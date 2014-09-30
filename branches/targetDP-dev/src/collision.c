@@ -331,21 +331,23 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 }
 
 
-/* /\* Constants*\/ */
+/* Constants*/
 
-/* TARGET_CONST int tc_nSites; */
-/* TARGET_CONST double tc_rtau_shear; */
-/* TARGET_CONST double tc_rtau_bulk; */
-/* TARGET_CONST double tc_rtau[NVEL]; */
-/* TARGET_CONST double tc_wv[NVEL]; */
-/* TARGET_CONST double tc_ma[NVEL][NVEL]; */
-/* TARGET_CONST double tc_mi[NVEL][NVEL]; */
-/* TARGET_CONST int tc_cv[NVEL][3]; */
-/* TARGET_CONST double tc_rtau2; */
-/* TARGET_CONST double tc_rcs2; */
-/* TARGET_CONST double tc_force_global[3]; */
-/* TARGET_CONST double tc_d[3][3]; */
-/* TARGET_CONST double tc_q[NVEL][3][3]; */
+TARGET_CONST int tc_nSites;
+TARGET_CONST double tc_rtau_shear;
+TARGET_CONST double tc_rtau_bulk;
+TARGET_CONST double tc_rtau_[NVEL];
+TARGET_CONST double tc_wv[NVEL];
+TARGET_CONST double tc_ma_[NVEL][NVEL];
+TARGET_CONST double tc_mi_[NVEL][NVEL];
+TARGET_CONST int tc_cv[NVEL][3];
+TARGET_CONST double tc_rtau2;
+TARGET_CONST double tc_rcs2;
+TARGET_CONST double tc_r3_; 
+TARGET_CONST double tc_r2rcs4;
+TARGET_CONST double tc_force_global[3];
+TARGET_CONST double tc_d_[3][3];
+TARGET_CONST double tc_q_[NVEL][3][3];
 
 
 
@@ -445,6 +447,30 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
   TARGET_INDEX_INIT(nSites);
+
+
+ //start constant setup
+
+
+  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
+  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  copyConstantDoubleToTarget(&tc_r3_, &r3_, sizeof(double));
+  copyConstantDoubleToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_rtau_, rtau_, NVEL*sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget( (double **) tc_ma_, (double*) ma_, NVEL*NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget((double **) tc_mi_, (double*) mi_, NVEL*NVEL*sizeof(double));
+  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
+  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
+  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
+  copyConstantDouble2DArrayToTarget((double **) tc_d_, (double*) d_, 3*3*sizeof(double));
+  copyConstantDouble3DArrayToTarget((double ***) tc_q_, (double *)q_, NVEL*3*3*sizeof(double)); 
+  checkTargetError("constants");
+  //end constant setup
+
+
   //end targetdp dev
 
 		
@@ -488,7 +514,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	for (m = 0; m < nmodes_; m++) {
 	  V1D(mode,m) = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    V1D(mode,m) += f_v[p][0]*ma_[m][p];
+	    V1D(mode,m) += f_v[p][0]*tc_ma_[m][p];
 	  }
 	  
 	}
@@ -522,7 +548,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	  hydro_f_local(hydro, base_index, force_local);
 	  
 	  for (i = 0; i < 3; i++) {
-	    V1D(force,i) = (force_global[i] + V1D(force_local,i));
+	    V1D(force,i) = (tc_force_global[i] + V1D(force_local,i));
 	    V1D(u,i) = VSC(rrho)*(V1D(u,i) + 0.5*V1D(force,i));  
 	  }
 	  hydro_u_set(hydro, base_index, u);
@@ -549,21 +575,21 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	  
 	  /* Form traceless parts */
 	  for (i = 0; i < 3; i++) {
-	    V2D(s,i,i)   -= r3_*VSC(tr_s);
-	    V2D(seq,i,i) -= r3_*VSC(tr_seq);
+	    V2D(s,i,i)   -= tc_r3_*VSC(tr_s);
+	    V2D(seq,i,i) -= tc_r3_*VSC(tr_seq);
 	  }
 	  
 	/* Relax each mode */
-	  VSC(tr_s) = VSC(tr_s) - rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
+	  VSC(tr_s) = VSC(tr_s) - tc_rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
 	  
 	  for (i = 0; i < 3; i++) {
 	    for (j = 0; j < 3; j++) {
-	      V2D(s,i,j) -= rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
-	      V2D(s,i,j) += d_[i][j]*r3_*VSC(tr_s);
+	      V2D(s,i,j) -= tc_rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
+	      V2D(s,i,j) += tc_d_[i][j]*tc_r3_*VSC(tr_s);
 	      
 	      /* Correction from body force (assumes equal relaxation times) */
 	      
-	      V2D(s,i,j) += (2.0-rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
+	      V2D(s,i,j) += (2.0-tc_rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
 	      V2D(shat,i,j) = 0.0;
 	    }
 	  }
@@ -589,7 +615,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	  /* Ghost modes are relaxed toward zero equilibrium. */
 	  
 	  for (m = NHYDRO; m < nmodes_; m++) {
-	    V1D(mode,m) = V1D(mode,m) - rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
+	    V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
 	  }
 	  	  
 	
@@ -600,7 +626,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	for (p = 0; p < NVEL; p++) {
 	    f_v[p][0] = 0.0;
 	  for (m = 0; m < nmodes_; m++) {
-	    f_v[p][0] += mi_[p][m]*V1D(mode,m);
+	    f_v[p][0] += tc_mi_[p][m]*V1D(mode,m);
 	  }
 	}
 	
@@ -626,7 +652,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	  for (p = 1; p < NVEL; p++) {
 	    VSC(phi) += f_v[p][0];
 	    for (i = 0; i < 3; i++) {
-	      V1D(jphi,i) += f_v[p][0]*cv[p][i];
+	      V1D(jphi,i) += f_v[p][0]*tc_cv[p][i];
 	    }
 	  }
 	  
@@ -635,10 +661,10 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 	  for (i = 0; i < 3; i++) {
 	    for (j = 0; j < 3; j++) {
-	      V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*d_[i][j];
+	      V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*tc_d_[i][j];
 	      /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
 	    }
-	    V1D(jphi,i) = V1D(jphi,i) - rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
+	    V1D(jphi,i) = V1D(jphi,i) - tc_rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
 	    /* jphi[i] = phi*u[i];*/
 	  }
 	  
@@ -651,16 +677,16 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	    VSC(sphidotq) = 0.0;
 	    
 	    for (i = 0; i < 3; i++) {
-	      VSC(jdotc) += V1D(jphi,i)*cv[p][i];
+	      VSC(jdotc) += V1D(jphi,i)*tc_cv[p][i];
 	      for (j = 0; j < 3; j++) {
-		VSC(sphidotq) += V2D(sphi,i,j)*q_[p][i][j];
+		VSC(sphidotq) += V2D(sphi,i,j)*tc_q_[p][i][j];
 	      }
 	    }
 	    
 	    /* Project all this back to the distributions. The magic
 	     * here is to move phi into the non-propagating distribution. */
 	    
-	    f_v[p][0] = wv[p]*(VSC(jdotc)*rcs2 + VSC(sphidotq)*r2rcs4) + VSC(phi)*dp0;
+	    f_v[p][0] = tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
 	  }
 
 	

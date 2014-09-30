@@ -42,6 +42,11 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 CC = gcc
+
+ifeq ($(MYHOSTNAME),mbpag3)
+CC= gcc-4.9
+endif
+
 MPICC = mpicc
 OPTS = -DNP_D3Q6
 CFLAGS = -Wall -O2
