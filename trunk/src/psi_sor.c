@@ -158,23 +158,6 @@ int psi_sor_poisson(psi_t * obj) {
 
 	psi_rho_elec(obj, index, &rho_elec);
 
-        /* D3Q19 stencil of Laplacian */
-/*
-	dpsi = 0.0;
-
-	for (p = 1; p < NVEL; p++) {
-
-	  coords_nbr[X] = ic + cv[p][X];
-	  coords_nbr[Y] = jc + cv[p][Y];
-	  coords_nbr[Z] = kc + cv[p][Z];
-
-	  index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
-       
-	  dpsi += 6.0 * wv[p] * obj->psi[index_nbr];
-	}
-
-        dpsi -= 4.0 * obj->psi[index]; 
-*/
         /* 6-point stencil of Laplacian */
 
 	dpsi = obj->psi[index + xs] + obj->psi[index - xs]
@@ -209,23 +192,6 @@ int psi_sor_poisson(psi_t * obj) {
 
 	    psi_rho_elec(obj, index, &rho_elec);
 
-	    /* D3Q19 stencil of Laplacian */
-/*
-	    dpsi = 0.0;
-
-	    for (p = 1; p < NVEL; p++) {
-
-	      coords_nbr[X] = ic + cv[p][X];
-	      coords_nbr[Y] = jc + cv[p][Y];
-	      coords_nbr[Z] = kc + cv[p][Z];
-
-	      index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
-	   
-	      dpsi += 6.0 * wv[p] * obj->psi[index_nbr];
-	    }
-
-	    dpsi -= 4.0 * obj->psi[index]; 
-*/
 	    /* 6-point stencil of Laplacian */
 
 	    dpsi = obj->psi[index + xs] + obj->psi[index - xs]
@@ -288,44 +254,13 @@ int psi_sor_poisson(psi_t * obj) {
  *  varying permittivity epsilon:
  *
  *    div [epsilon(r) grad phi(r) ] = -rho(r)
- *
- *  The differencing in one dimension is:
- *
- *    d_x (epsilon d_x phi) =~ epsilon(i+1/2,j,k) [ phi(i+1,j,k) - phi(i,j,k) ]
- *                           - epsilon(i-1/2,j,k) [ phi(i,j,k) - phi(i-1,j,k) ]
- *
- *  which collapses to the uniform case above for constant epsilon. This
- *  is straightforwardly extended to three dimensions to give the five
- *  point stencil.
- *
- *  Permittivity is provided via a function of f_vare_t which returns
- *  values at index = (i,j,k); a simple average
- *
- *    epsilon(i+1/2,j,k) = (1/2) [ epsilon(i,j,k) + epsilon(i+1,j,k) ]
- *
- *  is used to get the mid-point values in each coordinate direction.
- *
- *  A constant external field gives rise to an effective additional
- *  (surface) charge which must be accounted for even if rho is
- *  uniformly zero. This looks like:
- *
- *     d_x [ epsilon(r) . (d_x psi + E_0) ] = -rho(r)
- *
- *  and so on. So here we can write an effective induced charge
- *  which is constant throughout the iteration:
- *
- *     d_x [ epsilon(r) d_x psi ] = -rho(r) - rho_s(r)
- *
- *  with
- *
- *     rho_s(r) = div [ epsilon(r) E_0 ]
- *
+ * 
  ****************************************************************************/
 
 int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   int niteration = 2000;       /* Maximum number of iterations */
-  const int ncheck = 5;        /* Check global residual every n iterations */
+  const int ncheck = 1;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
   int nhalo;
@@ -342,7 +277,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   double rnorm_local[2];       /* Local values */
 
   double depsi;                /* Differenced left-hand side */
-  double ep0, ep1;             /* Permittivity values */
+  double eps0, eps1;           /* Permittivity values */
   double epsh;                 /* Permittivity value half-way */
   double epstot;               /* Net coefficient of the psi(i,j,k) term */
 
@@ -351,7 +286,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
-  double e[3];                 /* External field (constant) */
+  double e0[3];                /* External field (constant) */
 
   MPI_Comm comm;               /* Cartesian communicator */
 
@@ -360,7 +295,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   comm = cart_comm();
 
   assert(nhalo >= 1);
-  physics_e0(e);
+  physics_e0(e0);
 
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
@@ -384,33 +319,48 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
-
-	psi_rho_elec(obj, index, &rho_elec);
-	fepsilon(index, &ep0);
 	depsi = 0.0;
 	rho_s = 0.0;
 
-	fepsilon(index + xs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index + xs] - obj->psi[index]);
-	rho_s += e[X]*ep1; 
-	fepsilon(index - xs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index - xs] - obj->psi[index]);
-	rho_s -= e[X]*ep1;
-	fepsilon(index + ys, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index + ys] - obj->psi[index]);
-	rho_s += e[Y]*ep1;
-	fepsilon(index - ys, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index - ys] - obj->psi[index]);
-	rho_s -= e[Y]*ep1;
-	fepsilon(index + zs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index + zs] - obj->psi[index]);
-	rho_s += e[Z]*ep1;
-	fepsilon(index - zs, &ep1);
-	depsi += (ep0 + ep1)*(obj->psi[index - zs] - obj->psi[index]);
-	rho_s -= e[Z]*ep1;
+	index = coords_index(ic, jc, kc);
 
-	rnorm_local[0] += fabs(0.5*depsi + rho_elec + 0.5*rho_s);
+	psi_rho_elec(obj, index, &rho_elec);
+	fepsilon(index, &eps0);
+
+	/* Laplacian part of operator */
+
+        depsi += eps0*(-6.0*obj->psi[index]
+	      + obj->psi[index + xs] + obj->psi[index - xs]
+	      + obj->psi[index + ys] + obj->psi[index - ys]
+	      + obj->psi[index + zs] + obj->psi[index - zs]);
+
+	/* Additional terms in generalised Poisson equation */
+
+	fepsilon(index + xs, &eps1);
+	depsi += 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
+	rho_s += 0.5*eps1*e0[X]; 
+
+	fepsilon(index - xs, &eps1);
+	depsi -= 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
+	rho_s -= 0.5*eps1*e0[X];
+
+	fepsilon(index + ys, &eps1);
+	depsi += 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
+	rho_s += 0.5*eps1*e0[Y];
+
+	fepsilon(index - ys, &eps1);
+	depsi -= 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
+	rho_s -= 0.5*eps1*e0[Y];
+
+	fepsilon(index + zs, &eps1);
+	depsi += 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
+	rho_s += 0.5*eps1*e0[Z];
+
+	fepsilon(index - zs, &eps1);
+	depsi -= 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
+	rho_s -= 0.5*eps1*e0[Z];
+
+	rnorm_local[0] += fabs(depsi + rho_elec - rho_s);
       }
     }
   }
@@ -432,70 +382,63 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	  kst = 1 + (ic + jc + pass) % 2;
 	  for (kc = kst; kc <= nlocal[Z]; kc += 2) {
 
+	    depsi  = 0.0;
+	    rho_s  = 0.0;
+	    epstot = 0.0;
+
 	    index = coords_index(ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
-	    fepsilon(index, &ep0);
-	    depsi = 0.0;
-	    rho_s = 0.0;
-	    epstot = 0.0;
+	    fepsilon(index, &eps0);
 
-	    fepsilon(index + xs, &ep1);
-	    epsh = 0.5*(ep0 + ep1);
-	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + xs] - obj->psi[index]);
-	    rho_s += epsh*e[X];
+	    /* Laplacian part of operator */
 
-	    fepsilon(index - xs, &ep1);
-	    epsh = 0.5*(ep0 + ep1);
-	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - xs] - obj->psi[index]);
-	    rho_s -= epsh*e[X];
+	    depsi += eps0*(-6.0*obj->psi[index]
+		  + obj->psi[index + xs] + obj->psi[index - xs]
+		  + obj->psi[index + ys] + obj->psi[index - ys]
+		  + obj->psi[index + zs] + obj->psi[index - zs]);
 
-	    fepsilon(index + ys, &ep1);
-	    epsh = 0.5*(ep0 + ep1);
-	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + ys] - obj->psi[index]);
-	    rho_s += epsh*e[Y];
+	    /* Additional terms in generalised Poisson equation */
 
-	    fepsilon(index - ys, &ep1);
-	    epsh = 0.5*(ep0 + ep1);
-	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - ys] - obj->psi[index]);
-	    rho_s -= epsh*e[Y];
+	    fepsilon(index + xs, &eps1);
+	    depsi += 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
+	    rho_s += 0.5*eps1*e0[X]; 
 
-	    fepsilon(index + zs, &ep1);
-	    epsh = 0.5*(ep0 + ep1);
-	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index + zs] - obj->psi[index]);
-	    rho_s += epsh*e[Z];
+	    fepsilon(index - xs, &eps1);
+	    depsi -= 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
+	    rho_s -= 0.5*eps1*e0[X];
 
-	    fepsilon(index - zs, &ep1);
-	    epsh = 0.5*(ep0 + ep1);
-	    epstot += epsh;
-	    depsi += epsh*(obj->psi[index - zs] - obj->psi[index]);
-	    rho_s -= epsh*e[Z];
+	    fepsilon(index + ys, &eps1);
+	    depsi += 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
+	    rho_s += 0.5*eps1*e0[Y];
 
-	    residual = depsi + rho_elec + rho_s;
-	    obj->psi[index] -= omega*residual / (-1.0*epstot);
+	    fepsilon(index - ys, &eps1);
+	    depsi -= 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
+	    rho_s -= 0.5*eps1*e0[Y];
+
+	    fepsilon(index + zs, &eps1);
+	    depsi += 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
+	    rho_s += 0.5*eps1*e0[Z];
+
+	    fepsilon(index - zs, &eps1);
+	    depsi -= 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
+	    rho_s -= 0.5*eps1*e0[Z];
+
+	    residual = depsi + rho_elec - rho_s;
+	    obj->psi[index] -= omega*residual / (-6.0*eps0);
 	    rnorm_local[1] += fabs(residual);
+
 	  }
 	}
       }
 
-      /* Recompute relation parameter and next pass */
-
-      if (n == 0 && pass == 0) {
-	omega = 1.0 / (1.0 - 0.5*radius*radius);
-      }
-      else {
-	omega = 1.0 / (1.0 - 0.25*radius*radius*omega);
-      }
-      assert(1.0 < omega);
-      assert(omega < 2.0);
-
       psi_halo_psi(obj);
+
     }
+
+    /* Recompute relation parameter */
+    /* Note: The default Chebychev acceleration causes a convergence problem */ 
+    omega = 1.0 / (1.0 - 0.25*radius*radius*omega);
 
     if ((n % ncheck) == 0) {
       /* Compare residual and exit if small enough */
@@ -505,13 +448,13 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
 
 	if (is_statistics_step()) {
-	  info("\nSOR solver\nNorm of residual %g at %d iterations\n",rnorm[1],n);
+	  info("\nHeterogeneous SOR solver\nNorm of residual %g at %d iterations\n",rnorm[1],n);
 	}
 	break;
       }
 
       if (n == niteration-1) {
-	info("\nSOR solver\n");
+	info("\nHeterogeneous SOR solver\n");
 	info("Exceeded %d iterations\n", n+1);
 	info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
       }
