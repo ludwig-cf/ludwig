@@ -5,7 +5,9 @@
  *  A solution of the Poisson equation for the potential and
  *  charge densities stored in the psi_t object.
  *
- *  The Poisson equation looks like
+ *  This uses the PETSc library version 3.4.3
+ *
+ *  The Poisson equation homogeneous permittivity looks like
  *
  *    nabla^2 \psi = - rho_elec / epsilon
  *
@@ -390,27 +392,20 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	col[5].i = i;     col[5].j = j+1;   col[5].k = k;
 	col[6].i = i;     col[6].j = j;     col[6].k = k+1;
 
-        /* Laplacian part of operator */
-	for (p = 0; p < PSI_NGRAD; p++){
-	  ic = (col[p].i + 1) - noffset[X];
-	  jc = (col[p].j + 1) - noffset[Y];
-	  kc = (col[p].k + 1) - noffset[Z];
-	  index = coords_index(ic, jc, kc);
-
-	  fepsilon(index, &eps); 
-	  v[p] = matval[p] * eps;
-	}
-
-        /* Addtional terms in generalised Poisson equation */
 	ic = (col[0].i + 1) - noffset[X];
 	jc = (col[0].j + 1) - noffset[Y];
 	kc = (col[0].k + 1) - noffset[Z];
 	index = coords_index(ic, jc, kc);
 
+	fepsilon(index, &eps); 
 	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
 
-	for (p = 1; p < PSI_NGRAD; p++) {
+	for (p = 0; p < PSI_NGRAD; p++){
 
+	  /* Laplacian part of operator */
+	  v[p] = matval[p] * eps;
+
+	  /* Addtional terms in generalised Poisson equation */
 	  for(ia = 0; ia < 3; ia++){
 	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
 	  }
@@ -443,26 +438,20 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	col[18].i = i-1;   col[18].j = j-1;   col[18].k = k;    
 
         /* Laplacian part of operator */
-	for (p = 0; p < PSI_NGRAD; p++){
-	  ic = (col[p].i + 1) - noffset[X];
-	  jc = (col[p].j + 1) - noffset[Y];
-	  kc = (col[p].k + 1) - noffset[Z];
-	  index = coords_index(ic, jc, kc);
-
-	  fepsilon(index, &eps); 
-	  v[p] = matval[p] * eps;
-	}
-
-        /* Addtional terms in generalised Poisson equation */
 	ic = (col[0].i + 1) - noffset[X];
 	jc = (col[0].j + 1) - noffset[Y];
 	kc = (col[0].k + 1) - noffset[Z];
 	index = coords_index(ic, jc, kc);
 
+	fepsilon(index, &eps); 
 	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
 
-	for (p = 1; p < PSI_NGRAD; p++) {
+	for (p = 0; p < PSI_NGRAD; p++){
 
+	  /* Laplacian part of operator */
+	  v[p] = matval[p] * eps;
+
+	  /* Addtional terms in generalised Poisson equation */
 	  for(ia = 0; ia < 3; ia++){
 	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
 	  }
@@ -503,32 +492,26 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	col[26].i = i+1;   col[26].j = j+1;   col[26].k = k+1;
 
         /* Laplacian part of operator */
-	for (p = 0; p < PSI_NGRAD; p++){
-	  ic = (col[p].i + 1) - noffset[X];
-	  jc = (col[p].j + 1) - noffset[Y];
-	  kc = (col[p].k + 1) - noffset[Z];
-	  index = coords_index(ic, jc, kc);
-
-	  fepsilon(index, &eps); 
-	  v[p] = matval[p] * eps;
-	}
-
-	/* Addtional terms in generalised Poisson equation */
 	ic = (col[0].i + 1) - noffset[X];
 	jc = (col[0].j + 1) - noffset[Y];
 	kc = (col[0].k + 1) - noffset[Z];
 	index = coords_index(ic, jc, kc);
 
+	fepsilon(index, &eps); 
 	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
 
-	for (p = 1; p < PSI_NGRAD; p++) {
+	for (p = 0; p < PSI_NGRAD; p++){
 
+	  /* Laplacian part of operator */
+	  v[p] = matval[p] * eps;
+
+	  /* Addtional terms in generalised Poisson equation */
 	  for(ia = 0; ia < 3; ia++){
 	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
 	  }
 
 	}
-
+	
 	MatSetValuesStencil(A,1,&row,27,col,v,INSERT_VALUES);
 #endif
 
@@ -781,12 +764,12 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
 
   assert(obj);
 
+  if(fepsilon == NULL) {
+    psi_petsc_set_rhs(obj);
+  }
   if(fepsilon != NULL) {
     psi_petsc_compute_matrix(obj,fepsilon);
     psi_petsc_set_rhs_vare(obj,fepsilon);
-  }
-  else {
-    psi_petsc_set_rhs(obj);
   }
 
   psi_petsc_copy_psi_to_da(obj);
