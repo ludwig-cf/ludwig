@@ -22,6 +22,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "pe.h"
@@ -29,6 +30,7 @@
 #include "coords.h"
 #include "physics.h"
 #include "model.h"
+#include "lb_model_s.h"
 #include "free_energy.h"
 #include "control.h"
 #include "collision.h"
@@ -351,6 +353,175 @@ TARGET_CONST double tc_q_[NVEL][3][3];
 
 
 
+// host copies of fields
+//extern double* f_;
+//extern double* phi_site;
+//extern double* phi_delsq_;
+//extern double* phi_grad_;
+//extern double* f;
+//extern double* u;
+
+// target copies of fields 
+static double *t_f; 
+//static double *t_phi; 
+//static double *t_delsqphi; 
+//static double *t_gradphi; 
+//static double *t_force; 
+//static double *t_velocity; 
+
+#define NDIST 2 //for binary collision
+
+void init_fields_target(){
+
+  int N[3];
+  coords_nlocal(N);
+
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+
+  targetInit(nSites, nFields);
+
+  printf("XXX %d\n",nSites*nFields*sizeof(double));
+  targetCalloc((void **) &t_f, nSites*nFields*sizeof(double));
+
+  //printf("PPP %f\n",t_f[1532856]);
+
+  //targetCalloc((void **) &t_phi, nSites*sizeof(double));
+  //targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
+  //targetCalloc((void **) &t_gradphi, nSites*3*sizeof(double));
+  //targetCalloc((void **) &t_force, nSites*3*sizeof(double));
+  //targetCalloc((void **) &t_velocity, nSites*3*sizeof(double));
+
+  checkTargetError("Binary Collision Allocation");
+
+
+  
+}
+
+
+void finalise_fields_target(){
+
+  targetFree(t_f);
+  //targetFree(t_phi);
+  //targetFree(t_delsqphi);
+  //targetFree(t_gradphi);
+  //targetFree(t_force);
+  //targetFree(t_velocity);
+
+  checkTargetError("Binary Collision Free");
+
+  targetFinalize();
+
+
+}
+
+void put_fields_on_target_masked(lb_t * lb){
+
+  int       ic, jc, kc, index;       /* site indices */
+
+  int N[3];
+  coords_nlocal(N);
+
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+
+
+//set up site mask
+  char* siteMask = (char*) calloc(nSites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+  // set all non-halo sites to 1
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+  	index=coords_index(ic, jc, kc);
+  	siteMask[index]=1;
+      }
+    }
+  }
+
+  //copyToTargetMasked(t_f,lb->f,nSites,nFields,siteMask); 
+  copyToTarget(t_f,lb->f,nSites*nFields*sizeof(double)); 
+  //copyToTargetMaskedAoS(t_phi,phi_site,nSites,1,siteMask); 
+  //copyToTargetMaskedAoS(t_delsqphi,phi_delsq_,nSites,1,siteMask); 
+  //copyToTargetMaskedAoS(t_gradphi,phi_grad_,nSites,3,siteMask); 
+  //copyToTargetMaskedAoS(t_force,f,nSites,3,siteMask); 
+  //copyToTargetMaskedAoS(t_velocity,u,nSites,3,siteMask); 
+
+
+  free(siteMask);
+
+
+}
+
+
+void get_fields_from_target_masked(lb_t * lb){
+
+  int       ic, jc, kc, index;       /* site indices */
+
+  int N[3];
+  coords_nlocal(N);
+
+  int nFields=NVEL*NDIST;
+  int nhalo=coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  
+
+//set up site mask
+  char* siteMask = (char*) calloc(nSites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+  // set all non-halo sites to 1
+  for (ic = 1; ic <= N[X]; ic++) {
+    for (jc = 1; jc <= N[Y]; jc++) {
+      for (kc = 1; kc <= N[Z]; kc++) {
+  	index=coords_index(ic, jc, kc);
+  	siteMask[index]=1;
+      }
+    }
+  }
+
+  copyFromTargetMasked(lb->f,t_f,nSites,nFields,siteMask); 
+  //copyFromTargetMaskedAoS(phi_site,t_phi,nSites,1,siteMask); 
+  //copyFromTargetMaskedAoS(phi_delsq_,t_delsqphi,nSites,1,siteMask); 
+  //copyFromTargetMaskedAoS(phi_grad_,t_gradphi,nSites,3,siteMask); 
+  //copyFromTargetMaskedAoS(f,t_force,nSites,3,siteMask); 
+  //copyFromTargetMaskedAoS(u,t_velocity,nSites,3,siteMask); 
+
+
+  free(siteMask);
+
+
+
+}
+
+
+
+
 /*****************************************************************************
  *
  *  lb_collision_binary
@@ -474,8 +645,8 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   //end targetdp dev
 
 		
-
-
+  init_fields_target();
+  put_fields_on_target_masked(lb);
 
 
   TARGET_TLP(base_index,nSites){
@@ -507,18 +678,32 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 	/* Compute all the modes */
 	/* load SIMD vector of lattice sites */
 
-	  lb_f_multi_index_part(lb, base_index, 0, f_v, 1);
+    lb_f_multi_index_part(lb, base_index, 0, f_v, 1);
 	
 	/* matrix multiplication for full SIMD vector */
+    double diff,maxdiff=0;
 
 	for (m = 0; m < nmodes_; m++) {
 	  V1D(mode,m) = 0.0;
 	  for (p = 0; p < NVEL; p++) {
-	    V1D(mode,m) += f_v[p][0]*tc_ma_[m][p];
+	    //V1D(mode,m) += f_v[p][0]*tc_ma_[m][p];
+	    //int vecIndex=0;
+
+	    //	    V1D(mode,m) += t_f[tc_nSites*NDIST*p + tc_nSites*0 + base_index + vecIndex]*tc_ma_[m][p];
+
+	    V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ]*tc_ma_[m][p];
+
+	    diff=fabs(f_v[p][0]-t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ]);
+	    if (diff>maxdiff) maxdiff=diff;
 	  }
 	  
 	}
-	
+
+	if(maxdiff>0.) {
+	  printf("%d %1.16e\n",base_index,maxdiff);
+	  exit(1);
+	}	
+
 	  map_status(map, base_index, &status);
 	  if (status != MAP_FLUID) continue;
 	  
@@ -696,8 +881,10 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 	/* Next site */
       }
- 
-  
+
+  //get_fields_from_target_masked(lb); 
+  finalise_fields_target();
+
   return 0;
 }
 

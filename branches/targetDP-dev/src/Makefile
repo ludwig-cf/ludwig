@@ -49,7 +49,8 @@ endif
 
 MPICC = mpicc
 OPTS = -DNP_D3Q6
-CFLAGS = -Wall -O2
+#CFLAGS = -Wall -O2
+CFLAGS = -g
 
 INC = -I. -I ../targetDP
 LIBS = -lm
