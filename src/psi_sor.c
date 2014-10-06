@@ -263,7 +263,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   const int ncheck = 1;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
-  int nhalo;
   int n;                       /* Relaxation iterations */
   int pass;                    /* Red/black iteration */
   int kst;                     /* Start kc index for red/black iteration */
@@ -278,8 +277,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   double depsi;                /* Differenced left-hand side */
   double eps0, eps1;           /* Permittivity values */
-  double epsh;                 /* Permittivity value half-way */
-  double epstot;               /* Net coefficient of the psi(i,j,k) term */
 
   double omega;                /* Over-relaxation parameter 1 < omega < 2 */
   double radius;               /* Spectral radius of Jacobi iteration */
@@ -290,11 +287,10 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   MPI_Comm comm;               /* Cartesian communicator */
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   comm = cart_comm();
 
-  assert(nhalo >= 1);
+  assert(coords_nhalo() >= 1);
   physics_e0(e0);
 
   /* The red/black operation needs to be tested for odd numbers
@@ -384,7 +380,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
 	    depsi  = 0.0;
 	    rho_s  = 0.0;
-	    epstot = 0.0;
 
 	    index = coords_index(ic, jc, kc);
 

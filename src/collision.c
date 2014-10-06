@@ -432,6 +432,12 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   noise_present(noise, NOISE_RHO, &noise_on);
   fluctuations_off(shat, ghat);
 
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < SIMDVL; j++) {
+      u_v[i][j] = 0.0;
+    }
+  }
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 

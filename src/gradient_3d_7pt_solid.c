@@ -204,6 +204,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
   blue_phase_coll_w12(&w1_coll, &w2_coll);
   blue_phase_wall_w12(&w1_wall, &w2_wall);
   amplitude = blue_phase_amplitude_compute(); 
+  ifail = 0;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -375,7 +376,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	}
 
 	if (nunknown > 0) {
-	  ifail = util_svd_solve(6*nunknown, NQAB*nunknown, a18, b18, x15);
+	  ifail += util_svd_solve(6*nunknown, NQAB*nunknown, a18, b18, x15);
 	  assert(ifail == 0);
 	}
 
@@ -402,6 +403,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
   }
 
   util_matrix_free(3*6, &a18);
+  if (ifail > 0) fatal("Failure in gradient SVD\n");
 
   return 0;
 }
@@ -486,6 +488,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
   blue_phase_coll_w12(&w1_coll, &w2_coll);
   blue_phase_wall_w12(&w1_wall, &w2_wall);
   amplitude = blue_phase_amplitude_compute(); 
+  ifail = 0;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -659,7 +662,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 	}
 
 	if (nunknown > 0) {
-	  ifail = util_gauss_solve(NSYMM*nunknown, a18, xb18, pivot18);
+	  ifail += util_gauss_solve(NSYMM*nunknown, a18, xb18, pivot18);
 	  assert(ifail == 0);
 	}
 
@@ -695,6 +698,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
   }
 
   util_matrix_free(3*6, &a18);
+  if (ifail > 0) fatal("Failure in gradient Gaussian elimination\n");
 
   return 0;
 }
