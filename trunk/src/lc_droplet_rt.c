@@ -39,11 +39,13 @@ void lc_droplet_run_time(void) {
   info("liquid crystal droplet free energy selected.\n");
 
   n = RUN_get_double_parameter("lc_droplet_gamma", &gamma0);
-  assert(n == 1);
+  if (n == 0) fatal("Please specify lc_droplet_gamma in input\n");
+
   n = RUN_get_double_parameter("lc_droplet_delta", &delta);
-  assert(n == 1);
+  if (n == 0) fatal("Please specify lc_droplet_delta in input\n");
+
   n = RUN_get_double_parameter("lc_droplet_W", &W);
-  assert(n == 1);
+  if (n == 0) fatal("Please specify lc_droplet_W in input\n");
   
   info("Parameters:\n");
   info("parameter gamma0      = %12.5e\n", gamma0);
@@ -54,10 +56,10 @@ void lc_droplet_run_time(void) {
 
   /* set the free energy function pointers */
   /* currently molecular field is missing */
+
   fe_density_set(lc_droplet_free_energy_density);
   fe_chemical_potential_set(lc_droplet_chemical_potential);
   fe_chemical_stress_set(blue_phase_antisymmetric_stress);
-  /*fe_molecular_field_set(lc_droplet_molecular_field);*/
 
   return;
 }

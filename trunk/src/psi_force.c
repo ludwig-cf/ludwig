@@ -51,7 +51,6 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int zs, ys, xs;
-  int nhalo;
   int nlocal[3];
 
   double rho_elec;
@@ -61,9 +60,8 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   if (hydro == NULL) return 0;
   assert(psi);
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  assert(nhalo >= 1);
+  assert(coords_nhalo() >= 1);
 
   physics_e0(e0);
 
