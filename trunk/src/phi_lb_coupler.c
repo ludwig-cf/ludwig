@@ -43,7 +43,7 @@ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
 	index = coords_index(ic, jc, kc);
 
-	lb_0th_moment(lb, index, 1, &phi0);
+	lb_0th_moment(lb, index, LB_PHI, &phi0);
 	field_scalar_set(phi, index, phi0);
 
       }

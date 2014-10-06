@@ -247,10 +247,10 @@ void wall_finish() {
 
 int wall_bounce_back(lb_t * lb, map_t * map) {
 
+  int i, j, ij, ji, ia;
+  int ndist;
+  int status;
   B_link * p_link;
-  int      i, j, ij, ji, ia;
-  int      n, ndist;
-  int     status;
 
   double   rho, cdotu;
   double   fp, fp0, fp1;
@@ -277,8 +277,8 @@ int wall_bounce_back(lb_t * lb, map_t * map) {
       /* This matches the momentum exchange in colloid BBL. */
       /* This only affects the accounting (via anomaly, as below) */
 
-      lb_f(lb, i, ij, 0, &fp0);
-      lb_f(lb, j, ji, 0, &fp1);
+      lb_f(lb, i, ij, LB_RHO, &fp0);
+      lb_f(lb, j, ji, LB_RHO, &fp1);
       fp = fp0 + fp1;
       for (ia = 0; ia < 3; ia++) {
 	fnet_[ia] += (fp - 2.0*wv[ij])*cv[ij][ia];
@@ -287,27 +287,31 @@ int wall_bounce_back(lb_t * lb, map_t * map) {
     }
     else {
 
-      for (n = 0; n < ndist; n++) {
+      /* This is the momentum. To prevent accumulation of round-off
+       * in the running total (fnet_), we subtract the equilibrium
+       * wv[]ij]. This is ok for walls where there are exactly
+       * equal and opposite links at each side of the system. */
 
-	lb_f(lb, i, ij, n, &fp);
-	lb_0th_moment(lb, i, n, &rho);
+      lb_f(lb, i, ij, LB_RHO, &fp);
+      lb_0th_moment(lb, i, LB_RHO, &rho);
 
-	if (n == 0) {
-	  /* This is the momentum. To prevent accumulation of round-off
-	   * in the running total (fnet_), we subtract the equilibrium
-	   * wv[]ij]. This is ok for walls where there are exactly
-	   * equal and opposite links at each side of the system. */
+      force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+      for (ia = 0; ia < 3; ia++) {
+	fnet_[ia] += (force - 2.0*wv[ij])*cv[ij][ia];
+      }
 
-	  force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-	  for (ia = 0; ia < 3; ia++) {
-	    fnet_[ia] += (force - 2.0*wv[ij])*cv[ij][ia];
-	  }
-	}
+      fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
+      lb_f_set(lb, j, ji, LB_RHO, fp);
+
+      if (ndist > 1) {
+	/* Order parameter */
+	lb_f(lb, i, ij, LB_PHI, &fp);
+	lb_0th_moment(lb, i, LB_PHI, &rho);
 
 	fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-	lb_f_set(lb, j, ji, n, fp);
-
+	lb_f_set(lb, j, ji, LB_PHI, fp);
       }
+
     }
 
     p_link = p_link->next;
