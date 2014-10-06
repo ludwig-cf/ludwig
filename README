@@ -1,0 +1,19 @@
+Ludwig - a lattice Boltzmann code for complex fluids
+
+The ./docs directory contains the manual in tex form, and as
+a pdf. This includes a quickstart guide for compilation and
+running the code.
+
+The ./src directory contains the main src code.
+
+License details are given in the ./LICENSE file
+
+* Contact
+
+Ludwig is available from
+
+http://ccpforge.cse.rl.ac.uk/gf/project/ludwig/
+
+Please contact support@epcc.ed.ac.uk if you have any questions
+and quote "Ludwig" in the subject line.
+ 
