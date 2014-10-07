@@ -14,9 +14,12 @@
 
 /* declarations for required external (host) routines */
 extern "C" void fluid_body_force(double f[3]);
+#ifdef KEVIN_GPU
+#else
 extern "C" char site_map_get_status(int,int,int);
 extern "C" char site_map_get_status_index(int);
 //extern "C" void * colloid_at_site_index(int index);
+#endif
 extern "C" colloid_t * colloid_at_site_index(int index);
 
 

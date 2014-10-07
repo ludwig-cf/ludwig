@@ -862,7 +862,7 @@ void phi_force_colloid_gpu_d(const char * __restrict__ site_map_status_d,
 
 #else
 
-/* ALAN'S VERSION
+/* ALAN'S VERSION */
 
 __global__ void phi_force_colloid_gpu_d(const int * __restrict__ le_index_real_to_buffer_d,
 					const char * __restrict__ site_map_status_d,
