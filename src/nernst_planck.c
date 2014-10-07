@@ -380,8 +380,6 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   int c;
   int status1;
 
-  double eunit;
-  double beta;
   double b0, b1;
   double mu0, mu1;
   double rho0, rho1;
@@ -398,8 +396,6 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   coords_nlocal(nlocal);
 
   psi_nk(psi, &nk);
-  psi_unit_charge(psi, &eunit);
-  psi_beta(psi, &beta);
   psi_multistep_timestep(psi, &dt);
 
   physics_e0(e0);
@@ -426,14 +422,14 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 	      for (n = 0; n < nk; n++) {
 
 		fe_mu_solv(index0, n, &mu_s0);
-		mu0 = mu_s0 + psi->valency[n]*eunit*psi->psi[index0];
+		mu0 = mu_s0 + psi->valency[n]*psi->psi[index0];
 		rho0 = psi->rho[nk*index0 + n];
 
 		fe_mu_solv(index1, n, &mu_s1);
-		mu1 = mu_s1 + psi->valency[n]*eunit * (psi->psi[index1] - 
+		mu1 = mu_s1 + psi->valency[n]* (psi->psi[index1] - 
 	    		psi_gr_cv[c][X]*e0[X] - psi_gr_cv[c][Y]*e0[Y] - psi_gr_cv[c][Z]*e0[Z]);
-		b0 = exp(-beta*(mu1 - mu0));
-		b1 = exp(+beta*(mu1 - mu0));
+		b0 = exp(mu0 - mu1);
+		b1 = exp(mu1 - mu0);
 		rho1 = psi->rho[nk*(index1) + n]*b1;
 
 		flx[(nk*index0 + n)][c - 1] -= psi->diffusivity[n]*0.5*(1.0 + b0)*(rho1 - rho0) * psi_gr_rnorm[c];

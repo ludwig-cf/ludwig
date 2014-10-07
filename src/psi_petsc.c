@@ -645,12 +645,16 @@ int psi_petsc_set_rhs(psi_t * obj) {
    int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
    double *** rho_3d;
    double rho_elec;
+   double eunit, beta;
  
    assert(obj);
    coords_nlocal_offset(noffset);
  
    DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
    DMDAVecGetArray(da, b, &rho_3d);
+
+   psi_unit_charge(obj, &eunit);
+   psi_beta(obj, &beta);
  
    xe = xs + xw;
    ye = ys + yw;
@@ -665,7 +669,8 @@ int psi_petsc_set_rhs(psi_t * obj) {
  
          index = coords_index(ic,jc,kc);
 	 psi_rho_elec(obj, index, &rho_elec);
-         rho_3d[k][j][i] = rho_elec;
+	 /* Non-dimensional potential in Poisson eqn requires e/kT */
+         rho_3d[k][j][i] = rho_elec * eunit * beta;
  
        }
      }
@@ -702,6 +707,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
    double rho_elec;
    double eps0, eps1, grad_eps[3];
    double e0[3];   
+   double eunit, beta;
  
    assert(obj);
    coords_nlocal_offset(noffset);
@@ -710,6 +716,8 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
    DMDAVecGetArray(da, b, &rho_3d);
  
    physics_e0(e0);
+   psi_unit_charge(obj, &eunit);
+   psi_beta(obj, &beta);
 
    xe = xs + xw;
    ye = ys + yw;
@@ -723,9 +731,9 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
          ic = i - noffset[X] + 1;
 
          index = coords_index(ic,jc,kc);
-
 	 psi_rho_elec(obj, index, &rho_elec);
-         rho_3d[k][j][i] = rho_elec;
+	 /* Non-dimensional potential in Poisson eqn requires e/kT */
+         rho_3d[k][j][i] = rho_elec * eunit * beta;
 
 	 psi_grad_eps_d3qx(fepsilon, index, grad_eps);
 

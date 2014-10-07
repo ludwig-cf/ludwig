@@ -327,6 +327,11 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   double epsloc;
   double e0[3], e[3]; /* External and 'internal' electric field. */
   double e2;
+  double eunit, reunit, kt;
+
+  physics_kt(&kt);
+  psi_unit_charge(fe->psi, &eunit);
+  reunit = 1.0/eunit;
 
   symmetric_chemical_stress(index, s); 
 
@@ -334,12 +339,14 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
 
   field_scalar(fe->phi, index, &phi);
   psi_electric_field_d3qx(fe->psi, index, e);
+
   physics_e0(e0);
 
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     e[ia] += e0[ia];
+    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
 

@@ -119,6 +119,8 @@ int psi_sor_poisson(psi_t * obj) {
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
 
+  double eunit, beta;
+
   /* int index_nbr, coords_nbr[3];*/
 
   MPI_Comm comm;               /* Cartesian communicator */
@@ -148,6 +150,9 @@ int psi_sor_poisson(psi_t * obj) {
   psi_abstol(obj, &tol_abs);
   psi_maxits(obj, &niteration);
 
+  psi_beta(obj, &beta);
+  psi_unit_charge(obj, &eunit);
+
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -165,8 +170,8 @@ int psi_sor_poisson(psi_t * obj) {
 	     + obj->psi[index + zs] + obj->psi[index - zs]
 	     - 6.0*obj->psi[index];
 
-
-	rnorm_local[0] += fabs(epsilon*dpsi + rho_elec);
+	/* Non-dimensional potential in Poisson eqn requires e/kT */
+	rnorm_local[0] += fabs(epsilon*dpsi + eunit*beta*rho_elec);
       }
     }
   }
@@ -199,8 +204,8 @@ int psi_sor_poisson(psi_t * obj) {
 	         + obj->psi[index + zs] + obj->psi[index - zs]
 	      - 6.0*obj->psi[index];
 
-
-	    residual = epsilon*dpsi + rho_elec;
+	    /* Non-dimensional potential in Poisson eqn requires e/kT */
+	    residual = epsilon*dpsi + eunit*beta*rho_elec;
 	    obj->psi[index] -= omega*residual / (-6.0*epsilon);
 	    rnorm_local[1] += fabs(residual);
 	  }
@@ -285,6 +290,8 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   double tol_abs;              /* Absolute tolerance */
   double e0[3];                /* External field (constant) */
 
+  double eunit, beta;
+
   MPI_Comm comm;               /* Cartesian communicator */
 
   coords_nlocal(nlocal);
@@ -309,6 +316,9 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
   psi_maxits(obj, &niteration);
+  psi_beta(obj, &beta);
+  psi_unit_charge(obj, &eunit);
+
   rnorm_local[0] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -356,7 +366,8 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	depsi -= 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
 	rho_s -= 0.5*eps1*e0[Z];
 
-	rnorm_local[0] += fabs(depsi + rho_elec - rho_s);
+	/* Non-dimensional potential in Poisson eqn requires e/kT */
+	rnorm_local[0] += fabs(depsi + eunit*beta*rho_elec - rho_s);
       }
     }
   }
@@ -419,7 +430,8 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	    depsi -= 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
 	    rho_s -= 0.5*eps1*e0[Z];
 
-	    residual = depsi + rho_elec - rho_s;
+	    /* Non-dimensional potential in Poisson eqn requires e/kT */
+	    residual = depsi + eunit*beta*rho_elec - rho_s;
 	    obj->psi[index] -= omega*residual / (-6.0*eps0);
 	    rnorm_local[1] += fabs(residual);
 
