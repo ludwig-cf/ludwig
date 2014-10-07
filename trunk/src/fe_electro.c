@@ -197,7 +197,7 @@ void fe_electro_stress(const int index, double s[3][3]) {
   double e0[3];      /* External field */
   int nk;
   double rho;
-  double kt;
+  double eunit, reunit, kt;
 
   assert(fe);
 
@@ -207,12 +207,15 @@ void fe_electro_stress(const int index, double s[3][3]) {
 
   physics_e0(e0);
   physics_kt(&kt);
+  psi_unit_charge(fe->psi, &eunit);
+  reunit = 1.0/eunit;
   psi_nk(fe->psi, &nk);
 
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     e[ia] += e0[ia];
+    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
 
@@ -248,6 +251,7 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
   double e[3];       /* Electric field */
   double e2;         /* Magnitude squared */
   double e0[3];      /* External field */
+  double eunit, reunit, kt;
 
   assert(fe);
 
@@ -256,11 +260,15 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
   psi_electric_field_d3qx(fe->psi, index, e);
 
   physics_e0(e0);
+  physics_kt(&kt);
+  psi_unit_charge(fe->psi, &eunit);
+  reunit = 1.0/eunit;
 
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     e[ia] += e0[ia];
+    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
 

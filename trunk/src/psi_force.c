@@ -57,6 +57,8 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   double f[3];
   double e0[3];
 
+  double eunit, reunit, kt;
+
   if (hydro == NULL) return 0;
   assert(psi);
 
@@ -64,6 +66,9 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   assert(coords_nhalo() >= 1);
 
   physics_e0(e0);
+  psi_unit_charge(psi, &eunit);
+  reunit = 1.0/eunit;
+  physics_kt(&kt);
 
   /* Memory strides */
   coords_strides(&xs, &ys, &zs);
@@ -86,6 +91,10 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
 	f[X] += rho_elec*e0[X];
 	f[Y] += rho_elec*e0[Y];
 	f[Z] += rho_elec*e0[Z];
+
+	f[X] *= reunit * kt;
+	f[Y] *= reunit * kt;
+	f[Z] *= reunit * kt;
 
 	hydro_f_local_add(hydro, index, f);
       }
@@ -139,7 +148,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   double flocal[4] = {0.0, 0.0, 0.0, 0.0};
   double fsum[4];
   double e0[3], elocal[3];
-  double kt;
+  double eunit, reunit, kt;
 
   colloid_t * pc = NULL;
   MPI_Comm comm;
@@ -148,9 +157,13 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   assert(cinfo);
 
   physics_e0(e0); 
-  physics_kt(&kt); 
+
   coords_nlocal(nlocal);
   comm = cart_comm();
+
+  psi_unit_charge(psi, &eunit);
+  reunit = 1.0/eunit;
+  physics_kt(&kt);
 
   psi_nk(psi, &nk);
   assert(nk == 2); /* This routine is not completely general */
@@ -171,9 +184,9 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 	/* If solid, accumulate contribution to colloid;
 	   otherwise to fluid node */
 
-	f[X] = rho_elec*(e0[X] + elocal[X]);
-	f[Y] = rho_elec*(e0[Y] + elocal[Y]);
-	f[Z] = rho_elec*(e0[Z] + elocal[Z]);
+	f[X] = rho_elec*reunit*kt*(e0[X] + elocal[X]);
+	f[Y] = rho_elec*reunit*kt*(e0[Y] + elocal[Y]);
+	f[Z] = rho_elec*reunit*kt*(e0[Z] + elocal[Z]);
 
 	if (pc) {
 
@@ -186,6 +199,9 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 
           /* Include ideal gas contribution */   
 /*
+
+	  physics_kt(&kt); 
+
 	  for (n = 0; n < nk; n++) {
 
 	    psi_grad_rho_d3qx(psi, map, index, n, grad_rho);
