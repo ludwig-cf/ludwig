@@ -13,7 +13,7 @@
  *****************************************************************************/
 
 #ifndef GRADIENT_2D_TOMITA_FLUID_H
-#define GRADIENT_2D_TOIMTA_FLUID_H
+#define GRADIENT_2D_TOMITA_FLUID_H
 
 int gradient_2d_tomita_fluid_d2(const int nop, const double * field,
 				double * grad, double * delsq);

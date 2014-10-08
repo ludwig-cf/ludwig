@@ -14,7 +14,7 @@
  ****************************************************************************/
 
 #ifndef LC_DROPLET_RT_H
-#define LC_DROPLET__RT_H
+#define LC_DROPLET_RT_H
 
 void lc_droplet_run_time(void);
 
