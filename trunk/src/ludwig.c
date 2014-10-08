@@ -666,7 +666,7 @@ void ludwig_run(const char * inputfile) {
       io_write_data(iohandler, filename, ludwig->hydro);
     }
 
-    if (is_fed_output_step()) {
+    if (fe_set() && is_fed_output_step()) {
       fed_io_info(&iohandler);
       info("Writing free energy density output at step %d!\n", step);
       sprintf(filename, "%sfed-%8.8d", subdirectory, step);
