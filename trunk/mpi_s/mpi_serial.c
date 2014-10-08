@@ -676,7 +676,7 @@ static void mpi_copy(void * send, void * recv, int count, MPI_Datatype type) {
 
 static int mpi_sizeof(MPI_Datatype type) {
 
-  int size;
+  int size = sizeof(int);
 
   switch (type) {
   case MPI_CHAR:
@@ -716,11 +716,10 @@ static int mpi_sizeof(MPI_Datatype type) {
     size = sizeof(char);
     break;
   case MPI_PACKED:
-    /* mpi_error("MPI_PACKED not implemented\n");*/
-    break;
+    printf("MPI_PACKED not implemented\n");
   default:
-    ;
-    /* mpi_error("Unrecognised data type\n");*/
+    printf("Unrecognised data type\n");
+    MPI_Abort(MPI_COMM_WORLD, 0);
   }
 
   return size;

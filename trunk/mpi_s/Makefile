@@ -14,20 +14,8 @@
 
 LIBNAME = libmpi.a
 
-###############################################################################
-#
-#  BlueGene
-#
-###############################################################################
-
-#CC = xlc_r
-#CXX = xlC_r
-#CFLAGS = -O2 -qhalt=w
-#CXXFLAGS = $(CFLAGS)
-#INCLUDE  = -I.
-#AR = ar -cru
-
 CC = gcc -Wall
+CXX = 
 INCLUDE = -I.
 AR = ar -cru
 
