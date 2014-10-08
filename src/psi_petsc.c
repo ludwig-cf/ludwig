@@ -101,7 +101,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   nhalo = coords_nhalo();
 
   DMDACreate3d(PETSC_COMM_WORLD, \
-	DMDA_BOUNDARY_PERIODIC,	DMDA_BOUNDARY_PERIODIC, DMDA_BOUNDARY_PERIODIC,	\
+	DM_BOUNDARY_PERIODIC,	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,	\
 	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
 	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
 	NULL, NULL, NULL, &da);
@@ -111,7 +111,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   VecDuplicate(x,&b);
 
   /* Create matrix on DM pre-allocated according to distributed array structure */
-  DMCreateMatrix(da,MATAIJ,&A);
+  DMCreateMatrix(da,&A);
 
   /* Initialise solver context and preconditioner */
 
@@ -120,7 +120,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   psi_maxits(obj, &niteration);
 
   KSPCreate(PETSC_COMM_WORLD,&ksp);	
-  KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN);
+  KSPSetOperators(ksp,A,A);
   KSPSetTolerances(ksp,tol_rel,tol_abs,PETSC_DEFAULT,niteration);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
@@ -279,6 +279,10 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   /* Matrix assembly & halo swap */
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
+
+  /* Retain the non-zero structure of the matrix and produce an error if changed */
+  MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
+  MatSetOption(A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE);
 
   if (view_matrix) {
     info("\nPETSc output matrix\n");
@@ -521,6 +525,10 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
   /* Matrix assembly & halo swap */
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
+
+  /* Retain the non-zero structure of the matrix and produce an error if changed */
+  MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
+  MatSetOption(A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE);
 
   if (view_matrix) {
     info("\nPETSc output matrix\n");
