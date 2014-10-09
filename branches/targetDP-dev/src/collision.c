@@ -31,6 +31,7 @@
 #include "physics.h"
 #include "model.h"
 #include "lb_model_s.h"
+#include "hydro_s.h"
 #include "free_energy.h"
 #include "control.h"
 #include "collision.h"
@@ -363,11 +364,11 @@ TARGET_CONST double tc_q_[NVEL][3][3];
 
 // target copies of fields 
 static double *t_f; 
-//static double *t_phi; 
-//static double *t_delsqphi; 
-//static double *t_gradphi; 
-//static double *t_force; 
-//static double *t_velocity; 
+static double *t_phi; 
+static double *t_delsqphi; 
+static double *t_gradphi; 
+static double *t_force; 
+static double *t_velocity; 
 
 #define NDIST 2 //for binary collision
 
@@ -388,16 +389,12 @@ void init_fields_target(){
 
   targetInit(nSites, nFields);
 
-  printf("XXX %d\n",nSites*nFields*sizeof(double));
   targetCalloc((void **) &t_f, nSites*nFields*sizeof(double));
-
-  //printf("PPP %f\n",t_f[1532856]);
-
-  //targetCalloc((void **) &t_phi, nSites*sizeof(double));
-  //targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
-  //targetCalloc((void **) &t_gradphi, nSites*3*sizeof(double));
-  //targetCalloc((void **) &t_force, nSites*3*sizeof(double));
-  //targetCalloc((void **) &t_velocity, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_phi, nSites*sizeof(double));
+  targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
+  targetCalloc((void **) &t_gradphi, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_force, nSites*3*sizeof(double));
+  targetCalloc((void **) &t_velocity, nSites*3*sizeof(double));
 
   checkTargetError("Binary Collision Allocation");
 
@@ -409,11 +406,11 @@ void init_fields_target(){
 void finalise_fields_target(){
 
   targetFree(t_f);
-  //targetFree(t_phi);
-  //targetFree(t_delsqphi);
-  //targetFree(t_gradphi);
-  //targetFree(t_force);
-  //targetFree(t_velocity);
+  targetFree(t_phi);
+  targetFree(t_delsqphi);
+  targetFree(t_gradphi);
+  targetFree(t_force);
+  targetFree(t_velocity);
 
   checkTargetError("Binary Collision Free");
 
@@ -422,7 +419,7 @@ void finalise_fields_target(){
 
 }
 
-void put_fields_on_target_masked(lb_t * lb){
+void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
 
   int       ic, jc, kc, index;       /* site indices */
 
@@ -457,13 +454,26 @@ void put_fields_on_target_masked(lb_t * lb){
     }
   }
 
-  //copyToTargetMasked(t_f,lb->f,nSites,nFields,siteMask); 
-  copyToTarget(t_f,lb->f,nSites*nFields*sizeof(double)); 
-  //copyToTargetMaskedAoS(t_phi,phi_site,nSites,1,siteMask); 
-  //copyToTargetMaskedAoS(t_delsqphi,phi_delsq_,nSites,1,siteMask); 
-  //copyToTargetMaskedAoS(t_gradphi,phi_grad_,nSites,3,siteMask); 
-  //copyToTargetMaskedAoS(t_force,f,nSites,3,siteMask); 
-  //copyToTargetMaskedAoS(t_velocity,u,nSites,3,siteMask); 
+
+  //  copyToTargetMasked(t_f,lb->f,nSites,nFields,siteMask); 
+  copyToTargetMaskedAoS(t_f,lb->f,nSites,nFields,siteMask); 
+  //copyToTarget(t_f,lb->f,nSites*nFields*sizeof(double)); 
+
+
+  //TODO generalise away from symmetric case
+  double *ptr;
+
+  symmetric_phi(&ptr);
+  copyToTargetMaskedAoS(t_phi,ptr,nSites,1,siteMask); 
+
+  symmetric_delsqphi(&ptr);
+  copyToTargetMaskedAoS(t_delsqphi,ptr,nSites,1,siteMask); 
+
+  symmetric_gradphi(&ptr);
+  copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
+
+  copyToTargetMaskedAoS(t_force,hydro->f,nSites,3,siteMask); 
+  //copyToTargetMaskedAoS(t_velocity,hydro->u,nSites,3,siteMask); 
 
 
   free(siteMask);
@@ -472,7 +482,7 @@ void put_fields_on_target_masked(lb_t * lb){
 }
 
 
-void get_fields_from_target_masked(lb_t * lb){
+void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro){
 
   int       ic, jc, kc, index;       /* site indices */
 
@@ -505,12 +515,14 @@ void get_fields_from_target_masked(lb_t * lb){
     }
   }
 
-  copyFromTargetMasked(lb->f,t_f,nSites,nFields,siteMask); 
+  //copyFromTargetMasked(lb->f,t_f,nSites,nFields,siteMask); 
+  copyFromTargetMaskedAoS(lb->f,t_f,nSites,nFields,siteMask); 
+  //copyFromTarget(lb->f,t_f,nSites*nFields*sizeof(double));
   //copyFromTargetMaskedAoS(phi_site,t_phi,nSites,1,siteMask); 
   //copyFromTargetMaskedAoS(phi_delsq_,t_delsqphi,nSites,1,siteMask); 
   //copyFromTargetMaskedAoS(phi_grad_,t_gradphi,nSites,3,siteMask); 
   //copyFromTargetMaskedAoS(f,t_force,nSites,3,siteMask); 
-  //copyFromTargetMaskedAoS(u,t_velocity,nSites,3,siteMask); 
+  copyFromTargetMaskedAoS(hydro->u,t_velocity,nSites,3,siteMask); 
 
 
   free(siteMask);
@@ -644,10 +656,31 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   //end targetdp dev
 
-		
-  init_fields_target();
-  put_fields_on_target_masked(lb);
 
+  //start field management
+  init_fields_target();
+  put_fields_on_target_masked(lb,hydro);
+  //end field management
+
+  //start function pointer management
+
+  mu_fntype* t_chemical_potential; 
+  targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
+
+  //TODO  
+  //chemical_potential = fe_chemical_potential_function();
+  //the below is currently hardwired in symmetric module. Need to
+  // abstract in fe interface
+  get_chemical_potential_target(t_chemical_potential);
+
+
+  pth_fntype* t_chemical_stress; 
+  targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
+  get_chemical_stress_target(t_chemical_stress);
+
+
+  //end function pointer management
+ 
 
   TARGET_TLP(base_index,nSites){
 	
@@ -673,218 +706,201 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
     //HACK TODO vectorise these
     noise_present(noise, NOISE_RHO, &noise_on);
     fluctuations_off(shat, ghat);
-
-
-	/* Compute all the modes */
-	/* load SIMD vector of lattice sites */
-
-    lb_f_multi_index_part(lb, base_index, 0, f_v, 1);
-	
-	/* matrix multiplication for full SIMD vector */
-    double diff,maxdiff=0;
-
-	for (m = 0; m < nmodes_; m++) {
-	  V1D(mode,m) = 0.0;
-	  for (p = 0; p < NVEL; p++) {
-	    //V1D(mode,m) += f_v[p][0]*tc_ma_[m][p];
-	    //int vecIndex=0;
-
-	    //	    V1D(mode,m) += t_f[tc_nSites*NDIST*p + tc_nSites*0 + base_index + vecIndex]*tc_ma_[m][p];
-
-	    V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ]*tc_ma_[m][p];
-
-	    diff=fabs(f_v[p][0]-t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ]);
-	    if (diff>maxdiff) maxdiff=diff;
-	  }
-	  
-	}
-
-	if(maxdiff>0.) {
-	  printf("%d %1.16e\n",base_index,maxdiff);
-	  exit(1);
-	}	
-
-	  map_status(map, base_index, &status);
-	  if (status != MAP_FLUID) continue;
-	  
-	  /* For convenience, write out the physical modes. */
-	  
-	  VSC(rho) = V1D(mode,0);
-	  for (i = 0; i < 3; i++) {
-	    V1D(u,i) = V1D(mode,1 + i);
-	  }
-
-	  V2D(s,X,X) = V1D(mode,4);
-	  V2D(s,X,Y) = V1D(mode,5);
-	  V2D(s,X,Z) = V1D(mode,6);
-	  V2D(s,Y,X) = V2D(s,X,Y);
-	  V2D(s,Y,Y) = V1D(mode,7);
-	  V2D(s,Y,Z) = V1D(mode,8);
-	  V2D(s,Z,X) = V2D(s,X,Z);
-	  V2D(s,Z,Y) = V2D(s,Y,Z);
-	  V2D(s,Z,Z) = V1D(mode,9);
-	  
-	  /* Compute the local velocity, taking account of any body force */
-	  
-
-	  VSC(rrho) = 1.0/VSC(rho);
-
-	  //TODO HACK vectorise
-	  hydro_f_local(hydro, base_index, force_local);
-	  
-	  for (i = 0; i < 3; i++) {
-	    V1D(force,i) = (tc_force_global[i] + V1D(force_local,i));
-	    V1D(u,i) = VSC(rrho)*(V1D(u,i) + 0.5*V1D(force,i));  
-	  }
-	  hydro_u_set(hydro, base_index, u);
-	  
-	  /* Compute the thermodynamic component of the stress */
-	  
-      
-	  chemical_stress(base_index, sth);
-	  
-	  /* Relax stress with different shear and bulk viscosity */
-	  
-	  VSC(tr_s)   = 0.0;
-	  VSC(tr_seq) = 0.0;
-	  
-	  for (i = 0; i < 3; i++) {
-	    /* Set equilibrium stress, which includes thermodynamic part */
-	    for (j = 0; j < 3; j++) {
-	      V2D(seq,i,j) = VSC(rho)*V1D(u,i)*V1D(u,j) + V2D(sth,i,j);
-	    }
-	    /* Compute trace */
-	    VSC(tr_s)   += V2D(s,i,i);
-	    VSC(tr_seq) += V2D(seq,i,i);
-	  }
-	  
-	  /* Form traceless parts */
-	  for (i = 0; i < 3; i++) {
-	    V2D(s,i,i)   -= tc_r3_*VSC(tr_s);
-	    V2D(seq,i,i) -= tc_r3_*VSC(tr_seq);
-	  }
-	  
-	/* Relax each mode */
-	  VSC(tr_s) = VSC(tr_s) - tc_rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
-	  
-	  for (i = 0; i < 3; i++) {
-	    for (j = 0; j < 3; j++) {
-	      V2D(s,i,j) -= tc_rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
-	      V2D(s,i,j) += tc_d_[i][j]*tc_r3_*VSC(tr_s);
-	      
-	      /* Correction from body force (assumes equal relaxation times) */
-	      
-	      V2D(s,i,j) += (2.0-tc_rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
-	      V2D(shat,i,j) = 0.0;
-	    }
-	  }
-	  
-	  //HACK TODO vectorise this
-	  if (noise_on) collision_fluctuations(noise, base_index, shat, ghat);
-	  
-
-	  /* Now reset the hydrodynamic modes to post-collision values */
-	  
-	  V1D(mode,1) = V1D(mode,1) + V1D(force,X);    /* Conserved if no force */
-	  V1D(mode,2) = V1D(mode,2) + V1D(force,Y);    /* Conserved if no force */
-	  V1D(mode,3) = V1D(mode,3) + V1D(force,Z);    /* Conserved if no force */
-	  V1D(mode,4) = V2D(s,X,X) + V2D(shat,X,X);
-	  V1D(mode,5) = V2D(s,X,Y) + V2D(shat,X,Y);
-	  V1D(mode,6) = V2D(s,X,Z) + V2D(shat,X,Z);
-	  V1D(mode,7) = V2D(s,Y,Y) + V2D(shat,Y,Y);
-	  V1D(mode,8) = V2D(s,Y,Z) + V2D(shat,Y,Z);
-	  V1D(mode,9) = V2D(s,Z,Z) + V2D(shat,Z,Z);
-	  
-
-
-	  /* Ghost modes are relaxed toward zero equilibrium. */
-	  
-	  for (m = NHYDRO; m < nmodes_; m++) {
-	    V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
-	  }
-	  	  
-	
-	
-	/* Project post-collision modes back onto the distribution */
-	/* matrix multiplication for full SIMD vector */
-
-	for (p = 0; p < NVEL; p++) {
-	    f_v[p][0] = 0.0;
-	  for (m = 0; m < nmodes_; m++) {
-	    f_v[p][0] += tc_mi_[p][m]*V1D(mode,m);
-	  }
-	}
-	
-	/* Store SIMD vector of lattice sites for density */
-
-	  lb_f_multi_index_set_part(lb, base_index, 0, f_v, 1);
-
-	/* Now load SIMD vector of lattice sites for composition */
-	  lb_f_multi_index_part(lb, base_index, 1, f_v, 1);
-
-
-	  
-	  /* Now, the order parameter distribution */
-	  
-	  VSC(phi) = f_v[0][0];
-
-	  //HACK TODO vectorise this
-	  VSC(mu) = chemical_potential(base_index, 0);
-	  
-	  V1D(jphi,X) = 0.0;
-	  V1D(jphi,Y) = 0.0;
-	  V1D(jphi,Z) = 0.0;
-	  for (p = 1; p < NVEL; p++) {
-	    VSC(phi) += f_v[p][0];
-	    for (i = 0; i < 3; i++) {
-	      V1D(jphi,i) += f_v[p][0]*tc_cv[p][i];
-	    }
-	  }
-	  
-	  
-	  /* Relax order parameters modes. See the comments above. */
-
-	  for (i = 0; i < 3; i++) {
-	    for (j = 0; j < 3; j++) {
-	      V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*tc_d_[i][j];
-	      /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
-	    }
-	    V1D(jphi,i) = V1D(jphi,i) - tc_rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
-	    /* jphi[i] = phi*u[i];*/
-	  }
-	  
-	  /* Now update the distribution */
-	  
-	  for (p = 0; p < NVEL; p++) {
-	    
-	    int dp0 = (p == 0);
-	    VSC(jdotc)    = 0.0;
-	    VSC(sphidotq) = 0.0;
-	    
-	    for (i = 0; i < 3; i++) {
-	      VSC(jdotc) += V1D(jphi,i)*tc_cv[p][i];
-	      for (j = 0; j < 3; j++) {
-		VSC(sphidotq) += V2D(sphi,i,j)*tc_q_[p][i][j];
-	      }
-	    }
-	    
-	    /* Project all this back to the distributions. The magic
-	     * here is to move phi into the non-propagating distribution. */
-	    
-	    f_v[p][0] = tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
-	  }
-
-	
-	/* store SIMD vector of lattice sites */
-	  lb_f_multi_index_set_part(lb, base_index, 1, f_v, 1);
-
-
-	/* Next site */
+    
+    
+    /* Compute all the modes */
+    for (m = 0; m < nmodes_; m++) {
+      V1D(mode,m) = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ]*tc_ma_[m][p];
       }
+      
+    }
+    
+    map_status(map, base_index, &status);
+    if (status != MAP_FLUID) continue;
+    
+    /* For convenience, write out the physical modes. */
+    
+    VSC(rho) = V1D(mode,0);
+    for (i = 0; i < 3; i++) {
+      V1D(u,i) = V1D(mode,1 + i);
+    }
+    
+    V2D(s,X,X) = V1D(mode,4);
+    V2D(s,X,Y) = V1D(mode,5);
+    V2D(s,X,Z) = V1D(mode,6);
+    V2D(s,Y,X) = V2D(s,X,Y);
+    V2D(s,Y,Y) = V1D(mode,7);
+    V2D(s,Y,Z) = V1D(mode,8);
+    V2D(s,Z,X) = V2D(s,X,Z);
+    V2D(s,Z,Y) = V2D(s,Y,Z);
+    V2D(s,Z,Z) = V1D(mode,9);
+    
+    /* Compute the local velocity, taking account of any body force */
+        
+    VSC(rrho) = 1.0/VSC(rho);
+    
+    //TODO HACK vectorise
+    //hydro_f_local(hydro, base_index, force_local);
 
-  //get_fields_from_target_masked(lb); 
+    for (i = 0; i < 3; i++) 
+      force_local[i]=t_force[3*base_index+i];
+
+    
+    for (i = 0; i < 3; i++) {
+      V1D(force,i) = (tc_force_global[i] + V1D(force_local,i));
+      V1D(u,i) = VSC(rrho)*(V1D(u,i) + 0.5*V1D(force,i));  
+    }
+
+
+    //hydro_u_set(hydro, base_index, u);
+   for (i = 0; i < 3; i++) {    
+     t_velocity[3*base_index+i]=u[i];
+   }
+
+    /* Compute the thermodynamic component of the stress */
+       
+    //chemical_stress(base_index, sth);
+    (*t_chemical_stress)(base_index, sth,  t_phi, t_gradphi, t_delsqphi);
+    
+    /* Relax stress with different shear and bulk viscosity */
+    
+    VSC(tr_s)   = 0.0;
+    VSC(tr_seq) = 0.0;
+    
+    for (i = 0; i < 3; i++) {
+      /* Set equilibrium stress, which includes thermodynamic part */
+      for (j = 0; j < 3; j++) {
+	V2D(seq,i,j) = VSC(rho)*V1D(u,i)*V1D(u,j) + V2D(sth,i,j);
+      }
+      /* Compute trace */
+      VSC(tr_s)   += V2D(s,i,i);
+      VSC(tr_seq) += V2D(seq,i,i);
+    }
+    
+    /* Form traceless parts */
+    for (i = 0; i < 3; i++) {
+      V2D(s,i,i)   -= tc_r3_*VSC(tr_s);
+      V2D(seq,i,i) -= tc_r3_*VSC(tr_seq);
+    }
+    
+    /* Relax each mode */
+    VSC(tr_s) = VSC(tr_s) - tc_rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
+    
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+	V2D(s,i,j) -= tc_rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
+	V2D(s,i,j) += tc_d_[i][j]*tc_r3_*VSC(tr_s);
+	
+	/* Correction from body force (assumes equal relaxation times) */
+	
+	V2D(s,i,j) += (2.0-tc_rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
+	V2D(shat,i,j) = 0.0;
+      }
+    }
+    
+    //HACK TODO vectorise this
+    if (noise_on) collision_fluctuations(noise, base_index, shat, ghat);
+    
+    
+    /* Now reset the hydrodynamic modes to post-collision values */
+    
+    V1D(mode,1) = V1D(mode,1) + V1D(force,X);    /* Conserved if no force */
+    V1D(mode,2) = V1D(mode,2) + V1D(force,Y);    /* Conserved if no force */
+    V1D(mode,3) = V1D(mode,3) + V1D(force,Z);    /* Conserved if no force */
+    V1D(mode,4) = V2D(s,X,X) + V2D(shat,X,X);
+    V1D(mode,5) = V2D(s,X,Y) + V2D(shat,X,Y);
+    V1D(mode,6) = V2D(s,X,Z) + V2D(shat,X,Z);
+    V1D(mode,7) = V2D(s,Y,Y) + V2D(shat,Y,Y);
+    V1D(mode,8) = V2D(s,Y,Z) + V2D(shat,Y,Z);
+    V1D(mode,9) = V2D(s,Z,Z) + V2D(shat,Z,Z);
+    
+    
+    
+    /* Ghost modes are relaxed toward zero equilibrium. */
+    
+    for (m = NHYDRO; m < nmodes_; m++) {
+      V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
+    }
+    
+    
+    
+    /* Project post-collision modes back onto the distribution */
+    
+    for (p = 0; p < NVEL; p++) {
+      double ftmp=0;
+      for (m = 0; m < nmodes_; m++) {
+	ftmp += tc_mi_[p][m]*V1D(mode,m);
+      }
+      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ] = ftmp;
+    }
+    
+    
+    /* Now, the order parameter distribution */
+    
+    VSC(phi)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, 0) ];
+    
+    
+    //HACK TODO vectorise this
+    // VSC(mu) = chemical_potential(base_index, 0);
+
+    VSC(mu) = (*t_chemical_potential)(base_index, 0,t_phi,t_delsqphi);
+    
+    V1D(jphi,X) = 0.0;
+    V1D(jphi,Y) = 0.0;
+    V1D(jphi,Z) = 0.0;
+    for (p = 1; p < NVEL; p++) {
+      VSC(phi) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, p) ];
+      for (i = 0; i < 3; i++) {
+	V1D(jphi,i) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, p) ]*tc_cv[p][i];
+      }
+    }
+    
+    
+    /* Relax order parameters modes. See the comments above. */
+    
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
+	V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*tc_d_[i][j];
+	/* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
+      }
+      V1D(jphi,i) = V1D(jphi,i) - tc_rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
+      /* jphi[i] = phi*u[i];*/
+    }
+    
+    /* Now update the distribution */
+    
+    for (p = 0; p < NVEL; p++) {
+      
+      int dp0 = (p == 0);
+      VSC(jdotc)    = 0.0;
+      VSC(sphidotq) = 0.0;
+      
+      for (i = 0; i < 3; i++) {
+	VSC(jdotc) += V1D(jphi,i)*tc_cv[p][i];
+	for (j = 0; j < 3; j++) {
+	  VSC(sphidotq) += V2D(sphi,i,j)*tc_q_[p][i][j];
+	}
+      }
+      
+      /* Project all this back to the distributions. The magic
+       * here is to move phi into the non-propagating distribution. */
+
+      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, p) ] 
+	= tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
+      
+    }
+        
+    /* Next site */
+  }
+  
+  get_fields_from_target_masked(lb,hydro); 
   finalise_fields_target();
 
+  targetFree(t_chemical_potential);
+  targetFree(t_chemical_stress);
+  
   return 0;
 }
 
