@@ -459,8 +459,11 @@ void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
   copyToTargetMaskedAoS(t_f,lb->f,nSites,nFields,siteMask); 
   //copyToTarget(t_f,lb->f,nSites*nFields*sizeof(double)); 
 
+  if (!symmetric_in_use()){
+    printf("Error: binary collision is only compatible with symmetric free energy\n");
+    exit(1);
+  }
 
-  //TODO generalise away from symmetric case
   double *ptr;
 
   symmetric_phi(&ptr);

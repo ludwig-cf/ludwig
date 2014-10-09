@@ -46,6 +46,12 @@ extern TARGET_CONST double tc_d_[3][3];
 static field_t * phi_ = NULL;
 static field_grad_t * grad_phi_ = NULL;
 
+
+// flag to track whether this module has been initiated
+static char symmetric_flag=0;
+char symmetric_in_use(){ return symmetric_flag; }
+
+
 /****************************************************************************
  *
  *  symmetric_phi_set
@@ -84,6 +90,8 @@ void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
   b_ = b;
   kappa_ = kappa;
   fe_kappa_set(kappa);
+
+  symmetric_flag=1;
 
   return;
 }
