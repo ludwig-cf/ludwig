@@ -55,6 +55,15 @@ static int fluctuations_off(double shat[3][3], double ghat[NVEL]);
 static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
 
+
+//TODO refactor these forward declarations
+HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress);
+HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential);
+HOST void symmetric_phi(double** address_of_ptr);
+HOST void symmetric_gradphi(double** address_of_ptr);
+HOST void symmetric_delsqphi(double** address_of_ptr);
+HOST char symmetric_in_use();
+
 /*****************************************************************************
  *
  *  lb_collide

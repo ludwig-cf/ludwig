@@ -37,9 +37,9 @@
 #include "field_grad_s.h"
 
 
-static double a_     = -0.003125;
-static double b_     = +0.003125;
-static double kappa_ = +0.002;
+static TARGET_CONST double a_     = -0.003125;
+static TARGET_CONST double b_     = +0.003125;
+static TARGET_CONST double kappa_ = +0.002;
 
 extern TARGET_CONST double tc_d_[3][3];
 
@@ -49,7 +49,7 @@ static field_grad_t * grad_phi_ = NULL;
 
 // flag to track whether this module has been initiated
 static char symmetric_flag=0;
-char symmetric_in_use(){ return symmetric_flag; }
+HOST char symmetric_in_use(){ return symmetric_flag; }
 
 
 /****************************************************************************
@@ -86,9 +86,15 @@ int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
 
 void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
-  a_ = a;
-  b_ = b;
-  kappa_ = kappa;
+  //  a_ = a;
+  //b_ = b;
+  //kappa_ = kappa;
+
+  copyConstantDoubleToTarget(&a_, &a, sizeof(double));
+  copyConstantDoubleToTarget(&b_, &b, sizeof(double));
+  copyConstantDoubleToTarget(&kappa_, &kappa, sizeof(double));
+
+
   fe_kappa_set(kappa);
 
   symmetric_flag=1;
@@ -125,7 +131,7 @@ double symmetric_b(void) {
  *
  ****************************************************************************/
 
-void symmetric_phi(double** address_of_ptr) {
+HOST void symmetric_phi(double** address_of_ptr) {
 
   *address_of_ptr = phi_->data;
 
@@ -139,7 +145,7 @@ void symmetric_phi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-void symmetric_gradphi(double** address_of_ptr) {
+HOST void symmetric_gradphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->grad;
   
@@ -152,7 +158,7 @@ void symmetric_gradphi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-void symmetric_delsqphi(double** address_of_ptr) {
+HOST void symmetric_delsqphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->delsq;
 
