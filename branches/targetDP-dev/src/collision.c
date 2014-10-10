@@ -586,228 +586,238 @@ void lb_collision_binary_site( double* __restrict__ t_f,
 
   int i,j,m,p;
 
-    double    VDECL1D(mode,NVEL);              /* Modes; hydrodynamic + ghost */
-    double    VDECLSC(rho), VDECLSC(rrho);               /* Density, reciprocal density */
-    double    VDECL1D(u,3);                    /* Velocity */
-    double    VDECL2D(s,3,3);                 /* Stress */
-    double    VDECL2D(seq,3,3);               /* equilibrium stress */
-    double    VDECL2D(shat,3,3);              /* random stress */
-    double    VDECL1D(ghat,NVEL);              /* noise for ghosts */
-    
-    double    VDECL1D(force,3);                /* External force */
-    double    VDECLSC(tr_s), VDECLSC(tr_seq);
-    
-    double    VDECL1D(force_local,3);
-    
-    double    VDECLSC(phi), VDECLSC(jdotc), VDECLSC(sphidotq);    /* modes */
-    double    VDECL1D(jphi,3);
-    double    VDECL2D(sth,3,3), VDECL2D(sphi,3,3);
-    double    VDECLSC(mu);                      /* Chemical potential */
 
 
-    ILP_INIT;
+  //TARGETDP SYNTAX GUIDE:
+  //VDECL* macros are used to declare automatic data structures 
+  //where each holds a vector "chunk" of lattice sites.
+  //"VDECLSC(var)" is equivalent of "var"
+  //"VDECL1D(array,n)" is equivalent of "array[n]"
+  //"VDECL2D(array,n1,n2)" is equivalent of "array[n1][n2]"
+  
+  
+  double    VDECL1D(mode,NVEL);              /* Modes; hydrodynamic + ghost */
+  double    VDECLSC(rho), VDECLSC(rrho);               /* Density, reciprocal density */
+  double    VDECL1D(u,3);                    /* Velocity */
+  double    VDECL2D(s,3,3);                 /* Stress */
+  double    VDECL2D(seq,3,3);               /* equilibrium stress */
+  double    VDECL2D(shat,3,3);              /* random stress */
+  double    VDECL1D(ghat,NVEL);              /* noise for ghosts */
+  
+  double    VDECL1D(force,3);                /* External force */
+  double    VDECLSC(tr_s), VDECLSC(tr_seq);
+  
+  double    VDECL1D(force_local,3);
+  
+  double    VDECLSC(phi), VDECLSC(jdotc), VDECLSC(sphidotq);    /* modes */
+  double    VDECL1D(jphi,3);
+  double    VDECL2D(sth,3,3), VDECL2D(sphi,3,3);
+  double    VDECLSC(mu);                      /* Chemical potential */
+  
+  
+  ILP_INIT;
         
-    //HACK TODO vectorise
-    fluctuations_off(shat, ghat);
-
-    /* Compute all the modes */
-    for (m = 0; m < nmodes_; m++) {
-      V1D(mode,m) = 0.0;
-      for (p = 0; p < NVEL; p++) {
-	V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ]*tc_ma_[m][p];
-      }
+  //HACK TODO vectorise
+  fluctuations_off(shat, ghat);
+  
+  /* Compute all the modes */
+  for (m = 0; m < nmodes_; m++) {
+    V1D(mode,m) = 0.0;
+    for (p = 0; p < NVEL; p++) {
+      V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ]*tc_ma_[m][p];
+    }
+    
+  }
+  
+  //TO DO map field    
+  int status;
+  map_status(map, baseIndex, &status);
+  if (status != MAP_FLUID) return;
+  
+  /* For convenience, write out the physical modes. */
+  
+  VSC(rho) = V1D(mode,0);
+  for (i = 0; i < 3; i++) {
+    V1D(u,i) = V1D(mode,1 + i);
+  }
+  
+  V2D(s,X,X) = V1D(mode,4);
+  V2D(s,X,Y) = V1D(mode,5);
+  V2D(s,X,Z) = V1D(mode,6);
+  V2D(s,Y,X) = V2D(s,X,Y);
+  V2D(s,Y,Y) = V1D(mode,7);
+  V2D(s,Y,Z) = V1D(mode,8);
+  V2D(s,Z,X) = V2D(s,X,Z);
+  V2D(s,Z,Y) = V2D(s,Y,Z);
+  V2D(s,Z,Z) = V1D(mode,9);
+  
+  /* Compute the local velocity, taking account of any body force */
+  
+  VSC(rrho) = 1.0/VSC(rho);
+  
+  
+  //TODO vectorise
+  for (i = 0; i < 3; i++) 
+    force_local[i]=t_force[3*baseIndex+i];
+  
+  
+  for (i = 0; i < 3; i++) {
+    V1D(force,i) = (tc_force_global[i] + V1D(force_local,i));
+    V1D(u,i) = VSC(rrho)*(V1D(u,i) + 0.5*V1D(force,i));  
+  }
+  
+  
+  for (i = 0; i < 3; i++) {    
+    t_velocity[3*baseIndex+i]=V1D(u,i);
+  }
+  
+  /* Compute the thermodynamic component of the stress */
+  
+  (*t_chemical_stress)(baseIndex, sth,  t_phi, t_gradphi, t_delsqphi);
+  
+  /* Relax stress with different shear and bulk viscosity */
+  
+  VSC(tr_s)   = 0.0;
+  VSC(tr_seq) = 0.0;
+  
+  for (i = 0; i < 3; i++) {
+    /* Set equilibrium stress, which includes thermodynamic part */
+    for (j = 0; j < 3; j++) {
+      V2D(seq,i,j) = VSC(rho)*V1D(u,i)*V1D(u,j) + V2D(sth,i,j);
+    }
+    /* Compute trace */
+    VSC(tr_s)   += V2D(s,i,i);
+    VSC(tr_seq) += V2D(seq,i,i);
+  }
+  
+  /* Form traceless parts */
+  for (i = 0; i < 3; i++) {
+    V2D(s,i,i)   -= tc_r3_*VSC(tr_s);
+    V2D(seq,i,i) -= tc_r3_*VSC(tr_seq);
+  }
+  
+  /* Relax each mode */
+  VSC(tr_s) = VSC(tr_s) - tc_rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
+  
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      V2D(s,i,j) -= tc_rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
+      V2D(s,i,j) += tc_d_[i][j]*tc_r3_*VSC(tr_s);
       
-    }
-
-    //TO DO map field    
-    int status;
-    map_status(map, baseIndex, &status);
-    if (status != MAP_FLUID) return;
-    
-    /* For convenience, write out the physical modes. */
-    
-    VSC(rho) = V1D(mode,0);
-    for (i = 0; i < 3; i++) {
-      V1D(u,i) = V1D(mode,1 + i);
-    }
-    
-    V2D(s,X,X) = V1D(mode,4);
-    V2D(s,X,Y) = V1D(mode,5);
-    V2D(s,X,Z) = V1D(mode,6);
-    V2D(s,Y,X) = V2D(s,X,Y);
-    V2D(s,Y,Y) = V1D(mode,7);
-    V2D(s,Y,Z) = V1D(mode,8);
-    V2D(s,Z,X) = V2D(s,X,Z);
-    V2D(s,Z,Y) = V2D(s,Y,Z);
-    V2D(s,Z,Z) = V1D(mode,9);
-    
-    /* Compute the local velocity, taking account of any body force */
-        
-    VSC(rrho) = 1.0/VSC(rho);
-    
-
-    //TODO vectorise
-    for (i = 0; i < 3; i++) 
-      force_local[i]=t_force[3*baseIndex+i];
-
-    
-    for (i = 0; i < 3; i++) {
-      V1D(force,i) = (tc_force_global[i] + V1D(force_local,i));
-      V1D(u,i) = VSC(rrho)*(V1D(u,i) + 0.5*V1D(force,i));  
-    }
-
-
-   for (i = 0; i < 3; i++) {    
-     t_velocity[3*baseIndex+i]=V1D(u,i);
-   }
-
-    /* Compute the thermodynamic component of the stress */
-       
-    (*t_chemical_stress)(baseIndex, sth,  t_phi, t_gradphi, t_delsqphi);
-    
-    /* Relax stress with different shear and bulk viscosity */
-    
-    VSC(tr_s)   = 0.0;
-    VSC(tr_seq) = 0.0;
-    
-    for (i = 0; i < 3; i++) {
-      /* Set equilibrium stress, which includes thermodynamic part */
-      for (j = 0; j < 3; j++) {
-	V2D(seq,i,j) = VSC(rho)*V1D(u,i)*V1D(u,j) + V2D(sth,i,j);
-      }
-      /* Compute trace */
-      VSC(tr_s)   += V2D(s,i,i);
-      VSC(tr_seq) += V2D(seq,i,i);
-    }
-    
-    /* Form traceless parts */
-    for (i = 0; i < 3; i++) {
-      V2D(s,i,i)   -= tc_r3_*VSC(tr_s);
-      V2D(seq,i,i) -= tc_r3_*VSC(tr_seq);
-    }
-    
-    /* Relax each mode */
-    VSC(tr_s) = VSC(tr_s) - tc_rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
-    
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) {
-	V2D(s,i,j) -= tc_rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
-	V2D(s,i,j) += tc_d_[i][j]*tc_r3_*VSC(tr_s);
-	
-	/* Correction from body force (assumes equal relaxation times) */
-	
-	V2D(s,i,j) += (2.0-tc_rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
-	V2D(shat,i,j) = 0.0;
-      }
-    }
-    
-
-    if (noise_on) {
+      /* Correction from body force (assumes equal relaxation times) */
       
+      V2D(s,i,j) += (2.0-tc_rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
+      V2D(shat,i,j) = 0.0;
+    }
+  }
+  
+  
+  if (noise_on) {
+    
 #ifdef CUDA 
-      
-      printf("Error: noise_on is not yet supported for CUDA\n");
-      exit(1);
-
+    
+    printf("Error: noise_on is not yet supported for CUDA\n");
+    exit(1);
+    
 #else      
-
-      //TODO vectorise
-            collision_fluctuations(noise, baseIndex, shat, ghat);      
-
+    
+    //TODO vectorise
+    collision_fluctuations(noise, baseIndex, shat, ghat);      
+    
 #endif
-      
-    }    
-
-    /* Now reset the hydrodynamic modes to post-collision values */
     
-    V1D(mode,1) = V1D(mode,1) + V1D(force,X);    /* Conserved if no force */
-    V1D(mode,2) = V1D(mode,2) + V1D(force,Y);    /* Conserved if no force */
-    V1D(mode,3) = V1D(mode,3) + V1D(force,Z);    /* Conserved if no force */
-    V1D(mode,4) = V2D(s,X,X) + V2D(shat,X,X);
-    V1D(mode,5) = V2D(s,X,Y) + V2D(shat,X,Y);
-    V1D(mode,6) = V2D(s,X,Z) + V2D(shat,X,Z);
-    V1D(mode,7) = V2D(s,Y,Y) + V2D(shat,Y,Y);
-    V1D(mode,8) = V2D(s,Y,Z) + V2D(shat,Y,Z);
-    V1D(mode,9) = V2D(s,Z,Z) + V2D(shat,Z,Z);
-    
-    
-    
-    /* Ghost modes are relaxed toward zero equilibrium. */
-    
-    for (m = NHYDRO; m < nmodes_; m++) {
-      V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
+  }    
+  
+  /* Now reset the hydrodynamic modes to post-collision values */
+  
+  V1D(mode,1) = V1D(mode,1) + V1D(force,X);    /* Conserved if no force */
+  V1D(mode,2) = V1D(mode,2) + V1D(force,Y);    /* Conserved if no force */
+  V1D(mode,3) = V1D(mode,3) + V1D(force,Z);    /* Conserved if no force */
+  V1D(mode,4) = V2D(s,X,X) + V2D(shat,X,X);
+  V1D(mode,5) = V2D(s,X,Y) + V2D(shat,X,Y);
+  V1D(mode,6) = V2D(s,X,Z) + V2D(shat,X,Z);
+  V1D(mode,7) = V2D(s,Y,Y) + V2D(shat,Y,Y);
+  V1D(mode,8) = V2D(s,Y,Z) + V2D(shat,Y,Z);
+  V1D(mode,9) = V2D(s,Z,Z) + V2D(shat,Z,Z);
+  
+  
+  
+  /* Ghost modes are relaxed toward zero equilibrium. */
+  
+  for (m = NHYDRO; m < nmodes_; m++) {
+    V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
+  }
+  
+  
+  
+  /* Project post-collision modes back onto the distribution */
+  
+  for (p = 0; p < NVEL; p++) {
+    double ftmp=0;
+    for (m = 0; m < nmodes_; m++) {
+      ftmp += tc_mi_[p][m]*V1D(mode,m);
     }
-    
-    
-    
-    /* Project post-collision modes back onto the distribution */
-    
-    for (p = 0; p < NVEL; p++) {
-      double ftmp=0;
-      for (m = 0; m < nmodes_; m++) {
-	ftmp += tc_mi_[p][m]*V1D(mode,m);
-      }
-      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ] = ftmp;
+    t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ] = ftmp;
+  }
+  
+  
+  /* Now, the order parameter distribution */
+  
+  VSC(phi)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, 0) ];
+  
+  
+  //HACK TODO vectorise this
+  // VSC(mu) = chemical_potential(baseIndex, 0);
+  
+  VSC(mu) = (*t_chemical_potential)(baseIndex, 0,t_phi,t_delsqphi);
+  
+  V1D(jphi,X) = 0.0;
+  V1D(jphi,Y) = 0.0;
+  V1D(jphi,Z) = 0.0;
+  for (p = 1; p < NVEL; p++) {
+    VSC(phi) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ];
+    for (i = 0; i < 3; i++) {
+      V1D(jphi,i) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ]*tc_cv[p][i];
     }
-    
-    
-    /* Now, the order parameter distribution */
-    
-    VSC(phi)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, 0) ];
-    
-    
-    //HACK TODO vectorise this
-    // VSC(mu) = chemical_potential(baseIndex, 0);
-
-    VSC(mu) = (*t_chemical_potential)(baseIndex, 0,t_phi,t_delsqphi);
-    
-    V1D(jphi,X) = 0.0;
-    V1D(jphi,Y) = 0.0;
-    V1D(jphi,Z) = 0.0;
-    for (p = 1; p < NVEL; p++) {
-      VSC(phi) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ];
-      for (i = 0; i < 3; i++) {
-	V1D(jphi,i) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ]*tc_cv[p][i];
-      }
+  }
+  
+  
+  /* Relax order parameters modes. See the comments above. */
+  
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*tc_d_[i][j];
+      /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
     }
+    V1D(jphi,i) = V1D(jphi,i) - tc_rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
+    /* jphi[i] = phi*u[i];*/
+  }
+  
+  /* Now update the distribution */
+  
+  for (p = 0; p < NVEL; p++) {
     
-    
-    /* Relax order parameters modes. See the comments above. */
+    int dp0 = (p == 0);
+    VSC(jdotc)    = 0.0;
+    VSC(sphidotq) = 0.0;
     
     for (i = 0; i < 3; i++) {
+      VSC(jdotc) += V1D(jphi,i)*tc_cv[p][i];
       for (j = 0; j < 3; j++) {
-	V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*tc_d_[i][j];
-	/* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
+	VSC(sphidotq) += V2D(sphi,i,j)*tc_q_[p][i][j];
       }
-      V1D(jphi,i) = V1D(jphi,i) - tc_rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
-      /* jphi[i] = phi*u[i];*/
     }
     
-    /* Now update the distribution */
+    /* Project all this back to the distributions. The magic
+     * here is to move phi into the non-propagating distribution. */
     
-    for (p = 0; p < NVEL; p++) {
-      
-      int dp0 = (p == 0);
-      VSC(jdotc)    = 0.0;
-      VSC(sphidotq) = 0.0;
-      
-      for (i = 0; i < 3; i++) {
-	VSC(jdotc) += V1D(jphi,i)*tc_cv[p][i];
-	for (j = 0; j < 3; j++) {
-	  VSC(sphidotq) += V2D(sphi,i,j)*tc_q_[p][i][j];
-	}
-      }
-      
-      /* Project all this back to the distributions. The magic
-       * here is to move phi into the non-propagating distribution. */
-
-      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ] 
-	= tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
-      
-    }
-
-    return;
-
+    t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ] 
+      = tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
+    
+  }
+  
+  return;
+  
 }
 
 
