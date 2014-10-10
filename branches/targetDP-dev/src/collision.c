@@ -352,16 +352,6 @@ TARGET_CONST double tc_force_global[3];
 TARGET_CONST double tc_d_[3][3];
 TARGET_CONST double tc_q_[NVEL][3][3];
 
-
-
-// host copies of fields
-//extern double* f_;
-//extern double* phi_site;
-//extern double* phi_delsq_;
-//extern double* phi_grad_;
-//extern double* f;
-//extern double* u;
-
 // target copies of fields 
 static double *t_f; 
 static double *t_phi; 
@@ -476,6 +466,8 @@ void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
   copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
 
   copyToTargetMaskedAoS(t_force,hydro->f,nSites,3,siteMask); 
+
+  
   //copyToTargetMaskedAoS(t_velocity,hydro->u,nSites,3,siteMask); 
 
 
@@ -579,114 +571,20 @@ void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro){
  *
  *****************************************************************************/
 
-int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
-  int       nlocal[3];
-  int       ic, jc, kc, index;       /* site indices */
-  int       p, m;                    /* velocity index */
-  int       i, j;                    /* summed over indices ("alphabeta") */
-  int noise_on = 0;                  /* Fluctuations switch */
-  int status;
+// first we define the function applied to each lattice site
+void lb_collision_binary_site( double* __restrict__ t_f, 
+			      const double* __restrict__ t_force, 
+			      double* __restrict__ t_velocity,
+			      double* __restrict__ t_phi,
+			      double* __restrict__ t_gradphi,
+			      double* __restrict__ t_delsqphi,
+			      pth_fntype* t_chemical_stress,
+			      mu_fntype* t_chemical_potential,
+			       map_t * map, noise_t * noise, int noise_on,
+			      const int baseIndex){
 
-  //  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
-
-  double    rtau2;
-  double    mobility;
-  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
-  double    force_global[3];
-
-
-  double (* chemical_potential)(const int index, const int nop);
-  void   (* chemical_stress)(const int index, double s[3][3]);
-
-  //temp hack
-  double f_v[NVEL][1];
-
-
-  int iv,base_index;
-  int nv,full_vec;
-
-
-  assert (NDIM == 3);
-  assert(lb);
-  assert(hydro);
-  assert(map);
-
-  coords_nlocal(nlocal);
-  physics_fbody(force_global);
-
-  chemical_potential = fe_chemical_potential_function();
-  chemical_stress = fe_chemical_stress_function();
-
-  /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
-   * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
-
-  physics_mobility(&mobility);
-  rtau2 = 2.0 / (1.0 + 2.0*mobility);
-
-  //start targetdp dev
-  int Nall[3];
-  int nhalo=coords_nhalo();
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-  TARGET_INDEX_INIT(nSites);
-
-
- //start constant setup
-
-
-  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
-  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  copyConstantDoubleToTarget(&tc_r3_, &r3_, sizeof(double));
-  copyConstantDoubleToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double)); 
-  copyConstantDouble1DArrayToTarget(tc_rtau_, rtau_, NVEL*sizeof(double)); 
-  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget( (double **) tc_ma_, (double*) ma_, NVEL*NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget((double **) tc_mi_, (double*) mi_, NVEL*NVEL*sizeof(double));
-  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
-  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
-  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
-  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
-  copyConstantDouble2DArrayToTarget((double **) tc_d_, (double*) d_, 3*3*sizeof(double));
-  copyConstantDouble3DArrayToTarget((double ***) tc_q_, (double *)q_, NVEL*3*3*sizeof(double)); 
-  checkTargetError("constants");
-  //end constant setup
-
-
-  //end targetdp dev
-
-
-  //start field management
-  init_fields_target();
-  put_fields_on_target_masked(lb,hydro);
-  //end field management
-
-  //start function pointer management
-
-  mu_fntype* t_chemical_potential; 
-  targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
-
-  //TODO  
-  //chemical_potential = fe_chemical_potential_function();
-  //the below is currently hardwired in symmetric module. Need to
-  // abstract in fe interface
-  get_chemical_potential_target(t_chemical_potential);
-
-
-  pth_fntype* t_chemical_stress; 
-  targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
-  get_chemical_stress_target(t_chemical_stress);
-
-
-  //end function pointer management
- 
-
-  TARGET_TLP(base_index,nSites){
-	
+  int i,j,m,p;
 
     double    VDECL1D(mode,NVEL);              /* Modes; hydrodynamic + ghost */
     double    VDECLSC(rho), VDECLSC(rrho);               /* Density, reciprocal density */
@@ -705,23 +603,26 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
     double    VDECL1D(jphi,3);
     double    VDECL2D(sth,3,3), VDECL2D(sphi,3,3);
     double    VDECLSC(mu);                      /* Chemical potential */
-    
-    //HACK TODO vectorise these
-    noise_present(noise, NOISE_RHO, &noise_on);
+
+
+    ILP_INIT;
+        
+    //HACK TODO vectorise
     fluctuations_off(shat, ghat);
-    
-    
+
     /* Compute all the modes */
     for (m = 0; m < nmodes_; m++) {
       V1D(mode,m) = 0.0;
       for (p = 0; p < NVEL; p++) {
-	V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ]*tc_ma_[m][p];
+	V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ]*tc_ma_[m][p];
       }
       
     }
-    
-    map_status(map, base_index, &status);
-    if (status != MAP_FLUID) continue;
+
+    //TO DO map field    
+    int status;
+    map_status(map, baseIndex, &status);
+    if (status != MAP_FLUID) return;
     
     /* For convenience, write out the physical modes. */
     
@@ -744,11 +645,10 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
         
     VSC(rrho) = 1.0/VSC(rho);
     
-    //TODO HACK vectorise
-    //hydro_f_local(hydro, base_index, force_local);
 
+    //TODO vectorise
     for (i = 0; i < 3; i++) 
-      force_local[i]=t_force[3*base_index+i];
+      force_local[i]=t_force[3*baseIndex+i];
 
     
     for (i = 0; i < 3; i++) {
@@ -757,15 +657,13 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
     }
 
 
-    //hydro_u_set(hydro, base_index, u);
    for (i = 0; i < 3; i++) {    
-     t_velocity[3*base_index+i]=u[i];
+     t_velocity[3*baseIndex+i]=V1D(u,i);
    }
 
     /* Compute the thermodynamic component of the stress */
        
-    //chemical_stress(base_index, sth);
-    (*t_chemical_stress)(base_index, sth,  t_phi, t_gradphi, t_delsqphi);
+    (*t_chemical_stress)(baseIndex, sth,  t_phi, t_gradphi, t_delsqphi);
     
     /* Relax stress with different shear and bulk viscosity */
     
@@ -803,10 +701,23 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
       }
     }
     
-    //HACK TODO vectorise this
-    if (noise_on) collision_fluctuations(noise, base_index, shat, ghat);
-    
-    
+
+    if (noise_on) {
+      
+#ifdef CUDA 
+      
+      printf("Error: noise_on is not yet supported for CUDA\n");
+      exit(1);
+
+#else      
+
+      //TODO vectorise
+            collision_fluctuations(noise, baseIndex, shat, ghat);      
+
+#endif
+      
+    }    
+
     /* Now reset the hydrodynamic modes to post-collision values */
     
     V1D(mode,1) = V1D(mode,1) + V1D(force,X);    /* Conserved if no force */
@@ -836,27 +747,27 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
       for (m = 0; m < nmodes_; m++) {
 	ftmp += tc_mi_[p][m]*V1D(mode,m);
       }
-      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 0, p) ] = ftmp;
+      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ] = ftmp;
     }
     
     
     /* Now, the order parameter distribution */
     
-    VSC(phi)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, 0) ];
+    VSC(phi)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, 0) ];
     
     
     //HACK TODO vectorise this
-    // VSC(mu) = chemical_potential(base_index, 0);
+    // VSC(mu) = chemical_potential(baseIndex, 0);
 
-    VSC(mu) = (*t_chemical_potential)(base_index, 0,t_phi,t_delsqphi);
+    VSC(mu) = (*t_chemical_potential)(baseIndex, 0,t_phi,t_delsqphi);
     
     V1D(jphi,X) = 0.0;
     V1D(jphi,Y) = 0.0;
     V1D(jphi,Z) = 0.0;
     for (p = 1; p < NVEL; p++) {
-      VSC(phi) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, p) ];
+      VSC(phi) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ];
       for (i = 0; i < 3; i++) {
-	V1D(jphi,i) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, p) ]*tc_cv[p][i];
+	V1D(jphi,i) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ]*tc_cv[p][i];
       }
     }
     
@@ -890,10 +801,115 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
       /* Project all this back to the distributions. The magic
        * here is to move phi into the non-propagating distribution. */
 
-      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, base_index, 1, p) ] 
+      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ] 
 	= tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
       
     }
+
+    return;
+
+}
+
+
+// full lattice operation
+int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
+
+  int       nlocal[3];
+  int       ic, jc, kc, index;       /* site indices */
+  int       p, m;                    /* velocity index */
+  int       i, j;                    /* summed over indices ("alphabeta") */
+  int noise_on = 0;                  /* Fluctuations switch */
+  int status;
+
+  //  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
+
+  double    rtau2;
+  double    mobility;
+  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
+
+  double    force_global[3];
+
+  //temp hack
+  double f_v[NVEL][1];
+
+
+  int iv,baseIndex;
+  int nv,full_vec;
+
+
+  assert (NDIM == 3);
+  assert(lb);
+  assert(hydro);
+  assert(map);
+
+  coords_nlocal(nlocal);
+  physics_fbody(force_global);
+
+
+  noise_present(noise, NOISE_RHO, &noise_on);
+
+
+  /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
+   * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
+
+  physics_mobility(&mobility);
+  rtau2 = 2.0 / (1.0 + 2.0*mobility);
+
+  int Nall[3];
+  int nhalo=coords_nhalo();
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+ //start constant setup
+
+  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
+  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  copyConstantDoubleToTarget(&tc_r3_, &r3_, sizeof(double));
+  copyConstantDoubleToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_rtau_, rtau_, NVEL*sizeof(double)); 
+  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget( (double **) tc_ma_, (double*) ma_, NVEL*NVEL*sizeof(double));
+  copyConstantDouble2DArrayToTarget((double **) tc_mi_, (double*) mi_, NVEL*NVEL*sizeof(double));
+  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
+  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
+  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
+  copyConstantDouble2DArrayToTarget((double **) tc_d_, (double*) d_, 3*3*sizeof(double));
+  copyConstantDouble3DArrayToTarget((double ***) tc_q_, (double *)q_, NVEL*3*3*sizeof(double)); 
+  checkTargetError("constants");
+  //end constant setup
+
+
+  //start field management
+  init_fields_target();
+  put_fields_on_target_masked(lb,hydro);
+  //end field management
+
+  //start function pointer management
+  mu_fntype* t_chemical_potential; 
+  targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
+
+  //TODO  
+  //chemical_potential = fe_chemical_potential_function();
+  //the below is currently hardwired in symmetric module. Need to
+  // abstract in fe interface
+  get_chemical_potential_target(t_chemical_potential);
+
+
+  pth_fntype* t_chemical_stress; 
+  targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
+  get_chemical_stress_target(t_chemical_stress);
+
+
+  //end function pointer management
+ 
+
+  TARGET_TLP(baseIndex,nSites){
+	
+    lb_collision_binary_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,map,noise,noise_on,baseIndex);
         
     /* Next site */
   }
