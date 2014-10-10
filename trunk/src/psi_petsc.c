@@ -112,6 +112,8 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   /* Create matrix on DM pre-allocated according to distributed array structure */
   DMCreateMatrix(da,&A);
+  DMSetMatType(da,MATMPIAIJ); 
+  DMSetMatrixPreallocateOnly(da,PETSC_TRUE);
 
   /* Initialise solver context and preconditioner */
 
@@ -138,7 +140,6 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   if (fepsilon == NULL) psi_petsc_compute_laplacian(obj);
   if (fepsilon != NULL) psi_petsc_compute_matrix(obj,fepsilon);
-  MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
  
   return 0;
 }
@@ -180,8 +181,6 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 #endif
 
   assert(obj);
-
-  MatZeroEntries(A);
 
   /* Get details of the distributed array data structure.
      The PETSc directives return global indices, but 
@@ -280,9 +279,8 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
 
-  /* Retain the non-zero structure of the matrix and produce an error if changed */
+  /* Retain the non-zero structure of the matrix */
   MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
-  MatSetOption(A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE);
 
   if (view_matrix) {
     info("\nPETSc output matrix\n");
@@ -362,8 +360,6 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 #endif
 
   assert(obj);
-
-  MatZeroEntries(A);
 
   /* Get details of the distributed array data structure.
      The PETSc directives return global indices, but 
@@ -526,9 +522,8 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
   MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);
 
-  /* Retain the non-zero structure of the matrix and produce an error if changed */
+  /* Retain the non-zero structure of the matrix */
   MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
-  MatSetOption(A,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE);
 
   if (view_matrix) {
     info("\nPETSc output matrix\n");
