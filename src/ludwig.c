@@ -125,7 +125,8 @@ struct ludwig_s {
   field_grad_t * q_grad;    /* Gradients for q */
   psi_t * psi;              /* Electrokinetics */
   map_t * map;              /* Site map for fluid/solid status etc. */
-  noise_t * noise;          /* Lattice fluctuation generator */
+  noise_t * noise_rho;      /* Lattice fluctuation generator (rho) */
+  noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
   colloids_info_t * collinfo;  /* Colloid information */
@@ -177,10 +178,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_info(ludwig->param);
 
   lb_run_time(ludwig->lb);
-  collision_run_time(ludwig->noise);
+  collision_run_time(ludwig->noise_rho);
   map_init_rt(&ludwig->map);
 
-  noise_init(ludwig->noise, 0);
+  noise_init(ludwig->noise_rho, 0);
   ran_init();
   hydro_rt(&ludwig->hydro);
 
@@ -534,13 +535,13 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
-					 ludwig->map, ludwig->noise);
+					 ludwig->map, ludwig->noise_phi);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
       if (ludwig->q) {
 	if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
 	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
 	blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
-				 ludwig->map, ludwig->noise);
+				 ludwig->map, ludwig->noise_rho);
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
@@ -557,7 +558,7 @@ void ludwig_run(const char * inputfile) {
       /* Collision stage */
 
       TIMER_start(TIMER_COLLIDE);
-      lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise);
+      lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho);
       TIMER_stop(TIMER_COLLIDE);
 
       /* Boundary conditions */
@@ -706,7 +707,7 @@ void ludwig_run(const char * inputfile) {
 	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
       }
 
-      lb_collision_stats_kt(ludwig->lb, ludwig->noise, ludwig->map);
+      lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
 
       info("\nCompleted cycle %d\n", step);
     }
@@ -780,6 +781,9 @@ void ludwig_run(const char * inputfile) {
 
   bbl_free(ludwig->bbl);
   colloids_info_free(ludwig->collinfo);
+
+  if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
+  if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
@@ -882,7 +886,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   lb_create(&ludwig->lb);
 
-  noise_create(&ludwig->noise);
+  noise_create(&ludwig->noise_rho);
 
   n = RUN_get_string_parameter("free_energy", description, BUFSIZ);
 
@@ -940,9 +944,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     RUN_get_int_parameter("fd_phi_fluctuations", &noise_on);
     info("Order parameter noise = %3s\n", (noise_on == 0) ? "off" : " on");
 
-    noise_present_set(ludwig->noise, NOISE_PHI, noise_on);
-
     if (noise_on) {
+      noise_create(&ludwig->noise_phi);
+      noise_init(ludwig->noise_phi, 0);
+      noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
       if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
     }
 
@@ -1067,7 +1072,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     p = 0;
     RUN_get_int_parameter("lc_noise", &p);
-    noise_present_set(ludwig->noise, NOISE_QAB, p);
+    noise_present_set(ludwig->noise_rho, NOISE_QAB, p);
     info("LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
   }
