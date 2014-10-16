@@ -71,6 +71,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
 
   MPI_Comm new_comm;
   int new_rank, nhalo;
+  char version[256];
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
   int niteration = 10000;      /* Number of iterations */
@@ -126,7 +127,10 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   KSPSetTolerances(ksp,tol_rel,tol_abs,PETSC_DEFAULT,niteration);
   KSPSetFromOptions(ksp);
   KSPSetUp(ksp);
-  
+
+  PetscGetVersion(version, 256);
+  info("\n%s\n", version);
+   
   KSPGetType(ksp, &solver_type);
   KSPGetTolerances(ksp, &rtol, &abstol, &dtol, &maxits);
   KSPGetPC(ksp, &pc);

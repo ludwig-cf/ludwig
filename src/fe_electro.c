@@ -122,7 +122,6 @@ double fe_electro_fed(const int index) {
   double fed;
   double psi;
   double rho;
-  double epsi;
 
   assert(fe);
   assert(fe->psi);
@@ -131,14 +130,13 @@ double fe_electro_fed(const int index) {
   physics_kt(&kt);
   psi_nk(fe->psi, &nk);
   psi_psi(fe->psi, index, &psi);
-  epsi = 0.5*fe->psi->e*psi;
 
   for (n = 0; n < nk; n++) {
 
     psi_rho(fe->psi, index, n, &rho);
     assert(rho >= 0.0); /* For log(rho + epsilon) */
+    fed += rho*((log(rho + DBL_EPSILON) - 1.0) + 0.5*fe->psi->valency[n]*psi);
 
-    fed += rho*(kt*(log(rho + DBL_EPSILON) - 1.0) + fe->psi->valency[n]*epsi);
   }
 
   return fed;

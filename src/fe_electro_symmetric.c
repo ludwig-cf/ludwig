@@ -99,6 +99,7 @@ int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi) {
   if (fe->deltamu == NULL) fatal("calloc(fe->deltamu) failed\n");
 
   fe_electro_create(psi);
+  fe_density_set(fe_es_fed);
   fe_mu_solv_set(fe_es_mu_solv);
   fe_chemical_potential_set(fe_es_mu);
   fe_chemical_stress_set(fe_es_stress_ex);
