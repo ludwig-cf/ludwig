@@ -701,7 +701,7 @@ void phi_force_colloid_gpu_d(const char * __restrict__ site_map_status_d,
 			     double* __restrict__ force_d,
 			     coll_array_t * __restrict__ cinfo_d) {
 
-  int ia, ib;
+  int ia, ib, n;
   int index, index1;
   int ii, jj, kk;
   double pth0[3][3];
@@ -828,32 +828,37 @@ void phi_force_colloid_gpu_d(const char * __restrict__ site_map_status_d,
     force_d[ia*nsites_cd + index] += force[ia];
   }
 
-  /* Per block reduction (factor of 2 is because the above logic
-   * is a factor of two out if this is a solid site) */
+  for (n = 0; n < cinfo_d->nc; n++) {
 
-  fx[tid] = 2.0*(1.0 - w0)*force[X];
-  fy[tid] = 2.0*(1.0 - w0)*force[Y];
-  fz[tid] = 2.0*(1.0 - w0)*force[Z];
+    w0 = (cinfo_d->mapd[index] == n);
 
-  for (ia = DEFAULT_TPB/2; ia > 0; ia /= 2) {
-    __syncthreads();
-    if (tid < ia) {
-      fx[tid] += fx[tid + ia];
-      fy[tid] += fy[tid + ia];
-      fz[tid] += fz[tid + ia];
+    /* Per block reduction (factor of 2 is because the above logic
+     * is a factor of two out if this is a solid site) */
+
+    fx[tid] = 2.0*w0*force[X];
+    fy[tid] = 2.0*w0*force[Y];
+    fz[tid] = 2.0*w0*force[Z];
+
+    for (ia = DEFAULT_TPB/2; ia > 0; ia /= 2) {
+      __syncthreads();
+      if (tid < ia) {
+        fx[tid] += fx[tid + ia];
+        fy[tid] += fy[tid + ia];
+        fz[tid] += fz[tid + ia];
+      }
     }
-  }
 
-  /* store result for blockidx on thread 0. ONE COLLOID */
+    /* store result for blockidx on thread 0 */
 
-  ia = blockIdx.x*cinfo_d->nblock[Z]*cinfo_d->nblock[Y]
-     + blockIdx.y*cinfo_d->nblock[Z] + blockIdx.z;
-  ib = cinfo_d->nblock[X]*cinfo_d->nblock[Y]*cinfo_d->nblock[Z];
+    ia = blockIdx.x*cinfo_d->nblock[Z]*cinfo_d->nblock[Y]
+       + blockIdx.y*cinfo_d->nblock[Z] + blockIdx.z;
+    ib = cinfo_d->nblock[X]*cinfo_d->nblock[Y]*cinfo_d->nblock[Z];
 
-  if (tid == 0) {
-    cinfo_d->fblockd[X*ib + ia] = fx[0];
-    cinfo_d->fblockd[Y*ib + ia] = fy[0];
-    cinfo_d->fblockd[Z*ib + ia] = fz[0];
+    if (tid == 0) {
+      cinfo_d->fblockd[(3*n + X)*ib + ia] = fx[0];
+      cinfo_d->fblockd[(3*n + Y)*ib + ia] = fy[0];
+      cinfo_d->fblockd[(3*n + Z)*ib + ia] = fz[0];
+    }
   }
 
   return;

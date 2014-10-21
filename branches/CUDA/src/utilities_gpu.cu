@@ -537,6 +537,7 @@ typedef struct coords_s coords_t;
 
 struct coords_s {
   int nhalo;
+  int nsite;
   int nlocal[3];
   int noffset[3];  /* Local offset */
   double sl[3];    /* System length */
@@ -555,8 +556,9 @@ __device__ int coords_minimum_distance_gpu(double r[3]);
 static coll_array_t * carry;
 coll_array_t * carry_d;
 
-__global__ void colloid_update_map_gpu(int nextra, coll_array_t * carry_d,
-                                       char * __restrict__ map);
+__global__ void colloid_update_map_gpu(int nextra, coll_array_t * carry_d);
+__global__ void colloid_fix_swd_gpu(int nextra, coll_array_t * carry_d,
+	                            double * __restrict__ u);
 
 /*****************************************************************************
  *
@@ -575,6 +577,7 @@ int utilities_init_extra(void) {
   coords_nlocal(host.nlocal);
   coords_nlocal_offset(host.noffset);
   host.sl[X] = L(X); host.sl[Y] = L(Y); host.sl[Z] = L(Z);
+  host.nsite = coords_nsites();
 
   cudaMemcpyToSymbol(coord, &host, sizeof(coords_t), 0,
                      cudaMemcpyHostToDevice);
@@ -668,7 +671,7 @@ int colloids_to_gpu(void) {
   nextra = coords_nhalo();
   coords_kernel_blocks_1d(nextra, &nblocks);
   colloid_update_map_gpu<<<nblocks, DEFAULT_TPB>>>
-	(nextra, carry_d, colloid_map_d);
+	(nextra, carry_d);
 
   cudaThreadSynchronize();
   checkCUDAError("COLLOIDS TO GPU");
@@ -685,8 +688,8 @@ int colloids_to_gpu(void) {
 __host__
 int colloids_gpu_force_reduction(void) {
 
-  int nc;
-  int n, nblocks;
+  int n, nc;
+  int nb, nblocks;
   int ic, jc, kc, idc, jdc, kdc;
   double f1[3];
   double * ftmp = NULL;
@@ -701,22 +704,12 @@ int colloids_gpu_force_reduction(void) {
   cudaMemcpy(ftmp, carry->fblockd, 3*nc*nblocks*sizeof(double),
              cudaMemcpyDeviceToHost);
 
-  f1[X] = 0.0; f1[Y] = 0.0; f1[Z] = 0.0;
-
-  for (n = 0; n < nblocks; n++) {
-    f1[X] += ftmp[X*nblocks + n];
-    f1[Y] += ftmp[Y*nblocks + n];
-    f1[Z] += ftmp[Z*nblocks + n];
-  }
-
- /* printf("FORCE REDUCTION %14.7e %14.7e %14.7e\n", f1[X], f1[Y], f1[Z]);*/
-
-
-  /* List */
+  /* Loop through relevant colloids and complete block sum for each. */
 
   idc = 1 - (cart_size(X) == 1);
   jdc = 1 - (cart_size(Y) == 1);
   kdc = 1 - (cart_size(Z) == 1);
+  n = 0;
 
   for (ic = 1 - idc; ic <= Ncell(X) + idc; ic++) {
     for (jc = 1 - jdc; jc <= Ncell(Y) + jdc; jc++) {
@@ -724,17 +717,25 @@ int colloids_gpu_force_reduction(void) {
 
          pc = colloids_cell_list(ic, jc, kc);
          for ( ; pc; pc = pc->next) {
+
+ 	   f1[X] = 0.0; f1[Y] = 0.0; f1[Z] = 0.0;
+
+	   for (nb = 0; nb < nblocks; nb++) {
+ 	     f1[X] += ftmp[(3*n + X)*nblocks + nb];
+  	     f1[Y] += ftmp[(3*n + Y)*nblocks + nb];
+  	     f1[Z] += ftmp[(3*n + Z)*nblocks + nb];
+  	   }
+
            pc->force[X] = f1[X];
            pc->force[Y] = f1[Y];
            pc->force[Z] = f1[Z];
-
- /* printf("ALAN            %14.7e %14.7e %14.7e\n", pc->force[X], pc->force[Y], pc->force[Z]);*/
-
+	   n += 1;
          }
       }
     }
   }
 
+  assert (n == nc);
 
   free(ftmp);
 
@@ -790,11 +791,13 @@ int coords_kernel_blocks_3d(int nextra, int * nblocks) {
  *
  *  colloid_update_map_gpu
  *
+ *  Note: char * map is for testing against older version only; may be
+ *  removed ultimately.
+ *
  *****************************************************************************/
 
 __global__
-void colloid_update_map_gpu(int nextra, coll_array_t * cary,
-                            char * __restrict__ map) {
+void colloid_update_map_gpu(int nextra, coll_array_t * pca) {
 
   int threadIndex;
   int ic, jc, kc, index;   /* Lattice position */
@@ -813,23 +816,19 @@ void colloid_update_map_gpu(int nextra, coll_array_t * cary,
   coords_from_threadindex_gpu(nextra, threadIndex, &ic, &jc, &kc);
   coords_index_gpu(ic, jc, kc, &index);
 
-  /* The index is the position in the array; -1 is no colloid */
+  /* The value is the position in the array; -1 is no colloid */
 
-  map[index] = -1;
-  cary->mapd[index] = -1;
+  pca->mapd[index] = -1;
 
-  for (n = 0; n < cary->nc; n++) {
-    a2 = cary->s[n].a0*cary->s[n].a0;
-    r[X] = 1.0*(coord.noffset[X] + ic) - cary->s[n].r[X];
-    r[Y] = 1.0*(coord.noffset[Y] + jc) - cary->s[n].r[Y];
-    r[Z] = 1.0*(coord.noffset[Z] + kc) - cary->s[n].r[Z];
+  for (n = 0; n < pca->nc; n++) {
+    a2 = pca->s[n].a0*pca->s[n].a0;
+    r[X] = 1.0*(coord.noffset[X] + ic) - pca->s[n].r[X];
+    r[Y] = 1.0*(coord.noffset[Y] + jc) - pca->s[n].r[Y];
+    r[Z] = 1.0*(coord.noffset[Z] + kc) - pca->s[n].r[Z];
 
     coords_minimum_distance_gpu(r);
     rsq = r[X]*r[X] + r[Y]*r[Y] + r[Z]*r[Z];
-    if (rsq < a2) {
-      map[index] = n;
-      cary->mapd[index] = n;
-    }
+    if (rsq < a2) pca->mapd[index] = n;
   }
 
   return;
@@ -931,5 +930,60 @@ int coords_index_gpu(int ic, int jc, int kc, int * index) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  colloids_fix_swd_gpu
+ *
+ *  At colloid sites replace fluid u by colloid solid body rotation
+ *    v + Omega x rb
+ *  so that velocity gradients can be computed in S(W,D) term in the
+ *  Beris Edwards equation.
+ *
+ *****************************************************************************/
+
+__global__
+void colloid_fix_swd_gpu(int nextra, coll_array_t * pc,
+	double * __restrict__ u) {
+
+  int threadIndex;
+  int ic, jc, kc, index;   /* Lattice position */
+  int nkthreads;           /* Threads required for this kernel */
+  int n;
+
+  double r[3];
+  double u0[3];
+
+  threadIndex = blockIdx.x*blockDim.x + threadIdx.x;
+  coords_nkthreads_gpu(nextra, &nkthreads);
+
+  if (threadIndex >= nkthreads) return;
+
+  coords_from_threadindex_gpu(nextra, threadIndex, &ic, &jc, &kc);
+  coords_index_gpu(ic, jc, kc, &index);
+
+  /* Look through each colloid for a match */
+
+  for (n = 0; n < pc->nc; n++) {
+    if (n == pc->mapd[index]) {
+      r[X] = 1.0*(coord.noffset[X] + ic) - pc->s[n].r[X];
+      r[Y] = 1.0*(coord.noffset[Y] + jc) - pc->s[n].r[Y];
+      r[Z] = 1.0*(coord.noffset[Z] + kc) - pc->s[n].r[Z];
+
+      coords_minimum_distance_gpu(r);
+
+      u0[X] = pc->s[n].v[X] + (pc->s[n].w[Y]*r[Z] - pc->s[n].w[Z]*r[Y]);
+      u0[Y] = pc->s[n].v[Y] + (pc->s[n].w[Z]*r[X] - pc->s[n].w[X]*r[Z]);
+      u0[Z] = pc->s[n].v[Z] + (pc->s[n].w[X]*r[Y] - pc->s[n].w[Y]*r[X]);
+      u[X*coord.nsite + index] = u0[X];
+      u[Y*coord.nsite + index] = u0[Y];
+      u[Z*coord.nsite + index] = u0[Z];
+      break; /* Only one match is possible */
+    }
+  }
+
+  return;
+}
+
 
 #endif
