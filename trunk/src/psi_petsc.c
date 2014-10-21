@@ -51,6 +51,7 @@
 DM             da;            /* distributed array */
 Vec            x,b,u;         /* approx solution, RHS, exact solution */
 Mat            A;             /* linear system matrix */
+MatNullSpace   nullsp;        /* null space of matrix */
 KSP            ksp;           /* linear solver context */
 PC             pc;            /* preconditioner context */
 PetscReal      norm;          /* norm of solution error */
@@ -285,6 +286,13 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 
   /* Retain the non-zero structure of the matrix */
   MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
+
+  /* Set the matrix, preconditioner and nullspace */
+  KSPSetOperators(ksp,A,A);
+  MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullsp);
+  KSPSetNullSpace(ksp, nullsp);
+  MatNullSpaceDestroy(&nullsp);
+  KSPSetFromOptions(ksp);
 
   if (view_matrix) {
     info("\nPETSc output matrix\n");
@@ -528,6 +536,13 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 
   /* Retain the non-zero structure of the matrix */
   MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);
+  
+  /* Set the matrix, preconditioner and nullspace */
+  KSPSetOperators(ksp,A,A);
+  MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullsp);
+  KSPSetNullSpace(ksp, nullsp);
+  MatNullSpaceDestroy(&nullsp);
+  KSPSetFromOptions(ksp);
 
   if (view_matrix) {
     info("\nPETSc output matrix\n");
