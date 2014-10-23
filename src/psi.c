@@ -598,6 +598,38 @@ int psi_epsilon_set(psi_t * obj, double epsilon) {
 
 /*****************************************************************************
  *
+ *  psi_epsilon2
+ *
+ *****************************************************************************/
+
+int psi_epsilon2(psi_t * obj, double * epsilon2) {
+
+  assert(obj);
+  assert(epsilon2);
+
+  *epsilon2 = obj->epsilon2;
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  psi_epsilon2_set
+ *
+ *****************************************************************************/
+
+int psi_epsilon2_set(psi_t * obj, double epsilon2) {
+
+  assert(obj);
+
+  obj->epsilon2 = epsilon2;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_ionic_strength
  *
  *  This is (1/2) \sum_k z_k^2 rho_k. This is a number density, and
@@ -632,7 +664,7 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
   assert(obj);
   assert(lb);
 
-  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon);
+  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*0.5*(obj->epsilon + obj->epsilon2));
 
   return 0;
 }

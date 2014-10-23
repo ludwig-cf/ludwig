@@ -40,7 +40,8 @@ struct psi_s {
   double * diffusivity;     /* Diffusivity for each species */
   int * valency;            /* Valency for each species */
   double e;                 /* unit charge */
-  double epsilon;           /* reference permittivity */
+  double epsilon;           /* first and reference permittivity */
+  double epsilon2;          /* second permittivity */
   double beta;              /* Boltzmann factor (1 / k_B T) */
   double reltol;            /* Relative tolerance for Poisson solver */
   double abstol;            /* Absolute tolerance for Poisson solver */
