@@ -45,8 +45,9 @@ int psi_init_param_rt(psi_t * obj) {
 
   double eunit = 1.0;         /* Unit charge */
   double temperature, beta;   /* Temperature (set by fluctuations) */
-  double epsilon = 0.0;       /* Permittivity */
-  double lb;                  /* Bjerrum length; derived, not input */
+  double epsilon = 0.0;       /* Reference permittivity */
+  double epsilon2 = 0.0;      /* Second permittivity */
+  double lbjerrum;            /* Bjerrum length; derived, not input */
   double tolerance;           /* Numerical tolerance for SOR and Krylov subspace solver */
   int    niteration;          /* Max. number of iterations */ 
 
@@ -76,6 +77,7 @@ int psi_init_param_rt(psi_t * obj) {
 
   psi_unit_charge_set(obj, eunit);
   psi_epsilon_set(obj, epsilon);
+  psi_epsilon2_set(obj, epsilon); /* Default is no dielectric contrast */
 
   n = RUN_get_double_parameter("temperature", &temperature);
 
@@ -86,13 +88,13 @@ int psi_init_param_rt(psi_t * obj) {
   beta = 1.0/temperature;
 
   psi_beta_set(obj, beta);
-  psi_bjerrum_length(obj, &lb);
+  psi_bjerrum_length(obj, &lbjerrum);
 
   info("Electrokinetic species:    %2d\n", nk);
   info("Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
   info("Unit charge:               %14.7e\n", eunit);
   info("Reference permittivity:    %14.7e\n", epsilon);
-  info("Bjerrum length:            %14.7e\n", lb);
+  info("Reference Bjerrum length:  %14.7e\n", lbjerrum);
 
   for (n = 0; n < nk; n++) {
     info("Valency species %d:         %2d\n", n, valency[n]);

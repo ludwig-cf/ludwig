@@ -506,6 +506,8 @@ void ludwig_run(const char * inputfile) {
 
       if (is_statistics_step()) info("%d multisteps\n",im);
 
+      psi_sor_offset(ludwig->psi);
+
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
@@ -1232,6 +1234,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     double e1, e2;
     double mu[2];
+    double lbjerrum;
 
     /* Binary fluid plus electrokinetics */
 
@@ -1302,13 +1305,14 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_es_create(ludwig->phi, ludwig->phi_grad, ludwig->psi);
 
     /* Dielectric contrast */
-    /* Read in the second dielectric constant, and use the first
-     * from the electrokinetic sector as default (both e1 and e2) */
 
+    /* Call permittivities, e1=e2 has been set as default */
     psi_epsilon(ludwig->psi, &e1);
-    e2 = e1;
+    psi_epsilon2(ludwig->psi, &e2);
 
-    RUN_get_double_parameter("electrosymmetric_epsilon2", &e2);
+    /* Read the second permittivity */
+    n = RUN_get_double_parameter("electrosymmetric_epsilon2", &e2);
+    if (n == 1) psi_epsilon2_set(ludwig->psi, e2);
 
     fe_es_epsilon_set(e1, e2);
 
@@ -1322,9 +1326,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_es_deltamu_set(nk, mu);
 
+    psi_bjerrum_length(ludwig->psi, &lbjerrum);
+
     info("Second permittivity:      %15.7e\n", e2);
     info("Dielectric average:       %15.7e\n", 0.5*(e1 + e2));
     info("Dielectric contrast:      %15.7e\n", (e1-e2)/(e1+e2));
+    info("Average Bjerrum length:   %15.7e\n", lbjerrum);
     info("Solvation dmu species 0:  %15.7e\n", mu[0]);
     info("Solvation dmu species 1:  %15.7e\n", mu[1]);
 
