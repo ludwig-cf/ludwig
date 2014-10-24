@@ -319,12 +319,12 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 
   int ic, jc, kc, p;
-  int index, index0, index1;
+  int index;
   int noffset[3];
 
   int i, j, k, ia;
   int xs, ys, zs, xw, yw, zw, xe, ye, ze;
-  double eps, eps1, grad_eps[3];
+  double eps, grad_eps[3];
   
 
 #ifdef NP_D3Q6
@@ -721,13 +721,13 @@ int psi_petsc_set_rhs(psi_t * obj) {
 int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 
    int    ic,jc,kc;
-   int    index, index0, index1;
+   int    index;
    int    noffset[3];
    int    i, j, k, ia;
    int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
    double *** rho_3d;
    double rho_elec;
-   double eps0, eps1, grad_eps[3];
+   double grad_eps[3];
    double e0[3];   
    double eunit, beta;
  
