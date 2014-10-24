@@ -46,7 +46,6 @@ int psi_init_param_rt(psi_t * obj) {
   double eunit = 1.0;         /* Unit charge */
   double temperature, beta;   /* Temperature (set by fluctuations) */
   double epsilon = 0.0;       /* Reference permittivity */
-  double epsilon2 = 0.0;      /* Second permittivity */
   double lbjerrum;            /* Bjerrum length; derived, not input */
   double tolerance;           /* Numerical tolerance for SOR and Krylov subspace solver */
   int    niteration;          /* Max. number of iterations */ 
