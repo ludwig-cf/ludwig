@@ -66,10 +66,12 @@ int main(int argc, char ** argv) {
   int nrequest;
   int nactual;
 
-  double a0 = 2.3;                      /* Input radius */
-  double ah = 2.3;                      /* Hydrodynamic radius */ 
+  double a0 = 6.0;                      /* Input radius */
+  double ah = 6.0;                      /* Hydrodynamic radius */ 
   double vf = 0.05;                       /* Volume fraction */
   double dh = 1.0;                       /* "grace' distance */
+  double q0 = 150.0 
+  double q1 = 0.0;
 
   colloid_state_t * state;
 
@@ -98,6 +100,8 @@ int main(int argc, char ** argv) {
     state[n].rebuild = 1;
     state[n].a0 = a0;
     state[n].ah = ah;
+    state[n].q0 = q0;
+    state[n].q1 = q1;
   }
 
   /* Set positions and write out */
