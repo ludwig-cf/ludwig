@@ -1,23 +1,39 @@
-# vtk_extract.c
-# Script for creating data files in vtk-format for visualisation in Paraview
+########################################################################
+#			   					       #
+#  vtk_extract_script.py 					       #
+#			   					       #
+#  Script for creating data files in vtk-format for visualisation in   #
+#  Paraview.						               #
+#  Requires vtk_extract.c with corresponding flags set and	       #
+#  an executable 'extract_colloids' for colloid processing. 	       #				
+#								       #				
+#  Usage: $> python vtk_extract_script.py			       #
+#								       #
+#  $Id$$							       #
+#								       #	
+#  Edinburgh Soft Matter and Statistical Physics Group and	       #
+#  Edinburgh Parallel Computing Centre				       #
+#								       #	
+#  Oliver Henrich (ohenrich@epcc.ed.ac.uk)			       #
+#  (c) 2014 The University of Edinburgh				       #
+#			   					       #
+########################################################################
 
 import sys, os, re, math
 
-nstart=100
-nint=100
-nend=1000
-ngroup=8
+nstart=1000	# Start timestep
+nint=1000	# Increment
+nend=40000	# End timestep
+ngroup=1	# Number of output groups
 
-vel=1
-q=1
-phi=0
-psi=0
-fed=0
-bfed=0
-gfed=0
-colloid=0
+vel=1		# Switch for velocity 
+q=1		# Switch for Q-tensor postprocessing
+phi=1		# Switch for binary fluid
+psi=1		# Switch for electrokinetics
+fed=1		# Switch for free energy
+colloid=1	# Switch for colloid postprocessing
 
-# set lists for analysis
+# Set lists for analysis
 type=[]
 x=[]
 y=[]
@@ -60,20 +76,6 @@ if fed==1:
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_fed' % (i,ngroup))
 
-if bfed==1:
-        metafile.append('fed.%03.0d-001.meta' % ngroup)
-        filelist.append('filelist_bfed')
-        os.system('rm filelist_bfed')
-        for i in range(nstart,nend+nint,nint):
-                os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_bfed' % (i,ngroup))
-
-if gfed==1:
-        metafile.append('fed.%03.0d-001.meta' % ngroup)
-        filelist.append('filelist_gfed')
-        os.system('rm filelist_gfed')
-        for i in range(nstart,nend+nint,nint):
-                os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_gfed' % (i,ngroup))
-
 os.system('gcc -o vtk_extract vtk_extract.c -lm')
 
 if colloid==1:
@@ -83,8 +85,7 @@ if colloid==1:
 	for i in range(nstart,nend+nint,nint):
 		os.system('ls -t1 config.cds%08.0d.001-001 >> filelist_colloid' % i)
 
-
-# create vtk-files
+# Create vtk-files
 for i in range(len(filelist)):
 	if filelist[i] != 'filelist_colloid':
 		datafiles=open(filelist[i],'r') 
@@ -95,7 +96,7 @@ for i in range(len(filelist)):
 			line=datafiles.readline()
 			if not line: break
 
-			print '# Processing %s' % line 
+			print '\n# Processing %s' % line 
 
 			stub=line.split('.',1)
 			os.system('./vtk_extract %s %s' % (metafile[i],stub[0]))
