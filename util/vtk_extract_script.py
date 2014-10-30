@@ -86,8 +86,6 @@ for i in range(len(filelist)):
 	if filelist[i] != 'filelist_colloid':
 		datafiles=open(filelist[i],'r') 
 
-		print('# Creating vtk-datafiles')
-
 		while 1:
 			line=datafiles.readline()
 			if not line: break
@@ -102,8 +100,6 @@ for i in range(len(filelist)):
 	if filelist[i] == 'filelist_colloid':
 		datafiles=open(filelist[i],'r') 
 
-		print('# Creating csv-files')
-
 		while 1:
 			line=datafiles.readline()
 			if not line: break
@@ -112,8 +108,6 @@ for i in range(len(filelist)):
 
 			os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename))
 	
-		datafilenames.close
-
 os.system('rm filelist*')
 
 print('# Done')
