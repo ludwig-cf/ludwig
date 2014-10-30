@@ -34,10 +34,6 @@ fed=1		# Switch for free energy
 colloid=1	# Switch for colloid postprocessing
 
 # Set lists for analysis
-type=[]
-x=[]
-y=[]
-z=[]
 metafile=[]
 filelist=[]
 
