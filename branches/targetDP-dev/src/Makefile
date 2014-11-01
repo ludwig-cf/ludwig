@@ -41,6 +41,10 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
+#USEGPU=
+USEGPU=1
+
+
 CC = gcc
 
 ifeq ($(MYHOSTNAME),mbpag3)
@@ -52,8 +56,21 @@ OPTS = -DNP_D3Q6
 #CFLAGS = -Wall -O2
 CFLAGS = -g
 
+ifdef USEGPU
+TARGETCC = nvcc -arch=sm_21
+#TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
+TARGETOPTS =  $(OPTS) -x cu -DCUDA -g -G -dc
+LIBS = -lm -L../targetDP -ltargetDP_CUDA
+else
+TARGETCC = $(CC)
+TARGETOPTS = $(OPTS) -x c 
+LIBS = -lm -L../targetDP -ltargetDP_X86
+endif
+
+
+
 INC = -I. -I ../targetDP
-LIBS = -lm
+#LIBS = -lm
 AR = ar
 ARFLAGS = -cru
 
@@ -80,7 +97,7 @@ endif
 ###############################################################################
 
 OBJS = model.o propagation.o \
-     collision.o physics.o physics_rt.o \
+     physics.o physics_rt.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
@@ -113,12 +130,14 @@ OBJS = model.o propagation.o \
      psi_petsc.o psi_gradients.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
-     symmetric.o symmetric_rt.o subgrid.o \
+     symmetric_rt.o subgrid.o \
      stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
      timer.o util.o wall.o colloids_Q_tensor.o ludwig.o
+
+TARGETDP_OBJS = collision.o symmetric.o
 
 ###############################################################################
 #
@@ -202,8 +221,8 @@ mpi-model:
 
 # Libraries
 
-libar:	$(OBJS) $(LBOBJ)
-	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(LBOBJ)
+libar:	$(OBJS) $(TARGETDP_OBJS) $(LBOBJ)
+	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(TARGETDP_OBJS) $(LBOBJ)
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
@@ -230,8 +249,11 @@ svn.o:
 .c.o :
 	$(CC) $(LB) $(OPTS) $(CFLAGS) $(INC) -c $?
 
+.C.o :
+	$(TARGETCC) $(LB) $(TARGETOPTS) $(CFLAGS) $(INC) -c $?
+
 
 .PHONY : clean
 clean:
 	rm -f d2q9.o d3q15.o d3q19.o
-	rm -f $(OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o
+	rm -f $(OBJS) $(TARGETDP_OBJS) $(EXECUTABLE) $(LIBRARY) $(MAIN).o
