@@ -17,6 +17,10 @@ AR = ar -cru
 
 # CC=	gcc-4.9
  CC=	gcc
+
+ifeq ($(MYHOSTNAME),mbpag3)
+CC= gcc-4.9
+endif
 # CFLAGS = -O3 -fopenmp  #-save-temps
  CFLAGS = -g -fopenmp  #-save-temps
 

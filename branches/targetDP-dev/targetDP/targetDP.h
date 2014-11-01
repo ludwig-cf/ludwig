@@ -12,6 +12,9 @@
 
 #ifdef CUDA /* CUDA */
 
+#define HOST extern "C"
+
+
 /* default threads per block */
 #define DEFAULT_TPB 256
 //#define DEFAULT_TPB 32
@@ -41,6 +44,8 @@
 
 #else /* X86 */
 
+#define HOST
+
 /* kernel function specifiers */
 #define TARGET 
 #define TARGET_ENTRY
@@ -67,9 +72,14 @@
 /* Common */
 
 /* Initialisation */
-#define TARGET_INDEX_INIT(extent)		\
-  int targetExtent=extent;			\
-  int baseIndex=0,vecIndex=0;
+//#define TARGET_INDEX_INIT(extent)		\
+//  int targetExtent=extent;			\
+//  int baseIndex=0,vecIndex=0;
+
+
+#define ILP_INIT		\
+  int vecIndex=0;
+
 
 
 #define ILPIDX(instrn) (instrn)*NILP+vecIndex 
@@ -90,6 +100,8 @@
 /* access function for lattice site data */
 #define SITE(array,field) \
   array[targetExtent*p+baseIndex+vecIndex]
+
+
 
 
 
