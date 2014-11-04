@@ -31,12 +31,12 @@ NPROCS = 8
 
 SRC     = ../../src
 INCLUDE = -I$(SRC) -I../../targetDP
-CFLAGS  = -g -O2 -Wall
+CFLAGS  = -g -O2 -Wall 
 
 MPI_STUB_INCLUDE = -I../../mpi_s
 MPI_STUB_LIB = -L../../mpi_s -lmpi
 
-CLIBS  = -lm
+CLIBS  = -lm $(TARGETDPLIBS) #AG: temp hack 
 MPILIB = -lmpi
 
 #------------------------------------------------------------------------------
