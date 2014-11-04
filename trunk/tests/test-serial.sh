@@ -22,6 +22,7 @@ OPTIND=1
 
 DIR_TST=`pwd`
 DIR_MPI=`pwd`/../mpi_s
+DIR_TARGETDP=`pwd`/../targetDP
 DIR_SRC=`pwd`/../src
 DIR_REG=`pwd`/regression
 DIR_UNT=`pwd`/unit
@@ -45,6 +46,10 @@ function test_unit {
   make clean
   make libc
   make testc
+
+  cd $DIR_TARGETDP
+  make clean
+  make targetDP_X86
 
   cd $DIR_SRC
   make clean
