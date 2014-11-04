@@ -30,7 +30,7 @@ MPIRUN = mpirun -np
 NPROCS = 8
 
 SRC     = ../../src
-INCLUDE = -I$(SRC)
+INCLUDE = -I$(SRC) -I../../targetDP
 CFLAGS  = -g -O2 -Wall
 
 MPI_STUB_INCLUDE = -I../../mpi_s
