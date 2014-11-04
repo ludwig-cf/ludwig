@@ -3,6 +3,8 @@
  * Alan Gray, November 2013
  */
 
+#include <stdlib.h>
+
 #ifndef _DATA_PARALLEL_INCLUDED
 #define _DATA_PARALLEL_INCLUDED
 
