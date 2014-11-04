@@ -41,8 +41,12 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-#USEGPU=
+USEGPU=
+
+ifeq ($(TARGETDP),GPU)
+#ONLY for Alan G development at the moment
 USEGPU=1
+endif
 
 
 CC = gcc
@@ -59,7 +63,7 @@ CFLAGS = -g
 ifdef USEGPU
 TARGETCC = nvcc -arch=sm_21
 #TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
-TARGETOPTS =  $(OPTS) -x cu -DCUDA -g -G -dc
+TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc #-g -G
 LIBS = -lm -L../targetDP -ltargetDP_CUDA
 else
 TARGETCC = $(CC)
@@ -160,7 +164,7 @@ verbose:
             "\t Check the Makefile for further details\n"	
 
 code:	$(MAIN).o
-	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(MAIN).o $(LIBRARY) $(LIBS)
+	$(TARGETCC) $(LDFLAGS) -o $(EXECUTABLE) $(MAIN).o $(LIBRARY) $(LIBS)
 
 # Serial versions
 
@@ -188,8 +192,8 @@ serial-d3q19r:
 
 serial-model:
 	$(MAKE) lib
-#	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi"
-	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi -L../targetDP -ltargetDP_X86"
+	$(MAKE) code "INC=$(INC) -I../mpi_s" "LIBS=$(LIBS) -L../mpi_s -lmpi"
+
 
 # MPI versions
 

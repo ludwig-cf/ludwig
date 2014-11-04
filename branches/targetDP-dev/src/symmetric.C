@@ -61,7 +61,7 @@ HOST char symmetric_in_use(){ return symmetric_flag; }
  *
  ****************************************************************************/
 
-int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
+HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
 
   assert(phi);
   assert(dphi);
@@ -84,7 +84,7 @@ int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
  *
  ****************************************************************************/
 
-void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
+HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
   //  a_ = a;
   //b_ = b;
@@ -108,7 +108,7 @@ void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
  *
  ****************************************************************************/
 
-double symmetric_a(void) {
+HOST double symmetric_a(void) {
 
   return a_;
 }
@@ -119,7 +119,7 @@ double symmetric_a(void) {
  *
  ****************************************************************************/
 
-double symmetric_b(void) {
+HOST double symmetric_b(void) {
 
   return b_;
 }
@@ -175,7 +175,7 @@ HOST void symmetric_delsqphi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-double symmetric_interfacial_tension(void) {
+HOST double symmetric_interfacial_tension(void) {
 
   double sigma;
 
@@ -190,7 +190,7 @@ double symmetric_interfacial_tension(void) {
  *
  ****************************************************************************/
 
-double symmetric_interfacial_width(void) {
+HOST double symmetric_interfacial_width(void) {
 
   double xi;
 
@@ -207,7 +207,7 @@ double symmetric_interfacial_width(void) {
  *
  ****************************************************************************/
 
-double symmetric_free_energy_density(const int index) {
+HOST double symmetric_free_energy_density(const int index) {
 
   double phi;
   double dphi[3];
@@ -234,7 +234,7 @@ double symmetric_free_energy_density(const int index) {
  *
  ****************************************************************************/
 
-double symmetric_chemical_potential(const int index, const int nop) {
+HOST double symmetric_chemical_potential(const int index, const int nop) {
 
   double phi;
   double delsq_phi;
@@ -304,7 +304,7 @@ HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
  *
  ****************************************************************************/
 
-double symmetric_isotropic_pressure(const int index) {
+HOST double symmetric_isotropic_pressure(const int index) {
 
   double phi;
   double delsq_phi;
@@ -336,7 +336,7 @@ double symmetric_isotropic_pressure(const int index) {
  *
  ****************************************************************************/
 
-void symmetric_chemical_stress(const int index, double s[3][3]) {
+HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
 
   int ia, ib;
   double phi;
