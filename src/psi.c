@@ -37,6 +37,7 @@ static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
 static const double  abstol_default = 0.01*FLT_EPSILON;
 static const int     maxits_default = 10000;            /* Default number of iterations in Poisson solver */
 static const int multisteps_default = 1;                /* Default number of multisteps in NPE */
+static const int  skipsteps_default = 1;                /* Default number of skipped timesteps in Poisson solver */
 static const double diffacc_default = 0;                /* Default diffusive accuracy in NPE for constant no. of multisteps */ 
 
 static int psi_read(FILE * fp, int index, void * self);
@@ -119,6 +120,7 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->abstol = abstol_default;
   psi->maxits = maxits_default;
   psi->multisteps = multisteps_default;
+  psi->skipsteps = skipsteps_default;
   psi->diffacc = diffacc_default;
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
@@ -897,4 +899,33 @@ int psi_diffacc(psi_t * obj, double * diffacc) {
   *diffacc = obj->diffacc;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_skipsteps_set
+ *
+ *****************************************************************************/
+
+int psi_skipsteps_set(psi_t * obj, double skipsteps) {
+
+  assert(obj);
+  assert(skipsteps>=1);
+
+  obj->skipsteps = skipsteps;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_skipsteps
+ *
+ *****************************************************************************/
+
+int psi_skipsteps(psi_t * obj) {
+
+  assert(obj);
+
+  return obj->skipsteps;
 }

@@ -550,7 +550,7 @@ electrokinetics_z1      -1
 electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
-electrokinetics_epsilon 3.3e3
+electrokinetics_epsilon 100
 electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 0.0
 electrokinetics_init_sigma 0.0125
@@ -561,8 +561,9 @@ electrokinetics_maxits   1000
 electrokinetics_diffacc  0
 
 electrokinetics_multisteps 1
+electrokinetics_skipsteps  1
 
-electrosymmetric_epsilon2   2000.0
+electrosymmetric_epsilon2   100.0
 electrosymmetric_delta_mu0  1.0
 electrosymmetric_delta_mu1  2.0
 

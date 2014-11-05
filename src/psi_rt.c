@@ -56,6 +56,7 @@ int psi_init_param_rt(psi_t * obj) {
   char value[BUFSIZ] = "BINARY";
 
   int multisteps;             /* Number of substeps in NPE */
+  int skipsteps;              /* Poisson equation solved every skipstep timesteps */ 
   double diffacc;             /* Relative accuracy of diffusion in NPE */
 
   psi_nk(obj, &nk);
@@ -104,11 +105,14 @@ int psi_init_param_rt(psi_t * obj) {
 
   n = RUN_get_int_parameter("electrokinetics_multisteps", &multisteps);
   if (n == 1) psi_multisteps_set(obj, multisteps);
+  n = RUN_get_int_parameter("electrokinetics_skipsteps", &skipsteps);
+  if (n == 1) psi_skipsteps_set(obj, skipsteps);
   n = RUN_get_double_parameter("electrokinetics_diffacc", &diffacc);
   if (n == 1) psi_diffacc_set(obj, diffacc);
 
   psi_multisteps(obj, &multisteps);
   info("Number of multisteps:       %d\n", multisteps);
+  info("Number of skipsteps:        %d\n", psi_skipsteps(obj));
   psi_diffacc(obj, &diffacc);
   info("Diffusive accuracy in NPE: %14.7e\n", diffacc);
 

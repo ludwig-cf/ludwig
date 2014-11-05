@@ -449,13 +449,16 @@ void ludwig_run(const char * inputfile) {
       psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
 
       /* Poisson solve */
-      TIMER_start(TIMER_ELECTRO_POISSON);
+
+      if(get_step() % psi_skipsteps(ludwig->psi) == 0){
+	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
-      psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
 #else
-      psi_sor_solve(ludwig->psi, ludwig->epsilon);
+	psi_sor_solve(ludwig->psi, ludwig->epsilon);
 #endif
-      TIMER_stop(TIMER_ELECTRO_POISSON);
+	TIMER_stop(TIMER_ELECTRO_POISSON);
+      }
 
       if (ludwig->hydro) {
 	TIMER_start(TIMER_HALO_LATTICE);
@@ -702,6 +705,7 @@ void ludwig_run(const char * inputfile) {
       }
 
       stats_free_energy_density(ludwig->q, ludwig->map, ncolloid);
+//      blue_phase_stats(ludwig->q, ludwig->q_grad, ludwig->map, step);
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
