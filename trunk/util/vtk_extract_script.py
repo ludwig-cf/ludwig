@@ -23,14 +23,14 @@ import sys, os, re, math
 
 nstart=1000	# Start timestep
 nint=1000	# Increment
-nend=40000	# End timestep
+nend=13000	# End timestep
 ngroup=1	# Number of output groups
 
-vel=1		# Switch for velocity 
-q=1		# Switch for Q-tensor postprocessing
-phi=1		# Switch for binary fluid
-psi=1		# Switch for electrokinetics
-fed=1		# Switch for free energy
+vel=0		# Switch for velocity 
+q=0		# Switch for Q-tensor postprocessing
+phi=0		# Switch for binary fluid
+psi=0		# Switch for electrokinetics
+fed=0		# Switch for free energy
 colloid=1	# Switch for colloid postprocessing
 
 # Set lists for analysis
@@ -104,8 +104,11 @@ for i in range(len(filelist)):
 			line=datafiles.readline()
 			if not line: break
 
-			print '# Processing %s' % line 
+			print '\n# Processing %s' % line 
 
+			stub=line.split('.',2)
+			datafilename = ('%s.%s' % (stub[0], stub[1]))
+			outputfilename = ('col-%s.csv' % stub[1])
 			os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename))
 	
 os.system('rm filelist*')
