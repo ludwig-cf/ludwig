@@ -67,5 +67,7 @@ int psi_multisteps_set(psi_t * obj, int multisteps);
 int psi_multistep_timestep(psi_t * obj, double * dt);
 int psi_diffacc(psi_t * obj, double * diffacc);
 int psi_diffacc_set(psi_t * obj, double diffacc);
+int psi_skipsteps(psi_t * obj);
+int psi_skipsteps_set(psi_t * obj, double skipsteps);
 
 #endif
