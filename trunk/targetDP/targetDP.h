@@ -3,6 +3,8 @@
  * Alan Gray, November 2013
  */
 
+#include <stdlib.h>
+
 #ifndef _DATA_PARALLEL_INCLUDED
 #define _DATA_PARALLEL_INCLUDED
 
@@ -11,6 +13,9 @@
 
 
 #ifdef CUDA /* CUDA */
+
+#define HOST extern "C"
+
 
 /* default threads per block */
 #define DEFAULT_TPB 256
@@ -31,10 +36,7 @@
 /* special kernel launch syntax */
 #define TARGET_LAUNCH(extent) \
   <<<((extent/NILP)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
-
-
-/* Instruction-level-parallelism execution macro */
-#define TARGET_ILP(simdIndex) for (simdIndex = 0; simdIndex < NILP; simdIndex++)  
+  
 
 /* Thread-level-parallelism execution macro */
 #define TARGET_TLP(simtIndex,extent) \
@@ -43,6 +45,8 @@
 
 
 #else /* X86 */
+
+#define HOST
 
 /* kernel function specifiers */
 #define TARGET 
@@ -55,19 +59,51 @@
 #define TARGET_LAUNCH(extent)
 
 /* Instruction-level-parallelism vector length */
-#define NILP 2
-
-/* Instruction-level-parallelism execution macro */
-#define TARGET_ILP(simdIndex)  for (simdIndex = 0; simdIndex < NILP; simdIndex++) 
+#define NILP 1
 
 /* Thread-level-parallelism execution macro */
-#define TARGET_TLP(simtIndex,extent)    _Pragma("omp parallel for")	\
+//#define TARGET_TLP(simtIndex,extent)    _Pragma("omp parallel for")	\
+//  for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
+
+#define TARGET_TLP(simtIndex,extent)   	\
   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
 
 #endif
 
 
+/* Common */
+
+/* Initialisation */
+//#define TARGET_INDEX_INIT(extent)		\
+//  int targetExtent=extent;			\
+//  int baseIndex=0,vecIndex=0;
+
+
+#define ILP_INIT		\
+  int vecIndex=0;
+
+
+
 #define ILPIDX(instrn) (instrn)*NILP+vecIndex 
+
+/* Instruction-level-parallelism execution macro */
+#define TARGET_ILP  for (vecIndex = 0; vecIndex < NILP; vecIndex++) 
+
+/* declaration of thread-dependent stack data */
+#define VDECLSC(var) var[NILP]
+#define VDECL1D(var,extent) var[extent*NILP]
+#define VDECL2D(var,extent1,extent2) var[extent1][extent2*NILP]
+
+/* access functions for thread-dependent stack data */
+#define VSC(var) var[vecIndex]
+#define V1D(var,idx) var[ILPIDX(idx)]
+#define V2D(var,idx1,idx2) var[idx1][ILPIDX(idx2)]
+
+/* access function for lattice site data */
+#define SITE(array,field) \
+  array[targetExtent*p+baseIndex+vecIndex]
+
+
 
 
 
