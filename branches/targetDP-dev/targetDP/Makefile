@@ -16,11 +16,18 @@ AR = ar -cru
 .SUFFIXES: .c  .o
 
 # CC=	gcc-4.9
- CC=	gcc
+
+CC=	gcc
+NVCC= nvcc 
+
 
 ifeq ($(MYHOSTNAME),mbpag3)
-CC= gcc-4.9
+CC= gcc-4.6
+NVCC= nvcc -ccbin=gcc-4.6
 endif
+
+
+
 # CFLAGS = -O3 -fopenmp  #-save-temps
  CFLAGS = -g -fopenmp  #-save-temps
 
@@ -31,7 +38,7 @@ endif
 # CFLAGS=$(CFLAGS_BASE)
 #endif
 
- CC_CUDA=	nvcc
+ CC_CUDA=	$(NVCC)
 # CFLAGS_CUDA= -DCUDA -O3 -arch=sm_35 -I $(TARGETDPDIR) -dc -x cu #-save-temps
  CFLAGS_CUDA= -DCUDA -g -G -arch=sm_21 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
