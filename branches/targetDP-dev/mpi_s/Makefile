@@ -31,6 +31,11 @@ CC = gcc -Wall
 INCLUDE = -I.
 AR = ar -cru
 
+#options specific to AG's development environment
+ifeq ($(MYHOSTNAME),mbpag3)
+CC= gcc-4.6
+endif
+
 ###############################################################################
 #
 #  Targets
