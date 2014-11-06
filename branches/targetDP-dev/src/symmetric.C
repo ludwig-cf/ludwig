@@ -252,7 +252,10 @@ HOST double symmetric_chemical_potential(const int index, const int nop) {
 }
 
 
+//TODO currently we have duplicate HOST and TARGET versions of potential and stress routines 
+
 //TODO vectorise
+
 
 TARGET double symmetric_chemical_potential_target(const int index, const int nop, const double* t_phi, const double* t_delsqphi) {
 
@@ -364,25 +367,26 @@ HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
 }
 
 TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP], const double* t_phi,  const double* t_gradphi, const double* t_delsqphi) {
-
+  
   int ia, ib;
   double phi;
   double delsq_phi;
   double grad_phi[3];
   double p0;
 
+  //initialisation for targetDP instruction level parallelism
   ILP_INIT;
-
+  
   TARGET_ILP {
-
+    
     //phi = phi_get_phi_site(index+vecIndex);
     //phi_gradients_grad(index+vecIndex, grad_phi);
     //  delsq_phi = phi_gradients_delsq(index+vecIndex);
-
+    
     for (ia=0;ia<3;ia++){
-      //     if((index+vecIndex)==9701)      printf("%d %d %1.16e %1.16e \n",index+vecIndex,ia,grad_phi[ia],t_gradphi[3*(index+vecIndex)+ia]);
+      
       grad_phi[ia]=t_gradphi[3*(index+vecIndex)+ia];
-	
+      
     }
     
     phi=t_phi[index+vecIndex];
@@ -391,27 +395,24 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
     
     //    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
     //- kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
-
-        p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-    - kappa_*phi*delsq_phi 
-	  - 0.5*kappa_
-	  *(grad_phi[0]*grad_phi[0]+grad_phi[1]*grad_phi[1]
-	    +grad_phi[2]*grad_phi[2]);
     
-
-
+    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+      - kappa_*phi*delsq_phi 
+      - 0.5*kappa_
+      *(grad_phi[0]*grad_phi[0]+grad_phi[1]*grad_phi[1]
+	+grad_phi[2]*grad_phi[2]);
+    
+    
+    
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	s[ia][ILPIDX(ib)] = p0*tc_d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
       }
     }
-
+    
 
 
   }
-
-  //  printf("%1.16e %1.16e\n",d_[0][0],tc_d[0][0]);
-  //printf("%1.16e \n",tc_d[0][0]);
 
 
   return;

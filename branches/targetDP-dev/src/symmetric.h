@@ -30,8 +30,10 @@ HOST double symmetric_interfacial_tension(void);
 HOST double symmetric_interfacial_width(void);
 HOST double symmetric_free_energy_density(const int index);
 HOST double symmetric_chemical_potential(const int index, const int nop);
+TARGET double symmetric_chemical_potential_target(const int index, const int nop, const double* t_phi, const double* t_delsqphi);
 HOST double symmetric_isotropic_pressure(const int index);
 HOST void   symmetric_chemical_stress(const int index, double s[3][3]);
+TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP], const double* t_phi,  const double* t_gradphi, const double* t_delsqphi) {
 
 #endif
 

@@ -41,18 +41,24 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-USEGPU=
 
+# GPU usage is under development through the targetDP work
+# but not yet supported in the trunk of Ludwig
+# the below option is just for develoment purposes.
+USEGPU=
 ifeq ($(TARGETDP),GPU)
-#ONLY for Alan G development at the moment
 USEGPU=1
 endif
 
 
 CC = gcc
 
+NVCC = nvcc
+
+#options specific to AG's development environment
 ifeq ($(MYHOSTNAME),mbpag3)
-CC= gcc-4.9
+CC= gcc-4.6
+NVCC= nvcc -ccbin=gcc-4.6
 endif
 
 MPICC = mpicc
@@ -61,7 +67,7 @@ OPTS = -DNP_D3Q6
 CFLAGS = -g
 
 ifdef USEGPU
-TARGETCC = nvcc -arch=sm_21
+TARGETCC = $(NVCC) -arch=sm_21
 #TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
 TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc #-g -G
 LIBS = -lm -L../targetDP -ltargetDP_CUDA
