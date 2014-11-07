@@ -343,6 +343,8 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 }
 
 
+// binary collision code below has been ported to targetDP programming model.
+
 /* Constants*/
 
 TARGET_CONST int tc_nSites;
@@ -386,8 +388,10 @@ void init_fields_target(){
 
 
 
+  //initialise targetDP
   targetInit(nSites, nFields);
 
+  //allocate data on the target
   targetCalloc((void **) &t_f, nSites*nFields*sizeof(double));
   targetCalloc((void **) &t_phi, nSites*sizeof(double));
   targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
@@ -454,8 +458,11 @@ void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
   }
 
 
+  // at the moment we are using AoS data structures
+
   //  copyToTargetMasked(t_f,lb->f,nSites,nFields,siteMask); 
   copyToTargetMaskedAoS(t_f,lb->f,nSites,nFields,siteMask); 
+
   //copyToTarget(t_f,lb->f,nSites*nFields*sizeof(double)); 
 
   if (!symmetric_in_use()){
@@ -582,6 +589,8 @@ void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro){
 
 
 // first we define the function applied to each lattice site
+// TODO Instruction Level Parallelism (ILP). We are currently just setting the 
+// vector length to 1.
 void lb_collision_binary_site( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
@@ -626,7 +635,7 @@ void lb_collision_binary_site( double* __restrict__ t_f,
   
   ILP_INIT;
         
-  //HACK TODO vectorise
+  //TODO vectorise
   fluctuations_off(shat, ghat);
   
   /* Compute all the modes */
@@ -910,27 +919,19 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   //start function pointer management
   mu_fntype* t_chemical_potential; 
   targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
-
-  //TODO  
-  //chemical_potential = fe_chemical_potential_function();
-  //the below is currently hardwired in symmetric module. Need to
-  // abstract in fe interface
   get_chemical_potential_target(t_chemical_potential);
-
 
   pth_fntype* t_chemical_stress; 
   targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
   get_chemical_stress_target(t_chemical_stress);
-
-
   //end function pointer management
  
 
+  //partition binary collision kernel across the lattice on the target
   TARGET_TLP(baseIndex,nSites){
 	
     lb_collision_binary_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,map,noise,noise_on,baseIndex);
         
-    /* Next site */
   }
   
   get_fields_from_target_masked(lb,hydro); 
