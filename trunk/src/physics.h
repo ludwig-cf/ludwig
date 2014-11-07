@@ -15,35 +15,37 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
+#include "targetDP.h"
+
 typedef struct physics_s physics_t;
 
-int physics_ref(physics_t ** ref);
-int physics_free(void);
+HOST int physics_ref(physics_t ** ref);
+HOST int physics_free(void);
 
-int physics_rho0(double * rho);
-int physics_rho0_set(double rho0);
-int physics_phi0(double * phi0);
-int physics_phi0_set(double phi0);
+HOST int physics_rho0(double * rho);
+HOST int physics_rho0_set(double rho0);
+HOST int physics_phi0(double * phi0);
+HOST int physics_phi0_set(double phi0);
 
-int physics_eta_shear(double * eta);
-int physics_eta_shear_set(double eta);
-int physics_eta_bulk(double * zeta);
-int physics_eta_bulk_set(double zeta);
-int physics_kt(double * kt);
-int physics_kt_set(double kt);
+HOST int physics_eta_shear(double * eta);
+HOST int physics_eta_shear_set(double eta);
+HOST int physics_eta_bulk(double * zeta);
+HOST int physics_eta_bulk_set(double zeta);
+HOST int physics_kt(double * kt);
+HOST int physics_kt_set(double kt);
 
-int physics_b0(double b0[3]);
-int physics_b0_set(double b0[3]);
-int physics_e0(double e0[3]);
-int physics_e0_set(double e0[3]);
-int physics_fbody(double f[3]);
-int physics_fbody_set(double f[3]);
-int physics_fgrav(double g[3]);
-int physics_fgrav_set(double g[3]);
+HOST int physics_b0(double b0[3]);
+HOST int physics_b0_set(double b0[3]);
+HOST int physics_e0(double e0[3]);
+HOST int physics_e0_set(double e0[3]);
+HOST int physics_fbody(double f[3]);
+HOST int physics_fbody_set(double f[3]);
+HOST int physics_fgrav(double g[3]);
+HOST int physics_fgrav_set(double g[3]);
 
-int physics_mobility(double * mobility);
-int physics_mobility_set(double mobility);
-int physics_lc_gamma_rot(double * gamma);
-int physics_lc_gamma_rot_set(double gamma);
+HOST int physics_mobility(double * mobility);
+HOST int physics_mobility_set(double mobility);
+HOST int physics_lc_gamma_rot(double * gamma);
+HOST int physics_lc_gamma_rot_set(double gamma);
 
 #endif
