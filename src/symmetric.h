@@ -18,17 +18,20 @@
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
-int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
 
-void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
-double symmetric_a(void);
-double symmetric_b(void);
-double symmetric_interfacial_tension(void);
-double symmetric_interfacial_width(void);
-double symmetric_free_energy_density(const int index);
-double symmetric_chemical_potential(const int index, const int nop);
-double symmetric_isotropic_pressure(const int index);
-void   symmetric_chemical_stress(const int index, double s[3][3]);
+#include "targetDP.h"
+
+HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
+
+HOST void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
+HOST double symmetric_a(void);
+HOST double symmetric_b(void);
+HOST double symmetric_interfacial_tension(void);
+HOST double symmetric_interfacial_width(void);
+HOST double symmetric_free_energy_density(const int index);
+HOST double symmetric_chemical_potential(const int index, const int nop);
+HOST double symmetric_isotropic_pressure(const int index);
+HOST void   symmetric_chemical_stress(const int index, double s[3][3]);
 
 #endif
 
