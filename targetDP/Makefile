@@ -43,6 +43,8 @@ endif
  CFLAGS_CUDA= -DCUDA -g -G -arch=sm_21 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
 
+default: targetDP_X86
+
 all: targetDP_CUDA targetDP_X86
 
 targetDP_CUDA:
