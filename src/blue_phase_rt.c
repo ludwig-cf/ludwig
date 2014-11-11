@@ -360,6 +360,24 @@ int blue_phase_rt_initial_conditions(field_t * q) {
     blue_phase_BPIII_init(q, nhat2);
   }
 
+  if (strcmp(key1, "cf1_x") == 0) {
+    info("Initialising Q_ab to cholesteric finger (1st kind)\n");
+    info("Finger axis X, helical axis Y\n");
+    blue_phase_cf1_init(q, X);
+  }
+
+  if (strcmp(key1, "cf1_y") == 0) {
+    info("Initialising Q_ab to cholesteric finger (1st kind)\n");
+    info("Finger axis Y, helical axis Z\n");
+    blue_phase_cf1_init(q, Y);
+  }
+
+  if (strcmp(key1, "cf1_z") == 0) {
+    info("Initialising Q_ab to cholesteric finger (1st kind)\n");
+    info("Finger axis Z, helical axis X\n");
+    blue_phase_cf1_init(q, Z);
+  }
+
   if (strcmp(key1, "random") == 0) {
     info("Initialising Q_ab randomly\n");
     blue_phase_random_q_init(q);

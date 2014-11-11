@@ -1148,3 +1148,105 @@ void blue_phase_M_rot(double M[3][3], int dim, double alpha){
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  blue_phase_cf1_init
+ *
+ *  Initialise a cholesteric finger of the first kind.
+ *  Uses the current free energy parameters
+ *     q0 (P=2pi/q0)
+ *     amplitude
+ *
+ *****************************************************************************/
+
+int blue_phase_cf1_init(field_t * fq, const int axis) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int ntotal[3];
+  int index;
+
+  double n[3];
+  double q[3][3];
+  double x, y, z;
+  double q0;
+  double alpha, alpha0, beta;
+
+  assert(fq);
+  assert(axis == X || axis == Y || axis == Z);
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+  coords_ntotal(ntotal);
+
+  q0 = blue_phase_q0();
+  alpha0 = 0.5*pi_; 
+
+  n[X] = 0.0;
+  n[Y] = 0.0;
+  n[Z] = 0.0;
+ 
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	if (axis == X) {
+
+	    alpha = alpha0*sin(pi_*(noffset[Z]+kc)/ntotal[Z]);
+	    beta  = -2.0*(pi_*(noffset[Z]+kc)/ntotal[Z]-0.5*pi_);
+
+	    n[X]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[Y]+jc)) -
+		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[Y]+jc)) +
+		     sin(alpha)*sin(beta)*cos(alpha);
+	    n[Y]  = -sin(beta)*sin(alpha)*sin(q0*(noffset[Y]+jc)) -
+		     cos(alpha)*cos(beta)*sin(alpha)*cos(q0*(noffset[Y]+jc)) +
+		     sin(alpha)*cos(beta)*cos(alpha);
+	    n[Z]  =  sin(alpha)*sin(alpha)*cos(q0*(noffset[Y]+jc)) +
+		     cos(alpha)*cos(alpha);
+
+	}
+
+	if (axis == Y) {
+
+	    alpha = alpha0*sin(pi_*(noffset[X]+ic)/ntotal[X]);
+	    beta  = -2.0*(pi_*(noffset[X]+ic)/ntotal[X]-0.5*pi_);
+
+	    n[Y]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[Z]+kc)) -
+		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[Z]+kc)) +
+		     sin(alpha)*sin(beta)*cos(alpha);
+	    n[Z]  = -sin(beta)*sin(alpha)*sin(q0*(noffset[Z]+kc)) -
+		     cos(alpha)*cos(beta)*sin(alpha)*cos(q0*(noffset[Z]+kc)) +
+		     sin(alpha)*cos(beta)*cos(alpha);
+	    n[X]  =  sin(alpha)*sin(alpha)*cos(q0*(noffset[Z]+kc)) +
+		     cos(alpha)*cos(alpha);
+
+	}
+
+	if (axis == Z) {
+
+	    alpha = alpha0*sin(pi_*(noffset[Y]+jc)/ntotal[Y]);
+	    beta  = -2.0*(pi_*(noffset[Y]+jc)/ntotal[Y]-0.5*pi_);
+
+	    n[Z]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[X]+ic)) -
+		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[X]+ic)) +
+		     sin(alpha)*sin(beta)*cos(alpha);
+	    n[X]  = -sin(beta)*sin(alpha)*sin(q0*(noffset[X]+ic)) -
+		     cos(alpha)*cos(beta)*sin(alpha)*cos(q0*(noffset[X]+ic)) +
+		     sin(alpha)*cos(beta)*cos(alpha);
+	    n[Y]  =  sin(alpha)*sin(alpha)*cos(q0*(noffset[X]+ic)) +
+		     cos(alpha)*cos(alpha);
+
+	}
+
+	blue_phase_q_uniaxial(amplitude0_, n, q);
+	field_tensor_set(fq, index, q);
+      }
+    }
+  }
+
+  return 0;
+}
