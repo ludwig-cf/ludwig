@@ -488,3 +488,9 @@ void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const in
   checkTargetError("copyConstantPthfnFromTarget");
   return;
 }
+
+void copyConstantDoubleFromTarget(double *data, const double *data_d, const int size){
+  cudaMemcpyFromSymbol(data, *data_d, size, 0,cudaMemcpyDeviceToHost);
+  checkTargetError("copyConstantDoubleFromTarget");
+  return;
+} 

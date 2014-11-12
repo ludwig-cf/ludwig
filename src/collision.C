@@ -51,7 +51,7 @@ static double noise_var[NVEL];  /* Noise variances */
 
 static int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
 static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
-static int fluctuations_off(double shat[3][3], double ghat[NVEL]);
+HOST TARGET static int fluctuations_off(double shat[3][3], double ghat[NVEL]);
 static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
 
@@ -362,6 +362,7 @@ TARGET_CONST double tc_r2rcs4;
 TARGET_CONST double tc_force_global[3];
 TARGET_CONST double tc_d_[3][3];
 TARGET_CONST double tc_q_[NVEL][3][3];
+TARGET_CONST int tc_nmodes_; 
 
 // target copies of fields 
 static double *t_f; 
@@ -422,7 +423,8 @@ void finalise_fields_target(){
 
 }
 
-void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
+void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro, 
+			       map_t * map){
 
   int       ic, jc, kc, index;       /* site indices */
 
@@ -447,12 +449,24 @@ void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
     exit(1);
   }
 
-  // set all non-halo sites to 1
+
+  //map status is now taken care of in masked targetDP data copies.
+  // we perform calculations for all sites, and only copy back the fluid
+  //sites to the host
+
+  // set all non-halo fluid sites to 1
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
+
+
   	index=coords_index(ic, jc, kc);
-  	siteMask[index]=1;
+
+	int status;
+	map_status(map, index, &status);
+
+	if (status == MAP_FLUID)
+	  siteMask[index]=1;
       }
     }
   }
@@ -493,7 +507,8 @@ void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro){
 }
 
 
-void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro){
+void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro,
+			       map_t * map){
 
   int       ic, jc, kc, index;       /* site indices */
 
@@ -516,12 +531,24 @@ void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro){
     exit(1);
   }
 
-  // set all non-halo sites to 1
+
+  //map status is now taken care of in masked targetDP data copies.
+  // we perform calculations for all sites, and only copy back the fluid
+  //sites to the host
+
+  // set all non-halo fluid sites to 1
   for (ic = 1; ic <= N[X]; ic++) {
     for (jc = 1; jc <= N[Y]; jc++) {
       for (kc = 1; kc <= N[Z]; kc++) {
+
+
   	index=coords_index(ic, jc, kc);
-  	siteMask[index]=1;
+
+	int status;
+	map_status(map, index, &status);
+
+	if (status == MAP_FLUID)
+	  siteMask[index]=1;
       }
     }
   }
@@ -591,15 +618,15 @@ void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro){
 // first we define the function applied to each lattice site
 // TODO Instruction Level Parallelism (ILP). We are currently just setting the 
 // vector length to 1.
-void lb_collision_binary_site( double* __restrict__ t_f, 
+TARGET void lb_collision_binary_site( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
 			      double* __restrict__ t_phi,
 			      double* __restrict__ t_gradphi,
 			      double* __restrict__ t_delsqphi,
 			      pth_fntype* t_chemical_stress,
-			      mu_fntype* t_chemical_potential,
-			       map_t * map, noise_t * noise, int noise_on,
+			      mu_fntype* t_chemical_potential, 
+			       noise_t * noise, int noise_on,
 			      const int baseIndex){
 
   int i,j,m,p;
@@ -639,7 +666,7 @@ void lb_collision_binary_site( double* __restrict__ t_f,
   fluctuations_off(shat, ghat);
   
   /* Compute all the modes */
-  for (m = 0; m < nmodes_; m++) {
+  for (m = 0; m < tc_nmodes_; m++) {
     V1D(mode,m) = 0.0;
     for (p = 0; p < NVEL; p++) {
       V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ]*tc_ma_[m][p];
@@ -647,10 +674,12 @@ void lb_collision_binary_site( double* __restrict__ t_f,
     
   }
   
-  //TO DO map field    
-  int status;
-  map_status(map, baseIndex, &status);
-  if (status != MAP_FLUID) return;
+  //map status is now taken care of in masked targetDP data copies.
+  // we perform calculations for all sites, and only copy back the fluid
+  //sites to the host
+  //int status;
+  //map_status(map, baseIndex, &status);
+  //if (status != MAP_FLUID) return;
   
   /* For convenience, write out the physical modes. */
   
@@ -735,7 +764,7 @@ void lb_collision_binary_site( double* __restrict__ t_f,
 #ifdef CUDA 
     
     printf("Error: noise_on is not yet supported for CUDA\n");
-    exit(1);
+    //exit(1);
     
 #else      
     
@@ -762,7 +791,7 @@ void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* Ghost modes are relaxed toward zero equilibrium. */
   
-  for (m = NHYDRO; m < nmodes_; m++) {
+  for (m = NHYDRO; m < tc_nmodes_; m++) {
     V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
   }
   
@@ -772,7 +801,7 @@ void lb_collision_binary_site( double* __restrict__ t_f,
   
   for (p = 0; p < NVEL; p++) {
     double ftmp=0;
-    for (m = 0; m < nmodes_; m++) {
+    for (m = 0; m < tc_nmodes_; m++) {
       ftmp += tc_mi_[p][m]*V1D(mode,m);
     }
     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ] = ftmp;
@@ -840,14 +869,34 @@ void lb_collision_binary_site( double* __restrict__ t_f,
 
 
 // full lattice operation
+TARGET_ENTRY void lb_collision_binary_lattice( double* __restrict__ t_f, 
+			      const double* __restrict__ t_force, 
+			      double* __restrict__ t_velocity,
+			      double* __restrict__ t_phi,
+			      double* __restrict__ t_gradphi,
+			      double* __restrict__ t_delsqphi,
+			      pth_fntype* t_chemical_stress,
+			      mu_fntype* t_chemical_potential, 
+					       noise_t * noise, int noise_on, int nSites){
+
+ 
+  int baseIndex=0;
+
+  //partition binary collision kernel across the lattice on the target
+  TARGET_TLP(baseIndex,nSites){
+	
+    lb_collision_binary_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,baseIndex);
+        
+  }
+  
+  
+  return;
+}
+
 int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int       nlocal[3];
-  int       ic, jc, kc, index;       /* site indices */
-  int       p, m;                    /* velocity index */
-  int       i, j;                    /* summed over indices ("alphabeta") */
   int noise_on = 0;                  /* Fluctuations switch */
-  int status;
 
   //  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
 
@@ -857,12 +906,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   double    force_global[3];
 
-  //temp hack
-  double f_v[NVEL][1];
-
-
-  int iv,baseIndex;
-  int nv,full_vec;
 
 
   assert (NDIM == 3);
@@ -892,6 +935,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
  //start constant setup
 
+  copyConstantIntToTarget(&tc_nmodes_, &nmodes_, sizeof(int)); 
   copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
   copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
   copyConstantDoubleToTarget(&tc_r3_, &r3_, sizeof(double));
@@ -913,7 +957,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   //start field management
   init_fields_target();
-  put_fields_on_target_masked(lb,hydro);
+  put_fields_on_target_masked(lb,hydro,map);
   //end field management
 
   //start function pointer management
@@ -927,14 +971,23 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   //end function pointer management
  
 
-  //partition binary collision kernel across the lattice on the target
-  TARGET_TLP(baseIndex,nSites){
-	
-    lb_collision_binary_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,map,noise,noise_on,baseIndex);
-        
+
+  if (noise_on) {
+    
+#ifdef CUDA 
+    
+    printf("Error: noise_on is not yet supported for CUDA\n");
+    exit(1);
+    
+#endif      
+
   }
-  
-  get_fields_from_target_masked(lb,hydro); 
+
+	
+  lb_collision_binary_lattice TARGET_LAUNCH(nSites) ( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
+        
+
+  get_fields_from_target_masked(lb,hydro,map); 
   finalise_fields_target();
 
   targetFree(t_chemical_potential);
@@ -951,7 +1004,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
  *
  *****************************************************************************/
 
-static int fluctuations_off(double shat[3][3], double ghat[NVEL]) {
+HOST TARGET static int fluctuations_off(double shat[3][3], double ghat[NVEL]) {
 
   int ia, ib;
 

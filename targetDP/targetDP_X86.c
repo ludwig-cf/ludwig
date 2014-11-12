@@ -189,4 +189,8 @@ void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const in
   memcpy(data, data_d, size);
   return;
 }
+void copyConstantDoubleFromTarget(double *data, const double *data_d, const int size){
+  memcpy(data, data_d, size); 
+  return;
+} 
 

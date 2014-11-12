@@ -14,7 +14,7 @@
 
 #ifdef CUDA /* CUDA */
 
-#define HOST extern "C"
+#define HOST extern "C" __host__
 
 
 /* default threads per block */
@@ -144,5 +144,6 @@ void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, con
 void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size );
 void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const int size );
 
+void copyConstantDoubleFromTarget(double *data, const double *data_d, const int size);
 
 #endif
