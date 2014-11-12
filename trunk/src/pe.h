@@ -15,23 +15,24 @@
 
 #include "../version.h"
 #include <mpi.h>
+#include "targetDP.h"
 
 typedef struct pe_s pe_t;
 
-void pe_init(void);
-void pe_finalise(void);
-int  pe_init_quiet(void);
-int  pe_rank(void);
-int  pe_size(void);
-void pe_parent_comm_set(const MPI_Comm parent);
-void pe_redirect_stdout(const char * filename);
-void pe_subdirectory_set(const char * name);
-void pe_subdirectory(char * name);
+HOST void pe_init(void);
+HOST void pe_finalise(void);
+HOST int  pe_init_quiet(void);
+HOST int  pe_rank(void);
+HOST int  pe_size(void);
+HOST void pe_parent_comm_set(const MPI_Comm parent);
+HOST void pe_redirect_stdout(const char * filename);
+HOST void pe_subdirectory_set(const char * name);
+HOST void pe_subdirectory(char * name);
 
-MPI_Comm pe_comm(void);
+HOST MPI_Comm pe_comm(void);
 
-void info(const char * fmt, ...);
-void fatal(const char * fmt, ...);
-void verbose(const char * fmt, ...);
+HOST void info(const char * fmt, ...);
+HOST void fatal(const char * fmt, ...);
+HOST void verbose(const char * fmt, ...);
 
 #endif
