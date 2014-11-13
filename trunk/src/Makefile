@@ -41,12 +41,12 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = cc
-MPICC = cc
+CC = gcc
+MPICC = mpicc
 NVCC = nvcc
 
 OPTS = -DNP_D3Q6
-CFLAGS = -O3
+CFLAGS = -O2
 LIBS = -lm
 
 # TargetDP, under development

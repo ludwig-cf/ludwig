@@ -25,23 +25,14 @@
 #include <assert.h>
 #include <math.h>
 
-
-#include "field.h"
-#include "field_grad.h"
 #include "util.h"
 #include "symmetric.h"
-
-#include "targetDP.h"
-
 #include "field_s.h"
 #include "field_grad_s.h"
-
 
 static TARGET_CONST double a_     = -0.003125;
 static TARGET_CONST double b_     = +0.003125;
 static TARGET_CONST double kappa_ = +0.002;
-
-extern TARGET_CONST double tc_d_[3][3];
 
 static field_t * phi_ = NULL;
 static field_grad_t * grad_phi_ = NULL;

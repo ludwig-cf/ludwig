@@ -36,8 +36,6 @@
 #include "control.h"
 #include "collision.h"
 
-#include <targetDP.h>
-
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
@@ -357,10 +355,8 @@ TARGET_CONST double tc_mi_[NVEL][NVEL];
 TARGET_CONST int tc_cv[NVEL][3];
 TARGET_CONST double tc_rtau2;
 TARGET_CONST double tc_rcs2;
-TARGET_CONST double tc_r3_; 
 TARGET_CONST double tc_r2rcs4;
 TARGET_CONST double tc_force_global[3];
-TARGET_CONST double tc_d_[3][3];
 TARGET_CONST double tc_q_[NVEL][3][3];
 TARGET_CONST int tc_nmodes_; 
 
