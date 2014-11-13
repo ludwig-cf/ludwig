@@ -131,9 +131,9 @@ OBJS = model.o propagation.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
-     timer.o util.o wall.o colloids_Q_tensor.o ludwig.o
+     timer.o wall.o colloids_Q_tensor.o ludwig.o
 
-TARGETDP_OBJS = collision.o symmetric.o
+TARGETDP_OBJS = collision.o symmetric.o util.o
 
 ###############################################################################
 #

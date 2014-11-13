@@ -433,7 +433,7 @@ int util_gauss_jordan(const int n, double * a, double * b) {
   assert(a);
   assert(b);
 
-  ipivot = calloc(n, sizeof(int));
+  ipivot = (int*) calloc(n, sizeof(int));
   if (ipivot == NULL) return -3;
 
   icol = -1;
@@ -601,7 +601,7 @@ int util_vector_create(int n, double ** p) {
   int ifail = 0;
   double * v = NULL;
 
-  v = calloc(n, sizeof(double));
+  v = (double*) calloc(n, sizeof(double));
   if (v == NULL) ifail = 1;
 
   *p = v;
@@ -635,11 +635,11 @@ int util_matrix_create(int m, int n, double *** p) {
   int i;
   double ** matrix = NULL;
 
-  matrix = calloc(m, sizeof(double *));
+  matrix = (double**) calloc(m, sizeof(double *));
   if (matrix == NULL) return -1;
 
   for (i = 0; i < m; i++) {
-    matrix[i] = calloc(n, sizeof(double));
+    matrix[i] = (double*) calloc(n, sizeof(double));
     if (matrix[i] == NULL) ifail += 1;
   }
 
@@ -695,7 +695,7 @@ int util_svd(int m, int n, double ** a, double * w, double ** v) {
 
   assert(m >= n); /* Number of rows is >= number of columns */
 
-  rv1 = calloc(n, sizeof(double));
+  rv1 = (double*) calloc(n, sizeof(double));
   if (rv1 == NULL) return -1;
 
   g = scale = anorm = 0.0;
@@ -953,9 +953,9 @@ int util_matrix_invert(int n, double ** a) {
 
   assert(a);
 
-  indexcol = calloc(n, sizeof(int));
-  indexrow = calloc(n, sizeof(int));
-  ipivot = calloc(n, sizeof(int));
+  indexcol = (int*) calloc(n, sizeof(int));
+  indexrow = (int*) calloc(n, sizeof(int));
+  ipivot = (int*) calloc(n, sizeof(int));
 
   if (indexcol == NULL) return -3;
   if (indexrow == NULL) return -3;
