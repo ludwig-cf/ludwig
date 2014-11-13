@@ -290,6 +290,7 @@ TARGET double symmetric_chemical_potential_target(const int index, const int nop
   //phi = phi_get_phi_site(index);
   //delsq_phi = phi_gradients_delsq(index);
 
+
   phi=t_phi[index];
   delsq_phi=t_delsqphi[index];
 
@@ -406,9 +407,10 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
   double p0;
 
   //initialisation for targetDP instruction level parallelism
-  ILP_INIT;
-  
-  TARGET_ILP {
+
+  int vecIndex=0;
+
+  TARGET_ILP(vecIndex) {
     
     //phi = phi_get_phi_site(index+vecIndex);
     //phi_gradients_grad(index+vecIndex, grad_phi);

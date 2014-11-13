@@ -36,6 +36,7 @@
 #include "control.h"
 #include "collision.h"
 
+
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
@@ -630,45 +631,68 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
 
 
   //TARGETDP SYNTAX GUIDE:
-  //VDECL* macros are used to declare automatic data structures 
-  //where each holds a vector "chunk" of lattice sites.
-  //"VDECLSC(var)" is equivalent of "var"
-  //"VDECL1D(array,n)" is equivalent of "array[n]"
-  //"VDECL2D(array,n1,n2)" is equivalent of "array[n1][n2]"
+  //DECLARE_SIMD_* macros are used to declare automatic data structures 
+  //where each holds a vector "chunk" of lattice sites to allow SIMD operations.
+  //e.g. "DECLARE_SIMD_VECTOR1D(type, var, size, iv) is equivalent of "type var[size]", where the extra index iv 
+  // will automatically index into the short SIMD array when used in conjuction with TARGET_ILP.  
   
+  DECLARE_SIMD_VECTOR1D(double, mode, NVEL); /* Modes; hydrodynamic + ghost */
+
+  /* Density, reciprocal density */
+  DECLARE_SIMD_SCALAR(double,rho);
+  DECLARE_SIMD_SCALAR(double,rrho);
+    
+  DECLARE_SIMD_VECTOR1D(double, u, 3);       /* Velocity */
+  DECLARE_SIMD_VECTOR2D(double,s,3,3);       /* Stress */
+  DECLARE_SIMD_VECTOR2D(double,seq,3,3);     /* equilibrium stress */
+  DECLARE_SIMD_VECTOR2D(double,shat,3,3);    /* random stress */
+  DECLARE_SIMD_VECTOR1D(double, ghat, NVEL); /* noise for ghosts */
   
-  double    VDECL1D(mode,NVEL);              /* Modes; hydrodynamic + ghost */
-  double    VDECLSC(rho), VDECLSC(rrho);               /* Density, reciprocal density */
-  double    VDECL1D(u,3);                    /* Velocity */
-  double    VDECL2D(s,3,3);                 /* Stress */
-  double    VDECL2D(seq,3,3);               /* equilibrium stress */
-  double    VDECL2D(shat,3,3);              /* random stress */
-  double    VDECL1D(ghat,NVEL);              /* noise for ghosts */
+  DECLARE_SIMD_VECTOR1D(double, force, 3);  /* External force */
+
+  DECLARE_SIMD_SCALAR(double,tr_s);
+  DECLARE_SIMD_SCALAR(double,tr_seq);
   
-  double    VDECL1D(force,3);                /* External force */
-  double    VDECLSC(tr_s), VDECLSC(tr_seq);
+  /* modes */
+  DECLARE_SIMD_SCALAR(double,phi);
+  DECLARE_SIMD_SCALAR(double,jdotc);
+  DECLARE_SIMD_SCALAR(double,sphidotq);    
+
+  DECLARE_SIMD_VECTOR1D(double, jphi, 3); 
+
+  DECLARE_SIMD_VECTOR2D(double,sth,3,3);
+  DECLARE_SIMD_VECTOR2D(double,sphi,3,3);
+
+  DECLARE_SIMD_SCALAR(double,mu);    /* Chemical potential */
   
-  double    VDECL1D(force_local,3);
-  
-  double    VDECLSC(phi), VDECLSC(jdotc), VDECLSC(sphidotq);    /* modes */
-  double    VDECL1D(jphi,3);
-  double    VDECL2D(sth,3,3), VDECL2D(sphi,3,3);
-  double    VDECLSC(mu);                      /* Chemical potential */
-  
-  
-  ILP_INIT;
-        
-  //TODO vectorise
-  fluctuations_off(shat, ghat);
-  
+
+  /* index for SIMD vectors */
+  int iv=0;        
+
+  /* switch fluctuations off */
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
+      TARGET_ILP(iv) SIMD_2D_ELMNT(shat,i,j,iv) = 0.0;
+    }
+  }
+
+  for (i = NHYDRO; i < NVEL; i++) {
+    TARGET_ILP(iv) SIMD_1D_ELMNT(ghat,i,iv) = 0.0;
+  }
+
+
   /* Compute all the modes */
   for (m = 0; m < tc_nmodes_; m++) {
-    V1D(mode,m) = 0.0;
+    TARGET_ILP(iv) SIMD_1D_ELMNT(mode,m,iv) = 0.0;
     for (p = 0; p < NVEL; p++) {
-      V1D(mode,m) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ]*tc_ma_[m][p];
+      TARGET_ILP(iv) SIMD_1D_ELMNT(mode,m,iv) +=
+  	t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + iv, 0, p) ]
+  	*tc_ma_[m][p];
     }
     
   }
+
+
   
   //map status is now taken care of in masked targetDP data copies.
   // we perform calculations for all sites, and only copy back the fluid
@@ -679,40 +703,43 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* For convenience, write out the physical modes. */
   
-  VSC(rho) = V1D(mode,0);
+  TARGET_ILP(iv) SIMD_SC_ELMNT(rho,iv) = SIMD_1D_ELMNT(mode,0,iv);
   for (i = 0; i < 3; i++) {
-    V1D(u,i) = V1D(mode,1 + i);
+    TARGET_ILP(iv) SIMD_1D_ELMNT(u,i,iv) = SIMD_1D_ELMNT(mode,1 + i,iv);
   }
   
-  V2D(s,X,X) = V1D(mode,4);
-  V2D(s,X,Y) = V1D(mode,5);
-  V2D(s,X,Z) = V1D(mode,6);
-  V2D(s,Y,X) = V2D(s,X,Y);
-  V2D(s,Y,Y) = V1D(mode,7);
-  V2D(s,Y,Z) = V1D(mode,8);
-  V2D(s,Z,X) = V2D(s,X,Z);
-  V2D(s,Z,Y) = V2D(s,Y,Z);
-  V2D(s,Z,Z) = V1D(mode,9);
-  
+  TARGET_ILP(iv) {
+    SIMD_2D_ELMNT(s,X,X,iv) = SIMD_1D_ELMNT(mode,4,iv);
+    SIMD_2D_ELMNT(s,X,Y,iv) = SIMD_1D_ELMNT(mode,5,iv);
+    SIMD_2D_ELMNT(s,X,Z,iv) = SIMD_1D_ELMNT(mode,6,iv);
+    SIMD_2D_ELMNT(s,Y,X,iv) = SIMD_2D_ELMNT(s,X,Y,iv);
+    SIMD_2D_ELMNT(s,Y,Y,iv) = SIMD_1D_ELMNT(mode,7,iv);
+    SIMD_2D_ELMNT(s,Y,Z,iv) = SIMD_1D_ELMNT(mode,8,iv);
+    SIMD_2D_ELMNT(s,Z,X,iv) = SIMD_2D_ELMNT(s,X,Z,iv);
+    SIMD_2D_ELMNT(s,Z,Y,iv) = SIMD_2D_ELMNT(s,Y,Z,iv);
+    SIMD_2D_ELMNT(s,Z,Z,iv) = SIMD_1D_ELMNT(mode,9,iv);
+  }
+
   /* Compute the local velocity, taking account of any body force */
   
-  VSC(rrho) = 1.0/VSC(rho);
-  
-  
-  //TODO vectorise
-  for (i = 0; i < 3; i++) 
-    force_local[i]=t_force[3*baseIndex+i];
-  
+  TARGET_ILP(iv) SIMD_SC_ELMNT(rrho,iv) 
+    = 1.0/SIMD_SC_ELMNT(rho,iv);
+
+
   
   for (i = 0; i < 3; i++) {
-    V1D(force,i) = (tc_force_global[i] + V1D(force_local,i));
-    V1D(u,i) = VSC(rrho)*(V1D(u,i) + 0.5*V1D(force,i));  
+
+    TARGET_ILP(iv){
+      SIMD_1D_ELMNT(force,i,iv) = (tc_force_global[i] + t_force[3*baseIndex+iv+i]);
+      SIMD_1D_ELMNT(u,i,iv) = SIMD_SC_ELMNT(rrho,iv)*(SIMD_1D_ELMNT(u,i,iv) + 0.5*SIMD_1D_ELMNT(force,i,iv));  
+    }
   }
   
   
-  for (i = 0; i < 3; i++) {    
-    t_velocity[3*baseIndex+i]=V1D(u,i);
+  for (i = 0; i < 3; i++) {   
+    TARGET_ILP(iv) t_velocity[3*baseIndex+iv+i]=SIMD_1D_ELMNT(u,i,iv);
   }
+
   
   /* Compute the thermodynamic component of the stress */
   
@@ -720,41 +747,55 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* Relax stress with different shear and bulk viscosity */
   
-  VSC(tr_s)   = 0.0;
-  VSC(tr_seq) = 0.0;
+  TARGET_ILP(iv){
+    SIMD_SC_ELMNT(tr_s,iv)   = 0.0;
+    SIMD_SC_ELMNT(tr_seq,iv) = 0.0;
+  }
   
   for (i = 0; i < 3; i++) {
     /* Set equilibrium stress, which includes thermodynamic part */
     for (j = 0; j < 3; j++) {
-      V2D(seq,i,j) = VSC(rho)*V1D(u,i)*V1D(u,j) + V2D(sth,i,j);
+      TARGET_ILP(iv) SIMD_2D_ELMNT(seq,i,j,iv) = SIMD_SC_ELMNT(rho,iv)*SIMD_1D_ELMNT(u,i,iv)*SIMD_1D_ELMNT(u,j,iv) 
+	+ SIMD_2D_ELMNT(sth,i,j,iv);
     }
     /* Compute trace */
-    VSC(tr_s)   += V2D(s,i,i);
-    VSC(tr_seq) += V2D(seq,i,i);
+    TARGET_ILP(iv) {
+      SIMD_SC_ELMNT(tr_s,iv)   += SIMD_2D_ELMNT(s,i,i,iv);
+      SIMD_SC_ELMNT(tr_seq,iv) += SIMD_2D_ELMNT(seq,i,i,iv);
+    }
   }
   
   /* Form traceless parts */
   for (i = 0; i < 3; i++) {
-    V2D(s,i,i)   -= tc_r3_*VSC(tr_s);
-    V2D(seq,i,i) -= tc_r3_*VSC(tr_seq);
+    TARGET_ILP(iv) {
+      SIMD_2D_ELMNT(s,i,i,iv)   -= tc_r3_*SIMD_SC_ELMNT(tr_s,iv);
+      SIMD_2D_ELMNT(seq,i,i,iv) -= tc_r3_*SIMD_SC_ELMNT(tr_seq,iv);
+    }
   }
+
   
   /* Relax each mode */
-  VSC(tr_s) = VSC(tr_s) - tc_rtau_bulk*(VSC(tr_s) - VSC(tr_seq));
+  TARGET_ILP(iv)
+    SIMD_SC_ELMNT(tr_s,iv) = SIMD_SC_ELMNT(tr_s,iv) - tc_rtau_bulk*(SIMD_SC_ELMNT(tr_s,iv) - SIMD_SC_ELMNT(tr_seq,iv));
   
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      V2D(s,i,j) -= tc_rtau_shear*(V2D(s,i,j) - V2D(seq,i,j));
-      V2D(s,i,j) += tc_d_[i][j]*tc_r3_*VSC(tr_s);
+
+      TARGET_ILP(iv) {
+	SIMD_2D_ELMNT(s,i,j,iv) -= tc_rtau_shear*(SIMD_2D_ELMNT(s,i,j,iv) - SIMD_2D_ELMNT(seq,i,j,iv));
+	SIMD_2D_ELMNT(s,i,j,iv) += tc_d_[i][j]*tc_r3_*SIMD_SC_ELMNT(tr_s,iv);
       
-      /* Correction from body force (assumes equal relaxation times) */
+	/* Correction from body force (assumes equal relaxation times) */
       
-      V2D(s,i,j) += (2.0-tc_rtau_shear)*(V1D(u,i)*V1D(force,j) + V1D(force,i)*V1D(u,j));
-      V2D(shat,i,j) = 0.0;
+	SIMD_2D_ELMNT(s,i,j,iv) += (2.0-tc_rtau_shear)*(SIMD_1D_ELMNT(u,i,iv)*SIMD_1D_ELMNT(force,j,iv) 
+					   + SIMD_1D_ELMNT(force,i,iv)*SIMD_1D_ELMNT(u,j,iv));
+	SIMD_2D_ELMNT(shat,i,j,iv) = 0.0;
+      }
     }
   }
   
-  
+
+
   if (noise_on) {
     
 #ifdef CUDA 
@@ -764,31 +805,47 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
     
 #else      
     
-    //TODO vectorise
-    collision_fluctuations(noise, baseIndex, shat, ghat);      
-    
+     TARGET_ILP(iv){
+      
+      double shattmp[3][3];
+      double ghattmp[NVEL];
+      
+      collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);      
+
+      for(i=0;i<3;i++)
+	for(j=0;j<3;j++)
+	  SIMD_2D_ELMNT(shat,i,j,iv)=shattmp[i][j];
+
+      for(i=0;i<NVEL;i++)
+	SIMD_1D_ELMNT(ghat,i,iv)=ghattmp[i];
+      
+
+    }    
+
 #endif
     
   }    
   
   /* Now reset the hydrodynamic modes to post-collision values */
   
-  V1D(mode,1) = V1D(mode,1) + V1D(force,X);    /* Conserved if no force */
-  V1D(mode,2) = V1D(mode,2) + V1D(force,Y);    /* Conserved if no force */
-  V1D(mode,3) = V1D(mode,3) + V1D(force,Z);    /* Conserved if no force */
-  V1D(mode,4) = V2D(s,X,X) + V2D(shat,X,X);
-  V1D(mode,5) = V2D(s,X,Y) + V2D(shat,X,Y);
-  V1D(mode,6) = V2D(s,X,Z) + V2D(shat,X,Z);
-  V1D(mode,7) = V2D(s,Y,Y) + V2D(shat,Y,Y);
-  V1D(mode,8) = V2D(s,Y,Z) + V2D(shat,Y,Z);
-  V1D(mode,9) = V2D(s,Z,Z) + V2D(shat,Z,Z);
-  
+  TARGET_ILP(iv) {
+    SIMD_1D_ELMNT(mode,1,iv) = SIMD_1D_ELMNT(mode,1,iv) + SIMD_1D_ELMNT(force,X,iv);    /* Conserved if no force */
+    SIMD_1D_ELMNT(mode,2,iv) = SIMD_1D_ELMNT(mode,2,iv) + SIMD_1D_ELMNT(force,Y,iv);    /* Conserved if no force */
+    SIMD_1D_ELMNT(mode,3,iv) = SIMD_1D_ELMNT(mode,3,iv) + SIMD_1D_ELMNT(force,Z,iv);    /* Conserved if no force */
+    SIMD_1D_ELMNT(mode,4,iv) = SIMD_2D_ELMNT(s,X,X,iv) + SIMD_2D_ELMNT(shat,X,X,iv);
+    SIMD_1D_ELMNT(mode,5,iv) = SIMD_2D_ELMNT(s,X,Y,iv) + SIMD_2D_ELMNT(shat,X,Y,iv);
+    SIMD_1D_ELMNT(mode,6,iv) = SIMD_2D_ELMNT(s,X,Z,iv) + SIMD_2D_ELMNT(shat,X,Z,iv);
+    SIMD_1D_ELMNT(mode,7,iv) = SIMD_2D_ELMNT(s,Y,Y,iv) + SIMD_2D_ELMNT(shat,Y,Y,iv);
+    SIMD_1D_ELMNT(mode,8,iv) = SIMD_2D_ELMNT(s,Y,Z,iv) + SIMD_2D_ELMNT(shat,Y,Z,iv);
+    SIMD_1D_ELMNT(mode,9,iv) = SIMD_2D_ELMNT(s,Z,Z,iv) + SIMD_2D_ELMNT(shat,Z,Z,iv);
+  }
   
   
   /* Ghost modes are relaxed toward zero equilibrium. */
   
   for (m = NHYDRO; m < tc_nmodes_; m++) {
-    V1D(mode,m) = V1D(mode,m) - tc_rtau_[m]*(V1D(mode,m) - 0.0) + V1D(ghat,m);
+         TARGET_ILP(iv)  SIMD_1D_ELMNT(mode,m,iv) = SIMD_1D_ELMNT(mode,m,iv) 
+	   - tc_rtau_[m]*(SIMD_1D_ELMNT(mode,m,iv) - 0.0) + SIMD_1D_ELMNT(ghat,m,iv);
   }
   
   
@@ -796,31 +853,42 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   /* Project post-collision modes back onto the distribution */
   
   for (p = 0; p < NVEL; p++) {
-    double ftmp=0;
+    DECLARE_SIMD_SCALAR(double,ftmp);
+    TARGET_ILP(iv) SIMD_SC_ELMNT(ftmp,iv)=0.;
     for (m = 0; m < tc_nmodes_; m++) {
-      ftmp += tc_mi_[p][m]*V1D(mode,m);
+      TARGET_ILP(iv) SIMD_SC_ELMNT(ftmp,iv) += tc_mi_[p][m]*SIMD_1D_ELMNT(mode,m,iv);
     }
-    t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 0, p) ] = ftmp;
+    TARGET_ILP(iv) t_f[ LB_ADDR(tc_nSites, NDIST, 
+				      NVEL, baseIndex+iv, 
+				      0, p) ] = SIMD_SC_ELMNT(ftmp,iv);
   }
   
   
+
+
   /* Now, the order parameter distribution */
-  
-  VSC(phi)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, 0) ];
+  TARGET_ILP(iv)
+    SIMD_SC_ELMNT(phi,iv)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 0) ];
   
   
   //HACK TODO vectorise this
-  // VSC(mu) = chemical_potential(baseIndex, 0);
+  // SIMD_SC_ELMNT(mu) = chemical_potential(baseIndex, 0);
   
-  VSC(mu) = (*t_chemical_potential)(baseIndex, 0,t_phi,t_delsqphi);
+  TARGET_ILP(iv){
+    SIMD_SC_ELMNT(mu,iv) = (*t_chemical_potential)(baseIndex+iv, 0,t_phi,t_delsqphi);
   
-  V1D(jphi,X) = 0.0;
-  V1D(jphi,Y) = 0.0;
-  V1D(jphi,Z) = 0.0;
+    SIMD_1D_ELMNT(jphi,X,iv) = 0.0;
+    SIMD_1D_ELMNT(jphi,Y,iv) = 0.0;
+    SIMD_1D_ELMNT(jphi,Z,iv) = 0.0;
+  }
+
   for (p = 1; p < NVEL; p++) {
-    VSC(phi) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ];
+    TARGET_ILP(iv) SIMD_SC_ELMNT(phi,iv) += 
+      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ];
     for (i = 0; i < 3; i++) {
-      V1D(jphi,i) += t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ]*tc_cv[p][i];
+      TARGET_ILP(iv) SIMD_1D_ELMNT(jphi,i,iv) += 
+	t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ]
+	*tc_cv[p][i];
     }
   }
   
@@ -829,10 +897,12 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
-      V2D(sphi,i,j) = VSC(phi)*V1D(u,i)*V1D(u,j) + VSC(mu)*tc_d_[i][j];
+      TARGET_ILP(iv) 
+	SIMD_2D_ELMNT(sphi,i,j,iv) = SIMD_SC_ELMNT(phi,iv)*SIMD_1D_ELMNT(u,i,iv)*SIMD_1D_ELMNT(u,j,iv) + SIMD_SC_ELMNT(mu,iv)*tc_d_[i][j];
       /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
     }
-    V1D(jphi,i) = V1D(jphi,i) - tc_rtau2*(V1D(jphi,i) - VSC(phi)*V1D(u,i));
+    TARGET_ILP(iv)  SIMD_1D_ELMNT(jphi,i,iv) = SIMD_1D_ELMNT(jphi,i,iv) 
+      - tc_rtau2*(SIMD_1D_ELMNT(jphi,i,iv) - SIMD_SC_ELMNT(phi,iv)*SIMD_1D_ELMNT(u,i,iv));
     /* jphi[i] = phi*u[i];*/
   }
   
@@ -841,21 +911,27 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   for (p = 0; p < NVEL; p++) {
     
     int dp0 = (p == 0);
-    VSC(jdotc)    = 0.0;
-    VSC(sphidotq) = 0.0;
+
+    TARGET_ILP(iv) {
+      SIMD_SC_ELMNT(jdotc,iv)    = 0.0;
+      SIMD_SC_ELMNT(sphidotq,iv) = 0.0;
+    }
     
     for (i = 0; i < 3; i++) {
-      VSC(jdotc) += V1D(jphi,i)*tc_cv[p][i];
+      TARGET_ILP(iv)  SIMD_SC_ELMNT(jdotc,iv) += SIMD_1D_ELMNT(jphi,i,iv)*tc_cv[p][i];
       for (j = 0; j < 3; j++) {
-	VSC(sphidotq) += V2D(sphi,i,j)*tc_q_[p][i][j];
+	TARGET_ILP(iv)  SIMD_SC_ELMNT(sphidotq,iv) += SIMD_2D_ELMNT(sphi,i,j,iv)*tc_q_[p][i][j];
       }
     }
     
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
     
-    t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex, 1, p) ] 
-      = tc_wv[p]*(VSC(jdotc)*tc_rcs2 + VSC(sphidotq)*tc_r2rcs4) + VSC(phi)*dp0;
+    TARGET_ILP(iv) 
+      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ] 
+      = tc_wv[p]*(SIMD_SC_ELMNT(jdotc,iv)*tc_rcs2 
+		  + SIMD_SC_ELMNT(sphidotq,iv)*tc_r2rcs4) 
+      + SIMD_SC_ELMNT(phi,iv)*dp0;
     
   }
   
