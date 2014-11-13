@@ -41,30 +41,19 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
+CC = cc
+MPICC = cc
+NVCC = nvcc
 
-# GPU usage is under development through the targetDP work
-# but not yet supported in the trunk of Ludwig
-# the below option is just for develoment purposes.
+OPTS = -DNP_D3Q6
+CFLAGS = -O3
+LIBS = -lm
+
+# TargetDP, under development
 USEGPU=
 ifeq ($(TARGETDP),GPU)
 USEGPU=1
 endif
-
-
-CC = gcc
-
-NVCC = nvcc
-
-#options specific to AG's development environment
-ifeq ($(MYHOSTNAME),mbpag3)
-CC= gcc-4.6
-NVCC= nvcc -ccbin=gcc-4.6
-endif
-
-MPICC = mpicc
-OPTS = -DNP_D3Q6
-#CFLAGS = -Wall -O2
-CFLAGS = -g
 
 ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_21
@@ -73,14 +62,11 @@ TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc #-g -G
 LIBS = -lm -L../targetDP -ltargetDP_CUDA
 else
 TARGETCC = $(CC)
-TARGETOPTS = $(OPTS) -x c 
+TARGETOPTS = $(OPTS)
 LIBS = -lm -L../targetDP -ltargetDP_X86
 endif
 
-
-
 INC = -I. -I ../targetDP
-#LIBS = -lm
 AR = ar
 ARFLAGS = -cru
 
@@ -231,8 +217,13 @@ mpi-model:
 
 # Libraries
 
-libar:	$(OBJS) $(TARGETDP_OBJS) $(LBOBJ)
+objs1:	$(OBJS) $(LBOBJ)
+objs2:	$(TARGETDP_OBJS)
+libar:
+	$(MAKE) objs1
+	$(MAKE) objs2 "CC=$(TARGETCC)" "OPTS=$(TARGETOPTS)"
 	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(TARGETDP_OBJS) $(LBOBJ)
+
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
@@ -259,8 +250,6 @@ svn.o:
 .c.o :
 	$(CC) $(LB) $(OPTS) $(CFLAGS) $(INC) -c $?
 
-.C.o :
-	$(TARGETCC) $(LB) $(TARGETOPTS) $(CFLAGS) $(INC) -c $?
 
 
 .PHONY : clean
