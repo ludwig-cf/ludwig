@@ -22,6 +22,9 @@ extern const double e_[3][3][3];
 extern const double pi_;
 extern const double r3_;
 
+extern TARGET_CONST double tc_d_[3][3];
+extern TARGET_CONST double tc_r3_; 
+
 HOST int    is_bigendian(void);
 HOST double reverse_byte_order_double(char *);
 HOST double dot_product(const double a[3], const double b[3]);

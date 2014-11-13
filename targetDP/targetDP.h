@@ -62,8 +62,8 @@
 #define NILP 1
 
 /* Thread-level-parallelism execution macro */
-//#define TARGET_TLP(simtIndex,extent)    _Pragma("omp parallel for")	\
-//  for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
+/* #define TARGET_TLP(simtIndex,extent)    _Pragma("omp parallel for")	\
+   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)*/
 
 #define TARGET_TLP(simtIndex,extent)   	\
   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
@@ -74,9 +74,9 @@
 /* Common */
 
 /* Initialisation */
-//#define TARGET_INDEX_INIT(extent)		\
-//  int targetExtent=extent;			\
-//  int baseIndex=0,vecIndex=0;
+/* #define TARGET_INDEX_INIT(extent)		\
+  int targetExtent=extent;			\
+  int baseIndex=0,vecIndex=0;*/
 
 
 #define ILP_INIT		\

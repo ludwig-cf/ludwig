@@ -1170,7 +1170,6 @@ int blue_phase_cf1_init(field_t * fq, const int axis) {
 
   double n[3];
   double q[3][3];
-  double x, y, z;
   double q0;
   double alpha, alpha0, beta;
 
