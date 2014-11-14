@@ -79,25 +79,25 @@
   int baseIndex=0,vecIndex=0;*/
 
 
-#define ILP_INIT		\
-  int vecIndex=0;
-
-
-
 #define ILPIDX(instrn) (instrn)*NILP+vecIndex 
 
 /* Instruction-level-parallelism execution macro */
-#define TARGET_ILP  for (vecIndex = 0; vecIndex < NILP; vecIndex++) 
+#define TARGET_ILP(vecIndex)  for (vecIndex = 0; vecIndex < NILP; vecIndex++) 
 
 /* declaration of thread-dependent stack data */
-#define VDECLSC(var) var[NILP]
-#define VDECL1D(var,extent) var[extent*NILP]
-#define VDECL2D(var,extent1,extent2) var[extent1][extent2*NILP]
+
+#define DECLARE_SIMD_SCALAR(type, name) type name[NILP];
+
+#define DECLARE_SIMD_VECTOR1D(type, name, extent) type name[extent*NILP];
+
+#define DECLARE_SIMD_VECTOR2D(type, name, extent1, extent2) \
+  type name[extent1][extent2*NILP];
+
 
 /* access functions for thread-dependent stack data */
-#define VSC(var) var[vecIndex]
-#define V1D(var,idx) var[ILPIDX(idx)]
-#define V2D(var,idx1,idx2) var[idx1][ILPIDX(idx2)]
+#define SIMD_SC_ELMNT(var,vecIndex) var[vecIndex]
+#define SIMD_1D_ELMNT(var,idx,vecIndex) var[(idx)*NILP+vecIndex]
+#define SIMD_2D_ELMNT(var,idx1,idx2,vecIndex) var[idx1][(idx2)*NILP+vecIndex]
 
 /* access function for lattice site data */
 #define SITE(array,field) \
