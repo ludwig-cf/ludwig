@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <float.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "coords.h"
