@@ -22,6 +22,7 @@
 #include "leesedwards.h"
 #include "field_s.h"
 #include "field_grad_s.h"
+#include "targetDP.h"
 
 static int field_grad_init(field_grad_t * obj);
 
@@ -33,12 +34,12 @@ static int field_grad_init(field_grad_t * obj);
 
 int field_grad_create(field_t * f, int level, field_grad_t ** pobj) {
 
-  field_grad_t * obj = NULL;
+  field_grad_t * obj =  (field_grad_t*) NULL;
 
   assert(f);
   assert(pobj);
 
-  obj = calloc(1, sizeof(field_grad_t));
+  obj = (field_grad_t*) calloc(1, sizeof(field_grad_t));
   if (obj == NULL) fatal("calloc(field_grad_t) failed\n");
 
   obj->field = f;
@@ -68,20 +69,26 @@ static int field_grad_init(field_grad_t * obj) {
   nsites = le_nsites();
 
   if (obj->level >= 2) {
-    obj->grad = calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq = calloc(obj->nf*nsites, sizeof(double));
+    obj->grad = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
+    obj->delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad == NULL) fatal("calloc(field_grad->grad) failed");
     if (obj->delsq == NULL) fatal("calloc(field_grad->delsq) failed");
+
+    /* allocate target copies */
+    targetCalloc((void **) &obj->t_grad, NVECTOR*obj->nf*nsites*sizeof(double));
+    targetCalloc((void **) &obj->t_delsq, obj->nf*nsites*sizeof(double));
+
+
   }
 
   if (obj->level == 3) {
-    obj->d_ab = calloc(NSYMM*obj->nf*nsites, sizeof(double));
+    obj->d_ab = (double*) calloc(NSYMM*obj->nf*nsites, sizeof(double));
     if (obj->d_ab == NULL) fatal("calloc(fieldgrad->d_ab) failed\n");
   }
 
   if (obj->level >= 4) {
-    obj->grad_delsq = calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq_delsq = calloc(obj->nf*nsites, sizeof(double));
+    obj->grad_delsq = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
+    obj->delsq_delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad_delsq == NULL) fatal("calloc(grad->grad_delsq) failed");
     if (obj->delsq_delsq == NULL) fatal("calloc(grad->delsq_delsq) failed");
   }
@@ -137,6 +144,8 @@ void field_grad_free(field_grad_t * obj) {
 
   if (obj->grad) free(obj->grad);
   if (obj->delsq) free(obj->delsq);
+  if (obj->t_grad) targetFree(obj->t_grad);
+  if (obj->t_delsq) targetFree(obj->t_delsq);
   if (obj->grad_delsq) free(obj->grad_delsq);
   if (obj->delsq_delsq) free(obj->delsq_delsq);
   if (obj->d_ab) free(obj->d_ab);
