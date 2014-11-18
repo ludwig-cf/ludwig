@@ -16,11 +16,12 @@
 #define COORDS_FIELD_H
 
 #include <mpi.h>
+#include "targetDP.h"
 
-int coords_field_index(int index, int n, int nf, int * indexf);
-int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
+HOST int coords_field_index(int index, int n, int nf, int * indexf);
+HOST int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
 				  MPI_Datatype halo[3]);
-int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
+HOST int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 		      MPI_Datatype halo[3]);
 
 #endif

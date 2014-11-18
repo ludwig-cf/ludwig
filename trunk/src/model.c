@@ -28,6 +28,7 @@
 #include "coords.h"
 #include "model.h"
 #include "lb_model_s.h"
+#include "targetDP.h"
 
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
@@ -93,6 +94,7 @@ void lb_free(lb_t * lb) {
 
   if (lb->io_info) io_info_destroy(lb->io_info);
   if (lb->f) free(lb->f);
+  if (lb->t_f) targetFree(lb->t_f);
 
   MPI_Type_free(&lb->plane_xy_full);
   MPI_Type_free(&lb->plane_xz_full);
@@ -149,6 +151,10 @@ int lb_init(lb_t * lb) {
 
   lb->f = (double  *) malloc(ndata*sizeof(double));
   if (lb->f == NULL) fatal("malloc(distributions) failed\n");
+
+    /* allocate target copy */
+  targetCalloc((void **) &lb->t_f, ndata*sizeof(double));
+
 
   /* Set up the MPI Datatypes used for full halo messages:
    *
@@ -680,7 +686,7 @@ static int lb_f_read(FILE * fp, int index, void * self) {
 
   int iread, n, p;
   int nr = 0;
-  lb_t * lb = self;
+  lb_t * lb = (lb_t*) self;
 
   assert(fp);
   assert(lb);
@@ -710,7 +716,7 @@ static int lb_f_write(FILE * fp, int index, void * self) {
 
   int iwrite, n, p;
   int nw = 0;
-  lb_t * lb = self;
+  lb_t * lb = (lb_t*) self;
 
   assert(fp);
   assert(self);

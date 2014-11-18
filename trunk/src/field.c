@@ -35,6 +35,7 @@
 #include "util.h"
 #include "control.h" /* Can we move get_step() to LE please? */
 #include "field_s.h"
+#include "targetDP.h"
 
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
@@ -64,7 +65,7 @@ int field_create(int nf, const char * name, field_t ** pobj) {
   assert(nf > 0);
   assert(pobj);
 
-  obj = calloc(1, sizeof(field_t));
+  obj = (field_t*) calloc(1, sizeof(field_t));
   if (obj == NULL) fatal("calloc(obj) failed\n");
 
   obj->nf = nf;
@@ -72,7 +73,7 @@ int field_create(int nf, const char * name, field_t ** pobj) {
   obj->halo[1] = MPI_DATATYPE_NULL;
   obj->halo[2] = MPI_DATATYPE_NULL;
 
-  obj->name = calloc(strlen(name) + 1, sizeof(char));
+  obj->name = (char*) calloc(strlen(name) + 1, sizeof(char));
   if (obj->name == NULL) fatal("calloc(name) failed\n");
 
   assert(strlen(name) < BUFSIZ);
@@ -95,6 +96,7 @@ void field_free(field_t * obj) {
   assert(obj);
 
   if (obj->data) free(obj->data);
+  if (obj->t_data) targetFree(obj->t_data);
   if (obj->halo[0] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[0]);
   if (obj->halo[1] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[1]);
   if (obj->halo[2] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[2]);
@@ -123,7 +125,11 @@ int field_init(field_t * obj, int nhcomm) {
   assert(nhcomm <= coords_nhalo());
 
   nsites = le_nsites();
-  obj->data = calloc(obj->nf*nsites, sizeof(double));
+  obj->data = (double*) calloc(obj->nf*nsites, sizeof(double));
+
+  /* allocate target copy */
+  targetCalloc((void **) &obj->t_data, obj->nf*nsites*sizeof(double));
+
   if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
 
   /* MPI datatypes for halo */
@@ -658,7 +664,7 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 static int field_read(FILE * fp, int index, void * self) {
 
   int n;
-  field_t * obj = self;
+  field_t * obj = (field_t*) self;
 
   assert(fp);
   assert(obj);
@@ -678,7 +684,7 @@ static int field_read(FILE * fp, int index, void * self) {
 static int field_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
-  field_t * obj = self;
+  field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
@@ -700,7 +706,7 @@ static int field_read_ascii(FILE * fp, int index, void * self) {
 static int field_write(FILE * fp, int index, void * self) {
 
   int n;
-  field_t * obj = self;
+  field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
@@ -720,7 +726,7 @@ static int field_write(FILE * fp, int index, void * self) {
 static int field_write_ascii(FILE * fp, int index, void * self) {
 
   int n, nwrite;
-  field_t * obj = self;
+  field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);

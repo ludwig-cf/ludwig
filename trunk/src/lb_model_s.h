@@ -57,7 +57,8 @@ struct lb_data_s {
   int model;             /* MODEL or MODEL_R */
   io_info_t * io_info; 
 
-  double * f;            /* Distributions */
+  double * f;            /* Distributions (on host)*/
+  double * t_f;            /* Distributions (on target)*/
 
   /* MPI data types for halo swaps; these are comupted at runtime
    * to conform to the model selected at compile time */
