@@ -65,11 +65,22 @@ TESTOBJECTS = ${TESTSOURCES:.c=.o}
 #  Rules
 #------------------------------------------------------------------------------
 
-NEWSRC = e4c_lite.c e4c_mpi.c unit_control.c unit_lang.c unit_util.c unit_pe.c unit_coords.c driver.c
-NEWOBS = ${NEWSRC:.c=.o}
+TESTSRC = e4c_lite.c e4c_mpi.c unit_control.c unit_lang.c unit_util.c unit_pe.c unit_coords.c unit_fe_electro.c driver.c
+TESTOBJ = ${TESTSRC:.c=.o}
 
-new:	$(NEWOBS)
-	mpicc $(NEWOBS) -L$(SRC) -lludwig $(CLIBS)
+new-mpi:	$(TESTOBJ)
+	$(MAKE) base2 "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
+
+new-ser:	
+	$(MAKE) base2 "INCLUDE = $(INCLUDE) $(MPI_STUB_INCLUDE)" \
+	"CLIBS=$(CLIBS) $(MPI_STUB_LIB) $(LBLIBS)"
+
+
+base2:	$(TESTOBJ)
+	$(CC) $(LB) -L$(SRC) $(TESTOBJ) -L$(SRC) -lludwig $(CLIBS)
+
+
+#old
 
 base-me: $(TESTOBJECTS) tests.o test_coords_field.o
 	$(CC) $(LB) -L$(SRC) $(TESTOBJECTS) tests.o test_coords_field.o \
