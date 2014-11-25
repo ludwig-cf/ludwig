@@ -92,7 +92,7 @@ endif
 #
 ###############################################################################
 
-OBJS = propagation.o \
+OBJS = \
      physics.o physics_rt.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
@@ -133,7 +133,8 @@ OBJS = propagation.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
      timer.o wall.o colloids_Q_tensor.o ludwig.o
 
-TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o hydro.o model.o
+TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
+	propagation.o hydro.o model.o
 
 ###############################################################################
 #
