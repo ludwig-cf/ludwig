@@ -29,11 +29,13 @@
 #include "e4c_lite.h"
 
 /* A facade merely to provide information to the reader. */
-#define throws(MPIException)
+#define throws(MPIException, ...)
 
 /* Runtime exceptions */
 
 E4C_DECLARE_EXCEPTION(MPINullPointerException);
+E4C_DECLARE_EXCEPTION(IOException);
+E4C_DECLARE_EXCEPTION(MPIIOException);
 
 /* Checked exceptions */
 
@@ -41,6 +43,16 @@ E4C_DECLARE_EXCEPTION(TestException);
 E4C_DECLARE_EXCEPTION(TestFailedException);
 E4C_DECLARE_EXCEPTION(MPITestFailedException);
 
-int e4c_mpi_err(MPI_Comm comm);
+typedef struct e4c_mpi_s e4c_mpi_t;
+
+struct e4c_mpi_s {
+  MPI_Comm comm;
+  const struct e4c_exception_type * type;
+};
+
+#define e4c_mpi_init(e, comm) do {e.comm = comm; e.type = NULL;} while (0)
+#define e4c_mpi_exception(e) do { e.type = e4c.err.type; } while(0)
+
+int e4c_mpi_allreduce(e4c_mpi_t e);
 
 #endif

@@ -229,7 +229,7 @@ int do_test_fe_electro3(control_t * ctrl) {
   int ia, ib;
   psi_t * psi = NULL;
 
-  double kt = 1..0;                 /* Reset following previous test */
+  double kt = 1.0;                  /* Reset following previous test */
   double epsilon = 0.5;             /* Permeativity */
   double s[3][3];                   /* A stress */
   double e0[3];                     /* A field */

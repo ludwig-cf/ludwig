@@ -38,6 +38,9 @@ int control_create(MPI_Comm comm, control_t ** pc) throws(MPIException) {
 
   int rank;
   control_t * c = NULL;
+  e4c_mpi_t e;
+
+  e4c_mpi_init(e, comm);
 
   try {
     c = (control_t *) calloc(1, sizeof(control_t));
@@ -55,12 +58,10 @@ int control_create(MPI_Comm comm, control_t ** pc) throws(MPIException) {
   }
   catch (NullPointerException) {
     printf("calloc(1, sizeof(control_t)) failed\n");
+    e4c_mpi_exception(e);
   }
   finally {
-    if (e4c_mpi_err(comm)) {
-      if (c) free(c);
-      throw(MPINullPointerException, "Global failure");
-    }
+    if (e4c_mpi_allreduce(e)) throw(MPINullPointerException, "");
   }
 
   return 0;
