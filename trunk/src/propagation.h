@@ -16,7 +16,8 @@
 #define PROPAGATION_H
 
 #include "model.h"
+#include "targetDP.h"
 
-int lb_propagation(lb_t * lb);
+HOST int lb_propagation(lb_t * lb);
 
 #endif

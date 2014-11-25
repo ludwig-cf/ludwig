@@ -36,7 +36,7 @@ static int lb_propagate_d3q19_r(lb_t * lb);
  *
  *****************************************************************************/
 
-int lb_propagation(lb_t * lb) {
+HOST int lb_propagation(lb_t * lb) {
 
   assert(lb);
 
@@ -194,7 +194,8 @@ static int lb_propagate_d3q15(lb_t * lb) {
 
 
 
-TARGET_CONST int tc_nSites;
+extern TARGET_CONST int tc_nSites; //declared in collision.c
+
 TARGET_CONST int tc_ndist;
 TARGET_CONST int tc_nhalo;
 TARGET_CONST int tc_Nall[3];
@@ -290,8 +291,7 @@ TARGET_ENTRY  void lb_propagate_d3q19_lattice(double* t_f,
 
 static int lb_propagate_d3q19(lb_t * lb) {
 
-  int ic, jc, kc, index, n, p;
-  int xstr, ystr, zstr;
+  int ic, jc, kc, index;
   int nhalo;
   int nlocal[3];
 
@@ -307,11 +307,6 @@ static int lb_propagate_d3q19(lb_t * lb) {
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
   int nFields=NVEL*lb->ndist;
-
-
-  //zstr = lb->ndist*NVEL;
-  //ystr = zstr*(nlocal[Z] + 2*nhalo);
-  //xstr = ystr*(nlocal[Y] + 2*nhalo);
 
 
   //start constant setup
