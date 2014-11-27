@@ -29,9 +29,19 @@ struct field_grad_s {
   double * grad_delsq;      /* Gradient of Laplacian grad \nabla^2 f */
   double * delsq_delsq;     /* Laplacian^2           \nabla^4 f */
 
-  int (* d2) (int nf, const double * field, double * grad, double * delsq);
-  int (* d4) (int nf, const double * field, double * grad, double * delsq);
-  int (* dab) (int nf, const double * field, double * d_ab);
+  int (* d2) (int nf, const double * field, 
+	      double * t_field,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq);
+  int (* d4) (int nf, const double * field, 
+	      double * t_field,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq);
+  int (* dab)  (int nf, const double * field, 
+	      double * dab);
 };
-
 #endif

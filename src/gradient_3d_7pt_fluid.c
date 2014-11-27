@@ -39,11 +39,18 @@
 #include "leesedwards.h"
 #include "wall.h"
 #include "gradient_3d_7pt_fluid.h"
+#include "string.h"
+#include "targetDP.h"
 
 
-static void gradient_3d_7pt_fluid_operator(const int nop, const double * field,
-					   double * grad, double * delsq,
-					   const int nextra);
+static void gradient_3d_7pt_fluid_operator(const int nop, 
+			     const double * field,
+			     double * t_field,
+			     double * grad,
+			     double * t_grad,
+			     double * delsq,
+			     double * t_delsq,
+			     const int nextra);
 static void gradient_3d_7pt_fluid_le_correction(const int nop,
 						const double * field,
 						double * grad,
@@ -64,8 +71,14 @@ static int gradient_dab_compute(int nf, const double * field, double * dab);
  *
  *****************************************************************************/
 
-int gradient_3d_7pt_fluid_d2(const int nop, const double * field,
-			     double * grad, double * delsq) {
+int gradient_3d_7pt_fluid_d2(const int nop, 
+			     const double * field,
+			     double * t_field,
+			     double * grad,
+			     double * t_grad,
+			     double * delsq,
+			     double * t_delsq
+			     ) {
 
   int nextra;
 
@@ -76,7 +89,8 @@ int gradient_3d_7pt_fluid_d2(const int nop, const double * field,
   assert(grad);
   assert(delsq);
 
-  gradient_3d_7pt_fluid_operator(nop, field, grad, delsq, nextra);
+  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad,
+				 delsq, t_delsq, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
@@ -92,8 +106,14 @@ int gradient_3d_7pt_fluid_d2(const int nop, const double * field,
  *
  *****************************************************************************/
 
-int gradient_3d_7pt_fluid_d4(const int nop, const double * field,
-			     double * grad, double * delsq) {
+int gradient_3d_7pt_fluid_d4(const int nop, 
+			     const double * field,
+			     double * t_field,
+			     double * grad,
+			     double * t_grad,
+			     double * delsq,
+			     double * t_delsq
+			     ) {
 
   int nextra;
 
@@ -104,7 +124,7 @@ int gradient_3d_7pt_fluid_d4(const int nop, const double * field,
   assert(grad);
   assert(delsq);
 
-  gradient_3d_7pt_fluid_operator(nop, field, grad, delsq, nextra);
+  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad, delsq, t_delsq, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
@@ -130,7 +150,9 @@ int gradient_3d_7pt_fluid_d4(const int nop, const double * field,
  *
  *****************************************************************************/
 
-int gradient_3d_7pt_fluid_dab(int nf, const double * field, double * dab) {
+int gradient_3d_7pt_fluid_dab(const int nf, 
+			     const double * field,
+			      double * dab){
 
   assert(nf == 1); /* Scalars only */
 
@@ -140,39 +162,25 @@ int gradient_3d_7pt_fluid_dab(int nf, const double * field, double * dab) {
   return 0;
 }
 
+
+TARGET_CONST int tc_Nall[3];
+
 /*****************************************************************************
  *
  *  gradient_3d_7pt_fluid_operator
  *
  *****************************************************************************/
 
-static void gradient_3d_7pt_fluid_operator(const int nop,
+static void gradient_3d_7pt_fluid_operator_site(const int nop,
 					   const double * field,
 					   double * grad,
-					   double * del2,
-					   const int nextra) {
-  int nlocal[3];
-  int nhalo;
+						double * del2, 
+						const int index,
+						const int indexm1,
+						const int indexp1) {
+
   int n;
-  int ic, jc, kc;
-  int ys;
-  int icm1, icp1;
-  int index, indexm1, indexp1;
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  ys = nlocal[Z] + 2*nhalo;
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-	index = le_site_index(ic, jc, kc);
-	indexm1 = le_site_index(icm1, jc, kc);
-	indexp1 = le_site_index(icp1, jc, kc);
+  int ys=tc_Nall[Z];
 
 	for (n = 0; n < nop; n++) {
 	  grad[3*(nop*index + n) + X]
@@ -186,7 +194,84 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
 	    + field[nop*(index + 1)  + n] + field[nop*(index - 1)  + n]
 	    - 6.0*field[nop*index + n];
+
 	}
+
+  return;
+}
+
+
+static void gradient_3d_7pt_fluid_operator(const int nop,
+					   const double * field,
+					   double * t_field,
+					   double * grad,
+					   double * t_grad,
+					   double * del2,
+					   double * t_del2,
+					   const int nextra) {
+  int nlocal[3];
+  int nhalo;
+  int n;
+  int ic, jc, kc;
+  int icm1, icp1;
+  int index, indexm1, indexp1;
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+  int nFields=nop;
+
+
+
+
+  //start constant setup
+  //copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  //copyConstantIntToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
+  //copyConstantIntToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
+  //end constant setup
+
+
+  //  copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
+
+
+  /* //set up sitemask for gradient operation */
+  /* memset(lb->siteMask,0,nSites*sizeof(char)); */
+
+  /* for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) { */
+  /*   for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) { */
+  /*     for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) { */
+	
+  /* 	index=coords_index(ic, jc, kc); */
+  /* 	lb->siteMask[index]=1; */
+	
+  /*     } */
+  /*   } */
+  /* } */
+
+
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = le_site_index(ic, jc, kc);
+	indexm1 = le_site_index(icm1, jc, kc);
+	indexp1 = le_site_index(icp1, jc, kc);
+
+
+	gradient_3d_7pt_fluid_operator_site(nop,field,grad,del2,index,
+					    indexm1,indexp1);
+
       }
     }
   }
