@@ -58,7 +58,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
  *****************************************************************************/
 
 int gradient_2d_5pt_fluid_d2(const int nop, const double * field, double * t_field,
-			     double * grad, double * t_grad, double * delsq,double * t_delsq) {
+			     double * grad, double * t_grad, double * delsq,double * t_delsq, char * siteMask,char * t_siteMask) {
 
   int nextra;
 
@@ -83,7 +83,7 @@ int gradient_2d_5pt_fluid_d2(const int nop, const double * field, double * t_fie
  *****************************************************************************/
 
 int gradient_2d_5pt_fluid_d4(const int nop, const double * field,double * t_field,
-			     double * grad,double * t_grad, double * delsq, double * t_delsq) {
+			     double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
 
   int nextra;
 
