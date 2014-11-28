@@ -164,8 +164,8 @@ int lb_init(lb_t * lb) {
 
   /* allocate boolean lattice-shaped struture for masking*/
   
-  lb->siteMask = (char  *) calloc(ndata,sizeof(char));
-  targetCalloc((void **) &lb->t_siteMask, ndata*sizeof(char));
+  lb->siteMask = (char  *) calloc(lb->nsite,sizeof(char));
+  targetCalloc((void **) &lb->t_siteMask, lb->nsite*sizeof(char));
 
 
   /* Set up the MPI Datatypes used for full halo messages:

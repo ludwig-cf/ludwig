@@ -34,13 +34,19 @@ struct field_grad_s {
 	      double * grad,
 	      double * t_grad,
 	      double * delsq,
-	      double * t_delsq);
+	      double * t_delsq,
+	      char * siteMask,
+	      char * t_siteMask
+);
   int (* d4) (int nf, const double * field, 
 	      double * t_field,
 	      double * grad,
 	      double * t_grad,
 	      double * delsq,
-	      double * t_delsq);
+	      double * t_delsq,
+	      char * siteMask,
+	      char * t_siteMask
+);
   int (* dab)  (int nf, const double * field, 
 	      double * dab);
 };

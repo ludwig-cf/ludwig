@@ -44,12 +44,14 @@
 
 
 static void gradient_3d_7pt_fluid_operator(const int nop, 
-			     const double * field,
-			     double * t_field,
-			     double * grad,
-			     double * t_grad,
-			     double * delsq,
-			     double * t_delsq,
+					   const double * field,
+					   double * t_field,
+					   double * grad,
+					   double * t_grad,
+					   double * delsq,
+					   double * t_delsq,
+					   char * siteMask,
+					   char * t_siteMask,
 			     const int nextra);
 static void gradient_3d_7pt_fluid_le_correction(const int nop,
 						const double * field,
@@ -77,7 +79,9 @@ int gradient_3d_7pt_fluid_d2(const int nop,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq
+			     double * t_delsq, 
+			     char * siteMask,
+			     char * t_siteMask
 			     ) {
 
   int nextra;
@@ -90,7 +94,7 @@ int gradient_3d_7pt_fluid_d2(const int nop,
   assert(delsq);
 
   gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad,
-				 delsq, t_delsq, nextra);
+				 delsq, t_delsq, siteMask, t_siteMask, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
@@ -112,7 +116,9 @@ int gradient_3d_7pt_fluid_d4(const int nop,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq
+			     double * t_delsq, 
+			     char * siteMask,
+			     char * t_siteMask
 			     ) {
 
   int nextra;
@@ -124,7 +130,7 @@ int gradient_3d_7pt_fluid_d4(const int nop,
   assert(grad);
   assert(delsq);
 
-  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad, delsq, t_delsq, nextra);
+  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad, delsq, t_delsq, siteMask, t_siteMask, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
@@ -172,31 +178,43 @@ TARGET_CONST int tc_Nall[3];
  *****************************************************************************/
 
 static void gradient_3d_7pt_fluid_operator_site(const int nop,
-					   const double * field,
-					   double * grad,
-						double * del2, 
-						const int index,
-						const int indexm1,
-						const int indexp1) {
+					   const double * t_field,
+					   double * t_grad,
+						double * t_del2, 
+						char * t_siteMask,
+						const int index){
 
-  int n;
-  int ys=tc_Nall[Z];
 
-	for (n = 0; n < nop; n++) {
-	  grad[3*(nop*index + n) + X]
-	    = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	  grad[3*(nop*index + n) + Y]
-	    = 0.5*(field[nop*(index + ys) + n] - field[nop*(index - ys) + n]);
-	  grad[3*(nop*index + n) + Z]
-	    = 0.5*(field[nop*(index + 1) + n] - field[nop*(index - 1) + n]);
-	  del2[nop*index + n]
-	    = field[nop*indexp1      + n] + field[nop*indexm1      + n]
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    + field[nop*(index + 1)  + n] + field[nop*(index - 1)  + n]
-	    - 6.0*field[nop*index + n];
 
-	}
+  if(t_siteMask[index]){
 
+    int coords[3];
+    coords_index_to_ijk(index, coords);
+    
+    int indexm1 = coords_index(coords[0]-1, coords[1], coords[2]);
+    int indexp1 = coords_index(coords[0]+1, coords[1], coords[2]);
+    
+    
+    int n;
+    int ys=tc_Nall[Z];
+    
+    for (n = 0; n < nop; n++) {
+      t_grad[3*(nop*index + n) + X]
+	= 0.5*(t_field[nop*indexp1 + n] - t_field[nop*indexm1 + n]);
+      t_grad[3*(nop*index + n) + Y]
+	= 0.5*(t_field[nop*(index + ys) + n] - t_field[nop*(index - ys) + n]);
+      t_grad[3*(nop*index + n) + Z]
+	= 0.5*(t_field[nop*(index + 1) + n] - t_field[nop*(index - 1) + n]);
+      t_del2[nop*index + n]
+	= t_field[nop*indexp1      + n] + t_field[nop*indexm1      + n]
+	+ t_field[nop*(index + ys) + n] + t_field[nop*(index - ys) + n]
+	+ t_field[nop*(index + 1)  + n] + t_field[nop*(index - 1)  + n]
+	- 6.0*t_field[nop*index + n];
+      
+    }
+    
+  }
+  
   return;
 }
 
@@ -208,6 +226,8 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 					   double * t_grad,
 					   double * del2,
 					   double * t_del2,
+					   char * siteMask,
+					   char * t_siteMask,
 					   const int nextra) {
   int nlocal[3];
   int nhalo;
@@ -239,42 +259,34 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   //end constant setup
 
 
-  //  copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
+    copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
 
 
-  /* //set up sitemask for gradient operation */
-  /* memset(lb->siteMask,0,nSites*sizeof(char)); */
-
-  /* for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) { */
-  /*   for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) { */
-  /*     for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) { */
-	
-  /* 	index=coords_index(ic, jc, kc); */
-  /* 	lb->siteMask[index]=1; */
-	
-  /*     } */
-  /*   } */
-  /* } */
-
-
+  //set up sitemask for gradient operation
+  memset(siteMask,0,nSites*sizeof(char));
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-	index = le_site_index(ic, jc, kc);
-	indexm1 = le_site_index(icm1, jc, kc);
-	indexp1 = le_site_index(icp1, jc, kc);
-
-
-	gradient_3d_7pt_fluid_operator_site(nop,field,grad,del2,index,
-					    indexm1,indexp1);
-
+	
+  	index=coords_index(ic, jc, kc);
+  	siteMask[index]=1;
+	
       }
     }
   }
+
+  copyToTarget(t_siteMask,siteMask,nSites*sizeof(char)); 
+
+
+  TARGET_TLP(index,nSites){
+    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,t_siteMask,index);
+  }
+   
+
+  copyFromTarget(grad,t_grad,3*nSites*nFields*sizeof(double)); 
+  copyFromTarget(del2,t_del2,nSites*nFields*sizeof(double)); 
+    
 
   return;
 }

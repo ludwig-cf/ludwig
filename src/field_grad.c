@@ -171,7 +171,7 @@ int field_grad_compute(field_grad_t * obj) {
 
   //  obj->d2(obj->field->nf, obj->field->data, obj->grad, obj->delsq);
 
-  obj->d2(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq);
+  obj->d2(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
 
   if (obj->level == 3) {
     assert(obj->dab);
@@ -181,7 +181,7 @@ int field_grad_compute(field_grad_t * obj) {
   if (obj->level >= 4) {
     assert(obj->d4);
     // obj->d4(obj->field->nf, obj->delsq, obj->grad_delsq, obj->delsq_delsq);
-    obj->d4(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq);
+    obj->d4(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
 
   }
 

@@ -97,6 +97,10 @@ void field_free(field_t * obj) {
 
   if (obj->data) free(obj->data);
   if (obj->t_data) targetFree(obj->t_data);
+
+  if (obj->siteMask) free(obj->siteMask);
+  if (obj->t_siteMask) targetFree(obj->t_siteMask);
+
   if (obj->halo[0] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[0]);
   if (obj->halo[1] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[1]);
   if (obj->halo[2] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[2]);
@@ -127,10 +131,16 @@ int field_init(field_t * obj, int nhcomm) {
   nsites = le_nsites();
   obj->data = (double*) calloc(obj->nf*nsites, sizeof(double));
 
+  if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
+
   /* allocate target copy */
   targetCalloc((void **) &obj->t_data, obj->nf*nsites*sizeof(double));
 
-  if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
+  /* allocate boolean lattice-shaped struture for masking*/
+  
+  obj->siteMask = (char  *) calloc(nsites,sizeof(char));
+  targetCalloc((void **) &obj->t_siteMask, nsites*sizeof(char));
+
 
   /* MPI datatypes for halo */
 
