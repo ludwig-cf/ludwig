@@ -181,7 +181,16 @@ int field_grad_compute(field_grad_t * obj) {
   if (obj->level >= 4) {
     assert(obj->d4);
     // obj->d4(obj->field->nf, obj->delsq, obj->grad_delsq, obj->delsq_delsq);
-    obj->d4(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+    //obj->d4(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+
+    //TO DO TEMPORARY FIX to allow free energies which require del^4 phi - 
+    // we are just using the existing t_* data structures 
+    // for the higher order host structures - this needs properly sorted
+
+    obj->d4(obj->field->nf, obj->delsq,obj->field->t_data,obj->grad_delsq, obj->t_grad, obj->delsq_delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+    
+    //void* dummy;
+    //obj->d4(obj->field->nf, obj->delsq,dummy,obj->grad_delsq, dummy, obj->delsq_delsq, dummy, obj->field->siteMask, obj->field->t_siteMask);
 
   }
 
