@@ -109,7 +109,7 @@ OBJS = \
      free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
-     gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
+     gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
       hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
@@ -134,7 +134,7 @@ OBJS = \
      timer.o wall.o colloids_Q_tensor.o ludwig.o
 
 TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
-	propagation.o hydro.o model.o
+	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o
 
 ###############################################################################
 #
