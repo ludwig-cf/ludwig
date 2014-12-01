@@ -194,11 +194,12 @@ static int lb_propagate_d3q15(lb_t * lb) {
 
 
 
+//TODO declare these somewhere sensible.
 extern TARGET_CONST int tc_nSites; //declared in collision.c
+extern TARGET_CONST int tc_Nall[3]; //declared in gradient routine
 
 TARGET_CONST int tc_ndist;
 TARGET_CONST int tc_nhalo;
-TARGET_CONST int tc_Nall[3];
 
 
 /*****************************************************************************

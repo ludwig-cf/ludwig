@@ -43,7 +43,7 @@
 #include "targetDP.h"
 
 
-static void gradient_3d_7pt_fluid_operator(const int nop, 
+HOST static void gradient_3d_7pt_fluid_operator(const int nop, 
 					   const double * field,
 					   double * t_field,
 					   double * grad,
@@ -53,19 +53,19 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 					   char * siteMask,
 					   char * t_siteMask,
 			     const int nextra);
-static void gradient_3d_7pt_fluid_le_correction(const int nop,
+HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
 						const double * field,
 						double * grad,
 						double * delsq,
 						const int nextra);
-static void gradient_3d_7pt_fluid_wall_correction(const int nop,
+HOST static void gradient_3d_7pt_fluid_wall_correction(const int nop,
 						  const double * field,
 						  double * grad,
 						  double * delsq,
 						  const int nextra);
 
-static int gradient_dab_le_correct(int nf, const double * field, double * dab);
-static int gradient_dab_compute(int nf, const double * field, double * dab);
+HOST static int gradient_dab_le_correct(int nf, const double * field, double * dab);
+HOST static int gradient_dab_compute(int nf, const double * field, double * dab);
 
 /*****************************************************************************
  *
@@ -73,7 +73,7 @@ static int gradient_dab_compute(int nf, const double * field, double * dab);
  *
  *****************************************************************************/
 
-int gradient_3d_7pt_fluid_d2(const int nop, 
+HOST int gradient_3d_7pt_fluid_d2(const int nop, 
 			     const double * field,
 			     double * t_field,
 			     double * grad,
@@ -110,7 +110,7 @@ int gradient_3d_7pt_fluid_d2(const int nop,
  *
  *****************************************************************************/
 
-int gradient_3d_7pt_fluid_d4(const int nop, 
+HOST int gradient_3d_7pt_fluid_d4(const int nop, 
 			     const double * field,
 			     double * t_field,
 			     double * grad,
@@ -156,7 +156,7 @@ int gradient_3d_7pt_fluid_d4(const int nop,
  *
  *****************************************************************************/
 
-int gradient_3d_7pt_fluid_dab(const int nf, 
+HOST int gradient_3d_7pt_fluid_dab(const int nf, 
 			     const double * field,
 			      double * dab){
 
@@ -177,7 +177,7 @@ TARGET_CONST int tc_Nall[3];
  *
  *****************************************************************************/
 
-static void gradient_3d_7pt_fluid_operator_site(const int nop,
+static TARGET void gradient_3d_7pt_fluid_operator_site(const int nop,
 					   const double * t_field,
 					   double * t_grad,
 						double * t_del2, 
@@ -189,12 +189,26 @@ static void gradient_3d_7pt_fluid_operator_site(const int nop,
   if(t_siteMask[index]){
 
     int coords[3];
-    coords_index_to_ijk(index, coords);
+    //coords_index_to_ijk(index, coords);
     
-    int indexm1 = coords_index(coords[0]-1, coords[1], coords[2]);
-    int indexp1 = coords_index(coords[0]+1, coords[1], coords[2]);
+
+    //get 3d indexing from linear index
+    coords[0]=index/(tc_Nall[Y]*tc_Nall[Z]);
+    coords[1] = (index - tc_Nall[Y]*tc_Nall[Z]*coords[0]) / tc_Nall[Z];
+    coords[2] = index - tc_Nall[Y]*tc_Nall[Z]*coords[0]
+      - tc_Nall[Z]*coords[1];
     
-    
+    //get index -1 in X dirn
+    int indexm1 = tc_Nall[Z]*tc_Nall[Y]*(coords[0]-1)
+    + tc_Nall[Z]*(coords[1])
+    + coords[2];
+
+    //get index +1 in X dirn
+    int indexp1 = tc_Nall[Z]*tc_Nall[Y]*(coords[0]+1)
+    + tc_Nall[Z]*(coords[1])
+    + coords[2];
+
+      
     int n;
     int ys=tc_Nall[Z];
     
@@ -219,6 +233,25 @@ static void gradient_3d_7pt_fluid_operator_site(const int nop,
 }
 
 
+static TARGET_ENTRY void gradient_3d_7pt_fluid_operator_lattice(const int nop,
+					   const double * t_field,
+					   double * t_grad,
+						double * t_del2, 
+						   char * t_siteMask){
+
+
+
+  int nSites=tc_Nall[X]*tc_Nall[Y]*tc_Nall[Z];
+
+  int index;
+  TARGET_TLP(index,nSites){
+    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,t_siteMask,index);
+  }
+
+
+}
+
+
 static void gradient_3d_7pt_fluid_operator(const int nop,
 					   const double * field,
 					   double * t_field,
@@ -231,11 +264,8 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 					   const int nextra) {
   int nlocal[3];
   int nhalo;
-  int n;
   int ic, jc, kc;
-  int icm1, icp1;
-  int index, indexm1, indexp1;
-
+  int index;
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
@@ -252,14 +282,11 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 
 
   //start constant setup
-  //copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  //copyConstantIntToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
-  //copyConstantIntToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
   //end constant setup
 
 
-    copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
+  copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
 
 
   //set up sitemask for gradient operation
@@ -279,9 +306,8 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   copyToTarget(t_siteMask,siteMask,nSites*sizeof(char)); 
 
 
-  TARGET_TLP(index,nSites){
-    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,t_siteMask,index);
-  }
+  gradient_3d_7pt_fluid_operator_lattice TARGET_LAUNCH(nSites) 
+    (nop,t_field,t_grad,t_del2,t_siteMask);
    
 
   copyFromTarget(grad,t_grad,3*nSites*nFields*sizeof(double)); 
@@ -300,7 +326,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
  *
  *****************************************************************************/
 
-static void gradient_3d_7pt_fluid_le_correction(const int nop,
+HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
 						const double * field,
 						double * grad,
 						double * del2,
@@ -400,7 +426,7 @@ static void gradient_3d_7pt_fluid_le_correction(const int nop,
  *
  *****************************************************************************/
 
-static void gradient_3d_7pt_fluid_wall_correction(const int nop,
+HOST static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
 						  const double * field,
 						  double * grad,
 						  double * del2,
@@ -507,7 +533,7 @@ static void gradient_3d_7pt_fluid_wall_correction(const int nop,
  *
  *****************************************************************************/
 
-static int gradient_dab_compute(int nf, const double * field, double * dab) {
+HOST static int gradient_dab_compute(int nf, const double * field, double * dab) {
 
   int nlocal[3];
   int nhalo;
@@ -576,7 +602,7 @@ static int gradient_dab_compute(int nf, const double * field, double * dab) {
  *
  *****************************************************************************/
 
-static int gradient_dab_le_correct(int nf, const double * field,
+HOST static int gradient_dab_le_correct(int nf, const double * field,
 				   double * dab) {
 
   int nlocal[3];
