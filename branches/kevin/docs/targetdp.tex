@@ -1,0 +1,242 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  targetdp.tex
+%
+%  Target Data Parallel information
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  (c) 2014 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Target Data Parallel}
+
+\subsection{Aim}
+
+\subsection{Target context and API}
+
+\subsection{Memory}
+
+There are three types of memory requirement we will consider.
+(A fourth, constant host memory not suitable for target constant
+memory is could also be handled, but is less likely to occur.)
+An approach to each relevant type is set out in the three following
+sections.
+
+\subsubsection{\texttt{const} object on host, and suitable for
+\texttt{\_\_target\_const\_\_} memory}
+
+Objects declared \texttt{const} on the host are suitable for transfer
+to target constant memory. In order to have a consistent reference
+to the object, the following approach can be used. We declare two
+objects which are initialised via a macro-expansion at file scope:
+
+\begin{lstlisting}
+struct const_object {
+  ...
+};
+
+#define object_initialiser() { ... }
+
+const              struct const_object host = object_initialiser();
+__target_const__ struct const_object target = object_initialiser();
+\end{lstlisting}
+All references to the object in kernel-related code is then via the
+variable \texttt{target}, to be declared \texttt{extern} the the
+relevant object header if necessary.
+By making the appropriate macro-expansions for \texttt{\_\_target\_const\_\_}
+we allow for different implementations. An implementation with separate
+address spaces must ensure the \texttt{host}
+contents are copied to the \texttt{target} object before any kernel
+related activity. We suggest that this is at a well-defined
+\begin{lstlisting}
+__host__ int object_commit(struct object * obj);
+\end{lstlisting}
+stage. There is no coherency issue as both objects are constant. In a
+shared-memory implementation, constant data are shared by virtue of
+being at file scope.
+
+We note a slightly more elegant version of the above would be
+\begin{lstlisting}
+struct const_object {
+  /* declare */
+};
+
+const struct const_object object = {
+  /* initialise */
+};
+
+const              struct const_object * const host = &object;
+__target_const__ struct const_object * const target = &object;
+\end{lstlisting}
+which does away with the need for repeated initialisation via
+an error-prone macro expansion. However,
+for CUDA implementation the expansion of \texttt{\_\_target\_const\_\_}
+to \texttt{\_\_constant\_\_}
+may not get past \texttt{nvcc} unless an appropriate cast can
+be identified to make the \texttt{target} initialisation consistent.
+
+\subsubsection{Non \texttt{const} object on host, but suitable for
+\texttt{\_\_target\_const\_\_} memory}
+
+Here, the situation is less clear. Consider a non-constant data item
+on the host defined as part of a object, along with corresponding
+\texttt{target}:
+\begin{lstlisting}
+struct object {
+   struct kernel_const host;
+   ...
+};
+
+__target_const__ struct kernel_const target;
+
+\end{lstlisting}
+Here, an implementation with either uniform or separate address
+spaces must arrange a copy of the data at appropriate times so
+that any updates to \texttt{host} are correctly reflected
+in \texttt{target}. All kernel-related references are again through
+\texttt{target}.
+The slightly disjoint nature of this definition and increased pressure
+on global name-space must be weighed against potential increase in kernel
+performance and reduction in register pressure.
+
+\subsubsection{Non \texttt{const} object in both address spaces}
+
+The most general case may be handled in the following manner:
+\begin{lstlisting}
+
+struct object_kernel_data {
+  ...
+};
+
+struct object {
+   struct object_kernel_data * host;
+   struct object_kernel_data * target;
+   ...
+};
+
+\end{lstlisting}
+All relevant kernel data may then be handled by references to
+\texttt{target} in a consistent way. For implementations with
+separate address spaces, the memory coherency issue
+must be handled explicitly as both \texttt{host} and \texttt{target}
+are subject to modification. However, an implementation with uniform
+address space may simply alias the \texttt{target} to the \texttt{host}
+pointer. No data reside at file scope.
+
+\subsubsection{Aliasing}
+Consider a kernel data structure:
+\begin{lstlisting}
+struct object_kernel_data {
+  double * data1;
+  double * data2;
+};
+\end{lstlisting}
+An object of this type is to be passed into a kernel function via a pointer,
+which itself may be declared in contract to be
+\begin{lstlisting}
+__target__ void kernel_function(struct object_kernel_data * __restrict__ obj);
+\end{lstlisting}
+Further instruction to the compiler in the kernel function itself would
+be required to specify the status of individual data items, e.g.,
+\begin{lstlisting}
+__target__ void kernel_function(struct object_kernel_data * __restrict__ obj) {
+
+  double * restrict data1 = obj->data1;
+  double * restrict data2 = obj->data2;
+
+  /* ... and reference via ``data1'' and ``data2'' */
+\end{lstlisting}
+Standard C99 is required for a host implementation.
+A test of this for a CUDA implementation with \texttt{nvcc} is needed.
+
+
+\subsection{Kernel Execution}
+
+\subsubsection{Typical kernel in host code}
+
+A typical kernel representing a loop over local domain lattice sites
+might look like:
+\begin{lstlisting}
+
+int nextra = 1;  /* extent of kernel into halo regions */
+int nlocal[3];    /* local domain size */
+
+for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+  for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+    for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+       /* operations for site (ic, jc, kc) which may involve neighbours */
+       index = coords_index(ic, jc, kc);
+       ...
+    }
+  }
+}
+
+\end{lstlisting}
+Indexing calculations for lattice data structures are required to
+respect the total extent of the halo regions. Not all sites are
+involved in a typical kernel as determined above by \texttt{nextra}.
+
+\subsubsection{Typical kernel in target code}
+
+In a target implementation, the schematic code block shown above is necessarily
+split into two parts. The first is the scheduling of the required
+iterations (taking the place of the nested loops), and the second
+is the site-wise kernel (the code inside the loops).
+
+The two parts might take the form, schematically:
+\begin{lstlisting}
+int nextra = 1;            /* extent of kernel into halo regions */
+int nlocal[3];             /* local domain size */
+kernel_block_t nblocks;   /* Kernel blocks */
+kernel_block_t ntpb;       /* Number of threads per block */
+
+target_launch(kernel_function, nblocks, ntpb, nextra, nlocal[3], ...);
+\end{lstlisting}
+to be followed by
+\begin{lstlisting}
+__target__ void kernel_function(int nextra, int nlocal[3], ...) {
+
+  if (threadIndex < threadsRequired) {
+
+    /* locate (ic, jc, kc) from  kernel thread index */
+    ...
+  }
+
+  return;
+}
+
+\end{lstlisting}
+A small number of utility functions would allow us to compute the actual
+number of threads required dependent on \texttt{nextra}, and to perform
+relevant indexing. See, e.g., functions in
+\texttt{branches/CUDA/src/utilities\_gpu.cu}
+for identifying colloid map on the target.
+
+Note that a \texttt{target\_launch()} macro expansion (that looks
+like a standard C syntax) would require something of the form
+\begin{lstlisting}
+#define target_launch(f, nblocks, ntpb, ...) f(__VA_ARGS__)
+\end{lstlisting}
+or, for a CUDA run-time API implementation
+\begin{lstlisting}
+#define target_launch(f, nblocks, ntpb, ...) f<<<nblocks, ntpb>>>(__VA_ARGS__)
+\end{lstlisting}
+
+
+
+\subsubsection{Kernel reductions}
+
+Can we do reductions in a kernel in a sane fashion?
+
+\subsubsection{Bespoke target implementations for a single kernel}
+
+What does the code look like if we are forced to have separate kernel
+implementations for different targets for some reason?
+
+\vfill
+\pagebreak
+
