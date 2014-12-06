@@ -373,6 +373,22 @@ int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm) {
 
 /*****************************************************************************
  *
+ *  MPI_Comm_compare
+ *
+ *  Difficult to get right in this fake; reliable test for
+ *  MPI_IDENT is required.
+ *
+ *****************************************************************************/
+
+int MPI_Comm_compare(MPI_Comm comm1, MPI_Comm comm2, int * result) {
+
+  *result = MPI_CONGRUENT;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Comm_free
  *
  *  No operation.

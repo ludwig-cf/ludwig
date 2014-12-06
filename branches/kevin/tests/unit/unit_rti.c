@@ -52,11 +52,13 @@ int do_test_rti1(control_t * ctrl) {
   int unit_rti1_input(control_t * ctrl, char * f) throws(MPIIOException);
   int unit_rti1_tests(control_t * ctrl, char * f) throws(TestFailedException);
 
+  pe_t * pe = NULL;
+
   assert(ctrl);
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Runtine input from file\n");
 
-  pe_init_quiet();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
 
   try {
     unit_rti1_input(ctrl, filename);
@@ -70,7 +72,7 @@ int do_test_rti1(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    pe_finalise();
+    pe_free(&pe);
   }
 
   control_report(ctrl);

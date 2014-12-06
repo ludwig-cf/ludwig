@@ -60,7 +60,7 @@ static int initialised_ = 0;
  *  all with the same speed.
  *
  *  Pending (KS):
- *   - dx should be integers, i.e, N_total(X) % ntotal must be zero
+ *   - dx should be integers, i.e, ntotal[X] % ntotal must be zero
  *   - look at displacement issue
  *
  *****************************************************************************/
@@ -68,12 +68,15 @@ static int initialised_ = 0;
 void le_init() {
 
   int n;
-  int ntotal;
+  int nplanetotal;
+  int ntotal[3];
+
+  coords_ntotal(ntotal);
 
   /* initialise the state from input */
 
-  n = RUN_get_int_parameter("N_LE_plane", &ntotal);
-  if (n != 0) nplane_total_ = ntotal;
+  n = RUN_get_int_parameter("N_LE_plane", &nplanetotal);
+  if (n != 0) nplane_total_ = nplanetotal;
 
   n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
 
@@ -91,38 +94,19 @@ void le_init() {
   n = RUN_get_int_parameter("LE_time_offset", &le_params_.nt0);
 
   initialised_ = 1;
-  ntotal = le_get_nplane_total();
+  nplanetotal = le_get_nplane_total();
 
   if (le_get_nplane_total() != 0) {
 
-    /*info("\nLees-Edwards boundary conditions are active:\n");*/
-
-    if (N_total(X) % ntotal) {
-      info("System size x-direction: %d\n", N_total(X));
-      info("Number of LE planes requested: %d\n", ntotal);
+    if (ntotal[X] % nplanetotal) {
+      info("System size x-direction: %d\n", ntotal[X]);
+      info("Number of LE planes requested: %d\n", nplanetotal);
       fatal("Number of planes must divide system size\n");
     }
 
-    le_params_.dx_sep = L(X) / ntotal;
+    le_params_.dx_sep = L(X) / nplanetotal;
     le_params_.dx_min = 0.5*le_params_.dx_sep;
-    /*
-    for (n = 0; n < ntotal; n++) {
-      info("LE plane %d is at x = %d with speed %f\n", n+1,
-	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
-	   le_plane_uy_max());
-    }
-
-    if (le_type_ == LINEAR) {
-      info("Overall shear rate = %f\n", le_shear_rate());
-    }
-    else {
-      info("Oscillation period: %d time steps\n", period);
-      info("Maximum shear rate = %f\n", le_shear_rate());
-    }
-    */
     le_params_.time0 = 1.0*le_params_.nt0;
-    /*info("\n");
-      info("Lees-Edwards time offset (time steps): %8d\n", time_zero);*/
   }
 
   le_checks();

@@ -1062,7 +1062,14 @@ void blue_phase_set_active_region_gamma_zeta(const int index) {
 
   /* check if we are inside/outside the active region */
 
-  if ( coords_active_region(index) > 0.5 ){
+  /* KS note: the radius of the 'active region' needs to
+   * be defined locally as coords_active_region() is removed */
+
+  double r;
+
+  assert(0);
+
+  if ( r > 0.5 ) {
     /*inside*/
     blue_phase_set_zeta(zeta_inside);
     blue_phase_set_gamma(gamma_inside);

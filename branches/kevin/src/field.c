@@ -321,6 +321,7 @@ int field_leesedwards(field_t * obj) {
 static int field_leesedwards_parallel(field_t * obj) {
 
   int nf;
+  int ntotal[3];
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   int ib;                  /* Index in buffer region */
@@ -354,6 +355,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   field_nf(obj, &nf);
   nhalo = coords_nhalo();
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   ib0 = nlocal[X] + nhalo + 1;
@@ -387,12 +389,12 @@ static int field_leesedwards_parallel(field_t * obj) {
     /* In the real system the first point we require is
      * j1 = jc - jdy - 3
      * with jc = noffset[Y] + 1 - nhalo in the global coordinates.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y) */
+     * Modular arithmetic ensures 1 <= j1 <= ntotal[Y] */
 
     jc = noffset[Y] + 1 - nhalo;
-    j1 = 1 + (jc - jdy - 3 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 3 + 2*ntotal[Y]) % ntotal[Y];
     assert(j1 >= 1);
-    assert(j1 <= N_total(Y));
+    assert(j1 <= ntotal[Y]);
 
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 

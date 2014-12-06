@@ -38,16 +38,11 @@ int do_ut_fe_electro(control_t * ctrl) {
   physics_t * param = NULL;
 
   assert(ctrl);
-  pe_init_quiet();
-  coords_init();
   physics_ref(&param);
 
   do_test_fe_electro1(ctrl);
   do_test_fe_electro2(ctrl);
   do_test_fe_electro3(ctrl);
-
-  coords_finish();
-  pe_finalise();
 
   return 0;
 }
@@ -63,20 +58,27 @@ int do_ut_fe_electro(control_t * ctrl) {
 int do_test_fe_electro1(control_t * ctrl) {
 
   int nk = 2;
+  int index = 1;
   double valency[2] = {1, 2};
   double kt = 1.0;       /* Passes with scaled potential but REMOVE */
   double eunit = 1.0;    /* Passes with scaled potential but REMOVE */
-  psi_t * psi = NULL;
 
-  int index = 1;
   double rho0, rho1;     /* Test charge densities */
   double fed0, fed1;     /* Expected free energy contributions */
   double psi0;           /* Test potential */
   double fed;
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+  psi_t * psi = NULL;
+
   assert(ctrl);
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Free energy densities\n");
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
@@ -136,6 +138,8 @@ int do_test_fe_electro1(control_t * ctrl) {
   finally {
     fe_electro_free();
     psi_free(psi);
+    coords_free(&cs);
+    pe_free(&pe);
   }
 
   control_report(ctrl);
@@ -155,20 +159,27 @@ int do_test_fe_electro2(control_t * ctrl) {
 
   int n;
   int nk = 3;
+  int index = 1;
   double kt = 0.1;
   double eunit = 1.0;
   double valency[3] = {3, 2, 1};
-  psi_t * psi = NULL;
 
-  int index = 1;
   double rho0;    /* Test charge density */
   double psi0;    /* Test potential */
   double mu0;     /* Expected chemical potential */
   double mu;      /* Actual chemical potential */
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+  psi_t * psi = NULL;
+
   assert(ctrl);
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Chemical potentias\n");
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
@@ -206,6 +217,8 @@ int do_test_fe_electro2(control_t * ctrl) {
   finally {
     fe_electro_free();
     psi_free(psi);
+    coords_free(&cs);
+    pe_free(&pe); assert(pe == NULL);
   }
 
   control_report(ctrl);
@@ -227,7 +240,6 @@ int do_test_fe_electro3(control_t * ctrl) {
   int nk = 2;
   int index;
   int ia, ib;
-  psi_t * psi = NULL;
 
   double kt = 1.0;                  /* Reset following previous test */
   double epsilon = 0.5;             /* Permeativity */
@@ -238,9 +250,17 @@ int do_test_fe_electro3(control_t * ctrl) {
   double emod;
   double sexpect;
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+  psi_t * psi = NULL;
+
   assert(ctrl);
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Stress calculation\n");
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   psi_create(nk, &psi);
   psi_epsilon_set(psi, epsilon);
@@ -303,6 +323,8 @@ int do_test_fe_electro3(control_t * ctrl) {
   finally {
     fe_electro_free();
     psi_free(psi);
+    coords_free(&cs);
+    pe_free(&pe);
   }
 
   control_report(ctrl);

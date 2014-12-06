@@ -12,8 +12,8 @@
 
 #include "pe.h"
 
-int do_test_pe_init(control_t * ctrl);
-int do_test_pe_init_quiet(control_t * ctrl);
+int do_test_pe_create(control_t * ctrl);
+int do_test_pe_mpi(control_t * ctrl);
 
 /*****************************************************************************
  *
@@ -25,27 +25,46 @@ int do_test_pe_init_quiet(control_t * ctrl);
 
 int do_ut_pe(control_t * ctrl) {
 
-  do_test_pe_init_quiet(ctrl);
-  do_test_pe_init(ctrl);
+  do_test_pe_create(ctrl);
+  do_test_pe_mpi(ctrl);
   
   return 0;
 }
 
 /*****************************************************************************
  *
- *  do_test_pe_init
+ *  do_test_pe_create
  *
  *****************************************************************************/
 
-int do_test_pe_init(control_t * ctrl) {
+int do_test_pe_create(control_t * ctrl) {
+
+  pe_t * pe = NULL;
+  pe_t * pe_copy = NULL;
+  MPI_Comm comm;
 
   assert(ctrl);
 
   control_test(ctrl, __CONTROL_INFO__);
-  control_verb(ctrl, "pe_init with introductory messages\n");
+  control_verb(ctrl, "pe_create_parent works...\n");
+  control_comm(ctrl, &comm);
 
-  pe_init();
-  pe_finalise();
+  try {
+    pe_create_parent(comm, &pe);
+    control_macro_test(ctrl, pe != NULL);
+
+    pe_retain(pe);
+    pe_copy = pe;
+
+    pe_free(&pe_copy);
+    control_macro_test(ctrl, pe_copy == NULL);
+
+    pe_free(&pe);
+    control_macro_test(ctrl, pe == NULL);
+  }
+  catch (TestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
+  }
 
   control_report(ctrl);
 
@@ -54,11 +73,11 @@ int do_test_pe_init(control_t * ctrl) {
 
 /*****************************************************************************
  *
- *  do_test_pe_init_quiet
+ *  do_test_pe_mpi
  *
  *****************************************************************************/
 
-int do_test_pe_init_quiet(control_t * ctrl) {
+int do_test_pe_mpi(control_t * ctrl) {
 
   int rank, sz;
   int icompare = MPI_IDENT;
@@ -72,13 +91,12 @@ int do_test_pe_init_quiet(control_t * ctrl) {
 
   control_test(ctrl, __CONTROL_INFO__);
   control_comm(ctrl, &ctrlcomm);
-  control_verb(ctrl, "pe_init_quiet\n");
+  control_verb(ctrl, "pe_mpi_comm etc\n");
 
   pe_create_parent(ctrlcomm, &pe);
-  pe_init_quiet();
 
   try {
-    comm = pe_comm();
+    pe_mpi_comm(pe, &comm);
     MPI_Comm_compare(comm, ctrlcomm, &icompare);
     control_macro_test(ctrl, icompare == MPI_CONGRUENT);
 
@@ -91,6 +109,8 @@ int do_test_pe_init_quiet(control_t * ctrl) {
     MPI_Comm_rank(ctrlcomm, &rank);
     MPI_Comm_size(ctrlcomm, &sz);
 
+    control_macro_test(ctrl, rank == pe_mpi_rank(pe));
+    control_macro_test(ctrl, sz == pe_mpi_size(pe));
     control_macro_test(ctrl, rank == pe_rank());
     control_macro_test(ctrl, sz == pe_size());
   }
@@ -98,7 +118,7 @@ int do_test_pe_init_quiet(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  pe_finalise();
+  pe_free(&pe);
 
   control_report(ctrl);
 

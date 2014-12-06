@@ -90,6 +90,10 @@ enum collective_operations {MPI_MAX,
 
 enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 
+/* Results of comparison */
+
+enum mpi_comm_comp {MPI_IDENT, MPI_CONGRUENT, MPI_SIMILAR, MPI_UNEQUAL};
+
 /* NULL handles */
 
 #define MPI_GROUP_NULL      -1
@@ -158,6 +162,7 @@ int MPI_Allreduce(void * send, void * recv, int count, MPI_Datatype type,
 		  MPI_Op op, MPI_Comm comm);
 
 int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm);
+  int MPI_Comm_compare(MPI_Comm comm1, MPI_Comm comm2, int * result);
 int MPI_Comm_free(MPI_Comm * comm);
 int MPI_Comm_dup(MPI_Comm oldcomm, MPI_Comm * newcomm);
 

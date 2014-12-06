@@ -21,13 +21,11 @@
 #include <stdlib.h>
 
 /* Coordinate system, general */
-#include "pe.h"
 #include "runtime.h"
 #include "ran.h"
 #include "noise.h"
 #include "timer.h"
 #include "coords_rt.h"
-#include "coords.h"
 #include "leesedwards.h"
 #include "control.h"
 #include "util.h"
@@ -114,6 +112,8 @@
 
 typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
+  pe_t * pe;                /* Parallel enviroment */
+  coords_t * cs;            /* Coordinate system */
   physics_t * param;        /* Physical parameters */
   lb_t * lb;                /* Lattice Botlzmann */
   hydro_t * hydro;          /* Hydrodynamic quantities */
@@ -163,9 +163,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   io_info_t * iohandler = NULL;
 
   assert(ludwig);
-  
+
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
+
+  coords_create(ludwig->pe, &ludwig->cs);
+  assert(ludwig->cs);
 
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
@@ -371,7 +374,10 @@ void ludwig_run(const char * inputfile) {
   ludwig = calloc(1, sizeof(ludwig_t));
   assert(ludwig);
 
-  pe_init();
+  pe_create_parent(MPI_COMM_WORLD, &ludwig->pe);
+  assert(ludwig->pe);
+  pe_set(ludwig->pe, PE_VERBOSE);
+  pe_commit(ludwig->pe);
 
   RUN_read_input_file(inputfile);
 
@@ -794,7 +800,8 @@ void ludwig_run(const char * inputfile) {
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
-  pe_finalise();
+  coords_free(&ludwig->cs);
+  pe_free(&ludwig->pe);
 
   return;
 }
@@ -903,8 +910,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     phi_force_required_set(0); /* Could reverse the default */
 
     nhalo = 1;
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
   }
@@ -923,8 +930,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       nhalo = 3;
     }
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 
@@ -976,8 +983,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 1;   /* Require one piont for LB. */
     ngrad = 2;   /* \nabla^2 required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 
@@ -1008,8 +1015,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 3;   /* Required for stress diveregnce. */
     ngrad = 4;   /* (\nabla^2)^2 required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 
@@ -1051,8 +1058,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 
@@ -1090,8 +1097,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 
@@ -1129,8 +1136,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       nhalo = 3;
     }
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
         
@@ -1205,8 +1212,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 
@@ -1259,8 +1266,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* First, the symmetric part. */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time();
+    coords_nhalo_set(ludwig->cs, nhalo);
+    coords_run_time(ludwig->cs);
     le_init();
     le_info();
 

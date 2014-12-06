@@ -530,6 +530,7 @@ void stats_rheology_stress_profile(const char * filename) {
 void stats_rheology_stress_section(const char * filename) {
 
   int ic, kc;
+  int ntotal[3];
   int nlocal[3];
   int n, is_writing;
   FILE   * fp_output = NULL;
@@ -546,6 +547,8 @@ void stats_rheology_stress_section(const char * filename) {
   const int tag_token = 1012;
 
   assert(initialised_);
+
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
 
   physics_eta_shear(&eta);
@@ -554,7 +557,7 @@ void stats_rheology_stress_section(const char * filename) {
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
   if (stat_2d == NULL) fatal("malloc(stat_2d) failed\n");
 
-  stat_1d = (double *) malloc(NSTAT2*N_total(Z)*sizeof(double));
+  stat_1d = (double *) malloc(NSTAT2*ntotal[Z]*sizeof(double));
   if (stat_1d == NULL) fatal("malloc(stat_1d) failed\n");
 
   /* Set the averaging factor (if no data, set to zero) */
@@ -621,7 +624,7 @@ void stats_rheology_stress_section(const char * filename) {
 
       /* write data */
       if (is_writing) {
-	for (kc = 1; kc <= N_total(Z); kc++) {
+	for (kc = 1; kc <= ntotal[Z]; kc++) {
 	  for (n = 0; n < NSTAT2; n++) {
 	    fprintf(fp_output, " %15.8e", stat_1d[NSTAT2*(kc-1) + n]);
 	  }

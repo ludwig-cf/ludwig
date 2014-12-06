@@ -57,11 +57,15 @@ int control_create(MPI_Comm comm, control_t ** pc) throws(MPIException) {
     *pc = c;
   }
   catch (NullPointerException) {
-    printf("calloc(1, sizeof(control_t)) failed\n");
+    fprintf(stderr, "calloc(1, sizeof(control_t)) failed\n");
     e4c_mpi_exception(e);
   }
   finally {
-    if (e4c_mpi_allreduce(e)) throw(MPINullPointerException, "");
+    if (e4c_mpi_allreduce(e)) {
+      if (c) free(c);
+      *pc = NULL;
+      throw(MPINullPointerException, "");
+    }
   }
 
   return 0;

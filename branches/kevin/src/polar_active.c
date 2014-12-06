@@ -312,3 +312,4 @@ double polar_active_region(const int index) {
 
   return active;
 }
+

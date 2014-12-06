@@ -81,36 +81,127 @@ static int pe_create(MPI_Comm parent) {
 
 /*****************************************************************************
  *
- *  pe_ref
+ *  pe_retain
  *
- *  Return exiting reference, or create one in MPI_COMM_WORLD
- *  via pe_init_quiet().
+ *  Increment reference count by one.
  *
  *****************************************************************************/
 
-int pe_ref(pe_t ** ref) {
+int pe_retain(pe_t * peref) {
 
-  int ifail = 0;
+  assert(peref);
 
-  if (pe == NULL) ifail = pe_init_quiet();
-  if (ifail == 0) *ref = pe;
+  peref->nref += 1;
 
-  return ifail;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  pe_init
+ *  pe_free
  *
- *  Initialise the model. If it's MPI, we choose that all errors
- *  be terminal.
+ *  Release a reference; if that's the last reference, close down.
  *
  *****************************************************************************/
 
-void pe_init(void) {
+int pe_free(pe_t ** peref) {
 
-  pe_init_quiet();
-  pe->unquiet = 1;
+  assert(peref);
+
+  (*peref)->nref -= 1;
+
+  if ((*peref)->nref <= 0) {
+    MPI_Comm_free(&pe->comm);
+    if (pe->unquiet) info("Ludwig finished normally.\n");
+    free(pe);
+    pe = NULL;
+  }
+
+  *peref = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_set
+ *
+ *****************************************************************************/
+
+int pe_set(pe_t * pe, pe_enum_t option) {
+
+  assert(pe);
+
+  switch (option) {
+  case PE_QUIET:
+    pe->unquiet = 0;
+    break;
+  case PE_VERBOSE:
+    pe->unquiet = 1;
+    break;
+  default:
+    assert(0);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_mpi_comm
+ *
+ *****************************************************************************/
+
+int pe_mpi_comm(pe_t * peref, MPI_Comm * comm) {
+
+  assert(peref);
+  assert(comm);
+
+  *comm = pe->comm;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_mpi_rank
+ *
+ *****************************************************************************/
+
+int pe_mpi_rank(pe_t * peref) {
+
+  assert(peref);
+
+  return peref->mpi_rank;
+}
+
+/*****************************************************************************
+ *
+ *  pe_mpi_size
+ *
+ *****************************************************************************/
+
+int pe_mpi_size(pe_t * peref) {
+
+  assert(peref);
+
+  return peref->mpi_size;
+}
+
+
+/*****************************************************************************
+ *
+ *  pe_commit
+ *
+ *  Just the welcome message.
+ *
+ *  The message. Don't push me 'cos I'm close to the edge...
+ *
+ *****************************************************************************/
+
+int pe_commit(pe_t * pe) {
+
+  assert(pe);
 
   info("Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n\n",
        LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
@@ -122,84 +213,7 @@ void pe_init(void) {
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
   }
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  pe_init_quiet
- *
- *****************************************************************************/
-
-int pe_init_quiet(void) {
-
-  int ifail = 0;
-
-  if (pe == NULL) ifail = pe_create(MPI_COMM_WORLD);
-
-  if (ifail == 0) {
-    MPI_Comm_dup(pe->parent_comm, &pe->comm);
-
-    MPI_Errhandler_set(pe->comm, MPI_ERRORS_ARE_FATAL);
-
-    MPI_Comm_size(pe->comm, &pe->mpi_size);
-    MPI_Comm_rank(pe->comm, &pe->mpi_rank);
-  }
-
-  return ifail;
-}
-
-/*****************************************************************************
- *
- *  pe_finalise
- *
- *  Decrement reference count or final executable statement.
- *
- *****************************************************************************/
-
-void pe_finalise() {
-
-  if (pe == NULL) return;
-
-  if (pe->nref > 1) {
-    pe->nref -= 1;
-  }
-  else {
-    MPI_Comm_free(&pe->comm);
-    if (pe->unquiet) info("Ludwig finished normally.\n");
-    free(pe);
-    pe = NULL;
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  pe_redirect_stdout
- *
- *****************************************************************************/
-
-void pe_redirect_stdout(const char * filename) {
-
-  int rank;
-  FILE * stream;
-
-  assert(pe);
-
-  MPI_Comm_rank(pe->parent_comm, &rank);
-
-  if (rank == 0) {
-    printf("Redirecting stdout to file %s\n", filename);
-  }
-
-  stream = freopen(filename, "w", stdout);
-  if (stream == NULL) {
-    printf("[%d] ffreopen(%s) failed\n", rank, filename);
-    fatal("Stop.\n");
-  }
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -315,7 +329,17 @@ int pe_create_parent(MPI_Comm parent, pe_t ** peref) {
 
   int ifail = 0;
 
-  if (pe == NULL) ifail = pe_create(parent);
+  assert(pe == NULL);
+
+  ifail = pe_create(parent);
+
+  MPI_Comm_dup(pe->parent_comm, &pe->comm);
+
+  MPI_Errhandler_set(pe->comm, MPI_ERRORS_ARE_FATAL);
+
+  MPI_Comm_size(pe->comm, &pe->mpi_size);
+  MPI_Comm_rank(pe->comm, &pe->mpi_rank);
+
   if (ifail == 0) *peref = pe;
 
   return ifail;

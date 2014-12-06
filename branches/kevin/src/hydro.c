@@ -414,6 +414,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 
 static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
+  int ntotal[3];
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   int ib;                  /* Index in buffer region */
@@ -444,6 +445,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   nf = obj->nf;
 
   nhalo = coords_nhalo();
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   ib0 = nlocal[X] + nhalo + 1;
@@ -477,10 +479,10 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
     fr  = dy - jdy;
 
     /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+     * Modular arithmetic ensures 1 <= j1 <= ntotal[Y]. */
 
     jc = noffset[Y] + 1 - nhalo;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 2 + 2*ntotal[Y]) % ntotal[Y];
 
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 

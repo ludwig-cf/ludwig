@@ -76,6 +76,7 @@ static int stats_sigma_find_xi0(field_t * phi, drop_t * drop);
 
 int stats_sigma_init(field_t * phi, int nswitch) {
 
+  int ntotal[3];
   drop_t drop;
   double datum;
   double mobility;
@@ -86,19 +87,21 @@ int stats_sigma_init(field_t * phi, int nswitch) {
   }
   else {
     assert(phi);
+
+    coords_ntotal(ntotal);
     physics_mobility(&mobility);
 
     /* Check we have a cubic system, or a square system (2d) */
 
-    if (N_total(X) != N_total(Y)) {
+    if (ntotal[X] != ntotal[Y]) {
       info("Surface tension calibration expects Lx = Ly\n");
-      info("You have: %4d %4d\n", N_total(X), N_total(Y));
+      info("You have: %4d %4d\n", ntotal[X], ntotal[Y]);
       fatal("Please check and try again\n");
     }
 
-    if (N_total(Z) != 1 && (N_total(Z) != N_total(Y))) {
+    if (ntotal[Z] != 1 && (ntotal[Z] != ntotal[Y])) {
       info("Surface tension calibration expects Lx = Ly = Lz\n");
-      info("You have: %4d %4d %4d\n", N_total(X), N_total(Y), N_total(Z));
+      info("You have: %4d %4d %4d\n", ntotal[X], ntotal[Y], ntotal[Z]);
       fatal("Please check and try again\n");
     }
 

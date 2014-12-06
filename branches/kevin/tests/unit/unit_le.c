@@ -21,6 +21,7 @@
 #include "unit_control.h"
 
 int do_test_le1(control_t * ctrl);
+int do_test_le2(control_t * ctrl);
 int do_test_le_interp3(control_t * ctrl);
 int do_test_le_interp4(control_t * ctrl);
 
@@ -35,6 +36,7 @@ int do_ut_lees_edwards(control_t * ctrl) {
   assert(ctrl);
 
   do_test_le1(ctrl);
+  do_test_le2(ctrl);
   do_test_le_interp3(ctrl);
   do_test_le_interp4(ctrl);
 
@@ -53,15 +55,21 @@ int do_test_le1(control_t * ctrl) {
 
   int nplane = 8;
   int nplane_local;
+  int n, nx;
+  int nlocal[3];
 
   double uy0 = 0.08;
   double uy;
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Lees Edwards plane structure\n");
 
-  pe_init_quiet();
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   le_set_nplane_total(nplane);
   le_set_plane_uymax(uy0);
@@ -79,14 +87,79 @@ int do_test_le1(control_t * ctrl) {
     uy = le_plane_uy_max();
     control_verb(ctrl, "Plane maximum velocity: %10.4f\n", uy0);
     control_macro_test_dbl_eq(ctrl, uy, uy0, DBL_EPSILON);
+
+    /* Plane locations */
+
+    coords_nlocal(nlocal);
+
+    for (n = 0; n < nplane_local; n++) {
+      nx = nlocal[X]/(2*nplane_local) + n*nlocal[X]/nplane_local;
+      control_verb(ctrl, "Plane %d integer position: %d (%d)\n", n, nx,
+		   le_plane_location(n));
+      control_macro_test(ctrl, nx == le_plane_location(n));
+    }
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
     le_finish();
-    coords_finish();
-    pe_finalise();
+    coords_free(&cs);
+    pe_free(&pe);
+  }
+
+  control_report(ctrl);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_le2
+ *
+ *  Lees Edwards sites, buffer quantites.
+ *
+ *****************************************************************************/
+
+int do_test_le2(control_t * ctrl) {
+
+  int nplane = 4;
+  int nlocal[3];
+  int nh2;              /* 2*nhalo */
+  int nxb;              /* Number buffer planes in x */
+  int nsites;           /* Total lattice sites */
+
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+
+  control_test(ctrl, __CONTROL_INFO__);
+  control_verb(ctrl, "Lees Edwards buffers\n");
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
+  nh2 = 2*coords_nhalo();
+  coords_nlocal(nlocal);
+
+  le_set_nplane_total(nplane);
+  le_init();
+
+  try {
+    nxb = nh2*le_get_nplane_local();
+    control_verb(ctrl, "Lees buffer size: %d (d)\n", nxb, le_get_nxbuffer());
+    control_macro_test(ctrl, nxb == le_get_nxbuffer());
+
+    nsites = (nlocal[X] + nh2 + nxb)*(nlocal[Y] + nh2)*(nlocal[Z] + nh2);
+    control_verb(ctrl, "Lees nsites: %d (%d)\n", nsites, le_nsites());
+    control_macro_test(ctrl, nsites == le_nsites());
+  }
+  catch (TestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
+  }
+  finally {
+    le_finish();
+    coords_free(&cs);
+    pe_free(&pe);
   }
 
   control_report(ctrl);
@@ -120,13 +193,16 @@ int do_test_le_interp3(control_t * ctrl) {
   double fr;
   double dy;
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
   MPI_Comm comm;
 
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Lees Edwards 3-point interpolation\n");
 
-  pe_init_quiet();
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   le_set_nplane_total(nplane);
   le_set_plane_uymax(uy_set);
@@ -215,8 +291,8 @@ int do_test_le_interp3(control_t * ctrl) {
   }
   finally {
     le_finish();
-    coords_finish();
-    pe_finalise();
+    coords_free(&cs); assert(cs == NULL);
+    pe_free(&pe);
   }
 
   control_report(ctrl);
@@ -235,6 +311,8 @@ int do_test_le_interp3(control_t * ctrl) {
 int do_test_le_interp4(control_t * ctrl) {
 
   const int nplane = 2;
+  const double uy_set = 0.25;
+
   int n;
   int jdy;
   int jc, j1, j2;
@@ -245,18 +323,21 @@ int do_test_le_interp4(control_t * ctrl) {
   int nlocal[3];
   int noffset[3];
 
-  const double uy_set = 0.25;
-
   double fr;
   double dy;
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
   MPI_Comm comm;
+
+  assert(ctrl);
 
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Lees-Edwards 4-point interpolation\n");
 
-  pe_init_quiet();
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   le_set_nplane_total(nplane);
   le_set_plane_uymax(uy_set);
@@ -314,8 +395,8 @@ int do_test_le_interp4(control_t * ctrl) {
   }
   finally {
     le_finish();
-    coords_finish();
-    pe_finalise();
+    coords_free(&cs);
+    pe_free(&pe); assert(pe == NULL);
   }
 
   control_report(ctrl);

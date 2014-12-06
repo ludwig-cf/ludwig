@@ -13,6 +13,7 @@ int main(int argc, char ** argv) {
   int do_ut_coords(control_t * ctrl);
   int do_ut_rti(control_t * ctrl);
   int do_ut_fe_electro(control_t * ctrl);
+  int do_ut_fe_es(control_t * ctrl);
   int do_ut_lees_edwards(control_t * ctrl);
 
   MPI_Init(&argc, &argv);
@@ -25,8 +26,9 @@ int main(int argc, char ** argv) {
   do_ut_pe(ctrl);
   do_ut_coords(ctrl);
   do_ut_rti(ctrl);
-  do_ut_fe_electro(ctrl);
   do_ut_lees_edwards(ctrl);
+  do_ut_fe_electro(ctrl);
+  do_ut_fe_es(ctrl);
 
   control_free(ctrl);
 

@@ -68,7 +68,8 @@ static int stats_calibration_measure(colloids_info_t * cinfo, hydro_t * hydro,
 int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
 
   int ia;
-  int ntotal;
+  int nc;
+  int ntotal[3];
   double a;
   double rho;
   double eta;
@@ -85,12 +86,15 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
 
     assert(cinfo);
 
+    coords_ntotal(ntotal);
+
     /* Make sure we have a cubic system with one particle */
 
-    assert(N_total(X) == N_total(Y));
-    assert(N_total(Y) == N_total(Z));
-    colloids_info_ntotal(cinfo, &ntotal);
-    if (ntotal != 1) fatal("Calibration requires exactly one colloid\n");
+    if (ntotal[X] != ntotal[Y]) fatal("Calibration must have cubic system\n");
+    if (ntotal[Y] != ntotal[Z]) fatal("Calibration must have cubic system\n");
+
+    colloids_info_ntotal(cinfo, &nc);
+    if (nc != 1) fatal("Calibration requires exactly one colloid\n");
 
     length = 1.0*L(Z);
     physics_rho0(&rho);

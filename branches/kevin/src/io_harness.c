@@ -130,11 +130,14 @@ io_info_t * io_info_create_with_grid(const int grid[3]) {
 static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
 
   int i, colour;
+  int ntotal[3];
   int noffset[3];
   struct io_decomposition_t * p = NULL;
   MPI_Comm comm = cart_comm();
 
   assert(comm != MPI_COMM_NULL);
+
+  coords_ntotal(ntotal);
   coords_nlocal_offset(noffset);
 
   p = io_decomposition_allocate();
@@ -145,7 +148,7 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
     p->ngroup[i] = grid[i];
     p->n_io *= grid[i];
     p->coords[i] = grid[i]*cart_coords(i)/cart_size(i);
-    p->nsite[i] = N_total(i)/grid[i];
+    p->nsite[i] = ntotal[i]/grid[i];
     p->offset[i] = noffset[i] - p->coords[i]*p->nsite[i];
   }
 
@@ -358,6 +361,7 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
 
   long int offset;
   int ifo, jfo, kfo;
+  int ntotal[3];
   int noffset[3];
 
   assert(info);
@@ -374,11 +378,12 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
   /* Single file offset */
 
   if (info->single_file_read) {
+    coords_ntotal(ntotal);
     coords_nlocal_offset(noffset);
     ifo = noffset[X] + ic - 1;
     jfo = noffset[Y] + jc - 1;
     kfo = noffset[Z];
-    offset = info->bytesize*(ifo*N_total(Y)*N_total(Z) + jfo*N_total(Z) + kfo);
+    offset = info->bytesize*(ifo*ntotal[Y]*ntotal[Z] + jfo*ntotal[Z] + kfo);
   }
 
   return offset;
@@ -415,6 +420,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   int  nx, ny, nz;
+  int ntotal[3];
   int n[3], noff[3];
 
   int token = 0;
@@ -426,6 +432,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
    * be unmangled. */
 
   assert(info);
+  coords_ntotal(ntotal);
   coords_nlocal_offset(noff);
 
   pe_subdirectory(subdirectory);
@@ -452,7 +459,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
 	    cart_size(X), cart_size(Y), cart_size(Z));
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
-	    N_total(X), N_total(Y), N_total(Z));
+	    ntotal[X], ntotal[Y], ntotal[Z]);
     /* Lees Edwards hardwired until refactor LE code dependencies */
     fprintf(fp_meta, "Lees-Edwards planes:             %d\n",
 	    le_get_nplane_total());

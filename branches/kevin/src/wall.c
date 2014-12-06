@@ -395,12 +395,14 @@ static int wall_init_boundary_site_map(map_t * map) {
 
   int ic, jc, kc, index;
   int ic_global, jc_global, kc_global;
+  int ntotal[3];
   int nlocal[3];
   int noffset[3];
   int nextra;
 
   assert(map);
 
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   nextra = coords_nhalo();
@@ -416,21 +418,21 @@ static int wall_init_boundary_site_map(map_t * map) {
 	kc_global = kc + noffset[Z];
 
 	if (is_boundary_[Z]) {
-	  if (kc_global == 0 || kc_global == N_total(Z) + 1) {
+	  if (kc_global == 0 || kc_global == ntotal[Z] + 1) {
 	    index = coords_index(ic, jc, kc);
 	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[Y]) {
-	  if (jc_global == 0 || jc_global == N_total(Y) + 1) {
+	  if (jc_global == 0 || jc_global == ntotal[Y] + 1) {
 	    index = coords_index(ic, jc, kc);
 	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[X]) {
-	  if (ic_global == 0 || ic_global == N_total(X) + 1) {
+	  if (ic_global == 0 || ic_global == ntotal[X] + 1) {
 	    index = coords_index(ic, jc, kc);
 	    map_status_set(map, index, MAP_BOUNDARY);
 	  }

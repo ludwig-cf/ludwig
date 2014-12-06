@@ -522,9 +522,9 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
 
       a[in] = 2.0*pi_ * ran_serial_uniform();
       b[in] = 2.0*pi_ * ran_serial_uniform();
-      C[3*in]   = N_total(X) * ran_serial_uniform(); 
-      C[3*in+1] = N_total(Y) * ran_serial_uniform(); 
-      C[3*in+2] = N_total(Z) * ran_serial_uniform(); 
+      C[3*in]   = L(X) * ran_serial_uniform(); 
+      C[3*in+1] = L(Y) * ran_serial_uniform(); 
+      C[3*in+2] = L(Z) * ran_serial_uniform(); 
 
     }
 
@@ -797,6 +797,7 @@ int blue_phase_nematic_init(field_t * fq, const double n[3]) {
 int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
 
   int ic, jc, kc;
+  int ntotal[3];
   int nlocal[3];
   int noffset[3];
   int ia, index;
@@ -811,6 +812,7 @@ int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
   double ang=pi_/180.0*10.0;
 
   assert(modulus(n) > 0.0);
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -869,11 +871,11 @@ int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
 	field_tensor_set(fq, index, q);
 
         /* If alignment along x region around 
-	   z=N_total(Z)/2 is being replaced */
+	   z= ntotal[Z]/2 is being replaced */
  
-	if(nhat[0] == 1.0) {
-	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
-	    if(x<=N_total(X)/2.0) {
+	if (nhat[0] == 1.0) {
+	  if (z == ntotal[Z]/2.0 || z == (ntotal[Z]-1)/2.0) {
+	    if (x <= ntotal[X]/2.0) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -883,11 +885,11 @@ int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
 	}
 
         /* If alignment along y region around 
-	   z=N_total(Z)/2 is being replaced */
+	   z = ntotal[Z]/2 is being replaced */
 
-	if(nhat[1] == 1.0){
-	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
-	    if(y<=N_total(Y)/2.0) {
+	if (nhat[1] == 1.0){
+	  if (z == ntotal[Z]/2.0 || z == (ntotal[Z]-1)/2.0) {
+	    if (y <= ntotal[Y]/2.0) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -897,7 +899,7 @@ int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
 	}
 
         /* If alignment along z region around 
-	   x=N_total(X)/2 is being replaced */
+	   x = ntotal[X]/2 is being replaced */
 /*
 	if(nhat[2] == 1.0){
 	  if(x==N_total(X)/2.0 || x==(N_total(X)-1)/2.0) {
@@ -914,7 +916,6 @@ int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
       }
     }
   }
-
 
   return 0;
 }

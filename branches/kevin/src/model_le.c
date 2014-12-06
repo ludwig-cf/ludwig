@@ -481,6 +481,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   int ind0, ind1, ind2, index, i0;
   int n, nplane, plane;
   int p;
+  int ntotal[3];
   int nlocal[3];
   int offset[3];
   int nrank_s[3], nrank_r[3];
@@ -502,7 +503,8 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
   assert(lb);
   assert(CVXBLOCK == 1);
-
+  
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   coords_nlocal_offset(offset);
@@ -531,10 +533,10 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
     jdy = floor(dy);
     fr  = dy - jdy;
 
-    /* Starting y coordinate is j1: 1 <= j1 <= N_total.y */
+    /* Starting y coordinate is j1: 1 <= j1 <= ntotal[Y] */
 
     jc = offset[Y] + 1;
-    j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc + jdy - 1 + 2*ntotal[Y]) % ntotal[Y];
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 
     j1mod = 1 + (j1 - 1) % nlocal[Y];
@@ -613,10 +615,10 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
     jdy = floor(dy);
     fr  = dy - jdy;
 
-    /* Starting y coordinate (global address): range 1 <= j1 <= N_total.y */
+    /* Starting y coordinate (global address): range 1 <= j1 <= ntotal[Y] */
 
     jc = offset[Y] + 1;
-    j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc + jdy - 1 + 2*ntotal[Y]) % ntotal[Y];
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 
     j1mod = 1 + (j1 - 1) % nlocal[Y];

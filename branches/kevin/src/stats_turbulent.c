@@ -199,6 +199,7 @@ void stats_turbulent_ubar_zero() {
 void stats_turbulent_ubar_output(const char * filename) {
 
   int ic, kc;
+  int ntotal[3];
   int nlocal[3];
   int n, is_writing;
   FILE   * fp_output = NULL;
@@ -214,12 +215,14 @@ void stats_turbulent_ubar_output(const char * filename) {
   const int tag_token = 4129;
 
   assert(initialised_);
+
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
 
   f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
   if (f1 == NULL) fatal("malloc(f1) failed\n");
 
-  f1z = (double *) malloc(3*N_total(Z)*sizeof(double));
+  f1z = (double *) malloc(3*ntotal[Z]*sizeof(double));
   if (f1z == NULL) fatal("malloc(f1z) failed\n");
 
   /* Set the averaging factor (if no data, set to zero) */
@@ -273,8 +276,8 @@ void stats_turbulent_ubar_output(const char * filename) {
 
       /* write data */
       if (is_writing) {
-	n = fwrite(f1z, sizeof(double), 3*N_total(Z), fp_output);
-	if (n != 3*N_total(Z)) fatal("fwrite(f1z) returned %d\n", n);
+	n = fwrite(f1z, sizeof(double), 3*ntotal[Z], fp_output);
+	if (n != 3*ntotal[Z]) fatal("fwrite(f1z) returned %d\n", n);
       }
     }
 

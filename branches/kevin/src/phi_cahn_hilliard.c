@@ -514,6 +514,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   int      nhalo;
+  int ntotal[3];
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   double * buffere;        /* Interpolation buffer */
@@ -539,6 +540,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   int get_step(void);
 
   nhalo = coords_nhalo();
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -571,12 +573,12 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
     frw  = dy - jdy;
 
     /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+     * Modular arithmetic ensures 1 <= j1 <= ntotal[Y]. */
 
     jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 2 + 2*ntotal[Y]) % ntotal[Y];
     assert(j1 > 0);
-    assert(j1 <= N_total(Y));
+    assert(j1 <= ntotal[Y]);
 
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 
@@ -612,10 +614,10 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
     fre  = dy - jdy;
 
     /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+     * Modular arithmetic ensures 1 <= j1 <= ntotal[Y]. */
 
     jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 2 + 2*ntotal[Y]) % ntotal[Y];
 
     le_jstart_to_ranks(j1, nrank_s, nrank_r);
 

@@ -46,7 +46,7 @@ MPICC = mpicc
 NVCC = nvcc
 
 OPTS = -DNP_D3Q6
-CFLAGS = -O2
+CFLAGS = -O2 -Wall
 LIBS = -lm
 
 # TargetDP, under development

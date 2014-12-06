@@ -164,10 +164,12 @@ int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
 int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el) {
 
   int ic, jc, kc, index;
+  int ntotal[3];
   int nlocal[3], noff[3];
 
   assert(obj);
 
+  coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noff);
 
@@ -181,7 +183,7 @@ int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el) {
 
 	psi_psi_set(obj, index, 0.0);
 
-	if ((1 <= noff[0] + ic) && (noff[0] + ic < N_total(X)/2)) {
+	if ((1 <= noff[0] + ic) && (noff[0] + ic < ntotal[X]/2)) {
 	  psi_rho_set(obj, index, 0, rho_el * (1.0 + delta_el));
 	  psi_rho_set(obj, index, 1, rho_el * (1.0 + delta_el));
 	}

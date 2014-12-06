@@ -18,10 +18,12 @@ int do_test_coords_default(control_t * ctrl);
 int do_test_coords_nhalo(control_t * ctrl);
 int do_test_coords_case1(control_t * ctrl);
 int do_test_coords_case2(control_t * ctrl);
+int do_test_coords_case3(control_t * ctrl);
 int do_test_coords_system(control_t * ctrl, int ntotal[3], int periodic[3]);
 int do_test_coords_decomposition(control_t * ctrl, int decomp_ref[3]);
 int do_test_coords_communicator(control_t * ctrl);
 int do_test_coords_periodic_comm(control_t * ctrl);
+int do_test_coords_nsites(control_t * ctrl);
 int do_test_coords_cart_info(control_t * ctrl);
 int do_test_coords_sub_comm_info(control_t * ctrl);
 int ut_neighbour_rank(int nx, int ny, int nz, int * nrank);
@@ -40,6 +42,7 @@ int do_ut_coords(control_t * ctrl) {
   do_test_coords_nhalo(ctrl);
   do_test_coords_case1(ctrl);
   do_test_coords_case2(ctrl);
+  do_test_coords_case3(ctrl);
   do_test_coords_periodic_comm(ctrl);
   do_test_coords_cart_info(ctrl);
   do_test_coords_sub_comm_info(ctrl);
@@ -59,20 +62,27 @@ int do_test_coords_default(control_t * ctrl) {
   int periodic_ref[3] = {1, 1, 1};
   int decomposition_ref1[3] = {2, 2, 2};
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Default settings\n");
 
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+
   try {
-    coords_init();
+    coords_commit(cs);
     do_test_coords_system(ctrl, ntotal_ref, periodic_ref);
     do_test_coords_decomposition(ctrl, decomposition_ref1);
     do_test_coords_communicator(ctrl);
   }
   catch (MPITestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
   }
-  finally {
-    coords_finish();
-  }
+
+  coords_free(&cs);
+  pe_free(&pe);
 
   control_report(ctrl);
 
@@ -93,12 +103,18 @@ int do_test_coords_nhalo(control_t * ctrl) {
   int xs, ys, zs;
   int nlocal[3];
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+
   assert(ctrl);
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Coords halo set to %d\n", nhalo_ref);
 
-  coords_nhalo_set(nhalo_ref);
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+
+  coords_nhalo_set(cs, nhalo_ref);
+  coords_commit(cs);
 
   try {
     nhalo = coords_nhalo();
@@ -107,18 +123,18 @@ int do_test_coords_nhalo(control_t * ctrl) {
     coords_strides(&xs, &ys, &zs);
     coords_nlocal(nlocal);
     control_macro_test(ctrl, zs == 1);
-    control_macro_test(ctrl, ys == zs*(nlocal[Z] + 2*nhalo));
-    control_macro_test(ctrl, xs == ys*(nlocal[Y] + 2*nhalo));
+    control_macro_test(ctrl, ys == zs*(nlocal[Z] + 2*nhalo_ref));
+    control_macro_test(ctrl, xs == ys*(nlocal[Y] + 2*nhalo_ref));
  
     nsites = coords_nsites();
-    control_macro_test(ctrl, nsites = zs*ys*(nlocal[X] + 2*nhalo));
+    control_macro_test(ctrl, nsites == xs*(nlocal[X] + 2*nhalo_ref));
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
-  finally {
-    coords_finish();
-  }
+
+  coords_free(&cs);
+  pe_free(&pe);
 
   control_report(ctrl);
 
@@ -137,24 +153,32 @@ int do_test_coords_case1(control_t * ctrl) {
   int periodic_ref1[3] = {1, 0, 1};
   int decomposition_ref1[3] = {2, 1, 4};
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Case1: 2d\n");
 
-  coords_ntotal_set(ntotal_ref1);
-  coords_periodicity_set(periodic_ref1);
-  coords_decomposition_set(decomposition_ref1);
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+
+  coords_ntotal_set(cs, ntotal_ref1);
+  coords_periodicity_set(cs, periodic_ref1);
+  coords_decomposition_set(cs, decomposition_ref1);
+  coords_commit(cs);
 
   try {
     do_test_coords_system(ctrl, ntotal_ref1, periodic_ref1);
     do_test_coords_decomposition(ctrl, decomposition_ref1);
     do_test_coords_communicator(ctrl);
+    do_test_coords_nsites(ctrl);
   }
   catch (MPITestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
   }
-  finally {
-    coords_finish();
-  }
+
+  coords_free(&cs);
+  pe_free(&pe);
 
   control_report(ctrl);
 
@@ -173,23 +197,75 @@ int do_test_coords_case2(control_t * ctrl) {
   int periodic_ref1[3] = {1, 1, 1};
   int decomposition_ref1[3] = {4, 4, 4};
 
-  control_test(ctrl, __CONTROL_INFO__);
-  control_verb(ctrl, "Case1: 3d\n");
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
 
-  coords_ntotal_set(ntotal_ref1);
-  coords_periodicity_set(periodic_ref1);
-  coords_decomposition_set(decomposition_ref1);
-  coords_init();
+  control_test(ctrl, __CONTROL_INFO__);
+  control_verb(ctrl, "Case2: 3d\n");
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+
+  coords_ntotal_set(cs, ntotal_ref1);
+  coords_periodicity_set(cs, periodic_ref1);
+  coords_decomposition_set(cs, decomposition_ref1);
+  coords_commit(cs);
 
   try {
     do_test_coords_system(ctrl, ntotal_ref1, periodic_ref1);
     do_test_coords_decomposition(ctrl, decomposition_ref1);
     do_test_coords_communicator(ctrl);
+    do_test_coords_nsites(ctrl);
   }
   catch (MPITestFailedException) {
   }
   finally {
-    coords_finish();
+    coords_free(&cs);
+    pe_free(&pe);
+  }
+
+  control_report(ctrl);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_coords_case3
+ *
+ *****************************************************************************/
+
+int do_test_coords_case3(control_t * ctrl) {
+
+  int ntotal_ref1[3]   = {128, 64, 32};
+  int periodic_ref1[3] = {1, 1, 1};
+  int decomposition_ref1[3] = {4, 2, 1};
+
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
+
+  control_test(ctrl, __CONTROL_INFO__);
+  control_verb(ctrl, "Case3: 3d\n");
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+
+  coords_ntotal_set(cs, ntotal_ref1);
+  coords_periodicity_set(cs, periodic_ref1);
+  coords_decomposition_set(cs, decomposition_ref1);
+  coords_commit(cs);
+
+  try {
+    do_test_coords_system(ctrl, ntotal_ref1, periodic_ref1);
+    do_test_coords_decomposition(ctrl, decomposition_ref1);
+    do_test_coords_communicator(ctrl);
+    do_test_coords_nsites(ctrl);
+  }
+  catch (MPITestFailedException) {
+  }
+  finally {
+    coords_free(&cs);
+    pe_free(&pe);
   }
 
   control_report(ctrl);
@@ -215,7 +291,9 @@ int do_test_coords_system(control_t * ctrl, int ntotal_ref[3],
 
   try {
     control_verb(ctrl, "ntotal\n");
+
     coords_ntotal(ntotal);
+
     control_macro_test(ctrl, ntotal[X] == ntotal_ref[X]);
     control_macro_test(ctrl, ntotal[Y] == ntotal_ref[Y]);
     control_macro_test(ctrl, ntotal[Z] == ntotal_ref[Z]);
@@ -224,6 +302,11 @@ int do_test_coords_system(control_t * ctrl, int ntotal_ref[3],
     control_macro_test(ctrl, is_periodic(X) == period_ref[X]);
     control_macro_test(ctrl, is_periodic(Y) == period_ref[Y]);
     control_macro_test(ctrl, is_periodic(Z) == period_ref[Z]);
+
+    control_verb(ctrl, "Lmin\n");
+    control_macro_test_dbl_eq(ctrl, Lmin(X), 0.5, DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, Lmin(Y), 0.5, DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, Lmin(Z), 0.5, DBL_EPSILON);
 
     control_verb(ctrl, "default L()\n");
     control_macro_test_dbl_eq(ctrl, L(X), 1.0*ntotal_ref[X], DBL_EPSILON);
@@ -234,6 +317,40 @@ int do_test_coords_system(control_t * ctrl, int ntotal_ref[3],
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally { 
+    if (control_allfail(ctrl)) throw(MPITestFailedException, "");
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_coords_nsites
+ *
+ *****************************************************************************/
+
+int do_test_coords_nsites(control_t * ctrl) throws (MPITestFailedException) {
+
+  int nh2;
+  int nsites;
+  int nexpect;
+  int nlocal[3];
+
+  assert(ctrl);
+
+  try {
+    nh2 = 2*coords_nhalo();
+    coords_nlocal(nlocal);
+    nsites = coords_nsites();
+    nexpect = (nlocal[X] + nh2)*(nlocal[Y] + nh2)*(nlocal[Z] + nh2);
+
+    control_verb(ctrl, "nsites: %d (%d)\n", nsites, nexpect);
+    control_macro_test(ctrl, nsites == nexpect);
+  }
+  catch (TestFailedException) {
+    control_option_set(ctrl , CONTROL_FAIL);
+  }
+  finally {
     if (control_allfail(ctrl)) throw(MPITestFailedException, "");
   }
 
@@ -315,11 +432,6 @@ int do_test_coords_const(control_t * ctrl) {
     control_verb(ctrl, "enum {FORW, BACK}\n");
     control_macro_test(ctrl, FORWARD  == 0);
     control_macro_test(ctrl, BACKWARD == 1);
-
-    control_verb(ctrl, "Lmin\n");
-    control_macro_test_dbl_eq(ctrl, Lmin(X), 0.5, DBL_EPSILON);
-    control_macro_test_dbl_eq(ctrl, Lmin(Y), 0.5, DBL_EPSILON);
-    control_macro_test_dbl_eq(ctrl, Lmin(Z), 0.5, DBL_EPSILON);
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -476,14 +588,18 @@ int do_test_coords_cart_info(control_t * ctrl) {
   int tag = 100;
   char string[FILENAME_MAX];
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
   MPI_Status status[1];
 
   assert(ctrl);
 
-  coords_init();
-
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Information on Cartesian communicator\n"); 
+
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   control_verb(ctrl, "Overview\n");
   control_verb(ctrl, "Decomposition %d %d %d\n",
@@ -512,7 +628,8 @@ int do_test_coords_cart_info(control_t * ctrl) {
     }
   }
 
-  coords_finish();
+  coords_free(&cs);
+  pe_free(&pe);
 
   control_report(ctrl);
 
@@ -534,6 +651,8 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   int tag = 100;
   char string[FILENAME_MAX];
 
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
   MPI_Comm comms1;
   MPI_Comm comms2;
   MPI_Status status[1];
@@ -543,7 +662,9 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Sub-communicators\n");
 
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   /* One-dimensional ub-communicator in Y */
 
@@ -582,7 +703,9 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
 
   MPI_Comm_free(&comms2);
   MPI_Comm_free(&comms1);
-  coords_finish();
+
+  coords_free(&cs);
+  pe_free(&pe);
 
   control_report(ctrl);
 
@@ -601,12 +724,17 @@ int do_test_coords_periodic_comm(control_t * ctrl) {
   int pforw, pback;
   int nsource, ndest;
   int coords[3];
+
+  pe_t * pe = NULL;
+  coords_t * cs = NULL;
   MPI_Comm pcomm;
 
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Periodic communicator\n");
 
-  coords_init();
+  pe_create_parent(MPI_COMM_WORLD, &pe);
+  coords_create(pe, &cs);
+  coords_commit(cs);
 
   try {
     coords_periodic_comm(&pcomm);
@@ -638,7 +766,8 @@ int do_test_coords_periodic_comm(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    coords_finish();
+    coords_free(&cs);
+    pe_free(&pe);
   }
 
   control_report(ctrl);

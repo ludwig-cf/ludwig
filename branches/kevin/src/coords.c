@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,57 +18,136 @@
 #include <float.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "coords.h"
 
-/* The effective state here is, with default values: */
+struct coords_s {
+  pe_t * pe;                       /* Retain a reference to pe */
+  int nref;                        /* Reference count */
 
-static int nhalo_ = 1;
-static int ntotal_[3]                  = {64, 64, 64};
-static int periodic[3]                 = {1, 1, 1};
-static int pe_cartesian_size[3]        = {1, 1, 1};
-static MPI_Comm cartesian_communicator = MPI_COMM_NULL;
-static MPI_Comm cart_periodic          = MPI_COMM_NULL;
-static int reorder_                    = 1;
-static int initialised_                = 0;
+  /* Potential target data */
+  int nhalo;                       /* Width of halo region */
+  int nsites;                      /* Total sites (incl. halo) */
+  int ntotal[3];                   /* System (physical) size */
+  int nlocal[3];                   /* Local system size */
+  int noffset[3];                  /* Local system offset */
+  int str[3];                      /* Memory strides */
+  int periodic[3];                 /* Periodic boundary (non-periodic = 0) */
+  double lenmin[3];                /* System L_min */
 
-/* The following lookups will be set by a call to coords_init(), for
- * convenience, based on the current state: */
+  /* MPI data */
+  int mpi_cartsz[3];               /* Cartesian size */
+  int reorder;                     /* MPI reorder flag */
+  int mpi_cartrank;                /* MPI Cartesian rank */
+  int mpi_cartcoords[3];           /* Cartesian coordinates lookup */
+  int mpi_cart_neighbours[2][3];   /* Ranks of Cartesian neighbours lookup */
 
-static int xfac_;
-static int yfac_;
-static int n_local[3];
-
-static int pe_cartesian_rank             = 0;
-static int pe_cartesian_coordinates[3]   = {0, 0, 0};
-static int pe_cartesian_neighbours[2][3] = {{0, 0, 0}, {0, 0, 0}};
-
-/* Lmin is fixed for all current use. */
-
-static double lmin[3] = {0.5, 0.5, 0.5};
-
-static double radius_ = FLT_MAX;
+  MPI_Comm commcart;               /* Cartesian communicator */
+  MPI_Comm commperiodic;           /* Cartesian periodic communicator */
+};
 
 static void default_decomposition(void);
 static int  is_ok_decomposition(void);
 
+static coords_t * cs;
+
 /*****************************************************************************
  *
- *  coords_init
- *
- *  Set up the Cartesian communicator for the current state.
- *  We must check here that the decomposition is allowable.
+ *  coords_create
  *
  *****************************************************************************/
 
-void coords_init() {
+int coords_create(pe_t * pe, coords_t ** pcoord) {
+
+  assert(cs == NULL);
+  assert(pe);
+
+  cs = (coords_t *) calloc(1, sizeof(coords_t));
+  if (cs == NULL) fatal("calloc(coords_t) failed\n");
+
+  cs->pe = pe;
+  pe_retain(cs->pe);
+
+  /* Default values for non-zero quatities. */
+
+  cs->ntotal[X]   = 64;
+  cs->ntotal[Y]   = 64;
+  cs->ntotal[Z]   = 64;
+  cs->periodic[X] = 1;
+  cs->periodic[Y] = 1;
+  cs->periodic[Z] = 1;
+
+  cs->mpi_cartsz[X] = 1;
+  cs->mpi_cartsz[Y] = 1;
+  cs->mpi_cartsz[Z] = 1;
+
+  cs->nhalo = 1;
+  cs->reorder = 1;
+  cs->commcart = MPI_COMM_NULL;
+  cs->commperiodic = MPI_COMM_NULL;
+  cs->lenmin[X] = 0.5; cs->lenmin[Y] = 0.5; cs->lenmin[Z] = 0.5;
+
+  cs->nref = 1;
+  *pcoord = cs;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_retain
+ *
+ *****************************************************************************/
+
+int coords_retain(coords_t * coord) {
+
+  assert(coord);
+
+  coord->nref += 1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_free
+ *
+ *****************************************************************************/
+
+int coords_free(coords_t ** coord) {
+
+  assert(cs); /* Remove static reference */
+
+  (*coord)->nref -= 1;
+
+  if ((*coord)->nref <= 0) {
+
+    MPI_Comm_free(&cs->commcart);
+    MPI_Comm_free(&cs->commperiodic);
+    pe_free(&cs->pe);
+
+    free(cs);
+    cs = NULL;
+  }
+
+  *coord = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  coords_commit
+ *
+ *****************************************************************************/
+
+int coords_commit(coords_t * cs) {
 
   int n;
   int iperiodic[3] = {1, 1, 1};
-  pe_t * pe = NULL;
+  MPI_Comm comm;
 
-  assert(initialised_ == 0);
-  pe_ref(&pe);
+  assert(cs);
+  pe_mpi_comm(cs->pe, &comm);
 
   if (is_ok_decomposition()) {
     /* The user decomposition is selected */
@@ -80,88 +159,68 @@ void coords_init() {
 
   /* A communicator which is always periodic: */
 
-  MPI_Cart_create(pe_comm(), 3, pe_cartesian_size, iperiodic, reorder_,
-		  &cart_periodic);
+  MPI_Cart_create(comm, 3, cs->mpi_cartsz, iperiodic, cs->reorder,
+		  &cs->commperiodic);
 
   /* Set up the communicator and the Cartesian neighbour lists for
    * the requested communicator. */
 
-  for (n = 0; n < 3; n++) {
-    iperiodic[n] = is_periodic(n);
-  }
+  iperiodic[X] = cs->periodic[X];
+  iperiodic[Y] = cs->periodic[Y];
+  iperiodic[Z] = cs->periodic[Z];
 
-  MPI_Cart_create(pe_comm(), 3, pe_cartesian_size, iperiodic, reorder_,
-		  &cartesian_communicator);
-  MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
-  MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
-		  pe_cartesian_coordinates);
+  MPI_Cart_create(comm, 3, cs->mpi_cartsz, iperiodic, cs->reorder,
+		  &cs->commcart);
+  MPI_Comm_rank(cs->commcart, &cs->mpi_cartrank);
+  MPI_Cart_coords(cs->commcart, cs->mpi_cartrank, 3, cs->mpi_cartcoords);
 
   for (n = 0; n < 3; n++) {
-    MPI_Cart_shift(cartesian_communicator, n, 1,
-		   pe_cartesian_neighbours[BACKWARD] + n,
-		   pe_cartesian_neighbours[FORWARD] + n);
+    MPI_Cart_shift(cs->commcart, n, 1, &(cs->mpi_cart_neighbours[BACKWARD][n]),
+		   &(cs->mpi_cart_neighbours[FORWARD][n]));
   }
 
   /* Set local number of lattice sites and offsets. */
 
-  for (n = 0; n < 3; n++) {
-    n_local[n] = N_total(n) / pe_cartesian_size[n];
-  }
+  cs->nlocal[X] = cs->ntotal[X] / cs->mpi_cartsz[X];
+  cs->nlocal[Y] = cs->ntotal[Y] / cs->mpi_cartsz[Y];
+  cs->nlocal[Z] = cs->ntotal[Z] / cs->mpi_cartsz[Z];
 
-  xfac_ = (n_local[Y] + 2*nhalo_)*(n_local[Z] + 2*nhalo_);
-  yfac_ = (n_local[Z] + 2*nhalo_);
+  cs->noffset[X] = cs->mpi_cartcoords[X]*cs->nlocal[X];
+  cs->noffset[Y] = cs->mpi_cartcoords[Y]*cs->nlocal[Y];
+  cs->noffset[Z] = cs->mpi_cartcoords[Z]*cs->nlocal[Z];
 
-  initialised_ = 1;
+  cs->str[Z] = 1;
+  cs->str[Y] = cs->str[Z]*(cs->nlocal[Z] + 2*cs->nhalo);
+  cs->str[X] = cs->str[Y]*(cs->nlocal[Y] + 2*cs->nhalo);
 
-  return;
-}
+  cs->nsites = cs->str[X]*(cs->nlocal[X] + 2*cs->nhalo);
 
-/****************************************************************************
- *
- *  coords_finish
- *
- *  Free Cartesian communicator; reset defaults.
- *
- ****************************************************************************/
-
-void coords_finish(void) {
-
-  int ia;
-  assert(initialised_);
-
-  MPI_Comm_free(&cartesian_communicator);
-  MPI_Comm_free(&cart_periodic);
-
-  cartesian_communicator = MPI_COMM_NULL;
-  cart_periodic = MPI_COMM_NULL;
-
-  for (ia = 0; ia < 3; ia++) {
-    ntotal_[ia] = 64;
-    pe_cartesian_size[ia] = 1;
-    periodic[ia] = 1;
-  }
-  initialised_ = 0;
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  coords_info()
+ *  coords_info
  *
  *****************************************************************************/
 
-void coords_info(void) {
+int coords_info(coords_t * cs) {
 
-  info("System size:    %d %d %d\n", ntotal_[X], ntotal_[Y], ntotal_[Z]);
-  info("Decomposition:  %d %d %d\n", cart_size(X), cart_size(Y), cart_size(Z));
-  info("Local domain:   %d %d %d\n", n_local[X], n_local[Y], n_local[Z]);
-  info("Periodic:       %d %d %d\n", periodic[X], periodic[Y], periodic[Z]);
-  info("Halo nhalo:     %d\n", nhalo_);
-  info("Reorder:        %s\n", reorder_ ? "true" : "false");
-  info("Initialised:    %d\n", initialised_);
+  assert(cs);
 
-  return;
+  info("System size:    %d %d %d\n",
+       cs->ntotal[X], cs->ntotal[Y], cs->ntotal[Z]);
+  info("Decomposition:  %d %d %d\n",
+       cs->mpi_cartsz[X], cs->mpi_cartsz[Y], cs->mpi_cartsz[Z]);
+  info("Local domain:   %d %d %d\n",
+       cs->nlocal[X], cs->nlocal[Y], cs->nlocal[Z]);
+  info("Periodic:       %d %d %d\n",
+       cs->periodic[X], cs->periodic[Y], cs->periodic[Z]);
+  info("Halo nhalo:     %d\n", cs->nhalo);
+  info("Reorder:        %s\n", cs->reorder ? "true" : "false");
+  info("Initialised:    %d\n", 1);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -171,7 +230,7 @@ void coords_info(void) {
  *****************************************************************************/
 
 int cart_rank() {
-  return pe_cartesian_rank;
+  return cs->mpi_cartrank;
 }
 
 /*****************************************************************************
@@ -182,7 +241,7 @@ int cart_rank() {
 
 int cart_size(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return pe_cartesian_size[dim];
+  return cs->mpi_cartsz[dim];
 }
 
 /*****************************************************************************
@@ -193,7 +252,7 @@ int cart_size(const int dim) {
 
 int cart_coords(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
-  return pe_cartesian_coordinates[dim];
+  return cs->mpi_cartcoords[dim];
 }
 
 /*****************************************************************************
@@ -203,9 +262,10 @@ int cart_coords(const int dim) {
  *****************************************************************************/
 
 int cart_neighb(const int dir, const int dim) {
+  assert(cs);
   assert(dir == FORWARD || dir == BACKWARD);
   assert(dim == X || dim == Y || dim == Z);
-  return pe_cartesian_neighbours[dir][dim];
+  return cs->mpi_cart_neighbours[dir][dim];
 }
 
 /*****************************************************************************
@@ -215,18 +275,9 @@ int cart_neighb(const int dir, const int dim) {
  *****************************************************************************/
 
 MPI_Comm cart_comm() {
-  return cartesian_communicator;
-}
 
-/*****************************************************************************
- *
- *  N_total access function
- *
- *****************************************************************************/
-
-int N_total(const int dim) {
-  assert(dim == X || dim == Y || dim == Z);
-  return ntotal_[dim];
+  assert(cs);
+  return cs->commcart;
 }
 
 /*****************************************************************************
@@ -236,8 +287,10 @@ int N_total(const int dim) {
  *****************************************************************************/
 
 int is_periodic(const int dim) {
+  assert(cs);
   assert(dim == X || dim == Y || dim == Z);
-  return periodic[dim];
+
+  return cs->periodic[dim];
 }
 
 /*****************************************************************************
@@ -247,8 +300,10 @@ int is_periodic(const int dim) {
  *****************************************************************************/
 
 double L(const int dim) {
+  assert(cs);
   assert(dim == X || dim == Y || dim == Z);
-  return ((double) ntotal_[dim]);
+
+  return ((double) cs->ntotal[dim]);
 }
 
 /*****************************************************************************
@@ -258,8 +313,10 @@ double L(const int dim) {
  *****************************************************************************/
 
 double Lmin(const int dim) {
+  assert(cs);
   assert(dim == X || dim == Y || dim == Z);
-  return lmin[dim];
+
+  return cs->lenmin[dim];
 }
 
 /*****************************************************************************
@@ -274,12 +331,11 @@ double Lmin(const int dim) {
 
 void coords_nlocal(int n[3]) {
 
-  int ia;
-  assert(initialised_);
+  assert(cs);
 
-  for (ia = 0; ia < 3; ia++) {
-    n[ia] = n_local[ia];
-  }
+  n[X] = cs->nlocal[X];
+  n[Y] = cs->nlocal[Y];
+  n[Z] = cs->nlocal[Z];
 
   return;
 }
@@ -295,14 +351,9 @@ void coords_nlocal(int n[3]) {
 
 int coords_nsites(void) {
 
-  int nsites;
+  assert(cs);
 
-  assert(initialised_);
-
-  nsites = (n_local[X] + 2*nhalo_)*(n_local[Y] + 2*nhalo_)
-    *(n_local[Z] + 2*nhalo_);
-
-  return nsites;
+  return cs->nsites;
 }
 
 /*****************************************************************************
@@ -316,12 +367,10 @@ int coords_nsites(void) {
 
 void coords_nlocal_offset(int n[3]) {
 
-  int i;
-  assert(initialised_);
-
-  for (i = 0; i < 3; i++) {
-    n[i] = pe_cartesian_coordinates[i]*n_local[i];
-  }
+  assert(cs);
+  n[X] = cs->noffset[X];
+  n[Y] = cs->noffset[Y];
+  n[Z] = cs->noffset[Z];
 
   return;
 }
@@ -340,15 +389,15 @@ static void default_decomposition() {
   int pe0[3] = {0, 0, 0};
 
   /* Trap 2-d systems */
-  if (ntotal_[X] == 1) pe0[X] = 1;
-  if (ntotal_[Y] == 1) pe0[Y] = 1;
-  if (ntotal_[Z] == 1) pe0[Z] = 1;
+  if (cs->ntotal[X] == 1) pe0[X] = 1;
+  if (cs->ntotal[Y] == 1) pe0[Y] = 1;
+  if (cs->ntotal[Z] == 1) pe0[Z] = 1;
 
-  MPI_Dims_create(pe_size(), 3, pe0);
+  MPI_Dims_create(pe_mpi_size(cs->pe), 3, pe0);
 
-  pe_cartesian_size[X] = pe0[X];
-  pe_cartesian_size[Y] = pe0[Y];
-  pe_cartesian_size[Z] = pe0[Z];
+  cs->mpi_cartsz[X] = pe0[X];
+  cs->mpi_cartsz[Y] = pe0[Y];
+  cs->mpi_cartsz[Z] = pe0[Z];
   
   if (is_ok_decomposition() == 0) {
     fatal("No default decomposition available!\n");
@@ -370,13 +419,13 @@ static int is_ok_decomposition() {
   int ok = 1;
   int nnodes;
 
-  if (N_total(X) % pe_cartesian_size[X]) ok = 0;
-  if (N_total(Y) % pe_cartesian_size[Y]) ok = 0;
-  if (N_total(Z) % pe_cartesian_size[Z]) ok = 0;
+  if (cs->ntotal[X] % cs->mpi_cartsz[X]) ok = 0;
+  if (cs->ntotal[Y] % cs->mpi_cartsz[Y]) ok = 0;
+  if (cs->ntotal[Z] % cs->mpi_cartsz[Z]) ok = 0;
 
   /*  The Cartesian decomposition must use all processors in COMM_WORLD. */
-  nnodes = pe_cartesian_size[X]*pe_cartesian_size[Y]*pe_cartesian_size[Z];
-  if (nnodes != pe_size()) ok = 0;
+  nnodes = cs->mpi_cartsz[X]*cs->mpi_cartsz[Y]*cs->mpi_cartsz[Z];
+  if (nnodes != pe_mpi_size(cs->pe)) ok = 0;
 
   return ok;
 }
@@ -390,16 +439,18 @@ static int is_ok_decomposition() {
  *****************************************************************************/
 
 int coords_index(const int ic, const int jc, const int kc) {
+  assert(cs);
 
-  assert(initialised_);
-  assert(ic >= 1-nhalo_);
-  assert(jc >= 1-nhalo_);
-  assert(kc >= 1-nhalo_);
-  assert(ic <= n_local[X] + nhalo_);
-  assert(jc <= n_local[Y] + nhalo_);
-  assert(kc <= n_local[Z] + nhalo_);
+  assert(ic >= 1 - cs->nhalo);
+  assert(jc >= 1 - cs->nhalo);
+  assert(kc >= 1 - cs->nhalo);
+  assert(ic <= cs->nlocal[X] + cs->nhalo);
+  assert(jc <= cs->nlocal[Y] + cs->nhalo);
+  assert(kc <= cs->nlocal[Z] + cs->nhalo);
 
-  return (xfac_*(nhalo_ + ic - 1) + yfac_*(nhalo_ + jc -1) + nhalo_ + kc - 1);
+  return (cs->str[X]*(cs->nhalo + ic - 1) +
+	  cs->str[Y]*(cs->nhalo + jc - 1) +
+	  cs->str[Z]*(cs->nhalo + kc - 1));
 }
 
 /*****************************************************************************
@@ -408,13 +459,14 @@ int coords_index(const int ic, const int jc, const int kc) {
  *
  *****************************************************************************/
 
-void coords_nhalo_set(const int n) {
+int coords_nhalo_set(coords_t * cs, int nhalo) {
 
-  assert(n > 0);
-  assert(initialised_ == 0);
+  assert(nhalo > 0);
+  assert(cs);
 
-  nhalo_ = n;
-  return;
+  cs->nhalo = nhalo;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -425,7 +477,8 @@ void coords_nhalo_set(const int n) {
 
 int coords_nhalo(void) {
 
-  return nhalo_;
+  assert(cs);
+  return cs->nhalo;
 }
 
 /*****************************************************************************
@@ -436,11 +489,11 @@ int coords_nhalo(void) {
 
 int coords_ntotal(int ntotal[3]) {
 
+  assert(cs);
   assert(ntotal);
-
-  ntotal[X] = ntotal_[X];
-  ntotal[Y] = ntotal_[Y];
-  ntotal[Z] = ntotal_[Z];
+  ntotal[X] = cs->ntotal[X];
+  ntotal[Y] = cs->ntotal[Y];
+  ntotal[Z] = cs->ntotal[Z];
 
   return 0;
 }
@@ -451,16 +504,15 @@ int coords_ntotal(int ntotal[3]) {
  *
  *****************************************************************************/
 
-void coords_ntotal_set(const int ntotal[3]) {
+int coords_ntotal_set(coords_t * cs, const int ntotal[3]) {
 
-  int ia;
-  assert(initialised_ == 0);
+  assert(cs);
 
-  for (ia = 0; ia < 3; ia++) {
-    ntotal_[ia] = ntotal[ia];
-  }
+  cs->ntotal[X] = ntotal[X];
+  cs->ntotal[Y] = ntotal[Y];
+  cs->ntotal[Z] = ntotal[Z];
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -469,16 +521,15 @@ void coords_ntotal_set(const int ntotal[3]) {
  *
  *****************************************************************************/
 
-void coords_periodicity_set(const int p[3]) {
+int coords_periodicity_set(coords_t * cs, const int period[3]) {
 
-  int ia;
-  assert(initialised_ == 0);
+  assert(cs);
 
-  for (ia = 0; ia < 3; ia++) {
-    periodic[ia] = p[ia];
-  }
+  cs->periodic[X] = period[X];
+  cs->periodic[Y] = period[Y];
+  cs->periodic[Z] = period[Z];
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -487,16 +538,15 @@ void coords_periodicity_set(const int p[3]) {
  *
  *****************************************************************************/
 
-void coords_decomposition_set(const int input[3]) {
+int coords_decomposition_set(coords_t * cs, const int irequest[3]) {
 
-  int ia;
-  assert(initialised_ == 0);
+  assert(cs);
 
-  for (ia = 0; ia < 3; ia++) {
-    pe_cartesian_size[ia] = input[ia];
-  }
+  cs->mpi_cartsz[X] = irequest[X];
+  cs->mpi_cartsz[Y] = irequest[Y];
+  cs->mpi_cartsz[Z] = irequest[Z];
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -505,13 +555,13 @@ void coords_decomposition_set(const int input[3]) {
  *
  *****************************************************************************/
 
-void coords_reorder_set(const int reorder_in) {
+int coords_reorder_set(coords_t * cs, int reorder) {
 
-  assert(initialised_ == 0);
+  assert(cs);
 
-  reorder_ = reorder_in;
+  cs->reorder = reorder;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -525,13 +575,17 @@ void coords_reorder_set(const int reorder_in) {
 
 void coords_minimum_distance(const double r1[3], const double r2[3],
 			     double r12[3]) {
-  int ia;
 
-  for (ia = 0; ia < 3; ia++) {
-    r12[ia] = r2[ia] - r1[ia];
-    if (r12[ia] >  0.5*ntotal_[ia]) r12[ia] -= 1.0*ntotal_[ia]*periodic[ia];
-    if (r12[ia] < -0.5*ntotal_[ia]) r12[ia] += 1.0*ntotal_[ia]*periodic[ia];
-  }
+  r12[X] = r2[X] - r1[X];
+  r12[Y] = r2[Y] - r1[Y];
+  r12[Z] = r2[Z] - r1[Z];
+
+  if (r12[X] >  0.5*cs->ntotal[X]) r12[X] -= 1.0*cs->ntotal[X]*cs->periodic[X];
+  if (r12[X] < -0.5*cs->ntotal[X]) r12[X] += 1.0*cs->ntotal[X]*cs->periodic[X];
+  if (r12[Y] >  0.5*cs->ntotal[Y]) r12[Y] -= 1.0*cs->ntotal[Y]*cs->periodic[Y];
+  if (r12[Y] < -0.5*cs->ntotal[Y]) r12[Y] += 1.0*cs->ntotal[Y]*cs->periodic[Y];
+  if (r12[Z] >  0.5*cs->ntotal[Z]) r12[Z] -= 1.0*cs->ntotal[Z]*cs->periodic[Z];
+  if (r12[Z] < -0.5*cs->ntotal[Z]) r12[Z] += 1.0*cs->ntotal[Z]*cs->periodic[Z];
 
   return;
 }
@@ -547,9 +601,9 @@ void coords_minimum_distance(const double r1[3], const double r2[3],
 
 void coords_index_to_ijk(const int index, int coords[3]) {
 
-  coords[X] = (1 - nhalo_) + index / xfac_;
-  coords[Y] = (1 - nhalo_) + (index % xfac_) / yfac_;
-  coords[Z] = (1 - nhalo_) + index % yfac_;
+  coords[X] = (1 - cs->nhalo) + index / cs->str[X];
+  coords[Y] = (1 - cs->nhalo) + (index % cs->str[X]) / cs->str[Y];
+  coords[Z] = (1 - cs->nhalo) + index % cs->str[Y];
 
   assert(coords_index(coords[X], coords[Y], coords[Z]) == index);
 
@@ -564,54 +618,11 @@ void coords_index_to_ijk(const int index, int coords[3]) {
 
 int coords_strides(int * xs, int * ys, int * zs) {
 
-  *xs = xfac_;
-  *ys = yfac_;
-  *zs = 1;
+  *xs = cs->str[X];
+  *ys = cs->str[Y];
+  *zs = cs->str[Z];
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  coords_active_region_radius_set
- *
- *****************************************************************************/
-
-void coords_active_region_radius_set(const double r) {
-
-  radius_ = r;
-  return;
-}
-
-/*****************************************************************************
- *
- *  coords_active_region
- *
- *  Returns 1 in the 'region' and zero outside. The 'region' is a
- *  spherical volume of radius radius_, centred at the centre of
- *  the grid.
- *
- *****************************************************************************/
-
-double coords_active_region(const int index) {
-
-  int noffset[3];
-  int coords[3];
-
-  double x, y, z;
-  double active;
-
-  coords_nlocal_offset(noffset);
-  coords_index_to_ijk(index, coords);
-
-  x = 1.0*(noffset[X] + coords[X]) - (Lmin(X) + 0.5*L(X));
-  y = 1.0*(noffset[Y] + coords[Y]) - (Lmin(Y) + 0.5*L(Y));
-  z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
-
-  active = 1.0;
-  if ((x*x + y*y + z*z) > radius_*radius_) active = 0.0;
-
-  return active;
 }
 
 /*****************************************************************************
@@ -622,10 +633,9 @@ double coords_active_region(const int index) {
 
 int coords_periodic_comm(MPI_Comm * comm) {
 
-  assert(initialised_);
-  assert(comm);
+  assert(cs);
 
-  *comm = cart_periodic;
+  *comm = cs->commperiodic;
 
   return 0;
 }
@@ -647,7 +657,6 @@ int coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank) {
   int shift;       /* Shift is +/- 1 in direction dim */
   int coords[3];   /* Cartesian coordinates this rank */
 
-  assert(initialised_);
   assert(dim == X || dim == Y || dim == Z);
   assert(direction == FORWARD || direction == BACKWARD);
   assert(rank);
