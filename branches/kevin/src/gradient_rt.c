@@ -18,8 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "gradient_2d_5pt_fluid.h"
 #include "gradient_2d_tomita_fluid.h"
 #include "gradient_3d_7pt_fluid.h"
@@ -40,7 +38,7 @@
  *
  *****************************************************************************/
 
-int gradient_rt_init(field_grad_t * grad, map_t * map) {
+int gradient_rt_init(rt_t * rt, field_grad_t * grad, map_t * map) {
 
   int n;
   char keyvalue[BUFSIZ];
@@ -50,7 +48,7 @@ int gradient_rt_init(field_grad_t * grad, map_t * map) {
 
   assert(grad);
 
-  n = RUN_get_string_parameter("fd_gradient_calculation", keyvalue, BUFSIZ);
+  n = rt_string_parameter(rt, "fd_gradient_calculation", keyvalue, BUFSIZ);
 
   if (n == 0) {
     info("You must specify the keyvalue fd_gradient_calculation\n");

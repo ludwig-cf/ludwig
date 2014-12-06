@@ -15,9 +15,10 @@
 #ifndef PHYSICS_RT_H
 #define PHYSICS_RT_H
 
+#include "runtime.h"
 #include "physics.h"
 
 int physics_info(physics_t * phys);
-int physics_init_rt(physics_t * phys);
+int physics_init_rt(rt_t * rt, physics_t * phys);
 
 #endif

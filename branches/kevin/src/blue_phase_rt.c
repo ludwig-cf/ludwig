@@ -19,9 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
 #include "coords.h"
-#include "runtime.h"
 #include "field.h"
 #include "field_grad.h"
 #include "colloids_Q_tensor.h"
@@ -38,7 +36,7 @@
  *
  *****************************************************************************/
 
-void blue_phase_run_time(void) {
+int blue_phase_run_time(rt_t * rt) {
 
   int n;
   int redshift_update;
@@ -55,41 +53,43 @@ void blue_phase_run_time(void) {
   double epsilon;
   double electric[3];
 
+  assert(rt);
+  
   info("Blue phase free energy selected.\n");
 
   /* PARAMETERS */
 
-  n = RUN_get_double_parameter("lc_a0", &a0);
+  n = rt_double_parameter(rt, "lc_a0", &a0);
   if (n != 1) fatal("Please specify lc_a0 <value>\n");
 
-  n = RUN_get_double_parameter("lc_gamma", &gamma);
+  n = rt_double_parameter(rt, "lc_gamma", &gamma);
   if (n != 1) fatal("Please specify lc_gamma <value>\n");
 
-  n = RUN_get_double_parameter("lc_q0", &q0);
+  n = rt_double_parameter(rt, "lc_q0", &q0);
   if (n != 1) fatal("Please specify lc_q0 <value>\n");
 
-  n = RUN_get_double_parameter("lc_kappa0", &kappa0);
+  n = rt_double_parameter(rt, "lc_kappa0", &kappa0);
   if (n != 1) fatal("Please specify lc_kappa0 <value>\n");
 
-  n = RUN_get_double_parameter("lc_kappa1", &kappa1);
+  n = rt_double_parameter(rt, "lc_kappa1", &kappa1);
   if (n != 1) fatal("Please specify lc_kappa1 <value>\n");
 
-  n = RUN_get_double_parameter("lc_xi", &xi);
+  n = rt_double_parameter(rt, "lc_xi", &xi);
   if (n != 1) fatal("Please specify lc_xi <value>\n");
 
-  n = RUN_get_double_parameter("lc_q_init_amplitude", &amplitude);
+  n = rt_double_parameter(rt, "lc_q_init_amplitude", &amplitude);
   if (n != 1) fatal("Please specify lc_q_init_amplitude <value>\n");
 
   /* Use a default redshift of 1 */
   redshift = 1.0;
-  RUN_get_double_parameter("lc_init_redshift", &redshift);
+  rt_double_parameter(rt, "lc_init_redshift", &redshift);
 
   redshift_update = 0;
-  RUN_get_int_parameter("lc_redshift_update", &redshift_update);
+  rt_int_parameter(rt, "lc_redshift_update", &redshift_update);
 
   /* Use a default zeta (no activity) of 0 */
   zeta = 0.0;
-  RUN_get_double_parameter("lc_active_zeta", &zeta);
+  rt_double_parameter(rt, "lc_active_zeta", &zeta);
 
   info("\n");
   info("Liquid crystal blue phase free energy\n");
@@ -124,12 +124,12 @@ void blue_phase_run_time(void) {
   /* Default electric field stuff zero */
 
   epsilon = 0.0;
-  RUN_get_double_parameter("lc_dielectric_anisotropy", &epsilon);
+  rt_double_parameter(rt, "lc_dielectric_anisotropy", &epsilon);
   electric[X] = 0.0;
   electric[Y] = 0.0;
   electric[Z] = 0.0;
 
-  n = RUN_get_double_parameter_vector("electric_e0", electric);
+  n = rt_double_parameter_vector(rt, "electric_e0", electric);
 
   if (n == 1) {
     blue_phase_dielectric_anisotropy_set(epsilon);
@@ -147,7 +147,7 @@ void blue_phase_run_time(void) {
 
   /* Surface anchoring */
 
-  RUN_get_string_parameter("lc_anchoring_method", method, FILENAME_MAX);
+  rt_string_parameter(rt, "lc_anchoring_method", method, FILENAME_MAX);
 
   if (strcmp(method, "two") != 0) {
     /* There's a bit of an historical problem here, as 'two'
@@ -160,7 +160,7 @@ void blue_phase_run_time(void) {
 
     /* Find out type */
 
-    n = RUN_get_string_parameter("lc_anchoring", type, FILENAME_MAX);
+    n = rt_string_parameter(rt, "lc_anchoring", type, FILENAME_MAX);
 
     if (n == 1) {
       info("Please replace lc_anchoring by lc_wall_anchoring and/or\n");
@@ -168,7 +168,7 @@ void blue_phase_run_time(void) {
       fatal("Please check input file and try agains.\n");
     }
 
-    RUN_get_string_parameter("lc_coll_anchoring", type, FILENAME_MAX);
+    rt_string_parameter(rt, "lc_coll_anchoring", type, FILENAME_MAX);
 
     if (strcmp(type, "normal") == 0) {
       colloids_q_tensor_anchoring_set(ANCHORING_NORMAL);
@@ -182,8 +182,8 @@ void blue_phase_run_time(void) {
 
     w1 = 0.0;
     w2 = 0.0;
-    RUN_get_double_parameter("lc_anchoring_strength", &w1);
-    RUN_get_double_parameter("lc_anchoring_strength_2", &w2);
+    rt_double_parameter(rt, "lc_anchoring_strength", &w1);
+    rt_double_parameter(rt, "lc_anchoring_strength_2", &w2);
 
     info("\n");
     info("Liquid crystal anchoring\n");
@@ -192,7 +192,7 @@ void blue_phase_run_time(void) {
 
     /* Walls (if present) separate type allowed but same strength */
 
-    RUN_get_string_parameter("lc_wall_anchoring", type_wall, FILENAME_MAX);
+    rt_string_parameter(rt, "lc_wall_anchoring", type_wall, FILENAME_MAX);
 
     if (strcmp(type_wall, "normal") == 0) {
       wall_anchoring_set(ANCHORING_NORMAL);
@@ -217,7 +217,7 @@ void blue_phase_run_time(void) {
     if (strcmp(type, "normal") == 0) w2 = 0.0;
     if (strcmp(type, "fixed")  == 0) w2 = 0.0;
       
-    n =  RUN_get_double_parameter("lc_anchoring_strength_colloid", &w1);
+    n =  rt_double_parameter(rt, "lc_anchoring_strength_colloid", &w1);
 
     if ( n == 1 ) {
       if (strcmp(type, "normal") == 0) w2 = 0.0;
@@ -228,7 +228,7 @@ void blue_phase_run_time(void) {
 
     /* Wall */
 
-    n =  RUN_get_double_parameter("lc_anchoring_strength_wall", &w1_wall);
+    n =  rt_double_parameter(rt, "lc_anchoring_strength_wall", &w1_wall);
     if ( n == 1 ) {
       if (strcmp(type_wall, "normal") == 0) w2_wall = 0.0;
       if (strcmp(type_wall, "planar") == 0) w2_wall = w1_wall;
@@ -250,7 +250,7 @@ void blue_phase_run_time(void) {
     if (gamma < (8.0/3.0)) fatal("Please check anchoring amplitude\n");
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -261,7 +261,7 @@ void blue_phase_run_time(void) {
  *
  *****************************************************************************/
 
-int blue_phase_rt_initial_conditions(field_t * q) {
+int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q) {
 
   int  n1, n2;
   int  rmin[3], rmax[3];
@@ -270,9 +270,11 @@ int blue_phase_rt_initial_conditions(field_t * q) {
   double nhat[3] = {1.0, 0.0, 0.0};
   double nhat2[3] = {64.0, 3.0, 1.0};
 
+  assert(rt);
+
   info("\n");
 
-  n1 = RUN_get_string_parameter("lc_q_initialisation", key1, FILENAME_MAX);
+  n1 = rt_string_parameter(rt, "lc_q_initialisation", key1, FILENAME_MAX);
   if (n1 != 1) fatal("Please specify lc_q_initialisation <value>\n");
 
   info("\n");
@@ -304,14 +306,14 @@ int blue_phase_rt_initial_conditions(field_t * q) {
 
   if (strcmp(key1, "nematic") == 0) {
     info("Initialising Q_ab to nematic\n");
-    RUN_get_double_parameter_vector("lc_init_nematic", nhat);
+    rt_double_parameter_vector(rt, "lc_init_nematic", nhat);
     info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
     blue_phase_nematic_init(q, nhat);
   }
 
   if (strcmp(key1, "active_nematic") == 0) {
     info("Initialising Q_ab to active nematic\n");
-    RUN_get_double_parameter_vector("lc_init_nematic", nhat);
+    rt_double_parameter_vector(rt, "lc_init_nematic", nhat);
     info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
     blue_phase_active_nematic_init(q, nhat);
   }
@@ -353,7 +355,7 @@ int blue_phase_rt_initial_conditions(field_t * q) {
 
   if (strcmp(key1, "bp3") == 0) {
     info("Initialising Q_ab using BPIII\n");
-    RUN_get_double_parameter_vector("lc_init_bp3", nhat2);
+    rt_double_parameter_vector(rt, "lc_init_bp3", nhat2);
     info("BPIII specifications: N_DTC=%g,  R_DTC=%g,  ", nhat2[0], nhat2[1]);
     if (nhat2[2] == 0) info("isotropic environment\n");
     if (nhat2[2] == 1) info("cholesteric environment\n");
@@ -385,8 +387,8 @@ int blue_phase_rt_initial_conditions(field_t * q) {
 
   /* Superpose a rectangle of random Q_ab on whatever was above */
 
-  n1 = RUN_get_int_parameter_vector("lc_q_init_rectangle_min", rmin);
-  n2 = RUN_get_int_parameter_vector("lc_q_init_rectangle_max", rmax);
+  n1 = rt_int_parameter_vector(rt, "lc_q_init_rectangle_min", rmin);
+  n2 = rt_int_parameter_vector(rt, "lc_q_init_rectangle_max", rmax);
 
   if (n1 == 1 && n2 == 1) {
     info("Superposing random rectangle\n");

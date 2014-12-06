@@ -15,9 +15,10 @@
 #ifndef COLLISION_RT_H
 #define COLLISION_RT_H
 
+#include "runtime.h"
 #include "noise.h"
 
-int collision_run_time(noise_t * noise);
+int collision_run_time(rt_t * rt, noise_t * noise);
 
 #endif
  

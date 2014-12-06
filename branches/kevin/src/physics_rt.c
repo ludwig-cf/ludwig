@@ -2,8 +2,6 @@
  *
  *  physics_rt.c
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -12,9 +10,10 @@
  *
  *****************************************************************************/
 
-#include "pe.h"
-#include "runtime.h"
+#include <assert.h>
+
 #include "physics.h"
+#include "physics_rt.h"
 
 /*****************************************************************************
  *
@@ -22,7 +21,7 @@
  *
  *****************************************************************************/
 
-int physics_info(void) {
+int physics_info(physics_t * phys) {
 
   double rho0;
   double eta1, eta2;
@@ -60,7 +59,7 @@ int physics_info(void) {
  *
  *****************************************************************************/
 
-int physics_init_rt(void) {
+int physics_init_rt(rt_t * rt, physics_t * phys) {
 
   double kt;
   double eta;
@@ -68,38 +67,40 @@ int physics_init_rt(void) {
   double phi0;
   double vector[3];
 
+  assert(rt);
+
   /* Bulk viscosity defaults to shear value */
 
-  if (RUN_get_double_parameter("viscosity", &eta)) {
+  if (rt_double_parameter(rt, "viscosity", &eta)) {
     physics_eta_shear_set(eta);
     physics_eta_bulk_set(eta);
   }
 
-  if (RUN_get_double_parameter("viscosity_bulk", &eta)) {
+  if (rt_double_parameter(rt, "viscosity_bulk", &eta)) {
     physics_eta_bulk_set(eta);
   }
 
-  if (RUN_get_double_parameter("temperature", &kt)) {
+  if (rt_double_parameter(rt, "temperature", &kt)) {
     physics_kt_set(kt);
   }
 
-  if (RUN_get_double_parameter("fluid_rho0", &rho0)) {
+  if (rt_double_parameter(rt, "fluid_rho0", &rho0)) {
     physics_rho0_set(rho0);
   }
 
-  if (RUN_get_double_parameter("phi0", &phi0)) {
+  if (rt_double_parameter(rt, "phi0", &phi0)) {
     physics_phi0_set(phi0);
   }
 
-  if (RUN_get_double_parameter_vector("force", vector)) {
+  if (rt_double_parameter_vector(rt, "force", vector)) {
     physics_fbody_set(vector);
   }
 
-  if (RUN_get_double_parameter_vector("magnetic_b0", vector)) {
+  if (rt_double_parameter_vector(rt, "magnetic_b0", vector)) {
     physics_b0_set(vector);
   }
 
-  if (RUN_get_double_parameter_vector("electric_e0", vector)) {
+  if (rt_double_parameter_vector(rt, "electric_e0", vector)) {
     physics_e0_set(vector);
   }
 

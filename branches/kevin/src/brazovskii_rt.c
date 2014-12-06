@@ -10,14 +10,12 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) The University of Edinburgh (2009-2015)
  *
  ****************************************************************************/
 
 #include <assert.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "free_energy.h"
 #include "brazovskii.h"
 #include "brazovskii_rt.h"
@@ -28,22 +26,24 @@
  *
  ****************************************************************************/
 
-void brazovskii_run_time(void) {
+int brazovskii_run_time(rt_t * rt) {
 
   double a;
   double b;
   double c;
   double kappa;
 
+  assert(rt);
+
   info("Brazovskii free energy selected.\n");
   info("\n");
 
   /* Parameters */
 
-  RUN_get_double_parameter("A", &a);
-  RUN_get_double_parameter("B", &b);
-  RUN_get_double_parameter("K", &kappa);
-  RUN_get_double_parameter("C", &c);
+  rt_double_parameter(rt, "A", &a);
+  rt_double_parameter(rt, "B", &b);
+  rt_double_parameter(rt, "K", &kappa);
+  rt_double_parameter(rt, "C", &c);
 
   info("Brazovskii free energy parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);
@@ -68,5 +68,5 @@ void brazovskii_run_time(void) {
   fe_isotropic_pressure_set(brazovskii_isotropic_pressure);
   fe_chemical_stress_set(brazovskii_chemical_stress);
 
-  return;
+  return 0;
 }

@@ -15,7 +15,9 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
-void init_control(void);
+#include "runtime.h"
+
+int init_control(rt_t * rt);
 int  get_step(void);
 int  next_step(void);
 int  is_statistics_step(void);

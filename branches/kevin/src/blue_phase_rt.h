@@ -8,16 +8,17 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinbrugh
+ *  (c) 2011-2015 The University of Edinbrugh
  *
  *****************************************************************************/
 
 #ifndef BLUE_PHASE_RT_H
 #define BLUE_PHASE_RT_H
 
+#include "runtime.h"
 #include "field.h"
 
-int blue_phase_rt_initial_conditions(field_t * q);
-void blue_phase_run_time(void);
+int blue_phase_run_time(rt_t * rt);
+int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q);
 
 #endif

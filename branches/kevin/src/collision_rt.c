@@ -10,13 +10,13 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <string.h>
 
-#include "pe.h"
 #include "model.h"
 #include "physics.h"
-#include "runtime.h"
 #include "collision.h"
+#include "collision_rt.h"
 
 /****************************************************************************
  *
@@ -29,7 +29,7 @@
  *
  ****************************************************************************/
 
-int collision_run_time(noise_t * noise) {
+int collision_run_time(rt_t * rt, noise_t * noise) {
 
   int p;
   int noise_on = 0;
@@ -37,7 +37,9 @@ int collision_run_time(noise_t * noise) {
   char tmp[128];
   double rtau[NVEL];
 
-  p = RUN_get_string_parameter("isothermal_fluctuations", tmp, 128);
+  assert(rt);
+
+  p = rt_string_parameter(rt, "isothermal_fluctuations", tmp, 128);
 
   if (p == 1 && strcmp(tmp, "on") == 0) {
     noise_on = 1;
@@ -46,7 +48,7 @@ int collision_run_time(noise_t * noise) {
 
   /* Ghost modes */
 
-  p = RUN_get_string_parameter("ghost_modes", tmp, 128);
+  p = rt_string_parameter(rt, "ghost_modes", tmp, 128);
   nghost = 1;
   if (p == 1 && strcmp(tmp, "off") == 0) {
     nghost = 0;

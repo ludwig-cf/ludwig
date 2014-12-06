@@ -13,7 +13,9 @@
 #ifndef RAN_H
 #define RAN_H
 
-void   ran_init(void);
+#include "runtime.h"
+
+int  ran_init(rt_t * rt);
 double ran_parallel_gaussian(void);
 double ran_parallel_uniform(void);
 void   ran_parallel_unit_vector(double []);

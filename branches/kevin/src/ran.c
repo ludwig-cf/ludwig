@@ -12,6 +12,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
@@ -47,14 +48,16 @@ static double ran_lecuyer(struct lecuyer *);
  *
  ****************************************************************************/
 
-void ran_init( void ) {
+int ran_init(rt_t * rt) {
 
   int n;
   int scalar_seed = 7361237;
 
+  assert(rt);
+
   /* Look for "random_seed" in the user input, or use a default. */ 
 
-  n = RUN_get_int_parameter("random_seed", &scalar_seed);
+  n = rt_int_parameter(rt, "random_seed", &scalar_seed);
 
   if (n == 0) {
     info("[Default] Random number seed: %d\n", scalar_seed);
@@ -83,7 +86,7 @@ void ran_init( void ) {
   p_rng.rstate[3] = 3;
   p_rng.rstate[4] = 4;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

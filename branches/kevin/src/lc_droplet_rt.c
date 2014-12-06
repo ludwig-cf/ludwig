@@ -4,21 +4,21 @@
  *
  *  Run time initiliasation for the liquid crystal droplet free energy
  *
- *  $Id: $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2015 The University of Edinburgh
+ *  Contributing authors:
+ *    Juho Lintuvuori ()
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
 #include <assert.h>
 
 #include "free_energy.h"
-#include "runtime.h"
-#include "pe.h"
 #include "lc_droplet.h"
+#include "lc_droplet_rt.h"
 
 /*****************************************************************************
  *
@@ -31,20 +31,22 @@
  *
  *****************************************************************************/
 
-void lc_droplet_run_time(void) {
+int lc_droplet_run_time(rt_t * rt) {
 
   int n;
   double gamma0, delta, W;
 
+  assert(rt);
+
   info("liquid crystal droplet free energy selected.\n");
 
-  n = RUN_get_double_parameter("lc_droplet_gamma", &gamma0);
+  n = rt_double_parameter(rt, "lc_droplet_gamma", &gamma0);
   if (n == 0) fatal("Please specify lc_droplet_gamma in input\n");
 
-  n = RUN_get_double_parameter("lc_droplet_delta", &delta);
+  n = rt_double_parameter(rt, "lc_droplet_delta", &delta);
   if (n == 0) fatal("Please specify lc_droplet_delta in input\n");
 
-  n = RUN_get_double_parameter("lc_droplet_W", &W);
+  n = rt_double_parameter(rt, "lc_droplet_W", &W);
   if (n == 0) fatal("Please specify lc_droplet_W in input\n");
   
   info("Parameters:\n");
@@ -61,7 +63,7 @@ void lc_droplet_run_time(void) {
   fe_chemical_potential_set(lc_droplet_chemical_potential);
   fe_chemical_stress_set(blue_phase_antisymmetric_stress);
 
-  return;
+  return 0;
 }
   
   

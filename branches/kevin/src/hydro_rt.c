@@ -7,11 +7,9 @@
 #include <assert.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "hydro_rt.h"
 
-static int hydro_do_init(hydro_t ** phydro);
+static int hydro_do_init(rt_t * rt, hydro_t ** phydro);
 
 /*****************************************************************************
  *
@@ -19,14 +17,15 @@ static int hydro_do_init(hydro_t ** phydro);
  *
  ****************************************************************************/
 
-int hydro_rt(hydro_t ** phydro) {
+int hydro_rt(rt_t * rt, hydro_t ** phydro) {
 
   int hswitch = 1;
   char value[BUFSIZ];
 
+  assert(rt);
   assert(phydro);
 
-  if (RUN_get_string_parameter("hydrodynamics", value, BUFSIZ)) {
+  if (rt_string_parameter(rt, "hydrodynamics", value, BUFSIZ)) {
     if (strcmp(value, "off") == 0) hswitch = 0;
     if (strcmp(value, "0") == 0) hswitch = 0;
     if (strcmp(value, "no") == 0) hswitch = 0;
@@ -37,7 +36,7 @@ int hydro_rt(hydro_t ** phydro) {
   info("-------------\n");
   info("Hydrodynamics: %s\n", (hswitch) ? "on" : "off");
 
-  if (hswitch) hydro_do_init(phydro);
+  if (hswitch) hydro_do_init(rt, phydro);
 
   return 0;
 }
@@ -51,7 +50,7 @@ int hydro_rt(hydro_t ** phydro) {
  *
  *****************************************************************************/
 
-static int hydro_do_init(hydro_t ** phydro) {
+static int hydro_do_init(rt_t * rt, hydro_t ** phydro) {
 
   hydro_t * obj = NULL;
 
@@ -61,13 +60,14 @@ static int hydro_do_init(hydro_t ** phydro) {
   int io_format_in  = IO_FORMAT_DEFAULT;
   int io_format_out = IO_FORMAT_DEFAULT;
 
+  assert(rt);
   assert(phydro);
 
   hydro_create(nhcomm, &obj);
   assert(obj);
 
-  RUN_get_int_parameter_vector("default_io_grid", io_grid);
-  RUN_get_string_parameter("vel_format", value, BUFSIZ);
+  rt_int_parameter_vector(rt, "default_io_grid", io_grid);
+  rt_string_parameter(rt, "vel_format", value, BUFSIZ);
 
   if (strcmp(value, "ASCII") == 0) {
     io_format_in = IO_FORMAT_ASCII;

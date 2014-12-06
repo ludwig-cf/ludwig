@@ -7,15 +7,13 @@
  *  At the moment the number of species is set to 2 automatically
  *  if the electrokinetics is switched on.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
  *
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,8 +21,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "psi_rt.h"
 #include "psi_init.h"
 #include "io_harness.h"
@@ -35,7 +31,7 @@
  *
  *****************************************************************************/
 
-int psi_init_param_rt(psi_t * obj) {
+int psi_init_param_rt(psi_t * psi, rt_t * rt) {
 
   int n;
   int nk;
@@ -59,27 +55,30 @@ int psi_init_param_rt(psi_t * obj) {
   int skipsteps;              /* Poisson equation solved every skipstep timesteps */ 
   double diffacc;             /* Relative accuracy of diffusion in NPE */
 
-  psi_nk(obj, &nk);
+  assert(psi);
+  assert(rt);
+
+  psi_nk(psi, &nk);
   assert(nk == 2); /* nk must be two for the time being */
 
-  n = RUN_get_int_parameter("electrokinetics_z0", valency);
-  n = RUN_get_int_parameter("electrokinetics_z1", valency + 1);
-  n = RUN_get_double_parameter("electrokinetics_d0", diffusivity);
-  n = RUN_get_double_parameter("electrokinetics_d1", diffusivity + 1);
+  n = rt_int_parameter(rt, "electrokinetics_z0", valency);
+  n = rt_int_parameter(rt, "electrokinetics_z1", valency + 1);
+  n = rt_double_parameter(rt, "electrokinetics_d0", diffusivity);
+  n = rt_double_parameter(rt, "electrokinetics_d1", diffusivity + 1);
 
   for (n = 0; n < nk; n++) {
-    psi_valency_set(obj, n, valency[n]);
-    psi_diffusivity_set(obj, n, diffusivity[n]);
+    psi_valency_set(psi, n, valency[n]);
+    psi_diffusivity_set(psi, n, diffusivity[n]);
   }
 
-  n = RUN_get_double_parameter("electrokinetics_eunit", &eunit);
-  n = RUN_get_double_parameter("electrokinetics_epsilon", &epsilon);
+  n = rt_double_parameter(rt, "electrokinetics_eunit", &eunit);
+  n = rt_double_parameter(rt, "electrokinetics_epsilon", &epsilon);
 
-  psi_unit_charge_set(obj, eunit);
-  psi_epsilon_set(obj, epsilon);
-  psi_epsilon2_set(obj, epsilon); /* Default is no dielectric contrast */
+  psi_unit_charge_set(psi, eunit);
+  psi_epsilon_set(psi, epsilon);
+  psi_epsilon2_set(psi, epsilon); /* Default is no dielectric contrast */
 
-  n = RUN_get_double_parameter("temperature", &temperature);
+  n = rt_double_parameter(rt, "temperature", &temperature);
 
   if (n == 0 || temperature <= 0.0) {
     fatal("Please set a temperature to use electrokinetics\n");
@@ -87,8 +86,8 @@ int psi_init_param_rt(psi_t * obj) {
 
   beta = 1.0/temperature;
 
-  psi_beta_set(obj, beta);
-  psi_bjerrum_length(obj, &lbjerrum);
+  psi_beta_set(psi, beta);
+  psi_bjerrum_length(psi, &lbjerrum);
 
   info("Electrokinetic species:    %2d\n", nk);
   info("Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
@@ -103,39 +102,39 @@ int psi_init_param_rt(psi_t * obj) {
 
   /* Multisteps and diffusive accuracy in NPE */
 
-  n = RUN_get_int_parameter("electrokinetics_multisteps", &multisteps);
-  if (n == 1) psi_multisteps_set(obj, multisteps);
-  n = RUN_get_int_parameter("electrokinetics_skipsteps", &skipsteps);
-  if (n == 1) psi_skipsteps_set(obj, skipsteps);
-  n = RUN_get_double_parameter("electrokinetics_diffacc", &diffacc);
-  if (n == 1) psi_diffacc_set(obj, diffacc);
+  n = rt_int_parameter(rt, "electrokinetics_multisteps", &multisteps);
+  if (n == 1) psi_multisteps_set(psi, multisteps);
+  n = rt_int_parameter(rt, "electrokinetics_skipsteps", &skipsteps);
+  if (n == 1) psi_skipsteps_set(psi, skipsteps);
+  n = rt_double_parameter(rt, "electrokinetics_diffacc", &diffacc);
+  if (n == 1) psi_diffacc_set(psi, diffacc);
 
-  psi_multisteps(obj, &multisteps);
+  psi_multisteps(psi, &multisteps);
   info("Number of multisteps:       %d\n", multisteps);
-  info("Number of skipsteps:        %d\n", psi_skipsteps(obj));
-  psi_diffacc(obj, &diffacc);
+  info("Number of skipsteps:        %d\n", psi_skipsteps(psi));
+  psi_diffacc(psi, &diffacc);
   info("Diffusive accuracy in NPE: %14.7e\n", diffacc);
 
   /* Tolerances and Iterations */
 
-  n = RUN_get_double_parameter("electrokinetics_rel_tol", &tolerance);
-  if (n == 1) psi_reltol_set(obj, tolerance);
-  n = RUN_get_double_parameter("electrokinetics_abs_tol", &tolerance);
-  if (n == 1) psi_abstol_set(obj, tolerance);
-  n = RUN_get_int_parameter("electrokinetics_maxits", &niteration);
-  if (n == 1) psi_maxits_set(obj, niteration);
+  n = rt_double_parameter(rt, "electrokinetics_rel_tol", &tolerance);
+  if (n == 1) psi_reltol_set(psi, tolerance);
+  n = rt_double_parameter(rt, "electrokinetics_abs_tol", &tolerance);
+  if (n == 1) psi_abstol_set(psi, tolerance);
+  n = rt_int_parameter(rt, "electrokinetics_maxits", &niteration);
+  if (n == 1) psi_maxits_set(psi, niteration);
 
-  psi_reltol(obj, &tolerance);
+  psi_reltol(psi, &tolerance);
   info("Relative tolerance:  %20.7e\n", tolerance);
-  psi_abstol(obj, &tolerance);
+  psi_abstol(psi, &tolerance);
   info("Absolute tolerance:  %20.7e\n", tolerance);
-  psi_maxits(obj, &niteration);
+  psi_maxits(psi, &niteration);
   info("Max. no. of iterations:  %16d\n", niteration);
 
   /* I/O */
 
-  n = RUN_get_int_parameter_vector("default_io_grid", io_grid);
-  n = RUN_get_string_parameter("psi_format", value, BUFSIZ);
+  n = rt_int_parameter_vector(rt, "default_io_grid", io_grid);
+  n = rt_string_parameter(rt, "psi_format", value, BUFSIZ);
 
   if (strcmp(value, "ASCII") == 0) {
     io_format_in = IO_FORMAT_ASCII;
@@ -146,7 +145,7 @@ int psi_init_param_rt(psi_t * obj) {
        io_grid[2]);
   info("I/O format:                 %s\n", value);
 
-  psi_init_io_info(obj, io_grid, io_format_in, io_format_out);
+  psi_init_io_info(psi, io_grid, io_format_in, io_format_out);
 
   return 0;
 }
@@ -163,7 +162,7 @@ int psi_init_param_rt(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_init_rho_rt(psi_t * obj, map_t * map) {
+int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt) {
 
   int n;
   char value[BUFSIZ];
@@ -173,56 +172,59 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
   double sigma;               /* Surface charge density */
   double ld;                  /* Debye length */
 
+  assert(psi);
+  assert(rt);
+
   /* Initial charge densities */
 
   info("\n");
   info("Initial charge densities\n");
   info("------------------------\n");
 
-  n = RUN_get_string_parameter("electrokinetics_init", value, BUFSIZ);
+  n = rt_string_parameter(rt, "electrokinetics_init", value, BUFSIZ);
 
   if (strcmp(value, "gouy_chapman") == 0) {
     info("Initial conditions:         %s\n", "Gouy Chapman");
 
-    n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
+    n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el:  %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
+    psi_debye_length(psi, rho_el, &ld);
     info("Debye length:             %14.7e\n", ld);
 
-    n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
+    n = rt_double_parameter(rt, "electrokinetics_init_sigma", &sigma);
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
     info("Initial condition sigma:   %14.7e\n", sigma);
 
-    psi_init_gouy_chapman_set(obj, map, rho_el, sigma);
+    psi_init_gouy_chapman_set(psi, map, rho_el, sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
     info("Initial conditions:         %s\n", "Liquid junction");
 
-    n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
+    n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
+    psi_debye_length(psi, rho_el, &ld);
     info("Debye length:             %14.7e\n", ld);
 
-    n = RUN_get_double_parameter("electrokinetics_init_delta_el", &delta_el);
+    n = rt_double_parameter(rt, "electrokinetics_init_delta_el", &delta_el);
     if (n == 0) fatal("... please set electrokinetics_init_delta_el\n");
     info("Initial condition delta_el: %14.7e\n", delta_el);
 
-    psi_init_liquid_junction_set(obj, rho_el, delta_el);
+    psi_init_liquid_junction_set(psi, rho_el, delta_el);
   }
 
   if (strcmp(value, "uniform") == 0) {
     info("Initial conditions:         %s\n", "Uniform");
 
-    n = RUN_get_double_parameter("electrokinetics_init_rho_el", &rho_el);
+    n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el: %14.7e\n", rho_el);
-    psi_debye_length(obj, rho_el, &ld);
+    psi_debye_length(psi, rho_el, &ld);
     info("Debye length:             %14.7e\n", ld);
 
-    psi_init_uniform(obj, rho_el);
+    psi_init_uniform(psi, rho_el);
   }
 
   return 0;

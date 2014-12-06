@@ -20,8 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "coords.h"
 #include "field.h"
 #include "field_grad.h"
@@ -40,7 +38,7 @@ static int polar_active_init_code(field_t * p);
  *
  *****************************************************************************/
 
-void polar_active_run_time(void) {
+int polar_active_run_time(rt_t * rt) {
 
   double a;
   double b;
@@ -50,18 +48,20 @@ void polar_active_run_time(void) {
   double zeta;
   double lambda;
 
+  assert(rt);
+
   info("Polar active free energy selected.\n");
 
   /* PARAMETERS */
 
-  RUN_get_double_parameter("polar_active_a", &a);
-  RUN_get_double_parameter("polar_active_b", &b);
-  RUN_get_double_parameter("polar_active_k", &k1);
-  RUN_get_double_parameter("polar_active_dk", &delta);
+  rt_double_parameter(rt, "polar_active_a", &a);
+  rt_double_parameter(rt, "polar_active_b", &b);
+  rt_double_parameter(rt, "polar_active_k", &k1);
+  rt_double_parameter(rt, "polar_active_dk", &delta);
   delta = 0.0; /* Pending molecular field */
-  RUN_get_double_parameter("polar_active_klc", &klc);
-  RUN_get_double_parameter("polar_active_zeta", &zeta);
-  RUN_get_double_parameter("polar_active_lambda", &lambda);
+  rt_double_parameter(rt, "polar_active_klc", &klc);
+  rt_double_parameter(rt, "polar_active_zeta", &zeta);
+  rt_double_parameter(rt, "polar_active_lambda", &lambda);
 
   info("\n");
 
@@ -82,7 +82,7 @@ void polar_active_run_time(void) {
   fe_v_lambda_set(lambda);
   fe_v_molecular_field_set(polar_active_molecular_field);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -91,13 +91,14 @@ void polar_active_run_time(void) {
  *
  *****************************************************************************/
 
-int polar_active_rt_initial_conditions(field_t * p) {
+int polar_active_rt_initial_conditions(rt_t * rt, field_t * p) {
 
   char key[BUFSIZ];
 
+  assert(rt);
   assert(p);
 
-  RUN_get_string_parameter("polar_active_initialisation", key, BUFSIZ);
+  rt_string_parameter(rt, "polar_active_initialisation", key, BUFSIZ);
 
   if (strcmp(key, "from_file") == 0) {
     assert(0);

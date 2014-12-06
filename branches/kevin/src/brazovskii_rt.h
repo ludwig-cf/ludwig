@@ -8,13 +8,15 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) The University of Edinburgh (2009-2015)
  *
  ****************************************************************************/
 
 #ifndef BRAZOVSKII_RT_H
 #define BRAZOVSKII_RT_H
 
-void brazovskii_run_time(void);
+#include "runtime.h"
+
+int brazovskii_run_time(rt_t * rt);
 
 #endif

@@ -13,10 +13,11 @@
 #ifndef DISTRIBUTION_RT_H
 #define DISTRIBUTION_RT_H
 
+#include "runtime.h"
 #include "physics.h"
 #include "model.h"
 
-int lb_run_time(lb_t * lb);
-int lb_rt_initial_conditions(lb_t * lb, physics_t * phys);
+int lb_run_time(lb_t * lb, rt_t * rt);
+int lb_rt_initial_conditions(lb_t * lb, rt_t * rt, physics_t * phys);
 
 #endif

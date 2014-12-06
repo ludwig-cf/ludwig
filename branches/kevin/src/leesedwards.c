@@ -65,22 +65,24 @@ static int initialised_ = 0;
  *
  *****************************************************************************/
 
-void le_init() {
+int le_init(rt_t * rt) {
 
   int n;
   int nplanetotal;
   int ntotal[3];
 
+  assert(rt);
+
   coords_ntotal(ntotal);
 
   /* initialise the state from input */
 
-  n = RUN_get_int_parameter("N_LE_plane", &nplanetotal);
+  n = rt_int_parameter(rt, "N_LE_plane", &nplanetotal);
   if (n != 0) nplane_total_ = nplanetotal;
 
-  n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
+  n = rt_double_parameter(rt, "LE_plane_vel", &le_params_.uy_plane);
 
-  n = RUN_get_int_parameter("LE_oscillation_period", &le_params_.period);
+  n = rt_int_parameter(rt, "LE_oscillation_period", &le_params_.period);
 
   if (n == 1 && le_params_.period > 0) {
     le_type_ = OSCILLATORY;
@@ -91,7 +93,7 @@ void le_init() {
    * store in le_params as a double (below). */
 
   le_params_.nt0 = 0;
-  n = RUN_get_int_parameter("LE_time_offset", &le_params_.nt0);
+  n = rt_int_parameter(rt, "LE_time_offset", &le_params_.nt0);
 
   initialised_ = 1;
   nplanetotal = le_get_nplane_total();
@@ -112,7 +114,7 @@ void le_init() {
   le_checks();
   le_init_tables();
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

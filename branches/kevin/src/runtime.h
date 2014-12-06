@@ -10,19 +10,25 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
-void RUN_read_input_file(const char *);
-int  RUN_get_int_parameter(const char *, int *);
-int  RUN_get_int_parameter_vector(const char *, int []);
-int  RUN_get_double_parameter(const char *, double *);
-int  RUN_get_double_parameter_vector(const char *, double []);
-int  RUN_get_string_parameter(const char *, char *, const int);
-int  RUN_get_active_keys(void);
+#include "pe.h"
+
+typedef struct rt_s rt_t;
+
+int rt_create(pe_t * pe, rt_t ** prt);
+int rt_free(rt_t ** rt);
+int rt_read_input_file(rt_t * rt, const char * filename);
+int rt_int_parameter(rt_t * rt, const char * key, int * ivalue);
+int rt_int_parameter_vector(rt_t * rt, const char * key, int ivalue[3]);
+int rt_double_parameter(rt_t * rt, const char * key, double * value);
+int rt_double_parameter_vector(rt_t * rt, const char * key, double value[3]);
+int rt_string_parameter(rt_t * rt, const char * key, char * s, const int len);
+int rt_active_keys(rt_t * rt, int * nactive);
 
 #endif

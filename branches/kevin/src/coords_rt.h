@@ -16,7 +16,8 @@
 #define COORDS_RT_H
 
 #include "coords.h"
+#include "runtime.h"
 
-int coords_run_time(coords_t * cs);
+int coords_run_time(coords_t * cs, rt_t * rt);
 
 #endif

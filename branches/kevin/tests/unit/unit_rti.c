@@ -19,7 +19,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "pe.h"
 #include "runtime.h"
 #include "unit_control.h"
 
@@ -49,29 +48,32 @@ int do_ut_rti(control_t * ctrl) {
 int do_test_rti1(control_t * ctrl) {
 
   char * filename = "junk";
-  int unit_rti1_input(control_t * ctrl, char * f) throws(MPIIOException);
-  int unit_rti1_tests(control_t * ctrl, char * f) throws(TestFailedException);
+  int unit_rti1_input(control_t * ctrl, char * f);
+  int unit_rti1_tests(control_t * ctrl, rt_t * rt, char * f);
 
   pe_t * pe = NULL;
+  rt_t * rt = NULL;
 
   assert(ctrl);
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Runtine input from file\n");
 
   pe_create_parent(MPI_COMM_WORLD, &pe);
-
+  rt_create(pe, &rt);
+  
   try {
     unit_rti1_input(ctrl, filename);
-    unit_rti1_tests(ctrl, filename);
+    unit_rti1_tests(ctrl, rt, filename);
     remove(filename);
   }
   catch (MPIIOException) {
-    /* No file :( IFAIL */
+    /* No file :( IFAIL internal error */
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
+    rt_free(&rt);
     pe_free(&pe);
   }
 
@@ -138,7 +140,8 @@ int unit_rti1_input(control_t * ctrl, char * filename) throws(MPIIOException) {
  *
  *****************************************************************************/
 
-int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedException) {
+int unit_rti1_tests(control_t * ctrl, rt_t * rt, char * filename)
+  throws(TestFailedException) {
 
   char string[BUFSIZ];
   int n;
@@ -148,20 +151,22 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   double dvector[3];
 
   assert(ctrl);
+  assert(rt);
 
   control_verb(ctrl, "Passing %s to rti_read_input_file()\n", filename);
-  RUN_read_input_file(filename); /* Can be fatal */
+
+  rt_read_input_file(rt, filename); /* Can be fatal */
 
   /* Start the tests. */
 
   n = 0;
-  n = RUN_get_active_keys();
+  rt_active_keys(rt, &n);
 
   control_verb(ctrl, "Number of keys available is %d (11)\n", n);
   control_macro_test(ctrl, n == 11);
 
   n = 0;
-  n = RUN_get_int_parameter("int_scalar", &ivalue);
+  n = rt_int_parameter(rt, "int_scalar", &ivalue);
 
   control_verb(ctrl, "key 'int_scalar' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -169,7 +174,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, ivalue = 999);
 
   n = 0;
-  n = RUN_get_double_parameter("double_scalar", &dvalue);
+  n = rt_double_parameter(rt, "double_scalar", &dvalue);
 
   control_verb(ctrl, "key 'double_scalar' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -177,7 +182,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test_dbl_eq(ctrl, dvalue, 3.33, DBL_EPSILON);
 
   n = 0;
-  n = RUN_get_int_parameter("temperature", &ivalue);
+  n = rt_int_parameter(rt, "temperature", &ivalue);
 
   control_verb(ctrl, "key 'temperature' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -185,7 +190,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, ivalue == -1);
 
   n = 0;
-  n = RUN_get_int_parameter("temp", &ivalue);
+  n = rt_int_parameter(rt, "temp", &ivalue);
 
   control_verb(ctrl, "key 'temp' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -193,7 +198,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, ivalue == 1);
 
   n = 0;
-  n = RUN_get_int_parameter("temper", &ivalue);
+  n = rt_int_parameter(rt, "temper", &ivalue);
 
   control_verb(ctrl, "key 'temper' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -201,7 +206,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, ivalue == 0);
 
   n = 0;
-  n = RUN_get_int_parameter_vector("int_vector", ivector);
+  n = rt_int_parameter_vector(rt, "int_vector", ivector);
 
   control_verb(ctrl, "key 'int_vector' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -213,7 +218,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, ivector[2] == +3);
 
   n = 0;
-  n = RUN_get_double_parameter_vector("double_vector", dvector);
+  n = rt_double_parameter_vector(rt, "double_vector", dvector);
 
   control_verb(ctrl, "key 'double_vector' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -224,18 +229,18 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_verb(ctrl, "key 'double_vector' [z]: %6.3f (+3.0)\n", dvector[2]);
   control_macro_test_dbl_eq(ctrl, +3.0, dvector[2], DBL_EPSILON);
 
-  n = RUN_get_int_parameter("int_dummy", &ivalue);
+  n = rt_int_parameter(rt, "int_dummy", &ivalue);
   control_verb(ctrl, "key 'int_dummy' does not exist: %d\n", n);
   control_macro_test(ctrl, n == 0);
 
-  n = RUN_get_double_parameter("double_dummy", &dvalue);
+  n = rt_double_parameter(rt, "double_dummy", &dvalue);
   control_verb(ctrl, "key 'double_dummy' does not exist: %d\n", n);
   control_macro_test(ctrl, n == 0);
 
   /* Parameters specified in odd syntax */
 
   n = 0;
-  n = RUN_get_int_parameter("int_multiple_space", &ivalue);
+  n = rt_int_parameter(rt, "int_multiple_space", &ivalue);
 
   control_verb(ctrl, "key 'int_multiple_space' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -243,7 +248,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, ivalue == -2);
 
   n = 0;
-  n = RUN_get_double_parameter("double_tab", &dvalue);
+  n = rt_double_parameter(rt, "double_tab", &dvalue);
 
   control_verb(ctrl, "key 'double_tab' available: %d", n);
   control_macro_test(ctrl, n == 1);
@@ -253,7 +258,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   /* String parameters */
 
   n = 0;
-  n = RUN_get_string_parameter("string_parameter", string, BUFSIZ);
+  n = rt_string_parameter(rt, "string_parameter", string, BUFSIZ);
 
   control_verb(ctrl, "key 'string_parameter' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -261,7 +266,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   control_macro_test(ctrl, strcmp(string, "ASCII") == 0);
 
   n = 0;
-  n = RUN_get_string_parameter("input_config", string, BUFSIZ);
+  n = rt_string_parameter(rt, "input_config", string, BUFSIZ);
 
   control_verb(ctrl, "key 'input_config' available: %d\n", n);
   control_macro_test(ctrl, n == 1);
@@ -271,7 +276,7 @@ int unit_rti1_tests(control_t * ctrl, char * filename) throws(TestFailedExceptio
   /* Finish. */
 
   n = 1;
-  n = RUN_get_active_keys();
+  n = rt_active_keys(rt, &n);
 
   control_verb(ctrl, "Keys unchecked: %d (0)\n", n);
   control_macro_test(ctrl, n == 0);

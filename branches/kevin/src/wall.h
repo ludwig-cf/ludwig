@@ -13,10 +13,11 @@
 #ifndef WALL_H
 #define WALL_H
 
+#include "runtime.h"
 #include "model.h"
 #include "map.h"
 
-int wall_init(lb_t * lb, map_t * map);
+int wall_init(rt_t * rt, lb_t * lb, map_t * map);
 int wall_bounce_back(lb_t * lb, map_t * map);
 int wall_set_wall_velocity(lb_t * lb);
 

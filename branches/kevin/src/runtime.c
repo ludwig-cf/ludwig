@@ -19,7 +19,7 @@
  *  the "database" of keys to get their corresponding value. The
  *  relevant keys and types must clearly be known, e.g.,
  *
- *  RUN_get_double_parameter("temperature", &value);
+ *  rt_double_parameter("temperature", &value);
  *
  *  We demand that the keys are unique, i.e., they only appear
  *  once in the input file.
@@ -38,48 +38,116 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "runtime.h"
 
 #define NKEY_LENGTH 128           /* Maximum key / value string length */
 
-static void add_key_pair(const char *, int lineno);
-static void key_broadcast(int);
-static int  is_valid_key_pair(const char *, int lineno);
-static int  look_up_key(const char *, char *);
+typedef struct key_pair_s key_pair_t;
 
-struct key_pair {
+struct key_pair_s {
   char key[NKEY_LENGTH];
   int  is_active;
   int  input_line_no;
-  struct key_pair * next;
+  key_pair_t * next;
 };
 
-static struct key_pair * p_keylist = NULL;
+struct rt_s {
+  pe_t * pe;                      /* Reference to parallel environment */
+  int nkeys;                      /* Number of keys */
+  key_pair_t * keylist;           /* Key list */
+};
 
+static int rt_add_key_pair(rt_t * rt, const char *, int lineno);
+static int rt_key_broadcast(rt_t * rt);
+static int rt_is_valid_key_pair(rt_t * rt, const char *, int lineno);
+static int rt_look_up_key(rt_t * rt, const char * key, char * value);
+static int rt_free_keylist(key_pair_t * key);
 
 /*****************************************************************************
  *
- *  RUN_read_user_input
+ *  rt_create
+ *
+ *****************************************************************************/
+
+int rt_create(pe_t * pe, rt_t ** prt) {
+
+  rt_t * rt = NULL;
+
+  assert(pe);
+
+  rt = (rt_t *) calloc(1, sizeof(rt_t));
+  if (rt == NULL) fatal("calloc(rt) failed\n");
+
+  rt->pe = pe;
+  pe_retain(pe);
+
+  *prt = rt;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_free
+ *
+ *****************************************************************************/
+
+int rt_free(rt_t ** rt) {
+
+  assert(rt);
+
+  rt_free_keylist((*rt)->keylist);
+  pe_free(&(*rt)->pe);
+  free(*rt);
+  *rt = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_free_keylist
+ *
+ *****************************************************************************/
+
+static int rt_free_keylist(key_pair_t * key) {
+
+  if (key == NULL) return 0;
+
+  if (key->next) {
+    rt_free_keylist(key->next);
+  }
+  else {
+    free(key);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_read_input_file
  *
  *  Read the input file, and construct the list of key value pairs.
  *
  *****************************************************************************/
 
-void RUN_read_input_file(const char * input_file_name) {
+int rt_read_input_file(rt_t * rt, const char * input_file_name) {
 
   FILE * fp_input;
-  int    nkeys = 0;
   int    nline = 0;
   char   line[NKEY_LENGTH];
 
+  assert(rt);
+
   /* Read the file and work out number of valid key lines */
 
-  if (pe_rank() == 0) {
+  if (pe_mpi_rank(rt->pe) == 0) {
 
     fp_input = fopen(input_file_name, "r");
 
@@ -91,9 +159,9 @@ void RUN_read_input_file(const char * input_file_name) {
       while (fgets(line, NKEY_LENGTH, fp_input)) {
 	nline += 1;
 	/* Look at the line and add it if it's a key. */
-	if (is_valid_key_pair(line, nline)) {
-	  add_key_pair(line, nline);
-	  ++nkeys;
+	if (rt_is_valid_key_pair(rt, line, nline)) {
+	  rt_add_key_pair(rt, line, nline);
+	  rt->nkeys += 1;
 	}
       }
     }
@@ -101,16 +169,16 @@ void RUN_read_input_file(const char * input_file_name) {
     fclose(fp_input);
   }
 
-  info("Read %d user parameters from %s\n", nkeys, input_file_name);
+  info("Read %d user parameters from %s\n", rt->nkeys, input_file_name);
 
-  key_broadcast(nkeys);
+  rt_key_broadcast(rt);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  key_broadcast
+ *  rt_key_broadcast
  *
  *  Make the keys available to all MPI processes. As the number of
  *  keys could be quite large, it's worth restricting this to one
@@ -118,59 +186,64 @@ void RUN_read_input_file(const char * input_file_name) {
  *
  *****************************************************************************/
 
-static void key_broadcast(int nkeys) {
+static int rt_key_broadcast(rt_t * rt) {
 
   char * packed_keys;
-  int n = 0;
+  int nk = 0;
+  MPI_Comm comm;
+
+  assert(rt);
+  pe_mpi_comm(rt->pe, &comm);
 
   /* Broacdcast the number of keys and set up the message. */
 
-  MPI_Bcast(&nkeys, 1, MPI_INT, 0, pe_comm());
+  MPI_Bcast(&rt->nkeys, 1, MPI_INT, 0, comm);
 
-  packed_keys = (char *) malloc(nkeys*NKEY_LENGTH*sizeof(char));
+  packed_keys = (char *) calloc(rt->nkeys*NKEY_LENGTH, sizeof(char));
   if (packed_keys == NULL) fatal("malloc(packed_keys) failed\n");
 
   /* Pack message */
 
-  if (pe_rank() == 0) {
-    struct key_pair * p_key = p_keylist;
+  if (pe_mpi_rank(rt->pe) == 0) {
+    key_pair_t * key = rt->keylist;
 
-    while (p_key) {
-      strncpy(packed_keys + n*NKEY_LENGTH, p_key->key, NKEY_LENGTH);
-      ++n;
-      p_key = p_key->next;
+    for ( ; key; key = key->next) {
+      strncpy(packed_keys + nk*NKEY_LENGTH, key->key, NKEY_LENGTH);
+      nk += 1;
     }
   }
 
-  MPI_Bcast(packed_keys, nkeys*NKEY_LENGTH, MPI_CHAR, 0, pe_comm());
+  MPI_Bcast(packed_keys, rt->nkeys*NKEY_LENGTH, MPI_CHAR, 0, comm);
 
   /* Unpack message and set up the list */
 
-  if (pe_rank() != 0) {
-    for (n = 0; n < nkeys; n++) {
-      add_key_pair(packed_keys + n*NKEY_LENGTH, 0);
+  if (pe_mpi_rank(rt->pe) != 0) {
+    for (nk = 0; nk < rt->nkeys; nk++) {
+      rt_add_key_pair(rt, packed_keys + nk*NKEY_LENGTH, 0);
     }
   }
 
   free(packed_keys);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  RUN_get_double_parameter
+ *  rt_double_parameter
  *
  *  Query the keys for a scalar double matching te given key.
  *
  *****************************************************************************/
 
-int RUN_get_double_parameter(const char * key, double * value) {
+int rt_double_parameter(rt_t * rt, const char * key, double * value) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  key_present = look_up_key(key, str_value);
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
     /* Parse the value as a double */
@@ -182,18 +255,20 @@ int RUN_get_double_parameter(const char * key, double * value) {
 
 /*****************************************************************************
  *
- *  run_get_int_parameter
+ *  rt_int_parameter
  *
- *  Query the keys for a scalr int.
+ *  Query the keys for a scalar int.
  *
  *****************************************************************************/
 
-int RUN_get_int_parameter(const char * key, int * value) {
+int rt_int_parameter(rt_t * rt, const char * key, int * value) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  key_present = look_up_key(key, str_value);
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
     /* Parse the value as integer */
@@ -205,18 +280,20 @@ int RUN_get_int_parameter(const char * key, int * value) {
 
 /*****************************************************************************
  *
- *  run_get_double_parameter_vector
+ *  rt_double_parameter_vector
  *
  *  Query keys for a 3-vector of double.
  *
  *****************************************************************************/
 
-int RUN_get_double_parameter_vector(const char * key, double v[]) {
+int rt_double_parameter_vector(rt_t * rt, const char * key, double v[]) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  key_present = look_up_key(key, str_value);
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
     /* Parse the value as a 3-vector of double */
@@ -236,12 +313,14 @@ int RUN_get_double_parameter_vector(const char * key, double v[]) {
  *
  *****************************************************************************/
 
-int RUN_get_int_parameter_vector(const char * key, int v[]) {
+int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  key_present = look_up_key(key, str_value);
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
     /* Parse the value as a 3-vector of ints */
@@ -255,19 +334,21 @@ int RUN_get_int_parameter_vector(const char * key, int v[]) {
 
 /*****************************************************************************
  *
- *  run_get_string_parameter
+ *  rt_string_parameter
  *
  *  Query the key list for a string. Any truncation is treated as
  *  fatal to prevent problems down the line.
  *
  *****************************************************************************/
 
-int RUN_get_string_parameter(const char * key, char * value, const int len) {
+int rt_string_parameter(rt_t * rt, const char * key, char * value, const int len) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  key_present = look_up_key(key, str_value);
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
     /* Just copy the string across */
@@ -280,28 +361,31 @@ int RUN_get_string_parameter(const char * key, char * value, const int len) {
 
 /*****************************************************************************
  *
- *  RUN_get_active_keys
+ *  rt_active_keys
  *
  *  Count up the number of active key / value pairs.
  *
  *****************************************************************************/
 
-int RUN_get_active_keys() {
+int rt_active_keys(rt_t * rt, int * nactive) {
 
-  int nkeys = 0;
-  struct key_pair * p_key = p_keylist;
+  key_pair_t * key = NULL;
 
-  while (p_key) {
-    if (p_key->is_active) ++nkeys;
-    p_key = p_key->next;
+  assert(rt);
+  *nactive = 0;
+
+  key = rt->keylist;
+
+  for ( ; key; key = key->next) {
+    if (key->is_active) *nactive += 1;
   }
 
-  return nkeys;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  is_valid_key
+ *  rt_is_valid_key
  *
  *  Checks a line of the input file (one string) is a valid key.
  *
@@ -310,7 +394,7 @@ int RUN_get_active_keys() {
  *
  *****************************************************************************/
 
-static int is_valid_key_pair(const char * line, int lineno) {
+static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
   char a[NKEY_LENGTH];
   char b[NKEY_LENGTH];
@@ -328,7 +412,7 @@ static int is_valid_key_pair(const char * line, int lineno) {
   else {
     /* Check against existing keys for duplicate definitions. */
 
-    struct key_pair * p_key = p_keylist;
+    key_pair_t * p_key = rt->keylist;
 
     while (p_key) {
 
@@ -349,20 +433,22 @@ static int is_valid_key_pair(const char * line, int lineno) {
 
 /*****************************************************************************
  *
- *  add_key_pair
+ *  rt_add_key_pair
  *
  *  Put a new key on the list.
  *
  *****************************************************************************/
 
-static void add_key_pair(const char * key, int lineno) {
+static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
 
-  struct key_pair * p_new;
+  key_pair_t * p_new;
 
-  p_new = (struct key_pair *) malloc(sizeof(struct key_pair));
+  assert(rt);
+
+  p_new = (key_pair_t *) calloc(1, sizeof(key_pair_t));
 
   if (p_new == NULL) {
-    fatal("malloc(key_pair) failed\n");
+    fatal("calloc(key_pair) failed\n");
   }
   else {
     /* Put the new key at the head of the list. */
@@ -370,42 +456,44 @@ static void add_key_pair(const char * key, int lineno) {
     strncpy(p_new->key, key, NKEY_LENGTH);
     p_new->is_active = 1;
     p_new->input_line_no = lineno;
-    p_new->next = p_keylist;
 
-    p_keylist = p_new;
+    p_new->next = rt->keylist;
+    rt->keylist = p_new;
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  look_up_key
+ *  rt_look_up_key
  *
  *  Look through the list of keys to find one matching "key"
  *  and return the corrsponding value string.
  *
  *****************************************************************************/
 
-static int look_up_key(const char * key, char * value) {
+static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
 
   int key_present = 0;
-  struct key_pair * p_key = p_keylist;
   char a[NKEY_LENGTH];
   char b[NKEY_LENGTH];
+  key_pair_t * pkey;
 
-  while (p_key) {
+  assert(rt);
 
-    sscanf(p_key->key, "%s %s", a, b);
+  pkey = rt->keylist;
+
+  for ( ; pkey; pkey = pkey->next) {
+
+    sscanf(pkey->key, "%s %s", a, b);
 
     if (strcmp(a, key) == 0) {
-      p_key->is_active = 0;
+      pkey->is_active = 0;
       key_present = 1;
       strncpy(value, b, NKEY_LENGTH);
-      return key_present;
+      break;
     }
-
-    p_key = p_key->next;
   }
 
   return key_present;

@@ -14,11 +14,10 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "advection.h"
 #include "advection_rt.h"
 
@@ -28,13 +27,15 @@
  *
  *****************************************************************************/
 
-void advection_run_time(void) {
+int advection_run_time(rt_t * rt) {
 
   int n;
   int order;
   char key1[FILENAME_MAX];
 
-  RUN_get_string_parameter("free_energy", key1, FILENAME_MAX);
+  assert(rt);
+
+  rt_string_parameter(rt, "free_energy", key1, FILENAME_MAX);
 
   if (strcmp(key1, "none") == 0 || strcmp(key1, "symmetric_lb") == 0) {
     /* No finite difference advection required. */
@@ -43,7 +44,7 @@ void advection_run_time(void) {
 
     info("\nAdvection scheme order: ");
 
-    n = RUN_get_int_parameter("fd_advection_scheme_order", &order);
+    n = rt_int_parameter(rt, "fd_advection_scheme_order", &order);
 
     if (n == 0) {
       advection_order(&order);
@@ -55,5 +56,5 @@ void advection_run_time(void) {
     }
   }
 
-  return;
+  return 0;
 }

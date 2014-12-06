@@ -13,7 +13,9 @@
 #ifndef LEESEDWARDS_H
 #define LEESEDWARDS_H
 
-void le_init(void);
+#include "runtime.h"
+
+int le_init(rt_t * rt);
 void le_finish(void);
 
 int le_info(void);

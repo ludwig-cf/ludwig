@@ -15,6 +15,8 @@
 #ifndef SURFACTANT_RT_H
 #define SURFACTANT_RT_H
 
-void surfactant_run_time(void);
+#include "runtime.h"
+
+int surfactant_run_time(rt_t * rt);
 
 #endif

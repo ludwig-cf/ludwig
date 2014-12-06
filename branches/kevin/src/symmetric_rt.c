@@ -18,12 +18,11 @@
 #include <math.h>
 #include <string.h>
 
-#include "pe.h"
 #include "coords.h"
 #include "noise.h"
-#include "runtime.h"
 #include "free_energy.h"
 #include "symmetric.h"
+#include "symmetric_rt.h"
 
 #include "physics.h"
 #include "util.h"
@@ -35,8 +34,8 @@
 
 static int symmetric_init_block(field_t * phi, double xi0);
 static int symmetric_init_bath(field_t * phi);
-int symmetric_init_spinodal(field_t * phi);
-int symmetric_init_spinodal_patches(field_t * phi);
+int symmetric_init_spinodal(rt_t * rt, field_t * phi);
+int symmetric_init_spinodal_patches(rt_t * rt, field_t * phi);
 int symmetric_init_drop(field_t * fphi, double xi0, double radius);
 
 /****************************************************************************
@@ -45,20 +44,22 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius);
  *
  ****************************************************************************/
 
-void symmetric_run_time(void) {
+int symmetric_run_time(rt_t * rt) {
 
   double a;
   double b;
   double kappa;
+
+  assert(rt);
 
   info("Symmetric phi^4 free energy selected.\n");
   info("\n");
 
   /* Parameters */
 
-  RUN_get_double_parameter("A", &a);
-  RUN_get_double_parameter("B", &b);
-  RUN_get_double_parameter("K", &kappa);
+  rt_double_parameter(rt, "A", &a);
+  rt_double_parameter(rt, "B", &b);
+  rt_double_parameter(rt, "K", &kappa);
 
   info("Parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);
@@ -77,7 +78,7 @@ void symmetric_run_time(void) {
   fe_isotropic_pressure_set(symmetric_isotropic_pressure);
   fe_chemical_stress_set(symmetric_chemical_stress);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -86,7 +87,7 @@ void symmetric_run_time(void) {
  *
  *****************************************************************************/
 
-int symmetric_rt_initial_conditions(field_t * phi) {
+int symmetric_rt_initial_conditions(rt_t * rt, field_t * phi) {
 
   int p;
   char value[BUFSIZ];
@@ -95,19 +96,20 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 
   io_info_t * iohandler = NULL;
 
+  assert(rt);
   assert(phi);
 
-  p = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
+  p = rt_string_parameter(rt, "phi_initialisation", value, BUFSIZ);
 
   /* Default is spinodal */
   if (p == 0 || strcmp(value, "spinodal") == 0) {
     info("Initialising phi for spinodal\n");
-    symmetric_init_spinodal(phi);
+    symmetric_init_spinodal(rt, phi);
   }
 
   if (p != 0 && strcmp(value, "patches") == 0) {
     info("Initialising phi in patches\n");
-    symmetric_init_spinodal_patches(phi);
+    symmetric_init_spinodal_patches(rt, phi);
   }
 
   if (p != 0 && strcmp(value, "block") == 0) {
@@ -122,7 +124,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 
   if (p != 0 && strcmp(value, "drop") == 0) {
     radius = DEFAULT_RADIUS;
-    RUN_get_double_parameter("phi_init_drop_radius", &radius);
+    rt_double_parameter(rt, "phi_init_drop_radius", &radius);
     info("Initialising droplet radius:     %14.7e\n", radius);
     symmetric_init_drop(phi, symmetric_interfacial_width(), radius);
   }
@@ -130,7 +132,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
   if (p != 0 && strcmp(value, "from_file") == 0) {
     info("Initial order parameter requested from file\n");
     strcpy(filestub, "phi.init"); /* A default */
-    RUN_get_string_parameter("phi_file_stub", filestub, FILENAME_MAX);
+    rt_string_parameter(rt, "phi_file_stub", filestub, FILENAME_MAX);
     info("Attempting to read phi from file: %s\n", filestub);
 
     field_io_info(phi, &iohandler);
@@ -279,7 +281,7 @@ static int symmetric_init_bath(field_t * phi) {
  *
  *****************************************************************************/
 
-int symmetric_init_spinodal(field_t * phi) {
+int symmetric_init_spinodal(rt_t * rt, field_t * phi) {
 
   int seed = 13;
   int ic, jc, kc, index;
@@ -292,13 +294,14 @@ int symmetric_init_spinodal(field_t * phi) {
 
   noise_t * rng = NULL;
 
+  assert(rt);
   assert(phi);
 
   coords_nlocal(nlocal);
   physics_phi0(&phi0);
 
-  RUN_get_int_parameter("random_seed", &seed);
-  RUN_get_double_parameter("noise", &noise0);
+  rt_int_parameter(rt, "random_seed", &seed);
+  rt_double_parameter(rt, "noise", &noise0);
 
   noise_create(&rng);
   noise_init(rng, seed);
@@ -335,7 +338,7 @@ int symmetric_init_spinodal(field_t * phi) {
  *
  *****************************************************************************/
 
-int symmetric_init_spinodal_patches(field_t * phi) {
+int symmetric_init_spinodal_patches(rt_t * rt, field_t * phi) {
 
   int ic, jc, kc, index;
   int ip, jp, kp;
@@ -351,13 +354,14 @@ int symmetric_init_spinodal_patches(field_t * phi) {
 
   noise_t * rng = NULL;
 
+  assert(rt);
   assert(phi);
 
   coords_nlocal(nlocal);
 
-  RUN_get_int_parameter("random_seed", &seed);
-  RUN_get_int_parameter("phi_init_patch_size", &patch);
-  RUN_get_double_parameter("phi_init_patch_vol", &volminus1);
+  rt_int_parameter(rt, "random_seed", &seed);
+  rt_int_parameter(rt, "phi_init_patch_size", &patch);
+  rt_double_parameter(rt, "phi_init_patch_vol", &volminus1);
 
   noise_create(&rng);
   noise_init(rng, seed);

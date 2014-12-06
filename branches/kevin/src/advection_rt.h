@@ -15,6 +15,8 @@
 #ifndef ADVECTION_RT_H
 #define ADVECTION_RT_H
 
-void advection_run_time(void);
+#include "runtime.h" 
+
+int advection_run_time(rt_t * rt);
 
 #endif

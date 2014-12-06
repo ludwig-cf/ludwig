@@ -16,9 +16,7 @@
 
 #include <assert.h>
 
-#include "pe.h"
 #include "coords.h"
-#include "runtime.h"
 #include "free_energy.h"
 #include "surfactant.h"
 #include "surfactant_rt.h"
@@ -29,7 +27,7 @@
  *
  ****************************************************************************/
 
-void surfactant_run_time(void) {
+int surfactant_run_time(rt_t * rt) {
 
   double a;
   double b;
@@ -39,16 +37,18 @@ void surfactant_run_time(void) {
   double beta;
   double w;
 
+  assert(rt);
+
   /* Parameters */
 
-  RUN_get_double_parameter("surf_A", &a);
-  RUN_get_double_parameter("surf_B", &b);
-  RUN_get_double_parameter("surf_K", &kappa);
+  rt_double_parameter(rt, "surf_A", &a);
+  rt_double_parameter(rt, "surf_B", &b);
+  rt_double_parameter(rt, "surf_K", &kappa);
 
-  RUN_get_double_parameter("surf_kt", &kt);
-  RUN_get_double_parameter("surf_epsilon", &epsilon);
-  RUN_get_double_parameter("surf_beta", &beta);
-  RUN_get_double_parameter("surf_w", &w);
+  rt_double_parameter(rt, "surf_kt", &kt);
+  rt_double_parameter(rt, "surf_epsilon", &epsilon);
+  rt_double_parameter(rt, "surf_beta", &beta);
+  rt_double_parameter(rt, "surf_w", &w);
 
   info("Surfactant free energy parameters:\n");
   info("Bulk parameter A      = %12.5e\n", a);
@@ -86,5 +86,5 @@ void surfactant_run_time(void) {
   fe_isotropic_pressure_set(surfactant_isotropic_pressure);
   fe_chemical_stress_set(surfactant_chemical_stress);
 
-  return;
+  return 0;
 }

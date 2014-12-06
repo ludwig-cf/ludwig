@@ -15,10 +15,11 @@
 #ifndef PSI_RT_H
 #define PSI_RT_H
 
+#include "runtime.h"
 #include "psi.h"
 #include "map.h"
 
-int psi_init_param_rt(psi_t * psi);
-int psi_init_rho_rt(psi_t * psi, map_t * map);
+int psi_init_param_rt(psi_t * psi, rt_t * rt);
+int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt);
 
 #endif

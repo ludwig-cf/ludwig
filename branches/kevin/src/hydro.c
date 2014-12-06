@@ -4,8 +4,6 @@
  *
  *  Hydrodynamic quantities: velocity, body force on fluid.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *

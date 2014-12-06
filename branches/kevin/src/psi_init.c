@@ -1,24 +1,23 @@
 /*****************************************************************************
-*
-*  psi_init.c
-*
-*  Various initial states for electrokinetics.
-*
-*  $Id$
-*
-*  Edinburgh Soft Matter and Statistical Physics Group and
-*  Edinburgh Parallel Computing Centre
-*
-*  Oliver Henrich (o.henrich@ucl.ac.uk) wrote most of these.
-*  (c) 2012 The University of Edinburgh
-*
-*****************************************************************************/
+ *
+ *  psi_init.c
+ *
+ *  Various initial states for electrokinetics.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  Oliver Henrich (o.henrich@ucl.ac.uk) wrote most of these.
+ *  (c) 2012 The University of Edinburgh
+ *
+ *****************************************************************************/
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
  
-#include "pe.h"
 #include "coords.h"
 #include "psi_init.h"
 

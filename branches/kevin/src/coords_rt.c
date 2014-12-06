@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "coords_rt.h"
-#include "runtime.h"
 
 /*****************************************************************************
  *
@@ -25,30 +24,31 @@
  *
  *****************************************************************************/
 
-int coords_run_time(coords_t * cs) {
+int coords_run_time(coords_t * cs, rt_t * rt) {
 
   int n;
   int reorder;
   int vector[3];
 
   assert(cs);
+  assert(rt);
   
   info("\n");
   info("System details\n");
   info("--------------\n");
 
-  n = RUN_get_int_parameter_vector("size", vector);
+  n = rt_int_parameter_vector(rt, "size", vector);
   coords_ntotal_set(cs, vector);
 
-  n = RUN_get_int_parameter_vector("periodicity", vector);
+  n = rt_int_parameter_vector(rt, "periodicity", vector);
   if (n != 0) coords_periodicity_set(cs, vector);
 
   /* Look for a user-defined decomposition */
 
-  n = RUN_get_int_parameter_vector("grid", vector);
+  n = rt_int_parameter_vector(rt, "grid", vector);
   if (n != 0) coords_decomposition_set(cs, vector);
 
-  n = RUN_get_int_parameter("reorder", &reorder);
+  n = rt_int_parameter(rt, "reorder", &reorder);
   if (n != 0) coords_reorder_set(cs, reorder);
 
   coords_commit(cs);

@@ -15,9 +15,10 @@
 #ifndef SYMMETRIC_RT_H
 #define SYMMETRIC_RT_H
 
+#include "runtime.h"
 #include "field.h"
 
-void symmetric_run_time(void);
-int symmetric_rt_initial_conditions(field_t * phi);
+int symmetric_run_time(rt_t * rt);
+int symmetric_rt_initial_conditions(rt_t * rt, field_t * phi);
 
 #endif
