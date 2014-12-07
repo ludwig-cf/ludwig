@@ -133,7 +133,7 @@ static void hydrodynamics_init_io() {
 
   io_info_set_format_binary(io_info_velocity_);
 #ifndef TITAN
-  io_write_metadata("vel", io_info_velocity_);
+  /*io_write_metadata("vel", io_info_velocity_);*/
 #endif
   return;
 }
@@ -679,6 +679,7 @@ void hydrodynamics_velocity_gradient_tensor(const int ic,
 					    const int kc,
 					    double w[3][3]) {
   int im1, ip1;
+  double tr;
 
   assert(initialised_);
 
@@ -704,6 +705,13 @@ void hydrodynamics_velocity_gradient_tensor(const int ic,
   w[X][Z] = 0.5*(u[ip1].c[X] - u[im1].c[X]);
   w[Y][Z] = 0.5*(u[ip1].c[Y] - u[im1].c[Y]);
   w[Z][Z] = 0.5*(u[ip1].c[Z] - u[im1].c[Z]);
+
+  /* Enforce tracelessnes */
+
+  tr = r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);
+  w[X][X] -= tr;
+  w[Y][Y] -= tr;
+  w[Z][Z] -= tr;
 
   return;
 }
