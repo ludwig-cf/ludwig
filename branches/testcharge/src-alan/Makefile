@@ -42,8 +42,8 @@
 #
 ###############################################################################
 
-USEGPU=
-#USEGPU=1
+#USEGPU=
+USEGPU=1
 
 MAIN = main
 EXECUTABLE = Ludwig.exe
