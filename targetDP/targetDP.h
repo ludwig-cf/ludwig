@@ -104,7 +104,16 @@
   array[targetExtent*p+baseIndex+vecIndex]
 
 
+#define GET_3DCOORDS_FROM_INDEX(index,coords,extents)	     \
+    coords[0]=index/(extents[1]*extents[2]); \
+    coords[1] = (index - extents[1]*extents[2]*coords[0]) / extents[2]; \
+    coords[2] = index - extents[1]*extents[2]*coords[0] \
+      - extents[2]*coords[1]; 
 
+#define INDEX_FROM_3DCOORDS(coords0,coords1,coords2,extents)	\
+  extents[2]*extents[1]*(coords0)				\
+  + extents[2]*(coords1)					\
+  + (coords2); 
 
 
 /* API */

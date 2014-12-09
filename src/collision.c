@@ -878,21 +878,34 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   symmetric_t_delsqphi(&t_delsqphi);
 
 
-  // at the moment we are using AoS data structures
+  //copyToTargetMaskedAoS(lb->t_f,lb->f,nSites,nFields,siteMask); 
+  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 
-  copyToTargetMaskedAoS(lb->t_f,lb->f,nSites,nFields,siteMask); 
+
+  //for GPU version, we use the data already existing on the target 
+  //for C version, we put data on the target (for now).
+  //ultimitely GPU and C versions will follow the same pattern
+  #ifndef CUDA
 
   double *ptr;
 
   symmetric_phi(&ptr);
-  copyToTargetMaskedAoS(t_phi,ptr,nSites,1,siteMask); 
+  //copyToTargetMaskedAoS(t_phi,ptr,nSites,1,siteMask); 
+  copyToTarget(t_phi,ptr,nSites*sizeof(double)); 
 
   symmetric_delsqphi(&ptr);
-  copyToTargetMaskedAoS(t_delsqphi,ptr,nSites,1,siteMask); 
+  //copyToTargetMaskedAoS(t_delsqphi,ptr,nSites,1,siteMask); 
+  copyToTarget(t_delsqphi,ptr,nSites*sizeof(double)); 
 
   symmetric_gradphi(&ptr);
-  copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
-  copyToTargetMaskedAoS(hydro->t_f,hydro->f,nSites,3,siteMask); 
+  //copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
+  copyToTarget(t_gradphi,ptr,nSites*3*sizeof(double)); 
+  #endif
+
+
+  //copyToTargetMaskedAoS(hydro->t_f,hydro->f,nSites,3,siteMask); 
+
+  copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
 
   //end field management
 
@@ -924,8 +937,14 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
         
 
   //start field management
-  copyFromTargetMaskedAoS(lb->f,lb->t_f,nSites,nFields,siteMask); 
-  copyFromTargetMaskedAoS(hydro->u,hydro->t_u,nSites,3,siteMask); 
+  //copyFromTargetMaskedAoS(lb->f,lb->t_f,nSites,nFields,siteMask); 
+
+  copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
+
+  //copyFromTargetMaskedAoS(hydro->u,hydro->t_u,nSites,3,siteMask); 
+  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+
+
   //end field management
 
 
