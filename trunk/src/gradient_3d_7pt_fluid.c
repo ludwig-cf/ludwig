@@ -190,23 +190,12 @@ static TARGET void gradient_3d_7pt_fluid_operator_site(const int nop,
 
     int coords[3];
     //coords_index_to_ijk(index, coords);
-    
 
-    //get 3d indexing from linear index
-    coords[0]=index/(tc_Nall[Y]*tc_Nall[Z]);
-    coords[1] = (index - tc_Nall[Y]*tc_Nall[Z]*coords[0]) / tc_Nall[Z];
-    coords[2] = index - tc_Nall[Y]*tc_Nall[Z]*coords[0]
-      - tc_Nall[Z]*coords[1];
-    
-    //get index -1 in X dirn
-    int indexm1 = tc_Nall[Z]*tc_Nall[Y]*(coords[0]-1)
-    + tc_Nall[Z]*(coords[1])
-    + coords[2];
+    GET_3DCOORDS_FROM_INDEX(index,coords,tc_Nall);
 
-    //get index +1 in X dirn
-    int indexp1 = tc_Nall[Z]*tc_Nall[Y]*(coords[0]+1)
-    + tc_Nall[Z]*(coords[1])
-    + coords[2];
+    //get index +1 and -1 in X dirn
+    int indexm1 = INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2],tc_Nall);
+    int indexp1 = INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2],tc_Nall);
 
       
     int n;
@@ -310,9 +299,13 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
     (nop,t_field,t_grad,t_del2,t_siteMask);
    
 
+  //for GPU version, we leave the results on the target for the next kernel.
+  //for C version, we bring back the results to the host (for now).
+  //ultimitely GPU and C versions will follow the same pattern
+  #ifndef CUDA
   copyFromTarget(grad,t_grad,3*nSites*nFields*sizeof(double)); 
   copyFromTarget(del2,t_del2,nSites*nFields*sizeof(double)); 
-    
+  #endif
 
   return;
 }

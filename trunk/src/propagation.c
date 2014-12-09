@@ -49,7 +49,9 @@ HOST int lb_propagation(lb_t * lb) {
     /* Reverse implementation */
     if (NVEL == 9)  lb_propagate_d2q9_r(lb);
     if (NVEL == 15) lb_propagate_d3q15_r(lb);
-    if (NVEL == 19) lb_propagate_d3q19_r(lb);
+    //if (NVEL == 19) lb_propagate_d3q19_r(lb);
+    // lb_propagate_d3q19 now uses generic addressing for both MODEL and MODEL_R
+    if (NVEL == 19) lb_propagate_d3q19(lb);
   }
 
   return 0;
@@ -211,54 +213,138 @@ TARGET_CONST int tc_nhalo;
  *****************************************************************************/
 
 TARGET  void lb_propagate_d3q19_site(double* t_f, 
-				     double* t_fprime, char* t_siteMask,
-					    const int baseIndex){
+				     double* t_fprime, 
+				     const int baseIndex){
   
 
 
-  int zstr = tc_ndist*NVEL;
-  int ystr = zstr*tc_Nall[Z];
-  int xstr = ystr*tc_Nall[Y];
+  int coords[3];
+  GET_3DCOORDS_FROM_INDEX(baseIndex,coords,tc_Nall);
 
   int n;
 
-  
-    if(t_siteMask[baseIndex]){ //only non-halo sites
-	for (n = 0; n < tc_ndist; n++) {
-	  int p = tc_ndist*NVEL*baseIndex + n*NVEL;
+  // if not a halo site:
+  if (coords[0] >= tc_nhalo && 
+      coords[1] >= tc_nhalo && 
+      coords[2] >= tc_nhalo &&
+      coords[0] < tc_Nall[X]-tc_nhalo &&  
+      coords[1] < tc_Nall[Y]-tc_nhalo &&  
+      coords[2] < tc_Nall[Z]-tc_nhalo){ 
 
-	  t_fprime[p] = t_f[p];
-	  t_fprime[p + 1] = t_f[p + (-1)*xstr + (-1)*ystr             + 1];
-	  t_fprime[p + 2] = t_f[p + (-1)*xstr             + (-1)*zstr + 2];
-	  t_fprime[p + 3] = t_f[p + (-1)*xstr                         + 3];
-	  t_fprime[p + 4] = t_f[p + (-1)*xstr             + (+1)*zstr + 4];
-	  t_fprime[p + 5] = t_f[p + (-1)*xstr + (+1)*ystr             + 5];
-	  t_fprime[p + 6] = t_f[p             + (-1)*ystr + (-1)*zstr + 6];
-	  t_fprime[p + 7] = t_f[p             + (-1)*ystr             + 7];
-	  t_fprime[p + 8] = t_f[p             + (-1)*ystr + (+1)*zstr + 8];
-	  t_fprime[p + 9] = t_f[p                         + (-1)*zstr + 9];
-	  t_fprime[p + 10] = t_f[p                         + (+1)*zstr + 10];
-	  t_fprime[p + 11] = t_f[p             + (+1)*ystr + (-1)*zstr + 11];
-	  t_fprime[p + 12] = t_f[p             + (+1)*ystr             + 12];
-	  t_fprime[p + 13] = t_f[p             + (+1)*ystr + (+1)*zstr + 13];
-	  t_fprime[p + 14] = t_f[p + (+1)*xstr + (-1)*ystr             + 14];
-	  t_fprime[p + 15] = t_f[p + (+1)*xstr             + (-1)*zstr + 15];
-	  t_fprime[p + 16] = t_f[p + (+1)*xstr                         + 16];
-	  t_fprime[p + 17] = t_f[p + (+1)*xstr             + (+1)*zstr + 17];
-	  t_fprime[p + 18] = t_f[p + (+1)*xstr + (+1)*ystr             + 18];
+	for (n = 0; n < tc_ndist; n++) {
+
+	  
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 0)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 0)];
+
+	  int shiftIndex;
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1]-1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 1)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 1)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 2)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 2)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 3)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 3)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 4)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 4)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1]+1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 5)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 5)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]-1,coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 6)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 6)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]-1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 7)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 7)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]-1,coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 8)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 8)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1],coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 9)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 9)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1],coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 10)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 10)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]+1,coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 11)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 11)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]+1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 12)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 12)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]+1,coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 13)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 13)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1]-1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 14)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 14)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 15)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 15)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 16)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 16)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 17)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 17)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1]+1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 18)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 18)];
+
+
+
 	}
+
+
  
     }
 
-    else{ //direct copy of t_fprime to t_f for halo sites 
+    else{ //direct copy of t_f to t_fprime for halo sites 
 
 	for (n = 0; n < tc_ndist; n++) {
 
 	  int ip;
 	  for (ip=0;ip<NVEL;ip++){
-	  int p = tc_ndist*NVEL*baseIndex + n*NVEL + ip;
 
-	  t_fprime[p] = t_f[p]; 
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, ip)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, ip)]; 
 
 	  }
 
@@ -275,14 +361,14 @@ TARGET  void lb_propagate_d3q19_site(double* t_f,
 }
 
 TARGET_ENTRY  void lb_propagate_d3q19_lattice(double* t_f, 
-					      double* t_fprime, char* t_siteMask){
+					      double* t_fprime){
 
 
   int baseIndex=0;
 
   //partition binary collision kernel across the lattice on the target
   TARGET_TLP(baseIndex,tc_nSites){
-    lb_propagate_d3q19_site (t_f,t_fprime,t_siteMask,baseIndex);
+    lb_propagate_d3q19_site (t_f,t_fprime,baseIndex);
 
   }
 
@@ -292,7 +378,6 @@ TARGET_ENTRY  void lb_propagate_d3q19_lattice(double* t_f,
 
 static int lb_propagate_d3q19(lb_t * lb) {
 
-  int ic, jc, kc, index;
   int nhalo;
   int nlocal[3];
 
@@ -317,26 +402,9 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
   //end constant setup
 
-
-  memset(lb->siteMask,0,nSites*sizeof(char));
-  // set all non-halo sites to 1
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-  	index=coords_index(ic, jc, kc);
-	lb->siteMask[index]=1;
-
-      }
-    }
-  }
-
-
-
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-  copyToTarget(lb->t_siteMask,lb->siteMask,nSites*sizeof(char)); 
 
-  lb_propagate_d3q19_lattice TARGET_LAUNCH(nSites) (lb->t_f,lb->t_fprime,lb->t_siteMask);
+  lb_propagate_d3q19_lattice TARGET_LAUNCH(nSites) (lb->t_f,lb->t_fprime);
 
   copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
 
