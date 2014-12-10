@@ -26,7 +26,7 @@
 #include "noise.h"
 #include "timer.h"
 #include "coords_rt.h"
-#include "leesedwards.h"
+#include "leesedwards_rt.h"
 #include "control.h"
 #include "util.h"
 
@@ -115,6 +115,7 @@ struct ludwig_s {
   pe_t * pe;                /* Parallel enviroment */
   rt_t * rt;                /* Run time input parameters */
   coords_t * cs;            /* Coordinate system */
+  le_t * le;                /* Lees Edwards sliding periodic bc */
   physics_t * param;        /* Physical parameters */
   lb_t * lb;                /* Lattice Botlzmann */
   hydro_t * hydro;          /* Hydrodynamic quantities */
@@ -805,6 +806,7 @@ void ludwig_run(const char * inputfile) {
   TIMER_statistics();
 
   rt_free(&ludwig->rt);
+  le_free(&ludwig->le);
   coords_free(&ludwig->cs);
   pe_free(&ludwig->pe);
 
@@ -917,8 +919,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 1;
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
   }
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
@@ -937,8 +938,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -990,8 +990,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -1022,8 +1021,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -1065,8 +1063,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
@@ -1104,8 +1101,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(nf, "p", &ludwig->p);
     field_init(ludwig->p, nhalo);
@@ -1143,8 +1139,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
         
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
@@ -1219,8 +1214,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     info("\n");
     info("Free energy details\n");
@@ -1273,8 +1267,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     coords_nhalo_set(ludwig->cs, nhalo);
     coords_run_time(ludwig->cs, ludwig->rt);
-    le_init(ludwig->rt);
-    le_info();
+    le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);

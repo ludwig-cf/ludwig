@@ -100,7 +100,10 @@ in \texttt{target}. All kernel-related references are again through
 \texttt{target}.
 The slightly disjoint nature of this definition and increased pressure
 on global name-space must be weighed against potential increase in kernel
-performance and reduction in register pressure.
+performance and reduction in register pressure. More seriously, thre is
+no way to write consistent \texttt{\_\_host\_\_ \_\_target\_\_} functions
+(we can see) except to move the host structure back to file scope to
+match the situation in the previous section.
 
 \subsubsection{Non \texttt{const} object in both address spaces}
 
@@ -125,6 +128,13 @@ must be handled explicitly as both \texttt{host} and \texttt{target}
 are subject to modification. However, an implementation with uniform
 address space may simply alias the \texttt{target} to the \texttt{host}
 pointer. No data reside at file scope.
+
+An attractive feature about this situation is that one can use the
+uniform picture in memory to write functions of contract
+\begin{lstlisting}
+__host__ __target__ int obj_function(struct obj_kernel_data * obj, ...);
+\end{lstlisting}
+which can be used in both host and kernel code.
 
 \subsubsection{Aliasing}
 Consider a kernel data structure:

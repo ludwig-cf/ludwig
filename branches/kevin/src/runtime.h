@@ -29,6 +29,7 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int ivalue[3]);
 int rt_double_parameter(rt_t * rt, const char * key, double * value);
 int rt_double_parameter_vector(rt_t * rt, const char * key, double value[3]);
 int rt_string_parameter(rt_t * rt, const char * key, char * s, const int len);
+int rt_switch(rt_t * rt, const char * key);
 int rt_active_keys(rt_t * rt, int * nactive);
 
 #endif

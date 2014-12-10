@@ -47,8 +47,8 @@ static int field_leesedwards_parallel(field_t * obj);
  *
  *  field_create
  *
- *  Allocation of data space is deferred until phi_init(), at which point
- *  a via coordinate system object should be available.
+ *  Allocation of data space is deferred until field_init(), at which point
+ *  a coordinate system object should be available.
  *
  *  This just sets the type of field; often order parameter, e.g.,:
  *     nf = 1 for scalar "phi"

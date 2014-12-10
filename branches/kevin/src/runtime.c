@@ -34,7 +34,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -244,11 +244,7 @@ int rt_double_parameter(rt_t * rt, const char * key, double * value) {
   assert(rt);
 
   key_present = rt_look_up_key(rt, key, str_value);
-
-  if (key_present) {
-    /* Parse the value as a double */
-    *value = atof(str_value);
-  }
+  if (key_present) *value = atof(str_value);
 
   return key_present;
 }
@@ -269,11 +265,7 @@ int rt_int_parameter(rt_t * rt, const char * key, int * value) {
   assert(rt);
 
   key_present = rt_look_up_key(rt, key, str_value);
-
-  if (key_present) {
-    /* Parse the value as integer */
-    *value = atoi(str_value);
-  }
+  if (key_present) *value = atoi(str_value);
 
   return key_present;
 }
@@ -361,6 +353,42 @@ int rt_string_parameter(rt_t * rt, const char * key, char * value, const int len
 
 /*****************************************************************************
  *
+ *  rt_switch
+ *
+ *  Key value pairs to evaluate to "switch on"
+ *
+ *  switch  on
+ *  switch  yes
+ *  switch  1
+ *  switch  true
+ *
+ *  If the key is not there, or it's anything else, it's "off" and
+ *  return value is zero.
+ *
+ *****************************************************************************/
+
+int rt_switch(rt_t * rt, const char * key) {
+
+  int key_present = 0;
+  int iswitch = 0;
+  char str_value[NKEY_LENGTH];
+
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
+
+  if (key_present) {
+    if (strcmp(str_value, "yes") == 0) iswitch = 1;
+    if (strcmp(str_value, "1") == 0) iswitch = 1;
+    if (strcmp(str_value, "on") == 0) iswitch = 1;
+    if (strcmp(str_value, "true") == 0) iswitch = 1;
+  }
+
+  return iswitch;
+}
+
+/*****************************************************************************
+ *
  *  rt_active_keys
  *
  *  Count up the number of active key / value pairs.
@@ -412,19 +440,19 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
   else {
     /* Check against existing keys for duplicate definitions. */
 
-    key_pair_t * p_key = rt->keylist;
+    key_pair_t * key = rt->keylist;
 
-    while (p_key) {
+    while (key) {
 
       /* We must compare for exact equality against existing key. */
-      sscanf(p_key->key, "%s ", b);
+      sscanf(key->key, "%s ", b);
 
       if (strcmp(b, a) == 0) {
 	info("At line %d: %s\n", lineno, line); 
 	fatal("Duplication of parameters in input file: %s %s\n", a, b);
       }
 
-      p_key = p_key->next;
+      key = key->next;
     }
   }
 
@@ -441,24 +469,24 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
 static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
 
-  key_pair_t * p_new;
+  key_pair_t * pnew;
 
   assert(rt);
 
-  p_new = (key_pair_t *) calloc(1, sizeof(key_pair_t));
+  pnew = (key_pair_t *) calloc(1, sizeof(key_pair_t));
 
-  if (p_new == NULL) {
+  if (pnew == NULL) {
     fatal("calloc(key_pair) failed\n");
   }
   else {
     /* Put the new key at the head of the list. */
 
-    strncpy(p_new->key, key, NKEY_LENGTH);
-    p_new->is_active = 1;
-    p_new->input_line_no = lineno;
+    strncpy(pnew->key, key, NKEY_LENGTH);
+    pnew->is_active = 1;
+    pnew->input_line_no = lineno;
 
-    p_new->next = rt->keylist;
-    rt->keylist = p_new;
+    pnew->next = rt->keylist;
+    rt->keylist = pnew;
   }
 
   return 0;

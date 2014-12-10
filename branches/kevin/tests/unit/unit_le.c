@@ -56,6 +56,7 @@ int do_test_le1(control_t * ctrl) {
   int nplane = 8;
   int nplane_local;
   int n, nx;
+  int nptotal, nplocal;
   int nlocal[3];
 
   double uy0 = 0.08;
@@ -63,6 +64,7 @@ int do_test_le1(control_t * ctrl) {
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
+  le_t * le = NULL;
 
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Lees Edwards plane structure\n");
@@ -71,20 +73,24 @@ int do_test_le1(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  le_set_nplane_total(nplane);
-  le_set_plane_uymax(uy0);
-  le_init();
+  le_create(cs, &le);
+  le_nplane_set(le, nplane);
+  le_uy_set(le, uy0);
+  le_commit(le);
 
   try {
 
+    le_nplane_total(le, &nptotal);
+    le_nplane_local(le, &nplocal);
+    le_uy(le, &uy);
+
     control_verb(ctrl, "Total number of planes: %d\n", nplane);
-    control_macro_test(ctrl, le_get_nplane_total() == nplane);
+    control_macro_test(ctrl, nptotal == nplane);
 
     nplane_local = nplane / cart_size(X);
     control_verb(ctrl, "Local number of planes: %d\n", nplane_local);
-    control_macro_test(ctrl, le_get_nplane_local() == nplane_local);
+    control_macro_test(ctrl, nplocal == nplane_local);
 
-    uy = le_plane_uy_max();
     control_verb(ctrl, "Plane maximum velocity: %10.4f\n", uy0);
     control_macro_test_dbl_eq(ctrl, uy, uy0, DBL_EPSILON);
 
@@ -103,7 +109,7 @@ int do_test_le1(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_finish();
+    le_free(&le);
     coords_free(&cs);
     pe_free(&pe);
   }
@@ -128,9 +134,11 @@ int do_test_le2(control_t * ctrl) {
   int nh2;              /* 2*nhalo */
   int nxb;              /* Number buffer planes in x */
   int nsites;           /* Total lattice sites */
+  int nexpect;
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
+  le_t * le = NULL;
 
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Lees Edwards buffers\n");
@@ -138,26 +146,30 @@ int do_test_le2(control_t * ctrl) {
   pe_create_parent(MPI_COMM_WORLD, &pe);
   coords_create(pe, &cs);
   coords_commit(cs);
+
   nh2 = 2*coords_nhalo();
   coords_nlocal(nlocal);
 
-  le_set_nplane_total(nplane);
-  le_init();
+  le_create(cs, &le);
+  le_nplane_set(le, nplane);
+  le_commit(le);
 
   try {
-    nxb = nh2*le_get_nplane_local();
-    control_verb(ctrl, "Lees buffer size: %d (d)\n", nxb, le_get_nxbuffer());
-    control_macro_test(ctrl, nxb == le_get_nxbuffer());
+    le_nxbuffer(le, &nxb);
+    nexpect = nh2*le_get_nplane_local();
+    control_verb(ctrl, "Lees buffer size: %d (d)\n", nxb, nexpect);
+    control_macro_test(ctrl, nxb == nexpect);
 
+    nexpect = le_nsites();
     nsites = (nlocal[X] + nh2 + nxb)*(nlocal[Y] + nh2)*(nlocal[Z] + nh2);
-    control_verb(ctrl, "Lees nsites: %d (%d)\n", nsites, le_nsites());
-    control_macro_test(ctrl, nsites == le_nsites());
+    control_verb(ctrl, "Lees nsites: %d (%d)\n", nsites, nexpect);
+    control_macro_test(ctrl, nsites == nexpect);
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_finish();
+    le_free(&le);
     coords_free(&cs);
     pe_free(&pe);
   }
@@ -195,6 +207,7 @@ int do_test_le_interp3(control_t * ctrl) {
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
+  le_t * le = NULL;
   MPI_Comm comm;
 
   control_test(ctrl, __CONTROL_INFO__);
@@ -204,9 +217,10 @@ int do_test_le_interp3(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  le_set_nplane_total(nplane);
-  le_set_plane_uymax(uy_set);
-  le_init();
+  le_create(cs, &le);
+  le_nplane_set(le, nplane);
+  le_uy_set(le, uy_set);
+  le_commit(le);
 
   try {
 
@@ -217,7 +231,7 @@ int do_test_le_interp3(control_t * ctrl) {
     coords_nlocal(nlocal);
     coords_nlocal_offset(noffset);
 
-    comm = le_communicator();
+    le_comm(le, &comm);
 
     for (n = -5000; n <= 5000; n++) {
 
@@ -290,7 +304,7 @@ int do_test_le_interp3(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_finish();
+    le_free(&le);
     coords_free(&cs); assert(cs == NULL);
     pe_free(&pe);
   }
@@ -328,7 +342,7 @@ int do_test_le_interp4(control_t * ctrl) {
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
-  MPI_Comm comm;
+  le_t * le = NULL;
 
   assert(ctrl);
 
@@ -339,9 +353,10 @@ int do_test_le_interp4(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  le_set_nplane_total(nplane);
-  le_set_plane_uymax(uy_set);
-  le_init();
+  le_create(cs, &le);
+  le_nplane_set(le, nplane);
+  le_uy_set(le, uy_set);
+  le_commit(le);
 
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
@@ -350,8 +365,6 @@ int do_test_le_interp4(control_t * ctrl) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   nhalo = coords_nhalo();
-
-  comm = le_communicator();
 
   try {
     for (n = -5000; n <= 5000; n++) {
@@ -394,7 +407,7 @@ int do_test_le_interp4(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_finish();
+    le_free(&le);
     coords_free(&cs);
     pe_free(&pe); assert(pe == NULL);
   }
