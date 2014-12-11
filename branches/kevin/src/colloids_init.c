@@ -16,15 +16,14 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <math.h>
 #include <assert.h>
 
-#include "pe.h"
-#include "ran.h"
+#include "util.h"
 #include "coords.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
@@ -40,38 +39,23 @@ static int colloids_init_check_wall(colloids_info_t * cinfo, double dh);
  *  colloids_init_random
  *
  *  Run the initialisation with a total of np particles.
- *  If np = 1, use the position of the given particle;
- *  otherwise, use random positions.
  *
  *****************************************************************************/
 
 int colloids_init_random(colloids_info_t * cinfo, int np,
 			 const colloid_state_t * s0, double dh) {
-
   double amax;
   double hmax;
-  colloid_t * pc;
 
   assert(cinfo);
 
-  if (np == 1) {
-    colloids_info_add_local(cinfo, 1, s0->r, &pc);
-    if (pc) {
-      pc->s = *s0;
-      pc->s.index = 1;
-      pc->s.rng = pc->s.index;
-      pc->s.rebuild = 1;
-    }
-  }
-  else {
-    /* Assume maximum size set by ah and small separation dh */
-    amax = s0->ah + dh;
-    hmax = 2.0*s0->ah + dh;
+  /* Assume maximum size set by ah and small separation dh */
+  amax = s0->ah + dh;
+  hmax = 2.0*s0->ah + dh;
 
-    colloids_init_random_set(cinfo, np, s0, amax);
-    colloids_halo_state(cinfo);
-    colloids_init_check_state(cinfo, hmax);
-  }
+  colloids_init_random_set(cinfo, np, s0, amax);
+  colloids_halo_state(cinfo);
+  colloids_init_check_state(cinfo, hmax);
 
   if (wall_present()) colloids_init_check_wall(cinfo, dh);
   colloids_info_ntotal_set(cinfo);
@@ -91,8 +75,10 @@ int colloids_init_random(colloids_info_t * cinfo, int np,
 static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
 				    const colloid_state_t * s,  double amax) {
   int n;
+  int state = 13;
   double r0[3];
   double lex[3];
+  double ran[3];
   colloid_t * pc;
 
   /* If boundaries are not perioidic, some of the volume must be excluded */
@@ -102,9 +88,13 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
   lex[Z] = amax*(1.0 - is_periodic(Z));
 
   for (n = 1; n <= npart; n++) {
-    r0[X] = Lmin(X) + lex[X] + ran_serial_uniform()*(L(X) - 2.0*lex[X]);
-    r0[Y] = Lmin(Y) + lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*lex[Y]);
-    r0[Z] = Lmin(Z) + lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*lex[Z]);
+    util_ranlcg_reap_uniform(&state, ran + X);
+    util_ranlcg_reap_uniform(&state, ran + Y);
+    util_ranlcg_reap_uniform(&state, ran + Z);
+
+    r0[X] = Lmin(X) + lex[X] + ran[X]*(L(X) - 2.0*lex[X]);
+    r0[Y] = Lmin(Y) + lex[Y] + ran[Y]*(L(Y) - 2.0*lex[Y]);
+    r0[Z] = Lmin(Z) + lex[Z] + ran[Z]*(L(Z) - 2.0*lex[Z]);
     colloids_info_add_local(cinfo, n, r0, &pc);
 
     if (pc) {

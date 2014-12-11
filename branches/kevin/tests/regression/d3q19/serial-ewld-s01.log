@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.5 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2558M
 Note assertions via standard C assert() are on.
 
-Read 26 user parameters from ./serial-ewld-s01.inp
+Read 26 user parameters from serial-ewld-s01.inp
 
 No free energy selected
 
@@ -101,34 +101,34 @@ Total terms kept in Fourier space sum:    1152
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]      261128.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[rho]      261138.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
-[total   ]  3.6238790e-12  0.0000000e+00  0.0000000e+00
-[fluid   ]  3.6238790e-12  0.0000000e+00  0.0000000e+00
+[total   ]  3.6240178e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6240178e-12  0.0000000e+00  0.0000000e+00
 [colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
 
 Particle statistics:
-Pair potential minimum h is:  2.5795578e+00
+Pair potential minimum h is:  2.6834279e+00
 Pair potential energy is:     0.0000000e+00
 
 Colloid velocities - x y z
-[minimum ] -2.0342172e-17 -7.6015470e-18 -4.1525044e-18
-[maximum ]  2.1840808e-17 -1.2082261e-19  2.1003666e-17
+[minimum ] -1.7310275e-17 -8.4858146e-18 -3.8679657e-18
+[maximum ]  3.5065328e-17  1.4718375e-16  3.6435892e-18
 
 Scalars - total mean variance min max
-[rho]      261128.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[rho]      261138.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
-[total   ] -1.7016464e-15 -1.8174504e-12  2.4727209e-15
-[fluid   ] -2.4286129e-16 -1.8129248e-12  1.8179902e-15
-[colloids] -1.4587851e-15 -4.5256111e-15  6.5473075e-16
+[total   ]  2.7867123e-15 -1.7941317e-12 -3.3664609e-16
+[fluid   ]  1.3010426e-15 -1.8003134e-12 -2.2898350e-16
+[colloids]  1.4856697e-15  6.1816716e-15 -1.0766259e-16
 
 Velocity - x y z
-[minimum ] -3.4694470e-17 -5.5511151e-17 -7.6327833e-17
-[maximum ]  4.8572257e-17  4.8572257e-17  8.6736174e-17
+[minimum ] -7.2858386e-17 -7.9797280e-17 -9.7144515e-17
+[maximum ]  7.6327833e-17  1.7694179e-16  7.2858386e-17
 
 Completed cycle 10
 
@@ -136,20 +136,20 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.160      3.160      3.160   3.159649 (1 call)
-      Time step loop:      0.294      0.307      2.976   0.297589 (10 calls)
-         Propagation:      0.019      0.020      0.199   0.019857 (10 calls)
-           Collision:      0.254      0.263      2.574   0.257432 (10 calls)
-       Lattice halos:      0.001      0.002      0.030   0.001503 (20 calls)
-       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
-              Forces:      0.002      0.002      0.021   0.002123 (10 calls)
-             Rebuild:      0.008      0.009      0.082   0.008221 (10 calls)
-                 BBL:      0.004      0.005      0.043   0.004312 (10 calls)
-      Particle halos:      0.000      0.000      0.001   0.000114 (10 calls)
-     Ewald Sum total:      0.002      0.002      0.020   0.002040 (10 calls)
-          Ewald Real:      0.000      0.000      0.000   0.000028 (10 calls)
-       Ewald_Fourier:      0.002      0.002      0.020   0.002010 (10 calls)
+               Total:      3.284      3.284      3.284   3.284341 (1 call)
+      Time step loop:      0.306      0.317      3.081   0.308120 (10 calls)
+         Propagation:      0.016      0.017      0.165   0.016533 (10 calls)
+           Collision:      0.265      0.268      2.664   0.266438 (10 calls)
+       Lattice halos:      0.001      0.003      0.030   0.001518 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
+              Forces:      0.002      0.002      0.023   0.002304 (10 calls)
+             Rebuild:      0.008      0.009      0.084   0.008418 (10 calls)
+                 BBL:      0.004      0.005      0.045   0.004544 (10 calls)
+      Particle halos:      0.000      0.000      0.002   0.000151 (10 calls)
+     Ewald Sum total:      0.002      0.002      0.022   0.002218 (10 calls)
+          Ewald Real:      0.000      0.000      0.000   0.000027 (10 calls)
+       Ewald_Fourier:      0.002      0.002      0.022   0.002190 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
-          phi update:      0.000      0.000      0.000   0.000001 (10 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
                Free1:      0.000      0.000      0.000   0.000001 (20 calls)
 Ludwig finished normally.

@@ -59,6 +59,7 @@ struct key_pair_s {
 struct rt_s {
   pe_t * pe;                      /* Reference to parallel environment */
   int nkeys;                      /* Number of keys */
+  char input_file[FILENAME_MAX];  /* Input file name */
   key_pair_t * keylist;           /* Key list */
 };
 
@@ -169,9 +170,25 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
     fclose(fp_input);
   }
 
-  info("Read %d user parameters from %s\n", rt->nkeys, input_file_name);
+  /*info("Read %d user parameters from %s\n", rt->nkeys, input_file_name);*/
+  strncpy(rt->input_file, input_file_name, FILENAME_MAX);
 
   rt_key_broadcast(rt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_info
+ *
+ *****************************************************************************/
+
+int rt_info(rt_t * rt) {
+
+  assert(rt);
+
+  info("Read %d user parameters from %s\n", rt->nkeys, rt->input_file);
 
   return 0;
 }

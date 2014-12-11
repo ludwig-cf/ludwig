@@ -52,5 +52,6 @@ HOST int util_matrix_invert(int n, double ** a);
 
 HOST int util_ranlcg_reap_uniform(int * state, double * r);
 HOST int util_ranlcg_reap_gaussian(int * state, double r[2]);
+HOST int util_ranlcg_reap_unit_vector(int * state, double rhat[3]);
 
 #endif

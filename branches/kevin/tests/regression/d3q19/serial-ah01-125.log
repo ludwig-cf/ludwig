@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.5 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2558M
 Note assertions via standard C assert() are on.
 
-Read 21 user parameters from ./serial-ah01-125.inp
+Read 21 user parameters from serial-ah01-125.inp
 
 No free energy selected
 
@@ -102,20 +102,20 @@ Starting time step loop.
 Particle statistics:
 
 Colloid velocities - x y z
-[minimum ]  4.2568127e-03 -1.5860852e-03 -7.8545320e-03
-[maximum ]  4.2568127e-03 -1.5860852e-03 -7.8545320e-03
+[minimum ]  7.9061279e-03 -9.0070937e-04  3.4303013e-03
+[maximum ]  7.9061279e-03 -9.0070937e-04  3.4303013e-03
 
 Scalars - total mean variance min max
-[rho]        4088.00  1.00000000000  4.2449635e-08  0.99751357462  1.00335181757
+[rho]        4088.00  1.00000000000  3.6098496e-08  0.99758918022  1.00268657657
 
 Momentum - x y z
-[total   ] -1.7395710e-11  1.4773443e-11 -2.7407396e-11
-[fluid   ] -3.5741255e-02  1.0754581e-02  6.1523317e-02
-[colloids]  3.5741255e-02 -1.0754581e-02 -6.1523317e-02
+[total   ] -3.7443951e-11  3.3605188e-11 -1.6779803e-11
+[fluid   ] -6.4727102e-02  7.2628569e-03 -2.7975366e-02
+[colloids]  6.4727102e-02 -7.2628568e-03  2.7975366e-02
 
 Velocity - x y z
-[minimum ] -4.3892230e-04 -2.1405550e-03 -5.7904112e-03
-[maximum ]  4.0104915e-03  1.1247225e-03  7.3013801e-04
+[minimum ] -7.6735246e-04 -1.9838523e-03 -4.6118166e-04
+[maximum ]  6.0492985e-03  1.2464016e-03  3.2554713e-03
 
 Completed cycle 10000
 
@@ -124,28 +124,28 @@ Calibration result
 Number of measurements:           2822
 Run time (Stokes times):    4.5273e+01
 
-Actual force:               3.3559e-02
-Actual speed:               7.9495e-03
-Hasimoto correction (a/L):  8.0864e-01
+Actual force:               3.3536e-02
+Actual speed:               7.9549e-03
+Hasimoto correction (a/L):  8.0885e-01
 Input radius:               1.2500e+00
-Hydrodynamic radius:        1.0866e+00
-Stokes equation rhs:        2.7137e-02
-Stokes equation lhs:        2.7137e-02
+Hydrodynamic radius:        1.0854e+00
+Stokes equation rhs:        2.7126e-02
+Stokes equation lhs:        2.7126e-02
 
 Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     31.211     31.211     31.211  31.210946 (1 call)
-      Time step loop:      0.003      0.004     30.985   0.003098 (10000 calls)
-         Propagation:      0.000      0.000      1.608   0.000161 (10000 calls)
-           Collision:      0.002      0.003     23.963   0.002396 (10000 calls)
-       Lattice halos:      0.000      0.000      0.983   0.000049 (20000 calls)
+               Total:     33.661     33.661     33.661  33.660652 (1 call)
+      Time step loop:      0.003      0.004     33.424   0.003342 (10000 calls)
+         Propagation:      0.000      0.000      1.436   0.000144 (10000 calls)
+           Collision:      0.002      0.003     25.493   0.002549 (10000 calls)
+       Lattice halos:      0.000      0.000      1.027   0.000051 (20000 calls)
        phi gradients:      0.000      0.000      0.005   0.000000 (10000 calls)
-              Forces:      0.000      0.000      0.286   0.000029 (10000 calls)
-             Rebuild:      0.000      0.000      1.798   0.000180 (10000 calls)
-                 BBL:      0.000      0.000      1.587   0.000159 (10000 calls)
-      Particle halos:      0.000      0.000      0.301   0.000030 (10000 calls)
+              Forces:      0.000      0.000      0.405   0.000041 (10000 calls)
+             Rebuild:      0.000      0.000      1.877   0.000188 (10000 calls)
+                 BBL:      0.000      0.000      1.730   0.000173 (10000 calls)
+      Particle halos:      0.000      0.000      0.429   0.000043 (10000 calls)
    Force calculation:      0.000      0.000      0.005   0.000001 (10000 calls)
           phi update:      0.000      0.000      0.005   0.000000 (10000 calls)
                Free1:      0.000      0.000      0.009   0.000000 (20000 calls)

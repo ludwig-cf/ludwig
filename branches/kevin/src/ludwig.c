@@ -22,7 +22,6 @@
 
 /* Coordinate system, general */
 
-#include "ran.h"
 #include "noise.h"
 #include "timer.h"
 #include "coords_rt.h"
@@ -187,7 +186,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   map_init_rt(ludwig->rt, &ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
-  ran_init(ludwig->rt);
   hydro_rt(ludwig->rt, &ludwig->hydro);
 
   /* PHI I/O */
@@ -385,6 +383,7 @@ void ludwig_run(const char * inputfile) {
   assert(ludwig->rt);
 
   rt_read_input_file(ludwig->rt, inputfile);
+  rt_info(ludwig->rt);
 
   ludwig_rt(ludwig);
 

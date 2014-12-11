@@ -124,7 +124,7 @@ OBJS = model.o propagation.o \
      psi_force.o psi_colloid.o \
      nernst_planck.o \
      psi_petsc.o psi_gradients.o \
-     leesedwards.o leesedwards_rt.o pe.o ran.o runtime.o \
+     leesedwards.o leesedwards_rt.o pe.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric_rt.o subgrid.o \
      stats_calibration.o stats_colloid.o \

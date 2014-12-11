@@ -28,8 +28,6 @@
 #include "field_grad.h"
 #include "blue_phase.h"
 #include "blue_phase_init.h"
-
-#include "ran.h"
 #include "noise.h"
 
 #define DEFAULT_SEED 13
@@ -488,6 +486,7 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
   int nlocal[3];
   int noffset[3];
   int index;
+  int iseed;
   double q[3][3], q0[3][3];
   double x, y, z;
   double *a, *b;	/* rotation angles */
@@ -499,6 +498,7 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
   double phase1, phase2;
   double n[3]={0.0,0.0,0.0};
   double q0_pitch;      /* Just q0 scalar */
+  double ran1, ran2, ran3;
 
   assert(fq);
   assert(specs);
@@ -516,19 +516,32 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
 
   q0_pitch = blue_phase_q0();
 
-    /* Initialise random rotation angles and centres in serial */
-    /* to get the same random numbers on all processes */
-    for(in = 0; in < N; in++){
+  /* Initialise random rotation angles and centres in serial */
+  /* to get the same random numbers on all processes */
 
-      a[in] = 2.0*pi_ * ran_serial_uniform();
-      b[in] = 2.0*pi_ * ran_serial_uniform();
-      C[3*in]   = L(X) * ran_serial_uniform(); 
-      C[3*in+1] = L(Y) * ran_serial_uniform(); 
-      C[3*in+2] = L(Z) * ran_serial_uniform(); 
+  /* All ranks have same random initialisation */
+  iseed = DEFAULT_SEED;
 
-    }
+  for (in = 0; in < N; in++) {
 
-  /* Setting environment configuration */
+    util_ranlcg_reap_uniform(&iseed, &ran1);
+    util_ranlcg_reap_uniform(&iseed, &ran2);
+    a[in] = 2.0*pi_ * ran1;
+    b[in] = 2.0*pi_ * ran2;
+
+    util_ranlcg_reap_uniform(&iseed, &ran1);
+    util_ranlcg_reap_uniform(&iseed, &ran2);
+    util_ranlcg_reap_uniform(&iseed, &ran3);
+    C[3*in]   = L(X) * ran1; 
+    C[3*in+1] = L(Y) * ran2; 
+    C[3*in+2] = L(Z) * ran3; 
+
+  }
+
+  /* Setting environment configuration: alter RNG according to rank ...*/
+
+  iseed += pe_rank();
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       y = noffset[Y] + jc;
@@ -536,8 +549,10 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
 
 	if (ENV == 0){
 
-	  phase1 = pi_*(0.5 - ran_parallel_uniform());
-	  phase2 = pi_*(0.5 - ran_parallel_uniform());
+	  util_ranlcg_reap_uniform(&iseed, &ran1);
+	  util_ranlcg_reap_uniform(&iseed, &ran2);
+	  phase1 = pi_*(0.5 - ran1);
+	  phase2 = pi_*(0.5 - ran2);
 
 	  n[X] = cos(phase1)*sin(phase2);
 	  n[Y] = sin(phase1)*sin(phase2);

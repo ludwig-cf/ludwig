@@ -18,8 +18,6 @@
 #include <limits.h>
 #include <math.h>
 
-#include "pe.h"
-#include "ran.h"
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
@@ -70,6 +68,7 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
   int ia;
   int nc;
   int ntotal[3];
+  int state = 13;
   double a;
   double rho;
   double eta;
@@ -115,7 +114,8 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
     /* Set a force of the right size in a random direction, and zero
      * the accumulators. */
 
-    ran_serial_unit_vector(f);
+    util_ranlcg_reap_unit_vector(&state, f);
+    /*ran_serial_unit_vector(f);*/
 
     for (ia = 0; ia < 3; ia++) {
       f[ia] *= calib_.ftarget;

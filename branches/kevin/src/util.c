@@ -1165,6 +1165,39 @@ int util_ranlcg_reap_uniform(int * state, double * r) {
 
 /*****************************************************************************
  *
+ *  util_ranlcg_unit_vector
+ *
+ *  Returns a vector randomly on the surface of a unit sphere.
+ *  Method of Marsaglia [1972]. See Allen and Tildesley.
+ *
+ *  Caller is responsible for maintaining state for LCG.
+ *
+ *****************************************************************************/
+
+int util_ranlcg_reap_unit_vector(int * state, double rhat[3]) {
+
+  double zeta1, zeta2, zsq;
+
+  assert(state);
+  assert(*state > 0);
+
+  do {
+    util_ranlcg_reap_uniform(state, &zeta1);
+    util_ranlcg_reap_uniform(state, &zeta2);
+    zeta1 = 1.0 - 2.0*zeta1;
+    zeta2 = 1.0 - 2.0*zeta1;
+    zsq   = zeta1*zeta1 + zeta2*zeta2;
+  } while (zsq > 1.0);
+
+  rhat[0] = 2.0*zeta1*sqrt(1.0 - zsq);
+  rhat[1] = 2.0*zeta2*sqrt(1.0 - zsq);
+  rhat[2] = 1.0 - 2.0*zsq;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  util_ranlcg_multiply
  *
  *  A safe multplication: returned value is (a*s + c) % m
