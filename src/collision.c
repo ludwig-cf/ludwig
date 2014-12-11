@@ -531,14 +531,17 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   for (i = 0; i < 3; i++) {
 
     TARGET_ILP(iv){
-      SIMD_1D_ELMNT(force,i,iv) = (tc_force_global[i] + t_force[3*baseIndex+iv+i]);
+      SIMD_1D_ELMNT(force,i,iv) = (tc_force_global[i] 
+		      + t_force[HYADR(tc_nSites,3,baseIndex+iv,i)]);
+      
+
       SIMD_1D_ELMNT(u,i,iv) = SIMD_SC_ELMNT(rrho,iv)*(SIMD_1D_ELMNT(u,i,iv) + 0.5*SIMD_1D_ELMNT(force,i,iv));  
     }
   }
   
   
   for (i = 0; i < 3; i++) {   
-    TARGET_ILP(iv) t_velocity[3*baseIndex+iv+i]=SIMD_1D_ELMNT(u,i,iv);
+    TARGET_ILP(iv) t_velocity[3*(baseIndex+iv)+i]=SIMD_1D_ELMNT(u,i,iv);
   }
 
   

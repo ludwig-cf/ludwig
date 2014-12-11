@@ -172,8 +172,9 @@ int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 
   assert(obj);
 
+  int nsites = le_nsites();
   for (ia = 0; ia < 3; ia++) {
-    obj->f[obj->nf*index + ia] = force[ia];
+    obj->f[HYADR(nsites,obj->nf,index,ia)] = force[ia];
   }
 
   return 0;
@@ -190,9 +191,10 @@ int hydro_f_local(hydro_t * obj, int index, double force[3]) {
   int ia;
 
   assert(obj);
+  int nsites = le_nsites();
 
   for (ia = 0; ia < 3; ia++) {
-    force[ia] = obj->f[obj->nf*index + ia];
+    force[ia] = obj->f[HYADR(nsites,obj->nf,index,ia)];
   }
 
   return 0;
@@ -211,10 +213,12 @@ int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
   int ia;
 
   assert(obj);
+  int nsites = le_nsites();
 
   for (ia = 0; ia < 3; ia++) {
-    obj->f[obj->nf*index + ia] += force[ia];
-  }
+        obj->f[HYADR(nsites,obj->nf,index,ia)] += force[ia];
+ 
+ }
 
   return 0;
 }
