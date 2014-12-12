@@ -1,9 +1,9 @@
-Welcome to Ludwig (Serial version running on 1 process)
+Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
 
-The SVN revision details are: 
+The SVN revision details are: 2563M
 Note assertions via standard C assert() are on.
 
-Read 23 user parameters from ./serial-init-bp1.inp
+Read 23 user parameters from serial-init-bp1.inp
 
 System details
 --------------
@@ -67,7 +67,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    5.50000e+00
 Bulk relaxation time:     5.50000e+00
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: 8361235
 
 Hydrodynamics
 -------------
@@ -86,12 +85,12 @@ Initialising Q_ab using O8M (BPI)
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
-[phi] -2.5424107e-14 -7.7588218e-19 6.0000000e-02 -4.4966058e-01 4.4966058e-01
-[phi] -1.4029333e-12 -4.2814127e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
-[phi] -1.2380652e-12 -3.7782752e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
-[phi] -1.8471336e-14 -5.6370043e-19 6.0000000e-02 -4.4966058e-01 4.4966058e-01
-[phi] -1.4698798e-12 -4.4857171e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -7.4301676e-14 -2.2675072e-18 6.0000000e-02 -4.4966058e-01 4.4966058e-01
+[phi] -1.4009349e-12 -4.2753141e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -1.2735923e-12 -3.8866954e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -2.5340841e-14 -7.7334108e-19 6.0000000e-02 -4.4966058e-01 4.4966058e-01
+[phi] -1.4913071e-12 -4.5511080e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
 
 Momentum - x y z
 [total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
@@ -100,19 +99,19 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.3705446e-05  0.99574253388 1.01118305550
-[phi] -3.2807109e-14 -1.0011935e-18 5.9699031e-02 -4.4806579e-01 4.4927991e-01
-[phi]  6.9706191e-08  2.1272641e-12 4.9622512e-02 -5.9696088e-01 5.9696088e-01
-[phi]  6.9706050e-08  2.1272598e-12 4.9622512e-02 -5.9696088e-01 5.9696088e-01
-[phi] -1.1370073e-13 -3.4698711e-18 5.9699031e-02 -4.4806579e-01 4.4927991e-01
-[phi]  6.9706100e-08  2.1272614e-12 4.9622512e-02 -5.9696088e-01 5.9696088e-01
+[rho]       32768.00  1.00000000000  1.3705446e-05  0.99574253388  1.01118305550
+[phi] -1.7735832e-14 -5.4125464e-19 5.9699031e-02 -4.4806579e-01 4.4927991e-01
+[phi]  6.9706194e-08  2.1272642e-12 4.9622512e-02 -5.9696088e-01 5.9696088e-01
+[phi]  6.9706022e-08  2.1272590e-12 4.9622512e-02 -5.9696088e-01 5.9696088e-01
+[phi] -9.9031913e-14 -3.0222141e-18 5.9699031e-02 -4.4806579e-01 4.4927991e-01
+[phi]  6.9706013e-08  2.1272587e-12 4.9622512e-02 -5.9696088e-01 5.9696088e-01
 
 Free energy density - timestep total fluid
 [fed]              1  4.1258783149e-03  4.1258783149e-03
 
 Momentum - x y z
-[total   ]  4.5353304e-13  6.5919492e-17 -9.2634234e-16
-[fluid   ]  4.5353304e-13  6.5919492e-17 -9.2634234e-16
+[total   ]  4.5190240e-13  2.6645353e-15 -1.5265567e-15
+[fluid   ]  4.5190240e-13  2.6645353e-15 -1.5265567e-15
 
 Velocity - x y z
 [minimum ] -5.7778663e-03 -5.7778663e-03 -5.7778663e-03
@@ -124,12 +123,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.230      0.230      0.230   0.230000 (1 call)
-      Time step loop:      0.200      0.200      0.200   0.200000 (1 call)
-         Propagation:      0.010      0.010      0.010   0.010000 (1 call)
-           Collision:      0.060      0.060      0.060   0.060000 (1 call)
-       Lattice halos:      0.000      0.000      0.000   0.000000 (1 call)
-       phi gradients:      0.010      0.010      0.010   0.010000 (1 call)
-                 BBL:      0.000      0.000      0.000   0.000000 (1 call)
-   Force calculation:      0.070      0.070      0.070   0.070000 (1 call)
+               Total:      0.211      0.211      0.211   0.211019 (1 call)
+      Time step loop:      0.170      0.170      0.170   0.170280 (1 call)
+         Propagation:      0.013      0.013      0.013   0.012686 (1 call)
+           Collision:      0.047      0.047      0.047   0.047125 (1 call)
+       Lattice halos:      0.001      0.001      0.001   0.000672 (1 call)
+       phi gradients:      0.011      0.011      0.011   0.010878 (1 call)
+                 BBL:      0.000      0.000      0.000   0.000004 (1 call)
+   Force calculation:      0.055      0.055      0.055   0.054503 (1 call)
+          phi update:      0.043      0.043      0.043   0.042695 (1 call)
 Ludwig finished normally.

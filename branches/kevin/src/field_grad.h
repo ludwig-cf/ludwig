@@ -20,8 +20,11 @@
 
 typedef struct field_grad_s field_grad_t;
 
-typedef int (* grad_ft)(int nf, const double * field, double * grad,
-                        double * delsq);
+typedef int (* grad_ft)(int nf, const double * field,double * t_field, 
+			double * grad, double * t_grad,
+                        double * delsq, double * t_delsq,
+			char * siteMask,char * t_siteMask
+);
 typedef int (* dab_ft)(int nf, const double * field, double * dab);
 
 HOST int field_grad_create(field_t * f, int level, field_grad_t ** pobj);

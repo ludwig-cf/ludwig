@@ -139,6 +139,20 @@ HOST void symmetric_phi(double** address_of_ptr) {
 
 /****************************************************************************
  *
+ *  symmetric_t_phi
+ *
+ ****************************************************************************/
+
+HOST void symmetric_t_phi(double** address_of_ptr) {
+
+  *address_of_ptr = phi_->t_data;
+
+  return;
+  
+}
+
+/****************************************************************************
+ *
  *  symmetric_gradphi
  *
  ****************************************************************************/
@@ -146,6 +160,20 @@ HOST void symmetric_phi(double** address_of_ptr) {
 HOST void symmetric_gradphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->grad;
+  
+  return;
+}
+
+
+/****************************************************************************
+ *
+ *  symmetric_t_gradphi
+ *
+ ****************************************************************************/
+
+HOST void symmetric_t_gradphi(double** address_of_ptr) {
+
+  *address_of_ptr = grad_phi_->t_grad;
   
   return;
 }
@@ -159,6 +187,21 @@ HOST void symmetric_gradphi(double** address_of_ptr) {
 HOST void symmetric_delsqphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->delsq;
+
+  return;
+
+}
+
+
+/****************************************************************************
+ *
+ *  symmetric_t_delsqphi
+ *
+ ****************************************************************************/
+
+HOST void symmetric_t_delsqphi(double** address_of_ptr) {
+
+  *address_of_ptr = grad_phi_->t_delsq;
 
   return;
 

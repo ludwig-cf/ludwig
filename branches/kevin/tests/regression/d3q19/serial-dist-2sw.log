@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.28 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
 
-The SVN revision details are: 2427M
+The SVN revision details are: 2563M
 Note assertions via standard C assert() are on.
 
-Read 16 user parameters from ./serial-dist-2sw.inp
+Read 16 user parameters from serial-dist-2sw.inp
 
 No free energy selected
 
@@ -45,7 +45,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    8.00000e-01
 Bulk relaxation time:     8.00000e-01
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: 8361235
 
 Hydrodynamics
 -------------
@@ -83,13 +82,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.052      0.052      0.052   0.051903 (1 call)
-      Time step loop:      0.004      0.005      0.046   0.004624 (10 calls)
-         Propagation:      0.000      0.000      0.002   0.000187 (10 calls)
-           Collision:      0.004      0.005      0.041   0.004119 (10 calls)
-       Lattice halos:      0.000      0.000      0.003   0.000257 (10 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
+               Total:      0.083      0.083      0.083   0.083006 (1 call)
+      Time step loop:      0.007      0.010      0.077   0.007657 (10 calls)
+         Propagation:      0.001      0.003      0.014   0.001402 (10 calls)
+           Collision:      0.006      0.006      0.058   0.005797 (10 calls)
+       Lattice halos:      0.000      0.000      0.003   0.000261 (10 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (10 calls)
-   Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
-          phi update:      0.000      0.000      0.000   0.000001 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000002 (10 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
 Ludwig finished normally.

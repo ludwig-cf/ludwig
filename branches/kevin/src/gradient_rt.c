@@ -43,8 +43,23 @@ int gradient_rt_init(rt_t * rt, field_grad_t * grad, map_t * map) {
   int n;
   char keyvalue[BUFSIZ];
 
-  int (*f2) (int nf, const double * data, double * grad, double * d2) = NULL;
-  int (*f4) (int nf, const double * data, double * grad, double * d2) = NULL;
+  int (* f2) (int nf, const double * data, 
+	      double * t_data,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq, 
+	      char * siteMask,
+	      char * t_siteMask) = NULL;
+  int (* f4) (int nf, const double * data, 
+	      double * t_data,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq, 
+	      char * siteMask,
+	      char * t_siteMask) = NULL;
+
 
   assert(grad);
 

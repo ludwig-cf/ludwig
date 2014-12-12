@@ -15,6 +15,7 @@
 
 #include "../version.h"
 #include <mpi.h>
+#include "targetDP.h"
 
 typedef struct pe_s pe_t;
 

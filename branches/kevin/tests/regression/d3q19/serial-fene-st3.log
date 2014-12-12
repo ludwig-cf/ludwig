@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2563M
 Note assertions via standard C assert() are on.
 
-Read 37 user parameters from ./serial-fene-st3.inp
+Read 37 user parameters from serial-fene-st3.inp
 
 No free energy selected
 
@@ -45,7 +45,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    1.00000e+00
 Bulk relaxation time:     1.00000e+00
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: 8361235
 
 Hydrodynamics
 -------------
@@ -142,16 +141,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.065      0.065      0.065   0.065487 (1 call)
-      Time step loop:      0.003      0.003      0.061   0.003042 (20 calls)
-         Propagation:      0.000      0.000      0.003   0.000166 (20 calls)
-           Collision:      0.002      0.003      0.048   0.002385 (20 calls)
-       Lattice halos:      0.000      0.000      0.002   0.000050 (40 calls)
+               Total:      0.094      0.094      0.094   0.093597 (1 call)
+      Time step loop:      0.004      0.006      0.089   0.004440 (20 calls)
+         Propagation:      0.001      0.001      0.013   0.000637 (20 calls)
+           Collision:      0.003      0.003      0.063   0.003155 (20 calls)
+       Lattice halos:      0.000      0.000      0.002   0.000053 (40 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (20 calls)
-              Forces:      0.000      0.000      0.000   0.000007 (20 calls)
-             Rebuild:      0.000      0.000      0.004   0.000180 (20 calls)
-                 BBL:      0.000      0.000      0.003   0.000141 (20 calls)
-      Particle halos:      0.000      0.000      0.000   0.000014 (20 calls)
+              Forces:      0.000      0.000      0.000   0.000009 (20 calls)
+             Rebuild:      0.000      0.000      0.004   0.000193 (20 calls)
+                 BBL:      0.000      0.000      0.003   0.000154 (20 calls)
+      Particle halos:      0.000      0.000      0.000   0.000018 (20 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (20 calls)
           phi update:      0.000      0.000      0.000   0.000000 (20 calls)
                Free1:      0.000      0.000      0.000   0.000000 (40 calls)

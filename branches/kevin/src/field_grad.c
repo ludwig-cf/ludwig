@@ -22,6 +22,7 @@
 #include "leesedwards.h"
 #include "field_s.h"
 #include "field_grad_s.h"
+#include "targetDP.h"
 
 static int field_grad_init(field_grad_t * obj);
 
@@ -33,12 +34,12 @@ static int field_grad_init(field_grad_t * obj);
 
 int field_grad_create(field_t * f, int level, field_grad_t ** pobj) {
 
-  field_grad_t * obj = NULL;
+  field_grad_t * obj =  (field_grad_t*) NULL;
 
   assert(f);
   assert(pobj);
 
-  obj = calloc(1, sizeof(field_grad_t));
+  obj = (field_grad_t*) calloc(1, sizeof(field_grad_t));
   if (obj == NULL) fatal("calloc(field_grad_t) failed\n");
 
   obj->field = f;
@@ -68,20 +69,26 @@ static int field_grad_init(field_grad_t * obj) {
   nsites = le_nsites();
 
   if (obj->level >= 2) {
-    obj->grad = calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq = calloc(obj->nf*nsites, sizeof(double));
+    obj->grad = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
+    obj->delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad == NULL) fatal("calloc(field_grad->grad) failed");
     if (obj->delsq == NULL) fatal("calloc(field_grad->delsq) failed");
+
+    /* allocate target copies */
+    targetCalloc((void **) &obj->t_grad, NVECTOR*obj->nf*nsites*sizeof(double));
+    targetCalloc((void **) &obj->t_delsq, obj->nf*nsites*sizeof(double));
+
+
   }
 
   if (obj->level == 3) {
-    obj->d_ab = calloc(NSYMM*obj->nf*nsites, sizeof(double));
+    obj->d_ab = (double*) calloc(NSYMM*obj->nf*nsites, sizeof(double));
     if (obj->d_ab == NULL) fatal("calloc(fieldgrad->d_ab) failed\n");
   }
 
   if (obj->level >= 4) {
-    obj->grad_delsq = calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq_delsq = calloc(obj->nf*nsites, sizeof(double));
+    obj->grad_delsq = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
+    obj->delsq_delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad_delsq == NULL) fatal("calloc(grad->grad_delsq) failed");
     if (obj->delsq_delsq == NULL) fatal("calloc(grad->delsq_delsq) failed");
   }
@@ -137,6 +144,8 @@ void field_grad_free(field_grad_t * obj) {
 
   if (obj->grad) free(obj->grad);
   if (obj->delsq) free(obj->delsq);
+  if (obj->t_grad) targetFree(obj->t_grad);
+  if (obj->t_delsq) targetFree(obj->t_delsq);
   if (obj->grad_delsq) free(obj->grad_delsq);
   if (obj->delsq_delsq) free(obj->delsq_delsq);
   if (obj->d_ab) free(obj->d_ab);
@@ -160,7 +169,9 @@ int field_grad_compute(field_grad_t * obj) {
 
   field_leesedwards(obj->field);
 
-  obj->d2(obj->field->nf, obj->field->data, obj->grad, obj->delsq);
+  //  obj->d2(obj->field->nf, obj->field->data, obj->grad, obj->delsq);
+
+  obj->d2(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
 
   if (obj->level == 3) {
     assert(obj->dab);
@@ -169,7 +180,18 @@ int field_grad_compute(field_grad_t * obj) {
 
   if (obj->level >= 4) {
     assert(obj->d4);
-    obj->d4(obj->field->nf, obj->delsq, obj->grad_delsq, obj->delsq_delsq);
+    // obj->d4(obj->field->nf, obj->delsq, obj->grad_delsq, obj->delsq_delsq);
+    //obj->d4(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+
+    //TO DO TEMPORARY FIX to allow free energies which require del^4 phi - 
+    // we are just using the existing t_* data structures 
+    // for the higher order host structures - this needs properly sorted
+
+    obj->d4(obj->field->nf, obj->delsq,obj->field->t_data,obj->grad_delsq, obj->t_grad, obj->delsq_delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+    
+    //void* dummy;
+    //obj->d4(obj->field->nf, obj->delsq,dummy,obj->grad_delsq, dummy, obj->delsq_delsq, dummy, obj->field->siteMask, obj->field->t_siteMask);
+
   }
 
   return 0;

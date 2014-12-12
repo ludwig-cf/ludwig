@@ -24,6 +24,7 @@
 #include "util.h"
 #include "control.h" /* Can we move this into LE please */
 #include "hydro_s.h"
+#include "targetDP.h"
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
@@ -43,22 +44,28 @@ static int hydro_u_read(FILE * fp, int index, void * self);
 int hydro_create(int nhcomm, hydro_t ** pobj) {
 
   int nsites;
-  hydro_t * obj = NULL;
+  hydro_t * obj = (hydro_t*) NULL;
 
   assert(pobj);
 
-  obj = calloc(1, sizeof(hydro_t));
+  obj = (hydro_t*) calloc(1, sizeof(hydro_t));
   if (obj == NULL) fatal("calloc(hydro) failed\n");
 
   obj->nf = 3; /* always for velocity, force */
   obj->nhcomm = nhcomm;
 
   nsites = le_nsites();
-  obj->u = calloc(obj->nf*nsites, sizeof(double));
+  obj->u = (double*) calloc(obj->nf*nsites, sizeof(double));
   if (obj->u == NULL) fatal("calloc(hydro->u) failed\n");
 
-  obj->f = calloc(obj->nf*nsites, sizeof(double));
+  obj->f = (double*) calloc(obj->nf*nsites, sizeof(double));
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
+
+  /* allocate target copies */
+  targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
+  targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
+
+
 
   coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
 
@@ -82,6 +89,8 @@ void hydro_free(hydro_t * obj) {
   MPI_Type_free(&obj->uhalo[X]);
   free(obj->f);
   free(obj->u);
+  targetFree(obj->t_f);
+  targetFree(obj->t_u);
   free(obj);
   obj = NULL;
 
@@ -158,11 +167,14 @@ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
 int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
 
+  nsites = le_nsites();
+
   for (ia = 0; ia < 3; ia++) {
-    obj->f[obj->nf*index + ia] = force[ia];
+    obj->f[HYADR(nsites,obj->nf,index,ia)] = force[ia];
   }
 
   return 0;
@@ -177,11 +189,14 @@ int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
 
+  nsites = le_nsites();
+
   for (ia = 0; ia < 3; ia++) {
-    force[ia] = obj->f[obj->nf*index + ia];
+    force[ia] = obj->f[HYADR(nsites,obj->nf,index,ia)];
   }
 
   return 0;
@@ -198,11 +213,14 @@ int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
 
+  nsites = le_nsites();
+
   for (ia = 0; ia < 3; ia++) {
-    obj->f[obj->nf*index + ia] += force[ia];
+    obj->f[HYADR(nsites,obj->nf,index,ia)] += force[ia];
   }
 
   return 0;
@@ -453,7 +471,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   /* Allocate the temporary buffer */
 
   n = (nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
-  buffer = calloc(nf*n, sizeof(double));
+  buffer = (double*) calloc(nf*n, sizeof(double));
   if (buffer == NULL) fatal("hydrodynamics: malloc(le buffer) failed\n");
 
   t = 1.0*get_step();
@@ -551,7 +569,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 static int hydro_u_write(FILE * fp, int index, void * arg) {
 
   int n;
-  hydro_t * obj = arg;
+  hydro_t * obj = (hydro_t*) arg;
 
   assert(fp);
   assert(obj);
@@ -571,7 +589,7 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
 static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 
   int n;
-  hydro_t * obj = arg;
+  hydro_t * obj = (hydro_t*) arg;
 
   assert(fp);
   assert(obj);
@@ -594,7 +612,7 @@ static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 int hydro_u_read(FILE * fp, int index, void * self) {
 
   int n;
-  hydro_t * obj = self;
+  hydro_t * obj = (hydro_t*) self;
 
   assert(fp);
   assert(obj);

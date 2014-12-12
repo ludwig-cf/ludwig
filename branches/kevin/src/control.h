@@ -17,23 +17,22 @@
 
 #include "runtime.h"
 
-int init_control(rt_t * rt);
-int  get_step(void);
-int  next_step(void);
-int  is_statistics_step(void);
-int  is_measurement_step(void);
-int  is_config_step(void);
-int  is_config_at_end(void);
-int  is_colloid_io_step(void);
+__host__ int init_control(rt_t * rt);
+__host__ int get_step(void);
+__host__ int next_step(void);
+__host__ int is_statistics_step(void);
+__host__ int is_measurement_step(void);
+__host__ int is_config_step(void);
+__host__ int is_config_at_end(void);
+__host__ int is_colloid_io_step(void);
 
-int  is_phi_output_step(void);
-int  is_psi_output_step(void);
-int  is_vel_output_step(void);
-int  is_fed_output_step(void);
-int  is_shear_measurement_step(void);
-int  is_shear_output_step(void);
-
-int control_freq_set(int freq);
-int control_time_set(int it);
+__host__ int is_phi_output_step(void);
+__host__ int is_psi_output_step(void);
+__host__ int is_vel_output_step(void);
+__host__ int is_fed_output_step(void);
+__host__ int is_shear_measurement_step(void);
+__host__ int is_shear_output_step(void);
+__host__ int control_freq_set(int freq);
+__host__ int control_time_set(int it);
 
 #endif

@@ -21,15 +21,33 @@ struct field_grad_s {
   field_t * field;          /* Reference to the field */
   int nf;                   /* Number of field components */
   int level;                /* Maximum derivative required */
-  double * grad;            /* Gradient              \nabla f */
-  double * delsq;           /* Laplacian             \nabla^2 f */
+  double * grad;            /* Gradient              \nabla f (on host)*/
+  double * delsq;           /* Laplacian             \nabla^2 f (on target)*/
+  double * t_grad;            /* Gradient              \nabla f (on host)*/
+  double * t_delsq;           /* Laplacian             \nabla^2 f (on target)*/
   double * d_ab;            /* Gradient tensor d_a d_b f */
   double * grad_delsq;      /* Gradient of Laplacian grad \nabla^2 f */
   double * delsq_delsq;     /* Laplacian^2           \nabla^4 f */
 
-  int (* d2) (int nf, const double * field, double * grad, double * delsq);
-  int (* d4) (int nf, const double * field, double * grad, double * delsq);
-  int (* dab) (int nf, const double * field, double * d_ab);
+  int (* d2) (int nf, const double * field, 
+	      double * t_field,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq,
+	      char * siteMask,
+	      char * t_siteMask
+);
+  int (* d4) (int nf, const double * field, 
+	      double * t_field,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq,
+	      char * siteMask,
+	      char * t_siteMask
+);
+  int (* dab)  (int nf, const double * field, 
+	      double * dab);
 };
-
 #endif

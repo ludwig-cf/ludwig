@@ -18,6 +18,8 @@
 #include "coords.h"
 #include "propagation.h"
 #include "lb_model_s.h"
+#include "targetDP.h"
+#include <string.h>
 
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
@@ -34,7 +36,7 @@ static int lb_propagate_d3q19_r(lb_t * lb);
  *
  *****************************************************************************/
 
-int lb_propagation(lb_t * lb) {
+HOST int lb_propagation(lb_t * lb) {
 
   assert(lb);
 
@@ -47,7 +49,9 @@ int lb_propagation(lb_t * lb) {
     /* Reverse implementation */
     if (NVEL == 9)  lb_propagate_d2q9_r(lb);
     if (NVEL == 15) lb_propagate_d3q15_r(lb);
-    if (NVEL == 19) lb_propagate_d3q19_r(lb);
+    if (NVEL == 12345) lb_propagate_d3q19_r(lb); /* scheduled for removal */
+    // lb_propagate_d3q19 now uses generic addressing for both MODEL and MODEL_R
+    if (NVEL == 19) lb_propagate_d3q19(lb);
   }
 
   return 0;
@@ -142,6 +146,7 @@ static int lb_propagate_d3q15(lb_t * lb) {
   ystr = zstr*(nlocal[Z] + 2*nhalo);
   xstr = ystr*(nlocal[Y] + 2*nhalo);
 
+
   /* Forward moving distributions */
   
   for (ic = nlocal[X]; ic >= 1; ic--) {
@@ -189,6 +194,16 @@ static int lb_propagate_d3q15(lb_t * lb) {
   return 0;
 }
 
+
+
+//TODO declare these somewhere sensible.
+extern TARGET_CONST int tc_nSites; //declared in collision.c
+extern TARGET_CONST int tc_Nall[3]; //declared in gradient routine
+
+TARGET_CONST int tc_ndist;
+TARGET_CONST int tc_nhalo;
+
+
 /*****************************************************************************
  *
  *  lb_propagate_d3q19
@@ -197,10 +212,172 @@ static int lb_propagate_d3q15(lb_t * lb) {
  *
  *****************************************************************************/
 
+TARGET  void lb_propagate_d3q19_site(double* t_f, 
+				     double* t_fprime, 
+				     const int baseIndex){
+  
+
+
+  int coords[3];
+  GET_3DCOORDS_FROM_INDEX(baseIndex,coords,tc_Nall);
+
+  int n;
+
+  // if not a halo site:
+  if (coords[0] >= tc_nhalo && 
+      coords[1] >= tc_nhalo && 
+      coords[2] >= tc_nhalo &&
+      coords[0] < tc_Nall[X]-tc_nhalo &&  
+      coords[1] < tc_Nall[Y]-tc_nhalo &&  
+      coords[2] < tc_Nall[Z]-tc_nhalo){ 
+
+	for (n = 0; n < tc_ndist; n++) {
+
+	  
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 0)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 0)];
+
+	  int shiftIndex;
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1]-1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 1)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 1)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 2)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 2)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 3)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 3)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1],coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 4)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 4)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]-1,coords[1]+1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 5)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 5)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]-1,coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 6)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 6)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]-1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 7)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 7)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]-1,coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 8)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 8)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1],coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 9)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 9)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1],coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 10)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 10)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]+1,coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 11)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 11)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]+1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 12)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 12)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0],coords[1]+1,coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 13)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 13)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1]-1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 14)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 14)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2]-1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 15)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 15)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 16)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 16)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1],coords[2]+1,tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 17)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 17)];
+
+
+	  shiftIndex=INDEX_FROM_3DCOORDS(coords[0]+1,coords[1]+1,coords[2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 18)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 18)];
+
+
+
+	}
+
+
+ 
+    }
+
+    else{ //direct copy of t_f to t_fprime for halo sites 
+
+	for (n = 0; n < tc_ndist; n++) {
+
+	  int ip;
+	  for (ip=0;ip<NVEL;ip++){
+
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, ip)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, ip)]; 
+
+	  }
+
+
+
+	}
+      
+
+    }
+  
+
+
+
+}
+
+TARGET_ENTRY  void lb_propagate_d3q19_lattice(double* t_f, 
+					      double* t_fprime){
+
+
+  int baseIndex=0;
+
+  //partition binary collision kernel across the lattice on the target
+  TARGET_TLP(baseIndex,tc_nSites){
+    lb_propagate_d3q19_site (t_f,t_fprime,baseIndex);
+
+  }
+
+
+}
+
+
 static int lb_propagate_d3q19(lb_t * lb) {
 
-  int ic, jc, kc, index, n, p;
-  int xstr, ystr, zstr;
   int nhalo;
   int nlocal[3];
 
@@ -210,57 +387,26 @@ static int lb_propagate_d3q19(lb_t * lb) {
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  zstr = lb->ndist*NVEL;
-  ystr = zstr*(nlocal[Z] + 2*nhalo);
-  xstr = ystr*(nlocal[Y] + 2*nhalo);
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
-  /* Distributions moving forward in memory. */
-  
-  for (ic = nlocal[X]; ic >= 1; ic--) {
-    for (jc = nlocal[Y]; jc >= 1; jc--) {
-      for (kc = nlocal[Z]; kc >= 1; kc--) {
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-	index = coords_index(ic, jc, kc);
+  int nFields=NVEL*lb->ndist;
 
-	for (n = 0; n < lb->ndist; n++) {
-	  p = lb->ndist*NVEL*index + n*NVEL;
-	  lb->f[p + 9] = lb->f[p                         + (-1)*zstr + 9];
-	  lb->f[p + 8] = lb->f[p             + (-1)*ystr + (+1)*zstr + 8];
-	  lb->f[p + 7] = lb->f[p             + (-1)*ystr             + 7];
-	  lb->f[p + 6] = lb->f[p             + (-1)*ystr + (-1)*zstr + 6];
-	  lb->f[p + 5] = lb->f[p + (-1)*xstr + (+1)*ystr             + 5];
-	  lb->f[p + 4] = lb->f[p + (-1)*xstr             + (+1)*zstr + 4];
-	  lb->f[p + 3] = lb->f[p + (-1)*xstr                         + 3];
-	  lb->f[p + 2] = lb->f[p + (-1)*xstr             + (-1)*zstr + 2];
-	  lb->f[p + 1] = lb->f[p + (-1)*xstr + (-1)*ystr             + 1];
-	}
-      }
-    }
-  }
 
-  /* Distributions mvoing backward in memory. */
-  
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+  //start constant setup
+  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstantIntToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
+  copyConstantIntToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
+  //end constant setup
 
-	index = coords_index(ic, jc, kc);
+  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 
-	for (n = 0; n < lb->ndist; n++) {
-	  p = lb->ndist*NVEL*index + n*NVEL;
-	  lb->f[p + 10] = lb->f[p                         + (+1)*zstr + 10];
-	  lb->f[p + 11] = lb->f[p             + (+1)*ystr + (-1)*zstr + 11];
-	  lb->f[p + 12] = lb->f[p             + (+1)*ystr             + 12];
-	  lb->f[p + 13] = lb->f[p             + (+1)*ystr + (+1)*zstr + 13];
-	  lb->f[p + 14] = lb->f[p + (+1)*xstr + (-1)*ystr             + 14];
-	  lb->f[p + 15] = lb->f[p + (+1)*xstr             + (-1)*zstr + 15];
-	  lb->f[p + 16] = lb->f[p + (+1)*xstr                         + 16];
-	  lb->f[p + 17] = lb->f[p + (+1)*xstr             + (+1)*zstr + 17];
-	  lb->f[p + 18] = lb->f[p + (+1)*xstr + (+1)*ystr             + 18];
-	}
-      }
-    }
-  }
+  lb_propagate_d3q19_lattice TARGET_LAUNCH(nSites) (lb->t_f,lb->t_fprime);
+
+  copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
 
   return 0;
 }

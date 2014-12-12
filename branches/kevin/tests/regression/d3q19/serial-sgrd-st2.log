@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2563M
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from ./serial-sgrd-st2.inp
+Read 24 user parameters from serial-sgrd-st2.inp
 
 No free energy selected
 
@@ -45,7 +45,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    1.00000e+00
 Bulk relaxation time:     1.00000e+00
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: 8361235
 
 Hydrodynamics
 -------------
@@ -123,13 +122,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.768      5.768      5.768   5.767546 (1 call)
-      Time step loop:      0.003      0.003      5.762   0.002881 (2000 calls)
-         Propagation:      0.000      0.000      0.327   0.000164 (2000 calls)
-           Collision:      0.002      0.003      4.835   0.002417 (2000 calls)
-       Lattice halos:      0.000      0.000      0.100   0.000050 (2000 calls)
-       phi gradients:      0.000      0.000      0.001   0.000000 (2000 calls)
-      Particle halos:      0.000      0.000      0.097   0.000049 (2000 calls)
+               Total:      8.345      8.345      8.345   8.345217 (1 call)
+      Time step loop:      0.004      0.005      8.339   0.004170 (2000 calls)
+         Propagation:      0.001      0.001      1.193   0.000597 (2000 calls)
+           Collision:      0.003      0.003      6.218   0.003109 (2000 calls)
+       Lattice halos:      0.000      0.000      0.102   0.000051 (2000 calls)
+       phi gradients:      0.000      0.000      0.001   0.000001 (2000 calls)
+      Particle halos:      0.000      0.000      0.136   0.000068 (2000 calls)
    Force calculation:      0.000      0.000      0.001   0.000001 (2000 calls)
           phi update:      0.000      0.000      0.001   0.000000 (2000 calls)
 Ludwig finished normally.

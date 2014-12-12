@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2563M
 Note assertions via standard C assert() are on.
 
-Read 42 user parameters from ./serial-chol-n04.inp
+Read 42 user parameters from serial-chol-n04.inp
 
 System details
 --------------
@@ -79,7 +79,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    3.50000e+00
 Bulk relaxation time:     3.50000e+00
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: 8361235
 
 Hydrodynamics
 -------------
@@ -179,17 +178,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.539      5.539      5.539   5.538839 (1 call)
-      Time step loop:      1.031      1.088      5.247   1.049357 (5 calls)
-         Propagation:      0.019      0.020      0.097   0.019309 (5 calls)
-           Collision:      0.255      0.260      1.286   0.257115 (5 calls)
-       Lattice halos:      0.001      0.003      0.016   0.001578 (10 calls)
-       phi gradients:      0.057      0.081      0.316   0.063136 (5 calls)
-              Forces:      0.000      0.000      0.000   0.000005 (5 calls)
-             Rebuild:      0.008      0.010      0.045   0.008910 (5 calls)
-                 BBL:      0.005      0.005      0.023   0.004595 (5 calls)
-      Particle halos:      0.000      0.000      0.000   0.000019 (5 calls)
-   Force calculation:      0.336      0.349      1.706   0.341156 (5 calls)
-          phi update:      0.345      0.356      1.746   0.349105 (5 calls)
-               Free1:      0.000      0.000      0.000   0.000000 (10 calls)
+               Total:      6.544      6.544      6.544   6.544085 (1 call)
+      Time step loop:      1.220      1.306      6.227   1.245438 (5 calls)
+         Propagation:      0.049      0.086      0.283   0.056683 (5 calls)
+           Collision:      0.362      0.368      1.822   0.364374 (5 calls)
+       Lattice halos:      0.001      0.003      0.016   0.001562 (10 calls)
+       phi gradients:      0.064      0.086      0.344   0.068821 (5 calls)
+              Forces:      0.000      0.000      0.000   0.000007 (5 calls)
+             Rebuild:      0.009      0.010      0.046   0.009234 (5 calls)
+                 BBL:      0.005      0.005      0.024   0.004827 (5 calls)
+      Particle halos:      0.000      0.000      0.000   0.000021 (5 calls)
+   Force calculation:      0.391      0.407      1.991   0.398104 (5 calls)
+          phi update:      0.325      0.336      1.650   0.329932 (5 calls)
+               Free1:      0.000      0.000      0.000   0.000001 (10 calls)
 Ludwig finished normally.

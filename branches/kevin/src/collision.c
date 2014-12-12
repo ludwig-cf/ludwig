@@ -35,7 +35,7 @@
 #include "free_energy.h"
 #include "control.h"
 #include "collision.h"
-
+#include "field_s.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
@@ -61,6 +61,9 @@ HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential);
 HOST void symmetric_phi(double** address_of_ptr);
 HOST void symmetric_gradphi(double** address_of_ptr);
 HOST void symmetric_delsqphi(double** address_of_ptr);
+HOST void symmetric_t_phi(double** address_of_ptr);
+HOST void symmetric_t_gradphi(double** address_of_ptr);
+HOST void symmetric_t_delsqphi(double** address_of_ptr);
 HOST char symmetric_in_use();
 
 /*****************************************************************************
@@ -362,211 +365,11 @@ TARGET_CONST double tc_q_[NVEL][3][3];
 TARGET_CONST int tc_nmodes_; 
 
 // target copies of fields 
-static double *t_f; 
 static double *t_phi; 
 static double *t_delsqphi; 
 static double *t_gradphi; 
-static double *t_force; 
-static double *t_velocity; 
 
 #define NDIST 2 //for binary collision
-
-void init_fields_target(){
-
-  int N[3];
-  coords_nlocal(N);
-
-  int nFields=NVEL*NDIST;
-  int nhalo=coords_nhalo();
-
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-
-
-  //initialise targetDP
-  targetInit(nSites, nFields);
-
-  //allocate data on the target
-  targetCalloc((void **) &t_f, nSites*nFields*sizeof(double));
-  targetCalloc((void **) &t_phi, nSites*sizeof(double));
-  targetCalloc((void **) &t_delsqphi, nSites*sizeof(double));
-  targetCalloc((void **) &t_gradphi, nSites*3*sizeof(double));
-  targetCalloc((void **) &t_force, nSites*3*sizeof(double));
-  targetCalloc((void **) &t_velocity, nSites*3*sizeof(double));
-
-  checkTargetError("Binary Collision Allocation");
-
-
-  
-}
-
-
-void finalise_fields_target(){
-
-  targetFree(t_f);
-  targetFree(t_phi);
-  targetFree(t_delsqphi);
-  targetFree(t_gradphi);
-  targetFree(t_force);
-  targetFree(t_velocity);
-
-  checkTargetError("Binary Collision Free");
-
-  targetFinalize();
-
-
-}
-
-void put_fields_on_target_masked(lb_t * lb, hydro_t * hydro, 
-			       map_t * map){
-
-  int       ic, jc, kc, index;       /* site indices */
-
-  int N[3];
-  coords_nlocal(N);
-
-  int nFields=NVEL*NDIST;
-  int nhalo=coords_nhalo();
-
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-
-
-
-//set up site mask
-  char* siteMask = (char*) calloc(nSites,sizeof(char));
-  if(!siteMask){
-    printf("siteMask malloc failed\n");
-    exit(1);
-  }
-
-
-  //map status is now taken care of in masked targetDP data copies.
-  // we perform calculations for all sites, and only copy back the fluid
-  //sites to the host
-
-  // set all non-halo fluid sites to 1
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-
-
-  	index=coords_index(ic, jc, kc);
-
-	int status;
-	map_status(map, index, &status);
-
-	if (status == MAP_FLUID)
-	  siteMask[index]=1;
-      }
-    }
-  }
-
-
-  // at the moment we are using AoS data structures
-
-  //  copyToTargetMasked(t_f,lb->f,nSites,nFields,siteMask); 
-  copyToTargetMaskedAoS(t_f,lb->f,nSites,nFields,siteMask); 
-
-  //copyToTarget(t_f,lb->f,nSites*nFields*sizeof(double)); 
-
-  if (!symmetric_in_use()){
-    printf("Error: binary collision is only compatible with symmetric free energy\n");
-    exit(1);
-  }
-
-  double *ptr;
-
-  symmetric_phi(&ptr);
-  copyToTargetMaskedAoS(t_phi,ptr,nSites,1,siteMask); 
-
-  symmetric_delsqphi(&ptr);
-  copyToTargetMaskedAoS(t_delsqphi,ptr,nSites,1,siteMask); 
-
-  symmetric_gradphi(&ptr);
-  copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
-
-  copyToTargetMaskedAoS(t_force,hydro->f,nSites,3,siteMask); 
-
-  
-  //copyToTargetMaskedAoS(t_velocity,hydro->u,nSites,3,siteMask); 
-
-
-  free(siteMask);
-
-
-}
-
-
-void get_fields_from_target_masked(lb_t * lb,hydro_t * hydro,
-			       map_t * map){
-
-  int       ic, jc, kc, index;       /* site indices */
-
-  int N[3];
-  coords_nlocal(N);
-
-  int nFields=NVEL*NDIST;
-  int nhalo=coords_nhalo();
-
-  int Nall[3];
-  Nall[X]=N[X]+2*nhalo;  Nall[Y]=N[Y]+2*nhalo;  Nall[Z]=N[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-  
-
-//set up site mask
-  char* siteMask = (char*) calloc(nSites,sizeof(char));
-  if(!siteMask){
-    printf("siteMask malloc failed\n");
-    exit(1);
-  }
-
-
-  //map status is now taken care of in masked targetDP data copies.
-  // we perform calculations for all sites, and only copy back the fluid
-  //sites to the host
-
-  // set all non-halo fluid sites to 1
-  for (ic = 1; ic <= N[X]; ic++) {
-    for (jc = 1; jc <= N[Y]; jc++) {
-      for (kc = 1; kc <= N[Z]; kc++) {
-
-
-  	index=coords_index(ic, jc, kc);
-
-	int status;
-	map_status(map, index, &status);
-
-	if (status == MAP_FLUID)
-	  siteMask[index]=1;
-      }
-    }
-  }
-
-  //copyFromTargetMasked(lb->f,t_f,nSites,nFields,siteMask); 
-  copyFromTargetMaskedAoS(lb->f,t_f,nSites,nFields,siteMask); 
-  //copyFromTarget(lb->f,t_f,nSites*nFields*sizeof(double));
-  //copyFromTargetMaskedAoS(phi_site,t_phi,nSites,1,siteMask); 
-  //copyFromTargetMaskedAoS(phi_delsq_,t_delsqphi,nSites,1,siteMask); 
-  //copyFromTargetMaskedAoS(phi_grad_,t_gradphi,nSites,3,siteMask); 
-  //copyFromTargetMaskedAoS(f,t_force,nSites,3,siteMask); 
-  copyFromTargetMaskedAoS(hydro->u,t_velocity,nSites,3,siteMask); 
-
-
-  free(siteMask);
-
-
-
-}
-
-
 
 
 /*****************************************************************************
@@ -717,14 +520,17 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   for (i = 0; i < 3; i++) {
 
     TARGET_ILP(iv){
-      SIMD_1D_ELMNT(force,i,iv) = (tc_force_global[i] + t_force[3*baseIndex+iv+i]);
+      SIMD_1D_ELMNT(force,i,iv) = (tc_force_global[i] 
+		      + t_force[HYADR(tc_nSites,3,baseIndex+iv,i)]);
+      
+
       SIMD_1D_ELMNT(u,i,iv) = SIMD_SC_ELMNT(rrho,iv)*(SIMD_1D_ELMNT(u,i,iv) + 0.5*SIMD_1D_ELMNT(force,i,iv));  
     }
   }
   
   
   for (i = 0; i < 3; i++) {   
-    TARGET_ILP(iv) t_velocity[3*baseIndex+iv+i]=SIMD_1D_ELMNT(u,i,iv);
+    TARGET_ILP(iv) t_velocity[3*(baseIndex+iv)+i]=SIMD_1D_ELMNT(u,i,iv);
   }
 
   
@@ -997,6 +803,9 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
+  int nFields=NVEL*NDIST;
+
+  targetInit(nSites, nFields);
 
  //start constant setup
 
@@ -1021,8 +830,81 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 
   //start field management
-  init_fields_target();
-  put_fields_on_target_masked(lb,hydro,map);
+
+  int       ic, jc, kc, index;       /* site indices */
+
+//set up site mask
+  char* siteMask = (char*) calloc(nSites,sizeof(char));
+  if(!siteMask){
+    printf("siteMask malloc failed\n");
+    exit(1);
+  }
+
+
+  //map status is now taken care of in masked targetDP data copies.
+  // we perform calculations for all sites, and only copy back the fluid
+  //sites to the host
+
+  // set all non-halo fluid sites to 1
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+
+  	index=coords_index(ic, jc, kc);
+
+	int status;
+	map_status(map, index, &status);
+
+	if (status == MAP_FLUID)
+	  siteMask[index]=1;
+      }
+    }
+  }
+
+
+
+  if (!symmetric_in_use()){
+    printf("Error: binary collision is only compatible with symmetric free energy\n");
+    exit(1);
+  }
+
+
+  //TO DO tidy this up - access directly.
+  symmetric_t_phi(&t_phi);
+  symmetric_t_gradphi(&t_gradphi);
+  symmetric_t_delsqphi(&t_delsqphi);
+
+
+  //copyToTargetMaskedAoS(lb->t_f,lb->f,nSites,nFields,siteMask); 
+  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
+
+
+  //for GPU version, we use the data already existing on the target 
+  //for C version, we put data on the target (for now).
+  //ultimitely GPU and C versions will follow the same pattern
+  #ifndef CUDA
+
+  double *ptr;
+
+  symmetric_phi(&ptr);
+  //copyToTargetMaskedAoS(t_phi,ptr,nSites,1,siteMask); 
+  copyToTarget(t_phi,ptr,nSites*sizeof(double)); 
+
+  symmetric_delsqphi(&ptr);
+  //copyToTargetMaskedAoS(t_delsqphi,ptr,nSites,1,siteMask); 
+  copyToTarget(t_delsqphi,ptr,nSites*sizeof(double)); 
+
+  symmetric_gradphi(&ptr);
+  //copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
+  copyToTarget(t_gradphi,ptr,nSites*3*sizeof(double)); 
+  #endif
+
+
+  //copyToTargetMaskedAoS(hydro->t_f,hydro->f,nSites,3,siteMask); 
+
+  copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
+
   //end field management
 
   //start function pointer management
@@ -1049,14 +931,27 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   }
 
 	
-  lb_collision_binary_lattice TARGET_LAUNCH(nSites) ( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
+  lb_collision_binary_lattice TARGET_LAUNCH(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
         
 
-  get_fields_from_target_masked(lb,hydro,map); 
-  finalise_fields_target();
+  //start field management
+  //copyFromTargetMaskedAoS(lb->f,lb->t_f,nSites,nFields,siteMask); 
+
+  copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
+
+  //copyFromTargetMaskedAoS(hydro->u,hydro->t_u,nSites,3,siteMask); 
+  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+
+
+  //end field management
+
 
   targetFree(t_chemical_potential);
   targetFree(t_chemical_stress);
+
+  free(siteMask);
+
+  targetFinalize();
   
   return 0;
 }

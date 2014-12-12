@@ -41,7 +41,7 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc
+CC = gcc 
 MPICC = mpicc
 NVCC = nvcc
 
@@ -92,7 +92,7 @@ endif
 #
 ###############################################################################
 
-OBJS = model.o propagation.o \
+OBJS = \
      physics.o physics_rt.o \
      advection.o advection_bcs.o advection_rt.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
@@ -105,13 +105,13 @@ OBJS = model.o propagation.o \
      coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      driven_colloid.o driven_colloid_rt.o \
-     ewald.o field.o field_grad.o \
+     ewald.o \
      free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
-     gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
+     gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-     hydro.o hydro_rt.o interaction.o io_harness.o \
+      hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o model_le.o map.o \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
@@ -133,7 +133,8 @@ OBJS = model.o propagation.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
      timer.o wall.o colloids_Q_tensor.o ludwig.o
 
-TARGETDP_OBJS = collision.o symmetric.o util.o
+TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
+	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o
 
 ###############################################################################
 #
@@ -219,7 +220,7 @@ mpi-model:
 
 objs1:	$(OBJS) $(LBOBJ)
 objs2:	$(TARGETDP_OBJS)
-libar:
+libar: 
 	$(MAKE) objs1
 	$(MAKE) objs2 "CC=$(TARGETCC)" "OPTS=$(TARGETOPTS)"
 	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(TARGETDP_OBJS) $(LBOBJ)

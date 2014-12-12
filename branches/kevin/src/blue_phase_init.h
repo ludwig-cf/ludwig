@@ -35,5 +35,6 @@ void blue_phase_M_rot(double M[3][3], int dim, double alpha);
 void blue_phase_init_amplitude_set(const double amplitude);
 double blue_phase_init_amplitude(void);
 int blue_phase_cf1_init(field_t * fq, const int axis);
+int blue_phase_random_cf1_init(field_t * fq, const int axis);
 
 #endif

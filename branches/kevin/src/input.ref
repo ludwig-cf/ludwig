@@ -217,7 +217,8 @@ surf_psi_b 0.01
 #
 #  lc_q_initialisation  nematic, twist, dtc
 #			cholesteric: cholesteric_x,y,z 
-#			cholesteric finger (1st kind): cf1_x,y,z
+#			cholesteric finger 1st kind (CF1): cf1_x,y,z
+#			CF1 with random fluctuation: cf1_fluc_x,y,z
 #                       cubic: o8m (BPI), o2 (BPII), o5
 #                       hexagonal BPs: h2d, h3da, h3db
 #                       amorphous BP: bp3

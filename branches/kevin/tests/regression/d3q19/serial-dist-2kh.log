@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.28 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
 
-The SVN revision details are: 2427M
+The SVN revision details are: 2563M
 Note assertions via standard C assert() are on.
 
-Read 16 user parameters from ./serial-dist-2kh.inp
+Read 16 user parameters from serial-dist-2kh.inp
 
 No free energy selected
 
@@ -45,7 +45,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    8.00000e-01
 Bulk relaxation time:     8.00000e-01
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: 8361235
 
 Hydrodynamics
 -------------
@@ -84,11 +83,11 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.051      0.051      0.051   0.050866 (1 call)
-      Time step loop:      0.004      0.005      0.045   0.004506 (10 calls)
-         Propagation:      0.000      0.000      0.002   0.000187 (10 calls)
-           Collision:      0.004      0.004      0.040   0.004006 (10 calls)
-       Lattice halos:      0.000      0.000      0.003   0.000252 (10 calls)
+               Total:      0.083      0.083      0.083   0.083392 (1 call)
+      Time step loop:      0.007      0.010      0.077   0.007690 (10 calls)
+         Propagation:      0.001      0.003      0.014   0.001420 (10 calls)
+           Collision:      0.006      0.006      0.058   0.005810 (10 calls)
+       Lattice halos:      0.000      0.000      0.003   0.000259 (10 calls)
        phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
