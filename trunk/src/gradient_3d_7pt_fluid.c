@@ -50,8 +50,6 @@ HOST static void gradient_3d_7pt_fluid_operator(const int nop,
 					   double * t_grad,
 					   double * delsq,
 					   double * t_delsq,
-					   char * siteMask,
-					   char * t_siteMask,
 			     const int nextra);
 HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
 						const double * field,
@@ -79,9 +77,7 @@ HOST int gradient_3d_7pt_fluid_d2(const int nop,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq, 
-			     char * siteMask,
-			     char * t_siteMask
+			     double * t_delsq
 			     ) {
 
   int nextra;
@@ -94,7 +90,7 @@ HOST int gradient_3d_7pt_fluid_d2(const int nop,
   assert(delsq);
 
   gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad,
-				 delsq, t_delsq, siteMask, t_siteMask, nextra);
+				 delsq, t_delsq, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
@@ -116,9 +112,7 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq, 
-			     char * siteMask,
-			     char * t_siteMask
+			     double * t_delsq
 			     ) {
 
   int nextra;
@@ -130,7 +124,7 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
   assert(grad);
   assert(delsq);
 
-  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad, delsq, t_delsq, siteMask, t_siteMask, nextra);
+  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad, delsq, t_delsq, nextra);
   gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
   gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
@@ -170,6 +164,8 @@ HOST int gradient_3d_7pt_fluid_dab(const int nf,
 
 
 TARGET_CONST int tc_Nall[3];
+TARGET_CONST int tc_nhalo;
+TARGET_CONST int tc_nextra;
 
 /*****************************************************************************
  *
@@ -181,12 +177,20 @@ static TARGET void gradient_3d_7pt_fluid_operator_site(const int nop,
 					   const double * t_field,
 					   double * t_grad,
 						double * t_del2, 
-						char * t_siteMask,
 						const int index){
 
 
+  int coords[3];
+  GET_3DCOORDS_FROM_INDEX(index,coords,tc_Nall);
+  
+  // if not a halo site:
+    if (coords[0] >= (tc_nhalo-tc_nextra) && 
+	coords[1] >= (tc_nhalo-tc_nextra) && 
+	coords[2] >= (tc_nhalo-tc_nextra) &&
+	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
+	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
+	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
 
-  if(t_siteMask[index]){
 
     int coords[3];
     //coords_index_to_ijk(index, coords);
@@ -225,8 +229,7 @@ static TARGET void gradient_3d_7pt_fluid_operator_site(const int nop,
 static TARGET_ENTRY void gradient_3d_7pt_fluid_operator_lattice(const int nop,
 					   const double * t_field,
 					   double * t_grad,
-						double * t_del2, 
-						   char * t_siteMask){
+						double * t_del2){
 
 
 
@@ -234,7 +237,7 @@ static TARGET_ENTRY void gradient_3d_7pt_fluid_operator_lattice(const int nop,
 
   int index;
   TARGET_TLP(index,nSites){
-    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,t_siteMask,index);
+    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,index);
   }
 
 
@@ -248,8 +251,6 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 					   double * t_grad,
 					   double * del2,
 					   double * t_del2,
-					   char * siteMask,
-					   char * t_siteMask,
 					   const int nextra) {
   int nlocal[3];
   int nhalo;
@@ -272,31 +273,15 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 
   //start constant setup
   copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstantIntToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstantIntToTarget(&tc_nextra,&nextra, sizeof(int)); 
   //end constant setup
 
 
   copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
 
-
-  //set up sitemask for gradient operation
-  memset(siteMask,0,nSites*sizeof(char));
-
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-	
-  	index=coords_index(ic, jc, kc);
-  	siteMask[index]=1;
-	
-      }
-    }
-  }
-
-  copyToTarget(t_siteMask,siteMask,nSites*sizeof(char)); 
-
-
   gradient_3d_7pt_fluid_operator_lattice TARGET_LAUNCH(nSites) 
-    (nop,t_field,t_grad,t_del2,t_siteMask);
+    (nop,t_field,t_grad,t_del2);
    
 
   //for GPU version, we leave the results on the target for the next kernel.

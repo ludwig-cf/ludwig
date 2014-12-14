@@ -22,8 +22,7 @@ typedef struct field_grad_s field_grad_t;
 
 typedef int (* grad_ft)(int nf, const double * field,double * t_field, 
 			double * grad, double * t_grad,
-                        double * delsq, double * t_delsq,
-			char * siteMask,char * t_siteMask
+                        double * delsq, double * t_delsq
 );
 typedef int (* dab_ft)(int nf, const double * field, double * dab);
 

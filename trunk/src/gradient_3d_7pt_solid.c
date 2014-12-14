@@ -110,7 +110,7 @@ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
  *****************************************************************************/
 
 int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
+				double * grad,double * t_grad, double * delsq, double * t_delsq) {
   int nextra;
   int method = 1;
 

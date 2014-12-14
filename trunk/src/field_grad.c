@@ -171,7 +171,7 @@ int field_grad_compute(field_grad_t * obj) {
 
   //  obj->d2(obj->field->nf, obj->field->data, obj->grad, obj->delsq);
 
-  obj->d2(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+  obj->d2(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq);
 
   if (obj->level == 3) {
     assert(obj->dab);
@@ -187,7 +187,7 @@ int field_grad_compute(field_grad_t * obj) {
     // we are just using the existing t_* data structures 
     // for the higher order host structures - this needs properly sorted
 
-    obj->d4(obj->field->nf, obj->delsq,obj->field->t_data,obj->grad_delsq, obj->t_grad, obj->delsq_delsq, obj->t_delsq, obj->field->siteMask, obj->field->t_siteMask);
+    obj->d4(obj->field->nf, obj->delsq,obj->field->t_data,obj->grad_delsq, obj->t_grad, obj->delsq_delsq, obj->t_delsq);
     
     //void* dummy;
     //obj->d4(obj->field->nf, obj->delsq,dummy,obj->grad_delsq, dummy, obj->delsq_delsq, dummy, obj->field->siteMask, obj->field->t_siteMask);

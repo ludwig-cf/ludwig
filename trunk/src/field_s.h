@@ -25,8 +25,6 @@ struct field_s {
   int nhcomm;                   /* Halo width required */
   double * data;                /* Data on host */
   double * t_data;              /* Data on target */
-  char * siteMask;      /* boolean lattice-shaped struture for masking (on host)*/
-  char * t_siteMask;      /* boolean lattice-shaped struture for masking (on target)*/
 
   MPI_Datatype halo[3];         /* Halo exchange data types */
   io_info_t * info;             /* I/O Handler */

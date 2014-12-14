@@ -201,7 +201,7 @@ extern TARGET_CONST int tc_nSites; //declared in collision.c
 extern TARGET_CONST int tc_Nall[3]; //declared in gradient routine
 
 TARGET_CONST int tc_ndist;
-TARGET_CONST int tc_nhalo;
+extern TARGET_CONST int tc_nhalo;
 
 
 /*****************************************************************************
@@ -402,11 +402,16 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
   //end constant setup
 
+#ifdef CUDA
+  copyToTargetHaloEdge(lb->t_f,lb->f,Nall,nFields,nhalo,TARGET_HALO); 
+#else
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
+#endif
 
   lb_propagate_d3q19_lattice TARGET_LAUNCH(nSites) (lb->t_f,lb->t_fprime);
 
   copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
+
 
   return 0;
 }

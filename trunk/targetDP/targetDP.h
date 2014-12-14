@@ -115,6 +115,7 @@
   + extents[2]*(coords1)					\
   + (coords2); 
 
+enum {TARGET_HALO,TARGET_EDGE};
 
 /* API */
 
@@ -136,6 +137,9 @@ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
 void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask);
+
+void copyFromTargetHaloEdge(double *data,const double* targetData,int extents[3], size_t nfields, int nhalo,int haloOrEdge);
+void copyToTargetHaloEdge(double *targetData,const double* data,int extents[3], size_t nfields, int nhalo,int haloOrEdge);
 void syncTarget();
 void targetFree(void *ptr);
 void checkTargetError(const char *msg);

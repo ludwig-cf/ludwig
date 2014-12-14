@@ -96,8 +96,8 @@ void lb_free(lb_t * lb) {
   if (lb->f) free(lb->f);
   if (lb->t_f) targetFree(lb->t_f);
   if (lb->t_fprime) targetFree(lb->t_fprime);
-  if (lb->siteMask) free(lb->siteMask);
-  if (lb->t_siteMask) targetFree(lb->t_siteMask);
+
+  targetFinalize();
 
   MPI_Type_free(&lb->plane_xy_full);
   MPI_Type_free(&lb->plane_xz_full);
@@ -152,20 +152,19 @@ int lb_init(lb_t * lb) {
 
   ndata = lb->nsite*lb->ndist*NVEL;
 
+  
+
   lb->f = (double  *) malloc(ndata*sizeof(double));
   if (lb->f == NULL) fatal("malloc(distributions) failed\n");
+
+  
+  targetInit(lb->nsite, lb->ndist*NVEL);
 
     /* allocate target copy */
   targetCalloc((void **) &lb->t_f, ndata*sizeof(double));
 
   /* allocate another space on target for staging data */
   targetCalloc((void **) &lb->t_fprime, ndata*sizeof(double));
-
-
-  /* allocate boolean lattice-shaped struture for masking*/
-  
-  lb->siteMask = (char  *) calloc(lb->nsite,sizeof(char));
-  targetCalloc((void **) &lb->t_siteMask, lb->nsite*sizeof(char));
 
 
   /* Set up the MPI Datatypes used for full halo messages:

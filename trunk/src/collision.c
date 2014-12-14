@@ -810,7 +810,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   int nFields=NVEL*NDIST;
 
-  targetInit(nSites, nFields);
 
  //start constant setup
 
@@ -835,38 +834,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 
   //start field management
-
-  int       ic, jc, kc, index;       /* site indices */
-
-//set up site mask
-  char* siteMask = (char*) calloc(nSites,sizeof(char));
-  if(!siteMask){
-    printf("siteMask malloc failed\n");
-    exit(1);
-  }
-
-
-  //map status is now taken care of in masked targetDP data copies.
-  // we perform calculations for all sites, and only copy back the fluid
-  //sites to the host
-
-  // set all non-halo fluid sites to 1
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-
-  	index=coords_index(ic, jc, kc);
-
-	int status;
-	map_status(map, index, &status);
-
-	if (status == MAP_FLUID)
-	  siteMask[index]=1;
-      }
-    }
-  }
-
 
 
   if (!symmetric_in_use()){
@@ -937,27 +904,16 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 	
   lb_collision_binary_lattice TARGET_LAUNCH(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
-        
 
-  //start field management
-  //copyFromTargetMaskedAoS(lb->f,lb->t_f,nSites,nFields,siteMask); 
 
+#ifdef CUDA        
+    copyFromTargetHaloEdge(lb->f,lb->t_f,Nall,nFields,nhalo,TARGET_EDGE); 
+  //copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+#else
   copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
-
-  //copyFromTargetMaskedAoS(hydro->u,hydro->t_u,nSites,3,siteMask); 
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+#endif
 
-
-  //end field management
-
-
-  targetFree(t_chemical_potential);
-  targetFree(t_chemical_stress);
-
-  free(siteMask);
-
-  targetFinalize();
-  
   return 0;
 }
 

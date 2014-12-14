@@ -50,17 +50,13 @@ int gradient_rt_init(field_grad_t * grad, map_t * map) {
 	      double * grad,
 	      double * t_grad,
 	      double * delsq,
-	      double * t_delsq, 
-	      char * siteMask,
-	      char * t_siteMask) = NULL;
+	      double * t_delsq) = NULL;
   int (* f4) (int nf, const double * data, 
 	      double * t_data,
 	      double * grad,
 	      double * t_grad,
 	      double * delsq,
-	      double * t_delsq, 
-	      char * siteMask,
-	      char * t_siteMask) = NULL;
+	      double * t_delsq) = NULL;
 
 
   assert(grad);

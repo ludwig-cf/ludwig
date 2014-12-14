@@ -19,5 +19,5 @@
 
 int gradient_3d_27pt_solid_map_set(map_t * map);
 int gradient_3d_27pt_solid_d2(const int nop, const double * field,double * t_field,
-			      double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask);
+			      double * grad,double * t_grad, double * delsq, double * t_delsq);
 #endif
