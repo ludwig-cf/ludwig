@@ -22,9 +22,7 @@ HOST int gradient_3d_7pt_fluid_d2(const int nop,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq, 
-			     char * siteMask,
-			     char * t_siteMask
+			     double * t_delsq 
 			     );
 HOST int gradient_3d_7pt_fluid_d4(const int nop, 
 			     const double * field,
@@ -32,9 +30,7 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq, 
-			     char * siteMask,
-			     char * t_siteMask
+			     double * t_delsq
 			     );
 HOST int gradient_3d_7pt_fluid_dab(const int nf, 
 			     const double * field,

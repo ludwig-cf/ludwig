@@ -138,7 +138,6 @@ __global__ static void copy_field_partial_gpu_AoS_d(double* f_out, const double*
   if ((threadIndex < packedsize))
     {
 
-
       for (i=0;i<nfields;i++)
 	{
 	    
@@ -294,6 +293,186 @@ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 
 
 
+int haloEdge(int index, int extents[3],int nhalo, int haloOrEdge){
+
+  int coords[3];
+
+
+  GET_3DCOORDS_FROM_INDEX(index,coords,extents);
+
+  int returncode=0;
+
+  int i;
+
+
+  if (haloOrEdge==TARGET_HALO){
+    for (i=0;i<3;i++){
+      if ( 
+	  (coords[i]<nhalo) || 
+	  (coords[i] >= (extents[i]-nhalo) )
+	   ) returncode=1;
+    }
+  }
+
+
+
+  if (haloOrEdge==TARGET_EDGE){
+    for (i=0;i<3;i++){
+      if ( 
+	  (coords[i]>=nhalo) && 
+	  (coords[i]<2*nhalo)  
+	  
+	   ) returncode=1;
+      
+      if ( 
+	  (coords[i] >= (extents[i]-2*nhalo) ) && 
+	  (coords[i] < (extents[i]-nhalo) )   
+	   ) returncode=1;
+    }
+
+
+  }
+
+  
+  
+    return returncode;
+
+
+}
+
+void copyFromTargetHaloEdge(double *data,const double* targetData,int extents[3], size_t nfields, int nhalo,int haloOrEdge){
+
+
+  size_t nsites=extents[0]*extents[1]*extents[2];
+
+
+  int i;
+  int index;
+
+
+  int* fullindex = iwork;
+  int* fullindex_d = iwork_d;
+
+  double* tmpGrid = dwork;
+  double* tmpGrid_d = dwork_d;
+
+
+  //get compression mapping
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(haloEdge(i,extents,nhalo,haloOrEdge)){
+      fullindex[j]=i;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+
+  
+  
+
+  //copy compresssion info to GPU
+  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
+
+  
+  //compress grid on GPU
+  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(tmpGrid_d,targetData,nsites,
+						    nfields,
+						    fullindex_d, packedsize, 0);
+  cudaThreadSynchronize();
+
+  //get compressed grid from GPU
+  cudaMemcpy(tmpGrid, tmpGrid_d, packedsize*nfields*sizeof(double), cudaMemcpyDeviceToHost); 
+
+    
+  //expand into final grid
+  for (i=0;i<nfields;i++)
+    {
+      
+      j=0;
+      for (index=0; index<nsites; index++){
+	if(haloEdge(index,extents,nhalo,haloOrEdge)){
+	  data[i*nsites+index]=tmpGrid[i*packedsize+j];	
+	  j++;
+	}
+      }
+      
+    }
+
+  checkTargetError("copyFromTargetHaloEdge");
+  return;
+
+}
+
+void copyToTargetHaloEdge(double *targetData,const double* data, int extents[3], size_t nfields, int nhalo,int haloOrEdge){
+
+  size_t nsites=extents[0]*extents[1]*extents[2];
+
+  int i;
+  int index;
+
+  int* fullindex = iwork;
+  int* fullindex_d = iwork_d;
+
+  double* tmpGrid = dwork;
+  double* tmpGrid_d = dwork_d;
+
+  //get compression mapping
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(haloEdge(i,extents,nhalo,haloOrEdge)){
+      fullindex[j]=i;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+
+
+  //copy compresssion info to GPU
+  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
+
+
+    
+  //compress grid
+  for (i=0;i<nfields;i++)
+    {
+      
+      j=0;
+      for (index=0; index<nsites; index++){
+	if(haloEdge(index,extents,nhalo,haloOrEdge)){
+	  tmpGrid[i*packedsize+j]=data[i*nsites+index];
+	  j++;
+	}
+      }
+      
+    }
+
+
+  //put compressed grid on GPU
+  cudaMemcpy(tmpGrid_d, tmpGrid, packedsize*nfields*sizeof(double), cudaMemcpyHostToDevice); 
+
+
+
+  //uncompress grid on GPU
+  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(targetData,tmpGrid_d,nsites,
+						    nfields,
+						    fullindex_d, packedsize, 1);
+  cudaThreadSynchronize();
+
+  checkTargetError("copyToTargetHaloEdge");
+  
+  return;
+  
+}
+
+
+
+
 
 void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask){
@@ -417,6 +596,7 @@ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites
       }
       
     }
+
 
   return;
 

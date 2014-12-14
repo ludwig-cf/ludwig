@@ -16,10 +16,10 @@
 #define GRADIENT_2D_TOMITA_FLUID_H
 
 int gradient_2d_tomita_fluid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask);
+				double * grad,double * t_grad, double * delsq, double * t_delsq);
 
 int gradient_2d_tomita_fluid_d4(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask);
+				double * grad,double * t_grad, double * delsq, double * t_delsq);
 
 
 #endif
