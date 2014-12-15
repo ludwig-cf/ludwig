@@ -181,6 +181,10 @@ void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, con
   memcpy(data_d, data, size); 
   return;
 }
+void copyConstantObjectToTarget(kernel_const_t *data_d, const kernel_const_t *data, const int size){
+  memcpy(data_d, data, size);
+  return;
+}
 void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size ){
   memcpy(data, data_d, size);
   return;

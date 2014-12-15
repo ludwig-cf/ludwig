@@ -43,6 +43,10 @@
   simtIndex = NILP*(blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
 
+#define __targetGetConstantAddress(addr_of_ptr,const_object) \
+  cudaGetSymbolAddress(addr_of_ptr, const_object); \
+  checkTargetError("getsymboladdress"); 
+
 
 #else /* X86 */
 
@@ -68,6 +72,9 @@
 #define TARGET_TLP(simtIndex,extent)   	\
   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
 
+
+#define __targetGetConstantAddress(addr_of_ptr,const_object) \
+  *addr_of_ptr=&(const_object);
 #endif
 
 
@@ -122,6 +129,10 @@ enum {TARGET_HALO,TARGET_EDGE};
 typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
 
+typedef struct {
+int  c1;
+int  c2;
+} kernel_const_t; 
 
 void targetInit(size_t nsites, size_t nfieldsmax);
 void targetFinalize();
@@ -153,6 +164,8 @@ void copyConstantDoubleToTarget(double *data_d, const double *data, const int si
 void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const int size);
 void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size);
 void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size);
+
+void copyConstantObjectToTarget(kernel_const_t *data_d, const kernel_const_t *data, const int size);
 
 void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size );
 void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const int size );

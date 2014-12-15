@@ -654,6 +654,14 @@ void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, con
   return;
 }
 
+
+void copyConstantObjectToTarget(kernel_const_t *data_d, const kernel_const_t *data, const int size){
+  cudaMemcpyToSymbol(*data_d, data, size, 0,cudaMemcpyHostToDevice);
+  checkTargetError("copyConstantObjectToTarget");
+  return;
+}
+
+
 void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size ){
 
   cudaMemcpyFromSymbol( data, *data_d, sizeof(mu_fntype));
@@ -674,3 +682,4 @@ void copyConstantDoubleFromTarget(double *data, const double *data_d, const int 
   checkTargetError("copyConstantDoubleFromTarget");
   return;
 } 
+
