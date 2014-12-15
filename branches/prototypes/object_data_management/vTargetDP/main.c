@@ -8,17 +8,15 @@ void kernel_wrapper(kernel_data_t d_array, kernel_const_t* const_ptr);
 int main(){
 
   
-  obj_t myobj;
+  obj_t* myobj = NULL;
 
-  //set constants to arbitrary values 999 and 25
-  const_init(&myobj,999,25);
+  //create object and set constants to arbitrary values 999 and 25
+  object_create(&myobj,999,25);
 
-  field_init(&myobj);
+  kernel_wrapper(myobj->data_target,myobj->const_target);
 
-  kernel_wrapper(myobj.data_target,myobj.const_target);
-
-  field_finalise(&myobj);
-
+  object_free(myobj);
+    
   return 0;
 
 }

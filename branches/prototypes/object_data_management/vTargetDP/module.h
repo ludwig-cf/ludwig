@@ -18,6 +18,5 @@ typedef struct {
 } obj_t;
 
 
-void const_init(obj_t * obj, int c1in, int c2in);
-void field_init(obj_t * obj);
-void field_finalise(obj_t * obj);
+HOST void object_create(obj_t ** pobj, int c1in, int c2in);
+HOST void object_free(obj_t * obj);

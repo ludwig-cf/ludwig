@@ -28,7 +28,7 @@ CFLAGS =  -I$(TARGETDPDIR) -x cu -DCUDA -dc #-g -G
 LIBS = -lm -L$(TARGETDPDIR) -ltargetDP_CUDA
 else
 CC = gcc
-CFLAGS = -I$(TARGETDPDIR) 
+CFLAGS = -I$(TARGETDPDIR) -g
 LIBS = -lm -L$(TARGETDPDIR) -ltargetDP_X86
 endif
 

@@ -9,7 +9,11 @@
 static kernel_const_t static_const;
 static TARGET_CONST kernel_const_t t_static_const;
 
-void const_init(obj_t * obj, int c1in, int c2in){
+HOST void object_create(obj_t ** pobj, int c1in, int c2in){
+
+  obj_t * obj = NULL;
+
+  obj = (obj_t*) calloc(1, sizeof(obj_t));
 
   //associate constant part of object with statically allocated space:
 
@@ -29,17 +33,14 @@ void const_init(obj_t * obj, int c1in, int c2in){
   // propagate to target copy
   copyConstantObjectToTarget(&t_static_const,obj->const_host, sizeof(kernel_const_t));
 
-}
-
-void field_init(obj_t * obj){
-
+  // allocate data on target
   targetMalloc((void **) &(obj->data_target.field),N*sizeof(double));
 
+  *pobj = obj;
 
 }
 
-
-void field_finalise(obj_t * obj){
+HOST void object_free(obj_t * obj){
 
   targetFree(obj->data_target.field);
 
