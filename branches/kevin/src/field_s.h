@@ -16,11 +16,10 @@
 #define FIELD_S_H
 
 #include <mpi.h>
-
-#include "io_harness.h"
 #include "field.h"
 
 struct field_s {
+  coords_t * cs;                /* Reference to coordinate system */
   int nf;                       /* Number of field components */
   int nhcomm;                   /* Halo width required */
   double * data;                /* Data on host */

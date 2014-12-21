@@ -22,12 +22,8 @@
 #include <float.h>
 #include <mpi.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "coords_field.h"
-#include "io_harness.h"
 #include "util.h"
-#include "map.h"
 #include "psi.h"
 #include "psi_s.h"
 #include "psi_gradients.h"
@@ -87,12 +83,13 @@ int psi_halo_rho(psi_t * psi) {
  *
  *****************************************************************************/
 
-int psi_create(int nk, psi_t ** pobj) {
+int psi_create(coords_t * cs, int nk, psi_t ** pobj) {
 
   int nsites;
   int nhalo;
   psi_t * psi = NULL;
 
+  assert(cs);
   assert(pobj);
   assert(nk > 1);
 
@@ -122,6 +119,9 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->multisteps = multisteps_default;
   psi->skipsteps = skipsteps_default;
   psi->diffacc = diffacc_default;
+
+  psi->cs = cs;
+  coords_retain(cs);
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
   coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
@@ -244,7 +244,7 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
   assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
+  io_info_create_with_grid(obj->cs, grid, &obj->info);
   if (obj->info == NULL) fatal("io_info_create(psi) failed\n");
 
   io_info_set_name(obj->info, "Potential and charge densities");
@@ -279,7 +279,8 @@ void psi_free(psi_t * obj) {
     MPI_Type_free(&obj->rhohalo[n]);
   }
 
-  if (obj->info) io_info_destroy(obj->info);
+  if (obj->info) io_info_free(obj->info);
+  coords_free(&obj->cs);
 
   free(obj->valency);
   free(obj->diffusivity);

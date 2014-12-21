@@ -481,13 +481,14 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
  *
  *****************************************************************************/
 
-int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
-		     int nstep) {
+int blue_phase_stats(coords_t * cs, field_t * qf, field_grad_t * dqf,
+		     map_t * map, int nstep) {
 
   int ic, jc, kc, index;
   int ia, ib, id, ig;
   int nlocal[3];
   int status;
+  int rank;
 
   double q0, redshift, rredshift, a0, gamma, kappa0, kappa1;
   double q[3][3], dq[3][3][3], dsq[3][3], h[3][3], sth[3][3];
@@ -498,7 +499,9 @@ int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
   double rv;
 
   FILE * fp_output;
+  MPI_Comm comm;
 
+  assert(cs);
   assert(qf);
   assert(dqf);
   assert(map);
@@ -622,7 +625,10 @@ int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
 
   /* Results to standard out */
 
-  MPI_Reduce(elocal, etotal, 14, MPI_DOUBLE, MPI_SUM, 0, cart_comm());
+  coords_cart_comm(cs, &comm);
+  MPI_Comm_rank(comm, &rank);
+
+  MPI_Reduce(elocal, etotal, 14, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   for (ia = 0; ia < 14; ia++) {
     etotal[ia] *= rv;
@@ -631,7 +637,7 @@ int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
    if (output_to_file_ == 1) {
 
      /* Note that the reduction is to rank 0 in the Cartesian communicator */
-     if (cart_rank() == 0) {
+     if (rank == 0) {
 
        fp_output = fopen("free_energy.dat", "a");
        if (fp_output == NULL) fatal("fopen(free_energy.dat) failed\n");

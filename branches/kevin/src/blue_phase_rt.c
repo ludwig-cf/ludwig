@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "coords.h"
 #include "field.h"
 #include "field_grad.h"
 #include "colloids_Q_tensor.h"
@@ -261,7 +260,7 @@ int blue_phase_run_time(rt_t * rt) {
  *
  *****************************************************************************/
 
-int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q) {
+int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
 
   int  n1, n2;
   int  rmin[3], rmax[3];
@@ -271,6 +270,7 @@ int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q) {
   double nhat2[3] = {64.0, 3.0, 1.0};
 
   assert(rt);
+  assert(cs);
 
   info("\n");
 
@@ -384,26 +384,26 @@ int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q) {
     info("Initialising Q_ab to cholesteric finger (1st kind)\n");
     info("with added traceless symmetric random fluctuation.\n");
     info("Finger axis X, helical axis Y\n");
-    blue_phase_random_cf1_init(q, X);
+    blue_phase_random_cf1_init(cs, q, X);
   }
 
   if (strcmp(key1, "cf1_fluc_y") == 0) {
     info("Initialising Q_ab to cholesteric finger (1st kind)\n");
     info("with added traceless symmetric random fluctuation.\n");
     info("Finger axis Y, helical axis Z\n");
-    blue_phase_random_cf1_init(q, Y);
+    blue_phase_random_cf1_init(cs, q, Y);
   }
 
   if (strcmp(key1, "cf1_fluc_z") == 0) {
     info("Initialising Q_ab to cholesteric finger (1st kind)\n");
     info("with added traceless symmetric random fluctuation.\n");
     info("Finger axis Z, helical axis X\n");
-    blue_phase_random_cf1_init(q, Z);
+    blue_phase_random_cf1_init(cs, q, Z);
   }
 
   if (strcmp(key1, "random") == 0) {
     info("Initialising Q_ab randomly\n");
-    blue_phase_random_q_init(q);
+    blue_phase_random_q_init(cs, q);
   }
 
   /* Superpose a rectangle of random Q_ab on whatever was above */
@@ -413,7 +413,7 @@ int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q) {
 
   if (n1 == 1 && n2 == 1) {
     info("Superposing random rectangle\n");
-    blue_phase_random_q_rectangle(q, rmin, rmax);
+    blue_phase_random_q_rectangle(cs, q, rmin, rmax);
   }
 
   return 0;

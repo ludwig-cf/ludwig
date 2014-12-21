@@ -41,11 +41,12 @@ static int hydro_u_read(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int hydro_create(int nhcomm, hydro_t ** pobj) {
+int hydro_create(coords_t * cs, int nhcomm, hydro_t ** pobj) {
 
   int nsites;
   hydro_t * obj = (hydro_t*) NULL;
 
+  assert(cs);
   assert(pobj);
 
   obj = (hydro_t*) calloc(1, sizeof(hydro_t));
@@ -65,7 +66,8 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
   targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
   targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
 
-
+  obj->cs = cs;
+  coords_retain(cs);
 
   coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
 
@@ -80,21 +82,25 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
  *
  *****************************************************************************/
 
-void hydro_free(hydro_t * obj) {
+int hydro_free(hydro_t * obj) {
 
   assert(obj);
 
   MPI_Type_free(&obj->uhalo[Z]);
   MPI_Type_free(&obj->uhalo[Y]);
   MPI_Type_free(&obj->uhalo[X]);
+
   free(obj->f);
   free(obj->u);
   targetFree(obj->t_f);
   targetFree(obj->t_u);
+
+  if (obj->info) io_info_free(obj->info);
+  coords_free(&obj->cs);
   free(obj);
   obj = NULL;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -127,7 +133,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
+  io_info_create_with_grid(obj->cs, grid, &obj->info);
   if (obj->info == NULL) fatal("io_info_create(hydro) failed\n");
 
   io_info_set_name(obj->info, "Velocity field");

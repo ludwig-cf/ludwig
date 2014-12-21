@@ -22,13 +22,12 @@
 #include <stdlib.h>
 
 #include "util.h"
-#include "coords.h"
+#include "noise.h"
 #include "field.h"
 #include "field_grad.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "blue_phase_init.h"
-#include "noise.h"
 
 #define DEFAULT_SEED 13
 
@@ -995,7 +994,7 @@ int blue_phase_chi_edge(field_t * fq, int N, double z0, double x0) {
  *
  *****************************************************************************/
 
-int blue_phase_random_q_init(field_t * fq) {
+int blue_phase_random_q_init(coords_t * cs, field_t * fq) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -1008,11 +1007,12 @@ int blue_phase_random_q_init(field_t * fq) {
   double ran1, ran2;
   noise_t * rng = NULL;
 
+  assert(cs);
   assert(fq);
   
   coords_nlocal(nlocal);
 
-  noise_create(&rng);
+  noise_create(cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -1055,7 +1055,8 @@ int blue_phase_random_q_init(field_t * fq) {
  * 
  *****************************************************************************/
 
-int blue_phase_random_q_rectangle(field_t * fq, int rmin[3], int rmax[3]) {
+int blue_phase_random_q_rectangle(coords_t * cs, field_t * fq, int rmin[3],
+				  int rmax[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -1070,12 +1071,13 @@ int blue_phase_random_q_rectangle(field_t * fq, int rmin[3], int rmax[3]) {
   double ran1, ran2;
   noise_t * rng = NULL;
 
+  assert(cs);
   assert(fq);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  noise_create(&rng);
+  noise_create(cs, &rng);
   noise_init(rng, seed);
 
   /* Adjust min, max to allow for parallel offset of box */
@@ -1280,7 +1282,7 @@ int blue_phase_cf1_init(field_t * fq, const int axis) {
  *
  *****************************************************************************/
 
-int blue_phase_random_cf1_init(field_t * fq, const int axis) {
+int blue_phase_random_cf1_init(coords_t * cs, field_t * fq, const int axis) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -1299,7 +1301,8 @@ int blue_phase_random_cf1_init(field_t * fq, const int axis) {
   double var = 1e-1; /* variance of random fluctuation */
   int seed = DEFAULT_SEED;
   noise_t * rng = NULL;
-  
+
+  assert(cs);
   assert(fq);
   assert(axis == X || axis == Y || axis == Z);
 
@@ -1314,7 +1317,7 @@ int blue_phase_random_cf1_init(field_t * fq, const int axis) {
   n[Y] = 0.0;
   n[Z] = 0.0;
 
-  noise_create(&rng);
+  noise_create(cs, &rng);
   noise_init(rng, seed);
  
   for (ic = 1; ic <= nlocal[X]; ic++) {

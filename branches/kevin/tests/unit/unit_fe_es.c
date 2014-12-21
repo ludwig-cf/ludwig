@@ -72,9 +72,9 @@ int do_test_fe_es1(control_t * ctrl) {
   le_commit(le);
 
   try {
-    field_create(1, "phi", &phi);
+    field_create(coords, 1, "phi", &phi);
     field_grad_create(phi, 2, &phi_grad);
-    psi_create(nk, &psi);
+    psi_create(coords, nk, &psi);
 
     control_macro_test(ctrl, phi != NULL);
     control_macro_test(ctrl, phi_grad != NULL);
@@ -139,10 +139,10 @@ int do_test_fe_es2(control_t * ctrl) {
   le_create(coords, &le);
   le_commit(le);
 
-  psi_create(nk, &psi);
+  psi_create(coords, nk, &psi);
   assert(psi);
 
-  field_create(1, "phi", &phi);
+  field_create(coords, 1, "phi", &phi);
   assert(phi);
   field_init(phi, 1);
 

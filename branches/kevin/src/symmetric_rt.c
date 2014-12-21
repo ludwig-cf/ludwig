@@ -34,8 +34,8 @@
 
 static int symmetric_init_block(field_t * phi, double xi0);
 static int symmetric_init_bath(field_t * phi);
-int symmetric_init_spinodal(rt_t * rt, field_t * phi);
-int symmetric_init_spinodal_patches(rt_t * rt, field_t * phi);
+int symmetric_init_spinodal(rt_t * rt, coords_t * cs, field_t * phi);
+int symmetric_init_spinodal_patches(rt_t * rt, coords_t * cs, field_t * phi);
 int symmetric_init_drop(field_t * fphi, double xi0, double radius);
 
 /****************************************************************************
@@ -87,7 +87,7 @@ int symmetric_run_time(rt_t * rt) {
  *
  *****************************************************************************/
 
-int symmetric_rt_initial_conditions(rt_t * rt, field_t * phi) {
+int symmetric_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * phi) {
 
   int p;
   char value[BUFSIZ];
@@ -97,6 +97,7 @@ int symmetric_rt_initial_conditions(rt_t * rt, field_t * phi) {
   io_info_t * iohandler = NULL;
 
   assert(rt);
+  assert(cs);
   assert(phi);
 
   p = rt_string_parameter(rt, "phi_initialisation", value, BUFSIZ);
@@ -104,12 +105,12 @@ int symmetric_rt_initial_conditions(rt_t * rt, field_t * phi) {
   /* Default is spinodal */
   if (p == 0 || strcmp(value, "spinodal") == 0) {
     info("Initialising phi for spinodal\n");
-    symmetric_init_spinodal(rt, phi);
+    symmetric_init_spinodal(rt, cs, phi);
   }
 
   if (p != 0 && strcmp(value, "patches") == 0) {
     info("Initialising phi in patches\n");
-    symmetric_init_spinodal_patches(rt, phi);
+    symmetric_init_spinodal_patches(rt, cs, phi);
   }
 
   if (p != 0 && strcmp(value, "block") == 0) {
@@ -281,7 +282,7 @@ static int symmetric_init_bath(field_t * phi) {
  *
  *****************************************************************************/
 
-int symmetric_init_spinodal(rt_t * rt, field_t * phi) {
+int symmetric_init_spinodal(rt_t * rt, coords_t * cs, field_t * phi) {
 
   int seed = 13;
   int ic, jc, kc, index;
@@ -295,6 +296,7 @@ int symmetric_init_spinodal(rt_t * rt, field_t * phi) {
   noise_t * rng = NULL;
 
   assert(rt);
+  assert(cs);
   assert(phi);
 
   coords_nlocal(nlocal);
@@ -303,7 +305,7 @@ int symmetric_init_spinodal(rt_t * rt, field_t * phi) {
   rt_int_parameter(rt, "random_seed", &seed);
   rt_double_parameter(rt, "noise", &noise0);
 
-  noise_create(&rng);
+  noise_create(cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -338,7 +340,7 @@ int symmetric_init_spinodal(rt_t * rt, field_t * phi) {
  *
  *****************************************************************************/
 
-int symmetric_init_spinodal_patches(rt_t * rt, field_t * phi) {
+int symmetric_init_spinodal_patches(rt_t * rt, coords_t * cs, field_t * phi) {
 
   int ic, jc, kc, index;
   int ip, jp, kp;
@@ -355,6 +357,7 @@ int symmetric_init_spinodal_patches(rt_t * rt, field_t * phi) {
   noise_t * rng = NULL;
 
   assert(rt);
+  assert(cs);
   assert(phi);
 
   coords_nlocal(nlocal);
@@ -363,7 +366,7 @@ int symmetric_init_spinodal_patches(rt_t * rt, field_t * phi) {
   rt_int_parameter(rt, "phi_init_patch_size", &patch);
   rt_double_parameter(rt, "phi_init_patch_vol", &volminus1);
 
-  noise_create(&rng);
+  noise_create(cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic += patch) {

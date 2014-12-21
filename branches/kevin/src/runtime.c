@@ -123,9 +123,8 @@ static int rt_free_keylist(key_pair_t * key) {
   if (key->next) {
     rt_free_keylist(key->next);
   }
-  else {
-    free(key);
-  }
+
+  free(key);
 
   return 0;
 }

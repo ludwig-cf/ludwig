@@ -477,9 +477,6 @@ int do_test_coords_communicator(control_t * ctrl)
     MPI_Cart_get(comm, 3, dims, periods, coords);
     MPI_Comm_rank(comm, &rank);
 
-    control_verb(ctrl, "Checking Cartesian rank...\n");
-    control_macro_test(ctrl, cart_rank() == rank);
-
     control_verb(ctrl, "Checking cart_size() ...\n");
     control_macro_test(ctrl, cart_size(X) == dims[X]);
     control_macro_test(ctrl, cart_size(Y) == dims[Y]);
@@ -586,11 +583,15 @@ int do_test_coords_cart_info(control_t * ctrl) {
 
   int n, index;
   int tag = 100;
+  int cartrank;
   char string[FILENAME_MAX];
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
+
+  MPI_Comm comm;
   MPI_Status status[1];
+
 
   assert(ctrl);
 
@@ -600,6 +601,9 @@ int do_test_coords_cart_info(control_t * ctrl) {
   pe_create_parent(MPI_COMM_WORLD, &pe);
   coords_create(pe, &cs);
   coords_commit(cs);
+
+  coords_cart_comm(cs, &comm);
+  MPI_Comm_rank(comm, &cartrank);
 
   control_verb(ctrl, "Overview\n");
   control_verb(ctrl, "Decomposition %d %d %d\n",
@@ -611,7 +615,7 @@ int do_test_coords_cart_info(control_t * ctrl) {
   index = cart_size(Z)*cart_size(Y)*cart_coords(X) +
     cart_size(Z)*cart_coords(Y) + cart_coords(Z);
 
-  sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cart_rank(),
+  sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cartrank,
           cart_coords(X), cart_coords(Y), cart_coords(Z), index);
 
   control_verb(ctrl, string);
@@ -647,12 +651,14 @@ int do_test_coords_cart_info(control_t * ctrl) {
 int do_test_coords_sub_comm_info(control_t * ctrl) {
 
   int remainder[3];
+  int cartrank;
   int n, rank1, rank2;
   int tag = 100;
   char string[FILENAME_MAX];
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
+  MPI_Comm comm;
   MPI_Comm comms1;
   MPI_Comm comms2;
   MPI_Status status[1];
@@ -665,6 +671,9 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   pe_create_parent(MPI_COMM_WORLD, &pe);
   coords_create(pe, &cs);
   coords_commit(cs);
+
+  coords_cart_comm(cs, &comm);
+  MPI_Comm_rank(comm, &cartrank);
 
   /* One-dimensional ub-communicator in Y */
 
@@ -684,7 +693,7 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   control_verb(ctrl, "[rank] cartesian rank (X, Y, Z) -> Y 1-d YZ 2-d\n");
 
   sprintf(string, "[%4d] %14d (%d, %d, %d)        %d      %d\n",
-          pe_rank(), cart_rank(),
+          pe_rank(), cartrank,
           cart_coords(X), cart_coords(Y), cart_coords(Z), rank1, rank2);
 
   control_verb(ctrl , string);

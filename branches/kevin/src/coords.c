@@ -225,23 +225,24 @@ int coords_info(coords_t * cs) {
 
 /*****************************************************************************
  *
- *  cart_rank access function
- *
- *****************************************************************************/
-
-int cart_rank() {
-  return cs->mpi_cartrank;
-}
-
-/*****************************************************************************
- *
- *  cart_size access function
+ *  coords_cartsz
  *
  *****************************************************************************/
 
 int cart_size(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
   return cs->mpi_cartsz[dim];
+}
+
+int coords_cartsz(coords_t * cs, int sz[3]) {
+
+  assert(cs);
+
+  sz[X] = cs->mpi_cartsz[X];
+  sz[Y] = cs->mpi_cartsz[Y];
+  sz[Z] = cs->mpi_cartsz[Z];
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -270,14 +271,23 @@ int cart_neighb(const int dir, const int dim) {
 
 /*****************************************************************************
  *
- *  Cartesian communicator
+ *  coords_cart_comm
  *
  *****************************************************************************/
 
 MPI_Comm cart_comm() {
-
   assert(cs);
   return cs->commcart;
+}
+
+int coords_cart_comm(coords_t * cs, MPI_Comm * comm) {
+
+  assert(cs);
+  assert(comm);
+
+  *comm = cs->commcart;
+
+  return 0;
 }
 
 /*****************************************************************************

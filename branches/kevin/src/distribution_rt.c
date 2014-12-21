@@ -17,8 +17,6 @@
 #include <string.h>
 
 #include "util.h"
-#include "runtime.h"
-#include "coords.h"
 #include "io_harness.h"
 #include "distribution_rt.h"
 
@@ -33,7 +31,7 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]);
  *
  *****************************************************************************/
 
-int lb_run_time(lb_t * lb, rt_t * rt) {
+int lb_run_time(lb_t * lb, rt_t * rt, coords_t * cs) {
 
   int ndist;
   int nreduced;
@@ -45,13 +43,14 @@ int lb_run_time(lb_t * lb, rt_t * rt) {
 
   assert(lb);
   assert(rt);
+  assert(cs);
 
   nreduced = 0;
   rt_string_parameter(rt, "reduced_halo", string, FILENAME_MAX);
   if (strcmp(string, "yes") == 0) nreduced = 1;
 
   rt_int_parameter_vector(rt, "distribution_io_grid", io_grid);
-  io_info = io_info_create_with_grid(io_grid);
+  io_info_create_with_grid(cs, io_grid, &io_info);
   lb_io_info_set(lb, io_info);
 
   rt_string_parameter(rt, "distribution_io_format_input", string,

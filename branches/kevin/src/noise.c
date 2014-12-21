@@ -31,8 +31,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "noise.h"
 
 /* The implementation is based on the following opaque object, which
@@ -41,7 +39,7 @@
  * values. */
 
 struct noise_s {
-  void * pe_t;              /* Placeholder for pe_t */
+  coords_t * cs;            /* Retain reference to coordinate system */
   int master_seed;          /* Overall noise seed */
   int nsites;               /* Total number of lattice sites */
   int on[NOISE_END];        /* Noise on or off for different noise_enum_t */
@@ -59,9 +57,11 @@ static int noise_read(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int noise_create(noise_t ** pobj) {
+int noise_create(coords_t * cs, noise_t ** pobj) {
 
   noise_t * obj = NULL;
+
+  assert(cs);
 
   obj = (noise_t *) calloc(1, sizeof(noise_t));
   if (obj == NULL) fatal("calloc(noise_t) failed\n");
@@ -77,6 +77,9 @@ int noise_create(noise_t ** pobj) {
   obj->rtable[6] = +sqrt(2.0 - sqrt(2.0));
   obj->rtable[7] = +sqrt(2.0 + sqrt(2.0));
 
+  obj->cs = cs;
+  coords_retain(cs);
+
   *pobj = obj;
 
   return 0;
@@ -88,13 +91,15 @@ int noise_create(noise_t ** pobj) {
  *
  *****************************************************************************/
 
-void noise_free(noise_t * obj) {
+int noise_free(noise_t * obj) {
 
   assert(obj);
+
+  coords_free(&obj->cs);
   free(obj->state);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -202,7 +207,7 @@ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
 
   assert(obj);
 
-  obj->info = io_info_create_with_grid(grid);
+  io_info_create_with_grid(obj->cs, grid, &obj->info);
   if (obj->info == NULL) fatal("io_info_create(noise) failed\n");
 
   io_info_set_name(obj->info, "Lattice noise RNG state");

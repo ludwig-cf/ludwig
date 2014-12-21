@@ -2,7 +2,12 @@
  *
  *  hydro_s.h
  *
- *  Structure.
+ *  Hydrodynamic structure implementation.
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -10,8 +15,6 @@
 #define HYDRO_S_H
 
 #include <mpi.h>
-
-#include "io_harness.h"
 #include "hydro.h"
 
 /* Data storage */
@@ -43,6 +46,7 @@
 
 
 struct hydro_s {
+  coords_t * cs;           /* Reference to coordinate system */
   int nf;                  /* Extent of fields = 3 for vectors */
   int nhcomm;              /* Width of halo region for u field */
   double * u;              /* Velocity field (on host)*/

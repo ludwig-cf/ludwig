@@ -31,9 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 
@@ -50,6 +48,7 @@ struct io_decomposition_t {
 };
 
 struct io_info_s {
+  coords_t * cs;
   struct io_decomposition_t * io_comm;
   size_t bytesize;
   int metadata_written;
@@ -76,7 +75,8 @@ static io_info_t * io_info_allocate(void);
 static void io_set_group_filename(char *, const char *, io_info_t *);
 static long int io_file_offset(int, int, io_info_t *);
 static struct io_decomposition_t * io_decomposition_allocate(void);
-static struct io_decomposition_t * io_decomposition_create(const int grid[3]);
+static struct io_decomposition_t * io_decomposition_create(coords_t * cs,
+							   const int grid[3]);
 static void io_decomposition_destroy(struct io_decomposition_t *);
 
 /*****************************************************************************
@@ -87,14 +87,15 @@ static void io_decomposition_destroy(struct io_decomposition_t *);
  *
  *****************************************************************************/
 
-io_info_t * io_info_create() {
+int io_info_create(coords_t * cs, io_info_t ** info) {
 
   int io_grid[3] = {1, 1, 1}; /* Default i/o grid */
-  io_info_t * p_info;
 
-  p_info = io_info_create_with_grid(io_grid);
+  assert(cs);
 
-  return p_info;
+  io_info_create_with_grid(cs, io_grid, info);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -105,18 +106,25 @@ io_info_t * io_info_create() {
  *
  *****************************************************************************/
 
-io_info_t * io_info_create_with_grid(const int grid[3]) {
+int io_info_create_with_grid(coords_t * cs, const int grid[3],
+			     io_info_t ** info) {
 
   io_info_t * p_info;
   struct io_decomposition_t * p_decomp;
 
+  assert(cs);
+
   p_info = io_info_allocate();
-  p_decomp = io_decomposition_create(grid);
+  p_decomp = io_decomposition_create(cs, grid);
   p_info->io_comm = p_decomp;
   io_info_set_processor_dependent(p_info);
   p_info->single_file_read = 0;
+  p_info->cs = cs;
+  coords_retain(cs);
 
-  return p_info;
+  *info = p_info;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -127,15 +135,24 @@ io_info_t * io_info_create_with_grid(const int grid[3]) {
  *
  *****************************************************************************/
 
-static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
+static struct io_decomposition_t * io_decomposition_create(coords_t * cs,
+							   const int grid[3]) {
 
   int i, colour;
   int ntotal[3];
   int noffset[3];
+  int ncartsz[3];
+  int icartcoords[3];
+  int rank;
   struct io_decomposition_t * p = NULL;
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
-  assert(comm != MPI_COMM_NULL);
+  assert(cs);
+
+  coords_cart_comm(cs, &comm);
+  coords_cartsz(cs, ncartsz);
+  MPI_Comm_rank(comm, &rank);
+  MPI_Cart_coords(comm, rank, 3, icartcoords);
 
   coords_ntotal(ntotal);
   coords_nlocal_offset(noffset);
@@ -144,10 +161,10 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
   p->n_io = 1;
 
   for (i = 0; i < 3; i++) {
-    if (cart_size(i) % grid[i] != 0) fatal("Bad I/O grid (dim %d)\n", i);
+    if (ncartsz[i] % grid[i] != 0) fatal("Bad I/O grid (dim %d)\n", i);
     p->ngroup[i] = grid[i];
     p->n_io *= grid[i];
-    p->coords[i] = grid[i]*cart_coords(i)/cart_size(i);
+    p->coords[i] = grid[i]*icartcoords[i]/ncartsz[i];
     p->nsite[i] = ntotal[i]/grid[i];
     p->offset[i] = noffset[i] - p->coords[i]*p->nsite[i];
   }
@@ -158,7 +175,7 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
 
   p->index = colour;
 
-  MPI_Comm_split(comm, colour, cart_rank(), &p->comm);
+  MPI_Comm_split(comm, colour, rank, &p->comm);
   MPI_Comm_rank(p->comm, &p->rank);
   MPI_Comm_size(p->comm, &p->size);
 
@@ -246,19 +263,20 @@ io_info_t * io_info_allocate() {
 
 /*****************************************************************************
  *
- *  io_info_destroy
+ *  io_info_free
  *
  *  Deallocate io_info_t struct.
  *
  *****************************************************************************/
 
-void io_info_destroy(io_info_t * p) {
+int io_info_free(io_info_t * p) {
 
   assert(p != (io_info_t *) NULL);
   io_decomposition_destroy(p->io_comm);
+  coords_free(&p->cs);
   free(p);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -267,13 +285,13 @@ void io_info_destroy(io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_write(io_info_t * p,
+int io_info_set_write(io_info_t * p,
 		       int (* writer) (FILE *, int, int, int)) {
 
   assert(p != (io_info_t *) NULL);
   p->write_function = writer;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -282,13 +300,13 @@ void io_info_set_write(io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_read(io_info_t * p,
+int io_info_set_read(io_info_t * p,
 		      int (* reader) (FILE *, int, int, int)) {
 
   assert(p);
   p->read_function = reader;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -297,13 +315,13 @@ void io_info_set_read(io_info_t * p,
  *
  *****************************************************************************/
 
-void io_info_set_name(io_info_t * p, const char * name) {
+int io_info_set_name(io_info_t * p, const char * name) {
 
   assert(p);
   assert(strlen(name) < FILENAME_MAX);
   strcpy(p->name, name);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -312,12 +330,12 @@ void io_info_set_name(io_info_t * p, const char * name) {
  *
  *****************************************************************************/
 
-void io_info_set_processor_dependent(io_info_t * p) {
+int io_info_set_processor_dependent(io_info_t * p) {
 
   assert(p);
   p->processor_independent = 0;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -326,12 +344,12 @@ void io_info_set_processor_dependent(io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_processor_independent(io_info_t * p) {
+int io_info_set_processor_independent(io_info_t * p) {
 
   assert(p);
   p->processor_independent = 1;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -340,12 +358,12 @@ void io_info_set_processor_independent(io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_bytesize(io_info_t * p, size_t size) {
+int io_info_set_bytesize(io_info_t * p, size_t size) {
 
   assert(p);
   p->bytesize = size;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -849,13 +867,13 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
  *
  *****************************************************************************/
 
-void io_info_single_file_set(io_info_t * info) {
+int io_info_single_file_set(io_info_t * info) {
 
   assert(info);
 
   info->single_file_read = 1;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

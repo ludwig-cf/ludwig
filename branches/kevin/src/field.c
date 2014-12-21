@@ -58,10 +58,11 @@ static int field_leesedwards_parallel(field_t * obj);
  *
  *****************************************************************************/
 
-int field_create(int nf, const char * name, field_t ** pobj) {
+int field_create(coords_t * cs, int nf, const char * name, field_t ** pobj) {
 
   field_t * obj = NULL;
 
+  assert(cs);
   assert(nf > 0);
   assert(pobj);
 
@@ -80,6 +81,9 @@ int field_create(int nf, const char * name, field_t ** pobj) {
   strncpy(obj->name, name, strlen(name));
   obj->name[strlen(name)] = '\0';
 
+  obj->cs = cs;
+  coords_retain(cs);
+
   *pobj = obj;
 
   return 0;
@@ -91,7 +95,7 @@ int field_create(int nf, const char * name, field_t ** pobj) {
  *
  *****************************************************************************/
 
-void field_free(field_t * obj) {
+int field_free(field_t * obj) {
 
   assert(obj);
 
@@ -106,10 +110,11 @@ void field_free(field_t * obj) {
   if (obj->halo[2] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[2]);
 
   if (obj->name) free(obj->name);
-  if (obj->info) io_info_destroy(obj->info);
+  if (obj->info) io_info_free(obj->info);
+  coords_free(&obj->cs);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -178,7 +183,7 @@ int field_init_io_info(field_t * obj, int grid[3], int form_in,
   assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
+  io_info_create_with_grid(obj->cs, grid, &obj->info);
   if (obj->info == NULL) fatal("io_info_create(field) failed\n");
 
   io_info_set_name(obj->info, obj->name);

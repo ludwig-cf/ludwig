@@ -16,7 +16,6 @@
 #define PSI_S_H
 
 #include <mpi.h>
-#include "io_harness.h"
 #include "psi.h"
 
 /*
@@ -34,6 +33,7 @@
  */
 
 struct psi_s {
+  coords_t * cs;            /* Retain a reference to coordinate system */
   int nk;                   /* Number of species */
   double * psi;             /* Electric potential */
   double * rho;             /* Charge densities */

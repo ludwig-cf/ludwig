@@ -16,9 +16,10 @@
 #define BLUE_PHASE_RT_H
 
 #include "runtime.h"
+#include "coords.h"
 #include "field.h"
 
 int blue_phase_run_time(rt_t * rt);
-int blue_phase_rt_initial_conditions(rt_t * rt, field_t * q);
+int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q);
 
 #endif

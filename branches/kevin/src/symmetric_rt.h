@@ -16,9 +16,10 @@
 #define SYMMETRIC_RT_H
 
 #include "runtime.h"
+#include "coords.h"
 #include "field.h"
 
 int symmetric_run_time(rt_t * rt);
-int symmetric_rt_initial_conditions(rt_t * rt, field_t * phi);
+int symmetric_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * phi);
 
 #endif

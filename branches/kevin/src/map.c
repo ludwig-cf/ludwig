@@ -38,12 +38,13 @@ static int map_write_ascii(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int map_create(int ndata, map_t ** pobj) {
+int map_create(coords_t * cs, int ndata, map_t ** pobj) {
 
   int nsites;
   int nhalo;
   map_t * obj = NULL;
 
+  assert(cs);
   assert(ndata >= 0);
   assert(pobj);
 
@@ -60,7 +61,7 @@ int map_create(int ndata, map_t ** pobj) {
 
   /* Could be zero-sized array */
 
-  obj->data = calloc(ndata*nsites, sizeof(double));
+  if (ndata > 0) obj->data = calloc(ndata*nsites, sizeof(double));
   if (ndata > 0 && obj->data == NULL) fatal("calloc(map->data) failed\n");
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_CHAR, obj->halostatus);
@@ -68,6 +69,9 @@ int map_create(int ndata, map_t ** pobj) {
     coords_field_init_mpi_indexed(nhalo, obj->ndata, MPI_DOUBLE,
 				  obj->halodata);
   }
+
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -80,7 +84,7 @@ int map_create(int ndata, map_t ** pobj) {
  *
  *****************************************************************************/
 
-void map_free(map_t * obj) {
+int map_free(map_t * obj) {
 
   assert(obj);
 
@@ -95,11 +99,12 @@ void map_free(map_t * obj) {
     MPI_Type_free(&obj->halodata[Z]);
   }
 
-  if (obj->info) io_info_destroy(obj->info);
   free(obj->status);
+  if (obj->info) io_info_free(obj->info);
+  coords_free(&obj->cs);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -116,7 +121,7 @@ int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
   assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
+  io_info_create_with_grid(obj->cs, grid, &obj->info);
   if (obj->info == NULL) fatal("io_info_create(map) failed\n");
 
   io_info_set_name(obj->info, "map");

@@ -4,8 +4,6 @@
  *
  *  Colloid parallel I/O driver.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -73,9 +71,10 @@ static int colloid_io_check_read(colloid_io_t * cio, int ngroup);
  *
  *****************************************************************************/
 
-int colloid_io_create(int io_grid[3], colloids_info_t * info,
+int colloid_io_create(MPI_Comm parent, int io_grid[3], colloids_info_t * info,
 		      colloid_io_t ** pcio) {
   int ia;
+  int rank;
   int ncart;
   colloid_io_t * obj = NULL;
 
@@ -104,13 +103,15 @@ int colloid_io_create(int io_grid[3], colloids_info_t * info,
   obj->index = obj->coords[X] + obj->coords[Y]*io_grid[X]
     + obj->coords[Z]*io_grid[X]*io_grid[Y];
 
-  MPI_Comm_split(cart_comm(), obj->index, cart_rank(), &obj->comm);
+  MPI_Comm_rank(parent, &rank);
+
+  MPI_Comm_split(parent, obj->index, rank, &obj->comm);
   MPI_Comm_rank(obj->comm, &obj->rank);
   MPI_Comm_size(obj->comm, &obj->size);
 
   /* 'Cross' communicator between same rank in different groups. */
 
-  MPI_Comm_split(cart_comm(), obj->rank, cart_rank(), &obj->xcomm);
+  MPI_Comm_split(parent, obj->rank, rank, &obj->xcomm);
 
   obj->info = info;
   *pcio = obj;
@@ -120,11 +121,11 @@ int colloid_io_create(int io_grid[3], colloids_info_t * info,
 
 /*****************************************************************************
  *
- *  colloid_io_finish
+ *  colloid_io_free
  *
  *****************************************************************************/
 
-void colloid_io_finish(colloid_io_t * cio) {
+int colloid_io_free(colloid_io_t * cio) {
 
   assert(cio);
 
@@ -133,7 +134,7 @@ void colloid_io_finish(colloid_io_t * cio) {
 
   free(cio);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

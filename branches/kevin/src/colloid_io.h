@@ -2,8 +2,6 @@
  *
  *  colloid_io.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -19,9 +17,9 @@
 
 typedef struct colloid_io_s colloid_io_t;
 
-int  colloid_io_create(int io_grid[3], colloids_info_t * info,
-		       colloid_io_t ** cio);
-void colliod_io_free(colloid_io_t * cio);
+int colloid_io_create(MPI_Comm parent, int io_grid[3], colloids_info_t * info,
+		      colloid_io_t ** cio);
+int colloid_io_free(colloid_io_t * cio);
 int colloid_io_info_set(colloid_io_t * cio, colloids_info_t * info);
 int colloid_io_info(colloid_io_t * cio);
 

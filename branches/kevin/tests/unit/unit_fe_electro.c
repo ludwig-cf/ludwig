@@ -80,7 +80,7 @@ int do_test_fe_electro1(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  psi_create(nk, &psi);
+  psi_create(cs, nk, &psi);
   psi_unit_charge_set(psi, eunit);
   physics_kt_set(kt);
 
@@ -181,7 +181,7 @@ int do_test_fe_electro2(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  psi_create(nk, &psi);
+  psi_create(cs, nk, &psi);
   psi_unit_charge_set(psi, eunit);
   physics_kt_set(kt);
 
@@ -262,7 +262,7 @@ int do_test_fe_electro3(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  psi_create(nk, &psi);
+  psi_create(cs, nk, &psi);
   psi_epsilon_set(psi, epsilon);
   fe_electro_create(psi);
   physics_kt_set(kt);

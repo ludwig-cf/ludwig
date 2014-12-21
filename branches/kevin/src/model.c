@@ -88,11 +88,11 @@ int lb_create(lb_t ** plb) {
  *
  *****************************************************************************/
 
-void lb_free(lb_t * lb) {
+int lb_free(lb_t * lb) {
 
   assert(lb);
 
-  if (lb->io_info) io_info_destroy(lb->io_info);
+  if (lb->io_info) io_info_free(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->t_f) targetFree(lb->t_f);
   if (lb->t_fprime) targetFree(lb->t_fprime);
@@ -117,7 +117,9 @@ void lb_free(lb_t * lb) {
   MPI_Type_free(&lb->site_z[0]);
   MPI_Type_free(&lb->site_z[1]);
 
-  return;
+  free(lb);
+
+  return 0;
 }
 
 /***************************************************************************

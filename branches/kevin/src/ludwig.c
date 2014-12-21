@@ -141,7 +141,7 @@ static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
-int map_init_rt(rt_t * rt, map_t ** map);
+int map_init_rt(rt_t * rt, coords_t * cs, map_t ** map);
 
 /*****************************************************************************
  *
@@ -181,12 +181,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_init_rt(ludwig->rt, ludwig->param);
   physics_info(ludwig->param);
 
-  lb_run_time(ludwig->lb, ludwig->rt);
+  lb_run_time(ludwig->lb, ludwig->rt, ludwig->cs);
   collision_run_time(ludwig->rt, ludwig->noise_rho);
-  map_init_rt(ludwig->rt, &ludwig->map);
+  map_init_rt(ludwig->rt, ludwig->cs, &ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
-  hydro_rt(ludwig->rt, &ludwig->hydro);
+  hydro_rt(ludwig->rt, ludwig->cs, &ludwig->hydro);
 
   /* PHI I/O */
 
@@ -223,7 +223,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) {
-    symmetric_rt_initial_conditions(ludwig->rt, ludwig->phi);
+    symmetric_rt_initial_conditions(ludwig->rt, ludwig->cs, ludwig->phi);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
   }
@@ -235,7 +235,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   wall_init(ludwig->rt, ludwig->lb, ludwig->map);
-  colloids_init_rt(ludwig->rt, &ludwig->collinfo, &ludwig->cio,
+  colloids_init_rt(ludwig->rt, ludwig->cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->map);
   colloids_init_ewald_rt(ludwig->rt, ludwig->collinfo, &ludwig->ewald);
   colloids_q_cinfo_set(ludwig->collinfo);
@@ -334,7 +334,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     polar_active_rt_initial_conditions(ludwig->rt, ludwig->p);
   }
   if (get_step() == 0 && ludwig->q) {
-    blue_phase_rt_initial_conditions(ludwig->rt, ludwig->q);
+    blue_phase_rt_initial_conditions(ludwig->rt, ludwig->cs, ludwig->q);
   }
 
   /* Electroneutrality */
@@ -715,7 +715,6 @@ void ludwig_run(const char * inputfile) {
       }
 
       stats_free_energy_density(ludwig->q, ludwig->map, ncolloid);
-//      blue_phase_stats(ludwig->q, ludwig->q_grad, ludwig->map, step);
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
@@ -787,6 +786,7 @@ void ludwig_run(const char * inputfile) {
   stats_calibration_finish();
 
   wall_finish();
+  map_free(ludwig->map);
 
   if (ludwig->phi_grad) field_grad_free(ludwig->phi_grad);
   if (ludwig->p_grad)   field_grad_free(ludwig->p_grad);
@@ -794,12 +794,18 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi)      field_free(ludwig->phi);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
+  if (ludwig->hydro)    hydro_free(ludwig->hydro);
 
   bbl_free(ludwig->bbl);
+  lb_free(ludwig->lb);
+
+  if (ludwig->interact) interact_free(ludwig->interact);
+  if (ludwig->cio) colloid_io_free(ludwig->cio);
   colloids_info_free(ludwig->collinfo);
 
   if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
+  if (ludwig->psi)       psi_free(ludwig->psi);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
@@ -808,6 +814,7 @@ void ludwig_run(const char * inputfile) {
   le_free(&ludwig->le);
   coords_free(&ludwig->cs);
   pe_free(&ludwig->pe);
+  free(ludwig);
 
   return;
 }
@@ -905,7 +912,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   lb_create(&ludwig->lb);
 
-  noise_create(&ludwig->noise_rho);
+  noise_create(ludwig->cs, &ludwig->noise_rho);
 
   n = rt_string_parameter(ludwig->rt, "free_energy", description, BUFSIZ);
 
@@ -939,7 +946,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
-    field_create(nf, "phi", &ludwig->phi);
+    field_create(ludwig->cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -962,7 +969,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Order parameter noise = %3s\n", (noise_on == 0) ? "off" : " on");
 
     if (noise_on) {
-      noise_create(&ludwig->noise_phi);
+      noise_create(ludwig->cs, &ludwig->noise_phi);
       noise_init(ludwig->noise_phi, 0);
       noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
       if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
@@ -991,7 +998,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
-    field_create(nf, "phi", &ludwig->phi);
+    field_create(ludwig->cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1022,7 +1029,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
-    field_create(nf, "phi", &ludwig->phi);
+    field_create(ludwig->cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1064,7 +1071,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
-    field_create(nf, "q", &ludwig->q);
+    field_create(ludwig->cs, nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
@@ -1102,7 +1109,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
-    field_create(nf, "p", &ludwig->p);
+    field_create(ludwig->cs, nf, "p", &ludwig->p);
     field_init(ludwig->p, nhalo);
     field_grad_create(ludwig->p, ngrad, &ludwig->p_grad);
 
@@ -1140,7 +1147,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
         
-    field_create(nf, "phi", &ludwig->phi);
+    field_create(ludwig->cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1171,7 +1178,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
     
-    field_create(nf, "q", &ludwig->q);
+    field_create(ludwig->cs, nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
@@ -1223,7 +1230,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Parameters:\n");
 
-    psi_create(nk, &ludwig->psi);
+    psi_create(ludwig->cs, nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi, ludwig->rt);
 
     /* P should still hold ... */
@@ -1268,7 +1275,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_run_time(ludwig->cs, ludwig->rt);
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
-    field_create(nf, "phi", &ludwig->phi);
+    field_create(ludwig->cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1297,7 +1304,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     info("Parameters:\n");
 
-    psi_create(nk, &ludwig->psi);
+    psi_create(ludwig->cs, nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi, ludwig->rt);
 
 #ifdef PETSC
@@ -1370,7 +1377,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
  *
  *****************************************************************************/
 
-int map_init_rt(rt_t * rt, map_t ** pmap) {
+int map_init_rt(rt_t * rt, coords_t * cs, map_t ** pmap) {
 
   int is_porous_media = 0;
   int ndata = 0;
@@ -1386,6 +1393,7 @@ int map_init_rt(rt_t * rt, map_t ** pmap) {
   map_t * map = NULL;
 
   assert(rt);
+  assert(cs);
 
   is_porous_media = rt_string_parameter(rt, "porous_media_file",
 					filename, FILENAME_MAX);
@@ -1412,7 +1420,7 @@ int map_init_rt(rt_t * rt, map_t ** pmap) {
     info("Porous media io grid:         %d %d %d\n", grid[X], grid[Y], grid[Z]);
   }
 
-  map_create(ndata, &map);
+  map_create(cs, ndata, &map);
   map_init_io_info(map, grid, form_in, form_out);
   map_io_info(map, &iohandler);
 

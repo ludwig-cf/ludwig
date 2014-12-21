@@ -15,6 +15,7 @@
 #ifndef PSI_H
 #define PSI_H
 
+#include "coords.h"
 #include "io_harness.h"
 #include "map.h"
 
@@ -24,7 +25,7 @@ typedef struct psi_s psi_t;
 * to return the permittivity as a function of position index. */
 typedef int (* f_vare_t)(int index, double * epsilon);
 
-int psi_create(int nk, psi_t ** pobj);
+int psi_create(coords_t * cs, int nk, psi_t ** pobj);
 void psi_free(psi_t * obj);
 int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out);
 int psi_io_info(psi_t * obj, io_info_t ** info);
