@@ -43,11 +43,23 @@
   simtIndex = NILP*(blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
 
+/* kevin */
+#define __target__ TARGET
+#define __target_entry__ TARGET_ENTRY
+#define target_is_host() 0
+#define target_launch(kernel_function, nblocks, ntpb, ...) \
+  kernel_function<<<nblocks, ntpb>>>(__VA_ARGS__)
 
 #else /* X86 */
 
 #define HOST
 #define __host__
+#define __device__
+#define __target__
+#define __target_entry__
+
+#define target_launch(kernel, nblocks, ntpb, ...) kernel(__VA_ARGS__)
+#define target_is_host() 1
 
 /* kernel function specifiers */
 #define TARGET 
