@@ -11,6 +11,7 @@ typedef struct object1_s object1_t;
 __host__ int object1_create(int data, object1_t ** phost);
 __host__ int object1_free(object1_t * obj1);
 __host__ int object1_target(object1_t * obj1, object1_t ** ptarget);
+__host__ int object1_memcpy(object1_t * obj1, int kind);
 
 __host__ __device__ int object1_function(object1_t * obj1);
 

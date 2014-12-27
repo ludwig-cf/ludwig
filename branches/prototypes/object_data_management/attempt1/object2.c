@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "object1_s.h"
 #include "object2_s.h"
 
 static __host__
@@ -52,33 +53,57 @@ int object2_free(object2_t * obj2) {
 static __host__
 int object2_target_create(object2_t * self, object2_t ** p) {
 
+  object2_t tmp;
+  object2_t * obj2 = &tmp;
+
+  assert(p);
+
   if (target_is_host()) {
     *p = self;
   }
   else {
+    targetMalloc((void **) &obj2->data, sizeof(object2_data_t));
     targetMalloc((void **) p, sizeof(object2_t));
-    targetMalloc((void **) &(*p)->data, sizeof(object2_data_t));
+    copyToTarget(*p, obj2, sizeof(object2_t));
   }
 
   return 0;
 }
 
 static __host__
-int object2_target_free(object2_t * obj2) {
+int object2_target_free(object2_t * target) {
+
+  object2_t tmp;
+  object2_t * host = &tmp;  /* Host pointer to target memory */
+
+  assert(target);
 
   if (target_is_host()) {
     /* No action */
   }
   else {
-    targetFree(obj2->data);
-    targetFree(obj2);
+    copyFromTarget(host, target, sizeof(object2_t));
+    targetFree(host->data);
+    targetFree(target);
   }
+
+  return 0;
+}
+
+__host__ int object2_target(object2_t * obj2, object2_t ** target) {
+
+  assert(obj2);
+  assert(target);
+
+  *target = obj2->target;
 
   return 0;
 }
 
 __host__ int object2_memcpy(object2_t * obj2, int kind) {
 
+  object2_t tmp;
+  object2_t * copy = &tmp;
   object1_t * obj1;
 
   if (target_is_host()) {
@@ -87,13 +112,14 @@ __host__ int object2_memcpy(object2_t * obj2, int kind) {
   else {
     switch (kind) {
     case 0:
-      copyToTarget(obj2->target->data, obj2->data, sizeof(object2_data_t));
-      /* We need the device reference from obj1 */
       object1_target(obj2->obj1, &obj1);
-      copyToTarget(obj2->obj1, obj1, sizeof(object1_t *));
+      copyFromTarget(copy, obj2->target, sizeof(object2_t));
+      copyToTarget(copy->data, obj2->data, sizeof(object2_data_t));
+
+      copy->obj1 = obj1;
+      copyToTarget(obj2->target, copy, sizeof(object2_t));
       break;
     case 1:
-      copyFromTarget(obj2->data, obj2->target->data, sizeof(object2_data_t));
       break;
     }
   }

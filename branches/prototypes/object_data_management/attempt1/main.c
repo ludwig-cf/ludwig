@@ -9,7 +9,7 @@ int main(int argc, char * argv[]) {
   object1_t * obj1 = NULL;
   object2_t * obj2 = NULL;
 
-  printf("Hello form main()\n");
+  printf("Hello from main()\n");
 
   object1_create(3, &obj1);
   object2_create(obj1, &obj2);
