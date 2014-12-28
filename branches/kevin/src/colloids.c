@@ -38,6 +38,7 @@ struct colloids_info_s {
   double rho0;                /* Mean density (usually matches fluid) */
   double drmax;               /* Maximum movement per time step */
 
+  coords_t * cs;              /* Reference to coordinate system */
   colloid_t ** clist;         /* Cell list pointers */
   colloid_t ** map_old;       /* Map (previous time step) pointers */
   colloid_t ** map_new;       /* Map (current time step) pointers */
@@ -54,12 +55,13 @@ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
  *
  *****************************************************************************/
 
-int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) {
+int colloids_info_create(coords_t * cs, int ncell[3], colloids_info_t ** pinfo) {
 
   int nhalo = 1;                   /* Always exactly one halo cell each side */
   int nlist;
   colloids_info_t * obj = NULL;
 
+  assert(cs);
   assert(pinfo);
 
   obj = calloc(1, sizeof(colloids_info_t));
@@ -84,6 +86,9 @@ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) {
   obj->rho0 = RHO_DEFAULT;
   obj->drmax = DRMAX_DEFAULT;
 
+  obj->cs = cs;
+  coords_retain(cs);
+
   *pinfo = obj;
 
   return 0;
@@ -104,6 +109,7 @@ void colloids_info_free(colloids_info_t * info) {
   free(info->clist);
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
+  coords_free(&info->cs);
   free(info);
 
   return;
@@ -125,7 +131,7 @@ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
 
   assert(pinfo);
 
-  colloids_info_create(newcell, &newinfo);
+  colloids_info_create((*pinfo)->cs, newcell, &newinfo);
 
   colloids_info_list_local_build(*pinfo);
   colloids_info_local_head(*pinfo, &pc);
@@ -266,12 +272,16 @@ int colloids_info_ncell(colloids_info_t * info, int ncell[3]) {
 
 int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]) {
 
+  int cartsz[3];
+
   assert(cinfo);
   assert(lcell);
 
-  lcell[X] = L(X)/(cart_size(X)*cinfo->ncell[X]);
-  lcell[Y] = L(Y)/(cart_size(Y)*cinfo->ncell[Y]);
-  lcell[Z] = L(Z)/(cart_size(Z)*cinfo->ncell[Z]);
+  coords_cartsz(cinfo->cs, cartsz);
+
+  lcell[X] = L(X)/(cartsz[X]*cinfo->ncell[X]);
+  lcell[Y] = L(Y)/(cartsz[Y]*cinfo->ncell[Y]);
+  lcell[Z] = L(Z)/(cartsz[Z]*cinfo->ncell[Z]);
 
   return 0;
 }
@@ -440,11 +450,13 @@ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
 int colloids_info_ntotal_set(colloids_info_t * cinfo) {
 
   int nlocal;
+  MPI_Comm comm;
 
   assert(cinfo);
+  coords_cart_comm(cinfo->cs, &comm);
 
   colloids_info_nlocal(cinfo, &nlocal);
-  MPI_Allreduce(&nlocal, &cinfo->ntotal, 1, MPI_INT, MPI_SUM, cart_comm());
+  MPI_Allreduce(&nlocal, &cinfo->ntotal, 1, MPI_INT, MPI_SUM, comm);
 
   return 0;
 }
@@ -487,14 +499,19 @@ int colloids_info_cell_list_head(colloids_info_t * cinfo,
 int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3],
 			      int icell[3]) {
   int ia;
+  int cartsz[3];
+  int cartcoords[3];
   double lcell;
 
   assert(cinfo);
 
+  coords_cartsz(cinfo->cs, cartsz);
+  coords_cart_coords(cinfo->cs, cartcoords);
+
   for (ia = 0; ia < 3; ia++) {
-    lcell = L(ia) / (cart_size(ia)*cinfo->ncell[ia]);
+    lcell = L(ia) / (cartsz[ia]*cinfo->ncell[ia]);
     icell[ia] = (int) floor((r[ia] - Lmin(ia) + lcell) / lcell);
-    icell[ia] -= cart_coords(ia)*cinfo->ncell[ia];
+    icell[ia] -= cartcoords[ia]*cinfo->ncell[ia];
   }
 
   return 0;
@@ -1123,12 +1140,15 @@ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic,
 			  int * lim) {
 
   int irange, halo;
+  int cartsz[3];
 
   assert(cinfo);
   assert(ia == X || ia == Y || ia == Z);
 
+  coords_cartsz(cinfo->cs, cartsz);
+
   irange = 1 + (cinfo->ncell[ia] == 2);
-  halo = (cart_size(ia) > 1 || irange == 1);
+  halo = (cartsz[ia] > 1 || irange == 1);
 
   lim[0] = imax(1 - halo, ic - irange);
   lim[1] = imin(ic + irange, cinfo->ncell[ia] + halo);
@@ -1148,9 +1168,12 @@ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
 
   double a0_local = 0.0;
   colloid_t * pc = NULL;
+  MPI_Comm comm;
 
   assert(cinfo);
   assert(a0max);
+
+  coords_cart_comm(cinfo->cs, &comm);
 
   /* Make sure lists are up-to-date */
   colloids_info_update_lists(cinfo);
@@ -1158,7 +1181,7 @@ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
   colloids_info_local_head(cinfo, &pc);
   for (; pc; pc = pc->next) a0_local = dmax(a0_local, pc->s.a0);
 
-  MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, cart_comm());
+  MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, comm);
 
   return 0;
 }

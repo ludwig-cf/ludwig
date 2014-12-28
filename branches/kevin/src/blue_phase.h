@@ -20,6 +20,7 @@
 
 /* 'Extension' of free energy (pending free_energy_tensor.h) */
 
+#include "coords.h"
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
@@ -64,7 +65,7 @@ double blue_phase_gamma(void);
 double blue_phase_dimensionless_field_strength(void);
 
 void blue_phase_redshift_update_set(int onoff);
-void blue_phase_redshift_compute(void);
+int blue_phase_redshift_compute(coords_t * cs);
 
 void blue_phase_q_uniaxial(double amplitude, const double n[3], double q[3][3]);
 

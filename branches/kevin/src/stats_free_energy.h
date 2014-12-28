@@ -20,7 +20,8 @@
 #include "field_grad.h"
 #include "map.h"
 
-int stats_free_energy_density(field_t * q, map_t * map, int ncolloid);
+int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
+			      int ncolloid);
 int blue_phase_stats(coords_t * cs, field_t * q, field_grad_t * dq,
 		     map_t * map, int tstep);
 

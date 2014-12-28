@@ -20,9 +20,7 @@
 #include <assert.h>
 #include <math.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "symmetric.h"
 #include "stats_symmetric.h"
 
@@ -33,11 +31,9 @@
  *  Computes estimates of domain length scales in real space based on
  *  a gradient statistic.
  *
- *  The reduction is in pe_comm() for output.
- *
  *****************************************************************************/
 
-int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
+int stats_symmetric_length(coords_t * cs, field_grad_t * phi_grad, map_t * map,
 			   int timestep) {
 
 #define NSTAT 7
@@ -161,7 +157,8 @@ int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
  *  
  *****************************************************************************/
 
-int stats_symmetric_moment_inertia(field_t * phi, map_t * map, int timestep) {
+int stats_symmetric_moment_inertia(coords_t * cs, field_t * phi, map_t * map,
+				   int timestep) {
 
   int ic, jc, kc, index;
   int nlocal[3], noffset[3];
@@ -178,12 +175,13 @@ int stats_symmetric_moment_inertia(field_t * phi, map_t * map, int timestep) {
 
   MPI_Comm comm;
 
+  assert(cs);
   assert(phi);
   assert(map);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-  comm = cart_comm();
+  coords_cart_comm(cs, &comm);
 
   rr[X] = rr[Y] = rr[Z] = rr[3] = 0.0;
 

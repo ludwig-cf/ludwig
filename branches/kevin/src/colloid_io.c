@@ -17,8 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "colloid_io.h"
 
 struct colloid_io_s {
@@ -71,15 +69,23 @@ static int colloid_io_check_read(colloid_io_t * cio, int ngroup);
  *
  *****************************************************************************/
 
-int colloid_io_create(MPI_Comm parent, int io_grid[3], colloids_info_t * info,
+int colloid_io_create(coords_t * cs, int io_grid[3], colloids_info_t * info,
 		      colloid_io_t ** pcio) {
   int ia;
   int rank;
   int ncart;
+  int cartsz[3];
+  int cartcoords[3];
+  MPI_Comm cartcomm;
   colloid_io_t * obj = NULL;
 
+  assert(cs);
   assert(info);
   assert(pcio);
+
+  coords_cart_comm(cs, &cartcomm);
+  coords_cartsz(cs, cartsz);
+  coords_cart_coords(cs, cartcoords);
 
   obj = calloc(1, sizeof(colloid_io_t));
   if (obj == NULL) fatal("calloc(colloid_io_t) failed\n");
@@ -87,7 +93,7 @@ int colloid_io_create(MPI_Comm parent, int io_grid[3], colloids_info_t * info,
   obj->n_io = 1;
 
   for (ia = 0; ia < 3; ia++) {
-    ncart = cart_size(ia);
+    ncart = cartsz[ia];
 
     if (io_grid[ia] > ncart) io_grid[ia] = ncart;
 
@@ -97,21 +103,21 @@ int colloid_io_create(MPI_Comm parent, int io_grid[3], colloids_info_t * info,
 
     obj->nd[ia] = io_grid[ia];
     obj->n_io *= io_grid[ia];
-    obj->coords[ia] = io_grid[ia]*cart_coords(ia)/ncart;
+    obj->coords[ia] = io_grid[ia]*cartcoords[ia]/ncart;
   }
 
   obj->index = obj->coords[X] + obj->coords[Y]*io_grid[X]
     + obj->coords[Z]*io_grid[X]*io_grid[Y];
 
-  MPI_Comm_rank(parent, &rank);
+  MPI_Comm_rank(cartcomm, &rank);
 
-  MPI_Comm_split(parent, obj->index, rank, &obj->comm);
+  MPI_Comm_split(cartcomm, obj->index, rank, &obj->comm);
   MPI_Comm_rank(obj->comm, &obj->rank);
   MPI_Comm_size(obj->comm, &obj->size);
 
   /* 'Cross' communicator between same rank in different groups. */
 
-  MPI_Comm_split(parent, obj->rank, rank, &obj->xcomm);
+  MPI_Comm_split(cartcomm, obj->rank, rank, &obj->xcomm);
 
   obj->info = info;
   *pcio = obj;

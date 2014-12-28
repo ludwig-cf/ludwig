@@ -48,10 +48,11 @@ static int lb_f_write(FILE *, int index, void * self);
  *
  ****************************************************************************/
 
-int lb_create_ndist(int ndist, lb_t ** plb) {
+int lb_create_ndist(coords_t * cs, int ndist, lb_t ** plb) {
 
   lb_t * lb = NULL;
 
+  assert(cs);
   assert(ndist > 0);
   assert(plb);
 
@@ -60,6 +61,10 @@ int lb_create_ndist(int ndist, lb_t ** plb) {
 
   lb->ndist = ndist;
   lb->model = LB_DATA_MODEL;
+
+  lb->cs = cs;
+  coords_retain(cs);
+
   *plb = lb;
 
   return 0;
@@ -73,11 +78,12 @@ int lb_create_ndist(int ndist, lb_t ** plb) {
  *
  *****************************************************************************/
 
-int lb_create(lb_t ** plb) {
+int lb_create(coords_t * cs, lb_t ** plb) {
 
+  assert(cs);
   assert(plb);
 
-  return lb_create_ndist(1, plb);
+  return lb_create_ndist(cs, 1, plb);
 }
 
 /*****************************************************************************
@@ -117,6 +123,7 @@ int lb_free(lb_t * lb) {
   MPI_Type_free(&lb->site_z[0]);
   MPI_Type_free(&lb->site_z[1]);
 
+  coords_free(&lb->cs);
   free(lb);
 
   return 0;
@@ -568,22 +575,25 @@ int lb_halo_via_struct(lb_t * lb) {
   int ihalo, ireal;
   int nhalo;
   int nlocal[3];
+  int cartsz[3];
 
   const int tagf = 900;
   const int tagb = 901;
 
   MPI_Request request[4];
   MPI_Status status[4];
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
   assert(lb);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+  coords_cart_comm(lb->cs, &comm);
+  coords_cartsz(lb->cs, cartsz);
 
   /* The x-direction (YZ plane) */
 
-  if (cart_size(X) == 1) {
+  if (cartsz[X] == 1) {
     if (is_periodic(X)) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -602,22 +612,22 @@ int lb_halo_via_struct(lb_t * lb) {
   else {
     ihalo = lb->ndist*NVEL*coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_yz[BACKWARD],
-	      cart_neighb(FORWARD,X), tagb, comm, &request[0]);
+	      coords_cart_neighb(lb->cs, FORWARD,X), tagb, comm, &request[0]);
     ihalo = lb->ndist*NVEL*coords_index(0, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_yz[FORWARD],
-	      cart_neighb(BACKWARD,X), tagf, comm, &request[1]);
+	      coords_cart_neighb(lb->cs, BACKWARD,X), tagf, comm, &request[1]);
     ireal = lb->ndist*NVEL*coords_index(1, 1-nhalo, 1-nhalo);
     MPI_Issend(lb->f + ireal, 1, lb->plane_yz[BACKWARD],
-	       cart_neighb(BACKWARD,X), tagb, comm, &request[2]);
+	       coords_cart_neighb(lb->cs,BACKWARD,X), tagb, comm, &request[2]);
     ireal = lb->ndist*NVEL*coords_index(nlocal[X], 1-nhalo, 1-nhalo);
     MPI_Issend(lb->f + ireal, 1, lb->plane_yz[FORWARD],
-	       cart_neighb(FORWARD,X), tagf, comm, &request[3]);
+	       coords_cart_neighb(lb->cs,FORWARD,X), tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
   }
   
   /* The y-direction (XZ plane) */
 
-  if (cart_size(Y) == 1) {
+  if (cartsz[Y] == 1) {
     if (is_periodic(Y)) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -636,22 +646,25 @@ int lb_halo_via_struct(lb_t * lb) {
   else {
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[BACKWARD],
-	      cart_neighb(FORWARD,Y), tagb, comm, &request[0]);
+	      coords_cart_neighb(lb->cs,FORWARD,Y), tagb, comm, &request[0]);
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 0, 1 - nhalo);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[FORWARD], cart_neighb(BACKWARD,Y),
+    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[FORWARD],
+	      coords_cart_neighb(lb->cs, BACKWARD,Y),
 	      tagf, comm, &request[1]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1, 1 - nhalo);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xz[BACKWARD], cart_neighb(BACKWARD,Y),
+    MPI_Issend(lb->f + ireal, 1, lb->plane_xz[BACKWARD],
+	       coords_cart_neighb(lb->cs, BACKWARD,Y),
 	       tagb, comm, &request[2]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, nlocal[Y], 1 - nhalo);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xz[FORWARD], cart_neighb(FORWARD,Y),
+    MPI_Issend(lb->f + ireal, 1, lb->plane_xz[FORWARD],
+	       coords_cart_neighb(lb->cs, FORWARD,Y),
 	       tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
   }
   
   /* Finally, z-direction (XY plane) */
 
-  if (cart_size(Z) == 1) {
+  if (cartsz[Z] == 1) {
     if (is_periodic(Z)) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
@@ -670,16 +683,20 @@ int lb_halo_via_struct(lb_t * lb) {
   else {
 
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[BACKWARD], cart_neighb(FORWARD,Z),
+    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[BACKWARD],
+	      coords_cart_neighb(lb->cs, FORWARD,Z),
 	      tagb, comm, &request[0]);
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, 0);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[FORWARD], cart_neighb(BACKWARD,Z),
+    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[FORWARD],
+	      coords_cart_neighb(lb->cs, BACKWARD,Z),
 	      tagf, comm, &request[1]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xy[BACKWARD], cart_neighb(BACKWARD,Z),
+    MPI_Issend(lb->f + ireal, 1, lb->plane_xy[BACKWARD],
+	       coords_cart_neighb(lb->cs, BACKWARD,Z),
 	       tagb, comm, &request[2]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xy[FORWARD], cart_neighb(FORWARD,Z),
+    MPI_Issend(lb->f + ireal, 1, lb->plane_xy[FORWARD],
+	       coords_cart_neighb(lb->cs, FORWARD,Z),
 	       tagf, comm, &request[3]);  
     MPI_Waitall(4, request, status);
   }
@@ -1209,6 +1226,7 @@ int lb_halo_via_copy(lb_t * lb) {
   int index, indexhalo, indexreal;
   int nsend, count;
   int nlocal[3];
+  int cartsz[3];
 
   const int tagf = 900;
   const int tagb = 901;
@@ -1220,10 +1238,12 @@ int lb_halo_via_copy(lb_t * lb) {
 
   MPI_Request request[4];
   MPI_Status status[4];
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
   assert(lb);
 
+  coords_cart_comm(lb->cs, &comm);
+  coords_cartsz(lb->cs, cartsz);
   coords_nlocal(nlocal);
 
   /* The x-direction (YZ plane) */
@@ -1258,14 +1278,14 @@ int lb_halo_via_copy(lb_t * lb) {
   }
   assert(count == nsend);
 
-  if (cart_size(X) == 1) {
+  if (cartsz[X] == 1) {
     memcpy(recvback, sendforw, nsend*sizeof(double));
     memcpy(recvforw, sendback, nsend*sizeof(double));
   }
   else {
 
-    pforw = cart_neighb(FORWARD, X);
-    pback = cart_neighb(BACKWARD, X);
+    pforw = coords_cart_neighb(lb->cs, FORWARD, X);
+    pback = coords_cart_neighb(lb->cs, BACKWARD, X);
 
     MPI_Irecv(recvforw, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
     MPI_Irecv(recvback, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
@@ -1300,7 +1320,7 @@ int lb_halo_via_copy(lb_t * lb) {
   free(recvback);
   free(recvforw);
 
-  if (cart_size(X) > 1) {
+  if (cartsz[X] > 1) {
     /* Wait for sends */
     MPI_Waitall(2, request + 2, status);
   }
@@ -1342,14 +1362,14 @@ int lb_halo_via_copy(lb_t * lb) {
   assert(count == nsend);
 
 
-  if (cart_size(Y) == 1) {
+  if (cartsz[Y] == 1) {
     memcpy(recvback, sendforw, nsend*sizeof(double));
     memcpy(recvforw, sendback, nsend*sizeof(double));
   }
   else {
 
-    pforw = cart_neighb(FORWARD, Y);
-    pback = cart_neighb(BACKWARD, Y);
+    pforw = coords_cart_neighb(lb->cs, FORWARD, Y);
+    pback = coords_cart_neighb(lb->cs, BACKWARD, Y);
 
     MPI_Irecv(recvforw, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
     MPI_Irecv(recvback, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
@@ -1383,7 +1403,7 @@ int lb_halo_via_copy(lb_t * lb) {
   free(recvback);
   free(recvforw);
 
-  if (cart_size(Y) > 1) {
+  if (cartsz[Y] > 1) {
     /* Wait for sends */
     MPI_Waitall(2, request + 2, status);
   }
@@ -1423,14 +1443,14 @@ int lb_halo_via_copy(lb_t * lb) {
   }
   assert(count == nsend);
 
-  if (cart_size(Z) == 1) {
+  if (cartsz[Z] == 1) {
     memcpy(recvback, sendforw, nsend*sizeof(double));
     memcpy(recvforw, sendback, nsend*sizeof(double));
   }
   else {
 
-    pforw = cart_neighb(FORWARD, Z);
-    pback = cart_neighb(BACKWARD, Z);
+    pforw = coords_cart_neighb(lb->cs, FORWARD, Z);
+    pback = coords_cart_neighb(lb->cs, BACKWARD, Z);
 
     MPI_Irecv(recvforw, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
     MPI_Irecv(recvback, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
@@ -1464,7 +1484,7 @@ int lb_halo_via_copy(lb_t * lb) {
   free(recvback);
   free(recvforw);
 
-  if (cart_size(Z) > 1) {
+  if (cartsz[Z] > 1) {
     /* Wait for sends */
     MPI_Waitall(2, request + 2, status);
   }

@@ -58,6 +58,7 @@ int do_test_le1(control_t * ctrl) {
   int n, nx;
   int nptotal, nplocal;
   int nlocal[3];
+  int cartsz[3];
 
   double uy0 = 0.08;
   double uy;
@@ -73,6 +74,8 @@ int do_test_le1(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
+  coords_cartsz(cs, cartsz);
+
   le_create(cs, &le);
   le_nplane_set(le, nplane);
   le_uy_set(le, uy0);
@@ -87,7 +90,7 @@ int do_test_le1(control_t * ctrl) {
     control_verb(ctrl, "Total number of planes: %d\n", nplane);
     control_macro_test(ctrl, nptotal == nplane);
 
-    nplane_local = nplane / cart_size(X);
+    nplane_local = nplane / cartsz[X];
     control_verb(ctrl, "Local number of planes: %d\n", nplane_local);
     control_macro_test(ctrl, nplocal == nplane_local);
 
@@ -200,6 +203,7 @@ int do_test_le_interp3(control_t * ctrl) {
   int nlocal[3];
   int ntotal[3];
   int noffset[3];
+  int cartsz[3];
 
   const double uy_set = 0.25;
   double fr;
@@ -216,6 +220,8 @@ int do_test_le_interp3(control_t * ctrl) {
   pe_create_parent(MPI_COMM_WORLD, &pe);
   coords_create(pe, &cs);
   coords_commit(cs);
+
+  coords_cartsz(cs, cartsz);
 
   le_create(cs, &le);
   le_nplane_set(le, nplane);
@@ -291,12 +297,12 @@ int do_test_le_interp3(control_t * ctrl) {
 
       py = (j1 - 1) / nlocal[Y];
       control_macro_test(ctrl, py >= 0);
-      control_macro_test(ctrl, py < cart_size(Y));
+      control_macro_test(ctrl, py < cartsz[Y]);
 
       MPI_Cart_rank(comm, &py, &precv_rank_left);
       py = 1 + (j1 - 1) / nlocal[Y];
       control_macro_test(ctrl, py >= 1);
-      control_macro_test(ctrl, py <= cart_size(Y));
+      control_macro_test(ctrl, py <= cartsz[Y]);
       MPI_Cart_rank(comm, &py, &precv_rank_right);
     }
   }

@@ -51,7 +51,7 @@ int colloids_rt_gravity(rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(rt_t * rt, colloids_info_t * cinfo, int nc);
 int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio);
-int colloids_rt_init_random(rt_t * rt, colloids_info_t * cinfo);
+int colloids_rt_init_random(rt_t * rt, coords_t * cs, colloids_info_t * cinfo);
 int colloids_rt_state_stub(rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
@@ -90,7 +90,7 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   /* Colloid info object always created with ncell = 2;
    * later we check if this is ok and adjust if necesaary/possible. */
 
-  colloids_info_create(ncell, pinfo);
+  colloids_info_create(cs, ncell, pinfo);
 
   rt_string_parameter(rt, "colloid_init", keyvalue, BUFSIZ);
 
@@ -116,7 +116,7 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   if (init_two) colloids_rt_init_few(rt, *pinfo, 2);
   if (init_three) colloids_rt_init_few(rt, *pinfo, 3);
   if (init_from_file) colloids_rt_init_from_file(rt, *pinfo, *pcio);
-  if (init_random) colloids_rt_init_random(rt, *pinfo);
+  if (init_random) colloids_rt_init_random(rt, cs, *pinfo);
 
   /* At this point, we know number of colloids */
 
@@ -148,7 +148,7 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
    * colloid map and build the particles for the first time. */
 
   colloids_info_map_init(*pinfo);
-  colloids_halo_state(*pinfo);
+  colloids_halo_state(cs, *pinfo);
 
   colloids_rt_dynamics(*pinfo, map);
   colloids_rt_gravity(rt, *pinfo);
@@ -282,13 +282,14 @@ int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_init_random(rt_t * rt, colloids_info_t * cinfo) {
+int colloids_rt_init_random(rt_t * rt, coords_t * cs, colloids_info_t * cinfo) {
 
   int nc;
   double dh = 0.0;
   colloid_state_t * state0 = NULL;
 
   assert(rt);
+  assert(cs);
   assert(cinfo);
 
   state0 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
@@ -299,7 +300,7 @@ int colloids_rt_init_random(rt_t * rt, colloids_info_t * cinfo) {
   rt_int_parameter(rt, "colloid_random_no", &nc);
   rt_double_parameter(rt, "colloid_random_dh", &dh);
 
-  colloids_init_random(cinfo, nc, state0, dh);
+  colloids_init_random(cs, cinfo, nc, state0, dh);
 
   info("Requested   %d colloid%s at random\n", nc, (nc > 1) ? "s" : "");
   info("Colloid  radius a0 = %le\n", state0->a0);
@@ -580,7 +581,7 @@ int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_init_ewald_rt(rt_t * rt, colloids_info_t * cinfo,
+int colloids_init_ewald_rt(rt_t * rt, coords_t * cs, colloids_info_t * cinfo,
 			   ewald_t ** pewald) {
 
   int ncolloid;
@@ -604,7 +605,7 @@ int colloids_init_ewald_rt(rt_t * rt, colloids_info_t * cinfo,
     iarg = rt_double_parameter(rt, "ewald_rc", &rc);
     if (iarg == 0) fatal("Ewald sum requires a real space cut off\n");
 
-    ewald_create(mu, rc, cinfo, pewald);
+    ewald_create(mu, rc, cs, cinfo, pewald);
     assert(*pewald);
     ewald_info(*pewald); 
   }

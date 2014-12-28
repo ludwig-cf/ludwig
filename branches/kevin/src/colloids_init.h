@@ -12,9 +12,10 @@
 
 #ifndef COLLOIDS_INIT_H
 
+#include "coords.h"
 #include "colloids.h"
 
-int colloids_init_random(colloids_info_t * cinfo, int n,
+int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int n,
 			 const colloid_state_t * state0, double dh);
 
 #endif

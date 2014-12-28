@@ -15,12 +15,15 @@
 #ifndef STATS_TURBULENT_H
 #define STATS_TURBULENT_H
 
+typedef struct stats_turb_s stats_turb_t;
+
+#include "coords.h"
 #include "hydro.h"
 
-void stats_turbulent_init(void);
-void stats_turbulent_finish(void);
-void stats_turbulent_ubar_zero(void);
-int  stats_turbulent_ubar_accumulate(hydro_t * hydro);
-void stats_turbulent_ubar_output(const char *);
+int stats_turbulent_create(coords_t * cs, stats_turb_t ** stat);
+int stats_turbulent_free(stats_turb_t * stat);
+int stats_turbulent_ubar_zero(stats_turb_t * stat);
+int  stats_turbulent_ubar_accumulate(stats_turb_t * stat, hydro_t * hydro);
+int stats_turbulent_ubar_output(stats_turb_t * stat, const char * file);
 
 #endif

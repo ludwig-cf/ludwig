@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <string.h>
  
-#include "coords.h"
 #include "psi_init.h"
 
 /*****************************************************************************
@@ -30,13 +29,14 @@
  *
  *****************************************************************************/
 
-int psi_init_uniform(psi_t * obj, double rho_el) {
+int psi_init_uniform(psi_t * obj, coords_t * cs, double rho_el) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int n, nk;
 
   assert(obj);
+  assert(cs);
   assert(rho_el >= 0.0);
 
   coords_nlocal(nlocal);
@@ -76,16 +76,22 @@ int psi_init_uniform(psi_t * obj, double rho_el) {
  *
  *****************************************************************************/
 
-int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
-			      double sigma) {
+int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
+			      double rho_el, double sigma) {
 
   int ic, jc, kc, index;
+  int cartsz[3];
+  int cartcoords[3];
   int nlocal[3];
+
   double rho_w, rho_i;
 
   assert(obj);
+  assert(cs);
   assert(map);
 
+  coords_cartsz(cs, cartsz);
+  coords_cart_coords(cs, cartcoords);
   coords_nlocal(nlocal);
 
   /* wall surface charge density */
@@ -110,7 +116,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
   }
 
   /* apply wall charges */
-  if (cart_coords(X) == 0) {
+  if (cartcoords[X] == 0) {
     ic = 1;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -125,7 +131,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (cartcoords[X] == cartsz[X] - 1) {
     ic = nlocal[X];
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -160,13 +166,15 @@ int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
  *
  *****************************************************************************/
 
-int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el) {
+int psi_init_liquid_junction_set(psi_t * obj, coords_t * cs, double rho_el,
+				 double delta_el) {
 
   int ic, jc, kc, index;
   int ntotal[3];
   int nlocal[3], noff[3];
 
   assert(obj);
+  assert(cs);
 
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);

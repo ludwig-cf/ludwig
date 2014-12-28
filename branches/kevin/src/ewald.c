@@ -21,9 +21,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "colloids.h"
 #include "ewald.h"
 #include "timer.h"
 #include "util.h"
@@ -47,6 +44,7 @@ static double * sinkr_;  /* Table for sin(kr) values */
 static double * coskr_;  /* Table for cos(kr) values */
 
 struct ewald_s {
+  coords_t * cs;             /* Reference to coordinate system */
   colloids_info_t * cinfo;   /* Retain a reference to colloids_info_t */
 };
 
@@ -66,18 +64,21 @@ static void ewald_set_kr_table(double []);
  *
  *****************************************************************************/
 
-int ewald_create(double mu_input, double rc_input,
+int ewald_create(double mu_input, double rc_input, coords_t * cs,
 		 colloids_info_t * cinfo, ewald_t ** pewald) {
   int nk;
   ewald_t * ewald = NULL;
 
   assert(pewald);
+  assert(cs);
   assert(cinfo);
 
   ewald = (ewald_t *) calloc(1, sizeof(ewald_t));
   if (ewald == NULL) fatal("calloc(ewald) failed");
 
   ewald->cinfo = cinfo;
+  ewald->cs =cs;
+  coords_retain(cs);
 
   /* Set constants */
 
@@ -122,6 +123,8 @@ int ewald_create(double mu_input, double rc_input,
 void ewald_free(ewald_t * ewald) {
 
   assert(ewald);
+
+  coords_free(&ewald->cs);
   free(ewald);
 
   return;
@@ -332,8 +335,10 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
   double * subsin;
   double * subcos;
+  MPI_Comm comm;
 
   assert(ewald);
+  coords_cart_comm(ewald->cs, &comm);
   colloids_info_ncell(ewald->cinfo, ncell);
 
   fkx = 2.0*pi_/L(X);
@@ -415,8 +420,8 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
     subcos[kn] = cosx_[kn];
   }
 
-  MPI_Allreduce(subsin, sinx_, nktot_, MPI_DOUBLE, MPI_SUM, cart_comm());
-  MPI_Allreduce(subcos, cosx_, nktot_, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(subsin, sinx_, nktot_, MPI_DOUBLE, MPI_SUM, comm);
+  MPI_Allreduce(subcos, cosx_, nktot_, MPI_DOUBLE, MPI_SUM, comm);
 
   free(subsin);
   free(subcos);

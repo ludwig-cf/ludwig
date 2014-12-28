@@ -127,7 +127,7 @@ int psi_sor_poisson(psi_t * obj) {
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(obj->cs, &comm);
 
   assert(nhalo >= 1);
 
@@ -295,7 +295,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   MPI_Comm comm;               /* Cartesian communicator */
 
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(obj->cs, &comm);
 
   assert(coords_nhalo() >= 1);
   physics_e0(e0);
@@ -497,7 +497,7 @@ int psi_sor_offset(psi_t * psi) {
   assert(psi);
 
   coords_nlocal(nlocal);  
-  comm = cart_comm();
+  coords_cart_comm(psi->cs, &comm);
 
   sum_local = 0.0;
 

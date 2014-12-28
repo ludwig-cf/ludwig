@@ -20,9 +20,19 @@
 
 #include "coords.h"
 
+struct coords_ro_s {
+  int nhalo;
+  /* etc */
+};
+
+
 struct coords_s {
   pe_t * pe;                       /* Retain a reference to pe */
   int nref;                        /* Reference count */
+
+  /* kernel read-only type */
+  /* coords_ro_t * host; */
+  /* coords_ro_t * target; */
 
   /* Potential target data */
   int nhalo;                       /* Width of halo region */
@@ -43,6 +53,8 @@ struct coords_s {
 
   MPI_Comm commcart;               /* Cartesian communicator */
   MPI_Comm commperiodic;           /* Cartesian periodic communicator */
+
+  coords_t * target;               /* Host pointer to target memory */
 };
 
 static void default_decomposition(void);
@@ -229,11 +241,6 @@ int coords_info(coords_t * cs) {
  *
  *****************************************************************************/
 
-int cart_size(const int dim) {
-  assert(dim == X || dim == Y || dim == Z);
-  return cs->mpi_cartsz[dim];
-}
-
 int coords_cartsz(coords_t * cs, int sz[3]) {
 
   assert(cs);
@@ -247,26 +254,38 @@ int coords_cartsz(coords_t * cs, int sz[3]) {
 
 /*****************************************************************************
  *
- *  cart_coords access function
+ *  coords_cart_coords
  *
  *****************************************************************************/
 
-int cart_coords(const int dim) {
-  assert(dim == X || dim == Y || dim == Z);
-  return cs->mpi_cartcoords[dim];
+int coords_cart_coords(coords_t * cs, int coords[3]) {
+
+  assert(cs);
+
+  coords[X] = cs->mpi_cartcoords[X];
+  coords[Y] = cs->mpi_cartcoords[Y];
+  coords[Z] = cs->mpi_cartcoords[Z];
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  cart_neighb access function
+ *  coords_cart_neighb
  *
  *****************************************************************************/
 
-int cart_neighb(const int dir, const int dim) {
+int coords_cart_neighb(coords_t * cs, int forwback, int dim) {
+
+  int p;
+
   assert(cs);
-  assert(dir == FORWARD || dir == BACKWARD);
+  assert(forwback == FORWARD || forwback == BACKWARD);
   assert(dim == X || dim == Y || dim == Z);
-  return cs->mpi_cart_neighbours[dir][dim];
+
+  p = cs->mpi_cart_neighbours[forwback][dim];
+
+  return p;
 }
 
 /*****************************************************************************
@@ -274,11 +293,6 @@ int cart_neighb(const int dir, const int dim) {
  *  coords_cart_comm
  *
  *****************************************************************************/
-
-MPI_Comm cart_comm() {
-  assert(cs);
-  return cs->commcart;
-}
 
 int coords_cart_comm(coords_t * cs, MPI_Comm * comm) {
 

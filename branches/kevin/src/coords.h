@@ -18,6 +18,7 @@
 #include "pe.h"
 
 typedef struct coords_s coords_t;
+typedef struct coords_ro_s coords_ro_t;
 
 #define NSYMM 6      /* Elements for general symmetric tensor */
 
@@ -41,16 +42,10 @@ int coords_info(coords_t * cs);
 
 int coords_cartsz(coords_t * cs, int cartsz[3]);
 int coords_cart_comm(coords_t * cs, MPI_Comm * comm);
-int coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
+int coords_cart_coords(coords_t * cs, int coords[3]);
+int coords_cart_neighb(coords_t * cs, int forwback, int dim);
 
-/* Old interface */
-
-int    coords_periodic_comm(MPI_Comm * comm);
-int    cart_size(const int);
-int    cart_coords(const int);
-int    cart_neighb(const int direction, const int dimension);
-
-MPI_Comm cart_comm(void);
+/* Old interface pending update */
 
 int    is_periodic(const int);
 double L(const int);
@@ -66,5 +61,8 @@ void   coords_minimum_distance(const double r1[3], const double r2[3],
 			       double r12[3]);
 void   coords_index_to_ijk(const int index, int coords[3]);
 int    coords_strides(int * xs, int * ys, int * zs);
+
+int coords_periodic_comm(MPI_Comm * comm);
+int coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
 
 #endif

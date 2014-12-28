@@ -159,7 +159,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
   physics_e0(e0); 
 
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(psi->cs, &comm);
 
   psi_unit_charge(psi, &eunit);
   reunit = 1.0/eunit;

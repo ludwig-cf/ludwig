@@ -439,6 +439,8 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   char filename[FILENAME_MAX];
   int  nx, ny, nz;
   int ntotal[3];
+  int cartsz[3];
+  int cartcoords[3];
   int n[3], noff[3];
 
   int token = 0;
@@ -450,6 +452,9 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
    * be unmangled. */
 
   assert(info);
+  coords_cartsz(info->cs, cartsz);
+  coords_cart_coords(info->cs, cartcoords);
+
   coords_ntotal(ntotal);
   coords_nlocal_offset(noff);
 
@@ -475,7 +480,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     fprintf(fp_meta, "is_bigendian():                  %d\n", is_bigendian());
     fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
     fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
-	    cart_size(X), cart_size(Y), cart_size(Z));
+	    cartsz[X], cartsz[Y], cartsz[Z]);
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
 	    ntotal[X], ntotal[Y], ntotal[Z]);
     /* Lees Edwards hardwired until refactor LE code dependencies */
@@ -500,7 +505,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   coords_nlocal(n);
   fprintf(fp_meta, "%3d %3d %3d %3d %d %d %d %d %d %d\n", info->io_comm->rank,
-          cart_coords(X), cart_coords(Y), cart_coords(Z),
+          cartcoords[X], cartcoords[Y], cartcoords[Z],
           n[X], n[Y], n[Z], noff[X], noff[Y], noff[Z]);
 
   if (ferror(fp_meta)) {

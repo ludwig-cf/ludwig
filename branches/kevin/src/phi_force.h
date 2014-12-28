@@ -16,9 +16,10 @@
 #define PHI_FORCE_H
 
 #include "field.h"
+#include "coords.h"
 #include "hydro.h"
 
-int phi_force_calculation(field_t * phi, hydro_t * hydro);
+int phi_force_calculation(field_t * phi, coords_t * cs, hydro_t * hydro);
 int phi_force_required(int * flag);
 int phi_force_required_set(const int flag);
 int phi_force_divergence_set(const int flag);

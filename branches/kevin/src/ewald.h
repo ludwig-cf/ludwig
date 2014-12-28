@@ -17,9 +17,13 @@
 #ifndef EWALD_H
 #define EWALD_H
 
+#include "coords.h"
+#include "colloids.h"
+
 typedef struct ewald_s ewald_t;
 
-int ewald_create(double mu, double rc, colloids_info_t * cinfo, ewald_t ** e);
+int ewald_create(double mu, double rc, coords_t * cs, colloids_info_t * cinfo,
+		 ewald_t ** e);
 void ewald_free(ewald_t * ewald);
 int ewald_info(ewald_t * ewald);
 int ewald_kappa(ewald_t * ewald, double * kappa);

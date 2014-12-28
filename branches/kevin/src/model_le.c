@@ -58,8 +58,12 @@ static int le_displace_and_interpolate_parallel(lb_t * lb);
 
 int lb_le_apply_boundary_conditions(lb_t * lb) {
 
-  assert(lb);
   const int irepro = 0;
+  int cartsz[3];
+
+  assert(lb);
+
+  coords_cartsz(lb->cs, cartsz);
 
   if (le_get_nplane_local() > 0) {
 
@@ -69,7 +73,7 @@ int lb_le_apply_boundary_conditions(lb_t * lb) {
     if (irepro == 0) le_reproject(lb);
     if (irepro != 0) le_reproject_all(lb);
 
-    if (cart_size(Y) > 1) {
+    if (cartsz[Y] > 1) {
       le_displace_and_interpolate_parallel(lb);
     }
     else {

@@ -2,8 +2,6 @@
  *
  *  advection_s.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -18,6 +16,7 @@
 #include "advection.h"
 
 struct advflux_s {
+  coords_t * cs; /* Reference to coordinate system */
   double * fe;   /* For LE planes */
   double * fw;   /* For LE planes */
   double * fy;

@@ -162,13 +162,11 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
   int ic, jc, kc, index0, index1;
   int status;
   int c;
-  double * mask;
+  double mask0, mask1;
 
   assert(nf > 0);
   assert(flx);
   assert(map);
-
-  mask = calloc(PSI_NGRAD, sizeof(double)); 
 
   coords_nlocal(nlocal);
 
@@ -178,16 +176,16 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 
 	index0 = coords_index(ic, jc, kc);
 	map_status(map, index0, &status);
-	mask[0] = (status == MAP_FLUID);
+	mask0 = (status == MAP_FLUID);
 
 	for (c = 1; c < PSI_NGRAD; c++) {
 
 	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  map_status(map, index1, &status);
-	  mask[c] = (status == MAP_FLUID);
+	  mask1 = (status == MAP_FLUID);
 
 	  for (n = 0;  n < nf; n++) {
-	    flx[nf*index0 + n][c - 1] *= mask[0]*mask[c];
+	    flx[nf*index0 + n][c - 1] *= mask0*mask1;
 	  }
 
 	}
@@ -198,6 +196,7 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 
   return 0;
 }
+
 /*****************************************************************************
  *
  *  advection_bcs_wall
@@ -214,22 +213,29 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
  *
  ****************************************************************************/
 
-int advection_bcs_wall(field_t * fphi) {
+int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
 
   int ic, jc, kc, index, index1;
   int nlocal[3];
   int nf;
+  int cartsz[3];
+  int cartcoords[3];
+
   double q[NQAB];
+
+  assert(flux);
+  assert(fphi);
+  assert(nf <= NQAB);
 
   if (wall_at_edge(X) == 0) return 0;
 
-  assert(fphi);
+  coords_cartsz(flux->cs, cartsz);
+  coords_cart_coords(flux->cs, cartcoords);
 
   field_nf(fphi, &nf);
   coords_nlocal(nlocal);
-  assert(nf <= NQAB);
 
-  if (cart_coords(X) == 0) {
+  if (cartcoords[X] == 0) {
     ic = 1;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -244,7 +250,7 @@ int advection_bcs_wall(field_t * fphi) {
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (cartcoords[X] == cartsz[X] - 1) {
 
     ic = nlocal[X];
 

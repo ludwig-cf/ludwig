@@ -13,12 +13,13 @@
 #ifndef BBL_H
 #define BBL_H
 
+#include "coords.h"
 #include "colloids.h"
 #include "model.h"
 
 typedef struct bbl_s bbl_t;
 
-int bbl_create(lb_t * lb, bbl_t ** pobj);
+int bbl_create(coords_t * cs, lb_t * lb, bbl_t ** pobj);
 int bbl_free(bbl_t * obj);
 
 int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);

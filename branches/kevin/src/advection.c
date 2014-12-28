@@ -24,19 +24,17 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "leesedwards.h"
 #include "field_s.h"
-#include "advection_s.h"
 #include "psi_gradients.h"
+#include "advection_s.h"
 
 static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
@@ -84,11 +82,12 @@ int advection_order(int * order) {
  *
  *****************************************************************************/
 
-int advflux_create(int nf, advflux_t ** pobj) {
+int advflux_create(coords_t * cs, int nf, advflux_t ** pobj) {
 
   int nsites;
   advflux_t * obj = NULL;
 
+  assert(cs);
   assert(pobj);
 
   obj = calloc(1, sizeof(advflux_t));
@@ -106,6 +105,9 @@ int advflux_create(int nf, advflux_t ** pobj) {
   if (obj->fy == NULL) fatal("calloc(advflux->fy) failed\n");
   if (obj->fz == NULL) fatal("calloc(advflux->fz) failed\n");
 
+  obj->cs = cs;
+  coords_retain(cs);
+
   *pobj = obj;
 
   return 0;
@@ -117,17 +119,18 @@ int advflux_create(int nf, advflux_t ** pobj) {
  *
  *****************************************************************************/
 
-void advflux_free(advflux_t * obj) {
+int advflux_free(advflux_t * obj) {
 
   assert(obj);
 
+  coords_free(&obj->cs);
   free(obj->fe);
   free(obj->fw);
   free(obj->fy);
   free(obj->fz);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

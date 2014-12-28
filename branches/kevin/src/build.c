@@ -19,8 +19,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "physics.h"
 #include "colloid_sums.h"
 #include "psi_colloid.h"
@@ -1175,7 +1173,8 @@ int build_count_faces_local(colloid_t * colloid, double * sa, double * saf) {
  *
  *****************************************************************************/
 
-int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
+int build_conservation(coords_t * cs, colloids_info_t * cinfo,
+		       field_t * phi, psi_t * psi) {
 
   int p;
 
@@ -1186,6 +1185,7 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
 
+  assert(cs);
   assert(cinfo);
 
   colloids_info_all_head(cinfo, &colloid);
@@ -1246,7 +1246,7 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
    * of any shortfall in what we have tried to put back.
    * Record this in the state so it is always retained. */
 
-  colloid_sums_halo(cinfo, COLLOID_SUM_CONSERVATION);
+  colloid_sums_halo(cs, cinfo, COLLOID_SUM_CONSERVATION);
 
   colloids_info_all_head(cinfo, &colloid);
 

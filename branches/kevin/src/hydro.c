@@ -69,7 +69,7 @@ int hydro_create(coords_t * cs, int nhcomm, hydro_t ** pobj) {
   obj->cs = cs;
   coords_retain(cs);
 
-  coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
+  coords_field_init_mpi_indexed(cs, nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
 
   *pobj = obj;
 
@@ -113,7 +113,8 @@ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
-  coords_field_halo(obj->nhcomm, obj->nf, obj->u, MPI_DOUBLE, obj->uhalo);
+  coords_field_halo(obj->cs, obj->nhcomm, obj->nf, obj->u, MPI_DOUBLE,
+		    obj->uhalo);
 
   return 0;
 }
@@ -346,6 +347,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   int nhalo;
   int nlocal[3]; /* Local system size */
+  int cartsz[3]; /* Cartesian decomposition size */
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
@@ -363,7 +365,9 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   assert(obj);
 
-  if (cart_size(Y) > 1) {
+  coords_cartsz(obj->cs, cartsz);
+
+  if (cartsz[Y] > 1) {
     hydro_lees_edwards_parallel(obj);
   }
   else {

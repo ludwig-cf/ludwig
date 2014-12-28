@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,9 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "colloids.h"
 #include "colloid_sums.h"
 
 /*****************************************************************************
@@ -49,7 +46,8 @@
  *****************************************************************************/
 
 struct colloid_sum_s {
-  colloids_info_t * cinfo;                /* Temporary reference */
+  coords_t * cs;                          /* Reference to coordinates */
+  colloids_info_t * cinfo;                /* cinfo reference */
   int mtype;                              /* Current message type */
   int mload;                              /* Load / unload flag */
   int msize;                              /* Current message size */
@@ -85,16 +83,21 @@ static int tagb_ = 1071;                        /* Message tag */
  *
  *****************************************************************************/
 
-int colloid_sums_create(colloids_info_t * cinfo, colloid_sum_t ** psum) {
+int colloid_sums_create(coords_t * cs, colloids_info_t * cinfo,
+			colloid_sum_t ** psum) {
 
   colloid_sum_t * sum = NULL;
 
+  assert(cs);
   assert(cinfo);
 
   sum = (colloid_sum_t *) calloc(1, sizeof(colloid_sum_t));
   if (sum == NULL) fatal("calloc(colloid_sum_t) failed\n");
 
   sum->cinfo = cinfo;
+  sum->cs = cs;
+  coords_retain(cs);
+
   *psum = sum;
 
   return 0;
@@ -106,13 +109,14 @@ int colloid_sums_create(colloids_info_t * cinfo, colloid_sum_t ** psum) {
  *
  *****************************************************************************/
 
-void colloid_sums_free(colloid_sum_t * sum) {
+int colloid_sums_free(colloid_sum_t * sum) {
 
   assert(sum);
 
+  coords_free(&sum->cs);
   free(sum);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -125,15 +129,16 @@ void colloid_sums_free(colloid_sum_t * sum) {
  *
  *****************************************************************************/
 
-int colloid_sums_halo(colloids_info_t * cinfo, colloid_sum_enum_t mtype) {
+int colloid_sums_halo(coords_t * cs, colloids_info_t * cinfo,
+		      colloid_sum_enum_t mtype) {
 
   colloid_sum_t * sum = NULL;
 
+  assert(cs);
   assert(cinfo);
 
-  sum = (colloid_sum_t * ) calloc(1, sizeof(colloid_sum_t));
-  if (sum == NULL) fatal("calloc(colloid_sum_t) failed\n");
-  sum->cinfo = cinfo;
+  colloid_sums_create(cs, cinfo, &sum);
+
   sum->mtype = mtype;
   sum->msize = msize_[mtype];
 
@@ -141,7 +146,7 @@ int colloid_sums_halo(colloids_info_t * cinfo, colloid_sum_enum_t mtype) {
   colloid_sums_1d(sum, Y, mtype);
   colloid_sums_1d(sum, Z, mtype);
 
-  free(sum);
+  colloid_sums_free(sum);
 
   return 0;
 }
@@ -219,6 +224,11 @@ static int colloid_sums_count(colloid_sum_t * sum, const int dim) {
   int ic, jc, kc;
   int n0, n1;
   int ncell[3];
+  int cartsz[3];
+  int cartcoords[3];
+
+  coords_cartsz(sum->cs, cartsz);
+  coords_cart_coords(sum->cs, cartcoords);
 
   sum->ncount[BACKWARD] = 0;
   sum->ncount[FORWARD] = 0;
@@ -265,8 +275,8 @@ static int colloid_sums_count(colloid_sum_t * sum, const int dim) {
   }
 
   if (is_periodic(dim) == 0) {
-    if (cart_coords(dim) == 0) sum->ncount[BACKWARD] = 0;
-    if (cart_coords(dim) == cart_size(dim) - 1) sum->ncount[FORWARD] = 0;
+    if (cartcoords[dim] == 0) sum->ncount[BACKWARD] = 0;
+    if (cartcoords[dim] == cartsz[dim] - 1) sum->ncount[FORWARD] = 0;
   }
 
   return 0;
@@ -282,16 +292,19 @@ static int colloid_sums_irecv(colloid_sum_t * sum, int dim,
 			      MPI_Request req[2]) {
   int nf, pforw;
   int nb, pback;
+  int cartsz[3];
 
   MPI_Comm comm;
+
+  coords_cartsz(sum->cs, cartsz);
 
   req[0] = MPI_REQUEST_NULL;
   req[1] = MPI_REQUEST_NULL;
 
-  if (cart_size(dim) > 1) {
-    comm  = cart_comm();
-    pforw = cart_neighb(FORWARD, dim);
-    pback = cart_neighb(BACKWARD, dim);
+  if (cartsz[dim] > 1) {
+    coords_cart_comm(sum->cs, &comm);
+    pforw = coords_cart_neighb(sum->cs, FORWARD, dim);
+    pback = coords_cart_neighb(sum->cs, BACKWARD, dim);
 
     nb = sum->msize*sum->ncount[BACKWARD];
     nf = sum->msize*sum->ncount[FORWARD];
@@ -315,8 +328,11 @@ static int colloid_sums_isend(colloid_sum_t * sum, int dim,
 			       MPI_Request req[2]) {
   int nf, pforw;
   int nb, pback;
+  int cartsz[3];
 
   MPI_Comm comm;
+
+  coords_cartsz(sum->cs, cartsz);
 
   nf = sum->msize*sum->ncount[FORWARD];
   nb = sum->msize*sum->ncount[BACKWARD];
@@ -324,14 +340,14 @@ static int colloid_sums_isend(colloid_sum_t * sum, int dim,
   req[0] = MPI_REQUEST_NULL;
   req[1] = MPI_REQUEST_NULL;
 
-  if (cart_size(dim) == 1) {
+  if (cartsz[dim] == 1) {
     memcpy(sum->recv, sum->send, (nf + nb)*sizeof(double));
   }
   else {
 
-    comm = cart_comm();
-    pforw = cart_neighb(FORWARD, dim);
-    pback = cart_neighb(BACKWARD, dim);
+    coords_cart_comm(sum->cs, &comm);
+    pforw = coords_cart_neighb(sum->cs, FORWARD, dim);
+    pback = coords_cart_neighb(sum->cs, BACKWARD, dim);
 
     if (nb > 0) MPI_Issend(sum->send, nb, MPI_DOUBLE, pback, tagb_, comm, req);
     if (nf > 0) MPI_Issend(sum->send + nb, nf, MPI_DOUBLE, pforw, tagf_,
@@ -360,9 +376,15 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
   int nb, nf;
   int ic, jc, kc;
   int ncell[3];
+  int cartsz[3];
+  int cartcoords[3];
 
   int (* mloader_forw)(colloid_sum_t *, int, int, int, int) = NULL;
   int (* mloader_back)(colloid_sum_t *, int, int, int, int) = NULL;
+
+  assert(sum);
+  coords_cartsz(sum->cs, cartsz);
+  coords_cart_coords(sum->cs, cartcoords);
 
   colloids_info_ncell(sum->cinfo, ncell);
 
@@ -387,9 +409,9 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
    * This is where loader_forw and loader_back can differ. */
 
   if (is_periodic(dim) == 0) {
-    ic = cart_coords(dim);
+    ic = cartcoords[dim];
     if (ic == 0) mloader_back = colloid_sums_m0;
-    if (ic == cart_size(dim) - 1) mloader_forw = colloid_sums_m0;
+    if (ic == cartsz[dim] - 1) mloader_forw = colloid_sums_m0;
   }
 
   if (dim == X) {

@@ -150,7 +150,8 @@ int field_init(field_t * obj, int nhcomm) {
   /* MPI datatypes for halo */
 
   obj->nhcomm = nhcomm;
-  coords_field_init_mpi_indexed(obj->nhcomm, obj->nf, MPI_DOUBLE, obj->halo);
+  coords_field_init_mpi_indexed(obj->cs, obj->nhcomm, obj->nf, MPI_DOUBLE,
+				obj->halo);
 
   return 0;
 }
@@ -226,7 +227,8 @@ int field_halo(field_t * obj) {
 
   assert(obj);
   assert(obj->data);
-  coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
+  coords_field_halo(obj->cs, obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE,
+		    obj->halo);
 
   return 0;
 }
@@ -253,6 +255,7 @@ int field_leesedwards(field_t * obj) {
   int ic;        /* Index corresponding x location in real system */
   int jc, kc, n;
   int index, index0, index1, index2, index3;
+  int cartsz[3];
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
@@ -266,7 +269,9 @@ int field_leesedwards(field_t * obj) {
   assert(obj);
   assert(obj->data);
 
-  if (cart_size(Y) > 1) {
+  coords_cartsz(obj->cs, cartsz);
+
+  if (cartsz[Y] > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);
   }

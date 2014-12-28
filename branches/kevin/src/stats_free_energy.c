@@ -16,8 +16,6 @@
 
 #include <assert.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "control.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
@@ -27,10 +25,10 @@
 #include "blue_phase.h"
 #include "util.h"
 
-static int stats_free_energy_wall(field_t * q, double * fs);
-static int stats_free_energy_wallx(field_t * q, double * fs);
-static int stats_free_energy_wally(field_t * q, double * fs);
-static int stats_free_energy_wallz(field_t * q, double * fs);
+static int stats_free_energy_wall(coords_t * cs, field_t * q, double * fs);
+static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs);
+static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs);
+static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs);
 static int stats_free_energy_colloid(field_t * q, map_t * map, double * fs);
 
 static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
@@ -48,7 +46,8 @@ static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
  *
  ****************************************************************************/
 
-int stats_free_energy_density(field_t * q, map_t * map, int ncolloid) {
+int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
+			      int ncolloid) {
 
 #define NSTAT 5
 
@@ -63,6 +62,7 @@ int stats_free_energy_density(field_t * q, map_t * map, int ncolloid) {
 
   double (* free_energy_density)(const int index);
 
+  assert(cs);
   assert(map);
 
   if (fe_set() == 0) return 0;
@@ -98,7 +98,7 @@ int stats_free_energy_density(field_t * q, map_t * map, int ncolloid) {
 
   if (wall_present()) {
 
-    if (q) stats_free_energy_wall(q, fe_local + 3);
+    if (q) stats_free_energy_wall(cs, q, fe_local + 3);
 
     MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
@@ -149,13 +149,14 @@ int stats_free_energy_density(field_t * q, map_t * map, int ncolloid) {
  *
  *****************************************************************************/
 
-static int stats_free_energy_wall(field_t * q, double * fs) {
+static int stats_free_energy_wall(coords_t * cs, field_t * q, double * fs) {
 
+  assert(cs);
   assert(q);
 
-  if (wall_at_edge(X)) stats_free_energy_wallx(q, fs);
-  if (wall_at_edge(Y)) stats_free_energy_wally(q, fs);
-  if (wall_at_edge(Z)) stats_free_energy_wallz(q, fs);
+  if (wall_at_edge(X)) stats_free_energy_wallx(cs, q, fs);
+  if (wall_at_edge(Y)) stats_free_energy_wally(cs, q, fs);
+  if (wall_at_edge(Z)) stats_free_energy_wallz(cs, q, fs);
 
   return 0;
 }
@@ -168,27 +169,32 @@ static int stats_free_energy_wall(field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-static int stats_free_energy_wallx(field_t * q, double * fs) {
+static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int cartsz[3];
+  int cartcoords[3];
 
   double dn[3];
   double qs[3][3];
   double fes;
 
-  fs[0] = 0.0;
-  fs[1] = 0.0;
-
+  assert(cs);
   assert(q);
   assert(fs);
 
+  coords_cartsz(cs, cartsz);
+  coords_cart_coords(cs, cartcoords);
   coords_nlocal(nlocal);
+
+  fs[0] = 0.0;
+  fs[1] = 0.0;
 
   dn[Y] = 0.0;
   dn[Z] = 0.0;
 
-  if (cart_coords(X) == 0) {
+  if (cartcoords[X] == 0) {
 
     ic = 1;
     dn[X] = +1.0;
@@ -204,7 +210,7 @@ static int stats_free_energy_wallx(field_t * q, double * fs) {
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (cartcoords[X] == cartsz[X] - 1) {
 
     ic = nlocal[X];
     dn[X] = -1;
@@ -231,26 +237,32 @@ static int stats_free_energy_wallx(field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-static int stats_free_energy_wally(field_t * q, double * fs) {
+static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int cartsz[3];
+  int cartcoords[3];
 
   double dn[3];
   double qs[3][3];
   double fes;
 
-  fs[0] = 0.0;
-  fs[1] = 0.0;
-
+  assert(cs);
   assert(q);
   assert(fs);
 
+  coords_cartsz(cs, cartsz);
+  coords_cart_coords(cs, cartcoords);
   coords_nlocal(nlocal);
+
+  fs[0] = 0.0;
+  fs[1] = 0.0;
+
   dn[X] = 0.0;
   dn[Z] = 0.0;
 
-  if (cart_coords(Y) == 0) {
+  if (cartcoords[Y] == 0) {
 
     jc = 1;
     dn[Y] = +1.0;
@@ -266,7 +278,7 @@ static int stats_free_energy_wally(field_t * q, double * fs) {
     }
   }
 
-  if (cart_coords(Y) == cart_size(Y) - 1) {
+  if (cartcoords[Y] == cartsz[Y] - 1) {
 
     jc = nlocal[Y];
     dn[Y] = -1;
@@ -293,26 +305,32 @@ static int stats_free_energy_wally(field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-static int stats_free_energy_wallz(field_t * q, double * fs) {
+static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int cartsz[3];
+  int cartcoords[3];
 
   double dn[3];
   double qs[3][3];
   double fes;
 
-  fs[0] = 0.0;
-  fs[1] = 0.0;
-
+  assert(cs);
   assert(q);
   assert(fs);
 
+  coords_cartsz(cs, cartsz);
+  coords_cart_coords(cs, cartcoords);
   coords_nlocal(nlocal);
+
+  fs[0] = 0.0;
+  fs[1] = 0.0;
+
   dn[X] = 0.0;
   dn[Y] = 0.0;
 
-  if (cart_coords(Z) == 0) {
+  if (cartcoords[Z] == 0) {
 
     kc = 1;
     dn[Z] = +1.0;
@@ -328,7 +346,7 @@ static int stats_free_energy_wallz(field_t * q, double * fs) {
     }
   }
 
-  if (cart_coords(Z) == cart_size(Z) - 1) {
+  if (cartcoords[Z] == cartsz[Z] - 1) {
 
     kc = nlocal[Z];
     dn[Z] = -1;

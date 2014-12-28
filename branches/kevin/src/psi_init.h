@@ -17,12 +17,14 @@
 #ifndef PSI_INIT_H
 #define PSI_INIT_H
 
+#include "coords.h"
 #include "psi.h"
 #include "map.h"
 
-int psi_init_uniform(psi_t * obj, double rho_el);
-int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
-			      double sigma);
-int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el);
+int psi_init_uniform(psi_t * obj, coords_t * cs, double rho_el);
+int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
+			      double rho_el, double sigma);
+int psi_init_liquid_junction_set(psi_t * obj, coords_t * cs, double rho_el,
+				 double delta_el);
 
 #endif 

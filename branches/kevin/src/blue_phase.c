@@ -926,7 +926,7 @@ void blue_phase_redshift_update_set(int update) {
  *
  *****************************************************************************/
 
-void blue_phase_redshift_compute(void) {
+int blue_phase_redshift_compute(coords_t * cs) {
 
   int ic, jc, kc, index;
   int ia, ib, id, ig;
@@ -937,9 +937,13 @@ void blue_phase_redshift_compute(void) {
   double dq0, dq1, dq2, dq3, sum;
   double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
   double rnew;
+  MPI_Comm comm;
 
-  if (redshift_update_ == 0) return;
+  assert(cs);
 
+  if (redshift_update_ == 0) return 0;
+
+  coords_cart_comm(cs, &comm);
   coords_nlocal(nlocal);
 
   egrad_local[0] = 0.0;
@@ -1000,7 +1004,7 @@ void blue_phase_redshift_compute(void) {
   /* Allreduce the gradient results, and compute a new redshift (we
    * keep the old one if problematic). */
 
-  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, comm);
 
   rnew = redshift_;
   if (egrad[1] != 0.0) rnew = -0.5*egrad[0]/egrad[1];
@@ -1008,7 +1012,7 @@ void blue_phase_redshift_compute(void) {
 
   blue_phase_redshift_set(rnew);
 
-  return;
+  return 0;
 }
 
 

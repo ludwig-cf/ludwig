@@ -15,13 +15,14 @@
 #ifndef ADVECTION_H
 #define ADVECTION_H
 
+#include "coords.h"
 #include "hydro.h"
 #include "field.h"
 
 typedef struct advflux_s advflux_t;
 
-int advflux_create(int nf, advflux_t ** pobj);
-void advflux_free(advflux_t * obj);
+int advflux_create(coords_t * cs, int nf, advflux_t ** pobj);
+int advflux_free(advflux_t * obj);
 int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
 
 int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
@@ -35,4 +36,5 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
 
 int advection_order_set(const int order);
 int advection_order(int * order);
+
 #endif

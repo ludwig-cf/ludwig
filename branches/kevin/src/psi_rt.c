@@ -31,7 +31,7 @@
  *
  *****************************************************************************/
 
-int psi_init_param_rt(psi_t * psi, rt_t * rt) {
+int psi_init_param_rt(psi_t * psi,  rt_t * rt) {
 
   int n;
   int nk;
@@ -162,7 +162,7 @@ int psi_init_param_rt(psi_t * psi, rt_t * rt) {
  *
  *****************************************************************************/
 
-int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt) {
+int psi_init_rho_rt(psi_t * psi, coords_t * cs, map_t * map, rt_t * rt) {
 
   int n;
   char value[BUFSIZ];
@@ -173,6 +173,7 @@ int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt) {
   double ld;                  /* Debye length */
 
   assert(psi);
+  assert(cs);
   assert(rt);
 
   /* Initial charge densities */
@@ -196,7 +197,7 @@ int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt) {
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
     info("Initial condition sigma:   %14.7e\n", sigma);
 
-    psi_init_gouy_chapman_set(psi, map, rho_el, sigma);
+    psi_init_gouy_chapman_set(psi, cs, map, rho_el, sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
@@ -212,7 +213,7 @@ int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt) {
     if (n == 0) fatal("... please set electrokinetics_init_delta_el\n");
     info("Initial condition delta_el: %14.7e\n", delta_el);
 
-    psi_init_liquid_junction_set(psi, rho_el, delta_el);
+    psi_init_liquid_junction_set(psi, cs, rho_el, delta_el);
   }
 
   if (strcmp(value, "uniform") == 0) {
@@ -224,7 +225,7 @@ int psi_init_rho_rt(psi_t * psi, map_t * map, rt_t * rt) {
     psi_debye_length(psi, rho_el, &ld);
     info("Debye length:             %14.7e\n", ld);
 
-    psi_init_uniform(psi, rho_el);
+    psi_init_uniform(psi, cs, rho_el);
   }
 
   return 0;

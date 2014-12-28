@@ -19,6 +19,7 @@
 
 #include "colloid.h"
 #include "colloid_link.h"
+#include "coords.h"
 
 typedef struct colloid colloid_t;
 
@@ -60,7 +61,7 @@ struct colloid {
 
 typedef struct colloids_info_s colloids_info_t;
 
-int colloids_info_create(int ncell[3], colloids_info_t ** pinfo);
+int colloids_info_create(coords_t * cs, int ncell[3], colloids_info_t ** pinfo);
 void colloids_info_free(colloids_info_t * info);
 int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo);
 int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated);

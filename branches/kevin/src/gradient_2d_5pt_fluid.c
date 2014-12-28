@@ -32,7 +32,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "wall.h"
 #include "gradient_2d_5pt_fluid.h"
 
 static void gradient_2d_5pt_fluid_operator(const int nop,
@@ -45,11 +44,6 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 						double * grad,
 						double * delsq,
 						int nextra);
-static void gradient_2d_5pt_fluid_wall_correction(const int nop,
-						  const double * field,
-						  double * grad,
-						  double * delsq,
-						  const int nextra);
 
 /*****************************************************************************
  *
@@ -71,7 +65,6 @@ int gradient_2d_5pt_fluid_d2(const int nop, const double * field, double * t_fie
 
   gradient_2d_5pt_fluid_operator(nop, field, grad, delsq, nextra);
   gradient_2d_5pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_2d_5pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
   return 0;
 }
@@ -96,7 +89,6 @@ int gradient_2d_5pt_fluid_d4(const int nop, const double * field,double * t_fiel
 
   gradient_2d_5pt_fluid_operator(nop, field, grad, delsq, nextra);
   gradient_2d_5pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_2d_5pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
   return 0;
 }
@@ -239,109 +231,6 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
     }
     /* Next plane */
   }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_2d_5pt_fluid_wall_correction
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-
-static void gradient_2d_5pt_fluid_wall_correction(const int nop,
-						  const double * field,
-						  double * grad,
-						  double * del2,
-						  const int nextra) {
-  int nlocal[3];
-  int nhalo;
-  int n;
-  int jc;
-  int index;
-  int xs, ys;
-
-  double fb;                    /* Extrapolated value of field at boundary */
-  double gradm1, gradp1;        /* gradient terms */
-  double rk;                    /* Fluid free energy parameter (reciprocal) */
-  double * c;                   /* Solid free energy parameters C */
-  double * h;                   /* Solid free energy parameters H */
-
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-
-  assert(nlocal[Z] == 1);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  assert(wall_at_edge(Y) == 0);
-  assert(wall_at_edge(Z) == 0);
-
-  /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
-   * is currently no mechanism to obtain the free energy parameters. */
-
-  c = (double *) malloc(nop*sizeof(double));
-  h = (double *) malloc(nop*sizeof(double));
-
-  if (c == NULL) fatal("malloc(c) failed\n");
-  if (h == NULL) fatal("malloc(h) failed\n");
-
-  for (n = 0; n < nop; n++) {
-    c[n] = 0.0;
-    h[n] = 0.0;
-  }
-  rk = 0.0;
-
-  if (wall_at_edge(X) && cart_coords(X) == 0) {
-
-    /* Correct the lower wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = le_site_index(1, jc, 1);
-
-      for (n = 0; n < nop; n++) {
-	gradp1 = field[nop*(index + xs) + n] - field[nop*index + n];
-	fb = field[nop*index + n] - 0.5*gradp1;
-	gradm1 = -(c[n]*fb + h[n])*rk;
-	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	del2[nop*index + n]
-	  = gradp1 - gradm1
-	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
-	  - 2.0*field[nop*index + n];
-      }
-
-      /* Next site */
-    }
-  }
-
-  if (wall_at_edge(X) && cart_coords(X) == cart_size(X) - 1) {
-
-    /* Correct the upper wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = le_site_index(nlocal[X], jc, 1);
-
-      for (n = 0; n < nop; n++) {
-	gradm1 = field[nop*index + n] - field[nop*(index - xs) + n];
-	fb = field[nop*index + n] + 0.5*gradm1;
-	gradp1 = -(c[n]*fb + h[n])*rk;
-	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	del2[nop*index + n]
-	  = gradp1 - gradm1
-	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
-	  - 2.0*field[nop*index + n];
-      }
-      /* Next site */
-    }
-  }
-
-  free(c);
-  free(h);
 
   return;
 }

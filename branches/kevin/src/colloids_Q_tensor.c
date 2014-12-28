@@ -85,7 +85,6 @@ void colloids_q_boundary_normal(const int index, const int di[3],
 
   double rd;
   colloid_t * pc;
-  colloid_t * colloid_at_site_index(int);
 
   coords_index_to_ijk(index, isite);
 

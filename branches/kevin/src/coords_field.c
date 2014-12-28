@@ -105,7 +105,8 @@ int coords_field_index(int index, int n, int nf, int * indexf) {
  *
  *****************************************************************************/
 
-int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
+int coords_field_init_mpi_indexed(coords_t * cs, int nhcomm, int nf,
+				  MPI_Datatype mpidata,
 				  MPI_Datatype halo[3]) {
 
   int ic, jc, n;
@@ -117,6 +118,7 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
   int * blocklen;        /* Array of block lengths */
   int * displace;        /* Array of displacements */
 
+  assert(cs);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -234,9 +236,11 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
  *
  *****************************************************************************/
 
-int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
+int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
+			MPI_Datatype halo[3]) {
 
   int nlocal[3];
+  int cartsz[3];
   int ic, jc, kc, ihalo, ireal;
   int pforw, pback;
   int n, nh;
@@ -248,12 +252,14 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
 
   const int btagx = 639, btagy = 640, btagz = 641;
   const int ftagx = 642, ftagy = 643, ftagz = 644;
-
+  
+  assert(cs);
   assert(f);
   assert(halo);
 
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(cs, &comm);
+  coords_cartsz(cs, cartsz);
 
   for (n = 0; n < 6; n++) {
     req_send[n] = MPI_REQUEST_NULL;
@@ -262,27 +268,27 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
 
   /* Post all receives */
 
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
+  if (cartsz[X] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, X);
+    pforw = coords_cart_neighb(cs, FORWARD, X);
     ihalo = nf*coords_index(nlocal[X] + 1, 1, 1);
     MPI_Irecv(f + ihalo, 1, halo[X], pforw, btagx, comm, req_recv);
     ihalo = nf*coords_index(1 - nhcomm, 1, 1);
     MPI_Irecv(f + ihalo, 1, halo[X], pback, ftagx, comm, req_recv + 1);
   }
 
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
+  if (cartsz[Y] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Y);
+    pforw = coords_cart_neighb(cs, FORWARD, Y);
     ihalo = nf*coords_index(1 - nhcomm, nlocal[Y] + 1, 1);
     MPI_Irecv(f + ihalo, 1, halo[Y], pforw, btagy, comm, req_recv + 2);
     ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
     MPI_Irecv(f + ihalo, 1, halo[Y], pback, ftagy, comm, req_recv + 3);
   }
 
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
+  if (cartsz[Z] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Z);
+    pforw = coords_cart_neighb(cs, FORWARD, Z);
     ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
     MPI_Irecv(f + ihalo, 1, halo[Z], pforw, btagz, comm, req_recv + 4);
     ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
@@ -292,9 +298,9 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
 
   /* X sends */
 
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
+  if (cartsz[X] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, X);
+    pforw = coords_cart_neighb(cs, FORWARD, X);
     ireal = nf*coords_index(1, 1, 1);
     MPI_Issend(f + ireal, 1, halo[X], pback, btagx, comm, req_send);
     ireal = nf*coords_index(nlocal[X] - nhcomm + 1, 1, 1);
@@ -320,9 +326,9 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
   /* X recvs to be complete before Y sends */
   MPI_Waitall(2, req_recv, status);
 
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
+  if (cartsz[Y] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Y);
+    pforw = coords_cart_neighb(cs, FORWARD, Y);
     ireal = nf*coords_index(1 - nhcomm, 1, 1);
     MPI_Issend(f + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
     ireal = nf*coords_index(1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
@@ -348,9 +354,9 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
   /* Y recvs to be complete before Z sends */
   MPI_Waitall(2, req_recv + 2, status);
 
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
+  if (cartsz[Z] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Z);
+    pforw = coords_cart_neighb(cs, FORWARD, Z);
     ireal = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
     MPI_Issend(f + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
     ireal = nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
@@ -388,10 +394,12 @@ int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
  *
  *****************************************************************************/
 
-int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
+int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
+		      MPI_Datatype mpidata,
 		      MPI_Datatype halo[3]) {
 
   int nlocal[3];
+  int cartsz[3];
   int ic, jc, kc, ihalo, ireal;
   int pforw, pback;
   int n, nh;
@@ -406,6 +414,7 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
   const int btagx = 639, btagy = 640, btagz = 641;
   const int ftagx = 642, ftagy = 643, ftagz = 644;
 
+  assert(cs);
   assert(mbuf);
   assert(halo);
   assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
@@ -414,7 +423,8 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(cs, &comm);
+  coords_cartsz(cs, cartsz);
 
   for (n = 0; n < 6; n++) {
     req_send[n] = MPI_REQUEST_NULL;
@@ -423,27 +433,27 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 
   /* Post all receives */
 
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
+  if (cartsz[X] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, X);
+    pforw = coords_cart_neighb(cs, FORWARD, X);
     ihalo = sz*nf*coords_index(nlocal[X] + 1, 1, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[X], pforw, btagx, comm, req_recv);
     ihalo = sz*nf*coords_index(1 - nhcomm, 1, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[X], pback, ftagx, comm, req_recv + 1);
   }
 
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
+  if (cartsz[Y] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Y);
+    pforw = coords_cart_neighb(cs, FORWARD, Y);
     ihalo = sz*nf*coords_index(1 - nhcomm, nlocal[Y] + 1, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[Y], pforw, btagy, comm, req_recv + 2);
     ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[Y], pback, ftagy, comm, req_recv + 3);
   }
 
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
+  if (cartsz[Z] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Z);
+    pforw = coords_cart_neighb(cs, FORWARD, Z);
     ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[Z], pforw, btagz, comm, req_recv + 4);
     ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
@@ -453,9 +463,9 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 
   /* X sends */
 
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
+  if (cartsz[X] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, X);
+    pforw = coords_cart_neighb(cs, FORWARD, X);
     ireal = sz*nf*coords_index(1, 1, 1);
     MPI_Issend(mbuf + ireal, 1, halo[X], pback, btagx, comm, req_send);
     ireal = sz*nf*coords_index(nlocal[X] - nhcomm + 1, 1, 1);
@@ -481,9 +491,9 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
   /* X recvs to be complete before Y sends */
   MPI_Waitall(2, req_recv, status);
 
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
+  if (cartsz[Y] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Y);
+    pforw = coords_cart_neighb(cs, FORWARD, Y);
     ireal = sz*nf*coords_index(1 - nhcomm, 1, 1);
     MPI_Issend(mbuf + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
     ireal = sz*nf*coords_index(1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
@@ -509,9 +519,9 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
   /* Y recvs to be complete before Z sends */
   MPI_Waitall(2, req_recv + 2, status);
 
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
+  if (cartsz[Z] > 1) {
+    pback = coords_cart_neighb(cs, BACKWARD, Z);
+    pforw = coords_cart_neighb(cs, FORWARD, Z);
     ireal = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
     MPI_Issend(mbuf + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
     ireal = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);

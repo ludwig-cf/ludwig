@@ -17,6 +17,7 @@
 #ifndef LC_DROPLET_H
 #define LC_DROPLET_H
 
+#include "coords.h"
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
@@ -39,5 +40,6 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt);
 void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]);
 void blue_phase_symmetric_stress(const int index, double sth[3][3]);
 void blue_phase_antisymmetric_stress(const int index, double sth[3][3]);
-int lc_droplet_extract_total_force(hydro_t * hydro);
+int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro);
+
 #endif

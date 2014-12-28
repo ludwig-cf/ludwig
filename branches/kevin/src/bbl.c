@@ -20,16 +20,14 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "physics.h"
 #include "colloid_sums.h"
-#include "model.h"
 #include "util.h"
 #include "wall.h"
 #include "bbl.h"
 
 struct bbl_s {
+  coords_t * cs;        /* Reference to coordinate system */
   int active;           /* Global flag for active particles. */
   int ndist;            /* Number of LB distributions active */
   double deltag;        /* Excess or deficit of phi between steps */
@@ -49,10 +47,11 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo);
  *
  *****************************************************************************/
 
-int bbl_create(lb_t * lb, bbl_t ** pobj) {
+int bbl_create(coords_t * cs, lb_t * lb, bbl_t ** pobj) {
 
   bbl_t * bbl = NULL;
 
+  assert(cs);
   assert(lb);
   assert(pobj);
 
@@ -60,6 +59,8 @@ int bbl_create(lb_t * lb, bbl_t ** pobj) {
   if (bbl == NULL) fatal("calloc(bbl_t) failed\n");
 
   lb_ndist(lb, &bbl->ndist);
+  coords_retain(cs);
+  bbl->cs = cs;
 
   *pobj = bbl;
 
@@ -76,6 +77,7 @@ int bbl_free(bbl_t * bbl) {
 
   assert(bbl);
 
+  coords_free(&bbl->cs);
   free(bbl);
 
   return 0;
@@ -137,14 +139,14 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloids_info_ntotal(cinfo, &ntotal);
   if (ntotal == 0) return 0;
 
-  colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
+  colloid_sums_halo(bbl->cs, cinfo, COLLOID_SUM_STRUCTURE);
   bbl_pass0(bbl, lb, cinfo);
   bbl_pass1(bbl, lb, cinfo);
-  colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
+  colloid_sums_halo(bbl->cs, cinfo, COLLOID_SUM_DYNAMICS);
 
   if (bbl->active) {
     bbl_active_conservation(bbl, cinfo);
-    colloid_sums_halo(cinfo, COLLOID_SUM_ACTIVE);
+    colloid_sums_halo(bbl->cs, cinfo, COLLOID_SUM_ACTIVE);
   }
 
   bbl_update_colloids(bbl, cinfo);

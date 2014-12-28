@@ -53,7 +53,7 @@ int psi_halo_psi(psi_t * psi) {
   assert(psi);
 
   nhalo = coords_nhalo();
-  coords_field_halo(nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
+  coords_field_halo(psi->cs, nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
 
   return 0;
 }
@@ -70,7 +70,8 @@ int psi_halo_rho(psi_t * psi) {
   assert(psi);
 
   nhalo = coords_nhalo();
-  coords_field_halo(nhalo, psi->nk, psi->rho, MPI_DOUBLE, psi->rhohalo);
+  coords_field_halo(psi->cs, nhalo, psi->nk, psi->rho, MPI_DOUBLE,
+		    psi->rhohalo);
 
   return 0;
 }
@@ -123,8 +124,8 @@ int psi_create(coords_t * cs, int nk, psi_t ** pobj) {
   psi->cs = cs;
   coords_retain(cs);
 
-  coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
-  coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
+  coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_DOUBLE, psi->psihalo);
+  coords_field_init_mpi_indexed(cs, nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
   *pobj = psi; 
 
   return 0;

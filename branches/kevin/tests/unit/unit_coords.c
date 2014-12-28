@@ -19,14 +19,16 @@ int do_test_coords_nhalo(control_t * ctrl);
 int do_test_coords_case1(control_t * ctrl);
 int do_test_coords_case2(control_t * ctrl);
 int do_test_coords_case3(control_t * ctrl);
-int do_test_coords_system(control_t * ctrl, int ntotal[3], int periodic[3]);
-int do_test_coords_decomposition(control_t * ctrl, int decomp_ref[3]);
-int do_test_coords_communicator(control_t * ctrl);
+int do_test_coords_system(control_t * ctrl, coords_t * cs, int ntotal[3],
+			  int periodic[3]);
+int do_test_coords_decomposition(control_t * ctrl, coords_t * cs,
+				 int decomp_ref[3]);
+int do_test_coords_communicator(control_t * ctrl, coords_t * cs);
 int do_test_coords_periodic_comm(control_t * ctrl);
-int do_test_coords_nsites(control_t * ctrl);
+int do_test_coords_nsites(control_t * ctrl, coords_t * cs);
 int do_test_coords_cart_info(control_t * ctrl);
 int do_test_coords_sub_comm_info(control_t * ctrl);
-int ut_neighbour_rank(int nx, int ny, int nz, int * nrank);
+int ut_neighbour_rank(coords_t * cs, int nx, int ny, int nz, int * nrank);
 
 /*****************************************************************************
  *
@@ -65,6 +67,8 @@ int do_test_coords_default(control_t * ctrl) {
   pe_t * pe = NULL;
   coords_t * cs = NULL;
 
+  assert(ctrl);
+
   control_test(ctrl, __CONTROL_INFO__);
   control_verb(ctrl, "Default settings\n");
 
@@ -73,9 +77,9 @@ int do_test_coords_default(control_t * ctrl) {
 
   try {
     coords_commit(cs);
-    do_test_coords_system(ctrl, ntotal_ref, periodic_ref);
-    do_test_coords_decomposition(ctrl, decomposition_ref1);
-    do_test_coords_communicator(ctrl);
+    do_test_coords_system(ctrl, cs, ntotal_ref, periodic_ref);
+    do_test_coords_decomposition(ctrl, cs, decomposition_ref1);
+    do_test_coords_communicator(ctrl, cs);
   }
   catch (MPITestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -168,10 +172,10 @@ int do_test_coords_case1(control_t * ctrl) {
   coords_commit(cs);
 
   try {
-    do_test_coords_system(ctrl, ntotal_ref1, periodic_ref1);
-    do_test_coords_decomposition(ctrl, decomposition_ref1);
-    do_test_coords_communicator(ctrl);
-    do_test_coords_nsites(ctrl);
+    do_test_coords_system(ctrl, cs, ntotal_ref1, periodic_ref1);
+    do_test_coords_decomposition(ctrl, cs, decomposition_ref1);
+    do_test_coords_communicator(ctrl, cs);
+    do_test_coords_nsites(ctrl, cs);
   }
   catch (MPITestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -212,10 +216,10 @@ int do_test_coords_case2(control_t * ctrl) {
   coords_commit(cs);
 
   try {
-    do_test_coords_system(ctrl, ntotal_ref1, periodic_ref1);
-    do_test_coords_decomposition(ctrl, decomposition_ref1);
-    do_test_coords_communicator(ctrl);
-    do_test_coords_nsites(ctrl);
+    do_test_coords_system(ctrl, cs, ntotal_ref1, periodic_ref1);
+    do_test_coords_decomposition(ctrl, cs, decomposition_ref1);
+    do_test_coords_communicator(ctrl, cs);
+    do_test_coords_nsites(ctrl, cs);
   }
   catch (MPITestFailedException) {
   }
@@ -256,10 +260,10 @@ int do_test_coords_case3(control_t * ctrl) {
   coords_commit(cs);
 
   try {
-    do_test_coords_system(ctrl, ntotal_ref1, periodic_ref1);
-    do_test_coords_decomposition(ctrl, decomposition_ref1);
-    do_test_coords_communicator(ctrl);
-    do_test_coords_nsites(ctrl);
+    do_test_coords_system(ctrl, cs, ntotal_ref1, periodic_ref1);
+    do_test_coords_decomposition(ctrl, cs, decomposition_ref1);
+    do_test_coords_communicator(ctrl, cs);
+    do_test_coords_nsites(ctrl, cs);
   }
   catch (MPITestFailedException) {
   }
@@ -280,8 +284,9 @@ int do_test_coords_case3(control_t * ctrl) {
  *
  *****************************************************************************/
 
-int do_test_coords_system(control_t * ctrl, int ntotal_ref[3],
-			  int period_ref[3]) throws (MPITestFailedException) {
+int do_test_coords_system(control_t * ctrl, coords_t * cs,
+			  int ntotal_ref[3], int period_ref[3])
+  throws (MPITestFailedException) {
 
   int ntotal[3];
 
@@ -329,7 +334,8 @@ int do_test_coords_system(control_t * ctrl, int ntotal_ref[3],
  *
  *****************************************************************************/
 
-int do_test_coords_nsites(control_t * ctrl) throws (MPITestFailedException) {
+int do_test_coords_nsites(control_t * ctrl, coords_t * cs)
+  throws (MPITestFailedException) {
 
   int nh2;
   int nsites;
@@ -337,6 +343,7 @@ int do_test_coords_nsites(control_t * ctrl) throws (MPITestFailedException) {
   int nlocal[3];
 
   assert(ctrl);
+  assert(cs);
 
   try {
     nh2 = 2*coords_nhalo();
@@ -367,18 +374,27 @@ int do_test_coords_nsites(control_t * ctrl) throws (MPITestFailedException) {
  *
  *****************************************************************************/
 
-int do_test_coords_decomposition(control_t * ctrl, int decomp_ref[3])
+int do_test_coords_decomposition(control_t * ctrl, coords_t * cs,
+				 int decomp_ref[3])
   throws(MPITestFailedException) {
 
   int ntask;
   int ntotal[3];
+  int ncartsz;
+  int cartsz[3];
+  MPI_Comm cartcomm;
 
   assert(ctrl);
+  assert(cs);
+
+  coords_cartsz(cs, cartsz);
+  coords_cart_comm(cs, &cartcomm);
+  MPI_Comm_size(cartcomm, &ncartsz);
 
   ntask = decomp_ref[X]*decomp_ref[Y]*decomp_ref[Z];
 
   coords_ntotal(ntotal);
-  if (pe_size() != ntask) return 0;
+  if (ncartsz != ntask) return 0;
   if (ntotal[X] % decomp_ref[X] != 0) return 0;
   if (ntotal[Y] % decomp_ref[Y] != 0) return 0;
   if (ntotal[Z] % decomp_ref[Z] != 0) return 0;
@@ -388,9 +404,9 @@ int do_test_coords_decomposition(control_t * ctrl, int decomp_ref[3])
 	       decomp_ref[X], decomp_ref[Y], decomp_ref[Z]);
 
   try {
-    control_macro_test(ctrl, cart_size(X) == decomp_ref[X]);
-    control_macro_test(ctrl, cart_size(Y) == decomp_ref[Y]);
-    control_macro_test(ctrl, cart_size(Z) == decomp_ref[Z]);
+    control_macro_test(ctrl, cartsz[X] == decomp_ref[X]);
+    control_macro_test(ctrl, cartsz[Y] == decomp_ref[Y]);
+    control_macro_test(ctrl, cartsz[Z] == decomp_ref[Z]);
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -449,7 +465,7 @@ int do_test_coords_const(control_t * ctrl) {
  *
  *****************************************************************************/
 
-int do_test_coords_communicator(control_t * ctrl)
+int do_test_coords_communicator(control_t * ctrl, coords_t * cs)
   throws (MPITestFailedException) {
 
   int nlocal[3];
@@ -459,17 +475,22 @@ int do_test_coords_communicator(control_t * ctrl)
   int periods[3];
   int coords[3];
   int nr, rank;
+  int cartsz[3];
+  int cartcoords[3];
 
   MPI_Comm comm;
 
   assert(ctrl);
+  assert(cs);
 
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
   try {
-    comm = cart_comm();
+    coords_cart_comm(cs, &comm);
+    coords_cartsz(cs, cartsz);
+    coords_cart_coords(cs, cartcoords);
 
     control_verb(ctrl, "Cartesian communicator\n");
     control_macro_test(ctrl, comm != MPI_COMM_NULL);
@@ -477,15 +498,15 @@ int do_test_coords_communicator(control_t * ctrl)
     MPI_Cart_get(comm, 3, dims, periods, coords);
     MPI_Comm_rank(comm, &rank);
 
-    control_verb(ctrl, "Checking cart_size() ...\n");
-    control_macro_test(ctrl, cart_size(X) == dims[X]);
-    control_macro_test(ctrl, cart_size(Y) == dims[Y]);
-    control_macro_test(ctrl, cart_size(Z) == dims[Z]);
+    control_verb(ctrl, "Checking cartsz ...\n");
+    control_macro_test(ctrl, cartsz[X] == dims[X]);
+    control_macro_test(ctrl, cartsz[Y] == dims[Y]);
+    control_macro_test(ctrl, cartsz[Z] == dims[Z]);
 
-    control_verb(ctrl, "Checking cart_coords() ...\n");
-    control_macro_test(ctrl, cart_coords(X) == coords[X]);
-    control_macro_test(ctrl, cart_coords(Y) == coords[Y]);
-    control_macro_test(ctrl, cart_coords(Z) == coords[Z]);
+    control_verb(ctrl, "Checking cartcoords ...\n");
+    control_macro_test(ctrl, cartcoords[X] == coords[X]);
+    control_macro_test(ctrl, cartcoords[Y] == coords[Y]);
+    control_macro_test(ctrl, cartcoords[Z] == coords[Z]);
 
     control_verb(ctrl, "Checking periodity...\n");
     control_macro_test(ctrl, is_periodic(X) == periods[X]);
@@ -493,40 +514,40 @@ int do_test_coords_communicator(control_t * ctrl)
     control_macro_test(ctrl, is_periodic(Z) == periods[Z]);
 
     control_verb(ctrl, "Checking (uniform) nlocal[] ...\n");
-    control_macro_test(ctrl, nlocal[X] == ntotal[X] / cart_size(X));
-    control_macro_test(ctrl, nlocal[Y] == ntotal[Y] / cart_size(Y));
-    control_macro_test(ctrl, nlocal[Z] == ntotal[Z] / cart_size(Z));
+    control_macro_test(ctrl, nlocal[X] == ntotal[X] / cartsz[X]);
+    control_macro_test(ctrl, nlocal[Y] == ntotal[Y] / cartsz[Y]);
+    control_macro_test(ctrl, nlocal[Z] == ntotal[Z] / cartsz[Z]);
 
     control_verb(ctrl, "Checking (uniform) noffset()...\n");
-    control_macro_test(ctrl, noffset[X] == cart_coords(X)*nlocal[X]);
-    control_macro_test(ctrl, noffset[Y] == cart_coords(Y)*nlocal[Y]);
-    control_macro_test(ctrl, noffset[Z] == cart_coords(Z)*nlocal[Z]);
+    control_macro_test(ctrl, noffset[X] == cartcoords[X]*nlocal[X]);
+    control_macro_test(ctrl, noffset[Y] == cartcoords[Y]*nlocal[Y]);
+    control_macro_test(ctrl, noffset[Z] == cartcoords[Z]*nlocal[Z]);
 
     /* Check the neighbours */
 
     control_verb(ctrl, "Checking neighbour rank X+1...\n");
-    ut_neighbour_rank(cart_coords(X)+1, cart_coords(Y), cart_coords(Z), &nr);
-    control_macro_test(ctrl, nr == cart_neighb(FORWARD, X));
+    ut_neighbour_rank(cs, cartcoords[X]+1, cartcoords[Y], cartcoords[Z], &nr);
+    control_macro_test(ctrl, nr == coords_cart_neighb(cs, FORWARD, X));
 
     control_verb(ctrl, "Checking neighbour rank X-1...\n");
-    ut_neighbour_rank(cart_coords(X)-1, cart_coords(Y), cart_coords(Z), &nr);
-    control_macro_test(ctrl, nr == cart_neighb(BACKWARD, X));
+    ut_neighbour_rank(cs, cartcoords[X]-1, cartcoords[Y], cartcoords[Z], &nr);
+    control_macro_test(ctrl, nr == coords_cart_neighb(cs, BACKWARD, X));
 
     control_verb(ctrl, "Checking neighbour rank Y+1...\n");
-    ut_neighbour_rank(cart_coords(X), cart_coords(Y)+1, cart_coords(Z), &nr);
-    control_macro_test(ctrl, nr == cart_neighb(FORWARD, Y));
+    ut_neighbour_rank(cs, cartcoords[X], cartcoords[Y]+1, cartcoords[Z], &nr);
+    control_macro_test(ctrl, nr == coords_cart_neighb(cs, FORWARD, Y));
 
     control_verb(ctrl, "Checking neighbour rank Y-1...\n");
-    ut_neighbour_rank(cart_coords(X), cart_coords(Y)-1, cart_coords(Z), &nr);
-    control_macro_test(ctrl, nr == cart_neighb(BACKWARD, Y));
+    ut_neighbour_rank(cs, cartcoords[X], cartcoords[Y]-1, cartcoords[Z], &nr);
+    control_macro_test(ctrl, nr == coords_cart_neighb(cs, BACKWARD, Y));
 
     control_verb(ctrl, "Checking neighbour rank Z+1...\n");
-    ut_neighbour_rank(cart_coords(X), cart_coords(Y), cart_coords(Z)+1, &nr);
-    control_macro_test(ctrl, nr == cart_neighb(FORWARD, Z));
+    ut_neighbour_rank(cs, cartcoords[X], cartcoords[Y], cartcoords[Z]+1, &nr);
+    control_macro_test(ctrl, nr == coords_cart_neighb(cs, FORWARD, Z));
 
     control_verb(ctrl, "Checking neighbour rank Z-1...\n");
-    ut_neighbour_rank(cart_coords(X), cart_coords(Y), cart_coords(Z)-1, &nr);
-    control_macro_test(ctrl, nr == cart_neighb(BACKWARD, Z));
+    ut_neighbour_rank(cs, cartcoords[X], cartcoords[Y], cartcoords[Z]-1, &nr);
+    control_macro_test(ctrl, nr == coords_cart_neighb(cs, BACKWARD, Z));
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -550,21 +571,28 @@ int do_test_coords_communicator(control_t * ctrl)
  *
  *****************************************************************************/
 
-int ut_neighbour_rank(int nx, int ny, int nz, int * nrank) {
+int ut_neighbour_rank(coords_t * cs, int nx, int ny, int nz, int * nrank) {
 
   int coords[3];
+  int cartsz[3];
   int periodic = 1;
+  MPI_Comm comm;
 
-  if (is_periodic(X) == 0 && (nx < 0 || nx >= cart_size(X))) periodic = 0;
-  if (is_periodic(Y) == 0 && (ny < 0 || ny >= cart_size(Y))) periodic = 0;
-  if (is_periodic(Z) == 0 && (nz < 0 || nz >= cart_size(Z))) periodic = 0;
+  assert(cs);
+
+  coords_cartsz(cs, cartsz);
+  coords_cart_comm(cs, &comm);
+
+  if (is_periodic(X) == 0 && (nx < 0 || nx >= cartsz[X])) periodic = 0;
+  if (is_periodic(Y) == 0 && (ny < 0 || ny >= cartsz[Y])) periodic = 0;
+  if (is_periodic(Z) == 0 && (nz < 0 || nz >= cartsz[Z])) periodic = 0;
 
   coords[X] = nx;
   coords[Y] = ny;
   coords[Z] = nz;
 
   *nrank = MPI_PROC_NULL;
-  if (periodic) MPI_Cart_rank(cart_comm(), coords, nrank);
+  if (periodic) MPI_Cart_rank(comm, coords, nrank);
 
   /* Serial doesn't quite work out with the above */
   /*if (pe_size() == 1) *nrank = 0;*/ /* or stub library does not pass */
@@ -584,6 +612,8 @@ int do_test_coords_cart_info(control_t * ctrl) {
   int n, index;
   int tag = 100;
   int cartrank;
+  int cartsz[3];
+  int coords[3];
   char string[FILENAME_MAX];
 
   pe_t * pe = NULL;
@@ -605,18 +635,20 @@ int do_test_coords_cart_info(control_t * ctrl) {
   coords_cart_comm(cs, &comm);
   MPI_Comm_rank(comm, &cartrank);
 
+  coords_cartsz(cs, cartsz);
+  coords_cart_coords(cs, coords);
+
   control_verb(ctrl, "Overview\n");
   control_verb(ctrl, "Decomposition %d %d %d\n",
-	       cart_size(X), cart_size(Y), cart_size(Z));
+	       cartsz[X], cartsz[Y], cartsz[Z]);
   control_verb(ctrl, "[rank] cartesian rank (X, Y, Z) cartesian order\n");
 
   /* index is a reference "natural" order */
 
-  index = cart_size(Z)*cart_size(Y)*cart_coords(X) +
-    cart_size(Z)*cart_coords(Y) + cart_coords(Z);
+  index = cartsz[Z]*cartsz[Y]*coords[X] + cartsz[Z]*coords[Y] + coords[Z];
 
   sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cartrank,
-          cart_coords(X), cart_coords(Y), cart_coords(Z), index);
+          coords[X], coords[Y], coords[Z], index);
 
   control_verb(ctrl, string);
 
@@ -652,6 +684,7 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
 
   int remainder[3];
   int cartrank;
+  int cartcoords[3];
   int n, rank1, rank2;
   int tag = 100;
   char string[FILENAME_MAX];
@@ -672,6 +705,7 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
+  coords_cart_coords(cs, cartcoords);
   coords_cart_comm(cs, &comm);
   MPI_Comm_rank(comm, &cartrank);
 
@@ -679,14 +713,14 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
 
   remainder[X] = 0; remainder[Y] = 1; remainder[Z] = 0;
 
-  MPI_Cart_sub(cart_comm(), remainder, &comms1);
+  MPI_Cart_sub(comm, remainder, &comms1);
   MPI_Comm_rank(comms1, &rank1);
 
   /* Two-dimensional sub-comminucator in YZ */
 
   remainder[X] = 0; remainder[Y] = 1; remainder[Z] = 1;
 
-  MPI_Cart_sub(cart_comm(), remainder, &comms2);
+  MPI_Cart_sub(comm, remainder, &comms2);
   MPI_Comm_rank(comms2, &rank2);
 
   control_verb(ctrl, "Sub-dimensional communicators\n");
@@ -694,7 +728,7 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
 
   sprintf(string, "[%4d] %14d (%d, %d, %d)        %d      %d\n",
           pe_rank(), cartrank,
-          cart_coords(X), cart_coords(Y), cart_coords(Z), rank1, rank2);
+          cartcoords[X], cartcoords[Y], cartcoords[Z], rank1, rank2);
 
   control_verb(ctrl , string);
 

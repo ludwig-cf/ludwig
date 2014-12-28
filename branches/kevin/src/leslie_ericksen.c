@@ -11,17 +11,14 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "free_energy_vector.h"
-#include "field.h"
 #include "advection_s.h"
 #include "leslie_ericksen.h"
 
@@ -69,16 +66,17 @@ int leslie_ericksen_swim_set(const double s) {
  *
  *****************************************************************************/
 
-int leslie_ericksen_update(field_t * p, hydro_t * hydro) {
+int leslie_ericksen_update(field_t * p, coords_t * cs, hydro_t * hydro) {
 
   int nf;
   advflux_t * flux = NULL;
 
+  assert(cs);
   assert(p);
 
   field_nf(p, &nf);
   assert(nf == NVECTOR);
-  advflux_create(nf, &flux);
+  advflux_create(cs, nf, &flux);
 
   if (hydro) {
     if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(p, hydro);

@@ -108,7 +108,8 @@ int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
+int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
+			       colloids_info_t * cinfo) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -124,10 +125,14 @@ int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
   colloid_t * pc = NULL;
   MPI_Comm comm;
 
+  assert(obj);
+  assert(cs);
+  assert(cinfo);
+
   psi_nk(obj, &nk);
   assert(nk == 2);
 
-  comm = cart_comm();
+  coords_cart_comm(cs, &comm);
 
   colloids_info_q_local(cinfo, qvlocal);      /* 2 charge densities */
   colloids_info_v_local(cinfo, qvlocal + 2);  /* solid volume */
@@ -311,7 +316,8 @@ static int psi_colloid_charge_accum(psi_t * psi, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
+int psi_colloid_zetapotential(psi_t * obj, coords_t * cs,
+			      colloids_info_t * cinfo,
 			      double * psi_zeta) {
 
   int ic, jc, kc;
@@ -326,13 +332,13 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
   double psic_local, psic_total; /* local and global cummulative potential */
 
   colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
-
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
   assert(obj);
+  assert(cs);
   assert(cinfo);
   coords_nlocal(nlocal);
+  coords_cart_comm(cs, &comm);
 
   /* Set result to zero and escape if there is not one particle. */
 

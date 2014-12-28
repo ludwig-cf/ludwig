@@ -32,18 +32,15 @@ int colloid_io_run_time(rt_t * rt, coords_t * cs, colloids_info_t * cinfo,
   char tmp[BUFSIZ];
 
   colloid_io_t * cio = NULL;
-  MPI_Comm comm;
 
   assert(rt);
   assert(cs);
   assert(cinfo);
 
-  coords_cart_comm(cs, &comm);
-
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);
   rt_int_parameter_vector(rt, "colloid_io_grid", io_grid);
 
-  colloid_io_create(comm, io_grid, cinfo, &cio);
+  colloid_io_create(cs, io_grid, cinfo, &cio);
   assert(cio);
 
   /* Default format to ascii, parallel; then check user input */

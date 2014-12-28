@@ -13,6 +13,7 @@
 #ifndef BUILD_H
 #define BUILD_H
 
+#include "coords.h"
 #include "field.h"
 #include "map.h"
 #include "psi.h"
@@ -24,10 +25,10 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 
 int build_update_links(colloids_info_t * cinfo, map_t * map);
 int build_update_map(colloids_info_t * cinfo, map_t * map);
-int build_conservation(colloids_info_t * info, field_t * phi, psi_t * psi);
+int build_conservation(coords_t * cs, colloids_info_t * info, field_t * phi,
+		       psi_t * psi);
 
 int build_count_links_local(colloid_t * colloid, int * nlinks);
 int build_count_faces_local(colloid_t * colloid, double * sa, double * saf);
-
 
 #endif

@@ -12,7 +12,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,8 +20,6 @@
 #include <math.h>
 #include <stddef.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "physics.h"
 #include "colloids.h"
 #include "colloid_sums.h"
@@ -136,7 +134,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
+int subgrid_update(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ia;
   int ic, jc, kc;
@@ -146,13 +144,14 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   double eta;
   colloid_t * p_colloid;
 
+  assert(cs);
   assert(cinfo);
   assert(hydro);
 
   colloids_info_ncell(cinfo, ncell);
 
   subgrid_interpolation(cinfo, hydro);
-  colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
+  colloid_sums_halo(cs, cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
 

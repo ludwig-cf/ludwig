@@ -135,6 +135,10 @@ struct ludwig_s {
   ewald_t * ewald;             /* Ewald sum for dipoles */
   interact_t * interact;       /* Colloid-colloid interaction handler */
   bbl_t * bbl;                 /* Bounce-back on links boundary condition */
+
+  stats_rheo_t * stats_rheo;   /* If required, rheology diagnostics */
+  stats_turb_t * stats_turb;   /* If required, turbulent diagnostics */
+  stats_sigma_t * stats_sigma; /* If required, interfacial tension statistic */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -231,16 +235,17 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* To be called before wall_init() */
   if (ludwig->psi) {
     advection_run_time(ludwig->rt);
-    psi_init_rho_rt(ludwig->psi, ludwig->map, ludwig->rt);
+    psi_init_rho_rt(ludwig->psi, ludwig->cs, ludwig->map, ludwig->rt);
   }
 
   wall_init(ludwig->rt, ludwig->lb, ludwig->map);
   colloids_init_rt(ludwig->rt, ludwig->cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->map);
-  colloids_init_ewald_rt(ludwig->rt, ludwig->collinfo, &ludwig->ewald);
+  colloids_init_ewald_rt(ludwig->rt, ludwig->cs, ludwig->collinfo,
+			 &ludwig->ewald);
   colloids_q_cinfo_set(ludwig->collinfo);
 
-  bbl_create(ludwig->lb, &ludwig->bbl);
+  bbl_create(ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
   /* NOW INITIAL CONDITIONS */
@@ -305,8 +310,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->p) gradient_rt_init(ludwig->rt, ludwig->p_grad, ludwig->map);
   if (ludwig->q) gradient_rt_init(ludwig->rt, ludwig->q_grad, ludwig->map);
 
-  stats_rheology_init();
-  stats_turbulent_init();
+  stats_rheology_create(ludwig->cs, &ludwig->stats_rheo);
+  stats_turbulent_create(ludwig->cs, &ludwig->stats_turb);
 
   /* Calibration statistics for ah required? */
 
@@ -323,7 +328,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
   if (get_step() == 0) {
-    stats_sigma_init(ludwig->phi, nstat);
+    if (nstat == 1) {
+      stats_sigma_create(ludwig->cs, ludwig->phi, &ludwig->stats_sigma);
+    }
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
   }
@@ -342,7 +349,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (get_step() == 0 && ludwig->psi) {
     info("Arranging initial charge neutrality.\n\n");
     psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
-    psi_colloid_electroneutral(ludwig->psi, ludwig->collinfo);
+    psi_colloid_electroneutral(ludwig->psi, ludwig->cs, ludwig->collinfo);
   }
 
   return 0;
@@ -446,7 +453,7 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->q) {
       field_halo(ludwig->q);
       field_grad_compute(ludwig->q_grad);
-      blue_phase_redshift_compute(); /* if redshift required? */
+      blue_phase_redshift_compute(ludwig->cs); /* if redshift required */
     }
 
     TIMER_stop(TIMER_PHI_GRADIENTS);
@@ -538,7 +545,7 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (ncolloid == 0) {
-	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+	  phi_force_calculation(ludwig->phi, ludwig->cs, ludwig->hydro);
 	}
 	else {
 	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map);
@@ -549,13 +556,15 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
-      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
+      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->cs,
+					 ludwig->hydro,
 					 ludwig->map, ludwig->noise_phi);
-      if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
+      if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->cs,
+					    ludwig->hydro);
       if (ludwig->q) {
 	if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
 	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
+	blue_phase_beris_edwards(ludwig->q, ludwig->cs, ludwig->hydro,
 				 ludwig->map, ludwig->noise_rho);
       }
 
@@ -588,7 +597,7 @@ void ludwig_run(const char * inputfile) {
        * propagation steps. */
 
       if (is_subgrid) {
-	subgrid_update(ludwig->collinfo, ludwig->hydro);
+	subgrid_update(ludwig->cs, ludwig->collinfo, ludwig->hydro);
       }
       else {
 	TIMER_start(TIMER_BBL);
@@ -661,18 +670,19 @@ void ludwig_run(const char * inputfile) {
 
     /* Measurements */
 
-    if (is_measurement_step()) {
-      stats_sigma_measure(ludwig->phi, step);
+    if (is_measurement_step() && ludwig->stats_sigma) {
+      stats_sigma_measure(ludwig->stats_sigma, ludwig->phi, step);
     }
 
     if (is_shear_measurement_step()) {
-      stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->hydro);
+      stats_rheology_stress_profile_accumulate(ludwig->stats_rheo, ludwig->lb,
+					       ludwig->hydro);
     }
 
     if (is_shear_output_step()) {
       sprintf(filename, "%sstr-%8.8d.dat", subdirectory, step);
-      stats_rheology_stress_section(filename);
-      stats_rheology_stress_profile_zero();
+      stats_rheology_stress_section(ludwig->stats_rheo, filename);
+      stats_rheology_stress_profile_zero(ludwig->stats_rheo);
     }
 
     if (is_vel_output_step() || is_config_step()) {
@@ -710,11 +720,12 @@ void ludwig_run(const char * inputfile) {
 	psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
 	psi_stats_info(ludwig->psi);
 	/* Zeta potential for one colloid only to follow psi_stats()*/
-	psi_colloid_zetapotential(ludwig->psi, ludwig->collinfo, &psi_zeta);
+	psi_colloid_zetapotential(ludwig->psi, ludwig->cs, ludwig->collinfo,
+				  &psi_zeta);
 	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
-      stats_free_energy_density(ludwig->q, ludwig->map, ncolloid);
+      stats_free_energy_density(ludwig->cs, ludwig->q, ludwig->map, ncolloid);
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
@@ -781,8 +792,9 @@ void ludwig_run(const char * inputfile) {
   psi_petsc_finish();
 #endif
 
-  stats_rheology_finish();
-  stats_turbulent_finish();
+  if (ludwig->stats_rheo) stats_rheology_free(ludwig->stats_rheo);
+  if (ludwig->stats_turb) stats_turbulent_free(ludwig->stats_turb);
+  if (ludwig->stats_sigma) stats_sigma_free(ludwig->stats_sigma);
   stats_calibration_finish();
 
   wall_finish();
@@ -799,6 +811,7 @@ void ludwig_run(const char * inputfile) {
   bbl_free(ludwig->bbl);
   lb_free(ludwig->lb);
 
+  if (ludwig->ewald) ewald_free(ludwig->ewald);
   if (ludwig->interact) interact_free(ludwig->interact);
   if (ludwig->cio) colloid_io_free(ludwig->cio);
   colloids_info_free(ludwig->collinfo);
@@ -910,7 +923,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   physics_ref(&ludwig->param);
 
-  lb_create(&ludwig->lb);
+  lb_create(ludwig->cs, &ludwig->lb);
 
   noise_create(ludwig->cs, &ludwig->noise_rho);
 
@@ -1461,7 +1474,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
-  colloids_halo_state(ludwig->collinfo);
+  colloids_halo_state(ludwig->cs, ludwig->collinfo);
   colloids_info_update_lists(ludwig->collinfo);
 
   TIMER_stop(TIMER_PARTICLE_HALO);
@@ -1495,8 +1508,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_FREE1);
     if (iconserve) {
-      colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
-      build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
+      colloid_sums_halo(ludwig->cs, ludwig->collinfo, COLLOID_SUM_CONSERVATION);
+      build_conservation(ludwig->cs, ludwig->collinfo, ludwig->phi, ludwig->psi);
     }
     TIMER_stop(TIMER_FREE1);
 

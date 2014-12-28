@@ -41,9 +41,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
 #include "leesedwards.h"
 #include "colloids_Q_tensor.h"
@@ -67,13 +65,14 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f,
  *
  *****************************************************************************/
 
-int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map,
-			     noise_t * noise) {
+int blue_phase_beris_edwards(field_t * fq, coords_t * cs, hydro_t * hydro,
+			     map_t * map, noise_t * noise) {
 
   int nf;
   advflux_t * flux = NULL;
 
   assert(fq);
+  assert(cs);
   assert(map);
 
   /* Set up advective fluxes (which default to zero),
@@ -82,7 +81,7 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map,
   field_nf(fq, &nf);
   assert(nf == NQAB);
 
-  advflux_create(nf, &flux);
+  advflux_create(cs, nf, &flux);
 
   if (hydro) {
 
@@ -93,6 +92,7 @@ int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map,
   }
 
   blue_phase_be_update(fq, hydro, flux, map, noise);
+
   advflux_free(flux);
 
   return 0;

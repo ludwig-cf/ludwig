@@ -42,7 +42,7 @@ static int colloids_init_check_wall(colloids_info_t * cinfo, double dh);
  *
  *****************************************************************************/
 
-int colloids_init_random(colloids_info_t * cinfo, int np,
+int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int np,
 			 const colloid_state_t * s0, double dh) {
   double amax;
   double hmax;
@@ -54,7 +54,7 @@ int colloids_init_random(colloids_info_t * cinfo, int np,
   hmax = 2.0*s0->ah + dh;
 
   colloids_init_random_set(cinfo, np, s0, amax);
-  colloids_halo_state(cinfo);
+  colloids_halo_state(cs, cinfo);
   colloids_init_check_state(cinfo, hmax);
 
   if (wall_present()) colloids_init_check_wall(cinfo, dh);

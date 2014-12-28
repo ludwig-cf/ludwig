@@ -13,8 +13,6 @@
 
 #include <assert.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "driven_colloid.h"
 
 static double fmod_ = 0.0;
@@ -67,13 +65,18 @@ void driven_colloid_force(const double s[3], double force[3]) {
  *
  *****************************************************************************/
 
-void driven_colloid_total_force(colloids_info_t * cinfo, double ftotal[3]) {
+int driven_colloid_total_force(coords_t * cs, colloids_info_t * cinfo,
+			       double ftotal[3]) {
 
   int ia;
-  double flocal[3],f[3];
+  double flocal[3], f[3];
+  MPI_Comm comm;
   colloid_t * pc = NULL;
 
+  assert(cs);
   assert(cinfo);
+
+  coords_cart_comm(cs, &comm);
 
   for (ia = 0; ia < 3; ia++) {
     ftotal[ia] = 0.0;
@@ -91,9 +94,9 @@ void driven_colloid_total_force(colloids_info_t * cinfo, double ftotal[3]) {
     }
   }
   
-  MPI_Allreduce(flocal, ftotal, 3, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(flocal, ftotal, 3, MPI_DOUBLE, MPI_SUM, comm);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

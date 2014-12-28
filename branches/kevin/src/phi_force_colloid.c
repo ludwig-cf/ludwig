@@ -113,8 +113,6 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   double fw[3];                     /* Accumulated force on wall */
 
   colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
-
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(cinfo);

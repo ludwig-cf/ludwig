@@ -494,7 +494,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
   assert(flx);
 
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(psi->cs, &comm);
 
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);

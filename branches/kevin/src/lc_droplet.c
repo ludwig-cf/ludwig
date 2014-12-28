@@ -5,12 +5,13 @@
  *  Routines related to liquid crystal droplet free energy
  *  and molecular field.
  *
- *  $Id:               $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2015 The University of Edinburgh
+ *  Contributing authors:
+ *    Juho Lintuvuori ()
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -19,9 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "blue_phase.h"
 #include "symmetric.h"
 #include "leesedwards.h"
@@ -654,7 +653,7 @@ void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
  *
  *****************************************************************************/
 
-int lc_droplet_extract_total_force(hydro_t * hydro) {
+int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -668,8 +667,10 @@ int lc_droplet_extract_total_force(hydro_t * hydro) {
 
   if (hydro == NULL) return 0;
 
+  assert(cs);
+
   coords_nlocal(nlocal);
-  comm = cart_comm();
+  coords_cart_comm(cs, &comm);
 
   /* Compute force without correction. */
   

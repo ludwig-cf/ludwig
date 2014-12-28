@@ -15,12 +15,13 @@
 #ifndef PHI_CAHN_HILLIARD_H
 #define PHI_CAHN_HILLIARD_H
 
+#include "coords.h"
 #include "field.h"
 #include "hydro.h"
 #include "map.h"
 #include "noise.h"
 
-int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map,
-		      noise_t * noise);
+int phi_cahn_hilliard(field_t * phi, coords_t * cs, hydro_t * hydro,
+		      map_t * map, noise_t * noise);
 
 #endif

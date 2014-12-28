@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -321,10 +321,17 @@ static int le_init_tables(le_t * le) {
   int nhalo;
   int nlocal[3];
   int rdims[3];
+  int cartsz[3];
+  MPI_Comm cartcomm;
+
+  assert(le);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  le->nlocal = le->nplanes / cart_size(X);
+  coords_cartsz(le->coords, cartsz);
+  coords_cart_comm(le->coords, &cartcomm);
+
+  le->nlocal = le->nplanes / cartsz[X];
 
   /* Look up table for buffer -> real index */
 
@@ -451,7 +458,7 @@ static int le_init_tables(le_t * le) {
   rdims[X] = 0;
   rdims[Y] = 1;
   rdims[Z] = 0;
-  MPI_Cart_sub(cart_comm(), rdims, &le->le_comm);
+  MPI_Cart_sub(cartcomm, rdims, &le->le_comm);
 
   /* Plane communicator in yz, or x = const. */
 
@@ -459,7 +466,7 @@ static int le_init_tables(le_t * le) {
   rdims[Y] = 1;
   rdims[Z] = 1;
 
-  MPI_Cart_sub(cart_comm(), rdims, &le->le_plane_comm);
+  MPI_Cart_sub(cartcomm, rdims, &le->le_plane_comm);
 
   return 0;
 }
@@ -480,11 +487,15 @@ static int le_checks(le_t * le) {
   int n;
   int ifail_local = 0;
   int ifail_global;
+  int cartsz[3];
+  MPI_Comm cartcomm;
 
   assert(le);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+  coords_cartsz(le->coords, cartsz);
+  coords_cart_comm(le->coords, &cartcomm);
 
   /* From the local viewpoint, there must be no planes at either
    * x = 1 or x = nlocal[X] (or indeed, within nhalo points of
@@ -495,16 +506,16 @@ static int le_checks(le_t * le) {
     if (le_plane_location(n) > nlocal[X] - nhalo) ifail_local = 1;
   }
 
-  MPI_Allreduce(&ifail_local, &ifail_global, 1, MPI_INT, MPI_LOR, cart_comm());
+  MPI_Allreduce(&ifail_local, &ifail_global, 1, MPI_INT, MPI_LOR, cartcomm);
 
   if (ifail_global) {
     fatal("LE_init(): wall at domain boundary\n");
   }
 
-  /* As nplane_local = ntotal/cart_size(X) (integer division) we must have
-   * ntotal % cart_size(X) = 0 */
+  /* As nplane_local = ntotal/cartsz[X] (integer division) we must have
+   * ntotal % cartsz[X] = 0 */
 
-  if ((le->nplanes % cart_size(X)) != 0) {
+  if ((le->nplanes % cartsz[X]) != 0) {
     info("\n");
     info("Must have a uniform number of planes per process in X direction\n");
     info("Eg., use one plane per process.\n");
@@ -688,12 +699,14 @@ int le_plane_location(const int n) {
   int offset[3];
   int nplane_offset;
   int ix;
+  int cartcoords[3];
 
   assert(le_stat);
   assert(n >= 0 && n < le_stat->nlocal);
 
+  coords_cart_coords(le_stat->coords, cartcoords);
   coords_nlocal_offset(offset);
-  nplane_offset = cart_coords(X)*le_stat->nlocal;
+  nplane_offset = cartcoords[X]*le_stat->nlocal;
 
   ix = le_stat->dx_min + (n + nplane_offset)*le_stat->dx_sep - offset[X];
 
@@ -855,9 +868,11 @@ int le_jstart_to_ranks(const int j1, int send[3], int recv[3]) {
 int le_jstart_to_mpi_ranks(le_t * le, const int j1, int send[3], int recv[3]) {
 
   int nlocal[3];
+  int cartcoords[3];
   int pe_carty1, pe_carty2, pe_carty3;
 
   assert(le);
+  coords_cart_coords(le->coords, cartcoords);
   coords_nlocal(nlocal);
 
   /* Receive from ... */
@@ -872,7 +887,7 @@ int le_jstart_to_mpi_ranks(le_t * le, const int j1, int send[3], int recv[3]) {
 
   /* Send to ... */
 
-  pe_carty1 = cart_coords(Y) - (((j1 - 1)/nlocal[Y]) - cart_coords(Y));
+  pe_carty1 = cartcoords[Y] - (((j1 - 1)/nlocal[Y]) - cartcoords[Y]);
   pe_carty2 = pe_carty1 - 1;
   pe_carty3 = pe_carty1 - 2;
 

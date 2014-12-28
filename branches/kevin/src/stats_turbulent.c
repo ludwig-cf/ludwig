@@ -18,18 +18,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "leesedwards.h"
 #include "stats_turbulent.h"
 
-static double * ubar_;
-static int initialised_ = 0;
-static int time_counter_ = 0;
-static MPI_Comm comm_y_;
-static MPI_Comm comm_z_;
+struct stats_turb_s {
+  coords_t * cs;       /* Reference to coordinate system */
+  double * ubar;
+  int time_counter;
+  MPI_Comm comm_y;
+  MPI_Comm comm_z;
+};
 
-static void stats_turbulent_init_mpi(void);
+static int stats_turbulent_init_mpi(stats_turb_t * stat);
 
 /*****************************************************************************
  *
@@ -37,20 +37,30 @@ static void stats_turbulent_init_mpi(void);
  *
  *****************************************************************************/
 
-void stats_turbulent_init() {
+int stats_turbulent_create(coords_t * cs, stats_turb_t ** pstat) {
 
+  stats_turb_t * stat = NULL;
   int nlocal[3];
+
+  assert(cs);
+  assert(pstat);
+
+  stat = (stats_turb_t *) calloc(1, sizeof(stats_turb_t));
+  if (stat == NULL) fatal ("calloc(stats_turb_t) failed\n");
 
   coords_nlocal(nlocal);
 
-  ubar_ = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
-  if (ubar_ == NULL) fatal("malloc(ubar_) failed\n");
+  stat->ubar = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
+  if (stat->ubar == NULL) fatal("calloc(stat->ubar) failed\n");
 
-  stats_turbulent_init_mpi();
-  initialised_ = 1;
+  stat->cs = cs;
+  coords_retain(cs);
 
-  stats_turbulent_ubar_zero();
-  return;
+  stats_turbulent_init_mpi(stat);
+
+  *pstat = stat;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -63,11 +73,17 @@ void stats_turbulent_init() {
  *
  *****************************************************************************/
 
-static void stats_turbulent_init_mpi() {
+static int stats_turbulent_init_mpi(stats_turb_t * stat) {
 
   int rank;
   int remainders[3];
-  MPI_Comm comm = cart_comm();
+  int cartcoords[3];
+  MPI_Comm comm;
+
+  assert(stat);
+
+  coords_cart_comm(stat->cs, &comm);
+  coords_cart_coords(stat->cs, cartcoords);
 
   /* Initialise the streamwise (y-direction) communicator */
 
@@ -75,7 +91,7 @@ static void stats_turbulent_init_mpi() {
   remainders[Y] = 1;
   remainders[Z] = 0;
 
-  MPI_Cart_sub(comm, remainders, &comm_y_);
+  MPI_Cart_sub(comm, remainders, &stat->comm_y);
 
   /* Initialise the z-direction communicator */
 
@@ -83,58 +99,61 @@ static void stats_turbulent_init_mpi() {
   remainders[Y] = 0;
   remainders[Z] = 1;
 
-  MPI_Cart_sub(comm, remainders, &comm_z_);
+  MPI_Cart_sub(comm, remainders, &stat->comm_z);
 
   /* Are the ranks ok? */
 
-  MPI_Comm_rank(comm_y_, &rank);
+  MPI_Comm_rank(stat->comm_y, &rank);
 
-  if (rank != cart_coords(Y)) {
-    fatal("rank in streamwise_ communicator not cart_coords(Y)\n");
+  if (rank != cartcoords[Y]) {
+    fatal("rank in streamwise_ communicator not cart_coords[Y]\n");
   }
 
-  MPI_Comm_rank(comm_z_, &rank);
+  MPI_Comm_rank(stat->comm_z, &rank);
 
-  if (rank != cart_coords(Z)) {
-    fatal("rank in z communicator not cart_coords(Z)\n");
+  if (rank != cartcoords[Z]) {
+    fatal("rank in z communicator not cart_coords[Z]\n");
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  stats_turbulent_finish
+ *  stats_turbulent_free
  *
  *****************************************************************************/
 
-void stats_turbulent_finish() {
+int stats_turbulent_free(stats_turb_t * stat) {
 
-  MPI_Comm_free(&comm_y_);
-  MPI_Comm_free(&comm_z_);
+  assert(stat);
 
-  free(ubar_);
-  initialised_ = 0;
+  MPI_Comm_free(&stat->comm_y);
+  MPI_Comm_free(&stat->comm_z);
 
-  return;
+  free(stat->ubar);
+  coords_free(&stat->cs);
+  free(stat);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  stats_turbulent_ubar_accumulate
  *
- *  Accumulate the current contribution to ubar_.
+ *  Accumulate the current contribution to ubar.
  *
  *****************************************************************************/
 
-int stats_turbulent_ubar_accumulate(hydro_t * hydro) {
+int stats_turbulent_ubar_accumulate(stats_turb_t * stat, hydro_t * hydro) {
 
   int nlocal[3];
   int ic, jc, kc;
   int index, ia;
   double u[3];
 
-  assert(initialised_);
+  assert(stat);
   assert(hydro);
   coords_nlocal(nlocal);
 
@@ -146,13 +165,13 @@ int stats_turbulent_ubar_accumulate(hydro_t * hydro) {
 	hydro_u(hydro, index, u);
 
 	for (ia = 0; ia < 3; ia++) {
-	  ubar_[3*(nlocal[Z]*(ic - 1) + kc - 1) + ia] += u[ia];
+	  stat->ubar[3*(nlocal[Z]*(ic - 1) + kc - 1) + ia] += u[ia];
 	}
       }
     }
   }
 
-  time_counter_ += 1;
+  stat->time_counter += 1;
 
   return 0;
 }
@@ -165,26 +184,26 @@ int stats_turbulent_ubar_accumulate(hydro_t * hydro) {
  *
  *****************************************************************************/
 
-void stats_turbulent_ubar_zero() {
+int stats_turbulent_ubar_zero(stats_turb_t * stat) {
 
   int nlocal[3];
   int ic, kc;
   int ia;
 
-  assert(initialised_);
+  assert(stat);
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (kc = 1; kc <= nlocal[Z]; kc++) {
       for (ia = 0; ia < 3; ia++) {
-	ubar_[3*(nlocal[Z]*(ic - 1) + kc - 1) + ia] = 0.0;
+	stat->ubar[3*(nlocal[Z]*(ic - 1) + kc - 1) + ia] = 0.0;
       }
     }
   }
 
-  time_counter_ = 0;
+  stat->time_counter = 0;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -196,11 +215,13 @@ void stats_turbulent_ubar_zero() {
  *
  *****************************************************************************/
 
-void stats_turbulent_ubar_output(const char * filename) {
+int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
 
   int ic, kc;
   int ntotal[3];
   int nlocal[3];
+  int cartcoords[3];
+  int cartsz[3];
   int n, is_writing;
   FILE   * fp_output = NULL;
   double * f1;
@@ -208,14 +229,17 @@ void stats_turbulent_ubar_output(const char * filename) {
   double raverage;
   double uy;
 
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
   MPI_Status status;
   int token = 0;
   int rank;
   const int tag_token = 4129;
 
-  assert(initialised_);
+  assert(stat);
 
+  coords_cart_comm(stat->cs, &comm);
+  coords_cart_coords(stat->cs, cartcoords);
+  coords_cartsz(stat->cs, cartsz);
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
 
@@ -227,27 +251,27 @@ void stats_turbulent_ubar_output(const char * filename) {
 
   /* Set the averaging factor (if no data, set to zero) */
   raverage = 0.0;
-  if (time_counter_ > 0) raverage = 1.0/(L(Y)*time_counter_); 
+  if (stat->time_counter > 0) raverage = 1.0/(L(Y)*stat->time_counter); 
 
   /* Take the sum in the y-direction and store in f1(x,z) */
 
-  MPI_Reduce(ubar_, f1, 3*nlocal[X]*nlocal[Z], MPI_DOUBLE, MPI_SUM,
-	     0, comm_y_);
+  MPI_Reduce(stat->ubar, f1, 3*nlocal[X]*nlocal[Z], MPI_DOUBLE, MPI_SUM,
+	     0, stat->comm_y);
 
-  /* Output now only involves cart_coords(Y) = 0 */
+  /* Output now only involves cart_coords[Y] = 0 */
 
-  if (cart_coords(Y) == 0) {
+  if (cartcoords[Y] == 0) {
 
-    is_writing = (cart_coords(Z) == 0);
+    is_writing = (cartcoords[Z] == 0);
 
-    if (cart_coords(X) == 0) {
+    if (cartcoords[X] == 0) {
       /* Open the file */
       if (is_writing) fp_output = fopen(filename, "w");
     }
     else {
       /* Block until we get the token from the previous process and
        * then can reopen the file... */
-      rank = cart_neighb(BACKWARD, X);
+      rank = coords_cart_neighb(stat->cs, BACKWARD, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
 
       if (is_writing) fp_output = fopen(filename, "a");
@@ -272,7 +296,7 @@ void stats_turbulent_ubar_output(const char * filename) {
       }
 
       MPI_Gather(f1 + 3*(ic-1)*nlocal[Z], 3*nlocal[Z], MPI_DOUBLE, f1z,
-		 3*nlocal[Z], MPI_DOUBLE, 0, comm_z_);
+		 3*nlocal[Z], MPI_DOUBLE, 0, stat->comm_z);
 
       /* write data */
       if (is_writing) {
@@ -291,8 +315,8 @@ void stats_turbulent_ubar_output(const char * filename) {
       fclose(fp_output);
     }
 
-    if (cart_coords(X) < cart_size(X) - 1) {
-      rank = cart_neighb(FORWARD, X);
+    if (cartcoords[X] < cartsz[X] - 1) {
+      rank = coords_cart_neighb(stat->cs, FORWARD, X);
       MPI_Ssend(&token, 1, MPI_INT, rank, tag_token, comm);
     }
   }
@@ -300,5 +324,5 @@ void stats_turbulent_ubar_output(const char * filename) {
   free(f1z);
   free(f1);
 
-  return;
+  return 0;
 }

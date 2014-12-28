@@ -64,9 +64,9 @@ int map_create(coords_t * cs, int ndata, map_t ** pobj) {
   if (ndata > 0) obj->data = calloc(ndata*nsites, sizeof(double));
   if (ndata > 0 && obj->data == NULL) fatal("calloc(map->data) failed\n");
 
-  coords_field_init_mpi_indexed(nhalo, 1, MPI_CHAR, obj->halostatus);
+  coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_CHAR, obj->halostatus);
   if (obj->ndata) {
-    coords_field_init_mpi_indexed(nhalo, obj->ndata, MPI_DOUBLE,
+    coords_field_init_mpi_indexed(cs, nhalo, obj->ndata, MPI_DOUBLE,
 				  obj->halodata);
   }
 
@@ -170,9 +170,9 @@ int map_halo(map_t * obj) {
 
   nhalo = coords_nhalo();
 
-  coords_field_halo(nhalo, 1, obj->status, MPI_CHAR, obj->halostatus);
+  coords_field_halo(obj->cs, nhalo, 1, obj->status, MPI_CHAR, obj->halostatus);
   if (obj->ndata) {
-    coords_field_halo(nhalo, obj->ndata, obj->data, MPI_DOUBLE,
+    coords_field_halo(obj->cs, nhalo, obj->ndata, obj->data, MPI_DOUBLE,
 		      obj->halodata);
   }
 
@@ -316,8 +316,8 @@ int map_volume_allreduce(map_t * obj, int status, int * volume) {
   assert(volume);
 
   map_volume_local(obj, status, &vol_local);
+  coords_cart_comm(obj->cs, &comm);
 
-  comm = cart_comm();
   MPI_Allreduce(&vol_local, volume, 1, MPI_INT, MPI_SUM, comm);
 
   return 0;
