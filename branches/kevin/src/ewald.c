@@ -535,7 +535,7 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 		    /* Here we need r2-r1 */
 
-		    coords_minimum_distance(p_c2->s.r, p_c1->s.r, r12);
+		    coords_minimum_distance(ewald->cs, p_c2->s.r, p_c1->s.r, r12);
 		    r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
 		    if (r < ewald_rc_) {

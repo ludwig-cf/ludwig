@@ -244,7 +244,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
 		   &ludwig->interact, ludwig->map);
   colloids_init_ewald_rt(ludwig->rt, ludwig->cs, ludwig->collinfo,
 			 &ludwig->ewald);
-  colloids_q_cinfo_set(ludwig->collinfo);
+
+  /* KLUDGE TO BE REMVOED */
+  colloids_q_cinfo_set(ludwig->cs, ludwig->collinfo);
 
   bbl_create(ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
@@ -1509,10 +1511,11 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_REBUILD);
 
-    build_update_map(ludwig->collinfo, ludwig->map);
-    build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
+    build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
+    build_remove_replace(ludwig->cs, ludwig->collinfo, ludwig->lb,
+			 ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi);
-    build_update_links(ludwig->collinfo, ludwig->map);
+    build_update_links(ludwig->cs, ludwig->collinfo, ludwig->map);
 
     TIMER_stop(TIMER_REBUILD);
 

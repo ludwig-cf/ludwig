@@ -362,7 +362,8 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids_info_t * cinfo) {
+int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map,
+			     colloids_info_t * cinfo) {
 
   int ic, jc, kc;
   int index, index_nb;
@@ -393,7 +394,7 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids
 	map_status(map, index, &status);
 	colloids_info_map(cinfo, index, &pc);
 
-	coords_index_to_ijk(index, coords);
+	coords_index_to_ijk(psi->cs, index, coords);
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = 0.0;
@@ -479,7 +480,8 @@ int psi_force_is_divergence(int * flag) {
  *
  *****************************************************************************/
 
-int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids_info_t * cinfo) {
+int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro,
+				       map_t * map, colloids_info_t * cinfo) {
 
   int ic, jc, kc;
   int index, index_nb, index1, index2;
@@ -512,7 +514,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 	map_status(map, index, &status);
 	colloids_info_map(cinfo, index, &pc);
 
-	coords_index_to_ijk(index, coords);
+	coords_index_to_ijk(psi->cs, index, coords);
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = 0.0;

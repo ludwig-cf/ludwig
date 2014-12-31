@@ -24,12 +24,12 @@
 #include <assert.h>
 
 #include "util.h"
-#include "coords.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
 #include "wall.h"
 
-static int colloids_init_check_state(colloids_info_t * cinfo, double hmax);
+static int colloids_init_check_state(coords_t * cs, colloids_info_t * cinfo,
+				     double hmax);
 static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
 				    int n,
 				    const colloid_state_t * s,  double amax);
@@ -57,7 +57,7 @@ int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int np,
 
   colloids_init_random_set(cs, cinfo, np, s0, amax);
   colloids_halo_state(cs, cinfo);
-  colloids_init_check_state(cinfo, hmax);
+  colloids_init_check_state(cs, cinfo, hmax);
 
   if (wall_present()) colloids_init_check_wall(cs, cinfo, dh);
   colloids_info_ntotal_set(cinfo);
@@ -132,7 +132,8 @@ static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
+static int colloids_init_check_state(coords_t * cs, colloids_info_t * cinfo,
+				     double hmax) {
 
   int noverlap_local;
   int noverlap;
@@ -144,6 +145,7 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
   colloid_t * p_c1;
   colloid_t * p_c2;
 
+  assert(cs);
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
 
@@ -167,7 +169,7 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
 
 		while (p_c2) {
 		  if (p_c2 != p_c1) {
-		    coords_minimum_distance(p_c1->s.r, p_c2->s.r, r12);
+		    coords_minimum_distance(cs, p_c1->s.r, p_c2->s.r, r12);
 		    hh = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 		    if (hh < hmax*hmax) noverlap_local += 1;
 		  }

@@ -142,7 +142,7 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
 
                   if (pc1->s.index >= pc2->s.index) continue;
 
-                  coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+                  coords_minimum_distance(obj->cs, pc1->s.r, pc2->s.r, r12);
 		  util_ranlcg_reap_gaussian(&pc1->s.rng, ran);
 
 		  lubrication_single(obj, pc1->s.ah, pc2->s.ah, pc1->s.v,

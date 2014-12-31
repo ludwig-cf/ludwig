@@ -20,11 +20,12 @@
 #include "colloids.h"
 #include "model.h"
 
-int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
+int build_remove_replace(coords_t * cs, colloids_info_t * cinfo, lb_t * lb,
+			 field_t * phi,
 			 field_t * p, field_t * q, psi_t * psi);
 
-int build_update_links(colloids_info_t * cinfo, map_t * map);
-int build_update_map(colloids_info_t * cinfo, map_t * map);
+int build_update_links(coords_t * cs, colloids_info_t * cinfo, map_t * map);
+int build_update_map(coords_t * cs, colloids_info_t * cinfo, map_t * map);
 int build_conservation(coords_t * cs, colloids_info_t * info, field_t * phi,
 		       psi_t * psi);
 

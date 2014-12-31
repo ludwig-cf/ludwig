@@ -609,8 +609,11 @@ int coords_reorder_set(coords_t * cs, int reorder) {
  *
  *****************************************************************************/
 
-void coords_minimum_distance(const double r1[3], const double r2[3],
-			     double r12[3]) {
+int coords_minimum_distance(coords_t * cs, const double r1[3],
+			    const double r2[3],
+			    double r12[3]) {
+
+  assert(cs);
 
   r12[X] = r2[X] - r1[X];
   r12[Y] = r2[Y] - r1[Y];
@@ -623,7 +626,7 @@ void coords_minimum_distance(const double r1[3], const double r2[3],
   if (r12[Z] >  0.5*cs->ntotal[Z]) r12[Z] -= 1.0*cs->ntotal[Z]*cs->periodic[Z];
   if (r12[Z] < -0.5*cs->ntotal[Z]) r12[Z] += 1.0*cs->ntotal[Z]*cs->periodic[Z];
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -635,7 +638,9 @@ void coords_minimum_distance(const double r1[3], const double r2[3],
  *
  *****************************************************************************/
 
-void coords_index_to_ijk(const int index, int coords[3]) {
+int coords_index_to_ijk(coords_t * cs, int index, int coords[3]) {
+
+  assert(cs);
 
   coords[X] = (1 - cs->nhalo) + index / cs->str[X];
   coords[Y] = (1 - cs->nhalo) + (index % cs->str[X]) / cs->str[Y];
@@ -643,7 +648,7 @@ void coords_index_to_ijk(const int index, int coords[3]) {
 
   assert(coords_index(coords[X], coords[Y], coords[Z]) == index);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -653,6 +658,8 @@ void coords_index_to_ijk(const int index, int coords[3]) {
  *****************************************************************************/
 
 int coords_strides(int * xs, int * ys, int * zs) {
+
+  assert(cs);
 
   *xs = cs->str[X];
   *ys = cs->str[Y];

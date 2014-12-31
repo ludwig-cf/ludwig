@@ -188,7 +188,7 @@ int bond_fene_compute(colloids_info_t * cinfo, void * self) {
 
       /* Compute force arising on each particle from single bond */
 
-      coords_minimum_distance(pc->s.r, pc->bonded[n]->s.r, r12);
+      coords_minimum_distance(obj->cs, pc->s.r, pc->bonded[n]->s.r, r12);
       r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 
       if (r2 < r2min) r2min = r2;

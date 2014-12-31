@@ -218,7 +218,7 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
 
 		  if (pc1->s.index >= pc2->s.index) continue;
 
-		  coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+		  coords_minimum_distance(obj->cs, pc1->s.r, pc2->s.r, r12);
 		  r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 
 		  r = sqrt(r2);

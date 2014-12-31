@@ -247,7 +247,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	r0[X] = pc->s.r[X] - 1.0*noffset[X];
 	r0[Y] = pc->s.r[Y] - 1.0*noffset[Y];
 	r0[Z] = pc->s.r[Z] - 1.0*noffset[Z];
-	coords_minimum_distance(r, r0, rb);
+	coords_minimum_distance(bbl->cs, r, r0, rb);
 	cross_product(pc->s.w, rb, wxrb);
 	ub[X] = pc->s.v[X] + wxrb[X];
 	ub[Y] = pc->s.v[Y] + wxrb[Y];

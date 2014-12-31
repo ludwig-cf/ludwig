@@ -15,6 +15,7 @@
 #ifndef COLLOIDS_Q_TENSOR_H
 #define COLLOIDS_Q_TENSOR_H
 
+#include "coords.h"
 #include "hydro.h"
 #include "map.h"
 
@@ -22,7 +23,7 @@ enum colloid_anchoring {ANCHORING_PLANAR, ANCHORING_NORMAL, ANCHORING_FIXED};
 
 #include "colloids.h"
 
-int colloids_q_cinfo_set(colloids_info_t * cinfo);
+int colloids_q_cinfo_set(coords_t * cs, colloids_info_t * cinfo);
 int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
 int colloids_q_boundary(const double n[3], double qs[3][3], double q0[3][3],
 			int map_status);

@@ -161,7 +161,7 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
 
   assert(psi);
 
-  coords_index_to_ijk(index, coords);
+  coords_index_to_ijk(psi->cs, index, coords);
 
   e[X] = 0;  
   e[Y] = 0;
@@ -312,7 +312,8 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
  *
  *****************************************************************************/
 
-int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
+int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n,
+		      double grad_rho[3]) {
 
   int p;
   int coords[3], coords1[3], coords2[3]; 
@@ -324,7 +325,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
   assert(n < psi->nk);
   assert(grad_rho);
 
-  coords_index_to_ijk(index, coords);
+  coords_index_to_ijk(psi->cs, index, coords);
   map_status(map, index, &status);
 
   grad_rho[X] = 0;  
@@ -408,17 +409,19 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
  *
  *****************************************************************************/
 
-int psi_grad_eps_d3qx(f_vare_t fepsilon, int index, double grad_eps[3]) {
+int psi_grad_eps_d3qx(psi_t * psi, f_vare_t fepsilon, int index,
+		      double grad_eps[3]) {
 
   int p;
   int coords[3], coords1[3]; 
   int index1;
   double aux, eps1;
 
+  assert(psi);
   assert(fepsilon);
   assert(grad_eps);
 
-  coords_index_to_ijk(index, coords);
+  coords_index_to_ijk(psi->cs, index, coords);
 
   grad_eps[X] = 0;  
   grad_eps[Y] = 0;

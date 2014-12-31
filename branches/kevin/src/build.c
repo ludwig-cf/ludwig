@@ -27,19 +27,24 @@
 #include "build.h"
 
 
-static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
-static int build_replace_fluid(lb_t * lb, colloids_info_t * info, int index,
+static int build_remove_fluid(coords_t * cs, lb_t * lb, int index,
+			      colloid_t * pc);
+static int build_replace_fluid(coords_t * cs, lb_t * lb,
+			       colloids_info_t * info, int index,
 			       colloid_t * pc);
 static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc);
-static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
+static int build_replace_order_parameter(coords_t * cs, lb_t * lb,
+					 colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc);
-static int build_reset_links(colloid_t * pc, map_t * map);
-static int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * pc,
+static int build_reset_links(coords_t * cs, colloid_t * pc, map_t * map);
+static int build_reconstruct_links(coords_t * cs, colloids_info_t * cinfo,
+				   colloid_t * pc,
 				   map_t * map);
 static void build_link_mean(colloid_t * pc, int p, const double rb[3]);
-static int build_colloid_wall_links(colloids_info_t * cinfo, colloid_t * pc,
+static int build_colloid_wall_links(coords_t * cs, colloids_info_t * cinfo,
+				    colloid_t * pc,
 				    map_t * map);
 
 /*****************************************************************************
@@ -52,7 +57,7 @@ static int build_colloid_wall_links(colloids_info_t * cinfo, colloid_t * pc,
  *
  ****************************************************************************/
 
-int build_update_map(colloids_info_t * cinfo, map_t * map) {
+int build_update_map(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
 
   int nlocal[3];
   int noffset[3];
@@ -78,6 +83,7 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
   int ndata;
   double wet[2];
 
+  assert(cs);
   assert(cinfo);
   assert(map);
 
@@ -163,7 +169,7 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
 		rsite0[X] = 1.0*i;
 		rsite0[Y] = 1.0*j;
 		rsite0[Z] = 1.0*k;
-		coords_minimum_distance(rsite0, r0, rsep);
+		coords_minimum_distance(cs, rsite0, r0, rsep);
 
 		/* Are we inside? */
 
@@ -214,7 +220,7 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
  *
  *****************************************************************************/
 
-int build_update_links(colloids_info_t * cinfo, map_t * map) {
+int build_update_links(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
 
   int ia;
   int ic, jc, kc;
@@ -222,6 +228,7 @@ int build_update_links(colloids_info_t * cinfo, map_t * map) {
   int nhalo;
   colloid_t * pc;
 
+  assert(cs);
   assert(cinfo);
   assert(map);
 
@@ -244,12 +251,12 @@ int build_update_links(colloids_info_t * cinfo, map_t * map) {
 
 	  if (pc->s.rebuild) {
 	    /* The shape has changed, so need to reconstruct */
-	    build_reconstruct_links(cinfo, pc, map);
-	    if (wall_present()) build_colloid_wall_links(cinfo, pc, map);
+	    build_reconstruct_links(cs, cinfo, pc, map);
+	    if (wall_present()) build_colloid_wall_links(cs, cinfo, pc, map);
 	  }
 	  else {
 	    /* Shape unchanged, so just reset existing links */
-	    build_reset_links(pc, map);
+	    build_reset_links(cs, pc, map);
 	  }
 
 	  build_count_faces_local(pc, &pc->s.sa, &pc->s.saf);
@@ -284,7 +291,8 @@ int build_update_links(colloids_info_t * cinfo, map_t * map) {
  *
   ****************************************************************************/
 
-int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
+int build_reconstruct_links(coords_t * cs, colloids_info_t * cinfo,
+			    colloid_t * p_colloid,
 			    map_t * map) {
 
   colloid_link_t * p_link;
@@ -303,6 +311,8 @@ int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
   int offset[3];
 
   colloid_t * pc = NULL;
+
+  assert(cs);
 
   coords_nlocal(ntotal);
   coords_nlocal_offset(offset);
@@ -352,7 +362,7 @@ int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
 	rsite1[X] = 1.0*i;
 	rsite1[Y] = 1.0*j;
 	rsite1[Z] = 1.0*k;
-	coords_minimum_distance(r0, rsite1, rsep);
+	coords_minimum_distance(cs, r0, rsite1, rsep);
 	map_status(map, index1, &status1);
 
 	/* Index 1 is outside, so cycle through the lattice vectors
@@ -459,7 +469,7 @@ int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * p_colloid,
  *
  ****************************************************************************/
 
-int build_reset_links(colloid_t * p_colloid, map_t * map) {
+int build_reset_links(coords_t * cs, colloid_t * p_colloid, map_t * map) {
 
   int ia;
 
@@ -473,6 +483,7 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
 
   double      lambda = 0.5;
 
+  assert(cs);
   assert(p_colloid);
   assert(map);
 
@@ -491,12 +502,12 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
        * and the fluid site involved with this link. The position
        * of the outside site is rsite in local coordinates. */
 
-      coords_index_to_ijk(p_link->i, isite);
+      coords_index_to_ijk(cs, p_link->i, isite);
       for (ia = 0; ia < 3; ia++) {
 	rsite[ia] = 1.0*isite[ia];
 	r0[ia] = p_colloid->s.r[ia] - 1.0*offset[ia];
       }
-      coords_minimum_distance(r0, rsite, rsep);
+      coords_minimum_distance(cs, r0, rsite, rsep);
 
       p_link->rb[X] = rsep[X] + lambda*cv[p_link->p][X];
       p_link->rb[Y] = rsep[Y] + lambda*cv[p_link->p][Y];
@@ -536,7 +547,8 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
  *
  *****************************************************************************/
 
-int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
+int build_remove_replace(coords_t * cs, colloids_info_t * cinfo,
+			 lb_t * lb, field_t * phi,
 			 field_t * p, field_t * q, psi_t * psi) {
 
   int ic, jc, kc, index;
@@ -546,6 +558,7 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
   colloid_t * pcold;
   colloid_t * pcnew;
 
+  assert(cs);
   assert(lb);
   assert(cinfo);
 
@@ -569,7 +582,7 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 	  pcnew->s.rebuild = 1;
 
 	  if (!is_halo) {
-	    build_remove_fluid(lb, index, pcnew);
+	    build_remove_fluid(cs, lb, index, pcnew);
 	    if (phi) build_remove_order_parameter(lb, phi, index, pcnew);
 	    if (psi)  psi_colloid_remove_charge(psi, pcnew, index);
 	  }
@@ -580,10 +593,10 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 	  pcold->s.rebuild = 1;
 
 	  if (!is_halo) {
-	    build_replace_fluid(lb, cinfo, index, pcold);
-	    if (phi) build_replace_order_parameter(lb, cinfo, phi, index, pcold);
-	    if (p) build_replace_order_parameter(lb, cinfo, p, index, pcold);
-	    if (q) build_replace_order_parameter(lb, cinfo, q, index, pcold);
+	    build_replace_fluid(cs, lb, cinfo, index, pcold);
+	    if (phi) build_replace_order_parameter(cs, lb, cinfo, phi, index, pcold);
+	    if (p) build_replace_order_parameter(cs, lb, cinfo, p, index, pcold);
+	    if (q) build_replace_order_parameter(cs, lb, cinfo, q, index, pcold);
 	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
@@ -607,9 +620,12 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
  *  We don't care about the 'swallowed' distribution information
  *  associated with the old fluid.
  *
+ *  TODO probably move to bbl
+ *
  *****************************************************************************/
 
-static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
+static int build_remove_fluid(coords_t * cs, lb_t * lb, int index,
+			      colloid_t * p_colloid) {
 
   int    ia;
   int    ib[3];
@@ -622,10 +638,11 @@ static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
   double rtmp[3];
   double rho0;
 
+  assert(cs);
   assert(lb);
 
   coords_nlocal_offset(noffset);
-  coords_index_to_ijk(index, ib);
+  coords_index_to_ijk(cs, index, ib);
 
   physics_rho0(&rho0);
 
@@ -645,7 +662,7 @@ static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
     rtmp[ia] = 1.0*ib[ia];
   }
 
-  coords_minimum_distance(r0, rtmp, rb);
+  coords_minimum_distance(cs, r0, rtmp, rb);
   cross_product(rb, g, rtmp);
 
   for (ia = 0; ia < 3; ia++) {
@@ -700,9 +717,12 @@ static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
  *  Replace the distributions when a fluid site (index) is exposed.
  *  This gives rise to corrections on the particle force and torque.
  *
+ *  Suggest move to bbl
+ *
  *****************************************************************************/
 
-static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
+static int build_replace_fluid(coords_t * cs, lb_t * lb,
+			       colloids_info_t * cinfo, int index,
 			       colloid_t * p_colloid) {
 
   int indexn, p, pdash;
@@ -721,11 +741,12 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 
   colloid_t * pc = NULL;
 
+  assert(cs);
   assert(lb);
   assert(p_colloid);
 
   coords_nlocal_offset(noffset);
-  coords_index_to_ijk(index, ib);
+  coords_index_to_ijk(cs, index, ib);
 
   physics_rho0(&rho0);
 
@@ -791,7 +812,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
     rtmp[ia] = 1.0*ib[ia];
   }
 
-  coords_minimum_distance(r0, rtmp, rb);
+  coords_minimum_distance(cs, r0, rtmp, rb);
   cross_product(rb, g, rtmp);
 
   for (ia = 0; ia < 3; ia++) {
@@ -809,7 +830,8 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
  *
  *****************************************************************************/
 
-static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
+static int build_replace_order_parameter(coords_t * cs, lb_t * lb,
+					 colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc) {
   int indexn, n, p, pdash;
@@ -826,13 +848,14 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 
   colloid_t * pcmap = NULL;
 
+  assert(cs);
   assert(lb);
   lb_ndist(lb, &ndist);
 
   field_nf(f, &nf);
   assert(nf <= NQAB);
 
-  coords_index_to_ijk(index, ri);
+  coords_index_to_ijk(cs, index, ri);
   physics_phi0(&phi0);
 
   /* Check the surrounding sites that were linked to inode,
@@ -965,7 +988,8 @@ static void build_link_mean(colloid_t * p_colloid, int p, const double rb[3]) {
  *
  *****************************************************************************/
 
-int build_colloid_wall_links(colloids_info_t * cinfo, colloid_t * p_colloid,
+int build_colloid_wall_links(coords_t * cs,
+			     colloids_info_t * cinfo, colloid_t * p_colloid,
 			     map_t * map) {
 
   int i_min, i_max, j_min, j_max, k_min, k_max;
@@ -985,6 +1009,7 @@ int build_colloid_wall_links(colloids_info_t * cinfo, colloid_t * p_colloid,
   colloid_link_t * p_link;
   colloid_link_t * p_last;
 
+  assert(cs);
   assert(p_colloid);
   assert(map);
 
@@ -1031,7 +1056,7 @@ int build_colloid_wall_links(colloids_info_t * cinfo, colloid_t * p_colloid,
 	rsite1[X] = 1.0*i;
 	rsite1[Y] = 1.0*j;
 	rsite1[Z] = 1.0*k;
-	coords_minimum_distance(r0, rsite1, rsep);
+	coords_minimum_distance(cs, r0, rsite1, rsep);
 
 	for (p = 1; p < NVEL; p++) {
 

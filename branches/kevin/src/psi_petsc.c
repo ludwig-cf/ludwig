@@ -410,7 +410,7 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	index = coords_index(ic, jc, kc);
 
 	fepsilon(index, &eps); 
-	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
+	psi_grad_eps_d3qx(obj, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 
@@ -456,7 +456,7 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	index = coords_index(ic, jc, kc);
 
 	fepsilon(index, &eps); 
-	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
+	psi_grad_eps_d3qx(obj, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 

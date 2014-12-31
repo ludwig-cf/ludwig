@@ -48,7 +48,9 @@ static double w2_colloid_ = 0.0;
 static double w1_wall_ = 0.0;
 static double w2_wall_ = 0.0;
 
+static coords_t * cs_ = NULL; /* KLUGDE */
 static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
+
 
 /*****************************************************************************
  *
@@ -56,10 +58,11 @@ static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
  *
  *****************************************************************************/
 
-int colloids_q_cinfo_set(colloids_info_t * cinfo) {
+int colloids_q_cinfo_set(coords_t * cs, colloids_info_t * cinfo) {
 
   assert(cinfo);
 
+  cs_ = cs;
   cinfo_ = cinfo;
   return 0;
 }
@@ -86,7 +89,7 @@ void colloids_q_boundary_normal(const int index, const int di[3],
   double rd;
   colloid_t * pc;
 
-  coords_index_to_ijk(index, isite);
+  coords_index_to_ijk(cs_, index, isite);
 
   index1 = coords_index(isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
 

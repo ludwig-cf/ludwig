@@ -184,13 +184,13 @@ int angle_cosine_compute(colloids_info_t * cinfo, void * self) {
 
     /* Bond 0 is pc -> bonded[0] */
 
-    coords_minimum_distance(pc->s.r, pc->bonded[0]->s.r, r0);
+    coords_minimum_distance(obj->cs, pc->s.r, pc->bonded[0]->s.r, r0);
     r0sq = r0[X]*r0[X] + r0[Y]*r0[Y] + r0[Z]*r0[Z];
     r0md = sqrt(r0sq);
 
     /* Bond 2 is pc -> bonded[1] */
 
-    coords_minimum_distance(pc->s.r, pc->bonded[1]->s.r, r1);
+    coords_minimum_distance(obj->cs, pc->s.r, pc->bonded[1]->s.r, r1);
     r1sq = r1[X]*r1[X] + r1[Y]*r1[Y] + r1[Z]*r1[Z];
     r1md = sqrt(r1sq);
 

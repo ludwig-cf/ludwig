@@ -44,7 +44,7 @@ int pair_lj_cut_init(rt_t * rt, coords_t * cs, interact_t * inter);
 int bond_fene_init(rt_t * rt, coords_t * cs, interact_t * interact);
 int angle_cosine_init(rt_t * rt, coords_t * cs, interact_t * interact);
 
-int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map);
+int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo, map_t * map);
 int colloids_rt_gravity(rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(rt_t * rt, colloids_info_t * cinfo, int nc);
 int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
@@ -148,7 +148,7 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   colloids_info_map_init(*pinfo);
   colloids_halo_state(cs, *pinfo);
 
-  colloids_rt_dynamics(*pinfo, map);
+  colloids_rt_dynamics(cs, *pinfo, map);
   colloids_rt_gravity(rt, *pinfo);
   info("\n");
   
@@ -161,11 +161,12 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map) {
+int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
 
   int nsubgrid_local = 0;
   int nsubgrid;
 
+  assert(cs);
   assert(cinfo);
 
   colloids_info_count_local(cinfo, COLLOID_TYPE_SUBGRID, &nsubgrid_local);
@@ -176,9 +177,9 @@ int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map) {
     subgrid_on_set();
   }
   else {
-    build_update_map(cinfo, map);
-    build_update_links(cinfo, map);
-  }  
+    build_update_map(cs, cinfo, map);
+    build_update_links(cs, cinfo, map);
+  }
 
   return 0;
 }
