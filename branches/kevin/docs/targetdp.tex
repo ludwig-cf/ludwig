@@ -17,13 +17,67 @@
 
 \subsection{Target context and API}
 
+\subsubsection{Error handling}
+
+The targetDP interface should provide a mechanism for errors to be
+handled by the application.
+
 \subsection{Memory}
 
-There are three types of memory requirement we will consider.
-(A fourth, constant host memory not suitable for target constant
-memory is could also be handled, but is less likely to occur.)
-An approach to each relevant type is set out in the three following
-sections.
+First, we consider the general problem of encapsulation of objects
+in the context of device memory. We then consider two special cases
+involving device constant memory.
+
+\subsubsection{General}
+
+It is useful to manage host and device memory in such a way that
+three is a uniform interface to related functionality, and that
+will not require substantially different code or API to handle the cases of
+unified and separate address spaces.
+
+The model used is to define host objects which include a reference
+to an object of the same type intended for device memory. A schematic
+example is
+\begin{lstlisting}
+struct object_s { 
+  ...                            /* data items (host) */
+  struct object_s * target;      /* device copy */
+};
+\end{lstlisting}
+The object created on the host is then responsible for the management
+of the appropriate device reference \texttt{target}. For implementations
+with a unified address space the host may simply alias the target
+reference to itself. For implementations with separate address spaces
+appropriate allocation of device memory must be arranged, along with
+necessary marshalling of data between host and device. The model
+allows consistent use of functions with contract
+\begin{lstlisting}
+__host__ __device__ int object_function(struct object_s * obj, ...)
+\end{lstlisting}
+Kernel functions may be declared with contract
+\begin{lstlisting}
+__target_entry__ void object_kernel(struct object_s * obj, ...)
+\end{lstlisting}
+and must take the \texttt{target} reference as actual argument when invoked
+from the host. Likewise, functions declared with \texttt{\_\_host\_\_}
+attribute may be
+invoked on the host with the
+host reference as actual argument.
+We note:
+\begin{enumerate}
+\item
+A number of data items only relevant on the host may be retained in
+the \texttt{target} reference redundantly.
+\item
+The \texttt{target} reference in the device copy is also redundant.
+\item
+The host does not maintain a permanent copy of all device memory
+references in this model. However, these may be recovered from the
+device if needed.
+\end{enumerate}
+I think the benefits this model, which allows a clearly uniform picture
+of host and device memory, and is largely transparent to details of the
+address space, justify the small number of slightly inelegant redundancies.
 
 \subsubsection{\texttt{const} object on host, and suitable for
 \texttt{\_\_target\_const\_\_} memory}
@@ -104,37 +158,6 @@ performance and reduction in register pressure. More seriously, thre is
 no way to write consistent \texttt{\_\_host\_\_ \_\_target\_\_} functions
 (we can see) except to move the host structure back to file scope to
 match the situation in the previous section.
-
-\subsubsection{Non \texttt{const} object in both address spaces}
-
-The most general case may be handled in the following manner:
-\begin{lstlisting}
-
-struct object_kernel_data {
-  ...
-};
-
-struct object {
-   struct object_kernel_data * host;
-   struct object_kernel_data * target;
-   ...
-};
-
-\end{lstlisting}
-All relevant kernel data may then be handled by references to
-\texttt{target} in a consistent way. For implementations with
-separate address spaces, the memory coherency issue
-must be handled explicitly as both \texttt{host} and \texttt{target}
-are subject to modification. However, an implementation with uniform
-address space may simply alias the \texttt{target} to the \texttt{host}
-pointer. No data reside at file scope.
-
-An attractive feature about this situation is that one can use the
-uniform picture in memory to write functions of contract
-\begin{lstlisting}
-__host__ __target__ int obj_function(struct obj_kernel_data * obj, ...);
-\end{lstlisting}
-which can be used in both host and kernel code.
 
 \subsubsection{Aliasing}
 Consider a kernel data structure:

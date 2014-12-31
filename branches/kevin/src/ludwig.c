@@ -139,6 +139,7 @@ struct ludwig_s {
   stats_rheo_t * stats_rheo;   /* If required, rheology diagnostics */
   stats_turb_t * stats_turb;   /* If required, turbulent diagnostics */
   stats_sigma_t * stats_sigma; /* If required, interfacial tension statistic */
+  stats_ahydro_t * stats_ah;   /* If required, hydrodynamic calibration ah */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -238,7 +239,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_init_rho_rt(ludwig->psi, ludwig->cs, ludwig->map, ludwig->rt);
   }
 
-  wall_init(ludwig->rt, ludwig->lb, ludwig->map);
+  wall_init(ludwig->rt, ludwig->cs, ludwig->lb, ludwig->map);
   colloids_init_rt(ludwig->rt, ludwig->cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->map);
   colloids_init_ewald_rt(ludwig->rt, ludwig->cs, ludwig->collinfo,
@@ -254,7 +255,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (get_step() == 0) {
     n = 0;
-    lb_rt_initial_conditions(ludwig->lb, ludwig->rt, ludwig->param);
+    lb_rt_initial_conditions(ludwig->lb, ludwig->rt, ludwig->cs,
+			     ludwig->param);
 
     rt_int_parameter(ludwig->rt, "LE_init_profile", &n);
     if (n != 0) lb_le_init_shear_profile(ludwig->lb);
@@ -319,7 +321,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   n = rt_string_parameter(ludwig->rt, "calibration", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
-  stats_calibration_init(ludwig->collinfo, nstat);
+  if (nstat == 1) {
+    stats_ahydro_create(ludwig->cs, &ludwig->stats_ah);
+    stats_ahydro_init(ludwig->stats_ah, ludwig->collinfo);
+  }
 
   /* Calibration of surface tension required (symmetric only) */
 
@@ -338,7 +343,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Initial Q_ab field required, apparently More GENERAL? */
 
   if (get_step() == 0 && ludwig->p) {
-    polar_active_rt_initial_conditions(ludwig->rt, ludwig->p);
+    polar_active_rt_initial_conditions(ludwig->rt, ludwig->cs, ludwig->p);
   }
   if (get_step() == 0 && ludwig->q) {
     blue_phase_rt_initial_conditions(ludwig->rt, ludwig->cs, ludwig->q);
@@ -738,8 +743,10 @@ void ludwig_run(const char * inputfile) {
       info("\nCompleted cycle %d\n", step);
     }
 
-    stats_calibration_accumulate(ludwig->collinfo, step, ludwig->hydro,
-				 ludwig->map);
+    if (ludwig->stats_ah) stats_ahydro_accumulate(ludwig->stats_ah,
+						  ludwig->collinfo, step,
+						  ludwig->hydro,
+						  ludwig->map);
 
     /* Next time step */
   }
@@ -795,7 +802,10 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->stats_rheo) stats_rheology_free(ludwig->stats_rheo);
   if (ludwig->stats_turb) stats_turbulent_free(ludwig->stats_turb);
   if (ludwig->stats_sigma) stats_sigma_free(ludwig->stats_sigma);
-  stats_calibration_finish();
+  if (ludwig->stats_ah) {
+    stats_ahydro_finish(ludwig->stats_ah);
+    stats_ahydro_free(ludwig->stats_ah);
+  }
 
   wall_finish();
   map_free(ludwig->map);

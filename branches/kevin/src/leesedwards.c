@@ -196,7 +196,7 @@ int le_commit(le_t * le) {
       fatal("Number of planes must divide system size\n");
     }
 
-    le->dx_sep = L(X) / le->nplanes;
+    le->dx_sep = 1.0*ntotal[X] / le->nplanes;
     le->dx_min = 0.5*le->dx_sep;
     le->time0 = 1.0*le->nt0;
   }
@@ -602,15 +602,20 @@ double le_get_block_uy(int ic) {
   int offset[3];
   int n;
   double xh, uy;
+  double lmin[3];
+  double ltot[3];
 
   assert(le_stat);
   assert(le_stat->type == LE_LINEAR);
+
+  coords_lmin(le_stat->coords, lmin);
+  coords_ltot(le_stat->coords, ltot);
   coords_nlocal_offset(offset);
 
-  /* So, just count the number of blocks from the centre L(X)/2
+  /* So, just count the number of blocks from the centre L_x/2
    * and mutliply by the plane speed. */
 
-  xh = offset[X] + (double) ic - Lmin(X) - 0.5*L(X);
+  xh = offset[X] + (double) ic - lmin[X] - 0.5*ltot[X];
   if (xh > 0.0) {
     n = (0.5 + xh/le_stat->dx_sep);
   }
@@ -907,8 +912,13 @@ int le_jstart_to_mpi_ranks(le_t * le, const int j1, int send[3], int recv[3]) {
  *****************************************************************************/
 
 double le_shear_rate() {
+
+  double ltot[3];
+
   assert(le_stat);
-  return (le_plane_uy_max()*le_stat->nplanes/L(X));
+  coords_ltot(le_stat->coords, ltot);
+
+  return (le_plane_uy_max()*le_stat->nplanes/ltot[X]);
 }
 
 /*****************************************************************************

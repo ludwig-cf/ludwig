@@ -51,7 +51,8 @@ static int wall_init_links(map_t * map);
 static int wall_init_boundary_site_map(map_t * map);
 static void     init_boundary_speeds(const double, const double);
 static void     wall_checks(void);
-static int wall_shear_init(lb_t * lb, double utop, double ubottom);
+static int wall_shear_init(lb_t * lb, coords_t * cs, double utop,
+			   double ubottom);
 
 /*****************************************************************************
  *
@@ -59,7 +60,7 @@ static int wall_shear_init(lb_t * lb, double utop, double ubottom);
  *
  ****************************************************************************/
 
-int wall_init(rt_t * rt, lb_t * lb, map_t * map) {
+int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map) {
 
   int init_shear = 0;
   int ntotal;
@@ -95,7 +96,7 @@ int wall_init(rt_t * rt, lb_t * lb, map_t * map) {
     lubrication_rcnormal_ = rc;
 
     rt_int_parameter(rt, "boundary_shear_init", &init_shear);
-    if (init_shear) wall_shear_init(lb, ux_top, ux_bottom);
+    if (init_shear) wall_shear_init(lb, cs, ux_top, ux_bottom);
 
     info("Boundary walls:                  %1s %1s %1s\n",
 	 (is_boundary_[X] == 1) ? "X" : "-",
@@ -581,7 +582,8 @@ void wall_net_momentum(double g[3]) {
  *
  *****************************************************************************/
 
-static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
+static int wall_shear_init(lb_t * lb, coords_t * cs, double uxtop,
+			   double uxbottom) {
 
   int ic, jc, kc, index;
   int ia, ib, p;
@@ -593,11 +595,15 @@ static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
   double f;
   double cdotu;
   double sdotq;
+  double ltot[3];
 
   assert(lb);
+  assert(cs);
+
+  coords_ltot(cs, ltot);
 
   /* Shear rate */
-  gammadot = (uxtop - uxbottom)/L(Z);
+  gammadot = (uxtop - uxbottom)/ltot[Z];
 
   info("Initialising linear shear profile for walls\n");
   info("Speed at top u_x    %14.7e\n", uxtop);
@@ -629,7 +635,7 @@ static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
 
 	/* Linearly interpolate between top and bottom to get velocity;
 	 * the - 1.0 accounts for kc starting at 1. */
-	u[X] = uxbottom + (noffset[Z] + kc - 0.5)*(uxtop - uxbottom)/L(Z);
+	u[X] = uxbottom + (noffset[Z] + kc - 0.5)*(uxtop - uxbottom)/ltot[Z];
 
         index = coords_index(ic, jc, kc);
 
@@ -677,22 +683,28 @@ static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
  *
  *****************************************************************************/
 
-double wall_lubrication(const int dim, const double r[3], const double ah) {
+double wall_lubrication(coords_t * cs, const int dim, const double r[3],
+			const double ah) {
 
   double force;
   double hlub;
   double h;
   double eta;
+  double lmin[3];
+  double ltot[3];
 
+  assert(cs);
+  coords_lmin(cs, lmin);
+  coords_ltot(cs, ltot);
   physics_eta_shear(&eta);
   force = 0.0;
   hlub = lubrication_rcnormal_;
 
   if (is_boundary_[dim]) {
     /* Lower, then upper */
-    h = r[dim] - Lmin(dim) - ah; 
+    h = r[dim] - lmin[dim] - ah; 
     if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
-    h = Lmin(dim) + L(dim) - r[dim] - ah;
+    h = lmin[dim] + ltot[dim] - r[dim] - ah;
     if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
   }
 

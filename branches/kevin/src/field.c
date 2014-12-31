@@ -260,6 +260,7 @@ int field_leesedwards(field_t * obj) {
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
   double t;      /* Time */
+  double ltot[3];
 
   const double r6 = (1.0/6.0);
 
@@ -269,6 +270,7 @@ int field_leesedwards(field_t * obj) {
   assert(obj);
   assert(obj->data);
 
+  coords_ltot(obj->cs, ltot);
   coords_cartsz(obj->cs, cartsz);
 
   if (cartsz[Y] > 1) {
@@ -291,7 +293,7 @@ int field_leesedwards(field_t * obj) {
 
       ic = le_index_buffer_to_real(ib);
       dy = le_buffer_displacement(ib, t);
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = 1.0 - (dy - jdy);
 
@@ -364,6 +366,7 @@ static int field_leesedwards_parallel(field_t * obj) {
   double fr;               /* Fractional displacement */
   double t;                /* Time */
   double * buffer;         /* Interpolation buffer */
+  double ltot[3];
   const double r6 = (1.0/6.0);
 
   int      nrank_s[3];     /* send ranks */
@@ -380,6 +383,8 @@ static int field_leesedwards_parallel(field_t * obj) {
   assert(obj);
 
   field_nf(obj, &nf);
+
+  coords_ltot(obj->cs, ltot);
   nhalo = coords_nhalo();
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
@@ -409,7 +414,7 @@ static int field_leesedwards_parallel(field_t * obj) {
     /* Work out the displacement-dependent quantities */
 
     dy = le_buffer_displacement(ib, t);
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = 1.0 - (dy - jdy);
     /* In the real system the first point we require is

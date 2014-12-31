@@ -182,6 +182,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat,
   double * fex;
   double * fexmean;
   double raverage;
+  double ltot[3];
 
   FILE * fp_output;
   MPI_Status status;
@@ -191,6 +192,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat,
 
   assert(stat);
 
+  coords_ltot(stat->cs, ltot);
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
@@ -222,7 +224,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat,
 
   /* Write f(x) to file in order */
 
-  raverage = 1.0/(L(Y)*L(Z));
+  raverage = 1.0/(ltot[Y]*ltot[Z]);
 
   if (cartcoords[Y] == 0 && cartcoords[Z] == 0) {
 
@@ -442,6 +444,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
   double rmean;
   double uy;
   double eta;
+  double ltot[3];
 
   const int tag_token = 728;
   int rank;
@@ -452,6 +455,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
 
   assert(stat);
 
+  coords_ltot(stat->cs, ltot);
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
@@ -466,7 +470,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
   MPI_Reduce(stat->sxy, sxymean, NSTAT1*nlocal[X], MPI_DOUBLE, MPI_SUM, 0,
 	     stat->comm_yz);
 
-  rmean = 1.0/(L(Y)*L(Z)*stat->counter_sxy);
+  rmean = 1.0/(ltot[Y]*ltot[Z]*stat->counter_sxy);
 
   /* Write to file in order of x */
 
@@ -569,6 +573,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   double raverage;
   double uy;
   double eta, viscous;
+  double ltot[3];
 
   MPI_Comm comm;
   MPI_Status status;
@@ -578,6 +583,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
 
   assert(stat);
 
+  coords_ltot(stat->cs, ltot);
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
@@ -596,7 +602,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   /* Set the averaging factor (if no data, set to zero) */
 
   raverage = 0.0;
-  if (stat->counter_sxy > 0) raverage = 1.0/(L(Y)*stat->counter_sxy); 
+  if (stat->counter_sxy > 0) raverage = 1.0/(ltot[Y]*stat->counter_sxy); 
 
   /* Take the sum in the y-direction and store in stat_2d(x,z) */
 
@@ -718,6 +724,7 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
   double recv[NCOMP];
   double rho, rrho, rv;
   double eta, viscous;
+  double ltot[3];
   int nlocal[3];
   int ic, jc, kc, index, ia, ib;
   FILE * fp;
@@ -727,7 +734,9 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
   assert(stat);
   assert(lb);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  coords_ltot(stat->cs, ltot);
+
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);

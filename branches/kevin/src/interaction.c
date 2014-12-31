@@ -29,7 +29,6 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
 #include "control.h"
 #include "stats_colloid.h"
@@ -48,6 +47,7 @@ struct interact_s {
   void * abstr[INTERACT_MAX];        /* Abstract interaction types */
   compute_ft compute[INTERACT_MAX];  /* Corresponding compute functions */
   stat_ft stats[INTERACT_MAX];       /* Statisitics functions */
+  free_ft release[INTERACT_MAX];     /* Release child object call back */
 };
 
 /*****************************************************************************
@@ -76,13 +76,19 @@ int interact_create(interact_t ** pobj) {
  *
  *****************************************************************************/
 
-void interact_free(interact_t * obj) {
+int interact_free(interact_t * obj) {
+
+  int it;
 
   assert(obj);
 
+  for (it = 0; it < INTERACT_MAX; it++) {
+    if (obj->release[it]) obj->release[it](obj->abstr[it]);
+  }
+
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -159,6 +165,26 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
 
   obj->abstr[it] = pot;
   obj->stats[it] = stats;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  interact_release_add
+ *
+ *****************************************************************************/
+
+int interact_release_add(interact_t * obj, interact_enum_t it, void * pot,
+			 free_ft release) {
+
+  assert(obj);
+  assert(it >= 0 && it <= INTERACT_MAX);
+  assert(pot);
+  assert(release);
+
+  obj->abstr[it] = pot;
+  obj->release[it] = release;
 
   return 0;
 }

@@ -20,16 +20,19 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
 #include "lubrication.h"
 
 struct lubrication_s {
+  int nref;                          /* Reference count */
+  coords_t * cs;                     /* Reference to coordinate system */
   double hminlocal;
   double rch[LUBRICATION_SS_MAX];    /* Cut offs for different components */
   double rrch[LUBRICATION_SS_MAX];   /* Table of reciprocal cut offs */
   double rchmax;
 };
+
+int lubrication_release(void * self);
 
 /*****************************************************************************
  *
@@ -37,7 +40,7 @@ struct lubrication_s {
  *
  *****************************************************************************/
 
-int lubrication_create(lubr_t ** pobj) {
+int lubrication_create(coords_t * cs, lubr_t ** pobj) {
 
   lubr_t * obj = NULL;
 
@@ -45,6 +48,10 @@ int lubrication_create(lubr_t ** pobj) {
 
   obj = (lubr_t *) calloc(1, sizeof(lubr_t));
   if (obj == NULL) fatal("calloc(lubr_t) failed\n");
+
+  obj->nref = 1;
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -57,13 +64,32 @@ int lubrication_create(lubr_t ** pobj) {
  *
  *****************************************************************************/
 
-void lubrication_free(lubr_t * obj) {
+int lubrication_free(lubr_t * obj) {
 
-  assert(obj);
+  if (obj) {
+    obj->nref -= 1;
+    if (obj->nref <= 0) {
+      coords_free(&obj->cs);
+      free(obj);
+    }
+  }
 
-  free(obj);
+  return 0;
+}
 
-  return;
+/*****************************************************************************
+ *
+ *  lubrication_release
+ *
+ *****************************************************************************/
+
+int lubrication_release(void * self) {
+
+  lubr_t * lubr = (lubr_t *) self;
+
+  if (lubr) lubrication_free(lubr);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -85,6 +111,7 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
   double ran[2];  /* Random numbers for fluctuation dissipation correction */
   double r12[3];
   double f[3];
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -92,7 +119,8 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
   assert(cinfo);
   assert(obj);
 
-  obj->hminlocal = L(X);
+  coords_ltot(obj->cs, ltot);
+  obj->hminlocal = ltot[X];
   colloids_info_ncell(cinfo, ncell);
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
@@ -193,6 +221,7 @@ int lubrication_register(lubr_t * obj, interact_t * parent) {
   interact_potential_add(parent, INTERACT_LUBR, obj, lubrication_compute);
   interact_statistic_add(parent, INTERACT_LUBR, obj, lubrication_stats);
   interact_hc_set(parent, INTERACT_LUBR, obj->rchmax);
+  interact_release_add(parent, INTERACT_LUBR, obj, lubrication_release);
 
   return 0;
 }

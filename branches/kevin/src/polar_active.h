@@ -31,7 +31,5 @@ void   polar_active_parameters_set(const double a, const double b,
 				   const double kappa2);
 void   polar_active_zeta_set(const double zeta);
 double polar_active_zeta(void);
-void   polar_active_region_radius_set(const double r);
-double polar_active_region(const int index);
 
 #endif

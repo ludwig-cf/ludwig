@@ -662,6 +662,7 @@ int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
   double flocal[3] = {0.0, 0.0, 0.0};
   double fsum[3];
   double rv;
+  double ltot[3];
   
   MPI_Comm comm;
 
@@ -669,6 +670,7 @@ int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
 
   assert(cs);
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_cart_comm(cs, &comm);
 
@@ -693,7 +695,7 @@ int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
 
   MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
   f[X] = -fsum[X]*rv;
   f[Y] = -fsum[Y]*rv;
   f[Z] = -fsum[Z]*rv;

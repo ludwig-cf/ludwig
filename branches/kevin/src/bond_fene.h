@@ -14,13 +14,14 @@
 #ifndef BOND_FENE_H
 #define BOND_FENE_H
 
+#include "coords.h"
 #include "colloids.h"
 #include "interaction.h"
 
 typedef struct bond_fene_s bond_fene_t;
 
-int bond_fene_create(bond_fene_t ** pobj);
-void bond_fene_free(bond_fene_t * obj);
+int bond_fene_create(coords_t * cs, bond_fene_t ** pobj);
+int bond_fene_free(bond_fene_t * obj);
 int bond_fene_param_set(bond_fene_t * obj, double k, double r0);
 int bond_fene_info(bond_fene_t * obj);
 int bond_fene_register(bond_fene_t * obj, interact_t * parent);

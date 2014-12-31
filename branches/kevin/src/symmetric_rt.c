@@ -18,7 +18,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "coords.h"
 #include "noise.h"
 #include "free_energy.h"
 #include "symmetric.h"
@@ -32,11 +31,12 @@
 #define  DEFAULT_PATCH_VOL  0.5
 #define  DEFAULT_RADIUS     8.0
 
-static int symmetric_init_block(field_t * phi, double xi0);
-static int symmetric_init_bath(field_t * phi);
+static int symmetric_init_block(field_t * phi, coords_t * cs, double xi0);
+static int symmetric_init_bath(field_t * phi, coords_t * cs);
 int symmetric_init_spinodal(rt_t * rt, coords_t * cs, field_t * phi);
 int symmetric_init_spinodal_patches(rt_t * rt, coords_t * cs, field_t * phi);
-int symmetric_init_drop(field_t * fphi, double xi0, double radius);
+int symmetric_init_drop(field_t * fphi, coords_t * cs, double xi0,
+			double radius);
 
 /****************************************************************************
  *
@@ -115,19 +115,19 @@ int symmetric_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * phi) {
 
   if (p != 0 && strcmp(value, "block") == 0) {
     info("Initialisng phi as block\n");
-    symmetric_init_block(phi, symmetric_interfacial_width());
+    symmetric_init_block(phi, cs, symmetric_interfacial_width());
   }
 
   if (p != 0 && strcmp(value, "bath") == 0) {
     info("Initialising phi for bath\n");
-    symmetric_init_bath(phi);
+    symmetric_init_bath(phi, cs);
   }
 
   if (p != 0 && strcmp(value, "drop") == 0) {
     radius = DEFAULT_RADIUS;
     rt_double_parameter(rt, "phi_init_drop_radius", &radius);
     info("Initialising droplet radius:     %14.7e\n", radius);
-    symmetric_init_drop(phi, symmetric_interfacial_width(), radius);
+    symmetric_init_drop(phi, cs, symmetric_interfacial_width(), radius);
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {
@@ -149,7 +149,8 @@ int symmetric_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * phi) {
  *
  *****************************************************************************/
 
-int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
+int symmetric_init_drop(field_t * fphi, coords_t * cs, double xi0,
+			double radius) {
 
   int nlocal[3];
   int noffset[3];
@@ -158,17 +159,20 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
   double position[3];
   double centre[3];
   double phi, r, rxi0;
+  double ltot[3];
 
   assert(fphi);
+  assert(cs);
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
   rxi0 = 1.0/xi0;
 
-  centre[X] = 0.5*L(X);
-  centre[Y] = 0.5*L(Y);
-  centre[Z] = 0.5*L(Z);
+  centre[X] = 0.5*ltot[X];
+  centre[Y] = 0.5*ltot[Y];
+  centre[Z] = 0.5*ltot[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -199,19 +203,24 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
  *
  *****************************************************************************/
 
-static int symmetric_init_block(field_t * phi, double xi0) {
+static int symmetric_init_block(field_t * phi, coords_t * cs, double xi0) {
 
   int nlocal[3];
   int noffset[3];
   int ic, jc, kc, index;
   double z, z1, z2;
   double phi0;
+  double ltot[3];
 
+  assert(phi);
+  assert(cs);
+
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  z1 = 0.25*L(Z);
-  z2 = 0.75*L(Z);
+  z1 = 0.25*ltot[Z];
+  z2 = 0.75*ltot[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
@@ -220,7 +229,7 @@ static int symmetric_init_block(field_t * phi, double xi0) {
 	index = coords_index(ic, jc, kc);
 	z = noffset[Z] + kc;
 
-	if (z > 0.5*L(Z)) {
+	if (z > 0.5*ltot[Z]) {
 	  phi0 = tanh((z-z2)/xi0);
 	}
 	else {
@@ -244,18 +253,23 @@ static int symmetric_init_block(field_t * phi, double xi0) {
  *
  *****************************************************************************/
 
-static int symmetric_init_bath(field_t * phi) {
+static int symmetric_init_bath(field_t * phi, coords_t *cs) {
 
   int nlocal[3];
   int noffset[3];
   int ic, jc, kc, index;
   double z, z0;
   double phi0, xi0;
+  double ltot[3];
 
+  assert(phi);
+  assert(cs);
+
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  z0 = 0.25*L(Z);
+  z0 = 0.25*ltot[Z];
   xi0 = 1.13;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {

@@ -80,6 +80,7 @@ int stats_sigma_create(coords_t * cs, field_t * phi, stats_sigma_t ** pstat) {
   int ntotal[3];
   double datum;
   double mobility;
+  double ltot[3];
 
   assert(cs);
   assert(phi);
@@ -87,6 +88,7 @@ int stats_sigma_create(coords_t * cs, field_t * phi, stats_sigma_t ** pstat) {
   stat = (stats_sigma_t *) calloc(1, sizeof(stats_sigma_t));
   if (stat == NULL) fatal("calloc(stat_sigma_t) failed\n");
 
+  coords_ltot(cs, ltot);
   coords_ntotal(ntotal);
   physics_mobility(&mobility);
 
@@ -109,11 +111,11 @@ int stats_sigma_create(coords_t * cs, field_t * phi, stats_sigma_t ** pstat) {
 
   /* Initialise the drop properties. */
 
-  stat->drop.radius    = L(X)/4.0;
+  stat->drop.radius    = ltot[X]/4.0;
   stat->drop.xi0       = XIINIT*symmetric_interfacial_width();
-  stat->drop.centre[X] = L(X)/2.0;
-  stat->drop.centre[Y] = L(Y)/2.0;
-  stat->drop.centre[Z] = L(Z)/2.0;
+  stat->drop.centre[X] = ltot[X]/2.0;
+  stat->drop.centre[Y] = ltot[Y]/2.0;
+  stat->drop.centre[Z] = ltot[Z]/2.0;
   stat->drop.phimax    = sqrt(-symmetric_a()/symmetric_b());
 
   /* Initialise the order parameter field */

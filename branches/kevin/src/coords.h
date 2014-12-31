@@ -44,12 +44,15 @@ int coords_cartsz(coords_t * cs, int cartsz[3]);
 int coords_cart_comm(coords_t * cs, MPI_Comm * comm);
 int coords_cart_coords(coords_t * cs, int coords[3]);
 int coords_cart_neighb(coords_t * cs, int forwback, int dim);
+int coords_periodic_comm(coords_t * cs, MPI_Comm * comm);
+
+int coords_lmin(coords_t * cs, double lmin[3]);
+int coords_ltot(coords_t * cs, double ltot[3]);
+int coords_perioidic(coords_t * cs, int period[3]);
 
 /* Old interface pending update */
 
 int    is_periodic(const int);
-double L(const int);
-double Lmin(const int);
 
 void   coords_nlocal(int n[3]);
 void   coords_nlocal_offset(int n[3]);
@@ -62,7 +65,6 @@ void   coords_minimum_distance(const double r1[3], const double r2[3],
 void   coords_index_to_ijk(const int index, int coords[3]);
 int    coords_strides(int * xs, int * ys, int * zs);
 
-int coords_periodic_comm(MPI_Comm * comm);
 int coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
 
 #endif

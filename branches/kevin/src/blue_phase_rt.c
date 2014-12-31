@@ -335,17 +335,17 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
 
   if (strcmp(key1, "h2d") == 0) {
     info("Initialising Q_ab using H2D\n");
-    blue_phase_H2D_init(q);
+    blue_phase_H2D_init(cs, q);
   }
 
   if (strcmp(key1, "h3da") == 0) {
     info("Initialising Q_ab using H3DA\n");
-    blue_phase_H3DA_init(q);
+    blue_phase_H3DA_init(cs, q);
   }
 
   if (strcmp(key1, "h3db") == 0) {
     info("Initialising Q_ab using H3DB\n");
-    blue_phase_H3DB_init(q);
+    blue_phase_H3DB_init(cs, q);
   }
 
   if (strcmp(key1, "dtc") == 0) {
@@ -359,7 +359,7 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
     info("BPIII specifications: N_DTC=%g,  R_DTC=%g,  ", nhat2[0], nhat2[1]);
     if (nhat2[2] == 0) info("isotropic environment\n");
     if (nhat2[2] == 1) info("cholesteric environment\n");
-    blue_phase_BPIII_init(q, nhat2);
+    blue_phase_BPIII_init(cs, q, nhat2);
   }
 
   if (strcmp(key1, "cf1_x") == 0) {

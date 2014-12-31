@@ -16,11 +16,12 @@
 
 typedef struct pair_yukawa_s pair_yukawa_t;
 
+#include "coords.h"
 #include "colloids.h"
 #include "interaction.h"
 
-int pair_yukawa_create(pair_yukawa_t ** pobj);
-void pair_yukawa_free(pair_yukawa_t * obj);
+int pair_yukawa_create(coords_t * cs, pair_yukawa_t ** pobj);
+int pair_yukawa_free(pair_yukawa_t * obj);
 int pair_yukawa_info(pair_yukawa_t * obj);
 int pair_yukawa_param_set(pair_yukawa_t * obj, double epsilon, double kappa,
                           double rc);

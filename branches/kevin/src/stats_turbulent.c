@@ -228,6 +228,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   double * f1z;
   double raverage;
   double uy;
+  double ltot[3];
 
   MPI_Comm comm;
   MPI_Status status;
@@ -237,6 +238,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
 
   assert(stat);
 
+  coords_ltot(stat->cs, ltot);
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
@@ -251,7 +253,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
 
   /* Set the averaging factor (if no data, set to zero) */
   raverage = 0.0;
-  if (stat->time_counter > 0) raverage = 1.0/(L(Y)*stat->time_counter); 
+  if (stat->time_counter > 0) raverage = 1.0/(ltot[Y]*stat->time_counter); 
 
   /* Take the sum in the y-direction and store in f1(x,z) */
 

@@ -33,8 +33,10 @@ static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				    double * fz);
 static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
 				     double * fw, double * fy, double * fz);
-static int phi_force_flux_fix_local(double * fluxe, double * fluxw);
-static int phi_force_flux_divergence_with_fix(hydro_t * hydro, double * fe,
+static int phi_force_flux_fix_local(coords_t * cs, double * fluxe,
+				    double * fluxw);
+static int phi_force_flux_divergence_with_fix(coords_t * cs, hydro_t * hydro,
+					      double * fe,
 					      double * fw,
 					      double * fy, double * fz);
 static int phi_force_flux(coords_t * cs, hydro_t * hydro);
@@ -338,11 +340,11 @@ static int phi_force_flux(coords_t * cs, hydro_t * hydro) {
   if (wall_at_edge(Z)) phi_force_wallz(cs, fluxz);
 
   if (fix_fluxes || wall_present()) {
-    phi_force_flux_fix_local(fluxe, fluxw);
+    phi_force_flux_fix_local(cs, fluxe, fluxw);
     phi_force_flux_divergence(hydro, fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_force_flux_divergence_with_fix(hydro, fluxe, fluxw, fluxy, fluxz);
+    phi_force_flux_divergence_with_fix(cs, hydro, fluxe, fluxw, fluxy, fluxz);
   }
 
   free(fluxz);
@@ -491,7 +493,7 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
  *
  *****************************************************************************/
 
-static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
+static int phi_force_flux_divergence_with_fix(coords_t * cs, hydro_t * hydro,
 					      double * fluxe, double * fluxw,
 					      double * fluxy,
 					      double * fluxz) {
@@ -499,6 +501,7 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
   int ic, jc, kc, index, ia;
   int indexj, indexk;
   double f[3];
+  double ltot[3];
 
   double fsum_local[3];
   double fsum[3];
@@ -510,6 +513,7 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
   assert(fluxy);
   assert(fluxz);
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
 
   for (ia = 0; ia < 3; ia++) {
@@ -536,7 +540,7 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
 
   MPI_Allreduce(fsum_local, fsum, 3, MPI_DOUBLE, MPI_SUM, pe_comm());
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   for (ia = 0; ia < 3; ia++) {
     fsum[ia] *= rv;
@@ -576,7 +580,8 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
  *
  *****************************************************************************/
 
-static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
+static int phi_force_flux_fix_local(coords_t * cs, double * fluxe,
+				    double * fluxw) {
 
   int nlocal[3];
   int nplane;
@@ -585,9 +590,13 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
   double * fbar;     /* Local sum over plane */
   double * fcor;     /* Global correction */
   double ra;         /* Normaliser */
+  double ltot[3];
 
   MPI_Comm comm;
 
+  assert(cs);
+
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   nplane = le_get_nplane_local();
 
@@ -619,7 +628,7 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 
   MPI_Allreduce(fbar, fcor, 3*nplane, MPI_DOUBLE, MPI_SUM, comm);
 
-  ra = 0.5/(L(Y)*L(Z));
+  ra = 0.5/(ltot[Y]*ltot[Z]);
 
   for (ip = 0; ip < nplane; ip++) { 
 

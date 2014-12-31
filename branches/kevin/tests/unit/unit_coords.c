@@ -289,6 +289,8 @@ int do_test_coords_system(control_t * ctrl, coords_t * cs,
   throws (MPITestFailedException) {
 
   int ntotal[3];
+  double lmin[3];
+  double ltot[3];
 
   assert(ctrl);
   control_verb(ctrl, "reference system %d %d %d\n",
@@ -297,6 +299,8 @@ int do_test_coords_system(control_t * ctrl, coords_t * cs,
   try {
     control_verb(ctrl, "ntotal\n");
 
+    coords_lmin(cs, lmin);
+    coords_ltot(cs, ltot);
     coords_ntotal(ntotal);
 
     control_macro_test(ctrl, ntotal[X] == ntotal_ref[X]);
@@ -309,14 +313,14 @@ int do_test_coords_system(control_t * ctrl, coords_t * cs,
     control_macro_test(ctrl, is_periodic(Z) == period_ref[Z]);
 
     control_verb(ctrl, "Lmin\n");
-    control_macro_test_dbl_eq(ctrl, Lmin(X), 0.5, DBL_EPSILON);
-    control_macro_test_dbl_eq(ctrl, Lmin(Y), 0.5, DBL_EPSILON);
-    control_macro_test_dbl_eq(ctrl, Lmin(Z), 0.5, DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, lmin[X], 0.5, DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, lmin[Y], 0.5, DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, lmin[Z], 0.5, DBL_EPSILON);
 
-    control_verb(ctrl, "default L()\n");
-    control_macro_test_dbl_eq(ctrl, L(X), 1.0*ntotal_ref[X], DBL_EPSILON);
-    control_macro_test_dbl_eq(ctrl, L(Y), 1.0*ntotal_ref[Y], DBL_EPSILON);
-    control_macro_test_dbl_eq(ctrl, L(Z), 1.0*ntotal_ref[Z], DBL_EPSILON);
+    control_verb(ctrl, "default L\n");
+    control_macro_test_dbl_eq(ctrl, ltot[X], 1.0*ntotal_ref[X], DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, ltot[Y], 1.0*ntotal_ref[Y], DBL_EPSILON);
+    control_macro_test_dbl_eq(ctrl, ltot[Z], 1.0*ntotal_ref[Z], DBL_EPSILON);
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -780,7 +784,7 @@ int do_test_coords_periodic_comm(control_t * ctrl) {
   coords_commit(cs);
 
   try {
-    coords_periodic_comm(&pcomm);
+    coords_periodic_comm(cs, &pcomm);
     MPI_Comm_rank(pcomm, &rank);
     MPI_Cart_coords(pcomm, rank, 3, coords);
 

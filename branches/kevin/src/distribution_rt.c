@@ -20,10 +20,11 @@
 #include "io_harness.h"
 #include "distribution_rt.h"
 
-static int lb_rt_2d_kelvin_helmholtz(lb_t * lb);
-static int lb_rt_2d_shear_wave(lb_t * lb);
-static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]);
-static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]);
+static int lb_rt_2d_kelvin_helmholtz(lb_t * lb, coords_t * cs);
+static int lb_rt_2d_shear_wave(lb_t * lb, coords_t * cs);
+static int lb_init_uniform(lb_t * lb, coords_t *cs, double rho0, double u0[3]);
+static int lb_init_poiseuille(lb_t * lb, coords_t * cs, double rho0,
+			      const double umax[3]);
 
 /*****************************************************************************
  *
@@ -94,7 +95,8 @@ int lb_run_time(lb_t * lb, rt_t * rt, coords_t * cs) {
  *
  *****************************************************************************/
 
-int lb_rt_initial_conditions(lb_t * lb, rt_t * rt, physics_t * phys) {
+int lb_rt_initial_conditions(lb_t * lb, rt_t * rt, coords_t * cs,
+			     physics_t * phys) {
 
   char key[FILENAME_MAX];
   double rho0;
@@ -102,6 +104,7 @@ int lb_rt_initial_conditions(lb_t * lb, rt_t * rt, physics_t * phys) {
 
   assert(lb);
   assert(rt);
+  assert(cs);
   assert(phys);
   physics_rho0(&rho0);
 
@@ -112,21 +115,21 @@ int lb_rt_initial_conditions(lb_t * lb, rt_t * rt, physics_t * phys) {
   rt_string_parameter(rt, "distribution_initialisation", key, FILENAME_MAX);
 
   if (strcmp("2d_kelvin_helmholtz", key) == 0) {
-    lb_rt_2d_kelvin_helmholtz(lb);
+    lb_rt_2d_kelvin_helmholtz(lb, cs);
   }
 
   if (strcmp("2d_shear_wave", key) == 0) {
-    lb_rt_2d_shear_wave(lb);
+    lb_rt_2d_shear_wave(lb, cs);
   }
 
   if (strcmp("3d_uniform_u", key) == 0) {
     rt_double_parameter_vector(rt, "distribution_uniform_u", u0);
-    lb_init_uniform(lb, rho0, u0);
+    lb_init_uniform(lb, cs, rho0, u0);
   }
 
   if (strcmp("1d_poiseuille", key) == 0) {
     rt_double_parameter_vector(rt, "distribution_poiseuille_umax", u0);
-    lb_init_poiseuille(lb, rho0, u0);
+    lb_init_poiseuille(lb, cs, rho0, u0);
   }
 
   return 0;
@@ -160,7 +163,7 @@ int lb_rt_initial_conditions(lb_t * lb, rt_t * rt, physics_t * phys) {
  *
  *****************************************************************************/
 
-static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
+static int lb_rt_2d_kelvin_helmholtz(lb_t * lb, coords_t * cs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -171,17 +174,23 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
   double delta = 0.05;
   double kappa = 80.0;
   double u[3];
+  double lmin[3];
+  double ltot[3];
 
   double x, y;
 
   assert(lb);
+  assert(cs);
+
+  coords_lmin(cs, lmin);
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = (1.0*(noffset[X] + ic) - Lmin(X))/L(X);
+    x = (1.0*(noffset[X] + ic) - lmin[X])/ltot[X];
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+      y = (1.0*(noffset[Y] + jc) - lmin[Y])/ltot[Y];
 
       if (y >  0.5) u[X] = u0*tanh(kappa*(0.75 - y));
       if (y <= 0.5) u[X] = u0*tanh(kappa*(y - 0.25));
@@ -219,7 +228,7 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
  *
  *****************************************************************************/
 
-static int lb_rt_2d_shear_wave(lb_t * lb) {
+static int lb_rt_2d_shear_wave(lb_t * lb, coords_t * cs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -230,9 +239,15 @@ static int lb_rt_2d_shear_wave(lb_t * lb) {
   double kappa;
   double u[3];
 
+  double lmin[3];
+  double ltot[3];
   double y;
 
   assert(lb);
+  assert(cs);
+
+  coords_lmin(cs, lmin);
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -240,7 +255,7 @@ static int lb_rt_2d_shear_wave(lb_t * lb) {
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+      y = (1.0*(noffset[Y] + jc) - lmin[Y])/ltot[Y];
 
       u[X] = u0*sin(kappa * y);
       u[Y] = 0.0;
@@ -271,12 +286,15 @@ static int lb_rt_2d_shear_wave(lb_t * lb) {
  *
  *****************************************************************************/
 
-static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]) {
+static int lb_init_uniform(lb_t * lb, coords_t * cs, double rho0,
+			   double u0[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
 
   assert(lb);
+  assert(cs);
+
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -310,7 +328,8 @@ static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]) {
  *
  *****************************************************************************/
 
-static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
+static int lb_init_poiseuille(lb_t * lb, coords_t * cs, double rho0,
+			      const double umax[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -318,8 +337,14 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
 
   double u0[3];
   double x, y, z;
+  double lmin[3];
+  double ltot[3];
 
   assert(lb);
+  assert(cs);
+
+  coords_lmin(cs, lmin);
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -328,18 +353,18 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
     /* The - Lmin() in each direction centres the profile symmetrically,
      * and the 4/L^2 normalises to umax at centre */
 
-    x = 1.0*(noffset[X] + ic) - Lmin(X);
-    u0[X] = umax[X]*x*(L(X) - x)*4.0/(L(X)*L(X));
+    x = 1.0*(noffset[X] + ic) - lmin[X];
+    u0[X] = umax[X]*x*(ltot[X] - x)*4.0/(ltot[X]*ltot[X]);
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-      y = 1.0*(noffset[Y] + jc) - Lmin(Y);
-      u0[Y] = umax[Y]*y*(L(Y) - y)*4.0/(L(Y)*L(Y));
+      y = 1.0*(noffset[Y] + jc) - lmin[Y];
+      u0[Y] = umax[Y]*y*(ltot[Y] - y)*4.0/(ltot[Y]*ltot[Y]);
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	z = 1.0*(noffset[Z] + kc) - Lmin(Z);
-	u0[Z] = umax[Z]*z*(L(Z) - z)*4.0/(L(Z)*L(Z));
+	z = 1.0*(noffset[Z] + kc) - lmin[Z];
+	u0[Z] = umax[Z]*z*(ltot[Z] - z)*4.0/(ltot[Z]*ltot[Z]);
 
 	index = coords_index(ic, jc, kc);
 	lb_1st_moment_equilib_set(lb, index, rho0, u0);

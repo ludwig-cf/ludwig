@@ -49,8 +49,8 @@ struct ewald_s {
 };
 
 static int ewald_sum_sin_cos_terms(ewald_t * ewald);
-static int  ewald_get_number_fourier_terms(void);
-static void ewald_set_kr_table(double []);
+static int ewald_get_number_fourier_terms(ewald_t * ewald);
+static int ewald_set_kr_table(ewald_t * ewald, double []);
 
 /*****************************************************************************
  *
@@ -67,6 +67,7 @@ static void ewald_set_kr_table(double []);
 int ewald_create(double mu_input, double rc_input, coords_t * cs,
 		 colloids_info_t * cinfo, ewald_t ** pewald) {
   int nk;
+  double ltot[3];          /* system size */
   ewald_t * ewald = NULL;
 
   assert(pewald);
@@ -77,8 +78,9 @@ int ewald_create(double mu_input, double rc_input, coords_t * cs,
   if (ewald == NULL) fatal("calloc(ewald) failed");
 
   ewald->cinfo = cinfo;
-  ewald->cs =cs;
+  ewald->cs = cs;
   coords_retain(cs);
+  coords_ltot(cs, ltot);
 
   /* Set constants */
 
@@ -88,14 +90,14 @@ int ewald_create(double mu_input, double rc_input, coords_t * cs,
   ewald_on_ = 1;
   kappa_    = 5.0/(2.0*ewald_rc_);
 
-  nk = ceil(kappa_*kappa_*ewald_rc_*L(X)/pi_);
+  nk = ceil(kappa_*kappa_*ewald_rc_*ltot[X]/pi_);
 
   nk_[X] = nk;
   nk_[Y] = nk;
   nk_[Z] = nk;
-  kmax_ = pow(2.0*pi_*nk/L(X), 2);
+  kmax_ = pow(2.0*pi_*nk/ltot[X], 2);
   nkmax_ = nk + 1;
-  nktot_ = ewald_get_number_fourier_terms();
+  nktot_ = ewald_get_number_fourier_terms(ewald);
 
   sinx_ = (double *) malloc(nktot_*sizeof(double));
   cosx_ = (double *) malloc(nktot_*sizeof(double));
@@ -270,19 +272,23 @@ int ewald_real_space_energy(ewald_t * ewald, const double u1[3],
 
 int ewald_fourier_space_energy(ewald_t * ewald, double * ef) {
 
+  int kx, ky, kz, kn = 0;
   double e = 0.0;
   double k[3], ksq;
   double fkx, fky, fkz;
   double b0, b;
   double r4kappa_sq;
-  int kx, ky, kz, kn = 0;
+  double ltot[3];
 
+  assert(ewald);
+
+  coords_ltot(ewald->cs, ltot);
   ewald_sum_sin_cos_terms(ewald);
 
-  fkx = 2.0*pi_/L(X);
-  fky = 2.0*pi_/L(Y);
-  fkz = 2.0*pi_/L(Z);
-  b0 = (4.0*pi_/(L(X)*L(Y)*L(Z)))*mu_*mu_;
+  fkx = 2.0*pi_/ltot[X];
+  fky = 2.0*pi_/ltot[Y];
+  fkz = 2.0*pi_/ltot[Z];
+  b0 = (4.0*pi_/(ltot[X]*ltot[Y]*ltot[Z]))*mu_*mu_;
   r4kappa_sq = 1.0/(4.0*kappa_*kappa_);
 
   /* Sum over k to get the energy. */
@@ -335,15 +341,18 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
   double * subsin;
   double * subcos;
+  double ltot[3];
   MPI_Comm comm;
 
   assert(ewald);
+
+  coords_ltot(ewald->cs, ltot);
   coords_cart_comm(ewald->cs, &comm);
   colloids_info_ncell(ewald->cinfo, ncell);
 
-  fkx = 2.0*pi_/L(X);
-  fky = 2.0*pi_/L(Y);
-  fkz = 2.0*pi_/L(Z);
+  fkx = 2.0*pi_/ltot[X];
+  fky = 2.0*pi_/ltot[Y];
+  fkz = 2.0*pi_/ltot[Z];
 
   /* Comupte S(k) and C(k) from sum over particles */
 
@@ -364,7 +373,7 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
 	  kn = 0;
 
-	  ewald_set_kr_table(p_colloid->s.r);
+	  ewald_set_kr_table(ewald, p_colloid->s.r);
 
 	  for (kz = 0; kz <= nk_[Z]; kz++) {
 	    for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
@@ -619,24 +628,27 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 int ewald_fourier_space_sum(ewald_t * ewald) {
 
+  int ic, jc, kc;
+  int kx, ky, kz, kn = 0;
+  int ncell[3];
   double k[3], ksq;
   double b0, b;
   double fkx, fky, fkz;
   double r4kappa_sq;
-  int ic, jc, kc;
-  int kx, ky, kz, kn = 0;
-  int ncell[3];
+  double ltot[3];
 
   TIMER_start(TIMER_EWALD_FOURIER_SPACE);
 
   assert(ewald);
+
+  coords_ltot(ewald->cs, ltot);
   ewald_sum_sin_cos_terms(ewald);
 
-  fkx = 2.0*pi_/L(X);
-  fky = 2.0*pi_/L(Y);
-  fkz = 2.0*pi_/L(Z);
+  fkx = 2.0*pi_/ltot[X];
+  fky = 2.0*pi_/ltot[Y];
+  fkz = 2.0*pi_/ltot[Z];
   r4kappa_sq = 1.0/(4.0*kappa_*kappa_);
-  b0 = (4.0*pi_/(L(X)*L(Y)*L(Z)))*mu_*mu_;
+  b0 = (4.0*pi_/(ltot[X]*ltot[Y]*ltot[Z]))*mu_*mu_;
 
   colloids_info_ncell(ewald->cinfo, ncell);
 
@@ -655,7 +667,7 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 	  double f[3], t[3];
 	  int i;
 
-	  ewald_set_kr_table(p_colloid->s.r);
+	  ewald_set_kr_table(ewald, p_colloid->s.r);
 
 	  for (i = 0; i < 3; i++) {
 	    f[i] = 0.0;
@@ -748,15 +760,20 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
  *
  *****************************************************************************/
 
-static int ewald_get_number_fourier_terms() {
+static int ewald_get_number_fourier_terms(ewald_t * ewald) {
 
+  int kx, ky, kz, kn = 0;
   double k[3], ksq;
   double fkx, fky, fkz;
-  int kx, ky, kz, kn = 0;
+  double ltot[3];
 
-  fkx = 2.0*pi_/L(X);
-  fky = 2.0*pi_/L(Y);
-  fkz = 2.0*pi_/L(Z);
+  assert(ewald);
+
+  coords_ltot(ewald->cs, ltot);
+
+  fkx = 2.0*pi_/ltot[X];
+  fky = 2.0*pi_/ltot[Y];
+  fkz = 2.0*pi_/ltot[Z];
 
   for (kz = 0; kz <= nk_[Z]; kz++) {
     for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
@@ -785,16 +802,21 @@ static int ewald_get_number_fourier_terms() {
  *
  *****************************************************************************/
 
-static void ewald_set_kr_table(double r[3]) {
+static int ewald_set_kr_table(ewald_t * ewald, double r[3]) {
 
   int i, k;
   double c2[3];
+  double ltot[3];
+
+  assert(ewald);
+
+  coords_ltot(ewald->cs, ltot);
 
   for (i = 0; i < 3; i++) {
     sinkr_[3*0 + i] = 0.0;
     coskr_[3*0 + i] = 1.0;
-    sinkr_[3*1 + i] = sin(2.0*pi_*r[i]/L(i));
-    coskr_[3*1 + i] = cos(2.0*pi_*r[i]/L(i));
+    sinkr_[3*1 + i] = sin(2.0*pi_*r[i]/ltot[i]);
+    coskr_[3*1 + i] = cos(2.0*pi_*r[i]/ltot[i]);
     c2[i] = 2.0*coskr_[3*1 + i];
   }
 
@@ -805,5 +827,5 @@ static void ewald_set_kr_table(double r[3]) {
     }
   }
 
-  return;
+  return 0;
 }

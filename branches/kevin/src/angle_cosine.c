@@ -24,17 +24,19 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "angle_cosine.h"
 
 struct angle_cosine_s {
+  int nref;
+  coords_t * cs;
   double kappa;
   double vlocal;
   double cosine_max;
   double cosine_min;
 };
+
+int angle_cosine_release(void * self);
 
 /*****************************************************************************
  *
@@ -42,7 +44,7 @@ struct angle_cosine_s {
  *
  *****************************************************************************/
 
-int angle_cosine_create(angle_cosine_t ** pobj) {
+int angle_cosine_create(coords_t * cs, angle_cosine_t ** pobj) {
 
   angle_cosine_t * obj = NULL;
 
@@ -50,6 +52,10 @@ int angle_cosine_create(angle_cosine_t ** pobj) {
 
   obj = (angle_cosine_t *) calloc(1, sizeof(angle_cosine_t));
   if (obj == NULL) fatal("calloc(angle_cosine) failed\n");
+
+  obj->nref = 1;
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -62,13 +68,32 @@ int angle_cosine_create(angle_cosine_t ** pobj) {
  *
  *****************************************************************************/
 
-void angle_cosine_free(angle_cosine_t * obj) {
+int angle_cosine_free(angle_cosine_t * obj) {
 
-  assert(obj);
+  if (obj) {
+    obj->nref -= 1;
+    if (obj->nref <= 0) {
+      coords_free(&obj->cs);
+      free(obj);
+    }
+  }
 
-  free(obj);
+  return 0;
+}
 
-  return;
+/*****************************************************************************
+ *
+ *  angle_cosine_release
+ *
+ *****************************************************************************/
+
+int angle_cosine_release(void * self) {
+
+  angle_cosine_t * angle = (angle_cosine_t *) self;
+
+  if  (angle) angle_cosine_free(angle);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -116,6 +141,7 @@ int angle_cosine_register(angle_cosine_t * obj, interact_t * parent) {
 
   interact_potential_add(parent, INTERACT_ANGLE, obj, angle_cosine_compute);
   interact_statistic_add(parent, INTERACT_ANGLE, obj, angle_cosine_stats);
+  interact_release_add(parent, INTERACT_ANGLE, obj, angle_cosine_release);
 
   return 0;
 }

@@ -26,11 +26,11 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "bond_fene.h"
 
 struct bond_fene_s {
+  int nref;            /* Reference counter */
+  coords_t * cs;       /* Reference to coordinate system */
   double k;            /* 'spring' constant */
   double r0;           /* Maximum separation */
   double vlocal;       /* Bond potential contribution */
@@ -39,13 +39,15 @@ struct bond_fene_s {
   double bondlocal;    /* Number of bonds computed (double) */
 };
 
+int bond_fene_release(void * self);
+
 /*****************************************************************************
  *
  *  bond_fene_create
  *
  *****************************************************************************/
 
-int bond_fene_create(bond_fene_t ** pobj) {
+int bond_fene_create(coords_t * cs, bond_fene_t ** pobj) {
 
   bond_fene_t * obj = NULL;
 
@@ -53,6 +55,10 @@ int bond_fene_create(bond_fene_t ** pobj) {
 
   obj = (bond_fene_t *) calloc(1, sizeof(bond_fene_t));
   if (obj == NULL) fatal("calloc(bond_fene_t) failed\n");
+
+  obj->nref = 1;
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -65,13 +71,32 @@ int bond_fene_create(bond_fene_t ** pobj) {
  *
  *****************************************************************************/
 
-void bond_fene_free(bond_fene_t * obj) {
+int bond_fene_free(bond_fene_t * obj) {
 
-  assert(obj);
+  if (obj) {
+    obj->nref -= 1;
+    if (obj->nref <= 0 ) {
+      coords_free(&obj->cs);
+      free(obj);
+    }
+  }
 
-  free(obj);
+  return 0;
+}
 
-  return;
+/*****************************************************************************
+ *
+ *  bond_fene_release
+ *
+ *****************************************************************************/
+
+int bond_fene_release(void * self) {
+
+  bond_fene_t * obj = (bond_fene_t *) self;
+
+  if (obj) bond_fene_free(obj);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -121,6 +146,7 @@ int bond_fene_register(bond_fene_t * obj, interact_t * parent) {
   interact_potential_add(parent, INTERACT_BOND, obj, bond_fene_compute);
   interact_statistic_add(parent, INTERACT_BOND, obj, bond_fene_stats);
   interact_rc_set(parent, INTERACT_BOND, obj->r0);
+  interact_release_add(parent, INTERACT_BOND, obj, bond_fene_release);
 
   return 0;
 }

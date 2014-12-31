@@ -121,6 +121,7 @@ int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
   double qtot;               /* net colloid charge */
   double vf;                 /* total volume of fluid */
   double rho, rhoi;          /* charge and countercharge densities */
+  double ltot[3];            /* system sie */
 
   colloid_t * pc = NULL;
   MPI_Comm comm;
@@ -132,6 +133,7 @@ int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
   psi_nk(obj, &nk);
   assert(nk == 2);
 
+  coords_ltot(cs, ltot);
   coords_cart_comm(cs, &comm);
 
   colloids_info_q_local(cinfo, qvlocal);      /* 2 charge densities */
@@ -141,7 +143,7 @@ int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
 
   /* Volume of fluid, assuming no other solid is present */
 
-  vf = L(X)*L(Y)*L(Z) - qv[2];
+  vf = ltot[X]*ltot[Y]*ltot[Z] - qv[2];
 
   /* Net colloid charge is 'qtot'; the required countercharge density
    * is 'rhoi' */

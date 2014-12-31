@@ -14,6 +14,7 @@
 #ifndef LUBRICATION_H
 #define LUBRICATION_H
 
+#include "coords.h"
 #include "physics.h"
 #include "colloids.h"
 #include "interaction.h"
@@ -26,8 +27,8 @@ typedef enum lubr_ss_enum {
   
 typedef struct lubrication_s lubr_t;
 
-int lubrication_create(lubr_t ** pobj);
-void lubrication_free(lubr_t * obj);
+int lubrication_create(coords_t * cs, lubr_t ** pobj);
+int lubrication_free(lubr_t * obj);
 int lubrication_register(lubr_t * obj, interact_t * parent);
 int lubrication_compute(colloids_info_t * cinfo, void * self);
 int lubrication_stats(void * obj, double * stats);

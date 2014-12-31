@@ -30,9 +30,11 @@
 #include "wall.h"
 
 static int colloids_init_check_state(colloids_info_t * cinfo, double hmax);
-static int colloids_init_random_set(colloids_info_t * cinfo, int n,
+static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
+				    int n,
 				    const colloid_state_t * s,  double amax);
-static int colloids_init_check_wall(colloids_info_t * cinfo, double dh);
+static int colloids_init_check_wall(coords_t * cs, colloids_info_t * cinfo,
+				    double dh);
 
 /*****************************************************************************
  *
@@ -53,11 +55,11 @@ int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int np,
   amax = s0->ah + dh;
   hmax = 2.0*s0->ah + dh;
 
-  colloids_init_random_set(cinfo, np, s0, amax);
+  colloids_init_random_set(cs, cinfo, np, s0, amax);
   colloids_halo_state(cs, cinfo);
   colloids_init_check_state(cinfo, hmax);
 
-  if (wall_present()) colloids_init_check_wall(cinfo, dh);
+  if (wall_present()) colloids_init_check_wall(cs, cinfo, dh);
   colloids_info_ntotal_set(cinfo);
 
   return 0;
@@ -72,14 +74,21 @@ int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int np,
  *
  *****************************************************************************/
 
-static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
+static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
+				    int npart,
 				    const colloid_state_t * s,  double amax) {
   int n;
   int state = 13;
   double r0[3];
   double lex[3];
   double ran[3];
+  double lmin[3];
+  double ltot[3];
   colloid_t * pc;
+
+  assert(cs);
+  coords_lmin(cs, lmin);
+  coords_ltot(cs, ltot);
 
   /* If boundaries are not perioidic, some of the volume must be excluded */
 
@@ -92,9 +101,9 @@ static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
     util_ranlcg_reap_uniform(&state, ran + Y);
     util_ranlcg_reap_uniform(&state, ran + Z);
 
-    r0[X] = Lmin(X) + lex[X] + ran[X]*(L(X) - 2.0*lex[X]);
-    r0[Y] = Lmin(Y) + lex[Y] + ran[Y]*(L(Y) - 2.0*lex[Y]);
-    r0[Z] = Lmin(Z) + lex[Z] + ran[Z]*(L(Z) - 2.0*lex[Z]);
+    r0[X] = lmin[X] + lex[X] + ran[X]*(ltot[X] - 2.0*lex[X]);
+    r0[Y] = lmin[Y] + lex[Y] + ran[Y]*(ltot[Y] - 2.0*lex[Y]);
+    r0[Z] = lmin[Z] + lex[Z] + ran[Z]*(ltot[Z] - 2.0*lex[Z]);
     colloids_info_add_local(cinfo, n, r0, &pc);
 
     if (pc) {
@@ -197,17 +206,24 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
  *
  *****************************************************************************/
 
-static int colloids_init_check_wall(colloids_info_t * cinfo, double dh) {
+static int colloids_init_check_wall(coords_t * cs, colloids_info_t * cinfo,
+				    double dh) {
 
   int ic, jc, kc, ia;
   int ncell[3];
   int ifailocal = 0;
   int ifail;
+  double lmin[3];
+  double ltot[3];
 
   colloid_t * pc = NULL;
 
+  assert(cs);
   assert(cinfo);
   assert(dh >= 0.0);
+
+  coords_lmin(cs, lmin);
+  coords_ltot(cs, ltot);
   colloids_info_ncell(cinfo, ncell);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
@@ -218,8 +234,8 @@ static int colloids_init_check_wall(colloids_info_t * cinfo, double dh) {
 
 	while (pc) {
 	  for (ia = 0; ia < 3; ia++) {
-	    if (pc->s.r[ia] <= Lmin(ia) + pc->s.ah + dh) ifailocal = 1;
-	    if (pc->s.r[ia] >= Lmin(ia) + L(ia) - pc->s.ah - dh) ifailocal = 1;
+	    if (pc->s.r[ia] <= lmin[ia] + pc->s.ah + dh) ifailocal = 1;
+	    if (pc->s.r[ia] >= lmin[ia] + ltot[ia] - pc->s.ah - dh) ifailocal = 1;
 	  }
 	  pc = pc->next;
 	}

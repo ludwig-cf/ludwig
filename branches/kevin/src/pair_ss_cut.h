@@ -13,13 +13,14 @@
 #ifndef PAIR_SS_CUT_H
 #define PAIR_SS_CUT_H
 
+#include "coords.h"
 #include "colloids.h"
 #include "interaction.h"
 
 typedef struct pair_ss_cut_s pair_ss_cut_t;
 
-int pair_ss_cut_create(pair_ss_cut_t ** pobj);
-void pair_ss_cut_free(pair_ss_cut_t * obj);
+int pair_ss_cut_create(coords_t * cs, pair_ss_cut_t ** pobj);
+int pair_ss_cut_free(pair_ss_cut_t * obj);
 int pair_ss_cut_info(pair_ss_cut_t * obj);
 int pair_ss_cut_register(pair_ss_cut_t * obj, interact_t * parent);
 int pair_ss_cut_compute(colloids_info_t * cinfo, void * self);

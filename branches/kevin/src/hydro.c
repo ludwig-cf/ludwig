@@ -358,6 +358,8 @@ int hydro_lees_edwards(hydro_t * obj) {
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
   double t;      /* Time */
+  double ltot[3];
+
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
@@ -365,6 +367,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   assert(obj);
 
+  coords_ltot(obj->cs, ltot);
   coords_cartsz(obj->cs, cartsz);
 
   if (cartsz[Y] > 1) {
@@ -394,7 +397,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 
       ule[Y] = dy/t; /* STEADY SHEAR ONLY */
 
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = dy - jdy;
 
@@ -456,6 +459,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   int index, ia;
   int nf, nhalo;
   double ule[3];
+  double ltot[3];
 
   int      nrank_s[3];     /* send ranks */
   int      nrank_r[3];     /* recv ranks */
@@ -470,6 +474,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   assert(obj);
   nf = obj->nf;
 
+  coords_ltot(obj->cs, ltot);
   nhalo = coords_nhalo();
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
@@ -500,7 +505,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
     dy = le_buffer_displacement(ib, t);
     ule[Y] = dy/t; /* STEADY SHEAR ONLY */
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 

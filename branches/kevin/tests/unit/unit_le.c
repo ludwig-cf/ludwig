@@ -208,6 +208,7 @@ int do_test_le_interp3(control_t * ctrl) {
   const double uy_set = 0.25;
   double fr;
   double dy;
+  double ltot[3];
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
@@ -221,6 +222,7 @@ int do_test_le_interp3(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
+  coords_ltot(cs, ltot);
   coords_cartsz(cs, cartsz);
 
   le_create(cs, &le);
@@ -245,10 +247,10 @@ int do_test_le_interp3(control_t * ctrl) {
        * give -L(Y) < dy < +L(Y) */
 
       dy = uy_set*n;
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
 
-      control_macro_test(ctrl, dy > -L(Y));
-      control_macro_test(ctrl, dy < +L(Y));
+      control_macro_test(ctrl, dy > -ltot[Y]);
+      control_macro_test(ctrl, dy < +ltot[Y]);
 
       /* The integral part of the displacement jdy and the fractional
        * part are... */
@@ -345,6 +347,7 @@ int do_test_le_interp4(control_t * ctrl) {
 
   double fr;
   double dy;
+  double ltot[3];
 
   pe_t * pe = NULL;
   coords_t * cs = NULL;
@@ -371,6 +374,7 @@ int do_test_le_interp4(control_t * ctrl) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   nhalo = coords_nhalo();
+  coords_ltot(cs, ltot);
 
   try {
     for (n = -5000; n <= 5000; n++) {
@@ -379,10 +383,10 @@ int do_test_le_interp4(control_t * ctrl) {
        * give -L(Y) < dy < +L(Y) */
 
       dy = uy_set*n;
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
 
-      control_macro_test(ctrl, dy > -L(Y));
-      control_macro_test(ctrl, dy < +L(Y));
+      control_macro_test(ctrl, dy > -ltot[Y]);
+      control_macro_test(ctrl, dy < +ltot[Y]);
 
       /* The integral part of the displacement jdy and the fractional
        * part are... */

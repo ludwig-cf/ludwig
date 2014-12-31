@@ -182,7 +182,7 @@ int blue_phase_O2_init(field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_H2D_init(field_t * fq) {
+int blue_phase_H2D_init(coords_t * cs, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -236,7 +236,7 @@ int blue_phase_H2D_init(field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_H3DA_init(field_t * fq) {
+int blue_phase_H3DA_init(coords_t * cs, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -247,12 +247,15 @@ int blue_phase_H3DA_init(field_t * fq) {
   double x, y, z;
   double r3;
   double q0;
+  double ltot[3];
 
+  assert(cs);
   assert(fq);
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -266,13 +269,13 @@ int blue_phase_H3DA_init(field_t * fq) {
 	index = coords_index(ic, jc, kc);
 
 	q[X][X] = amplitude0_*(-1.5*cos(q0*x)*cos(q0*r3*y)
-			       + 0.25*cos(q0*L(X)/L(Z)*z)); 
+			       + 0.25*cos(q0*ltot[X]/ltot[Z]*z)); 
 	q[X][Y] = amplitude0_*(-0.5*r3*sin(q0*x)*sin(q0*r3*y)
-			       + 0.25*sin(q0*L(X)/L(Z)*z));
+			       + 0.25*sin(q0*ltot[X]/ltot[Z]*z));
 	q[X][Z] = amplitude0_*(r3*cos(q0*x)*sin(q0*r3*y));
 	q[Y][X] = q[X][Y];
 	q[Y][Y] = amplitude0_*(-cos(2.0*q0*x)-0.5*cos(q0*x)*cos(q0*r3*y)
-			       -0.25*cos(q0*L(X)/L(Z)*z));
+			       -0.25*cos(q0*ltot[X]/ltot[Z]*z));
 	q[Y][Z] = amplitude0_*(-sin(2.0*q0*x)-sin(q0*x)*cos(q0*r3*y));
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
@@ -294,7 +297,7 @@ int blue_phase_H3DA_init(field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_H3DB_init(field_t * fq) {
+int blue_phase_H3DB_init(coords_t * cs, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -305,12 +308,15 @@ int blue_phase_H3DB_init(field_t * fq) {
   double x, y, z;
   double r3;
   double q0;
+  double ltot[3];
 
+  assert(cs);
   assert(fq);
 
   r3 = sqrt(3.0);
   q0 = blue_phase_q0();
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -324,13 +330,13 @@ int blue_phase_H3DB_init(field_t * fq) {
 	index = coords_index(ic, jc, kc);
 
 	q[X][X] = amplitude0_*(1.5*cos(q0*x)*cos(q0*r3*y)
-			       + 0.25*cos(q0*L(X)/L(Z)*z)); 
+			       + 0.25*cos(q0*ltot[X]/ltot[Z]*z)); 
 	q[X][Y] = amplitude0_*(0.5*r3*sin(q0*x)*sin(q0*r3*y)
-			       + 0.25*sin(q0*L(X)/L(Z)*z));
+			       + 0.25*sin(q0*ltot[X]/ltot[Z]*z));
 	q[X][Z] = amplitude0_*(-r3*cos(q0*x)*sin(q0*r3*y));
 	q[Y][X] = q[X][Y];
 	q[Y][Y] = amplitude0_*(cos(2.0*q0*x) + 0.5*cos(q0*x)*cos(q0*r3*y)
-			       - 0.25*cos(q0*L(X)/L(Z)*z));
+			       - 0.25*cos(q0*ltot[X]/ltot[Z]*z));
 	q[Y][Z] = amplitude0_*(sin(2.0*q0*x) + sin(q0*x)*cos(q0*r3*y));
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
@@ -477,7 +483,7 @@ int blue_phase_DTC_init(field_t * fq) {
  *        
  *****************************************************************************/
 
-int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
+int blue_phase_BPIII_init(coords_t * cs, field_t * fq, const double specs[3]) {
 
   int ic, jc, kc;
   int ir, jr, kr; 	/* indices for rotated output */
@@ -498,7 +504,9 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
   double n[3]={0.0,0.0,0.0};
   double q0_pitch;      /* Just q0 scalar */
   double ran1, ran2, ran3;
+  double ltot[3];
 
+  assert(cs);
   assert(fq);
   assert(specs);
 
@@ -510,6 +518,7 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
   b = (double*)calloc(N, sizeof(double));
   C = (double*)calloc(3*N, sizeof(double));
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -531,9 +540,9 @@ int blue_phase_BPIII_init(field_t * fq, const double specs[3]) {
     util_ranlcg_reap_uniform(&iseed, &ran1);
     util_ranlcg_reap_uniform(&iseed, &ran2);
     util_ranlcg_reap_uniform(&iseed, &ran3);
-    C[3*in]   = L(X) * ran1; 
-    C[3*in+1] = L(Y) * ran2; 
-    C[3*in+2] = L(Z) * ran3; 
+    C[3*in]   = ltot[X] * ran1; 
+    C[3*in+1] = ltot[Y] * ran2; 
+    C[3*in+2] = ltot[Z] * ran3; 
 
   }
 

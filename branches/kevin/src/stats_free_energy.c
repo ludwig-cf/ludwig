@@ -58,6 +58,7 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
   double fed;
   double fe_local[NSTAT];
   double fe_total[NSTAT];
+  double ltot[3];
   double rv;
 
   double (* free_energy_density)(const int index);
@@ -67,6 +68,7 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
 
   if (fe_set() == 0) return 0;
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
   free_energy_density = fe_density_function();
 
@@ -129,7 +131,7 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
   }
   else {
     MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-    rv = 1.0/(L(X)*L(Y)*L(Z));
+    rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
     info("\nFree energy density - timestep total fluid\n");
     info("[fed] %14d %17.10e %17.10e\n", get_step(), rv*fe_total[0],
@@ -514,6 +516,7 @@ int blue_phase_stats(coords_t * cs, field_t * qf, field_grad_t * dqf,
   double q2, q3, dq0, dq1, sum;
 
   double elocal[14], etotal[14];        /* Free energy contributions etc */
+  double ltot[3];
   double rv;
 
   FILE * fp_output;
@@ -524,8 +527,9 @@ int blue_phase_stats(coords_t * cs, field_t * qf, field_grad_t * dqf,
   assert(dqf);
   assert(map);
 
+  coords_ltot(cs, ltot);
   coords_nlocal(nlocal);
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   q0 = blue_phase_q0();
   kappa0 = blue_phase_kappa0();

@@ -27,12 +27,12 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "pair_lj_cut.h"
 
 struct pair_lj_cut_s {
+  int nref;
+  coords_t * cs;
   double epsilon;
   double sigma;
   double rc;
@@ -41,20 +41,27 @@ struct pair_lj_cut_s {
   double rminlocal;
 };
 
+int pair_lj_cut_release(void * self);
+
 /*****************************************************************************
  *
  *  pair_lj_cut_create
  *
  *****************************************************************************/
 
-int pair_lj_cut_create(pair_lj_cut_t ** pobj) {
+int pair_lj_cut_create(coords_t * cs, pair_lj_cut_t ** pobj) {
 
   pair_lj_cut_t * obj = NULL;
 
+  assert(cs);
   assert(pobj);
 
   obj = (pair_lj_cut_t *) calloc(1, sizeof(pair_lj_cut_t));
   if (obj == NULL) fatal("calloc(pair_lj_cut_t) failed\n");
+
+  obj->nref = 1;
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -67,13 +74,32 @@ int pair_lj_cut_create(pair_lj_cut_t ** pobj) {
  *
  *****************************************************************************/
 
-void pair_lj_cut_free(pair_lj_cut_t * obj) {
+int pair_lj_cut_free(pair_lj_cut_t * obj) {
 
-  assert(obj);
+  if (obj) {
+    obj->nref -= 1;
+    if (obj->nref <= 0) {
+      coords_free(&obj->cs);
+      free(obj);
+    }
+  }
 
-  free(obj);
+  return 0;
+}
 
-  return;
+/*****************************************************************************
+ *
+ *  pair_lj_cut_release
+ *
+ *****************************************************************************/
+
+int pair_lj_cut_release(void * self) {
+
+  pair_lj_cut_t * obj = (pair_lj_cut_t *) self;
+
+  if (obj) pair_lj_cut_free(obj);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -125,6 +151,7 @@ int pair_lj_cut_register(pair_lj_cut_t * obj, interact_t * parent) {
   interact_potential_add(parent, INTERACT_PAIR, obj, pair_lj_cut_compute);
   interact_statistic_add(parent, INTERACT_PAIR, obj, pair_lj_cut_stats);
   interact_rc_set(parent, INTERACT_PAIR, obj->rc);
+  interact_release_add(parent, INTERACT_PAIR, obj, pair_lj_cut_release);
 
   return 0;
 }
@@ -151,6 +178,7 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
   double dvcut;
   double r12[3];
   double f, h;
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -158,10 +186,11 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
   assert(cinfo);
   assert(self);
 
+  coords_ltot(obj->cs, ltot);
   colloids_info_ncell(cinfo, ncell);
 
   obj->vlocal = 0.0;
-  obj->rminlocal = dmax(L(X), dmax(L(Y), L(Z)));
+  obj->rminlocal = dmax(ltot[X], dmax(ltot[Y], ltot[Z]));
   obj->hminlocal = obj->rminlocal;
 
   rr = 1.0/obj->rc;

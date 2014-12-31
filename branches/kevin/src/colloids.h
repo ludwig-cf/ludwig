@@ -106,5 +106,4 @@ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
 int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
 int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
 			      int * count);
-
 #endif

@@ -118,14 +118,13 @@ int psi_sor_poisson(psi_t * obj) {
 
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
+  double ltot[3];              /* system length */
 
   double eunit, beta;
-
-  /* int index_nbr, coords_nbr[3];*/
-
   MPI_Comm comm;               /* Cartesian communicator */
 
   nhalo = coords_nhalo();
+  coords_ltot(obj->cs, ltot);
   coords_nlocal(nlocal);
   coords_cart_comm(obj->cs, &comm);
 
@@ -143,7 +142,7 @@ int psi_sor_poisson(psi_t * obj) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/ltot[X], 2);
 
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);
@@ -289,11 +288,15 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
   double e0[3];                /* External field (constant) */
+  double ltot[3];              /* System length */
 
   double eunit, beta;
 
   MPI_Comm comm;               /* Cartesian communicator */
 
+  assert(obj);
+
+  coords_ltot(obj->cs, ltot);
   coords_nlocal(nlocal);
   coords_cart_comm(obj->cs, &comm);
 
@@ -311,7 +314,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/ltot[X], 2);
 
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
@@ -491,11 +494,13 @@ int psi_sor_offset(psi_t * psi) {
   double psi0;
   double sum_local;
   double psi_offset;                  
+  double ltot[3];
 
   MPI_Comm comm;
 
   assert(psi);
 
+  coords_ltot(psi->cs, ltot);
   coords_nlocal(nlocal);  
   coords_cart_comm(psi->cs, &comm);
 
@@ -515,7 +520,7 @@ int psi_sor_offset(psi_t * psi) {
 
   MPI_Allreduce(&sum_local, &psi_offset, 1, MPI_DOUBLE, MPI_SUM, comm);
 
-  psi_offset /= (L(X)*L(Y)*L(Z));
+  psi_offset /= (ltot[X]*ltot[Y]*ltot[Z]);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

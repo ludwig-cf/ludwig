@@ -19,8 +19,6 @@
 #include <string.h>
 
 #include "util.h"
-#include "coords.h"
-#include "runtime.h"
 #include "control.h"
 
 #include "lubrication.h"
@@ -39,12 +37,12 @@
 #include "build.h"
 #include "subgrid.h"
 
-int lubrication_init(rt_t * rt, interact_t * inter);
-int pair_ss_cut_init(rt_t * rt, interact_t * inter);
-int pair_yukawa_init(rt_t * rt, interact_t * inter);
-int pair_lj_cut_init(rt_t * rt, interact_t * inter);
-int bond_fene_init(rt_t * rt, interact_t * interact);
-int angle_cosine_init(rt_t * rt, interact_t * interact);
+int lubrication_init(rt_t * rt, coords_t * cs, interact_t * inter);
+int pair_ss_cut_init(rt_t * rt, coords_t * cs, interact_t * inter);
+int pair_yukawa_init(rt_t * rt, coords_t * cs, interact_t * inter);
+int pair_lj_cut_init(rt_t * rt, coords_t * cs, interact_t * inter);
+int bond_fene_init(rt_t * rt, coords_t * cs, interact_t * interact);
+int angle_cosine_init(rt_t * rt, coords_t * cs, interact_t * interact);
 
 int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map);
 int colloids_rt_gravity(rt_t * rt, colloids_info_t * cinfo);
@@ -129,12 +127,12 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   interact_create(interact);
   assert(*interact);
 
-  lubrication_init(rt, *interact);
-  pair_ss_cut_init(rt, *interact);
-  pair_lj_cut_init(rt, *interact);
-  pair_yukawa_init(rt, *interact);
-  bond_fene_init(rt, *interact);
-  angle_cosine_init(rt, *interact);
+  lubrication_init(rt, cs, *interact);
+  pair_ss_cut_init(rt, cs, *interact);
+  pair_lj_cut_init(rt, cs, *interact);
+  pair_yukawa_init(rt, cs, *interact);
+  bond_fene_init(rt, cs, *interact);
+  angle_cosine_init(rt, cs, *interact);
 
   colloids_rt_cell_list_checks(pinfo, *interact);
   colloids_init_halo_range_check(*pinfo);
@@ -622,7 +620,7 @@ int colloids_init_ewald_rt(rt_t * rt, coords_t * cs, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int lubrication_init(rt_t * rt, interact_t * inter) {
+int lubrication_init(rt_t * rt, coords_t * cs, interact_t * inter) {
 
   int n, on = 0;
   double rcnorm = 0.0;
@@ -630,6 +628,7 @@ int lubrication_init(rt_t * rt, interact_t * inter) {
   lubr_t * lubr = NULL;
 
   assert(rt);
+  assert(cs);
 
   n = rt_int_parameter(rt, "lubrication_on", &on);
 
@@ -644,7 +643,7 @@ int lubrication_init(rt_t * rt, interact_t * inter) {
     info((n == 0) ? "[Default] " : "[User   ] ");
     info("Tangential force cutoff is %f\n", rctang);
 
-    lubrication_create(&lubr);
+    lubrication_create(cs, &lubr);
     lubrication_rch_set(lubr, LUBRICATION_SS_FNORM, rcnorm);
     lubrication_rch_set(lubr, LUBRICATION_SS_FTANG, rctang);
     lubrication_register(lubr, inter);
@@ -662,7 +661,7 @@ int lubrication_init(rt_t * rt, interact_t * inter) {
  *
  *****************************************************************************/
 
-int pair_ss_cut_init(rt_t * rt, interact_t * inter) {
+int pair_ss_cut_init(rt_t * rt, coords_t * cs, interact_t * inter) {
 
   int n;
   int on = 0;
@@ -673,6 +672,9 @@ int pair_ss_cut_init(rt_t * rt, interact_t * inter) {
   double cutoff;
 
   pair_ss_cut_t * pair = NULL;
+
+  assert(rt);
+  assert(cs);
 
   physics_kt(&kt);
 
@@ -693,7 +695,7 @@ int pair_ss_cut_init(rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "soft_sphere_cutoff", &cutoff);
     if (n == 0) fatal("Please check soft_sphere_cutoff appears in input\n");
 
-    pair_ss_cut_create(&pair);
+    pair_ss_cut_create(cs, &pair);
     pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);
     pair_ss_cut_register(pair, inter);
     pair_ss_cut_info(pair);
@@ -708,7 +710,7 @@ int pair_ss_cut_init(rt_t * rt, interact_t * inter) {
  *
  *****************************************************************************/
 
-int pair_yukawa_init(rt_t * rt, interact_t * interact) {
+int pair_yukawa_init(rt_t * rt, coords_t * cs, interact_t * interact) {
 
   int n;
   int on = 0;
@@ -719,6 +721,7 @@ int pair_yukawa_init(rt_t * rt, interact_t * interact) {
   pair_yukawa_t * yukawa = NULL;
 
   assert(rt);
+  assert(cs);
   assert(interact);
 
   n = rt_int_parameter(rt, "yukawa_on", &on);
@@ -731,7 +734,7 @@ int pair_yukawa_init(rt_t * rt, interact_t * interact) {
     n = rt_double_parameter(rt, "yukawa_cutoff", &cutoff);
     if (n == 0) fatal("Please check yukawa_cutoff appears in input\n");
 
-    pair_yukawa_create(&yukawa);
+    pair_yukawa_create(cs, &yukawa);
     pair_yukawa_param_set(yukawa, epsilon, kappa, cutoff);
     pair_yukawa_register(yukawa, interact);
     pair_yukawa_info(yukawa);
@@ -746,7 +749,7 @@ int pair_yukawa_init(rt_t * rt, interact_t * interact) {
  *
  *****************************************************************************/
 
-int pair_lj_cut_init(rt_t * rt, interact_t * inter) {
+int pair_lj_cut_init(rt_t * rt, coords_t * cs, interact_t * inter) {
 
   int n;
   int on = 0;
@@ -757,6 +760,7 @@ int pair_lj_cut_init(rt_t * rt, interact_t * inter) {
   pair_lj_cut_t * lj = NULL;
 
   assert(rt);
+  assert(cs);
   assert(inter);
 
   n = rt_int_parameter(rt, "lennard_jones_on", &on);
@@ -769,7 +773,7 @@ int pair_lj_cut_init(rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "lj_cutoff", &cutoff);
     if (n == 0) fatal("Please set lj_cutoff in input for LJ potential\n");
 
-    pair_lj_cut_create(&lj);
+    pair_lj_cut_create(cs, &lj);
     pair_lj_cut_param_set(lj, epsilon, sigma, cutoff);
     pair_lj_cut_register(lj, inter);
     pair_lj_cut_info(lj);
@@ -784,7 +788,7 @@ int pair_lj_cut_init(rt_t * rt, interact_t * inter) {
  *
  *****************************************************************************/
 
-int bond_fene_init(rt_t * rt, interact_t * interact) {
+int bond_fene_init(rt_t * rt, coords_t * cs, interact_t * interact) {
 
   int n;
   int on = 0;
@@ -794,6 +798,7 @@ int bond_fene_init(rt_t * rt, interact_t * interact) {
   bond_fene_t * fene = NULL;
 
   assert(rt);
+  assert(cs);
   assert(interact);
 
   n = rt_int_parameter(rt, "bond_fene_on", &on);
@@ -804,7 +809,7 @@ int bond_fene_init(rt_t * rt, interact_t * interact) {
     n = rt_double_parameter(rt, "bond_fene_r0", &r0);
     if (n == 0) fatal("Please set bond_fene_r0 in input for fene bond\n");
 
-    bond_fene_create(&fene);
+    bond_fene_create(cs, &fene);
     bond_fene_param_set(fene, kappa, r0);
     bond_fene_register(fene, interact);
     bond_fene_info(fene);
@@ -819,7 +824,7 @@ int bond_fene_init(rt_t * rt, interact_t * interact) {
  *
  *****************************************************************************/
 
-int angle_cosine_init(rt_t * rt, interact_t * interact) {
+int angle_cosine_init(rt_t * rt, coords_t * cs, interact_t * interact) {
 
   int n;
   int on = 0;
@@ -836,7 +841,7 @@ int angle_cosine_init(rt_t * rt, interact_t * interact) {
     n = rt_double_parameter(rt, "angle_cosine_k", &kappa);
     if (n == 0) fatal("Please set anagle_cosine_k int input for angle\n");
 
-    angle_cosine_create(&angle);
+    angle_cosine_create(cs, &angle);
     angle_cosine_param_set(angle, kappa);
     angle_cosine_register(angle, interact);
     angle_cosine_info(angle);

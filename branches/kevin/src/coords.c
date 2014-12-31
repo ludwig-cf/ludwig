@@ -310,6 +310,17 @@ int coords_cart_comm(coords_t * cs, MPI_Comm * comm) {
  *
  *****************************************************************************/
 
+int coords_periodic(coords_t * cs, int periodic[3]) {
+
+  assert(cs);
+
+  periodic[X] = cs->periodic[X];
+  periodic[Y] = cs->periodic[Y];
+  periodic[Z] = cs->periodic[Z];
+
+  return 0;
+}
+
 int is_periodic(const int dim) {
   assert(cs);
   assert(dim == X || dim == Y || dim == Z);
@@ -323,24 +334,32 @@ int is_periodic(const int dim) {
  *
  *****************************************************************************/
 
-double L(const int dim) {
-  assert(cs);
-  assert(dim == X || dim == Y || dim == Z);
+int coords_ltot(coords_t * cs, double ltotal[3]) {
 
-  return ((double) cs->ntotal[dim]);
+  assert(cs);
+
+  ltotal[X] = (double) cs->ntotal[X];
+  ltotal[Y] = (double) cs->ntotal[Y];
+  ltotal[Z] = (double) cs->ntotal[Z];
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  Lmin access function
+ *  coords_lmin
  *
  *****************************************************************************/
 
-double Lmin(const int dim) {
-  assert(cs);
-  assert(dim == X || dim == Y || dim == Z);
+int coords_lmin(coords_t * cs, double lmin[3]) {
 
-  return cs->lenmin[dim];
+  assert(cs);
+
+  lmin[X] = cs->lenmin[X];
+  lmin[Y] = cs->lenmin[Y];
+  lmin[Z] = cs->lenmin[Z];
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -655,7 +674,7 @@ int coords_strides(int * xs, int * ys, int * zs) {
  *
  *****************************************************************************/
 
-int coords_periodic_comm(MPI_Comm * comm) {
+int coords_periodic_comm(coords_t * cs, MPI_Comm * comm) {
 
   assert(cs);
 

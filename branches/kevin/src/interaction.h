@@ -41,13 +41,16 @@ typedef struct interact_s interact_t;
 typedef int (*range_ft)(void * self, double * rchmax);
 typedef int (*compute_ft)(colloids_info_t * cinfo, void * self);
 typedef int (*stat_ft)(void * self, double * stats);
+typedef int (*free_ft)(void * self);
 
 int interact_create(interact_t ** pobj);
-void interact_free(interact_t * obj);
+int interact_free(interact_t * obj);
 int interact_potential_add(interact_t * obj, interact_enum_t it,
 			   void * potential, compute_ft compute);
 int interact_statistic_add(interact_t * obj, interact_enum_t it,
 			   void * potential, stat_ft stats);
+int interact_release_add(interact_t * obj, interact_enum_t it,
+			 void * potential, free_ft free);
 int interact_rc_set(interact_t * obj, interact_enum_t it, double rc);
 int interact_hc_set(interact_t * obj, interact_enum_t it, double hc);
 int interact_range_check(interact_t * obj, colloids_info_t * cinfo);

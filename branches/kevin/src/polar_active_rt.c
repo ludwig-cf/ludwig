@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "coords.h"
 #include "field.h"
 #include "field_grad.h"
 #include "io_harness.h"
@@ -28,7 +27,7 @@
 #include "polar_active.h"
 #include "polar_active_rt.h"
 
-static int polar_active_init_code(field_t * p);
+static int polar_active_init_code(coords_t * cs, field_t * p);
 
 /*****************************************************************************
  *
@@ -91,11 +90,12 @@ int polar_active_run_time(rt_t * rt) {
  *
  *****************************************************************************/
 
-int polar_active_rt_initial_conditions(rt_t * rt, field_t * p) {
+int polar_active_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * p) {
 
   char key[BUFSIZ];
 
   assert(rt);
+  assert(cs);
   assert(p);
 
   rt_string_parameter(rt, "polar_active_initialisation", key, BUFSIZ);
@@ -107,12 +107,12 @@ int polar_active_rt_initial_conditions(rt_t * rt, field_t * p) {
 
   if (strcmp(key, "from_code") == 0) {
     info("Initial polar order parameter from code\n");
-    polar_active_init_code(p);
+    polar_active_init_code(cs, p);
   }
 
   if (strcmp(key, "aster") == 0) {
     info("Initialise standard aster\n");
-    polar_active_init_aster(p);
+    polar_active_init_aster(cs, p);
   }
 
   return 0;
@@ -126,7 +126,7 @@ int polar_active_rt_initial_conditions(rt_t * rt, field_t * p) {
  *
  *****************************************************************************/
 
-static int polar_active_init_code(field_t * fp) {
+static int polar_active_init_code(coords_t * cs, field_t * fp) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -135,6 +135,7 @@ static int polar_active_init_code(field_t * fp) {
   double x, y, z;            /* Global coordinates */
   double p[3];               /* Local order parameter */
 
+  assert(cs);
   assert(fp);
 
   coords_nlocal(nlocal);
@@ -169,49 +170,52 @@ static int polar_active_init_code(field_t * fp) {
  *
  *****************************************************************************/
 
-int polar_active_init_aster(field_t * fp) {
+int polar_active_init_aster(coords_t * cs, field_t * fp) {
 
-    int nlocal[3];
-    int noffset[3];
-    int ic, jc, kc, index;
+  int nlocal[3];
+  int noffset[3];
+  int ic, jc, kc, index;
 
-    double p[3];
-    double r;
-    double x, y, z, x0, y0, z0;
+  double p[3];
+  double r;
+  double x, y, z, x0, y0, z0;
+  double ltot[3];
 
-    assert(fp);
+  assert(cs);
+  assert(fp);
 
-    coords_nlocal(nlocal);
-    coords_nlocal_offset(noffset);
+  coords_ltot(cs, ltot);
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
-    x0 = 0.5*L(X);
-    y0 = 0.5*L(Y);
-    z0 = 0.5*L(Z);
+  x0 = 0.5*ltot[X];
+  y0 = 0.5*ltot[Y];
+  z0 = 0.5*ltot[Z];
 
-    if (nlocal[Z] == 1) z0 = 0.0;
+  if (nlocal[Z] == 1) z0 = 0.0;
 
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      x = 1.0*(noffset[X] + ic - 1);
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	y = 1.0*(noffset[Y] + jc - 1);
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  z = 1.0*(noffset[Z] + kc - 1);
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = 1.0*(noffset[X] + ic - 1);
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = 1.0*(noffset[Y] + jc - 1);
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = 1.0*(noffset[Z] + kc - 1);
 
-	  p[X] = 0.0;
-	  p[Y] = 1.0;
-	  p[Z] = 0.0;
+	p[X] = 0.0;
+	p[Y] = 1.0;
+	p[Z] = 0.0;
 
-	  r = sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0) + (z-z0)*(z-z0));
-	  if (r > FLT_EPSILON) {
-	    p[X] = -(x - x0)/r;
-	    p[Y] = -(y - y0)/r;
-	    p[Z] = -(z - z0)/r;
-	  }
-	  index = coords_index(ic, jc, kc);
-	  field_vector_set(fp, index, p);
+	r = sqrt((x-x0)*(x-x0) + (y-y0)*(y-y0) + (z-z0)*(z-z0));
+	if (r > FLT_EPSILON) {
+	  p[X] = -(x - x0)/r;
+	  p[Y] = -(y - y0)/r;
+	  p[Z] = -(z - z0)/r;
 	}
+	index = coords_index(ic, jc, kc);
+	field_vector_set(fp, index, p);
       }
     }
+  }
 
-    return 0;
+  return 0;
 }

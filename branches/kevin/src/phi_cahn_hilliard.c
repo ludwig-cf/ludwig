@@ -55,8 +55,9 @@ static int phi_ch_flux_mu1(advflux_t * flux);
 static int phi_ch_flux_mu2(advflux_t * flux);
 static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux);
 
-static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux);
-static int phi_ch_le_fix_fluxes_parallel(int nf, advflux_t * flux);
+static int phi_ch_le_fix_fluxes(coords_t * cs, int nf, advflux_t * flux);
+static int phi_ch_le_fix_fluxes_parallel(coords_t * cs, int nf,
+					 advflux_t * flux);
 static int phi_ch_random_flux(noise_t * noise, advflux_t * flux);
 
 /*****************************************************************************
@@ -122,7 +123,7 @@ int phi_cahn_hilliard(field_t * phi, coords_t * cs, hydro_t * hydro,
 
   if (map) advection_bcs_no_normal_flux(nf, fluxes, map);
 
-  phi_ch_le_fix_fluxes(nf, fluxes);
+  phi_ch_le_fix_fluxes(cs, nf, fluxes);
   phi_ch_update_forward_step(phi, fluxes);
 
   advflux_free(fluxes);
@@ -394,7 +395,7 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux) {
+static int phi_ch_le_fix_fluxes(coords_t * cs, int nf, advflux_t * flux) {
 
   int nlocal[3]; /* Local system size */
   int ip;        /* Index of the plane */
@@ -412,14 +413,17 @@ static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux) {
 
   double * bufferw;
   double * buffere;
+  double ltot[3];
 
   int get_step(void);
 
-  coords_cartsz(flux->cs, cartsz);
+  assert(cs);
+  coords_ltot(cs, ltot);
+  coords_cartsz(cs, cartsz);
 
   if (cartsz[Y] > 1) {
     /* Parallel */
-    phi_ch_le_fix_fluxes_parallel(nf, flux);
+    phi_ch_le_fix_fluxes_parallel(cs, nf, flux);
   }
   else {
     /* Can do it directly */
@@ -443,7 +447,7 @@ static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux) {
 
       /* Looking up */
       dy = +t*le_plane_uy(t);
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = dy - jdy;
 
@@ -465,7 +469,7 @@ static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux) {
       /* Looking down */
 
       dy = -t*le_plane_uy(t);
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = dy - jdy;
 
@@ -516,7 +520,8 @@ static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_ch_le_fix_fluxes_parallel(int nf, advflux_t * flux) {
+static int phi_ch_le_fix_fluxes_parallel(coords_t *cs, int nf,
+					 advflux_t * flux) {
 
   int      nhalo;
   int ntotal[3];
@@ -538,15 +543,18 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, advflux_t * flux) {
   const int tag0 = 1254;
   const int tag1 = 1255;
 
+  double ltot[3];
   MPI_Comm    le_comm;
   MPI_Request request[8];
   MPI_Status  status[8];
 
   int get_step(void);
-
+  
+  assert(cs);
   assert(flux);
 
   nhalo = coords_nhalo();
+  coords_ltot(cs, ltot);
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -575,7 +583,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, advflux_t * flux) {
     /* Work out the displacement-dependent quantities */
 
     dy = +t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     frw  = dy - jdy;
 
@@ -616,7 +624,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, advflux_t * flux) {
     kc = 1 - nhalo;
 
     dy = -t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fre  = dy - jdy;
 

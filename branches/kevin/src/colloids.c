@@ -273,15 +273,17 @@ int colloids_info_ncell(colloids_info_t * info, int ncell[3]) {
 int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]) {
 
   int cartsz[3];
+  double ltot[3];
 
   assert(cinfo);
   assert(lcell);
 
+  coords_ltot(cinfo->cs, ltot);
   coords_cartsz(cinfo->cs, cartsz);
 
-  lcell[X] = L(X)/(cartsz[X]*cinfo->ncell[X]);
-  lcell[Y] = L(Y)/(cartsz[Y]*cinfo->ncell[Y]);
-  lcell[Z] = L(Z)/(cartsz[Z]*cinfo->ncell[Z]);
+  lcell[X] = ltot[X]/(cartsz[X]*cinfo->ncell[X]);
+  lcell[Y] = ltot[Y]/(cartsz[Y]*cinfo->ncell[Y]);
+  lcell[Z] = ltot[Z]/(cartsz[Z]*cinfo->ncell[Z]);
 
   return 0;
 }
@@ -502,15 +504,19 @@ int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3],
   int cartsz[3];
   int cartcoords[3];
   double lcell;
+  double lmin[3];
+  double ltot[3];
 
   assert(cinfo);
 
+  coords_lmin(cinfo->cs, lmin);
+  coords_ltot(cinfo->cs, ltot);
   coords_cartsz(cinfo->cs, cartsz);
   coords_cart_coords(cinfo->cs, cartcoords);
 
   for (ia = 0; ia < 3; ia++) {
-    lcell = L(ia) / (cartsz[ia]*cinfo->ncell[ia]);
-    icell[ia] = (int) floor((r[ia] - Lmin(ia) + lcell) / lcell);
+    lcell = ltot[ia] / (cartsz[ia]*cinfo->ncell[ia]);
+    icell[ia] = (int) floor((r[ia] - lmin[ia] + lcell) / lcell);
     icell[ia] -= cartcoords[ia]*cinfo->ncell[ia];
   }
 
@@ -1247,3 +1253,4 @@ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
 
   return 0;
 }
+

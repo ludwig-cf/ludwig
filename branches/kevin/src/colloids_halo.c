@@ -255,9 +255,11 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
   int cartcoords[3];
   double rforw[3];
   double rback[3];
+  double ltot[3];
 
   assert(halo);
 
+  coords_ltot(halo->cs, ltot);
   coords_cartsz(halo->cs, cartsz);
   coords_cart_coords(halo->cs, cartcoords);
   colloids_info_ncell(halo->cinfo, ncell);
@@ -274,8 +276,8 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
    * with a colloid position *exactly* on a cell boundary. */
 
   p = cartcoords[dim];
-  if (p == 0) rback[dim] = (1.0-DBL_EPSILON)*L(dim);
-  if (p == cartsz[dim] - 1) rforw[dim] = -L(dim);
+  if (p == 0) rback[dim] = (1.0-DBL_EPSILON)*ltot[dim];
+  if (p == cartsz[dim] - 1) rforw[dim] = -ltot[dim];
 
   if (dim == X) {
     for (jc = 1; jc <= ncell[Y]; jc++) {

@@ -53,7 +53,6 @@ static double delta_;             /* Free energy elastic constant */
 static double kappa2_;            /* Free energy elastic constant */
 
 static double zeta_ = 0.0;        /* 'Activity' parameter */
-static double radius_ = FLT_MAX;  /* Used for spherical 'active region' */
 
 static field_t * p_ = NULL;           /* A reference to the order parameter */
 static field_grad_t * grad_p_ = NULL; /* Ditto for gradients */
@@ -268,48 +267,5 @@ void polar_active_zeta_set(const double zeta_new) {
 double polar_active_zeta(void) {
 
   return zeta_;
-}
-
-/*****************************************************************************
- *
- *  polar_active_region_radius_set
- *
- *****************************************************************************/
-
-void polar_active_region_radius_set(const double r) {
-
-  radius_ = r;
-  return;
-}
-
-/*****************************************************************************
- *
- *  polar_active_region
- *
- *  Returns 1 in the 'region' and zero outside. The 'region' is a
- *  spherical volume of radius raduis_, centred at the centre of
- *  the grid.
- *
- *****************************************************************************/
-
-double polar_active_region(const int index) {
-
-  int noffset[3];
-  int coords[3];
-
-  double x, y, z;
-  double active;
-
-  coords_nlocal_offset(noffset);
-  coords_index_to_ijk(index, coords);
-
-  x = 1.0*(noffset[X] + coords[X]) - (Lmin(X) + 0.5*L(X));
-  y = 1.0*(noffset[Y] + coords[Y]) - (Lmin(Y) + 0.5*L(Y));
-  z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
-
-  active = 1.0;
-  if ((x*x + y*y + z*z) > radius_*radius_) active = 0.0;
-
-  return active;
 }
 

@@ -34,11 +34,12 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
 #include "pair_ss_cut.h"
 
 struct pair_ss_cut_s {
+  int nref;              /* reference counter */
+  coords_t * cs;         /* reference to the coordinate system */
   double epsilon;        /* epsilon (energy) */
   double sigma;          /* sigma (length) */
   double nu;             /* exponent */
@@ -48,20 +49,27 @@ struct pair_ss_cut_s {
   double rminlocal;      /* local min centre-centre separation */
 };
 
+int pair_ss_cut_release(void * self);
+
 /*****************************************************************************
  *
  *  pair_ss_cut_create
  *
  *****************************************************************************/
 
-int pair_ss_cut_create(pair_ss_cut_t ** pobj) {
+int pair_ss_cut_create(coords_t * cs, pair_ss_cut_t ** pobj) {
 
   pair_ss_cut_t * obj = NULL;
 
+  assert(cs);
   assert(pobj);
 
   obj = (pair_ss_cut_t *) calloc(1, sizeof(pair_ss_cut_t));
   if (obj == NULL) fatal("calloc(pair_ss_cut_t) failed\n");
+
+  obj->nref = 1;
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -74,13 +82,35 @@ int pair_ss_cut_create(pair_ss_cut_t ** pobj) {
  *
  *****************************************************************************/
 
-void pair_ss_cut_free(pair_ss_cut_t * obj) {
+int pair_ss_cut_free(pair_ss_cut_t * obj) {
 
-  assert(obj);
+  if (obj) {
+    obj->nref -= 1;
+    if (obj->nref <= 0) {
+      coords_free(&obj->cs);
+      free(obj);
+    }
+  }
 
-  free(obj);
+  return 0;
+}
 
-  return;
+/*****************************************************************************
+ *
+ *  pair_ss_cut_release
+ *
+ *  Decrement reference count; intended to be called from parent
+ *  interaction object to allow clean-up.
+ *
+ *****************************************************************************/
+
+int pair_ss_cut_release(void * self) {
+
+  pair_ss_cut_t * obj = (pair_ss_cut_t *) self;
+
+  if (obj) pair_ss_cut_free(obj);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -142,6 +172,7 @@ int pair_ss_cut_register(pair_ss_cut_t * obj, interact_t * parent) {
   interact_potential_add(parent, INTERACT_PAIR, obj, pair_ss_cut_compute);
   interact_statistic_add(parent, INTERACT_PAIR, obj, pair_ss_cut_stats);
   interact_hc_set(parent, INTERACT_PAIR, obj->hc);
+  interact_release_add(parent, INTERACT_PAIR, obj, pair_ss_cut_release);
 
   return 0;
 }
@@ -168,6 +199,7 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   double dvcut;                         /* derivative at cut off */
   double r12[3];                        /* centre-centre min distance 1->2 */
   double f;
+  double ltot[3];                       /* system size */
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -175,8 +207,10 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   assert(cinfo);
   assert(self);
 
+  coords_ltot(self->cs, ltot);
+
   self->vlocal = 0.0;
-  self->hminlocal = dmax(L(X), dmax(L(Y), L(Z)));
+  self->hminlocal = dmax(ltot[X], dmax(ltot[Y], ltot[Z]));
   self->rminlocal = self->hminlocal;
 
   rsigma = 1.0/self->sigma;

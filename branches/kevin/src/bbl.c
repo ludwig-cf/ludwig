@@ -697,7 +697,7 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
     a[5][5] = moment + pc->zeta[20];
 
     for (k = 0; k < 3; k++) {
-      a[k][k] -= wall_lubrication(k, pc->s.r, pc->s.ah);
+      a[k][k] -= wall_lubrication(bbl->cs, k, pc->s.r, pc->s.ah);
     }
 
     /* Lower triangle */
@@ -864,9 +864,9 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo) {
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
-    f[X] -= pc->s.v[X]*wall_lubrication(X, pc->s.r, pc->s.ah);
-    f[Y] -= pc->s.v[Y]*wall_lubrication(Y, pc->s.r, pc->s.ah);
-    f[Z] -= pc->s.v[Z]*wall_lubrication(Z, pc->s.r, pc->s.ah);
+    f[X] -= pc->s.v[X]*wall_lubrication(bbl->cs, X, pc->s.r, pc->s.ah);
+    f[Y] -= pc->s.v[Y]*wall_lubrication(bbl->cs, Y, pc->s.r, pc->s.ah);
+    f[Z] -= pc->s.v[Z]*wall_lubrication(bbl->cs, Z, pc->s.r, pc->s.ah);
   }
 
   wall_accumulate_force(f);
@@ -908,10 +908,12 @@ int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]) {
 
   int ia, ib;
   double rv;
+  double ltot[3];
 
   assert(bbl);
+  coords_ltot(bbl->cs, ltot);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

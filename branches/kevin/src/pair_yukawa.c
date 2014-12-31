@@ -25,11 +25,12 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "coords.h"
 #include "physics.h"
 #include "pair_yukawa.h"
 
 struct pair_yukawa_s {
+  int nref;              /* Reference counter */
+  coords_t * cs;         /* Reference to the coordinate system */
   double epsilon;        /* Energy */
   double kappa;          /* Reciprocal length */
   double rc;             /* Cut off distance */
@@ -38,13 +39,15 @@ struct pair_yukawa_s {
   double vlocal;         /* Contribution to potential */
 };
 
+int pair_yukawa_release(void * self);
+
 /*****************************************************************************
  *
  *  pair_yukawa_create
  *
  *****************************************************************************/
 
-int pair_yukawa_create(pair_yukawa_t ** pobj) {
+int pair_yukawa_create(coords_t * cs, pair_yukawa_t ** pobj) {
 
   pair_yukawa_t * obj = NULL;
 
@@ -52,6 +55,10 @@ int pair_yukawa_create(pair_yukawa_t ** pobj) {
 
   obj = (pair_yukawa_t *) calloc(1, sizeof(pair_yukawa_t));
   if (obj == NULL) fatal("calloc(pair_yukawa_t) failed\n");
+
+  obj->nref = 1;
+  obj->cs = cs;
+  coords_retain(cs);
 
   *pobj = obj;
 
@@ -64,13 +71,32 @@ int pair_yukawa_create(pair_yukawa_t ** pobj) {
  *
  *****************************************************************************/
 
-void pair_yukawa_free(pair_yukawa_t * obj) {
+int pair_yukawa_free(pair_yukawa_t * obj) {
 
-  assert(obj);
+  if (obj) {
+    obj->nref -= 1;
+    if (obj->nref <= 0) {
+      coords_free(&obj->cs);
+      free(obj);
+    }
+  }
 
-  free(obj);
+  return 0;
+}
 
-  return;
+/*****************************************************************************
+ *
+ *  pair_yukawa_release
+ *
+ *****************************************************************************/
+
+int pair_yukawa_release(void * self) {
+
+  pair_yukawa_t * obj = (pair_yukawa_t *) self;
+
+  if (obj) pair_yukawa_free(obj);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -132,6 +158,7 @@ int pair_yukawa_register(pair_yukawa_t * obj, interact_t * parent) {
   interact_potential_add(parent, INTERACT_PAIR, obj, pair_yukawa_compute);
   interact_statistic_add(parent, INTERACT_PAIR, obj, pair_yukawa_stats);
   interact_rc_set(parent, INTERACT_PAIR, obj->rc);
+  interact_release_add(parent, INTERACT_PAIR, obj, pair_yukawa_release);
 
   return 0;
 }
@@ -155,6 +182,7 @@ int pair_yukawa_compute(colloids_info_t * cinfo, void * self) {
   double r, h, rr;
   double vcut;
   double dvcut;
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -162,14 +190,15 @@ int pair_yukawa_compute(colloids_info_t * cinfo, void * self) {
   assert(cinfo);
   assert(obj);
 
+  coords_ltot(obj->cs, ltot);
   colloids_info_ncell(cinfo, ncell);
 
   vcut = obj->epsilon*exp(-obj->kappa*obj->rc)/obj->rc;
   dvcut = -vcut*(1.0/obj->rc + obj->kappa);
 
   obj->vlocal = 0.0;
-  obj->rminlocal = L(X);
-  obj->hminlocal = L(X);
+  obj->rminlocal = ltot[X];
+  obj->hminlocal = ltot[X];
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
     colloids_info_climits(cinfo, X, ic1, di); 

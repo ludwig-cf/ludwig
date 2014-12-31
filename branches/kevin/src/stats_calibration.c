@@ -19,14 +19,14 @@
 #include <math.h>
 
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
 #include "stats_calibration.h"
 
 #define TARGET_REYNOLDS_NUMBER 0.05
 #define MEASUREMENTS_PER_STOKES_TIME 50
 
-struct stats_calibration_type {
+struct stats_ahydro_s {
+  coords_t * cs;
   int nstart;
   int ndata;
   int nstokes;
@@ -38,16 +38,53 @@ struct stats_calibration_type {
   double fbar[3];
 };
 
-typedef struct stats_calibration_type stats_calibration_t;
-
-static stats_calibration_t calib_;
-static double stats_calibration_hasimoto(double a, double length);
-static int stats_calibration_measure(colloids_info_t * cinfo, hydro_t * hydro,
-				     map_t * map);
+static double stats_ahydro_hasimoto(double a, double length);
+static int stats_ahydro_measure(stats_ahydro_t * ahydro,
+				colloids_info_t * cinfo, hydro_t * hydro,
+				map_t * map);
 
 /*****************************************************************************
  *
- *  stats_calibration_init
+ *  stats_ahydro_create
+ *
+ *****************************************************************************/
+
+int stats_ahydro_create(coords_t * cs, stats_ahydro_t ** p) {
+
+  stats_ahydro_t * obj = NULL;
+
+  assert(cs);
+
+  obj = (stats_ahydro_t *) calloc(1, sizeof(stats_ahydro_t));
+  if (obj == NULL) fatal("calloc(stats_ahydro_t) failed\n");
+
+  obj->cs = cs;
+  coords_retain(cs);
+
+  *p = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  stats_ahydro_free
+ *
+ *****************************************************************************/
+
+int stats_ahydro_free(stats_ahydro_t * ahydro) {
+
+  assert(ahydro);
+
+  coords_free(&ahydro->cs);
+  free(ahydro);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  stats_ahydro_init
  *
  *  1. We control the particle Reynolds number rho a U / eta (= 0.05)
  *     to give a target velocity.
@@ -63,7 +100,7 @@ static int stats_calibration_measure(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
+int stats_ahydro_init(stats_ahydro_t * ahydro, colloids_info_t * cinfo) {
 
   int ia;
   int nc;
@@ -76,88 +113,82 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
   double fhasimoto;
   double f[3];
 
-  if (nswitch == 0) {
-    /* No statistics are required */
-    calib_.nstart = INT_MAX;
-    calib_.nfreq = INT_MAX;
+  assert(ahydro);
+  assert(cinfo);
+
+  coords_ntotal(ntotal);
+
+  /* Make sure we have a cubic system with one particle */
+
+  if (ntotal[X] != ntotal[Y]) fatal("Calibration must have cubic system\n");
+  if (ntotal[Y] != ntotal[Z]) fatal("Calibration must have cubic system\n");
+
+  colloids_info_ntotal(cinfo, &nc);
+  if (nc != 1) fatal("Calibration requires exactly one colloid\n");
+
+  length = 1.0*ntotal[Z];
+  physics_rho0(&rho);
+  physics_eta_shear(&eta);
+
+  colloids_info_ahmax(cinfo, &a);
+
+  ahydro->a0 = a;
+  ahydro->utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);
+  fhasimoto = stats_ahydro_hasimoto(a, length);
+  ahydro->ftarget = 6.0*pi_*eta*a*ahydro->utarget/fhasimoto;
+
+  ahydro->nstokes = a/ahydro->utarget;
+  ahydro->nfreq = ahydro->nstokes/MEASUREMENTS_PER_STOKES_TIME;
+  if (ahydro->nfreq < 1) ahydro->nfreq = 1;
+  ahydro->nstart = length*length/eta;
+  
+  /* Set a force of the right size in a random direction, and zero
+   * the accumulators. */
+
+  util_ranlcg_reap_unit_vector(&state, f);
+
+  for (ia = 0; ia < 3; ia++) {
+    f[ia] *= ahydro->ftarget;
+    ahydro->fbar[ia] = 0.0;
+    ahydro->ubar[ia] = 0.0;
   }
-  else {
+  ahydro->ndata = 0;
 
-    assert(cinfo);
+  physics_fgrav_set(f);
 
-    coords_ntotal(ntotal);
-
-    /* Make sure we have a cubic system with one particle */
-
-    if (ntotal[X] != ntotal[Y]) fatal("Calibration must have cubic system\n");
-    if (ntotal[Y] != ntotal[Z]) fatal("Calibration must have cubic system\n");
-
-    colloids_info_ntotal(cinfo, &nc);
-    if (nc != 1) fatal("Calibration requires exactly one colloid\n");
-
-    length = 1.0*L(Z);
-    physics_rho0(&rho);
-    physics_eta_shear(&eta);
-
-    colloids_info_ahmax(cinfo, &a);
-
-    calib_.a0 = a;
-    calib_.utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);
-    fhasimoto = stats_calibration_hasimoto(a, length);
-    calib_.ftarget = 6.0*pi_*eta*a*calib_.utarget/fhasimoto;
-
-    calib_.nstokes = a/calib_.utarget;
-    calib_.nfreq = calib_.nstokes/MEASUREMENTS_PER_STOKES_TIME;
-    if (calib_.nfreq < 1) calib_.nfreq = 1;
-    calib_.nstart = length*length/eta;
-
-    /* Set a force of the right size in a random direction, and zero
-     * the accumulators. */
-
-    util_ranlcg_reap_unit_vector(&state, f);
-    /*ran_serial_unit_vector(f);*/
-
-    for (ia = 0; ia < 3; ia++) {
-      f[ia] *= calib_.ftarget;
-      calib_.fbar[ia] = 0.0;
-      calib_.ubar[ia] = 0.0;
-    }
-    calib_.ndata = 0;
-
-    physics_fgrav_set(f);
-
-    info("\n\n");
-    info("Calibration information:\n");
-    info("Target Reynolds number:    %11.4e\n", TARGET_REYNOLDS_NUMBER);
-    info("Target particle speed:     %11.4e\n", calib_.utarget);
-    info("Force applied:             %11.4e\n", calib_.ftarget);
-    info("Spin-up T_diffusion:       %11d\n", calib_.nstart);
-    info("Stokes time (timesteps):   %11d\n", calib_.nstokes);
-    info("Measurement frequency:     %11d\n", calib_.nfreq);
-    info("\n\n");
-  }
+  info("\n\n");
+  info("Calibration information:\n");
+  info("Target Reynolds number:    %11.4e\n", TARGET_REYNOLDS_NUMBER);
+  info("Target particle speed:     %11.4e\n", ahydro->utarget);
+  info("Force applied:             %11.4e\n", ahydro->ftarget);
+  info("Spin-up T_diffusion:       %11d\n", ahydro->nstart);
+  info("Stokes time (timesteps):   %11d\n", ahydro->nstokes);
+  info("Measurement frequency:     %11d\n", ahydro->nfreq);
+  info("\n\n");
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  stats_calibration_accumulate
+ *  stats_ahydro_accumulate
  *
- *  All arguments may be NULL if calibration is not active.
+ *  Arguments may be NULL if calibration is not active.
  *
  *****************************************************************************/
 
-int stats_calibration_accumulate(colloids_info_t * cinfo, int ntime,
-				 hydro_t * hydro, map_t * map) {
+int stats_ahydro_accumulate(stats_ahydro_t * ahydro,
+			    colloids_info_t * cinfo, int ntime,
+			    hydro_t * hydro, map_t * map) {
 
+  assert(ahydro);
   if (cinfo == NULL) return 0;
   if (hydro == NULL) return 0;
 
-  if (ntime >= calib_.nstart) {
-    if ((ntime % calib_.nfreq) == 0) {
-      ++calib_.ndata;
-      stats_calibration_measure(cinfo, hydro, map);
+  if (ntime >= ahydro->nstart) {
+    if ((ntime % ahydro->nfreq) == 0) {
+      ahydro->ndata += 1;
+      stats_ahydro_measure(ahydro, cinfo, hydro, map);
     }
   }
 
@@ -166,14 +197,14 @@ int stats_calibration_accumulate(colloids_info_t * cinfo, int ntime,
 
 /*****************************************************************************
  *
- *  stats_calibration_finish
+ *  stats_ahydro_finish
  *
  *  We require at this point for root to have the appropriate
  *  information for output.
  *
  *****************************************************************************/
 
-int stats_calibration_finish(void) {
+int stats_ahydro_finish(stats_ahydro_t * ahydro) {
 
   int ia;
   double eta;
@@ -185,52 +216,57 @@ int stats_calibration_finish(void) {
   double f[3];
   double u[3];
   double fbar[3];
+  double ltot[3];
 
-  if (calib_.nstart < INT_MAX) {
+  assert(ahydro);
+
+  coords_ltot(ahydro->cs, ltot);
+
+  if (ahydro->nstart < INT_MAX) {
 
     physics_eta_shear(&eta);
-    t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
+    t = 1.0*ahydro->ndata*ahydro->nfreq/ahydro->nstokes;
 
     info("\n\n");
     info("Calibration result\n");
-    info("Number of measurements:    %11d\n", calib_.ndata);
+    info("Number of measurements:    %11d\n", ahydro->ndata);
     info("Run time (Stokes times):   %11.4e\n", t);
 
-    if (calib_.ndata < 1) fatal("No data in stats_calibration_finish\n");
+    if (ahydro->ndata < 1) fatal("No data in stats_calibration_finish\n");
 
     /* We need to do a reduction on fbar to get the total before
      * taking the average. */
 
-    MPI_Reduce(calib_.fbar, fbar, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(ahydro->fbar, fbar, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
     for (ia = 0; ia < 3; ia++) {
-      u[ia] = calib_.ubar[ia]/calib_.ndata;
-      f[ia] = fbar[ia]/calib_.ndata;
+      u[ia] = ahydro->ubar[ia]/ahydro->ndata;
+      f[ia] = fbar[ia]/ahydro->ndata;
     }
 
     /* There is no closed expression for ah in the finite system, so
      * we use the Hasimoto expression to iterate to a solution. Two
      * or three iterations is usually enough for 3 figures of accuracy. */
 
-    length = L(X);
+    length = ltot[X];
     f0 = modulus(f);
     u0 = modulus(u);
 
-    ah = calib_.a0;
+    ah = ahydro->a0;
 
     for (ia = 0; ia < 10; ia++) {
       ahm1 = ah;
-      fhasimoto = stats_calibration_hasimoto(ahm1, length);
+      fhasimoto = stats_ahydro_hasimoto(ahm1, length);
       ah = 1.0/(6.0*pi_*eta*u0/f0 - (fhasimoto - 1.0)/ahm1);
     }
 
-    fhasimoto = stats_calibration_hasimoto(ah, length);
+    fhasimoto = stats_ahydro_hasimoto(ah, length);
   
     info("\n");
     info("Actual force:              %11.4e\n", f0);
     info("Actual speed:              %11.4e\n", u0);
     info("Hasimoto correction (a/L): %11.4e\n", fhasimoto);
-    info("Input radius:              %11.4e\n", calib_.a0);
+    info("Input radius:              %11.4e\n", ahydro->a0);
     info("Hydrodynamic radius:       %11.4e\n", ah);
     info("Stokes equation rhs:       %11.4e\n", 6.0*pi_*eta*ah*u0);
     info("Stokes equation lhs:       %11.4e\n", f0*fhasimoto);
@@ -241,7 +277,7 @@ int stats_calibration_finish(void) {
 
 /*****************************************************************************
  *
- *  stats_calibration_hasimoto
+ *  stats_ahydro_hasimoto
  *
  *  The finite size correction to the Stokes' relation is
  *
@@ -251,7 +287,7 @@ int stats_calibration_finish(void) {
  *
  *****************************************************************************/
 
-static double stats_calibration_hasimoto(double a, double len) {
+static double stats_ahydro_hasimoto(double a, double len) {
 
   double f;
 
@@ -262,7 +298,7 @@ static double stats_calibration_hasimoto(double a, double len) {
 
 /*****************************************************************************
  *
- *  stats_calibration_measure
+ *  stats_ahydro_measure
  *
  *  Accumulate a measurement of
  *    1. the hydrodynamic force on the particle and
@@ -274,8 +310,9 @@ static double stats_calibration_hasimoto(double a, double len) {
  *
  *****************************************************************************/
 
-static int stats_calibration_measure(colloids_info_t * cinfo,
-				     hydro_t * hydro, map_t * map) {
+static int stats_ahydro_measure(stats_ahydro_t * ahydro,
+				colloids_info_t * cinfo,
+				hydro_t * hydro, map_t * map) {
   int ic, jc, kc, ia, index;
   int nlocal[3];
   int ncell[3];
@@ -288,6 +325,7 @@ static int stats_calibration_measure(colloids_info_t * cinfo,
   double datalocal[7], datasum[7];
   colloid_t * pc;
 
+  assert(ahydro);
   assert(hydro);
   assert(map);
 
@@ -310,7 +348,7 @@ static int stats_calibration_measure(colloids_info_t * cinfo,
 
 	if (pc) {
 	  for (ia = 0; ia < 3; ia++) {
-	    calib_.fbar[ia] += pc->force[ia];
+	    ahydro->fbar[ia] += pc->force[ia];
 	    upart[ia] = pc->s.v[ia];
 	  }
 	  break;
@@ -357,7 +395,7 @@ static int stats_calibration_measure(colloids_info_t * cinfo,
   for (ia = 0; ia < 3; ia++) {
     upart[ia] = datasum[ia];
     ulocal[ia] = datasum[3+ia]/datasum[6];
-    calib_.ubar[ia] += (upart[ia] - ulocal[ia]);
+    ahydro->ubar[ia] += (upart[ia] - ulocal[ia]);
   }
 
   return 0;

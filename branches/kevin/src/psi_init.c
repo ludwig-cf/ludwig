@@ -84,12 +84,14 @@ int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
   int cartcoords[3];
   int nlocal[3];
 
+  double ltot[3];
   double rho_w, rho_i;
 
   assert(obj);
   assert(cs);
   assert(map);
 
+  coords_ltot(cs, ltot);
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
   coords_nlocal(nlocal);
@@ -98,7 +100,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
   rho_w = sigma;
 
   /* counter charge density */
-  rho_i = rho_w * 2.0 *L(Y)*L(Z) / (L(Y)*L(Z)*(L(X) - 2.0));
+  rho_i = rho_w * 2.0 *ltot[Y]*ltot[Z] / (ltot[Y]*ltot[Z]*(ltot[X] - 2.0));
 
   /* apply counter charges & electrolyte */
   for (ic = 1; ic <= nlocal[X]; ic++) {

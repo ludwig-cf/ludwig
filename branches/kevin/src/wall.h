@@ -14,11 +14,12 @@
 #define WALL_H
 
 #include "runtime.h"
+#include "coords.h"
 #include "model.h"
 #include "map.h"
 #include "targetDP.h"
 
-HOST int wall_init(rt_t * rt, lb_t * lb, map_t * map);
+HOST int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map);
 HOST int wall_bounce_back(lb_t * lb, map_t * map);
 HOST int wall_set_wall_velocity(lb_t * lb);
 
@@ -30,6 +31,7 @@ HOST int  wall_present(void);
 HOST int  wall_at_edge(const int dimension);
 HOST int wall_pm(int * present);
 
-HOST double wall_lubrication(const int dim, const double r[3], const double ah);
+HOST double wall_lubrication(coords_t * cs, const int dim, const double r[3],
+			     const double ah);
 
 #endif

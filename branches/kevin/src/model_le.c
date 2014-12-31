@@ -329,8 +329,12 @@ int le_displace_and_interpolate(lb_t * lb) {
   int    nhalo;
   double dy, fr;
   double t;
+  double ltot[3];
   double * recv_buff;
 
+  assert(lb);
+
+  coords_ltot(lb->cs, ltot);
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nplane = le_get_nplane_local();
@@ -353,7 +357,7 @@ int le_displace_and_interpolate(lb_t * lb) {
     ic  = le_plane_location(plane);
 
     dy  = le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, L(Y));
+    dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr = dy - jdy;
 
@@ -405,7 +409,7 @@ int le_displace_and_interpolate(lb_t * lb) {
     ic  = le_plane_location(plane) + 1;
 
     dy  = -le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, L(Y));
+    dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr = dy - jdy;
 
@@ -500,6 +504,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   double t;
   double * send_buff;
   double * recv_buff;
+  double ltot[3];
 
   MPI_Comm    comm;
   MPI_Request req[4];
@@ -507,7 +512,8 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
   assert(lb);
   assert(CVXBLOCK == 1);
-  
+
+  coords_ltot(lb->cs, ltot);
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
@@ -533,7 +539,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
     ic  = le_plane_location(plane);
 
     dy  = le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, L(Y));
+    dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 
@@ -615,7 +621,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
     ic  = le_plane_location(plane) + 1;
 
     dy  = -le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, L(Y));
+    dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 
