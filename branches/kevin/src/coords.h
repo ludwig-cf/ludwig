@@ -48,11 +48,9 @@ int coords_periodic_comm(coords_t * cs, MPI_Comm * comm);
 
 int coords_lmin(coords_t * cs, double lmin[3]);
 int coords_ltot(coords_t * cs, double ltot[3]);
-int coords_perioidic(coords_t * cs, int period[3]);
+int coords_periodic(coords_t * cs, int period[3]);
 
 /* Old interface pending update */
-
-int    is_periodic(const int);
 
 void   coords_nlocal(int n[3]);
 void   coords_nlocal_offset(int n[3]);

@@ -457,16 +457,18 @@ static int colloids_halo_isend(colloid_halo_t * halo, int dim,
   int n;
   int pforw;
   int pback;
+  int periodic[3];
   int cartsz[3];
 
   MPI_Comm comm;
 
   assert(halo);
+  coords_periodic(halo->cs, periodic);
   coords_cartsz(halo->cs, cartsz);
 
   if (cartsz[dim] == 1) {
 
-    if (is_periodic(dim)) {
+    if (periodic[dim]) {
       n = halo->nsend[FORWARD] + halo->nsend[BACKWARD];
       memcpy(halo->recv, halo->send, n*sizeof(colloid_state_t));
     }
@@ -500,6 +502,7 @@ static int colloids_halo_isend(colloid_halo_t * halo, int dim,
 static int colloids_halo_number(colloid_halo_t * halo, int dim) {
 
   int pforw, pback;
+  int periodic[3];
   int cartsz[3];
   int cartcoords[3];
 
@@ -508,6 +511,7 @@ static int colloids_halo_number(colloid_halo_t * halo, int dim) {
   MPI_Status  status[4];
 
   assert(halo);
+  coords_periodic(halo->cs, periodic);
   coords_cartsz(halo->cs, cartsz);
   coords_cart_coords(halo->cs, cartcoords);
 
@@ -535,7 +539,7 @@ static int colloids_halo_number(colloid_halo_t * halo, int dim) {
 
   /* Non periodic boundaries receive no particles */
 
-  if (is_periodic(dim) == 0) {
+  if (periodic[dim] == 0) {
     if (cartcoords[dim] == 0) halo->nrecv[BACKWARD] = 0;
     if (cartcoords[dim] == cartsz[dim] - 1) halo->nrecv[FORWARD] = 0;
   }

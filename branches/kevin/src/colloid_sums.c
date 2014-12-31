@@ -224,9 +224,13 @@ static int colloid_sums_count(colloid_sum_t * sum, const int dim) {
   int ic, jc, kc;
   int n0, n1;
   int ncell[3];
+  int periodic[3];
   int cartsz[3];
   int cartcoords[3];
 
+  assert(sum);
+
+  coords_periodic(sum->cs, periodic);
   coords_cartsz(sum->cs, cartsz);
   coords_cart_coords(sum->cs, cartcoords);
 
@@ -274,7 +278,7 @@ static int colloid_sums_count(colloid_sum_t * sum, const int dim) {
     }
   }
 
-  if (is_periodic(dim) == 0) {
+  if (periodic[dim] == 0) {
     if (cartcoords[dim] == 0) sum->ncount[BACKWARD] = 0;
     if (cartcoords[dim] == cartsz[dim] - 1) sum->ncount[FORWARD] = 0;
   }
@@ -376,6 +380,7 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
   int nb, nf;
   int ic, jc, kc;
   int ncell[3];
+  int periodic[3];
   int cartsz[3];
   int cartcoords[3];
 
@@ -383,6 +388,8 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
   int (* mloader_back)(colloid_sum_t *, int, int, int, int) = NULL;
 
   assert(sum);
+
+  coords_periodic(sum->cs, periodic);
   coords_cartsz(sum->cs, cartsz);
   coords_cart_coords(sum->cs, cartcoords);
 
@@ -408,7 +415,7 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
   /* Eliminate messages at non-perioidic boundaries via dummy loader m0.
    * This is where loader_forw and loader_back can differ. */
 
-  if (is_periodic(dim) == 0) {
+  if (periodic[dim] == 0) {
     ic = cartcoords[dim];
     if (ic == 0) mloader_back = colloid_sums_m0;
     if (ic == cartsz[dim] - 1) mloader_forw = colloid_sums_m0;

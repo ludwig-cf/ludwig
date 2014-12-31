@@ -79,6 +79,7 @@ static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
 				    const colloid_state_t * s,  double amax) {
   int n;
   int state = 13;
+  int periodic[3];
   double r0[3];
   double lex[3];
   double ran[3];
@@ -87,14 +88,15 @@ static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
   colloid_t * pc;
 
   assert(cs);
+  coords_periodic(cs, periodic);
   coords_lmin(cs, lmin);
   coords_ltot(cs, ltot);
 
   /* If boundaries are not perioidic, some of the volume must be excluded */
 
-  lex[X] = amax*(1.0 - is_periodic(X));
-  lex[Y] = amax*(1.0 - is_periodic(Y));
-  lex[Z] = amax*(1.0 - is_periodic(Z));
+  lex[X] = amax*(1 - periodic[X]);
+  lex[Y] = amax*(1 - periodic[Y]);
+  lex[Z] = amax*(1 - periodic[Z]);
 
   for (n = 1; n <= npart; n++) {
     util_ranlcg_reap_uniform(&state, ran + X);

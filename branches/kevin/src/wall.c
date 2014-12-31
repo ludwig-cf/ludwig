@@ -50,7 +50,7 @@ static B_link * allocate_link(void);
 static int wall_init_links(map_t * map);
 static int wall_init_boundary_site_map(map_t * map);
 static void     init_boundary_speeds(const double, const double);
-static void     wall_checks(void);
+static void     wall_checks(int p[3]);
 static int wall_shear_init(lb_t * lb, coords_t * cs, double utop,
 			   double ubottom);
 
@@ -65,11 +65,15 @@ int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map) {
   int init_shear = 0;
   int ntotal;
   int porous_media = 0;
+  int periodic[3];
   double ux_bottom = 0.0;
   double ux_top = 0.0;
   double rc = 0.0;
 
   assert(rt);
+  assert(cs);
+
+  coords_periodic(cs, periodic);
 
   rt_double_parameter(rt, "boundary_speed_bottom", &ux_bottom);
   rt_double_parameter(rt, "boundary_speed_top", &ux_top);
@@ -88,7 +92,7 @@ int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map) {
     info("Boundary walls\n");
     info("--------------\n");
 
-    wall_checks();
+    wall_checks(periodic);
     wall_init_boundary_site_map(map);
     wall_init_links(map);
 
@@ -150,14 +154,14 @@ int wall_pm(int * present) {
  *
  *****************************************************************************/
 
-static void wall_checks(void) {
+static void wall_checks(int periodic[3]) {
 
   int ifail;
 
   ifail = 0;
-  if (is_periodic(X) && is_boundary_[X]) ifail = 1;
-  if (is_periodic(Y) && is_boundary_[Y]) ifail = 1;
-  if (is_periodic(Z) && is_boundary_[Z]) ifail = 1;
+  if (periodic[X] && is_boundary_[X]) ifail = 1;
+  if (periodic[Y] && is_boundary_[Y]) ifail = 1;
+  if (periodic[Z] && is_boundary_[Z]) ifail = 1;
 
   if (ifail == 1) {
     info("Boundary walls must match periodicity of system\n");

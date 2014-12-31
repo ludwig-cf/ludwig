@@ -575,6 +575,7 @@ int lb_halo_via_struct(lb_t * lb) {
   int ihalo, ireal;
   int nhalo;
   int nlocal[3];
+  int periodic[3];
   int cartsz[3];
 
   const int tagf = 900;
@@ -588,13 +589,14 @@ int lb_halo_via_struct(lb_t * lb) {
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+  coords_periodic(lb->cs, periodic);
   coords_cart_comm(lb->cs, &comm);
   coords_cartsz(lb->cs, cartsz);
 
   /* The x-direction (YZ plane) */
 
   if (cartsz[X] == 1) {
-    if (is_periodic(X)) {
+    if (periodic[X]) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
@@ -628,7 +630,7 @@ int lb_halo_via_struct(lb_t * lb) {
   /* The y-direction (XZ plane) */
 
   if (cartsz[Y] == 1) {
-    if (is_periodic(Y)) {
+    if (periodic[Y]) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
@@ -665,7 +667,7 @@ int lb_halo_via_struct(lb_t * lb) {
   /* Finally, z-direction (XY plane) */
 
   if (cartsz[Z] == 1) {
-    if (is_periodic(Z)) {
+    if (periodic[Z]) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 

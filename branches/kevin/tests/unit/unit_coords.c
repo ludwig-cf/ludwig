@@ -289,6 +289,7 @@ int do_test_coords_system(control_t * ctrl, coords_t * cs,
   throws (MPITestFailedException) {
 
   int ntotal[3];
+  int periodic[3];
   double lmin[3];
   double ltot[3];
 
@@ -301,16 +302,17 @@ int do_test_coords_system(control_t * ctrl, coords_t * cs,
 
     coords_lmin(cs, lmin);
     coords_ltot(cs, ltot);
+    coords_periodic(cs, periodic);
     coords_ntotal(ntotal);
 
     control_macro_test(ctrl, ntotal[X] == ntotal_ref[X]);
     control_macro_test(ctrl, ntotal[Y] == ntotal_ref[Y]);
     control_macro_test(ctrl, ntotal[Z] == ntotal_ref[Z]);
 
-    control_verb(ctrl, "default is_periodic()\n");
-    control_macro_test(ctrl, is_periodic(X) == period_ref[X]);
-    control_macro_test(ctrl, is_periodic(Y) == period_ref[Y]);
-    control_macro_test(ctrl, is_periodic(Z) == period_ref[Z]);
+    control_verb(ctrl, "default periodic[]\n");
+    control_macro_test(ctrl, periodic[X] == period_ref[X]);
+    control_macro_test(ctrl, periodic[Y] == period_ref[Y]);
+    control_macro_test(ctrl, periodic[Z] == period_ref[Z]);
 
     control_verb(ctrl, "Lmin\n");
     control_macro_test_dbl_eq(ctrl, lmin[X], 0.5, DBL_EPSILON);
@@ -478,9 +480,11 @@ int do_test_coords_communicator(control_t * ctrl, coords_t * cs)
   int dims[3];
   int periods[3];
   int coords[3];
+
   int nr, rank;
   int cartsz[3];
   int cartcoords[3];
+  int periodic[3];
 
   MPI_Comm comm;
 
@@ -495,6 +499,7 @@ int do_test_coords_communicator(control_t * ctrl, coords_t * cs)
     coords_cart_comm(cs, &comm);
     coords_cartsz(cs, cartsz);
     coords_cart_coords(cs, cartcoords);
+    coords_periodic(cs, periodic);
 
     control_verb(ctrl, "Cartesian communicator\n");
     control_macro_test(ctrl, comm != MPI_COMM_NULL);
@@ -513,9 +518,9 @@ int do_test_coords_communicator(control_t * ctrl, coords_t * cs)
     control_macro_test(ctrl, cartcoords[Z] == coords[Z]);
 
     control_verb(ctrl, "Checking periodity...\n");
-    control_macro_test(ctrl, is_periodic(X) == periods[X]);
-    control_macro_test(ctrl, is_periodic(Y) == periods[Y]);
-    control_macro_test(ctrl, is_periodic(Z) == periods[Z]);
+    control_macro_test(ctrl, periodic[X] == periods[X]);
+    control_macro_test(ctrl, periodic[Y] == periods[Y]);
+    control_macro_test(ctrl, periodic[Z] == periods[Z]);
 
     control_verb(ctrl, "Checking (uniform) nlocal[] ...\n");
     control_macro_test(ctrl, nlocal[X] == ntotal[X] / cartsz[X]);
@@ -579,17 +584,19 @@ int ut_neighbour_rank(coords_t * cs, int nx, int ny, int nz, int * nrank) {
 
   int coords[3];
   int cartsz[3];
+  int periods[3];
   int periodic = 1;
   MPI_Comm comm;
 
   assert(cs);
 
+  coords_periodic(cs, periods);
   coords_cartsz(cs, cartsz);
   coords_cart_comm(cs, &comm);
 
-  if (is_periodic(X) == 0 && (nx < 0 || nx >= cartsz[X])) periodic = 0;
-  if (is_periodic(Y) == 0 && (ny < 0 || ny >= cartsz[Y])) periodic = 0;
-  if (is_periodic(Z) == 0 && (nz < 0 || nz >= cartsz[Z])) periodic = 0;
+  if (periods[X] == 0 && (nx < 0 || nx >= cartsz[X])) periodic = 0;
+  if (periods[Y] == 0 && (ny < 0 || ny >= cartsz[Y])) periodic = 0;
+  if (periods[Z] == 0 && (nz < 0 || nz >= cartsz[Z])) periodic = 0;
 
   coords[X] = nx;
   coords[Y] = ny;

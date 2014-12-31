@@ -306,7 +306,7 @@ int coords_cart_comm(coords_t * cs, MPI_Comm * comm) {
 
 /*****************************************************************************
  *
- *  is_periodic
+ *  coords_periodic
  *
  *****************************************************************************/
 
@@ -321,16 +321,9 @@ int coords_periodic(coords_t * cs, int periodic[3]) {
   return 0;
 }
 
-int is_periodic(const int dim) {
-  assert(cs);
-  assert(dim == X || dim == Y || dim == Z);
-
-  return cs->periodic[dim];
-}
-
 /*****************************************************************************
  *
- *  L access function
+ *  coords_ltot
  *
  *****************************************************************************/
 
