@@ -112,7 +112,7 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
   double * fz = NULL;
 
   psi_nk(psi, &nk);
-  nsites = coords_nsites();
+  coords_nsites(psi->cs, &nsites);
 
  /* Allocate fluxes and initialise to zero */
   fe = calloc(nsites*nk, sizeof(double));
@@ -326,7 +326,7 @@ int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro,
   double ** flx = NULL;
 
   psi_nk(psi, &nk);
-  nsites = coords_nsites();
+  coords_nsites(psi->cs, &nsites);
 
   /* Allocate fluxes and initialise to zero */
   flx = (double **) calloc(nsites*nk, sizeof(double));

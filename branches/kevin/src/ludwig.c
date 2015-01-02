@@ -555,7 +555,8 @@ void ludwig_run(const char * inputfile) {
 	  phi_force_calculation(ludwig->phi, ludwig->cs, ludwig->hydro);
 	}
 	else {
-	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map);
+	  phi_force_colloid(ludwig->cs, ludwig->collinfo, ludwig->hydro,
+			    ludwig->map);
 	}
       }
 

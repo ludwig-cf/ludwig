@@ -43,7 +43,7 @@ int coords_field_index(int index, int n, int nf, int * indexf) {
   assert(n >= 0);
   assert(n < nf);
   assert(index >= 0);
-  assert(index < coords_nsites());
+  /* assert(index < cs->nsites); PENDING reinstate */
   assert(indexf);
 
   *indexf = nf*index + n;

@@ -132,7 +132,7 @@ int noise_init(noise_t * obj, int master_seed) {
 
   assert(obj);
 
-  obj->nsites = coords_nsites();
+  coords_nsites(obj->cs, &obj->nsites);
   nstat = NNOISE_STATE*obj->nsites;
 
   obj->state = (unsigned int *) calloc(nstat, sizeof(unsigned int));
@@ -146,7 +146,7 @@ int noise_init(noise_t * obj, int master_seed) {
   }
 
   nextra = 1;
-  coords_ntotal(ntotal);
+  coords_ntotal(obj->cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 

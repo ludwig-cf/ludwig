@@ -587,7 +587,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
-  coords_ntotal(ntotal);
+  coords_ntotal(stat->cs, ntotal);
   coords_nlocal(nlocal);
 
   physics_eta_shear(&eta);

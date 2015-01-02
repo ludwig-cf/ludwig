@@ -19,11 +19,8 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "coords.h"
 #include "free_energy.h"
 #include "phi_force_stress.h"
-
-static double * pth_;
 
 /*****************************************************************************
  *
@@ -33,7 +30,7 @@ static double * pth_;
  *
  *****************************************************************************/
 
-void phi_force_stress_compute(void) {
+int phi_force_stress_compute(coords_t * cs, double * p3d) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -54,13 +51,13 @@ void phi_force_stress_compute(void) {
 	index = coords_index(ic, jc, kc);
 
 	chemical_stress(index, pth_local);
-	phi_force_stress_set(index, pth_local);
+	phi_force_stress_set(p3d, index, pth_local);
 
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -69,20 +66,20 @@ void phi_force_stress_compute(void) {
  *
  *****************************************************************************/
 
-void phi_force_stress_set(const int index, double p[3][3]) {
+int phi_force_stress_set(double * p3d, int index, double p[3][3]) {
 
   int ia, ib, n;
 
-  assert(pth_);
+  assert(p3d);
 
   n = 0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      pth_[9*index + n++] = p[ia][ib];
+      p3d[9*index + n++] = p[ia][ib];
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -91,20 +88,20 @@ void phi_force_stress_set(const int index, double p[3][3]) {
  *
  *****************************************************************************/
 
-void phi_force_stress(const int index, double p[3][3]) {
+int phi_force_stress(double * p3d, int index, double p[3][3]) {
 
   int ia, ib, n;
 
-  assert(pth_);
+  assert(p3d);
 
   n = 0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      p[ia][ib] = pth_[9*index + n++];
+      p[ia][ib] = p3d[9*index + n++];
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -113,18 +110,18 @@ void phi_force_stress(const int index, double p[3][3]) {
  *
  *****************************************************************************/
 
-void phi_force_stress_allocate() {
+int phi_force_stress_allocate(coords_t * cs, double ** p3d) {
 
   int n;
 
   assert(coords_nhalo() >= 2);
 
-  n = coords_nsites();
+  coords_nsites(cs, &n);
 
-  pth_ = (double *) malloc(9*n*sizeof(double));
-  if (pth_ == NULL) fatal("malloc(pth_) failed\n");
+  *p3d = (double *) malloc(9*n*sizeof(double));
+  if (*p3d == NULL) fatal("malloc(pth_) failed\n");
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -133,9 +130,9 @@ void phi_force_stress_allocate() {
  *
  *****************************************************************************/
 
-void phi_force_stress_free() {
+int phi_force_stress_free(double * pth) {
 
-  free(pth_);
+  free(pth);
 
-  return;
+  return 0;
 }

@@ -28,7 +28,7 @@
 #include "phi_force_stress.h"
 #include "phi_force.h"
 
-static int phi_force_calculation_fluid(hydro_t * hydro);
+static int phi_force_calculation_fluid(coords_t * cs, hydro_t * hydro);
 static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				    double * fz);
 static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
@@ -113,7 +113,7 @@ int phi_force_calculation(field_t * phi, coords_t * cs, hydro_t * hydro) {
   }
   else {
     if (force_divergence_) {
-      phi_force_calculation_fluid(hydro);
+      phi_force_calculation_fluid(cs, hydro);
    }
     else {
       assert(phi);
@@ -137,7 +137,7 @@ int phi_force_calculation(field_t * phi, coords_t * cs, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int phi_force_calculation_fluid(hydro_t * hydro) {
+static int phi_force_calculation_fluid(coords_t * cs, hydro_t * hydro) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -145,17 +145,15 @@ static int phi_force_calculation_fluid(hydro_t * hydro) {
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
+  double * p3d = NULL;
 
-  void (* chemical_stress)(const int index, double s[3][3]);
-
+  assert(cs);
   assert(hydro);
 
   coords_nlocal(nlocal);
 
-  phi_force_stress_allocate();
-  phi_force_stress_compute();
-
-  chemical_stress = phi_force_stress;
+  phi_force_stress_allocate(cs, &p3d);
+  phi_force_stress_compute(cs, p3d);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -166,37 +164,37 @@ static int phi_force_calculation_fluid(hydro_t * hydro) {
 	index = le_site_index(ic, jc, kc);
 
 	/* Compute pth at current point */
-	chemical_stress(index, pth0);
+	phi_force_stress(p3d, index, pth0);
 
 	/* Compute differences */
 	
 	index1 = le_site_index(icp1, jc, kc);
-	chemical_stress(index1, pth1);
+	phi_force_stress(p3d, index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 	index1 = le_site_index(icm1, jc, kc);
-	chemical_stress(index1, pth1);
+	phi_force_stress(p3d, index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 	index1 = le_site_index(ic, jc+1, kc);
-	chemical_stress(index1, pth1);
+	phi_force_stress(p3d, index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	index1 = le_site_index(ic, jc-1, kc);
-	chemical_stress(index1, pth1);
+	phi_force_stress(p3d, index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	index1 = le_site_index(ic, jc, kc+1);
-	chemical_stress(index1, pth1);
+	phi_force_stress(p3d, index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 	index1 = le_site_index(ic, jc, kc-1);
-	chemical_stress(index1, pth1);
+	phi_force_stress(p3d, index1, pth1);
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
@@ -210,7 +208,7 @@ static int phi_force_calculation_fluid(hydro_t * hydro) {
     }
   }
 
-  phi_force_stress_free();
+  phi_force_stress_free(p3d);
 
   return 0;
 }
@@ -321,7 +319,7 @@ static int phi_force_flux(coords_t * cs, hydro_t * hydro) {
   assert(cs);
   assert(hydro);
 
-  n = coords_nsites();
+  coords_nsites(cs, &n);
 
   fluxe = (double *) malloc(3*n*sizeof(double));
   fluxw = (double *) malloc(3*n*sizeof(double));

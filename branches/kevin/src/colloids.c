@@ -217,7 +217,7 @@ int colloids_info_map_init(colloids_info_t * info) {
 
   assert(info);
 
-  nsites = coords_nsites();
+  coords_nsites(info->cs, &nsites);
 
   info->nsites = nsites;
   info->map_old = (colloid_t **) calloc(nsites, sizeof(colloid_t *));

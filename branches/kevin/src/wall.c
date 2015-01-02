@@ -48,7 +48,7 @@ static double lubrication_rcnormal_; /* Wall normal lubrication cut off */
 static B_link * allocate_link(void);
 
 static int wall_init_links(map_t * map);
-static int wall_init_boundary_site_map(map_t * map);
+static int wall_init_boundary_site_map(coords_t * cs, map_t * map);
 static void     init_boundary_speeds(const double, const double);
 static void     wall_checks(int p[3]);
 static int wall_shear_init(lb_t * lb, coords_t * cs, double utop,
@@ -93,7 +93,7 @@ int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map) {
     info("--------------\n");
 
     wall_checks(periodic);
-    wall_init_boundary_site_map(map);
+    wall_init_boundary_site_map(cs, map);
     wall_init_links(map);
 
     init_boundary_speeds(ux_bottom, ux_top);
@@ -397,7 +397,7 @@ static int wall_init_links(map_t * map) {
  *
  *****************************************************************************/
 
-static int wall_init_boundary_site_map(map_t * map) {
+static int wall_init_boundary_site_map(coords_t * cs, map_t * map) {
 
   int ic, jc, kc, index;
   int ic_global, jc_global, kc_global;
@@ -406,9 +406,10 @@ static int wall_init_boundary_site_map(map_t * map) {
   int noffset[3];
   int nextra;
 
+  assert(cs);
   assert(map);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   nextra = coords_nhalo();

@@ -817,7 +817,8 @@ int blue_phase_nematic_init(field_t * fq, const double n[3]) {
  *
  *****************************************************************************/
 
-int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
+int blue_phase_active_nematic_init(coords_t * cs, field_t * fq,
+				   const double n[3]) {
 
   int ic, jc, kc;
   int ntotal[3];
@@ -835,7 +836,7 @@ int blue_phase_active_nematic_init(field_t * fq, const double n[3]) {
   double ang=pi_/180.0*10.0;
 
   assert(modulus(n) > 0.0);
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -1187,7 +1188,7 @@ void blue_phase_M_rot(double M[3][3], int dim, double alpha){
  *
  *****************************************************************************/
 
-int blue_phase_cf1_init(field_t * fq, const int axis) {
+int blue_phase_cf1_init(coords_t * cs, field_t * fq, const int axis) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -1205,7 +1206,7 @@ int blue_phase_cf1_init(field_t * fq, const int axis) {
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
 
   q0 = blue_phase_q0();
   alpha0 = 0.5*pi_; 
@@ -1317,7 +1318,7 @@ int blue_phase_random_cf1_init(coords_t * cs, field_t * fq, const int axis) {
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
 
   q0 = blue_phase_q0();
   alpha0 = 0.5*pi_; 

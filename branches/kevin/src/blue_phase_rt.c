@@ -315,7 +315,7 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
     info("Initialising Q_ab to active nematic\n");
     rt_double_parameter_vector(rt, "lc_init_nematic", nhat);
     info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
-    blue_phase_active_nematic_init(q, nhat);
+    blue_phase_active_nematic_init(cs, q, nhat);
   }
 
   if (strcmp(key1, "o8m") == 0) {
@@ -365,19 +365,19 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
   if (strcmp(key1, "cf1_x") == 0) {
     info("Initialising Q_ab to cholesteric finger (1st kind)\n");
     info("Finger axis X, helical axis Y\n");
-    blue_phase_cf1_init(q, X);
+    blue_phase_cf1_init(cs, q, X);
   }
 
   if (strcmp(key1, "cf1_y") == 0) {
     info("Initialising Q_ab to cholesteric finger (1st kind)\n");
     info("Finger axis Y, helical axis Z\n");
-    blue_phase_cf1_init(q, Y);
+    blue_phase_cf1_init(cs, q, Y);
   }
 
   if (strcmp(key1, "cf1_z") == 0) {
     info("Initialising Q_ab to cholesteric finger (1st kind)\n");
     info("Finger axis Z, helical axis X\n");
-    blue_phase_cf1_init(q, Z);
+    blue_phase_cf1_init(cs, q, Z);
   }
 
   if (strcmp(key1, "cf1_fluc_x") == 0) {

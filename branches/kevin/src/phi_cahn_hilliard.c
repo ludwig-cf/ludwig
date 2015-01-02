@@ -320,7 +320,7 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
   physics_mobility(&mobility);
   var = sqrt(2.0*kt*mobility);
 
-  nsites = coords_nsites();
+  coords_nsites(flux->cs, &nsites);
   rflux = (double *) malloc(3*nsites*sizeof(double));
   if (rflux == NULL) fatal("malloc(rflux) failed\n");
 
@@ -555,7 +555,7 @@ static int phi_ch_le_fix_fluxes_parallel(coords_t *cs, int nf,
 
   nhalo = coords_nhalo();
   coords_ltot(cs, ltot);
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 

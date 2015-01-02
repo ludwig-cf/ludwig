@@ -385,11 +385,13 @@ void coords_nlocal(int n[3]) {
  *
  *****************************************************************************/
 
-int coords_nsites(void) {
+int coords_nsites(coords_t * cs, int * nsites) {
 
   assert(cs);
 
-  return cs->nsites;
+  *nsites = cs->nsites;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -523,10 +525,10 @@ int coords_nhalo(void) {
  *
  *****************************************************************************/
 
-int coords_ntotal(int ntotal[3]) {
+int coords_ntotal(coords_t * cs, int ntotal[3]) {
 
   assert(cs);
-  assert(ntotal);
+
   ntotal[X] = cs->ntotal[X];
   ntotal[Y] = cs->ntotal[Y];
   ntotal[Z] = cs->ntotal[Z];

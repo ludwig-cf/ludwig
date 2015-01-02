@@ -130,7 +130,7 @@ int do_test_coords_nhalo(control_t * ctrl) {
     control_macro_test(ctrl, ys == zs*(nlocal[Z] + 2*nhalo_ref));
     control_macro_test(ctrl, xs == ys*(nlocal[Y] + 2*nhalo_ref));
  
-    nsites = coords_nsites();
+    coords_nsites(cs, &nsites);
     control_macro_test(ctrl, nsites == xs*(nlocal[X] + 2*nhalo_ref));
   }
   catch (TestFailedException) {
@@ -303,7 +303,7 @@ int do_test_coords_system(control_t * ctrl, coords_t * cs,
     coords_lmin(cs, lmin);
     coords_ltot(cs, ltot);
     coords_periodic(cs, periodic);
-    coords_ntotal(ntotal);
+    coords_ntotal(cs, ntotal);
 
     control_macro_test(ctrl, ntotal[X] == ntotal_ref[X]);
     control_macro_test(ctrl, ntotal[Y] == ntotal_ref[Y]);
@@ -354,7 +354,7 @@ int do_test_coords_nsites(control_t * ctrl, coords_t * cs)
   try {
     nh2 = 2*coords_nhalo();
     coords_nlocal(nlocal);
-    nsites = coords_nsites();
+    coords_nsites(cs, &nsites);
     nexpect = (nlocal[X] + nh2)*(nlocal[Y] + nh2)*(nlocal[Z] + nh2);
 
     control_verb(ctrl, "nsites: %d (%d)\n", nsites, nexpect);
@@ -399,7 +399,7 @@ int do_test_coords_decomposition(control_t * ctrl, coords_t * cs,
 
   ntask = decomp_ref[X]*decomp_ref[Y]*decomp_ref[Z];
 
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   if (ncartsz != ntask) return 0;
   if (ntotal[X] % decomp_ref[X] != 0) return 0;
   if (ntotal[Y] % decomp_ref[Y] != 0) return 0;
@@ -491,7 +491,7 @@ int do_test_coords_communicator(control_t * ctrl, coords_t * cs)
   assert(ctrl);
   assert(cs);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 

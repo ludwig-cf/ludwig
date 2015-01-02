@@ -235,7 +235,7 @@ int do_test_le_interp3(control_t * ctrl) {
     /* Check displacement calculations. Run to a displacement which is
      * at least a couple of periodic images. */
 
-    coords_ntotal(ntotal);
+    coords_ntotal(cs, ntotal);
     coords_nlocal(nlocal);
     coords_nlocal_offset(noffset);
 
@@ -370,7 +370,7 @@ int do_test_le_interp4(control_t * ctrl) {
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
 
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   nhalo = coords_nhalo();

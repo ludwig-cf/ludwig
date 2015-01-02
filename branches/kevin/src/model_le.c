@@ -514,7 +514,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   assert(CVXBLOCK == 1);
 
   coords_ltot(lb->cs, ltot);
-  coords_ntotal(ntotal);
+  coords_ntotal(lb->cs, ntotal);
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   coords_nlocal_offset(offset);

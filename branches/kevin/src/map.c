@@ -48,7 +48,7 @@ int map_create(coords_t * cs, int ndata, map_t ** pobj) {
   assert(ndata >= 0);
   assert(pobj);
 
-  nsites = coords_nsites();
+  coords_nsites(cs, &nsites);
   nhalo = coords_nhalo();
 
   obj = calloc(1, sizeof(map_t));

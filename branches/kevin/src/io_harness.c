@@ -154,7 +154,7 @@ static struct io_decomposition_t * io_decomposition_create(coords_t * cs,
   MPI_Comm_rank(comm, &rank);
   MPI_Cart_coords(comm, rank, 3, icartcoords);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal_offset(noffset);
 
   p = io_decomposition_allocate();
@@ -396,7 +396,7 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
   /* Single file offset */
 
   if (info->single_file_read) {
-    coords_ntotal(ntotal);
+    coords_ntotal(info->cs, ntotal);
     coords_nlocal_offset(noffset);
     ifo = noffset[X] + ic - 1;
     jfo = noffset[Y] + jc - 1;
@@ -455,7 +455,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   coords_cartsz(info->cs, cartsz);
   coords_cart_coords(info->cs, cartcoords);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(info->cs, ntotal);
   coords_nlocal_offset(noff);
 
   pe_subdirectory(subdirectory);

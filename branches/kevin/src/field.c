@@ -386,7 +386,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   coords_ltot(obj->cs, ltot);
   nhalo = coords_nhalo();
-  coords_ntotal(ntotal);
+  coords_ntotal(obj->cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   ib0 = nlocal[X] + nhalo + 1;

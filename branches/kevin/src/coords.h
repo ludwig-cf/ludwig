@@ -56,10 +56,10 @@ int coords_periodic(coords_t * cs, int period[3]);
 void   coords_nlocal(int n[3]);
 void   coords_nlocal_offset(int n[3]);
 int    coords_nhalo(void);
-int    coords_ntotal(int ntotal[3]);
-int    coords_nsites(void);
 int    coords_index(const int ic, const int jc, const int kc);
 
+int coords_ntotal(coords_t * cs, int ntotal[3]);
+int coords_nsites(coords_t * cs, int * nsites);
 int coords_minimum_distance(coords_t * cs, const double r1[3],
 			    const double r2[3], double r12[3]);
 int coords_index_to_ijk(coords_t * cs, int index, int coords[3]);

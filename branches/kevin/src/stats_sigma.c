@@ -89,7 +89,7 @@ int stats_sigma_create(coords_t * cs, field_t * phi, stats_sigma_t ** pstat) {
   if (stat == NULL) fatal("calloc(stat_sigma_t) failed\n");
 
   coords_ltot(cs, ltot);
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   physics_mobility(&mobility);
 
   /* Check we have a cubic system, or a square system (2d) */

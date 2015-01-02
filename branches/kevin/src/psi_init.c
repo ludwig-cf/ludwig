@@ -178,7 +178,7 @@ int psi_init_liquid_junction_set(psi_t * obj, coords_t * cs, double rho_el,
   assert(obj);
   assert(cs);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noff);
 

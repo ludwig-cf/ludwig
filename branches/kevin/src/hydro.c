@@ -476,7 +476,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   coords_ltot(obj->cs, ltot);
   nhalo = coords_nhalo();
-  coords_ntotal(ntotal);
+  coords_ntotal(obj->cs, ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   ib0 = nlocal[X] + nhalo + 1;

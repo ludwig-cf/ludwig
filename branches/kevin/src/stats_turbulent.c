@@ -242,7 +242,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
-  coords_ntotal(ntotal);
+  coords_ntotal(stat->cs, ntotal);
   coords_nlocal(nlocal);
 
   f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));

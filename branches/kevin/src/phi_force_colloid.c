@@ -54,7 +54,8 @@
 #include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 
-static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
+static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
+				   hydro_t * hydro,
 				   map_t * map);
 
 /*****************************************************************************
@@ -66,7 +67,8 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+int phi_force_colloid(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro,
+		      map_t * map) {
 
   int ncolloid;
   int required;
@@ -77,13 +79,7 @@ int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
   if (hydro == NULL && ncolloid == 0) required = 0;
 
   if (required) {
-
-    phi_force_stress_allocate();
-
-    phi_force_stress_compute();
-    phi_force_interpolation(cinfo, hydro, map);
-
-    phi_force_stress_free();
+    phi_force_interpolation(cs, cinfo, hydro, map);
   }
 
   return 0;
@@ -100,7 +96,8 @@ int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
  *
  *****************************************************************************/
 
-static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
+static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
+				   hydro_t * hydro,
 				   map_t * map) {
   int ia, ic, jc, kc;
   int index, index1;
@@ -111,16 +108,18 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   double pth1[3][3];
   double force[3];                  /* Accumulated force on fluid */
   double fw[3];                     /* Accumulated force on wall */
+  double * p3d = NULL;
 
   colloid_t * p_c;
-  void (* chemical_stress)(const int index, double s[3][3]);
 
+  assert(cs);
   assert(cinfo);
   assert(map);
 
   coords_nlocal(nlocal);
 
-  chemical_stress = phi_force_stress;
+  phi_force_stress_allocate(cs, &p3d);
+  phi_force_stress_compute(cs, p3d);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -134,7 +133,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	if (p_c) continue;
 
 	/* Compute pth at current point */
-	chemical_stress(index, pth0);
+	phi_force_stress(p3d, index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
 	  fw[ia] = 0.0;
@@ -162,7 +161,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  }
 	  else {
 	    /* This flux is fluid-fluid */ 
-	    chemical_stress(index1, pth1);
+	    phi_force_stress(p3d, index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	    }
@@ -189,7 +188,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  }
 	  else {
 	    /* Fluid - fluid */
-	    chemical_stress(index1, pth1);
+	    phi_force_stress(p3d, index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	    }
@@ -216,7 +215,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  }
 	  else {
 	    /* Fluid-fluid */
-	    chemical_stress(index1, pth1);
+	    phi_force_stress(p3d, index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	    }
@@ -243,7 +242,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  }
 	  else {
 	    /* Fluid-fluid */
-	    chemical_stress(index1, pth1);
+	    phi_force_stress(p3d, index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	    }
@@ -270,7 +269,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  }
 	  else {
 	    /* Fluid-fluid */
-	    chemical_stress(index1, pth1);
+	    phi_force_stress(p3d, index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	    }
@@ -297,7 +296,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	  }
 	  else {
 	    /* Fluid-fluid */
-	    chemical_stress(index1, pth1);
+	    phi_force_stress(p3d, index1, pth1);
 	    for (ia = 0; ia < 3; ia++) {
 	      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	    }
@@ -313,6 +312,8 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
       }
     }
   }
+
+  phi_force_stress_free(p3d);
 
   return 0;
 }

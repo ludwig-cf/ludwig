@@ -116,7 +116,7 @@ int stats_ahydro_init(stats_ahydro_t * ahydro, colloids_info_t * cinfo) {
   assert(ahydro);
   assert(cinfo);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(ahydro->cs, ntotal);
 
   /* Make sure we have a cubic system with one particle */
 

@@ -94,7 +94,7 @@ int psi_create(coords_t * cs, int nk, psi_t ** pobj) {
   assert(pobj);
   assert(nk > 1);
 
-  nsites = coords_nsites();
+  coords_nsites(cs, &nsites);
   nhalo = coords_nhalo();
 
   psi = calloc(1, sizeof(psi_t));

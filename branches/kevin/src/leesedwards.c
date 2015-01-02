@@ -186,7 +186,7 @@ int le_commit(le_t * le) {
 
   assert(le);
 
-  coords_ntotal(ntotal);
+  coords_ntotal(le->coords, ntotal);
 
   if (le->nplanes > 0) {
 
