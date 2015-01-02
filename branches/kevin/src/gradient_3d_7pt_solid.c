@@ -58,6 +58,7 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "map_s.h"
 #include "free_energy.h"
 #include "blue_phase.h"
 #include "colloids.h"
@@ -752,7 +753,9 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   assert(field);
 
   coords_nlocal(nlocal);
-  coords_strides(str + X, str + Y, str + Z);
+
+  /* PENDING a sane way to reference the coords object */
+  coords_strides(map_->cs, str + X, str + Y, str + Z);
 
   kappa0 = blue_phase_kappa0();
   kappa1 = blue_phase_kappa1();

@@ -15,6 +15,7 @@
 #ifndef FIELD_H
 #define FIELD_H
 
+#define NPAIR 2      /* Storage requirement for pair field */
 #define NVECTOR 3    /* Storage requirement for vector (per site) */
 #define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
 

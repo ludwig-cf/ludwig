@@ -19,7 +19,7 @@
 
 typedef int (* f_mu_solv_t)(int index, int n, double * mu);
 
-HOST int fe_create(void);
+HOST int fe_create_old(void);
 
 HOST void fe_density_set(double (* f)(const int index));
 HOST void fe_chemical_potential_set(double (* f)(const int index, const int nop));

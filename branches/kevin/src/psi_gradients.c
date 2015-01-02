@@ -133,7 +133,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
   assert(psi);
 
-  coords_strides(&xs, &ys, &zs);
+  coords_strides(psi->cs, &xs, &ys, &zs);
 
   e[X] = -0.5*(psi->psi[index + xs] - psi->psi[index - xs]);
   e[Y] = -0.5*(psi->psi[index + ys] - psi->psi[index - ys]);
@@ -217,7 +217,7 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   assert(n < psi->nk);
   assert(grad_rho);
 
-  coords_strides(&xs, &ys, &zs);
+  coords_strides(psi->cs, &xs, &ys, &zs);
 
   grad_rho[X] = 0.0;
   grad_rho[Y] = 0.0;

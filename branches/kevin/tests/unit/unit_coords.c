@@ -124,7 +124,7 @@ int do_test_coords_nhalo(control_t * ctrl) {
     nhalo = coords_nhalo();
     control_macro_test(ctrl, nhalo == nhalo_ref);
 
-    coords_strides(&xs, &ys, &zs);
+    coords_strides(cs, &xs, &ys, &zs);
     coords_nlocal(nlocal);
     control_macro_test(ctrl, zs == 1);
     control_macro_test(ctrl, ys == zs*(nlocal[Z] + 2*nhalo_ref));

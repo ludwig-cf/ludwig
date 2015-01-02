@@ -12,6 +12,9 @@ int main(int argc, char ** argv) {
   int do_ut_pe(control_t * ctrl);
   int do_ut_coords(control_t * ctrl);
   int do_ut_rti(control_t * ctrl);
+  int do_ut_fe_symm(control_t * ctrl);
+  int do_ut_fe_braz(control_t * ctrl);
+  int do_ut_fe_surf(control_t * ctrl);
   int do_ut_fe_electro(control_t * ctrl);
   int do_ut_fe_es(control_t * ctrl);
   int do_ut_lees_edwards(control_t * ctrl);

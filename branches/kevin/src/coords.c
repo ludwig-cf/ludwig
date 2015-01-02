@@ -657,7 +657,7 @@ int coords_index_to_ijk(coords_t * cs, int index, int coords[3]) {
  *
  *****************************************************************************/
 
-int coords_strides(int * xs, int * ys, int * zs) {
+int coords_strides(coords_t * cs, int * xs, int * ys, int * zs) {
 
   assert(cs);
 

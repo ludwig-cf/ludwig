@@ -71,7 +71,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   physics_kt(&kt);
 
   /* Memory strides */
-  coords_strides(&xs, &ys, &zs);
+  coords_strides(psi->cs, &xs, &ys, &zs);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

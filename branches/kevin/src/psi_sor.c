@@ -310,7 +310,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   assert(nlocal[Y] % 2 == 0);
   assert(nlocal[Z] % 2 == 0);
 
-  coords_strides(&xs, &ys, &zs);
+  coords_strides(obj->cs, &xs, &ys, &zs);
 
   /* Compute initial norm of the residual */
 

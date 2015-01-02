@@ -27,7 +27,6 @@
 #include "field_grad.h"
 #include "blue_phase.h"
 #include "io_harness.h"
-#include "leesedwards.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */

@@ -433,7 +433,7 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
   /* Stride in memory for velocities, and space */
 
   p = lb->ndist*lb->nsite;
-  coords_strides(&xstr, &ystr, &zstr);
+  coords_strides(lb->cs, &xstr, &ystr, &zstr);
   kc = 1;
 
   for (n = 0; n < lb->ndist; n++) {
@@ -492,7 +492,7 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
   /* Stride in memory for velocities, and space */
 
   p = lb->ndist*lb->nsite;
-  coords_strides(&xstr, &ystr, &zstr);
+  coords_strides(lb->cs, &xstr, &ystr, &zstr);
 
   for (n = 0; n < lb->ndist; n++) {
 
@@ -563,7 +563,7 @@ static int lb_propagate_d3q19_r(lb_t * lb) {
   /* Stride in memory for velocities, and space */
 
   p = lb->ndist*lb->nsite;
-  coords_strides(&xstr, &ystr, &zstr);
+  coords_strides(lb->cs, &xstr, &ystr, &zstr);
 
   for (n = 0; n < lb->ndist; n++) {
 

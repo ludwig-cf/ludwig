@@ -51,7 +51,6 @@ int coords_ltot(coords_t * cs, double ltot[3]);
 int coords_periodic(coords_t * cs, int period[3]);
 
 
-
 /* Old interface pending update */
 
 void   coords_nlocal(int n[3]);
@@ -64,8 +63,7 @@ int    coords_index(const int ic, const int jc, const int kc);
 int coords_minimum_distance(coords_t * cs, const double r1[3],
 			    const double r2[3], double r12[3]);
 int coords_index_to_ijk(coords_t * cs, int index, int coords[3]);
-
-int coords_strides(int * xs, int * ys, int * zs);
+int coords_strides(coords_t * cs, int * xs, int * ys, int * zs);
 
 /* A "class" function */
 

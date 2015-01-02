@@ -57,7 +57,7 @@ static double kappa_ = 1.0;
  *
  ****************************************************************************/
 
-int fe_create(void) {
+int fe_create_old(void) {
 
   fp_fed = fe_fed_null;
   fp_mu  = fe_mu_null;

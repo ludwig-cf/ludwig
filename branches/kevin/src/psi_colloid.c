@@ -21,6 +21,7 @@
 
 #include "util.h"
 #include "coords.h"
+#include "psi_s.h"
 #include "psi_colloid.h"
 
 static int psi_colloid_charge_accum(psi_t * psi, colloids_info_t * cinfo,
@@ -236,7 +237,7 @@ int psi_colloid_replace_charge(psi_t * psi, colloids_info_t * cinfo,
   psi_nk(psi, &nk);
   assert(nk == 2);
 
-  coords_strides(&xs, &ys, &zs);
+  coords_strides(psi->cs, &xs, &ys, &zs);
 
   weight = 0.0;
   for (n = 0; n < nk; n++) {

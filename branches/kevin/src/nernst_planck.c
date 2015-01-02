@@ -69,7 +69,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
-#include "psi.h"
 #include "advection.h"
 #include "advection_bcs.h"
 #include "free_energy.h"
@@ -184,7 +183,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   assert(fz);
 
   coords_nlocal(nlocal);
-  coords_strides(&xs, &ys, &zs);
+  coords_strides(psi->cs, &xs, &ys, &zs);
 
   psi_nk(psi, &nk);
   psi_unit_charge(psi, &eunit);

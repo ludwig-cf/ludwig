@@ -347,6 +347,46 @@ int field_grad_vector_delsq(field_grad_t * obj, int index, double delsq[3]) {
 
 /*****************************************************************************
  *
+ *  field_grad_pair_grad
+ *
+ *  Expand and return grad[3][2]
+ *
+ *****************************************************************************/
+
+int field_grad_pair_grad(field_grad_t * obj, int index, double grad[2][3]) {
+
+  assert(obj);
+  assert(obj->nf == NPAIR);
+
+  grad[0][X] = obj->grad[NVECTOR*(NPAIR*index + X) + 0];
+  grad[1][X] = obj->grad[NVECTOR*(NPAIR*index + X) + 1];
+  grad[0][Y] = obj->grad[NVECTOR*(NPAIR*index + Y) + 0];
+  grad[1][Y] = obj->grad[NVECTOR*(NPAIR*index + Y) + 1];
+  grad[0][Z] = obj->grad[NVECTOR*(NPAIR*index + Z) + 0];
+  grad[1][Z] = obj->grad[NVECTOR*(NPAIR*index + Z) + 1];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ * field_grad_pair_delsq
+ *
+ *****************************************************************************/
+
+int field_grad_pair_delsq(field_grad_t * obj, int index, double delsq[2]) {
+
+  assert(obj);
+  assert(obj->nf == NPAIR);
+
+  delsq[0] = obj->delsq[NPAIR*index + 0];
+  delsq[1] = obj->delsq[NPAIR*index + 1];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  field_grad_tensor_grad
  *
  *  Expand and return the rank 3 gradient of rank 2 tensor q.

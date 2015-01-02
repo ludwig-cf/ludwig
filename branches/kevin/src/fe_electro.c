@@ -76,7 +76,7 @@ int fe_electro_create(psi_t * psi) {
   fe->psi = psi;
   physics_ref(&fe->param);
 
-  fe_create();
+  fe_create_old();
   fe_density_set(fe_electro_fed);
   fe_chemical_potential_set(fe_electro_mu);
   fe_chemical_stress_set(fe_electro_stress_ex);
