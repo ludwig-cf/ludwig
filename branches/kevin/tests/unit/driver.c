@@ -30,6 +30,11 @@ int main(int argc, char ** argv) {
   do_ut_coords(ctrl);
   do_ut_rti(ctrl);
   do_ut_lees_edwards(ctrl);
+  /*
+  do_ut_fe_symm(ctrl);
+  do_ut_fe_braz(ctrl);
+  do_ut_fe_surf(ctrl);
+  */
   do_ut_fe_electro(ctrl);
   do_ut_fe_es(ctrl);
 

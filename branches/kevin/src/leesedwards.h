@@ -22,43 +22,46 @@ __host__ int le_free(le_t ** le);
 __host__ int le_retain(le_t * le);
 
 __host__ int le_nplane_set(le_t * le, int nplanes);
-__host__ int le_uy_set(le_t * le, double uy);
+__host__ int le_plane_uy_set(le_t * le, double uy);
 __host__ int le_oscillatory_set(le_t * le, int period);
 __host__ int le_toffset_set(le_t * le, int nt0);
 __host__ int le_info(le_t * le);
 __host__ int le_commit(le_t * le);
 
 __host__ int le_comm(le_t * le, MPI_Comm * comm);
-__host__ int le_xplane_comm(le_t * le, MPI_Comm * comm);
-__host__ int le_jstart_to_mpi_ranks(le_t * le, const int, int send[2], int recv[2]);
+__host__ int le_plane_comm(le_t * le, MPI_Comm * comm);
+__host__ int le_jstart_to_mpi_ranks(le_t * le, int, int send[2], int recv[2]);
 __host__ int le_nplane_total(le_t * le, int * npt);
 __host__ int le_nplane_local(le_t * le, int * npl);
-__host__ int le_uy(le_t * le, double * uy);
+__host__ int le_plane_uy(le_t * le, double * uy);
+__host__ int le_plane_uy_now(le_t * le, double t, double * uy);
 __host__ int le_nxbuffer(le_t * le, int * nxb);
+__host__ int le_shear_rate(le_t * le, double * gammadot);
+__host__ int le_steady_uy(le_t * le, int ic, double * uy); 
+
+
+/* coords 'inherited' interface host / device */
+
+__host__ int le_nhalo(le_t * le, int * nhalo);
+__host__ int le_nsites(le_t * le, int * nsites);
+__host__ int le_nlocal(le_t * le, int nlocal[3]);
+__host__ int le_site_index(le_t * le, int ic, int jc, int kc);
+__host__ int le_strides(le_t * le, int * xs, int * ys, int * zs);
+__host__ int le_ltot(le_t * le, double ltot[3]);
+__host__ int le_cartsz(le_t * le, int cartsz[3]);
+__host__ int le_ntotal(le_t * le, int ntotal[3]);
+__host__ int le_nlocal_offset(le_t * le, int offset[3]);
+__host__ int le_cart_coords(le_t * le, int cartcoords[3]);
 
 /* old static interface */
 
-__host__ MPI_Comm le_communicator(void);
-__host__ MPI_Comm le_plane_comm(void);
-__host__ int le_jstart_to_ranks(const int, int send[2], int recv[2]);
-
-__host__ int le_get_nxbuffer(void);
 __host__ int le_plane_location(const int);
-__host__ int le_get_nplane_total(void);
-__host__ int le_nsites(void);
-
 __host__ double le_buffer_displacement(const int, const double);
 __host__ double le_get_block_uy(int);
-__host__ double le_get_steady_uy(const int); 
-__host__ double le_plane_uy(const double);
-__host__ double le_plane_uy_max(void);
-__host__ double le_shear_rate(void);
 
-/* Posible target routines */
+/* Additional target routines */
 
-__host__ int le_get_nplane_local(void);
-__host__ int le_index_real_to_buffer(const int, const int);
-__host__ int le_index_buffer_to_real(const int);
-__host__ int le_site_index(const int, const int, const int);
+__host__ int le_index_real_to_buffer(le_t * le, int ic, int idisplace);
+__host__ int le_index_buffer_to_real(le_t * le, int ibuf);
 
 #endif

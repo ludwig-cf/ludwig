@@ -144,7 +144,7 @@ int do_test_fe_es2(control_t * ctrl) {
 
   field_create(coords, 1, "phi", &phi);
   assert(phi);
-  field_init(phi, 1);
+  field_init(phi, 1, NULL);
 
   field_grad_create(phi, 2, &dphi);
   assert(dphi);

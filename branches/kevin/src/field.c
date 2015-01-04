@@ -27,15 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "coords_field.h"
-#include "leesedwards.h"
-#include "io_harness.h"
 #include "util.h"
 #include "control.h" /* Can we move get_step() to LE please? */
 #include "field_s.h"
-#include "targetDP.h"
 
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
@@ -125,26 +120,27 @@ int field_free(field_t * obj) {
  *
  *****************************************************************************/
 
-int field_init(field_t * obj, int nhcomm) {
-
-  int nsites;
+int field_init(field_t * obj, int nhcomm, le_t * le) {
 
   assert(obj);
   assert(obj->data == NULL);
+
   /* assert(nhcomm <= coords_nhalo());*/
 
-  nsites = le_nsites();
-  obj->data = (double*) calloc(obj->nf*nsites, sizeof(double));
+  coords_nsites(obj->cs, &obj->nsites);
+  if (le) le_nsites(le, &obj->nsites);
+
+  obj->data = (double*) calloc(obj->nf*obj->nsites, sizeof(double));
 
   if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
 
   /* allocate target copy */
-  targetCalloc((void **) &obj->t_data, obj->nf*nsites*sizeof(double));
+  targetCalloc((void **) &obj->t_data, obj->nf*obj->nsites*sizeof(double));
 
   /* allocate boolean lattice-shaped struture for masking*/
   
-  obj->siteMask = (char  *) calloc(nsites,sizeof(char));
-  targetCalloc((void **) &obj->t_siteMask, nsites*sizeof(char));
+  obj->siteMask = (char  *) calloc(obj->nsites,sizeof(char));
+  targetCalloc((void **) &obj->t_siteMask, obj->nsites*sizeof(char));
 
 
   /* MPI datatypes for halo */
@@ -152,6 +148,9 @@ int field_init(field_t * obj, int nhcomm) {
   obj->nhcomm = nhcomm;
   coords_field_init_mpi_indexed(obj->cs, obj->nhcomm, obj->nf, MPI_DOUBLE,
 				obj->halo);
+
+  obj->le = le;
+  /* PENDING RETAIN */
 
   return 0;
 }
@@ -240,6 +239,9 @@ int field_halo(field_t * obj) {
  *  Interpolate the phi field to take account of any local Lees Edwards
  *  boundaries.
  *
+ *  If a non-NULL Lees Edwards coordinate system has not been provided,
+ *  this will just return as if there are no planes.
+ *
  *  The buffer region of obj->data[] is updated with the interpolated
  *  values.
  *
@@ -248,6 +250,7 @@ int field_halo(field_t * obj) {
 int field_leesedwards(field_t * obj) {
 
   int nf;
+  int nxb;
   int nhalo;
   int nlocal[3]; /* Local system size */
   int ib;        /* Index in buffer region */
@@ -269,9 +272,12 @@ int field_leesedwards(field_t * obj) {
 
   assert(obj);
   assert(obj->data);
+ 
+  if (obj->le == NULL) return 0;
 
-  coords_ltot(obj->cs, ltot);
-  coords_cartsz(obj->cs, cartsz);
+  le_ltot(obj->le, ltot);
+  le_nxbuffer(obj->le, &nxb);
+  le_cartsz(obj->le, cartsz);
 
   if (cartsz[Y] > 1) {
     /* This has its own routine. */
@@ -281,17 +287,17 @@ int field_leesedwards(field_t * obj) {
     /* No messages are required... */
 
     field_nf(obj, &nf);
-    coords_nhalo(obj->cs, &nhalo);
-    coords_nlocal(obj->cs, nlocal);
+    le_nhalo(obj->le, &nhalo);
+    le_nlocal(obj->le, nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
     /* -1.0 as zero required for first step; a 'feature' to
      * maintain the regression tests */
     t = 1.0*get_step() - 1.0;
 
-    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+    for (ib = 0; ib < nxb; ib++) {
 
-      ic = le_index_buffer_to_real(ib);
+      ic = le_index_buffer_to_real(obj->le, ib);
       dy = le_buffer_displacement(ib, t);
       dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
@@ -309,11 +315,11 @@ int field_leesedwards(field_t * obj) {
         j3 = 1 + j2 % nlocal[Y];
 
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-          index  = nf*le_site_index(ib0 + ib, jc, kc);
-          index0 = nf*le_site_index(ic, j0, kc);
-          index1 = nf*le_site_index(ic, j1, kc);
-          index2 = nf*le_site_index(ic, j2, kc);
-          index3 = nf*le_site_index(ic, j3, kc);
+          index  = nf*le_site_index(obj->le, ib0 + ib, jc, kc);
+          index0 = nf*le_site_index(obj->le, ic, j0, kc);
+          index1 = nf*le_site_index(obj->le, ic, j1, kc);
+          index2 = nf*le_site_index(obj->le, ic, j2, kc);
+          index3 = nf*le_site_index(obj->le, ic, j3, kc);
           for (n = 0; n < nf; n++) {
             obj->data[index + n] =
               -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[index0 + n]
@@ -350,6 +356,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   int nf;
   int ntotal[3];
+  int nxb;
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   int ib;                  /* Index in buffer region */
@@ -376,22 +383,24 @@ static int field_leesedwards_parallel(field_t * obj) {
   const int tag1 = 1257;
   const int tag2 = 1258;
 
-  MPI_Comm le_comm;
+  MPI_Comm comm;
   MPI_Request request[6];
   MPI_Status  status[3];
 
   assert(obj);
+  assert(obj->le);
 
   field_nf(obj, &nf);
 
-  coords_ltot(obj->cs, ltot);
-  coords_nhalo(obj->cs, &nhalo);
-  coords_ntotal(obj->cs, ntotal);
-  coords_nlocal(obj->cs, nlocal);
-  coords_nlocal_offset(obj->cs, noffset);
+  le_ltot(obj->le, ltot);
+  le_nhalo(obj->le, &nhalo);
+  le_ntotal(obj->le, ntotal);
+  le_nlocal(obj->le, nlocal);
+  le_nlocal_offset(obj->le, noffset);
   ib0 = nlocal[X] + nhalo + 1;
 
-  le_comm = le_communicator();
+  le_nxbuffer(obj->le, &nxb);
+  le_comm(obj->le, &comm);
 
   /* Allocate the temporary buffer */
 
@@ -406,9 +415,9 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   /* One round of communication for each buffer plane */
 
-  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+  for (ib = 0; ib < nxb; ib++) {
 
-    ic = le_index_buffer_to_real(ib);
+    ic = le_index_buffer_to_real(obj->le, ib);
     kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
@@ -427,7 +436,7 @@ static int field_leesedwards_parallel(field_t * obj) {
     assert(j1 >= 1);
     assert(j1 <= ntotal[Y]);
 
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    le_jstart_to_mpi_ranks(obj->le, j1, nrank_s, nrank_r);
 
     /* Local quantities: j2 is the position of j1 in local coordinates.
      * The three sections to send/receive are organised as follows:
@@ -440,27 +449,27 @@ static int field_leesedwards_parallel(field_t * obj) {
 
     jc = nlocal[Y] - j2 + 1;
     n1 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer, n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(buffer, n1, MPI_DOUBLE, nrank_r[0], tag0, comm, request);
 
     jc = imin(nlocal[Y], j2 + 2*nhalo + 2);
     n2 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
+    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, comm,
               request + 1);
 
     jc = imax(0, j2 - nlocal[Y] + 2*nhalo + 2);
     n3 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, le_comm,
+    MPI_Irecv(buffer + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, comm,
               request + 2);
 
     /* Post sends and wait for receives. */
 
-    index = nf*le_site_index(ic, j2, kc);
-    MPI_Issend(&obj->data[index], n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm,
+    index = nf*le_site_index(obj->le, ic, j2, kc);
+    MPI_Issend(&obj->data[index], n1, MPI_DOUBLE, nrank_s[0], tag0, comm,
                request + 3);
-    index = nf*le_site_index(ic, 1, kc);
-    MPI_Issend(&obj->data[index], n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm,
+    index = nf*le_site_index(obj->le, ic, 1, kc);
+    MPI_Issend(&obj->data[index], n2, MPI_DOUBLE, nrank_s[1], tag1, comm,
                request + 4);
-    MPI_Issend(&obj->data[index], n3, MPI_DOUBLE, nrank_s[2], tag2, le_comm,
+    MPI_Issend(&obj->data[index], n3, MPI_DOUBLE, nrank_s[2], tag2, comm,
                request + 5);
 
     MPI_Waitall(3, request, status);
@@ -481,7 +490,7 @@ static int field_leesedwards_parallel(field_t * obj) {
       j3 = (jc + nhalo - 1 + 3)*(nlocal[Z] + 2*nhalo);
 
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-        index = nf*le_site_index(ib0 + ib, jc, kc);
+        index = nf*le_site_index(obj->le, ib0 + ib, jc, kc);
         for (n = 0; n < nf; n++) {
           obj->data[index + n] =
             -  r6*fr*(fr-1.0)*(fr-2.0)*buffer[nf*(j0 + kc+nhalo-1) + n]

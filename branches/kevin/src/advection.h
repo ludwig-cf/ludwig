@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -16,14 +16,23 @@
 #define ADVECTION_H
 
 #include "coords.h"
+#include "leesedwards.h"
 #include "hydro.h"
 #include "field.h"
 
 typedef struct advflux_s advflux_t;
 
-int advflux_create(coords_t * cs, int nf, advflux_t ** pobj);
-int advflux_free(advflux_t * obj);
-int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
+/* For Lees Edwards */
+
+int advflux_create(le_t * le, int nf, advflux_t ** pobj);
+int advflux_free(advflux_t * flux);
+int advflux_compute(advflux_t * flux, hydro_t * hydro, field_t * field);
+int advflux_free(advflux_t * flux);
+
+int advection_order_set(const int order);
+int advection_order(int * order);
+
+/* If no Lees Edwards */
 
 int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
 			double * fy, double * fz);
@@ -33,8 +42,5 @@ int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f,
 			double ** flx);
 int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f, 
 			double ** flx);
-
-int advection_order_set(const int order);
-int advection_order(int * order);
 
 #endif

@@ -16,7 +16,7 @@
 #include "advection.h"
 
 struct advflux_s {
-  coords_t * cs; /* Reference to coordinate system */
+  le_t * le;     /* Reference to Lees Edwards information */
   double * fe;   /* For LE planes */
   double * fw;   /* For LE planes */
   double * fy;

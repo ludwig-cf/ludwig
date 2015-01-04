@@ -13,9 +13,10 @@
 #define HYDRO_RT_H
 
 #include "coords.h"
+#include "leesedwards.h"
 #include "runtime.h"
 #include "hydro.h"
 
-int hydro_rt(rt_t * rt, coords_t * cs, hydro_t ** phydro);
+int hydro_rt(rt_t * rt, coords_t * cs, le_t * le, hydro_t ** phydro);
 
 #endif

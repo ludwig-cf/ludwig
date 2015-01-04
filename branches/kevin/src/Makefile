@@ -41,7 +41,7 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc 
+CC = gcc
 MPICC = mpicc
 NVCC = nvcc
 

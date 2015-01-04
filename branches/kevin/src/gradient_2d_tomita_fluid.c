@@ -41,8 +41,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "leesedwards_s.h"
 #include "gradient_2d_tomita_fluid.h"
 
@@ -99,7 +97,9 @@ int gradient_2d_tomita_fluid_d4(const int nop, const double * field,double * t_f
   int nextra;
 
   /* PENDING */
-  coords_nhalo(le_stat->cs, &nhalo);
+  le_t * le = le_stat;
+
+  le_nhalo(le, &nhalo);
   nextra = nhalo - 2;
   assert(nextra >= 0);
 
@@ -125,10 +125,9 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
 					      double * del2,
 					      const int nextra) {
   int nlocal[3];
-  int nhalo;
   int n;
   int ic, jc;
-  int ys;
+  int zs, ys, xs;
   int icm1, icp1;
   int index, indexm1, indexp1;
 
@@ -136,23 +135,20 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
   const double rfactor1 = 1.0 / (1.0 + 2.0*epsilon1_);
 
   /* PENDING */
-  coords_t * cs;
-  cs = le_stat->cs;
+  le_t * le;
+  le = le_stat;
 
-
-  coords_nlocal(cs, nlocal);
-  coords_nhalo(cs, &nhalo);
-
-  ys = nlocal[Z] + 2*nhalo;
+  le_nlocal(le, nlocal);
+  le_strides(le, &xs, &ys, &zs);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = le_index_real_to_buffer(le, ic, -1);
+    icp1 = le_index_real_to_buffer(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
-      index = le_site_index(ic, jc, 1);
-      indexm1 = le_site_index(icm1, jc, 1);
-      indexp1 = le_site_index(icp1, jc, 1);
+      index   = le_site_index(le, ic, jc, 1);
+      indexm1 = le_site_index(le, icm1, jc, 1);
+      indexp1 = le_site_index(le, icp1, jc, 1);
 
       for (n = 0; n < nop; n++) {
 	grad[3*(nop*index + n) + X] = 0.5*rfactor1*
@@ -197,43 +193,42 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
 						double * grad,
 						double * del2,
 						const int nextra) {
-  int nlocal[3];
-  int nhalo;
-  int nh;                                 /* counter over halo extent */
-  int n;
+
   int nplane;                             /* Number LE planes */
+  int nlocal[3];
+  int nh;                                 /* counter over halo extent */
+  int n, np;
   int ic, jc;
   int ic0, ic1, ic2;                      /* x indices involved */
   int index, indexm1, indexp1;            /* 1d addresses involved */
-  int ys;                                 /* y-stride for 1d address */
+  int zs, ys, xs;                         /* strides for 1d address */
 
   const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
 
   /* PENDING */
-  coords_t * cs;
-  cs = le_stat->cs;
+  le_t * le;
+  le = le_stat;
 
-  coords_nlocal(cs, nlocal);
-  coords_nhalo(cs, &nhalo);
+  le_nplane_local(le, &nplane);
+  le_nlocal(le, nlocal);
+  le_strides(le, &xs, &ys, &zs);
 
   assert(nlocal[Z] == 1);
 
-  ys = (nlocal[Z] + 2*nhalo);
+  for (np = 0; np < nplane; np++) {
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
-
-    ic = le_plane_location(nplane);
+    ic = le_plane_location(np);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = le_index_real_to_buffer(le, ic, nh-1);
+      ic1 = le_index_real_to_buffer(le, ic, nh  );
+      ic2 = le_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-	indexm1 = le_site_index(ic0, jc, 1);
-	index   = le_site_index(ic1, jc, 1);
-	indexp1 = le_site_index(ic2, jc, 1);
+	indexm1 = le_site_index(le, ic0, jc, 1);
+	index   = le_site_index(le, ic1, jc, 1);
+	indexp1 = le_site_index(le, ic2, jc, 1);
 
 	for (n = 0; n < nop; n++) {
 	  grad[3*(nop*index + n) + X] = 0.5*rfactor*
@@ -266,14 +261,14 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = le_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = le_index_real_to_buffer(le, ic, -nh  );
+      ic0 = le_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-	indexm1 = le_site_index(ic0, jc, 1);
-	index   = le_site_index(ic1, jc, 1);
-	indexp1 = le_site_index(ic2, jc, 1);
+	indexm1 = le_site_index(le, ic0, jc, 1);
+	index   = le_site_index(le, ic1, jc, 1);
+	indexp1 = le_site_index(le, ic2, jc, 1);
 
 	for (n = 0; n < nop; n++) {
 	  grad[3*(nop*index + n) + X] = 0.5*rfactor*

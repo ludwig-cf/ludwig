@@ -14,8 +14,9 @@
 #define MODEL_LE_H
 
 #include "model.h"
+#include "leesedwards.h"
 
-int lb_le_apply_boundary_conditions(lb_t * lb);
-int lb_le_init_shear_profile(lb_t * lb);
+int lb_le_apply_boundary_conditions(lb_t * lb, le_t * le);
+int lb_le_init_shear_profile(lb_t * lb, le_t * le);
 
 #endif

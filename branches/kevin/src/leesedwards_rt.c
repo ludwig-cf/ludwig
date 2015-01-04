@@ -46,7 +46,7 @@ int le_rt(rt_t * rt, coords_t * coords, le_t ** ple) {
   rt_int_parameter(rt, "LE_oscillation_period", &period);
 
   le_nplane_set(le, nplane);
-  le_uy_set(le, uy);
+  le_plane_uy_set(le, uy);
   le_toffset_set(le, nt0);
 
   if (period > 0) {

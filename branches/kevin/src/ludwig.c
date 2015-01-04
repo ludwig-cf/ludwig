@@ -191,7 +191,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   map_init_rt(ludwig->rt, ludwig->cs, &ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
-  hydro_rt(ludwig->rt, ludwig->cs, &ludwig->hydro);
+  hydro_rt(ludwig->rt, ludwig->cs, ludwig->le, &ludwig->hydro);
 
   /* PHI I/O */
 
@@ -261,7 +261,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 			     ludwig->param);
 
     rt_int_parameter(ludwig->rt, "LE_init_profile", &n);
-    if (n != 0) lb_le_init_shear_profile(ludwig->lb);
+    if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
   }
   else {
     /* Distributions */
@@ -552,7 +552,7 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (ncolloid == 0) {
-	  phi_force_calculation(ludwig->phi, ludwig->cs, ludwig->hydro);
+	  phi_force_calculation(ludwig->le, ludwig->phi, ludwig->hydro);
 	}
 	else {
 	  phi_force_colloid(ludwig->cs, ludwig->collinfo, ludwig->hydro,
@@ -564,15 +564,15 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
-      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->cs,
+      if (ludwig->phi) phi_cahn_hilliard(ludwig->le, ludwig->phi,
 					 ludwig->hydro,
 					 ludwig->map, ludwig->noise_phi);
-      if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->cs,
+      if (ludwig->p) leslie_ericksen_update(ludwig->le, ludwig->p,
 					    ludwig->hydro);
       if (ludwig->q) {
 	if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
 	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	blue_phase_beris_edwards(ludwig->q, ludwig->cs, ludwig->hydro,
+	blue_phase_beris_edwards(ludwig->le, ludwig->q, ludwig->hydro,
 				 ludwig->map, ludwig->noise_rho);
       }
 
@@ -595,7 +595,7 @@ void ludwig_run(const char * inputfile) {
 
       /* Boundary conditions */
 
-      lb_le_apply_boundary_conditions(ludwig->lb);
+      lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
 
       TIMER_start(TIMER_HALO_LATTICE);
       lb_halo(ludwig->lb);
@@ -973,7 +973,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(ludwig->cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_init(ludwig->phi, nhalo, ludwig->le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
     info("\n");
@@ -1025,7 +1025,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(ludwig->cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_init(ludwig->phi, nhalo, ludwig->le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
     info("\n");
@@ -1056,7 +1056,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(ludwig->cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_init(ludwig->phi, nhalo, ludwig->le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
     info("\n");
@@ -1098,7 +1098,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(ludwig->cs, nf, "q", &ludwig->q);
-    field_init(ludwig->q, nhalo);
+    field_init(ludwig->q, nhalo, ludwig->le);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
     info("\n");
@@ -1136,7 +1136,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(ludwig->cs, nf, "p", &ludwig->p);
-    field_init(ludwig->p, nhalo);
+    field_init(ludwig->p, nhalo, ludwig->le);
     field_grad_create(ludwig->p, ngrad, &ludwig->p_grad);
 
     info("\n");
@@ -1174,7 +1174,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
         
     field_create(ludwig->cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_init(ludwig->phi, nhalo, ludwig->le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
     info("\n");
@@ -1205,7 +1205,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ngrad = 2;   /* (\nabla^2) required */
     
     field_create(ludwig->cs, nf, "q", &ludwig->q);
-    field_init(ludwig->q, nhalo);
+    field_init(ludwig->q, nhalo, ludwig->le);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
     info("\n");
@@ -1302,7 +1302,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     le_rt(ludwig->rt, ludwig->cs, &ludwig->le);
 
     field_create(ludwig->cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_init(ludwig->phi, nhalo, ludwig->le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
     info("\n");

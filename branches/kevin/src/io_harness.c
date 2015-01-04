@@ -32,7 +32,7 @@
 #include <string.h>
 
 #include "util.h"
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "io_harness.h"
 
 struct io_decomposition_t {
@@ -447,6 +447,13 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   const int tag = 1293;
   MPI_Status status;
 
+  /* PENDING */
+  int nplane;
+  double uy;
+  le_t * le = le_stat;
+  le_nplane_total(le, &nplane);
+  le_plane_uy(le, &uy);
+
   /* Every group writes a file, ie., the information stub and
    * the details of the local group which allow the output to
    * be unmangled. */
@@ -484,10 +491,8 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
 	    ntotal[X], ntotal[Y], ntotal[Z]);
     /* Lees Edwards hardwired until refactor LE code dependencies */
-    fprintf(fp_meta, "Lees-Edwards planes:             %d\n",
-	    le_get_nplane_total());
-    fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n",
-	    le_plane_uy_max());
+    fprintf(fp_meta, "Lees-Edwards planes:             %d\n", nplane);
+    fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n", uy);
     fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
     fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n",
 	    nx, ny, nz);

@@ -14,11 +14,13 @@
 #define HYDRO_H
 
 #include "coords.h"
+#include "leesedwards.h"
 #include "io_harness.h"
 
 typedef struct hydro_s hydro_t;
 
-__host__ int hydro_create(coords_t * cs, int nhalocomm, hydro_t ** pobj);
+__host__ int hydro_create(coords_t * cs, int nhalocomm, le_t * le,
+			  hydro_t ** pobj);
 __host__ int hydro_free(hydro_t * obj);
 __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
 				int form_out);

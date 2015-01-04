@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,12 +19,10 @@
 #include "pe.h"
 #include "coords.h"
 #include "coords_field.h"
-#include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
 #include "control.h" /* Can we move this into LE please */
 #include "hydro_s.h"
-#include "targetDP.h"
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
@@ -39,12 +37,14 @@ static int hydro_u_read(FILE * fp, int index, void * self);
  *  one lattice site in width, i.e., nhcomm = 1. This is independent
  *  of the width of the halo region specified for coords object.
  *
+ *  The Lees Edwards le reference may be NULL, in which case we proceed
+ *  with no LE planes.
+ *
  *****************************************************************************/
 
-int hydro_create(coords_t * cs, int nhcomm, hydro_t ** pobj) {
+int hydro_create(coords_t * cs, int nhcomm, le_t * le, hydro_t ** pobj) {
 
-  int nsites;
-  hydro_t * obj = (hydro_t*) NULL;
+  hydro_t * obj = (hydro_t *) NULL;
 
   assert(cs);
   assert(pobj);
@@ -55,16 +55,21 @@ int hydro_create(coords_t * cs, int nhcomm, hydro_t ** pobj) {
   obj->nf = 3; /* always for velocity, force */
   obj->nhcomm = nhcomm;
 
-  nsites = le_nsites();
-  obj->u = (double*) calloc(obj->nf*nsites, sizeof(double));
+  coords_nsites(cs, &obj->nsites);
+  if (le) le_nsites(le, &obj->nsites);
+
+  obj->u = (double*) calloc(obj->nf*obj->nsites, sizeof(double));
   if (obj->u == NULL) fatal("calloc(hydro->u) failed\n");
 
-  obj->f = (double*) calloc(obj->nf*nsites, sizeof(double));
+  obj->f = (double*) calloc(obj->nf*obj->nsites, sizeof(double));
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
 
   /* allocate target copies */
-  targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
-  targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
+  targetCalloc((void **) &obj->t_u, obj->nf*obj->nsites*sizeof(double));
+  targetCalloc((void **) &obj->t_f, obj->nf*obj->nsites*sizeof(double));
+
+  obj->le = le;
+  /* PENDING RETAIN */
 
   obj->cs = cs;
   coords_retain(cs);
@@ -174,14 +179,11 @@ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
 int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
-  int nsites;
 
   assert(obj);
 
-  nsites = le_nsites();
-
   for (ia = 0; ia < 3; ia++) {
-    obj->f[HYADR(nsites,obj->nf,index,ia)] = force[ia];
+    obj->f[HYADR(obj->nsites,obj->nf,index,ia)] = force[ia];
   }
 
   return 0;
@@ -196,14 +198,11 @@ int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 
   int ia;
-  int nsites;
 
   assert(obj);
 
-  nsites = le_nsites();
-
   for (ia = 0; ia < 3; ia++) {
-    force[ia] = obj->f[HYADR(nsites,obj->nf,index,ia)];
+    force[ia] = obj->f[HYADR(obj->nsites,obj->nf,index,ia)];
   }
 
   return 0;
@@ -220,14 +219,11 @@ int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
-  int nsites;
 
   assert(obj);
 
-  nsites = le_nsites();
-
   for (ia = 0; ia < 3; ia++) {
-    obj->f[HYADR(nsites,obj->nf,index,ia)] += force[ia];
+    obj->f[HYADR(obj->nsites,obj->nf,index,ia)] += force[ia];
   }
 
   return 0;
@@ -346,6 +342,7 @@ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
 int hydro_lees_edwards(hydro_t * obj) {
 
   int nhalo;
+  int nxb;
   int nlocal[3]; /* Local system size */
   int cartsz[3]; /* Cartesian decomposition size */
   int ib;        /* Index in buffer region */
@@ -367,8 +364,10 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   assert(obj);
 
-  coords_ltot(obj->cs, ltot);
-  coords_cartsz(obj->cs, cartsz);
+  if (obj->le == NULL) return 0;
+
+  le_ltot(obj->le, ltot);
+  le_cartsz(obj->le, cartsz);
 
   if (cartsz[Y] > 1) {
     hydro_lees_edwards_parallel(obj);
@@ -381,15 +380,16 @@ int hydro_lees_edwards(hydro_t * obj) {
 
     nf = obj->nf;
 
-    coords_nhalo(obj->cs, &nhalo);
-    coords_nlocal(obj->cs, nlocal);
+    le_nxbuffer(obj->le, &nxb);
+    le_nhalo(obj->le, &nhalo);
+    le_nlocal(obj->le, nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
     t = 1.0*get_step();
 
-    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+    for (ib = 0; ib < nxb; ib++) {
 
-      ic = le_index_buffer_to_real(ib);
+      ic = le_index_buffer_to_real(obj->le, ib);
       dy = le_buffer_displacement(ib, t);
 
       /* This is a slightly awkward way to compute the velocity
@@ -414,9 +414,9 @@ int hydro_lees_edwards(hydro_t * obj) {
 	 * (As j1 and j2 are always in the domain proper, jc can use nhalo.) */
 
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	  index0 = le_site_index(ib0 + ib, jc, kc);
-	  index1 = le_site_index(ic, j1, kc);
-	  index2 = le_site_index(ic, j2, kc);
+	  index0 = le_site_index(obj->le, ib0 + ib, jc, kc);
+	  index1 = le_site_index(obj->le, ic, j1, kc);
+	  index2 = le_site_index(obj->le, ic, j2, kc);
 	  for (ia = 0; ia < 3; ia++) {
 	    obj->u[nf*index0 + ia] = ule[ia] +
 	      fr*obj->u[nf*index1 + ia] + (1.0 - fr)*obj->u[nf*index2 + ia];
@@ -458,6 +458,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   int jdy;                 /* Integral part of displacement */
   int index, ia;
   int nf, nhalo;
+  int nxb;
   double ule[3];
   double ltot[3];
 
@@ -467,22 +468,24 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   const int tag1 = 1257;
   const int tag2 = 1258;
 
-  MPI_Comm    le_comm;
+  MPI_Comm    comm;
   MPI_Request request[6];
   MPI_Status  status[3];
 
   assert(obj);
+  assert(obj->le);
   nf = obj->nf;
 
-  coords_ltot(obj->cs, ltot);
-  coords_nhalo(obj->cs, &nhalo);
-  coords_ntotal(obj->cs, ntotal);
-  coords_nlocal(obj->cs, nlocal);
-  coords_nlocal_offset(obj->cs, noffset);
+  le_ltot(obj->le, ltot);
+  le_nhalo(obj->le, &nhalo);
+  le_ntotal(obj->le, ntotal);
+  le_nlocal(obj->le, nlocal);
+  le_nlocal_offset(obj->le, noffset);
 
   ib0 = nlocal[X] + nhalo + 1;
 
-  le_comm = le_communicator();
+  le_comm(obj->le, &comm);
+  le_nxbuffer(obj->le, &nxb);
 
   /* Allocate the temporary buffer */
 
@@ -497,9 +500,9 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   /* One round of communication for each buffer plane */
 
-  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+  for (ib = 0; ib < nxb; ib++) {
 
-    ic = le_index_buffer_to_real(ib);
+    ic = le_index_buffer_to_real(obj->le, ib);
     kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
@@ -516,7 +519,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
     jc = noffset[Y] + 1 - nhalo;
     j1 = 1 + (jc - jdy - 2 + 2*ntotal[Y]) % ntotal[Y];
 
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    le_jstart_to_mpi_ranks(obj->le, j1, nrank_s, nrank_r);
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
@@ -532,21 +535,21 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
     /* Post receives, sends and wait for receives. */
 
-    MPI_Irecv(buffer, nf*n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(buffer, nf*n1, MPI_DOUBLE, nrank_r[0], tag0, comm, request);
     MPI_Irecv(buffer + nf*n1, nf*n2, MPI_DOUBLE, nrank_r[1], tag1,
-	      le_comm, request + 1);
+	      comm, request + 1);
     MPI_Irecv(buffer + nf*(n1 + n2), nf*n3, MPI_DOUBLE, nrank_r[2], tag2,
-	      le_comm, request + 2);
+	      comm, request + 2);
 
-    index = le_site_index(ic, j2, kc);
+    index = le_site_index(obj->le, ic, j2, kc);
     MPI_Issend(&obj->u[nf*index], nf*n1, MPI_DOUBLE, nrank_s[0], tag0,
-	       le_comm, request + 3);
+	       comm, request + 3);
 
-    index = le_site_index(ic, 1, kc);
+    index = le_site_index(obj->le, ic, 1, kc);
     MPI_Issend(&obj->u[nf*index], nf*n2, MPI_DOUBLE, nrank_s[1], tag1,
-	       le_comm, request + 4);
+	       comm, request + 4);
     MPI_Issend(&obj->u[nf*index], nf*n3, MPI_DOUBLE, nrank_s[2], tag2,
-	       le_comm, request + 5);
+	       comm, request + 5);
 
     MPI_Waitall(3, request, status);
 
@@ -559,7 +562,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
       j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
 
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	index = le_site_index(ib0 + ib, jc, kc);
+	index = le_site_index(obj->le, ib0 + ib, jc, kc);
 	for (ia = 0; ia < 3; ia++) {
 	  obj->u[nf*index + ia] = ule[ia]
 	    + fr*buffer[nf*(j1 + kc + nhalo - 1) + ia]
@@ -658,25 +661,26 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
   double tr;
 
   assert(obj);
+  assert(obj->le);
 
-  im1 = le_index_real_to_buffer(ic, -1);
-  im1 = obj->nf*le_site_index(im1, jc, kc);
-  ip1 = le_index_real_to_buffer(ic, +1);
-  ip1 = obj->nf*le_site_index(ip1, jc, kc);
+  im1 = le_index_real_to_buffer(obj->le, ic, -1);
+  im1 = obj->nf*le_site_index(obj->le, im1, jc, kc);
+  ip1 = le_index_real_to_buffer(obj->le, ic, +1);
+  ip1 = obj->nf*le_site_index(obj->le, ip1, jc, kc);
 
   w[X][X] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
   w[Y][X] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
   w[Z][X] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
 
-  im1 = obj->nf*le_site_index(ic, jc - 1, kc);
-  ip1 = obj->nf*le_site_index(ic, jc + 1, kc);
+  im1 = obj->nf*le_site_index(obj->le, ic, jc - 1, kc);
+  ip1 = obj->nf*le_site_index(obj->le, ic, jc + 1, kc);
 
   w[X][Y] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
   w[Y][Y] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
   w[Z][Y] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
 
-  im1 = obj->nf*le_site_index(ic, jc, kc - 1);
-  ip1 = obj->nf*le_site_index(ic, jc, kc + 1);
+  im1 = obj->nf*le_site_index(obj->le, ic, jc, kc - 1);
+  ip1 = obj->nf*le_site_index(obj->le, ic, jc, kc + 1);
 
   w[X][Z] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
   w[Y][Z] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);

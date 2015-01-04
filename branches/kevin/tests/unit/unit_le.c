@@ -78,14 +78,14 @@ int do_test_le1(control_t * ctrl) {
 
   le_create(cs, &le);
   le_nplane_set(le, nplane);
-  le_uy_set(le, uy0);
+  le_plane_uy_set(le, uy0);
   le_commit(le);
 
   try {
 
     le_nplane_total(le, &nptotal);
     le_nplane_local(le, &nplocal);
-    le_uy(le, &uy);
+    le_plane_uy(le, &uy);
 
     control_verb(ctrl, "Total number of planes: %d\n", nplane);
     control_macro_test(ctrl, nptotal == nplane);
@@ -132,7 +132,8 @@ int do_test_le1(control_t * ctrl) {
 
 int do_test_le2(control_t * ctrl) {
 
-  int nplane = 4;
+  int nplane_ref = 4;
+  int nplane;
   int nlocal[3];
   int nhalo;
   int nh2;              /* 2*nhalo */
@@ -156,16 +157,18 @@ int do_test_le2(control_t * ctrl) {
   coords_nlocal(cs, nlocal);
 
   le_create(cs, &le);
-  le_nplane_set(le, nplane);
+  le_nplane_set(le, nplane_ref);
   le_commit(le);
 
   try {
     le_nxbuffer(le, &nxb);
-    nexpect = nh2*le_get_nplane_local();
+    le_nplane_local(le, &nplane);
+
+    nexpect = nh2*nplane;
     control_verb(ctrl, "Lees buffer size: %d (d)\n", nxb, nexpect);
     control_macro_test(ctrl, nxb == nexpect);
 
-    nexpect = le_nsites();
+    le_nsites(le, &nexpect);
     nsites = (nlocal[X] + nh2 + nxb)*(nlocal[Y] + nh2)*(nlocal[Z] + nh2);
     control_verb(ctrl, "Lees nsites: %d (%d)\n", nsites, nexpect);
     control_macro_test(ctrl, nsites == nexpect);
@@ -229,7 +232,7 @@ int do_test_le_interp3(control_t * ctrl) {
 
   le_create(cs, &le);
   le_nplane_set(le, nplane);
-  le_uy_set(le, uy_set);
+  le_plane_uy_set(le, uy_set);
   le_commit(le);
 
   try {
@@ -366,7 +369,7 @@ int do_test_le_interp4(control_t * ctrl) {
 
   le_create(cs, &le);
   le_nplane_set(le, nplane);
-  le_uy_set(le, uy_set);
+  le_plane_uy_set(le, uy_set);
   le_commit(le);
 
   /* Check displacement calculations. Run to a displacement which is

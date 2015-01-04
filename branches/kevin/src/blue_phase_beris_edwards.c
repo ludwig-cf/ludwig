@@ -43,7 +43,6 @@
 
 #include "util.h"
 #include "physics.h"
-#include "leesedwards.h"
 #include "colloids_Q_tensor.h"
 #include "advection.h"
 #include "advection_bcs.h"
@@ -60,19 +59,20 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f,
  *
  *  Driver routine for the update.
  *
- *  hydro is allowed to be NULL, in which case we only have relaxational
- *  dynamics.
+ *  Coordinate system information is via le_t * le.
+ *
+ *  hydro is allowed to be NULL, in which case its relaxational dynamics.
  *
  *****************************************************************************/
 
-int blue_phase_beris_edwards(field_t * fq, coords_t * cs, hydro_t * hydro,
+int blue_phase_beris_edwards(le_t * le, field_t * fq,
+			     hydro_t * hydro,
 			     map_t * map, noise_t * noise) {
-
   int nf;
   advflux_t * flux = NULL;
 
+  assert(le);
   assert(fq);
-  assert(cs);
   assert(map);
 
   /* Set up advective fluxes (which default to zero),
@@ -81,18 +81,15 @@ int blue_phase_beris_edwards(field_t * fq, coords_t * cs, hydro_t * hydro,
   field_nf(fq, &nf);
   assert(nf == NQAB);
 
-  advflux_create(cs, nf, &flux);
+  advflux_create(le, nf, &flux);
 
   if (hydro) {
-
     hydro_lees_edwards(hydro);
-
-    advection_x(flux, hydro, fq);
+    advflux_compute(flux, hydro, fq);
     advection_bcs_no_normal_flux(nf, flux, map);
   }
 
   blue_phase_be_update(fq, hydro, flux, map, noise);
-
   advflux_free(flux);
 
   return 0;
@@ -141,7 +138,7 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
   assert(flux);
   assert(map);
 
-  coords_nlocal(flux->cs, nlocal); /* PENDING whither cs? */
+  le_nlocal(flux->le, nlocal);
   field_nf(fq, &nf);
   assert(nf == NQAB);
 
@@ -169,7 +166,7 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = le_site_index(flux->le, ic, jc, kc);
 
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
@@ -225,8 +222,8 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 
 	/* Here's the full hydrodynamic update. */
 	  
-	indexj = le_site_index(ic, jc-1, kc);
-	indexk = le_site_index(ic, jc, kc-1);
+	indexj = le_site_index(flux->le, ic, jc-1, kc);
+	indexk = le_site_index(flux->le, ic, jc, kc-1);
 
 	q[X][X] += dt*(s[X][X] + gamma*h[X][X] + chi_qab[X][X]
 		       - flux->fe[nf*index + XX] + flux->fw[nf*index  + XX]

@@ -25,10 +25,10 @@
 static double Gamma_;       /* Rotational diffusion constant */
 static double swim_ = 0.0;  /* Self-advection parameter */
 
-static int leslie_ericksen_update_fluid(coords_t * cs, field_t * p,
+static int leslie_ericksen_update_fluid(le_t * le, field_t * p,
 					hydro_t * hydro,
 					advflux_t * flux);
-static int leslie_ericksen_add_swimming_velocity(coords_t * cs, field_t * p,
+static int leslie_ericksen_add_swimming_velocity(le_t * le, field_t * p,
 						 hydro_t * hydro);
 
 /*****************************************************************************
@@ -67,25 +67,26 @@ int leslie_ericksen_swim_set(const double s) {
  *
  *****************************************************************************/
 
-int leslie_ericksen_update(field_t * p, coords_t * cs, hydro_t * hydro) {
+int leslie_ericksen_update(le_t * le, field_t * p, hydro_t * hydro) {
 
   int nf;
   advflux_t * flux = NULL;
 
-  assert(cs);
+  assert(le);
   assert(p);
 
   field_nf(p, &nf);
   assert(nf == NVECTOR);
-  advflux_create(cs, nf, &flux);
+
+  advflux_create(le, nf, &flux);
 
   if (hydro) {
-    if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(cs, p, hydro);
+    if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(le, p, hydro);
     hydro_u_halo(hydro);
-    advection_x(flux, hydro, p);
+    advflux_compute(flux, hydro, p);
   }
 
-  leslie_ericksen_update_fluid(cs, p, hydro, flux);
+  leslie_ericksen_update_fluid(le, p, hydro, flux);
 
   advflux_free(flux);
 
@@ -101,7 +102,7 @@ int leslie_ericksen_update(field_t * p, coords_t * cs, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int leslie_ericksen_update_fluid(coords_t * cs, field_t * fp,
+static int leslie_ericksen_update_fluid(le_t * le, field_t * fp,
 					hydro_t * hydro,
 					advflux_t * flux) {
   int ic, jc, kc, index;
@@ -121,11 +122,11 @@ static int leslie_ericksen_update_fluid(coords_t * cs, field_t * fp,
 
   void (* fe_molecular_field_function)(int index, double h[3]);
 
-  assert(cs);
+  assert(le);
   assert(fp);
   assert(flux);
 
-  coords_nlocal(cs, nlocal);
+  le_nlocal(le, nlocal);
   fe_molecular_field_function = fe_v_molecular_field();
   lambda = fe_v_lambda();
 
@@ -139,7 +140,7 @@ static int leslie_ericksen_update_fluid(coords_t * cs, field_t * fp,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(cs, ic, jc, kc);
+	index = le_site_index(le, ic, jc, kc);
 	field_vector(fp, index, p);
 	fe_molecular_field_function(index, h);
 	if (hydro) hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
@@ -158,8 +159,8 @@ static int leslie_ericksen_update_fluid(coords_t * cs, field_t * fp,
 
 	/* update */
 
-	indexj = coords_index(cs, ic, jc-1, kc);
-	indexk = coords_index(cs, ic, jc, kc-1);
+	indexj = le_site_index(le, ic, jc-1, kc);
+	indexk = le_site_index(le, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
 
@@ -190,7 +191,7 @@ static int leslie_ericksen_update_fluid(coords_t * cs, field_t * fp,
  *
  *****************************************************************************/
 
-static int leslie_ericksen_add_swimming_velocity(coords_t * cs,
+static int leslie_ericksen_add_swimming_velocity(le_t * le,
 						 field_t * fp,
 						 hydro_t * hydro) {
   int ic, jc, kc, index;
@@ -200,17 +201,17 @@ static int leslie_ericksen_add_swimming_velocity(coords_t * cs,
   double p[3];
   double u[3];
 
-  assert(cs);
+  assert(le);
   assert(fp);
   assert(hydro);
 
-  coords_nlocal(cs, nlocal);
+  le_nlocal(le, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(cs, ic, jc, kc);
+	index = le_site_index(le, ic, jc, kc);
 	field_vector(fp, index, p);
 	hydro_u(hydro, index, u);
 

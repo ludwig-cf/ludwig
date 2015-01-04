@@ -93,11 +93,11 @@ int le_nplane_set(le_t * le, int nplanes) {
 
 /*****************************************************************************
  *
- * le_uy_set
+ * le_plane_uy_set
  *
  *****************************************************************************/
 
-int le_uy_set(le_t * le, double uy) {
+int le_plane_uy_set(le_t * le, double uy) {
 
   assert(le);
 
@@ -212,11 +212,11 @@ int le_nplane_local(le_t * le, int * npl) {
 
 /*****************************************************************************
  *
- *  le_uy
+ *  le_plane_uy
  *
  *****************************************************************************/
 
-int le_uy(le_t * le, double * uy) {
+int le_plane_uy(le_t * le, double * uy) {
 
   assert(le);
 
@@ -251,6 +251,7 @@ int le_nxbuffer(le_t * le, int * nxb) {
 int le_info(le_t * le) {
 
   int np;
+  double gammadot;
 
   assert(le);
 
@@ -258,17 +259,19 @@ int le_info(le_t * le) {
 
     info("\nLees-Edwards boundary conditions are active:\n");
 
+    le_shear_rate(le, &gammadot);
+
     for (np = 0; np < le->nplanes; np++) {
       info("LE plane %d is at x = %d with speed %f\n", np+1,
 	   (int)(le->dx_min + np*le->dx_sep), le->uy);
     }
 
     if (le->type == LE_LINEAR) {
-      info("Overall shear rate = %f\n", le_shear_rate());
+      info("Overall shear rate = %f\n", gammadot);
     }
     else {
       info("Oscillation period: %d time steps\n", le->period);
-      info("Maximum shear rate = %f\n", le_shear_rate());
+      info("Maximum shear rate = %f\n", gammadot);
     }
 
     info("\n");
@@ -505,25 +508,25 @@ static int le_checks(le_t * le) {
  *
  *****************************************************************************/
 
-int le_nsites(void) {
+int le_nsites(le_t * le, int * nsites) {
 
   int nhalo;
   int nlocal[3];
-  int nsites;
 
-  assert(le_stat);
-  coords_nhalo(le_stat->cs, &nhalo);
-  coords_nlocal(le_stat->cs, nlocal);
+  assert(le);
+  coords_nhalo(le->cs, &nhalo);
+  coords_nlocal(le->cs, nlocal);
 
-  nsites = (nlocal[X] + 2*nhalo + le_get_nxbuffer())*(nlocal[Y] + 2*nhalo)
+  *nsites = (nlocal[X] + 2*nhalo + le->nxbuffer)
+    *(nlocal[Y] + 2*nhalo)
     *(nlocal[Z] + 2*nhalo);
 
-  return nsites;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  le_get_steady_uy
+ *  le_steady_uy
  *
  *  Return the velocity expected for steady shear profile at
  *  position x (dependent on x-direction only). Takes a local index.
@@ -532,15 +535,18 @@ int le_nsites(void) {
  *
  *****************************************************************************/
 
-double le_get_steady_uy(int ic) {
+int le_steady_uy(le_t * le, int ic, double * uy) {
 
   int offset[3];
   int nplane;
-  double xglobal, uy;
+  double gammadot;
+  double xglobal;
 
-  assert(le_stat);
-  assert(le_stat->type == LE_LINEAR);
-  coords_nlocal_offset(le_stat->cs, offset);
+  assert(le);
+  assert(le->type == LE_LINEAR);
+
+  coords_nlocal_offset(le->cs, offset);
+  le_shear_rate(le, &gammadot);
 
   /* The shear profile is linear, so the local velocity is just a
    * function of position, modulo the number of planes encountered
@@ -548,11 +554,11 @@ double le_get_steady_uy(int ic) {
    * the - 0.5. */
 
   xglobal = offset[X] + (double) ic - 0.5;
-  nplane = (int) ((le_stat->dx_min + xglobal)/le_stat->dx_sep);
+  nplane = (int) ((le->dx_min + xglobal)/le->dx_sep);
 
-  uy = xglobal*le_shear_rate() - le_plane_uy_max()*nplane;
+  *uy = xglobal*gammadot - le->uy*nplane;
  
-  return uy;
+  return 0;
 }
 
 /*****************************************************************************
@@ -593,72 +599,32 @@ double le_get_block_uy(int ic) {
   else {
     n = (-0.5 + xh/le_stat->dx_sep);
   }
-  uy = le_plane_uy_max()*n;
+  uy = le_stat->uy*n;
 
   return uy;
 }
 
 /*****************************************************************************
  *
- *  le_get_nplane_local
- *
- *  Return the local number of planes.
- *
- *****************************************************************************/
-
-int le_get_nplane_local() {
-  assert(le_stat);
-  return le_stat->nlocal;
-}
-
-/*****************************************************************************
- *
- *  le_get_nplane_total
- *
- *  Return the total number of planes in the system.
- *
- *****************************************************************************/
-
-int le_get_nplane_total() {
-  assert(le_stat);
-  return le_stat->nplanes;
-}
-
-/*****************************************************************************
- *
- *  le_plane_uy
+ *  le_plane_uy_now
  *
  *  Return the current plane velocity for time t.
  *
  *****************************************************************************/
 
-double le_plane_uy(double t) {
+int le_plane_uy_now(le_t * le, double t, double * uy) {
 
-  double uy;
   double tle;
 
-  assert(le_stat);
+  assert(le);
 
-  tle = t - le_stat->time0;
+  tle = t - le->time0;
   assert(tle >= 0.0);
 
-  uy = le_stat->uy;
-  if (le_stat->type == LE_OSCILLATORY) uy *= cos(le_stat->omega*tle);
+  *uy = le->uy;
+  if (le->type == LE_OSCILLATORY) *uy *= cos(le->omega*tle);
 
-  return uy;
-}
-
-/*****************************************************************************
- *
- *  le_plane_uy_max
- *
- *  Return the maximum plane velocity.
- *
- *****************************************************************************/
-
-double le_plane_uy_max() {
-  assert(le_stat);
-  return le_stat->uy;
+  return 0;
 }
 
 /*****************************************************************************
@@ -691,42 +657,29 @@ int le_plane_location(const int n) {
 
 /*****************************************************************************
  *
- *  le_get_nxbuffer
- *
- *  Return the size (x-direction) of the buffer required to hold
- *  cross-boundary interpolated quantities.
- *
- *****************************************************************************/
-
-int le_get_nxbuffer() {
-  assert(le_stat);
-  return le_stat->nxbuffer;
-}
-
-/*****************************************************************************
- *
  *  le_index_real_to_buffer
  *
- *  For x index and step size di, return the x index of the translated
- *  buffer.
+ *  For x index 'ic' and step size 'idisplace', return the x index of the
+ *  translated buffer.
  *
  *****************************************************************************/
 
-int le_index_real_to_buffer(const int ic, const int di) {
+int le_index_real_to_buffer(le_t * le,  int ic,  int idisplace) {
 
   int ib;
   int nhalo;
 
-  assert(le_stat);
+  assert(le);
+  assert(le->index_real_to_buffer);
 
-  coords_nhalo(le_stat->cs, &nhalo);
-  assert(di >= -nhalo && di <= +nhalo);
+  coords_nhalo(le->cs, &nhalo);
+  assert(idisplace >= -nhalo && idisplace <= +nhalo);
 
-  ib = (ic + nhalo - 1)*(2*nhalo + 1) + di + nhalo;
+  ib = (ic + nhalo - 1)*(2*nhalo + 1) + idisplace + nhalo;
 
-  assert(ib >= 0 && ib < le_stat->index_real_nbuffer);
+  assert(ib >= 0 && ib < le->index_real_nbuffer);
 
-  return le_stat->index_real_to_buffer[ib];
+  return le->index_real_to_buffer[ib];
 }
 
 /*****************************************************************************
@@ -738,12 +691,13 @@ int le_index_real_to_buffer(const int ic, const int di) {
  *
  *****************************************************************************/
 
-int le_index_buffer_to_real(int ib) {
+int le_index_buffer_to_real(le_t * le, int ib) {
 
-  assert(le_stat);
-  assert(ib >=0 && ib < le_get_nxbuffer());
+  assert(le);
+  assert(le->index_buffer_to_real);
+  assert(ib >=0 && ib < le->nxbuffer);
 
-  return le_stat->index_buffer_to_real[ib];
+  return le->index_buffer_to_real[ib];
 }
 
 /*****************************************************************************
@@ -786,12 +740,6 @@ double le_buffer_displacement(int ib, double t) {
  *
  *****************************************************************************/
 
-MPI_Comm le_communicator(void) {
-
-  assert(le_stat);
-  return le_stat->le_comm;
-}
-
 int le_comm(le_t * le, MPI_Comm * comm) {
 
   assert(le);
@@ -807,14 +755,7 @@ int le_comm(le_t * le, MPI_Comm * comm) {
  *
  *****************************************************************************/
 
-MPI_Comm le_plane_comm(void) {
-
-  assert(le_stat);
-
-  return le_stat->le_plane_comm;
-}
-
-int le_xplane_comm(le_t * le, MPI_Comm * comm) {
+int le_plane_comm(le_t * le, MPI_Comm * comm) {
 
   assert(le);
 
@@ -882,14 +823,16 @@ int le_jstart_to_mpi_ranks(le_t * le, const int j1, int send[3], int recv[3]) {
  *
  *****************************************************************************/
 
-double le_shear_rate() {
+int le_shear_rate(le_t * le, double * gammadot) {
 
   double ltot[3];
 
-  assert(le_stat);
-  coords_ltot(le_stat->cs, ltot);
+  assert(le);
+  coords_ltot(le->cs, ltot);
 
-  return (le_plane_uy_max()*le_stat->nplanes/ltot[X]);
+  *gammadot = le->uy*le->nplanes/ltot[X];
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -897,27 +840,26 @@ double le_shear_rate() {
  *  le_site_index
  *
  *  Compute the one-dimensional index from coordinates ic, jc, kc.
- *  This differs from get_site_index only in construction (not in result).
- *
- *  Where performance is important, prefer macro version via NDEBUG.
+ *  This differs from coords_index() in that it allows the buffer
+ *  region to be used.
  *
  *****************************************************************************/
 
-int le_site_index(const int ic, const int jc, const int kc) {
+int le_site_index(le_t * le, int ic, int jc, int kc) {
 
   int nhalo;
   int nlocal[3];
   int index;
 
-  assert(le_stat);
+  assert(le);
 
-  coords_nhalo(le_stat->cs, &nhalo);
-  coords_nlocal(le_stat->cs, nlocal);
+  coords_nhalo(le->cs, &nhalo);
+  coords_nlocal(le->cs, nlocal);
 
   assert(ic >= 1-nhalo);
   assert(jc >= 1-nhalo);
   assert(kc >= 1-nhalo);
-  assert(ic <= nlocal[X] + nhalo + le_stat->nxbuffer);
+  assert(ic <= nlocal[X] + nhalo + le->nxbuffer);
   assert(jc <= nlocal[Y] + nhalo);
   assert(kc <= nlocal[Z] + nhalo);
 
@@ -926,4 +868,108 @@ int le_site_index(const int ic, const int jc, const int kc) {
     +                                                  nhalo + kc - 1;
 
   return index;
+}
+
+/*****************************************************************************
+ *
+ *  le_nlocal
+ *
+ *****************************************************************************/
+
+int le_nlocal(le_t * le, int nlocal[3]) {
+
+  assert(le);
+
+  return coords_nlocal(le->cs, nlocal);
+}
+
+/*****************************************************************************
+ *
+ *  le_strides
+ *
+ *****************************************************************************/
+
+int le_strides(le_t * le, int * xs, int * ys, int * zs) {
+
+  assert(le);
+
+  return coords_strides(le->cs, xs, ys, zs);
+}
+
+/*****************************************************************************
+ *
+ *  le_nhalo
+ *
+ *****************************************************************************/
+
+int le_nhalo(le_t * le, int * nhalo) {
+
+  assert(le);
+
+  return coords_nhalo(le->cs, nhalo);
+}
+
+/*****************************************************************************
+ *
+ *  le_ltot
+ *
+ *****************************************************************************/
+
+int le_ltot(le_t * le, double ltot[3]) {
+
+  assert(le);
+
+  return coords_ltot(le->cs, ltot);
+}
+
+/*****************************************************************************
+ *
+ *  le_cartsz
+ *
+ *****************************************************************************/
+
+int le_cartsz(le_t * le, int cartsz[3]) {
+
+  assert(le);
+
+  return coords_cartsz(le->cs, cartsz);
+}
+
+/*****************************************************************************
+ *
+ *  le_ntotal
+ *
+ *****************************************************************************/
+
+int le_ntotal(le_t * le, int ntotal[3]) {
+
+  assert(le);
+
+  return coords_ntotal(le->cs, ntotal);
+}
+
+/*****************************************************************************
+ *
+ *  le_nlocal_offset
+ *
+ *****************************************************************************/
+
+int le_nlocal_offset(le_t * le, int noffset[3]) {
+
+  assert(le);
+
+  return coords_nlocal_offset(le->cs, noffset);
+}
+
+/*****************************************************************************
+ *
+ *  le_cart_coords
+ *
+ *****************************************************************************/
+
+int le_cart_coords(le_t * le, int cartcoord[3]) {
+
+  assert(le);
+
+  return coords_cart_coords(le->cs, cartcoord);
 }

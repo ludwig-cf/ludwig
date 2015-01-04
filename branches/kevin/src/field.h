@@ -20,6 +20,7 @@
 #define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
 
 #include "coords.h"
+#include "leesedwards.h"
 #include "io_harness.h"
 
 typedef struct field_s field_t;
@@ -28,7 +29,7 @@ __host__ int field_create(coords_t * cs, int nf, const char * name,
 			  field_t ** pobj);
 __host__ int field_free(field_t * obj);
 
-__host__ int field_init(field_t * obj, int nhcomm);
+__host__ int field_init(field_t * obj, int nhcomm, le_t * le);
 __host__ int field_nf(field_t * obj, int * nop);
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out);

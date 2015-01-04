@@ -34,12 +34,12 @@ static int field_grad_init(field_grad_t * obj);
 
 int field_grad_create(field_t * f, int level, field_grad_t ** pobj) {
 
-  field_grad_t * obj =  (field_grad_t*) NULL;
+  field_grad_t * obj =  (field_grad_t *) NULL;
 
   assert(f);
   assert(pobj);
 
-  obj = (field_grad_t*) calloc(1, sizeof(field_grad_t));
+  obj = (field_grad_t *) calloc(1, sizeof(field_grad_t));
   if (obj == NULL) fatal("calloc(field_grad_t) failed\n");
 
   obj->field = f;
@@ -65,8 +65,8 @@ static int field_grad_init(field_grad_t * obj) {
   int nsites;
 
   assert(obj);
-
-  nsites = le_nsites();
+  
+  nsites = obj->field->nsites;
 
   if (obj->level >= 2) {
     obj->grad = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));

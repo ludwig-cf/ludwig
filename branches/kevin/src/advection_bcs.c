@@ -33,11 +33,13 @@
  *
  *****************************************************************************/
 
+/* PENDING Lees Edwards only */ 
+
 int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
   int n;
   int nlocal[3];
-  int ic, jc, kc, index, indexf;
+  int ic, jc, kc, index;
   int status;
 
   double mask, maskw, maske, masky, maskz;
@@ -46,38 +48,37 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
   assert(flux);
   assert(map);
 
-  coords_nlocal(flux->cs, nlocal);
+  le_nlocal(flux->le, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(flux->cs, ic-1, jc, kc);
+	index = le_site_index(flux->le, ic-1, jc, kc);
 	map_status(map, index, &status);
 	maskw = (status == MAP_FLUID);
 
-	index = coords_index(flux->cs, ic+1, jc, kc);
+	index = le_site_index(flux->le, ic+1, jc, kc);
 	map_status(map, index, &status);
 	maske = (status == MAP_FLUID);
 
-	index = coords_index(flux->cs, ic, jc+1, kc);
+	index = le_site_index(flux->le, ic, jc+1, kc);
 	map_status(map, index, &status);
 	masky = (status == MAP_FLUID);
 
-	index = coords_index(flux->cs, ic, jc, kc+1);
+	index = le_site_index(flux->le, ic, jc, kc+1);
 	map_status(map, index, &status);
 	maskz = (status == MAP_FLUID);
 
-	index = coords_index(flux->cs, ic, jc, kc);
+	index = le_site_index(flux->le, ic, jc, kc);
 	map_status(map, index, &status);
 	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
-	  coords_field_index(flux->cs, index, n, nf, &indexf);
-	  flux->fw[indexf] *= mask*maskw;
-	  flux->fe[indexf] *= mask*maske;
-	  flux->fy[indexf] *= mask*masky;
-	  flux->fz[indexf] *= mask*maskz;
+	  flux->fw[nf*index + n] *= mask*maskw;
+	  flux->fe[nf*index + n] *= mask*maske;
+	  flux->fy[nf*index + n] *= mask*masky;
+	  flux->fz[nf*index + n] *= mask*maskz;
 	}
       }
     }
@@ -225,6 +226,10 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
  *
  ****************************************************************************/
 
+/* PENDING wall */
+
+#include "field_s.h"
+
 int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
 
   int ic, jc, kc, index, index1;
@@ -241,11 +246,11 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
 
   if (wall_at_edge(X) == 0) return 0;
 
-  coords_cartsz(flux->cs, cartsz);
-  coords_cart_coords(flux->cs, cartcoords);
+  coords_cartsz(fphi->cs, cartsz);
+  coords_cart_coords(fphi->cs, cartcoords);
 
   field_nf(fphi, &nf);
-  coords_nlocal(flux->cs, nlocal);
+  coords_nlocal(fphi->cs, nlocal);
 
   if (cartcoords[X] == 0) {
     ic = 1;
@@ -253,8 +258,8 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index  = coords_index(flux->cs, ic, jc, kc);
-	index1 = coords_index(flux->cs, ic-1, jc, kc);
+	index  = le_site_index(flux->le, ic, jc, kc);
+	index1 = le_site_index(flux->le, ic-1, jc, kc);
 
 	field_scalar_array(fphi, index, q);
 	field_scalar_array_set(fphi, index1, q);
@@ -269,8 +274,8 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(flux->cs, ic, jc, kc);
-	index1 = coords_index(flux->cs, ic+1, jc, kc);
+	index = le_site_index(flux->le, ic, jc, kc);
+	index1 = le_site_index(flux->le, ic+1, jc, kc);
 
 	field_scalar_array(fphi, index, q);
 	field_scalar_array_set(fphi, index1, q);

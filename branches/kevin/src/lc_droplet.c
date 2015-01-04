@@ -423,25 +423,24 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
   double force[3];
 
   /* PENDING */
-  coords_t * cs;
-  cs = le_stat->cs;
+  le_t * le;
+  le = le_stat;
 
   assert(phi_);
   
-  coords_nhalo(cs, &nhalo);
-  coords_nlocal(cs, nlocal);
-  coords_strides(cs, &xs, &ys, &zs);
+  le_nhalo(le, &nhalo);
+  le_nlocal(le, nlocal);
+  le_strides(le, &xs, &ys, &zs);
   assert(nhalo >= 2);
 
-
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = le_index_real_to_buffer(le, ic, -1);
+    icp1 = le_index_real_to_buffer(le, ic, +1);
     
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, jc, kc);
+	index0 = le_site_index(le, ic, jc, kc);
 	
 	field_scalar(phi_, index0, &phi);
 	field_tensor(q_, index0, q);
@@ -449,8 +448,8 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
 	field_grad_tensor_grad(grad_q_, index0, dq);
 	lc_droplet_molecular_field(index0, h);
   
-        indexm1 = le_site_index(icm1, jc, kc);
-        indexp1 = le_site_index(icp1, jc, kc);
+        indexm1 = le_site_index(le, icm1, jc, kc);
+        indexp1 = le_site_index(le, icp1, jc, kc);
 
         mum1 = lc_droplet_chemical_potential(indexm1, 0);
         mup1 = lc_droplet_chemical_potential(indexp1, 0);

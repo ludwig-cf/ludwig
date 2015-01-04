@@ -47,12 +47,14 @@
 
 struct hydro_s {
   coords_t * cs;           /* Reference to coordinate system */
+  le_t * le;               /* Reference to Lees Edwards */
   int nf;                  /* Extent of fields = 3 for vectors */
   int nhcomm;              /* Width of halo region for u field */
+  int nsites;              /* Total sites (dependent on LE planes) */
   double * u;              /* Velocity field (on host)*/
   double * f;              /* Body force field (on host) */
-  double * t_u;              /* Velocity field (on target) */
-  double * t_f;              /* Body force field (on target) */
+  double * t_u;            /* Velocity field (on target) */
+  double * t_f;            /* Body force field (on target) */
   MPI_Datatype uhalo[3];   /* Halo exchange datatypes for velocity */
   io_info_t * info;        /* I/O handler. */
 };

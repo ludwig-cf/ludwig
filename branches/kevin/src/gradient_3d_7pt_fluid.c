@@ -79,7 +79,7 @@ HOST int gradient_3d_7pt_fluid_d2(const int nop,
   int nextra;
 
   /* PENDING */
-  coords_nhalo(le_stat->cs, &nhalo);
+  le_nhalo(le_stat, &nhalo);
   nextra = nhalo - 1;
   assert(nextra >= 0);
 
@@ -116,7 +116,8 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
   int nhalo;
   int nextra;
 
-  coords_nhalo(le_stat->cs, &nhalo);
+  /* PENDING */
+  le_nhalo(le_stat, &nhalo);
   nextra = nhalo - 2;
   assert(nextra >= 0);
 
@@ -248,10 +249,11 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   int nhalo;
   int ic, jc, kc;
   int index;
+
   /* PENDING */
 
-  coords_nhalo(le_stat->cs, &nhalo);
-  coords_nlocal(le_stat->cs, nlocal);
+  le_nhalo(le_stat, &nhalo);
+  le_nlocal(le_stat, nlocal);
 
 
   int Nall[3];
@@ -280,7 +282,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 	
-  	index=coords_index(le_stat->cs, ic, jc, kc);
+  	index = le_site_index(le_stat, ic, jc, kc);
   	siteMask[index]=1;
 	
       }
@@ -320,36 +322,38 @@ HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
 						double * del2,
 						const int nextra) {
   int nlocal[3];
-  int nhalo;
   int nh;                                 /* counter over halo extent */
-  int n;
+  int n, np;
   int nplane;                             /* Number LE planes */
   int ic, jc, kc;
   int ic0, ic1, ic2;                      /* x indices involved */
   int index, indexm1, indexp1;            /* 1d addresses involved */
-  int ys;                                 /* y-stride for 1d address */
+  int zs, ys, xs;                         /* strides for 1d address */
 
   /* PENDING */
-  coords_nhalo(le_stat->cs, &nhalo);
-  coords_nlocal(le_stat->cs, nlocal);
-  ys = (nlocal[Z] + 2*nhalo);
+  le_t * le;
+  le = le_stat;
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  le_nplane_local(le, &nplane);
+  le_nlocal(le, nlocal);
+  le_strides(le, &xs, &ys, &zs);
 
-    ic = le_plane_location(nplane);
+  for (np = 0; np < nplane; np++) {
+
+    ic = le_plane_location(np);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = le_index_real_to_buffer(le, ic, nh-1);
+      ic1 = le_index_real_to_buffer(le, ic, nh  );
+      ic2 = le_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = le_site_index(le, ic0, jc, kc);
+	  index   = le_site_index(le, ic1, jc, kc);
+	  indexp1 = le_site_index(le, ic2, jc, kc);
 
 	  for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X]
@@ -373,16 +377,16 @@ HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = le_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = le_index_real_to_buffer(le, ic, -nh  );
+      ic0 = le_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = le_site_index(le, ic0, jc, kc);
+	  index   = le_site_index(le, ic1, jc, kc);
+	  indexp1 = le_site_index(le, ic2, jc, kc);
 
 	  for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X]
@@ -420,7 +424,7 @@ HOST static int gradient_dab_compute(int nf, const double * field, double * dab)
   int nextra;
   int n;
   int ic, jc, kc;
-  int ys;
+  int zs, ys, xs;
   int icm1, icp1;
   int index, indexm1, indexp1;
 
@@ -429,23 +433,23 @@ HOST static int gradient_dab_compute(int nf, const double * field, double * dab)
   assert(dab);
 
   /* PENDING */
-  coords_nhalo(le_stat->cs, &nhalo);
+  le_t * le = le_stat;
+  le_nhalo(le, &nhalo);
   nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  coords_nlocal(le_stat->cs, nlocal);
-
-  ys = nlocal[Z] + 2*nhalo;
+  le_nlocal(le, nlocal);
+  le_strides(le, &xs, &ys, &zs);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = le_index_real_to_buffer(le, ic, -1);
+    icp1 = le_index_real_to_buffer(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = le_site_index(ic, jc, kc);
-	indexm1 = le_site_index(icm1, jc, kc);
-	indexp1 = le_site_index(icp1, jc, kc);
+	index = le_site_index(le, ic, jc, kc);
+	indexm1 = le_site_index(le, icm1, jc, kc);
+	indexp1 = le_site_index(le, icp1, jc, kc);
 
 	for (n = 0; n < nf; n++) {
 	  dab[NSYMM*(nf*index + n) + XX]
@@ -490,38 +494,40 @@ HOST static int gradient_dab_le_correct(int nf, const double * field,
   int nhalo;
   int nextra;
   int nh;                                 /* counter over halo extent */
-  int n;
+  int n, np;
   int nplane;                             /* Number LE planes */
   int ic, jc, kc;
   int ic0, ic1, ic2;                      /* x indices involved */
   int index, indexm1, indexp1;            /* 1d addresses involved */
-  int ys;                                 /* y-stride for 1d address */
+  int zs, ys, xs;                         /* strides for 1d address */
 
   /* PENDING */
+  le_t * le = le_stat;
 
-  coords_nhalo(le_stat->cs, &nhalo);
-  coords_nlocal(le_stat->cs, nlocal);
-  ys = (nlocal[Z] + 2*nhalo);
+  le_nplane_local(le, &nplane);
+  le_nhalo(le, &nhalo);
+  le_nlocal(le, nlocal);
+  le_strides(le, &xs, &ys, &zs);
 
   nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  for (np = 0; np < nplane; np++) {
 
-    ic = le_plane_location(nplane);
+    ic = le_plane_location(np);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = le_index_real_to_buffer(le, ic, nh-1);
+      ic1 = le_index_real_to_buffer(le, ic, nh  );
+      ic2 = le_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = le_site_index(le, ic0, jc, kc);
+	  index   = le_site_index(le, ic1, jc, kc);
+	  indexp1 = le_site_index(le, ic2, jc, kc);
 
 	  for (n = 0; n < nf; n++) {
 	    dab[NSYMM*(nf*index + n) + XX]
@@ -554,16 +560,16 @@ HOST static int gradient_dab_le_correct(int nf, const double * field,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = le_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = le_index_real_to_buffer(le, ic, -nh  );
+      ic0 = le_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = le_site_index(le, ic0, jc, kc);
+	  index   = le_site_index(le, ic1, jc, kc);
+	  indexp1 = le_site_index(le, ic2, jc, kc);
 
 	  for (n = 0; n < nf; n++) {
 	    dab[NSYMM*(nf*index + n) + XX]
