@@ -49,7 +49,7 @@ int map_create(coords_t * cs, int ndata, map_t ** pobj) {
   assert(pobj);
 
   coords_nsites(cs, &nsites);
-  nhalo = coords_nhalo();
+  coords_nhalo(cs, &nhalo);
 
   obj = calloc(1, sizeof(map_t));
   if (obj == NULL) fatal("calloc(map_t) failed\n");
@@ -166,9 +166,10 @@ int map_io_info(map_t * obj, io_info_t ** info) {
 int map_halo(map_t * obj) {
 
   int nhalo;
+
   assert(obj);
 
-  nhalo = coords_nhalo();
+  coords_nhalo(obj->cs, &nhalo);
 
   coords_field_halo(obj->cs, nhalo, 1, obj->status, MPI_CHAR, obj->halostatus);
   if (obj->ndata) {
@@ -339,14 +340,14 @@ int map_volume_local(map_t * obj, int status_wanted, int * volume) {
   assert(obj);
   assert(volume);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
   vol_local = 0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 	map_status(obj, index, &status);
 	if (status == status_wanted) vol_local += 1;
       }
@@ -377,7 +378,7 @@ static int map_write(FILE * fp, int index, void * self) {
   if (nw != 1) fatal("fwrite(map->status) failed\n");
 
   if (obj->ndata > 0) {
-    coords_field_index(index, 0, obj->ndata, &indexf);
+    coords_field_index(obj->cs, index, 0, obj->ndata, &indexf);
     nw = fwrite(&obj->data[indexf], sizeof(double), obj->ndata, fp);
     if (nw != obj->ndata) fatal("fwrite(map->data) failed\n");
   }
@@ -404,7 +405,7 @@ static int map_read(FILE * fp, int index, void * self) {
   if (nr != 1) fatal("fread(map->status) failed");
 
   if (obj->ndata > 0) {
-    coords_field_index(index, 0, obj->ndata, &indexf);
+    coords_field_index(obj->cs, index, 0, obj->ndata, &indexf);
     nr = fread(&obj->data[indexf], sizeof(double), obj->ndata, fp);
     if (nr != obj->ndata) fatal("fread(map->data) failed\n");
   }
@@ -435,7 +436,7 @@ static int map_write_ascii(FILE * fp, int index, void * self) {
   if (nw != 2) fatal("fprintf(map->status) failed\n");
 
   for (n = 0; n < obj->ndata; n++) {
-    coords_field_index(index, n, obj->ndata, &indexf);
+    coords_field_index(obj->cs, index, n, obj->ndata, &indexf);
     fprintf(fp, " %22.15e", obj->data[indexf]);
   }
 
@@ -466,7 +467,7 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
   obj->status[index] = status;
 
   for (n = 0; n < obj->ndata; n++) {
-    coords_field_index(index, n, obj->ndata, &indexf);
+    coords_field_index(obj->cs, index, n, obj->ndata, &indexf);
     nr = fscanf(fp, " %le", obj->data + indexf);
     if (nr != 1) fatal("fscanf(map->data[%d]) failed\n", n);
   }

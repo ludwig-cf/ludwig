@@ -13,13 +13,10 @@
  *****************************************************************************/
 
 #include <assert.h>
-
-#include "pe.h"
-#include "coords.h"
-#include "propagation.h"
-#include "lb_model_s.h"
-#include "targetDP.h"
 #include <string.h>
+
+#include "lb_model_s.h"
+#include "propagation.h"
 
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
@@ -75,8 +72,8 @@ static int lb_propagate_d2q9(lb_t * lb) {
   assert(lb);
   assert(NVEL == 9);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal(lb->cs, nlocal);
 
   zstr = lb->ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
@@ -88,7 +85,7 @@ static int lb_propagate_d2q9(lb_t * lb) {
     for (jc = nlocal[Y]; jc >= 1; jc--) {
 
       kc = 1;
-      index = coords_index(ic, jc, kc);
+      index = coords_index(lb->cs, ic, jc, kc);
 
       for (n = 0; n < lb->ndist; n++) {
 	p = lb->ndist*NVEL*index + n*NVEL;
@@ -106,7 +103,7 @@ static int lb_propagate_d2q9(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
       kc = 1;
-      index = coords_index(ic, jc, kc);
+      index = coords_index(lb->cs, ic, jc, kc);
 
       for (n = 0; n < lb->ndist; n++) {
 	p = lb->ndist*NVEL*index + n*NVEL;
@@ -139,8 +136,8 @@ static int lb_propagate_d3q15(lb_t * lb) {
   assert(lb);
   assert(NVEL == 15);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal(lb->cs, nlocal);
 
   zstr = lb->ndist*NVEL;
   ystr = zstr*(nlocal[Z] + 2*nhalo);
@@ -153,7 +150,7 @@ static int lb_propagate_d3q15(lb_t * lb) {
     for (jc = nlocal[Y]; jc >= 1; jc--) {
       for (kc = nlocal[Z]; kc >= 1; kc--) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(lb->cs, ic, jc, kc);
 
 	for (n = 0; n < lb->ndist; n++) {
 	  p = lb->ndist*NVEL*index + n*NVEL;
@@ -175,7 +172,7 @@ static int lb_propagate_d3q15(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(lb->cs, ic, jc, kc);
 
 	for (n = 0; n < lb->ndist; n++) {
 	  p = lb->ndist*NVEL*index + n*NVEL;
@@ -384,8 +381,8 @@ static int lb_propagate_d3q19(lb_t * lb) {
   assert(lb);
   assert(NVEL == 19);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal(lb->cs, nlocal);
 
   int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
@@ -428,7 +425,7 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
   assert(lb);
   assert(NVEL == 9);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   /* Stride in memory for velocities, and space */
 
@@ -443,7 +440,7 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
     for (ic = nlocal[X]; ic >= 1; ic--) {
       for (jc = nlocal[Y]; jc >= 1; jc--) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(lb->cs, ic, jc, kc);
 	q = n*lb->nsite + index;
 
 	lb->f[4*p + q] = lb->f[4*p + q +             (-1)*ystr];
@@ -456,7 +453,7 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(lb->cs, ic, jc, kc);
 	q = n*lb->nsite + index;
 
 	lb->f[5*p + q] = lb->f[5*p + q             + (+1)*ystr];
@@ -487,7 +484,7 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
   assert(lb);
   assert(NVEL == 15);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   /* Stride in memory for velocities, and space */
 
@@ -502,7 +499,7 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
       for (jc = nlocal[Y]; jc >= 1; jc--) {
 	for (kc = nlocal[Z]; kc >= 1; kc--) {
 
-	  index = coords_index(ic, jc, kc);
+	  index = coords_index(lb->cs, ic, jc, kc);
 	  q = n*lb->nsite + index;
 
 	  lb->f[7*p + q] = lb->f[7*p + q                         + (-1)*zstr];
@@ -523,7 +520,7 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(ic, jc, kc);
+	  index = coords_index(lb->cs, ic, jc, kc);
 	  q = n*lb->nsite + index;
 
 	  lb->f[ 8*p + q] = lb->f[ 8*p+q                         + (+1)*zstr];
@@ -558,7 +555,7 @@ static int lb_propagate_d3q19_r(lb_t * lb) {
   assert(lb);
   assert(NVEL == 19);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   /* Stride in memory for velocities, and space */
 
@@ -573,7 +570,7 @@ static int lb_propagate_d3q19_r(lb_t * lb) {
       for (jc = nlocal[Y]; jc >= 1; jc--) {
 	for (kc = nlocal[Z]; kc >= 1; kc--) {
 
-	  index = coords_index(ic, jc, kc);
+	  index = coords_index(lb->cs, ic, jc, kc);
 
 	  q = n*lb->nsite + index;
 	  lb->f[9*p + q] = lb->f[9*p + q                         + (-1)*zstr];
@@ -595,7 +592,7 @@ static int lb_propagate_d3q19_r(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(ic, jc, kc);
+	  index = coords_index(lb->cs, ic, jc, kc);
 
 	  q = n*lb->nsite + index;
 	  lb->f[10*p + q] = lb->f[10*p + q                         + (+1)*zstr];

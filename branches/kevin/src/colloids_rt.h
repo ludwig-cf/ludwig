@@ -27,6 +27,6 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
 		     interact_t ** interact, map_t * map);
 int colloids_init_ewald_rt(rt_t * rt, coords_t * cs, colloids_info_t * cinfo,
 			   ewald_t ** pewald);
-int colloids_init_halo_range_check(colloids_info_t * cinfo);
+int colloids_init_halo_range_check(coords_t * cs, colloids_info_t * cinfo);
 
 #endif

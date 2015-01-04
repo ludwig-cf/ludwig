@@ -48,7 +48,7 @@ static double w2_colloid_ = 0.0;
 static double w1_wall_ = 0.0;
 static double w2_wall_ = 0.0;
 
-static coords_t * cs_ = NULL; /* KLUGDE */
+static coords_t * cs_ = NULL; /* PENDING KLUGDE */
 static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
 
 
@@ -91,13 +91,13 @@ void colloids_q_boundary_normal(const int index, const int di[3],
 
   coords_index_to_ijk(cs_, index, isite);
 
-  index1 = coords_index(isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
+  index1 = coords_index(cs_, isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
 
   assert(cinfo_);
   colloids_info_map(cinfo_, index1, &pc);
 
   if (pc) {
-    coords_nlocal_offset(noffset);
+    coords_nlocal_offset(cs_, noffset);
     for (ia = 0; ia < 3; ia++) {
       dn[ia] = 1.0*(noffset[ia] + isite[ia]);
       dn[ia] -= pc->s.r[ia];
@@ -218,8 +218,8 @@ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   if (hydro == NULL) return 0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs_, nlocal);
+  coords_nlocal_offset(cs_, noffset);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     x = noffset[X] + ic;
@@ -228,7 +228,7 @@ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs_, ic, jc, kc);
 	map_status(map, index, &status);
 
 	if (status != MAP_FLUID) {
@@ -471,11 +471,11 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
   if (status == MAP_COLLOID) {
 
-    index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
+    index = coords_index(cs_, ic - di[X], jc - di[Y], kc - di[Z]);
     colloids_info_map(cinfo_, index, &pc);
     assert(pc);
 
-    coords_nlocal_offset(noffset);
+    coords_nlocal_offset(cs_, noffset);
 
     w1 = w1_colloid_;
     w2 = w2_colloid_;

@@ -50,9 +50,10 @@ static int psi_write_ascii(FILE * fp, int index, void * self);
 int psi_halo_psi(psi_t * psi) {
 
   int nhalo;
+
   assert(psi);
 
-  nhalo = coords_nhalo();
+  coords_nhalo(psi->cs, &nhalo);
   coords_field_halo(psi->cs, nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
 
   return 0;
@@ -67,9 +68,10 @@ int psi_halo_psi(psi_t * psi) {
 int psi_halo_rho(psi_t * psi) {
 
   int nhalo;
+
   assert(psi);
 
-  nhalo = coords_nhalo();
+  coords_nhalo(psi->cs, &nhalo);
   coords_field_halo(psi->cs, nhalo, psi->nk, psi->rho, MPI_DOUBLE,
 		    psi->rhohalo);
 
@@ -95,7 +97,7 @@ int psi_create(coords_t * cs, int nk, psi_t ** pobj) {
   assert(nk > 1);
 
   coords_nsites(cs, &nsites);
-  nhalo = coords_nhalo();
+  coords_nhalo(cs, &nhalo);
 
   psi = calloc(1, sizeof(psi_t));
   if (psi == NULL) fatal("Allocation of psi failed\n");

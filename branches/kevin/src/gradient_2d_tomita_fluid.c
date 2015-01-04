@@ -43,7 +43,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "gradient_2d_tomita_fluid.h"
 
 static const double epsilon_ = 0.5;
@@ -69,9 +69,11 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
 int gradient_2d_tomita_fluid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 1;
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   assert(field);
@@ -93,9 +95,12 @@ int gradient_2d_tomita_fluid_d2(const int nop, const double * field,double * t_f
 int gradient_2d_tomita_fluid_d4(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask){
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 2;
+  /* PENDING */
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 2;
   assert(nextra >= 0);
 
   assert(field);
@@ -130,8 +135,13 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
   const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
   const double rfactor1 = 1.0 / (1.0 + 2.0*epsilon1_);
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+
+  coords_nlocal(cs, nlocal);
+  coords_nhalo(cs, &nhalo);
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -199,8 +209,12 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
 
   const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+  coords_nlocal(cs, nlocal);
+  coords_nhalo(cs, &nhalo);
 
   assert(nlocal[Z] == 1);
 

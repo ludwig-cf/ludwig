@@ -19,38 +19,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 
-enum shear_type {LE_LINEAR, LE_OSCILLATORY};
-
-struct le_s {
-  coords_t * coords;        /* Reference to coordinate system */
-  int nref;                 /* Reference count */
-
-  /* Global parameters */
-  int    nplanes;           /* Total number of planes */
-  int    type;              /* Shear type */
-  int    period;            /* for oscillatory */
-  int    nt0;               /* time0 (input as integer) */
-  double uy;                /* u[Y] for all planes */
-  double dx_min;            /* Position first plane */
-  double dx_sep;            /* Plane separation */
-  double omega;             /* u_y = u_le cos (omega t) for oscillatory */  
-  double time0;             /* time offset */
-
-  /* Local parameters */
-  int nlocal;               /* Number of planes local domain */
-  int nxbuffer;             /* Size of buffer region in x */
-  int index_real_nbuffer;
-  int * index_buffer_to_real;
-  int * index_real_to_buffer;
-  int * buffer_duy;
-
-  MPI_Comm  le_comm;        /* 1-d communicator */
-  MPI_Comm  le_plane_comm;  /* 2-d communicator */
-};
-
-static le_t * le_stat = NULL;
+le_t * le_stat = NULL;
 
 static int le_checks(le_t * le);
 static int le_init_tables(le_t * le);
@@ -69,7 +40,7 @@ int le_create(coords_t * cs, le_t ** ple) {
   if (le == NULL) fatal("calloc(le_t) failed\n");
 
   assert(cs);
-  le->coords = cs;
+  le->cs = cs;
   coords_retain(cs);
 
   le->nplanes = 0;
@@ -94,7 +65,7 @@ int le_free(le_t ** ple) {
   assert(ple);
   le = *ple;
 
-  coords_free(&le->coords);
+  coords_free(&le->cs);
   free(le->index_buffer_to_real);
   free(le->index_real_to_buffer);
   free(le->buffer_duy);
@@ -186,7 +157,7 @@ int le_commit(le_t * le) {
 
   assert(le);
 
-  coords_ntotal(le->coords, ntotal);
+  coords_ntotal(le->cs, ntotal);
 
   if (le->nplanes > 0) {
 
@@ -326,10 +297,10 @@ static int le_init_tables(le_t * le) {
 
   assert(le);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_cartsz(le->coords, cartsz);
-  coords_cart_comm(le->coords, &cartcomm);
+  coords_nhalo(le->cs, &nhalo);
+  coords_nlocal(le->cs, nlocal);
+  coords_cartsz(le->cs, cartsz);
+  coords_cart_comm(le->cs, &cartcomm);
 
   le->nlocal = le->nplanes / cartsz[X];
 
@@ -492,10 +463,10 @@ static int le_checks(le_t * le) {
 
   assert(le);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_cartsz(le->coords, cartsz);
-  coords_cart_comm(le->coords, &cartcomm);
+  coords_nhalo(le->cs, &nhalo);
+  coords_nlocal(le->cs, nlocal);
+  coords_cartsz(le->cs, cartsz);
+  coords_cart_comm(le->cs, &cartcomm);
 
   /* From the local viewpoint, there must be no planes at either
    * x = 1 or x = nlocal[X] (or indeed, within nhalo points of
@@ -541,8 +512,8 @@ int le_nsites(void) {
   int nsites;
 
   assert(le_stat);
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(le_stat->cs, &nhalo);
+  coords_nlocal(le_stat->cs, nlocal);
 
   nsites = (nlocal[X] + 2*nhalo + le_get_nxbuffer())*(nlocal[Y] + 2*nhalo)
     *(nlocal[Z] + 2*nhalo);
@@ -569,7 +540,7 @@ double le_get_steady_uy(int ic) {
 
   assert(le_stat);
   assert(le_stat->type == LE_LINEAR);
-  coords_nlocal_offset(offset);
+  coords_nlocal_offset(le_stat->cs, offset);
 
   /* The shear profile is linear, so the local velocity is just a
    * function of position, modulo the number of planes encountered
@@ -608,9 +579,9 @@ double le_get_block_uy(int ic) {
   assert(le_stat);
   assert(le_stat->type == LE_LINEAR);
 
-  coords_lmin(le_stat->coords, lmin);
-  coords_ltot(le_stat->coords, ltot);
-  coords_nlocal_offset(offset);
+  coords_lmin(le_stat->cs, lmin);
+  coords_ltot(le_stat->cs, ltot);
+  coords_nlocal_offset(le_stat->cs, offset);
 
   /* So, just count the number of blocks from the centre L_x/2
    * and mutliply by the plane speed. */
@@ -709,8 +680,8 @@ int le_plane_location(const int n) {
   assert(le_stat);
   assert(n >= 0 && n < le_stat->nlocal);
 
-  coords_cart_coords(le_stat->coords, cartcoords);
-  coords_nlocal_offset(offset);
+  coords_cart_coords(le_stat->cs, cartcoords);
+  coords_nlocal_offset(le_stat->cs, offset);
   nplane_offset = cartcoords[X]*le_stat->nlocal;
 
   ix = le_stat->dx_min + (n + nplane_offset)*le_stat->dx_sep - offset[X];
@@ -748,7 +719,7 @@ int le_index_real_to_buffer(const int ic, const int di) {
 
   assert(le_stat);
 
-  nhalo = coords_nhalo();
+  coords_nhalo(le_stat->cs, &nhalo);
   assert(di >= -nhalo && di <= +nhalo);
 
   ib = (ic + nhalo - 1)*(2*nhalo + 1) + di + nhalo;
@@ -877,8 +848,8 @@ int le_jstart_to_mpi_ranks(le_t * le, const int j1, int send[3], int recv[3]) {
   int pe_carty1, pe_carty2, pe_carty3;
 
   assert(le);
-  coords_cart_coords(le->coords, cartcoords);
-  coords_nlocal(nlocal);
+  coords_cart_coords(le->cs, cartcoords);
+  coords_nlocal(le->cs, nlocal);
 
   /* Receive from ... */
 
@@ -916,7 +887,7 @@ double le_shear_rate() {
   double ltot[3];
 
   assert(le_stat);
-  coords_ltot(le_stat->coords, ltot);
+  coords_ltot(le_stat->cs, ltot);
 
   return (le_plane_uy_max()*le_stat->nplanes/ltot[X]);
 }
@@ -940,8 +911,8 @@ int le_site_index(const int ic, const int jc, const int kc) {
 
   assert(le_stat);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(le_stat->cs, &nhalo);
+  coords_nlocal(le_stat->cs, nlocal);
 
   assert(ic >= 1-nhalo);
   assert(jc >= 1-nhalo);

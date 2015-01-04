@@ -20,7 +20,6 @@
 #include <stdlib.h>
 
 #include "util.h"
-#include "coords.h"
 #include "psi_s.h"
 #include "psi_colloid.h"
 
@@ -45,7 +44,7 @@ static int psi_colloid_charge_accum(psi_t * psi, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
+int psi_colloid_rho_set(psi_t * psi, colloids_info_t * cinfo) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -53,16 +52,16 @@ int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
   double rho0, rho1, volume;
   colloid_t * pc = NULL;
 
-  assert(obj);
+  assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	if (pc) {
@@ -72,8 +71,8 @@ int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
 	  rho0 = dmax(0.0, pc->s.q0 + pc->s.deltaq0) / volume;
 	  rho1 = dmax(0.0, pc->s.q1 + pc->s.deltaq1) / volume;
 
-	  psi_rho_set(obj, index, 0, rho0);
-	  psi_rho_set(obj, index, 1, rho1);
+	  psi_rho_set(psi, index, 0, rho0);
+	  psi_rho_set(psi, index, 1, rho1);
 	}
 
 	/* Next site */
@@ -109,7 +108,7 @@ int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
+int psi_colloid_electroneutral(psi_t * psi, coords_t * cs,
 			       colloids_info_t * cinfo) {
 
   int ic, jc, kc, index;
@@ -127,11 +126,11 @@ int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
   colloid_t * pc = NULL;
   MPI_Comm comm;
 
-  assert(obj);
+  assert(psi);
   assert(cs);
   assert(cinfo);
 
-  psi_nk(obj, &nk);
+  psi_nk(psi, &nk);
   assert(nk == 2);
 
   coords_ltot(cs, ltot);
@@ -151,7 +150,7 @@ int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
 
   qtot = 0.0;
   for (n = 0; n < nk; n++) {
-    psi_valency(obj, n, valency + n);
+    psi_valency(psi, n, valency + n);
     qtot += valency[n]*qv[n];
   }
 
@@ -167,19 +166,19 @@ int psi_colloid_electroneutral(psi_t * obj, coords_t * cs,
 
   /* Loop over lattice and accumulate the countercharge */
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	if (pc == NULL) {
-	  psi_rho(obj, index, nc, &rho);
+	  psi_rho(psi, index, nc, &rho);
 	  rho += rhoi;
-	  psi_rho_set(obj, index, nc, rho);
+	  psi_rho_set(psi, index, nc, rho);
 	}
 
 	/* Next site */
@@ -319,7 +318,7 @@ static int psi_colloid_charge_accum(psi_t * psi, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int psi_colloid_zetapotential(psi_t * obj, coords_t * cs,
+int psi_colloid_zetapotential(psi_t * psi, coords_t * cs,
 			      colloids_info_t * cinfo,
 			      double * psi_zeta) {
 
@@ -337,10 +336,11 @@ int psi_colloid_zetapotential(psi_t * obj, coords_t * cs,
   colloid_t * p_c;
   MPI_Comm comm;
 
-  assert(obj);
+  assert(psi);
   assert(cs);
   assert(cinfo);
-  coords_nlocal(nlocal);
+
+  coords_nlocal(cs, nlocal);
   coords_cart_comm(cs, &comm);
 
   /* Set result to zero and escape if there is not one particle. */
@@ -359,7 +359,7 @@ int psi_colloid_zetapotential(psi_t * obj, coords_t * cs,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	/* If this is a solid site, there's no contribution here. */
 
@@ -367,60 +367,60 @@ int psi_colloid_zetapotential(psi_t * obj, coords_t * cs,
 	if (p_c) continue;
 
 	/* Get potential at fluid site */
-	psi_psi(obj, index, &psi0);
+	psi_psi(psi, index, &psi0);
 
 	/* Check if adjacent site is solid and add contribution */
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = coords_index(cs, ic+1, jc, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
-	  psi_psi(obj, index1, &psi1);
+	  psi_psi(psi, index1, &psi1);
 	  psic_local += 0.5*(psi0+psi1);
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = coords_index(cs, ic-1, jc, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
-	  psi_psi(obj, index1, &psi1);
+	  psi_psi(psi, index1, &psi1);
 	  psic_local += 0.5*(psi0+psi1);
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = coords_index(cs, ic, jc+1, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
-	  psi_psi(obj, index1, &psi1);
+	  psi_psi(psi, index1, &psi1);
 	  psic_local += 0.5*(psi0+psi1);
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic, jc-1, kc);
+	index1 = coords_index(cs, ic, jc-1, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
-	  psi_psi(obj, index1, &psi1);
+	  psi_psi(psi, index1, &psi1);
 	  psic_local += 0.5*(psi0+psi1);
 	  nsl_local ++;
 	}
 	
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = coords_index(cs, ic, jc, kc+1);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
-	  psi_psi(obj, index1, &psi1);
+	  psi_psi(psi, index1, &psi1);
 	  psic_local += 0.5*(psi0+psi1);
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic, jc, kc-1);
+	index1 = coords_index(cs, ic, jc, kc-1);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
-	  psi_psi(obj, index1, &psi1);
+	  psi_psi(psi, index1, &psi1);
 	  psic_local += 0.5*(psi0+psi1);
 	  nsl_local ++;
 	}

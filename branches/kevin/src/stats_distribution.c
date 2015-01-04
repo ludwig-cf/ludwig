@@ -20,10 +20,8 @@
 #include <float.h>
 #include <math.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "model.h"
 #include "util.h"
+#include "lb_model_s.h"
 #include "stats_distribution.h"
 
 /*****************************************************************************
@@ -52,7 +50,7 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
   assert(lb);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
   comm = pe_comm();
 
   stat_local[0] = 0.0;       /* Volume */
@@ -65,7 +63,7 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(lb->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -120,7 +118,7 @@ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
   assert(map);
   assert(g);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   g_local[X] = 0.0;
   g_local[Y] = 0.0;
@@ -130,7 +128,7 @@ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(lb->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

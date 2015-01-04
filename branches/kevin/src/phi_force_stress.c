@@ -39,8 +39,11 @@ int phi_force_stress_compute(coords_t * cs, double * p3d) {
   double pth_local[3][3];
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+  assert(cs);
+  assert(p3d);
+
+  coords_nlocal(cs, nlocal);
+  /* assert(coords_nhalo() >= 2);*/
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -48,7 +51,7 @@ int phi_force_stress_compute(coords_t * cs, double * p3d) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	chemical_stress(index, pth_local);
 	phi_force_stress_set(p3d, index, pth_local);
@@ -114,7 +117,8 @@ int phi_force_stress_allocate(coords_t * cs, double ** p3d) {
 
   int n;
 
-  assert(coords_nhalo() >= 2);
+  assert(cs);
+  assert(p3d);
 
   coords_nsites(cs, &n);
 

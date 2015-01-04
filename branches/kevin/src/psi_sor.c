@@ -98,7 +98,6 @@ int psi_sor_poisson(psi_t * obj) {
   const int ncheck = 5;        /* Check global residual every n iterations */
   
   int ic, jc, kc, index;
-  int nhalo;
   int n;                       /* Relaxation iterations */
   int pass;                    /* Red/black iteration */
   int kst;                     /* Start kc index for red/black iteration */
@@ -123,22 +122,20 @@ int psi_sor_poisson(psi_t * obj) {
   double eunit, beta;
   MPI_Comm comm;               /* Cartesian communicator */
 
-  nhalo = coords_nhalo();
-  coords_ltot(obj->cs, ltot);
-  coords_nlocal(nlocal);
-  coords_cart_comm(obj->cs, &comm);
+  assert(obj);
 
-  assert(nhalo >= 1);
+  coords_ltot(obj->cs, ltot);
+  coords_nlocal(obj->cs, nlocal);
+  coords_cart_comm(obj->cs, &comm);
+  coords_strides(obj->cs, &xs, &ys, &zs);
+
+  /* assert(nhalo >= 1);*/
 
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
   assert(nlocal[X] % 2 == 0);
   assert(nlocal[Y] % 2 == 0);
   assert(nlocal[Z] % 2 == 0);
-
-  zs = 1;
-  ys = zs*(nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
 
   /* Compute initial norm of the residual */
 
@@ -158,7 +155,7 @@ int psi_sor_poisson(psi_t * obj) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 
 	psi_rho_elec(obj, index, &rho_elec);
 
@@ -192,7 +189,7 @@ int psi_sor_poisson(psi_t * obj) {
 	  kst = 1 + (ic + jc + pass) % 2;
 	  for (kc = kst; kc <= nlocal[Z]; kc += 2) {
 
-	    index = coords_index(ic, jc, kc);
+	    index = coords_index(obj->cs, ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
 
@@ -297,10 +294,10 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   assert(obj);
 
   coords_ltot(obj->cs, ltot);
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
   coords_cart_comm(obj->cs, &comm);
 
-  assert(coords_nhalo() >= 1);
+  /* assert(coords_nhalo() >= 1);*/
   physics_e0(e0);
 
   /* The red/black operation needs to be tested for odd numbers
@@ -331,7 +328,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	depsi = 0.0;
 	rho_s = 0.0;
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 
 	psi_rho_elec(obj, index, &rho_elec);
 	fepsilon(index, &eps0);
@@ -395,7 +392,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	    depsi  = 0.0;
 	    rho_s  = 0.0;
 
-	    index = coords_index(ic, jc, kc);
+	    index = coords_index(obj->cs, ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
 	    fepsilon(index, &eps0);
@@ -501,7 +498,7 @@ int psi_sor_offset(psi_t * psi) {
   assert(psi);
 
   coords_ltot(psi->cs, ltot);
-  coords_nlocal(nlocal);  
+  coords_nlocal(psi->cs, nlocal);  
   coords_cart_comm(psi->cs, &comm);
 
   sum_local = 0.0;
@@ -510,7 +507,7 @@ int psi_sor_offset(psi_t * psi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 
 	psi_psi(psi, index, &psi0);
 	sum_local += psi0;
@@ -526,7 +523,7 @@ int psi_sor_offset(psi_t * psi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 
 	psi_psi(psi, index, &psi0);
 	psi0 -= psi_offset;

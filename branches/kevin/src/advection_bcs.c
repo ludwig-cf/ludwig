@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  (c) 2009-2015 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -46,34 +46,34 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
   assert(flux);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(flux->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic-1, jc, kc);
+	index = coords_index(flux->cs, ic-1, jc, kc);
 	map_status(map, index, &status);
 	maskw = (status == MAP_FLUID);
 
-	index = coords_index(ic+1, jc, kc);
+	index = coords_index(flux->cs, ic+1, jc, kc);
 	map_status(map, index, &status);
 	maske = (status == MAP_FLUID);
 
-	index = coords_index(ic, jc+1, kc);
+	index = coords_index(flux->cs, ic, jc+1, kc);
 	map_status(map, index, &status);
 	masky = (status == MAP_FLUID);
 
-	index = coords_index(ic, jc, kc+1);
+	index = coords_index(flux->cs, ic, jc, kc+1);
 	map_status(map, index, &status);
 	maskz = (status == MAP_FLUID);
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(flux->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
-	  coords_field_index(index, n, nf, &indexf);
+	  coords_field_index(flux->cs, index, n, nf, &indexf);
 	  flux->fw[indexf] *= mask*maskw;
 	  flux->fe[indexf] *= mask*maske;
 	  flux->fy[indexf] *= mask*masky;
@@ -94,6 +94,9 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
  *
  *****************************************************************************/
 
+/* PENDING a sane way to get cs */
+#include "map_s.h"
+
 int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 			  map_t * map) {
   int n;
@@ -103,37 +106,41 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 
   double mask, maskx, masky, maskz;
 
+  /*PENDING */
+  coords_t * cs;
+  cs = map->cs;
+
   assert(nf > 0);
   assert(fx);
   assert(fy);
   assert(fz);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic + 1, jc, kc);
+	index = coords_index(cs, ic + 1, jc, kc);
 	map_status(map, index, &status);
 	maskx = (status == MAP_FLUID);
 
-	index = coords_index(ic, jc + 1, kc);
+	index = coords_index(cs, ic, jc + 1, kc);
 	map_status(map, index, &status);
 	masky = (status == MAP_FLUID);
 
-	index = coords_index(ic, jc, kc + 1);
+	index = coords_index(cs, ic, jc, kc + 1);
 	map_status(map, index, &status);
 	maskz = (status == MAP_FLUID);
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	mask = (status == MAP_FLUID);
 
 	for (n = 0;  n < nf; n++) {
 
-	  coords_field_index(index, n, nf, &indexf);
+	  coords_field_index(cs, index, n, nf, &indexf);
 	  fx[indexf] *= mask*maskx;
 	  fy[indexf] *= mask*masky;
 	  fz[indexf] *= mask*maskz;
@@ -164,23 +171,28 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
   int c;
   double mask0, mask1;
 
+  /*PENDING*/
+  coords_t * cs = NULL;
+  cs = map->cs;
+
   assert(nf > 0);
   assert(flx);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(cs, ic, jc, kc);
 	map_status(map, index0, &status);
 	mask0 = (status == MAP_FLUID);
 
 	for (c = 1; c < PSI_NGRAD; c++) {
 
-	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  index1 = coords_index(cs, ic + psi_gr_cv[c][X],
+				jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  map_status(map, index1, &status);
 	  mask1 = (status == MAP_FLUID);
 
@@ -233,7 +245,7 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
   coords_cart_coords(flux->cs, cartcoords);
 
   field_nf(fphi, &nf);
-  coords_nlocal(nlocal);
+  coords_nlocal(flux->cs, nlocal);
 
   if (cartcoords[X] == 0) {
     ic = 1;
@@ -241,8 +253,8 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index  = coords_index(ic, jc, kc);
-	index1 = coords_index(ic-1, jc, kc);
+	index  = coords_index(flux->cs, ic, jc, kc);
+	index1 = coords_index(flux->cs, ic-1, jc, kc);
 
 	field_scalar_array(fphi, index, q);
 	field_scalar_array_set(fphi, index1, q);
@@ -257,8 +269,8 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
-	index1 = coords_index(ic+1, jc, kc);
+	index = coords_index(flux->cs, ic, jc, kc);
+	index1 = coords_index(flux->cs, ic+1, jc, kc);
 
 	field_scalar_array(fphi, index, q);
 	field_scalar_array_set(fphi, index1, q);

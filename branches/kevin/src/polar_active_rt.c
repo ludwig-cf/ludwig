@@ -138,8 +138,8 @@ static int polar_active_init_code(coords_t * cs, field_t * fp) {
   assert(cs);
   assert(fp);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = 1.0*(noffset[X] + ic);
@@ -148,7 +148,7 @@ static int polar_active_init_code(coords_t * cs, field_t * fp) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = 1.0*(noffset[Z] + kc);
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 
         /* Set p as a function of true position (x,y,z) as required */
 
@@ -185,8 +185,8 @@ int polar_active_init_aster(coords_t * cs, field_t * fp) {
   assert(fp);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   x0 = 0.5*ltot[X];
   y0 = 0.5*ltot[Y];
@@ -211,7 +211,7 @@ int polar_active_init_aster(coords_t * cs, field_t * fp) {
 	  p[Y] = -(y - y0)/r;
 	  p[Z] = -(z - z0)/r;
 	}
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	field_vector_set(fp, index, p);
       }
     }

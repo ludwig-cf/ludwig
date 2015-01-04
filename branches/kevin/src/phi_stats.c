@@ -19,9 +19,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
+
 #include "util.h"
+#include "field_s.h"
 #include "phi_stats.h"
 
 /*****************************************************************************
@@ -195,7 +195,7 @@ int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
   assert(fsum);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
   field_nf(obj, &nf);
   assert(nf <= NQAB);
 
@@ -214,7 +214,7 @@ int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(obj->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

@@ -10,15 +10,13 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *
  ****************************************************************************/
 
 #include <assert.h>
 #include <float.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "util.h"
 #include "stats_velocity.h"
 
@@ -35,7 +33,8 @@
  *
  ****************************************************************************/
 
-int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
+int stats_velocity_minmax(coords_t * cs, hydro_t * hydro, map_t * map,
+			  int print_vol_flux) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
@@ -48,10 +47,11 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
 
   MPI_Comm comm;
 
+  assert(cs);
   assert(hydro);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   comm = pe_comm();
 
   for (ia = 0; ia < 3; ia++) {
@@ -64,7 +64,7 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 
 	if (status == MAP_FLUID) {

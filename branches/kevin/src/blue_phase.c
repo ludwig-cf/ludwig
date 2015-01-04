@@ -943,7 +943,7 @@ int blue_phase_redshift_compute(coords_t * cs) {
   if (redshift_update_ == 0) return 0;
 
   coords_cart_comm(cs, &comm);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   egrad_local[0] = 0.0;
   egrad_local[1] = 0.0;
@@ -954,7 +954,7 @@ int blue_phase_redshift_compute(coords_t * cs) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	field_tensor(q_, index, q);
 	field_grad_tensor_grad(grad_q_, index, dq);

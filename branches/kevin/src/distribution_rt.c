@@ -184,8 +184,8 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb, coords_t * cs) {
 
   coords_lmin(cs, lmin);
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = (1.0*(noffset[X] + ic) - lmin[X])/ltot[X];
@@ -199,7 +199,7 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb, coords_t * cs) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
         lb_1st_moment_equilib_set(lb, index, rho, u);
       }
     }
@@ -248,8 +248,8 @@ static int lb_rt_2d_shear_wave(lb_t * lb, coords_t * cs) {
 
   coords_lmin(cs, lmin);
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   kappa = 2.0*pi_;
 
@@ -263,7 +263,7 @@ static int lb_rt_2d_shear_wave(lb_t * lb, coords_t * cs) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
         lb_1st_moment_equilib_set(lb, index, rho, u);
       }
     }
@@ -295,13 +295,13 @@ static int lb_init_uniform(lb_t * lb, coords_t * cs, double rho0,
   assert(lb);
   assert(cs);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	lb_1st_moment_equilib_set(lb, index, rho0, u0);
 
       }
@@ -345,8 +345,8 @@ static int lb_init_poiseuille(lb_t * lb, coords_t * cs, double rho0,
 
   coords_lmin(cs, lmin);
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
 
@@ -366,7 +366,7 @@ static int lb_init_poiseuille(lb_t * lb, coords_t * cs, double rho0,
 	z = 1.0*(noffset[Z] + kc) - lmin[Z];
 	u0[Z] = umax[Z]*z*(ltot[Z] - z)*4.0/(ltot[Z]*ltot[Z]);
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	lb_1st_moment_equilib_set(lb, index, rho0, u0);
 
       }

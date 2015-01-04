@@ -283,32 +283,32 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
     /* This gives cholesteric_z (for backwards compatibility) */
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis Z\n");
-    blue_phase_twist_init(q, Z);
+    blue_phase_twist_init(cs, q, Z);
   }
 
   if (strcmp(key1, "cholesteric_x") == 0) {
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis X\n");
-    blue_phase_twist_init(q, X);
+    blue_phase_twist_init(cs, q, X);
   }
 
   if (strcmp(key1, "cholesteric_y") == 0) {
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis Y\n");
-    blue_phase_twist_init(q, Y);
+    blue_phase_twist_init(cs, q, Y);
   }
 
   if (strcmp(key1, "cholesteric_z") == 0) {
     info("Initialising Q_ab to cholesteric\n");
     info("Helical axis Z\n");
-    blue_phase_twist_init(q, Z);
+    blue_phase_twist_init(cs, q, Z);
   }
 
   if (strcmp(key1, "nematic") == 0) {
     info("Initialising Q_ab to nematic\n");
     rt_double_parameter_vector(rt, "lc_init_nematic", nhat);
     info("Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
-    blue_phase_nematic_init(q, nhat);
+    blue_phase_nematic_init(cs, q, nhat);
   }
 
   if (strcmp(key1, "active_nematic") == 0) {
@@ -320,17 +320,17 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
 
   if (strcmp(key1, "o8m") == 0) {
     info("Initialising Q_ab using O8M (BPI)\n");
-    blue_phase_O8M_init(q);
+    blue_phase_O8M_init(cs, q);
   }
 
   if (strcmp(key1, "o2") == 0) {
     info("Initialising Q_ab using O2 (BPII)\n");
-    blue_phase_O2_init(q);
+    blue_phase_O2_init(cs, q);
   }
 
   if (strcmp(key1, "o5") == 0) {
     info("Initialising Q_ab using O5\n");
-    blue_phase_O5_init(q);
+    blue_phase_O5_init(cs, q);
   }
 
   if (strcmp(key1, "h2d") == 0) {
@@ -350,7 +350,7 @@ int blue_phase_rt_initial_conditions(rt_t * rt, coords_t * cs, field_t * q) {
 
   if (strcmp(key1, "dtc") == 0) {
     info("Initialising Q_ab using DTC\n");
-    blue_phase_DTC_init(q);
+    blue_phase_DTC_init(cs, q);
   }
 
   if (strcmp(key1, "bp3") == 0) {

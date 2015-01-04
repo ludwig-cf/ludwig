@@ -38,8 +38,9 @@
  *
  *****************************************************************************/
 
-int coords_field_index(int index, int n, int nf, int * indexf) {
+int coords_field_index(coords_t * cs, int index, int n, int nf, int * indexf) {
 
+  assert(cs);
   assert(n >= 0);
   assert(n < nf);
   assert(index >= 0);
@@ -120,8 +121,8 @@ int coords_field_init_mpi_indexed(coords_t * cs, int nhcomm, int nf,
 
   assert(cs);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(cs, &nhalo);
+  coords_nlocal(cs, nlocal);
   nh[X] = nlocal[X] + 2*nhalo;
   nh[Y] = nlocal[Y] + 2*nhalo;
   nh[Z] = nlocal[Z] + 2*nhalo;
@@ -257,7 +258,7 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
   assert(f);
   assert(halo);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   coords_cart_comm(cs, &comm);
   coords_cartsz(cs, cartsz);
 
@@ -271,27 +272,27 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
   if (cartsz[X] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, X);
     pforw = coords_cart_neighb(cs, FORWARD, X);
-    ihalo = nf*coords_index(nlocal[X] + 1, 1, 1);
+    ihalo = nf*coords_index(cs, nlocal[X] + 1, 1, 1);
     MPI_Irecv(f + ihalo, 1, halo[X], pforw, btagx, comm, req_recv);
-    ihalo = nf*coords_index(1 - nhcomm, 1, 1);
+    ihalo = nf*coords_index(cs, 1 - nhcomm, 1, 1);
     MPI_Irecv(f + ihalo, 1, halo[X], pback, ftagx, comm, req_recv + 1);
   }
 
   if (cartsz[Y] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Y);
     pforw = coords_cart_neighb(cs, FORWARD, Y);
-    ihalo = nf*coords_index(1 - nhcomm, nlocal[Y] + 1, 1);
+    ihalo = nf*coords_index(cs, 1 - nhcomm, nlocal[Y] + 1, 1);
     MPI_Irecv(f + ihalo, 1, halo[Y], pforw, btagy, comm, req_recv + 2);
-    ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
+    ihalo = nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, 1);
     MPI_Irecv(f + ihalo, 1, halo[Y], pback, ftagy, comm, req_recv + 3);
   }
 
   if (cartsz[Z] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Z);
     pforw = coords_cart_neighb(cs, FORWARD, Z);
-    ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
+    ihalo = nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
     MPI_Irecv(f + ihalo, 1, halo[Z], pforw, btagz, comm, req_recv + 4);
-    ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
+    ihalo = nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
     MPI_Irecv(f + ihalo, 1, halo[Z], pback, ftagz, comm, req_recv + 5);
   }
 
@@ -301,9 +302,9 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
   if (cartsz[X] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, X);
     pforw = coords_cart_neighb(cs, FORWARD, X);
-    ireal = nf*coords_index(1, 1, 1);
+    ireal = nf*coords_index(cs, 1, 1, 1);
     MPI_Issend(f + ireal, 1, halo[X], pback, btagx, comm, req_send);
-    ireal = nf*coords_index(nlocal[X] - nhcomm + 1, 1, 1);
+    ireal = nf*coords_index(cs, nlocal[X] - nhcomm + 1, 1, 1);
     MPI_Issend(f + ireal, 1, halo[X], pforw, ftagx, comm, req_send + 1);
   }
   else {
@@ -311,11 +312,11 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
-	    ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
+	    ihalo = n + nf*coords_index(cs, 0 - nh, jc, kc);
+	    ireal = n + nf*coords_index(cs, nlocal[X] - nh, jc, kc);
 	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc, kc);
-	    ireal = n + nf*coords_index(1 + nh, jc, kc);
+	    ihalo = n + nf*coords_index(cs, nlocal[X] + 1 + nh, jc, kc);
+	    ireal = n + nf*coords_index(cs, 1 + nh, jc, kc);
 	    f[ihalo] = f[ireal];
 	  }
 	}
@@ -329,9 +330,9 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
   if (cartsz[Y] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Y);
     pforw = coords_cart_neighb(cs, FORWARD, Y);
-    ireal = nf*coords_index(1 - nhcomm, 1, 1);
+    ireal = nf*coords_index(cs, 1 - nhcomm, 1, 1);
     MPI_Issend(f + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
-    ireal = nf*coords_index(1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
+    ireal = nf*coords_index(cs, 1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
     MPI_Issend(f + ireal, 1, halo[Y], pforw, ftagy, comm, req_send + 3);
   }
   else {
@@ -339,11 +340,11 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
       for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
-	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
+	    ihalo = n + nf*coords_index(cs, ic, 0 - nh, kc);
+	    ireal = n + nf*coords_index(cs, ic, nlocal[Y] - nh, kc);
 	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
+	    ihalo = n + nf*coords_index(cs, ic, nlocal[Y] + 1 + nh, kc);
+	    ireal = n + nf*coords_index(cs, ic, 1 + nh, kc);
 	    f[ihalo] = f[ireal];
 	  }
 	}
@@ -357,9 +358,9 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
   if (cartsz[Z] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Z);
     pforw = coords_cart_neighb(cs, FORWARD, Z);
-    ireal = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
+    ireal = nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, 1);
     MPI_Issend(f + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
-    ireal = nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
+    ireal = nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
     MPI_Issend(f + ireal, 1, halo[Z], pforw, ftagz, comm, req_send + 5);
   }
   else {
@@ -367,11 +368,11 @@ int coords_field_halo_d(coords_t * cs, int nhcomm, int nf, double * f,
       for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
 	for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
-	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
+	    ihalo = n + nf*coords_index(cs, ic, jc, 0 - nh);
+	    ireal = n + nf*coords_index(cs, ic, jc, nlocal[Z] - nh);
 	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
+	    ihalo = n + nf*coords_index(cs, ic, jc, nlocal[Z] + 1 + nh);
+	    ireal = n + nf*coords_index(cs, ic, jc, 1 + nh);
 	    f[ihalo] = f[ireal];
 	  }
 	}
@@ -422,7 +423,7 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   coords_cart_comm(cs, &comm);
   coords_cartsz(cs, cartsz);
 
@@ -436,27 +437,27 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
   if (cartsz[X] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, X);
     pforw = coords_cart_neighb(cs, FORWARD, X);
-    ihalo = sz*nf*coords_index(nlocal[X] + 1, 1, 1);
+    ihalo = sz*nf*coords_index(cs, nlocal[X] + 1, 1, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[X], pforw, btagx, comm, req_recv);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1, 1);
+    ihalo = sz*nf*coords_index(cs, 1 - nhcomm, 1, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[X], pback, ftagx, comm, req_recv + 1);
   }
 
   if (cartsz[Y] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Y);
     pforw = coords_cart_neighb(cs, FORWARD, Y);
-    ihalo = sz*nf*coords_index(1 - nhcomm, nlocal[Y] + 1, 1);
+    ihalo = sz*nf*coords_index(cs, 1 - nhcomm, nlocal[Y] + 1, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[Y], pforw, btagy, comm, req_recv + 2);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
+    ihalo = sz*nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[Y], pback, ftagy, comm, req_recv + 3);
   }
 
   if (cartsz[Z] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Z);
     pforw = coords_cart_neighb(cs, FORWARD, Z);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
+    ihalo = sz*nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
     MPI_Irecv(mbuf + ihalo, 1, halo[Z], pforw, btagz, comm, req_recv + 4);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
+    ihalo = sz*nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
     MPI_Irecv(mbuf + ihalo, 1, halo[Z], pback, ftagz, comm, req_recv + 5);
   }
 
@@ -466,9 +467,9 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
   if (cartsz[X] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, X);
     pforw = coords_cart_neighb(cs, FORWARD, X);
-    ireal = sz*nf*coords_index(1, 1, 1);
+    ireal = sz*nf*coords_index(cs, 1, 1, 1);
     MPI_Issend(mbuf + ireal, 1, halo[X], pback, btagx, comm, req_send);
-    ireal = sz*nf*coords_index(nlocal[X] - nhcomm + 1, 1, 1);
+    ireal = sz*nf*coords_index(cs, nlocal[X] - nhcomm + 1, 1, 1);
     MPI_Issend(mbuf + ireal, 1, halo[X], pforw, ftagx, comm, req_send + 1);
   }
   else {
@@ -476,11 +477,11 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
-	    ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
+	    ihalo = n + nf*coords_index(cs, 0 - nh, jc, kc);
+	    ireal = n + nf*coords_index(cs, nlocal[X] - nh, jc, kc);
 	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc, kc);
-	    ireal = n + nf*coords_index(1 + nh, jc, kc);
+	    ihalo = n + nf*coords_index(cs, nlocal[X] + 1 + nh, jc, kc);
+	    ireal = n + nf*coords_index(cs, 1 + nh, jc, kc);
 	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	  }
 	}
@@ -494,9 +495,9 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
   if (cartsz[Y] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Y);
     pforw = coords_cart_neighb(cs, FORWARD, Y);
-    ireal = sz*nf*coords_index(1 - nhcomm, 1, 1);
+    ireal = sz*nf*coords_index(cs, 1 - nhcomm, 1, 1);
     MPI_Issend(mbuf + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
-    ireal = sz*nf*coords_index(1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
+    ireal = sz*nf*coords_index(cs, 1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
     MPI_Issend(mbuf + ireal, 1, halo[Y], pforw, ftagy, comm, req_send + 3);
   }
   else {
@@ -504,11 +505,11 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
       for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
-	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
+	    ihalo = n + nf*coords_index(cs, ic, 0 - nh, kc);
+	    ireal = n + nf*coords_index(cs, ic, nlocal[Y] - nh, kc);
 	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
+	    ihalo = n + nf*coords_index(cs, ic, nlocal[Y] + 1 + nh, kc);
+	    ireal = n + nf*coords_index(cs, ic, 1 + nh, kc);
 	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	  }
 	}
@@ -522,9 +523,9 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
   if (cartsz[Z] > 1) {
     pback = coords_cart_neighb(cs, BACKWARD, Z);
     pforw = coords_cart_neighb(cs, FORWARD, Z);
-    ireal = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
+    ireal = sz*nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, 1);
     MPI_Issend(mbuf + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
-    ireal = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
+    ireal = sz*nf*coords_index(cs, 1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
     MPI_Issend(mbuf + ireal, 1, halo[Z], pforw, ftagz, comm, req_send + 5);
   }
   else {
@@ -532,11 +533,11 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
       for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
 	for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
-	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
+	    ihalo = n + nf*coords_index(cs, ic, jc, 0 - nh);
+	    ireal = n + nf*coords_index(cs, ic, jc, nlocal[Z] - nh);
 	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
+	    ihalo = n + nf*coords_index(cs, ic, jc, nlocal[Z] + 1 + nh);
+	    ireal = n + nf*coords_index(cs, ic, jc, 1 + nh);
 	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
 	  }
 	}

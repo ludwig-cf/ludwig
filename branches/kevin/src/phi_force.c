@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "free_energy.h"
 #include "wall.h"
 #include "phi_force_stress.h"
@@ -137,6 +137,8 @@ int phi_force_calculation(field_t * phi, coords_t * cs, hydro_t * hydro) {
  *
  *****************************************************************************/
 
+/* PENDING LE or cs */
+
 static int phi_force_calculation_fluid(coords_t * cs, hydro_t * hydro) {
 
   int ia, ic, jc, kc, icm1, icp1;
@@ -150,7 +152,7 @@ static int phi_force_calculation_fluid(coords_t * cs, hydro_t * hydro) {
   assert(cs);
   assert(hydro);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   phi_force_stress_allocate(cs, &p3d);
   phi_force_stress_compute(cs, p3d);
@@ -235,23 +237,24 @@ static int phi_force_fluid_phi_gradmu(field_t * fphi, hydro_t * hydro) {
   int index0, indexm1, indexp1;
   int nhalo;
   int nlocal[3];
-  int zs, ys;
+  int zs, ys, xs;
   double phi, mum1, mup1;
   double force[3];
 
   double (* chemical_potential)(const int index, const int nop);
 
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
   assert(fphi);
   assert(hydro);
   /* Could check nf == 1 sclar field. */
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(cs, &nhalo);
+  coords_nlocal(cs, nlocal);
+  coords_strides(cs, &xs, &ys, &zs);
   assert(nhalo >= 2);
-
-  /* Memory strides */
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
 
   chemical_potential = fe_chemical_potential_function();
 
@@ -373,8 +376,12 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+  coords_nlocal(cs, nlocal);
+  /* assert(coords_nhalo() >= 2);*/
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -446,13 +453,17 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
   int index, indexj, indexk;
   double f[3];
 
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
   assert(hydro);
   assert(fluxe);
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -505,6 +516,8 @@ static int phi_force_flux_divergence_with_fix(coords_t * cs, hydro_t * hydro,
   double fsum[3];
   double rv;
 
+  /* PENDING */
+
   assert(hydro);
   assert(fluxe);
   assert(fluxw);
@@ -512,7 +525,7 @@ static int phi_force_flux_divergence_with_fix(coords_t * cs, hydro_t * hydro,
   assert(fluxz);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   for (ia = 0; ia < 3; ia++) {
     fsum_local[ia] = 0.0;
@@ -595,7 +608,7 @@ static int phi_force_flux_fix_local(coords_t * cs, double * fluxe,
   assert(cs);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   nplane = le_get_nplane_local();
 
   if (nplane == 0) return 0;
@@ -678,7 +691,7 @@ static int phi_force_wallx(coords_t * cs, double * fluxe, double * fluxw) {
   assert(cs);
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -691,7 +704,7 @@ static int phi_force_wallx(coords_t * cs, double * fluxe, double * fluxw) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic,jc,kc);
+	index = coords_index(cs, ic,jc,kc);
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -707,7 +720,7 @@ static int phi_force_wallx(coords_t * cs, double * fluxe, double * fluxw) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic,jc,kc);
+	index = coords_index(cs, ic,jc,kc);
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -749,7 +762,7 @@ static int phi_force_wally(coords_t * cs, double * fluxy) {
   assert(cs);
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -762,11 +775,11 @@ static int phi_force_wally(coords_t * cs, double * fluxy) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	chemical_stress(index, pth0);
 
 	/* Face flux a jc - 1 */
-	index1 = le_site_index(ic, jc-1, kc);
+	index1 = coords_index(cs, ic, jc-1, kc);
 
 	for (ia = 0; ia < 3; ia++) {
 	  fluxy[3*index1 + ia] = pth0[ia][Y];
@@ -781,7 +794,7 @@ static int phi_force_wally(coords_t * cs, double * fluxy) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -823,7 +836,7 @@ static int phi_force_wallz(coords_t  * cs, double * fluxz) {
   assert(cs);
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -836,11 +849,11 @@ static int phi_force_wallz(coords_t  * cs, double * fluxz) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	chemical_stress(index, pth0);
 
 	/* Face flux at kc-1 */
-	index1 = le_site_index(ic, jc, kc-1);
+	index1 = coords_index(cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
 	  fluxz[3*index1 + ia] = pth0[ia][Z];
@@ -855,7 +868,7 @@ static int phi_force_wallz(coords_t  * cs, double * fluxz) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {

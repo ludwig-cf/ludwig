@@ -116,7 +116,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
   assert(cinfo);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   phi_force_stress_allocate(cs, &p3d);
   phi_force_stress_compute(cs, p3d);
@@ -125,7 +125,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	/* If this is solid, then there's no contribution here. */
 
@@ -141,7 +141,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 
 	/* Compute differences */
 	
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = coords_index(cs, ic+1, jc, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -168,7 +168,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 	  }
 	}
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = coords_index(cs, ic-1, jc, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -195,7 +195,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 	  }
 	}
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = coords_index(cs, ic, jc+1, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -222,7 +222,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 	  }
 	}
 
-	index1 = coords_index(ic, jc-1, kc);
+	index1 = coords_index(cs, ic, jc-1, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -249,7 +249,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 	  }
 	}
 	
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = coords_index(cs, ic, jc, kc+1);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -276,7 +276,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 	  }
 	}
 
-	index1 = coords_index(ic, jc, kc-1);
+	index1 = coords_index(cs, ic, jc, kc-1);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {

@@ -230,7 +230,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->phi) {
     symmetric_rt_initial_conditions(ludwig->rt, ludwig->cs, ludwig->phi);
     lb_ndist(ludwig->lb, &n);
-    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
+    if (n == 2) phi_lb_from_field(ludwig->cs, ludwig->phi, ludwig->lb);
   }
 
   /* To be called before wall_init() */
@@ -339,7 +339,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
       stats_sigma_create(ludwig->cs, ludwig->phi, &ludwig->stats_sigma);
     }
     lb_ndist(ludwig->lb, &n);
-    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
+    if (n == 2) phi_lb_from_field(ludwig->cs, ludwig->phi, ludwig->lb); 
   }
 
   /* Initial Q_ab field required, apparently More GENERAL? */
@@ -412,7 +412,7 @@ void ludwig_run(const char * inputfile) {
 
   lb_ndist(ludwig->lb, &im);
   if (im == 2) {
-    phi_lb_to_field(ludwig->phi, ludwig->lb);
+    phi_lb_to_field(ludwig->cs, ludwig->phi, ludwig->lb);
     stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
   }
   else {
@@ -447,7 +447,7 @@ void ludwig_run(const char * inputfile) {
     /* if symmetric_lb store phi to field */
 
     lb_ndist(ludwig->lb, &im);
-    if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
+    if (im == 2) phi_lb_to_field(ludwig->cs, ludwig->phi, ludwig->lb);
 
     if (ludwig->phi) {
       field_halo(ludwig->phi);
@@ -714,7 +714,7 @@ void ludwig_run(const char * inputfile) {
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
       if (im == 2) {
-	phi_lb_to_field(ludwig->phi, ludwig->lb);
+	phi_lb_to_field(ludwig->cs, ludwig->phi, ludwig->lb);
 	stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
       }
       else {
@@ -738,7 +738,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->hydro) {
 	wall_pm(&is_pm);
-	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
+	stats_velocity_minmax(ludwig->cs, ludwig->hydro, ludwig->map, is_pm);
       }
 
       lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
@@ -1495,7 +1495,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   if (is_subgrid) {
     interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		     ludwig->psi, ludwig->ewald);
-    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);    
+    subgrid_force_from_particles(ludwig->cs, ludwig->collinfo, ludwig->hydro);
   }
   else {
 

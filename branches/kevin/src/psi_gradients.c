@@ -173,7 +173,7 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
     coords_nbr[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords_nbr[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
+    index_nbr = coords_index(psi->cs, coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
 
     aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi[index_nbr];
 
@@ -338,7 +338,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n,
     coords1[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+    index1 = coords_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
     map_status(map, index1, &status1);
 
     if(status == MAP_FLUID && status1 == MAP_FLUID) { 
@@ -356,13 +356,13 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n,
       coords1[X] = coords[X] - psi_gr_cv[p][X];
       coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
       coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
-      index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+      index1 = coords_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
       map_status(map, index1, &status1);
 
       coords2[X] = coords[X] - 2*psi_gr_cv[p][X];
       coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
       coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
-      index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+      index2 = coords_index(psi->cs, coords2[X], coords2[Y], coords2[Z]);
       map_status(map, index2, &status2);
 	
       if(status == MAP_FLUID && status1 == MAP_FLUID && status2 == MAP_FLUID) {
@@ -433,7 +433,7 @@ int psi_grad_eps_d3qx(psi_t * psi, f_vare_t fepsilon, int index,
     coords1[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+    index1 = coords_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
     fepsilon(index1, &eps1);
 
     aux = psi_gr_wv[p]* psi_gr_rcs2 * eps1;
@@ -446,4 +446,3 @@ int psi_grad_eps_d3qx(psi_t * psi, f_vare_t fepsilon, int index,
 
   return 0;
 }
-

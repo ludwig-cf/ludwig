@@ -46,7 +46,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "wall.h"
 #include "gradient_3d_27pt_fluid.h"
 
@@ -73,9 +73,12 @@ static void gradient_3d_27pt_fluid_wall_correction(const int nop,
 int gradient_3d_27pt_fluid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 1;
+  /* PENDING */
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
@@ -97,9 +100,11 @@ int gradient_3d_27pt_fluid_d2(const int nop, const double * field,double * t_fie
 int gradient_3d_27pt_fluid_d4(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 2;
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 2;
   assert(nextra >= 0);
 
   gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
@@ -130,8 +135,12 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
 
   const double r9 = (1.0/9.0);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+  coords_nhalo(cs, &nhalo);
+  coords_nlocal(cs, nlocal);
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -242,8 +251,12 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 
   const double r9 = (1.0/9.0);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  /*PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+  coords_nhalo(cs, &nhalo);
+  coords_nlocal(cs, nlocal);
 
   ys = (nlocal[Z] + 2*nhalo);
 

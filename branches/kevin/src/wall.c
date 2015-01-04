@@ -47,7 +47,7 @@ static double lubrication_rcnormal_; /* Wall normal lubrication cut off */
 
 static B_link * allocate_link(void);
 
-static int wall_init_links(map_t * map);
+static int wall_init_links(coords_t * cs, map_t * map);
 static int wall_init_boundary_site_map(coords_t * cs, map_t * map);
 static void     init_boundary_speeds(const double, const double);
 static void     wall_checks(int p[3]);
@@ -94,7 +94,7 @@ int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map) {
 
     wall_checks(periodic);
     wall_init_boundary_site_map(cs, map);
-    wall_init_links(map);
+    wall_init_links(cs, map);
 
     init_boundary_speeds(ux_bottom, ux_top);
     lubrication_rcnormal_ = rc;
@@ -121,7 +121,7 @@ int wall_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map) {
   map_pm(map, &porous_media);
 
   if (porous_media) {
-    wall_init_links(map);
+    wall_init_links(cs, map);
     MPI_Reduce(&nalloc_links_, &ntotal, 1, MPI_INT, MPI_SUM, 0, pe_comm());
     info("Porous media boundary links allocated:  %d\n", ntotal);
   }
@@ -335,7 +335,7 @@ int wall_bounce_back(lb_t * lb, map_t * map) {
  *
  ****************************************************************************/
 
-static int wall_init_links(map_t * map) {
+static int wall_init_links(coords_t * cs, map_t * map) {
 
   int ic, jc, kc, index;
   int ic1, jc1, kc1, p;
@@ -344,15 +344,16 @@ static int wall_init_links(map_t * map) {
 
   B_link * tmp;
 
+  assert(cs);
   assert(map);
 
-  coords_nlocal(n);
+  coords_nlocal(cs, n);
 
   for (ic = 1; ic <= n[X]; ic++) {
     for (jc = 1; jc <= n[Y]; jc++) {
       for (kc = 1; kc <= n[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -363,7 +364,7 @@ static int wall_init_links(map_t * map) {
 	  ic1 = ic + cv[p][X];
 	  jc1 = jc + cv[p][Y];
 	  kc1 = kc + cv[p][Z];
-	  index = coords_index(ic1, jc1, kc1);
+	  index = coords_index(cs, ic1, jc1, kc1);
 	  map_status(map, index, &status);
 
 	  if (status == MAP_BOUNDARY) {
@@ -371,8 +372,8 @@ static int wall_init_links(map_t * map) {
 	    /* Add a link to head of the list */
 
 	    tmp = allocate_link();
-	    tmp->i = coords_index(ic, jc, kc);        /* fluid site */
-	    tmp->j = coords_index(ic1, jc1, kc1);     /* solid site */
+	    tmp->i = coords_index(cs, ic, jc, kc);        /* fluid site */
+	    tmp->j = coords_index(cs, ic1, jc1, kc1);     /* solid site */
 	    tmp->p = p;
 	    tmp->ux = 0.0;
 
@@ -410,9 +411,9 @@ static int wall_init_boundary_site_map(coords_t * cs, map_t * map) {
   assert(map);
 
   coords_ntotal(cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  nextra = coords_nhalo();
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
+  coords_nhalo(cs, &nextra);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -426,21 +427,21 @@ static int wall_init_boundary_site_map(coords_t * cs, map_t * map) {
 
 	if (is_boundary_[Z]) {
 	  if (kc_global == 0 || kc_global == ntotal[Z] + 1) {
-	    index = coords_index(ic, jc, kc);
+	    index = coords_index(cs, ic, jc, kc);
 	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[Y]) {
 	  if (jc_global == 0 || jc_global == ntotal[Y] + 1) {
-	    index = coords_index(ic, jc, kc);
+	    index = coords_index(cs, ic, jc, kc);
 	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
 
 	if (is_boundary_[X]) {
 	  if (ic_global == 0 || ic_global == ntotal[X] + 1) {
-	    index = coords_index(ic, jc, kc);
+	    index = coords_index(cs, ic, jc, kc);
 	    map_status_set(map, index, MAP_BOUNDARY);
 	  }
 	}
@@ -620,8 +621,8 @@ static int wall_shear_init(lb_t * lb, coords_t * cs, double uxtop,
   physics_rho0(&rho);
   physics_eta_shear(&eta);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   for (ia = 0; ia < 3; ia++) {
     u[ia] = 0.0;
@@ -642,7 +643,7 @@ static int wall_shear_init(lb_t * lb, coords_t * cs, double uxtop,
 	 * the - 1.0 accounts for kc starting at 1. */
 	u[X] = uxbottom + (noffset[Z] + kc - 0.5)*(uxtop - uxbottom)/ltot[Z];
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 
         for (p = 0; p < NVEL; p++) {
 

@@ -62,8 +62,8 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
   if (hydro == NULL) return 0;
   assert(psi);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
+  coords_nlocal(psi->cs, nlocal);
+  /* assert(coords_nhalo() >= 1);*/
 
   physics_e0(e0);
   psi_unit_charge(psi, &eunit);
@@ -77,7 +77,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(psi->cs, ic, jc, kc);
 	psi_rho_elec(psi, index, &rho_elec);
 
 	/* "Internal" field */
@@ -158,7 +158,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 
   physics_e0(e0); 
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
   coords_cart_comm(psi->cs, &comm);
 
   psi_unit_charge(psi, &eunit);
@@ -174,7 +174,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(psi->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	psi_rho_elec(psi, index, &rho_elec);
@@ -240,7 +240,7 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(psi->cs, ic, jc, kc);
 
 	colloids_info_map(cinfo, index, &pc);
 	if (pc) continue;
@@ -284,49 +284,49 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
   assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
   chemical_stress = fe_electro_stress_ex;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(psi->cs, ic, jc, kc);
  
        /* Calculate divergence based on 6-pt stencil */
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = coords_index(psi->cs, ic+1, jc, kc);
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X]);
 	}
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = coords_index(psi->cs, ic-1, jc, kc);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] += 0.5*(pth1[ia][X]);
         }
 
-        index1 = coords_index(ic, jc+1, kc);
+        index1 = coords_index(psi->cs, ic, jc+1, kc);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] -= 0.5*(pth1[ia][Y]);
         }
 
-        index1 = coords_index(ic, jc-1, kc);
+        index1 = coords_index(psi->cs, ic, jc-1, kc);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] += 0.5*(pth1[ia][Y]);
         }
 
-        index1 = coords_index(ic, jc, kc+1);
+        index1 = coords_index(psi->cs, ic, jc, kc+1);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] -= 0.5*(pth1[ia][Z]);
         }
 
-        index1 = coords_index(ic, jc, kc-1);
+        index1 = coords_index(psi->cs, ic, jc, kc-1);
         chemical_stress(index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] += 0.5*(pth1[ia][Z]);
@@ -383,14 +383,14 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map,
   assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
   chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	colloids_info_map(cinfo, index, &pc);
 
@@ -407,7 +407,8 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map,
 	  coords_nb[Y] = coords[Y] + psi_gr_cv[p][Y];
 	  coords_nb[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-	  index_nb = coords_index(coords_nb[X], coords_nb[Y], coords_nb[Z]);
+	  index_nb = coords_index(psi->cs,
+				  coords_nb[X], coords_nb[Y], coords_nb[Z]);
 	  map_status(map, index_nb, &status_nb);
 
 	  chemical_stress(index_nb, pth_nb);
@@ -502,7 +503,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro,
   assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
   chemical_stress    = fe_electro_stress;
   chemical_stress_ex = fe_electro_stress_ex;
 
@@ -510,7 +511,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	colloids_info_map(cinfo, index, &pc);
 
@@ -527,7 +528,8 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro,
 	  coords_nb[Y] = coords[Y] + psi_gr_cv[p][Y];
 	  coords_nb[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-	  index_nb = coords_index(coords_nb[X], coords_nb[Y], coords_nb[Z]);
+	  index_nb = coords_index(psi->cs,
+				  coords_nb[X], coords_nb[Y], coords_nb[Z]);
 	  map_status(map, index_nb, &status_nb);
 
           if (status != MAP_FLUID) {
@@ -563,7 +565,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro,
 	    coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
 	    coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
 
-	    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+	    index1 = coords_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
 
 	    chemical_stress(index1, pth1);
 
@@ -580,7 +582,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro,
 	    coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
 	    coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
 
-	    index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+	    index2 = coords_index(psi->cs, coords2[X], coords2[Y], coords2[Z]);
 
 	    chemical_stress(index2, pth2);
 

@@ -53,7 +53,7 @@ int colloids_rt_init_random(rt_t * rt, coords_t * cs, colloids_info_t * cinfo);
 int colloids_rt_state_stub(rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
-int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
+int colloids_rt_cell_list_checks(coords_t * cs, colloids_info_t ** pinfo,
 				 interact_t * interact);
 
 /*****************************************************************************
@@ -134,8 +134,8 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   bond_fene_init(rt, cs, *interact);
   angle_cosine_init(rt, cs, *interact);
 
-  colloids_rt_cell_list_checks(pinfo, *interact);
-  colloids_init_halo_range_check(*pinfo);
+  colloids_rt_cell_list_checks(cs, pinfo, *interact);
+  colloids_init_halo_range_check(cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
   /* As the cell list has potentially changed, update I/O reference */
@@ -502,7 +502,7 @@ int colloids_rt_gravity(rt_t * rt, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
+int colloids_rt_cell_list_checks(coords_t * cs, colloids_info_t ** pinfo,
 				 interact_t * interact) {
   int nc;
   int nlocal[3];
@@ -521,8 +521,8 @@ int colloids_rt_cell_list_checks(colloids_info_t ** pinfo,
 
   if (nc == 0) return 0;
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  coords_nlocal(cs, nlocal);
+  coords_nhalo(cs, &nhalo);
   colloids_info_a0max(*pinfo, &a0max);
 
   /* For nhalo = 1, we require an additional + 0.5 to identify BBL;
@@ -871,7 +871,7 @@ int angle_cosine_init(rt_t * rt, coords_t * cs, interact_t * interact) {
  *
  *****************************************************************************/
 
-int colloids_init_halo_range_check(colloids_info_t * cinfo) {
+int colloids_init_halo_range_check(coords_t * cs, colloids_info_t * cinfo) {
 
   int ifail = 0;
   int ncolloid;
@@ -887,7 +887,7 @@ int colloids_init_halo_range_check(colloids_info_t * cinfo) {
   colloids_info_ntotal(cinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   colloids_info_ncell(cinfo, ncell);
   colloids_info_lcell(cinfo, lcell);
 
@@ -917,7 +917,7 @@ int colloids_init_halo_range_check(colloids_info_t * cinfo) {
 
   /* Halo region colloid map constraint */
 
-  nhalo = coords_nhalo();
+  coords_nhalo(cs, &nhalo);
 
   if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
   if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;

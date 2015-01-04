@@ -230,8 +230,8 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   assert(lb);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(bbl->cs, nlocal);
+  coords_nlocal_offset(bbl->cs, noffset);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     r[X] = 1.0*ic;
@@ -240,7 +240,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 	r[Z] = 1.0*kc;
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(bbl->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 	if (pc == NULL) continue;
 

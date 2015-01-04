@@ -99,7 +99,7 @@ int do_test_le1(control_t * ctrl) {
 
     /* Plane locations */
 
-    coords_nlocal(nlocal);
+    coords_nlocal(cs, nlocal);
 
     for (n = 0; n < nplane_local; n++) {
       nx = nlocal[X]/(2*nplane_local) + n*nlocal[X]/nplane_local;
@@ -134,6 +134,7 @@ int do_test_le2(control_t * ctrl) {
 
   int nplane = 4;
   int nlocal[3];
+  int nhalo;
   int nh2;              /* 2*nhalo */
   int nxb;              /* Number buffer planes in x */
   int nsites;           /* Total lattice sites */
@@ -150,8 +151,9 @@ int do_test_le2(control_t * ctrl) {
   coords_create(pe, &cs);
   coords_commit(cs);
 
-  nh2 = 2*coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(cs, &nhalo);
+  nh2 = 2*nhalo;
+  coords_nlocal(cs, nlocal);
 
   le_create(cs, &le);
   le_nplane_set(le, nplane);
@@ -236,8 +238,8 @@ int do_test_le_interp3(control_t * ctrl) {
      * at least a couple of periodic images. */
 
     coords_ntotal(cs, ntotal);
-    coords_nlocal(nlocal);
-    coords_nlocal_offset(noffset);
+    coords_nlocal(cs, nlocal);
+    coords_nlocal_offset(cs, noffset);
 
     le_comm(le, &comm);
 
@@ -371,9 +373,9 @@ int do_test_le_interp4(control_t * ctrl) {
    * at least a couple of periodic images. */
 
   coords_ntotal(cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  nhalo = coords_nhalo();
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
+  coords_nhalo(cs, &nhalo);
   coords_ltot(cs, ltot);
 
   try {

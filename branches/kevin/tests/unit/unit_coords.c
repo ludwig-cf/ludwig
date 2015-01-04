@@ -121,11 +121,11 @@ int do_test_coords_nhalo(control_t * ctrl) {
   coords_commit(cs);
 
   try {
-    nhalo = coords_nhalo();
+    coords_nhalo(cs, &nhalo);
     control_macro_test(ctrl, nhalo == nhalo_ref);
 
     coords_strides(cs, &xs, &ys, &zs);
-    coords_nlocal(nlocal);
+    coords_nlocal(cs, nlocal);
     control_macro_test(ctrl, zs == 1);
     control_macro_test(ctrl, ys == zs*(nlocal[Z] + 2*nhalo_ref));
     control_macro_test(ctrl, xs == ys*(nlocal[Y] + 2*nhalo_ref));
@@ -344,6 +344,7 @@ int do_test_coords_nsites(control_t * ctrl, coords_t * cs)
   throws (MPITestFailedException) {
 
   int nh2;
+  int nhalo;
   int nsites;
   int nexpect;
   int nlocal[3];
@@ -352,8 +353,9 @@ int do_test_coords_nsites(control_t * ctrl, coords_t * cs)
   assert(cs);
 
   try {
-    nh2 = 2*coords_nhalo();
-    coords_nlocal(nlocal);
+    coords_nhalo(cs, &nhalo);
+    nh2 = 2*nhalo;
+    coords_nlocal(cs, nlocal);
     coords_nsites(cs, &nsites);
     nexpect = (nlocal[X] + nh2)*(nlocal[Y] + nh2)*(nlocal[Z] + nh2);
 
@@ -492,8 +494,8 @@ int do_test_coords_communicator(control_t * ctrl, coords_t * cs)
   assert(cs);
 
   coords_ntotal(cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   try {
     coords_cart_comm(cs, &comm);

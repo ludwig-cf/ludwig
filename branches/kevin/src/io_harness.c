@@ -155,7 +155,7 @@ static struct io_decomposition_t * io_decomposition_create(coords_t * cs,
   MPI_Cart_coords(comm, rank, 3, icartcoords);
 
   coords_ntotal(cs, ntotal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal_offset(cs, noffset);
 
   p = io_decomposition_allocate();
   p->n_io = 1;
@@ -397,7 +397,7 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
 
   if (info->single_file_read) {
     coords_ntotal(info->cs, ntotal);
-    coords_nlocal_offset(noffset);
+    coords_nlocal_offset(info->cs, noffset);
     ifo = noffset[X] + ic - 1;
     jfo = noffset[Y] + jc - 1;
     kfo = noffset[Z];
@@ -456,7 +456,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   coords_cart_coords(info->cs, cartcoords);
 
   coords_ntotal(info->cs, ntotal);
-  coords_nlocal_offset(noff);
+  coords_nlocal_offset(info->cs, noff);
 
   pe_subdirectory(subdirectory);
 
@@ -503,7 +503,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   /* Local decomposition information */
 
-  coords_nlocal(n);
+  coords_nlocal(info->cs, n);
   fprintf(fp_meta, "%3d %3d %3d %3d %d %d %d %d %d %d\n", info->io_comm->rank,
           cartcoords[X], cartcoords[Y], cartcoords[Z],
           n[X], n[Y], n[Z], noff[X], noff[Y], noff[Z]);
@@ -738,7 +738,7 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (obj->metadata_written == 0) io_write_metadata(obj);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
   io_set_group_filename(filename_io, filename_stub, obj);
 
   if (obj->io_comm->rank == 0) {
@@ -761,7 +761,7 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 	obj->write_data(fp_state, index, data);
       }
     }
@@ -809,7 +809,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   assert(filename_stub);
   assert(data);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
 
   io_set_group_filename(filename_io, filename_stub, obj);
 
@@ -838,7 +838,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
       if (obj->processor_independent) fseek(fp_state, offset, SEEK_SET);
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 	obj->read_data(fp_state, index, data);
       }
     }

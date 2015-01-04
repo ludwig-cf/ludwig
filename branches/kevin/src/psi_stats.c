@@ -4,13 +4,11 @@
  *
  *  Statistics for the electrokintic quantities.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,9 +16,8 @@
 #include <float.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "util.h"
+#include "psi_s.h"
 #include "psi_stats.h"
 
 /*****************************************************************************
@@ -150,7 +147,7 @@ int psi_stats_local(psi_t * obj, double * rho_min, double * rho_max,
   assert(rho_max);
   assert(rho_tot);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
   psi_nk(obj, &nk);
   nrho = 2 + nk;
 
@@ -164,7 +161,7 @@ int psi_stats_local(psi_t * obj, double * rho_min, double * rho_max,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 
 	psi_psi(obj, index, &psi);
 	rho_min[0] = dmin(psi, rho_min[0]);

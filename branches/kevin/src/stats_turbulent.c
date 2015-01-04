@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2008-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "leesedwards.h"
 #include "stats_turbulent.h"
 
 struct stats_turb_s {
@@ -48,7 +47,7 @@ int stats_turbulent_create(coords_t * cs, stats_turb_t ** pstat) {
   stat = (stats_turb_t *) calloc(1, sizeof(stats_turb_t));
   if (stat == NULL) fatal ("calloc(stats_turb_t) failed\n");
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   stat->ubar = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
   if (stat->ubar == NULL) fatal("calloc(stat->ubar) failed\n");
@@ -155,13 +154,13 @@ int stats_turbulent_ubar_accumulate(stats_turb_t * stat, hydro_t * hydro) {
 
   assert(stat);
   assert(hydro);
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = coords_index(stat->cs, ic, jc, kc);
 	hydro_u(hydro, index, u);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -191,7 +190,7 @@ int stats_turbulent_ubar_zero(stats_turb_t * stat) {
   int ia;
 
   assert(stat);
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -243,7 +242,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
   coords_ntotal(stat->cs, ntotal);
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
 
   f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
   if (f1 == NULL) fatal("malloc(f1) failed\n");
@@ -288,7 +287,9 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
       /* Correct f1[Y] for leesedwards planes before output */
       /* Also take the average here. */
 
-      uy = le_get_block_uy(ic);
+      /* uy = le_get_block_uy(ic);*/
+      assert(0); /* Can above be corrected via hydro to avoid dependency
+		    on LE ? */
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < 3; n++) {

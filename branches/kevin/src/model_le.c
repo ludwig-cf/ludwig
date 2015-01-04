@@ -129,7 +129,7 @@ static int le_reproject(lb_t * lb) {
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
@@ -236,7 +236,7 @@ static int le_reproject_all(lb_t * lb) {
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
@@ -335,8 +335,8 @@ int le_displace_and_interpolate(lb_t * lb) {
   assert(lb);
 
   coords_ltot(lb->cs, ltot);
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  coords_nlocal(lb->cs, nlocal);
+  coords_nhalo(lb->cs, &nhalo);
   nplane = le_get_nplane_local();
 
   t = 1.0*get_step();
@@ -515,9 +515,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
   coords_ltot(lb->cs, ltot);
   coords_ntotal(lb->cs, ntotal);
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  coords_nlocal_offset(offset);
+  coords_nlocal(lb->cs, nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal_offset(lb->cs, offset);
   nplane = le_get_nplane_local();
 
   comm = le_communicator();
@@ -729,7 +729,7 @@ int lb_le_init_shear_profile(lb_t * lb) {
   physics_rho0(&rho0);
   physics_eta_shear(&eta);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   for (i = 0; i< NDIM; i++) {
     u[i] = 0.0;
@@ -751,7 +751,7 @@ int lb_le_init_shear_profile(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(lb->cs, ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  double f = 0.0;

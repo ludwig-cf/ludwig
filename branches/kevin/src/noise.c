@@ -147,8 +147,8 @@ int noise_init(noise_t * obj, int master_seed) {
 
   nextra = 1;
   coords_ntotal(obj->cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(obj->cs, nlocal);
+  coords_nlocal_offset(obj->cs, noffset);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
 
@@ -185,7 +185,7 @@ int noise_init(noise_t * obj, int master_seed) {
 	state[2] = noise_uniform(state_local);
 	state[3] = noise_uniform(state_local);
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 	noise_state_set(obj, index, state);
       }
     }

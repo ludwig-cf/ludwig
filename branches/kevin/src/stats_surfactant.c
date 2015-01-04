@@ -10,16 +10,13 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  (c) 2009-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 #include <math.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "field.h"
 #include "control.h"
 #include "util.h"
 #include "surfactant.h"
@@ -35,7 +32,7 @@
  *
  *****************************************************************************/
 
-int stats_surfactant_1d(field_t * fphi) {
+int stats_surfactant_1d(coords_t * cs, field_t * fphi) {
 
   int index;
   int ic = 1, jc = 1, kc;
@@ -48,18 +45,19 @@ int stats_surfactant_1d(field_t * fphi) {
   /* This is not run in parallel, so assert it's serial.
    * We also require surfactant */
 
+  assert(cs);
   assert(fphi);
   assert(0); /* Check nf = 2 in refactored version */
   assert(pe_size() == 1);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   /* We assume z = 1 is a reasonable choice for the background
    * free energy level, which we need to subtract to find the
    * excess. */
 
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = coords_index(cs, ic, jc, kc);
   e0 = surfactant_free_energy_density(index);
   field_scalar_array(fphi, index, phi);
 
@@ -74,7 +72,7 @@ int stats_surfactant_1d(field_t * fphi) {
 
   for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-    index = coords_index(ic, jc, kc);
+    index = coords_index(cs, ic, jc, kc);
 
     e = surfactant_free_energy_density(index);
     sigma += 0.5*(e - e0);

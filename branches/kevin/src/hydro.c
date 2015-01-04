@@ -284,13 +284,13 @@ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
   assert(obj);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 	hydro_u_set(obj, index, uzero);
 
       }
@@ -314,13 +314,13 @@ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
 
   assert(obj);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(obj->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(obj->cs, ic, jc, kc);
 	hydro_f_local_set(obj, index, fzero);
 
       }
@@ -381,8 +381,8 @@ int hydro_lees_edwards(hydro_t * obj) {
 
     nf = obj->nf;
 
-    nhalo = coords_nhalo();
-    coords_nlocal(nlocal);
+    coords_nhalo(obj->cs, &nhalo);
+    coords_nlocal(obj->cs, nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
     t = 1.0*get_step();
@@ -475,10 +475,11 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   nf = obj->nf;
 
   coords_ltot(obj->cs, ltot);
-  nhalo = coords_nhalo();
+  coords_nhalo(obj->cs, &nhalo);
   coords_ntotal(obj->cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(obj->cs, nlocal);
+  coords_nlocal_offset(obj->cs, noffset);
+
   ib0 = nlocal[X] + nhalo + 1;
 
   le_comm = le_communicator();

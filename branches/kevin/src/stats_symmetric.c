@@ -59,10 +59,11 @@ int stats_symmetric_length(coords_t * cs, field_grad_t * phi_grad, map_t * map,
 
   MPI_Comm comm;
 
+  assert(cs);
   assert(phi_grad);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   comm = pe_comm();
 
   a = symmetric_a();
@@ -77,7 +78,7 @@ int stats_symmetric_length(coords_t * cs, field_grad_t * phi_grad, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -179,8 +180,8 @@ int stats_symmetric_moment_inertia(coords_t * cs, field_t * phi, map_t * map,
   assert(phi);
   assert(map);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
   coords_cart_comm(cs, &comm);
 
   rr[X] = rr[Y] = rr[Z] = rr[3] = 0.0;
@@ -189,7 +190,7 @@ int stats_symmetric_moment_inertia(coords_t * cs, field_t * phi, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -217,7 +218,7 @@ int stats_symmetric_moment_inertia(coords_t * cs, field_t * phi, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

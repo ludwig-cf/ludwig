@@ -149,8 +149,8 @@ int lb_init(lb_t * lb) {
 
   assert(lb);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal(lb->cs, nlocal);
 
   nx = nlocal[X] + 2*nhalo;
   ny = nlocal[Y] + 2*nhalo;
@@ -270,13 +270,13 @@ int lb_init_rest_f(lb_t * lb, double rho0) {
 
   assert(lb);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(lb->cs, ic, jc, kc);
 	lb_0th_moment_equilib_set(lb, index, 0, rho0);
       }
     }
@@ -306,8 +306,8 @@ static int lb_mpi_init(lb_t * lb) {
 
   assert(lb);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal(lb->cs, nlocal);
 
   nx = nlocal[X] + 2*nhalo;
   ny = nlocal[Y] + 2*nhalo;
@@ -587,8 +587,8 @@ int lb_halo_via_struct(lb_t * lb) {
 
   assert(lb);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(lb->cs, &nhalo);
+  coords_nlocal(lb->cs, nlocal);
   coords_periodic(lb->cs, periodic);
   coords_cart_comm(lb->cs, &comm);
   coords_cartsz(lb->cs, cartsz);
@@ -600,28 +600,32 @@ int lb_halo_via_struct(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  ihalo = lb->ndist*NVEL*coords_index(0, jc, kc);
-	  ireal = lb->ndist*NVEL*coords_index(nlocal[X], jc, kc);
+	  ihalo = lb->ndist*NVEL*coords_index(lb->cs, 0, jc, kc);
+	  ireal = lb->ndist*NVEL*coords_index(lb->cs, nlocal[X], jc, kc);
 	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
 
-	  ihalo = lb->ndist*NVEL*coords_index(nlocal[X]+1, jc, kc);
-	  ireal = lb->ndist*NVEL*coords_index(1, jc, kc);
+	  ihalo = lb->ndist*NVEL*coords_index(lb->cs, nlocal[X]+1, jc, kc);
+	  ireal = lb->ndist*NVEL*coords_index(lb->cs, 1, jc, kc);
 	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
 	}
       }
     }
   }
   else {
-    ihalo = lb->ndist*NVEL*coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
+    ihalo = lb->ndist*NVEL
+      *coords_index(lb->cs, nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_yz[BACKWARD],
 	      coords_cart_neighb(lb->cs, FORWARD,X), tagb, comm, &request[0]);
-    ihalo = lb->ndist*NVEL*coords_index(0, 1 - nhalo, 1 - nhalo);
+
+    ihalo = lb->ndist*NVEL*coords_index(lb->cs, 0, 1 - nhalo, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_yz[FORWARD],
 	      coords_cart_neighb(lb->cs, BACKWARD,X), tagf, comm, &request[1]);
-    ireal = lb->ndist*NVEL*coords_index(1, 1-nhalo, 1-nhalo);
+
+    ireal = lb->ndist*NVEL*coords_index(lb->cs, 1, 1-nhalo, 1-nhalo);
     MPI_Issend(lb->f + ireal, 1, lb->plane_yz[BACKWARD],
 	       coords_cart_neighb(lb->cs,BACKWARD,X), tagb, comm, &request[2]);
-    ireal = lb->ndist*NVEL*coords_index(nlocal[X], 1-nhalo, 1-nhalo);
+
+    ireal = lb->ndist*NVEL*coords_index(lb->cs, nlocal[X], 1-nhalo, 1-nhalo);
     MPI_Issend(lb->f + ireal, 1, lb->plane_yz[FORWARD],
 	       coords_cart_neighb(lb->cs,FORWARD,X), tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
@@ -634,30 +638,34 @@ int lb_halo_via_struct(lb_t * lb) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  ihalo = lb->ndist*NVEL*coords_index(ic, 0, kc);
-	  ireal = lb->ndist*NVEL*coords_index(ic, nlocal[Y], kc);
+	  ihalo = lb->ndist*NVEL*coords_index(lb->cs, ic, 0, kc);
+	  ireal = lb->ndist*NVEL*coords_index(lb->cs, ic, nlocal[Y], kc);
 	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
 
-	  ihalo = lb->ndist*NVEL*coords_index(ic, nlocal[Y] + 1, kc);
-	  ireal = lb->ndist*NVEL*coords_index(ic, 1, kc);
+	  ihalo = lb->ndist*NVEL*coords_index(lb->cs, ic, nlocal[Y] + 1, kc);
+	  ireal = lb->ndist*NVEL*coords_index(lb->cs, ic, 1, kc);
 	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
 	}
       }
     }
   }
   else {
-    ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
+    ihalo = lb->ndist*NVEL
+      *coords_index(lb->cs, 1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[BACKWARD],
 	      coords_cart_neighb(lb->cs,FORWARD,Y), tagb, comm, &request[0]);
-    ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 0, 1 - nhalo);
+
+    ihalo = lb->ndist*NVEL*coords_index(lb->cs, 1 - nhalo, 0, 1 - nhalo);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[FORWARD],
 	      coords_cart_neighb(lb->cs, BACKWARD,Y),
 	      tagf, comm, &request[1]);
-    ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1, 1 - nhalo);
+
+    ireal = lb->ndist*NVEL*coords_index(lb->cs, 1 - nhalo, 1, 1 - nhalo);
     MPI_Issend(lb->f + ireal, 1, lb->plane_xz[BACKWARD],
 	       coords_cart_neighb(lb->cs, BACKWARD,Y),
 	       tagb, comm, &request[2]);
-    ireal = lb->ndist*NVEL*coords_index(1 - nhalo, nlocal[Y], 1 - nhalo);
+
+    ireal = lb->ndist*NVEL*coords_index(lb->cs, 1 - nhalo, nlocal[Y], 1 - nhalo);
     MPI_Issend(lb->f + ireal, 1, lb->plane_xz[FORWARD],
 	       coords_cart_neighb(lb->cs, FORWARD,Y),
 	       tagf, comm, &request[3]);
@@ -671,12 +679,12 @@ int lb_halo_via_struct(lb_t * lb) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	  ihalo = lb->ndist*NVEL*coords_index(ic, jc, 0);
-	  ireal = lb->ndist*NVEL*coords_index(ic, jc, nlocal[Z]);
+	  ihalo = lb->ndist*NVEL*coords_index(lb->cs, ic, jc, 0);
+	  ireal = lb->ndist*NVEL*coords_index(lb->cs, ic, jc, nlocal[Z]);
 	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
 
-	  ihalo = lb->ndist*NVEL*coords_index(ic, jc, nlocal[Z] + 1);
-	  ireal = lb->ndist*NVEL*coords_index(ic, jc, 1);
+	  ihalo = lb->ndist*NVEL*coords_index(lb->cs, ic, jc, nlocal[Z] + 1);
+	  ireal = lb->ndist*NVEL*coords_index(lb->cs, ic, jc, 1);
 	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
 	}
       }
@@ -684,19 +692,23 @@ int lb_halo_via_struct(lb_t * lb) {
   }
   else {
 
-    ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
+    ihalo = lb->ndist*NVEL
+      *coords_index(lb->cs, 1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[BACKWARD],
 	      coords_cart_neighb(lb->cs, FORWARD,Z),
 	      tagb, comm, &request[0]);
-    ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, 0);
+
+    ihalo = lb->ndist*NVEL*coords_index(lb->cs, 1 - nhalo, 1 - nhalo, 0);
     MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[FORWARD],
 	      coords_cart_neighb(lb->cs, BACKWARD,Z),
 	      tagf, comm, &request[1]);
-    ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, 1);
+
+    ireal = lb->ndist*NVEL*coords_index(lb->cs, 1 - nhalo, 1 - nhalo, 1);
     MPI_Issend(lb->f + ireal, 1, lb->plane_xy[BACKWARD],
 	       coords_cart_neighb(lb->cs, BACKWARD,Z),
 	       tagb, comm, &request[2]);
-    ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
+
+    ireal = lb->ndist*NVEL*coords_index(lb->cs, 1 - nhalo, 1 - nhalo, nlocal[Z]);
     MPI_Issend(lb->f + ireal, 1, lb->plane_xy[FORWARD],
 	       coords_cart_neighb(lb->cs, FORWARD,Z),
 	       tagf, comm, &request[3]);  
@@ -1246,7 +1258,7 @@ int lb_halo_via_copy(lb_t * lb) {
 
   coords_cart_comm(lb->cs, &comm);
   coords_cartsz(lb->cs, cartsz);
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   /* The x-direction (YZ plane) */
 
@@ -1266,11 +1278,11 @@ int lb_halo_via_copy(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(nlocal[X], jc, kc);
+	  index = coords_index(lb->cs, nlocal[X], jc, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendforw[count] = lb->f[indexreal];
 
-	  index = coords_index(1, jc, kc);
+	  index = coords_index(lb->cs, 1, jc, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendback[count] = lb->f[indexreal];
 	  ++count;
@@ -1305,11 +1317,11 @@ int lb_halo_via_copy(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(0, jc, kc);
+	  index = coords_index(lb->cs, 0, jc, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvback[count];
 
-	  index = coords_index(nlocal[X] + 1, jc, kc);
+	  index = coords_index(lb->cs, nlocal[X] + 1, jc, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvforw[count];
 	  ++count;
@@ -1349,11 +1361,11 @@ int lb_halo_via_copy(lb_t * lb) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(ic, nlocal[Y], kc);
+	  index = coords_index(lb->cs, ic, nlocal[Y], kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendforw[count] = lb->f[indexreal];
 
-	  index = coords_index(ic, 1, kc);
+	  index = coords_index(lb->cs, ic, 1, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendback[count] = lb->f[indexreal];
 	  ++count;
@@ -1389,11 +1401,11 @@ int lb_halo_via_copy(lb_t * lb) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(ic, 0, kc);
+	  index = coords_index(lb->cs, ic, 0, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvback[count];
 
-	  index = coords_index(ic, nlocal[Y] + 1, kc);
+	  index = coords_index(lb->cs, ic, nlocal[Y] + 1, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvforw[count];
 	  ++count;
@@ -1431,11 +1443,11 @@ int lb_halo_via_copy(lb_t * lb) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	  index = coords_index(ic, jc, nlocal[Z]);
+	  index = coords_index(lb->cs, ic, jc, nlocal[Z]);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendforw[count] = lb->f[indexreal];
 
-	  index = coords_index(ic, jc, 1);
+	  index = coords_index(lb->cs, ic, jc, 1);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  sendback[count] = lb->f[indexreal];
 	  ++count;
@@ -1470,11 +1482,11 @@ int lb_halo_via_copy(lb_t * lb) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
 
-	  index = coords_index(ic, jc, 0);
+	  index = coords_index(lb->cs, ic, jc, 0);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvback[count];
 
-	  index = coords_index(ic, jc, nlocal[Z] + 1);
+	  index = coords_index(lb->cs, ic, jc, nlocal[Z] + 1);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
 	  lb->f[indexhalo] = recvforw[count];
 	  ++count;

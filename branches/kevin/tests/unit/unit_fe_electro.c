@@ -272,7 +272,7 @@ int do_test_fe_electro3(control_t * ctrl) {
     /* No external field, no potential; note index must allow for a
      * spatial gradient */
 
-    index = coords_index(1, 1, 1);
+    index = coords_index(cs, 1, 1, 1);
     fe_electro_stress(index, s);
 
     for (ia = 0; ia < 3; ia++) {
@@ -289,24 +289,24 @@ int do_test_fe_electro3(control_t * ctrl) {
 
     psi0 = 1.0;
     psi1 = 2.0;
-    psi_psi_set(psi, coords_index(1+1, 1, 1), psi1);
-    psi_psi_set(psi, coords_index(1-1, 1, 1), psi0);
+    psi_psi_set(psi, coords_index(cs, 1+1, 1, 1), psi1);
+    psi_psi_set(psi, coords_index(cs, 1-1, 1, 1), psi0);
     e0[X] = -0.5*(psi1 - psi0);
 
     psi0 = 3.0;
     psi1 = 4.0;
-    psi_psi_set(psi, coords_index(1, 1+1, 1), psi1);
-    psi_psi_set(psi, coords_index(1, 1-1, 1), psi0);
+    psi_psi_set(psi, coords_index(cs, 1, 1+1, 1), psi1);
+    psi_psi_set(psi, coords_index(cs, 1, 1-1, 1), psi0);
     e0[Y] = -0.5*(psi1 - psi0);
 
     psi0 = 6.0;
     psi1 = 5.0;
-    psi_psi_set(psi, coords_index(1, 1, 1+1), psi1);
-    psi_psi_set(psi, coords_index(1, 1, 1-1), psi0);
+    psi_psi_set(psi, coords_index(cs, 1, 1, 1+1), psi1);
+    psi_psi_set(psi, coords_index(cs, 1, 1, 1-1), psi0);
     e0[Z] = -0.5*(psi1 - psi0);
     emod = modulus(e0);
 
-    fe_electro_stress(coords_index(1, 1, 1), s);
+    fe_electro_stress(coords_index(cs, 1, 1, 1), s);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {

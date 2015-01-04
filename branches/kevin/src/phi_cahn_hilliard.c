@@ -157,8 +157,7 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
 
   assert(flux);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+  coords_nlocal(flux->cs, nlocal);
 
   physics_mobility(&mobility);
   chemical_potential = fe_chemical_potential_function();
@@ -224,6 +223,7 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
  *****************************************************************************/
 
 static int phi_ch_flux_mu2(advflux_t * flux) {
+
   int nhalo;
   int nlocal[3];
   int ic, jc, kc;
@@ -236,23 +236,19 @@ static int phi_ch_flux_mu2(advflux_t * flux) {
 
   assert(flux);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(flux->cs, &nhalo);
+  coords_nlocal(flux->cs, nlocal);
+  coords_strides(flux->cs, &xs, &ys, &zs);
   assert(nhalo >= 3);
 
   physics_mobility(&mobility);
-
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
-  xs = (nlocal[Y] + 2*nhalo)*ys;
-
   chemical_potential = fe_chemical_potential_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(flux->cs, ic, jc, kc);
 	mum2 = chemical_potential(index0 - 2*xs, 0);
 	mum1 = chemical_potential(index0 - 1*xs, 0);
 	mu00 = chemical_potential(index0,        0);
@@ -311,8 +307,7 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
   double kt, mobility, var;
 
   assert(flux);
-  assert(le_get_nplane_local() == 0);
-  assert(coords_nhalo() >= 1);
+  /* assert(coords_nhalo() >= 1); PENDING */
 
   /* Variance of the noise from fluctuation dissipation relation */
 
@@ -324,7 +319,7 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
   rflux = (double *) malloc(3*nsites*sizeof(double));
   if (rflux == NULL) fatal("malloc(rflux) failed\n");
 
-  coords_nlocal(nlocal);
+  coords_nlocal(flux->cs, nlocal);
 
   /* We go one site into the halo region to allow all the fluxes to
    * be comupted locally. */
@@ -334,7 +329,7 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-        index0 = coords_index(ic, jc, kc);
+        index0 = coords_index(flux->cs, ic, jc, kc);
         noise_reap_n(noise, index0, 3, reap);
 
         for (ia = 0; ia < 3; ia++) {
@@ -351,24 +346,24 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(flux->cs, ic, jc, kc);
 
 	/* x-direction */
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = coords_index(flux->cs, ic-1, jc, kc);
 	flux->fw[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = coords_index(flux->cs, ic+1, jc, kc);
 	flux->fe[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
 
 	/* y direction */
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = coords_index(flux->cs, ic, jc+1, kc);
 	flux->fy[index0] += 0.5*(rflux[3*index0 + Y] + rflux[3*index1 + Y]);
 
 	/* z direction */
 
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = coords_index(flux->cs, ic, jc, kc+1);
 	flux->fz[index0] += 0.5*(rflux[3*index0 + Z] + rflux[3*index1 + Z]);
       }
     }
@@ -394,6 +389,8 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux) {
  *  for general cases.
  *
  *****************************************************************************/
+
+/* PENDING le not cs */
 
 static int phi_ch_le_fix_fluxes(coords_t * cs, int nf, advflux_t * flux) {
 
@@ -428,7 +425,7 @@ static int phi_ch_le_fix_fluxes(coords_t * cs, int nf, advflux_t * flux) {
   else {
     /* Can do it directly */
 
-    coords_nlocal(nlocal);
+    coords_nlocal(cs, nlocal);
 
     nbuffer = nf*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
@@ -520,6 +517,8 @@ static int phi_ch_le_fix_fluxes(coords_t * cs, int nf, advflux_t * flux) {
  *
  *****************************************************************************/
 
+/* PENDING le not cs */
+
 static int phi_ch_le_fix_fluxes_parallel(coords_t *cs, int nf,
 					 advflux_t * flux) {
 
@@ -553,11 +552,11 @@ static int phi_ch_le_fix_fluxes_parallel(coords_t *cs, int nf,
   assert(cs);
   assert(flux);
 
-  nhalo = coords_nhalo();
+  coords_nhalo(cs, &nhalo);
   coords_ltot(cs, ltot);
   coords_ntotal(cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   le_comm = le_communicator();
 
@@ -707,15 +706,15 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 
   int nlocal[3];
   int ic, jc, kc, index;
-  int ys;
+  int xs, ys, zs;
   double wz = 1.0;
   double phi;
 
   assert(phif);
   assert(flux);
 
-  coords_nlocal(nlocal);
-  ys = nlocal[Z] + 2*coords_nhalo();
+  coords_nlocal(flux->cs, nlocal);
+  coords_strides(flux->cs, &xs, &ys, &zs);
 
   /* In 2-d systems need to eliminate the z fluxes (no chemical
    * potential computed in halo region for 2d_5pt_fluid) */
@@ -725,7 +724,7 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(flux->cs, ic, jc, kc);
 
 	field_scalar(phif, index, &phi);
 	phi -= (+ flux->fe[index] - flux->fw[index]

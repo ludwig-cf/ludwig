@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,7 +18,6 @@
 #include "pe.h"
 
 typedef struct coords_s coords_t;
-typedef struct coords_ro_s coords_ro_t;
 
 #define NSYMM 6      /* Elements for general symmetric tensor */
 
@@ -26,7 +25,7 @@ enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
-/* New interface */
+/* Host interface */
 
 int coords_create(pe_t * pe, coords_t ** pcoord);
 int coords_free(coords_t ** pcoord);
@@ -39,24 +38,23 @@ int coords_nhalo_set(coords_t * cs, int nhalo);
 int coords_reorder_set(coords_t * cs, int reorder);
 int coords_commit(coords_t * cs);
 int coords_info(coords_t * cs);
+int coords_cart_comm(coords_t * cs, MPI_Comm * comm);
+int coords_periodic_comm(coords_t * cs, MPI_Comm * comm);
+int coords_cart_neighb(coords_t * cs, int forwback, int dim);
+
+/* Host / device interface */
 
 int coords_cartsz(coords_t * cs, int cartsz[3]);
-int coords_cart_comm(coords_t * cs, MPI_Comm * comm);
 int coords_cart_coords(coords_t * cs, int coords[3]);
-int coords_cart_neighb(coords_t * cs, int forwback, int dim);
-int coords_periodic_comm(coords_t * cs, MPI_Comm * comm);
 
 int coords_lmin(coords_t * cs, double lmin[3]);
 int coords_ltot(coords_t * cs, double ltot[3]);
 int coords_periodic(coords_t * cs, int period[3]);
 
-
-/* Old interface pending update */
-
-void   coords_nlocal(int n[3]);
-void   coords_nlocal_offset(int n[3]);
-int    coords_nhalo(void);
-int    coords_index(const int ic, const int jc, const int kc);
+int coords_nlocal(coords_t * cs, int n[3]);
+int coords_nlocal_offset(coords_t * cs, int n[3]);
+int coords_nhalo(coords_t *cs, int * nhalo);
+int coords_index(coords_t * cs, int ic, int jc, int kc);
 
 int coords_ntotal(coords_t * cs, int ntotal[3]);
 int coords_nsites(coords_t * cs, int * nsites);

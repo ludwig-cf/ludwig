@@ -27,7 +27,8 @@
 #include "subgrid.h"
 
 static double d_peskin(double);
-static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
+static int subgrid_interpolation(coords_t * cs, colloids_info_t * cinfo,
+				 hydro_t * hydro);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
 static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
@@ -40,7 +41,8 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *
  *****************************************************************************/
 
-int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
+int subgrid_force_from_particles(coords_t * cs, colloids_info_t * cinfo,
+				 hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -52,11 +54,12 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
   double dr;
   colloid_t * p_colloid;
 
+  assert(cs);
   assert(cinfo);
   assert(hydro);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
   physics_fgrav(g);
@@ -93,7 +96,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = coords_index(i, j, k);
+		index = coords_index(cs, i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
@@ -150,7 +153,7 @@ int subgrid_update(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro) {
 
   colloids_info_ncell(cinfo, ncell);
 
-  subgrid_interpolation(cinfo, hydro);
+  subgrid_interpolation(cs, cinfo, hydro);
   colloid_sums_halo(cs, cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -193,7 +196,8 @@ int subgrid_update(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
+static int subgrid_interpolation(coords_t * cs, colloids_info_t * cinfo,
+				 hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -205,11 +209,12 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
   double dr;
   colloid_t * p_colloid;
 
+  assert(cs);
   assert(cinfo);
   assert(hydro);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
   /* Loop through all cells (including the halo cells) and set
@@ -263,7 +268,7 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = coords_index(i, j, k);
+		index = coords_index(cs, i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */

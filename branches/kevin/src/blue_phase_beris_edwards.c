@@ -141,7 +141,7 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
   assert(flux);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(flux->cs, nlocal); /* PENDING whither cs? */
   field_nf(fq, &nf);
   assert(nf == NQAB);
 

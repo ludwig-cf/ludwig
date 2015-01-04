@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computeing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -205,8 +205,8 @@ static int stats_sigma_init_drop(stats_sigma_t * stat, field_t * fphi) {
   assert(stat);
   assert(fphi);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(stat->cs, nlocal);
+  coords_nlocal_offset(stat->cs, noffset);
 
   rxi0 = 1.0/stat->drop.xi0;
 
@@ -214,7 +214,7 @@ static int stats_sigma_init_drop(stats_sigma_t * stat, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
 
         position[X] = 1.0*(noffset[X] + ic) - stat->drop.centre[X];
         position[Y] = 1.0*(noffset[Y] + jc) - stat->drop.centre[Y];
@@ -255,8 +255,8 @@ static int stats_sigma_find_drop(stats_sigma_t * stat, field_t * fphi) {
   assert(fphi);
 
   coords_cart_comm(stat->cs, &comm);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(stat->cs, nlocal);
+  coords_nlocal_offset(stat->cs, noffset);
 
   for (ic = 0; ic <= 3; ic++) {
     c[ic] =0.0;
@@ -267,7 +267,7 @@ static int stats_sigma_find_drop(stats_sigma_t * stat, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
 	field_scalar(fphi, index, &phi);
 
         if (phi <= 0.0) {
@@ -312,13 +312,12 @@ static int stats_sigma_find_radius(stats_sigma_t * stat, field_t * fphi) {
   double fraction, r[3];               /* lengths */
   MPI_Comm comm;
 
-
   assert(stat);
   assert(fphi);
 
   coords_cart_comm(stat->cs, &comm);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(stat->cs, nlocal);
+  coords_nlocal_offset(stat->cs, noffset);
 
   result[0] = 0.0;
   result[1] = 0.0;
@@ -329,7 +328,7 @@ static int stats_sigma_find_radius(stats_sigma_t * stat, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
 	field_scalar(fphi, index, &phi0);
 
         /* Look around at the neighbours */
@@ -341,7 +340,7 @@ static int stats_sigma_find_radius(stats_sigma_t * stat, field_t * fphi) {
               /* Avoid self (ic, jc, kc) */
 	      if (!(ip || jp || kp)) continue;
 
-              index = coords_index(ip, jp, kp);
+              index = coords_index(stat->cs, ip, jp, kp);
 	      field_scalar(fphi, index, &phi1);
 
 	      /* Look for change in sign */
@@ -411,8 +410,8 @@ static int stats_sigma_find_xi0(stats_sigma_t * stat, field_t * fphi) {
   assert(stat);
   assert(fphi);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(stat->cs, nlocal);
+  coords_nlocal_offset(stat->cs, noffset);
   comm = pe_comm();
 
   /* Set the bin widths based on the expected xi0 */
@@ -432,7 +431,7 @@ static int stats_sigma_find_xi0(stats_sigma_t * stat, field_t * fphi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
 
         /* Work out the displacement from the drop centre
            and hence the bin number */
@@ -518,7 +517,7 @@ static int stats_sigma_find_sigma(stats_sigma_t * stat) {
 
   assert(stat);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
   comm = pe_comm();
 
   /* Find the local minimum of the free energy density */
@@ -529,7 +528,7 @@ static int stats_sigma_find_sigma(stats_sigma_t * stat) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
 
         fe = symmetric_free_energy_density(index);
 	if (fe < fmin_local) fmin_local = fe;
@@ -548,7 +547,7 @@ static int stats_sigma_find_sigma(stats_sigma_t * stat) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
         fe = symmetric_free_energy_density(index);
         excess_local += (fe - fmin);
       }
@@ -569,4 +568,3 @@ static int stats_sigma_find_sigma(stats_sigma_t * stat) {
 
   return 0;
 }
-

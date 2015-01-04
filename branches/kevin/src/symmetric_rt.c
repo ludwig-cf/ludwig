@@ -165,8 +165,8 @@ int symmetric_init_drop(field_t * fphi, coords_t * cs, double xi0,
   assert(cs);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   rxi0 = 1.0/xi0;
 
@@ -178,7 +178,7 @@ int symmetric_init_drop(field_t * fphi, coords_t * cs, double xi0,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
         position[X] = 1.0*(noffset[X] + ic) - centre[X];
         position[Y] = 1.0*(noffset[Y] + jc) - centre[Y];
         position[Z] = 1.0*(noffset[Z] + kc) - centre[Z];
@@ -216,8 +216,8 @@ static int symmetric_init_block(field_t * phi, coords_t * cs, double xi0) {
   assert(cs);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   z1 = 0.25*ltot[Z];
   z2 = 0.75*ltot[Z];
@@ -226,7 +226,7 @@ static int symmetric_init_block(field_t * phi, coords_t * cs, double xi0) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	z = noffset[Z] + kc;
 
 	if (z > 0.5*ltot[Z]) {
@@ -266,8 +266,8 @@ static int symmetric_init_bath(field_t * phi, coords_t *cs) {
   assert(cs);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noffset);
 
   z0 = 0.25*ltot[Z];
   xi0 = 1.13;
@@ -276,7 +276,7 @@ static int symmetric_init_bath(field_t * phi, coords_t *cs) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	z = noffset[Z] + kc;
 	phi0 = tanh((z-z0)/xi0);
 
@@ -313,7 +313,7 @@ int symmetric_init_spinodal(rt_t * rt, coords_t * cs, field_t * phi) {
   assert(cs);
   assert(phi);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   physics_phi0(&phi0);
 
   rt_int_parameter(rt, "random_seed", &seed);
@@ -326,7 +326,7 @@ int symmetric_init_spinodal(rt_t * rt, coords_t * cs, field_t * phi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	noise_uniform_double_reap(rng, index, &ran);
 	phi1 = phi0 + noise0*(ran - 0.5);
@@ -374,7 +374,7 @@ int symmetric_init_spinodal_patches(rt_t * rt, coords_t * cs, field_t * phi) {
   assert(cs);
   assert(phi);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   rt_int_parameter(rt, "random_seed", &seed);
   rt_int_parameter(rt, "phi_init_patch_size", &patch);
@@ -387,7 +387,7 @@ int symmetric_init_spinodal_patches(rt_t * rt, coords_t * cs, field_t * phi) {
     for (jc = 1; jc <= nlocal[Y]; jc += patch) {
       for (kc = 1; kc <= nlocal[Z]; kc += patch) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	/* Uniform patch */
 	phi1 = 1.0;
@@ -402,7 +402,7 @@ int symmetric_init_spinodal_patches(rt_t * rt, coords_t * cs, field_t * phi) {
 	  for (jp = jc; jp <= jpatch; jp++) {
 	    for (kp = kc; kp <= kpatch; kp++) {
 
-	      index = coords_index(ip, jp, kp);
+	      index = coords_index(cs, ip, jp, kp);
 	      field_scalar_set(phi, index, phi1);
 	      count += 1;
 	    }

@@ -8,16 +8,18 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *
  ****************************************************************************/
 
 #ifndef STATS_VELOCITY_H
 #define STATS_VELOCITY_H
 
+#include "coords.h"
 #include "hydro.h"
 #include "map.h"
 
-int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux);
+int stats_velocity_minmax(coords_t * cs, hydro_t * hydro, map_t * map,
+			  int print_vol_flux);
 
 #endif

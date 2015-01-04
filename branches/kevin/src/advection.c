@@ -203,7 +203,7 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   assert(hydro);
   assert(f);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(flux->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -301,8 +301,7 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
   assert(hydro);
   assert(f);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
+  coords_nlocal(flux->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -395,8 +394,7 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   assert(hydro);
   assert(f);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+  coords_nlocal(flux->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm2 = le_index_real_to_buffer(ic, -2);
@@ -535,8 +533,7 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
   assert(hydro);
   assert(f);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+  coords_nlocal(flux->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm2 = le_index_real_to_buffer(ic, -2);
@@ -647,7 +644,7 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
   assert(hydro);
   assert(f);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(flux->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm3 = le_index_real_to_buffer(ic, -3);
@@ -783,12 +780,15 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
  *  advective_fluxes
  *
  *  General routine for nf fields at starting address f.
- *  No Lees Edwards boundaries.
+ *  No Lees Edwards boundaries, so no separate 'east' and 'west'
+ *  face fluxes required (cf. above).
  *
  *  The storage of the field(s) for all the related routines is
  *  assumed to be f[index][nf], where index is the spatial index.
  *
  *****************************************************************************/
+
+#include "hydro_s.h"
 
 int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
 		     double * fy, double * fz) {
@@ -831,20 +831,18 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
   assert(fy);
   assert(fz);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
-  assert(le_get_nplane_total() == 0);
+  coords_nlocal(hydro->cs, nlocal);
 
   for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(hydro->cs, ic, jc, kc);
 	hydro_u(hydro, index0, u0);
 
 	/* east face (ic and icp1) */
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = coords_index(hydro->cs, ic+1, jc, kc);
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
@@ -855,7 +853,7 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
 
 	/* y direction */
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = coords_index(hydro->cs, ic, jc+1, kc);
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
@@ -866,7 +864,7 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
 
 	/* z direction */
 
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = coords_index(hydro->cs, ic, jc, kc+1);
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
@@ -913,9 +911,7 @@ int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f,
  *
  *  advective_fluxes_2nd_d3qx
  *
- *  'Centred difference' advective fluxes. No LE planes.
- *
- *  Symmetric two-point stencil.
+ *  No LE planes.
  *
  *****************************************************************************/
 
@@ -934,19 +930,19 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
   assert(flx);
   assert(le_get_nplane_total() == 0);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
+  coords_nlocal(hydro->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(hydro->cs, ic, jc, kc);
 	hydro_u(hydro, index0, u0);
 
         for (c = 1; c < PSI_NGRAD; c++) {
 
-	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  index1 = coords_index(hydro->cs, ic + psi_gr_cv[c][X],
+				jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  hydro_u(hydro, index1, u1);
 
 	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);

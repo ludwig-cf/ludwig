@@ -29,7 +29,8 @@ static int stats_free_energy_wall(coords_t * cs, field_t * q, double * fs);
 static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs);
 static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs);
 static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs);
-static int stats_free_energy_colloid(field_t * q, map_t * map, double * fs);
+static int stats_free_energy_colloid(coords_t * cs, field_t * q, map_t * map,
+				     double * fs);
 
 static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
 
@@ -69,7 +70,7 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
   if (fe_set() == 0) return 0;
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   free_energy_density = fe_density_function();
 
   fe_local[0] = 0.0; /* Total free energy (fluid all sites) */
@@ -82,7 +83,7 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 
 	fed = free_energy_density(index);
@@ -111,7 +112,7 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
   }
   else if (ncolloid > 0) {
 
-    if (q) stats_free_energy_colloid(q, map, fe_local + 3);
+    if (q) stats_free_energy_colloid(cs, q, map, fe_local + 3);
 
     MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
@@ -188,7 +189,7 @@ static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs) {
 
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -204,7 +205,7 @@ static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
@@ -220,7 +221,7 @@ static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
@@ -256,7 +257,7 @@ static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs) {
 
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -272,7 +273,7 @@ static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
@@ -288,7 +289,7 @@ static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
@@ -324,7 +325,7 @@ static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs) {
 
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -340,7 +341,7 @@ static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
@@ -356,7 +357,7 @@ static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
@@ -378,7 +379,8 @@ static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
+static int stats_free_energy_colloid(coords_t * cs, field_t *q, map_t * map,
+				     double * fs) {
 
   int ic, jc, kc, index, index1;
   int nhat[3];
@@ -389,20 +391,21 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
   double qs[3][3];
   double fes;
 
-  coords_nlocal(nlocal);
-
-  fs[0] = 0.0;
-  fs[1] = 0.0;
-
+  assert(cs);
   assert(q);
   assert(fs);
   assert(map);
+
+  coords_nlocal(cs, nlocal);
+
+  fs[0] = 0.0;
+  fs[1] = 0.0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -411,7 +414,7 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
         nhat[Y] = 0;
         nhat[Z] = 0;
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = coords_index(cs, ic+1, jc, kc);
 	map_status(map, index1, &status);
 
 	if (status == MAP_COLLOID) {
@@ -422,7 +425,7 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 	  fs[1] += 1.0;
         }
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = coords_index(cs, ic-1, jc, kc);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -436,7 +439,7 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 	nhat[X] = 0;
 	nhat[Z] = 0;
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = coords_index(cs, ic, jc+1, kc);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -447,7 +450,7 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 	  fs[1] += 1.0;
         }
 
-	index1 = coords_index(ic, jc-1, kc);
+	index1 = coords_index(cs, ic, jc-1, kc);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -461,7 +464,7 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 	nhat[X] = 0;
 	nhat[Y] = 0;
 
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = coords_index(cs, ic, jc, kc+1);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -472,7 +475,7 @@ static int stats_free_energy_colloid(field_t *q, map_t * map, double * fs) {
 	  fs[1] += 1.0;
         }
 
-	index1 = coords_index(ic, jc, kc-1);
+	index1 = coords_index(cs, ic, jc, kc-1);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -528,7 +531,7 @@ int blue_phase_stats(coords_t * cs, field_t * qf, field_grad_t * dqf,
   assert(map);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   q0 = blue_phase_q0();
@@ -556,7 +559,7 @@ int blue_phase_stats(coords_t * cs, field_t * qf, field_grad_t * dqf,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

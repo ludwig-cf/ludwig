@@ -39,14 +39,14 @@ int psi_init_uniform(psi_t * obj, coords_t * cs, double rho_el) {
   assert(cs);
   assert(rho_el >= 0.0);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   psi_nk(obj, &nk);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	psi_psi_set(obj, index, 0.0);
 
@@ -94,7 +94,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
   coords_ltot(cs, ltot);
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   /* wall surface charge density */
   rho_w = sigma;
@@ -107,7 +107,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	psi_psi_set(obj, index, 0.0);
 	psi_rho_set(obj, index, 0, rho_el);
@@ -123,7 +123,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(obj, index, 0, rho_w);
@@ -138,7 +138,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, coords_t * cs, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(obj, index, 0, rho_w);
@@ -179,8 +179,8 @@ int psi_init_liquid_junction_set(psi_t * obj, coords_t * cs, double rho_el,
   assert(cs);
 
   coords_ntotal(cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noff);
+  coords_nlocal(cs, nlocal);
+  coords_nlocal_offset(cs, noff);
 
   /* Set electrolyte densities */
 
@@ -188,7 +188,7 @@ int psi_init_liquid_junction_set(psi_t * obj, coords_t * cs, double rho_el,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 
 	psi_psi_set(obj, index, 0.0);
 

@@ -37,6 +37,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "map_s.h"
 #include "free_energy.h"
 #include "gradient_3d_27pt_solid.h"
 
@@ -93,9 +94,12 @@ int gradient_3d_27pt_solid_map_set(map_t * map_in) {
 int gradient_3d_27pt_solid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 1;
+  /* PENDING */
+  coords_nhalo(map->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   gradient_3d_27pt_solid_op(nop, field, grad, delsq, nextra);
@@ -135,7 +139,11 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
   const double r9 = (1.0/9.0);     /* normaliser for grad */
   const double r18 = (1.0/18.0);   /* normaliser for delsq */
 
-  coords_nlocal(nlocal);
+  /* PENDING */
+  coords_t * cs;
+  cs = map->cs;
+
+  coords_nlocal(cs, nlocal);
 
   rk = 1.0/fe_kappa();
 
@@ -143,7 +151,7 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -154,7 +162,7 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	  jc1 = jc + bs_cv[p][Y];
 	  kc1 = kc + bs_cv[p][Z];
 
-	  isite[p] = coords_index(ic1, jc1, kc1);
+	  isite[p] = coords_index(cs, ic1, jc1, kc1);
 	  map_status(map, isite[p], &status);
 	  if (status != MAP_FLUID) isite[p] = -1;
 	}
@@ -193,7 +201,7 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 
 	      /* Set gradient phi at boundary following wetting properties */
 
-	      ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
+	      ia = coords_index(cs, ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				 kc + bs_cv[p][Z]);
 	      map_data(map, ia, wet);
 	      c = wet[0];

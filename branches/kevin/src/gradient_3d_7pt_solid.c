@@ -119,6 +119,7 @@ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
 			     char * siteMask,
 			     char * t_siteMask) {
   int nextra;
+  int nhalo;
   int method = 1;
 
   assert(nop == NQAB);
@@ -127,7 +128,9 @@ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
   assert(grad);
   assert(delsq);
 
-  nextra = coords_nhalo() - 1;
+  /* PENDING */
+  coords_nhalo(map_->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   if (method == 1) gradient_6x5_svd(field, grad, delsq, nextra);
@@ -151,7 +154,6 @@ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
 static int gradient_6x5_svd(const double * field, double * grad,
 			    double * del2, const int nextra) {
   int nlocal[3];
-  int nhalo;
   int ic, jc, kc;
   int ia, ib, ig, ih;
   int index, n, n1, n2;
@@ -194,15 +196,16 @@ static int gradient_6x5_svd(const double * field, double * grad,
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
 
+  /* PENDING */
+  coords_t * cs;
+  cs = map_->cs;
+
   assert(NQAB == 5);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
+  coords_strides(cs, str + X, str + Y, str + Z);
   util_matrix_create(3*6, 3*NQAB, &a18);
 
-  str[Z] = 1;
-  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
-  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
 
   kappa0 = fe_kappa();
   kappa1 = fe_kappa(); /* One elastic constant */ 
@@ -217,7 +220,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map_, index, &status0);
 
 	if (status0 != MAP_FLUID) continue;
@@ -433,7 +436,6 @@ static int gradient_6x5_svd(const double * field, double * grad,
 static int gradient_6x6_gauss_elim(const double * field, double * grad,
 				   double * del2, const int nextra) {
   int nlocal[3];
-  int nhalo;
   int ic, jc, kc;
   int ia, ib, ig, ih;
   int index, n, n1, n2;
@@ -477,16 +479,16 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
 
+  /* PENDING */
+  coords_t * cs;
+  cs = map_->cs;
+
   assert(NQAB == 5);
   assert(NSYMM == 6);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
+  coords_strides(cs, str + X, str + Y, str + Z);
   util_matrix_create(3*NSYMM, 3*NSYMM, &a18);
-
-  str[Z] = 1;
-  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
-  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
 
   kappa0 = fe_kappa();
   kappa1 = fe_kappa(); /* One elastic constant */ 
@@ -501,7 +503,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map_, index, &status0);
 
 	if (status0 != MAP_FLUID) continue;
@@ -750,12 +752,14 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   double ** a12inv[3];
   double ** a18inv;
 
+  /*PENDING */
+  coords_t * cs;
+  cs = map_->cs;
+
   assert(field);
 
-  coords_nlocal(nlocal);
-
-  /* PENDING a sane way to reference the coords object */
-  coords_strides(map_->cs, str + X, str + Y, str + Z);
+  coords_nlocal(cs, nlocal);
+  coords_strides(cs, str + X, str + Y, str + Z);
 
   kappa0 = blue_phase_kappa0();
   kappa1 = blue_phase_kappa1();
@@ -818,7 +822,7 @@ static int gradient_6x6_gpu(const double * field, double * grad,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	map_status(map_, index, &status0);
 
 	if (status0 != MAP_FLUID) continue;

@@ -359,13 +359,13 @@ static int stats_ahydro_measure(stats_ahydro_t * ahydro,
 
   /* Work out the fluid velocity */
 
-  coords_nlocal(nlocal);
+  coords_nlocal(ahydro->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(ahydro->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

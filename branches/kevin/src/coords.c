@@ -20,19 +20,9 @@
 
 #include "coords.h"
 
-struct coords_ro_s {
-  int nhalo;
-  /* etc */
-};
-
-
 struct coords_s {
   pe_t * pe;                       /* Retain a reference to pe */
   int nref;                        /* Reference count */
-
-  /* kernel read-only type */
-  /* coords_ro_t * host; */
-  /* coords_ro_t * target; */
 
   /* Potential target data */
   int nhalo;                       /* Width of halo region */
@@ -42,13 +32,15 @@ struct coords_s {
   int noffset[3];                  /* Local system offset */
   int str[3];                      /* Memory strides */
   int periodic[3];                 /* Periodic boundary (non-periodic = 0) */
+
+  int mpi_cartsz[3];               /* Cartesian size */
+  int mpi_cartcoords[3];           /* Cartesian coordinates lookup */
+
   double lenmin[3];                /* System L_min */
 
-  /* MPI data */
-  int mpi_cartsz[3];               /* Cartesian size */
-  int reorder;                     /* MPI reorder flag */
+  /* Host data */
   int mpi_cartrank;                /* MPI Cartesian rank */
-  int mpi_cartcoords[3];           /* Cartesian coordinates lookup */
+  int reorder;                     /* MPI reorder flag */
   int mpi_cart_neighbours[2][3];   /* Ranks of Cartesian neighbours lookup */
 
   MPI_Comm commcart;               /* Cartesian communicator */
@@ -57,10 +49,8 @@ struct coords_s {
   coords_t * target;               /* Host pointer to target memory */
 };
 
-static void default_decomposition(void);
-static int  is_ok_decomposition(void);
-
-static coords_t * cs;
+static int default_decomposition(coords_t * cs);
+static int is_ok_decomposition(coords_t * cs);
 
 /*****************************************************************************
  *
@@ -70,7 +60,8 @@ static coords_t * cs;
 
 int coords_create(pe_t * pe, coords_t ** pcoord) {
 
-  assert(cs == NULL);
+  coords_t * cs = NULL;
+
   assert(pe);
 
   cs = (coords_t *) calloc(1, sizeof(coords_t));
@@ -125,23 +116,25 @@ int coords_retain(coords_t * coord) {
  *
  *****************************************************************************/
 
-int coords_free(coords_t ** coord) {
+int coords_free(coords_t ** cs) {
 
-  assert(cs); /* Remove static reference */
+  coords_t * obj;
 
-  (*coord)->nref -= 1;
+  assert(cs && *cs);
 
-  if ((*coord)->nref <= 0) {
+  obj = *cs;
 
-    MPI_Comm_free(&cs->commcart);
-    MPI_Comm_free(&cs->commperiodic);
-    pe_free(&cs->pe);
+  obj->nref -= 1;
 
-    free(cs);
-    cs = NULL;
+  if (obj->nref <= 0) {
+
+    MPI_Comm_free(&obj->commcart);
+    MPI_Comm_free(&obj->commperiodic);
+    pe_free(&obj->pe);
+
+    free(obj);
+    *cs = NULL;
   }
-
-  *coord = NULL;
 
   return 0;
 }
@@ -161,12 +154,12 @@ int coords_commit(coords_t * cs) {
   assert(cs);
   pe_mpi_comm(cs->pe, &comm);
 
-  if (is_ok_decomposition()) {
+  if (is_ok_decomposition(cs)) {
     /* The user decomposition is selected */
   }
   else {
     /* Look for a default */
-    default_decomposition();
+    default_decomposition(cs);
   }
 
   /* A communicator which is always periodic: */
@@ -365,7 +358,7 @@ int coords_lmin(coords_t * cs, double lmin[3]) {
  *
  *****************************************************************************/
 
-void coords_nlocal(int n[3]) {
+int coords_nlocal(coords_t * cs, int n[3]) {
 
   assert(cs);
 
@@ -373,7 +366,7 @@ void coords_nlocal(int n[3]) {
   n[Y] = cs->nlocal[Y];
   n[Z] = cs->nlocal[Z];
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -403,14 +396,15 @@ int coords_nsites(coords_t * cs, int * nsites) {
  *
  *****************************************************************************/
 
-void coords_nlocal_offset(int n[3]) {
+int coords_nlocal_offset(coords_t * cs, int n[3]) {
 
   assert(cs);
+
   n[X] = cs->noffset[X];
   n[Y] = cs->noffset[Y];
   n[Z] = cs->noffset[Z];
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -422,9 +416,11 @@ void coords_nlocal_offset(int n[3]) {
  *
  *****************************************************************************/
 
-static void default_decomposition() {
+static int default_decomposition(coords_t * cs) {
 
   int pe0[3] = {0, 0, 0};
+
+  assert(cs);
 
   /* Trap 2-d systems */
   if (cs->ntotal[X] == 1) pe0[X] = 1;
@@ -437,11 +433,11 @@ static void default_decomposition() {
   cs->mpi_cartsz[Y] = pe0[Y];
   cs->mpi_cartsz[Z] = pe0[Z];
   
-  if (is_ok_decomposition() == 0) {
+  if (is_ok_decomposition(cs) == 0) {
     fatal("No default decomposition available!\n");
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -452,10 +448,12 @@ static void default_decomposition() {
  *
  *****************************************************************************/
 
-static int is_ok_decomposition() {
+static int is_ok_decomposition(coords_t * cs) {
 
   int ok = 1;
   int nnodes;
+
+  assert(cs);
 
   if (cs->ntotal[X] % cs->mpi_cartsz[X]) ok = 0;
   if (cs->ntotal[Y] % cs->mpi_cartsz[Y]) ok = 0;
@@ -476,7 +474,8 @@ static int is_ok_decomposition() {
  *
  *****************************************************************************/
 
-int coords_index(const int ic, const int jc, const int kc) {
+int coords_index(coords_t * cs,  int ic, int jc, int kc) {
+
   assert(cs);
 
   assert(ic >= 1 - cs->nhalo);
@@ -513,10 +512,14 @@ int coords_nhalo_set(coords_t * cs, int nhalo) {
  *
  *****************************************************************************/
 
-int coords_nhalo(void) {
+int coords_nhalo(coords_t * cs, int * nhalo) {
 
   assert(cs);
-  return cs->nhalo;
+  assert(nhalo);
+
+  *nhalo = cs->nhalo;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -648,7 +651,7 @@ int coords_index_to_ijk(coords_t * cs, int index, int coords[3]) {
   coords[Y] = (1 - cs->nhalo) + (index % cs->str[X]) / cs->str[Y];
   coords[Z] = (1 - cs->nhalo) + index % cs->str[Y];
 
-  assert(coords_index(coords[X], coords[Y], coords[Z]) == index);
+  assert(coords_index(cs, coords[X], coords[Y], coords[Z]) == index);
 
   return 0;
 }

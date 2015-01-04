@@ -13,7 +13,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,7 +26,6 @@
 #include "util.h"
 #include "control.h"
 #include "physics.h"
-#include "leesedwards.h"
 #include "free_energy.h"
 #include "stats_rheology.h"
 
@@ -119,7 +118,7 @@ int stats_rheology_create(coords_t * cs, stats_rheo_t ** pstat) {
 
   /* sxy */
 
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
 
   stat->sxy = (double *) calloc(NSTAT1*nlocal[X], sizeof(double));
   if (stat->sxy == NULL) fatal("calloc(stat->sxy) failed\n");
@@ -196,8 +195,8 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat,
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(stat->cs, nlocal);
+  coords_nlocal_offset(stat->cs, noffset);
 
   fex = (double *) malloc(nlocal[X]*sizeof(double));
   if (fex == NULL) fatal("malloc(fex) failed\n");
@@ -214,7 +213,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = coords_index(stat->cs, ic, jc, kc);
 	fex[ic-1] += free_energy_density(index); 
       }
     }
@@ -285,7 +284,7 @@ int stats_rheology_stress_profile_zero(stats_rheo_t * stat) {
   int nlocal[3];
 
   assert(stat);
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (n = 0; n < NSTAT1; n++) {
@@ -328,7 +327,8 @@ int stats_rheology_stress_profile_accumulate(stats_rheo_t * stat, lb_t * lb,
   assert(stat);
   assert(lb);
   assert(hydro);
-  coords_nlocal(nlocal);
+
+  coords_nlocal(stat->cs, nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -336,7 +336,7 @@ int stats_rheology_stress_profile_accumulate(stats_rheo_t * stat, lb_t * lb,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = coords_index(stat->cs, ic, jc, kc);
 
 	/* Set up the (inverse) density, velocity */
 
@@ -459,8 +459,8 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
   coords_cart_comm(stat->cs, &comm);
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(stat->cs, nlocal);
+  coords_nlocal_offset(stat->cs, noffset);
 
   physics_eta_shear(&eta);
 
@@ -495,7 +495,9 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
       /* This is an average over (y,z) so don't care about the
        * Lees Edwards places, but correct uy */
 
-      uy = le_get_block_uy(ic);
+      /* uy = le_get_block_uy(ic);*/
+      assert(0); /* Can the previous line be replaced to remove dependcy
+		  * on LE ? */
 
       fprintf(fp_output,
 	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
@@ -588,7 +590,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   coords_cart_coords(stat->cs, cartcoords);
   coords_cartsz(stat->cs, cartsz);
   coords_ntotal(stat->cs, ntotal);
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
 
   physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
@@ -641,7 +643,8 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
       /* Correct f1[Y] for leesedwards planes before output. */
       /* Viscous stress likewise. Also take the average here. */
 
-      uy = le_get_block_uy(ic);
+      /*uy = le_get_block_uy(ic);*/
+      assert(0); /* Diito */
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < NSTAT2; n++) {
@@ -741,7 +744,7 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
   physics_eta_shear(&eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(stat->cs, nlocal);
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -759,7 +762,7 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = coords_index(stat->cs, ic, jc, kc);
 
 	lb_0th_moment(lb, index, LB_RHO, &rho);
 	lb_1st_moment(lb, index, LB_RHO, u);

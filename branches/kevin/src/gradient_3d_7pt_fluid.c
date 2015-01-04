@@ -33,13 +33,10 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "gradient_3d_7pt_fluid.h"
-#include "string.h"
-#include "targetDP.h"
 
 
 HOST static void gradient_3d_7pt_fluid_operator(const int nop, 
@@ -78,9 +75,12 @@ HOST int gradient_3d_7pt_fluid_d2(const int nop,
 			     char * t_siteMask
 			     ) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 1;
+  /* PENDING */
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   assert(field);
@@ -113,10 +113,11 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
 			     char * siteMask,
 			     char * t_siteMask
 			     ) {
-
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 2;
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 2;
   assert(nextra >= 0);
 
   assert(field);
@@ -149,8 +150,8 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
  *****************************************************************************/
 
 HOST int gradient_3d_7pt_fluid_dab(const int nf, 
-			     const double * field,
-			      double * dab){
+				   const double * field,
+				   double * dab){
 
   assert(nf == 1); /* Scalars only */
 
@@ -170,11 +171,11 @@ TARGET_CONST int tc_Nall[3];
  *****************************************************************************/
 
 static TARGET void gradient_3d_7pt_fluid_operator_site(const int nop,
-					   const double * t_field,
-					   double * t_grad,
-						double * t_del2, 
-						char * t_siteMask,
-						const int index){
+						       const double * t_field,
+						       double * t_grad,
+						       double * t_del2, 
+						       char * t_siteMask,
+						       const int index){
 
 
 
@@ -247,8 +248,10 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   int nhalo;
   int ic, jc, kc;
   int index;
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  /* PENDING */
+
+  coords_nhalo(le_stat->cs, &nhalo);
+  coords_nlocal(le_stat->cs, nlocal);
 
 
   int Nall[3];
@@ -277,7 +280,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 	
-  	index=coords_index(ic, jc, kc);
+  	index=coords_index(le_stat->cs, ic, jc, kc);
   	siteMask[index]=1;
 	
       }
@@ -326,8 +329,9 @@ HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  /* PENDING */
+  coords_nhalo(le_stat->cs, &nhalo);
+  coords_nlocal(le_stat->cs, nlocal);
   ys = (nlocal[Z] + 2*nhalo);
 
   for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
@@ -424,11 +428,12 @@ HOST static int gradient_dab_compute(int nf, const double * field, double * dab)
   assert(field);
   assert(dab);
 
-  nextra = coords_nhalo() - 1;
+  /* PENDING */
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nlocal(le_stat->cs, nlocal);
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -492,8 +497,10 @@ HOST static int gradient_dab_le_correct(int nf, const double * field,
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  /* PENDING */
+
+  coords_nhalo(le_stat->cs, &nhalo);
+  coords_nlocal(le_stat->cs, nlocal);
   ys = (nlocal[Z] + 2*nhalo);
 
   nextra = nhalo - 1;

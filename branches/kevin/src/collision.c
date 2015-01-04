@@ -148,7 +148,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   assert(hydro);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
   fluctuations_off(shat, ghat);
   physics_fbody(force_global);
 
@@ -180,7 +180,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 	  nv = nlocal[Z] + 1 - kc;
 	}
 	
-	base_index = coords_index(ic, jc, kc);	
+	base_index = coords_index(lb->cs, ic, jc, kc);	
 	
 	/* Compute all the modes */	
 	/* load SIMD vector of lattice sites */
@@ -784,7 +784,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   assert(hydro);
   assert(map);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
   physics_fbody(force_global);
 
 
@@ -798,11 +798,12 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
 
   int Nall[3];
-  int nhalo=coords_nhalo();
+  int nhalo;
+
+  coords_nhalo(lb->cs, &nhalo);
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
   int nFields=NVEL*NDIST;
 
   targetInit(nSites, nFields);
@@ -851,7 +852,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 
-  	index=coords_index(ic, jc, kc);
+  	index=coords_index(lb->cs, ic, jc, kc);
 
 	int status;
 	map_status(map, index, &status);
@@ -1010,7 +1011,7 @@ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
   noise_present(noise, NOISE_RHO, &status);
   if (status == 0) return 0;
 
-  coords_nlocal(nlocal);
+  coords_nlocal(lb->cs, nlocal);
 
   glocal[X] = 0.0;
   glocal[Y] = 0.0;
@@ -1021,7 +1022,7 @@ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(lb->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

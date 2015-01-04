@@ -182,7 +182,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   assert(fy);
   assert(fz);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
   coords_strides(psi->cs, &xs, &ys, &zs);
 
   psi_nk(psi, &nk);
@@ -202,7 +202,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 
 	for (n = 0; n < nk; n++) {
 
@@ -264,7 +264,6 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
-  int nhalo;
   int zs, ys, xs;
   int n, nk;
   
@@ -275,12 +274,8 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
   assert(fy);
   assert(fz);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  zs = 1;
-  ys = zs*(nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
+  coords_nlocal(psi->cs, nlocal);
+  coords_strides(psi->cs, &xs, &ys, &zs);
 
   psi_nk(psi, &nk);
   psi_multistep_timestep(psi, &dt);
@@ -289,7 +284,7 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
 
 	for (n = 0; n < nk; n++) {
 	  psi->rho[nk*index + n]
@@ -317,13 +312,15 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *****************************************************************************/
 
 int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro, 
-		map_t * map, colloids_info_t * cinfo) {
+			      map_t * map, colloids_info_t * cinfo) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
   int ia;
 
   double ** flx = NULL;
+
+  assert(psi);
 
   psi_nk(psi, &nk);
   coords_nsites(psi->cs, &nsites);
@@ -392,7 +389,7 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   assert(psi);
   assert(flx);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
 
   psi_nk(psi, &nk);
   psi_multistep_timestep(psi, &dt);
@@ -403,7 +400,7 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(psi->cs, ic, jc, kc);
         colloids_info_map(cinfo, index0, &pc);
 
 	if (pc) {
@@ -413,7 +410,8 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 
 	  for (c = 1; c < PSI_NGRAD; c++) {
 
-	    index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	    index1 = coords_index(psi->cs, ic + psi_gr_cv[c][X],
+				  jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	    map_status(map, index1, &status1);
 
 	    if (status1 == MAP_FLUID) {
@@ -492,7 +490,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
   assert(psi);
   assert(flx);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
   coords_cart_comm(psi->cs, &comm);
 
   psi_nk(psi, &nk);
@@ -507,7 +505,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(psi->cs, ic, jc, kc);
         colloids_info_map(cinfo, index0, &pc);
 
 	f[X] = 0.0;
@@ -535,7 +533,8 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
 	/* Internal electrostatic force on fluid */
 	  for (c = 1; c < PSI_NGRAD; c++) {
 
-	    index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	    index1 = coords_index(psi->cs, ic + psi_gr_cv[c][X],
+				  jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	    map_status(map, index1, &status1);
 
 	    if (status1 == MAP_FLUID) {
@@ -611,7 +610,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = coords_index(psi->cs, ic, jc, kc);
         colloids_info_map(cinfo, index0, &pc);
 
 	if (pc) {
@@ -655,7 +654,7 @@ static int nernst_planck_update_d3qx(psi_t * psi, map_t * map, double ** flx) {
   assert(psi);
   assert(flx);
 
-  coords_nlocal(nlocal);
+  coords_nlocal(psi->cs, nlocal);
 
   psi_nk(psi, &nk);
   psi_multistep_timestep(psi, &dt);
@@ -664,7 +663,7 @@ static int nernst_planck_update_d3qx(psi_t * psi, map_t * map, double ** flx) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(psi->cs, ic, jc, kc);
         map_status(map, index, &status);
 
         if (status == MAP_FLUID) {
@@ -774,4 +773,4 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
   }    
 
   return 0;
-} 
+}

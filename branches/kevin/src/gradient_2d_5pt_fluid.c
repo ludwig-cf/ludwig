@@ -31,7 +31,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "gradient_2d_5pt_fluid.h"
 
 static void gradient_2d_5pt_fluid_operator(const int nop,
@@ -54,9 +54,12 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 int gradient_2d_5pt_fluid_d2(const int nop, const double * field, double * t_field,
 			     double * grad, double * t_grad, double * delsq,double * t_delsq, char * siteMask,char * t_siteMask) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 1;
+  /* PENDING */
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   assert(field);
@@ -78,9 +81,11 @@ int gradient_2d_5pt_fluid_d2(const int nop, const double * field, double * t_fie
 int gradient_2d_5pt_fluid_d4(const int nop, const double * field,double * t_field,
 			     double * grad,double * t_grad, double * delsq, double * t_delsq, char * siteMask,char * t_siteMask) {
 
+  int nhalo;
   int nextra;
 
-  nextra = coords_nhalo() - 2;
+  coords_nhalo(le_stat->cs, &nhalo);
+  nextra = nhalo - 2;
   assert(nextra >= 0);
 
   assert(field);
@@ -112,8 +117,12 @@ static void gradient_2d_5pt_fluid_operator(const int nop,
   int icm1, icp1;
   int index, indexm1, indexp1;
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+  coords_nlocal(cs, nlocal);
+  coords_nhalo(cs, &nhalo);
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -167,8 +176,12 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
+  coords_nlocal(cs, nlocal);
+  coords_nhalo(cs, &nhalo);
 
   assert(nlocal[Z] == 1);
 

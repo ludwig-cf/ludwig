@@ -18,7 +18,8 @@
 #include <mpi.h>
 #include "coords.h"
 
-__host__ int coords_field_index(int index, int n, int nf, int * indexf);
+__host__ int coords_field_index(coords_t * cs, int index, int n, int nf,
+				int * indexf);
 __host__ int coords_field_init_mpi_indexed(coords_t * cs, int nhcomm, int nf,
 					   MPI_Datatype mpidata,
 					   MPI_Datatype halo[3]);

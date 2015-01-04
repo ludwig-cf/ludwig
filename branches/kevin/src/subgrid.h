@@ -20,7 +20,8 @@
 #include "hydro.h"
 
 int subgrid_update(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro);
-int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro);
+int subgrid_force_from_particles(coords_t * cs, colloids_info_t * cinfo,
+				 hydro_t * hydro);
 int subgrid_on_set(void);
 int subgrid_on(int * flag);
 

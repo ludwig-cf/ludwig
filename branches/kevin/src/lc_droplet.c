@@ -23,7 +23,7 @@
 #include "util.h"
 #include "blue_phase.h"
 #include "symmetric.h"
-#include "leesedwards.h"
+#include "leesedwards_s.h"
 #include "lc_droplet.h"
 
 
@@ -418,20 +418,21 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
   int index0, indexm1, indexp1;
   int nhalo;
   int nlocal[3];
-  int zs, ys;
+  int zs, ys, xs;
   double mum1, mup1;
   double force[3];
-  
+
+  /* PENDING */
+  coords_t * cs;
+  cs = le_stat->cs;
+
   assert(phi_);
   
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  coords_nhalo(cs, &nhalo);
+  coords_nlocal(cs, nlocal);
+  coords_strides(cs, &xs, &ys, &zs);
   assert(nhalo >= 2);
 
-  /* Memory strides */
-
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -671,7 +672,7 @@ int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
   assert(cs);
 
   coords_ltot(cs, ltot);
-  coords_nlocal(nlocal);
+  coords_nlocal(cs, nlocal);
   coords_cart_comm(cs, &comm);
 
   /* Compute force without correction. */
@@ -680,7 +681,7 @@ int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	hydro_f_local(hydro, index, f);
 
 	flocal[X] += f[X];
@@ -706,7 +707,7 @@ int lc_droplet_extract_total_force(coords_t * cs, hydro_t * hydro) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = coords_index(cs, ic, jc, kc);
 	hydro_f_local_add(hydro, index, f);
 
       }

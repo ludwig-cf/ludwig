@@ -131,7 +131,7 @@ int field_init(field_t * obj, int nhcomm) {
 
   assert(obj);
   assert(obj->data == NULL);
-  assert(nhcomm <= coords_nhalo());
+  /* assert(nhcomm <= coords_nhalo());*/
 
   nsites = le_nsites();
   obj->data = (double*) calloc(obj->nf*nsites, sizeof(double));
@@ -281,8 +281,8 @@ int field_leesedwards(field_t * obj) {
     /* No messages are required... */
 
     field_nf(obj, &nf);
-    nhalo = coords_nhalo();
-    coords_nlocal(nlocal);
+    coords_nhalo(obj->cs, &nhalo);
+    coords_nlocal(obj->cs, nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
     /* -1.0 as zero required for first step; a 'feature' to
@@ -385,10 +385,10 @@ static int field_leesedwards_parallel(field_t * obj) {
   field_nf(obj, &nf);
 
   coords_ltot(obj->cs, ltot);
-  nhalo = coords_nhalo();
+  coords_nhalo(obj->cs, &nhalo);
   coords_ntotal(obj->cs, ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  coords_nlocal(obj->cs, nlocal);
+  coords_nlocal_offset(obj->cs, noffset);
   ib0 = nlocal[X] + nhalo + 1;
 
   le_comm = le_communicator();
