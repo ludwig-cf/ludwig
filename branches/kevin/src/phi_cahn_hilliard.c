@@ -440,7 +440,7 @@ static int phi_ch_le_fix_fluxes(int nf, advflux_t * flux) {
       t = 1.0*get_step() - 1.0;
       le_plane_uy_now(flux->le, t, &uy0);
 
-      ic = le_plane_location(ip);
+      ic = le_plane_location(flux->le, ip);
 
       /* Looking up */
       dy = +t*uy0;
@@ -579,7 +579,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, advflux_t * flux) {
 
   for (ip = 0; ip < nplane; ip++) {
 
-    ic = le_plane_location(ip);
+    ic = le_plane_location(flux->le, ip);
 
     /* Work out the displacement-dependent quantities */
 

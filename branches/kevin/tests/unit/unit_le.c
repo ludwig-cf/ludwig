@@ -55,7 +55,7 @@ int do_test_le1(control_t * ctrl) {
 
   int nplane = 8;
   int nplane_local;
-  int n, nx;
+  int n, nx, ix;
   int nptotal, nplocal;
   int nlocal[3];
   int cartsz[3];
@@ -103,9 +103,9 @@ int do_test_le1(control_t * ctrl) {
 
     for (n = 0; n < nplane_local; n++) {
       nx = nlocal[X]/(2*nplane_local) + n*nlocal[X]/nplane_local;
-      control_verb(ctrl, "Plane %d integer position: %d (%d)\n", n, nx,
-		   le_plane_location(n));
-      control_macro_test(ctrl, nx == le_plane_location(n));
+      ix = le_plane_location(le, n);
+      control_verb(ctrl, "Plane %d integer position: %d (%d)\n", n, nx, ix);
+      control_macro_test(ctrl, nx == ix);
     }
   }
   catch (TestFailedException) {

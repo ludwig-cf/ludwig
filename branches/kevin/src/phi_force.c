@@ -576,7 +576,7 @@ static int phi_force_flux_fix_local(advflux_t * flux) {
 
   for (ip = 0; ip < nplane; ip++) { 
 
-    ic = le_plane_location(ip);
+    ic = le_plane_location(flux->le, ip);
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -597,7 +597,7 @@ static int phi_force_flux_fix_local(advflux_t * flux) {
 
   for (ip = 0; ip < nplane; ip++) { 
 
-    ic = le_plane_location(ip);
+    ic = le_plane_location(flux->le, ip);
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {

@@ -324,7 +324,7 @@ static int le_init_tables(le_t * le) {
 
   ib = 0;
   for (n = 0; n < le->nlocal; n++) {
-    ic = le_plane_location(n) - (nhalo - 1);
+    ic = le_plane_location(le, n) - (nhalo - 1);
     for (nh = 0; nh < 2*nhalo; nh++) {
       assert(ib < 2*nhalo*le->nlocal);
       le->index_buffer_to_real[ib] = ic + nh;
@@ -368,7 +368,7 @@ static int le_init_tables(le_t * le) {
 
    for (ib = 0; ib < le->nxbuffer; ib++) {
      np = ib / (2*nhalo);
-     ip = le_plane_location(np);
+     ip = le_plane_location(le, np);
 
      /* This bit of logic chooses the first nhalo points of the
       * buffer region for each plane as the 'downward' looking part */
@@ -476,8 +476,8 @@ static int le_checks(le_t * le) {
    * a processor or periodic boundary). */
 
   for (n = 0; n < le->nlocal; n++) {
-    if (le_plane_location(n) <= nhalo) ifail_local = 1;
-    if (le_plane_location(n) > nlocal[X] - nhalo) ifail_local = 1;
+    if (le_plane_location(le, n) <= nhalo) ifail_local = 1;
+    if (le_plane_location(le, n) > nlocal[X] - nhalo) ifail_local = 1;
   }
 
   MPI_Allreduce(&ifail_local, &ifail_global, 1, MPI_INT, MPI_LOR, cartcomm);
@@ -574,34 +574,35 @@ int le_steady_uy(le_t * le, int ic, double * uy) {
  *
  *****************************************************************************/
 
-double le_get_block_uy(int ic) {
+int le_block_uy(le_t * le, int ic, double * uy) {
 
   int offset[3];
   int n;
-  double xh, uy;
+  double xh;
   double lmin[3];
   double ltot[3];
 
-  assert(le_stat);
-  assert(le_stat->type == LE_LINEAR);
+  assert(le);
+  assert(le->type == LE_LINEAR);
 
-  coords_lmin(le_stat->cs, lmin);
-  coords_ltot(le_stat->cs, ltot);
-  coords_nlocal_offset(le_stat->cs, offset);
+  coords_lmin(le->cs, lmin);
+  coords_ltot(le->cs, ltot);
+  coords_nlocal_offset(le->cs, offset);
 
   /* So, just count the number of blocks from the centre L_x/2
    * and mutliply by the plane speed. */
 
   xh = offset[X] + (double) ic - lmin[X] - 0.5*ltot[X];
   if (xh > 0.0) {
-    n = (0.5 + xh/le_stat->dx_sep);
+    n = (0.5 + xh/le->dx_sep);
   }
   else {
-    n = (-0.5 + xh/le_stat->dx_sep);
+    n = (-0.5 + xh/le->dx_sep);
   }
-  uy = le_stat->uy*n;
 
-  return uy;
+  *uy = le->uy*n;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -631,26 +632,26 @@ int le_plane_uy_now(le_t * le, double t, double * uy) {
  *
  *  le_plane_location
  *
- *  Return location (local x-coordinte - 0.5) of local plane n.
+ *  Return location (local x-coordinte - 0.5) of local plane np.
  *  It is erroneous to call this if no planes.
  *
  *****************************************************************************/
 
-int le_plane_location(const int n) {
+int le_plane_location(le_t * le, int np) {
 
   int offset[3];
   int nplane_offset;
-  int ix;
   int cartcoords[3];
+  int ix;
 
-  assert(le_stat);
-  assert(n >= 0 && n < le_stat->nlocal);
+  assert(le);
+  assert(np >= 0 && np < le->nlocal);
 
-  coords_cart_coords(le_stat->cs, cartcoords);
-  coords_nlocal_offset(le_stat->cs, offset);
-  nplane_offset = cartcoords[X]*le_stat->nlocal;
+  coords_cart_coords(le->cs, cartcoords);
+  coords_nlocal_offset(le->cs, offset);
+  nplane_offset = cartcoords[X]*le->nlocal;
 
-  ix = le_stat->dx_min + (n + nplane_offset)*le_stat->dx_sep - offset[X];
+  ix = le->dx_min + (np + nplane_offset)*le->dx_sep - offset[X];
 
   return ix;
 }
@@ -713,23 +714,24 @@ int le_index_buffer_to_real(le_t * le, int ib) {
  *
  *****************************************************************************/
 
-double le_buffer_displacement(int ib, double t) {
+int le_buffer_displacement(le_t * le, int ib, double t, double * dy) {
 
-  double dy = 0.0;
   double tle;
 
-  assert(le_stat);
-  assert(ib >= 0 && ib < le_stat->nxbuffer);
+  assert(le);
+  assert(ib >= 0 && ib < le->nxbuffer);
 
-  tle = t - le_stat->time0;
+  tle = t - le->time0;
   assert(tle >= 0.0);
 
-  if (le_stat->type == LE_LINEAR) dy = tle*le_stat->uy*le_stat->buffer_duy[ib];
-  if (le_stat->type == LE_OSCILLATORY) {
-    dy = le_stat->uy*sin(le_stat->omega*tle)/le_stat->omega;
+  *dy = 0.0;
+
+  if (le->type == LE_LINEAR) *dy = tle*le->uy*le->buffer_duy[ib];
+  if (le->type == LE_OSCILLATORY) {
+    *dy = le->uy*sin(le->omega*tle)/le->omega;
   }
 
-  return dy;
+  return 0;
 }
 
 /*****************************************************************************
@@ -766,21 +768,13 @@ int le_plane_comm(le_t * le, MPI_Comm * comm) {
 
 /*****************************************************************************
  *
- *  le_jstart_to_ranks
+ *  le_jstart_to_mpi_ranks
  *
  *  For global period position j1, work out which ranks are to
  *  receive messages, and which are to send from the current
  *  process in order to grab translated information.
  *
  *****************************************************************************/
-
-int le_jstart_to_ranks(const int j1, int send[3], int recv[3]) {
-
-  assert(le_stat);
-  le_jstart_to_mpi_ranks(le_stat, j1, send, recv);
-
-  return 0;
-}
 
 int le_jstart_to_mpi_ranks(le_t * le, const int j1, int send[3], int recv[3]) {
 

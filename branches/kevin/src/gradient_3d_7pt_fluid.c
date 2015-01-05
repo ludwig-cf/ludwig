@@ -340,7 +340,7 @@ HOST static void gradient_3d_7pt_fluid_le_correction(const int nop,
 
   for (np = 0; np < nplane; np++) {
 
-    ic = le_plane_location(np);
+    ic = le_plane_location(le, np);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
@@ -514,7 +514,7 @@ HOST static int gradient_dab_le_correct(int nf, const double * field,
 
   for (np = 0; np < nplane; np++) {
 
-    ic = le_plane_location(np);
+    ic = le_plane_location(le, np);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {

@@ -146,13 +146,13 @@ static int le_reproject(le_t * le, lb_t * lb) {
       if (side == 0) {
 	/* Start with plane below Lees-Edwards BC */
 	du[Y] = -uy0;
-	ic = le_plane_location(plane);
+	ic = le_plane_location(le, plane);
 	poffset = xdisp_fwd_cv[0];
       }
       else {
 	/* Finally, deal with plane above LEBC */
 	du[Y] = +uy0;
-	ic = le_plane_location(plane) + 1;
+	ic = le_plane_location(le, plane) + 1;
 	poffset = xdisp_bwd_cv[0];
       }
 
@@ -256,13 +256,13 @@ static int le_reproject_all(le_t * le, lb_t * lb) {
       if (side == 0) {
 	/* Start with plane below Lees-Edwards BC */
 	du[Y] = -uy0;
-	ic = le_plane_location(plane);
+	ic = le_plane_location(le, plane);
 	poffset = xdisp_fwd_cv[0];
       }
       else {
 	/* Finally, deal with plane above LEBC */
 	du[Y] = +uy0;
-	ic = le_plane_location(plane) + 1;
+	ic = le_plane_location(le, plane) + 1;
 	poffset = xdisp_bwd_cv[0];
       }
 
@@ -363,9 +363,8 @@ int le_displace_and_interpolate(le_t * le, lb_t * lb) {
 
   for (plane = 0; plane < nplane; plane++) {
  
-    ic  = le_plane_location(plane);
-
-    dy  = le_buffer_displacement(nhalo, t);
+    ic = le_plane_location(le, plane);
+    le_buffer_displacement(le, nhalo, t, &dy);
     dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr = dy - jdy;
@@ -415,10 +414,9 @@ int le_displace_and_interpolate(le_t * le, lb_t * lb) {
 
     /* OTHER DIRECTION */
  
-    ic  = le_plane_location(plane) + 1;
-
-    dy  = -le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, ltot[Y]);
+    ic = le_plane_location(le, plane) + 1;
+    le_buffer_displacement(le, nhalo, t, &dy);
+    dy  = fmod(-dy, ltot[Y]);
     jdy = floor(dy);
     fr = dy - jdy;
 
@@ -546,9 +544,8 @@ static int le_displace_and_interpolate_parallel(le_t * le, lb_t * lb) {
 
   for (plane = 0; plane < nplane; plane++) {
 
-    ic  = le_plane_location(plane);
-
-    dy  = le_buffer_displacement(nhalo, t);
+    ic = le_plane_location(le, plane);
+    le_buffer_displacement(le, nhalo, t, &dy);
     dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
@@ -628,10 +625,9 @@ static int le_displace_and_interpolate_parallel(le_t * le, lb_t * lb) {
 
     /* NOW THE OTHER DIRECTION */
 
-    ic  = le_plane_location(plane) + 1;
-
-    dy  = -le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, ltot[Y]);
+    ic = le_plane_location(le, plane) + 1;
+    le_buffer_displacement(le, nhalo, t, &dy);
+    dy  = fmod(-dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 

@@ -183,7 +183,7 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 
   for (np = 0; np < nplane; np++) {
 
-    ic = le_plane_location(np);
+    ic = le_plane_location(le, np);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {

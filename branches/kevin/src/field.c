@@ -298,7 +298,7 @@ int field_leesedwards(field_t * obj) {
     for (ib = 0; ib < nxb; ib++) {
 
       ic = le_index_buffer_to_real(obj->le, ib);
-      dy = le_buffer_displacement(ib, t);
+      le_buffer_displacement(obj->le, ib, t, &dy);
       dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = 1.0 - (dy - jdy);
@@ -422,7 +422,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
     /* Work out the displacement-dependent quantities */
 
-    dy = le_buffer_displacement(ib, t);
+    le_buffer_displacement(obj->le, ib, t, &dy);
     dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = 1.0 - (dy - jdy);

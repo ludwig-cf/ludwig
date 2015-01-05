@@ -390,7 +390,7 @@ int hydro_lees_edwards(hydro_t * obj) {
     for (ib = 0; ib < nxb; ib++) {
 
       ic = le_index_buffer_to_real(obj->le, ib);
-      dy = le_buffer_displacement(ib, t);
+      le_buffer_displacement(obj->le, ib, t, &dy);
 
       /* This is a slightly awkward way to compute the velocity
        * jump: just the (+/-) displacement devided by time. */
@@ -507,7 +507,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
     /* Work out the displacement-dependent quantities */
 
-    dy = le_buffer_displacement(ib, t);
+    le_buffer_displacement(obj->le, ib, t, &dy);
     ule[Y] = dy/t; /* STEADY SHEAR ONLY */
     dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
