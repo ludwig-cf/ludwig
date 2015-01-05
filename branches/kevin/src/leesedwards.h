@@ -18,7 +18,7 @@
 typedef struct le_s le_t;
 
 __host__ int le_create(coords_t * coords, le_t ** le);
-__host__ int le_free(le_t ** le);
+__host__ int le_free(le_t * le);
 __host__ int le_retain(le_t * le);
 
 __host__ int le_nplane_set(le_t * le, int nplanes);

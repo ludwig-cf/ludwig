@@ -2,6 +2,8 @@
  *
  *  advection.c
  *
+ *  PENDIONG combine advection_bcs to deal LE planes.
+ *
  *  Computes advective order parameter fluxes from the current
  *  velocity field (from hydrodynamics) and the the current
  *  order parameter(s).
@@ -31,9 +33,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "leesedwards.h"
 #include "field_s.h"
-#include "psi_gradients.h"
 #include "advection_s.h"
 
 static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
@@ -90,7 +90,7 @@ int advflux_create(le_t * le, int nf, advflux_t ** pobj) {
   assert(le);
   assert(pobj);
 
-  obj = calloc(1, sizeof(advflux_t));
+  obj = (advflux_t *) calloc(1, sizeof(advflux_t));
   if (obj == NULL) fatal("calloc(advflux) failed\n");
 
   le_nsites(le, &nsites);
@@ -105,10 +105,10 @@ int advflux_create(le_t * le, int nf, advflux_t ** pobj) {
   if (obj->fy == NULL) fatal("calloc(advflux->fy) failed\n");
   if (obj->fz == NULL) fatal("calloc(advflux->fz) failed\n");
 
+  obj->nsites = nsites;
+  obj->nf = nf;
   obj->le = le;
-
-  /* PENDING */
-  /* le_retain(le);*/
+  le_retain(le);
 
   *pobj = obj;
 
@@ -125,7 +125,7 @@ int advflux_free(advflux_t * obj) {
 
   assert(obj);
 
-  /* le_free(&obj->le);*/
+  le_free(obj->le);
   free(obj->fe);
   free(obj->fw);
   free(obj->fy);
@@ -770,189 +770,6 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
         }
 
         /* Next interface. */
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  advective_fluxes
- *
- *  General routine for nf fields at starting address f.
- *  No Lees Edwards boundaries, so no separate 'east' and 'west'
- *  face fluxes required (cf. above).
- *
- *  The storage of the field(s) for all the related routines is
- *  assumed to be f[index][nf], where index is the spatial index.
- *
- *****************************************************************************/
-
-#include "hydro_s.h"
-
-int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
-		     double * fy, double * fz) {
-
-  assert(hydro);
-  assert(nf > 0);
-  assert(f);
-  assert(fe);
-  assert(fy);
-  assert(fz);
-
-  advective_fluxes_2nd(hydro, nf, f, fe, fy, fz);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  advective_fluxes_2nd
- *
- *  'Centred difference' advective fluxes. No LE planes.
- *
- *  Symmetric two-point stencil.
- *
- *****************************************************************************/
-
-int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
-			 double * fy, double * fz) {
-  int nlocal[3];
-  int ic, jc, kc;
-  int n;
-  int index0, index1;
-  double u0[3], u1[3], u;
-
-  assert(hydro);
-  assert(nf > 0);
-  assert(f);
-  assert(fe);
-  assert(fy);
-  assert(fz);
-
-  coords_nlocal(hydro->cs, nlocal);
-
-  for (ic = 0; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index0 = coords_index(hydro->cs, ic, jc, kc);
-	hydro_u(hydro, index0, u0);
-
-	/* east face (ic and icp1) */
-
-	index1 = coords_index(hydro->cs, ic+1, jc, kc);
-
-	hydro_u(hydro, index1, u1);
-	u = 0.5*(u0[X] + u1[X]);
-
-	for (n = 0; n < nf; n++) {
-	  fe[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-
-	/* y direction */
-
-	index1 = coords_index(hydro->cs, ic, jc+1, kc);
-
-	hydro_u(hydro, index1, u1);
-	u = 0.5*(u0[Y] + u1[Y]);
-
-	for (n = 0; n < nf; n++) {
-	  fy[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-
-	/* z direction */
-
-	index1 = coords_index(hydro->cs, ic, jc, kc+1);
-
-	hydro_u(hydro, index1, u1);
-	u = 0.5*(u0[Z] + u1[Z]);
-
-	for (n = 0; n < nf; n++) {
-	  fz[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-
-	/* Next site */
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  advective_fluxes_d3qx
- *
- *  General routine for nf fields at starting address f.
- *  No Lees Edwards boundaries.
- *
- *  The storage of the field(s) for all the related routines is
- *  assumed to be f[index][nf], where index is the spatial index.
- *
- *****************************************************************************/
-
-int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f, 
-					double ** flx) {
-
-  assert(hydro);
-  assert(nf > 0);
-  assert(f);
-  assert(flx);
-
-  advective_fluxes_2nd_d3qx(hydro, nf, f, flx);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  advective_fluxes_2nd_d3qx
- *
- *  No LE planes.
- *
- *****************************************************************************/
-
-int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f, 
-					double ** flx) {
-
-  int nlocal[3];
-  int ic, jc, kc, c;
-  int n;
-  int index0, index1;
-  double u0[3], u1[3], u;
-
-  assert(hydro);
-  assert(nf > 0);
-  assert(f);
-  assert(flx);
-
-  coords_nlocal(hydro->cs, nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = coords_index(hydro->cs, ic, jc, kc);
-	hydro_u(hydro, index0, u0);
-
-        for (c = 1; c < PSI_NGRAD; c++) {
-
-	  index1 = coords_index(hydro->cs, ic + psi_gr_cv[c][X],
-				jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
-	  hydro_u(hydro, index1, u1);
-
-	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);
-
-	  for (n = 0; n < nf; n++) {
-	    flx[nf*index0 + n][c - 1] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	  }
-
-	}
-
-	/* Next site */
       }
     }
   }

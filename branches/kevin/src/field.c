@@ -106,6 +106,8 @@ int field_free(field_t * obj) {
 
   if (obj->name) free(obj->name);
   if (obj->info) io_info_free(obj->info);
+  if (obj->le) le_free(obj->le);
+
   coords_free(&obj->cs);
   free(obj);
 
@@ -150,7 +152,7 @@ int field_init(field_t * obj, int nhcomm, le_t * le) {
 				obj->halo);
 
   obj->le = le;
-  /* PENDING RETAIN */
+  if (le) le_retain(le);
 
   return 0;
 }

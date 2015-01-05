@@ -54,24 +54,38 @@ int le_create(coords_t * cs, le_t ** ple) {
 
 /*****************************************************************************
  *
+ *  le_retain
+ *
+ *****************************************************************************/
+
+int le_retain(le_t * le) {
+
+  assert(le);
+
+  le->nref += 1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  le_free
  *
  *****************************************************************************/
 
-int le_free(le_t ** ple) {
+int le_free(le_t * le) {
 
-  le_t * le = NULL;
+  assert(le);
 
-  assert(ple);
-  le = *ple;
+  le->nref -= 1;
 
-  coords_free(&le->cs);
-  free(le->index_buffer_to_real);
-  free(le->index_real_to_buffer);
-  free(le->buffer_duy);
-  free(le);
-
-  *ple = NULL;
+  if (le->nref <= 0) {
+    coords_free(&le->cs);
+    free(le->index_buffer_to_real);
+    free(le->index_real_to_buffer);
+    free(le->buffer_duy);
+    free(le);
+  }
 
   return 0;
 }

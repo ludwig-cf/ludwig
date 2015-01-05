@@ -2,6 +2,14 @@
  *
  *  leesedwards_s.h
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2015 The University of Edinburgh
+ *
+ *  Authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk
+ *
  *****************************************************************************/
 
 #ifndef LEESEDWARDS_S_H

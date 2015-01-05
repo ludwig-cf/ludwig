@@ -69,8 +69,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
-#include "advection.h"
-#include "advection_bcs.h"
 #include "free_energy.h"
 #include "physics.h"
 #include "nernst_planck.h"
@@ -88,6 +86,16 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 		map_t * map, colloids_info_t * cinfo, double ** flx);
 static int nernst_planck_update_d3qx(psi_t * psi, 
 				map_t * map, double ** flx);
+
+
+static int advective_fluxes_2nd(psi_t * psi, hydro_t * hydro,
+				double * fe, double * fy, double * fz);
+static int advective_bcs_no_flux(psi_t * psi, map_t * map, 
+				 double * fx, double * fy, double * fz);
+static int advective_fluxes_2nd_d3qx(psi_t * psi, hydro_t * hydro,
+				     double ** flx);
+static int advective_bcs_no_flux_d3qx(psi_t * psi, map_t * map, double ** flx);
+
 static double max_acc; 
 
 /*****************************************************************************
@@ -127,13 +135,13 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
    * whole lot are then subject to no normal flux BCs. */
 
   /* Add advective fluxes based on six-point stencil */
-  if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
+  if (hydro) advective_fluxes_2nd(psi, hydro, fe, fy, fz);
 
   /* Add diffusive fluxes based on six-point stencil */
   nernst_planck_fluxes(psi, fe, fy, fz);
 
   /* Apply no flux BC for six-point stencil */
-  if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
+  if (map) advective_bcs_no_flux(psi, map, fe, fy, fz);
   
   /* Update charge distribution */
   nernst_planck_update(psi, fe, fy, fz);
@@ -333,13 +341,13 @@ int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro,
   if (flx == NULL) fatal("calloc(flx) failed\n");
 
   /* Add advective fluxes */
-  if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho, flx);
+  if (hydro) advective_fluxes_2nd_d3qx(psi, hydro, flx);
 
   /* Add diffusive fluxes */
   nernst_planck_fluxes_d3qx(psi, hydro, map, cinfo, flx);
   
   /* Apply no-flux BC */
-  if (map) advective_bcs_no_flux_d3qx(nk, flx, map);
+  if (map) advective_bcs_no_flux_d3qx(psi, map, flx);
 
   /* Update charges */
   nernst_planck_update_d3qx(psi, map, flx);
@@ -771,6 +779,247 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
     }    
 
   }    
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advective_bcs_no_flux_d3qx
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+static
+int advective_bcs_no_flux_d3qx(psi_t * psi, map_t * map, double ** flx) {
+
+  int n;
+  int nlocal[3];
+  int ic, jc, kc, index0, index1;
+  int status;
+  int c;
+  double mask0, mask1;
+
+  assert(psi);
+  assert(map);
+  assert(flx);
+
+  coords_nlocal(psi->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(psi->cs, ic, jc, kc);
+	map_status(map, index0, &status);
+	mask0 = (status == MAP_FLUID);
+
+	for (c = 1; c < PSI_NGRAD; c++) {
+
+	  index1 = coords_index(psi->cs, ic + psi_gr_cv[c][X],
+				jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  map_status(map, index1, &status);
+	  mask1 = (status == MAP_FLUID);
+
+	  for (n = 0;  n < psi->nk; n++) {
+	    flx[psi->nk*index0 + n][c - 1] *= mask0*mask1;
+	  }
+
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advective_fluxes_2nd_d3qx
+ *
+ *  No LE planes.
+ *
+ *****************************************************************************/
+
+static
+int advective_fluxes_2nd_d3qx(psi_t * psi, hydro_t * hydro, double ** flx) {
+
+  int nlocal[3];
+  int ic, jc, kc, c;
+  int n;
+  int index0, index1;
+  double u0[3], u1[3], u;
+
+  assert(psi);
+  assert(hydro);
+  assert(flx);
+
+  coords_nlocal(psi->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(psi->cs, ic, jc, kc);
+	hydro_u(hydro, index0, u0);
+
+        for (c = 1; c < PSI_NGRAD; c++) {
+
+	  index1 = coords_index(psi->cs, ic + psi_gr_cv[c][X],
+				jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  hydro_u(hydro, index1, u1);
+
+	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);
+
+	  for (n = 0; n < psi->nk; n++) {
+	    flx[psi->nk*index0 + n][c - 1] =
+	      u*0.5*(psi->rho[psi->nk*index1 + n] + psi->rho[psi->nk*index0 + n]);
+	  }
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  advective_fluxes_2nd
+ *
+ *  'Centred difference' advective fluxes. No LE planes.
+ *
+ *  Symmetric two-point stencil.
+ *
+ *****************************************************************************/
+
+static int advective_fluxes_2nd(psi_t * psi, hydro_t * hydro, double * fe,
+				double * fy, double * fz) {
+  int nlocal[3];
+  int ic, jc, kc;
+  int n, nk;
+  int index0, index1;
+  double u0[3], u1[3], u;
+
+  assert(psi);
+  assert(hydro);
+  assert(fe);
+  assert(fy);
+  assert(fz);
+
+  nk = psi->nk;
+  coords_nlocal(psi->cs, nlocal);
+
+  for (ic = 0; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index0 = coords_index(psi->cs, ic, jc, kc);
+	hydro_u(hydro, index0, u0);
+
+	/* east face (ic and icp1) */
+
+	index1 = coords_index(psi->cs, ic+1, jc, kc);
+
+	hydro_u(hydro, index1, u1);
+	u = 0.5*(u0[X] + u1[X]);
+
+	for (n = 0; n < nk; n++) {
+	  fe[psi->nk*index0 + n] =
+	    u*0.5*(psi->rho[nk*index1 + n] + psi->rho[nk*index0 + n]);
+	}
+
+	/* y direction */
+
+	index1 = coords_index(psi->cs, ic, jc+1, kc);
+
+	hydro_u(hydro, index1, u1);
+	u = 0.5*(u0[Y] + u1[Y]);
+
+	for (n = 0; n < nk; n++) {
+	  fy[nk*index0 + n]
+	    = u*0.5*(psi->rho[nk*index1 + n] + psi->rho[nk*index0 + n]);
+	}
+
+	/* z direction */
+
+	index1 = coords_index(psi->cs, ic, jc, kc+1);
+
+	hydro_u(hydro, index1, u1);
+	u = 0.5*(u0[Z] + u1[Z]);
+
+	for (n = 0; n < nk; n++) {
+	  fz[nk*index0 + n]
+	    = u*0.5*(psi->rho[nk*index1 + n] + psi->rho[nk*index0 + n]);
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advective_bcs_no_flux
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+static int advective_bcs_no_flux(psi_t * psi, map_t * map, 
+				 double * fx, double * fy, double * fz) {
+  int n;
+  int nlocal[3];
+  int ic, jc, kc, index;
+  int status;
+
+  double mask, maskx, masky, maskz;
+
+  assert(psi);
+  assert(map);
+  assert(fx);
+  assert(fy);
+  assert(fz);
+
+  coords_nlocal(psi->cs, nlocal);
+
+  for (ic = 0; ic <= nlocal[X]; ic++) {
+    for (jc = 0; jc <= nlocal[Y]; jc++) {
+      for (kc = 0; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(psi->cs, ic + 1, jc, kc);
+	map_status(map, index, &status);
+	maskx = (status == MAP_FLUID);
+
+	index = coords_index(psi->cs, ic, jc + 1, kc);
+	map_status(map, index, &status);
+	masky = (status == MAP_FLUID);
+
+	index = coords_index(psi->cs, ic, jc, kc + 1);
+	map_status(map, index, &status);
+	maskz = (status == MAP_FLUID);
+
+	index = coords_index(psi->cs, ic, jc, kc);
+	map_status(map, index, &status);
+	mask = (status == MAP_FLUID);
+
+	for (n = 0;  n < psi->nk; n++) {
+	  fx[psi->nk*index + n] *= mask*maskx;
+	  fy[psi->nk*index + n] *= mask*masky;
+	  fz[psi->nk*index + n] *= mask*maskz;
+	}
+
+      }
+    }
+  }
 
   return 0;
 }

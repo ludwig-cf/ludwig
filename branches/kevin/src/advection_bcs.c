@@ -23,7 +23,6 @@
 #include "coords_field.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
-#include "psi_gradients.h"
 
 /*****************************************************************************
  *
@@ -89,129 +88,6 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
 /*****************************************************************************
  *
- *  advective_bcs_no_flux
- *
- *  Set normal fluxes at solid fluid interfaces to zero.
- *
- *****************************************************************************/
-
-/* PENDING a sane way to get cs */
-#include "map_s.h"
-
-int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
-			  map_t * map) {
-  int n;
-  int nlocal[3];
-  int ic, jc, kc, index, indexf;
-  int status;
-
-  double mask, maskx, masky, maskz;
-
-  /*PENDING */
-  coords_t * cs;
-  cs = map->cs;
-
-  assert(nf > 0);
-  assert(fx);
-  assert(fy);
-  assert(fz);
-  assert(map);
-
-  coords_nlocal(cs, nlocal);
-
-  for (ic = 0; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(cs, ic + 1, jc, kc);
-	map_status(map, index, &status);
-	maskx = (status == MAP_FLUID);
-
-	index = coords_index(cs, ic, jc + 1, kc);
-	map_status(map, index, &status);
-	masky = (status == MAP_FLUID);
-
-	index = coords_index(cs, ic, jc, kc + 1);
-	map_status(map, index, &status);
-	maskz = (status == MAP_FLUID);
-
-	index = coords_index(cs, ic, jc, kc);
-	map_status(map, index, &status);
-	mask = (status == MAP_FLUID);
-
-	for (n = 0;  n < nf; n++) {
-
-	  coords_field_index(cs, index, n, nf, &indexf);
-	  fx[indexf] *= mask*maskx;
-	  fy[indexf] *= mask*masky;
-	  fz[indexf] *= mask*maskz;
-
-	}
-
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  advective_bcs_no_flux_d3qx
- *
- *  Set normal fluxes at solid fluid interfaces to zero.
- *
- *****************************************************************************/
-
-int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
-
-  int n;
-  int nlocal[3];
-  int ic, jc, kc, index0, index1;
-  int status;
-  int c;
-  double mask0, mask1;
-
-  /*PENDING*/
-  coords_t * cs = NULL;
-  cs = map->cs;
-
-  assert(nf > 0);
-  assert(flx);
-  assert(map);
-
-  coords_nlocal(cs, nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = coords_index(cs, ic, jc, kc);
-	map_status(map, index0, &status);
-	mask0 = (status == MAP_FLUID);
-
-	for (c = 1; c < PSI_NGRAD; c++) {
-
-	  index1 = coords_index(cs, ic + psi_gr_cv[c][X],
-				jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
-	  map_status(map, index1, &status);
-	  mask1 = (status == MAP_FLUID);
-
-	  for (n = 0;  n < nf; n++) {
-	    flx[nf*index0 + n][c - 1] *= mask0*mask1;
-	  }
-
-	}
-
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  advection_bcs_wall
  *
  *  For the case of flat walls, we kludge the order parameter advection
@@ -226,7 +102,7 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
  *
  ****************************************************************************/
 
-/* PENDING wall */
+/* PENDING wall (allowed with LE) */
 
 #include "field_s.h"
 

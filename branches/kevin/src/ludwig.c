@@ -837,7 +837,7 @@ void ludwig_run(const char * inputfile) {
   TIMER_statistics();
 
   rt_free(&ludwig->rt);
-  le_free(&ludwig->le);
+  le_free(ludwig->le);
   coords_free(&ludwig->cs);
   pe_free(&ludwig->pe);
   free(ludwig);

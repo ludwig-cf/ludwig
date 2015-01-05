@@ -17,10 +17,12 @@
 
 struct advflux_s {
   le_t * le;     /* Reference to Lees Edwards information */
-  double * fe;   /* For LE planes */
-  double * fw;   /* For LE planes */
-  double * fy;
-  double * fz;
+  int nf;        /* Number of fields */
+  int nsites;    /* Number of sites */
+  double * fe;   /* East face fluxes */
+  double * fw;   /* West faces fluxes */
+  double * fy;   /* Unique y-fluxes */
+  double * fz;   /* Unique z-fluxes */
 };
 
 #endif
