@@ -29,18 +29,25 @@
 #define TARGET_CONST __constant__
 
 /* Instruction-level-parallelism vector length */
-//#define NILP 2
-#define NILP 1
+#define NILP 2
+//#define NILP 1
 
 
 /* special kernel launch syntax */
 #define TARGET_LAUNCH(extent) \
   <<<((extent/NILP)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
+
+#define TARGET_LAUNCH_NOSTRIDE(extent) \
+  <<<((extent)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
   
 
 /* Thread-level-parallelism execution macro */
 #define TARGET_TLP(simtIndex,extent) \
   simtIndex = NILP*(blockIdx.x*blockDim.x+threadIdx.x);	\
+  if (simtIndex < extent)
+
+#define TARGET_TLP_NOSTRIDE(simtIndex,extent) \
+  simtIndex = (blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
 
 #define __targetGetConstantAddress(addr_of_ptr,const_object) \
@@ -71,6 +78,9 @@
 
 #define TARGET_TLP(simtIndex,extent)   	\
   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
+
+#define TARGET_TLP_NOSTRIDE(simtIndex,extent)   	\
+  for(simtIndex=0;simtIndex<extent;simtIndex++)
 
 
 #define __targetGetConstantAddress(addr_of_ptr,const_object) \
@@ -112,10 +122,10 @@
 
 
 #define GET_3DCOORDS_FROM_INDEX(index,coords,extents)	     \
-    coords[0]=index/(extents[1]*extents[2]); \
-    coords[1] = (index - extents[1]*extents[2]*coords[0]) / extents[2]; \
-    coords[2] = index - extents[1]*extents[2]*coords[0] \
-      - extents[2]*coords[1]; 
+  coords[0]=(index)/(extents[1]*extents[2]);				\
+  coords[1] = ((index) - extents[1]*extents[2]*coords[0]) / extents[2];	\
+  coords[2] = (index) - extents[1]*extents[2]*coords[0]			\
+    - extents[2]*coords[1]; 
 
 #define INDEX_FROM_3DCOORDS(coords0,coords1,coords2,extents)	\
   extents[2]*extents[1]*(coords0)				\
