@@ -69,8 +69,8 @@ static int field_grad_init(field_grad_t * obj) {
   nsites = obj->field->nsites;
 
   if (obj->level >= 2) {
-    obj->grad = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
+    obj->grad = (double *) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
+    obj->delsq = (double *) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad == NULL) fatal("calloc(field_grad->grad) failed");
     if (obj->delsq == NULL) fatal("calloc(field_grad->delsq) failed");
 

@@ -107,6 +107,7 @@ OBJS = \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o \
      free_energy.o free_energy_vector.o fe_electro.o fe_electro_symmetric.o \
+     fe.o fe_symmetric.o fe_surfactant.o fe_brazovskii.o fe_polar.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_solid.o \
