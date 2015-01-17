@@ -89,7 +89,7 @@ int fe_surfactant_create(field_t * phi, field_grad_t * grad) {
   assert(phi);
   assert(grad);
 
-  fe = calloc(1, sizeof(fe_surfactant_t));
+  fe = (fe_surfactant_t *) calloc(1, sizeof(fe_surfactant_t));
   if (fe == NULL) fatal("calloc(fe_surfactant) failed\n");
 
   fe->phi = phi;

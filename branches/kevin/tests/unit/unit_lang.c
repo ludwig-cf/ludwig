@@ -23,6 +23,10 @@ int do_test_lang_comm_failure(control_t * ctrl);
 int do_test_that_fails1(control_t * ctrl);
 int do_test_that_fails2(control_t * ctrl);
 
+/* C standard: enumeration constants are of type int */
+
+typedef enum enum_i4 {ENUM_I4 = 256} enum_t;
+
 /*****************************************************************************
  *
  *  do_ut_lang
@@ -152,6 +156,10 @@ int do_test_lang_assumptions(control_t * ctrl) {
     nsz = FILENAME_MAX;
     control_verb(ctrl, "FILENAME_MAX is %d\n", nsz);
     control_macro_assert(ctrl, nsz >= 128, MPITestFailedException);
+
+    nsz = sizeof(enum_t);
+    control_verb(ctrl, "sizeof(enum_t) is %d\n", nsz);
+    control_macro_assert(ctrl, nsz == sizeof(int), MPITestFailedException); 
   }
   catch (MPITestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);

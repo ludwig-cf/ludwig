@@ -11,14 +11,16 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef TIMER_H
 #define TIMER_H
 
-void TIMER_init(void);
+#include "mpi.h"
+
+void TIMER_init(MPI_Comm comm);
 void TIMER_start(const int);
 void TIMER_stop(const int);
 void TIMER_statistics(void);

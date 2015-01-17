@@ -348,7 +348,8 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
  *
  *****************************************************************************/
 
-int rt_string_parameter(rt_t * rt, const char * key, char * value, const int len) {
+int rt_string_parameter(rt_t * rt, const char * key, char * value,
+			unsigned int len) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];

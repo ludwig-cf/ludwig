@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -136,8 +136,8 @@ int coords_field_init_mpi_indexed(coords_t * cs, int nhcomm, int nf,
   nstripy = nlocal[Y];
   ncount = nhcomm*nstripy;
 
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
+  blocklen = (int *) calloc(ncount, sizeof(int));
+  displace = (int *) calloc(ncount, sizeof(int));
   if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
   if (displace == NULL) fatal("calloc(displace) failed\n");
 
@@ -165,8 +165,8 @@ int coords_field_init_mpi_indexed(coords_t * cs, int nhcomm, int nf,
   nstripx = nlocal[X] + 2*nhcomm;
   ncount = nhcomm*nstripx;
 
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
+  blocklen = (int *) calloc(ncount, sizeof(int));
+  displace = (int *) calloc(ncount, sizeof(int));
   if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
   if (displace == NULL) fatal("calloc(displace) failed\n");
 
@@ -195,8 +195,8 @@ int coords_field_init_mpi_indexed(coords_t * cs, int nhcomm, int nf,
   nstripy = (nlocal[Y] + 2*nhcomm);
   ncount = nstripx*nstripy;
 
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
+  blocklen = (int *) calloc(ncount, sizeof(int));
+  displace = (int *) calloc(ncount, sizeof(int));
   if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
   if (displace == NULL) fatal("calloc(displace) failed\n");
 
@@ -405,7 +405,7 @@ int coords_field_halo(coords_t * cs, int nhcomm, int nf, void * buf,
   int pforw, pback;
   int n, nh;
   size_t sz;
-  unsigned char * mbuf = buf;
+  unsigned char * mbuf = (unsigned char *) buf;
 
   MPI_Request req_send[6];
   MPI_Request req_recv[6];

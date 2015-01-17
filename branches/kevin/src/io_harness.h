@@ -44,7 +44,8 @@ __host__ int io_info_single_file_set(io_info_t * info);
 
 __host__ int io_write_metadata(io_info_t * info);
 __host__ int io_write_metadata_file(io_info_t * info, char * filestub);
-__host__ int io_info_metadata_filestub_set(io_info_t * info, char * filestub);
+__host__ int io_info_metadata_filestub_set(io_info_t * info,
+					   const char * filestub);
 
 __host__ int io_remove(char * filename_stub, io_info_t * obj);
 __host__ int io_remove_metadata(io_info_t * obj, const char * file_stub);

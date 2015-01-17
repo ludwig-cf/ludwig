@@ -70,7 +70,7 @@ int fe_electro_create(psi_t * psi) {
   assert(fe == NULL);
   assert(psi);
 
-  fe = calloc(1, sizeof(fe_electro_t));
+  fe = (fe_electro_t *) calloc(1, sizeof(fe_electro_t));
   if (fe == NULL) fatal("calloc() failed\n");
 
   fe->psi = psi;

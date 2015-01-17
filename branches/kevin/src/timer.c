@@ -19,8 +19,8 @@
 
 #include <time.h>
 #include <float.h>
+#include <stdio.h>
 
-#include "pe.h"
 #include "util.h"
 #include "timer.h"
 
@@ -63,6 +63,7 @@ static const char * timer_name[] = {"Total",
 				    "Free2",
                                     "Free3"};
 
+static MPI_Comm statcomm;
 
 /****************************************************************************
  *
@@ -72,7 +73,7 @@ static const char * timer_name[] = {"Total",
  *
  ****************************************************************************/
 
-void TIMER_init() {
+void TIMER_init(MPI_Comm comm) {
 
   int n;
 
@@ -83,6 +84,8 @@ void TIMER_init() {
     timer[n].active = 0;
     timer[n].nsteps = 0;
   }
+
+  statcomm = comm;
 
   return;
 }
@@ -141,17 +144,20 @@ void TIMER_stop(const int t_id) {
 
 void TIMER_statistics() {
 
-  int    n;
+  int    n, nsz;
+  int    rank;
   double t_min, t_max, t_sum;
   double r;
 
-  MPI_Comm comm = pe_comm();
-
+  MPI_Comm_rank(statcomm, &rank);
+  MPI_Comm_size(statcomm, &nsz);
   r = MPI_Wtick();
 
-  info("\nTimer resolution: %g second\n", r);
-  info("\nTimer statistics\n");
-  info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
+  if (rank == 0) {
+    printf("\nTimer resolution: %g second\n", r);
+    printf("\nTimer statistics\n");
+    printf("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
+  }
 
   for (n = 0; n < NTIMERS; n++) {
 
@@ -163,15 +169,17 @@ void TIMER_statistics() {
       t_max = timer[n].t_max;
       t_sum = timer[n].t_sum;
 
-      MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
-      MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
-      MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+      MPI_Reduce(&(timer[n].t_min), &t_min, 1, MPI_DOUBLE, MPI_MIN, 0, statcomm);
+      MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, statcomm);
+      MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, statcomm);
 
-      t_sum /= pe_size();
+      t_sum /= nsz;
 
-      info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
-	   t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
-      info(" (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
+      if (rank == 0) {
+	printf("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
+	     t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
+	printf(" (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
+      }
     }
   }
 

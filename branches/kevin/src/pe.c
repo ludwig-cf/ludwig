@@ -228,24 +228,6 @@ MPI_Comm pe_comm(void) {
 
 /*****************************************************************************
  *
- *  pe_rank, pe_size
- *
- *  "Getter" functions.
- *
- *****************************************************************************/
-
-int pe_rank() {
-  assert(pe);
-  return pe->mpi_rank;
-}
-
-int pe_size() {
-  assert(pe);
-  return pe->mpi_size;
-}
-
-/*****************************************************************************
- *
  *  info
  *
  *  Print arguments on process 0 only (important stuff!).

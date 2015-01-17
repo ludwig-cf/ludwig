@@ -168,10 +168,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int io_grid[3];
 
   io_info_t * iohandler = NULL;
+  MPI_Comm comm;
 
   assert(ludwig);
 
-  TIMER_init();
+  pe_mpi_comm(ludwig->pe, &comm);
+
+  TIMER_init(comm);
   TIMER_start(TIMER_TOTAL);
 
   coords_create(ludwig->pe, &ludwig->cs);
@@ -390,7 +393,7 @@ void ludwig_run(const char * inputfile) {
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
 
-  ludwig = calloc(1, sizeof(ludwig_t));
+  ludwig = (ludwig_t *) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
 
   pe_create_parent(MPI_COMM_WORLD, &ludwig->pe);

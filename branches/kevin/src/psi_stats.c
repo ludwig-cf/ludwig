@@ -41,9 +41,9 @@ int psi_stats_info(psi_t * obj) {
   nrho = 2 + nk;
   comm = pe_comm();
 
-  rho_min = calloc(nrho, sizeof(double));
-  rho_max = calloc(nrho, sizeof(double));
-  rho_tot = calloc(nrho, sizeof(double));
+  rho_min = (double *) calloc(nrho, sizeof(double));
+  rho_max = (double *) calloc(nrho, sizeof(double));
+  rho_tot = (double *) calloc(nrho, sizeof(double));
   if (rho_min == NULL) fatal("calloc(rho_min) failed\n");
   if (rho_max == NULL) fatal("calloc(rho_max) failed\n");
   if (rho_tot == NULL) fatal("calloc(rho_tot) failed\n");
@@ -94,9 +94,9 @@ int psi_stats_reduce(psi_t * obj, double * rho_min, double * rho_max,
   psi_nk(obj, &nk);
   nrho = 2 + nk;
 
-  rho_min_local = calloc(nrho, sizeof(double));
-  rho_max_local = calloc(nrho, sizeof(double));
-  rho_tot_local = calloc(nrho, sizeof(double));
+  rho_min_local = (double *) calloc(nrho, sizeof(double));
+  rho_max_local = (double *) calloc(nrho, sizeof(double));
+  rho_tot_local = (double *) calloc(nrho, sizeof(double));
   if (rho_min_local == NULL) fatal("calloc(rho_min_local) failed\n");
   if (rho_max_local == NULL) fatal("calloc(rho_max_local) failed\n");
   if (rho_tot_local == NULL) fatal("calloc(rho_tot_local) failed\n");

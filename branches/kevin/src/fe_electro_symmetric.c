@@ -87,7 +87,7 @@ int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi) {
   assert(gradphi);
   assert(psi);
 
-  fe = calloc(1, sizeof(fe_es_t));
+  fe = (fe_es_t *) calloc(1, sizeof(fe_es_t));
   if (fe == NULL) fatal("calloc(fe_es_t) failed\n");
 
   fe->phi = phi;
@@ -95,7 +95,7 @@ int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi) {
   fe->psi = psi;
 
   psi_nk(psi, &fe->nk);
-  fe->deltamu = calloc(fe->nk, sizeof(double));
+  fe->deltamu = (double *) calloc(fe->nk, sizeof(double));
   if (fe->deltamu == NULL) fatal("calloc(fe->deltamu) failed\n");
 
   fe_electro_create(psi);

@@ -47,9 +47,9 @@ int do_ut_rti(control_t * ctrl) {
 
 int do_test_rti1(control_t * ctrl) {
 
-  char * filename = "junk";
-  int unit_rti1_input(control_t * ctrl, char * f);
-  int unit_rti1_tests(control_t * ctrl, rt_t * rt, char * f);
+  const char * filename = "junk";
+  int unit_rti1_input(control_t * ctrl, const char * f);
+  int unit_rti1_tests(control_t * ctrl, rt_t * rt, const char * f);
 
   pe_t * pe = NULL;
   rt_t * rt = NULL;
@@ -88,7 +88,8 @@ int do_test_rti1(control_t * ctrl) {
  *
  *****************************************************************************/
 
-int unit_rti1_input(control_t * ctrl, char * filename) throws(MPIIOException) {
+int unit_rti1_input(control_t * ctrl, const char * filename)
+  throws(MPIIOException) {
 
   int rank;
   e4c_mpi_t e;
@@ -140,7 +141,7 @@ int unit_rti1_input(control_t * ctrl, char * filename) throws(MPIIOException) {
  *
  *****************************************************************************/
 
-int unit_rti1_tests(control_t * ctrl, rt_t * rt, char * filename)
+int unit_rti1_tests(control_t * ctrl, rt_t * rt, const char * filename)
   throws(TestFailedException) {
 
   char string[BUFSIZ];

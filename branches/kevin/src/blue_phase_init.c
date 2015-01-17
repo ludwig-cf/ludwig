@@ -495,6 +495,7 @@ int blue_phase_BPIII_init(coords_t * cs, field_t * fq, const double specs[3]) {
   int noffset[3];
   int index;
   int iseed;
+  int rank;
   double q[3][3], q0[3][3];
   double x, y, z;
   double *a, *b;	/* rotation angles */
@@ -549,9 +550,12 @@ int blue_phase_BPIII_init(coords_t * cs, field_t * fq, const double specs[3]) {
 
   }
 
-  /* Setting environment configuration: alter RNG according to rank ...*/
+  /* Setting environment configuration: alter RNG according to rank
+   * in parent communicator (avoids possible reordering of Cartesian
+   * communicator whic would introduce decomposition dependence). */
 
-  iseed += pe_rank();
+  coords_pe_rank(cs, &rank);
+  iseed += rank;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

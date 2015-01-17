@@ -64,7 +64,7 @@ int colloids_info_create(coords_t * cs, int ncell[3], colloids_info_t ** pinfo) 
   assert(cs);
   assert(pinfo);
 
-  obj = calloc(1, sizeof(colloids_info_t));
+  obj = (colloids_info_t *) calloc(1, sizeof(colloids_info_t));
   if (obj == NULL) fatal("calloc(colloids_info_t) failed\n");
 
   /* Defaults */
@@ -79,7 +79,7 @@ int colloids_info_create(coords_t * cs, int ncell[3], colloids_info_t ** pinfo) 
   obj->str[X] = obj->str[Y]*(ncell[Y] + 2*nhalo);
 
   nlist = (ncell[X] + 2*nhalo)*(ncell[Y] + 2*nhalo)*(ncell[Z] + 2*nhalo);
-  obj->clist = calloc(nlist, sizeof(colloid_t *));
+  obj->clist = (colloid_t **) calloc(nlist, sizeof(colloid_t *));
   if (obj->clist == NULL) fatal("calloc(nlist, colloid_t *) failed\n");
 
   obj->ncells = nlist;

@@ -713,3 +713,21 @@ int coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  coords_pe_rank
+ *
+ *  This can be useful if you do not want side effects from any possible
+ *  reordering of Cartesian rank.
+ *
+ *****************************************************************************/
+
+int coords_pe_rank(coords_t * cs, int * rank) {
+
+  assert(cs);
+
+  *rank = pe_mpi_rank(cs->pe);
+
+  return 0;
+}

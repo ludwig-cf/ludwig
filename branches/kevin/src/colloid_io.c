@@ -87,7 +87,7 @@ int colloid_io_create(coords_t * cs, int io_grid[3], colloids_info_t * info,
   coords_cartsz(cs, cartsz);
   coords_cart_coords(cs, cartcoords);
 
-  obj = calloc(1, sizeof(colloid_io_t));
+  obj = (colloid_io_t *) calloc(1, sizeof(colloid_io_t));
   if (obj == NULL) fatal("calloc(colloid_io_t) failed\n");
 
   obj->n_io = 1;

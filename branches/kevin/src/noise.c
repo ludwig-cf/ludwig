@@ -384,7 +384,7 @@ unsigned int noise_uniform(unsigned int state[NNOISE_STATE]) {
 
 static int noise_write(FILE * fp, int index, void * self) {
 
-  noise_t * obj = self;
+  noise_t * obj = (noise_t *) self;
   int n;
 
   assert(fp);
@@ -407,7 +407,7 @@ static int noise_write(FILE * fp, int index, void * self) {
 
 static int noise_read(FILE * fp, int index, void * self) {
 
-  noise_t * obj = self;
+  noise_t * obj = (noise_t *) self;
   int n;
 
   assert(obj);

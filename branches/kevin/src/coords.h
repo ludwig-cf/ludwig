@@ -41,6 +41,7 @@ int coords_info(coords_t * cs);
 int coords_cart_comm(coords_t * cs, MPI_Comm * comm);
 int coords_periodic_comm(coords_t * cs, MPI_Comm * comm);
 int coords_cart_neighb(coords_t * cs, int forwback, int dim);
+int coords_pe_rank(coords_t * cs, int * rank);
 
 /* Host / device interface */
 

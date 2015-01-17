@@ -52,7 +52,8 @@ enum {MODEL, MODEL_R};
 extern const double cs2;
 extern const double rcs2;
 
-typedef enum lb_dist_enum_type{LB_RHO = 0, LB_PHI = 1} lb_dist_enum_t;
+enum lb_dist_enum_type {LB_RHO = 0, LB_PHI = 1};
+typedef int lb_dist_enum_t;
 
 typedef struct lb_data_s lb_t;
 typedef enum lb_halo_enum_type {LB_HALO_FULL, LB_HALO_REDUCED} lb_halo_enum_t;

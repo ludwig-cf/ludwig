@@ -222,7 +222,7 @@ static struct io_decomposition_t * io_decomposition_allocate() {
 
   struct io_decomposition_t * p = NULL;
 
-  p = calloc(1, sizeof(struct io_decomposition_t));
+  p = (struct io_decomposition_t *) calloc(1, sizeof(struct io_decomposition_t));
   if (p == NULL) fatal("Failed to allocate io_decomposition_t\n");
 
   return p;
@@ -255,7 +255,7 @@ io_info_t * io_info_allocate() {
 
   io_info_t * p = NULL;
 
-  p = calloc(1, sizeof(io_info_t));
+  p = (io_info_t *) calloc(1, sizeof(io_info_t));
   if (p == NULL) fatal("Failed to allocate io_info_t struct\n");
 
   return p;
@@ -894,7 +894,7 @@ int io_info_single_file_set(io_info_t * info) {
  *
  *****************************************************************************/
 
-int io_info_metadata_filestub_set(io_info_t * info, char * stub) {
+int io_info_metadata_filestub_set(io_info_t * info, const char * stub) {
 
   assert(info);
   assert(stub);
