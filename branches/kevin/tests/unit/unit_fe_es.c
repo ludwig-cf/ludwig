@@ -90,9 +90,9 @@ int do_test_fe_es1(control_t * ctrl) {
     psi_free(psi);
     field_grad_free(phi_grad);
     field_free(phi);
-    le_free(&le);
-    coords_free(&coords);
-    pe_free(&pe);
+    le_free(le);
+    coords_free(coords);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -203,9 +203,9 @@ int do_test_fe_es2(control_t * ctrl) {
     field_grad_free(dphi);
     field_free(phi);
     psi_free(psi);
-    le_free(&le);
-    coords_free(&coords);
-    pe_free(&pe);
+    le_free(le);
+    coords_free(coords);
+    pe_free(pe);
   }
 
   control_report(ctrl);

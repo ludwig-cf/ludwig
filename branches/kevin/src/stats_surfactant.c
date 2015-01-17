@@ -48,7 +48,6 @@ int stats_surfactant_1d(coords_t * cs, field_t * fphi) {
   assert(cs);
   assert(fphi);
   assert(0); /* Check nf = 2 in refactored version */
-  assert(pe_size() == 1);
 
   coords_nlocal(cs, nlocal);
 

@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2563M
+The SVN revision details are: 2581:2582M
 Note assertions via standard C assert() are on.
 
 Read 22 user parameters from serial-wall-st4.inp
@@ -56,9 +56,6 @@ Boundary walls:                  X Y Z
 Boundary speed u_x (bottom):     0.0000000e+00
 Boundary speed u_x (top):        0.0000000e+00
 Boundary normal lubrication rc:  5.0000000e-01
-Wall boundary links allocated:   16992
-Memory (total, bytes):           543744
-Boundary shear initialise:       0
 
 Colloid information
 -------------------
@@ -126,17 +123,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.268      0.268      0.268   0.268418 (1 call)
-      Time step loop:      0.024      0.027      0.251   0.025121 (10 calls)
-         Propagation:      0.002      0.004      0.026   0.002596 (10 calls)
-           Collision:      0.019      0.020      0.199   0.019868 (10 calls)
+               Total:      0.259      0.259      0.259   0.258684 (1 call)
+      Time step loop:      0.024      0.027      0.241   0.024114 (10 calls)
+         Propagation:      0.002      0.004      0.026   0.002598 (10 calls)
+           Collision:      0.019      0.019      0.190   0.019008 (10 calls)
        Lattice halos:      0.000      0.000      0.000   0.000001 (20 calls)
        phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
-              Forces:      0.000      0.000      0.001   0.000132 (10 calls)
-             Rebuild:      0.001      0.001      0.005   0.000544 (10 calls)
-                 BBL:      0.001      0.002      0.014   0.001360 (10 calls)
-      Particle halos:      0.000      0.000      0.000   0.000047 (10 calls)
+              Forces:      0.000      0.000      0.001   0.000137 (10 calls)
+             Rebuild:      0.001      0.001      0.006   0.000557 (10 calls)
+                 BBL:      0.001      0.002      0.014   0.001382 (10 calls)
+      Particle halos:      0.000      0.000      0.000   0.000046 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
           phi update:      0.000      0.000      0.000   0.000000 (10 calls)
-               Free1:      0.000      0.000      0.000   0.000001 (20 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (20 calls)
 Ludwig finished normally.

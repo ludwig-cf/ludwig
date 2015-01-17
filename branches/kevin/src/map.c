@@ -70,10 +70,26 @@ int map_create(coords_t * cs, int ndata, map_t ** pobj) {
 				  obj->halodata);
   }
 
+  obj->nref = 1;
   obj->cs = cs;
   coords_retain(cs);
 
   *pobj = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  map_retain
+ *
+ *****************************************************************************/
+
+int map_retain(map_t * map) {
+
+  assert(map);
+
+  map->nref += 1;
 
   return 0;
 }
@@ -88,21 +104,26 @@ int map_free(map_t * obj) {
 
   assert(obj);
 
-  MPI_Type_free(&obj->halostatus[X]);
-  MPI_Type_free(&obj->halostatus[Y]);
-  MPI_Type_free(&obj->halostatus[Z]);
+  obj->nref -= 1;
 
-  if (obj->ndata > 0) {
-    free(obj->data);
-    MPI_Type_free(&obj->halodata[X]);
-    MPI_Type_free(&obj->halodata[Y]);
-    MPI_Type_free(&obj->halodata[Z]);
+  if (obj->nref <= 0) {
+
+    MPI_Type_free(&obj->halostatus[X]);
+    MPI_Type_free(&obj->halostatus[Y]);
+    MPI_Type_free(&obj->halostatus[Z]);
+
+    if (obj->ndata > 0) {
+      free(obj->data);
+      MPI_Type_free(&obj->halodata[X]);
+      MPI_Type_free(&obj->halodata[Y]);
+      MPI_Type_free(&obj->halodata[Z]);
+    }
+
+    free(obj->status);
+    if (obj->info) io_info_free(obj->info);
+    coords_free(obj->cs);
+    free(obj);
   }
-
-  free(obj->status);
-  if (obj->info) io_info_free(obj->info);
-  coords_free(&obj->cs);
-  free(obj);
 
   return 0;
 }

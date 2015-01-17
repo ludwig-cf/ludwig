@@ -131,7 +131,7 @@ int stats_turbulent_free(stats_turb_t * stat) {
   MPI_Comm_free(&stat->comm_z);
 
   free(stat->ubar);
-  coords_free(&stat->cs);
+  coords_free(stat->cs);
   free(stat);
 
   return 0;

@@ -18,8 +18,10 @@
 #include "leesedwards.h"
 #include "field.h"
 #include "hydro.h"
+#include "wall.h"
 
-int phi_force_calculation(le_t * le, field_t * phi, hydro_t * hydro);
+int phi_force_calculation(le_t * le, wall_t * wall, field_t * phi,
+			  hydro_t * hydro);
 int phi_force_required(int * flag);
 int phi_force_required_set(const int flag);
 int phi_force_divergence_set(const int flag);

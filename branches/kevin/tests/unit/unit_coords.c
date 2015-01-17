@@ -85,8 +85,8 @@ int do_test_coords_default(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  coords_free(&cs);
-  pe_free(&pe);
+  coords_free(cs);
+  pe_free(pe);
 
   control_report(ctrl);
 
@@ -137,8 +137,8 @@ int do_test_coords_nhalo(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  coords_free(&cs);
-  pe_free(&pe);
+  coords_free(cs);
+  pe_free(pe);
 
   control_report(ctrl);
 
@@ -181,8 +181,8 @@ int do_test_coords_case1(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  coords_free(&cs);
-  pe_free(&pe);
+  coords_free(cs);
+  pe_free(pe);
 
   control_report(ctrl);
 
@@ -224,8 +224,8 @@ int do_test_coords_case2(control_t * ctrl) {
   catch (MPITestFailedException) {
   }
   finally {
-    coords_free(&cs);
-    pe_free(&pe);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -268,8 +268,8 @@ int do_test_coords_case3(control_t * ctrl) {
   catch (MPITestFailedException) {
   }
   finally {
-    coords_free(&cs);
-    pe_free(&pe);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -660,25 +660,25 @@ int do_test_coords_cart_info(control_t * ctrl) {
 
   index = cartsz[Z]*cartsz[Y]*coords[X] + cartsz[Z]*coords[Y] + coords[Z];
 
-  sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cartrank,
+  sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_mpi_rank(pe), cartrank,
           coords[X], coords[Y], coords[Z], index);
 
   control_verb(ctrl, string);
 
   /* Pass everything to root to print in order. */
 
-  if (pe_rank() != 0) {
+  if (pe_mpi_rank(pe) != 0) {
     MPI_Ssend(string, FILENAME_MAX, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
   }
   else {
-    for (n = 1; n < pe_size(); n++) {
+    for (n = 1; n < pe_mpi_size(pe); n++) {
       MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
       control_verb(ctrl, string);
     }
   }
 
-  coords_free(&cs);
-  pe_free(&pe);
+  coords_free(cs);
+  pe_free(pe);
 
   control_report(ctrl);
 
@@ -740,18 +740,18 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   control_verb(ctrl, "[rank] cartesian rank (X, Y, Z) -> Y 1-d YZ 2-d\n");
 
   sprintf(string, "[%4d] %14d (%d, %d, %d)        %d      %d\n",
-          pe_rank(), cartrank,
+          pe_mpi_rank(pe), cartrank,
           cartcoords[X], cartcoords[Y], cartcoords[Z], rank1, rank2);
 
   control_verb(ctrl , string);
 
   /* Pass everything to root to print in order. */
 
-  if (pe_rank() != 0) {
+  if (pe_mpi_rank(pe) != 0) {
     MPI_Ssend(string, FILENAME_MAX, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
   }
   else {
-    for (n = 1; n < pe_size(); n++) {
+    for (n = 1; n < pe_mpi_size(pe); n++) {
       MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
       control_verb(ctrl, string);
     }
@@ -760,8 +760,8 @@ int do_test_coords_sub_comm_info(control_t * ctrl) {
   MPI_Comm_free(&comms2);
   MPI_Comm_free(&comms1);
 
-  coords_free(&cs);
-  pe_free(&pe);
+  coords_free(cs);
+  pe_free(pe);
 
   control_report(ctrl);
 
@@ -822,8 +822,8 @@ int do_test_coords_periodic_comm(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    coords_free(&cs);
-    pe_free(&pe);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);

@@ -39,7 +39,7 @@
 #include "collision_rt.h"
 
 #include "map.h"
-#include "wall.h"
+#include "wall_rt.h"
 #include "interaction.h"
 #include "physics_rt.h"
 
@@ -126,6 +126,7 @@ struct ludwig_s {
   field_grad_t * q_grad;    /* Gradients for q */
   psi_t * psi;              /* Electrokinetics */
   map_t * map;              /* Site map for fluid/solid status etc. */
+  wall_t * wall;            /* Plane walls (also porous media) */
   noise_t * noise_rho;      /* Lattice fluctuation generator (rho) */
   noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
@@ -233,15 +234,15 @@ static int ludwig_rt(ludwig_t * ludwig) {
     if (n == 2) phi_lb_from_field(ludwig->cs, ludwig->phi, ludwig->lb);
   }
 
-  /* To be called before wall_init() */
+  /* To be called before wall_init()  PENDING WHY? */
   if (ludwig->psi) {
     advection_run_time(ludwig->rt);
     psi_init_rho_rt(ludwig->psi, ludwig->cs, ludwig->map, ludwig->rt);
   }
 
-  wall_init(ludwig->rt, ludwig->cs, ludwig->lb, ludwig->map);
+  wall_rt_init(ludwig->rt, ludwig->cs, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(ludwig->rt, ludwig->cs, &ludwig->collinfo, &ludwig->cio,
-		   &ludwig->interact, ludwig->map);
+		   &ludwig->interact, ludwig->map, ludwig->wall);
   colloids_init_ewald_rt(ludwig->rt, ludwig->cs, ludwig->collinfo,
 			 &ludwig->ewald);
 
@@ -253,15 +254,20 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* NOW INITIAL CONDITIONS */
 
-  pe_subdirectory(subdirectory);
+  pe_subdirectory(ludwig->pe, subdirectory);
 
   if (get_step() == 0) {
     n = 0;
     lb_rt_initial_conditions(ludwig->lb, ludwig->rt, ludwig->cs,
 			     ludwig->param);
 
+    /* PENDING MOVE */
     rt_int_parameter(ludwig->rt, "LE_init_profile", &n);
     if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
+
+    n = 0;
+    rt_int_parameter(ludwig->rt, "boundary_shear_init", &n);
+    if (n != 0) wall_shear_init(ludwig->wall);
   }
   else {
     /* Distributions */
@@ -372,7 +378,6 @@ void ludwig_run(const char * inputfile) {
 
   char    filename[FILENAME_MAX];
   char    subdirectory[FILENAME_MAX];
-  int     is_porous_media = 0;
   int     step = 0;
   int     is_subgrid = 0;
   int     is_pm = 0;
@@ -403,10 +408,9 @@ void ludwig_run(const char * inputfile) {
 
   /* Report initial statistics */
 
-  pe_subdirectory(subdirectory);
+  pe_subdirectory(ludwig->pe, subdirectory);
 
   info("Initial conditions.\n");
-  wall_pm(&is_porous_media);
 
   stats_distribution_print(ludwig->lb, ludwig->map);
 
@@ -552,11 +556,12 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (ncolloid == 0) {
-	  phi_force_calculation(ludwig->le, ludwig->phi, ludwig->hydro);
+	  phi_force_calculation(ludwig->le, ludwig->wall, ludwig->phi,
+				ludwig->hydro);
 	}
 	else {
 	  phi_force_colloid(ludwig->cs, ludwig->collinfo, ludwig->hydro,
-			    ludwig->map);
+			    ludwig->wall, ludwig->map);
 	}
       }
 
@@ -565,8 +570,8 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->le, ludwig->phi,
-					 ludwig->hydro,
-					 ludwig->map, ludwig->noise_phi);
+					 ludwig->hydro, ludwig->map,
+					 ludwig->wall, ludwig->noise_phi);
       if (ludwig->p) leslie_ericksen_update(ludwig->le, ludwig->p,
 					    ludwig->hydro);
       if (ludwig->q) {
@@ -609,9 +614,10 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	TIMER_start(TIMER_BBL);
-	wall_set_wall_velocity(ludwig->lb);
-	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->collinfo);
-	wall_bounce_back(ludwig->lb, ludwig->map);
+	if (ludwig->wall) wall_set_wall_distributions(ludwig->wall);
+	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
+			     ludwig->collinfo);
+	if (ludwig->wall) wall_bbl(ludwig->wall);
 	TIMER_stop(TIMER_BBL);
       }
     }
@@ -619,7 +625,7 @@ void ludwig_run(const char * inputfile) {
       /* No hydrodynamics, but update colloids in response to
        * external forces. */
 
-      bbl_update_colloids(ludwig->bbl, ludwig->collinfo);
+      bbl_update_colloids(ludwig->bbl, ludwig->wall, ludwig->collinfo);
     }
 
     /* There must be no halo updates between bounce back
@@ -733,11 +739,13 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
-      stats_free_energy_density(ludwig->cs, ludwig->q, ludwig->map, ncolloid);
+      stats_free_energy_density(ludwig->cs, ludwig->q, ludwig->map,
+				ludwig->wall, ncolloid);
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
-	wall_pm(&is_pm);
+	is_pm = 0;
+	if (ludwig->wall) wall_is_pm(ludwig->wall, &is_pm);
 	stats_velocity_minmax(ludwig->cs, ludwig->hydro, ludwig->map, is_pm);
       }
 
@@ -810,7 +818,8 @@ void ludwig_run(const char * inputfile) {
     stats_ahydro_free(ludwig->stats_ah);
   }
 
-  wall_finish();
+
+  if (ludwig->wall) wall_free(ludwig->wall);
   map_free(ludwig->map);
 
   if (ludwig->phi_grad) field_grad_free(ludwig->phi_grad);
@@ -836,10 +845,10 @@ void ludwig_run(const char * inputfile) {
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
-  rt_free(&ludwig->rt);
+  rt_free(ludwig->rt);
   le_free(ludwig->le);
-  coords_free(&ludwig->cs);
-  pe_free(&ludwig->pe);
+  coords_free(ludwig->cs);
+  pe_free(ludwig->pe);
   free(ludwig);
 
   return;
@@ -857,14 +866,16 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
 
   int n;
   int ncolloid;
-  int is_pm;
 
   double g[3];         /* Fluid momentum (total) */
   double gc[3];        /* Colloid momentum (total) */
   double gwall[3];     /* Wall momentum (for accounting purposes only) */
+  double glocal[3];
   double gtotal[3];
 
-  wall_pm(&is_pm);
+  MPI_Comm comm;
+
+  coords_cart_comm(ludwig->cs, &comm);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = 0.0;
@@ -877,7 +888,11 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   stats_colloid_momentum(ludwig->collinfo, gc);
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
-  if (wall_present() || is_pm) wall_net_momentum(gwall);
+  if (ludwig->wall) {
+    wall_momentum(ludwig->wall, glocal);
+    MPI_Reduce(glocal, gwall, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+    /* PENDING relies on MPI_CONGRUENT */
+  }
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
@@ -890,7 +905,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   if (ncolloid > 0) {
     info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
   }
-  if (wall_present() || is_pm) {
+  if (ludwig->wall) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 
@@ -1516,7 +1531,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     build_remove_replace(ludwig->cs, ludwig->collinfo, ludwig->lb,
 			 ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi);
-    build_update_links(ludwig->cs, ludwig->collinfo, ludwig->map);
+    build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall,
+		       ludwig->map);
 
     TIMER_stop(TIMER_REBUILD);
 

@@ -138,8 +138,8 @@ int do_test_fe_electro1(control_t * ctrl) {
   finally {
     fe_electro_free();
     psi_free(psi);
-    coords_free(&cs);
-    pe_free(&pe);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -217,8 +217,8 @@ int do_test_fe_electro2(control_t * ctrl) {
   finally {
     fe_electro_free();
     psi_free(psi);
-    coords_free(&cs);
-    pe_free(&pe); assert(pe == NULL);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -323,8 +323,8 @@ int do_test_fe_electro3(control_t * ctrl) {
   finally {
     fe_electro_free();
     psi_free(psi);
-    coords_free(&cs);
-    pe_free(&pe);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);

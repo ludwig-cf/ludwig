@@ -95,10 +95,10 @@ int advflux_create(le_t * le, int nf, advflux_t ** pobj) {
 
   le_nsites(le, &nsites);
 
-  obj->fe = calloc(nsites*nf, sizeof(double));
-  obj->fw = calloc(nsites*nf, sizeof(double));
-  obj->fy = calloc(nsites*nf, sizeof(double));
-  obj->fz = calloc(nsites*nf, sizeof(double));
+  obj->fe = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fw = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fy = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fz = (double *) calloc(nsites*nf, sizeof(double));
 
   if (obj->fe == NULL) fatal("calloc(advflux->fe) failed\n");
   if (obj->fw == NULL) fatal("calloc(advflux->fw) failed\n");

@@ -95,7 +95,7 @@ int noise_free(noise_t * obj) {
 
   assert(obj);
 
-  coords_free(&obj->cs);
+  coords_free(obj->cs);
   free(obj->state);
   free(obj);
 

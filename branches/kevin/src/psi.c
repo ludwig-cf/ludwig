@@ -283,7 +283,7 @@ void psi_free(psi_t * obj) {
   }
 
   if (obj->info) io_info_free(obj->info);
-  coords_free(&obj->cs);
+  coords_free(obj->cs);
 
   free(obj->valency);
   free(obj->diffusivity);

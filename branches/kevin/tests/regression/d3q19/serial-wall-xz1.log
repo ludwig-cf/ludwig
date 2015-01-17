@@ -1,0 +1,98 @@
+Welcome to Ludwig v0.3.19 (Serial version running on 1 process)
+
+The SVN revision details are: 2581:2582M
+Note assertions via standard C assert() are on.
+
+Read 13 user parameters from serial-wall-xz1.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    16 2 16
+Decomposition:  1 1 1
+Local domain:   16 2 16
+Periodic:       0 1 0
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               4.00000e-02
+Bulk viscosity                4.00000e-02
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  1.00000e-04  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    6.20000e-01
+Bulk relaxation time:     6.20000e-01
+Ghost relaxation time:    1.00000e+00
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Boundary walls
+--------------
+Boundary walls:                  X - Z
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         512.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  7.1054274e-15  0.0000000e+00  0.0000000e+00
+[fluid   ]  7.1054274e-15  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]         512.00  1.00000000000  1.1290968e-12  0.99999816456  1.00000226012
+
+Momentum - x y z
+[total   ] -5.0598414e-14  2.5600000e+02  1.6313340e-14
+[fluid   ] -9.5617958e-15  1.1485389e+01  1.3690438e-14
+[walls   ] -4.1036619e-14  2.4451461e+02  2.6229019e-15
+
+Velocity - x y z
+[minimum ] -2.9040348e-06  1.1165299e-03 -2.9040348e-06
+[maximum ]  2.9040348e-06  4.6808043e-02  2.9040348e-06
+
+Completed cycle 5000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      4.466      4.466      4.466   4.465863 (1 call)
+      Time step loop:      0.001      0.001      4.462   0.000892 (5000 calls)
+         Propagation:      0.000      0.000      0.565   0.000113 (5000 calls)
+           Collision:      0.001      0.001      3.528   0.000706 (5000 calls)
+       Lattice halos:      0.000      0.000      0.083   0.000017 (5000 calls)
+       phi gradients:      0.000      0.000      0.002   0.000000 (5000 calls)
+                 BBL:      0.000      0.000      0.199   0.000040 (5000 calls)
+   Force calculation:      0.000      0.000      0.002   0.000000 (5000 calls)
+          phi update:      0.000      0.000      0.002   0.000000 (5000 calls)
+Ludwig finished normally.

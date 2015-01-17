@@ -58,11 +58,12 @@ static int is_ok_decomposition(coords_t * cs);
  *
  *****************************************************************************/
 
-int coords_create(pe_t * pe, coords_t ** pcoord) {
+int coords_create(pe_t * pe, coords_t ** pcs) {
 
   coords_t * cs = NULL;
 
   assert(pe);
+  assert(pcs);
 
   cs = (coords_t *) calloc(1, sizeof(coords_t));
   if (cs == NULL) fatal("calloc(coords_t) failed\n");
@@ -90,7 +91,7 @@ int coords_create(pe_t * pe, coords_t ** pcoord) {
   cs->lenmin[X] = 0.5; cs->lenmin[Y] = 0.5; cs->lenmin[Z] = 0.5;
 
   cs->nref = 1;
-  *pcoord = cs;
+  *pcs = cs;
 
   return 0;
 }
@@ -101,11 +102,11 @@ int coords_create(pe_t * pe, coords_t ** pcoord) {
  *
  *****************************************************************************/
 
-int coords_retain(coords_t * coord) {
+int coords_retain(coords_t * cs) {
 
-  assert(coord);
+  assert(cs);
 
-  coord->nref += 1;
+  cs->nref += 1;
 
   return 0;
 }
@@ -116,24 +117,17 @@ int coords_retain(coords_t * coord) {
  *
  *****************************************************************************/
 
-int coords_free(coords_t ** cs) {
+int coords_free(coords_t * cs) {
 
-  coords_t * obj;
+  assert(cs);
 
-  assert(cs && *cs);
+  cs->nref -= 1;
 
-  obj = *cs;
-
-  obj->nref -= 1;
-
-  if (obj->nref <= 0) {
-
-    MPI_Comm_free(&obj->commcart);
-    MPI_Comm_free(&obj->commperiodic);
-    pe_free(&obj->pe);
-
-    free(obj);
-    *cs = NULL;
+  if (cs->nref <= 0) {
+    MPI_Comm_free(&cs->commcart);
+    MPI_Comm_free(&cs->commperiodic);
+    pe_free(cs->pe);
+    free(cs);
   }
 
   return 0;

@@ -27,8 +27,8 @@ enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 /* Host interface */
 
-int coords_create(pe_t * pe, coords_t ** pcoord);
-int coords_free(coords_t ** pcoord);
+int coords_create(pe_t * pe, coords_t ** pcs);
+int coords_free(coords_t * cs);
 int coords_retain(coords_t * cs);
 
 int coords_decomposition_set(coords_t * cs, const int irequest[3]);

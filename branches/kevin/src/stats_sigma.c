@@ -149,7 +149,7 @@ int stats_sigma_free(stats_sigma_t * stat) {
 
   assert(stat);
 
-  coords_free(&stat->cs);
+  coords_free(stat->cs);
   free(stat);
 
   return 0;

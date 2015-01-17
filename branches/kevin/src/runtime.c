@@ -98,14 +98,13 @@ int rt_create(pe_t * pe, rt_t ** prt) {
  *
  *****************************************************************************/
 
-int rt_free(rt_t ** rt) {
+int rt_free(rt_t * rt) {
 
   assert(rt);
 
-  rt_free_keylist((*rt)->keylist);
-  pe_free(&(*rt)->pe);
-  free(*rt);
-  *rt = NULL;
+  rt_free_keylist(rt->keylist);
+  pe_free(rt->pe);
+  free(rt);
 
   return 0;
 }

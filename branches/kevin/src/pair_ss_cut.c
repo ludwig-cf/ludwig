@@ -87,7 +87,7 @@ int pair_ss_cut_free(pair_ss_cut_t * obj) {
   if (obj) {
     obj->nref -= 1;
     if (obj->nref <= 0) {
-      coords_free(&obj->cs);
+      coords_free(obj->cs);
       free(obj);
     }
   }

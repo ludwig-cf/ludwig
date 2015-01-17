@@ -23,7 +23,6 @@
 #include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
-#include "wall.h"
 #include "build.h"
 
 
@@ -220,7 +219,8 @@ int build_update_map(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
  *
  *****************************************************************************/
 
-int build_update_links(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
+int build_update_links(coords_t * cs, colloids_info_t * cinfo, wall_t * wall,
+		       map_t * map) {
 
   int ia;
   int ic, jc, kc;
@@ -252,7 +252,7 @@ int build_update_links(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
 	  if (pc->s.rebuild) {
 	    /* The shape has changed, so need to reconstruct */
 	    build_reconstruct_links(cs, cinfo, pc, map);
-	    if (wall_present()) build_colloid_wall_links(cs, cinfo, pc, map);
+	    if (wall) build_colloid_wall_links(cs, cinfo, pc, map);
 	  }
 	  else {
 	    /* Shape unchanged, so just reset existing links */

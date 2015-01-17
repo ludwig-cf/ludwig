@@ -73,8 +73,8 @@ int do_test_rti1(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    rt_free(&rt);
-    pe_free(&pe);
+    rt_free(rt);
+    pe_free(pe);
   }
 
   control_report(ctrl);

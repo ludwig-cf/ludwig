@@ -104,20 +104,18 @@ int pe_retain(pe_t * peref) {
  *
  *****************************************************************************/
 
-int pe_free(pe_t ** peref) {
+int pe_free(pe_t * peref) {
 
   assert(peref);
 
-  (*peref)->nref -= 1;
+  peref->nref -= 1;
 
-  if ((*peref)->nref <= 0) {
+  if (peref->nref <= 0) {
     MPI_Comm_free(&pe->comm);
     if (pe->unquiet) info("Ludwig finished normally.\n");
     free(pe);
     pe = NULL;
   }
-
-  *peref = NULL;
 
   return 0;
 }
@@ -351,12 +349,12 @@ int pe_create_parent(MPI_Comm parent, pe_t ** peref) {
  *
  *****************************************************************************/
 
-void pe_subdirectory_set(const char * name) {
+int pe_subdirectory_set(pe_t * pe, const char * name) {
 
   assert(pe);
   if (name != NULL) sprintf(pe->subdirectory, "%s/", name);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -365,12 +363,12 @@ void pe_subdirectory_set(const char * name) {
  *
  *****************************************************************************/
 
-void pe_subdirectory(char * name) {
+int pe_subdirectory(pe_t * pe, char * name) {
 
   assert(pe);
   assert(name);
 
   sprintf(name, "%s", pe->subdirectory);
 
-  return;
+  return 0;
 }

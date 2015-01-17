@@ -19,9 +19,10 @@
 #include "field.h"
 #include "hydro.h"
 #include "map.h"
+#include "wall.h"
 #include "noise.h"
 
 int phi_cahn_hilliard(le_t * le, field_t * phi, hydro_t * hydro,
-		      map_t * map, noise_t * noise);
+		      map_t * map, wall_t * wall, noise_t * noise);
 
 #endif

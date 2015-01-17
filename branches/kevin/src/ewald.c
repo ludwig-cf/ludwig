@@ -126,7 +126,7 @@ void ewald_free(ewald_t * ewald) {
 
   assert(ewald);
 
-  coords_free(&ewald->cs);
+  coords_free(ewald->cs);
   free(ewald);
 
   return;

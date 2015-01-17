@@ -82,7 +82,7 @@ int colloids_halo_free(colloid_halo_t * halo) {
 
   assert(halo);
 
-  coords_free(&halo->cs);
+  coords_free(halo->cs);
   free(halo);
 
   return 0;

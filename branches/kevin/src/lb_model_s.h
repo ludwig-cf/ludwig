@@ -53,6 +53,7 @@
 struct lb_data_s {
 
   coords_t * cs;         /* Reference to coordinate system */
+  int nref;              /* Reference count */
 
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */

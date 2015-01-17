@@ -24,6 +24,7 @@ typedef struct map_s map_t;
 
 __host__ int map_create(coords_t * cs, int ndata, map_t ** pobj);
 __host__ int map_free(map_t * obj);
+__host__ int map_retain(map_t * obj);
 
 __host__ int map_status(map_t * obj, int index, int * status);
 __host__ int map_status_set(map_t * obj, int index, int status);

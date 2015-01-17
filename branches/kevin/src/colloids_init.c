@@ -26,7 +26,6 @@
 #include "util.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
-#include "wall.h"
 
 static int colloids_init_check_state(coords_t * cs, colloids_info_t * cinfo,
 				     double hmax);
@@ -34,7 +33,7 @@ static int colloids_init_random_set(coords_t * cs, colloids_info_t * cinfo,
 				    int n,
 				    const colloid_state_t * s,  double amax);
 static int colloids_init_check_wall(coords_t * cs, colloids_info_t * cinfo,
-				    double dh);
+				    wall_t * wall, double dh);
 
 /*****************************************************************************
  *
@@ -45,7 +44,7 @@ static int colloids_init_check_wall(coords_t * cs, colloids_info_t * cinfo,
  *****************************************************************************/
 
 int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int np,
-			 const colloid_state_t * s0, double dh) {
+			 const colloid_state_t * s0, wall_t * wall, double dh) {
   double amax;
   double hmax;
 
@@ -59,7 +58,7 @@ int colloids_init_random(coords_t * cs, colloids_info_t * cinfo, int np,
   colloids_halo_state(cs, cinfo);
   colloids_init_check_state(cs, cinfo, hmax);
 
-  if (wall_present()) colloids_init_check_wall(cs, cinfo, dh);
+  if (wall) colloids_init_check_wall(cs, cinfo, wall, dh);
   colloids_info_ntotal_set(cinfo);
 
   return 0;
@@ -211,24 +210,31 @@ static int colloids_init_check_state(coords_t * cs, colloids_info_t * cinfo,
  *****************************************************************************/
 
 static int colloids_init_check_wall(coords_t * cs, colloids_info_t * cinfo,
-				    double dh) {
+				    wall_t * wall, double dh) {
 
   int ic, jc, kc, ia;
   int ncell[3];
   int ifailocal = 0;
   int ifail;
+  int iswall[3];         /* wall flag */
+  double adh;            /* ah + dh */
   double lmin[3];
   double ltot[3];
+  MPI_Comm comm;
 
   colloid_t * pc = NULL;
 
   assert(cs);
   assert(cinfo);
+  assert(wall);
   assert(dh >= 0.0);
 
   coords_lmin(cs, lmin);
   coords_ltot(cs, ltot);
+  coords_cart_comm(cs, &comm);
   colloids_info_ncell(cinfo, ncell);
+
+  wall_present(wall, iswall);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
@@ -236,19 +242,19 @@ static int colloids_init_check_wall(coords_t * cs, colloids_info_t * cinfo,
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
-	while (pc) {
+	for ( ; pc; pc = pc->next) {
+	  adh = pc->s.ah + dh;
 	  for (ia = 0; ia < 3; ia++) {
-	    if (pc->s.r[ia] <= lmin[ia] + pc->s.ah + dh) ifailocal = 1;
-	    if (pc->s.r[ia] >= lmin[ia] + ltot[ia] - pc->s.ah - dh) ifailocal = 1;
+	    if (pc->s.r[X] <= lmin[X] + adh) ifailocal = iswall[ia];
+	    if (pc->s.r[X] >= lmin[X] + ltot[X] - adh) ifailocal = iswall[ia];
 	  }
-	  pc = pc->next;
 	}
-
+	/* next cell */
       }
     }
   }
 
-  MPI_Allreduce(&ifailocal, &ifail, 1, MPI_INT, MPI_SUM, pe_comm());
+  MPI_Allreduce(&ifailocal, &ifail, 1, MPI_INT, MPI_SUM, comm);
 
   if (ifail) fatal("Colloid initial position overlaps wall\n");
 

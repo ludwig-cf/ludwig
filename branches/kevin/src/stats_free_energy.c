@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -19,13 +19,14 @@
 #include "control.h"
 #include "colloids.h"
 #include "colloids_Q_tensor.h"
-#include "wall.h"
 #include "free_energy.h"
 #include "stats_free_energy.h"
 #include "blue_phase.h"
 #include "util.h"
 
-static int stats_free_energy_wall(coords_t * cs, field_t * q, double * fs);
+static int stats_free_energy_wall(coords_t * cs, wall_t * wall, field_t * q,
+				  double * fs);
+
 static int stats_free_energy_wallx(coords_t * cs, field_t * q, double * fs);
 static int stats_free_energy_wally(coords_t * cs, field_t * q, double * fs);
 static int stats_free_energy_wallz(coords_t * cs, field_t * q, double * fs);
@@ -48,7 +49,7 @@ static int output_to_file_  = 1; /* To stdout or "free_energy.dat" */
  ****************************************************************************/
 
 int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
-			      int ncolloid) {
+			      wall_t * wall, int ncolloid) {
 
 #define NSTAT 5
 
@@ -99,9 +100,9 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
 
   /* A robust mechanism is required to get the surface free energy */
 
-  if (wall_present()) {
+  if (wall) {
 
-    if (q) stats_free_energy_wall(cs, q, fe_local + 3);
+    if (q) stats_free_energy_wall(cs, wall, q, fe_local + 3);
 
     MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
@@ -152,14 +153,20 @@ int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
  *
  *****************************************************************************/
 
-static int stats_free_energy_wall(coords_t * cs, field_t * q, double * fs) {
+static int stats_free_energy_wall(coords_t * cs, wall_t * wall, field_t * q,
+				  double * fs) {
+
+  int iswall[3];
 
   assert(cs);
+  assert(wall);
   assert(q);
 
-  if (wall_at_edge(X)) stats_free_energy_wallx(cs, q, fs);
-  if (wall_at_edge(Y)) stats_free_energy_wally(cs, q, fs);
-  if (wall_at_edge(Z)) stats_free_energy_wallz(cs, q, fs);
+  wall_present(wall, iswall);
+
+  if (iswall[X]) stats_free_energy_wallx(cs, q, fs);
+  if (iswall[Y]) stats_free_energy_wally(cs, q, fs);
+  if (iswall[Z]) stats_free_energy_wallz(cs, q, fs);
 
   return 0;
 }

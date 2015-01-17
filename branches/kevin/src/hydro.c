@@ -69,7 +69,7 @@ int hydro_create(coords_t * cs, int nhcomm, le_t * le, hydro_t ** pobj) {
   targetCalloc((void **) &obj->t_f, obj->nf*obj->nsites*sizeof(double));
 
   obj->le = le;
-  /* PENDING RETAIN */
+  if (le) le_retain(le);
 
   obj->cs = cs;
   coords_retain(cs);
@@ -101,9 +101,10 @@ int hydro_free(hydro_t * obj) {
   targetFree(obj->t_u);
 
   if (obj->info) io_info_free(obj->info);
-  coords_free(&obj->cs);
+  if (obj->le) le_free(obj->le);
+
+  coords_free(obj->cs);
   free(obj);
-  obj = NULL;
 
   return 0;
 }

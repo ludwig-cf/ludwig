@@ -80,7 +80,7 @@ int le_free(le_t * le) {
   le->nref -= 1;
 
   if (le->nref <= 0) {
-    coords_free(&le->cs);
+    coords_free(le->cs);
     free(le->index_buffer_to_real);
     free(le->index_real_to_buffer);
     free(le->buffer_duy);

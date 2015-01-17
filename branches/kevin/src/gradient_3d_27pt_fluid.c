@@ -56,11 +56,6 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 						 const double * field,
 						 double * grad, double * delsq,
 						 const int nextra);
-static void gradient_3d_27pt_fluid_wall_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * delsq,
-						   const int nextra);
 
 /*****************************************************************************
  *
@@ -81,7 +76,6 @@ int gradient_3d_27pt_fluid_d2(const int nop, const double * field,double * t_fie
 
   gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
   gradient_3d_27pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
   return 0;
 }
@@ -108,7 +102,6 @@ int gradient_3d_27pt_fluid_d4(const int nop, const double * field,double * t_fie
 
   gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
   gradient_3d_27pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
 
   return 0;
 }
@@ -420,27 +413,6 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
       }
     }
     /* Next plane */
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_3d_27pt_fluid_wall_correction
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-
-static void gradient_3d_27pt_fluid_wall_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * del2,
-						   const int nextra) {
-
-  if (wall_present()) {
-    fatal("Wall not implemented in 3d 27pt gradients yet (use 7pt)\n");
   }
 
   return;

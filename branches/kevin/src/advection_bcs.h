@@ -17,9 +17,10 @@
 
 #include "advection.h"
 #include "field.h"
+#include "wall.h"
 #include "map.h"
 
 int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map);
-int advection_bcs_wall(advflux_t * flux, field_t * phi);
+int advection_bcs_wall(advflux_t * flux, wall_t * wall, field_t * phi);
 
 #endif

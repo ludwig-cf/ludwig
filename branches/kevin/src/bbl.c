@@ -23,7 +23,6 @@
 #include "physics.h"
 #include "colloid_sums.h"
 #include "util.h"
-#include "wall.h"
 #include "bbl.h"
 
 struct bbl_s {
@@ -37,7 +36,8 @@ struct bbl_s {
 static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo);
-static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo);
+static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
+					colloids_info_t * cinfo);
 
 /*****************************************************************************
  *
@@ -77,7 +77,7 @@ int bbl_free(bbl_t * bbl) {
 
   assert(bbl);
 
-  coords_free(&bbl->cs);
+  coords_free(bbl->cs);
   free(bbl);
 
   return 0;
@@ -128,7 +128,8 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
+int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
+			 colloids_info_t * cinfo) {
 
   int ntotal;
 
@@ -149,7 +150,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
     colloid_sums_halo(bbl->cs, cinfo, COLLOID_SUM_ACTIVE);
   }
 
-  bbl_update_colloids(bbl, cinfo);
+  bbl_update_colloids(bbl, wall, cinfo);
   bbl_pass2(bbl, lb, cinfo);
 
   return 0;
@@ -637,7 +638,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
+int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   int ia;
   int ipivot[6];
@@ -648,6 +649,7 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
   double moment;  /* also assumes (2/5) mass r^2 for sphere */
   double tmp;
   double rho0;
+  double dwall[3];  /* Wall lubrication correction drag */
   double xb[6];
   double a[6][6];
 
@@ -672,20 +674,23 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
     mass = (4.0/3.0)*pi_*rho0*pow(pc->s.a0, 3);
     moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
 
+    /* Wall normal correction */
+    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+
     /* Add inertial terms to diagonal elements */
 
-    a[0][0] = mass +   pc->zeta[0];
+    a[0][0] = mass +   pc->zeta[0] - dwall[X];
     a[0][1] =          pc->zeta[1];
     a[0][2] =          pc->zeta[2];
     a[0][3] =          pc->zeta[3];
     a[0][4] =          pc->zeta[4];
     a[0][5] =          pc->zeta[5];
-    a[1][1] = mass +   pc->zeta[6];
+    a[1][1] = mass +   pc->zeta[6] - dwall[Y];
     a[1][2] =          pc->zeta[7];
     a[1][3] =          pc->zeta[8];
     a[1][4] =          pc->zeta[9];
     a[1][5] =          pc->zeta[10];
-    a[2][2] = mass +   pc->zeta[11];
+    a[2][2] = mass +   pc->zeta[11] - dwall[Z];
     a[2][3] =          pc->zeta[12];
     a[2][4] =          pc->zeta[13];
     a[2][5] =          pc->zeta[14];
@@ -695,10 +700,6 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
     a[4][4] = moment + pc->zeta[18];
     a[4][5] =          pc->zeta[19];
     a[5][5] = moment + pc->zeta[20];
-
-    for (k = 0; k < 3; k++) {
-      a[k][k] -= wall_lubrication(bbl->cs, k, pc->s.r, pc->s.ah);
-    }
 
     /* Lower triangle */
 
@@ -834,7 +835,7 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
   /* As the lubrication force is based on the updated velocity, but
    * the old position, we can account for the total momentum here. */
 
-  bbl_wall_lubrication_account(bbl, cinfo);
+  bbl_wall_lubrication_account(bbl, wall, cinfo);
 
   return 0;
 }
@@ -852,9 +853,11 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo) {
+static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
+					colloids_info_t * cinfo) {
 
-  double f[3] = {0.0, 0.0, 0.0};
+  double fnet[3] = {0.0, 0.0, 0.0};
+  double f[3];
   colloid_t * pc = NULL;
 
   assert(cinfo);
@@ -864,12 +867,13 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo) {
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
-    f[X] -= pc->s.v[X]*wall_lubrication(bbl->cs, X, pc->s.r, pc->s.ah);
-    f[Y] -= pc->s.v[Y]*wall_lubrication(bbl->cs, Y, pc->s.r, pc->s.ah);
-    f[Z] -= pc->s.v[Z]*wall_lubrication(bbl->cs, Z, pc->s.r, pc->s.ah);
+    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, f);
+    fnet[X] -= pc->s.v[X]*f[X];
+    fnet[Y] -= pc->s.v[Y]*f[Y];
+    fnet[Z] -= pc->s.v[Z]*f[Z];
   }
 
-  wall_accumulate_force(f);
+  wall_momentum_add(wall, fnet);
 
   return 0;
 }

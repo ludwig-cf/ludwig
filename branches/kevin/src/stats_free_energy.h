@@ -18,10 +18,11 @@
 #include "coords.h"
 #include "field.h"
 #include "field_grad.h"
+#include "wall.h"
 #include "map.h"
 
 int stats_free_energy_density(coords_t * cs, field_t * q, map_t * map,
-			      int ncolloid);
+			      wall_t * wall, int ncolloid);
 int blue_phase_stats(coords_t * cs, field_t * q, field_grad_t * dq,
 		     map_t * map, int tstep);
 

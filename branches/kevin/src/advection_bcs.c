@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "wall.h"
 #include "coords.h"
 #include "coords_field.h"
@@ -106,11 +105,12 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
 #include "field_s.h"
 
-int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
+int advection_bcs_wall(advflux_t * flux, wall_t * wall, field_t * fphi) {
 
   int ic, jc, kc, index, index1;
   int nlocal[3];
   int nf;
+  int iswall[3];
   int cartsz[3];
   int cartcoords[3];
 
@@ -120,7 +120,12 @@ int advection_bcs_wall(advflux_t * flux, field_t * fphi) {
   assert(fphi);
   assert(nf <= NQAB);
 
-  if (wall_at_edge(X) == 0) return 0;
+  if (wall == NULL) return 0;
+  wall_present(wall, iswall);
+  if (iswall[X] == 0) return 0;
+
+  assert(iswall[Y] == 0);
+  assert(iswall[Z] == 0);
 
   coords_cartsz(fphi->cs, cartsz);
   coords_cart_coords(fphi->cs, cartcoords);

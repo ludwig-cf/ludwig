@@ -23,7 +23,6 @@
 #include <math.h>
 
 #include "free_energy.h"
-#include "wall.h"
 #include "advection_s.h"
 #include "phi_force.h"
 
@@ -32,10 +31,10 @@ static int phi_force_compute_fluxes(advflux_t * flux);
 static int phi_force_flux_divergence(advflux_t * flux, hydro_t * hydro);
 static int phi_force_flux_fix_local(advflux_t * flux);
 static int phi_force_flux_divergence_fix(advflux_t * flux, hydro_t * hydro);
-static int phi_force_flux(le_t * le, hydro_t * hydro);
-static int phi_force_wallx(advflux_t * flux);
-static int phi_force_wally(advflux_t * flux);
-static int phi_force_wallz(advflux_t * flux);
+static int phi_force_flux(le_t * le, wall_t * wall, hydro_t * hydro);
+static int phi_force_wallx(advflux_t * flux, wall_t * wall);
+static int phi_force_wally(advflux_t * flux, wall_t * wall);
+static int phi_force_wallz(advflux_t * flux, wall_t * wall);
 
 static int phi_force_fluid_phi_gradmu(le_t * le, field_t * phi,
 				      hydro_t * hydro);
@@ -93,7 +92,8 @@ int phi_force_divergence_set(const int flag) {
  *
  *****************************************************************************/
 
-int phi_force_calculation(le_t * le, field_t * phi, hydro_t * hydro) {
+int phi_force_calculation(le_t * le, wall_t * wall, field_t * phi,
+			  hydro_t * hydro) {
 
   int nplane;
 
@@ -101,12 +101,13 @@ int phi_force_calculation(le_t * le, field_t * phi, hydro_t * hydro) {
   if (hydro == NULL) return 0;
 
   assert(le);
+
   le_nplane_total(le, &nplane);
 
-  if (nplane > 0 || wall_present()) {
+  if (nplane > 0 || wall) {
     /* Must use the flux method for LE planes */
     /* Also convenient for plane walls */
-    phi_force_flux(le, hydro);
+    phi_force_flux(le, wall, hydro);
   }
   else {
     if (force_divergence_) {
@@ -303,23 +304,26 @@ static int phi_force_fluid_phi_gradmu(le_t * le, field_t * fphi,
  *
  *****************************************************************************/
 
-static int phi_force_flux(le_t * le, hydro_t * hydro) {
+static int phi_force_flux(le_t * le, wall_t * wall, hydro_t * hydro) {
 
   int fix_fluxes = 1;
+  int iswall[3] = {0, 0, 0};
   advflux_t * fluxes = NULL;
 
   assert(le);
   assert(hydro);
 
+  if (wall) wall_present(wall, iswall);
+
   advflux_create(le, 3, &fluxes);
 
   phi_force_compute_fluxes(fluxes);
 
-  if (wall_at_edge(X)) phi_force_wallx(fluxes);
-  if (wall_at_edge(Y)) phi_force_wally(fluxes);
-  if (wall_at_edge(Z)) phi_force_wallz(fluxes);
+  if (iswall[X]) phi_force_wallx(fluxes, wall);
+  if (iswall[Y]) phi_force_wally(fluxes, wall);
+  if (iswall[Z]) phi_force_wallz(fluxes, wall);
 
-  if (fix_fluxes || wall_present()) {
+  if (fix_fluxes || iswall[X] || iswall[Y] || iswall[Z]) {
     phi_force_flux_fix_local(fluxes);
     phi_force_flux_divergence(fluxes, hydro);
   }
@@ -630,7 +634,7 @@ static int phi_force_flux_fix_local(advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_force_wallx(advflux_t * flux) {
+static int phi_force_wallx(advflux_t * flux, wall_t * wall) {
 
   int ic, jc, kc;
   int index, ia;
@@ -643,6 +647,7 @@ static int phi_force_wallx(advflux_t * flux) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(flux);
+  assert(wall);
 
   le_cartsz(flux->le, cartsz);
   le_cart_coords(flux->le, cartcoords);
@@ -686,7 +691,7 @@ static int phi_force_wallx(advflux_t * flux) {
     }
   }
 
-  wall_accumulate_force(fw);
+  wall_momentum_add(wall, fw);
 
   return 0;
 }
@@ -702,7 +707,7 @@ static int phi_force_wallx(advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_force_wally(advflux_t * flux) {
+static int phi_force_wally(advflux_t * flux, wall_t * wall) {
 
   int ic, jc, kc;
   int index, index1, ia;
@@ -715,6 +720,7 @@ static int phi_force_wally(advflux_t * flux) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(flux);
+  assert(wall);
 
   le_cartsz(flux->le, cartsz);
   le_cart_coords(flux->le, cartcoords);
@@ -761,7 +767,7 @@ static int phi_force_wally(advflux_t * flux) {
     }
   }
 
-  wall_accumulate_force(fy);
+  wall_momentum_add(wall, fy);
 
   return 0;
 }
@@ -777,7 +783,7 @@ static int phi_force_wally(advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_force_wallz(advflux_t * flux) {
+static int phi_force_wallz(advflux_t * flux, wall_t * wall) {
 
   int ic, jc, kc;
   int index, index1, ia;
@@ -790,6 +796,8 @@ static int phi_force_wallz(advflux_t * flux) {
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(flux);
+  assert(wall);
+
   le_cartsz(flux->le, cartsz);
   le_cart_coords(flux->le, cartcoords);
   le_nlocal(flux->le, nlocal);
@@ -835,7 +843,7 @@ static int phi_force_wallz(advflux_t * flux) {
     }
   }
 
-  wall_accumulate_force(fz);
+  wall_momentum_add(wall, fz);
 
   return 0;
 }

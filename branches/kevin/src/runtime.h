@@ -22,7 +22,7 @@
 typedef struct rt_s rt_t;
 
 int rt_create(pe_t * pe, rt_t ** prt);
-int rt_free(rt_t ** rt);
+int rt_free(rt_t * rt);
 int rt_read_input_file(rt_t * rt, const char * filename);
 int rt_info(rt_t * rt);
 int rt_int_parameter(rt_t * rt, const char * key, int * ivalue);

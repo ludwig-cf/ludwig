@@ -20,6 +20,7 @@
 
 struct map_s {
   coords_t * cs;              /* Retain reference to coordinate system */
+  int nref;                   /* Reference count */
   int is_porous_media;        /* Flag for porous media */
   int ndata;                  /* Additional fields associated with map */
   char * status;              /* Status (one of enum_status) */

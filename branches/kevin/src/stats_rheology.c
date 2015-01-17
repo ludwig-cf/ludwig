@@ -39,8 +39,8 @@ struct stats_rheo_s {
   MPI_Comm comm_z;
 };
 
-static void stats_rheology_print_s(const char *, double s[3][3]);
-static void stats_rheology_print_matrix(FILE *, double s[3][3]);
+static int stats_rheology_print_s(int print, const char *, double s[3][3]);
+static int stats_rheology_print_matrix(FILE *, double s[3][3]);
 
 #define NSTAT1 7  /* Number of data items for stess statistics */
 #define NSTAT2 22 /* Number of data items for 2-d stress stats
@@ -152,7 +152,7 @@ int stats_rheology_free(stats_rheo_t * stat) {
   free(stat->sxy);
   free(stat->stat_xz);
 
-  coords_free(&stat->cs);
+  coords_free(stat->cs);
   free(stat);
 
   return 0;
@@ -730,6 +730,9 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
   double ltot[3];
   int nlocal[3];
   int ic, jc, kc, index, ia, ib;
+
+  int rank;
+  MPI_Comm comm;
   FILE * fp;
 
   void (* chemical_stress)(const int index, double s[3][3]);
@@ -737,6 +740,7 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
   assert(stat);
   assert(lb);
 
+  coords_cart_comm(stat->cs, &comm);
   coords_ltot(stat->cs, ltot);
 
   rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
@@ -793,7 +797,7 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
     }
   }
 
-  MPI_Reduce(send, recv, NCOMP, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  MPI_Reduce(send, recv, NCOMP, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   kc = 0;
   for (ia = 0; ia < 3; ia++) {
@@ -805,16 +809,17 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
     }
   }
 
+  MPI_Comm_rank(comm, &rank);
+
   if (filename == NULL || strcmp(filename, "") == 0) {
-    /* Use info() */
-    stats_rheology_print_s("stress_viscs", stress);
-    stats_rheology_print_s("stress_pchem", pchem);
-    stats_rheology_print_s("stress_rhouu", rhouu);
+    stats_rheology_print_s((rank == 0), "stress_viscs", stress);
+    stats_rheology_print_s((rank == 0), "stress_pchem", pchem);
+    stats_rheology_print_s((rank == 0), "stress_rhouu", rhouu);
   }
   else {
     /* Use filename supplied */
 
-    if (pe_rank() == 0) {
+    if (rank == 0) {
       fp = fopen(filename, "a");
       if (fp == NULL) fatal("fopen(%s) failed\n", filename);
 
@@ -839,14 +844,14 @@ int stats_rheology_mean_stress(stats_rheo_t * stat, lb_t * lb,
  *
  ****************************************************************************/
 
-static void stats_rheology_print_matrix(FILE * fp, double s[3][3]) {
+static int stats_rheology_print_matrix(FILE * fp, double s[3][3]) {
 
   assert(fp);
 
   fprintf(fp, "%15.8e %15.8e %15.8e ", s[X][X], s[X][Y], s[X][Z]);  
   fprintf(fp, "%15.8e %15.8e %15.8e ", s[Y][Y], s[Y][Z], s[Z][Z]);  
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -857,11 +862,13 @@ static void stats_rheology_print_matrix(FILE * fp, double s[3][3]) {
  *
  *****************************************************************************/
 
-static void stats_rheology_print_s(const char * label, double s[3][3]) {
+static int stats_rheology_print_s(int print, const char * label, double s[3][3]) {
 
-  info("%s x %15.8e %15.8e %15.8e\n", label, s[X][X], s[X][Y], s[X][Z]);
-  info("%s y %15.8e %15.8e %15.8e\n", label, s[Y][X], s[Y][Y], s[Y][Z]);
-  info("%s z %15.8e %15.8e %15.8e\n", label, s[Z][X], s[Z][Y], s[Z][Z]);
+  if (print) {
+    printf("%s x %15.8e %15.8e %15.8e\n", label, s[X][X], s[X][Y], s[X][Z]);
+    printf("%s y %15.8e %15.8e %15.8e\n", label, s[Y][X], s[Y][Y], s[Y][Z]);
+    printf("%s z %15.8e %15.8e %15.8e\n", label, s[Z][X], s[Z][Y], s[Z][Z]);
+  }
 
-  return;
+  return 0;
 }

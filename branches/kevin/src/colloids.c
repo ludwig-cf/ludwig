@@ -109,7 +109,7 @@ void colloids_info_free(colloids_info_t * info) {
   free(info->clist);
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
-  coords_free(&info->cs);
+  coords_free(info->cs);
   free(info);
 
   return;

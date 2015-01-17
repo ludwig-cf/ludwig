@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2563M
+The SVN revision details are: 2581:2582M
 Note assertions via standard C assert() are on.
 
 Read 22 user parameters from serial-spin-lb2.inp
@@ -75,9 +75,6 @@ Boundary walls:                  X Y Z
 Boundary speed u_x (bottom):     0.0000000e+00
 Boundary speed u_x (top):        0.0000000e+00
 Boundary normal lubrication rc:  0.0000000e+00
-Wall boundary links allocated:   30336
-Memory (total, bytes):           970752
-Boundary shear initialise:       0
 Gradient calcaulation: 3d_27pt_solid
 Initial conditions.
 
@@ -114,11 +111,11 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.500      3.500      3.500   3.499666 (1 call)
-      Time step loop:      0.085      0.098      3.446   0.086142 (40 calls)
-         Propagation:      0.011      0.016      0.453   0.011314 (40 calls)
-           Collision:      0.039      0.045      1.581   0.039524 (40 calls)
+               Total:      3.773      3.773      3.773   3.773105 (1 call)
+      Time step loop:      0.089      0.104      3.711   0.092768 (40 calls)
+         Propagation:      0.011      0.017      0.469   0.011726 (40 calls)
+           Collision:      0.042      0.049      1.745   0.043624 (40 calls)
        Lattice halos:      0.000      0.000      0.000   0.000002 (40 calls)
-       phi gradients:      0.030      0.032      1.232   0.030799 (40 calls)
-                 BBL:      0.003      0.004      0.131   0.003276 (40 calls)
+       phi gradients:      0.032      0.035      1.329   0.033223 (40 calls)
+                 BBL:      0.003      0.004      0.134   0.003349 (40 calls)
 Ludwig finished normally.

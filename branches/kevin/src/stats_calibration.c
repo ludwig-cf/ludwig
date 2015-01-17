@@ -76,7 +76,7 @@ int stats_ahydro_free(stats_ahydro_t * ahydro) {
 
   assert(ahydro);
 
-  coords_free(&ahydro->cs);
+  coords_free(ahydro->cs);
   free(ahydro);
 
   return 0;

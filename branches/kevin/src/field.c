@@ -108,7 +108,7 @@ int field_free(field_t * obj) {
   if (obj->info) io_info_free(obj->info);
   if (obj->le) le_free(obj->le);
 
-  coords_free(&obj->cs);
+  coords_free(obj->cs);
   free(obj);
 
   return 0;

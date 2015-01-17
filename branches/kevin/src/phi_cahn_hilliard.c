@@ -81,7 +81,7 @@ static int phi_ch_random_flux(noise_t * noise, advflux_t * flux);
  *****************************************************************************/
 
 int phi_cahn_hilliard(le_t * le, field_t * phi, hydro_t * hydro,
-		      map_t * map, noise_t * noise) {
+		      map_t * map, wall_t * wall, noise_t * noise) {
   int nf;
   int noise_phi = 0;
   advflux_t * fluxes = NULL;
@@ -102,7 +102,7 @@ int phi_cahn_hilliard(le_t * le, field_t * phi, hydro_t * hydro,
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */
-    advection_bcs_wall(fluxes, phi);
+    advection_bcs_wall(fluxes, wall, phi);
     advflux_compute(fluxes, hydro, phi);
   }
 

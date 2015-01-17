@@ -60,6 +60,7 @@ typedef enum lb_halo_enum_type {LB_HALO_FULL, LB_HALO_REDUCED} lb_halo_enum_t;
 __host__ int lb_create_ndist(coords_t * cs, int ndist, lb_t ** lb);
 __host__ int lb_create(coords_t * cs, lb_t ** lb);
 __host__ int lb_free(lb_t * lb);
+__host__ int lb_retain(lb_t * lb);
 __host__ int lb_nvel(lb_t * lb, int * nvel);
 __host__ int lb_ndim(lb_t * lb, int * ndim);
 __host__ int lb_nblock(lb_t * lb, int dim, int * nblock);

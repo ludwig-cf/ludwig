@@ -112,9 +112,9 @@ int do_test_le1(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_free(&le);
-    coords_free(&cs);
-    pe_free(&pe);
+    le_free(le);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -177,9 +177,9 @@ int do_test_le2(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_free(&le);
-    coords_free(&cs);
-    pe_free(&pe);
+    le_free(le);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -317,9 +317,9 @@ int do_test_le_interp3(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_free(&le);
-    coords_free(&cs); assert(cs == NULL);
-    pe_free(&pe);
+    le_free(le);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);
@@ -422,9 +422,9 @@ int do_test_le_interp4(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
   finally {
-    le_free(&le);
-    coords_free(&cs);
-    pe_free(&pe); assert(pe == NULL);
+    le_free(le);
+    coords_free(cs);
+    pe_free(pe);
   }
 
   control_report(ctrl);

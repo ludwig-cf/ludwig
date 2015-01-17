@@ -20,11 +20,12 @@
 #include "colloid_io.h"
 #include "interaction.h"
 #include "map.h"
+#include "wall.h"
 #include "ewald.h"
 
 int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** cio,
-		     interact_t ** interact, map_t * map);
+		     interact_t ** interact, map_t * map, wall_t * wall);
 int colloids_init_ewald_rt(rt_t * rt, coords_t * cs, colloids_info_t * cinfo,
 			   ewald_t ** pewald);
 int colloids_init_halo_range_check(coords_t * cs, colloids_info_t * cinfo);

@@ -73,7 +73,7 @@ int angle_cosine_free(angle_cosine_t * obj) {
   if (obj) {
     obj->nref -= 1;
     if (obj->nref <= 0) {
-      coords_free(&obj->cs);
+      coords_free(obj->cs);
       free(obj);
     }
   }

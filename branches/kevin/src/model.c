@@ -62,6 +62,7 @@ int lb_create_ndist(coords_t * cs, int ndist, lb_t ** plb) {
   lb->ndist = ndist;
   lb->model = LB_DATA_MODEL;
 
+  lb->nref = 1;
   lb->cs = cs;
   coords_retain(cs);
 
@@ -88,6 +89,21 @@ int lb_create(coords_t * cs, lb_t ** plb) {
 
 /*****************************************************************************
  *
+ *  lb_retain
+ *
+ *****************************************************************************/
+
+int lb_retain(lb_t * lb) {
+
+  assert(lb);
+
+  lb->nref += 1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_free
  *
  *  Clean up.
@@ -98,33 +114,38 @@ int lb_free(lb_t * lb) {
 
   assert(lb);
 
-  if (lb->io_info) io_info_free(lb->io_info);
-  if (lb->f) free(lb->f);
-  if (lb->t_f) targetFree(lb->t_f);
-  if (lb->t_fprime) targetFree(lb->t_fprime);
-  if (lb->siteMask) free(lb->siteMask);
-  if (lb->t_siteMask) targetFree(lb->t_siteMask);
+  lb->nref -= 1;
 
-  MPI_Type_free(&lb->plane_xy_full);
-  MPI_Type_free(&lb->plane_xz_full);
-  MPI_Type_free(&lb->plane_yz_full);
+  if (lb->nref <= 0) {
 
-  MPI_Type_free(&lb->plane_xy_reduced[0]);
-  MPI_Type_free(&lb->plane_xy_reduced[1]);
-  MPI_Type_free(&lb->plane_xz_reduced[0]);
-  MPI_Type_free(&lb->plane_xz_reduced[1]);
-  MPI_Type_free(&lb->plane_yz_reduced[0]);
-  MPI_Type_free(&lb->plane_yz_reduced[1]);
+    if (lb->io_info) io_info_free(lb->io_info);
+    if (lb->f) free(lb->f);
+    if (lb->t_f) targetFree(lb->t_f);
+    if (lb->t_fprime) targetFree(lb->t_fprime);
+    if (lb->siteMask) free(lb->siteMask);
+    if (lb->t_siteMask) targetFree(lb->t_siteMask);
 
-  MPI_Type_free(&lb->site_x[0]);
-  MPI_Type_free(&lb->site_x[1]);
-  MPI_Type_free(&lb->site_y[0]);
-  MPI_Type_free(&lb->site_y[1]);
-  MPI_Type_free(&lb->site_z[0]);
-  MPI_Type_free(&lb->site_z[1]);
+    MPI_Type_free(&lb->plane_xy_full);
+    MPI_Type_free(&lb->plane_xz_full);
+    MPI_Type_free(&lb->plane_yz_full);
 
-  coords_free(&lb->cs);
-  free(lb);
+    MPI_Type_free(&lb->plane_xy_reduced[0]);
+    MPI_Type_free(&lb->plane_xy_reduced[1]);
+    MPI_Type_free(&lb->plane_xz_reduced[0]);
+    MPI_Type_free(&lb->plane_xz_reduced[1]);
+    MPI_Type_free(&lb->plane_yz_reduced[0]);
+    MPI_Type_free(&lb->plane_yz_reduced[1]);
+
+    MPI_Type_free(&lb->site_x[0]);
+    MPI_Type_free(&lb->site_x[1]);
+    MPI_Type_free(&lb->site_y[0]);
+    MPI_Type_free(&lb->site_y[1]);
+    MPI_Type_free(&lb->site_z[0]);
+    MPI_Type_free(&lb->site_z[1]);
+
+    coords_free(lb->cs);
+    free(lb);
+  }
 
   return 0;
 }

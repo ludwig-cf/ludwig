@@ -48,7 +48,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "wall.h"
 #include "free_energy.h"
 #include "phi_force.h"
 #include "phi_force_stress.h"
@@ -56,7 +55,7 @@
 
 static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 				   hydro_t * hydro,
-				   map_t * map);
+				   wall_t * wall, map_t * map);
 
 /*****************************************************************************
  *
@@ -68,7 +67,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
  *****************************************************************************/
 
 int phi_force_colloid(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro,
-		      map_t * map) {
+		      wall_t * wall, map_t * map) {
 
   int ncolloid;
   int required;
@@ -79,7 +78,7 @@ int phi_force_colloid(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro,
   if (hydro == NULL && ncolloid == 0) required = 0;
 
   if (required) {
-    phi_force_interpolation(cs, cinfo, hydro, map);
+    phi_force_interpolation(cs, cinfo, hydro, wall, map);
   }
 
   return 0;
@@ -98,7 +97,7 @@ int phi_force_colloid(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro,
 
 static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 				   hydro_t * hydro,
-				   map_t * map) {
+				   wall_t * wall, map_t * map) {
   int ia, ic, jc, kc;
   int index, index1;
   int nlocal[3];
@@ -306,7 +305,7 @@ static int phi_force_interpolation(coords_t * cs, colloids_info_t * cinfo,
 	/* Store the force on lattice */
 
 	if (hydro) hydro_f_local_add(hydro, index, force);
-	wall_accumulate_force(fw);
+	wall_momentum_add(wall, fw);
 
 	/* Next site */
       }

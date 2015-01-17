@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.10 (MPI version running on 8 processes)
+Welcome to Ludwig v0.3.15 (MPI version running on 8 processes)
 
-The SVN revision details are: 2374M
+The SVN revision details are: 2576:2578M
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from ./pmpi08-le2d-lb1.inp
+Read 24 user parameters from pmpi08-le2d-lb1.inp
 
 System details
 --------------
@@ -65,7 +65,6 @@ Isothermal fluctuations:  off
 Shear relaxation time:    8.00000e-01
 Bulk relaxation time:     8.00000e-01
 Ghost relaxation time:    1.00000e+00
-[User   ] Random number seed: -7361237
 
 Hydrodynamics
 -------------
@@ -81,7 +80,7 @@ Gradient calcaulation: 3d_27pt_fluid
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]        4096.00  1.00000000000 0.0000000e+00  1.00000000000 1.00000000000
+[rho]        4096.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
 [phi] -1.1802440e-02 -2.8814551e-06 8.2680383e-04 -4.9977721e-02 4.9988335e-02
 
 Momentum - x y z
@@ -91,7 +90,7 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]        4096.00  1.00000000000 4.2323269e-05  0.97719283427 1.02804195103
+[rho]        4096.00  1.00000000000  4.2323269e-05  0.97719283427  1.02804195103
 [phi] -1.1802440e-02 -2.8814551e-06 8.4887719e-01 -1.0190475e+00 1.0178491e+00
 
 Free energy density - timestep total fluid
@@ -111,12 +110,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      6.390      6.390      6.390   6.390241 (1 call)
-      Time step loop:      0.001      0.015      6.373   0.002451 (2600 calls)
-         Propagation:      0.000      0.001      0.284   0.000109 (2600 calls)
-           Collision:      0.001      0.010      3.002   0.001155 (2600 calls)
-       Lattice halos:      0.000      0.009      1.207   0.000464 (2600 calls)
-       phi gradients:      0.000      0.009      1.312   0.000505 (2600 calls)
-     Lees Edwards BC:      0.000      0.009      0.527   0.000203 (2600 calls)
-                 BBL:      0.000      0.000      0.003   0.000001 (2600 calls)
+               Total:     21.478     21.478     21.478  21.478278 (1 call)
+      Time step loop:      0.006      0.025     21.466   0.008256 (2600 calls)
+         Propagation:      0.000      0.008      5.050   0.001942 (2600 calls)
+           Collision:      0.003      0.012     11.991   0.004612 (2600 calls)
+       Lattice halos:      0.000      0.014      1.629   0.000627 (2600 calls)
+       phi gradients:      0.000      0.015      1.740   0.000669 (2600 calls)
+     Lees Edwards BC:      0.000      0.010      0.870   0.000335 (2600 calls)
+                 BBL:      0.000      0.001      0.005   0.000002 (2600 calls)
 Ludwig finished normally.

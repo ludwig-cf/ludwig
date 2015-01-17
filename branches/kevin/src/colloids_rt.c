@@ -44,12 +44,14 @@ int pair_lj_cut_init(rt_t * rt, coords_t * cs, interact_t * inter);
 int bond_fene_init(rt_t * rt, coords_t * cs, interact_t * interact);
 int angle_cosine_init(rt_t * rt, coords_t * cs, interact_t * interact);
 
-int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo, map_t * map);
+int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo,
+			 wall_t * wall, map_t * map);
 int colloids_rt_gravity(rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(rt_t * rt, colloids_info_t * cinfo, int nc);
 int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio);
-int colloids_rt_init_random(rt_t * rt, coords_t * cs, colloids_info_t * cinfo);
+int colloids_rt_init_random(rt_t * rt, coords_t * cs, wall_t * wall,
+			    colloids_info_t * cinfo);
 int colloids_rt_state_stub(rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
@@ -72,7 +74,7 @@ int colloids_rt_cell_list_checks(coords_t * cs, colloids_info_t ** pinfo,
 
 int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** pcio,
-		     interact_t ** interact, map_t * map) {
+		     interact_t ** interact, map_t * map, wall_t * wall) {
   int nc;
   int init_one = 0;
   int init_two = 0;
@@ -114,7 +116,7 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   if (init_two) colloids_rt_init_few(rt, *pinfo, 2);
   if (init_three) colloids_rt_init_few(rt, *pinfo, 3);
   if (init_from_file) colloids_rt_init_from_file(rt, *pinfo, *pcio);
-  if (init_random) colloids_rt_init_random(rt, cs, *pinfo);
+  if (init_random) colloids_rt_init_random(rt, cs, wall, *pinfo);
 
   /* At this point, we know number of colloids */
 
@@ -148,7 +150,7 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
   colloids_info_map_init(*pinfo);
   colloids_halo_state(cs, *pinfo);
 
-  colloids_rt_dynamics(cs, *pinfo, map);
+  colloids_rt_dynamics(cs, *pinfo, wall, map);
   colloids_rt_gravity(rt, *pinfo);
   info("\n");
   
@@ -161,7 +163,8 @@ int colloids_init_rt(rt_t * rt, coords_t * cs, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
+int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo,
+			 wall_t * wall, map_t * map) {
 
   int nsubgrid_local = 0;
   int nsubgrid;
@@ -178,7 +181,7 @@ int colloids_rt_dynamics(coords_t * cs, colloids_info_t * cinfo, map_t * map) {
   }
   else {
     build_update_map(cs, cinfo, map);
-    build_update_links(cs, cinfo, map);
+    build_update_links(cs, cinfo, wall, map);
   }
 
   return 0;
@@ -248,7 +251,7 @@ int colloids_rt_init_few(rt_t * rt, colloids_info_t * cinfo, int nc) {
 int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio) {
 
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX] = "\0";
   char filename[FILENAME_MAX];
   char stub[FILENAME_MAX];
 
@@ -256,7 +259,7 @@ int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
   assert(cinfo);
   assert(cio);
 
-  pe_subdirectory(subdirectory);
+  /* pe_subdirectory(subdirectory); PENDING */
 
   strcpy(stub, "config.cds.init");
   rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
@@ -281,7 +284,8 @@ int colloids_rt_init_from_file(rt_t * rt, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_init_random(rt_t * rt, coords_t * cs, colloids_info_t * cinfo) {
+int colloids_rt_init_random(rt_t * rt, coords_t * cs, wall_t * wall,
+			    colloids_info_t * cinfo) {
 
   int nc;
   double dh = 0.0;
@@ -299,7 +303,7 @@ int colloids_rt_init_random(rt_t * rt, coords_t * cs, colloids_info_t * cinfo) {
   rt_int_parameter(rt, "colloid_random_no", &nc);
   rt_double_parameter(rt, "colloid_random_dh", &dh);
 
-  colloids_init_random(cs, cinfo, nc, state0, dh);
+  colloids_init_random(cs, cinfo, nc, state0, wall, dh);
 
   info("Requested   %d colloid%s at random\n", nc, (nc > 1) ? "s" : "");
   info("Colloid  radius a0 = %le\n", state0->a0);

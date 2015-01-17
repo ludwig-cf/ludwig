@@ -55,12 +55,8 @@ int do_test_pe_create(control_t * ctrl) {
 
     pe_retain(pe);
     pe_copy = pe;
-
-    pe_free(&pe_copy);
-    control_macro_test(ctrl, pe_copy == NULL);
-
-    pe_free(&pe);
-    control_macro_test(ctrl, pe == NULL);
+    pe_free(pe_copy);
+    pe_free(pe);
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
@@ -100,8 +96,8 @@ int do_test_pe_mpi(control_t * ctrl) {
     MPI_Comm_compare(comm, ctrlcomm, &icompare);
     control_macro_test(ctrl, icompare == MPI_CONGRUENT);
 
-    pe_subdirectory_set("testme");
-    pe_subdirectory(subname);
+    pe_subdirectory_set(pe, "testme");
+    pe_subdirectory(pe, subname);
 
     control_verb(ctrl, "testme/ and %s\n", subname);
     control_macro_test(ctrl, strcmp("testme/", subname) == 0);
@@ -111,14 +107,14 @@ int do_test_pe_mpi(control_t * ctrl) {
 
     control_macro_test(ctrl, rank == pe_mpi_rank(pe));
     control_macro_test(ctrl, sz == pe_mpi_size(pe));
-    control_macro_test(ctrl, rank == pe_rank());
-    control_macro_test(ctrl, sz == pe_size());
+    control_macro_test(ctrl, rank == pe_mpi_rank(pe));
+    control_macro_test(ctrl, sz == pe_mpi_size(pe));
   }
   catch (TestFailedException) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  pe_free(&pe);
+  pe_free(pe);
 
   control_report(ctrl);
 

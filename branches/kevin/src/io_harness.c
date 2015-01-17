@@ -273,7 +273,7 @@ int io_info_free(io_info_t * p) {
 
   assert(p != (io_info_t *) NULL);
   io_decomposition_destroy(p->io_comm);
-  coords_free(&p->cs);
+  coords_free(p->cs);
   free(p);
 
   return 0;
@@ -435,13 +435,14 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   FILE * fp_meta;
   char filename_io[FILENAME_MAX];
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX] = "\0";
   char filename[FILENAME_MAX];
   int  nx, ny, nz;
   int ntotal[3];
   int cartsz[3];
   int cartcoords[3];
   int n[3], noff[3];
+  int mpisz;
 
   int token = 0;
   const int tag = 1293;
@@ -465,7 +466,8 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   coords_ntotal(info->cs, ntotal);
   coords_nlocal_offset(info->cs, noff);
 
-  pe_subdirectory(subdirectory);
+  mpisz = cartsz[X]*cartsz[Y]*cartsz[Z];
+  /* pe_subdirectory(subdirectory); PENDING */
 
   io_set_group_filename(filename, filename_stub, info);
   sprintf(filename_io, "%s%s.meta", subdirectory, filename);
@@ -485,7 +487,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     fprintf(fp_meta, "Data size per site (bytes):      %d\n",
 	    (int) info->bytesize);
     fprintf(fp_meta, "is_bigendian():                  %d\n", is_bigendian());
-    fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
+    fprintf(fp_meta, "Number of processors:            %d\n", mpisz);
     fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
 	    cartsz[X], cartsz[Y], cartsz[Z]);
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
@@ -539,7 +541,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
 int io_remove_metadata(io_info_t * obj, const char * file_stub) {
 
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX] = "";
   char filename[FILENAME_MAX];
   char filename_io[FILENAME_MAX];
 
@@ -547,7 +549,7 @@ int io_remove_metadata(io_info_t * obj, const char * file_stub) {
   assert(file_stub);
 
   if (obj->io_comm->rank == 0) {
-    pe_subdirectory(subdirectory);
+    /* pe_subdirectory(subdirectory);PENDING */
     io_set_group_filename(filename, file_stub, obj);
     sprintf(filename_io, "%s%s.meta", subdirectory, filename);
     remove(filename_io);
@@ -566,14 +568,14 @@ int io_remove_metadata(io_info_t * obj, const char * file_stub) {
 
 int io_remove(char * filename_stub, io_info_t * obj) {
 
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX] = "";
   char filename[FILENAME_MAX];
 
   assert(filename_stub);
   assert(obj);
 
   if (obj->io_comm->rank == 0) {
-    pe_subdirectory(subdirectory);
+    /* pe_subdirectory(subdirectory); PENDING*/
     io_set_group_filename(filename, filename_stub, obj);
     remove(filename);
   }

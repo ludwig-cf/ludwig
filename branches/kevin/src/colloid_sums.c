@@ -113,7 +113,7 @@ int colloid_sums_free(colloid_sum_t * sum) {
 
   assert(sum);
 
-  coords_free(&sum->cs);
+  coords_free(sum->cs);
   free(sum);
 
   return 0;

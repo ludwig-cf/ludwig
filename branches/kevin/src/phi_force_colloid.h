@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2009-2015 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -19,8 +19,9 @@
 #include "colloids.h"
 #include "hydro.h"
 #include "map.h"
+#include "wall.h"
 
 int phi_force_colloid(coords_t * cs, colloids_info_t * cinfo, hydro_t * hydro,
-		      map_t * map);
+		      wall_t * wall, map_t * map);
 
 #endif
