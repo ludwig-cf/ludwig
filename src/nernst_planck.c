@@ -386,6 +386,8 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
   
   double e0[3];
+  double eunit, reunit;
+  double beta;
   double dt;
 
   colloid_t * pc = NULL;
@@ -395,6 +397,10 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 
   coords_nlocal(nlocal);
 
+  psi_unit_charge(psi, &eunit);
+  reunit = 1.0/eunit;
+
+  psi_beta(psi, &beta);
   psi_nk(psi, &nk);
   psi_multistep_timestep(psi, &dt);
 
@@ -422,11 +428,11 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 	      for (n = 0; n < nk; n++) {
 
 		fe_mu_solv(index0, n, &mu_s0);
-		mu0 = mu_s0 + psi->valency[n]*psi->psi[index0];
+		mu0 = reunit*mu_s0 + psi->valency[n]*psi->psi[index0];
 		rho0 = psi->rho[nk*index0 + n];
 
 		fe_mu_solv(index1, n, &mu_s1);
-		mu1 = mu_s1 + psi->valency[n]* (psi->psi[index1] - 
+		mu1 = reunit*mu_s1 + psi->valency[n]* (psi->psi[index1] - 
 	    		psi_gr_cv[c][X]*e0[X] - psi_gr_cv[c][Y]*e0[Y] - psi_gr_cv[c][Z]*e0[Z]);
 		b0 = exp(mu0 - mu1);
 		b1 = exp(mu1 - mu0);
