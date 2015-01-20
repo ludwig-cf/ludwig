@@ -59,18 +59,18 @@ int main(int argc, char ** argv) {
 
   int ntotal[3] = {128.0, 128.0, 128.0};  /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};           /* 0 = wall, 1 = periodic */
-  int file_format = ASCII;
+  int file_format = BINARY;
 
   int n;
   int index;
   int nrequest;
   int nactual;
 
-  double a0 = 6.0;                      /* Input radius */
-  double ah = 6.0;                      /* Hydrodynamic radius */ 
-  double vf = 0.05;                       /* Volume fraction */
+  double a0 = 3.5;                      /* Input radius */
+  double ah = 3.5;                      /* Hydrodynamic radius */ 
+  double vf = 0.1;                       /* Volume fraction */
   double dh = 1.0;                       /* "grace' distance */
-  double q0 = 150.0 
+  double q0 = 150.0; 
   double q1 = 0.0;
 
   colloid_state_t * state;
