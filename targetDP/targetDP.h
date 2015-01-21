@@ -29,8 +29,8 @@
 #define TARGET_CONST __constant__
 
 /* Instruction-level-parallelism vector length */
-#define NILP 2
-//#define NILP 1
+//#define NILP 2
+#define NILP 1
 
 
 /* special kernel launch syntax */
