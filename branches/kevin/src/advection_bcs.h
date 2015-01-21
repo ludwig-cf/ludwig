@@ -20,7 +20,7 @@
 #include "wall.h"
 #include "map.h"
 
-int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map);
+int advection_bcs_no_normal_flux(advflux_t * flux, map_t * map);
 int advection_bcs_wall(advflux_t * flux, wall_t * wall, field_t * phi);
 
 #endif

@@ -116,7 +116,7 @@ int phi_cahn_hilliard(le_t * le, field_t * phi, hydro_t * hydro,
 
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
 
-  if (map) advection_bcs_no_normal_flux(nf, fluxes, map);
+  if (map) advection_bcs_no_normal_flux(fluxes, map);
 
   phi_ch_le_fix_fluxes(nf, fluxes);
   phi_ch_update_forward_step(phi, fluxes);

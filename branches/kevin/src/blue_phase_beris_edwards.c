@@ -86,7 +86,7 @@ int blue_phase_beris_edwards(le_t * le, field_t * fq,
   if (hydro) {
     hydro_lees_edwards(hydro);
     advflux_compute(flux, hydro, fq);
-    advection_bcs_no_normal_flux(nf, flux, map);
+    advection_bcs_no_normal_flux(flux, map);
   }
 
   blue_phase_be_update(fq, hydro, flux, map, noise);

@@ -15,11 +15,8 @@
  ****************************************************************************/
 
 #include <assert.h>
-#include <stdlib.h>
 
 #include "wall.h"
-#include "coords.h"
-#include "coords_field.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 
@@ -31,9 +28,7 @@
  *
  *****************************************************************************/
 
-/* PENDING Lees Edwards only */ 
-
-int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
+int advection_bcs_no_normal_flux(advflux_t * flux, map_t * map) {
 
   int n;
   int nlocal[3];
@@ -42,8 +37,8 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
   double mask, maskw, maske, masky, maskz;
 
-  assert(nf > 0);
   assert(flux);
+  assert(flux->nf > 0);
   assert(map);
 
   le_nlocal(flux->le, nlocal);
@@ -72,11 +67,11 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 	map_status(map, index, &status);
 	mask = (status == MAP_FLUID);
 
-	for (n = 0;  n < nf; n++) {
-	  flux->fw[nf*index + n] *= mask*maskw;
-	  flux->fe[nf*index + n] *= mask*maske;
-	  flux->fy[nf*index + n] *= mask*masky;
-	  flux->fz[nf*index + n] *= mask*maskz;
+	for (n = 0;  n < flux->nf; n++) {
+	  flux->fw[flux->nf*index + n] *= mask*maskw;
+	  flux->fe[flux->nf*index + n] *= mask*maske;
+	  flux->fy[flux->nf*index + n] *= mask*masky;
+	  flux->fz[flux->nf*index + n] *= mask*maskz;
 	}
       }
     }
@@ -101,10 +96,6 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
  *
  ****************************************************************************/
 
-/* PENDING wall (allowed with LE) */
-
-#include "field_s.h"
-
 int advection_bcs_wall(advflux_t * flux, wall_t * wall, field_t * fphi) {
 
   int ic, jc, kc, index, index1;
@@ -121,17 +112,18 @@ int advection_bcs_wall(advflux_t * flux, wall_t * wall, field_t * fphi) {
   assert(nf <= NQAB);
 
   if (wall == NULL) return 0;
+
   wall_present(wall, iswall);
   if (iswall[X] == 0) return 0;
 
   assert(iswall[Y] == 0);
   assert(iswall[Z] == 0);
 
-  coords_cartsz(fphi->cs, cartsz);
-  coords_cart_coords(fphi->cs, cartcoords);
+  le_cartsz(flux->le, cartsz);
+  le_cart_coords(flux->le, cartcoords);
+  le_nlocal(flux->le, nlocal);
 
   field_nf(fphi, &nf);
-  coords_nlocal(fphi->cs, nlocal);
 
   if (cartcoords[X] == 0) {
     ic = 1;
