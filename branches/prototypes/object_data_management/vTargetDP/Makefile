@@ -24,7 +24,7 @@ endif
 
 ifdef USEGPU
 CC = nvcc -arch=sm_21
-CFLAGS =  -I$(TARGETDPDIR) -x cu -DCUDA -dc #-g -G
+CFLAGS =  -I$(TARGETDPDIR) -x cu -DCUDA -dc -g -G
 LIBS = -lm -L$(TARGETDPDIR) -ltargetDP_CUDA
 else
 CC = gcc

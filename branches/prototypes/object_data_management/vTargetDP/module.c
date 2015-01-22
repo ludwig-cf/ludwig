@@ -23,7 +23,7 @@ HOST void object_create(obj_t ** pobj, int c1in, int c2in){
   //target
   void * ptrtmp;
   //get constant memory address from target
-  __targetGetConstantAddress(&ptrtmp, t_static_const); 
+  __getTargetConstantAddress__(&ptrtmp, t_static_const); 
   obj->const_target=(kernel_const_t*) ptrtmp; 
 
   // set host copy
@@ -31,7 +31,7 @@ HOST void object_create(obj_t ** pobj, int c1in, int c2in){
   obj->const_host->c2=c2in;
 
   // propagate to target copy
-  copyConstantObjectToTarget(&t_static_const,obj->const_host, sizeof(kernel_const_t));
+  __copyConstantToTarget__(&t_static_const,obj->const_host, sizeof(kernel_const_t));
 
   // allocate data on target
   targetMalloc((void **) &(obj->data_target.field),N*sizeof(double));

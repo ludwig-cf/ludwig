@@ -7,7 +7,11 @@ typedef struct {
  double * field;
 } kernel_data_t;
 
-// N.B. kernel_const_t is defined in targetDP.h
+
+typedef struct {
+int  c1;
+int  c2;
+} kernel_const_t; 
 
 typedef struct {
   kernel_const_t * const_host; 
