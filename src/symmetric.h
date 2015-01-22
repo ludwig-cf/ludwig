@@ -21,6 +21,11 @@
 
 #include "targetDP.h"
 
+//TO DO: refactor these type definitions
+typedef double (*mu_fntype)(const int, const int, const double*, const double*);
+typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
+
+
 HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
 
 HOST void   symmetric_free_energy_parameters_set(double a, double b, double kappa);

@@ -4,6 +4,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifndef _DATA_PARALLEL_INCLUDED
 #define _DATA_PARALLEL_INCLUDED
@@ -50,9 +51,20 @@
   simtIndex = (blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
 
-#define __targetGetConstantAddress(addr_of_ptr,const_object) \
+#define __getTargetConstantAddress__(addr_of_ptr,const_object) \
   cudaGetSymbolAddress(addr_of_ptr, const_object); \
-  checkTargetError("getsymboladdress"); 
+  checkTargetError("__getTargetConstantAddress__"); 
+
+#define __copyConstantToTarget__(data_d, data, size) \
+  cudaMemcpyToSymbol(*data_d, (const void*) data, size, 0,cudaMemcpyHostToDevice); \
+   checkTargetError("__copyConstantToTarget__"); 
+
+#define __copyConstantFromTarget__(data, data_d, size) \
+  cudaMemcpyFromSymbol((void*) data, *data_d, size, 0,cudaMemcpyDeviceToHost); \
+   checkTargetError("__copyConstantFromTarget__"); 
+
+
+
 
 
 #else /* X86 */
@@ -68,6 +80,7 @@
 
 /* special kernel launch syntax */
 #define TARGET_LAUNCH(extent)
+#define TARGET_LAUNCH_NOSTRIDE(extent)
 
 /* Instruction-level-parallelism vector length */
 #define NILP 1
@@ -82,10 +95,20 @@
 #define TARGET_TLP_NOSTRIDE(simtIndex,extent)   	\
   for(simtIndex=0;simtIndex<extent;simtIndex++)
 
-
-#define __targetGetConstantAddress(addr_of_ptr,const_object) \
+#define __getTargetConstantAddress__(addr_of_ptr,const_object) \
   *addr_of_ptr=&(const_object);
+
+
+#define __copyConstantToTarget__(data_d, data, size) \
+  memcpy(data_d,data,size);
+
+
+#define __copyConstantFromTarget__(data, data_d, size) \
+  memcpy(data,data_d,size);
+
+
 #endif
+
 
 
 /* Common */
@@ -136,14 +159,6 @@ enum {TARGET_HALO,TARGET_EDGE};
 
 /* API */
 
-typedef double (*mu_fntype)(const int, const int, const double*, const double*);
-typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
-
-typedef struct {
-int  c1;
-int  c2;
-} kernel_const_t; 
-
 void targetInit(size_t nsites, size_t nfieldsmax);
 void targetFinalize();
 void checkTargetError(const char *msg);
@@ -167,19 +182,5 @@ void checkTargetError(const char *msg);
 void targetMalloc(void **address_of_ptr,const size_t size);
 void targetCalloc(void **address_of_ptr,const size_t size);
 void targetFree(void *ptr);
-void copyConstantIntToTarget(int *data_d, const int *data, const int size);
-void copyConstantInt1DArrayToTarget(int *data_d, const int *data, const int size);
-void copyConstantInt2DArrayToTarget(int **data_d, const int *data, const int size);
-void copyConstantDoubleToTarget(double *data_d, const double *data, const int size);
-void copyConstantDouble1DArrayToTarget(double *data_d, const double *data, const int size);
-void copyConstantDouble2DArrayToTarget(double **data_d, const double *data, const int size);
-void copyConstantDouble3DArrayToTarget(double ***data_d, const double *data, const int size);
-
-void copyConstantObjectToTarget(kernel_const_t *data_d, const kernel_const_t *data, const int size);
-
-void  copyConstantMufnFromTarget(mu_fntype* data, mu_fntype* data_d, const int size );
-void  copyConstantPthfnFromTarget(pth_fntype* data, pth_fntype* data_d, const int size );
-
-void copyConstantDoubleFromTarget(double *data, const double *data_d, const int size);
 
 #endif
