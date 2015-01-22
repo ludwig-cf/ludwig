@@ -43,6 +43,7 @@ static char symmetric_flag=0;
 HOST char symmetric_in_use(){ return symmetric_flag; }
 
 
+
 /****************************************************************************
  *
  *  symmetric_phi_set
@@ -81,9 +82,9 @@ HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa)
   //b_ = b;
   //kappa_ = kappa;
 
-  copyConstantDoubleToTarget(&a_, &a, sizeof(double));
-  copyConstantDoubleToTarget(&b_, &b, sizeof(double));
-  copyConstantDoubleToTarget(&kappa_, &kappa, sizeof(double));
+  __copyConstantToTarget__(&a_, &a, sizeof(double));
+  __copyConstantToTarget__(&b_, &b, sizeof(double));
+  __copyConstantToTarget__(&kappa_, &kappa, sizeof(double));
 
 
   fe_kappa_set(kappa);
@@ -102,7 +103,7 @@ HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa)
 HOST double symmetric_a(void) {
 
   double atmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
 
   return atmp;
 
@@ -117,7 +118,7 @@ HOST double symmetric_a(void) {
 HOST double symmetric_b(void) {
 
   double btmp;
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
 
   return btmp;
 }
@@ -221,9 +222,9 @@ HOST double symmetric_interfacial_tension(void) {
   double sigma;
 
   double atmp, btmp,kappatmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
-  copyConstantDoubleFromTarget(&kappatmp, &kappa_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
   sigma = sqrt(-8.0*kappatmp*atmp*atmp*atmp/(9.0*btmp*btmp));
 
@@ -241,9 +242,9 @@ HOST double symmetric_interfacial_width(void) {
   double xi;
 
   double atmp, btmp,kappatmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
-  copyConstantDoubleFromTarget(&kappatmp, &kappa_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
   xi = sqrt(-2.0*kappatmp/atmp);
 
@@ -265,9 +266,9 @@ HOST double symmetric_free_energy_density(const int index) {
   double e;
 
   double atmp, btmp,kappatmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
-  copyConstantDoubleFromTarget(&kappatmp, &kappa_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
 
   assert(phi_);
@@ -298,9 +299,9 @@ HOST double symmetric_chemical_potential(const int index, const int nop) {
   double mu;
 
   double atmp, btmp,kappatmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
-  copyConstantDoubleFromTarget(&kappatmp, &kappa_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
   assert(phi_);
   assert(grad_phi_);
@@ -352,7 +353,7 @@ HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
   mu_fntype h_chemical_potential; //temp host copy of fn addess
 
   //get host copy of function pointer
-  copyConstantMufnFromTarget(&h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
+  __copyConstantFromTarget__(&h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
 
   //and put back on target, now in an accessible location
   copyToTarget( t_chemical_potential, &h_chemical_potential,sizeof(mu_fntype));
@@ -380,9 +381,9 @@ HOST double symmetric_isotropic_pressure(const int index) {
   double p0;
 
   double atmp, btmp,kappatmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
-  copyConstantDoubleFromTarget(&kappatmp, &kappa_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
   assert(phi_);
   assert(grad_phi_);
@@ -418,9 +419,9 @@ HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
   double p0;
 
   double atmp, btmp,kappatmp;
-  copyConstantDoubleFromTarget(&atmp, &a_, sizeof(double));
-  copyConstantDoubleFromTarget(&btmp, &b_, sizeof(double));
-  copyConstantDoubleFromTarget(&kappatmp, &kappa_, sizeof(double));
+  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
+  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
   assert(phi_);
   assert(grad_phi_);
@@ -503,7 +504,7 @@ HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress){
   pth_fntype h_chemical_stress; //temp host copy of fn addess
 
   //get host copy of function pointer
-  copyConstantPthfnFromTarget(&h_chemical_stress, &p_symmetric_chemical_stress_target,sizeof(pth_fntype) );
+  __copyConstantFromTarget__(&h_chemical_stress, &p_symmetric_chemical_stress_target,sizeof(pth_fntype) );
 
   //and put back on target, now in an accessible location
   copyToTarget( t_chemical_stress, &h_chemical_stress,sizeof(pth_fntype));

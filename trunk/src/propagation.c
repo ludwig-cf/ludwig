@@ -367,7 +367,7 @@ TARGET_ENTRY  void lb_propagate_d3q19_lattice(double* t_f,
   int baseIndex=0;
 
   //partition binary collision kernel across the lattice on the target
-  TARGET_TLP(baseIndex,tc_nSites){
+  TARGET_TLP_NOSTRIDE(baseIndex,tc_nSites){
     lb_propagate_d3q19_site (t_f,t_fprime,baseIndex);
 
   }
@@ -396,10 +396,10 @@ static int lb_propagate_d3q19(lb_t * lb) {
 
 
   //start constant setup
-  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstantIntToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
-  copyConstantIntToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
+  __copyConstantToTarget__(&tc_nSites,&nSites, sizeof(int)); 
+  __copyConstantToTarget__(&tc_ndist,&lb->ndist, sizeof(int)); 
+  __copyConstantToTarget__(&tc_nhalo,&nhalo, sizeof(int)); 
+  __copyConstantToTarget__(tc_Nall,Nall, 3*sizeof(int)); 
   //end constant setup
 
 #ifdef CUDA
@@ -408,7 +408,7 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 #endif
 
-  lb_propagate_d3q19_lattice TARGET_LAUNCH(nSites) (lb->t_f,lb->t_fprime);
+  lb_propagate_d3q19_lattice TARGET_LAUNCH_NOSTRIDE(nSites) (lb->t_f,lb->t_fprime);
 
   copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
 

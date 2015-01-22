@@ -236,7 +236,7 @@ static TARGET_ENTRY void gradient_3d_7pt_fluid_operator_lattice(const int nop,
   int nSites=tc_Nall[X]*tc_Nall[Y]*tc_Nall[Z];
 
   int index;
-  TARGET_TLP(index,nSites){
+  TARGET_TLP_NOSTRIDE(index,nSites){
     gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,index);
   }
 
@@ -272,15 +272,15 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 
 
   //start constant setup
-  copyConstantInt1DArrayToTarget( (int*) tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstantIntToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstantIntToTarget(&tc_nextra,&nextra, sizeof(int)); 
+  __copyConstantToTarget__(tc_Nall,Nall, 3*sizeof(int)); 
+  __copyConstantToTarget__(&tc_nhalo,&nhalo, sizeof(int)); 
+  __copyConstantToTarget__(&tc_nextra,&nextra, sizeof(int)); 
   //end constant setup
 
 
   copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
 
-  gradient_3d_7pt_fluid_operator_lattice TARGET_LAUNCH(nSites) 
+  gradient_3d_7pt_fluid_operator_lattice TARGET_LAUNCH_NOSTRIDE(nSites) 
     (nop,t_field,t_grad,t_del2);
    
 

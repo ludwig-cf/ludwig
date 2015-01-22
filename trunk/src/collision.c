@@ -37,6 +37,8 @@
 #include "collision.h"
 #include "field_s.h"
 
+
+
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
@@ -55,7 +57,11 @@ static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
 
 
-//TODO refactor these forward declarations
+//TODO refactor these type definitions and forward declarations
+
+typedef double (*mu_fntype)(const int, const int, const double*, const double*);
+typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
+
 HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress);
 HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential);
 HOST void symmetric_phi(double** address_of_ptr);
@@ -813,22 +819,24 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
  //start constant setup
 
-  copyConstantIntToTarget(&tc_nmodes_, &nmodes_, sizeof(int)); 
-  copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
-  copyConstantDoubleToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  copyConstantDoubleToTarget(&tc_r3_, &r3_, sizeof(double));
-  copyConstantDoubleToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double)); 
-  copyConstantDouble1DArrayToTarget(tc_rtau_, rtau_, NVEL*sizeof(double)); 
-  copyConstantDouble1DArrayToTarget(tc_wv, wv, NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget( (double **) tc_ma_, (double*) ma_, NVEL*NVEL*sizeof(double));
-  copyConstantDouble2DArrayToTarget((double **) tc_mi_, (double*) mi_, NVEL*NVEL*sizeof(double));
-  copyConstantInt2DArrayToTarget((int **) tc_cv,(int*) cv, NVEL*3*sizeof(int)); 
-  copyConstantDoubleToTarget(&tc_rtau2, &rtau2, sizeof(double));
-  copyConstantDoubleToTarget(&tc_rcs2, &rcs2, sizeof(double));
-  copyConstantIntToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstantDouble1DArrayToTarget(tc_force_global,force_global, 3*sizeof(double)); 
-  copyConstantDouble2DArrayToTarget((double **) tc_d_, (double*) d_, 3*3*sizeof(double));
-  copyConstantDouble3DArrayToTarget((double ***) tc_q_, (double *)q_, NVEL*3*3*sizeof(double)); 
+  __copyConstantToTarget__(&tc_nmodes_,&nmodes_, sizeof(int));
+  __copyConstantToTarget__(&tc_nmodes_, &nmodes_, sizeof(int));
+  __copyConstantToTarget__(&tc_rtau_shear, &rtau_shear, sizeof(double));
+  __copyConstantToTarget__(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  __copyConstantToTarget__(&tc_r3_, &r3_, sizeof(double));
+  __copyConstantToTarget__(&tc_r2rcs4, &r2rcs4, sizeof(double));
+  __copyConstantToTarget__(tc_rtau_, rtau_, NVEL*sizeof(double));
+  __copyConstantToTarget__(tc_wv, wv, NVEL*sizeof(double));
+  __copyConstantToTarget__(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
+  __copyConstantToTarget__(tc_mi_, mi_, NVEL*NVEL*sizeof(double));
+  __copyConstantToTarget__(tc_cv, cv, NVEL*3*sizeof(int));
+  __copyConstantToTarget__(&tc_rtau2, &rtau2, sizeof(double));
+  __copyConstantToTarget__(&tc_rcs2, &rcs2, sizeof(double));
+  __copyConstantToTarget__(&tc_nSites,&nSites, sizeof(int));
+  __copyConstantToTarget__(tc_force_global,force_global, 3*sizeof(double));
+  __copyConstantToTarget__(tc_d_, d_, 3*3*sizeof(double));
+  __copyConstantToTarget__(tc_q_, q_, NVEL*3*3*sizeof(double));
+
   checkTargetError("constants");
   //end constant setup
 
