@@ -407,7 +407,7 @@ void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
  *
  *****************************************************************************/
   
-void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
+void lc_droplet_bodyforce(hydro_t * hydro) {
 
   double h[3][3];
   double q[3][3];
@@ -457,11 +457,11 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
 	
 	/* X */
 
-	force[X] = - phi*0.5*(mup1 - mum1)*dt;
+	force[X] = - phi*0.5*(mup1 - mum1);
 	
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
-	    force[X] -= h[ia][ib]*dq[X][ia][ib]*dt;
+	    force[X] -= h[ia][ib]*dq[X][ia][ib];
 	  }
 	}
 	
@@ -470,11 +470,11 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
 	mum1 = lc_droplet_chemical_potential(index0 - ys, 0);
         mup1 = lc_droplet_chemical_potential(index0 + ys, 0);
 
-        force[Y] = -phi*0.5*(mup1 - mum1)*dt;
+        force[Y] = -phi*0.5*(mup1 - mum1);
 	
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
-	    force[Y] -= h[ia][ib]*dq[Y][ia][ib]*dt;
+	    force[Y] -= h[ia][ib]*dq[Y][ia][ib];
 	  }
 	}
 
@@ -483,11 +483,11 @@ void lc_droplet_bodyforce(hydro_t * hydro, double dt) {
 	mum1 = lc_droplet_chemical_potential(index0 - zs, 0);
         mup1 = lc_droplet_chemical_potential(index0 + zs, 0);
 
-        force[Z] = -phi*0.5*(mup1 - mum1)*dt;
+        force[Z] = -phi*0.5*(mup1 - mum1);
 	
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
-	    force[Z] -= h[ia][ib]*dq[Z][ia][ib]*dt;
+	    force[Z] -= h[ia][ib]*dq[Z][ia][ib];
 	  }
 	}
 
