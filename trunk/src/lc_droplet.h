@@ -35,7 +35,7 @@ void lc_droplet_anchoring_molecular_field(const int index, double h[3][3]);
 double lc_droplet_chemical_potential(const int index, const int nop);
 double lc_droplet_chemical_potential_lc(const int index);
 void lc_droplet_chemical_stress(const int index, double sth[3][3]);
-void lc_droplet_bodyforce(hydro_t * hydro, double dt);
+void lc_droplet_bodyforce(hydro_t * hydro);
 void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]);
 void blue_phase_symmetric_stress(const int index, double sth[3][3]);
 void blue_phase_antisymmetric_stress(const int index, double sth[3][3]);
