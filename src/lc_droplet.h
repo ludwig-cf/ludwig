@@ -5,7 +5,7 @@
  *  Routines related to liquid crystal droplet free energy
  *  and molecular field.
  *
- *  $Id:               $
+ *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
