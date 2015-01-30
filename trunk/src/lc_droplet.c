@@ -508,8 +508,10 @@ void lc_droplet_bodyforce(hydro_t * hydro) {
  *  Returns the LC component of the LC droplet  
  *  chemical stress sth[3][3] at lattice site index.
  *
+ *  Note: This routine is depreciated.
+ *
  *****************************************************************************/
-
+/*
 void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]) {
   
   double phi, gamma;
@@ -520,14 +522,20 @@ void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]) {
   gamma = lc_droplet_gamma_calculate(phi);
   blue_phase_set_gamma(gamma);
 
-  /* This will be returned with additional -ve sign */
+  // This will be returned with additional -ve sign //
   blue_phase_chemical_stress(index, sth);
   
   return;
 }
+*/
 
+/*****************************************************************************
+ *
+ *  lc_droplet_symmetric_stress
+ *
+ *****************************************************************************/
 
-void blue_phase_symmetric_stress(const int index, double sth[3][3]){
+void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
 
   double q[3][3], dq[3][3][3];
   double h[3][3], dsq[3][3];
@@ -581,7 +589,7 @@ void blue_phase_symmetric_stress(const int index, double sth[3][3]){
     }
   }
 
-  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -600,7 +608,13 @@ void blue_phase_symmetric_stress(const int index, double sth[3][3]){
   return;
 }
 
-void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
+/*****************************************************************************
+ *
+ *  lc_droplet_antisymmetric_stress
+ *
+ *****************************************************************************/
+
+void lc_droplet_antisymmetric_stress(const int index, double sth[3][3]) {
 
   double q[3][3], dq[3][3][3];
   double h[3][3], dsq[3][3];
@@ -627,7 +641,7 @@ void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
     }
   }
   /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
-   * rewrite it as q_ac h_bc - h_ac q_bc. */
+     rewrite it as q_ac h_bc - h_ac q_bc. */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -637,8 +651,7 @@ void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
     }
   }
   
-  /* This is the minus sign. */
-
+  /*  This is the minus sign. */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] = -sth[ia][ib];
@@ -648,67 +661,3 @@ void blue_phase_antisymmetric_stress(const int index, double sth[3][3]) {
   return;
 }
 
-/*****************************************************************************
- *
- *  lc_droplet_extract_total_force
- *
- *****************************************************************************/
-
-int lc_droplet_extract_total_force(hydro_t * hydro) {
-
-  int ic, jc, kc, index;
-  int nlocal[3];
-
-  double f[3];
-  double flocal[3] = {0.0, 0.0, 0.0};
-  double fsum[3];
-  double rv;
-  
-  MPI_Comm comm;
-
-  if (hydro == NULL) return 0;
-
-  coords_nlocal(nlocal);
-  comm = cart_comm();
-
-  /* Compute force without correction. */
-  
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  
-	index = coords_index(ic, jc, kc);
-	hydro_f_local(hydro, index, f);
-
-	flocal[X] += f[X];
-	flocal[Y] += f[Y];
-	flocal[Z] += f[Z];
-	  
-      }
-    }
-  }
-    
-  /* calculate the total force per fluid node */
-
-  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
-
-  rv = 1.0/(L(X)*L(Y)*L(Z));
-  f[X] = -fsum[X]*rv;
-  f[Y] = -fsum[Y]*rv;
-  f[Z] = -fsum[Z]*rv;
-
-  /* Now add correction */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-	hydro_f_local_add(hydro, index, f);
-
-      }
-    }
-  }
-  
-  return 0;
-}
