@@ -277,6 +277,7 @@ lc_init_nematic 1.0_0.0_0.0
 lc_dielectric_anisotropy 41.4
 
 electric_e0 0.0_1.0e-6_0.0
+electric_e0_frequency 0
 
 lc_anchoring_method none
 lc_wall_anchoring fixed

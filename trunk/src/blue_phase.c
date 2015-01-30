@@ -28,6 +28,8 @@
 #include "blue_phase.h"
 #include "io_harness.h"
 #include "leesedwards.h"
+#include "physics.h"
+#include "control.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */
@@ -42,8 +44,6 @@ static double zeta_;      /* Apolar activity parameter \zeta */
 
 static int redshift_update_ = 0; /* Dynamic cubic redshift update */
 static double epsilon_ = 0.0;    /* Dielectric anisotropy (e/12pi) */
-
-static double electric_[3] = {0.0, 0.0, 0.0}; /* Electric field */
 
 static const double redshift_min_ = 0.00000000001; 
 
@@ -235,6 +235,21 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
   double dq0, dq1;
   double sum;
   double efield;
+  double e0[3], e0_frequency;
+  double coswt;
+  int t_step;
+
+  physics_e0(e0);
+  physics_e0_frequency(&e0_frequency);
+
+  /* Scale amplitude if e0_frequency != 0 */ 
+  if (e0_frequency) {
+    t_step = get_step();
+    coswt  = cos(2.0*pi_*e0_frequency*t_step);
+    for (ia = 0; ia < 3; ia++) {
+      e0[ia] *= coswt;
+    }
+  }
 
   q0 = q0_*rredshift_;
   kappa0 = kappa0_*redshift_*redshift_;
@@ -298,7 +313,7 @@ double blue_phase_compute_fed(double q[3][3], double dq[3][3][3]) {
   efield = 0.0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      efield += electric_[ia]*q[ia][ib]*electric_[ib];
+      efield += e0[ia]*q[ia][ib]*e0[ib];
     }
   }
 
@@ -475,6 +490,21 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
   double e2;
   double eq;
   double sum;
+  double e0[3], e0_frequency;
+  double coswt;
+  int t_step;
+
+  physics_e0(e0);
+  physics_e0_frequency(&e0_frequency);
+
+  /* Scale amplitude if e0_frequency != 0 */ 
+  if (e0_frequency) {
+    t_step = get_step();
+    coswt  = cos(2.0*pi_*e0_frequency*t_step);
+    for (ia = 0; ia < 3; ia++) {
+      e0[ia] *= coswt;
+    }
+  }
 
   q0 = q0_*rredshift_;
   kappa0 = kappa0_*redshift_*redshift_;
@@ -534,12 +564,12 @@ void blue_phase_compute_h(double q[3][3], double dq[3][3][3],
 
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    e2 += electric_[ia]*electric_[ia];
+    e2 += e0[ia]*e0[ia];
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      h[ia][ib] +=  epsilon_*(electric_[ia]*electric_[ib] - r3_*d_[ia][ib]*e2);
+      h[ia][ib] +=  epsilon_*(e0[ia]*e0[ib] - r3_*d_[ia][ib]*e2);
     }
   }
 
@@ -768,10 +798,13 @@ double blue_phase_dimensionless_field_strength(void) {
   int ia;
   double e;
   double fieldsq;
+  double e0[3];
+
+  physics_e0(e0);
 
   fieldsq = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    fieldsq += electric_[ia]*electric_[ia];
+    fieldsq += e0[ia]*e0[ia];
   }
 
   /* Remember epsilon is stored with factor (1/12pi) */ 
@@ -1007,23 +1040,6 @@ void blue_phase_redshift_compute(void) {
   if (fabs(rnew) < redshift_min_) rnew = redshift_;
 
   blue_phase_redshift_set(rnew);
-
-  return;
-}
-
-
-
-/*****************************************************************************
- *
- *  blue_phase_electric_field_set
- *
- *****************************************************************************/
-
-void blue_phase_electric_field_set(const double e[3]) {
-
-  electric_[X] = e[X];
-  electric_[Y] = e[Y];
-  electric_[Z] = e[Z];
 
   return;
 }

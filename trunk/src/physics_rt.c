@@ -28,6 +28,7 @@ int physics_info(void) {
   double eta1, eta2;
   double kt;
   double f0[3], e0[3], b0[3];
+  double e0_frequency;
 
   physics_rho0(&rho0);
   physics_eta_shear(&eta1);
@@ -35,6 +36,7 @@ int physics_info(void) {
   physics_kt(&kt);
   physics_fbody(f0);
   physics_e0(e0);
+  physics_e0_frequency(&e0_frequency);
   physics_b0(b0);
 
   info("\n");
@@ -46,8 +48,9 @@ int physics_info(void) {
   info("Temperature                  %12.5e\n", kt);
   info("External body force density  %12.5e %12.5e %12.5e\n",
        f0[0], f0[1], f0[2]);
-  info("External electric field      %12.5e %12.5e %12.5e\n",
+  info("External E-field amplitude   %12.5e %12.5e %12.5e\n",
        e0[0], e0[1], e0[2]);
+  info("External E-field frequency   %12.5e\n", e0_frequency);
   info("External magnetic field      %12.5e %12.5e %12.5e\n",
        b0[0], b0[1], b0[2]);
 
@@ -67,6 +70,7 @@ int physics_init_rt(void) {
   double rho0;
   double phi0;
   double vector[3];
+  double frequency;
 
   /* Bulk viscosity defaults to shear value */
 
@@ -101,6 +105,10 @@ int physics_init_rt(void) {
 
   if (RUN_get_double_parameter_vector("electric_e0", vector)) {
     physics_e0_set(vector);
+  }
+
+  if (RUN_get_double_parameter("electric_e0_frequency", &frequency)) {
+    physics_e0_frequency_set(frequency);
   }
 
   return 0;
