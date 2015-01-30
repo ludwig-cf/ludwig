@@ -670,3 +670,68 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  hydro_correct_momentum
+ *
+ *****************************************************************************/
+
+int hydro_correct_momentum(hydro_t * hydro) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double f[3];
+  double flocal[3] = {0.0, 0.0, 0.0};
+  double fsum[3];
+  double rv; 
+  
+  MPI_Comm comm;
+
+  if (hydro == NULL) return 0;
+
+  coords_nlocal(nlocal);
+  comm = cart_comm();
+
+  /* Compute force without correction. */
+  
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    
+        index = coords_index(ic, jc, kc);
+        hydro_f_local(hydro, index, f); 
+
+        flocal[X] += f[X];
+        flocal[Y] += f[Y];
+        flocal[Z] += f[Z];
+    
+      }   
+    }   
+  }
+    
+  /* calculate the total force per fluid node */
+
+  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+
+  rv = 1.0/(L(X)*L(Y)*L(Z));
+  f[X] = -fsum[X]*rv;
+  f[Y] = -fsum[Y]*rv;
+  f[Z] = -fsum[Z]*rv;
+
+  /* Now add correction */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+        hydro_f_local_add(hydro, index, f); 
+
+      }   
+    }   
+  }
+  
+  return 0;
+}

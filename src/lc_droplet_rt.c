@@ -59,7 +59,7 @@ void lc_droplet_run_time(void) {
 
   fe_density_set(lc_droplet_free_energy_density);
   fe_chemical_potential_set(lc_droplet_chemical_potential);
-  fe_chemical_stress_set(blue_phase_antisymmetric_stress);
+  fe_chemical_stress_set(lc_droplet_antisymmetric_stress);
 
   return;
 }

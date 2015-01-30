@@ -37,7 +37,6 @@ double lc_droplet_chemical_potential_lc(const int index);
 void lc_droplet_chemical_stress(const int index, double sth[3][3]);
 void lc_droplet_bodyforce(hydro_t * hydro);
 void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]);
-void blue_phase_symmetric_stress(const int index, double sth[3][3]);
-void blue_phase_antisymmetric_stress(const int index, double sth[3][3]);
-int lc_droplet_extract_total_force(hydro_t * hydro);
+void lc_droplet_symmetric_stress(const int index, double sth[3][3]);
+void lc_droplet_antisymmetric_stress(const int index, double sth[3][3]);
 #endif
