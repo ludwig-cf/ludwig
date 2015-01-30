@@ -38,6 +38,8 @@ HOST int physics_b0(double b0[3]);
 HOST int physics_b0_set(double b0[3]);
 HOST int physics_e0(double e0[3]);
 HOST int physics_e0_set(double e0[3]);
+HOST int physics_e0_frequency(double * e0_frequency);
+HOST int physics_e0_frequency_set(double e0_frequency);
 HOST int physics_fbody(double f[3]);
 HOST int physics_fbody_set(double f[3]);
 HOST int physics_fgrav(double g[3]);

@@ -29,6 +29,7 @@
 #include "blue_phase.h"
 #include "blue_phase_init.h"
 #include "blue_phase_rt.h"
+#include "physics.h"
 
 /*****************************************************************************
  *
@@ -53,7 +54,7 @@ void blue_phase_run_time(void) {
   double w1_wall, w2_wall;
   double redshift;
   double epsilon;
-  double electric[3];
+  double e0[3];
 
   info("Blue phase free energy selected.\n");
 
@@ -125,19 +126,13 @@ void blue_phase_run_time(void) {
 
   epsilon = 0.0;
   RUN_get_double_parameter("lc_dielectric_anisotropy", &epsilon);
-  electric[X] = 0.0;
-  electric[Y] = 0.0;
-  electric[Z] = 0.0;
 
-  n = RUN_get_double_parameter_vector("electric_e0", electric);
+  n = RUN_get_double_parameter_vector("electric_e0", e0);
 
   if (n == 1) {
     blue_phase_dielectric_anisotropy_set(epsilon);
-    blue_phase_electric_field_set(electric);
-    info("\n");
+    physics_e0_set(e0);
     info("Dielectric anisotropy      = %14.7e\n", epsilon);
-    info("Electric field             = %14.7e %14.7e %14.7e\n",
-	 electric[X], electric[Y], electric[Z]);
     info("Dimensionless field e      = %14.7e\n",
          blue_phase_dimensionless_field_strength());
   }

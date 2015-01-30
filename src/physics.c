@@ -25,19 +25,19 @@
 #define RHO_DEFAULT 1.0
 
 struct physics_s {
-  double eta_shear;   /* Shear viscosity */
-  double eta_bulk;    /* Bulk viscosity */
-  double kt;          /* Isothermal "temperature" */
-  double rho0;        /* Mean fluid density */
-  double phi0;        /* Mean fluid composition (binary fluid) */
-  double phi_noise0;  /* Initial order parameter noise amplitude */
-  double fbody[3];    /* External body force on fluid */
-  double e0[3];       /* External electric field */
-  double b0[3];       /* External magnetic field */
-  double fgravity[3]; /* Gravitational force (on objects) */
-
-  double mobility;    /* Order parameter mobility (binary fluid) */
-  double lc_gamma_rot;/* Liquid crystal rotational diffusion coefficient */
+  double eta_shear;    /* Shear viscosity */
+  double eta_bulk;     /* Bulk viscosity */
+  double kt;           /* Isothermal "temperature" */
+  double rho0;         /* Mean fluid density */
+  double phi0;         /* Mean fluid composition (binary fluid) */
+  double phi_noise0;   /* Initial order parameter noise amplitude */
+  double fbody[3];     /* External body force on fluid */
+  double e0[3];        /* Amplitude of external electric field */
+  double e0_frequency; /* Frequency of external electric field */ 
+  double b0[3];        /* External magnetic field */
+  double fgravity[3];  /* Gravitational force (on objects) */
+  double mobility;     /* Order parameter mobility (binary fluid) */
+  double lc_gamma_rot; /* Liquid crystal rotational diffusion coefficient */
 };
 
 static physics_t * phys = NULL;
@@ -319,6 +319,36 @@ int physics_e0_set(double e0[3]) {
   phys->e0[0] = e0[0];
   phys->e0[1] = e0[1];
   phys->e0[2] = e0[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_e0_frequency
+ *
+ *****************************************************************************/
+
+int physics_e0_frequency(double * e0_frequency) {
+
+  assert(phys);
+
+  *e0_frequency = phys->e0_frequency;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_e0_frequency_set
+ *
+ *****************************************************************************/
+
+int physics_e0_frequency_set(double e0_frequency) {
+
+  assert(phys);
+
+  phys->e0_frequency = e0_frequency;
 
   return 0;
 }
