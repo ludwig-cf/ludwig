@@ -36,5 +36,6 @@ HOST int hydro_u_zero(hydro_t * obj, const double uzero[3]);
 HOST int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 			    double w[3][3]);
 HOST int hydro_lees_edwards(hydro_t * obj);
+HOST int hydro_correct_momentum(hydro_t * obj);
 
 #endif
