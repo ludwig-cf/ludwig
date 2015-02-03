@@ -26,6 +26,7 @@
 #include "field_grad.h"
 #include "colloids_Q_tensor.h"
 #include "free_energy.h"
+#include "free_energy_tensor.h"
 #include "blue_phase.h"
 #include "blue_phase_init.h"
 #include "blue_phase_rt.h"
@@ -139,6 +140,7 @@ void blue_phase_run_time(void) {
 
   fe_density_set(blue_phase_free_energy_density);
   fe_chemical_stress_set(blue_phase_chemical_stress);
+  fe_t_molecular_field_set(blue_phase_molecular_field);
 
   /* Surface anchoring */
 

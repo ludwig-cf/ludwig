@@ -21,8 +21,7 @@
 #include "colloids.h"
 #include "map.h"
 
-int psi_force_grad_mu(psi_t * psi, hydro_t * hydro);
-int psi_force_gradmu_conserve(psi_t * psi,  hydro_t * hydro,
+int psi_force_gradmu(psi_t * psi,  hydro_t * hydro,
 			map_t * map, colloids_info_t * cinfo);
 int psi_force_divstress(psi_t * psi, hydro_t * hydro, 
 			colloids_info_t * cinfo);

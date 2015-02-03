@@ -270,35 +270,19 @@ void lc_droplet_anchoring_molecular_field(const int index, double h[3][3]) {
 double lc_droplet_chemical_potential(const int index, const int nop) {
   
   double mu;
-  
-  mu = 0;
-  
-  mu = symmetric_chemical_potential(index, nop);
-  mu += lc_droplet_chemical_potential_lc(index);
-
-  return mu;
-}
-  
-/*****************************************************************************
- *
- *  lc_droplet_chemical_potential_lc
- *
- *  Return the chemical potential at lattice site index.
- *
- *****************************************************************************/
-
-double lc_droplet_chemical_potential_lc(const int index) {
-  
   double q[3][3];
   double dphi[3];
   double dq[3][3][3];
   double dabphi[3][3];
   double q2, q3;
-  double mu;
   double wmu;
   double a0;
   int ia, ib, ic;
   
+  mu = 0;
+  
+  mu = symmetric_chemical_potential(index, nop);
+
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
   field_grad_scalar_grad(grad_phi_, index, dphi);
@@ -335,60 +319,10 @@ double lc_droplet_chemical_potential_lc(const int index) {
   }
   
   a0 = blue_phase_a0();
-  mu = -0.5*r3_*a0*delta_*q2 - r3_*a0*delta_*q3 + 0.25*a0*delta_*q2*q2
+  mu += -0.5*r3_*a0*delta_*q2 - r3_*a0*delta_*q3 + 0.25*a0*delta_*q2*q2
     - 2.0*W_*wmu;
-  
+
   return mu;
-}
-
-/*****************************************************************************
- *
- *  lc_droplet_chemical_stress
- *
- *  Return the chemical stress sth[3][3] at lattice site index.
- *
- *****************************************************************************/
-
-void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
-
-  double q[3][3];
-  double dphi[3];
-  double s1[3][3];
-  double s2[3][3];
-  double gamma;
-  double phi;
-  int ia, ib;
-  double f;
-
-  assert(phi_);
-  
-  field_scalar(phi_, index, &phi);
-  field_grad_scalar_grad(grad_phi_, index, dphi);
-  field_tensor(q_, index, q);
-
-  gamma = lc_droplet_gamma_calculate(phi);
-  blue_phase_set_gamma(gamma);
-
-  /* This will be returned with additional -ve sign */
-  blue_phase_chemical_stress(index, s1);
-
-  /* This will have a +ve sign */
-  symmetric_chemical_stress(index, s2);
-
-  /* The whole thing is ... */
-  /* This has an additional -ve sign so the divergence of the stress
-   * can be computed with the correct sign (see blue phase). */
-
-  f = lc_droplet_chemical_potential_lc(index);
-  
-  for (ia = 0; ia < 3; ia++){
-    for(ib = 0; ib < 3; ib++){
-      sth[ia][ib] = -1.0*(-s1[ia][ib] - s2[ia][ib] - f*phi*d_[ia][ib]
-			  - 2.0*W_*dphi[ia]*dphi[ib]*q[ia][ib]);
-    }
-  }
-
-  return;
 }
 
 /*****************************************************************************
@@ -396,13 +330,16 @@ void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
  *  lc_droplet_bodyforce
  *
  *  This computes and stores the force on the fluid via
+ *
  *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
  *
  *  this is appropriate for the LC droplets including symmtric and blue_phase 
- *  free energies.
+ *  free energies. Additonal force terms are included in the stress tensor.
  *
  *  The gradient of the chemical potential is computed as
+ *
  *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
+ *
  *  Lees-Edwards planes are allowed for.
  *
  *****************************************************************************/
@@ -503,31 +440,29 @@ void lc_droplet_bodyforce(hydro_t * hydro) {
 
 /*****************************************************************************
  *
- *  lc_droplet_chemical_stress_lc
+ *  lc_droplet_chemical_stress
  *
- *  Returns the LC component of the LC droplet  
- *  chemical stress sth[3][3] at lattice site index.
- *
- *  Note: This routine is depreciated.
+ *  Return the chemical stress sth[3][3] at lattice site index.
  *
  *****************************************************************************/
-/*
-void lc_droplet_chemical_stress_lc(const int index, double sth[3][3]) {
-  
-  double phi, gamma;
-  
-  assert(phi_);
-  
-  field_scalar(phi_, index, &phi);
-  gamma = lc_droplet_gamma_calculate(phi);
-  blue_phase_set_gamma(gamma);
 
-  // This will be returned with additional -ve sign //
-  blue_phase_chemical_stress(index, sth);
-  
+void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
+
+  double s1[3][3];
+  double s2[3][3];
+  int ia, ib;
+
+  lc_droplet_symmetric_stress(index, s1);
+  lc_droplet_antisymmetric_stress(index, s2);
+
+  for (ia = 0; ia < 3; ia++){
+    for(ib = 0; ib < 3; ib++){
+      sth[ia][ib] = s1[ia][ib] + s2[ia][ib];
+    }
+  }
+
   return;
 }
-*/
 
 /*****************************************************************************
  *

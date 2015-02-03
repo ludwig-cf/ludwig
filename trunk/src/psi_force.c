@@ -30,9 +30,13 @@
 
 static int psi_force_divergence_ = 1;
 
+
 /*****************************************************************************
  *
- *  psi_force_grad_mu
+ *  psi_force_gradmu
+ *
+ *  This routine computes the force on the fluid via the gradient
+ *  of the chemical potential.
  *
  *  The force density is
  *    f_a = - \sum_k rho_k grad_a mu^ex_k
@@ -40,82 +44,6 @@ static int psi_force_divergence_ = 1;
  *  So
  *    f_a = - \sum_k rho_k grad_a z_k e psi
  *        = - rho_el grad_a psi
- *
- *  The external electric field term is just f = rho E_0
- *
- *  We allow hydro to be NULL, in which case there is no force.
- *
- ****************************************************************************/
-
-int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
-
-  int ic, jc, kc, index;
-  int zs, ys, xs;
-  int nlocal[3];
-
-  double rho_elec;
-  double f[3];
-  double e0[3];
-
-  double eunit, reunit, kt;
-
-  if (hydro == NULL) return 0;
-  assert(psi);
-
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
-
-  physics_e0(e0);
-  psi_unit_charge(psi, &eunit);
-  reunit = 1.0/eunit;
-  physics_kt(&kt);
-
-  /* Memory strides */
-  coords_strides(&xs, &ys, &zs);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = coords_index(ic, jc, kc);
-	psi_rho_elec(psi, index, &rho_elec);
-
-	/* "Internal" field */
-
-	f[X] = -0.5*rho_elec*(psi->psi[index + xs] - psi->psi[index - xs]);
-	f[Y] = -0.5*rho_elec*(psi->psi[index + ys] - psi->psi[index - ys]);
-	f[Z] = -0.5*rho_elec*(psi->psi[index + zs] - psi->psi[index - zs]);
-
-	/* External field */
-
-	f[X] += rho_elec*e0[X];
-	f[Y] += rho_elec*e0[Y];
-	f[Z] += rho_elec*e0[Z];
-
-	f[X] *= reunit * kt;
-	f[Y] *= reunit * kt;
-	f[Z] *= reunit * kt;
-
-	hydro_f_local_add(hydro, index, f);
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_force_gradmu_conserve
- *
- *  This routine computes the force on the fluid via the gradient
- *  of the chemical potential.
- *
- *  First, we compute a correction which ensures global net momentum
- *  is unchanged. This must take account of colloids, if present.
- *  (There is no direct force on the colloid in this approach.)
- *
- *  This requires MPI_Allreduce().
  *
  *  The resultant force is accumulated to the hydrodynamic sector.
  *  If hydro is NULL, this routine is a bit over-the-top, but will
@@ -135,7 +63,7 @@ int psi_force_grad_mu(psi_t * psi, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
+int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
 		map_t * map, colloids_info_t * cinfo) {
 
   int ic, jc, kc;
@@ -145,30 +73,24 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 
   double rho_elec;
   double f[3];
-  double flocal[4] = {0.0, 0.0, 0.0, 0.0};
-  double fsum[4];
   double e0[3], elocal[3];
   double eunit, reunit, kt;
 
   colloid_t * pc = NULL;
-  MPI_Comm comm;
 
   assert(psi);
   assert(cinfo);
 
   physics_e0(e0); 
+  physics_kt(&kt);
 
   coords_nlocal(nlocal);
-  comm = cart_comm();
 
   psi_unit_charge(psi, &eunit);
   reunit = 1.0/eunit;
-  physics_kt(&kt);
 
   psi_nk(psi, &nk);
   assert(nk == 2); /* This routine is not completely general */
-
-  /* Compute force without correction. */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -199,9 +121,6 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 
           /* Include ideal gas contribution */   
 /*
-
-	  physics_kt(&kt); 
-
 	  for (n = 0; n < nk; n++) {
 
 	    psi_grad_rho_d3qx(psi, map, index, n, grad_rho);
@@ -213,43 +132,8 @@ int psi_force_gradmu_conserve(psi_t * psi, hydro_t * hydro,
 */
 	  if (hydro) hydro_f_local_add(hydro, index, f);
 
-	  flocal[3] += 1.0;
-
 	}
 
-	/* Accumulate contribution to total force on system */
-
-	flocal[X] += f[X];
-	flocal[Y] += f[Y];
-	flocal[Z] += f[Z];
-      }
-    }
-  }
-
-  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
-
-  fsum[X] /= fsum[3];
-  fsum[Y] /= fsum[3];
-  fsum[Z] /= fsum[3];
-
-
-  /* Now actually compute the force on the fluid with the correction
-     (based on number of fluid nodes) and store */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = coords_index(ic, jc, kc);
-
-	colloids_info_map(cinfo, index, &pc);
-	if (pc) continue;
-
-        f[X] = - fsum[X];
-        f[Y] = - fsum[Y];
-        f[Z] = - fsum[Z];
-
-	if (hydro) hydro_f_local_add(hydro, index, f);
       }
     }
   }

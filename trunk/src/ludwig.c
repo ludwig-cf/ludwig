@@ -486,11 +486,14 @@ void ludwig_run(const char * inputfile) {
 	  TIMER_start(TIMER_FORCE_CALCULATION);
 	  psi_force_is_divergence(&flag);
 
+          /* Force input as body force and momentum correction */
 	  if (flag == 0) {
-	    psi_force_gradmu_conserve(ludwig->psi, ludwig->hydro,
+	    psi_force_gradmu(ludwig->psi, ludwig->hydro,
 				  ludwig->map, ludwig->collinfo);
+	    hydro_correct_momentum(ludwig->hydro);
 	  }
 
+          /* Force calculation as divergence of stress tensor */
 	  if (flag == 1) {
 	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
 				  ludwig->map, ludwig->collinfo);
@@ -528,7 +531,13 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (ncolloid == 0) {
+	  /* Force calculation as divergence of stress tensor */
 	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+	  /* LC-droplet requires partial body force input and momentum correction */
+	  if (ludwig->q && ludwig->phi) {
+	    lc_droplet_bodyforce(ludwig->hydro);
+	    hydro_correct_momentum(ludwig->hydro);
+	  }
 	}
 	else {
 	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map);

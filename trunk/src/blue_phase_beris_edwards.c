@@ -52,6 +52,7 @@
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
+#include "free_energy_tensor.h"
 
 static int blue_phase_be_update(field_t * fq, hydro_t * hydro, advflux_t * f,
 				map_t * map, noise_t * noise);
@@ -137,6 +138,8 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 
   const double dt = 1.0;
 
+  void (* molecular_field)(const int index, double h[3][3]);
+
   assert(fq);
   assert(flux);
   assert(map);
@@ -165,6 +168,8 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
     blue_phase_be_tmatrix_set(tmatrix);
   }
 
+  molecular_field = fe_t_molecular_field();
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -175,7 +180,7 @@ static int blue_phase_be_update(field_t * fq, hydro_t * hydro,
 	if (status != MAP_FLUID) continue;
 
 	field_tensor(fq, index, q);
-	blue_phase_molecular_field(index, h);
+	molecular_field(index, h);
 
 	if (hydro) {
 

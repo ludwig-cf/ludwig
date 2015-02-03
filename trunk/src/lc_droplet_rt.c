@@ -16,6 +16,7 @@
 #include <assert.h>
 
 #include "free_energy.h"
+#include "free_energy_tensor.h"
 #include "runtime.h"
 #include "pe.h"
 #include "lc_droplet.h"
@@ -59,7 +60,8 @@ void lc_droplet_run_time(void) {
 
   fe_density_set(lc_droplet_free_energy_density);
   fe_chemical_potential_set(lc_droplet_chemical_potential);
-  fe_chemical_stress_set(lc_droplet_antisymmetric_stress);
+  fe_chemical_stress_set(lc_droplet_chemical_stress);
+  fe_t_molecular_field_set(lc_droplet_molecular_field);
 
   return;
 }
