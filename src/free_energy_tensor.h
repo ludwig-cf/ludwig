@@ -17,13 +17,13 @@
 #ifndef FREE_ENERGY_TENSOR_H
 #define FREE_ENERGY_TENSOR_H
 
-/* We 'extend' the free energy abstract type via... */
+#include "targetDP.h"
 #include "free_energy.h"
 
-void   fe_t_molecular_field_set(void (* f)(const int index, double h[3][3]));
-void   (* fe_t_molecular_field(void))(const int index, double h[3][3]);
+HOST void   fe_t_molecular_field_set(void (* f)(const int index, double h[3][3]));
+HOST void   (* fe_t_molecular_field(void))(const int index, double h[3][3]);
 
-double fe_xi(void);
-void   fe_xi_set(void);
+HOST double fe_xi(void);
+HOST void   fe_xi_set(void);
 
 #endif

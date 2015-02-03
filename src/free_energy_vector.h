@@ -17,13 +17,13 @@
 #ifndef FREE_ENERGY_VECTOR_H
 #define FREE_ENERGY_VECTOR_H
 
-/* Extend the abstract type via ... */
+#include "targetDP.h"
 #include "free_energy.h"
 
-void   fe_v_molecular_field_set(void (* f)(const int index, double h[3]));
-void   (* fe_v_molecular_field(void))(const int index, double h[3]);
+HOST void   fe_v_molecular_field_set(void (* f)(const int index, double h[3]));
+HOST void   (* fe_v_molecular_field(void))(const int index, double h[3]);
 
-double fe_v_lambda(void);
-void   fe_v_lambda_set(const double);
+HOST double fe_v_lambda(void);
+HOST void   fe_v_lambda_set(const double);
 
 #endif
