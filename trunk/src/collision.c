@@ -433,6 +433,7 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
 			       noise_t * noise, int noise_on,
 			      const int baseIndex){
 
+
   int i,j,m,p;
 
 
@@ -546,9 +547,10 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
   }
   
   
-  for (i = 0; i < 3; i++) {   
-    TARGET_ILP(iv) t_velocity[3*(baseIndex+iv)+i]=SIMD_1D_ELMNT(u,i,iv);
-  }
+    for (i = 0; i < 3; i++) {   
+              TARGET_ILP(iv) t_velocity[HYADR(tc_nSites,3,baseIndex+iv,i)]=SIMD_1D_ELMNT(u,i,iv);
+
+   }
 
   
   /* Compute the thermodynamic component of the stress */

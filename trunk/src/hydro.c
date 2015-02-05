@@ -67,9 +67,15 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
   targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
   targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
 
-
-
+  #ifdef LB_DATA_SOA
+  //we will do nf halo exchanges, each with 1 field
+  coords_field_init_mpi_indexed(nhcomm, 1, MPI_DOUBLE, obj->uhalo);
+  #else
+  //we will do 1 halo exchange, with nf fields
   coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
+  #endif
+
+
 
   *pobj = obj;
 
@@ -109,7 +115,20 @@ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
+  #ifdef LB_DATA_SOA
+  //we will do nf halo exchanges, each with 1 field
+  int ia;
+  int  nsites = le_nsites();
+  for (ia=0;ia<obj->nf;ia++){
+    coords_field_halo(obj->nhcomm, 1, &obj->u[ia*nsites], MPI_DOUBLE, obj->uhalo);
+  }
+  #else
+  //we will do 1 halo exchange, with nf fields
   coords_field_halo(obj->nhcomm, obj->nf, obj->u, MPI_DOUBLE, obj->uhalo);
+  #endif
+
+
+
 
   return 0;
 }
@@ -235,8 +254,10 @@ int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
 
   assert(obj);
 
+  int nsites = le_nsites();
+
   for (ia = 0; ia < 3; ia++) {
-    obj->u[obj->nf*index + ia] = u[ia];
+    obj->u[HYADR(nsites,obj->nf,index,ia)] = u[ia];
   }
 
   return 0;
@@ -254,8 +275,10 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
 
   assert(obj);
 
+  int nsites = le_nsites();
+
   for (ia = 0; ia < 3; ia++) {
-    u[ia] = obj->u[obj->nf*index + ia];
+    u[ia] = obj->u[HYADR(nsites,obj->nf,index,ia)];
   }
 
   return 0;
@@ -354,6 +377,9 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   assert(obj);
 
+
+  int nsites = le_nsites();
+
   if (cart_size(Y) > 1) {
     hydro_lees_edwards_parallel(obj);
   }
@@ -402,8 +428,8 @@ int hydro_lees_edwards(hydro_t * obj) {
 	  index1 = le_site_index(ic, j1, kc);
 	  index2 = le_site_index(ic, j2, kc);
 	  for (ia = 0; ia < 3; ia++) {
-	    obj->u[nf*index0 + ia] = ule[ia] +
-	      fr*obj->u[nf*index1 + ia] + (1.0 - fr)*obj->u[nf*index2 + ia];
+	    obj->u[HYADR(nsites,obj->nf,index0,ia)] = ule[ia] +
+	      fr*obj->u[HYADR(nsites,obj->nf,index1,ia)] + (1.0 - fr)*obj->u[HYADR(nsites,obj->nf,index2,ia)];
 	  }
 	}
       }
@@ -426,6 +452,10 @@ int hydro_lees_edwards(hydro_t * obj) {
  *****************************************************************************/
 
 static int hydro_lees_edwards_parallel(hydro_t * obj) {
+
+  #ifdef LB_DATA_SOA
+  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
+  #endif
 
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
@@ -563,6 +593,10 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
 static int hydro_u_write(FILE * fp, int index, void * arg) {
 
+  #ifdef LB_DATA_SOA
+  fatal("LB_SATA_SOA not supported with hydro_e_write\n");
+  #endif
+
   int n;
   hydro_t * obj = (hydro_t*) arg;
 
@@ -583,14 +617,17 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
 
 static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 
+
   int n;
   hydro_t * obj = (hydro_t*) arg;
 
   assert(fp);
   assert(obj);
 
-  n = fprintf(fp, "%22.15e %22.15e %22.15e\n", obj->u[obj->nf*index + X],
-	      obj->u[obj->nf*index + Y], obj->u[obj->nf*index + Z]);
+  int nsites = le_nsites();
+
+  n = fprintf(fp, "%22.15e %22.15e %22.15e\n", obj->u[HYADR(nsites,obj->nf,index,X)],
+	      obj->u[HYADR(nsites,obj->nf,index,Y)], obj->u[HYADR(nsites,obj->nf,index,Z)]);
 
   /* Expect total of 69 characters ... */
   if (n != 69) fatal("fprintf(hydro->u) failed\n");
@@ -605,6 +642,10 @@ static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
  *****************************************************************************/
 
 int hydro_u_read(FILE * fp, int index, void * self) {
+
+  #ifdef LB_DATA_SOA
+  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
+  #endif
 
   int n;
   hydro_t * obj = (hydro_t*) self;
@@ -633,6 +674,12 @@ int hydro_u_read(FILE * fp, int index, void * self) {
 
 int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 			    double w[3][3]) {
+
+  #ifdef LB_DATA_SOA
+  fatal("LB_SATA_SOA not supported with hydro_u_gradient_tensor\n");
+  #endif
+
+
   int im1, ip1;
   double tr;
 
