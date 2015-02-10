@@ -102,6 +102,7 @@ int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
 int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 void util_swap(int ia, int ib, double a[3], double b[3][3]);
 
+int is_bigendian(void);
 
 int main(int argc, char ** argv) {
 
@@ -473,6 +474,8 @@ void read_meta_data_file(const char * filename) {
   assert(ifail == 1);
   assert(input_isbigendian_ == 0 || input_isbigendian_ == 1);
 
+  if(input_isbigendian_ != is_bigendian())reverse_byte_order_ = 1;
+  
   fgets(tmp, FILENAME_MAX, fp_meta);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &npe);
   assert(ifail == 1);
@@ -1567,3 +1570,18 @@ void util_swap(int ia, int ib, double a[3], double b[3][3]) {
   return;
 }
 
+/***************************************************************************
+ *
+ *  is_bigendian
+ *
+ *  Byte order for this 4-byte int is 00 00 00 01 for big endian (most
+ *  significant byte stored first).
+ *
+ ***************************************************************************/
+
+int is_bigendian() {
+
+  const int i = 1;
+
+  return (*(char *) &i == 0);
+}
