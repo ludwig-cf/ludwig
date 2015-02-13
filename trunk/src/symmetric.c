@@ -30,9 +30,14 @@
 #include "field_s.h"
 #include "field_grad_s.h"
 
-static TARGET_CONST double a_     = -0.003125;
-static TARGET_CONST double b_     = +0.003125;
-static TARGET_CONST double kappa_ = +0.002;
+static double a_     = -0.003125;
+static double b_     = +0.003125;
+static double kappa_ = +0.002;
+
+static TARGET_CONST double t_a_     = -0.003125;
+static TARGET_CONST double t_b_     = +0.003125;
+static TARGET_CONST double t_kappa_ = +0.002;
+
 
 static field_t * phi_ = NULL;
 static field_grad_t * grad_phi_ = NULL;
@@ -78,13 +83,15 @@ HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
 
 HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
-  //  a_ = a;
-  //b_ = b;
-  //kappa_ = kappa;
+  //set host copy
+   a_ = a;
+   b_ = b;
+   kappa_ = kappa;
 
-  __copyConstantToTarget__(&a_, &a, sizeof(double));
-  __copyConstantToTarget__(&b_, &b, sizeof(double));
-  __copyConstantToTarget__(&kappa_, &kappa, sizeof(double));
+  //set target copy
+  __copyConstantToTarget__(&t_a_, &a, sizeof(double));
+  __copyConstantToTarget__(&t_b_, &b, sizeof(double));
+  __copyConstantToTarget__(&t_kappa_, &kappa, sizeof(double));
 
 
   fe_kappa_set(kappa);
@@ -102,10 +109,7 @@ HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa)
 
 HOST double symmetric_a(void) {
 
-  double atmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-
-  return atmp;
+  return a_;
 
 }
 
@@ -117,10 +121,8 @@ HOST double symmetric_a(void) {
 
 HOST double symmetric_b(void) {
 
-  double btmp;
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
+  return b_;
 
-  return btmp;
 }
 
 
@@ -221,12 +223,8 @@ HOST double symmetric_interfacial_tension(void) {
 
   double sigma;
 
-  double atmp, btmp,kappatmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
-  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
 
-  sigma = sqrt(-8.0*kappatmp*atmp*atmp*atmp/(9.0*btmp*btmp));
+  sigma = sqrt(-8.0*kappa_*a_*a_*a_/(9.0*b_*b_));
 
   return sigma;
 }
@@ -241,12 +239,7 @@ HOST double symmetric_interfacial_width(void) {
 
   double xi;
 
-  double atmp, btmp,kappatmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
-  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
-
-  xi = sqrt(-2.0*kappatmp/atmp);
+  xi = sqrt(-2.0*kappa_/a_);
 
   return xi;
 }
@@ -265,11 +258,6 @@ HOST double symmetric_free_energy_density(const int index) {
   double dphi[3];
   double e;
 
-  double atmp, btmp,kappatmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
-  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
-
 
   assert(phi_);
   assert(grad_phi_);
@@ -277,8 +265,8 @@ HOST double symmetric_free_energy_density(const int index) {
   field_scalar(phi_, index, &phi);
   field_grad_scalar_grad(grad_phi_, index, dphi);
 
-  e = 0.5*atmp*phi*phi + 0.25*btmp*phi*phi*phi*phi
-	+ 0.5*kappatmp*dot_product(dphi, dphi);
+  e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi
+	+ 0.5*kappa_*dot_product(dphi, dphi);
 
   return e;
 }
@@ -298,18 +286,13 @@ HOST double symmetric_chemical_potential(const int index, const int nop) {
   double delsq_phi;
   double mu;
 
-  double atmp, btmp,kappatmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
-  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
-
   assert(phi_);
   assert(grad_phi_);
 
   field_scalar(phi_, index, &phi);
   field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
 
-  mu = atmp*phi + btmp*phi*phi*phi - kappatmp*delsq_phi;
+  mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
 
   return mu;
 }
@@ -338,7 +321,7 @@ TARGET double symmetric_chemical_potential_target(const int index, const int nop
   phi=t_phi[index];
   delsq_phi=t_delsqphi[index];
 
-  mu = a_*phi + b_*phi*phi*phi - kappa_*delsq_phi;
+  mu = t_a_*phi + t_b_*phi*phi*phi - t_kappa_*delsq_phi;
 
   return mu;
 }
@@ -380,11 +363,6 @@ HOST double symmetric_isotropic_pressure(const int index) {
   double grad_phi[3];
   double p0;
 
-  double atmp, btmp,kappatmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
-  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
-
   assert(phi_);
   assert(grad_phi_);
 
@@ -392,8 +370,8 @@ HOST double symmetric_isotropic_pressure(const int index) {
   field_grad_scalar_grad(grad_phi_, index, grad_phi);
   field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
 
-  p0 = 0.5*atmp*phi*phi + 0.75*btmp*phi*phi*phi*phi
-    - kappatmp*phi*delsq_phi - 0.5*kappatmp*dot_product(grad_phi, grad_phi);
+  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+    - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
 
   return p0;
 }
@@ -418,11 +396,6 @@ HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
   double grad_phi[3];
   double p0;
 
-  double atmp, btmp,kappatmp;
-  __copyConstantFromTarget__(&atmp, &a_, sizeof(double));
-  __copyConstantFromTarget__(&btmp, &b_, sizeof(double));
-  __copyConstantFromTarget__(&kappatmp, &kappa_, sizeof(double));
-
   assert(phi_);
   assert(grad_phi_);
 
@@ -430,12 +403,12 @@ HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
   field_grad_scalar_grad(grad_phi_, index, grad_phi);
   field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
 
-  p0 = 0.5*atmp*phi*phi + 0.75*btmp*phi*phi*phi*phi
-    - kappatmp*phi*delsq_phi - 0.5*kappatmp*dot_product(grad_phi, grad_phi);
+  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
+    - kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_[ia][ib]	+ kappatmp*grad_phi[ia]*grad_phi[ib];
+      s[ia][ib] = p0*d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
     }
   }
 
@@ -473,9 +446,9 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
     //    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
     //- kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
     
-    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-      - kappa_*phi*delsq_phi 
-      - 0.5*kappa_
+    p0 = 0.5*t_a_*phi*phi + 0.75*t_b_*phi*phi*phi*phi
+      - t_kappa_*phi*delsq_phi 
+      - 0.5*t_kappa_
       *(grad_phi[0]*grad_phi[0]+grad_phi[1]*grad_phi[1]
 	+grad_phi[2]*grad_phi[2]);
     
@@ -483,7 +456,7 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
     
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ILPIDX(ib)] = p0*tc_d_[ia][ib]	+ kappa_*grad_phi[ia]*grad_phi[ib];
+	s[ia][ILPIDX(ib)] = p0*tc_d_[ia][ib]	+ t_kappa_*grad_phi[ia]*grad_phi[ib];
       }
     }
     

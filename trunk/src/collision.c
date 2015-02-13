@@ -918,7 +918,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 #ifdef CUDA        
     copyFromTargetHaloEdge(lb->f,lb->t_f,Nall,nFields,nhalo,TARGET_EDGE); 
-  //copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+    copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
 #else
   copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
