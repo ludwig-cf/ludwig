@@ -52,7 +52,7 @@ static double noise_var[NVEL];  /* Noise variances */
 
 static int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
 static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
-HOST TARGET static int fluctuations_off(double shat[3][3], double ghat[NVEL]);
+__targetHost__ __target__ static int fluctuations_off(double shat[3][3], double ghat[NVEL]);
 static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
 
@@ -62,15 +62,15 @@ static int collision_fluctuations(noise_t * noise, int index,
 typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
 
-HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress);
-HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential);
-HOST void symmetric_phi(double** address_of_ptr);
-HOST void symmetric_gradphi(double** address_of_ptr);
-HOST void symmetric_delsqphi(double** address_of_ptr);
-HOST void symmetric_t_phi(double** address_of_ptr);
-HOST void symmetric_t_gradphi(double** address_of_ptr);
-HOST void symmetric_t_delsqphi(double** address_of_ptr);
-HOST char symmetric_in_use();
+__targetHost__ void get_chemical_stress_target(pth_fntype* t_chemical_stress);
+__targetHost__ void get_chemical_potential_target(mu_fntype* t_chemical_potential);
+__targetHost__ void symmetric_phi(double** address_of_ptr);
+__targetHost__ void symmetric_gradphi(double** address_of_ptr);
+__targetHost__ void symmetric_delsqphi(double** address_of_ptr);
+__targetHost__ void symmetric_t_phi(double** address_of_ptr);
+__targetHost__ void symmetric_t_gradphi(double** address_of_ptr);
+__targetHost__ void symmetric_t_delsqphi(double** address_of_ptr);
+__targetHost__ char symmetric_in_use();
 
 /*****************************************************************************
  *
@@ -355,20 +355,20 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
 /* Constants*/
 
-TARGET_CONST int tc_nSites;
-TARGET_CONST double tc_rtau_shear;
-TARGET_CONST double tc_rtau_bulk;
-TARGET_CONST double tc_rtau_[NVEL];
-TARGET_CONST double tc_wv[NVEL];
-TARGET_CONST double tc_ma_[NVEL][NVEL];
-TARGET_CONST double tc_mi_[NVEL][NVEL];
-TARGET_CONST int tc_cv[NVEL][3];
-TARGET_CONST double tc_rtau2;
-TARGET_CONST double tc_rcs2;
-TARGET_CONST double tc_r2rcs4;
-TARGET_CONST double tc_force_global[3];
-TARGET_CONST double tc_q_[NVEL][3][3];
-TARGET_CONST int tc_nmodes_; 
+__targetConst__ int tc_nSites;
+__targetConst__ double tc_rtau_shear;
+__targetConst__ double tc_rtau_bulk;
+__targetConst__ double tc_rtau_[NVEL];
+__targetConst__ double tc_wv[NVEL];
+__targetConst__ double tc_ma_[NVEL][NVEL];
+__targetConst__ double tc_mi_[NVEL][NVEL];
+__targetConst__ int tc_cv[NVEL][3];
+__targetConst__ double tc_rtau2;
+__targetConst__ double tc_rcs2;
+__targetConst__ double tc_r2rcs4;
+__targetConst__ double tc_force_global[3];
+__targetConst__ double tc_q_[NVEL][3][3];
+__targetConst__ int tc_nmodes_; 
 
 // target copies of fields 
 static double *t_phi; 
@@ -422,7 +422,7 @@ static double *t_gradphi;
 
 
 // first we define the function applied to each lattice site
-TARGET void lb_collision_binary_site( double* __restrict__ t_f, 
+__target__ void lb_collision_binary_site( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
 			      double* __restrict__ t_phi,
@@ -753,7 +753,7 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
 
 
 // full lattice operation
-TARGET_ENTRY void lb_collision_binary_lattice( double* __restrict__ t_f, 
+__targetEntry__ void lb_collision_binary_lattice( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
 			      double* __restrict__ t_phi,
@@ -767,7 +767,7 @@ TARGET_ENTRY void lb_collision_binary_lattice( double* __restrict__ t_f,
   int baseIndex=0;
 
   //partition binary collision kernel across the lattice on the target
-  TARGET_TLP(baseIndex,nSites){
+  __targetTLP__(baseIndex,nSites){
 	
     lb_collision_binary_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,baseIndex);
         
@@ -821,23 +821,23 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
  //start constant setup
 
-  __copyConstantToTarget__(&tc_nmodes_,&nmodes_, sizeof(int));
-  __copyConstantToTarget__(&tc_nmodes_, &nmodes_, sizeof(int));
-  __copyConstantToTarget__(&tc_rtau_shear, &rtau_shear, sizeof(double));
-  __copyConstantToTarget__(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  __copyConstantToTarget__(&tc_r3_, &r3_, sizeof(double));
-  __copyConstantToTarget__(&tc_r2rcs4, &r2rcs4, sizeof(double));
-  __copyConstantToTarget__(tc_rtau_, rtau_, NVEL*sizeof(double));
-  __copyConstantToTarget__(tc_wv, wv, NVEL*sizeof(double));
-  __copyConstantToTarget__(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
-  __copyConstantToTarget__(tc_mi_, mi_, NVEL*NVEL*sizeof(double));
-  __copyConstantToTarget__(tc_cv, cv, NVEL*3*sizeof(int));
-  __copyConstantToTarget__(&tc_rtau2, &rtau2, sizeof(double));
-  __copyConstantToTarget__(&tc_rcs2, &rcs2, sizeof(double));
-  __copyConstantToTarget__(&tc_nSites,&nSites, sizeof(int));
-  __copyConstantToTarget__(tc_force_global,force_global, 3*sizeof(double));
-  __copyConstantToTarget__(tc_d_, d_, 3*3*sizeof(double));
-  __copyConstantToTarget__(tc_q_, q_, NVEL*3*3*sizeof(double));
+  copyConstToTarget(&tc_nmodes_,&nmodes_, sizeof(int));
+  copyConstToTarget(&tc_nmodes_, &nmodes_, sizeof(int));
+  copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
+  copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
+  copyConstToTarget(&tc_r3_, &r3_, sizeof(double));
+  copyConstToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double));
+  copyConstToTarget(tc_rtau_, rtau_, NVEL*sizeof(double));
+  copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
+  copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
+  copyConstToTarget(tc_mi_, mi_, NVEL*NVEL*sizeof(double));
+  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));
+  copyConstToTarget(&tc_rtau2, &rtau2, sizeof(double));
+  copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
+  copyConstToTarget(tc_force_global,force_global, 3*sizeof(double));
+  copyConstToTarget(tc_d_, d_, 3*3*sizeof(double));
+  copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
 
   checkTargetError("constants");
   //end constant setup
@@ -880,12 +880,14 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   symmetric_gradphi(&ptr);
   //copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
   copyToTarget(t_gradphi,ptr,nSites*3*sizeof(double)); 
+
   #endif
 
-
-  //copyToTargetMaskedAoS(hydro->t_f,hydro->f,nSites,3,siteMask); 
-
   copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
+
+
+
+
 
   //end field management
 
@@ -913,12 +915,13 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   }
 
 	
-  lb_collision_binary_lattice TARGET_LAUNCH(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
+  lb_collision_binary_lattice __targetLaunch__(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
 
+  targetSynchronize();
 
 #ifdef CUDA        
-    copyFromTargetHaloEdge(lb->f,lb->t_f,Nall,nFields,nhalo,TARGET_EDGE); 
-    copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+  copyFromTargetBoundary3D(lb->f,lb->t_f,Nall,nFields,nhalo,nhalo); 
+  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
 #else
   copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
@@ -935,7 +938,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
  *
  *****************************************************************************/
 
-HOST TARGET static int fluctuations_off(double shat[3][3], double ghat[NVEL]) {
+__targetHost__ __target__ static int fluctuations_off(double shat[3][3], double ghat[NVEL]) {
 
   int ia, ib;
 

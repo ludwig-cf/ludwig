@@ -34,18 +34,18 @@ static double a_     = -0.003125;
 static double b_     = +0.003125;
 static double kappa_ = +0.002;
 
-static TARGET_CONST double t_a_     = -0.003125;
-static TARGET_CONST double t_b_     = +0.003125;
-static TARGET_CONST double t_kappa_ = +0.002;
+static __targetConst__ double t_a_     = -0.003125;
+static __targetConst__ double t_b_     = +0.003125;
+static __targetConst__ double t_kappa_ = +0.002;
 
 
 static field_t * phi_ = NULL;
 static field_grad_t * grad_phi_ = NULL;
 
 
-// flag to track whether this module has been initiated
+// flag to track whHether this module has been initiated
 static char symmetric_flag=0;
-HOST char symmetric_in_use(){ return symmetric_flag; }
+__targetHost__ char symmetric_in_use(){ return symmetric_flag; }
 
 
 
@@ -58,7 +58,7 @@ HOST char symmetric_in_use(){ return symmetric_flag; }
  *
  ****************************************************************************/
 
-HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
+__targetHost__ int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
 
   assert(phi);
   assert(dphi);
@@ -81,7 +81,7 @@ HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
  *
  ****************************************************************************/
 
-HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
+__targetHost__ void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
   //set host copy
    a_ = a;
@@ -89,9 +89,9 @@ HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa)
    kappa_ = kappa;
 
   //set target copy
-  __copyConstantToTarget__(&t_a_, &a, sizeof(double));
-  __copyConstantToTarget__(&t_b_, &b, sizeof(double));
-  __copyConstantToTarget__(&t_kappa_, &kappa, sizeof(double));
+  copyConstToTarget(&t_a_, &a, sizeof(double));
+  copyConstToTarget(&t_b_, &b, sizeof(double));
+  copyConstToTarget(&t_kappa_, &kappa, sizeof(double));
 
 
   fe_kappa_set(kappa);
@@ -107,7 +107,7 @@ HOST void symmetric_free_energy_parameters_set(double a, double b, double kappa)
  *
  ****************************************************************************/
 
-HOST double symmetric_a(void) {
+__targetHost__ double symmetric_a(void) {
 
   return a_;
 
@@ -119,7 +119,7 @@ HOST double symmetric_a(void) {
  *
  ****************************************************************************/
 
-HOST double symmetric_b(void) {
+__targetHost__ double symmetric_b(void) {
 
   return b_;
 
@@ -132,7 +132,7 @@ HOST double symmetric_b(void) {
  *
  ****************************************************************************/
 
-HOST void symmetric_phi(double** address_of_ptr) {
+__targetHost__ void symmetric_phi(double** address_of_ptr) {
 
   *address_of_ptr = phi_->data;
 
@@ -146,7 +146,7 @@ HOST void symmetric_phi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-HOST void symmetric_t_phi(double** address_of_ptr) {
+__targetHost__ void symmetric_t_phi(double** address_of_ptr) {
 
   *address_of_ptr = phi_->t_data;
 
@@ -160,7 +160,7 @@ HOST void symmetric_t_phi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-HOST void symmetric_gradphi(double** address_of_ptr) {
+__targetHost__ void symmetric_gradphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->grad;
   
@@ -174,7 +174,7 @@ HOST void symmetric_gradphi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-HOST void symmetric_t_gradphi(double** address_of_ptr) {
+__targetHost__ void symmetric_t_gradphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->t_grad;
   
@@ -187,7 +187,7 @@ HOST void symmetric_t_gradphi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-HOST void symmetric_delsqphi(double** address_of_ptr) {
+__targetHost__ void symmetric_delsqphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->delsq;
 
@@ -202,7 +202,7 @@ HOST void symmetric_delsqphi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-HOST void symmetric_t_delsqphi(double** address_of_ptr) {
+__targetHost__ void symmetric_t_delsqphi(double** address_of_ptr) {
 
   *address_of_ptr = grad_phi_->t_delsq;
 
@@ -219,7 +219,7 @@ HOST void symmetric_t_delsqphi(double** address_of_ptr) {
  *
  ****************************************************************************/
 
-HOST double symmetric_interfacial_tension(void) {
+__targetHost__ double symmetric_interfacial_tension(void) {
 
   double sigma;
 
@@ -235,7 +235,7 @@ HOST double symmetric_interfacial_tension(void) {
  *
  ****************************************************************************/
 
-HOST double symmetric_interfacial_width(void) {
+__targetHost__ double symmetric_interfacial_width(void) {
 
   double xi;
 
@@ -252,7 +252,7 @@ HOST double symmetric_interfacial_width(void) {
  *
  ****************************************************************************/
 
-HOST double symmetric_free_energy_density(const int index) {
+__targetHost__ double symmetric_free_energy_density(const int index) {
 
   double phi;
   double dphi[3];
@@ -280,7 +280,7 @@ HOST double symmetric_free_energy_density(const int index) {
  *
  ****************************************************************************/
 
-HOST double symmetric_chemical_potential(const int index, const int nop) {
+__targetHost__ double symmetric_chemical_potential(const int index, const int nop) {
 
   double phi;
   double delsq_phi;
@@ -298,12 +298,12 @@ HOST double symmetric_chemical_potential(const int index, const int nop) {
 }
 
 
-//TODO currently we have duplicate HOST and TARGET versions of potential and stress routines 
+//TODO currently we have duplicate __targetHost__ and __target__ versions of potential and stress routines 
 
 //TODO vectorise
 
 
-TARGET double symmetric_chemical_potential_target(const int index, const int nop, const double* t_phi, const double* t_delsqphi) {
+__target__ double symmetric_chemical_potential_target(const int index, const int nop, const double* t_phi, const double* t_delsqphi) {
 
   double phi;
   double delsq_phi;
@@ -327,16 +327,16 @@ TARGET double symmetric_chemical_potential_target(const int index, const int nop
 }
 
 // pointer to above target function. 
-TARGET mu_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
+__target__ mu_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
 
 
 
-HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
+__targetHost__ void get_chemical_potential_target(mu_fntype* t_chemical_potential){
 
   mu_fntype h_chemical_potential; //temp host copy of fn addess
 
   //get host copy of function pointer
-  __copyConstantFromTarget__(&h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
+  copyConstFromTarget(&h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
 
   //and put back on target, now in an accessible location
   copyToTarget( t_chemical_potential, &h_chemical_potential,sizeof(mu_fntype));
@@ -356,7 +356,7 @@ HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential){
  *
  ****************************************************************************/
 
-HOST double symmetric_isotropic_pressure(const int index) {
+__targetHost__ double symmetric_isotropic_pressure(const int index) {
 
   double phi;
   double delsq_phi;
@@ -388,7 +388,7 @@ HOST double symmetric_isotropic_pressure(const int index) {
  *
  ****************************************************************************/
 
-HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
+__targetHost__ void symmetric_chemical_stress(const int index, double s[3][3]) {
 
   int ia, ib;
   double phi;
@@ -415,7 +415,7 @@ HOST void symmetric_chemical_stress(const int index, double s[3][3]) {
   return;
 }
 
-TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP], const double* t_phi,  const double* t_gradphi, const double* t_delsqphi) {
+__target__ void symmetric_chemical_stress_target(const int index, double s[3][3*NILP], const double* t_phi,  const double* t_gradphi, const double* t_delsqphi) {
   
   int ia, ib;
   double phi;
@@ -469,15 +469,15 @@ TARGET void symmetric_chemical_stress_target(const int index, double s[3][3*NILP
 }
 
 // pointer to above target function. 
-TARGET pth_fntype p_symmetric_chemical_stress_target = symmetric_chemical_stress_target;
+__target__ pth_fntype p_symmetric_chemical_stress_target = symmetric_chemical_stress_target;
 
 
-HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress){
+__targetHost__ void get_chemical_stress_target(pth_fntype* t_chemical_stress){
 
   pth_fntype h_chemical_stress; //temp host copy of fn addess
 
   //get host copy of function pointer
-  __copyConstantFromTarget__(&h_chemical_stress, &p_symmetric_chemical_stress_target,sizeof(pth_fntype) );
+  copyConstFromTarget(&h_chemical_stress, &p_symmetric_chemical_stress_target,sizeof(pth_fntype) );
 
   //and put back on target, now in an accessible location
   copyToTarget( t_chemical_stress, &h_chemical_stress,sizeof(pth_fntype));
