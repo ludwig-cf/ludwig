@@ -293,42 +293,30 @@ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 
 
 
-int haloEdge(int index, int extents[3],int nhalo, int haloOrEdge){
+int haloEdge(int index, int extents[3],int offset, int depth){
 
   int coords[3];
 
 
-  GET_3DCOORDS_FROM_INDEX(index,coords,extents);
+  targetCoords3D(coords,extents,index);
 
   int returncode=0;
 
   int i;
 
 
-  if (haloOrEdge==TARGET_HALO){
+
     for (i=0;i<3;i++){
       if ( 
-	  (coords[i]<nhalo) || 
-	  (coords[i] >= (extents[i]-nhalo) )
-	   ) returncode=1;
-    }
-  }
-
-
-
-  if (haloOrEdge==TARGET_EDGE){
-    for (i=0;i<3;i++){
-      if ( 
-	  (coords[i]>=nhalo) && 
-	  (coords[i]<2*nhalo)  
+	  (coords[i]>=(offset)) && 
+	  (coords[i]<(offset+depth))  
 	  
 	   ) returncode=1;
       
       if ( 
-	  (coords[i] >= (extents[i]-2*nhalo) ) && 
-	  (coords[i] < (extents[i]-nhalo) )   
+	  (coords[i] >= (extents[i]-offset-depth) ) && 
+	  (coords[i] < (extents[i]-offset) )   
 	   ) returncode=1;
-    }
 
 
   }
@@ -340,7 +328,9 @@ int haloEdge(int index, int extents[3],int nhalo, int haloOrEdge){
 
 }
 
-void copyFromTargetHaloEdge(double *data,const double* targetData,int extents[3], size_t nfields, int nhalo,int haloOrEdge){
+
+
+void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth){
 
 
   size_t nsites=extents[0]*extents[1]*extents[2];
@@ -360,7 +350,7 @@ void copyFromTargetHaloEdge(double *data,const double* targetData,int extents[3]
   //get compression mapping
   int j=0;
   for (i=0; i<nsites; i++){
-    if(haloEdge(i,extents,nhalo,haloOrEdge)){
+    if(haloEdge(i,extents,offset,depth)){
       fullindex[j]=i;
       j++;
     }
@@ -393,7 +383,7 @@ void copyFromTargetHaloEdge(double *data,const double* targetData,int extents[3]
       
       j=0;
       for (index=0; index<nsites; index++){
-	if(haloEdge(index,extents,nhalo,haloOrEdge)){
+	if(haloEdge(index,extents,offset,depth)){
 	  data[i*nsites+index]=tmpGrid[i*packedsize+j];	
 	  j++;
 	}
@@ -406,7 +396,7 @@ void copyFromTargetHaloEdge(double *data,const double* targetData,int extents[3]
 
 }
 
-void copyToTargetHaloEdge(double *targetData,const double* data, int extents[3], size_t nfields, int nhalo,int haloOrEdge){
+void copyToTargetBoundary3D(double *targetData,const double* data, int extents[3], size_t nfields, int offset,int depth){
 
   size_t nsites=extents[0]*extents[1]*extents[2];
 
@@ -419,10 +409,11 @@ void copyToTargetHaloEdge(double *targetData,const double* data, int extents[3],
   double* tmpGrid = dwork;
   double* tmpGrid_d = dwork_d;
 
+
   //get compression mapping
   int j=0;
   for (i=0; i<nsites; i++){
-    if(haloEdge(i,extents,nhalo,haloOrEdge)){
+    if(haloEdge(i,extents,offset,depth)){
       fullindex[j]=i;
       j++;
     }
@@ -443,7 +434,7 @@ void copyToTargetHaloEdge(double *targetData,const double* data, int extents[3],
       
       j=0;
       for (index=0; index<nsites; index++){
-	if(haloEdge(index,extents,nhalo,haloOrEdge)){
+	if(haloEdge(index,extents,offset,depth)){
 	  tmpGrid[i*packedsize+j]=data[i*nsites+index];
 	  j++;
 	}
@@ -604,7 +595,7 @@ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites
 
 
 
-void syncTarget(){
+void targetSynchronize(){
   cudaThreadSynchronize();
   checkTargetError("syncTarget");
   return;

@@ -149,7 +149,7 @@ void copyFromTargetMaskedAoS(double *data,const double* targetData,const size_t 
 }
 
 
-void syncTarget(){
+void targetSynchronize(){
   return;
 }
 
