@@ -37,8 +37,8 @@ const double e_[3][3][3] = {{{c0, c0, c0}, { c0, c0, c1}, {c0,-c1, c0}},
 			    {{c0, c0,-c1}, { c0, c0, c0}, {c1, c0, c0}},
 			    {{c0, c1, c0}, {-c1, c0, c0}, {c0, c0, c0}}}; 
 
-TARGET_CONST double tc_r3_; 
-TARGET_CONST double tc_d_[3][3];
+__targetConst__ double tc_r3_; 
+__targetConst__ double tc_d_[3][3];
 
 static void util_swap(int ia, int ib, double a[3], double b[3][3]);
 
