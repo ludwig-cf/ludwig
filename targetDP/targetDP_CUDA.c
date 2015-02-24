@@ -18,7 +18,7 @@ static int* iwork;
 static int* iwork_d;
 
 
-void checkTargetError(const char *msg)
+__targetHost__ void checkTargetError(const char *msg)
 {
 	cudaError_t err = cudaGetLastError();
 	if( cudaSuccess != err) 
@@ -31,7 +31,7 @@ void checkTargetError(const char *msg)
 	}                         
 }
 
-void targetMalloc(void **address_of_ptr,size_t size){
+__targetHost__ void targetMalloc(void **address_of_ptr,size_t size){
 
  
   cudaMalloc(address_of_ptr,size);
@@ -40,7 +40,7 @@ void targetMalloc(void **address_of_ptr,size_t size){
   return;
 }
 
-void targetInit(size_t nsites, size_t nfieldsmax){
+__targetHost__ void targetInit(size_t nsites, size_t nfieldsmax){
 
 
   // allocate internal work space
@@ -61,7 +61,7 @@ void targetInit(size_t nsites, size_t nfieldsmax){
   return;
 }
 
-void targetFinalize(){
+__targetHost__ void targetFinalize(){
 
   free(iwork);
   free(dwork);
@@ -69,7 +69,7 @@ void targetFinalize(){
   cudaFree(dwork_d);
 }
 
-void targetCalloc(void **address_of_ptr,size_t size){
+__targetHost__ void targetCalloc(void **address_of_ptr,size_t size){
 
  
   cudaMalloc(address_of_ptr,size);
@@ -80,14 +80,14 @@ void targetCalloc(void **address_of_ptr,size_t size){
   return;
 }
 
-void copyToTarget(void *targetData,const void* data,size_t size){
+__targetHost__ void copyToTarget(void *targetData,const void* data,size_t size){
 
   cudaMemcpy(targetData,data,size,cudaMemcpyHostToDevice);
   checkTargetError("copyToTarget");
   return;
 }
 
-void copyFromTarget(void *data,const void* targetData,size_t size){
+__targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size){
 
   cudaMemcpy(data,targetData,size,cudaMemcpyDeviceToHost);
   checkTargetError("copyFromTarget");
@@ -165,7 +165,7 @@ __global__ static void copy_field_partial_gpu_AoS_d(double* f_out, const double*
 
 
 
-void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
+__targetHost__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -229,7 +229,7 @@ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 }
 
 
-void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+__targetHost__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -330,7 +330,7 @@ int haloEdge(int index, int extents[3],int offset, int depth){
 
 
 
-void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth){
+__targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth){
 
 
   size_t nsites=extents[0]*extents[1]*extents[2];
@@ -396,7 +396,7 @@ void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[
 
 }
 
-void copyToTargetBoundary3D(double *targetData,const double* data, int extents[3], size_t nfields, int offset,int depth){
+__targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data, int extents[3], size_t nfields, int offset,int depth){
 
   size_t nsites=extents[0]*extents[1]*extents[2];
 
@@ -465,7 +465,7 @@ void copyToTargetBoundary3D(double *targetData,const double* data, int extents[3
 
 
 
-void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
+__targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -529,7 +529,7 @@ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
   
 }
 
-void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
+__targetHost__ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -595,13 +595,13 @@ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites
 
 
 
-void targetSynchronize(){
+__targetHost__ void targetSynchronize(){
   cudaThreadSynchronize();
   checkTargetError("syncTarget");
   return;
 }
 
-void targetFree(void *ptr){
+__targetHost__ void targetFree(void *ptr){
   
   cudaFree(ptr);
   checkTargetError("targetFree");
