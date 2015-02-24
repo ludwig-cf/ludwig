@@ -175,27 +175,27 @@ enum {TARGET_HALO,TARGET_EDGE};
 
 /* API */
 
-void targetInit(size_t nsites,size_t nfieldsmax);
-void targetFinalize();
-void checkTargetError(const char *msg);
-void copyToTarget(void *targetData,const void* data,size_t size);
-void copyFromTarget(void *data,const void* targetData,size_t size);
-void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
+__targetHost__ void targetInit(size_t nsites,size_t nfieldsmax);
+__targetHost__ void targetFinalize();
+__targetHost__ void checkTargetError(const char *msg);
+__targetHost__ void copyToTarget(void *targetData,const void* data,size_t size);
+__targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size);
+__targetHost__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
-void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+__targetHost__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask);
-void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
+__targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
-void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
+__targetHost__ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask);
 
-void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth);
-void copyToTargetBoundary3D(double *targetData,const double* data,int extents[3], size_t nfields, int offset,int depth);
-void targetSynchronize();
-void targetFree(void *ptr);
-void checkTargetError(const char *msg);
-void targetMalloc(void **address_of_ptr,const size_t size);
-void targetCalloc(void **address_of_ptr,const size_t size);
-void targetFree(void *ptr);
+__targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth);
+__targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data,int extents[3], size_t nfields, int offset,int depth);
+__targetHost__ void targetSynchronize();
+__targetHost__ void targetFree(void *ptr);
+__targetHost__ void checkTargetError(const char *msg);
+__targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
+__targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
+__targetHost__ void targetFree(void *ptr);
 
 #endif
