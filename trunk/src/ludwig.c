@@ -34,6 +34,7 @@
 
 #include "model.h"
 #include "model_le.h"
+#include "lb_model_s.h"
 #include "bbl.h"
 
 #include "collision.h"
@@ -401,6 +402,19 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
+
+
+#ifdef CUDAHOST  //temporary optimisation specific to GPU code for benchmarking 
+    int nlocal[3];
+    coords_nlocal(nlocal);
+    int nhalo = coords_nhalo();
+    int Nall[3];
+    Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+    int nSites=Nall[X]*Nall[Y]*Nall[Z];
+    int nFields=NVEL*ludwig->lb->ndist;
+    copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));  
+#endif
+  
   /* Main time stepping loop */
 
   info("\n");
@@ -408,6 +422,7 @@ void ludwig_run(const char * inputfile) {
   subgrid_on(&is_subgrid);
 
   while (next_step()) {
+
 
     TIMER_start(TIMER_STEPS);
     step = get_step();
@@ -423,6 +438,7 @@ void ludwig_run(const char * inputfile) {
     /* if symmetric_lb store phi to field */
 
     lb_ndist(ludwig->lb, &im);
+
     if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
 
     if (ludwig->phi) {
@@ -613,6 +629,14 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_stop(TIMER_STEPS);
 
+    
+#ifdef CUDAHOST //temporary optimisation specific to GPU code for benchmarking
+    copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
+#endif
+
+
+
+
     /* Configuration dump */
 
     if (is_config_step()) {
@@ -729,6 +753,9 @@ void ludwig_run(const char * inputfile) {
 
     stats_calibration_accumulate(ludwig->collinfo, step, ludwig->hydro,
 				 ludwig->map);
+
+
+
 
     /* Next time step */
   }

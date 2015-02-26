@@ -59,7 +59,8 @@ ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_21
 #TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
 TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc #-g -G
-LIBS = -lm -L../targetDP -ltargetDP_CUDA
+OPTS += -DCUDAHOST
+LIBS = -lm -L../targetDP -ltargetDP_CUDA  
 else
 TARGETCC = $(CC)
 TARGETOPTS = $(OPTS)
@@ -119,7 +120,7 @@ OBJS = \
      angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o \
      phi_force.o phi_force_colloid.o phi_force_stress.o \
-     phi_lb_coupler.o phi_stats.o \
+     phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o \
@@ -135,7 +136,7 @@ OBJS = \
      timer.o wall.o colloids_Q_tensor.o ludwig.o
 
 TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
-	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o
+	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o
 
 ###############################################################################
 #

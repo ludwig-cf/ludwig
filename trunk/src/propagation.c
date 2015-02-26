@@ -212,8 +212,8 @@ extern __targetConst__ int tc_nhalo;
  *
  *****************************************************************************/
 
-__target__  void lb_propagate_d3q19_site(double* t_f, 
-				     double* t_fprime, 
+__target__  void lb_propagate_d3q19_site(const double* __restrict__ t_f, 
+				      double* t_fprime, 
 				     const int baseIndex){
   
 
@@ -360,7 +360,7 @@ __target__  void lb_propagate_d3q19_site(double* t_f,
 
 }
 
-__targetEntry__  void lb_propagate_d3q19_lattice(double* t_f, 
+__targetEntry__  void lb_propagate_d3q19_lattice(const double* __restrict__ t_f, 
 					      double* t_fprime){
 
 
@@ -402,9 +402,7 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   //end constant setup
 
-#ifdef CUDA
-  //  copyToTargetHaloEdge(lb->t_f,lb->f,Nall,nFields,nhalo,TARGET_HALO); 
-
+#ifdef CUDA //temporary optimisation specific to GPU code for benchmarking
   copyToTargetBoundary3D(lb->t_f,lb->f,Nall,nFields,0,nhalo); 
 #else
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
@@ -413,8 +411,13 @@ static int lb_propagate_d3q19(lb_t * lb) {
   lb_propagate_d3q19_lattice __targetLaunchNoStride__(nSites) (lb->t_f,lb->t_fprime);
   targetSynchronize();
 
-  copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
-
+#ifdef CUDA //temporary optimisation specific to GPU code for benchmarking
+  double* tmp=lb->t_fprime;
+  lb->t_fprime=lb->t_f;
+  lb->t_f=tmp;
+#else
+    copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
+#endif
 
   return 0;
 }
