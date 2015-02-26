@@ -858,14 +858,16 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   symmetric_t_delsqphi(&t_delsqphi);
 
 
-  //copyToTargetMaskedAoS(lb->t_f,lb->f,nSites,nFields,siteMask); 
-  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
+
+
 
 
   //for GPU version, we use the data already existing on the target 
   //for C version, we put data on the target (for now).
   //ultimitely GPU and C versions will follow the same pattern
-  #ifndef CUDA
+  #ifndef CUDA //temporary optimisation specific to GPU code for benchmarking
+
+  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 
   double *ptr;
 
@@ -919,7 +921,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   targetSynchronize();
 
-#ifdef CUDA        
+#ifdef CUDA  //temporary optimisation specific to GPU code for benchmarking
   copyFromTargetBoundary3D(lb->f,lb->t_f,Nall,nFields,nhalo,nhalo); 
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
 #else

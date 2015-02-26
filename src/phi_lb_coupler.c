@@ -18,6 +18,8 @@
 #include "pe.h"
 #include "coords.h"
 #include "model.h"
+#include "lb_model_s.h"
+#include "field_s.h"
 #include "phi_lb_coupler.h"
 
 /*****************************************************************************
@@ -26,32 +28,99 @@
  *
  *****************************************************************************/
 
-int phi_lb_to_field(field_t * phi, lb_t  *lb) {
+//TODO declare these somewhere sensible.
+extern __targetConst__ int tc_nSites; //declared in collision.c
+extern __targetConst__ int tc_Nall[3]; //declared in gradient routine
+extern __targetConst__ int tc_nhalo;
+extern __targetConst__ int tc_ndist;
+
+
+__target__ int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
+
+  double phi0=0.;
+
+  int coords[3];
+  targetCoords3D(coords,tc_Nall,baseIndex);
+  
+  // if not a halo site:
+  if (coords[0] >= tc_nhalo &&
+      coords[1] >= tc_nhalo &&
+      coords[2] >= tc_nhalo &&
+      coords[0] < tc_Nall[X]-tc_nhalo &&
+      coords[1] < tc_Nall[Y]-tc_nhalo &&
+      coords[2] < tc_Nall[Z]-tc_nhalo){
+    
+    
+    //lb_0th_moment(lb, baseIndex, LB_PHI, &phi0);
+    
+    int p;
+     for (p = 0; p < NVEL; p++) {
+      phi0 += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, LB_PHI, p)];
+    }
+    
+     //field_scalar_set(phi, baseIndex, phi0);
+     phi[baseIndex]=phi0;
+
+    
+    
+  }
+  
+
+  return 0;
+}
+
+
+__targetEntry__ void phi_lb_to_field_lattice(double * phi, double * f) {
+
+  int baseIndex=0;
+
+  __targetTLPNoStride__(baseIndex,tc_nSites){	  
+    phi_lb_to_field_site(phi, f, baseIndex);
+  }
+
+
+  return;
+}
+
+
+
+__targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  coords_nlocal(nlocal);
+  int nhalo = coords_nhalo();
 
   double phi0;
+
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  int nFields=NVEL*lb->ndist;
 
   assert(phi);
   assert(lb);
   coords_nlocal(nlocal);
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+  //start constant setup
+  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
+  //end constant setup
 
-	index = coords_index(ic, jc, kc);
+#ifndef CUDA   //temporary optimisation specific to GPU code for benchmarking
+  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
+#endif
 
-	lb_0th_moment(lb, index, LB_PHI, &phi0);
-	field_scalar_set(phi, index, phi0);
+  phi_lb_to_field_lattice __targetLaunchNoStride__(nSites) (phi->t_data, lb->t_f);
 
-      }
-    }
-  }
+  copyFromTarget(phi->data,phi->t_data,nSites*sizeof(double)); 
 
   return 0;
 }
+
 
 /*****************************************************************************
  *
@@ -63,7 +132,7 @@ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
  *
  *****************************************************************************/
 
-int phi_lb_from_field(field_t * phi, lb_t * lb) {
+__targetHost__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
   int p;
   int ic, jc, kc, index;
