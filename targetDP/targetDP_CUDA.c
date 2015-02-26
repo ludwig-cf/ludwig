@@ -378,18 +378,17 @@ __targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetDa
 
     
   //expand into final grid
-  for (i=0;i<nfields;i++)
-    {
+
+  j=0;
+  for (index=0; index<nsites; index++){
+    if(haloEdge(index,extents,offset,depth)){
+      for (i=0;i<nfields;i++)
+	data[i*nsites+index]=tmpGrid[i*packedsize+j];	
       
-      j=0;
-      for (index=0; index<nsites; index++){
-	if(haloEdge(index,extents,offset,depth)){
-	  data[i*nsites+index]=tmpGrid[i*packedsize+j];	
-	  j++;
-	}
-      }
-      
+      j++;
     }
+  }
+      
 
   checkTargetError("copyFromTargetHaloEdge");
   return;
@@ -427,26 +426,23 @@ __targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data
   cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
 
 
-    
-  //compress grid
-  for (i=0;i<nfields;i++)
-    {
-      
-      j=0;
-      for (index=0; index<nsites; index++){
-	if(haloEdge(index,extents,offset,depth)){
-	  tmpGrid[i*packedsize+j]=data[i*nsites+index];
-	  j++;
-	}
-      }
-      
-    }
 
+    
+  //  compress grid
+        
+  j=0;
+  for (index=0; index<nsites; index++){
+    if(haloEdge(index,extents,offset,depth)){
+      for (i=0;i<nfields;i++)  
+	tmpGrid[i*packedsize+j]=data[i*nsites+index];
+      j++;
+    }
+  }
+  
+  
 
   //put compressed grid on GPU
   cudaMemcpy(tmpGrid_d, tmpGrid, packedsize*nfields*sizeof(double), cudaMemcpyHostToDevice); 
-
-
 
   //uncompress grid on GPU
   int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
