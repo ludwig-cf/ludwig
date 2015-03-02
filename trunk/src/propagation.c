@@ -201,6 +201,7 @@ extern __targetConst__ int tc_nSites; //declared in collision.c
 extern __targetConst__ int tc_Nall[3]; //declared in gradient routine
 
 __targetConst__ int tc_ndist;
+extern __targetConst__ int tc_cv[NVEL][3]; //declared in collision.c
 extern __targetConst__ int tc_nhalo;
 
 
@@ -218,146 +219,113 @@ __target__  void lb_propagate_d3q19_site(const double* __restrict__ t_f,
   
 
 
+
   int coords[3];
-  targetCoords3D(coords,tc_Nall,baseIndex);
-
-  int n;
-
-  // if not a halo site:
-  if (coords[0] >= tc_nhalo && 
-      coords[1] >= tc_nhalo && 
-      coords[2] >= tc_nhalo &&
-      coords[0] < tc_Nall[X]-tc_nhalo &&  
-      coords[1] < tc_Nall[Y]-tc_nhalo &&  
-      coords[2] < tc_Nall[Z]-tc_nhalo){ 
-
-	for (n = 0; n < tc_ndist; n++) {
-
-	  
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 0)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 0)];
-
-	  int shiftIndex;
-
-	  shiftIndex=targetIndex3D(coords[0]-1,coords[1]-1,coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 1)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 1)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]-1,coords[1],coords[2]-1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 2)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 2)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 3)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 3)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]-1,coords[1],coords[2]+1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 4)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 4)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]-1,coords[1]+1,coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 5)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 5)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1]-1,coords[2]-1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 6)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 6)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 7)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 7)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1]-1,coords[2]+1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 8)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 8)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 9)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 9)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 10)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 10)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1]+1,coords[2]-1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 11)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 11)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 12)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 12)];
-
-
-	  shiftIndex=targetIndex3D(coords[0],coords[1]+1,coords[2]+1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 13)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 13)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]+1,coords[1]-1,coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 14)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 14)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]+1,coords[1],coords[2]-1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 15)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 15)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 16)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 16)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]+1,coords[1],coords[2]+1,tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 17)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 17)];
-
-
-	  shiftIndex=targetIndex3D(coords[0]+1,coords[1]+1,coords[2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, 18)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, 18)];
-
-
-
-	}
-
-
- 
-    }
-
-    else{ //direct copy of t_f to t_fprime for halo sites 
-
-	for (n = 0; n < tc_ndist; n++) {
-
-	  int ip;
-	  for (ip=0;ip<NVEL;ip++){
-
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, ip)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, n, ip)]; 
-
-	  }
-
-
-
-	}
-      
-
-    }
   
-
-
-
+  int n,p;
+  int vecIndex=0;
+  int shiftIndex;
+  
+  char halo_site=0;
+  __targetILP__(vecIndex){
+    targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
+    if (  coords[0] < tc_nhalo ||
+	  coords[1] < tc_nhalo || 
+	  coords[2] < tc_nhalo ||
+	  coords[0] >= tc_Nall[X]-tc_nhalo || 
+	  coords[1] >= tc_Nall[Y]-tc_nhalo ||  
+	  coords[2] >= tc_Nall[Z]-tc_nhalo) halo_site=1;
+  }
+  
+  // if not a halo site:
+  if (  !halo_site){ 
+    
+    for (n = 0; n < tc_ndist; n++) {
+      
+      
+      for (p=0;p<NVEL;p++){
+	
+	
+	__targetILP__(vecIndex){
+	  targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
+	  shiftIndex=targetIndex3D(coords[0]-tc_cv[p][0],coords[1]-tc_cv[p][1],coords[2]-tc_cv[p][2],tc_Nall);
+	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL,baseIndex+vecIndex , n, p)] 
+	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, p)];
+	}
+      }
+      
+      
+      
+    }
+    
+    
+    
+  }
+  
+  
+  else { //mopping up chunks that include halo sites
+    
+    
+    __targetILP__(vecIndex){
+      
+      halo_site=0;
+      
+      targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
+      if (  coords[0] < tc_nhalo ||
+	    coords[1] < tc_nhalo || 
+	    coords[2] < tc_nhalo ||
+	    coords[0] >= tc_Nall[X]-tc_nhalo || 
+	    coords[1] >= tc_Nall[Y]-tc_nhalo ||  
+	    coords[2] >= tc_Nall[Z]-tc_nhalo) halo_site=1;
+      
+      
+      if(!halo_site){
+	
+	for (n = 0; n < tc_ndist; n++) {
+	  
+	  
+	  for (p=0;p<NVEL;p++){
+	    
+	    
+	    targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
+	    shiftIndex=targetIndex3D(coords[0]-tc_cv[p][0],coords[1]-tc_cv[p][1],coords[2]-tc_cv[p][2],tc_Nall);
+	    t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+vecIndex, n, p)] 
+	      = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, p)];
+	    
+	  }
+	  
+	}
+      }
+      else if (  coords[0] < tc_Nall[X] &&
+		 coords[1] < tc_Nall[Y] && 
+		 coords[2] < tc_Nall[Z]) 
+	{ //direct copy of t_f to t_fprime for halo sites 
+	  
+	  for (n = 0; n < tc_ndist; n++) {
+	    
+	    int ip;
+	    for (ip=0;ip<NVEL;ip++){
+	      
+	      targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
+	      t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+vecIndex, n, ip)] 
+		= t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+vecIndex, n, ip)]; 
+	      
+	      
+	    }
+	    
+	    
+	    
+	  }
+	  
+	  
+	}
+    }
+  }
+  
+  
+  return;
+  
+  
 }
 
 __targetEntry__  void lb_propagate_d3q19_lattice(const double* __restrict__ t_f, 
@@ -367,7 +335,7 @@ __targetEntry__  void lb_propagate_d3q19_lattice(const double* __restrict__ t_f,
   int baseIndex=0;
 
   //partition binary collision kernel across the lattice on the target
-  __targetTLPNoStride__(baseIndex,tc_nSites){
+  __targetTLP__(baseIndex,tc_nSites){
     lb_propagate_d3q19_site (t_f,t_fprime,baseIndex);
 
   }
@@ -400,6 +368,7 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstToTarget(tc_cv,cv, NVEL*3*sizeof(int)); 
   //end constant setup
 
 #ifdef CUDA //temporary optimisation specific to GPU code for benchmarking
@@ -408,7 +377,7 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 #endif
 
-  lb_propagate_d3q19_lattice __targetLaunchNoStride__(nSites) (lb->t_f,lb->t_fprime);
+  lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb->t_f,lb->t_fprime);
   targetSynchronize();
 
 #ifdef CUDA //temporary optimisation specific to GPU code for benchmarking
