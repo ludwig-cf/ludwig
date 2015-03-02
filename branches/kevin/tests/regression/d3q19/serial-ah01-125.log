@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.3.6 (Serial version running on 1 process)
+Welcome to Ludwig v0.3.23 (Serial version running on 1 process)
 
-The SVN revision details are: 2563M
+The SVN revision details are: 2603M
 Note assertions via standard C assert() are on.
 
 Read 21 user parameters from serial-ah01-125.inp
@@ -101,20 +101,20 @@ Starting time step loop.
 Particle statistics:
 
 Colloid velocities - x y z
-[minimum ]  7.9061279e-03 -9.0070937e-04  3.4303013e-03
-[maximum ]  7.9061279e-03 -9.0070937e-04  3.4303013e-03
+[minimum ] -1.0691867e-05 -3.8039083e-03  7.0804345e-03
+[maximum ] -1.0691867e-05 -3.8039083e-03  7.0804345e-03
 
 Scalars - total mean variance min max
-[rho]        4088.00  1.00000000000  3.6098496e-08  0.99758918022  1.00268657657
+[rho]        4088.00  1.00000000000  3.3864298e-08  0.99718377825  1.00240224210
 
 Momentum - x y z
-[total   ] -3.7443951e-11  3.3605188e-11 -1.6779803e-11
-[fluid   ] -6.4727102e-02  7.2628569e-03 -2.7975366e-02
-[colloids]  6.4727102e-02 -7.2628568e-03  2.7975366e-02
+[total   ]  4.0825039e-11  2.5545985e-11  2.5069356e-11
+[fluid   ]  3.0395187e-05  3.1105094e-02 -5.7936703e-02
+[colloids] -3.0395146e-05 -3.1105094e-02  5.7936703e-02
 
 Velocity - x y z
-[minimum ] -7.6735246e-04 -1.9838523e-03 -4.6118166e-04
-[maximum ]  6.0492985e-03  1.2464016e-03  3.2554713e-03
+[minimum ] -1.5020737e-03 -3.5784189e-03 -7.3907217e-04
+[maximum ]  1.4965084e-03  4.2644630e-04  5.4970676e-03
 
 Completed cycle 10000
 
@@ -123,29 +123,29 @@ Calibration result
 Number of measurements:           2822
 Run time (Stokes times):    4.5273e+01
 
-Actual force:               3.3536e-02
-Actual speed:               7.9549e-03
-Hasimoto correction (a/L):  8.0885e-01
+Actual force:               3.3562e-02
+Actual speed:               8.0382e-03
+Hasimoto correction (a/L):  8.1032e-01
 Input radius:               1.2500e+00
-Hydrodynamic radius:        1.0854e+00
-Stokes equation rhs:        2.7126e-02
-Stokes equation lhs:        2.7126e-02
+Hydrodynamic radius:        1.0770e+00
+Stokes equation rhs:        2.7196e-02
+Stokes equation lhs:        2.7196e-02
 
 Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     44.543     44.543     44.543  44.543165 (1 call)
-      Time step loop:      0.004      0.005     44.303   0.004430 (10000 calls)
-         Propagation:      0.001      0.001      5.986   0.000599 (10000 calls)
-           Collision:      0.003      0.004     31.237   0.003124 (10000 calls)
-       Lattice halos:      0.000      0.000      1.028   0.000051 (20000 calls)
+               Total:     41.784     41.784     41.784  41.784388 (1 call)
+      Time step loop:      0.004      0.005     41.559   0.004156 (10000 calls)
+         Propagation:      0.001      0.001      5.881   0.000588 (10000 calls)
+           Collision:      0.003      0.004     29.091   0.002909 (10000 calls)
+       Lattice halos:      0.000      0.000      0.990   0.000050 (20000 calls)
        phi gradients:      0.000      0.000      0.005   0.000000 (10000 calls)
-              Forces:      0.000      0.000      0.403   0.000040 (10000 calls)
-             Rebuild:      0.000      0.000      1.887   0.000189 (10000 calls)
-                 BBL:      0.000      0.000      1.733   0.000173 (10000 calls)
-      Particle halos:      0.000      0.000      0.416   0.000042 (10000 calls)
+              Forces:      0.000      0.000      0.424   0.000042 (10000 calls)
+             Rebuild:      0.000      0.000      2.010   0.000201 (10000 calls)
+                 BBL:      0.000      0.000      1.763   0.000176 (10000 calls)
+      Particle halos:      0.000      0.000      0.395   0.000039 (10000 calls)
    Force calculation:      0.000      0.000      0.005   0.000001 (10000 calls)
           phi update:      0.000      0.000      0.005   0.000000 (10000 calls)
-               Free1:      0.000      0.000      0.009   0.000000 (20000 calls)
+               Free1:      0.000      0.000      0.010   0.000000 (20000 calls)
 Ludwig finished normally.

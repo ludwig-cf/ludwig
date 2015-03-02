@@ -63,7 +63,7 @@ int do_test_fe_braz_param(control_t * ctrl) {
   coords_commit(cs);
 
   field_create(cs, 1, "phi", &phi);
-  field_grad_create(phi, 4, &dphi);
+  field_grad_create(phi, 0, &dphi);
 
   fe_create(&fe);
   fe_brazovskii_create(fe, phi, dphi, &fb);
@@ -129,7 +129,7 @@ int do_test_fe_braz_param(control_t * ctrl) {
 int do_test_fe_braz_bulk(control_t * ctrl) {
 
   fe_brazovskii_param_t param0 = {-0.00001, +0.00001, +0.00076, -0.0006};
-  int index = 1;
+  int index;
   int ia, ib;
   double phi0 = 0.5;
   double fed0, fed1;
@@ -151,11 +151,12 @@ int do_test_fe_braz_bulk(control_t * ctrl) {
   pe_create_parent(MPI_COMM_WORLD, &pe);
   coords_create(pe, &cs);
   coords_commit(cs);
+  index = coords_index(cs, 1, 1, 1);
 
   field_create(cs, 1, "phi", &phi);
-  field_grad_create(phi, 4, &dphi);
-
   field_init(phi, 1, NULL);
+
+  field_grad_create(phi, 4, &dphi);
   field_scalar_set(phi, index, phi0);
 
   fe_create(&fe);

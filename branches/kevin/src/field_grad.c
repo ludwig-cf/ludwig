@@ -58,6 +58,9 @@ int field_grad_create(field_t * f, int level, field_grad_t ** pobj) {
  *
  *  field_grad_init
  *
+ *  It's worth asserting we do not have a zero allocation in case
+ *  the developer has forgotten field_init(), or otherwise erred.
+ *
  *****************************************************************************/
 
 static int field_grad_init(field_grad_t * obj) {
@@ -65,10 +68,12 @@ static int field_grad_init(field_grad_t * obj) {
   int nsites;
 
   assert(obj);
-  
+  assert(obj->field);
+
   nsites = obj->field->nsites;
 
   if (obj->level >= 2) {
+    assert(obj->field->nsites > 0);
     obj->grad = (double *) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
     obj->delsq = (double *) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad == NULL) fatal("calloc(field_grad->grad) failed");

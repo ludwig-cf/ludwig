@@ -16,6 +16,15 @@ int do_test_util_eijk(control_t * ctrl);
 int do_test_util_discrete_volume_sphere(control_t * ctrl);
 int do_test_util_matrix(control_t * ctrl);
 int do_test_util_svd(control_t * ctrl);
+int do_test_util_ran_uniform(control_t * ctrl);
+int do_test_util_ran_gaussian(control_t * ctrl);
+int do_test_util_ran_unit_vector(control_t * ctrl);
+
+/* Statistical sample size for RNG tests; the tolerance STAT_EPSILON
+ * needs to be about 1/sqrt(STAT_NSAMPLE) */
+
+#define STAT_NSAMPLE 10000000
+#define STAT_EPSILON 0.001
 
 /*****************************************************************************
  *
@@ -31,6 +40,9 @@ int do_ut_util(control_t * ctrl) {
   do_test_util_discrete_volume_sphere(ctrl);
   do_test_util_matrix(ctrl);
   do_test_util_svd(ctrl);
+  do_test_util_ran_uniform(ctrl);
+  do_test_util_ran_gaussian(ctrl);
+  do_test_util_ran_unit_vector(ctrl);
 
   return 0;
 }
@@ -420,6 +432,220 @@ int unit_assert_svd_matrix(control_t * ctrl, int m, int n, double ** a)
     if (v) util_matrix_free(n, &v);
     if (u) util_matrix_free(m, &u);
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_util_ran_uniform
+ *
+ * See util.c implementation for s -> (as + c) % m (with c = 0)
+ *
+ * For uniform distribution, first moment = (1/2) and raw second moment
+ * = (1/3); 10,000,000 just enough to clear FLT_EPSILON for rmin, rmax.
+ *
+ *****************************************************************************/
+
+int do_test_util_ran_uniform(control_t * ctrl) {
+
+  const int lcga = 1389796;
+  const int lcgm = 2147483647;
+
+  int n;
+  int rank;
+  int state;
+  double ran1;
+  double rmin, rmax;
+  double rmom1, rmom2;
+
+  MPI_Comm comm;
+
+  control_test(ctrl, __CONTROL_INFO__);
+  control_verb(ctrl, "Uniform RNG test\n");
+  control_comm(ctrl,  &comm);
+
+  MPI_Comm_rank(comm, &rank);
+  state = 1 + rank;
+
+  try {
+    util_ranlcg_reap_uniform(&state, &ran1);
+
+    control_verb(ctrl, "First state:    %d (%d)\n", state, lcga);
+    control_macro_test(ctrl, state == (1+rank)*lcga);
+
+    control_verb(ctrl, "First var:      %22.15e (%22.15e)\n",
+		 ran1, lcga*(1.0/lcgm));
+    control_macro_test_dbl_eq(ctrl, ran1, state*(1.0/lcgm), DBL_EPSILON);
+
+    /* Run statistics */
+
+    rmin = 1.0; rmax = 0.0; rmom1 = 0.0; rmom2 = 0.0;
+
+    for (n = 0; n < STAT_NSAMPLE; n++) {
+      util_ranlcg_reap_uniform(&state, &ran1);
+      rmin = dmin(ran1, rmin);
+      rmax = dmax(ran1, rmax);
+      rmom1 += ran1;
+      rmom2 += ran1*ran1;
+    }
+    rmom1 /= STAT_NSAMPLE;
+    rmom2 /= STAT_NSAMPLE;
+
+    control_verb(ctrl, "Min ran1:       %22.15e\n", rmin);
+    control_verb(ctrl, "Max ran1:       %22.15e\n", rmax);
+    control_verb(ctrl, "First moment:   %22.15e\n", rmom1);
+    control_verb(ctrl, "Second moment:  %22.15e\n", rmom2);
+
+    control_macro_test(ctrl, rmin >= 0.0);
+    control_macro_test(ctrl, rmax <= 1.0);
+
+    control_macro_test(ctrl, rmin < STAT_EPSILON);
+    control_macro_test(ctrl, (1.0 - rmax) < STAT_EPSILON);
+    control_macro_test(ctrl, fabs(rmom1 - 0.5) < STAT_EPSILON);
+    control_macro_test(ctrl, fabs(rmom2 - (1.0/3.0)) < STAT_EPSILON);
+
+  }
+  catch (TestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
+  }
+
+  control_report(ctrl);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_util_ran_gaussian
+ *
+ *****************************************************************************/
+
+int do_test_util_ran_gaussian(control_t * ctrl) {
+
+  int n;
+  int rank;
+  int state ;
+  double ran[2];
+  double rmin, rmax;
+  double rmom1, rmom2;
+
+  MPI_Comm comm;
+
+  control_test(ctrl, __CONTROL_INFO__);
+  control_verb(ctrl, "Gaussian RNG test\n");
+  control_comm(ctrl,  &comm);
+
+  MPI_Comm_rank(comm, &rank);
+  state = 1 + rank;
+
+  try {
+
+    /* Run statistics */
+
+    rmin = FLT_MAX; rmax = FLT_MIN; rmom1 = 0.0; rmom2 = 0.0;
+
+    for (n = 0; n < STAT_NSAMPLE; n++) {
+      util_ranlcg_reap_gaussian(&state, ran);
+      rmin = dmin(ran[0], rmin);
+      rmin = dmin(ran[1], rmin);
+      rmax = dmax(ran[0], rmax);
+      rmax = dmax(ran[1], rmax);
+      rmom1 += ran[0] + ran[1];
+      rmom2 += ran[0]*ran[0] + ran[1]*ran[1];
+    }
+    rmom1 /= 2*STAT_NSAMPLE;
+    rmom2 /= 2*STAT_NSAMPLE;
+
+    control_verb(ctrl, "Min ran1:       %22.15e\n", rmin);
+    control_verb(ctrl, "Max ran1:       %22.15e\n", rmax);
+    control_verb(ctrl, "First moment:   %22.15e\n", rmom1);
+    control_verb(ctrl, "Second moment:  %22.15e\n", rmom2);
+
+    control_macro_test(ctrl, rmin < -2.0);
+    control_macro_test(ctrl, rmax > +2.0);
+    control_macro_test(ctrl, fabs(rmom1) < STAT_EPSILON);
+    control_macro_test(ctrl, fabs(rmom2 - 1.0) < STAT_EPSILON);
+  }
+  catch (TestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
+  }
+
+  control_report(ctrl);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_util_ran_unit_vector
+ *
+ *****************************************************************************/
+
+int do_test_util_ran_unit_vector(control_t * ctrl) {
+
+  int n;
+  int rank;
+  int state;
+  double rmin, rmax;
+  double rmod;
+  double runit[3];
+  double rmean[3];
+
+  MPI_Comm comm;
+
+  control_test(ctrl, __CONTROL_INFO__);
+  control_verb(ctrl, "Random unit vector test\n");
+  control_comm(ctrl,  &comm);
+
+  MPI_Comm_rank(comm, &rank);
+  state = 1 + rank;
+
+  try {
+
+    rmin = 0.0; rmax = 0.0;
+    rmean[0] = 0.0; rmean[1] = 0.0; rmean[2] = 0.0;
+
+    for (n = 0; n < STAT_NSAMPLE; n++) {
+      util_ranlcg_reap_unit_vector(&state, runit);
+      rmean[0] += runit[0];
+      rmean[1] += runit[1];
+      rmean[2] += runit[2];
+      rmin = dmin(runit[0], rmin);
+      rmin = dmin(runit[1], rmin);
+      rmin = dmin(runit[2], rmin);
+      rmax = dmax(runit[0], rmax);
+      rmax = dmax(runit[1], rmax);
+      rmax = dmax(runit[2], rmax);
+
+      /* Maximum discrepancy in modulus is about 4xDBL_EPSILON, but use
+       * FLT_EPSILON and assume any problem will be gross. */
+
+      rmod = runit[0]*runit[0] + runit[1]*runit[1] + runit[2]*runit[2];
+      control_macro_test_dbl_eq(ctrl, rmod, 1.0, FLT_EPSILON);
+    }
+
+    rmean[0] /= STAT_NSAMPLE;
+    rmean[1] /= STAT_NSAMPLE;
+    rmean[2] /= STAT_NSAMPLE;
+
+    control_verb(ctrl, "Component rmin %22.15e\n", rmin);
+    control_verb(ctrl, "Component rmax %22.15e\n", rmax);
+    control_macro_test_dbl_eq(ctrl, rmin, -1.0, STAT_EPSILON);
+    control_macro_test_dbl_eq(ctrl, rmax, +1.0, STAT_EPSILON);
+
+    control_verb(ctrl, "Component mean x: %22.15e\n", rmean[0]);
+    control_verb(ctrl, "Component mean y: %22.15e\n", rmean[1]);
+    control_verb(ctrl, "Component mean z: %22.15e\n", rmean[2]);
+    control_macro_test_dbl_eq(ctrl, rmean[0], 0.0, STAT_EPSILON);
+    control_macro_test_dbl_eq(ctrl, rmean[1], 0.0, STAT_EPSILON);
+    control_macro_test_dbl_eq(ctrl, rmean[2], 0.0, STAT_EPSILON);
+  }
+  catch (TestFailedException) {
+    control_option_set(ctrl, CONTROL_FAIL);
+  }
+
+  control_report(ctrl);
 
   return 0;
 }

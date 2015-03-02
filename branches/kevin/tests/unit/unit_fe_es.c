@@ -73,7 +73,7 @@ int do_test_fe_es1(control_t * ctrl) {
 
   try {
     field_create(coords, 1, "phi", &phi);
-    field_grad_create(phi, 2, &phi_grad);
+    field_grad_create(phi, 0, &phi_grad);
     psi_create(coords, nk, &psi);
 
     control_macro_test(ctrl, phi != NULL);

@@ -65,7 +65,7 @@ int do_test_fe_symm_param(control_t * ctrl) {
   coords_commit(cs);
 
   field_create(cs, 1, "phi", &phi);
-  field_grad_create(phi, 2, &dphi);
+  field_grad_create(phi, 0, &dphi);
 
   fe_create(&fe);
   fe_symmetric_create(fe, phi, dphi, &fs);
@@ -121,7 +121,7 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
 
   fe_symmetric_param_t param0 = {-0.003125, +0.003125, +0.002};
 
-  int index = 1;
+  int index;
   int ia, ib;
   double phi0 = 0.5;
   double fed0, fed1;
@@ -146,8 +146,10 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
   coords_commit(cs);
 
   field_create(cs, 1, "phi", &phi);
-  field_grad_create(phi, 2, &dphi);
   field_init(phi, 1, NULL);
+  field_grad_create(phi, 2, &dphi);
+
+  index = coords_index(cs, 1, 1, 1);
   field_scalar_set(phi, index, phi0);
 
   fe_create(&fe);

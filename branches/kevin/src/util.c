@@ -1185,7 +1185,7 @@ int util_ranlcg_reap_unit_vector(int * state, double rhat[3]) {
     util_ranlcg_reap_uniform(state, &zeta1);
     util_ranlcg_reap_uniform(state, &zeta2);
     zeta1 = 1.0 - 2.0*zeta1;
-    zeta2 = 1.0 - 2.0*zeta1;
+    zeta2 = 1.0 - 2.0*zeta2;
     zsq   = zeta1*zeta1 + zeta2*zeta2;
   } while (zsq > 1.0);
 

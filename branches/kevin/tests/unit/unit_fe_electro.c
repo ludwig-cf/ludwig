@@ -200,7 +200,6 @@ int do_test_fe_electro2(control_t * ctrl) {
       mu0 = kt*log(rho0);
       mu = fe_electro_mu(index, n);
       control_macro_test_dbl_eq(ctrl, mu, mu0, DBL_EPSILON);
-      /* assert(fabs(mu - mu0) < DBL_EPSILON);*/
 
       /* Complete mu_a = kT log(rho) + Z_a e psi */
       psi0 = 1.0;
@@ -208,7 +207,6 @@ int do_test_fe_electro2(control_t * ctrl) {
       mu0 = kt*log(rho0) + valency[n]*eunit*psi0;
       mu = fe_electro_mu(index, n);
       control_macro_test_dbl_eq(ctrl, mu, mu0, DBL_EPSILON);
-      /* assert(fabs(mu - mu0) < DBL_EPSILON);*/
     }
   }
   catch (TestFailedException) {

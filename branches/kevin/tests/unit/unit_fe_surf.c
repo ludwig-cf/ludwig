@@ -63,7 +63,7 @@ int do_test_fe_surf_param(control_t * ctrl) {
   coords_commit(cs);
 
   field_create(cs, 2, "pair", &surf);
-  field_grad_create(surf, 2, &grad);
+  field_grad_create(surf, 0, &grad);
 
   fe_create(&fe);
   fe_surfactant_create(fe, surf, grad, &fs);
@@ -146,8 +146,10 @@ int do_test_fe_surf_param(control_t * ctrl) {
 int do_test_fe_surf_bulk(control_t * ctrl) {
 
   fe_surfactant_param_t param0 = {-0.0208333, +0.0208333, +0.12,
-				  0.00056587, +0.03, 0.0, 0.0};
-  int index = 1;
+    0.00056587, +0.03, 0.0, 0.0};
+  /*fe_surfactant_param_t param0 = {-0.0208333, +0.0208333, 0.0,
+    0.00056587, 0.0, 0.0, 0.0};*/
+  int index;
   double f[2] = {0.5, 0.01};  /* phi, psi */
   double fed0, fed1;
   double mu0[2], mu1[2];
@@ -169,8 +171,10 @@ int do_test_fe_surf_bulk(control_t * ctrl) {
   coords_commit(cs);
 
   field_create(cs, 2, "pair", &surf);
-  field_grad_create(surf, 2, &grad);
   field_init(surf, 1, NULL);
+  field_grad_create(surf, 2, &grad);
+
+  index = coords_index(cs, 1, 1, 1);
   field_scalar_array_set(surf, index, f);
 
   fe_create(&fe);

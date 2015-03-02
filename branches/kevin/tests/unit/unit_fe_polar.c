@@ -122,7 +122,7 @@ int do_test_fe_polar_bulk(control_t * ctrl) {
 
   fe_polar_param_t param0 = {-0.1, +0.1, 0.0, 0.01, 0.00, 0.03, 0.04};
 
-  int index = 0;
+  int index;
   int ia, ib;
   double p0[3] = {0.5, 0.6, 0.7};
   double fed0, fed1;
@@ -148,8 +148,10 @@ int do_test_fe_polar_bulk(control_t * ctrl) {
   coords_commit(cs);
 
   field_create(cs, 3, "p", &p);
-  field_grad_create(p, 2, &dp);
   field_init(p, 1, NULL);
+  field_grad_create(p, 2, &dp);
+
+  index = coords_index(cs, 1, 1, 1);
   field_vector_set(p, index, p0);
 
   fe_create(&fe);
