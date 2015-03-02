@@ -63,7 +63,12 @@ int wall_rt_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map,
 
   /* Allocate */
 
-  if (p.isporousmedia || p.iswall) {
+  if (p.isporousmedia) {
+    wall_create(cs, map, lb, wall);
+    wall_commit(*wall, p);
+  }
+
+  if (p.iswall) {
     wall_create(cs, map, lb, wall);
     wall_commit(*wall, p);
 
@@ -71,9 +76,9 @@ int wall_rt_init(rt_t * rt, coords_t * cs, lb_t * lb, map_t * map,
     info("Boundary walls\n");
     info("--------------\n");
     info("Boundary walls:                  %1s %1s %1s\n",
-         (p.isboundary[X] == 1) ? "X" : "-",
-         (p.isboundary[Y] == 1) ? "Y" : "-",
-         (p.isboundary[Z] == 1) ? "Z" : "-");
+	 (p.isboundary[X] == 1) ? "X" : "-",
+	 (p.isboundary[Y] == 1) ? "Y" : "-",
+	 (p.isboundary[Z] == 1) ? "Z" : "-");
     info("Boundary speed u_x (bottom):    %14.7e\n", p.ubot[X]);
     info("Boundary speed u_x (top):       %14.7e\n", p.utop[X]);
     info("Boundary normal lubrication rc: %14.7e\n", p.lubr_rc[X]);

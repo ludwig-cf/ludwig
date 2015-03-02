@@ -191,7 +191,7 @@ int psi_init_rho_rt(psi_t * psi, coords_t * cs, map_t * map, rt_t * rt) {
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el:  %14.7e\n", rho_el);
     psi_debye_length(psi, rho_el, &ld);
-    info("Debye length:             %14.7e\n", ld);
+    info("Debye length:              %14.7e\n", ld);
 
     n = rt_double_parameter(rt, "electrokinetics_init_sigma", &sigma);
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");

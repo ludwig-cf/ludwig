@@ -138,8 +138,11 @@ int psi_sor_poisson(psi_t * obj) {
   assert(nlocal[Z] % 2 == 0);
 
   /* Compute initial norm of the residual */
+  /* This allows some irregularly shaped systems to converge, but
+   * systems with high aspect ratio can be very sensitive to the
+   * value compared here for radius of convergence */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/ltot[X], 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0), 2)/(ltot[X]*ltot[Y]);
 
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);

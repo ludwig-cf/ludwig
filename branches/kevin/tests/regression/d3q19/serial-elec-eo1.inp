@@ -5,7 +5,7 @@
 ##############################################################################
 
 N_start  0
-N_cycles 1000
+N_cycles 100
 
 ##############################################################################
 #
@@ -13,7 +13,7 @@ N_cycles 1000
 # 
 ##############################################################################
 
-size 64_2_2
+size 64_4_4
 grid 8_1_1
 periodicity 0_1_1
 reduced_halo no
@@ -34,13 +34,9 @@ temperature 3.3333e-5
 #
 #  Uniform external fields
 #
-#  magnetic_b0     Bx_By_Bz  e.g., for dipoles (default zero)
-#  electric_e0     Ex_Ey_Ez  e.g., for electrokinetics (default zero)
-#
 ##############################################################################
 
-magnetic_b0 0.0_0.0_0.0
-electric_e0 0.0_1.0e-6_0.0
+electric_e0 0.0_3.0e-02_0.0
 
 ##############################################################################
 #
@@ -50,12 +46,6 @@ electric_e0 0.0_1.0e-6_0.0
 
 free_energy fe_electro
 
-fd_advection_scheme_order 3
-fd_gradient_calculation 3d_7pt_fluid
-fd_phi_fluctuations 0
-fd_phi_fluctuations_seed 17
-fd_force_divergence 0
-
 ###############################################################################
 #
 #  Colloid parameters
@@ -63,19 +53,6 @@ fd_force_divergence 0
 ###############################################################################
 
 colloid_init        none
-colloid_gravity  0.0_0.0_0.0
-
-###############################################################################
-#
-#  Walls / boundaries
-#
-###############################################################################
-
-boundary_walls 1_0_0
-boundary_speed_bottom 0.0
-boundary_speed_top    0.0
-boundary_shear_init 0
-boundary_lubrication_rcnormal 0.0
 
 ###############################################################################
 #
@@ -83,25 +60,8 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 1000
-freq_measure 10000000
-freq_config 10000000
-freq_phi    10000000
-freq_psi    50000
-freq_vel    50000
-freq_shear_measurement 1000000
-freq_shear_output      1000000
+freq_statistics 100
 config_at_end no
-
-default_io_grid 1_1_1
-
-distribution_io_grid 1_1_1
-distribution_io_input_format BINARY
-
-phi_io_grid 1_1_1
-phi_format    ASCII
-psi_format    ASCII
-vel_format    ASCII
 
 ##############################################################################
 #
@@ -115,17 +75,6 @@ colloid_io_freq 1000
 #
 #  Electrokinetics ALWAYS 2 SPECIES FOR NOW
 #
-#  electrokinetics_z0         valency species 0  default +1
-#  electrokinetics_z1         valency species 1  default -1
-#  electrokinetics_d0         diffusivity 0      default 0.0
-#  electrokinetics_d1         diffusivity 1      default 0.0
-#  electrokinetics_eunit      unit charge        default +1.0
-#  electrokinetics_epsilon    permeativity (ref) default 0.0
-#
-#  Also important
-#
-#  temperature                sets Boltzmann factor beta
-#
 ###############################################################################
 
 electrokinetics_z0      +1
@@ -138,14 +87,3 @@ electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 	0.00
 electrokinetics_init_delta_el 	0.01
 electrokinetics_init_sigma 	0.0125
-
-###############################################################################
-#
-#  Miscellaneous
-#
-#  random_seed  +ve integer is the random number generator seed
-#
-###############################################################################
-
-#random_seed 7361237
-random_seed 8361235
