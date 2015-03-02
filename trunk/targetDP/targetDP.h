@@ -16,8 +16,7 @@
 #define DEFAULT_TPB 256 /* default threads per block */
 
 /* Instruction-level-parallelism vector length */
-//#define NILP 2
-#define NILP 1
+#define VVL 1
 
 
 /* Language Extensions */
@@ -74,7 +73,7 @@
 /* Settings */
 
 /* Instruction-level-parallelism vector length */
-#define NILP 1
+#define VVL 1
 
 
 /* Language Extensions */
@@ -125,40 +124,11 @@
 
 /* Common */
 
-/* depricated? */
+#define NILP VVL
 
-/* Initialisation */
-/* #define TARGET_INDEX_INIT(extent)		\
-  int targetExtent=extent;			\
-  int baseIndex=0,vecIndex=0;*/
-
-
-#define ILPIDX(instrn) (instrn)*NILP+vecIndex 
 
 /* Instruction-level-parallelism execution macro */
-#define TARGET_ILP(vecIndex)  for (vecIndex = 0; vecIndex < NILP; vecIndex++) 
-
-/* declaration of thread-dependent stack data */
-
-#define DECLARE_SIMD_SCALAR(type, name) type name[NILP];
-
-#define DECLARE_SIMD_VECTOR1D(type, name, extent) type name[extent*NILP];
-
-#define DECLARE_SIMD_VECTOR2D(type, name, extent1, extent2) \
-  type name[extent1][extent2*NILP];
-
-
-/* access functions for thread-dependent stack data */
-#define SIMD_SC_ELMNT(var,vecIndex) var[vecIndex]
-#define SIMD_1D_ELMNT(var,idx,vecIndex) var[(idx)*NILP+vecIndex]
-#define SIMD_2D_ELMNT(var,idx1,idx2,vecIndex) var[idx1][(idx2)*NILP+vecIndex]
-
-/* access function for lattice site data */
-#define SITE(array,field) \
-  array[targetExtent*p+baseIndex+vecIndex]
-
-/* end depricated? */
-
+#define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < NILP; vecIndex++) 
 
 #define targetCoords3D(coords,extents,index)					\
   coords[0]=(index)/(extents[1]*extents[2]);				\
