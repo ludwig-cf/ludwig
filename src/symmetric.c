@@ -427,7 +427,7 @@ __target__ void symmetric_chemical_stress_target(const int index, double s[3][3*
 
   int vecIndex=0;
 
-  TARGET_ILP(vecIndex) {
+  __targetILP__(vecIndex) {
     
     //phi = phi_get_phi_site(index+vecIndex);
     //phi_gradients_grad(index+vecIndex, grad_phi);
@@ -456,7 +456,7 @@ __target__ void symmetric_chemical_stress_target(const int index, double s[3][3*
     
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ILPIDX(ib)] = p0*tc_d_[ia][ib]	+ t_kappa_*grad_phi[ia]*grad_phi[ib];
+	s[ia][ib*VVL+vecIndex] = p0*tc_d_[ia][ib]	+ t_kappa_*grad_phi[ia]*grad_phi[ib];
       }
     }
     
