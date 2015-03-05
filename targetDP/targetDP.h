@@ -9,6 +9,17 @@
 #ifndef _DATA_PARALLEL_INCLUDED
 #define _DATA_PARALLEL_INCLUDED
 
+//switch to keep data resident on target for whole timestep
+//only available for GPU version at the moment
+#define TARGETFASTON
+
+
+#ifdef CUDAHOST
+#ifdef TARGETFASTON
+#define TARGETFAST
+#endif
+#endif
+
 
 #ifdef CUDA /* CUDA */
 
@@ -18,6 +29,9 @@
 /* Instruction-level-parallelism vector length */
 #define VVL 1
 
+#ifdef TARGETFASTON
+#define TARGETFAST
+#endif
 
 /* Language Extensions */
 
@@ -161,6 +175,8 @@ __targetHost__ void copyFromTargetMaskedAoS(double *data,const double* targetDat
 
 __targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth);
 __targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data,int extents[3], size_t nfields, int offset,int depth);
+__targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData, int extents[3], size_t nfields, void** ptrarray);
+__targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, void** ptrarray);
 __targetHost__ void targetSynchronize();
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void checkTargetError(const char *msg);

@@ -25,9 +25,12 @@
 #include "physics.h"
 #include "colloid_sums.h"
 #include "model.h"
+#include "lb_model_s.h"
 #include "util.h"
 #include "wall.h"
 #include "bbl.h"
+#include "colloid.h"
+#include "colloids.h"
 
 struct bbl_s {
   int active;           /* Global flag for active particles. */
@@ -126,9 +129,39 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
+//TODO put this in _s header
+struct colloids_info_s {
+  int nhalo;                  /* Halo extent in cell list */
+  int ntotal;                 /* Total, physical, number of colloids */
+  int nallocated;             /* Number colloid_t allocated */
+  int ncell[3];               /* Number of cells (excluding  2*halo) */
+  int str[3];                 /* Strides for cell list */
+  int nsites;                 /* Total number of map sites */
+  int ncells;                 /* Total number of cells */
+  double rho0;                /* Mean density (usually matches fluid) */
+  double drmax;               /* Maximum movement per time step */
+
+  colloid_t ** clist;         /* Cell list pointers */
+  colloid_t ** map_old;       /* Map (previous time step) pointers */
+  colloid_t ** map_new;       /* Map (current time step) pointers */
+  colloid_t * headall;        /* All colloid list (incl. halo) head */
+  colloid_t * headlocal;      /* Local list (excl. halo) head */
+};
+
+
 int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int ntotal;
+  
+  int nhalo;
+  int nlocal[3];
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  int nFields=NVEL*lb->ndist;
 
   assert(bbl);
   assert(lb);
@@ -138,8 +171,16 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   if (ntotal == 0) return 0;
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
+
+#ifdef TARGETFAST
+  //update colloid-affected lattice sites from target
+  copyFromTargetPointerMap3D(lb->f,lb->t_f,
+			     Nall,nFields,(void**) cinfo->map_new); 
+#endif
+
   bbl_pass0(bbl, lb, cinfo);
   bbl_pass1(bbl, lb, cinfo);
+
   colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
 
   if (bbl->active) {
@@ -148,7 +189,15 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   }
 
   bbl_update_colloids(bbl, cinfo);
+
   bbl_pass2(bbl, lb, cinfo);
+
+
+#ifdef TARGETFAST
+  //update target with colloid-affected lattice sites 
+  copyToTargetPointerMap3D(lb->t_f,lb->f,
+			   Nall,nFields,(void**) cinfo->map_new); 
+#endif
 
   return 0;
 }

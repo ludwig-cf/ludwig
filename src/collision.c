@@ -150,6 +150,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   double f_v[NVEL][SIMDVL];
   double mode_v[NVEL][SIMDVL];
 
+
   assert(lb);
   assert(hydro);
   assert(map);
@@ -159,6 +160,18 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   physics_fbody(force_global);
 
   rdim = 1.0/NDIM;
+
+
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+    int nhalo = coords_nhalo();
+    int Nall[3];
+    Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+    int nSites=Nall[X]*Nall[Y]*Nall[Z];
+    int nFields=NVEL*lb->ndist; 
+    copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double));
+#endif
+
+
 
   for (ia = 0; ia < 3; ia++) {
     u[ia] = 0.0;
@@ -346,6 +359,10 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
       }
     }
   }
+
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double));
+#endif
   
   return 0;
 }
@@ -857,7 +874,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   //for GPU version, we use the data already existing on the target 
   //for C version, we put data on the target (for now).
   //ultimitely GPU and C versions will follow the same pattern
-  #ifndef CUDA //temporary optimisation specific to GPU code for benchmarking
+  #ifndef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
 
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 
@@ -913,13 +930,11 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   targetSynchronize();
 
-#ifdef CUDA  //temporary optimisation specific to GPU code for benchmarking
-  copyFromTargetBoundary3D(lb->f,lb->t_f,Nall,nFields,nhalo,nhalo); 
-  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
-#else
+#ifndef TARGETFAST  //temporary optimisation specific to GPU code for benchmarking
   copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
-  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
 #endif
+
+  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
 
   return 0;
 }

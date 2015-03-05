@@ -288,7 +288,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   //for GPU version, we leave the results on the target for the next kernel.
   //for C version, we bring back the results to the host (for now).
   //ultimitely GPU and C versions will follow the same pattern
-  #ifndef CUDA
+  #ifndef TARGETFAST
   copyFromTarget(grad,t_grad,3*nSites*nFields*sizeof(double)); 
   copyFromTarget(del2,t_del2,nSites*nFields*sizeof(double)); 
   #endif
