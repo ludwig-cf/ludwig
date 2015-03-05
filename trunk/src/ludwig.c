@@ -404,7 +404,7 @@ void ludwig_run(const char * inputfile) {
 
 
 
-#ifdef CUDAHOST  //temporary optimisation specific to GPU code for benchmarking 
+#ifdef TARGETFAST  //temporary optimisation specific to GPU code for benchmarking 
     int nlocal[3];
     coords_nlocal(nlocal);
     int nhalo = coords_nhalo();
@@ -422,6 +422,10 @@ void ludwig_run(const char * inputfile) {
   subgrid_on(&is_subgrid);
 
   while (next_step()) {
+
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+        copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));
+#endif
 
 
     TIMER_start(TIMER_STEPS);
@@ -587,6 +591,7 @@ void ludwig_run(const char * inputfile) {
 
       /* Collision stage */
 
+
       TIMER_start(TIMER_COLLIDE);
       lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho);
       TIMER_stop(TIMER_COLLIDE);
@@ -595,9 +600,24 @@ void ludwig_run(const char * inputfile) {
 
       lb_le_apply_boundary_conditions(ludwig->lb);
 
+
       TIMER_start(TIMER_HALO_LATTICE);
+
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+      copyFromTargetBoundary3D(ludwig->lb->f,ludwig->lb->t_f,
+      Nall,nFields,nhalo,nhalo); 
+#endif
+
+
       lb_halo(ludwig->lb);
+
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+      copyToTargetBoundary3D(ludwig->lb->t_f,ludwig->lb->f,
+      Nall,nFields,0,nhalo); 
+#endif
+
       TIMER_stop(TIMER_HALO_LATTICE);
+
 
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
@@ -623,6 +643,8 @@ void ludwig_run(const char * inputfile) {
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions are active */
 
+
+
     TIMER_start(TIMER_PROPAGATE);
     lb_propagation(ludwig->lb);
     TIMER_stop(TIMER_PROPAGATE);
@@ -630,7 +652,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_stop(TIMER_STEPS);
 
     
-#ifdef CUDAHOST //temporary optimisation specific to GPU code for benchmarking
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
     copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
 #endif
 

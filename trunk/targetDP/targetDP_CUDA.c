@@ -459,6 +459,137 @@ __targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data
 
 
 
+__targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData,int extents[3], size_t nfields, void** ptrarray){
+
+
+
+  size_t nsites=extents[0]*extents[1]*extents[2];
+
+
+  int i;
+  int index;
+
+
+  int* fullindex = iwork;
+  int* fullindex_d = iwork_d;
+
+  double* tmpGrid = dwork;
+  double* tmpGrid_d = dwork_d;
+
+
+  //get compression mapping
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(ptrarray[i]){
+      //printf("%p, ",ptrarray[i]);
+      fullindex[j]=i;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+
+  
+  
+
+  //copy compresssion info to GPU
+  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
+
+  
+  //compress grid on GPU
+  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(tmpGrid_d,targetData,nsites,
+						    nfields,
+						    fullindex_d, packedsize, 0);
+  cudaThreadSynchronize();
+
+  //get compressed grid from GPU
+  cudaMemcpy(tmpGrid, tmpGrid_d, packedsize*nfields*sizeof(double), cudaMemcpyDeviceToHost); 
+
+    
+  //expand into final grid
+
+  j=0;
+  for (index=0; index<nsites; index++){
+    if(ptrarray[index]){
+      for (i=0;i<nfields;i++)
+	data[i*nsites+index]=tmpGrid[i*packedsize+j];	
+      
+      j++;
+    }
+  }
+      
+
+  checkTargetError("copyFromTargetPointerMap");
+  return;
+
+}
+
+__targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, void** ptrarray){
+
+  size_t nsites=extents[0]*extents[1]*extents[2];
+
+  int i;
+  int index;
+
+  int* fullindex = iwork;
+  int* fullindex_d = iwork_d;
+
+  double* tmpGrid = dwork;
+  double* tmpGrid_d = dwork_d;
+
+
+  //get compression mapping
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(ptrarray[i]){
+      fullindex[j]=i;
+      j++;
+    }
+    
+  }
+
+  int packedsize=j;
+
+
+  //copy compresssion info to GPU
+  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
+
+
+
+    
+  //  compress grid
+        
+  j=0;
+  for (index=0; index<nsites; index++){
+    if(ptrarray[index]){
+      for (i=0;i<nfields;i++)  
+	tmpGrid[i*packedsize+j]=data[i*nsites+index];
+      j++;
+    }
+  }
+  
+  
+
+  //put compressed grid on GPU
+  cudaMemcpy(tmpGrid_d, tmpGrid, packedsize*nfields*sizeof(double), cudaMemcpyHostToDevice); 
+
+  //uncompress grid on GPU
+  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(targetData,tmpGrid_d,nsites,
+						    nfields,
+						    fullindex_d, packedsize, 1);
+  cudaThreadSynchronize();
+
+  checkTargetError("copyToTargetPointerMap");
+  
+  return;
+  
+}
+
+
+
 
 
 __targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,

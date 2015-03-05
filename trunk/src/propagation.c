@@ -362,7 +362,6 @@ static int lb_propagate_d3q19(lb_t * lb) {
 
   int nFields=NVEL*lb->ndist;
 
-
   //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
   copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
@@ -371,16 +370,15 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstToTarget(tc_cv,cv, NVEL*3*sizeof(int)); 
   //end constant setup
 
-#ifdef CUDA //temporary optimisation specific to GPU code for benchmarking
-  copyToTargetBoundary3D(lb->t_f,lb->f,Nall,nFields,0,nhalo); 
-#else
+
+  #ifndef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-#endif
+  #endif
 
   lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb->t_f,lb->t_fprime);
   targetSynchronize();
 
-#ifdef CUDA //temporary optimisation specific to GPU code for benchmarking
+#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
   double* tmp=lb->t_fprime;
   lb->t_fprime=lb->t_f;
   lb->t_f=tmp;

@@ -99,6 +99,7 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
   int nFields=NVEL*lb->ndist;
 
+
   assert(phi);
   assert(lb);
   coords_nlocal(nlocal);
@@ -110,7 +111,7 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
   copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
   //end constant setup
 
-#ifndef CUDA   //temporary optimisation specific to GPU code for benchmarking
+#ifndef TARGETFAST   //temporary optimisation specific to GPU code for benchmarking
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 #endif
 
