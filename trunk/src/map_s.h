@@ -22,6 +22,7 @@ struct map_s {
   int is_porous_media;        /* Flag for porous media */
   int ndata;                  /* Additional fields associated with map */
   char * status;              /* Status (one of enum_status) */
+  char * t_status;              /* Status (one of enum_status) on target */
   double * data;              /* Additional site lattice property */
   MPI_Datatype halostatus[3]; /* Halo datatype for status */
   MPI_Datatype halodata[3];   /* Halo datatype for data */

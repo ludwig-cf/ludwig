@@ -17,6 +17,7 @@ static double* dwork_d;
 static int* iwork;
 static int* iwork_d;
 
+static char* cwork;
 
 __targetHost__ void checkTargetError(const char *msg)
 {
@@ -56,6 +57,8 @@ __targetHost__ void targetInit(size_t nsites, size_t nfieldsmax){
   cudaMalloc(&iwork_d,nsites*sizeof(int));
   checkTargetError("malloc iwork_d");
 
+  cwork = (char*) malloc (nsites*sizeof(char));
+
 
 
   return;
@@ -65,8 +68,10 @@ __targetHost__ void targetFinalize(){
 
   free(iwork);
   free(dwork);
+  free(cwork);
   cudaFree(iwork_d);
   cudaFree(dwork_d);
+
 }
 
 __targetHost__ void targetCalloc(void **address_of_ptr,size_t size){
@@ -457,10 +462,17 @@ __targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data
   
 }
 
+static int neighb3D[19][3] = {{ 0,  0,  0},
+		 { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},
+		 { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},
+		 { 0,  1,  0}, { 0,  1, -1}, { 0,  0,  1},
+		 { 0,  0, -1}, { 0, -1,  1}, { 0, -1,  0},
+		 { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},
+		 {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
 
 
-__targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData,int extents[3], size_t nfields, void** ptrarray){
 
+__targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData,int extents[3], size_t nfields, int includeNeighbours,  void** ptrarray){
 
 
   size_t nsites=extents[0]*extents[1]*extents[2];
@@ -476,22 +488,60 @@ __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* target
   double* tmpGrid = dwork;
   double* tmpGrid_d = dwork_d;
 
+  char* siteMap = cwork; 
+  char zero=0;
+  memset(siteMap,zero,nsites);
+
+  int coords[3];
 
   //get compression mapping
+
   int j=0;
+    if (includeNeighbours){
+    int p;
+    for (i=0; i<nsites; i++){
+      if(ptrarray[i]){
+	
+	
+	targetCoords3D(coords,extents,i);
+	for (p=0;p<19;p++){
+	  
+	  int shiftIndex=targetIndex3D(coords[0]-neighb3D[p][0],coords[1]-neighb3D[p][1],coords[2]-neighb3D[p][2],extents);
+	  
+	  if ((shiftIndex >= 0) &&   (shiftIndex < nsites)){
+	    siteMap[shiftIndex]=1;
+	    j++;
+	  }
+	  
+	}
+	
+      }
+      
+    }
+    }
+    else{
+      for (i=0; i<nsites; i++){
+	if(ptrarray[i]){ 
+	  siteMap[i]=1;
+	  j++;
+	}
+      }
+    }
+  
+  int packedsize=j;
+  
+  j=0;
   for (i=0; i<nsites; i++){
-    if(ptrarray[i]){
-      //printf("%p, ",ptrarray[i]);
+    if(siteMap[i]){
+
       fullindex[j]=i;
       j++;
+
     }
     
   }
 
-  int packedsize=j;
 
-  
-  
 
   //copy compresssion info to GPU
   cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
@@ -508,25 +558,19 @@ __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* target
   cudaMemcpy(tmpGrid, tmpGrid_d, packedsize*nfields*sizeof(double), cudaMemcpyDeviceToHost); 
 
     
-  //expand into final grid
 
-  j=0;
-  for (index=0; index<nsites; index++){
-    if(ptrarray[index]){
-      for (i=0;i<nfields;i++)
-	data[i*nsites+index]=tmpGrid[i*packedsize+j];	
-      
-      j++;
-    }
+  //expand into final grid       
+  for (index=0; index<packedsize; index++){
+    for (i=0;i<nfields;i++)  
+      data[i*nsites+fullindex[index]] = tmpGrid[i*packedsize+index];
   }
-      
 
   checkTargetError("copyFromTargetPointerMap");
   return;
 
 }
 
-__targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, void** ptrarray){
+__targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray){
 
   size_t nsites=extents[0]*extents[1]*extents[2];
 
@@ -539,18 +583,58 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
   double* tmpGrid = dwork;
   double* tmpGrid_d = dwork_d;
 
+  char* siteMap = cwork; 
+  char zero=0;
+  memset(siteMap,zero,nsites);
+
+  int coords[3];
 
   //get compression mapping
+
   int j=0;
+    if (includeNeighbours){
+    int p;
+    for (i=0; i<nsites; i++){
+      if(ptrarray[i]){
+	
+	
+	targetCoords3D(coords,extents,i);
+	for (p=0;p<19;p++){
+	  
+	  int shiftIndex=targetIndex3D(coords[0]-neighb3D[p][0],coords[1]-neighb3D[p][1],coords[2]-neighb3D[p][2],extents);
+	  
+	  if ((shiftIndex >= 0) &&   (shiftIndex < nsites)){
+	    siteMap[shiftIndex]=1;
+	    j++;
+	  }
+	  
+	}
+	
+      }
+      
+    }
+    }
+    else{
+      for (i=0; i<nsites; i++){
+	if(ptrarray[i]){ 
+	  siteMap[i]=1;
+	  j++;
+	}
+      }
+    }
+  
+  int packedsize=j;
+  
+  j=0;
   for (i=0; i<nsites; i++){
-    if(ptrarray[i]){
+    if(siteMap[i]){
+
       fullindex[j]=i;
       j++;
+
     }
     
   }
-
-  int packedsize=j;
 
 
   //copy compresssion info to GPU
@@ -561,13 +645,9 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
     
   //  compress grid
         
-  j=0;
-  for (index=0; index<nsites; index++){
-    if(ptrarray[index]){
-      for (i=0;i<nfields;i++)  
-	tmpGrid[i*packedsize+j]=data[i*nsites+index];
-      j++;
-    }
+  for (index=0; index<packedsize; index++){
+    for (i=0;i<nfields;i++)  
+      tmpGrid[i*packedsize+index]=data[i*nsites+fullindex[index]];
   }
   
   
