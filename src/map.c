@@ -56,6 +56,9 @@ int map_create(int ndata, map_t ** pobj) {
   obj->status = calloc(nsites, sizeof(char));
   if (obj->status == NULL) fatal("calloc(map->status) failed\n");
 
+ /* allocate target copy */
+  targetCalloc((void **) &obj->t_status, nsites*sizeof(char));
+
   obj->ndata = ndata;
 
   /* Could be zero-sized array */
@@ -97,6 +100,7 @@ void map_free(map_t * obj) {
 
   if (obj->info) io_info_destroy(obj->info);
   free(obj->status);
+  targetFree(obj->t_status);
   free(obj);
 
   return;
