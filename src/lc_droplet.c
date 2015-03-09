@@ -505,7 +505,9 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
   }
 
   /* The term in the isotropic pressure, plus that in qh */
-
+  /* we have, for now, ignored the isotropic contribution 
+   * po = rho*T - lc_droplet_free_energy_density(index); */
+  
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sth[ia][ib] = 2.0*xi_*(q[ia][ib] + r3_*d_[ia][ib])*qh;
