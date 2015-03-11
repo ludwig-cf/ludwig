@@ -57,6 +57,7 @@
 #define __device__
 #define __target__
 #define __target_entry__
+#define __constant__ const
 
 #define target_launch(kernel, nblocks, ntpb, ...) kernel(__VA_ARGS__)
 #define target_is_host() 1
