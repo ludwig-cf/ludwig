@@ -1,0 +1,421 @@
+\chapter{Memory Management}
+
+
+
+\newpage
+\section{targetMalloc}
+
+\subsection{Description}
+
+The \verb+targetMalloc+ function allocates memory on the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetMalloc(void **targetPtr, size_t n);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetptr+: A pointer to the allocated memory.
+\item \verb+n+: The number of bytes to be allocated.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:targetMalloc} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+\subsection{Implementation}
+\subsubsection{C}
+\verb+malloc+
+\subsubsection{CUDA}
+\verb+cudaMalloc+
+
+\newpage
+\section{targetCalloc}
+
+\subsection{Description}
+
+The \verb+targetCalloc+ function allocates, and initializes to zero, memory on the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetCalloc(void **targetPtr, size_t n);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetptr+: A pointer to the allocated memory.
+\item \verb+n+: The number of bytes to be allocated.
+\end{itemize}
+
+
+\subsection{Example}
+Analogous to Line \ref{example:scalelaunch:targetMalloc} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+\verb+calloc+
+\subsubsection{CUDA}
+\verb+cudaMalloc+ followed by \verb+cudaMemset+
+
+\newpage
+\section{targetFree}
+
+\subsection{Description}
+
+The \verb+targetFree+ function deallocates memory on the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetFree(void *targetPtr);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetPtr+: A pointer to the memory to be freed.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:targetFree} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+\verb+free+
+\subsubsection{CUDA}
+\verb+cudaFree+
+
+\newpage
+\section{copyToTarget}
+
+\subsection{Description}
+
+The \verb+copyToTarget+ function copies data from the host to the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyToTarget(void *targetData, const void *data, size_t n);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetData+: A pointer to the destination array on the target.
+\item \verb+data+: A pointer to the source array on the host.
+\item \verb+n+: The number of bytes to be copied.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:copyToTarget} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+\verb+memcpy+
+\subsubsection{CUDA}
+\verb+cudaMemcpy+
+
+\newpage
+\section{copyFromTarget}
+
+\subsection{Description}
+
+The \verb+copyFromTarget+ function copies data from the target to the host.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyFromTarget(void *data, const void *targetData, size_t n);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+data+: A pointer to the destination array on the host.
+\item \verb+targetData+: A pointer to the source array on the target.
+\item \verb+n+: The number of bytes to be copied.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:copyFromTarget} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+\verb+memcpy+
+\subsubsection{CUDA}
+\verb+cudaMemcpy+
+
+
+\newpage
+\section{targetConst}
+\subsection{Description}
+
+The \verb+__targetConst__+ keyword is used in a variable or array declaration
+to specify that the corresponding data can be treated as constant (read-only) on the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+__targetConst__ type variableName
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+variableName+: The name of the variable or array.
+\item \verb+type+: The type of variabe or array.
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+\subsection{Implementation}
+\subsubsection{C}
+Holds no value
+\subsubsection{CUDA}
+\verb+__constant__+
+
+\newpage
+\section{copyConstToTarget}
+
+\subsection{Description}
+
+The \verb+copyConstToTarget+ function copies data from the host to the target, where the data will remain constant (read-only) during the execution of functions on the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyConstToTarget(void *targetData, const void *data, size_t n);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetData+: A pointer to the destination array on the target. This must have been declared using the \verb+__targetConst__ + keyword.
+\item \verb+data+: A pointer to the source array on the host.
+\item \verb+n+: The number of bytes to be copied.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:copyConstToTarget} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+\subsection{Implementation}
+\subsubsection{C}
+\verb+memcpy+
+\subsubsection{CUDA}
+\verb+cudaMemcpyToSymbol+
+
+\newpage
+\section{copyConstFromTarget}
+
+\subsection{Description}
+
+The \verb+copyConstFromTarget+ function copies data from a constant data location on the target to the host.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyConstToTarget(void *targetData, const void *data, size_t n);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+data+: A pointer to the destination array on the host.
+\item \verb+targetData+: A pointer to the source array on the target. This must have been declared using the \verb+__targetConst__ + keyword.
+\item \verb+n+: The number of bytes to be copied.
+\end{itemize}
+
+
+\subsection{Example}
+Analogous to Line \ref{example:scalelaunch:copyConstToTarget} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+\verb+memcpy+
+\subsubsection{CUDA}
+\verb+cudaMemcpyFromSymbol+
+
+\newpage
+\section{targetConstAddress}
+
+\subsection{Description}
+
+The \verb+targetConstAddress+ function provides the target address for a constant object.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetConstAddress(void **address, objectType object);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+address+ (output): The pointer to the constant object on the target.
+\item \verb+objectType+: The type of the object.
+\item \verb+object+ (input): The constant object on the target. This should have been declared using the \verb+__targetConst__+ keyword.
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+
+\subsection{Implementation}
+\subsubsection{C}
+Explicit copying of address.
+\subsubsection{CUDA}
+\verb+cudaGetSymbolAddress+
+
+\newpage
+\section{targetInit3D}
+
+\subsection{Description}
+
+The \verb+targetInit3D+ initialises the environment required to perform any of following the targetDP 3D lattice operations.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetInit3D(size_t extent, size_t nFields);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+extent+: The total extent of data parallelism (e.g. the number of lattice sites).
+\item \verb+nFields+: The extent of data resident within each parallel partition (e.g. the number of fields per lattice site).
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+\subsection{Implementation}
+\subsubsection{C}
+**TO DO**.
+\subsubsection{CUDA}
+**TO DO**.
+
+\newpage
+\section{targetFinalize3D}
+
+\subsection{Description}
+
+The \verb+targetFinalize3D+ finalizes the targetDP 3D environment.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetFinalize3D();
+\end{verbatim}
+
+\subsection{Example}
+**TO DO**.
+
+\subsection{Implementation}
+\subsubsection{C}
+**TO DO**.
+\subsubsection{CUDA}
+**TO DO**.
+
+
+\newpage
+\section{copyToTargetBoundary3D}
+
+\subsection{Description}
+
+The \verb+copyToTargetBoundary3D+ function copies the data corresponding to the boundaries of a 3D lattice from the host to the target.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyToTargetBoundary3D(void *targetData, const void *data, size_t extent3D[3], size_t nField, size_t offset, size_t depth);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetData+: A pointer to the destination array on the target.
+\item \verb+data+: A pointer to the source array on the host.
+\item \verb+extent3D+: An array of 3 integers corresponding to the 3D dimensions of the lattice.
+\item \verb+nFields+: The number of fields per lattice site.
+\item \verb+offset+: The number of sites from the lattice edge at which each boundary face should start.
+\item \verb+depth+: The depth of each boundary face.
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+\subsection{Implementation}
+\subsubsection{C}
+**TO DO**.
+\subsubsection{CUDA}
+**TO DO**.
+
+\newpage
+\section{copyFromTargetBoundary3D}
+
+\subsection{Description}
+
+The \verb+copyFromTargetBoundary3D+ function copies the data corresponding to the boundaries of a 3D lattice from the target to the host.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyFromTargetBoundary3D(void *data, const void *targetData, size_t extent3D[3], size_t nField, size_t offset, size_t depth);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+data+: A pointer to the destination array on the host.
+\item \verb+targetData+: A pointer to the source array on the target.
+\item \verb+extent3D+: An array of 3 integers corresponding to the 3D dimensions of the lattice.
+\item \verb+nFields+: The number of fields per lattice site.
+\item \verb+offset+: The number of sites from the lattice edge at which each boundary face should start.
+\item \verb+depth+: The depth of each boundary face.
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+\subsection{Implementation}
+\subsubsection{C}
+**TO DO**.
+\subsubsection{CUDA}
+**TO DO**.
+\newpage
+\section{copyToTargetPointerMap3D}
+
+\subsection{Description}
+
+The \verb+copyToTargetPointerMap3D+ function copies a subset of lattice data from the host to the target. The sites to be included are defined using an array of pointers passed as input.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyToTargetPointerMap3D(void *targetData, const void *data, 
+           size_t extent3D[3], size_t nField, 
+           int includeNeighbours, void** pointerArray);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+targetData+: A pointer to the destination array on the target.
+\item \verb+data+: A pointer to the source array on the host.
+\item \verb+extent3D+: An array of 3 integers corresponding to the 3D dimensions of the lattice.
+\item \verb+nField+: The number of fields per lattice site.
+\item \verb+includeNeighbours+: A boolean switch to specify whether each included site should also have it's neighbours included (in the 19-point 3D stencil).
+\item \verb+pointerArray+: An array of \verb+nSite+ pointers, where \verb+nSite+ is the total number of lattice sites. Each lattice site should be included unless the pointer corresponding to that site is \verb+NULL+.  
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+\subsection{Implementation}
+\subsubsection{C}
+**TO DO**.
+\subsubsection{CUDA}
+**TO DO**.
+
+\newpage
+\section{copyFromTargetPointerMap3D}
+
+\subsection{Description}
+
+The \verb+copyFromTargetPointerMap3D+ function copies a subset of lattice data from the target to the host. The sites to be included are defined using an array of pointers passed as input.
+
+\subsection{Syntax}
+\begin{verbatim}
+void copyFromTargetPointerMap3D(void *data, const void *targetData, 
+           size_t extent3D[3], size_t nField, 
+           int includeNeighbours, void** pointerArray);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+data+: A pointer to the destination array on the host.
+\item \verb+targetData+: A pointer to the source array on the target.
+\item \verb+extent3D+: An array of 3 integers corresponding to the 3D dimensions of the lattice.
+\item \verb+nField+: The number of fields per lattice site.
+\item \verb+includeNeighbours+: A boolean switch to specify whether each included site should also have it's neighbours included (in the 19-point 3D stencil).
+\item \verb+pointerArray+: An array of \verb+nSite+ pointers, where \verb+nSite+ is the total number of lattice sites. Each lattice site should be included unless the pointer corresponding to that site is \verb+NULL+.  
+\end{itemize}
+
+
+\subsection{Example}
+**TO DO**.
+
+\subsection{Implementation}
+\subsubsection{C}
+**TO DO**.
+\subsubsection{CUDA}
+**TO DO**.
+
