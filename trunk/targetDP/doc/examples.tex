@@ -1,0 +1,41 @@
+\chapter{Examples}\label{chapter:examples}
+\begin{comment}
+TO DO: describe this example. 
+\end{comment}
+\begin{figure}[h]
+\begin{lstlisting}
+__targetEntry__ void scale(double* t_field) { (*@\label{example:scalekernel:targetEntry}@*) 
+
+  int baseIndex;
+  __targetTLP__(baseIndex, N) { (*@\label{example:scalekernel:targetTLP}@*) 
+
+    int iDim, vecIndex;
+    for (iDim = 0; iDim < 3; iDim++) {
+
+      __targetILP__(vecIndex)  \ (*@\label{example:scalekernel:targetILP}@*) 
+         t_field[iDim*N + baseIndex + vecIndex] =  \
+	 t_a*t_field[iDim*N + baseIndex + vecIndex];       	  
+    }
+  }
+  return;
+}
+\end{lstlisting}
+\caption{***}\label{fig:scalekernel}
+\end{figure}
+
+\begin{figure}[h]
+\begin{lstlisting}
+  targetMalloc((void **) &t_field, datasize); (*@\label{example:scalelaunch:targetMalloc}@*) 
+  
+  copyToTarget(t_field, field, datasize); (*@\label{example:scalelaunch:copyToTarget}@*) 
+  copyConstToTarget(&t_a, &a, sizeof(double)); (*@\label{example:scalelaunch:copyConstToTarget}@*) 
+  
+  scale __targetLaunch__(N) (t_field); (*@\label{example:scalelaunch:targetLaunch}@*) 
+  targetSynchronize();(*@\label{example:scalelaunch:targetSynchronize}@*) 
+  
+  copyFromTarget(field, t_field, datasize); (*@\label{example:scalelaunch:copyFromTarget}@*) 
+  targetFree(t_field); (*@\label{example:scalelaunch:targetFree}@*) 
+\end{lstlisting}
+\caption{***}\label{fig:scalelaunch}
+\end{figure}
+

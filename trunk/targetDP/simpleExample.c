@@ -26,8 +26,8 @@ __targetEntry__ void scale(double* t_field) {
     int iDim, vecIndex;
     for (iDim = 0; iDim < 3; iDim++) {
 
-         __targetILP__(vecIndex)					\
-         t_field[iDim*N + baseIndex + vecIndex] =	\
+         __targetILP__(vecIndex)  \
+         t_field[iDim*N + baseIndex + vecIndex] =  \
 	  t_a*t_field[iDim*N + baseIndex + vecIndex];      	  
     }
   }
