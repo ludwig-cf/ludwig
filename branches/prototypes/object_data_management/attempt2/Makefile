@@ -6,11 +6,11 @@ MF= Makefile
 SRC1= main.c
 OBJ1= $(SRC1:.c=.o)
 
-CC = mpicc -Wall
-CFLAGS = -I$(TARGETDP) -g -std=c99
+CC = cc
+CFLAGS = -I$(TARGETDP) 
 LIBS = -lm -L$(TARGETDP) -ltargetDP_X86
 
-NVCC= nvcc -arch=sm_35
+NVCC= nvcc -arch=sm_35 #--verbose
 NVCCFLAGS= -I. -I../../../kevin/mpi_s -I$(TARGETDP) -x cu -DCUDA -dc
 NVCCLIBS= -L$(TARGETDP) -ltargetDP_CUDA
 
@@ -21,7 +21,7 @@ gpu1:
 	make gpu-x "CC=$(NVCC)" "CFLAGS=$(NVCCFLAGS)" "LIBS=$(NVCCLIBS)"
 
 gpu-x:	$(OBJ1)
-	$(CC) $(LDFLAGS) -o gpu-x $(OBJ1) $(LIBS)
+	$(CC) $(LDFLAGS) -o gpu-x $(OBJ1) $(NVCCLIBS)
 
 .SUFFIXES:
 .SUFFIXES: .c .o
@@ -29,6 +29,6 @@ gpu-x:	$(OBJ1)
 .c.o: 
 	$(CC) $(CFLAGS) -c $<
 clean:
-	rm -f $(OBJ2) gpu-x
+	rm -f $(OBJ1) host1 gpu-x
 
 
