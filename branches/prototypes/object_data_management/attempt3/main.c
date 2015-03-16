@@ -9,24 +9,65 @@
 
 
 #ifdef _OPENMP
+  /* have OpenMP */
   #include <omp.h>
 #else
+  /* NULL OpenMP implmentation */
   #define omp_get_thread_num()  0
   #define omp_get_num_threads() 1
   #define omp_get_max_threads() 1
 #endif
 
 
+#ifdef __NVCC__
+/* target defs, including real target_simd_loop() */
+#define target_simt_region()
+#define target_simt_loop(index, ndata, simdvl) \
+  index = 0;
+#define __simt_builtin_init()
+
+#else
+
+/* Dummy */
+
+#define __shared__
+
+/* Dummy built-in variable implmentation. */
+
+typedef struct uint3_s uint3;
+typedef uint3 uint3_t;
+struct uint3_s {
+  unsigned int x;
+  unsigned int y;
+  unsigned int z;
+};
+
+uint3_t __simd_builtin_threadIdx_init(void) {
+  uint3_t init = {1, 1, 1};
+  init.x = omp_get_thread_num();
+  return init;
+}
+
+uint3_t __simd_builtin_blockDim_init(void) {
+  uint3_t init = {1, 1, 1};
+  init.x = omp_get_num_threads();
+  return init;
+}
+/* Within target_simd_region(), provide access/initialisation */
+#define __simt_builtin_init() \
+  uint3_t threadIdx = __simd_builtin_threadIdx_init();	\
+  uint3_t blockDim  = __simd_builtin_blockDim_init();
+
+/* data parallel OpenMP */
+
 #define target_simt_region() _Pragma("omp parallel")
+
 #define target_simt_loop(index, ndata, simdvl) \
   _Pragma("omp for nowait") \
   for (index = 0; index < ndata; index += simdvl)
 
-/* To directly follow target_simt_region() to make threadIdx etc available */
-#define __simt_builtin_init() \
-  int threadIdx = omp_get_thread_num();		 \
-  int blockDim  = omp_get_num_threads();
 
+#endif
 
 __target_entry__ void kernel_trial(int ndata, double * data);
 
@@ -61,8 +102,8 @@ int main(int argc, char ** argv) {
 
 __target_entry__ void kernel_trial(int ndata, double * data) {
 
-  int index;    /* index for thread loop declared ahead of time  */
-  /* __shared__ declaration possible before simt region */
+  int index;                     /* Problem: shared in host implementation */
+  __shared__ double sdata[10];   /* OK; shared in host/device */
 
   assert(ndata % SIMDVL == 0);
 
@@ -76,7 +117,7 @@ __target_entry__ void kernel_trial(int ndata, double * data) {
       /* build-in variables can be accessed only if initialised via ... */
       __simt_builtin_init();
 
-      printf("Thread %d of %d index %d\n", threadIdx, blockDim, index);
+      printf("Thread %d of %d index %d\n", threadIdx.x, blockDim.x, index);
 
       if (index < ndata) {
 
