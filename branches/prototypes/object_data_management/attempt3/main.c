@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "targetDP.h"
-#define NDATA 4
+#define NDATA 8
 #define SIMDVL 2
 
 
@@ -16,51 +16,109 @@
   #define omp_get_thread_num()  0
   #define omp_get_num_threads() 1
   #define omp_get_max_threads() 1
+  #define omp_set_num_threads(nthread)
 #endif
 
 
 #ifdef __NVCC__
 /* target defs, including real target_simd_loop() */
-#define target_simt_region()
+#define target_simt_parallel_region()
 #define target_simt_loop(index, ndata, simdvl) \
   index = 0;
 #define __simt_builtin_init()
+#define __simt_threadIdx_init()
+#define __simt_blockIdx_init()
 
 #else
 
-/* Dummy */
+/* Device memory qualifier */
 
 #define __shared__
 
-/* Dummy built-in variable implmentation. */
+/* built-in variable implmentation. */
 
 typedef struct uint3_s uint3;
 typedef uint3 uint3_t;
+
 struct uint3_s {
   unsigned int x;
   unsigned int y;
   unsigned int z;
 };
 
-uint3_t __simd_builtin_threadIdx_init(void) {
-  uint3_t init = {1, 1, 1};
-  init.x = omp_get_thread_num();
-  return init;
+typedef struct dim3_s dim3;
+typedef dim3 dim3_t;
+
+struct dim3_s {
+  int x;
+  int y;
+  int z;
+};
+
+/* Smuggle in gridDim and blockDim through static file scope object;
+ * probably ok as names must be resevered. */
+
+static dim3_t gridDim;
+static dim3_t blockDim;
+
+/* ... executation configuration should  set the global
+ * gridDim and blockDim so they are available in kernel, and
+ * sets the number of threads which could be < omp_get_max_threads()
+ * Additional sanity checks could be envisaged.
+ */
+
+void __simt_target_prelaunch(dim3_t nblocks, dim3_t nthreads) {
+  gridDim = nblocks;
+  blockDim = nthreads;
+  /* sanity checks on user settings */
+  omp_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+  return;
 }
 
-uint3_t __simd_builtin_blockDim_init(void) {
-  uint3_t init = {1, 1, 1};
-  init.x = omp_get_num_threads();
-  return init;
+void __simt_target_postlaunch(void) {
+  omp_set_num_threads(omp_get_max_threads());
+  return;
 }
-/* Within target_simd_region(), provide access/initialisation */
+
+#define execution_configuration(kernel_trial, nblocks, nthreads, ...) \
+  __simt_target_prelaunch(nblocks, nthreads); \
+  target_launch(kernel_trial, nblocks, nthreads, __VA_ARGS__); \
+  __simt_target_postlaunch();
+
+/* Synchronisation */
+
+#define __syncthreads() _Pragma("omp barrier")
+
+/* Utilities */
+
+uint3_t __simd_builtin_threadIdx_init(void) {
+  uint3_t threads = {1, 1, 1};
+  threads.x = omp_get_thread_num();
+  return threads;
+}
+
+uint3_t __simd_builtin_blockIdx_init(void) {
+  uint3_t blocks = {1, 1, 1};
+  return blocks;
+}
+
+/* Within target_simd_parallel_region(), provide access/initialisation */
+/* If don't need both, use a single version to prevent unused variable
+ * warnings */
+
+#define __simt_threadIdx_init() \
+  uint3_t threadIdx = __simd_builtin_threadIdx_init();
+
+#define __simt_blockIdx_init() \
+  uint3_t blockIdx  = __simd_builtin_blockIdx_init();
+
 #define __simt_builtin_init() \
-  uint3_t threadIdx = __simd_builtin_threadIdx_init();	\
-  uint3_t blockDim  = __simd_builtin_blockDim_init();
+  __simt_threadIdx_init(); \
+  __simt_blockIdx_init();
 
 /* data parallel OpenMP */
 
-#define target_simt_region() _Pragma("omp parallel")
+#define target_simt_parallel_region() _Pragma("omp parallel")
 
 #define target_simt_loop(index, ndata, simdvl) \
   _Pragma("omp for nowait") \
@@ -75,6 +133,8 @@ int main(int argc, char ** argv) {
 
   int ndata = NDATA;
   int n;
+  dim3_t nblocks = {1, 1, 1};
+  dim3_t nthreads = {1, 1, 1};
   double hdata[NDATA];
   double * data;
 
@@ -86,8 +146,10 @@ int main(int argc, char ** argv) {
   /*targetMemcpy();*/
   data = hdata;
 
+  nthreads.x = omp_get_max_threads();
 
-  target_launch(kernel_trial, 1, 1, ndata, data);
+  execution_configuration(kernel_trial, nblocks, nthreads, ndata, data);
+
   syncTarget();
 
   /* targetMemcpy */
@@ -100,22 +162,63 @@ int main(int argc, char ** argv) {
   return 0;
 }
 
+/* Additional restrictions:
+ *
+ * __shared__ declarations must precede target_simt_region()
+ *   (CUDA allows them in any scoping unit in kernel) so that
+ * OpenMP sees shared memory
+ *
+ * extern __shared__ * types with dynamic allocation could
+ * be accommodated with the exectuation configuration.
+ *
+ * In host code thread private variables must come after
+ * target_simt_region() (function scope is private in CUDA).
+ *
+ * __simt_builtin_init() must occur inside target_simt_parallel_region()
+ * and before any references ot threadIdx etc (if present).
+ * If there are no references to in-built variables (unlikely),
+ *  __simt_builtin_init() may be omitted.
+ *
+ * Comments:
+ *
+ * target_simt_parallel_region() does job of "omp parallel"
+ * (One could enter the OpenMP parallel region at the point
+ * of the execution configuration, but that means __shared__
+ * declarations in kernel are impossible except via extern.)
+ *
+ * target_simt_loop() does job of "omp for"
+ *
+ * In the same vein as "omp parallel for" one could combine
+ * two in a convenience version:
+ *
+ *   target_simt_parallel_loop(index, ndata, SIMDVL)
+ *
+ * If no SIMD loop is required I suggest having, e.g.,
+ *
+ *   target_simt_parallel_loop(index, ndata, IGNORE_SIMDVL)
+ *
+ * with IGNORE_SIMDVL = 1
+ */
+
+
 __target_entry__ void kernel_trial(int ndata, double * data) {
 
   int index;                     /* Problem: shared in host implementation */
-  __shared__ double sdata[10];   /* OK; shared in host/device */
+  __shared__ int updates[32];    /* OK; shared in device */
 
   assert(ndata % SIMDVL == 0);
 
-  target_simt_region() {
+  target_simt_parallel_region() {
+
     /* Declare thread-private variables if required; here... */
+
+    __simt_threadIdx_init();
+    int nupdate = 0;
+    int ia;
 
     target_simt_loop(index, ndata, SIMDVL) {
 
       /* ... or here  */
-
-      /* build-in variables can be accessed only if initialised via ... */
-      __simt_builtin_init();
 
       printf("Thread %d of %d index %d\n", threadIdx.x, blockDim.x, index);
 
@@ -126,10 +229,25 @@ __target_entry__ void kernel_trial(int ndata, double * data) {
 	for (iv = 0; iv < SIMDVL; iv++) {
 	  /*printf("Update simd %d\n", index + iv);*/
 	  data[index + iv] *= 2.0;
+	  nupdate += 1;
 	}
       }
     }
+
+    /* Reduction (all threads) */
+
+    updates[threadIdx.x] = nupdate;
+    printf("Updates by thread %i = %i\n", threadIdx.x, updates[threadIdx.x]);
+
+    for (ia = blockDim.x/2; ia > 0; ia /= 2) {
+      __syncthreads();
+      if (threadIdx.x < ia) {
+        updates[threadIdx.x] += updates[threadIdx.x + ia];
+      }
+    }
   }
+
+  printf("blockIdx.x = 0 reduction: %i\n", updates[0]);
 
   return;
 }
