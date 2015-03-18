@@ -24,10 +24,13 @@
 /* target defs, including real target_simd_loop() */
 #define target_simt_parallel_region()
 #define target_simt_loop(index, ndata, simdvl) \
-  index = 0;
+  index = SIMDVL*(blockIdx.x*blockDim.x + threadIdx.x);
+
 #define __simt_builtin_init()
 #define __simt_threadIdx_init()
 #define __simt_blockIdx_init()
+
+#define execution_configuration(...) target_launch(__VA_ARGS__)
 
 #else
 
@@ -72,6 +75,7 @@ void __simt_target_prelaunch(dim3_t nblocks, dim3_t nthreads) {
   blockDim = nthreads;
   /* sanity checks on user settings */
   omp_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+
   return;
 }
 
@@ -100,6 +104,19 @@ uint3_t __simd_builtin_threadIdx_init(void) {
 uint3_t __simd_builtin_blockIdx_init(void) {
   uint3_t blocks = {1, 1, 1};
   return blocks;
+}
+
+int __simt_default_threads_per_block() {
+
+  int ntpb = 1;
+
+#ifdef _OPENMP
+  ntpb = omp_get_max_threads();
+#elif __NVCC__
+  ntpb = 32;  /* or whatever for CUDA */
+#endif
+
+  return ntpb;
 }
 
 /* Within target_simd_parallel_region(), provide access/initialisation */
@@ -133,8 +150,8 @@ int main(int argc, char ** argv) {
 
   int ndata = NDATA;
   int n;
-  dim3_t nblocks = {1, 1, 1};
-  dim3_t nthreads = {1, 1, 1};
+  dim3 nblocks;
+  dim3 nthreads;
   double hdata[NDATA];
   double * data;
 
@@ -142,21 +159,46 @@ int main(int argc, char ** argv) {
     hdata[n] = 1.0*n;
   }
 
-  targetMalloc((void **) &data, 5*sizeof(double));
-  /*targetMemcpy();*/
-  data = hdata;
+  targetMalloc((void **) &data, NDATA*sizeof(double));
+  if (target_is_host()) {
+    data = hdata;
+  }
+  else {
+    copyToTarget(data, hdata, NDATA*sizeof(double));
+  }
 
-  nthreads.x = omp_get_max_threads();
+  /* Block size.
+   * For OpenMP, it seems reasonable to set the number of blocks to
+   *   {1, 1, 1}
+   * in (almost all) cases and rely on ndata to express the extent of
+   * the parallel loop in the kernel. The number of threads is at most
+   *   omp_get_max_threads()
+   * and we need to use as many threads as possible.
+   *
+   * For CUDA, the block size is dependent on problem size and threads
+   * per block requested. Any given application may want a helper
+   * function to work this out. */
+
+  nblocks.x = 1; nblocks.y = 1; nblocks.z = 1;
+
+  nthreads.x = __simt_default_threads_per_block();
+  nthreads.y = 1;
+  nthreads.z = 1;
 
   execution_configuration(kernel_trial, nblocks, nthreads, ndata, data);
 
   syncTarget();
 
-  /* targetMemcpy */
+  if (target_is_host()) {
+    ;
+  }
+  else {
+    copyFromTarget(hdata, data, NDATA*sizeof(double));
+  }
 
   printf("ndara is %d\n", ndata);
   for (n = 0; n < ndata; n++) {
-    printf("data[%2i] = %5.1f\n", n, data[n]);
+    printf("data[%2i] = %5.1f\n", n, hdata[n]);
   }
 
   return 0;
@@ -172,7 +214,7 @@ int main(int argc, char ** argv) {
  * be accommodated with the exectuation configuration.
  *
  * In host code thread private variables must come after
- * target_simt_region() (function scope is private in CUDA).
+ * target_simt_region() (cf. whole function scope is private in CUDA).
  *
  * __simt_builtin_init() must occur inside target_simt_parallel_region()
  * and before any references ot threadIdx etc (if present).
@@ -234,7 +276,8 @@ __target_entry__ void kernel_trial(int ndata, double * data) {
       }
     }
 
-    /* Reduction (all threads) */
+    /* Reduction (all threads) Care with number of threads here
+     * as I have declared only updates[32] */
 
     updates[threadIdx.x] = nupdate;
     printf("Updates by thread %i = %i\n", threadIdx.x, updates[threadIdx.x]);
