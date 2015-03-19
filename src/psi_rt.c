@@ -93,8 +93,8 @@ int psi_init_param_rt(psi_t * obj) {
   info("Electrokinetic species:    %2d\n", nk);
   info("Boltzmann factor:          %14.7e (T = %14.7e)\n", beta, temperature);
   info("Unit charge:               %14.7e\n", eunit);
-  info("Reference permittivity:    %14.7e\n", epsilon);
-  info("Reference Bjerrum length:  %14.7e\n", lbjerrum);
+  info("Permittivity:              %14.7e\n", epsilon);
+  info("Bjerrum length:            %14.7e\n", lbjerrum);
 
   for (n = 0; n < nk; n++) {
     info("Valency species %d:         %2d\n", n, valency[n]);
@@ -172,6 +172,8 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
   double delta_el;            /* Relative difference in charge densities */
   double sigma;               /* Surface charge density */
   double ld;                  /* Debye length */
+  double ld2;                 /* Second Debye length for dielectric contrast */
+  double eps1, eps2;          /* Dielectric permittivities */
 
   /* Initial charge densities */
 
@@ -188,7 +190,7 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
     if (n == 0) fatal("... please set electrokinetics_init_rho_el\n");
     info("Initial condition rho_el:  %14.7e\n", rho_el);
     psi_debye_length(obj, rho_el, &ld);
-    info("Debye length:             %14.7e\n", ld);
+    info("Debye length:              %14.7e\n", ld);
 
     n = RUN_get_double_parameter("electrokinetics_init_sigma", &sigma);
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
@@ -221,6 +223,16 @@ int psi_init_rho_rt(psi_t * obj, map_t * map) {
     info("Initial condition rho_el: %14.7e\n", rho_el);
     psi_debye_length(obj, rho_el, &ld);
     info("Debye length:             %14.7e\n", ld);
+
+    /* Call permittivities and check for dielectric contrast */
+
+    psi_epsilon(obj, &eps1);
+    psi_epsilon2(obj, &eps2);
+
+    if (eps1 != eps2) {
+      psi_debye_length2(obj, rho_el, &ld2);
+      info("Second Debye length:      %14.7e\n", ld2);
+    }
 
     psi_init_uniform(obj, rho_el);
   }
