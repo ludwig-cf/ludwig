@@ -666,7 +666,27 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
   assert(obj);
   assert(lb);
 
-  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*0.5*(obj->epsilon + obj->epsilon2));
+  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  psi_bjerrum_length2
+ *
+ *  Is equal to e^2 / 4 pi epsilon2 k_B T if we have
+ *  a dielectric contrast between the electrolytes.
+ *
+ *****************************************************************************/
+
+int psi_bjerrum_length2(psi_t * obj, double * lb) {
+
+  assert(obj);
+  assert(lb);
+
+  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon2);
 
   return 0;
 }
@@ -689,6 +709,30 @@ int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
   assert(ld);
 
   psi_bjerrum_length(obj, &lb);
+  *ld = 1.0 / sqrt(8.0*pi_*lb*rho_b);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_debye_length2
+ *
+ *  Returns the Debye length for the second phase if we
+ *  have a dielectric contrast between the electrolytes.
+ *  An ionic strength is required as input (see above); this
+ *  accounts for the factor of 8 in the denominator.
+ *
+ *****************************************************************************/
+
+int psi_debye_length2(psi_t * obj, double rho_b, double * ld) {
+
+  double lb;
+
+  assert(obj);
+  assert(ld);
+
+  psi_bjerrum_length2(obj, &lb);
   *ld = 1.0 / sqrt(8.0*pi_*lb*rho_b);
 
   return 0;

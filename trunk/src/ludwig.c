@@ -1296,7 +1296,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     double e1, e2;
     double mu[2];
-    double lbjerrum;
+    double lbjerrum2;
 
     /* Binary fluid plus electrokinetics */
 
@@ -1388,12 +1388,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_es_deltamu_set(nk, mu);
 
-    psi_bjerrum_length(ludwig->psi, &lbjerrum);
+    psi_bjerrum_length2(ludwig->psi, &lbjerrum2);
 
     info("Second permittivity:      %15.7e\n", e2);
     info("Dielectric average:       %15.7e\n", 0.5*(e1 + e2));
     info("Dielectric contrast:      %15.7e\n", (e1-e2)/(e1+e2));
-    info("Average Bjerrum length:   %15.7e\n", lbjerrum);
+    info("Second Bjerrum length:    %15.7e\n", lbjerrum2);
     info("Solvation dmu species 0:  %15.7e\n", mu[0]);
     info("Solvation dmu species 1:  %15.7e\n", mu[1]);
 

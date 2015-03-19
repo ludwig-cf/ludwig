@@ -52,7 +52,9 @@ int psi_epsilon2(psi_t * obj, double * epsilon2);
 int psi_epsilon2_set(psi_t * obj, double epsilon2);
 int psi_ionic_strength(psi_t * psi, int index, double * sion);
 int psi_bjerrum_length(psi_t * obj, double * lb);
+int psi_bjerrum_length2(psi_t * obj, double * lb);
 int psi_debye_length(psi_t * obj, double rho_b, double * ld);
+int psi_debye_length2(psi_t * obj, double rho_b, double * ld);
 int psi_surface_potential(psi_t * obj, double sigma, double rho_b,
 			  double * sp);
 int psi_reltol(psi_t * obj, double * reltol);
