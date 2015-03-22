@@ -52,8 +52,8 @@ targetDP_CUDA:
 	$(AR) libtargetDP_CUDA.a targetDP_CUDA.o
 
 targetDP_X86:
-	$(CC) $(CFLAGS) -c targetDP_X86.c
-	$(AR) libtargetDP_X86.a targetDP_X86.o
+	$(CC) $(CFLAGS) -c cuda_stub_api.c targetDP_X86.c
+	$(AR) libtargetDP_X86.a cuda_stub_api.o targetDP_X86.o
 
 $(OBJ):	$(MF) *.h 
 

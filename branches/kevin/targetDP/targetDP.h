@@ -11,6 +11,7 @@
 
 /* Language "extensions", implemented through preprocessor */
 
+#include "target_api.h"
 
 #ifdef CUDA /* CUDA */
 
