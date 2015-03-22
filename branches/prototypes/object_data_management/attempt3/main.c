@@ -1,150 +1,216 @@
 /* OpenMP trial */
 
+/* The application is allowed to write a general CUDA-like kernel
+ * which will translate into OpenMP
+ */
+
+
+/* PROGRAMMING INTERFACE */
+
+/*
+ *
+ * C Extensions supported
+ *
+ *
+ * Execution space qualifiers. The following specify whether a function
+ * is callable from host or device or both.
+ *
+ * From CUDA          TargetDP alias
+ *
+ * __device__         __target__
+ * __global__         __target_entry__
+ * __host__           __targetHost__ (?)
+ *
+ * For x86 implementation all execution spaces collapse to host.
+ *
+ * The additional compiler directives are allowed. Whether they have
+ * effect is compiler-dependent:
+ *
+ * __forceinline__    __forceline__
+ * __noinline__       __noinline__
+ *
+ *
+ *
+ * Device memory qualifiers. The following may be used to specify
+ * device memory space
+ *
+ * __device__         __target__
+ * __constant__       __targetConst__
+ * __shared__         TBC
+ * __restrict__       __restrict__
+ *
+ * For x86 implementation these are respected in a threaded context.
+ * Note __managed__ is not supported.
+ *
+ * Restriction (from CUDA): only __shared__ variables may be declared as
+ * static within __device__ or __global__ functions.
+ *
+ * 
+ *
+ * Built-in variables. The following built-in variables (and corresponding
+ * type definitions) are available:
+ *
+ * dim3  gridDim        gridDim
+ * dim3  blockDim       blockDim
+ * uint3 blockIdx       blockIdx
+ * uint3 threadIdx      threadIdx
+ * int   warpSize       warpSize
+ *
+ * Note for CUDA implementation all these are available in __device__
+ * and __global__ functions. References from host execution space
+ * are erroneous (nvcc error).
+ * 
+ * This x86 implementation has gridDim and
+ * blockDim additionally in scope in __host__ functions. However,
+ * references should be disallowed owing to "reserved status".
+ *
+ * Additional restriction:
+ *
+ * Initialisation of in-built variables is ensured via a call to:
+ *
+ *   __target_simt_threadIdx_init()
+ *
+ * within a target_simt_parallel_region() (see below). Failure to
+ * do this will result in a compile-time error "variable not defined"
+ * in the host implementation.
+ * 
+ *
+ *
+ * Synchronisation functions
+ *
+ * void __syncthreads(void)
+ * 
+ * CUDA supplies a number of others int __syncthreads_count(),
+ * int __syncthreads_and() and int syncthreads_or() which would
+ * require per-block reduction (awkward).
+ *
+ * CUDA also implements various __threadfence() and __atomic() functions
+ * which I haven't looked at. It may be possible to ape these in the
+ * OpenMP content.
+ *
+ *
+ * Standard C functions.
+ *
+ * assert() is supported
+ * printf() is supported with some limitations from CUDA.
+ * malloc() etc are supported.
+ *
+ *
+ * Execution configuration
+ *
+ * __host_launch_kernel(void * kernel_function, dim3 nblocks, dim3 nthreads,
+ *                      ...)
+ *
+ * Note we enforce a strict C interface around the built-in
+ * variables gridDim, blockDim, so no C++ polymorphism is allowed.
+ *
+ * extern __shared__ * variables with dynamic allocation could
+ * be accommodated within the execution configuration by merely
+ * allocating and deallocating the file-scope object, which is
+ * has shared scope in the kernel.
+ *
+ *
+ * In general CUDA has the extension to standard C
+ *
+ * function<<<nblocks, nthreads_per_block, nbytes_shared, stream>>>(...)
+ *
+ * which can be replaced by the more standard
+ *
+ * cudaLaunchKernel()  (API v7.0;  now "deprecated" is  cudaLaunch())
+ *
+ * and related calls. This host-side interface could also be supported.
+ *
+ *
+ * Additional host extensions:
+ *
+ * int __host_simt_threads_per_block(void)
+ *
+ * Return default threads per block.
+ *
+ *
+ * Additional kernel function extensions:
+ *
+ * __target_simt_parallel_region() {
+ *   __target_simt_threadIdx_init();
+ *   ...
+ * }
+ *
+ * This is a structured block used to delimit the extent of threads
+ * (specifically in the host implementation). Thread-private variables
+ * must be declared within the scope of the parallel region. All
+ * variables outside the block default to shared.
+ *
+ * Note __target_simt_builtin_init() ensures initialisation of the
+ * built-in variables threadIdx and blockIdx as described above.
+ *
+ *
+ * __target_simt_for(index, nadata, istride) {
+ * }
+ *
+ * A structured block used to introduce worksharing. In the host
+ * implementation this must be replaced by a loop:
+ *
+ * for (index = 0; index < ndata; index += istride) {
+ * }
+ *
+ *
+ * And ...
+ *
+ * __target_simt_parallel_for(index, ndata, istride) {
+ * }
+ *
+ * Convenience structured block which combines __target_simt_parallel_region()
+ * and __target_simt_for().
+ *
+ *
+ *
+ * Host-side API
+ *
+ * I suggest a direct 1-1 mapping for "low-level" cuda stub interface
+ *
+ * "DP" Memcpy() -> cudaMemcpy() etc from CUDA runtime
+ *
+ * plus "higher-level" API as required (for stuff with no direct
+ * analogy in CUDA).
+ *
+ *
+ *
+ * Additional restrictions from CUDA:
+ *
+ * Pointers
+ *
+ * & obtains addresses valid only for the device for __device__
+ * __shared__ and __constant__ variables. Addresses of __device__
+ * and __constant__ variables obtained be dpeeGetSymbolAddress()
+ * can only be used in the host execution space.
+ *
+ * Operators
+ *
+ * __constant__ variables may only be assigned in host code.
+ * __shared__   variables cannot be initialised as part of a
+ *              declaration.
+ *
+ * & may not be used with built-in variables.
+ *
+ *
+ * Additional restrictions from OpenMP:
+ *
+ * Branching into/out of a parallel region is not allowed
+ * (to include the use of return statements). 
+ *
+ */
+
 #include <assert.h>
 #include <stdio.h>
 
 #include "targetDP.h"
+
+/* SIMPLE EXAMPLE */
+
 #define NDATA 8
 #define SIMDVL 2
 
-
-#ifdef _OPENMP
-  /* have OpenMP */
-  #include <omp.h>
-#else
-  /* NULL OpenMP implmentation */
-  #define omp_get_thread_num()  0
-  #define omp_get_num_threads() 1
-  #define omp_get_max_threads() 1
-  #define omp_set_num_threads(nthread)
-#endif
-
-
-#ifdef __NVCC__
-/* target defs, including real target_simd_loop() */
-#define target_simt_parallel_region()
-#define target_simt_loop(index, ndata, simdvl) \
-  index = SIMDVL*(blockIdx.x*blockDim.x + threadIdx.x);
-
-#define __simt_builtin_init()
-#define __simt_threadIdx_init()
-#define __simt_blockIdx_init()
-
-#define execution_configuration(...) target_launch(__VA_ARGS__)
-
-#else
-
-/* Device memory qualifier */
-
-#define __shared__
-
-/* built-in variable implmentation. */
-
-typedef struct uint3_s uint3;
-typedef uint3 uint3_t;
-
-struct uint3_s {
-  unsigned int x;
-  unsigned int y;
-  unsigned int z;
-};
-
-typedef struct dim3_s dim3;
-typedef dim3 dim3_t;
-
-struct dim3_s {
-  int x;
-  int y;
-  int z;
-};
-
-/* Smuggle in gridDim and blockDim through static file scope object;
- * probably ok as names must be resevered. */
-
-static dim3_t gridDim;
-static dim3_t blockDim;
-
-/* ... executation configuration should  set the global
- * gridDim and blockDim so they are available in kernel, and
- * sets the number of threads which could be < omp_get_max_threads()
- * Additional sanity checks could be envisaged.
- */
-
-void __simt_target_prelaunch(dim3_t nblocks, dim3_t nthreads) {
-  gridDim = nblocks;
-  blockDim = nthreads;
-  /* sanity checks on user settings */
-  omp_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
-
-  return;
-}
-
-void __simt_target_postlaunch(void) {
-  omp_set_num_threads(omp_get_max_threads());
-  return;
-}
-
-#define execution_configuration(kernel_trial, nblocks, nthreads, ...) \
-  __simt_target_prelaunch(nblocks, nthreads); \
-  target_launch(kernel_trial, nblocks, nthreads, __VA_ARGS__); \
-  __simt_target_postlaunch();
-
-/* Synchronisation */
-
-#define __syncthreads() _Pragma("omp barrier")
-
-/* Utilities */
-
-uint3_t __simd_builtin_threadIdx_init(void) {
-  uint3_t threads = {1, 1, 1};
-  threads.x = omp_get_thread_num();
-  return threads;
-}
-
-uint3_t __simd_builtin_blockIdx_init(void) {
-  uint3_t blocks = {1, 1, 1};
-  return blocks;
-}
-
-int __simt_default_threads_per_block() {
-
-  int ntpb = 1;
-
-#ifdef _OPENMP
-  ntpb = omp_get_max_threads();
-#elif __NVCC__
-  ntpb = 32;  /* or whatever for CUDA */
-#endif
-
-  return ntpb;
-}
-
-/* Within target_simd_parallel_region(), provide access/initialisation */
-/* If don't need both, use a single version to prevent unused variable
- * warnings */
-
-#define __simt_threadIdx_init() \
-  uint3_t threadIdx = __simd_builtin_threadIdx_init();
-
-#define __simt_blockIdx_init() \
-  uint3_t blockIdx  = __simd_builtin_blockIdx_init();
-
-#define __simt_builtin_init() \
-  __simt_threadIdx_init(); \
-  __simt_blockIdx_init();
-
-/* data parallel OpenMP */
-
-#define target_simt_parallel_region() _Pragma("omp parallel")
-
-#define target_simt_loop(index, ndata, simdvl) \
-  _Pragma("omp for nowait") \
-  for (index = 0; index < ndata; index += simdvl)
-
-
-#endif
-
-__target_entry__ void kernel_trial(int ndata, double * data);
+__global__ void kernel_trial(int ndata, double * data);
 
 int main(int argc, char ** argv) {
 
@@ -159,12 +225,14 @@ int main(int argc, char ** argv) {
     hdata[n] = 1.0*n;
   }
 
-  targetMalloc((void **) &data, NDATA*sizeof(double));
+  cudaMalloc((void **) &data, NDATA*sizeof(double));
+  /*__dpMemcpy(data, hdata, NDATA*sizeof(double), cudaMemcpyHostToDevice); */
+
   if (target_is_host()) {
     data = hdata;
   }
   else {
-    copyToTarget(data, hdata, NDATA*sizeof(double));
+    cudaMemcpy(data, hdata, NDATA*sizeof(double), cudaMemcpyHostToDevice);
   }
 
   /* Block size.
@@ -173,7 +241,7 @@ int main(int argc, char ** argv) {
    * in (almost all) cases and rely on ndata to express the extent of
    * the parallel loop in the kernel. The number of threads is at most
    *   omp_get_max_threads()
-   * and we need to use as many threads as possible.
+   * and we will generally want to use as many threads as possible.
    *
    * For CUDA, the block size is dependent on problem size and threads
    * per block requested. Any given application may want a helper
@@ -181,18 +249,16 @@ int main(int argc, char ** argv) {
 
   nblocks.x = 1; nblocks.y = 1; nblocks.z = 1;
 
-  nthreads.x = __simt_default_threads_per_block();
+  nthreads.x = __host_threads_per_block();
   nthreads.y = 1;
   nthreads.z = 1;
 
-  execution_configuration(kernel_trial, nblocks, nthreads, ndata, data);
+  __host_launch_kernel(kernel_trial, nblocks, nthreads, ndata, data);
 
-  syncTarget();
+  cudaDeviceSynchronize();
 
-  if (target_is_host()) {
-    ;
-  }
-  else {
+  /* __dpMemcpy();*/
+  if (!target_is_host()) {
     copyFromTarget(hdata, data, NDATA*sizeof(double));
   }
 
@@ -204,22 +270,25 @@ int main(int argc, char ** argv) {
   return 0;
 }
 
-/* Additional restrictions:
+/*
+ * Target-side interface
+ *
+ *  Additional restrictions:
  *
  * __shared__ declarations must precede target_simt_region()
  *   (CUDA allows them in any scoping unit in kernel) so that
  * OpenMP sees shared memory
  *
- * extern __shared__ * types with dynamic allocation could
- * be accommodated with the exectuation configuration.
- *
  * In host code thread private variables must come after
  * target_simt_region() (cf. whole function scope is private in CUDA).
  *
- * __simt_builtin_init() must occur inside target_simt_parallel_region()
+ * __simt_threadIdx_init() must occur inside target_simt_parallel_region()
  * and before any references ot threadIdx etc (if present).
  * If there are no references to in-built variables (unlikely),
- *  __simt_builtin_init() may be omitted.
+ *  __simt_threadIdx_init() may be omitted.
+ * The builtin variables come into scope with this call; if the current
+ * scope is finished, and a new one begun, a new call to
+ * __simt_threadIDx_init() is required.
  *
  * Comments:
  *
@@ -230,49 +299,38 @@ int main(int argc, char ** argv) {
  *
  * target_simt_loop() does job of "omp for"
  *
- * In the same vein as "omp parallel for" one could combine
- * two in a convenience version:
- *
- *   target_simt_parallel_loop(index, ndata, SIMDVL)
- *
- * If no SIMD loop is required I suggest having, e.g.,
- *
- *   target_simt_parallel_loop(index, ndata, IGNORE_SIMDVL)
- *
- * with IGNORE_SIMDVL = 1
  */
 
 
 __target_entry__ void kernel_trial(int ndata, double * data) {
 
-  int index;                     /* Problem: shared in host implementation */
+  int index;                     /* Problem: shared in OpenMP implementation
+				  * but private in CUDA; programmer error. */
   __shared__ int updates[32];    /* OK; shared in device */
 
   assert(ndata % SIMDVL == 0);
 
-  target_simt_parallel_region() {
+  __target_simt_parallel_region() {
 
+    /* Threads are now gauranteed to have started. */
     /* Declare thread-private variables if required; here... */
 
-    __simt_threadIdx_init();
+    __target_simt_threadIdx_init();
     int nupdate = 0;
     int ia;
 
-    target_simt_loop(index, ndata, SIMDVL) {
+    __target_simt_for(index, ndata, SIMDVL) {
 
-      /* ... or here  */
+      /* Worksharing  */
 
       printf("Thread %d of %d index %d\n", threadIdx.x, blockDim.x, index);
 
-      if (index < ndata) {
+      int iv;    /* index for simd loop private */
 
-	int iv;    /* index for simd loop private */
-
-	for (iv = 0; iv < SIMDVL; iv++) {
-	  /*printf("Update simd %d\n", index + iv);*/
-	  data[index + iv] *= 2.0;
-	  nupdate += 1;
-	}
+      for (iv = 0; iv < SIMDVL; iv++) {
+	/*printf("Update simd %d\n", index + iv);*/
+	data[index + iv] *= 2.0;
+	nupdate += 1;
       }
     }
 

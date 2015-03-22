@@ -6,9 +6,9 @@ MF= Makefile
 SRC1= main.c
 OBJ1= $(SRC1:.c=.o)
 
-CC = cc -h noomp
+CC = gcc -Wall
 CFLAGS = -I$(TARGETDP) 
-OMPFLAG =
+OMPFLAG = -fopenmp
 LIBS = -lm -L$(TARGETDP) -ltargetDP_X86
 
 NVCC= nvcc -arch=sm_35 #--verbose
