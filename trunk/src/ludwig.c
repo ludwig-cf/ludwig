@@ -1279,7 +1279,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_create(nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi);
 
-    /* P should still hold ... */
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
 
@@ -1287,8 +1286,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_petsc_init(ludwig->psi, ludwig->epsilon);
 #endif
 
-    /* Free energy object */
-
+    /* Create FE objects and set function pointers */
     fe_electro_create(ludwig->psi);
 
   }
@@ -1311,9 +1309,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_force_divergence_set(p);
 
     if (p == 1) phi_force_required_set(1);
-
-    info("Force calculation:          %s\n",
-         (p == 0) ? "psi grad mu method" : "Divergence method");
 
     /* First, the symmetric part. */
 
@@ -1354,6 +1349,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_create(nk, &ludwig->psi);
     psi_init_param_rt(ludwig->psi);
 
+
+    info("Force calculation:          %s\n",
+         (p == 0) ? "psi grad mu method" : "Divergence method");
+
 #ifdef PETSC
     psi_petsc_init(ludwig->psi, ludwig->epsilon);
 #endif
@@ -1364,6 +1363,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Coupling part\n");
     info("-------------\n");
 
+    /* Create FE objects and set function pointers */
     fe_es_create(ludwig->phi, ludwig->phi_grad, ludwig->psi);
 
     /* Dielectric contrast */
