@@ -2,6 +2,8 @@
  *
  *  fe_electro.c
  *
+ *  $Id$
+ *
  *  Free energy related to electrokinetics (simple fluid).
  *
  *  We have F = \int dr f[psi, rho_a] where the potential and the
@@ -53,6 +55,7 @@ struct fe_electro_s {
   double * mu_ref;   /* Reference potential currently unused (set to zero). */ 
 };
 
+/* A static implementation that holds relevant quantities for this model */
 static fe_electro_t * fe = NULL;
 
 /*****************************************************************************

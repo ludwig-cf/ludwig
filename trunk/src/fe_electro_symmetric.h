@@ -23,13 +23,13 @@
 
 int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi);
 int fe_es_free(void);
-int fe_es_mu_solv(int index, int n, double * mu);
+int fe_es_mu_ion_solv(int index, int n, double * mu);
 int fe_es_deltamu_set(int nk, double * deltamu);
 int fe_es_epsilon_set(double e1, double e2);
 int fe_es_var_epsilon(int index, double * epsilon);
 
 double fe_es_fed(const int index);
-double fe_es_mu(const int index, const int nop);
+double fe_es_mu_phi(const int index, const int nop);
 void fe_es_stress_ex(const int index, double s[3][3]);
 
 #endif

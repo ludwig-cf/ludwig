@@ -49,6 +49,7 @@
 #include "symmetric.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
+#include "psi.h"
 #include "psi_gradients.h"
 
 typedef struct fe_electro_symmetric_s fe_es_t;
@@ -66,10 +67,8 @@ struct fe_electro_symmetric_s {
   double * deltamu;   /* Solvation free energy difference (each species) */
 };
 
-
-/* Here's a static implementation. */
-
-static fe_es_t * fe = NULL;
+/* A static implementation that holds relevant quantities for this model */
+static fe_es_t * fe = NULL; 
 
 /*****************************************************************************
  *
@@ -100,8 +99,8 @@ int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi) {
 
   fe_electro_create(psi);
   fe_density_set(fe_es_fed);
-  fe_mu_solv_set(fe_es_mu_solv);
-  fe_chemical_potential_set(fe_es_mu);
+  fe_mu_solv_set(fe_es_mu_ion_solv);
+  fe_chemical_potential_set(fe_es_mu_phi);
   fe_chemical_stress_set(fe_es_stress_ex);
 
   return 0;
@@ -148,7 +147,7 @@ double fe_es_fed(int index) {
 
   for (n = 0; n < fe->nk; n++) {
     psi_rho(fe->psi, index, n, &rho);
-    fe_es_mu_solv(index, n, &fsolv);
+    fe_es_mu_ion_solv(index, n, &fsolv);
     fed += rho*fsolv;
   }
 
@@ -157,36 +156,43 @@ double fe_es_fed(int index) {
 
 /*****************************************************************************
  *
- *  fe_es_mu
+ *  fe_es_mu_phi
  *
  *  The chemical potential mu_phi
  *
- *      mu_phi = mu_mix + mu_solv + mu_el
+ *      mu_phi = mu_phi_mix + mu_phi_solv + mu_phi_el
+ *
+ *  Note: mu_phi_solv needs to be in agreement with the terms in fe_es_mu_ion()
  *
  *****************************************************************************/
 
-double fe_es_mu(const int index, const int nop) {
+double fe_es_mu_phi(const int index, const int nop) {
 
-  int n;
-  double phi;       /* Compositional order parameter */
-  double e[3];      /* External electric field */
-  double mu;        /* Result */
+  int ia, in;
+  double e0[3], e[3];  /* Electric field */
+  double rho;          /* Charge density */
+  double mu;           /* Result */
 
   assert(fe);
   assert(nop == 0); /* Only zero if relevant */
 
-  physics_e0(e);
-
   mu = symmetric_chemical_potential(index, 0);
 
-  /* Solvation piece needs to agree with fe_es_mu_solv() below */
+  /* Solvation piece */
 
-  field_scalar(fe->phi, index, &phi);
-  for (n = 0; n < fe->nk; n++) {
-    mu += 0.5*fe->deltamu[n]*(1.0 + phi);
+  for (in = 0; in < fe->nk; in++) {
+    psi_rho(fe->psi, index, in, &rho);
+    mu += 0.5*rho*fe->deltamu[in];
   }
 
-  /* External field contribution. */
+  /* Total electric field contribution */
+
+  physics_e0(e0);
+  psi_electric_field_d3qx(fe->psi, index, e); 
+
+  for (ia = 0; ia < 3; ia++) {
+    e[ia] += e0[ia];
+  }
 
   mu += -0.5*fe->gamma*fe->epsilonbar*(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
 
@@ -195,15 +201,17 @@ double fe_es_mu(const int index, const int nop) {
 
 /*****************************************************************************
  *
- *  fe_es_mu_solv
+ *  fe_es_mu_ion_solv
  *
  *  Solvation chemical potential, parameterised here as
  *
- *     mu = deltamu (1/2) [1 + phi(r)]
+ *     mu_ion_solv = 1/2 * deltamu * [1 + phi(r)]
+ *
+ *  Note: this needs to be in agreement with the terms in fe_es_mu_phi()
  *
  *****************************************************************************/
 
-int fe_es_mu_solv(int index, int n, double * mu) {
+int fe_es_mu_ion_solv(int index, int n, double * mu) {
 
   double phi;
 
