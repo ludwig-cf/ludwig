@@ -229,7 +229,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* To be called before wall_init() */
   if (ludwig->psi) {
     advection_run_time();
-    psi_init_rho_rt(ludwig->psi, ludwig->map);
+    psi_rt_init_rho(ludwig->psi, ludwig->map);
   }
 
   wall_init(ludwig->lb, ludwig->map);
@@ -1277,7 +1277,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Parameters:\n");
 
     psi_create(nk, &ludwig->psi);
-    psi_init_param_rt(ludwig->psi);
+    psi_rt_init_param(ludwig->psi);
 
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
@@ -1347,7 +1347,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Parameters:\n");
 
     psi_create(nk, &ludwig->psi);
-    psi_init_param_rt(ludwig->psi);
+    psi_rt_init_param(ludwig->psi);
 
 
     info("Force calculation:          %s\n",

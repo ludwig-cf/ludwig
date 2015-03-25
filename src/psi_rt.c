@@ -31,11 +31,11 @@
 
 /*****************************************************************************
  *
- *  psi_param_init_rt
+ *  psi_rt_param_init
  *
  *****************************************************************************/
 
-int psi_init_param_rt(psi_t * obj) {
+int psi_rt_init_param(psi_t * obj) {
 
   int n;
   int nk;
@@ -153,7 +153,7 @@ int psi_init_param_rt(psi_t * obj) {
 
 /*****************************************************************************
  *
- *  psi_init_rho_rt
+ *  psi_rt_init_rho
  *
  *  Initial configurations of the charge density.
  *
@@ -163,7 +163,7 @@ int psi_init_param_rt(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_init_rho_rt(psi_t * obj, map_t * map) {
+int psi_rt_init_rho(psi_t * obj, map_t * map) {
 
   int n;
   char value[BUFSIZ];
