@@ -18,7 +18,7 @@
 #include "psi.h"
 #include "map.h"
 
-int psi_init_param_rt(psi_t * psi);
-int psi_init_rho_rt(psi_t * psi, map_t * map);
+int psi_rt_init_param(psi_t * psi);
+int psi_rt_init_rho(psi_t * psi, map_t * map);
 
 #endif
