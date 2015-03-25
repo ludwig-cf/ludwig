@@ -527,7 +527,12 @@ void ludwig_run(const char * inputfile) {
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
       }
-
+      
+      TIMER_start(TIMER_HALO_LATTICE);
+      psi_halo_psi(ludwig->psi);
+      psi_halo_rho(ludwig->psi);
+      TIMER_stop(TIMER_HALO_LATTICE);
+    
       nernst_planck_adjust_multistep(ludwig->psi);
 
       if (is_statistics_step()) info("%d multisteps\n",im);
