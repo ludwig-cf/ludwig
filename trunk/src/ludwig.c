@@ -557,7 +557,7 @@ void ludwig_run(const char * inputfile) {
       else {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
-	  phi_force_calculation(ludwig->phi, ludwig->hydro);
+	  phi_force_calculation(ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
 	    lc_droplet_bodyforce(ludwig->hydro);
@@ -565,7 +565,7 @@ void ludwig_run(const char * inputfile) {
 	  }
 	}
 	else {
-	  phi_force_colloid(ludwig->collinfo, ludwig->hydro, ludwig->map);
+	  phi_force_colloid(ludwig->collinfo, ludwig->q, ludwig->q_grad,ludwig->hydro, ludwig->map);
 	}
       }
 

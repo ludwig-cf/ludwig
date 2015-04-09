@@ -17,10 +17,10 @@
 #ifndef PHI_FORCE_STRESS_H
 #define PHI_FORCE_STRESS_H
 
-void phi_force_stress(const int index, double p[3][3]);
-void phi_force_stress_set(const int index, double p[3][3]);
-void phi_force_stress_compute(void);
-void phi_force_stress_allocate(void);
-void phi_force_stress_free(void);
+__targetHost__  void phi_force_stress(const int index, double p[3][3]);
+__targetHost__  void phi_force_stress_set(const int index, double p[3][3]);
+__targetHost__  void phi_force_stress_compute(field_t* q, field_grad_t* q_grad);
+__targetHost__  void phi_force_stress_allocate(void);
+__targetHost__  void phi_force_stress_free(void);
 
 #endif

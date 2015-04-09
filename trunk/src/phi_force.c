@@ -29,9 +29,11 @@
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "wall.h"
+#include "field_grad_s.h"
+#include "field_s.h"
 #include "phi_force_stress.h"
 
-static int phi_force_calculation_fluid(hydro_t * hydro);
+static int phi_force_calculation_fluid(field_t* q, field_grad_t* q_grad, hydro_t * hydro);
 static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
 				    double * fz);
 static int phi_force_flux_divergence(hydro_t * hydro, double * fe,
@@ -100,7 +102,7 @@ int phi_force_divergence_set(const int flag) {
  *
  *****************************************************************************/
 
-int phi_force_calculation(field_t * phi, hydro_t * hydro) {
+int phi_force_calculation(field_t * phi, field_t* q, field_grad_t* q_grad, hydro_t * hydro) {
 
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
@@ -112,7 +114,7 @@ int phi_force_calculation(field_t * phi, hydro_t * hydro) {
   }
   else {
     if (force_divergence_) {
-      phi_force_calculation_fluid(hydro);
+      phi_force_calculation_fluid(q, q_grad, hydro);
    }
     else {
       assert(phi);
@@ -136,7 +138,7 @@ int phi_force_calculation(field_t * phi, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int phi_force_calculation_fluid(hydro_t * hydro) {
+static int phi_force_calculation_fluid(field_t * q, field_grad_t* q_grad, hydro_t * hydro) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
@@ -152,7 +154,9 @@ static int phi_force_calculation_fluid(hydro_t * hydro) {
   coords_nlocal(nlocal);
 
   phi_force_stress_allocate();
-  phi_force_stress_compute();
+
+
+  phi_force_stress_compute(q, q_grad);
 
   chemical_stress = phi_force_stress;
 
