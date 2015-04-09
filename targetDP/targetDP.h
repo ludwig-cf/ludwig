@@ -11,7 +11,7 @@
 
 //switch to keep data resident on target for whole timestep
 //only available for GPU version at the moment
-#define TARGETFASTON
+//#define TARGETFASTON
 
 
 #ifdef CUDAHOST
