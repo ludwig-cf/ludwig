@@ -29,6 +29,8 @@ struct field_grad_s {
   double * grad_delsq;      /* Gradient of Laplacian grad \nabla^2 f */
   double * delsq_delsq;     /* Laplacian^2           \nabla^4 f */
 
+  field_grad_t * tcopy;              /* copy of this structure on target */ 
+
   int (* d2) (int nf, const double * field, 
 	      double * t_field,
 	      double * grad,

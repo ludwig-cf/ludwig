@@ -66,7 +66,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+int phi_force_colloid(colloids_info_t * cinfo, field_t* q, field_grad_t* q_grad, hydro_t * hydro, map_t * map) {
 
   int ncolloid;
   int required;
@@ -80,7 +80,7 @@ int phi_force_colloid(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
     phi_force_stress_allocate();
 
-    phi_force_stress_compute();
+    phi_force_stress_compute(q, q_grad);
     phi_force_interpolation(cinfo, hydro, map);
 
     phi_force_stress_free();

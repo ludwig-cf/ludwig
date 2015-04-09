@@ -96,7 +96,18 @@ void field_free(field_t * obj) {
   assert(obj);
 
   if (obj->data) free(obj->data);
-  if (obj->t_data) targetFree(obj->t_data);
+
+  if (obj->tcopy) {
+
+    //free data space on target 
+    double* tmpptr;
+    field_t* t_obj = obj->tcopy;
+    copyFromTarget(&tmpptr,&(t_obj->data),sizeof(double*)); 
+    targetFree(tmpptr);
+    
+    //free target copy of structure
+    targetFree(obj->tcopy);
+  }
 
   if (obj->halo[0] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[0]);
   if (obj->halo[1] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[1]);
@@ -130,9 +141,18 @@ int field_init(field_t * obj, int nhcomm) {
 
   if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
 
-  /* allocate target copy */
-  targetCalloc((void **) &obj->t_data, obj->nf*nsites*sizeof(double));
+  /* allocate target copy of structure */
+  targetMalloc((void**) &(obj->tcopy),sizeof(field_t));
 
+  /* allocate data space on target */
+  double* tmpptr;
+  field_t* t_obj = obj->tcopy;
+  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->data),&tmpptr,sizeof(double*)); 
+
+  copyToTarget(&(t_obj->nf),&(obj->nf),sizeof(int)); //integer with number of field components
+
+  obj->t_data= tmpptr; //DEPRECATED direct access to target data.
 
   /* MPI datatypes for halo */
 

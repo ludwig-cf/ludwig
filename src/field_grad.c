@@ -74,10 +74,25 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->grad == NULL) fatal("calloc(field_grad->grad) failed");
     if (obj->delsq == NULL) fatal("calloc(field_grad->delsq) failed");
 
-    /* allocate target copies */
-    targetCalloc((void **) &obj->t_grad, NVECTOR*obj->nf*nsites*sizeof(double));
-    targetCalloc((void **) &obj->t_delsq, obj->nf*nsites*sizeof(double));
+ 
+    targetMalloc((void**) &(obj->tcopy),sizeof(field_grad_t));
 
+    //allocate data space on target 
+    double* tmpptr;
+    field_grad_t* t_obj = obj->tcopy;
+
+    targetCalloc((void**) &tmpptr,obj->nf*NVECTOR*nsites*sizeof(double));
+    copyToTarget(&(t_obj->grad),&tmpptr,sizeof(double*)); 
+
+    obj->t_grad=tmpptr; //DEPRECATED direct access to target data.
+    
+
+    targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
+    copyToTarget(&(t_obj->delsq),&tmpptr,sizeof(double*)); 
+
+    obj->t_delsq=tmpptr; //DEPRECATED direct access to target data.
+
+    copyToTarget(&(t_obj->nf),&(obj->nf),sizeof(int)); //integer with number of field components
 
   }
 
@@ -144,8 +159,24 @@ void field_grad_free(field_grad_t * obj) {
 
   if (obj->grad) free(obj->grad);
   if (obj->delsq) free(obj->delsq);
-  if (obj->t_grad) targetFree(obj->t_grad);
-  if (obj->t_delsq) targetFree(obj->t_delsq);
+
+  if (obj->tcopy) {
+
+    //free data space on target 
+    double* tmpptr;
+    field_grad_t* t_obj = obj->tcopy;
+    
+    copyFromTarget(&tmpptr,&(t_obj->grad),sizeof(double*)); 
+    targetFree(tmpptr);
+    
+    copyFromTarget(&tmpptr,&(t_obj->delsq),sizeof(double*)); 
+    targetFree(tmpptr);
+   
+    //free target copy of structure 
+    targetFree(obj->tcopy);
+  }
+
+
   if (obj->grad_delsq) free(obj->grad_delsq);
   if (obj->delsq_delsq) free(obj->delsq_delsq);
   if (obj->d_ab) free(obj->d_ab);

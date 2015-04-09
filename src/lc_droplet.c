@@ -494,7 +494,12 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
   field_grad_tensor_grad(grad_q_, index, dq);
   field_grad_tensor_delsq(grad_q_, index, dsq);
 
-  blue_phase_compute_h(q, dq, dsq, h);
+  //we are doing this on the host
+  blue_phase_set_kernel_constants();
+  void* pcon=NULL;
+  blue_phase_host_constant_ptr(&pcon);
+
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   
   qh = 0.0;
 
@@ -570,7 +575,12 @@ void lc_droplet_antisymmetric_stress(const int index, double sth[3][3]) {
   field_grad_tensor_grad(grad_q_, index, dq);
   field_grad_tensor_delsq(grad_q_, index, dsq);
 
-  blue_phase_compute_h(q, dq, dsq, h);
+  //we are doing this on the host
+  blue_phase_set_kernel_constants();
+  void* pcon=NULL;
+  blue_phase_host_constant_ptr(&pcon);
+
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

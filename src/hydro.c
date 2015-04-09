@@ -593,18 +593,27 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
 static int hydro_u_write(FILE * fp, int index, void * arg) {
 
-  #ifdef LB_DATA_SOA
-  fatal("LB_SATA_SOA not supported with hydro_e_write\n");
-  #endif
-
   int n;
   hydro_t * obj = (hydro_t*) arg;
 
   assert(fp);
   assert(obj);
 
+  
+  #ifdef LB_DATA_SOA
+
+  int nsites = le_nsites();
+  int i;
+
+  for(i=0;i<3;i++){
+    fwrite(&obj->u[i*nsites+index], sizeof(double), 1, fp);
+  }
+
+  #else    
+
   n = fwrite(&obj->u[obj->nf*index], sizeof(double), obj->nf, fp);
   if (n != obj->nf) fatal("fwrite(hydro->u) failed\n");
+  #endif
 
   return 0;
 }
@@ -675,38 +684,59 @@ int hydro_u_read(FILE * fp, int index, void * self) {
 int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 			    double w[3][3]) {
 
-  #ifdef LB_DATA_SOA
-  fatal("LB_SATA_SOA not supported with hydro_u_gradient_tensor\n");
-  #endif
+  //#ifdef LB_DATA_SOA
+  //fatal("LB_SATA_SOA not supported with hydro_u_gradient_tensor\n");
+  //#endif
 
 
   int im1, ip1;
   double tr;
+  int nsites = le_nsites();
 
   assert(obj);
 
   im1 = le_index_real_to_buffer(ic, -1);
-  im1 = obj->nf*le_site_index(im1, jc, kc);
+  //  im1 = obj->nf*le_site_index(im1, jc, kc);
+  im1 = le_site_index(im1, jc, kc);
   ip1 = le_index_real_to_buffer(ic, +1);
-  ip1 = obj->nf*le_site_index(ip1, jc, kc);
+  //ip1 = obj->nf*le_site_index(ip1, jc, kc);
+  ip1 = le_site_index(ip1, jc, kc);
 
-  w[X][X] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
-  w[Y][X] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
-  w[Z][X] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
+  //w[X][X] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
+  //w[Y][X] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
+  //w[Z][X] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
 
-  im1 = obj->nf*le_site_index(ic, jc - 1, kc);
-  ip1 = obj->nf*le_site_index(ic, jc + 1, kc);
+  w[X][X] = 0.5*(obj->u[HYADR(nsites,3,ip1,X)] - obj->u[HYADR(nsites,3,im1,X)]);
+  w[Y][X] = 0.5*(obj->u[HYADR(nsites,3,ip1,Y)] - obj->u[HYADR(nsites,3,im1,Y)]);
+  w[Z][X] = 0.5*(obj->u[HYADR(nsites,3,ip1,Z)] - obj->u[HYADR(nsites,3,im1,Z)]);
 
-  w[X][Y] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
-  w[Y][Y] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
-  w[Z][Y] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
+  //im1 = obj->nf*le_site_index(ic, jc - 1, kc);
+  //ip1 = obj->nf*le_site_index(ic, jc + 1, kc);
 
-  im1 = obj->nf*le_site_index(ic, jc, kc - 1);
-  ip1 = obj->nf*le_site_index(ic, jc, kc + 1);
+  im1 = le_site_index(ic, jc - 1, kc);
+  ip1 = le_site_index(ic, jc + 1, kc);
 
-  w[X][Z] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
-  w[Y][Z] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
-  w[Z][Z] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
+  //w[X][Y] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
+  //w[Y][Y] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
+  //w[Z][Y] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
+
+  w[X][Y] = 0.5*(obj->u[HYADR(nsites,3,ip1,X)] - obj->u[HYADR(nsites,3,im1,X)]);
+  w[Y][Y] = 0.5*(obj->u[HYADR(nsites,3,ip1,Y)] - obj->u[HYADR(nsites,3,im1,Y)]);
+  w[Z][Y] = 0.5*(obj->u[HYADR(nsites,3,ip1,Z)] - obj->u[HYADR(nsites,3,im1,Z)]);
+
+  //im1 = obj->nf*le_site_index(ic, jc, kc - 1);
+  //ip1 = obj->nf*le_site_index(ic, jc, kc + 1);
+
+  im1 = le_site_index(ic, jc, kc - 1);
+  ip1 = le_site_index(ic, jc, kc + 1);
+
+  //w[X][Z] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
+  //w[Y][Z] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
+  //w[Z][Z] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
+
+  w[X][Z] = 0.5*(obj->u[HYADR(nsites,3,ip1,X)] - obj->u[HYADR(nsites,3,im1,X)]);
+  w[Y][Z] = 0.5*(obj->u[HYADR(nsites,3,ip1,Y)] - obj->u[HYADR(nsites,3,im1,Y)]);
+  w[Z][Z] = 0.5*(obj->u[HYADR(nsites,3,ip1,Z)] - obj->u[HYADR(nsites,3,im1,Z)]);
 
   /* Enforce tracelessness */
 

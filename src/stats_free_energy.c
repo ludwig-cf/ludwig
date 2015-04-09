@@ -539,8 +539,13 @@ int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
 	field_grad_tensor_grad(dqf, index, dq);
 	field_grad_tensor_delsq(dqf, index, dsq);
 
-	blue_phase_compute_h(q, dq, dsq, h);
-	blue_phase_compute_stress(q, dq, h, sth);
+	//we are doing this on the host
+	blue_phase_set_kernel_constants();
+	void* pcon=NULL;
+	blue_phase_host_constant_ptr(&pcon);
+
+	blue_phase_compute_h(q, dq, dsq, h, pcon);
+	blue_phase_compute_stress(q, dq, h, sth, pcon);
 
 	q2 = 0.0;
 
