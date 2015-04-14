@@ -1,4 +1,4 @@
-\chapter{Memory Management}
+\chapter{Memory Management}\label{chap:memmanage}
 
 
 
@@ -11,7 +11,7 @@ The \verb+targetMalloc+ function allocates memory on the target.
 
 \subsection{Syntax}
 \begin{verbatim}
-void targetMalloc(void **targetPtr, size_t n);
+void targetMalloc(void** targetPtr, size_t n);
 \end{verbatim}
 
 \begin{itemize}
@@ -33,11 +33,11 @@ See Line \ref{example:scalelaunch:targetMalloc} in Figure \ref{fig:scalelaunch} 
 
 \subsection{Description}
 
-The \verb+targetCalloc+ function allocates, and initializes to zero, memory on the target.
+The \verb+targetCalloc+ function allocates, and initialises to zero, memory on the target.
 
 \subsection{Syntax}
 \begin{verbatim}
-void targetCalloc(void **targetPtr, size_t n);
+void targetCalloc(void** targetPtr, size_t n);
 \end{verbatim}
 
 \begin{itemize}
@@ -64,7 +64,7 @@ The \verb+targetFree+ function deallocates memory on the target.
 
 \subsection{Syntax}
 \begin{verbatim}
-void targetFree(void *targetPtr);
+void targetFree(void* targetPtr);
 \end{verbatim}
 
 \begin{itemize}
@@ -90,7 +90,7 @@ The \verb+copyToTarget+ function copies data from the host to the target.
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyToTarget(void *targetData, const void *data, size_t n);
+void copyToTarget(void* targetData, const void* data, size_t n);
 \end{verbatim}
 
 \begin{itemize}
@@ -118,7 +118,7 @@ The \verb+copyFromTarget+ function copies data from the target to the host.
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyFromTarget(void *data, const void *targetData, size_t n);
+void copyFromTarget(void* data, const void* targetData, size_t n);
 \end{verbatim}
 
 \begin{itemize}
@@ -152,7 +152,7 @@ __targetConst__ type variableName
 
 \begin{itemize}
 \item \verb+variableName+: The name of the variable or array.
-\item \verb+type+: The type of variabe or array.
+\item \verb+type+: The type of variable or array.
 \end{itemize}
 
 
@@ -173,7 +173,7 @@ The \verb+copyConstToTarget+ function copies data from the host to the target, w
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyConstToTarget(void *targetData, const void *data, size_t n);
+void copyConstToTarget(void* targetData, const void* data, size_t n);
 \end{verbatim}
 
 \begin{itemize}
@@ -200,7 +200,7 @@ The \verb+copyConstFromTarget+ function copies data from a constant data locatio
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyConstToTarget(void *targetData, const void *data, size_t n);
+void copyConstToTarget(void* targetData, const void* data, size_t n);
 \end{verbatim}
 
 \begin{itemize}
@@ -228,7 +228,7 @@ The \verb+targetConstAddress+ function provides the target address for a constan
 
 \subsection{Syntax}
 \begin{verbatim}
-void targetConstAddress(void **address, objectType object);
+void targetConstAddress(void** address, objectType object);
 \end{verbatim}
 
 \begin{itemize}
@@ -252,7 +252,7 @@ Explicit copying of address.
 
 \subsection{Description}
 
-The \verb+targetInit3D+ initialises the environment required to perform any of following the targetDP 3D lattice operations.
+The \verb+targetInit3D+ initialises the environment required to perform any of the ``3D'' operations described in the rest of this chapter.
 
 \subsection{Syntax}
 \begin{verbatim}
@@ -278,7 +278,7 @@ void targetInit3D(size_t extent, size_t nFields);
 
 \subsection{Description}
 
-The \verb+targetFinalize3D+ finalizes the targetDP 3D environment.
+The \verb+targetFinalize3D+ finalises the targetDP 3D environment.
 
 \subsection{Syntax}
 \begin{verbatim}
@@ -304,7 +304,9 @@ The \verb+copyToTargetBoundary3D+ function copies the data corresponding to the 
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyToTargetBoundary3D(void *targetData, const void *data, size_t extent3D[3], size_t nField, size_t offset, size_t depth);
+void copyToTargetBoundary3D(void* targetData, const void* data, 
+              size_t extent3D[3], size_t nField, 
+              size_t offset, size_t depth);
 \end{verbatim}
 
 \begin{itemize}
@@ -334,7 +336,9 @@ The \verb+copyFromTargetBoundary3D+ function copies the data corresponding to th
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyFromTargetBoundary3D(void *data, const void *targetData, size_t extent3D[3], size_t nField, size_t offset, size_t depth);
+void copyFromTargetBoundary3D(void* data, const void* targetData, 
+                 size_t extent3D[3], size_t nField, 
+                 size_t offset, size_t depth);
 \end{verbatim}
 
 \begin{itemize}
@@ -363,7 +367,7 @@ The \verb+copyToTargetPointerMap3D+ function copies a subset of lattice data fro
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyToTargetPointerMap3D(void *targetData, const void *data, 
+void copyToTargetPointerMap3D(void* targetData, const void* data, 
            size_t extent3D[3], size_t nField, 
            int includeNeighbours, void** pointerArray);
 \end{verbatim}
@@ -373,7 +377,7 @@ void copyToTargetPointerMap3D(void *targetData, const void *data,
 \item \verb+data+: A pointer to the source array on the host.
 \item \verb+extent3D+: An array of 3 integers corresponding to the 3D dimensions of the lattice.
 \item \verb+nField+: The number of fields per lattice site.
-\item \verb+includeNeighbours+: A boolean switch to specify whether each included site should also have it's neighbours included (in the 19-point 3D stencil).
+\item \verb+includeNeighbours+: A Boolean switch to specify whether each included site should also have it's neighbours included (in the 19-point 3D stencil).
 \item \verb+pointerArray+: An array of \verb+nSite+ pointers, where \verb+nSite+ is the total number of lattice sites. Each lattice site should be included unless the pointer corresponding to that site is \verb+NULL+.  
 \end{itemize}
 
@@ -395,7 +399,7 @@ The \verb+copyFromTargetPointerMap3D+ function copies a subset of lattice data f
 
 \subsection{Syntax}
 \begin{verbatim}
-void copyFromTargetPointerMap3D(void *data, const void *targetData, 
+void copyFromTargetPointerMap3D(void* data, const void* targetData, 
            size_t extent3D[3], size_t nField, 
            int includeNeighbours, void** pointerArray);
 \end{verbatim}
@@ -405,7 +409,7 @@ void copyFromTargetPointerMap3D(void *data, const void *targetData,
 \item \verb+targetData+: A pointer to the source array on the target.
 \item \verb+extent3D+: An array of 3 integers corresponding to the 3D dimensions of the lattice.
 \item \verb+nField+: The number of fields per lattice site.
-\item \verb+includeNeighbours+: A boolean switch to specify whether each included site should also have it's neighbours included (in the 19-point 3D stencil).
+\item \verb+includeNeighbours+: A Boolean switch to specify whether each included site should also have it's neighbours included (in the 19-point 3D stencil).
 \item \verb+pointerArray+: An array of \verb+nSite+ pointers, where \verb+nSite+ is the total number of lattice sites. Each lattice site should be included unless the pointer corresponding to that site is \verb+NULL+.  
 \end{itemize}
 

@@ -3,8 +3,8 @@
 The terminology ``host'' is used to refer to the CPU that is hosting
 the execution of the application, and ``target'' to refer to the
 device targeted for execution of data parallel operations. The target
-can be the same CPU as the host, or it can be a separate device such
-as an accelerator. 
+could be the same CPU as the host, or it could be a separate device such
+as an accelerator (depending on the hardware available). 
 
 The targetDP API follows the fork-join model of parallel
 execution. When the application initiates, a single thread executes
@@ -20,7 +20,7 @@ where target function is launched. When the initial thread encounters
 this statement, it will wait until the target region has completed. It
 is possible for the initial thread to execute other instructions
 (which do not depend on the results of the target function), after the
-function launch but before the syncronisation call. This may result in
+function launch but before the synchronisation call. This may result in
 overlapping of host and target execution, and hence optimisation, in
 some implementations. Once the target function has completed, the
 initial thread will continue sequentially until another target
@@ -35,4 +35,8 @@ to process.
 \begin{comment}
 Possibly add targetSyncThreads() to
   allow communication within target functions?]
+\end{comment}
+
+\begin{comment}
+Some text on reductions needed.
 \end{comment}

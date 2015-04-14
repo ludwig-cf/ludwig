@@ -27,7 +27,7 @@ See Line \ref{example:scalekernel:targetEntry} in Figure \ref{fig:scalekernel} i
 \subsubsection{C}
 Holds no value.
 \subsubsection{CUDA}
-
+\verb+__global__+
 
 \newpage
 \section{target}
@@ -56,7 +56,7 @@ Analogous to Line \ref{example:scalekernel:targetEntry} in Figure \ref{fig:scale
 \subsubsection{C}
 Holds no value.
 \subsubsection{CUDA}
-
+\verb+__device__+
 
 
 \newpage
@@ -124,7 +124,7 @@ CUDA \verb+<<<...>>>+ syntax.
 
 \subsection{Description}
 
-The \verb+targetSynchronize+ function is used to block until the preceeding \verb+__targetLaunch__+ has completed.
+The \verb+targetSynchronize+ function is used to block until the preceding \verb+__targetLaunch__+ has completed.
 
 \subsection{Syntax}
 \begin{verbatim}
@@ -162,7 +162,7 @@ Dummy function.
 
 
 \newpage
-\section{targetTLP}
+\section{targetTLP}\label{sec:TLP}
 
 \subsection{Description}
 
@@ -171,7 +171,7 @@ function, to specify that the proceeding block of code should be
 executed in parallel and mapped to thread level parallelism
 (TLP). Note that he behaviour of this operation depends on the defined
 virtual vector length (VVL), which controls the lower-level
-Instruction Level Parallelsim (ILP) (see following section).
+Instruction Level Parallelism (ILP) (see following section).
 
 \subsection{Syntax}
 \begin{verbatim}
@@ -199,14 +199,14 @@ OpenMP parallel loop.
 CUDA thread lookup.
 
 \newpage
-\section{targetILP}
+\section{targetILP}\label{sec:ILP}
 
 \subsection{Description}
 
 The \verb+__targetILP__+ syntax is used, within a \verb+__targetTLP__+
 region, to specify that the proceeding block of code should be
 executed in parallel and mapped to instruction level parallelism
-(ILP), where the extent of te ILP is defined by the virtual vector length (VVL) in the targetDP implementation. 
+(ILP), where the extent of the ILP is defined by the virtual vector length (VVL) in the targetDP implementation. 
 \begin{comment}
 need to document VVL in more detail somewhere and link.
 \end{comment}
@@ -238,7 +238,7 @@ Short vectorizable loop.
 
 \subsection{Description}
 
-The \verb+targetCoords3D+ function provides the 3D lattice coodinates corresponding to a specified linear index.
+The \verb+targetCoords3D+ function provides the 3D lattice coordinates corresponding to a specified linear index.
 
 \subsection{Syntax}
 \begin{verbatim}
@@ -246,7 +246,7 @@ void targetCoords3D(int coords3D[3], int extent3D[3], int index);
 \end{verbatim}
 
 \begin{itemize}
-\item \verb+coords3D+ (output): an array of 3 integers to be populated with ther 3D coordinates.
+\item \verb+coords3D+ (output): an array of 3 integers to be populated with the 3D coordinates.
 \item \verb+extent3D+ (input): An array of 3 integers corresponding to the 3D dimensions of the lattice.
 \item \verb+index+ (input): the linear index. 
 
@@ -266,7 +266,7 @@ void targetCoords3D(int coords3D[3], int extent3D[3], int index);
 
 \subsection{Description}
 
-The \verb+targetIndex3D+ function returns the linear index corresponding to a specified set of 3D lattice coodinates.
+The \verb+targetIndex3D+ function returns the linear index corresponding to a specified set of 3D lattice coordinates.
 
 \subsection{Syntax}
 \begin{verbatim}
