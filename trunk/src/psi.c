@@ -31,6 +31,7 @@
 #include "psi.h"
 #include "psi_s.h"
 #include "psi_gradients.h"
+#include "physics.h"
 
 static const double  e_unit_default = 1.0;              /* Default unit charge */
 static const double  reltol_default = FLT_EPSILON;      /* Solver tolerance */
@@ -972,4 +973,228 @@ int psi_skipsteps(psi_t * obj) {
   assert(obj);
 
   return obj->skipsteps;
+}
+
+/*****************************************************************************
+ *
+ *  psi_zero_mean
+ *
+ *  Shift the potential by the current mean value.
+ *
+ *****************************************************************************/
+
+int psi_zero_mean(psi_t * psi) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int nhalo;
+
+  double psi0;
+  double sum_local;
+  double psi_offset;                  
+
+  MPI_Comm comm;
+
+  assert(psi);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);  
+  comm = cart_comm();
+
+  sum_local = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	psi_psi(psi, index, &psi0);
+	sum_local += psi0;
+      }
+    }
+  }
+
+  MPI_Allreduce(&sum_local, &psi_offset, 1, MPI_DOUBLE, MPI_SUM, comm);
+
+  psi_offset /= (L(X)*L(Y)*L(Z));
+
+  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	psi_psi(psi, index, &psi0);
+	psi0 -= psi_offset;
+	psi_psi_set(psi, index, psi0);
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+
+/*****************************************************************************
+ *
+ *  psi_halo_psijump
+ *
+ *****************************************************************************/
+
+int psi_halo_psijump(psi_t * psi) {
+
+  int nhalo;
+  int nlocal[3], ntotal[3], noffset[3];
+  int index, index1;
+  int ic, jc, kc, nh;
+  double e0[3];
+  double eps, reps;
+  double beta;
+  assert(psi);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_ntotal(ntotal);
+  coords_nlocal_offset(noffset);
+
+  physics_e0(e0);
+  psi_epsilon(psi, &eps);
+  reps = 1.0/eps;
+  psi_beta(psi, &beta);
+
+  if (cart_coords(X) == 0) {
+
+    for (nh = 0; nh < nhalo; nh++) {
+      for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+
+	  index = coords_index(0 - nh, jc, kc);
+
+	  if (is_periodic(X)) {
+	    psi->psi[index] += e0[X]*ntotal[X];   
+	  }
+	  else{
+	    index1 = coords_index(1, jc, kc);
+	    psi->psi[index] = psi->psi[index1];   
+	  }
+
+	}
+      }
+    }
+
+  }
+
+  if (cart_coords(X) == cart_size(X)-1) {
+
+    for (nh = 0; nh < nhalo; nh++) {
+      for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+
+	    index = coords_index(nlocal[0] + 1 + nh, jc, kc);
+
+	    if (is_periodic(X)) {
+	      psi->psi[index] -= e0[X]*ntotal[X];   
+	    }
+	    else{
+	      index1 = coords_index(nlocal[0], jc, kc);
+	      psi->psi[index] = psi->psi[index1];   
+	    }
+
+	}
+      }
+    }  
+
+  }
+
+  if (cart_coords(Y) == 0) {
+
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+
+	    index = coords_index(ic, 0 - nh, kc);
+
+	    if (is_periodic(Y)) {
+	      psi->psi[index] += e0[Y]*ntotal[Y];   
+	    }
+	    else{
+	      index1 = coords_index(ic, 1, kc);
+	      psi->psi[index] = psi->psi[index1];   
+	    }
+
+	}
+      }
+    }  
+
+  }
+
+  if (cart_coords(Y) == cart_size(Y)-1) {
+
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+
+	  index = coords_index(ic, nlocal[1] + 1 + nh, kc);
+
+	  if (is_periodic(Y)) {
+	    psi->psi[index] -= e0[Y]*ntotal[Y];   
+	  }
+	  else{
+	    index1 = coords_index(ic, nlocal[1], kc);
+	    psi->psi[index] = psi->psi[index1];   
+	  }
+
+	}
+      }
+    }  
+
+  }
+
+  if (cart_coords(Z) == 0) {
+
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+
+	  index = coords_index(ic, jc, 0 - nh);
+
+	  if (is_periodic(Z)) {
+	    psi->psi[index] += e0[Z]*ntotal[Z];   
+	  }
+	  else{
+	    index1 = coords_index(ic, jc, 1);
+	    psi->psi[index] = psi->psi[index1];   
+	  }
+
+	}
+      }
+    }  
+
+  }
+
+  if (cart_coords(Z) == cart_size(Z)-1) {
+
+    for (nh = 0; nh < nhalo; nh++) {
+      for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+
+	  index = coords_index(ic, jc, nlocal[2] + 1 + nh);
+
+	  if (is_periodic(Z)) {
+	    psi->psi[index] -= e0[Z]*ntotal[Z];   
+	  }
+	  else{
+	    index1 = coords_index(ic, jc, nlocal[2]);
+	    psi->psi[index] = psi->psi[index1];   
+	  }
+
+	}
+      }
+    }  
+
+  }
+
+  return 0;
 }

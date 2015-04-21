@@ -73,7 +73,7 @@ int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
 
   double rho_elec;
   double f[3];
-  double e0[3], elocal[3];
+  double e[3];  /* Total electric field */
   double eunit, reunit, kt;
 
   colloid_t * pc = NULL;
@@ -81,7 +81,6 @@ int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
   assert(psi);
   assert(cinfo);
 
-  physics_e0(e0); 
   physics_kt(&kt);
 
   coords_nlocal(nlocal);
@@ -101,14 +100,14 @@ int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
 
 	psi_rho_elec(psi, index, &rho_elec);
 
-	psi_electric_field_d3qx(psi, index, elocal);
+	psi_electric_field_d3qx(psi, index, e);
 
 	/* If solid, accumulate contribution to colloid;
 	   otherwise to fluid node */
 
-	f[X] = rho_elec*reunit*kt*(e0[X] + elocal[X]);
-	f[Y] = rho_elec*reunit*kt*(e0[Y] + elocal[Y]);
-	f[Z] = rho_elec*reunit*kt*(e0[Z] + elocal[Z]);
+	f[X] = rho_elec*reunit*kt*e[X];
+	f[Y] = rho_elec*reunit*kt*e[Y];
+	f[Z] = rho_elec*reunit*kt*e[Z];
 
 	if (pc) {
 
@@ -226,6 +225,7 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
 	  hydro_f_local_add(hydro, index, force);
 	}
 
+
       }
     }
   }
@@ -305,6 +305,7 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids
 
 
         /* Store the force on lattice */
+
 	if (pc) {
 	  pc->force[X] += force[X];
 	  pc->force[Y] += force[Y];

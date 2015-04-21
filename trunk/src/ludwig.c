@@ -494,6 +494,7 @@ void ludwig_run(const char * inputfile) {
 
 	TIMER_start(TIMER_HALO_LATTICE);
 	psi_halo_psi(ludwig->psi);
+	psi_halo_psijump(ludwig->psi);
 	psi_halo_rho(ludwig->psi);
 	TIMER_stop(TIMER_HALO_LATTICE);
 
@@ -530,6 +531,7 @@ void ludwig_run(const char * inputfile) {
       
       TIMER_start(TIMER_HALO_LATTICE);
       psi_halo_psi(ludwig->psi);
+      psi_halo_psijump(ludwig->psi);
       psi_halo_rho(ludwig->psi);
       TIMER_stop(TIMER_HALO_LATTICE);
     
@@ -537,7 +539,7 @@ void ludwig_run(const char * inputfile) {
 
       if (is_statistics_step()) info("%d multisteps\n",im);
 
-      psi_sor_offset(ludwig->psi);
+      psi_zero_mean(ludwig->psi);
 
     }
 

@@ -176,7 +176,6 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   double mu0, mu1;
   double rho0, rho1;
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
-  double e0[3];
 
   assert(psi);
   assert(fe);
@@ -190,14 +189,11 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   psi_unit_charge(psi, &eunit);
   psi_beta(psi, &beta);
 
-  /* The external electric field appears in the potential as -E.r.
-   * So, e.g., if we write this external contribution as psi^ex_i,
-   * then the gradient
-   *   (psi^ex_{i} - psi^ex_{i-dx}) / dx = (-E.x - -E.(x-dx))/dx
-   *   = (-Ex + Ex - Edx)/dx = -E, ie., grad psi^ex = -E.
-   */
+  /* We write the contribution from the electric field as
+   *   - (psi^ex_{i} - psi^ex_{i-dx}) / dx 
+   *   = - (-E.x - -E.(x-dx))/dx
+   *   = (Ex - Ex + Edx)/dx = -grad psi^ex = E */
 
-  physics_e0(e0);
 
   for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -214,7 +210,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 	  /* x-direction (between ic and ic+1) */
 
 	  fe_mu_solv(index + xs, n, &mu_s1);
-	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + xs] - e0[X]);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*psi->psi[index + xs];
 
 	  b0 = exp(-beta*(mu1 - mu0));
 	  b1 = exp(+beta*(mu1 - mu0));
@@ -225,7 +221,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 	  /* y-direction (between jc and jc+1) */
 
 	  fe_mu_solv(index + ys, n, &mu_s1);
-	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + ys] - e0[Y]);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*psi->psi[index + ys];
 
 	  b0 = exp(-beta*(mu1 - mu0));
 	  b1 = exp(+beta*(mu1 - mu0));
@@ -236,7 +232,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 	  /* z-direction (between kc and kc+1) */
 
 	  fe_mu_solv(index + zs, n, &mu_s1);
-	  mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index + zs] - e0[Z]);
+	  mu1 = mu_s1 + psi->valency[n]*eunit*psi->psi[index + zs];
 
 	  b0 = exp(-beta*(mu1 - mu0));
 	  b1 = exp(+beta*(mu1 - mu0));
@@ -385,7 +381,6 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   double rho0, rho1;
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
   
-  double e0[3];
   double eunit, reunit;
   double beta;
   double dt;
@@ -404,7 +399,6 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   psi_nk(psi, &nk);
   psi_multistep_timestep(psi, &dt);
 
-  physics_e0(e0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -432,8 +426,7 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 		rho0 = psi->rho[nk*index0 + n];
 
 		fe_mu_solv(index1, n, &mu_s1);
-		mu1 = reunit*mu_s1 + psi->valency[n]* (psi->psi[index1] - 
-	    		psi_gr_cv[c][X]*e0[X] - psi_gr_cv[c][Y]*e0[Y] - psi_gr_cv[c][Z]*e0[Z]);
+		mu1 = reunit*mu_s1 + psi->valency[n]* psi->psi[index1];
 		b0 = exp(mu0 - mu1);
 		b1 = exp(mu1 - mu0);
 		rho1 = psi->rho[nk*(index1) + n]*b1;
@@ -487,7 +480,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
   
   double rho_elec;
-  double e0[3], elocal[3];
+  double e[3];
   double flocal[4] = {0.0, 0.0, 0.0, 0.0}, fsum[4], f[3]; 
   double flxtmp[2];
   double dt;
@@ -507,7 +500,6 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
   psi_beta(psi, &beta);
   psi_multistep_timestep(psi, &dt);
 
-  physics_e0(e0);
   rbeta = 1.0/beta;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -526,11 +518,11 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
 	/* Total electrostatic force on colloid */
 	if (pc) {
 
-	  psi_electric_field_d3qx(psi, index0, elocal);
+	  psi_electric_field_d3qx(psi, index0, e);
 
-	  f[X] = rho_elec * (e0[X] + elocal[X]) * dt;
-	  f[Y] = rho_elec * (e0[Y] + elocal[Y]) * dt;
-	  f[Z] = rho_elec * (e0[Z] + elocal[Z]) * dt;
+	  f[X] = rho_elec * e[X] * dt;
+	  f[Y] = rho_elec * e[Y] * dt;
+	  f[Z] = rho_elec * e[Z] * dt;
 
 	  pc->force[X] += f[X];
 	  pc->force[Y] += f[Y];
@@ -554,8 +546,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
 		rho0 = psi->rho[nk*index0 + n];
 
 		fe_mu_solv(index1, n, &mu_s1);
-		mu1 = mu_s1 + psi->valency[n]*eunit*(psi->psi[index1] - 
-			psi_gr_cv[c][X]*e0[X] - psi_gr_cv[c][Y]*e0[Y] - psi_gr_cv[c][Z]*e0[Z]);
+		mu1 = mu_s1 + psi->valency[n]*eunit*psi->psi[index1];
 		b0 = exp(-beta*(mu1 - mu0));
 		b1 = exp(+beta*(mu1 - mu0));
 		rho1 = psi->rho[nk*(index1) + n]*b1;
@@ -582,9 +573,6 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
 	  }
 
 	  /* Electrostatic force in external field */
-	  f[X] += rho_elec * e0[X];
-	  f[Y] += rho_elec * e0[Y];
-	  f[Z] += rho_elec * e0[Z];
 
 	  f[X] *= dt;
 	  f[Y] *= dt;
