@@ -35,6 +35,7 @@
 #include "physics.h"
 #include "psi_s.h"
 #include "psi_sor.h"
+#include "psi.h"
 #include "control.h"
 #include "model.h"
 #include "util.h"
@@ -104,21 +105,16 @@ int psi_sor_poisson(psi_t * obj) {
   int kst;                     /* Start kc index for red/black iteration */
   int nlocal[3];
   int xs, ys, zs;              /* Memory strides */
-
   double rho_elec;             /* Right-hand side */
   double residual;             /* Residual at given point */
   double rnorm[2];             /* Initial and current norm of residual */
   double rnorm_local[2];       /* Local values */
-
   double epsilon;              /* Uniform permittivity */
   double dpsi;
-
   double omega;                /* Over-relaxation parameter 1 < omega < 2 */
   double radius;               /* Spectral radius of Jacobi iteration */
-
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
-
   double eunit, beta;
 
   /* int index_nbr, coords_nbr[3];*/
@@ -144,6 +140,7 @@ int psi_sor_poisson(psi_t * obj) {
   /* Compute initial norm of the residual */
 
   radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
+//  radius = cos(pi_/(L(X)-1));  
 
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);
@@ -224,6 +221,8 @@ int psi_sor_poisson(psi_t * obj) {
       assert(omega < 2.0);
 
       psi_halo_psi(obj);
+      psi_halo_psijump(obj);
+
     }
 
     if ((n % ncheck) == 0) {
@@ -275,7 +274,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   int xs, ys, zs;              /* Memory strides */
 
   double rho_elec;             /* Right-hand side */
-  double rho_s;                /* Induced charge. */
   double residual;             /* Residual at given point */
   double rnorm[2];             /* Initial and current norm of residual */
   double rnorm_local[2];       /* Local values */
@@ -288,7 +286,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
-  double e0[3];                /* External field (constant) */
 
   double eunit, beta;
 
@@ -298,7 +295,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   comm = cart_comm();
 
   assert(coords_nhalo() >= 1);
-  physics_e0(e0);
 
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
@@ -326,7 +322,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	depsi = 0.0;
-	rho_s = 0.0;
 
 	index = coords_index(ic, jc, kc);
 
@@ -344,30 +339,24 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
 	fepsilon(index + xs, &eps1);
 	depsi += 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
-	rho_s += 0.5*eps1*e0[X]; 
 
 	fepsilon(index - xs, &eps1);
 	depsi -= 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
-	rho_s -= 0.5*eps1*e0[X];
 
 	fepsilon(index + ys, &eps1);
 	depsi += 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
-	rho_s += 0.5*eps1*e0[Y];
 
 	fepsilon(index - ys, &eps1);
 	depsi -= 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
-	rho_s -= 0.5*eps1*e0[Y];
 
 	fepsilon(index + zs, &eps1);
 	depsi += 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
-	rho_s += 0.5*eps1*e0[Z];
 
 	fepsilon(index - zs, &eps1);
 	depsi -= 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
-	rho_s -= 0.5*eps1*e0[Z];
 
 	/* Non-dimensional potential in Poisson eqn requires e/kT */
-	rnorm_local[0] += fabs(depsi + eunit*beta*rho_elec - rho_s);
+	rnorm_local[0] += fabs(depsi + eunit*beta*rho_elec);
       }
     }
   }
@@ -390,7 +379,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	  for (kc = kst; kc <= nlocal[Z]; kc += 2) {
 
 	    depsi  = 0.0;
-	    rho_s  = 0.0;
 
 	    index = coords_index(ic, jc, kc);
 
@@ -408,30 +396,24 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
 	    fepsilon(index + xs, &eps1);
 	    depsi += 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
-	    rho_s += 0.5*eps1*e0[X]; 
 
 	    fepsilon(index - xs, &eps1);
 	    depsi -= 0.25*eps1*(obj->psi[index + xs] - obj->psi[index - xs]);
-	    rho_s -= 0.5*eps1*e0[X];
 
 	    fepsilon(index + ys, &eps1);
 	    depsi += 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
-	    rho_s += 0.5*eps1*e0[Y];
 
 	    fepsilon(index - ys, &eps1);
 	    depsi -= 0.25*eps1*(obj->psi[index + ys] - obj->psi[index - ys]);
-	    rho_s -= 0.5*eps1*e0[Y];
 
 	    fepsilon(index + zs, &eps1);
 	    depsi += 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
-	    rho_s += 0.5*eps1*e0[Z];
 
 	    fepsilon(index - zs, &eps1);
 	    depsi -= 0.25*eps1*(obj->psi[index + zs] - obj->psi[index - zs]);
-	    rho_s -= 0.5*eps1*e0[Z];
 
 	    /* Non-dimensional potential in Poisson eqn requires e/kT */
-	    residual = depsi + eunit*beta*rho_elec - rho_s;
+	    residual = depsi + eunit*beta*rho_elec;
 	    obj->psi[index] -= omega*residual / (-6.0*eps0);
 	    rnorm_local[1] += fabs(residual);
 
@@ -440,6 +422,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
       }
 
       psi_halo_psi(obj);
+      psi_halo_psijump(obj);
 
     }
 
@@ -469,65 +452,6 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
     }
 
 
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_sor_offset
- *
- *  Shift the potential by the current mean value. This may be required
- *  to prevent long-term drift included in SOR.
- *
- *****************************************************************************/
-
-int psi_sor_offset(psi_t * psi) {
-
-  int ic, jc, kc, index;
-  int nlocal[3];
-
-  double psi0;
-  double sum_local;
-  double psi_offset;                  
-
-  MPI_Comm comm;
-
-  assert(psi);
-
-  coords_nlocal(nlocal);  
-  comm = cart_comm();
-
-  sum_local = 0.0;
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	psi_psi(psi, index, &psi0);
-	sum_local += psi0;
-      }
-    }
-  }
-
-  MPI_Allreduce(&sum_local, &psi_offset, 1, MPI_DOUBLE, MPI_SUM, comm);
-
-  psi_offset /= (L(X)*L(Y)*L(Z));
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	psi_psi(psi, index, &psi0);
-	psi0 -= psi_offset;
-	psi_psi_set(psi, index, psi0);
-      }
-    }
   }
 
   return 0;
