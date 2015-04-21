@@ -35,6 +35,7 @@ int psi_valency_set(psi_t * obj, int n, int iv);
 int psi_diffusivity(psi_t * obj, int n, double * diff);
 int psi_diffusivity_set(psi_t * obj, int n, double diff);
 int psi_halo_psi(psi_t * obj);
+int psi_halo_psijump(psi_t * obj);
 int psi_halo_rho(psi_t * obj);
 
 int psi_rho(psi_t * obj, int index, int n, double * rho);
@@ -71,5 +72,6 @@ int psi_diffacc(psi_t * obj, double * diffacc);
 int psi_diffacc_set(psi_t * obj, double diffacc);
 int psi_skipsteps(psi_t * obj);
 int psi_skipsteps_set(psi_t * obj, double skipsteps);
+int psi_zero_mean(psi_t * obj);
 
 #endif

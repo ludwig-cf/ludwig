@@ -162,14 +162,15 @@ double fe_es_fed(int index) {
  *
  *      mu_phi = mu_phi_mix + mu_phi_solv + mu_phi_el
  *
- *  Note: mu_phi_solv needs to be in agreement with the terms in fe_es_mu_ion()
+ *  Note: mu_phi_solv needs to be in agreement with 
+ *        the terms in fe_es_mu_ion()
  *
  *****************************************************************************/
 
 double fe_es_mu_phi(const int index, const int nop) {
 
-  int ia, in;
-  double e0[3], e[3];  /* Electric field */
+  int in;
+  double e[3];         /* Total electric field */
   double rho;          /* Charge density */
   double mu;           /* Result */
 
@@ -178,21 +179,16 @@ double fe_es_mu_phi(const int index, const int nop) {
 
   mu = symmetric_chemical_potential(index, 0);
 
-  /* Solvation piece */
+  /* Solvation contribution */
 
   for (in = 0; in < fe->nk; in++) {
     psi_rho(fe->psi, index, in, &rho);
     mu += 0.5*rho*fe->deltamu[in];
   }
 
-  /* Total electric field contribution */
+  /* Electric field contribution */
 
-  physics_e0(e0);
   psi_electric_field_d3qx(fe->psi, index, e); 
-
-  for (ia = 0; ia < 3; ia++) {
-    e[ia] += e0[ia];
-  }
 
   mu += -0.5*fe->gamma*fe->epsilonbar*(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
 
@@ -334,7 +330,7 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   double s_couple;
   double s_el;
   double epsloc;
-  double e0[3], e[3]; /* External and 'internal' electric field. */
+  double e[3];     /* Total electric field */
   double e2;
   double eunit, reunit, kt;
 
@@ -349,12 +345,9 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   field_scalar(fe->phi, index, &phi);
   psi_electric_field_d3qx(fe->psi, index, e);
 
-  physics_e0(e0);
-
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
-    e[ia] += e0[ia];
     e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
