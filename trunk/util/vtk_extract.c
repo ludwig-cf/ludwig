@@ -35,6 +35,8 @@
  *
  ****************************************************************************/
 
+
+
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -51,9 +53,10 @@ int pe_[3];
 int nplanes_ = 0;
 int nio_;
 int nrec_ = 1;
+int npp_ = 0;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int reverse_byte_order_ = 0;   /* Switch for bigendian input */
-int input_binary_  = 1;        /* Switch for format of input */
+int input_binary_  = 0;        /* Switch for format of input */
 int output_binary_ = 0;        /* Switch for format of final output */
 
 int output_lc_op_   = 1;       /* Switch for LC order parameter output */
@@ -62,14 +65,18 @@ int output_lc_biop_ = 1;       /* Switch for LC biaxial order parameter output *
 
 int output_ek_psi_ = 1;        /* Switch for EK potenital output */
 int output_ek_elc_ = 1;        /* Switch for EK electric charge density */
+int output_ek_elf_ = 1;        /* Switch for EK electric field */
 int output_ek_rho_ = 1;        /* Switch for EK number densities output */
 
 int is_velocity_ = 0;          /* Switch to identify velocity field */
+
 int output_index_ = 0;         /* For ASCII output, include (i,j,k) indices */
+int vtk_header = 1;            /* For visualisation with Paraview */
+int output_cmf_ = 1;           /* Flag for output in column-major format */
+
+double e0[3] = {0.0, 0.0, 0.0};  /* External electric field for potential jump */
 
 int le_t0_ = 0;                /* LE offset start time (time steps) */ 
-
-int output_cmf_ = 1;           /* flag for output in column-major format */
 
 double le_speed_ = 0.0;
 double le_displace_ = 0.0;
@@ -87,19 +94,20 @@ void write_data(FILE *, int *, double *);
 void write_data_cmf(FILE *, int *, double *);
 void write_data_q(FILE *, FILE *, FILE *, int *, double *);
 void write_data_q_cmf(FILE *, FILE *, FILE *, int *, double *);
-void write_data_psi(FILE *, FILE *, FILE *, FILE *, int *, double *);
-void write_data_psi_cmf(FILE *, FILE *, FILE *, FILE *, int *, double *);
+void write_data_psi(FILE *, FILE *, FILE *, FILE *, FILE *, int *, double *, double *);
+void write_data_psi_cmf(FILE *, FILE *, FILE *, FILE *, FILE *, int *, double *, double *);
 int copy_data(double *, double *);
 int le_displacement(int, int);
 void le_set_displacements(void);
 void le_unroll(double *);
 double reverse_byte_order_double(char *);
 
+void electric_field(double *, double *);
 
 void order_parameters(double *);
-void scalar_biaxial_order_parameter_director(double q[5], double qs[5]);
-int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
-int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
+void calculate_scalar_biaxial_order_parameter_director(double q[5], double qs[5]);
+int  util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+int  util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
 void util_swap(int ia, int ib, double a[3], double b[3][3]);
 
 int is_bigendian(void);
@@ -108,12 +116,11 @@ int main(int argc, char ** argv) {
 
   int ntime;
   int i, n, p, pe_per_io;
-  int ic,jc,kc,ic_g,jc_g,kc_g,nr,index;
   int ifail;
 
   double * datalocal;
   double * datasection;
-  double matrix_q[3][3];
+  double * ppsection;
   char io_metadata[FILENAME_MAX];
   char io_data[FILENAME_MAX];
   char line[FILENAME_MAX];
@@ -126,6 +133,7 @@ int main(int argc, char ** argv) {
   char rho0_filename[60];
   char rho1_filename[60];
   char elc_filename[60];
+  char elf_filename[60];
 
   char genfilename[60];
 
@@ -133,7 +141,8 @@ int main(int argc, char ** argv) {
   FILE * fp_data;
   FILE * fg_out;
   FILE * fp_out, * fd_out, * fb_out;
-  FILE * fp_psi_out, * fp_rho0_out, * fp_rho1_out, * fp_elc_out;
+  FILE * fp_psi_out, * fp_rho0_out, * fp_rho1_out;
+  FILE * fp_elf_out, * fp_elc_out;
 
 
   /* Check the command line, then parse the meta data information,
@@ -173,6 +182,15 @@ int main(int argc, char ** argv) {
   datasection = (double *) calloc(n, sizeof(double));
   if (datasection == NULL) printf("calloc(datasection) failed\n");
 
+  /* For electrokinetics post-processing cannot be done in place */
+  /* and we need to allocate a section dedicated to post-processing */
+
+  if (output_ek_elf_ == 1) npp_ += 3;
+
+  n = npp_*ntargets[0]*ntargets[1]*ntargets[2];
+
+  ppsection = (double *) calloc(n, sizeof(double));
+  if (ppsection == NULL) printf("calloc(ppsection) failed\n");
 
   /* LE displacements as function of x */
   le_displace_ = le_speed_*(double) (ntime - le_t0_);
@@ -240,23 +258,29 @@ int main(int argc, char ** argv) {
   /* Electrokinetic quantities */
   if (nrec_ == 4 && strncmp(stub_, "psi", 3) == 0) {
 
-  /* Write separately the three quantities in three different files
-     Change the flags at the top in order to select the output  */
+    if (output_ek_elc_ != 0 || output_ek_elf_ != 0) {
+      electric_field(datasection, ppsection);
+    }
+
+    /* Write separately the five quantities in five different files
+       Change the flags at the top in order to select the output  */
 
     if (output_ek_psi_ != 0) {
       sprintf(psi_filename,"psi-%s-%8.8d.vtk", stub_, ntime);
       fp_psi_out = fopen(psi_filename, "w");
       if (fp_psi_out == NULL) printf("fopen(%s) failed\n", psi_filename);
-      fprintf(fp_psi_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fp_psi_out, "Generated by vtk_extract.c\n");
-      fprintf(fp_psi_out, "ASCII\n");
-      fprintf(fp_psi_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fp_psi_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fp_psi_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fp_psi_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fp_psi_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fp_psi_out, "SCALARS el_potential float %d\n", 1);
-      fprintf(fp_psi_out, "LOOKUP_TABLE default\n");
+      if(vtk_header) {
+	fprintf(fp_psi_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fp_psi_out, "Generated by vtk_extract.c\n");
+	fprintf(fp_psi_out, "ASCII\n");
+	fprintf(fp_psi_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fp_psi_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fp_psi_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fp_psi_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fp_psi_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fp_psi_out, "SCALARS el_potential float %d\n", 1);
+	fprintf(fp_psi_out, "LOOKUP_TABLE default\n");
+      }
       printf("... Writing result to %s\n", psi_filename);
     }
 
@@ -265,31 +289,35 @@ int main(int argc, char ** argv) {
       sprintf(rho0_filename,"rho0-%s-%8.8d.vtk", stub_, ntime);
       fp_rho0_out = fopen(rho0_filename, "w");
       if (fp_rho0_out == NULL) printf("fopen(%s) failed\n", rho0_filename);
-      fprintf(fp_rho0_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fp_rho0_out, "Generated by vtk_extract.c\n");
-      fprintf(fp_rho0_out, "ASCII\n");
-      fprintf(fp_rho0_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fp_rho0_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fp_rho0_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fp_rho0_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fp_rho0_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fp_rho0_out, "SCALARS rho0 float %d\n", 1);
-      fprintf(fp_rho0_out, "LOOKUP_TABLE default\n");
+      if(vtk_header) {
+	fprintf(fp_rho0_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fp_rho0_out, "Generated by vtk_extract.c\n");
+	fprintf(fp_rho0_out, "ASCII\n");
+	fprintf(fp_rho0_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fp_rho0_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fp_rho0_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fp_rho0_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fp_rho0_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fp_rho0_out, "SCALARS rho0 float %d\n", 1);
+	fprintf(fp_rho0_out, "LOOKUP_TABLE default\n");
+      }
       printf("... Writing result to %s\n", rho0_filename);
 
       sprintf(rho1_filename,"rho1-%s-%8.8d.vtk", stub_, ntime);
       fp_rho1_out = fopen(rho1_filename, "w");
       if (fp_rho1_out == NULL) printf("fopen(%s) failed\n", rho1_filename);
-      fprintf(fp_rho1_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fp_rho1_out, "Generated by vtk_extract.c\n");
-      fprintf(fp_rho1_out, "ASCII\n");
-      fprintf(fp_rho1_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fp_rho1_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fp_rho1_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fp_rho1_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fp_rho1_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fp_rho1_out, "SCALARS rho1 float %d\n", 1);
-      fprintf(fp_rho1_out, "LOOKUP_TABLE default\n");
+      if(vtk_header) {
+	fprintf(fp_rho1_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fp_rho1_out, "Generated by vtk_extract.c\n");
+	fprintf(fp_rho1_out, "ASCII\n");
+	fprintf(fp_rho1_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fp_rho1_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fp_rho1_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fp_rho1_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fp_rho1_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fp_rho1_out, "SCALARS rho1 float %d\n", 1);
+	fprintf(fp_rho1_out, "LOOKUP_TABLE default\n");
+      }
       printf("... Writing result to %s\n", rho1_filename);
 
     }
@@ -298,22 +326,43 @@ int main(int argc, char ** argv) {
       sprintf(elc_filename,"elc-%s-%8.8d.vtk", stub_, ntime);
       fp_elc_out = fopen(elc_filename, "w");
       if (fp_elc_out == NULL) printf("fopen(%s) failed\n", elc_filename);
-      fprintf(fp_elc_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fp_elc_out, "Generated by vtk_extract.c\n");
-      fprintf(fp_elc_out, "ASCII\n");
-      fprintf(fp_elc_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fp_elc_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fp_elc_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fp_elc_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fp_elc_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fp_elc_out, "SCALARS elc float %d\n", 1);
-      fprintf(fp_elc_out, "LOOKUP_TABLE default\n");
+      if(vtk_header) {
+	fprintf(fp_elc_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fp_elc_out, "Generated by vtk_extract.c\n");
+	fprintf(fp_elc_out, "ASCII\n");
+	fprintf(fp_elc_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fp_elc_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fp_elc_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fp_elc_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fp_elc_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fp_elc_out, "SCALARS elc float %d\n", 1);
+	fprintf(fp_elc_out, "LOOKUP_TABLE default\n");
+      }
       printf("... Writing result to %s\n", elc_filename);
     }
 
+    if (output_ek_elf_ != 0) {
+      sprintf(elf_filename,"elf-%s-%8.8d.vtk", stub_, ntime);
+      fp_elf_out = fopen(elf_filename, "w");
+      if (fp_elf_out == NULL) printf("fopen(%s) failed\n", elf_filename);
+      if(vtk_header) {
+    	fprintf(fp_elf_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fp_elf_out, "Generated by vtk_extract.c\n");
+	fprintf(fp_elf_out, "ASCII\n");
+	fprintf(fp_elf_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fp_elf_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fp_elf_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fp_elf_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fp_elf_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fp_elf_out, "VECTORS elf float\n");
+      }
+      printf("... Writing result to %s\n", elf_filename);
+    }
 
-    if(output_cmf_ == 0) write_data_psi(fp_psi_out, fp_rho0_out, fp_rho1_out, fp_elc_out, ntargets, datasection);
-    if(output_cmf_ == 1) write_data_psi_cmf(fp_psi_out, fp_rho0_out, fp_rho1_out, fp_elc_out, ntargets, datasection);
+    if(output_cmf_ == 0) write_data_psi(fp_psi_out, fp_rho0_out, fp_rho1_out,
+	fp_elc_out, fp_elf_out, ntargets, datasection, ppsection);
+    if(output_cmf_ == 1) write_data_psi_cmf(fp_psi_out, fp_rho0_out, fp_rho1_out, 
+	fp_elc_out, fp_elf_out, ntargets, datasection, ppsection);
 
     if (output_ek_psi_ != 0) fclose(fp_psi_out);
     if (output_ek_rho_ != 0) {
@@ -321,6 +370,7 @@ int main(int argc, char ** argv) {
 			     fclose(fp_rho1_out);
     }
     if (output_ek_elc_ != 0) fclose(fp_elc_out);
+    if (output_ek_elf_ != 0) fclose(fp_elf_out);
 
   }
 
@@ -338,16 +388,18 @@ int main(int argc, char ** argv) {
       sprintf(opfilename,"op-%s-%8.8d.vtk", stub_, ntime);
       fp_out = fopen(opfilename, "w");
       if (fp_out == NULL) printf("fopen(%s) failed\n", opfilename);
-      fprintf(fp_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fp_out, "Generated by vtk_extract.c\n");
-      fprintf(fp_out, "ASCII\n");
-      fprintf(fp_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fp_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fp_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fp_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fp_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fp_out, "SCALARS scalar_op float %d\n", 1);
-      fprintf(fp_out, "LOOKUP_TABLE default\n");
+      if(vtk_header) {
+	fprintf(fp_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fp_out, "Generated by vtk_extract.c\n");
+	fprintf(fp_out, "ASCII\n");
+	fprintf(fp_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fp_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fp_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fp_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fp_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fp_out, "SCALARS scalar_op float %d\n", 1);
+	fprintf(fp_out, "LOOKUP_TABLE default\n");
+      }
       printf("... Writing result to %s\n", opfilename);
     }
 
@@ -355,15 +407,17 @@ int main(int argc, char ** argv) {
       sprintf(dirfilename,"dir-%s-%8.8d.vtk", stub_, ntime);
       fd_out = fopen(dirfilename, "w");
       if (fd_out == NULL) printf("fopen(%s) failed\n", dirfilename);
-      fprintf(fd_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fd_out, "Generated by vtk_extract.c\n");
-      fprintf(fd_out, "ASCII\n");
-      fprintf(fd_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fd_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fd_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fd_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fd_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fd_out, "VECTORS director float\n");
+      if(vtk_header) {
+	fprintf(fd_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fd_out, "Generated by vtk_extract.c\n");
+	fprintf(fd_out, "ASCII\n");
+	fprintf(fd_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fd_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fd_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fd_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fd_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fd_out, "VECTORS director float\n");
+      }
       printf("... Writing result to %s\n", dirfilename);
     }
 
@@ -371,16 +425,18 @@ int main(int argc, char ** argv) {
       sprintf(biopfilename,"biop-%s-%8.8d.vtk", stub_, ntime);
       fb_out = fopen(biopfilename, "w");
       if (fb_out == NULL) printf("fopen(%s) failed\n", biopfilename);
-      fprintf(fb_out, "# vtk DataFile Version 2.0\n");
-      fprintf(fb_out, "Generated by vtk_extract.c\n");
-      fprintf(fb_out, "ASCII\n");
-      fprintf(fb_out, "DATASET STRUCTURED_POINTS\n");
-      fprintf(fb_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-      fprintf(fb_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-      fprintf(fb_out, "SPACING %d %d %d\n", 1, 1, 1);
-      fprintf(fb_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-      fprintf(fb_out, "SCALARS biaxial_op float %d\n", 1);
-      fprintf(fb_out, "LOOKUP_TABLE default\n");
+      if(vtk_header) {
+	fprintf(fb_out, "# vtk DataFile Version 2.0\n");
+	fprintf(fb_out, "Generated by vtk_extract.c\n");
+	fprintf(fb_out, "ASCII\n");
+	fprintf(fb_out, "DATASET STRUCTURED_POINTS\n");
+	fprintf(fb_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+	fprintf(fb_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+	fprintf(fb_out, "SPACING %d %d %d\n", 1, 1, 1);
+	fprintf(fb_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+	fprintf(fb_out, "SCALARS biaxial_op float %d\n", 1);
+	fprintf(fb_out, "LOOKUP_TABLE default\n");
+      }
       printf("... Writing result to %s\n", biopfilename);
     }
 
@@ -401,21 +457,22 @@ int main(int argc, char ** argv) {
     fg_out = fopen(genfilename, "w");
 
     if (fg_out == NULL) printf("fopen(%s) failed\n", genfilename);
-    fprintf(fg_out, "# vtk DataFile Version 2.0\n");
-    fprintf(fg_out, "Generated by vtk_extract.c\n");
-    fprintf(fg_out, "ASCII\n");
-    fprintf(fg_out, "DATASET STRUCTURED_POINTS\n");
-    fprintf(fg_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
-    fprintf(fg_out, "ORIGIN %d %d %d\n", 0, 0, 0);
-    fprintf(fg_out, "SPACING %d %d %d\n", 1, 1, 1);
-    fprintf(fg_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
-
-    if (nrec_ == 1 && strncmp(stub_, "phi", 1) == 0) {
-      fprintf(fg_out, "SCALARS something float %d\n", nrec_);
-      fprintf(fg_out, "LOOKUP_TABLE default\n");
-    }
-    if (nrec_ == 3 && strncmp(stub_, "vel", 3) == 0) {
-      fprintf(fg_out, "VECTORS %s float\n", stub_);
+    if(vtk_header) {
+      fprintf(fg_out, "# vtk DataFile Version 2.0\n");
+      fprintf(fg_out, "Generated by vtk_extract.c\n");
+      fprintf(fg_out, "ASCII\n");
+      fprintf(fg_out, "DATASET STRUCTURED_POINTS\n");
+      fprintf(fg_out, "DIMENSIONS %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+      fprintf(fg_out, "ORIGIN %d %d %d\n", 0, 0, 0);
+      fprintf(fg_out, "SPACING %d %d %d\n", 1, 1, 1);
+      fprintf(fg_out, "POINT_DATA %d\n", ntotal[0]*ntotal[1]*ntotal[2]);
+      if (nrec_ == 1 && strncmp(stub_, "phi", 1) == 0) {
+	fprintf(fg_out, "SCALARS something float %d\n", nrec_);
+	fprintf(fg_out, "LOOKUP_TABLE default\n");
+      }
+      if (nrec_ == 3 && strncmp(stub_, "vel", 3) == 0) {
+	fprintf(fg_out, "VECTORS %s float\n", stub_);
+      }
     }
 
     printf("... Writing result to %s\n", genfilename);
@@ -738,12 +795,13 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
  ****************************************************************************/
 
 
-void write_data_psi(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, FILE * fp_elc_out, 
-	int n[3], double * data) {
+void write_data_psi(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, 
+	FILE * fp_elc_out, FILE * fp_elf_out, int n[3], double * data, double * pp) {
 
-  int ic, jc, kc, index, nr;
+  int ic, jc, kc, index0, index1, nr;
 
-  index = 0;
+  index0 = 0;
+  index1 = 0;
 
   if (output_binary_) {
 
@@ -752,21 +810,29 @@ void write_data_psi(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, F
 	for (kc = 0; kc < n[2]; kc++) {
 
           if (output_ek_psi_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_psi_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_psi_out);
 	  }
-	  index++;
+	  index0++;
 	  if (output_ek_rho_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_rho0_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_rho0_out);
 	  }
-	  index++;
+	  index0++;
 	  if (output_ek_rho_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_rho1_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_rho1_out);
 	  }
-	  index++;
+	  index0++;
 	  if (output_ek_elc_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_elc_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_elc_out);
 	  }
-	  index++;
+	  index0++;
+	  if (output_ek_elc_ != 0) {
+	    fwrite(data + index0, sizeof(double), 1, fp_elc_out);
+	  }
+	  index0++;
+	  if (output_ek_elf_ != 0) {
+	    fwrite(pp + index1, sizeof(double), 1, fp_elf_out);
+	  }
+	  index1++;
 
 	}
       }
@@ -788,30 +854,40 @@ void write_data_psi(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, F
 				     fprintf(fp_rho1_out, "%4d %4d %4d ", 1+ic, 1+jc, 1+kc);
 	    }
             if (output_ek_elc_ != 0) fprintf(fp_elc_out, "%4d %4d %4d ", 1+ic, 1+jc, 1+kc);
+            if (output_ek_elf_ != 0) fprintf(fp_elf_out, "%4d %4d %4d ", 1+ic, 1+jc, 1+kc);
 	  }
 
           if (output_ek_psi_ != 0) {
-	    fprintf(fp_psi_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_psi_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
           if (output_ek_rho_ != 0) {
-	    fprintf(fp_rho0_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_rho0_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
           if (output_ek_rho_ != 0) {
-	    fprintf(fp_rho1_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_rho1_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
           if (output_ek_elc_ != 0) {
-	    fprintf(fp_elc_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_elc_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
+          if (output_ek_elf_ != 0) {
+
+	    for (nr = 0; nr < 2; nr++) {
+	      fprintf(fp_elf_out, "%13.6e ", *(pp + index1));
+	      index1++;
+	    }
+	    fprintf(fp_elf_out, "%13.6e\n", *(pp + index1));
+	    index1++;
+	  }
 
 	}
       }
     }
-  }
 
+  }
   return;
 }
 
@@ -823,36 +899,42 @@ void write_data_psi(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, F
  *
  *****************************************************************************/
 
-void write_data_psi_cmf(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, FILE * fp_elc_out, 
-	int n[3], double * data) {
+void write_data_psi_cmf(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_out, 
+	FILE * fp_elc_out, FILE * fp_elf_out, int n[3], double * data, double * pp) {
 
-  int ic, jc, kc, index, nr;
+  int ic, jc, kc, index0, index1, nr;
 
-  index = 0;
+  index0 = 0;
 
   if (output_binary_) {
 
     for (kc = 1; kc <= n[2]; kc++) {
       for (jc = 1; jc <= n[1]; jc++) {
 	for (ic = 1; ic <= n[0]; ic++) {
-          index = nrec_*site_index(ic, jc, kc, n);
+
+          index0 = nrec_*site_index(ic, jc, kc, n);
+          index1 = npp_*site_index(ic, jc, kc, n);
 
           if (output_ek_psi_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_psi_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_psi_out);
 	  }
-	  index++;
+	  index0++;
           if (output_ek_rho_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_rho0_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_rho0_out);
 	  }
-	  index++;
+	  index0++;
           if (output_ek_rho_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_rho1_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_rho1_out);
 	  }
-	  index++;
+	  index0++;
           if (output_ek_elc_ != 0) {
-	    fwrite(data + index, sizeof(double), 1, fp_elc_out);
+	    fwrite(data + index0, sizeof(double), 1, fp_elc_out);
 	  }
-	  index++;
+	  index0++;
+          if (output_ek_elf_ != 0) {
+	    fwrite(pp + index1, sizeof(double), 1, fp_elf_out);
+	  }
+	  index1++;
 
 	}
       }
@@ -865,7 +947,9 @@ void write_data_psi_cmf(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_ou
     for (kc = 1; kc <= n[2]; kc++) {
       for (jc = 1; jc <= n[1]; jc++) {
 	for (ic = 1; ic <= n[0]; ic++) {
-          index = nrec_*site_index(ic, jc, kc, n);
+
+          index0 = nrec_*site_index(ic, jc, kc, n);
+          index1 = npp_*site_index(ic, jc, kc, n);
 
 	  if (output_index_) {
 	    /* Add the global (i,j,k) index starting at 1 each way */
@@ -875,30 +959,39 @@ void write_data_psi_cmf(FILE * fp_psi_out, FILE * fp_rho0_out, FILE * fp_rho1_ou
 				     fprintf(fp_rho1_out, "%4d %4d %4d ", ic, jc, kc);
 	    }
             if (output_ek_elc_ != 0) fprintf(fp_elc_out, "%4d %4d %4d ", ic, jc, kc);
+            if (output_ek_elf_ != 0) fprintf(fp_elf_out, "%4d %4d %4d ", ic, jc, kc);
 	  }
 
           if (output_ek_psi_ != 0) {
-	    fprintf(fp_psi_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_psi_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
 	  if (output_ek_rho_ != 0) {
-	    fprintf(fp_rho0_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_rho0_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
 	  if (output_ek_rho_ != 0) {
-	    fprintf(fp_rho1_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_rho1_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
 	  if (output_ek_elc_ != 0) {
-	    fprintf(fp_elc_out, "%13.6e\n", *(data + index));
+	    fprintf(fp_elc_out, "%13.6e\n", *(data + index0));
 	  }
-	  index++;
+	  index0++;
+	  if (output_ek_elf_ != 0) {
+	  for (nr = 0; nr < 2; nr++) {
+	    fprintf(fp_elf_out, "%13.6e ", *(pp + index1));
+	    index1++;
+	  }
+	    fprintf(fp_elf_out, "%13.6e\n", *(pp + index1));
+	    index1++;
+	  }
 
 	}
       }
     }
-  }
 
+  }
   return;
 }
 
@@ -1295,6 +1388,87 @@ double reverse_byte_order_double(char * c) {
   return result;
 }
 
+/****************************************************************************
+ *
+ *  electric_field
+ *
+ *  This routine calculates the electric field strength from the
+ *  electrostatic potential. Currently periodic boundary conditions
+ *  are assumed.
+ *
+ *****************************************************************************/
+
+void electric_field(double *datasection, double *ppsection){
+
+  int ic, jc, kc, ntot;
+  int a;
+  int index, indexpp; 
+  int ixup, iyup, izup, ixdwn, iydwn, izdwn;
+  int xs, ys, zs; /* strides */
+  double e[3];
+
+  xs = nrec_*ntargets[1]*ntargets[2];
+  ys = nrec_*ntargets[2];
+  zs = nrec_;
+
+  ntot = nrec_*ntargets[0]*ntargets[1]*ntargets[2];
+
+  for (ic = 1; ic <= ntargets[0]; ic++) {
+    for (jc = 1; jc <= ntargets[1]; jc++) {
+      for (kc = 1; kc <= ntargets[2]; kc++) {
+
+	index   = nrec_*site_index(ic, jc, kc, ntargets);
+	indexpp = npp_*site_index(ic, jc, kc, ntargets);
+
+	ixup = index + xs;
+	iyup = index + ys;
+	izup = index + zs;
+
+	ixdwn = index - xs;
+	iydwn = index - ys;
+	izdwn = index - zs;
+
+	for (a = 0; a < 3; a++) e[a] = 0.0;
+ 
+	if (ic == 1) {
+	  ixdwn = nrec_*site_index(ntargets[0], jc, kc, ntargets);
+	  e[0] = 0.5*(e0[0]*ntargets[0]);
+	}
+	if (jc == 1) {
+	  iydwn = nrec_*site_index(ic, ntargets[1], kc, ntargets);
+	  e[1] = 0.5*(e0[1]*ntargets[1]);
+	}
+	if (kc == 1) {
+	  izdwn = nrec_*site_index(ic, jc, ntargets[2], ntargets);
+	  e[2] = 0.5*(e0[2]*ntargets[2]);
+	}
+
+	if (ic == ntargets[0]) {
+	  ixup = nrec_*site_index(1, jc, kc, ntargets);
+	  e[0] = 0.5*(e0[0]*ntargets[0]);
+	}
+	if (jc == ntargets[1]) {
+	  iyup = nrec_*site_index(ic, 1, kc, ntargets);
+	  e[1] = 0.5*(e0[1]*ntargets[1]);
+	}
+	if (kc == ntargets[2]) {
+	  izup = nrec_*site_index(ic, jc, 1, ntargets);
+	  e[2] = 0.5*(e0[2]*ntargets[2]);
+	}
+
+	e[0] -= 0.5*( *(datasection + ixup) - *(datasection + ixdwn));
+	e[1] -= 0.5*( *(datasection + iyup) - *(datasection + iydwn));
+	e[2] -= 0.5*( *(datasection + izup) - *(datasection + izdwn));
+
+	for (a = 0; a < 3; a++) {
+	  *(ppsection + indexpp + a) = e[a];
+	}
+      }
+    }
+  }
+
+  return;
+}
 
 /****************************************************************************
  *
@@ -1321,7 +1495,7 @@ double q[5], qs[5];
           for (nr = 0; nr < nrec_; nr++) {
             q[nr] = *(datasection + index + nr);
            }
-	  scalar_biaxial_order_parameter_director(q, qs);
+	  calculate_scalar_biaxial_order_parameter_director(q, qs);
           for (nr = 0; nr < nrec_; nr++) {
             *(datasection + index + nr) = qs[nr];
 
@@ -1336,7 +1510,7 @@ return;
 
 /*****************************************************************************
  *
- *  scalar_biaxial_order_parameter_director
+ *  calculate_scalar_biaxial_order_parameter_director
  *
  *  Return the value of the scalar and biaxial order parameter and director for
  *  given Q tensor.
@@ -1350,7 +1524,7 @@ return;
  *
  *****************************************************************************/
 
-void scalar_biaxial_order_parameter_director(double q[5], double qs[5]) {
+void calculate_scalar_biaxial_order_parameter_director(double q[5], double qs[5]) {
 
   int ifail;
   double eigenvalue[3];
@@ -1585,3 +1759,5 @@ int is_bigendian() {
 
   return (*(char *) &i == 0);
 }
+
+
