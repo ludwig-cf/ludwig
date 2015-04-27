@@ -51,6 +51,9 @@ struct hydro_s {
   double * t_f;              /* Body force field (on target) */
   MPI_Datatype uhalo[3];   /* Halo exchange datatypes for velocity */
   io_info_t * info;        /* I/O handler. */
+
+  hydro_t * tcopy;              /* copy of this structure on target */ 
+
 };
 
 #endif

@@ -63,9 +63,28 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
   obj->f = (double*) calloc(obj->nf*nsites, sizeof(double));
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
 
+  /* allocate target copy of structure */
+  targetMalloc((void**) &(obj->tcopy),sizeof(hydro_t));
+
+  /* allocate data space on target */
+  double* tmpptr;
+  hydro_t* t_obj = obj->tcopy;
+
+  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->u),&tmpptr,sizeof(double*)); 
+  obj->t_u= tmpptr; //DEPRECATED direct access to target data.
+
+  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->f),&tmpptr,sizeof(double*)); 
+  obj->t_f= tmpptr; //DEPRECATED direct access to target data.
+
+
+  copyToTarget(&(t_obj->nf),&(obj->nf),sizeof(int)); //integer with number of field components
+
+
   /* allocate target copies */
-  targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
-  targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
+  //targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
+  //targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
 
   #ifdef LB_DATA_SOA
   //we will do nf halo exchanges, each with 1 field
@@ -97,8 +116,19 @@ void hydro_free(hydro_t * obj) {
   MPI_Type_free(&obj->uhalo[X]);
   free(obj->f);
   free(obj->u);
-  targetFree(obj->t_f);
-  targetFree(obj->t_u);
+
+  //free data space on target 
+  double* tmpptr;
+  hydro_t* t_obj = obj->tcopy;
+  copyFromTarget(&tmpptr,&(t_obj->u),sizeof(double*)); 
+  targetFree(tmpptr);
+
+  copyFromTarget(&tmpptr,&(t_obj->f),sizeof(double*)); 
+  targetFree(tmpptr);
+  
+  //free target copy of structure
+  targetFree(obj->tcopy);
+
   free(obj);
   obj = NULL;
 

@@ -29,8 +29,11 @@
 #include "blue_phase.h"
 
 
-static double * pth_;
-static double * t_pth_;
+//static double * pth_;
+//static double * t_pth_;
+
+double * pth_;
+double * t_pth_;
 
 /*****************************************************************************
  *
