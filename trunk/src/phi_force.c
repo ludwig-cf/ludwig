@@ -31,6 +31,7 @@
 #include "wall.h"
 #include "field_grad_s.h"
 #include "field_s.h"
+#include "hydro_s.h"
 #include "phi_force_stress.h"
 
 static int phi_force_calculation_fluid(field_t* q, field_grad_t* q_grad, hydro_t * hydro);
@@ -52,13 +53,14 @@ static int phi_force_fluid_phi_gradmu(field_t * phi, hydro_t * hydro);
 static int force_required_ = 1;
 static int force_divergence_ = 1;
 
+
 /*****************************************************************************
  *
  *  phi_force_required_set
  *
  *****************************************************************************/
 
-int phi_force_required_set(const int flag) {
+__targetHost__  int phi_force_required_set(const int flag) {
 
   force_required_ = flag;
   return 0;
@@ -70,7 +72,7 @@ int phi_force_required_set(const int flag) {
  *
  *****************************************************************************/
 
-int phi_force_required(int * flag) {
+__targetHost__ int phi_force_required(int * flag) {
 
   assert(flag);
 
@@ -85,7 +87,7 @@ int phi_force_required(int * flag) {
  *
  *****************************************************************************/
 
-int phi_force_divergence_set(const int flag) {
+__targetHost__ int phi_force_divergence_set(const int flag) {
 
   force_divergence_ = flag;
   return 0;
@@ -102,7 +104,7 @@ int phi_force_divergence_set(const int flag) {
  *
  *****************************************************************************/
 
-int phi_force_calculation(field_t * phi, field_t* q, field_grad_t* q_grad, hydro_t * hydro) {
+__targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t* q_grad, hydro_t * hydro) {
 
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
@@ -138,16 +140,119 @@ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t* q_grad, hydro
  *
  *****************************************************************************/
 
+extern __targetConst__ int tc_Nall[3];
+extern __targetConst__ int tc_nSites;
+extern __targetConst__ int tc_nhalo;
+
+__targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
+
+  int index, index1, ia, ib;
+  double pth0[3][3];
+  double pth1[3][3];
+  double force[3];
+
+  __targetTLPNoStride__(index,tc_nSites){
+  
+  int coords[3];
+  targetCoords3D(coords,tc_Nall,index);
+  
+  // if not a halo site:
+    if (coords[0] >= (tc_nhalo) && 
+	coords[1] >= (tc_nhalo) && 
+	coords[2] >= (tc_nhalo) &&
+	coords[0] < tc_Nall[X]-(tc_nhalo) &&  
+	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
+	coords[2] < tc_Nall[Z]-(tc_nhalo) ){ 
+
+
+    int coords[3];
+    targetCoords3D(coords,tc_Nall,index);
+
+
+    /* Compute pth at current point */
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth0[ia][ib]=t_pth[index*9+ia*3+ib];
+    
+    /* Compute differences */
+
+    index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);	    
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+    
+    
+    for (ia = 0; ia < 3; ia++) {
+      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+    }
+
+    index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);	
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+    
+    for (ia = 0; ia < 3; ia++) {
+      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+    }
+
+    index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);	
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+    
+    for (ia = 0; ia < 3; ia++) {
+      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+    }
+
+    index1 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);	
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+    
+    for (ia = 0; ia < 3; ia++) {
+      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+    }
+
+    index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);	
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+    
+    for (ia = 0; ia < 3; ia++) {
+      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+    }
+
+    index1 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);	    
+    for (ia = 0; ia < 3; ia++) 
+      for (ib = 0; ib < 3; ib++) 
+	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+    
+    for (ia = 0; ia < 3; ia++) {
+      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+    }
+    
+    /* Store the force on lattice */
+    
+    for (ia = 0; ia < 3; ia++) 
+      hydro->f[HYADR(tc_nSites,hydro->nf,index,ia)] += force[ia];
+    
+    }
+  }
+  
+  return;
+}
+
+extern double * pth_;
+extern double * t_pth_;
+
+
 static int phi_force_calculation_fluid(field_t * q, field_grad_t* q_grad, hydro_t * hydro) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
   int nlocal[3];
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];
 
-  void (* chemical_stress)(const int index, double s[3][3]);
+
 
   assert(hydro);
 
@@ -158,60 +263,38 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t* q_grad, hydro_
 
   phi_force_stress_compute(q, q_grad);
 
-  chemical_stress = phi_force_stress;
+  int nhalo;
+  nhalo = coords_nhalo();
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
-	/* Compute pth at current point */
-	chemical_stress(index, pth0);
 
-	/* Compute differences */
-	
-	index1 = le_site_index(icp1, jc, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
-	}
-	index1 = le_site_index(icm1, jc, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
-	}
-	index1 = le_site_index(ic, jc+1, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	}
-	index1 = le_site_index(ic, jc-1, kc);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	}
-	index1 = le_site_index(ic, jc, kc+1);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	}
-	index1 = le_site_index(ic, jc, kc-1);
-	chemical_stress(index1, pth1);
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	}
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-	/* Store the force on lattice */
 
-	hydro_f_local_add(hydro, index, force);
+  //set up constants on target
+  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
 
-	/* Next site */
-      }
-    }
-  }
+  // copy stress to target
+  copyToTarget(t_pth_,pth_,3*3*nSites*sizeof(double));      
+
+  //target copy of tensor order parameter field structure
+  hydro_t* t_hydro = hydro->tcopy; 
+  double* tmpptr;
+    
+  //populate target copy of force from host 
+  copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
+  copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
+  
+  //launch the force calculation across the lattice on the target
+  phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (hydro->tcopy, t_pth_);
+  
+  // get the resulting force from the target
+  copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 
   phi_force_stress_free();
 

@@ -119,7 +119,7 @@ OBJS = \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
      angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o \
-     phi_force.o phi_force_colloid.o  \
+     phi_force_colloid.o  \
      phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
@@ -137,7 +137,7 @@ OBJS = \
 
 TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
 	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o \
-	blue_phase.o phi_force_stress.o
+	blue_phase.o phi_force_stress.o phi_force.o
 
 ###############################################################################
 #
