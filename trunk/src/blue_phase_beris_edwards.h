@@ -20,8 +20,7 @@
 #include "map.h"
 #include "noise.h"
 
-int blue_phase_beris_edwards(field_t * fq, hydro_t * hydro, map_t * map,
-			     noise_t * noise);
-int blue_phase_be_tmatrix_set(double t[3][3][NQAB]);
+__targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, map_t * map, noise_t * noise);
+__targetHost__ int blue_phase_be_tmatrix_set(double t[3][3][NQAB]);
 
 #endif

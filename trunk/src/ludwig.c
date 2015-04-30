@@ -581,7 +581,7 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->q) {
 	if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
 	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	blue_phase_beris_edwards(ludwig->q, ludwig->hydro,
+	blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
 				 ludwig->map, ludwig->noise_rho);
       }
 

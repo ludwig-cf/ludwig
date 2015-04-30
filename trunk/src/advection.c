@@ -106,6 +106,31 @@ int advflux_create(int nf, advflux_t ** pobj) {
   if (obj->fy == NULL) fatal("calloc(advflux->fy) failed\n");
   if (obj->fz == NULL) fatal("calloc(advflux->fz) failed\n");
 
+
+  /* allocate target copy of structure */
+  targetMalloc((void**) &(obj->tcopy),sizeof(advflux_t));
+
+  /* allocate data space on target */
+  double* tmpptr;
+
+  advflux_t* t_obj = obj->tcopy;
+
+  //fe
+  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->fe),&tmpptr,sizeof(double*)); 
+
+  //fw
+  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->fw),&tmpptr,sizeof(double*)); 
+
+  //fy
+  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->fy),&tmpptr,sizeof(double*)); 
+
+  //fz
+  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
+  copyToTarget(&(t_obj->fz),&tmpptr,sizeof(double*)); 
+
   *pobj = obj;
 
   return 0;
@@ -125,6 +150,25 @@ void advflux_free(advflux_t * obj) {
   free(obj->fw);
   free(obj->fy);
   free(obj->fz);
+
+
+
+  //free data space on target 
+  double* tmpptr;
+  advflux_t* t_obj = obj->tcopy;
+  copyFromTarget(&tmpptr,&(t_obj->fe),sizeof(double*)); 
+  targetFree(tmpptr);
+  copyFromTarget(&tmpptr,&(t_obj->fw),sizeof(double*)); 
+  targetFree(tmpptr);
+  copyFromTarget(&tmpptr,&(t_obj->fy),sizeof(double*)); 
+  targetFree(tmpptr);
+  copyFromTarget(&tmpptr,&(t_obj->fz),sizeof(double*)); 
+  targetFree(tmpptr);
+
+  //free target copy of structure
+  targetFree(obj->tcopy);
+
+
   free(obj);
 
   return;

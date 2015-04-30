@@ -22,6 +22,8 @@ struct advflux_s {
   double * fw;   /* For LE planes */
   double * fy;
   double * fz;
+
+  advflux_t * tcopy;  /* copy of this structure on target */ 
 };
 
 #endif
