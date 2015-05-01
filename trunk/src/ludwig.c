@@ -498,10 +498,7 @@ void ludwig_run(const char * inputfile) {
 	psi_halo_rho(ludwig->psi);
 	TIMER_stop(TIMER_HALO_LATTICE);
 
-	/* Force for this step before update. Note that nhalo = 1
-	 * is indicating grad mu method and nhalo = 2 the divergence
-	 * method. Once per large time step with dt = 1.0. */
-
+	/* Force calculation is only once per LB timestep */
 	if (im == 0) {
 
 	  TIMER_start(TIMER_FORCE_CALCULATION);
@@ -509,7 +506,7 @@ void ludwig_run(const char * inputfile) {
 
           /* Force input as body force and momentum correction */
 	  if (flag == 0) {
-	    psi_force_gradmu(ludwig->psi, ludwig->hydro,
+	    psi_force_gradmu(ludwig->psi, ludwig->phi, ludwig->hydro,
 				  ludwig->map, ludwig->collinfo);
 	    hydro_correct_momentum(ludwig->hydro);
 	  }
@@ -1038,7 +1035,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lb_ndist_set(ludwig->lb, 2);
 
     nf = 1;      /* 1 scalar order parameter */
-    nhalo = 1;   /* Require one piont for LB. */
+    nhalo = 1;   /* Require one point for LB. */
     ngrad = 2;   /* \nabla^2 required */
 
     coords_nhalo_set(nhalo);

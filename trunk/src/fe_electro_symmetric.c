@@ -177,20 +177,18 @@ double fe_es_mu_phi(const int index, const int nop) {
   assert(fe);
   assert(nop == 0); /* Only zero if relevant */
 
+  /* Contribution from compositional order parameter */
   mu = symmetric_chemical_potential(index, 0);
 
-  /* Solvation contribution */
-
+  /* Contribution from solvation */
   for (in = 0; in < fe->nk; in++) {
     psi_rho(fe->psi, index, in, &rho);
     mu += 0.5*rho*fe->deltamu[in];
   }
 
   /* Electric field contribution */
-
   psi_electric_field_d3qx(fe->psi, index, e); 
-
-  mu += -0.5*fe->gamma*fe->epsilonbar*(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
+  mu += 0.5*fe->gamma*fe->epsilonbar*(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
 
   return mu;
 }
@@ -332,11 +330,6 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   double epsloc;
   double e[3];     /* Total electric field */
   double e2;
-  double eunit, reunit, kt;
-
-  physics_kt(&kt);
-  psi_unit_charge(fe->psi, &eunit);
-  reunit = 1.0/eunit;
 
   symmetric_chemical_stress(index, s); 
 
@@ -348,7 +341,6 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
-    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
 

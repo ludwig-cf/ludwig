@@ -38,43 +38,25 @@ static int psi_force_divergence_ = 1;
  *  This routine computes the force on the fluid via the gradient
  *  of the chemical potential.
  *
- *  The force density is
- *    f_a = - \sum_k rho_k grad_a mu^ex_k
- *  where mu_ex is the excess chemical potential (above ideal gas part).
- *  So
- *    f_a = - \sum_k rho_k grad_a z_k e psi
- *        = - rho_el grad_a psi
- *
- *  The resultant force is accumulated to the hydrodynamic sector.
- *  If hydro is NULL, this routine is a bit over-the-top, but will
- *  compute the force on colloids.
- *
- *  The same formulation is used at the same time to compute the
- *  net force on the colloid. As this includes terms related to
- *  fluid properties near the edge of the particle, the force is
- *  not exactly qE. This is apparently significant, particularly
- *  at higher q, e.g., in getting the correct electrophoretic
- *  colloid speeds cf O'Brien and White. (Just using qE tends to
- *  give a higher forces and higher speeds.)
- *
- *  One is relying on overall electroneutrality for this to be a
- *  sensible procedure (ie., there should in principle be zero
- *  net force on the system).
- *
  *****************************************************************************/
 
-int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
+int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 		map_t * map, colloids_info_t * cinfo) {
 
   int ic, jc, kc;
-  int nk;
+  int in, nk;
   int nlocal[3];
   int index;
+  int xs, ys, zs;       /* Coordinate strides */
 
-  double rho_elec;
-  double f[3];
-  double e[3];  /* Total electric field */
+  double rho, rho_elec; /* Species and electric charge density */
+  double e[3];          /* Total electric field */
+  double muphim1, muphip1, musm1, musp1;
+  double phi0;          /* Compositional order parameter */
   double eunit, reunit, kt;
+  double force[3];
+
+  double (* chemical_potential)(const int index, const int nop);
 
   colloid_t * pc = NULL;
 
@@ -84,6 +66,7 @@ int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
   physics_kt(&kt);
 
   coords_nlocal(nlocal);
+  coords_strides(&xs, &ys, &zs);
 
   psi_unit_charge(psi, &eunit);
   reunit = 1.0/eunit;
@@ -91,45 +74,103 @@ int psi_force_gradmu(psi_t * psi, hydro_t * hydro,
   psi_nk(psi, &nk);
   assert(nk == 2); /* This routine is not completely general */
 
+  chemical_potential = fe_chemical_potential_function();
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
+        if(phi) field_scalar(phi, index, &phi0);
+
+	/* X-direction */
+	/* Contribution from composition part */
+        muphim1 = chemical_potential(index - xs, 0);
+        muphip1 = chemical_potential(index + xs, 0);
+
+        force[X] = -phi0*0.5*(muphip1 - muphim1);
+
+	/* Contribution from ionic solvation part */
+	for (in = 0; in < nk; in++) {
+
+	  psi_rho(psi, index, in, &rho); 
+	  fe_mu_solv(index - xs, in, &musm1);
+	  fe_mu_solv(index + xs, in, &musp1);
+	  force[X] -= rho*0.5*(musp1 - musm1);
+
+	}
+
+	/* Y-direction */
+	/* Contribution from composition part */
+        muphim1 = chemical_potential(index - ys, 0);
+        muphip1 = chemical_potential(index + ys, 0);
+
+        force[Y] = -phi0*0.5*(muphip1 - muphim1);
+
+	/* Contribution from ionic solvation part */
+	for (in = 0; in < nk; in++) {
+
+	  psi_rho(psi, index, in, &rho); 
+	  fe_mu_solv(index - ys, in, &musm1);
+	  fe_mu_solv(index + ys, in, &musp1);
+	  force[Y] -= rho*0.5*(musp1 - musm1);
+
+	}
+
+	/* Z-direction */
+	/* Contribution from composition part */
+        muphim1 = chemical_potential(index - zs, 0);
+        muphip1 = chemical_potential(index + zs, 0);
+
+        force[Z] = -phi0*0.5*(muphip1 - muphim1);
+
+	/* Contribution from ionic solvation part */
+	for (in = 0; in < nk; in++) {
+
+	  psi_rho(psi, index, in, &rho); 
+	  fe_mu_solv(index - zs, in, &musm1);
+	  fe_mu_solv(index + zs, in, &musp1);
+	  force[Z] -= rho*0.5*(musp1 - musm1);
+
+	}
+
+	/* Contribution from ionic electrostatic part */
+        /* Note: The sum over the ionic species and the
+                 gradient of the electrostatic potential
+                 are implicitly calculated */
 
 	psi_rho_elec(psi, index, &rho_elec);
+	psi_electric_field(psi, index, e);
 
-	psi_electric_field_d3qx(psi, index, e);
+	force[X] += rho_elec*reunit*kt*e[X];
+	force[Y] += rho_elec*reunit*kt*e[Y];
+	force[Z] += rho_elec*reunit*kt*e[Z];
 
 	/* If solid, accumulate contribution to colloid;
 	   otherwise to fluid node */
 
-	f[X] = rho_elec*reunit*kt*e[X];
-	f[Y] = rho_elec*reunit*kt*e[Y];
-	f[Z] = rho_elec*reunit*kt*e[Z];
-
 	if (pc) {
 
-	  pc->force[X] += f[X];
-	  pc->force[Y] += f[Y];
-	  pc->force[Z] += f[Z];
+	  pc->force[X] += force[X];
+	  pc->force[Y] += force[Y];
+	  pc->force[Z] += force[Z];
 
 	}
 	else {
 
           /* Include ideal gas contribution */   
 /*
-	  for (n = 0; n < nk; n++) {
+	  for (in = 0; in < nk; in++) {
 
-	    psi_grad_rho_d3qx(psi, map, index, n, grad_rho);
+	    psi_grad_rho_d3qx(psi, map, index, in, grad_rho);
 
-	    f[X] -= kt*grad_rho[X];
-	    f[Y] -= kt*grad_rho[Y];
-	    f[Z] -= kt*grad_rho[Z];
+	    force[X] -= kt*grad_rho[X];
+	    force[Y] -= kt*grad_rho[Y];
+	    force[Z] -= kt*grad_rho[Z];
 	  }
 */
-	  if (hydro) hydro_f_local_add(hydro, index, f);
+	  if (hydro) hydro_f_local_add(hydro, index, force);
 
 	}
 
@@ -168,7 +209,7 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
   assert(cinfo);
 
   coords_nlocal(nlocal);
-  chemical_stress = fe_electro_stress_ex;
+  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
