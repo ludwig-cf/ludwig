@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2638M
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from ./serial-sgrd-st2.inp
+Read 24 user parameters from serial-sgrd-st2.inp
 
 No free energy selected
 
@@ -24,7 +24,8 @@ Shear viscosity               1.66667e-01
 Bulk viscosity                1.66667e-01
 Temperature                   0.00000e+00
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
@@ -123,13 +124,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.768      5.768      5.768   5.767546 (1 call)
-      Time step loop:      0.003      0.003      5.762   0.002881 (2000 calls)
-         Propagation:      0.000      0.000      0.327   0.000164 (2000 calls)
-           Collision:      0.002      0.003      4.835   0.002417 (2000 calls)
+               Total:     10.053     10.053     10.053  10.053126 (1 call)
+      Time step loop:      0.005      0.006     10.047   0.005024 (2000 calls)
+         Propagation:      0.001      0.002      2.646   0.001323 (2000 calls)
+           Collision:      0.003      0.004      6.232   0.003116 (2000 calls)
        Lattice halos:      0.000      0.000      0.100   0.000050 (2000 calls)
        phi gradients:      0.000      0.000      0.001   0.000000 (2000 calls)
-      Particle halos:      0.000      0.000      0.097   0.000049 (2000 calls)
+      Particle halos:      0.000      0.000      0.133   0.000067 (2000 calls)
    Force calculation:      0.000      0.000      0.001   0.000001 (2000 calls)
           phi update:      0.000      0.000      0.001   0.000000 (2000 calls)
 Ludwig finished normally.

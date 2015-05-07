@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.21 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
 
-The SVN revision details are: 2399M
+The SVN revision details are: 2638M
 Note assertions via standard C assert() are on.
 
-Read 26 user parameters from ./serial-ewld-s01.inp
+Read 26 user parameters from serial-ewld-s01.inp
 
 No free energy selected
 
@@ -24,7 +24,8 @@ Shear viscosity               8.33333e-02
 Bulk viscosity                8.33333e-02
 Temperature                   0.00000e+00
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
@@ -136,19 +137,19 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.160      3.160      3.160   3.159649 (1 call)
-      Time step loop:      0.294      0.307      2.976   0.297589 (10 calls)
-         Propagation:      0.019      0.020      0.199   0.019857 (10 calls)
-           Collision:      0.254      0.263      2.574   0.257432 (10 calls)
-       Lattice halos:      0.001      0.002      0.030   0.001503 (20 calls)
-       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
-              Forces:      0.002      0.002      0.021   0.002123 (10 calls)
-             Rebuild:      0.008      0.009      0.082   0.008221 (10 calls)
-                 BBL:      0.004      0.005      0.043   0.004312 (10 calls)
-      Particle halos:      0.000      0.000      0.001   0.000114 (10 calls)
-     Ewald Sum total:      0.002      0.002      0.020   0.002040 (10 calls)
+               Total:      4.090      4.090      4.090   4.089734 (1 call)
+      Time step loop:      0.382      0.428      3.883   0.388343 (10 calls)
+         Propagation:      0.092      0.112      0.953   0.095260 (10 calls)
+           Collision:      0.254      0.274      2.574   0.257393 (10 calls)
+       Lattice halos:      0.001      0.002      0.030   0.001501 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
+              Forces:      0.002      0.002      0.023   0.002319 (10 calls)
+             Rebuild:      0.008      0.009      0.083   0.008254 (10 calls)
+                 BBL:      0.004      0.005      0.044   0.004412 (10 calls)
+      Particle halos:      0.000      0.000      0.002   0.000155 (10 calls)
+     Ewald Sum total:      0.002      0.002      0.022   0.002234 (10 calls)
           Ewald Real:      0.000      0.000      0.000   0.000028 (10 calls)
-       Ewald_Fourier:      0.002      0.002      0.020   0.002010 (10 calls)
+       Ewald_Fourier:      0.002      0.002      0.022   0.002204 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
           phi update:      0.000      0.000      0.000   0.000001 (10 calls)
                Free1:      0.000      0.000      0.000   0.000001 (20 calls)
