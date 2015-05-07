@@ -115,10 +115,13 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
   void* pcon=NULL;
   blue_phase_target_constant_ptr(&pcon);
 
-  field_t* t_q = q->tcopy; //target copy of tensor order parameter field structure
-  field_grad_t* t_q_grad = q_grad->tcopy; //target copy of grad field structure
+  field_t* t_q = NULL; //target copy of tensor order parameter field structure
+  field_grad_t* t_q_grad = NULL;  //target copy of grad field structure
 
   if (q){ //we are using blue_phase_chemical_stress which is ported to targetDP
+
+    t_q = q->tcopy; 
+    t_q_grad = q_grad->tcopy;
 
     double* tmpptr;
     
