@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.28 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
 
-The SVN revision details are: 2427M
+The SVN revision details are: 2638M
 Note assertions via standard C assert() are on.
 
-Read 17 user parameters from ./serial-dist-1dp.inp
+Read 17 user parameters from serial-dist-1dp.inp
 
 No free energy selected
 
@@ -24,7 +24,8 @@ Shear viscosity               1.00000e-01
 Bulk viscosity                1.00000e-01
 Temperature                   2.13333e-05
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
@@ -83,11 +84,11 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.373      0.373      0.373   0.373444 (1 call)
-      Time step loop:      0.034      0.036      0.341   0.034142 (10 calls)
-         Propagation:      0.002      0.002      0.016   0.001624 (10 calls)
-           Collision:      0.032      0.033      0.319   0.031921 (10 calls)
-       Lattice halos:      0.000      0.000      0.003   0.000275 (10 calls)
+               Total:      0.536      0.536      0.536   0.535675 (1 call)
+      Time step loop:      0.049      0.056      0.497   0.049715 (10 calls)
+         Propagation:      0.011      0.014      0.118   0.011768 (10 calls)
+           Collision:      0.035      0.039      0.354   0.035365 (10 calls)
+       Lattice halos:      0.000      0.000      0.003   0.000309 (10 calls)
        phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
                  BBL:      0.000      0.000      0.000   0.000002 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
