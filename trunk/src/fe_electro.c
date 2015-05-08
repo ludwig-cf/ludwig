@@ -67,9 +67,9 @@ static fe_electro_t * fe = NULL;
  *  Retain a reference to the electrokinetics object psi.
  *
  *  Note: In this model we do not set the chemical potential.
- *        The ionic electrostatic forces on the fluid are 
- *        implicitly calculated through the electric charge 
- *        density and the electric field.
+ *        In the gradient method the ionic electrostatic forces 
+ *        on the fluid are implicitly calculated through the 
+ *        electric charge density and the electric field.
  *
  *****************************************************************************/
 
@@ -201,19 +201,22 @@ void fe_electro_stress(const int index, double s[3][3]) {
   double e2;         /* Magnitude squared */
   int nk;
   double rho;
-  double kt;
+  double kt, eunit, reunit;
 
   assert(fe);
+
+  physics_kt(&kt);
+  psi_nk(fe->psi, &nk);
+  psi_unit_charge(fe->psi, &eunit);	 
+  reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
   psi_electric_field_d3qx(fe->psi, index, e);
 
-  physics_kt(&kt);
-  psi_nk(fe->psi, &nk);
-
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
+    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
 
@@ -225,8 +228,8 @@ void fe_electro_stress(const int index, double s[3][3]) {
       for (in = 0; in < nk; in++) {
 	psi_rho(fe->psi, index, in, &rho);
 	s[ia][ib] += d_[ia][ib] * kt * rho;
-      }
 
+      }
     }
   }
 
@@ -248,8 +251,13 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
   double epsilon;    /* Permittivity */
   double e[3];       /* Total electric field */
   double e2;         /* Magnitude squared */
+  double kt, eunit, reunit;
 
   assert(fe);
+
+  physics_kt(&kt);
+  psi_unit_charge(fe->psi, &eunit);	 
+  reunit = 1.0/eunit;
 
   psi_epsilon(fe->psi, &epsilon);
   psi_electric_field_d3qx(fe->psi, index, e);
@@ -257,6 +265,7 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
+    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
 
