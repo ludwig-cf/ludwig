@@ -169,10 +169,16 @@ double fe_es_fed(int index) {
 
 double fe_es_mu_phi(const int index, const int nop) {
 
-  int in;
+  int in, ia;
   double e[3];         /* Total electric field */
+  double e2;
   double rho;          /* Charge density */
   double mu;           /* Result */
+  double kt, eunit, reunit;
+ 
+ physics_kt(&kt);
+ psi_unit_charge(fe->psi, &eunit);
+ reunit = 1.0/eunit;
 
   assert(fe);
   assert(nop == 0); /* Only zero if relevant */
@@ -181,14 +187,24 @@ double fe_es_mu_phi(const int index, const int nop) {
   mu = symmetric_chemical_potential(index, 0);
 
   /* Contribution from solvation */
+
   for (in = 0; in < fe->nk; in++) {
     psi_rho(fe->psi, index, in, &rho);
-    mu += 0.5*rho*fe->deltamu[in];
+    mu += 0.5*rho*fe->deltamu[in]*kt;
   }
 
   /* Electric field contribution */
+ 
+  e2 = 0.0;
+
   psi_electric_field_d3qx(fe->psi, index, e); 
-  mu += 0.5*fe->gamma*fe->epsilonbar*(e[0]*e[0] + e[1]*e[1] + e[2]*e[2]);
+
+  for (ia = 0; ia < 3; ia++) {
+    e[ia] *= kt*reunit;
+    e2 += e[ia]*e[ia];
+  }
+
+  mu += 0.5*fe->gamma*fe->epsilonbar*e2;
 
   return mu;
 }
@@ -208,14 +224,17 @@ double fe_es_mu_phi(const int index, const int nop) {
 int fe_es_mu_ion_solv(int index, int n, double * mu) {
 
   double phi;
-
+  double kt;
+ 
   assert(fe);
   assert(mu);
   assert(fe->phi);
   assert(n < fe->nk);
 
+  physics_kt(&kt);
+
   field_scalar(fe->phi, index, &phi);
-  *mu = 0.5*fe->deltamu[n]*(1.0 + phi);
+  *mu = 0.5*fe->deltamu[n]*(1.0 + phi)*kt;
 
   return 0;
 }
@@ -330,10 +349,18 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   double epsloc;
   double e[3];     /* Total electric field */
   double e2;
+  double kt, eunit, reunit;
+
+  assert(fe);
+
+  physics_kt(&kt);
+  psi_unit_charge(fe->psi, &eunit);
+  reunit = 1.0/eunit;
 
   symmetric_chemical_stress(index, s); 
 
-  /* Coupling part, requires phi, total field */
+  /* Coupling part
+     requires phi and total electric field */
 
   field_scalar(fe->phi, index, &phi);
   psi_electric_field_d3qx(fe->psi, index, e);
@@ -341,23 +368,32 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   e2 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
+    e[ia] *= kt*reunit;
     e2 += e[ia]*e[ia];
   }
+  
+  /* Dielectric part */
 
-  s_couple = 0.5*phi*fe->epsilonbar*fe->gamma*e2;
+  s_couple = 0.5*fe->epsilonbar*fe->gamma*e2;
+
+  /* Solvation part */
 
   for (ia = 0; ia < fe->nk; ia++) {
     psi_rho(fe->psi, index, ia, &rho);
-    s_couple += 0.5*phi*rho*fe->deltamu[ia];
+    s_couple += 0.5*phi*rho*fe->deltamu[ia]*kt;
   }
 
-  /* Local permittivity, requires phi */
-  fe_es_var_epsilon(index, &epsloc);
+  /* Electrostatic part
+     local permittivity depends implicitly on phi */
 
+  fe_es_var_epsilon(index, &epsloc);
+ 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
+
       s_el = -epsloc*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
       s[ia][ib] += s_el + d_[ia][ib]*s_couple;
+
     }
   }
 

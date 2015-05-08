@@ -45,15 +45,15 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 
   int ic, jc, kc;
   int in, nk;
+  int ia;
   int nlocal[3];
   int index;
   int xs, ys, zs;       /* Coordinate strides */
-
   double rho, rho_elec; /* Species and electric charge density */
   double e[3];          /* Total electric field */
   double muphim1, muphip1, musm1, musp1;
   double phi0;          /* Compositional order parameter */
-  double eunit, reunit, kt;
+  double kt, eunit, reunit;
   double force[3];
 
   double (* chemical_potential)(const int index, const int nop);
@@ -63,11 +63,10 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
   assert(psi);
   assert(cinfo);
 
-  physics_kt(&kt);
-
   coords_nlocal(nlocal);
   coords_strides(&xs, &ys, &zs);
 
+  physics_kt(&kt);
   psi_unit_charge(psi, &eunit);
   reunit = 1.0/eunit;
 
@@ -135,17 +134,18 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 
 	}
 
-	/* Contribution from ionic electrostatic part */
-        /* Note: The sum over the ionic species and the
+	/* Contribution from ionic electrostatic part
+           Note: The sum over the ionic species and the
                  gradient of the electrostatic potential
                  are implicitly calculated */
 
 	psi_rho_elec(psi, index, &rho_elec);
-	psi_electric_field(psi, index, e);
+	psi_electric_field_d3qx(psi, index, e);
 
-	force[X] += rho_elec*reunit*kt*e[X];
-	force[Y] += rho_elec*reunit*kt*e[Y];
-	force[Z] += rho_elec*reunit*kt*e[Z];
+	for (ia = 0; ia < 3; ia++) {
+	  e[ia] *= kt*reunit;
+	  force[ia] += rho_elec*e[ia];
+	}
 
 	/* If solid, accumulate contribution to colloid;
 	   otherwise to fluid node */
@@ -266,7 +266,6 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
 	  hydro_f_local_add(hydro, index, force);
 	}
 
-
       }
     }
   }
@@ -343,7 +342,6 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids
 	  }
 
 	}
-
 
         /* Store the force on lattice */
 
