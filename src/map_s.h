@@ -27,6 +27,9 @@ struct map_s {
   MPI_Datatype halostatus[3]; /* Halo datatype for status */
   MPI_Datatype halodata[3];   /* Halo datatype for data */
   io_info_t * info;           /* I/O handler */
+
+  map_t * tcopy;                /* Copy of this structure on target*/
+
 };
 
 #endif

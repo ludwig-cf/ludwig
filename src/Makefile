@@ -95,7 +95,7 @@ endif
 
 OBJS = \
      physics.o physics_rt.o \
-     advection.o advection_bcs.o advection_rt.o \
+     advection_bcs.o advection_rt.o \
      blue_phase_init.o blue_phase_rt.o \
      brazovskii.o brazovskii_rt.o \
      colloid_io.o colloids_init.o \
@@ -136,7 +136,8 @@ OBJS = \
 
 TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
 	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o \
-	blue_phase.o phi_force_stress.o phi_force.o blue_phase_beris_edwards.o
+	blue_phase.o phi_force_stress.o phi_force.o blue_phase_beris_edwards.o \
+	advection.o
 
 ###############################################################################
 #
