@@ -57,7 +57,7 @@ int map_create(int ndata, map_t ** pobj) {
   if (obj->status == NULL) fatal("calloc(map->status) failed\n");
 
  /* allocate target copy */
-  targetCalloc((void **) &obj->t_status, nsites*sizeof(char));
+  //targetCalloc((void **) &obj->t_status, nsites*sizeof(char));
 
   obj->ndata = ndata;
 
@@ -71,6 +71,23 @@ int map_create(int ndata, map_t ** pobj) {
     coords_field_init_mpi_indexed(nhalo, obj->ndata, MPI_DOUBLE,
 				  obj->halodata);
   }
+
+
+  /* allocate target copy of structure */
+  targetMalloc((void**) &(obj->tcopy),sizeof(map_t));
+
+  /* allocate data space on target */
+  char* tmpptr;
+  map_t* t_obj = obj->tcopy;
+  targetCalloc((void**) &tmpptr,nsites*sizeof(char));
+  copyToTarget(&(t_obj->status),&tmpptr,sizeof(char*)); 
+
+  copyToTarget(&(t_obj->is_porous_media),&(obj->is_porous_media),sizeof(int)); 
+  copyToTarget(&(t_obj->ndata),&(obj->ndata),sizeof(int)); 
+
+  obj->t_status= tmpptr; //DEPRECATED direct access to target data.
+
+
 
   *pobj = obj;
 
@@ -100,7 +117,20 @@ void map_free(map_t * obj) {
 
   if (obj->info) io_info_destroy(obj->info);
   free(obj->status);
-  targetFree(obj->t_status);
+  //  targetFree(obj->t_status);
+
+ if (obj->tcopy) {
+
+    //free data space on target 
+    char* tmpptr;
+    map_t* t_obj = obj->tcopy;
+    copyFromTarget(&tmpptr,&(t_obj->status),sizeof(char*)); 
+    targetFree(tmpptr);
+    
+    //free target copy of structure
+    targetFree(obj->tcopy);
+  }
+
   free(obj);
 
   return;
