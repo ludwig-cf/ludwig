@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "control.h"
 #include "physics.h"
 #include "psi_s.h"
 #include "fe_electro.h"
@@ -37,6 +38,8 @@ static int psi_force_divergence_ = 1;
  *
  *  This routine computes the force on the fluid via the gradient
  *  of the chemical potential.
+ *  Note: The ionic solvation free energy difference is in units 
+ *        of kt and must be dressed for the force calculation.
  *
  *****************************************************************************/
 
@@ -96,7 +99,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe_mu_solv(index - xs, in, &musm1);
 	  fe_mu_solv(index + xs, in, &musp1);
-	  force[X] -= rho*0.5*(musp1 - musm1);
+	  force[X] -= rho*0.5*(musp1 - musm1)*kt;
 
 	}
 
@@ -113,7 +116,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe_mu_solv(index - ys, in, &musm1);
 	  fe_mu_solv(index + ys, in, &musp1);
-	  force[Y] -= rho*0.5*(musp1 - musm1);
+	  force[Y] -= rho*0.5*(musp1 - musm1)*kt;
 
 	}
 
@@ -130,7 +133,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe_mu_solv(index - zs, in, &musm1);
 	  fe_mu_solv(index + zs, in, &musp1);
-	  force[Z] -= rho*0.5*(musp1 - musm1);
+	  force[Z] -= rho*0.5*(musp1 - musm1)*kt;
 
 	}
 
@@ -265,6 +268,7 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
 	else {
 	  hydro_f_local_add(hydro, index, force);
 	}
+
 
       }
     }
