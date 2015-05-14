@@ -190,7 +190,7 @@ double fe_es_mu_phi(const int index, const int nop) {
 
   for (in = 0; in < fe->nk; in++) {
     psi_rho(fe->psi, index, in, &rho);
-    mu += 0.5*rho*fe->deltamu[in];
+    mu += 0.5*rho*fe->deltamu[in]*kt;
   }
 
   /* Electric field contribution */
@@ -319,7 +319,7 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *  S^symmetric = S(phi, grad phi) following symmetric.c
  *
  *  S^coupling =
- *    (1/2) phi d_ab [ epsilonbar gamma E^2 + \sum_k rho_k deltamu_k ]
+ *    (1/2) d_ab [ epsilonbar gamma E^2 + \sum_k rho_k deltamu_k ]
  *
  *  The field term comes from
  *
@@ -329,7 +329,9 @@ int fe_es_var_epsilon(int index, double * epsilon) {
  *    epsilon(r) agrees with fe_es_var_epsilon() above.
  *
  *  Note that the sign of the electro- and symmetric- parts of the
- *  stress is already accounted for in the relevant functions.
+ *  stress is already accounted for in the relevant functions and
+ *  that deltamu_k is given in units of kt and must be dressed for
+ *  the force calculation.
  *
  *  Finally, the true Maxwell stress includes the total electric
  *  field. 
@@ -377,7 +379,7 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
 
   for (ia = 0; ia < fe->nk; ia++) {
     psi_rho(fe->psi, index, ia, &rho);
-    s_couple += 0.5*phi*rho*fe->deltamu[ia];
+    s_couple += 0.5*rho*fe->deltamu[ia]*kt;
   }
 
   /* Electrostatic part
