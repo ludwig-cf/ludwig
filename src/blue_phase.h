@@ -44,6 +44,11 @@ struct bluePhaseKernelConstants {
   double zeta_;
   double d_[3][3];
   double e_[3][3][3];
+  double w1_coll;                         /* Anchoring strength parameter */
+  double w2_coll;                         /* Second anchoring parameter */
+  double w1_wall;
+  double w2_wall;
+  double amplitude;
 
 };
 

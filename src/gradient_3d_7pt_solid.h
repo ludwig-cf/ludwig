@@ -17,7 +17,7 @@
 
 #include "map.h"
 
-int gradient_3d_7pt_solid_map_set(map_t * map);
-int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
+__targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map);
+__targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
 			     double * grad,double * t_grad, double * delsq, double * t_delsq);
 #endif

@@ -1,0 +1,71 @@
+%\documentclass[12pt,letterpaper,english]{article}
+\documentclass[11pt,landscape]{article}
+\usepackage[T1]{fontenc} % Standard package for selecting font encodingsamely titles, headers and contents
+\usepackage{txfonts} % makes spacing between characters space correctly
+\usepackage{xcolor} % Driver-independent color extensions for LaTeX and pdfLaTeX.
+%\usepackage[pagestyles,raggedright]{titlesec} % related with sections—n
+%\usepackage{blindtext} % To create text
+\usepackage{fancyhdr} % header footer placement
+
+\usepackage[top=1in, bottom=1in, left=1in, right=1in] {geometry} % Margins
+\usepackage{graphicx}  % Essential for adding images to you document.
+
+\usepackage{sectsty}
+\sectionfont{\large}
+\subsectionfont{\normalsize}
+\subsubsectionfont{\normalsize \it}
+
+\usepackage{caption}
+\captionsetup{labelsep=period}
+
+\renewcommand{\arraystretch}{1.25}
+
+\pagestyle{fancy} % allows you to use the header and footer commands
+
+\raggedright
+\begin{document}
+
+\setlength{\parindent}{0in} % Amount of indentation at the first line of a paragraph.
+
+\pagestyle{fancy} \lhead{Title} \rhead{Lead PI} \renewcommand{%
+\headrulewidth}{0.0pt}
+
+\colorbox{yellow} {\bf {\emph{[Refer to the guidelines for instructions in preparing the proposal. Table does not count toward}}}
+\colorbox{yellow} {\bf {\emph{[15-page project narrative count.]}}}
+
+\bigskip
+
+\textbf{Proposal Title (exactly as it appears on submission):} Text 
+
+\begin{table}[h]
+%\centering
+%\caption{Table title}
+%\vspace{-.15in}
+\label{Tab1}
+\begin{tabular}{p{5cm} p{5cm} p{5cm}} \\ \hline 
+\noalign{\smallskip}
+\multicolumn{3}{l}{\textbf {Year 1}}\\ \hline 
+\noalign{\smallskip}
+\textbf{Milestone} & \textbf{Details} & \textbf{Date and Status} \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+\noalign{\smallskip}
+\multicolumn{3}{l}{\textbf {Year 2 (if appropriate)}}\\ \hline
+\noalign{\smallskip}
+Insert Text & Insert Text & Insert Text \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+\noalign{\smallskip}
+\multicolumn{3}{l}{\textbf {Year 3 (if appropriate)}}\\ \hline
+\noalign{\smallskip}
+Insert Text & Insert Text & Insert Text \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+Insert Text & Insert Text & Insert Text \\ \hline 
+
+
+\end{tabular}
+\end{table}
+
+
+\end{document}

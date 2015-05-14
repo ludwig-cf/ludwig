@@ -37,8 +37,8 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
 void wall_anchoring_set(const int type);
 
-int blue_phase_wall_w12(double * w1, double * w2);
-int blue_phase_coll_w12(double * w1, double * w2);
+__targetHost__ int blue_phase_wall_w12(double * w1, double * w2);
+__targetHost__ int blue_phase_coll_w12(double * w1, double * w2);
 int blue_phase_wall_w12_set(double w1, double w2);
 int blue_phase_coll_w12_set(double w1, double w2);
 int blue_phase_fs(const double dn[3], double qs[3][3], char status,
