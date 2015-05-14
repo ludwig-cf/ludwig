@@ -200,6 +200,7 @@ int field_grad_compute(field_grad_t * obj) {
 
   field_leesedwards(obj->field);
 
+
   //  obj->d2(obj->field->nf, obj->field->data, obj->grad, obj->delsq);
 
   obj->d2(obj->field->nf, obj->field->data,obj->field->t_data, obj->grad, obj->t_grad, obj->delsq, obj->t_delsq);

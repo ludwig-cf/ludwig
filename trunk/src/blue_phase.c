@@ -32,6 +32,7 @@
 #include "leesedwards.h"
 #include "physics.h"
 #include "control.h"
+#include "colloids_Q_tensor.h"
 
 static double q0_;        /* Pitch = 2pi / q0_ */
 static double a0_;        /* Bulk free energy parameter A_0 */
@@ -76,7 +77,7 @@ __targetHost__ void blue_phase_set_kernel_constants(){
 
   int nlocal[3];
   int nextra = 1;
-
+  
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
 
@@ -121,6 +122,11 @@ __targetHost__ void blue_phase_set_kernel_constants(){
   memcpy(bpc.d_,d_,3*3*sizeof(double));
   memcpy(bpc.e_,e_,3*3*3*sizeof(double));
   bpc.r3_=r3_;
+
+  blue_phase_coll_w12(&(bpc.w1_coll), &(bpc.w2_coll));
+  blue_phase_wall_w12(&(bpc.w1_wall), &(bpc.w2_wall));
+  
+  bpc.amplitude = blue_phase_amplitude_compute(); 
 
   copyConstToTarget(&tbpc, &bpc, sizeof(bluePhaseKernelConstants_t)); 
 

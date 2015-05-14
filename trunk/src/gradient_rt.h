@@ -18,6 +18,6 @@
 #include "field_grad.h"
 #include "map.h"
 
-int gradient_rt_init(field_grad_t * grad, map_t * map);
+__targetHost__ int gradient_rt_init(field_grad_t * grad, map_t * map);
 
 #endif

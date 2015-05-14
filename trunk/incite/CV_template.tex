@@ -1,0 +1,95 @@
+\documentclass[11pt,letterpaper,english]{article}
+\usepackage[T1]{fontenc} % Standard package for selecting font encodings
+\usepackage{txfonts} % makes spacing between characters space correctly
+\usepackage{xcolor} % Driver-independent color extensions for LaTeX and pdfLaTeX.
+%\usepackage{blindtext} % To create text
+%\usepackage{mdwlist} % mdwlist for compact enumeration/list items 
+%\usepackage[pagestyles]{titlesec} % related with sections—namely titles, headers and contents
+\usepackage{fancyhdr} % header footer placement
+
+\usepackage[top=1in, bottom=1in, left=1in, right=1in] {geometry} % Margins
+\usepackage{graphicx}   % Essential for adding images to you document.
+
+\usepackage{sectsty}
+\sectionfont{\large}
+\subsectionfont{\normalsize}
+\subsubsectionfont{\normalsize \it}
+
+\usepackage{caption}
+\captionsetup{labelsep=period}
+
+\pagestyle{fancy} % allows you to use the header and footer commands 
+
+\raggedright
+\begin{document}
+
+\setlength{\parindent}{0in} % Amount of indentation at the first line of a paragraph.
+
+\pagestyle{fancy} \lhead{Title} \rhead{Lead PI} \renewcommand{%
+\headrulewidth}{0.0pt}
+
+
+
+\centering {\bf Curriculum Vitae ({\emph{2-page limit}})}\\
+{\bf PI NAME}\\
+{\bf Contact Information} \smallskip
+
+\begin{flushleft} {\bf Professional Preparation}
+{\parindent 16pt
+
+PhD \\ 
+MS \\ 
+BS \\ 
+}
+
+\vspace{.04in}
+{\bf Appointments}
+{\parindent 16pt
+
+2010--present \\ 
+2001--2010 \\ 
+1990--2001 \\ 
+}
+
+\vspace{.04in}
+{\bf Five Publications Most Relevant to This Proposal}
+\vspace{-6pt}
+\begin{enumerate} \itemsep1pt \parskip0pt \parsep0pt
+\item Publication most relevant to this proposal \\ 
+\item Publication most relevant to this proposal \\ 
+\item Publication most relevant to this proposal \\ 
+\item Publication most relevant to this proposal \\ 
+\item Publication most relevant to this proposal \\ 
+\end{enumerate} 
+
+\vspace{-6pt}
+{\bf Research Interests and Expertise}
+{\parindent 16pt
+
+Insert paragraph(s).
+}
+
+\vspace{.04in}
+{\bf Synergistic Activities}
+\vspace{-6pt}
+\begin{enumerate} \itemsep1pt \parskip0pt \parsep0pt
+\item Text \\ 
+\item Text \\ 
+\item Text \\ 
+\item Text \\ 
+\item Text \\ 
+\end{enumerate} 
+
+\vspace{-6pt}
+{\bf Collaborators ({\emph{past 5 years including name and current institution}})} 
+{\parindent 16pt
+
+
+Collaborator name, current institution \\
+Collaborator name, current institution \\
+}
+
+
+\end{flushleft}
+
+\end{document}
