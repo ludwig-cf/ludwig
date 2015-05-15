@@ -114,9 +114,9 @@ __targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
 __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq) {
   int nextra;
-  //  int method = 1;
+  int method = 1;
 
-  int method = 3;
+  //int method = 3;
 
   assert(nop == NQAB);
   assert(map_);
@@ -135,15 +135,7 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-  if (method == 1){
-    copyToTarget(t_field,field,nop*nSites*sizeof(double)); 
-
-    gradient_6x5_svd(t_field, t_grad, t_delsq, nextra);
-
-    copyFromTarget(grad,t_grad,nop*3*nSites*sizeof(double)); 
-    copyFromTarget(delsq,t_delsq,nop*nSites*sizeof(double)); 
-
-  }
+  if (method == 1) gradient_6x5_svd(field, grad, delsq, nextra);
   if (method == 2) gradient_6x6_gauss_elim(field, grad, delsq, nextra);
   if (method == 3){
 
@@ -169,331 +161,273 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
  *
  *****************************************************************************/
 
-extern __targetConst__ int tc_nSites; 
-extern __targetConst__ int tc_nhalo;
-extern __targetConst__ int tc_nextra;  
-extern __targetConst__ int tc_Nall[3]; 
-
-
-/* __targetEntry__ void gradient_6x5_svd_lattice(const double * field, double * grad, */
-/* 					      double * del2, map_t * map,bluePhaseKernelConstants_t* pbpc) { */
-/*   int ia, ib, ig, ih; */
-/*   int index, n, n1, n2; */
-/*   int ifail; */
-/*   int known[3]; */
-
-/*   int str[3]; */
-/*   int status[6]; */
-
-/*   const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}}; */
-/*   int normal[6]; */
-/*   int nunknown; */
-/*   int jcol; */
-/*   int idb; */
-
-/*   double gradn[NQAB][3][2];               /\* Partial gradients *\/ */
-/*   double q0[3][3];                        /\* Prefered surface Q_ab *\/ */
-/*   double qs[3][3];                        /\* 'Surface' Q_ab *\/ */
-/*   double ** a18; */
-/*   double b18[18]; */
-/*   double x15[15]; */
-/*   double bc[6][NQAB][3];                  /\* Terms in boundary condition *\/ */
-/*   double c[3][3];                         /\* Constant terms in BC. *\/ */
-/*   double dn[3];                           /\* Unit normal. *\/ */
-/*   double dq; */
-/*   double diag; */
-/*   double unkn; */
-
-/*   double w1 = 0.0; */
-/*   double w2 = 0.0; */
-
-/*   double qtilde[3][3];                      /\* For planar anchoring *\/ */
-/*   double q2;                                /\* Contraction Q_ab Q_ab *\/ */
-
-/*   //util_matrix_create(3*6, 3*NQAB, &a18); */
-
-  
-/*   str[Z] = 1; */
-/*   str[Y] = str[Z]*tc_Nall[Z]; */
-/*   str[X] = str[Y]*tc_Nall[Y]; */
-
-/*   ifail = 0; */
-
-
-/* __targetTLP__(index,tc_nSites){ */
-    
-/*     int coords[3]; */
-/*     targetCoords3D(coords,tc_Nall,index); */
-
-/*     // if not a halo site: */
-/*     if (coords[0] >= (tc_nhalo-tc_nextra) &&  */
-/* 	coords[1] >= (tc_nhalo-tc_nextra) &&  */
-/* 	coords[2] >= (tc_nhalo-tc_nextra) && */
-/* 	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&   */
-/* 	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&   */
-/* 	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){  */
-      
-      
-/*       //double a18[3*6][3*NQAB]; */
-/*       /\* for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) { *\/ */
-/*       /\*   for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) { *\/ */
-/*       /\*     for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) { *\/ */
-      
-/*       /\* 	index = coords_index(ic, jc, kc); *\/ */
-/*       //map_status(map, index, &status0); */
-      
-/*       //if (status0 == MAP_FLUID){ */
-/*       if ((map->status[index])==MAP_FLUID){ */
-
-/*       /\* Set up partial gradients and identify solid neighbours */
-/*        * (unknowns) in various directions. If both neighbours */
-/*        * in one coordinate direction are solid, treat as known. *\/ */
-      
-/*       nunknown = 0; */
-      
-/*       for (ia = 0; ia < 3; ia++) { */
-	
-/* 	known[ia] = 1; */
-/* 	normal[ia] = ia; */
-	
-/* 	/\* Look for outward normals is bcs[] with ib 2*ia + 1 */
-/* 	 * status at 2*ia, which is what we want *\/ */
-	
-/* 	ib = 2*ia + 1; */
-/* 	ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z]; */
-/* 	//map_status(map_, index + ib, status + 2*ia);	 */
-/* 	status[2*ia]=map->status[index+ib]; */
-
-/* 	ib = 2*ia; */
-/* 	ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z]; */
-/* 	//map_status(map_, index + ib, status + 2*ia + 1); */
-/* 	status[2*ia+1]=map->status[index+ib]; */
-	
-/* 	ig = (status[2*ia    ] != MAP_FLUID); */
-/* 	ih = (status[2*ia + 1] != MAP_FLUID); */
-	
-/* 	/\* Calculate half-gradients assuming they are all knowns *\/ */
-	
-/* 	for (n1 = 0; n1 < NQAB; n1++) { */
-/* 	  gradn[n1][ia][0] = */
-/* 	    field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1]; */
-/* 	  gradn[n1][ia][1] = */
-/* 	    field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1]; */
-/* 	} */
-	
-/* 	/\* Set unknown, with direction, or treat as known (zero grad) *\/ */
-	
-/* 	if (ig + ih == 1) { */
-/* 	  known[ia] = 0; */
-/* 	  normal[nunknown] = 2*ia + ih; */
-/* 	  nunknown += 1; */
-/* 	} */
-/* 	else  if (ig && ih) { */
-/* 	  for (n1 = 0; n1 < NQAB; n1++) { */
-/* 	    gradn[n1][ia][0] = 0.0; */
-/* 	    gradn[n1][ia][1] = 0.0; */
-/* 	  } */
-/* 	} */
-	
-/*       } */
-      
-/*       /\* For planar anchoring we require qtilde_ab of Fournier and */
-/*        * Galatola, and its square (reduendent for fluid sites) *\/ */
-      
-/*       util_q5_to_qab(qs, field + NQAB*index); */
-      
-/*       q2 = 0.0; */
-/*       for (ia = 0; ia < 3; ia++) { */
-/* 	for (ib = 0; ib < 3; ib++) { */
-/* 	  qtilde[ia][ib] = qs[ia][ib] + 0.5*pbpc->amplitude*pbpc->d_[ia][ib]; */
-/* 	  q2 += qtilde[ia][ib]*qtilde[ia][ib];  */
-/* 	} */
-/*       } */
-      
-/*       /\* For each solid boundary, set up the boundary condition terms *\/ */
-      
-/*       for (n = 0; n < nunknown; n++) { */
-	
-/* 	//colloids_q_boundary_normal(index, bcs[normal[n]], dn); */
-/* 	//colloids_q_boundary(dn, qs, q0, status[normal[n]]); */
-	
-/* 	/\* Check for wall/colloid *\/ */
-/* 	if (status[normal[n]] == MAP_COLLOID) { */
-/* 	  w1 = pbpc->w1_coll; */
-/* 	  w2 = pbpc->w2_coll; */
-/* 	} */
-	
-/* 	if (status[normal[n]] == MAP_BOUNDARY) { */
-/* 	  w1 = pbpc->w1_wall; */
-/* 	  w2 = pbpc->w2_wall; */
-/* 	} */
-	
-/* 	/\* Compute c[a][b] *\/ */
-	
-/* 	for (ia = 0; ia < 3; ia++) { */
-/* 	  for (ib = 0; ib < 3; ib++) { */
-/* 	    c[ia][ib] = 0.0; */
-/* 	    for (ig = 0; ig < 3; ig++) { */
-/* 	      for (ih = 0; ih < 3; ih++) { */
-/* 		c[ia][ib] -= pbpc->kappa1*pbpc->q0*bcs[normal[n]][ig]* */
-/* 		  (pbpc->e_[ia][ig][ih]*qs[ih][ib] + pbpc->e_[ib][ig][ih]*qs[ih][ia]); */
-/* 	      } */
-/* 	    } */
-/* 	    /\* Normal anchoring: w2 must be zero and q0 is preferred Q */
-/* 	     * Planar anchoring: in w1 term q0 is effectively */
-/* 	     *                   (Qtilde^perp - 0.5S_0) while in w2 we */
-/* 	     *                   have Qtilde appearing explicitly. */
-/* 	     *                   See colloids_q_boundary() etc *\/ */
-/* 	    c[ia][ib] += */
-/* 	      -w1*(qs[ia][ib] - q0[ia][ib]) */
-/* 	      -w2*(2.0*q2 - 4.5*pbpc->amplitude*pbpc->amplitude)*qtilde[ia][ib]; */
-/* 	  } */
-/* 	} */
-	
-	
-/* 	/\* Now set up the system *\/ */
-/* 	/\* Initialise whole rows of A and b *\/ */
-	
-/* 	for (n1 = 0; n1 < 6; n1++) { */
-/* 	  for (n2 = 0; n2 < 3*NQAB; n2++) { */
-/* 	    a18[6*n + n1][n2] = 0.0; */
-/* 	  } */
-/* 	  b18[6*n + n1] = 0.0; */
-/* 	} */
-	
-/* 	gradient_bcs6x5_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[n]], bc); */
-	
-/* 	/\* Three blocks of columns for each row; note that the index */
-/* 	 * ib is used to compute known terms, while idb is the */
-/* 	 * appropriate normal direction for unknowns (counted by jcol) *\/ */
-	
-/* 	jcol = 0; */
-	
-/* 	for (ib = 0; ib < 3; ib++) { */
-	  
-/* 	  diag = pbpc->d_[normal[n]/2][ib]; /\* block diagonal? *\/ */
-/* 	  unkn = 1.0 - known[ib];     /\* is ib unknown direction? *\/ */
-/* 	  idb = normal[jcol]/2;       /\* normal direction for this unknown *\/ */
-	  
-/* 	  for (n1 = 0; n1 < 6; n1++) { */
-/* 	    for (n2 = 0; n2 < NQAB; n2++) { */
-	      
-/* 	      /\* Unknown diagonal blocks contribute full bc to A *\/ */
-/* 	      /\* Unknown off-diagonal blocks contribute (1/2) bc */
-/* 	       * to A and (1/2) known dq to RHS. */
-/* 	       * Known off-diagonals to RHS *\/ */
-	      
-/* 	      a18[6*n + n1][NQAB*jcol + n2] += unkn*diag*bc[n1][n2][idb]; */
-/* 	      a18[6*n + n1][NQAB*jcol + n2] += 0.5*unkn*(1.0 - diag)*bc[n1][n2][idb]; */
-	      
-/* 	      dq = gradn[n2][idb][1 - (normal[jcol] % 2)]; */
-/* 	      b18[6*n + n1] += 0.5*unkn*(1.0 - diag)*bc[n1][n2][idb]*dq; */
-	      
-/* 	      dq = 0.5*known[ib]*(gradn[n2][ib][0] + gradn[n2][ib][1]); */
-/* 	      b18[6*n + n1] += (1.0 - diag)*bc[n1][n2][ib]*dq; */
-/* 	    } */
-/* 	  } */
-	  
-/* 	  jcol += (1 - known[ib]); */
-/* 	} */
-	
-/* 	/\* Constant terms all move to RHS (hence -ve sign) *\/ */
-	
-/* 	b18[6*n + XX] = -(b18[6*n + XX] +     c[X][X]); */
-/* 	b18[6*n + XY] = -(b18[6*n + XY] + 2.0*c[X][Y]); */
-/* 	b18[6*n + XZ] = -(b18[6*n + XZ] + 2.0*c[X][Z]); */
-/* 	b18[6*n + YY] = -(b18[6*n + YY] +     c[Y][Y]); */
-/* 	b18[6*n + YZ] = -(b18[6*n + YZ] + 2.0*c[Y][Z]); */
-/* 	b18[6*n + ZZ] = -(b18[6*n + ZZ] +     c[Z][Z]); */
-/*       } */
-      
-/*       if (nunknown > 0) { */
-/* 	//ifail += util_svd_solve(6*nunknown, NQAB*nunknown, a18, b18, x15); */
-/* 	//assert(ifail == 0); */
-/*       } */
-      
-/*       for (n = 0; n < nunknown; n++) { */
-/* 	for (n1 = 0; n1 < NQAB; n1++) { */
-/* 	  gradn[n1][normal[n]/2][normal[n] % 2] = x15[NQAB*n + n1]; */
-/* 	} */
-/*       } */
-      
-/*       /\* The final answer is the sum of the partial gradients *\/ */
-      
-/*       for (n1 = 0; n1 < NQAB; n1++) { */
-/* 	del2[NQAB*index + n1] = 0.0; */
-/* 	for (ia = 0; ia < 3; ia++) { */
-/* 	  grad[3*(NQAB*index + n1) + ia] = */
-/* 	    0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]); */
-/* 	  del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1]; */
-/* 	} */
-/*       } */
-      
-/*       } */
-/*       /\* Next site *\/ */
-/*     } */
-/*  } */
-/* //  } */
- 
-/* //util_matrix_free(3*6, &a18); */
-/* //if (ifail > 0) fatal("Failure in gradient SVD\n"); */
-
-/*   return; */
-/* } */
-
-
 static int gradient_6x5_svd(const double * field, double * grad,
 			    double * del2, const int nextra) {
   int nlocal[3];
   int nhalo;
+  int ic, jc, kc;
+  int ia, ib, ig, ih;
+  int index, n, n1, n2;
   int ifail;
+  int known[3];
+
+  int str[3];
+  int status0, status[6];
+
+  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+  int normal[6];
+  int nunknown;
+  int jcol;
+  int idb;
+
+  double gradn[NQAB][3][2];               /* Partial gradients */
+  double q0[3][3];                        /* Prefered surface Q_ab */
+  double qs[3][3];                        /* 'Surface' Q_ab */
+  double ** a18;
+  double b18[18];
+  double x15[15];
+  double bc[6][NQAB][3];                  /* Terms in boundary condition */
+  double c[3][3];                         /* Constant terms in BC. */
+  double dn[3];                           /* Unit normal. */
+  double dq;
+  double diag;
+  double unkn;
+
+  double w1_coll;                         /* Anchoring strength parameter */
+  double w2_coll;                         /* Second anchoring parameter */
+  double w1_wall;
+  double w2_wall;
+  double w1 = 0.0;
+  double w2 = 0.0;
+  double q_0;                             /* Cholesteric pitch wavevector */
+  double kappa0;                          /* Elastic constants */
+  double kappa1;
+
+  double amplitude;                         /* Scalar order parameter */
+  double qtilde[3][3];                      /* For planar anchoring */
+  double q2;                                /* Contraction Q_ab Q_ab */
 
   assert(NQAB == 5);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  //util_matrix_create(3*6, 3*NQAB, &a18);
+  util_matrix_create(3*6, 3*NQAB, &a18);
 
+  str[Z] = 1;
+  str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
+  str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
+
+  kappa0 = fe_kappa();
+  kappa1 = fe_kappa(); /* One elastic constant */ 
+
+  q_0 = blue_phase_q0();
+  blue_phase_coll_w12(&w1_coll, &w2_coll);
+  blue_phase_wall_w12(&w1_wall, &w2_wall);
+  amplitude = blue_phase_amplitude_compute(); 
   ifail = 0;
 
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+	index = coords_index(ic, jc, kc);
+	map_status(map_, index, &status0);
 
-  //copy lattice shape constants to target ahead of execution
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
+	if (status0 != MAP_FLUID) continue;
+
+	/* Set up partial gradients and identify solid neighbours
+	 * (unknowns) in various directions. If both neighbours
+	 * in one coordinate direction are solid, treat as known. */
+
+	nunknown = 0;
+
+	for (ia = 0; ia < 3; ia++) {
+
+	  known[ia] = 1;
+	  normal[ia] = ia;
+
+	  /* Look for outward normals is bcs[] with ib 2*ia + 1
+	   * status at 2*ia, which is what we want */
+
+	  ib = 2*ia + 1;
+	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
+	  map_status(map_, index + ib, status + 2*ia);
+
+	  ib = 2*ia;
+	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
+	  map_status(map_, index + ib, status + 2*ia + 1);
+
+	  ig = (status[2*ia    ] != MAP_FLUID);
+	  ih = (status[2*ia + 1] != MAP_FLUID);
+
+	  /* Calculate half-gradients assuming they are all knowns */
+
+	  for (n1 = 0; n1 < NQAB; n1++) {
+	    gradn[n1][ia][0] =
+	      field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
+	    gradn[n1][ia][1] =
+	      field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
+	  }
+
+	  /* Set unknown, with direction, or treat as known (zero grad) */
+
+	  if (ig + ih == 1) {
+	    known[ia] = 0;
+	    normal[nunknown] = 2*ia + ih;
+	    nunknown += 1;
+	  }
+	  else  if (ig && ih) {
+	    for (n1 = 0; n1 < NQAB; n1++) {
+	      gradn[n1][ia][0] = 0.0;
+	      gradn[n1][ia][1] = 0.0;
+	    }
+	  }
+
+	}
+
+	/* For planar anchoring we require qtilde_ab of Fournier and
+	 * Galatola, and its square (reduendent for fluid sites) */
+
+	util_q5_to_qab(qs, field + NQAB*index);
+
+	q2 = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+	    q2 += qtilde[ia][ib]*qtilde[ia][ib]; 
+	  }
+	}
+
+	/* For each solid boundary, set up the boundary condition terms */
+
+	for (n = 0; n < nunknown; n++) {
+
+	  colloids_q_boundary_normal(index, bcs[normal[n]], dn);
+	  colloids_q_boundary(dn, qs, q0, status[normal[n]]);
+
+	  /* Check for wall/colloid */
+	  if (status[normal[n]] == MAP_COLLOID) {
+	    w1 = w1_coll;
+	    w2 = w2_coll;
+	  }
+
+	  if (status[normal[n]] == MAP_BOUNDARY) {
+	    w1 = w1_wall;
+	    w2 = w2_wall;
+	  }
+
+	  /* Compute c[a][b] */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      c[ia][ib] = 0.0;
+	      for (ig = 0; ig < 3; ig++) {
+		for (ih = 0; ih < 3; ih++) {
+		  c[ia][ib] -= kappa1*q_0*bcs[normal[n]][ig]*
+		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+		}
+	      }
+	      /* Normal anchoring: w2 must be zero and q0 is preferred Q
+	       * Planar anchoring: in w1 term q0 is effectively
+	       *                   (Qtilde^perp - 0.5S_0) while in w2 we
+	       *                   have Qtilde appearing explicitly.
+	       *                   See colloids_q_boundary() etc */
+	      c[ia][ib] +=
+		-w1*(qs[ia][ib] - q0[ia][ib])
+		-w2*(2.0*q2 - 4.5*amplitude*amplitude)*qtilde[ia][ib];
+	    }
+	  }
 
 
-  // initialise kernel constants on both host and target
-  blue_phase_set_kernel_constants();
+	  /* Now set up the system */
+	  /* Initialise whole rows of A and b */
 
-  // get a pointer to target copy of stucture containing kernel constants
-  void* pcon=NULL;
-  blue_phase_target_constant_ptr(&pcon);
+	  for (n1 = 0; n1 < 6; n1++) {
+	    for (n2 = 0; n2 < 3*NQAB; n2++) {
+	      a18[6*n + n1][n2] = 0.0;
+	    }
+	    b18[6*n + n1] = 0.0;
+	  }
 
-  map_t* t_map = map_->tcopy; //target copy of field structure
+	  gradient_bcs6x5_coeff(kappa0, kappa1, bcs[normal[n]], bc);
 
-  double* tmpptr;
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
-  
+	  /* Three blocks of columns for each row; note that the index
+	   * ib is used to compute known terms, while idb is the
+	   * appropriate normal direction for unknowns (counted by jcol) */
 
-  //execute lattice-based operation on target
+	  jcol = 0;
 
+	  for (ib = 0; ib < 3; ib++) {
 
-  //  gradient_6x5_svd_lattice __targetLaunch__(nSites) (field, grad,
-  //						     del2, map_->tcopy,
-  //						     (bluePhaseKernelConstants_t*) pcon);
+	    diag = d_[normal[n]/2][ib]; /* block diagonal? */
+	    unkn = 1.0 - known[ib];     /* is ib unknown direction? */
+	    idb = normal[jcol]/2;       /* normal direction for this unknown */
 
-  //util_matrix_free(3*6, &a18);
+	    for (n1 = 0; n1 < 6; n1++) {
+	      for (n2 = 0; n2 < NQAB; n2++) {
+
+		/* Unknown diagonal blocks contribute full bc to A */
+		/* Unknown off-diagonal blocks contribute (1/2) bc
+		 * to A and (1/2) known dq to RHS.
+		 * Known off-diagonals to RHS */
+
+		a18[6*n + n1][NQAB*jcol + n2] += unkn*diag*bc[n1][n2][idb];
+		a18[6*n + n1][NQAB*jcol + n2] += 0.5*unkn*(1.0 - diag)*bc[n1][n2][idb];
+
+		dq = gradn[n2][idb][1 - (normal[jcol] % 2)];
+		b18[6*n + n1] += 0.5*unkn*(1.0 - diag)*bc[n1][n2][idb]*dq;
+
+		dq = 0.5*known[ib]*(gradn[n2][ib][0] + gradn[n2][ib][1]);
+		b18[6*n + n1] += (1.0 - diag)*bc[n1][n2][ib]*dq;
+	      }
+	    }
+
+	    jcol += (1 - known[ib]);
+	  }
+
+	  /* Constant terms all move to RHS (hence -ve sign) */
+
+	  b18[6*n + XX] = -(b18[6*n + XX] +     c[X][X]);
+	  b18[6*n + XY] = -(b18[6*n + XY] + 2.0*c[X][Y]);
+	  b18[6*n + XZ] = -(b18[6*n + XZ] + 2.0*c[X][Z]);
+	  b18[6*n + YY] = -(b18[6*n + YY] +     c[Y][Y]);
+	  b18[6*n + YZ] = -(b18[6*n + YZ] + 2.0*c[Y][Z]);
+	  b18[6*n + ZZ] = -(b18[6*n + ZZ] +     c[Z][Z]);
+	}
+
+	if (nunknown > 0) {
+	  ifail += util_svd_solve(6*nunknown, NQAB*nunknown, a18, b18, x15);
+	  assert(ifail == 0);
+	}
+
+	for (n = 0; n < nunknown; n++) {
+	  for (n1 = 0; n1 < NQAB; n1++) {
+	    gradn[n1][normal[n]/2][normal[n] % 2] = x15[NQAB*n + n1];
+	  }
+	}
+
+	/* The final answer is the sum of the partial gradients */
+
+	for (n1 = 0; n1 < NQAB; n1++) {
+	  del2[NQAB*index + n1] = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[3*(NQAB*index + n1) + ia] =
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  }
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  util_matrix_free(3*6, &a18);
   if (ifail > 0) fatal("Failure in gradient SVD\n");
 
   return 0;
 }
+
 
 /*****************************************************************************
  *
