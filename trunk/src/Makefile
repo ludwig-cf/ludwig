@@ -56,7 +56,7 @@ USEGPU=1
 endif
 
 ifdef USEGPU
-TARGETCC = $(NVCC) -arch=sm_21
+TARGETCC = $(NVCC) -arch=sm_30
 #TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
 TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc -g -G
 OPTS += -DCUDAHOST
@@ -99,7 +99,7 @@ OBJS = \
      blue_phase_init.o blue_phase_rt.o \
      brazovskii.o brazovskii_rt.o \
      colloid_io.o colloids_init.o \
-     colloid.o colloid_link.o colloids.o colloids_halo.o colloid_io_rt.o \
+     colloid.o colloid_link.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
      colloids_rt.o lubrication.o \
      coords.o coords_field.o coords_rt.o \
@@ -131,12 +131,12 @@ OBJS = \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
-     timer.o wall.o colloids_Q_tensor.o ludwig.o
+     timer.o wall.o ludwig.o
 
 TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
 	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o \
 	blue_phase.o phi_force_stress.o phi_force.o blue_phase_beris_edwards.o \
-	advection.o gradient_3d_7pt_solid.o
+	advection.o gradient_3d_7pt_solid.o colloids_Q_tensor.o colloids.o
 
 ###############################################################################
 #

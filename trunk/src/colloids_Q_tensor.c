@@ -28,9 +28,14 @@
 #include "model.h"
 #include "blue_phase.h"
 #include "colloids_Q_tensor.h"
+#include "colloids_s.h"
 
 static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
+
+static __targetConst__ int t_anchoring_coll_ = ANCHORING_NORMAL;
+static __targetConst__ int t_anchoring_wall_ = ANCHORING_NORMAL;
+
 
 /*
  * Normal anchoring free energy
@@ -48,6 +53,12 @@ static double w2_colloid_ = 0.0;
 static double w1_wall_ = 0.0;
 static double w2_wall_ = 0.0;
 
+
+static __targetConst__ double t_w1_colloid_ = 0.0;
+static __targetConst__ double t_w2_colloid_ = 0.0;
+static __targetConst__ double t_w1_wall_ = 0.0;
+static __targetConst__ double t_w2_wall_ = 0.0;
+
 static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
 
 /*****************************************************************************
@@ -56,12 +67,25 @@ static colloids_info_t * cinfo_ = NULL; /* Temporary solution to getting map */
  *
  *****************************************************************************/
 
-int colloids_q_cinfo_set(colloids_info_t * cinfo) {
+__targetHost__ int colloids_q_cinfo_set(colloids_info_t * cinfo) {
 
   assert(cinfo);
 
   cinfo_ = cinfo;
   return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  colloids_q_cinfo
+ *
+ *****************************************************************************/
+
+__targetHost__ colloids_info_t* colloids_q_cinfo() {
+
+  return cinfo_;
+
 }
 
 /*****************************************************************************
@@ -77,7 +101,7 @@ int colloids_q_cinfo_set(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-void colloids_q_boundary_normal(const int index, const int di[3],
+__targetHost__ void colloids_q_boundary_normal(const int index, const int di[3],
 				double dn[3]) {
   int ia, index1;
   int noffset[3];
@@ -135,7 +159,7 @@ void colloids_q_boundary_normal(const int index, const int di[3],
  *
  *****************************************************************************/
 
-int colloids_q_boundary(const double nhat[3], double qs[3][3],
+__targetHost__ int colloids_q_boundary(const double nhat[3], double qs[3][3],
 			double q0[3][3], int map_status) {
   int ia, ib, ic, id;
   int anchoring;
@@ -197,7 +221,7 @@ int colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
-int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+__targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -268,11 +292,14 @@ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
  *
  *****************************************************************************/
 
-void colloids_q_tensor_anchoring_set(const int type) {
+__targetHost__ void colloids_q_tensor_anchoring_set(const int type) {
 
   assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL);
 
   anchoring_coll_ = type;
+
+  //set target copy
+  copyConstToTarget(&t_anchoring_coll_, &anchoring_coll_, sizeof(int));
 
   return;
 }
@@ -283,7 +310,7 @@ void colloids_q_tensor_anchoring_set(const int type) {
  *
  *****************************************************************************/
 
-int colloids_q_tensor_anchoring(void) {
+__targetHost__ int colloids_q_tensor_anchoring(void) {
 
   return anchoring_coll_;
 }
@@ -294,12 +321,16 @@ int colloids_q_tensor_anchoring(void) {
  *
  *****************************************************************************/
 
-void wall_anchoring_set(const int type) {
+__targetHost__ void wall_anchoring_set(const int type) {
 
   assert(type == ANCHORING_PLANAR || type == ANCHORING_NORMAL ||
 	 type == ANCHORING_FIXED);
 
   anchoring_wall_ = type;
+
+  //set target copy
+  copyConstToTarget(&t_anchoring_wall_, &anchoring_wall_, sizeof(int));
+
 
   return;
 }
@@ -310,7 +341,7 @@ void wall_anchoring_set(const int type) {
  *
  *****************************************************************************/
 
-int blue_phase_coll_w12(double * w1, double * w2) {
+__targetHost__ int blue_phase_coll_w12(double * w1, double * w2) {
 
   assert(w1);
   assert(w2);
@@ -327,7 +358,7 @@ int blue_phase_coll_w12(double * w1, double * w2) {
  *
  *****************************************************************************/
 
-int blue_phase_wall_w12(double * w1, double * w2) {
+__targetHost__ int blue_phase_wall_w12(double * w1, double * w2) {
 
   assert(w1);
   assert(w2);
@@ -344,10 +375,14 @@ int blue_phase_wall_w12(double * w1, double * w2) {
  *
  *****************************************************************************/
 
-int blue_phase_wall_w12_set(double w1, double w2) {
+__targetHost__ int blue_phase_wall_w12_set(double w1, double w2) {
 
   w1_wall_ = w1;
   w2_wall_ = w2;
+
+  //set target copy
+  copyConstToTarget(&t_w1_wall_, &w1_wall_, sizeof(double));
+  copyConstToTarget(&t_w2_wall_, &w2_wall_, sizeof(double));
 
   return 0;
 }
@@ -358,10 +393,14 @@ int blue_phase_wall_w12_set(double w1, double w2) {
  *
  *****************************************************************************/
 
-int blue_phase_coll_w12_set(double w1, double w2) {
+__targetHost__ int blue_phase_coll_w12_set(double w1, double w2) {
 
   w1_colloid_ = w1;
   w2_colloid_ = w2;
+
+  //set target copy
+  copyConstToTarget(&t_w1_colloid_, &w1_colloid_, sizeof(double));
+  copyConstToTarget(&t_w2_colloid_, &w2_colloid_, sizeof(double));
 
   return 0;
 }
@@ -377,7 +416,7 @@ int blue_phase_coll_w12_set(double w1, double w2) {
  * 
  *****************************************************************************/
 
-int blue_phase_fs(const double dn[3], double qs[3][3], char status,
+__targetHost__ int blue_phase_fs(const double dn[3], double qs[3][3], char status,
 		  double *fe) {
 
   int ia, ib;
@@ -429,11 +468,17 @@ int blue_phase_fs(const double dn[3], double qs[3][3], char status,
  *
  *****************************************************************************/
 
-int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
-			 const int di[3], int status, double c[3][3]) {
+extern __targetConst__ int tc_noffset[3]; 
+extern __targetConst__ int tc_Nall[3]; 
+extern __targetConst__ int tc_nhalo; 
+
+__target__ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
+				    const int di[3], int status, double c[3][3],
+				    bluePhaseKernelConstants_t* pbpc,
+				    colloids_info_t* cinfo) {
 
   int index;
-  int noffset[3];
+  //  int noffset[3];
 
   int ia, ib, ig, ih;
   int anchor;
@@ -445,23 +490,23 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
   double q2 = 0.0;
   double rd;
 
-  double kappa1;
-  double q0_chl;
-  double amp;
+  //double kappa1;
+  //double q0_chl;
+  //double amp;
 
   colloid_t * pc = NULL;
 
-  assert(cinfo_);
+  //assert(cinfo_);
 
-  kappa1 = blue_phase_kappa1();
-  q0_chl = blue_phase_q0();
-  amp    = blue_phase_amplitude_compute();
+  //kappa1 = blue_phase_kappa1();
+  //q0_chl = blue_phase_q0();
+  //amp    = blue_phase_amplitude_compute();
 
   /* Default -> outward normal, ie., flat wall */
 
-  w1 = w1_wall_;
-  w2 = w2_wall_;
-  anchor = anchoring_wall_;
+  w1 = t_w1_wall_;
+  w2 = t_w2_wall_;
+  anchor = t_anchoring_wall_;
 
   dnhat[X] = 1.0*di[X];
   dnhat[Y] = 1.0*di[Y];
@@ -469,19 +514,27 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
   if (status == MAP_COLLOID) {
 
-    index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
-    colloids_info_map(cinfo_, index, &pc);
-    assert(pc);
+    //    index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
 
-    coords_nlocal_offset(noffset);
+    index=tc_Nall[Z]*tc_Nall[Y]*(tc_nhalo + ic-di[X] - 1) 
+      + tc_Nall[Z]*(tc_nhalo + jc -di[Y] -1) + tc_nhalo + kc - di[Z] - 1;
 
-    w1 = w1_colloid_;
-    w2 = w2_colloid_;
-    anchor = anchoring_coll_;
+    //colloids_info_map(cinfo_, index, &pc);
 
-    dnhat[X] = 1.0*(noffset[X] + ic) - pc->s.r[X];
-    dnhat[Y] = 1.0*(noffset[Y] + jc) - pc->s.r[Y];
-    dnhat[Z] = 1.0*(noffset[Z] + kc) - pc->s.r[Z];
+    //colloids_info_map(cinfo, index, &pc);
+    pc = cinfo->map_new[index];
+
+    //assert(pc);
+
+    //coords_nlocal_offset(noffset);
+
+    w1 = t_w1_colloid_;
+    w2 = t_w2_colloid_;
+    anchor = t_anchoring_coll_;
+
+    dnhat[X] = 1.0*(tc_noffset[X] + ic) - pc->s.r[X];
+    dnhat[Y] = 1.0*(tc_noffset[Y] + jc) - pc->s.r[Y];
+    dnhat[Z] = 1.0*(tc_noffset[Z] + kc) - pc->s.r[Z];
 
     /* unit vector */
     rd = 1.0/sqrt(dnhat[X]*dnhat[X] + dnhat[Y]*dnhat[Y] + dnhat[Z]*dnhat[Z]);
@@ -495,7 +548,7 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-        q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d_[ia][ib]);
+        q0[ia][ib] = 0.5*pbpc->amplitude*(3.0*dnhat[ia]*dnhat[ib] - pbpc->d_[ia][ib]);
 	qtilde[ia][ib] = 0.0;
       }
     }
@@ -505,7 +558,7 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
     q2 = 0.0;
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d_[ia][ib];
+        qtilde[ia][ib] = qs[ia][ib] + 0.5*pbpc->amplitude*pbpc->d_[ia][ib];
         q2 += qtilde[ia][ib]*qtilde[ia][ib];
       }
     }
@@ -515,12 +568,12 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
         q0[ia][ib] = 0.0;
         for (ig = 0; ig < 3; ig++) {
           for (ih = 0; ih < 3; ih++) {
-            q0[ia][ib] += (d_[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
-              *(d_[ih][ib] - dnhat[ih]*dnhat[ib]);
+            q0[ia][ib] += (pbpc->d_[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
+              *(pbpc->d_[ih][ib] - dnhat[ih]*dnhat[ib]);
           }
         }
 
-        q0[ia][ib] -= 0.5*amp*d_[ia][ib];
+        q0[ia][ib] -= 0.5*pbpc->amplitude*pbpc->d_[ia][ib];
       }
     }
   }
@@ -534,8 +587,8 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
       for (ig = 0; ig < 3; ig++) {
         for (ih = 0; ih < 3; ih++) {
-          c[ia][ib] -= kappa1*q0_chl*di[ig]*
-	    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+          c[ia][ib] -= pbpc->kappa1*pbpc->q0*di[ig]*
+	    (pbpc->e_[ia][ig][ih]*qs[ih][ib] + pbpc->e_[ib][ig][ih]*qs[ih][ia]);
         }
       }
 
@@ -547,7 +600,7 @@ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 
       c[ia][ib] +=
 	-w1*(qs[ia][ib] - q0[ia][ib])
-	-w2*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+	-w2*(2.0*q2 - 4.5*pbpc->amplitude*pbpc->amplitude)*qtilde[ia][ib];
     }
   }
 

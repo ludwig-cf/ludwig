@@ -675,8 +675,34 @@ __targetHost__ __target__ void blue_phase_compute_h(double q[3][3],
  *****************************************************************************/
 
 
+__targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
-__targetHost__ __target__ void blue_phase_chemical_stress(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, int calledFromPhiForceStress) { 
+  double q[3][3];
+  double h[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  field_tensor(q_, index, q);
+  field_grad_tensor_grad(grad_q_, index, dq);
+  field_grad_tensor_delsq(grad_q_, index, dsq);
+
+  //we are doing this on the host
+  blue_phase_set_kernel_constants();
+  void* pcon=NULL;
+  blue_phase_host_constant_ptr(&pcon);
+
+
+  blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
+  blue_phase_compute_stress(q, dq, h, sth, (bluePhaseKernelConstants_t*) pcon);
+
+  return;
+}
+
+
+
+
+//targetDP development version
+__targetHost__ __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, int calledFromPhiForceStress) { 
 
 
   if (calledFromPhiForceStress!=1){
@@ -756,7 +782,7 @@ __targetHost__ __target__ void blue_phase_chemical_stress(int index, field_t* t_
  *
  *****************************************************************************/
 
-__target__ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
+__targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 					  double h[3][3], double sth[3][3], 
 					  bluePhaseKernelConstants_t* pbpc) {
   int ia, ib, ic, id, ie;

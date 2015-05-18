@@ -15,6 +15,8 @@
 #ifndef COLLOID_H
 #define COLLOID_H
 
+#include "targetDP.h"
+
 /* Tag to describe I/O format version appearing in files */
 
 enum colloid_io_version {COLLOID_IO_VERSION = 0200};
@@ -94,9 +96,9 @@ struct colloid_state_type {
 			 * for future expansion. */
 };
 
-int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp);
-int colloid_state_read_binary(colloid_state_t * ps, FILE * fp);
-int colloid_state_write_ascii(colloid_state_t ps, FILE * fp);
-int colloid_state_write_binary(colloid_state_t ps, FILE * fp);
+__targetHost__ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp);
+__targetHost__ int colloid_state_read_binary(colloid_state_t * ps, FILE * fp);
+__targetHost__ int colloid_state_write_ascii(colloid_state_t ps, FILE * fp);
+__targetHost__ int colloid_state_write_binary(colloid_state_t ps, FILE * fp);
 
 #endif
