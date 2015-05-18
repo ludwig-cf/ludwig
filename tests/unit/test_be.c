@@ -17,6 +17,8 @@
 #include <float.h>
 #include <math.h>
 
+#include "field.h"
+#include "field_grad.h"
 #include "blue_phase_beris_edwards.h"
 #include "tests.h"
 

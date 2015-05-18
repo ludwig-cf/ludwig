@@ -325,7 +325,12 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
-  value = blue_phase_compute_fed(q, dq);
+
+  blue_phase_set_kernel_constants();
+  void* pcon=NULL;
+  blue_phase_host_constant_ptr(&pcon);
+  
+  value = blue_phase_compute_fed(q, dq,pcon);
   /* info("Check F( 1, 1, 1)...");*/
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -337,7 +342,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
-  value = blue_phase_compute_fed(q, dq);
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 1, 1, 2)...");*/
   test_assert(fabs(value - 1.056203e-02) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -349,7 +354,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
-  value = blue_phase_compute_fed(q, dq);
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 1, 1, 3)...");*/
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -361,7 +366,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
-  value = blue_phase_compute_fed(q, dq);
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 1,12, 4)...");*/
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -373,7 +378,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
-  value = blue_phase_compute_fed(q, dq);
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 2, 7, 6)...");*/
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -394,7 +399,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /* info("Check h( 1, 1, 1)...");*/
   test_assert(fabs(h[X][X] - 0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] - 0.0171194) < TEST_FLOAT_TOLERANCE);
@@ -414,7 +419,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /* info("Check h( 1, 1, 2)...");*/
   test_assert(fabs(h[X][X] - -0.0205178) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] -  0.0000000) < TEST_FLOAT_TOLERANCE);
@@ -433,7 +438,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /* info("Check h( 1, 1, 3)...");*/
   test_assert(fabs(h[X][X] -  0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] - -0.0171194) < TEST_FLOAT_TOLERANCE);
@@ -452,7 +457,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /*info("Check h( 1,12, 4)...");*/
   test_assert(fabs(h[X][X] - +0.0057295) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] -  0.0023299) < TEST_FLOAT_TOLERANCE);
@@ -471,7 +476,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /* info("Check h( 2, 7, 6)...");*/
   test_assert(fabs(h[X][X] - +0.0054159) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] -  0.0000000) < TEST_FLOAT_TOLERANCE);
@@ -514,8 +519,8 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
-  blue_phase_compute_stress(q, dq, h, dsq);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
   /* info("check s( 1, 1, 1)...");*/
 
@@ -541,8 +546,8 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
-  blue_phase_compute_stress(q, dq, h, dsq);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
   /* info("check s( 1, 1, 2)...");*/
   test_assert(fabs(dsq[X][X] -  7.375082e-03) < TEST_FLOAT_TOLERANCE);
@@ -566,8 +571,8 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
-  blue_phase_compute_stress(q, dq, h, dsq);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
   /* info("check s( 1, 1, 3)...");*/
   test_assert(fabs(dsq[X][X] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
@@ -591,8 +596,8 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
-  blue_phase_compute_stress(q, dq, h, dsq);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
   /* info("check s( 1,12, 4)...");*/
   test_assert(fabs(dsq[X][X] -  2.779621e-04) < TEST_FLOAT_TOLERANCE);
@@ -616,8 +621,8 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
-  blue_phase_compute_h(q, dq, dsq, h);
-  blue_phase_compute_stress(q, dq, h, dsq);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
   /* info("check s( 2, 7, 6)...");*/
   test_assert(fabs(dsq[X][X] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
@@ -693,7 +698,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   index = coords_index(ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
-  value = blue_phase_compute_fed(q, dq);
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 1, 1, 1)... %14.7e ", value);*/
   test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -704,7 +709,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   index = coords_index(ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
-  value = blue_phase_compute_fed(q, dq);
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 2, 7, 6)... %14.7e ", value);*/
   test_assert(fabs(value - 6.7087074e-04) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -726,7 +731,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /* info("Check h( 1, 1, 1)...");*/
 
   test_assert(fabs(h[X][X] -  1.2034268e-04) < TEST_FLOAT_TOLERANCE);
@@ -744,7 +749,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
-  blue_phase_compute_h(q, dq, dsq, h);
+  blue_phase_compute_h(q, dq, dsq, h, pcon);
   /* info("Check h( 2, 7, 6)...");*/
 
   test_assert(fabs(h[X][X] - +5.5362629e-03) < TEST_FLOAT_TOLERANCE);
