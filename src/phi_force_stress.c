@@ -70,7 +70,7 @@ __targetTLP__(index,tc_nSites){
 	//for the time being we are explicitly calling blue_phase_chemical_stress
 	//ultimitely this will be generic when the other options are ported to targetDP
 	int calledFromPhiForceStress=1;
-	blue_phase_chemical_stress(index, t_q, t_q_grad, t_pth, pcon, 
+	blue_phase_chemical_stress_dev(index, t_q, t_q_grad, t_pth, pcon, 
 				   calledFromPhiForceStress);
       }
       else{

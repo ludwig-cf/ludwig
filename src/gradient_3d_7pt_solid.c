@@ -61,6 +61,7 @@
 #include "free_energy.h"
 #include "blue_phase.h"
 #include "colloids.h"
+#include "colloids_s.h"
 #include "colloids_Q_tensor.h"
 #include "gradient_3d_7pt_solid.h"
 #include "targetDP.h"
@@ -114,9 +115,9 @@ __targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
 __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq) {
   int nextra;
-  int method = 1;
+  //int method = 1;
 
-  //int method = 3;
+  int method = 3;
 
   assert(nop == NQAB);
   assert(map_);
@@ -739,13 +740,15 @@ extern __targetConst__ int tc_nhalo;
 extern __targetConst__ int tc_nextra;  
 extern __targetConst__ int tc_Nall[3]; 
 
+__targetConst__ int tc_noffset[3]; 
+
 __targetConst__ double tc_a6inv[3][6]; 
 __targetConst__ double tc_a18inv[18][18]; 
 __targetConst__ double tc_a12inv[3][12][12]; 
 
 
 __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * grad,
-			    double * del2,  map_t * map,bluePhaseKernelConstants_t* pbpc) {
+					      double * del2,  map_t * map,bluePhaseKernelConstants_t* pbpc, colloids_info_t* cinfo) {
 
   int ic, jc, kc, index;
   int str[3];
@@ -862,7 +865,7 @@ __targetTLP__(index,tc_nSites){
 	
 	//TODO NEED TO PORT
 	q_boundary_constants(ic, jc, kc, qs, bcs[normal[0]],
-			     status[normal[0]], c);
+			     status[normal[0]], c, pbpc, cinfo);
 	
 	/* Constant terms all move to RHS (hence -ve sign). Factors
 	 * of two in off-diagonals agree with matrix coefficients. */
@@ -887,7 +890,7 @@ __targetTLP__(index,tc_nSites){
 	
 	//TODO NEED TO PORT
 	q_boundary_constants(ic, jc, kc, qs, bcs[normal[1]],
-			     status[normal[1]], c);
+			     status[normal[1]], c, pbpc, cinfo);
 	
 	b18[1*NSYMM + XX] = -1.0*c[X][X];
 	b18[1*NSYMM + XY] = -2.0*c[X][Y];
@@ -908,7 +911,7 @@ __targetTLP__(index,tc_nSites){
 	
 	//TODO NEED TO PORT
 	q_boundary_constants(ic, jc, kc, qs, bcs[normal[2]],
-			     status[normal[2]], c);
+			     status[normal[2]], c, pbpc, cinfo);
 	
 	b18[2*NSYMM + XX] = -1.0*c[X][X];
 	b18[2*NSYMM + XY] = -2.0*c[X][Y];
@@ -1170,12 +1173,18 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  
+  int noffset[3];
+  coords_nlocal_offset(noffset);
+
+
 
   //copy lattice shape constants to target ahead of execution
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int));
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
+  copyConstToTarget(tc_noffset,noffset, 3*sizeof(int));
 
   //contiguos memory
   double a18invtmp[18][18];
@@ -1215,14 +1224,22 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   double* tmpptr;
   copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
   copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
-  
+
+
+  //copy colloid data to target
+  colloids_info_t* cinfo=colloids_q_cinfo();  
+
+  colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure 
+
+  colloid_t* tmpcol;
+  copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+  copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
 
   //execute lattice-based operation on target
 
-
-     gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
+      gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
   						     del2, map_->tcopy,
-  						     (bluePhaseKernelConstants_t*) pcon);
+  							(bluePhaseKernelConstants_t*) pcon, cinfo->tcopy);
 
 
   util_matrix_free(18, &a18inv);

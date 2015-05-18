@@ -60,50 +60,50 @@ struct colloid {
 
 typedef struct colloids_info_s colloids_info_t;
 
-int colloids_info_create(int ncell[3], colloids_info_t ** pinfo);
-void colloids_info_free(colloids_info_t * info);
-int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo);
-int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated);
-int colloids_info_rho0(colloids_info_t * cinfo, double * rho0);
-int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0);
-int colloids_info_map_init(colloids_info_t * info);
-int colloids_info_ncell(colloids_info_t * info, int ncell[3]);
-int colloids_info_nhalo(colloids_info_t * info, int * nhalo);
-int colloids_info_ntotal(colloids_info_t * info, int * ntotal);
-int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal);
-int colloids_info_ntotal_set(colloids_info_t * cinfo);
-int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc);
-int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc);
-int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);
-int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll);
-int colloids_info_cell_list_clean(colloids_info_t * cinfo);
-int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc);
-int colloids_info_local_head(colloids_info_t * cinfo, colloid_t ** pc);
-int colloids_info_cell_list_head(colloids_info_t * info,
+__targetHost__ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo);
+__targetHost__ void colloids_info_free(colloids_info_t * info);
+__targetHost__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo);
+__targetHost__ int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated);
+__targetHost__ int colloids_info_rho0(colloids_info_t * cinfo, double * rho0);
+__targetHost__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0);
+__targetHost__ int colloids_info_map_init(colloids_info_t * info);
+__targetHost__ int colloids_info_ncell(colloids_info_t * info, int ncell[3]);
+__targetHost__ int colloids_info_nhalo(colloids_info_t * info, int * nhalo);
+__targetHost__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal);
+__targetHost__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal);
+__targetHost__ int colloids_info_ntotal_set(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc);
+__targetHost__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc);
+__targetHost__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);
+__targetHost__ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll);
+__targetHost__ int colloids_info_cell_list_clean(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc);
+__targetHost__ int colloids_info_local_head(colloids_info_t * cinfo, colloid_t ** pc);
+__targetHost__ int colloids_info_cell_list_head(colloids_info_t * info,
 				 int ic, int jc, int kc, colloid_t ** pc);
-int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3],
+__targetHost__ int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3],
 			      int icell[3]);
-int colloids_info_add_local(colloids_info_t * cinfo, int index,
+__targetHost__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
 			    const double r[3], colloid_t ** pc);
-int colloids_info_add(colloids_info_t * confo, int index, const double r[3],
+__targetHost__ int colloids_info_add(colloids_info_t * confo, int index, const double r[3],
 		      colloid_t ** pc);
-int colloids_info_update_cell_list(colloids_info_t * cinfo);
-int colloids_info_q_local(colloids_info_t * cinfo, double q[2]);
-int colloids_info_v_local(colloids_info_t * cinfo, double * v);
-int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]);
-int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
+__targetHost__ int colloids_info_update_cell_list(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_q_local(colloids_info_t * cinfo, double q[2]);
+__targetHost__ int colloids_info_v_local(colloids_info_t * cinfo, double * v);
+__targetHost__ int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]);
+__targetHost__ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
 			     int * ncount);
-int colloids_info_map_update(colloids_info_t * cinfo);
-int colloids_info_position_update(colloids_info_t * cinfo);
-int colloids_info_map_set(colloids_info_t * cinfo, int index,
+__targetHost__ int colloids_info_map_update(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_position_update(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_map_set(colloids_info_t * cinfo, int index,
 			      colloid_t * pc);
-int colloids_info_update_lists(colloids_info_t * cinfo);
-int colloids_info_list_all_build(colloids_info_t * cinfo);
-int colloids_info_list_local_build(colloids_info_t * cinfo);
-int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
-int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
-int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
-int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
+__targetHost__ int colloids_info_update_lists(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_list_all_build(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_list_local_build(colloids_info_t * cinfo);
+__targetHost__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic, int * lim);
+__targetHost__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
+__targetHost__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
+__targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
 			      int * count);
 
 #endif

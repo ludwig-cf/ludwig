@@ -17,6 +17,8 @@
 #ifndef COLLOID_LINK_H
 #define COLLOID_LINK_H
 
+#include "targetDP.h"
+
 typedef struct colloid_link_type colloid_link_t;
 
 struct colloid_link_type {
@@ -34,9 +36,9 @@ struct colloid_link_type {
 
 enum link_status {LINK_FLUID, LINK_COLLOID, LINK_BOUNDARY, LINK_UNUSED}; 
 
-colloid_link_t * colloid_link_allocate(void);
-void             colloid_link_free_list(colloid_link_t * link);
-int              colloid_link_count(colloid_link_t * link);
-int              colloid_link_total(void);
+__targetHost__ colloid_link_t * colloid_link_allocate(void);
+__targetHost__ void             colloid_link_free_list(colloid_link_t * link);
+__targetHost__ int              colloid_link_count(colloid_link_t * link);
+__targetHost__ int              colloid_link_total(void);
 
 #endif
