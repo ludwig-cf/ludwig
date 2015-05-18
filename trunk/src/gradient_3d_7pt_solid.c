@@ -1229,15 +1229,18 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   //copy colloid data to target
   colloids_info_t* cinfo=colloids_q_cinfo();  
 
-  colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure 
 
-  colloid_t* tmpcol;
-  copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-  copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
+  if (cinfo->map_new){
+    colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
+    colloid_t* tmpcol;
+    copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+    copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
+  }
+
 
   //execute lattice-based operation on target
-
-      gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
+  
+  gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
   						     del2, map_->tcopy,
   							(bluePhaseKernelConstants_t*) pcon, cinfo->tcopy);
 
