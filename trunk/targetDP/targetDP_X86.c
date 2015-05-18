@@ -46,7 +46,48 @@ void targetMalloc(void **address_of_ptr,size_t size){
   
 }
 
+
 void targetCalloc(void **address_of_ptr,size_t size){
+
+  void* ptr;
+  ptr = calloc(1,size);
+
+  if(!ptr){
+    printf("calloc failed\n");
+    exit(1);
+  }
+    
+
+  *address_of_ptr=ptr;
+
+
+
+  return;
+  
+}
+
+
+void targetMallocUnified(void **address_of_ptr,size_t size){
+
+  void* ptr;
+  ptr = malloc(size);
+
+  if(!ptr){
+    printf("malloc failed\n");
+    exit(1);
+  }
+    
+
+  *address_of_ptr=ptr;
+
+
+
+  return;
+  
+}
+
+
+void targetCallocUnified(void **address_of_ptr,size_t size){
 
   void* ptr;
   ptr = calloc(1,size);

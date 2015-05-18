@@ -182,6 +182,8 @@ __targetHost__ void targetFree(void *ptr);
 __targetHost__ void checkTargetError(const char *msg);
 __targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
+__targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
+__targetHost__ void targetCallocUnified(void **address_of_ptr,const size_t size);
 __targetHost__ void targetFree(void *ptr);
 
 #endif

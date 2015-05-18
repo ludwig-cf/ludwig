@@ -39,7 +39,7 @@ endif
 #endif
 
  CC_CUDA=	$(NVCC)
- CFLAGS_CUDA= -DCUDA -O3 -arch=sm_21 -I $(TARGETDPDIR) -dc -x cu #-save-temps
+ CFLAGS_CUDA= -DCUDA -O3 -arch=sm_30 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 # CFLAGS_CUDA= -DCUDA -g -G -arch=sm_21 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
 

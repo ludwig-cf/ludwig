@@ -41,6 +41,17 @@ __targetHost__ void targetMalloc(void **address_of_ptr,size_t size){
   return;
 }
 
+
+
+__targetHost__ void targetMallocUnified(void **address_of_ptr,size_t size){
+
+ 
+  cudaMallocManaged(address_of_ptr,size);
+  checkTargetError("targetMallocUnified");
+
+  return;
+}
+
 __targetHost__ void targetInit(size_t nsites, size_t nfieldsmax){
 
 
@@ -84,6 +95,19 @@ __targetHost__ void targetCalloc(void **address_of_ptr,size_t size){
 
   return;
 }
+
+
+__targetHost__ void targetCallocUnified(void **address_of_ptr,size_t size){
+
+ 
+  cudaMallocManaged(address_of_ptr,size);
+  double ZERO=0.;
+  cudaMemset(*address_of_ptr, ZERO, size);
+  checkTargetError("targetCallocUnified");
+
+  return;
+}
+
 
 __targetHost__ void copyToTarget(void *targetData,const void* data,size_t size){
 
