@@ -331,7 +331,10 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
       double ghattmp[NVEL];
 
       if (includeSite[iv]) {
+
+#ifndef CUDA //this is needed to allow GPU compilation at the moment
 	collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);
+#endif
 
 	for (ia = 0; ia < NDIM; ia++) {
 	  for (ib = 0; ib < NDIM; ib++) {
