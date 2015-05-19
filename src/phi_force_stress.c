@@ -43,11 +43,6 @@ double * t_pth_;
  *
  *****************************************************************************/
 
-extern __targetConst__ int tc_nSites; 
-extern __targetConst__ int tc_nhalo;
-extern __targetConst__ int tc_nextra;  
-extern __targetConst__ int tc_Nall[3]; 
-
 __targetEntry__ void chemical_stress_lattice(double pth_local[3][3], field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, void (* chemical_stress)(const int index, double s[3][3])){ 
 
   int index;

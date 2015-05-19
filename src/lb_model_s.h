@@ -80,4 +80,7 @@ struct lb_data_s {
   MPI_Datatype site_z[2];
 };
 
+extern __targetConst__ int tc_cv[NVEL][3];
+extern __targetConst__ int tc_ndist;
+
 #endif
