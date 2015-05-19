@@ -28,6 +28,7 @@
 #include "blue_phase.h"
 #include "blue_phase_init.h"
 #include "leesedwards.h"
+#include "physics.h"
 #include "tests.h"
 
 static void multiply_gradient(double [3][3][3], double);
@@ -174,7 +175,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   double field[3];
   double value;
   double e;
+  physics_t * phys = NULL;
 
+  physics_ref(&phys);
   coords_nlocal(nlocal);
   /*
   info("Blue phase O8M struct test\n");
@@ -650,7 +653,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field[Y] = 0.0;
   field[Z] = 1.0;
 
-  blue_phase_electric_field_set(field);
+  physics_e0_set(field);
   blue_phase_dielectric_anisotropy_set(epsilon);
 
   e = sqrt(27.0*epsilon*1.0/(32.0*pi_*a0*gamma));
@@ -664,7 +667,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field[Y] = 1.0;
   field[Z] = 1.0;
 
-  blue_phase_electric_field_set(field);
+  physics_e0_set(field);
 
   e = sqrt(27.0*epsilon*3.0/(32.0*pi_*a0*gamma));
 
@@ -680,7 +683,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field[Z] = field[X];
 
 
-  blue_phase_electric_field_set(field);
+  physics_e0_set(field);
   value = blue_phase_dimensionless_field_strength();
   /* info("Set dimensionless field 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
@@ -718,7 +721,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field[Y] = 0.0;
   field[Z] = 0.0;
 
-  blue_phase_electric_field_set(field);
+  physics_e0_set(field);
   value = blue_phase_dimensionless_field_strength();
   /* info("Set dimensionless field again 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
