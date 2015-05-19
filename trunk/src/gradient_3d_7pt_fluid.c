@@ -254,8 +254,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 					   const int nextra) {
   int nlocal[3];
   int nhalo;
-  int ic, jc, kc;
-  int index;
+
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 

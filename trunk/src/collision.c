@@ -73,16 +73,12 @@ __targetHost__ char symmetric_in_use();
 
 /* Constants */
 
-__targetConst__ int tc_nSites;
-extern __targetConst__ int tc_Nall[3];
-extern __targetConst__ int tc_nhalo;
 __targetConst__ double tc_rtau_shear;
 __targetConst__ double tc_rtau_bulk;
 __targetConst__ double tc_rtau_[NVEL];
 __targetConst__ double tc_wv[NVEL];
 __targetConst__ double tc_ma_[NVEL][NVEL];
 __targetConst__ double tc_mi_[NVEL][NVEL];
-__targetConst__ int tc_cv[NVEL][3];
 __targetConst__ double tc_rtau2;
 __targetConst__ double tc_rcs2;
 __targetConst__ double tc_r2rcs4;
@@ -607,12 +603,6 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   double mode[NVEL*VVL]; /* Modes; hydrodynamic + ghost */
   
-  /* double mode[SIMD_EXTENT(NVEL)];
-     double s[3][SIMD_EXTENT(3)]; */
-  /* double mode[NVEL][SIMDVL];
-     double mode[NVEL*SIMDVL];
-     double s[3][3*SIMDVL];*/
-
   /* Density, reciprocal density */
   double rho[VVL]; 
   double rrho[VVL];

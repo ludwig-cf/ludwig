@@ -421,12 +421,6 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
  *
  *****************************************************************************/
 
-//TO DO - enable LE planes for targetDP
-
-extern __targetConst__ int tc_nSites; 
-extern __targetConst__ int tc_nhalo;
-extern __targetConst__ int tc_Nall[3]; 
-
 __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux, 
 					      hydro_t * hydro, int nf,
 					      field_t * field) {

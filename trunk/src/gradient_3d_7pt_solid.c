@@ -735,13 +735,6 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
  *****************************************************************************/
 
 
-extern __targetConst__ int tc_nSites; 
-extern __targetConst__ int tc_nhalo;
-extern __targetConst__ int tc_nextra;  
-extern __targetConst__ int tc_Nall[3]; 
-
-__targetConst__ int tc_noffset[3]; 
-
 __targetConst__ double tc_a6inv[3][6]; 
 __targetConst__ double tc_a18inv[18][18]; 
 __targetConst__ double tc_a12inv[3][12][12]; 

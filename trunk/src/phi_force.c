@@ -141,10 +141,6 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
  *
  *****************************************************************************/
 
-extern __targetConst__ int tc_Nall[3];
-extern __targetConst__ int tc_nSites;
-extern __targetConst__ int tc_nhalo;
-
 __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
 
   int index, index1, ia, ib;
@@ -247,32 +243,27 @@ extern double * pth_;
 extern double * t_pth_;
 
 
-static int phi_force_calculation_fluid(field_t * q, field_grad_t* q_grad, hydro_t * hydro) {
-
-  int ia, ic, jc, kc, icm1, icp1;
-  int index, index1;
+static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
+				       hydro_t * hydro) {
+  int nhalo;
   int nlocal[3];
-
-
+  int Nall[3];
+  int nSites;
+  double * tmpptr;
+  hydro_t * t_hydro; 
 
   assert(hydro);
 
+  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
   phi_force_stress_allocate();
-
-
   phi_force_stress_compute(q, q_grad);
 
-  int nhalo;
-  nhalo = coords_nhalo();
-
-
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  Nall[X] = nlocal[X] + 2*nhalo;
+  Nall[Y] = nlocal[Y] + 2*nhalo;
+  Nall[Z] = nlocal[Z] + 2*nhalo;
+  nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
 
   //set up constants on target
@@ -284,8 +275,7 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t* q_grad, hydro_
   copyToTarget(t_pth_,pth_,3*3*nSites*sizeof(double));      
 
   //target copy of tensor order parameter field structure
-  hydro_t* t_hydro = hydro->tcopy; 
-  double* tmpptr;
+  t_hydro = hydro->tcopy; 
     
   //populate target copy of force from host 
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
@@ -447,9 +437,13 @@ static int phi_force_flux(hydro_t * hydro) {
  *  phi_force_compute_fluxes
  *
  *  Linearly interpolate the chemical stress to the cell faces to get
- *  the momentum fluxes. 
+ *  the momentum fluxes.
+ *
+ *  This is designed for LE planes; the chemical stress routine must
+ *  be called directly, as phi_force_stress cannot handle the planes.
  *
  *****************************************************************************/
+
 
 static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 				    double * fluxy, double * fluxz) {
@@ -482,6 +476,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 	
 	index1 = le_site_index(icm1, jc, kc);
 	chemical_stress(index1, pth1);
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxw[3*index + ia] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
@@ -490,6 +485,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 
 	index1 = le_site_index(icp1, jc, kc);
 	chemical_stress(index1, pth1);
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[3*index + ia] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
@@ -498,6 +494,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 
 	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxy[3*index + ia] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
@@ -506,6 +503,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 
 	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxz[3*index + ia] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}

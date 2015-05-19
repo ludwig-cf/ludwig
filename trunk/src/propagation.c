@@ -13,20 +13,19 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <string.h>
 
 #include "pe.h"
 #include "coords.h"
 #include "propagation.h"
 #include "lb_model_s.h"
 #include "targetDP.h"
-#include <string.h>
 
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
 static int lb_propagate_d3q19(lb_t * lb);
 static int lb_propagate_d2q9_r(lb_t * lb);
 static int lb_propagate_d3q15_r(lb_t * lb);
-static int lb_propagate_d3q19_r(lb_t * lb);
 
 /*****************************************************************************
  *
@@ -43,16 +42,13 @@ __targetHost__ int lb_propagation(lb_t * lb) {
   if (lb_order(lb) == MODEL) {
     if (NVEL == 9)  lb_propagate_d2q9(lb);
     if (NVEL == 15) lb_propagate_d3q15(lb);
-    if (NVEL == 19) lb_propagate_d3q19(lb);
   }
   else {
     /* Reverse implementation */
     if (NVEL == 9)  lb_propagate_d2q9_r(lb);
     if (NVEL == 15) lb_propagate_d3q15_r(lb);
-    //if (NVEL == 19) lb_propagate_d3q19_r(lb);
-    // lb_propagate_d3q19 now uses generic addressing for both MODEL and MODEL_R
-    if (NVEL == 19) lb_propagate_d3q19(lb);
   }
+  if (NVEL == 19) lb_propagate_d3q19(lb);
 
   return 0;
 }
@@ -193,16 +189,6 @@ static int lb_propagate_d3q15(lb_t * lb) {
 
   return 0;
 }
-
-
-
-//TODO declare these somewhere sensible.
-extern __targetConst__ int tc_nSites; //declared in collision.c
-extern __targetConst__ int tc_Nall[3]; //declared in gradient routine
-
-__targetConst__ int tc_ndist;
-extern __targetConst__ int tc_cv[NVEL][3]; //declared in collision.c
-extern __targetConst__ int tc_nhalo;
 
 
 /*****************************************************************************
@@ -511,80 +497,6 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
 	  lb->f[12*p + q] = lb->f[12*p+q + (+1)*xstr                        ];
 	  lb->f[13*p + q] = lb->f[13*p+q + (+1)*xstr + (+1)*ystr + (-1)*zstr];
 	  lb->f[14*p + q] = lb->f[14*p+q + (+1)*xstr + (+1)*ystr + (+1)*zstr];
-	}
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_propagate_d3q19_r
- *
- *  MODEL_R implmentation
- *
- *****************************************************************************/
-
-static int lb_propagate_d3q19_r(lb_t * lb) {
-
-  int ic, jc, kc, index, n, p, q;
-  int xstr, ystr, zstr;
-  int nlocal[3];
-
-  assert(lb);
-  assert(NVEL == 19);
-
-  coords_nlocal(nlocal);
-
-  /* Stride in memory for velocities, and space */
-
-  p = lb->ndist*lb->nsite;
-  coords_strides(&xstr, &ystr, &zstr);
-
-  for (n = 0; n < lb->ndist; n++) {
-
-    /* Distributions moving forward in memory. */
-  
-    for (ic = nlocal[X]; ic >= 1; ic--) {
-      for (jc = nlocal[Y]; jc >= 1; jc--) {
-	for (kc = nlocal[Z]; kc >= 1; kc--) {
-
-	  index = coords_index(ic, jc, kc);
-
-	  q = n*lb->nsite + index;
-	  lb->f[9*p + q] = lb->f[9*p + q                         + (-1)*zstr];
-	  lb->f[8*p + q] = lb->f[8*p + q             + (-1)*ystr + (+1)*zstr];
-	  lb->f[7*p + q] = lb->f[7*p + q             + (-1)*ystr            ];
-	  lb->f[6*p + q] = lb->f[6*p + q             + (-1)*ystr + (-1)*zstr];
-	  lb->f[5*p + q] = lb->f[5*p + q + (-1)*xstr + (+1)*ystr            ];
-	  lb->f[4*p + q] = lb->f[4*p + q + (-1)*xstr             + (+1)*zstr];
-	  lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr                        ];
-	  lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr             + (-1)*zstr];
-	  lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr            ];
-	}
-      }
-    }
-
-    /* Distributions mvoing backward in memory. */
-  
-    for (ic = 1; ic <= nlocal[X]; ic++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	  index = coords_index(ic, jc, kc);
-
-	  q = n*lb->nsite + index;
-	  lb->f[10*p + q] = lb->f[10*p + q                         + (+1)*zstr];
-	  lb->f[11*p + q] = lb->f[11*p + q             + (+1)*ystr + (-1)*zstr];
-	  lb->f[12*p + q] = lb->f[12*p + q             + (+1)*ystr            ];
-	  lb->f[13*p + q] = lb->f[13*p + q             + (+1)*ystr + (+1)*zstr];
-	  lb->f[14*p + q] = lb->f[14*p + q + (+1)*xstr + (-1)*ystr            ];
-	  lb->f[15*p + q] = lb->f[15*p + q + (+1)*xstr             + (-1)*zstr];
-	  lb->f[16*p + q] = lb->f[16*p + q + (+1)*xstr                        ];
-	  lb->f[17*p + q] = lb->f[17*p + q + (+1)*xstr             + (+1)*zstr];
-	  lb->f[18*p + q] = lb->f[18*p + q + (+1)*xstr + (+1)*ystr            ];
 	}
       }
     }

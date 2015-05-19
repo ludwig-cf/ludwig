@@ -116,9 +116,6 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad
  *
  *****************************************************************************/
 
-extern __targetConst__ int tc_Nall[3];
-extern __targetConst__ int tc_nSites;
-extern __targetConst__ int tc_nhalo;
 __targetConst__ double tc_gamma;
 __targetConst__ double tc_var;
 __targetConst__ double tc_tmatrix[3][3][NQAB];

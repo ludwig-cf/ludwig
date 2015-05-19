@@ -59,4 +59,11 @@ void coords_active_region_radius_set(const double r);
 __targetHost__ double coords_active_region(const int index);
 int    coords_periodic_comm(MPI_Comm * comm);
 int    coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
+
+extern __targetConst__ int tc_nSites;
+extern __targetConst__ int tc_noffset[3]; 
+extern __targetConst__ int tc_Nall[3];
+extern __targetConst__ int tc_nhalo;
+extern __targetConst__ int tc_nextra;
+
 #endif

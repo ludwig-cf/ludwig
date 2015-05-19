@@ -468,18 +468,12 @@ __targetHost__ int blue_phase_fs(const double dn[3], double qs[3][3], char statu
  *
  *****************************************************************************/
 
-extern __targetConst__ int tc_noffset[3]; 
-extern __targetConst__ int tc_Nall[3]; 
-extern __targetConst__ int tc_nhalo; 
-
 __target__ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
 				    const int di[3], int status, double c[3][3],
 				    bluePhaseKernelConstants_t* pbpc,
 				    colloids_info_t* cinfo) {
 
   int index;
-  //  int noffset[3];
-
   int ia, ib, ig, ih;
   int anchor;
 

@@ -28,13 +28,6 @@
  *
  *****************************************************************************/
 
-//TODO declare these somewhere sensible.
-extern __targetConst__ int tc_nSites; //declared in collision.c
-extern __targetConst__ int tc_Nall[3]; //declared in gradient routine
-extern __targetConst__ int tc_nhalo;
-extern __targetConst__ int tc_ndist;
-
-
 __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
 
   double phi0=0.;
@@ -86,23 +79,21 @@ __targetEntry__ void phi_lb_to_field_lattice(double * phi, double * f) {
 
 __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
-  int ic, jc, kc, index;
-  int nlocal[3];
-  coords_nlocal(nlocal);
-  int nhalo = coords_nhalo();
-
-  double phi0;
-
   int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-  int nFields=NVEL*lb->ndist;
-
+  int nlocal[3];
+  int nSites;
+  int nFields;
+  int nhalo = coords_nhalo();
 
   assert(phi);
   assert(lb);
+
   coords_nlocal(nlocal);
+
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+
+  nSites = Nall[X]*Nall[Y]*Nall[Z];
+  nFields = NVEL*lb->ndist;
 
   //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 

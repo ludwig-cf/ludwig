@@ -40,6 +40,9 @@ static int lb_set_displacements(lb_t * lb, int, MPI_Aint *, int, const int *);
 static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 
+__targetConst__ int tc_cv[NVEL][3];
+__targetConst__ int tc_ndist;
+
 /****************************************************************************
  *
  *  lb_create_ndist
