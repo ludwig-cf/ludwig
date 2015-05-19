@@ -90,16 +90,16 @@ static int do_test1(void) {
 
   phi0 = 0.0;
   field_scalar_set(phi, index, phi0);
-  fe_es_mu_solv(index, 0, &dmu_test);
+  fe_es_mu_ion_solv(index, 0, &dmu_test);
   assert(fabs(2.0*dmu_test - dmu[0]) < DBL_EPSILON);
-  fe_es_mu_solv(index, 1, &dmu_test);
+  fe_es_mu_ion_solv(index, 1, &dmu_test);
   assert(fabs(2.0*dmu_test - dmu[1]) < DBL_EPSILON);
 
   phi0 = 1.0;
   field_scalar_set(phi, index, phi0);
-  fe_es_mu_solv(index, 0, &dmu_test);
+  fe_es_mu_ion_solv(index, 0, &dmu_test);
   assert(fabs(dmu_test - dmu[0]) < DBL_EPSILON);
-  fe_es_mu_solv(index, 1, &dmu_test);
+  fe_es_mu_ion_solv(index, 1, &dmu_test);
   assert(fabs(dmu_test - dmu[1]) < DBL_EPSILON);
 
 
