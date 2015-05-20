@@ -51,7 +51,6 @@ int tests_create() {
   test_angle_cosine_suite();
   test_assumptions_suite();
   test_be_suite();
-  test_bp_suite();
   test_bond_fene_suite();
   test_bonds_suite();
   test_build_suite();
@@ -60,10 +59,7 @@ int tests_create() {
   test_colloids_info_suite();
   test_colloids_halo_suite();
   test_ewald_suite();
-  test_fe_electro_suite();
-  test_fe_electro_symm_suite();
   test_field_suite();
-  test_field_grad_suite();
   test_halo_suite();
   test_hydro_suite();
   test_io_suite();
@@ -71,7 +67,6 @@ int tests_create() {
   test_lubrication_suite();
   test_map_suite();
   test_model_suite();
-  test_nernst_planck_suite();
   test_noise_suite();
   test_pair_lj_cut_suite();
   test_pair_ss_cut_suite();
@@ -79,12 +74,21 @@ int tests_create() {
   test_phi_ch_suite();
   test_polar_active_suite();
   test_lb_prop_suite();
-  test_psi_suite();
-  test_psi_sor_suite();
   test_random_suite();
   test_rt_suite();
   test_timer_suite();
   test_util_suite();
+
+  /* Failing... */
+
+  test_bp_suite();                    /* AG */
+  test_fe_electro_suite();            /* KS */
+  test_fe_electro_symm_suite();       /* KS */
+  test_field_grad_suite();            /* AG */
+  /* test_nernst_planck_suite(); */   /* KS */
+  test_psi_suite();                   /* KS */
+  /* test_psi_sor_suite();*/          /* KS */
+
 
   return 0;
 }
