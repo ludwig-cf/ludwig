@@ -78,13 +78,13 @@ int tests_create() {
   test_rt_suite();
   test_timer_suite();
   test_util_suite();
+  test_field_grad_suite();           
 
   /* Failing... */
 
-  test_bp_suite();                    /* AG */
+  test_bp_suite();                    /* KS */
   test_fe_electro_suite();            /* KS */
   test_fe_electro_symm_suite();       /* KS */
-  test_field_grad_suite();            /* AG */
   /* test_nernst_planck_suite(); */   /* KS */
   test_psi_suite();                   /* KS */
   /* test_psi_sor_suite();*/          /* KS */
