@@ -33,8 +33,25 @@ static int do_test1(void);
 static int do_test3(void);
 static int do_test5(void);
 static int do_test_dab(void);
-static int test_d2(int nf, const double * data, double * grad, double * delsq);
-static int test_d4(int nf, const double * data, double * grad, double * delsq);
+//static int test_d2(int nf, const double * data, double * grad, double * delsq);
+//static int test_d4(int nf, const double * data, double * grad, double * delsq);
+static int test_d2(int nf, const double * field, 
+		   double * t_field,
+		   double * grad,
+		   double * t_grad,
+		   double * delsq,
+		   double * t_delsq
+		   );
+
+
+static int test_d4(int nf, const double * field, 
+		   double * t_field,
+		   double * grad,
+		   double * t_grad,
+		   double * delsq,
+		   double * t_delsq
+		   );
+
 static int test_dab(int nf, const double * field, double * dab);
 static double test_encode(int code, int nf, int n, int iv);
 
@@ -279,8 +296,14 @@ int do_test_dab(void) {
  *
  *****************************************************************************/
 
-static int test_d2(int nf, const double * data, double * grad,
-		   double * delsq) {
+static int test_d2(int nf, const double * field, 
+	      double * t_field,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq
+		   ){
+
   int n;
   int index = 1;
 
@@ -300,8 +323,13 @@ static int test_d2(int nf, const double * data, double * grad,
  *
  *****************************************************************************/
 
-static int test_d4(int nf, const double * data, double * grad,
-		   double * delsq) {
+static int test_d4(int nf, const double * field, 
+	      double * t_field,
+	      double * grad,
+	      double * t_grad,
+	      double * delsq,
+	      double * t_delsq
+		   ){
   int n;
   int index = 1;
 
