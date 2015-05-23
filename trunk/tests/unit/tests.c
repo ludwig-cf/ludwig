@@ -59,6 +59,8 @@ int tests_create() {
   test_colloids_info_suite();
   test_colloids_halo_suite();
   test_ewald_suite();
+  test_fe_electro_suite();
+  test_fe_electro_symm_suite();
   test_field_suite();
   test_halo_suite();
   test_hydro_suite();
@@ -73,6 +75,7 @@ int tests_create() {
   test_pair_yukawa_suite();
   test_phi_ch_suite();
   test_polar_active_suite();
+  test_psi_suite();
   test_lb_prop_suite();
   test_random_suite();
   test_rt_suite();
@@ -82,12 +85,9 @@ int tests_create() {
 
   /* Failing... */
 
-  test_bp_suite();                    /* KS */
-  test_fe_electro_suite();            /* KS */
-  test_fe_electro_symm_suite();       /* KS */
-  /* test_nernst_planck_suite(); */   /* KS */
-  test_psi_suite();                   /* KS */
-  /* test_psi_sor_suite();*/          /* KS */
+  /* test_bp_suite();*/
+  /* test_nernst_planck_suite(); */
+  /* test_psi_sor_suite();*/
 
 
   return 0;
