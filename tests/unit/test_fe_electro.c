@@ -82,12 +82,12 @@ static int do_test1(void) {
 
   fe_electro_create(psi);
 
-  /* psi = 0 so have \sum rho kT*(log(rho) - 1) */
+  /* psi = 0 so have \sum rho (log(rho) - 1) */
 
   rho0 = 1.0;
   rho1 = 1.0;
-  fed0 = rho0*kt*(log(rho0 + DBL_EPSILON) - 1.0);
-  fed1 = rho0*kt*(log(rho1 + DBL_EPSILON) - 1.0);
+  fed0 = rho0*(log(rho0 + DBL_EPSILON) - 1.0);
+  fed1 = rho0*(log(rho1 + DBL_EPSILON) - 1.0);
 
   psi_rho_set(psi, index, 0, rho0);
   psi_rho_set(psi, index, 1, rho1);
@@ -97,24 +97,24 @@ static int do_test1(void) {
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho0 = exp(1.0);
-  fed0 = rho0*kt*(log(rho0) - 1.0);
+  fed0 = rho0*(log(rho0) - 1.0);
 
   psi_rho_set(psi, index, 0, rho0);
   fed = fe_electro_fed(index);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho1 = exp(2.0);
-  fed1 = rho1*kt*(log(rho1) - 1.0);
+  fed1 = rho1*(log(rho1) - 1.0);
 
   psi_rho_set(psi, index, 1, rho1);
   fed = fe_electro_fed(index);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
-  /* For psi > 0 we add \sum rho 0.5 Z e psi */
+  /* For psi > 0 we add \sum rho 0.5 Z psi */
 
   psi0 = 2.0;
-  fed0 += rho0*0.5*valency[0]*eunit*psi0;
-  fed1 += rho1*0.5*valency[1]*eunit*psi0;
+  fed0 += rho0*0.5*valency[0]*psi0;
+  fed1 += rho1*0.5*valency[1]*psi0;
 
   psi_psi_set(psi, index, psi0);
   psi_valency_set(psi, 0, valency[0]);
@@ -202,6 +202,8 @@ static int do_test3(void) {
   double epsilon = 0.5;             /* Permeativity */
   double s[3][3];                   /* A stress */
   double e0[3];                     /* A field */
+  double kt = 2.0;                  /* kT */
+  double eunit = 3.0;               /* unit charge */
 
   double psi0, psi1;
   double emod;
@@ -209,7 +211,10 @@ static int do_test3(void) {
 
   psi_create(nk, &psi);
   psi_epsilon_set(psi, epsilon);
+  psi_unit_charge_set(psi, eunit);
   fe_electro_create(psi);
+
+  physics_kt_set(kt);
 
   /* No external field, no potential; note index must allow for a
    * spatial gradient */
@@ -231,19 +236,19 @@ static int do_test3(void) {
   psi1 = 2.0;
   psi_psi_set(psi, coords_index(1+1, 1, 1), psi1);
   psi_psi_set(psi, coords_index(1-1, 1, 1), psi0);
-  e0[X] = -0.5*(psi1 - psi0);
+  e0[X] = -0.5*(psi1 - psi0)*kt/eunit;
 
   psi0 = 3.0;
   psi1 = 4.0;
   psi_psi_set(psi, coords_index(1, 1+1, 1), psi1);
   psi_psi_set(psi, coords_index(1, 1-1, 1), psi0);
-  e0[Y] = -0.5*(psi1 - psi0);
+  e0[Y] = -0.5*(psi1 - psi0)*kt/eunit;
 
   psi0 = 6.0;
   psi1 = 5.0;
   psi_psi_set(psi, coords_index(1, 1, 1+1), psi1);
   psi_psi_set(psi, coords_index(1, 1, 1-1), psi0);
-  e0[Z] = -0.5*(psi1 - psi0);
+  e0[Z] = -0.5*(psi1 - psi0)*kt/eunit;
   emod = modulus(e0);
 
   fe_electro_stress(coords_index(1, 1, 1), s);
