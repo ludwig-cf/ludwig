@@ -20,7 +20,7 @@
 #include "model.h"
 
 int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
-			 field_t * p, field_t * q, psi_t * psi);
+			 field_t * p, field_t * q, psi_t * psi, map_t * map);
 
 int build_update_links(colloids_info_t * cinfo, map_t * map);
 int build_update_map(colloids_info_t * cinfo, map_t * map);

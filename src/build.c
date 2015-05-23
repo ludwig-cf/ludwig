@@ -31,12 +31,12 @@
 
 static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
 static int build_replace_fluid(lb_t * lb, colloids_info_t * info, int index,
-			       colloid_t * pc);
+			       colloid_t * pc, map_t * map);
 static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc);
 static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 					 field_t * f, int index,
-					 colloid_t * pc);
+					 colloid_t * pc, map_t * map);
 static int build_reset_links(colloid_t * pc, map_t * map);
 static int build_reconstruct_links(colloids_info_t * cinfo, colloid_t * pc,
 				   map_t * map);
@@ -539,7 +539,7 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
  *****************************************************************************/
 
 int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
-			 field_t * p, field_t * q, psi_t * psi) {
+			 field_t * p, field_t * q, psi_t * psi, map_t * map) {
 
   int ic, jc, kc, index;
   int is_halo;
@@ -582,10 +582,10 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 	  pcold->s.rebuild = 1;
 
 	  if (!is_halo) {
-	    build_replace_fluid(lb, cinfo, index, pcold);
-	    if (phi) build_replace_order_parameter(lb, cinfo, phi, index, pcold);
-	    if (p) build_replace_order_parameter(lb, cinfo, p, index, pcold);
-	    if (q) build_replace_order_parameter(lb, cinfo, q, index, pcold);
+	    build_replace_fluid(lb, cinfo, index, pcold, map);
+	    if (phi) build_replace_order_parameter(lb, cinfo, phi, index, pcold, map);
+	    if (p) build_replace_order_parameter(lb, cinfo, p, index, pcold, map);
+	    if (q) build_replace_order_parameter(lb, cinfo, q, index, pcold, map);
 	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
@@ -705,10 +705,11 @@ static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
  *****************************************************************************/
 
 static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
-			       colloid_t * p_colloid) {
+			       colloid_t * p_colloid, map_t * map) {
 
   int indexn, p, pdash;
   int ia;
+  int status;
   int ib[3];
   int noffset[3];
 
@@ -725,6 +726,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 
   assert(lb);
   assert(p_colloid);
+  assert(map);
 
   coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, ib);
@@ -754,6 +756,8 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 
     colloids_info_map_old(cinfo, indexn, &pc);
     if (pc) continue;
+    map_status(map, indexn, &status);
+    if (status == MAP_BOUNDARY) continue;
 
     for (pdash = 0; pdash < NVEL; pdash++) {
       lb_f(lb, indexn, pdash, 0, rtmp);
@@ -813,8 +817,9 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 
 static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 					 field_t * f, int index,
-					 colloid_t * pc) {
+					 colloid_t * pc, map_t * map) {
   int indexn, n, p, pdash;
+  int status;
   int ri[3];
   int nf;
   int ndist;
@@ -828,6 +833,7 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 
   colloid_t * pcmap = NULL;
 
+  assert(map);
   assert(lb);
   lb_ndist(lb, &ndist);
 
@@ -858,6 +864,8 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
       /* TODO Could be done with MAP_STATUS ? */
       colloids_info_map_old(cinfo, indexn, &pcmap);
       if (pcmap) continue;
+      map_status(map, indexn, &status);
+      if (status == MAP_BOUNDARY) continue;
 
       for (pdash = 0; pdash < NVEL; pdash++) {
 	lb_f(lb, indexn, pdash, LB_PHI, &g);
@@ -896,6 +904,8 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 
       colloids_info_map_old(cinfo, indexn, &pcmap);
       if (pcmap) continue;
+      map_status(map, indexn, &status);
+      if (status == MAP_BOUNDARY) continue;
 
       field_scalar_array(f, indexn, qs);
       for (n = 0; n < nf; n++) {
