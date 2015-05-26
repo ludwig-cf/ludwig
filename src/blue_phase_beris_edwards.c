@@ -418,7 +418,12 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   field_t* t_q = fq->tcopy; //target copy of tensor order parameter field structure
   field_grad_t* t_q_grad = fq_grad->tcopy; //target copy of grad field structure
-  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
+
+
+  hydro_t* t_hydro = NULL; //target copy of hydro structure
+
+  if(hydro->tcopy)
+    t_hydro = hydro->tcopy; 
 
   advflux_t* t_flux = flux->tcopy; //target copy of flux structure
 
@@ -434,9 +439,11 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   copyFromTarget(&tmpptr,&(t_q_grad->delsq),sizeof(double*)); 
   copyToTarget(tmpptr,fq_grad->delsq,fq_grad->nf*nSites*sizeof(double));
     
-  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-  copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
 
+  if(hydro->tcopy){
+    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+    copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
+  }
 
   copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*)); 
   copyToTarget(tmpptr,flux->fe,nf*nSites*sizeof(double));
