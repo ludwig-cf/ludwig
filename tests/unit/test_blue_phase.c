@@ -44,11 +44,12 @@ static int test_bp_nonfield(void);
 
 int test_bp_suite(void) {
 
-  int nhalo = 1;
+  int nhalo = 2;
   field_t * fq = NULL;
   field_grad_t * fqgrad = NULL;
 
   pe_init_quiet();
+  coords_nhalo_set(nhalo);
   coords_init();
   le_init(); /* Must be initialised to compute gradients. */
 
@@ -78,8 +79,7 @@ int test_bp_suite(void) {
  *
  *  test_bp_nonfield
  *
- *  The diagonalisation routine has been observed to fail for
- *  some gcc -O3 conditions (ifail = -1 and q5[] = 0.0).
+ *  Values confimed via Wolfram Alpha eigenvalue widget.
  *
  *****************************************************************************/
 
@@ -92,11 +92,14 @@ static int test_bp_nonfield(void) {
   /* Artificial example */
 
   q[X][X] = 1.0;
-  q[Y][Y] = -1.0;
   q[X][Y] = 2.0;
+  q[X][Z] = 0.0;
   q[Y][X] = 2.0;
+  q[Y][Y] = -1.0;
   q[Y][Z] = 1.5;
+  q[Z][X] = 0.0;
   q[Z][Y] = 1.5;
+  q[Z][Z] = 0.0;
 
   ifail = blue_phase_scalar_ops(q, q5);
   /*
@@ -107,11 +110,11 @@ static int test_bp_nonfield(void) {
   verbose("q5[4] = %14.7e\n", q5[4]);
   verbose("ifail = %d\n", ifail);
   */
-  assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
-  assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
-  assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
-  assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
-  assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
+  test_assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
+  test_assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
+  test_assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
+  test_assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
+  test_assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
 
   return 0;
 }
@@ -186,7 +189,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   assert(fq);
   assert(fqgrad);
   field_nf(fq, &nf);
-  assert(nf == NQAB);
+  test_assert(nf == NQAB);
 
   /* info("ok\n");*/
 
@@ -199,8 +202,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   value = sqrt(108.0*kappa/(a0*gamma))*q0;
 
   /* info("Testing chirality = %8.5f ...", value);*/
-  test_assert(fabs(value - blue_phase_chirality())
-	      < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(value - blue_phase_chirality()) < TEST_DOUBLE_TOLERANCE);
   /* info("ok\n");*/
 
   value = 27.0*(1.0 - gamma/3.0)/gamma;
@@ -689,6 +691,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
 
+  /* Note the electric field remains switched on so... */
+  blue_phase_set_kernel_constants();
+
   /* Check F(1,1,1) */
 
   field_halo(fq);
@@ -700,9 +705,10 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   kc = 1;
   index = coords_index(ic, jc, kc);
   field_tensor(fq, index, q);
+
   field_grad_tensor_grad(fqgrad, index, dq);
   value = blue_phase_compute_fed(q, dq, pcon);
-  /* info("Check F( 1, 1, 1)... %14.7e ", value);*/
+  /* info("Check F( 1, 1, 1)... %14.7e\n ", value);*/
   test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
 
@@ -726,6 +732,10 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   /* info("Set dimensionless field again 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
+
+
+  /* Note the electric field now changed so... */
+  blue_phase_set_kernel_constants();
 
   ic = 1;
   jc = 1;
