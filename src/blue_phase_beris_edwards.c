@@ -422,7 +422,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   hydro_t* t_hydro = NULL; //target copy of hydro structure
 
-  if(hydro->tcopy)
+  if(hydro)
     t_hydro = hydro->tcopy; 
 
   advflux_t* t_flux = flux->tcopy; //target copy of flux structure
@@ -440,7 +440,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   copyToTarget(tmpptr,fq_grad->delsq,fq_grad->nf*nSites*sizeof(double));
     
 
-  if(hydro->tcopy){
+  if(hydro){
     copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
     copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
   }
@@ -459,7 +459,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   //launch update across lattice on target
   blue_phase_be_update_lattice __targetLaunch__(nSites) (fq->tcopy, fq_grad->tcopy, 
-  							 hydro->tcopy,
+  							 t_hydro,
   							 flux->tcopy, map,
   							 noise_on, noise, pcon);
   
