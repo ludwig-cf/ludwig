@@ -25,6 +25,7 @@ typedef enum interact_enum {
   INTERACT_BOND,
   INTERACT_ANGLE,
   INTERACT_LUBR,
+  INTERACT_WALL,
   INTERACT_MAX
 } interact_enum_t;
 
@@ -54,6 +55,7 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo);
 int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 		     map_t * map, psi_t * psi, ewald_t * ewald);
 int interact_pairwise(interact_t * interact, colloids_info_t * cinfo);
+int interact_wall(interact_t * interact, colloids_info_t * cinfo);
 int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
@@ -64,6 +66,7 @@ int interact_rcmax(interact_t * obj, double * rcmax);
 int colloids_update_forces_zero(colloids_info_t * cinfo);
 int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi);
 int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map);
-
+int colloids_update_forces_fluid_driven(colloids_info_t * cinfo, map_t * map);
+                                         
 
 #endif

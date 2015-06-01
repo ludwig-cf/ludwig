@@ -33,6 +33,8 @@
 #include "physics.h"
 #include "control.h"
 #include "stats_colloid.h"
+#include "driven_colloid.h"
+#include "wall.h"
 #include "interaction.h"
 
 struct interact_s {
@@ -187,7 +189,9 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
     colloids_update_forces_zero(cinfo);
     colloids_update_forces_external(cinfo, psi);
     colloids_update_forces_fluid_gravity(cinfo, map);
-
+    colloids_update_forces_fluid_driven(cinfo, map);
+    interact_wall(interact, cinfo);
+    
     if (nc > 1) {
       interact_pairwise(interact, cinfo);
       interact_bonds(interact, cinfo);
@@ -225,74 +229,94 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
   double vlocal, v;
 
   colloids_info_ntotal(cinfo, &nc);
-  if (nc < 2) return 0;
+  
+  if (nc > 0) {
 
-  intr = obj->abstr[INTERACT_LUBR];
+    intr = obj->abstr[INTERACT_WALL];
+    
+    if (intr) {
+      
+      obj->stats[INTERACT_WALL](intr, stats);
+      
+      hminlocal = stats[INTERACT_STAT_HMINLOCAL];
+      vlocal = stats[INTERACT_STAT_VLOCAL];
+      
+      MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+      MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+      
+      info("Wall potential minimum h is: %14.7e\n", hmin);
+      info("Wall potential energy is:    %14.7e\n", v);
+    }
 
-  if (intr) {
+    if (nc > 1) {
+  
+      intr = obj->abstr[INTERACT_LUBR];
 
-    obj->stats[INTERACT_LUBR](intr, stats);
+      if (intr) {
 
-    hminlocal = stats[INTERACT_STAT_HMINLOCAL];
-    MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-    info("Lubrication minimum h is:    %14.7e\n", hmin);
+	obj->stats[INTERACT_LUBR](intr, stats);
+
+	hminlocal = stats[INTERACT_STAT_HMINLOCAL];
+	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+	info("Lubrication minimum h is:    %14.7e\n", hmin);
+      }
+
+      intr = obj->abstr[INTERACT_PAIR];
+
+      if (intr) {
+
+	obj->stats[INTERACT_PAIR](intr, stats);
+
+	hminlocal = stats[INTERACT_STAT_HMINLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+	info("Pair potential minimum h is: %14.7e\n", hmin);
+	info("Pair potential energy is:    %14.7e\n", v);
+      }
+
+      intr = obj->abstr[INTERACT_BOND];
+
+      if (intr) {
+
+	obj->stats[INTERACT_BOND](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+	info("Bond potential minimum r is: %14.7e\n", rmin);
+	info("Bond potential maximum r is: %14.7e\n", rmax);
+	info("Bond potential energy is:    %14.7e\n", v);
+      }
+
+      intr = obj->abstr[INTERACT_ANGLE];
+
+      if (intr) {
+
+	obj->stats[INTERACT_ANGLE](intr, stats);
+
+	rminlocal = stats[INTERACT_STAT_RMINLOCAL];
+	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
+	vlocal = stats[INTERACT_STAT_VLOCAL];
+
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+	info("Angle minimum angle is:      %14.7e\n", rmin);
+	info("Angle maximum angle is:      %14.7e\n", rmax);
+	info("Angle potential energy is:   %14.7e\n", v);
+      }
+    }
   }
-
-  intr = obj->abstr[INTERACT_PAIR];
-
-  if (intr) {
-
-    obj->stats[INTERACT_PAIR](intr, stats);
-
-    hminlocal = stats[INTERACT_STAT_HMINLOCAL];
-    vlocal = stats[INTERACT_STAT_VLOCAL];
-
-    MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-    MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-
-    info("Pair potential minimum h is: %14.7e\n", hmin);
-    info("Pair potential energy is:    %14.7e\n", v);
-  }
-
-  intr = obj->abstr[INTERACT_BOND];
-
-  if (intr) {
-
-    obj->stats[INTERACT_BOND](intr, stats);
-
-    rminlocal = stats[INTERACT_STAT_RMINLOCAL];
-    rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
-    vlocal = stats[INTERACT_STAT_VLOCAL];
-
-    MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-    MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
-    MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-
-    info("Bond potential minimum r is: %14.7e\n", rmin);
-    info("Bond potential maximum r is: %14.7e\n", rmax);
-    info("Bond potential energy is:    %14.7e\n", v);
-  }
-
-  intr = obj->abstr[INTERACT_ANGLE];
-
-  if (intr) {
-
-    obj->stats[INTERACT_ANGLE](intr, stats);
-
-    rminlocal = stats[INTERACT_STAT_RMINLOCAL];
-    rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
-    vlocal = stats[INTERACT_STAT_VLOCAL];
-
-    MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-    MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
-    MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-
-    info("Angle minimum angle is:      %14.7e\n", rmin);
-    info("Angle maximum angle is:      %14.7e\n", rmax);
-    info("Angle potential energy is:   %14.7e\n", v);
-  }
-
-
+  
   return 0;
 }
 
@@ -343,6 +367,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
   double b0[3];          /* external fields */
   double g[3];
   double btorque[3];
+  double dforce[3];
   colloid_t * pc;
 
   assert(cinfo);
@@ -362,9 +387,12 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
 	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
+	  driven_colloid_force(pc->s.s, dforce);
+	  
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->force[ia] += g[ia];                /* Gravity */
 	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
+	    pc->force[ia] += dforce[ia];           /* Active force */
 	  }
 	}
       }
@@ -420,6 +448,51 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
 
   return 0;
 }
+/*****************************************************************************
+* colloid_forces_fluid_driven                                                                      
+*                                                                                                       
+* Set the current drive force on the fluid. This should                                                
+* match, exactly, the force on the colloids and so depends on the                                      
+* current number of fluid sites globally (fluid volume).                                               
+*                                                                                                       
+* Note the calculation involves a collective communication.
+*                          
+*****************************************************************************/
+
+int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
+                                         map_t * map) {
+  int nc;
+  int ia;
+  int nsfluid;
+  double rvolume;
+  double fd[3], fw[3] ,f[3];
+
+  assert(cinfo);
+
+  colloids_info_ntotal(cinfo, &nc);
+
+  if (nc == 0) return 0;
+
+  if (is_driven()) {
+
+    assert(map);
+    map_volume_allreduce(map, MAP_FLUID, &nsfluid);
+    rvolume = 1.0/nsfluid;
+
+    /* Force per fluid node to balance is... */
+    driven_colloid_total_force(cinfo, fd);
+    
+    for (ia = 0; ia < 3; ia++) {
+      f[ia] = -1.0*fd[ia]*rvolume*is_periodic(ia);
+      fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());
+    }
+
+    physics_fbody_set(f);
+    wall_accumulate_force(fw);
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -439,6 +512,25 @@ int interact_pairwise(interact_t * obj, colloids_info_t * cinfo) {
 
   intr = obj->abstr[INTERACT_PAIR];
   if (intr) obj->compute[INTERACT_PAIR](cinfo, intr);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  interact_wall
+ *
+ *****************************************************************************/
+
+int interact_wall(interact_t * obj, colloids_info_t * cinfo) {
+
+  void * intr = NULL;
+
+  assert(obj);
+  assert(cinfo);
+
+  intr = obj->abstr[INTERACT_WALL];
+  if (intr) obj->compute[INTERACT_WALL](cinfo, intr);
 
   return 0;
 }
