@@ -520,7 +520,6 @@ __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* target
 
   //get compression mapping
 
-  int j=0;
     if (includeNeighbours){
     int p;
     for (i=0; i<nsites; i++){
@@ -534,7 +533,7 @@ __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* target
 	  
 	  if ((shiftIndex >= 0) &&   (shiftIndex < nsites)){
 	    siteMap[shiftIndex]=1;
-	    j++;
+	 
 	  }
 	  
 	}
@@ -547,10 +546,17 @@ __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* target
       for (i=0; i<nsites; i++){
 	if(ptrarray[i]){ 
 	  siteMap[i]=1;
-	  j++;
+	  
 	}
       }
     }
+
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(siteMap[i]){ 
+       j++;
+    }
+  }
   
   int packedsize=j;
   
@@ -615,7 +621,6 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
 
   //get compression mapping
 
-  int j=0;
     if (includeNeighbours){
     int p;
     for (i=0; i<nsites; i++){
@@ -629,7 +634,6 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
 	  
 	  if ((shiftIndex >= 0) &&   (shiftIndex < nsites)){
 	    siteMap[shiftIndex]=1;
-	    j++;
 	  }
 	  
 	}
@@ -642,10 +646,17 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
       for (i=0; i<nsites; i++){
 	if(ptrarray[i]){ 
 	  siteMap[i]=1;
-	  j++;
 	}
       }
     }
+
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(siteMap[i]){ 
+       j++;
+    }
+  }
+
   
   int packedsize=j;
   
