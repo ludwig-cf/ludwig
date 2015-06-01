@@ -54,10 +54,15 @@ void driven_colloid_force(const double s[3], double force[3]) {
 
   int ia;
 
-  for (ia = 0; ia < 3; ia++){
-    force[ia] = fmod_*s[ia];
-  }
+  force[0] = 0.0;
+  force[1] = 0.0;
+  force[2] = 0.0;
 
+  if (is_driven()){
+    for (ia = 0; ia < 3; ia++){
+      force[ia] = fmod_*s[ia];
+    }
+  }
   return;
 }
 
@@ -106,3 +111,4 @@ int is_driven(void) {
   
   return driven_;
 }
+
