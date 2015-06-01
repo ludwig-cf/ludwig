@@ -29,6 +29,7 @@ endif
 
 
  CFLAGS = -O3 -fopenmp  #-save-temps
+# CFLAGS = -g -G #-save-temps
 # CFLAGS = -g -fopenmp  #-save-temps
 
 #mic
@@ -40,7 +41,7 @@ endif
 
  CC_CUDA=	$(NVCC)
  CFLAGS_CUDA= -DCUDA -O3 -arch=sm_30 -I $(TARGETDPDIR) -dc -x cu #-save-temps
-# CFLAGS_CUDA= -DCUDA -g -G -arch=sm_21 -I $(TARGETDPDIR) -dc -x cu #-save-temps
+# CFLAGS_CUDA= -DCUDA -g -G -arch=sm_30 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
 
 default: targetDP_X86
