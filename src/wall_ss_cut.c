@@ -156,11 +156,9 @@ int wall_ss_cut_register(wall_ss_cut_t * obj, interact_t * parent) {
 int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
 
   wall_ss_cut_t * self = (wall_ss_cut_t *) obj;
-
-  int ic1, jc1, kc1, ic2, jc2, kc2;
-  int di[2], dj[2], dk[2];
+  
+  int ic1, jc1, kc1;
   int ncell[3];
-
   int ia;
   
   double r;                             /* centre-centre sepration */
@@ -173,8 +171,7 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   double f;
 
   colloid_t * pc1;
-  colloid_t * pc2;
-
+  
   assert(cinfo);
   assert(self);
 
@@ -193,12 +190,9 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   colloids_info_ncell(cinfo, ncell);
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
-    colloids_info_climits(cinfo, X, ic1, di); 
     for (jc1 = 1; jc1 <= ncell[Y]; jc1++) {
-      colloids_info_climits(cinfo, Y, jc1, dj);
       for (kc1 = 1; kc1 <= ncell[Z]; kc1++) {
-        colloids_info_climits(cinfo, Z, kc1, dk);
-
+	
         colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
         for (; pc1; pc1 = pc1->next) {
 
