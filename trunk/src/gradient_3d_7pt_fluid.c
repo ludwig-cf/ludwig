@@ -163,9 +163,10 @@ __targetHost__ int gradient_3d_7pt_fluid_dab(const int nf,
 }
 
 
-__targetConst__ int tc_Nall[3];
-__targetConst__ int tc_nhalo;
-__targetConst__ int tc_nextra;
+//__targetConst__ int tc_Nall[3];
+//__targetConst__ int tc_nhalo;
+//__targetConst__ int tc_nextra;
+
 
 /*****************************************************************************
  *

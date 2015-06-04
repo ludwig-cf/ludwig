@@ -94,15 +94,14 @@ endif
 ###############################################################################
 
 OBJS = \
-     physics.o physics_rt.o \
-     advection_bcs.o advection_rt.o \
+     physics.o physics_rt.o advection_rt.o \
      blue_phase_init.o blue_phase_rt.o \
      brazovskii.o brazovskii_rt.o \
      colloid_io.o colloids_init.o \
      colloid.o colloid_link.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision_rt.o \
      colloids_rt.o lubrication.o \
-     coords.o coords_field.o coords_rt.o \
+     coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o \
@@ -117,7 +116,6 @@ OBJS = \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
      angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o \
-     phi_force_colloid.o  \
      phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
@@ -136,7 +134,9 @@ OBJS = \
 TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
 	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o \
 	blue_phase.o phi_force_stress.o phi_force.o blue_phase_beris_edwards.o \
-	advection.o gradient_3d_7pt_solid.o colloids_Q_tensor.o colloids.o
+	advection.o gradient_3d_7pt_solid.o colloids_Q_tensor.o colloids.o \
+	advection_bcs.o coords.o phi_force_colloid.o  
+
 
 ###############################################################################
 #

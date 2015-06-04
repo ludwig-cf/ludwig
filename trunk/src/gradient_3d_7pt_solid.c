@@ -1200,11 +1200,6 @@ static int gradient_6x6_gpu(const double * field, double * grad,
 
   copyConstToTarget(tc_a6inv,a6inv, 3*6*sizeof(double));
 
-  // for(i=0;i<2;i++)
-  //for(j=0;j<2;j++)
-  //  printf("%d %d %1.16e %1.16e\n",i,j,a18inv[i][j],tc_a18inv[i][j]);
-
-
   // initialise kernel constants on both host and target
   blue_phase_set_kernel_constants();
 
@@ -1212,14 +1207,16 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   void* pcon=NULL;
   blue_phase_target_constant_ptr(&pcon);
 
-  map_t* t_map = map_->tcopy; //target copy of field structure
+  map_t* t_map = map_->tcopy; //target copy of map structure
 
   double* tmpptr;
   copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
   copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
 
 
-  //copy colloid data to target
+  // set up colloids such that they can be accessed from target
+  // noting that each actual colloid structure stays resident on the host
+
   colloids_info_t* cinfo=colloids_q_cinfo();  
 
 
@@ -1235,8 +1232,10 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   
   gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
   						     del2, map_->tcopy,
-  							(bluePhaseKernelConstants_t*) pcon, cinfo->tcopy);
-
+						     (bluePhaseKernelConstants_t*) pcon, 
+						     cinfo->tcopy);
+  targetSynchronize();
+  
 
   util_matrix_free(18, &a18inv);
   util_matrix_free(12, &(a12inv[2]));
