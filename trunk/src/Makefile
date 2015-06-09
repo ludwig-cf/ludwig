@@ -58,7 +58,8 @@ endif
 ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_30
 #TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
-TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc -g -G
+#TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc -g -G
+TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc 
 OPTS += -DCUDAHOST
 LIBS = -lm -L../targetDP -ltargetDP_CUDA  
 else

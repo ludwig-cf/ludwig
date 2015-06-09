@@ -172,7 +172,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
-#ifdef TARGETFAST
+#ifdef KEEPFONTARGET
   //update colloid-affected lattice sites from target, including neighbours
     copyFromTargetPointerMap3D(lb->f,lb->t_f,
 			       Nall,nFields,1,(void**) cinfo->map_new); 
@@ -193,7 +193,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   bbl_pass2(bbl, lb, cinfo);
 
 
-#ifdef TARGETFAST
+#ifdef KEEPFONTARGET
   //update target with colloid-affected lattice sites, not including neighbours 
     copyToTargetPointerMap3D(lb->t_f,lb->f,
 			     Nall,nFields,0,(void**) cinfo->map_new); 

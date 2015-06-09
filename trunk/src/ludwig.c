@@ -43,11 +43,13 @@
 #include "collision_rt.h"
 
 #include "map.h"
+#include "map_s.h"
 #include "wall.h"
 #include "interaction.h"
 #include "physics_rt.h"
 
 #include "hydro_rt.h"
+#include "hydro_s.h"
 
 #include "io_harness.h"
 #include "phi_stats.h"
@@ -57,6 +59,7 @@
 
 /* Order parameter fields */
 #include "field.h"
+#include "field_s.h"
 #include "field_grad.h"
 #include "gradient_rt.h"
 
@@ -86,7 +89,8 @@
 #include "colloids_Q_tensor.h"
 #include "build.h"
 #include "subgrid.h"
-
+#include "colloids.h"
+#include "colloids_s.h"
 #include "advection_rt.h"
 
 /* Electrokinetics */
@@ -369,6 +373,8 @@ void ludwig_run(const char * inputfile) {
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
 
+  double* tmpptr;
+
   ludwig = calloc(1, sizeof(ludwig_t));
   assert(ludwig);
 
@@ -404,7 +410,7 @@ void ludwig_run(const char * inputfile) {
 
 
 
-#ifdef TARGETFAST  //temporary optimisation specific to GPU code for benchmarking 
+#ifdef KEEPFONTARGET
     int nlocal[3];
     coords_nlocal(nlocal);
     int nhalo = coords_nhalo();
@@ -414,6 +420,21 @@ void ludwig_run(const char * inputfile) {
     int nFields=NVEL*ludwig->lb->ndist;
     copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));  
 #endif
+
+#ifdef KEEPHYDROONTARGET
+    //target copy of hydro structure
+    hydro_t* t_hydro = ludwig->hydro->tcopy; 
+    
+    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+#endif
+    
+#ifdef KEEPFIELDONTARGET
+    field_t* t_field = ludwig->q->tcopy; 
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+    copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
+#endif
+
   
   /* Main time stepping loop */
 
@@ -421,19 +442,38 @@ void ludwig_run(const char * inputfile) {
   info("Starting time step loop.\n");
   subgrid_on(&is_subgrid);
 
+  //#ifdef CUDAHOST
+  //cudaProfilerInitialize();
+  //#endif
+
+
   while (next_step()) {
 
-#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
-        copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));
-#endif
 
 
     TIMER_start(TIMER_STEPS);
+
+#ifdef CUDAHOST
+    cudaProfilerStart();
+#endif
+
+
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
+#ifdef KEEPHYDROONTARGET
+	    copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
+	    copyToTarget(tmpptr,ludwig->hydro->f,ludwig->hydro->nf*nSites*sizeof(double));
+#endif
+
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
+
     ludwig_colloids_update(ludwig);
+
+
+
+
+
 
     /* Order parameter gradients */
 
@@ -454,7 +494,21 @@ void ludwig_run(const char * inputfile) {
       field_grad_compute(ludwig->p_grad);
       }
     if (ludwig->q) {
+
+#ifdef KEEPFIELDONTARGET
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+    copyFromTarget(ludwig->q->data,tmpptr,ludwig->q->nf*nSites*sizeof(double));
+#endif
+
+
       field_halo(ludwig->q);
+
+#ifdef KEEPFIELDONTARGET
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+    copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
+#endif
+
+
       field_grad_compute(ludwig->q_grad);
       blue_phase_redshift_compute(); /* if redshift required? */
     }
@@ -540,6 +594,8 @@ void ludwig_run(const char * inputfile) {
 
     }
 
+
+
     /* order parameter dynamics (not if symmetric_lb) */
 
     lb_ndist(ludwig->lb, &im);
@@ -570,19 +626,41 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
+
+
+
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
 					 ludwig->map, ludwig->noise_phi);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
       if (ludwig->q) {
-	if (ludwig->hydro) hydro_u_halo(ludwig->hydro);
-	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
-				 ludwig->map, ludwig->noise_rho);
+	if (ludwig->hydro)
+	  {
+	    
+#ifdef KEEPHYDROONTARGET
+	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+	    copyFromTarget(ludwig->hydro->u,tmpptr,ludwig->hydro->nf*nSites*sizeof(double));
+#endif
+	    
+	    hydro_u_halo(ludwig->hydro);
+	    
+#ifdef KEEPHYDROONTARGET
+	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+#endif
+	    
+
+	  colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
+	  blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
+	  			 ludwig->map, ludwig->noise_rho);
+	  }
+
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
+
+
     }
 
 
@@ -593,34 +671,49 @@ void ludwig_run(const char * inputfile) {
        * colloids to present non-zero u inside particles. */
       hydro_u_zero(ludwig->hydro, uzero);
 
+#ifdef KEEPHYDROONTARGET
+	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+#endif
+
       /* Collision stage */
+
+
 
 
       TIMER_start(TIMER_COLLIDE);
       lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho);
       TIMER_stop(TIMER_COLLIDE);
 
+
       /* Boundary conditions */
 
       lb_le_apply_boundary_conditions(ludwig->lb);
 
 
+
+
+
+
       TIMER_start(TIMER_HALO_LATTICE);
 
-#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
-      copyFromTargetBoundary3D(ludwig->lb->f,ludwig->lb->t_f,
-      Nall,nFields,nhalo,nhalo); 
+#ifdef KEEPFONTARGET
+            copyFromTargetBoundary3D(ludwig->lb->f,ludwig->lb->t_f,
+         Nall,nFields,nhalo,nhalo); 
+      // copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double)); 
 #endif
 
 
       lb_halo(ludwig->lb);
 
-#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+#ifdef KEEPFONTARGET
       copyToTargetBoundary3D(ludwig->lb->t_f,ludwig->lb->f,
-      Nall,nFields,0,nhalo); 
+       Nall,nFields,0,nhalo); 
+      //copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double)); 
 #endif
 
       TIMER_stop(TIMER_HALO_LATTICE);
+
 
 
       /* Colloid bounce-back applied between collision and
@@ -644,6 +737,9 @@ void ludwig_run(const char * inputfile) {
       bbl_update_colloids(ludwig->bbl, ludwig->collinfo);
     }
 
+
+
+
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions are active */
 
@@ -653,19 +749,18 @@ void ludwig_run(const char * inputfile) {
     lb_propagation(ludwig->lb);
     TIMER_stop(TIMER_PROPAGATE);
 
-    TIMER_stop(TIMER_STEPS);
-
-    
-#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
-    copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
+#ifdef CUDAHOST
+    cudaProfilerStop();
 #endif
 
-
-
+    TIMER_stop(TIMER_STEPS);
 
     /* Configuration dump */
 
     if (is_config_step()) {
+#ifdef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
+       copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
+#endif
       info("Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
       lb_io_info(ludwig->lb, &iohandler);
@@ -715,6 +810,9 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_measurement_step()) {
+#ifdef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
+       copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
+#endif
       stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->hydro);
     }
 
@@ -742,6 +840,9 @@ void ludwig_run(const char * inputfile) {
 
     if (is_statistics_step()) {
 
+#ifdef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
+       copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
+#endif
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
       if (im == 2) {
@@ -794,6 +895,9 @@ void ludwig_run(const char * inputfile) {
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
+#ifdef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
+       copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double));
+#endif
     sprintf(filename, "%sdist-%8.8d", subdirectory, step);
     lb_io_info(ludwig->lb, &iohandler);
     io_write_data(iohandler, filename, ludwig->lb);
@@ -1538,6 +1642,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi, ludwig->map);
     build_update_links(ludwig->collinfo, ludwig->map);
+    
 
     TIMER_stop(TIMER_REBUILD);
 
@@ -1556,5 +1661,33 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     TIMER_stop(TIMER_FORCES);
   }
 
+
+  //update target copy of map structure
+  int nhalo = coords_nhalo();
+  int nlocal[3];
+  coords_nlocal(nlocal);
+  int Nall[3];
+  int nSites;
+  Nall[X] = nlocal[X] + 2*nhalo;
+  Nall[Y] = nlocal[Y] + 2*nhalo;
+  Nall[Z] = nlocal[Z] + 2*nhalo;
+  nSites  = Nall[X]*Nall[Y]*Nall[Z];
+  
+  map_t* t_map = ludwig->map->tcopy; 
+  
+  double* tmpptr;
+  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+  copyToTarget(tmpptr,ludwig->map->status,nSites*sizeof(char));
+  
+  // set up colloids such that they can be accessed from target
+  // noting that each actual colloid structure stays resident on the host
+  if (ludwig->collinfo->map_new){
+    colloids_info_t* t_cinfo=ludwig->collinfo->tcopy; //target copy of colloids_info structure     
+    colloid_t* tmpcol;
+    copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+    copyToTarget(tmpcol,ludwig->collinfo->map_new,nSites*sizeof(colloid_t*));
+  }
+  
+  
   return 0;
 }

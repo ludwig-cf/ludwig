@@ -121,13 +121,14 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
 
-#ifndef TARGETFAST
-
-  map_t* t_map = map->tcopy; //target copy of field structure
-
   double* tmpptr;
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map->status,nSites*sizeof(char));
+
+#ifndef KEEPFIELDONTARGET
+  //map_t* t_map = map->tcopy; //target copy of field structure
+
+
+  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+  //copyToTarget(tmpptr,map->status,nSites*sizeof(char));
 
 
   advflux_t* t_flux = flux->tcopy; //target copy of flux structure
@@ -147,7 +148,7 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
   advection_bcs_no_normal_flux_lattice  __targetLaunch__(nSites) (nf,flux->tcopy, map->tcopy);
 
-#ifndef TARGETFAST
+#ifndef KEEPFIELDONTARGET
   copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*));
   copyFromTarget(flux->fe,tmpptr,nf*nSites*sizeof(double));
 

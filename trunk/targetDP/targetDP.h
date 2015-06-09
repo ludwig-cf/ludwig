@@ -16,7 +16,9 @@
 
 #ifdef CUDAHOST
 #ifdef TARGETFASTON
-#define TARGETFAST
+#define KEEPFONTARGET
+#define KEEPHYDROONTARGET
+#define KEEPFIELDONTARGET
 #endif
 #endif
 
@@ -30,7 +32,9 @@
 #define VVL 1
 
 #ifdef TARGETFASTON
-#define TARGETFAST
+#define KEEPFONTARGET
+#define KEEPHYDROONTARGET
+#define KEEPFIELDONTARGET
 #endif
 
 /* Language Extensions */

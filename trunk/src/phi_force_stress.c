@@ -27,7 +27,7 @@
 #include "util.h"
 #include "math.h"
 #include "blue_phase.h"
-
+#include "timer.h"
 
 //static double * pth_;
 //static double * t_pth_;
@@ -119,7 +119,8 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
     t_q_grad = q_grad->tcopy;
 
     double* tmpptr;
-    
+
+    #ifndef KEEPFIELDONTARGET    
     //populate target copies from host 
     copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
     copyToTarget(tmpptr,q->data,q->nf*nSites*sizeof(double));
@@ -129,7 +130,8 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
     
     copyFromTarget(&tmpptr,&(t_q_grad->delsq),sizeof(double*)); 
     copyToTarget(tmpptr,q_grad->delsq,q_grad->nf*nSites*sizeof(double));
-    
+    #endif
+
   }
   else{
 #ifdef CUDA
@@ -145,13 +147,21 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
   
+  TIMER_start(TIMER_CHEMICAL_STRESS_KERNEL);
 
   //execute lattice-based operation on target
   chemical_stress_lattice __targetLaunch__(nSites) (pth_local, t_q, t_q_grad, t_pth_, pcon, chemical_stress);
+  targetSynchronize();
+
+  TIMER_stop(TIMER_CHEMICAL_STRESS_KERNEL);
   
+
   if (q){ //we are using blue_phase_chemical_stress which is ported to targetDP
     //copy result from target back to host
+
+   #ifndef KEEPFIELDONTARGET    
     copyFromTarget(pth_,t_pth_,3*3*nSites*sizeof(double));      
+   #endif
   }
   
   //end targetDP

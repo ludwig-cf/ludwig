@@ -29,6 +29,8 @@
 #include "blue_phase.h"
 #include "colloids_Q_tensor.h"
 #include "colloids_s.h"
+#include "map_s.h"
+#include "hydro_s.h"
 
 static int anchoring_coll_ = ANCHORING_NORMAL;
 static int anchoring_wall_ = ANCHORING_NORMAL;
@@ -221,19 +223,94 @@ __targetHost__ int colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+__targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
-  int ic, jc, kc, index;
-  int nlocal[3];
-  int noffset[3];
-  int status;
-  const int nextra = 1;
+  int ic, jc, kc, index, ia;
 
   double u[3];
   double rb[3];
   double x, y, z;
 
   colloid_t * p_c;
+
+
+  __targetTLPNoStride__(index,tc_nSites){
+    
+    int coords[3];
+    targetCoords3D(coords,tc_Nall,index);
+    
+    // if not a halo site:
+    if (coords[0] >= (tc_nhalo-tc_nextra) && 
+	coords[1] >= (tc_nhalo-tc_nextra) && 
+	coords[2] >= (tc_nhalo-tc_nextra) &&
+	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
+	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
+	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
+      
+      
+      int coords[3];
+      
+      targetCoords3D(coords,tc_Nall,index);
+      
+      ic=coords[0]-tc_nhalo+1;
+      jc=coords[1]-tc_nhalo+1;
+      kc=coords[2]-tc_nhalo+1;
+
+      x = tc_noffset[X]+ic;
+      y = tc_noffset[Y]+jc;
+      z = tc_noffset[Z]+kc;
+      
+      
+      if (map->status[index] != MAP_FLUID) {
+	u[X] = 0.0;
+	  u[Y] = 0.0;
+	  u[Z] = 0.0;
+	  
+	  for (ia = 0; ia < 3; ia++) {
+	    hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
+	  }
+	  
+      }
+      
+      p_c = cinfo->map_new[index];
+      
+      if (p_c) {
+	/* Set the lattice velocity here to the solid body
+	 * rotational velocity */
+	
+	rb[X] = x - p_c->s.r[X];
+	rb[Y] = y - p_c->s.r[Y];
+	rb[Z] = z - p_c->s.r[Z];
+	
+	u[X] = p_c->s.w[Y]*rb[Z] - p_c->s.w[Z]*rb[Y];
+	u[Y] = p_c->s.w[Z]*rb[X] - p_c->s.w[X]*rb[Z];
+	u[Z] = p_c->s.w[X]*rb[Y] - p_c->s.w[Y]*rb[X];
+	
+	
+	u[X] += p_c->s.v[X];
+	u[Y] += p_c->s.v[Y];
+	u[Z] += p_c->s.v[Z];
+	
+
+	for (ia = 0; ia < 3; ia++) {
+	  hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
+	}
+	
+	
+      }
+    }
+  }
+  
+  return;
+}
+
+
+__targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+
+  int nlocal[3];
+  int noffset[3];
+  const int nextra = 1;
+
 
   assert(cinfo);
   assert(map);
@@ -243,45 +320,58 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    x = noffset[X] + ic;
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      y = noffset[Y] + jc;
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-	z = noffset[Z] + kc;
+  int nhalo = coords_nhalo();
 
-	index = coords_index(ic, jc, kc);
-	map_status(map, index, &status);
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
-	if (status != MAP_FLUID) {
-	  u[X] = 0.0;
-	  u[Y] = 0.0;
-	  u[Z] = 0.0;
-	  hydro_u_set(hydro, index, u);
-	}
 
-	colloids_info_map(cinfo, index, &p_c);
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-	if (p_c) {
-	  /* Set the lattice velocity here to the solid body
-	   * rotational velocity */
+  //start constant setup
+  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstToTarget(tc_noffset,noffset, 3*sizeof(int)); 
+  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
+  //end constant setup
 
-	  rb[X] = x - p_c->s.r[X];
-	  rb[Y] = y - p_c->s.r[Y];
-	  rb[Z] = z - p_c->s.r[Z];
 
-	  cross_product(p_c->s.w, rb, u);
+  // set up colloids such that they can be accessed from target
+  // noting that each actual colloid structure stays resident on the host
+  // if (cinfo->map_new){
+  //colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
+  //colloid_t* tmpcol;
+  //copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+  //copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
+  //}
 
-	  u[X] += p_c->s.v[X];
-	  u[Y] += p_c->s.v[Y];
-	  u[Z] += p_c->s.v[Z];
+  //target copy of hydro structure
+  hydro_t* t_hydro = hydro->tcopy; 
 
-	  hydro_u_set(hydro, index, u);
+  //populate target copy of velocity from host 
+  double* tmpptr;
 
-	}
-      }
-    }
-  }
+#ifndef KEEPHYDROONTARGET
+  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+  copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
+#endif
+
+  //map_t* t_map = map->tcopy; //target copy of map structure
+  //populate target copy of map from host 
+  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+  //copyToTarget(tmpptr,map->status,nSites*sizeof(char));
+
+
+  // launch operation across the lattice on target
+  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy, map->tcopy);
+  targetSynchronize();
+
+  // collect results from target
+#ifndef KEEPHYDROONTARGET
+  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+  copyFromTarget(hydro->u,tmpptr,hydro->nf*nSites*sizeof(double));
+#endif
+
 
   return 0;
 }

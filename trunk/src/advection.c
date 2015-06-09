@@ -365,15 +365,19 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-#ifndef TARGETFAST
-  // copy input data to target
-  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
-  field_t* t_field = field->tcopy; //target copy of field structure
 
   double* tmpptr;
+
+  // copy input data to target
+
+#ifndef KEEPHYDROONTARGET
+  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
   copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->u,3*nSites*sizeof(double));
+#endif
 
+#ifndef KEEPFIELDONTARGET
+  field_t* t_field = field->tcopy; //target copy of field structure
   copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
   copyToTarget(tmpptr,field->data,nf*nSites*sizeof(double));
 #endif
@@ -388,7 +392,7 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro->tcopy, nf,field->tcopy);
   targetSynchronize();
 
-#ifndef TARGETFAST
+#ifndef KEEPFIELDONTARGET
   advflux_t* t_flux = flux->tcopy; //target copy of flux structure
 
   copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*)); 
@@ -682,15 +686,18 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
 
-#ifndef TARGETFAST
+
   // copy input data to target
-  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
-  field_t* t_field = field->tcopy; //target copy of field structure
 
   double* tmpptr;
+#ifndef KEEPHYDROONTARGET
+  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
   copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->u,3*nSites*sizeof(double));
+#endif
 
+#ifndef KEEPFIELDONTARGET
+  field_t* t_field = field->tcopy; //target copy of field structure
   copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
   copyToTarget(tmpptr,field->data,nf*nSites*sizeof(double));
 #endif
@@ -703,10 +710,11 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
 
   //execute lattice-based operation on target
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
+  targetSynchronize();
 
   // copy output data from target
 
-#ifndef TARGETFAST
+#ifndef KEEPFIELDONTARGET
   advflux_t* t_flux = flux->tcopy; //target copy of flux structure
 
   copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*)); 
