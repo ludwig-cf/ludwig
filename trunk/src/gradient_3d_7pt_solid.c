@@ -115,9 +115,14 @@ __targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
 __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq) {
   int nextra;
-  //  int method = 1;
 
-    int method = 3;
+  
+#ifdef CUDA
+  int method = 3;
+#else
+  int method = 1;
+#endif
+
 
   assert(nop == NQAB);
   assert(map_);

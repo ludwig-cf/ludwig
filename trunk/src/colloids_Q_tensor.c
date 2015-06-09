@@ -362,6 +362,8 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
   return 0;
 }
 
+
+
 /*****************************************************************************
  *
  *  colloids_q_tensor_anchoring_set
