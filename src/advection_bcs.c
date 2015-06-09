@@ -124,11 +124,11 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
   double* tmpptr;
 
 #ifndef KEEPFIELDONTARGET
-  //map_t* t_map = map->tcopy; //target copy of field structure
+  map_t* t_map = map->tcopy; //target copy of field structure
 
 
-  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  //copyToTarget(tmpptr,map->status,nSites*sizeof(char));
+  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+  copyToTarget(tmpptr,map->status,nSites*sizeof(char));
 
 
   advflux_t* t_flux = flux->tcopy; //target copy of flux structure
