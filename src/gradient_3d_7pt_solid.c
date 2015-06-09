@@ -115,9 +115,9 @@ __targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
 __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
 				double * grad,double * t_grad, double * delsq, double * t_delsq) {
   int nextra;
-  int method = 1;
+  //  int method = 1;
 
-  //int method = 3;
+    int method = 3;
 
   assert(nop == NQAB);
   assert(map_);
@@ -140,13 +140,17 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
   if (method == 2) gradient_6x6_gauss_elim(field, grad, delsq, nextra);
   if (method == 3){
 
+    #ifndef KEEPFIELDONTARGET
     copyToTarget(t_field,field,nop*nSites*sizeof(double)); 
-    
+    #endif
+
     gradient_6x6_gpu(t_field, t_grad, t_delsq, nextra);
     
+    #ifndef KEEPFIELDONTARGET
     copyFromTarget(grad,t_grad,nop*3*nSites*sizeof(double)); 
     copyFromTarget(delsq,t_delsq,nop*nSites*sizeof(double)); 
-    
+    #endif
+
   }
   return 0;
 }
@@ -1207,11 +1211,11 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   void* pcon=NULL;
   blue_phase_target_constant_ptr(&pcon);
 
-  map_t* t_map = map_->tcopy; //target copy of map structure
+  //map_t* t_map = map_->tcopy; //target copy of map structure
 
   double* tmpptr;
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
+  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+  //copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
 
 
   // set up colloids such that they can be accessed from target
@@ -1220,12 +1224,12 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   colloids_info_t* cinfo=colloids_q_cinfo();  
 
 
-  if (cinfo->map_new){
-    colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
-    colloid_t* tmpcol;
-    copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-    copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
-  }
+  // if (cinfo->map_new){
+  //colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
+  //colloid_t* tmpcol;
+  //copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+  //copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
+  //}
 
 
   //execute lattice-based operation on target

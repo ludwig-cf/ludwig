@@ -37,7 +37,7 @@
 #include "collision.h"
 #include "field_s.h"
 #include "map_s.h"
-
+#include "timer.h"
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
@@ -445,6 +445,7 @@ __targetEntry__ void lb_collision_mrt_lattice(double* __restrict__ t_f,
 			  noise_on, baseIndex);
   }
 
+
   return;
 }
 
@@ -503,13 +504,16 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
    * for C version, we put data on the target (for now).
    * ultimitely GPU and C versions will follow the same pattern */
 
-#ifndef TARGETFAST
+#ifndef KEEPFONTARGET
   /* temporary optimisation specific to GPU code for benchmarking */
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 #endif
 
+#ifndef KEEPHYDROONTARGET
   copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
-  copyToTarget(map->t_status,map->status,nSites*sizeof(char)); 
+#endif
+
+  //copyToTarget(map->t_status,map->status,nSites*sizeof(char)); 
 
   /* end field management */
 
@@ -522,16 +526,23 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   }
 #endif
 
+  TIMER_start(TIMER_COLLIDE_KERNEL);
+
+
   lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,map->t_status,noise,noise_on,nSites);
 
   targetSynchronize();
 
-#ifndef TARGETFAST
+  TIMER_stop(TIMER_COLLIDE_KERNEL);
+
+#ifndef KEEPFONTARGET
   /* temporary optimisation specific to GPU code for benchmarking */
   copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
 #endif
 
+#ifndef KEEPHYDROONTARGET
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
+#endif
 
   return 0;
 }

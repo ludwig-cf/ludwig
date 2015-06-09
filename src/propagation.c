@@ -357,14 +357,14 @@ static int lb_propagate_d3q19(lb_t * lb) {
   //end constant setup
 
 
-  #ifndef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+  #ifndef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
   #endif
 
   lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb->t_f,lb->t_fprime);
   targetSynchronize();
 
-#ifdef TARGETFAST //temporary optimisation specific to GPU code for benchmarking
+#ifdef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
   double* tmp=lb->t_fprime;
   lb->t_fprime=lb->t_f;
   lb->t_f=tmp;

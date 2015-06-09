@@ -92,50 +92,6 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad
 
   advflux_create(nf, &flux);
 
-#ifdef TARGETFAST
-
-  int nlocal[3];
-  coords_nlocal(nlocal);
-
-  int nhalo;
-  nhalo = coords_nhalo();
-
-
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-  map_t* t_map = map->tcopy; //target copy of field structure
-
-  double* tmpptr;
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map->status,nSites*sizeof(char));
-
-  field_t* t_q = fq->tcopy; //target copy of tensor order parameter field structure
-  field_grad_t* t_q_grad = fq_grad->tcopy; //target copy of grad field structure
-
-  hydro_t* t_hydro = NULL; //target copy of hydro structure
-
-  if(hydro)
-    t_hydro = hydro->tcopy; 
-
-  //populate target copies from host 
-  copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
-  copyToTarget(tmpptr,fq->data,fq->nf*nSites*sizeof(double));
-  
-  copyFromTarget(&tmpptr,&(t_q_grad->grad),sizeof(double*)); 
-  copyToTarget(tmpptr,fq_grad->grad,fq_grad->nf*NVECTOR*nSites*sizeof(double));
-  
-  copyFromTarget(&tmpptr,&(t_q_grad->delsq),sizeof(double*)); 
-  copyToTarget(tmpptr,fq_grad->delsq,fq_grad->nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-  copyToTarget(tmpptr,hydro->u,3*nSites*sizeof(double));
-
-
-#endif
-
   if (hydro) {
 
     hydro_lees_edwards(hydro);
@@ -147,12 +103,6 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad
 
 
   blue_phase_be_update(fq, fq_grad, hydro, flux, map, noise);
-
-#ifdef TARGETFAST
-  //get result back from target
-  copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
-  copyFromTarget(fq->data,tmpptr,fq->nf*nSites*sizeof(double));
-#endif
 
 
   advflux_free(flux);
@@ -486,7 +436,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   double* tmpptr;
 
-#ifndef TARGETFAST  
+#ifndef KEEPFIELDONTARGET
   //populate target copies from host 
   copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
   copyToTarget(tmpptr,fq->data,fq->nf*nSites*sizeof(double));
@@ -496,12 +446,18 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   
   copyFromTarget(&tmpptr,&(t_q_grad->delsq),sizeof(double*)); 
   copyToTarget(tmpptr,fq_grad->delsq,fq_grad->nf*nSites*sizeof(double));
-    
+#endif    
+
+
+
+#ifndef KEEPHYDROONTARGET
   if(hydro){
     copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
     copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
   }
+#endif
 
+#ifndef KEEPFIELDONTARGET
   copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*)); 
   copyToTarget(tmpptr,flux->fe,nf*nSites*sizeof(double));
 
@@ -521,7 +477,9 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   							 flux->tcopy, map,
   							 noise_on, noise, pcon);
   
-#ifndef TARGETFAST
+  targetSynchronize();
+
+#ifndef KEEPFIELDONTARGET
   //get result back from target
   copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
   copyFromTarget(fq->data,tmpptr,fq->nf*nSites*sizeof(double));

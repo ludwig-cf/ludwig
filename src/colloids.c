@@ -217,7 +217,7 @@ __targetHost__ int colloids_info_map_init(colloids_info_t * info) {
   double* tmpptr;
   colloids_info_t* t_info = info->tcopy;
   targetCalloc((void**) &tmpptr,nsites*sizeof(colloid_t*));
-  copyToTarget(&(t_info->map_new),&tmpptr,sizeof(colloid_t**)); 
+   copyToTarget(&(t_info->map_new),&tmpptr,sizeof(colloid_t**)); 
 
 
 

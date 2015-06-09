@@ -18,10 +18,10 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-void TIMER_init(void);
-void TIMER_start(const int);
-void TIMER_stop(const int);
-void TIMER_statistics(void);
+__targetHost__ void TIMER_init(void);
+__targetHost__ void TIMER_start(const int);
+__targetHost__ void TIMER_stop(const int);
+__targetHost__ void TIMER_statistics(void);
 
 enum timer_id {TIMER_TOTAL,
 	       TIMER_STEPS,
@@ -47,6 +47,9 @@ enum timer_id {TIMER_TOTAL,
 	       TIMER_ELECTRO_NPEQ,
 	       TIMER_FREE1,
 	       TIMER_FREE2,
-               TIMER_FREE3};
+               TIMER_FREE3,
+	       TIMER_COLLIDE_KERNEL,
+	       TIMER_CHEMICAL_STRESS_KERNEL
+};
 
 #endif

@@ -24,7 +24,7 @@
 #include "util.h"
 #include "timer.h"
 
-#define NTIMERS  24
+#define NTIMERS  27
 
 struct timer_struct {
   double          t_start;
@@ -61,7 +61,10 @@ static const char * timer_name[] = {"Total",
 				    "Nernst Planck",
 				    "Free1",
 				    "Free2",
-                                    "Free3"};
+                                    "Free3",
+				    "Collision (kernel)",
+				    "Chem stress (kernel)"
+};
 
 
 /****************************************************************************

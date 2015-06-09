@@ -437,31 +437,36 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
 
   // copy stress to target
+#ifndef KEEPFIELDONTARGET    
   copyToTarget(t_pth_,pth_,3*3*nSites*sizeof(double));      
+#endif
 
-  //target copy of tensor order parameter field structure
+  //target copy of hydro structure
   hydro_t* t_hydro = hydro->tcopy; 
     
 
 
+
   //populate target copy of force from host 
   double* tmpptr;
+#ifndef KEEPHYDROONTARGET
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
-  
-  map_t* t_map = map->tcopy; //target copy of map structure
+#endif
+
+  //map_t* t_map = map->tcopy; //target copy of map structure
   //populate target copy of map from host 
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map->status,nSites*sizeof(char));
+  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+  //copyToTarget(tmpptr,map->status,nSites*sizeof(char));
 
   // set up colloids such that they can be accessed from target
   // noting that each actual colloid structure stays resident on the host
-  if (cinfo->map_new){
-    colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
-    colloid_t* tmpcol;
-    copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-    copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
-  }
+  //  if (cinfo->map_new){
+  //colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
+  //colloid_t* tmpcol;
+  //copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+  //copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
+  //}
 
   // launch operation across the lattice on target
   phi_force_interpolation_lattice  __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy,  map->tcopy, t_pth_);
@@ -469,8 +474,9 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
 
   // collect results from target
+#ifndef KEEPHYDROONTARGET
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
-
+#endif
   return 0;
 }
