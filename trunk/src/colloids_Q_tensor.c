@@ -272,7 +272,9 @@ __targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t *
 	  
       }
       
-      p_c = cinfo->map_new[index];
+      p_c=NULL;
+      if (cinfo->map_new)
+	p_c = cinfo->map_new[index];
       
       if (p_c) {
 	/* Set the lattice velocity here to the solid body
@@ -335,16 +337,6 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
   //end constant setup
 
-
-  // set up colloids such that they can be accessed from target
-  // noting that each actual colloid structure stays resident on the host
-  // if (cinfo->map_new){
-  //colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
-  //colloid_t* tmpcol;
-  //copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-  //copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
-  //}
-
   //target copy of hydro structure
   hydro_t* t_hydro = hydro->tcopy; 
 
@@ -355,12 +347,6 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
   copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
 #endif
-
-  //map_t* t_map = map->tcopy; //target copy of map structure
-  //populate target copy of map from host 
-  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  //copyToTarget(tmpptr,map->status,nSites*sizeof(char));
-
 
   // launch operation across the lattice on target
   colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy, map->tcopy);
