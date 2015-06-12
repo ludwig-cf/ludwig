@@ -513,7 +513,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
 #endif
 
-  //copyToTarget(map->t_status,map->status,nSites*sizeof(char)); 
+  copyToTarget(map->t_status,map->status,nSites*sizeof(char)); 
 
   /* end field management */
 
