@@ -1035,11 +1035,16 @@ int psi_zero_mean(psi_t * psi) {
   return 0;
 }
 
-
-
 /*****************************************************************************
  *
  *  psi_halo_psijump
+ *
+ *  Creates an offset in the halo region of the electrostatic potential
+ *  to model an overall external electric field across the physical domain.
+ *  The routine has to be called after each halo swap to add the offset.
+ *
+ *  The external field has to be oriented along one of the cardinal coordinate
+ *  and the boundary conditions along this dimension have to be periodic.
  *
  *****************************************************************************/
 
