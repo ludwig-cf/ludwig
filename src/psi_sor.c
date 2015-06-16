@@ -139,8 +139,7 @@ int psi_sor_poisson(psi_t * obj) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
-//  radius = cos(pi_/(L(X)-1));  
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/imax(L(X),L(Z)), 2);
 
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);
@@ -307,7 +306,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/L(X), 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/imax(L(X),L(Z)), 2);
 
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
