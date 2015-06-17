@@ -17,23 +17,23 @@
 
 #include "targetDP.h"
 
-HOST void init_control(void);
-HOST int  get_step(void);
-HOST int  next_step(void);
-HOST int  is_statistics_step(void);
-HOST int  is_measurement_step(void);
-HOST int  is_config_step(void);
-HOST int  is_config_at_end(void);
-HOST int  is_colloid_io_step(void);
+__targetHost__ void init_control(void);
+__targetHost__ int  get_step(void);
+__targetHost__ int  next_step(void);
+__targetHost__ int  is_statistics_step(void);
+__targetHost__ int  is_measurement_step(void);
+__targetHost__ int  is_config_step(void);
+__targetHost__ int  is_config_at_end(void);
+__targetHost__ int  is_colloid_io_step(void);
 
-HOST int  is_phi_output_step(void);
-HOST int  is_psi_output_step(void);
-HOST int  is_vel_output_step(void);
-HOST int  is_fed_output_step(void);
-HOST int  is_shear_measurement_step(void);
-HOST int  is_shear_output_step(void);
+__targetHost__ int  is_phi_output_step(void);
+__targetHost__ int  is_psi_output_step(void);
+__targetHost__ int  is_vel_output_step(void);
+__targetHost__ int  is_fed_output_step(void);
+__targetHost__ int  is_shear_measurement_step(void);
+__targetHost__ int  is_shear_output_step(void);
 
-HOST int control_freq_set(int freq);
-HOST int control_time_set(int it);
+__targetHost__ int control_freq_set(int freq);
+__targetHost__ int control_time_set(int it);
 
 #endif

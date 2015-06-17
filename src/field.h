@@ -23,24 +23,24 @@
 
 typedef struct field_s field_t;
 
-HOST int field_create(int nf, const char * name, field_t ** pobj);
-HOST void field_free(field_t * obj);
+__targetHost__ int field_create(int nf, const char * name, field_t ** pobj);
+__targetHost__ void field_free(field_t * obj);
 
-HOST int field_init(field_t * obj, int nhcomm);
-HOST int field_nf(field_t * obj, int * nop);
-HOST int field_init_io_info(field_t * obj, int grid[3], int form_in, int form_out);
-HOST int field_io_info(field_t * obj, io_info_t ** info);
-HOST int field_halo(field_t * obj);
-HOST int field_leesedwards(field_t * obj);
+__targetHost__ int field_init(field_t * obj, int nhcomm);
+__targetHost__ int field_nf(field_t * obj, int * nop);
+__targetHost__ int field_init_io_info(field_t * obj, int grid[3], int form_in, int form_out);
+__targetHost__ int field_io_info(field_t * obj, io_info_t ** info);
+__targetHost__ int field_halo(field_t * obj);
+__targetHost__ int field_leesedwards(field_t * obj);
 
-HOST int field_scalar(field_t * obj, int index, double * phi);
-HOST int field_scalar_set(field_t * obj, int index, double phi);
-HOST int field_vector(field_t * obj, int index, double p[3]);
-HOST int field_vector_set(field_t * obj, int index, const double p[3]);
-HOST int field_tensor(field_t * obj, int index, double q[3][3]);
-HOST int field_tensor_set(field_t * obj, int index, double q[3][3]);
+__targetHost__ int field_scalar(field_t * obj, int index, double * phi);
+__targetHost__ int field_scalar_set(field_t * obj, int index, double phi);
+__targetHost__ int field_vector(field_t * obj, int index, double p[3]);
+__targetHost__ int field_vector_set(field_t * obj, int index, const double p[3]);
+__targetHost__ int field_tensor(field_t * obj, int index, double q[3][3]);
+__targetHost__ int field_tensor_set(field_t * obj, int index, double q[3][3]);
 
-HOST int field_scalar_array(field_t * obj, int index, double * array);
-HOST int field_scalar_array_set(field_t * obj, int index, const double * array);
+__targetHost__ int field_scalar_array(field_t * obj, int index, double * array);
+__targetHost__ int field_scalar_array_set(field_t * obj, int index, const double * array);
 
 #endif

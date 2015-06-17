@@ -20,10 +20,10 @@
 #include "targetDP.h"
 #include "free_energy.h"
 
-HOST void   fe_v_molecular_field_set(void (* f)(const int index, double h[3]));
-HOST void   (* fe_v_molecular_field(void))(const int index, double h[3]);
+__targetHost__ void   fe_v_molecular_field_set(void (* f)(const int index, double h[3]));
+__targetHost__ void   (* fe_v_molecular_field(void))(const int index, double h[3]);
 
-HOST double fe_v_lambda(void);
-HOST void   fe_v_lambda_set(const double);
+__targetHost__ double fe_v_lambda(void);
+__targetHost__ void   fe_v_lambda_set(const double);
 
 #endif

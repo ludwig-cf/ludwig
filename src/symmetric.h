@@ -26,17 +26,17 @@ typedef double (*mu_fntype)(const int, const int, const double*, const double*);
 typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
 
 
-HOST int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
+__targetHost__ int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
 
-HOST void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
-HOST double symmetric_a(void);
-HOST double symmetric_b(void);
-HOST double symmetric_interfacial_tension(void);
-HOST double symmetric_interfacial_width(void);
-HOST double symmetric_free_energy_density(const int index);
-HOST double symmetric_chemical_potential(const int index, const int nop);
-HOST double symmetric_isotropic_pressure(const int index);
-HOST void   symmetric_chemical_stress(const int index, double s[3][3]);
+__targetHost__ void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
+__targetHost__ double symmetric_a(void);
+__targetHost__ double symmetric_b(void);
+__targetHost__ double symmetric_interfacial_tension(void);
+__targetHost__ double symmetric_interfacial_width(void);
+__targetHost__ double symmetric_free_energy_density(const int index);
+__targetHost__ double symmetric_chemical_potential(const int index, const int nop);
+__targetHost__ double symmetric_isotropic_pressure(const int index);
+__targetHost__ void   symmetric_chemical_stress(const int index, double s[3][3]);
 
 #endif
 

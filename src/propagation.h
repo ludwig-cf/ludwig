@@ -18,6 +18,6 @@
 #include "model.h"
 #include "targetDP.h"
 
-HOST int lb_propagation(lb_t * lb);
+__targetHost__ int lb_propagation(lb_t * lb);
 
 #endif

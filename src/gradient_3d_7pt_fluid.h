@@ -16,7 +16,7 @@
 #define GRADIENT_3D_7PT_FLUID_H
 #include "targetDP.h"
 
-HOST int gradient_3d_7pt_fluid_d2(const int nop, 
+__targetHost__ int gradient_3d_7pt_fluid_d2(const int nop, 
 			     const double * field,
 			     double * t_field,
 			     double * grad,
@@ -24,7 +24,7 @@ HOST int gradient_3d_7pt_fluid_d2(const int nop,
 			     double * delsq,
 			     double * t_delsq 
 			     );
-HOST int gradient_3d_7pt_fluid_d4(const int nop, 
+__targetHost__ int gradient_3d_7pt_fluid_d4(const int nop, 
 			     const double * field,
 			     double * t_field,
 			     double * grad,
@@ -32,7 +32,7 @@ HOST int gradient_3d_7pt_fluid_d4(const int nop,
 			     double * delsq,
 			     double * t_delsq
 			     );
-HOST int gradient_3d_7pt_fluid_dab(const int nf, 
+__targetHost__ int gradient_3d_7pt_fluid_dab(const int nf, 
 			     const double * field,
 			      double * dab);
 
