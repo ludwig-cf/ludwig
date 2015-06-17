@@ -18,10 +18,10 @@
 #include <mpi.h>
 #include "targetDP.h"
 
-HOST int coords_field_index(int index, int n, int nf, int * indexf);
-HOST int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
+__targetHost__ int coords_field_index(int index, int n, int nf, int * indexf);
+__targetHost__ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
 				  MPI_Datatype halo[3]);
-HOST int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
+__targetHost__ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
 		      MPI_Datatype halo[3]);
 
 #endif
