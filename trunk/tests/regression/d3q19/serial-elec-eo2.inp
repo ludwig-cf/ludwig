@@ -1,14 +1,8 @@
 ##############################################################################
 #
-#  Guoy-Chapman electrokinetics
+#  Electro-osmotic flow
 #
 ##############################################################################
-
-##############################################################################
-#
-#  Run duration
-#
-###############################################################################
 
 N_start  0
 N_cycles 1000
@@ -21,8 +15,8 @@ N_cycles 1000
 
 size 64_4_4
 grid 1_1_1
-periodicity 1_1_1
-reduced_halo yes
+periodicity 0_1_1
+reduced_halo no
 
 ##############################################################################
 #
@@ -34,8 +28,17 @@ viscosity 0.1
 viscosity_bulk 0.1
 
 isothermal_fluctuations off
-temperature 3.33333333333333333e-5
+temperature 3.3333e-5
 
+##############################################################################
+#
+#  External electric field
+#
+#  electric_e0     Ex_Ey_Ez  e.g., for electrokinetics (default zero)
+#
+##############################################################################
+
+electric_e0 0.0_3.0e-2_0.0
 
 ##############################################################################
 #
@@ -49,7 +52,7 @@ fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
-fd_force_divergence 1
+fd_force_divergence 0
 
 ###############################################################################
 #
@@ -59,7 +62,6 @@ fd_force_divergence 1
 
 colloid_init        none
 colloid_gravity  0.0_0.0_0.0
-magnetic_b0      0.0_0.0_0.0
 
 ###############################################################################
 #
@@ -67,7 +69,7 @@ magnetic_b0      0.0_0.0_0.0
 #
 ###############################################################################
 
-boundary_walls 0_0_0
+boundary_walls 1_0_0
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
 boundary_shear_init 0
@@ -80,9 +82,13 @@ boundary_lubrication_rcnormal 0.0
 ###############################################################################
 
 freq_statistics 100
+freq_measure 10000000
 config_at_end no
 
-colloid_io_freq 1000
+default_io_grid 1_1_1
+
+distribution_io_grid 1_1_1
+distribution_io_input_format BINARY
 
 ###############################################################################
 #
@@ -106,15 +112,26 @@ electrokinetics_z1      -1
 electrokinetics_d0      0.01
 electrokinetics_d1      0.01
 electrokinetics_eunit   1.0
-electrokinetics_epsilon 3.3e3
+electrokinetics_epsilon 3300.0
 electrokinetics_init    gouy_chapman
-electrokinetics_init_rho_el 0.001
-electrokinetics_init_sigma 0.03125
+electrokinetics_init_rho_el 	0.00
+electrokinetics_init_delta_el 	0.01
+electrokinetics_init_sigma 	0.0125
+
+electrokinetics_rel_tol  1e-07
+electrokinetics_abs_tol  1e-09
+electrokinetics_maxits   2000
+electrokinetics_diffacc  0.5
+
+electrokinetics_multisteps  1
 
 ###############################################################################
 #
 #  Miscellaneous
 #
+#  random_seed  +ve integer is the random number generator seed
+#
 ###############################################################################
 
+#random_seed 7361237
 random_seed 8361235
