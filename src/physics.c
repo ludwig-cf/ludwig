@@ -43,6 +43,8 @@ struct physics_s {
 static physics_t * phys = NULL;
 static int physics_create(void);
 
+static int e0_flag = 0;
+
 /*****************************************************************************
  *
  *  physics_ref
@@ -320,7 +322,26 @@ int physics_e0_set(double e0[3]) {
   phys->e0[1] = e0[1];
   phys->e0[2] = e0[2];
 
+  if (e0[0] != 0.0 || e0[1] != 0.0 || e0[2] != 0.0) e0_flag = 1;
+
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  is_physics_e0
+ *
+ *  Returns flag if external electric field is set. This is required 
+ *  when constraints are applied in the Poisson solve to generate
+ *  a potential jump.
+ *
+ *****************************************************************************/
+
+int is_physics_e0() {
+
+  assert(phys);
+
+  return e0_flag;
 }
 
 /*****************************************************************************

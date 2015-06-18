@@ -48,13 +48,13 @@
 #include "petscksp.h"
 #include "petscdmda.h"
 
-DM             da;            /* distributed array */
-Vec            x,b,u;         /* approx solution, RHS, exact solution */
-Mat            A;             /* linear system matrix */
-MatNullSpace   nullsp;        /* null space of matrix */
-KSP            ksp;           /* linear solver context */
-PC             pc;            /* preconditioner context */
-PetscReal      norm;          /* norm of solution error */
+DM             da;            /*  distributed array      */
+Vec            x,b;           /*  approx solution, RHS   */
+Mat            A;             /*  linear system matrix   */
+MatNullSpace   nullsp;        /*  null space of matrix   */
+KSP            ksp;           /*  linear solver context  */
+PC             pc;            /*  preconditioner context */
+PetscReal      norm;          /*  norm of solution error */
 int       i,j,its;
 
 int view_matrix = 0;
@@ -310,7 +310,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
  *
  *  psi_petsc_compute_matrix
  *
- *  Computes the matrix for KSP solver. 
+ *  Computes the matrix for KSP solver for a system with dielectric contrast. 
  *  Note that this routine uses the PETSc stencil structure, which permits
  *  local assembly of the matrix.
  *
@@ -657,17 +657,22 @@ int psi_petsc_copy_da_to_psi(psi_t * obj) {
  *
  *  psi_petsc_set_rhs
  *
+ *  Sets the right hand side of the Poisson equation and 
+ *  modifies the boundary sites if an external electric
+ *  field is present.
+ *
  *****************************************************************************/
 
 int psi_petsc_set_rhs(psi_t * obj) {
 
    int    ic,jc,kc,index;
-   int    noffset[3];
+   int    ntotal[3], noffset[3];
    int    i,j,k;
    int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
    double *** rho_3d;
    double rho_elec;
    double eunit, beta;
+   double epsilon, e0[3];
  
    assert(obj);
    coords_nlocal_offset(noffset);
@@ -677,6 +682,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
 
    psi_unit_charge(obj, &eunit);
    psi_beta(obj, &beta);
+
  
    xe = xs + xw;
    ye = ys + yw;
@@ -697,6 +703,75 @@ int psi_petsc_set_rhs(psi_t * obj) {
        }
      }
    }
+
+  /* Modify right hand side for external electric field */
+  if (is_physics_e0()) {
+
+    coords_ntotal(ntotal);
+    physics_e0(e0);
+    psi_epsilon(obj, &epsilon);
+
+    if (is_periodic(X)) {
+
+      if (cart_coords(X) == 0) {
+	for (k=zs; k<ze; k++) {
+	  for (j=ys; j<ye; j++) {
+	    rho_3d[k][j][0] += epsilon * e0[X] * ntotal[X];
+	  }
+	}
+      }
+
+      if (cart_coords(X) == cart_size(X)-1) {
+	for (k=zs; k<ze; k++) {
+	  for (j=ys; j<ye; j++) {
+	    rho_3d[k][j][xe-1] -= epsilon * e0[X] * ntotal[X];
+	  }
+	}
+      }
+
+    } 
+
+    if (is_periodic(Y)) {
+
+      if (cart_coords(Y) == 0) {
+	for (k=zs; k<ze; k++) {
+	  for (i=xs; i<xe; i++) {
+	    rho_3d[k][0][i] += epsilon * e0[Y] * ntotal[Y];
+	  }
+	}
+      }
+
+      if (cart_coords(Y) == cart_size(Y)-1) {
+	for (k=zs; k<ze; k++) {
+	  for (i=xs; i<xe; i++) {
+	    rho_3d[k][ye-1][i] -= epsilon * e0[Y] * ntotal[Y];
+	  }
+	}
+      }
+
+    } 
+
+    if (is_periodic(Z)) {
+
+      if (cart_coords(Z) == 0) {
+	for (j=ys; j<ye; j++) {
+	  for (i=xs; i<xe; i++) {
+	    rho_3d[0][j][i] += epsilon * e0[Z] * ntotal[Z];
+	  }
+	}
+      }
+
+      if (cart_coords(Z) == cart_size(Z)-1) {
+	for (j=ys; j<ye; j++) {
+	  for (i=xs; i<xe; i++) {
+	    rho_3d[ze-1][j][i] -= epsilon * e0[Z] * ntotal[Z];
+	  }
+	}
+      }
+
+    } 
+
+  }
  
    DMDAVecRestoreArray(da, b, &rho_3d);
 
@@ -716,31 +791,32 @@ int psi_petsc_set_rhs(psi_t * obj) {
  *
  *  psi_petsc_set_rhs_vare
  *
+ *  Sets the right hand side of the Poisson equation and modifies
+ *  the boundary sites if an external electric field is present,
+ *  acounting for dielectric contrast.
+ *
  *****************************************************************************/
 
-int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
+int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) { 
 
-   int    ic,jc,kc;
-   int    index;
-   int    noffset[3];
-   int    i, j, k, ia;
+   int    ic,jc,kc,index;
+   int    ntotal[3], noffset[3];
+   int    i,j,k;
    int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
    double *** rho_3d;
    double rho_elec;
-   double grad_eps[3];
-   double e0[3];   
    double eunit, beta;
+   double eps, e0[3];
  
    assert(obj);
    coords_nlocal_offset(noffset);
  
    DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
    DMDAVecGetArray(da, b, &rho_3d);
- 
-   physics_e0(e0);
+
    psi_unit_charge(obj, &eunit);
    psi_beta(obj, &beta);
-
+ 
    xe = xs + xw;
    ye = ys + yw;
    ze = zs + zw;
@@ -751,21 +827,132 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
        jc = j - noffset[Y] + 1;
        for (i=xs; i<xe; i++) {
          ic = i - noffset[X] + 1;
-
+ 
          index = coords_index(ic,jc,kc);
 	 psi_rho_elec(obj, index, &rho_elec);
 	 /* Non-dimensional potential in Poisson eqn requires e/kT */
          rho_3d[k][j][i] = rho_elec * eunit * beta;
-
-	 psi_grad_eps_d3qx(fepsilon, index, grad_eps);
-
-	 for(ia=0; ia<3; ia++){
-	   rho_3d[k][j][i] -= grad_eps[ia] * e0[ia];
-	 }
-
+ 
        }
      }
    }
+
+  /* Modify right hand side for external electric field */
+  if (is_physics_e0()) {
+
+    coords_ntotal(ntotal);
+    physics_e0(e0);
+
+    if (is_periodic(X)) {
+
+      if (cart_coords(X) == 0) {
+	i = 0;
+	ic = i - noffset[X] + 1;
+	for (k=zs; k<ze; k++) {
+	  kc = k - noffset[Z] + 1;
+	  for (j=ys; j<ye; j++) {
+	    jc = j - noffset[Y] + 1;
+
+	    index = coords_index(ic,jc,kc);
+	    fepsilon(index, &eps);
+	    rho_3d[k][j][i] += eps * e0[X] * ntotal[X];
+
+	  }
+	}
+      }
+
+      if (cart_coords(X) == cart_size(X)-1) {
+	i = xe - 1;
+	ic = i - noffset[X] + 1;
+	for (k=zs; k<ze; k++) {
+	  kc = k - noffset[Z] + 1;
+	  for (j=ys; j<ye; j++) {
+	    jc = j - noffset[Y] + 1;
+
+	    index = coords_index(ic,jc,kc);
+	    fepsilon(index, &eps);
+	    rho_3d[k][j][i] -= eps * e0[X] * ntotal[X];
+
+	  }
+	}
+      }
+
+    } 
+
+    if (is_periodic(Y)) {
+
+      if (cart_coords(Y) == 0) {
+	j = 0;
+	jc = j - noffset[Y] + 1;
+	for (k=zs; k<ze; k++) {
+	  kc = k - noffset[Z] + 1;
+	  for (i=xs; i<xe; i++) {
+	    ic = i - noffset[X] + 1;
+
+	    index = coords_index(ic,jc,kc);
+	    fepsilon(index, &eps);
+	    rho_3d[k][j][i] += eps * e0[Y] * ntotal[Y];
+
+	  }
+	}
+      }
+
+      if (cart_coords(Y) == cart_size(Y)-1) {
+	j = ye - 1;
+	jc = j - noffset[Y] + 1;
+	for (k=zs; k<ze; k++) {
+	  kc = k - noffset[Z] + 1;
+	  for (i=xs; i<xe; i++) {
+	    ic = i - noffset[X] + 1;
+
+	    index = coords_index(ic,jc,kc);
+	    fepsilon(index, &eps);
+	    rho_3d[k][j][i] -= eps * e0[Y] * ntotal[Y];
+
+	  }
+	}
+      }
+
+    }
+
+    if (is_periodic(Z)) {
+
+      if (cart_coords(Z) == 0) {
+	k = 0;
+	kc = k - noffset[Z] + 1;
+	for (j=ys; j<ye; j++) {
+	  jc = j - noffset[Y] + 1;
+	  for (i=xs; i<xe; i++) {
+	    ic = i - noffset[X] + 1;
+
+	    index = coords_index(ic,jc,kc);
+	    fepsilon(index, &eps);
+	    rho_3d[k][j][i] += eps * e0[Z] * ntotal[Z];
+
+	  }
+	}
+      }
+
+      if (cart_coords(Z) == cart_size(Z)-1) {
+	k = ze - 1;
+	kc = k - noffset[Z] + 1;
+	for (j=ys; j<ye; j++) {
+	  jc = j - noffset[Y] + 1;
+	  for (i=xs; i<xe; i++) {
+	    ic = i - noffset[X] + 1;
+
+	    index = coords_index(ic,jc,kc);
+	    fepsilon(index, &eps);
+	    rho_3d[k][j][i] -= eps * e0[Z] * ntotal[Z];
+
+	  }
+	}
+      }
+
+    }
+
+
+  }
  
    DMDAVecRestoreArray(da, b, &rho_3d);
 
@@ -778,7 +965,8 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
     PetscViewerDestroy(&viewer);
   }
  
-   return 0;
+  return 0;
+
 }
 
 /*****************************************************************************
@@ -797,6 +985,7 @@ int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
   if(fepsilon == NULL) {
     psi_petsc_set_rhs(obj);
   }
+
   if(fepsilon != NULL) {
     psi_petsc_compute_matrix(obj,fepsilon);
     psi_petsc_set_rhs_vare(obj,fepsilon);
