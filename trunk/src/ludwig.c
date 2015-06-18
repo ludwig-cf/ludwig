@@ -182,6 +182,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_init_rt(ludwig->param);
   physics_info(ludwig->param);
 
+#ifdef PETSC
+    psi_petsc_init(ludwig->psi, ludwig->epsilon);
+#endif
+
   lb_run_time(ludwig->lb);
   collision_run_time(ludwig->noise_rho);
   map_init_rt(&ludwig->map);
@@ -558,11 +562,11 @@ void ludwig_run(const char * inputfile) {
 	  TIMER_start(TIMER_FORCE_CALCULATION);
 	  psi_force_is_divergence(&flag);
 
-          /* Force input as body force and momentum correction */
+          /* Force input as gradient of chemical potential 
+                 with integrated momentum correction       */
 	  if (flag == 0) {
 	    psi_force_gradmu(ludwig->psi, ludwig->phi, ludwig->hydro,
 				  ludwig->map, ludwig->collinfo);
-	    hydro_correct_momentum(ludwig->hydro);
 	  }
 
           /* Force calculation as divergence of stress tensor */
@@ -1390,10 +1394,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
 
-#ifdef PETSC
-    psi_petsc_init(ludwig->psi, ludwig->epsilon);
-#endif
-
     /* Create FE objects and set function pointers */
     fe_electro_create(ludwig->psi);
 
@@ -1460,10 +1460,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
-
-#ifdef PETSC
-    psi_petsc_init(ludwig->psi, ludwig->epsilon);
-#endif
 
     /* Coupling part */
 

@@ -58,8 +58,12 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
   double phi0;          /* Compositional order parameter */
   double kt, eunit, reunit;
   double force[3];
+  /* Cummulative forces for momentum correction */
+  double flocal[4] = {0.0, 0.0, 0.0, 0.0};
+  double fsum[4];
 
   double (* chemical_potential)(const int index, const int nop);
+  MPI_Comm comm;
 
   colloid_t * pc = NULL;
 
@@ -68,6 +72,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 
   coords_nlocal(nlocal);
   coords_strides(&xs, &ys, &zs);
+  comm = cart_comm();
 
   physics_kt(&kt);
   psi_unit_charge(psi, &eunit);
@@ -175,8 +180,43 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 */
 	  if (hydro) hydro_f_local_add(hydro, index, force);
 
+	  flocal[3] += 1.0;
+
 	}
 
+	/* Accumulate contribution to total force on system */
+
+	flocal[X] += force[X];
+	flocal[Y] += force[Y];
+	flocal[Z] += force[Z];
+
+      }
+    }
+  }
+
+  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+
+  fsum[X] /= fsum[3];
+  fsum[Y] /= fsum[3];
+  fsum[Z] /= fsum[3];
+
+  /* Now actually compute the force on the fluid with the correction
+     (based on number of fluid nodes) and store */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+
+	colloids_info_map(cinfo, index, &pc);
+	if (pc) continue;
+
+        force[X] = - fsum[X];
+        force[Y] = - fsum[Y];
+        force[Z] = - fsum[Z];
+
+	if (hydro) hydro_f_local_add(hydro, index, force);
       }
     }
   }
