@@ -20,7 +20,7 @@ N_cycles 1000
 ##############################################################################
 
 size 64_4_4
-grid 1_1_1
+grid 1_1_2
 periodicity 1_1_1
 reduced_halo yes
 
@@ -49,7 +49,7 @@ fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
-fd_force_divergence 1
+fd_force_divergence 0
 
 ###############################################################################
 #
@@ -79,7 +79,7 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 100
+freq_statistics 1000
 config_at_end no
 
 colloid_io_freq 1000

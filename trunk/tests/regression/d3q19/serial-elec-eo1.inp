@@ -1,6 +1,6 @@
 ##############################################################################
 #
-#  Electro-osmotic flow with divergence of stress tensor
+#  Electro-osmotic flow
 #
 ##############################################################################
 
@@ -13,8 +13,8 @@ N_cycles 1000
 # 
 ##############################################################################
 
-size 64_4_4
-grid 1_1_1
+size 64_2_2
+grid 8_1_1
 periodicity 0_1_1
 reduced_halo no
 
@@ -32,13 +32,15 @@ temperature 3.3333e-5
 
 ##############################################################################
 #
-#  External electric field
+#  Uniform external fields
 #
+#  magnetic_b0     Bx_By_Bz  e.g., for dipoles (default zero)
 #  electric_e0     Ex_Ey_Ez  e.g., for electrokinetics (default zero)
 #
 ##############################################################################
 
-electric_e0 0.0_3.0e-2_0.0
+magnetic_b0 0.0_0.0_0.0
+electric_e0 0.0_1.0e-6_0.0
 
 ##############################################################################
 #
@@ -52,7 +54,7 @@ fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 fd_phi_fluctuations 0
 fd_phi_fluctuations_seed 17
-fd_force_divergence 1
+fd_force_divergence 0
 
 ###############################################################################
 #
@@ -81,14 +83,33 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics 100
+freq_statistics 1000
 freq_measure 10000000
+freq_config 10000000
+freq_phi    10000000
+freq_psi    50000
+freq_vel    50000
+freq_shear_measurement 1000000
+freq_shear_output      1000000
 config_at_end no
 
 default_io_grid 1_1_1
 
 distribution_io_grid 1_1_1
 distribution_io_input_format BINARY
+
+phi_io_grid 1_1_1
+phi_format    ASCII
+psi_format    ASCII
+vel_format    ASCII
+
+##############################################################################
+#
+#  colloid i/o
+#
+##############################################################################
+
+colloid_io_freq 1000
 
 ###############################################################################
 #
@@ -117,13 +138,6 @@ electrokinetics_init    gouy_chapman
 electrokinetics_init_rho_el 	0.00
 electrokinetics_init_delta_el 	0.01
 electrokinetics_init_sigma 	0.0125
-
-electrokinetics_rel_tol  1e-07
-electrokinetics_abs_tol  1e-09
-electrokinetics_maxits   2000
-electrokinetics_diffacc  0.5
-
-electrokinetics_multisteps  1
 
 ###############################################################################
 #
