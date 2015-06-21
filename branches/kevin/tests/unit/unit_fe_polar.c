@@ -49,7 +49,6 @@ int do_test_fe_polar_param(control_t * ctrl) {
   field_t * p = NULL;
   field_grad_t * dp = NULL;
 
-  fe_t * fe = NULL;
   fe_polar_t * fep = NULL;
 
   assert(ctrl);
@@ -64,8 +63,7 @@ int do_test_fe_polar_param(control_t * ctrl) {
   field_create(cs, 3, "p", &p);
   field_grad_create(p, 1, &dp);
 
-  fe_create(&fe);
-  fe_polar_create(fe, p, dp, &fep);
+  fe_polar_create(p, dp, &fep);
 
   try {
     fe_polar_param_set(fep, param0);
@@ -99,7 +97,6 @@ int do_test_fe_polar_param(control_t * ctrl) {
   }
 
   fe_polar_free(fep);
-  fe_free(fe);
 
   field_grad_free(dp);
   field_free(p);
@@ -119,7 +116,6 @@ int do_test_fe_polar_param(control_t * ctrl) {
 
 int do_test_fe_polar_bulk(control_t * ctrl) {
 
-
   fe_polar_param_t param0 = {-0.1, +0.1, 0.0, 0.01, 0.00, 0.03, 0.04};
 
   int index;
@@ -135,7 +131,6 @@ int do_test_fe_polar_bulk(control_t * ctrl) {
   field_t * p = NULL;
   field_grad_t * dp = NULL;
 
-  fe_t * fe = NULL;
   fe_polar_t * fep = NULL;
 
   assert(ctrl);
@@ -154,8 +149,7 @@ int do_test_fe_polar_bulk(control_t * ctrl) {
   index = coords_index(cs, 1, 1, 1);
   field_vector_set(p, index, p0);
 
-  fe_create(&fe);
-  fe_polar_create(fe, p, dp, &fep);
+  fe_polar_create(p, dp, &fep);
 
   try {
     fe_polar_param_set(fep, param0);
@@ -166,10 +160,11 @@ int do_test_fe_polar_bulk(control_t * ctrl) {
     h0[Y] = -param0.a*p0[Y] - param0.b*p2*p0[Y];
     h0[Z] = -param0.a*p0[Z] - param0.b*p2*p0[Z];
 
+    /* Abstract interface */
 
-    fe_fed(fe, index, &fed1);
-    fe_hvector(fe, index, h1);
-    fe_str(fe, index, s1);
+    fe_fed((fe_t *) fep, index, &fed1);
+    fe_hvector((fe_t *) fep, index, h1);
+    fe_str((fe_t *) fep, index, s1);
 
     control_verb(ctrl, "fe density:         %22.15e %22.15e\n", fed0, fed1);
     control_macro_test_dbl_eq(ctrl, fed0, fed1, DBL_EPSILON);
@@ -198,8 +193,8 @@ int do_test_fe_polar_bulk(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  fe_polar_free(fep);
-  fe_free(fe);
+  /* Virtual destructor */
+  fe_free((fe_t *) fep);
 
   field_grad_free(dp);
   field_free(p);

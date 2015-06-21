@@ -50,7 +50,7 @@ int do_test_fe_surf_param(control_t * ctrl) {
   coords_t * cs = NULL;
   field_t * surf = NULL;
   field_grad_t * grad = NULL;
-  fe_t * fe = NULL;
+
   fe_surfactant_t * fs = NULL;
 
   assert(ctrl);
@@ -65,8 +65,7 @@ int do_test_fe_surf_param(control_t * ctrl) {
   field_create(cs, 2, "pair", &surf);
   field_grad_create(surf, 0, &grad);
 
-  fe_create(&fe);
-  fe_surfactant_create(fe, surf, grad, &fs);
+  fe_surfactant_create(surf, grad, &fs);
 
   try {
     fe_surfactant_param_set(fs, param0);
@@ -124,7 +123,6 @@ int do_test_fe_surf_param(control_t * ctrl) {
   }
 
   fe_surfactant_free(fs);
-  fe_free(fe);
 
   field_grad_free(grad);
   field_free(surf);
@@ -158,7 +156,7 @@ int do_test_fe_surf_bulk(control_t * ctrl) {
   coords_t * cs = NULL;
   field_t * surf = NULL;
   field_grad_t * grad = NULL;
-  fe_t * fe = NULL;
+
   fe_surfactant_t * fs = NULL;
 
   assert(ctrl);
@@ -177,14 +175,15 @@ int do_test_fe_surf_bulk(control_t * ctrl) {
   index = coords_index(cs, 1, 1, 1);
   field_scalar_array_set(surf, index, f);
 
-  fe_create(&fe);
-  fe_surfactant_create(fe, surf, grad, &fs);
+  fe_surfactant_create(surf, grad, &fs);
 
   try {
     fe_surfactant_param_set(fs, param0);
 
-    fe_fed(fe, index, &fed0);
-    fe_mu(fe, index, mu0);
+    /* Virtual functions */
+
+    fe_fed((fe_t *) fs, index, &fed0);
+    fe_mu((fe_t *) fs, index, mu0);
 
     fed1 = 0.5*(param0.a + 0.5*param0.b*f[0]*f[0])*f[0]*f[0]
       + param0.kt*(f[1]*log(f[1]) + (1.0 - f[1])*log(1.0 - f[1]));
@@ -206,8 +205,8 @@ int do_test_fe_surf_bulk(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  fe_surfactant_free(fs);
-  fe_free(fe);
+  /* Virtual destructor */
+  fe_free((fe_t *) fs);
 
   field_grad_free(grad);
   field_free(surf);

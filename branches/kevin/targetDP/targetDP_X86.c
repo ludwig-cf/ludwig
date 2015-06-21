@@ -10,6 +10,50 @@
 #include <math.h>
 #include "targetDP.h"
 
+/* Globally reserved names */
+
+dim3 gridDim;
+dim3 blockDim;
+
+/* Utilities */
+
+
+uint3 __x86_builtin_threadIdx_init(void) {
+  uint3 threads = {1, 1, 1};
+  threads.x = __x86_get_thread_num();
+  return threads;
+}
+
+uint3 __x86_builtin_blockIdx_init(void) {
+  uint3 blocks = {1, 1, 1};
+  return blocks;
+}
+
+void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
+
+  gridDim = nblocks;
+  blockDim = nthreads;
+
+  /* sanity checks on user settings here... */
+
+  /* In case we request fewer threads than are available: */
+
+  __x86_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+
+  return;
+}
+
+void __x86_postlaunch(void) {
+
+  int nthreads;
+
+  /* Reset the default number of threads. */
+  nthreads = __x86_get_max_threads();
+  __x86_set_num_threads(nthreads);
+
+  return;
+}
+
 
 void checkTargetError(const char *msg){
 

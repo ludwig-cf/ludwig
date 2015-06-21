@@ -5,7 +5,7 @@
  *  This is an 'abstract' free energy interface.
  *
  *  Any concrete implementation should implement one or more of the
- *  following functions to override the default 'null' free energy:
+ *  following functions:
  *
  *  fe_fed_ft      computes free energy density
  *  fe_mu_ft       computes one or more chemical potentials
@@ -18,51 +18,34 @@
  *  parameter, and sets the highest order of spatial derivatives of
  *  the order parameter required for the free energy calculations.
  *
- *  $Id: free_energy.c,v 1.16 2010-10-15 12:40:02 kevin Exp $
+ *  A free energy must implement at least a free energy density, a stress,
+ *  and an approproiate chemical potential or molecular field.
+ *  A destructor (free) should also be defined.
+ *
+ *  C casts can take place between the abstract and a concrete
+ *  pointers, e.g.,
+ *
+ *  fe_t * fe;
+ *  fe_foo_t * fe_derived;
+ *
+ *  fe = (fe_t *) fe_derived;         // upcast
+ *  fe_derived = (fe_derived *) fe;   // downcast
+ *
+ *  No objects of the abstract type fe_t should be instantiated (there
+ *  is no constructor in this class). A virtual destructor is supplied.
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2014 The University of Edinburgh
+ *  (c) 2009-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
 
 #include "fe_s.h"
-
-static int fe_fed_null(fe_t * fe, int index, double * fed);
-static int fe_mu_null(fe_t * fe,  int index, double * mu);
-static int fe_pth_null(fe_t * fe, int index, double s[3][3]);
-static int fe_mu_solv_null(fe_t * fe, int index, int n, double * mu);
-static int fe_hvector_null(fe_t * fe, int index, double h[3]);
-static int fe_htensor_null(fe_t * fe, int index, double h[3][3]);
-
-/****************************************************************************
- *
- *  fe_create
- *
- ****************************************************************************/
-
-int fe_create(fe_t ** p) {
-
-  fe_t * fe = NULL;
-
-  fe = (fe_t *) calloc(1, sizeof(fe_t));
-  if (fe == NULL) fatal("calloc(fe_t) failed\n");
-
-  fe->fed     = fe_fed_null;
-  fe->mu      = fe_mu_null;
-  fe->stress  = fe_pth_null;
-  fe->mu_solv = fe_mu_solv_null;
-  fe->hvector = fe_hvector_null;
-  fe->htensor = fe_htensor_null;
-
-  *p = fe;
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -73,52 +56,10 @@ int fe_create(fe_t ** p) {
 int fe_free(fe_t * fe) {
 
   assert(fe);
+  assert(fe->vtable);
+  assert(fe->vtable->free);
 
-  free(fe);
-
-  return 0;
-}
-
-/****************************************************************************
- *
- *  fe_register_cb
- *
- *  'Override' call back function pointers if non-NULL provided.
- *
- ****************************************************************************/
-
-int fe_register_cb(fe_t * fe, void * child, fe_fed_ft fed, fe_mu_ft mu,
-		   fe_str_ft str, fe_mu_solv_ft mu_solv,
-		   fe_hvector_ft hvector, fe_htensor_ft htensor) {
-
-  assert(fe);
-  assert(child);
-
-  fe->child = child;
-  if (fed) fe->fed = fed;
-  if (mu) fe->mu = mu;
-  if (str) fe->stress = str;
-  if (mu_solv) fe->mu_solv = mu_solv;
-  if (hvector) fe->hvector = hvector;
-  if (htensor) fe->htensor = htensor;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_child
- *
- *  Caller is responsible for dealing with child pointer correctly.
- *
- *****************************************************************************/
-
-int fe_child(fe_t * fe, void ** child) {
-
-  assert(fe);
-  assert(child);
-
-  *child = fe->child;
+  fe->vtable->free(fe);
 
   return 0;
 }
@@ -132,8 +73,10 @@ int fe_child(fe_t * fe, void ** child) {
 int fe_fed(fe_t * fe, int index, double * fed) {
 
   assert(fe);
+  assert(fe->vtable);
+  assert(fe->vtable->fed);
 
-  return fe->fed(fe, index, fed);
+  return fe->vtable->fed(fe, index, fed);
 }
 
 /*****************************************************************************
@@ -145,8 +88,10 @@ int fe_fed(fe_t * fe, int index, double * fed) {
 int fe_mu(fe_t * fe, int index, double * mu) {
 
   assert(fe);
+  assert(fe->vtable);
+  assert(fe->vtable->mu);
 
-  return fe->mu(fe, index, mu);
+  return fe->vtable->mu(fe, index, mu);
 }
 
 /*****************************************************************************
@@ -158,8 +103,10 @@ int fe_mu(fe_t * fe, int index, double * mu) {
 int fe_str(fe_t * fe, int index, double s[3][3]) {
 
   assert(fe);
+  assert(fe->vtable);
+  assert(fe->vtable->stress);
 
-  return fe->stress(fe, index, s);
+  return fe->vtable->stress(fe, index, s);
 }
 
 /*****************************************************************************
@@ -171,112 +118,23 @@ int fe_str(fe_t * fe, int index, double s[3][3]) {
 int fe_hvector(fe_t * fe, int index, double h[3]) {
 
   assert(fe);
+  assert(fe->vtable);
+  assert(fe->vtable->hvector);
 
-  return fe->hvector(fe, index, h);
+  return fe->vtable->hvector(fe, index, h);
 }
 
 /*****************************************************************************
  *
- *  fe_fed_null
+ *  fe_htensor
  *
  *****************************************************************************/
 
-int fe_fed_null(fe_t * fe, int index, double * fed) {
+int fe_htensor(fe_t * fe, int index, double h[3][3]) {
 
   assert(fe);
+  assert(fe->vtable);
+  assert(fe->vtable->htensor);
 
-  *fed = 0.0;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_mu_null
- *
- *****************************************************************************/
-
-int fe_mu_null(fe_t * fe, int index, double * mu) {
-
-  assert(fe);
-
-  *mu = 0.0;
-
-  return 0;
-}
-
-/****************************************************************************
- *
- *  fe_pth_null
- *
- *  Default chemical stress is zero.
- *
- ****************************************************************************/
-
-static int fe_pth_null(fe_t * fe, int index, double s[3][3]) {
-
-  int ia, ib;
-
-  assert(fe);
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = 0.0;
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_mu_solv_set
- *
- *****************************************************************************/
-
-static int fe_mu_solv_null(fe_t * fe, int index, int nt, double * mu) {
-
-  int n;
-
-  assert(fe);
-
-  for (n = 0; n < nt; n++) {
-    mu[n] = 0.0;
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_hvector_null
- *
- *****************************************************************************/
-
-static int fe_hvector_null(fe_t * fe, int index, double h[3]) {
-
-  h[0] = 0.0;
-  h[1] = 0.0;
-  h[2] = 0.0;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_htensor_null
- *
- *****************************************************************************/
-
-static int fe_htensor_null(fe_t * fe, int index, double h[3][3]) {
-
-  int ia, ib;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      h[ia][ib] = 0.0;
-    }
-  }
-
-  return 0;
+  return fe->vtable->htensor(fe, index, h);
 }

@@ -27,7 +27,7 @@ struct fe_symmetric_param_s {
   double kappa;
 };
 
-__host__ int fe_symmetric_create(fe_t * fe, field_t * f, field_grad_t * grd,
+__host__ int fe_symmetric_create(field_t * f, field_grad_t * grd,
 				 fe_symmetric_t ** p);
 __host__ int fe_symmetric_free(fe_symmetric_t * fe);
 __host__ int fe_symmetric_param_set(fe_symmetric_t * fe,

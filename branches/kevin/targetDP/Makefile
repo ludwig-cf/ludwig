@@ -17,7 +17,7 @@ AR = ar -cru
 
 # CC=	gcc-4.9
 
-CC=	gcc
+CC =  gcc -Wall -ansi 
 NVCC= nvcc 
 
 
@@ -29,7 +29,7 @@ endif
 
 
 # CFLAGS = -O3 -fopenmp  #-save-temps
- CFLAGS = -g -fopenmp  #-save-temps
+ CFLAGS = -g  #-save-temps
 
 #mic
 # CC= icc

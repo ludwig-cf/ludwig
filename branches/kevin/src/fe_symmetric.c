@@ -28,17 +28,22 @@
 #include "fe_symmetric.h"
 
 struct fe_symmetric_s {
-  fe_symmetric_param_t * param;
-  field_t * phi;
-  field_grad_t * dphi;
-  fe_symmetric_t * target; /* placeholder awaiting implementation */
+  fe_t super;                       /* Implements fe_t */
+  fe_symmetric_param_t * param;     /* Parameters */
+  field_t * phi;                    /* Scalar order parameter or composition */
+  field_grad_t * dphi;              /* Gradients thereof */
+  fe_symmetric_t * target;          /* Target copy */
 };
 
-/* "Superclass" call backs */
-
-int fe_symmetric_fed_cb(fe_t * fe, int index, double * fed);
-int fe_symmetric_mu_cb(fe_t * fe, int index, double * mu);
-int fe_symmetric_str_cb(fe_t * fe, int index, double s[3][3]);
+static fe_vtable_t fe_symmetric_vtable = {
+  (fe_free_ft)    fe_symmetric_free,
+  (fe_fed_ft)     fe_symmetric_fed,
+  (fe_mu_ft)      fe_symmetric_mu,
+  (fe_str_ft)     fe_symmetric_str,
+  (fe_mu_solv_ft) NULL,
+  (fe_hvector_ft) NULL,
+  (fe_htensor_ft) NULL
+};
 
 /****************************************************************************
  *
@@ -48,12 +53,11 @@ int fe_symmetric_str_cb(fe_t * fe, int index, double s[3][3]);
  *
  ****************************************************************************/
 
-__host__ int fe_symmetric_create(fe_t * fe, field_t * phi, field_grad_t * dphi,
+__host__ int fe_symmetric_create(field_t * phi, field_grad_t * dphi,
 				 fe_symmetric_t ** p) {
 
   fe_symmetric_t * obj = NULL;
 
-  assert(fe);
   assert(phi);
   assert(dphi);
 
@@ -63,10 +67,10 @@ __host__ int fe_symmetric_create(fe_t * fe, field_t * phi, field_grad_t * dphi,
   obj->param = (fe_symmetric_param_t *) calloc(1, sizeof(fe_symmetric_param_t));
   if (obj->param == NULL) fatal("calloc(fe_symetric_param_t failed\n");
 
+  obj->super.vtable = &fe_symmetric_vtable;
   obj->phi = phi;
   obj->dphi = dphi;
-  fe_register_cb(fe, obj, fe_symmetric_fed_cb, fe_symmetric_mu_cb,
-		 fe_symmetric_str_cb, NULL, NULL, NULL);
+
   *p = obj;
 
   return 0;
@@ -166,24 +170,6 @@ int fe_symmetric_interfacial_width(fe_symmetric_t * fe, double * xi) {
   return 0;
 }
 
-/*****************************************************************************
- *
- *  fe_symmetric_fed_cb
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_symmetric_fed_cb(fe_t * fe, int index, double * fed) {
-
-  fe_symmetric_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_symmetric_fed(fs, index, fed);
-}
-
 /****************************************************************************
  *
  *  symmetric_free_energy_density
@@ -206,24 +192,6 @@ __host__ __device__ int fe_symmetric_fed(fe_symmetric_t * fe, int index,
     + 0.5*fe->param->kappa*dot_product(dphi, dphi);
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_symmetric_mu_cb
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_symmetric_mu_cb(fe_t * fe, int index, double * mu) {
-
-  fe_symmetric_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_symmetric_mu(fs, index, mu);
 }
 
 /****************************************************************************
@@ -252,24 +220,6 @@ int fe_symmetric_mu(fe_symmetric_t * fe, int index, double * mu) {
     - fe->param->kappa*delsq_phi;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_symmetric_str_cb
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_symmetric_str_cb(fe_t * fe, int index, double s[3][3]) {
-
-  fe_symmetric_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_symmetric_str(fs, index, s);
 }
 
 /****************************************************************************

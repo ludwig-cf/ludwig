@@ -1,4 +1,4 @@
-/* Cuda stub interface. */
+/* Cuda stub interface. API functions are added as required. */
 
 #ifndef CUDA_STUB_API_H
 #define CUDA_STUB_API_H
@@ -12,6 +12,9 @@ typedef enum cudaMemcpyKind_enum {
   cudaMemcpyDeviceToDevice = 3,
   cudaMemcpyDefault = 4}
   cudaMemcpyKind;
+
+
+/* cudaGetLastError() can return... */
 
 enum cudaError {
   cudaSuccess = 0,
@@ -27,95 +30,61 @@ enum cudaError {
   cudaErrorInvalidValue = 11,
   cudaErrorInvalidPitchValue = 12,
   cudaErrorInvalidSymbol = 13,
-  cudaErrorInvalidDevicePointer = 17,
-  cudaErrorInvalidMemcpyDirection = 21
-};
-
-
-/* geterror can return:
- cudaErrorUnmapBufferObjectFailed, cudaErrorInvalidHostPointer, cudaErrorInvalidDevicePointer, cudaErrorInvalidTexture, cudaErrorInvalidTextureBinding, cudaErrorInvalidChannelDescriptor, cudaErrorInvalidMemcpyDirection, cudaErrorInvalidFilterSetting, cudaErrorInvalidNormSetting, cudaErrorUnknown, cudaErrorInvalidResourceHandle, cudaErrorInsufficientDriver, cudaErrorSetOnActiveProcess, cudaErrorStartupFailure,
-*/
-
-
-/* exhaustive list
-enum cudaError {
-  cudaErrorPriorLaunchFailure = 5,
-  cudaErrorMapBufferObjectFailed = 14,
   cudaErrorUnmapBufferObjectFailed = 15,
   cudaErrorInvalidHostPointer = 16,
+  cudaErrorInvalidDevicePointer = 17,
   cudaErrorInvalidTexture = 18,
   cudaErrorInvalidTextureBinding = 19,
   cudaErrorInvalidChannelDescriptor = 20,
-  cudaErrorAddressOfConstant = 22,
-  cudaErrorTextureFetchFailed = 23,
-  cudaErrorTextureNotBound = 24,
-  cudaErrorSynchronizationError = 25,
+  cudaErrorInvalidMemcpyDirection = 21,
   cudaErrorInvalidFilterSetting = 26,
-  cudaErrorMixedDeviceExecution = 28,
-  cudaErrorCudartUnloading = 29,
   cudaErrorUnknown = 30,
-  cudaErrorNotYetImplemented = 31,
-  cudaErrorMemoryValueTooLarge = 32,
   cudaErrorInvalidResourceHandle = 33,
-  cudaErrorNotReady = 34,
   cudaErrorInsufficientDriver = 35,
   cudaErrorSetOnActiveProcess = 36,
-  cudaErrorInvalidSurface = 37,
-  cudaErrorNoDevice = 38,
-  cudaErrorECCUncorrectable = 39,
-  cudaErrorSharedObjectSymbolNotFound = 40,
-  cudaErrorSharedObjectInitFailed = 41,
-  cudaErrorUnsupportedLimit = 42,
-  cudaErrorDuplicateVariableName = 43,
-  cudaErrorDuplicateTextureName = 44,
-  cudaErrorDuplicateSurfaceName = 45,
-  cudaErrorDevicesUnavailable = 46,
-  cudaErrorInvalidKernelImage = 47,
-  cudaErrorNoKernelImageForDevice = 48,
-  cudaErrorIncompatibleDriverContext = 49,
-  cudaErrorPeerAccessAlreadyEnabled = 50,
-  cudaErrorPeerAccessNotEnabled = 51,
-  cudaErrorDeviceAlreadyInUse = 54,
-  cudaErrorProfilerDisabled = 55,
-  cudaErrorProfilerNotInitialized = 56,
-  cudaErrorProfilerAlreadyStarted = 57,
-  cudaErrorProfilerAlreadyStopped = 58,
-  cudaErrorAssert = 59,
-  cudaErrorTooManyPeers = 60,
-  cudaErrorHostMemoryAlreadyRegistered = 61,
-  cudaErrorHostMemoryNotRegistered = 62,
-  cudaErrorOperatingSystem = 63,
-  cudaErrorPeerAccessUnsupported = 64,
-  cudaErrorLaunchMaxDepthExceeded = 65,
-  cudaErrorLaunchFileScopedTex = 66,
-  cudaErrorLaunchFileScopedSurf = 67,
-  cudaErrorSyncDepthExceeded = 68,
-  cudaErrorLaunchPendingCountExceeded = 69,
-  cudaErrorNotPermitted = 70,
-  cudaErrorNotSupported = 71,
-  cudaErrorHardwareStackError = 72,
-  cudaErrorIllegalInstruction = 73,
-  cudaErrorMisalignedAddress = 74,
-  cudaErrorInvalidAddressSpace = 75,
-  cudaErrorInvalidPc = 76,
-  cudaErrorIllegalAddress = 77,
-  cudaErrorInvalidPtx = 78,
-  cudaErrorInvalidGraphicsContext = 79,
-  cudaErrorStartupFailure = 0x7f,
-  cudaErrorApiFailureBase = 10000
+  cudaErrorStartupFailure = 0x7f
 };
-*/
+
+#define cudaHostAllocDefault       0x00
+#define cudaHostAllocMapped        0x02
+#define cudaHostAllocPortable      0x01
+#define cudaHostAllocWriteCombined 0x04
+
+/* Additional definitions */
+
+#define __host__
+#define __device__
 
 typedef enum cudaError cudaError_t;     /* an enum type */
 typedef int * cudaStream_t;             /* an opaque handle */
 
-cudaError_t cudaDeviceSynchronize(void);
-cudaError_t cudaFree(void ** devPtr);
-const char *  cudaGetErrorString(cudaError_t error);
-cudaError_t cudaGetLastError(void);
-cudaError_t cudaMalloc(void ** devRtr, size_t size);
-cudaError_t cudaMemcpy(void * dst, const void * src, size_t count,
-		       cudaMemcpyKind kind);
-cudaError_t cudaMemset(void * devPtr, int value, size_t count);
+/* API */
+
+__host__ __device__ cudaError_t cudaDeviceSynchronize(void);
+__host__ __device__ cudaError_t cudaFree(void ** devPtr);
+__host__            cudaError_t cudaFreeHost(void * phost);
+__host__ __device__ cudaError_t cudaGetDevice(int * device);
+__host__ __device__ cudaError_t cudaGetDeviceCount(int * count);
+__host__ __device__ const char* cudaGetErrorString(cudaError_t error);
+__host__ __device__ cudaError_t cudaGetLastError(void);
+
+__host__ __device__ cudaError_t cudaHostAlloc(void ** phost, size_t size,
+					      unsigned int flags);
+__host__ __device__ cudaError_t cudaMalloc(void ** devRtr, size_t size);
+__host__            cudaError_t cudaMemcpy(void * dst, const void * src,
+					   size_t count,
+					   cudaMemcpyKind kind);
+__host__            cudaError_t cudaMemcpyFromSymbol(void * dst,
+						     const void * symbol,
+						     size_t count,
+						     size_t offset,
+						     cudaMemcpyKind kind);
+__host__            cudaError_t cudaMemcpyToSymbol(void * symbol,
+						   const void * src,
+						   size_t count, size_t offset,
+						   cudaMemcpyKind kind);
+__host__            cudaError_t cudaMemset(void * devPtr, int value,
+					   size_t count);
+
 
 #endif

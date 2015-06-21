@@ -65,7 +65,7 @@ TESTOBJECTS = ${TESTSOURCES:.c=.o}
 #  Rules
 #------------------------------------------------------------------------------
 
-TESTSRC = e4c_lite.c e4c_mpi.c unit_control.c unit_lang.c unit_util.c unit_pe.c unit_coords.c unit_le.c unit_rti.c unit_fe_symm.c unit_fe_surf.c unit_fe_braz.c unit_fe_polar.c unit_fe_electro.c unit_fe_es.c driver.c
+TESTSRC = e4c_lite.c e4c_mpi.c unit_control.c unit_lang.c unit_util.c unit_pe.c unit_coords.c unit_le.c unit_rti.c unit_fe_symm.c unit_fe_surf.c unit_fe_braz.c unit_fe_polar.c unit_fe_electro.c unit_fe_es.c unit_fe_lcbp.c driver.c
 TESTOBJ = ${TESTSRC:.c=.o}
 
 new-mpi:	$(TESTOBJ)

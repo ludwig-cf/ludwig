@@ -83,11 +83,23 @@ double reverse_byte_order_double(char * c) {
  *
  *  dot_product
  *
+ *  Please use util_dot_product.
+ *
  *****************************************************************************/
 
 double dot_product(const double a[3], const double b[3]) {
 
   return (a[X]*b[X] + a[Y]*b[Y] + a[Z]*b[Z]);
+}
+
+__host__ __device__
+double util_dot_product(const double a[3], const double b[3]) {
+
+  double dot;
+
+  dot = a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+
+  return dot;
 }
 
 /*****************************************************************************

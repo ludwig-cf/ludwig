@@ -40,18 +40,26 @@
 #include <float.h>
 
 #include "util.h"
+#include "fe_s.h"
 #include "fe_polar.h"
 
 struct fe_polar_s {
-  fe_polar_param_t * param;
-  field_t * p;
-  field_grad_t * dp;
-  fe_polar_t * target;
+  fe_t super;                    /* Implements fe_t */
+  fe_polar_param_t * param;      /* Parameters */
+  field_t * p;                   /* Vector order parameter */
+  field_grad_t * dp;             /* Gradient d_a P_b */
+  fe_polar_t * target;           /* Target copy */
 };
 
-int fe_polar_fed_cb(fe_t * fe, int index, double * fed);
-int fe_polar_hvector_cb(fe_t * fe, int index, double h[3]);
-int fe_polar_str_cb(fe_t * fe, int index, double s[3][3]);
+static fe_vtable_t fe_polar_vtable = {
+  (fe_free_ft)    fe_polar_free,
+  (fe_fed_ft)     fe_polar_fed,
+  (fe_mu_ft)      NULL,
+  (fe_str_ft)     fe_polar_stress,
+  (fe_mu_solv_ft) NULL,
+  (fe_hvector_ft) fe_polar_mol_field,
+  (fe_htensor_ft) NULL
+};
 
 /*****************************************************************************
  *
@@ -59,12 +67,11 @@ int fe_polar_str_cb(fe_t * fe, int index, double s[3][3]);
  *
  *****************************************************************************/
 
-__host__ int fe_polar_create(fe_t * fe, field_t * p, field_grad_t * dp,
+__host__ int fe_polar_create(field_t * p, field_grad_t * dp,
 			     fe_polar_t ** pobj) {
 
   fe_polar_t * obj = NULL;
 
-  assert(fe);
   assert(p);
   assert(dp);
 
@@ -74,10 +81,10 @@ __host__ int fe_polar_create(fe_t * fe, field_t * p, field_grad_t * dp,
   obj->param = (fe_polar_param_t *) calloc(1, sizeof(fe_polar_param_t));
   if (obj->param == NULL) fatal("calloc(fe_polar_param_t) failed\n");
 
+  obj->super.vtable = &fe_polar_vtable;
   obj->p = p;
   obj->dp = dp;
-  fe_register_cb(fe, obj, fe_polar_fed_cb, NULL, fe_polar_str_cb, NULL,
-		 fe_polar_hvector_cb, NULL);
+
   *pobj = obj;
 
   return 0;
@@ -136,23 +143,6 @@ __host__ __device__ int fe_polar_param(fe_polar_t * fe,
 
 /*****************************************************************************
  *
- * fe_polar_fed_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_polar_fed_cb(fe_t * fe, int index, double * fed) {
-
-  fe_polar_t * fp;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fp);
-
-  return fe_polar_fed(fp, index, fed);
-}
-
-/*****************************************************************************
- *
  *  fe_polar_fed
  *
  *  The free energy density is:
@@ -199,23 +189,6 @@ __host__ __device__ int fe_polar_fed(fe_polar_t * fe, int index, double * fed) {
     + 0.5*fe->param->delta*fe->param->kappa1*dp3;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_polar_str_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_polar_str_cb(fe_t * fe, int index, double s[3][3]) {
-
-  fe_polar_t * fp;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fp);
-
-  return fe_polar_stress(fp, index, s);
 }
 
 /*****************************************************************************
@@ -290,23 +263,6 @@ __host__ __device__ int fe_polar_stress(fe_polar_t * fe, int index,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  fe_polar_hvector_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_polar_hvector_cb(fe_t * fe, int index, double h[3]) {
-  fe_polar_t * fp;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fp);
-
-  return fe_polar_mol_field(fp, index, h);
-}
-
 
 /*****************************************************************************
  *

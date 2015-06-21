@@ -33,7 +33,7 @@ struct fe_polar_param_s {
   double zeta;
 };
 
-__host__ int fe_polar_create(fe_t * fe, field_t * p, field_grad_t * dp,
+__host__ int fe_polar_create(field_t * p, field_grad_t * dp,
 			     fe_polar_t ** pobj);
 __host__ int fe_polar_free(fe_polar_t * fe);
 __host__ int fe_polar_param_set(fe_polar_t * fe, fe_polar_param_t values);
@@ -45,4 +45,5 @@ __host__ __device__ int fe_polar_mol_field(fe_polar_t * fe, int index,
 					   double h[3]);
 __host__ __device__ int fe_polar_stress(fe_polar_t * fe, int index,
 					double s[3][3]);
+
 #endif

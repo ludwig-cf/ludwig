@@ -84,62 +84,31 @@ struct __dim3_s {
   int z;
 };
 
-/* Smuggle in gridDim and blockDim through static file scope object;
- * names must be reserved. */
+/* Smuggle in gridDim and blockDim here; names must be reserved. */
 
-static dim3 gridDim;
-static dim3 blockDim;
+extern dim3 gridDim;
+extern dim3 blockDim;
+
+/* Private interface wanted for these helper functions? */
+
+void  __x86_prelaunch(dim3 nblocks, dim3 nthreads);
+void  __x86_postlaunch(void);
+uint3 __x86_builtin_threadIdx_init(void);
+uint3 __x86_builtin_blockIdx_init(void);
+
 
 /* ... execution configuration should  set the global
  * gridDim and blockDim so they are available in kernel, and
  * sets the number of threads which could be < omp_get_max_threads()
  */
 
-static void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
-
-  gridDim = nblocks;
-  blockDim = nthreads;
-
-  /* sanity checks on user settings here... */
-
-  /* In case we request fewer threads than are available: */
-
-  __x86_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
-
-  return;
-}
-
-static  void __x86_postlaunch(void) {
-
-  int nthreads;
-
-  /* Reset the default number of threads. */
-  nthreads = __x86_get_max_threads();
-  __x86_set_num_threads(nthreads);
-
-  return;
-}
-
 #define __x86_launch(kernel_function, nblocks, nthreads, ...)		\
   __x86_prelaunch(nblocks, nthreads);					\
   kernel_function(__VA_ARGS__);						\
   __x86_postlaunch();
 
-/* Utilities */
-
-static uint3 __x86_builtin_threadIdx_init(void) {
-  uint3 threads = {1, 1, 1};
-  threads.x = __x86_get_thread_num();
-  return threads;
-}
-
-static uint3 __x86_builtin_blockIdx_init(void) {
-  uint3 blocks = {1, 1, 1};
-  return blocks;
-}
-
-/* Within x86_simt_parallel_region(), provide access/initialisation */
-/* "threadIdx_init" does both. Must be a macro expansiosn. */
+/* Within x86_simt_parallel_region(), provide access/initialisation. */
+/* Must be a macro expansiosn. */
 
 #define __x86_simt_threadIdx_init()			\
   uint3 threadIdx;					\

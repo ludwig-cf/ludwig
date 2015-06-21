@@ -33,8 +33,7 @@ struct fe_surfactant_param_s {
   double w;
 };
 
-__host__ int fe_surfactant_create(fe_t * fe, field_t * phi,
-				  field_grad_t * dphi,
+__host__ int fe_surfactant_create(field_t * phi, field_grad_t * dphi,
 				  fe_surfactant_t ** p);
 __host__ int fe_surfactant_free(fe_surfactant_t * fe);
 __host__ int fe_surfactant_param_set(fe_surfactant_t * fe,

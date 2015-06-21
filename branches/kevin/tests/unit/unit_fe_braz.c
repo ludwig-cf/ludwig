@@ -50,7 +50,7 @@ int do_test_fe_braz_param(control_t * ctrl) {
   coords_t * cs = NULL;
   field_t * phi = NULL;
   field_grad_t * dphi = NULL;
-  fe_t * fe = NULL;
+
   fe_brazovskii_t * fb = NULL;
 
   assert(ctrl);
@@ -65,8 +65,7 @@ int do_test_fe_braz_param(control_t * ctrl) {
   field_create(cs, 1, "phi", &phi);
   field_grad_create(phi, 0, &dphi);
 
-  fe_create(&fe);
-  fe_brazovskii_create(fe, phi, dphi, &fb);
+  fe_brazovskii_create(phi, dphi, &fb);
 
   try {
     fe_brazovskii_param_set(fb, param0);
@@ -108,7 +107,6 @@ int do_test_fe_braz_param(control_t * ctrl) {
   }
 
   fe_brazovskii_free(fb);
-  fe_free(fe);
 
   field_grad_free(dphi);
   field_free(phi);
@@ -140,7 +138,7 @@ int do_test_fe_braz_bulk(control_t * ctrl) {
   coords_t * cs = NULL;
   field_t * phi = NULL;
   field_grad_t * dphi = NULL;
-  fe_t * fe = NULL;
+
   fe_brazovskii_t * fb = NULL;
 
   assert(ctrl);
@@ -159,8 +157,7 @@ int do_test_fe_braz_bulk(control_t * ctrl) {
   field_grad_create(phi, 4, &dphi);
   field_scalar_set(phi, index, phi0);
 
-  fe_create(&fe);
-  fe_brazovskii_create(fe, phi, dphi, &fb);
+  fe_brazovskii_create(phi, dphi, &fb);
 
   try {
     fe_brazovskii_param_set(fb, param0);
@@ -171,9 +168,9 @@ int do_test_fe_braz_bulk(control_t * ctrl) {
 
     /* Via abstract free energy */
 
-    fe_fed(fe, index, &fed1);
-    fe_mu(fe, index, &mu1);
-    fe_str(fe, index, s1);
+    fe_fed((fe_t *) fb, index, &fed1);
+    fe_mu((fe_t *) fb, index, &mu1);
+    fe_str((fe_t *) fb, index, s1);
 
     control_verb(ctrl, "fe density:      %22.15e %22.15e\n", fed0, fed1);
     control_macro_test_dbl_eq(ctrl, fed0, fed1, DBL_EPSILON);
@@ -194,8 +191,8 @@ int do_test_fe_braz_bulk(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  fe_brazovskii_free(fb);
-  fe_free(fe);
+  /* Virtual destructor */
+  fe_free((fe_t *) fb);
 
   field_grad_free(dphi);
   field_free(phi);

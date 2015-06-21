@@ -55,7 +55,6 @@ static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
 
 
-//TODO refactor these forward declarations
 HOST void get_chemical_stress_target(pth_fntype* t_chemical_stress);
 HOST void get_chemical_potential_target(mu_fntype* t_chemical_potential);
 HOST void symmetric_phi(double** address_of_ptr);
@@ -345,8 +344,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 }
 
 
-// binary collision code below has been ported to targetDP programming model.
-
 /* Constants*/
 
 TARGET_CONST int tc_nSites;
@@ -364,12 +361,11 @@ TARGET_CONST double tc_force_global[3];
 TARGET_CONST double tc_q_[NVEL][3][3];
 TARGET_CONST int tc_nmodes_; 
 
-// target copies of fields 
 static double *t_phi; 
 static double *t_delsqphi; 
 static double *t_gradphi; 
 
-#define NDIST 2 //for binary collision
+#define NDIST 2
 
 
 /*****************************************************************************
@@ -600,7 +596,6 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
 #ifdef CUDA 
     
     printf("Error: noise_on is not yet supported for CUDA\n");
-    //exit(1);
     
 #else      
     
@@ -670,9 +665,6 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
     SIMD_SC_ELMNT(phi,iv)=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 0) ];
   
   
-  //HACK TODO vectorise this
-  // SIMD_SC_ELMNT(mu) = chemical_potential(baseIndex, 0);
-  
   TARGET_ILP(iv){
     SIMD_SC_ELMNT(mu,iv) = (*t_chemical_potential)(baseIndex+iv, 0,t_phi,t_delsqphi);
   
@@ -739,7 +731,6 @@ TARGET void lb_collision_binary_site( double* __restrict__ t_f,
 }
 
 
-// full lattice operation
 TARGET_ENTRY void lb_collision_binary_lattice( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
@@ -753,7 +744,6 @@ TARGET_ENTRY void lb_collision_binary_lattice( double* __restrict__ t_f,
  
   int baseIndex=0;
 
-  //partition binary collision kernel across the lattice on the target
   TARGET_TLP(baseIndex,nSites){
 	
     lb_collision_binary_site( t_f, t_force, t_velocity,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,baseIndex);
@@ -769,7 +759,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   int       nlocal[3];
   int noise_on = 0;                  /* Fluctuations switch */
 
-  //  double    mode[NVEL];              /* Modes; hydrodynamic + ghost */
 
   double    rtau2;
   double    mobility;
@@ -808,7 +797,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   targetInit(nSites, nFields);
 
- //start constant setup
 
   copyConstantIntToTarget(&tc_nmodes_, &nmodes_, sizeof(int)); 
   copyConstantDoubleToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double)); 
@@ -827,14 +815,11 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   copyConstantDouble2DArrayToTarget((double **) tc_d_, (double*) d_, 3*3*sizeof(double));
   copyConstantDouble3DArrayToTarget((double ***) tc_q_, (double *)q_, NVEL*3*3*sizeof(double)); 
   checkTargetError("constants");
-  //end constant setup
 
-
-  //start field management
 
   int       ic, jc, kc, index;       /* site indices */
 
-//set up site mask
+
   char* siteMask = (char*) calloc(nSites,sizeof(char));
   if(!siteMask){
     printf("siteMask malloc failed\n");
@@ -842,11 +827,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   }
 
 
-  //map status is now taken care of in masked targetDP data copies.
-  // we perform calculations for all sites, and only copy back the fluid
-  //sites to the host
-
-  // set all non-halo fluid sites to 1
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -871,44 +851,33 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   }
 
 
-  //TO DO tidy this up - access directly.
   symmetric_t_phi(&t_phi);
   symmetric_t_gradphi(&t_gradphi);
   symmetric_t_delsqphi(&t_delsqphi);
 
 
-  //copyToTargetMaskedAoS(lb->t_f,lb->f,nSites,nFields,siteMask); 
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 
 
-  //for GPU version, we use the data already existing on the target 
-  //for C version, we put data on the target (for now).
-  //ultimitely GPU and C versions will follow the same pattern
+
   #ifndef CUDA
 
   double *ptr;
 
   symmetric_phi(&ptr);
-  //copyToTargetMaskedAoS(t_phi,ptr,nSites,1,siteMask); 
   copyToTarget(t_phi,ptr,nSites*sizeof(double)); 
 
   symmetric_delsqphi(&ptr);
-  //copyToTargetMaskedAoS(t_delsqphi,ptr,nSites,1,siteMask); 
   copyToTarget(t_delsqphi,ptr,nSites*sizeof(double)); 
 
   symmetric_gradphi(&ptr);
-  //copyToTargetMaskedAoS(t_gradphi,ptr,nSites,3,siteMask); 
   copyToTarget(t_gradphi,ptr,nSites*3*sizeof(double)); 
   #endif
 
 
-  //copyToTargetMaskedAoS(hydro->t_f,hydro->f,nSites,3,siteMask); 
-
   copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
 
-  //end field management
 
-  //start function pointer management
   mu_fntype* t_chemical_potential; 
   targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
   get_chemical_potential_target(t_chemical_potential);
@@ -916,8 +885,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   pth_fntype* t_chemical_stress; 
   targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
   get_chemical_stress_target(t_chemical_stress);
-  //end function pointer management
- 
 
 
   if (noise_on) {
@@ -935,16 +902,8 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   lb_collision_binary_lattice TARGET_LAUNCH(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
         
 
-  //start field management
-  //copyFromTargetMaskedAoS(lb->f,lb->t_f,nSites,nFields,siteMask); 
-
   copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
-
-  //copyFromTargetMaskedAoS(hydro->u,hydro->t_u,nSites,3,siteMask); 
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
-
-
-  //end field management
 
 
   targetFree(t_chemical_potential);

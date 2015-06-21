@@ -60,28 +60,32 @@
  */
 
 struct fe_surfactant_s {
-  fe_surfactant_param_t * param;
+  fe_t super;                      /* Implements free energy */
+  fe_surfactant_param_t * param;   /* Parameters */
   field_t * pair;                  /* Single field with two components */
   field_grad_t * dp;               /* Gradients thereof */
-  fe_surfactant_t * target;
+  fe_surfactant_t * target;        /* Target copy */
 };
 
-/* "Superclass" call back functions */
+static fe_vtable_t fe_surfactant_vtable = {
+  (fe_free_ft)    fe_surfactant_free,
+  (fe_fed_ft)     fe_surfactant_fed,
+  (fe_mu_ft)      fe_surfactant_mu,
+  (fe_str_ft)     fe_surfactant_str,
+  (fe_mu_solv_ft) NULL,
+  (fe_hvector_ft) NULL,
+  (fe_htensor_ft) NULL
+};
 
-int fe_surfactant_fed_cb(fe_t * fe, int index, double * fed);
-int fe_surfactant_mu_cb(fe_t * fe, int index, double * mu);
-int fe_surfactant_str_cb(fe_t * fe, int index, double s[3][3]);
 
 /****************************************************************************
  *
  *  fe_surfactant_create
  *
- *  A single static instance
- *
  ****************************************************************************/
 
-__host__ int fe_surfactant_create(fe_t * fe, field_t * pair,
-				  field_grad_t * dp, fe_surfactant_t ** p) {
+__host__ int fe_surfactant_create(field_t * pair, field_grad_t * dp,
+				  fe_surfactant_t ** p) {
 
   fe_surfactant_t * obj = NULL;
 
@@ -95,11 +99,10 @@ __host__ int fe_surfactant_create(fe_t * fe, field_t * pair,
     calloc(1, sizeof(fe_surfactant_param_t));
   if (obj->param == NULL) fatal("calloc(fe_surfactant_param_t) failed\n");
 
+  obj->super.vtable = &fe_surfactant_vtable;
   obj->pair = pair;
   obj->dp   = dp;
 
-  fe_register_cb(fe, obj, fe_surfactant_fed_cb, fe_surfactant_mu_cb,
-		 fe_surfactant_str_cb, NULL, NULL, NULL);
   *p = obj;
 
   return 0;
@@ -217,24 +220,6 @@ __host__ int fe_surfactant_langmuir_isotherm(fe_surfactant_t * fe,
   return 0;
 }
 
-/*****************************************************************************
- *
- *  fe_surfactant_fed_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_surfactant_fed_cb(fe_t * fe, int index,
-					     double * fed) {
-
-  fe_surfactant_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_surfactant_fed(fs, index, fed);
-}
-
 /****************************************************************************
  *
  *  fe_surfactant_fed
@@ -281,24 +266,6 @@ __host__ __device__ int fe_surfactant_fed(fe_surfactant_t * fe, int index,
     + 0.5*fe->param->w*psi*phi*phi;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_surfactant_mu_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_surfactant_mu_cb(fe_t * fe, int index,
-					    double * mu) {
-
-  fe_surfactant_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_surfactant_mu(fs, index, mu);
 }
 
 /****************************************************************************
@@ -354,23 +321,6 @@ __host__ __device__ int fe_surfactant_mu(fe_surfactant_t * fe, int index,
     - fe->param->beta*psi*dot_product(grad[0], grad[0]);
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_surfactant_str_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_surfactant_str_cb(fe_t * fe, int index,
-					     double s[3][3]) {
-  fe_surfactant_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_surfactant_str(fs, index, s);
 }
 
 /****************************************************************************

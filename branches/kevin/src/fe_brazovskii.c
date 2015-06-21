@@ -43,17 +43,22 @@
 #include "fe_brazovskii.h"
 
 struct fe_brazovskii_s {
+  fe_t super;                       /* Implements fe_t */
   fe_brazovskii_param_t * param;    /* Parameters */
   field_t * phi;                    /* Reference to order parameter field */
   field_grad_t * dphi;              /* Reference to gradient field */
   fe_brazovskii_t * target;         /* Placeholder for device copy */
 };
 
-/* "Superclass" call back functions */
-
-int fe_brazovskii_fed_cb(fe_t * fe, int index, double * fed);
-int fe_brazovskii_mu_cb(fe_t * fe, int index, double * mu);
-int fe_brazovskii_str_cb(fe_t * fe, int index, double s[3][3]);
+static fe_vtable_t fe_brazovskii_vtable = {
+  (fe_free_ft)    fe_brazovskii_free,
+  (fe_fed_ft)     fe_brazovskii_fed,
+  (fe_mu_ft)      fe_brazovskii_mu,
+  (fe_str_ft)     fe_brazovskii_str,
+  (fe_mu_solv_ft) NULL,
+  (fe_hvector_ft) NULL,
+  (fe_htensor_ft) NULL
+};
 
 /*****************************************************************************
  *
@@ -61,24 +66,24 @@ int fe_brazovskii_str_cb(fe_t * fe, int index, double s[3][3]);
  *
  *****************************************************************************/
 
-__host__ int fe_brazovskii_create(fe_t * fe, field_t * phi,
-				  field_grad_t * dphi, fe_brazovskii_t ** p) {
+__host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
+				  fe_brazovskii_t ** p) {
   fe_brazovskii_t * obj = NULL;
 
-  assert(fe);
   assert(phi);
   assert(dphi);
 
   obj = (fe_brazovskii_t *) calloc(1, sizeof(fe_brazovskii_t));
   if (obj == NULL) fatal("calloc(fe_brazovskii_t) failed\n");
 
-  obj->param = (fe_brazovskii_param_t *) calloc(1, sizeof(fe_brazovskii_param_t));
+  obj->param =
+    (fe_brazovskii_param_t *) calloc(1, sizeof(fe_brazovskii_param_t));
   if (obj->param == NULL) fatal("calloc(fe_brazovskii_param_t) failed\n");
 
+  obj->super.vtable = &fe_brazovskii_vtable;
   obj->phi = phi;
   obj->dphi = dphi;
-  fe_register_cb(fe, obj, fe_brazovskii_fed_cb, fe_brazovskii_mu_cb,
-		 fe_brazovskii_str_cb, NULL, NULL, NULL);
+
   *p = obj;
 
   return 0;
@@ -174,23 +179,6 @@ __host__ __device__ int fe_brazovskii_wavelength(fe_brazovskii_t * fe,
   return 0;
 }
 
-/*****************************************************************************
- *
- *  fe_brazovskii_fed_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_brazovskii_fed_cb(fe_t * fe, int index,
-					     double * fed) {
-  fe_brazovskii_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return  fe_brazovskii_fed(fs, index, fed);
-}
-
 /****************************************************************************
  *
  *  brazovskii_free_energy_density
@@ -216,23 +204,6 @@ __host__ __device__ int fe_brazovskii_fed(fe_brazovskii_t * fe, int index,
     + 0.5*fe->param->c*delsq*delsq;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_brazovskii_mu_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_brazovskii_mu_cb(fe_t * fe, int index,
-					    double * mu) {
-  fe_brazovskii_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_brazovskii_mu(fs, index, mu);
 }
 
 /****************************************************************************
@@ -264,23 +235,6 @@ __host__ __device__ int fe_brazovskii_mu(fe_brazovskii_t * fe, int index,
     - fe->param->kappa*del2_phi + fe->param->c*del4_phi;
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_brazovskii_str_cb
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_brazovskii_str_cb(fe_t * fe, int index,
-					     double s[3][3]) {
-  fe_brazovskii_t * fs;
-
-  assert(fe);
-
-  fe_child(fe, (void **) &fs);
-
-  return fe_brazovskii_str(fs, index, s);
 }
 
 /****************************************************************************

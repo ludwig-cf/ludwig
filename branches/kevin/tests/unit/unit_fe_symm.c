@@ -52,7 +52,6 @@ int do_test_fe_symm_param(control_t * ctrl) {
   field_t * phi = NULL;
   field_grad_t * dphi = NULL;
 
-  fe_t * fe = NULL;
   fe_symmetric_t * fs = NULL;
 
   assert(ctrl);
@@ -67,8 +66,7 @@ int do_test_fe_symm_param(control_t * ctrl) {
   field_create(cs, 1, "phi", &phi);
   field_grad_create(phi, 0, &dphi);
 
-  fe_create(&fe);
-  fe_symmetric_create(fe, phi, dphi, &fs);
+  fe_symmetric_create(phi, dphi, &fs);
 
   try {
 
@@ -99,7 +97,6 @@ int do_test_fe_symm_param(control_t * ctrl) {
   }
 
   fe_symmetric_free(fs);
-  fe_free(fe);
 
   field_grad_free(dphi);
   field_free(phi);
@@ -133,8 +130,7 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
   field_t * phi = NULL;
   field_grad_t * dphi = NULL;
 
-  fe_t * fe = NULL;
-  fe_symmetric_t * fs = NULL;
+  fe_symmetric_t * fe = NULL;
 
   assert(ctrl);
 
@@ -152,12 +148,11 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
   index = coords_index(cs, 1, 1, 1);
   field_scalar_set(phi, index, phi0);
 
-  fe_create(&fe);
-  fe_symmetric_create(fe, phi, dphi, &fs);
+  fe_symmetric_create(phi, dphi, &fe);
 
   try {
 
-    fe_symmetric_param_set(fs, param0);
+    fe_symmetric_param_set(fe, param0);
 
     /* Free energy density, chemical potential and diagonal term in stress */
 
@@ -165,9 +160,9 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
     mu0  = (param0.a + param0.b*phi0*phi0)*phi0;
     s0   = 0.5*(param0.a + 1.5*param0.b*phi0*phi0)*phi0*phi0;
 
-    fe_fed(fe, index, &fed1);
-    fe_mu(fe, index, &mu1);
-    fe_str(fe, index, s1);
+    fe_symmetric_fed(fe, index, &fed1);
+    fe_symmetric_mu(fe, index, &mu1);
+    fe_symmetric_str(fe, index, s1);
 
     control_verb(ctrl, "Bulk fe density: %22.15e %22.15e\n", fed0, fed1);
     control_macro_test_dbl_eq(ctrl, fed0, fed1, DBL_EPSILON);
@@ -184,10 +179,11 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
       }
     }
 
-    /* Explicit interface */
+    /* Abstract interface */
 
-    fe_symmetric_fed(fs, index, &fed1);
-    fe_symmetric_mu(fs, index, &mu1);
+    fe_fed((fe_t *) fe, index, &fed1);
+    fe_mu((fe_t *) fe, index, &mu1);
+    fe_str((fe_t *) fe, index, s1);
 
     control_macro_test_dbl_eq(ctrl, fed0, fed1, DBL_EPSILON);
     control_macro_test_dbl_eq(ctrl, mu0, mu1, DBL_EPSILON);
@@ -197,8 +193,8 @@ int do_test_fe_symm_bulk(control_t * ctrl) {
     control_option_set(ctrl, CONTROL_FAIL);
   }
 
-  fe_symmetric_free(fs);
-  fe_free(fe);
+  /* Virtual destructor */
+  fe_free((fe_t *) fe);
 
   field_grad_free(dphi);
   field_free(phi);

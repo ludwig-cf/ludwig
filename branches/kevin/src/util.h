@@ -54,4 +54,7 @@ HOST int util_ranlcg_reap_uniform(int * state, double * r);
 HOST int util_ranlcg_reap_gaussian(int * state, double r[2]);
 HOST int util_ranlcg_reap_unit_vector(int * state, double rhat[3]);
 
+__host__ __device__
+double util_dot_product(const double a[3], const double b[3]);
+
 #endif

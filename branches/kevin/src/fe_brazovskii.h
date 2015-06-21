@@ -2,8 +2,6 @@
  *
  *  fe_brazovskii.h
  *
- *  $Id: brazovskii.h,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
@@ -30,8 +28,7 @@ struct fe_brazovskii_param_s {
   double kappa;
 };
 
-__host__ int fe_brazovskii_create(fe_t * fe, field_t * phi,
-				  field_grad_t * dphi,
+__host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
 				  fe_brazovskii_t ** p);
 __host__ int fe_brazovskii_free(fe_brazovskii_t * fe);
 __host__ int fe_brazovskii_param_set(fe_brazovskii_t * fe,
@@ -51,4 +48,5 @@ __host__ __device__ int fe_brazovskii_mu(fe_brazovskii_t * fe, int index,
 					 double * mu);
 __host__ __device__ int fe_brazovskii_str(fe_brazovskii_t * fe, int index,
 					  double s[3][3]);
+
 #endif
