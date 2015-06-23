@@ -242,7 +242,8 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   
   /* Compute all the modes */
 
-#ifdef _D3Q19_ //specialized fast unrolled version 
+  //#ifdef _D3Q19_ //specialized fast unrolled version 
+#ifdef KEEPFONTARGET
     d3q19matmultchunk(mode, fchunk, baseIndex);
 #else
   for (m = 0; m < tc_nmodes_; m++) {
@@ -390,7 +391,8 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 
   /* Project post-collision modes back onto the distribution */
 
-#ifdef _D3Q19_ //specialized fast unrolled version 
+  //#ifdef _D3Q19_ //specialized fast unrolled version 
+#ifdef KEEPFONTARGET
     d3q19matmult2chunk(mode, fchunk, baseIndex);
 #else
   for (p = 0; p < NVEL; p++) {
@@ -680,7 +682,8 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
 
 
-#ifdef _D3Q19_ //specialized fast unrolled version 
+//#ifdef _D3Q19_ //specialized fast unrolled version 
+#ifdef KEEPFONTARGET
     d3q19matmult(mode, t_f, baseIndex);
 #else
   /* Compute all the modes */
@@ -889,7 +892,8 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* Project post-collision modes back onto the distribution */
   
-#ifdef _D3Q19_ //specialized fast unrolled version 
+//#ifdef _D3Q19_ //specialized fast unrolled version 
+#ifdef KEEPFONTARGET
   d3q19matmult2(mode, t_f, baseIndex);
 #else
 
