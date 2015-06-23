@@ -116,12 +116,19 @@
    for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)*/
 
 
+//#define __targetTLP__(simtIndex,extent)	\
+//_Pragma("omp parallel for")				\
+//for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
+
+//#define __targetTLPNoStride__(simtIndex,extent)   	\
+//_Pragma("omp parallel for")				\
+//for(simtIndex=0;simtIndex<extent;simtIndex++)
+
+
 #define __targetTLP__(simtIndex,extent)			\
-  _Pragma("omp parallel for") \
   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
 
 #define __targetTLPNoStride__(simtIndex,extent)   	\
-  _Pragma("omp parallel for") \
   for(simtIndex=0;simtIndex<extent;simtIndex++)
 
 
