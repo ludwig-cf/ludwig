@@ -252,6 +252,8 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   double * tmpptr;
   hydro_t * t_hydro; 
 
+  printf("PPP\n");
+
   assert(hydro);
 
   nhalo = coords_nhalo();

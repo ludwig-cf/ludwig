@@ -102,13 +102,15 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
   copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
   //end constant setup
 
-#ifndef TARGETFAST   //temporary optimisation specific to GPU code for benchmarking
+#ifndef KEEPFONTARGET   //temporary optimisation specific to GPU code for benchmarking
   copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
 #endif
 
   phi_lb_to_field_lattice __targetLaunchNoStride__(nSites) (phi->t_data, lb->t_f);
 
+#ifndef KEEPFIELDONTARGET   //temporary optimisation specific to GPU code for benchmarking
   copyFromTarget(phi->data,phi->t_data,nSites*sizeof(double)); 
+#endif
 
   return 0;
 }

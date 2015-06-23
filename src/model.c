@@ -29,6 +29,7 @@
 #include "model.h"
 #include "lb_model_s.h"
 #include "targetDP.h"
+#include "io_harness.h"
 
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
@@ -97,8 +98,24 @@ void lb_free(lb_t * lb) {
 
   if (lb->io_info) io_info_destroy(lb->io_info);
   if (lb->f) free(lb->f);
-  if (lb->t_f) targetFree(lb->t_f);
-  if (lb->t_fprime) targetFree(lb->t_fprime);
+  //if (lb->t_f) targetFree(lb->t_f);
+  //if (lb->t_fprime) targetFree(lb->t_fprime);
+
+
+  if (lb->tcopy) {
+
+    //free data space on target 
+    double* tmpptr;
+    lb_t* t_obj = lb->tcopy;
+    copyFromTarget(&tmpptr,&(t_obj->f),sizeof(double*)); 
+    targetFree(tmpptr);
+
+    copyFromTarget(&tmpptr,&(t_obj->fprime),sizeof(double*)); 
+    targetFree(tmpptr);
+    
+    //free target copy of structure
+    targetFree(lb->tcopy);
+  }
 
   targetFinalize();
 
@@ -160,14 +177,53 @@ int lb_init(lb_t * lb) {
   lb->f = (double  *) malloc(ndata*sizeof(double));
   if (lb->f == NULL) fatal("malloc(distributions) failed\n");
 
-  
-  targetInit(lb->nsite, lb->ndist*NVEL);
 
-    /* allocate target copy */
-  targetCalloc((void **) &lb->t_f, ndata*sizeof(double));
+  int Nall[3]; 
+  Nall[X]=nx;  Nall[Y]=ny;  Nall[Z]=nz;
+  targetInit(Nall, lb->ndist*NVEL, nhalo);
+
+  /* allocate target copy of structure */
+  targetMalloc((void**) &(lb->tcopy),sizeof(lb_t));
+
+  /* allocate data space on target */
+  double* tmpptr;
+  lb_t* t_obj = lb->tcopy;
+  targetCalloc((void**) &tmpptr,ndata*sizeof(double));
+  copyToTarget(&(t_obj->f),&tmpptr,sizeof(double*)); 
+
+  //  copyToTarget(&(t_obj->io_info),&(lb->io_info),sizeof(io_info_t)); 
+  copyToTarget(&(t_obj->ndist),&(lb->ndist),sizeof(int)); 
+  copyToTarget(&(t_obj->nsite),&(lb->nsite),sizeof(int)); 
+  copyToTarget(&(t_obj->model),&(lb->model),sizeof(int)); 
+
+  copyToTarget(&(t_obj->plane_xy_full),&(lb->plane_xy_full),sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->plane_xz_full),&(lb->plane_xz_full),sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->plane_yz_full),&(lb->plane_yz_full),sizeof(MPI_Datatype)); 
+
+  copyToTarget(&(t_obj->plane_xy_reduced),&(lb->plane_xy_reduced),2*sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->plane_xz_reduced),&(lb->plane_xz_reduced),2*sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->plane_yz_reduced),&(lb->plane_yz_reduced),2*sizeof(MPI_Datatype)); 
+
+  copyToTarget(&(t_obj->plane_xy),&(lb->plane_xy),2*sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->plane_xz),&(lb->plane_xz),2*sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->plane_yz),&(lb->plane_yz),2*sizeof(MPI_Datatype)); 
+
+  copyToTarget(&(t_obj->site_x),&(lb->site_x),2*sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->site_y),&(lb->site_y),2*sizeof(MPI_Datatype)); 
+  copyToTarget(&(t_obj->site_z),&(lb->site_z),2*sizeof(MPI_Datatype)); 
+
+  lb->t_f= tmpptr; //DEPRECATED direct access to target data.
+
 
   /* allocate another space on target for staging data */
-  targetCalloc((void **) &lb->t_fprime, ndata*sizeof(double));
+
+  targetCalloc((void**) &tmpptr,ndata*sizeof(double));
+  copyToTarget(&(t_obj->fprime),&tmpptr,sizeof(double*)); 
+  
+  lb->t_fprime= tmpptr; //DEPRECATED direct access to target data.
+
+
+
 
 
   /* Set up the MPI Datatypes used for full halo messages:

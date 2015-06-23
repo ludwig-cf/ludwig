@@ -262,6 +262,18 @@ __targetTLP__(index,tc_nSites){
       int index0, index1, index2;
       index0 = targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
 
+#ifdef CUDA
+      int icm1=coords[0]-1;
+      int icp1=coords[0]+1;
+
+#else
+
+      //enable LE planes (not yet supported for CUDA)
+      int icm1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, -1)+tc_nhalo-1;
+      int icp1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, +1)+tc_nhalo-1;
+      
+#endif
+
 
 	for (n = 0; n < nf; n++) {
 
@@ -272,7 +284,7 @@ __targetTLP__(index,tc_nSites){
 
 	  /* west face (icm1 and ic) */
 
-	  index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
+	  index1 = targetIndex3D(icm1,coords[1],coords[2],tc_Nall);
 	  for(i=0;i<3;i++)
 	    u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
       
@@ -287,7 +299,7 @@ __targetTLP__(index,tc_nSites){
 
 	  /* east face (ic and icp1) */
 
-	  index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+	  index1 = targetIndex3D(icp1,coords[1],coords[2],tc_Nall);
 
 	  for(i=0;i<3;i++)
 	    u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
@@ -518,6 +530,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
   double u0[3], u1[3], u;
   int i;
 
+
   const double a1 = -0.213933;
   const double a2 =  0.927865;
   const double a3 =  0.286067;
@@ -545,7 +558,24 @@ __targetTLP__(index,tc_nSites){
 
 	/* west face (icm1 and ic) */
 
-	index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
+
+#ifdef CUDA
+      int icm2=coords[0]-2;
+      int icm1=coords[0]-1;
+      int icp1=coords[0]+1;
+      int icp2=coords[0]+2;
+
+#else
+
+      //enable LE planes (not yet supported for CUDA)
+      int icm2 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, -2)+tc_nhalo-1;
+      int icm1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, -1)+tc_nhalo-1;
+      int icp1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, +1)+tc_nhalo-1;
+      int icp2 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, +2)+tc_nhalo-1;
+      
+#endif
+
+	index1 = targetIndex3D(icm1,coords[1],coords[2],tc_Nall);
 
 	for(i=0;i<3;i++)
 	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
@@ -553,7 +583,7 @@ __targetTLP__(index,tc_nSites){
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  index2 = targetIndex3D(coords[0]-2,coords[1],coords[2],tc_Nall);
+	  index2 = targetIndex3D(icm2,coords[1],coords[2],tc_Nall);
 
 	  for (n = 0; n < nf; n++) {
 	    flux->fw[nf*index0 + n] =
@@ -564,7 +594,7 @@ __targetTLP__(index,tc_nSites){
 	}
 	else {
 
-	index2 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+	index2 = targetIndex3D(icp1,coords[1],coords[2],tc_Nall);
 
 	  for (n = 0; n < nf; n++) {
 	    flux->fw[nf*index0 + n] =
@@ -576,7 +606,7 @@ __targetTLP__(index,tc_nSites){
 
 	/* east face (ic and icp1) */
 
-	index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+	index1 = targetIndex3D(icp1,coords[1],coords[2],tc_Nall);
 
 	for(i=0;i<3;i++)
 	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)]
@@ -584,7 +614,7 @@ __targetTLP__(index,tc_nSites){
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-	index2 = targetIndex3D(coords[0]+2,coords[1],coords[2],tc_Nall);
+	index2 = targetIndex3D(icp2,coords[1],coords[2],tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fe[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -593,7 +623,7 @@ __targetTLP__(index,tc_nSites){
 	  }
 	}
 	else {
-	index2 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
+	index2 = targetIndex3D(icm1,coords[1],coords[2],tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fe[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]

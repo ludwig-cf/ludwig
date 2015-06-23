@@ -58,6 +58,8 @@ struct lb_data_s {
   io_info_t * io_info; 
 
   double * f;            /* Distributions (on host)*/
+  double * fprime;            /* data staging space */
+
   double * t_f;            /* Distributions (on target)*/
 
   double * t_fprime;            /* data staging space (on target)*/
@@ -78,6 +80,9 @@ struct lb_data_s {
   MPI_Datatype site_x[2];
   MPI_Datatype site_y[2];
   MPI_Datatype site_z[2];
+
+  lb_t * tcopy;              /* copy of this structure on target */ 
+
 };
 
 extern __targetConst__ int tc_cv[NVEL][3];

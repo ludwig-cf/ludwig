@@ -2,11 +2,11 @@
 //
 //to compile for CPU:
 //gcc -I. -c simpleExample.c
-//gcc -I. simpleExample.c libtargetDP_X86.a 
+//gcc -I. simpleExample.c libtargetDP_C.a 
 //
 //to compile for GPU:
-//nvcc -x cu -arch=sm_21 -I. -DCUDA -dc -c simpleExample.c 
-//nvcc -arch=sm_21 simpleExample.o libtargetDP_CUDA.a 
+//nvcc -x cu -arch=sm_35 -I. -DCUDA -dc -c simpleExample.c 
+//nvcc -arch=sm_35 simpleExample.o libtargetDP_CUDA.a 
 
 //TODO: add makefile
 //TODO: comment below code
