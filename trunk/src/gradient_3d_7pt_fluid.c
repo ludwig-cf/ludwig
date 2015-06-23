@@ -277,8 +277,9 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
   //end constant setup
 
-
+  #ifndef KEEPFIELDONTARGET
   copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
+  #endif
 
   gradient_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
     (nop,t_field,t_grad,t_del2);
@@ -288,7 +289,7 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   //for GPU version, we leave the results on the target for the next kernel.
   //for C version, we bring back the results to the host (for now).
   //ultimitely GPU and C versions will follow the same pattern
-  #ifndef TARGETFAST
+  #ifndef KEEPFIELDONTARGET
   copyFromTarget(grad,t_grad,3*nSites*nFields*sizeof(double)); 
   copyFromTarget(del2,t_del2,nSites*nFields*sizeof(double)); 
   #endif

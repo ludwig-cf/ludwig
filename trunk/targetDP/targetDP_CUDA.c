@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <omp.h>
+//#include <omp.h>
 #include <math.h>
 
 #include "targetDP.h"
@@ -17,7 +17,18 @@ static double* dwork_d;
 static int* iwork;
 static int* iwork_d;
 
+static int* b3Dedgemap;
+static int* b3Dedgemap_d;
+
+static int* b3Dhalomap;
+static int* b3Dhalomap_d;
+
 static char* cwork;
+
+static int b3Dedgesize_=0;
+static int b3Dhalosize_=0;
+
+int haloEdge(int index, int extents[3],int offset, int depth);
 
 __targetHost__ void checkTargetError(const char *msg)
 {
@@ -52,9 +63,9 @@ __targetHost__ void targetMallocUnified(void **address_of_ptr,size_t size){
   return;
 }
 
-__targetHost__ void targetInit(size_t nsites, size_t nfieldsmax){
+__targetHost__ void targetInit(int extents[3], size_t nfieldsmax, int nhalo){
 
-
+  int nsites=extents[0]*extents[1]*extents[2];
   // allocate internal work space
 
   dwork = (double*) malloc (nsites*nfieldsmax*sizeof(double));
@@ -68,8 +79,59 @@ __targetHost__ void targetInit(size_t nsites, size_t nfieldsmax){
   cudaMalloc(&iwork_d,nsites*sizeof(int));
   checkTargetError("malloc iwork_d");
 
+
   cwork = (char*) malloc (nsites*sizeof(char));
 
+
+  b3Dedgemap = (int*) malloc (nsites*sizeof(int));
+  
+  cudaMalloc(&b3Dedgemap_d,nsites*sizeof(int));
+
+  checkTargetError("malloc b3Dedgemap_d ");
+
+
+  b3Dhalomap = (int*) malloc (nsites*sizeof(int));
+  
+  cudaMalloc(&b3Dhalomap_d,nsites*sizeof(int));
+
+  checkTargetError("malloc b3Dhalomap_d ");
+
+
+  //get 3D boundary compression mapping
+
+  int i;
+
+  int offset=nhalo;
+  int depth=nhalo;
+  int j=0;
+  for (i=0; i<nsites; i++){
+    if(haloEdge(i,extents,offset,depth)){
+      b3Dedgemap[j]=i;
+      j++;
+    }
+    
+  }
+
+  b3Dedgesize_=j;
+
+
+  offset=0;
+  depth=nhalo;
+  j=0;
+  for (i=0; i<nsites; i++){
+    if(haloEdge(i,extents,offset,depth)){
+      b3Dhalomap[j]=i;
+      j++;
+    }
+    
+  }
+
+  b3Dhalosize_=j;
+
+
+  //copy compresssion info to GPU
+  cudaMemcpy(b3Dedgemap_d, b3Dedgemap, b3Dedgesize_*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(b3Dhalomap_d, b3Dhalomap, b3Dhalosize_*sizeof(int), cudaMemcpyHostToDevice);
 
 
   return;
@@ -80,8 +142,13 @@ __targetHost__ void targetFinalize(){
   free(iwork);
   free(dwork);
   free(cwork);
+  free(b3Dedgemap);
+  free(b3Dhalomap);
+
   cudaFree(iwork_d);
   cudaFree(dwork_d);
+  cudaFree(b3Dedgemap_d);
+  cudaFree(b3Dhalomap_d);
 
 }
 
@@ -359,7 +426,7 @@ int haloEdge(int index, int extents[3],int offset, int depth){
 
 
 
-__targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth){
+__targetHost__ void copyFromTarget3DEdge(double *data,const double* targetData,int extents[3], size_t nfields){
 
 
   size_t nsites=extents[0]*extents[1]*extents[2];
@@ -368,119 +435,72 @@ __targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetDa
   int i;
   int index;
 
-
-  int* fullindex = iwork;
-  int* fullindex_d = iwork_d;
-
   double* tmpGrid = dwork;
   double* tmpGrid_d = dwork_d;
 
 
-  //get compression mapping
-  int j=0;
-  for (i=0; i<nsites; i++){
-    if(haloEdge(i,extents,offset,depth)){
-      fullindex[j]=i;
-      j++;
-    }
-    
-  }
-
-  int packedsize=j;
-
-  
-  
-
-  //copy compresssion info to GPU
-  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
+  int j;
 
   
   //compress grid on GPU
-  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
+  int nblocks=(b3Dedgesize_+DEFAULT_TPB-1)/DEFAULT_TPB;
   copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(tmpGrid_d,targetData,nsites,
 						    nfields,
-						    fullindex_d, packedsize, 0);
+						    b3Dedgemap_d, b3Dedgesize_, 0);
   cudaThreadSynchronize();
 
   //get compressed grid from GPU
-  cudaMemcpy(tmpGrid, tmpGrid_d, packedsize*nfields*sizeof(double), cudaMemcpyDeviceToHost); 
+  cudaMemcpy(tmpGrid, tmpGrid_d, b3Dedgesize_*nfields*sizeof(double), cudaMemcpyDeviceToHost); 
 
     
   //expand into final grid
 
-  j=0;
-  for (index=0; index<nsites; index++){
-    if(haloEdge(index,extents,offset,depth)){
-      for (i=0;i<nfields;i++)
-	data[i*nsites+index]=tmpGrid[i*packedsize+j];	
-      
-      j++;
-    }
-  }
-      
 
-  checkTargetError("copyFromTargetHaloEdge");
+  for (j=0; j<b3Dedgesize_; j++){
+    index=b3Dedgemap[j];
+    for (i=0;i<nfields;i++)
+	data[i*nsites+index]=tmpGrid[i*b3Dedgesize_+j];	
+  
+  }
+
+  checkTargetError("copyFromTarget3DEdge");
   return;
 
 }
 
-__targetHost__ void copyToTargetBoundary3D(double *targetData,const double* data, int extents[3], size_t nfields, int offset,int depth){
+__targetHost__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields){
 
   size_t nsites=extents[0]*extents[1]*extents[2];
 
-  int i;
+  int i,j;
   int index;
-
-  int* fullindex = iwork;
-  int* fullindex_d = iwork_d;
 
   double* tmpGrid = dwork;
   double* tmpGrid_d = dwork_d;
 
-
-  //get compression mapping
-  int j=0;
-  for (i=0; i<nsites; i++){
-    if(haloEdge(i,extents,offset,depth)){
-      fullindex[j]=i;
-      j++;
-    }
-    
-  }
-
-  int packedsize=j;
-
-
-  //copy compresssion info to GPU
-  cudaMemcpy(fullindex_d, fullindex, packedsize*sizeof(int), cudaMemcpyHostToDevice);
-
-
-
     
   //  compress grid
         
-  j=0;
-  for (index=0; index<nsites; index++){
-    if(haloEdge(index,extents,offset,depth)){
-      for (i=0;i<nfields;i++)  
-	tmpGrid[i*packedsize+j]=data[i*nsites+index];
-      j++;
-    }
-  }
+  for (j=0; j<b3Dhalosize_; j++){
+    index=b3Dhalomap[j];
+    for (i=0;i<nfields;i++)
+      tmpGrid[i*b3Dedgesize_+j]=data[i*nsites+index];
   
+  }
+
   
 
   //put compressed grid on GPU
-  cudaMemcpy(tmpGrid_d, tmpGrid, packedsize*nfields*sizeof(double), cudaMemcpyHostToDevice); 
+  cudaMemcpy(tmpGrid_d, tmpGrid, b3Dhalosize_*nfields*sizeof(double), cudaMemcpyHostToDevice); 
 
   //uncompress grid on GPU
-  int nblocks=(packedsize+DEFAULT_TPB-1)/DEFAULT_TPB;
+  int nblocks=(b3Dhalosize_+DEFAULT_TPB-1)/DEFAULT_TPB;
   copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(targetData,tmpGrid_d,nsites,
 						    nfields,
-						    fullindex_d, packedsize, 1);
+						    b3Dhalomap_d, b3Dhalosize_, 1);
   cudaThreadSynchronize();
 
-  checkTargetError("copyToTargetHaloEdge");
+  checkTargetError("copyToTarget3DHalo");
   
   return;
   
@@ -851,3 +871,31 @@ __targetHost__ void targetFree(void *ptr){
   
 }
 
+
+
+__global__ void zero_array(double* array,size_t size){
+
+  int threadIndex;
+
+
+  threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+
+
+  if (threadIndex < size)
+    array[threadIndex]=0.;
+  
+
+
+  return;
+
+}
+
+void targetZero(double* array,size_t size){
+
+  int nblocks=(size+DEFAULT_TPB-1)/DEFAULT_TPB;
+  zero_array<<<nblocks,DEFAULT_TPB>>>(array,size);
+  cudaThreadSynchronize();
+
+
+
+}

@@ -368,6 +368,16 @@ static int lb_propagate_d3q19(lb_t * lb) {
   double* tmp=lb->t_fprime;
   lb->t_fprime=lb->t_f;
   lb->t_f=tmp;
+
+
+  lb_t* t_lb = lb->tcopy; 
+      
+  copyToTarget(&(t_lb->f),&(lb->t_f),sizeof(double*)); 
+  copyToTarget(&(t_lb->fprime),&(lb->t_fprime),sizeof(double*)); 
+
+  //lb->tcopy->f=lb->t_f;
+  //lb->tcopy->fprime=lb->t_fprime;
+
 #else
     copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
 #endif

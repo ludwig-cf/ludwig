@@ -427,16 +427,28 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef KEEPHYDROONTARGET
     //target copy of hydro structure
-    hydro_t* t_hydro = ludwig->hydro->tcopy; 
-    
-    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+
+      hydro_t* t_hydro = ludwig->hydro->tcopy; 
+      
+      copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+      copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+
 #endif
     
 #ifdef KEEPFIELDONTARGET
-    field_t* t_field = ludwig->q->tcopy; 
-    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
-    copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
+      field_t* t_field = NULL; 
+    if (ludwig->q){
+      t_field = ludwig->q->tcopy; 
+      copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+      copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
+
+    }
+    if (ludwig->phi){
+      t_field = ludwig->phi->tcopy; 
+      copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+      copyToTarget(tmpptr,ludwig->phi->data,ludwig->phi->nf*nSites*sizeof(double));
+    }
+
 #endif
 
   
@@ -465,8 +477,10 @@ void ludwig_run(const char * inputfile) {
     step = get_step();
     if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
 #ifdef KEEPHYDROONTARGET
-	    copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
-	    copyToTarget(tmpptr,ludwig->hydro->f,ludwig->hydro->nf*nSites*sizeof(double));
+    
+    	    copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
+	    targetZero(tmpptr,ludwig->hydro->nf*nSites);
+    //	    copyToTarget(tmpptr,ludwig->hydro->f,ludwig->hydro->nf*nSites*sizeof(double));
 #endif
 
 
@@ -490,7 +504,17 @@ void ludwig_run(const char * inputfile) {
     if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
 
     if (ludwig->phi) {
+
+#ifdef KEEPFIELDONTARGET
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+    copyFromTarget(ludwig->phi->data,tmpptr,ludwig->phi->nf*nSites*sizeof(double));
+#endif
       field_halo(ludwig->phi);
+#ifdef KEEPFIELDONTARGET
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+    copyToTarget(tmpptr,ludwig->phi->data,ludwig->phi->nf*nSites*sizeof(double));
+#endif
+
       field_grad_compute(ludwig->phi_grad);
     }
     if (ludwig->p) {
@@ -677,7 +701,8 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef KEEPHYDROONTARGET
 	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+	    targetZero(tmpptr,ludwig->hydro->nf*nSites);
+	    //	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
 #endif
 
       /* Collision stage */
@@ -696,28 +721,28 @@ void ludwig_run(const char * inputfile) {
 
 
 
-
-
-
       TIMER_start(TIMER_HALO_LATTICE);
 
 #ifdef KEEPFONTARGET
-            copyFromTargetBoundary3D(ludwig->lb->f,ludwig->lb->t_f,
-         Nall,nFields,nhalo,nhalo); 
-      // copyFromTarget(ludwig->lb->f,ludwig->lb->t_f,nSites*nFields*sizeof(double)); 
-#endif
 
+#ifdef CUDAHOST
+      copyFromTarget3DEdge(ludwig->lb->f,ludwig->lb->t_f,
+			   Nall,nFields); 
+      lb_halo(ludwig->lb);
+      copyToTarget3DHalo(ludwig->lb->t_f,ludwig->lb->f,
+			 Nall,nFields); 
+#else
+      lb_halo(ludwig->lb->tcopy);
+#endif // CUDAHOST
+
+
+#else //not KEEPFONTARGET
 
       lb_halo(ludwig->lb);
 
-#ifdef KEEPFONTARGET
-      copyToTargetBoundary3D(ludwig->lb->t_f,ludwig->lb->f,
-       Nall,nFields,0,nhalo); 
-      //copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double)); 
-#endif
+#endif 
 
       TIMER_stop(TIMER_HALO_LATTICE);
-
 
 
       /* Colloid bounce-back applied between collision and
@@ -924,6 +949,12 @@ void ludwig_run(const char * inputfile) {
     }
     /* Only strictly required if have order parameter dynamics */ 
     if (ludwig->hydro) {
+
+#ifdef KEEPHYDROONTARGET
+	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+	    copyFromTarget(ludwig->hydro->u,tmpptr,ludwig->hydro->nf*nSites*sizeof(double));
+#endif
+
       hydro_io_info(ludwig->hydro, &iohandler);
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);

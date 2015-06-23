@@ -4,7 +4,7 @@
 
 MF= Makefile
 
-SRC_X86= targetDP_X86.c 
+SRC_C= targetDP_C.c 
 SRC_CUDA= targetDP_CUDA.c 
 
 
@@ -19,11 +19,12 @@ AR = ar -cru
 
 CC=	gcc
 NVCC= nvcc 
-
+CUARCH= sm_35
 
 ifeq ($(MYHOSTNAME),mbpag3)
-CC= gcc-4.6
-NVCC= nvcc -ccbin=gcc-4.6
+CC= gcc-4.9
+NVCC= nvcc #-ccbin=gcc-4.9
+CUARCH=sm_30
 endif
 
 
@@ -40,21 +41,21 @@ endif
 #endif
 
  CC_CUDA=	$(NVCC)
- CFLAGS_CUDA= -DCUDA -O3 -arch=sm_30 -I $(TARGETDPDIR) -dc -x cu #-save-temps
+ CFLAGS_CUDA= -DCUDA -O3 -arch=$(CUARCH) -I $(TARGETDPDIR) -dc -x cu #-save-temps
 # CFLAGS_CUDA= -DCUDA -g -G -arch=sm_30 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
 
-default: targetDP_X86
+default: targetDP_C
 
-all: targetDP_CUDA targetDP_X86
+all: targetDP_CUDA targetDP_C
 
 targetDP_CUDA:
 	$(CC_CUDA) $(CFLAGS_CUDA) -c targetDP_CUDA.c
 	$(AR) libtargetDP_CUDA.a targetDP_CUDA.o
 
-targetDP_X86:
-	$(CC) $(CFLAGS) -c targetDP_X86.c
-	$(AR) libtargetDP_X86.a targetDP_X86.o
+targetDP_C:
+	$(CC) $(CFLAGS) -c targetDP_C.c
+	$(AR) libtargetDP_C.a targetDP_C.o
 
 $(OBJ):	$(MF) *.h 
 

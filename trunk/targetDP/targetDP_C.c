@@ -1,5 +1,5 @@
 /*
- * targetDP_X86.c: API Implementation for targetDP: X86 version
+ * targetDP_C.c: API Implementation for targetDP: C version
  * Alan Gray, November 2013
  */
 
@@ -17,7 +17,7 @@ void checkTargetError(const char *msg){
 
 }
 
-void targetInit(size_t nsites,size_t nfieldsmax){
+void targetInit(int extents[3], size_t nfieldsmax, int nhalo){
   return;
 }
 
@@ -194,3 +194,15 @@ void targetSynchronize(){
   return;
 }
 
+
+void targetZero(double* array,size_t size){
+
+  int i;
+
+  for(i=0;i<size;i++){
+    
+    array[i]=0.;
+    
+  }
+
+}
