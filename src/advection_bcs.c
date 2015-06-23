@@ -57,25 +57,24 @@ __targetTLP__(index,tc_nSites){
 	coords[2] < tc_Nall[Z]-tc_nhalo ){ 
 
 
-      int index0, index1, index2;
-      index0 = targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
+      int index1;
       
       
-      index=targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
-      maskw = (map->status[index]==MAP_FLUID);    
+      index1=targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
+      maskw = (map->status[index1]==MAP_FLUID);    
 
-      index=targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
-      maske = (map->status[index]==MAP_FLUID);    
+      index1=targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+      maske = (map->status[index1]==MAP_FLUID);    
       
-      index= targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
-      masky = (map->status[index]==MAP_FLUID);    
+      index1= targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
+      masky = (map->status[index1]==MAP_FLUID);    
       
-      index= targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
-      maskz = (map->status[index]==MAP_FLUID);    
+      index1= targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
+      maskz = (map->status[index1]==MAP_FLUID);    
 
       
-      index= targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
-      mask = (map->status[index]==MAP_FLUID);    
+      index1= targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
+      mask = (map->status[index1]==MAP_FLUID);    
       
       for (n = 0;  n < nf; n++) {
 
