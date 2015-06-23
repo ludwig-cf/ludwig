@@ -49,7 +49,7 @@ function test_unit {
 
   cd $DIR_TARGETDP
   make clean
-  make targetDP_X86
+  make targetDP_C
 
   cd $DIR_SRC
   make clean
