@@ -36,7 +36,7 @@ CFLAGS  = -g -O2 -Wall
 MPI_STUB_INCLUDE = -I../../mpi_s
 MPI_STUB_LIB = -L../../mpi_s -lmpi
 
-CLIBS  = -lm -L../../targetDP -ltargetDP_X
+CLIBS  = -lm -L../../targetDP -ltargetDP_C
 MPILIB = -lmpi
 
 #------------------------------------------------------------------------------
