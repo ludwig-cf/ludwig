@@ -1,6 +1,6 @@
 /*
  * targetDP.h: definitions, macros and declarations for targetDP.
- * Alan Gray, November 2013
+ * Alan Gray
  */
 
 #include <stdlib.h>
@@ -26,7 +26,7 @@
 #ifdef CUDA /* CUDA */
 
 /* Settings */
-#define DEFAULT_TPB 256 /* default threads per block */
+#define DEFAULT_TPB 128 /* default threads per block */
 
 /* Instruction-level-parallelism vector length */
 #define VVL 1

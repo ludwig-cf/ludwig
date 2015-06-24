@@ -21,6 +21,12 @@ CC=	gcc
 NVCC= nvcc 
 CUARCH= sm_35
 
+
+USEGPU=
+ifeq ($(TARGETDP),GPU)
+USEGPU=1
+endif
+
 ifeq ($(MYHOSTNAME),mbpag3)
 CC= gcc-4.9
 NVCC= nvcc #-ccbin=gcc-4.9
@@ -44,8 +50,14 @@ endif
  CFLAGS_CUDA= -DCUDA -O3 -arch=$(CUARCH) -I $(TARGETDPDIR) -dc -x cu #-save-temps
 # CFLAGS_CUDA= -DCUDA -g -G -arch=sm_30 -I $(TARGETDPDIR) -dc -x cu #-save-temps
 
+DEFTAR=targetDP_C
 
-default: targetDP_C
+ifdef USEGPU
+DEFTAR+= targetDP_CUDA
+endif
+
+
+default: $(DEFTAR)
 
 all: targetDP_CUDA targetDP_C
 
