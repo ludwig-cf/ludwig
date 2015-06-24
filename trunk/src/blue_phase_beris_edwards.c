@@ -165,9 +165,9 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
     if (coords[0] >= (tc_nhalo) &&
 	coords[1] >= (tc_nhalo) &&
 	coords[2] >= (tc_nhalo) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo) &&
-	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&
-	coords[2] < tc_Nall[Z]-(tc_nhalo) ){
+	coords[0] < (tc_Nall[X]-tc_nhalo) &&
+	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
+	coords[2] < (tc_Nall[Z]-tc_nhalo) ){
 
       
       for (ia = 0; ia < 3; ia++) {

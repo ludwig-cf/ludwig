@@ -251,12 +251,12 @@ __targetTLP__(index,tc_nSites){
     targetCoords3D(coords,tc_Nall,index);
     
     // if not a halo site:
-    if (coords[0] >= tc_nhalo && 
-	coords[1] >= 0 && 
-	coords[2] >= 0 &&
-	coords[0] < tc_Nall[X]-tc_nhalo &&  
-	coords[1] < tc_Nall[Y]-tc_nhalo  &&  
-	coords[2] < tc_Nall[Z]-tc_nhalo ){ 
+    if (coords[0] >= (tc_nhalo) &&
+    	coords[1] >= (tc_nhalo-1) &&
+    	coords[2] >= (tc_nhalo-1) &&
+    	coords[0] < (tc_Nall[X]-tc_nhalo) &&
+	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
+	coords[2] < (tc_Nall[Z]-tc_nhalo)) {
 
 
       int index0, index1, index2;
@@ -542,12 +542,12 @@ __targetTLP__(index,tc_nSites){
     targetCoords3D(coords,tc_Nall,index);
     
     // if not a halo site:
-    if (coords[0] >= tc_nhalo && 
-	coords[1] >= 0 && 
-	coords[2] >= 0 &&
-	coords[0] < tc_Nall[X]-tc_nhalo &&  
-	coords[1] < tc_Nall[Y]-tc_nhalo  &&  
-	coords[2] < tc_Nall[Z]-tc_nhalo ){ 
+    if (coords[0] >= (tc_nhalo) &&
+    	coords[1] >= (tc_nhalo-1) &&
+    	coords[2] >= (tc_nhalo-1) &&
+    	coords[0] < (tc_Nall[X]-tc_nhalo) &&
+	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
+	coords[2] < (tc_Nall[Z]-tc_nhalo)) {
 
 
       int index0, index1, index2;
