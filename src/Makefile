@@ -47,7 +47,7 @@ NVCC = nvcc
 
 OPTS = -DNP_D3Q6 
 CFLAGS = -O2 
-LIBS = -lm
+LIBS = -lm 
 
 # TargetDP, under development
 USEGPU=
@@ -57,29 +57,30 @@ endif
 
 ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_35
-#TARGETOPTS =  -x cu -D_D3Q19_ -DCUDA -g -G -dc
-#TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc -g -G
 TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc 
 OPTS += -DCUDAHOST
-LIBS = -lm -L../targetDP -ltargetDP_CUDA  
-
-ifeq ($(MYHOSTNAME),mbpag3)
-TARGETCC = $(NVCC) -arch=sm_30
-LIBS+=-L/usr/local/Cellar/open-mpi/1.8.1/lib/ -lmpi
-endif
-
+LIBS += -L../targetDP -ltargetDP_CUDA  
 else
 TARGETCC = $(CC)
 TARGETOPTS = $(OPTS)
-LIBS = -lm -L../targetDP -ltargetDP_C
+CFLAGS += #-fopenmp
+LIBS += -L../targetDP -ltargetDP_C #-lgomp -lpthread
+endif
+
 
 
 ifeq ($(MYHOSTNAME),mbpag3)
+
+ifdef USEGPU
+TARGETCC = $(NVCC) -arch=sm_30
+#LIBS+=-L/usr/local/Cellar/open-mpi/1.8.1/lib/ -lmpi
+else
 OPTS+=-fopenmp
 LIBS+=-L/usr/local/Cellar/gcc49/4.9.0/lib/gcc/x86_64-apple-darwin13.1.0/4.9.0/  -lgomp
 endif
 
-endif
+endif #host is mbpag3
+
 
 INC = -I. -I ../targetDP
 AR = ar
@@ -178,7 +179,12 @@ code:	$(MAIN).o
 # Serial versions
 
 serial:
-	$(MAKE) serial-d3q19
+ifdef USEGPU
+	$(MAKE) serial-d3q19r	
+else
+	$(MAKE) serial-d3q19	
+endif
+
 
 serial-d2q9:
 	$(MAKE) serial-model "LB=-D_D2Q9_" "LBOBJ=d2q9.o"

@@ -96,6 +96,10 @@ void pe_init(void) {
        (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
        (pe->mpi_size == 1) ? "" : "es");
 
+#ifdef CUDAHOST
+  info("***GPU ACCELERATION ENABLED*** \n -- You are running the GPU build which is under development.\n -- Please check results carefully against CPU build before production.\n\n");  
+#endif
+
   if (pe->mpi_rank == 0) {
     printf("The SVN revision details are: %s\n", svn_revision());
     assert(printf("Note assertions via standard C assert() are on.\n\n"));

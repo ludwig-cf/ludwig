@@ -470,7 +470,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_start(TIMER_STEPS);
 
 #ifdef CUDAHOST
-    cudaProfilerStart();
+    //    cudaProfilerStart();
 #endif
 
 
@@ -779,7 +779,7 @@ void ludwig_run(const char * inputfile) {
     TIMER_stop(TIMER_PROPAGATE);
 
 #ifdef CUDAHOST
-    cudaProfilerStop();
+    //    cudaProfilerStop();
 #endif
 
     TIMER_stop(TIMER_STEPS);
