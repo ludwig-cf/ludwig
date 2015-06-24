@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "mpi.h"
 
@@ -142,7 +143,16 @@ int MPI_Abort(MPI_Comm comm, int code) {
 
 double MPI_Wtime(void) {
 
-  return ((double) clock() / CLOCKS_PER_SEC);
+  //  return ((double) clock() / CLOCKS_PER_SEC);
+
+  //use gettimeofday rather than clock because it reports walltime: 
+  //better when OpenMP is enabled.
+ 
+  struct timeval t1;
+  gettimeofday(&t1, NULL);
+
+  return (t1.tv_sec * 1000000 + t1.tv_usec)/1000000.;
+
 }
 
 /*****************************************************************************
