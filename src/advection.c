@@ -401,7 +401,12 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
 
 
+#ifdef CUDA
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro->tcopy, nf,field->tcopy);
+#else//use host copies of input just now, because of LE plane look-aside buffers
+  advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro, nf,field);
+#endif
+
   targetSynchronize();
 
 #ifndef KEEPFIELDONTARGET
@@ -739,7 +744,12 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   
 
   //execute lattice-based operation on target
+#ifdef CUDA
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
+#else//use host copies of input just now, because of LE plane look-aside buffers
+  advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro,nf,field);
+#endif
+
   targetSynchronize();
 
   // copy output data from target
