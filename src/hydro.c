@@ -4,13 +4,13 @@
  *
  *  Hydrodynamic quantities: velocity, body force on fluid.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2015 The University of Edinburgh
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -46,7 +46,8 @@ static int hydro_u_read(FILE * fp, int index, void * self);
 int hydro_create(int nhcomm, hydro_t ** pobj) {
 
   int nsites;
-  hydro_t * obj = (hydro_t*) NULL;
+  double * tmpptr;
+  hydro_t * obj = (hydro_t *) NULL;
 
   assert(pobj);
 
@@ -64,37 +65,30 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
 
   /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(hydro_t));
+
+  targetMalloc((void**) &(obj->tcopy), sizeof(hydro_t));
 
   /* allocate data space on target */
-  double* tmpptr;
-  hydro_t* t_obj = obj->tcopy;
 
-  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->u),&tmpptr,sizeof(double*)); 
-  obj->t_u= tmpptr; //DEPRECATED direct access to target data.
+  targetCalloc((void**) &tmpptr, obj->nf*nsites*sizeof(double));
+  copyToTarget(&(obj->tcopy->u), &tmpptr, sizeof(double*)); 
+  obj->t_u = tmpptr; /* DEPRECATED direct access to target data. */
 
-  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->f),&tmpptr,sizeof(double*)); 
-  obj->t_f= tmpptr; //DEPRECATED direct access to target data.
+  targetCalloc((void**) &tmpptr, obj->nf*nsites*sizeof(double));
+  copyToTarget(&(obj->tcopy->f), &tmpptr, sizeof(double*)); 
+  obj->t_f = tmpptr; /* DEPRECATED direct access to target data. */
 
-
-  copyToTarget(&(t_obj->nf),&(obj->nf),sizeof(int)); //integer with number of field components
-
+  copyToTarget(&(obj->tcopy->nf), &(obj->nf), sizeof(int));
 
   /* allocate target copies */
-  //targetCalloc((void **) &obj->t_u, obj->nf*nsites*sizeof(double));
-  //targetCalloc((void **) &obj->t_f, obj->nf*nsites*sizeof(double));
 
   #ifdef LB_DATA_SOA
-  //we will do nf halo exchanges, each with 1 field
+  /* we will do nf halo exchanges, each with 1 field */
   coords_field_init_mpi_indexed(nhcomm, 1, MPI_DOUBLE, obj->uhalo);
   #else
-  //we will do 1 halo exchange, with nf fields
+  /* we will do 1 halo exchange, with nf fields */
   coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
   #endif
-
-
 
   *pobj = obj;
 
@@ -109,6 +103,8 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
 
 void hydro_free(hydro_t * obj) {
 
+  double * tmpptr;
+
   assert(obj);
 
   MPI_Type_free(&obj->uhalo[Z]);
@@ -117,20 +113,14 @@ void hydro_free(hydro_t * obj) {
   free(obj->f);
   free(obj->u);
 
-  //free data space on target 
-  double* tmpptr;
-  hydro_t* t_obj = obj->tcopy;
-  copyFromTarget(&tmpptr,&(t_obj->u),sizeof(double*)); 
+  copyFromTarget(&tmpptr, &(obj->tcopy->u), sizeof(double*)); 
   targetFree(tmpptr);
 
-  copyFromTarget(&tmpptr,&(t_obj->f),sizeof(double*)); 
+  copyFromTarget(&tmpptr, &(obj->tcopy->f), sizeof(double*)); 
   targetFree(tmpptr);
   
-  //free target copy of structure
   targetFree(obj->tcopy);
-
   free(obj);
-  obj = NULL;
 
   return;
 }
@@ -143,22 +133,26 @@ void hydro_free(hydro_t * obj) {
 
 int hydro_u_halo(hydro_t * obj) {
 
-  assert(obj);
+#ifdef LB_DATA_SOA
 
-  #ifdef LB_DATA_SOA
-  //we will do nf halo exchanges, each with 1 field
   int ia;
   int  nsites = le_nsites();
-  for (ia=0;ia<obj->nf;ia++){
+
+  assert(obj);
+
+  /* we need nf exchanges */
+  for (ia = 0; ia < obj->nf; ia++) {
     coords_field_halo(obj->nhcomm, 1, &obj->u[ia*nsites], MPI_DOUBLE, obj->uhalo);
   }
-  #else
-  //we will do 1 halo exchange, with nf fields
+
+#else
+
+  assert(obj);
+
+  /* we will do 1 halo exchange, with nf fields */
   coords_field_halo(obj->nhcomm, obj->nf, obj->u, MPI_DOUBLE, obj->uhalo);
-  #endif
 
-
-
+#endif
 
   return 0;
 }
@@ -218,12 +212,14 @@ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
 int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
 
-  int nsites = le_nsites();
+  nsites = le_nsites();
+
   for (ia = 0; ia < 3; ia++) {
-    obj->f[HYADR(nsites,obj->nf,index,ia)] = force[ia];
+    obj->f[HYADR(nsites, obj->nf, index, ia)] = force[ia];
   }
 
   return 0;
@@ -238,12 +234,14 @@ int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
-  int nsites = le_nsites();
+
+  nsites = le_nsites();
 
   for (ia = 0; ia < 3; ia++) {
-    force[ia] = obj->f[HYADR(nsites,obj->nf,index,ia)];
+    force[ia] = obj->f[HYADR(nsites, obj->nf, index, ia)];
   }
 
   return 0;
@@ -260,13 +258,14 @@ int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
-  int nsites = le_nsites();
+
+  nsites = le_nsites();
 
   for (ia = 0; ia < 3; ia++) {
-        obj->f[HYADR(nsites,obj->nf,index,ia)] += force[ia];
- 
+    obj->f[HYADR(nsites,obj->nf,index,ia)] += force[ia]; 
  }
 
   return 0;
@@ -281,10 +280,11 @@ int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
 
-  int nsites = le_nsites();
+  nsites = le_nsites();
 
   for (ia = 0; ia < 3; ia++) {
     obj->u[HYADR(nsites,obj->nf,index,ia)] = u[ia];
@@ -302,10 +302,11 @@ int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
 int hydro_u(hydro_t * obj, int index, double u[3]) {
 
   int ia;
+  int nsites;
 
   assert(obj);
 
-  int nsites = le_nsites();
+  nsites = le_nsites();
 
   for (ia = 0; ia < 3; ia++) {
     u[ia] = obj->u[HYADR(nsites,obj->nf,index,ia)];
@@ -394,6 +395,7 @@ int hydro_lees_edwards(hydro_t * obj) {
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
   int nf;        /* Number of fields */
+  int nsites;
 
   int jc, kc, ia, index0, index1, index2;
 
@@ -407,8 +409,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   assert(obj);
 
-
-  int nsites = le_nsites();
+  nsites = le_nsites();
 
   if (cart_size(Y) > 1) {
     hydro_lees_edwards_parallel(obj);
@@ -483,10 +484,6 @@ int hydro_lees_edwards(hydro_t * obj) {
 
 static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
-  #ifdef LB_DATA_SOA
-  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
-  #endif
-
   int      nlocal[3];      /* Local system size */
   int      noffset[3];     /* Local starting offset */
   int ib;                  /* Index in buffer region */
@@ -514,6 +511,11 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   MPI_Status  status[3];
 
   assert(obj);
+
+  #ifdef LB_DATA_SOA
+  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
+  #endif
+
   nf = obj->nf;
 
   nhalo = coords_nhalo();
@@ -629,14 +631,13 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
   assert(fp);
   assert(obj);
 
-  
   #ifdef LB_DATA_SOA
 
   int nsites = le_nsites();
-  int i;
 
-  for(i=0;i<3;i++){
-    fwrite(&obj->u[i*nsites+index], sizeof(double), 1, fp);
+  for (i = 0; i < 3; i++){
+    n = fwrite(&obj->u[i*nsites+index], sizeof(double), 1, fp);
+    if (n != 1) fatal("fwrite(hydro->u) failed\n");
   }
 
   #else    
@@ -656,17 +657,19 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
 
 static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 
-
   int n;
-  hydro_t * obj = (hydro_t*) arg;
+  int nsites;
+  hydro_t * obj = (hydro_t *) arg;
 
   assert(fp);
   assert(obj);
 
-  int nsites = le_nsites();
+  nsites = le_nsites();
 
-  n = fprintf(fp, "%22.15e %22.15e %22.15e\n", obj->u[HYADR(nsites,obj->nf,index,X)],
-	      obj->u[HYADR(nsites,obj->nf,index,Y)], obj->u[HYADR(nsites,obj->nf,index,Z)]);
+  n = fprintf(fp, "%22.15e %22.15e %22.15e\n",
+	      obj->u[HYADR(nsites,obj->nf,index,X)],
+	      obj->u[HYADR(nsites,obj->nf,index,Y)],
+	      obj->u[HYADR(nsites,obj->nf,index,Z)]);
 
   /* Expect total of 69 characters ... */
   if (n != 69) fatal("fprintf(hydro->u) failed\n");
@@ -682,15 +685,15 @@ static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 
 int hydro_u_read(FILE * fp, int index, void * self) {
 
-  #ifdef LB_DATA_SOA
-  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
-  #endif
-
   int n;
-  hydro_t * obj = (hydro_t*) self;
+  hydro_t * obj = (hydro_t *) self;
 
   assert(fp);
   assert(obj);
+
+  #ifdef LB_DATA_SOA
+  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
+  #endif
 
   n = fread(&obj->u[obj->nf*index], sizeof(double), obj->nf, fp);
   if (n != obj->nf) fatal("fread(hydro->u) failed\n");
@@ -714,55 +717,32 @@ int hydro_u_read(FILE * fp, int index, void * self) {
 int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 			    double w[3][3]) {
 
-  //#ifdef LB_DATA_SOA
-  //fatal("LB_SATA_SOA not supported with hydro_u_gradient_tensor\n");
-  //#endif
-
-
   int im1, ip1;
+  int nsites;
   double tr;
-  int nsites = le_nsites();
 
   assert(obj);
 
+  nsites = le_nsites();
+
   im1 = le_index_real_to_buffer(ic, -1);
-  //  im1 = obj->nf*le_site_index(im1, jc, kc);
   im1 = le_site_index(im1, jc, kc);
   ip1 = le_index_real_to_buffer(ic, +1);
-  //ip1 = obj->nf*le_site_index(ip1, jc, kc);
   ip1 = le_site_index(ip1, jc, kc);
-
-  //w[X][X] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
-  //w[Y][X] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
-  //w[Z][X] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
 
   w[X][X] = 0.5*(obj->u[HYADR(nsites,3,ip1,X)] - obj->u[HYADR(nsites,3,im1,X)]);
   w[Y][X] = 0.5*(obj->u[HYADR(nsites,3,ip1,Y)] - obj->u[HYADR(nsites,3,im1,Y)]);
   w[Z][X] = 0.5*(obj->u[HYADR(nsites,3,ip1,Z)] - obj->u[HYADR(nsites,3,im1,Z)]);
 
-  //im1 = obj->nf*le_site_index(ic, jc - 1, kc);
-  //ip1 = obj->nf*le_site_index(ic, jc + 1, kc);
-
   im1 = le_site_index(ic, jc - 1, kc);
   ip1 = le_site_index(ic, jc + 1, kc);
-
-  //w[X][Y] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
-  //w[Y][Y] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
-  //w[Z][Y] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
 
   w[X][Y] = 0.5*(obj->u[HYADR(nsites,3,ip1,X)] - obj->u[HYADR(nsites,3,im1,X)]);
   w[Y][Y] = 0.5*(obj->u[HYADR(nsites,3,ip1,Y)] - obj->u[HYADR(nsites,3,im1,Y)]);
   w[Z][Y] = 0.5*(obj->u[HYADR(nsites,3,ip1,Z)] - obj->u[HYADR(nsites,3,im1,Z)]);
 
-  //im1 = obj->nf*le_site_index(ic, jc, kc - 1);
-  //ip1 = obj->nf*le_site_index(ic, jc, kc + 1);
-
   im1 = le_site_index(ic, jc, kc - 1);
   ip1 = le_site_index(ic, jc, kc + 1);
-
-  //w[X][Z] = 0.5*(obj->u[ip1 + X] - obj->u[im1 + X]);
-  //w[Y][Z] = 0.5*(obj->u[ip1 + Y] - obj->u[im1 + Y]);
-  //w[Z][Z] = 0.5*(obj->u[ip1 + Z] - obj->u[im1 + Z]);
 
   w[X][Z] = 0.5*(obj->u[HYADR(nsites,3,ip1,X)] - obj->u[HYADR(nsites,3,im1,X)]);
   w[Y][Z] = 0.5*(obj->u[HYADR(nsites,3,ip1,Y)] - obj->u[HYADR(nsites,3,im1,Y)]);

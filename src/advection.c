@@ -18,13 +18,13 @@
  *  Any solid-fluid boundary conditions are dealt with post-hoc by
  *  in advection_bcs.c
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2015  The University of Edinburgh
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -88,6 +88,7 @@ int advection_order(int * order) {
 int advflux_create(int nf, advflux_t ** pobj) {
 
   int nsites;
+  double * tmpptr;
   advflux_t * obj = NULL;
 
   assert(pobj);
@@ -109,28 +110,20 @@ int advflux_create(int nf, advflux_t ** pobj) {
 
 
   /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(advflux_t));
 
-  /* allocate data space on target */
-  double* tmpptr;
+  targetMalloc((void **) &(obj->tcopy), sizeof(advflux_t));
 
-  advflux_t* t_obj = obj->tcopy;
+  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
+  copyToTarget(&(obj->tcopy->fe), &tmpptr, sizeof(double *)); 
 
-  //fe
-  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->fe),&tmpptr,sizeof(double*)); 
+  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
+  copyToTarget(&(obj->tcopy->fw), &tmpptr, sizeof(double *)); 
 
-  //fw
-  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->fw),&tmpptr,sizeof(double*)); 
+  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
+  copyToTarget(&(obj->tcopy->fy), &tmpptr, sizeof(double *)); 
 
-  //fy
-  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->fy),&tmpptr,sizeof(double*)); 
-
-  //fz
-  targetCalloc((void**) &tmpptr,nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->fz),&tmpptr,sizeof(double*)); 
+  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
+  copyToTarget(&(obj->tcopy->fz), &tmpptr, sizeof(double *)); 
 
   *pobj = obj;
 
@@ -145,6 +138,8 @@ int advflux_create(int nf, advflux_t ** pobj) {
 
 void advflux_free(advflux_t * obj) {
 
+  double * tmpptr;
+
   assert(obj);
 
   free(obj->fe);
@@ -152,24 +147,16 @@ void advflux_free(advflux_t * obj) {
   free(obj->fy);
   free(obj->fz);
 
-
-
-  //free data space on target 
-  double* tmpptr;
-  advflux_t* t_obj = obj->tcopy;
-  copyFromTarget(&tmpptr,&(t_obj->fe),sizeof(double*)); 
+  copyFromTarget(&tmpptr, &(obj->tcopy->fe), sizeof(double *)); 
   targetFree(tmpptr);
-  copyFromTarget(&tmpptr,&(t_obj->fw),sizeof(double*)); 
+  copyFromTarget(&tmpptr, &(obj->tcopy->fw), sizeof(double *)); 
   targetFree(tmpptr);
-  copyFromTarget(&tmpptr,&(t_obj->fy),sizeof(double*)); 
+  copyFromTarget(&tmpptr, &(obj->tcopy->fy), sizeof(double *)); 
   targetFree(tmpptr);
-  copyFromTarget(&tmpptr,&(t_obj->fz),sizeof(double*)); 
+  copyFromTarget(&tmpptr, &(obj->tcopy->fz), sizeof(double *)); 
   targetFree(tmpptr);
 
-  //free target copy of structure
   targetFree(obj->tcopy);
-
-
   free(obj);
 
   return;
@@ -233,196 +220,188 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
  *
  *****************************************************************************/
 
-__targetEntry__ void advection_le_1st_lattice(advflux_t * flux, hydro_t * hydro, int nf,
-			    field_t * field) {
-  int nlocal[3];
-  int ic, jc, kc;            /* Counters over faces */
+__targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
+					      hydro_t * hydro, int nf,
+					      field_t * field) {
   int index0, index1, n;
   int icm1, icp1;
   double u0[3], u1[3], u;
   double phi0;
   int i;
+  int index;
 
-
-  int index;  
-__targetTLP__(index,tc_nSites){
+  __targetTLP__(index, tc_nSites) {
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
     
-    // if not a halo site:
-    if (coords[0] >= (tc_nhalo) &&
-    	coords[1] >= (tc_nhalo-1) &&
-    	coords[2] >= (tc_nhalo-1) &&
-    	coords[0] < (tc_Nall[X]-tc_nhalo) &&
-	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
-	coords[2] < (tc_Nall[Z]-tc_nhalo)) {
+    /* if not a halo site: */
+    if (coords[X] >= (tc_nhalo) &&
+    	coords[Y] >= (tc_nhalo-1) &&
+    	coords[Z] >= (tc_nhalo-1) &&
+    	coords[X] < (tc_Nall[X]-tc_nhalo) &&
+	coords[Y] < (tc_Nall[Y]-tc_nhalo)  &&
+	coords[Z] < (tc_Nall[Z]-tc_nhalo)) {
 
-
-      int index0, index1, index2;
-      index0 = targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
+      index0 = targetIndex3D(coords[X],coords[Y],coords[Z],tc_Nall);
 
 #ifdef CUDA
-      int icm1=coords[0]-1;
-      int icp1=coords[0]+1;
-
+      icm1 = coords[X]-1;
+      icp1 = coords[X]+1;
 #else
-
-      //enable LE planes (not yet supported for CUDA)
-      int icm1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, -1)+tc_nhalo-1;
-      int icp1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, +1)+tc_nhalo-1;
-      
+      /* enable LE planes (not yet supported for CUDA) */
+      icm1 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, -1)+tc_nhalo-1;
+      icp1 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, +1)+tc_nhalo-1;
 #endif
 
+      for (n = 0; n < nf; n++) {
 
-	for (n = 0; n < nf; n++) {
-
-	  phi0 = field->data[nf*index0 + n];
-	  for(i=0;i<3;i++)
-	    u0[i]=hydro->u[HYADR(tc_nSites,3,index0,i)];
-
-
-	  /* west face (icm1 and ic) */
-
-	  index1 = targetIndex3D(icm1,coords[1],coords[2],tc_Nall);
-	  for(i=0;i<3;i++)
-	    u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-      
-	  u = 0.5*(u0[X] + u1[X]);
-
-	  if (u > 0.0) {
-	    flux->fw[nf*index0 + n] = u*field->data[nf*index1 + n];
-	  }
-	  else {
-	    flux->fw[nf*index0 + n] = u*phi0;
-	  }
-
-	  /* east face (ic and icp1) */
-
-	  index1 = targetIndex3D(icp1,coords[1],coords[2],tc_Nall);
-
-	  for(i=0;i<3;i++)
-	    u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-      
-	  u = 0.5*(u0[X] + u1[X]);
-
-	  if (u < 0.0) {
-	    flux->fe[nf*index0 + n] = u*field->data[nf*index1 + n];
-	  }
-	  else {
-	    flux->fe[nf*index0 + n] = u*phi0;
-	  }
-
-	  /* y direction */
-
-	  index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
-
-	  for(i=0;i<3;i++)
-	    u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-
-	  u = 0.5*(u0[Y] + u1[Y]);
-
-	  if (u < 0.0) {
-	    flux->fy[nf*index0 + n] = u*field->data[nf*index1 + n];
-	  }
-	  else {
-	    flux->fy[nf*index0 + n] = u*phi0;
-	  }
-
-	  /* z direction */
-
-	  index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
-
-	  for(i=0;i<3;i++)
-	    u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-
-	  u = 0.5*(u0[Z] + u1[Z]);
-
-	  if (u < 0.0) {
-	    flux->fz[nf*index0 + n] = u*field->data[nf*index1 + n];
-	  }
-	  else {
-	    flux->fz[nf*index0 + n] = u*phi0;
-	  }
+	phi0 = field->data[nf*index0 + n];
+	for (i = 0; i < 3; i++) {
+	  u0[i]=hydro->u[HYADR(tc_nSites,3,index0,i)];
 	}
-	/* Next site */
+
+	/* west face (icm1 and ic) */
+
+	index1 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
+	for (i = 0; i < 3; i++) {
+	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
+
+	u = 0.5*(u0[X] + u1[X]);
+
+	if (u > 0.0) {
+	  flux->fw[nf*index0 + n] = u*field->data[nf*index1 + n];
+	}
+	else {
+	  flux->fw[nf*index0 + n] = u*phi0;
+	}
+
+	/* east face (ic and icp1) */
+
+	index1 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
+
+	for(i = 0; i < 3; i++) {
+	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
+
+	u = 0.5*(u0[X] + u1[X]);
+
+	if (u < 0.0) {
+	  flux->fe[nf*index0 + n] = u*field->data[nf*index1 + n];
+	}
+	else {
+	  flux->fe[nf*index0 + n] = u*phi0;
+	}
+
+	/* y direction */
+
+	index1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
+
+	for (i = 0; i < 3; i++) {
+	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
+
+	u = 0.5*(u0[Y] + u1[Y]);
+
+	if (u < 0.0) {
+	  flux->fy[nf*index0 + n] = u*field->data[nf*index1 + n];
+	}
+	else {
+	  flux->fy[nf*index0 + n] = u*phi0;
+	}
+
+	/* z direction */
+
+	index1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
+
+	for (i = 0; i < 3; i++) {
+	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
+
+	u = 0.5*(u0[Z] + u1[Z]);
+
+	if (u < 0.0) {
+	  flux->fz[nf*index0 + n] = u*field->data[nf*index1 + n];
+	}
+	else {
+	  flux->fz[nf*index0 + n] = u*phi0;
+	}
       }
+      /* Next site */
     }
-  
+  }
 
   return;
 }
 
+/*****************************************************************************
+ *
+ *  advection_le_1st
+ *
+ *  Kernel driver routine
+ *
+ *****************************************************************************/
+
 static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
 			    field_t * field) {
   int nlocal[3];
-  int ic, jc, kc;            /* Counters over faces */
-  int index0, index1, n;
-  int icm1, icp1;
-  double u0[3], u1[3], u;
-  double phi0;
+  int nhalo;
+  int nSites;
+  int Nall[3];
+  double * tmpptr;
 
   assert(flux);
   assert(hydro);
   assert(field->data);
 
   coords_nlocal(nlocal);
-
-  int nhalo;
   nhalo = coords_nhalo();
 
+  Nall[X] = nlocal[X] + 2*nhalo;
+  Nall[Y] = nlocal[Y] + 2*nhalo;
+  Nall[Z] = nlocal[Z] + 2*nhalo;
+  nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-
-  double* tmpptr;
-
-  // copy input data to target
+  /* copy input data to target */
 
 #ifndef KEEPHYDROONTARGET
-  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
-  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-  copyToTarget(tmpptr,hydro->u,3*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(hydro->tcopy->u), sizeof(double *)); 
+  copyToTarget(tmpptr, hydro->u, 3*nSites*sizeof(double));
 #endif
 
 #ifndef KEEPFIELDONTARGET
-  field_t* t_field = field->tcopy; //target copy of field structure
-  copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
-  copyToTarget(tmpptr,field->data,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(field->tcopy->data), sizeof(double *)); 
+  copyToTarget(tmpptr, field->data, nf*nSites*sizeof(double));
 #endif
 
+  /* copy lattice shape constants to target ahead of execution */
 
-  //copy lattice shape constants to target ahead of execution
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
-
+  copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
+  copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int));
+  copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
 
 #ifdef CUDA
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro->tcopy, nf,field->tcopy);
-#else//use host copies of input just now, because of LE plane look-aside buffers
+#else
+  /* use host copies of input just now, because of LE plane buffers*/
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro, nf,field);
 #endif
 
   targetSynchronize();
 
 #ifndef KEEPFIELDONTARGET
-  advflux_t* t_flux = flux->tcopy; //target copy of flux structure
+  copyFromTarget(&tmpptr, &(flux->tcopy->fe), sizeof(double *)); 
+  copyFromTarget(flux->fe, tmpptr, nf*nSites*sizeof(double));
 
-  copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*)); 
-  copyFromTarget(flux->fe,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fw), sizeof(double *)); 
+  copyFromTarget(flux->fw, tmpptr, nf*nSites*sizeof(double));
 
-  copyFromTarget(&tmpptr,&(t_flux->fw),sizeof(double*)); 
-  copyFromTarget(flux->fw,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fy), sizeof(double *)); 
+  copyFromTarget(flux->fy, tmpptr, nf*nSites*sizeof(double));
 
-  copyFromTarget(&tmpptr,&(t_flux->fy),sizeof(double*)); 
-  copyFromTarget(flux->fy,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fz),sizeof(double*)); 
-  copyFromTarget(flux->fz,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fz), sizeof(double *)); 
+  copyFromTarget(flux->fz, tmpptr, nf*nSites*sizeof(double));
 #endif
 
   return 0;
@@ -534,61 +513,59 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
   int n;
   double u0[3], u1[3], u;
   int i;
-
+  int index;
+  int icm2,  icm1, icp1, icp2;
 
   const double a1 = -0.213933;
   const double a2 =  0.927865;
   const double a3 =  0.286067;
 
-  int index;  
-__targetTLP__(index,tc_nSites){
+  __targetTLP__(index, tc_nSites) {
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
     
-    // if not a halo site:
-    if (coords[0] >= (tc_nhalo) &&
-    	coords[1] >= (tc_nhalo-1) &&
-    	coords[2] >= (tc_nhalo-1) &&
-    	coords[0] < (tc_Nall[X]-tc_nhalo) &&
-	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
-	coords[2] < (tc_Nall[Z]-tc_nhalo)) {
+    /* if not a halo site: */
+    if (coords[X] >= (tc_nhalo) &&
+    	coords[Y] >= (tc_nhalo-1) &&
+    	coords[Z] >= (tc_nhalo-1) &&
+    	coords[X] < (tc_Nall[X]-tc_nhalo) &&
+	coords[Y] < (tc_Nall[Y]-tc_nhalo)  &&
+	coords[Z] < (tc_Nall[Z]-tc_nhalo)) {
 
 
       int index0, index1, index2;
-      index0 = targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
+      index0 = targetIndex3D(coords[X],coords[Y],coords[Z],tc_Nall);
 
-      for(i=0;i<3;i++)
-        u0[i]=hydro->u[HYADR(tc_nSites,3,index0,i)];
+      for (i = 0; i < 3; i++) {
+        u0[i] = hydro->u[HYADR(tc_nSites,3,index0,i)];
+      }
 
 	/* west face (icm1 and ic) */
 
-
 #ifdef CUDA
-      int icm2=coords[0]-2;
-      int icm1=coords[0]-1;
-      int icp1=coords[0]+1;
-      int icp2=coords[0]+2;
-
+      icm2 = coords[X]-2;
+      icm1 = coords[X]-1;
+      icp1 = coords[X]+1;
+      icp2 = coords[X]+2;
 #else
-
-      //enable LE planes (not yet supported for CUDA)
-      int icm2 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, -2)+tc_nhalo-1;
-      int icm1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, -1)+tc_nhalo-1;
-      int icp1 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, +1)+tc_nhalo-1;
-      int icp2 = le_index_real_to_buffer(coords[0]-tc_nhalo+1, +2)+tc_nhalo-1;
-      
+      /* enable LE planes (not yet supported for CUDA) */
+      icm2 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, -2)+tc_nhalo-1;
+      icm1 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, -1)+tc_nhalo-1;
+      icp1 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, +1)+tc_nhalo-1;
+      icp2 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, +2)+tc_nhalo-1;
 #endif
 
-	index1 = targetIndex3D(icm1,coords[1],coords[2],tc_Nall);
+	index1 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
 
-	for(i=0;i<3;i++)
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
+	for (i = 0; i < 3; i++) {
+	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
 
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-	  index2 = targetIndex3D(icm2,coords[1],coords[2],tc_Nall);
+	  index2 = targetIndex3D(icm2,coords[Y],coords[Z],tc_Nall);
 
 	  for (n = 0; n < nf; n++) {
 	    flux->fw[nf*index0 + n] =
@@ -599,7 +576,7 @@ __targetTLP__(index,tc_nSites){
 	}
 	else {
 
-	index2 = targetIndex3D(icp1,coords[1],coords[2],tc_Nall);
+	index2 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
 
 	  for (n = 0; n < nf; n++) {
 	    flux->fw[nf*index0 + n] =
@@ -611,15 +588,15 @@ __targetTLP__(index,tc_nSites){
 
 	/* east face (ic and icp1) */
 
-	index1 = targetIndex3D(icp1,coords[1],coords[2],tc_Nall);
+	index1 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
 
-	for(i=0;i<3;i++)
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)]
-;
+	for (i = 0; i < 3; i++) {
+	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-	index2 = targetIndex3D(icp2,coords[1],coords[2],tc_Nall);
+	index2 = targetIndex3D(icp2,coords[Y],coords[Z],tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fe[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -628,7 +605,7 @@ __targetTLP__(index,tc_nSites){
 	  }
 	}
 	else {
-	index2 = targetIndex3D(icm1,coords[1],coords[2],tc_Nall);
+	index2 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fe[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -639,15 +616,15 @@ __targetTLP__(index,tc_nSites){
 
 	/* y direction */
 
-	index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
+	index1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
 
-	for(i=0;i<3;i++)
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-
+	for (i = 0; i < 3; i++) {
+	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-	index2 = targetIndex3D(coords[0],coords[1]+2,coords[2],tc_Nall);
+	index2 = targetIndex3D(coords[X],coords[Y]+2,coords[Z],tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fy[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -656,7 +633,7 @@ __targetTLP__(index,tc_nSites){
 	  }
 	}
 	else {
-	index2 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);
+	index2 = targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fy[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -667,15 +644,15 @@ __targetTLP__(index,tc_nSites){
 
 	/* z direction */
 
-	index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
+	index1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
 
-	for(i=0;i<3;i++)
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-
+	for (i = 0; i < 3; i++) {
+	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
+	}
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-	index2 = targetIndex3D(coords[0],coords[1],coords[2]+2,tc_Nall);
+	index2 = targetIndex3D(coords[X],coords[Y],coords[Z]+2,tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fz[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -684,7 +661,7 @@ __targetTLP__(index,tc_nSites){
 	  }
 	}
 	else {
-	index2 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
+	index2 = targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
 	  for (n = 0; n < nf; n++) {
 	    flux->fz[nf*index0 + n] =
 	      u*(a1*field->data[nf*index2 + n]
@@ -700,74 +677,79 @@ __targetTLP__(index,tc_nSites){
   return;
 }
 
+/*****************************************************************************
+ *
+ *  advection_le_3rd
+ *
+ *  Kernel driver
+ *
+ *****************************************************************************/
+
 static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
 			    field_t * field) {
   int nlocal[3];
+  int nhalo;
+  int nSites;
+  int Nall[3];
+  double * tmpptr;
 
   assert(flux);
   assert(hydro);
   assert(field->data);
-
-  coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
 
-  int nhalo;
+  coords_nlocal(nlocal);
   nhalo = coords_nhalo();
 
+  Nall[X] = nlocal[X] + 2*nhalo;
+  Nall[Y] = nlocal[Y] + 2*nhalo;
+  Nall[Z] = nlocal[Z] + 2*nhalo;
+  nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+  /* copy input data to target */
 
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-
-
-  // copy input data to target
-
-  double* tmpptr;
 #ifndef KEEPHYDROONTARGET
-  hydro_t* t_hydro = hydro->tcopy; //target copy of hydro structure
-  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-  copyToTarget(tmpptr,hydro->u,3*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(hydro->tcopy->u), sizeof(double *)); 
+  copyToTarget(tmpptr, hydro->u, 3*nSites*sizeof(double));
 #endif
 
 #ifndef KEEPFIELDONTARGET
-  field_t* t_field = field->tcopy; //target copy of field structure
-  copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
-  copyToTarget(tmpptr,field->data,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(field->tcopy->data), sizeof(double *)); 
+  copyToTarget(tmpptr, field->data, nf*nSites*sizeof(double));
 #endif
 
-  //copy lattice shape constants to target ahead of execution
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
+  /* copy lattice shape constants to target ahead of execution */
+
+  copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
+  copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int));
+  copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
   
 
-  //execute lattice-based operation on target
+  /* execute lattice-based operation on target */
 #ifdef CUDA
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
-#else//use host copies of input just now, because of LE plane look-aside buffers
+#else
+  /*use host copies of input just now, because of LE plane  buffers */
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro,nf,field);
 #endif
 
   targetSynchronize();
 
-  // copy output data from target
+  /* copy output data from target */
 
 #ifndef KEEPFIELDONTARGET
-  advflux_t* t_flux = flux->tcopy; //target copy of flux structure
 
-  copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*)); 
-  copyFromTarget(flux->fe,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fe), sizeof(double *)); 
+  copyFromTarget(flux->fe, tmpptr, nf*nSites*sizeof(double));
 
-  copyFromTarget(&tmpptr,&(t_flux->fw),sizeof(double*)); 
-  copyFromTarget(flux->fw,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fw), sizeof(double *)); 
+  copyFromTarget(flux->fw, tmpptr, nf*nSites*sizeof(double));
 
-  copyFromTarget(&tmpptr,&(t_flux->fy),sizeof(double*)); 
-  copyFromTarget(flux->fy,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fy), sizeof(double*)); 
+  copyFromTarget(flux->fy, tmpptr, nf*nSites*sizeof(double));
 
-  copyFromTarget(&tmpptr,&(t_flux->fz),sizeof(double*)); 
-  copyFromTarget(flux->fz,tmpptr,nf*nSites*sizeof(double));
+  copyFromTarget(&tmpptr, &(flux->tcopy->fz), sizeof(double*)); 
+  copyFromTarget(flux->fz, tmpptr, nf*nSites*sizeof(double));
 #endif
 
   return 0;
