@@ -4,13 +4,13 @@
  *
  *  Basic memory management and cell list routines for particle code.
  *
- *  $Id: colloids.c,v 1.11 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk).
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -48,10 +48,9 @@ __targetHost__ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) 
   obj = (colloids_info_t*) calloc(1, sizeof(colloids_info_t));
   if (obj == NULL) fatal("calloc(colloids_info_t) failed\n");
 
-
   /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(colloids_info_t));
 
+  targetCalloc((void**) &(obj->tcopy), sizeof(colloids_info_t));
 
   /* Defaults */
 
@@ -93,7 +92,6 @@ __targetHost__ void colloids_info_free(colloids_info_t * info) {
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
 
-  //free target copy of structure
   if (info->tcopy) targetFree(info->tcopy);
 
   free(info);
@@ -200,8 +198,10 @@ __targetHost__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0) 
 __targetHost__ int colloids_info_map_init(colloids_info_t * info) {
 
   int nsites;
+  void * tmpptr;
 
   assert(info);
+  assert(info->tcopy);
 
   nsites = coords_nsites();
 
@@ -212,15 +212,10 @@ __targetHost__ int colloids_info_map_init(colloids_info_t * info) {
   if (info->map_old == (colloid_t **) NULL) fatal("calloc (map_old) failed");
   if (info->map_new == (colloid_t **) NULL) fatal("calloc (map_new) failed");
 
-
   /* allocate data space on target */
-  double* tmpptr;
-  colloids_info_t* t_info = info->tcopy;
-  targetCalloc((void**) &tmpptr,nsites*sizeof(colloid_t*));
-   copyToTarget(&(t_info->map_new),&tmpptr,sizeof(colloid_t**)); 
 
-
-
+  targetCalloc((void**) &tmpptr, nsites*sizeof(colloid_t*));
+  copyToTarget(&(info->tcopy->map_new), &tmpptr, sizeof(colloid_t**)); 
 
   return 0;
 }
@@ -486,8 +481,8 @@ __targetHost__ int colloids_info_cell_list_head(colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_cell_coords(colloids_info_t * cinfo, const double r[3],
-			      int icell[3]) {
+__targetHost__ int colloids_info_cell_coords(colloids_info_t * cinfo,
+					     const double r[3], int icell[3]) {
   int ia;
   double lcell;
 
@@ -721,8 +716,8 @@ __targetHost__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_add(colloids_info_t * cinfo, int index, const double r[3],
-		      colloid_t ** pc) {
+__targetHost__ int colloids_info_add(colloids_info_t * cinfo, int index,
+				     const double r[3], colloid_t ** pc) {
 
   int icell[3];
 
@@ -766,13 +761,6 @@ __targetHost__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
 
   colloid_t * obj = NULL;
 
-  //obj = (colloid_t *) calloc(1, sizeof(colloid_t));
-  //cudaMallocManaged((void**) &obj, sizeof(colloid_t));
-  //checkTargetError("cudaMallocManaged");
-
-
-  //if (obj == (colloid_t *) NULL) fatal("calloc(colloid_t) failed\n");
-
   targetCallocUnified((void**) &obj, sizeof(colloid_t));  
 
   cinfo->nallocated += 1;
@@ -793,7 +781,6 @@ __targetHost__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
   assert(pc);
 
   colloid_link_free_list(pc->lnk);
-  //free(pc);
   targetFree(pc);
 
   cinfo->nallocated -= 1;
