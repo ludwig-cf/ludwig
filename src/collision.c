@@ -56,7 +56,6 @@ static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t 
 static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
 
-//TODO refactor these type definitions and forward declarations
 
 
 __target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int baseIndex);
