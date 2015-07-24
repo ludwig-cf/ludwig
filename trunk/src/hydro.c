@@ -632,9 +632,9 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
   assert(obj);
 
   #ifdef LB_DATA_SOA
-
+  
   int nsites = le_nsites();
-
+  int i;
   for (i = 0; i < 3; i++){
     n = fwrite(&obj->u[i*nsites+index], sizeof(double), 1, fp);
     if (n != 1) fatal("fwrite(hydro->u) failed\n");

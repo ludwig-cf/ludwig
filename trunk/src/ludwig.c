@@ -423,6 +423,11 @@ void ludwig_run(const char * inputfile) {
     int nSites=Nall[X]*Nall[Y]*Nall[Z];
     int nFields=NVEL*ludwig->lb->ndist;
     copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));  
+
+#ifdef CUDAHOST
+    init_comms_gpu(nlocal, ludwig->lb->ndist);
+#endif
+
 #endif
 
 #ifdef KEEPHYDROONTARGET
@@ -506,14 +511,27 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->phi) {
 
 #ifdef KEEPFIELDONTARGET
+
+#ifdef CUDAHOST
+
+      /* use gpu-specific comms */
+      halo_gpu(1, 1, 0, ludwig->phi->t_data);
+
+#else
+
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
     copyFromTarget(ludwig->phi->data,tmpptr,ludwig->phi->nf*nSites*sizeof(double));
-#endif
-      field_halo(ludwig->phi);
-#ifdef KEEPFIELDONTARGET
+    field_halo(ludwig->phi);
+
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
     copyToTarget(tmpptr,ludwig->phi->data,ludwig->phi->nf*nSites*sizeof(double));
-#endif
+#endif /* CUDAHOST */
+
+#else /* not KEEPFIELDONTARGET */
+      field_halo(ludwig->phi);
+
+#endif /* KEEPFIELDONTARGET */
+
 
       field_grad_compute(ludwig->phi_grad);
     }
@@ -726,17 +744,25 @@ void ludwig_run(const char * inputfile) {
 #ifdef KEEPFONTARGET
 
 #ifdef CUDAHOST
-      copyFromTarget3DEdge(ludwig->lb->f,ludwig->lb->t_f,
-			   Nall,nFields); 
-      lb_halo(ludwig->lb);
-      copyToTarget3DHalo(ludwig->lb->t_f,ludwig->lb->f,
-			 Nall,nFields); 
+
+      /* use  targetDP and "traditional" ludwig comms
+	 copyFromTarget3DEdge(ludwig->lb->f,ludwig->lb->t_f,
+	 Nall,nFields); 
+	 lb_halo(ludwig->lb);
+	 copyToTarget3DHalo(ludwig->lb->t_f,ludwig->lb->f,
+      		 Nall,nFields); 
+      */
+
+      /* use gpu-specific comms */
+      /* TODO enable packed field */
+      halo_gpu(NVEL, ludwig->lb->ndist, 0, ludwig->lb->t_f);
+
 #else
       lb_halo(ludwig->lb->tcopy);
-#endif // CUDAHOST
+#endif /* CUDAHOST */
 
 
-#else //not KEEPFONTARGET
+#else /* not KEEPFONTARGET */
 
       lb_halo(ludwig->lb);
 
@@ -971,6 +997,12 @@ void ludwig_run(const char * inputfile) {
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 #ifdef PETSC
   psi_petsc_finish();
+#endif
+
+#ifdef KEEPFONTARGET
+#ifdef CUDAHOST
+  finalise_comms_gpu();
+#endif
 #endif
 
   stats_rheology_finish();

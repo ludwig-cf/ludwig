@@ -145,7 +145,7 @@ TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
 	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o \
 	blue_phase.o phi_force_stress.o phi_force.o blue_phase_beris_edwards.o \
 	advection.o gradient_3d_7pt_solid.o colloids_Q_tensor.o colloids.o \
-	advection_bcs.o coords.o phi_force_colloid.o  
+	advection_bcs.o coords.o phi_force_colloid.o comms_gpu.o
 
 
 ###############################################################################
