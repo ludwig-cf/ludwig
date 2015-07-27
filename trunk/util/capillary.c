@@ -44,7 +44,10 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "../src/site_map.h"
+/* This is a copy from ../src/map.h; it would be better to include
+ * directly, but that incurs additional dependencies on targetDP.h */
+
+enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 
 /* SYSTEM SIZE */
 /* Set the system size as desired. Clearly, this must match the system
@@ -138,15 +141,15 @@ int main(int argc, char ** argv) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
 
-	  map_in[n] = BOUNDARY;
+	  map_in[n] = MAP_BOUNDARY;
 	  map_h[n] = 0.0;
 	  /* Fluid if r(x,y) <= capillary width (L/2) */
 	  r = sqrt(x*x + y*y);
 	  if (r <= rc) {
-	    map_in[n] = FLUID;
+	    map_in[n] = MAP_FLUID;
 	  }
 
-	  if (map_in[n] == BOUNDARY) {
+	  if (map_in[n] == MAP_BOUNDARY) {
 	    nsolid++;
 	    if (k >= z1 && k <= z2) {
 	      map_h[n] = H;
@@ -168,13 +171,13 @@ int main(int argc, char ** argv) {
 
 	  n = ymax*zmax*i + zmax*j + k;
 
-	  map_in[n] = FLUID;
+	  map_in[n] = MAP_FLUID;
 	  
 	  if (i == 0 || j == 0 || i == xmax - 1 || j == ymax - 1) {
-	    map_in[n] = BOUNDARY;
+	    map_in[n] = MAP_BOUNDARY;
 	  }
 
-	  if (map_in[n] == BOUNDARY) {
+	  if (map_in[n] == MAP_BOUNDARY) {
 	    nsolid++;
 	    if (k >= z1 && k <= z2) {
 	      map_h[n] = H;
@@ -191,9 +194,9 @@ int main(int argc, char ** argv) {
       for (j = 0; j < ymax; j++) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
-	  map_in[n] = FLUID;
+	  map_in[n] = MAP_FLUID;
 	  if (i == 0 || i == xmax - 1) {
-	    map_in[n] = BOUNDARY;
+	    map_in[n] = MAP_BOUNDARY;
 	    ++nsolid;
 	  }
 	}
@@ -208,9 +211,9 @@ int main(int argc, char ** argv) {
       for (j = 0; j < ymax; j++) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
-	  map_in[n] = FLUID;
+	  map_in[n] = MAP_FLUID;
 	  if (j == 0 || j == ymax - 1) {
-	    map_in[n] = BOUNDARY;
+	    map_in[n] = MAP_BOUNDARY;
 	    ++nsolid;
 	  }
 	}
@@ -224,9 +227,9 @@ int main(int argc, char ** argv) {
       for (j = 0; j < ymax; j++) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
-	  map_in[n] = FLUID;
+	  map_in[n] = MAP_FLUID;
 	  if (k == 0 || k == zmax - 1) {
-	    map_in[n] = BOUNDARY;
+	    map_in[n] = MAP_BOUNDARY;
 	    ++nsolid;
 	  }
 	}
@@ -241,15 +244,15 @@ int main(int argc, char ** argv) {
 
   /* picture */
 
-  printf("\nCross section (%d = fluid, %d = solid)\n", FLUID, BOUNDARY);
+  printf("\nCross section (%d = fluid, %d = solid)\n", MAP_FLUID, MAP_BOUNDARY);
 
   k = 0;
   for (i = 0; i < xmax; i++) {
     for (j = 0; j < ymax; j++) {
 	n = ymax*zmax*i + zmax*j + k;
       
-	if (map_in[n] == BOUNDARY) printf(" %d", BOUNDARY);
-	if (map_in[n] == FLUID)    printf(" %d", FLUID);
+	if (map_in[n] == MAP_BOUNDARY) printf(" %d", MAP_BOUNDARY);
+	if (map_in[n] == MAP_FLUID)    printf(" %d", MAP_FLUID);
     }
     printf("\n");
   }
