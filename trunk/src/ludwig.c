@@ -179,7 +179,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   init_control();
 
-  physics_init_rt(ludwig->param);
+  physics_init_rt(ludwig->param); 
   physics_info(ludwig->param);
 
 #ifdef PETSC
@@ -379,7 +379,7 @@ void ludwig_run(const char * inputfile) {
 
   double* tmpptr;
 
-  ludwig = calloc(1, sizeof(ludwig_t));
+  ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
 
   pe_init();

@@ -499,7 +499,7 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
   void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
 
-  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
   
   qh = 0.0;
 
@@ -580,7 +580,7 @@ void lc_droplet_antisymmetric_stress(const int index, double sth[3][3]) {
   void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
 
-  blue_phase_compute_h(q, dq, dsq, h, pcon);
+  blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

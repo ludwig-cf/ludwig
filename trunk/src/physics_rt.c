@@ -22,7 +22,7 @@
  *
  *****************************************************************************/
 
-int physics_info(void) {
+int physics_info(physics_t * phys) {
 
   double rho0;
   double eta1, eta2;
@@ -63,7 +63,7 @@ int physics_info(void) {
  *
  *****************************************************************************/
 
-int physics_init_rt(void) {
+int physics_init_rt(physics_t * phys) {
 
   double kt;
   double eta;

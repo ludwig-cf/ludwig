@@ -50,10 +50,10 @@ int map_create(int ndata, map_t ** pobj) {
   nsites = coords_nsites();
   nhalo = coords_nhalo();
 
-  obj = calloc(1, sizeof(map_t));
+  obj = (map_t*) calloc(1, sizeof(map_t));
   if (obj == NULL) fatal("calloc(map_t) failed\n");
 
-  obj->status = calloc(nsites, sizeof(char));
+  obj->status = (char*) calloc(nsites, sizeof(char));
   if (obj->status == NULL) fatal("calloc(map->status) failed\n");
 
  /* allocate target copy */
@@ -63,7 +63,7 @@ int map_create(int ndata, map_t ** pobj) {
 
   /* Could be zero-sized array */
 
-  obj->data = calloc(ndata*nsites, sizeof(double));
+  obj->data = (double*) calloc(ndata*nsites, sizeof(double));
   if (ndata > 0 && obj->data == NULL) fatal("calloc(map->data) failed\n");
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_CHAR, obj->halostatus);
@@ -397,7 +397,7 @@ static int map_write(FILE * fp, int index, void * self) {
 
   int nw;
   int indexf;
-  map_t * obj = self;
+  map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
@@ -424,7 +424,7 @@ static int map_read(FILE * fp, int index, void * self) {
 
   int nr;
   int indexf;
-  map_t * obj = self;
+  map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
@@ -452,7 +452,7 @@ static int map_write_ascii(FILE * fp, int index, void * self) {
   int n, nw;
   int indexf;
   int status;
-  map_t * obj = self;
+  map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
@@ -485,7 +485,7 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
   int n, nr;
   int indexf;
   int status;
-  map_t * obj = self;
+  map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);

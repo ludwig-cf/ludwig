@@ -100,20 +100,20 @@ int psi_create(int nk, psi_t ** pobj) {
   nsites = coords_nsites();
   nhalo = coords_nhalo();
 
-  psi = calloc(1, sizeof(psi_t));
+  psi = (psi_t*) calloc(1, sizeof(psi_t));
   if (psi == NULL) fatal("Allocation of psi failed\n");
 
   psi->nk = nk;
-  psi->psi = calloc(nsites, sizeof(double));
+  psi->psi = (double*) calloc(nsites, sizeof(double));
   if (psi->psi == NULL) fatal("Allocation of psi->psi failed\n");
 
-  psi->rho = calloc(nk*nsites, sizeof(double));
+  psi->rho = (double*) calloc(nk*nsites, sizeof(double));
   if (psi->rho == NULL) fatal("Allocation of psi->rho failed\n");
 
-  psi->diffusivity = calloc(nk, sizeof(double));
+  psi->diffusivity = (double*) calloc(nk, sizeof(double));
   if (psi->diffusivity == NULL) fatal("calloc(psi->diffusivity) failed\n");
 
-  psi->valency = calloc(nk, sizeof(int));
+  psi->valency = (int*) calloc(nk, sizeof(int));
   if (psi->valency == NULL) fatal("calloc(psi->valency) failed\n");
 
   psi->e = e_unit_default;
@@ -304,7 +304,7 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 
   int n, nwrite;
   double rho_el;
-  psi_t * obj = self;
+  psi_t * obj = (psi_t*) self;
 
   assert(obj);
   assert(fp);
@@ -339,7 +339,7 @@ static int psi_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
   double rho_el;
-  psi_t * obj = self;
+  psi_t * obj = (psi_t*) self;
 
   assert(fp);
   assert(self);
@@ -370,7 +370,7 @@ static int psi_write(FILE * fp, int index, void * self) {
 
   int n;
   double rho_el;
-  psi_t * obj = self;
+  psi_t * obj = (psi_t*) self;
 
   assert(fp);
   assert(obj);
@@ -400,7 +400,7 @@ static int psi_read(FILE * fp, int index, void * self) {
 
   int n;
   double rho_el;
-  psi_t * obj = self;
+  psi_t * obj = (psi_t*) self;
 
   assert(fp);
   assert(obj);
