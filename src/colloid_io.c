@@ -82,7 +82,7 @@ int colloid_io_create(int io_grid[3], colloids_info_t * info,
   assert(info);
   assert(pcio);
 
-  obj = calloc(1, sizeof(colloid_io_t));
+  obj = (colloid_io_t*) calloc(1, sizeof(colloid_io_t));
   if (obj == NULL) fatal("calloc(colloid_io_t) failed\n");
 
   obj->n_io = 1;

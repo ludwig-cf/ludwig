@@ -544,8 +544,8 @@ int blue_phase_stats(field_t * qf, field_grad_t * dqf, map_t * map,
 	void* pcon=NULL;
 	blue_phase_host_constant_ptr(&pcon);
 
-	blue_phase_compute_h(q, dq, dsq, h, pcon);
-	blue_phase_compute_stress(q, dq, h, sth, pcon);
+	blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
+	blue_phase_compute_stress(q, dq, h, sth, (bluePhaseKernelConstants_t*) pcon);
 
 	q2 = 0.0;
 

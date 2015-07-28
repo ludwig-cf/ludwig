@@ -155,9 +155,9 @@ static int le_reproject(lb_t * lb) {
 	  for (n = 0; n < ndist; n++) {
 
 	    /* Compute 0th and 1st moments */
-
-	    lb_0th_moment(lb, index, n, &rho);
-	    lb_1st_moment(lb, index, n, g);
+	    lb_dist_enum_t ndn= (lb_dist_enum_t) n;
+	    lb_0th_moment(lb, index, ndn, &rho);
+	    lb_1st_moment(lb, index, ndn, g);
 
 	    for (ia = 0; ia < 3; ia++) {
 	      for (ib = 0; ib < 3; ib++) {

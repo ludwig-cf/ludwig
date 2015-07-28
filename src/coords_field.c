@@ -133,8 +133,8 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
   nstripy = nlocal[Y];
   ncount = nhcomm*nstripy;
 
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
+  blocklen = (int*) calloc(ncount, sizeof(int));
+  displace = (int*) calloc(ncount, sizeof(int));
   if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
   if (displace == NULL) fatal("calloc(displace) failed\n");
 
@@ -162,8 +162,8 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
   nstripx = nlocal[X] + 2*nhcomm;
   ncount = nhcomm*nstripx;
 
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
+  blocklen = (int*) calloc(ncount, sizeof(int));
+  displace = (int*) calloc(ncount, sizeof(int));
   if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
   if (displace == NULL) fatal("calloc(displace) failed\n");
 
@@ -192,8 +192,8 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
   nstripy = (nlocal[Y] + 2*nhcomm);
   ncount = nstripx*nstripy;
 
-  blocklen = calloc(ncount, sizeof(int));
-  displace = calloc(ncount, sizeof(int));
+  blocklen = (int*) calloc(ncount, sizeof(int));
+  displace = (int*) calloc(ncount, sizeof(int));
   if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
   if (displace == NULL) fatal("calloc(displace) failed\n");
 
@@ -396,7 +396,7 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
   int pforw, pback;
   int n, nh;
   size_t sz;
-  unsigned char * mbuf = buf;
+  unsigned char * mbuf = (unsigned char*) buf;
 
   MPI_Request req_send[6];
   MPI_Request req_recv[6];
