@@ -480,14 +480,18 @@ void ludwig_run(const char * inputfile) {
 
 
     step = get_step();
-    if (ludwig->hydro) hydro_f_zero(ludwig->hydro, fzero);
+
+    if (ludwig->hydro) {
 #ifdef KEEPHYDROONTARGET
-    
-    	    copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
-	    targetZero(tmpptr,ludwig->hydro->nf*nSites);
-    //	    copyToTarget(tmpptr,ludwig->hydro->f,ludwig->hydro->nf*nSites*sizeof(double));
+      
+      copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
+      targetZero(tmpptr,ludwig->hydro->nf*nSites);
+      //	    copyToTarget(tmpptr,ludwig->hydro->f,ludwig->hydro->nf*nSites*sizeof(double));
+#else
+      hydro_f_zero(ludwig->hydro, fzero);
 #endif
 
+    }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
@@ -715,13 +719,16 @@ void ludwig_run(const char * inputfile) {
        * at next time step for FD above. Strictly, we only need to
        * do this if velocity output is required in presence of
        * colloids to present non-zero u inside particles. */
-      hydro_u_zero(ludwig->hydro, uzero);
 
 #ifdef KEEPHYDROONTARGET
 	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
 	    targetZero(tmpptr,ludwig->hydro->nf*nSites);
 	    //	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+
+#else
+      hydro_u_zero(ludwig->hydro, uzero);
 #endif
+
 
       /* Collision stage */
 
