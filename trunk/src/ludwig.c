@@ -514,6 +514,8 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->phi) {
 
+    TIMER_start(TIMER_PHI_HALO);
+
 #ifdef KEEPFIELDONTARGET
 
 #ifdef CUDAHOST
@@ -536,6 +538,7 @@ void ludwig_run(const char * inputfile) {
 
 #endif /* KEEPFIELDONTARGET */
 
+    TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->phi_grad);
     }
