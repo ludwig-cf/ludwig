@@ -762,7 +762,8 @@ void ludwig_run(const char * inputfile) {
 
       /* use gpu-specific comms */
       /* TODO enable packed field */
-      halo_gpu(NVEL, ludwig->lb->ndist, 0, ludwig->lb->t_f);
+      
+      halo_gpu(NVEL, ludwig->lb->ndist, lb_halo_reduced(ludwig->lb), ludwig->lb->t_f);
 
 #else
       lb_halo(ludwig->lb->tcopy);

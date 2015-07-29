@@ -803,6 +803,8 @@ static int lb_f_write(FILE * fp, int index, void * self) {
   return 0;
 }
 
+static int isReduced_=0;
+
 /*****************************************************************************
  *
  *  lb_halo_set
@@ -822,6 +824,8 @@ int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
     lb->plane_xz[BACKWARD] = lb->plane_xz_reduced[BACKWARD];
     lb->plane_yz[FORWARD]  = lb->plane_yz_reduced[FORWARD];
     lb->plane_yz[BACKWARD] = lb->plane_yz_reduced[BACKWARD];
+
+    isReduced_=1;
   }
   else {
     /* Default to full halo. */
@@ -834,6 +838,20 @@ int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_halo_reduced
+ *
+ *  Return 1 if halo is reduced, 0 otherwise.
+ *
+ *****************************************************************************/
+
+int lb_halo_reduced(lb_t * lb) {
+
+  return isReduced_;
+
 }
 
 /*****************************************************************************
