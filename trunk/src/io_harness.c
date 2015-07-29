@@ -202,7 +202,7 @@ static struct io_decomposition_t * io_decomposition_allocate() {
 
   struct io_decomposition_t * p = NULL;
 
-  p = (io_decomposition_t*) calloc(1, sizeof(struct io_decomposition_t));
+  p = (struct io_decomposition_t*) calloc(1, sizeof(struct io_decomposition_t));
   if (p == NULL) fatal("Failed to allocate io_decomposition_t\n");
 
   return p;
