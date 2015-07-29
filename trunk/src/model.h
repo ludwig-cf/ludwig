@@ -79,6 +79,7 @@ __targetHost__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double
 __targetHost__ int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho);
 __targetHost__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
 __targetHost__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
+__targetHost__ int lb_halo_reduced(lb_t * lb);
 __targetHost__ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]);
 __targetHost__ int lb_f_multi_index(lb_t * lb, int index, int n, double f[NVEL][SIMDVL]);
 __targetHost__ int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]);
