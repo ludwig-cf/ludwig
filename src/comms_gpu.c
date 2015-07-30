@@ -20,6 +20,8 @@
 
 
 #include "model.h" 
+#include <time.h>
+#include <sys/time.h>
 
 extern "C" int  RUN_get_string_parameter(const char *, char *, const int);
 
@@ -151,6 +153,16 @@ __constant__ int cv_cd[NVEL][3];
 /* } */
 
 
+double wtime(void) {
+ 
+  struct timeval t1;
+  gettimeofday(&t1, NULL);
+
+  return (t1.tv_sec * 1000000 + t1.tv_usec)/1000000.;
+
+}
+
+
 /* get linear index from 3d coordinates (host) */
 int get_linear_index(int ii,int jj,int kk,int N[3])
 
@@ -260,6 +272,7 @@ static void calculate_comms_data_sizes()
   nhalodataY = Nall[X] * N[Z] * nhalo * n1;
   nhalodataZ = Nall[X] * Nall[Y] * nhalo * n1;
 
+  //  printf("KKK %d %d\n",nhalodataX, n1);
 
 
 }
@@ -589,10 +602,14 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 {
 
 
+
   
   int pack_field1=packablefield1*reduced_halo;
   int nfields1packed;
 
+  double t1, t2;
+
+  t1=wtime();
   
   if (packablefield1){
     /* calculate number of velocity components when packed */
@@ -608,13 +625,19 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   }
 
 
+  t2=wtime();
+  
+  //  printf("A %1.16e %d %d\n",t2-t1, nfields1packed, reduced_halo);
+
+  t1=wtime();
+
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
   int ii,jj,kk,m,index_source,index_target;
 
   int nblocks;
 
-#define OVERLAP
+  //#define OVERLAP
 
   const int tagf = 903;
   const int tagb = 904;
@@ -654,12 +677,19 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 						     edgeXHIGH_d,data_d,X);
 
 
- // printf("%d %d %d %d %p \n",nfields1,nfields2,nhalo,
+ // //printf("%d %d %d %d %p \n",nfields1,nfields2,nhalo,
  //						pack_field1, N_cd,edgeXLOW_d,
  //	edgeXHIGH_d,data_d,X)
  //cudaStreamSynchronize(streamX);
  //checkTargetError("hello\n");
  //return;
+
+
+  t2=wtime();
+  
+  //printf("A1 %1.16e\n",t2-t1);
+
+  t1=wtime();
 
 
  /* pack Y edges on accelerator */
@@ -675,6 +705,11 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 						     edgeZHIGH_d,data_d,Z);
 
 
+  nhalodataX = N[Y] * N[Z] * nhalo * nfields1packed*nfields2;
+  nhalodataY = Nall[X] * N[Z] * nhalo * nfields1packed*nfields2;
+  nhalodataZ = Nall[X] * Nall[Y] * nhalo * nfields1packed*nfields2;
+
+
 
   /* get X low edges */
   cudaMemcpyAsync(edgeXLOW, edgeXLOW_d, nhalodataX*sizeof(double),
@@ -688,6 +723,12 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   cudaStreamSynchronize(streamX);
 #endif
 
+  t2=wtime();
+  
+  //printf("A2 %1.16e\n",t2-t1);
+
+  t1=wtime();
+
  /* get Y low edges */
   cudaMemcpyAsync(edgeYLOW, edgeYLOW_d, nhalodataY*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamY);
@@ -699,6 +740,12 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 #ifndef OVERLAP
   cudaStreamSynchronize(streamY);
 #endif
+
+  t2=wtime();
+  
+  //printf("A3 %1.16e\n",t2-t1);
+
+  t1=wtime();
 
   /* get Z low edges */
   cudaMemcpyAsync(edgeZLOW, edgeZLOW_d, nhalodataZ*sizeof(double),
@@ -712,9 +759,23 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   cudaStreamSynchronize(streamZ);
 #endif
 
+  t2=wtime();
+  
+  //printf("A4 %1.16e\n",t2-t1);
+
+  t1=wtime();
+
+
 
  /* wait for X data from accelerator*/
   cudaStreamSynchronize(streamX);
+
+
+  t2=wtime();
+  
+  //printf("B %1.16e\n",t2-t1);
+
+  t1=wtime();
 
   //HACK
   //if (nfields1==19) 
@@ -751,6 +812,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
    if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
 
 
+  t2=wtime();
+  
+  //printf("C %1.16e\n",t2-t1);
+
+  t1=wtime();
+
+
  /* put X halos back on device, and unpack */
   cudaMemcpyAsync(haloXLOW_d, haloXLOW, nhalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
@@ -777,6 +845,12 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   /* wait for Y data from accelerator*/
   cudaStreamSynchronize(streamY);
 
+
+  t2=wtime();
+  
+  //printf("D %1.16e\n",t2-t1);
+
+  t1=wtime();
 
   /* fill in corners of Y edge data  */
 
@@ -831,6 +905,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   
 
 
+  t2=wtime();
+  
+  //printf("E %1.16e\n",t2-t1);
+
+  t1=wtime();
+
+
   /* The y-direction (XZ plane) */
    if (cart_size(Y) == 1) {
   /* y up */
@@ -857,6 +938,14 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
  /* wait for Y halo swaps to finish */
     if (cart_size(Y) > 1)       MPI_Waitall(4, request, status);
 
+
+  t2=wtime();
+  
+  //printf("F %1.16e\n",t2-t1);
+
+  t1=wtime();
+
+
  /* put Y halos back on device, and unpack */
   cudaMemcpyAsync(haloYLOW_d, haloYLOW, nhalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
@@ -879,6 +968,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   cudaStreamSynchronize(streamZ);
 
   /* fill in corners of Z edge data: from Xhalo  */
+
+
+  t2=wtime();
+  
+  //printf("H %1.16e\n",t2-t1);
+
+  t1=wtime();
     
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
@@ -934,6 +1030,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   /* fill in corners of Z edge data: from Yhalo  */
   
   
+
+  t2=wtime();
+  
+  //printf("I %1.16e\n",t2-t1);
+
+  t1=wtime();
+
   
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
@@ -988,6 +1091,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   
 
 
+  t2=wtime();
+  
+  //printf("J %1.16e\n",t2-t1);
+
+  t1=wtime();
+
+
   /* The z-direction (xy plane) */
    if (cart_size(Z) == 1) {
   /* z up */
@@ -1010,6 +1120,13 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
     }
 
+  t2=wtime();
+  
+  //printf("J1 %1.16e\n",t2-t1);
+
+  t1=wtime();
+
+
  /* put Z halos back on device and unpack*/
   cudaMemcpyAsync(haloZLOW_d, haloZLOW, nhalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
@@ -1028,9 +1145,18 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   cudaStreamSynchronize(streamX);
   cudaStreamSynchronize(streamY);
   cudaStreamSynchronize(streamZ);
+
+
+  t2=wtime();
+  
+  //printf("L %1.16e\n",t2-t1);
+
+  t1=wtime();
   
 
 }
+
+
 
 
 /* pack edges on the accelerator */
