@@ -424,7 +424,7 @@ void ludwig_run(const char * inputfile) {
     int nFields=NVEL*ludwig->lb->ndist;
     copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));  
 
-#ifdef CUDAHOST
+#ifdef LB_DATA_SOA
     init_comms_gpu(nlocal, ludwig->lb->ndist);
 #endif
 
@@ -518,7 +518,7 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef KEEPFIELDONTARGET
 
-#ifdef CUDAHOST
+#ifdef LB_DATA_SOA
 
       /* use gpu-specific comms */
       halo_gpu(1, 1, 0, ludwig->phi->t_data);
@@ -753,7 +753,7 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef KEEPFONTARGET
 
-#ifdef CUDAHOST
+#ifdef LB_DATA_SOA
 
       /* use  targetDP and "traditional" ludwig comms
 	 copyFromTarget3DEdge(ludwig->lb->f,ludwig->lb->t_f,
@@ -764,9 +764,8 @@ void ludwig_run(const char * inputfile) {
       */
 
       /* use gpu-specific comms */
-      
-            halo_gpu(NVEL, ludwig->lb->ndist, 1, ludwig->lb->t_f);
-
+      halo_gpu(NVEL, ludwig->lb->ndist, 1, ludwig->lb->t_f);
+	    
 #else
       lb_halo(ludwig->lb->tcopy);
 #endif /* CUDAHOST */
@@ -1010,7 +1009,7 @@ void ludwig_run(const char * inputfile) {
 #endif
 
 #ifdef KEEPFONTARGET
-#ifdef CUDAHOST
+#ifdef LB_DATA_SOA
   finalise_comms_gpu();
 #endif
 #endif
