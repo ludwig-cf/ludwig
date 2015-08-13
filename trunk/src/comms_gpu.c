@@ -22,6 +22,10 @@
 #include <sys/time.h>
 #include "targetDP.h"
 
+
+#ifdef TARGETFASTON 
+
+
 __targetHost__ int  RUN_get_string_parameter(const char *, char *, const int);
 
 
@@ -282,6 +286,7 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   if (threadIndex < npackedsite)
 #else
+#pragma omp parallel for
   for(threadIndex=0;threadIndex<npackedsite;threadIndex++)
 #endif
     {
@@ -408,6 +413,7 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   if (threadIndex < npackedsite)
 #else
+#pragma omp parallel for
     for(threadIndex=0;threadIndex<npackedsite;threadIndex++)
 #endif
     {
@@ -607,7 +613,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 						pack_field1, N_cd,edgeXLOW_d,
 						    edgeXHIGH_d,data_d,X);
 #else
- pack_edge_gpu_d(nfields1,nfields2,nhalo,
+ pack_edge_gpu_d (nfields1,nfields2,nhalo,
 		 pack_field1, N_cd,edgeXLOW_d,
 		 edgeXHIGH_d,data_d,X);
 #endif
@@ -2279,3 +2285,5 @@ static void halo_unpack_gpu_d(cuda_halo_t * halo, int id,
 #endif
 
 #endif
+
+#endif //TARGETFASTON
