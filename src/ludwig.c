@@ -354,6 +354,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   return 0;
 }
 
+
+__targetHost__ void init_comms_gpu(int N[3], int ndist);
+__targetHost__ void finalise_comms_gpu();
+__targetHost__ void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
+
+
 /*****************************************************************************
  *
  *  ludwig_run
