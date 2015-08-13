@@ -655,6 +655,7 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 
 
+
 #ifdef CUDA
   /* get X low edges */
   cudaMemcpyAsync(edgeXLOW, edgeXLOW_d, nhalodataX*sizeof(double),
@@ -665,11 +666,11 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 #else
   /* get X low edges */
-  memcpy(edgeXLOW, edgeXLOW_d, nhalodataX*sizeof(double));
-		  
+  //memcpy(edgeXLOW, edgeXLOW_d, nhalodataX*sizeof(double));
+
+ 
  /* get X high edges */
-  memcpy(edgeXHIGH, edgeXHIGH_d, nhalodataX*sizeof(double));
-		  
+  //memcpy(edgeXHIGH, edgeXHIGH_d, nhalodataX*sizeof(double));
 #endif
 
 
@@ -696,9 +697,9 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyDeviceToHost,streamY);
 #else
  /* get Y low edges */
-  memcpy(edgeYLOW, edgeYLOW_d, nhalodataY*sizeof(double));
+  //memcpy(edgeYLOW, edgeYLOW_d, nhalodataY*sizeof(double));
  /* get Y high edges */
-  memcpy(edgeYHIGH, edgeYHIGH_d, nhalodataY*sizeof(double));
+  //memcpy(edgeYHIGH, edgeYHIGH_d, nhalodataY*sizeof(double));
 #endif
 
 #ifndef OVERLAP
@@ -724,9 +725,9 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyDeviceToHost,streamZ);
 #else
   /* get Z low edges */
-  memcpy(edgeZLOW, edgeZLOW_d, nhalodataZ*sizeof(double));
+  //memcpy(edgeZLOW, edgeZLOW_d, nhalodataZ*sizeof(double));
   /* get Z high edges */
-  memcpy(edgeZHIGH, edgeZHIGH_d, nhalodataZ*sizeof(double));
+  //memcpy(edgeZHIGH, edgeZHIGH_d, nhalodataZ*sizeof(double));
 #endif
 
 
@@ -806,8 +807,8 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamX);
 #else
  /* put X halos back on device, and unpack */
-  memcpy(haloXLOW_d, haloXLOW, nhalodataX*sizeof(double));
-  memcpy(haloXHIGH_d, haloXHIGH, nhalodataX*sizeof(double));
+  //memcpy(haloXLOW_d, haloXLOW, nhalodataX*sizeof(double));
+  //memcpy(haloXHIGH_d, haloXHIGH, nhalodataX*sizeof(double));
 #endif
 
 
@@ -947,8 +948,8 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamY);
 #else
  /* put Y halos back on device, and unpack */
-  memcpy(haloYLOW_d, haloYLOW, nhalodataY*sizeof(double));
-  memcpy(haloYHIGH_d, haloYHIGH, nhalodataY*sizeof(double));
+  //memcpy(haloYLOW_d, haloYLOW, nhalodataY*sizeof(double));
+  //memcpy(haloYHIGH_d, haloYHIGH, nhalodataY*sizeof(double));
 #endif
 
 
@@ -1145,8 +1146,8 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
 		  cudaMemcpyHostToDevice,streamZ);
 #else
  /* put Z halos back on device and unpack*/
-  memcpy(haloZLOW_d, haloZLOW, nhalodataZ*sizeof(double));
-  memcpy(haloZHIGH_d, haloZHIGH, nhalodataZ*sizeof(double));
+  //memcpy(haloZLOW_d, haloZLOW, nhalodataZ*sizeof(double));
+  //memcpy(haloZHIGH_d, haloZHIGH, nhalodataZ*sizeof(double));
 #endif
 
 
@@ -1269,19 +1270,33 @@ static void allocate_comms_memory_on_gpu()
 
 #else
 
-  edgeXLOW_d=(double*) calloc(nhalodataX,sizeof(double));
-  edgeXHIGH_d=(double*) calloc(nhalodataX,sizeof(double));
-  edgeYLOW_d=(double*) calloc(nhalodataY,sizeof(double));
-  edgeYHIGH_d=(double*) calloc(nhalodataY,sizeof(double));
-  edgeZLOW_d=(double*) calloc(nhalodataZ,sizeof(double));
-  edgeZHIGH_d=(double*) calloc(nhalodataZ,sizeof(double));
+  /* edgeXLOW_d=(double*) calloc(nhalodataX,sizeof(double)); */
+  /* edgeXHIGH_d=(double*) calloc(nhalodataX,sizeof(double)); */
+  /* edgeYLOW_d=(double*) calloc(nhalodataY,sizeof(double)); */
+  /* edgeYHIGH_d=(double*) calloc(nhalodataY,sizeof(double)); */
+  /* edgeZLOW_d=(double*) calloc(nhalodataZ,sizeof(double)); */
+  /* edgeZHIGH_d=(double*) calloc(nhalodataZ,sizeof(double)); */
   
-  haloXLOW_d=(double*) calloc(nhalodataX,sizeof(double));
-  haloXHIGH_d=(double*) calloc(nhalodataX,sizeof(double));
-  haloYLOW_d=(double*) calloc(nhalodataY,sizeof(double));
-  haloYHIGH_d=(double*) calloc(nhalodataY,sizeof(double));
-  haloZLOW_d=(double*) calloc(nhalodataZ,sizeof(double));
-  haloZHIGH_d=(double*) calloc(nhalodataZ,sizeof(double));
+  /* haloXLOW_d=(double*) calloc(nhalodataX,sizeof(double)); */
+  /* haloXHIGH_d=(double*) calloc(nhalodataX,sizeof(double)); */
+  /* haloYLOW_d=(double*) calloc(nhalodataY,sizeof(double)); */
+  /* haloYHIGH_d=(double*) calloc(nhalodataY,sizeof(double)); */
+  /* haloZLOW_d=(double*) calloc(nhalodataZ,sizeof(double)); */
+  /* haloZHIGH_d=(double*) calloc(nhalodataZ,sizeof(double)); */
+
+  edgeXLOW_d=edgeXLOW;
+  edgeXHIGH_d=edgeXHIGH;
+  edgeYLOW_d=edgeYLOW;
+  edgeYHIGH_d=edgeYHIGH;
+  edgeZLOW_d=edgeZLOW;
+  edgeZHIGH_d=edgeZHIGH;
+  
+  haloXLOW_d=haloXLOW;
+  haloXHIGH_d=haloXHIGH;
+  haloYLOW_d=haloYLOW;
+  haloYHIGH_d=haloYHIGH;
+  haloZLOW_d=haloZLOW;
+  haloZHIGH_d=haloZHIGH;
 
   mask_d=(char*) calloc(nsites,sizeof(char));
   packedindex_d=(int*) calloc(nsites,sizeof(int));
@@ -1345,19 +1360,19 @@ static void free_comms_memory_on_gpu()
   free(mask_);
   free(mask_with_neighbours);
 
-  free(edgeXLOW);
-  free(edgeXHIGH);
-  free(edgeYLOW);
-  free(edgeYHIGH);
-  free(edgeZLOW);
-  free(edgeZHIGH);
+  /* free(edgeXLOW); */
+  /* free(edgeXHIGH); */
+  /* free(edgeYLOW); */
+  /* free(edgeYHIGH); */
+  /* free(edgeZLOW); */
+  /* free(edgeZHIGH); */
 
-  free(haloXLOW);
-  free(haloXHIGH);
-  free(haloYLOW);
-  free(haloYHIGH);
-  free(haloZLOW);
-  free(haloZHIGH);
+  /* free(haloXLOW); */
+  /* free(haloXHIGH); */
+  /* free(haloYLOW); */
+  /* free(haloYHIGH); */
+  /* free(haloZLOW); */
+  /* free(haloZHIGH); */
 
 
   /* free memory on accelerator */
