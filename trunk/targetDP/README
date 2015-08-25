@@ -18,14 +18,21 @@ limitations under the License.
 About
 ----------
 
-targetDP (target Data Parallel) is a lightweight programming abstraction layer, designed to allow the same application source code to be able to target multiple architectures, e.g. NVIDIA GPUs and multicore/manycore CPUs, in a performance portable manner.
+targetDP (target Data Parallel) is a lightweight programming
+abstraction layer, designed to allow the same application source code
+to be able to target multiple architectures, e.g. NVIDIA GPUs and
+multicore/manycore CPUs, in a performance portable manner.
 
 See:
 
- Alan Gray and Kevin Stratford. “targetDP: an Abstraction of Lattice Based Parallelism with Portable Performance”. In: Proceedings of 2014 IEEE International Conference on High Performance Computing and Communications (HPCC) (2014), pp. 312–315. doi: 10.1109/HPCC.2014.212, http://arxiv.org/abs/1405.6162
+ Alan Gray and Kevin Stratford. “targetDP: an Abstraction of Lattice
+ Based Parallelism with Portable Performance”. In: Proceedings of 2014
+ IEEE International Conference on High Performance Computing and
+ Communications (HPCC) (2014), pp. 312–315. doi:
+ 10.1109/HPCC.2014.212, http://arxiv.org/abs/1405.6162
 
 
-Downloading
+Getting targetDP
 ----------
 
 To obtain a copy of targetDP:
@@ -39,7 +46,9 @@ See targetDPspec.pdf in the doc directory
 
 Example
 ----------
-See simpleExample.c (which has compilation instructions for CPU and GPU near the top of the file)
+
+See simpleExample.c (which has compilation instructions for CPU and
+GPU near the top of the file)
 
 
  
