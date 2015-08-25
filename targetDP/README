@@ -41,14 +41,15 @@ svn checkout http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk/targetDP
 
 Documentation
 ----------
-See targetDPspec.pdf in the doc directory
+
+See targetDPspec.pdf in the doc directory.
 
 
 Example
 ----------
 
 See simpleExample.c (which has compilation instructions for CPU and
-GPU near the top of the file)
+GPU near the top of the file).
 
 
  
