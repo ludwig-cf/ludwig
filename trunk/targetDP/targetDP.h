@@ -11,7 +11,7 @@
 
 //switch to keep data resident on target for whole timestep
 //only available for GPU version at the moment
-#define TARGETFASTON
+//#define TARGETFASTON
 
 
 //#ifdef CUDAHOST
@@ -126,11 +126,9 @@
 
 
 #define __targetTLP__(simtIndex,extent)			\
-_Pragma("omp parallel for") \
   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
 
 #define __targetTLPNoStride__(simtIndex,extent)   	\
-_Pragma("omp parallel for") \
   for(simtIndex=0;simtIndex<extent;simtIndex++)
 
 
