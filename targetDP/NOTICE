@@ -11,22 +11,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. 
-
-Downloading
-----------
-
-To obtain a copy of targetDP:
-svn checkout http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk/targetDP
-
-
-Documentation
-----------
-See targetDPspec.pdf in the doc directory
-
-
-Example
-----------
-See simpleExample.c (which has compilation instructions for CPU and GPU near the top of the file)
-
-
- 
