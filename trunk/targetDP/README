@@ -32,17 +32,30 @@ See:
  10.1109/HPCC.2014.212, http://arxiv.org/abs/1405.6162
 
 
-Getting targetDP
+Obtaining
 ----------
 
 To obtain a copy of targetDP:
 svn checkout http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk/targetDP
 
+Note that this is the latest development version, and is subject to change.
 
-Documentation
+
+Compiling the targetDP libraries
+---------- 
+
+To build CPU version only
+make 
+
+To build both CPU and GPU versions 
+make all
+
+
+
+Documentation/Specification
 ----------
 
-See targetDPspec.pdf in the doc directory.
+See targetDPspec.pdf in the doc directory, and the example (below).
 
 
 Example

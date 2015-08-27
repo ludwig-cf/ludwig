@@ -20,63 +20,70 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef _DATA_PARALLEL_INCLUDED
-#define _DATA_PARALLEL_INCLUDED
-
-//switch to keep data resident on target for whole timestep
-//only available for GPU version at the moment
-//#define TARGETFASTON
-
-
-//#ifdef CUDAHOST
-#ifdef TARGETFASTON
-#define KEEPFONTARGET
-#define KEEPHYDROONTARGET
-#define KEEPFIELDONTARGET
-#endif
-//#endif
-
+#ifndef _TDP_INCLUDED
+#define _TDP_INCLUDED
 
 #ifdef CUDA /* CUDA */
 
-/* Settings */
+/*
+ * Settings 
+ */
+
 #define DEFAULT_TPB 128 /* default threads per block */
 
-/* Instruction-level-parallelism vector length */
+/* Instruction-level-parallelism vector length  - to be tuned to hardware*/
 #define VVL 1
 
-#ifdef TARGETFASTON
-#define KEEPFONTARGET
-#define KEEPHYDROONTARGET
-#define KEEPFIELDONTARGET
-#endif
 
-/* Language Extensions */
+/*
+ * Language Extensions 
+ */
 
-//#define HOST extern "C" __host__
+
+/* The __targetEntry__ keyword is used in a function declaration or definition
+ * to specify that the function should be compiled for the target, and that it will be
+ * called directly from host code. */
+
+#define __targetEntry__ __global__
+
+/* The __target__ keyword is used in a function declaration or definition to spec-
+ * ify that the function should be compiled for the target, and that it will be called
+ * from a targetEntry or another target function. */
+#define __target__ __device__ 
+
+
+/* The __targetHost__ keyword is used in a function declaration or definition to
+ * specify that the function should be compiled for the host. */
 #define __targetHost__ extern "C" __host__
 
 
-/* kernel function specifiers */
-#define __target__ __device__ 
-#define __targetEntry__ __global__
-
-/* constant data specifier */
+/* The __targetConst__ keyword is used in a variable or array declaration to
+ *  specify that the corresponding data can be treated as constant 
+ * (read-only) on the target. */
 #define __targetConst__ __constant__
 
-/* special kernel launch syntax */
+/* The __targetLaunch__ syntax is used to launch a function across 
+ * a data parallel target architecture. */
 #define __targetLaunch__(extent) \
-  <<<((extent/NILP)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
+  <<<((extent/VVL)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
 
+/* as above but with stride of 1 */
 #define __targetLaunchNoStride__(extent) \
   <<<((extent)+DEFAULT_TPB-1)/DEFAULT_TPB,DEFAULT_TPB>>>
   
 
 /* Thread-level-parallelism execution macro */
+
+/* The __targetTLP__ syntax is used, within a __targetEntry__ function, to
+ * specify that the proceeding block of code should be executed in parallel and
+ * mapped to thread level parallelism (TLP). Note that he behaviour of this op-
+ * eration depends on the defined virtual vector length (VVL), which controls the
+ * lower-level Instruction Level Parallelism (ILP)  */
 #define __targetTLP__(simtIndex,extent) \
-  simtIndex = NILP*(blockIdx.x*blockDim.x+threadIdx.x);	\
+  simtIndex = VVL*(blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
 
+/* as above but with stride of 1 */
 #define __targetTLPNoStride__(simtIndex,extent) \
   simtIndex = (blockIdx.x*blockDim.x+threadIdx.x);	\
   if (simtIndex < extent)
@@ -84,14 +91,21 @@
 
 /* Functions */
 
+/* The targetConstAddress function provides the target address for a constant
+ *  object. */
 #define targetConstAddress(addr_of_ptr,const_object) \
   cudaGetSymbolAddress(addr_of_ptr, const_object); \
   checkTargetError("__getTargetConstantAddress__"); 
 
+/* The copyConstToTarget function copies data from the host to the target, 
+ * where the data will remain constant (read-only) during the execution of 
+ * functions on the target. */
 #define copyConstToTarget(data_d, data, size) \
   cudaMemcpyToSymbol(*data_d, (const void*) data, size, 0,cudaMemcpyHostToDevice); \
    checkTargetError("copyConstToTarget"); 
 
+/* The copyConstFromTarget function copies data from a constant data location
+ *  on the target to the host. */
 #define copyConstFromTarget(data, data_d, size) \
   cudaMemcpyFromSymbol((void*) data, *data_d, size, 0,cudaMemcpyDeviceToHost); \
    checkTargetError("__copyConstantFromTarget__"); 
@@ -100,11 +114,13 @@
 
 
 
-#else /* C */
+#else /* C versions of the above*/
+
+/* SEE ABOVE FOR DOCUMENTATION */
 
 /* Settings */
 
-/* Instruction-level-parallelism vector length */
+/* Instruction-level-parallelism vector length  - to be tuned to hardware*/
 #define VVL 1
 
 
@@ -126,21 +142,20 @@
 
 
 /* Thread-level-parallelism execution macro */
-/* #define __targetTLP__(simtIndex,extent)    _Pragma("omp parallel for")	\
-   for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)*/
 
-
+//UNCOMMENT THIS OPENMP VERSION FOR PRODUCTION
 //#define __targetTLP__(simtIndex,extent)	\
 //_Pragma("omp parallel for")				\
-//for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
+//for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 
 //#define __targetTLPNoStride__(simtIndex,extent)   	\
 //_Pragma("omp parallel for")				\
 //for(simtIndex=0;simtIndex<extent;simtIndex++)
 
 
+// serial version for development
 #define __targetTLP__(simtIndex,extent)			\
-  for(simtIndex=0;simtIndex<extent;simtIndex+=NILP)
+  for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 
 #define __targetTLPNoStride__(simtIndex,extent)   	\
   for(simtIndex=0;simtIndex<extent;simtIndex++)
@@ -170,7 +185,13 @@
 
 
 /* Instruction-level-parallelism execution macro */
-#define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < NILP; vecIndex++) 
+/* The __targetILP__ syntax is used, within a __targetTLP__ region, to specify
+ * that the proceeding block of code should be executed in parallel and mapped to
+ * instruction level parallelism (ILP), where the extent of the ILP is defined by the
+ * virtual vector length (VVL) in the targetDP implementation. */
+#define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
+
+/* Utility functions for indexing */
 
 #define targetCoords3D(coords,extents,index)					\
   coords[0]=(index)/(extents[1]*extents[2]);				\
@@ -186,12 +207,19 @@
 enum {TARGET_HALO,TARGET_EDGE};
 
 /* API */
-
+/* see specification or implementation for documentation on these */
+__targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
+__targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
+__targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
+__targetHost__ void targetCallocUnified(void **address_of_ptr,const size_t size);
+__targetHost__ void copyToTarget(void *targetData,const void* data,size_t size);
+__targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size);
+__targetHost__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo);
+__targetHost__ void targetFinalize3D();
 __targetHost__ void targetInit(int extents[3], size_t nfieldsmax, int nhalo);
 __targetHost__ void targetFinalize();
 __targetHost__ void checkTargetError(const char *msg);
-__targetHost__ void copyToTarget(void *targetData,const void* data,size_t size);
-__targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size);
+
 __targetHost__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
 __targetHost__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
@@ -209,10 +237,6 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
 __targetHost__ void targetSynchronize();
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void checkTargetError(const char *msg);
-__targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
-__targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
-__targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
-__targetHost__ void targetCallocUnified(void **address_of_ptr,const size_t size);
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void targetZero(double* array,size_t size);
 #endif
