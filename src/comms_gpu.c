@@ -23,7 +23,7 @@
 #include "targetDP.h"
 
 
-#ifdef TARGETFASTON 
+#ifdef KEEPFONTARGET
 
 
 __targetHost__ int  RUN_get_string_parameter(const char *, char *, const int);
@@ -2301,4 +2301,4 @@ static void halo_unpack_gpu_d(cuda_halo_t * halo, int id,
 
 #endif
 
-#endif //TARGETFASTON
+#endif //KEEPFONTARGET

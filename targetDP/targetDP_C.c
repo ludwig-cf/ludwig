@@ -25,22 +25,8 @@
 #include "targetDP.h"
 
 
-void checkTargetError(const char *msg){
 
-  return;
-
-}
-
-void targetInit(int extents[3], size_t nfieldsmax, int nhalo){
-  return;
-}
-
-void targetFinalize(){
-  return;
-}
-
-
-
+//The targetMalloc function allocates memory on the target.
 void targetMalloc(void **address_of_ptr,size_t size){
 
   void* ptr;
@@ -60,7 +46,7 @@ void targetMalloc(void **address_of_ptr,size_t size){
   
 }
 
-
+//The targetCalloc function allocates, and initialises to zero, memory on the target.
 void targetCalloc(void **address_of_ptr,size_t size){
 
   void* ptr;
@@ -81,6 +67,8 @@ void targetCalloc(void **address_of_ptr,size_t size){
 }
 
 
+// The targetMalloc function allocates unified memory that can be accessed
+// on the host or the target.
 void targetMallocUnified(void **address_of_ptr,size_t size){
 
   void* ptr;
@@ -100,7 +88,8 @@ void targetMallocUnified(void **address_of_ptr,size_t size){
   
 }
 
-
+// The targetCalloc function allocates unified memory that can be accessed
+// on the host or the target, and is initialised to 0
 void targetCallocUnified(void **address_of_ptr,size_t size){
 
   void* ptr;
@@ -115,13 +104,12 @@ void targetCallocUnified(void **address_of_ptr,size_t size){
   *address_of_ptr=ptr;
 
 
-
   return;
   
 }
 
 
-
+//The targetFree function deallocates memory on the target.
 void targetFree(void *ptr){
   
   free(ptr);
@@ -130,6 +118,7 @@ void targetFree(void *ptr){
 }
 
 
+//The copyToTarget function copies data from the host to the target.
 void copyToTarget(void *targetData,const void* data,const size_t size){
 
   memcpy(targetData,data,size);
@@ -137,12 +126,37 @@ void copyToTarget(void *targetData,const void* data,const size_t size){
 
 }
 
+//The copyFromTarget function copies data from the target to the host.
 void copyFromTarget(void *data,const void* targetData,const size_t size){
 
   memcpy(data,targetData,size);
   return;
 
 }
+
+// The targetInit3D initialises the environment required to perform any of the
+// “3D” operations defined below.
+void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo){
+  return;
+}
+
+//deprecated
+void targetInit(int extents[3], size_t nfieldsmax, int nhalo){
+  return;
+}
+
+
+
+// The targetFinalize3D finalises the targetDP 3D environment.
+void targetFinalize3D(){
+  return;
+}
+
+// deprecated
+void targetFinalize(){
+  return;
+}
+
 
 void copyToTargetMasked(double *targetData,const double* data,const size_t nsites,
 			const size_t nfields,char* siteMask){
@@ -157,7 +171,7 @@ void copyToTargetMasked(double *targetData,const double* data,const size_t nsite
   
 }
 
-
+//
 void copyToTargetMaskedAoS(double *targetData,const double* data,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
@@ -187,7 +201,7 @@ void copyFromTargetMasked(double *data,const double* targetData,const size_t nsi
 
 }
 
-
+//
 void copyFromTargetMaskedAoS(double *data,const double* targetData,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
@@ -203,12 +217,14 @@ void copyFromTargetMaskedAoS(double *data,const double* targetData,const size_t 
     
 }
 
-
+// The targetSynchronize function is used to block until 
+// the preceding __targetLaunch__ has completed.
 void targetSynchronize(){
   return;
 }
 
 
+//
 void targetZero(double* array,size_t size){
 
   int i;
@@ -218,5 +234,13 @@ void targetZero(double* array,size_t size){
     array[i]=0.;
     
   }
+
+}
+
+
+//
+void checkTargetError(const char *msg){
+
+  return;
 
 }
