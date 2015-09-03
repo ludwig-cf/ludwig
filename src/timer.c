@@ -24,8 +24,6 @@
 #include "util.h"
 #include "timer.h"
 
-#define NTIMERS  27
-
 struct timer_struct {
   double          t_start;
   double          t_sum;
@@ -35,7 +33,7 @@ struct timer_struct {
   unsigned int    nsteps;
 };
 
-static struct timer_struct timer[NTIMERS];
+static struct timer_struct timer[TIMER_NTIMERS];
 
 static const char * timer_name[] = {"Total",
 				    "Time step loop",
@@ -80,7 +78,7 @@ void TIMER_init() {
 
   int n;
 
-  for (n = 0; n < NTIMERS; n++) {
+  for (n = 0; n < TIMER_NTIMERS; n++) {
     timer[n].t_sum  = 0.0;
     timer[n].t_max  = FLT_MIN;
     timer[n].t_min  = FLT_MAX;
@@ -157,7 +155,7 @@ void TIMER_statistics() {
   info("\nTimer statistics\n");
   info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
 
-  for (n = 0; n < NTIMERS; n++) {
+  for (n = 0; n < TIMER_NTIMERS; n++) {
 
     /* Report the stats for active timers */
 
