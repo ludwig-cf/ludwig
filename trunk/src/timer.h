@@ -23,7 +23,7 @@ __targetHost__ void TIMER_start(const int);
 __targetHost__ void TIMER_stop(const int);
 __targetHost__ void TIMER_statistics(void);
 
-enum timer_id {TIMER_TOTAL,
+enum timer_id {TIMER_TOTAL = 0,
 	       TIMER_STEPS,
 	       TIMER_PROPAGATE,
 	       TIMER_COLLIDE,
@@ -50,7 +50,8 @@ enum timer_id {TIMER_TOTAL,
 	       TIMER_FREE2,
                TIMER_FREE3,
 	       TIMER_COLLIDE_KERNEL,
-	       TIMER_CHEMICAL_STRESS_KERNEL
+	       TIMER_CHEMICAL_STRESS_KERNEL,
+	       TIMER_NTIMERS /* This must be the last entry */
 };
 
 #endif
