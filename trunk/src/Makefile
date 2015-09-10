@@ -131,7 +131,7 @@ OBJS = \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o \
      nernst_planck.o \
-     psi_petsc.o psi_gradients.o \
+     psi_petsc_3.5.o psi_petsc_3.6.o psi_gradients.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric_rt.o subgrid.o \
