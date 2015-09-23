@@ -80,7 +80,7 @@ __targetTLP__(index,tc_nSites){
       
       for (n = 0;  n < nf; n++) {
 
-	indexf = nf*index + n;
+	indexf = ADVADR(tc_nSites,nf,index,n);
 	flux->fw[indexf] *= mask*maskw;
 	flux->fe[indexf] *= mask*maske;
 	flux->fy[indexf] *= mask*masky;
