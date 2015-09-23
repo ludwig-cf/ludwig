@@ -317,29 +317,29 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 	indexk=targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
 
 	q[X][X] += dt*(s[X][X] + tc_gamma*h[X][X] + chi_qab[X][X]
-		       - flux->fe[nf*index + XX] + flux->fw[nf*index  + XX]
-		       - flux->fy[nf*index + XX] + flux->fy[nf*indexj + XX]
-		       - flux->fz[nf*index + XX] + flux->fz[nf*indexk + XX]);
+		       - flux->fe[ADVADR(tc_nSites,nf,index,XX)] + flux->fw[ADVADR(tc_nSites,nf,index,XX)]
+		       - flux->fy[ADVADR(tc_nSites,nf,index,XX)] + flux->fy[ADVADR(tc_nSites,nf,indexj,XX)]
+		       - flux->fz[ADVADR(tc_nSites,nf,index,XX)] + flux->fz[ADVADR(tc_nSites,nf,indexk,XX)]);
 
 	q[X][Y] += dt*(s[X][Y] + tc_gamma*h[X][Y] + chi_qab[X][Y]
-		       - flux->fe[nf*index + XY] + flux->fw[nf*index  + XY]
-		       - flux->fy[nf*index + XY] + flux->fy[nf*indexj + XY]
-		       - flux->fz[nf*index + XY] + flux->fz[nf*indexk + XY]);
+		       - flux->fe[ADVADR(tc_nSites,nf,index,XY)] + flux->fw[ADVADR(tc_nSites,nf,index,XY)]
+		       - flux->fy[ADVADR(tc_nSites,nf,index,XY)] + flux->fy[ADVADR(tc_nSites,nf,indexj,XY)]
+		       - flux->fz[ADVADR(tc_nSites,nf,index,XY)] + flux->fz[ADVADR(tc_nSites,nf,indexk,XY)]);
 
 	q[X][Z] += dt*(s[X][Z] + tc_gamma*h[X][Z] + chi_qab[X][Z]
-		       - flux->fe[nf*index + XZ] + flux->fw[nf*index  + XZ]
-		       - flux->fy[nf*index + XZ] + flux->fy[nf*indexj + XZ]
-		       - flux->fz[nf*index + XZ] + flux->fz[nf*indexk + XZ]);
+		       - flux->fe[ADVADR(tc_nSites,nf,index,XZ)] + flux->fw[ADVADR(tc_nSites,nf,index,XZ)]
+		       - flux->fy[ADVADR(tc_nSites,nf,index,XZ)] + flux->fy[ADVADR(tc_nSites,nf,indexj,XZ)]
+		       - flux->fz[ADVADR(tc_nSites,nf,index,XZ)] + flux->fz[ADVADR(tc_nSites,nf,indexk,XZ)]);
 
 	q[Y][Y] += dt*(s[Y][Y] + tc_gamma*h[Y][Y] + chi_qab[Y][Y]
-		       - flux->fe[nf*index + YY] + flux->fw[nf*index  + YY]
-		       - flux->fy[nf*index + YY] + flux->fy[nf*indexj + YY]
-		       - flux->fz[nf*index + YY] + flux->fz[nf*indexk + YY]);
+		       - flux->fe[ADVADR(tc_nSites,nf,index,YY)] + flux->fw[ADVADR(tc_nSites,nf,index,YY)]
+		       - flux->fy[ADVADR(tc_nSites,nf,index,YY)] + flux->fy[ADVADR(tc_nSites,nf,indexj,YY)]
+		       - flux->fz[ADVADR(tc_nSites,nf,index,YY)] + flux->fz[ADVADR(tc_nSites,nf,indexk,YY)]);
 
 	q[Y][Z] += dt*(s[Y][Z] + tc_gamma*h[Y][Z] + chi_qab[Y][Z]
-		       - flux->fe[nf*index + YZ] + flux->fw[nf*index  + YZ]
-		       - flux->fy[nf*index + YZ] + flux->fy[nf*indexj + YZ]
-		       - flux->fz[nf*index + YZ] + flux->fz[nf*indexk + YZ]);
+		       - flux->fe[ADVADR(tc_nSites,nf,index,YZ)] + flux->fw[ADVADR(tc_nSites,nf,index,YZ)]
+		       - flux->fy[ADVADR(tc_nSites,nf,index,YZ)] + flux->fy[ADVADR(tc_nSites,nf,indexj,YZ)]
+		       - flux->fz[ADVADR(tc_nSites,nf,index,YZ)] + flux->fz[ADVADR(tc_nSites,nf,indexk,YZ)]);
 
 
 	t_q->data[NQAB*index + XX] = q[X][X];

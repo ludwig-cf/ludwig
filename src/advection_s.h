@@ -26,4 +26,20 @@ struct advflux_s {
   advflux_t * tcopy;  /* copy of this structure on target */ 
 };
 
+/* array of structures */
+#define ADDR_ADV(nsite, nfield, index, ifield)	\
+  ((nfield)*(index) + (ifield))
+
+
+/* structure of arrays */
+#define ADDR_ADV_R(nsite, nfield, index, ifield)	\
+  ((nsite)*(ifield) + (index))
+
+#ifdef LB_DATA_SOA
+#define ADVADR ADDR_ADV_R
+#else
+#define ADVADR ADDR_ADV
+#endif
+
+
 #endif
