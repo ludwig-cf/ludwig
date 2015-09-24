@@ -34,4 +34,20 @@ struct field_s {
 
 };
 
+/* array of structures */
+#define ADDR_FLD(nsite, nfield, index, ifield)	\
+  ((nfield)*(index) + (ifield))
+
+
+/* structure of arrays */
+#define ADDR_FLD_R(nsite, nfield, index, ifield)	\
+  ((nsite)*(ifield) + (index))
+
+#ifdef LB_DATA_SOA
+#define FLDADR ADDR_FLD_R
+#else
+#define FLDADR ADDR_FLD
+#endif
+
+
 #endif

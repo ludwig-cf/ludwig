@@ -189,12 +189,12 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 
 	int ia, ib;
 	
-	q[X][X] = t_q->data[NQAB*index + XX];
-	q[X][Y] = t_q->data[NQAB*index + XY];
-	q[X][Z] = t_q->data[NQAB*index + XZ];
+	q[X][X] = t_q->data[FLDADR(tc_nSites,NQAB,index,XX)];
+	q[X][Y] = t_q->data[FLDADR(tc_nSites,NQAB,index,XY)];
+	q[X][Z] = t_q->data[FLDADR(tc_nSites,NQAB,index,XZ)];
 	q[Y][X] = q[X][Y];
-	q[Y][Y] = t_q->data[NQAB*index + YY];
-	q[Y][Z] = t_q->data[NQAB*index + YZ];
+	q[Y][Y] = t_q->data[FLDADR(tc_nSites,NQAB,index,YY)];
+	q[Y][Z] = t_q->data[FLDADR(tc_nSites,NQAB,index,YZ)];
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
@@ -321,6 +321,7 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 		       - flux->fy[ADVADR(tc_nSites,nf,index,XX)] + flux->fy[ADVADR(tc_nSites,nf,indexj,XX)]
 		       - flux->fz[ADVADR(tc_nSites,nf,index,XX)] + flux->fz[ADVADR(tc_nSites,nf,indexk,XX)]);
 
+
 	q[X][Y] += dt*(s[X][Y] + tc_gamma*h[X][Y] + chi_qab[X][Y]
 		       - flux->fe[ADVADR(tc_nSites,nf,index,XY)] + flux->fw[ADVADR(tc_nSites,nf,index,XY)]
 		       - flux->fy[ADVADR(tc_nSites,nf,index,XY)] + flux->fy[ADVADR(tc_nSites,nf,indexj,XY)]
@@ -342,11 +343,11 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 		       - flux->fz[ADVADR(tc_nSites,nf,index,YZ)] + flux->fz[ADVADR(tc_nSites,nf,indexk,YZ)]);
 
 
-	t_q->data[NQAB*index + XX] = q[X][X];
-	t_q->data[NQAB*index + XY] = q[X][Y];
-	t_q->data[NQAB*index + XZ] = q[X][Z];
-	t_q->data[NQAB*index + YY] = q[Y][Y];
-	t_q->data[NQAB*index + YZ] = q[Y][Z];
+	t_q->data[FLDADR(tc_nSites,NQAB,index,XX)] = q[X][X];
+	t_q->data[FLDADR(tc_nSites,NQAB,index,XY)] = q[X][Y];
+	t_q->data[FLDADR(tc_nSites,NQAB,index,XZ)] = q[X][Z];
+	t_q->data[FLDADR(tc_nSites,NQAB,index,YY)] = q[Y][Y];
+	t_q->data[FLDADR(tc_nSites,NQAB,index,YZ)] = q[Y][Z];
 
     }
   }

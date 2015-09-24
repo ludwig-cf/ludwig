@@ -23,7 +23,8 @@
 #include "targetDP.h"
 
 
-#ifdef KEEPFONTARGET
+
+#ifdef LB_DATA_SOA
 
 
 __targetHost__ int  RUN_get_string_parameter(const char *, char *, const int);

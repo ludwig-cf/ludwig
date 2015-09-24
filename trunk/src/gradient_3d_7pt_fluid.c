@@ -40,6 +40,7 @@
 #include "wall.h"
 #include "gradient_3d_7pt_fluid.h"
 #include "string.h"
+#include "field_s.h"
 #include "targetDP.h"
 
 
@@ -208,16 +209,16 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
     
     for (n = 0; n < nop; n++) {
       t_grad[3*(nop*index + n) + X]
-	= 0.5*(t_field[nop*indexp1 + n] - t_field[nop*indexm1 + n]);
+	= 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1,n)] - t_field[FLDADR(tc_nSites,nop,indexm1,n)]);
       t_grad[3*(nop*index + n) + Y]
-	= 0.5*(t_field[nop*(index + ys) + n] - t_field[nop*(index - ys) + n]);
+	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+ys,n)] - t_field[FLDADR(tc_nSites,nop,index-ys,n)]);
       t_grad[3*(nop*index + n) + Z]
-	= 0.5*(t_field[nop*(index + 1) + n] - t_field[nop*(index - 1) + n]);
+	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+1,n)] - t_field[FLDADR(tc_nSites,nop,index-1,n)]);
       t_del2[nop*index + n]
-	= t_field[nop*indexp1      + n] + t_field[nop*indexm1      + n]
-	+ t_field[nop*(index + ys) + n] + t_field[nop*(index - ys) + n]
-	+ t_field[nop*(index + 1)  + n] + t_field[nop*(index - 1)  + n]
-	- 6.0*t_field[nop*index + n];
+	= t_field[FLDADR(tc_nSites,nop,indexp1,n)] + t_field[FLDADR(tc_nSites,nop,indexm1,n)]
+	+ t_field[FLDADR(tc_nSites,nop,index+ys,n)] + t_field[FLDADR(tc_nSites,nop,index-ys,n)]
+	+ t_field[FLDADR(tc_nSites,nop,index+1,n)] + t_field[FLDADR(tc_nSites,nop,index-1,n)]
+	- 6.0*t_field[FLDADR(tc_nSites,nop,index,n)];
       
     }
     
@@ -234,10 +235,10 @@ static __targetEntry__ void gradient_3d_7pt_fluid_operator_lattice(const int nop
 
 
 
-  int nSites=tc_Nall[X]*tc_Nall[Y]*tc_Nall[Z];
+  
 
   int index;
-  __targetTLPNoStride__(index,nSites){
+  __targetTLPNoStride__(index,tc_nSites){
     gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,index);
   }
 
@@ -275,6 +276,8 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
+  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
+
   //end constant setup
 
   #ifndef KEEPFIELDONTARGET
