@@ -394,6 +394,41 @@ void ludwig_run(const char * inputfile) {
 
   ludwig_rt(ludwig);
 
+  int nlocal[3];
+  coords_nlocal(nlocal);
+  int nhalo = coords_nhalo();
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+
+
+
+#ifdef LB_DATA_SOA 
+/*transpose q to SoA (since we are still using AoS in the setup)*/
+  if (ludwig->q)
+  {
+     int is, ifield;
+     /* copy to target */
+    field_t* t_field = NULL;
+    t_field = ludwig->q->tcopy;
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));
+    copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
+      
+    /* copy back, transposing from AoS to SoA */
+    for(is=0;is<nSites;is++){
+      for(ifield=0;ifield<ludwig->q->nf;ifield++){
+    	ludwig->q->data[ifield*nSites+is]=
+	  ludwig->q->tcopy->data[is*ludwig->q->nf+ifield];
+
+      }
+    }
+  }
+
+#endif
+
+ 
+
+
   /* Report initial statistics */
 
   pe_subdirectory(subdirectory);
@@ -418,21 +453,20 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
+  coords_nlocal(nlocal);
+
+#ifdef LB_DATA_SOA
+    init_comms_gpu(nlocal, ludwig->lb->ndist);
+#endif
 
 
 #ifdef KEEPFONTARGET
-    int nlocal[3];
-    coords_nlocal(nlocal);
     int nhalo = coords_nhalo();
     int Nall[3];
     Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
     int nSites=Nall[X]*Nall[Y]*Nall[Z];
     int nFields=NVEL*ludwig->lb->ndist;
     copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));  
-
-#ifdef LB_DATA_SOA
-    init_comms_gpu(nlocal, ludwig->lb->ndist);
-#endif
 
 #endif
 
@@ -559,8 +593,12 @@ void ludwig_run(const char * inputfile) {
     copyFromTarget(ludwig->q->data,tmpptr,ludwig->q->nf*nSites*sizeof(double));
 #endif
 
+#ifdef LB_DATA_SOA
+    halo_gpu(ludwig->q->nf, 1, 0, ludwig->q->data);
+#else
+    field_halo(ludwig->q);
+#endif
 
-      field_halo(ludwig->q);
 
 #ifdef KEEPFIELDONTARGET
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
@@ -685,9 +723,6 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
-
-
-
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
@@ -710,7 +745,7 @@ void ludwig_run(const char * inputfile) {
 #endif
 	    
 
-	  colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
+	    colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
 	  blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
 	  			 ludwig->map, ludwig->noise_rho);
 	  }
@@ -721,6 +756,7 @@ void ludwig_run(const char * inputfile) {
 
 
     }
+
 
 
     if (ludwig->hydro) {

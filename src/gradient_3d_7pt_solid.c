@@ -66,6 +66,7 @@
 #include "gradient_3d_7pt_solid.h"
 #include "targetDP.h"
 #include "map_s.h"
+#include "field_s.h"
 
 static map_t * map_ = NULL;
 
@@ -831,9 +832,9 @@ __targetTLP__(index,tc_nSites){
 	
 	for (n1 = 0; n1 < NQAB; n1++) {
 	  gradn[n1][ia][0] =
-	    field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
+	    field[FLDADR(tc_nSites,NQAB,index+str[ia],n1)] - field[FLDADR(tc_nSites,NQAB,index,n1)];
 	  gradn[n1][ia][1] =
-	    field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
+	    field[FLDADR(tc_nSites,NQAB,index,n1)] - field[FLDADR(tc_nSites,NQAB,index-str[ia],n1)];
 	}
 	
 	gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
@@ -861,7 +862,18 @@ __targetTLP__(index,tc_nSites){
 	
 	/* Fluid Qab at surface */
 	
-	util_q5_to_qab(qs, field + NQAB*index);
+	//util_q5_to_qab(qs, field + NQAB*index);
+
+
+	qs[X][X] = field[FLDADR(tc_nSites,NQAB,index,0)];
+	qs[X][Y] = field[FLDADR(tc_nSites,NQAB,index,1)];
+	qs[X][Z] = field[FLDADR(tc_nSites,NQAB,index,2)];
+	qs[Y][X] = field[FLDADR(tc_nSites,NQAB,index,1)];
+	qs[Y][Y] = field[FLDADR(tc_nSites,NQAB,index,3)];
+	qs[Y][Z] = field[FLDADR(tc_nSites,NQAB,index,4)];
+	qs[Z][X] = field[FLDADR(tc_nSites,NQAB,index,2)];
+	qs[Z][Y] = field[FLDADR(tc_nSites,NQAB,index,4)];
+	qs[Z][Z] = -field[FLDADR(tc_nSites,NQAB,index,0)] - field[FLDADR(tc_nSites,NQAB,index,3)];
 
 
 	

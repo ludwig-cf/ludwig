@@ -644,6 +644,7 @@ __targetHost__ __target__ void blue_phase_compute_h(double q[3][3],
 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id] + pbpc->e_[ib][ic][id]*dq[ic][ia][id]);
 	}
       }
+      
       h[ia][ib] += pbpc->kappa0*dsq[ia][ib]
 	- 2.0*pbpc->kappa1*pbpc->q0*sum + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq*pbpc->d_[ia][ib]
 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib];
@@ -722,12 +723,12 @@ __targetHost__ __target__ void blue_phase_chemical_stress_dev(int index, field_t
 
   bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
 
-  q[X][X] = t_q->data[NQAB*index + XX];
-  q[X][Y] = t_q->data[NQAB*index + XY];
-  q[X][Z] = t_q->data[NQAB*index + XZ];
+  q[X][X] = t_q->data[FLDADR(tc_nSites,NQAB,index,XX)];
+  q[X][Y] = t_q->data[FLDADR(tc_nSites,NQAB,index,XY)];
+  q[X][Z] = t_q->data[FLDADR(tc_nSites,NQAB,index,XZ)];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = t_q->data[NQAB*index + YY];
-  q[Y][Z] = t_q->data[NQAB*index + YZ];
+  q[Y][Y] = t_q->data[FLDADR(tc_nSites,NQAB,index,YY)];
+  q[Y][Z] = t_q->data[FLDADR(tc_nSites,NQAB,index,YZ)];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
