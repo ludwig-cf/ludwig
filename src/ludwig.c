@@ -590,7 +590,19 @@ void ludwig_run(const char * inputfile) {
 #endif
 
 #ifdef LB_DATA_SOA
-    halo_gpu(ludwig->q->nf, 1, 0, ludwig->q->data);
+      field_t* t_field = NULL; 
+      t_field = ludwig->q->tcopy; 
+      copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+
+#ifndef KEEPFIELDONTARGET
+    copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
+#endif 
+    halo_gpu(ludwig->q->nf, 1, 0, tmpptr);
+#ifndef KEEPFIELDONTARGET
+    copyFromTarget(ludwig->q->data,tmpptr,ludwig->q->nf*nSites*sizeof(double));
+#endif 
+
+
 #else
     field_halo(ludwig->q);
 #endif
