@@ -237,6 +237,41 @@ void targetZero(double* array,size_t size){
 
 }
 
+__targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
+{
+  
+  int i,k;
+  double* tmpbuf = (double*) malloc(nsites*nfields*sizeof(double));
+  double* tmpbuf2 = (double*) malloc(nsites*nfields*sizeof(double));
+  copyFromTarget(tmpbuf,array,nsites*nfields*sizeof(double));	  
+  for(i=0;i<nsites;i++){
+    for(k=0;k<nfields;k++){
+      //tmpbuf2[i*nfields+k]=tmpbuf[k*nsites+i];
+      tmpbuf2[k*nsites+i]=tmpbuf[i*nfields+k];
+    }
+  }
+  copyToTarget(array,tmpbuf2,nsites*nfields*sizeof(double));	  
+  free(tmpbuf);
+  free(tmpbuf2);
+}
+
+__targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
+{
+  
+  int i,k;
+  double* tmpbuf = (double*) malloc(nsites*nfields*sizeof(double));
+  double* tmpbuf2 = (double*) malloc(nsites*nfields*sizeof(double));
+  copyFromTarget(tmpbuf,array,nsites*nfields*sizeof(double));	  
+  for(i=0;i<nsites;i++){
+    for(k=0;k<nfields;k++){
+      tmpbuf2[i*nfields+k]=tmpbuf[k*nsites+i];
+      //tmpbuf2[k*nsites+i]=tmpbuf[i*nfields+k];
+    }
+  }
+  copyToTarget(array,tmpbuf2,nsites*nfields*sizeof(double));	  
+  free(tmpbuf);
+  free(tmpbuf2);
+}
 
 //
 void checkTargetError(const char *msg){
