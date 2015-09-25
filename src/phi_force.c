@@ -169,14 +169,14 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     /* Compute pth at current point */
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth0[ia][ib]=t_pth[index*9+ia*3+ib];
+	pth0[ia][ib]=t_pth[PTHADR(tc_nSites,index,ia,ib)];
     
     /* Compute differences */
 
     index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);	    
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
     
     
     for (ia = 0; ia < 3; ia++) {
@@ -186,7 +186,7 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);	
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
     
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
@@ -195,7 +195,7 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);	
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
     
     for (ia = 0; ia < 3; ia++) {
       force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
@@ -204,7 +204,7 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     index1 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);	
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
     
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
@@ -213,7 +213,7 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);	
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
     
     for (ia = 0; ia < 3; ia++) {
       force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
@@ -222,7 +222,7 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     index1 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);	    
     for (ia = 0; ia < 3; ia++) 
       for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
     
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);

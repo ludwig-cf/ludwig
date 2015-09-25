@@ -66,4 +66,23 @@ extern __targetConst__ int tc_Nall[3];
 extern __targetConst__ int tc_nhalo;
 extern __targetConst__ int tc_nextra;
 
+
+/* memory addressing macro for pth. This maybe should be moved elsewhere */
+
+/* array of structures */
+#define ADDR_PTH(nsite, index, ia, ib)	\
+  (3*3*(index) + 3*(ia)+(ib))
+
+
+/* structure of arrays */
+#define ADDR_PTH_R(nsite, index, ia, ib)	\
+  (3*(nsite)*(ia)+(nsite)*(ib)+(index))
+
+#ifdef LB_DATA_SOA
+#define PTHADR ADDR_PTH_R
+#else
+#define PTHADR ADDR_PTH
+#endif
+
+
 #endif

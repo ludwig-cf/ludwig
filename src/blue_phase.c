@@ -734,24 +734,24 @@ __targetHost__ __target__ void blue_phase_chemical_stress_dev(int index, field_t
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    dq[ia][X][X] = t_q_grad->grad[NVECTOR*(NQAB*index + XX) + ia];
-    dq[ia][X][Y] = t_q_grad->grad[NVECTOR*(NQAB*index + XY) + ia];
-    dq[ia][X][Z] = t_q_grad->grad[NVECTOR*(NQAB*index + XZ) + ia];
+    dq[ia][X][X] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,XX,ia)];
+    dq[ia][X][Y] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,XY,ia)];
+    dq[ia][X][Z] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,XZ,ia)];
     dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = t_q_grad->grad[NVECTOR*(NQAB*index + YY) + ia];
-    dq[ia][Y][Z] = t_q_grad->grad[NVECTOR*(NQAB*index + YZ) + ia];
+    dq[ia][Y][Y] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,YY,ia)];
+    dq[ia][Y][Z] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,YZ,ia)];
     dq[ia][Z][X] = dq[ia][X][Z];
     dq[ia][Z][Y] = dq[ia][Y][Z];
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
   }
 
 
-  dsq[X][X] = t_q_grad->delsq[NQAB*index + XX];
-  dsq[X][Y] = t_q_grad->delsq[NQAB*index + XY];
-  dsq[X][Z] = t_q_grad->delsq[NQAB*index + XZ];
+  dsq[X][X] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,XX)];
+  dsq[X][Y] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,XY)];
+  dsq[X][Z] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,XZ)];
   dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = t_q_grad->delsq[NQAB*index + YY];
-  dsq[Y][Z] = t_q_grad->delsq[NQAB*index + YZ];
+  dsq[Y][Y] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,YY)];
+  dsq[Y][Z] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,YZ)];
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
@@ -763,7 +763,7 @@ __targetHost__ __target__ void blue_phase_chemical_stress_dev(int index, field_t
 
   for(ia=0;ia<3;ia++)
     for(ib=0;ib<3;ib++)
-      t_pth[index*9+ia*3+ib]=sth_loc[ia][ib];
+      t_pth[PTHADR(tc_nSites,index,ia,ib)]=sth_loc[ia][ib];
   
 
   return;

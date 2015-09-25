@@ -179,14 +179,13 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
 
 __targetHost__  void phi_force_stress_set(const int index, double p[3][3]) {
 
-  int ia, ib, n;
+  int ia, ib;
 
   assert(pth_);
 
-  n = 0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      pth_[9*index + n++] = p[ia][ib];
+      pth_[PTHADR(tc_nSites,index,ia,ib)] = p[ia][ib];
     }
   }
 
@@ -201,14 +200,14 @@ __targetHost__  void phi_force_stress_set(const int index, double p[3][3]) {
 
 __targetHost__  void phi_force_stress(const int index, double p[3][3]) {
 
-  int ia, ib, n;
+  int ia, ib;
 
   assert(pth_);
 
-  n = 0;
+  
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      p[ia][ib] = pth_[9*index + n++];
+      p[ia][ib] = pth_[PTHADR(tc_nSites,index,ia,ib)];
     }
   }
 

@@ -48,4 +48,22 @@ struct field_grad_s {
   int (* dab)  (int nf, const double * field, 
 	      double * dab);
 };
+
+
+
+/* array of structures */
+#define ADDR_FGRD(nsite, nfield, index, ifield, idir)	\
+  ((nfield)*3*(index) + (ifield)*3+(idir))
+
+
+/* structure of arrays */
+#define ADDR_FGRD_R(nsite, nfield, index, ifield,idir)	\
+  ((nsite)*3*(ifield) + (nsite)*(idir) + (index))
+
+#ifdef LB_DATA_SOA
+#define FGRDADR ADDR_FGRD_R
+#else
+#define FGRDADR ADDR_FGRD
+#endif
+
 #endif
