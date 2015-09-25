@@ -41,6 +41,7 @@
 #include "gradient_3d_7pt_fluid.h"
 #include "string.h"
 #include "field_s.h"
+#include "field_grad_s.h"
 #include "targetDP.h"
 
 
@@ -206,15 +207,14 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
       
     int n;
     int ys=tc_Nall[Z];
-    
     for (n = 0; n < nop; n++) {
-      t_grad[3*(nop*index + n) + X]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1,n)] - t_field[FLDADR(tc_nSites,nop,indexm1,n)]);
-      t_grad[3*(nop*index + n) + Y]
+      t_grad[FGRDADR(tc_nSites,nop,index,n,X)]
+      = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1,n)] - t_field[FLDADR(tc_nSites,nop,indexm1,n)]);
+      t_grad[FGRDADR(tc_nSites,nop,index,n,Y)]
 	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+ys,n)] - t_field[FLDADR(tc_nSites,nop,index-ys,n)]);
-      t_grad[3*(nop*index + n) + Z]
+      t_grad[FGRDADR(tc_nSites,nop,index,n,Z)]
 	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+1,n)] - t_field[FLDADR(tc_nSites,nop,index-1,n)]);
-      t_del2[nop*index + n]
+      t_del2[FLDADR(tc_nSites,nop,index,n)]
 	= t_field[FLDADR(tc_nSites,nop,indexp1,n)] + t_field[FLDADR(tc_nSites,nop,indexm1,n)]
 	+ t_field[FLDADR(tc_nSites,nop,index+ys,n)] + t_field[FLDADR(tc_nSites,nop,index-ys,n)]
 	+ t_field[FLDADR(tc_nSites,nop,index+1,n)] + t_field[FLDADR(tc_nSites,nop,index-1,n)]

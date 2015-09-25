@@ -67,6 +67,7 @@
 #include "targetDP.h"
 #include "map_s.h"
 #include "field_s.h"
+#include "field_grad_s.h"
 
 static map_t * map_ = NULL;
 
@@ -1087,11 +1088,11 @@ __targetTLP__(index,tc_nSites){
       /* The final answer is the sum of partial gradients */
       
       for (n1 = 0; n1 < NQAB; n1++) {
-	del2[NQAB*index + n1] = 0.0;
+	del2[FLDADR(tc_nSites,NQAB,index,n1)] = 0.0;
 	for (ia = 0; ia < 3; ia++) {
-	  grad[3*(NQAB*index + n1) + ia] =
+	  grad[FGRDADR(tc_nSites,NQAB,index,n1,ia)] =
 	    0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	  del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  del2[FLDADR(tc_nSites,NQAB,index,n1)] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	}
       }
 

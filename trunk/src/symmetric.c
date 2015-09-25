@@ -29,6 +29,7 @@
 #include "symmetric.h"
 #include "field_s.h"
 #include "field_grad_s.h"
+#include "coords.h"
 
 static double a_     = -0.003125;
 static double b_     = +0.003125;
@@ -435,8 +436,11 @@ __target__ void symmetric_chemical_stress_target(const int index, double s[3][3*
     
     for (ia=0;ia<3;ia++){
       
-      grad_phi[ia]=t_gradphi[3*(index+vecIndex)+ia];
+      //     grad_phi[ia]=t_gradphi[3*(index+vecIndex)+ia];
+     grad_phi[ia]=t_gradphi[FGRDADR(tc_nSites,1,index+vecIndex,0,ia)];
       
+
+
     }
     
     phi=t_phi[index+vecIndex];

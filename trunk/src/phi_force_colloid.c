@@ -180,7 +180,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
       /* Compute pth at current point */
       for (ia = 0; ia < 3; ia++) 
 	for (ib = 0; ib < 3; ib++) 
-	  pth0[ia][ib]=t_pth[index*9+ia*3+ib];
+	  pth0[ia][ib]=t_pth[PTHADR(tc_nSites,index,ia,ib)];
       
       for (ia = 0; ia < 3; ia++) {
 	fw[ia] = 0.0;
@@ -211,7 +211,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	  /* This flux is fluid-fluid */ 
 	  for (ia = 0; ia < 3; ia++) 
 	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
@@ -242,7 +242,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	  /* Fluid - fluid */
 	  for (ia = 0; ia < 3; ia++) 
 	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
@@ -273,7 +273,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	  /* Fluid-fluid */
 	  for (ia = 0; ia < 3; ia++) 
 	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
@@ -304,7 +304,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	  /* Fluid-fluid */
 	  for (ia = 0; ia < 3; ia++) 
 	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
@@ -335,7 +335,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	  /* Fluid-fluid */
 	  for (ia = 0; ia < 3; ia++) 
 	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
@@ -366,7 +366,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	  /* Fluid-fluid */
 	  for (ia = 0; ia < 3; ia++) 
 	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[index1*9+ia*3+ib];
+	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
