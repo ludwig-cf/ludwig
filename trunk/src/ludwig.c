@@ -407,21 +407,17 @@ void ludwig_run(const char * inputfile) {
 /*transpose q to SoA (since we are still using AoS in the setup)*/
   if (ludwig->q)
   {
-     int is, ifield;
-     /* copy to target */
+
     field_t* t_field = NULL;
     t_field = ludwig->q->tcopy;
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));
+
     copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
       
-    /* copy back, transposing from AoS to SoA */
-    for(is=0;is<nSites;is++){
-      for(ifield=0;ifield<ludwig->q->nf;ifield++){
-    	ludwig->q->data[ifield*nSites+is]=
-	  ludwig->q->tcopy->data[is*ludwig->q->nf+ifield];
+    targetAoS2SoA((double*) tmpptr,nSites,ludwig->q->nf);
 
-      }
-    }
+    copyFromTarget(ludwig->q->data,tmpptr,ludwig->q->nf*nSites*sizeof(double));
+
   }
 
 #endif
