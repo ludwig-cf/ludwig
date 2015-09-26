@@ -271,21 +271,27 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
 
+#ifndef KEEPFIELDONTARGET
   // copy stress to target
   copyToTarget(t_pth_,pth_,3*3*nSites*sizeof(double));      
+#endif
 
   //target copy of tensor order parameter field structure
   t_hydro = hydro->tcopy; 
     
+#ifndef KEEPHYDROONTARGET
   //populate target copy of force from host 
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
-  
+#endif  
+
   //launch the force calculation across the lattice on the target
   phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (hydro->tcopy, t_pth_);
   
+#ifndef KEEPHYDROONTARGET
   // get the resulting force from the target
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
+#endif
 
   phi_force_stress_free();
 
