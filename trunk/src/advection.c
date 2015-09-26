@@ -556,6 +556,10 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
       icp2 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, +2)+tc_nhalo-1;
 #endif
 
+	for (n = 0; n < nf; n++) 
+	{
+
+
 	index1 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
 
 	for (i = 0; i < 3; i++) {
@@ -564,26 +568,30 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	u = 0.5*(u0[X] + u1[X]);
 
+
+
 	if (u > 0.0) {
 	  index2 = targetIndex3D(icm2,coords[Y],coords[Z],tc_Nall);
 
-	  for (n = 0; n < nf; n++) {
+	  //for (n = 0; n < nf; n++) 
+	    {
 	    flux->fw[ADVADR(tc_nSites,nf,index0,n)] =
 	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	       + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
 	       + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-	  }
+	    }
 	}
 	else {
 
 	index2 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
 
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	  {
 	    flux->fw[ADVADR(tc_nSites,nf,index0,n)] =
 	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	       + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
 	       + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-	  }
+	    }
 	}
 
 	/* east face (ic and icp1) */
@@ -597,21 +605,23 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	if (u < 0.0) {
 	index2 = targetIndex3D(icp2,coords[Y],coords[Z],tc_Nall);
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	   {
 	    flux->fe[ADVADR(tc_nSites,nf,index0,n)] =
 	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	       + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
 	       + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-	  }
+	      }
 	}
 	else {
 	index2 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	  {
 	    flux->fe[ADVADR(tc_nSites,nf,index0,n)] =
 	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	       + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
 	       + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-	  }
+	}
 	}
 
 	/* y direction */
@@ -625,21 +635,23 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	if (u < 0.0) {
 	index2 = targetIndex3D(coords[X],coords[Y]+2,coords[Z],tc_Nall);
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	  {
 	    flux->fy[ADVADR(tc_nSites,nf,index0,n)] =
 	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	       + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
 	       + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-	  }
+	    }
 	}
 	else {
 	index2 = targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	  {
 	    flux->fy[ADVADR(tc_nSites,nf,index0,n)] =
 	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	       + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
 	       + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-	  }
+	    }
 	}
 
 	/* z direction */
@@ -653,23 +665,27 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	if (u < 0.0) {
 	index2 = targetIndex3D(coords[X],coords[Y],coords[Z]+2,tc_Nall);
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	  {
 	    flux->fz[ADVADR(tc_nSites,nf,index0,n)] =
 	     u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	     + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
 	     + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-	  }
+	    }
 	}
 	else {
 	index2 = targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
-	  for (n = 0; n < nf; n++) {
+	//for (n = 0; n < nf; n++) 
+	  {
 	    flux->fz[ADVADR(tc_nSites,nf,index0,n)] =
 	    u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
 	     + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
 	     + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-	  }
+	    }
 	}
 
+
+	}
 	/* Next site */
       }
     }

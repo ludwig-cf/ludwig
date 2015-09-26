@@ -457,10 +457,10 @@ void ludwig_run(const char * inputfile) {
 
 
 #ifdef KEEPFONTARGET
-    int nhalo = coords_nhalo();
-    int Nall[3];
-    Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-    int nSites=Nall[X]*Nall[Y]*Nall[Z];
+    //    int nhalo = coords_nhalo();
+    //int Nall[3];
+    //Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+    //int nSites=Nall[X]*Nall[Y]*Nall[Z];
     int nFields=NVEL*ludwig->lb->ndist;
     copyToTarget(ludwig->lb->t_f,ludwig->lb->f,nSites*nFields*sizeof(double));  
 
@@ -717,7 +717,7 @@ void ludwig_run(const char * inputfile) {
       else {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
-	  phi_force_calculation(ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
+	  	  	  phi_force_calculation(ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
 	    lc_droplet_bodyforce(ludwig->hydro);
@@ -754,8 +754,8 @@ void ludwig_run(const char * inputfile) {
 	    
 
 	    colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	  blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
-	  			 ludwig->map, ludwig->noise_rho);
+	    blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
+	    			 ludwig->map, ludwig->noise_rho);
 	  }
 
       }
