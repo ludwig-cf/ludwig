@@ -62,7 +62,7 @@ contains
        qsq = q*q ! naive value
        qsq = -(1.0/3.0)*(2.0*(cos(q)*1.0) + 4.0*(cos(q) + 1.0) - 10.0)
        sq = kt / (a + kappa*qsq)
-       write(unit = 20, fmt = '2(1x,e14.7)') q, sq
+       write(unit = 20, fmt = "(2(1x,e14.7))") q, sq
     end do
 
     close (unit = 20, status = 'keep')

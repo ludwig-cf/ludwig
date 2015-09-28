@@ -38,15 +38,15 @@ program isotherm_fig
   sigma0 = (4.0/3.0)*kappa/xi0
   psi_c_langmuir = exp((1.0/kT)*(-0.5*epsilon/xi0sq - 0.5*W))
 
-  write (unit = 0, fmt = '(a,e12.6)') 'Interfactial width = ', &
+  write (unit = 0, fmt = '(a,e13.6)') 'Interfactial width = ', &
        sqrt(-2.0*kappa/A)
 
-  write (unit = 0, fmt = '(a,e12.6)') 'psi_c (langmuir) ', psi_c_langmuir
-  write (unit = 0, fmt = '(a,e12.6)') 'psi0 diamant andelman ', &
+  write (unit = 0, fmt = '(a,e13.6)') 'psi_c (langmuir) ', psi_c_langmuir
+  write (unit = 0, fmt = '(a,e13.6)') 'psi0 diamant andelman ', &
        psi_0_diamant(psi_b, da_alpha, da_beta, da_kt)
 
   phi = psi_frumkin(psi_b, beta, epsilon, W, kT, 0.0d0, 0.0d0, xi0)
-  write (unit = 0, '(a,e12.6)') 'psi0 diffuse ', phi
+  write (unit = 0, fmt = '(a,e13.6)') 'psi0 diffuse ', phi
 
   !call figx()
   !call fig3()
@@ -97,7 +97,7 @@ contains
           psi_b = psi_c_frumkin*psi0/(1.0 - psi0)
           call free_energy(sigma, .false.)
 
-          write (unit = *, fmt = '(2(1x,e12.6))') psi0, (sigma - sigma0)/sigma0
+          write (unit = *, fmt = '(2(1x,e13.6))') psi0, (sigma - sigma0)/sigma0
        end if
     end do
 
@@ -119,7 +119,7 @@ contains
        psi0 = 0.01*n
        if (psi0 < psi0_eq) then
           dsigma_theory = log(1.0-psi0) + 0.5*(da_beta/da_kt)*psi0*psi0
-          write (unit = *, fmt = '(2(1x,e12.6))') psi0, dsigma_theory
+          write (unit = *, fmt = '(2(1x,e13.6))') psi0, dsigma_theory
        end if
     end do
 
@@ -179,11 +179,11 @@ contains
     end do
 
     if (verbose) then
-       write (unit = 0, fmt = '(a,e12.6)') 'Interfactial width = ', &
+       write (unit = 0, fmt = '(a,e13.6)') 'Interfactial width = ', &
             sqrt(-2.0*kappa/A)
-       write (unit = 0, fmt = '(a,e12.6,1xe12.6)') 'Surface tension = ', &
+       write (unit = 0, fmt = '(a,e13.6,1x,e13.6)') 'Surface tension = ', &
             sigma, sigma0
-       write (unit = 0, fmt = '(a,e12.6)') 'Surfactant bulk background = ', &
+       write (unit = 0, fmt = '(a,e13.6)') 'Surfactant bulk background = ', &
             psi_background
     end if
 
