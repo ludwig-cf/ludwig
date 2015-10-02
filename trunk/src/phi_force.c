@@ -241,7 +241,7 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
 
 extern double * pth_;
 extern double * t_pth_;
-
+#include "control.h"
 
 static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
 				       hydro_t * hydro) {
@@ -257,7 +257,9 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  phi_force_stress_allocate();
+  if (get_step()==1)
+    phi_force_stress_allocate();
+
   phi_force_stress_compute(q, q_grad);
 
   Nall[X] = nlocal[X] + 2*nhalo;
@@ -293,7 +295,8 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 #endif
 
-  phi_force_stress_free();
+  if (is_last_step())
+    phi_force_stress_free();
 
   return 0;
 }
