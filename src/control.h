@@ -20,6 +20,7 @@
 __targetHost__ void init_control(void);
 __targetHost__ int  get_step(void);
 __targetHost__ int  next_step(void);
+__targetHost__ int  is_last_step(void);
 __targetHost__ int  is_statistics_step(void);
 __targetHost__ int  is_measurement_step(void);
 __targetHost__ int  is_config_step(void);

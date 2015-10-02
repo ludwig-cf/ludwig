@@ -84,6 +84,7 @@ void init_control() {
  *
  *  get_step
  *  next step
+ *  is last step
  *
  *****************************************************************************/
 
@@ -94,6 +95,12 @@ int get_step() {
 int next_step() {
   ++t_current;
   return (t_start + t_steps - t_current + 1);
+}
+
+int is_last_step() {
+  if (get_step()==t_steps)
+    return 1;
+  return 0;
 }
 
 /*****************************************************************************
