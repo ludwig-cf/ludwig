@@ -131,7 +131,7 @@ __targetConst__ double tc_tmatrix[3][3][NQAB];
 //perform update across the lattice on target
 __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * t_q_grad, 
 						  hydro_t * hydro, advflux_t * flux, map_t * map,
-						  int noise_on, noise_t * noise, void* pcon) {
+						  int noise_on, noise_t * noise, void* pcon, void   (*molecular_field)(const int, double h[3][3])) {
   int ia, ib, id;
   int index, indexj, indexk;
   int nf;
@@ -223,9 +223,18 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 	dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
 	
 	
+
+
+  if (molecular_field==blue_phase_molecular_field)
 	blue_phase_compute_h(q, dq, dsq, h, pbpc);
-	
-	
+  else
+    {
+#ifndef CUDA //only BP supported for CUDA. This is caught earlier
+      molecular_field(index, h);
+#endif
+    }
+
+      
 	//end inline
 	
 	if (hydro) {
@@ -393,9 +402,11 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   molecular_field = fe_t_molecular_field();
 
+#ifdef CUDA
   //make sure blue_phase_molecular_field is in use here because this is assumed in targetDP port
   if (molecular_field!=blue_phase_molecular_field)
-    fatal("molecular field should be blue_phase_molecular_field\n");
+    fatal("only blue_phase_molecular_field for CUDA\n");
+#endif
 
   int nhalo;
   nhalo = coords_nhalo();
@@ -476,7 +487,8 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   blue_phase_be_update_lattice __targetLaunch__(nSites) (fq->tcopy, fq_grad->tcopy, 
   							 t_hydro,
   							 flux->tcopy, map,
-  							 noise_on, noise, pcon);
+  							 noise_on, noise, pcon,
+							 molecular_field);
   
   targetSynchronize();
 
