@@ -43,7 +43,7 @@ double * t_pth_;
  *
  *****************************************************************************/
 
-__targetEntry__ void chemical_stress_lattice(double pth_local[3][3], field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, void (* chemical_stress)(const int index, double s[3][3])){ 
+__targetEntry__ void chemical_stress_lattice(double pth_local[3][3], field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, void (* chemical_stress)(const int index, double s[3][3]),int isBPCS){ 
 
   int index;
 
@@ -61,7 +61,7 @@ __targetTLP__(index,tc_nSites){
 	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
       
 
-      if (t_q){ //we are using blue_phase_chemical_stress which is ported to targetDP
+      if (isBPCS){ //we are using blue_phase_chemical_stress which is ported to targetDP
 	//for the time being we are explicitly calling blue_phase_chemical_stress
 	//ultimitely this will be generic when the other options are ported to targetDP
 	int calledFromPhiForceStress=1;
@@ -70,7 +70,8 @@ __targetTLP__(index,tc_nSites){
       }
       else{
 
-#ifndef CUDA //only blue_phase_chemical_stress support for CUDA. This is trapped earlier.
+#ifndef CUDA //only blue_phase_chemical_stress support for CUDA. 
+	//This is trapped earlier.
 	chemical_stress(index, pth_local);
 	phi_force_stress_set(index, pth_local); 
 #endif
@@ -113,7 +114,16 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
   field_t* t_q = NULL; //target copy of tensor order parameter field structure
   field_grad_t* t_q_grad = NULL;  //target copy of grad field structure
 
-  if (q){ //we are using blue_phase_chemical_stress which is ported to targetDP
+
+  //isBPCS is 1 if we are using  blue_phase_chemical_stress 
+  //(which is ported to targetDP), 0 otherwise
+  int isBPCS=((void*)chemical_stress)==((void*) blue_phase_chemical_stress);
+
+#ifdef CUDA
+    if (!isBPCS) fatal("only Blue Phase chemical stress is currently supported for CUDA");
+#endif
+
+  if (isBPCS){ 
 
     t_q = q->tcopy; 
     t_q_grad = q_grad->tcopy;
@@ -133,12 +143,6 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
     #endif
 
   }
-  else{
-#ifdef CUDA
-    fatal("Error: only blue_phase_chemical_stress is currently supported for CUDA\n");
-#endif
-  }
-  
 
 
   //copy lattice shape constants to target ahead of execution
@@ -150,13 +154,13 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
   TIMER_start(TIMER_CHEMICAL_STRESS_KERNEL);
 
   //execute lattice-based operation on target
-  chemical_stress_lattice __targetLaunch__(nSites) (pth_local, t_q, t_q_grad, t_pth_, pcon, chemical_stress);
+  chemical_stress_lattice __targetLaunch__(nSites) (pth_local, t_q, t_q_grad, t_pth_, pcon, chemical_stress, isBPCS);
   targetSynchronize();
 
   TIMER_stop(TIMER_CHEMICAL_STRESS_KERNEL);
   
 
-  if (q){ //we are using blue_phase_chemical_stress which is ported to targetDP
+  if (isBPCS){ //we are using blue_phase_chemical_stress which is ported to targetDP
     //copy result from target back to host
 
    #ifndef KEEPFIELDONTARGET    
