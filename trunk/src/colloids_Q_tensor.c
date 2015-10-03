@@ -225,16 +225,18 @@ __targetHost__ int colloids_q_boundary(const double nhat[3], double qs[3][3],
 
 __targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
-  int ic, jc, kc, index, ia;
 
-  double u[3];
-  double rb[3];
-  double x, y, z;
-
-  colloid_t * p_c;
-
-
+  int index;
   __targetTLPNoStride__(index,tc_nSites){
+
+    int ic, jc, kc, ia;
+    
+    double u[3];
+    double rb[3];
+    double x, y, z;
+    
+    colloid_t * p_c;
+
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);

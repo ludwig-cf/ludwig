@@ -223,14 +223,16 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
 __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 					      hydro_t * hydro, int nf,
 					      field_t * field) {
-  int index0, index1, n;
-  int icm1, icp1;
-  double u0[3], u1[3], u;
-  double phi0;
-  int i;
-  int index;
 
+
+  int index;
   __targetTLP__(index, tc_nSites) {
+
+    int index0, index1, n;
+    int icm1, icp1;
+    double u0[3], u1[3], u;
+    double phi0;
+    int i;
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
@@ -510,18 +512,20 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux, 
 					      hydro_t * hydro, int nf,
 					      field_t * field) {
-  int n;
-  double u0[3], u1[3], u;
-  int i;
+
   int index;
-  int icm2,  icm1, icp1, icp2;
-
-  const double a1 = -0.213933;
-  const double a2 =  0.927865;
-  const double a3 =  0.286067;
-
   __targetTLP__(index, tc_nSites) {
+
+    int n;
+    double u0[3], u1[3], u;
+    int i;
     
+    int icm2,  icm1, icp1, icp2;
+    
+    const double a1 = -0.213933;
+    const double a2 =  0.927865;
+    const double a3 =  0.286067;
+        
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
     
