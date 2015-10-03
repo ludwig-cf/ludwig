@@ -143,12 +143,14 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
 
 __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
 
-  int index, index1, ia, ib;
+
+  int index;
+  __targetTLPNoStride__(index,tc_nSites){
+
+  int index1, ia, ib;
   double pth0[3][3];
   double pth1[3][3];
   double force[3];
-
-  __targetTLPNoStride__(index,tc_nSites){
   
   int coords[3];
   targetCoords3D(coords,tc_Nall,index);

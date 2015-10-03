@@ -754,36 +754,39 @@ __targetConst__ double tc_a12inv[3][12][12];
 __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 					      double * del2,  map_t * map,bluePhaseKernelConstants_t* pbpc, colloids_info_t* cinfo) {
 
-  int ic, jc, kc, index;
-  int str[3];
-  int ia, ib, n1, n2;
-  int ih, ig;
-  int n, nunknown;
-  int status[6];
-  int normal[3];
-  const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
-  const double bcsign[6] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
 
-  double gradn[6][3][2];          /* one-sided partial gradients */
-  double dq;
-  double qs[3][3];
-  double c[3][3];
-
-  double bc[6][6][3];
-  double b18[18];
-  double x18[18];
-  double tr;
-  const double r3 = (1.0/3.0);
-
-  str[Z]=1;
-  str[Y]=tc_Nall[Z];
-  str[X]=tc_Nall[Z]*tc_Nall[Y];
-
-__targetTLP__(index,tc_nSites){
+  int index;
+  __targetTLP__(index,tc_nSites){
+    
+    int ic, jc, kc;
+    int str[3];
+    int ia, ib, n1, n2;
+    int ih, ig;
+    int n, nunknown;
+    int status[6];
+    int normal[3];
+    const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
+    const double bcsign[6] = {-1.0, 1.0, -1.0, 1.0, -1.0, 1.0};
+    
+    double gradn[6][3][2];          /* one-sided partial gradients */
+    double dq;
+    double qs[3][3];
+    double c[3][3];
+    
+    double bc[6][6][3];
+    double b18[18];
+    double x18[18];
+    double tr;
+    const double r3 = (1.0/3.0);
+    
+    str[Z]=1;
+    str[Y]=tc_Nall[Z];
+    str[X]=tc_Nall[Z]*tc_Nall[Y];
+    
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
-
+    
     // if not a halo site:
     if (coords[0] >= (tc_nhalo-tc_nextra) &&
 	coords[1] >= (tc_nhalo-tc_nextra) &&

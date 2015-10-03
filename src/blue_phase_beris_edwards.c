@@ -132,8 +132,14 @@ __targetConst__ double tc_tmatrix[3][3][NQAB];
 __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * t_q_grad, 
 						  hydro_t * hydro, advflux_t * flux, map_t * map,
 						  int noise_on, noise_t * noise, void* pcon, void   (*molecular_field)(const int, double h[3][3])) {
+
+  int index;
+
+  __targetTLPNoStride__(index,tc_nSites){
+
+
   int ia, ib, id;
-  int index, indexj, indexk;
+  int indexj, indexk;
   int nf;
   int status;
 
@@ -155,8 +161,6 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
   bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
 
   nf=t_q->nf;
-
-  __targetTLPNoStride__(index,tc_nSites){
   
   int coords[3];
   targetCoords3D(coords,tc_Nall,index);

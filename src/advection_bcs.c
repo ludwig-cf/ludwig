@@ -36,14 +36,16 @@
 
 __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux, map_t * map) {
 
-  int n;
-  int nlocal[3];
-  int ic, jc, kc, index, indexf;
-  int status;
 
-  double mask, maskw, maske, masky, maskz;
+  int index;
+  __targetTLP__(index,tc_nSites){
 
-__targetTLP__(index,tc_nSites){
+    int n;
+    int nlocal[3];
+    int ic, jc, kc, indexf;
+    int status;
+    
+    double mask, maskw, maske, masky, maskz;
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);

@@ -139,21 +139,26 @@ double atomicAdd(double* address, double val)
 #endif
 
 __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro, map_t * map, double* t_pth) {
+
+
+
+  int index;
+  __targetTLPNoStride__(index,tc_nSites){
+
   int ia, ib, ic, jc, kc;
-  int index, index1;
+  int index1;
   int nlocal[3];
   int status;
-
+  
   double pth0[3][3];
   double pth1[3][3];
+
   double force[3];                  /* Accumulated force on fluid */
   double fw[3];                     /* Accumulated force on wall */
-
+  
   colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
 
-
-  __targetTLPNoStride__(index,tc_nSites){
   
   int coords[3];
   targetCoords3D(coords,tc_Nall,index);
