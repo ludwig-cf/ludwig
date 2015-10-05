@@ -584,10 +584,6 @@ void ludwig_run(const char * inputfile) {
       }
     if (ludwig->q) {
 
-#ifdef KEEPFIELDONTARGET
-    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
-    copyFromTarget(ludwig->q->data,tmpptr,ludwig->q->nf*nSites*sizeof(double));
-#endif
 
 #ifdef LB_DATA_SOA
       field_t* t_field = NULL; 
@@ -603,15 +599,21 @@ void ludwig_run(const char * inputfile) {
 #endif 
 
 
-#else
-    field_halo(ludwig->q);
+#else //not LB_DATA_SOA
+
+#ifdef KEEPFIELDONTARGET
+    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
+    copyFromTarget(ludwig->q->data,tmpptr,ludwig->q->nf*nSites*sizeof(double));
 #endif
 
+    field_halo(ludwig->q);
 
 #ifdef KEEPFIELDONTARGET
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*)); 
     copyToTarget(tmpptr,ludwig->q->data,ludwig->q->nf*nSites*sizeof(double));
 #endif
+
+#endif //LB_DATA_SOA
 
 
       field_grad_compute(ludwig->q_grad);
@@ -739,19 +741,35 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->q) {
 	if (ludwig->hydro)
 	  {
+
+	    hydro_t* t_hydro = ludwig->hydro->tcopy; 
+	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
 	    
-#ifdef KEEPHYDROONTARGET
-	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-	    copyFromTarget(ludwig->hydro->u,tmpptr,ludwig->hydro->nf*nSites*sizeof(double));
-#endif
+#ifdef LB_DATA_SOA 
 	    
-	    hydro_u_halo(ludwig->hydro);
-	    
-#ifdef KEEPHYDROONTARGET
-	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+#ifndef KEEPHYDROONTARGET
 	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
 #endif
+	    halo_gpu(ludwig->hydro->nf, 1, 0, tmpptr);
+#ifndef KEEPHYDROONTARGET
+	    copyFromTarget(ludwig->hydro->u,tmpptr,ludwig->hydro->nf*nSites*sizeof(double));
 	    
+#endif
+
+	    #else //not LB_DATA_SOA
+
+#ifdef KEEPHYDROONTARGET
+	    copyFromTarget(ludwig->hydro->u,tmpptr,ludwig->hydro->nf*nSites*sizeof(double));
+	    #endif
+
+	    hydro_u_halo(ludwig->hydro);
+
+	    #ifdef KEEPFIELDONTARGET
+	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
+	    #endif
+
+#endif //LB_DATA_SOA
+
 
 	    colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
 	    blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
@@ -774,10 +792,9 @@ void ludwig_run(const char * inputfile) {
        * colloids to present non-zero u inside particles. */
 
 #ifdef KEEPHYDROONTARGET
-	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-	    targetZero(tmpptr,ludwig->hydro->nf*nSites);
-	    //	    copyToTarget(tmpptr,ludwig->hydro->u,ludwig->hydro->nf*nSites*sizeof(double));
-
+      copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
+      targetZero(tmpptr,ludwig->hydro->nf*nSites);
+      
 #else
       hydro_u_zero(ludwig->hydro, uzero);
 #endif

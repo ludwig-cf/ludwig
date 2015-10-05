@@ -749,8 +749,14 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
 #ifdef CUDA
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
 #else
+
+#ifdef KEEPFIELDONTARGET
+  advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
+#else
   /*use host copies of input just now, because of LE plane  buffers */
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro,nf,field);
+#endif
+
 #endif
 
   targetSynchronize();

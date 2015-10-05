@@ -40,7 +40,7 @@ CC = gcc
 MPICC = mpicc
 NVCC = nvcc
 
-OPTS = -DNP_D3Q6 #-DNDEBUG
+OPTS = -DNP_D3Q6 #-DNDEBUG 
 CFLAGS = -O2 
 LIBS = -lm 
 
