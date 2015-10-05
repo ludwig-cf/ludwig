@@ -584,7 +584,6 @@ void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
   MPI_Comm comm = cart_comm();
 
 
-
   /* the sizes of the packed structures */
   NedgeX[X]=nhalo;
   NedgeX[Y]=N[Y];
