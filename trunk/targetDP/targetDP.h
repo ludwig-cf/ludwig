@@ -244,4 +244,9 @@ __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields);
 __targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields);
 
 
+
+__targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
+
+__targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
+
 #endif
