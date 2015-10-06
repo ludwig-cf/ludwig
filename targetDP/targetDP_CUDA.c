@@ -972,6 +972,47 @@ __targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
 }
 
 
+__targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size)
+{
+
+  //calculate the offset between the object start and the component of interest
+  long int offset=((char*)hostComponentAddress)-((char*)hostObjectAddress);
+
+  //calculate the position of this component on the target
+  char* targetComponentAddress=((char*)targetObjectAddress)+offset;
+
+  //get a copy of this component pointer on the target
+  void* tmpptr;
+  copyFromTarget(&tmpptr,targetComponentAddress,sizeof(double*)); 
+
+  //copy the deep array 
+  void** ptrToHostComponent= (void**) hostComponentAddress;
+  copyToTarget(tmpptr,*ptrToHostComponent,size*sizeof(double));
+
+
+}
+
+
+__targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size)
+{
+
+  //calculate the offset between the object start and the component of interest
+  long int offset=((char*)hostComponentAddress)-((char*)hostObjectAddress);
+
+  //calculate the position of this component on the target
+  char* targetComponentAddress=((char*)targetObjectAddress)+offset;
+
+  //get a copy of this component pointer on the target
+  void* tmpptr;
+  copyFromTarget(&tmpptr,targetComponentAddress,sizeof(double*)); 
+
+  //copy the deep array 
+  void** ptrToHostComponent= (void**) hostComponentAddress;
+  copyFromTarget(*ptrToHostComponent,tmpptr,size*sizeof(double));
+
+
+}
+
 //
 __targetHost__ void checkTargetError(const char *msg)
 {
@@ -985,3 +1026,4 @@ __targetHost__ void checkTargetError(const char *msg)
 		exit(EXIT_FAILURE);
 	}                         
 }
+

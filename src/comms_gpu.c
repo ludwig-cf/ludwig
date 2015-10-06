@@ -32,7 +32,7 @@ __targetHost__ int  RUN_get_string_parameter(const char *, char *, const int);
 
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_gpu(int nfields1, int nfields2, int packfield1, double * data_d);
+__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
 
 #ifdef KEVIN_GPU
 int halo_init_extra(void);
@@ -536,7 +536,7 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 
 
 
-void halo_gpu(int nfields1, int nfields2, int packablefield1, double * data_d)
+void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 {
 
 
