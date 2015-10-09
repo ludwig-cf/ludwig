@@ -143,17 +143,18 @@
 
 /* Thread-level-parallelism execution macro */
 
-//UNCOMMENT THIS OPENMP VERSION FOR PRODUCTION
-//#define __targetTLP__(simtIndex,extent)	\
-//_Pragma("omp parallel for")				\
-//for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
+/* UNCOMMENT THIS OPENMP VERSION FOR PRODUCTION */
+/*
+#define __targetTLP__(simtIndex,extent)	\
+_Pragma("omp parallel for")				\
+for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 
-//#define __targetTLPNoStride__(simtIndex,extent)   	\
-//_Pragma("omp parallel for")				\
-//for(simtIndex=0;simtIndex<extent;simtIndex++)
+#define __targetTLPNoStride__(simtIndex,extent)   	\
+_Pragma("omp parallel for")				\
+for(simtIndex=0;simtIndex<extent;simtIndex++)
+*/
 
-
-// serial version for development
+/* serial version for development */
 #define __targetTLP__(simtIndex,extent)			\
   for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 
