@@ -39,6 +39,8 @@ fi
 
 function test_unit {
 
+  echo "TEST --> unit tests parallel $1"
+
   # Make sure no stub mpi hanging around
   cd $DIR_MPI
   make clean
@@ -72,6 +74,7 @@ function test_unit {
 
 function test_regr {
 
+  echo "TEST --> regression tests parallel $1"
   cd $DIR_MPI
   make clean
 

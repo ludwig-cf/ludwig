@@ -37,6 +37,7 @@ fi
 
 function test_regr {
 
+  echo "TEST --> regression tests parallel $1"
   cd $DIR_MPI
   make clean
 
