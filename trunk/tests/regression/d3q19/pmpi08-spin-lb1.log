@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.1.10 (MPI version running on 8 processes)
+Welcome to Ludwig v0.2.15 (MPI version running on 8 processes)
 
-The SVN revision details are: 2374M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 20 user parameters from ./pmpi08-spin-lb1.inp
+Read 20 user parameters from pmpi08-spin-lb1.inp
 
 System details
 --------------
@@ -37,7 +37,8 @@ Shear viscosity               6.25000e-03
 Bulk viscosity                6.25000e-03
 Temperature                   0.00000e+00
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
@@ -73,7 +74,7 @@ Gradient calcaulation: 3d_27pt_fluid
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]      262144.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 [phi]  3.1484764e+00  1.2010484e-05 8.3289934e-04 -4.9999916e-02 4.9999705e-02
 
 Momentum - x y z
@@ -83,7 +84,7 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]      262144.00  1.00000000000 8.6437524e-12  0.99998918253 1.00003227165
+[rho]      262144.00  1.00000000000  8.6439744e-12  0.99998918253  1.00003227165
 [phi]  3.1484764e+00  1.2010484e-05 5.0209947e-04 -9.7618051e-02 8.9753962e-02
 
 Free energy density - timestep total fluid
@@ -99,15 +100,16 @@ Velocity - x y z
 
 Completed cycle 400
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.001 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     49.959     49.959     49.959  49.958707 (1 call)
-      Time step loop:      0.094      0.172     49.869   0.124672 (400 calls)
-         Propagation:      0.010      0.028      8.582   0.021454 (400 calls)
-           Collision:      0.059      0.117     31.857   0.079643 (400 calls)
-       Lattice halos:      0.002      0.041      2.462   0.006156 (400 calls)
-       phi gradients:      0.009      0.036      6.677   0.016692 (400 calls)
+               Total:     60.013     60.014     60.014  60.013534 (1 call)
+      Time step loop:      0.122      0.194     59.858   0.149644 (400 calls)
+         Propagation:      0.023      0.061     15.812   0.039530 (400 calls)
+           Collision:      0.056      0.090     26.417   0.066043 (400 calls)
+       Lattice halos:      0.003      0.037      4.219   0.010547 (400 calls)
+       phi gradients:      0.015      0.058     12.547   0.031368 (400 calls)
+           phi halos:      0.000      0.044      4.999   0.012497 (400 calls)
                  BBL:      0.000      0.000      0.001   0.000002 (400 calls)
 Ludwig finished normally.

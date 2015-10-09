@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.0 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.15 (Serial version running on 1 process)
 
-The SVN revision details are: 2454M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
 Read 25 user parameters from serial-le2d-lb1.inp
@@ -44,7 +44,8 @@ Shear viscosity               1.00000e-01
 Bulk viscosity                1.00000e-01
 Temperature                   2.13333e-05
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
@@ -111,12 +112,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.172      1.172      1.172   1.171900 (1 call)
-      Time step loop:      0.006      0.007      1.163   0.005814 (200 calls)
-         Propagation:      0.000      0.000      0.053   0.000263 (200 calls)
-           Collision:      0.004      0.004      0.786   0.003930 (200 calls)
-       Lattice halos:      0.000      0.000      0.060   0.000302 (200 calls)
-       phi gradients:      0.001      0.001      0.204   0.001019 (200 calls)
-     Lees Edwards BC:      0.000      0.000      0.040   0.000200 (200 calls)
+               Total:      3.988      3.988      3.988   3.987570 (1 call)
+      Time step loop:      0.020      0.021      3.970   0.019848 (200 calls)
+         Propagation:      0.000      0.001      0.101   0.000503 (200 calls)
+           Collision:      0.015      0.016      3.046   0.015231 (200 calls)
+       Lattice halos:      0.001      0.001      0.191   0.000956 (200 calls)
+       phi gradients:      0.003      0.003      0.518   0.002588 (200 calls)
+           phi halos:      0.000      0.000      0.035   0.000175 (200 calls)
+     Lees Edwards BC:      0.000      0.000      0.056   0.000281 (200 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (200 calls)
 Ludwig finished normally.
