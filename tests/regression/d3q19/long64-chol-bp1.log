@@ -1,9 +1,9 @@
-Welcome to Ludwig (MPI version running on 64 processes)
+Welcome to Ludwig v0.2.15 (MPI version running on 64 processes)
 
 The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 23 user parameters from ../tests/regression/long64-chol-bp1.inp
+Read 23 user parameters from long64-chol-bp1.inp
 
 System details
 --------------
@@ -46,7 +46,8 @@ Shear viscosity               1.66667e+00
 Bulk viscosity                1.66667e+00
 Temperature                   0.00000e+00
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
@@ -77,6 +78,7 @@ Order parameter I/O
 -------------------
 Order parameter I/O format:   
 I/O decomposition:            1 1 1
+
 Advection scheme order:  1 (default)
 Gradient calcaulation: 3d_7pt_fluid
 
@@ -85,7 +87,7 @@ Initialising Q_ab using O8M (BPI)
 Initial conditions.
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 2.2204460e-16  1.00000000000 1.00000000000
+[rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 [phi] -1.7053026e-13 -5.2041704e-18 6.0000000e-02 -4.4966058e-01 4.4966058e-01
 [phi] -1.4495072e-12 -4.4235449e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
 [phi] -1.5845103e-12 -4.8355417e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
@@ -99,7 +101,7 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]       32768.00  1.00000000000 1.7974870e-09  0.99995331917 1.00016701701
+[rho]       32768.00  1.00000000000  1.7974870e-09  0.99995331917  1.00016701701
 [phi]  8.0824236e-13  2.4665599e-17 2.2598396e-02 -1.9090918e-01 3.6978523e-01
 [phi]  1.0195211e-07  3.1113316e-12 1.6031174e-02 -2.5750012e-01 2.5750012e-01
 [phi]  1.0195209e-07  3.1113307e-12 1.6031174e-02 -2.5750012e-01 2.5750012e-01
@@ -123,12 +125,15 @@ Timer resolution: 0.001 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:    134.956    134.957    134.956 134.956400 (1 call)
-      Time step loop:      0.006      0.132    134.717   0.006736 (20000 calls)
-         Propagation:      0.000      0.008      0.912   0.000046 (20000 calls)
-           Collision:      0.001      0.045     26.723   0.001336 (20000 calls)
-       Lattice halos:      0.000      0.077     26.435   0.001322 (20000 calls)
-       phi gradients:      0.000      0.097     11.047   0.000552 (20000 calls)
-                 BBL:      0.000      0.000      0.008   0.000000 (20000 calls)
-   Force calculation:      0.002      0.027     37.950   0.001897 (20000 calls)
+               Total:    265.670    265.707    265.692 265.691948 (1 call)
+      Time step loop:      0.012      0.178    265.336   0.013267 (20000 calls)
+         Propagation:      0.000      0.016      7.248   0.000362 (20000 calls)
+           Collision:      0.004      0.089     96.701   0.004835 (20000 calls)
+       Lattice halos:      0.000      0.119     21.891   0.001095 (20000 calls)
+       phi gradients:      0.000      0.155     19.706   0.000985 (20000 calls)
+                 BBL:      0.000      0.000      0.023   0.000001 (20000 calls)
+   Force calculation:      0.003      0.080     69.657   0.003483 (20000 calls)
+          phi update:      0.001      0.081     48.831   0.002442 (20000 calls)
+  Collision (kernel):      0.004      0.089     88.310   0.004416 (20000 calls)
+Chem stress (kernel):      0.002      0.080     63.491   0.003175 (20000 calls)
 Ludwig finished normally.
