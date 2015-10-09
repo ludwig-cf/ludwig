@@ -41,7 +41,7 @@ fi
 
 function test_unit {
 
-  echo "TEST     unit tests serial $1"
+  echo "TEST --> unit tests serial $1"
   cd $DIR_MPI
   make clean
   make libc
@@ -80,7 +80,7 @@ function test_unit {
 
 function test_regr {
 
-  echo "TEST     regression tests serial $1"
+  echo "TEST --> regression tests serial $1"
   cd $DIR_MPI
   make clean
   make libc
