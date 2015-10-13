@@ -12,10 +12,12 @@
  *  can be ascii or binary and is set by the switch below.
  *
  *  Compile against the ludwig library, e.g.,
+ *  $ cd ../targetDP
+ *  $ make
  *  $ cd ../src
- *  $ make lib
+ *  $ make serial
  *  $ cd ../util
- *  $ $(CC) -I../mpi_s -I../src extract_colloids.c \
+ *  $ $(CC) -I../mpi_s -I../src -I../targetDP extract_colloids.c \
  *          -L../mpi_s -lmpi -L../src -lludwig -lm
  *
  *  $ ./a.out <colloid file name> <nfile> <csv file name>
