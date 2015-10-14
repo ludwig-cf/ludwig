@@ -44,7 +44,7 @@ colloid_gravity  0.0_0.0_0.0
 
 lubrication_on 0
 soft_sphere_on 1
-soft_sphere_epsilon 0.004
+soft_sphere_epsilon 0.0004
 soft_sphere_sigma 1.0
 soft_sphere_nu 1.0
 soft_sphere_cutoff 2.25

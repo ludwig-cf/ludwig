@@ -1,6 +1,6 @@
 Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
 
-The SVN revision details are: 2638M
+The SVN revision details are: 2745M
 Note assertions via standard C assert() are on.
 
 Read 25 user parameters from serial-pair-ss1.inp
@@ -69,11 +69,11 @@ Read a total of 1000 colloids from file
 Initialised 1000 colloids
 
 Soft sphere potential
-epsilon:                   4.0000000e-03
+epsilon:                   4.0000000e-04
 sigma:                     1.0000000e+00
 exponent nu:               1.0000000e+00
 cut off (surface-surface)  2.2500000e+00
-epsilon / kT               1.8750003e+01
+epsilon / kT               1.8750003e+00
 
 Colloid cell list information
 -----------------------------
@@ -97,24 +97,24 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
-Pair potential minimum h is:  1.5710575e+00
-Pair potential energy is:     2.7124051e-01
+Pair potential minimum h is:  1.5706584e+00
+Pair potential energy is:     2.7140251e-02
 
 Colloid velocities - x y z
-[minimum ] -8.4047217e-05 -7.2168198e-05 -6.5140474e-05
-[maximum ]  8.5810031e-05  7.1571167e-05  8.5784144e-05
+[minimum ] -8.4083232e-06 -7.2194522e-06 -6.5167192e-06
+[maximum ]  8.5845905e-06  7.1599043e-06  8.5830119e-06
 
 Scalars - total mean variance min max
-[rho]      202992.00  1.00000000000  7.0570572e-10  0.99986455439  1.00008657299
+[rho]      202992.00  1.00000000000  7.1200823e-12  0.99998644597  1.00000865920
 
 Momentum - x y z
-[total   ] -1.0406788e-12 -8.8155980e-13 -6.4295791e-14
-[fluid   ] -2.1075751e-03  2.4314058e-05  5.1849401e-04
-[colloids]  2.1075751e-03 -2.4314059e-05 -5.1849402e-04
+[total   ] -1.0989482e-12 -7.5563130e-13 -9.6974295e-14
+[fluid   ] -2.0924025e-04  1.6287146e-06  5.5726166e-05
+[colloids]  2.0924025e-04 -1.6287154e-06 -5.5726167e-05
 
 Velocity - x y z
-[minimum ] -7.1416268e-05 -6.8976562e-05 -6.3958053e-05
-[maximum ]  8.2872532e-05  6.6435445e-05  8.0208254e-05
+[minimum ] -7.1449166e-06 -6.8996995e-06 -6.3969540e-06
+[maximum ]  8.2897145e-06  6.6462799e-06  8.0249346e-06
 
 Completed cycle 10
 
@@ -122,17 +122,18 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      5.364      5.364      5.364   5.363881 (1 call)
-      Time step loop:      0.492      0.537      4.999   0.499880 (10 calls)
-         Propagation:      0.093      0.112      0.963   0.096263 (10 calls)
-           Collision:      0.252      0.273      2.566   0.256591 (10 calls)
-       Lattice halos:      0.001      0.002      0.030   0.001497 (20 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
-              Forces:      0.001      0.002      0.015   0.001504 (10 calls)
-             Rebuild:      0.041      0.043      0.416   0.041568 (10 calls)
-                 BBL:      0.082      0.084      0.828   0.082790 (10 calls)
-      Particle halos:      0.001      0.001      0.007   0.000717 (10 calls)
-   Force calculation:      0.000      0.000      0.000   0.000002 (10 calls)
+               Total:      5.387      5.387      5.387   5.386579 (1 call)
+      Time step loop:      0.495      0.546      5.036   0.503564 (10 calls)
+         Propagation:      0.091      0.112      0.938   0.093782 (10 calls)
+           Collision:      0.261      0.283      2.656   0.265568 (10 calls)
+       Lattice halos:      0.001      0.003      0.030   0.001501 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
+              Forces:      0.001      0.001      0.014   0.001413 (10 calls)
+             Rebuild:      0.040      0.044      0.411   0.041100 (10 calls)
+                 BBL:      0.080      0.085      0.810   0.081001 (10 calls)
+      Particle halos:      0.001      0.001      0.007   0.000690 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
           phi update:      0.000      0.000      0.000   0.000000 (10 calls)
-               Free1:      0.000      0.000      0.000   0.000001 (20 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (20 calls)
+  Collision (kernel):      0.244      0.256      2.464   0.246380 (10 calls)
 Ludwig finished normally.
