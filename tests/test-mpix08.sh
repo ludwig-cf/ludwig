@@ -155,7 +155,9 @@ function test_regr {
   # We are going to run from the regression test directory
   # for the appropriate argument
 
-  cd $DIR_REG/$1
+  actual_dir=`echo $1 | sed 's/r$//'`
+
+  cd $DIR_REG/${actual_dir}
 
   for f in $2*inp
   do
