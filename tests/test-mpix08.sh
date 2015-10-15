@@ -76,6 +76,8 @@ function main() {
   [[ $run_regr -eq 1 ]]  && test_regr "$1" "$2"
   [[ $run_clean -eq 1 ]] && test_clean
 
+  cd $DIR_TST
+
   return
 }
 
