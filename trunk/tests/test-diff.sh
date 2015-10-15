@@ -13,6 +13,7 @@
 #    - the run times
 #    - SVN version information
 #    - exact location of input file
+#    - allow "Model R" tests to pass by looking for "d3q19 R" etc
 #
 #  Options:
 #    -v causes the actual results of the diff to be sent to stdout
@@ -84,6 +85,9 @@ sed -i~ '/SVN.revision/d' test-diff-tmp.ref
 sed -i~ '/^$/d' test-diff-tmp.ref
 sed -i~ '/Timer/d' test-diff-tmp.ref
 sed -i~ '/user.parameters.from/d' test-diff-tmp.ref
+sed -i~ 's/d2q9\ R/d2q9/' test-diff-tmp.ref
+sed -i~ 's/d3q15\ R/d3q15/' test-diff-tmp.ref
+sed -i~ 's/d3q19\ R/d3q19/' test-diff-tmp.ref
 
 sed '/call)/d' $2 > test-diff-tmp.log
 sed -i~ '/calls)/d' test-diff-tmp.log
@@ -92,6 +96,9 @@ sed -i~ '/SVN.revision/d' test-diff-tmp.log
 sed -i~ '/^$/d' test-diff-tmp.log
 sed -i~ '/Timer/d' test-diff-tmp.log
 sed -i~ '/user.parameters.from/d' test-diff-tmp.log
+sed -i~ 's/d2q9\ R/d2q9/' test-diff-tmp.log
+sed -i~ 's/d3q15\ R/d3q15/' test-diff-tmp.log
+sed -i~ 's/d3q19\ R/d3q19/' test-diff-tmp.log
 
 # Here we use the floating point diff to measure "success"
 

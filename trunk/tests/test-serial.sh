@@ -165,9 +165,13 @@ function test_regr {
   # output.
 
   # We are going to run from the regression test directory
-  # for the appropriate argument
+  # for the appropriate argument (remove any postfix "r")
+  # Note that the report below will say .../d3q19r/... etc,
+  # but that directory doesn't really exist.
 
-  cd $DIR_REG/$1
+  actual_dir=`echo $1 | sed 's/r$//'`
+
+  cd $DIR_REG/${actual_dir}
 
   for f in serial*inp
   do
