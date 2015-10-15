@@ -172,6 +172,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
 
+#ifdef CUDAHOST
+  info("GPU INFO: ***GPU ACCELERATION ENABLED***\n");
+  info("GPU INFO: Running GPU build which is under development.\n");
+  info("GPU INFO: Please check results against CPU build.\n\n");  
+#endif
+
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
 
