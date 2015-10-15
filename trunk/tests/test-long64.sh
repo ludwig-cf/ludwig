@@ -1,21 +1,22 @@
 ###############################################################################
 #
+#  test-long64.sh
+#
 #  Even longer parallel regression tests for 64 MPI tasks
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2014 The University of Edinburgh
+#  (c) 2014-2015 The University of Edinburgh
+#  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
 #
 ###############################################################################
 #!/bin/bash
 
-echo $0 $@
-OPTIND=1
-
 DIR_TST=`pwd`
 DIR_MPI=`pwd`/../mpi_s
+DIR_TARGETDP=`pwd`/../targetDP
 DIR_SRC=`pwd`/../src
 DIR_REG=`pwd`/regression
 DIR_UNT=`pwd`/unit
@@ -23,11 +24,39 @@ DIR_UNT=`pwd`/unit
 MPIRUN=mpirun
 NPROCS=64
 
-if [ $# -lt 2 ]
-then
+##############################################################################
+#
+#  main
+#
+##############################################################################
+
+function main() {
+
+  echo $0 $@
+  OPTIND=1
+
+  if [ $# -lt 2 ]; then
     echo "Usage: $0 -r [d2q9 | d3q15 | ...] test-stub"
     exit -1
-fi
+  fi
+
+  run_regr=0
+
+  while getopts ru opt
+  do
+      case "$opt" in
+	  r)
+	      run_regr=1
+	      ;;
+      esac
+  done
+
+  shift $((OPTIND-1))
+
+  [[ $run_regr -eq 1 ]] && test_regr $1 $2
+
+  return
+}
 
 ##############################################################################
 #
@@ -40,6 +69,10 @@ function test_regr {
   echo "TEST --> regression tests parallel $1"
   cd $DIR_MPI
   make clean
+
+  cd $DIR_TARGETDP
+  make clean
+  make targetDP_C
 
   cd $DIR_SRC
   make clean
@@ -85,23 +118,6 @@ function test_regr {
   cd $DIR_TST
 }
 
+# Run and exit
 
-# Run the regression tests
-
-run_regr=0
-
-while getopts ru opt
-do
-case "$opt" in
-    r)
-	    run_regr=1
-	    ;;
-esac
-done
-
-shift $((OPTIND-1))
-
-if [ $run_regr -eq 1 ]
-then
-    test_regr $1 $2
-fi
+main "$@"
