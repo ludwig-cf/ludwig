@@ -16,12 +16,13 @@
 . ./test-serial.sh -u d2q9
 . ./test-serial.sh -u d2q9r
 . ./test-serial.sh -u -r d3q15
-. ./test-serial.sh -u d3q15r
+. ./test-serial.sh -u -r d3q15r
 . ./test-serial.sh -u -r d3q19
-. ./test-serial.sh -u d3q19r
+. ./test-serial.sh -u -r d3q19r
 
 . ./test-mpix08.sh -u d3q15 pmpi08
 . ./test-mpix08.sh -u -r d3q19 pmpi08
+. ./test-mpix08.sh -u -r d3q19r pmpi08
 . ./test-mpix08.sh -u d3q19 long08
 
 . ./test-long64.sh -r d3q19 long64
