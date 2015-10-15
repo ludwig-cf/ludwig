@@ -55,6 +55,8 @@ function main() {
 
   [[ $run_regr -eq 1 ]] && test_regr $1 $2
 
+  cd $DIR_TST
+
   return
 }
 
