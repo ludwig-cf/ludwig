@@ -1,0 +1,115 @@
+Welcome to Ludwig v0.2.15 (MPI version running on 8 processes)
+
+The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
+Read 20 user parameters from pmpi08-spin-lb1.inp
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  2 2 2
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-03
+Bulk parameter B      =  6.25000e-03
+Surface penalty kappa =  4.00000e-03
+Surface tension       =  4.71405e-03
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  3.75000e+00
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               6.25000e-03
+Bulk viscosity                6.25000e-03
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    5.18750e-01
+Bulk relaxation time:     5.18750e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+Gradient calcaulation: 3d_27pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  3.1484764e+00  1.2010484e-05 8.3289934e-04 -4.9999916e-02 4.9999705e-02
+
+Momentum - x y z
+[total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000  8.6439744e-12  0.99998918253  1.00003227165
+[phi]  3.1484764e+00  1.2010484e-05 5.0209947e-04 -9.7618051e-02 8.9753962e-02
+
+Free energy density - timestep total fluid
+[fed]            400 -1.0487384227e-06 -1.0487384227e-06
+
+Momentum - x y z
+[total   ]  6.8594436e-14 -5.3724386e-14 -7.9096452e-14
+[fluid   ]  6.8594436e-14 -5.3724386e-14 -7.9096452e-14
+
+Velocity - x y z
+[minimum ] -6.4411425e-05 -9.6213900e-05 -8.0159249e-05
+[maximum ]  9.7876012e-05  1.2081571e-04  1.0236469e-04
+
+Completed cycle 400
+
+Timer resolution: 0.001 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     60.013     60.014     60.014  60.013534 (1 call)
+      Time step loop:      0.122      0.194     59.858   0.149644 (400 calls)
+         Propagation:      0.023      0.061     15.812   0.039530 (400 calls)
+           Collision:      0.056      0.090     26.417   0.066043 (400 calls)
+       Lattice halos:      0.003      0.037      4.219   0.010547 (400 calls)
+       phi gradients:      0.015      0.058     12.547   0.031368 (400 calls)
+           phi halos:      0.000      0.044      4.999   0.012497 (400 calls)
+                 BBL:      0.000      0.000      0.001   0.000002 (400 calls)
+Ludwig finished normally.

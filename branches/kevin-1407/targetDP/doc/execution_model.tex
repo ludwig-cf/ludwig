@@ -1,0 +1,42 @@
+\chapter{Execution model}
+
+The terminology ``host'' is used to refer to the CPU that is hosting
+the execution of the application, and ``target'' to refer to the
+device targeted for execution of data parallel operations. The target
+could be the same CPU as the host, or it could be a separate device such
+as an accelerator (depending on the hardware available). 
+
+The targetDP API follows the fork-join model of parallel
+execution. When the application initiates, a single thread executes
+sequentially on the host, until it encounters a function to be
+launched on the target. This function will be executed by a team of
+threads on the target cooperating in a data-parallel manner (e.g. for
+a structured grid problem each thread is responsible for a subset of
+the grid). 
+
+To ensure that the target function has completed, a
+\verb+targetSynchronize+ statement should follow the code location
+where target function is launched. When the initial thread encounters
+this statement, it will wait until the target region has completed. It
+is possible for the initial thread to execute other instructions
+(which do not depend on the results of the target function), after the
+function launch but before the synchronisation call. This may result in
+overlapping of host and target execution, and hence optimisation, in
+some implementations. Once the target function has completed, the
+initial thread will continue sequentially until another target
+function launch is encountered.
+
+Within each target function, each thread is given a unique index which
+it uses to work in a data-parallel manner. Each thread works
+independently from all others, but usually operating on a shared data
+structure where the index is used to determine the portion of data
+to process.
+
+\begin{comment}
+Possibly add targetSyncThreads() to
+  allow communication within target functions?]
+\end{comment}
+
+\begin{comment}
+Some text on reductions needed.
+\end{comment}

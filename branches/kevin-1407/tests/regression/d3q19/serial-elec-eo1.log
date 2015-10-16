@@ -1,0 +1,155 @@
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+
+The SVN revision details are: 2638M
+Note assertions via standard C assert() are on.
+
+Read 53 user parameters from serial-elec-eo1.inp
+
+System details
+--------------
+System size:    64 2 2
+Decomposition:  1 1 1
+Local domain:   64 2 2
+Periodic:       0 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Electrokinetics (single fluid) selected
+
+Parameters:
+Electrokinetic species:     2
+Boltzmann factor:           3.0000300e+04 (T =  3.3333000e-05)
+Unit charge:                1.0000000e+00
+Permittivity:               3.3000000e+03
+Bjerrum length:             7.2343879e-01
+Valency species 0:          1
+Diffusivity species 0:      1.0000000e-02
+Valency species 1:         -1
+Diffusivity species 1:      1.0000000e-02
+Number of multisteps:       1
+Number of skipsteps:        1
+Diffusive accuracy in NPE:  0.0000000e+00
+Relative tolerance:         1.1920929e-07
+Absolute tolerance:         1.1920929e-09
+Max. no. of iterations:             10000
+I/O decomposition:          1 1 1
+I/O format:                 ASCII
+Force calculation:          psi grad mu method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   3.33330e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  1.00000e-06  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Advection scheme order: 3
+
+Initial charge densities
+------------------------
+Initial conditions:         Gouy Chapman
+Initial condition rho_el:   0.0000000e+00
+Debye length:                         inf
+Initial condition sigma:    1.2500000e-02
+
+Boundary walls
+--------------
+Boundary walls:                  X - -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   40
+Memory (total, bytes):           1280
+Boundary shear initialise:       0
+Porous media boundary links allocated:  80
+Arranging initial charge neutrality.
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         248.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[psi]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[rho]  1.0000000e-01  0.0000000e+00  1.2500000e-02
+[rho]  1.0000000e-01  0.0000000e+00  4.0322581e-04
+[elc] -1.4224733e-16 -4.0322581e-04  1.2500000e-02
+
+Momentum - x y z
+[total   ]  3.4416914e-15  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.4416914e-15  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+SOR solver
+Norm of residual 1.18581e-08 at 235 iterations
+1 multisteps
+
+Scalars - total mean variance min max
+[rho]         248.00  1.00000000000  2.2204460e-16  0.99999997379  1.00000004969
+[psi]  7.1054274e-15 -6.0376531e-01  1.1609255e+00
+[rho]  1.0000000e-01  0.0000000e+00  1.2500000e-02
+[rho]  1.0000000e-01  0.0000000e+00  5.4240246e-04
+[elc] -3.4694470e-18 -5.4240246e-04  1.2500000e-02
+
+Free energies - timestep f v f/v f_s1 fs_s2 
+[fe]           1000 -8.8100642125e-01  2.4800000000e+02 -3.5524452470e-03  0.0000000000e+00  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.5935478e-15 -4.1769188e-09  0.0000000e+00
+[fluid   ]  5.5885852e-14 -2.4895684e-09  0.0000000e+00
+[walls   ] -5.1292304e-14 -1.6873504e-09  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.5809081e-09 -1.3023345e-11  0.0000000e+00
+[maximum ]  5.5809084e-09  1.1754944e-38  1.1754944e-38
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     14.206     14.206     14.206  14.206048 (1 call)
+      Time step loop:      0.014      0.016     14.204   0.014204 (1000 calls)
+         Propagation:      0.000      0.000      0.137   0.000137 (1000 calls)
+           Collision:      0.001      0.001      0.951   0.000951 (1000 calls)
+       Lattice halos:      0.000      0.000      0.162   0.000040 (4000 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
+                 BBL:      0.000      0.000      0.006   0.000006 (1000 calls)
+   Force calculation:      0.000      0.000      0.057   0.000029 (2000 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (1000 calls)
+    Poisson equation:      0.012      0.014     12.308   0.012308 (1000 calls)
+       Nernst Planck:      0.001      0.001      0.543   0.000543 (1000 calls)
+Ludwig finished normally.

@@ -1,0 +1,54 @@
+\chapter{Memory model}
+
+\section{Model overview}
+The targetDP model draws a distinction between the memory spaces
+accessed by the host and target, such that code executed on the host
+always accesses the host memory space, and code executed on the target
+(i.e. within target functions) always accesses the target memory space. The
+host memory space can be initialised using regular \verb+C/C+++
+functionality, and the targetDP API provides the functionality
+necessary to manage the target memory space and transfer data between
+the host and target. For each data-parallel data structure, the
+programmer should create both host and target copies, and should
+update these from each other as and when required.
+
+\subsection{Host memory model}
+The sequential thread executing host code should always access host data
+structures. The memory model is the same as one would expect from a
+regular sequential application.
+
+\subsection{Target memory model}
+The team of threads performing the execution of target functions
+should always act on target data structures. These can take one of 3
+forms:
+\begin{enumerate}
+\item Those created using the targetDP memory allocation API
+  functions. These are shared between all threads in the team, where
+  each thread should use its unique index to access the portion of data
+  for which it is responsible.
+\item Those created using the targetDP constant data management
+  functionality. These are read-only and normally used for relatively
+  small amounts of constant data.
+\item Those declared within the body of a target function. These are private
+  to each thread in the team and should be used for temporary scratch structures.
+\end{enumerate}
+
+\begin{comment}
+For 3, at the moment any data declared in the function but above the targetTLP keyword will be private for GPU threads but shared for CPU (since outside parallel region). So either need to make this clearer above, or somehow move OpenMP parallel region to target launch. 
+\end{comment}
+
+
+\section{Implementation}
+\subsection{C}
+
+The target memory structures will exist on the same physical memory as
+the host structures. The implementation may either use separate target
+copies (managed using regular C/C++ memory management functionality),
+or use pointer aliasing for the target versions such that a reference
+to any part of a target structure will correspond to exactly the same
+physical address as that of the corresponding host structure.
+
+\subsection{CUDA}
+
+The target memory space will exist on the distinct GPU memory, i.e. in
+a separate memory space from the host structures.

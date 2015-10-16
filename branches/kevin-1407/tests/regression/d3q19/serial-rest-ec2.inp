@@ -1,0 +1,86 @@
+##############################################################################
+#
+#  Restart smoke test part 2 (see also serial-rest-ec1.inp)
+#
+#  Charged fluid plus colloid.
+#
+##############################################################################
+
+N_start  20
+N_cycles 20
+
+size 32_32_32
+periodicity 1_1_1
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.1
+viscosity_bulk 0.1
+isothermal_fluctuations off
+temperature 0.00001
+
+free_energy fe_electro
+
+fd_advection_scheme_order 2
+fd_gradient_calculation 3d_7pt_fluid
+fd_force_divergence 0
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        from_file
+
+colloid_one_type    inactive
+
+colloid_one_a0      2.3
+colloid_one_ah      2.3
+colloid_one_r       16.0_16.0_15.699
+colloid_one_v       0.0_0.0_0.01
+colloid_one_s       1.0_0.0_0.0
+colloid_one_m       1.0_0.0_0.0
+
+colloid_one_q0     +0.01
+colloid_one_q1      0.0000
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 20
+config_at_end no
+
+default_io_grid 1_1_1
+colloid_io_freq 1000
+
+###############################################################################
+#
+#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#
+###############################################################################
+
+electrokinetics_z0      +1
+electrokinetics_z1      -1
+electrokinetics_d0      0.01
+electrokinetics_d1      0.01
+electrokinetics_eunit   1.0
+electrokinetics_epsilon 3.3e3
+electrokinetics_init    uniform
+electrokinetics_init_rho_el 0.001
+electrokinetics_init_sigma 0.03125
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235

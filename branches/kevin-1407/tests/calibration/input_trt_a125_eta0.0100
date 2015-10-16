@@ -1,0 +1,305 @@
+##############################################################################
+#
+#  Ludwig input file
+#  Reference.
+#
+#  Lines introduced with # and blank lines are ignored.
+#
+#  The file is made up of a series of (case-sensitive) keyword value
+#  pairs which should be separated by a space:
+#
+#  keyword value
+#
+#  Components of vector values are separated by an underscore, e.g.,
+#  force 0.01_0.00_0.00
+#
+#  If a given keyword does not appear, or is commented out, a default
+#  value will be used.
+#
+#  $Id$
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+#  N_start        If N_start > 0, this is a restart from previous output
+#
+#  N_cycles       number of lattice Boltzmann time steps to run
+#                 (if it's a restart, this is still the number of steps
+#                 to run, not the final step)
+#
+###############################################################################
+
+N_start  0
+N_cycles 50000
+
+##############################################################################
+#
+#  System and MPI
+#
+#  size NX_NY_NZ is the size of the system in lattice units
+#  grid PX_PY_PZ is the processor decomposition
+#                If PX*PY*PZ is not equal to the number of processors,
+#                MPI will choose a default (may be implementation-dependent).
+#
+#  reduced_halo  [yes|no] use reduced or full halos. Using reduced halos
+#                is *only* appropriate for fluid only problems.
+#                Default is no.
+# 
+##############################################################################
+
+size 16_16_16
+#grid 1_2_1
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+#  viscosity      shear viscosity [default is 1/6, ie., relaxation time 1]
+#  viscosity_bulk bulk viscosity  [default = shear viscosity]
+#
+#  isothermal_fluctuations  [on|off] Default is off.
+#  temperature              isothermal fluctuation 'temperature'
+#
+#  ghost_modes           [on|off] Default is on.
+#  force FX_FY_FZ        Uniform body force on fluid (default zero)
+#
+##############################################################################
+
+viscosity 0.01
+viscosity_bulk 0.01
+
+isothermal_fluctuations off
+temperature 0.00002133333
+
+relaxation trt
+ghost_modes on
+# force 0.00_0.0_0.0
+
+##############################################################################
+#
+#  Free energy parameters
+#
+#  free_energy none               single fluid only [the default]
+#
+#  Otherwise
+#
+#  free_energy                    symmetric
+#                                 brazovskii
+#                                 surfactant
+#                                 polar_active
+#                                 lc_blue_phase
+#
+#                                 symmetric_lb symmetric with 2 distributions
+#
+#  fd_advection_scheme_order      1-7
+#                                 sets order of finite difference
+#                                 advection scheme
+#
+#  fd_gradient_calcualtion        Scheme to yse for gradient calculations
+#                                 2d_5pt_fluid
+#                                 3d_7pt_fluid
+#                                 3d_27pt_fluid
+#                                 3d_27pt_solid
+#
+#  Note: only parameters for the currently selected free energy at
+#  run time are meaningful; you don't have to comment out all the others.
+#
+###############################################################################
+
+free_energy none
+
+###############################################################################
+#
+#  Colloid parameters
+#
+#  colloid_init:  no_colloids [default]
+#                 from_file
+#                 random (see below)
+#  colloid_type:  inactive bbl [default]
+#                 active   Include active terms in BBL
+#                 subgrid  No bbl ("unresolved particles")
+#
+#  colloid_cell_min:
+#                 This MUST be set if colloids are present: it specifies
+#                 the minimum cell list width, and must be at least 2ah
+#                 + delta, where delta catches any colloid-colloid
+#                 interactions. 
+#
+###############################################################################
+
+colloid_type        inactive
+colloid_init        random
+
+colloid_random_no   1
+colloid_random_dh   0.4
+
+colloid_random_a0   1.25
+colloid_random_ah   1.25
+colloid_random_r0   6.1_6.1_6.1
+colloid_random_v0   0.0_0.0_0.0
+colloid_random_s0   1.0_0.0_0.0
+colloid_random_m0   1.0_0.0_0.0
+
+# Constant body force on all colloids ("gravity") [default is zero]
+# Uniform magnetic field [default is zero]
+
+colloid_cell_min 4.0
+colloid_gravity  0.0_0.0_0.0
+magnetic_b0      0.0_0.0_0.0
+
+# Colloid-colloid lubrication corrections
+
+lubrication_on 0
+lubrication_normal_cutoff 0.3
+lubrication_tangential_cutoff 0.0
+
+###############################################################################
+#
+# Colloid-colloid soft-sphere potential parameters
+# The soft sphere is always needed
+#
+###############################################################################
+
+soft_sphere_on 0
+soft_sphere_epsilon 0.0004
+soft_sphere_sigma 0.1
+soft_sphere_nu 1.0
+soft_sphere_cutoff 0.25
+
+# Lennard Jones
+lennard_jones_on 0
+lj_sigma 2.3
+lj_cutoff 4.6
+lj_epsilon 0.0003
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+#  boundary_walls_on      [yes|no] Use built-in side walls [default no]
+#  periodicity X_Y_Z      Sets periodic boundary conditions in coordinate
+#                         directions [default is 1_1_1]. Best to leave this
+#                         unchanged
+#  boundary_speed_top     For use with built-in walls
+#  boundary_speed_bottom  For use with built-in walls
+#
+#  porous_media_file filestub    If present, the file filestub.001-001
+#                                should contain porous media data
+#  porous_media_format           [ASCII|BINARY] file format [default BINARY]
+#  porous_media_type             [status_only|status_with_h]
+#                                determines type of porous media data to be
+#                                supplied
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+boundary_speed_bottom 0.0
+boundary_speed_top    0.0
+
+#porous_media_format BINARY
+#porous_media_file   capillary_8_8_32.dat
+#porous_media_type   status_only
+
+###############################################################################
+#
+#  Output frequency and type
+#
+#  freq_statistics N        Output diagnostics every N steps
+#  freq_output     N        Output field state every N steps
+#  freq_config     N        Output full configuration (for restart) every
+#                           N steps (can be large!)
+#  freq_phi        N        phi data output frequency
+#  freq_vel        N        velocity data output frequency
+#  freq_shear_measurement   stress profile accumulator
+#  freq_shear_output        stress profile output
+#  config_at_end            [yes|no] write full configuration at end of run
+#                           [default is yes]
+#
+#  io_grid  NX_NY_NZ        Cartesian processor I/O grid. Default is 1_1_1
+#  The following for particle data are under review...
+#  n_io_nodes               Number of I/O processors for particles
+#  output_format            [ASCII|BINARY] default output format
+#  input_format             [ASCII|BINARY] default input format
+#
+#  phi_format               Override default format for particular quantities
+#  etc...                   (both input and output)
+#
+###############################################################################
+
+calibration on
+
+freq_statistics 5000
+freq_measure 2000000
+freq_config 5000000
+freq_phi    10000000
+freq_vel    10000000
+freq_shear_measurement 10000000
+freq_shear_output      10000000
+config_at_end no
+
+distribution_io_grid 1_1_1
+
+phi_format    ASCII
+vel_format    ASCII
+
+##############################################################################
+#
+#  colloid i/o
+#
+#  colloid_io_freq           currently set to freq_measure internally
+#  colloid_io_grid           currently set to 1_1_1 internally
+#  colloid_io_format_input   ASCII ASCII_SERIAL BINARY BINARY_SERIAL
+#  colloid_io_format_output  ASCII BINARY
+#
+#  Note that the output is always parallel. A SERIAL input file must
+#  be a single serial file.
+#
+##############################################################################
+
+colloid_io_freq 10000000
+colloids_io_grid 1_1_1
+colloid_io_format_input  BINARY
+colloid_io_format_output BINARY
+
+qs_dir_format BINARY
+
+###############################################################################
+#
+#  Lees-Edwards planes
+#
+#  These parameters set up a number of equally spaced planes
+#  with constant velocity.
+#
+#  N_LE_plane       the number of planes
+#  LE_plane_vel     the y-component of the plane velocity
+#  LE_init_profile  set the initial velocity profile to be consistent with
+#                   desired shear rate. (Only valid at t = 0). [0|1]
+#
+#  LE_oscillation_period
+#                   Integer > 1, switches on u = u_0 cos(2\pi t/T) where
+#                   u_0 is maximum plane velocity set via LE_plane_vel,
+#                   and T is the oscillation period
+#
+###############################################################################
+
+#N_LE_plane 2
+#LE_plane_vel 0.008
+#LE_init_profile 1
+#LE_oscillation_period 0
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+#random_seed 7361237
+random_seed 8361235
+

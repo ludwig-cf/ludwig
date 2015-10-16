@@ -1,0 +1,128 @@
+Welcome to Ludwig v0.2.2 (MPI version running on 8 processes)
+
+The SVN revision details are: 2458
+Note assertions via standard C assert() are on.
+
+Read 21 user parameters from pmpi08-auto-c01.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  2 2 2
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q15  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+Requested one colloid via input:
+colloid_one_a0                2.3000000e+00
+colloid_one_ah                2.3000000e+00
+colloid_one_r                 3.2000000e+01  3.2000000e+01  3.2000000e+01
+colloid_one_v                 4.3478261e-02  0.0000000e+00  0.0000000e+00
+
+Initialised 1 colloid
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              11 11 11
+Final cell lengths:           2.9090909e+00  2.9090909e+00  2.9090909e+00
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262087.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  2.2158700e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6371878e-12  0.0000000e+00  0.0000000e+00
+[colloids]  2.2158700e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  2.3053953e-03 -1.5394796e-17 -1.4571112e-17
+[maximum ]  2.3053953e-03 -1.5394796e-17 -1.4571112e-17
+
+Scalars - total mean variance min max
+[rho]      262091.00  1.00000000000  6.5697667e-09  0.99967393682  1.00032331163
+
+Momentum - x y z
+[total   ]  2.2158700e+00  1.0212755e-14 -2.2451801e-14
+[fluid   ]  2.0999793e+00  1.0880186e-14 -2.2037927e-14
+[colloids]  1.1589069e-01 -6.6743101e-16 -4.1387362e-16
+
+Velocity - x y z
+[minimum ] -1.8677558e-04 -5.3624238e-04 -5.3624238e-04
+[maximum ]  2.4256769e-03  5.3624238e-04  5.3624238e-04
+
+Completed cycle 40
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      2.295      2.296      2.296   2.295594 (1 call)
+      Time step loop:      0.054      0.081      2.241   0.056027 (40 calls)
+         Propagation:      0.002      0.008      0.267   0.006665 (40 calls)
+           Collision:      0.038      0.049      1.569   0.039213 (40 calls)
+       Lattice halos:      0.001      0.014      0.172   0.002145 (80 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (40 calls)
+              Forces:      0.000      0.000      0.001   0.000023 (40 calls)
+             Rebuild:      0.002      0.006      0.084   0.002104 (40 calls)
+                 BBL:      0.001      0.008      0.053   0.001324 (40 calls)
+      Particle halos:      0.000      0.014      0.033   0.000814 (40 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (40 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (40 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (80 calls)
+Ludwig finished normally.

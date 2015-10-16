@@ -1,0 +1,56 @@
+
+\chapter{Introduction}
+
+%\begin{comment}
+%TO DO.
+%\end{comment}
+\section{Abstract}
+
+The targetDP API provides an abstraction layer which allows
+applications to \underline{t}arget \underline{D}ata
+\underline{P}arallel hardware in a platform agnostic manner, by
+abstracting the memory spaces and hierarchy of hardware
+parallelism. Applications written using targetDP syntax are
+performance portable: the same source code can be compiled for
+different targets (currently supported are accelerators such as GPUs
+and modern multi-core SIMD CPUs), without performance overheads. The
+targetDP API is aimed at the types of parallelism found in grid-based
+applications, but may be applicable to a wider class of problems. This
+document introduces the targetDP memory and execution models, and
+specifies the syntax and functionality of the
+interface. Implementation details are also provided, and a simple
+example is given to demonstrate usage.
+
+\section{Motivation}
+It is becoming increasingly difficult for applications to exploit
+modern computers, which continue to increase in complexity and
+diversity with features including multiple multicore CPUs (often
+distributed across multiple nodes), vector floating point units,
+accelerators such as GPUs and non-uniform distributed memory spaces.
+From a scientist's perspective, it is not only imperative to achieve
+performance, but also to retain maintainability, sustainability and
+portability. The use of a simplistic, well structured and clearly
+defined abstraction layer such as targetDP can allow the programmer to
+express the scientific problems in a way that will automatically
+achieve good performance across the range of leading hardware
+solutions.
+
+\section{Glossary}
+
+\begin{itemize}
+
+    \item \keyword{CPU}: Central Processing Unit. The main computer chip used in a system, suitable for a wide variety of computational tasks.
+    \item \keyword{Accelerator}: A processing unit which is not used in isolation, but instead in tandem with the CPU, with the aim of improving the performance of key code sections. 
+    \item \keyword{GPU}: Graphics Processing Unit. A type of accelerator, originally evolved to render graphics content (particularly to satisfy demands of the gaming industry), but now widely used for general purpose computation.
+    \item \keyword{Host}: Another term for the CPU that ``hosts'' the application.
+    \item \keyword{Data Parallel}: The type of algorithmic parallelism involved where a single operation is performed to each element of a data set. The extent of parallelism is determined by the size of the data set.
+    \item \keyword{Target}: The device targeted for execution of data parallel operations.  Depending on the underlying hardware available, the target could simply be the a CPU, or it could be a separate device such as an accelerator.
+    \item \keyword{CUDA}: Compute Unified Device Architecture. The parallel platform and model created by NVIDIA to allow general purpose programming of their GP architectures.
+    \item \keyword{TLP}: Thread Level Parallelism.
+    \item \keyword{ILP}: Instruction Level Parallelism.
+      
+\end{itemize}
+
+
+
+
