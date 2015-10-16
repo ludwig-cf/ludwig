@@ -229,19 +229,33 @@ int psi_sor_poisson(psi_t * obj) {
 
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
 
+      if (rnorm[1] < tol_abs) {
+
+	if (is_statistics_step()) {
+	  info("\n");
+	  info("SOR solver converged to absolute tolerance\n");
+	  info("SOR residual per site %14.7e at %d iterations\n",
+	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+	}
+	break;
+      }
+
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
 
 	if (is_statistics_step()) {
-	  info("\nSOR solver\nNorm of residual %g at %d iterations\n",rnorm[1],n);
+	  info("\n");
+	  info("SOR solver converged to relative tolerance\n");
+	  info("SOR residual per site %14.7e at %d iterations\n",
+	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
 	}
 	break;
       }
     }
  
     if (n == niteration-1) {
-      info("\nSOR solver\n");
-      info("Exceeded %d iterations\n", n+1);
-      info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+      info("\n");
+      info("SOR solver exceeded %d iterations\n", n+1);
+      info("SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
     }
 
   }
@@ -434,10 +448,24 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
 
-      if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
+      if (rnorm[1] < tol_abs) {
 
 	if (is_statistics_step()) {
-	  info("\nHeterogeneous SOR solver\nNorm of residual %g at %d iterations\n",rnorm[1],n);
+	  info("\n");
+	  info("SOR (heterogeneous) solver converged to absolute tolerance\n");
+	  info("SOR residual per site %14.7e at %d iterations\n",
+	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+	}
+	break;
+      }
+
+      if (rnorm[1] < tol_rel*rnorm[0]) {
+
+	if (is_statistics_step()) {
+	  info("\n");
+	  info("SOR (heterogeneous) solver converged to relative tolerance\n");
+	  info("SOR residual per site %14.7e at %d iterations\n",
+	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
 	}
 	break;
       }
