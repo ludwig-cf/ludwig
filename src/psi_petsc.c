@@ -14,7 +14,7 @@
  *  where psi is the potential, rho_elec is the free charge density, and
  *  epsilon is a permeability.
  *
- *  $Id$
+ *  $Id: psi_petsc.c 2679 2015-06-18 09:18:01Z ohenrich $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -290,7 +290,13 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   /* Set the matrix, preconditioner and nullspace */
   KSPSetOperators(ksp,A,A);
   MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullsp);
+
+#ifdef PETSC3_6
+  MatSetNullSpace(A, nullsp);
+#elif
   KSPSetNullSpace(ksp, nullsp);
+#endif
+
   MatNullSpaceDestroy(&nullsp);
   KSPSetFromOptions(ksp);
 
@@ -540,7 +546,13 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
   /* Set the matrix, preconditioner and nullspace */
   KSPSetOperators(ksp,A,A);
   MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullsp);
+
+#ifdef PETSC3_6
+  MatSetNullSpace(A, nullsp);
+#elif
   KSPSetNullSpace(ksp, nullsp);
+#endif
+
   MatNullSpaceDestroy(&nullsp);
   KSPSetFromOptions(ksp);
 
