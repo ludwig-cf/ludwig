@@ -84,6 +84,8 @@ ARFLAGS = -cru
 ###############################################################################
 #
 # Compilation with PETSc is enabled by setting 'PETSC = some_non_empty_value'.
+# The default version is 3.5. Higher versions are invoked by adding a 
+# compiler flag in OPTS, e.g. -DPETSC3_6.
 #
 # For explicit libraries and includes the correct paths are obtained with
 # 'make getincludedirs' and 'make getlinklibs' in $PETSC_DIR.
@@ -93,8 +95,8 @@ ARFLAGS = -cru
 PETSC = 
 ifdef PETSC
 OPTS += -DPETSC
-INC  += -I/Users/ohenrich/petsc-3.5.2/include -I/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/include -I/opt/local/include/mpich-mp
-LIBS += -L/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -lpthread -L/opt/local/lib/mpich-mp -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.0.0/lib/darwin -lmpifort -lgfortran -L/opt/local/lib/gcc49/gcc/x86_64-apple-darwin15/4.9.3 -L/opt/local/lib/gcc49 -lgfortran -lgcc_ext.10.5 -lquadmath -lm -lclang_rt.osx -lmpicxx -lc++ -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/lib/darwin -lclang_rt.osx -L/opt/local/lib/mpich-mp -ldl -lmpi -lpmpi -lSystem -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/lib/darwin -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/lib/darwin -lclang_rt.osx -ldl
+INC  +=
+LIBS +=
 endif 
 
 ###############################################################################
