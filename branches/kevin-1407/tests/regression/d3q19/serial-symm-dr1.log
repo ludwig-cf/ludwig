@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2647M
+The SVN revision details are: 2757:2758M
 Note assertions via standard C assert() are on.
 
 Read 21 user parameters from serial-symm-dr1.inp
@@ -74,6 +74,7 @@ I/O decomposition:            1 1 1
 
 Advection scheme order: 2
 Initialising droplet radius:      1.6000000e+01
+Initialising droplet amplitude:   1.0000000e+00
 Gradient calcaulation: 3d_27pt_fluid
 Initial conditions.
 
@@ -108,13 +109,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.973      0.973      0.973   0.972981 (1 call)
-      Time step loop:      0.730      0.730      0.730   0.730261 (1 call)
-         Propagation:      0.119      0.119      0.119   0.119182 (1 call)
-           Collision:      0.320      0.320      0.320   0.320436 (1 call)
-       Lattice halos:      0.001      0.001      0.001   0.001415 (1 call)
-       phi gradients:      0.047      0.047      0.047   0.047226 (1 call)
+               Total:      0.955      0.955      0.955   0.955321 (1 call)
+      Time step loop:      0.721      0.721      0.721   0.721116 (1 call)
+         Propagation:      0.123      0.123      0.123   0.122881 (1 call)
+           Collision:      0.337      0.337      0.337   0.337341 (1 call)
+       Lattice halos:      0.001      0.001      0.001   0.001474 (1 call)
+       phi gradients:      0.045      0.045      0.045   0.044608 (1 call)
+           phi halos:      0.001      0.001      0.001   0.001190 (1 call)
                  BBL:      0.000      0.000      0.000   0.000008 (1 call)
-   Force calculation:      0.077      0.077      0.077   0.076672 (1 call)
-          phi update:      0.145      0.145      0.145   0.144902 (1 call)
+   Force calculation:      0.072      0.072      0.072   0.071648 (1 call)
+          phi update:      0.127      0.127      0.127   0.127001 (1 call)
+  Collision (kernel):      0.298      0.298      0.298   0.298312 (1 call)
+Chem stress (kernel):      0.025      0.025      0.025   0.025117 (1 call)
 Ludwig finished normally.

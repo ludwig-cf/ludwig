@@ -257,7 +257,6 @@ int psi_sor_poisson(psi_t * obj) {
       info("SOR solver exceeded %d iterations\n", n+1);
       info("SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
     }
-
   }
 
   return 0;
@@ -444,6 +443,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
     omega = 1.0 / (1.0 - 0.25*radius*radius*omega);
 
     if ((n % ncheck) == 0) {
+
       /* Compare residual and exit if small enough */
 
       MPI_Allreduce(rnorm_local, rnorm, 2, MPI_DOUBLE, MPI_SUM, comm);
@@ -471,14 +471,11 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
       }
 
       if (n == niteration-1) {
-	info("\nHeterogeneous SOR solver\n");
-	info("Exceeded %d iterations\n", n+1);
-	info("Norm of residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+	info("\n");
+	info("SOR solver (heterogeneous) exceeded %d iterations\n", n+1);
+	info("SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
       }
-
     }
-
-
   }
 
   return 0;
