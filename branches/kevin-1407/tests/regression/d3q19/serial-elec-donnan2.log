@@ -1,6 +1,8 @@
-Welcome to Ludwig v0.2.15 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2676:2677M
+The SVN revision details are: 2757:2758
+Note assertions via standard C assert() are on.
+
 Read 54 user parameters from serial-elec-donnan2.inp
 
 System details
@@ -133,17 +135,17 @@ Momentum - x y z
 
 Starting time step loop.
 
-SOR solver
-Norm of residual 1.14252e-05 at 715 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  2.7893637e-09 at 715 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  9.4350199e-09  5.99975966186  6.00043442457
 [phi]  3.5527137e-15  8.6736174e-19 9.6172565e-01 -1.0000000e+00 1.0000000e+00
-[psi]  3.3549552e-15 -1.7692747e-02  1.7692747e-02
+[psi]  3.1294412e-15 -1.7692747e-02  1.7692747e-02
 [rho]  1.9251200e+00  3.7777504e-04  5.7557905e-04
 [rho]  1.9251200e+00  3.7777504e-04  5.7557905e-04
-[elc] -8.6194073e-18 -1.9780400e-04  1.9780400e-04
+[elc]  3.3610267e-18 -1.9780400e-04  1.9780400e-04
 
 Free energy density - timestep total fluid
 [fed]             10 -1.0533005175e-02 -1.0533005175e-02
@@ -158,17 +160,17 @@ Velocity - x y z
 
 Completed cycle 10
 
-SOR solver
-Norm of residual 9.21698e-06 at 715 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  2.2502393e-09 at 715 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  6.4979915e-09  5.99979858564  6.00036958733
 [phi]  1.0658141e-14  2.6020852e-18 9.6172627e-01 -1.0000019e+00 1.0000019e+00
-[psi]  1.1303458e-14 -3.6655556e-02  3.6655556e-02
+[psi]  3.2890357e-15 -3.6655556e-02  3.6655556e-02
 [rho]  1.9251200e+00  3.2389225e-04  6.3420040e-04
 [rho]  1.9251200e+00  3.2389225e-04  6.3420040e-04
-[elc]  3.5236571e-18 -3.1030816e-04  3.1030816e-04
+[elc]  1.0625181e-17 -3.1030816e-04  3.1030816e-04
 
 Free energy density - timestep total fluid
 [fed]             20 -1.0544743624e-02 -1.0544743624e-02
@@ -183,17 +185,17 @@ Velocity - x y z
 
 Completed cycle 20
 
-SOR solver
-Norm of residual 7.85814e-06 at 715 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  1.9184948e-09 at 715 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  6.4134298e-09  5.99980770950  6.00036351414
 [phi] -3.5527137e-15 -8.6736174e-19 9.6172690e-01 -1.0000040e+00 1.0000040e+00
-[psi]  7.2858386e-15 -5.4867247e-02  5.4867247e-02
+[psi]  7.0221606e-15 -5.4867247e-02  5.4867247e-02
 [rho]  1.9251200e+00  2.8726287e-04  6.8561174e-04
 [rho]  1.9251200e+00  2.8726287e-04  6.8561174e-04
-[elc]  6.5052130e-19 -3.7639909e-04  3.7639909e-04
+[elc] -7.8062556e-18 -3.7639909e-04  3.7639909e-04
 
 Free energy density - timestep total fluid
 [fed]             30 -1.0554459437e-02 -1.0554459437e-02
@@ -208,17 +210,17 @@ Velocity - x y z
 
 Completed cycle 30
 
-SOR solver
-Norm of residual 6.0605e-06 at 720 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  1.4796143e-09 at 720 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  6.2583041e-09  5.99981086822  6.00035842451
 [phi]  4.4408921e-15  1.0842022e-18 9.6172750e-01 -1.0000055e+00 1.0000055e+00
-[psi]  2.7838842e-14 -7.2378982e-02  7.2378982e-02
+[psi] -9.2953423e-14 -7.2378982e-02  7.2378982e-02
 [rho]  1.9251200e+00  2.6036605e-04  7.2234149e-04
 [rho]  1.9251200e+00  2.6036605e-04  7.2234149e-04
-[elc]  2.3418767e-17 -4.3544303e-04  4.3544303e-04
+[elc] -2.0708261e-17 -4.3544303e-04  4.3544303e-04
 
 Free energy density - timestep total fluid
 [fed]             40 -1.0562755568e-02 -1.0562755568e-02
@@ -233,17 +235,17 @@ Velocity - x y z
 
 Completed cycle 40
 
-SOR solver
-Norm of residual 5.83913e-06 at 720 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  1.4255569e-09 at 720 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  6.1085785e-09  5.99981486873  6.00035353709
 [phi]  2.6645353e-15  6.5052130e-19 9.6172810e-01 -1.0000064e+00 1.0000064e+00
-[psi] -3.4833247e-15 -8.9256948e-02  8.9256948e-02
+[psi]  2.8949065e-14 -8.9256948e-02  8.9256948e-02
 [rho]  1.9251200e+00  2.3965910e-04  7.4742904e-04
 [rho]  1.9251200e+00  2.3965910e-04  7.4742904e-04
-[elc]  1.4799360e-17 -4.8228078e-04  4.8228078e-04
+[elc]  6.6678434e-18 -4.8228078e-04  4.8228078e-04
 
 Free energy density - timestep total fluid
 [fed]             50 -1.0569999686e-02 -1.0569999686e-02
@@ -258,17 +260,17 @@ Velocity - x y z
 
 Completed cycle 50
 
-SOR solver
-Norm of residual 4.82984e-06 at 730 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  1.1791496e-09 at 730 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  5.9696674e-09  5.99982382550  6.00034881158
 [phi] -2.2071234e-13 -5.3884848e-17 9.6172869e-01 -1.0000065e+00 1.0000065e+00
-[psi]  1.4363510e-14 -1.0556537e-01  1.0556537e-01
+[psi]  4.1799897e-14 -1.0556537e-01  1.0556537e-01
 [rho]  1.9251200e+00  2.2318499e-04  7.6471031e-04
 [rho]  1.9251200e+00  2.2318499e-04  7.6471031e-04
-[elc] -5.2041704e-18 -5.1721973e-04  5.1721973e-04
+[elc]  7.1015242e-18 -5.1721973e-04  5.1721973e-04
 
 Free energy density - timestep total fluid
 [fed]             60 -1.0576433461e-02 -1.0576433461e-02
@@ -283,17 +285,17 @@ Velocity - x y z
 
 Completed cycle 60
 
-SOR solver
-Norm of residual 4.51543e-06 at 730 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  1.1023930e-09 at 730 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  5.8409029e-09  5.99982916687  6.00034423621
 [phi] -1.0613732e-13 -2.5912432e-17 9.6172928e-01 -1.0000063e+00 1.0000063e+00
-[psi]  4.1897041e-14 -1.2136181e-01  1.2136181e-01
+[psi]  8.1504248e-14 -1.2136181e-01  1.2136181e-01
 [rho]  1.9251200e+00  2.0975198e-04  7.7673311e-04
 [rho]  1.9251200e+00  2.0975198e-04  7.7673311e-04
-[elc] -7.1015242e-18 -5.4388082e-04  5.4388082e-04
+[elc]  6.2341625e-18 -5.4388082e-04  5.4388082e-04
 
 Free energy density - timestep total fluid
 [fed]             70 -1.0582224256e-02 -1.0582224256e-02
@@ -308,17 +310,17 @@ Velocity - x y z
 
 Completed cycle 70
 
-SOR solver
-Norm of residual 4.26895e-06 at 730 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  1.0421935e-09 at 730 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  5.7184550e-09  5.99983196547  6.00033980411
 [phi]  1.7763568e-15  4.3368087e-19 9.6172986e-01 -1.0000060e+00 1.0000060e+00
-[psi] -4.2771342e-14 -1.3669645e-01  1.3669645e-01
+[psi]  4.1522341e-14 -1.3669645e-01  1.3669645e-01
 [rho]  1.9251200e+00  1.9858471e-04  7.8517324e-04
 [rho]  1.9251200e+00  1.9858471e-04  7.8517324e-04
-[elc] -2.8948198e-17 -5.6466300e-04  5.6466300e-04
+[elc] -6.5594231e-18 -5.6466300e-04  5.6466300e-04
 
 Free energy density - timestep total fluid
 [fed]             80 -1.0587492599e-02 -1.0587492599e-02
@@ -333,17 +335,17 @@ Velocity - x y z
 
 Completed cycle 80
 
-SOR solver
-Norm of residual 4.06768e-06 at 730 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  9.9307895e-10 at 730 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  5.6014358e-09  5.99983763039  6.00033550949
 [phi] -6.4392935e-15 -1.5720932e-18 9.6173045e-01 -1.0000058e+00 1.0000058e+00
-[psi]  1.4765966e-14 -1.5161261e-01  1.5161261e-01
+[psi] -2.7255975e-14 -1.5161261e-01  1.5161261e-01
 [rho]  1.9251200e+00  1.8915379e-04  7.9783404e-04
 [rho]  1.9251200e+00  1.8915379e-04  7.9783404e-04
-[elc] -1.4853570e-17 -5.8118528e-04  5.8118528e-04
+[elc]  2.0925102e-17 -5.8118528e-04  5.8118528e-04
 
 Free energy density - timestep total fluid
 [fed]             90 -1.0592328035e-02 -1.0592328035e-02
@@ -358,17 +360,17 @@ Velocity - x y z
 
 Completed cycle 90
 
-SOR solver
-Norm of residual 3.6384e-06 at 735 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  8.8827106e-10 at 735 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       24576.00  6.00000000000  5.4621481e-09  5.99984610356  6.00033134679
 [phi] -9.1038288e-15 -2.2226145e-18 9.6173102e-01 -1.0000059e+00 1.0000059e+00
-[psi]  1.1923795e-13 -1.6614755e-01  1.6614755e-01
+[psi] -1.4041546e-13 -1.6614755e-01  1.6614755e-01
 [rho]  1.9251200e+00  1.8108408e-04  8.0868833e-04
 [rho]  1.9251200e+00  1.8108408e-04  8.0868833e-04
-[elc] -6.8304737e-18 -5.9456303e-04  5.9456303e-04
+[elc]  5.5131680e-17 -5.9456303e-04  5.9456303e-04
 
 Free energy density - timestep total fluid
 [fed]            100 -1.0596798809e-02 -1.0596798809e-02
@@ -387,16 +389,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     31.942     31.942     31.942  31.942298 (1 call)
-      Time step loop:      0.030      0.343     31.926   0.319261 (100 calls)
-         Propagation:      0.001      0.002      0.089   0.000886 (100 calls)
-           Collision:      0.010      0.014      1.034   0.010341 (100 calls)
-       Lattice halos:      0.000      0.000      0.092   0.000231 (400 calls)
-       phi gradients:      0.000      0.001      0.035   0.000346 (100 calls)
+               Total:     60.696     60.696     60.696  60.695742 (1 call)
+      Time step loop:      0.046      0.641     60.670   0.606701 (100 calls)
+         Propagation:      0.002      0.004      0.245   0.002448 (100 calls)
+           Collision:      0.015      0.017      1.527   0.015274 (100 calls)
+       Lattice halos:      0.000      0.001      0.186   0.000465 (400 calls)
+       phi gradients:      0.001      0.001      0.061   0.000606 (100 calls)
+           phi halos:      0.000      0.000      0.020   0.000202 (100 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (100 calls)
-   Force calculation:      0.000      0.003      0.245   0.001227 (200 calls)
-          phi update:      0.003      0.004      0.298   0.002984 (100 calls)
-    Poisson equation:      0.001      0.319     29.487   0.294870 (100 calls)
-       Nernst Planck:      0.006      0.007      0.628   0.006277 (100 calls)
-  Collision (kernel):      0.010      0.013      0.981   0.009806 (100 calls)
+   Force calculation:      0.000      0.005      0.439   0.002197 (200 calls)
+          phi update:      0.005      0.006      0.518   0.005184 (100 calls)
+    Poisson equation:      0.001      0.600     56.681   0.566813 (100 calls)
+       Nernst Planck:      0.009      0.010      0.963   0.009628 (100 calls)
+  Collision (kernel):      0.014      0.016      1.435   0.014349 (100 calls)
 Ludwig finished normally.

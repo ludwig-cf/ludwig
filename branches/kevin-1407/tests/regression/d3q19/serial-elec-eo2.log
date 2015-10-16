@@ -1,6 +1,8 @@
-Welcome to Ludwig v0.2.15 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2676:2677M
+The SVN revision details are: 2757:2758
+Note assertions via standard C assert() are on.
+
 Read 46 user parameters from serial-elec-eo2.inp
 
 System details
@@ -110,16 +112,16 @@ Momentum - x y z
 
 Starting time step loop.
 
-SOR solver
-Norm of residual 6.20876e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  6.1163088e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  6.3282712e-15  0.99999999731  1.00000001802
-[psi] -4.6718185e-13 -6.6776790e-01  1.2344090e+00
+[psi] -1.5587531e-13 -6.6776790e-01  1.2344090e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  4.3462600e-04
-[elc]  3.5735304e-16 -4.3462600e-04  1.2500000e-02
+[elc]  3.2959746e-16 -4.3462600e-04  1.2500000e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
 [fe]            100 -3.5194748004e+00  9.9200000000e+02 -3.5478576617e-03  0.0000000000e+00  0.0000000000e+00
@@ -135,13 +137,13 @@ Velocity - x y z
 
 Completed cycle 100
 
-SOR solver
-Norm of residual 5.90992e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  5.8778159e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  9.9920072e-15  0.99999999213  1.00000003066
-[psi] -9.1038288e-15 -6.6554114e-01  1.2308017e+00
+[psi] -7.5495166e-15 -6.6554114e-01  1.2308017e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  4.5466276e-04
 [elc]  2.7408631e-16 -4.5466276e-04  1.2500000e-02
@@ -160,16 +162,16 @@ Velocity - x y z
 
 Completed cycle 200
 
-SOR solver
-Norm of residual 5.74843e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  5.5642664e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  1.5543122e-15  0.99999998435  1.00000004114
-[psi] -1.3233858e-13 -6.6334586e-01  1.2273469e+00
+[psi] -9.7921671e-14 -6.6334586e-01  1.2273469e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  4.7045551e-04
-[elc]  8.0144225e-16 -4.7045551e-04  1.2500000e-02
+[elc]  8.2919782e-16 -4.7045551e-04  1.2500000e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
 [fe]            300 -3.5207646143e+00  9.9200000000e+02 -3.5491578773e-03  0.0000000000e+00  0.0000000000e+00
@@ -185,13 +187,13 @@ Velocity - x y z
 
 Completed cycle 300
 
-SOR solver
-Norm of residual 5.52226e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  5.4358490e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  2.2204460e-16  0.99999997547  1.00000004931
-[psi] -1.3322676e-15 -6.6118046e-01  1.2240157e+00
+[psi]  6.9499961e-14 -6.6118046e-01  1.2240157e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  4.8389990e-04
 [elc] -5.4470317e-16 -4.8389990e-04  1.2500000e-02
@@ -210,16 +212,16 @@ Velocity - x y z
 
 Completed cycle 400
 
-SOR solver
-Norm of residual 5.40846e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  5.1645230e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  1.7097435e-14  0.99999996800  1.00000005505
-[psi]  3.6592951e-13 -6.5904382e-01  1.2207906e+00
+[psi]  3.9435122e-13 -6.5904382e-01  1.2207906e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  4.9579396e-04
-[elc]  3.5735304e-16 -4.9579396e-04  1.2500000e-02
+[elc]  3.8510861e-16 -4.9579396e-04  1.2500000e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
 [fe]            500 -3.5218578275e+00  9.9200000000e+02 -3.5502599068e-03  0.0000000000e+00  0.0000000000e+00
@@ -235,13 +237,13 @@ Velocity - x y z
 
 Completed cycle 500
 
-SOR solver
-Norm of residual 5.20937e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  5.0674437e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  2.7755576e-15  0.99999996374  1.00000005825
-[psi]  1.9273472e-13 -6.5693504e-01  1.2176597e+00
+[psi]  1.8451907e-13 -6.5693504e-01  1.2176597e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  5.0656142e-04
 [elc]  1.6063539e-15 -5.0656142e-04  1.2500000e-02
@@ -260,13 +262,13 @@ Velocity - x y z
 
 Completed cycle 600
 
-SOR solver
-Norm of residual 4.99255e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  5.0210110e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  7.8825835e-15  0.99999996303  1.00000005894
-[psi]  3.6570746e-13 -6.5485337e-01  1.2146140e+00
+[psi] -4.9960036e-14 -6.5485337e-01  1.2146140e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  5.1645934e-04
 [elc] -1.1275703e-15 -5.1645934e-04  1.2500000e-02
@@ -285,16 +287,16 @@ Velocity - x y z
 
 Completed cycle 700
 
-SOR solver
-Norm of residual 4.94921e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  4.8650937e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  9.7699626e-15  0.99999996519  1.00000005733
-[psi]  1.2057022e-13 -6.5279816e-01  1.2116466e+00
+[psi]  1.5831780e-13 -6.5279816e-01  1.2116466e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  5.2565774e-04
-[elc]  6.3490879e-16 -5.2565774e-04  1.2500000e-02
+[elc]  6.9041994e-16 -5.2565774e-04  1.2500000e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
 [fe]            800 -3.5232395212e+00  9.9200000000e+02 -3.5516527432e-03  0.0000000000e+00  0.0000000000e+00
@@ -310,16 +312,16 @@ Velocity - x y z
 
 Completed cycle 800
 
-SOR solver
-Norm of residual 4.84788e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  4.7273373e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  7.5495166e-15  0.99999996915  1.00000005397
-[psi]  2.1582736e-13 -6.5076882e-01  1.2087519e+00
+[psi]  2.6401104e-13 -6.5076882e-01  1.2087519e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  5.3427615e-04
-[elc]  1.1900203e-15 -5.3427615e-04  1.2500000e-02
+[elc]  1.0512424e-15 -5.3427615e-04  1.2500000e-02
 
 Free energies - timestep f v f/v f_s1 fs_s2 
 [fe]            900 -3.5236445806e+00  9.9200000000e+02 -3.5520610692e-03  0.0000000000e+00  0.0000000000e+00
@@ -335,13 +337,13 @@ Velocity - x y z
 
 Completed cycle 900
 
-SOR solver
-Norm of residual 4.75965e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  4.6254597e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  9.9920072e-15  0.99999997379  1.00000004969
-[psi] -7.1942452e-14 -6.4876481e-01  1.2059250e+00
+[psi] -1.2323476e-13 -6.4876481e-01  1.2059250e+00
 [rho]  4.0000000e-01  0.0000000e+00  1.2500000e-02
 [rho]  4.0000000e-01  0.0000000e+00  5.4240246e-04
 [elc] -1.8388069e-16 -5.4240246e-04  1.2500000e-02
@@ -364,16 +366,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     15.465     15.465     15.465  15.464755 (1 call)
-      Time step loop:      0.015      0.019     15.459   0.015459 (1000 calls)
-         Propagation:      0.000      0.000      0.126   0.000126 (1000 calls)
-           Collision:      0.001      0.003      1.451   0.001451 (1000 calls)
-       Lattice halos:      0.000      0.000      0.134   0.000034 (4000 calls)
+               Total:     28.780     28.780     28.780  28.779829 (1 call)
+      Time step loop:      0.028      0.032     28.772   0.028772 (1000 calls)
+         Propagation:      0.000      0.001      0.403   0.000403 (1000 calls)
+           Collision:      0.002      0.003      2.232   0.002232 (1000 calls)
+       Lattice halos:      0.000      0.000      0.265   0.000066 (4000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.000      0.011   0.000011 (1000 calls)
-   Force calculation:      0.000      0.000      0.158   0.000079 (2000 calls)
+                 BBL:      0.000      0.000      0.018   0.000018 (1000 calls)
+   Force calculation:      0.000      0.001      0.457   0.000228 (2000 calls)
           phi update:      0.000      0.000      0.000   0.000000 (1000 calls)
-    Poisson equation:      0.012      0.016     12.513   0.012513 (1000 calls)
-       Nernst Planck:      0.001      0.001      1.025   0.001025 (1000 calls)
-  Collision (kernel):      0.001      0.003      1.402   0.001402 (1000 calls)
+    Poisson equation:      0.023      0.026     23.625   0.023625 (1000 calls)
+       Nernst Planck:      0.002      0.002      1.662   0.001662 (1000 calls)
+  Collision (kernel):      0.002      0.003      2.162   0.002162 (1000 calls)
 Ludwig finished normally.
