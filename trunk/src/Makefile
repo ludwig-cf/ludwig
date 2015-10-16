@@ -52,7 +52,7 @@ endif
 
 ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_35
-TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc 
+TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc
 OPTS += -DCUDAHOST #-DKEEPFONTARGET -DKEEPHYDROONTARGET -DKEEPFIELDONTARGET
 LIBS += -L../targetDP -ltargetDP_CUDA  
 else
@@ -93,8 +93,8 @@ ARFLAGS = -cru
 PETSC = 
 ifdef PETSC
 OPTS += -DPETSC
-INC  +=
-LIBS +=
+INC  += -I/Users/ohenrich/petsc-3.5.2/include -I/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/include -I/opt/local/include/mpich-mp
+LIBS += -L/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.5.2/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -lpthread -L/opt/local/lib/mpich-mp -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.0.0/lib/darwin -lmpifort -lgfortran -L/opt/local/lib/gcc49/gcc/x86_64-apple-darwin15/4.9.3 -L/opt/local/lib/gcc49 -lgfortran -lgcc_ext.10.5 -lquadmath -lm -lclang_rt.osx -lmpicxx -lc++ -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/lib/darwin -lclang_rt.osx -L/opt/local/lib/mpich-mp -ldl -lmpi -lpmpi -lSystem -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/lib/darwin -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.0/lib/darwin -lclang_rt.osx -ldl
 endif 
 
 ###############################################################################
@@ -131,7 +131,7 @@ OBJS = \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
      psi_force.o psi_colloid.o \
      nernst_planck.o \
-     psi_petsc_3.5.o psi_gradients.o \
+     psi_petsc.o psi_gradients.o \
      leesedwards.o pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric_rt.o subgrid.o \
