@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2638M
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
-Read 37 user parameters from serial-elec-gc1.inp
+Read 38 user parameters from serial-elec-gc1.inp
 
 System details
 --------------
@@ -100,17 +100,14 @@ Momentum - x y z
 [fluid   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
-
-SOR solver
-Norm of residual 3.83063e-07 at 200 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  3.8857806e-15  0.99999987748  1.00000032642
-[psi] -3.5127456e-13 -1.2074611e+00  2.4452182e+00
+[psi] -4.3964832e-13 -1.2074611e+00  2.4452182e+00
 [rho]  1.9920000e+00  4.5245968e-04  3.1250000e-02
 [rho]  1.9920000e+00  0.0000000e+00  3.8175240e-03
-[elc] -5.5511151e-16 -3.3650643e-03  3.1250000e-02
+[elc] -3.3306691e-16 -3.3650643e-03  3.1250000e-02
 
 Free energy density - timestep total fluid
 [fed]           1000 -2.4980173368e-02 -2.2516704343e-02
@@ -129,15 +126,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     24.941     24.941     24.941  24.941043 (1 call)
-      Time step loop:      0.024      0.027     24.938   0.024938 (1000 calls)
-         Propagation:      0.000      0.001      0.405   0.000405 (1000 calls)
-           Collision:      0.002      0.002      2.132   0.002132 (1000 calls)
-       Lattice halos:      0.000      0.000      0.269   0.000067 (4000 calls)
-       phi gradients:      0.000      0.000      0.001   0.000001 (1000 calls)
-                 BBL:      0.000      0.000      0.010   0.000010 (1000 calls)
-   Force calculation:      0.000      0.000      0.216   0.000108 (2000 calls)
+               Total:     36.858     36.858     36.858  36.857793 (1 call)
+      Time step loop:      0.036      0.037     36.854   0.036854 (1000 calls)
+         Propagation:      0.000      0.000      0.270   0.000270 (1000 calls)
+           Collision:      0.004      0.005      4.664   0.004664 (1000 calls)
+       Lattice halos:      0.000      0.000      0.356   0.000089 (4000 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
+                 BBL:      0.000      0.000      0.015   0.000015 (1000 calls)
+   Force calculation:      0.000      0.001      1.091   0.000545 (2000 calls)
           phi update:      0.000      0.000      0.000   0.000000 (1000 calls)
-    Poisson equation:      0.020      0.022     20.140   0.020140 (1000 calls)
-       Nernst Planck:      0.002      0.002      1.645   0.001645 (1000 calls)
+    Poisson equation:      0.028      0.029     28.109   0.028109 (1000 calls)
+       Nernst Planck:      0.002      0.003      2.222   0.002222 (1000 calls)
+  Collision (kernel):      0.004      0.005      4.589   0.004589 (1000 calls)
 Ludwig finished normally.

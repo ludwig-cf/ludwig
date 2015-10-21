@@ -26,6 +26,7 @@ static int t_steps   = 0;
 static int t_current = 0;
 
 static int freq_statistics = 100;
+static int freq_psi_resid  = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
@@ -56,6 +57,7 @@ void init_control() {
   if (n == 0) fatal("Please set N_cycles in input\n");
 
   n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
+
   n = RUN_get_int_parameter("freq_measure", &freq_measure);
   n = RUN_get_int_parameter("freq_config", &freq_config);
   n = RUN_get_int_parameter("freq_phi", &freq_phi);
@@ -76,6 +78,11 @@ void init_control() {
 
   if (freq_shear_io   < 1) freq_shear_io   = t_start + t_steps + 1;
   if (freq_shear_meas < 1) freq_shear_meas = t_start + t_steps + 1;
+
+  /* Default to freq_statisitics if not present */
+
+  n = RUN_get_int_parameter("freq_psi_resid", &freq_psi_resid);
+  if (n == 0) freq_psi_resid = freq_statistics;
 
   return;
 }
@@ -111,6 +118,10 @@ int is_last_step() {
 
 int is_statistics_step() {
   return ((t_current % freq_statistics) == 0);
+}
+
+int is_psi_resid_step() {
+  return ((t_current % freq_psi_resid) == 0);
 }
 
 int is_measurement_step() {

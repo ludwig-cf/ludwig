@@ -155,6 +155,7 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
   double position[3];
   double centre[3];
   double phi, r, rxi0;
+  double phistar = 1.0;      /* "Amplitude", can be negative. */
 
   assert(fphi);
 
@@ -167,6 +168,9 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
   centre[Y] = 0.5*L(Y);
   centre[Z] = 0.5*L(Z);
 
+  RUN_get_double_parameter("phi_init_drop_amplitude", &phistar);
+  info("Initialising droplet amplitude:  %14.7e\n", phistar);
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -178,7 +182,7 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
 
         r = sqrt(dot_product(position, position));
 
-        phi = tanh(rxi0*(r - radius));
+        phi = phistar*tanh(rxi0*(r - radius));
 	field_scalar_set(fphi, index, phi);
       }
     }

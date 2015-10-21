@@ -1,7 +1,7 @@
 ##############################################################################
 #
-#  Donnan potential w/o dielectric contrast, 
-#  force calculation with gradient of chemical potential
+#  Oil-water droplet deformation with dielectric contrast,
+#  force calculation with gradient of chemical potential 
 #
 ##############################################################################
 
@@ -20,7 +20,7 @@ N_cycles 100
 #
 ##############################################################################
 
-size 4_4_256
+size 64_64_2
 grid 1_1_1
 periodicity 1_1_1
 reduced_halo no
@@ -38,9 +38,6 @@ viscosity_bulk 0.083333
 
 isothermal_fluctuations off
 temperature 3.3333e-4
-
-# ghost_modes off
-# force 0.00_0.0_0.0
 
 ##############################################################################
 #
@@ -74,16 +71,18 @@ fd_force_divergence 0
 #
 ###############################################################################
 
-A -0.01
-B 0.01
-K 0.03
+A -0.001
+B 0.001
+K 0.003
 C 0.0
 
-mobility 0.05
+mobility 1.0
 
 noise 0.0
 phi0 0.0
-phi_initialisation    block
+phi_initialisation    drop
+phi_init_drop_radius  20.0
+phi_init_drop_amplitude -1.0
 
 ###############################################################################
 #
@@ -91,7 +90,8 @@ phi_initialisation    block
 #
 ###############################################################################
 
-electric_e0 0.0_0.0_0.0
+electric_e0 0.0_0.75_0.0
+
 
 ###############################################################################
 #
@@ -121,9 +121,9 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics  10
-freq_measure 100000
-freq_config 100000
+freq_statistics  100
+freq_measure    10000000
+freq_config     10000000
 config_at_end no
 
 ###############################################################################
@@ -164,24 +164,23 @@ config_at_end no
 
 electrokinetics_z0      +1
 electrokinetics_z1      -1
-electrokinetics_d0      0.1
-electrokinetics_d1      0.1
-electrokinetics_eunit   1.0
-electrokinetics_epsilon 300.0
+electrokinetics_d0      0.01
+electrokinetics_d1      0.01
+electrokinetics_eunit   0.5
+electrokinetics_epsilon 270.0
 electrokinetics_init    uniform
-electrokinetics_init_rho_el 0.00047
-#electrokinetics_init_sigma 0.0125
+electrokinetics_init_rho_el 0.00
 
 electrokinetics_rel_tol  1e-06
 electrokinetics_abs_tol  1e-07
-electrokinetics_maxits   10000
+electrokinetics_maxits   2000
 electrokinetics_diffacc  0.5
 
 electrokinetics_multisteps  1
 
-electrosymmetric_epsilon2   300.0
-electrosymmetric_delta_mu0  +4.0
-electrosymmetric_delta_mu1  -4.0
+electrosymmetric_epsilon2   30.0
+electrosymmetric_delta_mu0  0.0
+electrosymmetric_delta_mu1  0.0
 
 ###############################################################################
 #
@@ -191,5 +190,4 @@ electrosymmetric_delta_mu1  -4.0
 #
 ###############################################################################
 
-#random_seed 7361237
 random_seed 8361235

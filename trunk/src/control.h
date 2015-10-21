@@ -22,6 +22,7 @@ __targetHost__ int  get_step(void);
 __targetHost__ int  next_step(void);
 __targetHost__ int  is_last_step(void);
 __targetHost__ int  is_statistics_step(void);
+__targetHost__ int  is_psi_resid_step(void);
 __targetHost__ int  is_measurement_step(void);
 __targetHost__ int  is_config_step(void);
 __targetHost__ int  is_config_at_end(void);
