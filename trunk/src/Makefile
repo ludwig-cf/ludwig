@@ -84,8 +84,6 @@ ARFLAGS = -cru
 ###############################################################################
 #
 # Compilation with PETSc is enabled by setting 'PETSC = some_non_empty_value'.
-# The default version is 3.5. Higher versions are invoked by adding a 
-# compiler flag in OPTS, e.g. -DPETSC3_6.
 #
 # For explicit libraries and includes the correct paths are obtained with
 # 'make getincludedirs' and 'make getlinklibs' in $PETSC_DIR.

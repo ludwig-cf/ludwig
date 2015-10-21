@@ -5,9 +5,7 @@
  *  A solution of the Poisson equation for the potential and
  *  charge densities stored in the psi_t object.
  *
- *  This uses the PETSc library. The default version is 3.5. 
- *  Different versions are invoked by using an additional 
- *  compiler flag, e.g. -DPETSC3_6.
+ *  This uses the PETSc library.
  *
  *  The Poisson equation homogeneous permittivity looks like
  *
@@ -293,7 +291,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   KSPSetOperators(ksp,A,A);
   MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullsp);
 
-#ifdef PETSC3_6
+#if PETSC_VERSION_GE(3, 6, 0)
   MatSetNullSpace(A, nullsp);
 #else
   KSPSetNullSpace(ksp, nullsp);
@@ -549,7 +547,7 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
   KSPSetOperators(ksp,A,A);
   MatNullSpaceCreate(PETSC_COMM_WORLD, PETSC_TRUE, 0, NULL, &nullsp);
 
-#ifdef PETSC3_6
+#if PETSC_VERSION_GE(3, 6, 0)
   MatSetNullSpace(A, nullsp);
 #else
   KSPSetNullSpace(ksp, nullsp);
