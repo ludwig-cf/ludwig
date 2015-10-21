@@ -12,7 +12,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 300
+N_cycles 100
 
 ##############################################################################
 #
@@ -38,9 +38,6 @@ viscosity_bulk 0.083333
 
 isothermal_fluctuations off
 temperature 3.3333e-4
-
-# ghost_modes off
-# force 0.00_0.0_0.0
 
 ##############################################################################
 #
@@ -74,22 +71,12 @@ colloid_init        input_one
 colloid_type        inactive
 colloid_rho0        6.0
 
-colloid_random_no   1
-colloid_random_dh   0.4
-colloid_random_type default
-
 colloid_one_a0	    3.75
 colloid_one_ah	    3.75
 colloid_one_r       16.0_16.0_16.0
 colloid_one_q0      100
 colloid_one_q1      0
 colloid_one_isfixedr 1
-
-colloid_random_v    0.0_0.0_0.0
-colloid_random_s    1.0_0.0_0.0
-colloid_random_m    1.0_0.0_0.0
-colloid_random_c    0.0
-colloid_random_h    0.0
 
 # Constant body force on all colloids ("gravity") [default is zero]
 # Uniform magnetic field [default is zero]
@@ -192,7 +179,6 @@ electrokinetics_eunit   0.5
 electrokinetics_epsilon 100.0
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.00104
-#electrokinetics_init_sigma 0.0125
 
 electrokinetics_rel_tol  1e-07
 electrokinetics_abs_tol  1e-15
@@ -202,10 +188,6 @@ electrokinetics_diffacc  0.5
 electrokinetics_multisteps  1
 electrokinetics_skipsteps 1
 
-#electrosymmetric_epsilon2   100.0
-#electrosymmetric_delta_mu0  0.0
-#electrosymmetric_delta_mu1  0.0
-
 ###############################################################################
 #
 #  Miscellaneous
@@ -214,5 +196,4 @@ electrokinetics_skipsteps 1
 #
 ###############################################################################
 
-#random_seed 7361237
 random_seed 8361235

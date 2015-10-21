@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
 
-The SVN revision details are: 2638M
+The SVN revision details are: 2757:2758
 Note assertions via standard C assert() are on.
 
 Read 53 user parameters from serial-elec-eo1.inp
@@ -112,8 +112,8 @@ Momentum - x y z
 
 Starting time step loop.
 
-SOR solver
-Norm of residual 1.18581e-08 at 235 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  4.6320663e-11 at 235 iterations
 1 multisteps
 
 Scalars - total mean variance min max
@@ -141,15 +141,16 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     14.206     14.206     14.206  14.206048 (1 call)
-      Time step loop:      0.014      0.016     14.204   0.014204 (1000 calls)
-         Propagation:      0.000      0.000      0.137   0.000137 (1000 calls)
-           Collision:      0.001      0.001      0.951   0.000951 (1000 calls)
-       Lattice halos:      0.000      0.000      0.162   0.000040 (4000 calls)
+               Total:     14.215     14.215     14.215  14.214688 (1 call)
+      Time step loop:      0.014      0.016     14.213   0.014213 (1000 calls)
+         Propagation:      0.000      0.000      0.136   0.000136 (1000 calls)
+           Collision:      0.001      0.001      0.995   0.000995 (1000 calls)
+       Lattice halos:      0.000      0.000      0.158   0.000040 (4000 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (1000 calls)
-                 BBL:      0.000      0.000      0.006   0.000006 (1000 calls)
-   Force calculation:      0.000      0.000      0.057   0.000029 (2000 calls)
+                 BBL:      0.000      0.000      0.005   0.000005 (1000 calls)
+   Force calculation:      0.000      0.000      0.116   0.000058 (2000 calls)
           phi update:      0.000      0.000      0.000   0.000000 (1000 calls)
-    Poisson equation:      0.012      0.014     12.308   0.012308 (1000 calls)
-       Nernst Planck:      0.001      0.001      0.543   0.000543 (1000 calls)
+    Poisson equation:      0.012      0.014     12.231   0.012231 (1000 calls)
+       Nernst Planck:      0.001      0.001      0.536   0.000536 (1000 calls)
+  Collision (kernel):      0.001      0.001      0.965   0.000965 (1000 calls)
 Ludwig finished normally.

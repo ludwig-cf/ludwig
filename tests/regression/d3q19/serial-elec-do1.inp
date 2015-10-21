@@ -12,7 +12,7 @@
 ###############################################################################
 
 N_start  0
-N_cycles 100
+N_cycles 50
 
 ##############################################################################
 #
@@ -38,9 +38,6 @@ viscosity_bulk 0.083333
 
 isothermal_fluctuations off
 temperature 3.3333e-4
-
-# ghost_modes off
-# force 0.00_0.0_0.0
 
 ##############################################################################
 #
@@ -121,7 +118,7 @@ boundary_lubrication_rcnormal 0.0
 #
 ###############################################################################
 
-freq_statistics  10
+freq_statistics  50
 freq_measure 100000
 freq_config 100000
 config_at_end no
@@ -170,7 +167,6 @@ electrokinetics_eunit   1.0
 electrokinetics_epsilon 300.0
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.00047
-#electrokinetics_init_sigma 0.0125
 
 electrokinetics_rel_tol  1e-06
 electrokinetics_abs_tol  1e-07
@@ -191,5 +187,4 @@ electrosymmetric_delta_mu1  -4.0
 #
 ###############################################################################
 
-#random_seed 7361237
 random_seed 8361235
