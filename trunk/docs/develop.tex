@@ -1,0 +1,231 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  develop.tex
+%
+%  Further information for delvelopers
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  (c) 2014-2015 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Further Information for Developers}
+
+\subsection{Address models for 3-dimensional fields}
+
+The code allows for different order of storage associated with 3-dimensional
+fields (scalars, vectors, and so on). For historical reasons these are
+referred to as `Model' and `Model~R' options, which correspond
+to array-of-structures and structure-of-arrays layout, respectively. Early
+versions of the code for CPU were written to favour summation of LB
+distributions on a per lattice site basis in operations such as
+$\rho(\mathbf{r}) = \sum_i f_i(\mathbf{r})$. This is array-of-structures,
+where the $f_i$ are stored contiguously per site. Introduction of GPU
+versions, where memory coalescing favours the opposite memory order,
+were then referred to as `Model~R', the `R' standing for `reverse'.
+
+The memory layouts are discussed below. In all cases, a 3-d field occupies
+lattice sites with a unique spatial index determine by position, and
+computed via \texttt{coords\_index()}. These position indices will be denoted
+$r_0, r_1, \ldots, r_{n_s-1}$ where $n_s$ is the total number of lattice
+sites (including halo points).
+
+\subsubsection{Rank 1 objects (to include scalar fields)}
+
+\textbf{ADDR\_MODEL}: The array-of-structures or Model order for an
+$n-$vector field
+with components $ v_\alpha = (v_0, v_1, \ldots, v_{n-1})$ is, schematically:
+\[
+\underbrace{ \boxed{v_0\vphantom{v_{n-1}}} \boxed{v_1\vphantom{v_{n-1}}}
+\boxed{\ldots\vphantom{v_{n-1}}} \boxed{v_{n-1}} }_{r_0}
+\underbrace{ \boxed{v_0\vphantom{v_{n-1}}} \boxed{v_1\vphantom{v_{n-1}}}
+\boxed{\ldots\vphantom{v_{n-1}}} \boxed{v_{n-1}} }_{r_1}
+\underbrace{ \boxed{v_0\vphantom{v_{n-1}}} \boxed{v_1\vphantom{v_{n-1}}}
+\boxed{\ldots\vphantom{v_{n-1}}} \boxed{v_{n-1}} }_{r_2} \ldots
+\underbrace{ \boxed{v_0\vphantom{v_{n-1}}} \boxed{v_1\vphantom{v_{n-1}}}
+\boxed{\ldots\vphantom{v_{n-1}}} \boxed{v_{n-1}} }_{r_{n_s-1}}
+\]
+
+\textbf{ADDR\_MODEL\_R}: The Model~R version is:
+\[
+\overbrace{
+\begin{array}{cc} \boxed{v_0} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_0} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{v_0}} \\ \phantom{r_2}\end{array} \mkern-22mu
+\begin{array}{cc} \boxed{v_0} \\  _{r_{n_s-1}} \end{array}
+}^{component_0}
+\overbrace{
+\begin{array}{cc} \boxed{v_1} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_1} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{v_0}} \\ \phantom{r_2}\end{array} \mkern-22mu
+\begin{array}{cc} \boxed{v_1} \\  _{r_{n_s-1}} \end{array}
+}^{component_1}
+\begin{array}{cc} \ldots \\ \phantom{r_2} \end{array}
+\overbrace{
+\begin{array}{cc} \boxed{v_{n-1}} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_{n-1}} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{v_{n-1}}} \\ \phantom{r_2}\end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_{n-1}} \\  _{r_{n_s-1}} \end{array}
+}^{component_{n-1}}
+\]
+
+A scalar field has $n=1$.
+
+% ADDR_MACRO(n_s, n, i, \alpha) in this notation corresponds to
+% ADDR_MACRO(nsites, nfield, index, ifld)
+
+\subsubsection{Rank 2 objects (to include dyadic tensor fields)}
+
+\textbf{ADDR\_MODEL}:
+A general rank 2 tensor $t_{\alpha\beta}$ with components $(t_{0,0},
+\ldots, t_{m-1,n-1})$ is stored as:
+\begin{gather*}
+\underbrace{
+\boxed{t_{0,0}\vphantom{t_{m-1,n-1}}} \boxed{t_{1,0}\vphantom{t_{m-1,n-1}}}
+\boxed{\ldots\vphantom{t_{m-1,n-1}}} \boxed{t_{m-1,0}\vphantom{t_{m-1,n-1}}}
+\boxed{t_{0,1}\vphantom{t_{m-1,n-1}}} \boxed{t_{1,1}\vphantom{t_{m-1,n-1}}}
+\boxed{\ldots\vphantom{t_{m-1,n-1}}} \boxed{t_{m-1,1}\vphantom{t_{m-1,n-1}}}
+\ldots
+\boxed{t_{0,n-1}\vphantom{t_{m-1,n-1}}}\boxed{t_{1,n-1} \vphantom{t_{m-1,n-1}}}
+\boxed{\ldots\vphantom{t_{m-1,n-1}}} \boxed{t_{m-1,n-1}\vphantom{t_{m-1,n-1}}}
+}_{r_0}
+\ldots
+\\
+\ldots
+\underbrace{
+\boxed{t_{0,0}\vphantom{t_{m-1,n-1}}} \boxed{t_{1,0}\vphantom{t_{m-1,n-1}}}
+\boxed{\ldots\vphantom{t_{m-1,n-1}}} \boxed{t_{m-1,0}\vphantom{t_{m-1,n-1}}}
+\boxed{t_{0,1}\vphantom{t_{m-1,n-1}}} \boxed{t_{1,1}\vphantom{t_{m-1,n-1}}}
+\boxed{\ldots\vphantom{t_{m-1,n-1}}} \boxed{t_{m-1,1}\vphantom{t_{m-1,n-1}}}
+\ldots
+\boxed{t_{0,n-1}\vphantom{t_{m-1,n-1}}}\boxed{t_{1,n-1} \vphantom{t_{m-1,n-1}}}
+\boxed{\ldots\vphantom{t_{m-1,n-1}}} \boxed{t_{m-1,n-1}\vphantom{t_{m-1,n-1}}}
+}_{r_{n_s-1}}
+\end{gather*}
+Dyadic tensors, for example the gradient of a vector field
+$\partial_\alpha v_\beta$ in three dimensions, are stored in corresponding
+fashion with $m=3$ and
+$\partial_\alpha = (\partial_x, \partial_y, \partial_z)$.
+
+\textbf{ADDR\_MODEL\_R}: The Model R version is
+\[
+\overbrace{
+\begin{array}{cc} \boxed{t_{0,0}} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{t_{0,0}} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{t_{0,0}}} \\ \phantom{r_2}\end{array} \mkern-18mu
+\begin{array}{cc} \boxed{t_{0,0}} \\  _{r_{n_s-1}} \end{array}
+}^{component_{0,0}}
+\overbrace{
+\begin{array}{cc} \boxed{t_{1,0}} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{t_{1,0}} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{t_{0,0}}} \\ \phantom{r_2}\end{array} \mkern-18mu
+\begin{array}{cc} \boxed{t_{1,0}} \\  _{r_{n_s-1}} \end{array}
+}^{component_{1,0}}
+\begin{array}{cc} \ldots\vphantom{t_{n-1}} \\ \phantom{r_2}\end{array}
+\overbrace{
+\begin{array}{cc} \boxed{t_{m-1,n-1}} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{t_{m-1,n-1}} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{t_{0,0}}} \\ \phantom{r_2}\end{array} \mkern-17mu
+\begin{array}{cc} \boxed{t_{m-1,n-1}} \\  _{r_{n_s-1}} \end{array}
+}^{component_{m-1,n-1}}
+\]
+
+% ADDRRES_MACRO(n_s, m, n, i, alpha, beta) corresponds to, e.g.,
+% ADDRESS_MACRO(nsites, NVECTOR, NQAB, index, ia, ib)
+
+\subsubsection{Compressed rank 2 objects}
+
+A symmetric tensor $S_{\alpha\beta}$ in three dimensions has six independent
+components. It may be convenient to store this in compressed form as a
+rank 1 vector $(S_{xx}, S_{xy}, S_{xz}, S_{yy}, S_{yz}, S_{zz})$ to eliminate
+redundent storage.
+
+A symmetric traceless rank 2 tensor --- for example, the Landau-de Gennes
+liquid crystal order parameter $Q_{\alpha\beta}$ --- has five independent
+components. This is stored as a rank 1 vector with five components
+$(Q_{xx}, Q_{xy}, Q_{xz}, Q_{yy}, Q_{yz})$ to eliminate redundant
+storage. API calls are provided to expand the compressed format to the
+full rank-2 representation $Q_{\alpha\beta}$ and, conversely, to compress
+the full representation to five components.
+
+\subsubsection{Rank 3 objects (to include triadic tensor fields)}
+
+The general rank 3 object $t_{\alpha\beta\gamma}$ with components
+$(t_{0,0,0}, \ldots, t_{m-1,n-1,p-1})$ is stored in a manner which
+generalises from the above, i.e., with the rightmost index running
+fastest. Diagrams are omitted, but Model and Model R storage patterns
+follow the same form as seen above.
+
+A triadic tensor, for example the general second derivative of a vector
+field $\partial_\alpha \partial_\beta v_\gamma$ may be stored as a rank
+3 object.
+
+\subsubsection{Compressed rank 3 objects}
+
+Symmetry properties may be used to reduce the storage requirement
+associated with rank 3 tensors. `For example, the gradient of the
+liquid crystal order parameter $\partial_\gamma Q_{\alpha\beta}$
+may be stored as a rank 2 object. The exact requirement will depend
+on the construction of the tensor.
+
+%
+% The generalised macro would be
+% ADDR_MACRO(nsites, m, n, p, i, alpha, beta, gamma)
+
+\subsubsection{LB distribution data}
+
+\textbf{ADDR\_MODEL}: For the LB distributions, up to two distinct
+distributions can be accommodated to allow for a binary fluid
+implementation, although the usual situation is to have only one.
+The Model order for two $N$-velocity distributions $f$ and $g$ is:
+\[
+\underbrace{
+\boxed{f_0\vphantom{f_{N-1}}}    \boxed{f_1\vphantom{f_{N-1}}}
+\boxed{\ldots\vphantom{f_{N-1}}} \boxed{f_{N-1}} \,
+\boxed{g_0\vphantom{f_{N-1}}}        \boxed{g_1\vphantom{f_{N-1}}}
+\boxed{\ldots\vphantom{f_{N-1}}} \boxed{g_{N-1}\vphantom{f_{N-1}}}}_{r_0}
+\ldots
+\underbrace{
+\boxed{f_0\vphantom{f_{N-1}}}    \boxed{f_1\vphantom{f_{N-1}}}
+\boxed{\ldots\vphantom{f_{N-1}}} \boxed{f_{N-1}} \,
+\boxed{g_0\vphantom{f_{N-1}}}        \boxed{g_1\vphantom{f_{N-1}}}
+\boxed{\ldots\vphantom{f_{N-1}}} \boxed{g_{N-1}\vphantom{f_{N-1}}}}_{r_{n_s=1}}
+\]
+
+\textbf{ADDR\_MODEL\_R}: The Model R order is:
+
+\[
+\overbrace{
+\overbrace{
+\begin{array}{cc} \boxed{f_0} \\  _{r_0} \end{array} \mkern-18mu
+\begin{array}{cc} \boxed{\ldots\vphantom{f_0}} \\ \phantom{r_2}\end{array} \mkern-22mu
+\begin{array}{cc} \boxed{f_0} \\  _{r_{n_s-1}} \end{array}
+}^{f_0}
+\begin{array}{cc} \ldots \\ \phantom{r_2} \end{array}
+\overbrace{
+\begin{array}{cc} \boxed{f_{N-1}} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{f_{N-1}}} \\ \phantom{r_2}\end{array} \mkern-17mu
+\begin{array}{cc} \boxed{f_{N-1}} \\  _{r_{n_s-1}} \end{array}
+}^{f_{N-1}}
+}^{f_i}
+\overbrace{
+\overbrace{
+\begin{array}{cc} \boxed{g_0\vphantom{f_{N-1}}} \\ _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{f_{N-1}}} \\ \phantom{r_2}\end{array} \mkern-22mu
+\begin{array}{cc} \boxed{g_0\vphantom{f_{N-1}}} \\  _{r_{n_s-1}} \end{array}
+}^{g_0} \ldots
+\overbrace{
+\begin{array}{cc} \boxed{g_{N-1}\vphantom{f_{N-1}}} \\ _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{f_{N-1}}} \\ \phantom{r_2}\end{array} \mkern-17mu
+\begin{array}{cc} \boxed{g_{N-1}\vphantom{f_{N-1}}} \\  _{r_{n_s-1}} \end{array}
+}^{g_{N-1}\vphantom{f_{N-1}}}
+}^{g_i} 
+\]
+For the single-distribution case, this is equivalent to the rank 1 vector
+field with $n=N$.
+
+\vfill
+\pagebreak
+
