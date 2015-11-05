@@ -33,6 +33,7 @@ $r_0, r_1, \ldots, r_{n_s-1}$ where $n_s$ is the total number of lattice
 sites (including halo points).
 
 \subsubsection{Rank 1 objects (to include scalar fields)}
+\label{subsection:addressing-model-rank1}
 
 \textbf{ADDR\_MODEL}: The array-of-structures or Model order for an
 $n-$vector field
@@ -165,7 +166,7 @@ field $\partial_\alpha \partial_\beta v_\gamma$ may be stored as a rank
 \subsubsection{Compressed rank 3 objects}
 
 Symmetry properties may be used to reduce the storage requirement
-associated with rank 3 tensors. `For example, the gradient of the
+associated with rank 3 tensors. For example, the gradient of the
 liquid crystal order parameter $\partial_\gamma Q_{\alpha\beta}$
 may be stored as a rank 2 object. The exact requirement will depend
 on the construction of the tensor.
@@ -225,6 +226,135 @@ The Model order for two $N$-velocity distributions $f$ and $g$ is:
 \]
 For the single-distribution case, this is equivalent to the rank 1 vector
 field with $n=N$.
+
+\subsection{Generalised model for SIMD vectorisation}
+
+To promote parallelism at the instruction level, it is necessary to
+insure the innermost loop of any loop construct has an extent which
+is the vector length for the target architecture. The memory layout
+should therefore be adjusted accordingly. This means the MODEL format
+is generalised to a (rather clumsily named) array of structures of
+short vectors. The length of the short vectors is the SIMD vector
+length.
+
+The outermost loop in this context is always to be the loop over
+lattice sites, which is adjusted according to the vector length;
+see Section \ref{subsection:addressing-how-to} below for practical
+examples.
+
+The Model R picture, which targets coalescene, can be viewed as
+naturally supporting SIMD vectorisation by virtue of allowing
+contiguous access to individual quantities as a function of lattice
+index. (If SIMD vectorisation is wanted at all on GPU architecture,
+it can be as a means to releive register pressure.) Model R therefore
+remains unaltered and we concentrate on the Model picture.
+
+\subsubsection{Rank 1 objects}
+
+\textbf{VADDR\_MODEL}: The structure of short vectors is based on the
+SIMD vector length which we here denote $V$:
+\[
+\underbrace{
+\overbrace{
+\begin{array}{cc} \boxed{v_0} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_0} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{v_0}} \\ \phantom{r_2}\end{array} \mkern-20mu
+\begin{array}{cc} \boxed{v_0} \\  _{r_{V-1}} \end{array}
+}^{component_0}
+\overbrace{
+\begin{array}{cc} \boxed{v_1} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_1} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{v_0}} \\ \phantom{r_2}\end{array} \mkern-20mu
+\begin{array}{cc} \boxed{v_1} \\  _{r_{V-1}} \end{array}
+}^{component_1}
+%\begin{array}{cc} \ldots \\ \phantom{r_2} \end{array}
+\overbrace{
+\begin{array}{cc} \boxed{v_{n-1}} \\  _{r_0} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{v_{n-1}} \\  _{r_1} \end{array} \mkern-17mu
+\begin{array}{cc} \boxed{\ldots\vphantom{v_{n-1}}} \\ \phantom{r_2}\end{array}
+\mkern-17mu
+\begin{array}{cc} \boxed{v_{n-1}} \\  _{r_{V-1}} \end{array}
+}^{component_{n-1}}}_{\mathrm{SIMD\ BLOCK}}
+\quad\ldots
+\]
+Subsequent SIMD blocks involve lattice sites $r_V \ldots r_{2V-1}$,
+$r_{2V} \ldots r_{3V-1}$, and so on. If the SIMD vector length is unity,
+this collapses to the standard Model picture shown in
+Section~\ref{subsection:addressing-model-rank1}.
+
+The generalisation of this approach to rank 2 and rank 3 objects 
+follows the corresponding Model implementation.
+
+\subsection{Addressing: How to?}
+\label{subsection:addressing-how-to}
+
+To provide a transparent interface for addressing vector fields,
+a single API is provided which implements the addressing order
+selected at compile time. This interface is always based
+on a fixed order of indices which may include the
+vector index of the innermost SIMD loop if present. This
+allows both vectorised and non-vectorised loops to be constructed
+in a consistent manner.
+
+The usual model for constructing a loop involving all lattice sites
+(in this case without haloes) would be, in the absence of vectorisation:
+\begin{lstlisting}
+for (ic = 1; ic <= nlocal[X]; ic++) {
+  for (jc = 1; jc <= nlocal[Y]; jc++) {
+    for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+      index = coords_index(ic, jc, kc);
+      /* Perform operation per lattice site ... */
+    }
+  }
+}
+\end{lstlisting}
+where final array indexing is based on the coordinate index and is
+specific to the object at hand. To allow transparent switching
+between Model and Model R versions, the indexing must be abstracted.
+As a concrete example, the following considers a rank 1 3-vector:
+\begin{lstlisting}
+for (ic = 1; ic <= nlocal[X]; ic++) {
+  for (jc = 1; jc <= nlocal[Y]; jc++) {
+    for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+      index = coords_index(ic, jc, kc);
+      for (ia = 0; ia < 3; ia++) {
+        iref = addr_rank1(nsites, 3, index, ia);
+        array[iref] = ...;
+      }
+    }
+  }
+}
+\end{lstlisting}
+Here, the function \texttt{addr\_rank1()} performs the appropriate
+arithmetic to reference the correct 1-d array element in either
+address model. We note that
+this can be implemented to operate appropriately when the SIMD vector
+length is an arbitrary number.
+
+An equivalent vectorised version may be constructed as follows:
+\begin{lstlisting}
+for (n = 0; n < nsites; n += SIMDVL) {
+  index = coords_indexv(n, nextra);       /* Proposal */
+  for (ia = 0; ia < 3; ia++) {
+    for (iv = 0; iv < SIMDVL; iv++) {
+      iref = vaddr_rank1(nsites, 3, index, ia, iv);
+      array[iref] = ...;
+    }
+  }
+}
+\end{lstlisting}
+Note that a different function \texttt{vaddr\_rank1()} with an additional
+argument which is the index of the vector loop is used. Note also that
+vectorisaed versions must take into account the extent that the kernel
+extends into the halo region (here \texttt{nextra}), which involves
+logic to avoid lattice sites which are not required (not shown in this
+example).
+
+Note that, in practice, 
+the loop over lattice sites is further abstracted in the code to
+accommodate thread-level parallelism via targetDP interface.
 
 \vfill
 \pagebreak
