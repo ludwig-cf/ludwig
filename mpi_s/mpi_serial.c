@@ -6,13 +6,16 @@
  *
  *  From an idea appearing in, for example,  LAMMPS.
  *
- *  Current status:
  *    Point-to-point communications: will terminate.
  *    Collective communications: copy for basic datatypes
  *    Groups, Contexts, Comunicators: mostly no-operations
  *    Process Topologies: no operations
  *    Environmental inquiry: mostly operational
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2015 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -21,8 +24,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* Use clock() only as a last resort in serial */
+
+#ifdef _OPENMP
+#include <omp.h>
+#else
 #include <time.h>
-#include <sys/time.h>
+#define omp_get_wtime() ((double) clock()*(1.0/CLOCKS_PER_SEC))
+#define omp_get_wtick() (1.0/CLOCKS_PER_SEC)
+#endif
 
 #include "mpi.h"
 
@@ -143,16 +154,7 @@ int MPI_Abort(MPI_Comm comm, int code) {
 
 double MPI_Wtime(void) {
 
-  //  return ((double) clock() / CLOCKS_PER_SEC);
-
-  //use gettimeofday rather than clock because it reports walltime: 
-  //better when OpenMP is enabled.
- 
-  struct timeval t1;
-  gettimeofday(&t1, NULL);
-
-  return (t1.tv_sec * 1000000 + t1.tv_usec)/1000000.;
-
+  return omp_get_wtime();
 }
 
 /*****************************************************************************
@@ -163,7 +165,7 @@ double MPI_Wtime(void) {
 
 double MPI_Wtick(void) {
 
-  return (double) (1.0/ CLOCKS_PER_SEC);
+  return omp_get_wtick();
 }
 
 /*****************************************************************************
