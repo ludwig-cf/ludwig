@@ -358,7 +358,7 @@ int do_test_model_distributions(void) {
 
     /* info("Check first moment... ");*/
 
-    lb_1st_moment(lb, index, n, u);
+    lb_1st_moment(lb, index, (n == 0) ? LB_RHO : LB_PHI, u);
 
     for (i = 0; i < NDIM; i++) {
       assert(fabs(u[i] - 0.0) < DBL_EPSILON);

@@ -15,6 +15,8 @@
 # limitations under the License.  
 #
 
+include ../Makefile.mk
+
 MF= Makefile
 
 SRC_C= targetDP_C.c 
@@ -28,10 +30,6 @@ AR = ar -cru
 .SUFFIXES:
 .SUFFIXES: .c  .o
 
-# CC=	gcc-4.9
-
-CC=	gcc
-NVCC= nvcc 
 CUARCH= sm_35
 
 
@@ -48,7 +46,7 @@ endif
 
 
 
- CFLAGS = -O3 -fopenmp  #-save-temps
+# CFLAGS = -O3 -fopenmp  #-save-temps
 # CFLAGS = -g -G #-save-temps
 # CFLAGS = -g -fopenmp  #-save-temps
 

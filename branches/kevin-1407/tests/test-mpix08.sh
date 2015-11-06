@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ##############################################################################
 #
 #  test-mpix08.sh
@@ -16,7 +18,6 @@
 #  Kevin Stratford (kevin@epcce.ed.ac.uk)
 #
 ##############################################################################
-#!/bin/bash
 
 DIR_TST=`pwd`
 DIR_MPI=`pwd`/../mpi_s
@@ -27,6 +28,7 @@ DIR_UNT=`pwd`/unit
 
 MPIRUN=mpirun
 NPROCS=8
+
 
 ##############################################################################
 #
@@ -166,7 +168,7 @@ function test_regr {
     input=$f
     stub=`echo $input | sed 's/.inp//'`
     echo
-    $MPIRUN -np $NPROCS $DIR_SRC/Ludwig.exe $input > $stub.new
+    $MPIRUN $DIR_SRC/Ludwig.exe $input > $stub.new
 
     # Get difference via the difference script
     $DIR_TST/test-diff.sh $stub.new $stub.log

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ###############################################################################
 #
 #  test-diff.sh [options] file1 file2
@@ -26,8 +28,6 @@
 #  (c) 2013-2014 The University of Edinburgh
 #
 ###############################################################################
-#!/bin/bash
-
 
 # Slightly flaky. We assume location of tests to find the floating
 # point 'diff' script

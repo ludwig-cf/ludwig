@@ -46,7 +46,7 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
   int ic, jc, kc, index, indexf;
 
   size_t sz;
-  unsigned char * fc = buf;
+  unsigned char * fc = (unsigned char *) buf;
 
   assert (nf >= 0);
   assert(fc);
@@ -105,7 +105,7 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
   char   cref, cact;            /* Reference, actual, function value */
   double dref, dact;            /* Reference, actual, function value */
-  unsigned char * bufc = buf;
+  unsigned char * bufc = (unsigned char *) buf;
 
   assert(nhcomm <= coords_nhalo());
   assert(nf >= 0);
@@ -162,7 +162,7 @@ int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
 
   int ntotal[3];
   int iref;
-  char * c = ref;
+  char * c = (char *) ref;
 
   assert(c);
   coords_ntotal(ntotal);
@@ -190,7 +190,7 @@ int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
 
 int test_ref_double1(int ic, int jc, int kc, int n, void * ref) {
 
-  double * d = ref;
+  double * d = (double *) ref;
 
   assert(d);
 
