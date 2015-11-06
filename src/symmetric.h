@@ -15,11 +15,11 @@
 #ifndef SYMMETRIC_H
 #define SYMMETRIC_H
 
+#include "targetDP.h"
+
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
-
-#include "targetDP.h"
 
 //TO DO: refactor these type definitions
 typedef double (*mu_fntype)(const int, const int, const double*, const double*);

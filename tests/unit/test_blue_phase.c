@@ -332,10 +332,11 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   multiply_gradient(dq, 3.0);
 
   blue_phase_set_kernel_constants();
-  void* pcon=NULL;
-  blue_phase_host_constant_ptr(&pcon);
-  
-  value = blue_phase_compute_fed(q, dq,pcon);
+  void* vpcon=NULL;
+  blue_phase_host_constant_ptr(&vpcon);
+  bluePhaseKernelConstants_t * pcon = (bluePhaseKernelConstants_t *) vpcon;
+
+  value = blue_phase_compute_fed(q, dq, pcon);
   /* info("Check F( 1, 1, 1)...");*/
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/

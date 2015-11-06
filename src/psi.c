@@ -1055,7 +1055,7 @@ int psi_halo_psijump(psi_t * psi) {
   int index, index1;
   int ic, jc, kc, nh;
   double e0[3];
-  double eps, reps;
+  double eps;
   double beta;
   assert(psi);
 
@@ -1066,7 +1066,6 @@ int psi_halo_psijump(psi_t * psi) {
 
   physics_e0(e0);
   psi_epsilon(psi, &eps);
-  reps = 1.0/eps;
   psi_beta(psi, &beta);
 
   if (cart_coords(X) == 0) {

@@ -425,7 +425,7 @@ static int do_test_ionic_strength(void) {
 
 static int testf2(int ic, int jc, int kc, int n, void * buf) {
 
-  double * ref = buf;
+  double * ref = (double *) buf;
 
   assert(ref);
 
