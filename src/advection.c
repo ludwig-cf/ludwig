@@ -38,6 +38,7 @@
 #include "advection_s.h"
 #include "psi_gradients.h"
 #include "hydro_s.h"
+#include "timer.h"
 
 static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
 			    field_t * field);
@@ -383,12 +384,14 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int));
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
 
+  TIMER_start(ADVECTION_X_KERNEL);
 #ifdef CUDA
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro->tcopy, nf,field->tcopy);
 #else
   /* use host copies of input just now, because of LE plane buffers*/
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro, nf,field);
 #endif
+  TIMER_stop(ADVECTION_X_KERNEL);
 
   targetSynchronize();
 
@@ -745,6 +748,7 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
   
 
+  TIMER_start(ADVECTION_X_KERNEL);
   /* execute lattice-based operation on target */
 #ifdef CUDA
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
@@ -760,6 +764,8 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
 #endif
 
   targetSynchronize();
+
+  TIMER_stop(ADVECTION_X_KERNEL);
 
   /* copy output data from target */
 

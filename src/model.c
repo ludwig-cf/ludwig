@@ -98,6 +98,7 @@ void lb_free(lb_t * lb) {
 
   if (lb->io_info) io_info_destroy(lb->io_info);
   if (lb->f) free(lb->f);
+  if (lb->fprime) free(lb->fprime);
   //if (lb->t_f) targetFree(lb->t_f);
   //if (lb->t_fprime) targetFree(lb->t_fprime);
 
@@ -176,6 +177,9 @@ int lb_init(lb_t * lb) {
 
   lb->f = (double  *) malloc(ndata*sizeof(double));
   if (lb->f == NULL) fatal("malloc(distributions) failed\n");
+
+  lb->fprime = (double  *) malloc(ndata*sizeof(double));
+  if (lb->fprime == NULL) fatal("malloc(distributions) failed\n");
 
 
   int Nall[3]; 

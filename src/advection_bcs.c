@@ -25,6 +25,7 @@
 #include "advection_bcs.h"
 #include "psi_gradients.h"
 #include "map_s.h"
+#include "timer.h"
 
 /*****************************************************************************
  *
@@ -149,7 +150,10 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
   copyToTarget(tmpptr,flux->fz,nf*nSites*sizeof(double));
 #endif
 
+  TIMER_start(ADVECTION_BCS_KERNEL);
   advection_bcs_no_normal_flux_lattice  __targetLaunch__(nSites) (nf,flux->tcopy, map->tcopy);
+  targetSynchronize();
+  TIMER_stop(ADVECTION_BCS_KERNEL);
 
 #ifndef KEEPFIELDONTARGET
   copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*));

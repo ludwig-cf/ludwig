@@ -60,6 +60,7 @@
 #include "field_grad.h"
 #include "field_grad_s.h"
 #include "map_s.h"
+#include "timer.h"
 
 static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, advflux_t * f,
 				map_t * map, noise_t * noise);
@@ -90,7 +91,9 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad
   field_nf(fq, &nf);
   assert(nf == NQAB);
 
+  TIMER_start(ADVECTION_BCS_MEM);
   advflux_create(nf, &flux);
+  TIMER_stop(ADVECTION_BCS_MEM);
 
   if (hydro) {
 
@@ -104,8 +107,9 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad
 
   blue_phase_be_update(fq, fq_grad, hydro, flux, map, noise);
 
-
+  TIMER_start(ADVECTION_BCS_MEM);
   advflux_free(flux);
+  TIMER_stop(ADVECTION_BCS_MEM);
 
 
   return 0;
@@ -488,6 +492,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   copyToTarget(tmpptr,flux->fz,nf*nSites*sizeof(double));
 #endif
 
+  TIMER_start(BP_BE_UPDATE_KERNEL);
   //launch update across lattice on target
   blue_phase_be_update_lattice __targetLaunch__(nSites) (fq->tcopy, fq_grad->tcopy, 
   							 t_hydro,
@@ -496,6 +501,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 							 molecular_field, isBPMF);
   
   targetSynchronize();
+  TIMER_stop(BP_BE_UPDATE_KERNEL);
 
 #ifndef KEEPFIELDONTARGET
   //get result back from target

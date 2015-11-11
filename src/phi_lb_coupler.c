@@ -63,12 +63,12 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
 }
 
 
-__targetEntry__ void phi_lb_to_field_lattice(double * phi, double * f) {
+__targetEntry__ void phi_lb_to_field_lattice(double * phi, lb_t * lb) {
 
   int baseIndex=0;
 
   __targetTLPNoStride__(baseIndex,tc_nSites){	  
-    phi_lb_to_field_site(phi, f, baseIndex);
+    phi_lb_to_field_site(phi, lb->f, baseIndex);
   }
 
 
@@ -93,24 +93,54 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
   nSites = Nall[X]*Nall[Y]*Nall[Z];
-  nFields = NVEL*lb->ndist;
+
+  int nDist;
+  copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
+  
+  nFields = NVEL*nDist;
 
   //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
+  copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
   //end constant setup
 
-#ifndef KEEPFONTARGET   //temporary optimisation specific to GPU code for benchmarking
-  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-#endif
-
-  phi_lb_to_field_lattice __targetLaunchNoStride__(nSites) (phi->t_data, lb->t_f);
+    phi_lb_to_field_lattice __targetLaunchNoStride__(nSites) (phi->t_data, lb);
 
 #ifndef KEEPFIELDONTARGET   //temporary optimisation specific to GPU code for benchmarking
   copyFromTarget(phi->data,phi->t_data,nSites*sizeof(double)); 
 #endif
+
+  return 0;
+}
+
+
+
+/* Host-only version of the above */
+__targetHost__ int phi_lb_to_field_host(field_t * phi, lb_t  *lb) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+
+  double phi0;
+
+  assert(phi);
+  assert(lb);
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	lb_0th_moment(lb, index, LB_PHI, &phi0);
+	field_scalar_set(phi, index, phi0);
+
+      }
+    }
+  }
 
   return 0;
 }

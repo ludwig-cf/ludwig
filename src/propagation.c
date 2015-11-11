@@ -39,15 +39,14 @@ __targetHost__ int lb_propagation(lb_t * lb) {
 
   assert(lb);
 
-  if (lb_order(lb) == MODEL) {
-    if (NVEL == 9)  lb_propagate_d2q9(lb);
-    if (NVEL == 15) lb_propagate_d3q15(lb);
-  }
-  else {
-    /* Reverse implementation */
+#ifdef LB_DATA_SOA
     if (NVEL == 9)  lb_propagate_d2q9_r(lb);
     if (NVEL == 15) lb_propagate_d3q15_r(lb);
-  }
+#else
+    if (NVEL == 9)  lb_propagate_d2q9(lb);
+    if (NVEL == 15) lb_propagate_d3q15(lb);
+#endif
+
   if (NVEL == 19) lb_propagate_d3q19(lb);
 
   return 0;
@@ -314,15 +313,14 @@ __target__  void lb_propagate_d3q19_site(const double* __restrict__ t_f,
   
 }
 
-__targetEntry__  void lb_propagate_d3q19_lattice(const double* __restrict__ t_f, 
-					      double* t_fprime){
-
+__targetEntry__  void lb_propagate_d3q19_lattice(lb_t* t_lb)
+{
 
   int baseIndex=0;
 
   //partition binary collision kernel across the lattice on the target
   __targetTLP__(baseIndex,tc_nSites){
-    lb_propagate_d3q19_site (t_f,t_fprime,baseIndex);
+    lb_propagate_d3q19_site (t_lb->f,t_lb->fprime,baseIndex);
 
   }
 
@@ -346,42 +344,37 @@ static int lb_propagate_d3q19(lb_t * lb) {
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-  int nFields=NVEL*lb->ndist;
+  int nDist;
+  copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
+
+  int nFields=NVEL*nDist;
+
 
   //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstToTarget(&tc_ndist,&lb->ndist, sizeof(int)); 
+  copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(tc_cv,cv, NVEL*3*sizeof(int)); 
   //end constant setup
 
 
-  #ifndef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
-  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-  #endif
-
-  lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb->t_f,lb->t_fprime);
-  targetSynchronize();
-
-#ifdef KEEPFONTARGET //temporary optimisation specific to GPU code for benchmarking
-  double* tmp=lb->t_fprime;
-  lb->t_fprime=lb->t_f;
-  lb->t_f=tmp;
-
-
-  lb_t* t_lb = lb->tcopy; 
-      
-  copyToTarget(&(t_lb->f),&(lb->t_f),sizeof(double*)); 
-  copyToTarget(&(t_lb->fprime),&(lb->t_fprime),sizeof(double*)); 
-
-  //lb->tcopy->f=lb->t_f;
-  //lb->tcopy->fprime=lb->t_fprime;
-
-#else
-    copyFromTarget(lb->f,lb->t_fprime,nSites*nFields*sizeof(double)); 
-#endif
-
+  lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb);
+  
+  /* swap f and fprime */
+  double* tmpptr1;
+  double* tmpptr2;
+  copyFromTarget(&tmpptr1,&(lb->f),sizeof(double*)); 
+  copyFromTarget(&tmpptr2,&(lb->fprime),sizeof(double*)); 
+  
+  double* tmp=tmpptr2;
+  tmpptr2=tmpptr1;
+  tmpptr1=tmp;
+  
+  copyToTarget(&(lb->f),&tmpptr1,sizeof(double*)); 
+  copyToTarget(&(lb->fprime),&tmpptr2,sizeof(double*)); 
+  /* end swap f and fprime */
+  
   return 0;
 }
 
