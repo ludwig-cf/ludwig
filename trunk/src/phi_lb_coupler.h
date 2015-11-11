@@ -17,6 +17,7 @@
 #include "model.h"
 
 __targetHost__ int phi_lb_to_field(field_t * phi, lb_t * lb);
+__targetHost__ int phi_lb_to_field_host(field_t * phi, lb_t * lb);
 __targetHost__ int phi_lb_from_field(field_t * phi, lb_t * lb);
 
 #endif

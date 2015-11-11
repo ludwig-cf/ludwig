@@ -2301,4 +2301,4 @@ static void halo_unpack_gpu_d(cuda_halo_t * halo, int id,
 
 #endif
 
-#endif //KEEPFONTARGET
+#endif 

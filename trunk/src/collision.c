@@ -39,6 +39,7 @@
 #include "map_s.h"
 #include "timer.h"
 
+
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
@@ -112,6 +113,9 @@ static double *t_gradphi;
  * 
  *****************************************************************************/
 
+
+
+
 int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int ndist;
@@ -121,11 +125,14 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   assert(lb);
   assert(map);
 
-  lb_ndist(lb, &ndist);
+
+  //lb_ndist(lb, &ndist);
+  copyFromTarget(&ndist,&(lb->ndist),sizeof(int)); 
   lb_collision_relaxation_times_set(noise);
 
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
   if (ndist == 2) lb_collision_binary(lb, hydro, map, noise);
+
 
   return 0;
 }
@@ -243,16 +250,16 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   
   /* Compute all the modes */
 
-#ifdef KEEPFONTARGET
+  if(tc_nmodes_==19)
     d3q19matmultchunk(mode, fchunk, baseIndex);
-#else
-  for (m = 0; m < tc_nmodes_; m++) {
-    __targetILP__(iv) mode[m*VVL+iv] = 0.0;
-    for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) mode[m*VVL+iv] += fchunk[p*VVL+iv]*tc_ma_[m][p];
+  else{
+    for (m = 0; m < tc_nmodes_; m++) {
+      __targetILP__(iv) mode[m*VVL+iv] = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	__targetILP__(iv) mode[m*VVL+iv] += fchunk[p*VVL+iv]*tc_ma_[m][p];
+      }
     }
   }
-#endif
 
   /* For convenience, write out the physical modes, that is,
    * rho, NDIM components of velocity, independent components
@@ -392,18 +399,18 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 
   /* Project post-collision modes back onto the distribution */
 
-#ifdef KEEPFONTARGET
+  if(tc_nmodes_==19)
     d3q19matmult2chunk(mode, fchunk, baseIndex);
-#else
-  for (p = 0; p < NVEL; p++) {
-    double ftmp[VVL];
-    __targetILP__(iv) ftmp[iv] = 0.0;
-    for (m = 0; m < tc_nmodes_; m++) {
-      __targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*VVL+iv];
+  else{
+    for (p = 0; p < NVEL; p++) {
+      double ftmp[VVL];
+      __targetILP__(iv) ftmp[iv] = 0.0;
+      for (m = 0; m < tc_nmodes_; m++) {
+	__targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*VVL+iv];
+      }
+      __targetILP__(iv) fchunk[p*VVL+iv] = ftmp[iv];
     }
-    __targetILP__(iv) fchunk[p*VVL+iv] = ftmp[iv];
   }
-#endif
 
 
   /* Write SIMD chunks back to main arrays. */
@@ -453,7 +460,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
  *
  *****************************************************************************/
 
-__targetEntry__ void lb_collision_mrt_lattice(double* __restrict__ t_f, 
+__targetEntry__ void lb_collision_mrt_lattice(lb_t* t_lb, 
 					      const double* __restrict__ t_force, 
 					      double* __restrict__ t_velocity,
 					      char * t_status,
@@ -462,7 +469,7 @@ __targetEntry__ void lb_collision_mrt_lattice(double* __restrict__ t_f,
   int baseIndex = 0;
 
   __targetTLP__(baseIndex, nSites) {
-    lb_collision_mrt_site(t_f, t_force, t_velocity, t_status, noise,
+    lb_collision_mrt_site(t_lb->f, t_force, t_velocity, t_status, noise,
 			  noise_on, baseIndex);
   }
 
@@ -525,11 +532,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
    * for C version, we put data on the target (for now).
    * ultimitely GPU and C versions will follow the same pattern */
 
-#ifndef KEEPFONTARGET
-  /* temporary optimisation specific to GPU code for benchmarking */
-  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-#endif
-
 #ifndef KEEPHYDROONTARGET
   copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
 #endif
@@ -550,16 +552,12 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
 
-  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,map->t_status,noise,noise_on,nSites);
+  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,map->t_status,noise,noise_on,nSites);
 
   targetSynchronize();
 
   TIMER_stop(TIMER_COLLIDE_KERNEL);
 
-#ifndef KEEPFONTARGET
-  /* temporary optimisation specific to GPU code for benchmarking */
-  copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
-#endif
 
 #ifndef KEEPHYDROONTARGET
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
@@ -571,7 +569,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
 
 
-#define NDIST 2 /* for binary collision */
 
 
 /*****************************************************************************
@@ -615,6 +612,8 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
  *   distribution following J. Stat. Phys. (2005).
  *
  *****************************************************************************/
+
+#define NDIST 2 /* for binary collision */
 
 __target__ void lb_collision_binary_site( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
@@ -680,20 +679,20 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
 
 
-#ifdef KEEPFONTARGET
+  if(tc_nmodes_==19)
     d3q19matmult(mode, t_f, baseIndex);
-#else
-  /* Compute all the modes */
-  for (m = 0; m < tc_nmodes_; m++) {
-    __targetILP__(iv) mode[m*VVL+iv] = 0.0;
-    for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) mode[m*VVL+iv] +=
-  	t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + iv, 0, p) ]
-  	*tc_ma_[m][p];
+  else{
+    /* Compute all the modes */
+    for (m = 0; m < tc_nmodes_; m++) {
+      __targetILP__(iv) mode[m*VVL+iv] = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	__targetILP__(iv) mode[m*VVL+iv] +=
+	  t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + iv, 0, p) ]
+	  *tc_ma_[m][p];
+      }
+      
     }
-    
   }
-#endif
 
   /* For convenience, write out the physical modes. */
   
@@ -855,22 +854,22 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* Project post-collision modes back onto the distribution */
   
-#ifdef KEEPFONTARGET
+  if(tc_nmodes_==19)
   d3q19matmult2(mode, t_f, baseIndex);
-#else
-
-  for (p = 0; p < NVEL; p++) {
-    double ftmp[VVL];
-    __targetILP__(iv) ftmp[iv]=0.;
-    for (m = 0; m < tc_nmodes_; m++) {
-      __targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*VVL+iv];
+  else{
+    
+    for (p = 0; p < NVEL; p++) {
+      double ftmp[VVL];
+      __targetILP__(iv) ftmp[iv]=0.;
+      for (m = 0; m < tc_nmodes_; m++) {
+	__targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*VVL+iv];
+      }
+      __targetILP__(iv) t_f[ LB_ADDR(tc_nSites, NDIST, 
+				     NVEL, baseIndex+iv, 
+				     0, p) ] = ftmp[iv];
     }
-    __targetILP__(iv) t_f[ LB_ADDR(tc_nSites, NDIST, 
-				      NVEL, baseIndex+iv, 
-				      0, p) ] = ftmp[iv];
   }
   
-#endif
   
 
 
@@ -943,7 +942,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
 }
 
-__targetEntry__ void lb_collision_binary_lattice( double* __restrict__ t_f, 
+__targetEntry__ void lb_collision_binary_lattice( lb_t* __restrict__ t_lb, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
 			      double* __restrict__ t_phi,
@@ -959,7 +958,7 @@ __targetEntry__ void lb_collision_binary_lattice( double* __restrict__ t_f,
   /* partition binary collision kernel across the lattice on the target */
 
   __targetTLP__(baseIndex,nSites){
-    lb_collision_binary_site(t_f, t_force, t_velocity, t_phi, t_gradphi,
+    lb_collision_binary_site(t_lb->f, t_force, t_velocity, t_phi, t_gradphi,
 			     t_delsqphi, t_chemical_stress,
 			     t_chemical_potential,noise,noise_on,baseIndex);
         
@@ -1046,9 +1045,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
    * for C version, we put data on the target (for now).
    * ultimitely GPU and C versions will follow the same pattern */
 
-#ifndef KEEPFONTARGET
-  copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-#endif
 
 
 #ifndef KEEPFIELDONTARGET
@@ -1086,13 +1082,10 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   }
 
 	
-  lb_collision_binary_lattice __targetLaunch__(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
+  lb_collision_binary_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
 
   targetSynchronize();
 
-#ifndef KEEPFONTARGET
-  copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
-#endif
 
 #ifndef KEEPHYDROONTARGET
   copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 

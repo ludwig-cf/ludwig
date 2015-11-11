@@ -161,7 +161,9 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
-  int nFields=NVEL*lb->ndist;
+  int nDist;
+  copyFromTarget(&nDist,&(lb->ndist),sizeof(int));
+  int nFields=NVEL*nDist;
 
   assert(bbl);
   assert(lb);
@@ -172,15 +174,15 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
-#ifdef KEEPFONTARGET
-#ifdef CUDAHOST
-  //update colloid-affected lattice sites from target, including neighbours
-    copyFromTargetPointerMap3D(lb->f,lb->t_f,
-			       Nall,nFields,1,(void**) cinfo->map_new); 
-#else
-	    copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
-#endif
-#endif
+/* #ifdef KEEPFONTARGET */
+/* #ifdef CUDAHOST */
+/*   //update colloid-affected lattice sites from target, including neighbours */
+/*     copyFromTargetPointerMap3D(lb->f,lb->t_f, */
+/* 			       Nall,nFields,1,(void**) cinfo->map_new);  */
+/* #else */
+/* 	    copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double));  */
+/* #endif */
+/* #endif */
 
   bbl_pass0(bbl, lb, cinfo);
   bbl_pass1(bbl, lb, cinfo);
@@ -197,16 +199,16 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   bbl_pass2(bbl, lb, cinfo);
 
 
-#ifdef KEEPFONTARGET
-#ifdef CUDAHOST
-  //update target with colloid-affected lattice sites, not including neighbours 
-    copyToTargetPointerMap3D(lb->t_f,lb->f,
-			     Nall,nFields,0,(void**) cinfo->map_new); 
-#else
-	    copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
+/* #ifdef KEEPFONTARGET */
+/* #ifdef CUDAHOST */
+/*   //update target with colloid-affected lattice sites, not including neighbours  */
+/*     copyToTargetPointerMap3D(lb->t_f,lb->f, */
+/* 			     Nall,nFields,0,(void**) cinfo->map_new);  */
+/* #else */
+/* 	    copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double));  */
 
-#endif
-#endif
+/* #endif */
+/* #endif */
 
   return 0;
 }
@@ -546,7 +548,8 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   assert(cinfo);
 
   physics_rho0(&rho0);
-  lb_ndist(lb, &ndist);
+
+  copyFromTarget(&ndist,&(lb->ndist),sizeof(int));
 
   /* Account the current phi deficit */
   bbl->deltag = 0.0;

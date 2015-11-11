@@ -26,6 +26,7 @@
 #include "util.h"
 #include "wall.h"
 #include "runtime.h"
+#include "lb_model_s.h"
 
 typedef struct B_link_struct B_link;
 
@@ -260,7 +261,7 @@ int wall_bounce_back(lb_t * lb, map_t * map) {
   assert(map);
 
   p_link = link_list_;
-  lb_ndist(lb, &ndist);
+  copyFromTarget(&ndist,&(lb->ndist),sizeof(int));
 
   while (p_link) {
 
