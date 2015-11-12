@@ -23,16 +23,28 @@
 #ifndef _TDP_INCLUDED
 #define _TDP_INCLUDED
 
+
+/* Main settings */
+
+#define VVL_CUDA 1 /* virtual vector length for TARGETDP CUDA (usually 1) */
+#define VVL_C 1 /* virtual vector length for TARGETDP C (usually 1 for AoS */
+              /*  or a small multiple of the hardware vector length for SoA)*/
+
+/* #define OPENMP_ENABLED */ /* uncomment when OpenMP is being used for TARGETDP C */
+
+/* End main settings */
+
+
 #ifdef CUDA /* CUDA */
 
 /*
- * Settings 
+ * CUDA Settings 
  */
 
 #define DEFAULT_TPB 128 /* default threads per block */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
-#define VVL 1
+#define VVL VVL_CUDA
 
 
 /*
@@ -89,6 +101,18 @@
   if (simtIndex < extent)
 
 
+/* Instruction-level-parallelism execution macro */
+/* The __targetILP__ syntax is used, within a __targetTLP__ region, to specify
+ * that the proceeding block of code should be executed in parallel and mapped to
+ * instruction level parallelism (ILP), where the extent of the ILP is defined by the
+ * virtual vector length (VVL) in the targetDP implementation. */
+#if VVL == 1
+#define __targetILP__(vecIndex)  
+#else
+#define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
+#endif
+
+
 /* Functions */
 
 /* The targetConstAddress function provides the target address for a constant
@@ -121,7 +145,7 @@
 /* Settings */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
-#define VVL 1
+#define VVL VVL_C
 
 
 /* Language Extensions */
@@ -143,8 +167,8 @@
 
 /* Thread-level-parallelism execution macro */
 
-/* UNCOMMENT THIS OPENMP VERSION FOR PRODUCTION */
-/*
+#ifdef OPENMP_ENABLED
+
 #define __targetTLP__(simtIndex,extent)	\
 _Pragma("omp parallel for")				\
 for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
@@ -152,14 +176,38 @@ for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 #define __targetTLPNoStride__(simtIndex,extent)   	\
 _Pragma("omp parallel for")				\
 for(simtIndex=0;simtIndex<extent;simtIndex++)
-*/
 
-/* serial version for development */
-#define __targetTLP__(simtIndex,extent)			\
-  for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
+#else //NOT OPENMP_ENABLED
+
+#define __targetTLP__(simtIndex,extent)	\
+for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 
 #define __targetTLPNoStride__(simtIndex,extent)   	\
-  for(simtIndex=0;simtIndex<extent;simtIndex++)
+for(simtIndex=0;simtIndex<extent;simtIndex++)
+
+#endif
+
+
+
+/* Instruction-level-parallelism execution macro */
+/* The __targetILP__ syntax is used, within a __targetTLP__ region, to specify
+ * that the proceeding block of code should be executed in parallel and mapped to
+ * instruction level parallelism (ILP), where the extent of the ILP is defined by the
+ * virtual vector length (VVL) in the targetDP implementation. */
+#if VVL == 1
+#define __targetILP__(vecIndex) 
+#else
+
+#ifdef OPENMP_ENABLED
+#define __targetILP__(vecIndex)  \
+_Pragma("omp simd")				\
+ for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
+#else
+#define __targetILP__(vecIndex)  \
+ for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
+#endif
+
+#endif
 
 
 /* functions */
@@ -183,14 +231,6 @@ for(simtIndex=0;simtIndex<extent;simtIndex++)
 /* Common */
 
 #define NILP VVL
-
-
-/* Instruction-level-parallelism execution macro */
-/* The __targetILP__ syntax is used, within a __targetTLP__ region, to specify
- * that the proceeding block of code should be executed in parallel and mapped to
- * instruction level parallelism (ILP), where the extent of the ILP is defined by the
- * virtual vector length (VVL) in the targetDP implementation. */
-#define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
 
 /* Utility functions for indexing */
 

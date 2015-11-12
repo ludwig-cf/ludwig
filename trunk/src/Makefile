@@ -70,8 +70,8 @@ ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_30
 #LIBS+=-L/usr/local/Cellar/open-mpi/1.8.1/lib/ -lmpi
 else
-OPTS+=-fopenmp #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET  #
-LIBS+=-L/usr/local/Cellar/gcc49/4.9.0/lib/gcc/x86_64-apple-darwin13.1.0/4.9.0/  -lgomp
+OPTS+=#-fopenmp #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET  #
+LIBS+=#-L/usr/local/Cellar/gcc49/4.9.0/lib/gcc/x86_64-apple-darwin13.1.0/4.9.0/  -lgomp
 endif
 
 endif #host is mbpag3
