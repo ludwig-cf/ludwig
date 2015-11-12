@@ -7,7 +7,12 @@
 #
 ##############################################################################
 
-ROOT_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+CC=gcc
+MPICC=mpicc
+CFLAGS=-O2
 
-include $(ROOT_DIR)/config.mk
+OPTS=-DNP_D3Q6
 
+LAUNCH_SERIAL_CMD=
+LAUNCH_MPI_CMD=mpirun
+LAUNCH_MPI_NP_SWITCH=-np

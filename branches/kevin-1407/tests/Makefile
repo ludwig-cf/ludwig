@@ -32,6 +32,16 @@
 
 include ../Makefile.mk
 
+default:
+	$(MAKE) -s verbose
+
+verbose:
+	@echo \
+	"\t Testing options include:\n" \
+	"\t   make compile-run-serial\n" \
+	"\t   make compile-run-mpi\n"  \
+	"\t See the Makefile for further model-specific targets\n"
+
 # Compilation only
 
 compile-mpi-base:
