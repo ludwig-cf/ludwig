@@ -20,6 +20,7 @@
 #include "propagation.h"
 #include "lb_model_s.h"
 #include "targetDP.h"
+#include "timer.h"
 
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
@@ -358,9 +359,11 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstToTarget(tc_cv,cv, NVEL*3*sizeof(int)); 
   //end constant setup
 
-
+  TIMER_start(TIMER_PROP_KERNEL);
   lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb);
-  
+  targetSynchronize();
+  TIMER_stop(TIMER_PROP_KERNEL);
+
   /* swap f and fprime */
   double* tmpptr1;
   double* tmpptr2;

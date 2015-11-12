@@ -1082,9 +1082,11 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   }
 
 	
+  TIMER_start(TIMER_COLLIDE_KERNEL);
   lb_collision_binary_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
 
   targetSynchronize();
+  TIMER_stop(TIMER_COLLIDE_KERNEL);
 
 
 #ifndef KEEPHYDROONTARGET

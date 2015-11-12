@@ -846,7 +846,7 @@ void ludwig_run(const char * inputfile) {
       copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
       halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
 #else
-      lb_halo(ludwig->lb->tcopy);
+      lb_halo(ludwig->lb);
 #endif 
 
 
@@ -1765,7 +1765,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     /* Removal or replacement of fluid requires a lattice halo update */
 
     TIMER_start(TIMER_HALO_LATTICE);
-    lb_halo(ludwig->lb->tcopy);
+    lb_halo(ludwig->lb);
     TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_FREE1);

@@ -30,7 +30,7 @@
 #include "lb_model_s.h"
 #include "targetDP.h"
 #include "io_harness.h"
-
+#include "control.h"
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 
@@ -641,6 +641,12 @@ int lb_halo_via_struct(lb_t * lb) {
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
+  double* fptr; /*pointer to the distribution*/
+  if (get_step()) /* we are in the timestep, so use target copy */
+    fptr=lb->tcopy->f;
+  else
+    fptr=lb->f;  /* we are not in a timestep, use host copy */
+  
   /* The x-direction (YZ plane) */
 
   if (cart_size(X) == 1) {
@@ -650,27 +656,27 @@ int lb_halo_via_struct(lb_t * lb) {
 
 	  ihalo = lb->ndist*NVEL*coords_index(0, jc, kc);
 	  ireal = lb->ndist*NVEL*coords_index(nlocal[X], jc, kc);
-	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
+	  memcpy(fptr + ihalo, fptr + ireal, lb->ndist*NVEL*sizeof(double));
 
 	  ihalo = lb->ndist*NVEL*coords_index(nlocal[X]+1, jc, kc);
 	  ireal = lb->ndist*NVEL*coords_index(1, jc, kc);
-	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
+	  memcpy(fptr + ihalo, fptr + ireal, lb->ndist*NVEL*sizeof(double));
 	}
       }
     }
   }
   else {
     ihalo = lb->ndist*NVEL*coords_index(nlocal[X] + 1, 1 - nhalo, 1 - nhalo);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_yz[BACKWARD],
+    MPI_Irecv(fptr + ihalo, 1, lb->plane_yz[BACKWARD],
 	      cart_neighb(FORWARD,X), tagb, comm, &request[0]);
     ihalo = lb->ndist*NVEL*coords_index(0, 1 - nhalo, 1 - nhalo);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_yz[FORWARD],
+    MPI_Irecv(fptr + ihalo, 1, lb->plane_yz[FORWARD],
 	      cart_neighb(BACKWARD,X), tagf, comm, &request[1]);
     ireal = lb->ndist*NVEL*coords_index(1, 1-nhalo, 1-nhalo);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_yz[BACKWARD],
+    MPI_Issend(fptr + ireal, 1, lb->plane_yz[BACKWARD],
 	       cart_neighb(BACKWARD,X), tagb, comm, &request[2]);
     ireal = lb->ndist*NVEL*coords_index(nlocal[X], 1-nhalo, 1-nhalo);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_yz[FORWARD],
+    MPI_Issend(fptr + ireal, 1, lb->plane_yz[FORWARD],
 	       cart_neighb(FORWARD,X), tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
   }
@@ -684,27 +690,27 @@ int lb_halo_via_struct(lb_t * lb) {
 
 	  ihalo = lb->ndist*NVEL*coords_index(ic, 0, kc);
 	  ireal = lb->ndist*NVEL*coords_index(ic, nlocal[Y], kc);
-	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
+	  memcpy(fptr + ihalo, fptr + ireal, lb->ndist*NVEL*sizeof(double));
 
 	  ihalo = lb->ndist*NVEL*coords_index(ic, nlocal[Y] + 1, kc);
 	  ireal = lb->ndist*NVEL*coords_index(ic, 1, kc);
-	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
+	  memcpy(fptr + ihalo, fptr + ireal, lb->ndist*NVEL*sizeof(double));
 	}
       }
     }
   }
   else {
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, nlocal[Y] + 1, 1 - nhalo);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[BACKWARD],
+    MPI_Irecv(fptr + ihalo, 1, lb->plane_xz[BACKWARD],
 	      cart_neighb(FORWARD,Y), tagb, comm, &request[0]);
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 0, 1 - nhalo);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xz[FORWARD], cart_neighb(BACKWARD,Y),
+    MPI_Irecv(fptr + ihalo, 1, lb->plane_xz[FORWARD], cart_neighb(BACKWARD,Y),
 	      tagf, comm, &request[1]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1, 1 - nhalo);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xz[BACKWARD], cart_neighb(BACKWARD,Y),
+    MPI_Issend(fptr + ireal, 1, lb->plane_xz[BACKWARD], cart_neighb(BACKWARD,Y),
 	       tagb, comm, &request[2]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, nlocal[Y], 1 - nhalo);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xz[FORWARD], cart_neighb(FORWARD,Y),
+    MPI_Issend(fptr + ireal, 1, lb->plane_xz[FORWARD], cart_neighb(FORWARD,Y),
 	       tagf, comm, &request[3]);
     MPI_Waitall(4, request, status);
   }
@@ -718,11 +724,11 @@ int lb_halo_via_struct(lb_t * lb) {
 
 	  ihalo = lb->ndist*NVEL*coords_index(ic, jc, 0);
 	  ireal = lb->ndist*NVEL*coords_index(ic, jc, nlocal[Z]);
-	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
+	  memcpy(fptr + ihalo, fptr + ireal, lb->ndist*NVEL*sizeof(double));
 
 	  ihalo = lb->ndist*NVEL*coords_index(ic, jc, nlocal[Z] + 1);
 	  ireal = lb->ndist*NVEL*coords_index(ic, jc, 1);
-	  memcpy(lb->f + ihalo, lb->f + ireal, lb->ndist*NVEL*sizeof(double));
+	  memcpy(fptr + ihalo, fptr + ireal, lb->ndist*NVEL*sizeof(double));
 	}
       }
     }
@@ -730,16 +736,16 @@ int lb_halo_via_struct(lb_t * lb) {
   else {
 
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z] + 1);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[BACKWARD], cart_neighb(FORWARD,Z),
+    MPI_Irecv(fptr + ihalo, 1, lb->plane_xy[BACKWARD], cart_neighb(FORWARD,Z),
 	      tagb, comm, &request[0]);
     ihalo = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, 0);
-    MPI_Irecv(lb->f + ihalo, 1, lb->plane_xy[FORWARD], cart_neighb(BACKWARD,Z),
+    MPI_Irecv(fptr + ihalo, 1, lb->plane_xy[FORWARD], cart_neighb(BACKWARD,Z),
 	      tagf, comm, &request[1]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, 1);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xy[BACKWARD], cart_neighb(BACKWARD,Z),
+    MPI_Issend(fptr + ireal, 1, lb->plane_xy[BACKWARD], cart_neighb(BACKWARD,Z),
 	       tagb, comm, &request[2]);
     ireal = lb->ndist*NVEL*coords_index(1 - nhalo, 1 - nhalo, nlocal[Z]);
-    MPI_Issend(lb->f + ireal, 1, lb->plane_xy[FORWARD], cart_neighb(FORWARD,Z),
+    MPI_Issend(fptr + ireal, 1, lb->plane_xy[FORWARD], cart_neighb(FORWARD,Z),
 	       tagf, comm, &request[3]);  
     MPI_Waitall(4, request, status);
   }
