@@ -4,8 +4,29 @@
 #
 #  Drives compilation and running of tests for various options.
 #
+#  Quick start:
+#    make compile-run-serial     for serial tests (default D3Q19)
+#    make compile-run-mpi        for parallel
+#
+#  The basic controls are of the form:
+#
+#    make compile-serial-d3q15
+#    make compile-mpi-d3q15
+#
+#    make run-serial-unit-d3q15
+#    make run-mpi-regr-d3q15
+#
+#  and so on. Various consolidated targets are available for convenience.
+#
 #  Compilation and executaion are separated to allow use on
 #  platforms where cross compilation is required.
+#
+#  Edinburgh Soft Matter and Statistical Physics Group and
+#  Edinburgh Parallel Computing Centre
+#
+#  (c) 2015 The University of Edinburgh
+#  Contributing authors:
+#  Kevin Stratford (kevinAepcc.ed.ac.uk)
 #
 ##############################################################################
 
@@ -37,25 +58,22 @@ compile-mpi-%:
 # Unit tests:        run whatever has been compiled
 # Regression tests:  run whatever ... against the requested directory
 #                                     which ignores any postfix "r"
+#
+# That means there should be no further targets ending in "r".
 
 run-serial-unit:
-	echo "run serial unit"
+	$(MAKE) -C unit run-serial
 run-serial-regr-%r:
 	$(MAKE) -s run-serial-regr-$*
 run-serial-regr-%:
-	echo "Run serial regr/$*"
+	$(MAKE) -C regression/$* serial
 
-run-serial-%r:
-	$(MAKE) -s run-serial-$*
-run-serial-%:
-	$(MAKE) -s run-serial-unit
-	$(MAKE) -s run-serial-regr-$*
-
-run-mpi-%r:
-	$(MAKE) -s run-mpi-$*
-run-mpi-%:
+run-mpi-unit:
 	$(MAKE) -C unit run-mpi
-	$(MAKE) -C regression/$* run-mpi-$*
+run-mpi-regr-%r:
+	$(MAKE) -s run-mpi-regr-$*
+run-mpi-regr-%:
+	$(MAKE) -C regression/$* mpix08
 
 clean:
 	$(MAKE) -C ../targetDP clean
@@ -63,3 +81,26 @@ clean:
 	$(MAKE) -C ../src      clean
 	$(MAKE) -C unit clean
 
+test-clean:
+	$(MAKE) -C regression
+
+
+# Compile and run tests (targets of convenience...)
+
+compile-run-serial-%:
+	make clean
+	make compile-serial-$*
+	make run-serial-unit
+	make run-serial-regr-$*
+
+compile-run-mpi-%:
+	make clean
+	make compile-mpi-$*
+	make run-mpi-unit
+	make run-mpi-regr-$*
+
+compile-run-serial:
+	make compile-run-serial-d3q19
+
+compile-run-mpi:
+	make compile-run-mpi-d3q19
