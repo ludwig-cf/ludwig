@@ -26,8 +26,8 @@ include ../../Makefile.mk
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-MPIRUN = "${MPILAUNCHCMD} ${MPILAUNCH-NP}"
 NPROCS = 8
+MPIRUN = ${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH} $(NPROCS)
 
 SRC     = ../../src
 INCLUDE = -I$(SRC) -I../../targetDP
@@ -104,12 +104,11 @@ mpi-test:
 	$(MAKE) base-me "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
 
 
-run-serial: serial
-	./a.out
+run-serial:
+	$(LAUNCH_SERIAL_CMD) ./a.out
 
-run-mpi: mpi
-	$(MPIRUN) $(NPROCS) ./a.out
-
+run-mpi:
+	$(MPIRUN) ./a.out
 
 clean:
 	$(RM) core *.o a.out

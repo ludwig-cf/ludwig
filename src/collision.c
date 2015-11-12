@@ -1409,7 +1409,7 @@ static int collision_fluctuations(noise_t * noise, int index,
   assert(noise);
   assert(NNOISE_MAX >= NDIM*(NDIM+1)/2);
   assert(NNOISE_MAX >= (NVEL - NHYDRO));
-  assert(NDIM == 3);
+  assert(NDIM == 2 || NDIM == 3);
 
   /* Set symetric random stress matrix (elements with unit variance);
    * in practice always 3d (= 6 elements) required */
@@ -1430,7 +1430,7 @@ static int collision_fluctuations(noise_t * noise, int index,
 
   /* Compute the trace and the traceless part */
 
-  tr = r3_*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
+  tr = (1.0/NDIM)*(shat[X][X] + shat[Y][Y] + (NDIM - 2.0)*shat[Z][Z]);
   shat[X][X] -= tr;
   shat[Y][Y] -= tr;
   shat[Z][Z] -= tr;

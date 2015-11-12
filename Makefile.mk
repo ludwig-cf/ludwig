@@ -7,11 +7,12 @@
 #
 ##############################################################################
 
-CC=cc
-MPICC=cc
-CFLAGS=-O0 -g
+CC=gcc
+MPICC=mpicc
+CFLAGS=-O2
 
 OPTS=-DNP_D3Q6
 
-MPILAUNCHCMD=aprun
-MPILAUNCH-NP=-n
+LAUNCH_SERIAL_CMD=
+LAUNCH_MPI_CMD=mpirun
+LAUNCH_MPI_NP_SWITCH=-np
