@@ -167,7 +167,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   
   int p, m;                        /* velocity index */
   int ia, ib;                      /* indices ("alphabeta") */
-  int iv;                          /* SIMD loop counter */
+  int iv=0;                          /* SIMD loop counter */
   double mode[NVEL*VVL];           /* Modes; hydrodynamic + ghost */
   double rho[VVL], rrho[VVL];      /* Density, reciprocal density */
   double u[3*VVL];                 /* Velocity */
@@ -1495,7 +1495,7 @@ static int collision_fluctuations(noise_t * noise, int index,
 __target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int baseIndex)
 {
 
-  int m, il;
+  int m, il=0;
 
    for (m = 0; m < NVEL; m++) { 
        __targetILP__(il) mode[m*VVL+il] = 0.0; 
@@ -1909,7 +1909,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
 
   double ftmp[VVL];
 
-  int il;
+  int il=0;
 
   
   __targetILP__(il) ftmp[il]=0.;
@@ -2355,7 +2355,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
 __target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex)
 {
 
-  int m, il;
+  int m, il=0;
 
    for (m = 0; m < NVEL; m++) { 
        __targetILP__(il) mode[m*VVL+il] = 0.0; 
@@ -2768,7 +2768,7 @@ __target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex)
 
   double ftmp[VVL];
 
-  int il;
+  int il=0;
 
   
   __targetILP__(il) ftmp[il]=0.;
