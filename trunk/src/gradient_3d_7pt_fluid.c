@@ -43,7 +43,7 @@
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "targetDP.h"
-
+#include "timer.h"
 
 __targetHost__ static void gradient_3d_7pt_fluid_operator(const int nop, 
 					   const double * field,
@@ -284,9 +284,11 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
   #endif
 
+  TIMER_start(TIMER_PHI_GRAD_KERNEL);	       
   gradient_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
     (nop,t_field,t_grad,t_del2);
   targetSynchronize();
+  TIMER_stop(TIMER_PHI_GRAD_KERNEL);	       
    
 
   //for GPU version, we leave the results on the target for the next kernel.
