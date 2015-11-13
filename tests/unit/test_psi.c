@@ -361,12 +361,12 @@ static int do_test_bjerrum(void) {
   psi_unit_charge(psi, &tmp);
   assert(fabs(tmp - eref) < DBL_EPSILON);
 
-  lbref = eref*eref / (4.0*M_PI*epsilonref*ktref);
+  lbref = eref*eref / (4.0*pi_*epsilonref*ktref);
   psi_bjerrum_length(psi, &tmp);
   assert(fabs(lbref - tmp) < DBL_EPSILON);
 
   /* For unit ionic strength */
-  ldebyeref = 1.0 / sqrt(8.0*M_PI*lbref);
+  ldebyeref = 1.0 / sqrt(8.0*pi_*lbref);
   psi_debye_length(psi, 1.0, &tmp);
   assert(fabs(ldebyeref - tmp) < DBL_EPSILON);
 

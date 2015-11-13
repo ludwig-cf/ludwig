@@ -232,7 +232,7 @@ int ewald_real_space_energy(ewald_t * ewald, const double u1[3],
 			    const double u2[3], const double r12[3],
 			    double * ereal) {
   double r;
-  double erfc(double); /* ANSI C does not define erfc() in math.h. */
+  /*double erfc(double);  ANSI C does not define erfc() in math.h. */
 
   assert(ewald);
   assert(ereal);
@@ -488,7 +488,7 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
   double r12[3];
 
-  double erfc(double);
+  /* double erfc(double);*/
 
   TIMER_start(TIMER_EWALD_REAL_SPACE);
 

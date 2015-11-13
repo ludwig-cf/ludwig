@@ -392,7 +392,7 @@ static int fepsilon_sinz(int index, double * epsilon) {
 
   coords_index_to_ijk(index, coords);
 
-  *epsilon = REF_PERMEATIVITY*sin(M_PI*(1.0*coords[Z] - 0.5)/L(Z));
+  *epsilon = REF_PERMEATIVITY*sin(pi_*(1.0*coords[Z] - 0.5)/L(Z));
 
   return 0;
 }
