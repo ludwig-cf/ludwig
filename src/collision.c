@@ -40,6 +40,7 @@
 #include "timer.h"
 
 
+
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
 static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
                                          /* Default is M10 */
@@ -136,6 +137,8 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   return 0;
 }
+
+
 
 /*****************************************************************************
  *
@@ -250,16 +253,16 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   
   /* Compute all the modes */
 
-  if(tc_nmodes_==19)
+#ifdef _D3Q19_
     d3q19matmultchunk(mode, fchunk, baseIndex);
-  else{
+#else
     for (m = 0; m < tc_nmodes_; m++) {
       __targetILP__(iv) mode[m*VVL+iv] = 0.0;
       for (p = 0; p < NVEL; p++) {
 	__targetILP__(iv) mode[m*VVL+iv] += fchunk[p*VVL+iv]*tc_ma_[m][p];
       }
     }
-  }
+#endif
 
   /* For convenience, write out the physical modes, that is,
    * rho, NDIM components of velocity, independent components
@@ -388,8 +391,11 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   }
     
   /* Ghost modes are relaxed toward zero equilibrium. */
-    
-  for (m = NHYDRO; m < tc_nmodes_; m++) {
+#ifdef _D3Q19_    
+  for (m = NHYDRO; m < NVEL; m++) {  
+#else
+  for (m = NHYDRO; m < tc_nmodes_; m++) {  
+#endif
     __targetILP__(iv) {
       mode[m*VVL+iv] = mode[m*VVL+iv] - tc_rtau_[m]*(mode[m*VVL+iv] - 0.0)
 	             + ghat[m*VVL+iv];
@@ -398,10 +404,9 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 
 
   /* Project post-collision modes back onto the distribution */
-
-  if(tc_nmodes_==19)
+#ifdef _D3Q19_
     d3q19matmult2chunk(mode, fchunk, baseIndex);
-  else{
+#else
     for (p = 0; p < NVEL; p++) {
       double ftmp[VVL];
       __targetILP__(iv) ftmp[iv] = 0.0;
@@ -410,7 +415,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
       }
       __targetILP__(iv) fchunk[p*VVL+iv] = ftmp[iv];
     }
-  }
+#endif
 
 
   /* Write SIMD chunks back to main arrays. */
@@ -678,10 +683,9 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   }
 
 
-
-  if(tc_nmodes_==19)
+#ifdef _D3Q19_
     d3q19matmult(mode, t_f, baseIndex);
-  else{
+#else
     /* Compute all the modes */
     for (m = 0; m < tc_nmodes_; m++) {
       __targetILP__(iv) mode[m*VVL+iv] = 0.0;
@@ -692,7 +696,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
       }
       
     }
-  }
+#endif
 
   /* For convenience, write out the physical modes. */
   
@@ -844,20 +848,24 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   
   /* Ghost modes are relaxed toward zero equilibrium. */
-  
-  for (m = NHYDRO; m < tc_nmodes_; m++) {
-         __targetILP__(iv)  mode[m*VVL+iv] = mode[m*VVL+iv] 
-	   - tc_rtau_[m]*(mode[m*VVL+iv] - 0.0) + ghat[m*VVL+iv];
-  }
+ 
+#ifdef _D3Q19_
+  for (m = NHYDRO; m < NVEL; m++) 
+#else
+  for (m = NHYDRO; m < tc_nmodes_; m++) 
+#endif
+    { 
+      __targetILP__(iv)  mode[m*VVL+iv] = mode[m*VVL+iv] 
+	- tc_rtau_[m]*(mode[m*VVL+iv] - 0.0) + ghat[m*VVL+iv];
+    }
   
   
   
   /* Project post-collision modes back onto the distribution */
-  
-  if(tc_nmodes_==19)
+
+#ifdef _D3Q19_  
   d3q19matmult2(mode, t_f, baseIndex);
-  else{
-    
+#else    
     for (p = 0; p < NVEL; p++) {
       double ftmp[VVL];
       __targetILP__(iv) ftmp[iv]=0.;
@@ -868,7 +876,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 				     NVEL, baseIndex+iv, 
 				     0, p) ] = ftmp[iv];
     }
-  }
+#endif
   
   
 
