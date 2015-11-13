@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "util.h"
 #include "coords.h"
 #include "coords_field.h"
 #include "test_coords_field.h"
@@ -194,7 +195,7 @@ int test_ref_double1(int ic, int jc, int kc, int n, void * ref) {
 
   assert(d);
 
-  *d = cos(2.0*M_PI*ic/L(X)) + cos(2.0*M_PI*jc/L(Y)) + cos(2.0*M_PI*kc/L(Z));
+  *d = cos(2.0*pi_*ic/L(X)) + cos(2.0*pi_*jc/L(Y)) + cos(2.0*pi_*kc/L(Z));
   *d += 1.0*n;
 
   return 0;
