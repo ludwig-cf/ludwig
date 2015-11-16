@@ -52,9 +52,9 @@ endif
 
 ifdef USEGPU
 TARGETCC = $(NVCC) -arch=sm_35
-TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc
+TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc -Xptxas -v -I/opt/intel/impi/5.0.3.048/intel64/include
 OPTS += -DCUDAHOST #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET
-LIBS += -L../targetDP -ltargetDP_CUDA  
+LIBS += -L../targetDP -ltargetDP_CUDA  -L /opt/intel/impi/5.0.3.048/intel64/lib -lmpi
 else
 TARGETCC = $(CC)
 TARGETOPTS = $(OPTS)
@@ -67,7 +67,7 @@ endif
 ifeq ($(MYHOSTNAME),mbpag3)
 
 ifdef USEGPU
-TARGETCC = $(NVCC) -arch=sm_30
+TARGETCC = $(NVCC) -arch=sm_30 -Xptxas -v
 #LIBS+=-L/usr/local/Cellar/open-mpi/1.8.1/lib/ -lmpi
 else
 OPTS+=#-fopenmp #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET  #

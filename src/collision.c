@@ -69,6 +69,8 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex);
 __target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex);
 __target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex);
 
+__target__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL],double jphi[3*VVL],double* t_f,int baseIndex);
+
 
 
 typedef double (*mu_fntype)(const int, const int, const double*, const double*);
@@ -620,12 +622,13 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
 #define NDIST 2 /* for binary collision */
 
+
 __target__ void lb_collision_binary_site( double* __restrict__ t_f, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
-			      double* __restrict__ t_phi,
-			      double* __restrict__ t_gradphi,
-			      double* __restrict__ t_delsqphi,
+			      const double* __restrict__ t_phi,
+			      const double* __restrict__ t_gradphi,
+			      const double* __restrict__ t_delsqphi,
 			      pth_fntype* t_chemical_stress,
 			      mu_fntype* t_chemical_potential, 
 			       noise_t * noise, int noise_on,
@@ -671,10 +674,6 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       __targetILP__(iv) shat[i][j*VVL+iv] = 0.0;
-      /*target_simd_loop(iv) {
-	ibv = simd_index(ib, iv);
-	shat[ia][ibv] = 0.0;
-	}*/
     }
   }
 
@@ -796,7 +795,6 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
       
 	s[i][j*VVL+iv] += (2.0-tc_rtau_shear)*(u[i*VVL+iv]*force[j*VVL+iv] 
 					   + force[i*VVL+iv]*u[j*VVL+iv]);
-	shat[i][j*VVL+iv] = 0.0;
       }
     }
   }
@@ -883,7 +881,9 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
   /* Now, the order parameter distribution */
   __targetILP__(iv)
-    phi[iv]=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 0) ];
+    //    phi[iv]=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 0) ];
+
+    phi[iv]=t_phi[baseIndex+iv];
   
   
   __targetILP__(iv){
@@ -895,8 +895,8 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   }
 
   for (p = 1; p < NVEL; p++) {
-    __targetILP__(iv) phi[iv] += 
-      t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ];
+    //__targetILP__(iv) phi[iv] += 
+    //t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ];
     for (i = 0; i < 3; i++) {
       __targetILP__(iv) jphi[i*VVL+iv] += 
 	t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ]
@@ -920,6 +920,10 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* Now update the distribution */
   
+#ifdef _D3Q19_
+  updateDistD3Q19(jdotc,sphidotq,sphi,phi,jphi, t_f, baseIndex);
+#else
+
   for (p = 0; p < NVEL; p++) {
     
     int dp0 = (p == 0);
@@ -945,6 +949,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
       + phi[iv]*dp0;
     
   }
+#endif
   
   return;
   
@@ -953,19 +958,19 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 __targetEntry__ void lb_collision_binary_lattice( lb_t* __restrict__ t_lb, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
-			      double* __restrict__ t_phi,
-			      double* __restrict__ t_gradphi,
-			      double* __restrict__ t_delsqphi,
+			      const double* __restrict__ t_phi,
+			      const double* __restrict__ t_gradphi,
+			      const double* __restrict__ t_delsqphi,
 			      pth_fntype* t_chemical_stress,
 			      mu_fntype* t_chemical_potential, 
-					       noise_t * noise, int noise_on, int nSites){
+					       noise_t * noise, int noise_on){
 
  
   int baseIndex = 0;
 
   /* partition binary collision kernel across the lattice on the target */
 
-  __targetTLP__(baseIndex,nSites){
+  __targetTLP__(baseIndex,tc_nSites){
     lb_collision_binary_site(t_lb->f, t_force, t_velocity, t_phi, t_gradphi,
 			     t_delsqphi, t_chemical_stress,
 			     t_chemical_potential,noise,noise_on,baseIndex);
@@ -1091,7 +1096,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
 	
   TIMER_start(TIMER_COLLIDE_KERNEL);
-  lb_collision_binary_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
+  lb_collision_binary_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on);
 
   targetSynchronize();
   TIMER_stop(TIMER_COLLIDE_KERNEL);
@@ -3217,3 +3222,275 @@ __target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex)
 
 
 }
+
+
+ __target__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL], double jphi[3*VVL], double* t_f, int baseIndex){
+
+  int i, j, p, iv=0;
+
+__targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 0) ] 
+        = tc_wv[0]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4)+ phi[iv];
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][1*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][0*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 1) ] 
+        = tc_wv[1]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][2*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][0*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 2) ] 
+        = tc_wv[2]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 3) ] 
+        = tc_wv[3]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][2*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][0*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 4) ] 
+        = tc_wv[4]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][1*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][0*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 5) ] 
+        = tc_wv[5]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][2*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][1*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 6) ] 
+        = tc_wv[6]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 7) ] 
+        = tc_wv[7]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][2*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][1*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 8) ] 
+        = tc_wv[8]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 9) ] 
+        = tc_wv[9]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 10) ] 
+        = tc_wv[10]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][2*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][1*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 11) ] 
+        = tc_wv[11]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 12) ] 
+        = tc_wv[12]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][2*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][1*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 13) ] 
+        = tc_wv[13]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][1*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][0*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 14) ] 
+        = tc_wv[14]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][2*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][0*VVL+iv]*-1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 15) ] 
+        = tc_wv[15]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 16) ] 
+        = tc_wv[16]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][2*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*-3.3333333333333331e-01;
+  __targetILP__(iv)  jdotc[iv] += jphi[2*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][0*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*6.6666666666666663e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 17) ] 
+        = tc_wv[17]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+
+  __targetILP__(iv)  jdotc[iv] += jphi[0*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][0*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[0][1*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  jdotc[iv] += jphi[1*VVL+iv]*-1;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][0*VVL+iv]*1.0000000000000000e+00;
+  __targetILP__(iv)  sphidotq[iv] += sphi[1][1*VVL+iv]*6.6666666666666663e-01;
+  __targetILP__(iv)  sphidotq[iv] += sphi[2][2*VVL+iv]*-3.3333333333333331e-01;
+
+ __targetILP__(iv) 
+     t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 18) ] 
+        = tc_wv[18]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4);
+
+
+  return;
+
+ }
