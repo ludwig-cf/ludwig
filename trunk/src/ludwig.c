@@ -189,7 +189,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_info(ludwig->param);
 
 #ifdef PETSC
-    psi_petsc_init(ludwig->psi, ludwig->epsilon);
+  if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->epsilon);
 #endif
 
   lb_run_time(ludwig->lb);
@@ -1076,7 +1076,7 @@ void ludwig_run(const char * inputfile) {
 
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 #ifdef PETSC
-  psi_petsc_finish();
+  if (ludwig->psi) psi_petsc_finish();
 #endif
 
 #ifdef LB_DATA_SOA
