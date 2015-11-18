@@ -17,7 +17,9 @@
 #include <stdio.h>
 
 
+#include "pe.h" 
 #include "model.h" 
+#include "lb_model_s.h" 
 #include <time.h>
 #include <sys/time.h>
 #include "targetDP.h"
@@ -325,7 +327,7 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 	    for (m = 0; m < nfields2; m++) {
 	      edgeLOW_d[nfields2*npackedsite*packedp+m*npackedsite
 	      	  +packed_index]
-	      	= f_d[nfields2*nsite*p+nsite*m+index];
+	      	= f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)];
 	    }
 	    packedp++;
 	  }
@@ -352,7 +354,7 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 	      
 	      edgeHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
 			   +packed_index]
-		= f_d[nfields2*nsite*p+nsite*m+index];
+		= f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)];
 	      
 	    }
 	    packedp++;
@@ -491,7 +493,7 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 	  {
 	    for (m = 0; m < nfields2; m++) {
 	  
-	      f_d[nfields2*nsite*p+nsite*m+index] =
+	      f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)] =
 	      haloLOW_d[nfields2*npackedsite*packedp+m*npackedsite
 	      	   +packed_index];
 
@@ -520,7 +522,7 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 	    for (m = 0; m < nfields2; m++) {
 	      
 
-	       f_d[nfields2*nsite*p+nsite*m+index] =
+	       f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)] =
 	      haloHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
 	       +packed_index];
 	      

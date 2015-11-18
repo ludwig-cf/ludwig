@@ -42,9 +42,16 @@
 #define LB_ADDR_MODEL_R(nsite, ndist, nvel, index, n, p) \
   ((p)*ndist*nsite + (n)*nsite + (index))
 
+/* Distribution 'array of structure of short arrays' */
+#define SAN VVL
+#define LB_ADDR_MODEL_AoSoA(nsite, ndist, nvel, index, n, p) \
+  (((index)/SAN)*(ndist)*(nvel)*SAN + (n)*(nvel)*SAN + (p)*SAN + ((index)-((index)/SAN)*SAN))
+
+
 #ifdef LB_DATA_SOA
 #define LB_DATA_MODEL MODEL_R
 #define LB_ADDR LB_ADDR_MODEL_R
+//#define LB_ADDR LB_ADDR_MODEL_AoSoA
 #else
 #define LB_DATA_MODEL MODEL
 #define LB_ADDR LB_ADDR_MODEL
