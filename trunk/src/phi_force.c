@@ -467,7 +467,11 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
+  int nhalo, nSites;
   coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(coords_nhalo() >= 2);
 
   chemical_stress = fe_chemical_stress_function();
@@ -489,7 +493,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[3*index + ia] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxw[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
@@ -498,7 +502,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*index + ia] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxe[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
@@ -507,7 +511,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[3*index + ia] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  fluxy[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 	
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
@@ -516,7 +520,7 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 	chemical_stress(index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[3*index + ia] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  fluxz[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 
 	/* Next site */
@@ -544,6 +548,11 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
   int index, indexj, indexk;
   double f[3];
 
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(hydro);
   assert(fluxe);
   assert(fluxw);
@@ -562,9 +571,9 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
 	indexk = le_site_index(ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
-		     + fluxy[3*index + ia] - fluxy[3*indexj + ia]
-		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
+	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
+		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
+		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
 	}
 
 	hydro_f_local_add(hydro, index, f);
@@ -602,6 +611,11 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
   double fsum[3];
   double rv;
 
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(hydro);
   assert(fluxe);
   assert(fluxw);
@@ -623,9 +637,9 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
 	indexk = le_site_index(ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
-		     + fluxy[3*index + ia] - fluxy[3*indexj + ia]
-		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
+	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
+		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
+		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
 	  fsum_local[ia] += f[ia];
 	}
       }
@@ -649,9 +663,9 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
 	indexk = le_site_index(ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[3*index + ia] - fluxw[3*index + ia]
-		     + fluxy[3*index + ia] - fluxy[3*indexj + ia]
-		     + fluxz[3*index + ia] - fluxz[3*indexk + ia]);
+	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
+		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
+		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
 	  f[ia] -= fsum[ia];
 	}
 	hydro_f_local_add(hydro, index, f);
@@ -685,6 +699,10 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
   double ra;         /* Normaliser */
 
   MPI_Comm comm;
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
 
   coords_nlocal(nlocal);
   nplane = le_get_nplane_local();
@@ -709,7 +727,7 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
         index1 = le_site_index(ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fbar[3*ip + ia] += - fluxe[3*index + ia] + fluxw[3*index1 + ia];
+	  fbar[3*ip + ia] += - fluxe[VECADR(nSites,3,index,ia)] + fluxw[VECADR(nSites,3,index1,ia)];
 	}
       }
     }
@@ -730,8 +748,8 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
         index1 = le_site_index(ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*index  + ia] += ra*fcor[3*ip + ia];
-	  fluxw[3*index1 + ia] -= ra*fcor[3*ip + ia];
+	  fluxe[VECADR(nSites,3,index,ia)] += ra*fcor[VECADR(nSites,3,ip,ia)];
+	  fluxw[VECADR(nSites,3,index1,ia)] -= ra*fcor[VECADR(nSites,3,ip,ia)];
 	}
       }
     }
@@ -764,7 +782,11 @@ static int phi_force_wallx(double * fluxe, double * fluxw) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
+  int nhalo, nSites;
   coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -781,7 +803,7 @@ static int phi_force_wallx(double * fluxe, double * fluxw) {
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[3*index + ia] = pth0[ia][X];
+	  fluxw[VECADR(nSites,3,index,ia)] = pth0[ia][X];
 	  fw[ia] -= pth0[ia][X];
 	}
       }
@@ -797,7 +819,7 @@ static int phi_force_wallx(double * fluxe, double * fluxw) {
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[3*index + ia] = pth0[ia][X];
+	  fluxe[VECADR(nSites,3,index,ia)] = pth0[ia][X];
 	  fw[ia] += pth0[ia][X];
 	}
       }
@@ -830,7 +852,11 @@ static int phi_force_wally(double * fluxy) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
+  int nhalo, nSites;
   coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -850,7 +876,7 @@ static int phi_force_wally(double * fluxy) {
 	index1 = le_site_index(ic, jc-1, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[3*index1 + ia] = pth0[ia][Y];
+	  fluxy[VECADR(nSites,3,index1,ia)] = pth0[ia][Y];
 	  fy[ia] -= pth0[ia][Y];
 	}
       }
@@ -866,7 +892,7 @@ static int phi_force_wally(double * fluxy) {
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[3*index + ia] = pth0[ia][Y];
+	  fluxy[VECADR(nSites,3,index,ia)] = pth0[ia][Y];
 	  fy[ia] += pth0[ia][Y];
 	}
       }
@@ -899,7 +925,11 @@ static int phi_force_wallz(double * fluxz) {
 
   void (* chemical_stress)(const int index, double s[3][3]);
 
+  int nhalo, nSites;
   coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
 
   chemical_stress = fe_chemical_stress_function();
 
@@ -919,7 +949,7 @@ static int phi_force_wallz(double * fluxz) {
 	index1 = le_site_index(ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[3*index1 + ia] = pth0[ia][Z];
+	  fluxz[VECADR(nSites,3,index1,ia)] = pth0[ia][Z];
 	  fz[ia] -= pth0[ia][Z];
 	}
       }
@@ -935,7 +965,7 @@ static int phi_force_wallz(double * fluxz) {
 	chemical_stress(index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[3*index + ia] = pth0[ia][Z];
+	  fluxz[VECADR(nSites,3,index,ia)] = pth0[ia][Z];
 	  fz[ia] += pth0[ia][Z];
 	}
       }

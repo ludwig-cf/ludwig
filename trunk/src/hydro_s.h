@@ -15,30 +15,11 @@
 #include "hydro.h"
 
 /* Data storage */
-/* A preprocessor macro is provided to switch between two options
- * for the arrangement of grid-based field objects in memory:
- *
- * The following macros allow the objects to be addressed in
- * terms of:
- *
- *  lattice spatial index = coords_index(ic, jc, kc) 0 ... nsite
- *  field index ifield                               0 ... nfield
- */
-
-
-/* array of structures */
-#define ADDR_HYDRO(nsite, nfield, index, ifield)	\
-  ((nfield)*(index) + (ifield))
-
-
-/* structure of arrays */
-#define ADDR_HYDRO_R(nsite, nfield, index, ifield)	\
-  ((nsite)*(ifield) + (index))
 
 #ifdef LB_DATA_SOA
-#define HYADR ADDR_HYDRO_R
+#define HYADR ADDR_VECSITE_R
 #else
-#define HYADR ADDR_HYDRO
+#define HYADR ADDR_VECSITE
 #endif
 
 

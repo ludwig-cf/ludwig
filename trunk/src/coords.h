@@ -67,6 +67,34 @@ extern __targetConst__ int tc_nhalo;
 extern __targetConst__ int tc_nextra;
 
 
+/* memory addressing macro for 1d vectors on each site */
+/* (e.g. force, velocity, ...)*/
+/* A preprocessor macro is provided to switch between two options
+ * for the arrangement of grid-based field objects in memory:
+ *
+ * The following macros allow the objects to be addressed in
+ * terms of:
+ *
+ *  lattice spatial index = coords_index(ic, jc, kc) 0 ... nsite
+ *  field index ifield                               0 ... nfield
+ */
+
+/* array of structures */
+#define ADDR_VECSITE(nsite, nfield, index, ifield)	\
+  ((nfield)*(index) + (ifield))
+
+
+/* structure of arrays */
+#define ADDR_VECSITE_R(nsite, nfield, index, ifield)	\
+  ((nsite)*(ifield) + (index))
+
+#ifdef LB_DATA_SOA
+#define VECADR ADDR_VECSITE_R
+#else
+#define VECADR ADDR_VECSITE
+#endif
+
+
 /* memory addressing macro for pth. This maybe should be moved elsewhere */
 
 /* array of structures */

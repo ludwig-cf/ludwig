@@ -315,18 +315,24 @@ int field_grad_scalar_delsq_delsq(field_grad_t * obj, int index, double * dd) {
 
 int field_grad_scalar_dab(field_grad_t * obj, int index, double dab[3][3]) {
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(obj);
   assert(obj->nf == 1);
 
-  dab[X][X] = obj->d_ab[NSYMM*index + XX];
-  dab[X][Y] = obj->d_ab[NSYMM*index + XY];
-  dab[X][Z] = obj->d_ab[NSYMM*index + XZ];
+  dab[X][X] = obj->d_ab[FLDADR(nSites,NSYMM,index,XX)];
+  dab[X][Y] = obj->d_ab[FLDADR(nSites,NSYMM,index,XY)];
+  dab[X][Z] = obj->d_ab[FLDADR(nSites,NSYMM,index,XZ)];
   dab[Y][X] = dab[X][Y];
-  dab[Y][Y] = obj->d_ab[NSYMM*index + YY];
-  dab[Y][Z] = obj->d_ab[NSYMM*index + YZ];
+  dab[Y][Y] = obj->d_ab[FLDADR(nSites,NSYMM,index,YY)];
+  dab[Y][Z] = obj->d_ab[FLDADR(nSites,NSYMM,index,YZ)];
   dab[Z][X] = dab[X][Z];
   dab[Z][Y] = dab[Y][Z];
-  dab[Z][Z] = obj->d_ab[NSYMM*index + ZZ];
+  dab[Z][Z] = obj->d_ab[FLDADR(nSites,NSYMM,index,ZZ)];
 
   return 0;
 }
@@ -389,17 +395,25 @@ int field_grad_tensor_grad(field_grad_t * obj, int index, double dq[3][3][3]) {
 
   int ia;
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
+
   assert(obj);
   assert(obj->nf == NQAB);
   assert(dq);
 
+
   for (ia = 0; ia < NVECTOR; ia++) {
-    dq[ia][X][X] = obj->grad[NVECTOR*(NQAB*index + XX) + ia];
-    dq[ia][X][Y] = obj->grad[NVECTOR*(NQAB*index + XY) + ia];
-    dq[ia][X][Z] = obj->grad[NVECTOR*(NQAB*index + XZ) + ia];
+    dq[ia][X][X] = obj->grad[FGRDADR(nSites,NQAB,index,XX,ia)];
+    dq[ia][X][Y] = obj->grad[FGRDADR(nSites,NQAB,index,XY,ia)];
+    dq[ia][X][Z] = obj->grad[FGRDADR(nSites,NQAB,index,XZ,ia)];
     dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = obj->grad[NVECTOR*(NQAB*index + YY) + ia];
-    dq[ia][Y][Z] = obj->grad[NVECTOR*(NQAB*index + YZ) + ia];
+    dq[ia][Y][Y] = obj->grad[FGRDADR(nSites,NQAB,index,YY,ia)];
+    dq[ia][Y][Z] = obj->grad[FGRDADR(nSites,NQAB,index,YZ,ia)];
     dq[ia][Z][X] = dq[ia][X][Z];
     dq[ia][Z][Y] = dq[ia][Y][Z];
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
@@ -418,16 +432,22 @@ int field_grad_tensor_grad(field_grad_t * obj, int index, double dq[3][3][3]) {
 
 int field_grad_tensor_delsq(field_grad_t * obj, int index, double dsq[3][3]) {
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(obj);
   assert(obj->nf == NQAB);
   assert(dsq);
 
-  dsq[X][X] = obj->delsq[NQAB*index + XX];
-  dsq[X][Y] = obj->delsq[NQAB*index + XY];
-  dsq[X][Z] = obj->delsq[NQAB*index + XZ];
+  dsq[X][X] = obj->delsq[FLDADR(nSites,NQAB,index,XX)];
+  dsq[X][Y] = obj->delsq[FLDADR(nSites,NQAB,index,XY)];
+  dsq[X][Z] = obj->delsq[FLDADR(nSites,NQAB,index,XZ)];
   dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = obj->delsq[NQAB*index + YY];
-  dsq[Y][Z] = obj->delsq[NQAB*index + YZ];
+  dsq[Y][Y] = obj->delsq[FLDADR(nSites,NQAB,index,YY)];
+  dsq[Y][Z] = obj->delsq[FLDADR(nSites,NQAB,index,YZ)];
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];

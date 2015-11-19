@@ -587,17 +587,23 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
 
 int field_tensor(field_t * obj, int index, double q[3][3]) {
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(obj);
   assert(obj->nf == NQAB);
   assert(obj->data);
   assert(q);
 
-  q[X][X] = obj->data[NQAB*index + XX];
-  q[X][Y] = obj->data[NQAB*index + XY];
-  q[X][Z] = obj->data[NQAB*index + XZ];
+  q[X][X] = obj->data[FLDADR(nSites,NQAB,index,XX)];
+  q[X][Y] = obj->data[FLDADR(nSites,NQAB,index,XY)];
+  q[X][Z] = obj->data[FLDADR(nSites,NQAB,index,XZ)];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = obj->data[NQAB*index + YY];
-  q[Y][Z] = obj->data[NQAB*index + YZ];
+  q[Y][Y] = obj->data[FLDADR(nSites,NQAB,index,YY)];
+  q[Y][Z] = obj->data[FLDADR(nSites,NQAB,index,YZ)];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
@@ -616,16 +622,22 @@ int field_tensor(field_t * obj, int index, double q[3][3]) {
 
 int field_tensor_set(field_t * obj, int index, double q[3][3]) {
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(obj);
   assert(obj->nf == NQAB);
   assert(obj->data);
   assert(q);
 
-  obj->data[NQAB*index + XX] = q[X][X];
-  obj->data[NQAB*index + XY] = q[X][Y];
-  obj->data[NQAB*index + XZ] = q[X][Z];
-  obj->data[NQAB*index + YY] = q[Y][Y];
-  obj->data[NQAB*index + YZ] = q[Y][Z];
+  obj->data[FLDADR(nSites,NQAB,index,XX)] = q[X][X];
+  obj->data[FLDADR(nSites,NQAB,index,XY)] = q[X][Y];
+  obj->data[FLDADR(nSites,NQAB,index,XZ)] = q[X][Z];
+  obj->data[FLDADR(nSites,NQAB,index,YY)] = q[Y][Y];
+  obj->data[FLDADR(nSites,NQAB,index,YZ)] = q[Y][Z];
 
   return 0;
 }
