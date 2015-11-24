@@ -109,6 +109,7 @@ distribution_poiseuille_umax  0.0_0.0_0.01
 #                                 surfactant
 #                                 polar_active
 #                                 lc_blue_phase
+#                                 lc_droplet
 #                                 fe_electro
 #                                 fe_electro_symmetric
 #
@@ -286,6 +287,16 @@ lc_anchoring_strength 0.0
 lc_anchoring_strength_2 0.0
 lc_anchoring_strength_colloid 0.0
 lc_anchoring_strength_wall 0.0
+
+###############################################################################
+#
+#  liquid crystal droplet
+#
+###############################################################################
+
+lc_droplet_gamma 2.586
+lc_droplet_delta 0.25
+lc_droplet_W -0.03
 
 ###############################################################################
 #
