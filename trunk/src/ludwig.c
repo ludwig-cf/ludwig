@@ -409,31 +409,6 @@ void ludwig_run(const char * inputfile) {
   double* tmpptr;
 
 
-#ifdef LB_DATA_SOA 
-/*transpose q to SoA (since we are still using AoS in the setup)*/
-  if (ludwig->q)
-  {
-
-
-    copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
-
-      
-    field_t* t_field = NULL;
-    t_field = ludwig->q->tcopy;
-    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));
-    targetAoS2SoA((double*) tmpptr,nSites,ludwig->q->nf);
-
-    copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
-
-
-
-  }
-
-#endif
-
- 
-
-
   /* Report initial statistics */
 
   pe_subdirectory(subdirectory);
