@@ -259,7 +259,7 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  if (get_step()==1)
+  //  if (get_step()==1)
     phi_force_stress_allocate();
 
   phi_force_stress_compute(q, q_grad);
@@ -297,7 +297,7 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 #endif
 
-  if (is_last_step())
+  //  if (is_last_step())
     phi_force_stress_free();
 
   return 0;
