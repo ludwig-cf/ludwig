@@ -1740,8 +1740,18 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     /* Removal or replacement of fluid requires a lattice halo update */
 
     TIMER_start(TIMER_HALO_LATTICE);
+
+    #ifdef LB_DATA_SOA
+    /* perform SoA halo exchange */
+    double* tmpptr;
+    copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
+    halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
+    #else
     lb_halo(ludwig->lb);
-    TIMER_stop(TIMER_HALO_LATTICE);
+    #endif
+ 
+
+   TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_FREE1);
     if (iconserve && ludwig->phi) field_halo(ludwig->phi);

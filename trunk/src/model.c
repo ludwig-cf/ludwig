@@ -1310,6 +1310,13 @@ int lb_halo_via_copy(lb_t * lb) {
 
   coords_nlocal(nlocal);
 
+  double* fptr; /*pointer to the distribution*/
+  if (get_step()) /* we are in the timestep, so use target copy */
+    fptr=lb->tcopy->f;
+  else
+    fptr=lb->f;  /* we are not in a timestep, use host copy */
+
+
   /* The x-direction (YZ plane) */
 
   nsend = NVEL*lb->ndist*nlocal[Y]*nlocal[Z];
@@ -1330,11 +1337,11 @@ int lb_halo_via_copy(lb_t * lb) {
 
 	  index = coords_index(nlocal[X], jc, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  sendforw[count] = lb->f[indexreal];
+	  sendforw[count] = fptr[indexreal];
 
 	  index = coords_index(1, jc, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  sendback[count] = lb->f[indexreal];
+	  sendback[count] = fptr[indexreal];
 	  ++count;
 	}
       }
@@ -1369,11 +1376,11 @@ int lb_halo_via_copy(lb_t * lb) {
 
 	  index = coords_index(0, jc, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  lb->f[indexhalo] = recvback[count];
+	  fptr[indexhalo] = recvback[count];
 
 	  index = coords_index(nlocal[X] + 1, jc, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  lb->f[indexhalo] = recvforw[count];
+	  fptr[indexhalo] = recvforw[count];
 	  ++count;
 	}
       }
@@ -1413,11 +1420,11 @@ int lb_halo_via_copy(lb_t * lb) {
 
 	  index = coords_index(ic, nlocal[Y], kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  sendforw[count] = lb->f[indexreal];
+	  sendforw[count] = fptr[indexreal];
 
 	  index = coords_index(ic, 1, kc);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  sendback[count] = lb->f[indexreal];
+	  sendback[count] = fptr[indexreal];
 	  ++count;
 	}
       }
@@ -1453,11 +1460,11 @@ int lb_halo_via_copy(lb_t * lb) {
 
 	  index = coords_index(ic, 0, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  lb->f[indexhalo] = recvback[count];
+	  fptr[indexhalo] = recvback[count];
 
 	  index = coords_index(ic, nlocal[Y] + 1, kc);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  lb->f[indexhalo] = recvforw[count];
+	  fptr[indexhalo] = recvforw[count];
 	  ++count;
 	}
       }
@@ -1495,11 +1502,11 @@ int lb_halo_via_copy(lb_t * lb) {
 
 	  index = coords_index(ic, jc, nlocal[Z]);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  sendforw[count] = lb->f[indexreal];
+	  sendforw[count] = fptr[indexreal];
 
 	  index = coords_index(ic, jc, 1);
 	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  sendback[count] = lb->f[indexreal];
+	  sendback[count] = fptr[indexreal];
 	  ++count;
 	}
       }
@@ -1534,11 +1541,11 @@ int lb_halo_via_copy(lb_t * lb) {
 
 	  index = coords_index(ic, jc, 0);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  lb->f[indexhalo] = recvback[count];
+	  fptr[indexhalo] = recvback[count];
 
 	  index = coords_index(ic, jc, nlocal[Z] + 1);
 	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
-	  lb->f[indexhalo] = recvforw[count];
+	  fptr[indexhalo] = recvforw[count];
 	  ++count;
 	}
       }
