@@ -49,8 +49,8 @@ INC = -I. -I ../targetDP
 
 ifdef HAVE_PETSC
 OPTS += -DPETSC
-INC  += PETSC_INC
-LIBS += PETSC_LIB
+INC  += $(PETSC_INC)
+LIBS += $(PETSC_LIB)
 endif 
 
 ###############################################################################
