@@ -29,9 +29,6 @@
 #include "blue_phase.h"
 #include "timer.h"
 
-//static double * pth_;
-//static double * t_pth_;
-
 double * pth_;
 double * t_pth_;
 
@@ -52,7 +49,7 @@ __targetTLP__(index,tc_nSites){
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
     
-    // if not a halo site:
+    /*  if not a halo site:*/
     if (coords[0] >= (tc_nhalo-tc_nextra) && 
 	coords[1] >= (tc_nhalo-tc_nextra) && 
 	coords[2] >= (tc_nhalo-tc_nextra) &&
@@ -61,17 +58,20 @@ __targetTLP__(index,tc_nSites){
 	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
       
 
-      if (isBPCS){ //we are using blue_phase_chemical_stress which is ported to targetDP
-	//for the time being we are explicitly calling blue_phase_chemical_stress
-	//ultimitely this will be generic when the other options are ported to targetDP
-	int calledFromPhiForceStress=1;
-	blue_phase_chemical_stress_dev(index, t_q, t_q_grad, t_pth, pcon, 
-				   calledFromPhiForceStress);
+      if (isBPCS){
+	/* we are using blue_phase_chemical_stress which is ported to targetDP
+	 * for the time being we are explicitly calling
+	 * blue_phase_chemical_stress
+	 * ultimitely this will be generic when the other options are
+	 * ported to targetDP */
+	 int calledFromPhiForceStress=1;
+	 blue_phase_chemical_stress_dev(index, t_q, t_q_grad, t_pth, pcon, 
+					calledFromPhiForceStress);
       }
       else{
 
-#ifndef CUDA //only blue_phase_chemical_stress support for CUDA. 
-	//This is trapped earlier.
+#ifndef __NVCC__
+	/* only blue_phase_chemical_stress support for CUDA. */
 	chemical_stress(index, pth_local);
 	phi_force_stress_set(index, pth_local); 
 #endif
@@ -102,24 +102,23 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
 
   chemical_stress = fe_chemical_stress_function();
 
-  //start targetDP
   
-  // initialise kernel constants on both host and target
+  /* initialise kernel constants on both host and target */
   blue_phase_set_kernel_constants();
 
-  // get a pointer to target copy of stucture containing kernel constants
   void* pcon=NULL;
   blue_phase_target_constant_ptr(&pcon);
 
-  field_t* t_q = NULL; //target copy of tensor order parameter field structure
-  field_grad_t* t_q_grad = NULL;  //target copy of grad field structure
+  field_t* t_q = NULL;
+  field_grad_t* t_q_grad = NULL;
 
 
-  //isBPCS is 1 if we are using  blue_phase_chemical_stress 
-  //(which is ported to targetDP), 0 otherwise
+  /* isBPCS is 1 if we are using  blue_phase_chemical_stress 
+   * (which is ported to targetDP), 0 otherwise*/
+
   int isBPCS=((void*)chemical_stress)==((void*) blue_phase_chemical_stress);
 
-#ifdef CUDA
+#ifdef __NVCC__
     if (!isBPCS) fatal("only Blue Phase chemical stress is currently supported for CUDA");
 #endif
 
@@ -131,7 +130,7 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
     double* tmpptr;
 
     #ifndef KEEPFIELDONTARGET    
-    //populate target copies from host 
+
     copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
     copyToTarget(tmpptr,q->data,q->nf*nSites*sizeof(double));
     
@@ -145,7 +144,7 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
   }
 
 
-  //copy lattice shape constants to target ahead of execution
+  /* copy lattice shape constants to target ahead of execution*/
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int));
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
@@ -153,24 +152,21 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
   
   TIMER_start(TIMER_CHEMICAL_STRESS_KERNEL);
 
-  //execute lattice-based operation on target
+  /* execute lattice-based operation on target*/
   chemical_stress_lattice __targetLaunch__(nSites) (pth_local, t_q, t_q_grad, t_pth_, pcon, chemical_stress, isBPCS);
   targetSynchronize();
 
   TIMER_stop(TIMER_CHEMICAL_STRESS_KERNEL);
   
 
-  if (isBPCS){ //we are using blue_phase_chemical_stress which is ported to targetDP
-    //copy result from target back to host
+  if (isBPCS){
+    /* we are using blue_phase_chemical_stress which is ported to targetDP
+       copy result from target back to host */
 
-   #ifndef KEEPFIELDONTARGET    
+#ifndef KEEPFIELDONTARGET    
     copyFromTarget(pth_,t_pth_,3*3*nSites*sizeof(double));      
-   #endif
+#endif
   }
-  
-  //end targetDP
-  
-
 
   return;
 }

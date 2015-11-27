@@ -1,17 +1,36 @@
 ##############################################################################
 #
-#  Makefile.mk
+#  lunix-nvcc-default.mk
 #
-#  Define here platform-dependent information.
-#  There are no targets.
+#  If CUDA is required use nvcc and
+#    - CFLAGS should contain appropriate flags to allow nvcc to identify
+#      C source files with extension .c
+#
+#  If MPI is required in addition to CUDA
+#     - MPICC should be set the nvcc
+#     - The true location of relevant MPI header files and libraries needs
+#       to be identified and set in MPI_INCL and MPI_LIBS respectively
+#     - nvcc will be also used at link stage.
+#
+#  Running the tests requires
+#     - an MPI launch command (often "mpirun")
+#     - the identity of the switch which controls the number of MPI tasks
+#     - a serial "launch command" (can be useful for platforms requiring
+#       cross-compiled)
+#       e.g., "aprun -n 1" on Cray systems. Leave blank if none is required.
 #
 ##############################################################################
 
 CC=nvcc
-MPICC=dont
-CFLAGS=-O2 -arch=sm_35 -x cu -DCUDA -DCUDAHOST -dc
+MPICC=nvcc
+CFLAGS=-O2 -arch=sm_35 -x cu -dc
 
-OPTS=-DNP_D3Q6
+AR = ar
+ARFLAGS = -cru
+LDFLAGS=-arch=sm_35
+
+MPI_INCL=-I/opt/intel/impi/5.0.3.048/intel64/include
+MPI_LIBS=-L/opt/intel/impi/5.0.3.048/intel64/lib -lmpi
 
 LAUNCH_SERIAL_CMD=
 LAUNCH_MPI_CMD=mpirun

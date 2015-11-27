@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -79,7 +79,7 @@ __targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double 
 
 //__targetEntry__ void   blue_phase_chemical_stress(const int, double sth[3][3], ...);
 __targetHost__ void blue_phase_chemical_stress(int index,  double sth[3][3]);
-__targetHost__ __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
+ __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
 __targetHost__ void   blue_phase_redshift_set(const double redshift);
 __targetHost__ void   blue_phase_electric_field_set(const double e[3]);
 __targetHost__ void   blue_phase_dielectric_anisotropy_set(double e);

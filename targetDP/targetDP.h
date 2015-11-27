@@ -24,7 +24,7 @@
 #ifndef _TDP_INCLUDED
 #define _TDP_INCLUDED
 
-#ifdef CUDA /* CUDA */
+#ifdef __NVCC__ /* CUDA */
 
 /*
  * Settings 

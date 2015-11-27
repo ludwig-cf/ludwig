@@ -16,7 +16,7 @@
 #  Edinburgh Parallel Computing Centre
 #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010-2014 The University of Edinburgh
+#  (c) 2010-2015 The University of Edinburgh
 #
 ###############################################################################
 
@@ -35,7 +35,7 @@ INCLUDE = -I$(SRC) -I../../targetDP
 MPI_STUB_INCLUDE = -I../../mpi_s
 MPI_STUB_LIB = -L../../mpi_s -lmpi
 
-CLIBS  = -lm -L../../targetDP -ltargetDP_C
+CLIBS  = -lm -L../../targetDP -ltarget
 MPILIB = -lmpi
 
 #------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ TESTOBJECTS = ${TESTSOURCES:.c=.o}
 #------------------------------------------------------------------------------
 
 base-me: $(TESTOBJECTS) tests.o test_coords_field.o
-	$(CC) $(LB) -L$(SRC) $(TESTOBJECTS) tests.o test_coords_field.o \
+	$(CC) $(LDFLAGS) -L$(SRC) $(TESTOBJECTS) tests.o test_coords_field.o \
         -L$(SRC) -lludwig $(CLIBS)
 
 serial:

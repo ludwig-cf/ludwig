@@ -343,7 +343,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 
       if (includeSite[iv]) {
 
-#ifndef CUDA
+#ifndef __NVCC__
 	/* this is needed to allow GPU compilation at the moment */
 	collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);
 #endif
@@ -540,7 +540,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   noise_present(noise, NOISE_RHO, &noise_on);
 
-#ifdef CUDA 
+#ifdef __NVCC__ 
   if (noise_on) {
     printf("Error: noise_on is not yet supported for CUDA\n");
     exit(1);
@@ -714,12 +714,6 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
     s[Z][Z*VVL+iv] = mode[9*VVL+iv];
   }
 
-  /*
-  target_simd_loop(iv) {
-    s[X][simd_index(X,iv)] = mode[simd_index(4,iv)]
-  }
-  */
-
   /* Compute the local velocity, taking account of any body force */
   
   __targetILP__(iv) rrho[iv] 
@@ -802,10 +796,8 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
   if (noise_on) {
     
-#ifdef CUDA 
-    
+#ifdef __NVCC__
     printf("Error: noise_on is not yet supported for CUDA\n");
-    
 #else      
     
      __targetILP__(iv){
@@ -1078,14 +1070,12 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   get_chemical_stress_target(t_chemical_stress);
 
   if (noise_on) {
-    
-#ifdef CUDA 
+#ifdef __NVCC__ 
     fatal("Error: noise_on is not yet supported for CUDA\n");
-#endif      
-
+#endif
   }
 
-	
+
   lb_collision_binary_lattice __targetLaunch__(nSites) ( lb->t_f, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on,nSites);
 
   targetSynchronize();

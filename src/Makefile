@@ -35,11 +35,8 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 OPTS = -DNP_D3Q6
-LIBS = -L../targetDP -ltargetDP_C -lm
-
+LIBS = -L../targetDP -ltarget -lm
 INC = -I. -I ../targetDP
-AR = ar
-ARFLAGS = -cru
 
 ###############################################################################
 #
@@ -183,7 +180,7 @@ mpi-d3q19r:
 
 mpi-model:
 	$(MAKE) libmpi
-	$(MAKE) code "CC=$(MPICC)"
+	$(MAKE) code "CC=$(MPICC)" "INC=$(INC) $(MPI_INCL)" "LIBS=$(LIBS) $(MPI_LIBS)"
 
 # Libraries
 
@@ -193,7 +190,7 @@ libar:	$(OBJS) $(LBOBJ)
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
-	$(MAKE) libar "CC=$(MPICC)"
+	$(MAKE) libar "CC=$(MPICC)" "INC=$(INC) $(MPI_INCL)"
 
 # To obtain the latest svn version information, we use svnversion.
 # If svnversion is not available there may be an ugly error message,
@@ -201,7 +198,7 @@ libmpi:
 # quoted, e.g. "1191", hence the apostrophe armageddon.
 
 svn.o:
-	$(CC) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
+	$(CC) $(CFLAGS) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
 
 ###############################################################################
 #

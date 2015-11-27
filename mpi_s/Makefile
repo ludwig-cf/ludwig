@@ -12,10 +12,10 @@
 #
 ###############################################################################
 
+include ../Makefile.mk
+
 LIBNAME = libmpi.a
 
-CC = gcc -Wall
-CXX = 
 INCLUDE = -I.
 AR = ar -cru
 

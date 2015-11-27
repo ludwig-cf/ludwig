@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -59,8 +59,8 @@ static int fed_write(FILE *, int index, void * self);
 static int fed_write_ascii(FILE *, int index, void * self);
 
 /* structure containing constants used in blue phase kernels */ 
-bluePhaseKernelConstants_t bpc; //host copy
-__targetConst__ bluePhaseKernelConstants_t tbpc; //target copy
+bluePhaseKernelConstants_t bpc;                   /* host copy */
+__targetConst__ bluePhaseKernelConstants_t tbpc;  /* target copy */
 
 
 /*****************************************************************************
@@ -322,13 +322,13 @@ __targetHost__ double blue_phase_free_energy_density(const int index) {
   double e;
   double q[3][3];
   double dq[3][3][3];
+  void * pcon = NULL;
 
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
 
-  //we are doing this on the host
+  /* we are doing this on the host */
   blue_phase_set_kernel_constants();
-  void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
 
   e = blue_phase_compute_fed(q, dq, (bluePhaseKernelConstants_t*) pcon);
@@ -562,6 +562,7 @@ __targetHost__ void blue_phase_molecular_field(int index, double h[3][3]) {
   double q[3][3];
   double dq[3][3][3];
   double dsq[3][3];
+  void* pcon = NULL;
 
   assert(kappa0_ == kappa1_);
 
@@ -569,9 +570,7 @@ __targetHost__ void blue_phase_molecular_field(int index, double h[3][3]) {
   field_grad_tensor_grad(grad_q_, index, dq);
   field_grad_tensor_delsq(grad_q_, index, dsq);
 
-  //we are doing this on the host
   blue_phase_set_kernel_constants();
-  void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
  
   blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
@@ -682,16 +681,14 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   double h[3][3];
   double dq[3][3][3];
   double dsq[3][3];
+  void * pcon = NULL;
 
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
   field_grad_tensor_delsq(grad_q_, index, dsq);
 
-  //we are doing this on the host
   blue_phase_set_kernel_constants();
-  void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
-
 
   blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
   blue_phase_compute_stress(q, dq, h, sth, (bluePhaseKernelConstants_t*) pcon);
@@ -702,14 +699,15 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
 
 
-//targetDP development version
-__targetHost__ __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, int calledFromPhiForceStress) { 
+/*targetDP development version */
+
+ __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, int calledFromPhiForceStress) { 
 
 
-  if (calledFromPhiForceStress!=1){
-  #ifndef CUDA
-  fatal("Error: in porting to targetDP we are assuming that blue_phase_chemical_stress is only called from phi_force_stress\n");
-  #endif  
+  if (calledFromPhiForceStress != 1) {
+#ifndef __NVCC__
+    fatal("Error: in porting to targetDP we are assuming that blue_phase_chemical_stress is only called from phi_force_stress\n");
+#endif  
   }
  
   double q[3][3];
@@ -1292,16 +1290,19 @@ __targetHost__ int fed_io_info(io_info_t ** info) {
 
 __targetHost__ int fed_io_info_set(io_info_t * info) {
 
+  const char * name = "Free energy density";
+  const char * stubname = "fed";
+
   assert(info);
   io_info_fed = info;
 
-  io_info_set_name(io_info_fed, "Free energy density");
+  io_info_set_name(io_info_fed, name);
   io_info_write_set(io_info_fed, IO_FORMAT_BINARY, fed_write);
   io_info_write_set(io_info_fed, IO_FORMAT_ASCII, fed_write_ascii);
   io_info_set_bytesize(io_info_fed, 3*sizeof(double));
  
   io_info_format_out_set(io_info_fed, IO_FORMAT_BINARY);
-  io_info_metadata_filestub_set(io_info_fed, "fed");
+  io_info_metadata_filestub_set(io_info_fed, stubname);
 
   return 0;
 }
@@ -1321,18 +1322,15 @@ static int fed_write_ascii(FILE * fp, int index, void * self) {
 
   double q[3][3], dq[3][3][3];
   double fed[3];
+  void * pcon = NULL;
 
   assert(fp);
 
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
 
-
-  //we are doing this on the host
   blue_phase_set_kernel_constants();
-  void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
-
 
   fed[0] = blue_phase_compute_fed(q, dq, (bluePhaseKernelConstants_t*) pcon);
   fed[1] = blue_phase_compute_bulk_fed(q);
@@ -1342,7 +1340,6 @@ static int fed_write_ascii(FILE * fp, int index, void * self) {
   if (n < 0) fatal("fprintf(fed) failed at index %d\n", index);
 
   return n;
-
 }
 
 /*****************************************************************************
@@ -1359,16 +1356,14 @@ static int fed_write(FILE * fp, int index, void * self) {
 
   double q[3][3], dq[3][3][3];
   double fed[3];
+  void * pcon = NULL;
 
   assert(fp);
 
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
 
-
-  //we are doing this on the host
   blue_phase_set_kernel_constants();
-  void* pcon=NULL;
   blue_phase_host_constant_ptr(&pcon);
 
   fed[0] = blue_phase_compute_fed(q, dq, (bluePhaseKernelConstants_t*) pcon);
@@ -1379,8 +1374,6 @@ static int fed_write(FILE * fp, int index, void * self) {
   if (n != 3) fatal("fwrite(fed) failed at index %d\n", index);
 
   return n;
-
-
 }
 
 /*****************************************************************************
