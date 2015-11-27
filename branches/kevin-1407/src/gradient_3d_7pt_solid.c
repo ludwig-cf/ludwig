@@ -114,17 +114,19 @@ __targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
  *
  *****************************************************************************/
 
-__targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__targetHost__ int gradient_3d_7pt_solid_d2(const int nop,
+					    const double * field,
+					    double * t_field,
+					    double * grad,
+					    double * t_grad,
+					    double * delsq, double * t_delsq) {
   int nextra;
-
-  
-#ifdef CUDA
+  int nsites;
+#ifdef __NVCC__
   int method = 3;
 #else
   int method = 1;
 #endif
-
 
   assert(nop == NQAB);
   assert(map_);
@@ -135,32 +137,25 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  int Nall[3];
-  int nlocal[3];
-  coords_nlocal(nlocal);
-  int nhalo=coords_nhalo();
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
   if (method == 1) gradient_6x5_svd(field, grad, delsq, nextra);
   if (method == 2) gradient_6x6_gauss_elim(field, grad, delsq, nextra);
   if (method == 3){
-
+    nsites = coords_nsites();
     #ifndef KEEPFIELDONTARGET
-    copyToTarget(t_field,field,nop*nSites*sizeof(double)); 
+    copyToTarget(t_field,field,nop*nsites*sizeof(double));
     #endif
 
     gradient_6x6_gpu(t_field, t_grad, t_delsq, nextra);
     
     #ifndef KEEPFIELDONTARGET
-    copyFromTarget(grad,t_grad,nop*3*nSites*sizeof(double)); 
-    copyFromTarget(delsq,t_delsq,nop*nSites*sizeof(double)); 
+    copyFromTarget(grad,t_grad,nop*3*nsites*sizeof(double)); 
+    copyFromTarget(delsq,t_delsq,nop*nsites*sizeof(double)); 
     #endif
-
   }
+
   return 0;
 }
+
 /*****************************************************************************
  *
  *  gradient_6x5_svd
@@ -1234,7 +1229,6 @@ static int gradient_6x6_gpu(const double * field, double * grad,
 
   //map_t* t_map = map_->tcopy; //target copy of map structure
 
-  double* tmpptr;
   //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
   //copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
 

@@ -129,39 +129,21 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-//TODO put this in _s header
-struct colloids_info_s {
-  int nhalo;                  /* Halo extent in cell list */
-  int ntotal;                 /* Total, physical, number of colloids */
-  int nallocated;             /* Number colloid_t allocated */
-  int ncell[3];               /* Number of cells (excluding  2*halo) */
-  int str[3];                 /* Strides for cell list */
-  int nsites;                 /* Total number of map sites */
-  int ncells;                 /* Total number of cells */
-  double rho0;                /* Mean density (usually matches fluid) */
-  double drmax;               /* Maximum movement per time step */
-
-  colloid_t ** clist;         /* Cell list pointers */
-  colloid_t ** map_old;       /* Map (previous time step) pointers */
-  colloid_t ** map_new;       /* Map (current time step) pointers */
-  colloid_t * headall;        /* All colloid list (incl. halo) head */
-  colloid_t * headlocal;      /* Local list (excl. halo) head */
-};
-
-
 int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int ntotal;
-  
   int nhalo;
   int nlocal[3];
+  int Nall[3];
+  int nSites;
+  int nFields;
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  int Nall[3];
+
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-  int nFields=NVEL*lb->ndist;
+  nSites=Nall[X]*Nall[Y]*Nall[Z];
+  nFields=NVEL*lb->ndist;
 
   assert(bbl);
   assert(lb);
@@ -173,12 +155,12 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
 #ifdef KEEPFONTARGET
-#ifdef CUDAHOST
-  //update colloid-affected lattice sites from target, including neighbours
-    copyFromTargetPointerMap3D(lb->f,lb->t_f,
-			       Nall,nFields,1,(void**) cinfo->map_new); 
+#ifdef __NVCC__
+  /* update colloid-affected lattice sites from target, including neighbours */
+  copyFromTargetPointerMap3D(lb->f, lb->t_f,
+			     Nall, nFields, 1, (void **) cinfo->map_new); 
 #else
-	    copyFromTarget(lb->f,lb->t_f,nSites*nFields*sizeof(double)); 
+  copyFromTarget(lb->f, lb->t_f, nSites*nFields*sizeof(double)); 
 #endif
 #endif
 
@@ -198,13 +180,13 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 
 #ifdef KEEPFONTARGET
-#ifdef CUDAHOST
-  //update target with colloid-affected lattice sites, not including neighbours 
-    copyToTargetPointerMap3D(lb->t_f,lb->f,
-			     Nall,nFields,0,(void**) cinfo->map_new); 
+#ifdef __NVCC__
+  /* update target with colloid-affected lattice sites,
+     not including neighbours */ 
+  copyToTargetPointerMap3D(lb->t_f, lb->f,
+			   Nall, nFields, 0, (void **) cinfo->map_new); 
 #else
-	    copyToTarget(lb->t_f,lb->f,nSites*nFields*sizeof(double)); 
-
+  copyToTarget(lb->t_f, lb->f, nSites*nFields*sizeof(double)); 
 #endif
 #endif
 
