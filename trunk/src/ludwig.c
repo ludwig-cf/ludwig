@@ -841,7 +841,7 @@ void ludwig_run(const char * inputfile) {
       else {
 	TIMER_start(TIMER_BBL);
 	wall_set_wall_velocity(ludwig->lb->tcopy);
-	bounce_back_on_links(ludwig->bbl, ludwig->lb->tcopy, ludwig->collinfo);
+	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->collinfo);
 	wall_bounce_back(ludwig->lb->tcopy, ludwig->map);
 	TIMER_stop(TIMER_BBL);
       }
