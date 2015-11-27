@@ -1688,7 +1688,10 @@ int map_init_rt(map_t ** pmap) {
   map_init_io_info(map, grid, form_in, form_out);
   map_io_info(map, &iohandler);
 
-  if (is_porous_media) io_read_data(iohandler, filename, map);
+  if (is_porous_media) {
+    io_read_data(iohandler, filename, map);
+    map_pm_set(map, 1);
+  }
   map_halo(map);
 
   *pmap = map;
