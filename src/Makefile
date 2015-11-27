@@ -17,12 +17,8 @@
 #
 # Compiler flags.
 #
-# You will need to set the appropriate compiler flags for your
-# local compiler/system of choice.
-#
-# CC        C compiler (make serial)
-# MPICC     C compiler (make mpi)
-# LDFLAGS   Link time flags [-lm included by default]
+# Appropriate flags for your system should be set in the parent
+# directory in the file config.mk. See ../Makefile.mk
 #
 # Edinburgh Soft Matter and Statistical Physics Group and
 # Edinburgh Parallel Computing Centre
@@ -38,7 +34,7 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-OPTS = -DNP_D3Q6 #-DNDEBUG 
+OPTS = -DNP_D3Q6
 LIBS = -L../targetDP -ltargetDP_C -lm
 
 INC = -I. -I ../targetDP
@@ -47,18 +43,17 @@ ARFLAGS = -cru
 
 ###############################################################################
 #
-# Compilation with PETSc is enabled by setting 'PETSC = some_non_empty_value'.
+# Compilation with PETSc is enabled by setting HAVE_PETSC.
 #
 # For explicit libraries and includes the correct paths are obtained with
 # 'make getincludedirs' and 'make getlinklibs' in $PETSC_DIR.
 #
 ###############################################################################
 
-PETSC = 
-ifdef PETSC
+ifdef HAVE_PETSC
 OPTS += -DPETSC
-INC  +=
-LIBS +=
+INC  += PETSC_INC
+LIBS += PETSC_LIB
 endif 
 
 ###############################################################################
