@@ -167,6 +167,7 @@ int psi_rt_init_rho(psi_t * obj, map_t * map) {
 
   int n;
   char value[BUFSIZ];
+  char filestub[FILENAME_MAX];
 
   double rho_el;              /* Charge density */
   double delta_el;            /* Relative difference in charge densities */
@@ -174,6 +175,8 @@ int psi_rt_init_rho(psi_t * obj, map_t * map) {
   double ld;                  /* Debye length */
   double ld2;                 /* Second Debye length for dielectric contrast */
   double eps1, eps2;          /* Dielectric permittivities */
+
+  io_info_t * iohandler;
 
   /* Initial charge densities */
 
@@ -235,6 +238,13 @@ int psi_rt_init_rho(psi_t * obj, map_t * map) {
     }
 
     psi_init_uniform(obj, rho_el);
+  }
+
+  if (strcmp(value, "from_file") == 0) {
+    sprintf(filestub, "%s", "psi-00000000");
+    info("Initialisation requested from file %s.001-001\n", filestub);
+    psi_io_info(obj, &iohandler);
+    io_read_data(iohandler, filestub, obj);
   }
 
   return 0;

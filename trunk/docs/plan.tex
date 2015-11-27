@@ -4,11 +4,16 @@
 %
 %  Software Configuration Management Plan
 %
+%  See, for example, Annex D of IEEE 828-2012
+%  IEEE Standard for Configuration Management in Systems and Software
+%  Engineering
+%
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  Kevin Stratford (kevin@epcc.ed.ac.uk)
 %  (c) 2011-2015 The University of Edinburgh
+%  Contributing authors:
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -31,22 +36,16 @@ of the section.
 
 \subsubsection{Scope}
 
-The \textit{Ludwig} code is designed to study the hydrodynamic properties
-of simple and complex fluids based around the numerical solution of the
-Navier-Stokes equations. Complex fluids are dealt with via a free-energy
-based finite difference approach, which couples explicitly to the
-hydrodynamics.
+The \textit{Ludwig} code is designed to study simple and complex fluids
+based around the numerical solution of the Navier-Stokes equations.
 Components of \textit{Ludwig} include the main program, unit and
 regression tests, and a small number support libraries, and a small
 number of utility programs used to prepare
 input and post-process output. The Plan is limited to these
 software components.
 
-\textit{Ludwig} is specifically designed for parallel computers and
-relies on the Message Passing Interface \cite{mpi-standard}. The
-code will also run in serial, and is independent of
-the platform it is run on. The Plan is not concerned with
-hardware or system management activities.
+% IEEE section to be completed
+\subsubsection{Relationship to organisation and other projects}
 
 \textit{Ludwig} is an on-going research project, and relies mainly
 on funding for the United Kingdom Engineering and Physical Sciences Research
@@ -58,48 +57,21 @@ development.
 
 \subsubsection{References}
 
-This section is based on the IEEE standard for Software Configuration
-Management Plans IEEE 828-2012 \cite{ieee-828-2012}, and follows the format
+This section is based on the IEEE standard for Configuration
+Management IEEE 828-2012 \cite{ieee-828-2012}, and follows the format
 set out therein.
 Relevant references are included and can be found in the main References
 section at the end of the document.
+%
 
-\subsection{Management}
 
-\subsubsection{Organisations}
+% Criteria for identication
 
-\textit{Ludwig} is developed by a team based in the School of Physics at
-The University of Edinburgh. This involves two groups: the Soft Matter
-Physics Group, and Edinburgh Parallel Computing Centre (EPCC). These
-groups collaborate with a number of workers at different Universities
-around the world on different aspects of the code.
+\subsection{Identification}
 
-\subsubsection{Responsibilities}
-
-While the Soft Matter Physics Group is responsible for the overall
-scientific direction and development of the code and concomitant
-priorities, all the Software Configuration Management activities will
-be the responsibility of EPCC.
-
-% IEEE section recheck what this actually means
-% \subsubsection{Procedures}
-% There are currently no external constraints on The Plan.
-
-\subsubsection{Process Management}
-
-EPCC is responsible for the Software Configuration Management process.
-It is anticipated that the cost of this process will be small as the
-project team can communicate informally on a regular basis. There is
-currently no independent
-surveillance of activities to ensure compliance with The Plan.
-
-\subsection{Activities}
-
-\subsubsection{Identification}
-
-The material under control of the project includes three sets of files:
-this documentation, the source code, and the test suite which is used
-to monitor the status of the code.
+The material under control of the project includes a number of sets
+of files: this documentation, the source code, the build and test
+suite which is used to monitor the status of the code, and so on.
 Control of project files is via a single on-line repository which
 uses the subversion (SVN) revision control system. The SVN repository
 is currently located at
@@ -113,23 +85,66 @@ unique revision number. A given version of a file is then uniquely
 identified by its path in the repository as it exists at a given
 revision number.
 
+Specifically, configuration items are taken to include files in the
+trunk of the repository
+
+\texttt{http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk}
+
+Other branches in the repository are not considered to be 
+under configuration management.
+
+
+% IEEE section
+% Limitations and assumptions
+% Deliberately empty at the moment.
+
+\subsection{Responsibility and authority}
+
+While the Soft Matter Physics Group is responsible for the overall
+scientific direction and development of the code and concomitant
+priorities, all Configuration Management activities will
+be the responsibility of EPCC at The University of Edinburgh.
+
+\subsection{Project organisation}
+
+
+\subsubsection{Organisations}
+
+\textit{Ludwig} is developed by a team based in the School of Physics at
+The University of Edinburgh. This involves two groups: the Soft Matter
+Physics Group, and Edinburgh Parallel Computing Centre (EPCC). These
+groups collaborate with a number of workers at different Universities
+around the world on different aspects of the code.
+
+\subsubsection{Process Management}
+
+EPCC is responsible for the Software Configuration Management process.
+It is anticipated that the cost of this process will be small as the
+project team can communicate informally on a regular basis. There is
+currently no independent
+surveillance of activities to ensure compliance with The Plan.
+
+
+
 % Add pointer to standard manifest (README)
 
-All access to the code is via the CCPForge repository. CCPForge identifies
-three different levels of access:
+%All access to the code is via the CCPForge repository. CCPForge identifies
+%three different levels of access:
 
-\textit{Administrators:} allows administration of the site itself and
-registered members;
+%\textit{Administrators:} allows administration of the site itself and
+%registered members;
 
-\textit{Developers:} members who have write access to the source code repository;
+%\textit{Developers:} members who have write access to the source code repository;
 
-\textit{Users:} have read only access to the source code via SVN (either
-as a member or via anonymous download). Member users also have access to
-the tracker.
+%\textit{Users:} have read only access to the source code via SVN (either
+%as a member or via anonymous download). Member users also have access to
+%the tracker.
 
-As CCPForge is not physically under the control of EPCC, a
-complete dump of the repository to a local resource is undertaken on a
-regular basis for security.
+%As CCPForge is not physically under the control of EPCC, a
+%complete dump of the repository to a local resource is undertaken on a
+%regular basis for security.
+
+
 
 \subsubsection{Control}
 
