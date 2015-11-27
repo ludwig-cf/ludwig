@@ -546,7 +546,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   physics_rho0(&rho0);
 
-  copyFromTarget(&ndist,&(lb->ndist),sizeof(int));
+  ndist=lb->ndist;
 
   /* Account the current phi deficit */
   bbl->deltag = 0.0;
