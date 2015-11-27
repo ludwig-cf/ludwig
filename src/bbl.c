@@ -163,8 +163,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
-  int nDist;
-  copyFromTarget(&nDist,&(lb_in->ndist),sizeof(int));
+  int nDist=lb_in->ndist;
   int nFields=NVEL*nDist;
 
   assert(bbl);
