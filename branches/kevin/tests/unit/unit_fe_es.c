@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2015 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -19,7 +19,6 @@
 #include <stdio.h>
 
 #include "coords.h"
-#include "leesedwards.h"
 #include "fe_electro_symmetric.h"
 #include "unit_control.h"
 
@@ -54,7 +53,6 @@ int do_test_fe_es1(control_t * ctrl) {
 
   pe_t * pe = NULL;
   coords_t * coords = NULL;
-  le_t * le = NULL;
   field_t * phi = NULL;
   field_grad_t * phi_grad = NULL;
   psi_t * psi = NULL;
@@ -67,9 +65,6 @@ int do_test_fe_es1(control_t * ctrl) {
   pe_create_parent(MPI_COMM_WORLD, &pe);
   coords_create(pe, &coords);
   coords_commit(coords);
-
-  le_create(coords, &le);
-  le_commit(le);
 
   try {
     field_create(coords, 1, "phi", &phi);
@@ -90,7 +85,6 @@ int do_test_fe_es1(control_t * ctrl) {
     psi_free(psi);
     field_grad_free(phi_grad);
     field_free(phi);
-    le_free(le);
     coords_free(coords);
     pe_free(pe);
   }
@@ -122,7 +116,6 @@ int do_test_fe_es2(control_t * ctrl) {
 
   pe_t * pe = NULL;
   coords_t * coords = NULL;
-  le_t * le = NULL;
   psi_t * psi = NULL;
   field_t * phi = NULL;
   field_grad_t * dphi = NULL;
@@ -135,9 +128,6 @@ int do_test_fe_es2(control_t * ctrl) {
   coords_create(pe, &coords);
   coords_nhalo_set(coords, 2);
   coords_commit(coords);
-
-  le_create(coords, &le);
-  le_commit(le);
 
   psi_create(coords, nk, &psi);
   assert(psi);
@@ -203,7 +193,6 @@ int do_test_fe_es2(control_t * ctrl) {
     field_grad_free(dphi);
     field_free(phi);
     psi_free(psi);
-    le_free(le);
     coords_free(coords);
     pe_free(pe);
   }

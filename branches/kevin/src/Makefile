@@ -113,6 +113,7 @@ OBJS = \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
+     grad_compute.o grad_fluid_2d_5pt.o grad_fluid_2d_tomita.o \
       hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o model_le.o map.o \

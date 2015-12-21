@@ -1,5 +1,7 @@
 
+#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "memory.h"
 
@@ -16,6 +18,11 @@ int main(int argc, char ** argv) {
   int ithread, itrip;
   int baseindex;
 
+  int * irefindex = NULL;
+
+  irefindex = (int *) calloc(nsites*na, sizeof(int));
+  assert(irefindex);
+
   /* Loop 1 */
 
   itrip = 0;
@@ -27,6 +34,7 @@ int main(int argc, char ** argv) {
 	for (ia = 0; ia < 3; ia++) {
 	  printf("Loop1 trip, addr: %8d %8d\n", itrip++,
 		 model_addr_rank1(nsites, na, index, ia));
+	  irefindex[model_addr_rank1(nsites, na, index, ia)] = itrip;
  	}
       }
     }
@@ -41,6 +49,7 @@ int main(int argc, char ** argv) {
     for (ia = 0; ia < 3; ia++) {
       printf("Loop2 trip, addr: %8d %8d\n", itrip++,
 	     model_addr_rank1(nsites, na, index, ia));
+      assert(irefindex[model_addr_rank1(nsites, na, index, ia)] == itrip);
      }
   }
 
@@ -58,5 +67,5 @@ int main(int argc, char ** argv) {
     }
   }
 
-  return;
+  return 0;
 }
