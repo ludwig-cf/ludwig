@@ -60,6 +60,10 @@
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 				   map_t * map);
 
+
+extern double * pth_;
+extern double * t_pth_;
+
 /*****************************************************************************
  *
  *  phi_force_colloid
@@ -104,14 +108,18 @@ __targetHost__ int phi_force_colloid(colloids_info_t * cinfo, field_t* q, field_
  *****************************************************************************/
 
 
-//
-// For the current colloid implementation, the below atomicAdd function
-// is needed to update colloids when the lattice is parallelised 
-// across threads
-// TO DO: properly push this into targetDP, 
-// or replace with more performant implementation
-#ifdef CUDA
-//from https://devtalk.nvidia.com/default/topic/529341/speed-of-double-precision-cuda-atomic-operations-on-kepler-k20/
+
+/* For the current colloid implementation, the below atomicAdd function
+ * is needed to update colloids when the lattice is parallelised 
+ * across threads
+ * TO DO: properly push this into targetDP, 
+ * or replace with more performant implementation
+ */
+
+#ifdef __NVCC__
+
+/* from https://devtalk.nvidia.com/default/topic/529341/speed-of-double-precision-cuda-atomic-operations-on-kepler-k20/ */
+
 __device__ double atomicAdd(double* address, double val)
 {
   unsigned long long int* address_as_ull =
@@ -119,8 +127,8 @@ __device__ double atomicAdd(double* address, double val)
   unsigned long long int old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old = atomicCAS(address_as_ull, assumed,__double_as_longlong(val +
-								 __longlong_as_double(assumed)));
+    old = atomicCAS(address_as_ull, assumed,
+		    __double_as_longlong(val + __longlong_as_double(assumed)));
   } while (assumed != old);
   return __longlong_as_double(old);
 }
@@ -130,8 +138,8 @@ double atomicAdd(double* address, double val)
   
   double old=*address;
 
-  //TO DO: uncomment below pragma when OpenMP implemenation is active
-  //#pragma omp atomic
+  /* TO DO: uncomment below pragma when OpenMP implemenation is active
+   * #pragma omp atomic */
   *address+=val;
 
   return old;
@@ -163,7 +171,7 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
   int coords[3];
   targetCoords3D(coords,tc_Nall,index);
   
-  // if not a halo site:
+  /*  if not a halo site:*/
     if (coords[0] >= (tc_nhalo) && 
 	coords[1] >= (tc_nhalo) && 
 	coords[2] >= (tc_nhalo) &&
@@ -383,9 +391,12 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
       for (ia = 0; ia < 3; ia++) 
 	hydro->f[HYADR(tc_nSites,hydro->nf,index,ia)] += force[ia];
       
-      //TO DO
-      //from wall.c "This is for accounting purposes only. There is no physical consequence."
-#ifndef CUDA
+      /*TO DO
+       * from wall.c 
+       * "This is for accounting purposes only.
+       * There is no physical consequence." */
+
+#ifndef __NVCC__
       wall_accumulate_force(fw);
 #endif
       
@@ -397,10 +408,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
   
   return;
 }
-
-
-extern double * pth_;
-extern double * t_pth_;
 
 
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
@@ -436,52 +443,47 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
 
-  //set up constants on target
+  /* set up constants on target */
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
 
-  // copy stress to target
+  /*  copy stress to target */
 #ifndef KEEPFIELDONTARGET    
   copyToTarget(t_pth_,pth_,3*3*nSites*sizeof(double));      
 #endif
 
-  //target copy of hydro structure
   hydro_t* t_hydro = hydro->tcopy; 
-    
-
-
-
-  //populate target copy of force from host 
   double* tmpptr;
 #ifndef KEEPHYDROONTARGET
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
 #endif
 
-  //map_t* t_map = map->tcopy; //target copy of map structure
-  //populate target copy of map from host 
-  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  //copyToTarget(tmpptr,map->status,nSites*sizeof(char));
+  /* map_t* t_map = map->tcopy;
+   * populate target copy of map from host 
+   * copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
+   * copyToTarget(tmpptr,map->status,nSites*sizeof(char));
 
-  // set up colloids such that they can be accessed from target
-  // noting that each actual colloid structure stays resident on the host
-  //  if (cinfo->map_new){
-  //colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
-  //colloid_t* tmpcol;
-  //copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-  //copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
-  //}
+   *  set up colloids such that they can be accessed from target
+   *  noting that each actual colloid structure stays resident on the host
+   *   if (cinfo->map_new){
+   * colloids_info_t* t_cinfo=cinfo->tcopy;
+   * colloid_t* tmpcol;
+   * copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
+   * copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
+   * }
+   */
 
-  // launch operation across the lattice on target
+  /* launch operation across the lattice on target */
+
   phi_force_interpolation_lattice  __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy,  map->tcopy, t_pth_);
   targetSynchronize();
 
-
-  // collect results from target
 #ifndef KEEPHYDROONTARGET
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 #endif
+
   return 0;
 }

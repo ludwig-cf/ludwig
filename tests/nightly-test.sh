@@ -9,7 +9,7 @@
 #  Edinburgh Parallel Computing Centre
 #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010-2014 The University of Edinburgh
+#  (c) 2010-2015 The University of Edinburgh
 #
 ##############################################################################
 #!/bin/bash --login
@@ -42,9 +42,14 @@ svn co --username stratford http://ccpforge.cse.rl.ac.uk/svn/ludwig &> $record
 # start via bsub (indy0.epcc.ed.ac.uk)
 
 cd $testdir
+cp ../config/lunix-gcc-default.mk ../config.mk
 bsub -o $record -e $record -n 64 -W 1200 -q normal -J test-cpu < test-all.sh
 
-bsub -w "done(test-cpu)" -o $record -e $record -q gpu -J test-gpu < test-gpu-01.sh
+# Note the need to wait for the first job to finish means
+# that the copy of the nvcc configuation is deferred until
+# the test-gpu script.
+
+bsub -w "ended(test-cpu)" -o $record -e $record -q gpu -J test-gpu < test-gpu-01.sh
 
 # Wait for the tests to finish, and clean up
 # This includes a copy of the summary to a public location
@@ -60,7 +65,7 @@ EOF
 )
 
 cd $thisdir
-bsub -w "done(test-gpu)" -o $record -e $record -I -q gpu "$finish"
+bsub -w "ended(test-gpu)" -o $record -e $record -I -q gpu "$finish"
 
-scp -p $summary kevin@garnet:~/html/.
+
 

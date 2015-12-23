@@ -17,12 +17,12 @@
  * limitations under the License. 
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #ifndef _TDP_INCLUDED
 #define _TDP_INCLUDED
-
 
 /* Main settings */
 
@@ -30,12 +30,11 @@
 #define VVL_C 1 /* virtual vector length for TARGETDP C (usually 1 for AoS */
               /*  or a small multiple of the hardware vector length for SoA)*/
 
-/* #define OPENMP_ENABLED */ /* uncomment when OpenMP is being used for TARGETDP C */
-
 /* End main settings */
 
 
-#ifdef CUDA /* CUDA */
+#ifdef __NVCC__ /* CUDA */
+
 
 /*
  * CUDA Settings 
@@ -167,7 +166,7 @@
 
 /* Thread-level-parallelism execution macro */
 
-#ifdef OPENMP_ENABLED
+#ifdef _OPENMP
 
 #define __targetTLP__(simtIndex,extent)	\
 _Pragma("omp parallel for")				\
@@ -177,7 +176,7 @@ for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
 _Pragma("omp parallel for")				\
 for(simtIndex=0;simtIndex<extent;simtIndex++)
 
-#else //NOT OPENMP_ENABLED
+#else /* NOT OPENMP */
 
 #define __targetTLP__(simtIndex,extent)	\
 for(simtIndex=0;simtIndex<extent;simtIndex+=VVL)
@@ -198,7 +197,7 @@ for(simtIndex=0;simtIndex<extent;simtIndex++)
 #define __targetILP__(vecIndex) 
 #else
 
-#ifdef OPENMP_ENABLED
+#ifdef _OPENMP
 #define __targetILP__(vecIndex)  \
 _Pragma("omp simd")				\
  for (vecIndex = 0; vecIndex < VVL; vecIndex++) 

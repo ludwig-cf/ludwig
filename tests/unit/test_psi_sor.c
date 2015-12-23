@@ -268,7 +268,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   /* Compute and store the permeativity values for convenience */
 
-  epsilon = calloc(n, sizeof(double));
+  epsilon = (double *) calloc(n, sizeof(double));
   if (epsilon == NULL) fatal("calloc(epsilon) failed\n");
 
   for (k = 0; k < n; k++) {
@@ -278,9 +278,9 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   /* Allocate space for exact solution */
 
-  a = calloc(n*n, sizeof(double));
-  b = calloc(n, sizeof(double));
-  c = calloc(n, sizeof(double));
+  a = (double *) calloc(n*n, sizeof(double));
+  b = (double *) calloc(n, sizeof(double));
+  c = (double *) calloc(n, sizeof(double));
   if (a == NULL) fatal("calloc(a) failed\n");
   if (b == NULL) fatal("calloc(b) failed\n");
   if (c == NULL) fatal("calloc(c) failed\n");
@@ -392,7 +392,7 @@ static int fepsilon_sinz(int index, double * epsilon) {
 
   coords_index_to_ijk(index, coords);
 
-  *epsilon = REF_PERMEATIVITY*sin(M_PI*(1.0*coords[Z] - 0.5)/L(Z));
+  *epsilon = REF_PERMEATIVITY*sin(pi_*(1.0*coords[Z] - 0.5)/L(Z));
 
   return 0;
 }

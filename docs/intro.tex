@@ -7,7 +7,7 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2014 The University of Edinburgh
+%  (c) 2016 The University of Edinburgh
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -126,6 +126,13 @@ branches  tags      trunk
 which is the usual svn convention for trunk, branches and tags.
 The process for committing code is described in section \ref{xref:developers}.
 
+If you look in  the \texttt{trunk} directory, you should see
+\begin{lstlisting}
+$ ls trunk
+config  LICENSE      mpi_s   src       tests  version.h
+docs    Makefile.mk  README  targetDP  util
+\end{lstlisting}
+
 \vfill
 \pagebreak
 
@@ -136,19 +143,47 @@ the code, which should allow users to get off the ground.
 The section assumes the code has been downloaded and you are in the
 top level directory.
 
-\subsection{Compilation}
+\subsection{Configuration}
 
-Identify your local C compiler. The following example uses \texttt{gcc}
+You will need to copy one of the existing configuration files from
+the \texttt{config} directory to the top level directory. This file
+sets all the relevant local details for compilation and so on. For
+example:
+\begin{lstlisting}
+$ cp config/lunix-gcc-default.mk config.mk
+\end{lstlisting}
+Edit the new \texttt{config.mk} file to check, or adjust, the options
+as required. You will need to identify your local C compiler. The
+example uses \texttt{gcc}
 in serial, and \texttt{mpicc} in parallel. For MPI in particular,
-local details may vary.
+local details may vary. A quick way to compile the code is via
+\begin{lstlisting}
+$ cd tests
+$ make compile-mpi-d3q19
+\end{lstlisting}
+This integrates a number of separate stages which are described
+indivually in the following sections. The resulting executable
+will be \texttt{./src/Ludwig.exe} at the top level.
+
+\subsubsection{targetDP}
+
+A \texttt{targetDP} layer is required by the code in all cases. It
+allows compilation for both simple CPU systems and
+for a number of accelerator systems using a single source code. This
+will make the appropriate choices depending what has been specified
+in the top-level \texttt{config.mk} file. From the top-level directory
+\begin{lstlisting}
+$ cd targetDP
+$ make
+\end{lstlisting}
+should produce the appropriate \texttt{libtarget.a} library.
 
 \subsubsection{Serial}
 \label{section:quick-serial}
 
 First, compile the MPI stub library in the \texttt{mpi\_s}
-directory. Do this by editing the Makefile, and checking the compiler
-is appropriate. You should be able to build the library and run the
-tests using, e.g.,:
+directory. You should be able to build the library and run the
+tests using, e.g.:
 
 \begin{lstlisting}
 $ make libc
@@ -161,9 +196,8 @@ Running mpi_s tests...
 Finished mpi_s tests ok.
 \end{lstlisting}
 
-Now compile the main code in the \texttt{src} directory. Again
-edit the Makefile to check the compiler. Compilation should
-look like:
+Now compile the main code in the \texttt{src} directory.
+Compilation should look like:
 
 \begin{lstlisting}
 $ make serial

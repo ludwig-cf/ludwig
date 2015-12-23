@@ -32,8 +32,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2009-2015 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -65,6 +66,10 @@
 static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, advflux_t * f,
 				map_t * map, noise_t * noise);
 
+__targetConst__ double tc_gamma;
+__targetConst__ double tc_var;
+__targetConst__ double tc_tmatrix[3][3][NQAB];
+
 /*****************************************************************************
  *
  *  blue_phase_beris_edwards
@@ -76,8 +81,10 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
  *
  *****************************************************************************/
 
-__targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, map_t * map,
-			     noise_t * noise) {
+__targetHost__ int blue_phase_beris_edwards(field_t * fq,
+					    field_grad_t * fq_grad,
+					    hydro_t * hydro, map_t * map,
+					    noise_t * noise) {
 
   int nf;
   advflux_t * flux = NULL;
@@ -127,15 +134,15 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad
  *
  *****************************************************************************/
 
-__targetConst__ double tc_gamma;
-__targetConst__ double tc_var;
-__targetConst__ double tc_tmatrix[3][3][NQAB];
-
-
-//perform update across the lattice on target
-__targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * t_q_grad, 
-						  hydro_t * hydro, advflux_t * flux, map_t * map,
-						  int noise_on, noise_t * noise, void* pcon, void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
+__targetEntry__ void blue_phase_be_update_lattice(field_t * t_q,
+						  field_grad_t * t_q_grad, 
+						  hydro_t * hydro,
+						  advflux_t * flux,
+						  map_t * map,
+						  int noise_on,
+						  noise_t * noise,
+						  void* pcon,
+void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
   int index;
 
@@ -169,7 +176,7 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
   int coords[3];
   targetCoords3D(coords,tc_Nall,index);
   
-  // if not a halo site:
+  /* if not a halo site:*/
     if (coords[0] >= (tc_nhalo) &&
 	coords[1] >= (tc_nhalo) &&
 	coords[2] >= (tc_nhalo) &&
@@ -187,13 +194,13 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
       
 
 
-#ifndef CUDA
-      //on gpu we will just calc all sites (and discard non-fluid results)
+#ifndef __NVCC__
+      /* on gpu we will just calc all sites (and discard non-fluid results)*/
       map_status(map, index, &status);
       if (status != MAP_FLUID) continue;
 #endif
 
-	//calculate molecular field	
+      /* calculate molecular field	*/
 
 	int ia, ib;
 	
@@ -237,38 +244,36 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 	blue_phase_compute_h(q, dq, dsq, h, pbpc);
   else
     {
-#ifndef CUDA //only BP supported for CUDA. This is caught earlier
+#ifndef __NVCC__
+      /*only BP supported for CUDA. This is caught earlier*/
       molecular_field(index, h);
 #endif
     }
-
-      
-	//end inline
 	
 	if (hydro) {
 
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
-	  //hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
-	  //inline above function
-	  //TODO add lees edwards support
+	  /* hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
+	   * inline above function
+	   * TODO add lees edwards support*/
 
-	  int im1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
-	  int ip1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+	  int im1 = targetIndex3D(coords[X]-1,coords[Y],coords[Z],tc_Nall);
+	  int ip1 = targetIndex3D(coords[X]+1,coords[Y],coords[Z],tc_Nall);
 	  
 	  w[X][X] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,X)] - hydro->u[HYADR(tc_nSites,3,im1,X)]);
 	  w[Y][X] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,Y)] - hydro->u[HYADR(tc_nSites,3,im1,Y)]);
 	  w[Z][X] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,Z)] - hydro->u[HYADR(tc_nSites,3,im1,Z)]);
 	  
-	  im1 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);
-	  ip1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
+	  im1 = targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
+	  ip1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
 	  
 	  w[X][Y] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,X)] - hydro->u[HYADR(tc_nSites,3,im1,X)]);
 	  w[Y][Y] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,Y)] - hydro->u[HYADR(tc_nSites,3,im1,Y)]);
 	  w[Z][Y] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,Z)] - hydro->u[HYADR(tc_nSites,3,im1,Z)]);
 	  
-	  im1 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
-	  ip1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
+	  im1 = targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
+	  ip1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
 	  
 	  w[X][Z] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,X)] - hydro->u[HYADR(tc_nSites,3,im1,X)]);
 	  w[Y][Z] = 0.5*(hydro->u[HYADR(tc_nSites,3,ip1,Y)] - hydro->u[HYADR(tc_nSites,3,im1,Y)]);
@@ -308,7 +313,7 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 
     if (noise_on) {
 
-#ifdef CUDA 
+#ifdef __NVCC__ 
       printf("Error: noise is not yet supported for CUDA\n");
 #else      
       noise_reap_n(noise, index, NQAB, chi);
@@ -325,13 +330,12 @@ __targetEntry__ void blue_phase_be_update_lattice(field_t * t_q, field_grad_t * 
 	}
       }
 #endif
-      
     }
 
 	/* Here's the full hydrodynamic update. */
 	  
-	indexj=targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);
-	indexk=targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
+	indexj=targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
+	indexk=targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
 
 	q[X][X] += dt*(s[X][X] + tc_gamma*h[X][X] + chi_qab[X][X]
 		       - flux->fe[ADVADR(tc_nSites,nf,index,XX)] + flux->fw[ADVADR(tc_nSites,nf,index,XX)]
@@ -411,8 +415,9 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   molecular_field = fe_t_molecular_field();
 
   int isBPMF = (molecular_field==blue_phase_molecular_field);
-#ifdef CUDA
-  //make sure blue_phase_molecular_field is in use here because this is assumed in targetDP port
+#ifdef __NVCC__
+  /* make sure blue_phase_molecular_field is in use here because
+     this is assumed in targetDP port*/
   if (!isBPMF)
     fatal("only blue_phase_molecular_field is supported for CUDA\n");
 #endif
@@ -428,7 +433,6 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
 
-  //set up constants on target
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
@@ -436,29 +440,31 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   copyConstToTarget(&tc_var,&var, sizeof(double));  
   copyConstToTarget(tc_tmatrix,tmatrix, 3*3*NQAB*sizeof(double)); 
 
-  // initialise kernel constants on both host and target
+  /* initialise kernel constants on both host and target*/
   blue_phase_set_kernel_constants();
 
-  // get a pointer to target copy of stucture containing kernel constants
+  /* get a pointer to target copy of stucture containing kernel constants*/
   void* pcon=NULL;
   blue_phase_target_constant_ptr(&pcon);
 
+  /* target copy of tensor order parameter field structure
+   * target copy of grad field structure
+   * target copy of hydro structure */
 
-  field_t* t_q = fq->tcopy; //target copy of tensor order parameter field structure
-  field_grad_t* t_q_grad = fq_grad->tcopy; //target copy of grad field structure
+  field_t* t_q = fq->tcopy;
+  field_grad_t* t_q_grad = fq_grad->tcopy;
+  hydro_t* t_hydro = NULL;
 
-
-  hydro_t* t_hydro = NULL; //target copy of hydro structure
-
-  if(hydro)
+  if (hydro) {
     t_hydro = hydro->tcopy; 
+  }
 
-  advflux_t* t_flux = flux->tcopy; //target copy of flux structure
+  /* target copy of flux structure*/
+  advflux_t* t_flux = flux->tcopy;
 
   double* tmpptr;
 
 #ifndef KEEPFIELDONTARGET
-  //populate target copies from host 
   copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
   copyToTarget(tmpptr,fq->data,fq->nf*nSites*sizeof(double));
   
@@ -492,8 +498,11 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   copyToTarget(tmpptr,flux->fz,nf*nSites*sizeof(double));
 #endif
 
+
+  /* launch update across lattice on target*/
+
   TIMER_start(BP_BE_UPDATE_KERNEL);
-  //launch update across lattice on target
+
   blue_phase_be_update_lattice __targetLaunch__(nSites) (fq->tcopy, fq_grad->tcopy, 
   							 t_hydro,
   							 flux->tcopy, map,
@@ -504,7 +513,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   TIMER_stop(BP_BE_UPDATE_KERNEL);
 
 #ifndef KEEPFIELDONTARGET
-  //get result back from target
+  /* get result back from target*/
   copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
   copyFromTarget(fq->data,tmpptr,fq->nf*nSites*sizeof(double));
 #endif

@@ -15,10 +15,10 @@
 
 #include <assert.h>
 
+#include "pe.h"
 #include "free_energy.h"
 #include "free_energy_tensor.h"
 #include "runtime.h"
-#include "pe.h"
 #include "lc_droplet.h"
 
 /*****************************************************************************

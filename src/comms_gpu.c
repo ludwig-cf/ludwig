@@ -15,22 +15,16 @@
 
 
 #include <stdio.h>
-
-
-#include "pe.h" 
-#include "model.h" 
-#include "lb_model_s.h" 
 #include <time.h>
 #include <sys/time.h>
-#include "targetDP.h"
+
+#include "pe.h"
+#include "runtime.h"
+#include "lb_model_s.h" 
 
 
 
 #ifdef LB_DATA_SOA
-
-
-__targetHost__ int  RUN_get_string_parameter(const char *, char *, const int);
-
 
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
@@ -148,7 +142,7 @@ static int nhalodataY;
 static int nhalodataZ;
 
 
-#ifdef CUDA
+#ifdef __NVCC__
 /* handles for CUDA streams (for ovelapping)*/
 static cudaStream_t streamX,streamY, streamZ, streamBULK;
 #endif
@@ -158,13 +152,6 @@ static int reduced_halo=0;
 
 /* constant memory symbols internal to this module */
 __targetConst__ int cv_cd[NVEL][3];
-//__constant__ int N_cd[3];
-
-/* void getXYZstreamptr(void* Xptr,void* Yptr,void* Zptr){ */
-/*   //void getXstreamptr(void* ptr){   */
-/*   *Xptr=streamX; Yptr=streamY;Zptr=streamZ; */
-/*   return ; */
-/* } */
 
 
 double wtime(void) {
@@ -224,7 +211,7 @@ int get_linear_index(int ii,int jj,int kk,int N[3])
 }
 
 
-#ifdef CUDA
+#ifdef __NVCC__
 
 cudaStream_t getXstream(){
   return streamX;
@@ -285,7 +272,7 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
 
 
   int threadIndex;
-#ifdef CUDA
+#ifdef __NVCC__
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   if (threadIndex < npackedsite)
 #else
@@ -375,12 +362,6 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 					      double* haloHIGH_d, int dirn_save)
 {
 
-
-  //if (dirn==X) return;
-  //if (dirn==Y) return;
-  //if (dirn==Z) return;
-
-
  
   int Nall[3];
   Nall[X]=N_cd[X]+2*nhalo;
@@ -412,7 +393,7 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
   
 
   int threadIndex;
-#ifdef CUDA
+#ifdef __NVCC__
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   if (threadIndex < npackedsite)
 #else
@@ -547,9 +528,6 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
   int pack_field1=packablefield1*reduced_halo;
   int nfields1packed;
 
-  double t1, t2;
-
-  //t1=wtime();
   
   if (packablefield1){
     /* calculate number of velocity components when packed */
@@ -564,19 +542,11 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
     nfields1packed=nfields1;
   }
 
-
-  //t2=wtime();
-  
-  //t1=wtime();
-
   int NedgeX[3], NedgeY[3], NedgeZ[3];
 
   int ii,jj,kk,m,index_source,index_target;
 
   int nblocks;
-
-  //#define OVERLAP
-
 
   const int tagf = 903;
   const int tagb = 904;
@@ -609,7 +579,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
    as and where possible */
 
  /* pack X edges on accelerator */
-#ifdef CUDA
+#ifdef __NVCC__
  nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
  pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2,nhalo,
 						pack_field1, N_cd,edgeXLOW_d,
@@ -620,15 +590,8 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 		 edgeXHIGH_d,data_d,X);
 #endif
 
-  //t2=wtime();
-  
-  //printf("A1 %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
  /* pack Y edges on accelerator */
-#ifdef CUDA
+#ifdef __NVCC__
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
   pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo,
 						pack_field1, N_cd,edgeYLOW_d,
@@ -640,7 +603,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 #endif
 
  /* pack Z edges on accelerator */
-#ifdef CUDA
+#ifdef __NVCC__
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
   pack_edge_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields1,nfields2,nhalo,
   						pack_field1, N_cd,edgeZLOW_d,
@@ -658,7 +621,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 
 
-#ifdef CUDA
+#ifdef __NVCC__
   /* get X low edges */
   cudaMemcpyAsync(edgeXLOW, edgeXLOW_d, nhalodataX*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamX);
@@ -678,19 +641,14 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 #ifndef OVERLAP
 
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamX);
 #endif
 
 #endif
 
-  //t2=wtime();
-  
-  //printf("A2 %1.16e\n",t2-t1);
 
-  //t1=wtime();
-
-#ifdef CUDA
+#ifdef __NVCC__
  /* get Y low edges */
   cudaMemcpyAsync(edgeYLOW, edgeYLOW_d, nhalodataY*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamY);
@@ -706,19 +664,13 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 #ifndef OVERLAP
 
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamY);
 #endif
 
 #endif
 
-  //t2=wtime();
-  
-  //printf("A3 %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-#ifdef CUDA
+#ifdef __NVCC__
   /* get Z low edges */
   cudaMemcpyAsync(edgeZLOW, edgeZLOW_d, nhalodataZ*sizeof(double),
 		  cudaMemcpyDeviceToHost,streamZ);
@@ -735,38 +687,15 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 
 #ifndef OVERLAP
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamZ);
 #endif
 #endif
 
-  //t2=wtime();
-  
-  //printf("A4 %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
-
  /* wait for X data from accelerator*/
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamX);
 #endif
-
-  //t2=wtime();
-  
-  //printf("B %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-  //HACK
-  //if (nfields1==19) 
-  //launch_bulk_calc_gpu();
-
-  // collide_bulk_gpu(1);
-
-
-
 
    if (cart_size(X) == 1) {
      /* x up */
@@ -793,15 +722,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
  /* wait for X halo swaps to finish */
    if (cart_size(X) > 1)       MPI_Waitall(4, request, status);
 
-
-  //t2=wtime();
-  
-  //printf("C %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
-#ifdef CUDA
+#ifdef __NVCC__
  /* put X halos back on device, and unpack */
   cudaMemcpyAsync(haloXLOW_d, haloXLOW, nhalodataX*sizeof(double),
 		  cudaMemcpyHostToDevice,streamX);
@@ -814,7 +735,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 #endif
 
 
-#ifdef CUDA
+#ifdef __NVCC__
   nblocks=(nhalo*N[Y]*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
      unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamX>>>(nfields1,nfields2,
      							  nhalo,
@@ -832,21 +753,15 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 
 #ifndef OVERLAP
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamX);
 #endif
 #endif
 
   /* wait for Y data from accelerator*/
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamY);
 #endif
-
-  //t2=wtime();
-  
-  //printf("D %1.16e\n",t2-t1);
-
-  //t1=wtime();
 
   /* fill in corners of Y edge data  */
 
@@ -899,15 +814,6 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
       }
     }
   
-
-
-  //t2=wtime();
-  
-  //printf("E %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
   /* The y-direction (XZ plane) */
    if (cart_size(Y) == 1) {
   /* y up */
@@ -935,14 +841,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
     if (cart_size(Y) > 1)       MPI_Waitall(4, request, status);
 
 
-  //t2=wtime();
-  
-  //printf("F %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
-#ifdef CUDA
+#ifdef __NVCC__
  /* put Y halos back on device, and unpack */
   cudaMemcpyAsync(haloYLOW_d, haloYLOW, nhalodataY*sizeof(double),
 		  cudaMemcpyHostToDevice,streamY);
@@ -956,7 +855,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 
 
-#ifdef CUDA
+#ifdef __NVCC__
   nblocks=(Nall[X]*nhalo*N[Z]+DEFAULT_TPB-1)/DEFAULT_TPB;
     unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamY>>>(nfields1,nfields2,nhalo,
   						  pack_field1, N_cd,data_d,haloYLOW_d,
@@ -969,25 +868,19 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
 
 #ifndef OVERLAP
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamY);
 #endif
 #endif
 
  
   /* wait for Z data from accelerator*/
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamZ);
 #endif
 
   /* fill in corners of Z edge data: from Xhalo  */
 
-
-  //t2=wtime();
-  
-  //printf("H %1.16e\n",t2-t1);
-
-  //t1=wtime();
     
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
@@ -1042,15 +935,6 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
   
   /* fill in corners of Z edge data: from Yhalo  */
   
-  
-
-  //t2=wtime();
-  
-  //printf("I %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-  
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
       
@@ -1102,15 +986,6 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
       }
     }
   
-
-
-  //t2=wtime();
-  
-  //printf("J %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
   /* The z-direction (xy plane) */
    if (cart_size(Z) == 1) {
   /* z up */
@@ -1133,14 +1008,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 
     }
 
-  //t2=wtime();
-  
-  //printf("J1 %1.16e\n",t2-t1);
-
-  //t1=wtime();
-
-
-#ifdef CUDA
+#ifdef __NVCC__
  /* put Z halos back on device and unpack*/
   cudaMemcpyAsync(haloZLOW_d, haloZLOW, nhalodataZ*sizeof(double),
 		  cudaMemcpyHostToDevice,streamZ);
@@ -1153,7 +1021,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 #endif
 
 
-#ifdef CUDA
+#ifdef __NVCC__
     nblocks=(Nall[X]*Nall[Y]*nhalo+DEFAULT_TPB-1)/DEFAULT_TPB;
      unpack_halo_gpu_d<<<nblocks,DEFAULT_TPB,0,streamZ>>>(nfields1,nfields2,nhalo,
 							  pack_field1, N_cd,data_d,haloZLOW_d,
@@ -1166,19 +1034,13 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 #endif
 
   /* wait for all streams to complete */
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamSynchronize(streamX);
   cudaStreamSynchronize(streamY);
   cudaStreamSynchronize(streamZ);
 #endif
 
-  //t2=wtime();
-  
-  //printf("L %1.16e\n",t2-t1);
-
-  //t1=wtime();
-  
-
+  return;
 }
 
 
@@ -1189,7 +1051,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
 static void allocate_comms_memory_on_gpu()
 {
 
-#ifdef CUDA
+#ifdef __NVCC__
   
   cudaHostAlloc( (void **)&packedindex, nsites*sizeof(int), 
 		 cudaHostAllocDefault);
@@ -1252,7 +1114,7 @@ static void allocate_comms_memory_on_gpu()
 
 
   
-#ifdef CUDA  
+#ifdef __NVCC__
   cudaMalloc((void **) &edgeXLOW_d, nhalodataX*sizeof(double));
   cudaMalloc((void **) &edgeXHIGH_d, nhalodataX*sizeof(double));
   cudaMalloc((void **) &edgeYLOW_d, nhalodataY*sizeof(double));
@@ -1305,10 +1167,7 @@ static void allocate_comms_memory_on_gpu()
 
 #endif
 
-
-
-  //   checkCUDAError("allocate_memory_on_gpu");
-
+  return;
 }
 
 
@@ -1317,7 +1176,7 @@ static void free_comms_memory_on_gpu()
 {
 
 
-#ifdef CUDA
+#ifdef __NVCC__
   cudaFreeHost(packedindex);
   cudaFreeHost(mask_);
   cudaFreeHost(mask_with_neighbours);
@@ -1421,17 +1280,12 @@ void init_comms_gpu(int Nin[3], int ndistin)
   if (strcmp(string, "yes") == 0) reduced_halo = 1;
   
   /* create CUDA streams (for ovelapping)*/
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamCreate(&streamX);
   cudaStreamCreate(&streamY);
   cudaStreamCreate(&streamZ);
   cudaStreamCreate(&streamBULK);
 #endif
-
-  //  cudaMemcpyToSymbol(cv_cd, cv, NVEL*3*sizeof(int), 0, cudaMemcpyHostToDevice); 
-  //cudaMemcpyToSymbol(N_cd, N, 3*sizeof(int), 0, cudaMemcpyHostToDevice);  
-  //checkCUDAError("Init GPU");  
-
 
   copyConstToTarget(cv_cd, cv, NVEL*3*sizeof(int)); 
   copyConstToTarget(N_cd, N, 3*sizeof(int));
@@ -1447,7 +1301,7 @@ void finalise_comms_gpu()
 {
   free_comms_memory_on_gpu();
 
-#ifdef CUDA
+#ifdef __NVCC__
   cudaStreamDestroy(streamX);
   cudaStreamDestroy(streamY);
   cudaStreamDestroy(streamZ);
@@ -1461,9 +1315,6 @@ static void calculate_comms_data_sizes()
 {
   coords_nlocal(N);  
   nhalo = coords_nhalo();  
-  //  ndist = distribution_ndist();
-  //ndist = lb_ndist();
-  //nop = phi_nop();
 
   Nall[X]=N[X]+2*nhalo;
   Nall[Y]=N[Y]+2*nhalo;
@@ -1482,227 +1333,21 @@ static void calculate_comms_data_sizes()
     }
 
   int n1=ndist*npvel;
-  //if (nop > n1) n1=nop;
-  
-  //HACK
-  //make sure enough space for 5-component order parameter
-  
+
   if (n1 < 5) n1=5;
 
   nhalodataX = N[Y] * N[Z] * nhalo * n1;
   nhalodataY = Nall[X] * N[Z] * nhalo * n1;
   nhalodataZ = Nall[X] * Nall[Y] * nhalo * n1;
 
-  //  printf("KKK %d %d\n",nhalodataX, n1);
-
-
+  return;
 }
 
 
 
 
-#ifdef CUDA
+#ifdef __NVCC__
 
-
-
-
-
-/* void fill_mask_with_neighbours(char *mask) */
-/* { */
-
-/*   int i, ib[3], p; */
-
-/*   for (i=0; i<nsites; i++) */
-/*     mask_with_neighbours[i]=0; */
-
-
-/*   for (i=0; i<nsites; i++){ */
-/*     if(mask[i]){ */
-/*       mask_with_neighbours[i]=1; */
-/*       coords_index_to_ijk(i, ib); */
-/*       /\* if not a halo *\/ */
-/*       int halo = (ib[X] < 1 || ib[Y] < 1 || ib[Z] < 1 || */
-/* 		  ib[X] > N[X] || ib[Y] > N[Y] || ib[Z] > N[Z]); */
-      
-/*       if (!halo){ */
-	
-/* 	for (p=1; p<NVEL; p++){ */
-/* 	  int indexn = coords_index(ib[X] + cv[p][X], ib[Y] + cv[p][Y], */
-/* 				    ib[Z] + cv[p][Z]); */
-/* 	  mask_with_neighbours[indexn]=1; */
-/* 	} */
-/*       } */
-/*     } */
-    
-/*   } */
-  
-  
-
-/* } */
-
-
-
-
-/* void put_field_partial_on_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *)){ */
-
-/*   char *mask; */
-/*   int i; */
-/*   int index; */
-/*   double field_tmp[50]; */
-  
-/*   if(include_neighbours){ */
-/*     fill_mask_with_neighbours(mask_); */
-/*     mask=mask_with_neighbours; */
-/*   } */
-/*   else{ */
-/*     mask=mask_; */
-/*   } */
-
-
-
-/*   int packedsize=0; */
-/*   for (index=0; index<nsites; index++){ */
-/*     if(mask[index]) packedsize++; */
-/*   } */
-
-
-/*   int j=0; */
-/*   for (index=0; index<nsites; index++){ */
-    
-/*     if(mask[index]){ */
- 
-/*       access_function(index,field_tmp); */
-      
-/*       for (i=0;i<(nfields1*nfields2);i++) */
-/* 	{ */
-/* 	  ftmp[i*packedsize+j]=field_tmp[i]; */
-/* 	} */
-      
-/*       packedindex[index]=j; */
-/*       j++; */
-
-/*     } */
-
-/*   } */
-
-/*   cudaMemcpy(ftmp_d, ftmp, packedsize*nfields1*nfields2*sizeof(double), cudaMemcpyHostToDevice); */
-/*   cudaMemcpy(mask_d, mask, nsites*sizeof(char), cudaMemcpyHostToDevice); */
-/*   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice); */
-
-/*   /\* run the GPU kernel *\/ */
-
-/*   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
-/*   copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(nfields1*nfields2, nhalo, N_d, */
-/*   						data_d, ftmp_d, mask_d, */
-/*   						packedindex_d, packedsize, 1); */
-/*   cudaThreadSynchronize(); */
-/*   checkCUDAError("put_partial_field_on_gpu"); */
-
-/* } */
-
-
-/* /\* copy part of velocity_ from accelerator to host, using mask structure *\/ */
-/* void get_field_partial_from_gpu(int nfields1, int nfields2, int include_neighbours,double *data_d, void (* access_function)(const int, double *)) */
-/* { */
-
-
-/*   char *mask; */
-/*   int i; */
-/*   int index; */
-/*   double field_tmp[50]; */
-
-/*   if(include_neighbours){ */
-/*     fill_mask_with_neighbours(mask_); */
-/*     mask=mask_with_neighbours; */
-/*   } */
-/*   else{ */
-/*     mask=mask_; */
-/*   } */
-
-/*   int j=0; */
-/*   for (i=0; i<nsites; i++){ */
-/*     if(mask[i]){ */
-/*       packedindex[i]=j; */
-/*       j++; */
-/*     } */
-    
-/*   } */
-
-/*   int packedsize=j; */
-
-/*   cudaMemcpy(mask_d, mask, nsites*sizeof(char), cudaMemcpyHostToDevice); */
-/*   cudaMemcpy(packedindex_d, packedindex, nsites*sizeof(int), cudaMemcpyHostToDevice); */
-
-/*   int nblocks=(Nall[X]*Nall[Y]*Nall[Z]+DEFAULT_TPB-1)/DEFAULT_TPB; */
-/*  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(nfields1*nfields2, nhalo, N_d, */
-/*   						ftmp_d, data_d, mask_d, */
-/*   						packedindex_d, packedsize, 0); */
-/*   cudaThreadSynchronize(); */
-
-/*   cudaMemcpy(ftmp, ftmp_d, packedsize*nfields1*nfields2*sizeof(double), cudaMemcpyDeviceToHost);  */
-
-/*   j=0; */
-/*   for (index=0; index<nsites; index++){ */
-    
-/*     if(mask[index]){ */
- 
-/*       for (i=0;i<nfields1*nfields2;i++) */
-/* 	{ */
-/* 	  field_tmp[i]=ftmp[i*packedsize+j]; */
-/* 	} */
-/*       access_function(index,field_tmp);        */
-/*       j++; */
-
-/*     } */
-
-/*   } */
-
-
-
-/*   /\* run the GPU kernel *\/ */
-
-/*   checkCUDAError("get_field_partial_from_gpu"); */
-
-/* } */
-
-
-/* __global__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3], */
-/* 					    double* f_out, double* f_in, char *mask_d, int *packedindex_d, int packedsize, int inpack) { */
-
-/*   int threadIndex, nsite, Nall[3]; */
-/*   int i; */
-
-
-/*   Nall[X]=N[X]+2*nhalo; */
-/*   Nall[Y]=N[Y]+2*nhalo; */
-/*   Nall[Z]=N[Z]+2*nhalo; */
-
-/*   nsite = Nall[X]*Nall[Y]*Nall[Z]; */
-
-
-/*   /\* CUDA thread index *\/ */
-/*   threadIndex = blockIdx.x*blockDim.x+threadIdx.x; */
-
-/*   //Avoid going beyond problem domain */
-/*   if ((threadIndex < Nall[X]*Nall[Y]*Nall[Z]) && mask_d[threadIndex]) */
-/*     { */
-
-/*       for (i=0;i<nPerSite;i++) */
-/* 	{ */
-	    
-/* 	  if (inpack) */
-/* 	    f_out[i*nsite+threadIndex] */
-/* 	    =f_in[i*packedsize+packedindex_d[threadIndex]]; */
-/* 	  else */
-/* 	   f_out[i*packedsize+packedindex_d[threadIndex]] */
-/* 	      =f_in[i*nsite+threadIndex]; */
-	  
-/* 	} */
-/*     } */
-
-
-/*   return; */
-/* } */
 
 #ifdef KEVIN_GPU
 
@@ -2303,4 +1948,4 @@ static void halo_unpack_gpu_d(cuda_halo_t * halo, int id,
 
 #endif
 
-#endif 
+#endif /* LB_DATA_SOA */

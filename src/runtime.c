@@ -34,7 +34,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2015 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -70,7 +70,7 @@ static struct key_pair * p_keylist = NULL;
  *
  *****************************************************************************/
 
-void RUN_read_input_file(const char * input_file_name) {
+__targetHost__ void RUN_read_input_file(const char * input_file_name) {
 
   FILE * fp_input;
   int    nkeys = 0;
@@ -165,7 +165,7 @@ static void key_broadcast(int nkeys) {
  *
  *****************************************************************************/
 
-int RUN_get_double_parameter(const char * key, double * value) {
+__targetHost__ int RUN_get_double_parameter(const char * key, double * value) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -188,7 +188,7 @@ int RUN_get_double_parameter(const char * key, double * value) {
  *
  *****************************************************************************/
 
-int RUN_get_int_parameter(const char * key, int * value) {
+__targetHost__ int RUN_get_int_parameter(const char * key, int * value) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -211,6 +211,7 @@ int RUN_get_int_parameter(const char * key, int * value) {
  *
  *****************************************************************************/
 
+__targetHost__
 int RUN_get_double_parameter_vector(const char * key, double v[]) {
 
   int key_present = 0;
@@ -236,6 +237,7 @@ int RUN_get_double_parameter_vector(const char * key, double v[]) {
  *
  *****************************************************************************/
 
+__targetHost__
 int RUN_get_int_parameter_vector(const char * key, int v[]) {
 
   int key_present = 0;
@@ -262,6 +264,7 @@ int RUN_get_int_parameter_vector(const char * key, int v[]) {
  *
  *****************************************************************************/
 
+__targetHost__
 int RUN_get_string_parameter(const char * key, char * value, const int len) {
 
   int key_present = 0;
@@ -286,6 +289,7 @@ int RUN_get_string_parameter(const char * key, char * value, const int len) {
  *
  *****************************************************************************/
 
+__targetHost__
 int RUN_get_active_keys() {
 
   int nkeys = 0;

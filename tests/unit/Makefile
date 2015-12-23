@@ -16,27 +16,26 @@
 #  Edinburgh Parallel Computing Centre
 #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010-2014 The University of Edinburgh
+#  (c) 2010-2015 The University of Edinburgh
 #
 ###############################################################################
+
+include ../../Makefile.mk
 
 #------------------------------------------------------------------------------
 # Compilation options, etc.
 #------------------------------------------------------------------------------
 
-CC     = gcc
-MPICC  = mpicc
-MPIRUN = mpirun -np
 NPROCS = 8
+MPIRUN = ${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH} $(NPROCS)
 
 SRC     = ../../src
 INCLUDE = -I$(SRC) -I../../targetDP
-CFLAGS  = -g -O2 -Wall 
 
 MPI_STUB_INCLUDE = -I../../mpi_s
 MPI_STUB_LIB = -L../../mpi_s -lmpi
 
-CLIBS  = -lm -L../../targetDP -ltargetDP_C
+CLIBS  = -lm -L../../targetDP -ltarget
 MPILIB = -lmpi
 
 #------------------------------------------------------------------------------
@@ -66,7 +65,7 @@ TESTOBJECTS = ${TESTSOURCES:.c=.o}
 #------------------------------------------------------------------------------
 
 base-me: $(TESTOBJECTS) tests.o test_coords_field.o
-	$(CC) $(LB) -L$(SRC) $(TESTOBJECTS) tests.o test_coords_field.o \
+	$(CC) $(LDFLAGS) -L$(SRC) $(TESTOBJECTS) tests.o test_coords_field.o \
         -L$(SRC) -lludwig $(CLIBS)
 
 serial:
@@ -105,12 +104,11 @@ mpi-test:
 	$(MAKE) base-me "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
 
 
-run-serial: serial
-	./a.out
+run-serial:
+	$(LAUNCH_SERIAL_CMD) ./a.out
 
-run-mpi: mpi
-	$(MPIRUN) $(NPROCS) ./a.out
-
+run-mpi:
+	$(MPIRUN) ./a.out
 
 clean:
 	$(RM) core *.o a.out

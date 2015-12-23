@@ -857,7 +857,7 @@ void io_info_single_file_set(io_info_t * info) {
  *
  *****************************************************************************/
 
-int io_info_metadata_filestub_set(io_info_t * info, char * stub) {
+int io_info_metadata_filestub_set(io_info_t * info, const char * stub) {
 
   assert(info);
   assert(stub);
