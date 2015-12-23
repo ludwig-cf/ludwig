@@ -17,12 +17,12 @@
 #ifndef RUNTIME_H
 #define RUNTIME_H
 
-void RUN_read_input_file(const char *);
-int  RUN_get_int_parameter(const char *, int *);
-int  RUN_get_int_parameter_vector(const char *, int []);
-int  RUN_get_double_parameter(const char *, double *);
-int  RUN_get_double_parameter_vector(const char *, double []);
-int  RUN_get_string_parameter(const char *, char *, const int);
-int  RUN_get_active_keys(void);
+__targetHost__ void RUN_read_input_file(const char *);
+__targetHost__ int  RUN_get_int_parameter(const char *, int *);
+__targetHost__ int  RUN_get_int_parameter_vector(const char *, int []);
+__targetHost__ int  RUN_get_double_parameter(const char *, double *);
+__targetHost__ int  RUN_get_double_parameter_vector(const char *, double []);
+__targetHost__ int  RUN_get_string_parameter(const char *, char *, const int);
+__targetHost__ int  RUN_get_active_keys(void);
 
 #endif

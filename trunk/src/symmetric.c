@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <math.h>
 
+#include "pe.h"
 #include "util.h"
 #include "symmetric.h"
 #include "field_s.h"

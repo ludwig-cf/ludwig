@@ -284,10 +284,10 @@ static int test_io(psi_t * psi, int tstep) {
   /* 1D output. calloc() is used to zero the arays, then
    * MPI_Gather to get complete picture. */
 
-  field = calloc(nlocal[X], sizeof(double));
-  psifield = calloc(ntotalx, sizeof(double));
-  rho0field = calloc(ntotalx, sizeof(double));
-  rho1field = calloc(ntotalx, sizeof(double));
+  field = (double *) calloc(nlocal[X], sizeof(double));
+  psifield = (double *) calloc(ntotalx, sizeof(double));
+  rho0field = (double *) calloc(ntotalx, sizeof(double));
+  rho1field = (double *) calloc(ntotalx, sizeof(double));
   if (field == NULL) fatal("calloc(field) failed\n");
   if (psifield == NULL) fatal("calloc(psifield) failed\n");
   if (rho0field == NULL) fatal("calloc(rho0field) failed\n");

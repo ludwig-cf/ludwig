@@ -19,6 +19,7 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include "pe.h"
 #include "util.h"
 #include "coords.h"
 #include "psi_colloid.h"

@@ -25,8 +25,8 @@ The top level ludwig directory should contain at least the following:
 \begin{lstlisting}
 $ ls
 bash-3.2$ ls
-LICENSE         docs            src             tests           version.h
-README          mpi_s           targetDP        util
+config  LICENSE      mpi_s   src       tests  version.h
+docs    Makefile.mk  README  targetDP  util
 \end{lstlisting}
 The code is released under a standard BSD license; the current version
 number is found in \texttt{version.h}. The main source is found in
@@ -40,6 +40,8 @@ found in \texttt{docs}.
 The code is ANSI C (1999), and can be built without any external
 dependencies, with the exception of the message passing interface
 (MPI), which is used to provide domain-decomposition based parallelism.
+Note that the code will also compile under NVIDIA \texttt{nvcc}, i.e.,
+it also meets the C++ standard.
 
 \subsubsection{Design}
 
@@ -192,8 +194,10 @@ See the relevant sections on each free energy for further details.
 
 \subsection{Compilation}
 
-Compilation of the main code is controlled by the \texttt{Makefile} in
-the \texttt{./src} directory. This section discusses a number of issues
+Compilation of the main code is controlled by the \texttt{config.mk} in
+the  top-level directory. A number of example \texttt{config.mk} files
+are provided in the \texttt{config} directory (which can be copied and
+adjusted as needed). This section discusses a number of issues
 which influence compilation.
 
 \subsubsection{Dependencies on third-party software:}
@@ -210,10 +214,10 @@ is included with the source.
 
 \subsubsection{Makefile}
 
-The \texttt{Makefile} provided in the source directory has a number of
-targets to allow different models to be compiled. Before compilation,
-the Makefile must be edited provide details of the local C compiler(s).
-The relevant lines are usually limited to:
+The \texttt{Makefile.mk} and \texttt{config.mk} files in the top level
+directory control options for compilation. Before compilation,
+the \texttt{config.mk} file must be edited provide details of the local
+C compiler(s). The relevant lines are usually limited to, e.g.:
 \begin{lstlisting}
 CC = cc
 MPICC = mpicc
@@ -222,8 +226,16 @@ CFLAGS = -O2
 where \texttt{CC} is the compiler used for serial compilation,
 \texttt{MPICC} is the compiler used for compilation against
 MPI, and \texttt{CFLAGS} provides compiler switches (often
-related to optimisation). Beyond these variables, changes to
-the \texttt{Makefile} should not usually be required.
+related to optimisation).
+
+The \texttt{Makefile} provided in each subdirectory includes
+the \texttt{config.mk} file via the top level \texttt{Makefile.mk}.
+Changes to the individual Makefiles should therefore not be required.
+
+If GPU compilation is required, the \texttt{config.mk} file should
+specify the local details concerning \texttt{nvcc}. This includes
+explicit information on the location of MPI headers and libraries
+if an MPI-parallel GPU version is required.
 
 \subsubsection{C assertions}
 
@@ -231,8 +243,8 @@ The code makes quite a lot of use of standard C assertions, which
 are useful to prevent errors. They do result in a considerably
 slower execution in some instances, so production runs should
 switch off the assertions with the standard \texttt{NDEBUG}
-preprocessor flag. Add \texttt{-DNDEBUG} to \texttt{OPTS} in
-the \texttt{Makefile}.
+preprocessor flag. Add \texttt{-DNDEBUG} to \texttt{CFLAGS} in
+the \texttt{config.mk}.
 
 \subsubsection{Targets for serial and parallel code}
 
@@ -289,19 +301,19 @@ they can be run independently, e.g., after adding or changing code.
 
 \subsubsection{Running the tests}
 
-A number of different scripts are provided for running serial, parallel,
-or GPU tests. For each test script, there is the option to run either
+A number of different \texttt{Makefile} targets are provided for
+running serial, parallel,
+or GPU tests. For each test, there is the option to run either
 the relevant unit tests, or regression tests, or both. For example, to
 run both serial unit tests and serial regression tests for the D3Q19
 model, invoke
 \begin{lstlisting}
-./test-serial.sh -u -r d3q19
+$ cd tests
+$ make compile-run-serial
 \end{lstlisting}
 in the test directory.
 The model selection follows the naming scheme described for compilation
 in the previous section.
-See the individual scripts for further information on the command line
-options.
 
 
 \subsection{Additional Notes for Developers}

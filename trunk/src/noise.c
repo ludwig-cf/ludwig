@@ -200,12 +200,15 @@ int noise_init(noise_t * obj, int master_seed) {
 int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
 		       int form_out) {
 
+  const char * name = "Lattice noise RNG state";
+  const char * stubname = "noise";
+
   assert(obj);
 
   obj->info = io_info_create_with_grid(grid);
   if (obj->info == NULL) fatal("io_info_create(noise) failed\n");
 
-  io_info_set_name(obj->info, "Lattice noise RNG state");
+  io_info_set_name(obj->info, name);
   io_info_write_set(obj->info, IO_FORMAT_BINARY, noise_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, noise_write);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, noise_read);
@@ -213,7 +216,7 @@ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
   io_info_set_bytesize(obj->info, NNOISE_STATE*sizeof(unsigned int));
 
   io_info_format_set(obj->info, form_in, form_out);
-  io_info_metadata_filestub_set(obj->info, "noise");
+  io_info_metadata_filestub_set(obj->info, stubname);
 
   return 0;
 }

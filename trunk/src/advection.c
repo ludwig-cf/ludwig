@@ -248,7 +248,7 @@ __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 
       index0 = targetIndex3D(coords[X],coords[Y],coords[Z],tc_Nall);
 
-#ifdef CUDA
+#ifdef __NVCC__
       icm1 = coords[X]-1;
       icp1 = coords[X]+1;
 #else
@@ -385,7 +385,7 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
 
   TIMER_start(ADVECTION_X_KERNEL);
-#ifdef CUDA
+#ifdef __NVCC__
   advection_le_1st_lattice __targetLaunch__(nSites) (flux->tcopy, hydro->tcopy, nf,field->tcopy);
 #else
   /* use host copies of input just now, because of LE plane buffers*/
@@ -550,7 +550,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	/* west face (icm1 and ic) */
 
-#ifdef CUDA
+#ifdef __NVCC__
       icm2 = coords[X]-2;
       icm1 = coords[X]-1;
       icp1 = coords[X]+1;
@@ -746,11 +746,11 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
   copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int));
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
-  
 
   TIMER_start(ADVECTION_X_KERNEL);
+
   /* execute lattice-based operation on target */
-#ifdef CUDA
+#ifdef __NVCC__
   advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
 #else
 

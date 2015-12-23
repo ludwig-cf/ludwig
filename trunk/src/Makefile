@@ -12,89 +12,45 @@
 # make serial            for serial code (default model is D3Q19)
 # make mpi               for parallel code (default model is D3Q19)
 #
-# make serial-d2q9       etc for serial D2Q19 or D3Q15 or D3Q19
+# make serial-d2q9       etc for serial D2Q19or D3Q15 or D3Q19
 # make mpi-d2q9          etc for parallel ditto
 #
 # Compiler flags.
 #
-# You will need to set the appropriate compiler flags for your
-# local compiler/system of choice.
-#
-# CC        C compiler (make serial)
-# MPICC     C compiler (make mpi)
-# LDFLAGS   Link time flags [-lm included by default]
+# Appropriate flags for your system should be set in the parent
+# directory in the file config.mk. See ../Makefile.mk
 #
 # Edinburgh Soft Matter and Statistical Physics Group and
 # Edinburgh Parallel Computing Centre
 #
 # Kevin Stratford (kevin@epcc.ed.ac.uk)
-# (c) 2010-2014 The University of Edinburgh
+# (c) 2010-2015 The University of Edinburgh
 #
 ###############################################################################
+
+include ../Makefile.mk
 
 MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-CC = gcc 
-MPICC = mpicc
-NVCC = nvcc
-
-OPTS = -DNP_D3Q6 #-DNDEBUG 
-CFLAGS = -O2 
-LIBS = -lm 
-
-# TargetDP, under development
-USEGPU=
-ifeq ($(TARGETDP),GPU)
-USEGPU=1
-endif
-
-ifdef USEGPU
-TARGETCC = $(NVCC) -arch=sm_35
-TARGETOPTS =  $(OPTS) -x cu -DCUDA -dc -Xptxas -v -I/opt/intel/impi/5.0.3.048/intel64/include
-OPTS += -DCUDAHOST #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET
-LIBS += -L../targetDP -ltargetDP_CUDA  -L /opt/intel/impi/5.0.3.048/intel64/lib -lmpi
-else
-TARGETCC = $(CC)
-TARGETOPTS = $(OPTS)
-CFLAGS += #-fopenmp
-LIBS += -L../targetDP -ltargetDP_C #-lgomp -lpthread
-endif
-
-
-
-ifeq ($(MYHOSTNAME),mbpag3)
-
-ifdef USEGPU
-TARGETCC = $(NVCC) -arch=sm_30 -Xptxas -v
-#LIBS+=-L/usr/local/Cellar/open-mpi/1.8.1/lib/ -lmpi
-else
-OPTS+=#-fopenmp #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET  #
-LIBS+=#-L/usr/local/Cellar/gcc49/4.9.0/lib/gcc/x86_64-apple-darwin13.1.0/4.9.0/  -lgomp
-endif
-
-endif #host is mbpag3
-
-
+OPTS = -DNP_D3Q6
+LIBS = -L../targetDP -ltarget -lm
 INC = -I. -I ../targetDP
-AR = ar
-ARFLAGS = -cru
 
 ###############################################################################
 #
-# Compilation with PETSc is enabled by setting 'PETSC = some_non_empty_value'.
+# Compilation with PETSc is enabled by setting HAVE_PETSC.
 #
 # For explicit libraries and includes the correct paths are obtained with
 # 'make getincludedirs' and 'make getlinklibs' in $PETSC_DIR.
 #
 ###############################################################################
 
-PETSC = 
-ifdef PETSC
+ifdef HAVE_PETSC
 OPTS += -DPETSC
-INC  +=
-LIBS +=
+INC  += $(PETSC_INC)
+LIBS += $(PETSC_LIB)
 endif 
 
 ###############################################################################
@@ -104,32 +60,36 @@ endif
 ###############################################################################
 
 OBJS = \
-     physics.o physics_rt.o advection_rt.o \
-     blue_phase_init.o blue_phase_rt.o \
+     physics.o physics_rt.o advection.o advection_rt.o advection_bcs.o \
+     blue_phase.o blue_phase_init.o blue_phase_rt.o \
+     blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
      colloid_io.o colloids_init.o \
      colloid.o colloid_link.o colloids_halo.o colloid_io_rt.o \
-     colloid_sums.o bbl.o build.o collision_rt.o \
-     colloids_rt.o lubrication.o \
-     coords_field.o coords_rt.o \
+     colloids_Q_tensor.o \
+     colloid_sums.o bbl.o build.o collision.o collision_rt.o \
+     colloids.o colloids_rt.o lubrication.o \
+     coords.o coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      driven_colloid.o driven_colloid_rt.o \
-     ewald.o \
+     ewald.o field.o field_grad.o \
      free_energy.o free_energy_vector.o free_energy_tensor.o \
      fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
+     gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-      hydro_rt.o interaction.o io_harness.o \
+     hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
-     lc_droplet.o lc_droplet_rt.o model_le.o map.o \
+     lc_droplet.o lc_droplet_rt.o model.o model_le.o map.o \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
      angle_cosine.o bond_fene.o \
-     phi_cahn_hilliard.o \
+     phi_cahn_hilliard.o phi_force.o phi_force_colloid.o \
+     phi_force_stress.o phi_lb_coupler.o \
      phi_stats.o \
      polar_active.o polar_active_rt.o \
      psi.o psi_rt.o psi_stats.o psi_sor.o psi_init.o \
-     psi_force.o psi_colloid.o \
+     psi_force.o psi_colloid.o propagation.o \
      nernst_planck.o \
      psi_petsc.o psi_gradients.o \
      leesedwards.o pe.o ran.o runtime.o \
@@ -139,13 +99,7 @@ OBJS = \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
-     timer.o wall.o wall_ss_cut.o ludwig.o
-
-TARGETDP_OBJS = collision.o symmetric.o util.o field.o field_grad.o \
-	propagation.o hydro.o model.o gradient_3d_7pt_fluid.o phi_lb_coupler.o \
-	blue_phase.o phi_force_stress.o phi_force.o blue_phase_beris_edwards.o \
-	advection.o gradient_3d_7pt_solid.o colloids_Q_tensor.o colloids.o \
-	advection_bcs.o coords.o phi_force_colloid.o comms_gpu.o
+     symmetric.o timer.o util.o wall.o wall_ss_cut.o comms_gpu.o ludwig.o
 
 
 ###############################################################################
@@ -169,17 +123,12 @@ verbose:
             "\t Check the Makefile for further details\n"	
 
 code:	$(MAIN).o
-	$(TARGETCC) $(LDFLAGS) -o $(EXECUTABLE) $(MAIN).o $(LIBRARY) $(LIBS)
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) $(MAIN).o $(LIBRARY) $(LIBS)
 
 # Serial versions
 
 serial:
-ifdef USEGPU
-	$(MAKE) serial-d3q19r	
-else
 	$(MAKE) serial-d3q19	
-endif
-
 
 serial-d2q9:
 	$(MAKE) serial-model "LB=-D_D2Q9_" "LBOBJ=d2q9.o"
@@ -231,21 +180,17 @@ mpi-d3q19r:
 
 mpi-model:
 	$(MAKE) libmpi
-	$(MAKE) code "CC=$(MPICC)"
+	$(MAKE) code "CC=$(MPICC)" "INC=$(INC) $(MPI_INCL)" "LIBS=$(LIBS) $(MPI_LIBS)"
 
 # Libraries
 
-objs1:	$(OBJS) $(LBOBJ)
-objs2:	$(TARGETDP_OBJS)
-libar: 
-	$(MAKE) objs1
-	$(MAKE) objs2 "CC=$(TARGETCC)" "OPTS=$(TARGETOPTS)"
-	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(TARGETDP_OBJS) $(LBOBJ)
+libar:	$(OBJS) $(LBOBJ) 
+	$(AR) $(ARFLAGS) $(LIBRARY) $(OBJS) $(LBOBJ)
 
 lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
-	$(MAKE) libar "CC=$(MPICC)"
+	$(MAKE) libar "CC=$(MPICC)" "INC=$(INC) $(MPI_INCL)"
 
 # To obtain the latest svn version information, we use svnversion.
 # If svnversion is not available there may be an ugly error message,
@@ -253,7 +198,7 @@ libmpi:
 # quoted, e.g. "1191", hence the apostrophe armageddon.
 
 svn.o:
-	$(CC) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
+	$(CC) $(CFLAGS) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
 
 ###############################################################################
 #

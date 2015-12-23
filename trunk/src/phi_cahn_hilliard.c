@@ -43,6 +43,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "control.h"
 #include "leesedwards.h"
 #include "advection.h"
 #include "free_energy.h"
@@ -535,8 +536,6 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   MPI_Comm    le_comm;
   MPI_Request request[8];
   MPI_Status  status[8];
-
-  int get_step(void);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);

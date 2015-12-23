@@ -355,7 +355,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 
       if (includeSite[iv]) {
 
-#ifndef CUDA
+#ifndef __NVCC__
 	/* this is needed to allow GPU compilation at the moment */
 	collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);
 #endif
@@ -549,7 +549,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   noise_present(noise, NOISE_RHO, &noise_on);
 
-#ifdef CUDA 
+#ifdef __NVCC__ 
   if (noise_on) {
     printf("Error: noise_on is not yet supported for CUDA\n");
     exit(1);
@@ -716,12 +716,6 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
     s[Z][Z*VVL+iv] = mode[9*VVL+iv];
   }
 
-  /*
-  target_simd_loop(iv) {
-    s[X][simd_index(X,iv)] = mode[simd_index(4,iv)]
-  }
-  */
-
   /* Compute the local velocity, taking account of any body force */
   
   __targetILP__(iv) rrho[iv] 
@@ -803,10 +797,8 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
   if (noise_on) {
     
-#ifdef CUDA 
-    
+#ifdef __NVCC__
     printf("Error: noise_on is not yet supported for CUDA\n");
-    
 #else      
     
      __targetILP__(iv){
@@ -1087,14 +1079,12 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
   get_chemical_stress_target(t_chemical_stress);
 
   if (noise_on) {
-    
-#ifdef CUDA 
+#ifdef __NVCC__ 
     fatal("Error: noise_on is not yet supported for CUDA\n");
-#endif      
-
+#endif
   }
 
-	
+
   TIMER_start(TIMER_COLLIDE_KERNEL);
   lb_collision_binary_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on);
 
@@ -1417,7 +1407,7 @@ static int collision_fluctuations(noise_t * noise, int index,
   assert(noise);
   assert(NNOISE_MAX >= NDIM*(NDIM+1)/2);
   assert(NNOISE_MAX >= (NVEL - NHYDRO));
-  assert(NDIM == 3);
+  assert(NDIM == 2 || NDIM == 3);
 
   /* Set symetric random stress matrix (elements with unit variance);
    * in practice always 3d (= 6 elements) required */
@@ -1438,7 +1428,7 @@ static int collision_fluctuations(noise_t * noise, int index,
 
   /* Compute the trace and the traceless part */
 
-  tr = r3_*(shat[X][X] + shat[Y][Y] + shat[Z][Z]);
+  tr = (1.0/NDIM)*(shat[X][X] + shat[Y][Y] + (NDIM - 2.0)*shat[Z][Z]);
   shat[X][X] -= tr;
   shat[Y][Y] -= tr;
   shat[Z][Z] -= tr;

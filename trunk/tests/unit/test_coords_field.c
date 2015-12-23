@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "util.h"
 #include "coords.h"
 #include "coords_field.h"
 #include "test_coords_field.h"
@@ -46,7 +47,7 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
   int ic, jc, kc, index, indexf;
 
   size_t sz;
-  unsigned char * fc = buf;
+  unsigned char * fc = (unsigned char *) buf;
 
   assert (nf >= 0);
   assert(fc);
@@ -105,7 +106,7 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
   char   cref, cact;            /* Reference, actual, function value */
   double dref, dact;            /* Reference, actual, function value */
-  unsigned char * bufc = buf;
+  unsigned char * bufc = (unsigned char *) buf;
 
   assert(nhcomm <= coords_nhalo());
   assert(nf >= 0);
@@ -162,7 +163,7 @@ int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
 
   int ntotal[3];
   int iref;
-  char * c = ref;
+  char * c = (char *) ref;
 
   assert(c);
   coords_ntotal(ntotal);
@@ -190,11 +191,11 @@ int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
 
 int test_ref_double1(int ic, int jc, int kc, int n, void * ref) {
 
-  double * d = ref;
+  double * d = (double *) ref;
 
   assert(d);
 
-  *d = cos(2.0*M_PI*ic/L(X)) + cos(2.0*M_PI*jc/L(Y)) + cos(2.0*M_PI*kc/L(Z));
+  *d = cos(2.0*pi_*ic/L(X)) + cos(2.0*pi_*jc/L(Y)) + cos(2.0*pi_*kc/L(Z));
   *d += 1.0*n;
 
   return 0;
