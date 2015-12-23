@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2014 The University of Edinburgh
+ *  (c) 2011-2015 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Alan Gray (alang@epcc.ed.ac.uk)
@@ -955,7 +955,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
 }
 
-__targetEntry__ void lb_collision_binary_lattice( lb_t* __restrict__ t_lb, 
+__targetEntry__ void lb_collision_binary_lattice( lb_t * t_lb, 
 			      const double* __restrict__ t_force, 
 			      double* __restrict__ t_velocity,
 			      const double* __restrict__ t_phi,
