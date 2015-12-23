@@ -56,11 +56,13 @@ compile-serial-base:
 compile-serial:
 	$(MAKE) compile-serial-base "LBMODEL=serial"
 compile-serial-%:
+	@echo "TEST --> compile serial $*"
 	$(MAKE) compile-serial-base "LBMODEL=serial-$*"
 
 compile-mpi:
 	$(MAKE) compile-mpi-base "LBMODEL=mpi"
 compile-mpi-%:
+	@echo "TEST --> compile mpi $*"
 	$(MAKE) compile-mpi-base "LBMODEL=mpi-$*"
 
 # Execution only
@@ -72,18 +74,18 @@ compile-mpi-%:
 # That means there should be no further targets ending in "r".
 
 run-serial-unit:
-	$(MAKE) -C unit run-serial
+	$(MAKE) -k -C unit run-serial
 run-serial-regr-%r:
 	$(MAKE) -s run-serial-regr-$*
 run-serial-regr-%:
-	$(MAKE) -C regression/$* serial
+	$(MAKE) -k -C regression/$* serial
 
 run-mpi-unit:
-	$(MAKE) -C unit run-mpi
+	$(MAKE) -k -C unit run-mpi
 run-mpi-regr-%r:
 	$(MAKE) -s run-mpi-regr-$*
 run-mpi-regr-%:
-	$(MAKE) -C regression/$* mpix08
+	$(MAKE) -k -C regression/$* mpix08
 
 clean:
 	$(MAKE) -C ../targetDP clean
