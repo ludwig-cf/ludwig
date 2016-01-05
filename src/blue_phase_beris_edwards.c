@@ -184,9 +184,10 @@ __targetHost__ __target__ void blue_phase_compute_h_inline(double q[3][3],
     for (ib = 0; ib < 3; ib++) {
        sum = 0.0;
        for (ic = 0; ic < 3; ic++) {
-	 for (id = 0; id < 3; id++) {
-	   sum += pbpc->e_[ia][ic][id]*dq[ic][ib][id] + pbpc->e_[ib][ic][id]*dq[ic][ia][id];
-	 }
+       for (id = 0; id < 3; id++) {
+	   //sum += pbpc->e_[ia][ic][id]*dq[ic][ib][id] + pbpc->e_[ib][ic][id]*dq[ic][ia][id];
+	 sum += pbpc->ec_[ia][ic][id]*dq[ic][ib][id] + pbpc->ec_[ib][ic][id]*dq[ic][ia][id];
+       }
        }
        
        h[ia][ib] += pbpc->kappa0*dsq[ia][ib]

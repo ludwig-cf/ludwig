@@ -19,6 +19,8 @@
 
 extern const double d_[3][3];
 extern const double e_[3][3][3];
+extern const char dc_[3][3];
+extern const char ec_[3][3][3];
 extern const double pi_;
 extern const double r3_;
 

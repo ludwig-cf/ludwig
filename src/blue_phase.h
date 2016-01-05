@@ -49,7 +49,8 @@ struct bluePhaseKernelConstants {
   double w1_wall;
   double w2_wall;
   double amplitude;
-
+  char dc_[3][3];
+  char ec_[3][3][3];
 };
 
 typedef struct bluePhaseKernelConstants bluePhaseKernelConstants_t;
