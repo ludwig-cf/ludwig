@@ -121,6 +121,8 @@ __targetHost__ void blue_phase_set_kernel_constants(){
   bpc.nextra=nextra;
   memcpy(bpc.d_,d_,3*3*sizeof(double));
   memcpy(bpc.e_,e_,3*3*3*sizeof(double));
+  memcpy(bpc.dc_,dc_,3*3*sizeof(char));
+  memcpy(bpc.ec_,ec_,3*3*3*sizeof(char));
   bpc.r3_=r3_;
 
   blue_phase_coll_w12(&(bpc.w1_coll), &(bpc.w2_coll));

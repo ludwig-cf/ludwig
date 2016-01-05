@@ -30,12 +30,21 @@
 #define c0 0.0
 #define c1 1.0
 
+#define c0c 0
+#define c1c 1
+
 const double pi_ = 3.1415926535897932385;
 const double r3_ = (1.0/3.0);
 const double d_[3][3]    = {{c1, c0, c0}, {c0, c1, c0}, {c0, c0, c1}};
 const double e_[3][3][3] = {{{c0, c0, c0}, { c0, c0, c1}, {c0,-c1, c0}},
 			    {{c0, c0,-c1}, { c0, c0, c0}, {c1, c0, c0}},
 			    {{c0, c1, c0}, {-c1, c0, c0}, {c0, c0, c0}}}; 
+
+
+const char dc_[3][3]    = {{c1c, c0c, c0c}, {c0c, c1c, c0c}, {c0c, c0c, c1c}};
+const char ec_[3][3][3] = {{{c0c, c0c, c0c}, { c0c, c0c, c1c}, {c0c,-c1c, c0c}},
+			    {{c0c, c0c,-c1c}, { c0c, c0c, c0}, {c1c, c0c, c0c}},
+			    {{c0c, c1c, c0c}, {-c1c, c0c, c0}, {c0c, c0c, c0c}}}; 
 
 __targetConst__ double tc_r3_; 
 __targetConst__ double tc_d_[3][3];
