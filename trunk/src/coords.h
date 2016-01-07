@@ -95,22 +95,44 @@ extern __targetConst__ int tc_nextra;
 #endif
 
 
-/* memory addressing macro for pth. This maybe should be moved elsewhere */
+/* memory addressing macro for 3x3 fields.
 
 /* array of structures */
-#define ADDR_PTH(nsite, index, ia, ib)	\
+#define ADDR_3X3(nsite, index, ia, ib)	\
   (3*3*(index) + 3*(ia)+(ib))
 
 
 /* structure of arrays */
-#define ADDR_PTH_R(nsite, index, ia, ib)	\
+#define ADDR_3X3_R(nsite, index, ia, ib)	\
   (3*(nsite)*(ia)+(nsite)*(ib)+(index))
 
 #ifdef LB_DATA_SOA
-#define PTHADR ADDR_PTH_R
+#define ADR3X3 ADDR_3X3_R
 #else
-#define PTHADR ADDR_PTH
+#define ADR3X3 ADDR_3X3
 #endif
+
+/* legacy */
+#define PTHADR ADR3X3
+
+/* memory addressing macro for 3x3x3 fields.
+
+/* array of structures */
+#define ADDR_3X3X3(nsite, index, ia, ib, ic)	\
+  (3*3*3*(index)+3*3*(ia)+3*(ib)+(ic))
+
+
+/* structure of arrays */
+#define ADDR_3X3X3_R(nsite, index, ia, ib, ic)	\
+  (3*3*(nsite)*(ia)+3*(nsite)*(ib)+(nsite)*(ic)+(index))
+
+#ifdef LB_DATA_SOA
+#define ADR3X3X3 ADDR_3X3X3_R
+#else
+#define ADR3X3X3 ADDR_3X3X3
+#endif
+
+
 
 
 #endif
