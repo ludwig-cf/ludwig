@@ -176,6 +176,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   info("GPU INFO: ***GPU ACCELERATION ENABLED***\n");
   info("GPU INFO: Running GPU build which is under development.\n");
   info("GPU INFO: Please check results against CPU build.\n\n");  
+
+  /* make maximum L1 cache available on GPU */
+  cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 #endif
 
   /* Initialise free-energy related objects, and the coordinate
