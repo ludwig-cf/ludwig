@@ -95,7 +95,7 @@ extern __targetConst__ int tc_nextra;
 #endif
 
 
-/* memory addressing macro for 3x3 fields.
+/* memory addressing macro for 3x3 fields. */
 
 /* array of structures */
 #define ADDR_3X3(nsite, index, ia, ib)	\
@@ -115,7 +115,7 @@ extern __targetConst__ int tc_nextra;
 /* legacy */
 #define PTHADR ADR3X3
 
-/* memory addressing macro for 3x3x3 fields.
+/* memory addressing macro for 3x3x3 fields. */
 
 /* array of structures */
 #define ADDR_3X3X3(nsite, index, ia, ib, ic)	\
