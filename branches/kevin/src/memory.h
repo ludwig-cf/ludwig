@@ -104,7 +104,7 @@ int forward_addr_rank1(int nsites, int na, int index, int ia) {
 }
 
 int forward_addr_rank2(int nsites, int na, int nb,
-		    int index, int ia, int ib) {
+		       int index, int ia, int ib) {
 
   assert(index >= 0 && index < nsites);
   assert(ia >= 0    && ia < na);
@@ -114,7 +114,7 @@ int forward_addr_rank2(int nsites, int na, int nb,
 }
 
 int forward_addr_rank3(int nsites, int na, int nb, int nc,
-		    int index, int ia, int ib, int ic) {
+		       int index, int ia, int ib, int ic) {
 
   assert(index >= 0 && index < nsites);
   assert(ia >= 0    && ia < na);
@@ -124,8 +124,8 @@ int forward_addr_rank3(int nsites, int na, int nb, int nc,
   return na*nb*nc*index + nb*nc*ia + nc*ib + ic;
 }
 
-int forward_index_rank4(int nsites, int na, int nb, int nc, int nd,
-		     int index, int ia, int ib, int ic, int id) {
+int forward_addr_rank4(int nsites, int na, int nb, int nc, int nd,
+		       int index, int ia, int ib, int ic, int id) {
 
   assert(index >= 0 && index < nsites);
   assert(ia >= 0    && ia < na);
@@ -146,6 +146,8 @@ int forward_index_rank4(int nsites, int na, int nb, int nc, int nd,
  * Rank 2 array[na][nb][nsites]
  * Rank 3 array[na][nb][nc][nsites] */
 
+#ifdef NDEBUG
+
 #define reverse_addr_rank1(nsites, na, index, ia) \
   ( (nsites)*(ia) + (index) )
 
@@ -155,13 +157,59 @@ int forward_index_rank4(int nsites, int na, int nb, int nc, int nd,
 #define reverse_addr_rank3(nsites, na, nb, nc, index, ia, ib, ic)	\
   ( (nb)*(nc)*(nsites)*(ia) + (nc)*(nsites)*(ib) + (nsites)*(ic) + (index) )
 
+#define reverse_addr_rank4(nsites, na, nb, nc, nd, index, ia, ib, ic, id) \
+  ( (nb)*(nc)*(nd)*(nsites)*(ia) + (nc)*(nd)*(nsites)*(ib) + \
+    (nd)*(nsites)*(ic) + (nsites)*(id) + (index) )
 
-#ifdef FOWARD
+#else
+
+int reverse_addr_rank1(int nsites, int na, int index, int ia) {
+
+  assert(index >= 0 && index < nsites);
+  assert(ia >= 0    && ia < na);
+
+  return nsites*ia + index;
+}
+
+int reverse_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib) {
+
+  assert(index >= 0 && index < nsites);
+  assert(ia >= 0    && ia < na);
+  assert(ib >= 0    && ib < nb);
+
+  return nb*nsites*ia + nsites*ib + index;
+}
+
+int reverse_addr_rank3(int nsites, int na, int nb, int nc,
+		       int index, int ia, int ib, int ic) {
+
+  assert(index >= 0 && index < nsites);
+  assert(ia >= 0    && index < na);
+  assert(ib >= 0    && index < nb);
+  assert(ic >= 0    && index < nc);
+
+  return nb*nc*nsites*ia + nc*nsites*ib + nsites*ic + index;
+}
+
+int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
+		       int index, int ia, int ib, int ic, int id) {
+
+  assert(index >= 0 && index < nsites);
+  assert(ia >= 0    && index < na);
+  assert(ib >= 0    && index < nb);
+  assert(ic >= 0    && index < nc);
+  assert(id >= 0    && index < nd);
+
+  return nb*nc*nd*nsites*ia + nc*nd*nsites*ib + nd*nsites*ic + nsites*id + index;
+}
+#endif
+
+
+#ifndef ADDR_MODEL_R
 #define base_addr_rank1 forward_addr_rank1
 #define base_addr_rank2 forward_addr_rank2
 #define base_addr_rank3 forward_addr_rank3
 #define base_addr_rank4 forward_addr_rank4
-#endif
 #else /* REVERSE */
 #define base_addr_rank1 reverse_addr_rank1
 #define base_addr_rank2 reverse_addr_rank2
@@ -169,10 +217,15 @@ int forward_index_rank4(int nsites, int na, int nb, int nc, int nd,
 #define base_addr_rank4 reverse_addr_rank4
 #endif
 
-
-/* Interface macro definitions */
+/* Non-vectorised loops. */
+/* We simulate an innermost vector loop by arithmetic based
+ * on the coordinate index, which is expected to run normally
+ * from 0 ... nites-1. The 'dummy' vector loop index is ... */
 
 #define pseudo_iv(index) ( (index) - (((index)/nsimd)*nsimd) )
+
+
+/* Macro definitions for the interface */
 
 #define addr_rank1(nsites, na, index, ia) \
   base_addr_rank2(nsites/nsimd, na, nsimd, (index)/nsimd, ia, pseudo_iv(index))
@@ -190,5 +243,6 @@ int forward_index_rank4(int nsites, int na, int nb, int nc, int nd,
 #define addrv_rank2(nsites, na, nb, index, ia, ib, iv) \
   base_addr_rank3(nsites/nsimd, na, nb, nsimd, (index)/nsimd, ia, ib, iv)
 
-/* And so on. */
+#define addrv_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv) \
+  base_addr_rank4(nsites/nsimd, na, nb, nc, nsimd, (index)/nsimd, ia, ib, ic, iv)
 
