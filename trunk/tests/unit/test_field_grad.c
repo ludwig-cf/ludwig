@@ -269,15 +269,15 @@ int do_test_dab(void) {
 
   field_grad_scalar_dab(gradient, index, dab);
 
-  assert(fabs(dab[X][X] - test_encode(ENCODE_DAB, nf, XX, 0) < DBL_EPSILON));
-  assert(fabs(dab[X][Y] - test_encode(ENCODE_DAB, nf, XY, 0) < DBL_EPSILON));
-  assert(fabs(dab[X][Z] - test_encode(ENCODE_DAB, nf, XZ, 0) < DBL_EPSILON));
-  assert(fabs(dab[Y][X] - test_encode(ENCODE_DAB, nf, XY, 0) < DBL_EPSILON));
-  assert(fabs(dab[Y][Y] - test_encode(ENCODE_DAB, nf, YY, 0) < DBL_EPSILON));
-  assert(fabs(dab[Y][Z] - test_encode(ENCODE_DAB, nf, YZ, 0) < DBL_EPSILON));
-  assert(fabs(dab[Z][X] - test_encode(ENCODE_DAB, nf, XZ, 0) < DBL_EPSILON));
-  assert(fabs(dab[Z][Y] - test_encode(ENCODE_DAB, nf, YZ, 0) < DBL_EPSILON));
-  assert(fabs(dab[Z][Z] - test_encode(ENCODE_DAB, nf, ZZ, 0) < DBL_EPSILON));
+  assert(fabs(dab[X][X] - test_encode(ENCODE_DAB, nf, XX, 0)) < DBL_EPSILON);
+  assert(fabs(dab[X][Y] - test_encode(ENCODE_DAB, nf, XY, 0)) < DBL_EPSILON);
+  assert(fabs(dab[X][Z] - test_encode(ENCODE_DAB, nf, XZ, 0)) < DBL_EPSILON);
+  assert(fabs(dab[Y][X] - test_encode(ENCODE_DAB, nf, XY, 0)) < DBL_EPSILON);
+  assert(fabs(dab[Y][Y] - test_encode(ENCODE_DAB, nf, YY, 0)) < DBL_EPSILON);
+  assert(fabs(dab[Y][Z] - test_encode(ENCODE_DAB, nf, YZ, 0)) < DBL_EPSILON);
+  assert(fabs(dab[Z][X] - test_encode(ENCODE_DAB, nf, XZ, 0)) < DBL_EPSILON);
+  assert(fabs(dab[Z][Y] - test_encode(ENCODE_DAB, nf, YZ, 0)) < DBL_EPSILON);
+  assert(fabs(dab[Z][Z] - test_encode(ENCODE_DAB, nf, ZZ, 0)) < DBL_EPSILON);
 
   /* Clean up */
 
