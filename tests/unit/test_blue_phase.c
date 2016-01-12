@@ -110,6 +110,7 @@ static int test_bp_nonfield(void) {
   verbose("q5[4] = %14.7e\n", q5[4]);
   verbose("ifail = %d\n", ifail);
   */
+  test_assert(ifail == 0);
   test_assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
   test_assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
   test_assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);

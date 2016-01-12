@@ -82,7 +82,6 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
   int Nall[3];
   int nlocal[3];
   int nSites;
-  int nFields;
   int nhalo = coords_nhalo();
 
   assert(phi);
@@ -96,8 +95,6 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
   int nDist;
   copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
-  
-  nFields = NVEL*nDist;
 
   //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 

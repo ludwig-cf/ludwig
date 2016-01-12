@@ -313,7 +313,7 @@ void test_coords_communicator(void) {
 
 static void test_coords_cart_info(void) {
 
-  int n, index;
+  int n;
   const int tag = 100;
   char string[FILENAME_MAX];
 
@@ -324,10 +324,9 @@ static void test_coords_cart_info(void) {
   info("[rank] cartesian rank (X, Y, Z) cartesian order\n");*/
 
   /* This looks at whether cart_rank() is in the "natural" order */
-
+  /*
   index = cart_size(Z)*cart_size(Y)*cart_coords(X) +
     cart_size(Z)*cart_coords(Y) + cart_coords(Z);
-  /*
   sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cart_rank(),
 	  cart_coords(X), cart_coords(Y), cart_coords(Z), index);
 	
