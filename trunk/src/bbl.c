@@ -136,7 +136,6 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   int nhalo;
   int nlocal[3];
   int Nall[3];
-  int nSites;
   int nFields;
 
   assert(bbl);
@@ -147,7 +146,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   coords_nlocal(nlocal);
 
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-  nSites=Nall[X]*Nall[Y]*Nall[Z];
+
   nFields = NVEL*lb_in->ndist;
 
   colloids_info_ntotal(cinfo, &ntotal);

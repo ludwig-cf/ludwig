@@ -41,7 +41,6 @@
 int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
 			  halo_ft bufset) {
   int n;
-  int nhalo;
   int nlocal[3];
   int noffst[3];
   int ic, jc, kc, index, indexf;
@@ -55,7 +54,6 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffst);
 

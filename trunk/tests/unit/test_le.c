@@ -197,8 +197,6 @@ static void test_le_parallel2(void) {
   double fr;
   double dy;
 
-  MPI_Comm comm;
-
   le_set_nplane_total(nplane);
   le_set_plane_uymax(uy_set);
   le_init();
@@ -209,8 +207,6 @@ static void test_le_parallel2(void) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
   nhalo = coords_nhalo();
-
-  comm = le_communicator();
 
   for (n = -5000; n <= 5000; n++) {
 

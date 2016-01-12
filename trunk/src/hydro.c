@@ -394,7 +394,6 @@ int hydro_lees_edwards(hydro_t * obj) {
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
-  int nf;        /* Number of fields */
   int nsites;
 
   int jc, kc, ia, index0, index1, index2;
@@ -419,8 +418,6 @@ int hydro_lees_edwards(hydro_t * obj) {
     ule[X] = 0.0;
     ule[Y] = 0.0;  /* Only y component will be non-zero */
     ule[Z] = 0.0;
-
-    nf = obj->nf;
 
     nhalo = coords_nhalo();
     coords_nlocal(nlocal);
