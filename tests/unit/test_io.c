@@ -65,14 +65,11 @@ int test_io_suite(void) {
 
 int do_test_io_info_struct(void) {
 
-  char stubp[L_tmpnam];
+  char stubp[FILENAME_MAX];
   test_io_t data = {2, 1.0};
   io_info_t * io_info = NULL;
 
-  /* Require agreement on temporary file name in parallel */
-
-  if (pe_rank() == 0) tmpnam(stubp);
-  MPI_Bcast(stubp, L_tmpnam, MPI_CHAR, 0, MPI_COMM_WORLD);
+  sprintf(stubp, "/tmp/temp-test-io-file");
 
   /*
   info("\nTesting io info struct...\n");

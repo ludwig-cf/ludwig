@@ -58,14 +58,8 @@ int test_colloid_suite(void) {
 			   37.0, 38.0, 39.0, 40.0, 41.0, 42.0, 43.0, 44.0,
 			   45.0, 46.0, 47.0, 48.0}};
 
-  char * tmp_ascii = NULL;
-  char * tmp_binary = NULL;
-
-  /* Use a unique temporary file to prevent i/o collisions if this
-   * serial code is started in parallel. */
-
-  tmp_ascii = tmpnam(NULL);
-  tmp_binary = tmpnam(NULL);
+  char * tmp_ascii = "/tmp/temp-test-io-file-ascii";
+  char * tmp_binary = "/tmp/temp-test-io-file-binary";
 
   assert(tmp_ascii);
   assert(tmp_binary);
