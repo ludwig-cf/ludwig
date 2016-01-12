@@ -1,0 +1,193 @@
+##############################################################################
+#
+#  Oil-water droplet deformation with dielectric contrast,
+#  force calculation with divergence of stress tensor 
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_start  0
+N_cycles 100
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+size 64_64_2
+grid 1_1_1
+periodicity 1_1_1
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+fluid_rho0 6.0
+
+viscosity 0.083333
+viscosity_bulk 0.083333
+
+isothermal_fluctuations off
+temperature 3.3333e-4
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy fe_electro_symmetric
+
+fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
+fd_phi_fluctuations 0
+
+fd_force_divergence 1
+
+###############################################################################
+#
+#  Symmetric / Brazovskii
+#
+#  A            symmetric bulk parameter (A < 0 for binary fluid)
+#  B            symmetric bulk parameter (B = -A for binary fluid)
+#  kappa        surface 'penalty' parameter (kappa > 0 for binary fluid)
+#  C            additional brazovskki parameter (C = 0 for binary fluid)
+#
+#  mobility               Order parameter mobility M
+#
+#  phi_initialisation     spinodal or block [spinodal] 
+#  noise        magnitude of initial order parameter noise [default 0.05]
+#  phi0         mean order parameter
+#
+#
+###############################################################################
+
+A -0.001
+B 0.001
+K 0.003
+C 0.0
+
+mobility 1.0
+
+noise 0.0
+phi0 0.0
+phi_initialisation    drop
+phi_init_drop_radius  20.0
+phi_init_drop_amplitude -1.0
+
+###############################################################################
+#
+#  External electric field
+#
+###############################################################################
+
+electric_e0 0.0_0.75_0.0
+
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+colloid_gravity  0.0_0.0_0.0
+magnetic_b0      0.0_0.0_0.0
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+
+boundary_walls 0_0_0
+boundary_speed_bottom 0.0
+boundary_speed_top    0.0
+boundary_shear_init 0
+boundary_lubrication_rcnormal 0.0
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics  100
+freq_measure    10000000
+freq_config     10000000
+config_at_end no
+
+###############################################################################
+#
+#  Electrokinetics ALWAYS 2 SPECIES FOR NOW
+#
+#  electrokinetics_z0         valency species 0  default +1
+#  electrokinetics_z1         valency species 1  default -1
+#  electrokinetics_d0         diffusivity 0      default 0.0
+#  electrokinetics_d1         diffusivity 1      default 0.0
+#  electrokinetics_eunit      unit charge        default +1.0
+#  electrokinetics_epsilon    permeativity (ref) default 0.0
+#
+#  electrokinetics_init		[gouy_chapman|liquid_junction|uniform]
+#  electrokinetics_init_rho_el	electrolyte concentration
+#  electrokinetics_init_sigma	surface charge density
+#
+#  Also important:
+#  temperature			sets Boltzmann factor beta
+#
+#  electrokinetics_rel_tol      relative tolerance in Poisson solver
+#  electrokinetics_abs_tol      absolute tolerance in Poisson solver
+#  electrokinetics_maxits       maximal number of iteration steps
+#  electrokinetics_diffacc      diffusive accuracy in Nernst-Planck equation
+#                               This parameter controls the adaptation of the 
+#                               number of multisteps: 0 < diffacc.
+#                               A value = 0 deactivates this feature.
+#  electrokinetics_multisteps   number of fractional LB timesteps in NPE
+#
+#  fe_electrosymmetric has a number of additional coupling parameters
+#                      for the binary problem:
+#
+#  electrosymmetric_epsilon2      additional permeativity to set contrast
+#  electrosymmetric_delta_mu0     solvation free energy diff species 0
+#  electrosymmetric_delta_mu1     solvation free energy diff species 1
+#
+###############################################################################
+
+electrokinetics_z0      +1
+electrokinetics_z1      -1
+electrokinetics_d0      0.01
+electrokinetics_d1      0.01
+electrokinetics_eunit   0.5
+electrokinetics_epsilon 270.0
+electrokinetics_init    uniform
+electrokinetics_init_rho_el 0.00
+
+electrokinetics_rel_tol  1e-06
+electrokinetics_abs_tol  1e-07
+electrokinetics_maxits   2000
+electrokinetics_diffacc  0.5
+
+electrokinetics_multisteps  1
+
+electrosymmetric_epsilon2   30.0
+electrosymmetric_delta_mu0  0.0
+electrosymmetric_delta_mu1  0.0
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235

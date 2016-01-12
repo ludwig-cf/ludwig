@@ -1,0 +1,120 @@
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+
+The SVN revision details are: 2647M
+Note assertions via standard C assert() are on.
+
+Read 21 user parameters from serial-spin-fd1.inp
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-03
+Bulk parameter B      =  6.25000e-03
+Surface penalty kappa =  4.00000e-03
+Surface tension       =  4.71405e-03
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  1.25000e+00
+Order parameter noise = off
+Force calculation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               6.25000e-03
+Bulk viscosity                6.25000e-03
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    5.18750e-01
+Bulk relaxation time:     5.18750e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 1
+Initialising phi for spinodal
+Gradient calcaulation: 3d_27pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  3.1484764e+00  1.2010484e-05 8.3289934e-04 -4.9999916e-02 4.9999705e-02
+
+Momentum - x y z
+[total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]      262144.00  1.00000000000  1.5449642e-11  0.99998006808  1.00001625877
+[phi]  3.1484764e+00  1.2010484e-05 3.7820523e-04 -4.7270149e-02 4.6821679e-02
+
+Free energy density - timestep total fluid
+[fed]             10 -9.7510518349e-07 -9.7510518349e-07
+
+Momentum - x y z
+[total   ]  3.6427701e-12 -1.5761698e-14 -4.5102810e-15
+[fluid   ]  3.6427701e-12 -1.5761698e-14 -4.5102810e-15
+
+Velocity - x y z
+[minimum ] -1.3145696e-05 -1.3301763e-05 -1.2618505e-05
+[maximum ]  1.2773457e-05  1.3768024e-05  1.2966490e-05
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      5.867      5.867      5.867   5.867462 (1 call)
+      Time step loop:      0.551      0.615      5.624   0.562363 (10 calls)
+         Propagation:      0.095      0.118      0.990   0.099000 (10 calls)
+           Collision:      0.186      0.211      1.915   0.191469 (10 calls)
+       Lattice halos:      0.001      0.002      0.014   0.001435 (10 calls)
+       phi gradients:      0.043      0.047      0.439   0.043875 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000002 (10 calls)
+   Force calculation:      0.058      0.075      0.601   0.060142 (10 calls)
+          phi update:      0.142      0.157      1.489   0.148908 (10 calls)
+Ludwig finished normally.

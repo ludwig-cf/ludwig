@@ -1,0 +1,156 @@
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+
+The SVN revision details are: 2638M
+Note assertions via standard C assert() are on.
+
+Read 26 user parameters from serial-ewld-s01.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              13 13 13
+Final cell lengths:           4.9230769e+00  4.9230769e+00  4.9230769e+00
+
+
+Ewald sum
+---------
+Number of particles:                      20
+Real space cut off:                       1.6000000e+01
+Dipole strength mu:                       2.8500000e-01
+Ewald parameter kappa:                    1.5625000e-01
+Self energy (constant):                  -2.3308461e-03
+Maximum square wavevector:                6.1685028e-01
+Max. term retained in Fourier space sum:  9
+Total terms kept in Fourier space sum:    1152
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      261128.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  3.6238790e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6238790e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  2.5795578e+00
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -2.0342172e-17 -7.6015470e-18 -4.1525044e-18
+[maximum ]  2.1840808e-17 -1.2082261e-19  2.1003666e-17
+
+Scalars - total mean variance min max
+[rho]      261128.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.7016464e-15 -1.8174504e-12  2.4727209e-15
+[fluid   ] -2.4286129e-16 -1.8129248e-12  1.8179902e-15
+[colloids] -1.4587851e-15 -4.5256111e-15  6.5473075e-16
+
+Velocity - x y z
+[minimum ] -3.4694470e-17 -5.5511151e-17 -7.6327833e-17
+[maximum ]  4.8572257e-17  4.8572257e-17  8.6736174e-17
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      4.090      4.090      4.090   4.089734 (1 call)
+      Time step loop:      0.382      0.428      3.883   0.388343 (10 calls)
+         Propagation:      0.092      0.112      0.953   0.095260 (10 calls)
+           Collision:      0.254      0.274      2.574   0.257393 (10 calls)
+       Lattice halos:      0.001      0.002      0.030   0.001501 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
+              Forces:      0.002      0.002      0.023   0.002319 (10 calls)
+             Rebuild:      0.008      0.009      0.083   0.008254 (10 calls)
+                 BBL:      0.004      0.005      0.044   0.004412 (10 calls)
+      Particle halos:      0.000      0.000      0.002   0.000155 (10 calls)
+     Ewald Sum total:      0.002      0.002      0.022   0.002234 (10 calls)
+          Ewald Real:      0.000      0.000      0.000   0.000028 (10 calls)
+       Ewald_Fourier:      0.002      0.002      0.022   0.002204 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
+          phi update:      0.000      0.000      0.000   0.000001 (10 calls)
+               Free1:      0.000      0.000      0.000   0.000001 (20 calls)
+Ludwig finished normally.

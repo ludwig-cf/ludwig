@@ -1,0 +1,78 @@
+\chapter{Example}\label{chapter:examples}
+
+Consider a simple example: the scaling of a 3-vector
+field by a constant, as implemented in a sequential programming style in Figure \ref{fig:scaleorig}. On each lattice site exists a 3-vector (a collection of three values corresponding to the 3 spatial dimensions). The outer loop corresponds to lattice sites, and the inner loop to the 3 components within each lattice site. This is a simple example of operations on ``multi-valued'' data, a very common situation in scientific simulations. 
+
+The lattice-based parallelism corresponding to the outer loop can be
+mapped to data parallel hardware using targetDP. We introduce targetDP
+by replacing the sequential code with the function given in Figure
+\ref{fig:scalekernel}. The \verb+t_+ syntax is used to identify target
+data structures. The \verb+__targetEntry__+ syntax is used to specify
+that this function is to be executed on the target, and it will be
+called from host code.  We expose the lattice-based parallelism to
+each of the TLP and ILP levels of hardware parallelism through use of
+the combination \verb+__targetTLP__(baseIndex,N)+ and
+\verb+__targetILP__(vecIndex)+ (See Sections \ref{sec:TLP} and
+\ref{sec:ILP}). The former specifies that lattice-based parallelism
+should be mapped to TLP, where each thread operates on a chunk of
+lattice sites. The latter specifies that the sites within each chunk
+should be mapped to ILP. It can be seen that the \verb+t_field+ array
+is accessed by combining these indexes. The size of the chunk can be
+set within the targetDP implementation, to give the best performance
+for a particular architecture.
+
+The \verb+scale+ function is called from host code as shown in Figure \ref{fig:scalelaunch}. The memory management facilities are used to allocate and transfer data to and from the target, as described in Chapter \ref{chap:memmanage}.
+
+\begin{figure}[h]
+\begin{lstlisting}
+ for (idx = 0; idx < N; idx++) { //loop over lattice sites
+   int iDim;
+   for (iDim = 0; iDim < 3; iDim++) 
+      field[iDim*N+idx] = a*field[iDim*N+idx];
+ }
+
+\end{lstlisting}
+\caption{A sequential implementation of the scalar multiplication of each element of a lattice data structure.}\label{fig:scaleorig}
+\end{figure}
+
+\begin{figure}[h]
+\begin{lstlisting}
+__targetEntry__ void scale(double* t_field) { (*@\label{example:scalekernel:targetEntry}@*) 
+
+  int baseIndex;
+  __targetTLP__(baseIndex, N) { (*@\label{example:scalekernel:targetTLP}@*) 
+
+    int iDim, vecIndex;
+    for (iDim = 0; iDim < 3; iDim++) {
+
+      __targetILP__(vecIndex)  \ (*@\label{example:scalekernel:targetILP}@*) 
+         t_field[iDim*N + baseIndex + vecIndex] =  \
+	 t_a*t_field[iDim*N + baseIndex + vecIndex];       	  
+    }
+  }
+  return;
+}
+\end{lstlisting}
+\caption{The targetDP implementation of the scalar multiplication kernel.}\label{fig:scalekernel}
+\end{figure}
+
+
+\begin{figure}[h]
+\begin{lstlisting}
+  targetMalloc((void **) &t_field, datasize); (*@\label{example:scalelaunch:targetMalloc}@*) 
+  
+  copyToTarget(t_field, field, datasize); (*@\label{example:scalelaunch:copyToTarget}@*) 
+  copyConstToTarget(&t_a, &a, sizeof(double)); (*@\label{example:scalelaunch:copyConstToTarget}@*) 
+  
+  scale __targetLaunch__(N) (t_field); (*@\label{example:scalelaunch:targetLaunch}@*) 
+  targetSynchronize();(*@\label{example:scalelaunch:targetSynchronize}@*) 
+  
+  copyFromTarget(field, t_field, datasize); (*@\label{example:scalelaunch:copyFromTarget}@*) 
+
+  targetFree(t_field); (*@\label{example:scalelaunch:targetFree}@*) 
+\end{lstlisting}
+\caption{The host code used to invoke the targetDP scalar multiplication kernel.}\label{fig:scalelaunch}
+\end{figure}
+
+
+
