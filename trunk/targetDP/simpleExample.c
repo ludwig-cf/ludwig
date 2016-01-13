@@ -16,13 +16,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. 
  * 
- * to compile for CPU:
+ * to compile for CPU (after building CPU version of libtarget.a):
  * gcc -I. -c simpleExample.c
- * gcc -I. simpleExample.c libtargetDP_C.a 
+ * gcc -I. simpleExample.o libtarget.a 
  * 
- * to compile for GPU:
+ * to compile for GPU (after building GPU version of libtarget.a):
  * nvcc -x cu -arch=sm_35 -I. -DCUDA -dc -c simpleExample.c 
- * nvcc -arch=sm_35 simpleExample.o libtargetDP_CUDA.a 
+ * nvcc -arch=sm_35 simpleExample.o libtarget.a 
  *
  */
 
