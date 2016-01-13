@@ -15,7 +15,21 @@
 # limitations under the License.  
 #
 
+ifneq ("","$(wildcard ../Makefile.mk)") #use global settings
+
 include ../Makefile.mk
+
+else #default settings
+
+#CPU:
+CC=gcc
+CFLAGS=-O2 -Wall -fopenmp
+
+#GPU
+#CC=nvcc
+#CFLAGS=-O2 -arch=sm_35 -x cu -dc
+
+endif
 
 AR = ar -cru
 
