@@ -12,22 +12,22 @@ SER=${LAUNCH_SERIAL_CMD}
 PAR=${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH}
 
 serial:
-	@echo "TEST --> regression tests serial d3q19"
+	@echo "TEST --> regression tests serial"
 	inputs='serial*inp'; \
 	for file in $$inputs; do ../../test.sh $$file "" ""; done
 
 mpix01:
-	@echo "TEST --> regression tests mpi d3q19 (1 mpi task)"
+	@echo "TEST --> regression tests mpi (1 mpi task)"
 	inputs='serial*inp'; \
 	for file in $$inputs; do ../../test.sh $$file "$(SER)" "$(PAR) 1"; done
 
 mpix08:
-	@echo "TEST --> regression tests mpi d3q19 (8 mpi tasks)"
+	@echo "TEST --> regression tests mpi (8 mpi tasks)"
 	inputs='pmpi08*inp'; \
 	for file in $$inputs; do ../../test.sh $$file "$(SER)" "$(PAR) 8"; done
 
 mpix64:
-	@echo "TEST --> regression test mpi d3q15 (64 mpi tasks)"
+	@echo "TEST --> regression test mpi (64 mpi tasks)"
 	inputs='pmpi64*inp'; \
 	for file in $$inputs; do ../../test.sh $$file "$(SER)" "$(PAR) 64"; done
 
