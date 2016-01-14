@@ -229,6 +229,9 @@ void targetZero(double* array,size_t size){
 
   int i;
 
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(i=0;i<size;i++){
     
     array[i]=0.;
@@ -320,4 +323,19 @@ __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* 
   copyFromTarget(*ptrToHostComponent,tmpptr,size*sizeof(double));
 
 
+}
+
+double targetDoubleSum(double* array, size_t size){
+
+  int i;
+
+  double result=0.;
+
+#ifdef _OPENMP
+#pragma omp parallel for reduction(+:result)
+#endif
+  for (i=0;i<size;i++)
+    result+=array[i];
+
+  return result;
 }

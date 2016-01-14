@@ -1013,6 +1013,89 @@ __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* 
 
 }
 
+
+
+// adapted from tutorial code at 
+// https://stanford-cs193g-sp2010.googlecode.com/svn/trunk/tutorials/sum_reduction.cu
+// this kernel computes, per-block, the sum
+// of a block-sized portion of the input
+// using a block-wide reduction
+__global__ void block_sum(const double *input,
+                          double *per_block_results,
+                          const size_t n)
+{
+  extern __shared__ double sdata[];
+
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+  // load input into __shared__ memory
+  double x = 0;
+  if(i < n)
+  {
+    x = input[i];
+  }
+  sdata[threadIdx.x] = x;
+  __syncthreads();
+
+  // contiguous range pattern
+  for(int offset = blockDim.x / 2;
+      offset > 0;
+      offset >>= 1)
+  {
+    if(threadIdx.x < offset)
+    {
+      // add a partial sum upstream to our own
+      sdata[threadIdx.x] += sdata[threadIdx.x + offset];
+    }
+
+    // wait until all threads in the block have
+    // updated their partial sums
+    __syncthreads();
+  }
+
+  // thread 0 writes the final result
+  if(threadIdx.x == 0)
+  {
+    per_block_results[blockIdx.x] = sdata[0];
+  }
+}
+
+
+
+// adapted from tutorial code at 
+// https://stanford-cs193g-sp2010.googlecode.com/svn/trunk/tutorials/sum_reduction.cu
+double targetDoubleSum(double* t_array, size_t size){
+  
+
+  int num_blocks=(size+DEFAULT_TPB-1)/DEFAULT_TPB;  
+
+  // allocate space to hold one partial sum per block, plus one additional
+  // slot to store the total sum
+  double *d_partial_sums_and_total = 0;
+ cudaMalloc((void**)&d_partial_sums_and_total, sizeof(double) * (2*num_blocks + 1));
+
+  // launch one kernel to compute, per-block, a partial sum
+  block_sum<<<num_blocks,DEFAULT_TPB,DEFAULT_TPB * sizeof(double)>>>(t_array, d_partial_sums_and_total, size);
+  targetSynchronize();
+
+  int num_blocks2=(num_blocks+DEFAULT_TPB-1)/DEFAULT_TPB;  
+
+  block_sum<<<num_blocks2,DEFAULT_TPB,DEFAULT_TPB * sizeof(double)>>>(d_partial_sums_and_total, d_partial_sums_and_total+num_blocks,num_blocks);
+  targetSynchronize();
+
+
+  // launch a single block to compute the sum of the partial sums
+  block_sum<<<1,num_blocks2,num_blocks2 * sizeof(double)>>>(d_partial_sums_and_total+num_blocks, d_partial_sums_and_total + num_blocks+num_blocks2, num_blocks2);
+  targetSynchronize();
+
+  // copy the result back to the host
+  double device_result = 0;
+  cudaMemcpy(&device_result, d_partial_sums_and_total + num_blocks+num_blocks2, sizeof(double), cudaMemcpyDeviceToHost);
+  
+  return device_result;
+}
+
+
 //
 __targetHost__ void checkTargetError(const char *msg)
 {
