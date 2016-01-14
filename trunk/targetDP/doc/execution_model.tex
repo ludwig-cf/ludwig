@@ -18,7 +18,7 @@ To ensure that the target function has completed, a
 \verb+targetSynchronize+ statement should follow the code location
 where target function is launched. When the initial thread encounters
 this statement, it will wait until the target region has completed. It
-is possible for the initial thread to execute other instructions
+is possible, in principle, for the initial thread to execute other instructions
 (which do not depend on the results of the target function), after the
 function launch but before the synchronisation call. This may result in
 overlapping of host and target execution, and hence optimisation, in
@@ -32,11 +32,15 @@ independently from all others, but usually operating on a shared data
 structure where the index is used to determine the portion of data
 to process.
 
-\begin{comment}
-Possibly add targetSyncThreads() to
-  allow communication within target functions?]
-\end{comment}
-
-\begin{comment}
-Some text on reductions needed.
-\end{comment}
+In applications, it is sometimes necessary to perform reductions,
+where multiple data values are combined in a certain way. For example,
+values existing on each grid point may be summed into a single total
+value. The targetDP model supports such operations in a simplistic
+way. It is the responsibility of the application to create the array
+of values (using standard targetDP functionality) to act as the input
+to the reduction operation. The application can then pass this array
+to the API function corresponding to the desired reduction operation
+(e.g. \verb+targetDoubleSum+ for the summation of an array of
+double-precision Values). If the required reduction operation does not yet
+exist, the user can simply extend the targetDP API using existing
+functionality as a template.
