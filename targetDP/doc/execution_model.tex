@@ -1,7 +1,7 @@
-\chapter{Execution model}
+\chapter{Execution model}\label{sec:exmodel}
 
 The terminology ``host'' is used to refer to the CPU that is hosting
-the execution of the application, and ``target'' to refer to the
+the execution of the application, and ``target'' refers to the
 device targeted for execution of data parallel operations. The target
 could be the same CPU as the host, or it could be a separate device such
 as an accelerator (depending on the hardware available). 
@@ -12,7 +12,14 @@ sequentially on the host, until it encounters a function to be
 launched on the target. This function will be executed by a team of
 threads on the target cooperating in a data-parallel manner (e.g. for
 a structured grid problem each thread is responsible for a subset of
-the grid). 
+the grid). Each thread in the team will have a unique index. For some
+architectures, it is important to expose not just thread-level
+parallelism (TLP), but also instruction-level parallelism (ILP). The
+targetDP model facilitates this by allowing striding at the thread
+level, such that each thread can operate on a chunk of data
+(e.g. multiple grid points) at the instruction level. The size of the
+chunk, which we call the ``Virtual Vector Length'' (VVL), can be tuned
+to the hardware.
 
 To ensure that the target function has completed, a
 \verb+targetSynchronize+ statement should follow the code location

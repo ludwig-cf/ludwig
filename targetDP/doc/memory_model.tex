@@ -1,16 +1,22 @@
-\chapter{Memory model}
+\chapter{Memory model}\label{sec:memmodel}
 
 \section{Model overview}
-The targetDP model draws a distinction between the memory spaces
-accessed by the host and target, such that code executed on the host
-always accesses the host memory space, and code executed on the target
-(i.e. within target functions) always accesses the target memory space. The
-host memory space can be initialised using regular \verb+C/C+++
-functionality, and the targetDP API provides the functionality
-necessary to manage the target memory space and transfer data between
-the host and target. For each data-parallel data structure, the
-programmer should create both host and target copies, and should
-update these from each other as and when required.
+The targetDP model draws a distinction between the memory space
+accessed by the host and that accessed by the target. Even although
+there is a trend towards ``unified'' address spaces, on which this
+distinction is not strictly required for applications to run successfully, such
+visibility at the application level is often crucial to allow good
+performance when running on those target architectures that have
+associated high-bandwidth memory systems (such as GPU and Intel Xeon
+Phi architectures). In the targetDP model, it is assumed that code
+executed on the host always accesses the host memory space, and code
+executed on the target (i.e. within target functions) always accesses
+the target memory space. The host memory space can be initialised
+using regular \verb+C/C+++ functionality, and the targetDP API
+provides the functionality necessary to manage the target memory space
+and transfer data between the host and target. For each data-parallel
+data structure, the programmer should create both host and target
+copies, and should update these from each other as and when required.
 
 \subsection{Host memory model}
 The sequential thread executing host code should always access host data
@@ -19,8 +25,8 @@ regular sequential application.
 
 \subsection{Target memory model}
 The team of threads performing the execution of target functions
-should always act on target data structures. These can take one of 3
-forms:
+should always act on target data structures. These data structures can
+take one of 3 forms:
 \begin{enumerate}
 \item Those created using the targetDP memory allocation API
   functions. These are shared between all threads in the team, where
@@ -33,9 +39,9 @@ forms:
   to each thread in the team and should be used for temporary scratch structures.
 \end{enumerate}
 
-\begin{comment}
-For 3, at the moment any data declared in the function but above the targetTLP keyword will be private for GPU threads but shared for CPU (since outside parallel region). So either need to make this clearer above, or somehow move OpenMP parallel region to target launch. 
-\end{comment}
+%\begin{comment}
+%For 3, at the moment any data declared in the function but above the targetTLP keyword will be private for GPU threads but shared for CPU (since outside parallel region). So either need to make this clearer above, or somehow move OpenMP parallel region to target launch. 
+%\end{comment}
 
 
 \section{Implementation}
