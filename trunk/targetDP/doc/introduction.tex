@@ -4,27 +4,8 @@
 %\begin{comment}
 %TO DO.
 %\end{comment}
-\section{Abstract}
 
-The targetDP API provides an abstraction layer which allows
-applications to \underline{t}arget \underline{D}ata
-\underline{P}arallel hardware in a platform agnostic manner, by
-abstracting the memory spaces and hierarchy of hardware
-parallelism. Applications written using targetDP syntax are
-performance portable: the same source code can be compiled for
-different targets (where we currently support GPU accelerators and
-modern multicore or manycore SIMD CPUs), without performance
-overheads. The model is appropriate for abstracting the parallelism
-contained within each compute node, and can be combined with, e.g. MPI
-to allow use on systems containing multiple nodes. The targetDP API is
-primarily aimed at the types of parallelism found in grid-based
-applications, but may be applicable to a wider class of problems.
-This document introduces the targetDP memory and execution models, and
-specifies the syntax and functionality of the
-interface. Implementation details are also provided, and a simple
-example is given to demonstrate usage.
 
-\section{Motivation}
 It is becoming increasingly difficult for applications to exploit
 modern computers, which continue to increase in complexity and
 diversity with features including multicore/manycore CPUs, vector
@@ -37,7 +18,26 @@ as targetDP can allow the programmer to express the scientific
 problems in a way that will automatically achieve good performance
 across the range of leading hardware solutions.
 
-\section{Glossary}
+The targetDP API (first introduced in \cite{hpcc}) provides an
+abstraction layer which allows applications to \underline{t}arget
+\underline{D}ata \underline{P}arallel hardware in a platform agnostic
+manner, by abstracting the memory spaces and hierarchy of hardware
+parallelism. Applications written using targetDP syntax are
+performance portable: the same source code can be compiled for
+different targets (where we currently support GPU accelerators and
+modern multicore or manycore SIMD CPUs), without performance
+overheads. The model is appropriate for abstracting the parallelism
+contained within each compute node, and can be combined with, e.g. MPI
+to allow use on systems containing multiple nodes. The targetDP API is
+primarily aimed at the types of parallelism found in grid-based
+applications, but may be applicable to a wider class of problems.
+
+The targetDP memory and execution models are described in Chapters \ref{sec:exmodel} and \ref{sec:memmodel} respectively, and the document goers on to specify the memory management functionality in Chapter \ref{chap:memmanage} and data parallel execution functionality in Chapter  \ref{sec:dpexecution}. Implementation details are also provided for the existing C and CUDA versions of targetDP throughout these chapters. Finally, a simple
+example is given to demonstrate usage in Chapter \ref{chapter:examples}.
+
+
+
+\section*{Glossary}
 
 \begin{itemize}
 

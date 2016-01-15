@@ -1,4 +1,6 @@
-\chapter{Data Parallel Execution}
+\chapter{Data Parallel Execution}\label{sec:dpexecution}
+
+This chapter specifices the data parallel execution functionality in targetDP.
 
 \newpage
 \section{targetEntry}
@@ -206,10 +208,7 @@ CUDA thread lookup.
 The \verb+__targetILP__+ syntax is used, within a \verb+__targetTLP__+
 region, to specify that the proceeding block of code should be
 executed in parallel and mapped to instruction level parallelism
-(ILP), where the extent of the ILP is defined by the virtual vector length (VVL) in the targetDP implementation. 
-\begin{comment}
-need to document VVL in more detail somewhere and link.
-\end{comment}
+(ILP), where the extent of the ILP is defined by the virtual vector length (VVL) in the targetDP implementation (see \ref{sec:exmodel}). 
 
 \subsection{Syntax}
 \begin{verbatim}
@@ -253,14 +252,6 @@ void targetCoords3D(int coords3D[3], int extent3D[3], int index);
 \end{itemize}
 
 
-\subsection{Example}
-**TO DO**
-\subsection{Implementation}
-\subsubsection{C}
-**TO DO**
-\subsubsection{CUDA}
-**TO DO**
-
 \newpage
 \section{targetIndex3D}
 
@@ -280,11 +271,3 @@ int targetIndex3D(int Xcoord,int Ycoord,int Zcoord,int extent3D[3]);
 \item \verb+extent3D+ (input): an array of 3 integers corresponding to the 3D dimensions of the lattice.
 \end{itemize}
 
-
-\subsection{Example}
-**TO DO**
-\subsection{Implementation}
-\subsubsection{C}
-**TO DO**
-\subsubsection{CUDA}
-**TO DO**
