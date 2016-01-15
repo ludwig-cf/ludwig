@@ -279,6 +279,7 @@ __targetHost__ void targetFree(void *ptr);
 __targetHost__ void checkTargetError(const char *msg);
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void targetZero(double* array,size_t size);
+__targetHost__ void targetSetConstant(double* array,double value,size_t size);
 //__targetHost__ double targetDoubleSum(double* array, size_t size);
 __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields);
 __targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields);

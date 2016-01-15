@@ -240,6 +240,23 @@ void targetZero(double* array,size_t size){
 
 }
 
+
+void targetSetConstant(double* array,double value,size_t size){
+
+  int i;
+
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(i=0;i<size;i++){
+    
+    array[i]=value;
+    
+  }
+
+}
+
+
 __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 {
   

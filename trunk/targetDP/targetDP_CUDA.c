@@ -935,6 +935,37 @@ void targetZero(double* array,size_t size){
 
 }
 
+
+//
+__global__ void set_array_constant(double* array,double value,size_t size){
+
+  int threadIndex;
+
+
+  threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
+
+
+  if (threadIndex < size)
+    array[threadIndex]=value;
+  
+
+
+  return;
+
+}
+
+//
+void targetSetConstant(double* array,double value, size_t size){
+
+  int nblocks=(size+DEFAULT_TPB-1)/DEFAULT_TPB;
+  set_array_constant<<<nblocks,DEFAULT_TPB>>>(array,value,size);
+  cudaThreadSynchronize();
+
+
+
+}
+
+
 __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 {
   
@@ -1094,6 +1125,7 @@ double targetDoubleSum(double* t_array, size_t size){
   
   return device_result;
 }
+
 
 
 //
