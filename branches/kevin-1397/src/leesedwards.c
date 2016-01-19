@@ -52,6 +52,8 @@ static int nplane_total_ = 0;     /* Total number of planes */
 static int le_type_ = LINEAR;
 static int initialised_ = 0;
 
+static __targetConst__ int cle_nsites_;
+
 /*****************************************************************************
  *
  *  le_init
@@ -127,6 +129,9 @@ void le_init() {
 
   le_checks();
   le_init_tables();
+
+  n = le_nsites();
+  copyConstToTarget(&cle_nsites_, &n, sizeof(int));
 
   return;
 }
@@ -416,8 +421,11 @@ static void le_checks(void) {
  *
  *****************************************************************************/
 
-int le_nsites(void) {
+__targetHost__ __target__ int le_nsites(void) {
 
+#ifdef __CUDA_ARCH__
+  return cle_nsites_;
+#else
   int nhalo;
   int nlocal[3];
   int nsites;
@@ -430,6 +438,31 @@ int le_nsites(void) {
     *(nlocal[Z] + 2*nhalo);
 
   return nsites;
+#endif
+}
+
+/*****************************************************************************
+ *
+ *  le_nall
+ *
+ *****************************************************************************/
+
+__targetHost__
+int le_nall(int nall[3]) {
+
+  int nhalo;
+  int nlocal[3];
+
+  assert(initialised_);
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+
+  nall[X] = nlocal[X] + 2*nhalo + le_get_nxbuffer();
+  nall[Y] = nlocal[Y] + 2*nhalo;
+  nall[Z] = nlocal[Z] + 2*nhalo;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -614,8 +647,13 @@ int le_get_nxbuffer() {
  *
  *****************************************************************************/
 
+__targetHost__ __target__
 int le_index_real_to_buffer(const int ic, const int di) {
 
+#ifdef __CUDA__ARCH__
+  /* Assumes no planes on device at the moment */
+  return ic + di;
+#else
   int ib;
   int nhalo;
 
@@ -629,6 +667,7 @@ int le_index_real_to_buffer(const int ic, const int di) {
   assert(ib >= 0 && ib < le_params_.index_real_nbuffer);
 
   return le_params_.index_real_to_buffer[ib];
+#endif
 }
 
 /*****************************************************************************

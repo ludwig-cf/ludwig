@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2016 The University of Edinburgh
  *
  *****************************************************************************/
 

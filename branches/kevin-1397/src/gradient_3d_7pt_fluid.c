@@ -26,8 +26,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -38,12 +41,12 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
-#include "gradient_3d_7pt_fluid.h"
 #include "string.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "targetDP.h"
 #include "timer.h"
+#include "gradient_3d_7pt_fluid.h"
 
 __targetHost__ static void gradient_3d_7pt_fluid_operator(const int nop, 
 					   const double * field,
@@ -73,14 +76,14 @@ __targetHost__ static int gradient_dab_compute(int nf, const double * field, dou
  *
  *****************************************************************************/
 
-__targetHost__ int gradient_3d_7pt_fluid_d2(const int nop, 
+__targetHost__
+int gradient_3d_7pt_fluid_d2(const int nop, 
 			     const double * field,
 			     double * t_field,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq
-			     ) {
+			     double * t_delsq) {
 
   int nextra;
 
@@ -108,14 +111,14 @@ __targetHost__ int gradient_3d_7pt_fluid_d2(const int nop,
  *
  *****************************************************************************/
 
-__targetHost__ int gradient_3d_7pt_fluid_d4(const int nop, 
+__targetHost__
+int gradient_3d_7pt_fluid_d4(const int nop, 
 			     const double * field,
 			     double * t_field,
 			     double * grad,
 			     double * t_grad,
 			     double * delsq,
-			     double * t_delsq
-			     ) {
+			     double * t_delsq) {
 
   int nextra;
 
@@ -164,29 +167,25 @@ __targetHost__ int gradient_3d_7pt_fluid_dab(const int nf,
   return 0;
 }
 
-
-//__targetConst__ int tc_Nall[3];
-//__targetConst__ int tc_nhalo;
-//__targetConst__ int tc_nextra;
-
-
 /*****************************************************************************
  *
  *  gradient_3d_7pt_fluid_operator
  *
  *****************************************************************************/
 
-static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
-					   const double * t_field,
-					   double * t_grad,
-						double * t_del2, 
-						const int index){
+static __targetEntry__
+void gradient_3d_7pt_fluid_operator_lattice(const int nop,
+					    const double * t_field,
+					    double * t_grad,
+					    double * t_del2) {
+  int index;
 
+  __targetTLPNoStride__(index, tc_nSites) {
 
-  int coords[3];
-  targetCoords3D(coords,tc_Nall,index);
-  
-  // if not a halo site:
+    int coords[3];
+
+    targetCoords3D(coords,tc_Nall,index);
+
     if (coords[0] >= (tc_nhalo-tc_nextra) && 
 	coords[1] >= (tc_nhalo-tc_nextra) && 
 	coords[2] >= (tc_nhalo-tc_nextra) &&
@@ -194,19 +193,46 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
 	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
 	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
 
+      int nsites;
 
-    int coords[3];
-    //coords_index_to_ijk(index, coords);
+      int indexm1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
+      int indexp1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
 
-    targetCoords3D(coords,tc_Nall,index);
+      int n;
+      int ys=tc_Nall[Z];
 
-    //get index +1 and -1 in X dirn
-    int indexm1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
-    int indexp1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+#ifndef OLD_SHIT
+      /* Addressing should be based on le_nsites() */
+      nsites =  le_nsites();
 
-      
-    int n;
-    int ys=tc_Nall[Z];
+      /* Offset for LE is awkward here... */
+      indexm1 = 1 + le_index_real_to_buffer(coords[X] - 1, -1);
+      indexm1 = targetIndex3D(indexm1, coords[Y], coords[Z], tc_Nall);
+      indexp1 = 1 + le_index_real_to_buffer(coords[X] - 1, +1);
+      indexp1 = targetIndex3D(indexp1, coords[Y], coords[Z], tc_Nall);
+
+      for (n = 0; n < nop; n++) {
+
+	t_grad[addr_rank2(nsites,nop,3,index,n,X)] =
+	  0.5*(t_field[addr_rank1(nsites, nop, indexp1,    n)]
+	     - t_field[addr_rank1(nsites, nop, indexm1,    n)]);
+	t_grad[addr_rank2(nsites,nop,3,index,n,Y)] =
+	  0.5*(t_field[addr_rank1(nsites, nop, index + ys, n)]
+	     - t_field[addr_rank1(nsites, nop, index - ys, n)]);
+	t_grad[addr_rank2(nsites,nop,3,index,n,Z)] =
+	  0.5*(t_field[addr_rank1(nsites, nop, index + 1,  n)]
+	     - t_field[addr_rank1(nsites, nop, index - 1,  n)]);
+
+	t_del2[addr_rank1(nsites, nop, index, n)]
+	  = t_field[addr_rank1(nsites, nop, indexp1,    n)]
+	  + t_field[addr_rank1(nsites, nop, indexm1,    n)]
+	  + t_field[addr_rank1(nsites, nop, index + ys, n)]
+	  + t_field[addr_rank1(nsites, nop, index - ys, n)]
+	  + t_field[addr_rank1(nsites, nop, index + 1,  n)]
+	  + t_field[addr_rank1(nsites, nop, index - 1,  n)]
+	  - 6.0*t_field[addr_rank1(nsites, nop, index, n)];
+      }
+#else
     for (n = 0; n < nop; n++) {
       t_grad[FGRDADR(tc_nSites,nop,index,n,X)]
       = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1,n)] - t_field[FLDADR(tc_nSites,nop,indexm1,n)]);
@@ -221,28 +247,11 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
 	- 6.0*t_field[FLDADR(tc_nSites,nop,index,n)];
       
     }
-    
+#endif
+    }
   }
-  
+
   return;
-}
-
-
-static __targetEntry__ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
-					   const double * t_field,
-					   double * t_grad,
-						double * t_del2){
-
-
-
-  
-
-  int index;
-  __targetTLPNoStride__(index,tc_nSites){
-    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,index);
-  }
-
-
 }
 
 
@@ -256,48 +265,37 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 					   const int nextra) {
   int nlocal[3];
   int nhalo;
+  int Nall[3];
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-
-  int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
   int nFields=nop;
 
+  copyConstToTarget(tc_Nall, Nall, 3*sizeof(int)); 
+  copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int)); 
+  copyConstToTarget(&tc_nextra, &nextra, sizeof(int)); 
+  copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
 
+#ifndef KEEPFIELDONTARGET
+  /* Copy the whole field storage with LE */
+  copyToTarget(t_field, field, le_nsites()*nFields*sizeof(double)); 
+#endif
 
-
-  //start constant setup
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-
-  //end constant setup
-
-  #ifndef KEEPFIELDONTARGET
-  copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
-  #endif
-
-  TIMER_start(TIMER_PHI_GRAD_KERNEL);	       
+  TIMER_start(TIMER_PHI_GRAD_KERNEL);
   gradient_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
-    (nop,t_field,t_grad,t_del2);
+    (nop, t_field, t_grad, t_del2);
   targetSynchronize();
-  TIMER_stop(TIMER_PHI_GRAD_KERNEL);	       
-   
+  TIMER_stop(TIMER_PHI_GRAD_KERNEL);
 
-  //for GPU version, we leave the results on the target for the next kernel.
-  //for C version, we bring back the results to the host (for now).
-  //ultimitely GPU and C versions will follow the same pattern
-  #ifndef KEEPFIELDONTARGET
-  copyFromTarget(grad,t_grad,3*nSites*nFields*sizeof(double)); 
-  copyFromTarget(del2,t_del2,nSites*nFields*sizeof(double)); 
-  #endif
+#ifndef KEEPFIELDONTARGET
+  copyFromTarget(grad, t_grad, 3*nSites*nFields*sizeof(double)); 
+  copyFromTarget(del2, t_del2, nSites*nFields*sizeof(double)); 
+#endif
 
   return;
 }
@@ -311,12 +309,14 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
  *
  *****************************************************************************/
 
-__targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
-						const double * field,
-						double * grad,
-						double * del2,
-						const int nextra) {
+__targetHost__ static
+void gradient_3d_7pt_fluid_le_correction(const int nop,
+					 const double * field,
+					 double * grad,
+					 double * del2,
+					 const int nextra) {
   int nlocal[3];
+  int nsites;
   int nhalo;
   int nh;                                 /* counter over halo extent */
   int n;
@@ -327,6 +327,7 @@ __targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
   int ys;                                 /* y-stride for 1d address */
 
   nhalo = coords_nhalo();
+  nsites = le_nsites();
   coords_nlocal(nlocal);
   ys = (nlocal[Z] + 2*nhalo);
 
@@ -347,6 +348,27 @@ __targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
+#ifndef OLD_SHIT
+	  for (n = 0; n < nop; n++) {
+	    grad[addr_rank2(nsites, nop, 3, index, n, X)]
+	      = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
+		   - field[addr_rank1(nsites, nop, indexm1, n)]);
+	    grad[addr_rank2(nsites, nop, 3, index, n, Y)]
+	      = 0.5*(field[addr_rank1(nsites, nop, (index + ys), n)]
+		   - field[addr_rank1(nsites, nop, (index - ys), n)]);
+	    grad[addr_rank2(nsites, nop, 3, index, n, Z)]
+	      = 0.5*(field[addr_rank1(nsites, nop, (index + 1), n)]
+		   - field[addr_rank1(nsites, nop, (index - 1), n)]);
+	    del2[addr_rank1(nsites, nop, index, n)]
+	      = field[addr_rank1(nsites, nop, indexp1,      n)]
+	      + field[addr_rank1(nsites, nop, indexm1,      n)]
+	      + field[addr_rank1(nsites, nop, (index + ys), n)]
+	      + field[addr_rank1(nsites, nop, (index - ys), n)]
+	      + field[addr_rank1(nsites, nop, (index + 1),  n)]
+	      + field[addr_rank1(nsites, nop, (index - 1),  n)]
+	      - 6.0*field[addr_rank1(nsites, nop, index, n)];
+	  }
+#else
 	  for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X]
 	      = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
@@ -361,6 +383,7 @@ __targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
 	      + field[nop*(index + 1)  + n] + field[nop*(index - 1)  + n]
 	      - 6.0*field[nop*index + n];
 	  }
+#endif
 	}
       }
     }
@@ -380,6 +403,27 @@ __targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
+#ifndef OLD_SHIT
+	  for (n = 0; n < nop; n++) {
+	    grad[addr_rank2(nsites, nop, 3, index, n, X)]
+	      = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
+		   - field[addr_rank1(nsites, nop, indexm1, n)]);
+	    grad[addr_rank2(nsites, nop, 3, index, n, Y)]
+	      = 0.5*(field[addr_rank1(nsites, nop, (index + ys), n)]
+		   - field[addr_rank1(nsites, nop, (index - ys), n)]);
+	    grad[addr_rank2(nsites, nop, 3, index, n, Z)]
+	      = 0.5*(field[addr_rank1(nsites, nop, (index + 1), n)]
+		   - field[addr_rank1(nsites, nop, (index - 1), n)]);
+	    del2[addr_rank1(nsites, nop, index, n)]
+	      = field[addr_rank1(nsites, nop, indexp1,       n)]
+	      + field[addr_rank1(nsites, nop, indexm1,       n)]
+	      + field[addr_rank1(nsites, nop, (index + ys),  n)]
+	      + field[addr_rank1(nsites, nop, (index - ys),  n)]
+	      + field[addr_rank1(nsites, nop, (index + 1),   n)]
+	      + field[addr_rank1(nsites, nop, (index - 1),   n)]
+	      - 6.0*field[addr_rank1(nsites, nop, index, n)];
+	  }
+#else
 	  for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X]
 	      = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
@@ -394,6 +438,7 @@ __targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
 	      + field[nop*(index + 1)  + n] + field[nop*(index - 1)  + n]
 	      - 6.0*field[nop*index + n];
 	  }
+#endif
 	}
       }
     }
@@ -411,7 +456,8 @@ __targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
  *
  *****************************************************************************/
 
-__targetHost__ static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
+__targetHost__
+static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
 						  const double * field,
 						  double * grad,
 						  double * del2,
@@ -518,7 +564,8 @@ __targetHost__ static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
  *
  *****************************************************************************/
 
-__targetHost__ static int gradient_dab_compute(int nf, const double * field, double * dab) {
+__targetHost__
+static int gradient_dab_compute(int nf, const double * field, double * dab) {
 
   int nlocal[3];
   int nhalo;

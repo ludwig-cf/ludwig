@@ -2,13 +2,11 @@
  *
  *  advection_s.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2016 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,12 +24,17 @@ struct advflux_s {
   advflux_t * tcopy;  /* copy of this structure on target */ 
 };
 
+#ifndef OLD_SHIT
+
+#include "memory.h"
+
+#else
 
 #ifdef LB_DATA_SOA
 #define ADVADR ADDR_VECSITE_R
 #else
 #define ADVADR ADDR_VECSITE
 #endif
-
+#endif
 
 #endif

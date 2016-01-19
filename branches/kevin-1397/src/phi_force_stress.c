@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -84,7 +84,14 @@ __targetTLP__(index,tc_nSites){
 return;
 }
 
-__targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) {
+/*****************************************************************************
+ *
+ *  phi_force_stress_compute
+ *
+ *****************************************************************************/
+
+__targetHost__
+void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) {
 
   int nlocal[3];
   int nextra = 1;
@@ -129,7 +136,7 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
 
     double* tmpptr;
 
-    #ifndef KEEPFIELDONTARGET    
+#ifndef KEEPFIELDONTARGET    
 
     copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
     copyToTarget(tmpptr,q->data,q->nf*nSites*sizeof(double));
@@ -139,7 +146,7 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
     
     copyFromTarget(&tmpptr,&(t_q_grad->delsq),sizeof(double*)); 
     copyToTarget(tmpptr,q_grad->delsq,q_grad->nf*nSites*sizeof(double));
-    #endif
+#endif
 
   }
 

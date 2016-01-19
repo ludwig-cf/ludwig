@@ -106,7 +106,7 @@
  * instruction level parallelism (ILP), where the extent of the ILP is defined by the
  * virtual vector length (VVL) in the targetDP implementation. */
 #if VVL == 1
-#define __targetILP__(vecIndex)  
+#define __targetILP__(vecIndex)  vecIndex = 0;
 #else
 #define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
 #endif
@@ -194,7 +194,7 @@ for(simtIndex=0;simtIndex<extent;simtIndex++)
  * instruction level parallelism (ILP), where the extent of the ILP is defined by the
  * virtual vector length (VVL) in the targetDP implementation. */
 #if VVL == 1
-#define __targetILP__(vecIndex) 
+#define __targetILP__(vecIndex) vecIndex = 0;
 #else
 
 #ifdef _OPENMP

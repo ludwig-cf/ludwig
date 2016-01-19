@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinbrugh
+ *  (c) 2010-2016 The University of Edinbrugh
  *
  *****************************************************************************/
 
@@ -68,8 +68,11 @@ int test_polar_active_suite(void) {
   field_grad_set(fpgrad, gradient_2d_5pt_fluid_d2, NULL);
   polar_active_p_set(fp, fpgrad);
 
+  printf("test 1\n");
   test_polar_active_aster(fp, fpgrad);
+  printf("test 2\n");
   test_polar_active_terms(fp, fpgrad);
+  printf("test 3\n");
 
   field_grad_free(fpgrad);
   field_free(fp);
@@ -114,7 +117,7 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   index = coords_index(1, 1, 1);
   field_vector(fp, index, p);
 
-  /*info("p_a(1, 1, 1) ...");*/
+  /* info("p_a(1, 1, 1) ...");*/
   test_assert(fabs(p[X] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
@@ -140,8 +143,8 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
 
   index = coords_index(1, 50, 1);
   fed = polar_active_free_energy_density(index);
-  /*info("free energy density at (1, 50, 1) ...");
-    info("ok\n");*/
+  /*   info("free energy density at (1, 50, 1) ...");
+       info("ok\n");*/
 
   index = coords_index(100, 3, 1);
   fed = polar_active_free_energy_density(index);
@@ -199,9 +202,9 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");
+  /* info("ok\n");*/
 
-     info("2-d test ok\n\n");*/
+  /* info("2-d test ok\n\n");*/
 
   return 0;
 }

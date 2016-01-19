@@ -12,13 +12,12 @@
  *
  *  The usual mode of operation is to take a = -b < 0 and k > 0.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -31,6 +30,11 @@
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "coords.h"
+#include "leesedwards.h"
+
+#ifdef OLD_SHIT
+#include "memory.h"
+#endif
 
 static double a_     = -0.003125;
 static double b_     = +0.003125;
@@ -40,15 +44,31 @@ static __targetConst__ double t_a_     = -0.003125;
 static __targetConst__ double t_b_     = +0.003125;
 static __targetConst__ double t_kappa_ = +0.002;
 
-
 static field_t * phi_ = NULL;
 static field_grad_t * grad_phi_ = NULL;
 
 
-// flag to track whHether this module has been initiated
+/* flag to track whether this module has been initiated*/
 static char symmetric_flag=0;
+
 __targetHost__ char symmetric_in_use(){ return symmetric_flag; }
 
+/* Global objects */
+
+
+__target__
+double symmetric_chemical_potential_target(const int index, const int nop,
+					   const double * t_phi,
+					   const double * t_delsqphi);
+__target__ void symmetric_chemical_stress_target(const int index,
+						 double s[3][3*NSIMDVL],
+						 const double* t_phi, 
+						 const double* t_gradphi,
+						 const double* t_delsqphi);
+
+__target__ mu_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
+
+__target__ pth_fntype p_symmetric_chemical_stress_target = symmetric_chemical_stress_target;
 
 
 /****************************************************************************
@@ -71,9 +91,6 @@ __targetHost__ int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
   return 0;
 }
 
-
-
-
 /****************************************************************************
  *
  *  symmetric_free_energy_parameters_set
@@ -83,18 +100,16 @@ __targetHost__ int symmetric_phi_set(field_t * phi, field_grad_t * dphi) {
  *
  ****************************************************************************/
 
-__targetHost__ void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
+__targetHost__
+void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
-  //set host copy
-   a_ = a;
-   b_ = b;
-   kappa_ = kappa;
+  a_ = a;
+  b_ = b;
+  kappa_ = kappa;
 
-  //set target copy
   copyConstToTarget(&t_a_, &a, sizeof(double));
   copyConstToTarget(&t_b_, &b, sizeof(double));
   copyConstToTarget(&t_kappa_, &kappa, sizeof(double));
-
 
   fe_kappa_set(kappa);
 
@@ -126,7 +141,6 @@ __targetHost__ double symmetric_b(void) {
   return b_;
 
 }
-
 
 /****************************************************************************
  *
@@ -169,7 +183,6 @@ __targetHost__ void symmetric_gradphi(double** address_of_ptr) {
   return;
 }
 
-
 /****************************************************************************
  *
  *  symmetric_t_gradphi
@@ -197,7 +210,6 @@ __targetHost__ void symmetric_delsqphi(double** address_of_ptr) {
 
 }
 
-
 /****************************************************************************
  *
  *  symmetric_t_delsqphi
@@ -211,7 +223,6 @@ __targetHost__ void symmetric_t_delsqphi(double** address_of_ptr) {
   return;
 
 }
-
 
 /****************************************************************************
  *
@@ -282,7 +293,8 @@ __targetHost__ double symmetric_free_energy_density(const int index) {
  *
  ****************************************************************************/
 
-__targetHost__ double symmetric_chemical_potential(const int index, const int nop) {
+__targetHost__
+double symmetric_chemical_potential(const int index, const int nop) {
 
   double phi;
   double delsq_phi;
@@ -299,55 +311,39 @@ __targetHost__ double symmetric_chemical_potential(const int index, const int no
   return mu;
 }
 
-
-//TODO currently we have duplicate __targetHost__ and __target__ versions of potential and stress routines 
-
-//TODO vectorise
-
-
-__target__ double symmetric_chemical_potential_target(const int index, const int nop, const double* t_phi, const double* t_delsqphi) {
-
+__target__
+double symmetric_chemical_potential_target(const int index, const int nop,
+					   const double * t_phi,
+					   const double * t_delsqphi) {
   double phi;
   double delsq_phi;
   double mu;
 
-
-
-  //TODO
-  //assert(nop == 0);
-
-  //phi = phi_get_phi_site(index);
-  //delsq_phi = phi_gradients_delsq(index);
-
-
-  phi=t_phi[index];
-  delsq_phi=t_delsqphi[index];
+  phi = t_phi[index];
+  delsq_phi = t_delsqphi[index];
 
   mu = t_a_*phi + t_b_*phi*phi*phi - t_kappa_*delsq_phi;
 
   return mu;
 }
 
-// pointer to above target function. 
-__target__ mu_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
 
+__targetHost__
+void get_chemical_potential_target(mu_fntype* t_chemical_potential) {
 
+  mu_fntype h_chemical_potential;
 
-__targetHost__ void get_chemical_potential_target(mu_fntype* t_chemical_potential){
+  /* get host copy of function pointer*/
+  copyConstFromTarget(&h_chemical_potential,
+		      &p_symmetric_chemical_potential_target,
+		      sizeof(mu_fntype));
 
-  mu_fntype h_chemical_potential; //temp host copy of fn addess
-
-  //get host copy of function pointer
-  copyConstFromTarget(&h_chemical_potential, &p_symmetric_chemical_potential_target,sizeof(mu_fntype) );
-
-  //and put back on target, now in an accessible location
-  copyToTarget( t_chemical_potential, &h_chemical_potential,sizeof(mu_fntype));
+  /* and put back on target, now in an accessible location*/
+  copyToTarget(t_chemical_potential,
+	       &h_chemical_potential, sizeof(mu_fntype));
 
   return;
-
-
 }
-
 
 
 /****************************************************************************
@@ -417,77 +413,65 @@ __targetHost__ void symmetric_chemical_stress(const int index, double s[3][3]) {
   return;
 }
 
-__target__ void symmetric_chemical_stress_target(const int index, double s[3][3*NILP], const double* t_phi,  const double* t_gradphi, const double* t_delsqphi) {
-  
+__target__
+void symmetric_chemical_stress_target(const int index,
+				      double s[3][3*NSIMDVL],
+				      const double* t_phi, 
+				      const double* t_gradphi,
+				      const double* t_delsqphi) {
   int ia, ib;
+  int iv;
   double phi;
   double delsq_phi;
   double grad_phi[3];
   double p0;
 
-  //initialisation for targetDP instruction level parallelism
-
-  int vecIndex=0;
-
-  __targetILP__(vecIndex) {
+  __targetILP__(iv) {
     
-    //phi = phi_get_phi_site(index+vecIndex);
-    //phi_gradients_grad(index+vecIndex, grad_phi);
-    //  delsq_phi = phi_gradients_delsq(index+vecIndex);
-    
-    for (ia=0;ia<3;ia++){
-      
-      //     grad_phi[ia]=t_gradphi[3*(index+vecIndex)+ia];
-     grad_phi[ia]=t_gradphi[FGRDADR(tc_nSites,1,index+vecIndex,0,ia)];
-      
-
-
+#ifndef OLD_SHIT
+    for (ia = 0; ia < 3; ia++) {
+      grad_phi[ia] = t_gradphi[vaddr_rank2(le_nsites(), 3, 1, index, ia, 0, iv)];
     }
-    
-    phi=t_phi[index+vecIndex];
-    delsq_phi=t_delsqphi[index+vecIndex];
-    
-    
-    //    p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi
-    //- kappa_*phi*delsq_phi - 0.5*kappa_*dot_product(grad_phi, grad_phi);
-    
+
+    phi = t_phi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
+    delsq_phi = t_delsqphi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
+#else
+    for (ia = 0; ia < 3; ia++) {
+      grad_phi[ia] = t_gradphi[FGRDADR(tc_nSites,1,index+iv,0,ia)];
+    }
+
+    phi = t_phi[index + iv];
+    delsq_phi = t_delsqphi[index + iv];
+#endif
+
     p0 = 0.5*t_a_*phi*phi + 0.75*t_b_*phi*phi*phi*phi
       - t_kappa_*phi*delsq_phi 
-      - 0.5*t_kappa_
-      *(grad_phi[0]*grad_phi[0]+grad_phi[1]*grad_phi[1]
-	+grad_phi[2]*grad_phi[2]);
-    
-    
+      - 0.5*t_kappa_*(grad_phi[X]*grad_phi[X] + grad_phi[Y]*grad_phi[Y]
+		      + grad_phi[Z]*grad_phi[Z]);
     
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ib*VVL+vecIndex] = p0*tc_d_[ia][ib]	+ t_kappa_*grad_phi[ia]*grad_phi[ib];
+	s[ia][ib*VVL+ iv] = p0*tc_d_[ia][ib]
+	  + t_kappa_*grad_phi[ia]*grad_phi[ib];
       }
     }
-    
-
-
   }
-
 
   return;
 }
 
-// pointer to above target function. 
-__target__ pth_fntype p_symmetric_chemical_stress_target = symmetric_chemical_stress_target;
 
+__targetHost__ void get_chemical_stress_target(pth_fntype* t_chemical_stress) {
 
-__targetHost__ void get_chemical_stress_target(pth_fntype* t_chemical_stress){
+  pth_fntype h_chemical_stress;
 
-  pth_fntype h_chemical_stress; //temp host copy of fn addess
+  /* get host copy of function pointer */
+  copyConstFromTarget(&h_chemical_stress,
+		      &p_symmetric_chemical_stress_target,
+		      sizeof(pth_fntype));
 
-  //get host copy of function pointer
-  copyConstFromTarget(&h_chemical_stress, &p_symmetric_chemical_stress_target,sizeof(pth_fntype) );
-
-  //and put back on target, now in an accessible location
-  copyToTarget( t_chemical_stress, &h_chemical_stress,sizeof(pth_fntype));
+  /* and put back on target, now in an accessible location*/
+  copyToTarget( t_chemical_stress, &h_chemical_stress, sizeof(pth_fntype));
 
   return;
-
-
 }

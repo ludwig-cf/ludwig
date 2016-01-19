@@ -9,7 +9,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,7 +23,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "field.h"
-#include "field_grad.h"
+#include "field_grad_s.h"
 #include "tests.h"
 
 enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,
@@ -33,8 +33,6 @@ static int do_test1(void);
 static int do_test3(void);
 static int do_test5(void);
 static int do_test_dab(void);
-//static int test_d2(int nf, const double * data, double * grad, double * delsq);
-//static int test_d4(int nf, const double * data, double * grad, double * delsq);
 static int test_d2(int nf, const double * field, 
 		   double * t_field,
 		   double * grad,
@@ -42,7 +40,6 @@ static int test_d2(int nf, const double * field,
 		   double * delsq,
 		   double * t_delsq
 		   );
-
 
 static int test_d4(int nf, const double * field, 
 		   double * t_field,
@@ -297,23 +294,37 @@ int do_test_dab(void) {
  *****************************************************************************/
 
 static int test_d2(int nf, const double * field, 
-	      double * t_field,
-	      double * grad,
-	      double * t_grad,
-	      double * delsq,
-	      double * t_delsq
-		   ){
+		   double * t_field,
+		   double * grad,
+		   double * t_grad,
+		   double * delsq,
+		   double * t_delsq
+		   ) {
 
   int n;
+  int nsites;
   int index = 1;
 
+  assert(grad);
+  assert(delsq);
+
+  nsites = coords_nsites();
+
+#ifndef OLD_SHIT
+  for (n = 0; n < nf; n++) {
+    grad[addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD, nf, X, n);
+    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD, nf, Y, n);
+    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD, nf, Z, n);
+    delsq[addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ, nf, X, n);
+  }
+#else
   for (n = 0; n < nf; n++) {
     grad[NVECTOR*(nf*index + n) + X] = test_encode(ENCODE_GRAD, nf, X, n);
     grad[NVECTOR*(nf*index + n) + Y] = test_encode(ENCODE_GRAD, nf, Y, n);
     grad[NVECTOR*(nf*index + n) + Z] = test_encode(ENCODE_GRAD, nf, Z, n);
     delsq[nf*index + n] = test_encode(ENCODE_DELSQ, nf, X, n);
   }
-
+#endif
   return 0;
 }
 
@@ -324,22 +335,36 @@ static int test_d2(int nf, const double * field,
  *****************************************************************************/
 
 static int test_d4(int nf, const double * field, 
-	      double * t_field,
-	      double * grad,
-	      double * t_grad,
-	      double * delsq,
-	      double * t_delsq
-		   ){
+		   double * t_field,
+		   double * grad,
+		   double * t_grad,
+		   double * delsq,
+		   double * t_delsq
+		   ) {
   int n;
+  int nsites;
   int index = 1;
 
+  assert(grad);
+  assert(delsq);
+
+  nsites = coords_nsites();
+
+#ifndef OLD_SHIT
+  for (n = 0; n < nf; n++) {
+    grad[addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD4, nf, X, n);
+    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD4, nf, Y, n);
+    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD4, nf, Z, n);
+    delsq[addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ4, nf, X, n);
+  }
+#else
   for (n = 0; n < nf; n++) {
     grad[NVECTOR*(nf*index + n) + X] = test_encode(ENCODE_GRAD4, nf, X, n);
     grad[NVECTOR*(nf*index + n) + Y] = test_encode(ENCODE_GRAD4, nf, Y, n);
     grad[NVECTOR*(nf*index + n) + Z] = test_encode(ENCODE_GRAD4, nf, Z, n);
     delsq[nf*index + n] = test_encode(ENCODE_DELSQ4, nf, X, n);
   }
-
+#endif
   return 0;
 }
 
@@ -367,12 +392,25 @@ static double test_encode(int code, int nf, int iv, int n) {
 static int test_dab(int nf, const double * field, double * dab) {
 
   int n;
+  int nsites;
   int index = 1;
 
   assert(nf == 1);
   assert(field);
   assert(dab);
 
+  nsites = coords_nsites();
+
+#ifndef OLD_SHIT
+  for (n = 0; n < nf; n++) {
+    dab[addr_dab(nsites, index, XX)] = test_encode(ENCODE_DAB, nf, XX, n);
+    dab[addr_dab(nsites, index, XY)] = test_encode(ENCODE_DAB, nf, XY, n);
+    dab[addr_dab(nsites, index, XZ)] = test_encode(ENCODE_DAB, nf, XZ, n);
+    dab[addr_dab(nsites, index, YY)] = test_encode(ENCODE_DAB, nf, YY, n);
+    dab[addr_dab(nsites, index, YZ)] = test_encode(ENCODE_DAB, nf, YZ, n);
+    dab[addr_dab(nsites, index, ZZ)] = test_encode(ENCODE_DAB, nf, ZZ, n);
+  }
+#else
   for (n = 0; n < nf; n++) {
     dab[NSYMM*(nf*index + n) + XX] = test_encode(ENCODE_DAB, nf, XX, n);
     dab[NSYMM*(nf*index + n) + XY] = test_encode(ENCODE_DAB, nf, XY, n);
@@ -381,6 +419,6 @@ static int test_dab(int nf, const double * field, double * dab) {
     dab[NSYMM*(nf*index + n) + YZ] = test_encode(ENCODE_DAB, nf, YZ, n);
     dab[NSYMM*(nf*index + n) + ZZ] = test_encode(ENCODE_DAB, nf, ZZ, n);
   }
-
+#endif
   return 0;
 }

@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2015 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Alan Gray (alang@epcc.ed.ac.uk)
@@ -115,9 +115,6 @@ static double *t_gradphi;
  *  We allow hydro to be NULL, in which case there is no hydrodynamics!
  * 
  *****************************************************************************/
-
-
-
 
 int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
@@ -231,13 +228,22 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     }
 
     /* force */
+#ifndef OLD_SHIT
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia*VVL+iv] = tc_force_global[ia] 
+	  + t_force[vaddr_hydro(baseIndex, ia, iv)];
+      }
+    }
+#else
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) force[ia*VVL+iv] = (tc_force_global[ia] 
 			  + t_force[HYADR(tc_nSites,3,baseIndex+iv,ia)]);
     }
+#endif
   }
   else {
-    __targetILP__(iv){
+    __targetILP__(iv) {
       if (includeSite[iv]) {
 	/* distribution */
 	for (p = 0; p < NVEL; p++) {
@@ -245,10 +251,17 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	    t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
 	}
 	/* force */
+#ifndef OLD_SHIT
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia*VVL+iv] = tc_force_global[ia] 
+	    + t_force[vaddr_hydro(baseIndex, ia, iv)];
+	}
+#else
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia*VVL+iv] = (tc_force_global[ia] 
 			      + t_force[HYADR(tc_nSites,3,baseIndex+iv,ia)]);
 	}
+#endif
       }
     }
   }
@@ -431,10 +444,16 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
       }
     }
     /* velocity */
-    for (ia = 0; ia < 3; ia++) {   
+    for (ia = 0; ia < 3; ia++) {
+#ifndef OLD_SHIT
+      __targetILP__(iv) {
+	t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+      }
+#else   
       __targetILP__(iv) {
 	t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)] = u[ia*VVL+iv];
       }
+#endif
     }
   }
   else {
@@ -446,10 +465,18 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	    = fchunk[p*VVL+iv]; 
 	}
 	/* velocity */
-	for (ia = 0; ia < 3; ia++) {   
+#ifndef OLD_SHIT
+	for (ia = 0; ia < 3; ia++) {
+	  __targetILP__(iv) {
+	    t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+	  }
+	}
+#else
+	for (ia = 0; ia < 3; ia++) {
 	  __targetILP__(iv) t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)]
 	    =u[ia*VVL+iv];
 	}
+#endif
       }
     }
   }
@@ -495,7 +522,6 @@ __targetEntry__ void lb_collision_mrt_lattice(lb_t* t_lb,
 int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   int nhalo;
-  int nFields = NVEL;
   int nlocal[3];
   int Nall[3];
   int nSites;
@@ -635,7 +661,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 			      const int baseIndex){
 
 
-  int i,j,m,p;
+  int i, ia, j,m,p;
 
   
   double mode[NVEL*VVL]; /* Modes; hydrodynamic + ghost */
@@ -725,6 +751,13 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   for (i = 0; i < 3; i++) {
 
+#ifndef OLD_SHIT
+    __targetILP__(iv) {
+      force[i*VVL+iv] = tc_force_global[i] 
+	+ t_force[vaddr_hydro(baseIndex, i, iv)];
+      u[i*VVL+iv] = rrho[iv]*(u[i*VVL+iv] + 0.5*force[i*VVL+iv]);  
+    }
+#else
     __targetILP__(iv){
       force[i*VVL+iv] = (tc_force_global[i] 
 		      + t_force[HYADR(tc_nSites,3,baseIndex+iv,i)]);
@@ -732,14 +765,21 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
       u[i*VVL+iv] = rrho[iv]*(u[i*VVL+iv] + 0.5*force[i*VVL+iv]);  
     }
+#endif
   }
   
-  
+#ifndef OLD_SHIT
+  for (ia = 0; ia < 3; ia++) {   
+    __targetILP__(iv) {
+      t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+    }
+  }
+#else
     for (i = 0; i < 3; i++) {   
               __targetILP__(iv) t_velocity[HYADR(tc_nSites,3,baseIndex+iv,i)]=u[i*VVL+iv];
 
    }
-
+#endif
   
   /* Compute the thermodynamic component of the stress */
   
@@ -3216,7 +3256,7 @@ __target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex)
 
  __target__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL], double jphi[3*VVL], double* t_f, int baseIndex){
 
-  int i, j, p, iv=0;
+  int iv=0;
 
 __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 

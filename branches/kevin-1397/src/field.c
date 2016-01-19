@@ -2,22 +2,20 @@
  *
  *  field.c
  *
- *  Data layout.
+ *  Rank 1 objects: scalar fields, vector fields, and compressed tensor Q_ab.
  *
- *  We store (conceptually) data[nsites][nf], so that components of
- *  a field are stored contiguously. A flattened 1d addressing is
- *  used so that data[index][n] becomes data[nf*index + 1*n].
- *
- *  To reverse this, use data[nf][nsites], so that addressing
- *  becomes data[n][index] -> data[1*index + nsites*n].
+ *  The data storage order is determined in memory.h.
  *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  Aln Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -35,7 +33,6 @@
 #include "util.h"
 #include "control.h" /* Can we move get_step() to LE please? */
 #include "field_s.h"
-#include "targetDP.h"
 
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
@@ -99,13 +96,11 @@ void field_free(field_t * obj) {
 
   if (obj->tcopy) {
 
-    //free data space on target 
     double* tmpptr;
     field_t* t_obj = obj->tcopy;
     copyFromTarget(&tmpptr,&(t_obj->data),sizeof(double*)); 
     targetFree(tmpptr);
     
-    //free target copy of structure
     targetFree(obj->tcopy);
   }
 
@@ -233,8 +228,15 @@ int field_halo(field_t * obj) {
 
   assert(obj);
   assert(obj->data);
-  coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
 
+#ifndef OLD_SHIT
+
+  coords_field_halo_rank1(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE);
+
+#else
+
+  coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
+#endif
   return 0;
 }
 
@@ -254,6 +256,7 @@ int field_leesedwards(field_t * obj) {
 
   int nf;
   int nhalo;
+  int nsites;
   int nlocal[3]; /* Local system size */
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
@@ -282,6 +285,7 @@ int field_leesedwards(field_t * obj) {
 
     field_nf(obj, &nf);
     nhalo = coords_nhalo();
+    nsites = le_nsites();
     coords_nlocal(nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
@@ -307,7 +311,22 @@ int field_leesedwards(field_t * obj) {
         j1 = 1 + j0 % nlocal[Y];
         j2 = 1 + j1 % nlocal[Y];
         j3 = 1 + j2 % nlocal[Y];
-
+#ifndef OLD_SHIT
+        for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+          index  = le_site_index(ib0 + ib, jc, kc);
+          index0 = le_site_index(ic, j0, kc);
+          index1 = le_site_index(ic, j1, kc);
+          index2 = le_site_index(ic, j2, kc);
+          index3 = le_site_index(ic, j3, kc);
+          for (n = 0; n < nf; n++) {
+            obj->data[addr_rank1(nsites, nf, index, n)] =
+              -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index0, n)]
+              + 0.5*(fr*fr-1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index1, n)]
+              - 0.5*fr*(fr+1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index2, n)]
+              +        r6*fr*(fr*fr-1.0)*obj->data[addr_rank1(nsites, nf, index3, n)];
+          }
+        }
+#else
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
           index  = nf*le_site_index(ib0 + ib, jc, kc);
           index0 = nf*le_site_index(ic, j0, kc);
@@ -322,6 +341,7 @@ int field_leesedwards(field_t * obj) {
               +        r6*fr*(fr*fr-1.0)*obj->data[index3 + n];
           }
         }
+#endif
       }
     }
   }
@@ -511,7 +531,11 @@ int field_scalar(field_t * obj, int index, double * phi) {
   assert(obj->data);
   assert(phi);
 
+#ifndef OLD_SHIT
+  *phi = obj->data[addr_rank1(le_nsites(), 1, index, 0)];
+#else
   *phi = obj->data[index];
+#endif
 
   return 0;
 }
@@ -528,8 +552,11 @@ int field_scalar_set(field_t * obj, int index, double phi) {
   assert(obj->nf == 1);
   assert(obj->data);
 
+#ifndef OLD_SHIT
+  obj->data[addr_rank1(le_nsites(), 1, index, 0)] = phi;
+#else
   obj->data[index] = phi;
-
+#endif
   return 0;
 }
 
@@ -548,10 +575,15 @@ int field_vector(field_t * obj, int index, double p[3]) {
   assert(obj->data);
   assert(p);
 
+#ifndef OLD_SHIT
+  for (ia = 0; ia < 3; ia++) {
+    p[ia] = obj->data[addr_rank1(le_nsites(), 3, index, ia)];
+  }
+#else
   for (ia = 0; ia < 3; ia++) {
     p[ia] = obj->data[3*index + ia];
   }
-
+#endif
   return 0;
 }
 
@@ -570,10 +602,15 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
   assert(obj->data);
   assert(p);
 
+#ifndef OLD_SHIT
+  for (ia = 0; ia < 3; ia++) {
+    obj->data[addr_rank1(le_nsites(), 3, index, ia)] = p[ia];
+  }
+#else
   for (ia = 0; ia < 3; ia++) {
     obj->data[3*index + ia] = p[ia];
   }
-
+#endif
   return 0;
 }
 
@@ -587,26 +624,36 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
 
 int field_tensor(field_t * obj, int index, double q[3][3]) {
 
-  int nlocal[3];
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  int nsites;
 
   assert(obj);
   assert(obj->nf == NQAB);
   assert(obj->data);
   assert(q);
 
-  q[X][X] = obj->data[FLDADR(nSites,NQAB,index,XX)];
-  q[X][Y] = obj->data[FLDADR(nSites,NQAB,index,XY)];
-  q[X][Z] = obj->data[FLDADR(nSites,NQAB,index,XZ)];
+  nsites = le_nsites();
+
+#ifndef OLD_SHIT
+  q[X][X] = obj->data[addr_rank1(nsites, NQAB, index, XX)];
+  q[X][Y] = obj->data[addr_rank1(nsites, NQAB, index, XY)];
+  q[X][Z] = obj->data[addr_rank1(nsites, NQAB, index, XZ)];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = obj->data[FLDADR(nSites,NQAB,index,YY)];
-  q[Y][Z] = obj->data[FLDADR(nSites,NQAB,index,YZ)];
+  q[Y][Y] = obj->data[addr_rank1(nsites, NQAB, index, YY)];
+  q[Y][Z] = obj->data[addr_rank1(nsites, NQAB, index, YZ)];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+#else
+  q[X][X] = obj->data[FLDADR(nsites, NQAB, index, XX)];
+  q[X][Y] = obj->data[FLDADR(nsites, NQAB, index, XY)];
+  q[X][Z] = obj->data[FLDADR(nsites, NQAB, index, XZ)];
+  q[Y][X] = q[X][Y];
+  q[Y][Y] = obj->data[FLDADR(nsites, NQAB, index, YY)];
+  q[Y][Z] = obj->data[FLDADR(nsites, NQAB, index, YZ)];
+  q[Z][X] = q[X][Z];
+  q[Z][Y] = q[Y][Z];
+  q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+#endif
 
   return 0;
 }
@@ -622,22 +669,28 @@ int field_tensor(field_t * obj, int index, double q[3][3]) {
 
 int field_tensor_set(field_t * obj, int index, double q[3][3]) {
 
-  int nlocal[3];
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  int nsites;
 
   assert(obj);
   assert(obj->nf == NQAB);
   assert(obj->data);
   assert(q);
 
-  obj->data[FLDADR(nSites,NQAB,index,XX)] = q[X][X];
-  obj->data[FLDADR(nSites,NQAB,index,XY)] = q[X][Y];
-  obj->data[FLDADR(nSites,NQAB,index,XZ)] = q[X][Z];
-  obj->data[FLDADR(nSites,NQAB,index,YY)] = q[Y][Y];
-  obj->data[FLDADR(nSites,NQAB,index,YZ)] = q[Y][Z];
+  nsites = le_nsites();
+
+#ifndef OLD_SHIT
+  obj->data[addr_rank1(nsites, NQAB, index, XX)] = q[X][X];
+  obj->data[addr_rank1(nsites, NQAB, index, XY)] = q[X][Y];
+  obj->data[addr_rank1(nsites, NQAB, index, XZ)] = q[X][Z];
+  obj->data[addr_rank1(nsites, NQAB, index, YY)] = q[Y][Y];
+  obj->data[addr_rank1(nsites, NQAB, index, YZ)] = q[Y][Z];
+#else
+  obj->data[FLDADR(nsites, NQAB, index, XX)] = q[X][X];
+  obj->data[FLDADR(nsites, NQAB, index, XY)] = q[X][Y];
+  obj->data[FLDADR(nsites, NQAB, index, XZ)] = q[X][Z];
+  obj->data[FLDADR(nsites, NQAB, index, YY)] = q[Y][Y];
+  obj->data[FLDADR(nsites, NQAB, index, YZ)] = q[Y][Z];
+#endif
 
   return 0;
 }
@@ -660,11 +713,15 @@ int field_scalar_array(field_t * obj, int index, double * array) {
   assert(obj);
   assert(obj->data);
   assert(array);
-
+#ifndef OLD_SHIT
+  for (n = 0; n < obj->nf; n++) {
+    array[n] = obj->data[addr_rank1(le_nsites(), obj->nf, index, n)];
+  }
+#else
   for (n = 0; n < obj->nf; n++) {
     array[n] = obj->data[obj->nf*index + n];
   }
-
+#endif
   return 0;
 }
 
@@ -681,10 +738,15 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
   assert(obj);
   assert(obj->data);
   assert(array);
-
+#ifndef OLD_SHIT
+  for (n = 0; n < obj->nf; n++) {
+    obj->data[addr_rank1(le_nsites(), obj->nf, index, n)] = array[n];
+  }
+#else
   for (n = 0; n < obj->nf; n++) {
     obj->data[obj->nf*index + n] = array[n];
   }
+#endif
 
   return 0;
 }
@@ -698,13 +760,17 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 static int field_read(FILE * fp, int index, void * self) {
 
   int n;
+  double array[NQAB];              /* Largest field currently expected */
   field_t * obj = (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
 
-  n = fread(&obj->data[obj->nf*index], sizeof(double), obj->nf, fp);
+  n = fread(array, sizeof(double), obj->nf, fp);
   if (n != obj->nf) fatal("fread(field) failed at index %d", index);
+
+  field_scalar_array_set(obj, index, array);
 
   return 0;
 }
@@ -718,15 +784,19 @@ static int field_read(FILE * fp, int index, void * self) {
 static int field_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
+  double array[NQAB];                /* Largest currently expected */
   field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
 
   for (n = 0; n < obj->nf; n++) {
-    nread = fscanf(fp, "%le", obj->data + obj->nf*index + n);
+    nread = fscanf(fp, "%le", array + n);
     if (nread != 1) fatal("fscanf(field) failed at index %d\n", index);
   }
+
+  field_scalar_array_set(obj, index, array);
 
   return 0;
 }
@@ -740,12 +810,16 @@ static int field_read_ascii(FILE * fp, int index, void * self) {
 static int field_write(FILE * fp, int index, void * self) {
 
   int n;
+  double array[NQAB];               /* Largest currently expected */
   field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
 
-  n = fwrite(&obj->data[obj->nf*index], sizeof(double), obj->nf, fp);
+  field_scalar_array(obj, index, array);
+
+  n = fwrite(array, sizeof(double), obj->nf, fp);
   if (n != obj->nf) fatal("fwrite(field) failed at index %d\n", index);
 
   return 0;
@@ -760,13 +834,17 @@ static int field_write(FILE * fp, int index, void * self) {
 static int field_write_ascii(FILE * fp, int index, void * self) {
 
   int n, nwrite;
+  double array[NQAB];               /* Largest currently expected */
   field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
+
+  field_scalar_array(obj, index, array);
 
   for (n = 0; n < obj->nf; n++) {
-    nwrite = fprintf(fp, "%22.15e ", obj->data[obj->nf*index + n]);
+    nwrite = fprintf(fp, "%22.15e ", array[n]);
     if (nwrite != 23) fatal("fprintf(%s) failed at index %d\n", obj->name,
 			    index);
   }

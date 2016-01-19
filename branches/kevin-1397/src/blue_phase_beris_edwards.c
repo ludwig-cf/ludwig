@@ -32,9 +32,12 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2015 The University of Edinburgh
+ *  (c) 2009-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
+ *  Davide Marenduzzo supplied the inspiration.
  *
  *****************************************************************************/
 
@@ -54,11 +57,8 @@
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
 #include "free_energy_tensor.h"
-#include "hydro.h"
 #include "hydro_s.h"
-#include "field.h"
 #include "field_s.h"
-#include "field_grad.h"
 #include "field_grad_s.h"
 #include "map_s.h"
 #include "timer.h"
@@ -226,18 +226,19 @@ __targetHost__ __target__ void blue_phase_compute_h_inline(double q[3][3],
  *
  *****************************************************************************/
 
-__targetEntry__ void blue_phase_be_update_lattice(double* __restrict__ qdata,
-						  const double* __restrict__ graddata, 
-						  const double* __restrict__ graddelsq, 
-						  const double* __restrict__ hydrou,
-						  const double* __restrict__ fluxe,
-						  const double* __restrict__ fluxw,
-						  const double* __restrict__ fluxy,
-						  const double* __restrict__ fluxz,
-						  map_t * map,
-						  int noise_on,
-						  noise_t * noise,
-						  void* pcon, int nf, int hydroOn,
+__targetEntry__
+void blue_phase_be_update_lattice(double* __restrict__ qdata,
+				  const double* __restrict__ graddata, 
+				  const double* __restrict__ graddelsq, 
+				  const double* __restrict__ hydrou,
+				  const double* __restrict__ fluxe,
+				  const double* __restrict__ fluxw,
+				  const double* __restrict__ fluxy,
+				  const double* __restrict__ fluxz,
+				  map_t * map,
+				  int noise_on,
+				  noise_t * noise,
+				  void* pcon, int nf, int hydroOn,
 void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
   int index;
@@ -296,7 +297,29 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
       /* calculate molecular field	*/
 
 	int ia, ib;
-	
+#ifndef OLD_SHIT
+	q[X][X] = qdata[addr_qab(tc_nSites, index, XX)];
+	q[X][Y] = qdata[addr_qab(tc_nSites, index, XY)];
+	q[X][Z] = qdata[addr_qab(tc_nSites, index, XZ)];
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = qdata[addr_qab(tc_nSites, index, YY)];
+	q[Y][Z] = qdata[addr_qab(tc_nSites, index, YZ)];
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+
+	for (ia = 0; ia < NVECTOR; ia++) {
+	  dq[ia][X][X] = graddata[addr_rank2(tc_nSites,NQAB,3, index,XX,ia)];
+	  dq[ia][X][Y] = graddata[addr_rank2(tc_nSites,NQAB,3, index,XY,ia)];
+	  dq[ia][X][Z] = graddata[addr_rank2(tc_nSites,NQAB,3, index,XZ,ia)];
+	  dq[ia][Y][X] = dq[ia][X][Y];
+	  dq[ia][Y][Y] = graddata[addr_rank2(tc_nSites,NQAB,3, index,YY,ia)];
+	  dq[ia][Y][Z] = graddata[addr_rank2(tc_nSites,NQAB,3, index,YZ,ia)];
+	  dq[ia][Z][X] = dq[ia][X][Z];
+	  dq[ia][Z][Y] = dq[ia][Y][Z];
+	  dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+	}
+#else
 	q[X][X] = qdata[FLDADR(tc_nSites,NQAB,index,XX)];
 	q[X][Y] = qdata[FLDADR(tc_nSites,NQAB,index,XY)];
 	q[X][Z] = qdata[FLDADR(tc_nSites,NQAB,index,XZ)];
@@ -306,7 +329,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-	
+
 	for (ia = 0; ia < NVECTOR; ia++) {
 	  dq[ia][X][X] = graddata[FGRDADR(tc_nSites,NQAB,index,XX,ia)];
 	  dq[ia][X][Y] = graddata[FGRDADR(tc_nSites,NQAB,index,XY,ia)];
@@ -318,8 +341,18 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	  dq[ia][Z][Y] = dq[ia][Y][Z];
 	  dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
 	}
-	
-	
+#endif	
+#ifndef OLD_SHIT
+	dsq[X][X] = graddelsq[addr_rank1(tc_nSites, NQAB, index, XX)];
+	dsq[X][Y] = graddelsq[addr_rank1(tc_nSites, NQAB, index, XY)];
+	dsq[X][Z] = graddelsq[addr_rank1(tc_nSites, NQAB, index, XZ)];
+	dsq[Y][X] = dsq[X][Y];
+	dsq[Y][Y] = graddelsq[addr_rank1(tc_nSites, NQAB, index, YY)];
+	dsq[Y][Z] = graddelsq[addr_rank1(tc_nSites, NQAB, index, YZ)];
+	dsq[Z][X] = dsq[X][Z];
+	dsq[Z][Y] = dsq[Y][Z];
+	dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+#else
 	dsq[X][X] = graddelsq[FLDADR(tc_nSites,NQAB,index,XX)];
 	dsq[X][Y] = graddelsq[FLDADR(tc_nSites,NQAB,index,XY)];
 	dsq[X][Z] = graddelsq[FLDADR(tc_nSites,NQAB,index,XZ)];
@@ -329,7 +362,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	dsq[Z][X] = dsq[X][Z];
 	dsq[Z][Y] = dsq[Y][Z];
 	dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-	
+#endif
 	
 
 
@@ -344,7 +377,43 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 		  }
 	
 	if (hydroOn) {
+#ifndef OLD_SHIT
+	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
+	  /* hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
+	   * inline above function
+	   * TODO add lees edwards support*/
+
+	  int im1 = targetIndex3D(coords[X]-1,coords[Y],coords[Z],tc_Nall);
+	  int ip1 = targetIndex3D(coords[X]+1,coords[Y],coords[Z],tc_Nall);
+	  
+	  w[X][X] = 0.5*(hydrou[addr_hydro(ip1, X)]
+		       - hydrou[addr_hydro(im1, X)]);
+	  w[Y][X] = 0.5*(hydrou[addr_hydro(ip1, Y)]
+		       - hydrou[addr_hydro(im1, Y)]);
+	  w[Z][X] = 0.5*(hydrou[addr_hydro(ip1, Z)]
+		       - hydrou[addr_hydro(im1, Z)]);
+	  
+	  im1 = targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
+	  ip1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
+	  
+	  w[X][Y] = 0.5*(hydrou[addr_hydro(ip1, X)]
+		       - hydrou[addr_hydro(im1, X)]);
+	  w[Y][Y] = 0.5*(hydrou[addr_hydro(ip1, Y)]
+		       - hydrou[addr_hydro(im1, Y)]);
+	  w[Z][Y] = 0.5*(hydrou[addr_hydro(ip1, Z)]
+		       - hydrou[addr_hydro(im1, Z)]);
+	  
+	  im1 = targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
+	  ip1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
+	  
+	  w[X][Z] = 0.5*(hydrou[addr_hydro(ip1, X)]
+		       - hydrou[addr_hydro(im1, X)]);
+	  w[Y][Z] = 0.5*(hydrou[addr_hydro(ip1, Y)]
+		       - hydrou[addr_hydro(im1, Y)]);
+	  w[Z][Z] = 0.5*(hydrou[addr_hydro(ip1, Z)]
+		       - hydrou[addr_hydro(im1, Z)]);
+#else
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
 	  /* hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
@@ -371,7 +440,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	  w[X][Z] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1,X)] - hydrou[HYADR(tc_nSites,3,im1,X)]);
 	  w[Y][Z] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1,Y)] - hydrou[HYADR(tc_nSites,3,im1,Y)]);
 	  w[Z][Z] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1,Z)] - hydrou[HYADR(tc_nSites,3,im1,Z)]);
-
+#endif
 	  /* Enforce tracelessness */
 	  
 	  double tr = pbpc->r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);
@@ -429,7 +498,47 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	  
 	indexj=targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
 	indexk=targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
+#ifndef OLD_SHIT
+	q[X][X] += dt*(s[X][X] + tc_gamma*h[X][X] + chi_qab[X][X]
+		       - fluxe[addr_rank1(tc_nSites, nf, index, XX)]
+		       + fluxw[addr_rank1(tc_nSites, nf, index, XX)]
+		       - fluxy[addr_rank1(tc_nSites, nf, index, XX)]
+		       + fluxy[addr_rank1(tc_nSites, nf, indexj,XX)]
+		       - fluxz[addr_rank1(tc_nSites, nf, index, XX)]
+		       + fluxz[addr_rank1(tc_nSites, nf, indexk,XX)]);
 
+	q[X][Y] += dt*(s[X][Y] + tc_gamma*h[X][Y] + chi_qab[X][Y]
+		       - fluxe[addr_rank1(tc_nSites, nf, index, XY)]
+		       + fluxw[addr_rank1(tc_nSites, nf, index, XY)]
+		       - fluxy[addr_rank1(tc_nSites, nf, index, XY)]
+		       + fluxy[addr_rank1(tc_nSites, nf, indexj,XY)]
+		       - fluxz[addr_rank1(tc_nSites, nf, index, XY)]
+		       + fluxz[addr_rank1(tc_nSites, nf, indexk,XY)]);
+
+	q[X][Z] += dt*(s[X][Z] + tc_gamma*h[X][Z] + chi_qab[X][Z]
+		       - fluxe[addr_rank1(tc_nSites, nf, index, XZ)]
+		       + fluxw[addr_rank1(tc_nSites, nf, index, XZ)]
+		       - fluxy[addr_rank1(tc_nSites, nf, index, XZ)]
+		       + fluxy[addr_rank1(tc_nSites, nf, indexj,XZ)]
+		       - fluxz[addr_rank1(tc_nSites, nf, index, XZ)]
+		       + fluxz[addr_rank1(tc_nSites, nf, indexk,XZ)]);
+
+	q[Y][Y] += dt*(s[Y][Y] + tc_gamma*h[Y][Y] + chi_qab[Y][Y]
+		       - fluxe[addr_rank1(tc_nSites, nf, index, YY)]
+		       + fluxw[addr_rank1(tc_nSites, nf, index, YY)]
+		       - fluxy[addr_rank1(tc_nSites, nf, index, YY)]
+		       + fluxy[addr_rank1(tc_nSites, nf, indexj,YY)]
+		       - fluxz[addr_rank1(tc_nSites, nf, index, YY)]
+		       + fluxz[addr_rank1(tc_nSites, nf, indexk,YY)]);
+
+	q[Y][Z] += dt*(s[Y][Z] + tc_gamma*h[Y][Z] + chi_qab[Y][Z]
+		       - fluxe[addr_rank1(tc_nSites, nf, index, YZ)]
+		       + fluxw[addr_rank1(tc_nSites, nf, index, YZ)]
+		       - fluxy[addr_rank1(tc_nSites, nf, index, YZ)]
+		       + fluxy[addr_rank1(tc_nSites, nf, indexj,YZ)]
+		       - fluxz[addr_rank1(tc_nSites, nf, index, YZ)]
+		       + fluxz[addr_rank1(tc_nSites, nf, indexk,YZ)]);
+#else
 	q[X][X] += dt*(s[X][X] + tc_gamma*h[X][X] + chi_qab[X][X]
 		       - fluxe[ADVADR(tc_nSites,nf,index,XX)] + fluxw[ADVADR(tc_nSites,nf,index,XX)]
 		       - fluxy[ADVADR(tc_nSites,nf,index,XX)] + fluxy[ADVADR(tc_nSites,nf,indexj,XX)]
@@ -455,14 +564,20 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 		       - fluxe[ADVADR(tc_nSites,nf,index,YZ)] + fluxw[ADVADR(tc_nSites,nf,index,YZ)]
 		       - fluxy[ADVADR(tc_nSites,nf,index,YZ)] + fluxy[ADVADR(tc_nSites,nf,indexj,YZ)]
 		       - fluxz[ADVADR(tc_nSites,nf,index,YZ)] + fluxz[ADVADR(tc_nSites,nf,indexk,YZ)]);
-
-
+#endif
+#ifndef OLD_SHIT
+	qdata[addr_qab(tc_nSites, index, XX)] = q[X][X];
+	qdata[addr_qab(tc_nSites, index, XY)] = q[X][Y];
+	qdata[addr_qab(tc_nSites, index, XZ)] = q[X][Z];
+	qdata[addr_qab(tc_nSites, index, YY)] = q[Y][Y];
+	qdata[addr_qab(tc_nSites, index, YZ)] = q[Y][Z];
+#else
 	qdata[FLDADR(tc_nSites,NQAB,index,XX)] = q[X][X];
 	qdata[FLDADR(tc_nSites,NQAB,index,XY)] = q[X][Y];
 	qdata[FLDADR(tc_nSites,NQAB,index,XZ)] = q[X][Z];
 	qdata[FLDADR(tc_nSites,NQAB,index,YY)] = q[Y][Y];
 	qdata[FLDADR(tc_nSites,NQAB,index,YZ)] = q[Y][Z];
-
+#endif
     }
   }
 
@@ -478,7 +593,6 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   double gamma;
 
-  double chi[NQAB], chi_qab[3][3];
   double tmatrix[3][3][NQAB];
   double kt, var = 0.0;
 
@@ -492,7 +606,6 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   field_nf(fq, &nf);
   assert(nf == NQAB);
 
-  double xi = blue_phase_get_xi();
   physics_lc_gamma_rot(&gamma);
 
   /* Get kBT, variance of noise and set basis of traceless,
