@@ -46,6 +46,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "memory.h"
 #include "leesedwards.h"
 #include "wall.h"
 #include "gradient_3d_27pt_fluid.h"
@@ -121,6 +122,7 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
 					   double * del2,
 					   const int nextra) {
   int nlocal[3];
+  int nsites;
   int nhalo;
   int n;
   int ic, jc, kc;
@@ -131,6 +133,7 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
   const double r9 = (1.0/9.0);
 
   nhalo = coords_nhalo();
+  nsites = le_nsites();
   coords_nlocal(nlocal);
 
   ys = nlocal[Z] + 2*nhalo;
@@ -145,6 +148,98 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
 	indexm1 = le_site_index(icm1, jc, kc);
 	indexp1 = le_site_index(icp1, jc, kc);
 
+#ifndef OLD_SHIT
+	for (n = 0; n < nop; n++) {
+	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Y)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Z)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     - field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     );
+	  del2[addr_rank1(nsites, nop, index, n)] = r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
+	}
+#else
 	for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X] = 0.5*r9*
 	      (+ field[nop*(indexp1-ys-1) + n] - field[nop*(indexm1-ys-1) + n]
@@ -208,6 +303,7 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
 	       + field[nop*(indexp1+ys+1) + n]
 	       - 26.0*field[nop*index + n]);
 	}
+#endif
       }
     }
   }
@@ -231,6 +327,7 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 						 double * del2,
 						 int nextra) {
   int nlocal[3];
+  int nsites;
   int nhalo;
   int nh;                                 /* counter over halo extent */
   int n;
@@ -243,6 +340,7 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
   const double r9 = (1.0/9.0);
 
   nhalo = coords_nhalo();
+  nsites = le_nsites();
   coords_nlocal(nlocal);
 
   ys = (nlocal[Z] + 2*nhalo);
@@ -264,6 +362,98 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
+#ifndef OLD_SHIT
+	for (n = 0; n < nop; n++) {
+	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Y)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Z)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     - field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     );
+	  del2[addr_rank1(nsites, nop, index, n)] = r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
+	}
+#else
 	  for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X] = 0.5*r9*
 	      (+ field[nop*(indexp1-ys-1) + n] - field[nop*(indexm1-ys-1) + n]
@@ -327,6 +517,7 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 	       + field[nop*(indexp1+ys+1) + n]
 	       - 26.0*field[nop*index + n]);
 	  }
+#endif
 	}
       }
     }
@@ -345,7 +536,98 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 	  indexm1 = le_site_index(ic0, jc, kc);
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
-
+#ifndef OLD_SHIT
+	for (n = 0; n < nop; n++) {
+	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Y)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Z)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     - field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     );
+	  del2[addr_rank1(nsites, nop, index, n)] = r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
+	}
+#else
 	  for (n = 0; n < nop; n++) {
 	    grad[3*(nop*index + n) + X] = 0.5*r9*
 	      (+ field[nop*(indexp1-ys-1) + n] - field[nop*(indexm1-ys-1) + n]
@@ -409,6 +691,7 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 	       + field[nop*(indexp1+ys+1) + n]
 	       - 26.0*field[nop*index + n]);
 	  }
+#endif
 	}
       }
     }

@@ -223,12 +223,15 @@ __targetHost__ int colloids_q_boundary(const double nhat[3], double qs[3][3],
  *
  *****************************************************************************/
 
-__targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
-
+__targetEntry__
+void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro,
+			      map_t * map) {
 
   int index;
-  __targetTLPNoStride__(index,tc_nSites){
 
+  __targetTLPNoStride__(index, tc_nSites) {
+
+    int coords[3];
     int ic, jc, kc, ia;
     
     double u[3];
@@ -236,9 +239,7 @@ __targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t *
     double x, y, z;
     
     colloid_t * p_c;
-
     
-    int coords[3];
     targetCoords3D(coords,tc_Nall,index);
     
     // if not a halo site:
@@ -265,13 +266,16 @@ __targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t *
       
       if (map->status[index] != MAP_FLUID) {
 	u[X] = 0.0;
-	  u[Y] = 0.0;
-	  u[Z] = 0.0;
+	u[Y] = 0.0;
+	u[Z] = 0.0;
 	  
-	  for (ia = 0; ia < 3; ia++) {
-	    hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
-	  }
-	  
+	for (ia = 0; ia < 3; ia++) {
+#ifndef OLD_SHIT
+	  hydro->u[addr_hydro(index, ia)] = u[ia];
+#else
+	  hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
+#endif
+	}  
       }
       
       p_c=NULL;
@@ -289,18 +293,18 @@ __targetEntry__ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t *
 	u[X] = p_c->s.w[Y]*rb[Z] - p_c->s.w[Z]*rb[Y];
 	u[Y] = p_c->s.w[Z]*rb[X] - p_c->s.w[X]*rb[Z];
 	u[Z] = p_c->s.w[X]*rb[Y] - p_c->s.w[Y]*rb[X];
-	
-	
+
 	u[X] += p_c->s.v[X];
 	u[Y] += p_c->s.v[Y];
 	u[Z] += p_c->s.v[Z];
-	
 
 	for (ia = 0; ia < 3; ia++) {
+#ifndef OLD_SHIT
+	  hydro->u[addr_hydro(index, ia)] = u[ia];
+#else
 	  hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
+#endif
 	}
-	
-	
       }
     }
   }

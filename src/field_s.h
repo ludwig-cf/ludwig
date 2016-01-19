@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -34,6 +34,14 @@ struct field_s {
 
 };
 
+#ifndef OLD_SHIT
+
+#include "memory.h"
+
+#define addr_qab(nsites, index, ia) addr_rank1(nsites, NQAB, index, ia)
+#define vaddr_qab(nsites, index, ia, iv) vaddr_rank1(nsites, NQAB, index, ia, iv)
+
+#else
 
 #ifdef LB_DATA_SOA
 #define FLDADR ADDR_VECSITE_R
@@ -41,5 +49,6 @@ struct field_s {
 #define FLDADR ADDR_VECSITE
 #endif
 
+#endif
 
 #endif

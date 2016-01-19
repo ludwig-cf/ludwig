@@ -146,16 +146,16 @@ double atomicAdd(double* address, double val)
 }
 #endif
 
-__targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro, map_t * map, double* t_pth) {
-
-
+__targetEntry__
+void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
+				     map_t * map, double * t_pth) {
 
   int index;
-  __targetTLPNoStride__(index,tc_nSites){
 
-  int ia, ib, ic, jc, kc;
+  __targetTLPNoStride__(index, tc_nSites) {
+
+  int ia, ib;
   int index1;
-  int nlocal[3];
   int status;
   
   double pth0[3][3];
@@ -388,9 +388,15 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
       }
       
       /* Store the force on lattice */
+#ifndef OLD_SHIT
+      /* Can we re-encapsulate this? Only one instance */
+      for (ia = 0; ia < 3; ia++) {
+	hydro->f[addr_hydro(index, ia)] += force[ia];
+      }
+#else
       for (ia = 0; ia < 3; ia++) 
 	hydro->f[HYADR(tc_nSites,hydro->nf,index,ia)] += force[ia];
-      
+#endif
       /*TO DO
        * from wall.c 
        * "This is for accounting purposes only.
@@ -412,19 +418,9 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 				   map_t * map) {
-  int ia, ic, jc, kc;
-  int index, index1;
+
   int nlocal[3];
-  int status;
-
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];                  /* Accumulated force on fluid */
-  double fw[3];                     /* Accumulated force on wall */
-
-  colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
-
   void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(cinfo);

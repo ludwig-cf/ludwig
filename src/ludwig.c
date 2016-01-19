@@ -503,8 +503,6 @@ void ludwig_run(const char * inputfile) {
 
 
 
-
-
     /* Order parameter gradients */
 
     TIMER_start(TIMER_PHI_GRADIENTS);
@@ -520,8 +518,6 @@ void ludwig_run(const char * inputfile) {
 
 
 
- 
-
     if (ludwig->phi) {
 
     TIMER_start(TIMER_PHI_HALO);
@@ -529,7 +525,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef KEEPFIELDONTARGET
 
 #ifdef LB_DATA_SOA
-
+  
       /* use gpu-specific comms */
       halo_SoA(1, 1, 0, ludwig->phi->t_data);
 
@@ -538,6 +534,7 @@ void ludwig_run(const char * inputfile) {
     copyDeepDoubleArrayFromTarget(ludwig->phi,ludwig->phi->tcopy,&(ludwig->phi->data),ludwig->phi->nf*nSites);
 
     field_halo(ludwig->phi);
+
 
     copyDeepDoubleArrayToTarget(ludwig->phi->tcopy,ludwig->phi,&(ludwig->phi->data),ludwig->phi->nf*nSites);
 #endif
@@ -549,8 +546,10 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_stop(TIMER_PHI_HALO);
 
-      field_grad_compute(ludwig->phi_grad);
+    field_grad_compute(ludwig->phi_grad);
+
     }
+  
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
@@ -585,6 +584,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef KEEPFIELDONTARGET
     copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
 #endif
+
 
     field_halo(ludwig->q);
 
@@ -700,7 +700,9 @@ void ludwig_run(const char * inputfile) {
       else {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
-	  	  	  phi_force_calculation(ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
+	    
+	  phi_force_calculation(ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
+  
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
 	    lc_droplet_bodyforce(ludwig->hydro);

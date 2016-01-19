@@ -81,7 +81,7 @@ OBJS = \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      hydro.o hydro_rt.o interaction.o io_harness.o \
      leslie_ericksen.o \
-     lc_droplet.o lc_droplet_rt.o model.o model_le.o map.o \
+     lc_droplet.o lc_droplet_rt.o memory.o model.o model_le.o map.o \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
      angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o phi_force.o phi_force_colloid.o \

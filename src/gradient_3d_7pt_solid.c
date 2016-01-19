@@ -71,14 +71,17 @@
 
 static map_t * map_ = NULL;
 
-/* Only tensor order parameter relevant */
-
-#define NQAB 5
+__targetConst__ double tc_a6inv[3][6]; 
+__targetConst__ double tc_a18inv[18][18]; 
+__targetConst__ double tc_a12inv[3][12][12]; 
 
 int util_gauss_solve(int mrow, double ** a, double * x, int * pivot);
-__targetHost__ __target__ int gradient_bcs6x5_coeff(double kappa0, double kappa1, const int dn[3],
+
+__targetHost__ __target__
+int gradient_bcs6x5_coeff(double kappa0, double kappa1, const int dn[3],
 			  double bc[6][NQAB][3]);
-__targetHost__ __target__ int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
+__targetHost__ __target__
+int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
 			  double bc[NSYMM][NSYMM][3]);
 
 static int gradient_6x5_svd(const double * field, double * grad,
@@ -88,7 +91,8 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 static int gradient_6x6_gpu(const double * field, double * grad,
 				   double * del2, const int nextra);
 
-__targetHost__ __target__ static void util_q5_to_qab(double q[3][3], const double * phi);
+__targetHost__ __target__ 
+static void util_q5_to_qab(double q[3][3], const double * phi);
 
 /*****************************************************************************
  *
@@ -139,18 +143,18 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop,
 
   if (method == 1) gradient_6x5_svd(field, grad, delsq, nextra);
   if (method == 2) gradient_6x6_gauss_elim(field, grad, delsq, nextra);
-  if (method == 3){
+  if (method == 3) {
     nsites = coords_nsites();
-    #ifndef KEEPFIELDONTARGET
+#ifndef KEEPFIELDONTARGET
     copyToTarget(t_field,field,nop*nsites*sizeof(double));
-    #endif
+#endif
 
     gradient_6x6_gpu(t_field, t_grad, t_delsq, nextra);
     
-    #ifndef KEEPFIELDONTARGET
+#ifndef KEEPFIELDONTARGET
     copyFromTarget(grad,t_grad,nop*3*nsites*sizeof(double)); 
     copyFromTarget(delsq,t_delsq,nop*nsites*sizeof(double)); 
-    #endif
+#endif
   }
 
   return 0;
@@ -414,7 +418,16 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	}
 
 	/* The final answer is the sum of the partial gradients */
-
+#ifndef OLD_SHIT
+	for (n1 = 0; n1 < NQAB; n1++) {
+	  del2[NQAB*index + n1] = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[addr_rank2(coords_nsites(), NQAB, 3, index, n1, ia)] =
+	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[addr_rank1(coords_nsites(), NQAB, index, n1)] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	  }
+	}
+#else
 	for (n1 = 0; n1 < NQAB; n1++) {
 	  del2[NQAB*index + n1] = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -423,7 +436,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	    del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	  }
 	}
-
+#endif
 	/* Next site */
       }
     }
@@ -740,18 +753,15 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
  *
  *****************************************************************************/
 
-
-__targetConst__ double tc_a6inv[3][6]; 
-__targetConst__ double tc_a18inv[18][18]; 
-__targetConst__ double tc_a12inv[3][12][12]; 
-
-
-__targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * grad,
-					      double * del2,  map_t * map,bluePhaseKernelConstants_t* pbpc, colloids_info_t* cinfo) {
-
+__targetEntry__
+void gradient_6x6_gpu_lattice(const double * field, double * grad,
+			      double * del2,  map_t * map,
+			      bluePhaseKernelConstants_t* pbpc,
+			      colloids_info_t* cinfo) {
 
   int index;
-  __targetTLP__(index,tc_nSites){
+
+  __targetTLP__(index, tc_nSites) {
     
     int ic, jc, kc;
     int str[3];
@@ -830,10 +840,19 @@ __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * gra
 	/* Calculate half-gradients assuming they are all knowns */
 	
 	for (n1 = 0; n1 < NQAB; n1++) {
+#ifndef OLD_SHIT
+	  gradn[n1][ia][0] =
+	    field[addr_qab(tc_nSites, index+str[ia], n1)]
+	  - field[addr_qab(tc_nSites, index,         n1)];
+	  gradn[n1][ia][1] =
+	    field[addr_qab(tc_nSites, index,         n1)]
+	  - field[addr_qab(tc_nSites, index-str[ia], n1)];
+#else
 	  gradn[n1][ia][0] =
 	    field[FLDADR(tc_nSites,NQAB,index+str[ia],n1)] - field[FLDADR(tc_nSites,NQAB,index,n1)];
 	  gradn[n1][ia][1] =
 	    field[FLDADR(tc_nSites,NQAB,index,n1)] - field[FLDADR(tc_nSites,NQAB,index-str[ia],n1)];
+#endif
 	}
 	
 	gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
@@ -860,10 +879,18 @@ __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * gra
       if (nunknown > 0) {
 	
 	/* Fluid Qab at surface */
-	
-	//util_q5_to_qab(qs, field + NQAB*index);
-
-
+#ifndef OLD_SHIT
+	qs[X][X] = field[addr_qab(tc_nSites, index, XX)];
+	qs[X][Y] = field[addr_qab(tc_nSites, index, XY)];
+	qs[X][Z] = field[addr_qab(tc_nSites, index, XZ)];
+	qs[Y][X] = field[addr_qab(tc_nSites, index, XY)];
+	qs[Y][Y] = field[addr_qab(tc_nSites, index, YY)];
+	qs[Y][Z] = field[addr_qab(tc_nSites, index, YZ)];
+	qs[Z][X] = field[addr_qab(tc_nSites, index, XZ)];
+	qs[Z][Y] = field[addr_qab(tc_nSites, index, YZ)];
+	qs[Z][Z] = 0.0 - field[addr_qab(tc_nSites, index, XX)]
+	               - field[addr_qab(tc_nSites, index, YY)];
+#else
 	qs[X][X] = field[FLDADR(tc_nSites,NQAB,index,0)];
 	qs[X][Y] = field[FLDADR(tc_nSites,NQAB,index,1)];
 	qs[X][Z] = field[FLDADR(tc_nSites,NQAB,index,2)];
@@ -873,7 +900,7 @@ __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * gra
 	qs[Z][X] = field[FLDADR(tc_nSites,NQAB,index,2)];
 	qs[Z][Y] = field[FLDADR(tc_nSites,NQAB,index,4)];
 	qs[Z][Z] = -field[FLDADR(tc_nSites,NQAB,index,0)] - field[FLDADR(tc_nSites,NQAB,index,3)];
-
+#endif
 
 	
 	//TODO NEED TO PORT
@@ -1084,7 +1111,17 @@ __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * gra
       }
       
       /* The final answer is the sum of partial gradients */
-      
+#ifndef OLD_SHIT
+      for (n1 = 0; n1 < NQAB; n1++) {
+	del2[addr_rank1(tc_nSites, NQAB, index, n1)] = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  grad[addr_rank2(tc_nSites, NQAB, 3, index, n1, ia)] =
+	    0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	  del2[addr_rank1(tc_nSites, NQAB, index, n1)]
+	    += gradn[n1][ia][0] - gradn[n1][ia][1];
+	}
+      }
+#else
       for (n1 = 0; n1 < NQAB; n1++) {
 	del2[FLDADR(tc_nSites,NQAB,index,n1)] = 0.0;
 	for (ia = 0; ia < 3; ia++) {
@@ -1093,7 +1130,7 @@ __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * gra
 	  del2[FLDADR(tc_nSites,NQAB,index,n1)] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	}
       }
-
+#endif
 
       }
 

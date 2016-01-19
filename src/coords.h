@@ -67,6 +67,9 @@ extern __targetConst__ int tc_nhalo;
 extern __targetConst__ int tc_nextra;
 
 
+#ifdef NEW_SHIT
+#else
+
 /* memory addressing macro for 1d vectors on each site */
 /* (e.g. force, velocity, ...)*/
 /* A preprocessor macro is provided to switch between two options
@@ -133,6 +136,6 @@ extern __targetConst__ int tc_nextra;
 #endif
 
 
-
+#endif
 
 #endif

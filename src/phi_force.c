@@ -34,6 +34,9 @@
 #include "hydro_s.h"
 #include "phi_force_stress.h"
 
+extern double * pth_;
+extern double * t_pth_;
+
 static int phi_force_calculation_fluid(field_t* q, field_grad_t* q_grad, hydro_t * hydro);
 
 static int phi_force_compute_fluxes(double * fe, double * fw, double * fy,
@@ -109,11 +112,13 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
 
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
+ 
 
   if (le_get_nplane_total() > 0 || wall_present()) {
     /* Must use the flux method for LE planes */
     /* Also convenient for plane walls */
-    phi_force_flux(hydro);
+ 
+     phi_force_flux(hydro);
   }
   else {
     if (force_divergence_) {
@@ -141,11 +146,13 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
  *
  *****************************************************************************/
 
-__targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
+__targetEntry__
+void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
 
 
   int index;
-  __targetTLPNoStride__(index,tc_nSites){
+
+  __targetTLPNoStride__(index, tc_nSites) {
 
   int index1, ia, ib;
   double pth0[3][3];
@@ -229,21 +236,31 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
     }
-    
+
     /* Store the force on lattice */
-    
+#ifndef OLD_SHIT
+    /* KS: Can we re-encapsulate this? There is only one addr_hydro() here */
+    for (ia = 0; ia < 3; ia++) 
+      hydro->f[addr_hydro(index, ia)] += force[ia];
+    }
+#else
     for (ia = 0; ia < 3; ia++) 
       hydro->f[HYADR(tc_nSites,hydro->nf,index,ia)] += force[ia];
     
     }
+#endif
   }
   
   return;
 }
 
-extern double * pth_;
-extern double * t_pth_;
-#include "control.h"
+/*****************************************************************************
+ *
+ *  phi_force_calculation
+ *
+ *  Kernel driver.
+ *
+ *****************************************************************************/
 
 static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
 				       hydro_t * hydro) {
@@ -259,8 +276,7 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  //  if (get_step()==1)
-    phi_force_stress_allocate();
+  phi_force_stress_allocate();
 
   phi_force_stress_compute(q, q_grad);
 
@@ -297,8 +313,7 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 #endif
 
-  //  if (is_last_step())
-    phi_force_stress_free();
+  phi_force_stress_free();
 
   return 0;
 }

@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -53,7 +53,7 @@ int tests_create() {
   test_be_suite();
   test_bond_fene_suite();
   test_bonds_suite();
-  /* test_bp_suite(); failing pending uniform gradient addressing scheme */
+  test_bp_suite();
   test_build_suite();
   test_colloid_suite();
   test_colloid_sums_suite();
@@ -64,7 +64,7 @@ int tests_create() {
   test_fe_electro_symm_suite();
   test_field_suite();
   test_halo_suite();
-  /* test_hydro_suite(); failing pending model R halo in coords_field_test */
+  test_hydro_suite();
   test_io_suite();
   test_le_suite();
   test_lubrication_suite();

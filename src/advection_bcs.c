@@ -9,8 +9,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2016 The University of Edinburgh
+*
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
@@ -20,6 +23,7 @@
 #include "pe.h"
 #include "wall.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "coords_field.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
@@ -35,16 +39,16 @@
  *
  *****************************************************************************/
 
-__targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux, map_t * map) {
-
+__targetEntry__
+void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux,
+					  map_t * map) {
 
   int index;
-  __targetTLP__(index,tc_nSites){
+
+  __targetTLP__(index, tc_nSites) {
 
     int n;
-    int nlocal[3];
-    int ic, jc, kc, indexf;
-    int status;
+    int indexf;
     
     double mask, maskw, maske, masky, maskz;
     
@@ -83,7 +87,11 @@ __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * fl
       
       for (n = 0;  n < nf; n++) {
 
+#ifndef OLD_SHIT
+	indexf = addr_rank1(le_nsites(), nf, index, n);
+#else
 	indexf = ADVADR(tc_nSites,nf,index,n);
+#endif
 	flux->fw[indexf] *= mask*maskw;
 	flux->fe[indexf] *= mask*maske;
 	flux->fy[indexf] *= mask*masky;
@@ -96,25 +104,27 @@ __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * fl
   return;
 }
 
+/*****************************************************************************
+ *
+ *  advection_bcs_no_normal_flux
+ *
+ *  Kernel driver.
+ *
+ *****************************************************************************/
 
 int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
-  int n;
+  int nhalo;
   int nlocal[3];
-  int ic, jc, kc, index, indexf;
-  int status;
+  int Nall[3];
 
   assert(nf > 0);
   assert(flux);
   assert(map);
 
   coords_nlocal(nlocal);
-
-  int nhalo;
   nhalo = coords_nhalo();
 
-
-  int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
@@ -284,6 +294,7 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 
   return 0;
 }
+
 /*****************************************************************************
  *
  *  advection_bcs_wall

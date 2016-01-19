@@ -50,6 +50,16 @@ struct field_grad_s {
 };
 
 
+#ifndef OLD_SHIT
+
+#include "memory.h"
+
+/* Commpressed symmetric rank 2 tensor */
+
+#define addr_dab(nsites, index, ia) addr_rank1(nsites, NSYMM, index, ia)
+#define vaddr_dab(nsites, index, ia, iv) vaddr_rank1(nsites, NSYMM, index, ia, iv)
+
+#else
 
 /* array of structures */
 #define ADDR_FGRD(nsite, nfield, index, ifield, idir)	\
@@ -64,6 +74,7 @@ struct field_grad_s {
 #define FGRDADR ADDR_FGRD_R
 #else
 #define FGRDADR ADDR_FGRD
-#endif
 
+#endif
+#endif
 #endif
