@@ -386,9 +386,9 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = ia; ib < NDIM; ib++) {
       __targetILP__(iv) {
-	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib*VVL+iv] + shat[ia][ib*VVL+iv];
-	m++;
+	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib*VVL+iv] + shat[ia][ib*VVL+iv];	
       }
+      m++;
     }
   }
     

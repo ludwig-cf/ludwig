@@ -751,7 +751,7 @@ __targetEntry__ void gradient_6x6_gpu_lattice(const double * field, double * gra
 
 
   int index;
-  __targetTLP__(index,tc_nSites){
+  __targetTLPNoStride__(index,tc_nSites){
     
     int ic, jc, kc;
     int str[3];
@@ -1249,7 +1249,7 @@ static int gradient_6x6_gpu(const double * field, double * grad,
 
   //execute lattice-based operation on target
   
-  gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
+  gradient_6x6_gpu_lattice __targetLaunchNoStride__(nSites) (field, grad,
   						     del2, map_->tcopy,
 						     (bluePhaseKernelConstants_t*) pcon, 
 						     cinfo->tcopy);
