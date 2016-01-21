@@ -477,7 +477,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
   /* launch operation across the lattice on target */
 
-  phi_force_interpolation_lattice  __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy,  map->tcopy, t_pth_);
+  phi_force_interpolation_lattice  __targetLaunchNoStride__(nSites) (cinfo->tcopy, hydro->tcopy,  map->tcopy, t_pth_);
   targetSynchronize();
 
 #ifndef KEEPHYDROONTARGET

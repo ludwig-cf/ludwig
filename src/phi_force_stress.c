@@ -42,20 +42,25 @@ double * t_pth_;
 
 __targetEntry__ void chemical_stress_lattice(double pth_local[3][3], field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, void (* chemical_stress)(const int index, double s[3][3]),int isBPCS){ 
 
-  int index;
+  int baseIndex;
 
-__targetTLP__(index,tc_nSites){
-    
+__targetTLP__(baseIndex,tc_nSites){
+
+#if VVL == 1    
+/*restrict operation to the interior lattice sites*/ 
     int coords[3];
-    targetCoords3D(coords,tc_Nall,index);
+    targetCoords3D(coords,tc_Nall,baseIndex);
     
     /*  if not a halo site:*/
-    if (coords[0] >= (tc_nhalo-tc_nextra) && 
-	coords[1] >= (tc_nhalo-tc_nextra) && 
-	coords[2] >= (tc_nhalo-tc_nextra) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
-	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
+    if (coords[0] >= (tc_nhalo-tc_nextra) &&
+    	coords[1] >= (tc_nhalo-tc_nextra) &&
+    	coords[2] >= (tc_nhalo-tc_nextra) &&
+    	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
+    	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
+    	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
+#endif
+
+{ 
       
 
       if (isBPCS){
@@ -65,15 +70,22 @@ __targetTLP__(index,tc_nSites){
 	 * ultimitely this will be generic when the other options are
 	 * ported to targetDP */
 	 int calledFromPhiForceStress=1;
-	 blue_phase_chemical_stress_dev(index, t_q, t_q_grad, t_pth, pcon, 
+	 blue_phase_chemical_stress_dev_vec(baseIndex, t_q, t_q_grad, t_pth, pcon, 
 					calledFromPhiForceStress);
       }
       else{
 
+
 #ifndef __NVCC__
+
+#if VVL > 1
+	fatal("Vectorisation not yet supported for this chemical stress");
+#endif
+
 	/* only blue_phase_chemical_stress support for CUDA. */
-	chemical_stress(index, pth_local);
-	phi_force_stress_set(index, pth_local); 
+        /* TO DO: support vectorisation for these routines */  
+	chemical_stress(baseIndex, pth_local);
+	phi_force_stress_set(baseIndex, pth_local); 
 #endif
 
       }
@@ -127,10 +139,8 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
     t_q = q->tcopy; 
     t_q_grad = q_grad->tcopy;
 
-    double* tmpptr;
-
     #ifndef KEEPFIELDONTARGET    
-
+    double* tmpptr;
     copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
     copyToTarget(tmpptr,q->data,q->nf*nSites*sizeof(double));
     

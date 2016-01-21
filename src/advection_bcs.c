@@ -38,60 +38,76 @@
 __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux, map_t * map) {
 
 
-  int index;
-  __targetTLP__(index,tc_nSites){
+  int baseIndex;
+  __targetTLP__(baseIndex,tc_nSites){
+
+    int iv=0;
+    int i;
 
     int n;
-    int nlocal[3];
-    int ic, jc, kc, indexf;
-    int status;
+    int indexf[VVL];
     
-    double mask, maskw, maske, masky, maskz;
+    double mask[VVL], maskw[VVL], maske[VVL], masky[VVL], maskz[VVL];
     
     int coords[3];
-    targetCoords3D(coords,tc_Nall,index);
+    targetCoords3D(coords,tc_Nall,baseIndex);
     
     // if not a halo site:
 
 
+#if VVL == 1    
+    /*restrict operation to the interior lattice sites*/ 
     if (coords[0] >= (tc_nhalo) &&
     	coords[1] >= (tc_nhalo-1) &&
     	coords[2] >= (tc_nhalo-1) &&
     	coords[0] < (tc_Nall[X]-tc_nhalo) &&
 	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
-	coords[2] < (tc_Nall[Z]-tc_nhalo)) {
+	coords[2] < (tc_Nall[Z]-tc_nhalo)) 
+#endif
+{
 
 
-      int index1;
-      
-      
-      index1=targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
-      maskw = (map->status[index1]==MAP_FLUID);    
+	
+	int coordschunk[3][VVL];
+		
+	__targetILP__(iv){
+	  for(i=0;i<3;i++){
+	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	    coordschunk[i][iv]=coords[i];
+	  }
+	}
 
-      index1=targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
-      maske = (map->status[index1]==MAP_FLUID);    
-      
-      index1= targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);
-      masky = (map->status[index1]==MAP_FLUID);    
-      
-      index1= targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);
-      maskz = (map->status[index1]==MAP_FLUID);    
 
+      int index1[VVL];
       
-      index1= targetIndex3D(coords[0],coords[1],coords[2],tc_Nall);
-      mask = (map->status[index1]==MAP_FLUID);    
+      
+      __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+      __targetILP__(iv) maskw[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      
+      __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+      __targetILP__(iv) maske[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      
+      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
+      __targetILP__(iv) masky[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      
+      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
+      __targetILP__(iv) maskz[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      
+      
+      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+      __targetILP__(iv) mask[iv] = (map->status[index1[iv]]==MAP_FLUID);    
       
       for (n = 0;  n < nf; n++) {
-
-	indexf = ADVADR(tc_nSites,nf,index,n);
-	flux->fw[indexf] *= mask*maskw;
-	flux->fe[indexf] *= mask*maske;
-	flux->fy[indexf] *= mask*masky;
-	flux->fz[indexf] *= mask*maskz;
+	
+	__targetILP__(iv) indexf[iv] = ADVADR(tc_nSites,nf,baseIndex+iv,n);
+	__targetILP__(iv) flux->fw[indexf[iv]] *= mask[iv]*maskw[iv];
+	__targetILP__(iv) flux->fe[indexf[iv]] *= mask[iv]*maske[iv];
+	__targetILP__(iv) flux->fy[indexf[iv]] *= mask[iv]*masky[iv];
+	__targetILP__(iv) flux->fz[indexf[iv]] *= mask[iv]*maskz[iv];
       }
-    }
  }
-
+  }
+  
 
   return;
 }

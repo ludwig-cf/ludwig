@@ -77,10 +77,13 @@ __targetHost__ __target__ void blue_phase_compute_h(double q[3][3], double dq[3]
 __targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 					  double h[3][3], double sth[3][3],
 					  bluePhaseKernelConstants_t* pbpc);
-
+__targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL], double dq[3][3][3][VVL],
+					  double h[3][3][VVL], double sth[3][3][VVL], 
+							     bluePhaseKernelConstants_t* pbpc);
 //__targetEntry__ void   blue_phase_chemical_stress(const int, double sth[3][3], ...);
 __targetHost__ void blue_phase_chemical_stress(int index,  double sth[3][3]);
  __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
+ __target__ void blue_phase_chemical_stress_dev_vec(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
 __targetHost__ void   blue_phase_redshift_set(const double redshift);
 __targetHost__ void   blue_phase_electric_field_set(const double e[3]);
 __targetHost__ void   blue_phase_dielectric_anisotropy_set(double e);

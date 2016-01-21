@@ -180,45 +180,61 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
 					   const double * t_field,
 					   double * t_grad,
 						double * t_del2, 
-						const int index){
+						const int baseIndex){
 
 
-  int coords[3];
-  targetCoords3D(coords,tc_Nall,index);
+
+  int iv=0;
+  int i;
+
+    int coordschunk[3][VVL];
+    int coords[3];
+
+    __targetILP__(iv){      
+      for(i=0;i<3;i++){
+	targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	coordschunk[i][iv]=coords[i];
+      }      
+    }
+
   
-  // if not a halo site:
+#if VVL == 1    
+/*restrict operation to the interior lattice sites*/ 
     if (coords[0] >= (tc_nhalo-tc_nextra) && 
 	coords[1] >= (tc_nhalo-tc_nextra) && 
 	coords[2] >= (tc_nhalo-tc_nextra) &&
 	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
 	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
+	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
+#endif
+
+{ 
 
 
-    int coords[3];
-    //coords_index_to_ijk(index, coords);
-
-    targetCoords3D(coords,tc_Nall,index);
+  int indexm1[VVL];
+  int indexp1[VVL];
 
     //get index +1 and -1 in X dirn
-    int indexm1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);
-    int indexp1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);
+    __targetILP__(iv) indexm1[iv] = targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],
+						      coordschunk[2][iv],tc_Nall);
+    __targetILP__(iv) indexp1[iv] = targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],
+						      coordschunk[2][iv],tc_Nall);
 
       
     int n;
     int ys=tc_Nall[Z];
     for (n = 0; n < nop; n++) {
-      t_grad[FGRDADR(tc_nSites,nop,index,n,X)]
-      = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1,n)] - t_field[FLDADR(tc_nSites,nop,indexm1,n)]);
-      t_grad[FGRDADR(tc_nSites,nop,index,n,Y)]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+ys,n)] - t_field[FLDADR(tc_nSites,nop,index-ys,n)]);
-      t_grad[FGRDADR(tc_nSites,nop,index,n,Z)]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+1,n)] - t_field[FLDADR(tc_nSites,nop,index-1,n)]);
-      t_del2[FLDADR(tc_nSites,nop,index,n)]
-	= t_field[FLDADR(tc_nSites,nop,indexp1,n)] + t_field[FLDADR(tc_nSites,nop,indexm1,n)]
-	+ t_field[FLDADR(tc_nSites,nop,index+ys,n)] + t_field[FLDADR(tc_nSites,nop,index-ys,n)]
-	+ t_field[FLDADR(tc_nSites,nop,index+1,n)] + t_field[FLDADR(tc_nSites,nop,index-1,n)]
-	- 6.0*t_field[FLDADR(tc_nSites,nop,index,n)];
+      __targetILP__(iv) t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,X)]
+      = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1[iv],n)] - t_field[FLDADR(tc_nSites,nop,indexm1[iv],n)]);
+      __targetILP__(iv) t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,Y)]
+	= 0.5*(t_field[FLDADR(tc_nSites,nop,baseIndex+iv+ys,n)] - t_field[FLDADR(tc_nSites,nop,baseIndex+iv-ys,n)]);
+      __targetILP__(iv) t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,Z)]
+	= 0.5*(t_field[FLDADR(tc_nSites,nop,baseIndex+iv+1,n)] - t_field[FLDADR(tc_nSites,nop,baseIndex+iv-1,n)]);
+      __targetILP__(iv) t_del2[FLDADR(tc_nSites,nop,baseIndex+iv,n)]
+	= t_field[FLDADR(tc_nSites,nop,indexp1[iv],n)] + t_field[FLDADR(tc_nSites,nop,indexm1[iv],n)]
+	+ t_field[FLDADR(tc_nSites,nop,baseIndex+iv+ys,n)] + t_field[FLDADR(tc_nSites,nop,baseIndex+iv-ys,n)]
+	+ t_field[FLDADR(tc_nSites,nop,baseIndex+iv+1,n)] + t_field[FLDADR(tc_nSites,nop,baseIndex+iv-1,n)]
+	- 6.0*t_field[FLDADR(tc_nSites,nop,baseIndex+iv,n)];
       
     }
     
@@ -237,9 +253,9 @@ static __targetEntry__ void gradient_3d_7pt_fluid_operator_lattice(const int nop
 
   
 
-  int index;
-  __targetTLPNoStride__(index,tc_nSites){
-    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,index);
+  int baseIndex;
+  __targetTLP__(baseIndex,tc_nSites){
+    gradient_3d_7pt_fluid_operator_site(nop,t_field,t_grad,t_del2,baseIndex);
   }
 
 
@@ -269,9 +285,6 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 
   int nFields=nop;
 
-
-
-
   //start constant setup
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
@@ -285,8 +298,8 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
   #endif
 
   TIMER_start(TIMER_PHI_GRAD_KERNEL);	       
-  gradient_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
-    (nop,t_field,t_grad,t_del2);
+   gradient_3d_7pt_fluid_operator_lattice __targetLaunch__(nSites) 
+  (nop,t_field,t_grad,t_del2);
   targetSynchronize();
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);	       
    

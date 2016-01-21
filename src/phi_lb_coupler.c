@@ -30,8 +30,15 @@
 
 __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
 
-  double phi0=0.;
+  int iv=0; 
 
+  double phi0[VVL];
+
+  __targetILP__(iv) phi0[iv]=0.;
+
+
+#if VVL == 1
+  /*restrict operation to the interiour lattice sites*/
   int coords[3];
   targetCoords3D(coords,tc_Nall,baseIndex);
   
@@ -41,22 +48,22 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
       coords[2] >= tc_nhalo &&
       coords[0] < tc_Nall[X]-tc_nhalo &&
       coords[1] < tc_Nall[Y]-tc_nhalo &&
-      coords[2] < tc_Nall[Z]-tc_nhalo){
+      coords[2] < tc_Nall[Z]-tc_nhalo)
+#endif
+
+
+    {
     
-    
-    //lb_0th_moment(lb, baseIndex, LB_PHI, &phi0);
     
     int p;
      for (p = 0; p < NVEL; p++) {
-      phi0 += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, LB_PHI, p)];
+      __targetILP__(iv) phi0[iv] += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+iv, LB_PHI, p)];
     }
     
-     //field_scalar_set(phi, baseIndex, phi0);
-     phi[baseIndex]=phi0;
-
+     __targetILP__(iv) phi[baseIndex+iv]=phi0[iv];
     
     
-  }
+    }
   
 
   return 0;
@@ -67,7 +74,7 @@ __targetEntry__ void phi_lb_to_field_lattice(double * phi, lb_t * lb) {
 
   int baseIndex=0;
 
-  __targetTLPNoStride__(baseIndex,tc_nSites){	  
+  __targetTLP__(baseIndex,tc_nSites){	  
     phi_lb_to_field_site(phi, lb->f, baseIndex);
   }
 
@@ -103,7 +110,7 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
   copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
   //end constant setup
 
-    phi_lb_to_field_lattice __targetLaunchNoStride__(nSites) (phi->t_data, lb);
+  phi_lb_to_field_lattice __targetLaunch__(nSites) (phi->t_data, lb);
 
 #ifndef KEEPFIELDONTARGET   //temporary optimisation specific to GPU code for benchmarking
   copyFromTarget(phi->data,phi->t_data,nSites*sizeof(double)); 
