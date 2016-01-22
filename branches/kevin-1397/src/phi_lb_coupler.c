@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
@@ -17,6 +17,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "model.h"
 #include "lb_model_s.h"
 #include "field_s.h"
@@ -33,6 +34,28 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
   double phi0=0.;
 
   int coords[3];
+#ifndef OLD_SHIT
+  int nsites;
+
+  nsites = coords_nsites();
+  targetCoords3D(coords,tc_Nall,baseIndex);
+
+  // if not a halo site:
+  if (coords[0] >= tc_nhalo &&
+      coords[1] >= tc_nhalo &&
+      coords[2] >= tc_nhalo &&
+      coords[0] < tc_Nall[X]-tc_nhalo &&
+      coords[1] < tc_Nall[Y]-tc_nhalo &&
+      coords[2] < tc_Nall[Z]-tc_nhalo){
+    
+    int p;
+    for (p = 0; p < NVEL; p++) {
+      phi0 += f[LB_ADDR(nsites, tc_ndist, NVEL, baseIndex, LB_PHI, p)];
+    }
+
+    phi[addr_rank0(le_nsites(), baseIndex)] = phi0;    
+  }
+#else
   targetCoords3D(coords,tc_Nall,baseIndex);
   
   // if not a halo site:
@@ -57,7 +80,7 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
     
     
   }
-  
+#endif
 
   return 0;
 }
@@ -105,8 +128,8 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
     phi_lb_to_field_lattice __targetLaunchNoStride__(nSites) (phi->t_data, lb);
 
-#ifndef KEEPFIELDONTARGET   //temporary optimisation specific to GPU code for benchmarking
-  copyFromTarget(phi->data,phi->t_data,nSites*sizeof(double)); 
+#ifndef KEEPFIELDONTARGET
+    copyFromTarget(phi->data, phi->t_data, nSites*sizeof(double)); 
 #endif
 
   return 0;

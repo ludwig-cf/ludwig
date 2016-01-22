@@ -67,7 +67,7 @@ extern __targetConst__ int tc_nhalo;
 extern __targetConst__ int tc_nextra;
 
 
-#ifdef NEW_SHIT
+#ifndef OLD_SHIT
 #else
 
 /* memory addressing macro for 1d vectors on each site */

@@ -53,11 +53,13 @@ struct field_grad_s {
 #ifndef OLD_SHIT
 
 #include "memory.h"
+#include "leesedwards.h"
 
 /* Commpressed symmetric rank 2 tensor */
 
-#define addr_dab(nsites, index, ia) addr_rank1(nsites, NSYMM, index, ia)
-#define vaddr_dab(nsites, index, ia, iv) vaddr_rank1(nsites, NSYMM, index, ia, iv)
+#define addr_dab(index, ia) addr_rank1(le_nsites(), NSYMM, index, ia)
+#define vaddr_dab(index, ia, iv) vaddr_rank1(le_nsites(), NSYMM, index, ia, iv)
+#define mem_addr_dab(index, ia) mem_addr_rank1(le_nsites(), NSYMM, index, ia)
 
 #else
 

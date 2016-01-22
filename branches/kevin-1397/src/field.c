@@ -275,7 +275,9 @@ int field_leesedwards(field_t * obj) {
 
   assert(obj);
   assert(obj->data);
-
+#ifndef OLD_SHIT
+  assert(1);
+#endif
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);

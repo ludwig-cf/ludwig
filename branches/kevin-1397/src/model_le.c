@@ -13,10 +13,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    J.-C. Desplat and Ronojoy Adhikari worked on the reprojection method.
+ *    J.-C. Desplat and Ronojoy Adhikari developed the reprojection method.
  * 
  *****************************************************************************/
 
@@ -64,7 +65,6 @@ int lb_le_apply_boundary_conditions(lb_t * lb) {
   if (le_get_nplane_local() > 0) {
 
     TIMER_start(TIMER_LE);
-    if (lb_order(lb) != MODEL) fatal("LE planes must use MODEL order\n");
 
     if (irepro == 0) le_reproject(lb);
     if (irepro != 0) le_reproject_all(lb);
@@ -365,7 +365,19 @@ int le_displace_and_interpolate(lb_t * lb) {
 	index1 = le_site_index(ic, j2, kc);
 		  
 	/* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
-
+#ifndef OLD_SHIT
+	for (n = 0; n < ndist; n++) {
+	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
+	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_fwd_cv[0];
+	  for (p = 0; p < nprop; p++) {
+	    int pcv = xdisp_fwd_cv[0] + p;
+	    recv_buff[ndata++] = (1.0 - fr)*
+	      lb->f[LB_ADDR(le_nsites(),ndist,NVEL,index0,n, pcv)]
+	      + fr*
+	      lb->f[LB_ADDR(le_nsites(),ndist,NVEL,index1,n, pcv)];
+	  }
+	}
+#else
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
 	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_fwd_cv[0];
@@ -373,6 +385,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 	    recv_buff[ndata++] = (1.0 - fr)*lb->f[i0 + p] + fr*lb->f[i1 + p];
 	  }
 	}
+#endif
 	/* Next site */
       }
     }
@@ -384,13 +397,22 @@ int le_displace_and_interpolate(lb_t * lb) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-
+#ifndef OLD_SHIT
+	for (n = 0; n < ndist; n++) {
+	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
+	  for (p = 0; p < nprop; p++) {
+	    int pcv = xdisp_fwd_cv[0] + p;
+	    lb->f[LB_ADDR(le_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	  }
+	}
+#else
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
 	    lb->f[i0 + p] = recv_buff[ndata++];
 	  }
 	}
+#endif
 	/* Next site */
       }
     }
@@ -415,7 +437,16 @@ int le_displace_and_interpolate(lb_t * lb) {
 
 	index0 = le_site_index(ic, j1, kc);
 	index1 = le_site_index(ic, j2, kc);
-
+#ifndef OLD_SHIT
+	for (n = 0; n < ndist; n++) {
+	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
+	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_bwd_cv[0];
+	  for (p = 0; p < nprop; p++) {
+	    int pcv = xdisp_bwd_cv[0] + p;
+	    recv_buff[ndata++] = (1.0 - fr)*lb->f[LB_ADDR(le_nsites(),ndist,NVEL,index0, n, pcv)] + fr*lb->f[LB_ADDR(le_nsites(), ndist, NVEL, index1, n, pcv)];
+	  }
+	}
+#else
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
 	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_bwd_cv[0];
@@ -423,6 +454,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 	    recv_buff[ndata++] = (1.0 - fr)*lb->f[i0 + p] + fr*lb->f[i1 + p];
 	  }
 	}
+#endif
 	/* Next site */
       }
     }
@@ -434,13 +466,22 @@ int le_displace_and_interpolate(lb_t * lb) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-
+#ifndef OLD_SHIT
+	for (n = 0; n < ndist; n++) {
+	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
+	  for (p = 0; p < nprop; p++) {
+	    int pcv = xdisp_bwd_cv[0] + p;
+	    lb->f[LB_ADDR(le_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	  }
+	}
+#else
 	for (n = 0; n < ndist; n++) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
 	    lb->f[i0 + p] = recv_buff[ndata++];
 	  }
 	}
+#endif
       }
     }
 

@@ -311,11 +311,12 @@ static int test_d2(int nf, const double * field,
   nsites = coords_nsites();
 
 #ifndef OLD_SHIT
+  nsites = le_nsites();
   for (n = 0; n < nf; n++) {
-    grad[addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD, nf, X, n);
-    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD, nf, Y, n);
-    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD, nf, Z, n);
-    delsq[addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ, nf, X, n);
+    grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD, nf, X, n);
+    grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD, nf, Y, n);
+    grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD, nf, Z, n);
+    delsq[mem_addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ, nf, X, n);
   }
 #else
   for (n = 0; n < nf; n++) {
@@ -351,11 +352,12 @@ static int test_d4(int nf, const double * field,
   nsites = coords_nsites();
 
 #ifndef OLD_SHIT
+  nsites = le_nsites();
   for (n = 0; n < nf; n++) {
-    grad[addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD4, nf, X, n);
-    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD4, nf, Y, n);
-    grad[addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD4, nf, Z, n);
-    delsq[addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ4, nf, X, n);
+    grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD4, nf, X, n);
+    grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD4, nf, Y, n);
+    grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD4, nf, Z, n);
+    delsq[mem_addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ4, nf, X, n);
   }
 #else
   for (n = 0; n < nf; n++) {
@@ -403,12 +405,12 @@ static int test_dab(int nf, const double * field, double * dab) {
 
 #ifndef OLD_SHIT
   for (n = 0; n < nf; n++) {
-    dab[addr_dab(nsites, index, XX)] = test_encode(ENCODE_DAB, nf, XX, n);
-    dab[addr_dab(nsites, index, XY)] = test_encode(ENCODE_DAB, nf, XY, n);
-    dab[addr_dab(nsites, index, XZ)] = test_encode(ENCODE_DAB, nf, XZ, n);
-    dab[addr_dab(nsites, index, YY)] = test_encode(ENCODE_DAB, nf, YY, n);
-    dab[addr_dab(nsites, index, YZ)] = test_encode(ENCODE_DAB, nf, YZ, n);
-    dab[addr_dab(nsites, index, ZZ)] = test_encode(ENCODE_DAB, nf, ZZ, n);
+    dab[mem_addr_dab(index, XX)] = test_encode(ENCODE_DAB, nf, XX, n);
+    dab[mem_addr_dab(index, XY)] = test_encode(ENCODE_DAB, nf, XY, n);
+    dab[mem_addr_dab(index, XZ)] = test_encode(ENCODE_DAB, nf, XZ, n);
+    dab[mem_addr_dab(index, YY)] = test_encode(ENCODE_DAB, nf, YY, n);
+    dab[mem_addr_dab(index, YZ)] = test_encode(ENCODE_DAB, nf, YZ, n);
+    dab[mem_addr_dab(index, ZZ)] = test_encode(ENCODE_DAB, nf, ZZ, n);
   }
 #else
   for (n = 0; n < nf; n++) {

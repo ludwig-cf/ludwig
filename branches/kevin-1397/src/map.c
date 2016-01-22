@@ -10,8 +10,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2012-2016 The University of Edinburgh
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -117,17 +118,14 @@ void map_free(map_t * obj) {
 
   if (obj->info) io_info_destroy(obj->info);
   free(obj->status);
-  //  targetFree(obj->t_status);
 
  if (obj->tcopy) {
 
-    //free data space on target 
     char* tmpptr;
     map_t* t_obj = obj->tcopy;
     copyFromTarget(&tmpptr,&(t_obj->status),sizeof(char*)); 
     targetFree(tmpptr);
     
-    //free target copy of structure
     targetFree(obj->tcopy);
   }
 
@@ -199,12 +197,18 @@ int map_halo(map_t * obj) {
 
   nhalo = coords_nhalo();
 
+#ifndef OLD_SHIT
+  coords_field_halo_rank1(nhalo, 1, obj->status, MPI_CHAR);
+  if (obj->ndata) {
+    coords_field_halo_rank1(nhalo, obj->ndata, obj->data, MPI_DOUBLE);
+  }
+#else
   coords_field_halo(nhalo, 1, obj->status, MPI_CHAR, obj->halostatus);
   if (obj->ndata) {
     coords_field_halo(nhalo, obj->ndata, obj->data, MPI_DOUBLE,
 		      obj->halodata);
   }
-
+#endif
   return 0;
 }
 
@@ -220,8 +224,11 @@ int map_status(map_t * obj, int index, int * status) {
 
   assert(obj);
   assert(status);
-
+#ifndef OLD_SHIT
+  *status = (int) obj->status[addr_rank0(coords_nsites(), index)];
+#else
   *status = (int) obj->status[index];
+#endif
 
   return 0;
 }
@@ -238,8 +245,11 @@ int map_status_set(map_t * obj, int index, int status) {
   assert(status >= 0);
   assert(status < MAP_STATUS_MAX);
 
+#ifndef OLD_SHIT
+  obj->status[addr_rank0(coords_nsites(), index)] = status;
+#else
   obj->status[index] = status;
-
+#endif
   return 0;
 }
 
@@ -271,11 +281,15 @@ int map_data(map_t * obj, int index, double * data) {
 
   assert(obj);
   assert(data);
-
+#ifndef OLD_SHIT
+  for (n = 0; n < obj->ndata; n++) {
+    data[n] = obj->data[addr_rank1(coords_nsites(), obj->ndata, index, n)];
+  }
+#else
   for (n = 0; n < obj->ndata; n++) {
     data[n] = obj->data[obj->ndata*index + n];
   }
-
+#endif
   return 0;
 }
 
@@ -291,11 +305,15 @@ int map_data_set(map_t * obj, int index, double * data) {
 
   assert(obj);
   assert(data);
-
+#ifndef OLD_SHIT
+  for (n = 0; n < obj->ndata; n++) {
+    obj->data[addr_rank1(coords_nsites(), obj->ndata, index, n)] = data[n];
+  }
+#else
   for (n = 0; n < obj->ndata; n++) {
     obj->data[obj->ndata*index + n] = data[n];
   }
-
+#endif
   return 0;
 }
 
@@ -395,13 +413,23 @@ int map_volume_local(map_t * obj, int status_wanted, int * volume) {
 
 static int map_write(FILE * fp, int index, void * self) {
 
-  int nw;
+  int n, nw;
   int indexf;
   map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
+#ifndef OLD_SHIT
+  indexf = addr_rank0(coords_nsites(), index);
+  nw = fwrite(&obj->status[indexf], sizeof(char), 1, fp);
+  if (nw != 1) fatal("fwrite(map->status) failed\n");
 
+  for (n = 0; n < obj->ndata; n++) {
+    indexf = addr_rank1(coords_nsites(), obj->ndata, index, n);
+    nw = fwrite(&obj->data[indexf], sizeof(double), 1, fp);
+    if (nw != 1) fatal("fwrite(map->data) failed\n");
+  }
+#else
   nw = fwrite(&obj->status[index], sizeof(char), 1, fp);
   if (nw != 1) fatal("fwrite(map->status) failed\n");
 
@@ -410,7 +438,7 @@ static int map_write(FILE * fp, int index, void * self) {
     nw = fwrite(&obj->data[indexf], sizeof(double), obj->ndata, fp);
     if (nw != obj->ndata) fatal("fwrite(map->data) failed\n");
   }
-
+#endif
   return 0;
 }
 
@@ -422,13 +450,23 @@ static int map_write(FILE * fp, int index, void * self) {
 
 static int map_read(FILE * fp, int index, void * self) {
 
-  int nr;
+  int n, nr;
   int indexf;
   map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
+#ifndef OLD_SHIT
+  indexf = addr_rank0(coords_nsites(), index);
+  nr = fread(&obj->status[indexf], sizeof(char), 1, fp);
+  if (nr != 1) fatal("fread(map->status) failed");
 
+  for (n = 0; n < obj->ndata; n++) {
+    indexf = addr_rank1(coords_nsites(), obj->ndata, index, n);
+    nr = fread(&obj->data[indexf], sizeof(double), 1, fp);
+    if (nr != 1) fatal("fread(map->data) failed\n");
+  }
+#else
   nr = fread(&obj->status[index], sizeof(char), 1, fp);
   if (nr != 1) fatal("fread(map->status) failed");
 
@@ -437,7 +475,7 @@ static int map_read(FILE * fp, int index, void * self) {
     nr = fread(&obj->data[indexf], sizeof(double), obj->ndata, fp);
     if (nr != obj->ndata) fatal("fread(map->data) failed\n");
   }
-
+#endif
   return 0;
 }
 
@@ -456,7 +494,18 @@ static int map_write_ascii(FILE * fp, int index, void * self) {
 
   assert(fp);
   assert(obj);
+#ifndef OLD_SHIT
+  status = obj->status[addr_rank0(coords_nsites(), index)];
+  assert(status < 99); /* Fixed format check. */
 
+  nw = fprintf(fp, "%2d", status);
+  if (nw != 2) fatal("fprintf(map->status) failed\n");
+
+  for (n = 0; n < obj->ndata; n++) {
+    indexf = addr_rank1(coords_nsites(), obj->ndata, index, n);
+    fprintf(fp, " %22.15e", obj->data[indexf]);
+  }
+#else
   status = obj->status[index];
   assert(status < 99); /* Fixed format check. */
 
@@ -467,7 +516,7 @@ static int map_write_ascii(FILE * fp, int index, void * self) {
     coords_field_index(index, n, obj->ndata, &indexf);
     fprintf(fp, " %22.15e", obj->data[indexf]);
   }
-
+#endif
   nw = fprintf(fp, "\n");
   if (nw != 1) fatal("fprintf(map) failed\n");
 
@@ -489,7 +538,17 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
 
   assert(fp);
   assert(obj);
+#ifndef OLD_SHIT
+  nr = fscanf(fp, "%2d", &status);
+  if (nr != 1) fatal("fscanf(map->status) failed\n");
+  obj->status[addr_rank0(coords_nsites(), index)] = status;
 
+  for (n = 0; n < obj->ndata; n++) {
+    indexf = addr_rank1(coords_nsites(), obj->ndata, index, n);
+    nr = fscanf(fp, " %le", obj->data + indexf);
+    if (nr != 1) fatal("fscanf(map->data[%d]) failed\n", n);
+  }
+#else
   nr = fscanf(fp, "%2d", &status);
   if (nr != 1) fatal("fscanf(map->status) failed\n");
   obj->status[index] = status;
@@ -499,6 +558,6 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
     nr = fscanf(fp, " %le", obj->data + indexf);
     if (nr != 1) fatal("fscanf(map->data[%d]) failed\n", n);
   }
-
+#endif
   return 0;
 }

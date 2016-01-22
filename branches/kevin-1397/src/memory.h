@@ -18,6 +18,7 @@
 #ifndef MEMORY_MODEL_H
 #define MEMORY_MODEL_H
 
+#include <assert.h>
 #include "targetDP.h"
 
 /* The targetDP SIMD vector length */
@@ -30,6 +31,7 @@
 
 For non-vectorised loops:
 
+addr_rank0(nsites, index);
 addr_rank1(nsites, na, index, ia)
 addr_rank2(nsites, na, nb, index, ia, ib)
 addr_rank3(nsites, na, nb, nc, index, ia, ib, ic)
@@ -37,12 +39,20 @@ addr_rank3(nsites, na, nb, nc, index, ia, ib, ic)
 
 For vectorised loops:
 
+vaddr_rank0(nsites, index, iv)
 vaddr_rank1(nsites, na, index, ia, iv)
 vaddr_rank2(nsites, na, nb, index, ia, ib, iv)
 vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv)
 ...
 
 */
+
+/* Interface not dependent on preprocessor directives at compile time.
+   For non-performance critical use. */
+
+int mem_addr_rank0(int nsites, int index);
+int mem_addr_rank1(int nsites, int na, int index, int ia);
+int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
 
 /* End of interface */
 
@@ -93,7 +103,12 @@ vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv)
 
 /* Implementation */
 
+typedef enum data_model_enum_type {ADDRESS_FORWARD, ADDRESS_REVERSE}
+  data_model_enum_t;
+
 #ifdef NDEBUG
+
+#define forward_addr_rank0(nsites, index) (index)
 
 #define forward_addr_rank1(nsites, na, index, ia) \
   ( (na)*(index) + (ia) )
@@ -109,6 +124,7 @@ vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv)
 
 #else
 
+int forward_addr_rank0(int nsites, int index);
 int forward_addr_rank1(int nsites, int na, int index, int ia);
 int forward_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
 int forward_addr_rank3(int nsites, int na, int nb, int nc,
@@ -128,6 +144,8 @@ int forward_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 
 #ifdef NDEBUG
 
+#define reverse_addr_rank0(nsites, index) (index)
+
 #define reverse_addr_rank1(nsites, na, index, ia) \
   ( (nsites)*(ia) + (index) )
 
@@ -143,6 +161,7 @@ int forward_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 
 #else
 
+int reverse_addr_rank0(int nsites, int index);
 int reverse_addr_rank1(int nsites, int na, int index, int ia);
 int reverse_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
 int reverse_addr_rank3(int nsites, int na, int nb, int nc,
@@ -153,15 +172,19 @@ int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 
 
 #ifndef LB_DATA_SOA
+#define base_addr_rank0 forward_addr_rank0
 #define base_addr_rank1 forward_addr_rank1
 #define base_addr_rank2 forward_addr_rank2
 #define base_addr_rank3 forward_addr_rank3
 #define base_addr_rank4 forward_addr_rank4
+#define DATA_MODEL ADDRESS_FORWARD
 #else /* REVERSE */
+#define base_addr_rank0 reverse_addr_rank0
 #define base_addr_rank1 reverse_addr_rank1
 #define base_addr_rank2 reverse_addr_rank2
 #define base_addr_rank3 reverse_addr_rank3
 #define base_addr_rank4 reverse_addr_rank4
+#define DATA_MODEL ADDRESS_REVERSE
 #endif
 
 /* Non-vectorised loops. */
@@ -174,6 +197,9 @@ int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 
 /* Macro definitions for the interface */
 
+#define addr_rank0(nsites, index) \
+  base_addr_rank1(nsites/NSIMDVL, NSIMDVL, (index)/NSIMDVL, pseudo_iv(index))
+
 #define addr_rank1(nsites, na, index, ia) \
   base_addr_rank2(nsites/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, pseudo_iv(index))
 
@@ -183,7 +209,8 @@ int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 #define addr_rank3(nsites, na, nb, nc, index, ia, ib, ic) \
   base_addr_rank4(nsites/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, pseudo_iv(index))
 
-
+#define vaddr_rank0(nsites, index, iv) \
+  base_addr_rank1(nsites/NSIMDVL, NSIMDVL, (index)/NSIMDVL, iv)
 #define vaddr_rank1(nsites, na, index, ia, iv) \
   base_addr_rank2(nsites/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, iv)
 

@@ -10,13 +10,20 @@
 #include <assert.h>
 #include "memory.h"
 
-#ifdef NDEBUG
+#ifndef NDEBUG
 
-int keep_linker_quiet(void) {
-  return 1;
+/*****************************************************************************
+ *
+ *  forward_addr_rank0
+ *
+ *****************************************************************************/
+
+inline int forward_addr_rank0(int nsites, int index) {
+
+  assert(index >= 0 && index < nsites);
+
+  return index;
 }
-
-#else
 
 /*****************************************************************************
  *
@@ -85,6 +92,19 @@ int forward_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 
 /*****************************************************************************
  *
+ *  reverse_addr_rank0
+ *
+ *****************************************************************************/
+
+int reverse_addr_rank0(int nsites, int index) {
+
+  assert(index >= 0 && index < nsites);
+
+  return index;
+}
+
+/*****************************************************************************
+ *
  *  reverse_addr_rank1
  *
  *****************************************************************************/
@@ -122,9 +142,9 @@ int reverse_addr_rank3(int nsites, int na, int nb, int nc,
 		       int index, int ia, int ib, int ic) {
 
   assert(index >= 0 && index < nsites);
-  assert(ia >= 0    && index < na);
-  assert(ib >= 0    && index < nb);
-  assert(ic >= 0    && index < nc);
+  assert(ia >= 0    && ia < na);
+  assert(ib >= 0    && ib < nb);
+  assert(ic >= 0    && ic < nc);
 
   return nb*nc*nsites*ia + nc*nsites*ib + nsites*ic + index;
 }
@@ -139,12 +159,45 @@ int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 		       int index, int ia, int ib, int ic, int id) {
 
   assert(index >= 0 && index < nsites);
-  assert(ia >= 0    && index < na);
-  assert(ib >= 0    && index < nb);
-  assert(ic >= 0    && index < nc);
-  assert(id >= 0    && index < nd);
+  assert(ia >= 0    && ia < na);
+  assert(ib >= 0    && ib < nb);
+  assert(ic >= 0    && ic < nc);
+  assert(id >= 0    && id < nd);
 
   return nb*nc*nd*nsites*ia + nc*nd*nsites*ib + nd*nsites*ic + nsites*id + index;
 }
 
 #endif /* NDEBUG */
+
+/*****************************************************************************
+ *
+ *  mem_addr_rank0
+ *
+ *****************************************************************************/
+
+int mem_addr_rank0(int nsites, int index) {
+
+  return addr_rank0(nsites, index);
+}
+
+/*****************************************************************************
+ *
+ *  mem_addr_rank1
+ *
+ *****************************************************************************/
+
+int mem_addr_rank1(int nsites, int na, int index, int ia) {
+
+  return addr_rank1(nsites, na, index, ia);
+}
+
+/*****************************************************************************
+ *
+ *  mem_addr_rank2
+ *
+ *****************************************************************************/
+
+int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib) {
+
+  return addr_rank2(nsites, na, nb, index, ia, ib);
+}

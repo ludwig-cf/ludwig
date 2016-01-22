@@ -581,7 +581,10 @@ __target__ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
   //amp    = blue_phase_amplitude_compute();
 
   /* Default -> outward normal, ie., flat wall */
-
+#ifndef OLD_SHIT
+  /* What is this doing? */
+  assert(0);
+#endif
   w1 = t_w1_wall_;
   w2 = t_w2_wall_;
   anchor = t_anchoring_wall_;

@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -108,6 +108,7 @@ static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
   int indexj, indexk;
   int ia, ib;
   int nlocal[3];
+  int nsites;
 
   double lambda;
   double p[3];
@@ -123,7 +124,10 @@ static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
 
   assert(fp);
   assert(flux);
-
+#ifndef OLD_SHIT
+  assert(1);
+  nsites = coords_nsites();
+#endif
   coords_nlocal(nlocal);
   fe_molecular_field_function = fe_v_molecular_field();
   lambda = fe_v_lambda();
@@ -166,11 +170,20 @@ static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
 	  for (ib = 0; ib < 3; ib++) {
 	    sum += lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
 	  }
-
+#ifndef OLD_SHIT
+	  p[ia] += dt*(- flux->fe[addr_rank1(nsites, 3, index,  ia)]
+		       + flux->fw[addr_rank1(nsites, 3, index,  ia)]
+		       - flux->fy[addr_rank1(nsites, 3, index,  ia)]
+		       + flux->fy[addr_rank1(nsites, 3, indexj, ia)]
+		       - flux->fz[addr_rank1(nsites, 3, index,  ia)]
+		       + flux->fz[addr_rank1(nsites, 3, indexk, ia)]
+		       + sum + Gamma_*h[ia]);
+#else
 	  p[ia] += dt*(-flux->fe[3*index + ia] + flux->fw[3*index  + ia]
 		       -flux->fy[3*index + ia] + flux->fy[3*indexj + ia]
 		       -flux->fz[3*index + ia] + flux->fz[3*indexk + ia]
 		       + sum + Gamma_*h[ia]);
+#endif
 	}
 
 	field_vector_set(fp, index, p);

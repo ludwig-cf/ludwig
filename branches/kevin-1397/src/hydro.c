@@ -423,7 +423,9 @@ int hydro_lees_edwards(hydro_t * obj) {
   double ule[3]; /* +/- velocity jump at plane */
 
   assert(obj);
-
+#ifndef OLD_SHIT
+  assert(1);
+#endif
   if (cart_size(Y) > 1) {
     hydro_lees_edwards_parallel(obj);
   }

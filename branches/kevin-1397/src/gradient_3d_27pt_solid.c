@@ -29,7 +29,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,6 +37,8 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "memory.h"
+#include "leesedwards.h"
 #include "free_energy.h"
 #include "gradient_3d_27pt_solid.h"
 
@@ -169,7 +171,13 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	  for (p = 1; p < NGRAD_; p++) {
 
 	    if (isite[p] == -1) continue;
+#ifndef OLD_SHIT
+	    dphi
+	      = field[addr_rank1(le_nsites(), nop, isite[p], n)]
+	      - field[addr_rank1(le_nsites(), nop, index,    n)];
+#else
 	    dphi = field[nop*isite[p] + n] - field[nop*index + n];
+#endif
 	    gradt[p] = dphi;
 
 	    for (ia = 0; ia < 3; ia++) {
@@ -187,10 +195,15 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	  for (p = 1; p < NGRAD_; p++) {
 
 	    if (isite[p] == -1) {
+#ifndef OLD_SHIT
+	      phi_b = field[addr_rank1(le_nsites(), nop, index, n)]
+		+ 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
+		       + bs_cv[p][Z]*gradn[Z]);
+#else
 	      phi_b = field[nop*index + n]
 		+ 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
 		       + bs_cv[p][Z]*gradn[Z]);
-
+#endif
 	      /* Set gradient phi at boundary following wetting properties */
 
 	      ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
@@ -221,11 +234,17 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	      gradn[ia] += gradt[p]*bs_cv[p][ia];
 	    }
 	  }
-
+#ifndef OLD_SHIT
+	  delsq[addr_rank1(le_nsites(), nop, index, n)] = r9*dphi;
+	  for (ia = 0; ia < 3; ia++) {
+	    grad[addr_rank2(le_nsites(),nop,3, index, n, ia)]  = r18*gradn[ia];
+	  }
+#else
 	  delsq[nop*index + n] = r9*dphi;
 	  for (ia = 0; ia < 3; ia++) {
 	    grad[3*(nop*index + n) + ia]  = r18*gradn[ia];
 	  }
+#endif
 	}
 
 	/* Next site */
