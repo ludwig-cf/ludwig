@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2016 The University of Edinburgh
+ *
+ *  Contributinf authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,6 +20,7 @@
 #include <mpi.h>
 #include "io_harness.h"
 #include "psi.h"
+#include "memory.h"
 
 /*
  * We store here the unit charge, the electric permittivity, and the

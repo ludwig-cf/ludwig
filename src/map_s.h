@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -17,6 +17,7 @@
 
 #include <mpi.h>
 #include "map.h"
+#include "memory.h"
 
 struct map_s {
   int is_porous_media;        /* Flag for porous media */

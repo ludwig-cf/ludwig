@@ -13,6 +13,7 @@
  *  (c) 2011-2016 The University of Edinburgh
  *
  *  Contributing authors:
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -795,13 +796,19 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
   blue_phase_compute_h(q, dq, dsq, h, pbpc);
   blue_phase_compute_stress(q, dq, h, sth_loc, pbpc);
-
+#ifndef OLD_SHIT
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      t_pth[addr_rank2(tc_nSites,3,3,index,ia,ib)] = sth_loc[ia][ib];
+    }
+  }
+#else
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       t_pth[PTHADR(tc_nSites,index,ia,ib)] = sth_loc[ia][ib];
     }
   }
-
+#endif
   return;
 }
 

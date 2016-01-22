@@ -11,7 +11,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U. Barcelona).
  *
- *  (c) 2010-2015 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 

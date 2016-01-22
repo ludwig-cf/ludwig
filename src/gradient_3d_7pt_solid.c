@@ -272,14 +272,23 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	  ih = (status[2*ia + 1] != MAP_FLUID);
 
 	  /* Calculate half-gradients assuming they are all knowns */
-
+#ifndef OLD_SHIT
+	  for (n1 = 0; n1 < NQAB; n1++) {
+	    gradn[n1][ia][0]
+	      = field[addr_rank1(le_nsites(), NQAB, index + str[ia], n1)]
+	      - field[addr_rank1(le_nsites(), NQAB, index,           n1)];
+	    gradn[n1][ia][1]
+	      = field[addr_rank1(le_nsites(), NQAB, index,           n1)]
+	      - field[addr_rank1(le_nsites(), NQAB, index - str[ia], n1)];
+	  }
+#else
 	  for (n1 = 0; n1 < NQAB; n1++) {
 	    gradn[n1][ia][0] =
 	      field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
 	    gradn[n1][ia][1] =
 	      field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
 	  }
-
+#endif
 	  /* Set unknown, with direction, or treat as known (zero grad) */
 
 	  if (ig + ih == 1) {
@@ -299,8 +308,20 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	/* For planar anchoring we require qtilde_ab of Fournier and
 	 * Galatola, and its square (reduendent for fluid sites) */
 
+#ifndef OLD_SHIT
+	/*util_qab_expand(field, index, qs);*/
+	qs[X][X] = field[addr_rank1(le_nsites(), NQAB, index, XX)];
+	qs[X][Y] = field[addr_rank1(le_nsites(), NQAB, index, XY)];
+	qs[X][Z] = field[addr_rank1(le_nsites(), NQAB, index, XZ)];
+	qs[Y][X] = qs[X][Y];
+	qs[Y][Y] = field[addr_rank1(le_nsites(), NQAB, index, YY)];
+	qs[Y][Z] = field[addr_rank1(le_nsites(), NQAB, index, YZ)];
+	qs[Z][X] = qs[X][Z];
+	qs[Z][Y] = qs[Y][Z];
+	qs[Z][Z] = 0.0 - qs[X][X] - qs[Y][Y];
+#else
 	util_q5_to_qab(qs, field + NQAB*index);
-
+#endif
 	q2 = 0.0;
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -420,11 +441,12 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	/* The final answer is the sum of the partial gradients */
 #ifndef OLD_SHIT
 	for (n1 = 0; n1 < NQAB; n1++) {
-	  del2[NQAB*index + n1] = 0.0;
+	  del2[addr_rank1(le_nsites(), NQAB, index, n1)] = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
-	    grad[addr_rank2(coords_nsites(), NQAB, 3, index, n1, ia)] =
+	    grad[addr_rank2(le_nsites(), NQAB, 3, index, n1, ia)] =
 	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	    del2[addr_rank1(coords_nsites(), NQAB, index, n1)] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	    del2[addr_rank1(le_nsites(), NQAB, index, n1)]
+	      += gradn[n1][ia][0] - gradn[n1][ia][1];
 	  }
 	}
 #else

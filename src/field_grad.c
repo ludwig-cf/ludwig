@@ -245,7 +245,7 @@ int field_grad_scalar_grad(field_grad_t * obj, int index, double grad[3]) {
   assert(grad);
 #ifndef OLD_SHIT
   for (ia = 0; ia < NVECTOR; ia++) {
-    grad[ia] = obj->grad[addr_rank1(le_nsites(), NVECTOR, index, ia)];
+    grad[ia] = obj->grad[addr_rank2(le_nsites(), 1, NVECTOR, index, 0, ia)];
   }
 #else
   for (ia = 0; ia < 3; ia++) {
@@ -339,15 +339,15 @@ int field_grad_scalar_dab(field_grad_t * obj, int index, double dab[3][3]) {
   nsites = coords_nsites();
 
 #ifndef OLD_SHIT
-  dab[X][X] = obj->d_ab[addr_dab(nsites, index, XX)];
-  dab[X][Y] = obj->d_ab[addr_dab(nsites, index, XY)];
-  dab[X][Z] = obj->d_ab[addr_dab(nsites, index, XZ)];
+  dab[X][X] = obj->d_ab[addr_dab(index, XX)];
+  dab[X][Y] = obj->d_ab[addr_dab(index, XY)];
+  dab[X][Z] = obj->d_ab[addr_dab(index, XZ)];
   dab[Y][X] = dab[X][Y];
-  dab[Y][Y] = obj->d_ab[addr_dab(nsites, index, YY)];
-  dab[Y][Z] = obj->d_ab[addr_dab(nsites, index, YZ)];
+  dab[Y][Y] = obj->d_ab[addr_dab(index, YY)];
+  dab[Y][Z] = obj->d_ab[addr_dab(index, YZ)];
   dab[Z][X] = dab[X][Z];
   dab[Z][Y] = dab[Y][Z];
-  dab[Z][Z] = obj->d_ab[addr_dab(nsites, index, ZZ)];
+  dab[Z][Z] = obj->d_ab[addr_dab(index, ZZ)];
 #else
   dab[X][X] = obj->d_ab[FLDADR(nsites,NSYMM,index,XX)];
   dab[X][Y] = obj->d_ab[FLDADR(nsites,NSYMM,index,XY)];

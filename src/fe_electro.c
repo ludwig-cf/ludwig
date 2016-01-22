@@ -29,9 +29,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2013)
  *
  *****************************************************************************/
 
@@ -164,11 +166,20 @@ double fe_electro_mu(const int index, const int n) {
   double mu;
   double kt;
   double rho;
+  double psi;
 
   assert(fe);
   assert(fe->psi);
   assert(n < fe->psi->nk);
+#ifndef OLD_SHIT
+  psi_psi(fe->psi, index, &psi);
+  psi_rho(fe->psi, index, n, &rho);
+  physics_kt(&kt);
 
+  assert(rho >= 0.0); /* For log(rho + epsilon) */
+  
+  mu = kt*log(rho + DBL_EPSILON) + fe->psi->valency[n]*fe->psi->e*psi;
+#else
   rho = fe->psi->rho[fe->psi->nk*index + n];
   physics_kt(&kt);
 
@@ -176,7 +187,7 @@ double fe_electro_mu(const int index, const int n) {
   
   mu = kt*log(rho + DBL_EPSILON)
     + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
-
+#endif
   return mu;
 }
 

@@ -254,6 +254,7 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 
   int n;
+  int nsites;
   int nlocal[3];
   int ic, jc, kc, index0, index1;
   int status;
@@ -263,8 +264,12 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
   assert(nf > 0);
   assert(flx);
   assert(map);
-
+#ifndef OLD_SHIT
+  assert(1);
+  nsites = coords_nsites();
+#endif
   mask = (double*) calloc(PSI_NGRAD, sizeof(double)); 
+  assert(mask);
 
   coords_nlocal(nlocal);
 
@@ -283,7 +288,11 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 	  mask[c] = (status == MAP_FLUID);
 
 	  for (n = 0;  n < nf; n++) {
+#ifndef OLD_SHIT
+	    flx[addr_rank1(nsites, nf, index0, n)][c - 1] *= mask[0]*mask[c];
+#else
 	    flx[nf*index0 + n][c - 1] *= mask[0]*mask[c];
+#endif
 	  }
 
 	}
@@ -291,6 +300,8 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
       }
     }
   }
+
+  free(mask);
 
   return 0;
 }

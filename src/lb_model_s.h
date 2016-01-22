@@ -19,43 +19,8 @@
 #include "model.h"
 #include "io_harness.h"
 
-/* Data storage */
-/* A preprocessor macro is provided to switch between two options
- * for the arrangement of the distributions in memory:
- *
- *   MODEL_R is 'structure of arrays'
- *   MODEL   is 'array of structures'
- *
- * The following macros  allow the distribution to ba addressed in
- * terms of:
- *
- *  lattice spatial index = coords_index(ic, jc, kc) 0 ... nsite
- *  distribution n (LB_RHO and optionally LB_PHI)    0 ... ndist
- *  discrete velocity p                              0 ... NVEL
- */
-
-/* Distribution 'array of structures' for 'MODEL' (independent of nsite) */
-#define LB_ADDR_MODEL(nsite, ndist, nvel, index, n, p) \
-  ((ndist)*nvel*(index) + (n)*nvel + (p))
-
-/* Distribution 'structure of arrays' for 'MODEL_R' (independent of NVEL) */
-#define LB_ADDR_MODEL_R(nsite, ndist, nvel, index, n, p) \
-  ((p)*ndist*nsite + (n)*nsite + (index))
-
-/* Distribution 'array of structure of short arrays' */
-#define SAN VVL
-#define LB_ADDR_MODEL_AoSoA(nsite, ndist, nvel, index, n, p) \
-  (((index)/SAN)*(ndist)*(nvel)*SAN + (n)*(nvel)*SAN + (p)*SAN + ((index)-((index)/SAN)*SAN))
-
-
-#ifdef LB_DATA_SOA
-#define LB_DATA_MODEL MODEL_R
-#define LB_ADDR LB_ADDR_MODEL_R
-//#define LB_ADDR LB_ADDR_MODEL_AoSoA
-#else
-#define LB_DATA_MODEL MODEL
-#define LB_ADDR LB_ADDR_MODEL
-#endif
+extern __targetConst__ int tc_cv[NVEL][3];
+extern __targetConst__ int tc_ndist;
 
 struct lb_data_s {
 
@@ -92,7 +57,53 @@ struct lb_data_s {
 
 };
 
-extern __targetConst__ int tc_cv[NVEL][3];
-extern __targetConst__ int tc_ndist;
+/* Data storage */
+/* A preprocessor macro is provided to switch between two options
+ * for the arrangement of the distributions in memory:
+ *
+ *   MODEL_R is 'structure of arrays'
+ *   MODEL   is 'array of structures'
+ *
+ * The following macros  allow the distribution to ba addressed in
+ * terms of:
+ *
+ *  lattice spatial index = coords_index(ic, jc, kc) 0 ... nsite
+ *  distribution n (LB_RHO and optionally LB_PHI)    0 ... ndist
+ *  discrete velocity p                              0 ... NVEL
+ */
+
+#ifndef OLD_SHIT
+
+#include "memory.h"
+
+#define LB_ADDR(nsites, ndist, nvel, index, n, p) \
+  addr_rank2(nsites, ndist, nvel, index, n, p)
+
+#else
+
+/* Distribution 'array of structures' for 'MODEL' (independent of nsite) */
+#define LB_ADDR_MODEL(nsite, ndist, nvel, index, n, p) \
+  ((ndist)*nvel*(index) + (n)*nvel + (p))
+
+/* Distribution 'structure of arrays' for 'MODEL_R' (independent of NVEL) */
+#define LB_ADDR_MODEL_R(nsite, ndist, nvel, index, n, p) \
+  ((p)*ndist*nsite + (n)*nsite + (index))
+
+/* Distribution 'array of structure of short arrays' */
+#define SAN VVL
+#define LB_ADDR_MODEL_AoSoA(nsite, ndist, nvel, index, n, p) \
+  (((index)/SAN)*(ndist)*(nvel)*SAN + (n)*(nvel)*SAN + (p)*SAN + ((index)-((index)/SAN)*SAN))
+
+
+#ifdef LB_DATA_SOA
+#define LB_DATA_MODEL MODEL_R
+#define LB_ADDR LB_ADDR_MODEL_R
+//#define LB_ADDR LB_ADDR_MODEL_AoSoA
+#else
+#define LB_DATA_MODEL MODEL
+#define LB_ADDR LB_ADDR_MODEL
+#endif
+
+#endif
 
 #endif

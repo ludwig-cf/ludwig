@@ -553,9 +553,8 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
-      }
+    }
     if (ludwig->q) {
-
 
 #ifdef LB_DATA_SOA
 

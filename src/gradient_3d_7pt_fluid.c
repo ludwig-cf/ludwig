@@ -48,6 +48,8 @@
 #include "timer.h"
 #include "gradient_3d_7pt_fluid.h"
 
+#define NSTENCIL 1 /* +/- 1 point in each direction */
+
 __targetHost__ static void gradient_3d_7pt_fluid_operator(const int nop, 
 					   const double * field,
 					   double * t_field,
@@ -87,7 +89,7 @@ int gradient_3d_7pt_fluid_d2(const int nop,
 
   int nextra;
 
-  nextra = coords_nhalo() - 1;
+  nextra = coords_nhalo() - NSTENCIL;
   assert(nextra >= 0);
 
   assert(field);
@@ -122,7 +124,7 @@ int gradient_3d_7pt_fluid_d4(const int nop,
 
   int nextra;
 
-  nextra = coords_nhalo() - 2;
+  nextra = coords_nhalo() - 2*NSTENCIL;
   assert(nextra >= 0);
 
   assert(field);
@@ -204,12 +206,14 @@ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
 #ifndef OLD_SHIT
       /* Addressing should be based on le_nsites() */
       nsites =  le_nsites();
+      int ip1, im1;
 
       /* Offset for LE is awkward here... */
-      indexm1 = 1 + le_index_real_to_buffer(coords[X] - 1, -1);
-      indexm1 = targetIndex3D(indexm1, coords[Y], coords[Z], tc_Nall);
-      indexp1 = 1 + le_index_real_to_buffer(coords[X] - 1, +1);
-      indexp1 = targetIndex3D(indexp1, coords[Y], coords[Z], tc_Nall);
+      im1 = le_index_real_to_buffer(coords[X], -1);
+      indexm1 = targetIndex3D(im1, coords[Y], coords[Z], tc_Nall);
+      ip1 = le_index_real_to_buffer(coords[X], +1);
+      indexp1 = targetIndex3D(ip1, coords[Y], coords[Z], tc_Nall);
+      /*if (coords[Y] == 1 && coords[Z] == 1) printf("ic jc kc ic-1 %2d %2d %2d %2d %2d %2d %d\n", coords[X], coords[Y], coords[Z], im1, ip1, nsites, indexp1);*/
 
       for (n = 0; n < nop; n++) {
 

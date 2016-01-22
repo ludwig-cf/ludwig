@@ -14,6 +14,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2011-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Alan Gray (alang@epcc.ed.ac.uk)
@@ -226,7 +227,6 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
       __targetILP__(iv) fchunk[p*VVL+iv] = 
 	t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
     }
-
     /* force */
 #ifndef OLD_SHIT
     for (ia = 0; ia < 3; ia++) {
@@ -250,6 +250,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	  fchunk[p*VVL+iv] = 
 	    t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
 	}
+
 	/* force */
 #ifndef OLD_SHIT
 	for (ia = 0; ia < 3; ia++) {
@@ -719,7 +720,6 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 	  t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + iv, 0, p) ]
 	  *tc_ma_[m][p];
       }
-      
     }
 #endif
 
@@ -913,11 +913,11 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
   /* Now, the order parameter distribution */
   __targetILP__(iv)
-    //    phi[iv]=t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, 0) ];
-
+#ifndef OLD_SHIT
+    phi[iv]=t_phi[vaddr_rank0(tc_nSites, baseIndex, iv)];
+#else
     phi[iv]=t_phi[baseIndex+iv];
-  
-  
+#endif
   __targetILP__(iv){
     mu[iv] = (*t_chemical_potential)(baseIndex+iv, 0,t_phi,t_delsqphi);
   
@@ -927,16 +927,14 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   }
 
   for (p = 1; p < NVEL; p++) {
-    //__targetILP__(iv) phi[iv] += 
-    //t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ];
     for (i = 0; i < 3; i++) {
-      __targetILP__(iv) jphi[i*VVL+iv] += 
-	t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ]
-	*tc_cv[p][i];
+      __targetILP__(iv) {
+	jphi[i*VVL+iv] += tc_cv[p][i]* 
+	t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ];
+      }
     }
   }
-  
-  
+
   /* Relax order parameters modes. See the comments above. */
   
   for (i = 0; i < 3; i++) {
@@ -974,12 +972,10 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
     
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
-    
     __targetILP__(iv) 
       t_f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, 1, p) ] 
       = tc_wv[p]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4)
       + phi[iv]*dp0;
-    
   }
 #endif
   
@@ -1095,7 +1091,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 #ifndef KEEPFIELDONTARGET
 
   symmetric_phi(&ptr);
-  copyToTarget(t_phi,ptr,nSites*sizeof(double)); 
+  copyToTarget(t_phi,ptr, nSites*sizeof(double)); 
 
   symmetric_delsqphi(&ptr);
   copyToTarget(t_delsqphi,ptr,nSites*sizeof(double)); 

@@ -12,7 +12,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Alan Gray (alang@epcc.ed.ac.uk)
@@ -31,6 +32,7 @@
 #include "targetDP.h"
 #include "io_harness.h"
 #include "control.h"
+
 const double cs2  = (1.0/3.0);
 const double rcs2 = 3.0;
 
@@ -63,7 +65,7 @@ int lb_create_ndist(int ndist, lb_t ** plb) {
   if (lb == NULL) fatal("calloc(1, lb_t) failed\n");
 
   lb->ndist = ndist;
-  lb->model = LB_DATA_MODEL;
+  lb->model = DATA_MODEL;
   *plb = lb;
 
   return 0;
@@ -917,7 +919,6 @@ int lb_f(lb_t * lb, int index, int p, int n, double * f) {
   assert(p >= 0 && p < NVEL);
   assert(n >= 0 && n < lb->ndist);
 
-  /* *f = lb->f[lb->ndist*NVEL*index + n*NVEL + p];*/
   *f = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)];
 
   return 0;
@@ -938,7 +939,6 @@ int lb_f_set(lb_t * lb, int index, int p, int n, double fvalue) {
   assert(p >= 0 && p < NVEL);
   assert(n >= 0 && n < lb->ndist);
 
-  /* lb->f[lb->ndist*NVEL*index + n*NVEL + p] = fvalue;*/
   lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] = fvalue;
 
   return 0;
@@ -964,7 +964,6 @@ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
   *rho = 0.0;
 
   for (p = 0; p < NVEL; p++) {
-    /* *rho += lb->f[lb->ndist*NVEL*index + nd*NVEL + p];*/
     *rho += lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, nd, p)];
   }
 
@@ -994,7 +993,6 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
 
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < NDIM; n++) {
-      /* g[n] += cv[p][n]*lb->f[lb->ndist*NVEL*index + nd*NVEL + p];*/
       g[n] += cv[p][n]*lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, nd, p)];
     }
   }
@@ -1027,7 +1025,6 @@ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
   for (p = 0; p < NVEL; p++) {
     for (ia = 0; ia < NDIM; ia++) {
       for (ib = 0; ib < NDIM; ib++) {
-	/* s[ia][ib] += lb->f[lb->ndist*NVEL*index + p]*q_[p][ia][ib];*/
 	s[ia][ib] += lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, nd, p)]
 	  *q_[p][ia][ib];
       }
@@ -1056,7 +1053,6 @@ int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho) {
   assert(index >= 0 && index < lb->nsite);
 
   for (p = 0; p < NVEL; p++) {
-    /* lb->f[lb->ndist*NVEL*index + n*NVEL + p] = wv[p]*rho;*/
     lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] = wv[p]*rho;
   }
 
@@ -1089,7 +1085,7 @@ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
 	sdotq += q_[p][ia][ib]*u[ia]*u[ib];
       }
     }
-      /* lb->f[lb->ndist*NVEL*index + p]*/
+
     lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p)]
       = rho*wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
   }
@@ -1115,7 +1111,6 @@ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]) {
 
   for (p = 0; p < NVEL; p++) {
     f[p] = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)];
-    /* f[p] = lb->f[lb->ndist*NVEL*index + n*NVEL + p];*/
   }
 
   return 0;
@@ -1141,7 +1136,6 @@ int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]) {
 
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < SIMDVL; iv++) {
-      /* fv[p][iv] = lb->f[lb->ndist*NVEL*(index + iv) + n*NVEL + p];*/
       fv[p][iv] = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)];
     }
   }
@@ -1169,7 +1163,6 @@ int lb_f_multi_index_part(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL],
 
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < nv; iv++) {
-      /* fv[p][iv] = lb->f[lb->ndist*NVEL*(index + iv) + n*NVEL + p];*/
       fv[p][iv] = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)];
     }
   }
@@ -1195,7 +1188,6 @@ int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]) {
   assert(index >= 0 && index < lb->nsite);
 
   for (p = 0; p < NVEL; p++) {
-    /* lb->f[lb->ndist*NVEL*index + n*NVEL + p] = f[p];*/
     lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] = f[p];
   }
 
@@ -1222,7 +1214,6 @@ int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]){
 
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < SIMDVL; iv++) {
-      /* lb->f[lb->ndist*NVEL*(index + iv) + n*NVEL + p] = fv[p][iv];*/
       lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)] = fv[p][iv];
     }
   }
@@ -1249,7 +1240,6 @@ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
 
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < nv; iv++) {
-      /* lb->f[lb->ndist*NVEL*(index + iv) + n*NVEL + p] = fv[p][iv];*/
       lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)] = fv[p][iv];
     }
   }
