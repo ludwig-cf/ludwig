@@ -372,9 +372,9 @@ int le_displace_and_interpolate(lb_t * lb) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
 	    recv_buff[ndata++] = (1.0 - fr)*
-	      lb->f[LB_ADDR(le_nsites(),ndist,NVEL,index0,n, pcv)]
+	      lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index0,n, pcv)]
 	      + fr*
-	      lb->f[LB_ADDR(le_nsites(),ndist,NVEL,index1,n, pcv)];
+	      lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index1,n, pcv)];
 	  }
 	}
 #else
@@ -402,7 +402,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
-	    lb->f[LB_ADDR(le_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
 	  }
 	}
 #else
@@ -443,7 +443,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_bwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
-	    recv_buff[ndata++] = (1.0 - fr)*lb->f[LB_ADDR(le_nsites(),ndist,NVEL,index0, n, pcv)] + fr*lb->f[LB_ADDR(le_nsites(), ndist, NVEL, index1, n, pcv)];
+	    recv_buff[ndata++] = (1.0 - fr)*lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index0, n, pcv)] + fr*lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index1, n, pcv)];
 	  }
 	}
 #else
@@ -471,7 +471,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
-	    lb->f[LB_ADDR(le_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
 	  }
 	}
 #else

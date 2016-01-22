@@ -2,7 +2,7 @@
  *
  *  memory.h
  *
- *  Memory access descriptions.
+ *  Memory access descriptions of scalar, vector, tensor, ... fields.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -124,13 +124,30 @@ typedef enum data_model_enum_type {ADDRESS_FORWARD, ADDRESS_REVERSE}
 
 #else
 
-int forward_addr_rank0(int nsites, int index);
-int forward_addr_rank1(int nsites, int na, int index, int ia);
-int forward_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
-int forward_addr_rank3(int nsites, int na, int nb, int nc,
-			int index, int ia, int ib, int ic);
-int forward_addr_rank4(int nsites, int na, int nb, int nc, int nd,
-			int index, int ia, int ib, int ic, int id);
+int forward_addr_rank0_assert(int line, const char * file,
+			      int nsites, int index);
+int forward_addr_rank1_assert(int line, const char * file,
+			      int nsites, int na, int index, int ia);
+int forward_addr_rank2_assert(int line, const char * file,
+			      int nsites, int na, int nb, int index,
+			      int ia, int ib);
+int forward_addr_rank3_assert(int line, const char * file,
+			      int nsites, int na, int nb, int nc,
+			      int index, int ia, int ib, int ic);
+int forward_addr_rank4_assert(int line, const char * file,
+			      int nsites, int na, int nb, int nc, int nd,
+			      int index, int ia, int ib, int ic, int id);
+
+#define forward_addr_rank0(...) \
+  forward_addr_rank0_assert(__LINE__, __FILE__, __VA_ARGS__) 
+#define forward_addr_rank1(...) \
+  forward_addr_rank1_assert(__LINE__, __FILE__, __VA_ARGS__) 
+#define forward_addr_rank2(...) \
+  forward_addr_rank2_assert(__LINE__, __FILE__, __VA_ARGS__)
+#define forward_addr_rank3(...) \
+  forward_addr_rank3_assert(__LINE__, __FILE__, __VA_ARGS__)
+#define forward_addr_rank4(...) \
+  forward_addr_rank4_assert(__LINE__, __FILE__, __VA_ARGS__)
 
 #endif /* NDEBUG */
 
@@ -161,15 +178,34 @@ int forward_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 
 #else
 
-int reverse_addr_rank0(int nsites, int index);
-int reverse_addr_rank1(int nsites, int na, int index, int ia);
-int reverse_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
-int reverse_addr_rank3(int nsites, int na, int nb, int nc,
-		       int index, int ia, int ib, int ic);
-int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
-		       int index, int ia, int ib, int ic, int id);
+int reverse_addr_rank0_assert(int line, const char * file,
+			      int nsites, int index);
+int reverse_addr_rank1_assert(int line, const char * file,
+			      int nsites, int na, int index, int ia);
+int reverse_addr_rank2_assert(int line, const char * file,
+			      int nsites, int na, int nb,
+			      int index, int ia, int ib);
+int reverse_addr_rank3_assert(int line, const char * file,
+			      int nsites, int na, int nb, int nc,
+			      int index, int ia, int ib, int ic);
+int reverse_addr_rank4_assert(int line, const char * file,
+			      int nsites, int na, int nb, int nc, int nd,
+			      int index, int ia, int ib, int ic, int id);
+
+#define reverse_addr_rank0(...)	\
+  reverse_addr_rank0_assert(__LINE__, __FILE__, __VA_ARGS__) 
+#define reverse_addr_rank1(...) \
+  reverse_addr_rank1_assert(__LINE__, __FILE__, __VA_ARGS__) 
+#define reverse_addr_rank2(...) \
+  reverse_addr_rank2_assert(__LINE__, __FILE__, __VA_ARGS__)
+#define reverse_addr_rank3(...) \
+  reverse_addr_rank3_assert(__LINE__, __FILE__, __VA_ARGS__)
+#define reverse_addr_rank4(...) \
+  reverse_addr_rank4_assert(__LINE__, __FILE__, __VA_ARGS__)
+
 #endif
 
+/* Here is the choise of direction */
 
 #ifndef LB_DATA_SOA
 #define base_addr_rank0 forward_addr_rank0
@@ -198,26 +234,26 @@ int reverse_addr_rank4(int nsites, int na, int nb, int nc, int nd,
 /* Macro definitions for the interface */
 
 #define addr_rank0(nsites, index) \
-  base_addr_rank1(nsites/NSIMDVL, NSIMDVL, (index)/NSIMDVL, pseudo_iv(index))
+  base_addr_rank1((nsites)/NSIMDVL, NSIMDVL, (index)/NSIMDVL, pseudo_iv(index))
 
 #define addr_rank1(nsites, na, index, ia) \
-  base_addr_rank2(nsites/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, pseudo_iv(index))
+  base_addr_rank2((nsites)/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, pseudo_iv(index))
 
 #define addr_rank2(nsites, na, nb, index, ia, ib) \
-  base_addr_rank3(nsites/NSIMDVL, na, nb, NSIMDVL, (index)/NSIMDVL, ia, ib, pseudo_iv(index))
+  base_addr_rank3((nsites)/NSIMDVL, na, nb, NSIMDVL, (index)/NSIMDVL, ia, ib, pseudo_iv(index))
 
 #define addr_rank3(nsites, na, nb, nc, index, ia, ib, ic) \
-  base_addr_rank4(nsites/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, pseudo_iv(index))
+  base_addr_rank4((nsites)/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, pseudo_iv(index))
 
 #define vaddr_rank0(nsites, index, iv) \
-  base_addr_rank1(nsites/NSIMDVL, NSIMDVL, (index)/NSIMDVL, iv)
+  base_addr_rank1((nsites)/NSIMDVL, NSIMDVL, (index)/NSIMDVL, iv)
 #define vaddr_rank1(nsites, na, index, ia, iv) \
-  base_addr_rank2(nsites/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, iv)
+  base_addr_rank2((nsites)/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, iv)
 
 #define vaddr_rank2(nsites, na, nb, index, ia, ib, iv) \
-  base_addr_rank3(nsites/NSIMDVL, na, nb, NSIMDVL, (index)/NSIMDVL, ia, ib, iv)
+  base_addr_rank3((nsites)/NSIMDVL, na, nb, NSIMDVL, (index)/NSIMDVL, ia, ib, iv)
 
 #define vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv) \
-  base_addr_rank4(nsites/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, iv)
+  base_addr_rank4((nsites)/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, iv)
 
 #endif
