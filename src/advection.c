@@ -1078,7 +1078,7 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
   coords_nlocal(nlocal);
 #ifndef OLD_SHIT
-  assert(0);
+  assert(1);
 #endif
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm3 = le_index_real_to_buffer(ic, -3);

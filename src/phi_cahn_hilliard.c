@@ -412,7 +412,9 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
   double * buffere;
 
   int get_step(void);
-
+#ifndef OLD_SHIT
+  assert(0);
+#endif
   if (cart_size(Y) > 1) {
     /* Parallel */
     phi_ch_le_fix_fluxes_parallel(nf, fe, fw);
@@ -695,7 +697,9 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 
   assert(phif);
   assert(flux);
-
+#ifndef OLD_SHIT
+  assert(0);
+#endif
   coords_nlocal(nlocal);
   ys = nlocal[Z] + 2*coords_nhalo();
 
