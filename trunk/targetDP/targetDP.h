@@ -26,9 +26,18 @@
 
 /* Main settings */
 
+#ifndef VVL
+
 #define VVL_CUDA 1 /* virtual vector length for TARGETDP CUDA (usually 1) */
 #define VVL_C 1 /* virtual vector length for TARGETDP C (usually 1 for AoS */
               /*  or a small multiple of the hardware vector length for SoA)*/
+
+#else /* allow this to be overwritten with compilation option -DVVL=N */
+
+#define VVL_CUDA VVL
+#define VVL_C VVL
+
+#endif
 
 /* End main settings */
 
@@ -43,8 +52,9 @@
 #define DEFAULT_TPB 128 /* default threads per block */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
+#ifndef VVL
 #define VVL VVL_CUDA
-
+#endif
 
 /*
  * Language Extensions 
@@ -144,8 +154,9 @@
 /* Settings */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
+#ifndef VVL
 #define VVL VVL_C
-
+#endif
 
 /* Language Extensions */
 
