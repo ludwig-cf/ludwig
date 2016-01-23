@@ -881,13 +881,14 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   /* copy input data to target */
 
 #ifndef KEEPHYDROONTARGET
+  assert(0);
   copyFromTarget(&tmpptr, &(hydro->tcopy->u), sizeof(double *)); 
-  copyToTarget(tmpptr, hydro->u, 3*nSites*sizeof(double));
+  copyToTarget(tmpptr, hydro->u, 3*le_nsites()*sizeof(double));
 #endif
 
 #ifndef KEEPFIELDONTARGET
   copyFromTarget(&tmpptr, &(field->tcopy->data), sizeof(double *)); 
-  copyToTarget(tmpptr, field->data, nf*nSites*sizeof(double));
+  copyToTarget(tmpptr, field->data, nf*le_nsites()*sizeof(double));
 #endif
 
   /* copy lattice shape constants to target ahead of execution */
@@ -921,16 +922,16 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
 #ifndef KEEPFIELDONTARGET
 
   copyFromTarget(&tmpptr, &(flux->tcopy->fe), sizeof(double *)); 
-  copyFromTarget(flux->fe, tmpptr, nf*nSites*sizeof(double));
+  copyFromTarget(flux->fe, tmpptr, nf*le_nsites()*sizeof(double));
 
   copyFromTarget(&tmpptr, &(flux->tcopy->fw), sizeof(double *)); 
-  copyFromTarget(flux->fw, tmpptr, nf*nSites*sizeof(double));
+  copyFromTarget(flux->fw, tmpptr, nf*le_nsites()*sizeof(double));
 
   copyFromTarget(&tmpptr, &(flux->tcopy->fy), sizeof(double*)); 
-  copyFromTarget(flux->fy, tmpptr, nf*nSites*sizeof(double));
+  copyFromTarget(flux->fy, tmpptr, nf*le_nsites()*sizeof(double));
 
   copyFromTarget(&tmpptr, &(flux->tcopy->fz), sizeof(double*)); 
-  copyFromTarget(flux->fz, tmpptr, nf*nSites*sizeof(double));
+  copyFromTarget(flux->fz, tmpptr, nf*le_nsites()*sizeof(double));
 #endif
 
   return 0;

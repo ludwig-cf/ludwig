@@ -413,7 +413,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
   int get_step(void);
 #ifndef OLD_SHIT
-  assert(0);
+  assert(1);
 #endif
   if (cart_size(Y) > 1) {
     /* Parallel */
@@ -453,8 +453,14 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
 	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+#ifndef OLD_SHIT
+	    /* just count++ for buffer? */
+	    bufferw[index] = fr*fw[addr_rank1(le_nsites(), nf, le_site_index(ic+1,j1,kc), n)]
+	      + (1.0-fr)*fw[addr_rank1(le_nsites(), nf, le_site_index(ic+1,j2,kc), n)];
+#else
 	    bufferw[index] = fr*fw[nf*le_site_index(ic+1,j1,kc) + n]
 	      + (1.0-fr)*fw[nf*le_site_index(ic+1,j2,kc) + n];
+#endif
 	  }
 	}
       }
@@ -475,8 +481,13 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
 	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+#ifndef OLD_SHIT
+	    buffere[index] = fr*fe[addr_rank1(le_nsites(), nf, le_site_index(ic,j1,kc), n)]
+	      + (1.0-fr)*fe[addr_rank1(le_nsites(), nf, le_site_index(ic,j2,kc), n)];
+#else
 	    buffere[index] = fr*fe[nf*le_site_index(ic,j1,kc) + n]
 	      + (1.0-fr)*fe[nf*le_site_index(ic,j2,kc) + n];
+#endif
 	  }
 	}
       }
@@ -488,9 +499,16 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	  for (n = 0; n < nf; n++) {
 	    index = nf*le_site_index(ic,jc,kc) + n;
 	    index1 = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+#ifndef OLD_SHIT
+	    index = addr_rank1(le_nsites(), nf, le_site_index(ic,jc,kc), n);
 	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
 	    index = nf*le_site_index(ic+1,jc,kc) + n;
 	    fw[index] = 0.5*(fw[index] + buffere[index1]);
+#else
+	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
+	    index = nf*le_site_index(ic+1,jc,kc) + n;
+	    fw[index] = 0.5*(fw[index] + buffere[index1]);
+#endif
 	  }
 	}
       }
@@ -538,7 +556,9 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   MPI_Comm    le_comm;
   MPI_Request request[8];
   MPI_Status  status[8];
-
+#ifndef OLD_SHIT
+  assert(0);
+#endif
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -698,7 +718,7 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
   assert(phif);
   assert(flux);
 #ifndef OLD_SHIT
-  assert(0);
+  assert(1);
 #endif
   coords_nlocal(nlocal);
   ys = nlocal[Z] + 2*coords_nhalo();
@@ -714,9 +734,18 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 	index = coords_index(ic, jc, kc);
 
 	field_scalar(phif, index, &phi);
+#ifndef OLD_SHIT
+	phi -= (+ flux->fe[addr_rank0(le_nsites(), index)]
+		- flux->fw[addr_rank0(le_nsites(), index)]
+		+ flux->fy[addr_rank0(le_nsites(), index)]
+		- flux->fy[addr_rank0(le_nsites(), index - ys)]
+		+ wz*flux->fz[addr_rank0(le_nsites(), index)]
+		- wz*flux->fz[addr_rank0(le_nsites(), index - 1)]);
+#else
 	phi -= (+ flux->fe[index] - flux->fw[index]
 		+ flux->fy[index] - flux->fy[index - ys]
 		+ wz*flux->fz[index] - wz*flux->fz[index - 1]);
+#endif
 	field_scalar_set(phif, index, phi);
       }
     }
