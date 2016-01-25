@@ -749,7 +749,7 @@ void ludwig_run(const char * inputfile) {
 
 	    hydro_u_halo(ludwig->hydro);
 
-	    #ifdef KEEPHYDROONTARGET
+#ifdef KEEPHYDROONTARGET
 	    copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 #endif
 

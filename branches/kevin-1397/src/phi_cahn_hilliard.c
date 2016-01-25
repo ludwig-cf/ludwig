@@ -502,7 +502,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 #ifndef OLD_SHIT
 	    index = addr_rank1(le_nsites(), nf, le_site_index(ic,jc,kc), n);
 	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
-	    index = nf*le_site_index(ic+1,jc,kc) + n;
+	    index = addr_rank1(le_nsites(), nf, le_site_index(ic+1,jc,kc), n);
 	    fw[index] = 0.5*(fw[index] + buffere[index1]);
 #else
 	    fe[index] = 0.5*(fe[index] + bufferw[index1]);

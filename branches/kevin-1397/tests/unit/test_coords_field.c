@@ -20,6 +20,7 @@
 
 #include "util.h"
 #include "coords.h"
+#include "memory.h"
 #include "coords_field.h"
 #include "test_coords_field.h"
 
@@ -66,7 +67,7 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
         index = coords_index(ic, jc, kc);
 
         for (n = 0; n < nf; n++) {
-          coords_field_index(index, n, nf, &indexf);
+	  indexf = mem_addr_rank1(coords_nsites(), nf, index, n); 
           bufset(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n,
                  fc + sz*indexf);
         }
@@ -124,7 +125,7 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
         if (mpidata == MPI_CHAR) {
           for (n = 0; n < nf; n++) {
-            coords_field_index(index, n, nf, &indexf);
+	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
             bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &cref);
             cact =  bufc[sz*indexf];
             assert(cref == cact);
@@ -133,7 +134,7 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
         if (mpidata == MPI_DOUBLE) {
           for (n = 0; n < nf; n++) {
-            coords_field_index(index, n, nf, &indexf);
+	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
             bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
             dact = *((double *) (bufc + sz*indexf));
             assert(fabs(dact - dref) < FLT_EPSILON);

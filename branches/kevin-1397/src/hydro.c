@@ -81,12 +81,15 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
 
   /* allocate target copies */
 
+#ifndef OLD_SHIT
+#else
 #ifdef LB_DATA_SOA
   /* we will do nf halo exchanges, each with 1 field */
   coords_field_init_mpi_indexed(nhcomm, 1, MPI_DOUBLE, obj->uhalo);
 #else
   /* we will do 1 halo exchange, with nf fields */
   coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
+#endif
 #endif
 
   *pobj = obj;
@@ -137,7 +140,8 @@ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
-  coords_field_halo_rank1(obj->nhcomm, obj->nf, obj->u, MPI_DOUBLE);
+  coords_field_halo_rank1(le_nsites(), obj->nhcomm, obj->nf, obj->u,
+			  MPI_DOUBLE);
 #else
 #ifdef LB_DATA_SOA
 
@@ -467,23 +471,30 @@ int hydro_lees_edwards(hydro_t * obj) {
 	/* If nhcomm < nhalo, we could use nhcomm here in the kc loop.
 	 * (As j1 and j2 are always in the domain proper, jc can use nhalo.) */
 
-	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+#ifndef OLD_SHIT
+	/* This kc loop was dubious +/- nhalo */
+	for (kc = 1 - obj->nhcomm; kc <= nlocal[Z] + obj->nhcomm; kc++) {
 	  index0 = le_site_index(ib0 + ib, jc, kc);
 	  index1 = le_site_index(ic, j1, kc);
 	  index2 = le_site_index(ic, j2, kc);
-#ifndef OLD_SHIT
 	  for (ia = 0; ia < 3; ia++) {
 	    obj->u[addr_hydro(index0, ia)] = ule[ia] +
 	      obj->u[addr_hydro(index1, ia)]*fr +
 	      obj->u[addr_hydro(index2, ia)]*(1.0 - fr);
 	  }
+	  /*printf("%2d %2d %2d %8.1e %8.1e\n", ic, jc, kc, obj->u[addr_hydro(index1, X)], obj->u[addr_hydro(index2, X)]);*/
+	}
 #else
+	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	  index0 = le_site_index(ib0 + ib, jc, kc);
+	  index1 = le_site_index(ic, j1, kc);
+	  index2 = le_site_index(ic, j2, kc);
 	  for (ia = 0; ia < 3; ia++) {
 	    obj->u[HYADR(obj->site,obj->nf,index0,ia)] = ule[ia] +
 	      fr*obj->u[HYADR(obj->nsite,obj->nf,index1,ia)] + (1.0 - fr)*obj->u[HYADR(obj->nsite,obj->nf,index2,ia)];
 	  }
-#endif
 	}
+#endif
       }
     }
   }
@@ -532,10 +543,6 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   MPI_Status  status[3];
 
   assert(obj);
-
-#ifdef LB_DATA_SOA
-  fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
-#endif
 
   nf = obj->nf;
 

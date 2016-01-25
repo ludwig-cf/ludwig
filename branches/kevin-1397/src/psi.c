@@ -61,7 +61,7 @@ int psi_halo_psi(psi_t * psi) {
 
   nhalo = coords_nhalo();
 #ifndef OLD_SHIT
-  coords_field_halo_rank1(nhalo, 1, psi->psi, MPI_DOUBLE);
+  coords_field_halo_rank1(coords_nsites(), nhalo, 1, psi->psi, MPI_DOUBLE);
 #else
   coords_field_halo(nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
 #endif
@@ -81,7 +81,7 @@ int psi_halo_rho(psi_t * psi) {
 
   nhalo = coords_nhalo();
 #ifndef OLD_SHIT
-  coords_field_halo_rank1(nhalo, psi->nk, psi->rho, MPI_DOUBLE);
+  coords_field_halo_rank1(coords_nsites(), nhalo, psi->nk, psi->rho, MPI_DOUBLE);
 #else
   coords_field_halo(nhalo, psi->nk, psi->rho, MPI_DOUBLE, psi->rhohalo);
 #endif

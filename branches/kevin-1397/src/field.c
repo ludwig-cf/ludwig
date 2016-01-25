@@ -231,8 +231,8 @@ int field_halo(field_t * obj) {
 
 #ifndef OLD_SHIT
 
-  coords_field_halo_rank1(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE);
-
+  coords_field_halo_rank1(le_nsites(), obj->nhcomm, obj->nf, obj->data,
+			  MPI_DOUBLE);
 #else
 
   coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
