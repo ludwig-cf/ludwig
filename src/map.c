@@ -198,9 +198,9 @@ int map_halo(map_t * obj) {
   nhalo = coords_nhalo();
 
 #ifndef OLD_SHIT
-  coords_field_halo_rank1(nhalo, 1, obj->status, MPI_CHAR);
+  coords_field_halo_rank1(coords_nsites(), nhalo, 1, obj->status, MPI_CHAR);
   if (obj->ndata) {
-    coords_field_halo_rank1(nhalo, obj->ndata, obj->data, MPI_DOUBLE);
+    coords_field_halo_rank1(coords_nsites(), nhalo, obj->ndata, obj->data, MPI_DOUBLE);
   }
 #else
   coords_field_halo(nhalo, 1, obj->status, MPI_CHAR, obj->halostatus);

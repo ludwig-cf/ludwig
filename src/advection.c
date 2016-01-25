@@ -524,7 +524,9 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 	  flux->fw[addr_rank1(le_nsites(), nf, index0, n)]
 	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
 		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
-	}	
+	}
+	/*printf("W %2d %2d %2d %2d %2d %10.3e %10.3e %14.7e %14.7e\n",
+	  ic, jc, kc, icm1, icp1, u0[X], u1[X], f[addr_rank1(le_nsites(), 1, index0, 0)],      f[addr_rank1(le_nsites(), 1, index1, 0)]);*/
 #else
 	for (n = 0; n < nf; n++) {
 	  flux->fw[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
@@ -536,11 +538,17 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
-
+#ifndef OLD_SHIT
+	for (n = 0; n < nf; n++) {
+	  flux->fe[addr_rank1(le_nsites(), nf, index0, n)]
+	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
+		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
+	}
+#else
 	for (n = 0; n < nf; n++) {
 	  flux->fe[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
 	}
-
+#endif
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
@@ -553,6 +561,8 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
 		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
 	}
+	/*if (kc == 1) printf("Y %2d %2d %2d %2d %2d %10.3e %10.3e %14.7e %14.7e\n",
+	  ic, jc, kc, icm1, icp1, u0[Y], u1[Y], f[addr_rank1(le_nsites(), 1, index0, 0)],      f[addr_rank1(le_nsites(), 1, index1, 0)]);*/
 #else
 	for (n = 0; n < nf; n++) {
 	  flux->fy[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
@@ -881,7 +891,7 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   /* copy input data to target */
 
 #ifndef KEEPHYDROONTARGET
-  assert(0);
+  assert(1);
   copyFromTarget(&tmpptr, &(hydro->tcopy->u), sizeof(double *)); 
   copyToTarget(tmpptr, hydro->u, 3*le_nsites()*sizeof(double));
 #endif

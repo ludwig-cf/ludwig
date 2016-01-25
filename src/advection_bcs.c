@@ -24,7 +24,6 @@
 #include "wall.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "coords_field.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 #include "psi_gradients.h"
@@ -229,7 +228,7 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 
 	for (n = 0;  n < nf; n++) {
 
-	  coords_field_index(index, n, nf, &indexf);
+	  indexf = addr_rank1(coords_nsites(), nf, index, n);
 	  fx[indexf] *= mask*maskx;
 	  fy[indexf] *= mask*masky;
 	  fz[indexf] *= mask*maskz;

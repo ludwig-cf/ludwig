@@ -117,7 +117,7 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
   if (le_get_nplane_total() > 0 || wall_present()) {
     /* Must use the flux method for LE planes */
     /* Also convenient for plane walls */
- 
+
      phi_force_flux(hydro);
   }
   else {
@@ -532,6 +532,10 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
   void (* chemical_stress)(const int index, double s[3][3]);
 
   int nhalo, nSites;
+
+#ifndef OLD_SHIT
+  assert(1);
+#endif
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
@@ -638,7 +642,10 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
-
+#ifndef OLD_SHIT
+  /* Not LE planes indexing here */
+  assert(1);
+#endif
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -667,7 +674,6 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
 	}
 #endif
 	hydro_f_local_add(hydro, index, f);
-
       }
     }
   }
@@ -711,7 +717,9 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
-
+#ifndef OLD_SHIT
+  assert(0);
+#endif
   coords_nlocal(nlocal);
 
   for (ia = 0; ia < 3; ia++) {
@@ -868,10 +876,11 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
         index1 = le_site_index(ic + 1, jc, kc);
 #ifndef OLD_SHIT
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(nSites,3,index,ia)] += ra*fcor[addr_rank1(nSites,3,ip,ia)];
-	  fluxw[addr_rank1(nSites,3,index1,ia)] -= ra*fcor[addr_rank1(nSites,3,ip,ia)];
+	  fluxe[addr_rank1(nSites,3,index,ia)] += ra*fcor[3*ip + ia];
+	  fluxw[addr_rank1(nSites,3,index1,ia)] -= ra*fcor[3*ip +ia];
 	}
 #else
+	/* KS: BUG here */
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[VECADR(nSites,3,index,ia)] += ra*fcor[VECADR(nSites,3,ip,ia)];
 	  fluxw[VECADR(nSites,3,index1,ia)] -= ra*fcor[VECADR(nSites,3,ip,ia)];

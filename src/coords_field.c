@@ -18,39 +18,10 @@
 #include <string.h>
 
 #include "pe.h"
+#include "util.h"
 #include "coords.h"
 #include "memory.h"
 #include "coords_field.h"
-
-/*****************************************************************************
- *
- *  coords_field_index
- *
- *  Indexing for field object relative to coordinate
- *  index returned by coords_index().
- *
- *  n is field count
- *  nf is total number of fields
- *  index is site index
- *  nsites is total number of sites (known form coords_t)
- *
- *  Order: nf*index + n      contiguous field
- *  Or:    nsites*n + index  contiguous sites
- *
- *****************************************************************************/
-
-int coords_field_index(int index, int n, int nf, int * indexf) {
-
-  assert(n >= 0);
-  assert(n < nf);
-  assert(index >= 0);
-  assert(index < coords_nsites());
-  assert(indexf);
-
-  *indexf = addr_rank1(coords_nsites(), nf, index, n);
-
-  return 0;
-}
 
 /*****************************************************************************
  *
@@ -548,7 +519,7 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
  *
  *****************************************************************************/
 
-int coords_field_halo_rank1(int nhcomm, int na, void * buf,
+int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
 			    MPI_Datatype mpidata) {
   int sz;
   int ic, jc, kc;
@@ -557,7 +528,6 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
   int ireal, ihalo;
   int icount, nsend;
   int pforw, pback;
-  int nsites;
   int nlocal[3];
 
   void * sendforw;
@@ -579,7 +549,6 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  nsites = coords_nsites();
   coords_nlocal(nlocal);
 
   /* X-direction */
@@ -604,11 +573,11 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
 	for (ia = 0; ia < na; ia++) {
 	  /* Backward going... */
 	  index = coords_index(1 + nh, jc, kc);
-	  ireal = addr_rank1(nsites, na, index, ia);
+	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  /* ...and forward going. */
 	  index = coords_index(nlocal[X] - nh, jc, kc);
-	  ireal = addr_rank1(nsites, na, index, ia);
+	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
 	}
@@ -642,10 +611,10 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
 	  index = coords_index(nlocal[X] + 1 + nh, jc, kc);
-	  ihalo = addr_rank1(nsites, na, index, ia);
+	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  index = coords_index(0 - nh, jc, kc);
-	  ihalo = addr_rank1(nsites, na, index, ia);
+	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  icount += 1;
 	}
@@ -684,10 +653,10 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
 	  index = coords_index(ic, 1 + nh, kc);
-	  ireal = addr_rank1(nsites, na, index, ia);
+	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  index = coords_index(ic, nlocal[Y] - nh, kc);
-	  ireal = addr_rank1(nsites, na, index, ia);
+	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
 	}
@@ -721,10 +690,10 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
 	  index = coords_index(ic, 0 - nh, kc);
-	  ihalo = addr_rank1(nsites, na, index, ia);
+	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  index = coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	  ihalo = addr_rank1(nsites, na, index, ia);
+	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;
 	}
@@ -763,13 +732,13 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, jc, 1 + nh);
-	  if (nlocal[Z] == 1) index = coords_index(ic, jc, 1);
-	  ireal = addr_rank1(nsites, na, index, ia);
+	  kc = imin(1 + nh, nlocal[Z]);
+	  index = coords_index(ic, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
-	  index = coords_index(ic, jc, nlocal[Z] - nh);
-	  if (nlocal[Z] == 1) index = coords_index(ic, jc, 1);
-	  ireal = addr_rank1(nsites, na, index, ia);
+	  kc = imax(nlocal[Z] - nh, 1);
+	  index = coords_index(ic, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
 	}
@@ -802,12 +771,16 @@ int coords_field_halo_rank1(int nhcomm, int na, void * buf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
+	  double val1, val2;
 	  index = coords_index(ic, jc, 0 - nh);
-	  ihalo = addr_rank1(nsites, na, index, ia);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  val1 = *((double*)(recvback +icount*sz));
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  index = coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	  ihalo = addr_rank1(nsites, na, index, ia);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  val2 = *((double *)(recvforw+icount*sz));
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  /*	  if (ia == 0) printf("H %2d %2d %2d %2d %10.2e %10.2e\n", nh, ic, jc, ia, val1, val2);*/
 	  icount += 1;
 	}
       }

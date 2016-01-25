@@ -140,13 +140,13 @@ serial-d3q19:
 	$(MAKE) serial-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
 
 serial-d2q9r:
-	$(MAKE) serial-d2q9 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) serial-d2q9 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 serial-d3q15r:
-	$(MAKE) serial-d3q15 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) serial-d3q15 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 serial-d3q19r:
-	$(MAKE) serial-d3q19 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) serial-d3q19 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 
 serial-model:
@@ -169,13 +169,13 @@ mpi-d3q19:
 	$(MAKE) mpi-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
 
 mpi-d2q9r:
-	$(MAKE) mpi-d2q9 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) mpi-d2q9 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 mpi-d3q15r:
-	$(MAKE) mpi-d3q15 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) mpi-d3q15 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 mpi-d3q19r:
-	$(MAKE) mpi-d3q19 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) mpi-d3q19 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 
 mpi-model:

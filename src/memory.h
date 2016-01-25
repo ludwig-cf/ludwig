@@ -207,7 +207,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
 
 /* Here is the choise of direction */
 
-#ifndef LB_DATA_SOA
+#ifndef ADDR_MODEL_R
 #define base_addr_rank0 forward_addr_rank0
 #define base_addr_rank1 forward_addr_rank1
 #define base_addr_rank2 forward_addr_rank2
