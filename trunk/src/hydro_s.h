@@ -16,12 +16,7 @@
 
 /* Data storage */
 
-#ifdef LB_DATA_SOA
-#define HYADR ADDR_VECSITE_R
-#else
-#define HYADR ADDR_VECSITE
-#endif
-
+#define HYADR VECADR
 
 struct hydro_s {
   int nf;                  /* Extent of fields = 3 for vectors */

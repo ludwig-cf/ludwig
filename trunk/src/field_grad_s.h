@@ -60,8 +60,20 @@ struct field_grad_s {
 #define ADDR_FGRD_R(nsite, nfield, index, ifield,idir)	\
   ((nsite)*3*(ifield) + (nsite)*(idir) + (index))
 
+/* array of structure of short arrays */
+#define SAN VVL
+#define ADDR_FGRD_AoSoA(nsite, nfield, index, ifield,idir)		\
+  (((index)/SAN)*3*(nfield)*SAN + (ifield)*3*SAN + (idir)*SAN + ((index)-((index)/SAN)*SAN))
+
+
 #ifdef LB_DATA_SOA
+
+#ifdef AOSOA
+#define FGRDADR ADDR_FGRD_AoSoA
+#else
 #define FGRDADR ADDR_FGRD_R
+#endif
+
 #else
 #define FGRDADR ADDR_FGRD
 #endif

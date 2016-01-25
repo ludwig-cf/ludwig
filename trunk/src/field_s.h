@@ -35,11 +35,9 @@ struct field_s {
 };
 
 
-#ifdef LB_DATA_SOA
-#define FLDADR ADDR_VECSITE_R
-#else
-#define FLDADR ADDR_VECSITE
-#endif
+
+#define FLDADR VECADR
+
 
 
 #endif
