@@ -78,8 +78,8 @@ __targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double 
 					  double h[3][3], double sth[3][3],
 					  bluePhaseKernelConstants_t* pbpc);
 __targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL], double dq[3][3][3][VVL],
-					  double h[3][3][VVL], double sth[3][3][VVL], 
-							     bluePhaseKernelConstants_t* pbpc);
+					  double h[3][3][VVL], double* sth, 
+							     bluePhaseKernelConstants_t* pbpc, int baseIndex);
 //__targetEntry__ void   blue_phase_chemical_stress(const int, double sth[3][3], ...);
 __targetHost__ void blue_phase_chemical_stress(int index,  double sth[3][3]);
  __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
