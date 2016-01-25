@@ -50,8 +50,13 @@
 
 #ifdef LB_DATA_SOA
 #define LB_DATA_MODEL MODEL_R
+
+#ifdef AOSOA
+#define LB_ADDR LB_ADDR_MODEL_AoSoA
+#else
 #define LB_ADDR LB_ADDR_MODEL_R
-//#define LB_ADDR LB_ADDR_MODEL_AoSoA
+#endif
+
 #else
 #define LB_DATA_MODEL MODEL
 #define LB_ADDR LB_ADDR_MODEL

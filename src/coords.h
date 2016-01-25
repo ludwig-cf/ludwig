@@ -88,8 +88,20 @@ extern __targetConst__ int tc_nextra;
 #define ADDR_VECSITE_R(nsite, nfield, index, ifield)	\
   ((nsite)*(ifield) + (index))
 
+/* Distribution 'array of structure of short arrays' */
+#define SAN VVL
+#define ADDR_VECSITE_AoSoA(nsite, nfield, index, ifield) \
+  (((index)/SAN)*(nfield)*SAN + (ifield)*SAN + ((index)-((index)/SAN)*SAN))
+
+
 #ifdef LB_DATA_SOA
+
+#ifdef AOSOA
+#define VECADR ADDR_VECSITE_AoSoA
+#else
 #define VECADR ADDR_VECSITE_R
+#endif
+
 #else
 #define VECADR ADDR_VECSITE
 #endif
@@ -106,8 +118,18 @@ extern __targetConst__ int tc_nextra;
 #define ADDR_3X3_R(nsite, index, ia, ib)	\
   (3*(nsite)*(ia)+(nsite)*(ib)+(index))
 
+#define ADDR_3X3_AoSoA(nsite, index, ia, ib)	\
+  (((index)/SAN)*(3)*(3)*SAN + (ia)*(3)*SAN + (ib)*SAN + ((index)-((index)/SAN)*SAN))
+
+
 #ifdef LB_DATA_SOA
+
+#ifdef AOSOA
+#define ADR3X3 ADDR_3X3_AoSoA
+#else
 #define ADR3X3 ADDR_3X3_R
+#endif
+
 #else
 #define ADR3X3 ADDR_3X3
 #endif
@@ -126,8 +148,17 @@ extern __targetConst__ int tc_nextra;
 #define ADDR_3X3X3_R(nsite, index, ia, ib, ic)	\
   (3*3*(nsite)*(ia)+3*(nsite)*(ib)+(nsite)*(ic)+(index))
 
+#define ADDR_3X3X3_AoSoA(nsite, index, ia, ib, ic)	\
+  (((index)/SAN)*27*SAN + (ia)*9*SAN + (ib)*3*SAN + (ic)*SAN + ((index)-((index)/SAN)*SAN))
+
 #ifdef LB_DATA_SOA
+
+#ifdef AOSOA
+#define ADR3X3X3 ADDR_3X3X3_AoSoA
+#else
 #define ADR3X3X3 ADDR_3X3X3_R
+#endif
+
 #else
 #define ADR3X3X3 ADDR_3X3X3
 #endif
