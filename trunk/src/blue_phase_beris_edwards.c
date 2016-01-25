@@ -123,6 +123,14 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
   return 0;
 }
 
+__targetHost__ __target__ void h_loop_unrolled_be(double sum[VVL], double dq[3][3][3][VVL],
+				double dsq[3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				double eq[VVL],
+				bluePhaseKernelConstants_t* pbpc);
+
+
 /*IMPORTANT NOTE*/
 
 /* the below routine is a COPY of that in blue_phase.h */
@@ -181,21 +189,24 @@ __targetHost__ __target__ void blue_phase_compute_h_vec_inline(double q[3][3][VV
   }
 
   /* d_c Q_db written as d_c Q_bd etc */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) sum[iv] = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  __targetILP__(iv) sum[iv] +=
-	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]);
-	}
-      }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     __targetILP__(iv) sum[iv] = 0.0; */
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	for (id = 0; id < 3; id++) { */
+  /* 	  __targetILP__(iv) sum[iv] += */
+  /* 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]); */
+  /* 	} */
+  /*     } */
       
-      __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv]
-	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib]
-	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv];
-    }
-  }
+  /*     __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv] */
+  /* 	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib] */
+  /* 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv]; */
+  /*   } */
+  /* } */
+  //#include "h_loop.h"
+
+  h_loop_unrolled_be(sum,dq,dsq,q,h,eq,pbpc);
 
   /* Electric field term */
 
@@ -760,4 +771,86 @@ __targetHost__ int blue_phase_be_tmatrix_set(double t[3][3][NQAB]) {
   t[Z][Y][YZ] = t[Y][Z][YZ];
 
   return 0;
+}
+
+
+/* Unrolled kernels: thes get much beter performance since he multiplications
+ by 0 and repeated loading of duplicate coefficients have been eliminated */
+
+__target__ void h_loop_unrolled_be(double sum[VVL], double dq[3][3][3][VVL],
+				double dsq[3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				double eq[VVL],
+				bluePhaseKernelConstants_t* pbpc){
+
+  int iv=0;
+
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
+__targetILP__(iv) h[0][0][iv] += pbpc->kappa0*dsq[0][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv];
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv];
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv] ;
+__targetILP__(iv) h[0][1][iv] += pbpc->kappa0*dsq[0][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv];
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv] ;
+__targetILP__(iv) h[0][2][iv] += pbpc->kappa0*dsq[0][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv];
+__targetILP__(iv) h[1][0][iv] += pbpc->kappa0*dsq[1][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
+__targetILP__(iv) h[1][1][iv] += pbpc->kappa0*dsq[1][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv];
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv];
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv] ;
+__targetILP__(iv) h[1][2][iv] += pbpc->kappa0*dsq[1][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv];
+__targetILP__(iv) h[2][0][iv] += pbpc->kappa0*dsq[2][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv];
+__targetILP__(iv) h[2][1][iv] += pbpc->kappa0*dsq[2][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
+__targetILP__(iv) h[2][2][iv] += pbpc->kappa0*dsq[2][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][2][iv];
+
 }

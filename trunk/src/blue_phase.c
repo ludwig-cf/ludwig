@@ -428,6 +428,12 @@ __targetHost__ __target__ double blue_phase_compute_fed(double q[3][3],
 }
 
 
+__targetHost__ __target__ void fed_loop_unrolled(double sum[VVL], double dq[3][3][3][VVL],
+				double q[3][3][VVL],
+				double dq1[VVL],
+				  bluePhaseKernelConstants_t* pbpc);
+
+
 /* Vectorized version */
 __targetHost__ __target__ void blue_phase_compute_fed_vec(double sum[VVL], double q[3][3][VVL], 
 							double dq[3][3][3][VVL],
@@ -479,18 +485,21 @@ __targetHost__ __target__ void blue_phase_compute_fed_vec(double sum[VVL], doubl
 
   __targetILP__(iv)  dq1[iv] = 0.0;
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv)  sum[iv] = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  __targetILP__(iv)  sum[iv] += pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv];
-	}
-      }
-      __targetILP__(iv)  sum[iv] += 2.0*pbpc->q0*q[ia][ib][iv];
-      __targetILP__(iv)  dq1[iv] += sum[iv]*sum[iv];
-    }
-  }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     __targetILP__(iv)  sum[iv] = 0.0; */
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	for (id = 0; id < 3; id++) { */
+  /* 	  __targetILP__(iv)  sum[iv] += pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv]; */
+  /* 	} */
+  /*     } */
+  /*     __targetILP__(iv)  sum[iv] += 2.0*pbpc->q0*q[ia][ib][iv]; */
+  /*     __targetILP__(iv)  dq1[iv] += sum[iv]*sum[iv]; */
+  /*   } */
+  /* } */
+
+  fed_loop_unrolled(sum,dq, q, dq1,pbpc);
+
 
   /* Electric field term (epsilon_ includes the factor 1/12pi) */
 
@@ -751,6 +760,14 @@ __targetHost__ __target__ void blue_phase_compute_h(double q[3][3],
 }
 
 
+__targetHost__ __target__ void h_loop_unrolled(double sum[VVL], double dq[3][3][3][VVL],
+				double dsq[3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				double eq[VVL],
+				bluePhaseKernelConstants_t* pbpc);
+
+
 /* vectorised version of above */
 __targetHost__ __target__ void blue_phase_compute_h_vec(double q[3][3][VVL], 
 						    double dq[3][3][3][VVL],
@@ -801,21 +818,23 @@ __targetHost__ __target__ void blue_phase_compute_h_vec(double q[3][3][VVL],
   }
 
   /* d_c Q_db written as d_c Q_bd etc */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) sum[iv] = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  __targetILP__(iv) sum[iv] +=
-	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]);
-	}
-      }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     __targetILP__(iv) sum[iv] = 0.0; */
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	for (id = 0; id < 3; id++) { */
+  /* 	  __targetILP__(iv) sum[iv] += */
+  /* 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]); */
+  /* 	} */
+  /*     } */
       
-      __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv]
-	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib]
-	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv];
-    }
-  }
+  /*     __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv] */
+  /* 	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib] */
+  /* 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv]; */
+  /*   } */
+  /* } */
+
+  h_loop_unrolled(sum,dq,dsq,q,h,eq,pbpc);
 
   /* Electric field term */
 
@@ -992,12 +1011,12 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
 
   blue_phase_compute_h_vec(q, dq, dsq, h, pbpc);
-  blue_phase_compute_stress_vec(q, dq, h, sth_loc, pbpc);
+  blue_phase_compute_stress_vec(q, dq, h, t_pth, pbpc,baseIndex);
 
 
-  for(ia=0;ia<3;ia++)
-    for(ib=0;ib<3;ib++)
-      __targetILP__(iv)  t_pth[PTHADR(tc_nSites,baseIndex+iv,ia,ib)]=sth_loc[ia][ib][iv];
+  //for(ia=0;ia<3;ia++)
+  //for(ib=0;ib<3;ib++)
+  //  __targetILP__(iv)  t_pth[PTHADR(tc_nSites,baseIndex+iv,ia,ib)]=sth_loc[ia][ib][iv];
 
 
   return;
@@ -1113,10 +1132,18 @@ __targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double 
 }
 
 
+__targetHost__ __target__ void stress_body_unrolled(double dq[3][3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				     double* sth,
+				double qh[VVL],
+				double p0[VVL],
+				     bluePhaseKernelConstants_t* pbpc, int baseIndex);
+
 /* vectorised version of above */
 __targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL], double dq[3][3][3][VVL],
-					  double h[3][3][VVL], double sth[3][3][VVL], 
-					  bluePhaseKernelConstants_t* pbpc) {
+					  double h[3][3][VVL], double* sth, 
+							     bluePhaseKernelConstants_t* pbpc, int baseIndex) {
   int ia, ib, ic, id, ie;
   int iv=0;
   double qh[VVL];
@@ -1140,72 +1167,74 @@ __targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL]
 
   /* The term in the isotropic pressure, plus that in qh */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) sth[ia][ib][iv] = -p0[iv]*pbpc->d_[ia][ib] + 2.0*pbpc->xi_*(q[ia][ib][iv]
-  						 + pbpc->r3_*pbpc->d_[ia][ib])*qh[iv];
-    }
-  }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     __targetILP__(iv) sth[ia][ib][iv] = -p0[iv]*pbpc->d_[ia][ib] + 2.0*pbpc->xi_*(q[ia][ib][iv] */
+  /* 						 + pbpc->r3_*pbpc->d_[ia][ib])*qh[iv]; */
+  /*   } */
+  /* } */
 
-  /* Remaining two terms in xi and molecular field */
+  /* /\* Remaining two terms in xi and molecular field *\/ */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
-  	__targetILP__(iv) sth[ia][ib][iv] +=
-  	  -pbpc->xi_*h[ia][ic][iv]*(q[ib][ic][iv] + pbpc->r3_*pbpc->d_[ib][ic])
-  	  -pbpc->xi_*(q[ia][ic][iv] + pbpc->r3_*pbpc->d_[ia][ic])*h[ib][ic][iv];
-      }
-    }
-  }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	__targetILP__(iv) sth[ia][ib][iv] += */
+  /* 	  -pbpc->xi_*h[ia][ic][iv]*(q[ib][ic][iv] + pbpc->r3_*pbpc->d_[ib][ic]) */
+  /* 	  -pbpc->xi_*(q[ia][ic][iv] + pbpc->r3_*pbpc->d_[ia][ic])*h[ib][ic][iv]; */
+  /*     } */
+  /*   } */
+  /* } */
 
-  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
+  /* /\* Dot product term d_a Q_cd . dF/dQ_cd,b *\/ */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
 
-      for (ic = 0; ic < 3; ic++) {
-  	for (id = 0; id < 3; id++) {
-  	  __targetILP__(iv) sth[ia][ib][iv] +=
-  	    - pbpc->kappa0*dq[ia][ib][ic][iv]*dq[id][ic][id][iv]
-  	    - pbpc->kappa1*dq[ia][ic][id][iv]*dq[ib][ic][id][iv]
-  	    + pbpc->kappa1*dq[ia][ic][id][iv]*dq[ic][ib][id][iv];
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	for (id = 0; id < 3; id++) { */
+  /* 	  __targetILP__(iv) sth[ia][ib][iv] += */
+  /* 	    - pbpc->kappa0*dq[ia][ib][ic][iv]*dq[id][ic][id][iv] */
+  /* 	    - pbpc->kappa1*dq[ia][ic][id][iv]*dq[ib][ic][id][iv] */
+  /* 	    + pbpc->kappa1*dq[ia][ic][id][iv]*dq[ic][ib][id][iv]; */
 
-  	  for (ie = 0; ie < 3; ie++) {
-  	    __targetILP__(iv) sth[ia][ib][iv] +=
-  	      -2.0*pbpc->kappa1*pbpc->q0*dq[ia][ic][id][iv]*pbpc->e_[ib][ic][ie]*q[id][ie][iv];
-  	  }
-  	}
-      }
-    }
-  }
+  /* 	  for (ie = 0; ie < 3; ie++) { */
+  /* 	    __targetILP__(iv) sth[ia][ib][iv] += */
+  /* 	      -2.0*pbpc->kappa1*pbpc->q0*dq[ia][ic][id][iv]*pbpc->e_[ib][ic][ie]*q[id][ie][iv]; */
+  /* 	  } */
+  /* 	} */
+  /*     } */
+  /*   } */
+  /* } */
 
-  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
-   * rewrite it as q_ac h_bc - h_ac q_bc. */
+  /* /\* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can */
+  /*  * rewrite it as q_ac h_bc - h_ac q_bc. *\/ */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
-  	__targetILP__(iv) sth[ia][ib][iv] += q[ia][ic][iv]*h[ib][ic][iv] - h[ia][ic][iv]*q[ib][ic][iv];
-      }
-    }
-  }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	__targetILP__(iv) sth[ia][ib][iv] += q[ia][ic][iv]*h[ib][ic][iv] - h[ia][ic][iv]*q[ib][ic][iv]; */
+  /*     } */
+  /*   } */
+  /* } */
 
-  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+  /* /\* Additional active stress -zeta*(q_ab - 1/3 d_ab) *\/ */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) sth[ia][ib][iv] -= pbpc->zeta_*(q[ia][ib][iv] + pbpc->r3_*pbpc->d_[ia][ib]);
-    }
-  }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     __targetILP__(iv) sth[ia][ib][iv] -= pbpc->zeta_*(q[ia][ib][iv] + pbpc->r3_*pbpc->d_[ia][ib]); */
+  /*   } */
+  /* } */
 
-  /* This is the minus sign. */
+  /* /\* This is the minus sign. *\/ */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-  	__targetILP__(iv) sth[ia][ib][iv] = -sth[ia][ib][iv];
-    }
-  }
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /* 	__targetILP__(iv) sth[ia][ib][iv] = -sth[ia][ib][iv]; */
+  /*   } */
+  /* } */
+
+  stress_body_unrolled( dq, q, h, sth, qh, p0, pbpc, baseIndex);
 
   return;
 }
@@ -1761,4 +1790,630 @@ __targetHost__ int blue_phase_scalar_ops(double q[3][3], double qs[5]) {
   }
 
   return ifail;
+}
+
+/* Unrolled kernels: thes get much beter performance since he multiplications
+ by 0 and repeated loading of duplicate coefficients have been eliminated */
+
+
+__targetHost__ __target__ void h_loop_unrolled(double sum[VVL], double dq[3][3][3][VVL],
+				double dsq[3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				double eq[VVL],
+				bluePhaseKernelConstants_t* pbpc){
+
+  int iv=0;
+
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
+__targetILP__(iv) h[0][0][iv] += pbpc->kappa0*dsq[0][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv];
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv];
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv] ;
+__targetILP__(iv) h[0][1][iv] += pbpc->kappa0*dsq[0][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv];
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv] ;
+__targetILP__(iv) h[0][2][iv] += pbpc->kappa0*dsq[0][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv];
+__targetILP__(iv) h[1][0][iv] += pbpc->kappa0*dsq[1][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
+__targetILP__(iv) h[1][1][iv] += pbpc->kappa0*dsq[1][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv];
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv];
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv] ;
+__targetILP__(iv) h[1][2][iv] += pbpc->kappa0*dsq[1][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv];
+__targetILP__(iv) h[2][0][iv] += pbpc->kappa0*dsq[2][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv];
+__targetILP__(iv) h[2][1][iv] += pbpc->kappa0*dsq[2][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
+__targetILP__(iv) h[2][2][iv] += pbpc->kappa0*dsq[2][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][2][iv];
+
+}
+
+
+__targetHost__ __target__ void fed_loop_unrolled(double sum[VVL], double dq[3][3][3][VVL],
+				double q[3][3][VVL],
+				double dq1[VVL],
+				bluePhaseKernelConstants_t* pbpc){
+
+
+  int iv=0;
+
+__targetILP__(iv) sum[iv] = 0.0;
+  __targetILP__(iv) sum[iv] += dq[1][0][2][iv];
+
+ __targetILP__(iv) sum[iv] -= dq[2][0][1][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[0][0][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+  __targetILP__(iv) sum[iv] += dq[1][1][2][iv];
+
+ __targetILP__(iv) sum[iv] -= dq[2][1][1][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[0][1][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+  __targetILP__(iv) sum[iv] += dq[1][2][2][iv];
+
+ __targetILP__(iv) sum[iv] -= dq[2][2][1][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[0][2][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+ __targetILP__(iv) sum[iv] -= dq[0][0][2][iv];
+
+  __targetILP__(iv) sum[iv] += dq[2][0][0][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[1][0][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+ __targetILP__(iv) sum[iv] -= dq[0][1][2][iv];
+
+  __targetILP__(iv) sum[iv] += dq[2][1][0][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[1][1][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+ __targetILP__(iv) sum[iv] -= dq[0][2][2][iv];
+
+  __targetILP__(iv) sum[iv] += dq[2][2][0][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[1][2][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+  __targetILP__(iv) sum[iv] += dq[0][0][1][iv];
+
+ __targetILP__(iv) sum[iv] -= dq[1][0][0][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[2][0][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+  __targetILP__(iv) sum[iv] += dq[0][1][1][iv];
+
+ __targetILP__(iv) sum[iv] -= dq[1][1][0][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[2][1][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+__targetILP__(iv) sum[iv] = 0.0;
+  __targetILP__(iv) sum[iv] += dq[0][2][1][iv];
+
+ __targetILP__(iv) sum[iv] -= dq[1][2][0][iv];
+
+__targetILP__(iv) sum[iv] += 2.0*pbpc->q0*q[2][2][iv];
+
+__targetILP__(iv) dq1[iv] += sum[iv]*sum[iv];
+
+
+}
+
+__targetHost__ __target__ void stress_body_unrolled(double dq[3][3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				     double* sth,
+				double qh[VVL],
+				double p0[VVL],
+				     bluePhaseKernelConstants_t* pbpc, int baseIndex){
+
+  int iv=0;
+
+double sthtmp[VVL];
+double xiloc=pbpc->xi_;
+double r3loc=pbpc->r3_;
+double kappa0loc=pbpc->kappa0;
+double kappa1loc=pbpc->kappa1;
+double q0loc=pbpc->q0;
+double zetaloc=pbpc->zeta_;
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][0][iv]+ r3loc)*qh[iv] -p0[iv] ;
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][0][iv]*(q[0][0][iv] + r3loc)   -xiloc*(q[0][0][iv]    +r3loc)*h[0][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][1][iv]*(q[0][1][iv])   -xiloc*(q[0][1][iv]    )*h[0][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][2][iv]*(q[0][2][iv])   -xiloc*(q[0][2][iv]    )*h[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[0][0][0][iv]*dq[0][0][0][iv]+ kappa1loc*dq[0][0][0][iv]*dq[0][0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[0][0][1][iv]*dq[0][0][1][iv]+ kappa1loc*dq[0][0][1][iv]*dq[0][0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[0][0][2][iv]*dq[0][0][2][iv]+ kappa1loc*dq[0][0][2][iv]*dq[0][0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[0][1][0][iv]*dq[0][1][0][iv]+ kappa1loc*dq[0][1][0][iv]*dq[1][0][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][1][0][iv]*q[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[0][1][1][iv]*dq[0][1][1][iv]+ kappa1loc*dq[0][1][1][iv]*dq[1][0][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][1][1][iv]*q[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[0][1][2][iv]*dq[0][1][2][iv]+ kappa1loc*dq[0][1][2][iv]*dq[1][0][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][1][2][iv]*q[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[0][2][0][iv]*dq[0][2][0][iv]+ kappa1loc*dq[0][2][0][iv]*dq[2][0][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][2][0][iv]*q[0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[0][2][1][iv]*dq[0][2][1][iv]+ kappa1loc*dq[0][2][1][iv]*dq[2][0][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][2][1][iv]*q[1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][0][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[0][2][2][iv]*dq[0][2][2][iv]+ kappa1loc*dq[0][2][2][iv]*dq[2][0][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][2][2][iv]*q[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][0][iv]*h[0][0][iv] - h[0][0][iv]*q[0][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][1][iv]*h[0][1][iv] - h[0][1][iv]*q[0][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][2][iv]*h[0][2][iv] - h[0][2][iv]*q[0][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[0][0][iv] + r3loc);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,0,0)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][1][iv])*qh[iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][0][iv]*(q[1][0][iv])   -xiloc*(q[0][0][iv]    +r3loc)*h[1][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][1][iv]*(q[1][1][iv] + r3loc)   -xiloc*(q[0][1][iv]    )*h[1][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][2][iv]*(q[1][2][iv])   -xiloc*(q[0][2][iv]    )*h[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[0][0][0][iv]*dq[1][0][0][iv]+ kappa1loc*dq[0][0][0][iv]*dq[0][1][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][0][0][iv]*q[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[0][0][1][iv]*dq[1][0][1][iv]+ kappa1loc*dq[0][0][1][iv]*dq[0][1][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][0][1][iv]*q[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[0][0][2][iv]*dq[1][0][2][iv]+ kappa1loc*dq[0][0][2][iv]*dq[0][1][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][0][2][iv]*q[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[0][1][0][iv]*dq[1][1][0][iv]+ kappa1loc*dq[0][1][0][iv]*dq[1][1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[0][1][1][iv]*dq[1][1][1][iv]+ kappa1loc*dq[0][1][1][iv]*dq[1][1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[0][1][2][iv]*dq[1][1][2][iv]+ kappa1loc*dq[0][1][2][iv]*dq[1][1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[0][2][0][iv]*dq[1][2][0][iv]+ kappa1loc*dq[0][2][0][iv]*dq[2][1][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][2][0][iv]*q[0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[0][2][1][iv]*dq[1][2][1][iv]+ kappa1loc*dq[0][2][1][iv]*dq[2][1][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][2][1][iv]*q[1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][1][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[0][2][2][iv]*dq[1][2][2][iv]+ kappa1loc*dq[0][2][2][iv]*dq[2][1][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][2][2][iv]*q[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][0][iv]*h[1][0][iv] - h[0][0][iv]*q[1][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][1][iv]*h[1][1][iv] - h[0][1][iv]*q[1][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][2][iv]*h[1][2][iv] - h[0][2][iv]*q[1][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[0][1][iv]);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,0,1)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][2][iv])*qh[iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][0][iv]*(q[2][0][iv])   -xiloc*(q[0][0][iv]    +r3loc)*h[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][1][iv]*(q[2][1][iv])   -xiloc*(q[0][1][iv]    )*h[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[0][2][iv]*(q[2][2][iv] + r3loc)   -xiloc*(q[0][2][iv]    )*h[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[0][0][0][iv]*dq[2][0][0][iv]+ kappa1loc*dq[0][0][0][iv]*dq[0][2][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][0][0][iv]*q[0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[0][0][1][iv]*dq[2][0][1][iv]+ kappa1loc*dq[0][0][1][iv]*dq[0][2][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][0][1][iv]*q[1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[0][0][2][iv]*dq[2][0][2][iv]+ kappa1loc*dq[0][0][2][iv]*dq[0][2][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[0][0][2][iv]*q[2][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[0][1][0][iv]*dq[2][1][0][iv]+ kappa1loc*dq[0][1][0][iv]*dq[1][2][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][1][0][iv]*q[0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[0][1][1][iv]*dq[2][1][1][iv]+ kappa1loc*dq[0][1][1][iv]*dq[1][2][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][1][1][iv]*q[1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[0][1][2][iv]*dq[2][1][2][iv]+ kappa1loc*dq[0][1][2][iv]*dq[1][2][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[0][1][2][iv]*q[2][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[0][2][0][iv]*dq[2][2][0][iv]+ kappa1loc*dq[0][2][0][iv]*dq[2][2][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[0][2][1][iv]*dq[2][2][1][iv]+ kappa1loc*dq[0][2][1][iv]*dq[2][2][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[0][2][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[0][2][2][iv]*dq[2][2][2][iv]+ kappa1loc*dq[0][2][2][iv]*dq[2][2][2][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][0][iv]*h[2][0][iv] - h[0][0][iv]*q[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][1][iv]*h[2][1][iv] - h[0][1][iv]*q[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[0][2][iv]*h[2][2][iv] - h[0][2][iv]*q[2][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[0][2][iv]);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,0,2)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][0][iv])*qh[iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][0][iv]*(q[0][0][iv] + r3loc)   -xiloc*(q[1][0][iv]    )*h[0][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][1][iv]*(q[0][1][iv])   -xiloc*(q[1][1][iv]    +r3loc)*h[0][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][2][iv]*(q[0][2][iv])   -xiloc*(q[1][2][iv]    )*h[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[1][0][0][iv]*dq[0][0][0][iv]+ kappa1loc*dq[1][0][0][iv]*dq[0][0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[1][0][1][iv]*dq[0][0][1][iv]+ kappa1loc*dq[1][0][1][iv]*dq[0][0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[1][0][2][iv]*dq[0][0][2][iv]+ kappa1loc*dq[1][0][2][iv]*dq[0][0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[1][1][0][iv]*dq[0][1][0][iv]+ kappa1loc*dq[1][1][0][iv]*dq[1][0][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][1][0][iv]*q[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[1][1][1][iv]*dq[0][1][1][iv]+ kappa1loc*dq[1][1][1][iv]*dq[1][0][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][1][1][iv]*q[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[1][1][2][iv]*dq[0][1][2][iv]+ kappa1loc*dq[1][1][2][iv]*dq[1][0][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][1][2][iv]*q[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[1][2][0][iv]*dq[0][2][0][iv]+ kappa1loc*dq[1][2][0][iv]*dq[2][0][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][2][0][iv]*q[0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[1][2][1][iv]*dq[0][2][1][iv]+ kappa1loc*dq[1][2][1][iv]*dq[2][0][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][2][1][iv]*q[1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][0][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[1][2][2][iv]*dq[0][2][2][iv]+ kappa1loc*dq[1][2][2][iv]*dq[2][0][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][2][2][iv]*q[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][0][iv]*h[0][0][iv] - h[1][0][iv]*q[0][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][1][iv]*h[0][1][iv] - h[1][1][iv]*q[0][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][2][iv]*h[0][2][iv] - h[1][2][iv]*q[0][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[1][0][iv]);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,1,0)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][1][iv]+ r3loc)*qh[iv] -p0[iv] ;
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][0][iv]*(q[1][0][iv])   -xiloc*(q[1][0][iv]    )*h[1][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][1][iv]*(q[1][1][iv] + r3loc)   -xiloc*(q[1][1][iv]    +r3loc)*h[1][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][2][iv]*(q[1][2][iv])   -xiloc*(q[1][2][iv]    )*h[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[1][0][0][iv]*dq[1][0][0][iv]+ kappa1loc*dq[1][0][0][iv]*dq[0][1][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][0][0][iv]*q[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[1][0][1][iv]*dq[1][0][1][iv]+ kappa1loc*dq[1][0][1][iv]*dq[0][1][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][0][1][iv]*q[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[1][0][2][iv]*dq[1][0][2][iv]+ kappa1loc*dq[1][0][2][iv]*dq[0][1][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][0][2][iv]*q[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[1][1][0][iv]*dq[1][1][0][iv]+ kappa1loc*dq[1][1][0][iv]*dq[1][1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[1][1][1][iv]*dq[1][1][1][iv]+ kappa1loc*dq[1][1][1][iv]*dq[1][1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[1][1][2][iv]*dq[1][1][2][iv]+ kappa1loc*dq[1][1][2][iv]*dq[1][1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[1][2][0][iv]*dq[1][2][0][iv]+ kappa1loc*dq[1][2][0][iv]*dq[2][1][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][2][0][iv]*q[0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[1][2][1][iv]*dq[1][2][1][iv]+ kappa1loc*dq[1][2][1][iv]*dq[2][1][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][2][1][iv]*q[1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][1][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[1][2][2][iv]*dq[1][2][2][iv]+ kappa1loc*dq[1][2][2][iv]*dq[2][1][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][2][2][iv]*q[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][0][iv]*h[1][0][iv] - h[1][0][iv]*q[1][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][1][iv]*h[1][1][iv] - h[1][1][iv]*q[1][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][2][iv]*h[1][2][iv] - h[1][2][iv]*q[1][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[1][1][iv] + r3loc);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,1,1)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][2][iv])*qh[iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][0][iv]*(q[2][0][iv])   -xiloc*(q[1][0][iv]    )*h[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][1][iv]*(q[2][1][iv])   -xiloc*(q[1][1][iv]    +r3loc)*h[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[1][2][iv]*(q[2][2][iv] + r3loc)   -xiloc*(q[1][2][iv]    )*h[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[1][0][0][iv]*dq[2][0][0][iv]+ kappa1loc*dq[1][0][0][iv]*dq[0][2][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][0][0][iv]*q[0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[1][0][1][iv]*dq[2][0][1][iv]+ kappa1loc*dq[1][0][1][iv]*dq[0][2][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][0][1][iv]*q[1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[1][0][2][iv]*dq[2][0][2][iv]+ kappa1loc*dq[1][0][2][iv]*dq[0][2][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[1][0][2][iv]*q[2][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[1][1][0][iv]*dq[2][1][0][iv]+ kappa1loc*dq[1][1][0][iv]*dq[1][2][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][1][0][iv]*q[0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[1][1][1][iv]*dq[2][1][1][iv]+ kappa1loc*dq[1][1][1][iv]*dq[1][2][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][1][1][iv]*q[1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[1][1][2][iv]*dq[2][1][2][iv]+ kappa1loc*dq[1][1][2][iv]*dq[1][2][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[1][1][2][iv]*q[2][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[1][2][0][iv]*dq[2][2][0][iv]+ kappa1loc*dq[1][2][0][iv]*dq[2][2][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[1][2][1][iv]*dq[2][2][1][iv]+ kappa1loc*dq[1][2][1][iv]*dq[2][2][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[1][2][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[1][2][2][iv]*dq[2][2][2][iv]+ kappa1loc*dq[1][2][2][iv]*dq[2][2][2][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][0][iv]*h[2][0][iv] - h[1][0][iv]*q[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][1][iv]*h[2][1][iv] - h[1][1][iv]*q[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[1][2][iv]*h[2][2][iv] - h[1][2][iv]*q[2][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[1][2][iv]);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,1,2)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][0][iv])*qh[iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][0][iv]*(q[0][0][iv] + r3loc)   -xiloc*(q[2][0][iv]    )*h[0][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][1][iv]*(q[0][1][iv])   -xiloc*(q[2][1][iv]    )*h[0][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][2][iv]*(q[0][2][iv])   -xiloc*(q[2][2][iv]    +r3loc)*h[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[2][0][0][iv]*dq[0][0][0][iv]+ kappa1loc*dq[2][0][0][iv]*dq[0][0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[2][0][1][iv]*dq[0][0][1][iv]+ kappa1loc*dq[2][0][1][iv]*dq[0][0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[2][0][2][iv]*dq[0][0][2][iv]+ kappa1loc*dq[2][0][2][iv]*dq[0][0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[2][1][0][iv]*dq[0][1][0][iv]+ kappa1loc*dq[2][1][0][iv]*dq[1][0][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][1][0][iv]*q[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[2][1][1][iv]*dq[0][1][1][iv]+ kappa1loc*dq[2][1][1][iv]*dq[1][0][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][1][1][iv]*q[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[2][1][2][iv]*dq[0][1][2][iv]+ kappa1loc*dq[2][1][2][iv]*dq[1][0][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][1][2][iv]*q[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[2][2][0][iv]*dq[0][2][0][iv]+ kappa1loc*dq[2][2][0][iv]*dq[2][0][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][2][0][iv]*q[0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[2][2][1][iv]*dq[0][2][1][iv]+ kappa1loc*dq[2][2][1][iv]*dq[2][0][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][2][1][iv]*q[1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][0][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[2][2][2][iv]*dq[0][2][2][iv]+ kappa1loc*dq[2][2][2][iv]*dq[2][0][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][2][2][iv]*q[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][0][iv]*h[0][0][iv] - h[2][0][iv]*q[0][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][1][iv]*h[0][1][iv] - h[2][1][iv]*q[0][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][2][iv]*h[0][2][iv] - h[2][2][iv]*q[0][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][0][iv]);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,2,0)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][1][iv])*qh[iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][0][iv]*(q[1][0][iv])   -xiloc*(q[2][0][iv]    )*h[1][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][1][iv]*(q[1][1][iv] + r3loc)   -xiloc*(q[2][1][iv]    )*h[1][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][2][iv]*(q[1][2][iv])   -xiloc*(q[2][2][iv]    +r3loc)*h[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[2][0][0][iv]*dq[1][0][0][iv]+ kappa1loc*dq[2][0][0][iv]*dq[0][1][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][0][0][iv]*q[0][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[2][0][1][iv]*dq[1][0][1][iv]+ kappa1loc*dq[2][0][1][iv]*dq[0][1][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][0][1][iv]*q[1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[2][0][2][iv]*dq[1][0][2][iv]+ kappa1loc*dq[2][0][2][iv]*dq[0][1][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][0][2][iv]*q[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[2][1][0][iv]*dq[1][1][0][iv]+ kappa1loc*dq[2][1][0][iv]*dq[1][1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[2][1][1][iv]*dq[1][1][1][iv]+ kappa1loc*dq[2][1][1][iv]*dq[1][1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[2][1][2][iv]*dq[1][1][2][iv]+ kappa1loc*dq[2][1][2][iv]*dq[1][1][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[2][2][0][iv]*dq[1][2][0][iv]+ kappa1loc*dq[2][2][0][iv]*dq[2][1][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][2][0][iv]*q[0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[2][2][1][iv]*dq[1][2][1][iv]+ kappa1loc*dq[2][2][1][iv]*dq[2][1][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][2][1][iv]*q[1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][1][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[2][2][2][iv]*dq[1][2][2][iv]+ kappa1loc*dq[2][2][2][iv]*dq[2][1][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][2][2][iv]*q[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][0][iv]*h[1][0][iv] - h[2][0][iv]*q[1][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][1][iv]*h[1][1][iv] - h[2][1][iv]*q[1][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][2][iv]*h[1][2][iv] - h[2][2][iv]*q[1][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][1][iv]);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,2,1)] = -sthtmp[iv];
+
+__targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][2][iv]+ r3loc)*qh[iv] -p0[iv] ;
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][0][iv]*(q[2][0][iv])   -xiloc*(q[2][0][iv]    )*h[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][1][iv]*(q[2][1][iv])   -xiloc*(q[2][1][iv]    )*h[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += -xiloc*h[2][2][iv]*(q[2][2][iv] + r3loc)   -xiloc*(q[2][2][iv]    +r3loc)*h[2][2][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][0][iv]*dq[0][0][0][iv] - kappa1loc*dq[2][0][0][iv]*dq[2][0][0][iv]+ kappa1loc*dq[2][0][0][iv]*dq[0][2][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][0][0][iv]*q[0][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][0][iv]*dq[1][0][1][iv] - kappa1loc*dq[2][0][1][iv]*dq[2][0][1][iv]+ kappa1loc*dq[2][0][1][iv]*dq[0][2][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][0][1][iv]*q[1][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][0][iv]*dq[2][0][2][iv] - kappa1loc*dq[2][0][2][iv]*dq[2][0][2][iv]+ kappa1loc*dq[2][0][2][iv]*dq[0][2][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] -= 2.0*kappa1loc*q0loc*dq[2][0][2][iv]*q[2][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][1][iv]*dq[0][1][0][iv] - kappa1loc*dq[2][1][0][iv]*dq[2][1][0][iv]+ kappa1loc*dq[2][1][0][iv]*dq[1][2][0][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][1][0][iv]*q[0][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][1][iv]*dq[1][1][1][iv] - kappa1loc*dq[2][1][1][iv]*dq[2][1][1][iv]+ kappa1loc*dq[2][1][1][iv]*dq[1][2][1][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][1][1][iv]*q[1][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][1][iv]*dq[2][1][2][iv] - kappa1loc*dq[2][1][2][iv]*dq[2][1][2][iv]+ kappa1loc*dq[2][1][2][iv]*dq[1][2][2][iv];
+
+      __targetILP__(iv) sthtmp[iv] += 2.0*kappa1loc*q0loc*dq[2][1][2][iv]*q[2][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][2][iv]*dq[0][2][0][iv] - kappa1loc*dq[2][2][0][iv]*dq[2][2][0][iv]+ kappa1loc*dq[2][2][0][iv]*dq[2][2][0][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][2][iv]*dq[1][2][1][iv] - kappa1loc*dq[2][2][1][iv]*dq[2][2][1][iv]+ kappa1loc*dq[2][2][1][iv]*dq[2][2][1][iv];
+
+    __targetILP__(iv) sthtmp[iv] += - kappa0loc*dq[2][2][2][iv]*dq[2][2][2][iv] - kappa1loc*dq[2][2][2][iv]*dq[2][2][2][iv]+ kappa1loc*dq[2][2][2][iv]*dq[2][2][2][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][0][iv]*h[2][0][iv] - h[2][0][iv]*q[2][0][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][1][iv]*h[2][1][iv] - h[2][1][iv]*q[2][1][iv];
+
+  __targetILP__(iv) sthtmp[iv] += q[2][2][iv]*h[2][2][iv] - h[2][2][iv]*q[2][2][iv];
+
+__targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][2][iv] + r3loc);
+
+__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,2,2)] = -sthtmp[iv];
+
 }
