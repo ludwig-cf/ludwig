@@ -27,11 +27,7 @@ struct advflux_s {
 };
 
 
-#ifdef LB_DATA_SOA
-#define ADVADR ADDR_VECSITE_R
-#else
-#define ADVADR ADDR_VECSITE
-#endif
+#define ADVADR VECADR
 
 
 #endif
