@@ -447,7 +447,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	}
 	/* velocity */
 	for (ia = 0; ia < 3; ia++) {   
-	  __targetILP__(iv) t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)]
+	   t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)]
 	    =u[ia*VVL+iv];
 	}
       }
