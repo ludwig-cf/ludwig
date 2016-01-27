@@ -367,7 +367,179 @@ int field_leesedwards(field_t * obj) {
  *  expected that they will be for the gradient calculation).
  *
  *****************************************************************************/
+#ifndef OLD_SHIT
+static int field_leesedwards_parallel(field_t * obj) {
 
+  int nf;
+  int      nlocal[3];      /* Local system size */
+  int      noffset[3];     /* Local starting offset */
+  int ib;                  /* Index in buffer region */
+  int ib0;                 /* buffer region offset */
+  int ic;                  /* Index corresponding x location in real system */
+  int jc, kc;
+  int j0, j1, j2, j3;
+  int n, n1, n2, n3;
+  int nhalo;
+  int jdy;                 /* Integral part of displacement */
+  int index;
+
+  double dy;               /* Displacement for current ic->ib pair */
+  double fr;               /* Fractional displacement */
+  double t;                /* Time */
+  const double r6 = (1.0/6.0);
+
+  int      nsend;          /* Send buffer size */
+  int      nrecv;          /* Recv buffer size */
+  int      nrank_s[3];     /* send ranks */
+  int      nrank_r[3];     /* recv ranks */
+  double * sendbuf = NULL; /* Send buffer */
+  double * recvbuf = NULL; /* Interpolation buffer */
+
+  const int tag0 = 1256;
+  const int tag1 = 1257;
+  const int tag2 = 1258;
+
+  MPI_Comm le_comm;
+  MPI_Request request[6];
+  MPI_Status  status[3];
+
+  assert(obj);
+
+  field_nf(obj, &nf);
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+  ib0 = nlocal[X] + nhalo + 1;
+
+  le_comm = le_communicator();
+
+  /* Allocate buffer space */
+
+  nsend = nf*nlocal[Y]*(nlocal[Z] + 2*nhalo);
+  nrecv = nf*(nlocal[Y] + 2*nhalo + 3)*(nlocal[Z] + 2*nhalo);
+
+  sendbuf = (double *) malloc(nsend*sizeof(double));
+  recvbuf = (double *) malloc(nrecv*sizeof(double));
+
+  if (sendbuf == NULL) fatal("malloc(sendbuf) failed\n");
+  if (recvbuf == NULL) fatal("malloc(recvbuf) failed\n");
+
+  /* -1.0 as zero required for fisrt step; this is a 'feature'
+   * to ensure the regression tests stay te same */
+
+  t = 1.0*get_step() - 1.0;
+
+  /* One round of communication for each buffer plane */
+
+  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+    ic = le_index_buffer_to_real(ib);
+    kc = 1 - nhalo;
+
+    /* Work out the displacement-dependent quantities */
+
+    dy = le_buffer_displacement(ib, t);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr  = 1.0 - (dy - jdy);
+    /* In the real system the first point we require is
+     * j1 = jc - jdy - 3
+     * with jc = noffset[Y] + 1 - nhalo in the global coordinates.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y) */
+
+    jc = noffset[Y] + 1 - nhalo;
+    j1 = 1 + (jc - jdy - 3 + 2*N_total(Y)) % N_total(Y);
+    assert(j1 >= 1);
+    assert(j1 <= N_total(Y));
+
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    /* Local quantities: j2 is the position of j1 in local coordinates.
+     * The three sections to send/receive are organised as follows:
+     * jc is the number of j points in each case, while n is the
+     * total number of data items. Note that n3 can be zero. */
+
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+    assert(j2 >= 1);
+    assert(j2 <= nlocal[Y]);
+
+    jc = nlocal[Y] - j2 + 1;
+    n1 = nf*jc*(nlocal[Z] + 2*nhalo);
+    MPI_Irecv(recvbuf, n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+
+    jc = imin(nlocal[Y], j2 + 2*nhalo + 2);
+    n2 = nf*jc*(nlocal[Z] + 2*nhalo);
+    MPI_Irecv(recvbuf + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
+              request + 1);
+
+    jc = imax(0, j2 - nlocal[Y] + 2*nhalo + 2);
+    n3 = nf*jc*(nlocal[Z] + 2*nhalo);
+    MPI_Irecv(recvbuf + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, le_comm,
+              request + 2);
+
+    /* Load contiguous send buffer */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = le_site_index(ic, jc, kc);
+	for (n = 0; n < nf; n++) {
+	  j0 = nf*(jc - 1)*(nlocal[Z] + 2*nhalo);
+	  j1 = j0 + nf*(kc + nhalo - 1);
+	  assert((j1+n) >= 0 && (j1+n) < nsend);
+	  sendbuf[j1+n] = obj->data[addr_rank1(le_nsites(), nf, index, n)];
+	}
+      }
+    }
+
+    /* Post sends and wait for receives. */
+
+    index = nf*(j2 - 1)*(nlocal[Z] + 2*nhalo);
+    MPI_Issend(sendbuf+index, n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm,
+               request + 3);
+    MPI_Issend(sendbuf, n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm,
+               request + 4);
+    MPI_Issend(sendbuf, n3, MPI_DOUBLE, nrank_s[2], tag2, le_comm,
+               request + 5);
+
+    MPI_Waitall(3, request, status);
+
+
+    /* Perform the actual interpolation from temporary buffer. */
+
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+
+      /* Note that the linear interpolation here would be
+       * (1.0-fr)*buffer(j1, k, n) + fr*buffer(j2, k, n)
+       * This is again Lagrange four point. */
+
+      j0 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
+      j1 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
+      j2 = (jc + nhalo - 1 + 2)*(nlocal[Z] + 2*nhalo);
+      j3 = (jc + nhalo - 1 + 3)*(nlocal[Z] + 2*nhalo);
+
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+        index = le_site_index(ib0 + ib, jc, kc);
+        for (n = 0; n < nf; n++) {
+          obj->data[addr_rank1(le_nsites(), nf, index, n)] =
+            -  r6*fr*(fr-1.0)*(fr-2.0)*recvbuf[nf*(j0 + kc+nhalo-1) + n]
+            + 0.5*(fr*fr-1.0)*(fr-2.0)*recvbuf[nf*(j1 + kc+nhalo-1) + n]
+            - 0.5*fr*(fr+1.0)*(fr-2.0)*recvbuf[nf*(j2 + kc+nhalo-1) + n]
+            +        r6*fr*(fr*fr-1.0)*recvbuf[nf*(j3 + kc+nhalo-1) + n];
+        }
+      }
+    }
+
+    /* Clean up the sends, and move to next buffer location. */
+
+    MPI_Waitall(3, request + 3, status);
+  }
+
+  free(recvbuf);
+  free(sendbuf);
+
+  return 0;
+}
+#else
 static int field_leesedwards_parallel(field_t * obj) {
 
   int nf;
@@ -518,7 +690,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   return 0;
 }
-
+#endif
 
 /*****************************************************************************
  *

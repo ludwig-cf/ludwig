@@ -63,6 +63,7 @@ int tests_create() {
   test_fe_electro_suite();
   test_fe_electro_symm_suite();
   test_field_suite();
+  test_field_grad_suite();           
   test_halo_suite();
   test_hydro_suite();
   test_io_suite();
@@ -82,7 +83,6 @@ int tests_create() {
   test_rt_suite();
   test_timer_suite();
   test_util_suite();
-  test_field_grad_suite();           
 
   /* Failing... pending investigation */
 

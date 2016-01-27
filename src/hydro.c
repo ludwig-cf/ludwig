@@ -109,9 +109,12 @@ void hydro_free(hydro_t * obj) {
 
   assert(obj);
 
+#ifndef OLD_SHIT
+#else
   MPI_Type_free(&obj->uhalo[Z]);
   MPI_Type_free(&obj->uhalo[Y]);
   MPI_Type_free(&obj->uhalo[X]);
+#endif
   free(obj->f);
   free(obj->u);
 
@@ -513,7 +516,158 @@ int hydro_lees_edwards(hydro_t * obj) {
  *  this avoids having to update the halos completely.
  *
  *****************************************************************************/
+#ifndef OLD_SHIT
+static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
+  int      nlocal[3];      /* Local system size */
+  int      noffset[3];     /* Local starting offset */
+  int ib;                  /* Index in buffer region */
+  int ib0;                 /* buffer region offset */
+  int ic;                  /* Index corresponding x location in real system */
+  int jc, kc, j1, j2;
+  int n1, n2, n3;
+  double dy;               /* Displacement for current ic->ib pair */
+  double fr;               /* Fractional displacement */
+  double t;                /* time */
+  int jdy;                 /* Integral part of displacement */
+  int index, ia;
+  int nf, nhalo;
+  double ule[3];
+
+  int nsend;
+  int nrecv;
+  int      nrank_s[3];     /* send ranks */
+  int      nrank_r[3];     /* recv ranks */
+  const int tag0 = 1256;
+  const int tag1 = 1257;
+  const int tag2 = 1258;
+
+  double * sbuf = NULL;   /* Send buffer */
+  double * rbuf = NULL;   /* Interpolation buffer */
+
+  MPI_Comm    le_comm;
+  MPI_Request request[6];
+  MPI_Status  status[3];
+
+  assert(obj);
+
+  nf = obj->nf;
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+  ib0 = nlocal[X] + nhalo + 1;
+
+  le_comm = le_communicator();
+
+  /* Allocate the temporary buffer */
+
+  nsend = nf*nlocal[Y]*(nlocal[Z] + 2*nhalo);
+  nrecv = nf*(nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
+
+  sbuf = (double *) calloc(nsend, sizeof(double));
+  rbuf = (double *) calloc(nrecv, sizeof(double));
+ 
+  if (sbuf == NULL) fatal("hydrodynamics: malloc(le sbuf) failed\n");
+  if (rbuf == NULL) fatal("hydrodynamics: malloc(le rbuf) failed\n");
+
+  t = 1.0*get_step();
+
+  ule[X] = 0.0;
+  ule[Z] = 0.0;
+
+  /* One round of communication for each buffer plane */
+
+  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+
+    ic = le_index_buffer_to_real(ib);
+
+    /* Work out the displacement-dependent quantities */
+
+    dy = le_buffer_displacement(ib, t);
+    ule[Y] = dy/t; /* STEADY SHEAR ONLY */
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fr  = dy - jdy;
+
+    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1 - nhalo;
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position nhalo. */
+
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+
+    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = imin(nlocal[Y], j2 + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+    n3 = imax(0, j2 - nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
+    assert((n1+n2+n3) == (nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo));
+
+    /* Post receives, sends and wait for receives. */
+
+    MPI_Irecv(rbuf, nf*n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(rbuf + nf*n1, nf*n2, MPI_DOUBLE, nrank_r[1], tag1,
+	      le_comm, request + 1);
+    MPI_Irecv(rbuf + nf*(n1 + n2), nf*n3, MPI_DOUBLE, nrank_r[2], tag2,
+	      le_comm, request + 2);
+
+    /* Load send buffer */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = le_site_index(ic, jc, kc);
+	for (ia = 0; ia < nf; ia++) {
+	  j1 = (jc - 1)*nf*(nlocal[Z] + 2*nhalo) + nf*(kc + nhalo - 1) + ia;
+	  assert(j1 >= 0 && j1 < nsend);
+	  sbuf[j1] = obj->u[addr_hydro(index, ia)];
+	}
+      }
+    }
+
+    j1 = (j2 - 1)*nf*(nlocal[Z] + 2*nhalo);
+    MPI_Issend(sbuf + j1, nf*n1, MPI_DOUBLE, nrank_s[0], tag0,
+	       le_comm, request + 3);
+    MPI_Issend(sbuf     , nf*n2, MPI_DOUBLE, nrank_s[1], tag1,
+	       le_comm, request + 4);
+    MPI_Issend(sbuf     , nf*n3, MPI_DOUBLE, nrank_s[2], tag2,
+	       le_comm, request + 5);
+
+    MPI_Waitall(3, request, status);
+
+    /* Perform the actual interpolation from temporary buffer to
+     * buffer region. */
+
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+
+      j1 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
+      j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
+
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = le_site_index(ib0 + ib, jc, kc);
+	for (ia = 0; ia < nf; ia++) {
+	  obj->u[addr_hydro(index, ia)] = ule[ia]
+	    + fr*rbuf[nf*(j1 + kc + nhalo - 1) + ia]
+	    + (1.0 - fr)*rbuf[nf*(j2 + kc + nhalo - 1) + ia];
+	}
+      }
+    }
+
+    MPI_Waitall(3, request + 3, status);
+  }
+
+  free(sbuf);
+  free(rbuf);
+
+  return 0;
+}
+#else
 static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   int      nlocal[3];      /* Local system size */
@@ -644,7 +798,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   return 0;
 }
-
+#endif
 /*****************************************************************************
  *
  *  hydro_u_write

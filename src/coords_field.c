@@ -590,6 +590,8 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   if (cart_size(X) == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
   }
   else {
     pforw = cart_neighb(FORWARD, X);
@@ -669,6 +671,8 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   if (cart_size(Y) == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
   }
   else {
     pforw = cart_neighb(FORWARD, Y);
@@ -751,10 +755,12 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   if (cart_size(Z) == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, Y);
-    pback = cart_neighb(BACKWARD, Y);
+    pforw = cart_neighb(FORWARD, Z);
+    pback = cart_neighb(BACKWARD, Z);
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -771,16 +777,12 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
-	  double val1, val2;
 	  index = coords_index(ic, jc, 0 - nh);
 	  ihalo = addr_rank1(nall, na, index, ia);
-	  val1 = *((double*)(recvback +icount*sz));
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  index = coords_index(ic, jc, nlocal[Z] + 1 + nh);
 	  ihalo = addr_rank1(nall, na, index, ia);
-	  val2 = *((double *)(recvforw+icount*sz));
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
-	  /*	  if (ia == 0) printf("H %2d %2d %2d %2d %10.2e %10.2e\n", nh, ic, jc, ia, val1, val2);*/
 	  icount += 1;
 	}
       }

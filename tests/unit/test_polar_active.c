@@ -68,11 +68,8 @@ int test_polar_active_suite(void) {
   field_grad_set(fpgrad, gradient_2d_5pt_fluid_d2, NULL);
   polar_active_p_set(fp, fpgrad);
 
-  printf("test 1\n");
   test_polar_active_aster(fp, fpgrad);
-  printf("test 2\n");
   test_polar_active_terms(fp, fpgrad);
-  printf("test 3\n");
 
   field_grad_free(fpgrad);
   field_free(fp);
