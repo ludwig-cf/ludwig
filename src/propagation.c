@@ -200,119 +200,103 @@ static int lb_propagate_d3q15(lb_t * lb) {
  *****************************************************************************/
 
 __target__  void lb_propagate_d3q19_site(const double* __restrict__ t_f, 
-				      double* t_fprime, 
-				     const int baseIndex){
+					 double* t_fprime, 
+					 const int baseIndex){
   
-
-
+  
+  
 
   int coords[3];
   
+  int i;
   int n,p;
-  int vecIndex=0;
-  int shiftIndex;
+  int iv=0;
   
-  char halo_site=0;
-  __targetILP__(vecIndex){
-    targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
-    if (  coords[0] < tc_nhalo ||
-	  coords[1] < tc_nhalo || 
-	  coords[2] < tc_nhalo ||
-	  coords[0] >= tc_Nall[X]-tc_nhalo || 
-	  coords[1] >= tc_Nall[Y]-tc_nhalo ||  
-	  coords[2] >= tc_Nall[Z]-tc_nhalo) halo_site=1;
-  }
   
-  // if not a halo site:
-  if (  !halo_site){ 
+#if VVL == 1    
+  /*restrict operation to the interior lattice sites*/ 
+  targetCoords3D(coords,tc_Nall,baseIndex); 
+  if (coords[0] >= (tc_nhalo) && 
+      coords[1] >= (tc_nhalo) && 
+      coords[2] >= (tc_nhalo) &&
+      coords[0] < tc_Nall[X]-(tc_nhalo) &&  
+      coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
+      coords[2] < tc_Nall[Z]-(tc_nhalo) )
+#endif
     
-    for (n = 0; n < tc_ndist; n++) {
+    { 
       
       
-      for (p=0;p<NVEL;p++){
-	
-	
-	__targetILP__(vecIndex){
-	  targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
-	  shiftIndex=targetIndex3D(coords[0]-tc_cv[p][0],coords[1]-tc_cv[p][1],coords[2]-tc_cv[p][2],tc_Nall);
-	  t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL,baseIndex+vecIndex , n, p)] 
-	    = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, p)];
+      
+      /* work out which sites in this chunk should be included */
+      int includeSite[VVL];
+      __targetILP__(iv) includeSite[iv]=0;
+      
+      int coordschunk[3][VVL];
+      
+      __targetILP__(iv){
+	for(i=0;i<3;i++){
+	  targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	  coordschunk[i][iv]=coords[i];
 	}
+      }
+      
+      __targetILP__(iv){
+	
+	if ((coordschunk[0][iv] >= (tc_nhalo) &&
+	     coordschunk[1][iv] >= (tc_nhalo) &&
+	     coordschunk[2][iv] >= (tc_nhalo) &&
+	     coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
+	     coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
+	     coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
+	  
+	  includeSite[iv]=1;
+      }
+      
+      
+      
+      int index1[VVL];
+      for (n = 0; n < tc_ndist; n++) {
+	
+	
+	for (p=0;p<NVEL;p++){
+	  
+	  
+	  /* get neighbour indices for this chunk */
+	  __targetILP__(iv) index1[iv] = 
+	    targetIndex3D(coordschunk[0][iv]-tc_cv[p][0],
+			  coordschunk[1][iv]-tc_cv[p][1],
+			  coordschunk[2][iv]-tc_cv[p][2],tc_Nall);
+	  
+	  
+	  /* perform propagation for to all non-halo sites */
+	  __targetILP__(iv){
+	    
+	    if(includeSite[iv])
+	      {
+		
+		t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL,baseIndex+iv , n, p)] 
+		  = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, index1[iv], n, p)];
+		
+	      }
+	    
+	  }
+	}
+	
+	
+	
       }
       
       
       
     }
-    
-    
-    
-  }
-  
-  
-  else { //mopping up chunks that include halo sites
-    
-    
-    __targetILP__(vecIndex){
-      
-      halo_site=0;
-      
-      targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
-      if (  coords[0] < tc_nhalo ||
-	    coords[1] < tc_nhalo || 
-	    coords[2] < tc_nhalo ||
-	    coords[0] >= tc_Nall[X]-tc_nhalo || 
-	    coords[1] >= tc_Nall[Y]-tc_nhalo ||  
-	    coords[2] >= tc_Nall[Z]-tc_nhalo) halo_site=1;
-      
-      
-      if(!halo_site){
-	
-	for (n = 0; n < tc_ndist; n++) {
-	  
-	  
-	  for (p=0;p<NVEL;p++){
-	    
-	    
-	    targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
-	    shiftIndex=targetIndex3D(coords[0]-tc_cv[p][0],coords[1]-tc_cv[p][1],coords[2]-tc_cv[p][2],tc_Nall);
-	    t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+vecIndex, n, p)] 
-	      = t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, shiftIndex, n, p)];
-	    
-	  }
-	  
-	}
-      }
-      else if (  coords[0] < tc_Nall[X] &&
-		 coords[1] < tc_Nall[Y] && 
-		 coords[2] < tc_Nall[Z]) 
-	{ //direct copy of t_f to t_fprime for halo sites 
-	  
-	  for (n = 0; n < tc_ndist; n++) {
-	    
-	    int ip;
-	    for (ip=0;ip<NVEL;ip++){
-	      
-	      targetCoords3D(coords,tc_Nall,baseIndex+vecIndex);
-	      t_fprime[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+vecIndex, n, ip)] 
-		= t_f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+vecIndex, n, ip)]; 
-	      
-	      
-	    }
-	    
-	    
-	    
-	  }
-	  
-	  
-	}
-    }
-  }
   
   
   return;
   
   
 }
+
 
 __targetEntry__  void lb_propagate_d3q19_lattice(lb_t* t_lb)
 {
