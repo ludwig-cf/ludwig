@@ -15,9 +15,15 @@
 #
 ##############################################################################
 
-CC=gcc
+CC=gcc-4.9
+#CC=gcc
 MPICC=mpicc
-CFLAGS=-O2 -Wall -DKEEPHYDROONTARGET -DKEEPFIELDONTARGET
+CFLAGS=-O2 -Wall #-DKEEPHYDROONTARGET -DKEEPFIELDONTARGET # -fopenmp -DVVL=4 -DAOSOA 
+#CFLAGS=-g -Wall -DKEEPHYDROONTARGET -DKEEPFIELDONTARGET -fopenmp -DVVL=4 -DAOSOA
+
+
+
+LDFLAGS= #-fopenmp
 
 AR = ar
 ARFLAGS = -cru
@@ -25,3 +31,4 @@ ARFLAGS = -cru
 LAUNCH_SERIAL_CMD=
 LAUNCH_MPI_CMD=mpirun
 LAUNCH_MPI_NP_SWITCH=-np
+
