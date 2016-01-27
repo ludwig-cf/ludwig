@@ -766,7 +766,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
       
-#pragma omp parallel for collapse(3)
+      //#pragma omp parallel for collapse(3)
       for (ii = 0; ii < nhalo; ii++) {
 	for (jj = 0; jj < nhalo; jj++) {
 	  for (kk = 0; kk < N[Z]; kk++) {
@@ -883,7 +883,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
       
-#pragma omp parallel for collapse(3)
+      //#pragma omp parallel for collapse(3)
       for (ii = 0; ii < nhalo; ii++) {
 	for (jj = 0; jj < N[Y]; jj++) {
 	  for (kk = 0; kk < nhalo; kk++) {
@@ -938,7 +938,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
     {
       
       
-      #pragma omp parallel for collapse(3)
+      //#pragma omp parallel for collapse(3)
       for (ii = 0; ii < Nall[X]; ii++) {
 	for (jj = 0; jj < nhalo; jj++) {
 	  for (kk = 0; kk < nhalo; kk++) {
