@@ -603,7 +603,12 @@ int lb_halo(lb_t * lb) {
   assert(lb);
 
   if (lb_order(lb) == MODEL) {
+#ifndef OLD_SHIT
+    lb_halo_via_copy(lb);
+#else
+    /* PENDING NSIMDVL = 1 only */
     lb_halo_via_struct(lb);
+#endif
   }
   else {
     /* MODEL_R only has ... */

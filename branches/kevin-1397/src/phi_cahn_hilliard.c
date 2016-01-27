@@ -532,6 +532,212 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
  *
  *****************************************************************************/
 
+#ifndef OLD_SHIT
+static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
+
+  int      nhalo;
+  int      nlocal[3];      /* Local system size */
+  int      noffset[3];     /* Local starting offset */
+  int ip;                  /* Index of the plane */
+  int ic;                  /* Index x location in real system */
+  int jc, kc, j1, j2;
+  int n, n1, n2;
+  int index;
+  double dy;               /* Displacement for current transforamtion */
+  double fre, frw;         /* Fractional displacements */
+  double t;                /* Time */
+  int jdy;                 /* Integral part of displacement */
+
+  /* Messages */
+
+  int nsend;               /* N send data */
+  int nrecv;               /* N recv data */
+  int nrank_s[3];          /* send ranks */
+  int nrank_r[3];          /* recv ranks */
+  const int tag0 = 1254;
+  const int tag1 = 1255;
+
+  double * sbufe = NULL;   /* Send buffer */
+  double * sbufw = NULL;   /* Send buffer */
+  double * rbufe = NULL;   /* Interpolation buffer */
+  double * rbufw = NULL;
+
+  MPI_Comm    le_comm;
+  MPI_Request rreq[4], sreq[4];
+  MPI_Status  status[4];
+
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  le_comm = le_communicator();
+
+  /* Allocate the temporary buffer */
+
+  nsend = nf*nlocal[Y]*(nlocal[Z] + 2*nhalo);
+  nrecv = nf*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
+
+  sbufe = (double *) malloc(nsend*sizeof(double));
+  sbufw = (double *) malloc(nsend*sizeof(double));
+
+  if (sbufe == NULL) fatal("malloc(sbufe) failed\n");
+  if (sbufw == NULL) fatal("malloc(sbufw) failed\n");
+
+  rbufe = (double *) malloc(nrecv*sizeof(double));
+  rbufw = (double *) malloc(nrecv*sizeof(double));
+
+  if (rbufe == NULL) fatal("malloc(rbufe) failed\n");
+  if (rbufw == NULL) fatal("malloc(rbufw) failed\n");
+
+  /* -1.0 as zero required for fisrt step; this is a 'feature'
+   * to ensure the regression tests stay te same */
+
+  t = 1.0*get_step() - 1.0;
+
+  /* One round of communication for each plane */
+
+  for (ip = 0; ip < le_get_nplane_local(); ip++) {
+
+    ic = le_plane_location(ip);
+
+    /* Work out the displacement-dependent quantities */
+
+    dy = +t*le_plane_uy(t);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    frw  = dy - jdy;
+
+    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1;
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    assert(j1 > 0);
+    assert(j1 <= N_total(Y));
+
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position 1. */
+
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+    assert(j2 > 0);
+    assert(j2 <= nlocal[Y]);
+
+    n1 = nf*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = nf*j2*(nlocal[Z] + 2*nhalo);
+
+    /* Post receives, sends (the wait is later). */
+
+    MPI_Irecv(rbufw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, rreq);
+    MPI_Irecv(rbufw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, rreq + 1);
+
+    /* Load send buffer from fw */
+    /* (ic+1,j2,1-nhalo) and (ic+1,1,1-nhalo) */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = le_site_index(ic+1, jc, kc);
+	for (n = 0; n < nf; n++) {
+	  j1 = nf*(jc - 1)*(nlocal[Z] + 2*nhalo) + nf*(kc + nhalo - 1) + n;
+	  assert(j1 >= 0 && j1 < nsend);
+	  sbufw[j1] = fw[addr_rank1(le_nsites(), nf, index, n)];
+	}
+      }
+    }
+
+    j1 = (j2 - 1)*nf*(nlocal[Z] + 2*nhalo);
+    MPI_Issend(sbufw + j1, n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm, sreq);
+    MPI_Issend(sbufw     , n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm, sreq+1);
+
+    /* OTHER WAY */
+
+    kc = 1 - nhalo;
+
+    dy = -t*le_plane_uy(t);
+    dy = fmod(dy, L(Y));
+    jdy = floor(dy);
+    fre  = dy - jdy;
+
+    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
+     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+
+    jc = noffset[Y] + 1;
+    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+
+    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+
+    /* Local quantities: given a local starting index j2, we receive
+     * n1 + n2 sites into the buffer, and send n1 sites starting with
+     * j2, and the remaining n2 sites from starting position nhalo. */
+
+    j2 = 1 + (j1 - 1) % nlocal[Y];
+
+    n1 = nf*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
+    n2 = nf*j2*(nlocal[Z] + 2*nhalo);
+
+    /* Post new receives, sends, and wait for whole lot to finish. */
+
+    MPI_Irecv(rbufe,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, rreq + 2);
+    MPI_Irecv(rbufe+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm, rreq + 3);
+
+    /* Load send buffer from fe */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = le_site_index(ic, jc, kc);
+	for (n = 0; n < nf; n++) {
+	  j1 = (jc - 1)*nf*(nlocal[Z] + 2*nhalo) + nf*(kc + nhalo - 1) + n;
+	  assert(j1 >= 0 && jc < nsend);
+	  sbufe[j1] = fe[addr_rank1(le_nsites(), nf, index, n)];
+	}
+      }
+    }
+
+    j1 = (j2 - 1)*nf*(nlocal[Z] + 2*nhalo);
+    MPI_Issend(sbufe + j1, n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm, sreq+2);
+    MPI_Issend(sbufe     , n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm, sreq+3);
+
+    MPI_Waitall(4, rreq, status);
+
+    /* Now we've done all the communication, we can update the fluxes
+     * using the average of the local value and interpolated buffer
+     * value. */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo);
+      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (n = 0; n < nf; n++) {
+	  index = le_site_index(ic,jc,kc);
+	  fe[addr_rank1(le_nsites(), nf, index, n)]
+	    = 0.5*(fe[addr_rank1(le_nsites(), nf, index, n)]
+		   + frw*rbufw[nf*(j1 + kc+nhalo-1) + n]
+		   + (1.0-frw)*rbufw[nf*(j2 + kc+nhalo-1) + n]);
+	  index = le_site_index(ic+1,jc,kc);
+	  fw[addr_rank1(le_nsites(), nf, index, n)]
+	    = 0.5*(fw[addr_rank1(le_nsites(), nf, index, n)]
+		   + fre*rbufe[nf*(j1 + kc+nhalo-1) + n]
+		   + (1.0-fre)*rbufe[nf*(j2 + kc+nhalo-1) + n]);
+	}
+      }
+    }
+
+    /* Clear the sends */
+    MPI_Waitall(4, sreq, status);
+
+    /* Next plane */
+  }
+
+  free(sbufw);
+  free(sbufe);
+  free(rbufw);
+  free(rbufe);
+
+  return 0;
+}
+#else
 static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   int      nhalo;
@@ -557,7 +763,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   MPI_Request request[8];
   MPI_Status  status[8];
 #ifndef OLD_SHIT
-  assert(0);
+  assert(1);
 #endif
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -691,6 +897,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   return 0;
 }
+#endif
 
 /*****************************************************************************
  *
@@ -741,6 +948,14 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 		- flux->fy[addr_rank0(le_nsites(), index - ys)]
 		+ wz*flux->fz[addr_rank0(le_nsites(), index)]
 		- wz*flux->fz[addr_rank0(le_nsites(), index - 1)]);
+	/*verbose("%2d %2d %2d %14.7e %8.1e %8.1e %8.1e %8.1e %8.1e %8.1e\n",
+	       ic, jc, kc, phi,
+	       flux->fe[addr_rank0(le_nsites(), index)],
+	       flux->fw[addr_rank0(le_nsites(), index)],
+	       flux->fy[addr_rank0(le_nsites(), index)],
+	       flux->fy[addr_rank0(le_nsites(), index -ys)],
+	       flux->fz[addr_rank0(le_nsites(), index)],
+	       flux->fz[addr_rank0(le_nsites(), index-1)] );*/
 #else
 	phi -= (+ flux->fe[index] - flux->fw[index]
 		+ flux->fy[index] - flux->fy[index - ys]

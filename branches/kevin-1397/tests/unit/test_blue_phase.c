@@ -294,7 +294,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   /* What we can test everywhere is that the q tensor is symmetric
    * and traceless. */
 
-  info("Check q tensor is symmetric and traceless...");
+  /* info("Check q tensor is symmetric and traceless...");*/
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -312,13 +312,13 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
     }
   }
 
-  info("ok\n");
+  /* info("ok\n");*/
 
 
   /* Now the free energy density. This requires that the gradients are
    * set. These values use the standard 27-point stencil in 3-d. */
 
-  info("Free energy density\n");
+  /* info("Free energy density\n");*/
 
   blue_phase_set_xi(xi);
   field_halo(fq);
@@ -338,9 +338,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   bluePhaseKernelConstants_t * pcon = (bluePhaseKernelConstants_t *) vpcon;
 
   value = blue_phase_compute_fed(q, dq, pcon);
-  info("Check F( 1, 1, 1)...");
+  /* info("Check F( 1, 1, 1)...");*/
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -362,9 +362,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq, pcon);
-  info("Check F( 1, 1, 3)...");
+  /* info("Check F( 1, 1, 3)..."); */
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 1;
   jc = 12;
@@ -374,9 +374,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq, pcon);
-  info("Check F( 1,12, 4)...");
+  /* info("Check F( 1,12, 4)...");*/
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -386,15 +386,15 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
   value = blue_phase_compute_fed(q, dq, pcon);
-  info("Check F( 2, 7, 6)...");
+  /* info("Check F( 2, 7, 6)...");*/
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
 
 
   /* Now the molecular field */
 
-  info("Molecular field\n");
+  /* info("Molecular field\n");*/
 
   ic = 1;
   jc = 1;
@@ -407,13 +407,13 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   multiply_gradient(dq, 3.0);
   multiply_delsq(dsq, 1.5);
   blue_phase_compute_h(q, dq, dsq, h, pcon);
-  info("Check h( 1, 1, 1)...");
+  /* info("Check h( 1, 1, 1)...");*/
   test_assert(fabs(h[X][X] - 0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] - 0.0171194) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Z] - 0.0171194) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Y] - 0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] - 0.0171194) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
 
   ic = 1;
@@ -493,7 +493,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   /* info("ok\n");*/
 
 
-  info("Check molecular field tensor is symmetric...");
+  /* info("Check molecular field tensor is symmetric...");*/
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -509,12 +509,12 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
     }
   }
 
-  info("ok\n");
+  /* info("ok\n");*/
 
 
   /* Finally, the stress. This is not necessarily symmetric. */
 
-  info("Thermodynamic contribution to stress\n");
+  /* info("Thermodynamic contribution to stress\n");*/
 
   ic = 1;
   jc = 1;
@@ -540,7 +540,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   test_assert(fabs(dsq[Z][X] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
 
   ic = 1;
@@ -556,7 +556,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   blue_phase_compute_h(q, dq, dsq, h, pcon);
   blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
-  info("check s( 1, 1, 2)...");
+  /* info("check s( 1, 1, 2)...");*/
   test_assert(fabs(dsq[X][X] -  7.375082e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
@@ -566,7 +566,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -2.871796e-02) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -5.329164e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -581,7 +581,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   blue_phase_compute_h(q, dq, dsq, h, pcon);
   blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
-  info("check s( 1, 1, 3)...");
+  /* info("check s( 1, 1, 3)...");*/
   test_assert(fabs(dsq[X][X] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  9.837494e-03) < TEST_FLOAT_TOLERANCE);
@@ -591,7 +591,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   test_assert(fabs(dsq[Z][X] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 1;
   jc = 12;
@@ -606,7 +606,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   blue_phase_compute_h(q, dq, dsq, h, pcon);
   blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
-  info("check s( 1,12, 4)...");
+  /* info("check s( 1,12, 4)...");*/
   test_assert(fabs(dsq[X][X] -  2.779621e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  7.180623e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
@@ -616,7 +616,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -631,7 +631,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   blue_phase_compute_h(q, dq, dsq, h, pcon);
   blue_phase_compute_stress(q, dq, h, dsq, pcon);
 
-  info("check s( 2, 7, 6)...");
+  /* info("check s( 2, 7, 6)...");*/
   test_assert(fabs(dsq[X][X] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[X][Z] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
@@ -641,7 +641,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
 
   /* Electric field test */
@@ -649,9 +649,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   /* Default electric field should be zero */
 
   value = blue_phase_dimensionless_field_strength();
-  info("Dimensionless electric field is initially zero...");
+  /* info("Dimensionless electric field is initially zero...");*/
   test_assert(fabs(value - 0.0) < TEST_DOUBLE_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   field[X] = 0.0;
   field[Y] = 0.0;
@@ -663,9 +663,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   e = sqrt(27.0*epsilon*1.0/(32.0*pi_*a0*gamma));
 
   value = blue_phase_dimensionless_field_strength();
-  info("Electric field (0.0, 0.0, 1.0) gives dimensionless field %14.7e...", e);
+  /* info("Electric field (0.0, 0.0, 1.0) gives dimensionless field %14.7e...", e);*/
   test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   field[X] = 1.0;
   field[Y] = 1.0;
@@ -689,9 +689,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   physics_e0_set(field);
   value = blue_phase_dimensionless_field_strength();
-  info("Set dimensionless field 0.2...");
+  /* info("Set dimensionless field 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   /* Note the electric field remains switched on so... */
   blue_phase_set_kernel_constants();
@@ -710,9 +710,9 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
 
   field_grad_tensor_grad(fqgrad, index, dq);
   value = blue_phase_compute_fed(q, dq, pcon);
-  info("Check F( 1, 1, 1)... %14.7e\n ", value);
+  /* info("Check F( 1, 1, 1)... %14.7e\n ", value);*/
   test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;

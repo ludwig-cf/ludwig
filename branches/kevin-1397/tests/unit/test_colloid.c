@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -38,6 +38,7 @@ void test_colloid_binary_io(colloid_state_t s, const char * filename);
 int test_colloid_suite(void) {
 
   int rank;
+  char filename[FILENAME_MAX];
 
   colloid_state_t sref = {1, 3, 2, 4, 5, 6, 7, 8, 9,
 			  {10, 11},
@@ -70,10 +71,16 @@ int test_colloid_suite(void) {
    * change it without sorting out the padding. */
   assert(sizeof(colloid_state_t) == 512);
 
-  test_colloid_ascii_io(sref, tmp_ascii);
-  test_colloid_binary_io(sref, tmp_binary);
-
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+  sprintf(filename, "%s-%3.3d", tmp_ascii, rank);
+  test_colloid_ascii_io(sref, filename);
+  remove(filename);
+
+  sprintf(filename, "%s-%3.3d", tmp_binary, rank);
+  test_colloid_binary_io(sref, filename);
+  remove(filename);
+  
   if (rank == 0) printf("PASS     ./unit/test_colloid\n");
 
   return 0;
@@ -152,7 +159,7 @@ void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
     n = colloid_state_read_binary(&s, fp);
     fclose(fp);
     assert(s.rebuild == 1);
-    /* printf("read binary item from %s\n", filename);*/
+    /* printf("read binary item from %s %d\n", filename, n);*/
     assert(n == 0);
   }
 
