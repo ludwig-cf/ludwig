@@ -16,7 +16,7 @@
 # This is intended for the nightly test, so this copy must be here
 
 echo "TEST --> SIMD VECTOR LENGTH TWO"
-cp ../config/lunix-nvcc-simdvl2.mk ../config.mk
+cp ../config/lunix-gcc-simdvl2.mk ../config.mk
 make clean
 make compile-run-serial-d3q15
 make compile-run-serial-d3q19
