@@ -89,6 +89,7 @@ sed -i~ 's/d2q9\ R/d2q9/' test-diff-tmp.ref
 sed -i~ 's/d3q15\ R/d3q15/' test-diff-tmp.ref
 sed -i~ 's/d3q19\ R/d3q19/' test-diff-tmp.ref
 sed -i~ '/GPU\ INFO/d' test-diff-tmp.ref
+sed -i~ '/SIMD\ vector/d' test-diff-tmp.ref
 
 sed '/call)/d' $2 > test-diff-tmp.log
 sed -i~ '/calls)/d' test-diff-tmp.log
@@ -101,6 +102,7 @@ sed -i~ 's/d2q9\ R/d2q9/' test-diff-tmp.log
 sed -i~ 's/d3q15\ R/d3q15/' test-diff-tmp.log
 sed -i~ 's/d3q19\ R/d3q19/' test-diff-tmp.log
 sed -i~ '/GPU\ INFO/d' test-diff-tmp.log
+sed -i~ '/SIMD\ vector/d' test-diff-tmp.log
 
 # Here we use the floating point diff to measure "success"
 
