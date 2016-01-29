@@ -112,13 +112,11 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
     advection_bcs_no_normal_flux(nf, flux, map);
   }
 
-
   blue_phase_be_update(fq, fq_grad, hydro, flux, map, noise);
 
   TIMER_start(ADVECTION_BCS_MEM);
   advflux_free(flux);
   TIMER_stop(ADVECTION_BCS_MEM);
-
 
   return 0;
 }
@@ -147,7 +145,7 @@ __targetHost__ __target__ void blue_phase_compute_h_vec_inline(double q[3][3][VV
 						    bluePhaseKernelConstants_t* pbpc) {
 
   int iv=0;
-  int ia, ib, ic, id;
+  int ia, ib, ic;
 
   double q2[VVL];
   double e2[VVL];
@@ -533,7 +531,8 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
   return;
 }
 
-static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro,
+static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad,
+				hydro_t * hydro,
 				advflux_t * flux, map_t * map,
 				noise_t * noise) {
   int nlocal[3];
@@ -542,7 +541,6 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   double gamma;
 
-  double chi[NQAB], chi_qab[3][3];
   double tmatrix[3][3][NQAB];
   double kt, var = 0.0;
 
@@ -556,7 +554,6 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   field_nf(fq, &nf);
   assert(nf == NQAB);
 
-  double xi = blue_phase_get_xi();
   physics_lc_gamma_rot(&gamma);
 
   /* Get kBT, variance of noise and set basis of traceless,
@@ -660,7 +657,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   /* launch update across lattice on target*/
 
-  double* hydrou;
+  double* hydrou = NULL;
   double* qdata;
   double* graddata;
   double*  graddelsq;
@@ -669,7 +666,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   double*  fluxy;
   double*  fluxz;
 
-  copyFromTarget(&hydrou,&(hydro->tcopy->u),sizeof(double*)); 
+  if (hydro) copyFromTarget(&hydrou,&(hydro->tcopy->u),sizeof(double*)); 
   copyFromTarget(&qdata,&(fq->tcopy->data),sizeof(double*)); 
   copyFromTarget(&graddata,&(fq_grad->tcopy->grad),sizeof(double*)); 
   copyFromTarget(&graddelsq,&(fq_grad->tcopy->delsq),sizeof(double*)); 
