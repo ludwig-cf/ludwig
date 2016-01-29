@@ -1,9 +1,7 @@
-Welcome to Ludwig v0.1.26 (Serial version running on 1 process)
+Welcome to Ludwig v0.4.5 (Serial version running on 1 process)
 
-The SVN revision details are: 2424
-Note assertions via standard C assert() are on.
-
-Read 36 user parameters from ./serial-rest-ec2.inp
+The SVN revision details are: 
+Read 36 user parameters from serial-rest-ec2.inp
 
 System details
 --------------
@@ -24,13 +22,14 @@ Parameters:
 Electrokinetic species:     2
 Boltzmann factor:           1.0000000e+05 (T =  1.0000000e-05)
 Unit charge:                1.0000000e+00
-Reference permittivity:     3.3000000e+03
+Permittivity:               3.3000000e+03
 Bjerrum length:             2.4114385e+00
 Valency species 0:          1
 Diffusivity species 0:      1.0000000e-02
 Valency species 1:         -1
 Diffusivity species 1:      1.0000000e-02
 Number of multisteps:       1
+Number of skipsteps:        1
 Diffusive accuracy in NPE:  0.0000000e+00
 Relative tolerance:         1.1920929e-07
 Absolute tolerance:         1.1920929e-09
@@ -46,13 +45,14 @@ Shear viscosity               1.00000e-01
 Bulk viscosity                1.00000e-01
 Temperature                   1.00000e-05
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
 Model:            d3q19  
-SIMD vector len:  1
+SIMD vector len:  2
 Number of sets:   1
 Halo type:        full
 Input format:     binary
@@ -111,43 +111,43 @@ Initial conditions.
 
 Scalars - total mean variance min max
 [rho]       32715.00  1.00000000000  5.7030056e-09  0.99976080725  1.00025312238
-[psi]  3.3983575e-08 -5.9491640e-09  1.3481725e-07
+[psi]  7.0651926e-14 -5.9502011e-04  1.3481622e-02
 [rho]  3.2726000e+01  1.8867925e-04  1.0413963e-03
 [rho]  3.2726000e+01  0.0000000e+00  1.0436820e-03
-[elc]  2.3917500e-15 -2.2857042e-06  1.8867925e-04
+[elc]  2.4333834e-15 -2.2857042e-06  1.8867925e-04
 
 Momentum - x y z
-[total   ]  4.1745393e-13  3.4425166e-14  5.0965010e-01
-[fluid   ]  4.1611853e-13  3.4972025e-14  4.5904331e-01
-[colloids]  1.3354049e-15 -5.4685919e-16  5.0606799e-02
+[total   ]  4.2678378e-13  1.5332055e-14  5.0965010e-01
+[fluid   ]  4.2549991e-13  1.6566609e-14  4.5904331e-01
+[colloids]  1.2838668e-15 -1.2345537e-15  5.0606799e-02
 
 Starting time step loop.
 
 Particle statistics:
 
 Colloid velocities - x y z
-[minimum ]  6.4302806e-18  2.6297952e-17  5.3437475e-04
-[maximum ]  6.4302806e-18  2.6297952e-17  5.3437475e-04
+[minimum ] -5.3255811e-18  1.3036179e-17  5.3437475e-04
+[maximum ] -5.3255811e-18  1.3036179e-17  5.3437475e-04
 
-SOR solver
-Norm of residual 4.49661e-10 at 70 iterations
+SOR solver converged to relative tolerance
+SOR residual per site  3.5025608e-12 at 100 iterations
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]       32715.00  1.00000000000  2.7668474e-09  0.99980584626  1.00019621357
-[psi]  4.0063501e-05 -4.6570935e-09  1.3533562e-07
+[psi]  6.1910438e-14 -5.8797345e-04  1.3411298e-02
 [rho]  3.2726000e+01  1.8867925e-04  1.0421620e-03
 [rho]  3.2726000e+01  0.0000000e+00  1.0451127e-03
-[elc]  2.4635242e-15 -3.6490067e-06  1.8867925e-04
-[psi_zeta]  8.3028724e-08
+[elc]  2.4656926e-15 -3.6490067e-06  1.8867925e-04
+[psi_zeta]  8.1806083e-03
 
 Free energies - timestep f v f/v f_s a f_s/a
-[fe]             40 -5.1748727568e-03  3.2715000000e+04 -1.5818042967e-07  0.0000000000e+00
+[fe]             40 -5.1748727507e+02  3.2715000000e+04 -1.5818042949e-02  0.0000000000e+00
 
 Momentum - x y z
-[total   ]  4.3175455e-13  6.4176761e-14  5.0965010e-01
-[fluid   ]  4.3294882e-13  6.2748418e-14  4.8276501e-01
-[colloids] -1.1942616e-15  1.4283438e-15  2.6885095e-02
+[total   ]  4.4305949e-13  3.7138259e-14  5.0965010e-01
+[fluid   ]  4.4431472e-13  3.6779607e-14  4.8276501e-01
+[colloids] -1.2552348e-15  3.5865180e-16  2.6885095e-02
 
 Velocity - x y z
 [minimum ] -1.0708508e-04 -1.0708508e-04 -4.9689535e-05
@@ -159,19 +159,21 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.291      2.291      2.291   2.290874 (1 call)
-      Time step loop:      0.111      0.130      2.252   0.112607 (20 calls)
-         Propagation:      0.002      0.002      0.033   0.001650 (20 calls)
-           Collision:      0.031      0.033      0.632   0.031587 (20 calls)
-       Lattice halos:      0.000      0.000      0.024   0.000298 (80 calls)
+               Total:      4.670      4.670      4.670   4.670000 (1 call)
+      Time step loop:      0.220      0.260      4.620   0.231000 (20 calls)
+         Propagation:      0.000      0.010      0.110   0.005500 (20 calls)
+    Propagtn (krnl) :      0.000      0.010      0.110   0.005500 (20 calls)
+           Collision:      0.040      0.040      0.800   0.040000 (20 calls)
+   Collision (krnl) :      0.040      0.040      0.800   0.040000 (20 calls)
+       Lattice halos:      0.000      0.010      0.060   0.000600 (100 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (20 calls)
-              Forces:      0.000      0.000      0.000   0.000014 (20 calls)
-             Rebuild:      0.001      0.001      0.021   0.001065 (20 calls)
-                 BBL:      0.001      0.001      0.012   0.000602 (20 calls)
-      Particle halos:      0.000      0.000      0.001   0.000067 (20 calls)
-   Force calculation:      0.000      0.002      0.041   0.001037 (40 calls)
-          phi update:      0.000      0.000      0.000   0.000001 (20 calls)
-    Poisson equation:      0.061      0.078      1.240   0.061984 (20 calls)
-       Nernst Planck:      0.011      0.012      0.226   0.011314 (20 calls)
-               Free1:      0.000      0.000      0.008   0.000202 (40 calls)
+              Forces:      0.000      0.000      0.000   0.000000 (20 calls)
+             Rebuild:      0.000      0.010      0.030   0.001500 (20 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (20 calls)
+      Particle halos:      0.000      0.000      0.000   0.000000 (20 calls)
+   Force calculation:      0.000      0.030      0.540   0.013500 (40 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (20 calls)
+    Poisson equation:      0.100      0.110      2.120   0.106000 (20 calls)
+       Nernst Planck:      0.040      0.070      0.900   0.045000 (20 calls)
+               Free1:      0.000      0.010      0.010   0.000250 (40 calls)
 Ludwig finished normally.
