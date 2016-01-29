@@ -39,7 +39,7 @@
  * match hardware, or in 2d) */
 
 #if !defined (SIMDVL)
-#define SIMDVL 1
+#define SIMDVL VVL
 #endif
 
 

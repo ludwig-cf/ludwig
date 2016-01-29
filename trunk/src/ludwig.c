@@ -409,9 +409,6 @@ void ludwig_run(const char * inputfile) {
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-  double* tmpptr;
-
-
   /* Report initial statistics */
 
   pe_subdirectory(subdirectory);
@@ -719,53 +716,50 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
 					 ludwig->map, ludwig->noise_phi);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
-      if (ludwig->q) {
-	if (ludwig->hydro)
-	  {
 
-      TIMER_start(TIMER_U_HALO);
+      if (ludwig->q) {
+	if (ludwig->hydro) {
+
+	  TIMER_start(TIMER_U_HALO);
 	    
 #ifdef LB_DATA_SOA 
 	    
 #ifndef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 #endif
-	    /* perform SoA halo exchange */
-	    hydro_t* t_hydro = ludwig->hydro->tcopy; 
-	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
-	    halo_SoA(ludwig->hydro->nf, 1, 0, tmpptr);
+	  /* perform SoA halo exchange */
+	  hydro_t* t_hydro = ludwig->hydro->tcopy; 
+	  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
+	  halo_SoA(ludwig->hydro->nf, 1, 0, tmpptr);
 
 #ifndef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+	  copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 	    
 #endif
 
 #else
 
 #ifdef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+	  copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 #endif
 
-	    hydro_u_halo(ludwig->hydro);
+	  hydro_u_halo(ludwig->hydro);
 
-	    #ifdef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+#ifdef KEEPHYDROONTARGET
+	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 #endif
 
 #endif
 
-	    TIMER_stop(TIMER_U_HALO);
+	  TIMER_stop(TIMER_U_HALO);
+	}
 
-	    colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	    blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
+	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
+	blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
 	    			 ludwig->map, ludwig->noise_rho);
-	  }
-
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
-
-
     }
 
 
@@ -849,10 +843,11 @@ void ludwig_run(const char * inputfile) {
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions are active */
 
-
-    TIMER_start(TIMER_PROPAGATE);
-    lb_propagation(ludwig->lb->tcopy);
-    TIMER_stop(TIMER_PROPAGATE);
+    if (ludwig->hydro) {
+      TIMER_start(TIMER_PROPAGATE);
+      lb_propagation(ludwig->lb->tcopy);
+      TIMER_stop(TIMER_PROPAGATE);
+    }
     TIMER_stop(TIMER_STEPS);
 
     /* Configuration dump */
