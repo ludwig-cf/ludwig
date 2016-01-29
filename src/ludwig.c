@@ -565,8 +565,8 @@ void ludwig_run(const char * inputfile) {
 
     /* perform SoA halo exchange */
     field_t* t_field = NULL; 
-    t_field = ludwig->q->tcopy;
     double* tmpptr;
+    t_field = ludwig->q->tcopy;
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
     halo_SoA(ludwig->q->nf, 1, 0, tmpptr);
 
@@ -728,6 +728,7 @@ void ludwig_run(const char * inputfile) {
 	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 #endif
 	  /* perform SoA halo exchange */
+	  double* tmpptr;
 	  hydro_t* t_hydro = ludwig->hydro->tcopy; 
 	  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
 	  halo_SoA(ludwig->hydro->nf, 1, 0, tmpptr);
@@ -802,6 +803,7 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef LB_DATA_SOA
       /* perform SoA halo exchange */
+      double* tmpptr;
       copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
       halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
 #else
