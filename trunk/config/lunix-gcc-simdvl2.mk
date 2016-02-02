@@ -9,7 +9,7 @@
 
 CC=gcc
 MPICC=mpicc
-CFLAGS=-O3 -DNDEBUG -DVVL=2
+CFLAGS=-O3 -DVVL=2
 
 AR = ar
 ARFLAGS = -cru
