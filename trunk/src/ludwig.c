@@ -1385,7 +1385,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if(strcmp(description, "lc_droplet") == 0){
     
     /* liquid crystal droplet */
-    info("\nliquid crystal droplet free energy chosen\n");
+    info("\n");
+    info("Liquid crystal droplet free energy selected\n");
     
     /* first do the symmetric */
     nf = 1;      /* 1 scalar order parameter */
