@@ -23,15 +23,18 @@
 
 CC=nvcc
 MPICC=nvcc
-CFLAGS=-O2 -arch=sm_35 -x cu -dc -DKEEPFIELDONTARGET -DKEEPHYDROONTARGET -DVERBOSE_PERF_REPORT
+CFLAGS=-O2 -arch=sm_35 -x cu -dc -Xcompiler -fopenmp  -Xptxas -v  -DKEEPFIELDONTARGET -DKEEPHYDROONTARGET -DVERBOSE_PERF_REPORT  #-maxrregcount=127 #-maxrregcount=255
+#CFLAGS=-O2 -arch=sm_35 -x cu -dc  -Xptxas -v  -DKEEPFIELDONTARGET -DKEEPHYDROONTARGET -DVERBOSE_PERF_REPORT  #-maxrregcount=127 #-maxrregcount=255
 
 
 AR = ar
 ARFLAGS = -cru
-LDFLAGS=-arch=sm_35
+LDFLAGS=-arch=sm_35 -Xcompiler -fopenmp
 
 MPI_INCL=-I/opt/intel/impi/5.0.3.048/intel64/include
-MPI_LIBS=-L/opt/intel/impi/5.0.3.048/intel64/lib -lmpi
+MPI_LIBS=-L/opt/intel/impi/5.0.3.048/intel64/lib -lmpi /opt/rh/devtoolset-3/root/usr/lib/gcc/x86_64-redhat-linux/4.9.1/libgomp.a
+#-L/opt/rh/devtoolset-3/root/usr/lib/gcc/x86_64-redhat-linux/4.9.1/ -lgomp
+
 
 LAUNCH_SERIAL_CMD=
 LAUNCH_MPI_CMD=mpirun
