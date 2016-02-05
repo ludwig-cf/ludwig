@@ -772,6 +772,7 @@ void ludwig_run(const char * inputfile) {
        * colloids to present non-zero u inside particles. */
 
 #ifdef KEEPHYDROONTARGET
+      double* tmpptr;
       hydro_t* t_hydro = ludwig->hydro->tcopy; 
       copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
       targetZero(tmpptr,ludwig->hydro->nf*nSites);
@@ -803,7 +804,6 @@ void ludwig_run(const char * inputfile) {
 
 #ifdef LB_DATA_SOA
       /* perform SoA halo exchange */
-      double* tmpptr;
       copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
       halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
 #else
