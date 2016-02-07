@@ -314,7 +314,7 @@ static int le_reproject_all(lb_t * lb) {
 int le_displace_and_interpolate(lb_t * lb) {
 
   int    ic, jc, kc;
-  int    index0, index1, i0, i1;
+  int    index0, index1;
   int    nlocal[3];
   int    n, nplane, plane;
   int    p;

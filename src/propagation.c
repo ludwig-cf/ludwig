@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,14 +19,11 @@
 #include "coords.h"
 #include "propagation.h"
 #include "lb_model_s.h"
-#include "targetDP.h"
 #include "timer.h"
 
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
 static int lb_propagate_d3q19(lb_t * lb);
-static int lb_propagate_d2q9_r(lb_t * lb);
-static int lb_propagate_d3q15_r(lb_t * lb);
 
 /*****************************************************************************
  *
@@ -40,6 +37,13 @@ __targetHost__ int lb_propagation(lb_t * lb) {
 
   assert(lb);
 
+#ifndef OLD_SHIT
+
+    if (NVEL ==  9) lb_propagate_d2q9(lb);
+    if (NVEL == 15) lb_propagate_d3q15(lb);
+
+#else
+
 #ifdef LB_DATA_SOA
     if (NVEL == 9)  lb_propagate_d2q9_r(lb);
     if (NVEL == 15) lb_propagate_d3q15_r(lb);
@@ -48,148 +52,12 @@ __targetHost__ int lb_propagation(lb_t * lb) {
     if (NVEL == 15) lb_propagate_d3q15(lb);
 #endif
 
+#endif
+
   if (NVEL == 19) lb_propagate_d3q19(lb);
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  lb_propagate_d2q9
- *
- *  Follows the definition of the velocities in d2q9.c
- *
- *****************************************************************************/
-
-static int lb_propagate_d2q9(lb_t * lb) {
-
-  int ic, jc, kc, index, n, p;
-  int xstr, ystr, zstr;
-  int nhalo;
-  int nlocal[3];
-
-  assert(lb);
-  assert(NVEL == 9);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  zstr = lb->ndist*NVEL;
-  ystr = zstr*(nlocal[Z] + 2*nhalo);
-  xstr = ystr*(nlocal[Y] + 2*nhalo);
-
-  /* Forward moving distributions in memory */
-  
-  for (ic = nlocal[X]; ic >= 1; ic--) {
-    for (jc = nlocal[Y]; jc >= 1; jc--) {
-
-      kc = 1;
-      index = coords_index(ic, jc, kc);
-
-      for (n = 0; n < lb->ndist; n++) {
-	p = lb->ndist*NVEL*index + n*NVEL;
-	lb->f[p + 4] = lb->f[p +             (-1)*ystr + 4];
-	lb->f[p + 3] = lb->f[p + (-1)*xstr + (+1)*ystr + 3];
-	lb->f[p + 2] = lb->f[p + (-1)*xstr             + 2];
-	lb->f[p + 1] = lb->f[p + (-1)*xstr + (-1)*ystr + 1];
-      }
-    }
-  }
-
-  /* Backward moving distributions in memory */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-
-      kc = 1;
-      index = coords_index(ic, jc, kc);
-
-      for (n = 0; n < lb->ndist; n++) {
-	p = lb->ndist*NVEL*index + n*NVEL;
-	lb->f[p + 5] = lb->f[p             + (+1)*ystr + 5];
-	lb->f[p + 6] = lb->f[p + (+1)*xstr + (-1)*ystr + 6];
-	lb->f[p + 7] = lb->f[p + (+1)*xstr             + 7];
-	lb->f[p + 8] = lb->f[p + (+1)*xstr + (+1)*ystr + 8];
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_propagate_d3q15
- *
- *  Follows the definition of the velocities in d3q15.c
- *
- *****************************************************************************/
-
-static int lb_propagate_d3q15(lb_t * lb) {
-
-  int ic, jc, kc, index, n, p;
-  int xstr, ystr, zstr;
-  int nhalo;
-  int nlocal[3];
-
-  assert(lb);
-  assert(NVEL == 15);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  zstr = lb->ndist*NVEL;
-  ystr = zstr*(nlocal[Z] + 2*nhalo);
-  xstr = ystr*(nlocal[Y] + 2*nhalo);
-
-
-  /* Forward moving distributions */
-  
-  for (ic = nlocal[X]; ic >= 1; ic--) {
-    for (jc = nlocal[Y]; jc >= 1; jc--) {
-      for (kc = nlocal[Z]; kc >= 1; kc--) {
-
-        index = coords_index(ic, jc, kc);
-
-	for (n = 0; n < lb->ndist; n++) {
-	  p = lb->ndist*NVEL*index + n*NVEL;
-	  lb->f[p + 7] = lb->f[p                         + (-1)*zstr + 7];
-	  lb->f[p + 6] = lb->f[p             + (-1)*ystr             + 6];
-	  lb->f[p + 5] = lb->f[p + (-1)*xstr + (+1)*ystr + (+1)*zstr + 5];
-	  lb->f[p + 4] = lb->f[p + (-1)*xstr + (+1)*ystr + (-1)*zstr + 4];
-	  lb->f[p + 3] = lb->f[p + (-1)*xstr                         + 3];
-	  lb->f[p + 2] = lb->f[p + (-1)*xstr + (-1)*ystr + (+1)*zstr + 2];
-	  lb->f[p + 1] = lb->f[p + (-1)*xstr + (-1)*ystr + (-1)*zstr + 1];
-	}
-      }
-    }
-  }
-
-  /* Backward moving distributions */
-  
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = coords_index(ic, jc, kc);
-
-	for (n = 0; n < lb->ndist; n++) {
-	  p = lb->ndist*NVEL*index + n*NVEL;
-	  lb->f[p +  8] = lb->f[p                         + (+1)*zstr +  8];
-	  lb->f[p +  9] = lb->f[p             + (+1)*ystr             +  9];
-	  lb->f[p + 10] = lb->f[p + (+1)*xstr + (-1)*ystr + (-1)*zstr + 10];
-	  lb->f[p + 11] = lb->f[p + (+1)*xstr + (-1)*ystr + (+1)*zstr + 11];
-	  lb->f[p + 12] = lb->f[p + (+1)*xstr                         + 12];
-	  lb->f[p + 13] = lb->f[p + (+1)*xstr + (+1)*ystr + (-1)*zstr + 13];
-	  lb->f[p + 14] = lb->f[p + (+1)*xstr + (+1)*ystr + (+1)*zstr + 14];
-	}
-      }
-    }
-  }
-
-  return 0;
-}
-
 
 /*****************************************************************************
  *
@@ -314,18 +182,15 @@ __target__  void lb_propagate_d3q19_site(const double* __restrict__ t_f,
   
 }
 
-__targetEntry__  void lb_propagate_d3q19_lattice(lb_t* t_lb)
-{
+__targetEntry__  void lb_propagate_d3q19_lattice(lb_t* t_lb) {
 
   int baseIndex=0;
 
-  //partition binary collision kernel across the lattice on the target
   __targetTLP__(baseIndex,tc_nSites){
     lb_propagate_d3q19_site (t_lb->f,t_lb->fprime,baseIndex);
-
   }
 
-
+  return;
 }
 
 
@@ -348,16 +213,12 @@ static int lb_propagate_d3q19(lb_t * lb) {
   int nDist;
   copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
 
-  int nFields=NVEL*nDist;
 
-
-  //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
   copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(tc_cv,cv, NVEL*3*sizeof(int)); 
-  //end constant setup
 
   TIMER_start(TIMER_PROP_KERNEL);
   lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb);
@@ -383,15 +244,15 @@ static int lb_propagate_d3q19(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_propagate_d3q19_r
+ *  lb_propagate_d2q9
  *
- *  Reverse storage implementation.
+ *  General implementation.
  *
  *****************************************************************************/
 
-static int lb_propagate_d2q9_r(lb_t * lb) {
+static int lb_propagate_d2q9(lb_t * lb) {
 
-  int ic, jc, kc, index, n, p, q;
+  int ic, jc, kc, index, index1, n, p;
   int xstr, ystr, zstr;
   int nlocal[3];
 
@@ -414,12 +275,31 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
       for (jc = nlocal[Y]; jc >= 1; jc--) {
 
 	index = coords_index(ic, jc, kc);
+#ifndef OLD_SHIT
+
+	index1 = coords_index(ic, jc - 1, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 4)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 4)];
+
+	index1 = coords_index(ic - 1, jc + 1, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 3)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 3)];
+
+	index1 = coords_index(ic - 1, jc, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 2)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 2)];
+
+	index1 = coords_index(ic - 1, jc - 1, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 1)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 1)];
+#else
 	q = n*lb->nsite + index;
 
 	lb->f[4*p + q] = lb->f[4*p + q +             (-1)*ystr];
 	lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr + (+1)*ystr];
 	lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr            ];
 	lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr];
+#endif
       }
     }
   
@@ -427,12 +307,30 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
 	index = coords_index(ic, jc, kc);
+#ifndef OLD_SHIT
+	index1 = coords_index(ic, jc + 1, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 5)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 5)];
+
+	index1 = coords_index(ic + 1, jc - 1, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 6)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 6)];
+
+	index1 = coords_index(ic + 1, jc, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 7)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 7)];
+
+	index1 = coords_index(ic + 1, jc + 1, kc);
+	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 8)] =
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 8)];
+#else
 	q = n*lb->nsite + index;
 
 	lb->f[5*p + q] = lb->f[5*p + q             + (+1)*ystr];
 	lb->f[6*p + q] = lb->f[6*p + q + (+1)*xstr + (-1)*ystr];
 	lb->f[7*p + q] = lb->f[7*p + q + (+1)*xstr            ];
 	lb->f[8*p + q] = lb->f[8*p + q + (+1)*xstr + (+1)*ystr];
+#endif
       }
     }
   }
@@ -442,15 +340,15 @@ static int lb_propagate_d2q9_r(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_propagate_d3q15_r
+ *  lb_propagate_d3q15
  *
- *  Reverse memeory order implementation
+ *  General implementation
  *
  *****************************************************************************/
 
-static int lb_propagate_d3q15_r(lb_t * lb) {
+static int lb_propagate_d3q15(lb_t * lb) {
 
-  int ic, jc, kc, index, n, p, q;
+  int ic, jc, kc, index, index1, n, p;
   int xstr, ystr, zstr;
   int nlocal[3];
 
@@ -473,6 +371,30 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
 	for (kc = nlocal[Z]; kc >= 1; kc--) {
 
 	  index = coords_index(ic, jc, kc);
+#ifndef OLD_SHIT
+
+	  index1 = coords_index(ic, jc, kc - 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 7)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 7)];
+	  index1 = coords_index(ic, jc - 1, kc);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 6)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 6)];
+	  index1 = coords_index(ic - 1, jc + 1, kc + 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 5)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 5)];
+	  index1 = coords_index(ic - 1, jc + 1, kc - 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 4)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 4)];
+	  index1 = coords_index(ic - 1, jc, kc);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 3)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 3)];
+	  index1 = coords_index(ic - 1, jc - 1, kc + 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 2)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 2)];
+	  index1 = coords_index(ic - 1, jc - 1, kc - 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 1)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 1)];
+#else
 	  q = n*lb->nsite + index;
 
 	  lb->f[7*p + q] = lb->f[7*p + q                         + (-1)*zstr];
@@ -482,7 +404,7 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
 	  lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr                        ];
 	  lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr + (-1)*ystr + (+1)*zstr];
 	  lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr + (-1)*zstr];
-
+#endif
 	}
       }
     }
@@ -492,7 +414,32 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
+#ifndef OLD_SHIT
+	  index = coords_index(ic, jc, kc);
 
+	  index1 = coords_index(ic, jc, kc + 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 8)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 8)];
+	  index1 = coords_index(ic, jc + 1, kc);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 9)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 9)];
+	  index1 = coords_index(ic + 1, jc - 1, kc - 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 10)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 10)];
+	  index1 = coords_index(ic + 1, jc - 1, kc + 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 11)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 11)];
+	  index1 = coords_index(ic + 1, jc, kc);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 12)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 12)];
+	  index1 = coords_index(ic + 1, jc + 1, kc - 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 13)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 13)];
+	  index1 = coords_index(ic + 1, jc + 1, kc + 1);
+	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 14)] =
+	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 14)];
+
+#else
 	  index = coords_index(ic, jc, kc);
 	  q = n*lb->nsite + index;
 
@@ -503,6 +450,7 @@ static int lb_propagate_d3q15_r(lb_t * lb) {
 	  lb->f[12*p + q] = lb->f[12*p+q + (+1)*xstr                        ];
 	  lb->f[13*p + q] = lb->f[13*p+q + (+1)*xstr + (+1)*ystr + (-1)*zstr];
 	  lb->f[14*p + q] = lb->f[14*p+q + (+1)*xstr + (+1)*ystr + (+1)*zstr];
+#endif
 	}
       }
     }

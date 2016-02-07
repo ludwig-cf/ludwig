@@ -264,7 +264,7 @@ static int do_test_io1(void) {
 
   int nk;
   int grid[3] = {1, 1, 1};
-  char * filename = "psi-test-io";
+  const char * filename = "psi-test-io";
 
   psi_t * psi = NULL;
   io_info_t * iohandler = NULL;

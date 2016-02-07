@@ -97,7 +97,7 @@ int do_test_io_info_struct(void) {
   io_read_data(io_info, stubp, &data);
   MPI_Barrier(MPI_COMM_WORLD);
 
-  io_remove(stubp, io_info);
+  io_remove((const char *) stubp, io_info);
   MPI_Barrier(MPI_COMM_WORLD);
 
   /* ASCII */

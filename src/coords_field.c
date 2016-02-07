@@ -519,7 +519,7 @@ int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
  *
  *****************************************************************************/
 
-int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
+int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
 			    MPI_Datatype mpidata) {
   int sz;
   int ic, jc, kc;
@@ -530,10 +530,11 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   int pforw, pback;
   int nlocal[3];
 
-  void * sendforw;
-  void * sendback;
-  void * recvforw;
-  void * recvback;
+  unsigned char * buf;
+  unsigned char * sendforw;
+  unsigned char * sendback;
+  unsigned char * recvforw;
+  unsigned char * recvback;
 
   MPI_Comm comm;
   MPI_Request req[4];
@@ -542,8 +543,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   const int tagf = 2015;
   const int tagb = 2016;
 
-  assert(buf);
+  assert(mbuf);
   assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
+
+  buf = (unsigned char *) mbuf;
 
   comm = cart_comm();
   if (mpidata == MPI_CHAR) sz = sizeof(char);
@@ -554,10 +557,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   /* X-direction */
 
   nsend = nhcomm*na*nlocal[Y]*nlocal[Z];
-  sendforw = (void *) malloc(nsend*sz);
-  sendback = (void *) malloc(nsend*sz);
-  recvforw = (void *) malloc(nsend*sz);
-  recvback = (void *) malloc(nsend*sz);
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
   if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
   if (sendback == NULL) fatal("malloc(sendback) failed\n");
   if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
@@ -637,10 +640,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   /* Y direction */
 
   nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*nlocal[Z];
-  sendforw = (void *) malloc(nsend*sz);
-  sendback = (void *) malloc(nsend*sz);
-  recvforw = (void *) malloc(nsend*sz);
-  recvback = (void *) malloc(nsend*sz);
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
   if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
   if (sendback == NULL) fatal("malloc(sendback) failed\n");
   if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
@@ -718,10 +721,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * buf,
   /* Z direction */
 
   nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*(nlocal[Y] + 2*nhcomm);
-  sendforw = (void *) malloc(nsend*sz);
-  sendback = (void *) malloc(nsend*sz);
-  recvforw = (void *) malloc(nsend*sz);
-  recvback = (void *) malloc(nsend*sz);
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
   if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
   if (sendback == NULL) fatal("malloc(sendback) failed\n");
   if (recvforw == NULL) fatal("malloc(recvforw) failed\n");

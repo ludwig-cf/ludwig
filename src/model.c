@@ -1216,7 +1216,7 @@ int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]){
   assert(lb);
   assert(n >= 0 && n < lb->ndist);
   assert(index >= 0 && index < lb->nsite);
-
+  assert(0);
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < SIMDVL; iv++) {
       lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)] = fv[p][iv];
@@ -1242,7 +1242,7 @@ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
   assert(lb);
   assert(n >= 0 && n < lb->ndist);
   assert(index >= 0 && index < lb->nsite);
-
+  assert(0);
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < nv; iv++) {
       lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)] = fv[p][iv];
