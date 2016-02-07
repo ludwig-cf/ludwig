@@ -220,7 +220,7 @@ int do_test_halo(int ndata) {
 static int do_test_io(int ndata, int io_format) {
 
   int grid[3] = {1, 1, 1};
-  char * filename = "map-io-test";
+  const char * filename = "map-io-test";
 
   map_t * map = NULL;
   io_info_t * iohandler = NULL;

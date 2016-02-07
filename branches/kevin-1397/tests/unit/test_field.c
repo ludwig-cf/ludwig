@@ -254,7 +254,7 @@ static int test_field_halo(field_t * phi) {
 static int do_test_io(int nf, int io_format) {
 
   int grid[3] = {1, 1, 1};
-  char * filename = "phi-test-io";
+  const char * filename = "phi-test-io";
 
   field_t * phi = NULL;
   io_info_t * iohandler = NULL;

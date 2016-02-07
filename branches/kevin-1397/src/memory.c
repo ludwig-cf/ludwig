@@ -27,8 +27,8 @@
  *
  *****************************************************************************/
 
-inline int forward_addr_rank0_assert(int lineno, const char * file,
-				     int nsites, int index) {
+int forward_addr_rank0_assert(int lineno, const char * file,
+			      int nsites, int index) {
 
   assert_valid_index(lineno, file, nsites, index);
 
@@ -41,8 +41,8 @@ inline int forward_addr_rank0_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
-inline int forward_addr_rank1_assert(int lineno, const char * file,
-				     int nsites, int na, int index, int ia) {
+int forward_addr_rank1_assert(int lineno, const char * file,
+			      int nsites, int na, int index, int ia) {
 
   assert_valid_index(lineno, file, nsites, index);
   assert_valid_index(lineno, file, na, ia);
@@ -56,9 +56,9 @@ inline int forward_addr_rank1_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
-inline int forward_addr_rank2_assert(int lineno, const char * file,
-				     int nsites, int na, int nb,
-				     int index, int ia, int ib) {
+int forward_addr_rank2_assert(int lineno, const char * file,
+			      int nsites, int na, int nb,
+			      int index, int ia, int ib) {
 
   assert_valid_index(lineno, file, nsites, index);
   assert_valid_index(lineno, file, na, ia);

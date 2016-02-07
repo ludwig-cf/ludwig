@@ -529,7 +529,7 @@ int io_remove_metadata(io_info_t * obj, const char * file_stub) {
  *
  *****************************************************************************/
 
-int io_remove(char * filename_stub, io_info_t * obj) {
+int io_remove(const char * filename_stub, io_info_t * obj) {
 
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];

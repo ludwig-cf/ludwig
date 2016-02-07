@@ -134,7 +134,7 @@ static int do_test_halo1(int nhalo, int nhcomm) {
 static int do_test_io1(void) {
 
   int grid[3] = {1, 1, 1};
-  char * filename = "hydro-test-io";
+  const char * filename = "hydro-test-io";
   io_info_t * iohandler = NULL;
   hydro_t * hydro;
 

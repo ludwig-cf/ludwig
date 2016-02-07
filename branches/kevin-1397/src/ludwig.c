@@ -502,7 +502,6 @@ void ludwig_run(const char * inputfile) {
 
 
 
-
     /* Order parameter gradients */
 
     TIMER_start(TIMER_PHI_GRADIENTS);
@@ -795,6 +794,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_COLLIDE);
       //lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho);
       lb_collide(ludwig->lb->tcopy, ludwig->hydro, ludwig->map, ludwig->noise_rho);
+
       TIMER_stop(TIMER_COLLIDE);
       
       
@@ -1730,14 +1730,14 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_HALO_LATTICE);
 
-    #ifdef LB_DATA_SOA
+#ifdef LB_DATA_SOA
     /* perform SoA halo exchange */
     double* tmpptr;
     copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
     halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
-    #else
+#else
     lb_halo(ludwig->lb);
-    #endif
+#endif
  
 
    TIMER_stop(TIMER_HALO_LATTICE);
