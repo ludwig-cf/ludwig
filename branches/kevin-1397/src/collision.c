@@ -401,11 +401,11 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     for (ib = ia; ib < NDIM; ib++) {
       __targetILP__(iv) {
 	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib*VVL+iv] + shat[ia][ib*VVL+iv];
-	m++;
       }
+      m++;
     }
   }
-    
+
   /* Ghost modes are relaxed toward zero equilibrium. */
 #ifdef _D3Q19_    
   for (m = NHYDRO; m < NVEL; m++) {  
