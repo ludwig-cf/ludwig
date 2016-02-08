@@ -392,6 +392,8 @@ void ludwig_run(const char * inputfile) {
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
 
+  double* tmpptr;
+
 
   ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
@@ -480,7 +482,6 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->hydro) {
 #ifdef KEEPHYDROONTARGET
       
-      double* tmpptr;
       hydro_t* t_hydro = ludwig->hydro->tcopy; 
       copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
       targetZero(tmpptr,ludwig->hydro->nf*nSites);
@@ -565,7 +566,6 @@ void ludwig_run(const char * inputfile) {
 
     /* perform SoA halo exchange */
     field_t* t_field = NULL; 
-    double* tmpptr;
     t_field = ludwig->q->tcopy;
     copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
     halo_SoA(ludwig->q->nf, 1, 0, tmpptr);
@@ -728,7 +728,6 @@ void ludwig_run(const char * inputfile) {
 	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 #endif
 	  /* perform SoA halo exchange */
-	  double* tmpptr;
 	  hydro_t* t_hydro = ludwig->hydro->tcopy; 
 	  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
 	  halo_SoA(ludwig->hydro->nf, 1, 0, tmpptr);
@@ -772,7 +771,6 @@ void ludwig_run(const char * inputfile) {
        * colloids to present non-zero u inside particles. */
 
 #ifdef KEEPHYDROONTARGET
-      double* tmpptr;
       hydro_t* t_hydro = ludwig->hydro->tcopy; 
       copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
       targetZero(tmpptr,ludwig->hydro->nf*nSites);
@@ -1696,6 +1694,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
   int is_subgrid = 0;    /* subgrid particle switch */
+  double* tmpptr;
 
   assert(ludwig);
 
@@ -1729,7 +1728,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     #ifdef LB_DATA_SOA
     /* perform SoA halo exchange */
-    double* tmpptr;
     copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
     halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
     #else
@@ -1783,7 +1781,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   
   map_t* t_map = ludwig->map->tcopy; 
   
-  double* tmpptr;
   copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
   copyToTarget(tmpptr,ludwig->map->status,nSites*sizeof(char));
   
