@@ -590,7 +590,10 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
       __targetILP__(iv) index0[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 
       for (i = 0; i < 3; i++) {
-        __targetILP__(iv) u0[i][iv] = hydro->u[HYADR(tc_nSites,3,index0[iv],i)];
+        __targetILP__(iv){
+	  if (includeSite[iv])
+	    u0[i][iv] = hydro->u[HYADR(tc_nSites,3,index0[iv],i)];
+	}
       }
 
 	/* west face (icm1 and ic) */
@@ -615,7 +618,10 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	__targetILP__(iv) index1[iv] = targetIndex3D(icm1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 
 	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  __targetILP__(iv){
+	    if (includeSite[iv])
+	      u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  }
 	}
 
 	__targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
@@ -657,7 +663,10 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	__targetILP__(iv) index1[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	
 	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  __targetILP__(iv){
+	    if (includeSite[iv])
+	      u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  }
 	}
 	__targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
 	
@@ -693,7 +702,10 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+1,coordschunk[Z][iv],tc_Nall);
 	
 	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  __targetILP__(iv){
+	    if (includeSite[iv])
+	      u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  }
 	}
 	__targetILP__(iv) u[iv] = 0.5*(u0[Y][iv] + u1[Y][iv]);
 	
@@ -729,7 +741,10 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+1,tc_Nall);
 	
 	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  __targetILP__(iv){
+	    if (includeSite[iv])
+	      u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
+	  }
 	}
 	__targetILP__(iv) u[iv] = 0.5*(u0[Z][iv] + u1[Z][iv]);
 	
