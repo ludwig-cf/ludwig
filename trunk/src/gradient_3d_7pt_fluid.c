@@ -184,6 +184,7 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
 
 
 
+
   int iv=0;
   int i;
 
@@ -210,6 +211,32 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
 
 { 
 
+      /* work out which sites in this chunk should be included */
+      int includeSite[VVL];
+      __targetILP__(iv) includeSite[iv]=0;
+      
+      int coordschunk[3][VVL];
+      
+      __targetILP__(iv){
+	for(i=0;i<3;i++){
+	  targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	  coordschunk[i][iv]=coords[i];
+	}
+      }
+      
+      __targetILP__(iv){
+	
+	if ((coordschunk[0][iv] >= (tc_nhalo-tc_nextra) &&
+	     coordschunk[1][iv] >= (tc_nhalo-tc_nextra) &&
+	     coordschunk[2][iv] >= (tc_nhalo-tc_nextra) &&
+	     coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
+	     coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
+	     coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo-tc_nextra)))
+	  
+	  includeSite[iv]=1;
+      }
+
+
 
   int indexm1[VVL];
   int indexp1[VVL];
@@ -224,17 +251,33 @@ static __target__ void gradient_3d_7pt_fluid_operator_site(const int nop,
     int n;
     int ys=tc_Nall[Z];
     for (n = 0; n < nop; n++) {
-      __targetILP__(iv) t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,X)]
-      = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1[iv],n)] - t_field[FLDADR(tc_nSites,nop,indexm1[iv],n)]);
-      __targetILP__(iv) t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,Y)]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,baseIndex+iv+ys,n)] - t_field[FLDADR(tc_nSites,nop,baseIndex+iv-ys,n)]);
-      __targetILP__(iv) t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,Z)]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,baseIndex+iv+1,n)] - t_field[FLDADR(tc_nSites,nop,baseIndex+iv-1,n)]);
-      __targetILP__(iv) t_del2[FLDADR(tc_nSites,nop,baseIndex+iv,n)]
-	= t_field[FLDADR(tc_nSites,nop,indexp1[iv],n)] + t_field[FLDADR(tc_nSites,nop,indexm1[iv],n)]
-	+ t_field[FLDADR(tc_nSites,nop,baseIndex+iv+ys,n)] + t_field[FLDADR(tc_nSites,nop,baseIndex+iv-ys,n)]
-	+ t_field[FLDADR(tc_nSites,nop,baseIndex+iv+1,n)] + t_field[FLDADR(tc_nSites,nop,baseIndex+iv-1,n)]
-	- 6.0*t_field[FLDADR(tc_nSites,nop,baseIndex+iv,n)];
+
+      __targetILP__(iv){ 
+	if(includeSite[iv])
+	  t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,X)]
+	    = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1[iv],n)] - t_field[FLDADR(tc_nSites,nop,indexm1[iv],n)]); 
+      }
+      
+      __targetILP__(iv){ 
+	if(includeSite[iv])
+	  t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,Y)]
+	    = 0.5*(t_field[FLDADR(tc_nSites,nop,baseIndex+iv+ys,n)] - t_field[FLDADR(tc_nSites,nop,baseIndex+iv-ys,n)]);
+      }
+      
+      __targetILP__(iv){ 
+	if(includeSite[iv])
+	  t_grad[FGRDADR(tc_nSites,nop,baseIndex+iv,n,Z)]
+	    = 0.5*(t_field[FLDADR(tc_nSites,nop,baseIndex+iv+1,n)] - t_field[FLDADR(tc_nSites,nop,baseIndex+iv-1,n)]);
+      }
+      
+      __targetILP__(iv){ 
+	if(includeSite[iv])
+	  t_del2[FLDADR(tc_nSites,nop,baseIndex+iv,n)]
+	    = t_field[FLDADR(tc_nSites,nop,indexp1[iv],n)] + t_field[FLDADR(tc_nSites,nop,indexm1[iv],n)]
+	    + t_field[FLDADR(tc_nSites,nop,baseIndex+iv+ys,n)] + t_field[FLDADR(tc_nSites,nop,baseIndex+iv-ys,n)]
+	    + t_field[FLDADR(tc_nSites,nop,baseIndex+iv+1,n)] + t_field[FLDADR(tc_nSites,nop,baseIndex+iv-1,n)]
+	    - 6.0*t_field[FLDADR(tc_nSites,nop,baseIndex+iv,n)];
+      }
       
     }
     

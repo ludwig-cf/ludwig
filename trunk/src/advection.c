@@ -558,6 +558,32 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
       {
 
 
+	/* work out which sites in this chunk should be included */
+	int includeSite[VVL];
+	__targetILP__(iv) includeSite[iv]=0;
+	
+	int coordschunk[3][VVL];
+		
+	__targetILP__(iv){
+	  for(i=0;i<3;i++){
+	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	    coordschunk[i][iv]=coords[i];
+	  }
+	}
+
+	__targetILP__(iv){
+	  
+	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
+	       coordschunk[1][iv] >= (tc_nhalo-1) &&
+	       coordschunk[2][iv] >= (tc_nhalo-1) &&
+	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
+	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
+	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
+	    
+	    includeSite[iv]=1;
+	}
+
+
       int index0[VVL], index1[VVL], index2[VVL];
 
 
@@ -601,121 +627,145 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	  for (n = 0; n < nf; n++) 
 	    {
-	    __targetILP__(iv) flux->fw[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	      u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	      __targetILP__(iv){ 
+		if (includeSite[iv])
+		  flux->fw[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			   + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
+			   + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	      }
 	    }
 	}
 	else {
-
-	__targetILP__(iv) index2[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-
-	for (n = 0; n < nf; n++) 
-	  {
-	    __targetILP__(iv) flux->fw[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	      u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	  
+	  __targetILP__(iv) index2[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
+	  
+	  for (n = 0; n < nf; n++) 
+	    {
+	      __targetILP__(iv){
+		if (includeSite[iv])
+		  flux->fw[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			   + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
+			   + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	      }
 	    }
 	}
-
+	
 	/* east face (ic and icp1) */
-
+	
 	__targetILP__(iv) index1[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-
+	
 	for (i = 0; i < 3; i++) {
 	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
 	}
 	__targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
-
+	
 	if (u[iv] < 0.0) {
-	__targetILP__(iv) index2[iv] = targetIndex3D(icp2[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	for (n = 0; n < nf; n++) 
-	   {
-	    __targetILP__(iv) flux->fe[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	      u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	  __targetILP__(iv) index2[iv] = targetIndex3D(icp2[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
+	  for (n = 0; n < nf; n++) 
+	    {
+	      __targetILP__(iv){
+		if (includeSite[iv])
+		  flux->fe[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			   + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
+			   + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
 	      }
+	    }
 	}
 	else {
-	__targetILP__(iv) index2[iv] = targetIndex3D(icm1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	for (n = 0; n < nf; n++) 
-	  {
-	    __targetILP__(iv) flux->fe[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	      u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	  __targetILP__(iv) index2[iv] = targetIndex3D(icm1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
+	  for (n = 0; n < nf; n++) 
+	    {
+	      __targetILP__(iv){
+		if (includeSite[iv])
+		  flux->fe[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			   + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
+			   + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	      }
+	    }
 	}
-	}
-
+	
 	/* y direction */
-
+	
 	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+1,coordschunk[Z][iv],tc_Nall);
-
+	
 	for (i = 0; i < 3; i++) {
 	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
 	}
 	__targetILP__(iv) u[iv] = 0.5*(u0[Y][iv] + u1[Y][iv]);
-
+	
 	if (u[iv] < 0.0) {
-	__targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+2,coordschunk[Z][iv],tc_Nall);
-	for (n = 0; n < nf; n++) 
-	  {
-	    __targetILP__(iv) flux->fy[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	      u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	  __targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+2,coordschunk[Z][iv],tc_Nall);
+	  for (n = 0; n < nf; n++) 
+	    {
+	      __targetILP__(iv){
+		if (includeSite[iv]) 
+		  flux->fy[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			   + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
+			   + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	      }
 	    }
 	}
 	else {
-	__targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
-	for (n = 0; n < nf; n++) 
-	  {
-	    __targetILP__(iv) flux->fy[ADVADR(tc_nSites,nf,index0[iv],n)] =
+	  __targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
+	  for (n = 0; n < nf; n++) 
+	    {
+	      __targetILP__(iv){ 
+		if (includeSite[iv])
+		  flux->fy[ADVADR(tc_nSites,nf,index0[iv],n)] =
 	      u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+		     + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
+		     + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	      }
 	    }
 	}
-
+	
 	/* z direction */
-
+	
 	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+1,tc_Nall);
-
+	
 	for (i = 0; i < 3; i++) {
 	  __targetILP__(iv) u1[i][iv] = hydro->u[HYADR(tc_nSites,3,index1[iv],i)];
 	}
 	__targetILP__(iv) u[iv] = 0.5*(u0[Z][iv] + u1[Z][iv]);
-
+	
 	if (u[iv] < 0.0) {
-	__targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+2,tc_Nall);
-	for (n = 0; n < nf; n++) 
-	  {
-	    __targetILP__(iv) flux->fz[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	     u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	     + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
-	     + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	  __targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+2,tc_Nall);
+	  for (n = 0; n < nf; n++) 
+	    {
+	    __targetILP__(iv){
+	      if (includeSite[iv])
+		flux->fz[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		  u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			 + a2*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]
+			 + a3*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]);
+	    }
 	    }
 	}
 	else {
-	__targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
-	for (n = 0; n < nf; n++) 
-	  {
-	    __targetILP__(iv) flux->fz[ADVADR(tc_nSites,nf,index0[iv],n)] =
-	    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
-	     + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
-	     + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	  __targetILP__(iv) index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
+	  for (n = 0; n < nf; n++) 
+	    {
+	      __targetILP__(iv){ 
+		if (includeSite[iv])
+		  flux->fz[ADVADR(tc_nSites,nf,index0[iv],n)] =
+		    u[iv]*(a1*field->data[FLDADR(tc_nSites,nf,index2[iv],n)]
+			   + a2*field->data[FLDADR(tc_nSites,nf,index0[iv],n)]
+			   + a3*field->data[FLDADR(tc_nSites,nf,index1[iv],n)]);
+	      }
 	    }
 	}
-
-
+	
+	
 	}
 	/* Next site */
       }
-    }
-
+  }
+  
   return;
 }
 
