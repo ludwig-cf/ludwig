@@ -67,6 +67,9 @@ __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * fl
 {
 
 
+	/* work out which sites in this chunk should be included */
+	int includeSite[VVL];
+	__targetILP__(iv) includeSite[iv]=0;
 	
 	int coordschunk[3][VVL];
 		
@@ -77,25 +80,52 @@ __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * fl
 	  }
 	}
 
+	__targetILP__(iv){
+	  
+	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
+	       coordschunk[1][iv] >= (tc_nhalo-1) &&
+	       coordschunk[2][iv] >= (tc_nhalo-1) &&
+	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
+	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
+	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
+	    
+	    includeSite[iv]=1;
+	}
+
+	
 
       int index1[VVL];
       
       
       __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv) maskw[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      __targetILP__(iv){
+	if (includeSite[iv])
+	  maskw[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      }
       
       __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv) maske[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      __targetILP__(iv){
+	if (includeSite[iv])
+	  maske[iv] = (map->status[index1[iv]]==MAP_FLUID);
+      }    
       
       __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv) masky[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      __targetILP__(iv){
+	if (includeSite[iv])
+	  masky[iv] = (map->status[index1[iv]]==MAP_FLUID);
+      }    
       
       __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
-      __targetILP__(iv) maskz[iv] = (map->status[index1[iv]]==MAP_FLUID);    
-      
+      __targetILP__(iv){
+	if (includeSite[iv]) 
+	  maskz[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      }      
       
       __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv) mask[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+      __targetILP__(iv){
+	if (includeSite[iv])
+	  mask[iv] = (map->status[index1[iv]]==MAP_FLUID);  
+      }  
       
       for (n = 0;  n < nf; n++) {
 	
