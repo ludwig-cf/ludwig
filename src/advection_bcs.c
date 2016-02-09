@@ -130,10 +130,24 @@ __targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * fl
       for (n = 0;  n < nf; n++) {
 	
 	__targetILP__(iv) indexf[iv] = ADVADR(tc_nSites,nf,baseIndex+iv,n);
-	__targetILP__(iv) flux->fw[indexf[iv]] *= mask[iv]*maskw[iv];
-	__targetILP__(iv) flux->fe[indexf[iv]] *= mask[iv]*maske[iv];
-	__targetILP__(iv) flux->fy[indexf[iv]] *= mask[iv]*masky[iv];
-	__targetILP__(iv) flux->fz[indexf[iv]] *= mask[iv]*maskz[iv];
+
+
+	__targetILP__(iv){
+	  if (includeSite[iv])
+	    flux->fw[indexf[iv]] *= mask[iv]*maskw[iv];
+	}
+	__targetILP__(iv){
+	  if (includeSite[iv])
+	    flux->fe[indexf[iv]] *= mask[iv]*maske[iv];
+	}
+	__targetILP__(iv){
+	  if (includeSite[iv])
+	    flux->fy[indexf[iv]] *= mask[iv]*masky[iv];
+	}
+	__targetILP__(iv){
+	  if (includeSite[iv])
+	    flux->fz[indexf[iv]] *= mask[iv]*maskz[iv];
+	}
       }
  }
   }
