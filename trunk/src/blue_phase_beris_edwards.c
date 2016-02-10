@@ -62,6 +62,7 @@
 #include "field_grad_s.h"
 #include "map_s.h"
 #include "timer.h"
+#include "control.h"
 
 
 static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, advflux_t * f,
@@ -82,13 +83,15 @@ __targetConst__ double tc_tmatrix[3][3][NQAB];
  *
  *****************************************************************************/
 
+static  advflux_t * flux;
+static int flux_created=0;
+
 __targetHost__ int blue_phase_beris_edwards(field_t * fq,
 					    field_grad_t * fq_grad,
 					    hydro_t * hydro, map_t * map,
 					    noise_t * noise) {
 
   int nf;
-  advflux_t * flux = NULL;
 
   assert(fq);
   assert(map);
@@ -100,7 +103,11 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
   assert(nf == NQAB);
 
   TIMER_start(ADVECTION_BCS_MEM);
-  advflux_create(nf, &flux);
+
+  if (flux_created==0){
+    advflux_create(nf, &flux);
+    flux_created=1;
+  }
   TIMER_stop(ADVECTION_BCS_MEM);
 
   if (hydro) {
@@ -115,7 +122,8 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
   blue_phase_be_update(fq, fq_grad, hydro, flux, map, noise);
 
   TIMER_start(ADVECTION_BCS_MEM);
-  advflux_free(flux);
+  if (is_last_step())
+    advflux_free(flux);
   TIMER_stop(ADVECTION_BCS_MEM);
 
   return 0;
