@@ -472,6 +472,9 @@ void ludwig_run(const char * inputfile) {
   info("Starting time step loop.\n");
   subgrid_on(&is_subgrid);
 
+  /* sync tasks before main loop for timing purposes */
+  MPI_Barrier(pe_comm()); 
+
   while (next_step()) {
 
 
