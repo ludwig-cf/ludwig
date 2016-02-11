@@ -320,8 +320,12 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  if (stress_allocated==0)
+  if (stress_allocated==0){
+
     phi_force_stress_allocate();
+    stress_allocated=1;
+
+  }
 
   phi_force_stress_compute(q, q_grad);
 
