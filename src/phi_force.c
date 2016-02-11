@@ -33,6 +33,7 @@
 #include "field_s.h"
 #include "hydro_s.h"
 #include "phi_force_stress.h"
+#include "timer.h"
 
 static int phi_force_calculation_fluid(field_t* q, field_grad_t* q_grad, hydro_t * hydro);
 
@@ -304,6 +305,8 @@ extern double * pth_;
 extern double * t_pth_;
 #include "control.h"
 
+static int stress_allocated=0;
+
 static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
 				       hydro_t * hydro) {
   int nhalo;
@@ -317,7 +320,7 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  //  if (get_step()==1)
+  if (stress_allocated==0)
     phi_force_stress_allocate();
 
   phi_force_stress_compute(q, q_grad);
@@ -348,15 +351,19 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
 #endif  
 
+  TIMER_start(TIMER_PHI_FORCE_CALC);
+
   //launch the force calculation across the lattice on the target
   phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (hydro->tcopy, t_pth_);
+  targetSynchronize();
+  TIMER_stop(TIMER_PHI_FORCE_CALC);
   
 #ifndef KEEPHYDROONTARGET
   // get the resulting force from the target
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 #endif
 
-  //  if (is_last_step())
+  if (is_last_step())
     phi_force_stress_free();
 
   return 0;
