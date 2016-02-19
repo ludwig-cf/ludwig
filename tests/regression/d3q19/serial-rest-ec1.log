@@ -1,6 +1,8 @@
-Welcome to Ludwig v0.4.5 (Serial version running on 1 process)
+Welcome to Ludwig v0.4.6 (Serial version running on 1 process)
 
 The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
 Read 36 user parameters from serial-rest-ec1.inp
 
 System details
@@ -170,21 +172,21 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      4.770      4.770      4.770   4.770000 (1 call)
-      Time step loop:      0.220      0.270      4.640   0.232000 (20 calls)
-         Propagation:      0.000      0.010      0.140   0.007000 (20 calls)
-    Propagtn (krnl) :      0.000      0.010      0.140   0.007000 (20 calls)
-           Collision:      0.040      0.050      0.810   0.040500 (20 calls)
-   Collision (krnl) :      0.040      0.050      0.810   0.040500 (20 calls)
+               Total:      6.470      6.470      6.470   6.470000 (1 call)
+      Time step loop:      0.310      0.330      6.330   0.316500 (20 calls)
+         Propagation:      0.000      0.010      0.110   0.005500 (20 calls)
+    Propagtn (krnl) :      0.000      0.010      0.110   0.005500 (20 calls)
+           Collision:      0.040      0.040      0.800   0.040000 (20 calls)
+   Collision (krnl) :      0.030      0.040      0.790   0.039500 (20 calls)
        Lattice halos:      0.000      0.010      0.050   0.000500 (100 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (20 calls)
               Forces:      0.000      0.000      0.000   0.000000 (20 calls)
-             Rebuild:      0.000      0.000      0.000   0.000000 (20 calls)
+             Rebuild:      0.000      0.010      0.020   0.001000 (20 calls)
                  BBL:      0.000      0.000      0.000   0.000000 (20 calls)
       Particle halos:      0.000      0.000      0.000   0.000000 (20 calls)
-   Force calculation:      0.000      0.030      0.550   0.013750 (40 calls)
+   Force calculation:      0.000      0.040      0.600   0.015000 (40 calls)
           phi update:      0.000      0.000      0.000   0.000000 (20 calls)
-    Poisson equation:      0.100      0.120      2.150   0.107500 (20 calls)
-       Nernst Planck:      0.040      0.080      0.930   0.046500 (20 calls)
-               Free1:      0.000      0.010      0.010   0.000250 (40 calls)
+    Poisson equation:      0.160      0.180      3.340   0.167000 (20 calls)
+       Nernst Planck:      0.060      0.070      1.340   0.067000 (20 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (40 calls)
 Ludwig finished normally.

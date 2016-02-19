@@ -1,6 +1,8 @@
-Welcome to Ludwig v0.4.5 (Serial version running on 1 process)
+Welcome to Ludwig v0.4.6 (Serial version running on 1 process)
 
 The SVN revision details are: 
+Note assertions via standard C assert() are on.
+
 Read 23 user parameters from serial-relx-bp1.inp
 
 System details
@@ -119,12 +121,12 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.610      3.610      3.610   3.610000 (1 call)
-      Time step loop:      0.020      0.060      3.570   0.035700 (100 calls)
-       phi gradients:      0.000      0.020      0.720   0.007200 (100 calls)
-    phi grad (krnl) :      0.000      0.010      0.320   0.003200 (100 calls)
+               Total:      2.710      2.710      2.710   2.710000 (1 call)
+      Time step loop:      0.020      0.050      2.640   0.026400 (100 calls)
+       phi gradients:      0.000      0.030      0.910   0.009100 (100 calls)
+    phi grad (krnl) :      0.000      0.020      0.550   0.005500 (100 calls)
    Force calculation:      0.000      0.000      0.000   0.000000 (100 calls)
-          phi update:      0.020      0.040      2.850   0.028500 (100 calls)
-BP BE update (krnl) :      0.010      0.020      1.230   0.012300 (100 calls)
-   BP BE alloc/free :      0.000      0.010      0.400   0.002000 (200 calls)
+          phi update:      0.010      0.020      1.730   0.017300 (100 calls)
+BP BE update (krnl) :      0.010      0.020      1.210   0.012100 (100 calls)
+   BP BE alloc/free :      0.000      0.000      0.000   0.000000 (200 calls)
 Ludwig finished normally.
