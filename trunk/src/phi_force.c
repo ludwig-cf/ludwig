@@ -142,7 +142,7 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
  *
  *****************************************************************************/
 
-__targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
+__targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, const double* __restrict__ t_pth) {
   
   
   int baseIndex;
@@ -204,7 +204,9 @@ __targetEntry__ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double
 	/* Compute pth at current point */
 	for (ia = 0; ia < 3; ia++)
 	  for (ib = 0; ib < 3; ib++)
-	    __targetILP__(iv) pth0[ia][ib][iv]=t_pth[PTHADR(tc_nSites,baseIndex+iv,ia,ib)];
+	    __targetILP__(iv){
+	      if(includeSite[iv]) pth0[ia][ib][iv]=t_pth[PTHADR(tc_nSites,baseIndex+iv,ia,ib)];
+	    }
 	
 	/* Compute differences */
 	
