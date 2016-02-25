@@ -1651,20 +1651,23 @@ __targetHost__ int fed_io_info(io_info_t ** info) {
  *
  *****************************************************************************/
 
-__targetHost__ int fed_io_info_set(io_info_t * info) {
+__targetHost__ int fed_io_info_set(int grid[3], int form_out) {
 
   const char * name = "Free energy density";
   const char * stubname = "fed";
 
-  assert(info);
-  io_info_fed = info;
+  assert(io_info_fed == NULL);
+  
+  io_info_fed = io_info_create_with_grid(grid);
 
+  if (io_info_fed == NULL) fatal("io_info_create(fed) failed\n");
+  
   io_info_set_name(io_info_fed, name);
   io_info_write_set(io_info_fed, IO_FORMAT_BINARY, fed_write);
   io_info_write_set(io_info_fed, IO_FORMAT_ASCII, fed_write_ascii);
   io_info_set_bytesize(io_info_fed, 3*sizeof(double));
  
-  io_info_format_out_set(io_info_fed, IO_FORMAT_BINARY);
+  io_info_format_out_set(io_info_fed, form_out);
   io_info_metadata_filestub_set(io_info_fed, stubname);
 
   return 0;

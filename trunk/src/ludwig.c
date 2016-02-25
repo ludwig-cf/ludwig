@@ -929,7 +929,7 @@ void ludwig_run(const char * inputfile) {
       fed_io_info(&iohandler);
       info("Writing free energy density output at step %d!\n", step);
       sprintf(filename, "%sfed-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, NULL);
+      io_write_data(iohandler, filename, ludwig->q); /* the ludwig->q is not used by the function, but a pointer is needed*/
     }
 
     /* Print progress report */
