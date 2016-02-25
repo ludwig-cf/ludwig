@@ -57,6 +57,10 @@ void blue_phase_run_time(void) {
   double epsilon;
   double e0[3];
 
+  int io_grid[3] = {1,1,1};
+  int io_format_out = IO_FORMAT_DEFAULT;
+  char value[BUFSIZ] = "BINARY";
+  
   info("Blue phase free energy selected.\n");
 
   /* PARAMETERS */
@@ -247,6 +251,17 @@ void blue_phase_run_time(void) {
     if (gamma < (8.0/3.0)) fatal("Please check anchoring amplitude\n");
   }
 
+  /* initialise the free energy io */
+  n = RUN_get_int_parameter_vector("default_io_grid", io_grid);
+  n = RUN_get_string_parameter("fed_format", value, BUFSIZ);
+
+  if (strcmp(value, "ASCII") == 0) {
+    io_format_out = IO_FORMAT_ASCII;
+  }
+  
+  fed_io_info_set(io_grid, io_format_out);
+
+  
   return;
 }
 

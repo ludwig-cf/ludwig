@@ -111,8 +111,8 @@ __targetHost__ void blue_phase_q_uniaxial(double amplitude, const double n[3], d
 
 __targetHost__ void blue_phase_set_active_region_gamma_zeta(const int index);
 
-__targetHost__ int fed_io_info_set(io_info_t * info);
-__targetHost__ int  fed_io_info(io_info_t ** info);
+__targetHost__ int fed_io_info_set(int grid[3], int form_out);
+__targetHost__ int fed_io_info(io_info_t ** info);
 __targetHost__ int blue_phase_scalar_ops(double q[3][3], double qs[5]);
 
 #endif
