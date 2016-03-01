@@ -263,6 +263,7 @@ __targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCallocUnified(void **address_of_ptr,const size_t size);
+__targetHost__ void targetMallocHost(void **address_of_ptr,size_t size);
 __targetHost__ void copyToTarget(void *targetData,const void* data,size_t size);
 __targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size);
 __targetHost__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo);
