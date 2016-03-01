@@ -94,6 +94,14 @@ __targetHost__ void targetCallocUnified(void **address_of_ptr,size_t size){
   return;
 }
 
+__targetHost__ void targetMallocHost(void **address_of_ptr,size_t size){
+
+
+  cudaMallocHost(address_of_ptr,size);
+  checkTargetError("targetMallocHost");
+
+  return;
+}
 
 //The copyToTarget function copies data from the host to the target.
 __targetHost__ void copyToTarget(void *targetData,const void* data,size_t size){

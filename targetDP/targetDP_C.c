@@ -108,6 +108,13 @@ void targetCallocUnified(void **address_of_ptr,size_t size){
   
 }
 
+void targetMallocHost(void **address_of_ptr,size_t size){
+
+  targetMalloc(address_of_ptr,size);
+
+  return;
+
+}
 
 //The targetFree function deallocates memory on the target.
 void targetFree(void *ptr){
