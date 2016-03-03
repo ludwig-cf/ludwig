@@ -1,0 +1,354 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  input.tex
+%
+%  Instructions for contents of the user input file.
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  (c) 2016 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{The Input File}
+
+\subsection{General}
+
+By default, the run time expects to find user input in a file
+\texttt{input} in the current working directory. If a different
+file name is required, its name
+should be provided as the sole command line argument, e.g.,
+\begin{lstlisting}
+./Ludwig.exe input_file_name
+\end{lstlisting}
+If the input file is not located in the current working directory
+the code will terminate immediately with an error message.
+
+When an input file is located, its content is read by a single MPI
+task, and its contents then broadcast to all MPI relevant tasks.
+The format of the file is plain ASCII text, and its contents are
+parsed on a line by line basis. Lines may contain the following:
+\begin{itemize}
+\item comments introduced by \texttt{\#}.
+\item key value pairs separated by white space.
+\end{itemize}
+Blank lines are treated as comments. The behaviour of the code is
+determined by a set of key value pairs. Any given key may appear
+only once in the input file; unused key value pairs are not reported.
+If the key value pairs are not correctly formed, the code will terminate
+with an error message and indicate the offending input line.
+
+Key value pairs may be present in the input file, but have no effect for
+any given run: they are merely ignored. Relevant control parameters for
+given input are reported in the standard output.
+
+\subsubsection{Key value pairs}
+
+Key value pairs are made up of a key --- an alphanumeric string with no
+white space --- and corresponding value following white space. Values
+may take on the follow forms:
+\begin{lstlisting}
+key_string           value_string
+
+key_integer_scalar  1
+key_integer_vector  1_2_3
+
+key_double_scalar    1.0
+key_double_vector    1.0_2.0_3.0
+\end{lstlisting}
+Values which are strings should contain no white space. Scalar parameters
+may be integer values, or floating point values with a decimal point
+(scientific notation is also allowed).  Vector parameters are introduced
+by a set of three values (to be interpreted as $x,y,z$ components of the
+vector in Cartesian coordinates) separated by an underscore. The identity
+of the key will specify what type of value is expected. Keys and (string)
+values are case sensitive.
+
+
+Most keys have an associated default value which will be used if
+the key is not present. Some keys must be specified: an error will
+occur if they are missing. The remainder of this part
+of the guide details the various choices for key value pairs,
+along with any default values, and any relevant constraints.
+
+\subsection{The Free Energy}
+\label{input-free-energy}
+
+The choice of free energy is determined as follows:
+\begin{lstlisting}
+free_energy   none
+\end{lstlisting}
+The default value is \texttt{none}, i.e., a simple Newtonian fluid is used.
+Possible values of the \texttt{free\_energy} key are:
+\begin{lstlisting}
+#  none                     Newtonian fluid [DEFAULT]
+#  symmetric                Symmetric binary fluid (finite difference)
+#  symmetric_lb             Symmetric binary fluid (two distributions)
+#  brazovskii               Brazovskii smectics
+#  surfactant               Surfactants
+#  polar_active             Polar active gels
+#  lc_blue_phase            Liquid crystal (nematics, cholesterics, BPs)
+#  lc_droplet               Liquid crystal emulsions
+#  fe_electro               Single fluid electrokinetics
+#  fe_electro_symmetric     Binary fluid electrokinetics
+\end{lstlisting}
+
+The choice of free energy will control automatically a number of factors
+related to choice of order parameter, the degree of parallel communication
+required, and so on. Each free energy has a number of associated parameters
+discussed in the following sections.
+
+Details of general (Newtonian) fluid parameters, such as viscosity,
+are discussed in Section~\ref{input-fluid-parameters}.
+
+\subsubsection{Symmetric Binary Fluids}
+
+We recall that the free energy density is, as a function of compositional
+order $\phi$:
+\[
+{\textstyle \frac{1}{2}} A\phi^2 +
+{\textstyle \frac{1}{4}} B\phi^4 +
+{\textstyle \frac{1}{2}} \kappa (\mathbf{\nabla}\phi)^2.
+\]
+
+Parameters are introduced by (with default values):
+\begin{lstlisting}
+free_energy  symmetric
+A            -0.0625                         # Default: -0.003125
+B            +0.0625                         # Default: +0.003125
+K            +0.04                           # Default: +0.002
+\end{lstlisting}
+Common usage has $A < 0$ and $B = -A$ so that $\phi^\star = \pm 1$.
+The parameter $\kappa$
+(key \texttt{K}) controls
+the interfacial energy penalty and is usually positive.
+
+\subsubsection{Brazovskii smectics}
+\label{input-brazovskki-smectics}
+The free energy density is:
+\[
+{\textstyle \frac{1}{2}} A\phi^2 +
+{\textstyle \frac{1}{4}} B\phi^4 +
+{\textstyle \frac{1}{2}} \kappa (\mathbf{\nabla}\phi)^2 +
+{\textstyle \frac{1}{2}} C (\nabla^2 \phi)^2 
+\]
+
+Parameters are introduced via the keys:
+\begin{lstlisting}
+free_energy  brazovskii
+A             -0.0005                        # Default: 0.0
+B             +0.0005                        # Default: 0.0
+K             -0.0006                        # Default: 0.0
+C             +0.00076                       # Default: 0.0
+\end{lstlisting}
+For $A<0$, phase separation occurs with a result depending on $\kappa$:
+one gets two symmetric phases for $\kappa >0$ (cf.\ the symmetric case)
+or a lamellar phase for $\kappa < 0$. Typically, $B = -A$ and the
+parameter in the highest derivative $C > 0$.
+
+\subsubsection{Surfactants}
+\label{input-surfactants}
+
+The surfactant free energy should not be used at the present time.
+
+\subsubsection{Polar active gels}
+\label{input-polar-active-gels}
+
+The free energy density is a function of vector order parameter $P_\alpha$:
+\[
+{\textstyle \frac{1}{2}} A P_\alpha P_\alpha +
+{\textstyle \frac{1}{4}} B (P_\alpha P_\alpha)^2 +
+{\textstyle \frac{1}{2}} \kappa (\partial_\alpha P_\beta)^2
+\]
+
+There are no default parameters:
+\begin{lstlisting}
+free_energy        polar_active
+polar_active_a    -0.1                       # Default: 0.0
+polar_active_b    +0.1                       # Default: 0.0
+polar_active_k     0.01                      # Default: 0.0
+\end{lstlisting}
+It is usual to choose $B > 0$, in which case $A > 0$ gives
+an isotropic phase, whereas $A < 0$ gives a polar nematic phase.
+The elastic constant $\kappa$ (key \texttt{polar\_active\_k})
+is positive.
+
+\subsubsection{Liquid crystal}
+\label{input-liquid-crystal}
+The free energy density is a function of tensor order parameter
+$Q_{\alpha\beta}$:
+\begin{eqnarray}
+{\textstyle\frac{1}{2}} A_0 (1 - \gamma/3)Q^2_{\alpha\beta} -
+{\textstyle\frac{1}{3}} A_0 \gamma
+                        Q_{\alpha\beta}Q_{\beta\delta}Q_{\delta\alpha} +
+{\textstyle\frac{1}{4}} A_0 \gamma (Q^2_{\alpha\beta})^2
+\nonumber \\
++ {\textstyle\frac{1}{2}} \Big(
+\kappa_0 (\epsilon_{\alpha\delta\sigma} \partial_\delta Q_{\sigma\beta} +
+2q_0 Q_{\alpha\beta})^2 + \kappa_1(\partial_\alpha Q_{\alpha\beta})^2 \Big)
+\nonumber
+\end{eqnarray}
+
+The corresponding \texttt{free\_energy} value, despite its name, is
+suitable for nematics and cholesterics, and not just blue phases:
+\begin{lstlisting}
+free_energy      lc_blue_phase
+lc_a0            0.01                       # Deafult: 0.0
+lc_gamma         3.0                        # Default: 0.0
+lc_q0            0.19635                    # Default: 0.0
+lc_kappa0        0.00648456                 # Default: 0.0
+lc_kappa1        0.00648456                 # Default: 0.0
+\end{lstlisting}
+The bulk free energy parameter $A_0$ is positive and controls the
+energy scale (key \texttt{lc\_a0}); $\gamma$ is positive and
+influences the position in the phase diagram relative to the
+isotropic/nematic transition (key \texttt{lc\_gamma}).
+The two elastic constants must be equal, i.e., we enforce the
+single elastic constant approximation (boths keys \texttt{lc\_kappa0} and
+\texttt{lc\_kappa1} must be specified).
+
+Other important parameters in the liquid crystal picture are:
+\begin{lstlisting}
+lc_xi            0.7                         # Default: 0.0
+lc_Gamma         0.5                         # Default: 0.0
+lc_active_zeta   0.0                         # Default: 0.0
+\end{lstlisting}
+The first is $\xi$ (key \texttt{lc\_xi}) is the effective molecular
+aspect ratio and should be in the range $0< \xi< 1$. The rotational
+diffusion constant is $\Gamma$ (key \texttt{lc\_Gamma}; not to be
+confused with \texttt{lc\_gamma}). The (optional) apolar activity
+parameter is $\zeta$ (key \texttt{lc\_active\_zeta}).
+
+
+
+\subsubsection{Liquid crystal emulsion}
+\label{input-liquid-crystal-emulsion}
+
+This an interaction free energy which combines the symmetric and liquid
+crystal free energies. The liquid crystal free energy constant $\gamma$
+becomes a
+function of composition via $\gamma(\phi) = \gamma_0 + \delta(1 + \phi)$,
+and a coupling term is added to the free energy density:
+\[
+WQ_{\alpha\beta} \partial_\alpha \phi \partial_\beta \phi.
+\]
+Typically, we might choose $\gamma_0$ and $\delta$ so that
+$\gamma(-\phi^\star) < 2.7$ and the $-\phi^\star$ phase is isotropic,
+while $\gamma(+\phi^\star) > 2.7$ and the
+$+\phi^\star$ phase is ordered (nematic, cholesteric, or blue phase).
+Experience suggests that a suitable choice is $\gamma_0 = 2.5$ and
+$\delta = 0.25$.
+
+For anchoring constant $W > 0$, the liquid crystal anchoring at the
+interface is planar, while for $W < 0$ the anchoring is normal. This
+is set via key \texttt{lc\_droplet\_W}.
+
+Relevant keys (with default values) are:
+\begin{lstlisting}
+free_energy            lc_droplet
+
+A                      -0.0625
+B                      +0.0625
+K                      +0.053
+
+lc_a0                   0.1
+lc_q0                   0.19635
+lc_kappa0               0.007
+lc_kappa1               0.007
+
+lc_droplet_gamma        2.586                # Default: 0.0
+lc_droplet_delta        0.25                 # Default: 0.0
+lc_droplet_W           -0.05                 # Default: 0.0
+\end{lstlisting}
+Note that key \texttt{lc\_gamma} is not set in this case.
+
+\subsection{System Parameters}
+\label{input-system-parameters}
+
+Basic parameters controlling the number of time steps
+and the system size are:
+\begin{lstlisting}
+N_start      0                              # Default: 0
+N_cycles     100                            # Default: 0
+size         128_128_1                      # Default: 64_64_64
+\end{lstlisting}
+A typical simulation will start from time zero (key \texttt{N\_start})
+and run for a certain number of time steps (key \texttt{N\_cycles}).
+The system size (key \texttt{size}) specifies the total number of
+lattice sites in each dimension. If a two-dimensional system is
+required, the extent in the $z$-direction must be set to unity, as
+in the above example.
+
+If a restart from a previous run is required, the choice of parameters
+may be as follows:
+\begin{lstlisting}
+N_start      100
+N_cycles     400
+\end{lstlisting}
+This will restart from data previously saved at time step 100, and
+run a further 400 cycles, i.e., to time step 500.
+% TODO Cross-reference to I/O.
+
+\subsubsection{Parallel decomposition}
+
+In parallel, the domain decompostion is closely related to the
+system size, and is specified as follows:
+\begin{lstlisting}
+size         64_64_64
+grid         4_2_1
+\end{lstlisting}
+The \texttt{grid} key specifies the number of MPI tasks required in
+each coordinate direction. In the above example, the decomposition
+is into 4 in the $x$-direction, into 2 in the $y$-direction, while
+the $z$-direction is not decomposed. In this example, the local domain
+size per MPI
+task would then be $16\times32\times64$. The total number of MPI tasks
+available must match the total implied by \texttt{grid} (8 in the
+example).
+
+The \texttt{grid} specifications must exactly divide the system size;
+if no decomposition is possible, the code will terminate with an error
+message.
+If the requested decomposition is not valid, or \texttt{grid} is
+omitted, the code will try to supply a decomposition based on
+the number of MPI tasks available and \texttt{MPI\_Dims\_create()};
+this may be implementation dependent.
+
+
+\subsection{Fluid Parameters}
+\label{input-fluid-parameters}
+
+Control parameters for a Newtonian fluid include:
+\begin{lstlisting}
+fluid_rho0                 1.0
+viscosity                  0.166666666666666
+viscosity_bulk             0.166666666666666
+isothermal_fluctuations    off
+temperature                0.0
+\end{lstlisting}
+The mean fluid density is $\rho_0$ (key \texttt{fluid\_rho0}) which
+defaults to unity in lattice units; it is not usually necessary to
+change this. The shear viscosity is
+\texttt{viscosity} and as default value 1/6 to correspond to
+unit relaxation time in the lattice Boltzmann picture. Reasonable
+values of the shear viscosity are $0.2 > \eta > 0.0001$ in lattice
+units. Higher values move further into the over-relaxation region, and can
+result in poor behaviour. Lower
+values increase the Reynolds number and tend to cause
+problems with stability. The bulk
+viscosity has a default value which is equal to whatever shear
+viscosity has been selected. Higher values of the bulk viscosity
+may be set independently and can help to suppress large deviations
+from incompressibility and maintain numerical stability
+in certain situations.
+
+If fluctuating hydrodynamics is wanted, set the value of
+ \texttt{isothermal\_fluctualtions} to \texttt{on}. The associated
+temperature is in lattice units: reasonable values (at $\rho_0 = 1$)
+are $0 < kT < 0.0001$. If the temperature is too high, local
+velocities will rapidly exceed the Mach number constraint and
+the simulation will be unstable.
+
+\vfill
+\pagebreak

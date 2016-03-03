@@ -93,7 +93,7 @@ In lattice Boltzmann, the density and velocity of the continuum fluid
 are complemented by the  distribution function
 $f_i(\mathbf{r}; t)$ defined with reference to the
 discrete velocity space $c_{i\alpha}$.
-It is possible to relate the hydrodynamic quatities to the distribution
+It is possible to relate the hydrodynamic quantities to the distribution
 function via its moments, that is
 \begin{equation}
 \rho(\mathbf{r};t) = \sum_i f_i(\mathbf{r};t),  \quad
@@ -153,14 +153,14 @@ The D2Q9 model in two dimensions consists one zero vector (0,0), four
 vectors of length unity being $(\pm 1,0)$ and $(0, \pm 1)$, and four
 vectors of length $\sqrt{2}$ being $(\pm 1, \pm 1)$. The eigenvectors of
 the collision matrix, with associated weights and normalisers are shown
-in Table~\ref{table-d2q9-spec}.
-
+in Table~\ref{table-d2q9-spec}. In two dimensions there are six hydrodynamic
+modes and a total of three kinetic modes, or ghost modes.
 
 \begin{table}[t]
 \begin{center}
 \begin{tabular}{|l|r|rrrrrrrrr|r|l|}
 \hline\hline
-$M^a$ & & \multicolumn{9}{c|}{$m_i^a$} & $N^a$  &\\
+$M^a$ & $p$ & \multicolumn{9}{c|}{$m_i^a$} & $N^a$  &\\
 \hline
 $\rho$ & - & 1 &  1 &  1 &  1 &  1 &  1 &  1 &   1 &  1 & 1 &$\mathbf{1}$ \\
 \hline
@@ -188,99 +188,34 @@ $w_i$ & 1/36 & 16 & 1 & 4 & 1 & 4 & 4 & 1 & 4 & 1 & & $w_i$\\
 \hline\hline
 \end{tabular}
 \end{center}
-\caption{TABLE CAPTION}
+\caption{Table showing the details of the basis used for the D2Q9 model
+in two dimensions. The nine modes $M^a$ include six hydrodynamic modes,
+one scalar kinetic mode $\chi^1$, and one vector kinetic mode $J_{i\alpha}$.
+The weights in the equilibrium distribution function are $w_i$ and the
+normaliser for each mode is $N^a$. The eigenvectors of the collision
+matrix are the columns of the transformation matrix $m^a_i$. The prefactor
+$p$ (where present) multiplies all the elements to the right in that row.}
 \label{table-d2q9-spec}
 \end{table}
 
 
 
-
-
-\subsection{Fluctuating LBE}
-
-It is possible \cite{adhikari2005} to simulate fluctuating
-hydrodynamics for an isothermal fluid via the inclusion of
-a fluctuating stress $\sigma_{\alpha\beta}$:
-\begin{equation}
-\Pi_{\alpha\beta} = p\delta_{\alpha\beta} + \rho u_\alpha u_\beta
-+ \eta_{\alpha\beta\gamma\delta} \nabla_\gamma u_\delta + \sigma_{\alpha\beta}.
-\end{equation}
-The fluctuation-dissipation theorem relates the magnitude of this
-random stress to the isothermal temperature and the viscosity.
-
-In the LBE, this translates to the addition of a random contribution
-$\xi_i$ to the distribution at the collision stage, so that
-\begin{equation}
-\ldots + \xi_i.
-\end{equation}
-
-For the conserved modes $\xi_i = 0$. For all the non-conserved modes,
-i.e., those with dissipation, the fluctuating part may be written
-\begin{equation}
-\xi_i (\mathbf{r}; t) = w_i m_i^a \hat{\xi}^a (\mathbf{r}; t) N^a
-\end{equation}
-where $\hat{\xi}^a$ is a noise termwhich has a variance determined
-by the relaxation time for given mode
-\begin{equation}
-\left< \hat{\xi}^a \hat{\xi}^b \right> =
-\frac{\tau_a + \tau_b + 1}{\tau_a \tau_b}
-\left< \delta M^a \delta M^b \right>.
-\label{eq_fvar}
-\end{equation}
-
-\subsubsection{Fluctuating stress}
-
-For the stress, the random contribution to the distributions is
-\begin{equation}
-\xi_i = w_i \frac{Q_{i\alpha\beta} \hat{\sigma}_{\alpha\beta}}{4c_s^2}
-\end{equation}
-where $\hat{\sigma}_{\alpha\beta}$ is a symmtric matrix of random
-variates drawn from a Gaussian distribution with variance given
-by equation~\ref{eq_fvar}. In the case that the shear and bulk
-viscosities are the same, i.e., there is a single relaxation
-time, then the variances of the six independent components of
-the matrix are given by
-\begin{equation}
-\left< \hat{\sigma}_{\alpha\beta} \hat{\sigma}_{\mu\nu} \right> =
-\frac{2\tau + 1}{\tau^2}
-(\delta_{\alpha\mu}\delta_{\beta\nu} + \delta_{\alpha\nu} \delta_{\beta\mu}).
-\end{equation}
-
-
-\subsection{Hydrodynamic Boundary Conditions}
-
-\subsubsection{Bounce-Back on Links}
-
-A very general method for the representation of solid objects
-within the LB approach was put forward by Ladd \cite{l94a, l94b}.
-Solid objects (of any shape) are defined by a boundary surface
-which intersects some of the velocity vectors $\mathbf{c}_i$
-joining lattice nodes. Sites inside are designated solid, while
-sites outside remain fluid. The correct boundary condition is
-defined by identifying \textit{links} between fluid and solid
-sites, which allows those elements of the distribution which would
-cross the boundary at the propagation step to be ``bounced-back''
-into the fluid. This bounce-back on links is an efficient method
-to obtain the  correct hydrodynamic interaction between solid
-and fluid.
-
-\subsubsection{Fixed objects}
-
-\subsubsection{Moving objects}
-
-
 \subsubsection{D3Q15}
 
-These are the eigenvalues and eigenvectors of the collision
-matrix used for D3Q15
+The D3Q15 model in three dimensions consists of a set of vectors:
+one zero vector $(0,0,0)$, six vectors of length unity being
+$(\pm 1, 0, 0)$ cyclically permuted, and 8 vectors of length
+$\sqrt{3}$ being $(\pm 1, \pm 1, \pm 1)$.
+The eigenvalues and eigenvectors of the collision
+matrix used for D3Q15 are given in Table~\ref{table-d3q15-spec}.
 
 
-\begin{table}
+\begin{table}[t]
 \centering
 \tabcolsep=4pt
 \begin{tabular}{|l|r|r|rrrrrr|rrrrrrrr|r|l|}
 \hline\hline
-$M^a$ & & \multicolumn{15}{c|}{$m_i^a$} & $N^a$  &\\
+$M^a$ & $p$ & \multicolumn{15}{c|}{$m_i^a$} & $N^a$  &\\
 \hline
 $\rho$ & - &
  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &  1 &
@@ -353,14 +288,22 @@ in three dimensions. The fifteen modes $M^a$ include two scalar kinetic
 modes $\chi^1$ and $\chi^3$, and one vector kinetic mode $J_{i\alpha}$.
 The weights in the equilibrium distribution are $w_i$ and the normaliser
 for each mode is $N^a$. The eigenvectors of the collision matrix are the
-colms of the transformation matrix $m_i^a$. The prefactor $p$ simply
-multiplies all elements of $m_i^a$ in that row as a convenience.}
+columns of the transformation matrix $m_i^a$. The prefactor $p$ simply
+multiplies all elements of $m_i^a$ in that row as a convenience.
+\label{table-d3q15-spec}
+}
 \end{table}
 
 
 \subsubsection{D3Q19}
 
-\begin{table}
+The D3Q19 model in three dimensions is constructed with velocities:
+one zero vector $(0,0,0)$, three vectors of length unity being
+$(\pm 1, 0, 0)$ cyclically permuted, and twelve vectors of length
+$\sqrt{2}$ being $(\pm 1, \pm 1, 0)$ cyclically permuted. The
+details of the D3Q19 model are set out in Table~\ref{table-d3q19-spec}.
+
+\begin{table}[t]
 \centering
 \tabcolsep=4pt
 \begin{tabular}{|l||r|rrrrrr|rrrr|rrrr|rrrr|r||}
@@ -449,7 +392,91 @@ $w_i$ & 12 & 2 & 2 & 2 & 2 & 2 & 2 &
 \hline\hline
 \end{tabular}
 \caption{Table showing the details of the basis used for the D3Q19 model in
-three dimensions. }
+three dimensions. The nineteen modes $M^a$ include ten hydrodynamic modes,
+three scalr kinetic modes $\chi^1$, $\chi^2$, and $\chi^3$; there are also
+two vector kinetic modes $\chi^1 \rho c_{i\alpha}$
+and $\chi^2 \rho c_{i\alpha}$. The weights in the equilibrium distribution
+function are $w_i$, and the normaliser for each mode is $N^a$. The
+eigenvectors of the collision matrix are the columns of the transformation
+matrix $m^a_i$.
+\label{table-d3q19-spec}
+}
 \end{table}
 
+
+\subsection{Fluctuating LBE}
+
+It is possible \cite{adhikari2005} to simulate fluctuating
+hydrodynamics for an isothermal fluid via the inclusion of
+a fluctuating stress $\sigma_{\alpha\beta}$:
+\begin{equation}
+\Pi_{\alpha\beta} = p\delta_{\alpha\beta} + \rho u_\alpha u_\beta
++ \eta_{\alpha\beta\gamma\delta} \nabla_\gamma u_\delta + \sigma_{\alpha\beta}.
+\end{equation}
+The fluctuation-dissipation theorem relates the magnitude of this
+random stress to the isothermal temperature and the viscosity.
+
+In the LBE, this translates to the addition of a random contribution
+$\xi_i$ to the distribution at the collision stage, so that
+\begin{equation}
+\ldots + \xi_i.
+\end{equation}
+
+For the conserved modes $\xi_i = 0$. For all the non-conserved modes,
+i.e., those with dissipation, the fluctuating part may be written
+\begin{equation}
+\xi_i (\mathbf{r}; t) = w_i m_i^a \hat{\xi}^a (\mathbf{r}; t) N^a
+\end{equation}
+where $\hat{\xi}^a$ is a noise termwhich has a variance determined
+by the relaxation time for given mode
+\begin{equation}
+\left< \hat{\xi}^a \hat{\xi}^b \right> =
+\frac{\tau_a + \tau_b + 1}{\tau_a \tau_b}
+\left< \delta M^a \delta M^b \right>.
+\label{eq_fvar}
+\end{equation}
+
+\subsubsection{Fluctuating stress}
+
+For the stress, the random contribution to the distributions is
+\begin{equation}
+\xi_i = w_i \frac{Q_{i\alpha\beta} \hat{\sigma}_{\alpha\beta}}{4c_s^2}
+\end{equation}
+where $\hat{\sigma}_{\alpha\beta}$ is a symmtric matrix of random
+variates drawn from a Gaussian distribution with variance given
+by equation~\ref{eq_fvar}. In the case that the shear and bulk
+viscosities are the same, i.e., there is a single relaxation
+time, then the variances of the six independent components of
+the matrix are given by
+\begin{equation}
+\left< \hat{\sigma}_{\alpha\beta} \hat{\sigma}_{\mu\nu} \right> =
+\frac{2\tau + 1}{\tau^2}
+(\delta_{\alpha\mu}\delta_{\beta\nu} + \delta_{\alpha\nu} \delta_{\beta\mu}).
+\end{equation}
+
+
+\subsection{Hydrodynamic Boundary Conditions}
+
+\subsubsection{Bounce-Back on Links}
+
+A very general method for the representation of solid objects
+within the LB approach was put forward by Ladd \cite{l94a, l94b}.
+Solid objects (of any shape) are defined by a boundary surface
+which intersects some of the velocity vectors $\mathbf{c}_i$
+joining lattice nodes. Sites inside are designated solid, while
+sites outside remain fluid. The correct boundary condition is
+defined by identifying \textit{links} between fluid and solid
+sites, which allows those elements of the distribution which would
+cross the boundary at the propagation step to be ``bounced-back''
+into the fluid. This bounce-back on links is an efficient method
+to obtain the  correct hydrodynamic interaction between solid
+and fluid.
+
+\subsubsection{Fixed objects}
+
+\subsubsection{Moving objects}
+
+
+
+\vfill
 \pagebreak
