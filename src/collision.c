@@ -62,8 +62,8 @@ static int collision_fluctuations(noise_t * noise, int index,
 /* TODO refactor these type definitions and forward declarations */
 
 
-__target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int baseIndex);
-__target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex);
+__target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int ndist, int baseIndex);
+__target__ void d3q19matmult2(double* mode, double* f_d, int ndist, int baseIndex);
 
 
 __target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex);
@@ -457,6 +457,199 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   return;
 }
 
+  /* fast version, but doesn't support noise or non-fluid status yet */
+  //__targetEntry__ void lb_collision_mrt_lattice_fast( double* __restrict__ t_f, 
+__targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb, 
+				       const double* __restrict__ t_force, 
+				       double* __restrict__ t_velocity,
+				       const int nSites){
+  
+
+
+  int baseIndex = 0;
+
+  __targetTLP__(baseIndex, nSites) {
+
+  double* t_f=lb->f;
+
+  int p, m;                        /* velocity index */
+  int ia, ib;                      /* indices ("alphabeta") */
+  int iv=0;                          /* SIMD loop counter */
+  double mode[NVEL*VVL];           /* Modes; hydrodynamic + ghost */
+  double rho[VVL], rrho[VVL];      /* Density, reciprocal density */
+  double u[3*VVL];                 /* Velocity */
+  double s[3][3*VVL];              /* Stress */
+  double seq[3][3*VVL];            /* Equilibrium stress */
+  double rdim;                     /* 1 / dimension */
+
+  double force[3*VVL];             /* External force */
+  double tr_s[VVL], tr_seq[VVL];   /* SIMD vectors for stress trace */
+
+  
+  rdim = 1.0/NDIM;
+  
+  
+  /* Load SIMD vectors for distribution and force */
+  
+  
+  /* force */
+  for (ia = 0; ia < 3; ia++) {
+    __targetILP__(iv) force[ia*VVL+iv] = (tc_force_global[ia] 
+					  + t_force[HYADR(tc_nSites,3,baseIndex+iv,ia)]);
+  }
+  
+  /* Compute all the modes */
+  
+#ifdef _D3Q19_
+  d3q19matmult(mode, t_f, 1, baseIndex);
+#else 
+  for (m = 0; m < tc_nmodes_; m++) {
+    __targetILP__(iv) mode[m*VVL+iv] = 0.0;
+    for (p = 0; p < NVEL; p++) {
+      __targetILP__(iv) mode[m*VVL+iv] += t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ]*tc_ma_[m][p];
+    }
+  }
+#endif
+  
+  /* For convenience, write out the physical modes, that is,
+   * rho, NDIM components of velocity, independent components
+   * of stress (upper triangle), and lower triangle. */
+  
+  __targetILP__(iv) rho[iv] = mode[0*VVL+iv];
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv) u[ia*VVL+iv] = mode[(1 + ia)*VVL+iv];
+  }
+  
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      __targetILP__(iv) s[ia][ib*VVL+iv] = mode[(1 + NDIM + m)*VVL+iv];
+      m++;
+    }
+  }
+  
+  for (ia = 1; ia < NDIM; ia++) {
+    for (ib = 0; ib < ia; ib++) {
+      __targetILP__(iv) s[ia][ib*VVL+iv] = s[ib][ia*VVL+iv];
+    }
+  }
+  
+  /* Compute the local velocity, taking account of any body force */
+  
+  __targetILP__(iv) rrho[iv] = 1.0/rho[iv];
+
+  for (ia = 0; ia < NDIM; ia++) {      
+    __targetILP__(iv) {
+      u[ia*VVL+iv] = rrho[iv]*(u[ia*VVL+iv] + 0.5*force[ia*VVL+iv]);  
+    }
+  }
+  
+  /* Relax stress with different shear and bulk viscosity */
+  
+  __targetILP__(iv) {
+    tr_s[iv]   = 0.0;
+    tr_seq[iv] = 0.0;
+  }
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    /* Set equilibrium stress */
+    for (ib = 0; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	seq[ia][ib*VVL+iv] = rho[iv]*u[ia*VVL+iv]*u[ib*VVL+iv];
+      }
+    }
+    /* Compute trace */
+    __targetILP__(iv){
+      tr_s[iv]   += s[ia][ia*VVL+iv];
+      tr_seq[iv] += seq[ia][ia*VVL+iv];
+    }
+  }
+  
+  /* Form traceless parts */
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv){
+      s[ia][ia*VVL+iv]   -= rdim*tr_s[iv];
+      seq[ia][ia*VVL+iv] -= rdim*tr_seq[iv];
+    }
+  }
+  
+  /* Relax each mode */
+  __targetILP__(iv) {
+    tr_s[iv] = tr_s[iv] - tc_rtau_bulk*(tr_s[iv] - tr_seq[iv]);
+  }
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = 0; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	s[ia][ib*VVL+iv] -= tc_rtau_shear*(s[ia][ib*VVL+iv] - seq[ia][ib*VVL+iv]);
+	s[ia][ib*VVL+iv] += tc_d_[ia][ib]*rdim*tr_s[iv];
+	
+	/* Correction from body force (assumes equal relaxation times) */
+	
+	s[ia][ib*VVL+iv] += (2.0-tc_rtau_shear)*(u[ia*VVL+iv]*force[ib*VVL+iv]
+						 + force[ia*VVL+iv]*u[ib*VVL+iv]);
+      }
+    }
+  }
+  
+  
+  /* Now reset the hydrodynamic modes to post-collision values:
+   * rho is unchanged, velocity unchanged if no force,
+   * independent components of stress, and ghosts. */
+  
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv) mode[(1 + ia)*VVL+iv] += force[ia*VVL+iv];
+  }
+  
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib*VVL+iv];// + shat[ia][ib*VVL+iv];	
+      }
+      m++;
+    }
+  }
+  
+  /* Ghost modes are relaxed toward zero equilibrium. */
+#ifdef _D3Q19_    
+  for (m = NHYDRO; m < NVEL; m++) {  
+#else
+  for (m = NHYDRO; m < tc_nmodes_; m++) {  
+#endif
+    __targetILP__(iv) {
+      mode[m*VVL+iv] = mode[m*VVL+iv] - tc_rtau_[m]*(mode[m*VVL+iv] - 0.0);
+    }
+  }
+  
+  
+  /* Project post-collision modes back onto the distribution */
+#ifdef _D3Q19_
+  d3q19matmult2(mode, t_f, 1, baseIndex);
+#else
+  for (p = 0; p < NVEL; p++) {
+    double ftmp[VVL];
+    __targetILP__(iv) ftmp[iv] = 0.0;
+    for (m = 0; m < tc_nmodes_; m++) {
+      __targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*VVL+iv];
+    }
+    __targetILP__(iv) t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ] = ftmp[iv];
+  }
+#endif
+  
+  
+  /* Write SIMD chunks back to main arrays. */
+  /* velocity */
+  for (ia = 0; ia < 3; ia++) {   
+    __targetILP__(iv) {
+      t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)] = u[ia*VVL+iv];
+    }
+  }
+  
+  }  
+  return;
+}
+  
 
 /*****************************************************************************
  *
@@ -559,7 +752,14 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
 
+#ifdef KEEPHYDROONTARGET
+  if (noise_on){
+    fatal("Error: fast mrt collision does not support noise yet\n");
+  }
+  lb_collision_mrt_lattice_fast __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,nSites);
+#else
   lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,map->t_status,noise,noise_on,nSites);
+#endif
 
   targetSynchronize();
 
@@ -683,7 +883,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
 
 #ifdef _D3Q19_
-    d3q19matmult(mode, t_f, baseIndex);
+  d3q19matmult(mode, t_f, 2, baseIndex);
 #else
     /* Compute all the modes */
     for (m = 0; m < tc_nmodes_; m++) {
@@ -854,7 +1054,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   /* Project post-collision modes back onto the distribution */
 
 #ifdef _D3Q19_  
-  d3q19matmult2(mode, t_f, baseIndex);
+  d3q19matmult2(mode, t_f,2, baseIndex);
 #else    
     for (p = 0; p < NVEL; p++) {
       double ftmp[VVL];
@@ -1495,7 +1695,7 @@ static int collision_fluctuations(noise_t * noise, int index,
 #define we ( 3.0/48.0)
 
 
-__target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int baseIndex)
+ __target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int ndist, int baseIndex)
 {
 
   int m, il=0;
@@ -1505,409 +1705,409 @@ __target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, in
    }
 
 
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c1;
-  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c1;
+  __targetILP__(il) mode[0*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c1;
 
   /* m=1*/
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c0;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*-c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c0;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*-c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*-c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*-c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*-c1;
+  __targetILP__(il) mode[1*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*-c1;
 
   /* m=2 */
   __targetILP__(il) mode[2*VVL+il]=0.;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c1;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c0;
-  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*-c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*-c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*-c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*-c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c1;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c0;
+  __targetILP__(il) mode[2*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*-c1;
 
   /* m=3*/
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*-c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*-c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*-c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*-c1;
+  __targetILP__(il) mode[3*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=4*/
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*t3;
-  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-r3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*t3;
+  __targetILP__(il) mode[4*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*t3;
 
   /* m=5 */
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c1;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*-c1;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*-c1;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c0;
-  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c1;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c1;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*-c1;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*-c1;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c0;
+  __targetILP__(il) mode[5*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c1;
 
   /* m=6*/
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*-c1;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*-c1;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c1;
-  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*-c1;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*-c1;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c1;
+  __targetILP__(il) mode[6*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=7*/
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*t3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*t3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*-r3;
+  __targetILP__(il) mode[7*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*t3;
 
   /* m=8*/
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*-c1;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*-c1;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c1;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c0;
-  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*-c1;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*-c1;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c1;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c0;
+  __targetILP__(il) mode[8*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=9*/
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*t3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*t3 ;
-  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*t3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*-r3;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*t3 ;
+  __targetILP__(il) mode[9*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*-r3;
 
   /* m=10*/
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c1;
-  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*-c2;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*-c2;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*-c2;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*-c2;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*-c2;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*-c2;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c1;
+  __targetILP__(il) mode[10*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*-c2;
 
   /* m=11*/
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*-c2;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c1;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c1;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*-c2;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c0;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c2;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*-c1;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*-c1;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*-c1;
-  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c2;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*-c2;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c1;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c1;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*-c2;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c0;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c2;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*-c1;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*-c1;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*-c1;
+  __targetILP__(il) mode[11*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c2;
 
   /* m=12 */
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*-c2;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c2;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c1;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*-c1;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*-c1;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-c1;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*-c2;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c0;
-  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c2;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*-c2;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c2;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c1;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*-c1;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*-c1;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-c1;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*-c2;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c0;
+  __targetILP__(il) mode[12*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c2;
 
   /* m=13 */
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*-c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*-c2;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c2;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*-c1;
-  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*-c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*-c2;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c2;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*-c1;
+  __targetILP__(il) mode[13*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=14*/
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*-c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*-c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*-c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*-c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*-c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*-c1;
+  __targetILP__(il) mode[14*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=15*/
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*-c1;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c1;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*-c1;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c1;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*-c1;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c1;
-  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*-c1;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c1;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*-c1;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c1;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*-c1;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c1;
+  __targetILP__(il) mode[15*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=16*/
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*-c1;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*-c1;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c1;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-c1;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c0;
-  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*-c1;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*-c1;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c1;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-c1;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c0;
+  __targetILP__(il) mode[16*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=17*/
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*c0;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c1;
-  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*-c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*-c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*-c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*-c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*c0;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c1;
+  __targetILP__(il) mode[17*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c0;
 
   /* m=18*/
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)]*c1;
-  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)]*-c2;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)]*-c2;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)]*-c2;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)]*-c2;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)]*-c2;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)]*-c2;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)]*c1;
+  __targetILP__(il) mode[18*VVL+il] += ftmp_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)]*c1;
  
 }
 
 
-__target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
+ __target__ void d3q19matmult2(double* mode, double* f_d, int ndist, int baseIndex)
 {
 
   double ftmp[VVL];
@@ -1935,7 +2135,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += r6*mode[18*VVL+il];
-  __targetILP__(il)   f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 0)] = ftmp[il];
+  __targetILP__(il)   f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 0)] = ftmp[il];
   
   /* p=1*/
   __targetILP__(il) ftmp[il]=0.;
@@ -1958,7 +2158,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 1)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 1)] = ftmp[il];
   
   /* p=2*/
   __targetILP__(il) ftmp[il]=0.;
@@ -1981,7 +2181,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 2)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 2)] =  ftmp[il];
   
   /* p=3*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2004,7 +2204,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 3)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 3)] =  ftmp[il];
   
   /* p=4*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2027,7 +2227,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 4)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 4)] = ftmp[il];
   
   /* p=5*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2050,7 +2250,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 5)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 5)] = ftmp[il];
   
   /*p=6 */
   __targetILP__(il) ftmp[il]=0.;
@@ -2073,7 +2273,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += r8*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 6)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 6)] =  ftmp[il];
   
   /* p=7*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2096,7 +2296,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += -r4*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 7)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 7)] = ftmp[il];
   
   /* p=8*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2119,7 +2319,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += r8*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 8)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 8)] =  ftmp[il];
   
   /* p=9*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2142,7 +2342,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 9)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 9)] = ftmp[il];
   
   /* p=10*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2165,7 +2365,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 10)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 10)] = ftmp[il];
   
   /* p=11*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2188,7 +2388,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += -r8*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 11)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 11)] =  ftmp[il];
   
   /* p=12*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2211,7 +2411,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += r4*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 12)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 12)] = ftmp[il];
   
   /* p=13*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2234,7 +2434,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += -r8*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 13)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 13)] =  ftmp[il];
   
   /* p=14*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2257,7 +2457,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 14)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 14)] =  ftmp[il];
   
   /* p=15*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2280,7 +2480,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 15)] =  ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 15)] =  ftmp[il];
   
   /* p=16*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2303,7 +2503,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 16)] =ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 16)] =ftmp[il];
   
   /* p=17*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2326,7 +2526,7 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 17)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 17)] = ftmp[il];
   
   /* p=18*/
   __targetILP__(il) ftmp[il]=0.;
@@ -2349,11 +2549,10 @@ __target__ void d3q19matmult2(double* mode, double* f_d, int baseIndex)
   __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
   __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
   __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) f_d[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + il,0, 18)] = ftmp[il];
+  __targetILP__(il) f_d[LB_ADDR(tc_nSites, ndist, NVEL, baseIndex + il,0, 18)] = ftmp[il];
 
 
 }
-
 
 __target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex)
 {
