@@ -366,7 +366,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
+__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
 
 
 /*****************************************************************************
@@ -438,7 +438,7 @@ void ludwig_run(const char * inputfile) {
 
   coords_nlocal(nlocal);
 
-#ifdef LB_DATA_SOA
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
     init_comms_gpu(nlocal, ludwig->lb->ndist);
 #endif
 
@@ -527,26 +527,30 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_PHI_HALO);
 
-#ifdef KEEPFIELDONTARGET
 
-#ifdef LB_DATA_SOA
+#if defined (KEEPFIELDONTARGET) && defined (LB_DATA_SOA)
 
-      /* use gpu-specific comms */
-      halo_SoA(1, 1, 0, ludwig->phi->t_data);
+      halo_alternative(1, 1, 0, ludwig->phi->t_data);
+
+#elif defined (KEEPFIELDONTARGET) //but not LB_DATA_SOA
+
+      halo_alternative(1, 1, 0, ludwig->phi->t_data);
+
+#elif defined (LB_DATA_SOA) //but not KEEPFIELDONTARGET
+
+      copyDeepDoubleArrayToTarget(ludwig->phi->tcopy,ludwig->phi,&(ludwig->phi->data),ludwig->phi->nf*nSites);
+      
+      halo_alternative(1, 1, 0, ludwig->phi->t_data);
+      
+      
+      copyDeepDoubleArrayFromTarget(ludwig->phi,ludwig->phi->tcopy,&(ludwig->phi->data),ludwig->phi->nf*nSites);
+      
+
 
 #else
-
-    copyDeepDoubleArrayFromTarget(ludwig->phi,ludwig->phi->tcopy,&(ludwig->phi->data),ludwig->phi->nf*nSites);
-
-    field_halo(ludwig->phi);
-
-    copyDeepDoubleArrayToTarget(ludwig->phi->tcopy,ludwig->phi,&(ludwig->phi->data),ludwig->phi->nf*nSites);
-#endif
-
-#else /* not KEEPFIELDONTARGET */
       field_halo(ludwig->phi);
 
-#endif /* KEEPFIELDONTARGET */
+#endif
 
     TIMER_stop(TIMER_PHI_HALO);
 
@@ -558,42 +562,37 @@ void ludwig_run(const char * inputfile) {
       }
     if (ludwig->q) {
 
+    TIMER_start(TIMER_PHI_HALO);
 
-#ifdef LB_DATA_SOA
+      field_t* t_field = NULL; 
+      t_field = ludwig->q->tcopy;
+      copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
 
-#ifndef KEEPFIELDONTARGET
+#if defined (KEEPFIELDONTARGET) && defined (LB_DATA_SOA)
 
-    copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
+      halo_alternative(ludwig->q->nf, 1, 0, tmpptr);
 
-#endif
+#elif defined (KEEPFIELDONTARGET) //but not LB_DATA_SOA
 
-    /* perform SoA halo exchange */
-    field_t* t_field = NULL; 
-    t_field = ludwig->q->tcopy;
-    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
-    halo_SoA(ludwig->q->nf, 1, 0, tmpptr);
+      halo_alternative(ludwig->q->nf, 1, 0, tmpptr);
 
-#ifndef KEEPFIELDONTARGET
+#elif defined (LB_DATA_SOA) //but not KEEPFIELDONTARGET
 
-    copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
+      copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
 
-#endif 
+      halo_alternative(ludwig->q->nf, 1, 0, tmpptr);
+
+      copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
 
 
-#else /* not LB_DATA_SOA*/
-
-#ifdef KEEPFIELDONTARGET
-    copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
-#endif
+#else
 
     field_halo(ludwig->q);
 
-#ifdef KEEPFIELDONTARGET
-    copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
-
 #endif
 
-#endif
+    TIMER_stop(TIMER_PHI_HALO);
+
 
 
       field_grad_compute(ludwig->q_grad);
@@ -724,33 +723,30 @@ void ludwig_run(const char * inputfile) {
 	if (ludwig->hydro) {
 
 	  TIMER_start(TIMER_U_HALO);
-	    
-#ifdef LB_DATA_SOA 
-	    
-#ifndef KEEPHYDROONTARGET
-	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
-	  /* perform SoA halo exchange */
+
 	  hydro_t* t_hydro = ludwig->hydro->tcopy; 
 	  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
-	  halo_SoA(ludwig->hydro->nf, 1, 0, tmpptr);
 
-#ifndef KEEPHYDROONTARGET
-	  copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+#if defined (KEEPHYDROONTARGET) && defined (LB_DATA_SOA)
+
+	  halo_alternative(ludwig->hydro->nf, 1, 0, tmpptr);
+
+#elif defined (KEEPHYDROONTARGET) //but not LB_DATA_SOA
+
+	  halo_alternative(ludwig->hydro->nf, 1, 0, tmpptr);
+
+#elif defined (LB_DATA_SOA) //but not KEEPHYDROONTARGET
 	    
-#endif
+
+	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+
+	  halo_alternative(ludwig->hydro->nf, 1, 0, tmpptr);
+
+	  copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
 
 #else
 
-#ifdef KEEPHYDROONTARGET
-	  copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
-
-	  hydro_u_halo(ludwig->hydro);
-
-#ifdef KEEPHYDROONTARGET
-	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
+ 	  hydro_u_halo(ludwig->hydro); 
 
 #endif
 
@@ -803,10 +799,9 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_HALO_LATTICE);
 
-#ifdef LB_DATA_SOA
-      /* perform SoA halo exchange */
+#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
       copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
-      halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
+      halo_alternative(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
 #else
       lb_halo(ludwig->lb);
 #endif 
@@ -1037,7 +1032,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_petsc_finish();
 #endif
 
-#ifdef LB_DATA_SOA
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
   finalise_comms_gpu();
 #endif
 
@@ -1729,11 +1724,10 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_HALO_LATTICE);
 
-    #ifdef LB_DATA_SOA
-    /* perform SoA halo exchange */
+    #if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
     copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
-    halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
-    #else
+    halo_alternative(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
+    #else		   
     lb_halo(ludwig->lb);
     #endif
  
