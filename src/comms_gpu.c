@@ -22,13 +22,11 @@
 #include "runtime.h"
 #include "lb_model_s.h" 
 
-
-
-#ifdef LB_DATA_SOA
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
 
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
+__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
 
 #ifdef KEVIN_GPU
 int halo_init_extra(void);
@@ -517,7 +515,7 @@ __targetEntry__ static void unpack_halo_gpu_d(const int nfields1, const int nfie
 
 
 
-void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
+void halo_alternative(int nfields1, int nfields2, int packablefield1, double * data_d)
 {
 
 
@@ -1947,4 +1945,5 @@ static void halo_unpack_gpu_d(cuda_halo_t * halo, int id,
 
 #endif
 
-#endif /* LB_DATA_SOA */
+
+#endif 
