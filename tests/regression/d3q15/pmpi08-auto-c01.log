@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.2 (MPI version running on 8 processes)
+Welcome to Ludwig v0.4.6 (MPI version running on 8 processes)
 
-The SVN revision details are: 2458
+The SVN revision details are: 
 Note assertions via standard C assert() are on.
 
 Read 21 user parameters from pmpi08-auto-c01.inp
@@ -24,12 +24,13 @@ Shear viscosity               1.00000e-01
 Bulk viscosity                1.00000e-01
 Temperature                   2.13333e-05
 External body force density   0.00000e+00  0.00000e+00  0.00000e+00
-External electric field       0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
 External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 
 Lattice Boltzmann distributions
 -------------------------------
-Model:            d3q15  
+Model:            d3q15 R
 SIMD vector len:  1
 Number of sets:   1
 Halo type:        full
@@ -95,11 +96,11 @@ Colloid velocities - x y z
 [maximum ]  2.3053953e-03 -1.5394796e-17 -1.4571112e-17
 
 Scalars - total mean variance min max
-[rho]      262091.00  1.00000000000  6.5697667e-09  0.99967393682  1.00032331163
+[rho]      262091.00  1.00000000000  6.5697665e-09  0.99967393682  1.00032331163
 
 Momentum - x y z
-[total   ]  2.2158700e+00  1.0212755e-14 -2.2451801e-14
-[fluid   ]  2.0999793e+00  1.0880186e-14 -2.2037927e-14
+[total   ]  2.2158700e+00  1.0323777e-14 -2.2451801e-14
+[fluid   ]  2.0999793e+00  1.0991208e-14 -2.2037927e-14
 [colloids]  1.1589069e-01 -6.6743101e-16 -4.1387362e-16
 
 Velocity - x y z
@@ -108,21 +109,22 @@ Velocity - x y z
 
 Completed cycle 40
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.001 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.295      2.296      2.296   2.295594 (1 call)
-      Time step loop:      0.054      0.081      2.241   0.056027 (40 calls)
-         Propagation:      0.002      0.008      0.267   0.006665 (40 calls)
-           Collision:      0.038      0.049      1.569   0.039213 (40 calls)
-       Lattice halos:      0.001      0.014      0.172   0.002145 (80 calls)
+               Total:      2.544      2.544      2.544   2.543866 (1 call)
+      Time step loop:      0.062      0.066      2.492   0.062306 (40 calls)
+         Propagation:      0.001      0.002      0.050   0.001261 (40 calls)
+           Collision:      0.049      0.053      1.981   0.049522 (40 calls)
+   Collision (krnl) :      0.049      0.053      1.963   0.049066 (40 calls)
+       Lattice halos:      0.003      0.007      0.284   0.003555 (80 calls)
        phi gradients:      0.000      0.000      0.000   0.000000 (40 calls)
-              Forces:      0.000      0.000      0.001   0.000023 (40 calls)
-             Rebuild:      0.002      0.006      0.084   0.002104 (40 calls)
-                 BBL:      0.001      0.008      0.053   0.001324 (40 calls)
-      Particle halos:      0.000      0.014      0.033   0.000814 (40 calls)
-   Force calculation:      0.000      0.000      0.000   0.000000 (40 calls)
+              Forces:      0.000      0.000      0.001   0.000021 (40 calls)
+             Rebuild:      0.001      0.001      0.046   0.001142 (40 calls)
+                 BBL:      0.001      0.001      0.029   0.000732 (40 calls)
+      Particle halos:      0.000      0.001      0.007   0.000171 (40 calls)
+   Force calculation:      0.000      0.000      0.000   0.000002 (40 calls)
           phi update:      0.000      0.000      0.000   0.000000 (40 calls)
                Free1:      0.000      0.000      0.000   0.000000 (80 calls)
 Ludwig finished normally.
