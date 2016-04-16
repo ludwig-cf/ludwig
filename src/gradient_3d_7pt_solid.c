@@ -120,13 +120,15 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop,
 					    double * grad,
 					    double * t_grad,
 					    double * delsq, double * t_delsq) {
+ 
+
   int nextra;
   int nsites;
-#ifdef __NVCC__
+  #ifdef __NVCC__
   int method = 3;
-#else
+  #else
   int method = 1;
-#endif
+  #endif
 
   assert(nop == NQAB);
   assert(map_);
@@ -213,11 +215,14 @@ static int gradient_6x5_svd(const double * field, double * grad,
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
+  int nSites;
 
   assert(NQAB == 5);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+
+  nSites=(nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo);
   util_matrix_create(3*6, 3*NQAB, &a18);
 
   str[Z] = 1;
@@ -269,11 +274,12 @@ static int gradient_6x5_svd(const double * field, double * grad,
 
 	  /* Calculate half-gradients assuming they are all knowns */
 
+
 	  for (n1 = 0; n1 < NQAB; n1++) {
 	    gradn[n1][ia][0] =
-	      field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
+	    field[FLDADR(nSites,NQAB,index+str[ia],n1)] - field[FLDADR(nSites,NQAB,index,n1)];
 	    gradn[n1][ia][1] =
-	      field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
+	      field[FLDADR(nSites,NQAB,index,n1)] - field[FLDADR(nSites,NQAB,index-str[ia],n1)];
 	  }
 
 	  /* Set unknown, with direction, or treat as known (zero grad) */
@@ -295,7 +301,19 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	/* For planar anchoring we require qtilde_ab of Fournier and
 	 * Galatola, and its square (reduendent for fluid sites) */
 
-	util_q5_to_qab(qs, field + NQAB*index);
+	//util_q5_to_qab(qs, field + NQAB*index);
+
+
+	qs[X][X] = field[FLDADR(nSites,NQAB,index,XX)];
+	qs[X][Y] = field[FLDADR(nSites,NQAB,index,XY)];
+	qs[X][Z] = field[FLDADR(nSites,NQAB,index,XZ)];
+	qs[Y][X] = qs[X][Y];
+	qs[Y][Y] = field[FLDADR(nSites,NQAB,index,YY)];
+	qs[Y][Z] = field[FLDADR(nSites,NQAB,index,YZ)];
+	qs[Z][X] = qs[X][Z];
+	qs[Z][Y] = qs[Y][Z];
+	qs[Z][Z] = 0.0 - qs[X][X] - qs[Y][Y];
+
 
 	q2 = 0.0;
 	for (ia = 0; ia < 3; ia++) {
@@ -416,11 +434,11 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	/* The final answer is the sum of the partial gradients */
 
 	for (n1 = 0; n1 < NQAB; n1++) {
-	  del2[NQAB*index + n1] = 0.0;
+	  del2[FLDADR(nSites,NQAB,index,n1)] = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
-	    grad[3*(NQAB*index + n1) + ia] =
-	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	    del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
+	    grad[FGRDADR(nSites,NQAB,index,n1,ia)] =
+	    0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
+	    del2[FLDADR(nSites,NQAB,index,n1)] += gradn[n1][ia][0] - gradn[n1][ia][1];
 	  }
 	}
 

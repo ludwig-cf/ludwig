@@ -108,6 +108,7 @@ __targetHost__ int phi_force_divergence_set(const int flag) {
 
 __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t* q_grad, hydro_t * hydro) {
 
+
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
 
@@ -504,7 +505,7 @@ static int phi_force_flux(hydro_t * hydro) {
     phi_force_flux_divergence(hydro, fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_force_flux_divergence_with_fix(hydro, fluxe, fluxw, fluxy, fluxz);
+     phi_force_flux_divergence_with_fix(hydro, fluxe, fluxw, fluxy, fluxz);
   }
 
   free(fluxz);
@@ -642,13 +643,13 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
 	indexj = le_site_index(ic, jc-1, kc);
 	indexk = le_site_index(ic, jc, kc-1);
 
+
 	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
-		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
-		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
+	  hydro->f[HYADR(nSites,hydro->nf,index,ia)] += - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
+	  + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
+	  + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
 	}
 
-	hydro_f_local_add(hydro, index, f);
 
       }
     }
@@ -820,8 +821,8 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
         index1 = le_site_index(ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[VECADR(nSites,3,index,ia)] += ra*fcor[VECADR(nSites,3,ip,ia)];
-	  fluxw[VECADR(nSites,3,index1,ia)] -= ra*fcor[VECADR(nSites,3,ip,ia)];
+	  fluxe[VECADR(nSites,3,index,ia)] += ra*fcor[3*ip + ia];
+	  fluxw[VECADR(nSites,3,index1,ia)] -= ra*fcor[3*ip + ia];
 	}
       }
     }
