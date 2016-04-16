@@ -657,12 +657,19 @@ int field_scalar_array(field_t * obj, int index, double * array) {
 
   int n;
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(obj);
   assert(obj->data);
   assert(array);
 
   for (n = 0; n < obj->nf; n++) {
-    array[n] = obj->data[obj->nf*index + n];
+    array[n] = obj->data[FLDADR(nSites,obj->nf,index,n)];
+
   }
 
   return 0;
@@ -678,12 +685,17 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 
   int n;
 
+  int nlocal[3];
+  int nhalo, nSites;
+  coords_nlocal(nlocal);
+  nhalo = coords_nhalo();
+  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+
   assert(obj);
   assert(obj->data);
   assert(array);
-
   for (n = 0; n < obj->nf; n++) {
-    obj->data[obj->nf*index + n] = array[n];
+    obj->data[FLDADR(nSites,obj->nf,index,n)] = array[n];
   }
 
   return 0;
