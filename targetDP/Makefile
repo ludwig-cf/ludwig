@@ -22,15 +22,18 @@ AR = ar -cru
 .SUFFIXES:
 .SUFFIXES: .c  .o
 
-TARGETSRC=targetDP_C
+
+TARGETSRC = targetDP_C.c cuda_stub_api.c
 
 ifeq ($(CC),nvcc)
-TARGETSRC=targetDP_CUDA
+TARGETSRC = targetDP_CUDA.c
 endif
 
+TARGETOBJ = ${TARGETSRC:.c=.o}
+
 default:
-	$(CC) $(CFLAGS) -c $(TARGETSRC).c
-	$(AR) libtarget.a $(TARGETSRC).o
+	$(CC) $(CFLAGS) -c $(TARGETSRC)
+	$(AR) libtarget.a $(TARGETOBJ)
 
 clean:
 	rm -f *.o *.a
