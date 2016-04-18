@@ -2,7 +2,7 @@
  *
  *  test_kernel.c
  *
- *  Test kernel coverage depending on target.
+ *  Test kernel coverage depending on target, vector length, and so on.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -28,18 +28,26 @@
 
 typedef struct kernel_limit_s kernel_limit_t;
 struct kernel_limit_s {
+  /* physical side */
+  int nhalo;
+  int nsites;
+  int nlocal[3];
   int imin;
   int imax;
   int jmin;
   int jmax;
   int kmin;
   int kmax;
-  int nhalo;
-  int nsites;
-  int nlocal[3];
+  /* kernel side no vectorisation */
   int nklocal[3];
   int kindex0;
   int kernel_iterations;
+  /* With vectorisation */
+  int kv_imin;
+  int kv_jmin;
+  int kv_kmin;
+  int kernel_vector_iterations;
+  int nkv_local[3];
 };
 
 static __targetConst__ kernel_limit_t klimits;
@@ -57,6 +65,7 @@ __host__ __target__ int kernel_coords_kc(int kindex);
 __host__ __target__ int kernel_coords_icv(int kindex, int iv);
 __host__ __target__ int kernel_coords_jcv(int kindex, int iv);
 __host__ __target__ int kernel_coords_kcv(int kindex, int iv);
+__host__ __target__ int kernel_mask(int ic, int jc, int kc);
 __host__ __target__ int kernel_coords_index(int ic, int jc, int kc);
 
 /*****************************************************************************
@@ -85,6 +94,8 @@ int test_kernel_suite(void) {
   lim.kmin = 0; lim.kmax = nlocal[Z] + 1;
   do_test_kernel(limits);
 
+  printf("Target vector length was %d\n", NSIMDVL);
+
   coords_finish();
   pe_finalise();
 
@@ -107,24 +118,39 @@ __host__ int do_test_kernel(kernel_limit_t * limits) {
   int nsites;
   int * iref = NULL;
   int * itarget1 = NULL;
+  int * itarget2 = NULL;
 
   /* Allocate space for reference */
 
   nsites = coords_nsites();
+
+  /* Additional issue. The assertions in memory.c actaully catch
+   * legal address owing to the division by NSIMDVL in the macros.
+   * It might be worth moving the division to after the assertion
+   * in memory.c */
+
+  /* In the meantime, we need... */
+  assert(nsites % NSIMDVL == 0);
+
   iref = (int *) calloc(nsites, sizeof(int));
   itarget1 = (int *) calloc(nsites, sizeof(int));
+  itarget2 = (int *) calloc(nsites, sizeof(int));
   assert(iref);
   assert(itarget1);
+  assert(itarget2);
 
   kernel_coords_commit(limits);
 
   do_host_kernel(limits, iref);
-
+  /*
   targetLaunch(do_target_kernel1, limits, itarget1);
-  /* targetLaunch(do_target_kernel2); */
-
   do_check(iref, itarget1);
+  */
+  targetLaunch(do_target_kernel2, limits, itarget2);
+  do_check(iref, itarget2);
 
+  free(itarget2);
+  free(itarget1);
   free(iref);
 
   return 0;
@@ -141,10 +167,12 @@ __host__ int do_test_kernel(kernel_limit_t * limits) {
 __host__ int do_host_kernel(kernel_limit_t * limits, int * mask) {
 
   int index;
+  int ifail;
   int ic, jc, kc;
   int nsites;
 
   nsites = coords_nsites();
+  printf("nsites %d\n", nsites);
 
   for (ic = limits->imin; ic <= limits->imax; ic++) {
     for (jc = limits->jmin; jc <= limits->jmax; jc++) {
@@ -153,6 +181,8 @@ __host__ int do_host_kernel(kernel_limit_t * limits, int * mask) {
 	/* We are at ic,jc,kc */
 
 	index = coords_index(ic, jc, kc);
+	/* printf("%3d %3d %3d %8d %8d\n", ic, jc, kc, index, nsites);*/
+	ifail = addr_rank0(nsites, index);
 	mask[mem_addr_rank0(nsites, index)] = index;
       }
     }
@@ -183,7 +213,7 @@ __kernel__ void do_target_kernel1(kernel_limit_t * limits, int * mask) {
     jc = kernel_coords_jc(kindex);
     kc = kernel_coords_kc(kindex);
 
-    /* We are at ic,jc,kc */
+    /* We are at ic, jc, kc */
 
     index = kernel_coords_index(ic, jc, kc);
 
@@ -206,27 +236,27 @@ __kernel__ void do_target_kernel2(kernel_limit_t * limits, int * mask) {
 
   int kindex;
 
-  __targetTLP__(kindex, limits->kernel_iterations) {
+  __targetTLP__(kindex, limits->kernel_vector_iterations) {
 
     int iv;
     int ic[NSIMDVL];
     int jc[NSIMDVL];
     int kc[NSIMDVL];
     int index[NSIMDVL];
+    int kmask[NSIMDVL];
     int nsites;
 
     __targetILP__(iv) ic[iv] = kernel_coords_icv(kindex, iv);
     __targetILP__(iv) jc[iv] = kernel_coords_jcv(kindex, iv);
     __targetILP__(iv) kc[iv] = kernel_coords_kcv(kindex, iv);
     __targetILP__(iv) index[iv] = kernel_coords_index(ic[iv], jc[iv], kc[iv]);
+    __targetILP__(iv) kmask[iv] = kernel_mask(ic[iv], jc[iv], kc[iv]);
 
     nsites = limits->nsites;
 
-    /*
     __targetILP__(iv) {
-      mask[mem_vaddr_rank0(nsites, indexv[iv])] = 1;
+      mask[mem_addr_rank0(nsites, index[iv])] = kmask[iv]*index[iv];
     }
-    */
   }
 
   return;
@@ -257,11 +287,9 @@ __host__ int do_check(int * iref, int * itarget) {
 	index = coords_index(ic, jc, kc);
 	if (iref[index] == itarget[index]) {
 	  /* ok */
-	  /* printf("%3d %3d %3d %8d %8d\n", ic, jc, kc, iref[index], itarget[index]);*/
 	}
 	else {
 	  printf("%3d %3d %3d %8d %8d\n", ic, jc, kc, iref[index], itarget[index]);
-	  printf("Bad index ...\n");
 	  assert(0);
 	}
 
@@ -280,6 +308,8 @@ __host__ int do_check(int * iref, int * itarget) {
 
 __host__ int kernel_coords_commit(kernel_limit_t * limits) {
 
+  int kiter;
+
   assert(limits);
 
   limits->nhalo = coords_nhalo();
@@ -290,24 +320,30 @@ __host__ int kernel_coords_commit(kernel_limit_t * limits) {
   limits->nklocal[Y] = limits->jmax - limits->jmin + 1;
   limits->nklocal[Z] = limits->kmax - limits->kmin + 1;
 
-  limits->kindex0 = 0;
   limits->kernel_iterations
     = limits->nklocal[X]*limits->nklocal[Y]*limits->nklocal[Z];
 
   /* Check vector length */
-  /*
-  if (NSIMDVL > 1) {
-    int nhalo = limits->nhalo;
-    limits->nklocal[Y] = limits->nlocal[Y] + 2*nhalo;
-    limits->nklocal[Z] = limits->nlocal[Z] + 2*nhalo;
-    limits->kindex0
-      = (coords_index(limits->imin, 1-nhalo, 1-nhalo)/NSIMDVL)*NSIMDVL;
-    limits->kernel_iterations
-      = limits->nklocal[X]*limits->nklocal[Y]*limits->nklocal[Z];
-    limits->kernel_iterations
-      = (limits->kernel_iterations + NSIMDVL - 1)/NSIMDVL;
-  }
-  */
+
+  limits->kv_imin = limits->imin;
+  limits->kv_jmin = 1 - limits->nhalo;
+  limits->kv_kmin = 1 - limits->nhalo;
+
+  limits->nkv_local[X] = limits->nklocal[X];
+  limits->nkv_local[Y] = limits->nlocal[Y] + 2*limits->nhalo;
+  limits->nkv_local[Z] = limits->nlocal[Z] + 2*limits->nhalo;
+
+  /* Offset of first site must be start of a SIMD vector block */
+  kiter = coords_index(limits->kv_imin, limits->kv_jmin, limits->kv_kmin);
+  limits->kindex0 = (kiter/NSIMDVL)*NSIMDVL;
+
+  /* Extent of the contiguous block ... */
+  kiter = limits->nkv_local[X]*limits->nkv_local[Y]*limits->nkv_local[Z];
+  limits->kernel_vector_iterations = kiter;
+
+  printf("kindex0 %d\n", limits->kindex0);
+  printf("vec_itr %d\n", limits->kernel_vector_iterations);
+
   copyConstToTarget(&klimits, limits, sizeof(kernel_limit_t));
 
   return 0;
@@ -364,25 +400,74 @@ __host__ __target__ int kernel_coords_kc(int kindex) {
 
 __host__ __target__ int kernel_coords_icv(int kindex, int iv) {
 
-  int ic = 0;
+  int ic;
+  int index;
 
-  return ic + iv;
+  index = klimits.kindex0 + kindex + iv;
+
+  ic = index/(klimits.nkv_local[Y]*klimits.nkv_local[Z]);
+  assert(1 - klimits.nhalo <= ic);
+  assert(ic <= klimits.nlocal[X] + klimits.nhalo);
+
+  return ic;
 }
 
 __host__ __target__ int kernel_coords_jcv(int kindex, int iv) {
 
-  int jc = 0;
+  int jc;
+  int ic;
+  int index;
 
-  return jc + iv;
+  index = klimits.kindex0 + kindex + iv;
+
+  ic = index/(klimits.nkv_local[Y]*klimits.nkv_local[Z]);
+  jc = (index - ic*klimits.nkv_local[Y]*klimits.nkv_local[Z])/klimits.nkv_local[Z];
+  assert(1 - klimits.nhalo <= jc);
+  assert(jc <= klimits.nlocal[Y] + klimits.nhalo);
+
+  return jc;
 }
 
 __host__ __target__ int kernel_coords_kcv(int kindex, int iv) {
 
-  int kc = 0;
+  int kc;
+  int jc;
+  int ic;
+  int index;
 
-  return kc + iv;
+  index = klimits.kindex0 + kindex + iv;
+
+  ic = index/(klimits.nkv_local[Y]*klimits.nkv_local[Z]);
+  jc = (index - ic*klimits.nkv_local[Y]*klimits.nkv_local[Z])/klimits.nkv_local[Z];
+  kc = index - ic*klimits.nkv_local[Y]*klimits.nkv_local[Z] - jc*klimits.nkv_local[Z];
+
+  assert(1 - klimits.nhalo <= jc);
+  assert(jc <= klimits.nlocal[Y] + klimits.nhalo);
+  assert(kc <= klimits.nlocal[Z] + klimits.nhalo);
+
+  return kc;
 }
 
+/*****************************************************************************
+ *
+ *  kernel_mask
+ *
+ *****************************************************************************/
+
+__host__ __target__ int kernel_mask(int ic, int jc, int kc) {
+
+  if (ic < klimits.imin || ic > klimits.imax ||
+      jc < klimits.jmin || jc > klimits.jmax ||
+      kc < klimits.kmin || kc > klimits.kmax) return 0;
+
+  return 1;
+}
+
+/*****************************************************************************
+ *
+ *  kernel_coords_index
+ *
+ *****************************************************************************/
 
 __host__ __target__ int kernel_coords_index(int ic, int jc, int kc) {
 
