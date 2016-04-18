@@ -22,12 +22,11 @@
 #include "coords.h"
 #include "memory.h"
 
-#define __host__ __targetHost__
 #define __kernel__ __targetEntry__
 #define targetLaunch(kernel_function, ...) kernel_function(__VA_ARGS__)
 
-typedef struct kernel_limit_s kernel_limit_t;
-struct kernel_limit_s {
+typedef struct kernel_s kernel_t;
+struct kernel_s {
   /* physical side */
   int nhalo;
   int nsites;
@@ -50,15 +49,15 @@ struct kernel_limit_s {
   int nkv_local[3];
 };
 
-static __targetConst__ kernel_limit_t klimits;
+static __targetConst__ kernel_t klimits;
 
-__host__ int do_test_kernel(kernel_limit_t * limits);
-__host__ int do_host_kernel(kernel_limit_t * limits, int * mask);
+__host__ int do_test_kernel(kernel_t * limits);
+__host__ int do_host_kernel(kernel_t * limits, int * mask, int * isum);
 __host__ int do_check(int * iref, int * itarget);
-__kernel__ void do_target_kernel1(kernel_limit_t * limits, int * mask);
-__kernel__ void do_target_kernel2(kernel_limit_t * limits, int * mask);
+__kernel__ void do_target_kernel1(kernel_t * limits, int * mask, int * isum);
+__kernel__ void do_target_kernel2(kernel_t * limits, int * mask);
 
-__host__            int kernel_coords_commit(kernel_limit_t * limits);
+__host__            int kernel_coords_commit(kernel_t * limits);
 __host__ __target__ int kernel_coords_ic(int kindex);
 __host__ __target__ int kernel_coords_jc(int kindex);
 __host__ __target__ int kernel_coords_kc(int kindex);
@@ -67,6 +66,10 @@ __host__ __target__ int kernel_coords_jcv(int kindex, int iv);
 __host__ __target__ int kernel_coords_kcv(int kindex, int iv);
 __host__ __target__ int kernel_mask(int ic, int jc, int kc);
 __host__ __target__ int kernel_coords_index(int ic, int jc, int kc);
+
+
+__target__ int __target_atomic_add_int(int * send, int * recv, int ncount);
+
 
 /*****************************************************************************
  *
@@ -77,8 +80,8 @@ __host__ __target__ int kernel_coords_index(int ic, int jc, int kc);
 int test_kernel_suite(void) {
 
   int nlocal[3];
-  kernel_limit_t lim;
-  kernel_limit_t * limits = &lim;
+  kernel_t lim;
+  kernel_t * limits = &lim;
 
   pe_init_quiet();
   coords_init();
@@ -113,12 +116,14 @@ int test_kernel_suite(void) {
  *
  *****************************************************************************/
 
-__host__ int do_test_kernel(kernel_limit_t * limits) {
+__host__ int do_test_kernel(kernel_t * limits) {
 
   int nsites;
   int * iref = NULL;
   int * itarget1 = NULL;
   int * itarget2 = NULL;
+
+  int isum;
 
   /* Allocate space for reference */
 
@@ -141,11 +146,13 @@ __host__ int do_test_kernel(kernel_limit_t * limits) {
 
   kernel_coords_commit(limits);
 
-  do_host_kernel(limits, iref);
-  /*
-  targetLaunch(do_target_kernel1, limits, itarget1);
+  do_host_kernel(limits, iref, &isum);
+  printf("Host kernel returns isum = %d\n", isum);
+
+  targetLaunch(do_target_kernel1, limits, itarget1, &isum);
+  printf("Kernel one  returns isum = %d\n", isum);
   do_check(iref, itarget1);
-  */
+
   targetLaunch(do_target_kernel2, limits, itarget2);
   do_check(iref, itarget2);
 
@@ -164,7 +171,7 @@ __host__ int do_test_kernel(kernel_limit_t * limits) {
  *
  *****************************************************************************/
 
-__host__ int do_host_kernel(kernel_limit_t * limits, int * mask) {
+__host__ int do_host_kernel(kernel_t * limits, int * mask, int * isum) {
 
   int index;
   int ifail;
@@ -173,6 +180,8 @@ __host__ int do_host_kernel(kernel_limit_t * limits, int * mask) {
 
   nsites = coords_nsites();
   printf("nsites %d\n", nsites);
+
+  *isum = 0;
 
   for (ic = limits->imin; ic <= limits->imax; ic++) {
     for (jc = limits->jmin; jc <= limits->jmax; jc++) {
@@ -184,6 +193,7 @@ __host__ int do_host_kernel(kernel_limit_t * limits, int * mask) {
 	/* printf("%3d %3d %3d %8d %8d\n", ic, jc, kc, index, nsites);*/
 	ifail = addr_rank0(nsites, index);
 	mask[mem_addr_rank0(nsites, index)] = index;
+	*isum += 1;
       }
     }
   }
@@ -199,9 +209,11 @@ __host__ int do_host_kernel(kernel_limit_t * limits, int * mask) {
  *
  *****************************************************************************/
 
-__kernel__ void do_target_kernel1(kernel_limit_t * limits, int * mask) {
+__kernel__ void do_target_kernel1(kernel_t * limits, int * mask,
+				  int * isum) {
 
   int kindex;
+  __shared__ int psum[TARGET_MAX_THREADS_PER_BLOCK];
 
   __targetTLPNoStride__(kindex, limits->kernel_iterations) {
 
@@ -219,6 +231,11 @@ __kernel__ void do_target_kernel1(kernel_limit_t * limits, int * mask) {
 
     nsites = limits->nsites;
     mask[mem_addr_rank0(nsites, index)] = index;
+
+    /* Do intra-block reduction... */
+    psum[0] = 1;
+    /* Do inter-block reduction... */
+    __target_atomic_add_int(isum, psum, 1);
   }
 
   return;
@@ -232,7 +249,7 @@ __kernel__ void do_target_kernel1(kernel_limit_t * limits, int * mask) {
  *
  *****************************************************************************/
 
-__kernel__ void do_target_kernel2(kernel_limit_t * limits, int * mask) {
+__kernel__ void do_target_kernel2(kernel_t * limits, int * mask) {
 
   int kindex;
 
@@ -306,7 +323,7 @@ __host__ int do_check(int * iref, int * itarget) {
  *
  *****************************************************************************/
 
-__host__ int kernel_coords_commit(kernel_limit_t * limits) {
+__host__ int kernel_coords_commit(kernel_t * limits) {
 
   int kiter;
 
@@ -344,7 +361,7 @@ __host__ int kernel_coords_commit(kernel_limit_t * limits) {
   printf("kindex0 %d\n", limits->kindex0);
   printf("vec_itr %d\n", limits->kernel_vector_iterations);
 
-  copyConstToTarget(&klimits, limits, sizeof(kernel_limit_t));
+  copyConstToTarget(&klimits, limits, sizeof(kernel_t));
 
   return 0;
 }
@@ -484,3 +501,29 @@ __host__ __target__ int kernel_coords_index(int ic, int jc, int kc) {
   return index;
 }
 
+
+
+#ifdef __NVCC__
+__target__ int __target_atomic_add_int(int * send, int * recv, int ncount) {
+
+  int n;
+
+  for (n = 0; n < ncount; n++) {
+    atomicAdd(recv +n, send[n]);
+  }
+
+  return 0
+}
+#else
+int __target_atomic_add_int(int * send, int * recv, int ncount) {
+
+  int n;
+
+  for (n = 0; n < ncount; n++) {
+    #pragma omp atomic
+    recv[n] += send[n];
+  }
+
+  return 0;
+}
+#endif
