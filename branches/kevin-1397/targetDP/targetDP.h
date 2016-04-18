@@ -24,6 +24,8 @@
 #ifndef _TDP_INCLUDED
 #define _TDP_INCLUDED
 
+#include "target_api.h"
+
 /* Main settings */
 
 #define VVL_CUDA 1 /* virtual vector length for TARGETDP CUDA (usually 1) */
@@ -144,8 +146,9 @@
 /* Settings */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
+#if ! defined(VVL)
 #define VVL VVL_C
-
+#endif
 
 /* Language Extensions */
 
