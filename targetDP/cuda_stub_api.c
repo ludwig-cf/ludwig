@@ -10,6 +10,11 @@
 
 #include "cuda_stub_api.h"
 
+/* Globally reserved names */
+
+dim3 gridDim;
+dim3 blockDim;
+
 static cudaError_t lastError;
 
 #define error_return_if(expr, error) \

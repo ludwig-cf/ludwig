@@ -24,7 +24,17 @@
 #ifndef _TDP_INCLUDED
 #define _TDP_INCLUDED
 
+/* KS. Additions */
+
 #include "target_api.h"
+
+__host__ int target_thread_info(void);
+__device__ int target_atomic_add_int(int * sums, int * vals, int ncount);
+__host__ __device__ int targetGetDeviceCount(int * device);
+__host__ __device__ int targetDeviceSynchronise(void);
+
+/* KS. End additions */
+
 
 /* Main settings */
 

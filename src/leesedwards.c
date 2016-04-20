@@ -647,10 +647,10 @@ int le_get_nxbuffer() {
  *
  *****************************************************************************/
 
-__targetHost__ __target__
+__host__ __target__
 int le_index_real_to_buffer(const int ic, const int di) {
 
-#ifdef __CUDA__ARCH__
+#ifdef __CUDA_ARCH__
   /* Assumes no planes on device at the moment */
   return ic + di;
 #else

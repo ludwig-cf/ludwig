@@ -50,8 +50,11 @@ vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv)
 /* Interface not dependent on preprocessor directives at compile time.
    For non-performance critical use. */
 
+__host__ __target__
 int mem_addr_rank0(int nsites, int index);
+__host__ __target__
 int mem_addr_rank1(int nsites, int na, int index, int ia);
+__host__ __target__
 int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
 
 /* End of interface */
@@ -124,16 +127,21 @@ typedef enum data_model_enum_type {ADDRESS_FORWARD, ADDRESS_REVERSE}
 
 #else
 
+__host__ __target__
 int forward_addr_rank0_assert(int line, const char * file,
 			      int nsites, int index);
+__host__ __target__
 int forward_addr_rank1_assert(int line, const char * file,
 			      int nsites, int na, int index, int ia);
+__host__ __target__
 int forward_addr_rank2_assert(int line, const char * file,
 			      int nsites, int na, int nb, int index,
 			      int ia, int ib);
+__host__ __target__
 int forward_addr_rank3_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc,
 			      int index, int ia, int ib, int ic);
+__host__ __target__
 int forward_addr_rank4_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc, int nd,
 			      int index, int ia, int ib, int ic, int id);
@@ -178,16 +186,21 @@ int forward_addr_rank4_assert(int line, const char * file,
 
 #else
 
+__host__ __target__
 int reverse_addr_rank0_assert(int line, const char * file,
 			      int nsites, int index);
+__host__ __target__
 int reverse_addr_rank1_assert(int line, const char * file,
 			      int nsites, int na, int index, int ia);
+__host__ __target__
 int reverse_addr_rank2_assert(int line, const char * file,
 			      int nsites, int na, int nb,
 			      int index, int ia, int ib);
+__host__ __target__
 int reverse_addr_rank3_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc,
 			      int index, int ia, int ib, int ic);
+__host__ __target__
 int reverse_addr_rank4_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc, int nd,
 			      int index, int ia, int ib, int ic, int id);

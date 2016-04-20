@@ -13,7 +13,7 @@
   index = (stride)*(blockIdx.x*blockDim.x + threadIdx.x);
 
 #define __cuda_simt_for(index, ndata, stride) \
-  ___cuda_for_all(index, ndata, stride) \
+  __cuda_simt_for_all(index, ndata, stride) \
   if (index < (ndata))
 
 #define __cuda_simt_parallel_for(index, ndata, stride) \

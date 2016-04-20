@@ -15,7 +15,7 @@
 #define assert_valid_index(lineno, file, nlen, index) \
   do {						       \
     if (index < 0 || index >= nlen) {		       \
-      fprintf(stderr, "%s (%s = %d, %s = %d), file %s, line %d\n", \
+      printf("%s (%s = %d, %s = %d), file %s, line %d\n", \
 	      "Bad array index", #nlen, nlen, #index, index, file, lineno); \
       assert(index > 0 && index < nlen); \
     }		 \
@@ -27,6 +27,7 @@
  *
  *****************************************************************************/
 
+__host__ __target__
 int forward_addr_rank0_assert(int lineno, const char * file,
 			      int nsites, int index) {
 
@@ -41,6 +42,7 @@ int forward_addr_rank0_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int forward_addr_rank1_assert(int lineno, const char * file,
 			      int nsites, int na, int index, int ia) {
 
@@ -56,6 +58,7 @@ int forward_addr_rank1_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int forward_addr_rank2_assert(int lineno, const char * file,
 			      int nsites, int na, int nb,
 			      int index, int ia, int ib) {
@@ -73,6 +76,7 @@ int forward_addr_rank2_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int forward_addr_rank3_assert(int lineno, const char * file,
 			      int nsites, int na, int nb, int nc,
 			      int index, int ia, int ib, int ic) {
@@ -91,6 +95,7 @@ int forward_addr_rank3_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int forward_addr_rank4_assert(int lineno, const char * file,
 			      int nsites, int na, int nb, int nc, int nd,
 			      int index, int ia, int ib, int ic, int id) {
@@ -110,6 +115,7 @@ int forward_addr_rank4_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int reverse_addr_rank0_assert(int lineno, const char * file,
 			      int nsites, int index) {
 
@@ -124,6 +130,7 @@ int reverse_addr_rank0_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int reverse_addr_rank1_assert(int lineno, const char * file,
 			      int nsites, int na, int index, int ia) {
 
@@ -139,6 +146,7 @@ int reverse_addr_rank1_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int reverse_addr_rank2_assert(int lineno, const char * file,
 			      int nsites, int na, int nb,
 			      int index, int ia, int ib) {
@@ -156,6 +164,7 @@ int reverse_addr_rank2_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int reverse_addr_rank3_assert(int lineno, const char * file,
 			      int nsites, int na, int nb, int nc,
 			      int index, int ia, int ib, int ic) {
@@ -174,6 +183,7 @@ int reverse_addr_rank3_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int reverse_addr_rank4_assert(int lineno, const char * file,
 			      int nsites, int na, int nb, int nc, int nd,
 			      int index, int ia, int ib, int ic, int id) {
@@ -195,6 +205,7 @@ int reverse_addr_rank4_assert(int lineno, const char * file,
  *
  *****************************************************************************/
 
+__host__ __target__
 int mem_addr_rank0(int nsites, int index) {
 
   return addr_rank0(nsites, index);
@@ -206,6 +217,7 @@ int mem_addr_rank0(int nsites, int index) {
  *
  *****************************************************************************/
 
+__host__ __target__
 int mem_addr_rank1(int nsites, int na, int index, int ia) {
 
   return addr_rank1(nsites, na, index, ia);
@@ -217,6 +229,7 @@ int mem_addr_rank1(int nsites, int na, int index, int ia) {
  *
  *****************************************************************************/
 
+__host__ __target__
 int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib) {
 
   return addr_rank2(nsites, na, nb, index, ia, ib);

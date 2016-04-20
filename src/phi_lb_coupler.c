@@ -37,7 +37,7 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
 #ifndef OLD_SHIT
   int nsites;
 
-  nsites = coords_nsites();
+  nsites = tc_nSites;
   targetCoords3D(coords,tc_Nall,baseIndex);
 
   // if not a halo site:
