@@ -17,12 +17,116 @@
  * limitations under the License. 
  */
 
-
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include "targetDP.h"
+
+/* Utilities */
+
+/*****************************************************************************
+ *
+ *  targetDeviceSynchronise
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetDeviceSynchronise(void) {
+
+  __host_barrier();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  targetGetDeviceCount
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetGetDeviceCount(int * device) {
+
+  *device = 0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Revisit
+ *
+ *  Some information on the implementation...
+ *
+ *****************************************************************************/
+
+__host__ int target_thread_info(void) {
+
+  printf("Thread implementation: OpenMP 1 block, %d threads per block.\n",
+         __host_get_max_threads());
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  target_atomic_add_int
+ *
+ *  Intended for reductions on __shared__ sums, ie., sums += vals
+ *
+ *****************************************************************************/
+
+__target__ int target_atomic_add_int(int * sums, int * vals, int ncount) {
+
+  int n;
+
+  assert(sums);
+  assert(vals);
+
+  for (n = 0; n < ncount; n++) {
+    #pragma omp atomic
+    sums[n] += vals[n];
+  }
+
+  return 0;
+}
+
+
+uint3 __x86_builtin_threadIdx_init(void) {
+  uint3 threads = {1, 1, 1};
+  threads.x = __host_get_thread_num();
+  return threads;
+}
+
+uint3 __x86_builtin_blockIdx_init(void) {
+  uint3 blocks = {1, 1, 1};
+  return blocks;
+}
+
+void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
+
+  gridDim = nblocks;
+  blockDim = nthreads;
+
+  /* sanity checks on user settings here... */
+
+  /* In case we request fewer threads than are available: */
+
+  __host_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+
+  return;
+}
+
+void __x86_postlaunch(void) {
+
+  int nthreads;
+
+  /* Reset the default number of threads. */
+  nthreads = __host_get_max_threads();
+  __host_set_num_threads(nthreads);
+
+  return;
+}
 
 
 

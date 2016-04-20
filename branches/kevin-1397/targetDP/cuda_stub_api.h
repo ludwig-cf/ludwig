@@ -50,10 +50,43 @@ enum cudaError {
 #define cudaHostAllocPortable      0x01
 #define cudaHostAllocWriteCombined 0x04
 
-/* Additional definitions */
+/* Device memory qualifiers / executation space qualifiers */
 
 #define __host__
+#define __global__
+#define __shared__
 #define __device__
+#define __constant__
+
+#if (__STDC__VERSION__ >= 19901)
+  #define __forceinline__ inline
+  #define __noinline__
+#else
+  #define __forceinline__
+  #define __noinline__
+#endif
+
+/* Built-in variable implementation. */
+
+typedef struct __uint3_s uint3;
+typedef struct __dim3_s dim3;
+
+struct __uint3_s {
+  unsigned int x;
+  unsigned int y;
+  unsigned int z;
+};
+
+struct __dim3_s {
+  int x;
+  int y;
+  int z;
+};
+
+/* Smuggle in gridDim and blockDim here; names must be reserved. */
+
+extern dim3 gridDim;
+extern dim3 blockDim;
 
 typedef enum cudaError cudaError_t;     /* an enum type */
 typedef int * cudaStream_t;             /* an opaque handle */

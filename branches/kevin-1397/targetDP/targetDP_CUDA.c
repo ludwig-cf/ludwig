@@ -1027,3 +1027,61 @@ __targetHost__ void checkTargetError(const char *msg)
 	}                         
 }
 
+
+/*****************************************************************************
+ *
+ *  Revisit
+ *
+ *****************************************************************************/
+
+__host__ int target_thread_info(void) {
+
+  printf("Thread implementation: CUDA x blocks; %d threads per block\n",
+	 CUDA_MAX_THREADS_PER_BLOCK);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  target_atomic_add_int
+ *
+ *****************************************************************************/
+
+__target__ int target_atomic_add_int(int * sums, int * vals, int ncount) {
+
+  int n;
+
+  for (n = 0; n < ncount; n++) {
+    atomicAdd(sums + n, vals[n]);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  targetDeviceSynhronise
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetDeviceSynchronise(void) {
+
+  cudaDeviceSynchronize();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  targetGetDeviceCount
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetGetDeviceCount(int * device) {
+
+  cudaGetDeviceCount(device);
+
+  return 0;
+}
+
