@@ -158,9 +158,15 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   lb_t* lb;
 
 #ifdef __NVCC__
+
   lb = lb_in;
+
+  double* tmpptr;
+  lb_t* t_lb = lb->tcopy; 
+  copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
+
   /* update colloid-affected lattice sites from target, including neighbours */
-  copyFromTargetPointerMap3D(lb->f, lb->t_f,
+  copyFromTargetPointerMap3D(lb->f, tmpptr,
 			     Nall, nFields, 1, (void **) cinfo->map_new);
 #else
   lb = lb_in->tcopy; /* set lb to target copy */
@@ -183,7 +189,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
 #ifdef __NVCC__
   /* update target with colloid-affected lattice sites,
      not including neighbours */ 
-  copyToTargetPointerMap3D(lb->t_f, lb->f,
+  copyToTargetPointerMap3D(tmpptr, lb->f,
 			   Nall, nFields, 0, (void **) cinfo->map_new); 
 #endif
 
