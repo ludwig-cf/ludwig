@@ -26,6 +26,7 @@ typedef struct kernel_s kernel_t;
 typedef struct data_s data_t;
 
 struct data_s {
+  int nsites;
   int isum;
   int * idata;
   data_t * target;
@@ -42,20 +43,17 @@ struct kernel_s {
   int jmax;
   int kmin;
   int kmax;
+  int kindex0;
   /* kernel side no vectorisation */
   int nklocal[3];
-  int kindex0;
   int kernel_iterations;
   /* With vectorisation */
-  int kv_imin;
-  int kv_jmin;
-  int kv_kmin;
   int kernel_vector_iterations;
   int nkv_local[3];
 };
 
 static kernel_t hlimits;
-static __targetConst__ kernel_t klimits;
+static __constant__ kernel_t klimits;
 
 __host__ int do_test_kernel(kernel_t * limits, data_t * data);
 __host__ int do_host_kernel(int * mask, int * isum);
@@ -74,6 +72,8 @@ __host__ __target__ int kernel_coords_jcv(int kindex, int iv);
 __host__ __target__ int kernel_coords_kcv(int kindex, int iv);
 __host__ __target__ int kernel_mask(int ic, int jc, int kc);
 __host__ __target__ int kernel_coords_index(int ic, int jc, int kc);
+__host__ __target__ int kernel_iterations(void);
+__host__ __target__ int kernel_vector_iterations(void);
 
 __host__ int data_create(data_t * data);
 __host__ int data_free(data_t * data);
@@ -251,11 +251,10 @@ __global__ void do_target_kernel1(data_t * data) {
 
   int kindex;
 
-  __target_simt_parallel_for(kindex, klimits.kernel_iterations, 1) {
+  __target_simt_parallel_for(kindex, kernel_iterations(), 1) {
 
     int ic, jc, kc;
     int index;
-    int nsites;
 
     ic = kernel_coords_ic(kindex);
     jc = kernel_coords_jc(kindex);
@@ -265,8 +264,7 @@ __global__ void do_target_kernel1(data_t * data) {
 
     index = kernel_coords_index(ic, jc, kc);
 
-    nsites = klimits.nsites;
-    data->idata[mem_addr_rank0(nsites, index)] = index;
+    data->idata[mem_addr_rank0(data->nsites, index)] = index;
   }
 
   return;
@@ -289,12 +287,11 @@ __global__ void do_target_kernel1r(data_t * data) {
 
     int ic, jc, kc;
     int index;
-    int nsites;
     int ia;
     __target_simt_threadIdx_init();
     psum[threadIdx.x] = 0;
 
-    __target_simt_for(kindex, klimits.kernel_iterations, 1) {
+    __target_simt_for(kindex, kernel_iterations(), 1) {
 
       ic = kernel_coords_ic(kindex);
       jc = kernel_coords_jc(kindex);
@@ -304,16 +301,16 @@ __global__ void do_target_kernel1r(data_t * data) {
 
       index = kernel_coords_index(ic, jc, kc);
 
-      nsites = klimits.nsites;
-      data->idata[mem_addr_rank0(nsites, index)] = index;
+      data->idata[mem_addr_rank0(data->nsites, index)] = index;
       psum[threadIdx.x] += 1;
     }
 
-    /* Reduction */
+    /* Reduction (nthreads power of two) */
 
     for (ia = blockDim.x/2; ia > 0; ia /= 2) {
       __target_syncthreads();
       if (threadIdx.x < ia) {
+	printf("sum %d %d %d\n", blockDim.x, threadIdx.x, threadIdx.x+ia);
 	psum[threadIdx.x] += psum[threadIdx.x + ia];
       }
     }
@@ -339,7 +336,7 @@ __global__ void do_target_kernel2(data_t * data) {
 
   int kindex;
 
-  __targetTLP__(kindex, klimits.kernel_vector_iterations) {
+  __targetTLP__(kindex, kernel_vector_iterations()) {
 
     int iv;
     int ic[NSIMDVL];
@@ -347,7 +344,6 @@ __global__ void do_target_kernel2(data_t * data) {
     int kc[NSIMDVL];
     int index[NSIMDVL];
     int kmask[NSIMDVL];
-    int nsites;
 
     __targetILP__(iv) ic[iv] = kernel_coords_icv(kindex, iv);
     __targetILP__(iv) jc[iv] = kernel_coords_jcv(kindex, iv);
@@ -355,10 +351,8 @@ __global__ void do_target_kernel2(data_t * data) {
     __targetILP__(iv) index[iv] = kernel_coords_index(ic[iv], jc[iv], kc[iv]);
     __targetILP__(iv) kmask[iv] = kernel_mask(ic[iv], jc[iv], kc[iv]);
 
-    nsites = klimits.nsites;
-
     __targetILP__(iv) {
-      data->idata[mem_addr_rank0(nsites, index[iv])] = kmask[iv]*index[iv];
+      data->idata[mem_addr_rank0(data->nsites, index[iv])] = kmask[iv]*index[iv];
     }
   }
 
@@ -417,10 +411,12 @@ __host__ int data_create(data_t * data) {
 
   /* host */
   nsites = coords_nsites();
+  data->nsites = nsites;
   data->idata = (int *) calloc(nsites, sizeof(int));
   assert(data->idata);
 
   targetGetDeviceCount(&ndevice);
+  printf("Number of devices: %d\n", ndevice);
 
   if (ndevice == 0) {
     data->target = data;
@@ -430,6 +426,7 @@ __host__ int data_create(data_t * data) {
     targetCalloc((void **) &(data->target), sizeof(data_t));
     targetCalloc((void **) &tmp, nsites*sizeof(int));
     copyToTarget(&(data->target->idata), &tmp, sizeof(int *));
+    copyToTarget(&data->target->nsites, &nsites, sizeof(int));
   }
 
   return 0;
@@ -505,9 +502,10 @@ __host__ int data_copy(data_t * data, int flag) {
     /* Alias is enough */
   }
   else {
-    nsites = coords_nsites();
+    nsites = data->nsites;
     copyFromTarget(&tmp, &(data->target->idata), sizeof(int *));
     if (flag == 0) {
+      copyToTarget(&data->target->nsites, &nsites, sizeof(int));
       copyToTarget(&data->target->isum, &data->isum, sizeof(int));
       copyToTarget(tmp, data->idata, nsites*sizeof(int));
     }
@@ -529,6 +527,9 @@ __host__ int data_copy(data_t * data, int flag) {
 __host__ int kernel_coords_commit(kernel_t * limits) {
 
   int kiter;
+  int kv_imin;
+  int kv_jmin;
+  int kv_kmin;
 
   assert(limits);
 
@@ -543,18 +544,18 @@ __host__ int kernel_coords_commit(kernel_t * limits) {
   limits->kernel_iterations
     = limits->nklocal[X]*limits->nklocal[Y]*limits->nklocal[Z];
 
-  /* Check vector length */
+  /* Vectorised case */
 
-  limits->kv_imin = limits->imin;
-  limits->kv_jmin = 1 - limits->nhalo;
-  limits->kv_kmin = 1 - limits->nhalo;
+  kv_imin = limits->imin;
+  kv_jmin = 1 - limits->nhalo;
+  kv_kmin = 1 - limits->nhalo;
 
   limits->nkv_local[X] = limits->nklocal[X];
   limits->nkv_local[Y] = limits->nlocal[Y] + 2*limits->nhalo;
   limits->nkv_local[Z] = limits->nlocal[Z] + 2*limits->nhalo;
 
   /* Offset of first site must be start of a SIMD vector block */
-  kiter = coords_index(limits->kv_imin, limits->kv_jmin, limits->kv_kmin);
+  kiter = coords_index(kv_imin, kv_jmin, kv_kmin);
   limits->kindex0 = (kiter/NSIMDVL)*NSIMDVL;
 
   /* Extent of the contiguous block ... */
@@ -564,12 +565,33 @@ __host__ int kernel_coords_commit(kernel_t * limits) {
   printf("kindex0 %d\n", limits->kindex0);
   printf("vec_itr %d\n", limits->kernel_vector_iterations);
 
+  /* Copy the results to host and device memory */
+
   hlimits = *limits;
   copyConstToTarget(&klimits, limits, sizeof(kernel_t));
 
   return 0;
 }
 
+/*****************************************************************************  
+ *                                                                              
+ *  kernel_host_target                                                          
+ *                                                                              
+ *  A convenience to prevent ifdefs all over the place.                         
+ *  Note this must be a real function, not a macro, as macro expansion          
+ *  occurs after preprocessor directive execution.                              
+ *                                                                              
+ *****************************************************************************/
+
+__host__ __device__ __inline__
+static kernel_t kernel_host_target(void) {
+
+#ifdef __CUDA_ARCH__
+  return klimits;
+#else
+  return hlimits;
+#endif
+}
 
 /*****************************************************************************
  *
@@ -580,12 +602,7 @@ __host__ int kernel_coords_commit(kernel_t * limits) {
 __host__ __target__ int kernel_coords_ic(int kindex) {
 
   int ic;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   ic = limits.imin + kindex/(limits.nklocal[Y]*limits.nklocal[Z]);
   assert(1 - limits.nhalo <= ic);
@@ -604,12 +621,7 @@ __host__ __target__ int kernel_coords_jc(int kindex) {
 
   int ic;
   int jc;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   ic = kindex/(limits.nklocal[Y]*limits.nklocal[Z]);
   jc = limits.jmin +
@@ -631,12 +643,7 @@ __host__ __target__ int kernel_coords_kc(int kindex) {
   int ic;
   int jc;
   int kc;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   ic = kindex/(limits.nklocal[Y]*limits.nklocal[Z]);
   jc = (kindex - ic*limits.nklocal[Y]*limits.nklocal[Z])/limits.nklocal[Z];
@@ -658,12 +665,7 @@ __host__ __target__ int kernel_coords_icv(int kindex, int iv) {
 
   int ic;
   int index;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   index = limits.kindex0 + kindex + iv;
 
@@ -679,12 +681,7 @@ __host__ __target__ int kernel_coords_jcv(int kindex, int iv) {
   int jc;
   int ic;
   int index;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   index = limits.kindex0 + kindex + iv;
 
@@ -702,12 +699,7 @@ __host__ __target__ int kernel_coords_kcv(int kindex, int iv) {
   int jc;
   int ic;
   int index;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   index = limits.kindex0 + kindex + iv;
 
@@ -730,11 +722,7 @@ __host__ __target__ int kernel_coords_kcv(int kindex, int iv) {
 
 __host__ __target__ int kernel_mask(int ic, int jc, int kc) {
 
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   if (ic < limits.imin || ic > limits.imax ||
       jc < limits.jmin || jc > limits.jmax ||
@@ -754,12 +742,7 @@ __host__ __target__ int kernel_coords_index(int ic, int jc, int kc) {
   int index;
   int nhalo;
   int xfac, yfac;
-
-#ifdef __CUDA_ARCH__
-  const kernel_t limits = klimits;
-#else
-  const kernel_t limits = hlimits;
-#endif
+  const kernel_t limits = kernel_host_target();
 
   nhalo = limits.nhalo;
   yfac = limits.nlocal[Z] + 2*nhalo;
@@ -787,3 +770,28 @@ __host__ dim3 kernel_blocks(kernel_t * limits, dim3 ntpb) {
   return nblocks;
 }
 
+/*****************************************************************************
+ *
+ *  kernel_iterations
+ *
+ *****************************************************************************/
+
+__host__ __target__ int kernel_iterations(void) {
+
+  const kernel_t limits = kernel_host_target();
+
+  return limits.kernel_iterations;
+}
+
+/*****************************************************************************
+ *
+ *  kernel_vector_iterations
+ *
+ *****************************************************************************/
+
+__host__ __target__ int kernel_vector_iterations(void) {
+
+  const kernel_t limits = kernel_host_target();
+
+  return limits.kernel_vector_iterations;
+}

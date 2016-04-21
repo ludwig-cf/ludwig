@@ -468,9 +468,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	/* velocity */
 #ifndef OLD_SHIT
 	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) {
-	    t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
-	  }
+	  t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
 	}
 #else
 	for (ia = 0; ia < 3; ia++) {
