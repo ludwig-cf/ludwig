@@ -28,6 +28,7 @@ void (* p_function)(void);
 void test_util(void);
 int test_util_discrete_volume(void);
 int test_discrete_volume_sphere(double r0[3], double a0, double answer);
+int test_macro_abuse(void);
 
 /*****************************************************************************
  *
@@ -99,6 +100,7 @@ int test_assumptions_suite(void) {
   printf("M_PI        is %14.7e\n", M_PI);
   */
   test_util();
+  test_macro_abuse();
 
 
   /* Information */
@@ -253,4 +255,28 @@ int test_discrete_volume_sphere(double r0[3], double a0, double answer) {
   if (fabs(vn - answer) > TEST_DOUBLE_TOLERANCE) ifail++;
 
   return ifail;
+}
+
+#define CONCAT_(a, b) a##b
+#define CONCAT(a, b) CONCAT_(a, b)
+
+#define MARGS_(_2, _1, N, ...) N 
+#define MARGS(...) MARGS_(__VA_ARGS__, 3arg, 2arg, not_allowed)
+
+#define blah_parallel_3arg(index, ndata, stride) \
+  index = (ndata) + (stride)
+#define blah_parallel_2arg(index, ndata) blah_parallel_3arg(index, ndata, 1)
+#define blah_parallel(index, ...) \
+  CONCAT(blah_parallel_, MARGS(__VA_ARGS__))(index, __VA_ARGS__)
+
+int test_macro_abuse(void) {
+
+  int sum;
+
+  blah_parallel(sum, 2);
+  assert(sum == 3);
+  blah_parallel(sum, 4, 99);
+  assert(sum == 103);
+
+  return 0;
 }
