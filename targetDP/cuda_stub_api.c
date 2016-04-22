@@ -12,8 +12,8 @@
 
 /* Globally reserved names */
 
-dim3 gridDim;
-dim3 blockDim;
+dim3 gridDim = {1, 1, 1};
+dim3 blockDim = {1, 1, 1};
 
 static cudaError_t lastError;
 
