@@ -74,6 +74,7 @@
   #define __target_simt_parallel_for(index, ndata, stride) __host_simt_parallel_for(index, ndata, stride)
   #define __target_simt_threadIdx_init()  __host_simt_threadIdx_init()
   #define __target_syncthreads()          __host_barrier()
+  #define __target_atomic()               __host_atomic()
 
   #define __host_threads_per_block()      __host_get_max_threads()
   #define __host_launch_kernel(...)       __host_launch(__VA_ARGS__)

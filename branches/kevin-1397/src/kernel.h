@@ -17,9 +17,14 @@
 
 #include "targetDP.h"
 
-typedef struct kernel_lim_s kernel_lim_t;
+typedef struct kernel_ctxt_s kernel_ctxt_t;
+typedef struct kernel_info_s kernel_info_t;
 
-struct kernel_lim_s {
+/* kernel_info_t
+ * is just a convenience to allow the user to pass the
+ * relevant information to the context constructor. */
+
+struct kernel_info_s {
   int imin;
   int imax;
   int jmin;
@@ -28,9 +33,11 @@ struct kernel_lim_s {
   int kmax;
 };
 
-__host__            int kernel_coords_commit(kernel_lim_t limits);
-__host__            int kernel_lim(kernel_lim_t * lim);
-__host__            int kernel_launch_param(int nvl, dim3 * nblk, dim3 * ntpb);
+__host__ int kernel_ctxt_create(int nsimdvl, kernel_info_t info, kernel_ctxt_t ** p);
+__host__ int kernel_ctxt_launch_param(kernel_ctxt_t * obj, dim3 * nblk, dim3 * ntpb);
+__host__ int kernel_ctxt_info(kernel_info_t * lim);
+__host__ int kernel_ctxt_free(kernel_ctxt_t * obj);
+
 __host__ __target__ int kernel_coords_ic(int kindex);
 __host__ __target__ int kernel_coords_jc(int kindex);
 __host__ __target__ int kernel_coords_kc(int kindex);

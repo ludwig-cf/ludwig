@@ -101,26 +101,18 @@ void lb_free(lb_t * lb) {
   if (lb->io_info) io_info_destroy(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->fprime) free(lb->fprime);
-  //if (lb->t_f) targetFree(lb->t_f);
-  //if (lb->t_fprime) targetFree(lb->t_fprime);
-
 
   if (lb->tcopy) {
 
-    //free data space on target 
     double* tmpptr;
     lb_t* t_obj = lb->tcopy;
     copyFromTarget(&tmpptr,&(t_obj->f),sizeof(double*)); 
     targetFree(tmpptr);
 
-    copyFromTarget(&tmpptr,&(t_obj->fprime),sizeof(double*)); 
+    copyFromTarget(&tmpptr, &(t_obj->fprime),sizeof(double*)); 
     targetFree(tmpptr);
-    
-    //free target copy of structure
     targetFree(lb->tcopy);
   }
-
-  targetFinalize();
 
   MPI_Type_free(&lb->plane_xy_full);
   MPI_Type_free(&lb->plane_xz_full);
@@ -192,12 +184,17 @@ int lb_init(lb_t * lb) {
   targetMalloc((void**) &(lb->tcopy),sizeof(lb_t));
 
   /* allocate data space on target */
+
   double* tmpptr;
   lb_t* t_obj = lb->tcopy;
-  targetCalloc((void**) &tmpptr,ndata*sizeof(double));
-  copyToTarget(&(t_obj->f),&tmpptr,sizeof(double*)); 
 
-  //  copyToTarget(&(t_obj->io_info),&(lb->io_info),sizeof(io_info_t)); 
+  targetCalloc((void**) &tmpptr, ndata*sizeof(double));
+  copyToTarget(&(t_obj->f),&tmpptr, sizeof(double*));
+ 
+  targetCalloc((void**) &tmpptr, ndata*sizeof(double));
+  copyToTarget(&(t_obj->fprime), &tmpptr, sizeof(double*));
+
+
   copyToTarget(&(t_obj->ndist),&(lb->ndist),sizeof(int)); 
   copyToTarget(&(t_obj->nsite),&(lb->nsite),sizeof(int)); 
   copyToTarget(&(t_obj->model),&(lb->model),sizeof(int)); 
@@ -217,18 +214,6 @@ int lb_init(lb_t * lb) {
   copyToTarget(&(t_obj->site_x),&(lb->site_x),2*sizeof(MPI_Datatype)); 
   copyToTarget(&(t_obj->site_y),&(lb->site_y),2*sizeof(MPI_Datatype)); 
   copyToTarget(&(t_obj->site_z),&(lb->site_z),2*sizeof(MPI_Datatype)); 
-
-  lb->t_f= tmpptr; //DEPRECATED direct access to target data.
-
-
-  /* allocate another space on target for staging data */
-
-  targetCalloc((void**) &tmpptr,ndata*sizeof(double));
-  copyToTarget(&(t_obj->fprime),&tmpptr,sizeof(double*)); 
-  
-  lb->t_fprime= tmpptr; //DEPRECATED direct access to target data.
-
-
 
 
 

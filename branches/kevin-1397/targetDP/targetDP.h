@@ -29,7 +29,27 @@
 #include "target_api.h"
 
 __host__ int target_thread_info(void);
-__device__ int target_atomic_add_int(int * sums, int * vals, int ncount);
+__inline__ __device__ int target_block_reduce_sum_int(int * val);
+
+__inline__ __device__ void target_atomic_add_int(int * sum, int  val);
+
+/*
+
+__host__ int host block_reduce_sum_double(double * sum, double val);
+__host__ int host_block_reduce_min_double(double * dmin, double val);
+__host__ int host_block_reduce_max_double(double * dmax, double val);
+
+__target__ int target_block_reduce_sum_int(int * isum, int ival)
+__target__ int target_block_reduce_sum_double(double * sum, double val);
+__target__ int target_block_reduce_min_double(double * dmin, double val);
+__target__ int target_block_reduce_max_double(double * dmax, double val);
+
+__target__ int target_atomic_sum_double(double * sum, double val);
+__target__ int target_atomic_min_double(double * dmin, double val);
+__target__ int target_atomic_max_double(double * dmax, double val);
+
+ */
+
 __host__ __device__ int targetGetDeviceCount(int * device);
 __host__ __device__ int targetDeviceSynchronise(void);
 

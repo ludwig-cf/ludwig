@@ -32,7 +32,7 @@ struct data_s {
   data_t * target;
 };
 
-__host__ int do_test_kernel(kernel_lim_t limits, data_t * data);
+__host__ int do_test_kernel(kernel_info_t limits, data_t * data);
 __host__ int do_host_kernel(int * mask, int * isum);
 __host__ int do_check(int * iref, int * itarget);
 __global__ void do_target_kernel1(data_t * data);
@@ -55,7 +55,7 @@ __host__ int test_kernel_suite(void) {
   int nlocal[3];
   data_t sdata;
   data_t * data = &sdata;
-  kernel_lim_t lim;
+  kernel_info_t lim;
 
   pe_init_quiet();
   coords_init();
@@ -77,8 +77,7 @@ __host__ int test_kernel_suite(void) {
 
   data_free(data);
 
-  printf("Target vector length was %d\n", NSIMDVL);
-
+  info("PASS     ./unit/test_kernel\n");
   coords_finish();
   pe_finalise();
 
@@ -96,13 +95,14 @@ __host__ int test_kernel_suite(void) {
  *
  *****************************************************************************/
 
-__host__ int do_test_kernel(kernel_lim_t limits, data_t * data) {
+__host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
 
+  int isum;
   int nsites;
   int * iref = NULL;
   dim3 ntpb;
   dim3 nblk;
-  int isum;
+  kernel_ctxt_t * ctxt = NULL;
 
   /* Allocate space for reference */
 
@@ -116,18 +116,21 @@ __host__ int do_test_kernel(kernel_lim_t limits, data_t * data) {
   /* In the meantime, we need... */
   assert(nsites % NSIMDVL == 0);
 
+  isum = 0;
   iref = (int *) calloc(nsites, sizeof(int));
   assert(iref);
 
-  kernel_coords_commit(limits);
 
-  isum = 0;
+  /* Here we need a context, as we use it in this particular
+   * host kernel */
+  kernel_ctxt_create(1, limits, &ctxt);
   do_host_kernel(iref, &isum);
+
   printf("Host kernel returns isum = %d\n", isum);
 
   /* Target */
 
-  kernel_launch_param(1, &nblk, &ntpb);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch_kernel(do_target_kernel1, nblk, ntpb, data->target);
   targetDeviceSynchronise();
@@ -136,10 +139,27 @@ __host__ int do_test_kernel(kernel_lim_t limits, data_t * data) {
   data_copy(data, 1);
   do_check(iref, data->idata);
 
+
+  /* Reduction kernel */
+
+  data_zero(data);
+  __host_launch_kernel(do_target_kernel1r, nblk, ntpb, data->target);
+  targetDeviceSynchronise();
+
+  data_copy(data, 1);
+  do_check(iref, data->idata);
+  printf("isum %d data->Isum %d\n", isum, data->isum);
+  assert(isum == data->isum);
+
+  kernel_ctxt_free(ctxt);
+
+
   /* Vectorised */
 
-  kernel_launch_param(NSIMDVL, &nblk, &ntpb);
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
+  data_zero(data);
   __host_launch_kernel(do_target_kernel2, nblk, ntpb, data->target);
   targetDeviceSynchronise();
 
@@ -147,17 +167,7 @@ __host__ int do_test_kernel(kernel_lim_t limits, data_t * data) {
   data_copy(data, 1);
   do_check(iref, data->idata);
 
-  /* Reduction kernels */
-
-  data_zero(data);
-  __host_launch_kernel(do_target_kernel1r, nblk, ntpb, data->target);
-  targetDeviceSynchronise();
-
-  printf("Finish kernel 3\n");
-  data_copy(data, 1);
-  do_check(iref, data->idata);
-  printf("isum %d data->Isum %d\n", isum, data->isum);
-  assert(isum == data->isum);
+  kernel_ctxt_free(ctxt);
 
   free(iref);
 
@@ -178,12 +188,12 @@ __host__ int do_host_kernel(int * mask, int * isum) {
   int ifail;
   int ic, jc, kc;
   int nsites;
-  kernel_lim_t limits;
+  kernel_info_t limits;
 
   assert(mask);
   assert(isum);
 
-  kernel_lim(&limits);
+  kernel_ctxt_info(&limits);
   nsites = coords_nsites();
 
   *isum = 0;
@@ -256,6 +266,7 @@ __global__ void do_target_kernel1r(data_t * data) {
     int ic, jc, kc;
     int index;
     int ia;
+    int block_sum;
     __target_simt_threadIdx_init();
     psum[threadIdx.x] = 0;
 
@@ -273,19 +284,12 @@ __global__ void do_target_kernel1r(data_t * data) {
       psum[threadIdx.x] += 1;
     }
 
-    /* Reduction (nthreads power of two) */
+    /* Reduction, two part */
 
-    for (ia = blockDim.x/2; ia > 0; ia /= 2) {
-      __target_syncthreads();
-      if (threadIdx.x < ia) {
-	printf("sum %d %d %d\n", blockDim.x, threadIdx.x, threadIdx.x+ia);
-	psum[threadIdx.x] += psum[threadIdx.x + ia];
-      }
-    }
+    block_sum = target_block_reduce_sum_int(psum);
 
     if (threadIdx.x == 0) {
-      /* Kludge: only valid for 1 element of psum (psum[0]) */
-      target_atomic_add_int(&data->isum, psum, 1);
+      target_atomic_add_int(&data->isum, block_sum);
     }
   }
 
@@ -384,13 +388,11 @@ __host__ int data_create(data_t * data) {
   assert(data->idata);
 
   targetGetDeviceCount(&ndevice);
-  printf("Number of devices: %d\n", ndevice);
 
   if (ndevice == 0) {
     data->target = data;
   }
   else {
-    printf("Create device copy\n");
     targetCalloc((void **) &(data->target), sizeof(data_t));
     targetCalloc((void **) &tmp, nsites*sizeof(int));
     copyToTarget(&(data->target->idata), &tmp, sizeof(int *));

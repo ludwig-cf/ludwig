@@ -34,7 +34,7 @@
 
 __host__ __target__ int targetDeviceSynchronise(void) {
 
-  __host_barrier();
+  /* No operation */
 
   return 0;
 }
@@ -54,7 +54,7 @@ __host__ __target__ int targetGetDeviceCount(int * device) {
 
 /*****************************************************************************
  *
- *  Revisit
+ *  Revisit to look more like cuda, or ...
  *
  *  Some information on the implementation...
  *
@@ -70,25 +70,55 @@ __host__ int target_thread_info(void) {
 
 /*****************************************************************************
  *
- *  target_atomic_add_int
+ *  Note to self
+ *https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
  *
- *  Intended for reductions on __shared__ sums, ie., sums += vals
+ *  The partial sums partsum must be __shared__; they are destroyed
+ *  on exit.
+ *  The result is only significant at thread zero.
  *
  *****************************************************************************/
 
-__target__ int target_atomic_add_int(int * sums, int * vals, int ncount) {
+__inline__ __target__
+int target_block_reduce_sum_int(int * partsum) {
 
-  int n;
+#ifdef _OPENMP
+  int istr;
+  int nblock;
+  int nthread = omp_get_num_threads();
+  int idx = omp_get_thread_num();
 
-  assert(sums);
-  assert(vals);
+  nblock = pow(2, ceil(log(1.0*nthread)/log(2)));
 
-  for (n = 0; n < ncount; n++) {
-    #pragma omp atomic
-    sums[n] += vals[n];
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    #pragma omp barrier
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
   }
+#endif
 
-  return 0;
+  return partsum[0];
+}
+
+/*****************************************************************************
+ *
+ *  target_atomic_add_int
+ *
+ *  Add val to sum.
+ *
+ *****************************************************************************/
+
+__inline__ __target__ void target_atomic_add_int(int * sum, int val) {
+
+#ifdef _OPENMP
+  #pragma omp atomic
+  *sum += val;
+#else
+  *sum += val;
+#endif
+
+  return;
 }
 
 
@@ -110,6 +140,8 @@ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   /* sanity checks on user settings here... */
 
+  gridDim.x = 1; /* Assert this for host implementation */
+
   /* In case we request fewer threads than are available: */
 
   __host_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
@@ -119,11 +151,15 @@ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
 void __x86_postlaunch(void) {
 
-  int nthreads;
-
   /* Reset the default number of threads. */
+
+  /* int nthreads;
+
+
   nthreads = __host_get_max_threads();
-  __host_set_num_threads(nthreads);
+  __host_set_num_threads(nthreads);*/
+
+  __host_set_num_threads(__host_get_max_threads());
 
   return;
 }
