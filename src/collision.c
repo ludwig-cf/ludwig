@@ -752,7 +752,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
 
-#ifdef KEEPHYDROONTARGET
+#ifdef FASTCOLLISION
   if (noise_on){
     fatal("Error: fast mrt collision does not support noise yet\n");
   }
