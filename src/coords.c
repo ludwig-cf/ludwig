@@ -54,6 +54,8 @@ static int  is_ok_decomposition(void);
 __targetConst__ int tc_nSites;
 __targetConst__ int tc_noffset[3]; 
 __targetConst__ int tc_Nall[3];
+__targetConst__ int tc_ntotal[3];
+__targetConst__ int tc_periodic[3];
 __targetConst__ int tc_nhalo;
 __targetConst__ int tc_nextra;
 
