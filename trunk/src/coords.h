@@ -63,6 +63,8 @@ int    coords_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
 extern __targetConst__ int tc_nSites;
 extern __targetConst__ int tc_noffset[3]; 
 extern __targetConst__ int tc_Nall[3];
+extern __targetConst__ int tc_ntotal[3];
+extern __targetConst__ int tc_periodic[3];
 extern __targetConst__ int tc_nhalo;
 extern __targetConst__ int tc_nextra;
 
