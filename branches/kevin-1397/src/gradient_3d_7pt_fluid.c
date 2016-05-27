@@ -213,7 +213,6 @@ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
       indexm1 = targetIndex3D(im1, coords[Y], coords[Z], tc_Nall);
       ip1 = le_index_real_to_buffer(coords[X], +1);
       indexp1 = targetIndex3D(ip1, coords[Y], coords[Z], tc_Nall);
-      /*if (coords[Y] == 1 && coords[Z] == 1) printf("ic jc kc ic-1 %2d %2d %2d %2d %2d %2d %d\n", coords[X], coords[Y], coords[Z], im1, ip1, nsites, indexp1);*/
 
       for (n = 0; n < nop; n++) {
 

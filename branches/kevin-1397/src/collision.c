@@ -232,7 +232,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) {
 	force[ia*VVL+iv] = tc_force_global[ia] 
-	  + t_force[vaddr_hydro(baseIndex, ia, iv)];
+	  + t_force[addr_hydro(baseIndex+iv, ia)];
       }
     }
 #else
@@ -255,7 +255,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 #ifndef OLD_SHIT
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia*VVL+iv] = tc_force_global[ia] 
-	    + t_force[vaddr_hydro(baseIndex, ia, iv)];
+	    + t_force[addr_hydro(baseIndex+iv, ia)];
 	}
 #else
 	for (ia = 0; ia < 3; ia++) {
@@ -448,7 +448,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     for (ia = 0; ia < 3; ia++) {
 #ifndef OLD_SHIT
       __targetILP__(iv) {
-	t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+	t_velocity[addr_hydro(baseIndex+iv, ia)] = u[ia*VVL+iv];
       }
 #else   
       __targetILP__(iv) {
@@ -912,7 +912,8 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   /* Now, the order parameter distribution */
   __targetILP__(iv)
 #ifndef OLD_SHIT
-    phi[iv]=t_phi[vaddr_rank0(tc_nSites, baseIndex, iv)];
+    /* Care */
+    phi[iv]=t_phi[vaddr_rank0(le_nsites(), baseIndex, iv)];
 #else
     phi[iv]=t_phi[baseIndex+iv];
 #endif

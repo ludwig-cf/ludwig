@@ -58,7 +58,11 @@ int lb_run_time(lb_t * lb) {
 			   FILENAME_MAX);
 
   /* Append R to the record if the model is the reverse implementation */ 
+#ifndef OLD_SHIT
+  if (DATA_MODEL == ADDRESS_REVERSE) memory = 'R';
+#else
   if (lb_order(lb) == MODEL_R) memory = 'R';
+#endif
   lb_ndist(lb, &ndist);
 
   info("\n");
@@ -66,7 +70,7 @@ int lb_run_time(lb_t * lb) {
   info("-------------------------------\n");
 
   info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
-  info("SIMD vector len:  %d\n", SIMDVL);
+  info("SIMD vector len:  %d\n", NSIMDVL);
   info("Number of sets:   %d\n", ndist);
   info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
 

@@ -434,7 +434,7 @@ static int map_write(FILE * fp, int index, void * self) {
   if (nw != 1) fatal("fwrite(map->status) failed\n");
 
   if (obj->ndata > 0) {
-    coords_field_index(index, 0, obj->ndata, &indexf);
+    /* coords_field_index(index, 0, obj->ndata, &indexf);*/
     nw = fwrite(&obj->data[indexf], sizeof(double), obj->ndata, fp);
     if (nw != obj->ndata) fatal("fwrite(map->data) failed\n");
   }
@@ -471,7 +471,7 @@ static int map_read(FILE * fp, int index, void * self) {
   if (nr != 1) fatal("fread(map->status) failed");
 
   if (obj->ndata > 0) {
-    coords_field_index(index, 0, obj->ndata, &indexf);
+    /* coords_field_index(index, 0, obj->ndata, &indexf);*/
     nr = fread(&obj->data[indexf], sizeof(double), obj->ndata, fp);
     if (nr != obj->ndata) fatal("fread(map->data) failed\n");
   }
@@ -513,7 +513,7 @@ static int map_write_ascii(FILE * fp, int index, void * self) {
   if (nw != 2) fatal("fprintf(map->status) failed\n");
 
   for (n = 0; n < obj->ndata; n++) {
-    coords_field_index(index, n, obj->ndata, &indexf);
+    /* coords_field_index(index, n, obj->ndata, &indexf);*/
     fprintf(fp, " %22.15e", obj->data[indexf]);
   }
 #endif
@@ -554,7 +554,7 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
   obj->status[index] = status;
 
   for (n = 0; n < obj->ndata; n++) {
-    coords_field_index(index, n, obj->ndata, &indexf);
+    /* coords_field_index(index, n, obj->ndata, &indexf);*/
     nr = fscanf(fp, " %le", obj->data + indexf);
     if (nr != 1) fatal("fscanf(map->data[%d]) failed\n", n);
   }

@@ -587,19 +587,18 @@ int lb_halo(lb_t * lb) {
 
   assert(lb);
 
-  if (lb_order(lb) == MODEL) {
 #ifndef OLD_SHIT
-    lb_halo_via_copy(lb);
+  lb_halo_via_copy(lb);
 #else
+  if (lb_order(lb) == MODEL) {
     /* PENDING NSIMDVL = 1 only */
     lb_halo_via_struct(lb);
-#endif
   }
   else {
     /* MODEL_R only has ... */
     lb_halo_via_copy(lb);
   }
-
+#endif
   return 0;
 }
 
@@ -1112,11 +1111,11 @@ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]) {
  *  lb_f_multi_index
  *
  *  Return a vector of distributions starting at index 
- *  where the vector length is fixed at SIMDVL
+ *  where the vector length is fixed at NSIMDVL
  *
  *****************************************************************************/
 
-int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]) {
+int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL]) {
 
   int p, iv;
 
@@ -1125,7 +1124,7 @@ int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]) {
   assert(index >= 0 && index < lb->nsite);
 
   for (p = 0; p < NVEL; p++) {
-    for (iv = 0; iv < SIMDVL; iv++) {
+    for (iv = 0; iv < NSIMDVL; iv++) {
       fv[p][iv] = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)];
     }
   }
@@ -1142,7 +1141,7 @@ int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]) {
  *
  *****************************************************************************/
 
-int lb_f_multi_index_part(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL],
+int lb_f_multi_index_part(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL],
 			  int nv) {
 
   int p, iv;
@@ -1190,11 +1189,11 @@ int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]) {
  *  lb_f_multi_index_set
  *
  *  Set a vector of distributions starting at index 
- *  where the vector length is fixed at SIMDVL
+ *  where the vector length is fixed at NSIMDVL
  *
  *****************************************************************************/
 
-int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]){
+int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL]){
 
   int p, iv;
 
@@ -1203,7 +1202,7 @@ int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]){
   assert(index >= 0 && index < lb->nsite);
   assert(0);
   for (p = 0; p < NVEL; p++) {
-    for (iv = 0; iv < SIMDVL; iv++) {
+    for (iv = 0; iv < NSIMDVL; iv++) {
       lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index + iv, n, p)] = fv[p][iv];
     }
   }
@@ -1221,7 +1220,7 @@ int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][SIMDVL]){
  *****************************************************************************/
 
 int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
-			      double fv[NVEL][SIMDVL], int nv) {
+			      double fv[NVEL][NSIMDVL], int nv) {
   int p, iv;
 
   assert(lb);

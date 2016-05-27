@@ -731,7 +731,7 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
   if (recvback == NULL) fatal("malloc(recvback) failed\n");
 
   /* Load */
-  /* Some adjust required for 2d systems ? */
+  /* Some adjustment in the load required for 2d systems (X-Y) */
 
   icount = 0;
 
