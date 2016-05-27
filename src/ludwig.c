@@ -539,7 +539,9 @@ void ludwig_run(const char * inputfile) {
 #endif
 
 #else /* not KEEPFIELDONTARGET */
-      field_halo(ludwig->phi);
+
+    assert(1);
+    field_halo(ludwig->phi);
 
 #endif /* KEEPFIELDONTARGET */
 

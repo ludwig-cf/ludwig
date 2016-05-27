@@ -20,7 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "util.h"
-#include "model.h"
+#include "lb_model_s.h"
 #include "tests.h"
 
 static void test_model_constants(void);

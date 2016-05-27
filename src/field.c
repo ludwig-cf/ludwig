@@ -313,6 +313,7 @@ int field_leesedwards(field_t * obj) {
         j1 = 1 + j0 % nlocal[Y];
         j2 = 1 + j1 % nlocal[Y];
         j3 = 1 + j2 % nlocal[Y];
+	/*printf("J %2d %2d %2d %2d %2d\n", jc, j0, j1, j2, j3);*/
 #ifndef OLD_SHIT
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
           index  = le_site_index(ib0 + ib, jc, kc);
@@ -328,6 +329,8 @@ int field_leesedwards(field_t * obj) {
               +        r6*fr*(fr*fr-1.0)*obj->data[addr_rank1(nsites, nf, index3, n)];
           }
         }
+	/*if (get_step() == 3) printf("%2d %2d %2d %2d %2d %22.14e\n", ic, jc, kc, ib, ib0+ib,
+	  obj->data[addr_rank1(nsites, nf, index, 0)]);*/
 #else
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
           index  = nf*le_site_index(ib0 + ib, jc, kc);

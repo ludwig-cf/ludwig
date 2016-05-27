@@ -31,23 +31,10 @@
 #endif
 
 #include "io_harness.h"
-#include "targetDP.h"
-
-/* Vector length for SIMD auto-vectorisation over lattice sites. */
-/* If not set in the Makefile, it defaults to 1, as larger values
- * can result in adverse performance (e.g., if choice doesn't
- * match hardware, or in 2d) */
-
-#if !defined (SIMDVL)
-#define SIMDVL VVL
-#endif
-
+#include "memory.h"
 
 /* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
-
-/* Memory arrangement */
-enum {MODEL, MODEL_R};
 
 extern const double cs2;
 extern const double rcs2;
@@ -81,13 +68,13 @@ __targetHost__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, d
 __targetHost__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
 __targetHost__ int lb_halo_reduced(lb_t * lb);
 __targetHost__ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]);
-__targetHost__ int lb_f_multi_index(lb_t * lb, int index, int n, double f[NVEL][SIMDVL]);
+__targetHost__ int lb_f_multi_index(lb_t * lb, int index, int n, double f[NVEL][NSIMDVL]);
 __targetHost__ int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]);
-__targetHost__ int lb_f_multi_index_set(lb_t * lb, int index, int n, double f[NVEL][SIMDVL]);
-__targetHost__ int lb_f_multi_index_part(lb_t * lb, int index, int n, double f[NVEL][SIMDVL],
+__targetHost__ int lb_f_multi_index_set(lb_t * lb, int index, int n, double f[NVEL][NSIMDVL]);
+__targetHost__ int lb_f_multi_index_part(lb_t * lb, int index, int n, double f[NVEL][NSIMDVL],
 			  int nv);
 __targetHost__ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
-			      double f[NVEL][SIMDVL], int nv);
+			      double f[NVEL][NSIMDVL], int nv);
 __targetHost__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __targetHost__ int lb_io_info_set(lb_t * lb, io_info_t * io_info);
 

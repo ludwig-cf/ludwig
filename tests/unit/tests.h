@@ -41,6 +41,7 @@ int test_halo_suite(void);
 int test_hydro_suite(void);
 int test_io_suite(void);
 int test_le_suite(void);
+int test_kernel_suite(void);
 int test_lubrication_suite(void);
 int test_map_suite(void);
 int test_model_suite(void);

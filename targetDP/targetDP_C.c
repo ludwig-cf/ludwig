@@ -79,7 +79,7 @@ __host__ int target_thread_info(void) {
  *
  *****************************************************************************/
 
-__inline__ __target__
+__target__
 int target_block_reduce_sum_int(int * partsum) {
 
 #ifdef _OPENMP
@@ -109,7 +109,7 @@ int target_block_reduce_sum_int(int * partsum) {
  *
  *****************************************************************************/
 
-__inline__ __target__ void target_atomic_add_int(int * sum, int val) {
+__target__ void target_atomic_add_int(int * sum, int val) {
 
 #ifdef _OPENMP
   #pragma omp atomic
@@ -133,7 +133,7 @@ uint3 __x86_builtin_blockIdx_init(void) {
   return blocks;
 }
 
-void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
+__host__ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   gridDim = nblocks;
   blockDim = nthreads;

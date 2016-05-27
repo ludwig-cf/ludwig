@@ -318,10 +318,13 @@ double symmetric_chemical_potential_target(const int index, const int nop,
   double phi;
   double delsq_phi;
   double mu;
-
+#ifndef OLD_SHIT
+  phi = t_phi[addr_rank0(le_nsites(), index)];
+  delsq_phi = t_delsqphi[addr_rank0(le_nsites(), index)];
+#else
   phi = t_phi[index];
   delsq_phi = t_delsqphi[index];
-
+#endif
   mu = t_a_*phi + t_b_*phi*phi*phi - t_kappa_*delsq_phi;
 
   return mu;
@@ -430,7 +433,7 @@ void symmetric_chemical_stress_target(const int index,
     
 #ifndef OLD_SHIT
     for (ia = 0; ia < 3; ia++) {
-      grad_phi[ia] = t_gradphi[vaddr_rank2(le_nsites(), 3, 1, index, ia, 0, iv)];
+      grad_phi[ia] = t_gradphi[vaddr_rank2(le_nsites(), 1, 3, index, 0, ia, iv)];
     }
 
     phi = t_phi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];

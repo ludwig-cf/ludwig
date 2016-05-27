@@ -23,7 +23,7 @@ AR = ar -cru
 .SUFFIXES: .c  .o
 
 
-TARGETSRC = targetDP_C.c cuda_stub_api.c
+TARGETSRC = cuda_stub_api.c targetDP_C.c
 
 ifeq ($(CC),nvcc)
 TARGETSRC = targetDP_CUDA.c
