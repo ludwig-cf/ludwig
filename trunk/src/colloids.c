@@ -1220,3 +1220,84 @@ __targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_ty
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  colloids_number_sites
+ *
+ *  returns the total number of lattice sites affected by colloids
+ *
+ *****************************************************************************/
+
+__targetHost__ int colloids_number_sites(colloids_info_t *cinfo)
+{
+  
+
+  int ia;
+  int i, j, ij, ji;
+
+  colloid_t * pc;
+  colloid_link_t * p_link;
+
+  /* All colloids, including halo */
+  colloids_info_all_head(cinfo, &pc);
+ 
+  int ncolsite=0;
+
+  for ( ; pc; pc = pc->nextall) {
+
+    p_link = pc->lnk;
+
+    for (; p_link; p_link = p_link->next) {
+
+      if (p_link->status == LINK_UNUSED) continue;
+
+      /* increment by 2 (outward and inward sites) */
+      ncolsite+=2;
+
+     
+    }
+  }
+
+  return ncolsite;
+
+}
+
+/*****************************************************************************
+ *
+ *  colloid_list_sites
+ *
+ *  provides a list of lattice site indexes affected by colloids 
+ *
+ *****************************************************************************/
+
+__targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo)
+{
+  
+
+  int ia;
+  int i, j, ij, ji;
+
+  colloid_t * pc;
+  colloid_link_t * p_link;
+
+  /* All colloids, including halo */  
+  colloids_info_all_head(cinfo, &pc);
+ 
+  int ncolsite=0;
+
+  for ( ; pc; pc = pc->nextall) {
+
+    p_link = pc->lnk;
+
+    for (; p_link; p_link = p_link->next) {
+
+      if (p_link->status == LINK_UNUSED) continue;
+
+      colloidSiteList[ncolsite++]= p_link->i;
+      colloidSiteList[ncolsite++]= p_link->j;
+
+    }
+  }
+  return;
+}
