@@ -105,5 +105,7 @@ __targetHost__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max);
 __targetHost__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax);
 __targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
 			      int * count);
+__targetHost__ int colloids_number_sites(colloids_info_t *cinfo);
+__targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo);
 
 #endif

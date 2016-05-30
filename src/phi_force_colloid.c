@@ -56,6 +56,7 @@
 #include "hydro_s.h" 
 #include "colloids_s.h"
 #include "map_s.h"
+#include "timer.h"
 
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 				   map_t * map);
@@ -109,43 +110,6 @@ __targetHost__ int phi_force_colloid(colloids_info_t * cinfo, field_t* q, field_
 
 
 
-/* For the current colloid implementation, the below atomicAdd function
- * is needed to update colloids when the lattice is parallelised 
- * across threads
- * TO DO: properly push this into targetDP, 
- * or replace with more performant implementation
- */
-
-#ifdef __NVCC__
-
-/* from https://devtalk.nvidia.com/default/topic/529341/speed-of-double-precision-cuda-atomic-operations-on-kepler-k20/ */
-
-__device__ double atomicAdd(double* address, double val)
-{
-  unsigned long long int* address_as_ull =
-    (unsigned long long int*)address;
-  unsigned long long int old = *address_as_ull, assumed;
-  do {
-    assumed = old;
-    old = atomicCAS(address_as_ull, assumed,
-		    __double_as_longlong(val + __longlong_as_double(assumed)));
-  } while (assumed != old);
-  return __longlong_as_double(old);
-}
-#else
-double atomicAdd(double* address, double val)
-{
-  
-  double old=*address;
-
-  /* TO DO: uncomment below pragma when OpenMP implemenation is active
-   * #pragma omp atomic */
-  *address+=val;
-
-  return old;
-}
-#endif
-
 __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro, map_t * map, double* t_pth) {
 
 
@@ -153,14 +117,13 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
   int index;
   __targetTLPNoStride__(index,tc_nSites){
 
-  int ia, ib, ic, jc, kc;
+  int ia, ib;
   int index1;
-  int nlocal[3];
   int status;
-  
+
   double pth0[3][3];
   double pth1[3][3];
-
+  
   double force[3];                  /* Accumulated force on fluid */
   double fw[3];                     /* Accumulated force on wall */
   
@@ -209,7 +172,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	/* Compute the fluxes at solid/fluid boundary */
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -pth0[ia][X];
-	  atomicAdd( &p_c->force[ia] , pth0[ia][X]);
 	}
       }
       else {
@@ -240,7 +202,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	/* Solid-fluid */
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += pth0[ia][X];
-	  atomicAdd( &p_c->force[ia] , -pth0[ia][X]);
 	}
       }
       else {
@@ -271,7 +232,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	/* Solid-fluid */
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= pth0[ia][Y];
-	  atomicAdd( &p_c->force[ia] , pth0[ia][Y]);
 	}
       }
       else {
@@ -302,7 +262,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	/* Solid-fluid */
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += pth0[ia][Y];
-	  atomicAdd( &p_c->force[ia] , -pth0[ia][Y]);
 	}
       }
       else {
@@ -333,7 +292,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	/* Fluid-solid */
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] -= pth0[ia][Z];
-	  atomicAdd( &p_c->force[ia] , pth0[ia][Z]);
 	}
       }
       else {
@@ -364,7 +322,6 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 	/* Fluid-solid */
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] += pth0[ia][Z];
-	  atomicAdd( &p_c->force[ia] , -pth0[ia][Z]);
 	}
       }
       else {
@@ -410,29 +367,24 @@ __targetEntry__ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hy
 }
 
 
+
+
 static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 				   map_t * map) {
-  int ia, ic, jc, kc;
-  int index, index1;
+  int ia;
   int nlocal[3];
-  int status;
 
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];                  /* Accumulated force on fluid */
-  double fw[3];                     /* Accumulated force on wall */
 
-  colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
 
-  void (* chemical_stress)(const int index, double s[3][3]);
+  //void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(cinfo);
   assert(map);
 
   coords_nlocal(nlocal);
 
-  chemical_stress = phi_force_stress;
+  //chemical_stress = phi_force_stress;
 
   int nhalo = coords_nhalo();
   int Nall[3];
@@ -460,25 +412,129 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
 #endif
 
-  /* map_t* t_map = map->tcopy;
-   * populate target copy of map from host 
-   * copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-   * copyToTarget(tmpptr,map->status,nSites*sizeof(char));
-
-   *  set up colloids such that they can be accessed from target
-   *  noting that each actual colloid structure stays resident on the host
-   *   if (cinfo->map_new){
-   * colloids_info_t* t_cinfo=cinfo->tcopy;
-   * colloid_t* tmpcol;
-   * copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-   * copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
-   * }
-   */
-
   /* launch operation across the lattice on target */
 
+
+  TIMER_start(TIMER_PHI_FORCE_CALC);
   phi_force_interpolation_lattice  __targetLaunchNoStride__(nSites) (cinfo->tcopy, hydro->tcopy,  map->tcopy, t_pth_);
-  targetSynchronize();
+
+/* note that ideally we would delay this sync to overlap 
+   with below colloid force updates, but this is not working on current GPU 
+   architectures because colloids are in unified memory */
+  targetSynchronize(); 
+
+
+  /* now update the force on the colloids */
+
+  double* pth;
+
+
+#ifdef KEEPFIELDONTARGET    
+
+
+
+#ifdef __NVCC__
+
+  pth = pth_;
+
+
+
+  /* update colloid-affected lattice sites from target*/
+  int ncolsite=colloids_number_sites(cinfo);
+
+
+  /* allocate space */
+  int* colloidSiteList =  (int*) malloc(ncolsite*sizeof(int));
+
+  /* populate list with all site indices */
+  colloids_list_sites(colloidSiteList,cinfo);
+
+
+  /* get fluid data from this subset of sites */
+  copyFromTargetSubset(pth,t_pth_,colloidSiteList,ncolsite,nSites,9);
+
+  free(colloidSiteList);
+
+#else
+
+  pth = t_pth_;
+
+#endif //__NVCC__
+
+
+#else
+
+  pth = pth_;
+
+#endif //KEEPFIELDONTARGET
+
+
+
+
+  colloid_t * pc;
+  colloid_link_t * p_link;
+
+  /* All colloids, including halo */
+  colloids_info_all_head(cinfo, &pc);
+ 
+  for ( ; pc; pc = pc->nextall) {
+
+    p_link = pc->lnk;
+
+    for (; p_link; p_link = p_link->next) {
+
+      if (p_link->status == LINK_UNUSED) continue;
+
+      int coordsOutside[3];
+      coords_index_to_ijk(p_link->i,coordsOutside);
+
+      int coordsInside[3];
+      coords_index_to_ijk(p_link->j,coordsInside);
+
+      int hopsApart=0;
+
+      /* only include those inside-outside pairs that fall
+	 on th 7-point stencil */
+
+      for (ia = 0; ia < 3; ia++) 
+	hopsApart+=abs(coordsOutside[ia]-coordsInside[ia]);
+
+      if (hopsApart>1) continue;
+
+
+      /* work out which X,Y or Z direction they are neighbours in
+	 and the +ve or -ve direction */
+      int idir=0,fac=0;
+      if ((coordsOutside[0]-coordsInside[0])==1){
+	idir=0;fac=-1;
+      }
+      if ((coordsOutside[0]-coordsInside[0])==-1){
+	idir=0;fac=1;
+      }
+      if ((coordsOutside[1]-coordsInside[1])==1){
+	idir=1;fac=-1;
+      }
+      if ((coordsOutside[1]-coordsInside[1])==-1){
+	idir=1;fac=1;
+      }
+      if ((coordsOutside[2]-coordsInside[2])==1){
+	idir=2;fac=-1;
+      }
+      if ((coordsOutside[2]-coordsInside[2])==-1){
+	idir=2;fac=1;
+      }
+
+      /* update the colloid force using the relavent part of the potential */
+	for (ia = 0; ia < 3; ia++) {
+	  pc->force[ia]+=fac*pth[PTHADR(nSites,p_link->i,ia,idir)];
+	}
+
+    }
+  }
+
+
+  TIMER_stop(TIMER_PHI_FORCE_CALC);
+
 
 #ifndef KEEPHYDROONTARGET
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 

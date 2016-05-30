@@ -130,6 +130,8 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
+
+
 int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
 
   int ntotal;
@@ -164,13 +166,22 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
 
   lb = lb_in;
 
+
+  /* update colloid-affected lattice sites from target*/
+  int ncolsite=colloids_number_sites(cinfo);
+
+  /* allocate space */
+  int* colloidSiteList =  (int*) malloc(ncolsite*sizeof(int));
+
+  /* populate list with all site indices */
+  colloids_list_sites(colloidSiteList,cinfo);
+
+  /* get fluid data from this subset of sites */
   double* tmpptr;
   lb_t* t_lb = lb->tcopy; 
   copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
+  copyFromTargetSubset(lb->f,tmpptr,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
 
-  /* update colloid-affected lattice sites from target, including neighbours */
-  copyFromTargetPointerMap3D(lb->f, tmpptr,
-  			     Nall, nFields, 1, (void **) cinfo->map_new);
 #else
   lb = lb_in->tcopy; /* set lb to target copy */
 #endif
@@ -189,10 +200,12 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   bbl_pass2(bbl, lb, cinfo);
 
 #ifdef __NVCC__
-  /* update target with colloid-affected lattice sites,
-     not including neighbours */ 
-    copyToTargetPointerMap3D(tmpptr, lb->f,
-  			   Nall, nFields, 0, (void **) cinfo->map_new); 
+  /* update target with colloid-affected lattice sites*/
+
+  copyToTargetSubset(tmpptr,lb->f,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
+  
+  free(colloidSiteList);
+
 #endif
 
   return 0;
