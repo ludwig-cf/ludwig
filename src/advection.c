@@ -230,7 +230,7 @@ __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 #endif
 
   int index;
-  __targetTLP__(index, tc_nSites) {
+  __targetTLPNoStride__(index, tc_nSites) {
 
     int index0, index1, n;
     int icm1, icp1;
@@ -291,7 +291,6 @@ __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 
 	if (u > 0.0) {
 #ifndef OLD_SHIT
-	  nsites = le_nsites();
 	  flux->fw[addr_rank1(nsites, nf, index0, n)]
 	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
 #else
@@ -323,7 +322,7 @@ __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 	if (u < 0.0) {
 #ifndef OLD_SHIT
 	  flux->fe[addr_rank1(nsites, nf, index0, n)]
-	    = u*field->data[addr_rank1(le_nsites(), nf, index1, n)];
+	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
 #else
 	  flux->fe[ADVADR(tc_nSites,nf,index0,n)] = u*field->data[FLDADR(tc_nSites,nf,index1,n)];
 #endif
@@ -615,7 +614,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 #endif
   int index;
 
-  __targetTLP__(index, tc_nSites) {
+  __targetTLPNoStride__(index, tc_nSites) {
 
     int n;
     int nsites;

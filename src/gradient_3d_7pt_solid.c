@@ -783,7 +783,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 
   int index;
 
-  __targetTLP__(index, tc_nSites) {
+  __targetTLPNoStride__(index, tc_nSites) {
     
     int ic, jc, kc;
     int str[3];

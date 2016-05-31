@@ -265,7 +265,6 @@ __global__ void do_target_kernel1r(data_t * data) {
 
     int ic, jc, kc;
     int index;
-    int ia;
     int block_sum;
     __target_simt_threadIdx_init();
     psum[threadIdx.x] = 0;

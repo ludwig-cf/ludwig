@@ -149,6 +149,7 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
   int ic, jc, kc;
   int index0, index1;
   int icm1, icp1;
+  int nsites;
   double mu0, mu1;
   double mobility;
 
@@ -158,6 +159,7 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
 
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
+  nsites = le_nsites();
 
   physics_mobility(&mobility);
   chemical_potential = fe_chemical_potential_function();
@@ -176,25 +178,25 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
 
 	index1 = le_site_index(icm1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
-	flux->fw[index0] -= mobility*(mu0 - mu1);
+	flux->fw[addr_rank0(nsites, index0)] -= mobility*(mu0 - mu1);
 
 	/* ...and between ic and ic+1 */
 
 	index1 = le_site_index(icp1, jc, kc);
 	mu1 = chemical_potential(index1, 0);
-	flux->fe[index0] -= mobility*(mu1 - mu0);
+	flux->fe[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
 	mu1 = chemical_potential(index1, 0);
-	flux->fy[index0] -= mobility*(mu1 - mu0);
+	flux->fy[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* z direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
 	mu1 = chemical_potential(index1, 0);
-	flux->fz[index0] -= mobility*(mu1 - mu0);
+	flux->fz[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* Next site */
       }
@@ -234,6 +236,7 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
 
   double (* chemical_potential)(const int index, const int nop);
 
+  assert(0);
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   assert(nhalo >= 3);
@@ -309,6 +312,7 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
   double reap[3];
   double kt, mobility, var;
 
+  assert(0);
   assert(le_get_nplane_local() == 0);
   assert(coords_nhalo() >= 1);
 

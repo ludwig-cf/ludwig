@@ -44,7 +44,7 @@ __targetEntry__ void chemical_stress_lattice(double pth_local[3][3], field_t* t_
 
   int index;
 
-__targetTLP__(index,tc_nSites){
+  __targetTLPNoStride__(index,tc_nSites){
     
     int coords[3];
     targetCoords3D(coords,tc_Nall,index);
