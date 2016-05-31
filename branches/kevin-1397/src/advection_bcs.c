@@ -44,7 +44,7 @@ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux,
 
   int index;
 
-  __targetTLP__(index, tc_nSites) {
+  __targetTLPNoStride__(index, tc_nSites) {
 
     int n;
     int indexf;

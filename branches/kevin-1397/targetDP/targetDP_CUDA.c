@@ -1048,15 +1048,39 @@ __host__ int target_thread_info(void) {
  *
  *****************************************************************************/
 
-__target__ int target_atomic_add_int(int * sums, int * vals, int ncount) {
+__target__ void target_atomic_add_int(int * sum, int val) {
 
-  int n;
+  atomicAdd(sum, val);
 
-  for (n = 0; n < ncount; n++) {
-    atomicAdd(sums + n, vals[n]);
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  target_block_reduce_sum_int
+ *
+ *  partsum is per-thread contribution on input
+ *  Returns on thread 0 the sum for block (other elements destroyed).
+ *
+ *****************************************************************************/
+
+__target__ int target_block_reduce_sum_int(int * partsum) {
+
+  int istr;
+  int nblock;
+  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
+  int idx = threadIdx.x;
+
+  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
+
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    __syncthreads();
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
   }
 
-  return 0;
+  return partsum[0];
 }
 
 /*****************************************************************************

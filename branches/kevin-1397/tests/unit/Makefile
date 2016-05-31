@@ -101,7 +101,8 @@ mpi-d3q15r:	mpi-d3q15
 mpi-d3q19r:	mpi-d3q19
 
 mpi-test:
-	$(MAKE) base-me "CC=$(MPICC)" "CLIBS=$(CLIBS) $(LBLIBS)"
+	$(MAKE) base-me "CC=$(MPICC)" "INCLUDE = $(INCLUDE) $(MPI_INCL)" \
+		"CLIBS=$(MPI_LIBS) $(CLIBS) $(LBLIBS)"
 
 
 run-serial:

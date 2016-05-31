@@ -48,7 +48,6 @@ int tests_create() {
   int test_kernel_suite();
   test_kernel_suite();
   test_lb_prop_suite();
-  return 0;
 
   test_pe_suite();
   test_coords_suite();
