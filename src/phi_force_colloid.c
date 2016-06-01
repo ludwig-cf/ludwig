@@ -191,17 +191,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
     if (!p_c){
 
       /* Compute pth at current point */
-#ifndef OLD_SHIT
+
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
 	  pth0[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index,ia,ib)];
 	}
       }
-#else
-      for (ia = 0; ia < 3; ia++)
-	for (ib = 0; ib < 3; ib++)
-	  pth0[ia][ib]=t_pth[PTHADR(tc_nSites,index,ia,ib)];
-#endif
+
       for (ia = 0; ia < 3; ia++) {
 	fw[ia] = 0.0;
       }
@@ -229,17 +225,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 	else {
 	  /* This flux is fluid-fluid */
-#ifndef OLD_SHIT
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
-#else 
-	  for (ia = 0; ia < 3; ia++) 
-	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif  
+
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
 	  }
@@ -267,17 +259,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 	else {
 	  /* Fluid - fluid */
-#ifndef OLD_SHIT
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
-#else
-	  for (ia = 0; ia < 3; ia++) 
-	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif  
+
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
 	  }
@@ -305,17 +293,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 	else {
 	  /* Fluid-fluid */
-#ifndef OLD_SHIT
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
-#else
-	  for (ia = 0; ia < 3; ia++) 
-	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif  
+
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	  }
@@ -343,17 +327,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 	else {
 	  /* Fluid-fluid */
-#ifndef OLD_SHIT
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
-#else
-	  for (ia = 0; ia < 3; ia++) 
-	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif  
+
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	  }
@@ -381,17 +361,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 	else {
 	  /* Fluid-fluid */
-#ifndef OLD_SHIT
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
-#else
-	  for (ia = 0; ia < 3; ia++) 
-	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif  
+
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	  }
@@ -419,17 +395,13 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	}
 	else {
 	  /* Fluid-fluid */
-#ifndef OLD_SHIT
+
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
 	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
-#else
-	  for (ia = 0; ia < 3; ia++) 
-	    for (ib = 0; ib < 3; ib++) 
-	      pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif  
+
 	  for (ia = 0; ia < 3; ia++) {
 	    force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	  }
@@ -437,15 +409,12 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
       }
       
       /* Store the force on lattice */
-#ifndef OLD_SHIT
+
       /* Can we re-encapsulate this? Only one instance */
       for (ia = 0; ia < 3; ia++) {
 	hydro->f[addr_hydro(index, ia)] += force[ia];
       }
-#else
-      for (ia = 0; ia < 3; ia++) 
-	hydro->f[HYADR(tc_nSites,hydro->nf,index,ia)] += force[ia];
-#endif
+
       /*TO DO
        * from wall.c 
        * "This is for accounting purposes only.

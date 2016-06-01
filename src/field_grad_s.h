@@ -15,6 +15,8 @@
 #ifndef FIELD_GRAD_S_H
 #define FIELD_GRAD_S_H
 
+#include "memory.h"
+#include "leesedwards.h"
 #include "field_grad.h"
 
 struct field_grad_s {
@@ -50,33 +52,10 @@ struct field_grad_s {
 };
 
 
-#ifndef OLD_SHIT
-
-#include "memory.h"
-#include "leesedwards.h"
-
 /* Commpressed symmetric rank 2 tensor */
 
 #define addr_dab(index, ia) addr_rank1(le_nsites(), NSYMM, index, ia)
 #define vaddr_dab(index, ia, iv) vaddr_rank1(le_nsites(), NSYMM, index, ia, iv)
 #define mem_addr_dab(index, ia) mem_addr_rank1(le_nsites(), NSYMM, index, ia)
 
-#else
-
-/* array of structures */
-#define ADDR_FGRD(nsite, nfield, index, ifield, idir)	\
-  ((nfield)*3*(index) + (ifield)*3+(idir))
-
-
-/* structure of arrays */
-#define ADDR_FGRD_R(nsite, nfield, index, ifield,idir)	\
-  ((nsite)*3*(ifield) + (nsite)*(idir) + (index))
-
-#ifdef LB_DATA_SOA
-#define FGRDADR ADDR_FGRD_R
-#else
-#define FGRDADR ADDR_FGRD
-
-#endif
-#endif
 #endif

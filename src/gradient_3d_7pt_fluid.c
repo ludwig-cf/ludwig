@@ -203,7 +203,6 @@ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
       int n;
       int ys=tc_Nall[Z];
 
-#ifndef OLD_SHIT
       /* Addressing should be based on le_nsites() */
       nsites =  le_nsites();
       int ip1, im1;
@@ -235,22 +234,6 @@ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
 	  + t_field[addr_rank1(nsites, nop, index - 1,  n)]
 	  - 6.0*t_field[addr_rank1(nsites, nop, index, n)];
       }
-#else
-    for (n = 0; n < nop; n++) {
-      t_grad[FGRDADR(tc_nSites,nop,index,n,X)]
-      = 0.5*(t_field[FLDADR(tc_nSites,nop,indexp1,n)] - t_field[FLDADR(tc_nSites,nop,indexm1,n)]);
-      t_grad[FGRDADR(tc_nSites,nop,index,n,Y)]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+ys,n)] - t_field[FLDADR(tc_nSites,nop,index-ys,n)]);
-      t_grad[FGRDADR(tc_nSites,nop,index,n,Z)]
-	= 0.5*(t_field[FLDADR(tc_nSites,nop,index+1,n)] - t_field[FLDADR(tc_nSites,nop,index-1,n)]);
-      t_del2[FLDADR(tc_nSites,nop,index,n)]
-	= t_field[FLDADR(tc_nSites,nop,indexp1,n)] + t_field[FLDADR(tc_nSites,nop,indexm1,n)]
-	+ t_field[FLDADR(tc_nSites,nop,index+ys,n)] + t_field[FLDADR(tc_nSites,nop,index-ys,n)]
-	+ t_field[FLDADR(tc_nSites,nop,index+1,n)] + t_field[FLDADR(tc_nSites,nop,index-1,n)]
-	- 6.0*t_field[FLDADR(tc_nSites,nop,index,n)];
-      
-    }
-#endif
     }
   }
 
@@ -351,7 +334,6 @@ void gradient_3d_7pt_fluid_le_correction(const int nop,
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
-#ifndef OLD_SHIT
 	  for (n = 0; n < nop; n++) {
 	    grad[addr_rank2(nsites, nop, 3, index, n, X)]
 	      = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
@@ -371,22 +353,6 @@ void gradient_3d_7pt_fluid_le_correction(const int nop,
 	      + field[addr_rank1(nsites, nop, (index - 1),  n)]
 	      - 6.0*field[addr_rank1(nsites, nop, index, n)];
 	  }
-#else
-	  for (n = 0; n < nop; n++) {
-	    grad[3*(nop*index + n) + X]
-	      = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	    grad[3*(nop*index + n) + Y]
-	      = 0.5*(field[nop*(index + ys) + n]
-		     - field[nop*(index - ys) + n]);
-	    grad[3*(nop*index + n) + Z]
-	      = 0.5*(field[nop*(index + 1) + n] - field[nop*(index - 1) + n]);
-	    del2[nop*index + n]
-	      = field[nop*indexp1      + n] + field[nop*indexm1      + n]
-	      + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	      + field[nop*(index + 1)  + n] + field[nop*(index - 1)  + n]
-	      - 6.0*field[nop*index + n];
-	  }
-#endif
 	}
       }
     }
@@ -406,7 +372,6 @@ void gradient_3d_7pt_fluid_le_correction(const int nop,
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
-#ifndef OLD_SHIT
 	  for (n = 0; n < nop; n++) {
 	    grad[addr_rank2(nsites, nop, 3, index, n, X)]
 	      = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
@@ -426,22 +391,6 @@ void gradient_3d_7pt_fluid_le_correction(const int nop,
 	      + field[addr_rank1(nsites, nop, (index - 1),   n)]
 	      - 6.0*field[addr_rank1(nsites, nop, index, n)];
 	  }
-#else
-	  for (n = 0; n < nop; n++) {
-	    grad[3*(nop*index + n) + X]
-	      = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	    grad[3*(nop*index + n) + Y]
-	      = 0.5*(field[nop*(index + ys) + n]
-		     - field[nop*(index - ys) + n]);
-	    grad[3*(nop*index + n) + Z]
-	      = 0.5*(field[nop*(index + 1) + n] - field[nop*(index - 1) + n]);
-	    del2[nop*index + n]
-	      = field[nop*indexp1      + n] + field[nop*indexm1      + n]
-	      + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	      + field[nop*(index + 1)  + n] + field[nop*(index - 1)  + n]
-	      - 6.0*field[nop*index + n];
-	  }
-#endif
 	}
       }
     }

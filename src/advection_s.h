@@ -13,6 +13,7 @@
 #ifndef ADVECTION_S_H
 #define ADVECTION_S_H
 
+#include "memory.h"
 #include "advection.h"
 
 struct advflux_s {
@@ -23,18 +24,5 @@ struct advflux_s {
 
   advflux_t * tcopy;  /* copy of this structure on target */ 
 };
-
-#ifndef OLD_SHIT
-
-#include "memory.h"
-
-#else
-
-#ifdef LB_DATA_SOA
-#define ADVADR ADDR_VECSITE_R
-#else
-#define ADVADR ADDR_VECSITE
-#endif
-#endif
 
 #endif

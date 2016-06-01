@@ -12,6 +12,7 @@
 #include <mpi.h>
 #include "memory.h"
 
+#include "leesedwards.h"
 #include "io_harness.h"
 #include "hydro.h"
 
@@ -32,22 +33,7 @@ struct hydro_s {
 
 };
 
-#ifndef OLD_SHIT
-
-/* Remove nsite in struct when finished */
-
-#include "leesedwards.h"
-
 #define addr_hydro(index, ia) addr_rank1(le_nsites(), 3, index, ia)
 #define vaddr_hydro(index, ia, iv) vaddr_rank1(le_nsites(), 3, index, ia, iv)
-
-#else
-
-#ifdef LB_DATA_SOA
-#define HYADR ADDR_VECSITE_R
-#else
-#define HYADR ADDR_VECSITE
-#endif
-#endif
 
 #endif

@@ -95,8 +95,8 @@ int test_colloid_suite(void) {
 void test_colloid_ascii_io(colloid_state_t sref, const char * filename) {
 
   int n;
-  colloid_state_t s;
-  FILE * fp;
+  colloid_state_t s = {0};
+  FILE * fp = NULL;
 
   fp = fopen(filename, "w");
 
@@ -110,6 +110,7 @@ void test_colloid_ascii_io(colloid_state_t sref, const char * filename) {
     assert(n == 0);
   }
 
+  fp = NULL;
   fp = fopen(filename, "r");
 
   if (fp == NULL) {
@@ -137,8 +138,8 @@ void test_colloid_ascii_io(colloid_state_t sref, const char * filename) {
 void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
 
   int n;
-  colloid_state_t s;
-  FILE * fp;
+  colloid_state_t s = {0};
+  FILE * fp = NULL;
 
   fp = fopen(filename, "w");
   if (fp == NULL) {
@@ -151,6 +152,7 @@ void test_colloid_binary_io(colloid_state_t sref, const char * filename) {
     assert(n == 0);
   }
 
+  fp = NULL;
   fp = fopen(filename, "r");
   if (fp == NULL) {
     printf("fopen(%s) failed\n", filename);

@@ -253,9 +253,9 @@ int psi_force_divstress(psi_t * psi, hydro_t * hydro, colloids_info_t * cinfo) {
 
   coords_nlocal(nlocal);
   chemical_stress = fe_chemical_stress_function();
-#ifndef OLD_SHIT
-  assert(0);
-#endif
+
+  assert(0); /* SHIT NO TEST? */
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -354,9 +354,7 @@ int psi_force_divstress_d3qx(psi_t * psi, hydro_t * hydro, map_t * map, colloids
 
   coords_nlocal(nlocal);
   chemical_stress = fe_chemical_stress_function();
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -475,9 +473,9 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
   coords_nlocal(nlocal);
   chemical_stress    = fe_electro_stress;
   chemical_stress_ex = fe_electro_stress_ex;
-#ifndef OLD_SHIT
-  assert(0);
-#endif
+
+  assert(0); /* SHIT NO TEST? */
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {

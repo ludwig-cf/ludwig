@@ -272,7 +272,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	  ih = (status[2*ia + 1] != MAP_FLUID);
 
 	  /* Calculate half-gradients assuming they are all knowns */
-#ifndef OLD_SHIT
+
 	  for (n1 = 0; n1 < NQAB; n1++) {
 	    gradn[n1][ia][0]
 	      = field[addr_rank1(le_nsites(), NQAB, index + str[ia], n1)]
@@ -281,14 +281,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	      = field[addr_rank1(le_nsites(), NQAB, index,           n1)]
 	      - field[addr_rank1(le_nsites(), NQAB, index - str[ia], n1)];
 	  }
-#else
-	  for (n1 = 0; n1 < NQAB; n1++) {
-	    gradn[n1][ia][0] =
-	      field[NQAB*(index + str[ia]) + n1] - field[NQAB*index + n1];
-	    gradn[n1][ia][1] =
-	      field[NQAB*index + n1] - field[NQAB*(index - str[ia]) + n1];
-	  }
-#endif
+
 	  /* Set unknown, with direction, or treat as known (zero grad) */
 
 	  if (ig + ih == 1) {
@@ -308,7 +301,6 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	/* For planar anchoring we require qtilde_ab of Fournier and
 	 * Galatola, and its square (reduendent for fluid sites) */
 
-#ifndef OLD_SHIT
 	/*util_qab_expand(field, index, qs);*/
 	qs[X][X] = field[addr_rank1(le_nsites(), NQAB, index, XX)];
 	qs[X][Y] = field[addr_rank1(le_nsites(), NQAB, index, XY)];
@@ -319,9 +311,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	qs[Z][X] = qs[X][Z];
 	qs[Z][Y] = qs[Y][Z];
 	qs[Z][Z] = 0.0 - qs[X][X] - qs[Y][Y];
-#else
-	util_q5_to_qab(qs, field + NQAB*index);
-#endif
+
 	q2 = 0.0;
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
@@ -439,7 +429,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	}
 
 	/* The final answer is the sum of the partial gradients */
-#ifndef OLD_SHIT
+
 	for (n1 = 0; n1 < NQAB; n1++) {
 	  del2[addr_rank1(le_nsites(), NQAB, index, n1)] = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -449,16 +439,6 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	      += gradn[n1][ia][0] - gradn[n1][ia][1];
 	  }
 	}
-#else
-	for (n1 = 0; n1 < NQAB; n1++) {
-	  del2[NQAB*index + n1] = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    grad[3*(NQAB*index + n1) + ia] =
-	      0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	    del2[NQAB*index + n1] += gradn[n1][ia][0] - gradn[n1][ia][1];
-	  }
-	}
-#endif
 	/* Next site */
       }
     }
@@ -862,19 +842,13 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	/* Calculate half-gradients assuming they are all knowns */
 	
 	for (n1 = 0; n1 < NQAB; n1++) {
-#ifndef OLD_SHIT
+
 	  gradn[n1][ia][0] =
 	    field[addr_qab(tc_nSites, index+str[ia], n1)]
 	  - field[addr_qab(tc_nSites, index,         n1)];
 	  gradn[n1][ia][1] =
 	    field[addr_qab(tc_nSites, index,         n1)]
 	  - field[addr_qab(tc_nSites, index-str[ia], n1)];
-#else
-	  gradn[n1][ia][0] =
-	    field[FLDADR(tc_nSites,NQAB,index+str[ia],n1)] - field[FLDADR(tc_nSites,NQAB,index,n1)];
-	  gradn[n1][ia][1] =
-	    field[FLDADR(tc_nSites,NQAB,index,n1)] - field[FLDADR(tc_nSites,NQAB,index-str[ia],n1)];
-#endif
 	}
 	
 	gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
@@ -901,7 +875,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
       if (nunknown > 0) {
 	
 	/* Fluid Qab at surface */
-#ifndef OLD_SHIT
+
 	qs[X][X] = field[addr_qab(tc_nSites, index, XX)];
 	qs[X][Y] = field[addr_qab(tc_nSites, index, XY)];
 	qs[X][Z] = field[addr_qab(tc_nSites, index, XZ)];
@@ -912,18 +886,6 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	qs[Z][Y] = field[addr_qab(tc_nSites, index, YZ)];
 	qs[Z][Z] = 0.0 - field[addr_qab(tc_nSites, index, XX)]
 	               - field[addr_qab(tc_nSites, index, YY)];
-#else
-	qs[X][X] = field[FLDADR(tc_nSites,NQAB,index,0)];
-	qs[X][Y] = field[FLDADR(tc_nSites,NQAB,index,1)];
-	qs[X][Z] = field[FLDADR(tc_nSites,NQAB,index,2)];
-	qs[Y][X] = field[FLDADR(tc_nSites,NQAB,index,1)];
-	qs[Y][Y] = field[FLDADR(tc_nSites,NQAB,index,3)];
-	qs[Y][Z] = field[FLDADR(tc_nSites,NQAB,index,4)];
-	qs[Z][X] = field[FLDADR(tc_nSites,NQAB,index,2)];
-	qs[Z][Y] = field[FLDADR(tc_nSites,NQAB,index,4)];
-	qs[Z][Z] = -field[FLDADR(tc_nSites,NQAB,index,0)] - field[FLDADR(tc_nSites,NQAB,index,3)];
-#endif
-
 	
 	//TODO NEED TO PORT
 	q_boundary_constants(ic, jc, kc, qs, bcs[normal[0]],
@@ -1133,7 +1095,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
       }
       
       /* The final answer is the sum of partial gradients */
-#ifndef OLD_SHIT
+
       for (n1 = 0; n1 < NQAB; n1++) {
 	del2[addr_rank1(tc_nSites, NQAB, index, n1)] = 0.0;
 	for (ia = 0; ia < 3; ia++) {
@@ -1143,16 +1105,6 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	    += gradn[n1][ia][0] - gradn[n1][ia][1];
 	}
       }
-#else
-      for (n1 = 0; n1 < NQAB; n1++) {
-	del2[FLDADR(tc_nSites,NQAB,index,n1)] = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  grad[FGRDADR(tc_nSites,NQAB,index,n1,ia)] =
-	    0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	  del2[FLDADR(tc_nSites,NQAB,index,n1)] += gradn[n1][ia][0] - gradn[n1][ia][1];
-	}
-      }
-#endif
 
       }
 

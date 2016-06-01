@@ -171,7 +171,7 @@ double fe_electro_mu(const int index, const int n) {
   assert(fe);
   assert(fe->psi);
   assert(n < fe->psi->nk);
-#ifndef OLD_SHIT
+
   psi_psi(fe->psi, index, &psi);
   psi_rho(fe->psi, index, n, &rho);
   physics_kt(&kt);
@@ -179,15 +179,7 @@ double fe_electro_mu(const int index, const int n) {
   assert(rho >= 0.0); /* For log(rho + epsilon) */
   
   mu = kt*log(rho + DBL_EPSILON) + fe->psi->valency[n]*fe->psi->e*psi;
-#else
-  rho = fe->psi->rho[fe->psi->nk*index + n];
-  physics_kt(&kt);
 
-  assert(rho >= 0.0); /* For log(rho + epsilon) */
-  
-  mu = kt*log(rho + DBL_EPSILON)
-    + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
-#endif
   return mu;
 }
 

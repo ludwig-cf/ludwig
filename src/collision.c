@@ -228,19 +228,13 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
     }
     /* force */
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) {
 	force[ia*VVL+iv] = tc_force_global[ia] 
 	  + t_force[addr_hydro(baseIndex+iv, ia)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) force[ia*VVL+iv] = (tc_force_global[ia] 
-			  + t_force[HYADR(tc_nSites,3,baseIndex+iv,ia)]);
-    }
-#endif
   }
   else {
     __targetILP__(iv) {
@@ -252,17 +246,11 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	}
 
 	/* force */
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia*VVL+iv] = tc_force_global[ia] 
 	    + t_force[addr_hydro(baseIndex+iv, ia)];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia*VVL+iv] = (tc_force_global[ia] 
-			      + t_force[HYADR(tc_nSites,3,baseIndex+iv,ia)]);
-	}
-#endif
       }
     }
   }
@@ -446,15 +434,9 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     }
     /* velocity */
     for (ia = 0; ia < 3; ia++) {
-#ifndef OLD_SHIT
       __targetILP__(iv) {
 	t_velocity[addr_hydro(baseIndex+iv, ia)] = u[ia*VVL+iv];
       }
-#else   
-      __targetILP__(iv) {
-	t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)] = u[ia*VVL+iv];
-      }
-#endif
     }
   }
   else {
@@ -466,16 +448,11 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	    = fchunk[p*VVL+iv]; 
 	}
 	/* velocity */
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)]
-	    =u[ia*VVL+iv];
-	}
-#endif
       }
     }
   }
@@ -749,35 +726,19 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   for (i = 0; i < 3; i++) {
 
-#ifndef OLD_SHIT
     __targetILP__(iv) {
       force[i*VVL+iv] = tc_force_global[i] 
 	+ t_force[vaddr_hydro(baseIndex, i, iv)];
       u[i*VVL+iv] = rrho[iv]*(u[i*VVL+iv] + 0.5*force[i*VVL+iv]);  
     }
-#else
-    __targetILP__(iv){
-      force[i*VVL+iv] = (tc_force_global[i] 
-		      + t_force[HYADR(tc_nSites,3,baseIndex+iv,i)]);
-      
-
-      u[i*VVL+iv] = rrho[iv]*(u[i*VVL+iv] + 0.5*force[i*VVL+iv]);  
-    }
-#endif
   }
   
-#ifndef OLD_SHIT
+
   for (ia = 0; ia < 3; ia++) {   
     __targetILP__(iv) {
       t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
     }
   }
-#else
-    for (i = 0; i < 3; i++) {   
-              __targetILP__(iv) t_velocity[HYADR(tc_nSites,3,baseIndex+iv,i)]=u[i*VVL+iv];
-
-   }
-#endif
   
   /* Compute the thermodynamic component of the stress */
   
@@ -910,13 +871,10 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
 
   /* Now, the order parameter distribution */
-  __targetILP__(iv)
-#ifndef OLD_SHIT
-    /* Care */
+    __targetILP__(iv) {
     phi[iv]=t_phi[vaddr_rank0(le_nsites(), baseIndex, iv)];
-#else
-    phi[iv]=t_phi[baseIndex+iv];
-#endif
+    }
+
   __targetILP__(iv){
     mu[iv] = (*t_chemical_potential)(baseIndex+iv, 0,t_phi,t_delsqphi);
   

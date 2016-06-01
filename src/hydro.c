@@ -79,19 +79,6 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
 
   copyToTarget(&(obj->tcopy->nf), &(obj->nf), sizeof(int));
 
-  /* allocate target copies */
-
-#ifndef OLD_SHIT
-#else
-#ifdef LB_DATA_SOA
-  /* we will do nf halo exchanges, each with 1 field */
-  coords_field_init_mpi_indexed(nhcomm, 1, MPI_DOUBLE, obj->uhalo);
-#else
-  /* we will do 1 halo exchange, with nf fields */
-  coords_field_init_mpi_indexed(nhcomm, obj->nf, MPI_DOUBLE, obj->uhalo);
-#endif
-#endif
-
   *pobj = obj;
 
   return 0;
@@ -109,12 +96,6 @@ void hydro_free(hydro_t * obj) {
 
   assert(obj);
 
-#ifndef OLD_SHIT
-#else
-  MPI_Type_free(&obj->uhalo[Z]);
-  MPI_Type_free(&obj->uhalo[Y]);
-  MPI_Type_free(&obj->uhalo[X]);
-#endif
   free(obj->f);
   free(obj->u);
 
@@ -138,36 +119,10 @@ void hydro_free(hydro_t * obj) {
 
 int hydro_u_halo(hydro_t * obj) {
 
-
-#ifndef OLD_SHIT
-
   assert(obj);
 
   coords_field_halo_rank1(le_nsites(), obj->nhcomm, obj->nf, obj->u,
 			  MPI_DOUBLE);
-#else
-#ifdef LB_DATA_SOA
-
-  int ia;
-  int  nsites = le_nsites();
-
-  assert(obj);
-
-  /* we need nf exchanges */
-  for (ia = 0; ia < obj->nf; ia++) {
-    coords_field_halo(obj->nhcomm, 1, &obj->u[ia*nsites], MPI_DOUBLE, obj->uhalo);
-  }
-
-#else
-
-  assert(obj);
-
-  /* we will do 1 halo exchange, with nf fields */
-  coords_field_halo(obj->nhcomm, obj->nf, obj->u, MPI_DOUBLE, obj->uhalo);
-
-#endif
-#endif
-
   return 0;
 }
 
@@ -229,15 +184,10 @@ int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 
   assert(obj);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     obj->f[addr_hydro(index, ia)] = force[ia];
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    obj->f[HYADR(obj->nsite, obj->nf, index, ia)] = force[ia];
-  }
-#endif
+
   return 0;
 }
 
@@ -253,15 +203,10 @@ int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 
   assert(obj);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     force[ia] = obj->f[addr_hydro(index, ia)];
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    force[ia] = obj->f[HYADR(obj->nsite, obj->nf, index, ia)];
-  }
-#endif
+
   return 0;
 }
 
@@ -279,15 +224,10 @@ int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 
   assert(obj);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     obj->f[addr_hydro(index, ia)] += force[ia]; 
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    obj->f[HYADR(obj->nsite,obj->nf,index,ia)] += force[ia]; 
- }
-#endif
+
   return 0;
 }
 
@@ -303,15 +243,10 @@ int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
 
   assert(obj);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     obj->u[addr_hydro(index, ia)] = u[ia];
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    obj->u[HYADR(obj->nsite,obj->nf,index,ia)] = u[ia];
-  }
-#endif
+
   return 0;
 }
 
@@ -327,15 +262,10 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
 
   assert(obj);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     u[ia] = obj->u[addr_hydro(index, ia)];
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    u[ia] = obj->u[HYADR(obj->nsite,obj->nf,index,ia)];
-  }
-#endif
+
   return 0;
 }
 
@@ -430,9 +360,7 @@ int hydro_lees_edwards(hydro_t * obj) {
   double ule[3]; /* +/- velocity jump at plane */
 
   assert(obj);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   if (cart_size(Y) > 1) {
     hydro_lees_edwards_parallel(obj);
   }
@@ -474,8 +402,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 	/* If nhcomm < nhalo, we could use nhcomm here in the kc loop.
 	 * (As j1 and j2 are always in the domain proper, jc can use nhalo.) */
 
-#ifndef OLD_SHIT
-	/* This kc loop was dubious +/- nhalo */
+	/* SHIT This kc loop was dubious +/- nhalo wrong */
 	for (kc = 1 - obj->nhcomm; kc <= nlocal[Z] + obj->nhcomm; kc++) {
 	  index0 = le_site_index(ib0 + ib, jc, kc);
 	  index1 = le_site_index(ic, j1, kc);
@@ -485,19 +412,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 	      obj->u[addr_hydro(index1, ia)]*fr +
 	      obj->u[addr_hydro(index2, ia)]*(1.0 - fr);
 	  }
-	  /*printf("%2d %2d %2d %8.1e %8.1e\n", ic, jc, kc, obj->u[addr_hydro(index1, X)], obj->u[addr_hydro(index2, X)]);*/
 	}
-#else
-	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	  index0 = le_site_index(ib0 + ib, jc, kc);
-	  index1 = le_site_index(ic, j1, kc);
-	  index2 = le_site_index(ic, j2, kc);
-	  for (ia = 0; ia < 3; ia++) {
-	    obj->u[HYADR(obj->site,obj->nf,index0,ia)] = ule[ia] +
-	      fr*obj->u[HYADR(obj->nsite,obj->nf,index1,ia)] + (1.0 - fr)*obj->u[HYADR(obj->nsite,obj->nf,index2,ia)];
-	  }
-	}
-#endif
       }
     }
   }
@@ -516,7 +431,7 @@ int hydro_lees_edwards(hydro_t * obj) {
  *  this avoids having to update the halos completely.
  *
  *****************************************************************************/
-#ifndef OLD_SHIT
+
 static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   int      nlocal[3];      /* Local system size */
@@ -667,138 +582,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   return 0;
 }
-#else
-static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
-  int      nlocal[3];      /* Local system size */
-  int      noffset[3];     /* Local starting offset */
-  int ib;                  /* Index in buffer region */
-  int ib0;                 /* buffer region offset */
-  int ic;                  /* Index corresponding x location in real system */
-  int jc, kc, j1, j2;
-  int n, n1, n2, n3;
-  double dy;               /* Displacement for current ic->ib pair */
-  double fr;               /* Fractional displacement */
-  double t;                /* time */
-  double * buffer;         /* Interpolation buffer */
-  int jdy;                 /* Integral part of displacement */
-  int index, ia;
-  int nf, nhalo;
-  double ule[3];
-
-  int      nrank_s[3];     /* send ranks */
-  int      nrank_r[3];     /* recv ranks */
-  const int tag0 = 1256;
-  const int tag1 = 1257;
-  const int tag2 = 1258;
-
-  MPI_Comm    le_comm;
-  MPI_Request request[6];
-  MPI_Status  status[3];
-
-  assert(obj);
-
-  nf = obj->nf;
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  ib0 = nlocal[X] + nhalo + 1;
-
-  le_comm = le_communicator();
-
-  /* Allocate the temporary buffer */
-
-  n = (nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
-  buffer = (double*) calloc(nf*n, sizeof(double));
-  if (buffer == NULL) fatal("hydrodynamics: malloc(le buffer) failed\n");
-
-  t = 1.0*get_step();
-
-  ule[X] = 0.0;
-  ule[Z] = 0.0;
-
-  /* One round of communication for each buffer plane */
-
-  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
-
-    ic = le_index_buffer_to_real(ib);
-    kc = 1 - nhalo;
-
-    /* Work out the displacement-dependent quantities */
-
-    dy = le_buffer_displacement(ib, t);
-    ule[Y] = dy/t; /* STEADY SHEAR ONLY */
-    dy = fmod(dy, L(Y));
-    jdy = floor(dy);
-    fr  = dy - jdy;
-
-    /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
-
-    jc = noffset[Y] + 1 - nhalo;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
-
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
-
-    /* Local quantities: given a local starting index j2, we receive
-     * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo. */
-
-    j2 = 1 + (j1 - 1) % nlocal[Y];
-
-    n1 = (nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = imin(nlocal[Y], j2 + 2*nhalo)*(nlocal[Z] + 2*nhalo);
-    n3 = imax(0, j2 - nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
-
-    assert((n1+n2+n3) == (nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo));
-
-    /* Post receives, sends and wait for receives. */
-
-    MPI_Irecv(buffer, nf*n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(buffer + nf*n1, nf*n2, MPI_DOUBLE, nrank_r[1], tag1,
-	      le_comm, request + 1);
-    MPI_Irecv(buffer + nf*(n1 + n2), nf*n3, MPI_DOUBLE, nrank_r[2], tag2,
-	      le_comm, request + 2);
-
-    index = le_site_index(ic, j2, kc);
-    MPI_Issend(&obj->u[nf*index], nf*n1, MPI_DOUBLE, nrank_s[0], tag0,
-	       le_comm, request + 3);
-
-    index = le_site_index(ic, 1, kc);
-    MPI_Issend(&obj->u[nf*index], nf*n2, MPI_DOUBLE, nrank_s[1], tag1,
-	       le_comm, request + 4);
-    MPI_Issend(&obj->u[nf*index], nf*n3, MPI_DOUBLE, nrank_s[2], tag2,
-	       le_comm, request + 5);
-
-    MPI_Waitall(3, request, status);
-
-    /* Perform the actual interpolation from temporary buffer to
-     * buffer region. */
-
-    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-
-      j1 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
-      j2 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
-
-      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	index = le_site_index(ib0 + ib, jc, kc);
-	for (ia = 0; ia < 3; ia++) {
-	  obj->u[nf*index + ia] = ule[ia]
-	    + fr*buffer[nf*(j1 + kc + nhalo - 1) + ia]
-	    + (1.0 - fr)*buffer[nf*(j2 + kc + nhalo - 1) + ia];
-	}
-      }
-    }
-
-    MPI_Waitall(3, request + 3, status);
-  }
-
-  free(buffer);
-
-  return 0;
-}
-#endif
 /*****************************************************************************
  *
  *  hydro_u_write
@@ -887,7 +671,7 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 
   int im1, ip1;
   double tr;
-#ifndef OLD_SHIT
+
   assert(obj);
 
   im1 = le_index_real_to_buffer(ic, -1);
@@ -912,32 +696,7 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
   w[X][Z] = 0.5*(obj->u[addr_hydro(ip1, X)] - obj->u[addr_hydro(im1, X)]);
   w[Y][Z] = 0.5*(obj->u[addr_hydro(ip1, Y)] - obj->u[addr_hydro(im1, Y)]);
   w[Z][Z] = 0.5*(obj->u[addr_hydro(ip1, Z)] - obj->u[addr_hydro(im1, Z)]);
-#else
-  assert(obj);
 
-  im1 = le_index_real_to_buffer(ic, -1);
-  im1 = le_site_index(im1, jc, kc);
-  ip1 = le_index_real_to_buffer(ic, +1);
-  ip1 = le_site_index(ip1, jc, kc);
-
-  w[X][X] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,X)] - obj->u[HYADR(obj->nsite,3,im1,X)]);
-  w[Y][X] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,Y)] - obj->u[HYADR(obj->nsite,3,im1,Y)]);
-  w[Z][X] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,Z)] - obj->u[HYADR(obj->nsite,3,im1,Z)]);
-
-  im1 = le_site_index(ic, jc - 1, kc);
-  ip1 = le_site_index(ic, jc + 1, kc);
-
-  w[X][Y] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,X)] - obj->u[HYADR(obj->nsite,3,im1,X)]);
-  w[Y][Y] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,Y)] - obj->u[HYADR(obj->nsite,3,im1,Y)]);
-  w[Z][Y] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,Z)] - obj->u[HYADR(obj->nsite,3,im1,Z)]);
-
-  im1 = le_site_index(ic, jc, kc - 1);
-  ip1 = le_site_index(ic, jc, kc + 1);
-
-  w[X][Z] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,X)] - obj->u[HYADR(obj->nsite,3,im1,X)]);
-  w[Y][Z] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,Y)] - obj->u[HYADR(obj->nsite,3,im1,Y)]);
-  w[Z][Z] = 0.5*(obj->u[HYADR(obj->nsite,3,ip1,Z)] - obj->u[HYADR(obj->nsite,3,im1,Z)]);
-#endif
   /* Enforce tracelessness */
 
   tr = r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);

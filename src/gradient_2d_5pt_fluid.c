@@ -137,7 +137,6 @@ static void gradient_2d_5pt_fluid_operator(const int nop,
       indexm1 = le_site_index(icm1, jc, 1);
       indexp1 = le_site_index(icp1, jc, 1);
 
-#ifndef OLD_SHIT
       for (n = 0; n < nop; n++) {
 	grad[addr_rank2(nsites, nop, NVECTOR, index, n, X)]
 	  = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
@@ -154,19 +153,6 @@ static void gradient_2d_5pt_fluid_operator(const int nop,
 	  + field[addr_rank1(nsites, nop, index - ys, n)]
 	  - 4.0*field[addr_rank1(nsites, nop, index,  n)];
       }
-#else
-      for (n = 0; n < nop; n++) {
-	grad[3*(nop*index + n) + X]
-	  = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	grad[3*(nop*index + n) + Y]
-	  = 0.5*(field[nop*(index + ys) + n] - field[nop*(index - ys) + n]);
-	grad[3*(nop*index + n) + Z] = 0.0;
-	del2[nop*index + n]
-	  = field[nop*indexp1 + n] + field[nop*indexm1 + n]
-	  + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	  - 4.0*field[nop*index + n];
-      }
-#endif
     }
   }
 
@@ -221,7 +207,6 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 	index   = le_site_index(ic1, jc, 1);
 	indexp1 = le_site_index(ic2, jc, 1);
 
-#ifndef OLD_SHIT
 	for (n = 0; n < nop; n++) {
 	  grad[addr_rank2(nsites, nop, NVECTOR, index, n, X)]
 	    = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
@@ -237,19 +222,6 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 	    + field[addr_rank1(nsites, nop, index - ys, n)]
 	    - 4.0*field[addr_rank1(nsites, nop, index, n)];
 	}
-#else
-	for (n = 0; n < nop; n++) {
-	  grad[3*(nop*index + n) + X]
-	    = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	  grad[3*(nop*index + n) + Y]
-	    = 0.5*(field[nop*(index + ys) + n] - field[nop*(index - ys) + n]);
-	  grad[3*(nop*index + n) + Z] = 0.0;
-	  del2[nop*index + n]
-	    = field[nop*indexp1 + n] + field[nop*indexm1 + n]
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    - 4.0*field[nop*index + n];
-	}
-#endif
       }
     }
 
@@ -265,7 +237,7 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 	indexm1 = le_site_index(ic0, jc, 1);
 	index   = le_site_index(ic1, jc, 1);
 	indexp1 = le_site_index(ic2, jc, 1);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < nop; n++) {
 	  grad[addr_rank2(nsites, nop, NVECTOR, index, n, X)]
 	    = 0.5*(field[addr_rank1(nsites, nop, indexp1, n)]
@@ -281,19 +253,6 @@ static void gradient_2d_5pt_fluid_le_correction(const int nop,
 	    + field[addr_rank1(nsites, nop, (index - ys), n)]
 	    - 4.0*field[addr_rank1(nsites, nop, index, n)];
 	}
-#else
-	for (n = 0; n < nop; n++) {
-	  grad[3*(nop*index + n) + X]
-	    = 0.5*(field[nop*indexp1 + n] - field[nop*indexm1 + n]);
-	  grad[3*(nop*index + n) + Y]
-	    = 0.5*(field[nop*(index + ys) + n] - field[nop*(index - ys) + n]);
-	  grad[3*(nop*index + n) + Z] = 0.0;
-	  del2[nop*index + n]
-	    = field[nop*indexp1 + n] + field[nop*indexm1 + n]
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    - 4.0*field[nop*index + n];
-	}
-#endif
       }
     }
     /* Next plane */
@@ -363,7 +322,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
       index = le_site_index(1, jc, 1);
-#ifndef OLD_SHIT
+
       for (n = 0; n < nop; n++) {
 	gradp1 = field[addr_rank1(nsites, nop, index + xs, n)]
 	       - field[addr_rank1(nsites, nop, index, n)];
@@ -376,18 +335,6 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
 	  + field[addr_rank1(nsites, nop, (index - ys), n)]
 	  - 2.0*field[addr_rank1(nsites, nop, index, n)];
       }
-#else
-      for (n = 0; n < nop; n++) {
-	gradp1 = field[nop*(index + xs) + n] - field[nop*index + n];
-	fb = field[nop*index + n] - 0.5*gradp1;
-	gradm1 = -(c[n]*fb + h[n])*rk;
-	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	del2[nop*index + n]
-	  = gradp1 - gradm1
-	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
-	  - 2.0*field[nop*index + n];
-      }
-#endif
       /* Next site */
     }
   }
@@ -399,7 +346,7 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
       index = le_site_index(nlocal[X], jc, 1);
-#ifndef OLD_SHIT
+
       for (n = 0; n < nop; n++) {
 	gradm1 = field[addr_rank1(nsites, nop, index, n)]
 	       - field[addr_rank1(nsites, nop, (index - xs), n)];
@@ -412,18 +359,6 @@ static void gradient_2d_5pt_fluid_wall_correction(const int nop,
 	  + field[addr_rank1(nsites, nop, (index - ys), n)]
 	  - 2.0*field[addr_rank1(nsites, nop, index, n)];
       }
-#else
-      for (n = 0; n < nop; n++) {
-	gradm1 = field[nop*index + n] - field[nop*(index - xs) + n];
-	fb = field[nop*index + n] + 0.5*gradm1;
-	gradp1 = -(c[n]*fb + h[n])*rk;
-	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	del2[nop*index + n]
-	  = gradp1 - gradm1
-	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
-	  - 2.0*field[nop*index + n];
-      }
-#endif
       /* Next site */
     }
   }

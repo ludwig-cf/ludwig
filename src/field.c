@@ -229,14 +229,9 @@ int field_halo(field_t * obj) {
   assert(obj);
   assert(obj->data);
 
-#ifndef OLD_SHIT
-
   coords_field_halo_rank1(le_nsites(), obj->nhcomm, obj->nf, obj->data,
 			  MPI_DOUBLE);
-#else
 
-  coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
-#endif
   return 0;
 }
 
@@ -275,9 +270,7 @@ int field_leesedwards(field_t * obj) {
 
   assert(obj);
   assert(obj->data);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);
@@ -313,8 +306,7 @@ int field_leesedwards(field_t * obj) {
         j1 = 1 + j0 % nlocal[Y];
         j2 = 1 + j1 % nlocal[Y];
         j3 = 1 + j2 % nlocal[Y];
-	/*printf("J %2d %2d %2d %2d %2d\n", jc, j0, j1, j2, j3);*/
-#ifndef OLD_SHIT
+
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
           index  = le_site_index(ib0 + ib, jc, kc);
           index0 = le_site_index(ic, j0, kc);
@@ -329,24 +321,6 @@ int field_leesedwards(field_t * obj) {
               +        r6*fr*(fr*fr-1.0)*obj->data[addr_rank1(nsites, nf, index3, n)];
           }
         }
-	/*if (get_step() == 3) printf("%2d %2d %2d %2d %2d %22.14e\n", ic, jc, kc, ib, ib0+ib,
-	  obj->data[addr_rank1(nsites, nf, index, 0)]);*/
-#else
-        for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-          index  = nf*le_site_index(ib0 + ib, jc, kc);
-          index0 = nf*le_site_index(ic, j0, kc);
-          index1 = nf*le_site_index(ic, j1, kc);
-          index2 = nf*le_site_index(ic, j2, kc);
-          index3 = nf*le_site_index(ic, j3, kc);
-          for (n = 0; n < nf; n++) {
-            obj->data[index + n] =
-              -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[index0 + n]
-              + 0.5*(fr*fr-1.0)*(fr-2.0)*obj->data[index1 + n]
-              - 0.5*fr*(fr+1.0)*(fr-2.0)*obj->data[index2 + n]
-              +        r6*fr*(fr*fr-1.0)*obj->data[index3 + n];
-          }
-        }
-#endif
       }
     }
   }
@@ -370,7 +344,7 @@ int field_leesedwards(field_t * obj) {
  *  expected that they will be for the gradient calculation).
  *
  *****************************************************************************/
-#ifndef OLD_SHIT
+
 static int field_leesedwards_parallel(field_t * obj) {
 
   int nf;
@@ -542,158 +516,6 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   return 0;
 }
-#else
-static int field_leesedwards_parallel(field_t * obj) {
-
-  int nf;
-  int      nlocal[3];      /* Local system size */
-  int      noffset[3];     /* Local starting offset */
-  int ib;                  /* Index in buffer region */
-  int ib0;                 /* buffer region offset */
-  int ic;                  /* Index corresponding x location in real system */
-  int jc, kc;
-  int j0, j1, j2, j3;
-  int n, n1, n2, n3;
-  int nhalo;
-  int jdy;                 /* Integral part of displacement */
-  int index;
-
-  double dy;               /* Displacement for current ic->ib pair */
-  double fr;               /* Fractional displacement */
-  double t;                /* Time */
-  double * buffer;         /* Interpolation buffer */
-  const double r6 = (1.0/6.0);
-
-  int      nrank_s[3];     /* send ranks */
-  int      nrank_r[3];     /* recv ranks */
-
-  const int tag0 = 1256;
-  const int tag1 = 1257;
-  const int tag2 = 1258;
-
-  MPI_Comm le_comm;
-  MPI_Request request[6];
-  MPI_Status  status[3];
-
-  assert(obj);
-
-  field_nf(obj, &nf);
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  ib0 = nlocal[X] + nhalo + 1;
-
-  le_comm = le_communicator();
-
-  /* Allocate the temporary buffer */
-
-  n = nf*(nlocal[Y] + 2*nhalo + 3)*(nlocal[Z] + 2*nhalo);
-
-  buffer = (double *) malloc(n*sizeof(double));
-  if (buffer == NULL) fatal("malloc(buffer) failed\n");
-  /* -1.0 as zero required for fisrt step; this is a 'feature'
-   * to ensure the regression tests stay te same */
-
-  t = 1.0*get_step() - 1.0;
-
-  /* One round of communication for each buffer plane */
-
-  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
-
-    ic = le_index_buffer_to_real(ib);
-    kc = 1 - nhalo;
-
-    /* Work out the displacement-dependent quantities */
-
-    dy = le_buffer_displacement(ib, t);
-    dy = fmod(dy, L(Y));
-    jdy = floor(dy);
-    fr  = 1.0 - (dy - jdy);
-    /* In the real system the first point we require is
-     * j1 = jc - jdy - 3
-     * with jc = noffset[Y] + 1 - nhalo in the global coordinates.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y) */
-
-    jc = noffset[Y] + 1 - nhalo;
-    j1 = 1 + (jc - jdy - 3 + 2*N_total(Y)) % N_total(Y);
-    assert(j1 >= 1);
-    assert(j1 <= N_total(Y));
-
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
-
-    /* Local quantities: j2 is the position of j1 in local coordinates.
-     * The three sections to send/receive are organised as follows:
-     * jc is the number of j points in each case, while n is the
-     * total number of data items. Note that n3 can be zero. */
-
-    j2 = 1 + (j1 - 1) % nlocal[Y];
-    assert(j2 >= 1);
-    assert(j2 <= nlocal[Y]);
-
-    jc = nlocal[Y] - j2 + 1;
-    n1 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer, n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-
-    jc = imin(nlocal[Y], j2 + 2*nhalo + 2);
-    n2 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
-              request + 1);
-
-    jc = imax(0, j2 - nlocal[Y] + 2*nhalo + 2);
-    n3 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, le_comm,
-              request + 2);
-
-    /* Post sends and wait for receives. */
-
-    index = nf*le_site_index(ic, j2, kc);
-    MPI_Issend(&obj->data[index], n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm,
-               request + 3);
-    index = nf*le_site_index(ic, 1, kc);
-    MPI_Issend(&obj->data[index], n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm,
-               request + 4);
-    MPI_Issend(&obj->data[index], n3, MPI_DOUBLE, nrank_s[2], tag2, le_comm,
-               request + 5);
-
-    MPI_Waitall(3, request, status);
-
-
-    /* Perform the actual interpolation from temporary buffer to
-     * phi_site[] buffer region. */
-
-    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
-
-      /* Note that the linear interpolation here would be
-       * (1.0-fr)*buffer(j1, k, n) + fr*buffer(j2, k, n)
-       * This is again Lagrange four point. */
-
-      j0 = (jc + nhalo - 1    )*(nlocal[Z] + 2*nhalo);
-      j1 = (jc + nhalo - 1 + 1)*(nlocal[Z] + 2*nhalo);
-      j2 = (jc + nhalo - 1 + 2)*(nlocal[Z] + 2*nhalo);
-      j3 = (jc + nhalo - 1 + 3)*(nlocal[Z] + 2*nhalo);
-
-      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-        index = nf*le_site_index(ib0 + ib, jc, kc);
-        for (n = 0; n < nf; n++) {
-          obj->data[index + n] =
-            -  r6*fr*(fr-1.0)*(fr-2.0)*buffer[nf*(j0 + kc+nhalo-1) + n]
-            + 0.5*(fr*fr-1.0)*(fr-2.0)*buffer[nf*(j1 + kc+nhalo-1) + n]
-            - 0.5*fr*(fr+1.0)*(fr-2.0)*buffer[nf*(j2 + kc+nhalo-1) + n]
-            +        r6*fr*(fr*fr-1.0)*buffer[nf*(j3 + kc+nhalo-1) + n];
-        }
-      }
-    }
-
-    /* Clean up the sends, and move to next buffer location. */
-
-    MPI_Waitall(3, request + 3, status);
-  }
-
-  free(buffer);
-
-  return 0;
-}
-#endif
 
 /*****************************************************************************
  *
@@ -708,11 +530,7 @@ int field_scalar(field_t * obj, int index, double * phi) {
   assert(obj->data);
   assert(phi);
 
-#ifndef OLD_SHIT
   *phi = obj->data[addr_rank1(le_nsites(), 1, index, 0)];
-#else
-  *phi = obj->data[index];
-#endif
 
   return 0;
 }
@@ -729,11 +547,8 @@ int field_scalar_set(field_t * obj, int index, double phi) {
   assert(obj->nf == 1);
   assert(obj->data);
 
-#ifndef OLD_SHIT
   obj->data[addr_rank1(le_nsites(), 1, index, 0)] = phi;
-#else
-  obj->data[index] = phi;
-#endif
+
   return 0;
 }
 
@@ -752,15 +567,10 @@ int field_vector(field_t * obj, int index, double p[3]) {
   assert(obj->data);
   assert(p);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     p[ia] = obj->data[addr_rank1(le_nsites(), 3, index, ia)];
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    p[ia] = obj->data[3*index + ia];
-  }
-#endif
+
   return 0;
 }
 
@@ -779,15 +589,10 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
   assert(obj->data);
   assert(p);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     obj->data[addr_rank1(le_nsites(), 3, index, ia)] = p[ia];
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    obj->data[3*index + ia] = p[ia];
-  }
-#endif
+
   return 0;
 }
 
@@ -810,7 +615,6 @@ int field_tensor(field_t * obj, int index, double q[3][3]) {
 
   nsites = le_nsites();
 
-#ifndef OLD_SHIT
   q[X][X] = obj->data[addr_rank1(nsites, NQAB, index, XX)];
   q[X][Y] = obj->data[addr_rank1(nsites, NQAB, index, XY)];
   q[X][Z] = obj->data[addr_rank1(nsites, NQAB, index, XZ)];
@@ -820,17 +624,6 @@ int field_tensor(field_t * obj, int index, double q[3][3]) {
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-#else
-  q[X][X] = obj->data[FLDADR(nsites, NQAB, index, XX)];
-  q[X][Y] = obj->data[FLDADR(nsites, NQAB, index, XY)];
-  q[X][Z] = obj->data[FLDADR(nsites, NQAB, index, XZ)];
-  q[Y][X] = q[X][Y];
-  q[Y][Y] = obj->data[FLDADR(nsites, NQAB, index, YY)];
-  q[Y][Z] = obj->data[FLDADR(nsites, NQAB, index, YZ)];
-  q[Z][X] = q[X][Z];
-  q[Z][Y] = q[Y][Z];
-  q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
-#endif
 
   return 0;
 }
@@ -855,19 +648,11 @@ int field_tensor_set(field_t * obj, int index, double q[3][3]) {
 
   nsites = le_nsites();
 
-#ifndef OLD_SHIT
   obj->data[addr_rank1(nsites, NQAB, index, XX)] = q[X][X];
   obj->data[addr_rank1(nsites, NQAB, index, XY)] = q[X][Y];
   obj->data[addr_rank1(nsites, NQAB, index, XZ)] = q[X][Z];
   obj->data[addr_rank1(nsites, NQAB, index, YY)] = q[Y][Y];
   obj->data[addr_rank1(nsites, NQAB, index, YZ)] = q[Y][Z];
-#else
-  obj->data[FLDADR(nsites, NQAB, index, XX)] = q[X][X];
-  obj->data[FLDADR(nsites, NQAB, index, XY)] = q[X][Y];
-  obj->data[FLDADR(nsites, NQAB, index, XZ)] = q[X][Z];
-  obj->data[FLDADR(nsites, NQAB, index, YY)] = q[Y][Y];
-  obj->data[FLDADR(nsites, NQAB, index, YZ)] = q[Y][Z];
-#endif
 
   return 0;
 }
@@ -890,15 +675,11 @@ int field_scalar_array(field_t * obj, int index, double * array) {
   assert(obj);
   assert(obj->data);
   assert(array);
-#ifndef OLD_SHIT
+
   for (n = 0; n < obj->nf; n++) {
     array[n] = obj->data[addr_rank1(le_nsites(), obj->nf, index, n)];
   }
-#else
-  for (n = 0; n < obj->nf; n++) {
-    array[n] = obj->data[obj->nf*index + n];
-  }
-#endif
+
   return 0;
 }
 
@@ -915,15 +696,10 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
   assert(obj);
   assert(obj->data);
   assert(array);
-#ifndef OLD_SHIT
+
   for (n = 0; n < obj->nf; n++) {
     obj->data[addr_rank1(le_nsites(), obj->nf, index, n)] = array[n];
   }
-#else
-  for (n = 0; n < obj->nf; n++) {
-    obj->data[obj->nf*index + n] = array[n];
-  }
-#endif
 
   return 0;
 }

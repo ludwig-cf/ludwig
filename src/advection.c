@@ -225,10 +225,6 @@ __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 					      hydro_t * hydro, int nf,
 					      field_t * field) {
 
-#ifndef OLD_SHIT
-  assert(1);
-#endif
-
   int index;
   __targetTLPNoStride__(index, tc_nSites) {
 
@@ -264,135 +260,81 @@ __targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
 
       for (n = 0; n < nf; n++) {
 
-#ifndef OLD_SHIT
 	phi0 = field->data[addr_rank1(nsites, nf, index0, n)];
 	for (i = 0; i < 3; i++) {
 	  u0[i] = hydro->u[addr_hydro(index0, i)];
 	}
-#else
-	phi0 = field->data[FLDADR(tc_nSites,nf,index0,n)];
-	for (i = 0; i < 3; i++) {
-	  u0[i]=hydro->u[HYADR(tc_nSites,3,index0,i)];
-	}
-#endif
+
 	/* west face (icm1 and ic) */
 
 	index1 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u > 0.0) {
-#ifndef OLD_SHIT
 	  flux->fw[addr_rank1(nsites, nf, index0, n)]
 	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-#else
-	  flux->fw[ADVADR(tc_nSites,nf,index0,n)] = u*field->data[FLDADR(tc_nSites,nf,index1,n)];
-#endif
 	}
 	else {
-#ifndef OLD_SHIT
 	  flux->fw[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-#else
-	  flux->fw[ADVADR(tc_nSites,nf,index0,n)] = u*phi0;
-#endif
 	}
 
 	/* east face (ic and icp1) */
 
 	index1 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	for(i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for(i = 0; i < 3; i++) {
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
-#ifndef OLD_SHIT
 	  flux->fe[addr_rank1(nsites, nf, index0, n)]
 	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-#else
-	  flux->fe[ADVADR(tc_nSites,nf,index0,n)] = u*field->data[FLDADR(tc_nSites,nf,index1,n)];
-#endif
 	}
 	else {
-#ifndef OLD_SHIT
 	  flux->fe[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-#else
-	  flux->fe[ADVADR(tc_nSites,nf,index0,n)] = u*phi0;
-#endif
 	}
 
 	/* y direction */
 
 	index1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
-#ifndef OLD_SHIT
 	  flux->fy[addr_rank1(nsites, nf, index0, n)]
 	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-#else
-	  flux->fy[ADVADR(tc_nSites,nf,index0,n)] = u*field->data[FLDADR(tc_nSites,nf,index1,n)];
-#endif
 	}
 	else {
-#ifndef OLD_SHIT
 	  flux->fy[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-#else
-	  flux->fy[ADVADR(tc_nSites,nf,index0,n)] = u*phi0;
-#endif
 	}
 
 	/* z direction */
 
 	index1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i]=hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
-#ifndef OLD_SHIT
 	  flux->fz[addr_rank1(nsites, nf, index0, n)]
 	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-#else
-	  flux->fz[ADVADR(tc_nSites,nf,index0,n)] = u*field->data[FLDADR(tc_nSites,nf,index1,n)];
-#endif
 	}
 	else {
-#ifndef OLD_SHIT
 	  flux->fz[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-#else
-	  flux->fz[ADVADR(tc_nSites,nf,index0,n)] = u*phi0;
-#endif
 	}
       }
       /* Next site */
@@ -501,9 +443,7 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 1);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
     icp1 = le_index_real_to_buffer(ic, +1);
@@ -518,68 +458,51 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 	index1 = le_site_index(icm1, jc, kc);
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < nf; n++) {
 	  flux->fw[addr_rank1(le_nsites(), nf, index0, n)]
 	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
 		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
 	}
-#else
-	for (n = 0; n < nf; n++) {
-	  flux->fw[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}	
-#endif
+
 	/* east face (ic and icp1) */
 
 	index1 = le_site_index(icp1, jc, kc);
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[X] + u1[X]);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < nf; n++) {
 	  flux->fe[addr_rank1(le_nsites(), nf, index0, n)]
 	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
 		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
 	}
-#else
-	for (n = 0; n < nf; n++) {
-	  flux->fe[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-#endif
+
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Y] + u1[Y]);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < nf; n++) {
 	  flux->fy[addr_rank1(le_nsites(), nf, index0, n)]
 	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
 		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
 	}
-#else
-	for (n = 0; n < nf; n++) {
-	  flux->fy[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-#endif
+
 	/* z direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
 
 	hydro_u(hydro, index1, u1);
 	u = 0.5*(u0[Z] + u1[Z]);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < nf; n++) {
 	  flux->fz[addr_rank1(le_nsites(), nf, index0, n)]
 	    = u*0.5*(f[addr_rank1(le_nsites(), nf, index1, n)]
 		     + f[addr_rank1(le_nsites(), nf, index0, n)]);
 	}
-#else
-	for (n = 0; n < nf; n++) {
-	  flux->fz[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-#endif
 	/* Next site */
       }
     }
@@ -605,14 +528,10 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux, 
 					      hydro_t * hydro, int nf,
 					      field_t * field) {
-
+  int index;
   assert(flux);
   assert(hydro);
   assert(field);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
-  int index;
 
   __targetTLPNoStride__(index, tc_nSites) {
 
@@ -641,16 +560,12 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
       int index0, index1, index2;
       index0 = targetIndex3D(coords[X],coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
       nsites = le_nsites();
       for (i = 0; i < 3; i++) {
         u0[i] = hydro->u[addr_hydro(index0, i)];
       }
-#else
-      for (i = 0; i < 3; i++) {
-        u0[i] = hydro->u[HYADR(tc_nSites,3,index0,i)];
-      }
-#endif
+
 	/* west face (icm1 and ic) */
 
 #ifdef __NVCC__
@@ -671,180 +586,110 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 
 	index1 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
 	u = 0.5*(u0[X] + u1[X]);
-
-
 
 	if (u > 0.0) {
 	  index2 = targetIndex3D(icm2,coords[Y],coords[Z],tc_Nall);
 
-#ifndef OLD_SHIT
 	  flux->fw[addr_rank1(nsites, nf, index0, n)] =
 	    u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	     + a2*field->data[addr_rank1(nsites, nf, index1, n)]
 	     + a3*field->data[addr_rank1(nsites, nf, index0, n)]);
-#else
-	  flux->fw[ADVADR(tc_nSites,nf,index0,n)] =
-	    u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-#endif
 	}
 	else {
 
 	index2 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	flux->fw[addr_rank1(nsites, nf, index0, n)] =
 	  u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	   + a2*field->data[addr_rank1(nsites, nf, index0, n)]
 	   + a3*field->data[addr_rank1(nsites, nf, index1, n)]);
 	}
-#else
-	flux->fw[ADVADR(tc_nSites,nf,index0,n)] =
-	  u*(a1*field->data[FLDADR(tc_nSites, nf, index2, n)]
-	   + a2*field->data[FLDADR(tc_nSites, nf, index0, n)]
-	   + a3*field->data[FLDADR(tc_nSites, nf, index1, n)]);
-	}
-#endif
 
 	/* east face (ic and icp1) */
 
 	index1 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[X] + u1[X]);
 
 	if (u < 0.0) {
 	index2 = targetIndex3D(icp2,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	flux->fe[addr_rank1(nsites, nf, index0, n)] =
 	  u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	   + a2*field->data[addr_rank1(nsites, nf, index1, n)]
 	   + a3*field->data[addr_rank1(nsites, nf, index0, n)]);
-#else
-	flux->fe[ADVADR(tc_nSites,nf,index0,n)] =
-	  u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	     + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
-	     + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-#endif
 	}
 	else {
 	index2 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	flux->fe[addr_rank1(nsites, nf, index0, n)] =
 	  u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	   + a2*field->data[addr_rank1(nsites, nf, index0, n)]
 	   + a3*field->data[addr_rank1(nsites, nf, index1, n)]);
-#else
-	flux->fe[ADVADR(tc_nSites,nf,index0,n)] =
-	  u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	     + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
-	     + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-#endif
 	}
 
 	/* y direction */
 
 	index1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[Y] + u1[Y]);
 
 	if (u < 0.0) {
 	index2 = targetIndex3D(coords[X],coords[Y]+2,coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	flux->fy[addr_rank1(nsites, nf, index0, n)] =
 	  u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	   + a2*field->data[addr_rank1(nsites, nf, index1, n)]
 	   + a3*field->data[addr_rank1(nsites, nf, index0, n)]);
-#else
-	flux->fy[ADVADR(tc_nSites,nf,index0,n)] =
-	  u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	     + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
-	     + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-#endif
 	}
 	else {
 	index2 = targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
-#ifndef OLD_SHIT
+
 	    flux->fy[addr_rank1(nsites, nf, index0, n)] =
 	      u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	       + a2*field->data[addr_rank1(nsites, nf, index0, n)]
 	       + a3*field->data[addr_rank1(nsites, nf, index1, n)]);
-#else
-	    flux->fy[ADVADR(tc_nSites,nf,index0,n)] =
-	      u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	       + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
-	       + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-#endif
 	}
 
 	/* z direction */
 
 	index1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
-#ifndef OLD_SHIT
+
 	for (i = 0; i < 3; i++) {
 	  u1[i] = hydro->u[addr_hydro(index1, i)];
 	}
-#else
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[HYADR(tc_nSites,3,index1,i)];
-	}
-#endif
+
 	u = 0.5*(u0[Z] + u1[Z]);
 
 	if (u < 0.0) {
 	index2 = targetIndex3D(coords[X],coords[Y],coords[Z]+2,tc_Nall);
-#ifndef OLD_SHIT
+
 	    flux->fz[addr_rank1(nsites, nf, index0, n)] =
 	     u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	      + a2*field->data[addr_rank1(nsites, nf, index1, n)]
 	      + a3*field->data[addr_rank1(nsites, nf, index0, n)]);
-#else
-	    flux->fz[ADVADR(tc_nSites,nf,index0,n)] =
-	     u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	     + a2*field->data[FLDADR(tc_nSites,nf,index1,n)]
-	     + a3*field->data[FLDADR(tc_nSites,nf,index0,n)]);
-#endif
 	}
 	else {
 	index2 = targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
-#ifndef OLD_SHIT
+
 	flux->fz[addr_rank1(nsites, nf, index0, n)] =
 	  u*(a1*field->data[addr_rank1(nsites, nf, index2, n)]
 	   + a2*field->data[addr_rank1(nsites, nf, index0, n)]
            + a3*field->data[addr_rank1(nsites, nf, index1, n)]);
-#else
-	flux->fz[ADVADR(tc_nSites,nf,index0,n)] =
-	  u*(a1*field->data[FLDADR(tc_nSites,nf,index2,n)]
-	   + a2*field->data[FLDADR(tc_nSites,nf,index0,n)]
-           + a3*field->data[FLDADR(tc_nSites,nf,index1,n)]);
-#endif
 	}
-
 
 	}
 	/* Next site */
@@ -970,9 +815,9 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
-#ifndef OLD_SHIT
-  assert(0);
-#endif
+
+  assert(0); /* SHIT NO TEST? */
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm2 = le_index_real_to_buffer(ic, -2);
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -1065,6 +910,7 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 
 static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f) {
+  int nsites;
   int nlocal[3];
   int ic, jc, kc;
   int n;
@@ -1082,10 +928,9 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
   assert(hydro);
   assert(f);
 
+  nsites = le_nsites();
   coords_nlocal(nlocal);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm3 = le_index_real_to_buffer(ic, -3);
     icm2 = le_index_real_to_buffer(ic, -2);
@@ -1107,22 +952,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u > 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fw[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(icm3, jc, kc) + n]
-	       + a2*f[nf*le_site_index(icm2, jc, kc) + n]
-               + a3*f[nf*index1 + n]
-               + a4*f[nf*index0 + n]
-	       + a5*f[nf*le_site_index(icp1, jc, kc) + n]);
+            flux->fw[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(icm3, jc, kc), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(icm2, jc, kc), n)] +
+               a3*f[addr_rank1(nsites, nf, index1, n)] +
+               a4*f[addr_rank1(nsites, nf, index0, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(icp1, jc, kc), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fw[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(icp2, jc, kc) + n]
-	       + a2*f[nf*le_site_index(icp1, jc, kc) + n]
-               + a3*f[nf*index0 + n]
-               + a4*f[nf*index1 + n]
-	       + a5*f[nf*le_site_index(icm2, jc, kc) + n]);
+            flux->fw[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(icp2, jc, kc), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(icp1, jc, kc), n)] +
+               a3*f[addr_rank1(nsites, nf, index0, n)] +
+               a4*f[addr_rank1(nsites, nf, index1, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(icm2, jc, kc), n)]);
           }
 	}
 
@@ -1134,22 +979,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u < 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fe[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(icp3, jc, kc) + n]
-	       + a2*f[nf*le_site_index(icp2, jc, kc) + n]
-               + a3*f[nf*index1 + n]
-               + a4*f[nf*index0 + n]
-	       + a5*f[nf*le_site_index(icm1, jc, kc) + n]);
+            flux->fe[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(icp3, jc, kc), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(icp2, jc, kc), n)] +
+               a3*f[addr_rank1(nsites, nf, index1, n)] +
+               a4*f[addr_rank1(nsites, nf, index0, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(icm1, jc, kc), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fe[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(icm2, jc, kc) + n]
-	       + a2*f[nf*le_site_index(icm1, jc, kc) + n]
-               + a3*f[nf*index0 + n]
-               + a4*f[nf*index1 + n]
-	       + a5*f[nf*le_site_index(icp2, jc, kc) + n]);
+            flux->fe[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(icm2, jc, kc), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(icm1, jc, kc), n)] +
+               a3*f[addr_rank1(nsites, nf, index0, n)] +
+               a4*f[addr_rank1(nsites, nf, index1, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(icp2, jc, kc), n)]);
           }
         }
 
@@ -1161,22 +1006,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u < 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fy[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(ic, jc+3, kc) + n]
-	       + a2*f[nf*le_site_index(ic, jc+2, kc) + n]
-               + a3*f[nf*index1 + n]
-               + a4*f[nf*index0 + n]
-	       + a5*f[nf*le_site_index(ic, jc-1, kc) + n]);
+            flux->fy[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(ic, jc+3, kc), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(ic, jc+2, kc), n)] +
+               a3*f[addr_rank1(nsites, nf, index1, n)] +
+               a4*f[addr_rank1(nsites, nf, index0, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(ic, jc-1, kc), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fy[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(ic, jc-2, kc) + n]
-	       + a2*f[nf*le_site_index(ic, jc-1, kc) + n]
-               + a3*f[nf*index0 + n]
-               + a4*f[nf*index1 + n]
-	       + a5*f[nf*le_site_index(ic, jc+2, kc) + n]);
+            flux->fy[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(ic, jc-2, kc), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(ic, jc-1, kc), n)] +
+               a3*f[addr_rank1(nsites, nf, index0, n)] +
+               a4*f[addr_rank1(nsites, nf, index1, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(ic, jc+2, kc), n)]);
           }
         }
 
@@ -1188,22 +1033,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u < 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fz[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(ic, jc, kc+3) + n]
-	       + a2*f[nf*le_site_index(ic, jc, kc+2) + n]
-               + a3*f[nf*index1 + n]
-               + a4*f[nf*index0 + n]
-	       + a5*f[nf*le_site_index(ic, jc, kc-1) + n]);
+            flux->fz[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(ic, jc, kc+3), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(ic, jc, kc+2), n)] +
+               a3*f[addr_rank1(nsites, nf, index1, n)] +
+               a4*f[addr_rank1(nsites, nf, index0, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(ic, jc, kc-1), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fz[nf*index0 + n] =
-              u*(a1*f[nf*le_site_index(ic, jc, kc-2) + n]
-	       + a2*f[nf*le_site_index(ic, jc, kc-1) + n]
-               + a3*f[nf*index0 + n]
-               + a4*f[nf*index1 + n]
-	       + a5*f[nf*le_site_index(ic, jc, kc+2) + n]);
+            flux->fz[addr_rank1(nsites, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(nsites, nf, le_site_index(ic, jc, kc-2), n)] +
+	       a2*f[addr_rank1(nsites, nf, le_site_index(ic, jc, kc-1), n)] +
+               a3*f[addr_rank1(nsites, nf, index0, n)] +
+               a4*f[addr_rank1(nsites, nf, index1, n)] +
+	       a5*f[addr_rank1(nsites, nf, le_site_index(ic, jc, kc+2), n)]);
           }
         }
 
@@ -1261,7 +1106,7 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
   int index0, index1;
   double u0[3], u1[3], u;
 
-  assert(0); /* OLD_SHIT */
+  assert(0); /* SHIT NO TEST? */
   assert(hydro);
   assert(nf > 0);
   assert(f);
@@ -1272,9 +1117,6 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 1);
   assert(le_get_nplane_total() == 0);
-#ifndef OLD_SHIT
-  assert(0);
-#endif
 
   for (ic = 0; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -1376,9 +1218,6 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
   assert(flx);
   assert(le_get_nplane_total() == 0);
 
-#ifndef OLD_SHIT
-  assert(1);
-#endif
   nsites = coords_nsites();
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 1);
@@ -1396,17 +1235,12 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
 	  hydro_u(hydro, index1, u1);
 
 	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);
-#ifndef OLD_SHIT
+
 	  for (n = 0; n < nf; n++) {
 	    flx[addr_rank1(nsites, nf, index0, n)][c - 1]
 	      = u*0.5*(f[addr_rank1(nsites, nf, index1, n)]
 		       + f[addr_rank1(nsites, nf, index0, n)]);
 	  }
-#else
-	  for (n = 0; n < nf; n++) {
-	    flx[nf*index0 + n][c - 1] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	  }
-#endif
 	}
 
 	/* Next site */

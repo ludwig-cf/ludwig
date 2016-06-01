@@ -270,11 +270,7 @@ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	u[Z] = 0.0;
 	  
 	for (ia = 0; ia < 3; ia++) {
-#ifndef OLD_SHIT
 	  hydro->u[addr_hydro(index, ia)] = u[ia];
-#else
-	  hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
-#endif
 	}  
       }
       
@@ -299,11 +295,7 @@ void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 	u[Z] += p_c->s.v[Z];
 
 	for (ia = 0; ia < 3; ia++) {
-#ifndef OLD_SHIT
 	  hydro->u[addr_hydro(index, ia)] = u[ia];
-#else
-	  hydro->u[HYADR(tc_nSites,3,index,ia)] = u[ia];
-#endif
 	}
       }
     }
@@ -581,10 +573,7 @@ __target__ int q_boundary_constants(int ic, int jc, int kc, double qs[3][3],
   //amp    = blue_phase_amplitude_compute();
 
   /* Default -> outward normal, ie., flat wall */
-#ifndef OLD_SHIT
-  /* What is this doing? */
-  assert(0);
-#endif
+
   w1 = t_w1_wall_;
   w2 = t_w2_wall_;
   anchor = t_anchoring_wall_;

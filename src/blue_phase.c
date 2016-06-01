@@ -726,7 +726,6 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 
   bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
 
-#ifndef OLD_SHIT
   q[X][X] = t_q->data[addr_qab(tc_nSites, index, XX)];
   q[X][Y] = t_q->data[addr_qab(tc_nSites, index, XY)];
   q[X][Z] = t_q->data[addr_qab(tc_nSites, index, XZ)];
@@ -748,31 +747,7 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
     dq[ia][Z][Y] = dq[ia][Y][Z];
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
   }
-#else
-  q[X][X] = t_q->data[FLDADR(tc_nSites,NQAB,index,XX)];
-  q[X][Y] = t_q->data[FLDADR(tc_nSites,NQAB,index,XY)];
-  q[X][Z] = t_q->data[FLDADR(tc_nSites,NQAB,index,XZ)];
-  q[Y][X] = q[X][Y];
-  q[Y][Y] = t_q->data[FLDADR(tc_nSites,NQAB,index,YY)];
-  q[Y][Z] = t_q->data[FLDADR(tc_nSites,NQAB,index,YZ)];
-  q[Z][X] = q[X][Z];
-  q[Z][Y] = q[Y][Z];
-  q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
 
-  for (ia = 0; ia < NVECTOR; ia++) {
-    dq[ia][X][X] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,XX,ia)];
-    dq[ia][X][Y] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,XY,ia)];
-    dq[ia][X][Z] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,XZ,ia)];
-    dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,YY,ia)];
-    dq[ia][Y][Z] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,index,YZ,ia)];
-    dq[ia][Z][X] = dq[ia][X][Z];
-    dq[ia][Z][Y] = dq[ia][Y][Z];
-    dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
-  }
-#endif
-
-#ifndef OLD_SHIT
   dsq[X][X] = t_q_grad->delsq[addr_rank1(tc_nSites, NQAB, index, XX)];
   dsq[X][Y] = t_q_grad->delsq[addr_rank1(tc_nSites, NQAB, index, XY)];
   dsq[X][Z] = t_q_grad->delsq[addr_rank1(tc_nSites, NQAB, index, XZ)];
@@ -782,33 +757,16 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-#else
-  dsq[X][X] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,XX)];
-  dsq[X][Y] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,XY)];
-  dsq[X][Z] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,XZ)];
-  dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,YY)];
-  dsq[Y][Z] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,index,YZ)];
-  dsq[Z][X] = dsq[X][Z];
-  dsq[Z][Y] = dsq[Y][Z];
-  dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
-#endif
 
   blue_phase_compute_h(q, dq, dsq, h, pbpc);
   blue_phase_compute_stress(q, dq, h, sth_loc, pbpc);
-#ifndef OLD_SHIT
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       t_pth[addr_rank2(tc_nSites,3,3,index,ia,ib)] = sth_loc[ia][ib];
     }
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      t_pth[PTHADR(tc_nSites,index,ia,ib)] = sth_loc[ia][ib];
-    }
-  }
-#endif
+
   return;
 }
 

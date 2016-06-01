@@ -189,19 +189,13 @@ __targetHost__  void phi_force_stress_set(const int index, double p[3][3]) {
   int ia, ib;
 
   assert(pth_);
-#ifndef OLD_SHIT
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       pth_[addr_rank2(tc_nSites,3,3,index,ia,ib)] = p[ia][ib];
     }
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      pth_[PTHADR(tc_nSites,index,ia,ib)] = p[ia][ib];
-    }
-  }
-#endif
+
   return;
 }
 
@@ -217,19 +211,12 @@ __targetHost__  void phi_force_stress(const int index, double p[3][3]) {
 
   assert(pth_);
 
-#ifndef OLD_SHIT
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       p[ia][ib] = pth_[addr_rank2(tc_nSites,3,3,index,ia,ib)];
     }
   }
-#else
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      p[ia][ib] = pth_[PTHADR(tc_nSites,index,ia,ib)];
-    }
-  }
-#endif
+
   return;
 }
 
