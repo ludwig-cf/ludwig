@@ -352,7 +352,7 @@ __global__ void lb_propagation_kernel(lb_t * lb) {
       jcv[iv] = kernel_coords_jcv(kindex, iv);
       kcv[iv] = kernel_coords_kcv(kindex, iv);
 
-      index[iv] = kernel_coords_index(icv[0], jcv[0], kcv[0]);
+      index[iv] = kernel_coords_index(icv[iv], jcv[iv], kcv[iv]);
       maskv[iv] = kernel_mask(icv[iv], jcv[iv], kcv[iv]);
     }
 

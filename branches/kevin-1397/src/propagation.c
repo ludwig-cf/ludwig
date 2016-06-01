@@ -37,23 +37,9 @@ __targetHost__ int lb_propagation(lb_t * lb) {
 
   assert(lb);
 
-#ifndef OLD_SHIT
 
-    if (NVEL ==  9) lb_propagate_d2q9(lb);
-    if (NVEL == 15) lb_propagate_d3q15(lb);
-
-#else
-
-#ifdef LB_DATA_SOA
-    if (NVEL == 9)  lb_propagate_d2q9_r(lb);
-    if (NVEL == 15) lb_propagate_d3q15_r(lb);
-#else
-    if (NVEL == 9)  lb_propagate_d2q9(lb);
-    if (NVEL == 15) lb_propagate_d3q15(lb);
-#endif
-
-#endif
-
+  if (NVEL ==  9) lb_propagate_d2q9(lb);
+  if (NVEL == 15) lb_propagate_d3q15(lb);
   if (NVEL == 19) lb_propagate_d3q19(lb);
 
   return 0;
@@ -275,8 +261,6 @@ static int lb_propagate_d2q9(lb_t * lb) {
       for (jc = nlocal[Y]; jc >= 1; jc--) {
 
 	index = coords_index(ic, jc, kc);
-#ifndef OLD_SHIT
-
 	index1 = coords_index(ic, jc - 1, kc);
 	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 4)] =
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 4)];
@@ -292,14 +276,6 @@ static int lb_propagate_d2q9(lb_t * lb) {
 	index1 = coords_index(ic - 1, jc - 1, kc);
 	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 1)] =
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 1)];
-#else
-	q = n*lb->nsite + index;
-
-	lb->f[4*p + q] = lb->f[4*p + q +             (-1)*ystr];
-	lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr + (+1)*ystr];
-	lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr            ];
-	lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr];
-#endif
       }
     }
   
@@ -307,7 +283,6 @@ static int lb_propagate_d2q9(lb_t * lb) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
 	index = coords_index(ic, jc, kc);
-#ifndef OLD_SHIT
 	index1 = coords_index(ic, jc + 1, kc);
 	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 5)] =
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 5)];
@@ -323,14 +298,6 @@ static int lb_propagate_d2q9(lb_t * lb) {
 	index1 = coords_index(ic + 1, jc + 1, kc);
 	lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 8)] =
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 8)];
-#else
-	q = n*lb->nsite + index;
-
-	lb->f[5*p + q] = lb->f[5*p + q             + (+1)*ystr];
-	lb->f[6*p + q] = lb->f[6*p + q + (+1)*xstr + (-1)*ystr];
-	lb->f[7*p + q] = lb->f[7*p + q + (+1)*xstr            ];
-	lb->f[8*p + q] = lb->f[8*p + q + (+1)*xstr + (+1)*ystr];
-#endif
       }
     }
   }
@@ -371,8 +338,6 @@ static int lb_propagate_d3q15(lb_t * lb) {
 	for (kc = nlocal[Z]; kc >= 1; kc--) {
 
 	  index = coords_index(ic, jc, kc);
-#ifndef OLD_SHIT
-
 	  index1 = coords_index(ic, jc, kc - 1);
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 7)] =
 	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 7)];
@@ -394,17 +359,6 @@ static int lb_propagate_d3q15(lb_t * lb) {
 	  index1 = coords_index(ic - 1, jc - 1, kc - 1);
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 1)] =
 	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 1)];
-#else
-	  q = n*lb->nsite + index;
-
-	  lb->f[7*p + q] = lb->f[7*p + q                         + (-1)*zstr];
-	  lb->f[6*p + q] = lb->f[6*p + q             + (-1)*ystr            ];
-	  lb->f[5*p + q] = lb->f[5*p + q + (-1)*xstr + (+1)*ystr + (+1)*zstr];
-	  lb->f[4*p + q] = lb->f[4*p + q + (-1)*xstr + (+1)*ystr + (-1)*zstr];
-	  lb->f[3*p + q] = lb->f[3*p + q + (-1)*xstr                        ];
-	  lb->f[2*p + q] = lb->f[2*p + q + (-1)*xstr + (-1)*ystr + (+1)*zstr];
-	  lb->f[1*p + q] = lb->f[1*p + q + (-1)*xstr + (-1)*ystr + (-1)*zstr];
-#endif
 	}
       }
     }
@@ -414,7 +368,7 @@ static int lb_propagate_d3q15(lb_t * lb) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
-#ifndef OLD_SHIT
+
 	  index = coords_index(ic, jc, kc);
 
 	  index1 = coords_index(ic, jc, kc + 1);
@@ -438,19 +392,6 @@ static int lb_propagate_d3q15(lb_t * lb) {
 	  index1 = coords_index(ic + 1, jc + 1, kc + 1);
 	  lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, 14)] =
 	    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index1, n, 14)];
-
-#else
-	  index = coords_index(ic, jc, kc);
-	  q = n*lb->nsite + index;
-
-	  lb->f[ 8*p + q] = lb->f[ 8*p+q                         + (+1)*zstr];
-	  lb->f[ 9*p + q] = lb->f[ 9*p+q             + (+1)*ystr            ];
-	  lb->f[10*p + q] = lb->f[10*p+q + (+1)*xstr + (-1)*ystr + (-1)*zstr];
-	  lb->f[11*p + q] = lb->f[11*p+q + (+1)*xstr + (-1)*ystr + (+1)*zstr];
-	  lb->f[12*p + q] = lb->f[12*p+q + (+1)*xstr                        ];
-	  lb->f[13*p + q] = lb->f[13*p+q + (+1)*xstr + (+1)*ystr + (-1)*zstr];
-	  lb->f[14*p + q] = lb->f[14*p+q + (+1)*xstr + (+1)*ystr + (+1)*zstr];
-#endif
 	}
       }
     }

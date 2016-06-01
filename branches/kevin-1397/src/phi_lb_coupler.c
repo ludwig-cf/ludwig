@@ -33,14 +33,14 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
 
   double phi0=0.;
 
+  int p;
   int coords[3];
-#ifndef OLD_SHIT
   int nsites;
 
   nsites = tc_nSites;
   targetCoords3D(coords,tc_Nall,baseIndex);
 
-  // if not a halo site:
+  /* if not a halo site:*/
   if (coords[0] >= tc_nhalo &&
       coords[1] >= tc_nhalo &&
       coords[2] >= tc_nhalo &&
@@ -48,39 +48,12 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
       coords[1] < tc_Nall[Y]-tc_nhalo &&
       coords[2] < tc_Nall[Z]-tc_nhalo){
     
-    int p;
     for (p = 0; p < NVEL; p++) {
       phi0 += f[LB_ADDR(nsites, tc_ndist, NVEL, baseIndex, LB_PHI, p)];
     }
 
     phi[addr_rank0(le_nsites(), baseIndex)] = phi0;    
   }
-#else
-  targetCoords3D(coords,tc_Nall,baseIndex);
-  
-  // if not a halo site:
-  if (coords[0] >= tc_nhalo &&
-      coords[1] >= tc_nhalo &&
-      coords[2] >= tc_nhalo &&
-      coords[0] < tc_Nall[X]-tc_nhalo &&
-      coords[1] < tc_Nall[Y]-tc_nhalo &&
-      coords[2] < tc_Nall[Z]-tc_nhalo){
-    
-    
-    //lb_0th_moment(lb, baseIndex, LB_PHI, &phi0);
-    
-    int p;
-     for (p = 0; p < NVEL; p++) {
-      phi0 += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex, LB_PHI, p)];
-    }
-    
-     //field_scalar_set(phi, baseIndex, phi0);
-     phi[baseIndex]=phi0;
-
-    
-    
-  }
-#endif
 
   return 0;
 }

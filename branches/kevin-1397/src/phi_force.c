@@ -176,128 +176,93 @@ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
 
 
     /* Compute pth at current point */
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth0[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth0[ia][ib]=t_pth[PTHADR(tc_nSites,index,ia,ib)];
-#endif
+
     /* Compute differences */
 
     index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);	    
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif
     
     for (ia = 0; ia < 3; ia++) {
       force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
     }
 
     index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);	
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif
+
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
     }
 
     index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);	
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif
+
     for (ia = 0; ia < 3; ia++) {
       force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
     }
 
     index1 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif
+
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
     }
 
     index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);	
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif
+
     for (ia = 0; ia < 3; ia++) {
       force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
     }
 
     index1 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
-#ifndef OLD_SHIT
+
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
       }
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      for (ib = 0; ib < 3; ib++) 
-	pth1[ia][ib]=t_pth[PTHADR(tc_nSites,index1,ia,ib)];
-#endif
+
     for (ia = 0; ia < 3; ia++) {
       force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
     }
 
     /* Store the force on lattice */
-#ifndef OLD_SHIT
+
     /* KS: Can we re-encapsulate this? There is only one addr_hydro() here */
     for (ia = 0; ia < 3; ia++) 
       hydro->f[addr_hydro(index, ia)] += force[ia];
     }
-#else
-    for (ia = 0; ia < 3; ia++) 
-      hydro->f[HYADR(tc_nSites,hydro->nf,index,ia)] += force[ia];
-    
-    }
-#endif
   }
   
   return;
@@ -533,9 +498,6 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 
   int nhalo, nSites;
 
-#ifndef OLD_SHIT
-  assert(1);
-#endif
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
@@ -559,54 +521,38 @@ static int phi_force_compute_fluxes(double * fluxe, double * fluxw,
 	
 	index1 = le_site_index(icm1, jc, kc);
 	chemical_stress(index1, pth1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxw[addr_rank1(nSites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxw[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
-	}
-#endif
+
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
 
 	index1 = le_site_index(icp1, jc, kc);
 	chemical_stress(index1, pth1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[addr_rank1(nSites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxe[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
-	}
-#endif
+
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
 
 	index1 = le_site_index(ic, jc+1, kc);
 	chemical_stress(index1, pth1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxy[addr_rank1(nSites,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxy[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	}
-#endif
+
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
 
 	index1 = le_site_index(ic, jc, kc+1);
 	chemical_stress(index1, pth1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxz[addr_rank1(nSites,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxz[VECADR(nSites,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	}
-#endif
+
 	/* Next site */
       }
     }
@@ -642,10 +588,7 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
-#ifndef OLD_SHIT
-  /* Not LE planes indexing here */
-  assert(1);
-#endif
+
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -656,7 +599,7 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
 
 	indexj = le_site_index(ic, jc-1, kc);
 	indexk = le_site_index(ic, jc, kc-1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia]
 	    = - (+ fluxe[addr_rank1(nSites,3,index,ia)]
@@ -666,13 +609,6 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
 		 + fluxz[addr_rank1(nSites,3,index,ia)]
 		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
-		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
-		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
-	}
-#endif
 	hydro_f_local_add(hydro, index, f);
       }
     }
@@ -717,9 +653,9 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
-#ifndef OLD_SHIT
-  assert(0);
-#endif
+
+  assert(0); /* SHIT NO TEST? */
+
   coords_nlocal(nlocal);
 
   for (ia = 0; ia < 3; ia++) {
@@ -733,7 +669,7 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
         index = le_site_index(ic, jc, kc);
 	indexj = le_site_index(ic, jc-1, kc);
 	indexk = le_site_index(ic, jc, kc-1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia]
 	    = - (+ fluxe[addr_rank1(nSites,3,index,ia)]
@@ -744,14 +680,6 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
 		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
 	  fsum_local[ia] += f[ia];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
-		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
-		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
-	  fsum_local[ia] += f[ia];
-	}
-#endif
       }
     }
   }
@@ -771,7 +699,7 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
         index = le_site_index(ic, jc, kc);
 	indexj = le_site_index(ic, jc-1, kc);
 	indexk = le_site_index(ic, jc, kc-1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia]
 	    = - (+ fluxe[addr_rank1(nSites,3,index,ia)]
@@ -782,14 +710,6 @@ static int phi_force_flux_divergence_with_fix(hydro_t * hydro,
 		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
 	  f[ia] -= fsum[ia];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  f[ia] = - (fluxe[VECADR(nSites,3,index,ia)] - fluxw[VECADR(nSites,3,index,ia)]
-		     + fluxy[VECADR(nSites,3,index,ia)] - fluxy[VECADR(nSites,3,indexj,ia)]
-		     + fluxz[VECADR(nSites,3,index,ia)] - fluxz[VECADR(nSites,3,indexk,ia)]);
-	  f[ia] -= fsum[ia];
-	}
-#endif
 	hydro_f_local_add(hydro, index, f);
       }
     }
@@ -847,16 +767,11 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 
         index = le_site_index(ic, jc, kc);
         index1 = le_site_index(ic + 1, jc, kc);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fbar[3*ip + ia] += - fluxe[addr_rank1(nSites,3,index,ia)]
 	    + fluxw[addr_rank1(nSites,3,index1,ia)];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fbar[3*ip + ia] += - fluxe[VECADR(nSites,3,index,ia)] + fluxw[VECADR(nSites,3,index1,ia)];
-	}
-#endif
       }
     }
   }
@@ -874,18 +789,11 @@ static int phi_force_flux_fix_local(double * fluxe, double * fluxw) {
 
         index  = le_site_index(ic, jc, kc);
         index1 = le_site_index(ic + 1, jc, kc);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[addr_rank1(nSites,3,index,ia)] += ra*fcor[3*ip + ia];
 	  fluxw[addr_rank1(nSites,3,index1,ia)] -= ra*fcor[3*ip +ia];
 	}
-#else
-	/* KS: BUG here */
-	for (ia = 0; ia < 3; ia++) {
-	  fluxe[VECADR(nSites,3,index,ia)] += ra*fcor[VECADR(nSites,3,ip,ia)];
-	  fluxw[VECADR(nSites,3,index1,ia)] -= ra*fcor[VECADR(nSites,3,ip,ia)];
-	}
-#endif
       }
     }
   }
@@ -936,17 +844,11 @@ static int phi_force_wallx(double * fluxe, double * fluxw) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic,jc,kc);
 	chemical_stress(index, pth0);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxw[addr_rank1(nSites,3,index,ia)] = pth0[ia][X];
 	  fw[ia] -= pth0[ia][X];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxw[VECADR(nSites,3,index,ia)] = pth0[ia][X];
-	  fw[ia] -= pth0[ia][X];
-	}
-#endif
       }
     }
   }
@@ -958,17 +860,11 @@ static int phi_force_wallx(double * fluxe, double * fluxw) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic,jc,kc);
 	chemical_stress(index, pth0);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxe[addr_rank1(nSites,3,index,ia)] = pth0[ia][X];
 	  fw[ia] += pth0[ia][X];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxe[VECADR(nSites,3,index,ia)] = pth0[ia][X];
-	  fw[ia] += pth0[ia][X];
-	}
-#endif
       }
     }
   }
@@ -1021,17 +917,11 @@ static int phi_force_wally(double * fluxy) {
 
 	/* Face flux a jc - 1 */
 	index1 = le_site_index(ic, jc-1, kc);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxy[addr_rank1(nSites,3,index1,ia)] = pth0[ia][Y];
 	  fy[ia] -= pth0[ia][Y];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxy[VECADR(nSites,3,index1,ia)] = pth0[ia][Y];
-	  fy[ia] -= pth0[ia][Y];
-	}
-#endif
       }
     }
   }
@@ -1043,17 +933,11 @@ static int phi_force_wally(double * fluxy) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	index = le_site_index(ic, jc, kc);
 	chemical_stress(index, pth0);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxy[addr_rank1(nSites,3,index,ia)] = pth0[ia][Y];
 	  fy[ia] += pth0[ia][Y];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxy[VECADR(nSites,3,index,ia)] = pth0[ia][Y];
-	  fy[ia] += pth0[ia][Y];
-	}
-#endif
       }
     }
   }
@@ -1106,17 +990,11 @@ static int phi_force_wallz(double * fluxz) {
 
 	/* Face flux at kc-1 */
 	index1 = le_site_index(ic, jc, kc-1);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxz[addr_rank1(nSites,3,index1,ia)] = pth0[ia][Z];
 	  fz[ia] -= pth0[ia][Z];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxz[VECADR(nSites,3,index1,ia)] = pth0[ia][Z];
-	  fz[ia] -= pth0[ia][Z];
-	}
-#endif
       }
     }
   }
@@ -1128,17 +1006,11 @@ static int phi_force_wallz(double * fluxz) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	index = le_site_index(ic, jc, kc);
 	chemical_stress(index, pth0);
-#ifndef OLD_SHIT
+
 	for (ia = 0; ia < 3; ia++) {
 	  fluxz[addr_rank1(nSites,3,index,ia)] = pth0[ia][Z];
 	  fz[ia] += pth0[ia][Z];
 	}
-#else
-	for (ia = 0; ia < 3; ia++) {
-	  fluxz[VECADR(nSites,3,index,ia)] = pth0[ia][Z];
-	  fz[ia] += pth0[ia][Z];
-	}
-#endif
       }
     }
   }
@@ -1147,4 +1019,3 @@ static int phi_force_wallz(double * fluxz) {
 
   return 0;
 }
-

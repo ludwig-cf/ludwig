@@ -58,11 +58,8 @@ int lb_run_time(lb_t * lb) {
 			   FILENAME_MAX);
 
   /* Append R to the record if the model is the reverse implementation */ 
-#ifndef OLD_SHIT
+
   if (DATA_MODEL == ADDRESS_REVERSE) memory = 'R';
-#else
-  if (lb_order(lb) == MODEL_R) memory = 'R';
-#endif
   lb_ndist(lb, &ndist);
 
   info("\n");

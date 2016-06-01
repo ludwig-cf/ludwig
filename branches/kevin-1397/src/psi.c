@@ -60,11 +60,8 @@ int psi_halo_psi(psi_t * psi) {
   assert(psi);
 
   nhalo = coords_nhalo();
-#ifndef OLD_SHIT
   coords_field_halo_rank1(coords_nsites(), nhalo, 1, psi->psi, MPI_DOUBLE);
-#else
-  coords_field_halo(nhalo, 1, psi->psi, MPI_DOUBLE, psi->psihalo);
-#endif
+
   return 0;
 }
 
@@ -80,11 +77,8 @@ int psi_halo_rho(psi_t * psi) {
   assert(psi);
 
   nhalo = coords_nhalo();
-#ifndef OLD_SHIT
   coords_field_halo_rank1(coords_nsites(), nhalo, psi->nk, psi->rho, MPI_DOUBLE);
-#else
-  coords_field_halo(nhalo, psi->nk, psi->rho, MPI_DOUBLE, psi->rhohalo);
-#endif
+
   return 0;
 }
 
@@ -316,7 +310,7 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 
   assert(obj);
   assert(fp);
-#ifndef OLD_SHIT
+
   nwrite = fprintf(fp, "%22.15e ", obj->psi[addr_rank0(coords_nsites(),index)]);
   if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
 
@@ -331,22 +325,7 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 
   nwrite = fprintf(fp, "\n");
   if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
-#else
-  nwrite = fprintf(fp, "%22.15e ", obj->psi[index]);
-  if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
 
-  for (n = 0; n < obj->nk; n++) {
-    nwrite = fprintf(fp, "%22.15e ", obj->rho[obj->nk*index + n]);
-    if (nwrite != 23) fatal("fprintf(rho) failed at index %d %d\n", index, n);
-  }
-  
-  psi_rho_elec(obj, index, &rho_el);
-  nwrite = fprintf(fp, "%22.15e ", rho_el);
-  if (nwrite != 23) fatal("fprintf(rho_el) failed at index %d\n", index);
-
-  nwrite = fprintf(fp, "\n");
-  if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
-#endif
   return 0;
 }
 
@@ -361,13 +340,13 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 static int psi_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
+  int indexf;
   double rho_el;
   psi_t * obj = (psi_t*) self;
 
   assert(fp);
   assert(self);
-#ifndef OLD_SHIT
-  int indexf;
+
   indexf = addr_rank0(coords_nsites(), index);
   nread = fscanf(fp, "%le", obj->psi + indexf);
   if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
@@ -380,18 +359,7 @@ static int psi_read_ascii(FILE * fp, int index, void * self) {
 
   nread = fscanf(fp, "%le", &rho_el);
   if (nread != 1) fatal("fscanf(rho_el) failed for %d %d\n", index, n);
-#else
-  nread = fscanf(fp, "%le", obj->psi + index);
-  if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
 
-  for (n = 0; n < obj->nk; n++) {
-    nread = fscanf(fp, "%le", obj->rho + obj->nk*index + n);
-    if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
-  }
-
-  nread = fscanf(fp, "%le", &rho_el);
-  if (nread != 1) fatal("fscanf(rho_el) failed for %d %d\n", index, n);
-#endif
   return 0;
 }
 
@@ -406,14 +374,14 @@ static int psi_read_ascii(FILE * fp, int index, void * self) {
 static int psi_write(FILE * fp, int index, void * self) {
 
   int n;
+  int na;
+  int indexf;
   double rho_el;
   psi_t * obj = (psi_t*) self;
 
   assert(fp);
   assert(obj);
-#ifndef OLD_SHIT
-  int na;
-  int indexf;
+
   indexf = addr_rank0(coords_nsites(), index);
   n = fwrite(obj->psi + indexf, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
@@ -427,17 +395,7 @@ static int psi_write(FILE * fp, int index, void * self) {
   psi_rho_elec(obj, index, &rho_el);
   n = fwrite(&rho_el, sizeof(double), 1, fp);
   if (n != 1) fatal("fwrite(rho_el) failed at index %d", index);
-#else
-  n = fwrite(obj->psi + index, sizeof(double), 1, fp);
-  if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
 
-  n = fwrite(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
-  if (n != obj->nk) fatal("fwrite(rho) failed at index %d", index);
-
-  psi_rho_elec(obj, index, &rho_el);
-  n = fwrite(&rho_el, sizeof(double), 1, fp);
-  if (n != 1) fatal("fwrite(rho_el) failed at index %d", index);
-#endif
   return 0;
 }
 
@@ -452,14 +410,14 @@ static int psi_write(FILE * fp, int index, void * self) {
 static int psi_read(FILE * fp, int index, void * self) {
 
   int n;
+  int na;
+  int indexf;
   double rho_el;
   psi_t * obj = (psi_t*) self;
 
   assert(fp);
   assert(obj);
-#ifndef OLD_SHIT
-  int na;
-  int indexf;
+
   indexf = addr_rank0(coords_nsites(), index);
   n = fread(obj->psi + indexf, sizeof(double), 1, fp);
   if (n != 1) fatal("fread(psi) failed at index %d\n", index);
@@ -472,16 +430,7 @@ static int psi_read(FILE * fp, int index, void * self) {
 
   n = fread(&rho_el, sizeof(double), 1, fp);
   if (n != 1) fatal("fread(rho_el) failed at index %d\n", index);
-#else
-  n = fread(obj->psi + index, sizeof(double), 1, fp);
-  if (n != 1) fatal("fread(psi) failed at index %d\n", index);
 
-  n = fread(obj->rho + obj->nk*index, sizeof(double), obj->nk, fp);
-  if (n != obj->nk) fatal("fread(rho) failed at index %d\n", index);
-
-  n = fread(&rho_el, sizeof(double), 1, fp);
-  if (n != 1) fatal("fread(rho_el) failed at index %d\n", index);
-#endif
   return 0;
 }
 
@@ -500,15 +449,10 @@ int psi_rho_elec(psi_t * obj, int index, double * rho) {
 
   assert(obj);
   assert(rho);
-#ifndef OLD_SHIT
+
   for (n = 0; n < obj->nk; n++) {
     rho_elec += obj->e*obj->valency[n]*obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)];
   }
-#else
-  for (n = 0; n < obj->nk; n++) {
-    rho_elec += obj->e*obj->valency[n]*obj->rho[obj->nk*index + n];
-  }
-#endif
   *rho = rho_elec;
 
   return 0;
@@ -525,11 +469,9 @@ int psi_rho(psi_t * obj, int index, int n, double * rho) {
   assert(obj);
   assert(rho);
   assert(n < obj->nk);
-#ifndef OLD_SHIT
+
   *rho = obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)];
-#else
-  *rho = obj->rho[obj->nk*index + n];
-#endif
+
   return 0;
 }
 
@@ -544,11 +486,8 @@ int psi_rho_set(psi_t * obj, int index, int n, double rho) {
   assert(obj);
   assert(n < obj->nk);
 
-#ifndef OLD_SHIT
   obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)] = rho;
-#else
-  obj->rho[obj->nk*index + n] = rho;
-#endif
+
   return 0;
 }
 
@@ -562,11 +501,9 @@ int psi_psi(psi_t * obj, int index, double * psi) {
 
   assert(obj);
   assert(psi);
-#ifndef OLD_SHIT
+
   *psi = obj->psi[addr_rank0(coords_nsites(), index)];
-#else
-  *psi = obj->psi[index];
-#endif
+
   return 0;
 }
 
@@ -579,11 +516,9 @@ int psi_psi(psi_t * obj, int index, double * psi) {
 int psi_psi_set(psi_t * obj, int index, double psi) {
 
   assert(obj);
-#ifndef OLD_SHIT
+
   obj->psi[addr_rank0(coords_nsites(), index)] = psi;
-#else
-  obj->psi[index] = psi;
-#endif
+
   return 0;
 }
 
@@ -727,18 +662,12 @@ int psi_ionic_strength(psi_t * psi, int index, double * sion) {
   assert(psi);
   assert(sion);
 
-#ifndef OLD_SHIT
   *sion = 0.0;
   for (n = 0; n < psi->nk; n++) {
     *sion += 0.5*psi->valency[n]*psi->valency[n]
       *psi->rho[addr_rank1(coords_nsites(), psi->nk, index, n)];
   }
-#else
-  *sion = 0.0;
-  for (n = 0; n < psi->nk; n++) {
-    *sion += 0.5*psi->valency[n]*psi->valency[n]*psi->rho[psi->nk*index + n];
-  }
-#endif
+
   return 0;
 }
 
@@ -1163,7 +1092,7 @@ int psi_halo_psijump(psi_t * psi) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
 	  index = coords_index(0 - nh, jc, kc);
-#ifndef OLD_SHIT
+
 	  if (is_periodic(X)) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] += e0[X]*ntotal[X];   
 	  }
@@ -1172,15 +1101,6 @@ int psi_halo_psijump(psi_t * psi) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] =
 	      psi->psi[addr_rank0(coords_nsites(), index1)];   
 	  }
-#else
-	  if (is_periodic(X)) {
-	    psi->psi[index] += e0[X]*ntotal[X];   
-	  }
-	  else{
-	    index1 = coords_index(1, jc, kc);
-	    psi->psi[index] = psi->psi[index1];   
-	  }
-#endif
 	}
       }
     }
@@ -1193,29 +1113,19 @@ int psi_halo_psijump(psi_t * psi) {
       for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	    index = coords_index(nlocal[0] + 1 + nh, jc, kc);
-#ifndef OLD_SHIT
-	    if (is_periodic(X)) {
-	      psi->psi[addr_rank0(coords_nsites(), index)] -= e0[X]*ntotal[X];   
-	    }
-	    else{
-	      index1 = coords_index(nlocal[0], jc, kc);
-	      psi->psi[addr_rank0(coords_nsites(), index)] =
-		psi->psi[addr_rank0(coords_nsites(), index1)];   
-	    }
-#else
-	    if (is_periodic(X)) {
-	      psi->psi[index] -= e0[X]*ntotal[X];   
-	    }
-	    else{
-	      index1 = coords_index(nlocal[0], jc, kc);
-	      psi->psi[index] = psi->psi[index1];   
-	    }
-#endif
+	  index = coords_index(nlocal[0] + 1 + nh, jc, kc);
+
+	  if (is_periodic(X)) {
+	    psi->psi[addr_rank0(coords_nsites(), index)] -= e0[X]*ntotal[X];   
+	  }
+	  else {
+	    index1 = coords_index(nlocal[0], jc, kc);
+	    psi->psi[addr_rank0(coords_nsites(), index)] =
+	      psi->psi[addr_rank0(coords_nsites(), index1)];   
+	  }
 	}
       }
     }  
-
   }
 
   if (cart_coords(Y) == 0) {
@@ -1225,7 +1135,7 @@ int psi_halo_psijump(psi_t * psi) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
 	    index = coords_index(ic, 0 - nh, kc);
-#ifndef OLD_SHIT
+
 	    if (is_periodic(Y)) {
 	      psi->psi[addr_rank0(coords_nsites(), index)] += e0[Y]*ntotal[Y];   
 	    }
@@ -1234,15 +1144,6 @@ int psi_halo_psijump(psi_t * psi) {
 	      psi->psi[addr_rank0(coords_nsites(), index)] =
 		psi->psi[addr_rank0(coords_nsites(), index1)];   
 	    }
-#else
-	    if (is_periodic(Y)) {
-	      psi->psi[index] += e0[Y]*ntotal[Y];   
-	    }
-	    else{
-	      index1 = coords_index(ic, 1, kc);
-	      psi->psi[index] = psi->psi[index1];   
-	    }
-#endif
 	}
       }
     }  
@@ -1256,24 +1157,15 @@ int psi_halo_psijump(psi_t * psi) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
 	  index = coords_index(ic, nlocal[1] + 1 + nh, kc);
-#ifndef OLD_SHIT
+
 	  if (is_periodic(Y)) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] -= e0[Y]*ntotal[Y];   
 	  }
-	  else{
+	  else {
 	    index1 = coords_index(ic, nlocal[1], kc);
 	    psi->psi[addr_rank0(coords_nsites(), index)] =
 	      psi->psi[addr_rank0(coords_nsites(), index1)];   
 	  }
-#else
-	  if (is_periodic(Y)) {
-	    psi->psi[index] -= e0[Y]*ntotal[Y];   
-	  }
-	  else{
-	    index1 = coords_index(ic, nlocal[1], kc);
-	    psi->psi[index] = psi->psi[index1];   
-	  }
-#endif
 	}
       }
     }  
@@ -1287,7 +1179,7 @@ int psi_halo_psijump(psi_t * psi) {
 	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 
 	  index = coords_index(ic, jc, 0 - nh);
-#ifndef OLD_SHIT
+
 	  if (is_periodic(Z)) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] += e0[Z]*ntotal[Z];   
 	  }
@@ -1296,15 +1188,6 @@ int psi_halo_psijump(psi_t * psi) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] =
 	      psi->psi[addr_rank0(coords_nsites(), index1)];   
 	  }
-#else
-	  if (is_periodic(Z)) {
-	    psi->psi[index] += e0[Z]*ntotal[Z];   
-	  }
-	  else{
-	    index1 = coords_index(ic, jc, 1);
-	    psi->psi[index] = psi->psi[index1];   
-	  }
-#endif
 	}
       }
     }  
@@ -1318,7 +1201,7 @@ int psi_halo_psijump(psi_t * psi) {
 	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 
 	  index = coords_index(ic, jc, nlocal[2] + 1 + nh);
-#ifndef OLD_SHIT
+
 	  if (is_periodic(Z)) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] -= e0[Z]*ntotal[Z];   
 	  }
@@ -1327,15 +1210,6 @@ int psi_halo_psijump(psi_t * psi) {
 	    psi->psi[addr_rank0(coords_nsites(), index)] =
 	      psi->psi[addr_rank0(coords_nsites(), index1)];   
 	  }
-#else
-	  if (is_periodic(Z)) {
-	    psi->psi[index] -= e0[Z]*ntotal[Z];   
-	  }
-	  else{
-	    index1 = coords_index(ic, jc, nlocal[2]);
-	    psi->psi[index] = psi->psi[index1];   
-	  }
-#endif
 	}
       }
     }  

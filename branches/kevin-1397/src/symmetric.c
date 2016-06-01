@@ -32,10 +32,6 @@
 #include "coords.h"
 #include "leesedwards.h"
 
-#ifdef OLD_SHIT
-#include "memory.h"
-#endif
-
 static double a_     = -0.003125;
 static double b_     = +0.003125;
 static double kappa_ = +0.002;
@@ -318,13 +314,10 @@ double symmetric_chemical_potential_target(const int index, const int nop,
   double phi;
   double delsq_phi;
   double mu;
-#ifndef OLD_SHIT
+
   phi = t_phi[addr_rank0(le_nsites(), index)];
   delsq_phi = t_delsqphi[addr_rank0(le_nsites(), index)];
-#else
-  phi = t_phi[index];
-  delsq_phi = t_delsqphi[index];
-#endif
+
   mu = t_a_*phi + t_b_*phi*phi*phi - t_kappa_*delsq_phi;
 
   return mu;
@@ -431,21 +424,12 @@ void symmetric_chemical_stress_target(const int index,
 
   __targetILP__(iv) {
     
-#ifndef OLD_SHIT
     for (ia = 0; ia < 3; ia++) {
       grad_phi[ia] = t_gradphi[vaddr_rank2(le_nsites(), 1, 3, index, 0, ia, iv)];
     }
 
     phi = t_phi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
     delsq_phi = t_delsqphi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
-#else
-    for (ia = 0; ia < 3; ia++) {
-      grad_phi[ia] = t_gradphi[FGRDADR(tc_nSites,1,index+iv,0,ia)];
-    }
-
-    phi = t_phi[index + iv];
-    delsq_phi = t_delsqphi[index + iv];
-#endif
 
     p0 = 0.5*t_a_*phi*phi + 0.75*t_b_*phi*phi*phi*phi
       - t_kappa_*phi*delsq_phi 

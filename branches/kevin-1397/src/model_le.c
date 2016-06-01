@@ -365,7 +365,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 	index1 = le_site_index(ic, j2, kc);
 		  
 	/* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
-#ifndef OLD_SHIT
+
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
@@ -375,15 +375,6 @@ int le_displace_and_interpolate(lb_t * lb) {
 	      lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index1,n, pcv)];
 	  }
 	}
-#else
-	for (n = 0; n < ndist; n++) {
-	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
-	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_fwd_cv[0];
-	  for (p = 0; p < nprop; p++) {
-	    recv_buff[ndata++] = (1.0 - fr)*lb->f[i0 + p] + fr*lb->f[i1 + p];
-	  }
-	}
-#endif
 	/* Next site */
       }
     }
@@ -395,21 +386,13 @@ int le_displace_and_interpolate(lb_t * lb) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
 	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
 	  }
 	}
-#else
-	for (n = 0; n < ndist; n++) {
-	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_fwd_cv[0];
-	  for (p = 0; p < nprop; p++) {
-	    lb->f[i0 + p] = recv_buff[ndata++];
-	  }
-	}
-#endif
 	/* Next site */
       }
     }
@@ -434,7 +417,7 @@ int le_displace_and_interpolate(lb_t * lb) {
 
 	index0 = le_site_index(ic, j1, kc);
 	index1 = le_site_index(ic, j2, kc);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
@@ -443,15 +426,6 @@ int le_displace_and_interpolate(lb_t * lb) {
 	      lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index1, n, pcv)];
 	  }
 	}
-#else
-	for (n = 0; n < ndist; n++) {
-	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
-	  i1 = ndist*NVEL*index1 + n*NVEL + xdisp_bwd_cv[0];
-	  for (p = 0; p < nprop; p++) {
-	    recv_buff[ndata++] = (1.0 - fr)*lb->f[i0 + p] + fr*lb->f[i1 + p];
-	  }
-	}
-#endif
 	/* Next site */
       }
     }
@@ -463,21 +437,13 @@ int le_displace_and_interpolate(lb_t * lb) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = le_site_index(ic, jc, kc);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
 	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
 	  }
 	}
-#else
-	for (n = 0; n < ndist; n++) {
-	  i0 = ndist*NVEL*index0 + n*NVEL + xdisp_bwd_cv[0];
-	  for (p = 0; p < nprop; p++) {
-	    lb->f[i0 + p] = recv_buff[ndata++];
-	  }
-	}
-#endif
       }
     }
 
@@ -596,20 +562,12 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
 	/* cv[p][X] = +1 identified by disp_fwd[] */
 	index = le_site_index(ic, jc, kc);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    send_buff[ndata++] = lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)];
 	  }
 	}
-#else
-	for (n = 0; n < ndist; n++) {
-	  i0 = ndist*NVEL*index + n*NVEL + xdisp_fwd_cv[0];
-	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = lb->f[i0 + p];
-	  }
-	}
-#endif
 	/* Next site */
       }
     }
@@ -635,15 +593,10 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 	  i0   = ndist*NVEL*index + n*NVEL + xdisp_fwd_cv[0];
 	  ind1 = ind0 + n*nprop;
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
-#ifndef OLD_SHIT
+
 	  for (p = 0; p < nprop; p++) {
 	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
-#else
-	  for (p = 0; p < nprop; p++) {
-	    lb->f[i0 + p] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
-	  }
-#endif
 	}
 	/* Next site */
       }
@@ -691,20 +644,12 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
 	/* cv[p][X] = -1 identified by disp_bwd[] */
 	index = le_site_index(ic, jc, kc);
-#ifndef OLD_SHIT
+
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    send_buff[ndata++] = lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)];
 	  }
 	}
-#else
-	for (n = 0; n < ndist; n++) {
-	  i0 = ndist*NVEL*index + n*NVEL + xdisp_bwd_cv[0];
-	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = lb->f[i0 + p];
-	  }
-	}
-#endif
 	/* Next site */
       }
     }
@@ -730,15 +675,10 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 	  i0   = ndist*NVEL*index + n*NVEL + xdisp_bwd_cv[0];
 	  ind1 = ind0 + n*nprop;
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
-#ifndef OLD_SHIT
+
 	  for (p = 0; p < nprop; p++) {
 	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
-#else
-	  for (p = 0; p < nprop; p++) {
-	    lb->f[i0 + p] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
-	  }
-#endif
 	}
 	/* Next site */
       }

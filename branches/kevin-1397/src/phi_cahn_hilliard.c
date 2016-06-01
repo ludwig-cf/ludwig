@@ -227,6 +227,7 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
 static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
 			   double * fz) {
   int nhalo;
+  int nsites;
   int nlocal[3];
   int ic, jc, kc;
   int index0;
@@ -236,8 +237,8 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
 
   double (* chemical_potential)(const int index, const int nop);
 
-  assert(0);
   nhalo = coords_nhalo();
+  nsites = le_nsites();
   coords_nlocal(nlocal);
   assert(nhalo >= 3);
 
@@ -262,11 +263,13 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
 
 	/* x-direction (between ic-1 and ic) */
 
-	fw[index0] -= 0.25*mobility*(mup1 + mu00 - mum1 - mum2);
+	fw[addr_rank0(nsites, index0)]
+	  -= 0.25*mobility*(mup1 + mu00 - mum1 - mum2);
 
 	/* ...and between ic and ic+1 */
 
-	fe[index0] -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
+	fe[addr_rank0(nsites, index0)]
+	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* y direction between jc and jc+1 */
 
@@ -274,14 +277,16 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
 	mup1 = chemical_potential(index0 + 1*ys, 0);
 	mup2 = chemical_potential(index0 + 2*ys, 0);
 
-	fy[index0] -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
+	fy[addr_rank0(nsites, index0)]
+	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* z direction between kc and kc+1 */
 
 	mum1 = chemical_potential(index0 - 1*zs, 0);
 	mup1 = chemical_potential(index0 + 1*zs, 0);
 	mup2 = chemical_potential(index0 + 2*zs, 0);
-	fz[index0] -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
+	fz[addr_rank0(nsites, index0)]
+	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* Next site */
       }
@@ -312,7 +317,6 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
   double reap[3];
   double kt, mobility, var;
 
-  assert(0);
   assert(le_get_nplane_local() == 0);
   assert(coords_nhalo() >= 1);
 
@@ -340,7 +344,7 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
         noise_reap_n(noise, index0, 3, reap);
 
         for (ia = 0; ia < 3; ia++) {
-          rflux[3*index0 + ia] = var*reap[ia];
+          rflux[addr_rank1(nsites, 3, index0, ia)] = var*reap[ia];
         }
 
       }
@@ -358,20 +362,28 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
 	/* x-direction */
 
 	index1 = coords_index(ic-1, jc, kc);
-	fw[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
+	fw[addr_rank0(nsites, index0)]
+	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, X)] +
+		  rflux[addr_rank1(nsites, 3, index1, X)]);
 
 	index1 = coords_index(ic+1, jc, kc);
-	fe[index0] += 0.5*(rflux[3*index0 + X] + rflux[3*index1 + X]);
+	fe[addr_rank0(nsites, index0)]
+	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, X)] +
+		  rflux[addr_rank1(nsites, 3, index1, X)]);
 
 	/* y direction */
 
 	index1 = coords_index(ic, jc+1, kc);
-	fy[index0] += 0.5*(rflux[3*index0 + Y] + rflux[3*index1 + Y]);
+	fy[addr_rank0(nsites, index0)]
+	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, Y)] +
+		  rflux[addr_rank1(nsites, 3, index1, Y)]);
 
 	/* z direction */
 
 	index1 = coords_index(ic, jc, kc+1);
-	fz[index0] += 0.5*(rflux[3*index0 + Z] + rflux[3*index1 + Z]);
+	fz[addr_rank0(nsites, index0)]
+	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, Z)] +
+		  rflux[addr_rank1(nsites, 3, index1, Z)]);
       }
     }
   }
@@ -416,9 +428,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
   double * buffere;
 
   int get_step(void);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   if (cart_size(Y) > 1) {
     /* Parallel */
     phi_ch_le_fix_fluxes_parallel(nf, fe, fw);
@@ -456,15 +466,11 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
+	    /* This could be replaced by just count++ (check) to addr buffer */
 	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-#ifndef OLD_SHIT
-	    /* just count++ for buffer? */
+
 	    bufferw[index] = fr*fw[addr_rank1(le_nsites(), nf, le_site_index(ic+1,j1,kc), n)]
 	      + (1.0-fr)*fw[addr_rank1(le_nsites(), nf, le_site_index(ic+1,j2,kc), n)];
-#else
-	    bufferw[index] = fr*fw[nf*le_site_index(ic+1,j1,kc) + n]
-	      + (1.0-fr)*fw[nf*le_site_index(ic+1,j2,kc) + n];
-#endif
 	  }
 	}
       }
@@ -485,13 +491,8 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
 	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-#ifndef OLD_SHIT
 	    buffere[index] = fr*fe[addr_rank1(le_nsites(), nf, le_site_index(ic,j1,kc), n)]
 	      + (1.0-fr)*fe[addr_rank1(le_nsites(), nf, le_site_index(ic,j2,kc), n)];
-#else
-	    buffere[index] = fr*fe[nf*le_site_index(ic,j1,kc) + n]
-	      + (1.0-fr)*fe[nf*le_site_index(ic,j2,kc) + n];
-#endif
 	  }
 	}
       }
@@ -503,16 +504,11 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	  for (n = 0; n < nf; n++) {
 	    index = nf*le_site_index(ic,jc,kc) + n;
 	    index1 = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-#ifndef OLD_SHIT
+
 	    index = addr_rank1(le_nsites(), nf, le_site_index(ic,jc,kc), n);
 	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
 	    index = addr_rank1(le_nsites(), nf, le_site_index(ic+1,jc,kc), n);
 	    fw[index] = 0.5*(fw[index] + buffere[index1]);
-#else
-	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
-	    index = nf*le_site_index(ic+1,jc,kc) + n;
-	    fw[index] = 0.5*(fw[index] + buffere[index1]);
-#endif
 	  }
 	}
       }
@@ -536,7 +532,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
  *
  *****************************************************************************/
 
-#ifndef OLD_SHIT
+
 static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   int      nhalo;
@@ -741,167 +737,6 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   return 0;
 }
-#else
-static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
-
-  int      nhalo;
-  int      nlocal[3];      /* Local system size */
-  int      noffset[3];     /* Local starting offset */
-  double * buffere;        /* Interpolation buffer */
-  double * bufferw;
-  int ip;                  /* Index of the plane */
-  int ic;                  /* Index x location in real system */
-  int jc, kc, j1, j2;
-  int n, n1, n2;
-  double dy;               /* Displacement for current transforamtion */
-  double fre, frw;         /* Fractional displacements */
-  double t;                /* Time */
-  int jdy;                 /* Integral part of displacement */
-
-  int      nrank_s[3];     /* send ranks */
-  int      nrank_r[3];     /* recv ranks */
-  const int tag0 = 1254;
-  const int tag1 = 1255;
-
-  MPI_Comm    le_comm;
-  MPI_Request request[8];
-  MPI_Status  status[8];
-#ifndef OLD_SHIT
-  assert(1);
-#endif
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  le_comm = le_communicator();
-
-  /* Allocate the temporary buffer */
-
-  n = nf*(nlocal[Y] + 1)*(nlocal[Z] + 2*nhalo);
-  buffere = (double *) malloc(n*sizeof(double));
-  bufferw = (double *) malloc(n*sizeof(double));
-  if (buffere == NULL) fatal("malloc(buffere) failed\n");
-  if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
-
-  /* -1.0 as zero required for fisrt step; this is a 'feature'
-   * to ensure the regression tests stay te same */
-
-  t = 1.0*get_step() - 1.0;
-
-  /* One round of communication for each plane */
-
-  for (ip = 0; ip < le_get_nplane_local(); ip++) {
-
-    ic = le_plane_location(ip);
-
-    /* Work out the displacement-dependent quantities */
-
-    dy = +t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
-    jdy = floor(dy);
-    frw  = dy - jdy;
-
-    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
-
-    jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
-    assert(j1 > 0);
-    assert(j1 <= N_total(Y));
-
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
-
-    /* Local quantities: given a local starting index j2, we receive
-     * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position 1. */
-
-    j2 = 1 + (j1 - 1) % nlocal[Y];
-    assert(j2 > 0);
-    assert(j2 <= nlocal[Y]);
-
-    n1 = nf*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = nf*j2*(nlocal[Z] + 2*nhalo);
-
-    /* Post receives, sends (the wait is later). */
-
-    MPI_Irecv(bufferw,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(bufferw+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
-	      request + 1);
-    MPI_Issend(fw + nf*le_site_index(ic+1,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
-	       tag0, le_comm, request + 2);
-    MPI_Issend(fw + nf*le_site_index(ic+1,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
-	       tag1, le_comm, request + 3);
-
-
-    /* OTHER WAY */
-
-    kc = 1 - nhalo;
-
-    dy = -t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
-    jdy = floor(dy);
-    fre  = dy - jdy;
-
-    /* First (global) j1 required is j1 = (noffset[Y] + 1) - jdy - 1.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
-
-    jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
-
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
-
-    /* Local quantities: given a local starting index j2, we receive
-     * n1 + n2 sites into the buffer, and send n1 sites starting with
-     * j2, and the remaining n2 sites from starting position nhalo. */
-
-    j2 = 1 + (j1 - 1) % nlocal[Y];
-
-    n1 = nf*(nlocal[Y] - j2 + 1)*(nlocal[Z] + 2*nhalo);
-    n2 = nf*j2*(nlocal[Z] + 2*nhalo);
-
-    /* Post new receives, sends, and wait for whole lot to finish. */
-
-    MPI_Irecv(buffere,    n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm,
-	      request + 4);
-    MPI_Irecv(buffere+n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
-	      request + 5);
-    MPI_Issend(fe + nf*le_site_index(ic,j2,1-nhalo), n1, MPI_DOUBLE, nrank_s[0],
-	       tag0, le_comm, request + 6);
-    MPI_Issend(fe + nf*le_site_index(ic,1,1-nhalo), n2, MPI_DOUBLE, nrank_s[1],
-	       tag1, le_comm, request + 7);
-
-    MPI_Waitall(8, request, status);
-
-    /* Now we've done all the communication, we can update the fluxes
-     * using the average of the local value and interpolated buffer
-     * value. */
-
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      j1 = (jc - 1    )*(nlocal[Z] + 2*nhalo);
-      j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (n = 0; n < nf; n++) {
-	  fe[nf*le_site_index(ic,jc,kc) + n]
-	    = 0.5*(fe[nf*le_site_index(ic,jc,kc) + n]
-		   + frw*bufferw[nf*(j1 + kc+nhalo-1) + n]
-		   + (1.0-frw)*bufferw[nf*(j2 + kc+nhalo-1) + n]);
-	  fw[nf*le_site_index(ic+1,jc,kc) + n]
-	    = 0.5*(fw[nf*le_site_index(ic+1,jc,kc) + n]
-		   + fre*buffere[nf*(j1 + kc+nhalo-1) + n]
-		   + (1.0-fre)*buffere[nf*(j2 + kc+nhalo-1) + n]);
-	}
-      }
-    }
-
-    /* Next plane */
-  }
-
-  free(bufferw);
-  free(buffere);
-
-  return 0;
-}
-#endif
 
 /*****************************************************************************
  *
@@ -928,9 +763,7 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 
   assert(phif);
   assert(flux);
-#ifndef OLD_SHIT
-  assert(1);
-#endif
+
   coords_nlocal(nlocal);
   ys = nlocal[Z] + 2*coords_nhalo();
 
@@ -945,26 +778,13 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 	index = coords_index(ic, jc, kc);
 
 	field_scalar(phif, index, &phi);
-#ifndef OLD_SHIT
 	phi -= (+ flux->fe[addr_rank0(le_nsites(), index)]
 		- flux->fw[addr_rank0(le_nsites(), index)]
 		+ flux->fy[addr_rank0(le_nsites(), index)]
 		- flux->fy[addr_rank0(le_nsites(), index - ys)]
 		+ wz*flux->fz[addr_rank0(le_nsites(), index)]
 		- wz*flux->fz[addr_rank0(le_nsites(), index - 1)]);
-	/*verbose("%2d %2d %2d %14.7e %8.1e %8.1e %8.1e %8.1e %8.1e %8.1e\n",
-	       ic, jc, kc, phi,
-	       flux->fe[addr_rank0(le_nsites(), index)],
-	       flux->fw[addr_rank0(le_nsites(), index)],
-	       flux->fy[addr_rank0(le_nsites(), index)],
-	       flux->fy[addr_rank0(le_nsites(), index -ys)],
-	       flux->fz[addr_rank0(le_nsites(), index)],
-	       flux->fz[addr_rank0(le_nsites(), index-1)] );*/
-#else
-	phi -= (+ flux->fe[index] - flux->fw[index]
-		+ flux->fy[index] - flux->fy[index - ys]
-		+ wz*flux->fz[index] - wz*flux->fz[index - 1]);
-#endif
+
 	field_scalar_set(phif, index, phi);
       }
     }

@@ -18,6 +18,7 @@
 #include <mpi.h>
 
 #include "io_harness.h"
+#include "memory.h"
 #include "field.h"
 
 struct field_s {
@@ -34,21 +35,7 @@ struct field_s {
 
 };
 
-#ifndef OLD_SHIT
-
-#include "memory.h"
-
 #define addr_qab(nsites, index, ia) addr_rank1(nsites, NQAB, index, ia)
 #define vaddr_qab(nsites, index, ia, iv) vaddr_rank1(nsites, NQAB, index, ia, iv)
-
-#else
-
-#ifdef LB_DATA_SOA
-#define FLDADR ADDR_VECSITE_R
-#else
-#define FLDADR ADDR_VECSITE
-#endif
-
-#endif
 
 #endif
