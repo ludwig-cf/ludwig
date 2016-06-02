@@ -286,6 +286,8 @@ __targetHost__ void copyFromTarget3DEdge(double *data,const double* targetData,i
 __targetHost__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields);
 __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
 __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
+__targetHost__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields);
+__targetHost__ void copyToTargetSubset(double *targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields);
 __targetHost__ void targetSynchronize();
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void checkTargetError(const char *msg);
