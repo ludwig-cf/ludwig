@@ -764,6 +764,81 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
 
 
 
+__targetHost__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields){
+
+  int* sites_d = iwork_d;
+  double* tmpGrid = dwork;
+  double* tmpGrid_d = dwork_d;
+  int index, i;
+
+  //copy compresssion info to GPU
+  cudaMemcpy(sites_d, sites, nsitessubset*sizeof(int), cudaMemcpyHostToDevice);
+
+  
+  //compress grid on GPU
+  int nblocks=(nsitessubset+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(tmpGrid_d,targetData,nsites,
+						    nfields,
+						    sites_d, nsitessubset, 0);
+  cudaThreadSynchronize();
+
+  //get compressed grid from GPU
+  cudaMemcpy(tmpGrid, tmpGrid_d, nsitessubset*nfields*sizeof(double), cudaMemcpyDeviceToHost); 
+
+    
+
+  //expand into final grid       
+  for (index=0; index<nsitessubset; index++){
+    for (i=0;i<nfields;i++)  
+      data[i*nsites+sites[index]] = tmpGrid[i*nsitessubset+index];
+  }
+
+  checkTargetError("copyFromTargetSubset");
+
+
+
+  return;
+}
+
+
+__targetHost__ void copyToTargetSubset(double* targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields){
+
+  int* sites_d = iwork_d;
+  double* tmpGrid = dwork;
+  double* tmpGrid_d = dwork_d;
+  int index, i;
+
+  //copy compresssion info to GPU
+  cudaMemcpy(sites_d, sites, nsitessubset*sizeof(int), cudaMemcpyHostToDevice);
+
+
+  //compress grid
+  for (index=0; index<nsitessubset; index++){
+    for (i=0;i<nfields;i++)  
+      tmpGrid[i*nsitessubset+index] = data[i*nsites+sites[index]];
+  }
+
+  //put compressed grid from GPU
+  cudaMemcpy(tmpGrid_d, tmpGrid, nsitessubset*nfields*sizeof(double), cudaMemcpyHostToDevice); 
+  
+  //uncompress grid on GPU
+  int nblocks=(nsitessubset+DEFAULT_TPB-1)/DEFAULT_TPB;
+  copy_field_partial_gpu_d<<<nblocks,DEFAULT_TPB>>>(targetData,tmpGrid_d,nsites,
+						    nfields,
+						    sites_d, nsitessubset, 1);
+  cudaThreadSynchronize();
+
+
+    
+
+  checkTargetError("copyToTargetSubset");
+
+
+
+  return;
+}
+
+
 
 //
 __targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
