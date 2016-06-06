@@ -1,0 +1,437 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  intro.tex
+%
+%  Contains introduction and quick start for users.
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  (c) 2016 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+\subsection{Overview}
+
+This introduction provides a brief overview of what the \textit{Ludwig} code
+does, how to obtain and build it, and how to run a sample problem.
+It is assumed that the reader has at least a general knowledge
+of Navier-Stokes hydrodynamics, complex fluids, and to some
+extent statistical physics. This knowledge will be required to make sense
+of the input and output involved in using the code. Those wanting
+to work on or develop the code itself will need knowledge of ANSI C,
+and perhaps message passing and CUDA. We assume the reader is using
+a Unix-based system.
+
+\subsubsection{Purpose of the code}
+
+The \textit{Ludwig} code has been developed over a number of
+years to address specific problems in complex fluids. The underlying
+hydrodynamic model is based on the lattice Boltzmann equation
+(LBE, or just `LB'). This itself may be used to study simple
+(Newtonian) fluids in a number of different scenarios, including porous
+media and particle suspensions. However, the
+code is more generally suited to complex fluids, where a number of
+options are available, among others: symmetric binary fluids and
+Brazovskii smectics,
+polar gels, liquid crystals, or charged fluid via a Poisson-Boltzmann
+equation approach. These features are added in the framework of a
+free energy approach, where specific compositional or orientational
+order parameters are evolved according to the appropriate
+coarse-grained dynamics, but also interact with the fluid in a
+fully coupled fashion.
+
+A number of other features are catered for is some or all situations.
+These include fluctuating hydrodynamics, and appropriate fluctuating
+versions of order parameter dynamics for binary solvents and liquid
+crystals. Colloidal particles are available for simulation of
+suspensions and dispersions, and with appropriate boundary
+conditions binary mixtures, liquid crystals, and charged fluid. Shear
+flow is available for fluid-only systems implemented via Lees-Edwards
+sliding periodic boundaries. Not all these features play with all the
+others: check the specific section of the document for details.
+
+Broadly, the code is intended for complex fluid problems at low
+Reynolds numbers, so there is no consideration of turbulence,
+high Mach number flows, high density ratio flows, and so on.
+
+\subsubsection{How the code works}
+
+We aim to provide a robust and portable code, written in ANSI C, which
+can be used to perform serial and scalable parallel simulations of
+complex fluid systems based around hydrodynamics via the lattice
+Boltzmann method. Time evolution of modelled quantities takes
+place on a fixed regular discrete lattice. The preferred method of
+dealing with the corresponding order parameter equations is by
+using finite difference. However, for the case of a binary fluid,
+a two-distribution lattice Boltzmann approach is also maintained
+for historical reference.
+
+Users control the operation of the code via a plain text input file;
+output for various data are available. These data may be visualised
+using appropriate third-party software (e.g., Paraview). Specific
+diagnostic output may require alterations to the code.
+
+Potential users should also note that the complex fluid simulations
+enabled by \textit{Ludwig} can be time consuming, prone to instability,
+and provide results which are difficult to
+interpret. We make no apology for this: that's the way it is.
+
+\subsubsection{Who should read what?}
+
+This documentation is aimed largely at users, but includes information
+that will also be relevant for developers. The documentation discusses
+the underlying features of the coordinate system, hydrodynamics (LB), and
+other generic features, and has a separate section for each free energy.
+You will need to consult the section relevant to your problem.
+
+
+\subsection{Obtaining the code}
+
+Under the auspices of the CCPs (Collaborative Computational Projects),
+and in particular CCP5, we have a CCPForge project account at
+\texttt{http://ccpforge.cse.rl.ac.uk/}
+which provides revision control via SVN, issue tracking, and so on.
+
+\paragraph{Users:}
+
+Code releases may be downloaded via anonymous download
+\begin{lstlisting}[style=terminalverbatim]
+http://ccpforge.cse.rl.ac.uk/gf/project/ludwig/frs/
+\end{lstlisting}
+The current release is available as \texttt{ludwig-0.4.0.tar.gz}.
+Alternatively, registered users can obtain the code via svn checkout
+in the same way as developers.
+
+
+\paragraph{Developers:}
+
+Developers need to create an account at CCPForge, and let one of the
+project owners\footnote{Currently: \texttt{kevin@epcc.ed.ac.uk},
+\texttt{ohenrich@epcc.ed.ac.uk}}
+know the user name so you can be added to the access list.
+
+To download the entire code, developers need
+\begin{lstlisting}
+svn checkout --username <user> http://ccpforge.cse.rl.ac.uk/svn/ludwig
+\end{lstlisting}
+where \texttt{<user>} is replaced by your CCPForge user name. You will
+see
+\begin{lstlisting}
+$ ls ludwig
+branches  tags      trunk
+\end{lstlisting}
+which is the usual svn convention for trunk, branches and tags.
+The process for committing code is described in section \ref{xref:developers}.
+
+If you look in  the \texttt{trunk} directory, you should see
+\begin{lstlisting}
+$ ls trunk
+config  LICENSE      mpi_s   src       tests  version.h
+docs    Makefile.mk  README  targetDP  util
+\end{lstlisting}
+
+\vfill
+\pagebreak
+
+\section{Quick Start for Users}
+
+This section provides a brief overview of compiling and running
+the code, which should allow users to get off the ground.
+The section assumes the code has been downloaded and you are in the
+top level directory.
+
+\subsection{Configuration}
+
+You will need to copy one of the existing configuration files from
+the \texttt{config} directory to the top level directory. This file
+sets all the relevant local details for compilation and so on. For
+example:
+\begin{lstlisting}
+$ cp config/lunix-gcc-default.mk config.mk
+\end{lstlisting}
+Edit the new \texttt{config.mk} file to check, or adjust, the options
+as required. You will need to identify your local C compiler. The
+example uses \texttt{gcc}
+in serial, and \texttt{mpicc} in parallel. For MPI in particular,
+local details may vary. A quick way to compile the code is via
+\begin{lstlisting}
+$ cd tests
+$ make compile-mpi-d3q19
+\end{lstlisting}
+This integrates a number of separate stages which are described
+indivually in the following sections. The resulting executable
+will be \texttt{./src/Ludwig.exe} at the top level.
+
+\subsubsection{targetDP}
+
+A \texttt{targetDP} layer is required by the code in all cases. It
+allows compilation for both simple CPU systems and
+for a number of accelerator systems using a single source code. This
+will make the appropriate choices depending what has been specified
+in the top-level \texttt{config.mk} file. From the top-level directory
+\begin{lstlisting}
+$ cd targetDP
+$ make
+\end{lstlisting}
+should produce the appropriate \texttt{libtarget.a} library.
+
+\subsubsection{Serial}
+\label{section:quick-serial}
+
+First, compile the MPI stub library in the \texttt{mpi\_s}
+directory. You should be able to build the library and run the
+tests using, e.g.:
+
+\begin{lstlisting}
+$ make libc
+gcc -Wall -I.  -c mpi_serial.c
+ar -cru libmpi.a mpi_serial.o
+$ make testc
+gcc -Wall   mpi_tests.c -L. -lmpi
+./a.out
+Running mpi_s tests...
+Finished mpi_s tests ok.
+\end{lstlisting}
+
+Now compile the main code in the \texttt{src} directory.
+Compilation should look like:
+
+\begin{lstlisting}
+$ make serial
+make serial-d3q19
+make serial-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
+make lib
+make libar "INC=-I. -I../mpi_s" "LIBS= -L../mpi_s -lmpi -lm"
+gcc -D_D3Q19_ -Wall -O2 -I. -I../mpi_s -c model.c
+gcc -D_D3Q19_ -Wall -O2 -I. -I../mpi_s -c propagation.c
+...
+\end{lstlisting}
+which shows that the default lattice Boltzmann model is D3Q19.
+Successful compilation will provide an executable \texttt{Ludwig.exe}
+which is linked against the MPI stub library.
+
+\subsubsection{Parallel}
+
+Here, you do not need to compile the stub library. Simply compile
+the main code with, e.g.,:
+\begin{lstlisting}
+$ make mpi
+make mpi-d3q19
+make mpi-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
+make libmpi
+make libar "CC=mpicc"
+mpicc -D_D3Q19_ -Wall -O2 -I. -c model.c
+mpicc -D_D3Q19_ -Wall -O2 -I. -c propagation.c
+...
+\end{lstlisting}
+
+Again, this should produce an executable \texttt{./Ludwig.exe}
+in the current directory, this time linked against the true MPI
+library.
+
+\subsection{Running an Example}
+
+\subsubsection{Input file}
+
+The behaviour of \textit{Ludwig} at run time is controlled by
+a plain text input file which consists of a series for key value
+pairs. Each key value pair controls a parameter or parameters
+within the code, for example the system size and number of time steps,
+the fluid properties density and viscosity, the free energy type
+and associated parameters (if required), frequency and type of
+output, parallel decomposition, and so on.
+
+For most keys, the associated property has some default value which
+will be used by the code if the relevant key is not present (or
+commented out) in the input file. While such default values are
+chosen to be at least sensible, users need to be aware that all
+necessary keys need to be considered for a given problem. However,
+many keys are irrelevant for any given problem.
+
+A significant number of example input files are available as
+part of the test suite, and these can form a useful starting
+point for a given type of problem. We will consider one which
+uses some of the common keys.
+
+\subsubsection{Example input}
+
+We will consider a simple example which computes the motion of
+a single spherical colloidal particle in an initially stationary
+fluid of given viscosity. The velocity may be measured as a
+function of time. Assume we have an executable in the \texttt{src}
+directory.
+
+Make a copy of the input file
+\begin{lstlisting}
+$ cp ../tests/regression/d3q19/serial-auto-c01.inp .
+\end{lstlisting}
+
+Inspection of this file will reveal the following: blank lines
+and comments --- lines beginning with \texttt{\#} --- may be included,
+but are ignored at run time; other lines are parsed as key value
+pairs, each pair on a separate line, and with key and value separated
+by one or more spaces. Values may be characters or strings, a
+scalar integer or 3-vector of integers, or a scalar or 3-vector
+of floating point numbers. Values which are 3-vectors are delineated
+by an underscore character (not a space), e.g., \texttt{1\_2\_3},
+and always correspond to a Cartesian triple $(x,y,z)$.
+A given value is parsed appropriately in the context of the associated key.
+
+So, the first few lines of the above file are:
+\lstinputlisting[firstline=1, lastline= 16]
+{../tests/regression/d3q19/serial-auto-c01.inp}
+Here, the first key value pair \texttt{N\_cycles 40} sets the number
+of time steps to 40, while the second, \texttt{size 64\_64\_64}, sets
+the system size to be 64 points in each of the three coordinate
+directions. The \texttt{grid} key relates to the parallel
+domain decomposition as is discussed in the following
+section.
+
+\subsubsection{Run time}
+
+The executable takes a single argument on the command line which
+is the name of the input file, which should be in the same
+directory as the executable. If no input file name is supplied,
+the executable will look for a default \texttt{input}. If no
+input file is located at all, an error to that effect will be
+reported.
+
+\textbf{Serial: }
+If a serial executable is run in the normal way with the copy of the
+input file as the argument the code should take around 10--20 seconds
+to execute 40 steps. The fist few lines of output should look like:
+
+\begin{lstlisting}[belowskip=0pt]
+$ ./Ludwig.exe ./serial-auto-c01.inp
+\end{lstlisting}
+\lstinputlisting[aboveskip=0pt, firstline=1, lastline= 16]
+{../tests/regression/d3q19/serial-auto-c01.log}
+This output shows that the appropriate input file has been read, and
+the system size set correspondingly with a number of default settings
+including periodic boundary conditions. ``No free energy'' tells us we
+are using a single Newtonian fluid.
+
+Normal termination of execution is accompanied by a report
+of the time take by various parts of the code, and finally by
+\begin{lstlisting}
+...
+Ludwig finished normally.
+\end{lstlisting}
+
+%\paragraph{Parallel: }
+\textbf{Parallel: }
+The executable compiled and linked against the MPI library can
+be run with the MPI launcher for the local system, often
+\texttt{mpirun}. For example, a run on 8 MPI tasks produces a
+similar output to that seen in the serial case, but reports
+details of the local domain decomposition:
+\begin{lstlisting}
+$ mpirun -np 8 ./Ludwig.exe ./serial-auto-c01.inp
+Welcome to Ludwig v0.1.26 (MPI version running on 8 processes)
+...
+System details
+--------------
+System size:    64 64 64
+Decomposition:  2 2 2
+Local domain:   32 32 32
+...
+\end{lstlisting}
+The decomposition is controlled by the \texttt{grid} key in
+the input. Here, \texttt{grid 2\_2\_2} is consistent with the
+8 MPI tasks specified on the command line, and the resulting
+local decomposition is 32 lattice points in each coordinate direction.
+If no grid is specified in the input, or a request is
+make for a grid which cannot be met (e.g., the product
+of the grid dimensions does not agree with the total number
+of MPI tasks available)
+the code will try to determine its own decomposition as best
+it can. If no valid parallel decomposition is available at all,
+the code will exit with a message to that effect.
+
+Further details of various input key value pairs are given in
+relevant sections of the documentation.
+
+\subsubsection{Output}
+
+The standard output of the running code produces a number of
+aggregate quantities which allow a broad overview of the progress
+of the computation to be seen by the user. These include, where
+relevant, global statistics related to fluid density and momentum,
+the integrated free energy, particle-related quantities, and so on.
+The frequency of this information can be adjusted from the input
+file (see, e.g., \texttt{freq\_statistics}).
+
+Output for lattice-based quantities (for example, the velocity field
+$u(\mathbf{r}; t)$) is via external file. This output is in serial
+or in parallel according to how the model is run, and may be in
+either ASCII or raw binary format as required. Output files are produced
+with time step encoded in the file, and an extension which describes the
+parallel output decomposition. Further, each quantity output in this way
+is accompanied by a metadata description with \texttt{meta} extension.
+For example, the two output files
+\begin{lstlisting}
+bash-3.2$ ls dist*
+dist-00000020.001-001   dist.001-001.meta
+\end{lstlisting}
+contain the LB distributions for time step 20 (the file is 1 of a total
+number of 1 in parallel), and the plain text metadata description,
+respectively.
+
+To ensure output for based-based quantities is in the correct order for
+analysis, post-processing
+may be required (always if the code is run in parallel). This uses a utility
+provided for the purpose which required both the data and the metadata
+description to recombine the parallel output. This utility is described
+ELSEWHERE.
+
+Output for colloidal particle data is again to file with a name encoding
+the time step and parallel docomposition of the output. For example,
+\begin{lstlisting}
+bash-3.2$ ls config*
+config.cds00000020.001-001
+\end{lstlisting}
+contains particle data for time step 20 in a format described ELSEWHERE.
+These data may be requested in ASCII or raw binary format.
+
+\subsubsection{Errors and run time failures}
+
+The code attempts to provide meaningful diagnostic error messages
+for common problems. Such errors include missing or incorrectly
+formatted input files, inconsistent input values, and unacceptable
+feature combinations. The code should also detect other run time
+problems such as insufficient memory and errors writing output
+files. These errors will result in termination.
+
+Instability in the computation will often be manifested by numerically
+absurd values in the statistical output (ultimately \texttt{NaN} in
+many cases). Instability may or may not result in termination, depending
+on the problem. Such instability is very often related to poor parameter
+choices, of which there can be many combinations. Check the
+relevant section of the documentation for advice on reasonable starting
+parameters for different problems.
+
+
+\subsection{Note on Units}
+
+All computation in \textit{Ludwig} is undertaken in ``lattice
+units,'' fundamentally related to the underlying LB fluid model
+which expects discrete model space and time steps
+$\Delta x = \Delta t = 1$. The natural way to approach problems
+is then to ensure that appropriate dimensionless quantities are
+reasonable. However, ``reasonable'' may not equate to ``matching
+experimental values''. For example, typical flows in colloidal
+suspensions my exhibit Reynolds numbers as low as $O(10^{-6})$
+to $O(10^{-8})$.
+Matching such a value in a computation may imply an impractically
+small time step; a solution is to let the Reynolds number rise
+artificially with the constraint that it remains small compared to $O(1)$.
+Further discussion of the issue of units is provided in, e.g.,
+\cite{cates_scaling}. Again, consult the relevant section of the documentation
+for comments on specific problems.
+
+
+\vfill
+\pagebreak

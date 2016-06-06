@@ -1,0 +1,273 @@
+\chapter{Data Parallel Execution}\label{sec:dpexecution}
+
+This chapter specifices the data parallel execution functionality in targetDP.
+
+\newpage
+\section{targetEntry}
+\subsection{Description}
+
+The \verb+__targetEntry__+ keyword is used in a function declaration
+or definition to specify that the function should be compiled for the
+target, and that it will be called directly from host code.
+
+\subsection{Syntax}
+\begin{verbatim}
+__targetEntry__ functionReturnType functionName(...
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+functionName+: The name of the function to be compiled for the target.
+\item \verb+functionReturnType+: The return type of the function.
+\item \verb+...+ the remainder of the function declaration or definition.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalekernel:targetEntry} in Figure \ref{fig:scalekernel} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+Holds no value.
+\subsubsection{CUDA}
+\verb+__global__+
+
+\newpage
+\section{target}
+\subsection{Description}
+
+The \verb+__target__+ keyword is used in a function declaration
+or definition to specify that the function should be compiled for the
+target, and that it will be called from a \verb+targetEntry+ or another \verb+target+ function.
+
+\subsection{Syntax}
+\begin{verbatim}
+__target__ functionReturnType functionName(...
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+functionName+: The name of the function to be compiled for the target.
+\item \verb+functionReturnType+: The return type of the function.
+\item \verb+...+ the remainder of the function declaration or definition.
+\end{itemize}
+
+
+\subsection{Example}
+Analogous to Line \ref{example:scalekernel:targetEntry} in Figure \ref{fig:scalekernel} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+Holds no value.
+\subsubsection{CUDA}
+\verb+__device__+
+
+
+\newpage
+\section{targetHost}
+\subsection{Description}
+
+The \verb+__targetHost__+ keyword is used in a function declaration
+or definition to specify that the function should be compiled for the
+host.
+
+\subsection{Syntax}
+\begin{verbatim}
+__targetHost__ functionReturnType functionName(...
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+functionName+: The name of the function to be compiled for the host.
+\item \verb+functionReturnType+: The return type of the function.
+\item \verb+...+ the remainder of the function declaration or definition.
+\end{itemize}
+
+
+\subsection{Example}
+Analogous to Line \ref{example:scalekernel:targetEntry} in Figure \ref{fig:scalekernel} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+Holds no value.
+\subsubsection{CUDA}
+\verb+extern ``C'' __host__+
+
+
+
+\newpage
+\section{targetLaunch}
+
+\subsection{Description}
+
+The \verb+__targetLaunch__+ syntax is used to launch a function across a data parallel target architecture.
+
+\subsection{Syntax}
+\begin{verbatim}
+functionName __targetLaunch__(size_t extent) \
+                 (functionArgument1,functionArgument2,...);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+functionName+: The name of the function to be launched. This function must be declared as \verb+__targetEntry__+ .
+\item \verb+functionArguments+: The arguments to the function \verb+functionName+  
+\item \verb+extent+: The total extent of data parallelism.
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:targetLaunch} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+Holds no value.
+\subsubsection{CUDA}
+CUDA \verb+<<<...>>>+ syntax.
+
+\newpage
+\section{targetSynchronize}
+
+\subsection{Description}
+
+The \verb+targetSynchronize+ function is used to block until the preceding \verb+__targetLaunch__+ has completed.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetSynchronize();
+\end{verbatim}
+
+\subsection{Example}
+See Line \ref{example:scalelaunch:targetSynchronize} in Figure \ref{fig:scalelaunch} in Section \ref{chapter:examples}.
+\subsection{Implementation}
+\subsubsection{C}
+Dummy function.
+\subsubsection{CUDA}
+\verb+cudaThreadSynchronize+
+
+
+%% \newpage
+%% \section{targetErrorCheck}
+
+%% \subsection{Description}
+
+%% The \verb+__targetErrorCheck__+ function is used to query for errors resulting from operations involving the target. The 
+
+%% \subsection{Syntax}
+%% \begin{verbatim}
+%% __targetSynchronize__()
+%% \end{verbatim}
+
+%% \subsection{Example}
+
+%% \subsection{Implementation}
+%% \subsubsection{C}
+
+%% \subsubsection{CUDA}
+
+
+
+\newpage
+\section{targetTLP}\label{sec:TLP}
+
+\subsection{Description}
+
+The \verb+__targetTLP__+ syntax is used, within a \verb+__targetEntry__+
+function, to specify that the proceeding block of code should be
+executed in parallel and mapped to thread level parallelism
+(TLP). Note that he behaviour of this operation depends on the defined
+virtual vector length (VVL), which controls the lower-level
+Instruction Level Parallelism (ILP) (see following section).
+
+\subsection{Syntax}
+\begin{verbatim}
+__targetTLP__(int baseIndex, size_t extent) 
+{
+//code to be executed in parallel
+}
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+extent+: The total extent of data parallelism, including
+  both TLP and ILP
+\item \verb+baseIndex+: the TLP index. This will vary from 0 to \verb+extent-VVL+ with stride VVL. This index should be combined with the ILP index to access shared arrays within the code block (see following section).
+
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalekernel:targetTLP} in Figure \ref{fig:scalekernel} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+OpenMP parallel loop.
+\subsubsection{CUDA}
+CUDA thread lookup.
+
+\newpage
+\section{targetILP}\label{sec:ILP}
+
+\subsection{Description}
+
+The \verb+__targetILP__+ syntax is used, within a \verb+__targetTLP__+
+region, to specify that the proceeding block of code should be
+executed in parallel and mapped to instruction level parallelism
+(ILP), where the extent of the ILP is defined by the virtual vector length (VVL) in the targetDP implementation (see \ref{sec:exmodel}). 
+
+\subsection{Syntax}
+\begin{verbatim}
+__targetILP__(int vecIndex) 
+{
+//code to be executed in parallel
+}
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+baseIndex+: the ILP index. This will vary from 0 to \verb+VVL-1+.  This index should be combined with the TLP index to access shared arrays within the code block (see previous section).
+\end{itemize}
+
+
+\subsection{Example}
+See Line \ref{example:scalekernel:targetILP} in Figure \ref{fig:scalekernel} in Section \ref{chapter:examples}.
+
+\subsection{Implementation}
+\subsubsection{C}
+Short vectorizable loop.
+\subsubsection{CUDA}
+Short vectorizable loop.
+
+\newpage
+\section{targetCoords3D}
+
+\subsection{Description}
+
+The \verb+targetCoords3D+ function provides the 3D lattice coordinates corresponding to a specified linear index.
+
+\subsection{Syntax}
+\begin{verbatim}
+void targetCoords3D(int coords3D[3], int extent3D[3], int index);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+coords3D+ (output): an array of 3 integers to be populated with the 3D coordinates.
+\item \verb+extent3D+ (input): An array of 3 integers corresponding to the 3D dimensions of the lattice.
+\item \verb+index+ (input): the linear index. 
+
+\end{itemize}
+
+
+\newpage
+\section{targetIndex3D}
+
+\subsection{Description}
+
+The \verb+targetIndex3D+ function returns the linear index corresponding to a specified set of 3D lattice coordinates.
+
+\subsection{Syntax}
+\begin{verbatim}
+int targetIndex3D(int Xcoord,int Ycoord,int Zcoord,int extent3D[3]);
+\end{verbatim}
+
+\begin{itemize}
+\item \verb+Xcoord+ (input): the specified coordinate in the X direction.
+\item \verb+Ycoord+ (input): the specified coordinate in the Y direction.
+\item \verb+Zcoord+ (input): the specified coordinate in the Z direction.
+\item \verb+extent3D+ (input): an array of 3 integers corresponding to the 3D dimensions of the lattice.
+\end{itemize}
+
