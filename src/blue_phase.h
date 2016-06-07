@@ -77,10 +77,13 @@ __targetHost__ __target__ void blue_phase_compute_h(double q[3][3], double dq[3]
 __targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
 					  double h[3][3], double sth[3][3],
 					  bluePhaseKernelConstants_t* pbpc);
-
+__targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL], double dq[3][3][3][VVL],
+					  double h[3][3][VVL], double* sth, 
+							     bluePhaseKernelConstants_t* pbpc, int baseIndex);
 //__targetEntry__ void   blue_phase_chemical_stress(const int, double sth[3][3], ...);
 __targetHost__ void blue_phase_chemical_stress(int index,  double sth[3][3]);
  __target__ void blue_phase_chemical_stress_dev(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
+ __target__ void blue_phase_chemical_stress_dev_vec(int index, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon,int calledFromPhiForceStress);
 __targetHost__ void   blue_phase_redshift_set(const double redshift);
 __targetHost__ void   blue_phase_electric_field_set(const double e[3]);
 __targetHost__ void   blue_phase_dielectric_anisotropy_set(double e);
@@ -108,8 +111,8 @@ __targetHost__ void blue_phase_q_uniaxial(double amplitude, const double n[3], d
 
 __targetHost__ void blue_phase_set_active_region_gamma_zeta(const int index);
 
-__targetHost__ int fed_io_info_set(io_info_t * info);
-__targetHost__ int  fed_io_info(io_info_t ** info);
+__targetHost__ int fed_io_info_set(int grid[3], int form_out);
+__targetHost__ int fed_io_info(io_info_t ** info);
 __targetHost__ int blue_phase_scalar_ops(double q[3][3], double qs[5]);
 
 #endif

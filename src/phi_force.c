@@ -33,6 +33,7 @@
 #include "field_s.h"
 #include "hydro_s.h"
 #include "phi_force_stress.h"
+#include "timer.h"
 
 extern double * pth_;
 extern double * t_pth_;
@@ -110,6 +111,7 @@ __targetHost__ int phi_force_divergence_set(const int flag) {
 
 __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t* q_grad, hydro_t * hydro) {
 
+
   if (force_required_ == 0) return 0;
   if (hydro == NULL) return 0;
  
@@ -146,124 +148,176 @@ __targetHost__ int phi_force_calculation(field_t * phi, field_t* q, field_grad_t
  *
  *****************************************************************************/
 
+
 __targetEntry__
-void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
+void phi_force_calculation_fluid_lattice(hydro_t * hydro,
+					 const double * __restrict__ t_pth) {
 
 
-  int index;
+  int baseIndex;
 
-  __targetTLPNoStride__(index, tc_nSites) {
+  __targetTLPNoStride__(baseIndex, tc_nSites) {
 
-  int index1, ia, ib;
-  double pth0[3][3];
-  double pth1[3][3];
-  double force[3];
-  
-  int coords[3];
-  targetCoords3D(coords,tc_Nall,index);
-  
-  // if not a halo site:
+
+    int iv=0;
+    int i;
+    int index1[VVL], ia, ib;
+    double pth0[3][3][VVL];
+    double pth1[3][3][VVL];
+    double force[3][VVL];
+    
+    int coords[3];
+    
+    
+#if VVL == 1    
+    /*restrict operation to the interior lattice sites*/ 
+    targetCoords3D(coords,tc_Nall,baseIndex); 
     if (coords[0] >= (tc_nhalo) && 
 	coords[1] >= (tc_nhalo) && 
 	coords[2] >= (tc_nhalo) &&
 	coords[0] < tc_Nall[X]-(tc_nhalo) &&  
 	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo) ){ 
+	coords[2] < tc_Nall[Z]-(tc_nhalo) )
+#endif
+      
+      { 
+	
+	
+	
+	/* work out which sites in this chunk should be included */
+	int includeSite[VVL];
+	__targetILP__(iv) includeSite[iv]=0;
+	
+	int coordschunk[3][VVL];
+		
+	__targetILP__(iv){
+	  for(i=0;i<3;i++){
+	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	    coordschunk[i][iv]=coords[i];
+	  }
+	}
 
-
-    int coords[3];
-    targetCoords3D(coords,tc_Nall,index);
-
-
-    /* Compute pth at current point */
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth0[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index,ia,ib)];
+	__targetILP__(iv){
+	  
+	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
+	       coordschunk[1][iv] >= (tc_nhalo) &&
+	       coordschunk[2][iv] >= (tc_nhalo) &&
+	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
+	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
+	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
+	    
+	    includeSite[iv]=1;
+	}
+	
+	
+	
+	
+	/* Compute pth at current point */
+	for (ia = 0; ia < 3; ia++)
+	  for (ib = 0; ib < 3; ib++)
+	    __targetILP__(iv){
+	      if(includeSite[iv]) pth0[ia][ib][iv]=t_pth[PTHADR(tc_nSites,baseIndex+iv,ia,ib)];
+	    }
+	
+	/* Compute differences */
+	
+	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+	
+	for (ia = 0; ia < 3; ia++){
+	  for (ib = 0; ib < 3; ib++){
+	    __targetILP__(iv) {
+	      if(includeSite[iv]) pth1[ia][ib][iv]=t_pth[PTHADR(tc_nSites,index1[iv],ia,ib)];
+	    }
+	  }
+	}
+	
+	
+	for (ia = 0; ia < 3; ia++) {
+	  __targetILP__(iv) force[ia][iv] = -0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
+	}
+	
+    __targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+    	__targetILP__(iv){
+	  if(includeSite[iv]) pth1[ia][ib][iv]=t_pth[PTHADR(tc_nSites,index1[iv],ia,ib)];
+	}
       }
     }
 
-    /* Compute differences */
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
+    }
 
-    index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);	    
+    __targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+    	__targetILP__(iv){ 
+	  if(includeSite[iv]) pth1[ia][ib][iv]=t_pth[PTHADR(tc_nSites,index1[iv],ia,ib)];
+	}
+      }
+
+    }
 
     for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+
+      __targetILP__(iv) force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
+
+    }
+
+
+    __targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]-1,coordschunk[2][iv],tc_Nall);
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+    	__targetILP__(iv){
+	  if(includeSite[iv]) pth1[ia][ib][iv]=t_pth[PTHADR(tc_nSites,index1[iv],ia,ib)];
+	}
       }
     }
     
+
     for (ia = 0; ia < 3; ia++) {
-      force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+      __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
     }
 
-    index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);	
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+    __targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+    	__targetILP__(iv){ 
+	  if(includeSite[iv]) pth1[ia][ib][iv]=t_pth[PTHADR(tc_nSites,index1[iv],ia,ib)];
+	}
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
-      force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+      __targetILP__(iv) force[ia][iv] -= 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
     }
 
-    index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);	
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+    __targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]-1,tc_Nall);
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+    	__targetILP__(iv){ 
+	  if(includeSite[iv]) pth1[ia][ib][iv]=t_pth[PTHADR(tc_nSites,index1[iv],ia,ib)];
+	}
       }
     }
+    
 
     for (ia = 0; ia < 3; ia++) {
-      force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-    }
-
-    index1 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-      }
-    }
-
-    for (ia = 0; ia < 3; ia++) {
-      force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-    }
-
-    index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);	
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-      }
-    }
-
-    for (ia = 0; ia < 3; ia++) {
-      force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-    }
-
-    index1 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);
-
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-      }
-    }
-
-    for (ia = 0; ia < 3; ia++) {
-      force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+      __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
     }
 
     /* Store the force on lattice */
 
     /* KS: Can we re-encapsulate this? There is only one addr_hydro() here */
     for (ia = 0; ia < 3; ia++) 
-      hydro->f[addr_hydro(index, ia)] += force[ia];
+      __targetILP__(iv){ 
+	if(includeSite[iv]) hydro->f[HYADR(tc_nSites,hydro->nf,baseIndex+iv,ia)] += force[ia][iv];
+      }
     }
   }
+
+  assert(0); /* Has been vectorised; complete review */
   
   return;
 }
@@ -276,13 +330,14 @@ void phi_force_calculation_fluid_lattice(hydro_t * hydro, double* t_pth) {
  *
  *****************************************************************************/
 
+static int stress_allocated=0;
+
 static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
 				       hydro_t * hydro) {
   int nhalo;
   int nlocal[3];
   int Nall[3];
   int nSites;
-  double * tmpptr;
   hydro_t * t_hydro; 
 
   assert(hydro);
@@ -290,7 +345,12 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
 
-  phi_force_stress_allocate();
+  if (stress_allocated==0){
+
+    phi_force_stress_allocate();
+    stress_allocated=1;
+
+  }
 
   phi_force_stress_compute(q, q_grad);
 
@@ -314,20 +374,26 @@ static int phi_force_calculation_fluid(field_t * q, field_grad_t * q_grad,
   t_hydro = hydro->tcopy; 
     
 #ifndef KEEPHYDROONTARGET
+  double* tmpptr;
   //populate target copy of force from host 
   copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
   copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
 #endif  
 
+  TIMER_start(TIMER_PHI_FORCE_CALC);
+
   //launch the force calculation across the lattice on the target
   phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (hydro->tcopy, t_pth_);
+  targetSynchronize();
+  TIMER_stop(TIMER_PHI_FORCE_CALC);
   
 #ifndef KEEPHYDROONTARGET
   // get the resulting force from the target
   copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
 #endif
 
-  phi_force_stress_free();
+  if (is_last_step())
+    phi_force_stress_free();
 
   return 0;
 }
@@ -461,7 +527,7 @@ static int phi_force_flux(hydro_t * hydro) {
     phi_force_flux_divergence(hydro, fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_force_flux_divergence_with_fix(hydro, fluxe, fluxw, fluxy, fluxz);
+     phi_force_flux_divergence_with_fix(hydro, fluxe, fluxw, fluxy, fluxz);
   }
 
   free(fluxz);
@@ -576,7 +642,6 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
   int nlocal[3];
   int ic, jc, kc, ia;
   int index, indexj, indexk;
-  double f[3];
 
   int nhalo, nSites;
   coords_nlocal(nlocal);
@@ -601,15 +666,14 @@ static int phi_force_flux_divergence(hydro_t * hydro, double * fluxe,
 	indexk = le_site_index(ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  f[ia]
-	    = - (+ fluxe[addr_rank1(nSites,3,index,ia)]
+	  hydro->f[HYADR(nSites,hydro->nf,index,ia)]
+	    += (+ fluxe[addr_rank1(nSites,3,index,ia)]
 		 - fluxw[addr_rank1(nSites,3,index,ia)]
 		 + fluxy[addr_rank1(nSites,3,index,ia)]
 		 - fluxy[addr_rank1(nSites,3,indexj,ia)]
 		 + fluxz[addr_rank1(nSites,3,index,ia)]
 		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
 	}
-	hydro_f_local_add(hydro, index, f);
       }
     }
   }

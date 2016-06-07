@@ -124,13 +124,15 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop,
 					    double * grad,
 					    double * t_grad,
 					    double * delsq, double * t_delsq) {
+ 
+
   int nextra;
   int nsites;
-#ifdef __NVCC__
+  #ifdef __NVCC__
   int method = 3;
-#else
+  #else
   int method = 1;
-#endif
+  #endif
 
   assert(nop == NQAB);
   assert(map_);
@@ -217,11 +219,14 @@ static int gradient_6x5_svd(const double * field, double * grad,
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
+  int nSites;
 
   assert(NQAB == 5);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
+
+  nSites=(nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo);
   util_matrix_create(3*6, 3*NQAB, &a18);
 
   str[Z] = 1;
@@ -273,6 +278,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 
 	  /* Calculate half-gradients assuming they are all knowns */
 
+
 	  for (n1 = 0; n1 < NQAB; n1++) {
 	    gradn[n1][ia][0]
 	      = field[addr_rank1(le_nsites(), NQAB, index + str[ia], n1)]
@@ -301,7 +307,6 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	/* For planar anchoring we require qtilde_ab of Fournier and
 	 * Galatola, and its square (reduendent for fluid sites) */
 
-	/*util_qab_expand(field, index, qs);*/
 	qs[X][X] = field[addr_rank1(le_nsites(), NQAB, index, XX)];
 	qs[X][Y] = field[addr_rank1(le_nsites(), NQAB, index, XY)];
 	qs[X][Z] = field[addr_rank1(le_nsites(), NQAB, index, XZ)];
@@ -1260,7 +1265,7 @@ static int gradient_6x6_gpu(const double * field, double * grad,
 
   //execute lattice-based operation on target
   
-  gradient_6x6_gpu_lattice __targetLaunch__(nSites) (field, grad,
+  gradient_6x6_gpu_lattice __targetLaunchNoStride__(nSites) (field, grad,
   						     del2, map_->tcopy,
 						     (bluePhaseKernelConstants_t*) pcon, 
 						     cinfo->tcopy);

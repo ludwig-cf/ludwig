@@ -37,6 +37,10 @@ The \verb+scale+ function is called from host code as shown in Figure \ref{fig:s
 
 \begin{figure}[h]
 \begin{lstlisting}
+
+//declare constant variable
+__targetConst__ double t_a; (*@\label{example:scalekernel:targetConst}@*) 
+
 __targetEntry__ void scale(double* t_field) { (*@\label{example:scalekernel:targetEntry}@*) 
 
   int baseIndex;

@@ -366,7 +366,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
+__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
 
 
 /*****************************************************************************
@@ -392,6 +392,8 @@ void ludwig_run(const char * inputfile) {
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
 
+  double* tmpptr;
+
 
   ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
@@ -408,9 +410,6 @@ void ludwig_run(const char * inputfile) {
   int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-  double* tmpptr;
-
 
   /* Report initial statistics */
 
@@ -439,7 +438,7 @@ void ludwig_run(const char * inputfile) {
 
   coords_nlocal(nlocal);
 
-#ifdef LB_DATA_SOA
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
     init_comms_gpu(nlocal, ludwig->lb->ndist);
 #endif
 
@@ -473,6 +472,9 @@ void ludwig_run(const char * inputfile) {
   info("Starting time step loop.\n");
   subgrid_on(&is_subgrid);
 
+  /* sync tasks before main loop for timing purposes */
+  MPI_Barrier(pe_comm()); 
+
   while (next_step()) {
 
 
@@ -483,7 +485,6 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->hydro) {
 #ifdef KEEPHYDROONTARGET
       
-      double* tmpptr;
       hydro_t* t_hydro = ludwig->hydro->tcopy; 
       copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
       targetZero(tmpptr,ludwig->hydro->nf*nSites);
@@ -521,29 +522,31 @@ void ludwig_run(const char * inputfile) {
 
     TIMER_start(TIMER_PHI_HALO);
 
-#ifdef KEEPFIELDONTARGET
 
-#ifdef LB_DATA_SOA
+#if defined (KEEPFIELDONTARGET) && defined (LB_DATA_SOA)
   
-      /* use gpu-specific comms */
-      halo_SoA(1, 1, 0, ludwig->phi->t_data);
+      halo_alternative(1, 1, 0, ludwig->phi->t_data);
+
+#elif defined (KEEPFIELDONTARGET) //but not LB_DATA_SOA
+
+      halo_alternative(1, 1, 0, ludwig->phi->t_data);
+
+#elif defined (LB_DATA_SOA) //but not KEEPFIELDONTARGET
+
+      copyDeepDoubleArrayToTarget(ludwig->phi->tcopy,ludwig->phi,&(ludwig->phi->data),ludwig->phi->nf*nSites);
+      
+      halo_alternative(1, 1, 0, ludwig->phi->t_data);
+      
+      
+      copyDeepDoubleArrayFromTarget(ludwig->phi,ludwig->phi->tcopy,&(ludwig->phi->data),ludwig->phi->nf*nSites);
 
 #else
-
-    copyDeepDoubleArrayFromTarget(ludwig->phi,ludwig->phi->tcopy,&(ludwig->phi->data),ludwig->phi->nf*nSites);
-
-    field_halo(ludwig->phi);
-
-
-    copyDeepDoubleArrayToTarget(ludwig->phi->tcopy,ludwig->phi,&(ludwig->phi->data),ludwig->phi->nf*nSites);
-#endif
-
-#else /* not KEEPFIELDONTARGET */
 
     assert(1);
     field_halo(ludwig->phi);
 
-#endif /* KEEPFIELDONTARGET */
+#endif
+
 
     TIMER_stop(TIMER_PHI_HALO);
 
@@ -557,43 +560,38 @@ void ludwig_run(const char * inputfile) {
     }
     if (ludwig->q) {
 
-#ifdef LB_DATA_SOA
+    TIMER_start(TIMER_PHI_HALO);
 
-#ifndef KEEPFIELDONTARGET
+      field_t* t_field = NULL; 
+      t_field = ludwig->q->tcopy;
+      copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
 
-    copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
+#if defined (KEEPFIELDONTARGET) && defined (LB_DATA_SOA)
 
-#endif
+      halo_alternative(ludwig->q->nf, 1, 0, tmpptr);
 
-    /* perform SoA halo exchange */
-    field_t* t_field = NULL; 
-    t_field = ludwig->q->tcopy;
-    double* tmpptr;
-    copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
-    halo_SoA(ludwig->q->nf, 1, 0, tmpptr);
+#elif defined (KEEPFIELDONTARGET) //but not LB_DATA_SOA
 
-#ifndef KEEPFIELDONTARGET
+      halo_alternative(ludwig->q->nf, 1, 0, tmpptr);
 
-    copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
+#elif defined (LB_DATA_SOA) //but not KEEPFIELDONTARGET
 
-#endif 
+      copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
+
+      halo_alternative(ludwig->q->nf, 1, 0, tmpptr);
+
+      copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
 
 
-#else /* not LB_DATA_SOA*/
-
-#ifdef KEEPFIELDONTARGET
-    copyDeepDoubleArrayFromTarget(ludwig->q,ludwig->q->tcopy,&(ludwig->q->data),ludwig->q->nf*nSites);
-#endif
+#else
 
 
     field_halo(ludwig->q);
 
-#ifdef KEEPFIELDONTARGET
-    copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
-
 #endif
 
-#endif
+    TIMER_stop(TIMER_PHI_HALO);
+
 
 
       field_grad_compute(ludwig->q_grad);
@@ -721,53 +719,51 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
 					 ludwig->map, ludwig->noise_phi);
       if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
+
       if (ludwig->q) {
-	if (ludwig->hydro)
-	  {
+	if (ludwig->hydro) {
 
-      TIMER_start(TIMER_U_HALO);
+	  TIMER_start(TIMER_U_HALO);
+
+	  hydro_t* t_hydro = ludwig->hydro->tcopy; 
+	  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
+
+#if defined (KEEPHYDROONTARGET) && defined (LB_DATA_SOA)
+
+	  halo_alternative(ludwig->hydro->nf, 1, 0, tmpptr);
+
+#elif defined (KEEPHYDROONTARGET) //but not LB_DATA_SOA
+
+	  halo_alternative(ludwig->hydro->nf, 1, 0, tmpptr);
+
+#elif defined (LB_DATA_SOA) //but not KEEPHYDROONTARGET
 	    
-#ifdef LB_DATA_SOA 
-	    
-#ifndef KEEPHYDROONTARGET
+
+	  copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+
+	  halo_alternative(ludwig->hydro->nf, 1, 0, tmpptr);
+
+	  copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
+
+#ifdef KEEPHYDROONTARGET
 	    copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
-	    /* perform SoA halo exchange */
-	    hydro_t* t_hydro = ludwig->hydro->tcopy; 
-	    copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
-	    halo_SoA(ludwig->hydro->nf, 1, 0, tmpptr);
-
-#ifndef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-	    
 #endif
 
 #else
 
-#ifdef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
-
-	    hydro_u_halo(ludwig->hydro);
-
-#ifdef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
+ 	  hydro_u_halo(ludwig->hydro); 
 
 #endif
 
-	    TIMER_stop(TIMER_U_HALO);
+	  TIMER_stop(TIMER_U_HALO);
+	}
 
-	    colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	    blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
+	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
+	blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
 	    			 ludwig->map, ludwig->noise_rho);
-	  }
-
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
-
-
     }
 
 
@@ -809,10 +805,9 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_HALO_LATTICE);
 
-#ifdef LB_DATA_SOA
-      /* perform SoA halo exchange */
+#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
       copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
-      halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
+      halo_alternative(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
 #else
       lb_halo(ludwig->lb);
 #endif 
@@ -852,10 +847,11 @@ void ludwig_run(const char * inputfile) {
     /* There must be no halo updates between bounce back
      * and propagation, as the halo regions are active */
 
-
-    TIMER_start(TIMER_PROPAGATE);
-    lb_propagation(ludwig->lb->tcopy);
-    TIMER_stop(TIMER_PROPAGATE);
+    if (ludwig->hydro) {
+      TIMER_start(TIMER_PROPAGATE);
+      lb_propagation(ludwig->lb->tcopy);
+      TIMER_stop(TIMER_PROPAGATE);
+    }
     TIMER_stop(TIMER_STEPS);
 
     /* Configuration dump */
@@ -934,7 +930,7 @@ void ludwig_run(const char * inputfile) {
       fed_io_info(&iohandler);
       info("Writing free energy density output at step %d!\n", step);
       sprintf(filename, "%sfed-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, NULL);
+      io_write_data(iohandler, filename, ludwig->q); /* the ludwig->q is not used by the function, but a pointer is needed*/
     }
 
     /* Print progress report */
@@ -1042,7 +1038,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_petsc_finish();
 #endif
 
-#ifdef LB_DATA_SOA
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
   finalise_comms_gpu();
 #endif
 
@@ -1391,7 +1387,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if(strcmp(description, "lc_droplet") == 0){
     
     /* liquid crystal droplet */
-    info("\nliquid crystal droplet free energy chosen\n");
+    info("\n");
+    info("Liquid crystal droplet free energy selected\n");
     
     /* first do the symmetric */
     nf = 1;      /* 1 scalar order parameter */
@@ -1701,6 +1698,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
   int is_subgrid = 0;    /* subgrid particle switch */
+  double* tmpptr;
 
   assert(ludwig);
 
@@ -1732,12 +1730,13 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_HALO_LATTICE);
 
-#ifdef LB_DATA_SOA
-    /* perform SoA halo exchange */
-    double* tmpptr;
+
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
+
     copyFromTarget(&tmpptr,&(ludwig->lb->tcopy->f),sizeof(double*));
-    halo_SoA(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
-#else
+    halo_alternative(NVEL, ludwig->lb->ndist, 1, tmpptr);	    
+#else		   
+
     lb_halo(ludwig->lb);
 #endif
  
@@ -1788,7 +1787,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   
   map_t* t_map = ludwig->map->tcopy; 
   
-  double* tmpptr;
   copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
   copyToTarget(tmpptr,ludwig->map->status,nSites*sizeof(char));
   

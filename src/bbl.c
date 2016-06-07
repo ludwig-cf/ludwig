@@ -130,6 +130,8 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
+
+
 int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
 
   int ntotal;
@@ -155,15 +157,37 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
 
-  lb_t* lb;
 
+
+  bbl_pass0(bbl, lb_in, cinfo);
+
+  lb_t* lb;
 #ifdef __NVCC__
 
+
   lb = lb_in;
+
   /* update colloid-affected lattice sites from target, including neighbours */
 #ifdef OLD_SHIT
   copyFromTargetPointerMap3D(lb->f, lb->t_f,
 			     Nall, nFields, 1, (void **) cinfo->map_new);
+
+
+  /* update colloid-affected lattice sites from target*/
+  int ncolsite=colloids_number_sites(cinfo);
+
+  /* allocate space */
+  int* colloidSiteList =  (int*) malloc(ncolsite*sizeof(int));
+
+  /* populate list with all site indices */
+  colloids_list_sites(colloidSiteList,cinfo);
+
+  /* get fluid data from this subset of sites */
+  double* tmpptr;
+  lb_t* t_lb = lb->tcopy; 
+  copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
+  copyFromTargetSubset(lb->f,tmpptr,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
+
 #else
   assert(0); /* KS removed lb->t_f */
 #endif
@@ -171,7 +195,6 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   lb = lb_in->tcopy; /* set lb to target copy */
 #endif
 
-  bbl_pass0(bbl, lb, cinfo);
   bbl_pass1(bbl, lb, cinfo);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
@@ -186,11 +209,20 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   bbl_pass2(bbl, lb, cinfo);
 
 #ifdef __NVCC__
+
   /* update target with colloid-affected lattice sites,
      not including neighbours */
 #ifdef OLD_SHIT 
   copyToTargetPointerMap3D(lb->t_f, lb->f,
 			   Nall, nFields, 0, (void **) cinfo->map_new); 
+
+  /* update target with colloid-affected lattice sites*/
+
+  copyToTargetSubset(tmpptr,lb->f,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
+  
+  free(colloidSiteList);
+
+
 #else
   assert(0); /* KS removed lb->t_f */
 #endif
@@ -257,61 +289,134 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
+extern __targetConst__ double tc_q_[NVEL][3][3];
+extern __targetConst__ double tc_rcs2;
+extern __targetConst__ double tc_wv[NVEL];
 
-  int ic, jc, kc, index;
+__targetEntry__ void bbl_pass0_lattice( lb_t * t_lb, colloids_info_t * cinfo) {
+
+
+ int baseIndex;
+ __targetTLPNoStride__(baseIndex,tc_nSites){
+
   int ia, ib, p;
   int nextra = 1;
-  int nlocal[3];
-  int noffset[3];
 
   double r[3], r0[3], rb[3], ub[3], wxrb[3];
   double udotc, sdotq;
 
   colloid_t * pc = NULL;
 
+
+    int coords[3];
+    targetCoords3D(coords,tc_Nall,baseIndex);
+    
+    /*  if not a halo site:*/
+    if (coords[0] >= (tc_nhalo-tc_nextra) &&
+    	coords[1] >= (tc_nhalo-tc_nextra) &&
+    	coords[2] >= (tc_nhalo-tc_nextra) &&
+    	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
+    	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
+    	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
+
+      {
+
+
+      	r[X] = 1.0*(coords[0]-(tc_nhalo-tc_nextra));
+      	r[Y] = 1.0*(coords[1]-(tc_nhalo-tc_nextra));
+      	r[Z] = 1.0*(coords[2]-(tc_nhalo-tc_nextra));
+
+
+      	pc = cinfo->map_new[baseIndex];
+	
+       	if (pc){ 
+      	  r0[X] = pc->s.r[X] - 1.0*tc_noffset[X];
+      	  r0[Y] = pc->s.r[Y] - 1.0*tc_noffset[Y];
+      	  r0[Z] = pc->s.r[Z] - 1.0*tc_noffset[Z];
+      	  //coords_minimum_distance(r, r0, rb);
+      	  for (ia = 0; ia < 3; ia++) {
+      	    rb[ia] = r0[ia] - r[ia];
+      	    if (rb[ia] >  0.5*tc_ntotal[ia]) rb[ia] -= 1.0*tc_ntotal[ia]*tc_periodic[ia];
+      	    if (rb[ia] < -0.5*tc_ntotal[ia]) rb[ia] += 1.0*tc_ntotal[ia]*tc_periodic[ia];
+      	  }
+
+      	  //cross_product(pc->s.w, rb, wxrb);
+
+	  wxrb[X] = pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+	  wxrb[Y] = pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+	  wxrb[Z] = pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+  
+
+      	  ub[X] = pc->s.v[X] + wxrb[X];
+      	  ub[Y] = pc->s.v[Y] + wxrb[Y];
+      	  ub[Z] = pc->s.v[Z] + wxrb[Z];
+	  
+	  for (p = 1; p < NVEL; p++) {
+      	    udotc = tc_cv[p][X]*ub[X] + tc_cv[p][Y]*ub[Y] + tc_cv[p][Z]*ub[Z];
+      	    sdotq = 0.0;
+      	    for (ia = 0; ia < 3; ia++) {
+      	      for (ib = 0; ib < 3; ib++) {
+      	    	sdotq += tc_q_[p][ia][ib]*ub[ia]*ub[ib];
+      	      }
+      	    }
+	    
+	
+	    t_lb->f[ LB_ADDR(tc_nSites, t_lb->ndist, NVEL, baseIndex, 0, p) ]
+  	     = tc_wv[p]*(1.0 + tc_rcs2*udotc + 0.5*tc_rcs2*tc_rcs2*sdotq);
+	  }
+	  
+	}
+	
+      }
+ }
+ return;
+}
+
+
+int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
+
+
+  int nlocal[3];
+  int ntotal[3];
+  int noffset[3];
+  int periodic[3];
+  int nextra = 1;
+
   assert(bbl);
   assert(lb);
   assert(cinfo);
 
   coords_nlocal(nlocal);
+  coords_nlocal(ntotal);
   coords_nlocal_offset(noffset);
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    r[X] = 1.0*ic;
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      r[Y] = 1.0*jc;
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-	r[Z] = 1.0*kc;
+  int nhalo = coords_nhalo();
+  int Nall[3];
+  int nSites;
+  Nall[X] = nlocal[X] + 2*nhalo;
+  Nall[Y] = nlocal[Y] + 2*nhalo;
+  Nall[Z] = nlocal[Z] + 2*nhalo;
+  nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
-	index = coords_index(ic, jc, kc);
-	colloids_info_map(cinfo, index, &pc);
-	if (pc == NULL) continue;
+  periodic[X]=is_periodic(X); 
+  periodic[Y]=is_periodic(Y); 
+  periodic[Z]=is_periodic(Z); 
 
-	r0[X] = pc->s.r[X] - 1.0*noffset[X];
-	r0[Y] = pc->s.r[Y] - 1.0*noffset[Y];
-	r0[Z] = pc->s.r[Z] - 1.0*noffset[Z];
-	coords_minimum_distance(r, r0, rb);
-	cross_product(pc->s.w, rb, wxrb);
-	ub[X] = pc->s.v[X] + wxrb[X];
-	ub[Y] = pc->s.v[Y] + wxrb[Y];
-	ub[Z] = pc->s.v[Z] + wxrb[Z];
+  /* set up constants on target */
+  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstToTarget(tc_noffset,noffset, 3*sizeof(int)); 
+  copyConstToTarget(tc_ntotal,ntotal, 3*sizeof(int)); 
+  copyConstToTarget(tc_periodic,periodic, 3*sizeof(int)); 
+  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
+  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
+  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));
+  copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
+  copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
 
-	for (p = 1; p < NVEL; p++) {
-	  udotc = cv[p][X]*ub[X] + cv[p][Y]*ub[Y] + cv[p][Z]*ub[Z];
-	  sdotq = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      sdotq += q_[p][ia][ib]*ub[ia]*ub[ib];
-	    }
-	  }
-	  lb_f_set(lb, index, p, 0,
-		   wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq));
-	}
-
-      }
-    }
-  }
+  bbl_pass0_lattice __targetLaunchNoStride__(nSites)  (lb->tcopy,cinfo->tcopy); 
+  targetSynchronize();
 
   return 0;
 }

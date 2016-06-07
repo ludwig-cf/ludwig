@@ -62,6 +62,7 @@
 #include "field_grad_s.h"
 #include "map_s.h"
 #include "timer.h"
+#include "control.h"
 
 
 static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, advflux_t * f,
@@ -82,13 +83,15 @@ __targetConst__ double tc_tmatrix[3][3][NQAB];
  *
  *****************************************************************************/
 
+static  advflux_t * flux;
+static int flux_created=0;
+
 __targetHost__ int blue_phase_beris_edwards(field_t * fq,
 					    field_grad_t * fq_grad,
 					    hydro_t * hydro, map_t * map,
 					    noise_t * noise) {
 
   int nf;
-  advflux_t * flux = NULL;
 
   assert(fq);
   assert(map);
@@ -100,7 +103,12 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
   assert(nf == NQAB);
 
   TIMER_start(ADVECTION_BCS_MEM);
-  advflux_create(nf, &flux);
+
+  if (flux_created==0){
+    advflux_create(nf, &flux);
+    flux_created=1;
+  }
+
   TIMER_stop(ADVECTION_BCS_MEM);
 
   if (hydro) {
@@ -112,16 +120,25 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
     advection_bcs_no_normal_flux(nf, flux, map);
   }
 
-
   blue_phase_be_update(fq, fq_grad, hydro, flux, map, noise);
 
   TIMER_start(ADVECTION_BCS_MEM);
-  advflux_free(flux);
-  TIMER_stop(ADVECTION_BCS_MEM);
 
+  if (is_last_step())
+    advflux_free(flux);
+
+  TIMER_stop(ADVECTION_BCS_MEM);
 
   return 0;
 }
+
+__targetHost__ __target__ void h_loop_unrolled_be(double sum[VVL], double dq[3][3][3][VVL],
+				double dsq[3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				double eq[VVL],
+				bluePhaseKernelConstants_t* pbpc);
+
 
 /*IMPORTANT NOTE*/
 
@@ -132,37 +149,39 @@ __targetHost__ int blue_phase_beris_edwards(field_t * fq,
 /* which has a huge impact on performance */
 /* TO DO: place this in a header file to be included both here and blue_phase.c */
 /* or work out how to get the compiler to inline it from the different source file */
+__targetHost__ __target__
+void blue_phase_compute_h_vec_inline(double q[3][3][VVL], 
+				     double dq[3][3][3][VVL],
+				     double dsq[3][3][VVL], 
+				     double h[3][3][VVL],
+				     bluePhaseKernelConstants_t* pbpc) {
 
-__targetHost__ __target__ void blue_phase_compute_h_inline(double q[3][3], 
-						    double dq[3][3][3],
-						    double dsq[3][3], 
-						    double h[3][3],
-						    bluePhaseKernelConstants_t* pbpc) {
-  int ia, ib, ic, id;
+  int iv=0;
+  int ia, ib, ic;
 
-  double q2;
-  double e2;
-  double eq;
-  double sum;
+  double q2[VVL];
+  double e2[VVL];
+  double eq[VVL];
+  double sum[VVL];
 
   /* From the bulk terms in the free energy... */
 
-  q2 = 0.0;
+  __targetILP__(iv) q2[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      q2 += q[ia][ib]*q[ia][ib];
+      __targetILP__(iv) q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
     }
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sum = 0.0;
+      __targetILP__(iv) sum[iv] = 0.0;
       for (ic = 0; ic < 3; ic++) {
-  	sum += q[ia][ic]*q[ib][ic];
+	__targetILP__(iv) sum[iv] += q[ia][ic][iv]*q[ib][ic][iv];
       }
-      h[ia][ib] = -pbpc->a0_*(1.0 - pbpc->r3_*pbpc->gamma_)*q[ia][ib]
-  	+ pbpc->a0_*pbpc->gamma_*(sum - pbpc->r3_*q2*pbpc->d_[ia][ib]) - pbpc->a0_*pbpc->gamma_*q2*q[ia][ib];
+      __targetILP__(iv) h[ia][ib][iv] = -pbpc->a0_*(1.0 - pbpc->r3_*pbpc->gamma_)*q[ia][ib][iv]
+	+ pbpc->a0_*pbpc->gamma_*(sum[iv] - pbpc->r3_*q2[iv]*pbpc->d_[ia][ib]) - pbpc->a0_*pbpc->gamma_*q2[iv]*q[ia][ib][iv];
     }
   }
 
@@ -170,43 +189,45 @@ __targetHost__ __target__ void blue_phase_compute_h_inline(double q[3][3],
   /* First, the sum e_abc d_b Q_ca. With two permutations, we
    * may rewrite this as e_bca d_b Q_ca */
 
-  eq = 0.0;
+  __targetILP__(iv) eq[iv] = 0.0;
   for (ib = 0; ib < 3; ib++) {
     for (ic = 0; ic < 3; ic++) {
       for (ia = 0; ia < 3; ia++) {
-  	eq += pbpc->e_[ib][ic][ia]*dq[ib][ic][ia];
+	__targetILP__(iv) eq[iv] += pbpc->e_[ib][ic][ia]*dq[ib][ic][ia][iv];
       }
     }
   }
 
   /* d_c Q_db written as d_c Q_bd etc */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-       sum = 0.0;
-       for (ic = 0; ic < 3; ic++) {
-       for (id = 0; id < 3; id++) {
-	   //sum += pbpc->e_[ia][ic][id]*dq[ic][ib][id] + pbpc->e_[ib][ic][id]*dq[ic][ia][id];
-	 sum += pbpc->ec_[ia][ic][id]*dq[ic][ib][id] + pbpc->ec_[ib][ic][id]*dq[ic][ia][id];
-       }
-       }
-       
-       h[ia][ib] += pbpc->kappa0*dsq[ia][ib]
-      - 2.0*pbpc->kappa1*pbpc->q0*sum + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq*pbpc->d_[ia][ib]
-      - 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib];
+  /* for (ia = 0; ia < 3; ia++) { */
+  /*   for (ib = 0; ib < 3; ib++) { */
+  /*     __targetILP__(iv) sum[iv] = 0.0; */
+  /*     for (ic = 0; ic < 3; ic++) { */
+  /* 	for (id = 0; id < 3; id++) { */
+  /* 	  __targetILP__(iv) sum[iv] += */
+  /* 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]); */
+  /* 	} */
+  /*     } */
       
-    }
-  }
+  /*     __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv] */
+  /* 	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib] */
+  /* 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv]; */
+  /*   } */
+  /* } */
+  //#include "h_loop.h"
+
+  h_loop_unrolled_be(sum,dq,dsq,q,h,eq,pbpc);
 
   /* Electric field term */
 
-  e2 = 0.0;
+  __targetILP__(iv) e2[iv] = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    e2 += pbpc->e0[ia]*pbpc->e0[ia];
+    __targetILP__(iv) e2[iv] += pbpc->e0[ia]*pbpc->e0[ia];
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      h[ia][ib] +=  pbpc->epsilon_*(pbpc->e0[ia]*pbpc->e0[ib] - pbpc->r3_*pbpc->d_[ia][ib]*e2);
+      __targetILP__(iv) h[ia][ib][iv] +=  pbpc->epsilon_*(pbpc->e0[ia]*pbpc->e0[ib] - pbpc->r3_*pbpc->d_[ia][ib]*e2[iv]);
     }
   }
 
@@ -241,104 +262,150 @@ void blue_phase_be_update_lattice(double* __restrict__ qdata,
 				  void* pcon, int nf, int hydroOn,
 void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
-  int index;
+  int baseIndex;
 
-  __targetTLPNoStride__(index,tc_nSites){
+  __targetTLP__(baseIndex,tc_nSites){
 
-
-  int ia, ib, id;
-  int indexj, indexk;
-  int status;
-
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
-  double w[3][3];
-  double d[3][3];
-  double h[3][3];
-  double s[3][3];
-
-  double omega[3][3];
-  double trace_qw;
-  double chi[NQAB], chi_qab[3][3];
+    int iv=0;
+    int i;
 
 
-  const double dt = 1.0;
 
-  bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
+    int ia, ib, id;
+    int indexj[VVL], indexk[VVL];
+    int status;
 
-  int coords[3];
-  targetCoords3D(coords,tc_Nall,index);
+    double q[3][3][VVL];
+    double dq[3][3][3][VVL];
+    double dsq[3][3][VVL];
+    double w[3][3][VVL];
+    double d[3][3][VVL];
+    double h[3][3][VVL];
+    double s[3][3][VVL];
+
+    double omega[3][3][VVL];
+    double trace_qw[VVL];
+    double chi[NQAB], chi_qab[3][3][VVL];
+
+
+    const double dt = 1.0;
+
+    bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
+
+    int coords[3];
+    targetCoords3D(coords,tc_Nall,baseIndex);
   
-  /* if not a halo site:*/
-    if (coords[0] >= (tc_nhalo) &&
-	coords[1] >= (tc_nhalo) &&
+    
+#if VVL == 1    
+    /*restrict operation to the interior lattice sites*/ 
+    targetCoords3D(coords,tc_Nall,baseIndex); 
+    if (coords[0] >= (tc_nhalo) && 
+	coords[1] >= (tc_nhalo) && 
 	coords[2] >= (tc_nhalo) &&
-	coords[0] < (tc_Nall[X]-tc_nhalo) &&
-	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
-	coords[2] < (tc_Nall[Z]-tc_nhalo) ){
+	coords[0] < tc_Nall[X]-(tc_nhalo) &&  
+	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
+	coords[2] < tc_Nall[Z]-(tc_nhalo) )
+#endif
+      
+      {
+	
+	/* work out which sites in this chunk should be included */
+
+	int includeSite[VVL];
+	__targetILP__(iv) includeSite[iv]=0;
+	
+	int coordschunk[3][VVL];
+		
+	__targetILP__(iv){
+	  for(i=0;i<3;i++){
+	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
+	    coordschunk[i][iv]=coords[i];
+	  }
+	}
+
+	__targetILP__(iv){
+	  
+	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
+	       coordschunk[1][iv] >= (tc_nhalo) &&
+	       coordschunk[2][iv] >= (tc_nhalo) &&
+	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
+	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
+	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
+	    
+	    includeSite[iv]=1;
+	}
+	
 
       
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
-	  s[ia][ib] = 0.0;
-	  chi_qab[ia][ib] = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    __targetILP__(iv) s[ia][ib][iv] = 0.0;
+	    __targetILP__(iv) chi_qab[ia][ib][iv] = 0.0;
+	  }
 	}
-      }
       
 
 
 #ifndef __NVCC__
-      /* on gpu we will just calc all sites (and discard non-fluid results)*/
-      map_status(map, index, &status);
-      if (status != MAP_FLUID) continue;
+#if VVL == 1
+	map_status(map, baseIndex, &status);
+	if (status != MAP_FLUID) continue;
 #endif
+#endif /* else just calc all sites (and discard non-fluid results)*/
 
-      /* calculate molecular field	*/
+	/* calculate molecular field	*/
 
 	int ia, ib;
-	q[X][X] = qdata[addr_qab(tc_nSites, index, XX)];
-	q[X][Y] = qdata[addr_qab(tc_nSites, index, XY)];
-	q[X][Z] = qdata[addr_qab(tc_nSites, index, XZ)];
-	q[Y][X] = q[X][Y];
-	q[Y][Y] = qdata[addr_qab(tc_nSites, index, YY)];
-	q[Y][Z] = qdata[addr_qab(tc_nSites, index, YZ)];
-	q[Z][X] = q[X][Z];
-	q[Z][Y] = q[Y][Z];
-	q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
+
+	__targetILP__(iv) q[X][X][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)];
+	__targetILP__(iv) q[X][Y][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)];
+	__targetILP__(iv) q[X][Z][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)];
+	__targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
+	__targetILP__(iv) q[Y][Y][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)];
+	__targetILP__(iv) q[Y][Z][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)];
+	__targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
+	__targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
+	__targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
+
 
 	for (ia = 0; ia < NVECTOR; ia++) {
-	  dq[ia][X][X] = graddata[addr_rank2(tc_nSites,NQAB,3, index,XX,ia)];
-	  dq[ia][X][Y] = graddata[addr_rank2(tc_nSites,NQAB,3, index,XY,ia)];
-	  dq[ia][X][Z] = graddata[addr_rank2(tc_nSites,NQAB,3, index,XZ,ia)];
-	  dq[ia][Y][X] = dq[ia][X][Y];
-	  dq[ia][Y][Y] = graddata[addr_rank2(tc_nSites,NQAB,3, index,YY,ia)];
-	  dq[ia][Y][Z] = graddata[addr_rank2(tc_nSites,NQAB,3, index,YZ,ia)];
-	  dq[ia][Z][X] = dq[ia][X][Z];
-	  dq[ia][Z][Y] = dq[ia][Y][Z];
-	  dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
+	  __targetILP__(iv) dq[ia][X][X][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XX,ia)];
+	  __targetILP__(iv) dq[ia][X][Y][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XY,ia)];
+	  __targetILP__(iv) dq[ia][X][Z][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XZ,ia)];
+	  __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
+	  __targetILP__(iv) dq[ia][Y][Y][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,YY,ia)];
+	  __targetILP__(iv) dq[ia][Y][Z][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,YZ,ia)];
+	  __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
+	  __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
+	  __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
 	}
-
-	dsq[X][X] = graddelsq[addr_rank1(tc_nSites, NQAB, index, XX)];
-	dsq[X][Y] = graddelsq[addr_rank1(tc_nSites, NQAB, index, XY)];
-	dsq[X][Z] = graddelsq[addr_rank1(tc_nSites, NQAB, index, XZ)];
-	dsq[Y][X] = dsq[X][Y];
-	dsq[Y][Y] = graddelsq[addr_rank1(tc_nSites, NQAB, index, YY)];
-	dsq[Y][Z] = graddelsq[addr_rank1(tc_nSites, NQAB, index, YZ)];
-	dsq[Z][X] = dsq[X][Z];
-	dsq[Z][Y] = dsq[Y][Z];
-	dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];
+	
+	__targetILP__(iv) dsq[X][X][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)];
+	__targetILP__(iv) dsq[X][Y][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)];
+	__targetILP__(iv) dsq[X][Z][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)];
+	__targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
+	__targetILP__(iv) dsq[Y][Y][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)];
+	__targetILP__(iv) dsq[Y][Z][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)];
+	__targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
+	__targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
+	__targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
 	if (isBPMF)
-	  blue_phase_compute_h_inline(q, dq, dsq, h, pbpc);
+	  blue_phase_compute_h_vec_inline(q, dq, dsq, h, pbpc);
 	else
 	{
 #ifndef __NVCC__
 	    /*only BP supported for CUDA. This is caught earlier*/
-	  molecular_field(index, h);
+	  __targetILP__(iv) {
+	    double htmp[3][3];
+	    molecular_field(baseIndex+iv, htmp);
+	    for (ia = 0; ia < 3; ia++) 
+	      for (ib = 0; ib < 3; ib++) 
+		h[ia][ib][iv]=htmp[ia][ib];
+	  }
 #endif
-		  }
-	
+	}
+      
 	if (hydroOn) {
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
@@ -346,61 +413,82 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	   * inline above function
 	   * TODO add lees edwards support*/
 
-	  int im1 = targetIndex3D(coords[X]-1,coords[Y],coords[Z],tc_Nall);
-	  int ip1 = targetIndex3D(coords[X]+1,coords[Y],coords[Z],tc_Nall);
+	    int im1[VVL];
+	    int ip1[VVL];
+	  __targetILP__(iv)  im1[iv] = targetIndex3D(coordschunk[X][iv]-1,coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
+	  __targetILP__(iv)  ip1[iv] = targetIndex3D(coordschunk[X][iv]+1,coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	  
-	  w[X][X] = 0.5*(hydrou[addr_hydro(ip1, X)]
-		       - hydrou[addr_hydro(im1, X)]);
-	  w[Y][X] = 0.5*(hydrou[addr_hydro(ip1, Y)]
-		       - hydrou[addr_hydro(im1, Y)]);
-	  w[Z][X] = 0.5*(hydrou[addr_hydro(ip1, Z)]
-		       - hydrou[addr_hydro(im1, Z)]);
+
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[X][X][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],X)] - hydrou[HYADR(tc_nSites,3,im1[iv],X)]);
+	  }
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[Y][X][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Y)] - hydrou[HYADR(tc_nSites,3,im1[iv],Y)]);
+	  }
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[Z][X][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Z)] - hydrou[HYADR(tc_nSites,3,im1[iv],Z)]);
 	  
-	  im1 = targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
-	  ip1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
+	  __targetILP__(iv) im1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
+	  __targetILP__(iv) ip1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+1,coordschunk[Z][iv],tc_Nall);
 	  
-	  w[X][Y] = 0.5*(hydrou[addr_hydro(ip1, X)]
-		       - hydrou[addr_hydro(im1, X)]);
-	  w[Y][Y] = 0.5*(hydrou[addr_hydro(ip1, Y)]
-		       - hydrou[addr_hydro(im1, Y)]);
-	  w[Z][Y] = 0.5*(hydrou[addr_hydro(ip1, Z)]
-		       - hydrou[addr_hydro(im1, Z)]);
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[X][Y][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],X)] - hydrou[HYADR(tc_nSites,3,im1[iv],X)]);
+	  }
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[Y][Y][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Y)] - hydrou[HYADR(tc_nSites,3,im1[iv],Y)]);
+	  }
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[Z][Y][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Z)] - hydrou[HYADR(tc_nSites,3,im1[iv],Z)]);
+	  }
 	  
-	  im1 = targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
-	  ip1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
+	  __targetILP__(iv) im1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
+	  __targetILP__(iv) ip1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+1,tc_Nall);
 	  
-	  w[X][Z] = 0.5*(hydrou[addr_hydro(ip1, X)]
-		       - hydrou[addr_hydro(im1, X)]);
-	  w[Y][Z] = 0.5*(hydrou[addr_hydro(ip1, Y)]
-		       - hydrou[addr_hydro(im1, Y)]);
-	  w[Z][Z] = 0.5*(hydrou[addr_hydro(ip1, Z)]
-		       - hydrou[addr_hydro(im1, Z)]);
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[X][Z][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],X)] - hydrou[HYADR(tc_nSites,3,im1[iv],X)]);
+	  }
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[Y][Z][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Y)] - hydrou[HYADR(tc_nSites,3,im1[iv],Y)]);
+	  }
+	  __targetILP__(iv){ 
+	    if (includeSite[iv])
+	      w[Z][Z][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Z)] - hydrou[HYADR(tc_nSites,3,im1[iv],Z)]);
+	  }
 
 	  /* Enforce tracelessness */
 	  
-	  double tr = pbpc->r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);
-	  w[X][X] -= tr;
-	  w[Y][Y] -= tr;
-	  w[Z][Z] -= tr;
+	  double tr[VVL];
+	  __targetILP__(iv) tr[iv] = pbpc->r3_*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
+	  __targetILP__(iv) w[X][X][iv] -= tr[iv];
+	  __targetILP__(iv) w[Y][Y][iv] -= tr[iv];
+	  __targetILP__(iv) w[Z][Z][iv] -= tr[iv];
 
 
-	  trace_qw = 0.0;
+	  __targetILP__(iv) trace_qw[iv] = 0.0;
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      trace_qw += q[ia][ib]*w[ib][ia];
-	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
-	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	      __targetILP__(iv) trace_qw[iv] += q[ia][ib][iv]*w[ib][ia][iv];
+	      __targetILP__(iv) d[ia][ib][iv]     = 0.5*(w[ia][ib][iv] + w[ib][ia][iv]);
+	      __targetILP__(iv) omega[ia][ib][iv] = 0.5*(w[ia][ib][iv] - w[ib][ia][iv]);
 	    }
 	  }
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      s[ia][ib] = -2.0*pbpc->xi_*(q[ia][ib] + pbpc->r3_*pbpc->d_[ia][ib])*trace_qw;
+	      __targetILP__(iv) s[ia][ib][iv] = -2.0*pbpc->xi_*(q[ia][ib][iv] + pbpc->r3_*pbpc->d_[ia][ib])*trace_qw[iv];
 	      for (id = 0; id < 3; id++) {
-		s[ia][ib] +=
-		  (pbpc->xi_*d[ia][id] + omega[ia][id])*(q[id][ib] + pbpc->r3_*pbpc->d_[id][ib])
-		+ (q[ia][id] + pbpc->r3_*pbpc->d_[ia][id])*(pbpc->xi_*d[id][ib] - omega[id][ib]);
+		__targetILP__(iv) s[ia][ib][iv] +=
+		  (pbpc->xi_*d[ia][id][iv] + omega[ia][id][iv])*(q[id][ib][iv] + pbpc->r3_*pbpc->d_[id][ib])
+		+ (q[ia][id][iv] + pbpc->r3_*pbpc->d_[ia][id])*(pbpc->xi_*d[id][ib][iv] - omega[id][ib][iv]);
 	      }
 	    }
 	  }
@@ -413,79 +501,90 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 #ifdef __NVCC__
       printf("Error: noise is not yet supported for CUDA\n");
 #else
-      noise_reap_n(noise, index, NQAB, chi);
-      for (id = 0; id < NQAB; id++) {
-	chi[id] = tc_var*chi[id];
-      }
-      
+
+      __targetILP__(iv) {
+	
+	noise_reap_n(noise, baseIndex, NQAB, chi);
+	
+	for (id = 0; id < NQAB; id++) {
+	  chi[id] = tc_var*chi[id];
+	}
+	
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
-	  chi_qab[ia][ib] = 0.0;
+	  chi_qab[ia][ib][iv] = 0.0;
 	  for (id = 0; id < NQAB; id++) {
-	    chi_qab[ia][ib] += chi[id]*tc_tmatrix[ia][ib][id];
+	    chi_qab[ia][ib][iv] += chi[id]*tc_tmatrix[ia][ib][id];
 	  }
 	}
+      }
+      
       }
 #endif
     }
 
-	/* Here's the full hydrodynamic update. */
+    /* Here's the full hydrodynamic update. */
 	  
-	indexj=targetIndex3D(coords[X],coords[Y]-1,coords[Z],tc_Nall);
-	indexk=targetIndex3D(coords[X],coords[Y],coords[Z]-1,tc_Nall);
+    __targetILP__(iv) indexj[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
+    __targetILP__(iv) indexk[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
 
-	q[X][X] += dt*(s[X][X] + tc_gamma*h[X][X] + chi_qab[X][X]
-		       - fluxe[addr_rank1(tc_nSites, nf, index, XX)]
-		       + fluxw[addr_rank1(tc_nSites, nf, index, XX)]
-		       - fluxy[addr_rank1(tc_nSites, nf, index, XX)]
-		       + fluxy[addr_rank1(tc_nSites, nf, indexj,XX)]
-		       - fluxz[addr_rank1(tc_nSites, nf, index, XX)]
-		       + fluxz[addr_rank1(tc_nSites, nf, indexk,XX)]);
 
-	q[X][Y] += dt*(s[X][Y] + tc_gamma*h[X][Y] + chi_qab[X][Y]
-		       - fluxe[addr_rank1(tc_nSites, nf, index, XY)]
-		       + fluxw[addr_rank1(tc_nSites, nf, index, XY)]
-		       - fluxy[addr_rank1(tc_nSites, nf, index, XY)]
-		       + fluxy[addr_rank1(tc_nSites, nf, indexj,XY)]
-		       - fluxz[addr_rank1(tc_nSites, nf, index, XY)]
-		       + fluxz[addr_rank1(tc_nSites, nf, indexk,XY)]);
-
-	q[X][Z] += dt*(s[X][Z] + tc_gamma*h[X][Z] + chi_qab[X][Z]
-		       - fluxe[addr_rank1(tc_nSites, nf, index, XZ)]
-		       + fluxw[addr_rank1(tc_nSites, nf, index, XZ)]
-		       - fluxy[addr_rank1(tc_nSites, nf, index, XZ)]
-		       + fluxy[addr_rank1(tc_nSites, nf, indexj,XZ)]
-		       - fluxz[addr_rank1(tc_nSites, nf, index, XZ)]
-		       + fluxz[addr_rank1(tc_nSites, nf, indexk,XZ)]);
-
-	q[Y][Y] += dt*(s[Y][Y] + tc_gamma*h[Y][Y] + chi_qab[Y][Y]
-		       - fluxe[addr_rank1(tc_nSites, nf, index, YY)]
-		       + fluxw[addr_rank1(tc_nSites, nf, index, YY)]
-		       - fluxy[addr_rank1(tc_nSites, nf, index, YY)]
-		       + fluxy[addr_rank1(tc_nSites, nf, indexj,YY)]
-		       - fluxz[addr_rank1(tc_nSites, nf, index, YY)]
-		       + fluxz[addr_rank1(tc_nSites, nf, indexk,YY)]);
-
-	q[Y][Z] += dt*(s[Y][Z] + tc_gamma*h[Y][Z] + chi_qab[Y][Z]
-		       - fluxe[addr_rank1(tc_nSites, nf, index, YZ)]
-		       + fluxw[addr_rank1(tc_nSites, nf, index, YZ)]
-		       - fluxy[addr_rank1(tc_nSites, nf, index, YZ)]
-		       + fluxy[addr_rank1(tc_nSites, nf, indexj,YZ)]
-		       - fluxz[addr_rank1(tc_nSites, nf, index, YZ)]
-		       + fluxz[addr_rank1(tc_nSites, nf, indexk,YZ)]);
-
-	qdata[addr_qab(tc_nSites, index, XX)] = q[X][X];
-	qdata[addr_qab(tc_nSites, index, XY)] = q[X][Y];
-	qdata[addr_qab(tc_nSites, index, XZ)] = q[X][Z];
-	qdata[addr_qab(tc_nSites, index, YY)] = q[Y][Y];
-	qdata[addr_qab(tc_nSites, index, YZ)] = q[Y][Z];
+    __targetILP__(iv){
+      if (includeSite[iv])
+	q[X][X][iv] += dt*(s[X][X][iv] + tc_gamma*h[X][X][iv] + chi_qab[X][X][iv]
+			       - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,XX)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,XX)]
+			       - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,XX)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],XX)]
+			       - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,XX)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],XX)]);
     }
+
+    __targetILP__(iv){
+      if (includeSite[iv])
+	q[X][Y][iv] += dt*(s[X][Y][iv] + tc_gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
+				 - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,XY)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,XY)]
+				 - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,XY)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],XY)]
+				 - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,XY)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],XY)]);
+    }
+	
+    __targetILP__(iv){
+      if (includeSite[iv])
+	    q[X][Z][iv] += dt*(s[X][Z][iv] + tc_gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
+			       - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)]
+			       - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],XZ)]
+			       - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],XZ)]);
+    }
+	
+    __targetILP__(iv){
+	    if (includeSite[iv])
+	      q[Y][Y][iv] += dt*(s[Y][Y][iv] + tc_gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
+				 - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,YY)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,YY)]
+				 - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,YY)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],YY)]
+				 - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,YY)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],YY)]);
+    }
+	
+    __targetILP__(iv){
+	    if (includeSite[iv])
+	      q[Y][Z][iv] += dt*(s[Y][Z][iv] + tc_gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
+				 - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)]
+				 - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],YZ)]
+				 - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],YZ)]);
+    }
+	
+	
+	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)] = q[X][X][iv];
+	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)] = q[X][Y][iv];
+	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)] = q[X][Z][iv];
+	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)] = q[Y][Y][iv];
+	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)] = q[Y][Z][iv];
+
+	}
+      }
   }
 
   return;
 }
 
-static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro,
+static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad,
+				hydro_t * hydro,
 				advflux_t * flux, map_t * map,
 				noise_t * noise) {
   int nlocal[3];
@@ -610,7 +709,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
 
   /* launch update across lattice on target*/
 
-  double* hydrou;
+  double* hydrou = NULL;
   double* qdata;
   double* graddata;
   double*  graddelsq;
@@ -619,7 +718,7 @@ static int blue_phase_be_update(field_t * fq, field_grad_t * fq_grad, hydro_t * 
   double*  fluxy;
   double*  fluxz;
 
-  copyFromTarget(&hydrou,&(hydro->tcopy->u),sizeof(double*)); 
+  if (hydro) copyFromTarget(&hydrou,&(hydro->tcopy->u),sizeof(double*)); 
   copyFromTarget(&qdata,&(fq->tcopy->data),sizeof(double*)); 
   copyFromTarget(&graddata,&(fq_grad->tcopy->grad),sizeof(double*)); 
   copyFromTarget(&graddelsq,&(fq_grad->tcopy->delsq),sizeof(double*)); 
@@ -721,4 +820,86 @@ __targetHost__ int blue_phase_be_tmatrix_set(double t[3][3][NQAB]) {
   t[Z][Y][YZ] = t[Y][Z][YZ];
 
   return 0;
+}
+
+
+/* Unrolled kernels: thes get much beter performance since he multiplications
+ by 0 and repeated loading of duplicate coefficients have been eliminated */
+
+__target__ void h_loop_unrolled_be(double sum[VVL], double dq[3][3][3][VVL],
+				double dsq[3][3][VVL],
+				double q[3][3][VVL],
+				double h[3][3][VVL],
+				double eq[VVL],
+				bluePhaseKernelConstants_t* pbpc){
+
+  int iv=0;
+
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
+__targetILP__(iv) h[0][0][iv] += pbpc->kappa0*dsq[0][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv];
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv];
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv] ;
+__targetILP__(iv) h[0][1][iv] += pbpc->kappa0*dsq[0][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv];
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv] ;
+__targetILP__(iv) h[0][2][iv] += pbpc->kappa0*dsq[0][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv];
+__targetILP__(iv) h[1][0][iv] += pbpc->kappa0*dsq[1][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
+__targetILP__(iv) h[1][1][iv] += pbpc->kappa0*dsq[1][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv];
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv];
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv] ;
+__targetILP__(iv) h[1][2][iv] += pbpc->kappa0*dsq[1][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv];
+__targetILP__(iv) h[2][0][iv] += pbpc->kappa0*dsq[2][0][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][0]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv];
+__targetILP__(iv) h[2][1][iv] += pbpc->kappa0*dsq[2][1][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][1]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
+__targetILP__(iv) h[2][2][iv] += pbpc->kappa0*dsq[2][2][iv]
+- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][2]
+- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][2][iv];
+
 }

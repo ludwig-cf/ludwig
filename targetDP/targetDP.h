@@ -58,9 +58,18 @@ __host__ __device__ int targetDeviceSynchronise(void);
 
 /* Main settings */
 
+#ifndef VVL
+
 #define VVL_CUDA 1 /* virtual vector length for TARGETDP CUDA (usually 1) */
 #define VVL_C 1 /* virtual vector length for TARGETDP C (usually 1 for AoS */
               /*  or a small multiple of the hardware vector length for SoA)*/
+
+#else /* allow this to be overwritten with compilation option -DVVL=N */
+
+#define VVL_CUDA VVL
+#define VVL_C VVL
+
+#endif
 
 /* End main settings */
 
@@ -75,8 +84,9 @@ __host__ __device__ int targetDeviceSynchronise(void);
 #define DEFAULT_TPB 128 /* default threads per block */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
+#ifndef VVL
 #define VVL VVL_CUDA
-
+#endif
 
 /*
  * Language Extensions 
@@ -176,7 +186,8 @@ __host__ __device__ int targetDeviceSynchronise(void);
 /* Settings */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
-#if ! defined(VVL)
+
+#ifndef VVL
 #define VVL VVL_C
 #endif
 
@@ -285,6 +296,7 @@ __targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCallocUnified(void **address_of_ptr,const size_t size);
+__targetHost__ void targetMallocHost(void **address_of_ptr,size_t size);
 __targetHost__ void copyToTarget(void *targetData,const void* data,size_t size);
 __targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size);
 __targetHost__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo);
@@ -307,16 +319,20 @@ __targetHost__ void copyFromTarget3DEdge(double *data,const double* targetData,i
 __targetHost__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields);
 __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
 __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
+__targetHost__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields);
+__targetHost__ void copyToTargetSubset(double *targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields);
 __targetHost__ void targetSynchronize();
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void checkTargetError(const char *msg);
 __targetHost__ void targetFree(void *ptr);
 __targetHost__ void targetZero(double* array,size_t size);
+__targetHost__ void targetSetConstant(double* array,double value,size_t size);
 //__targetHost__ double targetDoubleSum(double* array, size_t size);
 __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields);
 __targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields);
 
 
+__targetHost__ double targetDoubleSum(double* array, size_t size);
 
 __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
 

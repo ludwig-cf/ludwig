@@ -44,12 +44,15 @@ Note that this is the latest development version, and is subject to change.
 Compiling the targetDP libraries
 ---------- 
 
-To build CPU version only
-make 
+to create the library libtarget.a:
 
-To build both CPU and GPU versions 
-make all
+Edit the Makefile to set CC to the desired compiler (and CFLAGS to the
+desired compiler flags). Then type
 
+make
+
+If CC is a standard C/C++ compiler, then the CPU version of targetDP.a
+will be created. If CC=nvcc, then the GPU version will be created.
 
 
 Documentation/Specification

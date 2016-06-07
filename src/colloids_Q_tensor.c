@@ -347,7 +347,7 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
 #endif
 
   // launch operation across the lattice on target
-  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy, map->tcopy);
+  colloids_fix_swd_lattice __targetLaunchNoStride__(nSites) (cinfo->tcopy, hydro->tcopy, map->tcopy);
   targetSynchronize();
 
   // collect results from target

@@ -1,10 +1,10 @@
 \documentclass[10pt]{report}
 \usepackage[latin1]{inputenc}
 
-\usepackage{draftwatermark}
-\SetWatermarkText{DRAFT}
-\SetWatermarkScale{1}
-\SetWatermarkLightness{0.95}
+%\usepackage{draftwatermark}
+%\SetWatermarkText{DRAFT}
+%\SetWatermarkScale{1}
+%\SetWatermarkLightness{0.95}
 
 % packages
 %%%%%%%%%%%%
@@ -56,7 +56,7 @@ numbers=right
 
 %\renewenvironment{comment}{}{}
 
-\linenumbers
+%\linenumbers
 \onehalfspacing
 
 \fancyhead{}
@@ -125,9 +125,9 @@ numbers=right
 % document info
 %%%%%%%%%%%%%%%
 
-\title{targetDP Specification}
+\title{targetDP Specification \\ Version 0.1.0}
 \author{Alan Gray and Kevin Stratford}
-\date{}
+\date{\today}
 
 %\includecomment{comment}
 
@@ -143,6 +143,7 @@ numbers=right
 
 \pagenumbering{arabic}
 
+\linenumbers
 \input{introduction.tex}
 \input{execution_model.tex}
 \input{memory_model.tex}
@@ -150,17 +151,9 @@ numbers=right
 \input{data_parallel_execution.tex}
 \input{examples.tex}
 
-%\appendix
-
-%Bibliography
-%1. Extending \OpenMP to Survive the Heterogeneous Multi-core Era. Eduard Ayguade, Rosa M. Badia, Pieter Bellens, Daniel Cabrera, Alejandro Duran. 
-%2. CAPS HMPP. http://www.caps-entreprise.com. [Online] [Cited: November 22, 2009.]
-%3. hiCUDA: a high-level directive-based langauge for GPU programming. T.D. Han, T.S. Abdelrahman. Washington, D.C. : s.n., 2009. Proceedings of 2nd Workshop on General Purpose Processing of Graphics Processing Units (GPGPU-2). pp. 52-61.
-%4. PGI | Resources | Accelerator. http://www.pgroup.com/resources/accel.htm. [Online] [Cited: November 22, 2009.]
-%5. \OpenMP ARB. \OpenMP Application Program Interface Version 3.0. \OpenMP.org>>\OpenMP Specifications. [Online] May 2008. [Cited: November 22, 2009.] http://openmp.org/wp/openmp-specifications.
-
-% don't forget to comment this for final version
-% \input{tests}
+\begin{thebibliography}{}
+\bibitem{hpcc} Alan Gray and Kevin Stratford, {\it targetDP: an Abstraction of Lattice Based Parallelism with Portable Performance}, Proceedings of 2014 IEEE International Conference on High Performance Computing and Communications (HPCC), 312-315 (2014),  arxiv.org/abs/1405.6162 
+\end{thebibliography}{}
 
 \end{document}
 

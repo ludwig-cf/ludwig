@@ -1,3 +1,4 @@
+#!/bin/bash 
 ##############################################################################
 #
 #  test-gpu-01.sh
@@ -6,7 +7,6 @@
 #  Serial only, until a parallel test machine is available.
 #
 ##############################################################################
-#!/bin/bash 
 
 # This is intended for the nightly test, so this copy must be here
 

@@ -361,8 +361,10 @@ int hydro_lees_edwards(hydro_t * obj) {
 
   assert(obj);
 
+
   if (cart_size(Y) > 1) {
-    hydro_lees_edwards_parallel(obj);
+    if (le_get_nxbuffer())
+      hydro_lees_edwards_parallel(obj);
   }
   else {
 
