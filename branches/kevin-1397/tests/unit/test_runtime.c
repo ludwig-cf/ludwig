@@ -12,6 +12,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 #include <string.h>
 
@@ -46,7 +47,7 @@ int test_rt_suite(void) {
   n = 0;
   /* info("Checking number of keys available is now 11... ");*/
   n = RUN_get_active_keys();
-  test_assert(n == 11);
+  test_assert(n == 15);
   /* info("yes\n");*/
 
   n = 0;
@@ -184,6 +185,26 @@ int test_rt_suite(void) {
   /* info("Checking 'input_config' is 'config.0'...");*/
   test_assert(strcmp(string, "config.0") == 0);
   /* info("yes\n");*/
+
+  /* key_trail1 is 909; key_trail2 is 910 */
+
+  n = RUN_get_int_parameter("key_trail1", &ivalue);
+  assert(n == 1);
+  assert(ivalue == 909);
+
+  n = RUN_get_int_parameter("key_trail2", &ivalue);
+  assert(n == 1);
+  assert(ivalue == 910);
+
+  /* Strings with trailing white space */
+
+  n = RUN_get_string_parameter("key_trail3", string, 256);
+  assert(n == 1);
+  assert(strcmp(string, "string_3") == 0);
+
+  n = RUN_get_string_parameter("key_trail4", string, 256);
+  assert(n == 1);
+  assert(strcmp(string, "string_4") == 0);
 
   /* Done. */
 

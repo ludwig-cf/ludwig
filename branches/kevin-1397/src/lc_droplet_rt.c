@@ -4,12 +4,10 @@
  *
  *  Run time initiliasation for the liquid crystal droplet free energy
  *
- *  $Id: $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -37,7 +35,8 @@ void lc_droplet_run_time(void) {
   int n;
   double gamma0, delta, W;
 
-  info("liquid crystal droplet free energy selected.\n");
+  info("\n");
+  info("Liquid crystal droplet coupling parameters\n");
 
   n = RUN_get_double_parameter("lc_droplet_gamma", &gamma0);
   if (n == 0) fatal("Please specify lc_droplet_gamma in input\n");
@@ -48,10 +47,9 @@ void lc_droplet_run_time(void) {
   n = RUN_get_double_parameter("lc_droplet_W", &W);
   if (n == 0) fatal("Please specify lc_droplet_W in input\n");
   
-  info("Parameters:\n");
-  info("parameter gamma0      = %12.5e\n", gamma0);
-  info("parameter delta       = %12.5e\n", delta);
-  info("parameter W           = %12.5e\n", W);
+  info("Isotropic/LC control gamma0 = %12.5e\n", gamma0);
+  info("Isotropic/LC control delta  = %12.5e\n", delta);
+  info("Anchoring parameter  W      = %12.5e\n", W);
   
   lc_droplet_set_parameters(gamma0, delta, W);
 

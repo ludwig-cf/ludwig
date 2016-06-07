@@ -24,7 +24,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2015 The University of Edinburgh
+#  (c) 2015-2016 The University of Edinburgh
 #  Contributing authors:
 #  Kevin Stratford (kevinAepcc.ed.ac.uk)
 #
@@ -98,18 +98,25 @@ test-clean:
 
 
 # Compile and run tests (targets of convenience...)
+# "-i" to ignore errors and let the tests continue
 
 compile-run-serial-%:
-	make clean
-	make compile-serial-$*
-	make run-serial-unit
-	make run-serial-regr-$*
+	$(MAKE) clean
+	@echo "TEST --> compile-serial-$*"
+	$(MAKE) compile-serial-$*
+	@echo "TEST --> run-serial-unit-$*"
+	$(MAKE) -i run-serial-unit
+	@echo "TEST --> run-serial-regr-$*"
+	$(MAKE) -k run-serial-regr-$*
 
 compile-run-mpi-%:
-	make clean
-	make compile-mpi-$*
-	make run-mpi-unit
-	make run-mpi-regr-$*
+	$(MAKE) clean
+	@echo "TEST --> compile-mpi-$*"
+	$(MAKE) compile-mpi-$*
+	@echo "TEST --> run-mpi-unit-$*"
+	$(MAKE)	-i run-mpi-unit
+	@echo "TEST --> run-mpi-regr-$*"
+	$(MAKE) -k run-mpi-regr-$*
 
 compile-run-serial:
 	make compile-run-serial-d3q19

@@ -21,3 +21,16 @@ temper 0
 
 string_parameter ASCII
 input_config config.0
+
+# Key value with trailing while space (integers)
+
+key_trail1 909   
+
+# Key value with trailing comment
+
+key_trail2 910    # Trailing comment
+
+# Strings
+
+key_trail3 string_3   
+key_trail4 string_4    # Trailing comment

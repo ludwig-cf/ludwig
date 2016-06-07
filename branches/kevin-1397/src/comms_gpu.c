@@ -22,13 +22,11 @@
 #include "runtime.h"
 #include "lb_model_s.h" 
 
-
-
-#ifdef LB_DATA_SOA
+#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
 
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
+__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
 
 #ifdef KEVIN_GPU
 int halo_init_extra(void);
@@ -52,18 +50,6 @@ static void free_comms_memory_on_gpu(void);
 
 
 /* forward declarations of accelerator routines internal to this module */
-__targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
-				       int nhalo, int nreduced,
-					 int N[3],
-					 double* fedgeLOW_d,
-				       double* fedgeHIGH_d, 
-					    double* f_d, int dirn);
-
-__targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
-					 int nhalo, int nreduced,
-					   int N[3],
-					   double* f_d, double* fhaloLOW_d,
-					      double* fhaloHIGH_d, int dirn);
 
 
 __targetEntry__ static void copy_field_partial_gpu_d(int nPerSite, int nhalo, int N[3],
@@ -232,12 +218,13 @@ cudaStream_t getBULKstream(){
 
 
 /* pack edges on the accelerator */
-__targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
-				       int nhalo, int pack_field1,
-					  int N[3],
+__targetEntry__ static void pack_edge_gpu_d(const int nfields1, const int nfields2,
+				       const int nhalo, const int pack_field1,
+					  const int N[3],
 					 double* edgeLOW_d,
 				       double* edgeHIGH_d, 
-					    double* f_d, int dirn)
+					    const double* __restrict__ f_d, 
+					    const int dirn)
 {
 
 
@@ -276,7 +263,7 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   if (threadIndex < npackedsite)
 #else
-#pragma omp parallel for
+#pragma omp parallel for 
   for(threadIndex=0;threadIndex<npackedsite;threadIndex++)
 #endif
     {
@@ -307,17 +294,18 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
       }
  
       /* copy data to packed structure */
+      for (m = 0; m < nfields2; m++) {
       packedp=0;
       for (p = 0; p < nfields1; p++) {
 	if (cv_cd[p][dirn] == ud || !pack_field1)
 	  {
-	    for (m = 0; m < nfields2; m++) {
 	      edgeLOW_d[nfields2*npackedsite*packedp+m*npackedsite
 	      	  +packed_index]
 	      	= f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)];
-	    }
+	    
 	    packedp++;
-	  }
+	    }
+      }
       }
       
   
@@ -333,33 +321,36 @@ __targetEntry__ static void pack_edge_gpu_d(int nfields1, int nfields2,
       }
 
       /* copy data to packed structure */
+
+      for (m = 0; m < nfields2; m++) {
       packedp=0;
       for (p = 0; p < nfields1; p++) {
 	if (cv_cd[p][dirn] == ud*pn || !pack_field1 )
 	  {
-	    for (m = 0; m < nfields2; m++) {
+
 	      
 	      edgeHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
 			   +packed_index]
 		= f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)];
 	      
-	    }
 	    packedp++;
 	  }
       }
+
+      }
+    
+  
+  
     }
-  
-  
 }
 
 
-
 /* unpack halos on the accelerator */
-__targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
-					 int nhalo, int pack_field1,
-					   int N[3],
-					   double* f_d, double* haloLOW_d,
-					      double* haloHIGH_d, int dirn_save)
+__targetEntry__ static void unpack_halo_gpu_d(const int nfields1, const int nfields2,
+					 const int nhalo, const int pack_field1,
+					   const int N[3],
+					   double* f_d, const double* __restrict__ haloLOW_d,
+					      const double* __restrict__ haloHIGH_d, const int dirn_save)
 {
 
  
@@ -397,7 +388,7 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
   threadIndex = blockIdx.x*blockDim.x+threadIdx.x;
   if (threadIndex < npackedsite)
 #else
-#pragma omp parallel for
+#pragma omp parallel for 
     for(threadIndex=0;threadIndex<npackedsite;threadIndex++)
 #endif
     {
@@ -468,18 +459,19 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
       
       
       /* copy packed structure data to original array */
+      for (m = 0; m < nfields2; m++) {
       packedp=0;
       for (p = 0; p < nfields1; p++) {
 	if (cv_cd[p][dirn] == ud || !pack_field1)
 	  {
-	    for (m = 0; m < nfields2; m++) {
 	  
 	      f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)] =
 	      haloLOW_d[nfields2*npackedsite*packedp+m*npackedsite
 	      	   +packed_index];
 
-	    }
+	    
 	    packedp++;
+	    }
 	  }
       }
            
@@ -496,30 +488,34 @@ __targetEntry__ static void unpack_halo_gpu_d(int nfields1, int nfields2,
 
 
       /* copy packed structure data to original array */
+      for (m = 0; m < nfields2; m++) {
       packedp=0;
       for (p = 0; p < nfields1; p++) {
 	if (cv_cd[p][dirn] == ud*pn || !pack_field1 )
 	  {
-	    for (m = 0; m < nfields2; m++) {
+	    
 	      
 
 	       f_d[LB_ADDR(nsite, nfields2, nfields1, index, m, p)] =
 	      haloHIGH_d[nfields2*npackedsite*packedp+m*npackedsite
 	       +packed_index];
 	      
-	    }
+	    
 	    packedp++;
+
 	  }
       }
 
 
     }
   
+    }
+
 }
 
 
 
-void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
+void halo_alternative(int nfields1, int nfields2, int packablefield1, double * data_d)
 {
 
 
@@ -768,7 +764,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
       
-      
+      //#pragma omp parallel for collapse(3)
       for (ii = 0; ii < nhalo; ii++) {
 	for (jj = 0; jj < nhalo; jj++) {
 	  for (kk = 0; kk < N[Z]; kk++) {
@@ -885,6 +881,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
   for (m=0;m<(nfields1packed*nfields2);m++)
     {
       
+      //#pragma omp parallel for collapse(3)
       for (ii = 0; ii < nhalo; ii++) {
 	for (jj = 0; jj < N[Y]; jj++) {
 	  for (kk = 0; kk < nhalo; kk++) {
@@ -939,7 +936,7 @@ void halo_SoA(int nfields1, int nfields2, int packablefield1, double * data_d)
     {
       
       
-      
+      //#pragma omp parallel for collapse(3)
       for (ii = 0; ii < Nall[X]; ii++) {
 	for (jj = 0; jj < nhalo; jj++) {
 	  for (kk = 0; kk < nhalo; kk++) {
@@ -1948,4 +1945,5 @@ static void halo_unpack_gpu_d(cuda_halo_t * halo, int id,
 
 #endif
 
-#endif /* LB_DATA_SOA */
+
+#endif 

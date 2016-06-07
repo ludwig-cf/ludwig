@@ -248,6 +248,13 @@ void targetCallocUnified(void **address_of_ptr,size_t size){
   
 }
 
+void targetMallocHost(void **address_of_ptr,size_t size){
+
+  targetMalloc(address_of_ptr,size);
+
+  return;
+
+}
 
 //The targetFree function deallocates memory on the target.
 void targetFree(void *ptr){
@@ -369,6 +376,9 @@ void targetZero(double* array,size_t size){
 
   int i;
 
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(i=0;i<size;i++){
     
     array[i]=0.;
@@ -376,6 +386,23 @@ void targetZero(double* array,size_t size){
   }
 
 }
+
+
+void targetSetConstant(double* array,double value,size_t size){
+
+  int i;
+
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(i=0;i<size;i++){
+    
+    array[i]=value;
+    
+  }
+
+}
+
 
 __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 {
@@ -460,4 +487,19 @@ __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* 
   copyFromTarget(*ptrToHostComponent,tmpptr,size*sizeof(double));
 
 
+}
+
+double targetDoubleSum(double* array, size_t size){
+
+  int i;
+
+  double result=0.;
+
+#ifdef _OPENMP
+#pragma omp parallel for reduction(+:result)
+#endif
+  for (i=0;i<size;i++)
+    result+=array[i];
+
+  return result;
 }

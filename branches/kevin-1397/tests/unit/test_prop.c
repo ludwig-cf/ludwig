@@ -388,7 +388,8 @@ __global__ void lb_propagation_kernel(lb_t * lb) {
 __host__ int lb_model_swapf(lb_t * lb) {
 
   int ndevice;
-  double * tmp;
+  double * tmp1;
+  double * tmp2;
 
   assert(lb);
   assert(lb->tcopy);
@@ -396,14 +397,11 @@ __host__ int lb_model_swapf(lb_t * lb) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    tmp = lb->f;
+    tmp1 = lb->f;
     lb->f = lb->fprime;
-    lb->fprime = tmp;
+    lb->fprime = tmp1;
   }
   else {
-    double * tmp1;
-    double * tmp2;
-
     copyFromTarget(&tmp1, &lb->tcopy->f, sizeof(double *)); 
     copyFromTarget(&tmp2, &lb->tcopy->fprime, sizeof(double *)); 
 

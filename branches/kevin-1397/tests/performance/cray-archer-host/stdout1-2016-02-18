@@ -1,0 +1,887 @@
+--------------------------------------------------------------------------------
+*** ks0102   Job: 3522997.sdb   started: 19/02/16 11:52:02   host: mom2 ***
+*** ks0102   Job: 3522997.sdb   started: 19/02/16 11:52:02   host: mom2 ***
+*** ks0102   Job: 3522997.sdb   started: 19/02/16 11:52:02   host: mom2 ***
+*** ks0102   Job: 3522997.sdb   started: 19/02/16 11:52:02   host: mom2 ***
+
+--------------------------------------------------------------------------------
+ 
+ 
+Welcome to Ludwig v0.4.6 (MPI version running on 24 processes)
+
+The SVN revision details are: 2861
+Read 31 user parameters from input
+
+System details
+--------------
+System size:    64 48 32
+Decomposition:  4 3 2
+Local domain:   16 16 16
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  4.50000e-01
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random                default
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+epsilon / kT               1.8750003e+01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              3 3 3
+Final cell lengths:           5.3333333e+00  5.3333333e+00  5.3333333e+00
+
+Gradient calcaulation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       97269.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.1675985e+01  1.2003809e-04 8.3472210e-04 -4.9999491e-02 4.9999902e-02
+
+Momentum - x y z
+[total   ]  1.3498785e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  1.3498785e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  1.6183808e+00
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -1.6754328e-02 -2.4734114e-02 -2.0494560e-02
+[maximum ]  1.9935047e-02  3.3851378e-02  3.0476862e-02
+
+Scalars - total mean variance min max
+[rho]       97286.00  1.00000000000  1.1198685e-04  0.95463623081  1.08302627692
+[phi]  1.1675985e+01  1.2001712e-04 6.4539208e-01 -9.9730332e-01 1.0016882e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]           1000 -9.8020997312e+02  9.7286000000e+04 -1.0075550163e-02  0.0000000000e+00
+
+Momentum - x y z
+[total   ] -3.9634962e-13  1.6187052e-13  6.6258110e-13
+[fluid   ] -1.7401225e-01  1.3591007e-02 -2.7059151e+00
+[colloids]  1.7401225e-01 -1.3591007e-02  2.7059151e+00
+
+Velocity - x y z
+[minimum ] -9.0393383e-02 -6.9201843e-02 -5.5231916e-02
+[maximum ]  5.2944285e-02  8.1411488e-02  6.9725221e-02
+
+Isothermal fluctuations
+[eqipart.]  1.7334680e-04  1.9063028e-04  1.6718936e-04
+[measd/kT]  5.3116644e-04  6.3999990e-05
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      7.234      7.234      7.234   7.234101 (1 call)
+      Time step loop:      0.007      0.008      7.222   0.007222 (1000 calls)
+         Propagation:      0.001      0.001      1.213   0.001213 (1000 calls)
+    Propagtn (krnl) :      0.001      0.001      1.212   0.001212 (1000 calls)
+           Collision:      0.002      0.003      2.344   0.002344 (1000 calls)
+   Collision (krnl) :      0.002      0.002      2.156   0.002156 (1000 calls)
+       Lattice halos:      0.001      0.001      1.352   0.000676 (2000 calls)
+       phi gradients:      0.002      0.002      1.754   0.001754 (1000 calls)
+           phi halos:      0.000      0.000      0.060   0.000060 (1000 calls)
+              Forces:      0.000      0.000      0.003   0.000003 (1000 calls)
+             Rebuild:      0.000      0.000      0.121   0.000121 (1000 calls)
+                 BBL:      0.000      0.000      0.175   0.000175 (1000 calls)
+      Particle halos:      0.000      0.001      0.099   0.000099 (1000 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (2000 calls)
+Ludwig finished normally.
+Application 20639266 resources: utime ~160s, stime ~16s, Rss ~14800, inblocks ~6801, outblocks ~15365
+ 
+ 
+Welcome to Ludwig v0.4.6 (MPI version running on 24 processes)
+
+The SVN revision details are: 2861
+Read 31 user parameters from input
+
+System details
+--------------
+System size:    96 72 48
+Decomposition:  4 3 2
+Local domain:   24 24 24
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  4.50000e-01
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random                default
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+epsilon / kT               1.8750003e+01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              4 4 4
+Final cell lengths:           6.0000000e+00  6.0000000e+00  6.0000000e+00
+
+Gradient calcaulation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      330752.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.6966900e+00  5.1297952e-06 8.3436095e-04 -4.9999866e-02 4.9999902e-02
+
+Momentum - x y z
+[total   ]  4.5901061e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  4.5901061e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  2.9496381e+00
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -2.4393333e-02 -1.8644835e-02 -1.4802301e-02
+[maximum ]  2.2665644e-02  1.3813028e-02  2.5491170e-02
+
+Scalars - total mean variance min max
+[rho]      330759.00  1.00000000000  1.0599310e-04  0.95300405706  1.07614758014
+[phi]  1.6966900e+00  5.1296867e-06 6.4158201e-01 -9.9759570e-01 1.0147331e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]           1000 -3.2845174408e+03  3.3075900000e+05 -9.9302435938e-03  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  1.7763568e-13  9.3636210e-13 -3.2329694e-13
+[fluid   ] -4.3949726e+00  1.9024517e+00 -1.0511780e+00
+[colloids]  4.3949726e+00 -1.9024517e+00  1.0511780e+00
+
+Velocity - x y z
+[minimum ] -6.5432775e-02 -7.5977956e-02 -7.8091985e-02
+[maximum ]  8.6195660e-02  6.7771845e-02  5.7734355e-02
+
+Isothermal fluctuations
+[eqipart.]  1.8938869e-04  1.8099270e-04  1.4660475e-04
+[measd/kT]  5.1698614e-04  6.3999990e-05
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     21.232     21.232     21.232  21.231874 (1 call)
+      Time step loop:      0.021      0.024     21.200   0.021200 (1000 calls)
+         Propagation:      0.004      0.005      4.064   0.004064 (1000 calls)
+    Propagtn (krnl) :      0.004      0.005      4.063   0.004063 (1000 calls)
+           Collision:      0.007      0.008      7.235   0.007235 (1000 calls)
+   Collision (krnl) :      0.006      0.007      6.522   0.006522 (1000 calls)
+       Lattice halos:      0.001      0.002      2.351   0.001175 (2000 calls)
+       phi gradients:      0.006      0.007      6.356   0.006356 (1000 calls)
+           phi halos:      0.000      0.001      0.073   0.000073 (1000 calls)
+              Forces:      0.000      0.000      0.003   0.000003 (1000 calls)
+             Rebuild:      0.000      0.000      0.319   0.000319 (1000 calls)
+                 BBL:      0.000      0.000      0.261   0.000261 (1000 calls)
+      Particle halos:      0.000      0.001      0.124   0.000124 (1000 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (2000 calls)
+Ludwig finished normally.
+Application 20639270 resources: utime ~510s, stime ~2s, Rss ~28004, inblocks ~6801, outblocks ~15365
+ 
+ 
+Welcome to Ludwig v0.4.6 (MPI version running on 24 processes)
+
+The SVN revision details are: 2861
+Read 31 user parameters from input
+
+System details
+--------------
+System size:    128 96 64
+Decomposition:  4 3 2
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  4.50000e-01
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random                default
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+epsilon / kT               1.8750003e+01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              6 6 6
+Final cell lengths:           5.3333333e+00  5.3333333e+00  5.3333333e+00
+
+Gradient calcaulation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      785416.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -3.0105513e+01 -3.8330659e-05 8.3373486e-04 -4.9999866e-02 4.9999902e-02
+
+Momentum - x y z
+[total   ]  1.0899837e-11  0.0000000e+00  0.0000000e+00
+[fluid   ]  1.0899837e-11  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  1.2800000e+02
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -1.8435356e-02 -1.8073571e-02 -2.1165685e-02
+[maximum ]  2.7762438e-02  1.8117193e-02  2.6708676e-02
+
+Scalars - total mean variance min max
+[rho]      785407.00  1.00000000000  1.0569312e-04  0.94547247470  1.07733947965
+[phi] -3.0105513e+01 -3.8331099e-05 6.4295649e-01 -1.0344869e+00 1.0117060e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]           1000 -7.8096393316e+03  7.8540700000e+05 -9.9434297525e-03  0.0000000000e+00
+
+Momentum - x y z
+[total   ] -3.4416914e-13  4.8057114e-12 -2.0206059e-13
+[fluid   ]  2.6057836e-01  2.6545766e-01  1.1255499e+00
+[colloids] -2.6057836e-01 -2.6545766e-01 -1.1255499e+00
+
+Velocity - x y z
+[minimum ] -7.1659257e-02 -7.7983061e-02 -7.8415508e-02
+[maximum ]  7.6175575e-02  7.9602116e-02  6.4029800e-02
+
+Isothermal fluctuations
+[eqipart.]  1.6737949e-04  1.6302469e-04  1.5438674e-04
+[measd/kT]  4.8479092e-04  6.3999990e-05
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     48.830     48.831     48.831  48.830735 (1 call)
+      Time step loop:      0.048      0.053     48.766   0.048766 (1000 calls)
+         Propagation:      0.009      0.012      9.965   0.009965 (1000 calls)
+    Propagtn (krnl) :      0.009      0.012      9.964   0.009964 (1000 calls)
+           Collision:      0.016      0.018     17.329   0.017329 (1000 calls)
+   Collision (krnl) :      0.014      0.016     14.582   0.014582 (1000 calls)
+       Lattice halos:      0.002      0.003      4.595   0.002298 (2000 calls)
+       phi gradients:      0.014      0.015     14.379   0.014379 (1000 calls)
+           phi halos:      0.000      0.000      0.101   0.000101 (1000 calls)
+              Forces:      0.000      0.000      0.006   0.000006 (1000 calls)
+             Rebuild:      0.001      0.001      0.671   0.000671 (1000 calls)
+                 BBL:      0.000      0.001      0.406   0.000406 (1000 calls)
+      Particle halos:      0.000      0.001      0.293   0.000293 (1000 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (2000 calls)
+Ludwig finished normally.
+Application 20639285 resources: utime ~1171s, stime ~3s, Rss ~51784, inblocks ~6801, outblocks ~15365
+ 
+ 
+Welcome to Ludwig v0.4.6 (MPI version running on 24 processes)
+
+The SVN revision details are: 2861
+Read 31 user parameters from input
+
+System details
+--------------
+System size:    160 120 80
+Decomposition:  4 3 2
+Local domain:   40 40 40
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  4.50000e-01
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random                default
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+epsilon / kT               1.8750003e+01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              8 8 8
+Final cell lengths:           5.0000000e+00  5.0000000e+00  5.0000000e+00
+
+Gradient calcaulation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]     1534983.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.1380810e+01  7.4142908e-06 8.3293421e-04 -4.9999904e-02 4.9999914e-02
+
+Momentum - x y z
+[total   ]  2.1302168e-11  0.0000000e+00  0.0000000e+00
+[fluid   ]  2.1302168e-11  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  1.6000000e+02
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -2.2875530e-02 -1.6406049e-02 -2.7816637e-02
+[maximum ]  2.4653720e-02  2.7471483e-02  2.0209448e-02
+
+Scalars - total mean variance min max
+[rho]     1534978.00  1.00000000000  1.0643457e-04  0.94794214232  1.09239909050
+[phi]  1.1380810e+01  7.4143149e-06 6.4256351e-01 -9.9930138e-01 9.9808648e-01
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]           1000 -1.5287298529e+04  1.5349780000e+06 -9.9592948753e-03  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  2.3352431e-12 -2.7284841e-12 -3.6504133e-13
+[fluid   ]  1.9319478e-01 -3.1440522e+00  2.8431453e+00
+[colloids] -1.9319478e-01  3.1440522e+00 -2.8431453e+00
+
+Velocity - x y z
+[minimum ] -7.6719094e-02 -8.2710704e-02 -7.8648819e-02
+[maximum ]  7.8398635e-02  9.4919535e-02  7.7594755e-02
+
+Isothermal fluctuations
+[eqipart.]  1.6385073e-04  1.6671886e-04  1.6675677e-04
+[measd/kT]  4.9732636e-04  6.3999990e-05
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     95.553     95.553     95.553  95.552959 (1 call)
+      Time step loop:      0.094      0.102     95.438   0.095438 (1000 calls)
+         Propagation:      0.021      0.025     22.374   0.022374 (1000 calls)
+    Propagtn (krnl) :      0.021      0.025     22.373   0.022373 (1000 calls)
+           Collision:      0.032      0.034     32.947   0.032947 (1000 calls)
+   Collision (krnl) :      0.027      0.029     27.472   0.027472 (1000 calls)
+       Lattice halos:      0.003      0.005      8.125   0.004062 (2000 calls)
+       phi gradients:      0.027      0.028     27.231   0.027231 (1000 calls)
+           phi halos:      0.000      0.001      0.151   0.000151 (1000 calls)
+              Forces:      0.000      0.000      0.011   0.000011 (1000 calls)
+             Rebuild:      0.001      0.001      1.229   0.001229 (1000 calls)
+                 BBL:      0.000      0.001      0.596   0.000596 (1000 calls)
+      Particle halos:      0.000      0.002      0.639   0.000639 (1000 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (2000 calls)
+Ludwig finished normally.
+Application 20639309 resources: utime ~2292s, stime ~4s, Rss ~90604, inblocks ~6801, outblocks ~15365
+ 
+ 
+Welcome to Ludwig v0.4.6 (MPI version running on 24 processes)
+
+The SVN revision details are: 2861
+Read 31 user parameters from input
+
+System details
+--------------
+System size:    192 144 96
+Decomposition:  4 3 2
+Local domain:   48 48 48
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  4.50000e-01
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random                default
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+epsilon / kT               1.8750003e+01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              9 9 9
+Final cell lengths:           5.3333333e+00  5.3333333e+00  5.3333333e+00
+
+Gradient calcaulation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]     2653189.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.2864810e+01  4.8488102e-06 8.3315315e-04 -4.9999978e-02 4.9999945e-02
+
+Momentum - x y z
+[total   ]  3.6820394e-11  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6820394e-11  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  1.9200000e+02
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -2.8900581e-02 -1.2660850e-02 -1.8034020e-02
+[maximum ]  2.5157654e-02  3.0400495e-02  1.5040454e-02
+
+Scalars - total mean variance min max
+[rho]     2653192.00  1.00000000000  1.0597479e-04  0.94468437821  1.09310476846
+[phi]  1.2864810e+01  4.8488047e-06 6.4281065e-01 -1.0080429e+00 1.0094828e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]           1000 -2.6399980636e+04  2.6531920000e+06 -9.9502714603e-03  0.0000000000e+00
+
+Momentum - x y z
+[total   ] -1.2410961e-11  3.2374103e-13  2.0230484e-12
+[fluid   ]  1.1095955e+00 -3.5533132e+00  1.5660485e+00
+[colloids] -1.1095955e+00  3.5533132e+00 -1.5660485e+00
+
+Velocity - x y z
+[minimum ] -8.0099764e-02 -8.7483160e-02 -7.2704191e-02
+[maximum ]  7.7515097e-02  8.2141147e-02  8.9804917e-02
+
+Isothermal fluctuations
+[eqipart.]  1.6263449e-04  1.6112886e-04  1.6362947e-04
+[measd/kT]  4.8739282e-04  6.3999990e-05
+
+Completed cycle 1000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    165.235    165.237    165.236 165.235933 (1 call)
+      Time step loop:      0.163      0.176    165.045   0.165045 (1000 calls)
+         Propagation:      0.042      0.048     42.625   0.042625 (1000 calls)
+    Propagtn (krnl) :      0.042      0.048     42.624   0.042624 (1000 calls)
+           Collision:      0.051      0.057     54.946   0.054946 (1000 calls)
+   Collision (krnl) :      0.045      0.049     46.335   0.046335 (1000 calls)
+       Lattice halos:      0.006      0.011     13.741   0.006871 (2000 calls)
+       phi gradients:      0.046      0.048     46.339   0.046339 (1000 calls)
+           phi halos:      0.000      0.001      0.177   0.000177 (1000 calls)
+              Forces:      0.000      0.000      0.015   0.000015 (1000 calls)
+             Rebuild:      0.002      0.002      2.074   0.002074 (1000 calls)
+                 BBL:      0.001      0.002      0.896   0.000896 (1000 calls)
+      Particle halos:      0.000      0.003      0.623   0.000623 (1000 calls)
+               Free1:      0.000      0.000      0.000   0.000000 (2000 calls)
+Ludwig finished normally.
+Application 20639352 resources: utime ~3962s, stime ~5s, Rss ~147552, inblocks ~6801, outblocks ~15365
+--------------------------------------------------------------------------------
+
+Resources requested: ncpus=24,place=free,walltime=00:20:00
+Resources allocated: cpupercent=0,cput=00:00:01,mem=6628kb,ncpus=24,vmem=147788kb,walltime=00:05:48
+
+*** ks0102   Job: 3522997.sdb   ended: 19/02/16 11:57:49   queue: S3504586 ***
+*** ks0102   Job: 3522997.sdb   ended: 19/02/16 11:57:49   queue: S3504586 ***
+*** ks0102   Job: 3522997.sdb   ended: 19/02/16 11:57:49   queue: S3504586 ***
+*** ks0102   Job: 3522997.sdb   ended: 19/02/16 11:57:49   queue: S3504586 ***
+--------------------------------------------------------------------------------

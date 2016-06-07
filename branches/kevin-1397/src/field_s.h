@@ -39,3 +39,4 @@ struct field_s {
 #define vaddr_qab(nsites, index, ia, iv) vaddr_rank1(nsites, NQAB, index, ia, iv)
 
 #endif
+
