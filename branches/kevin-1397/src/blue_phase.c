@@ -438,12 +438,13 @@ __targetHost__ __target__ void fed_loop_unrolled(double sum[VVL], double dq[3][3
 
 
 /* Vectorized version */
-__targetHost__ __target__ void blue_phase_compute_fed_vec(double sum[VVL], double q[3][3][VVL], 
-							double dq[3][3][3][VVL],
-					 bluePhaseKernelConstants_t* pbpc) {
+__host__ __target__
+void blue_phase_compute_fed_vec(double sum[VVL], double q[3][3][VVL], 
+				double dq[3][3][3][VVL],
+				bluePhaseKernelConstants_t* pbpc) {
 
   int iv=0;
-  int ia, ib, ic, id;
+  int ia, ib, ic;
   double q2[VVL], q3[VVL];
   double dq0[VVL], dq1[VVL];
   double efield[VVL];
@@ -509,13 +510,20 @@ __targetHost__ __target__ void blue_phase_compute_fed_vec(double sum[VVL], doubl
   __targetILP__(iv)  efield[iv] = 0.0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv)  efield[iv] += pbpc->e0[ia]*q[ia][ib][iv]*pbpc->e0[ib];
+      __targetILP__(iv) {
+	efield[iv] += pbpc->e0[ia]*q[ia][ib][iv]*pbpc->e0[ib];
+      }
     }
   }
 
-  __targetILP__(iv)  sum[iv] = 0.5*pbpc->a0_*(1.0 - pbpc->r3_*pbpc->gamma_)*q2[iv] - pbpc->r3_*pbpc->a0_*pbpc->gamma_*q3[iv] +
-    0.25*pbpc->a0_*pbpc->gamma_*q2[iv]*q2[iv] + 0.5*pbpc->kappa0*dq0[iv] + 0.5*pbpc->kappa1*dq1[iv] - pbpc->epsilon_*efield[iv];
-
+  __targetILP__(iv) {
+    sum[iv] = 0.5*pbpc->a0_*(1.0 - pbpc->r3_*pbpc->gamma_)*q2[iv]
+      - pbpc->r3_*pbpc->a0_*pbpc->gamma_*q3[iv]
+      + 0.25*pbpc->a0_*pbpc->gamma_*q2[iv]*q2[iv]
+      + 0.5*pbpc->kappa0*dq0[iv]
+      + 0.5*pbpc->kappa1*dq1[iv]
+      - pbpc->epsilon_*efield[iv];
+  }
 
   return;
 }
@@ -779,7 +787,7 @@ __targetHost__ __target__ void blue_phase_compute_h_vec(double q[3][3][VVL],
 						    bluePhaseKernelConstants_t* pbpc) {
 
   int iv=0;
-  int ia, ib, ic, id;
+  int ia, ib, ic;
 
   double q2[VVL];
   double e2[VVL];
@@ -955,8 +963,14 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
 }
 
 /* vectorised version of the above */
- __target__ void blue_phase_chemical_stress_dev_vec(int baseIndex, field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, int calledFromPhiForceStress) { 
 
+__target__
+void blue_phase_chemical_stress_dev_vec(int baseIndex,
+					field_t* t_q,
+					field_grad_t* t_q_grad,
+					double* t_pth,
+					void* pcon,
+					int calledFromPhiForceStress) { 
 
    int iv=0;
 
@@ -971,54 +985,45 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
   double dq[3][3][3][VVL];
   double dsq[3][3][VVL];
 
-  double sth_loc[3][3][VVL];
-
-  int ia, ib;
+  int ia;
 
   bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
 
-  __targetILP__(iv) q[X][X][iv] = t_q->data[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)];
-  __targetILP__(iv) q[X][Y][iv] = t_q->data[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)];
-  __targetILP__(iv) q[X][Z][iv] = t_q->data[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)];
+  __targetILP__(iv) q[X][X][iv] = t_q->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)];
+  __targetILP__(iv) q[X][Y][iv] = t_q->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)];
+  __targetILP__(iv) q[X][Z][iv] = t_q->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)];
   __targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
-  __targetILP__(iv) q[Y][Y][iv] = t_q->data[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)];
-  __targetILP__(iv) q[Y][Z][iv] = t_q->data[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)];
+  __targetILP__(iv) q[Y][Y][iv] = t_q->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)];
+  __targetILP__(iv) q[Y][Z][iv] = t_q->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)];
   __targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
   __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
   __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    __targetILP__(iv) dq[ia][X][X][iv] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XX,ia)];
-    __targetILP__(iv) dq[ia][X][Y][iv] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XY,ia)];
-    __targetILP__(iv) dq[ia][X][Z][iv] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XZ,ia)];
+    __targetILP__(iv) dq[ia][X][X][iv] = t_q_grad->grad[addr_rank2(tc_nSites,NQAB,3,baseIndex+iv,XX,ia)];
+    __targetILP__(iv) dq[ia][X][Y][iv] = t_q_grad->grad[addr_rank2(tc_nSites,NQAB,3,baseIndex+iv,XY,ia)];
+    __targetILP__(iv) dq[ia][X][Z][iv] = t_q_grad->grad[addr_rank2(tc_nSites,NQAB,3,baseIndex+iv,XZ,ia)];
     __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-    __targetILP__(iv) dq[ia][Y][Y][iv] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,baseIndex+iv,YY,ia)];
-    __targetILP__(iv) dq[ia][Y][Z][iv] = t_q_grad->grad[FGRDADR(tc_nSites,NQAB,baseIndex+iv,YZ,ia)];
+    __targetILP__(iv) dq[ia][Y][Y][iv] = t_q_grad->grad[addr_rank2(tc_nSites,NQAB,3,baseIndex+iv,YY,ia)];
+    __targetILP__(iv) dq[ia][Y][Z][iv] = t_q_grad->grad[addr_rank2(tc_nSites,NQAB,3,baseIndex+iv,YZ,ia)];
     __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
     __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
     __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
   }
 
 
-  __targetILP__(iv) dsq[X][X][iv] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)];
-  __targetILP__(iv) dsq[X][Y][iv] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)];
-  __targetILP__(iv) dsq[X][Z][iv] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)];
+  __targetILP__(iv) dsq[X][X][iv] = t_q_grad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)];
+  __targetILP__(iv) dsq[X][Y][iv] = t_q_grad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)];
+  __targetILP__(iv) dsq[X][Z][iv] = t_q_grad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)];
   __targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
-  __targetILP__(iv) dsq[Y][Y][iv] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)];
-  __targetILP__(iv) dsq[Y][Z][iv] = t_q_grad->delsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)];
+  __targetILP__(iv) dsq[Y][Y][iv] = t_q_grad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)];
+  __targetILP__(iv) dsq[Y][Z][iv] = t_q_grad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)];
   __targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
   __targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
   __targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
-
   blue_phase_compute_h_vec(q, dq, dsq, h, pbpc);
   blue_phase_compute_stress_vec(q, dq, h, t_pth, pbpc,baseIndex);
-
-
-  //for(ia=0;ia<3;ia++)
-  //for(ib=0;ib<3;ib++)
-  //  __targetILP__(iv)  t_pth[PTHADR(tc_nSites,baseIndex+iv,ia,ib)]=sth_loc[ia][ib][iv];
-
 
   return;
 }
@@ -1037,9 +1042,10 @@ __targetHost__ void blue_phase_chemical_stress(int index, double sth[3][3]) {
  *
  *****************************************************************************/
 
-__targetHost__ __target__ void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
-					  double h[3][3], double sth[3][3], 
-					  bluePhaseKernelConstants_t* pbpc) {
+__host__ __target__
+void blue_phase_compute_stress(double q[3][3], double dq[3][3][3],
+			       double h[3][3], double sth[3][3], 
+			       bluePhaseKernelConstants_t* pbpc) {
   int ia, ib, ic, id, ie;
 
   double qh;
@@ -1142,10 +1148,14 @@ __targetHost__ __target__ void stress_body_unrolled(double dq[3][3][3][VVL],
 				     bluePhaseKernelConstants_t* pbpc, int baseIndex);
 
 /* vectorised version of above */
-__targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL], double dq[3][3][3][VVL],
-					  double h[3][3][VVL], double* sth, 
-							     bluePhaseKernelConstants_t* pbpc, int baseIndex) {
-  int ia, ib, ic, id, ie;
+
+__host__ __target__
+void blue_phase_compute_stress_vec(double q[3][3][VVL],
+				   double dq[3][3][3][VVL],
+				   double h[3][3][VVL], double* sth, 
+				   bluePhaseKernelConstants_t* pbpc,
+				   int baseIndex) {
+  int ia, ib;
   int iv=0;
   double qh[VVL];
   double p0[VVL];
@@ -2034,7 +2044,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][0][iv]+ r3loc)*qh[iv] -p0[iv] ;
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[0][0][iv] + r3loc);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,0,0)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,0,0)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][1][iv])*qh[iv];
 
@@ -2082,7 +2092,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][1][iv])*qh[iv];
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[0][1][iv]);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,0,1)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,0,1)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][2][iv])*qh[iv];
 
@@ -2130,7 +2140,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[0][2][iv])*qh[iv];
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[0][2][iv]);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,0,2)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,0,2)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][0][iv])*qh[iv];
 
@@ -2178,7 +2188,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][0][iv])*qh[iv];
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[1][0][iv]);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,1,0)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,1,0)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][1][iv]+ r3loc)*qh[iv] -p0[iv] ;
 
@@ -2226,7 +2236,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][1][iv]+ r3loc)*qh[iv] -p0[iv] ;
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[1][1][iv] + r3loc);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,1,1)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,1,1)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][2][iv])*qh[iv];
 
@@ -2274,7 +2284,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[1][2][iv])*qh[iv];
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[1][2][iv]);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,1,2)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,1,2)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][0][iv])*qh[iv];
 
@@ -2322,7 +2332,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][0][iv])*qh[iv];
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][0][iv]);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,2,0)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,2,0)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][1][iv])*qh[iv];
 
@@ -2370,7 +2380,7 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][1][iv])*qh[iv];
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][1][iv]);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,2,1)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,2,1)] = -sthtmp[iv];
 
 __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][2][iv]+ r3loc)*qh[iv] -p0[iv] ;
 
@@ -2418,6 +2428,6 @@ __targetILP__(iv) sthtmp[iv] = 2.0*xiloc*(q[2][2][iv]+ r3loc)*qh[iv] -p0[iv] ;
 
 __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][2][iv] + r3loc);
 
-__targetILP__(iv) sth[ADR3X3(tc_nSites,baseIndex+iv,2,2)] = -sthtmp[iv];
+ __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,2,2)] = -sthtmp[iv];
 
 }

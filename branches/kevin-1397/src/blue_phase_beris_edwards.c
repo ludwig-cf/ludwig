@@ -264,12 +264,10 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
   int baseIndex;
 
-  __targetTLP__(baseIndex,tc_nSites){
+  __targetTLP__(baseIndex,tc_nSites) {
 
     int iv=0;
     int i;
-
-
 
     int ia, ib, id;
     int indexj[VVL], indexk[VVL];
@@ -357,35 +355,35 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
 	int ia, ib;
 
-	__targetILP__(iv) q[X][X][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)];
-	__targetILP__(iv) q[X][Y][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)];
-	__targetILP__(iv) q[X][Z][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)];
+	__targetILP__(iv) q[X][X][iv] = qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)];
+	__targetILP__(iv) q[X][Y][iv] = qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)];
+	__targetILP__(iv) q[X][Z][iv] = qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)];
 	__targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
-	__targetILP__(iv) q[Y][Y][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)];
-	__targetILP__(iv) q[Y][Z][iv] = qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)];
+	__targetILP__(iv) q[Y][Y][iv] = qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)];
+	__targetILP__(iv) q[Y][Z][iv] = qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)];
 	__targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
 	__targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
 	__targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
 
 	for (ia = 0; ia < NVECTOR; ia++) {
-	  __targetILP__(iv) dq[ia][X][X][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XX,ia)];
-	  __targetILP__(iv) dq[ia][X][Y][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XY,ia)];
-	  __targetILP__(iv) dq[ia][X][Z][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,XZ,ia)];
+	  __targetILP__(iv) dq[ia][X][X][iv] = graddata[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,XX,ia)];
+	  __targetILP__(iv) dq[ia][X][Y][iv] = graddata[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,XY,ia)];
+	  __targetILP__(iv) dq[ia][X][Z][iv] = graddata[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,XZ,ia)];
 	  __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-	  __targetILP__(iv) dq[ia][Y][Y][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,YY,ia)];
-	  __targetILP__(iv) dq[ia][Y][Z][iv] = graddata[FGRDADR(tc_nSites,NQAB,baseIndex+iv,YZ,ia)];
+	  __targetILP__(iv) dq[ia][Y][Y][iv] = graddata[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,YY,ia)];
+	  __targetILP__(iv) dq[ia][Y][Z][iv] = graddata[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,YZ,ia)];
 	  __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
 	  __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
 	  __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
 	}
 	
-	__targetILP__(iv) dsq[X][X][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)];
-	__targetILP__(iv) dsq[X][Y][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)];
-	__targetILP__(iv) dsq[X][Z][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)];
+	__targetILP__(iv) dsq[X][X][iv] = graddelsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)];
+	__targetILP__(iv) dsq[X][Y][iv] = graddelsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)];
+	__targetILP__(iv) dsq[X][Z][iv] = graddelsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)];
 	__targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
-	__targetILP__(iv) dsq[Y][Y][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)];
-	__targetILP__(iv) dsq[Y][Z][iv] = graddelsq[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)];
+	__targetILP__(iv) dsq[Y][Y][iv] = graddelsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)];
+	__targetILP__(iv) dsq[Y][Z][iv] = graddelsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)];
 	__targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
 	__targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
 	__targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
@@ -413,54 +411,64 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	   * inline above function
 	   * TODO add lees edwards support*/
 
-	    int im1[VVL];
-	    int ip1[VVL];
+	  int im1[VVL];
+	  int ip1[VVL];
 	  __targetILP__(iv)  im1[iv] = targetIndex3D(coordschunk[X][iv]-1,coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	  __targetILP__(iv)  ip1[iv] = targetIndex3D(coordschunk[X][iv]+1,coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	  
 
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[X][X][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],X)] - hydrou[HYADR(tc_nSites,3,im1[iv],X)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[X][X][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],X)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],X)]);
+	    }
 	  }
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[Y][X][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Y)] - hydrou[HYADR(tc_nSites,3,im1[iv],Y)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[Y][X][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],Y)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],Y)]);
+	    }
 	  }
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[Z][X][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Z)] - hydrou[HYADR(tc_nSites,3,im1[iv],Z)]);
-	  
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[Z][X][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],Z)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],Z)]);
+	    }
+	  }
+
 	  __targetILP__(iv) im1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
 	  __targetILP__(iv) ip1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+1,coordschunk[Z][iv],tc_Nall);
 	  
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[X][Y][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],X)] - hydrou[HYADR(tc_nSites,3,im1[iv],X)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[X][Y][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],X)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],X)]);
+	    }
 	  }
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[Y][Y][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Y)] - hydrou[HYADR(tc_nSites,3,im1[iv],Y)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[Y][Y][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],Y)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],Y)]);
+	    }
 	  }
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[Z][Y][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Z)] - hydrou[HYADR(tc_nSites,3,im1[iv],Z)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[Z][Y][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],Z)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],Z)]);
+	    }
 	  }
 	  
 	  __targetILP__(iv) im1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
 	  __targetILP__(iv) ip1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+1,tc_Nall);
 	  
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[X][Z][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],X)] - hydrou[HYADR(tc_nSites,3,im1[iv],X)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[X][Z][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],X)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],X)]);
+	    }
 	  }
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[Y][Z][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Y)] - hydrou[HYADR(tc_nSites,3,im1[iv],Y)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[Y][Z][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],Y)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],Y)]);
+	    }
 	  }
-	  __targetILP__(iv){ 
-	    if (includeSite[iv])
-	      w[Z][Z][iv] = 0.5*(hydrou[HYADR(tc_nSites,3,ip1[iv],Z)] - hydrou[HYADR(tc_nSites,3,im1[iv],Z)]);
+	  __targetILP__(iv) { 
+	    if (includeSite[iv]) {
+	      w[Z][Z][iv] = 0.5*(hydrou[addr_rank1(tc_nSites,3,ip1[iv],Z)] - hydrou[addr_rank1(tc_nSites,3,im1[iv],Z)]);
+	    }
 	  }
 
 	  /* Enforce tracelessness */
@@ -496,7 +504,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
 	/* Fluctuating tensor order parameter */
 
-    if (noise_on) {
+	if (noise_on) {
 
 #ifdef __NVCC__
       printf("Error: noise is not yet supported for CUDA\n");
@@ -521,62 +529,81 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
       
       }
 #endif
-    }
-
-    /* Here's the full hydrodynamic update. */
-	  
-    __targetILP__(iv) indexj[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
-    __targetILP__(iv) indexk[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
-
-
-    __targetILP__(iv){
-      if (includeSite[iv])
-	q[X][X][iv] += dt*(s[X][X][iv] + tc_gamma*h[X][X][iv] + chi_qab[X][X][iv]
-			       - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,XX)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,XX)]
-			       - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,XX)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],XX)]
-			       - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,XX)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],XX)]);
-    }
-
-    __targetILP__(iv){
-      if (includeSite[iv])
-	q[X][Y][iv] += dt*(s[X][Y][iv] + tc_gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
-				 - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,XY)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,XY)]
-				 - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,XY)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],XY)]
-				 - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,XY)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],XY)]);
-    }
-	
-    __targetILP__(iv){
-      if (includeSite[iv])
-	    q[X][Z][iv] += dt*(s[X][Z][iv] + tc_gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
-			       - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)]
-			       - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],XZ)]
-			       - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,XZ)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],XZ)]);
-    }
-	
-    __targetILP__(iv){
-	    if (includeSite[iv])
-	      q[Y][Y][iv] += dt*(s[Y][Y][iv] + tc_gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
-				 - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,YY)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,YY)]
-				 - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,YY)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],YY)]
-				 - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,YY)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],YY)]);
-    }
-	
-    __targetILP__(iv){
-	    if (includeSite[iv])
-	      q[Y][Z][iv] += dt*(s[Y][Z][iv] + tc_gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
-				 - fluxe[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)] + fluxw[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)]
-				 - fluxy[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)] + fluxy[ADVADR(tc_nSites,nf,indexj[iv],YZ)]
-				 - fluxz[ADVADR(tc_nSites,nf,baseIndex+iv,YZ)] + fluxz[ADVADR(tc_nSites,nf,indexk[iv],YZ)]);
-    }
-	
-	
-	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XX)] = q[X][X][iv];
-	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XY)] = q[X][Y][iv];
-	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,XZ)] = q[X][Z][iv];
-	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YY)] = q[Y][Y][iv];
-	__targetILP__(iv) qdata[FLDADR(tc_nSites,NQAB,baseIndex+iv,YZ)] = q[Y][Z][iv];
-
 	}
+
+	/* Here's the full hydrodynamic update. */
+	  
+	__targetILP__(iv) indexj[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
+	__targetILP__(iv) indexk[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
+
+
+	__targetILP__(iv) {
+	  if (includeSite[iv]) {
+	    q[X][X][iv] += dt*(s[X][X][iv] + tc_gamma*h[X][X][iv] + chi_qab[X][X][iv]
+			       - fluxe[addr_rank1(tc_nSites,nf,baseIndex+iv,XX)]
+			   + fluxw[addr_rank1(tc_nSites,nf,baseIndex+iv,XX)]
+			   - fluxy[addr_rank1(tc_nSites,nf,baseIndex+iv,XX)]
+			   + fluxy[addr_rank1(tc_nSites,nf,indexj[iv],XX)]
+			   - fluxz[addr_rank1(tc_nSites,nf,baseIndex+iv,XX)]
+			   + fluxz[addr_rank1(tc_nSites,nf,indexk[iv],XX)]);
+      }
+    }
+
+    __targetILP__(iv) {
+      if (includeSite[iv]) {
+	q[X][Y][iv] += dt*(s[X][Y][iv] + tc_gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
+			   - fluxe[addr_rank1(tc_nSites,nf,baseIndex+iv,XY)]
+			   + fluxw[addr_rank1(tc_nSites,nf,baseIndex+iv,XY)]
+			   - fluxy[addr_rank1(tc_nSites,nf,baseIndex+iv,XY)]
+			   + fluxy[addr_rank1(tc_nSites,nf,indexj[iv],XY)]
+			   - fluxz[addr_rank1(tc_nSites,nf,baseIndex+iv,XY)]
+			   + fluxz[addr_rank1(tc_nSites,nf,indexk[iv],XY)]);
+      }
+    }
+	
+    __targetILP__(iv) {
+      if (includeSite[iv]) {
+	q[X][Z][iv] += dt*(s[X][Z][iv] + tc_gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
+			   - fluxe[addr_rank1(tc_nSites,nf,baseIndex+iv,XZ)]
+			   + fluxw[addr_rank1(tc_nSites,nf,baseIndex+iv,XZ)]
+			   - fluxy[addr_rank1(tc_nSites,nf,baseIndex+iv,XZ)]
+			   + fluxy[addr_rank1(tc_nSites,nf,indexj[iv],XZ)]
+			   - fluxz[addr_rank1(tc_nSites,nf,baseIndex+iv,XZ)]
+			   + fluxz[addr_rank1(tc_nSites,nf,indexk[iv],XZ)]);
+      }
+    }
+	
+    __targetILP__(iv) {
+      if (includeSite[iv]) {
+	q[Y][Y][iv] += dt*(s[Y][Y][iv] + tc_gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
+			   - fluxe[addr_rank1(tc_nSites,nf,baseIndex+iv,YY)]
+			   + fluxw[addr_rank1(tc_nSites,nf,baseIndex+iv,YY)]
+			   - fluxy[addr_rank1(tc_nSites,nf,baseIndex+iv,YY)]
+			   + fluxy[addr_rank1(tc_nSites,nf,indexj[iv],YY)]
+			   - fluxz[addr_rank1(tc_nSites,nf,baseIndex+iv,YY)]
+			   + fluxz[addr_rank1(tc_nSites,nf,indexk[iv],YY)]);
+      }
+    }
+	
+    __targetILP__(iv) {
+      if (includeSite[iv]) {
+	q[Y][Z][iv] += dt*(s[Y][Z][iv] + tc_gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
+			   - fluxe[addr_rank1(tc_nSites,nf,baseIndex+iv,YZ)]
+			   + fluxw[addr_rank1(tc_nSites,nf,baseIndex+iv,YZ)]
+			   - fluxy[addr_rank1(tc_nSites,nf,baseIndex+iv,YZ)]
+			   + fluxy[addr_rank1(tc_nSites,nf,indexj[iv],YZ)]
+			   - fluxz[addr_rank1(tc_nSites,nf,baseIndex+iv,YZ)]
+			   + fluxz[addr_rank1(tc_nSites,nf,indexk[iv],YZ)]);
+      }
+    }
+	
+	
+    __targetILP__(iv) qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)] = q[X][X][iv];
+    __targetILP__(iv) qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)] = q[X][Y][iv];
+    __targetILP__(iv) qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)] = q[X][Z][iv];
+    __targetILP__(iv) qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)] = q[Y][Y][iv];
+    __targetILP__(iv) qdata[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)] = q[Y][Z][iv];
+
       }
   }
 

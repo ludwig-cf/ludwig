@@ -8,6 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2010-2015 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -1232,10 +1233,6 @@ __targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_ty
 __targetHost__ int colloids_number_sites(colloids_info_t *cinfo)
 {
   
-
-  int ia;
-  int i, j, ij, ji;
-
   colloid_t * pc;
   colloid_link_t * p_link;
 
@@ -1273,10 +1270,6 @@ __targetHost__ int colloids_number_sites(colloids_info_t *cinfo)
 
 __targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo)
 {
-  
-
-  int ia;
-  int i, j, ij, ji;
 
   colloid_t * pc;
   colloid_link_t * p_link;

@@ -45,22 +45,23 @@ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux,
 
   int baseIndex;
 
-  __targetTLP__(baseIndex,tc_nSites){
+  __targetTLP__(baseIndex, tc_nSites) {
 
     int iv=0;
     int i;
     int n;
-
     int indexf[VVL];
-
     
     double mask[VVL], maskw[VVL], maske[VVL], masky[VVL], maskz[VVL];
     
     int coords[3];
-    targetCoords3D(coords,tc_Nall,baseIndex);
-    
-    // if not a halo site:
+    int coordschunk[3][VVL];
+    int includeSite[VVL];
+    int index1[VVL];
+    int nsites;
 
+    nsites = le_nsites();
+    targetCoords3D(coords,tc_Nall,baseIndex);
 
 #if VVL == 1    
     /*restrict operation to the interior lattice sites*/ 
@@ -71,92 +72,102 @@ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux,
 	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
 	coords[2] < (tc_Nall[Z]-tc_nhalo)) 
 #endif
-{
-
-
+      {
 	/* work out which sites in this chunk should be included */
-	int includeSite[VVL];
-	__targetILP__(iv) includeSite[iv]=0;
-	
-	int coordschunk[3][VVL];
-		
-	__targetILP__(iv){
-	  for(i=0;i<3;i++){
+
+	__targetILP__(iv) includeSite[iv] = 0;	
+
+	__targetILP__(iv) {
+	  for (i = 0; i < 3; i++) {
 	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	    coordschunk[i][iv]=coords[i];
+	    coordschunk[i][iv] = coords[i];
 	  }
 	}
 
-	__targetILP__(iv){
-	  
+	__targetILP__(iv) {
 	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
 	       coordschunk[1][iv] >= (tc_nhalo-1) &&
 	       coordschunk[2][iv] >= (tc_nhalo-1) &&
 	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
 	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
-	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
-	    
+	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo))) {
 	    includeSite[iv]=1;
+	  }
 	}
-
-	
-
-      int index1[VVL];
       
+	__targetILP__(iv) {
+	  index1[iv] = targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+	}
+	__targetILP__(iv) {
+	  if (includeSite[iv]) {
+	    maskw[iv] = (map->status[index1[iv]] == MAP_FLUID);    
+	  }
+	}
       
-      __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  maskw[iv] = (map->status[index1[iv]]==MAP_FLUID);    
+	__targetILP__(iv) {
+	  index1[iv] = targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+	}
+      __targetILP__(iv) {
+	if (includeSite[iv]) {
+	  maske[iv] = (map->status[index1[iv]] == MAP_FLUID);
+	}
       }
       
-      __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  maske[iv] = (map->status[index1[iv]]==MAP_FLUID);
-      }    
-      
-      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  masky[iv] = (map->status[index1[iv]]==MAP_FLUID);
-      }    
-      
-      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv]) 
-	  maskz[iv] = (map->status[index1[iv]]==MAP_FLUID);    
-      }      
-      
-      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  mask[iv] = (map->status[index1[iv]]==MAP_FLUID);  
+      __targetILP__(iv) {
+	index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
+      }
+      __targetILP__(iv) {
+	if (includeSite[iv]) {
+	  masky[iv] = (map->status[index1[iv]] == MAP_FLUID);
+	}
       }  
       
-      for (n = 0;  n < nf; n++) {
-	
-	__targetILP__(iv) indexf[iv] = ADVADR(tc_nSites,nf,baseIndex+iv,n);
-
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fw[indexf[iv]] *= mask[iv]*maskw[iv];
+      __targetILP__(iv) {
+	index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
+      }
+      __targetILP__(iv) {
+	if (includeSite[iv]) { 
+	  maskz[iv] = (map->status[index1[iv]] == MAP_FLUID);
 	}
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fe[indexf[iv]] *= mask[iv]*maske[iv];
-	}
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fy[indexf[iv]] *= mask[iv]*masky[iv];
-	}
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fz[indexf[iv]] *= mask[iv]*maskz[iv];
+      }      
+      
+      __targetILP__(iv) {
+	index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
+      }
+      __targetILP__(iv) {
+	if (includeSite[iv]) {
+	  mask[iv] = (map->status[index1[iv]] == MAP_FLUID);  
 	}
       }
- }
-  } 
+      
+      for (n = 0;  n < nf; n++) {
+	__targetILP__(iv) {
+	  indexf[iv] = addr_rank1(nsites,nf,baseIndex+iv,n);
+	}
+	__targetILP__(iv) {
+	  if (includeSite[iv]) {
+	    flux->fw[indexf[iv]] *= mask[iv]*maskw[iv];
+	  }
+	}
+	__targetILP__(iv) {
+	  if (includeSite[iv]) {
+	    flux->fe[indexf[iv]] *= mask[iv]*maske[iv];
+	  }
+	}
+	__targetILP__(iv) {
+	  if (includeSite[iv]) {
+	    flux->fy[indexf[iv]] *= mask[iv]*masky[iv];
+	  }
+	}
+	__targetILP__(iv) {
+	  if (includeSite[iv]) {
+	    flux->fz[indexf[iv]] *= mask[iv]*maskz[iv];
+	  }
+	}
+      }
+      }
+    /* Next site */
+  }
 
   return;
 }

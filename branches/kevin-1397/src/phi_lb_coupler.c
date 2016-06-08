@@ -29,7 +29,8 @@
  *
  *****************************************************************************/
 
-__target__ int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
+__target__
+int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
 
   int iv=0; 
 
@@ -53,18 +54,15 @@ __target__ int phi_lb_to_field_site(double * phi, double * f, const int baseInde
       coords[1] < tc_Nall[Y]-tc_nhalo &&
       coords[2] < tc_Nall[Z]-tc_nhalo)
 #endif
-
-
     {
-     for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) phi0[iv] += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+iv, LB_PHI, p)];
 
-    }
+      for (p = 0; p < NVEL; p++) {
+	__targetILP__(iv) phi0[iv] += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+iv, LB_PHI, p)];
+      }
 
-    
-     __targetILP__(iv) phi[baseIndex+iv]=phi0[iv];
-
-    assert(0); /* Has been vectorised */
+      __targetILP__(iv) {
+	phi[addr_rank1(tc_nSites, 1, baseIndex+iv, 0)] = phi0[iv];
+      }
     }
 
   return 0;

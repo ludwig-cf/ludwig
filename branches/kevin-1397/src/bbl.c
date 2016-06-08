@@ -300,7 +300,6 @@ __targetEntry__ void bbl_pass0_lattice( lb_t * t_lb, colloids_info_t * cinfo) {
  __targetTLPNoStride__(baseIndex,tc_nSites){
 
   int ia, ib, p;
-  int nextra = 1;
 
   double r[3], r0[3], rb[3], ub[3], wxrb[3];
   double udotc, sdotq;
