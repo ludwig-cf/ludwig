@@ -550,7 +550,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
       /* update the colloid force using the relavent part of the potential */
 	for (ia = 0; ia < 3; ia++) {
-	  pc->force[ia]+=fac*pth[PTHADR(nSites,p_link->i,ia,idir)];
+	  pc->force[ia]+=fac*pth[addr_rank2(nSites,3,3,p_link->i,ia,idir)];
 	}
 
     }

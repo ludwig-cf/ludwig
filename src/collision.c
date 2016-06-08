@@ -474,7 +474,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
 
   double* t_f=lb->f;
 
-  int p, m;                        /* velocity index */
+  int m;
   int ia, ib;                      /* indices ("alphabeta") */
   int iv=0;                          /* SIMD loop counter */
   double mode[NVEL*VVL];           /* Modes; hydrodynamic + ghost */
@@ -487,7 +487,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
   double force[3*VVL];             /* External force */
   double tr_s[VVL], tr_seq[VVL];   /* SIMD vectors for stress trace */
 
-  
+
   rdim = 1.0/NDIM;
   
   
@@ -497,7 +497,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
   /* force */
   for (ia = 0; ia < 3; ia++) {
     __targetILP__(iv) force[ia*VVL+iv] = (tc_force_global[ia] 
-					  + t_force[HYADR(tc_nSites,3,baseIndex+iv,ia)]);
+					  + t_force[addr_rank1(le_nsites(),3,baseIndex+iv,ia)]);
   }
   
   /* Compute all the modes */
@@ -644,7 +644,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
   /* velocity */
   for (ia = 0; ia < 3; ia++) {   
     __targetILP__(iv) {
-      t_velocity[HYADR(tc_nSites,3,baseIndex+iv,ia)] = u[ia*VVL+iv];
+      t_velocity[addr_rank1(le_nsites(),3,baseIndex+iv,ia)] = u[ia*VVL+iv];
     }
   }
   

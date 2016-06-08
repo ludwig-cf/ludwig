@@ -128,11 +128,11 @@ __targetHost__ int gradient_3d_7pt_solid_d2(const int nop,
 
   int nextra;
   int nsites;
-  #ifdef __NVCC__
+#ifdef __NVCC__
   int method = 3;
-  #else
+#else
   int method = 1;
-  #endif
+#endif
 
   assert(nop == NQAB);
   assert(map_);
@@ -1020,7 +1020,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	/* XY => ia = 0 XZ => ia = 1 YZ => ia = 2 ... */
 	
 	ia = normal[0]/2 + normal[1]/2 - 1;
-	//assert(ia == 0 || ia == 1 || ia == 2);
+	assert(ia == 0 || ia == 1 || ia == 2);
 	
 	for (n1 = 0; n1 < 2*NSYMM; n1++) {
 	  x18[n1] = 0.0;
