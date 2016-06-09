@@ -17,7 +17,7 @@
 
 CC=cc
 MPICC=cc
-CFLAGS=-O2 -Wall
+CFLAGS=-O2 
 
 AR = ar
 ARFLAGS = -cru
