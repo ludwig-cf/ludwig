@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#PBS -N script
+#PBS -l walltime=00:15:00
+
+export BG_THREADLAYOUT=1
+export BG_SHAREDMEMSIZE=32
+export BG_ALLOW_CACHELINE_LOCKING=1
+export BG_L2LOCK_L1_ONLY=1
+export L1P_POLICY=std
+
+cd $PBS_O_WORKDIR
+
+
+# Set the number of parallel tasks
+export PTASKS=2048
+export PTASKS_PER_NODE=16
+# This is a pure MPI job so the number of OpenMP threads is 1
+export OMP_NUM_THREADS=1
+ 
+# Make sure the block ID is correct
+BLOCKID=${PBS_QUEUE/-ga/}
+ 
+# Run the job on the correct block using 2048 MPI tasks
+runjob --block $BLOCKID -n $PTASKS -p $PTASKS_PER_NODE --exe ./Ludwig.exe ./serial-auto-c01.inp
+
+#runjob --block $PBS_QUEUE --np 2048 --ranks-per-node=16 --exe ./Ludwig.exe ./serial-auto-c01.inp
