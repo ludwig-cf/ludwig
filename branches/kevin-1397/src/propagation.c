@@ -24,6 +24,7 @@
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
 static int lb_propagate_d3q19(lb_t * lb);
+__host__ int lb_model_swapf(lb_t * lb);
 
 /*****************************************************************************
  *
@@ -33,10 +34,9 @@ static int lb_propagate_d3q19(lb_t * lb);
  *
  *****************************************************************************/
 
-__targetHost__ int lb_propagation(lb_t * lb) {
+__host__ int lb_propagation(lb_t * lb) {
 
   assert(lb);
-
 
   if (NVEL ==  9) lb_propagate_d2q9(lb);
   if (NVEL == 15) lb_propagate_d3q15(lb);
@@ -163,7 +163,7 @@ __targetEntry__  void lb_propagate_d3q19_lattice(lb_t* t_lb) {
 }
 
 
-static int lb_propagate_d3q19(lb_t * lb) {
+static __host__ int lb_propagate_d3q19(lb_t * lb) {
 
   int nhalo;
   int nlocal[3];
@@ -180,8 +180,7 @@ static int lb_propagate_d3q19(lb_t * lb) {
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
   int nDist;
-  copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
-
+  lb_ndist(lb, &nDist);
 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
   copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
@@ -190,24 +189,12 @@ static int lb_propagate_d3q19(lb_t * lb) {
   copyConstToTarget(tc_cv,cv, NVEL*3*sizeof(int)); 
 
   TIMER_start(TIMER_PROP_KERNEL);
-  lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb);
+  lb_propagate_d3q19_lattice __targetLaunch__(nSites) (lb->target);
   targetSynchronize();
   TIMER_stop(TIMER_PROP_KERNEL);
 
-  /* swap f and fprime */
-  double* tmpptr1;
-  double* tmpptr2;
-  copyFromTarget(&tmpptr1,&(lb->f),sizeof(double*)); 
-  copyFromTarget(&tmpptr2,&(lb->fprime),sizeof(double*)); 
-  
-  double* tmp=tmpptr2;
-  tmpptr2=tmpptr1;
-  tmpptr1=tmp;
-  
-  copyToTarget(&(lb->f),&tmpptr1,sizeof(double*)); 
-  copyToTarget(&(lb->fprime),&tmpptr2,sizeof(double*)); 
-  /* end swap f and fprime */
-  
+  lb_model_swapf(lb);
+
   return 0;
 }
 
@@ -378,6 +365,44 @@ static int lb_propagate_d3q15(lb_t * lb) {
 	}
       }
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_model_swapf
+ *
+ *  Switch the "f" and "fprime" pointers.
+ *  Intended for use after the propagation step.
+ *
+ *****************************************************************************/
+
+__host__ int lb_model_swapf(lb_t * lb) {
+
+  int ndevice;
+  double * tmp;
+
+  assert(lb);
+  assert(lb->target);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    tmp = lb->f;
+    lb->f = lb->fprime;
+    lb->fprime = tmp;
+  }
+  else {
+    double * tmp1;
+    double * tmp2;
+
+    copyFromTarget(&tmp1, &lb->target->f, sizeof(double *)); 
+    copyFromTarget(&tmp2, &lb->target->fprime, sizeof(double *)); 
+
+    copyToTarget(&lb->target->f, &tmp2, sizeof(double *));
+    copyToTarget(&lb->target->fprime, &tmp1, sizeof(double *));
   }
 
   return 0;

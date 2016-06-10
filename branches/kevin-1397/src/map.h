@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,8 +22,9 @@ enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 
 typedef struct map_s map_t;
 
-__targetHost__ int map_create(int ndata, map_t ** pobj);
-__targetHost__ void map_free(map_t * obj);
+__host__ int map_create(int ndata, map_t ** pobj);
+__host__ int map_free(map_t * obj);
+__host__ int map_memcpy(map_t * map, int flag);
 
 __targetHost__ int map_status(map_t * obj, int index, int * status);
 __targetHost__ int map_status_set(map_t * obj, int index, int status);

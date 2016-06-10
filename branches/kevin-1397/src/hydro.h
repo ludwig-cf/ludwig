@@ -23,6 +23,7 @@ typedef struct hydro_s hydro_t;
 __targetHost__ int hydro_create(int nhalocomm, hydro_t ** pobj);
 __targetHost__ void hydro_free(hydro_t * obj);
 __targetHost__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out);
+__host__ int hydro_memcpy(hydro_t * ibj, int flag);
 __targetHost__ int hydro_io_info(hydro_t * obj, io_info_t ** info);
 
 __targetHost__ int hydro_u_halo(hydro_t * obj);

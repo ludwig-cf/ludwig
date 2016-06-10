@@ -40,6 +40,7 @@
 #include "map_s.h"
 #include "timer.h"
 
+#include "symmetric.h"
 
 
 static int nmodes_ = NVEL;               /* Modes to use in collsion stage */
@@ -54,7 +55,8 @@ static double rtau_[NVEL];      /* Inverse relaxation times */
 static double noise_var[NVEL];  /* Noise variances */
 
 static int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
-static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
+static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
+			       noise_t * noise, fe_symm_t * fe);
 
 static int collision_fluctuations(noise_t * noise, int index,
 				  double shat[3][3], double ghat[NVEL]);
@@ -74,19 +76,6 @@ __target__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double 
 
 
 
-typedef double (*mu_fntype)(const int, const int, const double*, const double*);
-typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
-
-__targetHost__ void get_chemical_stress_target(pth_fntype* t_chemical_stress);
-__targetHost__ void get_chemical_potential_target(mu_fntype* t_chemical_potential);
-__targetHost__ void symmetric_phi(double** address_of_ptr);
-__targetHost__ void symmetric_gradphi(double** address_of_ptr);
-__targetHost__ void symmetric_delsqphi(double** address_of_ptr);
-__targetHost__ void symmetric_t_phi(double** address_of_ptr);
-__targetHost__ void symmetric_t_gradphi(double** address_of_ptr);
-__targetHost__ void symmetric_t_delsqphi(double** address_of_ptr);
-__targetHost__ char symmetric_in_use();
-
 /* Constants */
 
 __targetConst__ double tc_rtau_shear;
@@ -102,11 +91,6 @@ __targetConst__ double tc_force_global[3];
 __targetConst__ double tc_q_[NVEL][3][3];
 __targetConst__ int tc_nmodes_; 
 
-/* target copies of fields */
-static double *t_phi; 
-static double *t_delsqphi; 
-static double *t_gradphi; 
-
 /*****************************************************************************
  *
  *  lb_collide
@@ -117,7 +101,9 @@ static double *t_gradphi;
  * 
  *****************************************************************************/
 
-int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
+__host__
+int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
+	       fe_t * fe) {
 
   int ndist;
 
@@ -126,18 +112,14 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   assert(lb);
   assert(map);
 
-
-  //lb_ndist(lb, &ndist);
-  copyFromTarget(&ndist,&(lb->ndist),sizeof(int)); 
+  lb_ndist(lb, &ndist);
   lb_collision_relaxation_times_set(noise);
 
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
-  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise);
-
+  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise, fe);
 
   return 0;
 }
-
 
 
 /*****************************************************************************
@@ -162,11 +144,10 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
  *
  *****************************************************************************/
 
-__target__ void lb_collision_mrt_site( double* __restrict__ t_f, 
-				       const double* __restrict__ t_force, 
-				       double* __restrict__ t_velocity, char * t_status,
-				       noise_t * noise, int noise_on,
-				       const int baseIndex){
+__target__ void lb_collision_mrt_site(lb_t * lb, 
+				      hydro_t * hydro, map_t * map,
+				      noise_t * noise, int noise_on,
+				      const int baseIndex){
   
   int p, m;                        /* velocity index */
   int ia, ib;                      /* indices ("alphabeta") */
@@ -198,7 +179,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
       fullchunk = 0;
     }
     else {
-      if (t_status[baseIndex+iv] != MAP_FLUID) {
+      if (map->status[baseIndex+iv] != MAP_FLUID) {
 	includeSite[iv] = 0;
 	fullchunk = 0;
       }
@@ -225,14 +206,14 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     /* distribution */
     for (p = 0; p < NVEL; p++) {
       __targetILP__(iv) fchunk[p*VVL+iv] = 
-	t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
+	lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
     }
     /* force */
 
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) {
 	force[ia*VVL+iv] = tc_force_global[ia] 
-	  + t_force[addr_hydro(baseIndex+iv, ia)];
+	  + hydro->f[addr_hydro(baseIndex+iv, ia)];
       }
     }
   }
@@ -242,14 +223,14 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 	/* distribution */
 	for (p = 0; p < NVEL; p++) {
 	  fchunk[p*VVL+iv] = 
-	    t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
+	    lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
 	}
 
 	/* force */
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia*VVL+iv] = tc_force_global[ia] 
-	    + t_force[addr_hydro(baseIndex+iv, ia)];
+	    + hydro->f[addr_hydro(baseIndex+iv, ia)];
 	}
       }
     }
@@ -428,14 +409,14 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
     /* distribution */
     for (p = 0; p < NVEL; p++) {
       __targetILP__(iv) { 
-	t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ]
+	lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ]
 	  = fchunk[p*VVL+iv];
       }
     }
     /* velocity */
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) {
-	t_velocity[addr_hydro(baseIndex+iv, ia)] = u[ia*VVL+iv];
+	hydro->u[addr_hydro(baseIndex+iv, ia)] = u[ia*VVL+iv];
       }
     }
   }
@@ -444,13 +425,13 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
       if (includeSite[iv]) {
 	/* distribution */
 	for (p = 0; p < NVEL; p++) {
-	  t_f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ]
+	  lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ]
 	    = fchunk[p*VVL+iv]; 
 	}
 	/* velocity */
 
 	for (ia = 0; ia < 3; ia++) {
-	  t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+	  hydro->u[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
 	}
       }
     }
@@ -662,16 +643,15 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
  *
  *****************************************************************************/
 
-__targetEntry__ void lb_collision_mrt_lattice(lb_t* t_lb, 
-					      const double* __restrict__ t_force, 
-					      double* __restrict__ t_velocity,
-					      char * t_status,
+__targetEntry__ void lb_collision_mrt_lattice(lb_t * lb, 
+					      hydro_t * hydro, 
+					      map_t * map,
 					      noise_t * noise, int noise_on,
 					      int nSites) {
   int baseIndex = 0;
 
   __targetTLP__(baseIndex, nSites) {
-    lb_collision_mrt_site(t_lb->f, t_force, t_velocity, t_status, noise,
+    lb_collision_mrt_site(lb, hydro, map, noise,
 			  noise_on, baseIndex);
   }
 
@@ -728,19 +708,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   checkTargetError("constants");
 
-  /* Field management
-   * for GPU version, we use the data already existing on the target 
-   * for C version, we put data on the target (for now).
-   * ultimitely GPU and C versions will follow the same pattern */
-
-#ifndef KEEPHYDROONTARGET
-  copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
-#endif
-
-  copyToTarget(map->t_status,map->status,nSites*sizeof(char)); 
-
-  /* end field management */
-
   noise_present(noise, NOISE_RHO, &noise_on);
 
 #ifdef __NVCC__ 
@@ -752,31 +719,23 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
-
 #ifdef FASTCOLLISION
   if (noise_on){
     fatal("Error: fast mrt collision does not support noise yet\n");
   }
   lb_collision_mrt_lattice_fast __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,nSites);
 #else
-  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,map->t_status,noise,noise_on,nSites);
+
+  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->target, hydro->tcopy, map->target, noise,noise_on,nSites);
+
 #endif
 
   targetSynchronize();
 
   TIMER_stop(TIMER_COLLIDE_KERNEL);
 
-
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
-#endif
-
   return 0;
 }
-
-
-
-
 
 
 /*****************************************************************************
@@ -824,16 +783,11 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 #define NDIST 2 /* for binary collision */
 
 
-__target__ void lb_collision_binary_site( double* __restrict__ t_f, 
-			      const double* __restrict__ t_force, 
-			      double* __restrict__ t_velocity,
-			      const double* __restrict__ t_phi,
-			      const double* __restrict__ t_gradphi,
-			      const double* __restrict__ t_delsqphi,
-			      pth_fntype* t_chemical_stress,
-			      mu_fntype* t_chemical_potential, 
-			       noise_t * noise, int noise_on,
-			      const int baseIndex){
+__target__ void lb_collision_binary_site(double * __restrict__ t_f, 
+					 hydro_t * hydro,
+					 fe_symm_t * fe,
+					 noise_t * noise, int noise_on,
+					 const int baseIndex){
 
 
   int i, ia, j,m,p;
@@ -927,7 +881,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
     __targetILP__(iv) {
       force[i*VVL+iv] = tc_force_global[i] 
-	+ t_force[vaddr_hydro(baseIndex, i, iv)];
+	+ hydro->f[vaddr_hydro(baseIndex, i, iv)];
       u[i*VVL+iv] = rrho[iv]*(u[i*VVL+iv] + 0.5*force[i*VVL+iv]);  
     }
   }
@@ -935,14 +889,13 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
   for (ia = 0; ia < 3; ia++) {   
     __targetILP__(iv) {
-      t_velocity[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+      hydro->u[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
     }
   }
   
   /* Compute the thermodynamic component of the stress */
-  
-  (*t_chemical_stress)(baseIndex, sth,  t_phi, t_gradphi, t_delsqphi);
-  
+  fe_symm_chemical_stress_target(fe, baseIndex, sth);
+
   /* Relax stress with different shear and bulk viscosity */
   
   __targetILP__(iv){
@@ -1071,12 +1024,11 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
 
   /* Now, the order parameter distribution */
     __targetILP__(iv) {
-    phi[iv]=t_phi[vaddr_rank0(le_nsites(), baseIndex, iv)];
+      phi[iv] = fe->phi->data[vaddr_rank0(le_nsites(), baseIndex, iv)];
     }
 
   __targetILP__(iv){
-    mu[iv] = (*t_chemical_potential)(baseIndex+iv, 0,t_phi,t_delsqphi);
-  
+    fe_symm_chemical_potential_target(fe, baseIndex+iv, mu + iv);
     jphi[X*VVL+iv] = 0.0;
     jphi[Y*VVL+iv] = 0.0;
     jphi[Z*VVL+iv] = 0.0;
@@ -1139,14 +1091,9 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
 }
 
-__targetEntry__ void lb_collision_binary_lattice( lb_t * t_lb, 
-			      const double* __restrict__ t_force, 
-			      double* __restrict__ t_velocity,
-			      const double* __restrict__ t_phi,
-			      const double* __restrict__ t_gradphi,
-			      const double* __restrict__ t_delsqphi,
-			      pth_fntype* t_chemical_stress,
-			      mu_fntype* t_chemical_potential, 
+__targetEntry__ void lb_collision_binary_lattice(lb_t * t_lb, 
+						 hydro_t * hydro,
+						 fe_symm_t * fe,
 					       noise_t * noise, int noise_on){
 
  
@@ -1155,16 +1102,17 @@ __targetEntry__ void lb_collision_binary_lattice( lb_t * t_lb,
   /* partition binary collision kernel across the lattice on the target */
 
   __targetTLP__(baseIndex,tc_nSites){
-    lb_collision_binary_site(t_lb->f, t_force, t_velocity, t_phi, t_gradphi,
-			     t_delsqphi, t_chemical_stress,
-			     t_chemical_potential,noise,noise_on,baseIndex);
+    lb_collision_binary_site(t_lb->f, hydro, fe,
+			     noise,noise_on,baseIndex);
         
   }
   
   return;
 }
 
-int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
+__host__
+int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
+			noise_t * noise, fe_symm_t * fe) {
 
   int Nall[3];
   int nlocal[3];
@@ -1175,11 +1123,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   double rtau2;
   double mobility;
-  double * ptr;
   double force_global[3];
-
-  pth_fntype * t_chemical_stress; 
-  mu_fntype * t_chemical_potential; 
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
@@ -1229,64 +1173,17 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise
 
   checkTargetError("constants");
 
-  if (!symmetric_in_use()){
-    fatal("Error: binary collision is only compatible with symmetric free energy\n");
-  }
-
-  symmetric_t_phi(&t_phi);
-  symmetric_t_gradphi(&t_gradphi);
-  symmetric_t_delsqphi(&t_delsqphi);
-
-
-  /* for GPU version, we use the data already existing on the target 
-   * for C version, we put data on the target (for now).
-   * ultimitely GPU and C versions will follow the same pattern */
-
-
-
-#ifndef KEEPFIELDONTARGET
-
-  symmetric_phi(&ptr);
-  copyToTarget(t_phi,ptr, nSites*sizeof(double)); 
-
-  symmetric_delsqphi(&ptr);
-  copyToTarget(t_delsqphi,ptr,nSites*sizeof(double)); 
-
-  symmetric_gradphi(&ptr);
-  copyToTarget(t_gradphi,ptr,nSites*3*sizeof(double)); 
-
-#endif
-
-
-#ifndef KEEPHYDROONTARGET
-
-  copyToTarget(hydro->t_f,hydro->f,nSites*3*sizeof(double)); 
-
-#endif
-
-  targetMalloc((void**) &t_chemical_potential, sizeof(mu_fntype));
-  get_chemical_potential_target(t_chemical_potential);
-
-  targetMalloc((void**) &t_chemical_stress, sizeof(pth_fntype));
-  get_chemical_stress_target(t_chemical_stress);
-
   if (noise_on) {
 #ifdef __NVCC__ 
     fatal("Error: noise_on is not yet supported for CUDA\n");
 #endif
   }
 
-
   TIMER_start(TIMER_COLLIDE_KERNEL);
-  lb_collision_binary_lattice __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,t_phi,t_gradphi,t_delsqphi,t_chemical_stress,t_chemical_potential,noise,noise_on);
+  lb_collision_binary_lattice __targetLaunch__(nSites) (lb->target, hydro->tcopy, fe, noise, noise_on);
 
   targetSynchronize();
   TIMER_stop(TIMER_COLLIDE_KERNEL);
-
-
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(hydro->u,hydro->t_u,nSites*3*sizeof(double)); 
-#endif
 
   return 0;
 }

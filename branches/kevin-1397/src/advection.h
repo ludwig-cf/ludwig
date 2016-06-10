@@ -20,8 +20,10 @@
 
 typedef struct advflux_s advflux_t;
 
-__targetHost__  int advflux_create(int nf, advflux_t ** pobj);
-__targetHost__  void advflux_free(advflux_t * obj);
+__host__ int advflux_create(int nf, advflux_t ** pobj);
+__host__ int advflux_free(advflux_t * obj);
+__host__ int advflux_memcpy(advflux_t * obj);
+
 __targetHost__  int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
 
 __targetHost__ int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,

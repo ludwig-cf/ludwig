@@ -21,12 +21,13 @@
 #include "map.h"
 #include "noise.h"
 #include "model.h"
+#include "free_energy.h"
 #include "targetDP.h"
 
 typedef enum {RELAXATION_M10, RELAXATION_BGK, RELAXATION_TRT}
   lb_relaxation_enum_t;
 
-__targetHost__ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
+__targetHost__ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise, fe_t * fe);
 __targetHost__ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map);
 __targetHost__ int lb_collision_relaxation_times_set(noise_t * noise);
 

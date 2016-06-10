@@ -1364,7 +1364,7 @@ int blue_phase_random_cf1_init(field_t * fq, const int axis) {
 	  chi[id] = var*chi[id];
 	}
 
-	blue_phase_be_tmatrix_set(tmatrix);
+	beris_edw_tmatrix_set(tmatrix);
 
 	/* Random fluctuation added to tensor order parameter */
 	for (ia = 0; ia < 3; ia++) {

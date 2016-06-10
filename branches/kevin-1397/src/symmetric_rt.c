@@ -10,7 +10,7 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -22,7 +22,6 @@
 #include "coords.h"
 #include "noise.h"
 #include "runtime.h"
-#include "free_energy.h"
 #include "symmetric.h"
 
 #include "physics.h"
@@ -41,61 +40,79 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius);
 
 /****************************************************************************
  *
- *  symmetric_run_time
+ *  fe_symmetric_run_time
  *
  ****************************************************************************/
 
-void symmetric_run_time(void) {
+int fe_symmetric_run_time(field_t * phi, field_grad_t * dphi, fe_t ** fe) {
 
-  double a;
-  double b;
-  double kappa;
+  fe_symm_t * fsymm = NULL;
+  fe_symm_param_t param;
+
+  double sigma;
+  double xi;
+
+  assert(phi);
+  assert(dphi);
+  assert(fe);
 
   info("Symmetric phi^4 free energy selected.\n");
   info("\n");
 
   /* Parameters */
 
-  RUN_get_double_parameter("A", &a);
-  RUN_get_double_parameter("B", &b);
-  RUN_get_double_parameter("K", &kappa);
+  RUN_get_double_parameter("A", &param.a);
+  RUN_get_double_parameter("B", &param.b);
+  RUN_get_double_parameter("K", &param.kappa);
 
   info("Parameters:\n");
-  info("Bulk parameter A      = %12.5e\n", a);
-  info("Bulk parameter B      = %12.5e\n", b);
-  info("Surface penalty kappa = %12.5e\n", kappa);
+  info("Bulk parameter A      = %12.5e\n", param.a);
+  info("Bulk parameter B      = %12.5e\n", param.b);
+  info("Surface penalty kappa = %12.5e\n", param.kappa);
 
-  symmetric_free_energy_parameters_set(a, b, kappa);
+  fe_symm_create(phi, dphi, &fsymm);
+  fe_symm_param_set(fsymm, param);
 
-  info("Surface tension       = %12.5e\n", symmetric_interfacial_tension());
-  info("Interfacial width     = %12.5e\n", symmetric_interfacial_width());
+  fe_symm_interfacial_tension(fsymm, &sigma);
+  fe_symm_interfacial_width(fsymm, &xi);
+
+  info("Surface tension       = %12.5e\n", sigma);
+  info("Interfacial width     = %12.5e\n", xi);
 
   /* Set free energy function pointers. */
+  /*
+  fe_density_set(fe_symm_fed);
+  fe_chemical_potential_set(fe_symm_mu);
+  fe_isotropic_pressure_set(fe_symm_isotropic_pressure);
+  fe_chemical_stress_set(fe_symm_str);
+  */
+  assert(0);
 
-  fe_density_set(symmetric_free_energy_density);
-  fe_chemical_potential_set(symmetric_chemical_potential);
-  fe_isotropic_pressure_set(symmetric_isotropic_pressure);
-  fe_chemical_stress_set(symmetric_chemical_stress);
+  *fe = fsymm;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  symmetric_rt_initial_conditions
+ *  fe_symmetric_rt_initial_conditions
  *
  *****************************************************************************/
 
-int symmetric_rt_initial_conditions(field_t * phi) {
+int fe_symmetric_rt_initial_conditions(fe_symm_t * fe, field_t * phi) {
 
   int p;
   char value[BUFSIZ];
   char filestub[FILENAME_MAX];
   double radius;
+  double xi;
 
   io_info_t * iohandler = NULL;
 
+  assert(fe);
   assert(phi);
+
+  fe_symm_interfacial_width(fe, &xi);
 
   p = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
 
@@ -112,7 +129,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
 
   if (p != 0 && strcmp(value, "block") == 0) {
     info("Initialisng phi as block\n");
-    symmetric_init_block(phi, symmetric_interfacial_width());
+    symmetric_init_block(phi, xi);
   }
 
   if (p != 0 && strcmp(value, "bath") == 0) {
@@ -124,7 +141,7 @@ int symmetric_rt_initial_conditions(field_t * phi) {
     radius = DEFAULT_RADIUS;
     RUN_get_double_parameter("phi_init_drop_radius", &radius);
     info("Initialising droplet radius:     %14.7e\n", radius);
-    symmetric_init_drop(phi, symmetric_interfacial_width(), radius);
+    symmetric_init_drop(phi, xi, radius);
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {

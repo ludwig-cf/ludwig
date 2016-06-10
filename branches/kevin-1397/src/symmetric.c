@@ -26,11 +26,262 @@
 
 #include "pe.h"
 #include "util.h"
-#include "symmetric.h"
+#include "coords.h"
 #include "field_s.h"
 #include "field_grad_s.h"
-#include "coords.h"
 #include "leesedwards.h"
+#include "symmetric.h"
+
+#ifndef OLD_SHIT
+
+/****************************************************************************
+ *
+ *  fe_symm_create
+ *
+ *  fe is the "superclass" free energy pointer.
+ *
+ ****************************************************************************/
+
+__host__ int fe_symm_create(field_t * phi, field_grad_t * dphi,
+			    fe_symm_t ** p) {
+
+  fe_symm_t * obj = NULL;
+
+  assert(phi);
+  assert(dphi);
+
+  obj = (fe_symm_t *) calloc(1, sizeof(fe_symm_t));
+  if (obj == NULL) fatal("calloc(fe_symm_t) failed\n");
+
+  obj->phi = phi;
+  obj->dphi = dphi;
+
+  *p = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_symm_free
+ *
+ *****************************************************************************/
+
+__host__ int fe_symm_free(fe_symm_t * fe) {
+
+  assert(fe);
+
+  free(fe);
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_symm_param_set
+ *
+ *  No constraints are placed on the parameters here, so the caller is
+ *  responsible for making sure they are sensible.
+ *
+ ****************************************************************************/
+
+__host__ int fe_symm_param_set(fe_symm_t * fe, fe_symm_param_t values) {
+
+  assert(fe);
+
+  fe->param.a = values.a;
+  fe->param.b = values.b;
+  fe->param.kappa = values.kappa;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_symm_param
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_symm_param(fe_symm_t * fe, fe_symm_param_t * values) {
+
+  assert(fe);
+
+  values->a = fe->param.a;
+  values->b = fe->param.b;
+  values->kappa = fe->param.kappa;
+
+  return 0;
+}
+/****************************************************************************
+ *
+ *  fe_symm_interfacial_tension
+ *
+ *  Assumes phi^* = (-a/b)^1/2 and a < 0.
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_symm_interfacial_tension(fe_symm_t * fe, double * sigma) {
+
+  double a, b, kappa;
+
+  assert(fe);
+
+  a = fe->param.a;
+  b = fe->param.b;
+  kappa = fe->param.kappa;
+
+  *sigma = sqrt(-8.0*kappa*a*a*a/(9.0*b*b));
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_symm_interfacial_width
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_symm_interfacial_width(fe_symm_t * fe, double * xi) {
+
+  assert(fe);
+
+  *xi = sqrt(-2.0*fe->param.kappa/fe->param.a);
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_symm_free_energy_density
+ *
+ *  The free energy density is as above.
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_symm_fed(fe_symm_t * fe, int index, double * fed) {
+
+  double phi;
+  double dphi[3];
+
+  assert(fe);
+
+  field_scalar(fe->phi, index, &phi);
+  field_grad_scalar_grad(fe->dphi, index, dphi);
+
+  *fed = (0.5*fe->param.a + 0.25*fe->param.b*phi*phi)*phi*phi
+    + 0.5*fe->param.kappa*dot_product(dphi, dphi);
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_symm_str
+ *
+ *  Return the chemical stress tensor for given position index.
+ *
+ *  P_ab = [1/2 A phi^2 + 3/4 B phi^4 - kappa phi \nabla^2 phi
+ *       -  1/2 kappa (\nbla phi)^2] \delta_ab
+ *       +  kappa \nalba_a phi \nabla_b phi
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_symm_str(fe_symm_t * fe, int index,  double s[3][3]) {
+
+  int ia, ib;
+  double kappa;
+  double phi;
+  double delsq_phi;
+  double grad_phi[3];
+  double p0;
+
+  assert(fe);
+
+  kappa = fe->param.kappa;
+
+  field_scalar(fe->phi, index, &phi);
+  field_grad_scalar_grad(fe->dphi, index, grad_phi);
+  field_grad_scalar_delsq(fe->dphi, index, &delsq_phi);
+
+  p0 = 0.5*fe->param.a*phi*phi + 0.75*fe->param.b*phi*phi*phi*phi
+    - kappa*phi*delsq_phi - 0.5*kappa*dot_product(grad_phi, grad_phi);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib] = p0*d_[ia][ib] + kappa*grad_phi[ia]*grad_phi[ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_symm_chemical_potential_target
+ *
+ *****************************************************************************/
+
+__target__
+void fe_symm_chemical_potential_target(fe_symm_t * fe, int index, double * mu) {
+
+  double phi;
+  double delsq;
+
+  phi = fe->phi->data[addr_rank0(le_nsites(), index)];
+  delsq = fe->dphi->delsq[addr_rank0(le_nsites(), index)];
+
+  *mu = fe->param.a*phi + fe->param.b*phi*phi*phi - fe->param.kappa*delsq;
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_symm_chemical_stress_target
+ *
+ *****************************************************************************/
+
+__target__
+void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
+				    double s[3][3*NSIMDVL]) {
+  int ia, ib;
+  int iv;
+  double phi;
+  double delsq;
+  double grad[3];
+  double p0;
+  fe_symm_param_t param;
+
+  param = fe->param;
+
+  __targetILP__(iv) {
+    for (ia = 0; ia < 3; ia++) {
+      grad[ia] = fe->dphi->grad[vaddr_rank2(le_nsites(), 1, 3, index, 0, ia, iv)];
+    }
+
+    phi = fe->phi->data[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
+    delsq = fe->dphi->delsq[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
+
+    p0 = 0.5*param.a*phi*phi + 0.75*param.b*phi*phi*phi*phi
+      - param.kappa*phi*delsq 
+      - 0.5*param.kappa*(grad[X]*grad[X] + grad[Y]*grad[Y] + grad[Z]*grad[Z]);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib*NSIMDVL+iv] = p0*tc_d_[ia][ib] + param.kappa*grad[ia]*grad[ib];
+      }
+    }
+  }
+
+  return;
+}
+
+#else
 
 static double a_     = -0.003125;
 static double b_     = +0.003125;
@@ -42,30 +293,6 @@ static __targetConst__ double t_kappa_ = +0.002;
 
 static field_t * phi_ = NULL;
 static field_grad_t * grad_phi_ = NULL;
-
-
-/* flag to track whether this module has been initiated*/
-static char symmetric_flag=0;
-
-__targetHost__ char symmetric_in_use(){ return symmetric_flag; }
-
-/* Global objects */
-
-
-__target__
-double symmetric_chemical_potential_target(const int index, const int nop,
-					   const double * t_phi,
-					   const double * t_delsqphi);
-__target__ void symmetric_chemical_stress_target(const int index,
-						 double s[3][3*NSIMDVL],
-						 const double* t_phi, 
-						 const double* t_gradphi,
-						 const double* t_delsqphi);
-
-__target__ mu_fntype p_symmetric_chemical_potential_target = symmetric_chemical_potential_target;
-
-__target__ pth_fntype p_symmetric_chemical_stress_target = symmetric_chemical_stress_target;
-
 
 /****************************************************************************
  *
@@ -109,8 +336,6 @@ void symmetric_free_energy_parameters_set(double a, double b, double kappa) {
 
   fe_kappa_set(kappa);
 
-  symmetric_flag=1;
-
   return;
 }
 
@@ -135,88 +360,6 @@ __targetHost__ double symmetric_a(void) {
 __targetHost__ double symmetric_b(void) {
 
   return b_;
-
-}
-
-/****************************************************************************
- *
- *  symmetric_phi
- *
- ****************************************************************************/
-
-__targetHost__ void symmetric_phi(double** address_of_ptr) {
-
-  *address_of_ptr = phi_->data;
-
-  return;
-  
-}
-
-/****************************************************************************
- *
- *  symmetric_t_phi
- *
- ****************************************************************************/
-
-__targetHost__ void symmetric_t_phi(double** address_of_ptr) {
-
-  *address_of_ptr = phi_->t_data;
-
-  return;
-  
-}
-
-/****************************************************************************
- *
- *  symmetric_gradphi
- *
- ****************************************************************************/
-
-__targetHost__ void symmetric_gradphi(double** address_of_ptr) {
-
-  *address_of_ptr = grad_phi_->grad;
-  
-  return;
-}
-
-/****************************************************************************
- *
- *  symmetric_t_gradphi
- *
- ****************************************************************************/
-
-__targetHost__ void symmetric_t_gradphi(double** address_of_ptr) {
-
-  *address_of_ptr = grad_phi_->t_grad;
-  
-  return;
-}
-
-/****************************************************************************
- *
- *  symmetric_delsqphi
- *
- ****************************************************************************/
-
-__targetHost__ void symmetric_delsqphi(double** address_of_ptr) {
-
-  *address_of_ptr = grad_phi_->delsq;
-
-  return;
-
-}
-
-/****************************************************************************
- *
- *  symmetric_t_delsqphi
- *
- ****************************************************************************/
-
-__targetHost__ void symmetric_t_delsqphi(double** address_of_ptr) {
-
-  *address_of_ptr = grad_phi_->t_delsq;
-
-  return;
 
 }
 
@@ -266,7 +409,6 @@ __targetHost__ double symmetric_free_energy_density(const int index) {
   double phi;
   double dphi[3];
   double e;
-
 
   assert(phi_);
   assert(grad_phi_);
@@ -322,25 +464,6 @@ double symmetric_chemical_potential_target(const int index, const int nop,
 
   return mu;
 }
-
-
-__targetHost__
-void get_chemical_potential_target(mu_fntype* t_chemical_potential) {
-
-  mu_fntype h_chemical_potential;
-
-  /* get host copy of function pointer*/
-  copyConstFromTarget(&h_chemical_potential,
-		      &p_symmetric_chemical_potential_target,
-		      sizeof(mu_fntype));
-
-  /* and put back on target, now in an accessible location*/
-  copyToTarget(t_chemical_potential,
-	       &h_chemical_potential, sizeof(mu_fntype));
-
-  return;
-}
-
 
 /****************************************************************************
  *
@@ -447,18 +570,4 @@ void symmetric_chemical_stress_target(const int index,
   return;
 }
 
-
-__targetHost__ void get_chemical_stress_target(pth_fntype* t_chemical_stress) {
-
-  pth_fntype h_chemical_stress;
-
-  /* get host copy of function pointer */
-  copyConstFromTarget(&h_chemical_stress,
-		      &p_symmetric_chemical_stress_target,
-		      sizeof(pth_fntype));
-
-  /* and put back on target, now in an accessible location*/
-  copyToTarget( t_chemical_stress, &h_chemical_stress, sizeof(pth_fntype));
-
-  return;
-}
+#endif

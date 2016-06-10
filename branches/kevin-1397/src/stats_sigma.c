@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computeing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -32,6 +32,7 @@
 #define XIPROFILE 10.0
 
 struct drop_type {
+  fe_symm_t * fe;
   double radius;
   double xi0;
   double centre[3];
@@ -74,18 +75,27 @@ static int stats_sigma_find_xi0(field_t * phi, drop_t * drop);
  *
  *****************************************************************************/
 
-int stats_sigma_init(field_t * phi, int nswitch) {
+int stats_sigma_init(fe_symm_t * fe, field_t * phi, int nswitch) {
 
   drop_t drop;
+  double xi0;
   double datum;
   double mobility;
+  fe_symm_param_t param;
 
   if (nswitch == 0) {
     /* No measurement required. */
     initialised_ = 0;
   }
   else {
+
     assert(phi);
+    assert(fe);
+
+    fe_symm_param(fe, &param);
+    fe_symm_interfacial_width(fe, &xi0);
+    drop.fe = fe;
+
     physics_mobility(&mobility);
 
     /* Check we have a cubic system, or a square system (2d) */
@@ -106,11 +116,11 @@ int stats_sigma_init(field_t * phi, int nswitch) {
 
     initialised_ = 1;
     drop.radius    = L(X)/4.0;
-    drop.xi0       = XIINIT*symmetric_interfacial_width();
+    drop.xi0       = XIINIT*xi0;
     drop.centre[X] = L(X)/2.0;
     drop.centre[Y] = L(Y)/2.0;
     drop.centre[Z] = L(Z)/2.0;
-    drop.phimax    = sqrt(-symmetric_a()/symmetric_b());
+    drop.phimax    = sqrt(-param.a/param.b);
 
     /* Initialise the order parameter field */
 
@@ -122,9 +132,9 @@ int stats_sigma_init(field_t * phi, int nswitch) {
     info("Surface tension calibration via droplet initialised\n");
     info("---------------------------------------------------\n");
     info("Drop radius:     %14.7e\n", drop.radius);
-    datum = symmetric_interfacial_width()/drop.radius;
+    datum = xi0/drop.radius;
     info("Cahn number:     %14.7e\n", datum);
-    datum = -mobility*symmetric_a();
+    datum = -mobility*param.a;
     info("Diffusivity:     %14.7e\n", datum);
     /* The relevant diffusion time is for the interfacial width ... */
     datum = XIINIT*drop.xi0*XIINIT*drop.xi0/datum;
@@ -391,7 +401,7 @@ static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
 
   /* Set the bin widths based on the expected xi0 */
 
-  xi0 = symmetric_interfacial_width();
+  fe_symm_interfacial_width(drop->fe, &xi0);
 
   rmin = drop->radius - XIPROFILE*xi0;
   rmax = drop->radius + XIPROFILE*xi0;
@@ -503,7 +513,7 @@ static void stats_sigma_find_sigma(drop_t * drop) {
 
         index = coords_index(ic, jc, kc);
 
-        fe = symmetric_free_energy_density(index);
+	fe_symm_fed(drop->fe, index, &fe);
 	if (fe < fmin_local) fmin_local = fe;
 
       }
@@ -521,7 +531,7 @@ static void stats_sigma_find_sigma(drop_t * drop) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
         index = coords_index(ic, jc, kc);
-        fe = symmetric_free_energy_density(index);
+	fe_symm_fed(drop->fe, index, &fe);
         excess_local += (fe - fmin);
       }
     }

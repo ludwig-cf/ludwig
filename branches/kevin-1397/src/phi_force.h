@@ -18,10 +18,9 @@
 #include "field.h"
 #include "hydro.h"
 #include "field_grad_s.h"
+#include "phi_force_stress.h"
 
-__targetHost__ int phi_force_calculation(field_t * phi, field_t* q_, field_grad_t* q_grad_, hydro_t * hydro);
-__targetHost__ int phi_force_required(int * flag);
-__targetHost__ int phi_force_required_set(const int flag);
-__targetHost__ int phi_force_divergence_set(const int flag);
+__host__ int phi_force_calculation(pth_t * pth, field_t * phi, field_t* q,
+				   field_grad_t * qgrad, hydro_t * hydro);
 
 #endif

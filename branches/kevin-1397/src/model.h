@@ -47,6 +47,7 @@ typedef enum lb_halo_enum_type {LB_HALO_FULL, LB_HALO_REDUCED} lb_halo_enum_t;
 __targetHost__ int lb_create_ndist(int ndist, lb_t ** lb);
 __targetHost__ int lb_create(lb_t ** lb);
 __targetHost__ void lb_free(lb_t * lb);
+__host__ int lb_model_copy(lb_t * lb, int flag);
 __targetHost__ int lb_nvel(lb_t * lb, int * nvel);
 __targetHost__ int lb_ndim(lb_t * lb, int * ndim);
 __targetHost__ int lb_nblock(lb_t * lb, int dim, int * nblock);

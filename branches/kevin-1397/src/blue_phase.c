@@ -62,7 +62,7 @@ static int fed_write(FILE *, int index, void * self);
 static int fed_write_ascii(FILE *, int index, void * self);
 
 /* structure containing constants used in blue phase kernels */ 
-bluePhaseKernelConstants_t bpc;                   /* host copy */
+static bluePhaseKernelConstants_t bpc;                   /* host copy */
 __targetConst__ bluePhaseKernelConstants_t tbpc;  /* target copy */
 
 

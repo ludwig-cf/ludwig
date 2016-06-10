@@ -17,12 +17,15 @@
 #include "advection.h"
 
 struct advflux_s {
-  double * fe;   /* For LE planes */
-  double * fw;   /* For LE planes */
-  double * fy;
-  double * fz;
 
-  advflux_t * tcopy;  /* copy of this structure on target */ 
+  int nf;        /* Number of fields (1 for scalar etc) */
+  int nsite;     /* Number of sites allocated */
+  double * fe;   /* East face flxues */
+  double * fw;   /* West face flxues */
+  double * fy;   /* y-face fluxes */
+  double * fz;   /* z-face fluxes */
+
+  advflux_t * target;  /* copy of this structure on target */ 
 };
 
 #endif

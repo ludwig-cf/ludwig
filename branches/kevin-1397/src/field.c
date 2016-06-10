@@ -55,7 +55,7 @@ static int field_leesedwards_parallel(field_t * obj);
  *
  *****************************************************************************/
 
-int field_create(int nf, const char * name, field_t ** pobj) {
+__host__ int field_create(int nf, const char * name, field_t ** pobj) {
 
   field_t * obj = NULL;
 
@@ -88,22 +88,22 @@ int field_create(int nf, const char * name, field_t ** pobj) {
  *
  *****************************************************************************/
 
-void field_free(field_t * obj) {
+__host__ void field_free(field_t * obj) {
+
+  int ndevice;
+  double * tmp;
 
   assert(obj);
 
-  if (obj->data) free(obj->data);
+  targetGetDeviceCount(&ndevice);
 
-  if (obj->tcopy) {
-
-    double* tmpptr;
-    field_t* t_obj = obj->tcopy;
-    copyFromTarget(&tmpptr,&(t_obj->data),sizeof(double*)); 
-    targetFree(tmpptr);
-    
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &obj->tcopy->data, sizeof(double *));
+    targetFree(tmp);
     targetFree(obj->tcopy);
   }
 
+  if (obj->data) free(obj->data);
   if (obj->halo[0] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[0]);
   if (obj->halo[1] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[1]);
   if (obj->halo[2] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[2]);
@@ -123,36 +123,81 @@ void field_free(field_t * obj) {
  *
  *****************************************************************************/
 
-int field_init(field_t * obj, int nhcomm) {
+__host__ int field_init(field_t * obj, int nhcomm) {
 
+  int ndevice;
   int nsites;
+  double * tmp;
 
   assert(obj);
   assert(obj->data == NULL);
   assert(nhcomm <= coords_nhalo());
 
   nsites = le_nsites();
-  obj->data = (double*) calloc(obj->nf*nsites, sizeof(double));
+  obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
 
   if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
 
-  /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(field_t));
+  /* Allocate target copy of structure (or alias) */
 
-  /* allocate data space on target */
-  double* tmpptr;
-  field_t* t_obj = obj->tcopy;
-  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->data),&tmpptr,sizeof(double*)); 
+  targetGetDeviceCount(&ndevice);
 
-  copyToTarget(&(t_obj->nf),&(obj->nf),sizeof(int)); //integer with number of field components
+  if (ndevice == 0) {
+    obj->tcopy = obj;
+  }
+  else {
+    targetCalloc((void **) &obj->tcopy, sizeof(field_t));
+    targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
 
-  obj->t_data= tmpptr; //DEPRECATED direct access to target data.
+    copyToTarget(&obj->tcopy->data, &tmp, sizeof(double *)); 
+    copyToTarget(&obj->tcopy->nf, &obj->nf, sizeof(int));
+  }
 
   /* MPI datatypes for halo */
 
   obj->nhcomm = nhcomm;
+  obj->nsites = nsites;
   coords_field_init_mpi_indexed(obj->nhcomm, obj->nf, MPI_DOUBLE, obj->halo);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int field_memcpy(field_t * obj, int flag) {
+
+  int ndevice;
+  double * tmp;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(obj->tcopy == obj);
+  }
+  else {
+
+    copyFromTarget(&tmp, &obj->tcopy->data, sizeof(double *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(&obj->tcopy->nf, &obj->nf, sizeof(int));
+      copyToTarget(&obj->tcopy->nhcomm, &obj->nhcomm, sizeof(int));
+      copyToTarget(&obj->tcopy->nsites, &obj->nsites, sizeof(int));
+      copyToTarget(tmp, obj->data, obj->nf*obj->nsites*sizeof(double));
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(obj->data, tmp, obj->nf*obj->nsites*sizeof(double));
+      break;
+    default:
+      fatal("Bad flag in field_memcpy\n");
+      break;
+    }
+  }
 
   return 0;
 }

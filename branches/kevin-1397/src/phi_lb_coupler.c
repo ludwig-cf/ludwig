@@ -18,72 +18,22 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "model.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 #include "phi_lb_coupler.h"
+
+__global__ int phi_lb_to_field_kernel(field_t * phi, lb_t * lb);
 
 /*****************************************************************************
  *
  *  phi_lb_to_field
  *
+ *  Driver function: compute from the distribution the current
+ *  values of phi and store.
+ *
  *****************************************************************************/
 
-__target__
-int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
-
-  int iv=0; 
-
-  int p;
-  double phi0[VVL];
-
-#if VVL == 1
-  /*restrict operation to the interiour lattice sites*/
-
-  int coords[3];
-  int nsites;
-
-  nsites = tc_nSites;
-  targetCoords3D(coords,tc_Nall,baseIndex);
-
-  /* if not a halo site:*/
-  if (coords[0] >= tc_nhalo &&
-      coords[1] >= tc_nhalo &&
-      coords[2] >= tc_nhalo &&
-      coords[0] < tc_Nall[X]-tc_nhalo &&
-      coords[1] < tc_Nall[Y]-tc_nhalo &&
-      coords[2] < tc_Nall[Z]-tc_nhalo)
-#endif
-    {
-
-      for (p = 0; p < NVEL; p++) {
-	__targetILP__(iv) phi0[iv] += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+iv, LB_PHI, p)];
-      }
-
-      __targetILP__(iv) {
-	phi[addr_rank1(tc_nSites, 1, baseIndex+iv, 0)] = phi0[iv];
-      }
-    }
-
-  return 0;
-}
-
-
-__targetEntry__ void phi_lb_to_field_lattice(double * phi, lb_t * lb) {
-
-  int baseIndex=0;
-
-  __targetTLP__(baseIndex,tc_nSites){	  
-    phi_lb_to_field_site(phi, lb->f, baseIndex);
-  }
-
-
-  return;
-}
-
-
-
-__targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
+__host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
   int Nall[3];
   int nlocal[3];
@@ -97,57 +47,60 @@ __targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
 
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
-  nSites = Nall[X]*Nall[Y]*Nall[Z];
+  nSites = le_nsites();
 
   int nDist;
   copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
 
-  //start constant setup
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
-  //end constant setup
 
-  phi_lb_to_field_lattice __targetLaunch__(nSites) (phi->t_data, lb);
-
-#ifndef KEEPFIELDONTARGET
-    copyFromTarget(phi->data, phi->t_data, nSites*sizeof(double)); 
-#endif
+  phi_lb_to_field_kernel __targetLaunchNoStride__(nSites) (phi->tcopy, lb->target);
 
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  phi_lb_to_field_kernel
+ *
+ *  Kernel: 1->nlocal[] each direction.
+ *
+ *****************************************************************************/
 
+__global__ int phi_lb_to_field_kernel(field_t * phi, lb_t * lb) {
 
-/* Host-only version of the above */
-__targetHost__ int phi_lb_to_field_host(field_t * phi, lb_t  *lb) {
+  int kindex;
 
-  int ic, jc, kc, index;
-  int nlocal[3];
+  __targetTLPNoStride__(kindex, tc_nSites) {	  
 
-  double phi0;
+    int p;
+    int coords[3];
+    double phi0;
 
-  assert(phi);
-  assert(lb);
-  coords_nlocal(nlocal);
+    targetCoords3D(coords,tc_Nall, kindex);
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	lb_0th_moment(lb, index, LB_PHI, &phi0);
-	field_scalar_set(phi, index, phi0);
-
+    /* if not a halo site:*/
+    if (coords[0] >= tc_nhalo &&
+	coords[1] >= tc_nhalo &&
+	coords[2] >= tc_nhalo &&
+	coords[0] < tc_Nall[X]-tc_nhalo &&
+	coords[1] < tc_Nall[Y]-tc_nhalo &&
+	coords[2] < tc_Nall[Z]-tc_nhalo){
+    
+      phi0 = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	phi0 += lb->f[LB_ADDR(tc_nSites, tc_ndist, NVEL, kindex, LB_PHI, p)];
       }
+
+      phi->data[addr_rank0(tc_nSites, kindex)] = phi0;    
     }
   }
 
   return 0;
 }
-
 
 /*****************************************************************************
  *

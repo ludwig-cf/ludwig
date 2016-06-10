@@ -11,6 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2012-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -39,10 +40,12 @@ static int map_write_ascii(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int map_create(int ndata, map_t ** pobj) {
+__host__ int map_create(int ndata, map_t ** pobj) {
 
   int nsites;
   int nhalo;
+  int ndevice;
+  char * tmp;
   map_t * obj = NULL;
 
   assert(ndata >= 0);
@@ -57,9 +60,7 @@ int map_create(int ndata, map_t ** pobj) {
   obj->status = (char*) calloc(nsites, sizeof(char));
   if (obj->status == NULL) fatal("calloc(map->status) failed\n");
 
- /* allocate target copy */
-  //targetCalloc((void **) &obj->t_status, nsites*sizeof(char));
-
+  obj->nsite = nsites;
   obj->ndata = ndata;
 
   /* Could be zero-sized array */
@@ -74,21 +75,23 @@ int map_create(int ndata, map_t ** pobj) {
   }
 
 
-  /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(map_t));
+  /* Allocate target copy of structure (or alias) */
 
-  /* allocate data space on target */
-  char* tmpptr;
-  map_t* t_obj = obj->tcopy;
-  targetCalloc((void**) &tmpptr,nsites*sizeof(char));
-  copyToTarget(&(t_obj->status),&tmpptr,sizeof(char*)); 
+  targetGetDeviceCount(&ndevice);
 
-  copyToTarget(&(t_obj->is_porous_media),&(obj->is_porous_media),sizeof(int)); 
-  copyToTarget(&(t_obj->ndata),&(obj->ndata),sizeof(int)); 
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
 
-  obj->t_status= tmpptr; //DEPRECATED direct access to target data.
+    targetMalloc((void **) &obj->target, sizeof(map_t));
+    targetCalloc((void **) &tmp, nsites*sizeof(char));
 
-
+    copyToTarget(&obj->target->status, &tmp, sizeof(char *)); 
+    copyToTarget(&obj->target->is_porous_media, &obj->is_porous_media, sizeof(int)); 
+    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    copyToTarget(&obj->target->ndata, &obj->ndata, sizeof(int)); 
+  }
 
   *pobj = obj;
 
@@ -101,9 +104,20 @@ int map_create(int ndata, map_t ** pobj) {
  *
  *****************************************************************************/
 
-void map_free(map_t * obj) {
+__host__ int map_free(map_t * obj) {
+
+  int ndevice;
+  char * tmp;
 
   assert(obj);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &obj->target->status, sizeof(char *)); 
+    targetFree(tmp);
+    targetFree(obj->target);
+  }
 
   MPI_Type_free(&obj->halostatus[X]);
   MPI_Type_free(&obj->halostatus[Y]);
@@ -119,19 +133,47 @@ void map_free(map_t * obj) {
   if (obj->info) io_info_destroy(obj->info);
   free(obj->status);
 
- if (obj->tcopy) {
-
-    char* tmpptr;
-    map_t* t_obj = obj->tcopy;
-    copyFromTarget(&tmpptr,&(t_obj->status),sizeof(char*)); 
-    targetFree(tmpptr);
-    
-    targetFree(obj->tcopy);
-  }
 
   free(obj);
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  map_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int map_memcpy(map_t * map, int flag) {
+
+  int ndevice;
+  char * tmp;
+
+  assert(map);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(map->target == map);
+  }
+  else {
+    copyFromTarget(&tmp, &map->target->status, sizeof(char *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(tmp, map->status, map->nsite*sizeof(char));
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(map->status, tmp, map->nsite*sizeof(char));
+      break;
+    default:
+      fatal("Bad flag in map_memcpy()\n");
+    }
+  }
+
+  return 0;
 }
 
 /*****************************************************************************

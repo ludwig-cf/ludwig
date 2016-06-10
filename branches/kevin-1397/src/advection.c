@@ -52,6 +52,7 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
 
+/* SCHEDULED FOR DELETION! */
 static int order_ = 1; /* Default is upwind (bad!) */
 
 /*****************************************************************************
@@ -87,10 +88,11 @@ int advection_order(int * order) {
  *
  *****************************************************************************/
 
-int advflux_create(int nf, advflux_t ** pobj) {
+__host__ int advflux_create(int nf, advflux_t ** pobj) {
 
+  int ndevice;
   int nsites;
-  double * tmpptr;
+  double * tmp;
   advflux_t * obj = NULL;
 
   assert(pobj);
@@ -99,6 +101,7 @@ int advflux_create(int nf, advflux_t ** pobj) {
   if (obj == NULL) fatal("calloc(advflux) failed\n");
 
   nsites = le_nsites();
+  obj->nsite = nsites;
 
   obj->fe = (double*) calloc(nsites*nf, sizeof(double));
   obj->fw = (double*) calloc(nsites*nf, sizeof(double));
@@ -111,21 +114,31 @@ int advflux_create(int nf, advflux_t ** pobj) {
   if (obj->fz == NULL) fatal("calloc(advflux->fz) failed\n");
 
 
-  /* allocate target copy of structure */
+  /* Allocate target copy of structure (or alias) */
 
-  targetMalloc((void **) &(obj->tcopy), sizeof(advflux_t));
+  targetGetDeviceCount(&ndevice);
 
-  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
-  copyToTarget(&(obj->tcopy->fe), &tmpptr, sizeof(double *)); 
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
 
-  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
-  copyToTarget(&(obj->tcopy->fw), &tmpptr, sizeof(double *)); 
+    targetMalloc((void **) &obj->target, sizeof(advflux_t));
 
-  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
-  copyToTarget(&(obj->tcopy->fy), &tmpptr, sizeof(double *)); 
+    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
+    copyToTarget(&obj->target->fe, &tmp, sizeof(double *)); 
 
-  targetCalloc((void **) &tmpptr, nf*nsites*sizeof(double));
-  copyToTarget(&(obj->tcopy->fz), &tmpptr, sizeof(double *)); 
+    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
+    copyToTarget(&obj->target->fw, &tmp, sizeof(double *)); 
+
+    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
+    copyToTarget(&obj->target->fy, &tmp, sizeof(double *)); 
+
+    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
+    copyToTarget(&obj->target->fz, &tmp, sizeof(double *)); 
+
+    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+  }
 
   *pobj = obj;
 
@@ -138,30 +151,57 @@ int advflux_create(int nf, advflux_t ** pobj) {
  *
  *****************************************************************************/
 
-void advflux_free(advflux_t * obj) {
+__host__ int advflux_free(advflux_t * obj) {
 
-  double * tmpptr;
+  int ndevice;
+  double * tmp;
 
   assert(obj);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &obj->target->fe, sizeof(double *)); 
+    targetFree(tmp);
+    copyFromTarget(&tmp, &obj->target->fw, sizeof(double *)); 
+    targetFree(tmp);
+    copyFromTarget(&tmp, &obj->target->fy, sizeof(double *)); 
+    targetFree(tmp);
+    copyFromTarget(&tmp, &obj->target->fz, sizeof(double *)); 
+    targetFree(tmp);
+    targetFree(obj->target);
+  }
 
   free(obj->fe);
   free(obj->fw);
   free(obj->fy);
   free(obj->fz);
-
-  copyFromTarget(&tmpptr, &(obj->tcopy->fe), sizeof(double *)); 
-  targetFree(tmpptr);
-  copyFromTarget(&tmpptr, &(obj->tcopy->fw), sizeof(double *)); 
-  targetFree(tmpptr);
-  copyFromTarget(&tmpptr, &(obj->tcopy->fy), sizeof(double *)); 
-  targetFree(tmpptr);
-  copyFromTarget(&tmpptr, &(obj->tcopy->fz), sizeof(double *)); 
-  targetFree(tmpptr);
-
-  targetFree(obj->tcopy);
   free(obj);
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advection_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int advection_memcpy(advflux_t * obj) {
+
+  int ndevice;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(obj->target == obj);
+  }
+  else {
+    assert(0); /* Please fill me in */
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -358,7 +398,6 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   int nhalo;
   int nSites;
   int Nall[3];
-  double * tmpptr;
 
   assert(flux);
   assert(hydro);
@@ -372,18 +411,6 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   Nall[Z] = nlocal[Z] + 2*nhalo;
   nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
-  /* copy input data to target */
-
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(&tmpptr, &(hydro->tcopy->u), sizeof(double *)); 
-  copyToTarget(tmpptr, hydro->u, 3*nSites*sizeof(double));
-#endif
-
-#ifndef KEEPFIELDONTARGET
-  copyFromTarget(&tmpptr, &(field->tcopy->data), sizeof(double *)); 
-  copyToTarget(tmpptr, field->data, nf*nSites*sizeof(double));
-#endif
-
   /* copy lattice shape constants to target ahead of execution */
 
   copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
@@ -391,29 +418,13 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
 
   TIMER_start(ADVECTION_X_KERNEL);
-#ifdef __NVCC__
-  advection_le_1st_lattice __targetLaunchNoStride__(nSites) (flux->tcopy, hydro->tcopy, nf,field->tcopy);
-#else
-  /* use host copies of input just now, because of LE plane buffers*/
-  advection_le_1st_lattice __targetLaunchNoStride__(nSites) (flux->tcopy, hydro, nf,field);
-#endif
-  TIMER_stop(ADVECTION_X_KERNEL);
+
+  advection_le_1st_lattice __targetLaunchNoStride__(nSites) (flux->target, hydro->tcopy, nf, field->tcopy);
+
 
   targetSynchronize();
 
-#ifndef KEEPFIELDONTARGET
-  copyFromTarget(&tmpptr, &(flux->tcopy->fe), sizeof(double *)); 
-  copyFromTarget(flux->fe, tmpptr, nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fw), sizeof(double *)); 
-  copyFromTarget(flux->fw, tmpptr, nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fy), sizeof(double *)); 
-  copyFromTarget(flux->fy, tmpptr, nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fz), sizeof(double *)); 
-  copyFromTarget(flux->fz, tmpptr, nf*nSites*sizeof(double));
-#endif
+  TIMER_stop(ADVECTION_X_KERNEL);
 
   return 0;
 }
@@ -815,7 +826,6 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   int nhalo;
   int nSites;
   int Nall[3];
-  double * tmpptr;
 
   assert(flux);
   assert(hydro);
@@ -830,19 +840,6 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
   Nall[Z] = nlocal[Z] + 2*nhalo;
   nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
-  /* copy input data to target */
-
-#ifndef KEEPHYDROONTARGET
-  assert(1);
-  copyFromTarget(&tmpptr, &(hydro->tcopy->u), sizeof(double *)); 
-  copyToTarget(tmpptr, hydro->u, 3*le_nsites()*sizeof(double));
-#endif
-
-#ifndef KEEPFIELDONTARGET
-  copyFromTarget(&tmpptr, &(field->tcopy->data), sizeof(double *)); 
-  copyToTarget(tmpptr, field->data, nf*le_nsites()*sizeof(double));
-#endif
-
   /* copy lattice shape constants to target ahead of execution */
 
   copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
@@ -851,40 +848,10 @@ static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
 
   TIMER_start(ADVECTION_X_KERNEL);
 
-  /* execute lattice-based operation on target */
-#ifdef __NVCC__
-  advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
-#else
-
-#ifdef KEEPFIELDONTARGET
-    advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro->tcopy,nf,field->tcopy);
-#else
-  /*use host copies of input just now, because of LE plane  buffers */
-  advection_le_3rd_lattice __targetLaunch__(nSites) (flux->tcopy,hydro,nf,field);
-#endif
-
-#endif
-
+  advection_le_3rd_lattice __targetLaunch__(nSites) (flux->target, hydro,nf,field);
   targetSynchronize();
 
   TIMER_stop(ADVECTION_X_KERNEL);
-
-  /* copy output data from target */
-
-#ifndef KEEPFIELDONTARGET
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fe), sizeof(double *)); 
-  copyFromTarget(flux->fe, tmpptr, nf*le_nsites()*sizeof(double));
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fw), sizeof(double *)); 
-  copyFromTarget(flux->fw, tmpptr, nf*le_nsites()*sizeof(double));
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fy), sizeof(double*)); 
-  copyFromTarget(flux->fy, tmpptr, nf*le_nsites()*sizeof(double));
-
-  copyFromTarget(&tmpptr, &(flux->tcopy->fz), sizeof(double*)); 
-  copyFromTarget(flux->fz, tmpptr, nf*le_nsites()*sizeof(double));
-#endif
 
   return 0;
 }

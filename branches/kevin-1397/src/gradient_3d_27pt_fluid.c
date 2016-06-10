@@ -37,7 +37,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -49,78 +49,67 @@
 #include "memory.h"
 #include "leesedwards.h"
 #include "wall.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "gradient_3d_27pt_fluid.h"
 
-static void gradient_3d_27pt_fluid_operator(const int nop,
-					    const double * field,
-					    double * grad, double * delsq,
-					    const int nextra);
-static void gradient_3d_27pt_fluid_le_correction(const int nop,
-						 const double * field,
-						 double * grad, double * delsq,
-						 const int nextra);
-static void gradient_3d_27pt_fluid_wall_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * delsq,
-						   const int nextra);
+__host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra);
+__host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra);
+__host__ int grad_3d_27pt_fluid_wall_correction(field_grad_t * fg,  int nextra);
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_d2
+ *  grad_3d_27pt_fluid_d2
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_fluid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 
   int nextra;
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  grad_3d_27pt_fluid_operator(fgrad, nextra);
+  grad_3d_27pt_fluid_le_correction(fgrad, nextra);
+  grad_3d_27pt_fluid_wall_correction(fgrad, nextra);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_d4
+ *  grad_3d_27pt_fluid_d4
  *
  *  Higher derivatives are obtained by using the same operation
  *  on appropriate field.
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_fluid_d4(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
 
   int nextra;
 
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
-  gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  assert(0); /* Do we need this to work for d4? */
+  grad_3d_27pt_fluid_operator(fgrad, nextra);
+  grad_3d_27pt_fluid_le_correction(fgrad, nextra);
+  grad_3d_27pt_fluid_wall_correction(fgrad, nextra);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_operator
+ *  grad_3d_27pt_fluid_operator
  *
  *****************************************************************************/
 
-static void gradient_3d_27pt_fluid_operator(const int nop,
-					    const double * field,
-					   double * grad,
-					   double * del2,
-					   const int nextra) {
+__host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra) {
+
+  int nop;
   int nlocal[3];
   int nsites;
   int nhalo;
@@ -132,11 +121,20 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
 
   const double r9 = (1.0/9.0);
 
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
   nhalo = coords_nhalo();
   nsites = le_nsites();
   coords_nlocal(nlocal);
 
   ys = nlocal[Z] + 2*nhalo;
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -242,12 +240,12 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_le_correction
+ *  grad_3d_27pt_le_correction
  *
  *  The gradients of the order parameter need to be computed in the
  *  buffer region (nextra points). This is so that gradients at all
@@ -255,11 +253,9 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
  *
  *****************************************************************************/
 
-static void gradient_3d_27pt_fluid_le_correction(const int nop,
-						 const double * field,
-						 double * grad,
-						 double * del2,
-						 int nextra) {
+__host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
+
+  int nop;
   int nlocal[3];
   int nsites;
   int nhalo;
@@ -273,11 +269,20 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 
   const double r9 = (1.0/9.0);
 
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
   nhalo = coords_nhalo();
   nsites = le_nsites();
   coords_nlocal(nlocal);
 
   ys = (nlocal[Z] + 2*nhalo);
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
 
@@ -501,26 +506,23 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
     /* Next plane */
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_wall_correction
+ *  grad_3d_27pt_fluid_wall_correction
  *
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
 
-static void gradient_3d_27pt_fluid_wall_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * del2,
-						   const int nextra) {
+__host__ int grad_3d_27pt_fluid_wall_correction(field_grad_t * fg,
+						int nextra) {
 
   if (wall_present()) {
     fatal("Wall not implemented in 3d 27pt gradients yet (use 7pt)\n");
   }
 
-  return;
+  return 0;
 }

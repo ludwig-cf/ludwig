@@ -20,17 +20,16 @@
 #include "memory.h"
 
 struct map_s {
+  int nsite;                  /* Number of sites allocated */
   int is_porous_media;        /* Flag for porous media */
   int ndata;                  /* Additional fields associated with map */
   char * status;              /* Status (one of enum_status) */
-  char * t_status;              /* Status (one of enum_status) on target */
   double * data;              /* Additional site lattice property */
   MPI_Datatype halostatus[3]; /* Halo datatype for status */
   MPI_Datatype halodata[3];   /* Halo datatype for data */
   io_info_t * info;           /* I/O handler */
 
-  map_t * tcopy;                /* Copy of this structure on target*/
-
+  map_t * target;             /* Copy of this structure on target */
 };
 
 #endif

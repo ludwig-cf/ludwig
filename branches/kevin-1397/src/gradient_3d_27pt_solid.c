@@ -40,6 +40,8 @@
 #include "memory.h"
 #include "leesedwards.h"
 #include "free_energy.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "gradient_3d_27pt_solid.h"
 
 static map_t * map = NULL;
@@ -58,19 +60,15 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
-static void gradient_3d_27pt_solid_op(const int nop,
-				      const double * field,
-				      double * gradient,
-				      double * delsq,
-				      const int nextra);
+__host__ int grad_3d_27pt_solid_op(field_grad_t * fg, int nextra);
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_solid_map_set
+ *  grad_3d_27pt_solid_map_set
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_solid_map_set(map_t * map_in) {
+__host__ int grad_3d_27pt_solid_map_set(map_t * map_in) {
 
   int ndata;
   assert(map_in);
@@ -88,35 +86,34 @@ int gradient_3d_27pt_solid_map_set(map_t * map_in) {
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_solid_d2
+ *  grad_3d_27pt_solid_d2
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_solid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   int nextra;
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  gradient_3d_27pt_solid_op(nop, field, grad, delsq, nextra);
+  grad_3d_27pt_solid_op(fgrad, nextra);
 
   return 0;
 }
 
 /****************************************************************************
  *
- *  gradient_3d_27pt_solid_op
+ *  grad_3d_27pt_solid_op
  *
  *  This calculation can be extended into the halo region by
  *  nextra points in each direction.
  *
  ****************************************************************************/
 
-static void gradient_3d_27pt_solid_op(const int nop, const double * field,
-				      double * grad, double * delsq,
-				      int nextra) {
+__host__ int grad_3d_27pt_solid_op(field_grad_t * fg, int nextra) {
+
+  int nop;
   int nlocal[3];
   int ic, jc, kc, ic1, jc1, kc1;
   int ia, index, p;
@@ -137,9 +134,14 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
   const double r9 = (1.0/9.0);     /* normaliser for grad */
   const double r18 = (1.0/18.0);   /* normaliser for delsq */
 
+  double * __restrict__ field;
+
   coords_nlocal(nlocal);
 
   rk = 1.0/fe_kappa();
+
+  nop = fg->field->nf;
+  field = fg->field->data;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
@@ -227,9 +229,9 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
 	    }
 	  }
 
-	  delsq[addr_rank1(le_nsites(), nop, index, n)] = r9*dphi;
+	  fg->delsq[addr_rank1(le_nsites(), nop, index, n)] = r9*dphi;
 	  for (ia = 0; ia < 3; ia++) {
-	    grad[addr_rank2(le_nsites(),nop,3, index, n, ia)]  = r18*gradn[ia];
+	    fg->grad[addr_rank2(le_nsites(),nop,3,index,n,ia)] = r18*gradn[ia];
 	  }
 	}
 
@@ -238,5 +240,5 @@ static void gradient_3d_27pt_solid_op(const int nop, const double * field,
     }
   }
 
-  return;
+  return 0;
 }

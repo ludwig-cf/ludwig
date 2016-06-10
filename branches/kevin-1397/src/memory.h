@@ -241,7 +241,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
  * on the coordinate index, which is expected to run normally
  * from 0 ... nites-1. The 'dummy' vector loop index is ... */
 
-#define pseudo_iv(index) ( (index) - (((index)/NSIMDVL)*NSIMDVL) )
+#define pseudo_iv(index) ( (index) - ((index)/NSIMDVL)*NSIMDVL )
 
 
 /* Macro definitions for the interface */

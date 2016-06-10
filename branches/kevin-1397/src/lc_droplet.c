@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -53,8 +53,11 @@ int lc_droplet_phi_set(field_t * phi, field_grad_t * dphi) {
   
   phi_ = phi;
   grad_phi_ = dphi;
+#ifndef OLD_SHIT
+  assert(0);
+#else
   symmetric_phi_set(phi, dphi);
-  
+#endif
   return 0;
 }
 
@@ -137,11 +140,13 @@ double lc_droplet_free_energy_density(const int index) {
   
   gamma = lc_droplet_gamma_calculate(phi);
   blue_phase_set_gamma(gamma);
-  
+#ifndef OLD_SHIT
+  assert(0);
+#else
   f = symmetric_free_energy_density(index);
   f += blue_phase_free_energy_density(index);
   f += lc_droplet_anchoring_energy_density(q, dphi);
-
+#endif
   return f;
 }
 
@@ -280,9 +285,11 @@ double lc_droplet_chemical_potential(const int index, const int nop) {
   int ia, ib, ic;
   
   mu = 0;
-  
+#ifndef OLD_SHIT
+  assert(0);
+#else
   mu = symmetric_chemical_potential(index, nop);
-
+#endif
   field_tensor(q_, index, q);
   field_grad_tensor_grad(grad_q_, index, dq);
   field_grad_scalar_grad(grad_phi_, index, dphi);
