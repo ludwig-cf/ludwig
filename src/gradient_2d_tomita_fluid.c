@@ -45,88 +45,72 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "gradient_2d_tomita_fluid.h"
 
 static const double epsilon_ = 0.5;
 static const double epsilon1_ = 0.25;
 
-static void gradient_2d_tomita_fluid_operator(const int nop,
-					      const double * field,
-					      double * grad,
-					      double * delsq,
-					      const int nextra);
-static void gradient_2d_tomita_fluid_le_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * delsq,
-						   int nextra);
-static void gradient_2d_tomita_fluid_wall_correction(const int nop,
-						     const double * field,
-						     double * grad,
-						     double * delsq,
-						     const int nextra);
+__host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg,  int nextra);
+__host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg, int nextra);
+__host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg, int nextra);
 
 /*****************************************************************************
  *
- *  gradient_2d_tomita_fluid_d2
+ *  grad_2d_tomita_fluid_d2
  *
  *****************************************************************************/
 
-int gradient_2d_tomita_fluid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 
   int nextra;
+
+  assert(fg);
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  assert(field);
-  assert(grad);
-  assert(delsq);
+  assert(0);
 
-  gradient_2d_tomita_fluid_operator(nop, field, grad, delsq, nextra);
-  gradient_2d_tomita_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_2d_tomita_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  grad_2d_tomita_fluid_operator(fg, nextra);
+  grad_2d_tomita_fluid_le_correction(fg, nextra);
+  grad_2d_tomita_fluid_wall_correction(fg, nextra);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_2d_tomita_fluid_d4
+ *  grad_2d_tomita_fluid_d4
  *
  *****************************************************************************/
 
-int gradient_2d_tomita_fluid_d4(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq){
+__host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
 
   int nextra;
 
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
-  assert(field);
-  assert(grad);
-  assert(delsq);
+  assert(0);
 
-  gradient_2d_tomita_fluid_operator(nop, field, grad, delsq, nextra);
-  gradient_2d_tomita_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_2d_tomita_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  grad_2d_tomita_fluid_operator(fg, nextra);
+  grad_2d_tomita_fluid_le_correction(fg, nextra);
+  grad_2d_tomita_fluid_wall_correction(fg, nextra);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_2d_tomita_fluid_operator
+ *  grad_2d_tomita_fluid_operator
  *
  *****************************************************************************/
 
-static void gradient_2d_tomita_fluid_operator(const int nop,
-					      const double * field,
-					      double * grad,
-					      double * del2,
-					      const int nextra) {
+__host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg, int nextra) {
+
+  int nop;
   int nlocal[3];
   int nhalo;
   int n;
@@ -138,10 +122,19 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
   const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
   const double rfactor1 = 1.0 / (1.0 + 2.0*epsilon1_);
 
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
 
   ys = nlocal[Z] + 2*nhalo;
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -178,23 +171,21 @@ static void gradient_2d_tomita_fluid_operator(const int nop,
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_2d_tomita_le_correction
+ *  grad_2d_tomita_le_correction
  *
  *  Additional gradient calculations near LE planes to account for
  *  sliding displacement.
  *
  *****************************************************************************/
 
-static void gradient_2d_tomita_fluid_le_correction(const int nop,
-						const double * field,
-						double * grad,
-						double * del2,
-						const int nextra) {
+__host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg,
+						int nextra) {
+  int nop;
   int nlocal[3];
   int nhalo;
   int nh;                                 /* counter over halo extent */
@@ -207,12 +198,21 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
 
   const double rfactor = 1.0 / (1.0 + 2.0*epsilon_);
 
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
 
   assert(nlocal[Z] == 1);
 
   ys = (nlocal[Z] + 2*nhalo);
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
 
@@ -299,22 +299,20 @@ static void gradient_2d_tomita_fluid_le_correction(const int nop,
     /* Next plane */
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_2d_tomita_fluid_wall_correction
+ *  grad_2d_tomita_fluid_wall_correction
  *
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
 
-static void gradient_2d_tomita_fluid_wall_correction(const int nop,
-						     const double * field,
-						     double * grad,
-						     double * del2,
-						     const int nextra) {
+__host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg,
+						  int nextra) {
+  int nop;
   int nlocal[3];
   int nhalo;
   int n;
@@ -328,6 +326,10 @@ static void gradient_2d_tomita_fluid_wall_correction(const int nop,
   double * c;                   /* Solid free energy parameters C */
   double * h;                   /* Solid free energy parameters H */
 
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
   assert(wall_at_edge(X) == 0); /* NOT IMPLEMENTED */
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
@@ -339,6 +341,11 @@ static void gradient_2d_tomita_fluid_wall_correction(const int nop,
 
   assert(wall_at_edge(Y) == 0);
   assert(wall_at_edge(Z) == 0);
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
    * is currently no mechanism to obtain the free energy parameters. */
@@ -403,5 +410,5 @@ static void gradient_2d_tomita_fluid_wall_correction(const int nop,
   free(c);
   free(h);
 
-  return;
+  return 0;
 }

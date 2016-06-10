@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -16,8 +16,9 @@
 #define GRADIENT_3D_7PT_SOLID_H
 
 #include "map.h"
+#include "field_grad.h"
 
-__targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map);
-__targetHost__ int gradient_3d_7pt_solid_d2(const int nop, const double * field,double * t_field,
-			     double * grad,double * t_grad, double * delsq, double * t_delsq);
+__host__ int grad_3d_7pt_solid_d2(field_grad_t * fg);
+__host__ int grad_3d_7pt_solid_map_set(map_t * map);
+
 #endif

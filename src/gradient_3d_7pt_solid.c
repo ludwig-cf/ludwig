@@ -96,11 +96,11 @@ static void util_q5_to_qab(double q[3][3], const double * phi);
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_solid_map_set
+ *  grad_3d_7pt_solid_map_set
  *
  *****************************************************************************/
 
-__targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
+__host__ int grad_3d_7pt_solid_map_set(map_t * map_in) {
 
   assert(map_in);
 
@@ -118,46 +118,24 @@ __targetHost__ int gradient_3d_7pt_solid_map_set(map_t * map_in) {
  *
  *****************************************************************************/
 
-__targetHost__ int gradient_3d_7pt_solid_d2(const int nop,
-					    const double * field,
-					    double * t_field,
-					    double * grad,
-					    double * t_grad,
-					    double * delsq, double * t_delsq) {
+__host__ int grad_3d_7pt_solid_d2(field_grad_t * fg) {
+
  
 
   int nextra;
-  int nsites;
+
 #ifdef __NVCC__
   int method = 3;
 #else
   int method = 1;
 #endif
 
-  assert(nop == NQAB);
-  assert(map_);
-  assert(field);
-  assert(grad);
-  assert(delsq);
-
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  if (method == 1) gradient_6x5_svd(field, grad, delsq, nextra);
-  if (method == 2) gradient_6x6_gauss_elim(field, grad, delsq, nextra);
-  if (method == 3) {
-    nsites = coords_nsites();
-#ifndef KEEPFIELDONTARGET
-    copyToTarget(t_field,field,nop*nsites*sizeof(double));
-#endif
-
-    gradient_6x6_gpu(t_field, t_grad, t_delsq, nextra);
-    
-#ifndef KEEPFIELDONTARGET
-    copyFromTarget(grad,t_grad,nop*3*nsites*sizeof(double)); 
-    copyFromTarget(delsq,t_delsq,nop*nsites*sizeof(double)); 
-#endif
-  }
+  if (method == 1) gradient_6x5_svd(fg->field->data, fg->grad, fg->delsq, nextra);
+  if (method == 2) gradient_6x6_gauss_elim(fg->field->data, fg->grad, fg->delsq, nextra);
+  if (method == 3) gradient_6x6_gpu(fg->field->data, fg->grad, fg->delsq, nextra);
 
   return 0;
 }
@@ -1266,7 +1244,7 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   //execute lattice-based operation on target
   
   gradient_6x6_gpu_lattice __targetLaunchNoStride__(nSites) (field, grad,
-  						     del2, map_->tcopy,
+  						     del2, map_->target,
 						     (bluePhaseKernelConstants_t*) pcon, 
 						     cinfo->tcopy);
   targetSynchronize();

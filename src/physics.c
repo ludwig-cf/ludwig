@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,7 +37,6 @@ struct physics_s {
   double b0[3];        /* External magnetic field */
   double fgravity[3];  /* Gravitational force (on objects) */
   double mobility;     /* Order parameter mobility (binary fluid) */
-  double lc_gamma_rot; /* Liquid crystal rotational diffusion coefficient */
 };
 
 static physics_t * phys = NULL;
@@ -435,38 +434,6 @@ int physics_mobility_set(double mobility) {
   assert(mobility);
 
   phys->mobility = mobility;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  physics_lc_gamma_rot
- *
- *****************************************************************************/
-
-int physics_lc_gamma_rot(double * gamma) {
-
-  assert(phys);
-  assert(gamma);
-
-  *gamma = phys->lc_gamma_rot;
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  physics_lc_gamma_rot_set
- *
- *****************************************************************************/
-
-int physics_lc_gamma_rot_set(double gamma) {
-
-  assert(phys);
-
-  phys->lc_gamma_rot = gamma;
 
   return 0;
 }

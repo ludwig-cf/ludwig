@@ -34,7 +34,6 @@
 
 #include "model.h"
 #include "model_le.h"
-#include "lb_model_s.h"
 #include "bbl.h"
 
 #include "collision.h"
@@ -43,13 +42,11 @@
 #include "collision_rt.h"
 
 #include "map.h"
-#include "map_s.h"
 #include "wall.h"
 #include "interaction.h"
 #include "physics_rt.h"
 
 #include "hydro_rt.h"
-#include "hydro_s.h"
 
 #include "io_harness.h"
 #include "phi_stats.h"
@@ -59,7 +56,6 @@
 
 /* Order parameter fields */
 #include "field.h"
-#include "field_s.h"
 #include "field_grad.h"
 #include "gradient_rt.h"
 
@@ -134,6 +130,10 @@ struct ludwig_s {
   noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
+  fe_t * fe;                /* Free energy */
+  beris_edw_t * be;         /* Beris Edwards dynamics */
+  pth_t * pth;              /* Thermodynamic stress/force calculation */
+
   colloids_info_t * collinfo;  /* Colloid information */
   colloid_io_t * cio;          /* Colloid I/O harness */
   ewald_t * ewald;             /* Ewald sum for dipoles */
@@ -146,6 +146,12 @@ static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(map_t ** map);
+
+
+__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
+__targetHost__ void init_comms_gpu(int N[3], int ndist);
+__targetHost__ void finalise_comms_gpu();
+__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
 
 /*****************************************************************************
  *
@@ -238,7 +244,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) {
-    symmetric_rt_initial_conditions(ludwig->phi);
+    fe_symmetric_rt_initial_conditions(ludwig->fe, ludwig->phi);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
   }
@@ -338,7 +344,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
   if (get_step() == 0) {
-    stats_sigma_init(ludwig->phi, nstat);
+    /* fe must be fe_symm_t for sigma stats (not only nstat) */
+    stats_sigma_init(ludwig->fe, ludwig->phi, nstat);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
   }
@@ -364,11 +371,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
 }
 
 
-__targetHost__ void init_comms_gpu(int N[3], int ndist);
-__targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
-
-
 /*****************************************************************************
  *
  *  ludwig_run
@@ -392,8 +394,6 @@ void ludwig_run(const char * inputfile) {
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
 
-  double* tmpptr;
-
 
   ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
@@ -409,7 +409,6 @@ void ludwig_run(const char * inputfile) {
   int nhalo = coords_nhalo();
   int Nall[3];
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
   /* Report initial statistics */
 
@@ -423,7 +422,7 @@ void ludwig_run(const char * inputfile) {
   lb_ndist(ludwig->lb, &im);
 
   if (im == 2) {
-    phi_lb_to_field_host(ludwig->phi, ludwig->lb);
+    phi_lb_to_field(ludwig->phi, ludwig->lb);
     stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
   }
   else {
@@ -439,31 +438,10 @@ void ludwig_run(const char * inputfile) {
   coords_nlocal(nlocal);
 
 #if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
-    init_comms_gpu(nlocal, ludwig->lb->ndist);
+  init_comms_gpu(nlocal, ludwig->lb->ndist);
 #endif
 
-
-    int nFields=NVEL*ludwig->lb->ndist;
-
-    copyDeepDoubleArrayToTarget(ludwig->lb->tcopy,ludwig->lb,&(ludwig->lb->f),nSites*nFields);
-
-
-#ifdef KEEPHYDROONTARGET
-
-    copyDeepDoubleArrayToTarget(ludwig->hydro->tcopy,ludwig->hydro,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-
-#endif
-    
-#ifdef KEEPFIELDONTARGET
-    if (ludwig->q){
-      copyDeepDoubleArrayToTarget(ludwig->q->tcopy,ludwig->q,&(ludwig->q->data),ludwig->q->nf*nSites);
-
-    }
-    if (ludwig->phi){
-      copyDeepDoubleArrayToTarget(ludwig->phi->tcopy,ludwig->phi,&(ludwig->phi->data),ludwig->phi->nf*nSites);
-    }
-
-#endif
+  lb_model_copy(ludwig->lb, cudaMemcpyHostToDevice);
 
   
   /* Main time stepping loop */
@@ -512,10 +490,7 @@ void ludwig_run(const char * inputfile) {
 
     lb_ndist(ludwig->lb, &im);
 
-
-
-    if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb->tcopy);
-
+    if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
 
 
     if (ludwig->phi) {
@@ -560,11 +535,7 @@ void ludwig_run(const char * inputfile) {
     }
     if (ludwig->q) {
 
-    TIMER_start(TIMER_PHI_HALO);
-
-      field_t* t_field = NULL; 
-      t_field = ludwig->q->tcopy;
-      copyFromTarget(&tmpptr,&(t_field->data),sizeof(double*));       
+      TIMER_start(TIMER_PHI_HALO);
 
 #if defined (KEEPFIELDONTARGET) && defined (LB_DATA_SOA)
 
@@ -585,14 +556,11 @@ void ludwig_run(const char * inputfile) {
 
 #else
 
-
-    field_halo(ludwig->q);
+      field_halo(ludwig->q);
 
 #endif
 
-    TIMER_stop(TIMER_PHI_HALO);
-
-
+      TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->q_grad);
       blue_phase_redshift_compute(); /* if redshift required? */
@@ -699,7 +667,7 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
 	    
-	  phi_force_calculation(ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
+	  phi_force_calculation(ludwig->pth, ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
   
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
@@ -708,7 +676,7 @@ void ludwig_run(const char * inputfile) {
 	  }
 	}
 	else {
-	  phi_force_colloid(ludwig->collinfo, ludwig->q, ludwig->q_grad,ludwig->hydro, ludwig->map);
+	  phi_force_colloid(ludwig->pth, ludwig->collinfo, ludwig->q, ludwig->q_grad,ludwig->hydro, ludwig->map);
 	}
       }
 
@@ -724,9 +692,6 @@ void ludwig_run(const char * inputfile) {
 	if (ludwig->hydro) {
 
 	  TIMER_start(TIMER_U_HALO);
-
-	  hydro_t* t_hydro = ludwig->hydro->tcopy; 
-	  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*));  
 
 #if defined (KEEPHYDROONTARGET) && defined (LB_DATA_SOA)
 
@@ -759,8 +724,8 @@ void ludwig_run(const char * inputfile) {
 	}
 
 	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	blue_phase_beris_edwards(ludwig->q, ludwig->q_grad, ludwig->hydro,
-	    			 ludwig->map, ludwig->noise_rho);
+	beris_edw_update(ludwig->be, ludwig->q, ludwig->q_grad, ludwig->hydro,
+			 ludwig->map, ludwig->noise_rho);
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
@@ -786,21 +751,17 @@ void ludwig_run(const char * inputfile) {
 
       /* Collision stage */
 
-
-      
-      
       TIMER_start(TIMER_COLLIDE);
-      //lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho);
-      lb_collide(ludwig->lb->tcopy, ludwig->hydro, ludwig->map, ludwig->noise_rho);
+
+      lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho,
+		 ludwig->fe);
 
       TIMER_stop(TIMER_COLLIDE);
-      
-      
 
+      
       /* Boundary conditions */
 
-      lb_le_apply_boundary_conditions(ludwig->lb->tcopy);
-
+      lb_le_apply_boundary_conditions(ludwig->lb);
 
 
       TIMER_start(TIMER_HALO_LATTICE);
@@ -811,8 +772,6 @@ void ludwig_run(const char * inputfile) {
 #else
       lb_halo(ludwig->lb);
 #endif 
-
-
 
       TIMER_stop(TIMER_HALO_LATTICE);
 
@@ -828,9 +787,9 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	TIMER_start(TIMER_BBL);
-	wall_set_wall_velocity(ludwig->lb->tcopy);
+	wall_set_wall_velocity(ludwig->lb);
 	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->collinfo);
-	wall_bounce_back(ludwig->lb->tcopy, ludwig->map);
+	wall_bounce_back(ludwig->lb, ludwig->map);
 	TIMER_stop(TIMER_BBL);
       }
     }
@@ -849,16 +808,16 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->hydro) {
       TIMER_start(TIMER_PROPAGATE);
-      lb_propagation(ludwig->lb->tcopy);
+      lb_propagation(ludwig->lb);
       TIMER_stop(TIMER_PROPAGATE);
     }
+
     TIMER_stop(TIMER_STEPS);
 
     /* Configuration dump */
 
     if (is_config_step()) {
-      copyDeepDoubleArrayFromTarget(ludwig->lb,ludwig->lb->tcopy,&(ludwig->lb->f),nSites*nFields);
-
+      lb_model_copy(ludwig->lb, cudaMemcpyDeviceToHost);
       info("Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
       lb_io_info(ludwig->lb, &iohandler);
@@ -908,8 +867,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_measurement_step()) {
-      copyDeepDoubleArrayFromTarget(ludwig->lb,ludwig->lb->tcopy,&(ludwig->lb->f),nSites*nFields);
-
+      lb_model_copy(ludwig->lb, cudaMemcpyDeviceToDevice);
       stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->hydro);
     }
 
@@ -936,13 +894,11 @@ void ludwig_run(const char * inputfile) {
     /* Print progress report */
 
     if (is_statistics_step()) {
-
-      copyDeepDoubleArrayFromTarget(ludwig->lb,ludwig->lb->tcopy,&(ludwig->lb->f),nSites*nFields);
-
+      lb_model_copy(ludwig->lb, cudaMemcpyDeviceToHost);
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
       if (im == 2) {
-	phi_lb_to_field_host(ludwig->phi, ludwig->lb);
+	phi_lb_to_field(ludwig->phi, ludwig->lb);
 	stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
       }
       else {
@@ -991,8 +947,7 @@ void ludwig_run(const char * inputfile) {
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
-      copyDeepDoubleArrayFromTarget(ludwig->lb,ludwig->lb->tcopy,&(ludwig->lb->f),nSites*nFields);
-
+    lb_model_copy(ludwig->lb, cudaMemcpyDeviceToHost);
     sprintf(filename, "%sdist-%8.8d", subdirectory, step);
     lb_io_info(ludwig->lb, &iohandler);
     io_write_data(iohandler, filename, ludwig->lb);
@@ -1016,10 +971,7 @@ void ludwig_run(const char * inputfile) {
     /* Only strictly required if have order parameter dynamics */ 
     if (ludwig->hydro) {
 
-#ifdef KEEPHYDROONTARGET
-	    copyDeepDoubleArrayFromTarget(ludwig->hydro,ludwig->hydro->tcopy,&(ludwig->hydro->u),ludwig->hydro->nf*nSites);
-#endif
-
+      hydro_memcpy(ludwig->hydro, cudaMemcpyDeviceToHost);
       hydro_io_info(ludwig->hydro, &iohandler);
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
@@ -1060,6 +1012,7 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
+  if (ludwig->be)        beris_edw_free(ludwig->be);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
@@ -1170,13 +1123,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Appropriate for single fluid */
     info("\n");
     info("No free energy selected\n");
-    phi_force_required_set(0); /* Could reverse the default */
 
     nhalo = 1;
     coords_nhalo_set(nhalo);
     coords_run_time();
     le_init();
     le_info();
+    pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
   }
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
@@ -1205,8 +1158,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    symmetric_run_time();
-    symmetric_phi_set(ludwig->phi, ludwig->phi_grad);
+    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
 
     info("\n");
     info("Using Cahn-Hilliard finite difference solver.\n");
@@ -1228,12 +1180,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     }
 
     /* Force */
-
+#ifndef OLD_SHIT
+    assert(0); /* OK, make the choice */
+#else
     p = 1; /* Default is to use divergence method */
     RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
     phi_force_divergence_set(p);
+#endif
 
   }
   else if (strcmp(description, "symmetric_lb") == 0) {
@@ -1258,16 +1213,17 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    symmetric_run_time();
-    symmetric_phi_set(ludwig->phi, ludwig->phi_grad);
+    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
 
     info("\n");
     info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
-    phi_force_required_set(0);
 
     RUN_get_double_parameter("mobility", &value);
     physics_mobility_set(value);
     info("Mobility M            = %12.5e\n", value);
+
+    /* No explicit force is relevant */
+    pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
 
   }
   else if (strcmp(description, "brazovskii") == 0) {
@@ -1300,12 +1256,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     physics_mobility_set(value);
     info("Mobility M            = %12.5e\n", value);
 
+#ifndef OLD_SHIT
+    assert(0); /* OK, make choice... */
+#else
     p = 1;
     RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force caluclation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
     phi_force_divergence_set(p);
-
+#endif
 
   }
   else if (strcmp(description, "surfactant") == 0) {
@@ -1334,23 +1293,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Free energy details\n");
     info("-------------------\n\n");
 
-    blue_phase_run_time();
+    blue_phase_run_time(&ludwig->fe, &ludwig->be);
     blue_phase_q_set(ludwig->q, ludwig->q_grad);
-
-    info("\n");
-    info("Using Beris-Edwards solver:\n");
-
-    p = RUN_get_double_parameter("lc_Gamma", &value);
-    if (p != 0) {
-      physics_lc_gamma_rot_set(value);
-      info("Rotational diffusion const = %14.7e\n", value);
-    }
 
     p = 0;
     RUN_get_int_parameter("lc_noise", &p);
     noise_present_set(ludwig->noise_rho, NOISE_QAB, p);
     info("LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
+    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
   else if (strcmp(description, "polar_active") == 0) {
 
@@ -1383,6 +1334,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     RUN_get_double_parameter("leslie_ericksen_swim", &value);
     leslie_ericksen_swim_set(value);
     info("Self-advection parameter = %12.5e\n", value);
+
+    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
   else if(strcmp(description, "lc_droplet") == 0){
     
@@ -1412,7 +1365,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    symmetric_run_time();
+    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
     
     lc_droplet_phi_set(ludwig->phi, ludwig->phi_grad);
 
@@ -1425,12 +1378,17 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Force */
 
+#ifndef OLD_SHIT
+    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    /* Is it clear that a mixture of methods is useful as
+     * no H grad Q methd is implemented.... */
+#else
     p = 1; /* Default is to use divergence method */
     RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
     phi_force_divergence_set(p);
-  
+#endif
     /* Liquid crystal part */
     nf = NQAB;   /* Tensor order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
@@ -1444,19 +1402,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Free energy details\n");
     info("-------------------\n\n");
 
-    blue_phase_run_time();
-    lc_droplet_q_set(ludwig->q, ludwig->q_grad);
+    blue_phase_run_time(&ludwig->fe, &ludwig->be);
 
-    info("\n");
-    info("Using Beris-Edwards solver:\n");
-
-    p = RUN_get_double_parameter("lc_Gamma", &value);
-    if (p != 0) {
-      physics_lc_gamma_rot_set(value);
-      info("Rotational diffusion constant = %12.5e\n", value);
-    }
-    
     /* finalise with the droplet specific init*/
+    lc_droplet_q_set(ludwig->q, ludwig->q_grad);
     lc_droplet_run_time();
 
   }
@@ -1471,7 +1420,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     RUN_get_int_parameter("fd_force_divergence", &p);
     psi_force_divergence_set(p);
 
+#ifndef OLD_SHIT
+    assert(0); /* Why is this here?? */
+#else
     if (p == 1) phi_force_required_set(1);
+#endif
 
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
@@ -1517,7 +1470,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     RUN_get_int_parameter("fd_force_divergence", &p);
     psi_force_divergence_set(p);
 
+#ifndef OLD_SHIT
+    assert(0); /* Force mechanism? */
+#else
     if (p == 1) phi_force_required_set(1);
+#endif
 
     /* First, the symmetric part. */
 
@@ -1537,8 +1494,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Symmetric part\n");
     info("--------------\n\n");
-    symmetric_run_time();
-    symmetric_phi_set(ludwig->phi, ludwig->phi_grad);
+    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
 
     info("\n");
     info("Using Cahn-Hilliard finite difference solver.\n");
@@ -1698,7 +1654,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
   int is_subgrid = 0;    /* subgrid particle switch */
-  double* tmpptr;
 
   assert(ludwig);
 
@@ -1751,7 +1706,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     TIMER_start(TIMER_REBUILD);
 
     build_update_map(ludwig->collinfo, ludwig->map);
-    build_remove_replace(ludwig->collinfo, ludwig->lb->tcopy, ludwig->phi, ludwig->p,
+    build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi, ludwig->map);
     build_update_links(ludwig->collinfo, ludwig->map);
     
@@ -1784,11 +1739,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   Nall[Y] = nlocal[Y] + 2*nhalo;
   Nall[Z] = nlocal[Z] + 2*nhalo;
   nSites  = Nall[X]*Nall[Y]*Nall[Z];
-  
-  map_t* t_map = ludwig->map->tcopy; 
-  
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,ludwig->map->status,nSites*sizeof(char));
+
+  map_memcpy(ludwig->map, cudaMemcpyHostToDevice);
   
   /* set up colloids such that they can be accessed from target
    * noting that each actual colloid structure stays resident on the host */

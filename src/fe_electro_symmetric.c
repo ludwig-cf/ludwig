@@ -141,10 +141,12 @@ double fe_es_fed(int index) {
   double fed;
 
   assert(fe);
-
+#ifndef OLD_SHIT
+  assert(0);
+#else
   fed = fe_electro_fed(index);
   fed += symmetric_free_energy_density(index);
-
+#endif
   for (n = 0; n < fe->nk; n++) {
     psi_rho(fe->psi, index, n, &rho);
     fe_es_mu_ion_solv(index, n, &fsolv);
@@ -184,8 +186,11 @@ double fe_es_mu_phi(const int index, const int nop) {
   assert(nop == 0); /* Only zero if relevant */
 
   /* Contribution from compositional order parameter */
+#ifndef OLD_SHIT
+  assert(0);
+#else
   mu = symmetric_chemical_potential(index, 0);
-
+#endif
   /* Contribution from solvation */
 
   for (in = 0; in < fe->nk; in++) {
@@ -356,8 +361,11 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   psi_unit_charge(fe->psi, &eunit);
   reunit = 1.0/eunit;
 
+#ifndef OLD_SHIT
+  assert(0);
+#else
   symmetric_chemical_stress(index, s); 
-
+#endif
   /* Coupling part
      requires phi and total electric field */
 

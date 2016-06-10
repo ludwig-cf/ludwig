@@ -3,6 +3,7 @@
  *  blue_phase_rt.c
  *
  *  Run time input for blue phase free energy, and related parameters.
+ *  Also relevant Beris Edwards parameters.
  *
  *  $Id$
  *
@@ -10,7 +11,8 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,14 +24,10 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
-#include "field.h"
-#include "field_grad.h"
 #include "colloids_Q_tensor.h"
-#include "free_energy.h"
-#include "free_energy_tensor.h"
-#include "blue_phase.h"
 #include "blue_phase_init.h"
 #include "blue_phase_rt.h"
+#include "free_energy_tensor.h"
 #include "physics.h"
 
 /*****************************************************************************
@@ -40,7 +38,7 @@
  *
  *****************************************************************************/
 
-void blue_phase_run_time(void) {
+__host__ int blue_phase_run_time(fe_t ** fe, beris_edw_t ** be) {
 
   int n;
   int redshift_update;
@@ -56,6 +54,7 @@ void blue_phase_run_time(void) {
   double redshift;
   double epsilon;
   double e0[3];
+  beris_edw_param_t be_param;
 
   int io_grid[3] = {1,1,1};
   int io_format_out = IO_FORMAT_DEFAULT;
@@ -261,8 +260,23 @@ void blue_phase_run_time(void) {
   
   fed_io_info_set(io_grid, io_format_out);
 
-  
-  return;
+
+  /* Beris Edwards */
+
+  beris_edw_create(be);
+  assert(*be);
+
+  info("\n");
+  info("Using Beris-Edwards solver:\n");
+
+  n = RUN_get_double_parameter("lc_Gamma", &gamma);
+  if (n != 0) {
+    be_param.gamma = gamma;
+    beris_edw_param_set(*be, be_param);
+    info("Rotational diffusion const = %14.7e\n", gamma);
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -273,7 +287,7 @@ void blue_phase_run_time(void) {
  *
  *****************************************************************************/
 
-int blue_phase_rt_initial_conditions(field_t * q) {
+__host__ int blue_phase_rt_initial_conditions(field_t * q) {
 
   int  n1, n2;
   int  rmin[3], rmax[3];

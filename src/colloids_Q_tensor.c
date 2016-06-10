@@ -328,34 +328,13 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-  //start constant setup
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(tc_noffset,noffset, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
-  //end constant setup
 
-  //target copy of hydro structure
-  hydro_t* t_hydro = hydro->tcopy; 
-
-  //populate target copy of velocity from host 
-  double* tmpptr;
-
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-  copyToTarget(tmpptr,hydro->u,hydro->nf*nSites*sizeof(double));
-#endif
-
-  // launch operation across the lattice on target
-  colloids_fix_swd_lattice __targetLaunchNoStride__(nSites) (cinfo->tcopy, hydro->tcopy, map->tcopy);
+  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy, map->target);
   targetSynchronize();
-
-  // collect results from target
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(&tmpptr,&(t_hydro->u),sizeof(double*)); 
-  copyFromTarget(hydro->u,tmpptr,hydro->nf*nSites*sizeof(double));
-#endif
-
 
   return 0;
 }

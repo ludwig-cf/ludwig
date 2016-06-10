@@ -130,9 +130,8 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-
-
-int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
+__host__
+int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   int ntotal;
   int nhalo;
@@ -141,7 +140,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   int nFields;
 
   assert(bbl);
-  assert(lb_in);
+  assert(lb);
   assert(cinfo);
 
   nhalo = coords_nhalo();
@@ -149,26 +148,23 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
 
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
-  nFields = NVEL*lb_in->ndist;
+  nFields = NVEL*lb->ndist;
 
   colloids_info_ntotal(cinfo, &ntotal);
   if (ntotal == 0) return 0;
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
+  bbl_pass0(bbl, lb, cinfo);
 
-
-
-  bbl_pass0(bbl, lb_in, cinfo);
-
-  lb_t* lb;
 #ifdef __NVCC__
 
+  lb_t* lb;
 
   lb = lb_in;
 
   /* update colloid-affected lattice sites from target, including neighbours */
-#ifdef OLD_SHIT
+
   copyFromTargetPointerMap3D(lb->f, lb->t_f,
 			     Nall, nFields, 1, (void **) cinfo->map_new);
 
@@ -188,11 +184,6 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
   copyFromTargetSubset(lb->f,tmpptr,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
 
-#else
-  assert(0); /* KS removed lb->t_f */
-#endif
-#else
-  lb = lb_in->tcopy; /* set lb to target copy */
 #endif
 
   bbl_pass1(bbl, lb, cinfo);
@@ -210,9 +201,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
 
 #ifdef __NVCC__
 
-  /* update target with colloid-affected lattice sites,
-     not including neighbours */
-#ifdef OLD_SHIT 
+  assert(0); /* KS no device temporarily */
+
   copyToTargetPointerMap3D(lb->t_f, lb->f,
 			   Nall, nFields, 0, (void **) cinfo->map_new); 
 
@@ -222,10 +212,6 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb_in, colloids_info_t * cinfo) {
   
   free(colloidSiteList);
 
-
-#else
-  assert(0); /* KS removed lb->t_f */
-#endif
 #endif
 
   return 0;
@@ -414,7 +400,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
   copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
 
-  bbl_pass0_lattice __targetLaunchNoStride__(nSites)  (lb->tcopy,cinfo->tcopy); 
+  bbl_pass0_lattice __targetLaunchNoStride__(nSites)  (lb->target, cinfo->tcopy); 
   targetSynchronize();
 
   return 0;

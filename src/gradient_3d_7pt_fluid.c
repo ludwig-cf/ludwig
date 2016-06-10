@@ -41,106 +41,68 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "wall.h"
-#include "string.h"
 #include "field_s.h"
 #include "field_grad_s.h"
-#include "targetDP.h"
 #include "timer.h"
 #include "gradient_3d_7pt_fluid.h"
 
 #define NSTENCIL 1 /* +/- 1 point in each direction */
 
-__targetHost__ static void gradient_3d_7pt_fluid_operator(const int nop, 
-					   const double * field,
-					   double * t_field,
-					   double * grad,
-					   double * t_grad,
-					   double * delsq,
-					   double * t_delsq,
-			     const int nextra);
-__targetHost__ static void gradient_3d_7pt_fluid_le_correction(const int nop,
-						const double * field,
-						double * grad,
-						double * delsq,
-						const int nextra);
-__targetHost__ static void gradient_3d_7pt_fluid_wall_correction(const int nop,
-						  const double * field,
-						  double * grad,
-						  double * delsq,
-						  const int nextra);
+__host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra);
+__host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra);
+__host__ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg, int nextra);
 
-__targetHost__ static int gradient_dab_le_correct(int nf, const double * field, double * dab);
-__targetHost__ static int gradient_dab_compute(int nf, const double * field, double * dab);
+__host__ int grad_dab_le_correct(int nf, const double * field, double * dab);
+__host__ int grad_dab_compute(int nf, const double * field, double * dab);
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_d2
+ *  grad_3d_7pt_fluid_d2
  *
  *****************************************************************************/
 
-__targetHost__
-int gradient_3d_7pt_fluid_d2(const int nop, 
-			     const double * field,
-			     double * t_field,
-			     double * grad,
-			     double * t_grad,
-			     double * delsq,
-			     double * t_delsq) {
+__host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
 
   int nextra;
 
   nextra = coords_nhalo() - NSTENCIL;
   assert(nextra >= 0);
 
-  assert(field);
-  assert(grad);
-  assert(delsq);
+  assert(fgrad);
 
-  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad,
-				 delsq, t_delsq, nextra);
-  gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  grad_3d_7pt_fluid_operator(fgrad, nextra);
+  grad_3d_7pt_fluid_le_correction(fgrad, nextra);
+  grad_3d_7pt_fluid_wall_correction(fgrad, nextra);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_d4
- *
- *  Higher derivatives are obtained by using the same operation
- *  on appropriate field.
+ *  grad_3d_7pt_fluid_d4
  *
  *****************************************************************************/
 
-__targetHost__
-int gradient_3d_7pt_fluid_d4(const int nop, 
-			     const double * field,
-			     double * t_field,
-			     double * grad,
-			     double * t_grad,
-			     double * delsq,
-			     double * t_delsq) {
+__host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
   int nextra;
 
   nextra = coords_nhalo() - 2*NSTENCIL;
   assert(nextra >= 0);
+  assert(fgrad);
 
-  assert(field);
-  assert(grad);
-  assert(delsq);
-
-  gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad, delsq, t_delsq, nextra);
-  gradient_3d_7pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_7pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  assert(0);
+  assert(0); /* Works for double call? Brazovskii */
+  grad_3d_7pt_fluid_operator(fgrad, nextra);
+  grad_3d_7pt_fluid_le_correction(fgrad, nextra);
+  grad_3d_7pt_fluid_wall_correction(fgrad, nextra);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_dab
+ *  grad_3d_7pt_fluid_dab
  *
  *  This is the full gradient tensor, which actually requires more
  *  than the 7-point stencil advertised.
@@ -157,30 +119,31 @@ int gradient_3d_7pt_fluid_d4(const int nop,
  *
  *****************************************************************************/
 
-__targetHost__ int gradient_3d_7pt_fluid_dab(const int nf, 
-			     const double * field,
-			      double * dab){
+__host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
 
-  assert(nf == 1); /* Scalars only */
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->nf == 1); /* Scalars only; host only */
 
-  gradient_dab_compute(nf, field, dab);
-  gradient_dab_le_correct(nf, field, dab);
+  assert(0);
+  grad_dab_compute(1, fgrad->field->data, fgrad->d_ab);
+  grad_dab_le_correct(1, fgrad->field->data, fgrad->d_ab);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_operator
+ *  grad_3d_7pt_fluid_operator
  *
  *****************************************************************************/
 
 
-static __targetEntry__
-void gradient_3d_7pt_fluid_operator_lattice(const int nop,
-					    const double * t_field,
-					    double * t_grad,
-					    double * t_del2) {
+__targetEntry__
+void grad_3d_7pt_fluid_operator_lattice(int nop,
+					field_t * field, 
+					field_grad_t * fgrad) {
+
   int baseIndex;
 
   __targetTLP__(baseIndex, tc_nSites) {
@@ -251,41 +214,40 @@ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
 	int ys=tc_Nall[Z];
 
 	for (n = 0; n < nop; n++) {
-
 	  __targetILP__(iv) { 
 	    if (includeSite[iv]) {
-	      t_grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,X)] = 0.5*
-		(t_field[addr_rank1(tc_nSites,nop,indexp1[iv],n)] -
-		 t_field[addr_rank1(tc_nSites,nop,indexm1[iv],n)]); 
+	      fgrad->grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,X)] = 0.5*
+	      (field->data[addr_rank1(tc_nSites,nop,indexp1[iv],n)] -
+	       field->data[addr_rank1(tc_nSites,nop,indexm1[iv],n)]); 
 	    }
 	  }
       
 	  __targetILP__(iv) { 
 	    if (includeSite[iv]) {
-	      t_grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,Y)]= 0.5*
-		(t_field[addr_rank1(tc_nSites,nop,baseIndex+iv+ys,n)] -
-		 t_field[addr_rank1(tc_nSites,nop,baseIndex+iv-ys,n)]);
+	      fgrad->grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,Y)] = 0.5*
+		(field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+ys,n)] -
+		 field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-ys,n)]);
 	    }
 	  }
       
 	  __targetILP__(iv) { 
 	    if (includeSite[iv]) {
-	      t_grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,Z)] = 0.5*
-		(t_field[addr_rank1(tc_nSites,nop,baseIndex+iv+1,n)] -
-		 t_field[addr_rank1(tc_nSites,nop,baseIndex+iv-1,n)]);
+	      fgrad->grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,Z)] = 0.5*
+		(field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+1,n)] -
+		 field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-1,n)]);
 	    }
 	  }
 
 	  __targetILP__(iv) { 
 	    if (includeSite[iv]) {
-	      t_del2[addr_rank1(tc_nSites,nop,baseIndex+iv,n)]
-		= t_field[addr_rank1(tc_nSites,nop,indexp1[iv],n)]
-		+ t_field[addr_rank1(tc_nSites,nop,indexm1[iv],n)]
-		+ t_field[addr_rank1(tc_nSites,nop,baseIndex+iv+ys,n)]
-		+ t_field[addr_rank1(tc_nSites,nop,baseIndex+iv-ys,n)]
-		+ t_field[addr_rank1(tc_nSites,nop,baseIndex+iv+1,n)]
-		+ t_field[addr_rank1(tc_nSites,nop,baseIndex+iv-1,n)]
-		- 6.0*t_field[addr_rank1(tc_nSites,nop,baseIndex+iv,n)];
+	      fgrad->delsq[addr_rank1(tc_nSites,nop,baseIndex+iv,n)]
+		= field->data[addr_rank1(tc_nSites,nop,indexp1[iv],n)]
+		+ field->data[addr_rank1(tc_nSites,nop,indexm1[iv],n)]
+		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+ys,n)]
+		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-ys,n)]
+		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+1,n)]
+		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-1,n)]
+		- 6.0*field->data[addr_rank1(tc_nSites,nop,baseIndex+iv,n)];
 	    }
 	  }
 	}
@@ -296,15 +258,8 @@ void gradient_3d_7pt_fluid_operator_lattice(const int nop,
   return;
 }
 
+__host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
 
-static void gradient_3d_7pt_fluid_operator(const int nop,
-					   const double * field,
-					   double * t_field,
-					   double * grad,
-					   double * t_grad,
-					   double * del2,
-					   double * t_del2,
-					   const int nextra) {
   int nlocal[3];
   int nhalo;
   int Nall[3];
@@ -316,51 +271,34 @@ static void gradient_3d_7pt_fluid_operator(const int nop,
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-  int nFields=nop;
-
-  //start constant setup
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
 
-  //end constant setup
+  TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
-  #ifndef KEEPFIELDONTARGET
-  copyToTarget(t_field,field,nSites*nFields*sizeof(double)); 
-  #endif
-
-  TIMER_start(TIMER_PHI_GRAD_KERNEL);	       
-
-   gradient_3d_7pt_fluid_operator_lattice __targetLaunch__(nSites) 
-  (nop,t_field,t_grad,t_del2);
+  grad_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
+    (fg->field->nf, fg->field->tcopy, fg->tcopy);
   targetSynchronize();
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);
 
-#ifndef KEEPFIELDONTARGET
-  copyFromTarget(grad, t_grad, 3*nSites*nFields*sizeof(double)); 
-  copyFromTarget(del2, t_del2, nSites*nFields*sizeof(double)); 
-#endif
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_le_correction
+ *  grad_3d_7pt_le_correction
  *
  *  Additional gradient calculations near LE planes to account for
  *  sliding displacement.
  *
  *****************************************************************************/
 
-__targetHost__ static
-void gradient_3d_7pt_fluid_le_correction(const int nop,
-					 const double * field,
-					 double * grad,
-					 double * del2,
-					 const int nextra) {
+__host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra) {
+
+  int nop;
   int nlocal[3];
   int nsites;
   int nhalo;
@@ -372,10 +310,19 @@ void gradient_3d_7pt_fluid_le_correction(const int nop,
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
 
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+  double * __restrict__ field;
+
   nhalo = coords_nhalo();
   nsites = le_nsites();
   coords_nlocal(nlocal);
   ys = (nlocal[Z] + 2*nhalo);
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
 
@@ -457,23 +404,21 @@ void gradient_3d_7pt_fluid_le_correction(const int nop,
     /* Next plane */
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_7pt_fluid_wall_correction
+ *  grad_3d_7pt_fluid_wall_correction
  *
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
 
-__targetHost__
-static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
-						  const double * field,
-						  double * grad,
-						  double * del2,
-						  const int nextra) {
+__host__
+int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
+
+  int nop;
   int nlocal[3];
   int nhalo;
   int n;
@@ -487,7 +432,11 @@ static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
   double * c;                   /* Solid free energy parameters C */
   double * h;                   /* Solid free energy parameters H */
 
-  if (wall_at_edge(X) == 0) return;
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
+  if (wall_at_edge(X) == 0) return 0;
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -497,6 +446,11 @@ static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
 
   assert(wall_at_edge(Y) == 0);
   assert(wall_at_edge(Z) == 0);
+
+  nop = fg->field->nf;
+  field = fg->field->data;
+  grad = fg->grad;
+  del2 = fg->delsq;
 
   /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
    * is currently no mechanism to obtain the free energy parameters. */
@@ -567,17 +521,17 @@ static  void gradient_3d_7pt_fluid_wall_correction(const int nop,
   free(c);
   free(h);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_dab_compute
+ *  grad_dab_compute
  *
  *****************************************************************************/
 
-__targetHost__
-static int gradient_dab_compute(int nf, const double * field, double * dab) {
+__host__
+int grad_dab_compute(int nf, const double * field, double * dab) {
 
   int nlocal[3];
   int nhalo;
@@ -642,12 +596,11 @@ static int gradient_dab_compute(int nf, const double * field, double * dab) {
 
 /*****************************************************************************
  *
- *  gradient_dab_le_correct
+ *  grad_dab_le_correct
  *
  *****************************************************************************/
 
-__targetHost__ static int gradient_dab_le_correct(int nf, const double * field,
-				   double * dab) {
+__host__ int grad_dab_le_correct(int nf, const double * field, double * dab) {
 
   int nlocal[3];
   int nhalo;

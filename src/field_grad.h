@@ -2,13 +2,11 @@
  *
  *  field_grad.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,17 +17,12 @@
 #include "targetDP.h"
 
 typedef struct field_grad_s field_grad_t;
-
-typedef int (* grad_ft)(int nf, const double * field,double * t_field, 
-			double * grad, double * t_grad,
-                        double * delsq, double * t_delsq
-);
-typedef int (* dab_ft)(int nf, const double * field, double * dab);
+typedef int (* grad_ft)(field_grad_t * fgrad);
 
 __targetHost__ int field_grad_create(field_t * f, int level, field_grad_t ** pobj);
 __targetHost__ void field_grad_free(field_grad_t * obj);
 __targetHost__ int field_grad_set(field_grad_t * obj, grad_ft d2, grad_ft d4);
-__targetHost__ int field_grad_dab_set(field_grad_t * obj, dab_ft dab);
+__targetHost__ int field_grad_dab_set(field_grad_t * obj, grad_ft dab);
 __targetHost__ int field_grad_compute(field_grad_t * obj);
 
 __targetHost__ int field_grad_scalar_grad(field_grad_t * obj, int index, double grad[3]);

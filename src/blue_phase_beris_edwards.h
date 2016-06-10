@@ -7,8 +7,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,7 +21,22 @@
 #include "map.h"
 #include "noise.h"
 
-__targetHost__ int blue_phase_beris_edwards(field_t * fq, field_grad_t * fq_grad, hydro_t * hydro, map_t * map, noise_t * noise);
-__targetHost__ int blue_phase_be_tmatrix_set(double t[3][3][NQAB]);
+typedef struct beris_edw_s beris_edw_t;
+typedef struct beris_edw_param_s beris_edw_param_t;
+
+struct beris_edw_param_s {
+  double gamma;  /* Rotational diffusion constant */
+};
+
+__host__ int beris_edw_create(beris_edw_t ** pobj);
+__host__ int beris_edw_free(beris_edw_t * be);
+__host__ int beris_edw_memcpy(beris_edw_t * be, int flag);
+__host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t values);
+
+__host__ int beris_edw_update(beris_edw_t * be, field_t * fq,
+			      field_grad_t * fq_grad, hydro_t * hydro,
+			      map_t * map, noise_t * noise);
+
+__host__ __device__ int beris_edw_tmatrix_set(double t[3][3][NQAB]);
 
 #endif

@@ -49,7 +49,7 @@ struct lb_data_s {
   MPI_Datatype site_y[2];
   MPI_Datatype site_z[2];
 
-  lb_t * tcopy;              /* copy of this structure on target */ 
+  lb_t * target;              /* copy of this structure on target */ 
 
 };
 

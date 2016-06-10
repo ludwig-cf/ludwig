@@ -38,7 +38,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -51,19 +51,16 @@
 #include "wall.h"
 #include "free_energy.h"
 #include "phi_force.h"
-#include "phi_force_stress.h"
 #include "phi_force_colloid.h"
 #include "hydro_s.h" 
 #include "colloids_s.h"
 #include "map_s.h"
+#include "pth_s.h"
 #include "timer.h"
 
-static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
+static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
+				   hydro_t * hydro,
 				   map_t * map);
-
-
-extern double * pth_;
-extern double * t_pth_;
 
 /*****************************************************************************
  *
@@ -74,24 +71,21 @@ extern double * t_pth_;
  *
  *****************************************************************************/
 
-__targetHost__ int phi_force_colloid(colloids_info_t * cinfo, field_t* q, field_grad_t* q_grad, hydro_t * hydro, map_t * map) {
+__targetHost__ int phi_force_colloid(pth_t * pth, colloids_info_t * cinfo,
+				     field_t * q, field_grad_t * q_grad,
+				     hydro_t * hydro, map_t * map) {
 
   int ncolloid;
-  int required;
 
-  phi_force_required(&required);
+  assert(pth);
+
   colloids_info_ntotal(cinfo, &ncolloid);
 
-  if (hydro == NULL && ncolloid == 0) required = 0;
+  if (hydro == NULL && ncolloid == 0) return 0;
 
-  if (required) {
-
-    phi_force_stress_allocate();
-
-    phi_force_stress_compute(q, q_grad);
-    phi_force_interpolation(cinfo, hydro, map);
-
-    phi_force_stress_free();
+  if (pth->method == PTH_METHOD_DIVERGENCE) {
+    phi_force_stress_compute(pth, q, q_grad);
+    phi_force_interpolation(pth, cinfo, hydro, map);
   }
 
   return 0;
@@ -111,8 +105,9 @@ __targetHost__ int phi_force_colloid(colloids_info_t * cinfo, field_t* q, field_
 
 
 __targetEntry__
-void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
-				     map_t * map, double * t_pth) {
+void phi_force_interpolation_lattice(pth_t * pth, colloids_info_t * cinfo,
+				     hydro_t * hydro,
+				     map_t * map) {
 
   int index;
 
@@ -159,7 +154,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
-	  pth0[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index,ia,ib)];
+	  pth0[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index,ia,ib)];
 	}
       }
 
@@ -192,7 +187,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
 
@@ -225,7 +220,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
 
@@ -258,7 +253,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
 
@@ -291,7 +286,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
 
@@ -324,7 +319,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
 
@@ -357,7 +352,7 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = t_pth[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
+	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
 	    }
 	  }
 
@@ -394,21 +389,18 @@ void phi_force_interpolation_lattice(colloids_info_t * cinfo, hydro_t * hydro,
 
 
 
-
-static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
+static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
+				   hydro_t * hydro,
 				   map_t * map) {
   int ia;
   int nlocal[3];
 
   colloid_t * colloid_at_site_index(int);
-  //void (* chemical_stress)(const int index, double s[3][3]);
 
   assert(cinfo);
   assert(map);
 
   coords_nlocal(nlocal);
-
-  //chemical_stress = phi_force_stress;
 
   int nhalo = coords_nhalo();
   int Nall[3];
@@ -419,28 +411,14 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   nSites  = Nall[X]*Nall[Y]*Nall[Z];
 
 
-  /* set up constants on target */
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
 
-  /*  copy stress to target */
-#ifndef KEEPFIELDONTARGET    
-  copyToTarget(t_pth_,pth_,3*3*nSites*sizeof(double));      
-#endif
-
-  hydro_t* t_hydro = hydro->tcopy; 
-  double* tmpptr;
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
-  copyToTarget(tmpptr,hydro->f,hydro->nf*nSites*sizeof(double));
-#endif
-
-  /* launch operation across the lattice on target */
-
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
-  phi_force_interpolation_lattice  __targetLaunchNoStride__(nSites) (cinfo->tcopy, hydro->tcopy,  map->tcopy, t_pth_);
+
+  phi_force_interpolation_lattice  __targetLaunch__(nSites) (pth->target, cinfo->tcopy, hydro->tcopy, map->target);
 
 /* note that ideally we would delay this sync to overlap 
    with below colloid force updates, but this is not working on current GPU 
@@ -448,20 +426,8 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
   targetSynchronize(); 
 
 
-  /* now update the force on the colloids */
-
-  double* pth;
-
-
-#ifdef KEEPFIELDONTARGET    
-
-
 
 #ifdef __NVCC__
-
-  pth = pth_;
-
-
 
   /* update colloid-affected lattice sites from target*/
   int ncolsite=colloids_number_sites(cinfo);
@@ -479,21 +445,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
   free(colloidSiteList);
 
-#else
-
-  pth = t_pth_;
-
-#endif //__NVCC__
-
-
-#else
-
-  pth = pth_;
-
-#endif //KEEPFIELDONTARGET
-
-
-
+#endif
 
   colloid_t * pc;
   colloid_link_t * p_link;
@@ -550,7 +502,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
       /* update the colloid force using the relavent part of the potential */
 	for (ia = 0; ia < 3; ia++) {
-	  pc->force[ia]+=fac*pth[addr_rank2(nSites,3,3,p_link->i,ia,idir)];
+	  pc->force[ia] += fac*pth->str[addr_rank2(nSites,3,3,p_link->i,ia,idir)];
 	}
 
     }
@@ -558,12 +510,6 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
 
   TIMER_stop(TIMER_PHI_FORCE_CALC);
-
-
-#ifndef KEEPHYDROONTARGET
-  copyFromTarget(&tmpptr,&(t_hydro->f),sizeof(double*)); 
-  copyFromTarget(hydro->f,tmpptr,hydro->nf*nSites*sizeof(double));
-#endif
 
   return 0;
 }

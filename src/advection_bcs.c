@@ -197,55 +197,16 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
   int nSites=Nall[X]*Nall[Y]*Nall[Z];
 
-
-  //copy lattice shape constants to target ahead of execution
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
 
-  double* tmpptr;
-
-#ifndef KEEPFIELDONTARGET
-  map_t* t_map = map->tcopy; //target copy of field structure
-
-
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map->status,nSites*sizeof(char));
-
-
-  advflux_t* t_flux = flux->tcopy; //target copy of flux structure
-
-  copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*));
-  copyToTarget(tmpptr,flux->fe,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fw),sizeof(double*));
-  copyToTarget(tmpptr,flux->fw,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fy),sizeof(double*));
-  copyToTarget(tmpptr,flux->fy,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fz),sizeof(double*));
-  copyToTarget(tmpptr,flux->fz,nf*nSites*sizeof(double));
-#endif
-
   TIMER_start(ADVECTION_BCS_KERNEL);
-  advection_bcs_no_normal_flux_lattice  __targetLaunch__(nSites) (nf,flux->tcopy, map->tcopy);
+
+  advection_bcs_no_normal_flux_lattice  __targetLaunch__(nSites) (nf, flux->target, map->target);
   targetSynchronize();
+
   TIMER_stop(ADVECTION_BCS_KERNEL);
-
-#ifndef KEEPFIELDONTARGET
-  copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*));
-  copyFromTarget(flux->fe,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fw),sizeof(double*));
-  copyFromTarget(flux->fw,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fy),sizeof(double*));
-  copyFromTarget(flux->fy,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fz),sizeof(double*));
-  copyFromTarget(flux->fz,tmpptr,nf*nSites*sizeof(double));
-#endif
 
   return 0;
 }

@@ -45,7 +45,6 @@ int main(int argc, char ** argv) {
 
 int tests_create() {
 
-  int test_kernel_suite();
   test_kernel_suite();
   test_lb_prop_suite();
 

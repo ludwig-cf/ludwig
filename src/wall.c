@@ -246,7 +246,7 @@ void wall_finish() {
  *
  *****************************************************************************/
 
-int wall_bounce_back(lb_t * lb, map_t * map) {
+__host__ int wall_bounce_back(lb_t * lb, map_t * map) {
 
   int i, j, ij, ji, ia;
   int ndist;
@@ -261,7 +261,7 @@ int wall_bounce_back(lb_t * lb, map_t * map) {
   assert(map);
 
   p_link = link_list_;
-  copyFromTarget(&ndist,&(lb->ndist),sizeof(int));
+  lb_ndist(lb, &ndist);
 
   while (p_link) {
 
@@ -507,7 +507,7 @@ B_link * allocate_link() {
  *
  *****************************************************************************/
 
-int wall_set_wall_velocity(lb_t * lb) {
+__host__ int wall_set_wall_velocity(lb_t * lb) {
 
   B_link * p_link;
   double   fp;
@@ -515,6 +515,7 @@ int wall_set_wall_velocity(lb_t * lb) {
   int      p;
 
   assert(lb);
+
   physics_rho0(&rho);
   p_link = link_list_;
 

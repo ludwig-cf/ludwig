@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,6 +26,7 @@ typedef struct field_s field_t;
 __targetHost__ int field_create(int nf, const char * name, field_t ** pobj);
 __targetHost__ void field_free(field_t * obj);
 
+__host__ int field_memcpy(field_t * obj, int flag);
 __targetHost__ int field_init(field_t * obj, int nhcomm);
 __targetHost__ int field_nf(field_t * obj, int * nop);
 __targetHost__ int field_init_io_info(field_t * obj, int grid[3], int form_in, int form_out);

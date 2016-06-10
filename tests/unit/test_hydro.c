@@ -68,6 +68,8 @@ static int do_test1(void) {
   const double u[3] = {-1.0, -2.0, -3.0};
   double check[3] = {0.0, 0.0, 0.0};
 
+  assert(NHDIM == 3);
+
   coords_init();
   le_init();
 
@@ -112,9 +114,9 @@ static int do_test_halo1(int nhalo, int nhcomm) {
   hydro_create(nhcomm, &hydro);
   assert(hydro);
 
-  test_coords_field_set(hydro->nf, hydro->u, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
   hydro_u_halo(hydro);
-  test_coords_field_check(nhcomm, hydro->nf, hydro->u, MPI_DOUBLE,
+  test_coords_field_check(nhcomm, NHDIM, hydro->u, MPI_DOUBLE,
 			  test_ref_double1);
 
   hydro_free(hydro);
@@ -151,7 +153,7 @@ static int do_test_io1(void) {
   assert(hydro);
 
   hydro_init_io_info(hydro, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
-  test_coords_field_set(hydro->nf, hydro->u, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
 
   hydro_io_info(hydro, &iohandler);
   assert(iohandler);

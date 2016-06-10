@@ -43,9 +43,10 @@ static int hydro_u_read(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int hydro_create(int nhcomm, hydro_t ** pobj) {
+__host__ int hydro_create(int nhcomm, hydro_t ** pobj) {
 
-  double * tmpptr;
+  int ndevice;
+  double * tmp;
   hydro_t * obj = (hydro_t *) NULL;
 
   assert(pobj);
@@ -53,31 +54,34 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
   obj = (hydro_t *) calloc(1, sizeof(hydro_t));
   if (obj == NULL) fatal("calloc(hydro) failed\n");
 
-  obj->nf = 3; /* always for velocity, force */
   obj->nhcomm = nhcomm;
 
   obj->nsite = le_nsites();
-  obj->u = (double *) calloc(obj->nf*obj->nsite, sizeof(double));
+  obj->u = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->u == NULL) fatal("calloc(hydro->u) failed\n");
 
-  obj->f = (double *) calloc(obj->nf*obj->nsite, sizeof(double));
+  obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
 
-  /* allocate target copy of structure */
+  /* Allocate target copy of structure (or alias) */
 
-  targetMalloc((void **) &(obj->tcopy), sizeof(hydro_t));
+  targetGetDeviceCount(&ndevice);
 
-  /* allocate data space on target */
+  if (ndevice == 0) {
+    obj->tcopy = obj;
+  }
+  else {
 
-  targetCalloc((void **) &tmpptr, obj->nf*obj->nsite*sizeof(double));
-  copyToTarget(&(obj->tcopy->u), &tmpptr, sizeof(double*)); 
-  obj->t_u = tmpptr; /* DEPRECATED direct access to target data. */
+    targetCalloc((void **) &obj->tcopy, sizeof(hydro_t));
 
-  targetCalloc((void **) &tmpptr, obj->nf*obj->nsite*sizeof(double));
-  copyToTarget(&(obj->tcopy->f), &tmpptr, sizeof(double*)); 
-  obj->t_f = tmpptr; /* DEPRECATED direct access to target data. */
+    targetCalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
+    copyToTarget(&obj->tcopy->u, &tmp, sizeof(double *)); 
 
-  copyToTarget(&(obj->tcopy->nf), &(obj->nf), sizeof(int));
+    targetCalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
+    copyToTarget(&obj->tcopy->f, &tmp, sizeof(double *)); 
+
+    copyToTarget(&obj->tcopy->nsite, &obj->nsite, sizeof(int));
+  }
 
   *pobj = obj;
 
@@ -90,25 +94,70 @@ int hydro_create(int nhcomm, hydro_t ** pobj) {
  *
  *****************************************************************************/
 
-void hydro_free(hydro_t * obj) {
+__host__ void hydro_free(hydro_t * obj) {
 
-  double * tmpptr;
+  int ndevice;
+  double * tmp;
 
   assert(obj);
 
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &obj->tcopy->u, sizeof(double *)); 
+    targetFree(tmp);
+    copyFromTarget(&tmp, &obj->tcopy->f, sizeof(double *)); 
+    targetFree(tmp);
+    targetFree(obj->tcopy);
+  }
+
   free(obj->f);
   free(obj->u);
-
-  copyFromTarget(&tmpptr, &(obj->tcopy->u), sizeof(double*)); 
-  targetFree(tmpptr);
-
-  copyFromTarget(&tmpptr, &(obj->tcopy->f), sizeof(double*)); 
-  targetFree(tmpptr);
-  
-  targetFree(obj->tcopy);
   free(obj);
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int hydro_memcpy(hydro_t * obj, int flag) {
+
+  int ndevice;
+  double * tmpu;
+  double * tmpf;
+
+  assert(obj);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(obj->tcopy == obj);
+  }
+  else {
+    copyFromTarget(&tmpf, &obj->tcopy->f, sizeof(double *));
+    copyFromTarget(&tmpu, &obj->tcopy->u, sizeof(double *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double));
+      copyToTarget(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double));
+      copyToTarget(&obj->tcopy->nsite, &obj->nsite, sizeof(int));
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double));
+      copyFromTarget(obj->u, tmpu, NHDIM*obj->nsite*sizeof(double));
+      break;
+    default:
+      fatal("Bad flag in hydro_memcpy\n");
+    }
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -121,7 +170,7 @@ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
-  coords_field_halo_rank1(le_nsites(), obj->nhcomm, obj->nf, obj->u,
+  coords_field_halo_rank1(le_nsites(), obj->nhcomm, NHDIM, obj->u,
 			  MPI_DOUBLE);
   return 0;
 }
@@ -148,7 +197,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
-  io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
+  io_info_set_bytesize(obj->info, NHDIM*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
   io_info_metadata_filestub_set(obj->info, "vel");
@@ -448,7 +497,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   double t;                /* time */
   int jdy;                 /* Integral part of displacement */
   int index, ia;
-  int nf, nhalo;
+  int nhalo;
   double ule[3];
 
   int nsend;
@@ -468,8 +517,6 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   assert(obj);
 
-  nf = obj->nf;
-
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -479,8 +526,8 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   /* Allocate the temporary buffer */
 
-  nsend = nf*nlocal[Y]*(nlocal[Z] + 2*nhalo);
-  nrecv = nf*(nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
+  nsend = NHDIM*nlocal[Y]*(nlocal[Z] + 2*nhalo);
+  nrecv = NHDIM*(nlocal[Y] + 2*nhalo + 1)*(nlocal[Z] + 2*nhalo);
 
   sbuf = (double *) calloc(nsend, sizeof(double));
   rbuf = (double *) calloc(nrecv, sizeof(double));
@@ -529,10 +576,10 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
     /* Post receives, sends and wait for receives. */
 
-    MPI_Irecv(rbuf, nf*n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
-    MPI_Irecv(rbuf + nf*n1, nf*n2, MPI_DOUBLE, nrank_r[1], tag1,
+    MPI_Irecv(rbuf, NHDIM*n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(rbuf + NHDIM*n1, NHDIM*n2, MPI_DOUBLE, nrank_r[1], tag1,
 	      le_comm, request + 1);
-    MPI_Irecv(rbuf + nf*(n1 + n2), nf*n3, MPI_DOUBLE, nrank_r[2], tag2,
+    MPI_Irecv(rbuf + NHDIM*(n1 + n2), NHDIM*n3, MPI_DOUBLE, nrank_r[2], tag2,
 	      le_comm, request + 2);
 
     /* Load send buffer */
@@ -540,20 +587,20 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	index = le_site_index(ic, jc, kc);
-	for (ia = 0; ia < nf; ia++) {
-	  j1 = (jc - 1)*nf*(nlocal[Z] + 2*nhalo) + nf*(kc + nhalo - 1) + ia;
+	for (ia = 0; ia < NHDIM; ia++) {
+	  j1 = (jc - 1)*NHDIM*(nlocal[Z] + 2*nhalo) + NHDIM*(kc + nhalo - 1) + ia;
 	  assert(j1 >= 0 && j1 < nsend);
 	  sbuf[j1] = obj->u[addr_hydro(index, ia)];
 	}
       }
     }
 
-    j1 = (j2 - 1)*nf*(nlocal[Z] + 2*nhalo);
-    MPI_Issend(sbuf + j1, nf*n1, MPI_DOUBLE, nrank_s[0], tag0,
+    j1 = (j2 - 1)*NHDIM*(nlocal[Z] + 2*nhalo);
+    MPI_Issend(sbuf + j1, NHDIM*n1, MPI_DOUBLE, nrank_s[0], tag0,
 	       le_comm, request + 3);
-    MPI_Issend(sbuf     , nf*n2, MPI_DOUBLE, nrank_s[1], tag1,
+    MPI_Issend(sbuf     , NHDIM*n2, MPI_DOUBLE, nrank_s[1], tag1,
 	       le_comm, request + 4);
-    MPI_Issend(sbuf     , nf*n3, MPI_DOUBLE, nrank_s[2], tag2,
+    MPI_Issend(sbuf     , NHDIM*n3, MPI_DOUBLE, nrank_s[2], tag2,
 	       le_comm, request + 5);
 
     MPI_Waitall(3, request, status);
@@ -568,10 +615,10 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 	index = le_site_index(ib0 + ib, jc, kc);
-	for (ia = 0; ia < nf; ia++) {
+	for (ia = 0; ia < NHDIM; ia++) {
 	  obj->u[addr_hydro(index, ia)] = ule[ia]
-	    + fr*rbuf[nf*(j1 + kc + nhalo - 1) + ia]
-	    + (1.0 - fr)*rbuf[nf*(j2 + kc + nhalo - 1) + ia];
+	    + fr*rbuf[NHDIM*(j1 + kc + nhalo - 1) + ia]
+	    + (1.0 - fr)*rbuf[NHDIM*(j2 + kc + nhalo - 1) + ia];
 	}
       }
     }
@@ -601,8 +648,8 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
   assert(obj);
 
   hydro_u(obj, index, u);
-  n = fwrite(u, sizeof(double), obj->nf, fp);
-  if (n != obj->nf) fatal("fwrite(hydro->u) failed\n");
+  n = fwrite(u, sizeof(double), NHDIM, fp);
+  if (n != NHDIM) fatal("fwrite(hydro->u) failed\n");
 
   return 0;
 }
@@ -647,8 +694,8 @@ int hydro_u_read(FILE * fp, int index, void * self) {
   assert(fp);
   assert(obj);
 
-  n = fread(u, sizeof(double), obj->nf, fp);
-  if (n != obj->nf) fatal("fread(hydro->u) failed\n");
+  n = fread(u, sizeof(double), NHDIM, fp);
+  if (n != NHDIM) fatal("fread(hydro->u) failed\n");
 
   hydro_u_set(obj, index, u);
 

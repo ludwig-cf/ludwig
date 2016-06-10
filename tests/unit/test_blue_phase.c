@@ -58,7 +58,7 @@ int test_bp_suite(void) {
   field_create(NQAB, "q", &fq);
   field_init(fq, nhalo);
   field_grad_create(fq, 2, &fqgrad);
-  field_grad_set(fqgrad, gradient_3d_27pt_fluid_d2, NULL);
+  field_grad_set(fqgrad, grad_3d_27pt_fluid_d2, NULL);
 
   blue_phase_q_set(fq, fqgrad);
 
@@ -699,7 +699,7 @@ int test_o8m_struct(field_t * fq, field_grad_t * fqgrad) {
   /* Check F(1,1,1) */
 
   field_halo(fq);
-  field_grad_set(fqgrad, gradient_3d_7pt_fluid_d2, NULL);
+  field_grad_set(fqgrad, grad_3d_7pt_fluid_d2, NULL);
   field_grad_compute(fqgrad);
 
   ic = 1;

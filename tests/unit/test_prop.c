@@ -29,7 +29,6 @@ static __host__ int do_test_source_destination(lb_halo_enum_t halo);
 __host__ int lb_propagation_driver(lb_t * lb);
 __global__ void lb_propagation_kernel(lb_t * lb);
 __global__ void lb_propagation_kernel_novector(lb_t * lb);
-__host__ int lb_model_copy(lb_t * lb, int flag);
 
 
 /*****************************************************************************
@@ -104,13 +103,7 @@ int do_test_velocity(lb_halo_enum_t halo) {
   }
 
   lb_halo(lb);
-#ifdef OLD_SHIT
-  lb_propagation(lb->tcopy);
-#else
-  lb_model_copy(lb, cudaMemcpyHostToDevice);
   lb_propagation_driver(lb);
-  lb_model_copy(lb, cudaMemcpyDeviceToHost);
-#endif
 
   /* Test */
 
@@ -189,12 +182,8 @@ int do_test_source_destination(lb_halo_enum_t halo) {
     }
   }
 
-  /* HALO SWAP TO BE CHECKED */
   lb_halo(lb);
-
-  lb_model_copy(lb, cudaMemcpyHostToDevice);
   lb_propagation_driver(lb);
-  lb_model_copy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
@@ -266,8 +255,7 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   kernel_ctxt_create(NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  /* NEED TO EDIT CURRENTLY UNTIL ALIASING SORTED IN model.c */
-  __host_launch_kernel(lb_propagation_kernel_novector, nblk, ntpb, lb);
+  __host_launch_kernel(lb_propagation_kernel_novector, nblk, ntpb, lb->target);
   targetDeviceSynchronise();
 
   kernel_ctxt_free(ctxt);
@@ -374,77 +362,4 @@ __global__ void lb_propagation_kernel(lb_t * lb) {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  lb_model_swapf
- *
- *  Switch the "f" and "fprime" pointers.
- *  Intended for use after the propagation step.
- *
- *****************************************************************************/
-
-__host__ int lb_model_swapf(lb_t * lb) {
-
-  int ndevice;
-  double * tmp1;
-  double * tmp2;
-
-  assert(lb);
-  assert(lb->tcopy);
-
-  targetGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    tmp1 = lb->f;
-    lb->f = lb->fprime;
-    lb->fprime = tmp1;
-  }
-  else {
-    copyFromTarget(&tmp1, &lb->tcopy->f, sizeof(double *)); 
-    copyFromTarget(&tmp2, &lb->tcopy->fprime, sizeof(double *)); 
-
-    copyToTarget(&lb->tcopy->f, &tmp2, sizeof(double *));
-    copyToTarget(&lb->tcopy->fprime, &tmp1, sizeof(double *));
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_model_copy
- *
- *****************************************************************************/
-
-__host__ int lb_model_copy(lb_t * lb, int flag) {
-
-  lb_t * target;
-  int ndevice;
-  double * tmpf = NULL;
-
-  assert(lb);
-
-  targetGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    /* Make sure we alias IN THE END */
-    /* lb->tcopy = lb; */
-  }
-  else {
-
-    assert(lb->tcopy);
-    target = lb->tcopy;
-
-    copyFromTarget(&tmpf, &target->f, sizeof(double *)); 
-    if (flag == cudaMemcpyHostToDevice) {
-      copyToTarget(tmpf, lb->f, NVEL*lb->nsite*lb->ndist*sizeof(double));
-    }
-    else {
-      copyFromTarget(lb->f, tmpf, NVEL*lb->nsite*lb->ndist*sizeof(double));
-    }
-  }
-
-  return 0;
 }

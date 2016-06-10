@@ -24,15 +24,14 @@
 struct field_s {
   int nf;                       /* Number of field components */
   int nhcomm;                   /* Halo width required */
+  int nsites;                   /* Local sites (allocated) */
   double * data;                /* Data on host */
-  double * t_data;              /* Data on target: DEPRECATED (see tcopy below)*/
 
   MPI_Datatype halo[3];         /* Halo exchange data types */
   io_info_t * info;             /* I/O Handler */
   char * name;                  /* "phi", "p", "q" etc. */
 
   field_t * tcopy;              /* copy of this structure on target */ 
-
 };
 
 #define addr_qab(nsites, index, ia) addr_rank1(nsites, NQAB, index, ia)

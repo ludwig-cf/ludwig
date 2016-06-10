@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013 The University of Edinburgh
+ *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -48,7 +48,5 @@ __targetHost__ int physics_fgrav_set(double g[3]);
 
 __targetHost__ int physics_mobility(double * mobility);
 __targetHost__ int physics_mobility_set(double mobility);
-__targetHost__ int physics_lc_gamma_rot(double * gamma);
-__targetHost__ int physics_lc_gamma_rot_set(double gamma);
 
 #endif

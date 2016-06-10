@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2014 The University of Edinburgh
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -16,6 +16,8 @@
 #define FREE_ENERGY_H
 
 #include "targetDP.h"
+
+typedef void fe_t;
 
 typedef int (* f_mu_solv_t)(int index, int n, double * mu);
 

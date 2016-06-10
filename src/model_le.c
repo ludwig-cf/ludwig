@@ -57,7 +57,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb);
  *
  *****************************************************************************/
 
-int lb_le_apply_boundary_conditions(lb_t * lb) {
+__host__ int lb_le_apply_boundary_conditions(lb_t * lb) {
 
   assert(lb);
   const int irepro = 0;

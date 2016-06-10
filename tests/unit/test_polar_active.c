@@ -65,7 +65,7 @@ int test_polar_active_suite(void) {
   field_create(nf, "p", &fp);
   field_init(fp, nhalo);
   field_grad_create(fp, 2, &fpgrad);
-  field_grad_set(fpgrad, gradient_2d_5pt_fluid_d2, NULL);
+  field_grad_set(fpgrad, grad_2d_5pt_fluid_d2, NULL);
   polar_active_p_set(fp, fpgrad);
 
   test_polar_active_aster(fp, fpgrad);
