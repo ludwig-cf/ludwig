@@ -160,7 +160,7 @@ void phi_force_calculation_fluid_lattice(pth_t * pth, hydro_t * hydro) {
 
   int baseIndex;
 
-  __targetTLPNoStride__(baseIndex, tc_nSites) {
+  __targetTLP__(baseIndex, tc_nSites) {
 
     int iv=0;
     int i;
