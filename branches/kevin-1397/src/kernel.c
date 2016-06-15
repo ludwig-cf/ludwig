@@ -273,11 +273,14 @@ __host__ __target__ int kernel_coords_kc(int kindex) {
  *****************************************************************************/
 
 __host__ __target__ int kernel_coords_v(int kindex0,
-					int icv[NSIMDVL],
-					int jcv[NSIMDVL], int kcv[NSIMDVL]) {
+					int ic[NSIMDVL],
+					int jc[NSIMDVL], int kc[NSIMDVL]) {
 
   int iv;
   int index;
+  int * __restrict__ icv = ic;
+  int * __restrict__ jcv = jc;
+  int * __restrict__ kcv = kc;
   const kernel_ctxt_t limits = kernel_host_target();
 
   for (iv = 0; iv < NSIMDVL; iv++) {
@@ -286,7 +289,9 @@ __host__ __target__ int kernel_coords_v(int kindex0,
     icv[iv] = index/(limits.nkv_local[Y]*limits.nkv_local[Z]);
     jcv[iv] = (index - icv[iv]*limits.nkv_local[Y]*limits.nkv_local[Z])/limits.nkv_local[Z];
     kcv[iv] = index - icv[iv]*limits.nkv_local[Y]*limits.nkv_local[Z] - jcv[iv]*limits.nkv_local[Z];
+  }
 
+  for (iv = 0; iv < NSIMDVL; iv++) {
     icv[iv] = icv[iv] - (limits.nhalo - 1);
     jcv[iv] = jcv[iv] - (limits.nhalo - 1);
     kcv[iv] = kcv[iv] - (limits.nhalo - 1);
@@ -326,17 +331,25 @@ __host__ __target__ int kernel_mask(int ic, int jc, int kc) {
 
 __host__ __target__ int kernel_mask_v(int ic[NSIMDVL],
 				      int jc[NSIMDVL],
-				      int kc[NSIMDVL], int maskv[NSIMDVL]) {
+				      int kc[NSIMDVL], int mask[NSIMDVL]) {
 
   int iv;
+  int * __restrict__ icv = ic;
+  int * __restrict__ jcv = jc;
+  int * __restrict__ kcv = kc;
+  int * __restrict__ maskv = mask;
   const kernel_ctxt_t kern = kernel_host_target();
-
 
   for (iv = 0; iv < NSIMDVL; iv++) {
     maskv[iv] = 1;
-    if (ic[iv] < kern.lim.imin || ic[iv] > kern.lim.imax ||
-	jc[iv] < kern.lim.jmin || jc[iv] > kern.lim.jmax ||
-	kc[iv] < kern.lim.kmin || kc[iv] > kern.lim.kmax) maskv[iv] = 0;
+  }
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    if (icv[iv] < kern.lim.imin || icv[iv] > kern.lim.imax ||
+	jcv[iv] < kern.lim.jmin || jcv[iv] > kern.lim.jmax ||
+	kcv[iv] < kern.lim.kmin || kcv[iv] > kern.lim.kmax) {
+      maskv[iv] = 0;
+    }
   }
 
   return 0;
@@ -378,6 +391,9 @@ __host__ __target__ int kernel_coords_index_v(int ic[NSIMDVL],
   int iv;
   int nhalo;
   int xfac, yfac;
+  int * __restrict__ icv = ic;
+  int * __restrict__ jcv = jc;
+  int * __restrict__ kcv = kc;
   const kernel_ctxt_t limits = kernel_host_target();
 
   nhalo = limits.nhalo;
@@ -385,8 +401,8 @@ __host__ __target__ int kernel_coords_index_v(int ic[NSIMDVL],
   xfac = yfac*(limits.nlocal[Y] + 2*nhalo);
 
   for (iv = 0; iv < NSIMDVL; iv++) {
-    index[iv] = xfac*(nhalo + ic[iv] - 1)
-      + yfac*(nhalo + jc[iv] - 1) + nhalo + kc[iv] - 1; 
+    index[iv] = xfac*(nhalo + icv[iv] - 1)
+      + yfac*(nhalo + jcv[iv] - 1) + nhalo + kcv[iv] - 1; 
   }
 
   return 0;
