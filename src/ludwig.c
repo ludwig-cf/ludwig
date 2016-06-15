@@ -488,37 +488,36 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->phi) {
 
-    TIMER_start(TIMER_PHI_HALO);
-
+      TIMER_start(TIMER_PHI_HALO);
 
 #if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
 
       halo_alternative(1, 1, 0, ludwig->phi->data);
 
 #else
-    field_halo(ludwig->phi);
+      field_halo(ludwig->phi);
 
 #endif
-
 
     TIMER_stop(TIMER_PHI_HALO);
 
     field_grad_compute(ludwig->phi_grad);
 
     }
-  
+
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
     }
-    if (ludwig->q) {
 
+    if (ludwig->q) {
       TIMER_start(TIMER_PHI_HALO);
 
 #if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
       halo_alternative(NQAB, 1, 0, ludwig->q->data);
 #else
-      field_halo(ludwig->q);
+      halo_alternative(NQAB, 1, 0, ludwig->q->data);
+      /* field_halo(ludwig->q);*/
 #endif
 
       TIMER_stop(TIMER_PHI_HALO);
@@ -657,7 +656,8 @@ void ludwig_run(const char * inputfile) {
 #if defined (KEEPHYDROONTARGET) || defined (LB_DATA_SOA)
 	  halo_alternative(3, 1, 0, ludwig->hydro->u);
 #else
- 	  hydro_u_halo(ludwig->hydro); 
+	  halo_alternative(3, 1, 0, ludwig->hydro->u);
+ 	  /*hydro_u_halo(ludwig->hydro); */
 #endif
 
 	  TIMER_stop(TIMER_U_HALO);
@@ -670,7 +670,6 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
     }
-
 
 
     if (ludwig->hydro) {
@@ -698,11 +697,12 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_HALO_LATTICE);
 
-#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
       lb_ndist(ludwig->lb, &im);
+#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
       halo_alternative(NVEL, im, 1, ludwig->lb->f);	    
 #else
-      lb_halo(ludwig->lb);
+      halo_alternative(NVEL, im, 1, ludwig->lb->f);
+      /* lb_halo(ludwig->lb);*/
 #endif 
 
       TIMER_stop(TIMER_HALO_LATTICE);
