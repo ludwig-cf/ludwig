@@ -28,7 +28,7 @@ struct hydro_s {
   MPI_Datatype uhalo[3];   /* Halo exchange datatypes for velocity */
   io_info_t * info;        /* I/O handler. */
 
-  hydro_t * tcopy;         /* structure on target */ 
+  hydro_t * target;        /* structure on target */ 
 };
 
 #define addr_hydro(index, ia) addr_rank1(le_nsites(), NHDIM, index, ia)

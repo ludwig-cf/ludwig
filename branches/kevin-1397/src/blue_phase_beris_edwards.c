@@ -420,7 +420,7 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
 
   beris_edw_kernel __targetLaunch__(nSites) (fq->tcopy,
 					     fq_grad->tcopy,
-					     hydro->tcopy,
+					     hydro->target,
 					     be->flux->target,
 					     map->target,
 					     noise_on, noise, pcon,

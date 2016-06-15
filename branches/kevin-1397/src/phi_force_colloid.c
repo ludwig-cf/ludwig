@@ -418,7 +418,7 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  phi_force_interpolation_lattice  __targetLaunch__(nSites) (pth->target, cinfo->tcopy, hydro->tcopy, map->target);
+  phi_force_interpolation_lattice  __targetLaunch__(nSites) (pth->target, cinfo->tcopy, hydro->target, map->target);
 
 /* note that ideally we would delay this sync to overlap 
    with below colloid force updates, but this is not working on current GPU 

@@ -726,7 +726,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   lb_collision_mrt_lattice_fast __targetLaunch__(nSites) ( lb, hydro->t_f, hydro->t_u,nSites);
 #else
 
-  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->target, hydro->tcopy, map->target, noise,noise_on,nSites);
+  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->target, hydro->target, map->target, noise,noise_on,nSites);
 
 #endif
 
@@ -1180,7 +1180,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   }
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
-  lb_collision_binary_lattice __targetLaunch__(nSites) (lb->target, hydro->tcopy, fe, noise, noise_on);
+  lb_collision_binary_lattice __targetLaunch__(nSites) (lb->target, hydro->target, fe, noise, noise_on);
 
   targetSynchronize();
   TIMER_stop(TIMER_COLLIDE_KERNEL);

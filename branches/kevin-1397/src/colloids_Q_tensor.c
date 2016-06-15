@@ -333,7 +333,9 @@ __targetHost__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, ma
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
 
-  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy, hydro->tcopy, map->target);
+  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy,
+						     hydro->target,
+						     map->target);
   targetSynchronize();
 
   return 0;
