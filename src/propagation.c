@@ -17,14 +17,20 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "propagation.h"
 #include "lb_model_s.h"
 #include "timer.h"
+
+__host__ int lb_propagation_driver(lb_t * lb);
 
 static int lb_propagate_d2q9(lb_t * lb);
 static int lb_propagate_d3q15(lb_t * lb);
 static int lb_propagate_d3q19(lb_t * lb);
 __host__ int lb_model_swapf(lb_t * lb);
+
+__global__ void lb_propagation_kernel(lb_t * lb);
+__global__ void lb_propagation_kernel_novector(lb_t * lb);
 
 /*****************************************************************************
  *
@@ -54,7 +60,7 @@ __host__ int lb_propagation(lb_t * lb) {
  *****************************************************************************/
 
 __target__  void lb_propagate_d3q19_site(const double* __restrict__ t_f, 
-					 double* t_fprime, 
+					 double* __restrict__ t_fprime, 
 					 const int baseIndex){
   
   
@@ -372,6 +378,152 @@ static int lb_propagate_d3q15(lb_t * lb) {
 
 /*****************************************************************************
  *
+ *  lb_propagation_driver
+ *
+ *****************************************************************************/
+
+__host__ int lb_propagation_driver(lb_t * lb) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  __host__ int lb_model_swapf(lb_t * lb);
+
+  assert(lb);
+
+  coords_nlocal(nlocal);
+
+  /* The kernel is local domain only */
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  /* Encapsulate. lb_kernel_commit(lb); */
+  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int)); 
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  /* NEED TO EDIT CURRENTLY UNTIL ALIASING SORTED IN model.c */
+  __host_launch_kernel(lb_propagation_kernel_novector, nblk, ntpb, lb);
+  targetDeviceSynchronise();
+
+  kernel_ctxt_free(ctxt);
+
+  lb_model_swapf(lb);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_propagation_kernel_novector
+ *
+ *  Non-vectorised version, just for testing.
+ *
+ *****************************************************************************/
+
+__global__ void lb_propagation_kernel_novector(lb_t * lb) {
+
+  int kindex;
+  __shared__ int kiter;
+
+  assert(lb);
+
+  kiter = kernel_iterations();
+
+  __target_simt_parallel_for(kindex, kiter, 1) {
+
+    int n, p;
+    int ic, jc, kc;
+    int icp, jcp, kcp;
+    int index, indexp;
+
+    ic = kernel_coords_ic(kindex);
+    jc = kernel_coords_jc(kindex);
+    kc = kernel_coords_kc(kindex);
+    index = kernel_coords_index(ic, jc, kc);
+
+    for (n = 0; n < lb->ndist; n++) {
+      for (p = 0; p < NVEL; p++) {
+
+	/* Pull from neighbour */ 
+	icp = ic - tc_cv[p][X];
+	jcp = jc - tc_cv[p][Y];
+	kcp = kc - tc_cv[p][Z];
+	indexp = kernel_coords_index(icp, jcp, kcp);
+	lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] 
+	  = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp, n, p)];
+      }
+    }
+    /* Next site */
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  lb_propagation_kernel
+ *
+ *  Ultimately an optimised version.
+ *
+ *****************************************************************************/
+
+__global__ void lb_propagation_kernel(lb_t * lb) {
+
+  int kindex;
+  __shared__ int kiter;
+
+  assert(lb);
+
+  kiter = kernel_vector_iterations();
+
+  __targetTLP__ (kindex, kiter) {
+
+    int iv, indexp;
+    int n, p;
+    int icp, jcp, kcp;
+    int icv[NSIMDVL];
+    int jcv[NSIMDVL];
+    int kcv[NSIMDVL];
+    int maskv[NSIMDVL];
+    int index[NSIMDVL];
+
+    __targetILP__(iv) {
+
+      icv[iv] = kernel_coords_icv(kindex, iv);
+      jcv[iv] = kernel_coords_jcv(kindex, iv);
+      kcv[iv] = kernel_coords_kcv(kindex, iv);
+
+      index[iv] = kernel_coords_index(icv[iv], jcv[iv], kcv[iv]);
+      maskv[iv] = kernel_mask(icv[iv], jcv[iv], kcv[iv]);
+    }
+
+    for (n = 0; n < lb->ndist; n++) {
+      for (p = 0; p < NVEL; p++) {
+
+	__targetILP__(iv) {
+	  /* If this is a halo site, just copy, else pull from neighbour */ 
+	  icp = icv[iv] - maskv[iv]*tc_cv[p][X];
+	  jcp = jcv[iv] - maskv[iv]*tc_cv[p][Y];
+	  kcp = kcv[iv] - maskv[iv]*tc_cv[p][Z];
+	  indexp = kernel_coords_index(icp, jcp, kcp);
+	  lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index[iv], n, p)] 
+	    = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp, n, p)];
+	}
+      }
+    }
+    /* Next sites */
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  lb_model_swapf
  *
  *  Switch the "f" and "fprime" pointers.
@@ -382,7 +534,8 @@ static int lb_propagate_d3q15(lb_t * lb) {
 __host__ int lb_model_swapf(lb_t * lb) {
 
   int ndevice;
-  double * tmp;
+  double * tmp1;
+  double * tmp2;
 
   assert(lb);
   assert(lb->target);
@@ -390,14 +543,11 @@ __host__ int lb_model_swapf(lb_t * lb) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    tmp = lb->f;
+    tmp1 = lb->f;
     lb->f = lb->fprime;
-    lb->fprime = tmp;
+    lb->fprime = tmp1;
   }
   else {
-    double * tmp1;
-    double * tmp2;
-
     copyFromTarget(&tmp1, &lb->target->f, sizeof(double *)); 
     copyFromTarget(&tmp2, &lb->target->fprime, sizeof(double *)); 
 

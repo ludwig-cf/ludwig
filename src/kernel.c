@@ -104,6 +104,23 @@ int kernel_ctxt_launch_param(kernel_ctxt_t * obj, dim3 * nblk, dim3 * ntpb) {
   iterations = hlimits.kernel_iterations;
   if (hlimits.nsimdvl == NSIMDVL) iterations = hlimits.kernel_vector_iterations;
 
+  kernel_launch_param(iterations, nblk, ntpb);
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  kernel_launch_param
+ *
+ *  A "class" method
+ *
+ ****************************************************************************/
+
+__host__ int kernel_launch_param(int iterations, dim3 * nblk, dim3 * ntpb) {
+
+  assert(iterations > 0);
+
   ntpb->x = __host_threads_per_block();
   ntpb->y = 1;
   ntpb->z = 1;

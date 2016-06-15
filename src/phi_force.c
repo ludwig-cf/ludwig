@@ -355,7 +355,7 @@ static int phi_force_calculation_fluid(pth_t * pth, field_t * q,
     
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (pth->target, hydro->tcopy);
+  phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (pth->target, hydro->target);
   targetSynchronize();
 
   TIMER_stop(TIMER_PHI_FORCE_CALC);

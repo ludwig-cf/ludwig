@@ -49,4 +49,7 @@ __host__ __target__ int kernel_coords_index(int ic, int jc, int kc);
 __host__ __target__ int kernel_iterations(void);
 __host__ __target__ int kernel_vector_iterations(void);
 
+__host__ int kernel_launch_param(int iterations, dim3 * nblk, dim3 * ntpb);
+
 #endif
+

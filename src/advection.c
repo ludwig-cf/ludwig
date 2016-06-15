@@ -419,7 +419,7 @@ static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
 
   TIMER_start(ADVECTION_X_KERNEL);
 
-  advection_le_1st_lattice __targetLaunchNoStride__(nSites) (flux->target, hydro->tcopy, nf, field->tcopy);
+  advection_le_1st_lattice __targetLaunchNoStride__(nSites) (flux->target, hydro->target, nf, field->tcopy);
 
 
   targetSynchronize();

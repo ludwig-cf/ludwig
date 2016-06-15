@@ -241,32 +241,41 @@ int reverse_addr_rank4_assert(int line, const char * file,
  * on the coordinate index, which is expected to run normally
  * from 0 ... nites-1. The 'dummy' vector loop index is ... */
 
-#define pseudo_iv(index) ( (index) - ((index)/NSIMDVL)*NSIMDVL )
+#ifndef ADDR_VBLOCK
 
+#define NVBLOCK 1
+#define pseudo_iv(index) 0
+
+#else
+
+#define NVBLOCK NSIMDVL
+#define pseudo_iv(index) ( (index) - ((index)/NVBLOCK)*NVBLOCK )
+
+#endif
 
 /* Macro definitions for the interface */
 
 #define addr_rank0(nsites, index) \
-  base_addr_rank1((nsites)/NSIMDVL, NSIMDVL, (index)/NSIMDVL, pseudo_iv(index))
+  base_addr_rank1((nsites)/NVBLOCK, NVBLOCK, (index)/NVBLOCK, pseudo_iv(index))
 
 #define addr_rank1(nsites, na, index, ia) \
-  base_addr_rank2((nsites)/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, pseudo_iv(index))
+  base_addr_rank2((nsites)/NVBLOCK, na, NVBLOCK, (index)/NVBLOCK, ia, pseudo_iv(index))
 
 #define addr_rank2(nsites, na, nb, index, ia, ib) \
-  base_addr_rank3((nsites)/NSIMDVL, na, nb, NSIMDVL, (index)/NSIMDVL, ia, ib, pseudo_iv(index))
+  base_addr_rank3((nsites)/NVBLOCK, na, nb, NVBLOCK, (index)/NVBLOCK, ia, ib, pseudo_iv(index))
 
 #define addr_rank3(nsites, na, nb, nc, index, ia, ib, ic) \
-  base_addr_rank4((nsites)/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, pseudo_iv(index))
+  base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, pseudo_iv(index))
 
 #define vaddr_rank0(nsites, index, iv) \
-  base_addr_rank1((nsites)/NSIMDVL, NSIMDVL, (index)/NSIMDVL, iv)
+  base_addr_rank1((nsites)/NVBLOCK, NVBLOCK, (index)/NVBLOCK, iv)
 #define vaddr_rank1(nsites, na, index, ia, iv) \
-  base_addr_rank2((nsites)/NSIMDVL, na, NSIMDVL, (index)/NSIMDVL, ia, iv)
+  base_addr_rank2((nsites)/NVBLOCK, na, NVBLOCK, (index)/NVBLOCK, ia, iv)
 
 #define vaddr_rank2(nsites, na, nb, index, ia, ib, iv) \
-  base_addr_rank3((nsites)/NSIMDVL, na, nb, NSIMDVL, (index)/NSIMDVL, ia, ib, iv)
+  base_addr_rank3((nsites)/NVBLOCK, na, nb, NVBLOCK, (index)/NVBLOCK, ia, ib, iv)
 
 #define vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv) \
-  base_addr_rank4((nsites)/NSIMDVL, na, nb, nc, NSIMDVL, (index)/NSIMDVL, ia, ib, ic, iv)
+  base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, iv)
 
 #endif

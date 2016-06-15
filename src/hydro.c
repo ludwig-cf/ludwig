@@ -33,6 +33,10 @@ static int hydro_u_write(FILE * fp, int index, void * self);
 static int hydro_u_write_ascii(FILE * fp, int index, void * self);
 static int hydro_u_read(FILE * fp, int index, void * self);
 
+static __global__
+void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]);
+
+
 /*****************************************************************************
  *
  *  hydro_create
@@ -68,19 +72,19 @@ __host__ int hydro_create(int nhcomm, hydro_t ** pobj) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    obj->tcopy = obj;
+    obj->target = obj;
   }
   else {
 
-    targetCalloc((void **) &obj->tcopy, sizeof(hydro_t));
+    targetCalloc((void **) &obj->target, sizeof(hydro_t));
 
     targetCalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
-    copyToTarget(&obj->tcopy->u, &tmp, sizeof(double *)); 
+    copyToTarget(&obj->target->u, &tmp, sizeof(double *)); 
 
     targetCalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
-    copyToTarget(&obj->tcopy->f, &tmp, sizeof(double *)); 
+    copyToTarget(&obj->target->f, &tmp, sizeof(double *)); 
 
-    copyToTarget(&obj->tcopy->nsite, &obj->nsite, sizeof(int));
+    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
   }
 
   *pobj = obj;
@@ -104,11 +108,11 @@ __host__ void hydro_free(hydro_t * obj) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->tcopy->u, sizeof(double *)); 
+    copyFromTarget(&tmp, &obj->target->u, sizeof(double *)); 
     targetFree(tmp);
-    copyFromTarget(&tmp, &obj->tcopy->f, sizeof(double *)); 
+    copyFromTarget(&tmp, &obj->target->f, sizeof(double *)); 
     targetFree(tmp);
-    targetFree(obj->tcopy);
+    targetFree(obj->target);
   }
 
   free(obj->f);
@@ -136,17 +140,17 @@ __host__ int hydro_memcpy(hydro_t * obj, int flag) {
 
   if (ndevice == 0) {
     /* Ensure we alias */
-    assert(obj->tcopy == obj);
+    assert(obj->target == obj);
   }
   else {
-    copyFromTarget(&tmpf, &obj->tcopy->f, sizeof(double *));
-    copyFromTarget(&tmpu, &obj->tcopy->u, sizeof(double *));
+    copyFromTarget(&tmpf, &obj->target->f, sizeof(double *));
+    copyFromTarget(&tmpu, &obj->target->u, sizeof(double *));
 
     switch (flag) {
     case cudaMemcpyHostToDevice:
       copyToTarget(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double));
       copyToTarget(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double));
-      copyToTarget(&obj->tcopy->nsite, &obj->nsite, sizeof(int));
+      copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
       break;
     case cudaMemcpyDeviceToHost:
       copyFromTarget(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double));
@@ -324,8 +328,9 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
  *
  *****************************************************************************/
 
-int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
+__host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
+#ifdef OLD_SHIT
   int ic, jc, kc, index;
   int nlocal[3];
 
@@ -343,6 +348,16 @@ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
       }
     }
   }
+#else
+  dim3 nblk, ntpb;
+
+  assert(obj);
+
+  kernel_launch_param(obj->nsite, &nblk, &ntpb);
+  __host_launch_kernel(hydro_field_set, nblk, ntpb,
+		       obj->target, obj->target->u, uzero);
+  targetDeviceSynchronise();
+#endif
 
   return 0;
 }
@@ -354,13 +369,14 @@ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
  *
  *****************************************************************************/
 
-int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
+__host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
 
   assert(obj);
-
+#ifdef OLD_SHIT
+  assert(0);
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -373,8 +389,40 @@ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
       }
     }
   }
+#else
+
+  dim3 nblk, ntpb;
+
+  assert(obj);
+
+  kernel_launch_param(obj->nsite, &nblk, &ntpb);
+  __host_launch_kernel(hydro_field_set, nblk, ntpb,
+		       obj->target, obj->target->f, fzero);
+  targetDeviceSynchronise();
+#endif
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_zero
+ *
+ *****************************************************************************/
+
+static __global__
+void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]) {
+
+  int kindex;
+
+  __target_simt_parallel_for(kindex, hydro->nsite, 1) {
+    int ia;
+    for (ia = 0; ia < NHDIM; ia++) {
+      field[addr_rank1(hydro->nsite, NHDIM, kindex, ia)] = z[ia];
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************
