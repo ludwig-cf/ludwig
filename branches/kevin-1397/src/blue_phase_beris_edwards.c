@@ -418,6 +418,8 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
 
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
+  assert(hydro); /* Watch deferencing */
+
   beris_edw_kernel __targetLaunch__(nSites) (fq->tcopy,
 					     fq_grad->tcopy,
 					     hydro->target,
@@ -450,6 +452,11 @@ void beris_edw_kernel(field_t * fq, field_grad_t * fqgrad,
 void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
   int baseIndex;
+
+  assert(fq);
+  assert(fqgrad);
+  assert(pcon);
+  assert(flux);
 
   __targetTLP__(baseIndex,tc_nSites) {
 
@@ -528,7 +535,6 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	    __targetILP__(iv) chi_qab[ia][ib][iv] = 0.0;
 	  }
 	}
-      
 
 
 #ifndef __NVCC__
@@ -536,7 +542,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	map_status(map, baseIndex, &status);
 	if (status != MAP_FLUID) continue;
 #else
-	assert(0);
+	/* SHIT: can we really ignore this? */
 #endif
 #endif /* else just calc all sites (and discard non-fluid results)*/
 
@@ -577,8 +583,9 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	__targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
 	__targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
-	if (isBPMF)
+	if (isBPMF) {
 	  blue_phase_compute_h_vec_inline(q, dq, dsq, h, pbpc);
+	}
 	else
 	{
 #ifndef __NVCC__
@@ -591,9 +598,11 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 		h[ia][ib][iv]=htmp[ia][ib];
 	  }
 #endif
+
 	}
       
 	if (hydro) {
+
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
 	  /* hydro_u_gradient_tensor(hydro, ic, jc, kc, w);

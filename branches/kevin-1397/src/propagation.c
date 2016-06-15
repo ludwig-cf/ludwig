@@ -46,7 +46,9 @@ __host__ int lb_propagation(lb_t * lb) {
 
   if (NVEL ==  9) lb_propagate_d2q9(lb);
   if (NVEL == 15) lb_propagate_d3q15(lb);
-  if (NVEL == 19) lb_propagate_d3q19(lb);
+  /* if (NVEL == 19) lb_propagate_d3q19(lb);*/
+
+  lb_propagation_driver(lb);
 
   return 0;
 }
@@ -406,8 +408,7 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   kernel_ctxt_create(NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  /* NEED TO EDIT CURRENTLY UNTIL ALIASING SORTED IN model.c */
-  __host_launch_kernel(lb_propagation_kernel_novector, nblk, ntpb, lb);
+  __host_launch_kernel(lb_propagation_kernel, nblk, ntpb, lb->target);
   targetDeviceSynchronise();
 
   kernel_ctxt_free(ctxt);
@@ -483,36 +484,35 @@ __global__ void lb_propagation_kernel(lb_t * lb) {
 
   __targetTLP__ (kindex, kiter) {
 
-    int iv, indexp;
+    int iv;
     int n, p;
-    int icp, jcp, kcp;
-    int icv[NSIMDVL];
-    int jcv[NSIMDVL];
-    int kcv[NSIMDVL];
+    int ic[NSIMDVL], icp[NSIMDVL];
+    int jc[NSIMDVL], jcp[NSIMDVL];
+    int kc[NSIMDVL], kcp[NSIMDVL];
     int maskv[NSIMDVL];
     int index[NSIMDVL];
+    int indexp[NSIMDVL];
 
-    __targetILP__(iv) {
-
-      icv[iv] = kernel_coords_icv(kindex, iv);
-      jcv[iv] = kernel_coords_jcv(kindex, iv);
-      kcv[iv] = kernel_coords_kcv(kindex, iv);
-
-      index[iv] = kernel_coords_index(icv[iv], jcv[iv], kcv[iv]);
-      maskv[iv] = kernel_mask(icv[iv], jcv[iv], kcv[iv]);
-    }
+    kernel_coords_v(kindex, ic, jc, kc);
+    kernel_coords_index_v(ic, jc, kc, index);
+    kernel_mask_v(ic, jc, kc, maskv);
 
     for (n = 0; n < lb->ndist; n++) {
       for (p = 0; p < NVEL; p++) {
 
+	/* If this is a halo site, just copy, else pull from neighbour */ 
+
 	__targetILP__(iv) {
-	  /* If this is a halo site, just copy, else pull from neighbour */ 
-	  icp = icv[iv] - maskv[iv]*tc_cv[p][X];
-	  jcp = jcv[iv] - maskv[iv]*tc_cv[p][Y];
-	  kcp = kcv[iv] - maskv[iv]*tc_cv[p][Z];
-	  indexp = kernel_coords_index(icp, jcp, kcp);
+	  icp[iv] = ic[iv] - maskv[iv]*tc_cv[p][X];
+	  jcp[iv] = jc[iv] - maskv[iv]*tc_cv[p][Y];
+	  kcp[iv] = kc[iv] - maskv[iv]*tc_cv[p][Z];
+	}
+
+	kernel_coords_index_v(icp, jcp, kcp, indexp);
+
+	__targetILP__(iv) {
 	  lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index[iv], n, p)] 
-	    = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp, n, p)];
+	    = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp[iv], n, p)];
 	}
       }
     }

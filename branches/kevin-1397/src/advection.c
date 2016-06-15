@@ -97,16 +97,17 @@ __host__ int advflux_create(int nf, advflux_t ** pobj) {
 
   assert(pobj);
 
-  obj = (advflux_t*) calloc(1, sizeof(advflux_t));
+  obj = (advflux_t *) calloc(1, sizeof(advflux_t));
   if (obj == NULL) fatal("calloc(advflux) failed\n");
 
   nsites = le_nsites();
+  obj->nf = nf;
   obj->nsite = nsites;
 
-  obj->fe = (double*) calloc(nsites*nf, sizeof(double));
-  obj->fw = (double*) calloc(nsites*nf, sizeof(double));
-  obj->fy = (double*) calloc(nsites*nf, sizeof(double));
-  obj->fz = (double*) calloc(nsites*nf, sizeof(double));
+  obj->fe = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fw = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fy = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fz = (double *) calloc(nsites*nf, sizeof(double));
 
   if (obj->fe == NULL) fatal("calloc(advflux->fe) failed\n");
   if (obj->fw == NULL) fatal("calloc(advflux->fw) failed\n");
@@ -677,7 +678,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	
 	  __targetILP__(iv) {
 	    if (includeSite[iv]) {
-	      flux->fw[addr_rank1(tc_nSites,nf,index0[iv],n)] =
+	      flux->fw[addr_rank1(nsites,nf,index0[iv],n)] =
 		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
 		       + a2*fd1[iv]
 		       + a3*fd2[iv]);
@@ -717,7 +718,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	
 	  __targetILP__(iv) {
 	    if (includeSite[iv]) {
-	      flux->fe[addr_rank1(tc_nSites,nf,index0[iv],n)] =
+	      flux->fe[addr_rank1(nsites,nf,index0[iv],n)] =
 		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
 		       + a2*fd1[iv]
 		       + a3*fd2[iv]);
@@ -758,7 +759,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	  __targetILP__(iv) {
 	    if (includeSite[iv]) {
-	      flux->fy[addr_rank1(tc_nSites,nf,index0[iv],n)] =
+	      flux->fy[addr_rank1(nsites,nf,index0[iv],n)] =
 		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
 		       + a2*fd1[iv]
 		       + a3*fd2[iv]);
@@ -798,7 +799,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	
 	  __targetILP__(iv) {
 	    if (includeSite[iv]) {
-	      flux->fz[addr_rank1(tc_nSites,nf,index0[iv],n)] =
+	      flux->fz[addr_rank1(nsites,nf,index0[iv],n)] =
 		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
 		       + a2*fd1[iv]
 		       + a3*fd2[iv]);

@@ -316,11 +316,9 @@ __global__ void do_target_kernel2(data_t * data) {
     int index[NSIMDVL];
     int kmask[NSIMDVL];
 
-    __targetILP__(iv) ic[iv] = kernel_coords_icv(kindex, iv);
-    __targetILP__(iv) jc[iv] = kernel_coords_jcv(kindex, iv);
-    __targetILP__(iv) kc[iv] = kernel_coords_kcv(kindex, iv);
-    __targetILP__(iv) index[iv] = kernel_coords_index(ic[iv], jc[iv], kc[iv]);
-    __targetILP__(iv) kmask[iv] = kernel_mask(ic[iv], jc[iv], kc[iv]);
+    kernel_coords_v(kindex, ic, jc, kc);
+    kernel_coords_index_v(ic, jc, kc, index);
+    kernel_mask_v(ic, jc, kc, kmask);
 
     __targetILP__(iv) {
       data->idata[mem_addr_rank0(data->nsites, index[iv])] = kmask[iv]*index[iv];

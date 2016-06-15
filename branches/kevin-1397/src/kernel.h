@@ -15,7 +15,7 @@
 #ifndef LUDWIG_KERNEL_H
 #define LUDWIG_KERNEL_H
 
-#include "targetDP.h"
+#include "memory.h"
 
 typedef struct kernel_ctxt_s kernel_ctxt_t;
 typedef struct kernel_info_s kernel_info_t;
@@ -41,11 +41,21 @@ __host__ int kernel_ctxt_free(kernel_ctxt_t * obj);
 __host__ __target__ int kernel_coords_ic(int kindex);
 __host__ __target__ int kernel_coords_jc(int kindex);
 __host__ __target__ int kernel_coords_kc(int kindex);
-__host__ __target__ int kernel_coords_icv(int kindex, int iv);
-__host__ __target__ int kernel_coords_jcv(int kindex, int iv);
-__host__ __target__ int kernel_coords_kcv(int kindex, int iv);
+__host__ __target__ int kernel_coords_v(int kindex,
+					int ic[NSIMDVL],
+					int jc[NSIMDVL],
+					int kc[NSIMDVL]);
+
 __host__ __target__ int kernel_mask(int ic, int jc, int kc);
+__host__ __target__ int kernel_mask_v(int ic[NSIMDVL], int jc[NSIMDVL],
+				      int kc[NSIMDVL], int mask[NSIMDVL]);
+
 __host__ __target__ int kernel_coords_index(int ic, int jc, int kc);
+__host__ __target__ int kernel_coords_index_v(int ic[NSIMDVL],
+					      int jc[NSIMDVL],
+					      int kc[NSIMDVL],
+					      int index[NSIMDVL]);
+
 __host__ __target__ int kernel_iterations(void);
 __host__ __target__ int kernel_vector_iterations(void);
 

@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "coords_field.h"
 #include "leesedwards.h"
 #include "io_harness.h"
@@ -330,25 +331,6 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
 
 __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
-#ifdef OLD_SHIT
-  int ic, jc, kc, index;
-  int nlocal[3];
-
-  assert(obj);
-
-  coords_nlocal(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-	hydro_u_set(obj, index, uzero);
-
-      }
-    }
-  }
-#else
   dim3 nblk, ntpb;
 
   assert(obj);
@@ -357,7 +339,6 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
   __host_launch_kernel(hydro_field_set, nblk, ntpb,
 		       obj->target, obj->target->u, uzero);
   targetDeviceSynchronise();
-#endif
 
   return 0;
 }
@@ -371,26 +352,6 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
 __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
 
-  int ic, jc, kc, index;
-  int nlocal[3];
-
-  assert(obj);
-#ifdef OLD_SHIT
-  assert(0);
-  coords_nlocal(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-	hydro_f_local_set(obj, index, fzero);
-
-      }
-    }
-  }
-#else
-
   dim3 nblk, ntpb;
 
   assert(obj);
@@ -399,7 +360,6 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
   __host_launch_kernel(hydro_field_set, nblk, ntpb,
 		       obj->target, obj->target->f, fzero);
   targetDeviceSynchronise();
-#endif
 
   return 0;
 }
