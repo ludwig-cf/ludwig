@@ -71,7 +71,7 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-__targetHost__ int phi_force_colloid(pth_t * pth, colloids_info_t * cinfo,
+__host__ int phi_force_colloid(pth_t * pth, colloids_info_t * cinfo,
 				     field_t * q, field_grad_t * q_grad,
 				     hydro_t * hydro, map_t * map) {
 
@@ -429,6 +429,10 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
 
 #ifdef __NVCC__
 
+  assert(0);
+
+#ifdef OLD_SHIT
+
   /* update colloid-affected lattice sites from target*/
   int ncolsite=colloids_number_sites(cinfo);
 
@@ -444,7 +448,7 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
   copyFromTargetSubset(pth,t_pth_,colloidSiteList,ncolsite,nSites,9);
 
   free(colloidSiteList);
-
+#endif
 #endif
 
   colloid_t * pc;

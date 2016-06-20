@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -94,6 +94,7 @@ double reverse_byte_order_double(char * c) {
  *
  *****************************************************************************/
 
+__host__ __device__
 double dot_product(const double a[3], const double b[3]) {
 
   return (a[X]*b[X] + a[Y]*b[Y] + a[Z]*b[Z]);

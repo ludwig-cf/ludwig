@@ -116,7 +116,8 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collision_relaxation_times_set(noise);
 
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
-  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise, fe);
+  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise,
+				      (fe_symm_t *) fe);
 
   return 0;
 }

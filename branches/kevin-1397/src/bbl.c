@@ -159,6 +159,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 #ifdef __NVCC__
 
+  assert(0);
+#ifdef OLD_SHIT
   lb_t* lb;
 
   lb = lb_in;
@@ -183,7 +185,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   lb_t* t_lb = lb->tcopy; 
   copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
   copyFromTargetSubset(lb->f,tmpptr,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
-
+#endif
 #endif
 
   bbl_pass1(bbl, lb, cinfo);
@@ -202,7 +204,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 #ifdef __NVCC__
 
   assert(0); /* KS no device temporarily */
-
+#ifdef OLD_SHIT
   copyToTargetPointerMap3D(lb->t_f, lb->f,
 			   Nall, nFields, 0, (void **) cinfo->map_new); 
 
@@ -211,7 +213,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   copyToTargetSubset(tmpptr,lb->f,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
   
   free(colloidSiteList);
-
+#endif
 #endif
 
   return 0;

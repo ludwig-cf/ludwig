@@ -199,6 +199,7 @@ int fe_symm_str(fe_symm_t * fe, int index,  double s[3][3]) {
   double delsq_phi;
   double grad_phi[3];
   double p0;
+  double d_ab;
 
   assert(fe);
 
@@ -213,7 +214,8 @@ int fe_symm_str(fe_symm_t * fe, int index,  double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_[ia][ib] + kappa*grad_phi[ia]*grad_phi[ib];
+      d_ab = (ia == ib);
+      s[ia][ib] = p0*d_ab + kappa*grad_phi[ia]*grad_phi[ib];
     }
   }
 

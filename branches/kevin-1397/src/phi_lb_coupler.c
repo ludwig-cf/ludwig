@@ -22,7 +22,7 @@
 #include "field_s.h"
 #include "phi_lb_coupler.h"
 
-__global__ int phi_lb_to_field_kernel(field_t * phi, lb_t * lb);
+__global__ void phi_lb_to_field_kernel(field_t * phi, lb_t * lb);
 
 /*****************************************************************************
  *
@@ -70,7 +70,7 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
  *
  *****************************************************************************/
 
-__global__ int phi_lb_to_field_kernel(field_t * phi, lb_t * lb) {
+__global__ void phi_lb_to_field_kernel(field_t * phi, lb_t * lb) {
 
   int kindex;
 
@@ -99,7 +99,7 @@ __global__ int phi_lb_to_field_kernel(field_t * phi, lb_t * lb) {
     }
   }
 
-  return 0;
+  return;
 }
 
 /*****************************************************************************
