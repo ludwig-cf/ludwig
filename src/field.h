@@ -34,14 +34,14 @@ __targetHost__ int field_io_info(field_t * obj, io_info_t ** info);
 __targetHost__ int field_halo(field_t * obj);
 __targetHost__ int field_leesedwards(field_t * obj);
 
-__targetHost__ int field_scalar(field_t * obj, int index, double * phi);
-__targetHost__ int field_scalar_set(field_t * obj, int index, double phi);
-__targetHost__ int field_vector(field_t * obj, int index, double p[3]);
-__targetHost__ int field_vector_set(field_t * obj, int index, const double p[3]);
-__targetHost__ int field_tensor(field_t * obj, int index, double q[3][3]);
-__targetHost__ int field_tensor_set(field_t * obj, int index, double q[3][3]);
+__host__ __target__ int field_scalar(field_t * obj, int index, double * phi);
+__host__ __target__ int field_scalar_set(field_t * obj, int index, double phi);
+__host__ __target__ int field_vector(field_t * obj, int index, double p[3]);
+__host__ __target__ int field_vector_set(field_t * obj, int index, const double p[3]);
+__host__ __target__ int field_tensor(field_t * obj, int index, double q[3][3]);
+__host__ __target__ int field_tensor_set(field_t * obj, int index, double q[3][3]);
 
-__targetHost__ int field_scalar_array(field_t * obj, int index, double * array);
-__targetHost__ int field_scalar_array_set(field_t * obj, int index, const double * array);
+__host__ __target__ int field_scalar_array(field_t * obj, int index, double * array);
+__host__ __target__ int field_scalar_array_set(field_t * obj, int index, const double * array);
 
 #endif

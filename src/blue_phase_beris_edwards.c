@@ -853,6 +853,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 __host__ __device__ int beris_edw_tmatrix_set(double t[3][3][NQAB]) {
 
   int ia, ib, id;
+  const double r3 = (1.0/3.0);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -862,9 +863,9 @@ __host__ __device__ int beris_edw_tmatrix_set(double t[3][3][NQAB]) {
     }
   }
 
-  t[X][X][XX] = sqrt(3.0/2.0)*(0.0 - r3_);
-  t[Y][Y][XX] = sqrt(3.0/2.0)*(0.0 - r3_);
-  t[Z][Z][XX] = sqrt(3.0/2.0)*(1.0 - r3_);
+  t[X][X][XX] = sqrt(3.0/2.0)*(0.0 - r3);
+  t[Y][Y][XX] = sqrt(3.0/2.0)*(0.0 - r3);
+  t[Z][Z][XX] = sqrt(3.0/2.0)*(1.0 - r3);
 
   t[X][X][XY] = sqrt(1.0/2.0)*(1.0 - 0.0);
   t[Y][Y][XY] = sqrt(1.0/2.0)*(0.0 - 1.0);

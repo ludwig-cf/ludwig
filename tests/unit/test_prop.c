@@ -101,7 +101,7 @@ int do_test_velocity(lb_halo_enum_t halo) {
   }
 
   lb_halo(lb);
-  lb_propagation_driver(lb);
+  lb_propagation(lb);
 
   /* Test */
 
@@ -181,7 +181,7 @@ int do_test_source_destination(lb_halo_enum_t halo) {
   }
 
   lb_halo(lb);
-  lb_propagation_driver(lb);
+  lb_propagation(lb);
 
   /* Test */
 

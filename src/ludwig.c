@@ -248,7 +248,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* Can we move this down to t = 0 initialisation? */
   if (ludwig->phi) {
-    fe_symmetric_rt_initial_conditions(ludwig->fe, ludwig->phi);
+    fe_symmetric_rt_initial_conditions((fe_symm_t *) ludwig->fe, ludwig->phi);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
   }
@@ -349,7 +349,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (get_step() == 0) {
     /* fe must be fe_symm_t for sigma stats (not only nstat) */
-    stats_sigma_init(ludwig->fe, ludwig->phi, nstat);
+    stats_sigma_init((fe_symm_t *) ludwig->fe, ludwig->phi, nstat);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
   }
