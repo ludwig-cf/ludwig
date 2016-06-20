@@ -605,7 +605,7 @@ int lb_halo(lb_t * lb) {
   }
   else {
     /* MODEL_R only has ... */
-    lb_halo_via_copy(lb);
+    lb_halo_via_copy_test(lb);
   }
 
   return 0;
@@ -1565,3 +1565,690 @@ int lb_halo_via_copy(lb_t * lb) {
  
   return 0;
 }
+
+
+/*****************************************************************************
+ *
+ *  lb_halo_via_copy_nonblocking
+ *
+ *  A version of the halo swap which uses a flat buffer to copy the
+ *  relevant data rathar than MPI data types. It is therefore a 'full'
+ *  halo swapping NVEL distributions at each site.
+ *
+ *  It works for both MODEL and MODEL_R, but the loop order favours
+ *  MODEL_R.
+ *
+ *****************************************************************************/
+
+int lb_halo_via_copy_nonblocking(lb_t * lb) {
+
+  struct halo {
+    double * sendforwYZ;
+    double * sendbackYZ;
+    double * recvforwYZ;
+    double * recvbackYZ;
+    double * sendforwXZ;
+    double * sendbackXZ;
+    double * recvforwXZ;
+    double * recvbackXZ;
+    double * sendforwXY;
+    double * sendbackXY;
+    double * recvforwXY;
+    double * recvbackXY;
+  
+
+    MPI_Request request[12];
+    MPI_Status status[12];
+  }hl;
+
+  int ic, jc, kc;
+  int n, p;
+  int pforw, pback;
+  int index, indexhalo, indexreal;
+  int nsend, count;
+  int nlocal[3];
+/*
+    double * sendforwYZ;
+    double * sendbackYZ;
+    double * recvforwYZ;
+    double * recvbackYZ;
+    double * sendforwXZ;
+    double * sendbackXZ;
+    double * recvforwXZ;
+    double * recvbackXZ;
+    double * sendforwXY;
+    double * sendbackXY;
+    double * recvforwXY;
+    double * recvbackXY;
+  
+*/
+
+    const int tagf = 900;
+    const int tagb = 901;
+
+    MPI_Request request[12];
+    MPI_Status status[12];
+  MPI_Comm comm = cart_comm();
+
+  assert(lb);
+
+  coords_nlocal(nlocal);
+
+  double* fptr; /*pointer to the distribution*/
+  if (get_step()) /* we are in the timestep, so use target copy */
+    fptr=lb->tcopy->f;
+  else
+    fptr=lb->f;  /* we are not in a timestep, use host copy */
+
+
+  /* The x-direction (YZ plane) */
+
+  nsend = NVEL*lb->ndist*nlocal[Y]*nlocal[Z];
+  hl .sendforwYZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendforwYZ == NULL) fatal("malloc(send) failed\n");
+  hl .sendbackYZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendbackYZ == NULL) fatal("malloc(send) failed\n");
+  hl .recvforwYZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendforwYZ == NULL) fatal("malloc(send) failed\n");
+  hl .recvbackYZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendbackYZ == NULL) fatal("malloc(send) failed\n");
+
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(nlocal[X], jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendforwYZ[count] = fptr[indexreal];
+
+	  index = coords_index(1, jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendbackYZ[count] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+  //if (cart_size(X) == 1) {
+  //  memcpy(recvbackYZ, sendforwYZ, nsend*sizeof(double));
+  //  memcpy(recvforwYZ, sendbackYZ, nsend*sizeof(double));
+ // }
+  //else {
+
+    pforw = cart_neighb(FORWARD, X);
+    pback = cart_neighb(BACKWARD, X);
+
+    MPI_Irecv(&hl.recvforwYZ, nsend, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(&hl.recvbackYZ, nsend, MPI_DOUBLE, pback, tagf, comm, request + 1);
+
+    MPI_Issend(&hl.sendbackYZ, nsend, MPI_DOUBLE, pback, tagb, comm, request + 6);
+    MPI_Issend(&hl.sendforwYZ, nsend, MPI_DOUBLE, pforw, tagf, comm, request + 7);
+  //}
+
+  /* The y-direction (XZ plane) */
+
+  nsend = NVEL*lb->ndist*(nlocal[X])*nlocal[Z];
+  hl .sendforwXZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendforwXZ == NULL) fatal("malloc(send) failed\n");
+  hl .sendbackXZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendbackXZ == NULL) fatal("malloc(send) failed\n");
+  hl .recvforwXZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendforwXZ == NULL) fatal("malloc(send) failed\n");
+  hl .recvbackXZ = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendbackXZ == NULL) fatal("malloc(send) failed\n");
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 1; ic <= nlocal[X]; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(ic, nlocal[Y], kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl.sendforwXZ[count] = fptr[indexreal];
+
+	  index = coords_index(ic, 1, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl.sendbackXZ[count] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+ // if (cart_size(Y) == 1) {
+//    memcpy(recvbackXZ, sendforwXZ, nsend*sizeof(double));
+//    memcpy(recvforwXZ, sendbackXZ, nsend*sizeof(double));
+//  }
+ // else {
+
+    pforw = cart_neighb(FORWARD, Y);
+    pback = cart_neighb(BACKWARD, Y);
+
+    MPI_Irecv(&hl.recvforwXZ, nsend, MPI_DOUBLE, pforw, tagb, comm, request + 2);
+    MPI_Irecv(&hl.recvbackXZ, nsend, MPI_DOUBLE, pback, tagf, comm, request + 3);
+
+    MPI_Issend(&hl.sendbackXZ, nsend, MPI_DOUBLE, pback, tagb, comm, request + 8);
+    MPI_Issend(&hl.sendforwXZ, nsend, MPI_DOUBLE, pforw, tagf, comm, request + 9);
+
+ // }
+
+  /* Finally, z-direction (XY plane) */
+
+  nsend = NVEL*lb->ndist*(nlocal[X])*(nlocal[Y]);
+  hl .sendforwXY = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendforwXY == NULL) fatal("malloc(send) failed\n");
+  hl .sendbackXY = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendbackXY == NULL) fatal("malloc(send) failed\n");
+  hl .recvforwXY = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendforwXY == NULL) fatal("malloc(send) failed\n");
+  hl .recvbackXY = (double *) malloc(nsend*sizeof(double));
+  if (hl .sendbackXY == NULL) fatal("malloc(send) failed\n");
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 1; ic <= nlocal[X]; ic++) {
+	for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+	  index = coords_index(ic, jc, nlocal[Z]);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl.sendforwXY[count] = fptr[indexreal];
+
+	  index = coords_index(ic, jc, 1);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl.sendbackXY[count] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+  //if (cart_size(Z) == 1) {
+   // memcpy(recvbackXY, sendforwXY, nsend*sizeof(double));
+ //   memcpy(recvforwXY, sendbackXY, nsend*sizeof(double));
+//  }
+ // else {
+
+    pforw = cart_neighb(FORWARD, Z);
+    pback = cart_neighb(BACKWARD, Z);
+
+    MPI_Irecv(&hl.recvforwXY, nsend, MPI_DOUBLE, pforw, tagb, comm, request + 4);
+    MPI_Irecv(&hl.recvbackXY, nsend, MPI_DOUBLE, pback, tagf, comm, request + 5);
+
+    MPI_Issend(&hl.sendbackXY, nsend, MPI_DOUBLE, pback, tagb, comm, request + 10);
+    MPI_Issend(&hl.sendforwXY, nsend, MPI_DOUBLE, pforw, tagf, comm, request + 11);
+
+ // }
+
+  /* Wait for receives */
+  MPI_Waitall(6, request, status);
+
+  /* Once everything has been received, unpack send buffers */
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(0, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl.recvbackYZ[count];
+
+	  index = coords_index(nlocal[X] + 1, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl.recvforwYZ[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 1; ic <= nlocal[X]; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(ic, 0, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl.recvbackXZ[count];
+
+	  index = coords_index(ic, nlocal[Y] + 1, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl.recvforwXZ[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 1; ic <= nlocal[X]; ic++) {
+	for (jc = 1; jc <= nlocal[Y]; jc++) {
+
+	  index = coords_index(ic, jc, 0);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl.recvbackXY[count];
+
+	  index = coords_index(ic, jc, nlocal[Z] + 1);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl.recvforwXY[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+  /* Free Memory and wait for sends to finish */
+
+  free(hl.recvbackYZ);
+  free(hl.recvforwYZ);
+  free(hl.recvbackXZ);
+  free(hl.recvforwXZ);
+  free(hl.recvbackXY);
+  free(hl.recvforwXY);
+
+  if (cart_size(X) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 6, status);
+  }
+
+  if (cart_size(Y) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 8, status);
+  }
+
+  if (cart_size(Z) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 10, status);
+  }
+
+  free(hl.sendbackYZ);
+  free(hl.sendforwYZ);
+  free(hl.sendbackXZ);
+  free(hl.sendforwXZ);
+  free(hl.sendbackXY);
+  free(hl.sendforwXY);
+ 
+  return 0;
+}
+
+
+
+
+
+
+
+
+
+void pack_buf(int nsend, double *fptr, lb_t * lb, int nlocal1, int nlocal2, int nlocal3, double sendforw[nlocal1*nlocal2], double sendback[nlocal1*nlocal2])
+{
+
+  int ic, jc, kc;
+  int n, p;
+  int index, indexhalo, indexreal;
+  int count;
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 1; ic <= nlocal1; ic++) {
+	for (jc = 1; jc <= nlocal2; jc++) {
+
+	  index = coords_index(ic, jc, nlocal3);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  sendforw[count] = fptr[indexreal];
+
+	  index = coords_index(ic, jc, 1);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  sendback[count] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsend);
+
+}
+
+
+
+/*****************************************************************************
+ *
+ *  lb_halo_via_copy_test
+ *
+ *  A version of the halo swap which uses a flat buffer to copy the
+ *  relevant data rathar than MPI data types. It is therefore a 'full'
+ *  halo swapping NVEL distributions at each site.
+ *
+ *  It works for both MODEL and MODEL_R, but the loop order favours
+ *  MODEL_R.
+ *
+ *****************************************************************************/
+
+int lb_halo_via_copy_test(lb_t * lb) {
+
+
+  struct halo {
+    double *sendplanes;
+    double *recvplanes;
+
+    double *sendedges;
+    double *recvedges;
+
+    double *sendcorners;
+    double *recvcorners;
+  
+
+    MPI_Request request[12];
+    MPI_Status status[12];
+  }hl;
+
+  int ic, jc, kc;
+  int n, p;
+  int pforw, pback;
+  int index, indexhalo, indexreal;
+  int nsendYZ, nsendXZ, nsendXY, count;
+  int nlocal[3];
+
+  const int tagf = 900;
+  const int tagb = 901;
+
+
+  MPI_Request request[4];
+  MPI_Status status[4];
+  MPI_Comm comm = cart_comm();
+
+  assert(lb);
+
+  coords_nlocal(nlocal);
+
+  halo_planes(lb, hl);
+
+  return 0;
+}
+
+
+
+
+
+
+/******************/
+
+
+
+int halo_planes(lb_t * lb, halo*hl) {
+
+  int ic, jc, kc;
+  int n, p;
+  int pforw, pback;
+  int index, indexhalo, indexreal;
+  int nsendYZ, nsendXZ, nsendXY, count;
+  int nlocal[3];
+
+  const int tagf = 900;
+  const int tagb = 901;
+
+
+  MPI_Request request[4];
+  MPI_Status status[4];
+  MPI_Comm comm = cart_comm();
+
+
+  assert(lb);
+
+  coords_nlocal(nlocal);
+
+  double* fptr; /*pointer to the distribution*/
+  if (get_step()) /* we are in the timestep, so use target copy */
+    fptr=lb->tcopy->f;
+  else
+    fptr=lb->f;  /* we are not in a timestep, use host copy */
+
+  nsendYZ = NVEL*lb->ndist*nlocal[Y]*nlocal[Z];
+  nsendXZ = NVEL*lb->ndist*(nlocal[X]+2)*nlocal[Z];  //There will be no +2 here in final piece
+  nsendXY = NVEL*lb->ndist*(nlocal[X]+2)*(nlocal[Y]+2);
+  hl .sendplanes = (double *) malloc((nsendYZ*2*sizeof(double)) + (nsendXZ*2*sizeof(double)) + (nsendXY*2*sizeof(double)));
+  if (hl .sendplanes == NULL) fatal("malloc(send) failed\n");
+  hl .recvplanes = (double *) malloc((nsendYZ*2*sizeof(double)) + (nsendXZ*2*sizeof(double)) + (nsendXY*2*sizeof(double)));
+  if (hl .recvplanes == NULL) fatal("malloc(recv) failed\n");
+
+  /* The x-direction (YZ plane) */
+
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(nlocal[X], jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendplanes[count] = fptr[indexreal];
+
+	  index = coords_index(1, jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendplanes[count + nsendYZ] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsendYZ);
+
+  //if (cart_size(X) == 1) {
+    //memcpy(recvback, sendforw, nsend*sizeof(double));
+    //memcpy(recvforw, sendback, nsend*sizeof(double));
+  //}
+  //else {
+
+    pforw = cart_neighb(FORWARD, X);
+    pback = cart_neighb(BACKWARD, X);
+
+    MPI_Irecv(&hl .recvplanes[0], nsendYZ, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(&hl .recvplanes[nsendYZ], nsendYZ, MPI_DOUBLE, pback, tagf, comm, request + 1);
+
+    MPI_Issend(&hl .sendplanes[nsendYZ], nsendYZ, MPI_DOUBLE, pback, tagb, comm, request + 2);
+    MPI_Issend(&hl .sendplanes[0], nsendYZ, MPI_DOUBLE, pforw, tagf, comm, request + 3);
+
+    /* Wait for receives */
+    MPI_Waitall(2, request, status);
+  //}
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (jc = 1; jc <= nlocal[Y]; jc++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(0, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl .recvplanes[nsendYZ + count];
+
+	  index = coords_index(nlocal[X] + 1, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl .recvplanes[count];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsendYZ);
+
+  //free(recvback);
+  //free(recvforw);
+
+  if (cart_size(X) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 2, status);
+  }
+
+  //free(sendback);
+  //free(sendforw);
+  
+
+  /* The y-direction (XZ plane) */
+
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(nlocal[X], jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendplanes[count + 2*nsendYZ] = fptr[indexreal];
+
+	  index = coords_index(1, jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendplanes[count + nsendXZ + 2*nsendYZ] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsendXZ);
+
+
+  //if (cart_size(Y) == 1) {
+  //  memcpy(recvback, sendforw, nsend*sizeof(double));
+ //  memcpy(recvforw, sendback, nsend*sizeof(double));
+ // }
+  //else {
+
+    pforw = cart_neighb(FORWARD, Y);
+    pback = cart_neighb(BACKWARD, Y);
+
+    MPI_Irecv(&hl .recvplanes[2*nsendYZ], nsendYZ, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(&hl .recvplanes[2*nsendYZ + nsendXZ], nsendYZ, MPI_DOUBLE, pback, tagf, comm, request + 1);
+
+    MPI_Issend(&hl .sendplanes[2*nsendYZ + nsendXZ], nsendYZ, MPI_DOUBLE, pback, tagb, comm, request + 2);
+    MPI_Issend(&hl .sendplanes[2*nsendYZ], nsendYZ, MPI_DOUBLE, pforw, tagf, comm, request + 3);
+
+    /* Wait of receives */
+    MPI_Waitall(2, request, status);
+  //}
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	  index = coords_index(0, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl .recvplanes[count + nsendXZ + 2*nsendYZ];
+
+	  index = coords_index(nlocal[X] + 1, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl .recvplanes[count + 2*nsendYZ];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsendXZ);
+  //free(recvback);
+  //free(recvforw);
+
+  if (cart_size(Y) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 2, status);
+  }
+
+  //free(sendback);
+  //free(sendforw);
+
+  /* Finally, z-direction (XY plane) */
+
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+
+	  index = coords_index(nlocal[X], jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendplanes[count + 2*nsendYZ + 2*nsendXZ] = fptr[indexreal];
+
+	  index = coords_index(1, jc, kc);
+	  indexreal = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  hl .sendplanes[count + nsendXY + 2*nsendXZ + 2*nsendYZ] = fptr[indexreal];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsendXY);
+
+  //if (cart_size(Z) == 1) {
+  //  memcpy(recvback, sendforw, nsend*sizeof(double));
+  //  memcpy(recvforw, sendback, nsend*sizeof(double));
+ //}
+  //else {
+
+    pforw = cart_neighb(FORWARD, Z);
+    pback = cart_neighb(BACKWARD, Z);
+
+    MPI_Irecv(&hl .recvplanes[2*nsendYZ + 2*nsendXZ], nsendYZ, MPI_DOUBLE, pforw, tagb, comm, request);
+    MPI_Irecv(&hl .recvplanes[2*nsendYZ + 2*nsendXZ + nsendXY], nsendYZ, MPI_DOUBLE, pback, tagf, comm, request + 1);
+
+    MPI_Issend(&hl .sendplanes[2*nsendYZ + 2*nsendXZ + nsendXZ], nsendYZ, MPI_DOUBLE, pback, tagb, comm, request + 2);
+    MPI_Issend(&hl .sendplanes[2*nsendYZ + 2*nsendXZ], nsendYZ, MPI_DOUBLE, pforw, tagf, comm, request + 3);
+
+    /* Wait for receives */
+    MPI_Waitall(2, request, status);
+ // }
+
+  count = 0;
+  for (p = 0; p < NVEL; p++) {
+    for (n = 0; n < lb->ndist; n++) {
+      for (ic = 0; ic <= nlocal[X] + 1; ic++) {
+	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
+
+	  index = coords_index(0, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl .recvplanes[count + nsendXY + 2*nsendXZ + 2*nsendYZ];
+
+	  index = coords_index(nlocal[X] + 1, jc, kc);
+	  indexhalo = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+	  fptr[indexhalo] = hl .recvplanes[count + 2*nsendXZ + 2*nsendYZ];
+	  ++count;
+	}
+      }
+    }
+  }
+  assert(count == nsendXY);
+  //free(recvback);
+  //free(recvforw);
+
+  if (cart_size(Z) > 1) {
+    /* Wait for sends */
+    MPI_Waitall(2, request + 2, status);
+  }
+
+  //free(sendback);
+  //free(sendforw);
+ 
+  free(hl .sendplanes);
+  free(hl .recvplanes);
+
+  return 0;
+}
+
