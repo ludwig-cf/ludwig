@@ -16,6 +16,7 @@ dim3 gridDim = {1, 1, 1};
 dim3 blockDim = {1, 1, 1};
 
 static cudaError_t lastError;
+static int staticStream;
 
 #define error_return_if(expr, error) \
   do { if ((expr)) { 		     \
@@ -231,4 +232,40 @@ cudaError_t cudaMemset(void * devPtr, int value, size_t count) {
   memset(devPtr, value, count);
 
   return cudaSuccess;
+}
+
+
+cudaError_t cudaStreamCreate(cudaStream_t * stream) {
+
+  error_return_if(stream == NULL, cudaErrorInvalidValue);
+
+  *stream = &staticStream;
+
+  return cudaSuccess;
+}
+
+cudaError_t cudaStreamDestroy(cudaStream_t stream) {
+
+  error_return_if(stream != &staticStream, cudaErrorInvalidResourceHandle);
+
+  return cudaSuccess;
+}
+
+cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
+
+  error_return_if(stream != &staticStream, cudaErrorInvalidResourceHandle);
+
+  /* Success */
+
+  return cudaSuccess;
+}
+
+/* No optional arguments */
+
+cudaError_t cudaMemcpyAsync(void * dst, const void * src, size_t count,
+			    cudaMemcpyKind kind, cudaStream_t stream) {
+
+  /* Just ignore the stream argument and copy immediately */
+
+  return cudaMemcpy(dst, src, count, kind);
 }

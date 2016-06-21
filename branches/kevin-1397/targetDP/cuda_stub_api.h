@@ -119,5 +119,16 @@ __host__            cudaError_t cudaMemcpyToSymbol(void * symbol,
 __host__            cudaError_t cudaMemset(void * devPtr, int value,
 					   size_t count);
 
+__host__            cudaError_t cudaStreamCreate(cudaStream_t * stream);
+__host__            cudaError_t cudaStreamDestroy(cudaStream_t stream);
+__host__            cudaError_t cudaStreamSynchronize(cudaStream_t stream);
+
+/* No optional arguments */
+
+__host__            cudaError_t cudaMemcpyAsync(void * dst, const void * src,
+						size_t count,
+						cudaMemcpyKind kind,
+						cudaStream_t stream);
+						
 
 #endif

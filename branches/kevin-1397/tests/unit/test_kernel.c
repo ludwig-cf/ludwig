@@ -33,11 +33,11 @@ struct data_s {
 };
 
 __host__ int do_test_kernel(kernel_info_t limits, data_t * data);
-__host__ int do_host_kernel(int * mask, int * isum);
+__host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum);
 __host__ int do_check(int * iref, int * itarget);
-__global__ void do_target_kernel1(data_t * data);
-__global__ void do_target_kernel2(data_t * data);
-__global__ void do_target_kernel1r(data_t * data);
+__global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data);
+__global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data);
+__global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data);
 
 __host__ int data_create(data_t * data);
 __host__ int data_free(data_t * data);
@@ -124,7 +124,7 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
   /* Here we need a context, as we use it in this particular
    * host kernel */
   kernel_ctxt_create(1, limits, &ctxt);
-  do_host_kernel(iref, &isum);
+  do_host_kernel(limits, iref, &isum);
 
   printf("Host kernel returns isum = %d\n", isum);
 
@@ -132,7 +132,8 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
 
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch_kernel(do_target_kernel1, nblk, ntpb, data->target);
+  __host_launch_kernel(do_target_kernel1, nblk, ntpb,
+		       ctxt->target, data->target);
   targetDeviceSynchronise();
 
   printf("Finish kernel 1\n");
@@ -143,7 +144,8 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
   /* Reduction kernel */
 
   data_zero(data);
-  __host_launch_kernel(do_target_kernel1r, nblk, ntpb, data->target);
+  __host_launch_kernel(do_target_kernel1r, nblk, ntpb,
+		       ctxt->target, data->target);
   targetDeviceSynchronise();
 
   data_copy(data, 1);
@@ -160,7 +162,8 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   data_zero(data);
-  __host_launch_kernel(do_target_kernel2, nblk, ntpb, data->target);
+  __host_launch_kernel(do_target_kernel2, nblk, ntpb,
+		       ctxt->target, data->target);
   targetDeviceSynchronise();
 
   printf("Finish kernel 2\n");
@@ -182,18 +185,16 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
  *
  *****************************************************************************/
 
-__host__ int do_host_kernel(int * mask, int * isum) {
+__host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum) {
 
   int index;
   int ifail;
   int ic, jc, kc;
   int nsites;
-  kernel_info_t limits;
 
   assert(mask);
   assert(isum);
 
-  kernel_ctxt_info(&limits);
   nsites = coords_nsites();
 
   *isum = 0;
@@ -225,22 +226,22 @@ __host__ int do_host_kernel(int * mask, int * isum) {
  *
  *****************************************************************************/
 
-__global__ void do_target_kernel1(data_t * data) {
+__global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data) {
 
   int kindex;
 
-  __target_simt_parallel_for(kindex, kernel_iterations(), 1) {
+  __target_simt_parallel_for(kindex, kernel_iterations(ktx), 1) {
 
     int ic, jc, kc;
     int index;
 
-    ic = kernel_coords_ic(kindex);
-    jc = kernel_coords_jc(kindex);
-    kc = kernel_coords_kc(kindex);
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
 
     /* We are at ic, jc, kc */
 
-    index = kernel_coords_index(ic, jc, kc);
+    index = kernel_coords_index(ktx, ic, jc, kc);
 
     data->idata[mem_addr_rank0(data->nsites, index)] = index;
   }
@@ -256,7 +257,7 @@ __global__ void do_target_kernel1(data_t * data) {
  *
  *****************************************************************************/
 
-__global__ void do_target_kernel1r(data_t * data) {
+__global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
 
   int kindex;
   __shared__ int psum[TARGET_MAX_THREADS_PER_BLOCK];
@@ -269,15 +270,15 @@ __global__ void do_target_kernel1r(data_t * data) {
     __target_simt_threadIdx_init();
     psum[threadIdx.x] = 0;
 
-    __target_simt_for(kindex, kernel_iterations(), 1) {
+    __target_simt_for(kindex, kernel_iterations(ktx), 1) {
 
-      ic = kernel_coords_ic(kindex);
-      jc = kernel_coords_jc(kindex);
-      kc = kernel_coords_kc(kindex);
+      ic = kernel_coords_ic(ktx, kindex);
+      jc = kernel_coords_jc(ktx, kindex);
+      kc = kernel_coords_kc(ktx, kindex);
 
       /* We are at ic, jc, kc */
 
-      index = kernel_coords_index(ic, jc, kc);
+      index = kernel_coords_index(ktx, ic, jc, kc);
 
       data->idata[mem_addr_rank0(data->nsites, index)] = index;
       psum[threadIdx.x] += 1;
@@ -303,11 +304,11 @@ __global__ void do_target_kernel1r(data_t * data) {
  *
  *****************************************************************************/
 
-__global__ void do_target_kernel2(data_t * data) {
+__global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data) {
 
   int kindex;
 
-  __targetTLP__(kindex, kernel_vector_iterations()) {
+  __targetTLP__(kindex, kernel_vector_iterations(ktx)) {
 
     int iv;
     int ic[NSIMDVL];
@@ -316,9 +317,9 @@ __global__ void do_target_kernel2(data_t * data) {
     int index[NSIMDVL];
     int kmask[NSIMDVL];
 
-    kernel_coords_v(kindex, ic, jc, kc);
-    kernel_coords_index_v(ic, jc, kc, index);
-    kernel_mask_v(ic, jc, kc, kmask);
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    kernel_coords_index_v(ktx, ic, jc, kc, index);
+    kernel_mask_v(ktx, ic, jc, kc, kmask);
 
     __targetILP__(iv) {
       data->idata[mem_addr_rank0(data->nsites, index[iv])] = kmask[iv]*index[iv];
