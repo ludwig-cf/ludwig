@@ -27,8 +27,8 @@
 __host__ int lb_propagation_driver(lb_t * lb);
 __host__ int lb_model_swapf(lb_t * lb);
 
-__global__ void lb_propagation_kernel(lb_t * lb);
-__global__ void lb_propagation_kernel_novector(lb_t * lb);
+__global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb);
+__global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb);
 
 /*****************************************************************************
  *
@@ -78,7 +78,8 @@ __host__ int lb_propagation_driver(lb_t * lb) {
 
   TIMER_start(TIMER_PROP_KERNEL);
 
-  __host_launch_kernel(lb_propagation_kernel, nblk, ntpb, lb->target);
+  __host_launch_kernel(lb_propagation_kernel, nblk, ntpb,
+		       ctxt->target, lb->target);
   targetDeviceSynchronise();
 
   TIMER_stop(TIMER_PROP_KERNEL);
@@ -98,14 +99,15 @@ __host__ int lb_propagation_driver(lb_t * lb) {
  *
  *****************************************************************************/
 
-__global__ void lb_propagation_kernel_novector(lb_t * lb) {
+__global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
 
   int kindex;
   __shared__ int kiter;
 
+  assert(ktx);
   assert(lb);
 
-  kiter = kernel_iterations();
+  kiter = kernel_iterations(ktx);
 
   __target_simt_parallel_for(kindex, kiter, 1) {
 
@@ -114,10 +116,10 @@ __global__ void lb_propagation_kernel_novector(lb_t * lb) {
     int icp, jcp, kcp;
     int index, indexp;
 
-    ic = kernel_coords_ic(kindex);
-    jc = kernel_coords_jc(kindex);
-    kc = kernel_coords_kc(kindex);
-    index = kernel_coords_index(ic, jc, kc);
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
 
     for (n = 0; n < lb->ndist; n++) {
       for (p = 0; p < NVEL; p++) {
@@ -126,7 +128,7 @@ __global__ void lb_propagation_kernel_novector(lb_t * lb) {
 	icp = ic - tc_cv[p][X];
 	jcp = jc - tc_cv[p][Y];
 	kcp = kc - tc_cv[p][Z];
-	indexp = kernel_coords_index(icp, jcp, kcp);
+	indexp = kernel_coords_index(ktx, icp, jcp, kcp);
 	lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] 
 	  = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp, n, p)];
       }
@@ -145,14 +147,14 @@ __global__ void lb_propagation_kernel_novector(lb_t * lb) {
  *
  *****************************************************************************/
 
-__global__ void lb_propagation_kernel(lb_t * lb) {
+__global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
 
   int kindex;
   __shared__ int kiter;
 
   assert(lb);
 
-  kiter = kernel_vector_iterations();
+  kiter = kernel_vector_iterations(ktx);
 
   __targetTLP__ (kindex, kiter) {
 
@@ -165,9 +167,9 @@ __global__ void lb_propagation_kernel(lb_t * lb) {
     int index[NSIMDVL];
     int indexp[NSIMDVL];
 
-    kernel_coords_v(kindex, ic, jc, kc);
-    kernel_coords_index_v(ic, jc, kc, index);
-    kernel_mask_v(ic, jc, kc, maskv);
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    kernel_coords_index_v(ktx, ic, jc, kc, index);
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
 
     for (n = 0; n < lb->ndist; n++) {
       for (p = 0; p < NVEL; p++) {
@@ -180,7 +182,7 @@ __global__ void lb_propagation_kernel(lb_t * lb) {
 	  kcp[iv] = kc[iv] - maskv[iv]*tc_cv[p][Z];
 	}
 
-	kernel_coords_index_v(icp, jcp, kcp, indexp);
+	kernel_coords_index_v(ktx, icp, jcp, kcp, indexp);
 
 	__targetILP__(iv) {
 	  lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index[iv], n, p)] 

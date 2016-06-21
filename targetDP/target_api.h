@@ -32,6 +32,7 @@
 
   #define __host_threads_per_block() DEFAULT_TPB
   #define __host_launch_kernel(...) __cuda_launch(__VA_ARGS__)
+  #define __host_launch_kernel4s(...) __cuda_launch4s(__VA__ARGS__)
 
 #else
 
@@ -56,6 +57,10 @@
     __x86_prelaunch(nblocks, nthreads);					\
     kernel_function(__VA_ARGS__);					\
     __x86_postlaunch();
+
+  #define \
+  __host_launch4s(kernel_function, nblocks, nthreads, shmem, stream, ...) \
+  __host_launch(kernel_function, nblocks, nthreads, __VA_ARGS__)
 
   /* Within simt_parallel_region(), provide access/initialisation. */
   /* Must be a macro expansiosn. */
