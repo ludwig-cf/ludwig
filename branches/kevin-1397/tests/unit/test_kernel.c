@@ -132,8 +132,7 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
 
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch_kernel(do_target_kernel1, nblk, ntpb,
-		       ctxt->target, data->target);
+  __host_launch(do_target_kernel1, nblk, ntpb, ctxt->target, data->target);
   targetDeviceSynchronise();
 
   printf("Finish kernel 1\n");
@@ -144,8 +143,7 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
   /* Reduction kernel */
 
   data_zero(data);
-  __host_launch_kernel(do_target_kernel1r, nblk, ntpb,
-		       ctxt->target, data->target);
+  __host_launch(do_target_kernel1r, nblk, ntpb, ctxt->target, data->target);
   targetDeviceSynchronise();
 
   data_copy(data, 1);
@@ -162,8 +160,7 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   data_zero(data);
-  __host_launch_kernel(do_target_kernel2, nblk, ntpb,
-		       ctxt->target, data->target);
+  __host_launch(do_target_kernel2, nblk, ntpb, ctxt->target, data->target);
   targetDeviceSynchronise();
 
   printf("Finish kernel 2\n");

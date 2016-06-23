@@ -80,8 +80,8 @@ __host__ int kernel_ctxt_create(int nsimdvl, kernel_info_t info,
   }
   else {
     /* Link to static device memory */
-    targetConstAddress(&obj->target, static_ctxt);
-    targetConstAddress(&obj->target->param, static_param);
+    targetConstAddress((void **) &obj->target, static_ctxt);
+    targetConstAddress((void **) &obj->target->param, static_param);
   }
 
   kernel_ctxt_commit(obj, nsimdvl, info);

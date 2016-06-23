@@ -22,7 +22,7 @@
 #define __cuda_launch(kernel_function, nblocks, ntpb, ...) \
   kernel_function<<<nblocks, ntpb>>>(__VA_ARGS__)
 
-#define __cuda_launch4s(kernel_function, nblock, ntpb, shmem, stream, ...) \
+#define __cuda_launch4s(kernel_function, nblocks, ntpb, shmem, stream, ...) \
   kernel_function<<<nblocks, ntpb, shmem, stream>>>(__VA_ARGS__)
 
 #endif
