@@ -31,8 +31,8 @@
   /* Additional host-side API */
 
   #define __host_threads_per_block() DEFAULT_TPB
-  #define __host_launch_kernel(...) __cuda_launch(__VA_ARGS__)
-  #define __host_launch_kernel4s(...) __cuda_launch4s(__VA__ARGS__)
+  #define __host_launch(...) __cuda_launch(__VA_ARGS__)
+  #define __host_launch4s(...) __cuda_launch4s(__VA_ARGS__)
 
 #else
 
