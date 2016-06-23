@@ -420,7 +420,7 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
 
   assert(hydro); /* Watch deferencing */
 
-  beris_edw_kernel __targetLaunch__(nSites) (fq->tcopy,
+  beris_edw_kernel __targetLaunch__(nSites) (fq->target,
 					     fq_grad->tcopy,
 					     hydro->target,
 					     be->flux->target,

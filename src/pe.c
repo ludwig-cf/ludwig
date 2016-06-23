@@ -116,7 +116,7 @@ int pe_init_quiet(void) {
 
   MPI_Comm_dup(pe->parent_comm, &pe->comm);
 
-  MPI_Errhandler_set(pe->comm, MPI_ERRORS_ARE_FATAL);
+  MPI_Comm_set_errhandler(pe->comm, MPI_ERRORS_ARE_FATAL);
 
   MPI_Comm_size(pe->comm, &pe->mpi_size);
   MPI_Comm_rank(pe->comm, &pe->mpi_rank);

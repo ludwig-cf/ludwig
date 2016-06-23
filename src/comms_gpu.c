@@ -1333,25 +1333,14 @@ static void calculate_comms_data_sizes()
 
 /* KEVIN */
 
-#include "kernel.h"
+#include "halo_swap.h"
 
+/* Not exposed */
 
-typedef struct field_halo_s field_halo_t;
-typedef struct field_halo_param_s field_halo_param_t;
+typedef struct halo_swap_param_s halo_swap_param_t;
 
-struct field_halo_param_s {
-  int nhalo;                /* coords_nhalo() */
-  int nswap;                /* Width of actual halo swap <= nhalo */
-  int nsite;                /* total allocated nall[X]*nall[Y]*nall[Z] */
-  int nfel;                 /* Field elements per site (double) */
-  int nlocal[3];            /* local domain extent */
-  int nall[3];              /* ... including 2*coords_nhalo */
-  int hext[3][3];           /* halo extents ... see below */
-  int hsz[3];               /* halo size in lattice sites each direction */
-};
-
-struct field_halo_s {
-  field_halo_param_t * param; 
+struct halo_swap_s {
+  halo_swap_param_t * param; 
   double * fxlo;
   double * fxhi;
   double * fylo;
@@ -1364,43 +1353,54 @@ struct field_halo_s {
   double * hyhi;
   double * hzlo;
   double * hzhi;
+  f_pack_t data_pack;       /* Pack buffer kernel function */
+  f_unpack_t data_unpack;   /* Unpack buffer kernel function */
   cudaStream_t stream[3];   /* Stream for each of X,Y,Z */
-  field_halo_t * target;    /* Device memory */
+  halo_swap_t * target;    /* Device memory */
 };
 
-static __constant__ field_halo_param_t const_param;
+/* Note nsite != naddr if extra memory has been allocated for LE
+ * plane buffers. */
 
-int halo_swap_gpu(field_halo_t * halo, double * f_d);
+struct halo_swap_param_s {
+  int nhalo;                /* coords_nhalo() */
+  int nswap;                /* Width of actual halo swap <= nhalo */
+  int nsite;                /* Total nall[X]*nall[Y]*nall[Z] */
+  int naddr;                /* For addressing purposes */
+  int nfel;                 /* Field elements per site (double) */
+  int nlocal[3];            /* local domain extent */
+  int nall[3];              /* ... including 2*coords_nhalo */
+  int hext[3][3];           /* halo extents ... see below */
+  int hsz[3];               /* halo size in lattice sites each direction */
+};
 
-__global__ static void field_halo_pack(field_halo_t * halo, int id, double * data);
-__global__ static void field_halo_unpack(field_halo_t * halo, int id, double * data);
-__host__ __target__ static void field_halo_coords(field_halo_t * halo, int index,
-						 int * ic, int * jc, int * kc);
-__host__ __target__ static int field_halo_index(field_halo_t * halo,
-						int ic, int jc, int kc);
+static __constant__ halo_swap_param_t const_param;
+
+
+__host__ __target__ void halo_swap_coords(halo_swap_t * halo, int id, int index, int * ic, int * jc, int * kc);
+__host__ __target__ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc);
 
 /*****************************************************************************
  *
- *  halo_init_extra
+ *  halo_swap_create
  *
  *****************************************************************************/
 
-__host__ int field_halo_create(int nhcomm, int nfel, field_halo_t ** phalo) {
+__host__ int halo_swap_create(int nhcomm, int nfel, int naddr, halo_swap_t ** phalo) {
 
   int sz;
-  int rank;
   int nhalo;
   int ndevice;
   unsigned int mflag = cudaHostAllocDefault;
 
-  field_halo_t * halo = NULL;
+  halo_swap_t * halo = NULL;
 
   assert(phalo);
 
-  halo = (field_halo_t *) calloc(1, sizeof(field_halo_t));
+  halo = (halo_swap_t *) calloc(1, sizeof(halo_swap_t));
   assert(halo);
 
-  halo->param = (field_halo_param_t *) calloc(1, sizeof(field_halo_param_t));
+  halo->param = (halo_swap_param_t *) calloc(1, sizeof(halo_swap_param_t));
   assert(halo->param);
 
   /* Template for distributions, which is used to allocate buffers;
@@ -1411,6 +1411,7 @@ __host__ int field_halo_create(int nhcomm, int nfel, field_halo_t ** phalo) {
   halo->param->nhalo = nhalo;
   halo->param->nswap = nhcomm;
   halo->param->nfel = nfel;
+  halo->param->naddr = naddr;
   coords_nlocal(halo->param->nlocal);
   coords_nall(halo->param->nall);
 
@@ -1465,7 +1466,7 @@ __host__ int field_halo_create(int nhcomm, int nfel, field_halo_t ** phalo) {
     double * tmp;
 
     /* Target structure */
-    targetCalloc((void **) &halo->target, sizeof(field_halo_t));
+    targetCalloc((void **) &halo->target, sizeof(halo_swap_t));
 
     /* Buffers */
     sz = halo->param->hsz[X]*nfel*sizeof(double);
@@ -1505,21 +1506,21 @@ __host__ int field_halo_create(int nhcomm, int nfel, field_halo_t ** phalo) {
     copyToTarget(&halo->target->hzhi, &tmp, sizeof(double *));
 
     /* Device constants */
-    assert(0);
+    halo_swap_commit(halo);
   }
 
-  *phalo = 0;
+  *phalo = halo;
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  field_halo_free
+ *  halo_swap_free
  *
  *****************************************************************************/
 
-__host__ int field_halo_free(field_halo_t * halo) {
+__host__ int halo_swap_free(halo_swap_t * halo) {
 
   int ndevice;
 
@@ -1528,7 +1529,34 @@ __host__ int field_halo_free(field_halo_t * halo) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    assert(0); /* buffers */
+    double * tmp;
+
+    copyFromTarget(&tmp, &halo->target->fxlo, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->fxhi, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->fylo, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->fyhi, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->fzlo, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->fzhi, sizeof(double *));
+    targetFree(tmp);
+
+    copyFromTarget(&tmp, &halo->target->hxlo, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->hxhi, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->hyhi, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &halo->target->hzhi, sizeof(double *));
+    targetFree(tmp);
+
     targetFree(halo->target);
   }
 
@@ -1553,13 +1581,45 @@ __host__ int field_halo_free(field_halo_t * halo) {
 
 /*****************************************************************************
  *
- *  field_halo_swap
+ *  halo_swap_handlers_set
+ *
+ *****************************************************************************/
+
+__host__ int halo_swap_handlers_set(halo_swap_t * halo, f_pack_t pack,
+				    f_unpack_t unpack) {
+
+  assert(halo);
+
+  halo->data_pack = pack;
+  halo->data_unpack = unpack;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  halo_swap_commit
+ *
+ *****************************************************************************/
+
+__host__ int halo_swap_commit(halo_swap_t * halo) {
+
+  assert(halo);
+
+  copyConstToTarget(&const_param, halo->param, sizeof(halo_swap_param_t));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  halo_swap_driver
  *
  *  "data" needs to be a device pointer
  *
  *****************************************************************************/
 
-__host__ int field_halo_swap(field_halo_t * halo, double * data) {
+__host__ int halo_swap_driver(halo_swap_t * halo, double * data) {
 
   int ncount;
   int ndevice;
@@ -1568,7 +1628,6 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   int ixlo, ixhi;
   int iylo, iyhi;
   int izlo, izhi;  
-  int nblocks;
   int m, mc, p;
   int nd, nh;
   int hsz[3];
@@ -1587,6 +1646,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   assert(halo);
 
   targetGetDeviceCount(&ndevice);
+  halo_swap_commit(halo);
 
   /* hsz[] is just shorthand for local halo sizes */
   /* An offset nd is required if nswap < nhalo */
@@ -1634,7 +1694,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   /* pack Z edges on accelerator */
 
   kernel_launch_param(hsz[X], &nblk, &ntpb);
-  __host_launch4s(field_halo_pack, nblk, ntpb, 0, halo->stream[X],
+  __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[X],
 		  halo->target, X, data);
 
   if (ndevice > 0) {
@@ -1646,7 +1706,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[Y], &nblk, &ntpb);
-  __host_launch4s(field_halo_pack, nblk, ntpb, 0, halo->stream[Y],
+  __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[Y],
 		  halo->target, Y, data);
 
   if (ndevice > 0) {
@@ -1658,7 +1718,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[Z], &nblk, &ntpb);
-  __host_launch4s(field_halo_pack, nblk, ntpb, 0, halo->stream[Z],
+  __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
   if (ndevice > 0) {
@@ -1704,7 +1764,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[X], &nblk, &ntpb);
-  __host_launch4s(field_halo_unpack, nblk, ntpb, 0, halo->stream[X],
+  __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[X],
 		  halo->target, X, data);
 
   /* Now wait for Y data to arrive from device */
@@ -1767,7 +1827,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[Y], &nblk, &ntpb);
-  __host_launch4s(field_halo_unpack, nblk, ntpb, 0, halo->stream[Y],
+  __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[Y],
 		  halo->target, Y, data);
 
   /* Wait for Z data from device */
@@ -1853,7 +1913,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[Z], &nblk, &ntpb);
-  __host_launch4s(field_halo_unpack, nblk, ntpb, 0, halo->stream[Z],
+  __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
   cudaStreamSynchronize(halo->stream[X]);
@@ -1865,7 +1925,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
 
 /*****************************************************************************
  *
- *  field_halo_pack
+ *  halo_swap_pack_rank1
  *
  *  Move data to halo buffer on device for coordinate
  *  direction id at both low and high ends.
@@ -1873,7 +1933,7 @@ __host__ int field_halo_swap(field_halo_t * halo, double * data) {
  *****************************************************************************/
 
 __global__
-static void field_halo_pack(field_halo_t * halo, int id, double * data) {
+void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
 
   int kindex;
 
@@ -1881,12 +1941,14 @@ static void field_halo_pack(field_halo_t * halo, int id, double * data) {
 
     int nh;
     int nfel;
+    int naddr;
     int ia, indexl, indexh, ic, jc, kc;
     int hsz;
     int ho; /* high end offset */
     double * __restrict__ buflo;
     double * __restrict__ bufhi;
 
+    naddr = halo->param->naddr;
     nfel = halo->param->nfel;
     hsz = halo->param->hsz[id];
 
@@ -1894,26 +1956,26 @@ static void field_halo_pack(field_halo_t * halo, int id, double * data) {
     /* Use full nhalo to address full data */
 
     nh = halo->param->nhalo;
-    field_halo_coords(halo, kindex, &ic, &jc, &kc);
+    halo_swap_coords(halo, id, kindex, &ic, &jc, &kc);
 
     if (id == X) {
       ho = nh + halo->param->nlocal[X] - halo->param->nswap;
-      indexl = field_halo_index(halo, nh + ic, jc, kc);
-      indexh = field_halo_index(halo, ho + ic, jc, kc);
+      indexl = halo_swap_index(halo, nh + ic, jc, kc);
+      indexh = halo_swap_index(halo, ho + ic, jc, kc);
       buflo = halo->fxlo;
       bufhi = halo->fxhi;
     }
     if (id == Y) {
       ho = nh + halo->param->nlocal[Y] - halo->param->nswap;
-      indexl = get_linear_index_gpu_d(ic, nh + jc, kc, halo->param->nall);
-      indexh = get_linear_index_gpu_d(ic, ho + jc, kc, halo->param->nall);
+      indexl = halo_swap_index(halo, ic, nh + jc, kc);
+      indexh = halo_swap_index(halo, ic, ho + jc, kc);
       buflo = halo->fylo;
       bufhi = halo->fyhi;
     }
     if (id == Z) {
       ho = nh + halo->param->nlocal[Z] - halo->param->nswap;
-      indexl = get_linear_index_gpu_d(ic, jc, nh + kc, halo->param->nall);
-      indexh = get_linear_index_gpu_d(ic, jc, ho + kc, halo->param->nall);
+      indexl = halo_swap_index(halo, ic, jc, nh + kc);
+      indexh = halo_swap_index(halo, ic, jc, ho + kc);
       buflo = halo->fzlo;
       bufhi = halo->fzhi;
     }
@@ -1921,11 +1983,11 @@ static void field_halo_pack(field_halo_t * halo, int id, double * data) {
     /* Low end, and high end */
 
     for (ia = 0; ia < nfel; ia++) {
-      buflo[hsz*ia + kindex] = data[addr_rank1(nsites, nfel, indexl, ia)];
+      buflo[hsz*ia + kindex] = data[addr_rank1(naddr, nfel, indexl, ia)];
     }
 
     for (ia = 0; ia < nfel; ia++) {
-      bufhi[hsz*ia + kindex] = data[addr_rank1(nsites, nfel, indexh, ia)];
+      bufhi[hsz*ia + kindex] = data[addr_rank1(naddr, nfel, indexh, ia)];
     }
   }
 
@@ -1934,14 +1996,14 @@ static void field_halo_pack(field_halo_t * halo, int id, double * data) {
 
 /*****************************************************************************
  *
- *  field_halo_unpack
+ *  halo_swap_unpack_rank1
  *
  *  Unpack halo buffers to the distribution on device for direction id.
  *
  *****************************************************************************/
 
 __global__
-static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
+void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
   int kindex;
 
@@ -1949,6 +2011,7 @@ static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
 
   __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
 
+    int naddr;
     int nfel;
     int hsz;
     int ia, indexl, indexh;
@@ -1958,18 +2021,18 @@ static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
     double * __restrict__ buflo;
     double * __restrict__ bufhi;
 
-
+    naddr = halo->param->naddr;
     nfel = halo->param->nfel;
     hsz = halo->param->hsz[id];
 
     nh = halo->param->nhalo;
-    field_halo_coords(halo, kindex, &ic, &jc, &kc);
+    halo_swap_coords(halo, id, kindex, &ic, &jc, &kc);
 
     if (id == X) {
       lo = nh - halo->param->nswap;
       ho = nh + halo->param->nlocal[X];
-      indexl = field_halo_index(halo, lo + ic, jc, kc);
-      indexh = field_halo_index(halo, ho + ic, jc, kc);
+      indexl = halo_swap_index(halo, lo + ic, jc, kc);
+      indexh = halo_swap_index(halo, ho + ic, jc, kc);
       buflo = halo->hxlo;
       bufhi = halo->hxhi;
     }
@@ -1977,8 +2040,8 @@ static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
     if (id == Y) {
       lo = nh - halo->param->nswap;
       ho = nh + halo->param->nlocal[Y];
-      indexl = field_halo_index(halo, ic, lo + jc, kc);
-      indexh = field_halo_index(halo, ic, ho + jc, kc);
+      indexl = halo_swap_index(halo, ic, lo + jc, kc);
+      indexh = halo_swap_index(halo, ic, ho + jc, kc);
       buflo = halo->hylo;
       bufhi = halo->hyhi;
     }
@@ -1986,8 +2049,8 @@ static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
     if (id == Z) {
       lo = nh - halo->param->nswap;
       ho = nh + halo->param->nlocal[Z];
-      indexl = field_halo_index(halo, ic, jc, lo + kc);
-      indexh = field_halo_index(halo, ic, jc, ho + kc);
+      indexl = halo_swap_index(halo, ic, jc, lo + kc);
+      indexh = halo_swap_index(halo, ic, jc, ho + kc);
       buflo = halo->hzlo;
       bufhi = halo->hzhi;
     } 
@@ -1995,11 +2058,11 @@ static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
     /* Low end, then high end */
 
     for (ia = 0; ia < nfel; ia++) {
-      data[addr_rank1(nsites, nfel, indexl, ia)] = buflo[hsz*ia + kindex];
+      data[addr_rank1(naddr, nfel, indexl, ia)] = buflo[hsz*ia + kindex];
     }
 
     for (ia = 0; ia < nfel; ia++) {
-      data[addr_rank1(nsites, nfel, indexh, ia)] = bufhi[hsz*ia + kindex];
+      data[addr_rank1(naddr, nfel, indexh, ia)] = bufhi[hsz*ia + kindex];
     }
   }
 
@@ -2008,22 +2071,22 @@ static void field_halo_unpack(field_halo_t * halo, int id, double * data) {
 
 /*****************************************************************************
  *
- *  field_halo_coords
+ *  halo_swap_coords
  *
  *  For given kernel index, work out where we are in (ic, jc, kc)
  *
  *****************************************************************************/
 
 __host__ __target__
-static void field_halo_coords(field_halo_t * halo, int index,
-			     int * ic, int * jc, int * kc) {
+void halo_swap_coords(halo_swap_t * halo, int id, int index,
+		      int * ic, int * jc, int * kc) {
   int xstr;
   int ystr;
 
   assert(halo);
 
-  ystr = halo->param->nall[Z];
-  xstr = ystr*halo->param->nall[Y];
+  ystr = halo->param->hext[id][Z];
+  xstr = ystr*halo->param->hext[id][Y];
 
   *ic = index/xstr;
   *jc = (index - *ic*xstr)/ystr;
@@ -2034,14 +2097,14 @@ static void field_halo_coords(field_halo_t * halo, int index,
 
 /*****************************************************************************
  *
- *  field_halo_index
+ *  halo_swap_index
  *
  *  A special case of coords_index().
  *
  *****************************************************************************/
 
 __host__ __target__
-static int field_halo_index(field_halo_t * halo, int ic, int jc, int kc) {
+int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc) {
 
   int xstr;
   int ystr;

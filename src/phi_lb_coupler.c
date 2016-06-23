@@ -57,7 +57,7 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
 
-  phi_lb_to_field_kernel __targetLaunchNoStride__(nSites) (phi->tcopy, lb->target);
+  phi_lb_to_field_kernel __targetLaunchNoStride__(nSites) (phi->target, lb->target);
 
   return 0;
 }

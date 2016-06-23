@@ -66,9 +66,6 @@ __host__ int field_create(int nf, const char * name, field_t ** pobj) {
   if (obj == NULL) fatal("calloc(obj) failed\n");
 
   obj->nf = nf;
-  obj->halo[0] = MPI_DATATYPE_NULL;
-  obj->halo[1] = MPI_DATATYPE_NULL;
-  obj->halo[2] = MPI_DATATYPE_NULL;
 
   obj->name = (char*) calloc(strlen(name) + 1, sizeof(char));
   if (obj->name == NULL) fatal("calloc(name) failed\n");
@@ -98,17 +95,14 @@ __host__ void field_free(field_t * obj) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->tcopy->data, sizeof(double *));
+    copyFromTarget(&tmp, &obj->target->data, sizeof(double *));
     targetFree(tmp);
-    targetFree(obj->tcopy);
+    targetFree(obj->target);
   }
 
   if (obj->data) free(obj->data);
-  if (obj->halo[0] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[0]);
-  if (obj->halo[1] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[1]);
-  if (obj->halo[2] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[2]);
-
   if (obj->name) free(obj->name);
+  if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_destroy(obj->info);
   free(obj);
 
@@ -143,21 +137,25 @@ __host__ int field_init(field_t * obj, int nhcomm) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    obj->tcopy = obj;
+    obj->target = obj;
   }
   else {
-    targetCalloc((void **) &obj->tcopy, sizeof(field_t));
+    targetCalloc((void **) &obj->target, sizeof(field_t));
     targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
 
-    copyToTarget(&obj->tcopy->data, &tmp, sizeof(double *)); 
-    copyToTarget(&obj->tcopy->nf, &obj->nf, sizeof(int));
+    copyToTarget(&obj->target->data, &tmp, sizeof(double *)); 
+    copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
   }
 
   /* MPI datatypes for halo */
 
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
-  coords_field_init_mpi_indexed(obj->nhcomm, obj->nf, MPI_DOUBLE, obj->halo);
+
+  halo_swap_create(nhcomm, obj->nf, nsites, &obj->halo);
+  assert(obj->halo);
+
+  halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
 
   return 0;
 }
@@ -177,17 +175,17 @@ __host__ int field_memcpy(field_t * obj, int flag) {
 
   if (ndevice == 0) {
     /* Ensure we alias */
-    assert(obj->tcopy == obj);
+    assert(obj->target == obj);
   }
   else {
 
-    copyFromTarget(&tmp, &obj->tcopy->data, sizeof(double *));
+    copyFromTarget(&tmp, &obj->target->data, sizeof(double *));
 
     switch (flag) {
     case cudaMemcpyHostToDevice:
-      copyToTarget(&obj->tcopy->nf, &obj->nf, sizeof(int));
-      copyToTarget(&obj->tcopy->nhcomm, &obj->nhcomm, sizeof(int));
-      copyToTarget(&obj->tcopy->nsites, &obj->nsites, sizeof(int));
+      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
+      copyToTarget(&obj->target->nhcomm, &obj->nhcomm, sizeof(int));
+      copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
       copyToTarget(tmp, obj->data, obj->nf*obj->nsites*sizeof(double));
       break;
     case cudaMemcpyDeviceToHost:
@@ -225,7 +223,7 @@ int field_nf(field_t * obj, int * nf) {
  *****************************************************************************/
 
 int field_init_io_info(field_t * obj, int grid[3], int form_in,
-			     int form_out) {
+		       int form_out) {
   assert(obj);
   assert(grid);
   assert(obj->info == NULL);
@@ -274,8 +272,7 @@ int field_halo(field_t * obj) {
   assert(obj);
   assert(obj->data);
 
-  coords_field_halo_rank1(le_nsites(), obj->nhcomm, obj->nf, obj->data,
-			  MPI_DOUBLE);
+  halo_swap_driver(obj->halo, obj->target->data);
 
   return 0;
 }

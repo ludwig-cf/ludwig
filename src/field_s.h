@@ -19,19 +19,20 @@
 
 #include "io_harness.h"
 #include "memory.h"
+#include "halo_swap.h"
 #include "field.h"
 
 struct field_s {
   int nf;                       /* Number of field components */
   int nhcomm;                   /* Halo width required */
   int nsites;                   /* Local sites (allocated) */
-  double * data;                /* Data on host */
+  double * data;                /* Field data */
 
-  MPI_Datatype halo[3];         /* Halo exchange data types */
   io_info_t * info;             /* I/O Handler */
   char * name;                  /* "phi", "p", "q" etc. */
+  halo_swap_t * halo;           /* Halo swap driver object */
 
-  field_t * tcopy;              /* copy of this structure on target */ 
+  field_t * target;             /* target structure */ 
 };
 
 #define addr_qab(nsites, index, ia) addr_rank1(nsites, NQAB, index, ia)

@@ -68,6 +68,11 @@ __host__ int hydro_create(int nhcomm, hydro_t ** pobj) {
   obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
 
+  halo_swap_create(nhcomm, NHDIM, obj->nsite, &obj->halo);
+  assert(obj->halo);
+
+  halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
+
   /* Allocate target copy of structure (or alias) */
 
   targetGetDeviceCount(&ndevice);
@@ -116,6 +121,7 @@ __host__ void hydro_free(hydro_t * obj) {
     targetFree(obj->target);
   }
 
+  halo_swap_free(obj->halo);
   free(obj->f);
   free(obj->u);
   free(obj);
@@ -175,8 +181,8 @@ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
-  coords_field_halo_rank1(le_nsites(), obj->nhcomm, NHDIM, obj->u,
-			  MPI_DOUBLE);
+  halo_swap_driver(obj->halo, obj->target->u);
+
   return 0;
 }
 

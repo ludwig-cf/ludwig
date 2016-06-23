@@ -271,6 +271,20 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
   return MPI_SUCCESS;
 }
 
+
+/*****************************************************************************
+ *
+ *  MPI_Waitany
+ *
+ *****************************************************************************/
+
+int MPI_Waitany(int count, MPI_Request requests[], int * index,
+		MPI_Status * statuses) {
+
+  return MPI_SUCCESS;
+}
+
+
 /*****************************************************************************
  *
  *  MPI_Probe
@@ -737,3 +751,18 @@ static int mpi_sizeof(MPI_Datatype type) {
   return size;
 }
 
+
+/*****************************************************************************
+ *
+ *  MPI_Comm_set_errhandler
+ *
+ *****************************************************************************/
+
+int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
+
+  assert(mpi_initialised_flag_);
+  assert(comm != MPI_COMM_NULL);
+  assert(errhandler == MPI_ERRORS_ARE_FATAL);
+
+  return MPI_SUCCESS;
+}

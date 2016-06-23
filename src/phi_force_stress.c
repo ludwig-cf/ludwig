@@ -251,7 +251,7 @@ int phi_force_stress_compute(pth_t * pth, field_t * q, field_grad_t * qgrad) {
 
   TIMER_start(TIMER_CHEMICAL_STRESS_KERNEL);
 
-  chemical_stress_lattice __targetLaunch__(nSites) (pth->target, q->tcopy, qgrad->tcopy, pcon, chemical_stress, isBPCS);
+  chemical_stress_lattice __targetLaunch__(nSites) (pth->target, q->target, qgrad->tcopy, pcon, chemical_stress, isBPCS);
   targetSynchronize();
 
   TIMER_stop(TIMER_CHEMICAL_STRESS_KERNEL);

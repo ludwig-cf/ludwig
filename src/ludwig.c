@@ -152,7 +152,6 @@ int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(map_t ** map);
 
 
-__targetHost__ void halo_SoA(int nfields1, int nfields2, int packfield1, double * data_d);
 __targetHost__ void init_comms_gpu(int N[3], int ndist);
 __targetHost__ void finalise_comms_gpu();
 __targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
@@ -489,20 +488,10 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->phi) {
 
       TIMER_start(TIMER_PHI_HALO);
-
-#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
-
-      halo_alternative(1, 1, 0, ludwig->phi->data);
-
-#else
       field_halo(ludwig->phi);
+      TIMER_stop(TIMER_PHI_HALO);
 
-#endif
-
-    TIMER_stop(TIMER_PHI_HALO);
-
-    field_grad_compute(ludwig->phi_grad);
-
+      field_grad_compute(ludwig->phi_grad);
     }
 
     if (ludwig->p) {
@@ -512,14 +501,7 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->q) {
       TIMER_start(TIMER_PHI_HALO);
-
-#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
-      halo_alternative(NQAB, 1, 0, ludwig->q->data);
-#else
-      halo_alternative(NQAB, 1, 0, ludwig->q->data);
-      /* field_halo(ludwig->q);*/
-#endif
-
+      field_halo(ludwig->q);
       TIMER_stop(TIMER_PHI_HALO);
 
       field_grad_compute(ludwig->q_grad);
@@ -650,16 +632,8 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->q) {
 	if (ludwig->hydro) {
-
 	  TIMER_start(TIMER_U_HALO);
-
-#if defined (KEEPHYDROONTARGET) || defined (LB_DATA_SOA)
-	  halo_alternative(3, 1, 0, ludwig->hydro->u);
-#else
-	  halo_alternative(3, 1, 0, ludwig->hydro->u);
- 	  /*hydro_u_halo(ludwig->hydro); */
-#endif
-
+ 	  hydro_u_halo(ludwig->hydro);
 	  TIMER_stop(TIMER_U_HALO);
 	}
 
