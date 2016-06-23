@@ -148,6 +148,8 @@ int MPI_Type_commit(MPI_Datatype * datatype);
 int MPI_Type_free(MPI_Datatype * datatype);
 int MPI_Waitall(int count, MPI_Request * array_of_requests,
 		MPI_Status * array_of_statuses);
+int MPI_Waitany(int count, MPI_Request array_of_req[], int * index,
+		MPI_Status * status);
 int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 	       void * recvbuf, int recvcount, MPI_Datatype recvtype,
 	       int root, MPI_Comm comm);
@@ -186,6 +188,15 @@ int MPI_Init(int * argc, char *** argv);
 int MPI_Finalize(void);
 int MPI_Initialized(int * flag);
 int MPI_Abort(MPI_Comm comm, int errorcode);
+
+/* MPI 2.0 */
+/* In particular, replacements for routines removed from MPI 3 */
+/* MPI_Address() -> MPI_Get_Address()
+ * MPI_Type_struct() -> MPI_Type_create_struct()
+ * MPI_Type_lb() and MPI_Type_ub() -> MPI_Type_get_extent()
+ * See MPI 3 standard */
+
+int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler erhandler);
 
 #ifdef __cplusplus
 }

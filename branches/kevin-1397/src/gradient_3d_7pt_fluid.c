@@ -279,7 +279,7 @@ __host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
   TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
   grad_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
-    (fg->field->nf, fg->field->tcopy, fg->tcopy);
+    (fg->field->nf, fg->field->target, fg->tcopy);
   targetSynchronize();
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);
