@@ -236,24 +236,25 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define DATA_MODEL ADDRESS_REVERSE
 #endif
 
-/* Non-vectorised loops. */
+
+/* Macro definitions for the interface */
+
+#ifndef ADDR_VBLOCK
+
+#define addr_rank0 base_addr_rank0
+#define addr_rank1 base_addr_rank1
+#define addr_rank2 base_addr_rank2
+#define addr_rank3 base_addr_rank3
+
+#else
+
+/* Blocked version. Block length always vector length. */
 /* We simulate an innermost vector loop by arithmetic based
  * on the coordinate index, which is expected to run normally
  * from 0 ... nites-1. The 'dummy' vector loop index is ... */
 
-#ifndef ADDR_VBLOCK
-
-#define NVBLOCK 1
-#define pseudo_iv(index) 0
-
-#else
-
 #define NVBLOCK NSIMDVL
 #define pseudo_iv(index) ( (index) - ((index)/NVBLOCK)*NVBLOCK )
-
-#endif
-
-/* Macro definitions for the interface */
 
 #define addr_rank0(nsites, index) \
   base_addr_rank1((nsites)/NVBLOCK, NVBLOCK, (index)/NVBLOCK, pseudo_iv(index))
@@ -267,15 +268,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define addr_rank3(nsites, na, nb, nc, index, ia, ib, ic) \
   base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, pseudo_iv(index))
 
-#define vaddr_rank0(nsites, index, iv) \
-  base_addr_rank1((nsites)/NVBLOCK, NVBLOCK, (index)/NVBLOCK, iv)
-#define vaddr_rank1(nsites, na, index, ia, iv) \
-  base_addr_rank2((nsites)/NVBLOCK, na, NVBLOCK, (index)/NVBLOCK, ia, iv)
+#endif /* ADDR_VBLOCK */
 
-#define vaddr_rank2(nsites, na, nb, index, ia, ib, iv) \
-  base_addr_rank3((nsites)/NVBLOCK, na, nb, NVBLOCK, (index)/NVBLOCK, ia, ib, iv)
-
-#define vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv) \
-  base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, iv)
 
 #endif
