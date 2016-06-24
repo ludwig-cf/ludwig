@@ -7,7 +7,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -17,7 +18,7 @@
 #define LB_MODEL_S_H
 
 #include "model.h"
-#include "memory.h"
+#include "halo_swap.h"
 #include "io_harness.h"
 
 extern __targetConst__ int tc_cv[NVEL][3];
@@ -48,6 +49,8 @@ struct lb_data_s {
   MPI_Datatype site_x[2];
   MPI_Datatype site_y[2];
   MPI_Datatype site_z[2];
+
+  halo_swap_t * halo;
 
   lb_t * target;              /* copy of this structure on target */ 
 

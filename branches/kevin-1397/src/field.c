@@ -152,7 +152,7 @@ __host__ int field_init(field_t * obj, int nhcomm) {
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
 
-  halo_swap_create(nhcomm, obj->nf, nsites, &obj->halo);
+  halo_swap_create_r1(nhcomm, nsites, obj->nf, &obj->halo);
   assert(obj->halo);
 
   halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);

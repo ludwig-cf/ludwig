@@ -26,7 +26,8 @@ typedef struct halo_swap_s halo_swap_t;
 typedef void (*f_pack_t)(halo_swap_t * halo, int id, double * data);
 typedef void (*f_unpack_t)(halo_swap_t * halo, int id, double * data);
 
-__host__ int halo_swap_create(int nhcomm, int nfel, int naddr, halo_swap_t ** phalo);
+__host__ int halo_swap_create_r1(int nhcomm, int naddr, int na, halo_swap_t ** phalo);
+__host__ int halo_swap_create_r2(int nhcomm, int naddr, int na, int nb, halo_swap_t ** phalo);
 __host__ int halo_swap_free(halo_swap_t * halo);
 __host__ int halo_swap_commit(halo_swap_t * halo);
 __host__ int halo_swap_driver(halo_swap_t * halo, double * ddata);
