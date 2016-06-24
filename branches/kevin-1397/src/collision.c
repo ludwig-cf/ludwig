@@ -1117,7 +1117,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
 
   int Nall[3];
   int nlocal[3];
-  int nFields;
   int nSites;
   int nhalo;
   int noise_on = 0;                  /* Fluctuations switch */
@@ -1151,8 +1150,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   Nall[Y] = nlocal[Y]+2*nhalo;
   Nall[Z] = nlocal[Z]+2*nhalo;
   nSites  = Nall[X]*Nall[Y]*Nall[Z];
-
-  nFields = NVEL*NDIST;
 
   copyConstToTarget(&tc_nmodes_,&nmodes_, sizeof(int));
   copyConstToTarget(&tc_nmodes_, &nmodes_, sizeof(int));
