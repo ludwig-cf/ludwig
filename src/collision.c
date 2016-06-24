@@ -432,7 +432,7 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
 	/* velocity */
 
 	for (ia = 0; ia < 3; ia++) {
-	  hydro->u[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+	  hydro->u[addr_hydro(baseIndex + iv, ia)] = u[ia*VVL+iv];
 	}
       }
     }
@@ -882,7 +882,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 
     __targetILP__(iv) {
       force[i*VVL+iv] = tc_force_global[i] 
-	+ hydro->f[vaddr_hydro(baseIndex, i, iv)];
+	+ hydro->f[addr_hydro(baseIndex +iv, i)];
       u[i*VVL+iv] = rrho[iv]*(u[i*VVL+iv] + 0.5*force[i*VVL+iv]);  
     }
   }
@@ -890,7 +890,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 
   for (ia = 0; ia < 3; ia++) {   
     __targetILP__(iv) {
-      hydro->u[vaddr_hydro(baseIndex, ia, iv)] = u[ia*VVL+iv];
+      hydro->u[addr_hydro(baseIndex + iv, ia)] = u[ia*VVL+iv];
     }
   }
   
@@ -1025,7 +1025,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 
   /* Now, the order parameter distribution */
     __targetILP__(iv) {
-      phi[iv] = fe->phi->data[vaddr_rank0(le_nsites(), baseIndex, iv)];
+      phi[iv] = fe->phi->data[addr_rank0(le_nsites(), baseIndex + iv)];
     }
 
   __targetILP__(iv){

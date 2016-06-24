@@ -33,6 +33,5 @@ struct hydro_s {
 };
 
 #define addr_hydro(index, ia) addr_rank1(le_nsites(), NHDIM, index, ia)
-#define vaddr_hydro(index, ia, iv) vaddr_rank1(le_nsites(), NHDIM, index, ia, iv)
 
 #endif

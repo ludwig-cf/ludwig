@@ -263,11 +263,11 @@ void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
 
   __targetILP__(iv) {
     for (ia = 0; ia < 3; ia++) {
-      grad[ia] = fe->dphi->grad[vaddr_rank2(le_nsites(), 1, 3, index, 0, ia, iv)];
+      grad[ia] = fe->dphi->grad[addr_rank2(le_nsites(), 1, 3, index + iv, 0, ia)];
     }
 
-    phi = fe->phi->data[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
-    delsq = fe->dphi->delsq[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
+    phi = fe->phi->data[addr_rank1(le_nsites(), 1, index + iv, 0)];
+    delsq = fe->dphi->delsq[addr_rank1(le_nsites(), 1, index + iv, 0)];
 
     p0 = 0.5*param.a*phi*phi + 0.75*param.b*phi*phi*phi*phi
       - param.kappa*phi*delsq 
@@ -550,11 +550,11 @@ void symmetric_chemical_stress_target(const int index,
   __targetILP__(iv) {
     
     for (ia = 0; ia < 3; ia++) {
-      grad_phi[ia] = t_gradphi[vaddr_rank2(le_nsites(), 1, 3, index, 0, ia, iv)];
+      grad_phi[ia] = t_gradphi[addr_rank2(le_nsites(), 1, 3, index + iv, 0, ia)];
     }
 
-    phi = t_phi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
-    delsq_phi = t_delsqphi[vaddr_rank1(le_nsites(), 1, index, 0, iv)];
+    phi = t_phi[addr_rank1(le_nsites(), 1, index + iv, 0)];
+    delsq_phi = t_delsqphi[addr_rank1(le_nsites(), 1, index + iv, 0)];
 
     p0 = 0.5*t_a_*phi*phi + 0.75*t_b_*phi*phi*phi*phi
       - t_kappa_*phi*delsq_phi 
