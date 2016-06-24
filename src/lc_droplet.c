@@ -142,6 +142,7 @@ double lc_droplet_free_energy_density(const int index) {
   blue_phase_set_gamma(gamma);
 #ifndef OLD_SHIT
   assert(0);
+  f = 0.0;
 #else
   f = symmetric_free_energy_density(index);
   f += blue_phase_free_energy_density(index);

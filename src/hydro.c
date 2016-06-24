@@ -342,8 +342,8 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
   assert(obj);
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
-  __host_launch_kernel(hydro_field_set, nblk, ntpb,
-		       obj->target, obj->target->u, uzero);
+  __host_launch(hydro_field_set, nblk, ntpb,
+		obj->target, obj->target->u, uzero);
   targetDeviceSynchronise();
 
   return 0;
@@ -363,8 +363,8 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
   assert(obj);
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
-  __host_launch_kernel(hydro_field_set, nblk, ntpb,
-		       obj->target, obj->target->f, fzero);
+  __host_launch(hydro_field_set, nblk, ntpb,
+		obj->target, obj->target->f, fzero);
   targetDeviceSynchronise();
 
   return 0;

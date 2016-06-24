@@ -402,12 +402,6 @@ void ludwig_run(const char * inputfile) {
 
   ludwig_rt(ludwig);
 
-  int nlocal[3];
-  coords_nlocal(nlocal);
-  int nhalo = coords_nhalo();
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
   /* Report initial statistics */
 
   pe_subdirectory(subdirectory);
@@ -432,8 +426,6 @@ void ludwig_run(const char * inputfile) {
     psi_stats_info(ludwig->psi);
   }
   ludwig_report_momentum(ludwig);
-
-  coords_nlocal(nlocal);
 
   lb_model_copy(ludwig->lb, cudaMemcpyHostToDevice);
 

@@ -274,7 +274,7 @@ void phi_force_stress_set(pth_t * pth, int index, double p[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      pth->str[addr_rank2(tc_nSites,3,3,index,ia,ib)] = p[ia][ib];
+      pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)] = p[ia][ib];
     }
   }
 
@@ -296,7 +296,7 @@ void phi_force_stress(pth_t * pth, int index, double p[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      p[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index,ia,ib)];
+      p[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
     }
   }
 

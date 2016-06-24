@@ -78,8 +78,7 @@ __host__ int lb_propagation_driver(lb_t * lb) {
 
   TIMER_start(TIMER_PROP_KERNEL);
 
-  __host_launch_kernel(lb_propagation_kernel, nblk, ntpb,
-		       ctxt->target, lb->target);
+  __host_launch(lb_propagation_kernel, nblk, ntpb, ctxt->target, lb->target);
   targetDeviceSynchronise();
 
   TIMER_stop(TIMER_PROP_KERNEL);

@@ -481,7 +481,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   int n1, n2;
   int ndata, ndata1, ndata2;
   int nhalo;
-  int ind0, ind1, ind2, index, i0;
+  int ind0, ind1, ind2, index;
   int n, nplane, plane;
   int p;
   int nlocal[3];
@@ -590,7 +590,6 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
 	for (n = 0; n < ndist; n++) {
-	  i0   = ndist*NVEL*index + n*NVEL + xdisp_fwd_cv[0];
 	  ind1 = ind0 + n*nprop;
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 
@@ -672,7 +671,6 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
 	for (n = 0; n < ndist; n++) {
-	  i0   = ndist*NVEL*index + n*NVEL + xdisp_bwd_cv[0];
 	  ind1 = ind0 + n*nprop;
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 
