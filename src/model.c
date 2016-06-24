@@ -29,7 +29,6 @@
 #include "coords.h"
 #include "model.h"
 #include "lb_model_s.h"
-#include "targetDP.h"
 #include "io_harness.h"
 
 const double cs2  = (1.0/3.0);
@@ -111,6 +110,7 @@ __host__ void lb_free(lb_t * lb) {
     targetFree(lb->target);
   }
 
+  if (lb->halo) halo_swap_free(lb->halo);
   if (lb->io_info) io_info_destroy(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->fprime) free(lb->fprime);
@@ -461,6 +461,9 @@ static int lb_mpi_init(lb_t * lb) {
   free(disp_bwd);
   free(types);
 
+  halo_swap_create_r2(1, lb->nsite, lb->ndist, NVEL, &lb->halo);
+  halo_swap_handlers_set(lb->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
+
   return 0;
 }
 
@@ -605,7 +608,10 @@ int lb_halo(lb_t * lb) {
 
   assert(lb);
 
-  lb_halo_via_copy(lb);
+  halo_swap_driver(lb->halo, lb->target->f);
+
+  /* Also available */
+  /* lb_halo_via_copy(lb);*/
 
   /* If MODEL order and NSIMDVL is 1 the struct
    * approach is still available. */

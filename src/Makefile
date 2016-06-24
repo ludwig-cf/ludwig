@@ -79,7 +79,7 @@ OBJS = \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-     hydro.o hydro_rt.o interaction.o io_harness.o \
+     halo_swap.o hydro.o hydro_rt.o interaction.o io_harness.o \
      kernel.o leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o memory.o model.o model_le.o map.o \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
@@ -99,7 +99,7 @@ OBJS = \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
-     symmetric.o timer.o util.o wall.o wall_ss_cut.o comms_gpu.o ludwig.o
+     symmetric.o timer.o util.o wall.o wall_ss_cut.o ludwig.o
 
 
 ###############################################################################

@@ -151,11 +151,6 @@ static int ludwig_colloids_update(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(map_t ** map);
 
-
-__targetHost__ void init_comms_gpu(int N[3], int ndist);
-__targetHost__ void finalise_comms_gpu();
-__targetHost__ void halo_alternative(int nfields1, int nfields2, int packfield1, double * data_d);
-
 /*****************************************************************************
  *
  *  ludwig_rt
@@ -440,11 +435,6 @@ void ludwig_run(const char * inputfile) {
 
   coords_nlocal(nlocal);
 
-#ifndef OLD_SHIT
-  lb_ndist(ludwig->lb, &im);
-  init_comms_gpu(nlocal, im);
-#endif
-
   lb_model_copy(ludwig->lb, cudaMemcpyHostToDevice);
 
   
@@ -668,22 +658,11 @@ void ludwig_run(const char * inputfile) {
 
       lb_le_apply_boundary_conditions(ludwig->lb);
 
-
       TIMER_start(TIMER_HALO_LATTICE);
 
-      lb_ndist(ludwig->lb, &im);
-#if defined (KEEPFIELDONTARGET) || defined (LB_DATA_SOA)
-      halo_alternative(NVEL, im, 1, ludwig->lb->f);	    
-#else
-      halo_alternative(NVEL, im, 1, ludwig->lb->f);
-      /* lb_halo(ludwig->lb);*/
-#endif 
+      lb_halo(ludwig->lb);
 
       TIMER_stop(TIMER_HALO_LATTICE);
-
-
-
-
 
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
@@ -896,10 +875,6 @@ void ludwig_run(const char * inputfile) {
   /* Shut down cleanly. Give the timer statistics. Finalise PE. */
 #ifdef PETSC
   if (ludwig->psi) psi_petsc_finish();
-#endif
-
-#ifndef OLD_SHIT
-  finalise_comms_gpu();
 #endif
 
   stats_rheology_finish();
@@ -1593,18 +1568,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_HALO_LATTICE);
 
-
-#if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
-
-    lb_ndist(ludwig->lb, &ndist);
-    halo_alternative(NVEL, ndist, 1, ludwig->lb->f);	    
-#else		   
-
     lb_halo(ludwig->lb);
-#endif
- 
 
-   TIMER_stop(TIMER_HALO_LATTICE);
+    TIMER_stop(TIMER_HALO_LATTICE);
 
     TIMER_start(TIMER_FREE1);
     if (iconserve && ludwig->phi) field_halo(ludwig->phi);

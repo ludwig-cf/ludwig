@@ -68,7 +68,7 @@ __host__ int hydro_create(int nhcomm, hydro_t ** pobj) {
   obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->f == NULL) fatal("calloc(hydro->f) failed\n");
 
-  halo_swap_create(nhcomm, NHDIM, obj->nsite, &obj->halo);
+  halo_swap_create_r1(nhcomm, obj->nsite, NHDIM, &obj->halo);
   assert(obj->halo);
 
   halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
