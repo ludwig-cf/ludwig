@@ -3,7 +3,8 @@
 TARGETDP=../../../kevin-1397/targetDP
 
 MF= Makefile
-SRC1= constants.c
+SRC1= functions.c
+SRC2= constants.c
 OBJ1= $(SRC1:.c=.o)
 
 CC = gcc -Wall
