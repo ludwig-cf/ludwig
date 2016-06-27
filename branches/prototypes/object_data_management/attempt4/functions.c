@@ -71,8 +71,8 @@ __host__ int fe_symm_create(fe_symm_t ** p) {
     fe_vt_t * tmp;
     /* Allocate and set device vtable */
     targetCalloc((void **) &fes->target, sizeof(fe_symm_t));
-    targetConstAddress(&tmp, fe_symm_dvt);
-    copyToTarget(&fes->target->parent.child, tmp, sizeof(fe_vt_t *));
+    cudaGetSymbolAddress((void **) &tmp, fe_symm_dvt);
+    cudaMemcpy(&fes->target->parent.child, (const void *) &tmp, sizeof(fe_vt_t *), cudaMemcpyHostToDevice);
   }
 
   *p = fes;
@@ -121,12 +121,16 @@ int main(int argc, char ** argv) {
   fe_symm_target(fes, &fe);
 
   __host_launch(kernel_function, nblk, ntpb, fe);
+  /*kernel_function<<<1,1>>>(fe);*/
+  targetDeviceSynchronise();
 
+  printf("mina()\n");
   return 0;
 }
 
 __global__ void kernel_function(fe_t * fe) {
 
+  printf("Start kernel %p\n", fe->child);
   fe->child->f2(fe, "called from kernel");
   printf("Calling f3\n");
   fe->child->f3(fe, "called from kernel");
