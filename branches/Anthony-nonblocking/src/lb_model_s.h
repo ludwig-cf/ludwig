@@ -62,6 +62,23 @@
 #define LB_ADDR LB_ADDR_MODEL
 #endif
 
+struct halo_s {
+  double *sendplanes;
+  double *recvplanes;
+
+  double *sendedges;
+  double *recvedges;
+
+  double *sendcorners;
+  double *recvcorners;
+
+  MPI_Request sendreq[26];
+  MPI_Request recvreq[26];
+  MPI_Status status[52];
+};
+
+//typedef struct lb_s lb_t;
+
 struct lb_data_s {
 
   int ndist;             /* Number of distributions (default one) */
@@ -92,6 +109,8 @@ struct lb_data_s {
   MPI_Datatype site_x[2];
   MPI_Datatype site_y[2];
   MPI_Datatype site_z[2];
+
+  struct halo_s hl;
 
   lb_t * tcopy;              /* copy of this structure on target */ 
 
