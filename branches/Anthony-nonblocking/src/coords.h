@@ -24,6 +24,10 @@
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
+/* 26 Neighbours for non-blocking version */
+enum Halo_neighbour{NNN = 0, NNM, NNP, NMN, NMM, NMP, NPN, NPM, NPP,
+                    MNN, MNM, MNP, MMN, MMP, MPN, MPM, MPP,
+                    PNN, PNM, PNP, PMN, PMM, PMP, PPN, PPM, PPP} neigh;
 
 __targetHost__ void   coords_init(void);
 __targetHost__ void   coords_finish(void);
@@ -36,6 +40,7 @@ __targetHost__ int    cart_rank(void);
 __targetHost__ int    cart_size(const int);
 __targetHost__ int    cart_coords(const int);
 __targetHost__ int    cart_neighb(const int direction, const int dimension);
+__targetHost__ int    nonblocking_cart_neighb(const int index);
 
 __targetHost__ MPI_Comm cart_comm(void);
 
