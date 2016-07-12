@@ -41,6 +41,9 @@ static int n_local[3];
 static int pe_cartesian_rank             = 0;
 static int pe_cartesian_coordinates[3]   = {0, 0, 0};
 static int pe_cartesian_neighbours[2][3] = {{0, 0, 0}, {0, 0, 0}};
+/* Ranks of neighbours, non-blocking version */
+static int neighbour_cart_coords[3] = {0, 0, 0};
+static int nonblocking_cartesian_neighbours[26] = {0};
 
 /* Lmin is fixed for all current use. */
 
@@ -100,6 +103,27 @@ void coords_init() {
   MPI_Comm_rank(cartesian_communicator, &pe_cartesian_rank);
   MPI_Cart_coords(cartesian_communicator, pe_cartesian_rank, 3,
 		  pe_cartesian_coordinates);
+
+  /* Identify the cartesian coordinates, and therefore the rank
+     of each of the 26 neighbouring domains and save into
+     array nonblocking_cartesian_neighbours for non-blocking communication*/ 
+  int count = 0;
+  int neighbour_rank;
+  for (int i = -1; i <= 1; i++){
+    for (int j = -1; j <= 1; j++){
+      for (int k = -1; k <= 1; k++){ 
+          neighbour_cart_coords[0] = i + pe_cartesian_coordinates[0];
+          neighbour_cart_coords[1] = j + pe_cartesian_coordinates[1];
+          neighbour_cart_coords[2] = k + pe_cartesian_coordinates[2];
+        /* Convert neighbours cartesian index to rank (excluding 0,0,0) */
+        if(i != 0 || j != 0 || k != 0) {
+          MPI_Cart_rank(cartesian_communicator, neighbour_cart_coords, &neighbour_rank);
+          nonblocking_cartesian_neighbours[count] = neighbour_rank;
+          count++;
+        }
+      }
+    }
+  }
 
   for (n = 0; n < 3; n++) {
     MPI_Cart_shift(cartesian_communicator, n, 1,
@@ -211,6 +235,17 @@ int cart_neighb(const int dir, const int dim) {
   assert(dir == FORWARD || dir == BACKWARD);
   assert(dim == X || dim == Y || dim == Z);
   return pe_cartesian_neighbours[dir][dim];
+}
+
+/*****************************************************************************
+ *
+ *  nonblocking_cart_neighb access function (for non-blocking halo exchange)
+ *
+ *****************************************************************************/
+
+int nonblocking_cart_neighb(const int index) {
+  assert(index >= 0 && index <= 25);
+  return nonblocking_cartesian_neighbours[index];
 }
 
 /*****************************************************************************
