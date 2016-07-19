@@ -48,6 +48,7 @@ struct psi_s {
   double beta;              /* Boltzmann factor (1 / k_B T) */
   double reltol;            /* Relative tolerance for Poisson solver */
   double abstol;            /* Absolute tolerance for Poisson solver */
+  int method;               /* Force computation method */
   int maxits;               /* Maximum number of iterations */
   int multisteps;           /* Number of substeps in charge dynamics */
   int skipsteps;            /* Poisson equation solved every skipsteps timesteps */

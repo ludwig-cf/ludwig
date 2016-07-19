@@ -52,8 +52,8 @@ __host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra);
 __host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra);
 __host__ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg, int nextra);
 
-__host__ int grad_dab_le_correct(int nf, const double * field, double * dab);
-__host__ int grad_dab_compute(int nf, const double * field, double * dab);
+__host__ int grad_dab_le_correct(field_grad_t * df);
+__host__ int grad_dab_compute(field_grad_t * df);
 
 /*****************************************************************************
  *
@@ -91,8 +91,8 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
   assert(nextra >= 0);
   assert(fgrad);
 
-  assert(0);
-  assert(0); /* Works for double call? Brazovskii */
+  assert(0); /* SHIT NO TEST? */
+  assert(0); /* Needs double call. Brazovskii */
   grad_3d_7pt_fluid_operator(fgrad, nextra);
   grad_3d_7pt_fluid_le_correction(fgrad, nextra);
   grad_3d_7pt_fluid_wall_correction(fgrad, nextra);
@@ -125,9 +125,8 @@ __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
   assert(fgrad->field);
   assert(fgrad->field->nf == 1); /* Scalars only; host only */
 
-  assert(0);
-  grad_dab_compute(1, fgrad->field->data, fgrad->d_ab);
-  grad_dab_le_correct(1, fgrad->field->data, fgrad->d_ab);
+  grad_dab_compute(fgrad);
+  grad_dab_le_correct(fgrad);
 
   return 0;
 }
@@ -530,21 +529,20 @@ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
  *
  *****************************************************************************/
 
-__host__
-int grad_dab_compute(int nf, const double * field, double * dab) {
+__host__ int grad_dab_compute(field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
   int nextra;
-  int n;
+  int nsites;
   int ic, jc, kc;
   int ys;
   int icm1, icp1;
   int index, indexm1, indexp1;
+  double * __restrict__ dab;
+  double * __restrict__ field;
 
-  assert(nf == 1);
-  assert(field);
-  assert(dab);
+  assert(df);
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
@@ -553,6 +551,10 @@ int grad_dab_compute(int nf, const double * field, double * dab) {
   coords_nlocal(nlocal);
 
   ys = nlocal[Z] + 2*nhalo;
+
+  nsites = le_nsites();
+  field = df->field->data;
+  dab = df->d_ab;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -564,29 +566,33 @@ int grad_dab_compute(int nf, const double * field, double * dab) {
 	indexm1 = le_site_index(icm1, jc, kc);
 	indexp1 = le_site_index(icp1, jc, kc);
 
-	for (n = 0; n < nf; n++) {
-	  dab[NSYMM*(nf*index + n) + XX]
-	    = field[nf*indexp1 + n] + field[nf*indexm1 + n]
-	    - 2.0*field[nf*index + n];
-	  dab[NSYMM*(nf*index + n) + XY] = 0.25*
-	    (field[nf*(indexp1 + ys) + n] - field[nf*(indexp1 - ys) + n]
-	     - field[nf*(indexm1 + ys) + n] + field[nf*(indexm1 - ys) + n]);
-	  dab[NSYMM*(nf*index + n) + XZ] = 0.25*
-	    (field[nf*(indexp1 + 1) + n] - field[nf*(indexp1 - 1) + n]
-	     - field[nf*(indexm1 + 1) + n] + field[nf*(indexm1 - 1) + n]);
-
-	  dab[NSYMM*(nf*index + n) + YY]
-	    = field[nf*(index + ys) + n] + field[nf*(index - ys) + n]
-	    - 2.0*field[nf*index + n];
-	  dab[NSYMM*(nf*index + n) + YZ] = 0.25*
-	    (field[nf*(index + ys + 1) + n] - field[nf*(index + ys - 1) + n]
-	   - field[nf*(index - ys + 1) + n] + field[nf*(index - ys - 1) + n]
-	     );
-
-	  dab[NSYMM*(nf*index + n) + ZZ]
-	    = field[nf*(index + 1)  + n] + field[nf*(index - 1)  + n]
-	    - 2.0*field[nf*index + n];
-	}
+	dab[addr_dab(index, XX)] =
+	  (+ 1.0*field[addr_rank0(nsites, indexp1)]
+	   + 1.0*field[addr_rank0(nsites, indexm1)]
+	   - 2.0*field[addr_rank0(nsites, index)]);
+	dab[addr_dab(index, XY)] = 0.25*
+	  (+ field[addr_rank0(nsites, indexp1 + ys)]
+	   - field[addr_rank0(nsites, indexp1 - ys)]
+	   - field[addr_rank0(nsites, indexm1 + ys)]
+	   + field[addr_rank0(nsites, indexm1 - ys)]);
+	dab[addr_dab(index, XZ)] = 0.25*
+	  (+ field[addr_rank0(nsites, indexp1 + 1)]
+	   - field[addr_rank0(nsites, indexp1 - 1)]
+	   - field[addr_rank0(nsites, indexm1 + 1)]
+	   + field[addr_rank0(nsites, indexm1 - 1)]);
+	dab[addr_dab(index, YY)] =
+	  (+ 1.0*field[addr_rank0(nsites, index + ys)]
+	   + 1.0*field[addr_rank0(nsites, index - ys)]
+	   - 2.0*field[addr_rank0(nsites, index)]);
+	dab[addr_dab(index, YZ)] = 0.25*
+	  (+ field[addr_rank0(nsites, index + ys + 1)]
+	   - field[addr_rank0(nsites, index + ys - 1)]
+	   - field[addr_rank0(nsites, index - ys + 1)]
+	   + field[addr_rank0(nsites, index - ys - 1)]);
+	dab[addr_dab(index, ZZ)] =
+	  (+ 1.0*field[addr_rank0(nsites, index + 1)]
+	   + 1.0*field[addr_rank0(nsites, index - 1)]
+	   - 2.0*field[addr_rank0(nsites, index)]);
       }
     }
   }
@@ -600,18 +606,22 @@ int grad_dab_compute(int nf, const double * field, double * dab) {
  *
  *****************************************************************************/
 
-__host__ int grad_dab_le_correct(int nf, const double * field, double * dab) {
+__host__ int grad_dab_le_correct(field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
   int nextra;
+  int nsites;
   int nh;                                 /* counter over halo extent */
-  int n;
   int nplane;                             /* Number LE planes */
   int ic, jc, kc;
   int ic0, ic1, ic2;                      /* x indices involved */
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
+  double * __restrict__ dab;
+  double * __restrict__ field;
+
+  assert(df);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -619,6 +629,10 @@ __host__ int grad_dab_le_correct(int nf, const double * field, double * dab) {
 
   nextra = nhalo - 1;
   assert(nextra >= 0);
+
+  nsites = le_nsites();
+  dab = df->d_ab;
+  field = df->field->data;
 
   for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
 
@@ -637,29 +651,33 @@ __host__ int grad_dab_le_correct(int nf, const double * field, double * dab) {
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
-	  for (n = 0; n < nf; n++) {
-	    dab[NSYMM*(nf*index + n) + XX]
-	      = field[nf*indexp1 + n] + field[nf*indexm1 + n]
-	      - 2.0*field[nf*index + n];
-	    dab[NSYMM*(nf*index + n) + XY] = 0.25*
-	      (field[nf*(indexp1 + ys) + n] - field[nf*(indexp1 - ys) + n]
-	       - field[nf*(indexm1 + ys) + n] + field[nf*(indexm1 - ys) + n]);
-	    dab[NSYMM*(nf*index + n) + XZ] = 0.25*
-	      (field[nf*(indexp1 + 1) + n] - field[nf*(indexp1 - 1) + n]
-	       - field[nf*(indexm1 + 1) + n] + field[nf*(indexm1 - 1) + n]);
-
-	    dab[NSYMM*(nf*index + n) + YY]
-	      = field[nf*(index + ys) + n] + field[nf*(index - ys) + n]
-	      - 2.0*field[nf*index + n];
-	    dab[NSYMM*(nf*index + n) + YZ] = 0.25*
-	      (field[nf*(index + ys + 1) + n] - field[nf*(index + ys - 1) + n]
-	     - field[nf*(index - ys + 1) + n] + field[nf*(index - ys - 1) + n]
-	       );
-
-	    dab[NSYMM*(nf*index + n) + ZZ]
-	      = field[nf*(index + 1)  + n] + field[nf*(index - 1)  + n]
-	      - 2.0*field[nf*index + n];
-	  }
+	  dab[addr_dab(index, XX)] =
+	    (+ 1.0*field[addr_rank0(nsites, indexp1)]
+	     + 1.0*field[addr_rank0(nsites, indexm1)]
+	     - 2.0*field[addr_rank0(nsites, index)]);
+	  dab[addr_dab(index, XY)] = 0.25*
+	    (+ field[addr_rank0(nsites, indexp1 + ys)]
+	     - field[addr_rank0(nsites, indexp1 - ys)]
+	     - field[addr_rank0(nsites, indexm1 + ys)]
+	     + field[addr_rank0(nsites, indexm1 - ys)]);
+	  dab[addr_dab(index, XZ)] = 0.25*
+	    (+ field[addr_rank0(nsites, indexp1 + 1)]
+	     - field[addr_rank0(nsites, indexp1 - 1)]
+	     - field[addr_rank0(nsites, indexm1 + 1)]
+	     + field[addr_rank0(nsites, indexm1 - 1)]);
+	  dab[addr_dab(index, YY)] =
+	    (+ 1.0*field[addr_rank0(nsites, index + ys)]
+	     + 1.0*field[addr_rank0(nsites, index - ys)]
+	     - 2.0*field[addr_rank0(nsites, index)]);
+	  dab[addr_dab(index, YZ)] = 0.25*
+	    (+ field[addr_rank0(nsites, index + ys + 1)]
+	     - field[addr_rank0(nsites, index + ys - 1)]
+	     - field[addr_rank0(nsites, index - ys + 1)]
+	     + field[addr_rank0(nsites, index - ys - 1)]);
+	  dab[addr_dab(index, ZZ)] =
+	    (+ 1.0*field[addr_rank0(nsites, index + 1)]
+	     + 1.0*field[addr_rank0(nsites, index - 1)]
+	     - 2.0*field[addr_rank0(nsites, index)]);
 	}
       }
     }
@@ -679,29 +697,33 @@ __host__ int grad_dab_le_correct(int nf, const double * field, double * dab) {
 	  index   = le_site_index(ic1, jc, kc);
 	  indexp1 = le_site_index(ic2, jc, kc);
 
-	  for (n = 0; n < nf; n++) {
-	    dab[NSYMM*(nf*index + n) + XX]
-	      = field[nf*indexp1 + n] + field[nf*indexm1 + n]
-	      - 2.0*field[nf*index + n];
-	    dab[NSYMM*(nf*index + n) + XY] = 0.25*
-	      (field[nf*(indexp1 + ys) + n] - field[nf*(indexp1 - ys) + n]
-	       - field[nf*(indexm1 + ys) + n] + field[nf*(indexm1 - ys) + n]);
-	    dab[NSYMM*(nf*index + n) + XZ] = 0.25*
-	      (field[nf*(indexp1 + 1) + n] - field[nf*(indexp1 - 1) + n]
-	       - field[nf*(indexm1 + 1) + n] + field[nf*(indexm1 - 1) + n]);
-
-	    dab[NSYMM*(nf*index + n) + YY]
-	      = field[nf*(index + ys) + n] + field[nf*(index - ys) + n]
-	      - 2.0*field[nf*index + n];
-	    dab[NSYMM*(nf*index + n) + YZ] = 0.25*
-	      (field[nf*(index + ys + 1) + n] - field[nf*(index + ys - 1) + n]
-	     - field[nf*(index - ys + 1) + n] + field[nf*(index - ys - 1) + n]
-	       );
-
-	    dab[NSYMM*(nf*index + n) + ZZ]
-	      = field[nf*(index + 1)  + n] + field[nf*(index - 1)  + n]
-	      - 2.0*field[nf*index + n];
-	  }
+	  dab[addr_dab(index, XX)] =
+	    (+ 1.0*field[addr_rank0(nsites, indexp1)]
+	     + 1.0*field[addr_rank0(nsites, indexm1)]
+	     - 2.0*field[addr_rank0(nsites, index)]);
+	  dab[addr_dab(index, XY)] = 0.25*
+	    (+ field[addr_rank0(nsites, indexp1 + ys)]
+	     - field[addr_rank0(nsites, indexp1 - ys)]
+	     - field[addr_rank0(nsites, indexm1 + ys)]
+	     + field[addr_rank0(nsites, indexm1 - ys)]);
+	  dab[addr_dab(index, XZ)] = 0.25*
+	    (+ field[addr_rank0(nsites, indexp1 + 1)]
+	     - field[addr_rank0(nsites, indexp1 - 1)]
+	     - field[addr_rank0(nsites, indexm1 + 1)]
+	     + field[addr_rank0(nsites, indexm1 - 1)]);
+	  dab[addr_dab(index, YY)] =
+	    (+ 1.0*field[addr_rank0(nsites, index + ys)]
+	     + 1.0*field[addr_rank0(nsites, index - ys)]
+	     - 2.0*field[addr_rank0(nsites, index)]);
+	  dab[addr_dab(index, YZ)] = 0.25*
+	    (+ field[addr_rank0(nsites, index + ys + 1)]
+	     - field[addr_rank0(nsites, index + ys - 1)]
+	     - field[addr_rank0(nsites, index - ys + 1)]
+	     + field[addr_rank0(nsites, index - ys - 1)]);
+	  dab[addr_dab(index, ZZ)] =
+	    (+ 1.0*field[addr_rank0(nsites, index + 1)]
+	     + 1.0*field[addr_rank0(nsites, index - 1)]
+	     - 2.0*field[addr_rank0(nsites, index)]);
 	}
       }
     }

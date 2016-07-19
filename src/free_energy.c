@@ -33,7 +33,7 @@
 #include <assert.h>
 #include "free_energy.h"
 
-
+#ifdef OLD_SHIT
 static int set_ = 0;
 static double fe_fed_null(const int index);
 static double fe_mu_null(const int index, const int nop);
@@ -311,3 +311,4 @@ int fe_mu_solv(int index, int n, double * mu) {
 
   return fp_mus(index, n, mu);
 }
+#endif

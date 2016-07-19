@@ -107,5 +107,9 @@ __targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_ty
 			      int * count);
 __targetHost__ int colloids_number_sites(colloids_info_t *cinfo);
 __targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo);
+__targetHost__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
+					       const int index,
+					       const int di[3],
+					       double dn[3]);
 
 #endif

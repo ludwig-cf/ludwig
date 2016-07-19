@@ -60,16 +60,11 @@
 #include "gradient_rt.h"
 
 /* Free energy */
-#include "symmetric.h"
-#include "brazovskii.h"
-#include "polar_active.h"
-#include "blue_phase.h"
 #include "symmetric_rt.h"
 #include "brazovskii_rt.h"
 #include "polar_active_rt.h"
 #include "blue_phase_rt.h"
 #include "lc_droplet_rt.h"
-#include "lc_droplet.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
 
@@ -134,9 +129,12 @@ struct ludwig_s {
   noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
-  fe_t * fe;                /* Free energy */
-  beris_edw_t * be;         /* Beris Edwards dynamics */
-  pth_t * pth;              /* Thermodynamic stress/force calculation */
+  fe_t * fe;                   /* Free energy "polymorphic" version */
+  beris_edw_t * be;            /* Beris Edwards dynamics */
+  pth_t * pth;                 /* Thermodynamic stress/force calculation */
+  fe_lc_t * fe_lc;             /* LC free energy */
+  fe_symm_t * fe_symm;         /* Symmetric free energy */
+  fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
   colloids_info_t * collinfo;  /* Colloid information */
   colloid_io_t * cio;          /* Colloid I/O harness */
@@ -241,10 +239,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* Can we move this down to t = 0 initialisation? */
-  if (ludwig->phi) {
-    fe_symmetric_rt_initial_conditions((fe_symm_t *) ludwig->fe, ludwig->phi);
-    lb_ndist(ludwig->lb, &n);
-    if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb);
+
+  if (ludwig->fe_symm) {
+    fe_symmetric_rt_initial_conditions(ludwig->fe_symm, ludwig->phi);
+  }
+  if (ludwig->fe_braz) {
+    fe_brazovskii_rt_init_phi(ludwig->fe_braz, ludwig->phi);
   }
 
   /* To be called before wall_init() */
@@ -257,7 +257,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   colloids_init_rt(&ludwig->collinfo, &ludwig->cio, &ludwig->interact,
 		   ludwig->map);
   colloids_init_ewald_rt(ludwig->collinfo, &ludwig->ewald);
-  colloids_q_cinfo_set(ludwig->collinfo);
 
   bbl_create(ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
@@ -320,9 +319,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* gradient initialisation for field stuff */
 
-  if (ludwig->phi) gradient_rt_init(ludwig->phi_grad, ludwig->map);
-  if (ludwig->p) gradient_rt_init(ludwig->p_grad, ludwig->map);
-  if (ludwig->q) gradient_rt_init(ludwig->q_grad, ludwig->map);
+  if (ludwig->phi) gradient_rt_init(ludwig->phi_grad, ludwig->map, ludwig->collinfo);
+  if (ludwig->p) gradient_rt_init(ludwig->p_grad, ludwig->map, ludwig->collinfo);
+  if (ludwig->q) gradient_rt_init(ludwig->q_grad, ludwig->map, ludwig->collinfo);
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -342,19 +341,19 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
   if (get_step() == 0) {
-    /* fe must be fe_symm_t for sigma stats (not only nstat) */
-    stats_sigma_init((fe_symm_t *) ludwig->fe, ludwig->phi, nstat);
+    stats_sigma_init(ludwig->fe_symm, ludwig->phi, nstat);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
   }
 
-  /* Initial Q_ab field required, apparently More GENERAL? */
+  /* Initial Q_ab field required */
 
   if (get_step() == 0 && ludwig->p) {
     polar_active_rt_initial_conditions(ludwig->p);
   }
+
   if (get_step() == 0 && ludwig->q) {
-    blue_phase_rt_initial_conditions(ludwig->q);
+    blue_phase_rt_initial_conditions(ludwig->fe_lc, ludwig->q);
   }
 
   /* Electroneutrality */
@@ -485,13 +484,11 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->q);
       TIMER_stop(TIMER_PHI_HALO);
-
+      
       field_grad_compute(ludwig->q_grad);
-      blue_phase_redshift_compute(); /* if redshift required? */
+      fe_lc_redshift_compute(ludwig->fe_lc);
     }
-
     TIMER_stop(TIMER_PHI_GRADIENTS);
-
 
     /* Electrokinetics (including electro/symmetric requiring above
      * gradients for phi) */
@@ -507,7 +504,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef PETSC
 	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
 #else
-	psi_sor_solve(ludwig->psi, ludwig->epsilon);
+	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #endif
 	TIMER_stop(TIMER_ELECTRO_POISSON);
       }
@@ -534,18 +531,19 @@ void ludwig_run(const char * inputfile) {
 	if (im == 0) {
 
 	  TIMER_start(TIMER_FORCE_CALCULATION);
-	  psi_force_is_divergence(&flag);
+	  psi_force_method(ludwig->psi, &flag);
 
           /* Force input as gradient of chemical potential 
                  with integrated momentum correction       */
-	  if (flag == 0) {
-	    psi_force_gradmu(ludwig->psi, ludwig->phi, ludwig->hydro,
-				  ludwig->map, ludwig->collinfo);
+	  if (flag == PSI_FORCE_GRADMU) {
+	    psi_force_gradmu(ludwig->psi, ludwig->fe, ludwig->phi,
+			     ludwig->hydro,
+			     ludwig->map, ludwig->collinfo);
 	  }
 
           /* Force calculation as divergence of stress tensor */
-	  if (flag == 1) {
-	    psi_force_divstress_d3qx(ludwig->psi, ludwig->hydro,
+	  if (flag == PSI_FORCE_DIVERGENCE) {
+	    psi_force_divstress_d3qx(ludwig->psi, ludwig->fe, ludwig->hydro,
 				  ludwig->map, ludwig->collinfo);
 	  }
 	  TIMER_stop(TIMER_FORCE_CALCULATION);
@@ -553,7 +551,8 @@ void ludwig_run(const char * inputfile) {
 	}
 
 	TIMER_start(TIMER_ELECTRO_NPEQ);
-	nernst_planck_driver_d3qx(ludwig->psi, ludwig->hydro, ludwig->map, ludwig->collinfo);
+	nernst_planck_driver_d3qx(ludwig->psi, ludwig->fe, ludwig->hydro,
+				  ludwig->map, ludwig->collinfo);
 	TIMER_stop(TIMER_ELECTRO_NPEQ);
 
       }
@@ -590,17 +589,20 @@ void ludwig_run(const char * inputfile) {
       else {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
-	    
-	  phi_force_calculation(ludwig->pth, ludwig->phi, ludwig->q, ludwig->q_grad, ludwig->hydro);
-  
+
+	  phi_force_calculation(ludwig->pth, ludwig->fe, ludwig->phi,
+				ludwig->q, ludwig->q_grad, ludwig->hydro);
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
-	    lc_droplet_bodyforce(ludwig->hydro);
+	    fe_lc_droplet_t * fe = (fe_lc_droplet_t *) ludwig->fe;
+	    fe_lc_droplet_bodyforce(fe, ludwig->hydro);
 	    hydro_correct_momentum(ludwig->hydro);
 	  }
 	}
 	else {
-	  phi_force_colloid(ludwig->pth, ludwig->collinfo, ludwig->q, ludwig->q_grad,ludwig->hydro, ludwig->map);
+	  phi_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
+			    ludwig->q, ludwig->q_grad,ludwig->hydro,
+			    ludwig->map);
 	}
       }
 
@@ -608,9 +610,16 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
-      if (ludwig->phi) phi_cahn_hilliard(ludwig->phi, ludwig->hydro,
-					 ludwig->map, ludwig->noise_phi);
-      if (ludwig->p) leslie_ericksen_update(ludwig->p, ludwig->hydro);
+      if (ludwig->phi) {
+	phi_cahn_hilliard(ludwig->fe, ludwig->phi,
+			  ludwig->hydro,
+			  ludwig->map, ludwig->noise_phi);
+      }
+
+      if (ludwig->p) {
+	fe_polar_t * fe = (fe_polar_t *) ludwig->fe;
+	leslie_ericksen_update(fe, ludwig->p, ludwig->hydro);
+      }
 
       if (ludwig->q) {
 	if (ludwig->hydro) {
@@ -619,9 +628,9 @@ void ludwig_run(const char * inputfile) {
 	  TIMER_stop(TIMER_U_HALO);
 	}
 
-	colloids_fix_swd(ludwig->collinfo, ludwig->hydro, ludwig->map);
-	beris_edw_update(ludwig->be, ludwig->q, ludwig->q_grad, ludwig->hydro,
-			 ludwig->map, ludwig->noise_rho);
+	beris_edw_update(ludwig->be, ludwig->fe, ludwig->q, ludwig->q_grad,
+			 ludwig->hydro,
+			 ludwig->collinfo, ludwig->map, ludwig->noise_rho);
       }
 
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
@@ -747,7 +756,7 @@ void ludwig_run(const char * inputfile) {
 
     if (is_shear_measurement_step()) {
       lb_model_copy(ludwig->lb, cudaMemcpyDeviceToDevice);
-      stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->hydro);
+      stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->fe, ludwig->hydro);
     }
 
     if (is_shear_output_step()) {
@@ -761,13 +770,6 @@ void ludwig_run(const char * inputfile) {
       info("Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->hydro);
-    }
-
-    if (fe_set() && is_fed_output_step()) {
-      fed_io_info(&iohandler);
-      info("Writing free energy density output at step %d!\n", step);
-      sprintf(filename, "%sfed-%8.8d", subdirectory, step);
-      io_write_data(iohandler, filename, ludwig->q); /* the ludwig->q is not used by the function, but a pointer is needed*/
     }
 
     /* Print progress report */
@@ -795,7 +797,7 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
-      stats_free_energy_density(ludwig->q, ludwig->map, ncolloid);
+      stats_free_energy_density(ludwig->fe, ludwig->q, ludwig->map, ludwig->collinfo);
 //      blue_phase_stats(ludwig->q, ludwig->q_grad, ludwig->map, step);
       ludwig_report_momentum(ludwig);
 
@@ -1009,6 +1011,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 
+    fe_symm_t * fe = NULL;
+
     /* Symmetric free energy via finite difference */
 
     nf = 1;      /* 1 scalar order parameter */
@@ -1033,7 +1037,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
+    fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe);
+    fe_symmetric_run_time(fe);
 
     info("\n");
     info("Using Cahn-Hilliard finite difference solver.\n");
@@ -1055,18 +1060,20 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     }
 
     /* Force */
-#ifndef OLD_SHIT
-    assert(0); /* OK, make the choice */
-#else
+
     p = 1; /* Default is to use divergence method */
     RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
-    phi_force_divergence_set(p);
-#endif
+    if (p == 0) pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
+    if (p == 1) pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
+    ludwig->fe_symm = fe;
+    ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "symmetric_lb") == 0) {
+
+    fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via full lattice kintic equation */
 
@@ -1088,7 +1095,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
+    fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe);
+    fe_symmetric_run_time(fe);
 
     info("\n");
     info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
@@ -1100,11 +1108,14 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* No explicit force is relevant */
     pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
 
+    ludwig->fe_symm = fe;
+    ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "brazovskii") == 0) {
 
     /* Brazovskii (always finite difference). */
 
+    fe_brazovskii_t * fe = NULL;
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 3;   /* Required for stress diveregnce. */
     ngrad = 4;   /* (\nabla^2)^2 required */
@@ -1121,8 +1132,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    brazovskii_run_time();
-    brazovskii_phi_set(ludwig->phi, ludwig->phi_grad);
+    fe_brazovskii_create(ludwig->phi, ludwig->phi_grad, &fe);
+    fe_brazovskii_run_time(fe);
 
     info("\n");
     info("Using Cahn-Hilliard solver:\n");
@@ -1131,16 +1142,18 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     physics_mobility_set(value);
     info("Mobility M            = %12.5e\n", value);
 
-#ifndef OLD_SHIT
-    assert(0); /* OK, make choice... */
-#else
     p = 1;
     RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force caluclation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
-    phi_force_divergence_set(p);
-#endif
-
+    if (p == 0) {
+      pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
+    }
+    else {
+      pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+    ludwig->fe_braz = fe;
+    ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "surfactant") == 0) {
     /* Disable surfactant for the time being */
@@ -1148,6 +1161,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     assert(0);
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
+
+    fe_lc_t * fe = NULL;
 
     /* Liquid crystal (always finite difference). */
 
@@ -1168,8 +1183,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Free energy details\n");
     info("-------------------\n\n");
 
-    blue_phase_run_time(&ludwig->fe, &ludwig->be);
-    blue_phase_q_set(ludwig->q, ludwig->q_grad);
+    fe_lc_create(ludwig->q, ludwig->q_grad, &fe);
+    blue_phase_run_time(ludwig->q, ludwig->q_grad, fe, &ludwig->be);
 
     p = 0;
     RUN_get_int_parameter("lc_noise", &p);
@@ -1177,10 +1192,17 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+
+    /* Not very elegant, but set fe here */
+    grad_3d_7pt_fe_set(fe, NULL);
+
+    ludwig->fe_lc = fe;
+    ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "polar_active") == 0) {
 
     /* Polar active. */
+    fe_polar_t * fe = NULL;
 
     nf = NVECTOR;/* Vector order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
@@ -1199,8 +1221,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Free energy details\n");
     info("-------------------\n\n");
 
-    polar_active_run_time();
-    polar_active_p_set(ludwig->p, ludwig->p_grad);
+    fe_polar_create(ludwig->p, ludwig->p_grad, &fe);
+    polar_active_run_time(fe);
+    ludwig->fe = (fe_t *) fe;
 
     RUN_get_double_parameter("leslie_ericksen_gamma", &value);
     leslie_ericksen_gamma_set(value);
@@ -1213,7 +1236,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
   else if(strcmp(description, "lc_droplet") == 0){
-    
+    fe_symm_t * symm = NULL;
+    fe_lc_t * lc = NULL;
+    fe_lc_droplet_t * fe = NULL;
+
     /* liquid crystal droplet */
     info("\n");
     info("Liquid crystal droplet free energy selected\n");
@@ -1240,9 +1266,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Free energy details\n");
     info("-------------------\n\n");
-    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
-    
-    lc_droplet_phi_set(ludwig->phi, ludwig->phi_grad);
+    fe_symm_create(ludwig->phi, ludwig->phi_grad, &symm);
+    fe_symmetric_run_time(symm);
+
 
     info("\n");
     info("Using Cahn-Hilliard finite difference solver.\n");
@@ -1253,23 +1279,19 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Force */
 
-#ifndef OLD_SHIT
-    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
-    /* Is it clear that a mixture of methods is useful as
-     * no H grad Q methd is implemented.... */
-#else
     p = 1; /* Default is to use divergence method */
     RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
-    phi_force_divergence_set(p);
-#endif
+    assert(p != 0); /* Grad mu method not implemented! */
+    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+
+
     /* Liquid crystal part */
-    nf = NQAB;   /* Tensor order parameter */
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
     
-    field_create(nf, "q", &ludwig->q);
+    field_create(NQAB, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
@@ -1277,14 +1299,19 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Free energy details\n");
     info("-------------------\n\n");
 
-    blue_phase_run_time(&ludwig->fe, &ludwig->be);
+    fe_lc_create(ludwig->q, ludwig->q_grad, &lc);
+    blue_phase_run_time(ludwig->q, ludwig->q_grad, lc, &ludwig->be);
 
-    /* finalise with the droplet specific init*/
-    lc_droplet_q_set(ludwig->q, ludwig->q_grad);
-    lc_droplet_run_time();
+    fe_lc_droplet_create(lc, symm, &fe);
+    fe_lc_droplet_run_time(fe);
 
+    ludwig->fe_symm = symm;
+    ludwig->fe_lc = lc;
+    ludwig->fe = (fe_t *) fe;
   }
   else if(strcmp(description, "fe_electro") == 0) {
+
+    fe_electro_t * fe = NULL;
 
     nk = 2;    /* Number of charge densities always 2 for now */
 
@@ -1293,13 +1320,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Default method is divergence of stress tensor */
     p = 1;
     RUN_get_int_parameter("fd_force_divergence", &p);
-    psi_force_divergence_set(p);
-
-#ifndef OLD_SHIT
-    assert(0); /* Why is this here?? */
-#else
-    if (p == 1) phi_force_required_set(1);
-#endif
 
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
@@ -1322,13 +1342,18 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
+    if (p == 0) psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
+    if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
 
     /* Create FE objects and set function pointers */
-    fe_electro_create(ludwig->psi);
-
+    fe_electro_create(ludwig->psi, &fe);
+    ludwig->fe = (fe_t *) fe;
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
+    fe_symm_t * fe_symm = NULL;
+    fe_electro_t * fe_elec = NULL;
+    fe_es_t * fes = NULL;
     double e1, e2;
     double mu[2];
     double lbjerrum2;
@@ -1340,16 +1365,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Require stress divergence. */
     ngrad = 2;   /* \nabla^2 phi */
 
-    /* Default method is divergence of stress tensor */
-    p = 1;
-    RUN_get_int_parameter("fd_force_divergence", &p);
-    psi_force_divergence_set(p);
-
-#ifndef OLD_SHIT
-    assert(0); /* Force mechanism? */
-#else
-    if (p == 1) phi_force_required_set(1);
-#endif
 
     /* First, the symmetric part. */
 
@@ -1369,7 +1384,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("\n");
     info("Symmetric part\n");
     info("--------------\n\n");
-    fe_symmetric_run_time(ludwig->phi, ludwig->phi_grad, &ludwig->fe);
+
+    fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe_symm);
+    fe_symmetric_run_time(fe_symm);
 
     info("\n");
     info("Using Cahn-Hilliard finite difference solver.\n");
@@ -1389,9 +1406,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_create(nk, &ludwig->psi);
     psi_rt_init_param(ludwig->psi);
 
+    fe_electro_create(ludwig->psi, &fe_elec);
 
+    /* Default method is divergence of stress tensor */
+    p = 1;
+    RUN_get_int_parameter("fd_force_divergence", &p);
     info("Force calculation:          %s\n",
          (p == 0) ? "psi grad mu method" : "Divergence method");
+    if (p == 0) psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
+    if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
 
     /* Coupling part */
 
@@ -1400,7 +1423,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("-------------\n");
 
     /* Create FE objects and set function pointers */
-    fe_es_create(ludwig->phi, ludwig->phi_grad, ludwig->psi);
+    fe_es_create(fe_symm, fe_elec, ludwig->psi, &fes);
 
     /* Dielectric contrast */
 
@@ -1412,7 +1435,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     n = RUN_get_double_parameter("electrosymmetric_epsilon2", &e2);
     if (n == 1) psi_epsilon2_set(ludwig->psi, e2);
 
-    fe_es_epsilon_set(e1, e2);
+    fe_es_epsilon_set(fes, e1, e2);
 
     /* Solvation free energy difference: nk = 2 */
 
@@ -1422,7 +1445,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     RUN_get_double_parameter("electrosymmetric_delta_mu0", mu);
     RUN_get_double_parameter("electrosymmetric_delta_mu1", mu + 1);
 
-    fe_es_deltamu_set(nk, mu);
+    fe_es_deltamu_set(fes, nk, mu);
 
     psi_bjerrum_length2(ludwig->psi, &lbjerrum2);
 
@@ -1437,7 +1460,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     info("Poisson solver:           %15s\n",
 	 (e1 == e2) ? "uniform" : "heterogeneous");
-    if (e1 != e2) ludwig->epsilon = fe_es_var_epsilon;
+    if (e1 != e2) ludwig->epsilon = (f_vare_t) fe_es_var_epsilon;
+
+    ludwig->fe_symm = fe_symm;
+    ludwig->fe = (fe_t *) fes;
 
   }
   else {

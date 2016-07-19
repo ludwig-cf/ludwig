@@ -17,12 +17,17 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "leesedwards.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 #include "phi_lb_coupler.h"
 
-__global__ void phi_lb_to_field_kernel(field_t * phi, lb_t * lb);
+#define NDIST 2
+
+__global__ void phi_lb_to_field_kernel_old(field_t * phi, lb_t * lb);
+__global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktxt, field_t * phi,
+				       lb_t * lb);
 
 /*****************************************************************************
  *
@@ -33,7 +38,7 @@ __global__ void phi_lb_to_field_kernel(field_t * phi, lb_t * lb);
  *
  *****************************************************************************/
 
-__host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
+__host__ int phi_lb_to_field_old(field_t * phi, lb_t  * lb) {
 
   int Nall[3];
   int nlocal[3];
@@ -47,17 +52,18 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
-  nSites = le_nsites();
-
   int nDist;
   copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
 
+  nSites = le_nsites();
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
 
-  phi_lb_to_field_kernel __targetLaunchNoStride__(nSites) (phi->target, lb->target);
+  nSites = Nall[X]*Nall[Y]*Nall[Z];
+
+  phi_lb_to_field_kernel_old __targetLaunchNoStride__(nSites) (phi->target, lb->target);
 
   return 0;
 }
@@ -70,10 +76,10 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
  *
  *****************************************************************************/
 
-__global__ void phi_lb_to_field_kernel(field_t * phi, lb_t * lb) {
+__global__ void phi_lb_to_field_kernel_old(field_t * phi, lb_t * lb) {
 
   int kindex;
-
+  double phit=0.0;
   __targetTLPNoStride__(kindex, tc_nSites) {	  
 
     int p;
@@ -94,9 +100,70 @@ __global__ void phi_lb_to_field_kernel(field_t * phi, lb_t * lb) {
       for (p = 0; p < NVEL; p++) {
 	phi0 += lb->f[LB_ADDR(tc_nSites, tc_ndist, NVEL, kindex, LB_PHI, p)];
       }
-
+      phit += phi0;
       phi->data[addr_rank0(tc_nSites, kindex)] = phi0;    
     }
+  }
+  printf("PHIT %14.7e\n", phit);
+
+  return;
+}
+
+__host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(phi);
+  assert(lb);
+
+  coords_nlocal(nlocal);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  __host_launch(phi_lb_to_field_kernel, nblk, ntpb, ctxt->target,
+		phi->target, lb->target);
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+__global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
+				       lb_t * lb) {
+  int kindex;
+  __shared__ int kiter;
+
+  assert(ktx);
+  assert(phi);
+  assert(lb);
+
+  kiter = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, 1) {
+
+    int ic, jc, kc, index;
+    int p;
+    double phi0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+    
+    phi0 = 0.0;
+    for (p = 0; p < NVEL; p++) {
+      phi0 += lb->f[LB_ADDR(lb->nsite, NDIST, NVEL, index, LB_PHI, p)];
+    }
+
+    phi->data[addr_rank0(phi->nsites, index)] = phi0;
   }
 
   return;
@@ -132,11 +199,10 @@ __targetHost__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
 	field_scalar(phi, index, &phi0);
 
-	lb_f_set(lb, index, 0, 1, phi0);
+	lb_f_set(lb, index, 0, LB_PHI, phi0);
 	for (p = 1; p < NVEL; p++) {
-	  lb_f_set(lb, index, p, 1, 0.0);
+	  lb_f_set(lb, index, p, LB_PHI, 0.0);
 	}
-
       }
     }
   }

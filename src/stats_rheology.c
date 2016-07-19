@@ -13,7 +13,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -153,7 +153,7 @@ void stats_rheology_finish(void) {
  *
  *****************************************************************************/
 
-void stats_rheology_free_energy_density_profile(const char * filename) {
+void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -162,6 +162,7 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
   int token = 0;
   const int tag_token = 28125;
 
+  double fed;
   double * fex;
   double * fexmean;
   double raverage;
@@ -169,8 +170,6 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
   FILE * fp_output;
   MPI_Status status;
   MPI_Comm comm = cart_comm();
-
-  double (* free_energy_density)(const int index);
 
   assert(initialised_);
 
@@ -182,8 +181,6 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
   fexmean = (double *) malloc(nlocal[X]*sizeof(double));
   if (fexmean == NULL) fatal("malloc(fexmean failed\n");
 
-  free_energy_density = fe_density_function();
-
   /* Accumulate the local average over y,z */
   /* Do the reduction in (y,z) to give local f(x) */
 
@@ -193,7 +190,8 @@ void stats_rheology_free_energy_density_profile(const char * filename) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = le_site_index(ic, jc, kc);
-	fex[ic-1] += free_energy_density(index); 
+	fe->func->fed(fe, index, &fed);
+	fex[ic-1] += fed; 
       }
     }
   }
@@ -291,7 +289,8 @@ void stats_rheology_stress_profile_zero(void) {
  *
  *****************************************************************************/
 
-int stats_rheology_stress_profile_accumulate(lb_t * lb, hydro_t * hydro) {
+int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
+					     hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -300,14 +299,10 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, hydro_t * hydro) {
   double u[3];
   double s[3][3];
 
-  void (* chemical_stress)(const int index, double s[3][3]);
-
   assert(initialised_);
   assert(lb);
   assert(hydro);
   coords_nlocal(nlocal);
-
-  chemical_stress = fe_chemical_stress_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -341,7 +336,7 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, hydro_t * hydro) {
 
 	/* Thermodynamic part of stress */
 
-        chemical_stress(index, s);
+	fe->func->stress(fe, index, s);
 
 	sxy_[NSTAT1*(ic-1) + 1] += s[X][Y];
 
@@ -668,7 +663,7 @@ void stats_rheology_stress_section(const char * filename) {
  *
  *****************************************************************************/
 
-int stats_rheology_mean_stress(lb_t * lb, const char * filename) {
+int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
 
 #define NCOMP 27
 
@@ -685,8 +680,6 @@ int stats_rheology_mean_stress(lb_t * lb, const char * filename) {
   int ic, jc, kc, index, ia, ib;
   FILE * fp;
 
-  void (* chemical_stress)(const int index, double s[3][3]);
-
   assert(lb);
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
@@ -695,8 +688,6 @@ int stats_rheology_mean_stress(lb_t * lb, const char * filename) {
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   coords_nlocal(nlocal);
-
-  chemical_stress = fe_chemical_stress_function();
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -717,7 +708,7 @@ int stats_rheology_mean_stress(lb_t * lb, const char * filename) {
 	lb_0th_moment(lb, index, LB_RHO, &rho);
 	lb_1st_moment(lb, index, LB_RHO, u);
 	lb_2nd_moment(lb, index, LB_RHO, s);
-        chemical_stress(index, plocal);
+        fe->func->stress(fe, index, plocal);
 
 	rrho = 1.0/rho;
         for (ia = 0; ia < 3; ia++) {

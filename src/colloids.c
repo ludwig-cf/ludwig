@@ -1294,3 +1294,61 @@ __targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *c
   }
   return;
 }
+
+
+/*****************************************************************************
+ *
+ *  colloids_q_boundary_normal
+ *
+ *  Find the 'true' outward unit normal at fluid site index. Note that
+ *  the half-way point is not used to provide a simple unique value in
+ *  the gradient calculation.
+ *
+ *  The unit lattice vector which is the discrete outward normal is di[3].
+ *  The result is returned in unit vector dn.
+ *
+ *****************************************************************************/
+
+__host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
+					 const int index,
+					 const int di[3],
+					 double dn[3]) {
+  int ia, index1;
+  int noffset[3];
+  int isite[3];
+
+  double rd;
+  colloid_t * pc;
+
+  assert(cinfo);
+
+  coords_index_to_ijk(index, isite);
+
+  index1 = coords_index(isite[X] - di[X], isite[Y] - di[Y], isite[Z] - di[Z]);
+
+  colloids_info_map(cinfo, index1, &pc);
+
+  if (pc) {
+    coords_nlocal_offset(noffset);
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] = 1.0*(noffset[ia] + isite[ia]);
+      dn[ia] -= pc->s.r[ia];
+    }
+
+    rd = modulus(dn);
+    assert(rd > 0.0);
+    rd = 1.0/rd;
+
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] *= rd;
+    }
+  }
+  else {
+    /* Assume di is the true outward normal (e.g., flat wall) */
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] = 1.0*di[ia];
+    }
+  }
+
+  return;
+}

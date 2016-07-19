@@ -10,7 +10,7 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2009-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -18,55 +18,72 @@
 
 #include "pe.h"
 #include "runtime.h"
-#include "free_energy.h"
-#include "brazovskii.h"
 #include "brazovskii_rt.h"
 
 /****************************************************************************
  *
- *  brazovskii_run_time
+ *  fe_brazovskii_run_time
  *
  ****************************************************************************/
 
-void brazovskii_run_time(void) {
+__host__ int  fe_brazovskii_run_time(fe_brazovskii_t * fe) {
 
-  double a;
-  double b;
-  double c;
-  double kappa;
+  fe_brazovskii_param_t param;
+
+  double amplitude;
+  double lambda;
+
+  assert(fe);
 
   info("Brazovskii free energy selected.\n");
   info("\n");
 
   /* Parameters */
 
-  RUN_get_double_parameter("A", &a);
-  RUN_get_double_parameter("B", &b);
-  RUN_get_double_parameter("K", &kappa);
-  RUN_get_double_parameter("C", &c);
+  RUN_get_double_parameter("A", &param.a);
+  RUN_get_double_parameter("B", &param.b);
+  RUN_get_double_parameter("K", &param.kappa);
+  RUN_get_double_parameter("C", &param.c);
 
   info("Brazovskii free energy parameters:\n");
-  info("Bulk parameter A      = %12.5e\n", a);
-  info("Bulk parameter B      = %12.5e\n", b);
-  info("Ext. parameter C      = %12.5e\n", c);
-  info("Surface penalty kappa = %12.5e\n", kappa);
+  info("Bulk parameter A      = %12.5e\n", param.a);
+  info("Bulk parameter B      = %12.5e\n", param.b);
+  info("Ext. parameter C      = %12.5e\n", param.c);
+  info("Surface penalty kappa = %12.5e\n", param.kappa);
 
-  brazovskii_free_energy_parameters_set(a, b, kappa, c);
+  fe_brazovskii_param_set(fe, param);
 
-  info("Wavelength 2pi/q_0    = %12.5e\n", brazovskii_wavelength());
-  info("Amplitude             = %12.5e\n", brazovskii_amplitude());
+  fe_brazovskii_wavelength(fe, &lambda);
+  fe_brazovskii_amplitude(fe, &amplitude);
+
+  info("Wavelength 2pi/q_0    = %12.5e\n", lambda);
+  info("Amplitude             = %12.5e\n", amplitude);
 
   /* For stability ... */
 
-  assert(b > 0.0);
-  assert(c > 0.0);
+  assert(param.b > 0.0);
+  assert(param.c > 0.0);
 
-  /* Set free energy function pointers. */
+  return 0;
+}
 
-  fe_density_set(brazovskii_free_energy_density);
-  fe_chemical_potential_set(brazovskii_chemical_potential);
-  fe_isotropic_pressure_set(brazovskii_isotropic_pressure);
-  fe_chemical_stress_set(brazovskii_chemical_stress);
+/*****************************************************************************
+ *
+ *  fe_brazovskii_rt_init_phi
+ *
+ *****************************************************************************/
 
-  return;
+__host__ int fe_brazovskii_rt_init_phi(fe_brazovskii_t * fe, field_t * phi) {
+
+  double xi;
+  int field_phi_rt(field_t * phi, double xi); /* SHIT sort me out */
+
+  assert(fe);
+  assert(phi);
+
+  /* Only the spinodal condition is usually used for Brazovskii */
+  xi = -1.0;
+  field_phi_rt(phi, xi);
+
+  return 0;
 }

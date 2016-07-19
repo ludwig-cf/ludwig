@@ -20,12 +20,6 @@
 
 #include "pe.h"
 #include "runtime.h"
-#include "gradient_2d_5pt_fluid.h"
-#include "gradient_2d_tomita_fluid.h"
-#include "gradient_3d_7pt_fluid.h"
-#include "gradient_3d_7pt_solid.h"
-#include "gradient_3d_27pt_fluid.h"
-#include "gradient_3d_27pt_solid.h"
 #include "gradient_rt.h"
 
 /*****************************************************************************
@@ -40,7 +34,7 @@
  *
  *****************************************************************************/
 
-int gradient_rt_init(field_grad_t * grad, map_t * map) {
+int gradient_rt_init(field_grad_t * grad, map_t * map, colloids_info_t * cinfo) {
 
   int n;
   char keyvalue[BUFSIZ];
@@ -79,7 +73,7 @@ int gradient_rt_init(field_grad_t * grad, map_t * map) {
       f2 = grad_3d_7pt_solid_d2;
       f4 = NULL;
       assert(map);
-      grad_3d_7pt_solid_map_set(map);
+      grad_3d_7pt_solid_set(map, cinfo);
     }
     else if (strcmp(keyvalue, "3d_27pt_fluid") == 0) {
       info("3d_27pt_fluid\n");

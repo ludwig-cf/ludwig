@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -29,13 +29,15 @@
 #include "psi_stats.h"
 #include "tests.h"
 
+#define fe_fake_t void
+
 static int do_test_sor1(void);
 static int test_charge1_set(psi_t * psi);
 static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon);
 
 #define REF_PERMEATIVITY 1.0
-static int fepsilon_constant(int index, double * epsilon);
-static int fepsilon_sinz(int index, double * epsilon);
+static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon);
+static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon);
 
 /*****************************************************************************
  *
@@ -74,7 +76,7 @@ int test_psi_sor_suite(void) {
 
 static int do_test_sor1(void) {
 
-   psi_t * psi = NULL;
+  psi_t * psi = NULL;
 
   coords_nhalo_set(1);
   coords_init();
@@ -97,8 +99,9 @@ static int do_test_sor1(void) {
   test_charge1_set(psi);
   psi_halo_psi(psi);
   psi_halo_rho(psi);
+
   /* Following broken in latest vare solver */
-  psi_sor_vare_poisson(psi, fepsilon_sinz);
+  psi_sor_vare_poisson(psi, NULL, fepsilon_sinz);
   /*
   if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_sinz);
   */
@@ -273,7 +276,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, 1+k);
-    fepsilon(index, epsilon + k);
+    fepsilon(NULL, index, epsilon + k);
   }
 
   /* Allocate space for exact solution */
@@ -365,7 +368,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
  *
  *****************************************************************************/
 
-static int fepsilon_constant(int index, double * epsilon) {
+static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
 
   assert(epsilon);
 
@@ -386,7 +389,7 @@ static int fepsilon_constant(int index, double * epsilon) {
  *
  *****************************************************************************/
 
-static int fepsilon_sinz(int index, double * epsilon) {
+static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon) {
 
   int coords[3];
 

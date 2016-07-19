@@ -31,7 +31,6 @@
  *        w (Q_ab - Q^s_ab)
  *
  *  and for cholesterics, one related to the pitch wavenumber q0.
- *  Anchoring is specified in colloids_Q_tensor.c at the moment.
  *
  *  A special treatment of edges and corners is required for colloids,
  *  where an iterative approach is used to get two or three orthogonal
@@ -46,7 +45,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -58,18 +57,20 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "free_energy.h"
-#include "blue_phase.h"
-#include "colloids.h"
 #include "colloids_s.h"
-#include "colloids_Q_tensor.h"
-#include "gradient_3d_7pt_solid.h"
-#include "targetDP.h"
 #include "map_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
+#include "gradient_3d_7pt_solid.h"
 
-static map_t * map_ = NULL;
+struct solid_s {
+  map_t * map;
+  colloids_info_t * cinfo;
+  fe_lc_t * fe_lc;
+  fe_lc_droplet_t * fe_drop;
+};
+
+static struct solid_s static_solid = {0};
 
 __targetConst__ double tc_a6inv[3][6]; 
 __targetConst__ double tc_a18inv[18][18]; 
@@ -84,27 +85,57 @@ __targetHost__ __target__
 int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
 			  double bc[NSYMM][NSYMM][3]);
 
-static int gradient_6x5_svd(const double * field, double * grad,
-			    double * del2, const int nextra);
-static int gradient_6x6_gauss_elim(const double * field, double * grad,
-				   double * del2, const int nextra);
-static int gradient_6x6_gpu(const double * field, double * grad,
-				   double * del2, const int nextra);
+__host__ static
+int gradient_6x5_svd(fe_lc_param_t * fe, const double * field, double * grad,
+		     double * del2, const int nextra, colloids_info_t * cinfo);
+__host__ static
+int gradient_6x6_gauss_elim(fe_lc_param_t * fe, const double * field, double * grad,
+			    double * del2, const int nextra, colloids_info_t * cinfo);
+__host__ static
+int gradient_6x6_gpu(const double * field, double * grad,
+		     double * del2, const int nextra);
 
-__targetHost__ __target__ 
+__host__ __target__ 
 static void util_q5_to_qab(double q[3][3], const double * phi);
+
+
+__host__ __target__
+int colloids_q_boundary(fe_lc_param_t * param, const double n[3],
+			double qs[3][3], double q0[3][3],
+			int map_status);
+
+__host__ __target__
+int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
+			 double qs[3][3],
+			 const int di[3], int status, double c[3][3],
+			 colloids_info_t * cinfo);
 
 /*****************************************************************************
  *
- *  grad_3d_7pt_solid_map_set
+ *  grad_3d_7pt_solid_set
  *
  *****************************************************************************/
 
-__host__ int grad_3d_7pt_solid_map_set(map_t * map_in) {
+__host__ int grad_3d_7pt_solid_set(map_t * map, colloids_info_t * cinfo) {
 
-  assert(map_in);
+  assert(map);
 
-  map_ = map_in;
+  static_solid.map = map;
+  static_solid.cinfo = cinfo;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_7pt_fe_set
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_7pt_fe_set(fe_lc_t * fe_lc, fe_lc_droplet_t * fe_drop) {
+
+  static_solid.fe_lc = fe_lc;
+  static_solid.fe_drop = fe_drop;
 
   return 0;
 }
@@ -120,22 +151,35 @@ __host__ int grad_3d_7pt_solid_map_set(map_t * map_in) {
 
 __host__ int grad_3d_7pt_solid_d2(field_grad_t * fg) {
 
- 
-
   int nextra;
+  int ndevice;
+  int method = 0;
+  fe_lc_param_t * param = NULL;
 
-#ifdef __NVCC__
-  int method = 3;
-#else
-  int method = 1;
-#endif
+  targetGetDeviceCount(&ndevice);
+
+  method = 1;
+  if (ndevice > 0) method = 3;
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  if (method == 1) gradient_6x5_svd(fg->field->data, fg->grad, fg->delsq, nextra);
-  if (method == 2) gradient_6x6_gauss_elim(fg->field->data, fg->grad, fg->delsq, nextra);
-  if (method == 3) gradient_6x6_gpu(fg->field->data, fg->grad, fg->delsq, nextra);
+  if (static_solid.fe_lc) param = static_solid.fe_lc->param;
+  assert(param);
+
+  switch (method) {
+  case (1):
+    gradient_6x5_svd(param, fg->field->data, fg->grad, fg->delsq, nextra, static_solid.cinfo);
+    break;
+  case (2):
+    gradient_6x6_gauss_elim(param, fg->field->data, fg->grad, fg->delsq, nextra, static_solid.cinfo);
+    break;
+  case (3):
+    gradient_6x6_gpu(fg->field->data, fg->grad, fg->delsq, nextra);
+    break;
+  default:
+    fatal("No method\n");
+  }
 
   return 0;
 }
@@ -152,8 +196,10 @@ __host__ int grad_3d_7pt_solid_d2(field_grad_t * fg) {
  *
  *****************************************************************************/
 
-static int gradient_6x5_svd(const double * field, double * grad,
-			    double * del2, const int nextra) {
+static int gradient_6x5_svd(fe_lc_param_t * param,
+			    const double * field, double * grad,
+			    double * del2, const int nextra,
+			    colloids_info_t * cinfo) {
   int nlocal[3];
   int nhalo;
   int ic, jc, kc;
@@ -184,15 +230,8 @@ static int gradient_6x5_svd(const double * field, double * grad,
   double diag;
   double unkn;
 
-  double w1_coll;                         /* Anchoring strength parameter */
-  double w2_coll;                         /* Second anchoring parameter */
-  double w1_wall;
-  double w2_wall;
   double w1 = 0.0;
   double w2 = 0.0;
-  double q_0;                             /* Cholesteric pitch wavevector */
-  double kappa0;                          /* Elastic constants */
-  double kappa1;
 
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];                      /* For planar anchoring */
@@ -211,13 +250,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
   str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
   str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
 
-  kappa0 = fe_kappa();
-  kappa1 = fe_kappa(); /* One elastic constant */ 
-
-  q_0 = blue_phase_q0();
-  blue_phase_coll_w12(&w1_coll, &w2_coll);
-  blue_phase_wall_w12(&w1_wall, &w2_wall);
-  amplitude = blue_phase_amplitude_compute(); 
+  fe_lc_amplitude_compute(param, &amplitude);
   ifail = 0;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
@@ -225,7 +258,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	map_status(map_, index, &status0);
+	map_status(static_solid.map, index, &status0);
 
 	if (status0 != MAP_FLUID) continue;
 
@@ -245,11 +278,11 @@ static int gradient_6x5_svd(const double * field, double * grad,
 
 	  ib = 2*ia + 1;
 	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
-	  map_status(map_, index + ib, status + 2*ia);
+	  map_status(static_solid.map, index + ib, status + 2*ia);
 
 	  ib = 2*ia;
 	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
-	  map_status(map_, index + ib, status + 2*ia + 1);
+	  map_status(static_solid.map, index + ib, status + 2*ia + 1);
 
 	  ig = (status[2*ia    ] != MAP_FLUID);
 	  ih = (status[2*ia + 1] != MAP_FLUID);
@@ -307,18 +340,18 @@ static int gradient_6x5_svd(const double * field, double * grad,
 
 	for (n = 0; n < nunknown; n++) {
 
-	  colloids_q_boundary_normal(index, bcs[normal[n]], dn);
-	  colloids_q_boundary(dn, qs, q0, status[normal[n]]);
+	  colloids_q_boundary_normal(cinfo, index, bcs[normal[n]], dn);
+	  colloids_q_boundary(param, dn, qs, q0, status[normal[n]]);
 
 	  /* Check for wall/colloid */
 	  if (status[normal[n]] == MAP_COLLOID) {
-	    w1 = w1_coll;
-	    w2 = w2_coll;
+	    w1 = param->w1_coll;
+	    w2 = param->w2_coll;
 	  }
 
 	  if (status[normal[n]] == MAP_BOUNDARY) {
-	    w1 = w1_wall;
-	    w2 = w2_wall;
+	    w1 = param->w1_wall;
+	    w2 = param->w2_wall;
 	  }
 
 	  /* Compute c[a][b] */
@@ -328,7 +361,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	      c[ia][ib] = 0.0;
 	      for (ig = 0; ig < 3; ig++) {
 		for (ih = 0; ih < 3; ih++) {
-		  c[ia][ib] -= kappa1*q_0*bcs[normal[n]][ig]*
+		  c[ia][ib] -= param->kappa1*param->q0*bcs[normal[n]][ig]*
 		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
 		}
 	      }
@@ -354,7 +387,7 @@ static int gradient_6x5_svd(const double * field, double * grad,
 	    b18[6*n + n1] = 0.0;
 	  }
 
-	  gradient_bcs6x5_coeff(kappa0, kappa1, bcs[normal[n]], bc);
+	  gradient_bcs6x5_coeff(param->kappa0, param->kappa1, bcs[normal[n]], bc);
 
 	  /* Three blocks of columns for each row; note that the index
 	   * ib is used to compute known terms, while idb is the
@@ -449,8 +482,11 @@ static int gradient_6x5_svd(const double * field, double * grad,
  *
  *****************************************************************************/
 
-static int gradient_6x6_gauss_elim(const double * field, double * grad,
-				   double * del2, const int nextra) {
+static int gradient_6x6_gauss_elim(fe_lc_param_t * feparam,
+				   const double * field,
+				   double * grad,
+				   double * del2, const int nextra,
+				   colloids_info_t * cinfo) {
   int nlocal[3];
   int nhalo;
   int ic, jc, kc;
@@ -482,15 +518,8 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
   double unkn;
   double tr;
 
-  double w1_coll;                         /* Anchoring strength parameter */
-  double w2_coll;                         /* Second anchoring parameter */
-  double w1_wall;
-  double w2_wall;
   double w1 = 0.0;
   double w2 = 0.0;
-  double q_0;                             /* Cholesteric pitch wavevector */
-  double kappa0;                          /* Elastic constants */
-  double kappa1;
 
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];                      /* For planar anchoring */
@@ -507,13 +536,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
   str[Y] = str[Z]*(nlocal[Z] + 2*nhalo);
   str[X] = str[Y]*(nlocal[Y] + 2*nhalo);
 
-  kappa0 = fe_kappa();
-  kappa1 = fe_kappa(); /* One elastic constant */ 
-
-  q_0 = blue_phase_q0();
-  blue_phase_coll_w12(&w1_coll, &w2_coll);
-  blue_phase_wall_w12(&w1_wall, &w2_wall);
-  amplitude = blue_phase_amplitude_compute(); 
+  fe_lc_amplitude_compute(feparam, &amplitude);
   ifail = 0;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
@@ -521,7 +544,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	map_status(map_, index, &status0);
+	map_status(static_solid.map, index, &status0);
 
 	if (status0 != MAP_FLUID) continue;
 
@@ -540,11 +563,11 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 
 	  ib = 2*ia + 1;
 	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
-	  map_status(map_, index + ib, status + 2*ia);
+	  map_status(static_solid.map, index + ib, status + 2*ia);
 
 	  ib = 2*ia;
 	  ib = bcs[ib][X]*str[X] + bcs[ib][Y]*str[Y] + bcs[ib][Z]*str[Z];
-	  map_status(map_, index + ib, status + 2*ia + 1);
+	  map_status(static_solid.map, index + ib, status + 2*ia + 1);
 
 	  ig = (status[2*ia    ] != MAP_FLUID);
 	  ih = (status[2*ia + 1] != MAP_FLUID);
@@ -594,18 +617,18 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 
 	for (n = 0; n < nunknown; n++) {
 
-	  colloids_q_boundary_normal(index, bcs[normal[n]], dn);
-	  colloids_q_boundary(dn, qs, q0, status[normal[n]]);
+	  colloids_q_boundary_normal(cinfo, index, bcs[normal[n]], dn);
+	  colloids_q_boundary(feparam, dn, qs, q0, status[normal[n]]);
 
 	  /* Check for wall/colloid */
 	  if (status[normal[n]] == MAP_COLLOID) {
-	    w1 = w1_coll;
-	    w2 = w2_coll;
+	    w1 = feparam->w1_coll;
+	    w2 = feparam->w2_coll;
 	  }
 
 	  if (status[normal[n]] == MAP_BOUNDARY) {
-	    w1 = w1_wall;
-	    w2 = w2_wall;
+	    w1 = feparam->w1_wall;
+	    w2 = feparam->w2_wall;
 	  }
 
 	  /* Compute c[a][b] */
@@ -615,7 +638,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 	      c[ia][ib] = 0.0;
 	      for (ig = 0; ig < 3; ig++) {
 		for (ih = 0; ih < 3; ih++) {
-		  c[ia][ib] -= kappa1*q_0*bcs[normal[n]][ig]*
+		  c[ia][ib] -= feparam->kappa1*feparam->q0*bcs[normal[n]][ig]*
 		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
 		}
 	      }
@@ -640,7 +663,7 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
 	    xb18[NSYMM*n + n1] = 0.0;
 	  }
 
-	  gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[n]], bc);
+	  gradient_bcs6x6_coeff(feparam->kappa0, feparam->kappa1, bcs[normal[n]], bc);
 
 	  /* Three blocks of columns for each row; note that the index
 	   * ib is used to compute known terms, while idb is the
@@ -739,9 +762,9 @@ static int gradient_6x6_gauss_elim(const double * field, double * grad,
  *****************************************************************************/
 
 __targetEntry__
-void gradient_6x6_gpu_lattice(const double * field, double * grad,
+void gradient_6x6_gpu_lattice(fe_lc_param_t * feparam,
+			      const double * field, double * grad,
 			      double * del2,  map_t * map,
-			      bluePhaseKernelConstants_t* pbpc,
 			      colloids_info_t* cinfo) {
 
   int index;
@@ -768,7 +791,13 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
     double x18[18];
     double tr;
     const double r3 = (1.0/3.0);
-    
+
+    double kappa0;
+    double kappa1;
+
+    kappa0 = feparam->kappa0;
+    kappa1 = feparam->kappa1;
+
     str[Z]=1;
     str[Y]=tc_Nall[Z];
     str[X]=tc_Nall[Z]*tc_Nall[Y];
@@ -870,9 +899,8 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	qs[Z][Z] = 0.0 - field[addr_qab(tc_nSites, index, XX)]
 	               - field[addr_qab(tc_nSites, index, YY)];
 	
-	//TODO NEED TO PORT
-	q_boundary_constants(ic, jc, kc, qs, bcs[normal[0]],
-			     status[normal[0]], c, pbpc, cinfo);
+	q_boundary_constants(feparam, ic, jc, kc, qs, bcs[normal[0]],
+			     status[normal[0]], c, cinfo);
 	
 	/* Constant terms all move to RHS (hence -ve sign). Factors
 	 * of two in off-diagonals agree with matrix coefficients. */
@@ -895,9 +923,8 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
       
       if (nunknown > 1) {
 	
-	//TODO NEED TO PORT
-	q_boundary_constants(ic, jc, kc, qs, bcs[normal[1]],
-			     status[normal[1]], c, pbpc, cinfo);
+	q_boundary_constants(feparam, ic, jc, kc, qs, bcs[normal[1]],
+			     status[normal[1]], c, cinfo);
 	
 	b18[1*NSYMM + XX] = -1.0*c[X][X];
 	b18[1*NSYMM + XY] = -2.0*c[X][Y];
@@ -916,9 +943,8 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
       
       if (nunknown > 2) {
 	
-	//TODO NEED TO PORT
-	q_boundary_constants(ic, jc, kc, qs, bcs[normal[2]],
-			     status[normal[2]], c, pbpc, cinfo);
+	q_boundary_constants(feparam, ic, jc, kc, qs, bcs[normal[2]],
+			     status[normal[2]], c, cinfo);
 	
 	b18[2*NSYMM + XX] = -1.0*c[X][X];
 	b18[2*NSYMM + XY] = -2.0*c[X][Y];
@@ -941,7 +967,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	/* Subtract all three gradient terms from the RHS and then cancel
 	 * the one unknown contribution ... works for any normal[0] */
 	
-	gradient_bcs6x6_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[0]], bc);
+	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -966,7 +992,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	
 	/* Compute the RHS for two unknowns and one known */
 	
-	gradient_bcs6x6_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[0]], bc);
+	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -980,7 +1006,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	  }
 	}
 	
-	gradient_bcs6x6_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[1]], bc);
+	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[1]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -1013,7 +1039,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
       
       if (nunknown == 3) {
 	
-	gradient_bcs6x6_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[0]], bc);
+	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[0]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -1026,7 +1052,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	  b18[n1] *= bcsign[normal[0]];
 	}
 	
-	gradient_bcs6x6_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[1]], bc);
+	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[1]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -1039,7 +1065,7 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 	  b18[NSYMM + n1] *= bcsign[normal[1]];
 	}
 	
-	gradient_bcs6x6_coeff(pbpc->kappa0, pbpc->kappa1, bcs[normal[2]], bc);
+	gradient_bcs6x6_coeff(kappa0, kappa1, bcs[normal[2]], bc);
 	
 	for (n1 = 0; n1 < NSYMM; n1++) {
 	  for (n2 = 0; n2 < NSYMM; n2++) {
@@ -1099,28 +1125,26 @@ void gradient_6x6_gpu_lattice(const double * field, double * grad,
 }
 
 
-static int gradient_6x6_gpu(const double * field, double * grad,
-			    double * del2, const int nextra) {
+static __host__
+int gradient_6x6_gpu(const double * field, double * grad,
+		     double * del2, const int nextra) {
 
   int nlocal[3];
   int ia, n1, n2;
   const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
 
-
   double bc[6][6][3];
-
-  double kappa0;
-  double kappa1;
   double a6inv[3][6];
   double ** a12inv[3];
   double ** a18inv;
+
+  fe_lc_param_t fep;
 
   assert(field);
 
   coords_nlocal(nlocal);
 
-  kappa0 = blue_phase_kappa0();
-  kappa1 = blue_phase_kappa1();
+  fe_lc_param(static_solid.fe_lc, &fep);
 
   /* Compute inverse matrices */
 
@@ -1130,7 +1154,7 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   util_matrix_create(18, 18, &a18inv);
 
   for (ia = 0; ia < 3; ia++) {
-    gradient_bcs6x6_coeff(kappa0, kappa1, bcs[2*ia + 1], bc); /* +ve sign */
+    gradient_bcs6x6_coeff(fep.kappa0, fep.kappa1, bcs[2*ia + 1], bc); /* +ve sign */
     for (n1 = 0; n1 < NSYMM; n1++) {
       a6inv[ia][n1] = 1.0/bc[n1][n1][ia];
     }
@@ -1193,7 +1217,7 @@ static int gradient_6x6_gpu(const double * field, double * grad,
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
   copyConstToTarget(tc_noffset,noffset, 3*sizeof(int));
 
-  //contiguos memory
+
   double a18invtmp[18][18];
   double a12invtmp[3][12][12];
 
@@ -1214,39 +1238,12 @@ static int gradient_6x6_gpu(const double * field, double * grad,
 
   copyConstToTarget(tc_a6inv,a6inv, 3*6*sizeof(double));
 
-  // initialise kernel constants on both host and target
-  blue_phase_set_kernel_constants();
+  assert(0); /* Commit fe_lc constants */
 
-  // get a pointer to target copy of stucture containing kernel constants
-  void* pcon=NULL;
-  blue_phase_target_constant_ptr(&pcon);
+  gradient_6x6_gpu_lattice __targetLaunchNoStride__(nSites)
+    (static_solid.fe_lc->target->param, field, grad, del2,
+     static_solid.map->target, static_solid.cinfo->tcopy);
 
-  //map_t* t_map = map_->tcopy; //target copy of map structure
-
-  //copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  //copyToTarget(tmpptr,map_->status,nSites*sizeof(char));
-
-
-  // set up colloids such that they can be accessed from target
-  // noting that each actual colloid structure stays resident on the host
-
-  colloids_info_t* cinfo=colloids_q_cinfo();  
-
-
-  // if (cinfo->map_new){
-  //colloids_info_t* t_cinfo=cinfo->tcopy; //target copy of colloids_info structure     
-  //colloid_t* tmpcol;
-  //copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-  //copyToTarget(tmpcol,cinfo->map_new,nSites*sizeof(colloid_t*));
-  //}
-
-
-  //execute lattice-based operation on target
-  
-  gradient_6x6_gpu_lattice __targetLaunchNoStride__(nSites) (field, grad,
-  						     del2, map_->target,
-						     (bluePhaseKernelConstants_t*) pcon, 
-						     cinfo->tcopy);
   targetSynchronize();
   
 
@@ -1661,4 +1658,202 @@ __targetHost__ __target__ static void util_q5_to_qab(double q[3][3], const doubl
   q[Z][Z] = -phi[0] - phi[3];
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  q_boundary_constants
+ *
+ *  Compute the comstant term in the cholesteric boundary condition.
+ *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
+ *  The outward normal is di[3], and the map status is as given.
+ *
+ *****************************************************************************/
+
+__host__ __target__
+int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc, double qs[3][3],
+			 const int di[3], int status, double c[3][3],
+			 colloids_info_t * cinfo) {
+  int index;
+  int ia, ib, ig, ih;
+  int anchor;
+
+  double w1, w2;
+  double dnhat[3];
+  double qtilde[3][3];
+  double q0[3][3];
+  double q2 = 0.0;
+  double rd;
+  double amp;
+
+  colloid_t * pc = NULL;
+
+  /* Default -> outward normal, ie., flat wall */
+
+  w1 = param->w1_wall;
+  w2 = param->w2_wall;
+  anchor = param->anchoring_wall;
+
+  dnhat[X] = 1.0*di[X];
+  dnhat[Y] = 1.0*di[Y];
+  dnhat[Z] = 1.0*di[Z];
+  fe_lc_amplitude_compute(param, &amp);
+
+  if (status == MAP_COLLOID) {
+
+    //    index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
+
+    index = tc_Nall[Z]*tc_Nall[Y]*(tc_nhalo + ic-di[X] - 1) 
+      + tc_Nall[Z]*(tc_nhalo + jc -di[Y] -1) + tc_nhalo + kc - di[Z] - 1;
+
+    //colloids_info_map(cinfo_, index, &pc);
+
+    //colloids_info_map(cinfo, index, &pc);
+    pc = cinfo->map_new[index];
+
+    //assert(pc);
+
+    //coords_nlocal_offset(noffset);
+
+    w1 = param->w1_coll;
+    w2 = param->w2_coll;
+    anchor = param->anchoring_coll;
+
+    dnhat[X] = 1.0*(tc_noffset[X] + ic) - pc->s.r[X];
+    dnhat[Y] = 1.0*(tc_noffset[Y] + jc) - pc->s.r[Y];
+    dnhat[Z] = 1.0*(tc_noffset[Z] + kc) - pc->s.r[Z];
+
+    /* unit vector */
+    rd = 1.0/sqrt(dnhat[X]*dnhat[X] + dnhat[Y]*dnhat[Y] + dnhat[Z]*dnhat[Z]);
+    dnhat[X] *= rd;
+    dnhat[Y] *= rd;
+    dnhat[Z] *= rd;
+  }
+
+  if (anchor == LC_ANCHORING_NORMAL) {
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d_[ia][ib]);
+	qtilde[ia][ib] = 0.0;
+      }
+    }
+  }
+  else { /* PLANAR */
+
+    q2 = 0.0;
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d_[ia][ib];
+        q2 += qtilde[ia][ib]*qtilde[ia][ib];
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        q0[ia][ib] = 0.0;
+        for (ig = 0; ig < 3; ig++) {
+          for (ih = 0; ih < 3; ih++) {
+            q0[ia][ib] += (d_[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
+              *(d_[ih][ib] - dnhat[ih]*dnhat[ib]);
+          }
+        }
+        q0[ia][ib] -= 0.5*amp*d_[ia][ib];
+      }
+    }
+  }
+
+  /* Compute c[a][b] */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      c[ia][ib] = 0.0;
+
+      for (ig = 0; ig < 3; ig++) {
+        for (ih = 0; ih < 3; ih++) {
+          c[ia][ib] -= param->kappa1*param->q0*di[ig]*
+	    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+        }
+      }
+
+      /* Normal anchoring: w2 must be zero and q0 is preferred Q
+       * Planar anchoring: in w1 term q0 is effectively
+       *                   (Qtilde^perp - 0.5S_0) while in w2 we
+       *                   have Qtilde appearing explicitly.
+       *                   See colloids_q_boundary() etc */
+
+      c[ia][ib] +=
+	-w1*(qs[ia][ib] - q0[ia][ib])
+	-w2*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_q_boundary
+ *
+ *  Produce an estimate of the surface order parameter Q^0_ab for
+ *  normal or planar anchoring.
+ *
+ *  This will depend on the outward surface normal nhat, and in the
+ *  case of planar anchoring may depend on the estimate of the
+ *  existing order parameter at the surface Qs_ab.
+ *
+ *  This planar anchoring idea follows e.g., Fournier and Galatola
+ *  Europhys. Lett. 72, 403 (2005).
+ *
+ *****************************************************************************/
+
+__host__ __target__
+int colloids_q_boundary(fe_lc_param_t * param,
+			const double nhat[3], double qs[3][3],
+			double q0[3][3], int map_status) {
+  int ia, ib, ic, id;
+  int anchoring;
+
+  double qtilde[3][3];
+  double amplitude;
+  double  nfix[3] = {0.0, 1.0, 0.0};
+
+  assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
+
+  anchoring = param->anchoring_coll;
+  if (map_status == MAP_BOUNDARY) anchoring = param->anchoring_wall;
+
+  fe_lc_amplitude_compute(param, &amplitude);
+
+  if (anchoring == LC_ANCHORING_FIXED) fe_lc_q_uniaxial(param, nfix, q0);
+  if (anchoring == LC_ANCHORING_NORMAL) fe_lc_q_uniaxial(param, nhat, q0);
+
+  if (anchoring == LC_ANCHORING_PLANAR) {
+
+    /* Planar: use the fluid Q_ab to find ~Q_ab */
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.0;
+	for (ic = 0; ic < 3; ic++) {
+	  for (id = 0; id < 3; id++) {
+	    q0[ia][ib] += (d_[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
+	      *(d_[id][ib] - nhat[id]*nhat[ib]);
+	  }
+	}
+	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
+	q0[ia][ib] -= 0.5*amplitude*d_[ia][ib];
+      }
+    }
+
+  }
+
+  return 0;
 }

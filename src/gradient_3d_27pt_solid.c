@@ -37,14 +37,17 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "memory.h"
 #include "leesedwards.h"
-#include "free_energy.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "gradient_3d_27pt_solid.h"
 
-static map_t * map = NULL;
+struct solid_s {
+  map_t * map;
+  fe_symm_t * fe_symm;
+};
+
+static struct solid_s static_solid = {0};
 
 /* These are the 'links' used to form the gradients at boundaries. */
 
@@ -60,7 +63,8 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
-__host__ int grad_3d_27pt_solid_op(field_grad_t * fg, int nextra);
+__host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
+				   double kappa, int nextra);
 
 /*****************************************************************************
  *
@@ -68,18 +72,33 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, int nextra);
  *
  *****************************************************************************/
 
-__host__ int grad_3d_27pt_solid_map_set(map_t * map_in) {
+__host__ int grad_3d_27pt_solid_map_set(map_t * map) {
 
   int ndata;
-  assert(map_in);
+  assert(map);
 
-  map = map_in;
+  static_solid.map = map;
 
   /* We expect at most two wetting parameters; if present
    * first should be C, second H. Default to zero. */
 
   map_ndata(map, &ndata);
   if (ndata > 2) fatal("Two many wetting parameters for gradient %d\n", ndata);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_27pt_solid_fe_set
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_27pt_solid_fe_set(fe_symm_t * fe) {
+
+  assert(fe);
+
+  static_solid.fe_symm = fe;
 
   return 0;
 }
@@ -93,11 +112,16 @@ __host__ int grad_3d_27pt_solid_map_set(map_t * map_in) {
 __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   int nextra;
+  fe_symm_param_t param;
 
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
+  assert(static_solid.map);
+  assert(static_solid.fe_symm);
 
-  grad_3d_27pt_solid_op(fgrad, nextra);
+  fe_symm_param(static_solid.fe_symm, &param);
+
+  grad_3d_27pt_solid_op(fgrad, static_solid.map, param.kappa, nextra);
 
   return 0;
 }
@@ -109,9 +133,13 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
  *  This calculation can be extended into the halo region by
  *  nextra points in each direction.
  *
+ *  kappa is the interfacial energy penalty in the symmetric picture.
+ *
  ****************************************************************************/
 
-__host__ int grad_3d_27pt_solid_op(field_grad_t * fg, int nextra) {
+__host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
+				   double kappa,
+				   int nextra) {
 
   int nop;
   int nlocal[3];
@@ -138,10 +166,9 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, int nextra) {
 
   coords_nlocal(nlocal);
 
-  rk = 1.0/fe_kappa();
-
   nop = fg->field->nf;
   field = fg->field->data;
+  rk = 1.0/kappa;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {

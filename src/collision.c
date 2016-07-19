@@ -194,7 +194,7 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
     }
   }
 
-  for (ia = NHYDRO; ia < NVEL; ia++) {
+  for (ia = 0; ia < NVEL; ia++) {
     __targetILP__(iv) ghat[ia*VVL+iv] = 0.0;
   }
 
@@ -332,10 +332,10 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
   }
 
   if (noise_on) {
-    __targetILP__(iv) {
 	
-      double shattmp[3][3];
-      double ghattmp[NVEL];
+    double shattmp[3][3];
+    double ghattmp[NVEL];
+    __targetILP__(iv) {
 
       if (includeSite[iv]) {
 
@@ -442,7 +442,7 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
 }
 
   /* fast version, but doesn't support noise or non-fluid status yet */
-  //__targetEntry__ void lb_collision_mrt_lattice_fast( double* __restrict__ t_f, 
+
 __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb, 
 				       const double* __restrict__ t_force, 
 				       double* __restrict__ t_velocity,
@@ -487,6 +487,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
 #ifdef _D3Q19_
   d3q19matmult(mode, t_f, 1, baseIndex);
 #else 
+  assert(0);
   for (m = 0; m < tc_nmodes_; m++) {
     __targetILP__(iv) mode[m*VVL+iv] = 0.0;
     for (p = 0; p < NVEL; p++) {
@@ -599,6 +600,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
 #ifdef _D3Q19_    
   for (m = NHYDRO; m < NVEL; m++) {  
 #else
+    assert(0);
   for (m = NHYDRO; m < tc_nmodes_; m++) {  
 #endif
     __targetILP__(iv) {
@@ -611,6 +613,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
 #ifdef _D3Q19_
   d3q19matmult2(mode, t_f, 1, baseIndex);
 #else
+  assert(0);
   for (p = 0; p < NVEL; p++) {
     double ftmp[VVL];
     __targetILP__(iv) ftmp[iv] = 0.0;
@@ -841,6 +844,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 #ifdef _D3Q19_
   d3q19matmult(mode, t_f, 2, baseIndex);
 #else
+  assert(0);
     /* Compute all the modes */
     for (m = 0; m < tc_nmodes_; m++) {
       __targetILP__(iv) mode[m*VVL+iv] = 0.0;
@@ -994,6 +998,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 #ifdef _D3Q19_
   for (m = NHYDRO; m < NVEL; m++) 
 #else
+    assert(0);
   for (m = NHYDRO; m < tc_nmodes_; m++) 
 #endif
     { 
@@ -1008,6 +1013,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 #ifdef _D3Q19_  
   d3q19matmult2(mode, t_f,2, baseIndex);
 #else    
+  assert(0);
     for (p = 0; p < NVEL; p++) {
       double ftmp[VVL];
       __targetILP__(iv) ftmp[iv]=0.;
@@ -1029,7 +1035,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
     }
 
   __targetILP__(iv){
-    fe_symm_chemical_potential_target(fe, baseIndex+iv, mu + iv);
+    fe_symm_mu(fe, baseIndex + iv, mu + iv);
     jphi[X*VVL+iv] = 0.0;
     jphi[Y*VVL+iv] = 0.0;
     jphi[Z*VVL+iv] = 0.0;
@@ -1178,7 +1184,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   }
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
-  lb_collision_binary_lattice __targetLaunch__(nSites) (lb->target, hydro->target, fe, noise, noise_on);
+  lb_collision_binary_lattice __targetLaunch__(nSites) (lb->target, hydro->target, fe->target, noise, noise_on);
 
   targetSynchronize();
   TIMER_stop(TIMER_COLLIDE_KERNEL);
@@ -1543,6 +1549,10 @@ static int collision_fluctuations(noise_t * noise, int index,
   shat[Z][Z] += tr;
 
   /* Ghost modes */
+
+  for (ia = 0; ia < NVEL; ia++) {
+    ghat[ia] = 0.0;
+  }
 
   if (nmodes_ == NVEL) {
     noise_reap_n(noise, index, NVEL-NHYDRO, random);

@@ -37,7 +37,6 @@
 #include "psi_sor.h"
 #include "psi.h"
 #include "control.h"
-#include "model.h"
 #include "util.h"
 
 /*****************************************************************************
@@ -49,12 +48,12 @@
  *
  *****************************************************************************/
 
-int psi_sor_solve(psi_t * obj, f_vare_t fepsilon) {
+int psi_sor_solve(psi_t * obj, fe_t * fe, f_vare_t fepsilon) {
 
   assert(obj);
 
   if (fepsilon == NULL) psi_sor_poisson(obj);
-  if (fepsilon != NULL) psi_sor_vare_poisson(obj, fepsilon);
+  if (fepsilon != NULL) psi_sor_vare_poisson(obj, (fe_es_t *) fe, fepsilon);
 
   return 0;
 }
@@ -281,10 +280,12 @@ int psi_sor_poisson(psi_t * obj) {
  *  varying permittivity epsilon:
  *
  *    div [epsilon(r) grad phi(r) ] = -rho(r)
- * 
+ *
+ *  Only the electro-symmetric free energy is relevant at the moment.
+ *
  ****************************************************************************/
 
-int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
+int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   int niteration = 2000;       /* Maximum number of iterations */
   const int ncheck = 1;        /* Check global residual every n iterations */
@@ -314,6 +315,9 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
   double eunit, beta;
 
   MPI_Comm comm;               /* Cartesian communicator */
+
+  assert(obj);
+  assert(fepsilon);
 
   coords_nlocal(nlocal);
   nsites = coords_nsites();
@@ -351,7 +355,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	index = coords_index(ic, jc, kc);
 
 	psi_rho_elec(obj, index, &rho_elec);
-	fepsilon(index, &eps0);
+	fepsilon(fe, index, &eps0);
 
 	/* Laplacian part of operator */
 
@@ -365,27 +369,27 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
 	/* Additional terms in generalised Poisson equation */
 
-	fepsilon(index + xs, &eps1);
+	fepsilon(fe, index + xs, &eps1);
 	depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
 			    - obj->psi[addr_rank0(nsites, index - xs)]);
 
-	fepsilon(index - xs, &eps1);
+	fepsilon(fe, index - xs, &eps1);
 	depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
 			    - obj->psi[addr_rank0(nsites, index - xs)]);
 
-	fepsilon(index + ys, &eps1);
+	fepsilon(fe, index + ys, &eps1);
 	depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
 			    - obj->psi[addr_rank0(nsites, index - ys)]);
 
-	fepsilon(index - ys, &eps1);
+	fepsilon(fe, index - ys, &eps1);
 	depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
 			    - obj->psi[addr_rank0(nsites, index - ys)]);
 
-	fepsilon(index + zs, &eps1);
+	fepsilon(fe, index + zs, &eps1);
 	depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
 			    - obj->psi[addr_rank0(nsites, index - zs)]);
 
-	fepsilon(index - zs, &eps1);
+	fepsilon(fe, index - zs, &eps1);
 	depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
 			    - obj->psi[addr_rank0(nsites, index - zs)]);
 
@@ -417,7 +421,7 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 	    index = coords_index(ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
-	    fepsilon(index, &eps0);
+	    fepsilon(fe, index, &eps0);
 
 	    /* Laplacian part of operator */
 
@@ -431,27 +435,27 @@ int psi_sor_vare_poisson(psi_t * obj, f_vare_t fepsilon) {
 
 	    /* Additional terms in generalised Poisson equation */
 
-	    fepsilon(index + xs, &eps1);
+	    fepsilon(fe, index + xs, &eps1);
 	    depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
 				- obj->psi[addr_rank0(nsites, index - xs)]);
 
-	    fepsilon(index - xs, &eps1);
+	    fepsilon(fe, index - xs, &eps1);
 	    depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + xs)]
 				- obj->psi[addr_rank0(nsites, index - xs)]);
 
-	    fepsilon(index + ys, &eps1);
+	    fepsilon(fe, index + ys, &eps1);
 	    depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
 				- obj->psi[addr_rank0(nsites, index - ys)]);
 
-	    fepsilon(index - ys, &eps1);
+	    fepsilon(fe, index - ys, &eps1);
 	    depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + ys)]
 				- obj->psi[addr_rank0(nsites, index - ys)]);
 
-	    fepsilon(index + zs, &eps1);
+	    fepsilon(fe, index + zs, &eps1);
 	    depsi += 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
 				- obj->psi[addr_rank0(nsites, index - zs)]);
 
-	    fepsilon(index - zs, &eps1);
+	    fepsilon(fe, index - zs, &eps1);
 	    depsi -= 0.25*eps1*(obj->psi[addr_rank0(nsites, index + zs)]
 				- obj->psi[addr_rank0(nsites, index - zs)]);
 

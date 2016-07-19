@@ -50,7 +50,6 @@
 #include "coords.h"
 #include "physics.h"
 #include "leesedwards.h"
-#include "colloids_Q_tensor.h"
 #include "advection_bcs.h"
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
@@ -59,24 +58,30 @@
 #include "hydro_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
+#include "colloids_s.h"
 #include "map_s.h"
 #include "timer.h"
 
-__host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
+__host__ int beris_edw_update_driver(beris_edw_t * be, fe_t * fe, field_t * fq,
 				     field_grad_t * fq_grad,
 				     hydro_t * hydro,
-				     map_t * map, noise_t * noise);
+				     map_t * map, noise_t * noise); 
+__host__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro,
+			      map_t * map);
+__host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
+				   hydro_t * hydro, advflux_t * flux,
+				   map_t * map, noise_t * noise);
 
-__targetConst__ double tc_gamma;
-__targetConst__ double tc_var;
 __targetConst__ double tc_tmatrix[3][3][NQAB];
 
 struct beris_edw_s {
-  beris_edw_param_t param;         /* Parameters */ 
+  beris_edw_param_t * param;       /* Parameters */ 
   advflux_t * flux;                /* Advective fluxes */
 
   beris_edw_t * target;            /* Target memory */
 };
+
+static __constant__ beris_edw_param_t static_param;
 
 /*****************************************************************************
  *
@@ -95,6 +100,9 @@ __host__ int beris_edw_create(beris_edw_t ** pobj) {
   obj = (beris_edw_t *) calloc(1, sizeof(beris_edw_t));
   if (obj == NULL) fatal("calloc(beris_edw) failed\n");
 
+  obj->param = (beris_edw_param_t *) calloc(1, sizeof(beris_edw_param_t));
+  if (obj->param == NULL) fatal("calloc(beris_edw_param_t) failed\n");
+
   advflux_create(NQAB, &flx);
   assert(flx);
   obj->flux = flx;
@@ -108,6 +116,8 @@ __host__ int beris_edw_create(beris_edw_t ** pobj) {
   }
   else {
     targetCalloc((void **) &obj->target, sizeof(beris_edw_t));
+    targetConstAddress(&obj->target->param, static_param);
+    assert(0); /* Awaiting a test */
   }
 
   *pobj = obj;
@@ -132,6 +142,7 @@ __host__ int beris_edw_free(beris_edw_t * be) {
   if (ndevice > 0) targetFree(be->target);
 
   advflux_free(be->flux);
+  free(be->param);
   free(be);
 
   return 0;
@@ -139,34 +150,15 @@ __host__ int beris_edw_free(beris_edw_t * be) {
 
 /*****************************************************************************
  *
- *  beris_edw_memcpy
+ *  beris_edw_param_commit
  *
  *****************************************************************************/
 
-__host__ int beris_edw_memcpy(beris_edw_t * be, int flag) {
-
-  int ndevice;
+__host__ int beris_edw_param_commit(beris_edw_t * be) {
 
   assert(be);
 
-  targetGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    /* Ensure we alias */
-    assert(be->target = be);
-  }
-  else {
-    switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(&be->target->param, &be->param, sizeof(beris_edw_param_t));
-      break;
-    case cudaMemcpyDeviceToHost:
-      /* no action */
-      break;
-    default:
-      fatal("Bad flag in beris_edw_memcpy\n");
-    }
-  }
+  copyConstToTarget(&static_param, be->param, sizeof(beris_edw_param_t));
 
   return 0;
 }
@@ -181,7 +173,7 @@ __host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t vals) {
 
   assert(be);
 
-  be->param = vals;
+  *be->param = vals;
 
   return 0;
 }
@@ -200,9 +192,13 @@ __host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t vals) {
  *
  *****************************************************************************/
 
-__host__ int beris_edw_update(beris_edw_t * be, field_t * fq,
+__host__ int beris_edw_update(beris_edw_t * be,
+			      fe_t * fe,
+			      field_t * fq,
 			      field_grad_t * fq_grad,
-			      hydro_t * hydro, map_t * map,
+			      hydro_t * hydro,
+			      colloids_info_t * cinfo,
+			      map_t * map,
 			      noise_t * noise) {
   int nf;
 
@@ -214,119 +210,200 @@ __host__ int beris_edw_update(beris_edw_t * be, field_t * fq,
   assert(nf == NQAB);
 
   if (hydro) {
+    colloids_fix_swd(cinfo, hydro, map);
     hydro_lees_edwards(hydro);
     advection_x(be->flux, hydro, fq);
     advection_bcs_no_normal_flux(nf, be->flux, map);
   }
 
-  beris_edw_update_driver(be, fq, fq_grad, hydro, map, noise);
+  /* SHIT sort this out */
+  /* beris_edw_update_driver(be, fe, fq, fq_grad, hydro, map, noise);*/
+  beris_edw_update_host(be, fe, fq, hydro, be->flux, map, noise);
 
   return 0;
 }
 
-__targetHost__ __target__ void h_loop_unrolled_be(double sum[VVL], double dq[3][3][3][VVL],
-				double dsq[3][3][VVL],
-				double q[3][3][VVL],
-				double h[3][3][VVL],
-				double eq[VVL],
-				bluePhaseKernelConstants_t* pbpc);
+/*****************************************************************************
+ *
+ *  beris_edw_update_host
+ *
+ *  Update q via Euler forward step. Note here we only update the
+ *  5 independent elements of the Q tensor.
+ *
+ *  hydro is allowed to be NULL, in which case we only have relaxational
+ *  dynamics.
+ *
+ *****************************************************************************/
 
+__host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
+				   hydro_t * hydro, advflux_t * flux,
+				   map_t * map, noise_t * noise) {
+  int ic, jc, kc;
+  int ia, ib, id;
+  int index, indexj, indexk;
+  int nlocal[3];
+  int nsites;
+  int status;
+  int noise_on = 0;
 
-/*IMPORTANT NOTE*/
+  double q[3][3];
+  double w[3][3];
+  double d[3][3];
+  double h[3][3];
+  double s[3][3];
+  double omega[3][3];
+  double trace_qw;
+  double xi;
+  double gamma;
 
-/* the below routine is a COPY of that in blue_phase.h */
-/* required to be in scope here for performance reasons on GPU */
-/* since otherwise the compiler places the emporary q[][][] etc arrays */
-/* in regular off-chip memory rather than registers */
-/* which has a huge impact on performance */
-/* TO DO: place this in a header file to be included both here and blue_phase.c */
-/* or work out how to get the compiler to inline it from the different source file */
+  double chi[NQAB], chi_qab[3][3];
+  double tmatrix[3][3][NQAB];
+  double kt, var = 0.0;
 
-__targetHost__ __target__
-void blue_phase_compute_h_vec_inline(double q[3][3][VVL], 
-				     double dq[3][3][3][VVL],
-				     double dsq[3][3][VVL], 
-				     double h[3][3][VVL],
-				     bluePhaseKernelConstants_t* pbpc) {
+  const double dt = 1.0;
 
-  int iv=0;
-  int ia, ib, ic;
+  assert(be);
+  assert(fe);
+  assert(fe->func->htensor);
+  assert(fq);
+  assert(flux);
+  assert(map);
 
-  double q2[VVL];
-  double e2[VVL];
-  double eq[VVL];
-  double sum[VVL];
-
-  /* From the bulk terms in the free energy... */
-
-  __targetILP__(iv) q2[iv] = 0.0;
+  xi = be->param->xi;
+  gamma = be->param->gamma;
+  var = be->param->var;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
+      s[ia][ib] = 0.0;
+      chi_qab[ia][ib] = 0.0;
     }
   }
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) sum[iv] = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	__targetILP__(iv) sum[iv] += q[ia][ic][iv]*q[ib][ic][iv];
+  /* Get kBT, variance of noise and set basis of traceless,
+   * symmetric matrices for contraction */
+
+  if (noise) noise_present(noise, NOISE_QAB, &noise_on);
+  if (noise_on) {
+    physics_kt(&kt);
+    beris_edw_tmatrix(tmatrix);
+  }
+
+  coords_nlocal(nlocal);
+  nsites = le_nsites();
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = le_site_index(ic, jc, kc);
+
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
+
+	field_tensor(fq, index, q);
+	fe->func->htensor(fe, index, h);
+
+	if (hydro) {
+
+	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
+
+	  hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
+
+	  trace_qw = 0.0;
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      trace_qw += q[ia][ib]*w[ib][ia];
+	      d[ia][ib]     = 0.5*(w[ia][ib] + w[ib][ia]);
+	      omega[ia][ib] = 0.5*(w[ia][ib] - w[ib][ia]);
+	    }
+	  }
+	  
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      s[ia][ib] = -2.0*xi*(q[ia][ib] + r3_*d_[ia][ib])*trace_qw;
+	      for (id = 0; id < 3; id++) {
+		s[ia][ib] +=
+		  (xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3_*d_[id][ib])
+		+ (q[ia][id] + r3_*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
+	      }
+	    }
+	  }
+	}
+
+	/* Fluctuating tensor order parameter */
+
+	if (noise_on) {
+	  noise_reap_n(noise, index, NQAB, chi);
+	  for (id = 0; id < NQAB; id++) {
+	    chi[id] = var*chi[id];
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      chi_qab[ia][ib] = 0.0;
+	      for (id = 0; id < NQAB; id++) {
+		chi_qab[ia][ib] += chi[id]*tmatrix[ia][ib][id];
+	      }
+	    }
+	  }
+	}
+
+	/* Here's the full hydrodynamic update. */
+	  
+	indexj = le_site_index(ic, jc-1, kc);
+	indexk = le_site_index(ic, jc, kc-1);
+
+	q[X][X] += dt*(s[X][X] + gamma*h[X][X] + chi_qab[X][X]
+		       - flux->fe[addr_rank1(nsites, NQAB, index, XX)]
+		       + flux->fw[addr_rank1(nsites, NQAB, index, XX)]
+		       - flux->fy[addr_rank1(nsites, NQAB, index, XX)]
+		       + flux->fy[addr_rank1(nsites, NQAB, indexj, XX)]
+		       - flux->fz[addr_rank1(nsites, NQAB, index, XX)]
+		       + flux->fz[addr_rank1(nsites, NQAB, indexk, XX)]);
+
+	q[X][Y] += dt*(s[X][Y] + gamma*h[X][Y] + chi_qab[X][Y]
+		       - flux->fe[addr_rank1(nsites, NQAB, index, XY)]
+		       + flux->fw[addr_rank1(nsites, NQAB, index, XY)]
+		       - flux->fy[addr_rank1(nsites, NQAB, index, XY)]
+		       + flux->fy[addr_rank1(nsites, NQAB, indexj, XY)]
+		       - flux->fz[addr_rank1(nsites, NQAB, index,  XY)]
+		       + flux->fz[addr_rank1(nsites, NQAB, indexk, XY)]);
+
+	q[X][Z] += dt*(s[X][Z] + gamma*h[X][Z] + chi_qab[X][Z]
+		       - flux->fe[addr_rank1(nsites, NQAB, index, XZ)]
+		       + flux->fw[addr_rank1(nsites, NQAB, index, XZ)]
+		       - flux->fy[addr_rank1(nsites, NQAB, index, XZ)]
+		       + flux->fy[addr_rank1(nsites, NQAB, indexj, XZ)]
+		       - flux->fz[addr_rank1(nsites, NQAB, index, XZ)]
+		       + flux->fz[addr_rank1(nsites, NQAB, indexk, XZ)]);
+
+	q[Y][Y] += dt*(s[Y][Y] + gamma*h[Y][Y] + chi_qab[Y][Y]
+		       - flux->fe[addr_rank1(nsites, NQAB, index, YY)]
+		       + flux->fw[addr_rank1(nsites, NQAB, index, YY)]
+		       - flux->fy[addr_rank1(nsites, NQAB, index, YY)]
+		       + flux->fy[addr_rank1(nsites, NQAB, indexj, YY)]
+		       - flux->fz[addr_rank1(nsites, NQAB, index, YY)]
+		       + flux->fz[addr_rank1(nsites, NQAB, indexk, YY)]);
+
+	q[Y][Z] += dt*(s[Y][Z] + gamma*h[Y][Z] + chi_qab[Y][Z]
+		       - flux->fe[addr_rank1(nsites, NQAB, index, YZ)]
+		       + flux->fw[addr_rank1(nsites, NQAB, index, YZ)]
+		       - flux->fy[addr_rank1(nsites, NQAB, index, YZ)]
+		       + flux->fy[addr_rank1(nsites, NQAB, indexj, YZ)]
+		       - flux->fz[addr_rank1(nsites, NQAB, index, YZ)]
+		       + flux->fz[addr_rank1(nsites, NQAB, indexk, YZ)]);
+
+	field_tensor_set(fq, index, q);
+
+	/* Next site */
       }
-      __targetILP__(iv) h[ia][ib][iv] = -pbpc->a0_*(1.0 - pbpc->r3_*pbpc->gamma_)*q[ia][ib][iv]
-	+ pbpc->a0_*pbpc->gamma_*(sum[iv] - pbpc->r3_*q2[iv]*pbpc->d_[ia][ib]) - pbpc->a0_*pbpc->gamma_*q2[iv]*q[ia][ib][iv];
     }
   }
 
-  /* From the gradient terms ... */
-  /* First, the sum e_abc d_b Q_ca. With two permutations, we
-   * may rewrite this as e_bca d_b Q_ca */
-
-  __targetILP__(iv) eq[iv] = 0.0;
-  for (ib = 0; ib < 3; ib++) {
-    for (ic = 0; ic < 3; ic++) {
-      for (ia = 0; ia < 3; ia++) {
-	__targetILP__(iv) eq[iv] += pbpc->e_[ib][ic][ia]*dq[ib][ic][ia][iv];
-      }
-    }
-  }
-
-  /* d_c Q_db written as d_c Q_bd etc */
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     __targetILP__(iv) sum[iv] = 0.0; */
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	for (id = 0; id < 3; id++) { */
-  /* 	  __targetILP__(iv) sum[iv] += */
-  /* 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]); */
-  /* 	} */
-  /*     } */
-      
-  /*     __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv] */
-  /* 	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib] */
-  /* 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv]; */
-  /*   } */
-  /* } */
-  //#include "h_loop.h"
-
-  h_loop_unrolled_be(sum,dq,dsq,q,h,eq,pbpc);
-
-  /* Electric field term */
-
-  __targetILP__(iv) e2[iv] = 0.0;
-  for (ia = 0; ia < 3; ia++) {
-    __targetILP__(iv) e2[iv] += pbpc->e0[ia]*pbpc->e0[ia];
-  }
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) h[ia][ib][iv] +=  pbpc->epsilon_*(pbpc->e0[ia]*pbpc->e0[ib] - pbpc->r3_*pbpc->d_[ia][ib]*e2[iv]);
-    }
-  }
-
-  return;
+  return 0;
 }
-
 
 /*****************************************************************************
  *
@@ -340,7 +417,9 @@ void blue_phase_compute_h_vec_inline(double q[3][3][VVL],
  *
  *****************************************************************************/
 
-__host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
+__host__ int beris_edw_update_driver(beris_edw_t * be,
+				     fe_t * fe,
+				     field_t * fq,
 				     field_grad_t * fq_grad,
 				     hydro_t * hydro,
 				     map_t * map,
@@ -350,20 +429,20 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
 
   double tmatrix[3][3][NQAB];
   double kt, var = 0.0;
+  hydro_t * hydrotarget = NULL;
+  fe_t * fetarget = NULL;
 
-  void (* molecular_field)(const int index, double h[3][3]);
   __targetEntry__
-    void beris_edw_kernel(field_t * fq, field_grad_t * fqgrad,
-		      hydro_t * hydro,
-		      advflux_t * flux,
-		      map_t * map,
-		      int noise_on,
-		      noise_t * noise,
-		      void* pcon,
-			  void   (*molecular_field)(const int, double h[3][3]), int isBPMF);
-
+    void beris_edw_kernel(beris_edw_t * be, fe_t * fe, field_t * fq,
+			  field_grad_t * fqgrad,
+			  hydro_t * hydro,
+			  advflux_t * flux,
+			  map_t * map,
+			  int noise_on,
+			  noise_t * noise);
 
   assert(be);
+  assert(fe);
   assert(fq);
   assert(map);
 
@@ -375,19 +454,9 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
   if (noise) noise_present(noise, NOISE_QAB, &noise_on);
   if (noise_on) {
     physics_kt(&kt);
-    var = sqrt(2.0*kt*be->param.gamma);
-    beris_edw_tmatrix_set(tmatrix);
+    var = sqrt(2.0*kt*be->param->gamma);
+    beris_edw_tmatrix(tmatrix);
   }
-
-  molecular_field = fe_t_molecular_field();
-
-  int isBPMF = (molecular_field==blue_phase_molecular_field);
-#ifdef __NVCC__
-  /* make sure blue_phase_molecular_field is in use here because
-     this is assumed in targetDP port*/
-  if (!isBPMF)
-    fatal("only blue_phase_molecular_field is supported for CUDA\n");
-#endif
 
   int nhalo;
   nhalo = coords_nhalo();
@@ -397,36 +466,28 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
   Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
 
 
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  int nSites;
 
+  nSites =Nall[X]*Nall[Y]*Nall[Z];
 
   copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_gamma,&be->param.gamma, sizeof(double));  
-  copyConstToTarget(&tc_var,&var, sizeof(double));  
-  copyConstToTarget(tc_tmatrix,tmatrix, 3*3*NQAB*sizeof(double)); 
+  beris_edw_param_commit(be);
 
-  /* initialise kernel constants on both host and target*/
-  blue_phase_set_kernel_constants();
-
-  /* get a pointer to target copy of stucture containing kernel constants*/
-
-  void* pcon=NULL;
-  blue_phase_target_constant_ptr(&pcon);
-
+  fe->func->target(fe, &fetarget);
+  if (hydro) hydrotarget = hydro->target;
 
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
-  assert(hydro); /* Watch deferencing */
-
-  beris_edw_kernel __targetLaunch__(nSites) (fq->target,
+  beris_edw_kernel __targetLaunch__(nSites) (be->target,
+					     fetarget,
+					     fq->target,
 					     fq_grad->tcopy,
-					     hydro->target,
+					     hydrotarget,
 					     be->flux->target,
 					     map->target,
-					     noise_on, noise, pcon,
-					     molecular_field, isBPMF);
+					     noise_on, noise);
   
   targetSynchronize();
 
@@ -442,20 +503,22 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
  *****************************************************************************/
 
 __targetEntry__
-void beris_edw_kernel(field_t * fq, field_grad_t * fqgrad,
+void beris_edw_kernel(beris_edw_t * be, fe_t * fe,
+		      field_t * fq,
+		      field_grad_t * fqgrad,
 		      hydro_t * hydro,
 		      advflux_t * flux,
 		      map_t * map,
 		      int noise_on,
-		      noise_t * noise,
-		      void* pcon,
-void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
+		      noise_t * noise) {
 
   int baseIndex;
+  const double r3 = (1.0/3.0);
 
+  assert(fe);
+  assert(fe->func->htensor_v);
   assert(fq);
   assert(fqgrad);
-  assert(pcon);
   assert(flux);
 
   __targetTLP__(baseIndex,tc_nSites) {
@@ -482,9 +545,9 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
     const double dt = 1.0;
 
-    bluePhaseKernelConstants_t* pbpc= (bluePhaseKernelConstants_t*) pcon;
-
     int coords[3];
+
+
     targetCoords3D(coords,tc_Nall,baseIndex);
   
     
@@ -543,6 +606,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	if (status != MAP_FLUID) continue;
 #else
 	/* SHIT: can we really ignore this? */
+	status = MAP_FLUID; /* Add to prevent compiler warning */
 #endif
 #endif /* else just calc all sites (and discard non-fluid results)*/
 
@@ -583,26 +647,11 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	__targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
 	__targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
-	if (isBPMF) {
-	  blue_phase_compute_h_vec_inline(q, dq, dsq, h, pbpc);
-	}
-	else
-	{
-#ifndef __NVCC__
-	    /*only BP supported for CUDA. This is caught earlier*/
-	  __targetILP__(iv) {
-	    double htmp[3][3];
-	    molecular_field(baseIndex+iv, htmp);
-	    for (ia = 0; ia < 3; ia++) 
-	      for (ib = 0; ib < 3; ib++) 
-		h[ia][ib][iv]=htmp[ia][ib];
-	  }
-#endif
+	/* Compute the molecular field. */
 
-	}
-      
+	fe->func->htensor_v(fe, q, dq, dsq, h);
+
 	if (hydro) {
-
 	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
 	  /* hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
@@ -690,7 +739,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	  /* Enforce tracelessness */
 	  
 	  double tr[VVL];
-	  __targetILP__(iv) tr[iv] = pbpc->r3_*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
+	  __targetILP__(iv) tr[iv] = r3*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
 	  __targetILP__(iv) w[X][X][iv] -= tr[iv];
 	  __targetILP__(iv) w[Y][Y][iv] -= tr[iv];
 	  __targetILP__(iv) w[Z][Z][iv] -= tr[iv];
@@ -708,11 +757,11 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      __targetILP__(iv) s[ia][ib][iv] = -2.0*pbpc->xi_*(q[ia][ib][iv] + pbpc->r3_*pbpc->d_[ia][ib])*trace_qw[iv];
+	      __targetILP__(iv) s[ia][ib][iv] = -2.0*be->param->xi*(q[ia][ib][iv] + r3*d_[ia][ib])*trace_qw[iv];
 	      for (id = 0; id < 3; id++) {
 		__targetILP__(iv) s[ia][ib][iv] +=
-		  (pbpc->xi_*d[ia][id][iv] + omega[ia][id][iv])*(q[id][ib][iv] + pbpc->r3_*pbpc->d_[id][ib])
-		+ (q[ia][id][iv] + pbpc->r3_*pbpc->d_[ia][id])*(pbpc->xi_*d[id][ib][iv] - omega[id][ib][iv]);
+		  (be->param->xi*d[ia][id][iv] + omega[ia][id][iv])*(q[id][ib][iv] + r3*d_[id][ib])
+		+ (q[ia][id][iv] + r3*d_[ia][id])*(be->param->xi*d[id][ib][iv] - omega[id][ib][iv]);
 	      }
 	    }
 	  }
@@ -721,29 +770,25 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	/* Fluctuating tensor order parameter */
 
 	if (noise_on) {
-#ifdef __NVCC__
-      printf("Error: noise is not yet supported for CUDA\n");
-#else
 
-      __targetILP__(iv) {
+	  __targetILP__(iv) {
 	
-	noise_reap_n(noise, baseIndex, NQAB, chi);
+	    noise_reap_n(noise, baseIndex, NQAB, chi);
 	
-	for (id = 0; id < NQAB; id++) {
-	  chi[id] = tc_var*chi[id];
-	}
+	    for (id = 0; id < NQAB; id++) {
+	      assert(0); /* set var? */
+	      chi[id] = be->param->var*chi[id];
+	    }
 	
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
-	  chi_qab[ia][ib][iv] = 0.0;
-	  for (id = 0; id < NQAB; id++) {
-	    chi_qab[ia][ib][iv] += chi[id]*tc_tmatrix[ia][ib][id];
+	    for (ia = 0; ia < 3; ia++) {
+	      for (ib = 0; ib < 3; ib++) {
+		chi_qab[ia][ib][iv] = 0.0;
+		for (id = 0; id < NQAB; id++) {
+		  chi_qab[ia][ib][iv] += chi[id]*tc_tmatrix[ia][ib][id];
+		}
+	      }
+	    }
 	  }
-	}
-      }
-      
-      }
-#endif
 	}
 
 	/* Here's the full hydrodynamic update. */
@@ -755,7 +800,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 	__targetILP__(iv) {
 	  if (includeSite[iv]) {
 	    q[X][X][iv] += dt*
-	      (s[X][X][iv] + tc_gamma*h[X][X][iv] + chi_qab[X][X][iv]
+	      (s[X][X][iv] + be->param->gamma*h[X][X][iv] + chi_qab[X][X][iv]
 	       - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
 	       + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
 	       - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
@@ -768,7 +813,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
     __targetILP__(iv) {
       if (includeSite[iv]) {
 	q[X][Y][iv] += dt*
-	  (s[X][Y][iv] + tc_gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
+	  (s[X][Y][iv] + be->param->gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
 	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
 	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
 	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
@@ -781,7 +826,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
     __targetILP__(iv) {
       if (includeSite[iv]) {
 	q[X][Z][iv] += dt*
-	  (s[X][Z][iv] + tc_gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
+	  (s[X][Z][iv] + be->param->gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
 	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
 	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
 	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
@@ -794,7 +839,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
     __targetILP__(iv) {
       if (includeSite[iv]) {
 	q[Y][Y][iv] += dt*
-	  (s[Y][Y][iv] + tc_gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
+	  (s[Y][Y][iv] + be->param->gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
 	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
 	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
 	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
@@ -807,7 +852,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
     __targetILP__(iv) {
       if (includeSite[iv]) {
 	q[Y][Z][iv] += dt*
-	  (s[Y][Z][iv] + tc_gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
+	  (s[Y][Z][iv] + be->param->gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
 	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
 	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
 	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
@@ -831,7 +876,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
 
 /*****************************************************************************
  *
- *  beris_edw_tmatrix_set
+ *  beris_edw_tmatrix
  *
  *  Sets the elements of the traceless, symmetric base matrices
  *  following Bhattacharjee et al. There are five:
@@ -850,7 +895,7 @@ void   (*molecular_field)(const int, double h[3][3]), int isBPMF) {
  *
  *****************************************************************************/
 
-__host__ __device__ int beris_edw_tmatrix_set(double t[3][3][NQAB]) {
+__host__ __device__ int beris_edw_tmatrix(double t[3][3][NQAB]) {
 
   int ia, ib, id;
   const double r3 = (1.0/3.0);
@@ -882,84 +927,145 @@ __host__ __device__ int beris_edw_tmatrix_set(double t[3][3][NQAB]) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  colloids_fix_swd
+ *
+ *  The velocity gradient tensor used in the Beris-Edwards equations
+ *  requires some approximation to the velocity at lattice sites
+ *  inside particles. Here we set the lattice velocity based on
+ *  the solid body rotation u = v + Omega x rb
+ *
+ *****************************************************************************/
+ 
+__host__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
-/* Unrolled kernels: thes get much beter performance since he multiplications
- by 0 and repeated loading of duplicate coefficients have been eliminated */
+  int nlocal[3];
+  int noffset[3];
+  const int nextra = 1;
+  __global__ void colloids_fix_swd_lattice(colloids_info_t * cinfo,
+					   hydro_t * hydro,
+					   map_t * map);
 
-__target__ void h_loop_unrolled_be(double sum[VVL], double dq[3][3][3][VVL],
-				double dsq[3][3][VVL],
-				double q[3][3][VVL],
-				double h[3][3][VVL],
-				double eq[VVL],
-				bluePhaseKernelConstants_t* pbpc){
+  assert(cinfo);
+  assert(map);
 
-  int iv=0;
+  if (hydro == NULL) return 0;
 
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
-__targetILP__(iv) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
-__targetILP__(iv) h[0][0][iv] += pbpc->kappa0*dsq[0][0][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][0]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][0][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += -dq[0][0][2][iv];
-__targetILP__(iv) sum[iv] += dq[1][1][2][iv] ;
-__targetILP__(iv) sum[iv] += dq[2][0][0][iv];
-__targetILP__(iv) sum[iv] += -dq[2][1][1][iv] ;
-__targetILP__(iv) h[0][1][iv] += pbpc->kappa0*dsq[0][1][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][1]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][1][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += dq[0][0][1][iv];
-__targetILP__(iv) sum[iv] += -dq[1][0][0][iv];
-__targetILP__(iv) sum[iv] += dq[1][2][2][iv] ;
-__targetILP__(iv) sum[iv] += -dq[2][2][1][iv] ;
-__targetILP__(iv) h[0][2][iv] += pbpc->kappa0*dsq[0][2][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[0][2]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[0][2][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += -dq[0][0][2][iv] ;
-__targetILP__(iv) sum[iv] += dq[1][1][2][iv];
-__targetILP__(iv) sum[iv] += dq[2][0][0][iv] ;
-__targetILP__(iv) sum[iv] += -dq[2][1][1][iv];
-__targetILP__(iv) h[1][0][iv] += pbpc->kappa0*dsq[1][0][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][0]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][0][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
-__targetILP__(iv) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
-__targetILP__(iv) h[1][1][iv] += pbpc->kappa0*dsq[1][1][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][1]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][1][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += dq[0][1][1][iv];
-__targetILP__(iv) sum[iv] += -dq[0][2][2][iv] ;
-__targetILP__(iv) sum[iv] += -dq[1][1][0][iv];
-__targetILP__(iv) sum[iv] += dq[2][2][0][iv] ;
-__targetILP__(iv) h[1][2][iv] += pbpc->kappa0*dsq[1][2][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[1][2]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[1][2][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += dq[0][0][1][iv] ;
-__targetILP__(iv) sum[iv] += -dq[1][0][0][iv] ;
-__targetILP__(iv) sum[iv] += dq[1][2][2][iv];
-__targetILP__(iv) sum[iv] += -dq[2][2][1][iv];
-__targetILP__(iv) h[2][0][iv] += pbpc->kappa0*dsq[2][0][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][0]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][0][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += dq[0][1][1][iv] ;
-__targetILP__(iv) sum[iv] += -dq[0][2][2][iv];
-__targetILP__(iv) sum[iv] += -dq[1][1][0][iv] ;
-__targetILP__(iv) sum[iv] += dq[2][2][0][iv];
-__targetILP__(iv) h[2][1][iv] += pbpc->kappa0*dsq[2][1][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][1]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][1][iv];
-__targetILP__(iv) sum[iv] = 0.0;
-__targetILP__(iv) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
-__targetILP__(iv) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
-__targetILP__(iv) h[2][2][iv] += pbpc->kappa0*dsq[2][2][iv]
-- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[2][2]
-- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[2][2][iv];
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
 
+  int nhalo = coords_nhalo();
+
+  int Nall[3];
+  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+
+
+  int nSites;
+
+  nSites =Nall[X]*Nall[Y]*Nall[Z];
+
+  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
+  copyConstToTarget(tc_noffset,noffset, 3*sizeof(int)); 
+  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
+  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
+
+  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy,
+						     hydro->target,
+						     map->target);
+  targetSynchronize();
+
+  return 0;
 }
+
+/*****************************************************************************
+ *
+ *  colloids_fix_swd_kernel
+ *
+ *  Device note: cinfo is coming from unified memory.
+ *
+ *  Issues: this routines is doing towo things: solid and colloid.
+ *  these could be separate.
+ *
+ *****************************************************************************/
+
+__global__
+void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro,
+			      map_t * map) {
+
+  int index;
+
+  __targetTLPNoStride__(index, tc_nSites) {
+
+    int coords[3];
+    int ic, jc, kc, ia;
+    
+    double u[3];
+    double rb[3];
+    double x, y, z;
+    
+    colloid_t * p_c;
+    
+    targetCoords3D(coords,tc_Nall,index);
+    
+    // if not a halo site:
+    if (coords[0] >= (tc_nhalo-tc_nextra) && 
+	coords[1] >= (tc_nhalo-tc_nextra) && 
+	coords[2] >= (tc_nhalo-tc_nextra) &&
+	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
+	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
+	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
+      
+      
+      int coords[3];
+      
+      targetCoords3D(coords,tc_Nall,index);
+      
+      ic=coords[0]-tc_nhalo+1;
+      jc=coords[1]-tc_nhalo+1;
+      kc=coords[2]-tc_nhalo+1;
+
+      x = tc_noffset[X]+ic;
+      y = tc_noffset[Y]+jc;
+      z = tc_noffset[Z]+kc;
+      
+      
+      if (map->status[index] != MAP_FLUID) {
+	u[X] = 0.0;
+	u[Y] = 0.0;
+	u[Z] = 0.0;
+	  
+	for (ia = 0; ia < 3; ia++) {
+	  hydro->u[addr_hydro(index, ia)] = u[ia];
+	}  
+      }
+      
+      p_c = NULL;
+      if (cinfo->map_new) p_c = cinfo->map_new[index];
+      
+      if (p_c) {
+	/* Set the lattice velocity here to the solid body
+	 * rotational velocity */
+	
+	rb[X] = x - p_c->s.r[X];
+	rb[Y] = y - p_c->s.r[Y];
+	rb[Z] = z - p_c->s.r[Z];
+	
+	u[X] = p_c->s.w[Y]*rb[Z] - p_c->s.w[Z]*rb[Y];
+	u[Y] = p_c->s.w[Z]*rb[X] - p_c->s.w[X]*rb[Z];
+	u[Z] = p_c->s.w[X]*rb[Y] - p_c->s.w[Y]*rb[X];
+
+	u[X] += p_c->s.v[X];
+	u[Y] += p_c->s.v[Y];
+	u[Z] += p_c->s.v[Z];
+
+	for (ia = 0; ia < 3; ia++) {
+	  hydro->u[addr_hydro(index, ia)] = u[ia];
+	}
+      }
+    }
+  }
+  
+  return;
+}
+

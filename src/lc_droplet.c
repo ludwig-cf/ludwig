@@ -10,6 +10,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing authors:
+ *  Juho Lituvuori
+ *
  *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
@@ -27,88 +30,155 @@
 #include "leesedwards.h"
 #include "lc_droplet.h"
 
+static fe_vt_t fe_drop_hvt = {
+  (fe_free_ft)      fe_lc_droplet_free,
+  (fe_target_ft)    fe_lc_droplet_target,
+  (fe_fed_ft)       fe_lc_droplet_fed,
+  (fe_mu_ft)        fe_lc_droplet_mu,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_lc_droplet_stress,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   fe_lc_droplet_mol_field,
+  (fe_htensor_v_ft) NULL
+};
 
-static double gamma0_; /* \gamma(\phi) = gamma0_ + delta(1 + \phi)*/
-static double delta_;  /* For above */
-static double W_;      /* Coupling or anchoring constant */
+static __constant__ fe_vt_t fe_drop_dvt = {
+  (fe_free_ft)      NULL,
+  (fe_target_ft)    NULL,
+  (fe_fed_ft)       fe_lc_droplet_fed,
+  (fe_mu_ft)        fe_lc_droplet_mu,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_lc_droplet_stress,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   fe_lc_droplet_mol_field,
+  (fe_htensor_v_ft) NULL
+};
 
-static field_t * q_ = NULL;
-static field_grad_t * grad_q_ = NULL;
-static field_t * phi_ = NULL;
-static field_grad_t * grad_phi_ = NULL;
+__host__ __device__
+int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe, int index, double h[3][3]);
+
+__host__ __device__
+int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
+				   double sth[3][3]);
+__host__ __device__
+int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
+				       double sth[3][3]);
+
+static __constant__ fe_lc_droplet_param_t const_param;
 
 /*****************************************************************************
  *
- *  lc_droplet_phi_set
- *
- *  Attach a reference to the order parameter field object, and the
- *  associated gradient object.
+ *  fe_lc_droplet_create
  *
  *****************************************************************************/
 
-int lc_droplet_phi_set(field_t * phi, field_grad_t * dphi) {
+__host__ int fe_lc_droplet_create(fe_lc_t * lc, fe_symm_t * symm,
+				  fe_lc_droplet_t ** p) {
 
-  assert(phi);
-  assert(dphi);
-  
-  phi_ = phi;
-  grad_phi_ = dphi;
-#ifndef OLD_SHIT
-  assert(0);
-#else
-  symmetric_phi_set(phi, dphi);
-#endif
+  int ndevice;
+  fe_lc_droplet_t * fe = NULL;
+
+  assert(lc);
+  assert(symm);
+
+  fe = (fe_lc_droplet_t *) calloc(1, sizeof(fe_lc_droplet_t));
+  if (fe == NULL) fatal("calloc(fe_lc_droplet_t) failed\n");
+
+  fe->param = (fe_lc_droplet_param_t *) calloc(1, sizeof(fe_lc_droplet_param_t));
+  if (fe->param == NULL) fatal("calloc(fe_lc_droplet_param_t) failed\n");
+
+  fe->lc = lc;
+  fe->symm = symm;
+
+  fe->super.func = &fe_drop_hvt;
+  fe->super.id = FE_LC_DROPLET;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    fe->target = fe;
+  }
+  else {
+    fe_lc_droplet_param_t * tmp;
+    fe_vt_t * vt;
+    targetCalloc((void **) &fe->target, sizeof(fe_lc_droplet_t));
+    targetConstAddress(&tmp, const_param);
+    copyToTarget(&fe->target->param, tmp, sizeof(fe_lc_droplet_param_t *));
+    targetConstAddress(&vt, fe_drop_dvt);
+    copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
+    assert(0); /* Needs testing */
+  }
+
+  *p = fe;
+
   return 0;
 }
 
 /*****************************************************************************
  *
- *  lc_droplet_q_set
- *
- *  Attach a reference to the order parameter tensor object, and the
- *  associated gradient object.
+ *  fe_lc_droplet_free
  *
  *****************************************************************************/
 
-int lc_droplet_q_set(field_t * q, field_grad_t * dq) {
+__host__ int fe_lc_droplet_free(fe_lc_droplet_t * fe) {
 
-  assert(q);
-  assert(dq);
-  
-  q_ = q;
-  grad_q_ = dq;
-  blue_phase_q_set(q, dq);
-  
+  assert(fe);
+
+  if (fe->target != fe) targetFree(fe->target);
+
+  free(fe->param);
+  free(fe);
+
   return 0;
 }
-    
 
 /*****************************************************************************
  *
- *  lc_droplet_set_parameters
- *
- *  Set the parameters.
+ *  fe_lc_droplet_param
  *
  *****************************************************************************/
 
-void lc_droplet_set_parameters(double gamma0, double delta, double W) {
+__host__
+int fe_lc_droplet_param(fe_lc_droplet_t * fe, fe_lc_droplet_param_t * param) {
 
-  gamma0_ = gamma0;
-  delta_ = delta;
-  W_ = W;
+  assert(fe);
+  assert(param);
 
-  return;
+  *param = *fe->param;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  lc_droplet_get_gamma0
+ *  fe_lc_droplet_param_set
  *
  *****************************************************************************/
 
-double lc_droplet_get_gamma0(void) {
+__host__ int fe_lc_droplet_param_set(fe_lc_droplet_t * fe,
+				     fe_lc_droplet_param_t param) {
 
-  return gamma0_;
+  assert(fe);
+
+  *fe->param = param;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_droplet_target
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_droplet_target(fe_lc_droplet_t * fe, fe_t ** target) {
+
+  assert(fe);
+  assert(target);
+
+  *target = (fe_t *) fe->target;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -121,78 +191,58 @@ double lc_droplet_get_gamma0(void) {
  *
  *****************************************************************************/
 
-double lc_droplet_free_energy_density(const int index) {
-  
-  double f;
-  double phi;
+int fe_lc_droplet_fed(fe_lc_droplet_t * fe, int index, double * fed) {
+
+  int ia, ib;
+  double gamma;
   double q[3][3];
   double dphi[3];
-  double gamma;
+  double dq[3][3][3];
+  double fed_symm, fed_lc, fed_anch;
   
-  assert(phi_);
-  assert(q_);
-  assert(grad_phi_);
-    
-  field_scalar(phi_, index, &phi);
-  field_tensor(q_, index, q);
+  assert(fe);
 
-  field_grad_scalar_grad(grad_phi_, index, dphi);
-  
-  gamma = lc_droplet_gamma_calculate(phi);
-  blue_phase_set_gamma(gamma);
-#ifndef OLD_SHIT
-  assert(0);
-  f = 0.0;
-#else
-  f = symmetric_free_energy_density(index);
-  f += blue_phase_free_energy_density(index);
-  f += lc_droplet_anchoring_energy_density(q, dphi);
-#endif
-  return f;
+  fe_symm_fed(fe->symm, index, &fed_symm);
+
+  field_tensor(fe->lc->q, index, q);
+  field_grad_scalar_grad(fe->symm->dphi, index, dphi);
+  field_grad_tensor_grad(fe->lc->dq, index, dq);
+
+  fe_lc_droplet_gamma(fe, index, &gamma);
+  fe_lc_compute_fed(fe->lc, gamma, q, dq, &fed_lc);
+
+  fed_anch = 0.0;
+  for (ia = 0; ia < 3; ia++){
+    for (ib = 0; ib < 3; ib++){
+      fed_anch += q[ia][ib]*dphi[ia]*dphi[ib];
+    }
+  }
+
+  *fed = fed_symm + fed_lc + fe->param->w*fed_anch;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  lc_droplet_gamma
  *
- *  calculate: gamma = gamma0 + delta * (1 + phi)
+ *  gamma = gamma0 + delta * (1 + phi). Remember phi = phi(r).
  *
  *****************************************************************************/
 
-double lc_droplet_gamma_calculate(const double phi) {
-  
-  double gamma;
-  
-  gamma = gamma0_ + delta_ * (1.0 + phi);
-  
-  return gamma;
-}
+__host__ __device__ int fe_lc_droplet_gamma(fe_lc_droplet_t * fe, int index,
+					    double * gamma) {
 
-/*****************************************************************************
- *
- *  lc_droplet_anchoring_energy_density
- *
- *  Return the free energy density of anchoring at the interface
- *
- *  f = W Q dphi dphi
- *
- *****************************************************************************/
+  double phi;
+  assert(fe);
+  assert(gamma);
 
-double lc_droplet_anchoring_energy_density(double q[3][3], double dphi[3]) {
+  field_scalar(fe->symm->phi, index, &phi);
+
+  *gamma = fe->param->gamma0 + fe->param->delta*(1.0 + phi);
   
-  double f;
-  int ia, ib;
-  
-  f = 0.0;
-  
-  for (ia = 0; ia < 3; ia++){
-    for (ib = 0; ib < 3; ib++){
-      f += q[ia][ib] * dphi[ia] * dphi[ib];
-    }
-  }
-  f = W_ * f;
-  
-  return f;
+  return 0;
 }
   
 /*****************************************************************************
@@ -203,23 +253,29 @@ double lc_droplet_anchoring_energy_density(double q[3][3], double dphi[3]) {
  *
  *****************************************************************************/
 
-void lc_droplet_molecular_field(const int index, double h[3][3]) {
+__host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
+						int index, double h[3][3]) {
   
-  double h1[3][3], h2[3][3];
   int ia,ib;
+  double q[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+  double h1[3][3], h2[3][3];
   double phi;
   double gamma;
   
-  assert(phi_);
-  
-  field_scalar(phi_, index, &phi);
-  gamma = lc_droplet_gamma_calculate(phi);
+  assert(fe);
 
-  blue_phase_set_gamma(gamma);
+  field_scalar(fe->symm->phi, index, &phi);
+  fe_lc_droplet_gamma(fe, index, &gamma);
+
+  field_tensor(fe->lc->q, index, q);
+  field_grad_tensor_grad(fe->lc->dq, index, dq);
+  field_grad_tensor_delsq(fe->lc->dq, index, dsq);
+
+  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h1);
   
-  blue_phase_molecular_field(index, h1);
-  
-  lc_droplet_anchoring_molecular_field(index, h2);
+  fe_lc_droplet_anchoring_h(fe, index, h2);
     
   for (ia = 0; ia < 3; ia++){
     for(ib = 0; ib < 3; ib++){
@@ -227,37 +283,42 @@ void lc_droplet_molecular_field(const int index, double h[3][3]) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  lc_droplet_anchoring_molecular_field
+ *  fe_lc_droplet_anchoring_h
  *
  *  Return the molcular field h[3][3] at lattice site index.
  *
  *****************************************************************************/
 
-void lc_droplet_anchoring_molecular_field(const int index, double h[3][3]) {
+__host__ __device__ int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe,
+						  int index, double h[3][3]) {
   
+  int ia, ib;
   double dphi[3];
   double delsq_phi;
-  int ia, ib;
   double dphi2;
+  const double r3 = (1.0/3.0);
+
+  assert(fe);
   
-  field_grad_scalar_grad(grad_phi_, index, dphi);
-  field_grad_scalar_delsq(grad_phi_, index, &delsq_phi);
-  
+  field_grad_scalar_grad(fe->symm->dphi, index, dphi);
+  field_grad_scalar_delsq(fe->symm->dphi, index, &delsq_phi);
+
   dphi2 = dphi[X]*dphi[X] + dphi[Y]*dphi[Y] + dphi[Z]*dphi[Z];
 
   for (ia = 0; ia < 3; ia++){
     for (ib = 0; ib < 3; ib++){
-      h[ia][ib] = -W_*(dphi[ia]*dphi[ib] - r3_*d_[ia][ib]*dphi2);
+      h[ia][ib] = -fe->param->w*(dphi[ia]*dphi[ib] - r3*d_[ia][ib]*dphi2);
     }
   }
 
-  return;
+  return 0;
 }
+
 
 /*****************************************************************************
  *
@@ -273,9 +334,10 @@ void lc_droplet_anchoring_molecular_field(const int index, double h[3][3]) {
  *
  *****************************************************************************/
 
-double lc_droplet_chemical_potential(const int index, const int nop) {
+__host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
+					 double * mu) {
   
-  double mu;
+  int ia, ib, ic;
   double q[3][3];
   double dphi[3];
   double dq[3][3][3];
@@ -283,18 +345,15 @@ double lc_droplet_chemical_potential(const int index, const int nop) {
   double q2, q3;
   double wmu;
   double a0;
-  int ia, ib, ic;
-  
-  mu = 0;
-#ifndef OLD_SHIT
-  assert(0);
-#else
-  mu = symmetric_chemical_potential(index, nop);
-#endif
-  field_tensor(q_, index, q);
-  field_grad_tensor_grad(grad_q_, index, dq);
-  field_grad_scalar_grad(grad_phi_, index, dphi);
-  field_grad_scalar_dab(grad_phi_, index, dabphi);
+  double delta;
+  const double r3 = (1.0/3.0);
+
+  fe_symm_mu(fe->symm, index, mu);
+
+  field_tensor(fe->lc->q, index, q);
+  field_grad_tensor_grad(fe->lc->dq, index, dq);
+  field_grad_scalar_grad(fe->symm->dphi, index, dphi);
+  field_grad_scalar_dab(fe->symm->dphi, index, dabphi);
   
   q2 = 0.0;
 
@@ -318,150 +377,42 @@ double lc_droplet_chemical_potential(const int index, const int nop) {
       }
     }
   }
-  
+
   wmu = 0.0;
   for (ia = 0; ia < 3; ia++){
     for (ib = 0; ib < 3; ib++){
       wmu += (dphi[ia]*dq[ib][ia][ib] + q[ia][ib]*dabphi[ia][ib]);
     }
   }
-  
-  a0 = blue_phase_a0();
-  mu += -0.5*r3_*a0*delta_*q2 - r3_*a0*delta_*q3 + 0.25*a0*delta_*q2*q2
-    - 2.0*W_*wmu;
 
-  return mu;
+  a0 = fe->lc->param->a0;
+  delta = fe->param->delta;
+
+  *mu += -0.5*r3*a0*delta*q2 - r3*a0*delta*q3 + 0.25*a0*delta*q2*q2
+    - 2.0*fe->param->w*wmu;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  lc_droplet_bodyforce
- *
- *  This computes and stores the force on the fluid via
- *
- *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
- *
- *  this is appropriate for the LC droplets including symmtric and blue_phase 
- *  free energies. Additonal force terms are included in the stress tensor.
- *
- *  The gradient of the chemical potential is computed as
- *
- *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
- *
- *  Lees-Edwards planes are allowed for.
- *
- *****************************************************************************/
-  
-void lc_droplet_bodyforce(hydro_t * hydro) {
-
-  double h[3][3];
-  double q[3][3];
-  double dq[3][3][3];
-  double phi;
-    
-  int ic, jc, kc, icm1, icp1;
-  int ia, ib;
-  int index0, indexm1, indexp1;
-  int nhalo;
-  int nlocal[3];
-  int zs, ys;
-  double mum1, mup1;
-  double force[3];
-  
-  assert(phi_);
-  
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  assert(nhalo >= 2);
-
-  /* Memory strides */
-
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = le_site_index(ic, jc, kc);
-	
-	field_scalar(phi_, index0, &phi);
-	field_tensor(q_, index0, q);
-  
-	field_grad_tensor_grad(grad_q_, index0, dq);
-	lc_droplet_molecular_field(index0, h);
-  
-        indexm1 = le_site_index(icm1, jc, kc);
-        indexp1 = le_site_index(icp1, jc, kc);
-
-        mum1 = lc_droplet_chemical_potential(indexm1, 0);
-        mup1 = lc_droplet_chemical_potential(indexp1, 0);
-	
-	/* X */
-
-	force[X] = - phi*0.5*(mup1 - mum1);
-	
-	for (ia = 0; ia < 3; ia++ ) {
-	  for(ib = 0; ib < 3; ib++ ) {
-	    force[X] -= h[ia][ib]*dq[X][ia][ib];
-	  }
-	}
-	
-	/* Y */
-
-	mum1 = lc_droplet_chemical_potential(index0 - ys, 0);
-        mup1 = lc_droplet_chemical_potential(index0 + ys, 0);
-
-        force[Y] = -phi*0.5*(mup1 - mum1);
-	
-	for (ia = 0; ia < 3; ia++ ) {
-	  for(ib = 0; ib < 3; ib++ ) {
-	    force[Y] -= h[ia][ib]*dq[Y][ia][ib];
-	  }
-	}
-
-	/* Z */
-
-	mum1 = lc_droplet_chemical_potential(index0 - zs, 0);
-        mup1 = lc_droplet_chemical_potential(index0 + zs, 0);
-
-        force[Z] = -phi*0.5*(mup1 - mum1);
-	
-	for (ia = 0; ia < 3; ia++ ) {
-	  for(ib = 0; ib < 3; ib++ ) {
-	    force[Z] -= h[ia][ib]*dq[Z][ia][ib];
-	  }
-	}
-
-	/* Store the force on lattice */
-
-	hydro_f_local_add(hydro, index0, force);
-	
-      }
-    }
-  }
-  return;
-}
-
-/*****************************************************************************
- *
- *  lc_droplet_chemical_stress
+ *  fe_lc_droplet_stress
  *
  *  Return the chemical stress sth[3][3] at lattice site index.
  *
  *****************************************************************************/
 
-void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
+__host__ __device__ int fe_lc_droplet_stress(fe_lc_droplet_t * fe,
+					     int index, double sth[3][3]) {
 
+  int ia, ib;
   double s1[3][3];
   double s2[3][3];
-  int ia, ib;
 
-  lc_droplet_symmetric_stress(index, s1);
-  lc_droplet_antisymmetric_stress(index, s2);
+  assert(fe);
+
+  fe_lc_droplet_symmetric_stress(fe, index, s1);
+  fe_lc_droplet_antisymmetric_stress(fe, index, s2);
 
   for (ia = 0; ia < 3; ia++){
     for(ib = 0; ib < 3; ib++){
@@ -469,16 +420,19 @@ void lc_droplet_chemical_stress(const int index, double sth[3][3]) {
     }
   }
 
-  return;
+  return 0;
 }
+
 
 /*****************************************************************************
  *
- *  lc_droplet_symmetric_stress
+ *  fe_lc_droplet_symmetric_stress
  *
  *****************************************************************************/
 
-void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
+__host__ __device__
+int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
+				   double sth[3][3]){
 
   double q[3][3], dq[3][3][3];
   double h[3][3], dsq[3][3];
@@ -486,28 +440,23 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
   int ia, ib, ic;
   double qh;
   double gamma;
-  double xi_, zeta_;
-  
-  xi_ = blue_phase_get_xi();
-  zeta_ = blue_phase_get_zeta();
+  double xi, zeta;
+  const double r3 = (1.0/3.0);
+
+  xi = fe->lc->param->xi;
+  zeta = fe->lc->param->zeta;
   
   /* No redshift at the moment */
   
-  field_scalar(phi_, index, &phi);
-  field_tensor(q_, index, q);
+  field_scalar(fe->symm->phi, index, &phi);
+  field_tensor(fe->lc->q, index, q);
 
-  gamma = lc_droplet_gamma_calculate(phi);
-  blue_phase_set_gamma(gamma);
+  fe_lc_droplet_gamma(fe, index, &gamma);
   
-  field_grad_tensor_grad(grad_q_, index, dq);
-  field_grad_tensor_delsq(grad_q_, index, dsq);
+  field_grad_tensor_grad(fe->lc->dq, index, dq);
+  field_grad_tensor_delsq(fe->lc->dq, index, dsq);
 
-  //we are doing this on the host
-  blue_phase_set_kernel_constants();
-  void* pcon=NULL;
-  blue_phase_host_constant_ptr(&pcon);
-
-  blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
+  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h);
   
   qh = 0.0;
 
@@ -523,7 +472,7 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
   
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] = 2.0*xi_*(q[ia][ib] + r3_*d_[ia][ib])*qh;
+      sth[ia][ib] = 2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*qh;
     }
   }
 
@@ -533,17 +482,17 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] +=
-	  -xi_*h[ia][ic]*(q[ib][ic] + r3_*d_[ib][ic])
-	  -xi_*(q[ia][ic] + r3_*d_[ia][ic])*h[ib][ic];
+	  -xi*h[ia][ic]*(q[ib][ic] + r3*d_[ib][ic])
+	  -xi*(q[ia][ic] + r3*d_[ia][ic])*h[ib][ic];
       }
     }
   }
 
-  /* Additional active stress -zeta*(q_ab - 1/3 d_ab)Â */
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab)Â */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] -= zeta_*(q[ia][ib] + r3_*d_[ia][ib]);
+      sth[ia][ib] -= zeta*(q[ia][ib] + r3*d_[ia][ib]);
     }
   }
 
@@ -555,40 +504,38 @@ void lc_droplet_symmetric_stress(const int index, double sth[3][3]){
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  lc_droplet_antisymmetric_stress
+ *  fe_lc_droplet_antisymmetric_stress
  *
  *****************************************************************************/
 
-void lc_droplet_antisymmetric_stress(const int index, double sth[3][3]) {
+__host__ __device__
+int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
+				       double sth[3][3]) {
 
+  int ia, ib, ic;
   double q[3][3], dq[3][3][3];
   double h[3][3], dsq[3][3];
   double phi;
-  int ia, ib, ic;
   double gamma;
-  
+
+  assert(fe);
+
   /* No redshift at the moment */
   
-  field_scalar(phi_, index, &phi);
-  field_tensor(q_, index, q);
+  field_scalar(fe->symm->phi, index, &phi);
+  field_tensor(fe->lc->q, index, q);
 
-  gamma = lc_droplet_gamma_calculate(phi);
-  blue_phase_set_gamma(gamma);
-  
-  field_grad_tensor_grad(grad_q_, index, dq);
-  field_grad_tensor_delsq(grad_q_, index, dsq);
+  fe_lc_droplet_gamma(fe, index, &gamma);
 
-  //we are doing this on the host
-  blue_phase_set_kernel_constants();
-  void* pcon=NULL;
-  blue_phase_host_constant_ptr(&pcon);
+  field_grad_tensor_grad(fe->lc->dq, index, dq);
+  field_grad_tensor_delsq(fe->lc->dq, index, dsq);
 
-  blue_phase_compute_h(q, dq, dsq, h, (bluePhaseKernelConstants_t*) pcon);
+  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -613,6 +560,117 @@ void lc_droplet_antisymmetric_stress(const int index, double sth[3][3]) {
     }
   }
 
-  return;
+  return 0;
 }
 
+/*****************************************************************************
+ *
+ *  fe_lc_droplet_bodyforce
+ *
+ *  This computes and stores the force on the fluid via
+ *
+ *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
+ *
+ *  this is appropriate for the LC droplets including symmtric and blue_phase 
+ *  free energies. Additonal force terms are included in the stress tensor.
+ *
+ *  The gradient of the chemical potential is computed as
+ *
+ *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
+ *
+ *  Lees-Edwards planes are allowed for.
+ *
+ *****************************************************************************/
+  
+int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
+
+  int ic, jc, kc, icm1, icp1;
+  int ia, ib;
+  int index0, indexm1, indexp1;
+  int nhalo;
+  int nlocal[3];
+  int zs, ys;
+  double mum1, mup1;
+  double force[3];
+
+  double h[3][3];
+  double q[3][3];
+  double dq[3][3][3];
+  double phi;
+  
+  nhalo = coords_nhalo();
+  coords_nlocal(nlocal);
+  assert(nhalo >= 2);
+
+  /* Memory strides */
+
+  zs = 1;
+  ys = (nlocal[Z] + 2*nhalo)*zs;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
+    
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = le_site_index(ic, jc, kc);
+	
+	field_scalar(fe->symm->phi, index0, &phi);
+	field_tensor(fe->lc->q, index0, q);
+  
+	field_grad_tensor_grad(fe->lc->dq, index0, dq);
+	fe_lc_droplet_mol_field(fe, index0, h);
+  
+        indexm1 = le_site_index(icm1, jc, kc);
+        indexp1 = le_site_index(icp1, jc, kc);
+
+	fe_lc_droplet_mu(fe, indexm1, &mum1);
+        fe_lc_droplet_mu(fe, indexp1, &mup1);
+	
+	/* X */
+
+	force[X] = - phi*0.5*(mup1 - mum1);
+	
+	for (ia = 0; ia < 3; ia++ ) {
+	  for(ib = 0; ib < 3; ib++ ) {
+	    force[X] -= h[ia][ib]*dq[X][ia][ib];
+	  }
+	}
+	
+	/* Y */
+
+	fe_lc_droplet_mu(fe, index0 - ys, &mum1);
+        fe_lc_droplet_mu(fe, index0 + ys, &mup1);
+
+        force[Y] = -phi*0.5*(mup1 - mum1);
+	
+	for (ia = 0; ia < 3; ia++ ) {
+	  for(ib = 0; ib < 3; ib++ ) {
+	    force[Y] -= h[ia][ib]*dq[Y][ia][ib];
+	  }
+	}
+
+	/* Z */
+
+	fe_lc_droplet_mu(fe, index0 - zs, &mum1);
+        fe_lc_droplet_mu(fe, index0 + zs, &mup1);
+
+        force[Z] = -phi*0.5*(mup1 - mum1);
+	
+	for (ia = 0; ia < 3; ia++ ) {
+	  for(ib = 0; ib < 3; ib++ ) {
+	    force[Z] -= h[ia][ib]*dq[Z][ia][ib];
+	  }
+	}
+
+	/* Store the force on lattice */
+
+	hydro_f_local_add(hydro, index0, force);
+	
+      }
+    }
+  }
+
+  return 0;
+}

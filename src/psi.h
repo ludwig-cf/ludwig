@@ -18,11 +18,25 @@
 #include "io_harness.h"
 #include "map.h"
 
+/* PSI_NKMAX is here to allow us to declare arrays to hold
+ * per-species quantities. It avoids allocation of  short arrays,
+ * which is slightly tedious, particularly on the device. */
+
+#define PSI_NKMAX 2
+
+/* Force computation method */
+
+enum psi_force_method {PSI_FORCE_NONE = 0,
+		       PSI_FORCE_DIVERGENCE,
+		       PSI_FORCE_GRADMU,
+		       PSI_FORCE_NTYPES
+};
+
 typedef struct psi_s psi_t;
 
 /* f_vare_t describes the signature of the function expected
-* to return the permittivity as a function of position index. */
-typedef int (* f_vare_t)(int index, double * epsilon);
+ * to return the permittivity as a function of position index. */
+typedef int (* f_vare_t)(void * fe, int index, double * epsilon);
 
 int psi_create(int nk, psi_t ** pobj);
 void psi_free(psi_t * obj);
@@ -73,5 +87,6 @@ int psi_diffacc_set(psi_t * obj, double diffacc);
 int psi_skipsteps(psi_t * obj);
 int psi_skipsteps_set(psi_t * obj, double skipsteps);
 int psi_zero_mean(psi_t * obj);
-
+int psi_force_method(psi_t * obj, int * flag);
+int psi_force_method_set(psi_t * obj, int flag);
 #endif

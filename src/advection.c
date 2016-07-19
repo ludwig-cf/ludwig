@@ -664,6 +664,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	for (n = 0; n < nf; n++) {	    
 	  __targetILP__(iv) {
+	    if (includeSite[iv]) {
 	    if (u[iv] > 0.0) {
 	      index2[iv] = targetIndex3D(icm2[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
@@ -673,6 +674,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	      index2[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
 	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	    }
 	    }
 	  }
 	
@@ -704,6 +706,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	for (n = 0; n < nf; n++) {
 	  __targetILP__(iv) {
+	    if (includeSite[iv]) {
 	    if (u[iv] < 0.0) {
 	      index2[iv] = targetIndex3D(icp2[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
@@ -713,6 +716,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	      index2[iv] = targetIndex3D(icm1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
 	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	    }
 	    }
 	  }
 	
@@ -745,6 +749,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	for (n = 0; n < nf; n++) {
 	  __targetILP__(iv) {
+	    if (includeSite[iv]) {
 	    if (u[iv] < 0.0) {
 	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+2,coordschunk[Z][iv],tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
@@ -754,6 +759,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
 	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	    }
 	    }
 	  }
 
@@ -785,6 +791,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 
 	for (n = 0; n < nf; n++) {	    
 	  __targetILP__(iv) {
+	    if (includeSite[iv]) {
 	    if (u[iv] < 0.0) {
 	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+2,tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
@@ -794,6 +801,7 @@ __targetEntry__ void advection_le_3rd_lattice(advflux_t * flux,
 	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
 	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
 	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	    }
 	    }
 	  }
 	

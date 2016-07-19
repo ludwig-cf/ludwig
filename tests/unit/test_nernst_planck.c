@@ -7,8 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich (o.henrich@ucl.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -114,6 +117,7 @@ static int do_test_gouy_chapman(void) {
   map_t * map = NULL;
   psi_t * psi = NULL;
   physics_t * phys = NULL;
+  fe_electro_t * fe = NULL;
 
   physics_ref(&phys);
   coords_nhalo_set(1);
@@ -142,7 +146,7 @@ static int do_test_gouy_chapman(void) {
   psi_epsilon_set(psi, epsilon);
   psi_beta_set(psi, beta);
 
-  fe_electro_create(psi);
+  fe_electro_create(psi, &fe);
 
   /* wall charge density */
   rho_w = 1.e+0 / (2.0*L(Y)*L(Z));
@@ -205,7 +209,7 @@ static int do_test_gouy_chapman(void) {
     psi_sor_poisson(psi);
     psi_halo_rho(psi);
     /* The test is run with no hydrodynamics, hence NULL here. */
-    nernst_planck_driver(psi, NULL, map);
+    nernst_planck_driver(psi, (fe_t *) fe, NULL, map);
 
     if (tstep % 1000 == 0) {
 
@@ -247,7 +251,7 @@ static int do_test_gouy_chapman(void) {
   assert(fabs(yd     - 5.1997576e-05) < FLT_EPSILON);
 
   map_free(map);
-  fe_electro_free();
+  fe_electro_free(fe);
   psi_free(psi);
   coords_finish();
   physics_free();

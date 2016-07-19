@@ -56,7 +56,6 @@ int tests_create() {
   test_be_suite();
   test_bond_fene_suite();
   test_bonds_suite();
-  test_bp_suite();
   test_build_suite();
   test_colloid_suite();
   test_colloid_sums_suite();
@@ -78,7 +77,6 @@ int tests_create() {
   test_pair_lj_cut_suite();
   test_pair_ss_cut_suite();
   test_pair_yukawa_suite();
-  test_phi_ch_suite();
   test_polar_active_suite();
   test_psi_suite();
   test_lb_prop_suite();
@@ -91,6 +89,8 @@ int tests_create() {
 
   /* test_nernst_planck_suite(); */
   /* test_psi_sor_suite();*/
+  /* test_phi_ch_suite(); replace by advection without CH */
+  /* test_bp_suite(); Needs attention to electric field */
 
 
   return 0;

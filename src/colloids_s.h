@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -16,6 +16,8 @@
 #define COLLOIDS_S_H
 
 #include <mpi.h>
+#include "colloids.h"
+
 
 struct colloids_info_s {
   int nhalo;                  /* Halo extent in cell list */
