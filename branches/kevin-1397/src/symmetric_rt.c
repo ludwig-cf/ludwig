@@ -24,6 +24,7 @@
 #include "runtime.h"
 #include "symmetric.h"
 
+#include "gradient_3d_27pt_solid.h"
 #include "physics.h"
 #include "util.h"
 
@@ -32,8 +33,8 @@
 #define  DEFAULT_PATCH_VOL  0.5
 #define  DEFAULT_RADIUS     8.0
 
-static int symmetric_init_block(field_t * phi, double xi0);
-static int symmetric_init_bath(field_t * phi);
+int symmetric_init_block(field_t * phi, double xi0);
+int symmetric_init_bath(field_t * phi);
 int symmetric_init_spinodal(field_t * phi);
 int symmetric_init_spinodal_patches(field_t * phi);
 int symmetric_init_drop(field_t * fphi, double xi0, double radius);
@@ -44,16 +45,12 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius);
  *
  ****************************************************************************/
 
-int fe_symmetric_run_time(field_t * phi, field_grad_t * dphi, fe_t ** fe) {
-
-  fe_symm_t * fsymm = NULL;
-  fe_symm_param_t param;
+int fe_symmetric_run_time(fe_symm_t * fe) {
 
   double sigma;
   double xi;
+  fe_symm_param_t param;
 
-  assert(phi);
-  assert(dphi);
   assert(fe);
 
   info("Symmetric phi^4 free energy selected.\n");
@@ -70,25 +67,16 @@ int fe_symmetric_run_time(field_t * phi, field_grad_t * dphi, fe_t ** fe) {
   info("Bulk parameter B      = %12.5e\n", param.b);
   info("Surface penalty kappa = %12.5e\n", param.kappa);
 
-  fe_symm_create(phi, dphi, &fsymm);
-  fe_symm_param_set(fsymm, param);
+  fe_symm_param_set(fe, param);
 
-  fe_symm_interfacial_tension(fsymm, &sigma);
-  fe_symm_interfacial_width(fsymm, &xi);
+  fe_symm_interfacial_tension(fe, &sigma);
+  fe_symm_interfacial_width(fe, &xi);
 
   info("Surface tension       = %12.5e\n", sigma);
   info("Interfacial width     = %12.5e\n", xi);
 
-  /* Set free energy function pointers. */
-  /*
-  fe_density_set(fe_symm_fed);
-  fe_chemical_potential_set(fe_symm_mu);
-  fe_isotropic_pressure_set(fe_symm_isotropic_pressure);
-  fe_chemical_stress_set(fe_symm_str);
-  */
-  assert(0);
-
-  *fe = fsymm;
+  /* Initialise */
+  grad_3d_27pt_solid_fe_set(fe);
 
   return 0;
 }
@@ -101,18 +89,36 @@ int fe_symmetric_run_time(field_t * phi, field_grad_t * dphi, fe_t ** fe) {
 
 int fe_symmetric_rt_initial_conditions(fe_symm_t * fe, field_t * phi) {
 
-  int p;
-  char value[BUFSIZ];
-  char filestub[FILENAME_MAX];
-  double radius;
   double xi;
-
-  io_info_t * iohandler = NULL;
+  int field_phi_rt(field_t * phi, double xi); /* SHIT sort interface */
 
   assert(fe);
   assert(phi);
 
   fe_symm_interfacial_width(fe, &xi);
+  field_phi_rt(phi, xi);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_phi_rt
+ *
+ *  Initial choices for compositional order parameter.
+ *
+ *****************************************************************************/
+
+int field_phi_rt(field_t * phi, double xi) {
+
+  int p;
+  char value[BUFSIZ];
+  char filestub[FILENAME_MAX];
+  double radius;
+
+  io_info_t * iohandler = NULL;
+
+  assert(phi);
 
   p = RUN_get_string_parameter("phi_initialisation", value, BUFSIZ);
 
@@ -217,7 +223,7 @@ int symmetric_init_drop(field_t * fphi, double xi0, double radius) {
  *
  *****************************************************************************/
 
-static int symmetric_init_block(field_t * phi, double xi0) {
+int symmetric_init_block(field_t * phi, double xi0) {
 
   int nlocal[3];
   int noffset[3];
@@ -262,7 +268,7 @@ static int symmetric_init_block(field_t * phi, double xi0) {
  *
  *****************************************************************************/
 
-static int symmetric_init_bath(field_t * phi) {
+int symmetric_init_bath(field_t * phi) {
 
   int nlocal[3];
   int noffset[3];

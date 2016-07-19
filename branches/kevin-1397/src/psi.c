@@ -1218,3 +1218,35 @@ int psi_halo_psijump(psi_t * psi) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  psi_force_method
+ *
+ *****************************************************************************/
+
+int psi_force_method(psi_t * psi, int * flag) {
+
+  assert(psi);
+
+  *flag = psi->method;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_force_method
+ *
+ *****************************************************************************/
+
+int psi_force_method_set(psi_t * psi, int flag) {
+
+  assert(psi);
+  assert(flag >= 0 && flag < PSI_FORCE_NTYPES);
+
+  psi->method = flag;
+
+  return 0;
+}
+

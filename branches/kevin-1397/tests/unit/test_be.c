@@ -86,7 +86,7 @@ static int do_test_be_tmatrix(void) {
   double sum, dij;
   double t[3][3][NQAB];
 
-  beris_edw_tmatrix_set(t);
+  beris_edw_tmatrix(t);
 
   for (i = 0; i < NQAB; i++) {
     for (j = 0; j < NQAB; j++) {

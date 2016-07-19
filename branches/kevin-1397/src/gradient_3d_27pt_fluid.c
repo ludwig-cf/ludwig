@@ -93,7 +93,7 @@ __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
-  assert(0); /* Do we need this to work for d4? */
+  assert(0); /* We need this to work for d4. See 2d_5pt. */
   grad_3d_27pt_fluid_operator(fgrad, nextra);
   grad_3d_27pt_fluid_le_correction(fgrad, nextra);
   grad_3d_27pt_fluid_wall_correction(fgrad, nextra);
@@ -500,6 +500,9 @@ __host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
 	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
 	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
 	}
+	/* SHIT
+	   printf("%2d %2d %2d %14.7e %14.7e %14.7e\n", ic, jc, kc, grad[addr_rank2(nsites, 1, 3, index,0, X)], grad[addr_rank2(nsites,1,3,index,0,Y)], grad[nsites, 1,3, index, 0,X]);*/
+	/* Halo region z wrong in 2d? */
 	}
       }
     }

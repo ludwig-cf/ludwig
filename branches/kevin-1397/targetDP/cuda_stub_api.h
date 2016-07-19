@@ -100,7 +100,8 @@ __host__ __device__ cudaError_t cudaGetDevice(int * device);
 __host__ __device__ cudaError_t cudaGetDeviceCount(int * count);
 __host__ __device__ const char* cudaGetErrorString(cudaError_t error);
 __host__ __device__ cudaError_t cudaGetLastError(void);
-
+__host__            cudaError_t cudaGetSymbolAddress(void ** devPtr,
+						     const void * symbol);
 __host__ __device__ cudaError_t cudaHostAlloc(void ** phost, size_t size,
 					      unsigned int flags);
 __host__ __device__ cudaError_t cudaMalloc(void ** devRtr, size_t size);

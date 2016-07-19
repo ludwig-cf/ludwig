@@ -140,6 +140,35 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
  *
  *****************************************************************************/
 
+__host__
+int pth_stress_compute(pth_t * pth, fe_t * fe) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int nextra = 1;
+
+  double s[3][3];
+
+  assert(pth);
+  assert(fe);
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+	index = coords_index(ic, jc, kc);
+	fe->func->stress(fe, index, s);
+	pth_stress_set(pth, index, s);
+      }
+    }
+  }
+
+  return 0;
+}
+
+#ifdef OLD_SHIT
 __targetEntry__
 void chemical_stress_lattice(pth_t * pth, field_t * q, field_grad_t * qgrad,
 			     void * pcon,
@@ -167,7 +196,6 @@ void chemical_stress_lattice(pth_t * pth, field_t * q, field_grad_t * qgrad,
 
       { 
       
-
       if (isBPCS){
 	/* we are using blue_phase_chemical_stress which is ported to targetDP
 	 * for the time being we are explicitly calling
@@ -194,7 +222,6 @@ void chemical_stress_lattice(pth_t * pth, field_t * q, field_grad_t * qgrad,
 	chemical_stress(baseIndex, pth_local);
 	phi_force_stress_set(pth, baseIndex, pth_local); 
 #endif
-
       }
       
     }
@@ -258,6 +285,7 @@ int phi_force_stress_compute(pth_t * pth, field_t * q, field_grad_t * qgrad) {
  
   return 0;
 }
+#endif
 
 /*****************************************************************************
  *
@@ -266,7 +294,7 @@ int phi_force_stress_compute(pth_t * pth, field_t * q, field_grad_t * qgrad) {
  *****************************************************************************/
 
 __host__  __device__
-void phi_force_stress_set(pth_t * pth, int index, double p[3][3]) {
+void pth_stress_set(pth_t * pth, int index, double p[3][3]) {
 
   int ia, ib;
 
@@ -288,7 +316,7 @@ void phi_force_stress_set(pth_t * pth, int index, double p[3][3]) {
  *****************************************************************************/
 
 __host__  __device__
-void phi_force_stress(pth_t * pth, int index, double p[3][3]) {
+void pth_stress(pth_t * pth, int index, double p[3][3]) {
 
   int ia, ib;
 

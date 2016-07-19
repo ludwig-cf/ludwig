@@ -8,26 +8,48 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2009-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
-#ifndef BRAZOVSKII_H
-#define BRAZOVSKII_H
+#ifndef FE_BRAZOVSKII_H
+#define FE_BRAZOVSKII_H
 
+#include "memory.h"
+#include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
 
-int brazovskii_phi_set(field_t * phi, field_grad_t * phi_grad);
+typedef struct fe_brazovskii_s fe_brazovskii_t;
+typedef struct fe_brazovskii_param_s fe_brazovskii_param_t;
 
-void   brazovskii_free_energy_parameters_set(double a, double b, double kappa,
-					     double c);
-double brazovskii_amplitude(void);
-double brazovskii_wavelength(void);
-double brazovskii_free_energy_density(const int index);
-double brazovskii_chemical_potential(const int index, const int nop);
-double brazovskii_isotropic_pressure(const int index);
-void   brazovskii_chemical_stress(const int index, double s[3][3]);
+struct fe_brazovskii_param_s {
+  double a;
+  double b;
+  double c;
+  double kappa;
+};
+
+__host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
+				  fe_brazovskii_t ** p);
+__host__ int fe_brazovskii_free(fe_brazovskii_t * fe);
+__host__ int fe_brazovskii_param_set(fe_brazovskii_t * fe,
+				     fe_brazovskii_param_t param);
+__host__ int fe_brazovskii_target(fe_brazovskii_t * fe, fe_t ** target);
+
+/* Host / target functions */
+
+__host__ __device__ int fe_brazovskii_param(fe_brazovskii_t * fe,
+					    fe_brazovskii_param_t * param);
+__host__ __device__ int fe_brazovskii_amplitude(fe_brazovskii_t * fe,
+						double * a0);
+__host__ __device__ int fe_brazovskii_wavelength(fe_brazovskii_t * fe,
+						 double * lamb);
+__host__ __device__ int fe_brazovskii_fed(fe_brazovskii_t * fe, int index,
+					  double * fed);
+__host__ __device__ int fe_brazovskii_mu(fe_brazovskii_t * fe, int index,
+					 double * mu);
+__host__ __device__ int fe_brazovskii_str(fe_brazovskii_t * fe, int index,
+					  double s[3][3]);
 
 #endif
-

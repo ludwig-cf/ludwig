@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -35,7 +35,7 @@
  *
  *****************************************************************************/
 
-int stats_surfactant_1d(field_t * fphi) {
+int stats_surfactant_1d(fe_surfactant1_t * fe) {
 
   int index;
   int ic = 1, jc = 1, kc;
@@ -48,7 +48,7 @@ int stats_surfactant_1d(field_t * fphi) {
   /* This is not run in parallel, so assert it's serial.
    * We also require surfactant */
 
-  assert(fphi);
+  assert(fe);
   assert(0); /* Check nf = 2 in refactored version */
   assert(pe_size() == 1);
 
@@ -60,8 +60,10 @@ int stats_surfactant_1d(field_t * fphi) {
 
   kc = 1;
   index = coords_index(ic, jc, kc);
-  e0 = surfactant_free_energy_density(index);
-  field_scalar_array(fphi, index, phi);
+  fe_surfactant1_fed(fe, index, &e0);
+
+  /* field_scalar_array(fe->phi, index, phi);*/
+  assert(0); /* Incomplete type above*/
 
   psi_b = phi[1];
 
@@ -76,16 +78,17 @@ int stats_surfactant_1d(field_t * fphi) {
 
     index = coords_index(ic, jc, kc);
 
-    e = surfactant_free_energy_density(index);
+    fe_surfactant1_fed(fe, index, &e0);
     sigma += 0.5*(e - e0);
-    field_scalar_array(fphi, index, phi);
+    /* field_scalar_array(fe->phi, index, phi);*/
+    assert(0); /* Incomplete type above*/
     psi_0 = dmax(psi_0, phi[1]);
   }
 
   /* Compute the fractional reduction in the surface tension
    * below the bare surface value */
 
-  sigma0 = surfactant_interfacial_tension();
+  fe_surfactant1_sigma(fe, &sigma0);
   sigma = (sigma - sigma0)/sigma0;
 
   /* The sqrt(t) is the usual dependance for analysis of the

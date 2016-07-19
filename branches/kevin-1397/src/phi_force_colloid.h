@@ -21,7 +21,7 @@
 #include "map.h"
 #include "phi_force_stress.h"
 
-__host__ int phi_force_colloid(pth_t * pth, colloids_info_t * cinfo,
+__host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 			       field_t* q, field_grad_t* q_grad,
 			       hydro_t * hydro, map_t * map);
 

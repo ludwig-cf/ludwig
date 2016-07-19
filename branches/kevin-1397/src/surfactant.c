@@ -54,169 +54,199 @@
  * w_       = 0.0;
  */
 
-typedef struct fe_surfactant_s fe_surfactant_t;
-
-struct fe_surfactant_s {
-
-  field_t * phi;         /* Single field object with two components */
-  field_grad_t * grad;   /* gradients thereof */
-
-  double a;              /* Symmetric a */
-  double b;              /* Symmetric b */
-  double kappa;          /* Symmetric kappa */
-
-  double kt;             /* Not to be confused with physics_kt(). */
-  double epsilon;        /* Surfactant epsilon */
-  double beta;           /* Frumpkin isotherm */
-  double w;              /* Surfactant w */
-
+struct fe_surfactant1_s {
+  fe_t super;
+  fe_surfactant1_param_t * param;   /* Parameters */
+  field_t * phi;                    /* Single field with {phi,psi} */
+  field_grad_t * dphi;              /* gradients thereof */
+  fe_surfactant1_t * target;        /* Device copy */
 };
 
-static fe_surfactant_t * fe = NULL;
-
+static __constant__ fe_surfactant1_param_t const_param;
 
 /****************************************************************************
  *
- *  fe_surfactant_create
- *
- *  A single static instance
+ *  fe_surfactant1_create
  *
  ****************************************************************************/
 
-int fe_surfactant_create(field_t * phi, field_grad_t * grad) {
+int fe_surfactant1_create(field_t * phi, field_grad_t * grad,
+			  fe_surfactant1_t ** fe) {
 
-  assert(fe == NULL);
+  int ndevice;
+  fe_surfactant1_t * obj = NULL;
+
+  assert(fe);
   assert(phi);
   assert(grad);
 
-  fe = (fe_surfactant_t*) calloc(1, sizeof(fe_surfactant_t));
-  if (fe == NULL) fatal("calloc(fe_surfactant) failed\n");
+  obj = (fe_surfactant1_t *) calloc(1, sizeof(fe_surfactant1_t));
+  if (obj == NULL) fatal("calloc(fe_surfactant1_t) failed\n");
 
-  fe->phi = phi;
-  fe->grad = grad;
+  obj->phi = phi;
+  obj->dphi = grad;
+
+  assert(0); /* vtable required */
+
+  /* Allocate target memory, or alias */
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    fe_surfactant1_param_t * tmp;
+    targetCalloc((void **) &obj->target, sizeof(fe_surfactant1_t));
+    targetConstAddress(&tmp, const_param);
+    copyToTarget(&obj->target->param, tmp, sizeof(fe_surfactant1_param_t *));
+    /* Now copy. */
+    assert(0);
+  }
+
+  *fe = obj;
 
   return 0;
 }
 
 /****************************************************************************
  *
- *  fe_surfactant_free
+ *  fe_surfactant1_free
  *
  ****************************************************************************/
 
-void fe_surfactant_free(void) {
+__host__ int fe_surfactant1_free(fe_surfactant1_t * fe) {
 
-  if (fe) free(fe);
-  fe = NULL;
-
-  return;
-}
-
-/****************************************************************************
- *
- *  surfactant_fluid_parameters_set
- *
- ****************************************************************************/
-
-int surfactant_fluid_parameters_set(double a, double b, double kappa) {
+  int ndevice;
 
   assert(fe);
 
-  fe->a = a;
-  fe->b = b;
-  fe->kappa = kappa;
+  targetGetDeviceCount(&ndevice);
+  if (ndevice > 0) targetFree(fe->target);
+
+  free(fe->param);
+  free(fe);
 
   return 0;
 }
 
 /****************************************************************************
  *
- *  surfactant_parameters_set
+ *  fe_surfactant1_target
  *
  ****************************************************************************/
 
-int surfactant_parameters_set(double kt, double e, double beta, double w) {
+__host__ int fe_surfactant1_target(fe_surfactant1_t * fe, fe_t ** target) {
 
   assert(fe);
+  assert(target);
 
-  fe->kt = kt;
-  fe->epsilon = e;
-  fe->beta = beta;
-  fe->w = w;
+  *target = (fe_t *) fe->target;
 
   return 0;
 }
 
+/****************************************************************************
+ *
+ *  fe_surfactant1_param_set
+ *
+ ****************************************************************************/
+
+__host__ int fe_surfactant1_param_set(fe_surfactant1_t * fe,
+				      fe_surfactant1_param_t vals) {
+
+  assert(fe);
+
+  *fe->param = vals;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_surfactant1_param
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_surfactant1_param(fe_surfactant1_t * fe,
+					     fe_surfactant1_param_t * values) {
+  assert(fe);
+
+  *values = *fe->param;
+
+  return 0;
+}
 
 /****************************************************************************
  *
- *  surfactant_interfacial_tension
+ *  fe_surfactant1_sigma
  *
  *  Assumes phi^* = (-a/b)^1/2
  *
  ****************************************************************************/
 
-double surfactant_interfacial_tension(void) {
-
-  double a, b;
-  double sigma;
+__host__ __device__ int fe_surfactant1_sigma(fe_surfactant1_t * fe,
+					     double * sigma0) {
+  double a, b, kappa;
 
   assert(fe);
+  assert(sigma0);
 
-  a = fe->a;
-  b = fe->b;
+  a = fe->param->a;
+  b = fe->param->b;
+  kappa = fe->param->kappa;
 
-  sigma = sqrt(-8.0*fe->kappa*a*a*a/(9.0*b*b));
+  *sigma0 = sqrt(-8.0*kappa*a*a*a/(9.0*b*b));
 
-  return sigma;
+  return 0;
 }
 
 /****************************************************************************
  *
- *  surfactant_interfacial_width
+ *  fe_surfactant1_xi0
+ *
+ *  Interfacial width.
  *
  ****************************************************************************/
 
-double surfactant_interfacial_width(void) {
-
-  double xi;
-
+__host__ __device__ int fe_surfactant1_xi0(fe_surfactant1_t * fe,
+					   double * xi0) {
   assert(fe);
+  assert(xi0);
 
-  xi = sqrt(-2.0*fe->kappa/fe->a);
+  *xi0 = sqrt(-2.0*fe->param->kappa/fe->param->a);
 
-  return xi;
+  return 0;
 }
 
 /****************************************************************************
  *
- *  surfactant_langmuir_isotherm
+ *  fe_surfactant1_langmuir_isotherm
  *
  *  The Langmuir isotherm psi_c is given by
  *  
  *  ln psi_c = (1/2) epsilon / (kT xi_0^2)
  *
  *  and can be a useful reference. The situation is more complex if
- *  beta is not zero.
+ *  beta is not zero (Frumpkin isotherm).
  *
  ****************************************************************************/ 
 
-double surfactant_langmuir_isotherm(void) {
-
-  double psi_c;
+__host__ int fe_surfactant1_langmuir_isotherm(fe_surfactant1_t * fe,
+					      double * psi_c) {
   double xi0;
 
   assert(fe);
 
-  xi0 = surfactant_interfacial_width();
-  psi_c = exp(0.5*fe->epsilon / (fe->kt*xi0*xi0));
+  fe_surfactant1_xi0(fe, &xi0);
+  *psi_c = exp(0.5*fe->param->epsilon / (fe->param->kt*xi0*xi0));
 
-  return psi_c;
+  return 0;
 }
 
 /****************************************************************************
  *
- *  surfactant_free_energy_density
+ *  fe_surfactant1_fed
  *
  *  This is:
  *     (1/2)A \phi^2 + (1/4)B \phi^4 + (1/2) kappa (\nabla\phi)^2
@@ -226,41 +256,47 @@ double surfactant_langmuir_isotherm(void) {
  *
  ****************************************************************************/
 
-double surfactant_free_energy_density(const int index) {
+__host__ __device__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index,
+					   double * fed) {
 
-  double e;
   double field[2];
   double phi;
   double psi;
-  double dphi[3] = {0.0, 0.0, 0.0};
-  double dphisq = 0.0;
+  double grad[2][3];
+  double dphisq;
 
   assert(fe);
-  assert(0); /* Gradient needs work */
 
   field_scalar_array(fe->phi, index, field);
+  /* field_grad_grad(fe->dphi, index, grad);*/
+
+  assert(0);
   phi = field[0];
   psi = field[1];
 
-  dphisq = dot_product(dphi, dphi);
+  dphisq = dot_product(grad[0], grad[0]);
 
   /* We have the symmetric piece followed by terms in psi */
 
-  e = 0.5*fe->a*phi*phi + 0.25*fe->b*phi*phi*phi*phi + 0.5*fe->kappa*dphisq;
+  *fed = 0.5*fe->param->a*phi*phi + 0.25*fe->param->b*phi*phi*phi*phi
+    + 0.5*fe->param->kappa*dphisq;
 
   assert(psi > 0.0);
   assert(psi < 1.0);
 
-  e += fe->kt*(psi*log(psi) + (1.0 - psi)*log(1.0 - psi))
-    - 0.5*fe->epsilon*psi*dphisq
-    - 0.5*fe->beta*psi*psi*dphisq + 0.5*fe->w*psi*phi*phi;
+  *fed += fe->param->kt*(psi*log(psi) + (1.0 - psi)*log(1.0 - psi))
+    - 0.5*fe->param->epsilon*psi*dphisq
+    - 0.5*fe->param->beta*psi*psi*dphisq
+    + 0.5*fe->param->w*psi*phi*phi;
 
-  return e;
+  return 0;
 }
 
 /****************************************************************************
  *
- *  surfactant_chemical_potential
+ *  fe_surfactant_mu
+ * 
+ *  Two chemical potentials are present:
  *
  *  \mu_\phi = A\phi + B\phi^3 - kappa \nabla^2 \phi
  *           + W\phi \psi
@@ -273,86 +309,50 @@ double surfactant_free_energy_density(const int index) {
  *
  ****************************************************************************/
 
-double surfactant_chemical_potential(const int index, const int nop) {
-
+__host__ __device__ int fe_surfactant_mu(fe_surfactant1_t * fe, int index,
+					 double * mu) {
   double phi;
   double psi;
   double field[2];
-  double dphi[3] = {0.0, 0.0, 0.0};
-  double dpsi[3] = {0.0, 0.0, 0.0};
-  double delsq_phi = 0.0;
-  double mu;
-
-  assert(nop == 0 || nop == 1);
+  double grad[2][3];
+  double delsq[2];
 
   assert(fe);
-  assert(0); /* Gradient needs work */
+  assert(mu);
 
   field_scalar_array(fe->phi, index, field);
+  /* field_grad_pair_grad(fe->dphi, index, grad);
+     field_grad_pair_delsq(fe->dphi, index, delsq);*/
+  assert(0);
   phi = field[0];
   psi = field[1];
 
-  /* There's a rather ugly switch here... */
+  /* mu_phi */
 
-  if (nop == 0) {
-    /* mu_phi */
+  mu[0] = fe->param->a*phi + fe->param->b*phi*phi*phi
+    - fe->param->kappa*delsq[0]
+    + fe->param->w*phi*psi
+    + fe->param->epsilon*(psi*delsq[0] + dot_product(grad[0], grad[1]))
+    + fe->param->beta*psi*(psi*delsq[0] + 2.0*dot_product(grad[0], grad[1]));
 
-    mu = fe->a*phi + fe->b*phi*phi*phi - fe->kappa*delsq_phi
-      + fe->w*phi*psi
-      + fe->epsilon*(psi*delsq_phi + dot_product(dphi, dpsi))
-      + fe->beta*psi*(psi*delsq_phi + 2.0*dot_product(dphi, dpsi));
-  }
-  else {
-    /* mu_psi */
-    assert(psi > 0.0);
-    assert(psi < 1.0);
+  /* mu_psi */
 
-    mu = fe->kt*(log(psi) - log(1.0 - psi))
-      + 0.5*fe->w*phi*phi
-      - 0.5*fe->epsilon*dot_product(dphi, dphi)
-      - fe->beta*psi*dot_product(dphi, dphi);
-  }
-
-  return mu;
-}
-
-/****************************************************************************
- *
- *  surfactant_isotropic_pressure
- *
- *  See below.
- *
- ****************************************************************************/
-
-double surfactant_isotropic_pressure(const int index) {
-
-  double phi = 0.0;
-  double psi = 0.0;
-  double delsq_phi = 0.0;
-  double dphi[3] = {0.0, 0.0, 0.0};
-  double dpsi[3] = {0.0, 0.0, 0.0};
-  double p0;
-
-  assert(fe);
-  assert(0); /* Sort values */
-
+  assert(psi > 0.0);
   assert(psi < 1.0);
 
-  p0 = 0.5*fe->a*phi*phi + 0.75*fe->b*phi*phi*phi*phi
-    - fe->kappa*phi*delsq_phi - 0.5*fe->kappa*dot_product(dphi, dphi)
-    - fe->kt*log(1.0 - psi) + fe->w*psi*phi*phi
-    + fe->epsilon*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
-    + fe->beta*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
-		    - 0.5*psi*dot_product(dphi, dphi));
+  mu[1] = fe->param->kt*(log(psi) - log(1.0 - psi))
+    + 0.5*fe->param->w*phi*phi
+    - 0.5*fe->param->epsilon*dot_product(grad[0], grad[0])
+    - fe->param->beta*psi*dot_product(grad[0], grad[0]);
 
-  return p0;
+  return 0;
 }
 
 /****************************************************************************
  *
- *  surfactant_chemical_stress
+ *  fe_surfactant1_str
  *
- *  S_ab = p0 delta_ab + P_ab
+ *  Thermodynamoc stress S_ab = p0 delta_ab + P_ab
  *
  *  p0 = (1/2) A \phi^2 + (3/4) B \phi^4 - (1/2) \kappa \nabla^2 \phi
  *     - (1/2) kappa (\nabla phi)^2
@@ -368,34 +368,44 @@ double surfactant_isotropic_pressure(const int index) {
  *
  ****************************************************************************/
 
-void surfactant_chemical_stress(const int index, double s[3][3]) {
-
+__host__ __device__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
+					   double s[3][3]) {
   int ia, ib;
-  double phi = 0.5;
-  double psi = 0.5;
-  double delsq_phi = 0.0;
-  double dphi[3];
-  double dpsi[3];
+  double field[2];
+  double phi;
+  double psi;
+  double delsq[2];
+  double grad[2][3];
   double p0;
 
   assert(fe);
+
+  field_scalar_array(fe->phi, index, field);
+  /* field_grad_pair_grad(fe->dp, index, grad);
+     field_grad_pair_delsq(fe->dp, index, delsq);*/
   assert(0);
+  phi = field[0];
+  psi = field[1];
 
   assert(psi < 1.0);
 
-  p0 = 0.5*fe->a*phi*phi + 0.75*fe->b*phi*phi*phi*phi
-    - fe->kappa*phi*delsq_phi - 0.5*fe->kappa*dot_product(dphi, dphi)
-    - fe->kt*log(1.0 - psi) + fe->w*psi*phi*phi
-    + fe->epsilon*phi*(dot_product(dphi, dpsi) + psi*delsq_phi)
-    + fe->beta*psi*(2.0*phi*dot_product(dphi, dpsi) + phi*psi*delsq_phi
-		    - 0.5*psi*dot_product(dphi, dphi));
+  p0 = 0.5*fe->param->a*phi*phi + 0.75*fe->param->b*phi*phi*phi*phi
+    - fe->param->kappa*(phi*delsq[0] - 0.5*dot_product(grad[0], grad[0]))
+    - fe->param->kt*log(1.0 - psi)
+    + fe->param->w*psi*phi*phi
+    + fe->param->epsilon*phi*(dot_product(grad[0], grad[1]) + psi*delsq[0])
+    + fe->param->beta*psi*(2.0*phi*dot_product(grad[0], grad[1])
+			   + phi*psi*delsq[0]
+			   - 0.5*psi*dot_product(grad[0], grad[0]));
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_[ia][ib]
-	+ (fe->kappa - fe->epsilon*psi - fe->beta*psi*psi)*dphi[ia]*dphi[ib];
+      s[ia][ib] = p0*d_[ia][ib]	+
+	(fe->param->kappa - fe->param->epsilon*psi - fe->param->beta*psi*psi)*
+	grad[0][ia]*grad[0][ib];
     }
   }
 
-  return;
+  return 0;
 }
+

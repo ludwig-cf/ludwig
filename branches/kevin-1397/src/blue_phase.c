@@ -26,340 +26,247 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "field.h"
 #include "field_s.h"
-#include "field_grad.h"
 #include "field_grad_s.h"
 #include "blue_phase.h"
 #include "io_harness.h"
 #include "leesedwards.h"
 #include "physics.h"
-#include "control.h"
-#include "colloids_Q_tensor.h"
 
-static double q0_;        /* Pitch = 2pi / q0_ */
-static double a0_;        /* Bulk free energy parameter A_0 */
-static double gamma_;     /* Controls magnitude of order */
-static double kappa0_;    /* Elastic constant \kappa_0 */
-static double kappa1_;    /* Elastic constant \kappa_1 */
+static __constant__ fe_lc_param_t const_param;
 
-static double xi_;        /* effective molecular aspect ratio (<= 1.0) */
-static double redshift_;  /* redshift parameter */
-static double rredshift_; /* reciprocal */
-static double zeta_;      /* Apolar activity parameter \zeta */
+/* To prevent numerical catastrophe, we impose a minimum redshift.
+ * However, one should probably not be flirting with this value at
+ * all in general usage. */
 
-static int redshift_update_ = 0; /* Dynamic cubic redshift update */
-static double epsilon_ = 0.0;    /* Dielectric anisotropy (e/12pi) */
+#define FE_REDSHIFT_MIN 0.00000000001
 
-static const double redshift_min_ = 0.00000000001; 
+static fe_vt_t fe_hvt = {
+  (fe_free_ft)      fe_lc_free,
+  (fe_target_ft)    fe_lc_target,
+  (fe_fed_ft)       fe_lc_fed,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_lc_stress,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   fe_lc_mol_field,
+  (fe_htensor_v_ft) fe_lc_compute_h_v
+};
 
-static field_t * q_ = NULL;
-static field_grad_t * grad_q_ = NULL;
-
-static io_info_t * io_info_fed;
-
-static int fed_write(FILE *, int index, void * self);
-static int fed_write_ascii(FILE *, int index, void * self);
-
-/* structure containing constants used in blue phase kernels */ 
-static bluePhaseKernelConstants_t bpc;                   /* host copy */
-__targetConst__ bluePhaseKernelConstants_t tbpc;  /* target copy */
-
-
-/*****************************************************************************
- *
- *  blue_phase_set_kernel_constants
- *
- *  initialise the components of the blue phase kernel constant structure
- *  on both the host and the target
- * 
- *****************************************************************************/
-
-__targetHost__ void blue_phase_set_kernel_constants(){
-
-
-  int nlocal[3];
-  int nextra = 1;
-  
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
-
-  double redshift_ = blue_phase_redshift(); 
-  double rredshift_ = blue_phase_rredshift(); 
-
-  bpc.q0=blue_phase_q0();
-  bpc.q0 = bpc.q0*rredshift_;
-
-  bpc.a0_=blue_phase_a0();
-  bpc.kappa0=blue_phase_kappa0();
-  bpc.kappa1=blue_phase_kappa1();
-  bpc.kappa0 = bpc.kappa0*redshift_*redshift_;
-  bpc.kappa1 = bpc.kappa1*redshift_*redshift_;
-
-  bpc.xi_=blue_phase_get_xi();
-  bpc.zeta_=blue_phase_get_zeta();
-  bpc.gamma_=blue_phase_gamma();
-  bpc.epsilon_=blue_phase_dielectric_anisotropy();
-
-  double e0_frequency;
-  double coswt;
-  int t_step;
-  int ia;
-
-  physics_e0(bpc.e0);
-  physics_e0_frequency(&e0_frequency);
-  
-  /* Scale amplitude if e0_frequency != 0 */ 
-  if (e0_frequency) {
-    t_step = get_step();
-    coswt  = cos(2.0*pi_*e0_frequency*t_step);
-    for (ia = 0; ia < 3; ia++) {
-      bpc.e0[ia] *= coswt;
-    }
-  }
-  
-  bpc.nhalo = coords_nhalo();
-  bpc.Nall[X]=nlocal[X]+2*bpc.nhalo;  bpc.Nall[Y]=nlocal[Y]+2*bpc.nhalo;  bpc.Nall[Z]=nlocal[Z]+2*bpc.nhalo;
-  bpc.nSites=bpc.Nall[X]*bpc.Nall[Y]*bpc.Nall[Z];
-  bpc.nextra=nextra;
-  memcpy(bpc.d_,d_,3*3*sizeof(double));
-  memcpy(bpc.e_,e_,3*3*3*sizeof(double));
-  memcpy(bpc.dc_,dc_,3*3*sizeof(char));
-  memcpy(bpc.ec_,ec_,3*3*3*sizeof(char));
-  bpc.r3_=r3_;
-
-  blue_phase_coll_w12(&(bpc.w1_coll), &(bpc.w2_coll));
-  blue_phase_wall_w12(&(bpc.w1_wall), &(bpc.w2_wall));
-  
-  bpc.amplitude = blue_phase_amplitude_compute(); 
-
-  copyConstToTarget(&tbpc, &bpc, sizeof(bluePhaseKernelConstants_t)); 
-
-  return;
-}
-
+static __constant__ fe_vt_t fe_dvt = {
+  (fe_free_ft)      NULL,
+  (fe_target_ft)    NULL,
+  (fe_fed_ft)       fe_lc_fed,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_lc_stress,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   fe_lc_mol_field,
+  (fe_htensor_v_ft) fe_lc_compute_h_v
+};
 
 /*****************************************************************************
  *
- *  blue_phase_host_constant_ptr
- *
- *  get a pointer to the host version of the kernel constant structure
+ *  fe_lc_create
  *
  *****************************************************************************/
 
-__targetHost__ void blue_phase_host_constant_ptr(void** tmp){
+__host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
 
-  *tmp=&bpc;
-
-}
-
-
-
-/*****************************************************************************
- *
- *  blue_phase_target_constant_ptr
- *
- *  get a pointer to the target version of the kernel constant structure
- *
- *****************************************************************************/
-
-__targetHost__ void blue_phase_target_constant_ptr(void** tmp){
-
-
-  targetConstAddress(tmp,tbpc);
-  return;
-
-}
-
-
-/*****************************************************************************
- *
- *  blue_phase_q_set
- *
- *  Attach a reference to the order parameter field object, and the
- *  associated gradient object.
- *
- *****************************************************************************/
-
-__targetHost__ int blue_phase_q_set(field_t * q, field_grad_t * dq) {
+  int ndevice;
+  fe_lc_t * fe = NULL;
 
   assert(q);
   assert(dq);
+  assert(pobj);
 
-  q_ = q;
-  grad_q_ = dq;
+  fe = (fe_lc_t *) calloc(1, sizeof(fe_lc_t));
+  if (fe == NULL) fatal("calloc(fe_lc_t) failed\n");
+
+  fe->param = (fe_lc_param_t *) calloc(1, sizeof(fe_lc_param_t));
+  if (fe->param == NULL) fatal("");
+
+  fe->q = q;
+  fe->dq = dq;
+
+  /* free energy interface functions */
+  fe->super.func = &fe_hvt;
+  fe->super.id = FE_LC;
+
+  /* Allocate device memory, or alias */
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    fe->target = fe;
+  }
+  else {
+    fe_lc_param_t * tmp;
+    fe_vt_t * vt;
+    targetCalloc((void **) &fe->target, sizeof(fe_lc_t));
+    targetConstAddress(&tmp, const_param);
+    copyToTarget(&fe->target->param, tmp, sizeof(fe_lc_param_t *));
+    targetConstAddress(&vt, fe_dvt);
+    copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
+    assert(0); /* Requires a test */
+  }
+
+  *pobj = fe;
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_phase_set_free_energy_parameters
+ *  fe_lc_free
  *
- *  Enforces the 'one constant approximation' kappa0 = kappa1 = kappa
+ *****************************************************************************/
+
+__host__ int fe_lc_free(fe_lc_t * fe) {
+
+  int ndevice;
+
+  assert(fe);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) targetFree(fe->target);
+
+  free(fe->param);
+  free(fe);
+
+  return 0;
+}
+
+/*****************************************************************************
  *
- *  Note that these values remain unchanged throughout. Redshifted
+ *  fe_lc_target
+ *
+ *  Commit the parameters as a kernel call may be imminent.
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_target(fe_lc_t * fe, fe_t ** target) {
+
+  assert(fe);
+  assert(target);
+
+  fe_lc_param_commit(fe);
+  *target = (fe_t *) fe->target;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_param_commit
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_param_commit(fe_lc_t * fe) {
+
+  assert(fe);
+
+  copyConstToTarget(&const_param, fe->param, sizeof(fe_lc_param_t));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_param_set
+ *
+ *  The caller is responsible for all values.
+ *
+ *  Note that these values can remain unchanged throughout. Redshifted
  *  values are computed separately as needed.
  *
  *****************************************************************************/
 
-__targetHost__ void blue_phase_set_free_energy_parameters(double a0, double gamma,
-					   double kappa, double q0) {
-  a0_ = a0;
-  gamma_ = gamma;
-  kappa0_ = kappa;
-  kappa1_ = kappa;
-  q0_ = q0;
+__host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
 
-  /* Anchoring boundary conditions require kappa0 from free energy */
-  fe_kappa_set(kappa0_);
+  assert(fe);
 
-  return;
+  *fe->param = values;
+
+  /* The convention here is to non-dimensionalise the dielectric
+   * anisotropy by factor (1/12pi) which appears in free energy. */
+
+  fe->param->epsilon *= (1.0/(12.0*pi_));
+
+  /* Must compute reciprocal of redshift */
+  fe_lc_redshift_set(fe, fe->param->redshift);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_phase_amplitude_compute
- *
- *  Scalar order parameter in the nematic state, minimum of bulk free energy 
+ *  fe_lc_param
  *
  *****************************************************************************/
 
-__targetHost__ double blue_phase_amplitude_compute(void) {
+__host__ __device__ int fe_lc_param(fe_lc_t * fe, fe_lc_param_t * vals) {
 
-  double amplitude;
-  
-  amplitude = 2.0/3.0*(0.25 + 0.75*sqrt(1.0 - 8.0/(3.0*gamma_)));
+  assert(fe);
+  assert(vals);
 
-  return amplitude;
+  *vals = *fe->param;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_phase_set_xi
- *
- *  Set the molecular aspect ratio.
- *
- *****************************************************************************/
-
-__targetHost__ void blue_phase_set_xi(double xi) {
-
-  xi_ = xi;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_get_xi
- *
- *****************************************************************************/
-
-__targetHost__ double blue_phase_get_xi(void) {
-
-  return xi_;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_set_zeta
- *
- *  Set the activity parameter.
- *
- *****************************************************************************/
-
-__targetHost__ void blue_phase_set_zeta(double zeta) {
-
-  zeta_ = zeta;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_get_zeta
- *
- *****************************************************************************/
-
-__targetHost__ double blue_phase_get_zeta(void) {
-
-  return zeta_;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_set_gamma
- *
- *  Set the gamma_ parameter.
- *
- *****************************************************************************/
-
-__targetHost__ void blue_phase_set_gamma(double gamma) {
-
-  gamma_ = gamma;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_get_gamma
- *
- *****************************************************************************/
-
-__targetHost__ double blue_phase_get_gamma(void) {
-
-  return gamma_;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_free_energy_density
+ *  fe_lc_fed
  *
  *  Return the free energy density at lattice site index.
  *
  *****************************************************************************/
 
-__targetHost__ double blue_phase_free_energy_density(const int index) {
+__host__ __device__ int fe_lc_fed(fe_lc_t * fe, int index, double * fed) {
 
-
-
-  double e;
   double q[3][3];
   double dq[3][3][3];
-  void * pcon = NULL;
 
-  field_tensor(q_, index, q);
-  field_grad_tensor_grad(grad_q_, index, dq);
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
 
-  /* we are doing this on the host */
-  blue_phase_set_kernel_constants();
-  blue_phase_host_constant_ptr(&pcon);
+  fe_lc_compute_fed(fe, fe->param->gamma, q, dq, fed);
 
-  e = blue_phase_compute_fed(q, dq, (bluePhaseKernelConstants_t*) pcon);
-  return e;
-
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  blue_phase_compute_fed
+ *  fe_lc_compute_fed
  *
  *  Compute the free energy density as a function of q and the q gradient
  *  tensor dq.
  *
+ *  NOTE: gamma is potentially gamma(r) so does not come from the
+ *        fe->param
+ *
  *****************************************************************************/
 
-
-__targetHost__ __target__ double blue_phase_compute_fed(double q[3][3], 
-							double dq[3][3][3],
-					 bluePhaseKernelConstants_t* pbpc) {
+__host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
+					  double q[3][3],
+					  double dq[3][3][3], double * fed) {
 
   int ia, ib, ic, id;
+  double a0, q0;
+  double kappa0, kappa1;
   double q2, q3;
   double dq0, dq1;
   double sum;
   double efield;
+
+  assert(fe);
+  assert(fed);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
 
   q2 = 0.0;
 
@@ -406,10 +313,10 @@ __targetHost__ __target__ double blue_phase_compute_fed(double q[3][3],
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  sum += pbpc->e_[ia][ic][id]*dq[ic][ib][id];
+	  sum += e_[ia][ic][id]*dq[ic][ib][id];
 	}
       }
-      sum += 2.0*pbpc->q0*q[ia][ib];
+      sum += 2.0*q0*q[ia][ib];
       dq1 += sum*sum;
     }
   }
@@ -419,17 +326,772 @@ __targetHost__ __target__ double blue_phase_compute_fed(double q[3][3],
   efield = 0.0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      efield += pbpc->e0[ia]*q[ia][ib]*pbpc->e0[ib];
+      efield += fe->param->electric[ia]*q[ia][ib]*fe->param->electric[ib];
     }
   }
 
-  sum = 0.5*pbpc->a0_*(1.0 - pbpc->r3_*pbpc->gamma_)*q2 - pbpc->r3_*pbpc->a0_*pbpc->gamma_*q3 +
-    0.25*pbpc->a0_*pbpc->gamma_*q2*q2 + 0.5*pbpc->kappa0*dq0 + 0.5*pbpc->kappa1*dq1 - pbpc->epsilon_*efield;
+  a0 = fe->param->a0;
 
+  *fed = 0.5*a0*(1.0 - r3_*gamma)*q2 - r3_*a0*gamma*q3 + 0.25*a0*gamma*q2*q2
+    + 0.5*kappa0*dq0 + 0.5*kappa1*dq1
+    - fe->param->epsilon*efield;
 
-  return sum;
+  return 0;
 }
 
+/*****************************************************************************
+ *
+ *  fe_lc_stress
+ *
+ *  Return the stress sth[3][3] at lattice site index.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
+				     double sth[3][3]) {
+
+  double q[3][3];
+  double h[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  assert(fe);
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
+  fe_lc_compute_stress(fe, q, dq, h, sth);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_stress
+ *
+ *  Compute the stress as a function of the q tensor, the q tensor
+ *  gradient and the molecular field.
+ *
+ *  Note the definition here has a minus sign included to allow
+ *  computation of the force as minus the divergence (which often
+ *  appears as plus in the liquid crystal literature). This is a
+ *  separate operation at the end to avoid confusion.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
+					     double dq[3][3][3],
+					     double h[3][3],
+					     double sth[3][3]) {
+  int ia, ib, ic, id, ie;
+  double fed;
+  double q0;
+  double kappa0;
+  double kappa1;
+  double qh;
+  double p0;
+  const double r3 = (1.0/3.0);
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* We have ignored the rho T term at the moment, assumed to be zero
+   * (in particular, it has no divergence if rho = const). */
+
+  fe_lc_compute_fed(fe, fe->param->gamma, q, dq, &fed);
+  p0 = 0.0 - fed;
+
+  /* The contraction Q_ab H_ab */
+
+  qh = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      qh += q[ia][ib]*h[ia][ib];
+    }
+  }
+
+  /* The term in the isotropic pressure, plus that in qh */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] = -p0*d_[ia][ib]
+	+ 2.0*fe->param->xi*(q[ia][ib] + r3*d_[ia][ib])*qh;
+    }
+  }
+
+  /* Remaining two terms in xi and molecular field */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] +=
+	  -fe->param->xi*h[ia][ic]*(q[ib][ic] + r3*d_[ib][ic])
+	  -fe->param->xi*(q[ia][ic] + r3*d_[ia][ic])*h[ib][ic];
+      }
+    }
+  }
+
+  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sth[ia][ib] +=
+	    - kappa0*dq[ia][ib][ic]*dq[id][ic][id]
+	    - kappa1*dq[ia][ic][id]*dq[ib][ic][id]
+	    + kappa1*dq[ia][ic][id]*dq[ic][ib][id];
+
+	  for (ie = 0; ie < 3; ie++) {
+	    sth[ia][ib] +=
+	      -2.0*kappa1*q0*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
+	  }
+	}
+      }
+    }
+  }
+
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+      }
+    }
+  }
+
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] -= fe->param->zeta*(q[ia][ib] + r3*d_[ia][ib]);
+    }
+  }
+
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_mol_field
+ *
+ *  Return the molcular field h[3][3] at lattice site index.
+ *
+ *  Note this is only valid in the one-constant approximation at
+ *  the moment (kappa0 = kappa1 = kappa).
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_mol_field(fe_lc_t * fe, int index,
+					double h[3][3]) {
+
+  double q[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  assert(fe);
+  assert(fe->param->kappa0 == fe->param->kappa1);
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_h
+ *
+ *  Compute the molcular field h from q, the q gradient tensor dq, and
+ *  the del^2 q tensor.
+ *
+ *  NOTE: gamma is potentially gamma(r) so does not come from the
+ *        fe->param
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
+		    double dq[3][3][3],
+		    double dsq[3][3], double h[3][3]) {
+
+  int ia, ib, ic, id;
+
+  double q0;              /* Redshifted value */
+  double kappa0, kappa1;  /* Redshifted values */
+  double q2;
+  double e2;
+  double eq;
+  double sum;
+  const double r3 = (1.0/3.0);
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* From the bulk terms in the free energy... */
+
+  q2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	sum += q[ia][ic]*q[ib][ic];
+      }
+      h[ia][ib] = -fe->param->a0*(1.0 - r3*gamma)*q[ia][ib]
+	+ fe->param->a0*gamma*(sum - r3*q2*d_[ia][ib])
+	- fe->param->a0*gamma*q2*q[ia][ib];
+    }
+  }
+
+  /* From the gradient terms ... */
+  /* First, the sum e_abc d_b Q_ca. With two permutations, we
+   * may rewrite this as e_bca d_b Q_ca */
+
+  eq = 0.0;
+  for (ib = 0; ib < 3; ib++) {
+    for (ic = 0; ic < 3; ic++) {
+      for (ia = 0; ia < 3; ia++) {
+	eq += e_[ib][ic][ia]*dq[ib][ic][ia];
+      }
+    }
+  }
+
+  /* d_c Q_db written as d_c Q_bd etc */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum +=
+	    (e_[ia][ic][id]*dq[ic][ib][id] + e_[ib][ic][id]*dq[ic][ia][id]);
+	}
+      }
+      h[ia][ib] += kappa0*dsq[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d_[ia][ib]
+	- 4.0*kappa1*q0*q0*q[ia][ib];
+    }
+  }
+
+  /* Electric field term */
+
+  e2 = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    e2 += fe->param->electric[ia]*fe->param->electric[ia];
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      h[ia][ib] +=  fe->param->epsilon
+	*(fe->param->electric[ia]*fe->param->electric[ib] - r3*d_[ia][ib]*e2);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_bulk_fed
+ *
+ *  Compute the bulk free energy density as a function of q.
+ *
+ *  Note: This function contains also the part quadratic in q 
+ *        which is normally part of the gradient free energy. 
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
+
+  int ia, ib, ic;
+  double q0;
+  double kappa1;
+  double q2, q3;
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  q2 = 0.0;
+
+  /* Q_ab^2 */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  /* Q_ab Q_bc Q_ca */
+
+  q3 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	/* We use here the fact that q[ic][ia] = q[ia][ic] */
+	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
+      }
+    }
+  }
+
+  *fed = 0.5*fe->param->a0*(1.0 - r3_*fe->param->gamma)*q2
+    - r3_*fe->param->a0*fe->param->gamma*q3
+    + 0.25*fe->param->a0*fe->param->gamma*q2*q2;
+
+  /* Add terms quadratic in q from gradient free energy */ 
+
+  *fed += 0.5*kappa1*4.0*q0*q0*q2;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_gradient_fed
+ *
+ *  Compute the gradient contribution to the free energy density 
+ *  as a function of q and the q gradient tensor dq.
+ *
+ *  Note: The part quadratic in q has been added to the bulk free energy.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
+			       double dq[3][3][3], double * fed) {
+
+  int ia, ib, ic, id;
+  double q0;
+  double kappa0, kappa1;
+  double dq0, dq1;
+  double q2;
+  double sum;
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* (d_b Q_ab)^2 */
+
+  dq0 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    sum = 0.0;
+    for (ib = 0; ib < 3; ib++) {
+      sum += dq[ib][ia][ib];
+    }
+    dq0 += sum*sum;
+  }
+
+  /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
+  /* With symmetric Q_db write Q_bd */
+
+  dq1 = 0.0;
+  q2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      sum = 0.0;
+  
+      q2 += q[ia][ib]*q[ia][ib];
+
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum += e_[ia][ic][id]*dq[ic][ib][id];
+	}
+      }
+      sum += 2.0*q0*q[ia][ib];
+      dq1 += sum*sum;
+    }
+  }
+
+  /* Subtract part that is quadratic in q */
+  dq1 -= 4.0*q0*q0*q2;
+
+  *fed = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_chirality
+ *
+ *  Return the chirality, which is defined here as
+ *         sqrt(108 \kappa_0 q_0^2 / A_0 \gamma)
+ *
+ *  Not dependent on the redshift.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_chirality(fe_lc_t * fe, double * chirality) {
+
+  double a0;
+  double gamma;
+  double kappa0;
+  double q0;
+
+  assert(fe);
+  assert(chirality);
+
+  a0     = fe->param->a0;
+  gamma  = fe->param->gamma;
+  kappa0 = fe->param->kappa0;
+  q0     = fe->param->q0;
+
+  *chirality = sqrt(108.0*kappa0*q0*q0 / (a0*gamma));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_reduced_temperature
+ *
+ *  Return the the reduced temperature defined here as
+ *       27*(1 - \gamma/3) / \gamma
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_reduced_temperature(fe_lc_t * fe, double * tau) {
+
+  double gamma;
+
+  assert(fe);
+  assert(tau);
+
+  gamma = fe->param->gamma;
+  *tau = 27.0*(1.0 - r3_*gamma) / gamma;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_dimensionless_field_strength
+ *
+ *  Return the dimensionless field strength which is
+ *      e^2 = (27 epsilon / 32 pi A_O gamma) E_a E_a
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * ered) {
+
+  int ia;
+  double a0;
+  double gamma;
+  double epsilon;
+  double fieldsq;
+
+  assert(fe);
+
+  fieldsq = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    fieldsq += fe->param->electric[ia]*fe->param->electric[ia];
+  }
+
+  /* Remember epsilon is stored with factor (1/12pi) */ 
+
+  a0 = fe->param->a0;
+  gamma = fe->param->gamma;
+  epsilon = 12.0*pi_*fe->param->epsilon;
+
+  *ered = sqrt(27.0*epsilon*fieldsq/(32.0*pi_*a0*gamma));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_redshift
+ *
+ *  Return the redshift parameter.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_redshift(fe_lc_t * fe, double * redshift) {
+
+  assert(fe);
+  assert(redshift);
+
+  *redshift = fe->param->redshift;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_redshift_set
+ *
+ *  Set the redshift parameter (host only).
+ *
+ *****************************************************************************/
+
+__host__
+int fe_lc_redshift_set(fe_lc_t * fe,  double redshift) {
+
+  assert(fe);
+  assert(fabs(redshift) >= FE_REDSHIFT_MIN);
+
+  fe->param->redshift = redshift;
+  fe->param->rredshift = 1.0/redshift;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_amplitude_compute
+ *
+ *  Scalar order parameter in the nematic state, minimum of bulk free energy 
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_amplitude_compute(fe_lc_param_t * param, double * a) {
+
+  assert(a);
+  
+  *a = (2.0/3.0)*(0.25 + 0.75*sqrt(1.0 - 8.0/(3.0*param->gamma)));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_q_uniaxial
+ *
+ *  For given director n we return
+ *
+ *     Q_ab = (1/2) A (3 n_a n_b - d_ab)
+ *
+ *  where A gives the maximum amplitude of order on diagonalisation.
+ *
+ *  Note this is slightly different  from the definition in
+ *  Wright and Mermin (Eq. 4.3) where
+ *
+ *     Q_ab = (1/3) gamma (3 n_a n_b - d_ab)
+ *
+ *  and the magnitude of order is then (2/3) gamma.
+ *
+ *****************************************************************************/
+
+__host__ __target__
+int fe_lc_q_uniaxial(fe_lc_param_t * param, const double n[3], double q[3][3]) {
+
+  int ia, ib;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q[ia][ib] = 0.5*param->amplitude0*(3.0*n[ia]*n[ib] - d_[ia][ib]);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_redshift_compute
+ *
+ *  Redshift adjustment. If this is required at all, it should be
+ *  done at every timestep. It gives rise to an Allreduce.
+ *
+ *  The redshift calculation uses the unredshifted values of the
+ *  free energy parameters kappa0, kappa1 and q0.
+ *
+ *  The term quadratic in gradients may be written F_ddQ
+ *
+ *     (1/2) [ kappa1 (d_a Q_bc)^2 - kappa1 (d_a Q_bc d_b Q_ac)
+ *           + kappa0 (d_b Q_ab)^2 ]
+ *
+ *  The linear term is F_dQ
+ *
+ *     2 q0 kappa1 Q_ab e_acg d_c Q_gb
+ *
+ *  The new redshift is computed as - F_dQ / 2 F_ddQ
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
+
+  int ic, jc, kc, index;
+  int ia, ib, id, ig;
+  int nlocal[3];
+
+  double q[3][3], dq[3][3][3];
+
+  double dq0, dq1, dq2, dq3, sum;
+  double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
+  double rnew;
+
+  if (fe->param->is_redshift_updated == 0) return 0;
+
+  coords_nlocal(nlocal);
+
+  egrad_local[0] = 0.0;
+  egrad_local[1] = 0.0;
+
+  /* Accumulate the sums (all fluid) */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = coords_index(ic, jc, kc);
+
+	field_tensor(fe->q, index, q);
+	field_grad_tensor_grad(fe->dq, index, dq);
+
+	/* kappa0 (d_b Q_ab)^2 */
+
+	dq0 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  sum = 0.0;
+	  for (ib = 0; ib < 3; ib++) {
+	    sum += dq[ib][ia][ib];
+	  }
+	  dq0 += sum*sum;
+	}
+
+	/* kappa1 (e_agd d_g Q_db + 2q_0 Q_ab)^2 */
+
+	dq1 = 0.0;
+	dq2 = 0.0;
+	dq3 = 0.0;
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    sum = 0.0;
+	    for (ig = 0; ig < 3; ig++) {
+	      dq1 += dq[ia][ib][ig]*dq[ia][ib][ig];
+	      dq2 += dq[ia][ib][ig]*dq[ib][ia][ig];
+	      for (id = 0; id < 3; id++) {
+		sum += e_[ia][ig][id]*dq[ig][id][ib];
+	      }
+	    }
+	    dq3 += q[ia][ib]*sum;
+	  }
+	}
+
+	/* linear gradient and square gradient terms */
+
+	egrad_local[0] += 2.0*fe->param->q0*fe->param->kappa1*dq3;
+	egrad_local[1] += 0.5*(fe->param->kappa1*dq1 - fe->param->kappa1*dq2
+			       + fe->param->kappa0*dq0);
+
+      }
+    }
+  }
+
+  /* Allreduce the gradient results, and compute a new redshift (we
+   * keep the old one if problematic). */
+
+  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
+
+  rnew = fe->param->redshift;
+  if (egrad[1] != 0.0) rnew = -0.5*egrad[0]/egrad[1];
+  if (fabs(rnew) < FE_REDSHIFT_MIN) rnew = fe->param->redshift;
+
+  fe_lc_redshift_set(fe, rnew);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_scalar_ops
+ *
+ *  For symmetric traceless q[3][3], return the associated scalar
+ *  order parameter, biaxial order parameter and director:
+ *
+ *  qs[0]  scalar order parameter: largest eigenvalue
+ *  qs[1]  director[X] (associated eigenvector)
+ *  qs[2]  director[Y]
+ *  qs[3]  director[Z]
+ *  qs[4]  biaxial order parameter b = sqrt(1 - 6 (Tr(QQQ))^2 / Tr(QQ)^3)
+ *         related to the two largest eigenvalues...
+ *
+ *  If we write Q = ((s, 0, 0), (0, t, 0), (0, 0, -s -t)) then
+ *
+ *    Tr(QQ)  = s^2 + t^2 + (s + t)^2
+ *    Tr(QQQ) = 3 s t (s + t)
+ *
+ *  If no diagonalisation is possible, all the results are set to zero.
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_scalar_ops(double q[3][3], double qs[NQAB]) {
+
+  int ifail;
+  double eigenvalue[3];
+  double eigenvector[3][3];
+  double s, t;
+  double q2, q3;
+
+  ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
+
+  qs[0] = 0.0; qs[1] = 0.0; qs[2] = 0.0; qs[3] = 0.0; qs[4] = 0.0;
+
+  if (ifail == 0) {
+
+    qs[0] = eigenvalue[0];
+    qs[1] = eigenvector[X][0];
+    qs[2] = eigenvector[Y][0];
+    qs[3] = eigenvector[Z][0];
+
+    s = eigenvalue[0];
+    t = eigenvalue[1];
+
+    q2 = s*s + t*t + (s + t)*(s + t);
+    q3 = 3.0*s*t*(s + t);
+    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
+  }
+
+  return ifail;
+}
+
+
+
+
+#ifdef OLD_SHIT
 
 __targetHost__ __target__ void fed_loop_unrolled(double sum[VVL], double dq[3][3][3][VVL],
 				double q[3][3][VVL],
@@ -1252,38 +1914,6 @@ void blue_phase_compute_stress_vec(double q[3][3][VVL],
 
 /*****************************************************************************
  *
- *  blue_phase_q_uniaxial
- *
- *  For given director n we return
- *
- *     Q_ab = (1/2) A (3 n_a n_b - d_ab)
- *
- *  where A gives the maximum amplitude of order on diagonalisation.
- *
- *  Note this is slightly different  from the definition in
- *  Wright and Mermin (Eq. 4.3) where
- *
- *     Q_ab = (1/3) gamma (3 n_a n_b - d_ab)
- *
- *  and the magnitude of order is then (2/3) gamma.
- *
- *****************************************************************************/
-
-__targetHost__ void blue_phase_q_uniaxial(double amp, const double n[3], double q[3][3]) {
-
-  int ia, ib;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      q[ia][ib] = 0.5*amp*(3.0*n[ia]*n[ib] - d_[ia][ib]);
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  blue_phase_chirality
  *
  *  Return the chirality, which is defined here as
@@ -1474,114 +2104,6 @@ __targetHost__ void blue_phase_redshift_update_set(int update) {
 
 /*****************************************************************************
  *
- *  blue_phase_redshift_compute
- *
- *  Redshift adjustment. If this is required at all, it should be
- *  done at every timestep. It gives rise to an Allreduce.
- *
- *  The redshift calculation uses the unredshifted values of the
- *  free energy parameters kappa0_, kappa1_ and q0_.
- *
- *  The term quadratic in gradients may be written F_ddQ
- *
- *     (1/2) [ kappa1 (d_a Q_bc)^2 - kappa1 (d_a Q_bc d_b Q_ac)
- *           + kappa0 (d_b Q_ab)^2 ]
- *
- *  The linear term is F_dQ
- *
- *     2 q0 kappa1 Q_ab e_acg d_c Q_gb
- *
- *  The new redshift is computed as - F_dQ / 2 F_ddQ
- *
- *****************************************************************************/
-
-__targetHost__ void blue_phase_redshift_compute(void) {
-
-  int ic, jc, kc, index;
-  int ia, ib, id, ig;
-  int nlocal[3];
-
-  double q[3][3], dq[3][3][3];
-
-  double dq0, dq1, dq2, dq3, sum;
-  double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
-  double rnew;
-
-  if (redshift_update_ == 0) return;
-
-  coords_nlocal(nlocal);
-
-  egrad_local[0] = 0.0;
-  egrad_local[1] = 0.0;
-
-  /* Accumulate the sums (all fluid) */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	field_tensor(q_, index, q);
-	field_grad_tensor_grad(grad_q_, index, dq);
-
-	/* kappa0 (d_b Q_ab)^2 */
-
-	dq0 = 0.0;
-
-	for (ia = 0; ia < 3; ia++) {
-	  sum = 0.0;
-	  for (ib = 0; ib < 3; ib++) {
-	    sum += dq[ib][ia][ib];
-	  }
-	  dq0 += sum*sum;
-	}
-
-	/* kappa1 (e_agd d_g Q_db + 2q_0 Q_ab)^2 */
-
-	dq1 = 0.0;
-	dq2 = 0.0;
-	dq3 = 0.0;
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    sum = 0.0;
-	    for (ig = 0; ig < 3; ig++) {
-	      dq1 += dq[ia][ib][ig]*dq[ia][ib][ig];
-	      dq2 += dq[ia][ib][ig]*dq[ib][ia][ig];
-	      for (id = 0; id < 3; id++) {
-		sum += e_[ia][ig][id]*dq[ig][id][ib];
-	      }
-	    }
-	    dq3 += q[ia][ib]*sum;
-	  }
-	}
-
-	/* linear gradient and square gradient terms */
-
-	egrad_local[0] += 2.0*q0_*kappa1_*dq3;
-	egrad_local[1] += 0.5*(kappa1_*dq1 - kappa1_*dq2 + kappa0_*dq0);
-
-      }
-    }
-  }
-
-  /* Allreduce the gradient results, and compute a new redshift (we
-   * keep the old one if problematic). */
-
-  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
-
-  rnew = redshift_;
-  if (egrad[1] != 0.0) rnew = -0.5*egrad[0]/egrad[1];
-  if (fabs(rnew) < redshift_min_) rnew = redshift_;
-
-  blue_phase_redshift_set(rnew);
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  blue_phase_dielectric_anisotropy_set
  *
  *  Include the factor 1/12pi appearing in the free energy.
@@ -1751,59 +2273,6 @@ static int fed_write(FILE * fp, int index, void * self) {
   if (n != 3) fatal("fwrite(fed) failed at index %d\n", index);
 
   return n;
-}
-
-/*****************************************************************************
- *
- *  blue_phase_scalar_ops
- *
- *  For symmetric traceless q[3][3], return the associated scalar
- *  order parameter, biaxial order parameter and director:
- *
- *  qs[0]  scalar order parameter: largest eigenvalue
- *  qs[1]  director[X] (associated eigenvector)
- *  qs[2]  director[Y]
- *  qs[3]  director[Z]
- *  qs[4]  biaxial order parameter b = sqrt(1 - 6 (Tr(QQQ))^2 / Tr(QQ)^3)
- *         related to the two largest eigenvalues...
- *
- *  If we write Q = ((s, 0, 0), (0, t, 0), (0, 0, -s -t)) then
- *
- *    Tr(QQ)  = s^2 + t^2 + (s + t)^2
- *    Tr(QQQ) = 3 s t (s + t)
- *
- *  If no diagonalisation is possible, all the results are set to zero.
- *
- *****************************************************************************/
-
-__targetHost__ int blue_phase_scalar_ops(double q[3][3], double qs[5]) {
-
-  int ifail;
-  double eigenvalue[3];
-  double eigenvector[3][3];
-  double s, t;
-  double q2, q3;
-
-  ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
-
-  qs[0] = 0.0; qs[1] = 0.0; qs[2] = 0.0; qs[3] = 0.0; qs[4] = 0.0;
-
-  if (ifail == 0) {
-
-    qs[0] = eigenvalue[0];
-    qs[1] = eigenvector[X][0];
-    qs[2] = eigenvector[Y][0];
-    qs[3] = eigenvector[Z][0];
-
-    s = eigenvalue[0];
-    t = eigenvalue[1];
-
-    q2 = s*s + t*t + (s + t)*(s + t);
-    q3 = 3.0*s*t*(s + t);
-    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
-  }
-
-  return ifail;
 }
 
 /* Unrolled kernels: thes get much beter performance since he multiplications
@@ -2430,4 +2899,180 @@ __targetILP__(iv) sthtmp[iv] -= zetaloc*(q[2][2][iv] + r3loc);
 
  __targetILP__(iv) sth[addr_rank2(tc_nSites,3,3,baseIndex+iv,2,2)] = -sthtmp[iv];
 
+}
+#endif
+
+
+/* KEVIN */
+
+__host__ __target__ void h_loop_unrolled_be(fe_lc_t * fe,
+					    double dq[3][3][3][VVL],
+					    double dsq[3][3][VVL],
+					    double q[3][3][VVL],
+					    double h[3][3][VVL],
+					    double eq[VVL],
+					    double sum[NSIMDVL]);
+
+
+/*IMPORTANT NOTE*/
+
+/* required to be in scope here for performance reasons on GPU */
+/* since otherwise the compiler places the emporary q[][][] etc arrays */
+/* in regular off-chip memory rather than registers */
+/* which has a huge impact on performance */
+
+__host__ __target__
+void fe_lc_compute_h_v(fe_lc_t * fe, double q[3][3][NSIMDVL], 
+		       double dq[3][3][3][NSIMDVL],
+		       double dsq[3][3][NSIMDVL], 
+		       double h[3][3][NSIMDVL]) {
+
+  int iv=0;
+  int ia, ib, ic;
+  double q0;
+  double kappa0, kappa1;
+
+  double q2[VVL];
+  double e2[VVL];
+  double eq[VVL];
+  double sum[VVL];
+
+  const double r3 = (1.0/3.0);
+
+  /* Reshifted values */
+
+  q0 = fe->param->rredshift*fe->param->q0;
+  kappa0 = fe->param->redshift*fe->param->redshift*fe->param->kappa0;
+  kappa1 = kappa0;
+
+  /* From the bulk terms in the free energy... */
+
+  __targetILP__(iv) q2[iv] = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
+    }
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) sum[iv] = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	__targetILP__(iv) sum[iv] += q[ia][ic][iv]*q[ib][ic][iv];
+      }
+      __targetILP__(iv) h[ia][ib][iv] =
+	- fe->param->a0*(1.0 - r3*fe->param->gamma)*q[ia][ib][iv]
+	+ fe->param->a0*fe->param->gamma*(sum[iv] - r3*q2[iv]*d_[ia][ib])
+	- fe->param->a0*fe->param->gamma*q2[iv]*q[ia][ib][iv];
+    }
+  }
+
+  /* From the gradient terms ... */
+  /* First, the sum e_abc d_b Q_ca. With two permutations, we
+   * may rewrite this as e_bca d_b Q_ca */
+
+  __targetILP__(iv) eq[iv] = 0.0;
+  for (ib = 0; ib < 3; ib++) {
+    for (ic = 0; ic < 3; ic++) {
+      for (ia = 0; ia < 3; ia++) {
+	__targetILP__(iv) eq[iv] += e_[ib][ic][ia]*dq[ib][ic][ia][iv];
+      }
+    }
+  }
+
+  /* Contraction d_c Q_db ... */
+
+  h_loop_unrolled_be(fe, dq, dsq, q, h, eq, sum);
+
+  /* Electric field term */
+
+  __targetILP__(iv) e2[iv] = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    __targetILP__(iv) {
+      e2[iv] += fe->param->electric[ia]*fe->param->electric[ia];
+    }
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) {
+	h[ia][ib][iv] +=  fe->param->epsilon*(fe->param->electric[ia]*fe->param->electric[ib] - r3*d_[ia][ib]*e2[iv]);
+      }
+    }
+  }
+
+  return;
+
+}
+
+
+/* Unrolled kernels: thes get much beter performance since he multiplications
+ by 0 and repeated loading of duplicate coefficients have been eliminated */
+
+__target__ void h_loop_unrolled_be(fe_lc_t * fe, double dq[3][3][3][VVL],
+				   double dsq[3][3][VVL],
+				   double q[3][3][VVL],
+				   double h[3][3][VVL],
+				   double eq[VVL], double sum[NSIMDVL]) {
+
+  int iv=0;
+  double q0;
+  double kappa0, kappa1;
+  const double r3 = (1.0/3.0);
+
+  q0 = fe->param->rredshift*fe->param->q0;
+  kappa0 = fe->param->redshift*fe->param->redshift*fe->param->kappa0;
+  kappa1 = kappa0;
+
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
+__targetILP__(iv) h[0][0][iv] += kappa0*dsq[0][0][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[0][0] - 4.0*kappa1*q0*q0*q[0][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv];
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv];
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv] ;
+__targetILP__(iv) h[0][1][iv] += kappa0*dsq[0][1][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[0][1]- 4.0*kappa1*q0*q0*q[0][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv];
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv] ;
+__targetILP__(iv) h[0][2][iv] += kappa0*dsq[0][2][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[0][2] - 4.0*kappa1*q0*q0*q[0][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][0][2][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][0][0][iv] ;
+__targetILP__(iv) sum[iv] += -dq[2][1][1][iv];
+__targetILP__(iv) h[1][0][iv] += kappa0*dsq[1][0][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[1][0] - 4.0*kappa1*q0*q0*q[1][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
+__targetILP__(iv) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
+__targetILP__(iv) h[1][1][iv] += kappa0*dsq[1][1][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[1][1] - 4.0*kappa1*q0*q0*q[1][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv];
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv];
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv] ;
+__targetILP__(iv) h[1][2][iv] += kappa0*dsq[1][2][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[1][2] - 4.0*kappa1*q0*q0*q[1][2][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][0][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[1][0][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[1][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[2][2][1][iv];
+__targetILP__(iv) h[2][0][iv] += kappa0*dsq[2][0][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[2][0] - 4.0*kappa1*q0*q0*q[2][0][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][1][1][iv] ;
+__targetILP__(iv) sum[iv] += -dq[0][2][2][iv];
+__targetILP__(iv) sum[iv] += -dq[1][1][0][iv] ;
+__targetILP__(iv) sum[iv] += dq[2][2][0][iv];
+__targetILP__(iv) h[2][1][iv] += kappa0*dsq[2][1][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[2][1] - 4.0*kappa1*q0*q0*q[2][1][iv];
+__targetILP__(iv) sum[iv] = 0.0;
+__targetILP__(iv) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
+__targetILP__(iv) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
+__targetILP__(iv) h[2][2][iv] += kappa0*dsq[2][2][iv] - 2.0*kappa1*q0*sum[iv] + 4.0*r3*kappa1*q0*eq[iv]*d_[2][2] - 4.0*kappa1*q0*q0*q[2][2][iv];
+
+ return;
 }

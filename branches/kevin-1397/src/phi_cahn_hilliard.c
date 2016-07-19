@@ -52,8 +52,8 @@
 #include "advection_bcs.h"
 #include "phi_cahn_hilliard.h"
 
-static int phi_ch_flux_mu1(advflux_t * flux);
-static int phi_ch_flux_mu2(double * fe, double * fw, double * fy, double * fz);
+static int phi_ch_flux_mu1(fe_t * fes, advflux_t * flux);
+static int phi_ch_flux_mu2(fe_t * fes, double * fe, double * fw, double * fy, double * fz);
 static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux);
 
 static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw);
@@ -86,13 +86,15 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
  *
  *****************************************************************************/
 
-int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map,
+int phi_cahn_hilliard(fe_t * fe, field_t * phi, hydro_t * hydro, map_t * map,
 		      noise_t * noise) {
   int nf;
   int noise_phi = 0;
   advflux_t * fluxes = NULL;
 
+  assert(fe);
   assert(phi);
+
   if (noise) noise_present(noise, NOISE_PHI, &noise_phi);
 
   field_nf(phi, &nf);
@@ -111,11 +113,11 @@ int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map,
   }
 
   if (noise_phi) {
-    phi_ch_flux_mu2(fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
+    phi_ch_flux_mu2(fe, fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
     phi_ch_random_flux(noise, fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
   }
   else {
-    phi_ch_flux_mu1(fluxes);
+    phi_ch_flux_mu1(fe, fluxes);
   }
 
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
@@ -143,7 +145,7 @@ int phi_cahn_hilliard(field_t * phi, hydro_t * hydro, map_t * map,
  *
  *****************************************************************************/
 
-static int phi_ch_flux_mu1(advflux_t * flux) {
+static int phi_ch_flux_mu1(fe_t * fe, advflux_t * flux) {
 
   int nlocal[3];
   int ic, jc, kc;
@@ -153,8 +155,8 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
   double mu0, mu1;
   double mobility;
 
-  double (* chemical_potential)(const int index, const int nop);
-
+  assert(fe);
+  assert(fe->func->mu);
   assert(flux);
 
   coords_nlocal(nlocal);
@@ -162,7 +164,6 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
   nsites = le_nsites();
 
   physics_mobility(&mobility);
-  chemical_potential = fe_chemical_potential_function();
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -172,30 +173,30 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
 
 	index0 = le_site_index(ic, jc, kc);
 
-	mu0 = chemical_potential(index0, 0);
+	fe->func->mu(fe, index0, &mu0);
 
 	/* x-direction (between ic-1 and ic) */
 
 	index1 = le_site_index(icm1, jc, kc);
-	mu1 = chemical_potential(index1, 0);
+	fe->func->mu(fe, index1, &mu1);
 	flux->fw[addr_rank0(nsites, index0)] -= mobility*(mu0 - mu1);
 
 	/* ...and between ic and ic+1 */
 
 	index1 = le_site_index(icp1, jc, kc);
-	mu1 = chemical_potential(index1, 0);
+	fe->func->mu(fe, index1, &mu1);
 	flux->fe[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* y direction */
 
 	index1 = le_site_index(ic, jc+1, kc);
-	mu1 = chemical_potential(index1, 0);
+	fe->func->mu(fe, index1, &mu1);
 	flux->fy[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* z direction */
 
 	index1 = le_site_index(ic, jc, kc+1);
-	mu1 = chemical_potential(index1, 0);
+	fe->func->mu(fe, index1, &mu1);
 	flux->fz[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* Next site */
@@ -224,7 +225,8 @@ static int phi_ch_flux_mu1(advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
+static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
+			   double * fy,
 			   double * fz) {
   int nhalo;
   int nsites;
@@ -234,8 +236,6 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
   int xs, ys, zs;
   double mum2, mum1, mu00, mup1, mup2;
   double mobility;
-
-  double (* chemical_potential)(const int index, const int nop);
 
   nhalo = coords_nhalo();
   nsites = le_nsites();
@@ -248,18 +248,16 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
   ys = (nlocal[Z] + 2*nhalo)*zs;
   xs = (nlocal[Y] + 2*nhalo)*ys;
 
-  chemical_potential = fe_chemical_potential_function();
-
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
 	index0 = coords_index(ic, jc, kc);
-	mum2 = chemical_potential(index0 - 2*xs, 0);
-	mum1 = chemical_potential(index0 - 1*xs, 0);
-	mu00 = chemical_potential(index0,        0);
-	mup1 = chemical_potential(index0 + 1*xs, 0);
-	mup2 = chemical_potential(index0 + 2*xs, 0);
+	fesymm->func->mu(fesymm, index0 - 2*xs, &mum2);
+	fesymm->func->mu(fesymm, index0 - 1*xs, &mum1);
+	fesymm->func->mu(fesymm, index0,        &mu00);
+	fesymm->func->mu(fesymm, index0 + 1*xs, &mup1);
+	fesymm->func->mu(fesymm, index0 + 2*xs, &mup2);
 
 	/* x-direction (between ic-1 and ic) */
 
@@ -273,18 +271,19 @@ static int phi_ch_flux_mu2(double * fe, double * fw, double * fy,
 
 	/* y direction between jc and jc+1 */
 
-	mum1 = chemical_potential(index0 - 1*ys, 0);
-	mup1 = chemical_potential(index0 + 1*ys, 0);
-	mup2 = chemical_potential(index0 + 2*ys, 0);
+	fesymm->func->mu(fesymm, index0 - 1*ys, &mum1);
+	fesymm->func->mu(fesymm, index0 + 1*ys, &mup1);
+	fesymm->func->mu(fesymm, index0 + 2*ys, &mup2);
 
 	fy[addr_rank0(nsites, index0)]
 	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* z direction between kc and kc+1 */
 
-	mum1 = chemical_potential(index0 - 1*zs, 0);
-	mup1 = chemical_potential(index0 + 1*zs, 0);
-	mup2 = chemical_potential(index0 + 2*zs, 0);
+	fesymm->func->mu(fesymm, index0 - 1*zs, &mum1);
+	fesymm->func->mu(fesymm, index0 + 1*zs, &mup1);
+	fesymm->func->mu(fesymm, index0 + 2*zs, &mup2);
+
 	fz[addr_rank0(nsites, index0)]
 	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 

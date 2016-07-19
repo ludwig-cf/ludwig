@@ -57,8 +57,11 @@
  *  Edinbrugh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinbrugh
+ *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *
+ *  (c) 2012-2016 The University of Edinbrugh
  *
  *****************************************************************************/
 
@@ -69,23 +72,22 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_s.h"
-#include "psi.h"
 #include "advection.h"
 #include "advection_bcs.h"
-#include "free_energy.h"
 #include "physics.h"
 #include "nernst_planck.h"
 #include "psi_gradients.h"
 
 /* This needs an input switch to make it active. */
-int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
+int nernst_planck_fluxes_force_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro, 
 		map_t * map, colloids_info_t * cinfo, double ** flx);
 
-static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
+static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fe,
+				double * fy,
 				double * fz);
 static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
 				double * fz);
-static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro, 
+static int nernst_planck_fluxes_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro, 
 		map_t * map, colloids_info_t * cinfo, double ** flx);
 static int nernst_planck_update_d3qx(psi_t * psi, 
 				map_t * map, double ** flx);
@@ -103,7 +105,7 @@ static double max_acc;
  *
  *****************************************************************************/
 
-int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
+int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -112,7 +114,7 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
   double * fy = NULL;
   double * fz = NULL;
 
-  assert(0); /* Not in use. */
+  assert(0); /* Not in use. SHIT NO TEST ?*/
 
   psi_nk(psi, &nk);
   nsites = coords_nsites();
@@ -133,7 +135,7 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
   if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
 
   /* Add diffusive fluxes based on six-point stencil */
-  nernst_planck_fluxes(psi, fe, fy, fz);
+  nernst_planck_fluxes(psi, fel, fe, fy, fz);
 
   /* Apply no flux BC for six-point stencil */
   if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
@@ -165,7 +167,8 @@ int nernst_planck_driver(psi_t * psi, hydro_t * hydro, map_t * map) {
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
+static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fe,
+				double * fy,
 				double * fz) {
   int ic, jc, kc, index;
   int nlocal[3];
@@ -180,7 +183,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
   double rho0, rho1;
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
 
-  assert(0); /* Not in use */
+  assert(0); /* Not in use SHIT NO TEST? */
   assert(psi);
   assert(fe);
   assert(fy);
@@ -208,14 +211,14 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	for (n = 0; n < nk; n++) {
 
-	  fe_mu_solv(index, n, &mu_s0);
+	  fel->func->mu_solv(fel, index, n, &mu_s0);
 	  mu0 = mu_s0
 	    + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index)];
 	  rho0 = psi->rho[addr_rank1(nsites, nk, index, n)];
 
 	  /* x-direction (between ic and ic+1) */
 
-	  fe_mu_solv(index + xs, n, &mu_s1);
+	  fel->func->mu_solv(fel, index + xs, n, &mu_s1);
 	  mu1 = mu_s1
 	    + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index + xs)];
 
@@ -228,7 +231,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	  /* y-direction (between jc and jc+1) */
 
-	  fe_mu_solv(index + ys, n, &mu_s1);
+	  fel->func->mu_solv(fel, index + ys, n, &mu_s1);
 	  mu1 = mu_s1
 	    + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index + ys)];
 
@@ -240,7 +243,7 @@ static int nernst_planck_fluxes(psi_t * psi, double * fe, double * fy,
 
 	  /* z-direction (between kc and kc+1) */
 
-	  fe_mu_solv(index + zs, n, &mu_s1);
+	  fel->func->mu_solv(fel, index + zs, n, &mu_s1);
 	  mu1 = mu_s1
 	    + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index + zs)];
 
@@ -329,8 +332,8 @@ static int nernst_planck_update(psi_t * psi, double * fe, double * fy,
  *
  *****************************************************************************/
 
-int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro, 
-		map_t * map, colloids_info_t * cinfo) {
+int nernst_planck_driver_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro, 
+			      map_t * map, colloids_info_t * cinfo) {
 
   int nk;              /* Number of electrolyte species */
   int nsites;          /* Number of lattice sites */
@@ -352,7 +355,7 @@ int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro,
   if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho, flx);
 
   /* Add diffusive fluxes */
-  nernst_planck_fluxes_d3qx(psi, hydro, map, cinfo, flx);
+  nernst_planck_fluxes_d3qx(psi, fe, hydro, map, cinfo, flx);
   
   /* Apply no-flux BC */
   if (map) advective_bcs_no_flux_d3qx(nk, flx, map);
@@ -382,8 +385,9 @@ int nernst_planck_driver_d3qx(psi_t * psi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro, 
-	map_t * map, colloids_info_t * cinfo, double ** flx) {
+static int nernst_planck_fluxes_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro, 
+				     map_t * map, colloids_info_t * cinfo,
+				     double ** flx) {
 
   int ic, jc, kc; 
   int index0, index1;
@@ -405,6 +409,8 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
   colloid_t * pc = NULL;
 
   assert(psi);
+  assert(fe);
+  assert(fe->func->mu_solv);
   assert(flx);
 
   nsites = coords_nsites();
@@ -439,12 +445,12 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
 
 	      for (n = 0; n < nk; n++) {
 
-		fe_mu_solv(index0, n, &mu_s0);
+		fe->func->mu_solv(fe, index0, n, &mu_s0);
 		mu0 = reunit*mu_s0
 		  + psi->valency[n]*psi->psi[addr_rank0(nsites, index0)];
 		rho0 = psi->rho[addr_rank1(nsites, nk, index0, n)];
 
-		fe_mu_solv(index1, n, &mu_s1);
+		fe->func->mu_solv(fe, index1, n, &mu_s1);
 		mu1 = reunit*mu_s1
 		  + psi->valency[n]* psi->psi[addr_rank0(nsites, index1)];
 		b0 = exp(mu0 - mu1);
@@ -478,8 +484,9 @@ static int nernst_planck_fluxes_d3qx(psi_t * psi, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro, 
-	map_t * map, colloids_info_t * cinfo, double ** flx) {
+int nernst_planck_fluxes_force_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro, 
+				    map_t * map, colloids_info_t * cinfo,
+				    double ** flx) {
 
   int ic, jc, kc; 
   int index0, index1;
@@ -558,12 +565,12 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, hydro_t * hydro,
 	    if (status1 == MAP_FLUID) {
 
 	      for (n = 0; n < nk; n++) {
-		fe_mu_solv(index0, n, &mu_s0);
+		fe->func->mu_solv(fe, index0, n, &mu_s0);
 		mu0 = mu_s0
 		  + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index0)];
 		rho0 = psi->rho[addr_rank1(nsites, nk, index0, n)];
 
-		fe_mu_solv(index1, n, &mu_s1);
+		fe->func->mu_solv(fe, index1, n, &mu_s1);
 		mu1 = mu_s1
 		  + psi->valency[n]*eunit*psi->psi[addr_rank0(nsites, index1)];
 		b0 = exp(-beta*(mu1 - mu0));

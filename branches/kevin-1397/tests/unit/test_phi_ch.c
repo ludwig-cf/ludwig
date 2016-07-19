@@ -64,7 +64,6 @@ int test_phi_ch_suite(void) {
   field_create(nf, "phi", &phi);
   assert(phi);
   field_init(phi, nhalo);
-  fe_create();
 
   hydro_create(1, &hydro);
   assert(hydro);
@@ -125,7 +124,7 @@ static int test_advection(field_t * phi, hydro_t * hydro) {
     field_halo(phi);
     /* The map_t argument can be NULL here, as there is no solid;
      * the same is true for noise */
-    phi_cahn_hilliard(phi, hydro, NULL, NULL);
+    phi_cahn_hilliard(NULL, phi, hydro, NULL, NULL);
   }
 
   /* Exact solution has position: */

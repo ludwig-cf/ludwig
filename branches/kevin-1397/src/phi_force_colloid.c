@@ -71,7 +71,7 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-__host__ int phi_force_colloid(pth_t * pth, colloids_info_t * cinfo,
+__host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 				     field_t * q, field_grad_t * q_grad,
 				     hydro_t * hydro, map_t * map) {
 
@@ -84,7 +84,7 @@ __host__ int phi_force_colloid(pth_t * pth, colloids_info_t * cinfo,
   if (hydro == NULL && ncolloid == 0) return 0;
 
   if (pth->method == PTH_METHOD_DIVERGENCE) {
-    phi_force_stress_compute(pth, q, q_grad);
+    pth_stress_compute(pth, fe);
     phi_force_interpolation(pth, cinfo, hydro, map);
   }
 

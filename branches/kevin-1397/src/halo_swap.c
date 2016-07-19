@@ -15,6 +15,8 @@
  *
  *****************************************************************************/
 
+#include "pe.h"
+#include "util.h"
 #include "coords.h"
 #include "halo_swap.h"
 
@@ -60,6 +62,8 @@ struct halo_swap_param_s {
 static __constant__ halo_swap_param_t const_param;
 
 __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb, halo_swap_t ** phalo);
+__host__ int halo_swap_device(halo_swap_t * halo, double * data);
+__host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf, MPI_Datatype mpidata);
 __host__ __target__ void halo_swap_coords(halo_swap_t * halo, int id, int index, int * ic, int * jc, int * kc);
 __host__ __target__ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc);
 __host__ __target__ int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, int jc, int kc);
@@ -336,6 +340,335 @@ __host__ int halo_swap_commit(halo_swap_t * halo) {
 
 __host__ int halo_swap_driver(halo_swap_t * halo, double * data) {
 
+  assert(halo);
+  assert(data);
+
+  if (halo->param->nswap > halo->param->nlocal[Z]) {
+    /* Bit of a kludge: if 2d and host-only, use this ... */
+    /* Not LB distributions */
+   halo_swap_host_rank1(halo, data, MPI_DOUBLE);
+  }
+  else {
+    halo_swap_device(halo, data);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  halo_swap_host_rank1
+ *
+ *****************************************************************************/
+
+__host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
+				  MPI_Datatype mpidata) {
+
+  int sz;
+  int nall;
+  int nhcomm;
+  int na;
+  int ic, jc, kc;
+  int ia, index;
+  int nh;
+  int ireal, ihalo;
+  int icount, nsend;
+  int pforw, pback;
+  int nlocal[3];
+
+  unsigned char * buf;
+  unsigned char * sendforw;
+  unsigned char * sendback;
+  unsigned char * recvforw;
+  unsigned char * recvback;
+
+  MPI_Comm comm;
+  MPI_Request req[4];
+  MPI_Status status[2];
+
+  const int tagf = 2015;
+  const int tagb = 2016;
+
+  assert(halo);
+  assert(mbuf);
+  assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
+
+  buf = (unsigned char *) mbuf;
+
+  comm = cart_comm();
+  if (mpidata == MPI_CHAR) sz = sizeof(char);
+  if (mpidata == MPI_DOUBLE) sz = sizeof(double);
+
+  nall = halo->param->naddr;
+  nhcomm = halo->param->nswap;
+  na = halo->param->na;
+
+  coords_nlocal(nlocal);
+
+  /* X-direction */
+
+  nsend = nhcomm*na*nlocal[Y]*nlocal[Z];
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
+  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
+  if (sendback == NULL) fatal("malloc(sendback) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
+  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+
+  /* Load send buffers */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  /* Backward going... */
+	  index = coords_index(1 + nh, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
+	  /* ...and forward going. */
+	  index = coords_index(nlocal[X] - nh, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  if (cart_size(X) == 1) {
+    memcpy(recvback, sendforw, nsend*sz);
+    memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
+  }
+  else {
+    pforw = cart_neighb(FORWARD, X);
+    pback = cart_neighb(BACKWARD, X);
+    MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
+    MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
+    MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
+    MPI_Issend(sendforw, nsend, mpidata, pforw, tagf, comm, req + 3);
+    /* Wait for receives */
+    MPI_Waitall(2, req, status);
+  }
+
+  /* Unload */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = coords_index(nlocal[X] + 1 + nh, jc, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  index = coords_index(0 - nh, jc, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  MPI_Waitall(2, req + 2, status);
+
+  free(sendback);
+  free(sendforw);
+
+  /* Y direction */
+
+  nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*nlocal[Z];
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
+  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
+  if (sendback == NULL) fatal("malloc(sendback) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
+  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+
+  /* Load buffers */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = coords_index(ic, 1 + nh, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
+	  index = coords_index(ic, nlocal[Y] - nh, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  if (cart_size(Y) == 1) {
+    memcpy(recvback, sendforw, nsend*sz);
+    memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
+  }
+  else {
+    pforw = cart_neighb(FORWARD, Y);
+    pback = cart_neighb(BACKWARD, Y);
+    MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
+    MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
+    MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
+    MPI_Issend(sendforw, nsend, mpidata, pforw, tagf, comm, req + 3);
+    /* Wait for receives */
+    MPI_Waitall(2, req, status);
+  }
+
+  /* Unload */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = coords_index(ic, 0 - nh, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
+	  index = coords_index(ic, nlocal[Y] + 1 + nh, kc);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  MPI_Waitall(2, req + 2, status);
+
+  free(sendback);
+  free(sendforw);
+
+  /* Z direction */
+
+  nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*(nlocal[Y] + 2*nhcomm);
+  sendforw = (unsigned char *) malloc(nsend*sz);
+  sendback = (unsigned char *) malloc(nsend*sz);
+  recvforw = (unsigned char *) malloc(nsend*sz);
+  recvback = (unsigned char *) malloc(nsend*sz);
+  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
+  if (sendback == NULL) fatal("malloc(sendback) failed\n");
+  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
+  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+
+  /* Load */
+  /* Some adjustment in the load required for 2d systems (X-Y) */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
+	for (ia = 0; ia < na; ia++) {
+	  kc = imin(1 + nh, nlocal[Z]);
+	  index = coords_index(ic, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
+	  kc = imax(nlocal[Z] - nh, 1);
+	  index = coords_index(ic, jc, kc);
+	  ireal = addr_rank1(nall, na, index, ia);
+	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  if (cart_size(Z) == 1) {
+    memcpy(recvback, sendforw, nsend*sz);
+    memcpy(recvforw, sendback, nsend*sz);
+    req[2] = MPI_REQUEST_NULL;
+    req[3] = MPI_REQUEST_NULL;
+  }
+  else {
+    pforw = cart_neighb(FORWARD, Z);
+    pback = cart_neighb(BACKWARD, Z);
+    MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
+    MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
+    MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
+    MPI_Issend(sendforw, nsend, mpidata, pforw, tagf, comm, req + 3);
+    /* Wait before unloading */
+    MPI_Waitall(2, req, status);
+  }
+
+  /* Unload */
+
+  icount = 0;
+
+  for (nh = 0; nh < nhcomm; nh++) {
+    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+      for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
+	for (ia = 0; ia < na; ia++) {
+	  index = coords_index(ic, jc, 0 - nh);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
+	  index = coords_index(ic, jc, nlocal[Z] + 1 + nh);
+	  ihalo = addr_rank1(nall, na, index, ia);
+	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
+	  icount += 1;
+	}
+      }
+    }
+  }
+
+  assert(icount == nsend);
+
+  free(recvback);
+  free(recvforw);
+
+  MPI_Waitall(2, req + 2, status);
+
+  free(sendback);
+  free(sendforw);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  halo_swap_device
+ *
+ *  Version allowing for host/device copies.
+ *
+ *  "data" must be a device pointer
+ *
+ *****************************************************************************/
+
+__host__ int halo_swap_device(halo_swap_t * halo, double * data) {
+
   int ncount;
   int ndevice;
   int ic, jc, kc;
@@ -359,6 +692,8 @@ __host__ int halo_swap_driver(halo_swap_t * halo, double * data) {
   const int ftagx = 642, ftagy = 643, ftagz = 644;
 
   assert(halo);
+ /* 2D systems require fix... in the meantime...*/
+  assert(halo->param->nlocal[Z] >= halo->param->nswap);
 
   targetGetDeviceCount(&ndevice);
   halo_swap_commit(halo);
@@ -661,7 +996,7 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
     int naddr;
     int ia, indexl, indexh, ic, jc, kc;
     int hsz;
-    int ho; /* high end offset */
+    int hi; /* high end offset */
     double * __restrict__ buflo;
     double * __restrict__ bufhi;
 
@@ -676,23 +1011,35 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
     halo_swap_coords(halo, id, kindex, &ic, &jc, &kc);
 
     if (id == X) {
-      ho = nh + halo->param->nlocal[X] - halo->param->nswap;
+      /* lo: nh + ic */
+      /* hi: nh + nlocal[X] - 1 - ic */
+      hi = nh + halo->param->nlocal[X] - halo->param->nswap;
+      /* hi = halo->param->nlocal[X] - 1 - ic;*/
       indexl = halo_swap_index(halo, nh + ic, jc, kc);
-      indexh = halo_swap_index(halo, ho + ic, jc, kc);
+      indexh = halo_swap_index(halo, hi + ic, jc, kc);
       buflo = halo->fxlo;
       bufhi = halo->fxhi;
     }
     if (id == Y) {
-      ho = nh + halo->param->nlocal[Y] - halo->param->nswap;
+      /* lo: nh + jc */
+      /* hi = halo->param->nlocal[Y] - 1 - jc;*/
+      hi = nh + halo->param->nlocal[Y] - halo->param->nswap;
       indexl = halo_swap_index(halo, ic, nh + jc, kc);
-      indexh = halo_swap_index(halo, ic, ho + jc, kc);
+      indexh = halo_swap_index(halo, ic, hi + jc, kc);
       buflo = halo->fylo;
       bufhi = halo->fyhi;
     }
     if (id == Z) {
-      ho = nh + halo->param->nlocal[Z] - halo->param->nswap;
+      hi = nh + halo->param->nlocal[Z] - halo->param->nswap;
+      /* Low : nh + imin(kc, nlocal[Z]-1)  */
+      /* High: nh + imax(nlocal[Z]-1-kc,0) */
+      /*lo = imin(kc, halo->param->nlocal[Z] - 1);
+	hi = imax(halo->param->nlocal[Z] - 1 - kc, 0);*/
+      /*lo = imin(kc, halo->param->nlocal[Z] - 1);
+	hi = imax(hi + kc, nh);*/
+      /* printf("%2d %2d %2d %2d %2d\n", ic, jc, kc, nh + lo, hi);*/
       indexl = halo_swap_index(halo, ic, jc, nh + kc);
-      indexh = halo_swap_index(halo, ic, jc, ho + kc);
+      indexh = halo_swap_index(halo, ic, jc, hi + kc);
       buflo = halo->fzlo;
       bufhi = halo->fzhi;
     }
@@ -760,7 +1107,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
     int ia, indexl, indexh;
     int nh;                          /* Full halo width */
     int ic, jc, kc;                  /* Lattice ooords */
-    int lo, ho;                      /* Offset for low, high end */
+    int lo, hi;                      /* Offset for low, high end */
     double * __restrict__ buflo;
     double * __restrict__ bufhi;
 
@@ -773,27 +1120,27 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
     if (id == X) {
       lo = nh - halo->param->nswap;
-      ho = nh + halo->param->nlocal[X];
+      hi = nh + halo->param->nlocal[X];
       indexl = halo_swap_index(halo, lo + ic, jc, kc);
-      indexh = halo_swap_index(halo, ho + ic, jc, kc);
+      indexh = halo_swap_index(halo, hi + ic, jc, kc);
       buflo = halo->hxlo;
       bufhi = halo->hxhi;
     }
 
     if (id == Y) {
       lo = nh - halo->param->nswap;
-      ho = nh + halo->param->nlocal[Y];
+      hi = nh + halo->param->nlocal[Y];
       indexl = halo_swap_index(halo, ic, lo + jc, kc);
-      indexh = halo_swap_index(halo, ic, ho + jc, kc);
+      indexh = halo_swap_index(halo, ic, hi + jc, kc);
       buflo = halo->hylo;
       bufhi = halo->hyhi;
     }
 
     if (id == Z) {
       lo = nh - halo->param->nswap;
-      ho = nh + halo->param->nlocal[Z];
+      hi = nh + halo->param->nlocal[Z];
       indexl = halo_swap_index(halo, ic, jc, lo + kc);
-      indexh = halo_swap_index(halo, ic, jc, ho + kc);
+      indexh = halo_swap_index(halo, ic, jc, hi + kc);
       buflo = halo->hzlo;
       bufhi = halo->hzhi;
     } 
@@ -845,6 +1192,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
  *  halo_swap_coords
  *
  *  For given kernel index, work out where we are in (ic, jc, kc)
+ *  relative to buffer region for direction id.
  *
  *****************************************************************************/
 

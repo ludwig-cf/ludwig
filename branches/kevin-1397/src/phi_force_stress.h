@@ -18,6 +18,8 @@
 #ifndef PHI_FORCE_STRESS_H
 #define PHI_FORCE_STRESS_H
 
+#include "free_energy.h"
+
 enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU};
 
 typedef struct pth_s pth_t;
@@ -25,9 +27,11 @@ typedef struct pth_s pth_t;
 __host__ int pth_create(int method, pth_t ** pth);
 __host__ int pth_free(pth_t * pth);
 __host__ int pth_memcpy(pth_t * pth, int flag);
-__host__ int phi_force_stress_compute(pth_t * pth, field_t* q, field_grad_t* q_grad);
+__host__ int pth_stress_compute(pth_t * pth, fe_t * fe);
 
-__host__ __device__ void phi_force_stress(pth_t * pth,  int index, double p[3][3]);
-__host__ __device__ void phi_force_stress_set(pth_t * pth, int index, double p[3][3]);
+__host__ int phi_force_stress_compute(pth_t * pth, field_t * phi, field_grad_t * grad_phi);
+
+__host__ __device__ void pth_stress(pth_t * pth,  int index, double p[3][3]);
+__host__ __device__ void pth_stress_set(pth_t * pth, int index, double p[3][3]);
 
 #endif

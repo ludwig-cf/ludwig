@@ -7,9 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *  (c) 2014-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -76,11 +77,14 @@ static int do_test1(void) {
   double psi0;           /* Test potential */
   double fed;
 
+  fe_electro_t * fe = NULL;
+
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
   physics_kt_set(kt);
 
-  fe_electro_create(psi);
+  fe_electro_create(psi, &fe);
+  assert(fe);
 
   /* psi = 0 so have \sum rho (log(rho) - 1) */
 
@@ -93,21 +97,21 @@ static int do_test1(void) {
   psi_rho_set(psi, index, 1, rho1);
   psi_psi_set(psi, index, 0.0);
 
-  fed = fe_electro_fed(index);
+  fe_electro_fed(fe, index, &fed);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho0 = exp(1.0);
   fed0 = rho0*(log(rho0) - 1.0);
 
   psi_rho_set(psi, index, 0, rho0);
-  fed = fe_electro_fed(index);
+  fe_electro_fed(fe, index, &fed);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho1 = exp(2.0);
   fed1 = rho1*(log(rho1) - 1.0);
 
   psi_rho_set(psi, index, 1, rho1);
-  fed = fe_electro_fed(index);
+  fe_electro_fed(fe, index, &fed);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   /* For psi > 0 we add \sum rho 0.5 Z psi */
@@ -119,10 +123,10 @@ static int do_test1(void) {
   psi_psi_set(psi, index, psi0);
   psi_valency_set(psi, 0, valency[0]);
   psi_valency_set(psi, 1, valency[1]);
-  fed = fe_electro_fed(index);
+  fe_electro_fed(fe, index, &fed);
   assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
-  fe_electro_free();
+  fe_electro_free(fe);
   psi_free(psi);
 
   return 0;
@@ -149,13 +153,16 @@ int do_test2(void) {
   double rho0;    /* Test charge density */
   double psi0;    /* Test potential */
   double mu0;     /* Expected chemical potential */
-  double mu;      /* Actual chemical potential */
+  double mu[2];   /* Actual chemical potential */
+
+  fe_electro_t * fe = NULL;
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
   physics_kt_set(kt);
 
-  fe_electro_create(psi);
+  fe_electro_create(psi, &fe);
+  assert(fe);
 
   for (n = 0; n < nk; n++) {
     rho0 = 1.0 + 1.0*n;
@@ -166,18 +173,18 @@ int do_test2(void) {
     psi0 = 0.0;
     psi_psi_set(psi, index, psi0);
     mu0 = kt*log(rho0);
-    mu = fe_electro_mu(index, n);
-    assert(fabs(mu - mu0) < DBL_EPSILON);
+    fe_electro_mu(fe, index, mu);
+    assert(fabs(mu[n] - mu0) < DBL_EPSILON);
 
     /* Complete mu_a = kT log(rho) + Z_a e psi */
     psi0 = 1.0;
     psi_psi_set(psi, index, psi0);
     mu0 = kt*log(rho0) + valency[n]*eunit*psi0;
-    mu = fe_electro_mu(index, n);
-    assert(fabs(mu - mu0) < DBL_EPSILON);
+    fe_electro_mu(fe, index, mu);
+    assert(fabs(mu[n] - mu0) < DBL_EPSILON);
   }
 
-  fe_electro_free();
+  fe_electro_free(fe);
   psi_free(psi);
 
   return 0;
@@ -209,10 +216,13 @@ static int do_test3(void) {
   double emod;
   double sexpect;
 
+  fe_electro_t * fe = NULL;
+
   psi_create(nk, &psi);
   psi_epsilon_set(psi, epsilon);
   psi_unit_charge_set(psi, eunit);
-  fe_electro_create(psi);
+  fe_electro_create(psi, &fe);
+  assert(fe);
 
   physics_kt_set(kt);
 
@@ -220,7 +230,7 @@ static int do_test3(void) {
    * spatial gradient */
 
   index = coords_index(1, 1, 1);
-  fe_electro_stress(index, s);
+  fe_electro_stress(fe, index, s);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -251,7 +261,7 @@ static int do_test3(void) {
   e0[Z] = -0.5*(psi1 - psi0)*kt/eunit;
   emod = modulus(e0);
 
-  fe_electro_stress(coords_index(1, 1, 1), s);
+  fe_electro_stress(fe, coords_index(1, 1, 1), s);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -260,7 +270,7 @@ static int do_test3(void) {
     }
   }
 
-  fe_electro_free();
+  fe_electro_free(fe);
   psi_free(psi);
 
   return 0;

@@ -249,11 +249,13 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #else
 
 /* Blocked version. Block length always vector length. */
+
+#define NVBLOCK NSIMDVL
+
 /* We simulate an innermost vector loop by arithmetic based
  * on the coordinate index, which is expected to run normally
  * from 0 ... nites-1. The 'dummy' vector loop index is ... */
 
-#define NVBLOCK NSIMDVL
 #define pseudo_iv(index) ( (index) - ((index)/NVBLOCK)*NVBLOCK )
 
 #define addr_rank0(nsites, index) \

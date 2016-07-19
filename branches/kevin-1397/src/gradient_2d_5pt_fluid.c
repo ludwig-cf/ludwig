@@ -37,9 +37,11 @@
 #include "field_grad_s.h"
 #include "gradient_2d_5pt_fluid.h"
 
-__host__ int grad_2d_5pt_fluid_operator(field_grad_t * fg, int nextra);
-__host__ int grad_2d_5pt_fluid_le_correction(field_grad_t * fg, int nextra);
-__host__ int grad_2d_5pt_fluid_wall_correction(field_grad_t * fg, int nextra);
+enum grad_type {GRAD_DEL2, GRAD_DEL4};
+
+__host__ int grad_2d_5pt_fluid_operator(field_grad_t * fg, int nextra, int type);
+__host__ int grad_2d_5pt_fluid_le_correction(field_grad_t * fg, int nextra, int type);
+__host__ int grad_2d_5pt_fluid_wall_correction(field_grad_t * fg, int nextra, int type);
 
 /*****************************************************************************
  *
@@ -57,9 +59,9 @@ __host__ int grad_2d_5pt_fluid_d2(field_grad_t * fg) {
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  grad_2d_5pt_fluid_operator(fg, nextra);
-  grad_2d_5pt_fluid_le_correction(fg, nextra);
-  grad_2d_5pt_fluid_wall_correction(fg, nextra);
+  grad_2d_5pt_fluid_operator(fg, nextra, GRAD_DEL2);
+  grad_2d_5pt_fluid_le_correction(fg, nextra, GRAD_DEL2);
+  grad_2d_5pt_fluid_wall_correction(fg, nextra, GRAD_DEL2);
 
   return 0;
 }
@@ -80,9 +82,9 @@ __host__ int grad_2d_5pt_fluid_d4(field_grad_t * fg) {
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
-  grad_2d_5pt_fluid_operator(fg, nextra);
-  grad_2d_5pt_fluid_le_correction(fg, nextra);
-  grad_2d_5pt_fluid_wall_correction(fg, nextra);
+  grad_2d_5pt_fluid_operator(fg, nextra, GRAD_DEL4);
+  grad_2d_5pt_fluid_le_correction(fg, nextra, GRAD_DEL4);
+  grad_2d_5pt_fluid_wall_correction(fg, nextra, GRAD_DEL4);
 
   return 0;
 }
@@ -93,7 +95,8 @@ __host__ int grad_2d_5pt_fluid_d4(field_grad_t * fg) {
  *
  *****************************************************************************/
 
-__host__ int grad_2d_5pt_fluid_operator(field_grad_t * fg,  int nextra) {
+__host__ int grad_2d_5pt_fluid_operator(field_grad_t * fg,  int nextra,
+					int type) {
 
   int nop;
   int nlocal[3];
@@ -116,9 +119,17 @@ __host__ int grad_2d_5pt_fluid_operator(field_grad_t * fg,  int nextra) {
   ys = nlocal[Z] + 2*nhalo;
 
   nop = fg->field->nf;
-  field = fg->field->data;
-  grad = fg->grad;
-  del2 = fg->delsq;
+  if (type == GRAD_DEL2) {
+    field = fg->field->data;
+    grad  = fg->grad;
+    del2  = fg->delsq;
+  }
+  if (type == GRAD_DEL4) {
+    field = fg->delsq;
+    grad  = fg->grad_delsq;
+    del2 =  fg->delsq_delsq;
+  }
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -160,7 +171,8 @@ __host__ int grad_2d_5pt_fluid_operator(field_grad_t * fg,  int nextra) {
  *
  *****************************************************************************/
 
-__host__ int grad_2d_5pt_fluid_le_correction(field_grad_t * fg, int nextra) {
+__host__ int grad_2d_5pt_fluid_le_correction(field_grad_t * fg, int nextra,
+					     int type) {
 
   int nop;
   int nlocal[3];
@@ -187,9 +199,17 @@ __host__ int grad_2d_5pt_fluid_le_correction(field_grad_t * fg, int nextra) {
   ys = (nlocal[Z] + 2*nhalo);
 
   nop = fg->field->nf;
-  field = fg->field->data;
-  grad = fg->grad;
-  del2 = fg->delsq;
+  if (type == GRAD_DEL2) {
+    field = fg->field->data;
+    grad  = fg->grad;
+    del2  = fg->delsq;
+  }
+  if (type == GRAD_DEL4) {
+    field = fg->delsq;
+    grad  = fg->grad_delsq;
+    del2 =  fg->delsq_delsq;
+  }
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
 
   for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
 
@@ -268,7 +288,8 @@ __host__ int grad_2d_5pt_fluid_le_correction(field_grad_t * fg, int nextra) {
  *
  *****************************************************************************/
 
-__host__ int grad_2d_5pt_fluid_wall_correction(field_grad_t * fg, int nextra) {
+__host__ int grad_2d_5pt_fluid_wall_correction(field_grad_t * fg, int nextra,
+					       int type) {
 
   int nop;
   int nlocal[3];
@@ -302,9 +323,17 @@ __host__ int grad_2d_5pt_fluid_wall_correction(field_grad_t * fg, int nextra) {
   assert(wall_at_edge(Z) == 0);
 
   nop = fg->field->nf;
-  field = fg->field->data;
-  grad = fg->grad;
-  del2 = fg->delsq;
+  if (type == GRAD_DEL2) {
+    field = fg->field->data;
+    grad  = fg->grad;
+    del2  = fg->delsq;
+  }
+  if (type == GRAD_DEL4) {
+    field = fg->delsq;
+    grad  = fg->grad_delsq;
+    del2 =  fg->delsq_delsq;
+  }
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
 
   /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
    * is currently no mechanism to obtain the free energy parameters. */

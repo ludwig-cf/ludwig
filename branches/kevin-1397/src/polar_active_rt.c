@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,11 +23,7 @@
 #include "pe.h"
 #include "runtime.h"
 #include "coords.h"
-#include "field.h"
-#include "field_grad.h"
 #include "io_harness.h"
-#include "free_energy_vector.h"
-#include "polar_active.h"
 #include "polar_active_rt.h"
 
 static int polar_active_init_code(field_t * p);
@@ -40,49 +36,39 @@ static int polar_active_init_code(field_t * p);
  *
  *****************************************************************************/
 
-void polar_active_run_time(void) {
+__host__ int polar_active_run_time(fe_polar_t * fe) {
 
-  double a;
-  double b;
-  double k1;
-  double delta;
-  double klc;
-  double zeta;
-  double lambda;
+  fe_polar_param_t param;
+
+  assert(fe);
 
   info("Polar active free energy selected.\n");
 
   /* PARAMETERS */
 
-  RUN_get_double_parameter("polar_active_a", &a);
-  RUN_get_double_parameter("polar_active_b", &b);
-  RUN_get_double_parameter("polar_active_k", &k1);
-  RUN_get_double_parameter("polar_active_dk", &delta);
-  delta = 0.0; /* Pending molecular field */
-  RUN_get_double_parameter("polar_active_klc", &klc);
-  RUN_get_double_parameter("polar_active_zeta", &zeta);
-  RUN_get_double_parameter("polar_active_lambda", &lambda);
+  RUN_get_double_parameter("polar_active_a", &param.a);
+  RUN_get_double_parameter("polar_active_b", &param.b);
+  RUN_get_double_parameter("polar_active_k", &param.kappa1);
+  RUN_get_double_parameter("polar_active_dk", &param.delta);
+  param.delta = 0.0; /* Pending molecular field */
+  RUN_get_double_parameter("polar_active_klc", &param.kappa2);
+  RUN_get_double_parameter("polar_active_zeta", &param.zeta);
+  RUN_get_double_parameter("polar_active_lambda", &param.lambda);
 
   info("\n");
 
   info("Parameters:\n");
-  info("Quadratic term a     = %14.7e\n", a);
-  info("Quartic term b       = %14.7e\n", b);
-  info("Elastic constant k   = %14.7e\n", k1);
-  info("Elastic constant dk  = %14.7e\n", delta);
-  info("Elastic constant klc = %14.7e\n", klc);
-  info("Activity zeta        = %14.7e\n", zeta);
-  info("Lambda               = %14.7e\n", lambda);
+  info("Quadratic term a     = %14.7e\n", param.a);
+  info("Quartic term b       = %14.7e\n", param.b);
+  info("Elastic constant k   = %14.7e\n", param.kappa1);
+  info("Elastic constant dk  = %14.7e\n", param.delta);
+  info("Elastic constant klc = %14.7e\n", param.kappa2);
+  info("Activity zeta        = %14.7e\n", param.zeta);
+  info("Lambda               = %14.7e\n", param.lambda);
 
-  polar_active_parameters_set(a, b, k1, klc);
-  polar_active_zeta_set(zeta);
+  fe_polar_param_set(fe, param);
 
-  fe_density_set(polar_active_free_energy_density);
-  fe_chemical_stress_set(polar_active_chemical_stress);
-  fe_v_lambda_set(lambda);
-  fe_v_molecular_field_set(polar_active_molecular_field);
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************

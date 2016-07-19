@@ -95,6 +95,14 @@ cudaError_t cudaGetLastError(void) {
   return lastError;
 }
 
+cudaError_t cudaGetSymbolAddress(void ** devPtr, const void * symbol) {
+
+  /* No device symbols available... */
+  error_return(cudaErrorInvalidSymbol);
+
+  return cudaSuccess;
+}
+
 cudaError_t cudaHostAlloc(void ** phost, size_t size, unsigned int flags) {
 
   void * ptr = NULL;

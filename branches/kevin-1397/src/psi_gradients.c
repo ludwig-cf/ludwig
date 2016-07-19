@@ -423,6 +423,8 @@ int psi_grad_eps_d3qx(f_vare_t fepsilon, int index, double grad_eps[3]) {
   int index1;
   double aux, eps1;
 
+  fe_t * fe = NULL;
+
   assert(fepsilon);
   assert(grad_eps);
   assert(0); /* SHIT NO TEST? */
@@ -440,7 +442,7 @@ int psi_grad_eps_d3qx(f_vare_t fepsilon, int index, double grad_eps[3]) {
     coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
 
     index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
-    fepsilon(index1, &eps1);
+    fepsilon(fe, index1, &eps1);
 
     aux = psi_gr_wv[p]* psi_gr_rcs2 * eps1;
 
