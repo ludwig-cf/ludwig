@@ -174,6 +174,7 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
   double u[3];
 
   double x, y;
+  PI_DOUBLE(pi);
 
   assert(lb);
   coords_nlocal(nlocal);
@@ -186,7 +187,7 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
 
       if (y >  0.5) u[X] = u0*tanh(kappa*(0.75 - y));
       if (y <= 0.5) u[X] = u0*tanh(kappa*(y - 0.25));
-      u[Y] = u0*delta*sin(2.0*pi_*(x + 0.25));
+      u[Y] = u0*delta*sin(2.0*pi*(x + 0.25));
       u[Z] = 0.0;
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -232,12 +233,13 @@ static int lb_rt_2d_shear_wave(lb_t * lb) {
   double u[3];
 
   double y;
+  PI_DOUBLE(pi);
 
   assert(lb);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  kappa = 2.0*pi_;
+  kappa = 2.0*pi;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

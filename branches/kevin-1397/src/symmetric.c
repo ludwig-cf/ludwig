@@ -351,6 +351,7 @@ void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
   double delsq;
   double grad[3];
   double p0;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -372,7 +373,7 @@ void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ib*NSIMDVL+iv] = p0*tc_d_[ia][ib] + kappa*grad[ia]*grad[ib];
+	s[ia][ib*NSIMDVL+iv] = p0*d[ia][ib] + kappa*grad[ia]*grad[ib];
       }
     }
   }

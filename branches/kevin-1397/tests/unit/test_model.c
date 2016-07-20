@@ -128,6 +128,7 @@ static void test_model_velocity_set(void) {
   int i, j, k, p;
   double dij;
   double sum, sumx, sumy, sumz;
+  KRONECKER_DELTA_CHAR(d_);
 
   /*
   info("Checking velocities cv etc...\n\n");

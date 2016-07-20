@@ -497,6 +497,7 @@ static void stats_sigma_find_sigma(drop_t * drop) {
   double fe;
   double fmin, fmin_local;      /* Minimum free energy */
   double excess, excess_local;  /* Excess free energy */
+  PI_DOUBLE(pi);
 
   MPI_Comm comm;
 
@@ -543,10 +544,10 @@ static void stats_sigma_find_sigma(drop_t * drop) {
 
   if (nlocal[Z] == 1) {
     /* Assume 2d system */
-    drop->sigma = excess / (2.0*pi_*drop->radius);
+    drop->sigma = excess / (2.0*pi*drop->radius);
   }
   else {
-    drop->sigma = excess / (4.0*pi_*drop->radius*drop->radius);
+    drop->sigma = excess / (4.0*pi*drop->radius*drop->radius);
   }
 
   return;

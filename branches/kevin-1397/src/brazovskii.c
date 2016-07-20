@@ -316,6 +316,7 @@ int fe_brazovskii_str(fe_brazovskii_t * fe, int index,  double s[3][3]) {
   double grad_phi[3];
   double grad_del2_phi[3];
   double p0;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -338,7 +339,7 @@ int fe_brazovskii_str(fe_brazovskii_t * fe, int index,  double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_[ia][ib] + kappa*grad_phi[ia]*grad_phi[ib]
+      s[ia][ib] = p0*d[ia][ib] + kappa*grad_phi[ia]*grad_phi[ib]
       - c*(grad_phi[ia]*grad_del2_phi[ib] + grad_phi[ib]*grad_del2_phi[ia]);
     }
   }

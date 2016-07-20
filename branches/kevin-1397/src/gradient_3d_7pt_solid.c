@@ -237,6 +237,8 @@ static int gradient_6x5_svd(fe_lc_param_t * param,
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
   int nSites;
+  KRONECKER_DELTA_CHAR(d_);
+  LEVI_CIVITA_CHAR(e);
 
   assert(NQAB == 5);
 
@@ -362,7 +364,7 @@ static int gradient_6x5_svd(fe_lc_param_t * param,
 	      for (ig = 0; ig < 3; ig++) {
 		for (ih = 0; ih < 3; ih++) {
 		  c[ia][ib] -= param->kappa1*param->q0*bcs[normal[n]][ig]*
-		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+		    (e[ia][ig][ih]*qs[ih][ib] + e[ib][ig][ih]*qs[ih][ia]);
 		}
 	      }
 	      /* Normal anchoring: w2 must be zero and q0 is preferred Q
@@ -524,6 +526,9 @@ static int gradient_6x6_gauss_elim(fe_lc_param_t * feparam,
   double amplitude;                         /* Scalar order parameter */
   double qtilde[3][3];                      /* For planar anchoring */
   double q2;                                /* Contraction Q_ab Q_ab */
+  KRONECKER_DELTA_CHAR(d_);
+  LEVI_CIVITA_CHAR(e);
+
 
   assert(NQAB == 5);
   assert(NSYMM == 6);
@@ -639,7 +644,7 @@ static int gradient_6x6_gauss_elim(fe_lc_param_t * feparam,
 	      for (ig = 0; ig < 3; ig++) {
 		for (ih = 0; ih < 3; ih++) {
 		  c[ia][ib] -= feparam->kappa1*feparam->q0*bcs[normal[n]][ig]*
-		    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+		    (e[ia][ig][ih]*qs[ih][ib] + e[ib][ig][ih]*qs[ih][ia]);
 		}
 	      }
 	      /* Normal anchoring: w2 must be zero and q0 is preferred Q
@@ -719,7 +724,7 @@ static int gradient_6x6_gauss_elim(fe_lc_param_t * feparam,
 
 	  /* Fix trace (don't care about Qzz in the end) */
 
-	  tr = r3_*(xb18[NSYMM*n + XX] + xb18[NSYMM*n + YY] + xb18[NSYMM*n + ZZ]);
+	  tr = (1.0/3.0)*(xb18[NSYMM*n + XX] + xb18[NSYMM*n + YY] + xb18[NSYMM*n + ZZ]);
 	  xb18[NSYMM*n + XX] -= tr;
 	  xb18[NSYMM*n + YY] -= tr;
 
@@ -1137,8 +1142,10 @@ int gradient_6x6_gpu(const double * field, double * grad,
   double a6inv[3][6];
   double ** a12inv[3];
   double ** a18inv;
+  KRONECKER_DELTA_CHAR(d_);
 
   fe_lc_param_t fep;
+
 
   assert(field);
 
@@ -1685,6 +1692,8 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc, double q
   double q2 = 0.0;
   double rd;
   double amp;
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
 
   colloid_t * pc = NULL;
 
@@ -1734,7 +1743,7 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc, double q
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-        q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d_[ia][ib]);
+        q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d[ia][ib]);
 	qtilde[ia][ib] = 0.0;
       }
     }
@@ -1744,7 +1753,7 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc, double q
     q2 = 0.0;
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d_[ia][ib];
+        qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
         q2 += qtilde[ia][ib]*qtilde[ia][ib];
       }
     }
@@ -1754,11 +1763,11 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc, double q
         q0[ia][ib] = 0.0;
         for (ig = 0; ig < 3; ig++) {
           for (ih = 0; ih < 3; ih++) {
-            q0[ia][ib] += (d_[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
-              *(d_[ih][ib] - dnhat[ih]*dnhat[ib]);
+            q0[ia][ib] += (d[ia][ig] - dnhat[ia]*dnhat[ig])*qtilde[ig][ih]
+              *(d[ih][ib] - dnhat[ih]*dnhat[ib]);
           }
         }
-        q0[ia][ib] -= 0.5*amp*d_[ia][ib];
+        q0[ia][ib] -= 0.5*amp*d[ia][ib];
       }
     }
   }
@@ -1773,7 +1782,7 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc, double q
       for (ig = 0; ig < 3; ig++) {
         for (ih = 0; ih < 3; ih++) {
           c[ia][ib] -= param->kappa1*param->q0*di[ig]*
-	    (e_[ia][ig][ih]*qs[ih][ib] + e_[ib][ig][ih]*qs[ih][ia]);
+	    (e[ia][ig][ih]*qs[ih][ib] + e[ib][ig][ih]*qs[ih][ia]);
         }
       }
 
@@ -1818,6 +1827,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
   double qtilde[3][3];
   double amplitude;
   double  nfix[3] = {0.0, 1.0, 0.0};
+  KRONECKER_DELTA_CHAR(d);
 
   assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
 
@@ -1835,7 +1845,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+	qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d[ia][ib];
       }
     }
 
@@ -1844,12 +1854,12 @@ int colloids_q_boundary(fe_lc_param_t * param,
 	q0[ia][ib] = 0.0;
 	for (ic = 0; ic < 3; ic++) {
 	  for (id = 0; id < 3; id++) {
-	    q0[ia][ib] += (d_[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
-	      *(d_[id][ib] - nhat[id]*nhat[ib]);
+	    q0[ia][ib] += (d[ia][ic] - nhat[ia]*nhat[ic])*qtilde[ic][id]
+	      *(d[id][ib] - nhat[id]*nhat[ib]);
 	  }
 	}
 	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
-	q0[ia][ib] -= 0.5*amplitude*d_[ia][ib];
+	q0[ia][ib] -= 0.5*amplitude*d[ia][ib];
       }
     }
 

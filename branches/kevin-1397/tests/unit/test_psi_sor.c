@@ -392,10 +392,11 @@ static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
 static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon) {
 
   int coords[3];
+  PI_DOUBLE(pi);
 
   coords_index_to_ijk(index, coords);
 
-  *epsilon = REF_PERMEATIVITY*sin(pi_*(1.0*coords[Z] - 0.5)/L(Z));
+  *epsilon = REF_PERMEATIVITY*sin(pi*(1.0*coords[Z] - 0.5)/L(Z));
 
   return 0;
 }

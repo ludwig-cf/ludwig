@@ -75,6 +75,7 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
   double length;
   double fhasimoto;
   double f[3];
+  PI_DOUBLE(pi);
 
   if (nswitch == 0) {
     /* No statistics are required */
@@ -101,7 +102,7 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
     calib_.a0 = a;
     calib_.utarget = eta*TARGET_REYNOLDS_NUMBER/(a*rho);
     fhasimoto = stats_calibration_hasimoto(a, length);
-    calib_.ftarget = 6.0*pi_*eta*a*calib_.utarget/fhasimoto;
+    calib_.ftarget = 6.0*pi*eta*a*calib_.utarget/fhasimoto;
 
     calib_.nstokes = a/calib_.utarget;
     calib_.nfreq = calib_.nstokes/MEASUREMENTS_PER_STOKES_TIME;
@@ -181,6 +182,7 @@ int stats_calibration_finish(void) {
   double f[3];
   double u[3];
   double fbar[3];
+  PI_DOUBLE(pi);
 
   if (calib_.nstart < INT_MAX) {
 
@@ -217,7 +219,7 @@ int stats_calibration_finish(void) {
     for (ia = 0; ia < 10; ia++) {
       ahm1 = ah;
       fhasimoto = stats_calibration_hasimoto(ahm1, length);
-      ah = 1.0/(6.0*pi_*eta*u0/f0 - (fhasimoto - 1.0)/ahm1);
+      ah = 1.0/(6.0*pi*eta*u0/f0 - (fhasimoto - 1.0)/ahm1);
     }
 
     fhasimoto = stats_calibration_hasimoto(ah, length);
@@ -228,7 +230,7 @@ int stats_calibration_finish(void) {
     info("Hasimoto correction (a/L): %11.4e\n", fhasimoto);
     info("Input radius:              %11.4e\n", calib_.a0);
     info("Hydrodynamic radius:       %11.4e\n", ah);
-    info("Stokes equation rhs:       %11.4e\n", 6.0*pi_*eta*ah*u0);
+    info("Stokes equation rhs:       %11.4e\n", 6.0*pi*eta*ah*u0);
     info("Stokes equation lhs:       %11.4e\n", f0*fhasimoto);
   }
 

@@ -762,7 +762,7 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 
   /* Enforce tracelessness */
 
-  tr = r3_*(w[X][X] + w[Y][Y] + w[Z][Z]);
+  tr = (1.0/3.0)*(w[X][X] + w[Y][Y] + w[Z][Z]);
   w[X][X] -= tr;
   w[Y][Y] -= tr;
   w[Z][Z] -= tr;

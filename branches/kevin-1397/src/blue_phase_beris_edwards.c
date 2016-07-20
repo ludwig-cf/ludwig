@@ -261,6 +261,8 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   double kt, var = 0.0;
 
   const double dt = 1.0;
+  const double r3 = 1.0/3.0;
+  KRONECKER_DELTA_CHAR(d_);
 
   assert(be);
   assert(fe);
@@ -322,11 +324,11 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 	  
 	  for (ia = 0; ia < 3; ia++) {
 	    for (ib = 0; ib < 3; ib++) {
-	      s[ia][ib] = -2.0*xi*(q[ia][ib] + r3_*d_[ia][ib])*trace_qw;
+	      s[ia][ib] = -2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*trace_qw;
 	      for (id = 0; id < 3; id++) {
 		s[ia][ib] +=
-		  (xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3_*d_[id][ib])
-		+ (q[ia][id] + r3_*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
+		  (xi*d[ia][id] + omega[ia][id])*(q[id][ib] + r3*d_[id][ib])
+		+ (q[ia][id] + r3*d_[ia][id])*(xi*d[id][ib] - omega[id][ib]);
 	      }
 	    }
 	  }
@@ -514,6 +516,7 @@ void beris_edw_kernel(beris_edw_t * be, fe_t * fe,
 
   int baseIndex;
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d_);
 
   assert(fe);
   assert(fe->func->htensor_v);

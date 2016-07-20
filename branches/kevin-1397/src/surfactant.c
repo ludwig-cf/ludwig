@@ -377,6 +377,7 @@ __host__ __device__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
   double delsq[2];
   double grad[2][3];
   double p0;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -400,7 +401,7 @@ __host__ __device__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_[ia][ib]	+
+      s[ia][ib] = p0*d[ia][ib]	+
 	(fe->param->kappa - fe->param->epsilon*psi - fe->param->beta*psi*psi)*
 	grad[0][ia]*grad[0][ib];
     }

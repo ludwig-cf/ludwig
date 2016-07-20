@@ -400,6 +400,7 @@ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
   double e[3];     /* Total electric field */
   double e2;
   double kt, eunit, reunit;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -441,8 +442,8 @@ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 
-      s_el = -epsloc*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
-      s[ia][ib] += s_el + d_[ia][ib]*s_couple;
+      s_el = -epsloc*(e[ia]*e[ib] - 0.5*d[ia][ib]*e2);
+      s[ia][ib] += s_el + d[ia][ib]*s_couple;
 
     }
   }

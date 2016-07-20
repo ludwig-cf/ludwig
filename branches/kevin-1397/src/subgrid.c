@@ -144,7 +144,9 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   double drag, reta;
   double g[3];
   double eta;
+  PI_DOUBLE(pi);
   colloid_t * p_colloid;
+
 
   assert(cinfo);
   assert(hydro);
@@ -158,7 +160,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   physics_eta_shear(&eta);
   physics_fgrav(g);
-  reta = 1.0/(6.0*pi_*eta);
+  reta = 1.0/(6.0*pi*eta);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
     for (jc = 0; jc <= ncell[Y] + 1; jc++) {

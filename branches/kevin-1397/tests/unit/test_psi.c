@@ -345,6 +345,7 @@ static int do_test_bjerrum(void) {
   double epsilonref = 41.4*1000.0;
   double ktref = 0.00001;
   double tmp, lbref, ldebyeref;
+  PI_DOUBLE(pi_);
 
   coords_init();
   psi_create(2, &psi);
