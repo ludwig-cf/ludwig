@@ -29,8 +29,6 @@ __host__ int pth_free(pth_t * pth);
 __host__ int pth_memcpy(pth_t * pth, int flag);
 __host__ int pth_stress_compute(pth_t * pth, fe_t * fe);
 
-__host__ int phi_force_stress_compute(pth_t * pth, field_t * phi, field_grad_t * grad_phi);
-
 __host__ __device__ void pth_stress(pth_t * pth,  int index, double p[3][3]);
 __host__ __device__ void pth_stress_set(pth_t * pth, int index, double p[3][3]);
 

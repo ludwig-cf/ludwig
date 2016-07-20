@@ -15,20 +15,16 @@
  *****************************************************************************/
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "free_energy.h"
-#include "field_s.h"
-#include "field_grad_s.h"
-#include "util.h"
-#include "math.h"
-#include "blue_phase.h"
 #include "timer.h"
-
 #include "pth_s.h"
+#include "phi_force_stress.h"
+
+__global__ void pth_compute_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
+					    fe_t * fe);
 
 /*****************************************************************************
  *
@@ -140,152 +136,77 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
  *
  *****************************************************************************/
 
-__host__
-int pth_stress_compute(pth_t * pth, fe_t * fe) {
+__host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
-  int ic, jc, kc, index;
+  int nextra;
   int nlocal[3];
-  int nextra = 1;
-
-  double s[3][3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  fe_t * fe_target = NULL;
 
   assert(pth);
   assert(fe);
+  assert(fe->func->target);
 
   coords_nlocal(nlocal);
+  nextra = 1; /* Limits extend one point into the halo */
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-	index = coords_index(ic, jc, kc);
-	fe->func->stress(fe, index, s);
-	pth_stress_set(pth, index, s);
-      }
-    }
-  }
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  fe->func->target(fe, &fe_target);
+
+  __host_launch(pth_compute_kernel_novector, nblk, ntpb, ctxt->target,
+		pth->target, fe_target);
+
+  targetDeviceSynchronise();
+
+  kernel_ctxt_free(ctxt);
 
   return 0;
-}
-
-#ifdef OLD_SHIT
-__targetEntry__
-void chemical_stress_lattice(pth_t * pth, field_t * q, field_grad_t * qgrad,
-			     void * pcon,
-			     void (* chemical_stress)(const int index, double s[3][3]),int isBPCS){ 
-
-  int baseIndex;
-
-  __targetTLP__(baseIndex, tc_nSites) {
-
-
-#if VVL == 1    
-    /*restrict operation to the interior lattice sites*/ 
-
-    int coords[3];
-    targetCoords3D(coords,tc_Nall,baseIndex);
-
-    /*  if not a halo site:*/
-    if (coords[0] >= (tc_nhalo-tc_nextra) &&
-    	coords[1] >= (tc_nhalo-tc_nextra) &&
-    	coords[2] >= (tc_nhalo-tc_nextra) &&
-    	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
-    	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
-    	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
-#endif
-
-      { 
-      
-      if (isBPCS){
-	/* we are using blue_phase_chemical_stress which is ported to targetDP
-	 * for the time being we are explicitly calling
-	 * blue_phase_chemical_stress
-	 * ultimitely this will be generic when the other options are
-	 * ported to targetDP */
-	 int calledFromPhiForceStress=1;
-	 blue_phase_chemical_stress_dev_vec(baseIndex, q, qgrad, pth->str,
-					    pcon, 
-					    calledFromPhiForceStress);
-      }
-      else{
-
-	double pth_local[3][3];
-
-#ifndef __NVCC__
-
-#if VVL > 1
-	fatal("Vectorisation not yet supported for this chemical stress");
-#endif
-
-	/* only blue_phase_chemical_stress support for CUDA. */
-        /* TO DO: support vectorisation for these routines */  
-	chemical_stress(baseIndex, pth_local);
-	phi_force_stress_set(pth, baseIndex, pth_local); 
-#endif
-      }
-      
-    }
-  }
-
-return;
 }
 
 /*****************************************************************************
  *
- *  phi_force_stress_compute
+ *  pth_compute_kernel_novector
  *
  *****************************************************************************/
 
-__host__
-int phi_force_stress_compute(pth_t * pth, field_t * q, field_grad_t * qgrad) {
+__global__ void pth_compute_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
+					    fe_t * fe) {
 
-  int nlocal[3];
-  int nextra = 1;
+  int kindex;
+  __shared__ int kiter;
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+  assert(ktx);
+  assert(pth);
+  assert(fe);
+  assert(fe->func->stress);
 
-  int nhalo = coords_nhalo();
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  kiter = kernel_iterations(ktx);
 
-  void (* chemical_stress)(const int index, double s[3][3]);
+  __target_simt_parallel_for(kindex, kiter, 1) {
 
-  chemical_stress = fe_chemical_stress_function();
+    int ic, jc, kc, index;
+    double s[3][3];
 
-  
-  /* initialise kernel constants on both host and target */
-  blue_phase_set_kernel_constants();
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
 
-  void* pcon=NULL;
-  blue_phase_target_constant_ptr(&pcon);
+    fe->func->stress(fe, index, s);
+    pth_stress_set(pth, index, s);
+  }
 
-  /* isBPCS is 1 if we are using  blue_phase_chemical_stress 
-   * (which is ported to targetDP), 0 otherwise*/
-
-  int isBPCS=((void*)chemical_stress)==((void*) blue_phase_chemical_stress);
-
-#ifdef __NVCC__
-    if (!isBPCS) fatal("only Blue Phase chemical stress is currently supported for CUDA");
-#endif
-
-
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
-
-  TIMER_start(TIMER_CHEMICAL_STRESS_KERNEL);
-
-  chemical_stress_lattice __targetLaunch__(nSites) (pth->target, q->target, qgrad->tcopy, pcon, chemical_stress, isBPCS);
-  targetSynchronize();
-
-  TIMER_stop(TIMER_CHEMICAL_STRESS_KERNEL);
- 
-  return 0;
+  return;
 }
-#endif
+
 
 /*****************************************************************************
  *
