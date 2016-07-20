@@ -20,6 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "timer.h"
+#include "kernel.h"
 #include "pth_s.h"
 #include "phi_force_stress.h"
 
@@ -29,6 +30,9 @@ __global__ void pth_compute_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
 /*****************************************************************************
  *
  *  pth_create
+ *
+ *  The stress is always 3x3 tensor (to allow an anti-symmetric
+ *  contribution).
  *
  *****************************************************************************/
 
@@ -49,7 +53,7 @@ __host__ int pth_create(int method, pth_t ** pobj) {
   /* If memory required */
 
   if (method == PTH_METHOD_DIVERGENCE) {
-    obj->str = (double *) calloc(NVECTOR*NVECTOR*obj->nsites, sizeof(double));
+    obj->str = (double *) calloc(3*3*obj->nsites, sizeof(double));
     if (obj->str == NULL) fatal("calloc(pth->str) failed\n");
   }
 
@@ -66,7 +70,7 @@ __host__ int pth_create(int method, pth_t ** pobj) {
     copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
 
     if (method == PTH_METHOD_DIVERGENCE) {
-      targetCalloc((void **) &tmp, NVECTOR*NVECTOR*obj->nsites*sizeof(double));
+      targetCalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double));
       copyToTarget(&obj->target->str, &tmp, sizeof(double *));
     }
   }
