@@ -215,6 +215,7 @@ static int do_test3(void) {
   double psi0, psi1;
   double emod;
   double sexpect;
+  KRONECKER_DELTA_CHAR(d_);
 
   fe_electro_t * fe = NULL;
 

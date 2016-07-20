@@ -239,6 +239,7 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
   double rdotdu;
   double rhat[3];
   double kt;
+  PI_DOUBLE(pi);
 
   assert(lubr);
 
@@ -257,7 +258,7 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
 
     rhr = 1.0/hr;
     rrc  = lubr->rrch[LUBRICATION_SS_FNORM];
-    fmod = -6.0*pi_*eta*a1*a1*a2*a2*(rhr - rrc)/((a1 + a1)*(a2 + a2));
+    fmod = -6.0*pi*eta*a1*a1*a2*a2*(rhr - rrc)/((a1 + a1)*(a2 + a2));
 
     /* Fluctuation/dissipation contribution */
     fmod += ran[0]*sqrt(-2.0*kt*fmod);
@@ -286,7 +287,7 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
     rh  = 0.5*(a1 + a2)*rhr;
     rrc = 0.5*(a1 + a2)*lubr->rrch[LUBRICATION_SS_FTANG];
 
-    fmod = -(24.0/15.0)*pi_*eta*a1*a2*(2.0*a1*a1 + a1*a2 + 2.0*a2*a2)
+    fmod = -(24.0/15.0)*pi*eta*a1*a2*(2.0*a1*a1 + a1*a2 + 2.0*a2*a2)
       *(log(rh) - log(rrc)) / ((a1+a2)*(a1+a2)*(a1+a2));
 
     fmod += ran[1]*sqrt(-2.0*kt*fmod);

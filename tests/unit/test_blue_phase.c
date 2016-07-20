@@ -183,6 +183,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   double e;
   fe_lc_param_t param = {0};
   physics_t * phys = NULL;
+  PI_DOUBLE(pi_);
 
   physics_ref(&phys);
   coords_nlocal(nlocal);

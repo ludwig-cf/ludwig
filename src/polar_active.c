@@ -220,6 +220,7 @@ int fe_polar_fed(fe_polar_t * fe, int index, double * fed) {
   double p[3];
   double dp[3][3];
   double sum;
+  LEVI_CIVITA_CHAR(e);
 
   assert(fe);
 
@@ -236,7 +237,7 @@ int fe_polar_fed(fe_polar_t * fe, int index, double * fed) {
     for (ib = 0; ib < 3; ib++) {
       dp1 += dp[ia][ib]*dp[ia][ib];
       for (ic = 0; ic < 3; ic++) {
-        sum += e_[ia][ib][ic]*dp[ib][ic];
+        sum += e[ia][ib][ic]*dp[ib][ic];
       }
     }
     dp3 += sum*sum;
@@ -279,6 +280,7 @@ int fe_polar_stress(fe_polar_t * fe, int index, double s[3][3]) {
   double dp[3][3];
 
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -302,9 +304,9 @@ int fe_polar_stress(fe_polar_t * fe, int index, double s[3][3]) {
       }
       s[ia][ib] = 0.5*(p[ia]*h[ib] - p[ib]*h[ia])
 	- fe->param->lambda*(0.5*(p[ia]*h[ib] + p[ib]*h[ia])
-			     - r3*d_[ia][ib]*pdoth)
+			     - r3*d[ia][ib]*pdoth)
 	- fe->param->kappa1*sum
-	- fe->param->zeta*(p[ia]*p[ib] - r3*d_[ia][ib]*p2);
+	- fe->param->zeta*(p[ia]*p[ib] - r3*d[ia][ib]*p2);
     }
   }
 

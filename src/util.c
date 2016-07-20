@@ -27,28 +27,6 @@
 #include "coords.h"
 #include "util.h"
 
-#define c0 0.0
-#define c1 1.0
-
-#define c0c 0
-#define c1c 1
-
-const double pi_ = 3.1415926535897932385;
-const double r3_ = (1.0/3.0);
-const double d_[3][3]    = {{c1, c0, c0}, {c0, c1, c0}, {c0, c0, c1}};
-const double e_[3][3][3] = {{{c0, c0, c0}, { c0, c0, c1}, {c0,-c1, c0}},
-			    {{c0, c0,-c1}, { c0, c0, c0}, {c1, c0, c0}},
-			    {{c0, c1, c0}, {-c1, c0, c0}, {c0, c0, c0}}}; 
-
-
-const char dc_[3][3]    = {{c1c, c0c, c0c}, {c0c, c1c, c0c}, {c0c, c0c, c1c}};
-const char ec_[3][3][3] = {{{c0c, c0c, c0c}, { c0c, c0c, c1c}, {c0c,-c1c, c0c}},
-			    {{c0c, c0c,-c1c}, { c0c, c0c, c0}, {c1c, c0c, c0c}},
-			    {{c0c, c1c, c0c}, {-c1c, c0c, c0}, {c0c, c0c, c0c}}}; 
-
-__targetConst__ double tc_r3_; 
-__targetConst__ double tc_d_[3][3];
-
 static void util_swap(int ia, int ib, double a[3], double b[3][3]);
 
 /***************************************************************************
@@ -60,7 +38,7 @@ static void util_swap(int ia, int ib, double a[3], double b[3][3]);
  *
  ***************************************************************************/
 
-int is_bigendian() {
+__host__ int is_bigendian() {
 
   const int i = 1;
 
@@ -75,7 +53,7 @@ int is_bigendian() {
  *
  *****************************************************************************/
 
-double reverse_byte_order_double(char * c) {
+__host__ double reverse_byte_order_double(char * c) {
 
   double result;
   char * p = (char *) &result;
@@ -106,6 +84,7 @@ double dot_product(const double a[3], const double b[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 void cross_product(const double a[3], const double b[3], double result[3]) {
 
   result[X] = a[Y]*b[Z] - a[Z]*b[Y];
@@ -121,6 +100,7 @@ void cross_product(const double a[3], const double b[3], double result[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 double modulus(const double a[3]) {
 
   return sqrt(a[X]*a[X] + a[Y]*a[Y] + a[Z]*a[Z]);
@@ -143,6 +123,7 @@ double modulus(const double a[3]) {
  *
  ****************************************************************************/
 
+__host__ __device__
 void rotate_vector(double v[3], const double w[3]) {
 
   double what[3], vrot[3];
@@ -186,19 +167,19 @@ void rotate_vector(double v[3], const double w[3]) {
  *
  *****************************************************************************/
 
-int imin(const int i, const int j) {
+__host__ __device__ int imin(const int i, const int j) {
   return ((i < j) ? i : j);
 }
 
-int imax(const int i, const int j) {
+__host__ __device__ int imax(const int i, const int j) {
   return ((i > j) ? i : j);
 }
 
-double dmin(const double a, const double b) {
+__host__ __device__ double dmin(const double a, const double b) {
   return ((a < b) ? a : b);
 }
 
-double dmax(const double a, const double b) {
+__host__ __device__ double dmax(const double a, const double b) {
   return ((a > b) ? a : b);
 }
 
@@ -212,6 +193,7 @@ double dmax(const double a, const double b) {
  *
  *****************************************************************************/
 
+__host__
 int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]) {
 
   int ifail;
@@ -239,17 +221,18 @@ int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]) {
  *
  *****************************************************************************/
 
-int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
+__host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
 
   int iterate, ia, ib, ic;
   double tresh, theta, tau, t, sum, s, h, g, c;
   double b[3], z[3];
+  KRONECKER_DELTA_CHAR(d);
 
   const int maxjacobi = 50;    /* Maximum number of iterations */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      vecs[ia][ib] = d_[ia][ib];
+      vecs[ia][ib] = d[ia][ib];
     }
     vals[ia] = a[ia][ia];
     b[ia] = a[ia][ia];
@@ -350,7 +333,7 @@ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]) {
  *
  *****************************************************************************/
 
-static void util_swap(int ia, int ib, double a[3], double b[3][3]) {
+static __host__ void util_swap(int ia, int ib, double a[3], double b[3][3]) {
 
   int ic;
   double tmp;
@@ -386,6 +369,7 @@ static void util_swap(int ia, int ib, double a[3], double b[3][3]) {
  *
  *****************************************************************************/
 
+__host__
 int util_discrete_volume_sphere(double r0[3], double a0, double * vn) {
 
   int ic, jc, kc, nr;
@@ -432,6 +416,7 @@ int util_discrete_volume_sphere(double r0[3], double a0, double * vn) {
  *
  *****************************************************************************/
 
+__host__
 int util_gauss_jordan(const int n, double * a, double * b) {
 
   int i, j, k, ia, ib;
@@ -531,6 +516,7 @@ int util_gauss_jordan(const int n, double * a, double * b) {
  *
  *****************************************************************************/
 
+__host__
 int util_svd_solve(int m, int n, double ** a, double * b, double * x) {
 
   int i, j, k;
@@ -606,6 +592,7 @@ int util_svd_solve(int m, int n, double ** a, double * b, double * x) {
  *
  *****************************************************************************/
 
+__host__
 int util_vector_create(int n, double ** p) {
 
   int ifail = 0;
@@ -625,6 +612,7 @@ int util_vector_create(int n, double ** p) {
  *
  *****************************************************************************/
 
+__host__
 int util_vector_free(double ** p) {
 
   free(*p);
@@ -639,6 +627,7 @@ int util_vector_free(double ** p) {
  *
  *****************************************************************************/
 
+__host__
 int util_matrix_create(int m, int n, double *** p) {
 
   int ifail = 0;
@@ -664,6 +653,7 @@ int util_matrix_create(int m, int n, double *** p) {
  *
  *****************************************************************************/
 
+__host__
 int util_matrix_free(int m, double ***p) {
 
   int i;
@@ -691,6 +681,7 @@ int util_matrix_free(int m, double ***p) {
 
 #define MAX_SVD_ITERATION 30
 
+__host__
 int util_svd(int m, int n, double ** a, double * w, double ** v) {
 
   int i, j, k, ell;
@@ -950,7 +941,7 @@ int util_svd(int m, int n, double ** a, double * w, double ** v) {
  *
  *****************************************************************************/
 
-int util_matrix_invert(int n, double ** a) {
+__host__ int util_matrix_invert(int n, double ** a) {
 
   int i, j, k, ia, ib;
   int irow, icol;
@@ -1064,6 +1055,7 @@ int util_matrix_invert(int n, double ** a) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int util_dpythag(double a, double b, double * p) {
 
   double absa, absb, tmp;
@@ -1101,7 +1093,7 @@ int util_dpythag(double a, double b, double * p) {
 
 #include <inttypes.h>
 
-static long int util_ranlcg_multiply(long a, long s, long c, long m);
+static __host__ long int util_ranlcg_multiply(long a, long s, long c, long m);
 
 #define RANLCG_A 1389796
 #define RANLCG_C 0
@@ -1123,6 +1115,7 @@ static long int util_ranlcg_multiply(long a, long s, long c, long m);
  *
  *****************************************************************************/
 
+__host__
 int util_ranlcg_reap_gaussian(int * state, double r[2]) {
 
   double ranu[2];
@@ -1157,6 +1150,7 @@ int util_ranlcg_reap_gaussian(int * state, double r[2]) {
  *
  *****************************************************************************/
 
+__host__
 int util_ranlcg_reap_uniform(int * state, double * r) {
 
   long int sl;

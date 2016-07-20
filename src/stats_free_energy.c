@@ -523,7 +523,7 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
   double qtilde;
   double amplitude;
   double f1, f2, s0;
-
+  KRONECKER_DELTA_CHAR(d);
 
   /* SHIT An ugly cross cutting concern currently in gradient_3d_7pt_solid */
   int colloids_q_boundary(fe_lc_param_t * param,
@@ -554,7 +554,7 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       f1 += (qs[ia][ib] - q0[ia][ib])*(qs[ia][ib] - q0[ia][ib]);
-      qtilde = qs[ia][ib] + 0.5*amplitude*d_[ia][ib];
+      qtilde = qs[ia][ib] + 0.5*amplitude*d[ia][ib];
       f2 += (qtilde*qtilde - s0*s0)*(qtilde*qtilde - s0*s0);
     }
   }

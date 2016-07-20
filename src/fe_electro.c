@@ -278,6 +278,7 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
   int nk;
   double rho;
   double kt, eunit, reunit;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -298,12 +299,12 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d[ia][ib]*e2);
 
       /* Ideal gas contribution */
       for (in = 0; in < nk; in++) {
 	psi_rho(fe->psi, index, in, &rho);
-	s[ia][ib] += d_[ia][ib] * kt * rho;
+	s[ia][ib] += d[ia][ib] * kt * rho;
 
       }
     }
@@ -329,6 +330,7 @@ int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
   double e[3];       /* Total electric field */
   double e2;         /* Magnitude squared */
   double kt, eunit, reunit;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
@@ -348,7 +350,7 @@ int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d[ia][ib]*e2);
     }
   }
 

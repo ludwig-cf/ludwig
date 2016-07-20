@@ -682,6 +682,7 @@ double wall_lubrication(const int dim, const double r[3], const double ah) {
   double hlub;
   double h;
   double eta;
+  PI_DOUBLE(pi);
 
   physics_eta_shear(&eta);
   force = 0.0;
@@ -690,9 +691,9 @@ double wall_lubrication(const int dim, const double r[3], const double ah) {
   if (is_boundary_[dim]) {
     /* Lower, then upper */
     h = r[dim] - Lmin(dim) - ah; 
-    if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
     h = Lmin(dim) + L(dim) - r[dim] - ah;
-    if (h < hlub) force = -6.0*pi_*eta*ah*ah*(1.0/h - 1.0/hlub);
+    if (h < hlub) force = -6.0*pi*eta*ah*ah*(1.0/h - 1.0/hlub);
   }
 
   return force;

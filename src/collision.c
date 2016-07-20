@@ -168,6 +168,7 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
 
   char fullchunk=1;
   char includeSite[VVL];
+  KRONECKER_DELTA_CHAR(d);
 
   /* Determine whether this chunk of lattice sites are all active
    * and if not, which should be included */
@@ -321,7 +322,7 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
     for (ib = 0; ib < NDIM; ib++) {
       __targetILP__(iv) {
 	s[ia][ib*VVL+iv] -= tc_rtau_shear*(s[ia][ib*VVL+iv] - seq[ia][ib*VVL+iv]);
-	s[ia][ib*VVL+iv] += tc_d_[ia][ib]*rdim*tr_s[iv];
+	s[ia][ib*VVL+iv] += d[ia][ib]*rdim*tr_s[iv];
 	  
 	/* Correction from body force (assumes equal relaxation times) */
 	      
@@ -468,7 +469,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
 
   double force[3*VVL];             /* External force */
   double tr_s[VVL], tr_seq[VVL];   /* SIMD vectors for stress trace */
-
+  KRONECKER_DELTA_CHAR(d);
 
   rdim = 1.0/NDIM;
   
@@ -567,7 +568,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
     for (ib = 0; ib < NDIM; ib++) {
       __targetILP__(iv) {
 	s[ia][ib*VVL+iv] -= tc_rtau_shear*(s[ia][ib*VVL+iv] - seq[ia][ib*VVL+iv]);
-	s[ia][ib*VVL+iv] += tc_d_[ia][ib]*rdim*tr_s[iv];
+	s[ia][ib*VVL+iv] += d[ia][ib]*rdim*tr_s[iv];
 	
 	/* Correction from body force (assumes equal relaxation times) */
 	
@@ -696,7 +697,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   copyConstToTarget(&tc_nmodes_,&nmodes_, sizeof(int));
   copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
   copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  copyConstToTarget(&tc_r3_, &r3_, sizeof(double));
   copyConstToTarget(tc_rtau_, rtau_, NVEL*sizeof(double));
   copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
   copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
@@ -706,7 +706,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
   copyConstToTarget(tc_force_global,force_global, 3*sizeof(double));
-  copyConstToTarget(tc_d_, d_, 3*3*sizeof(double));
   copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
 
@@ -824,7 +823,8 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   double sphi[3][3*VVL];
 
   double mu[VVL];   /* Chemical potential */
-  
+  const double r3 = 1.0/3.0;
+  KRONECKER_DELTA_CHAR(d);
 
   /* index for SIMD vectors */
   int iv=0;        
@@ -924,8 +924,8 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   /* Form traceless parts */
   for (i = 0; i < 3; i++) {
     __targetILP__(iv) {
-      s[i][i*VVL+iv]   -= tc_r3_*tr_s[iv];
-      seq[i][i*VVL+iv] -= tc_r3_*tr_seq[iv];
+      s[i][i*VVL+iv]   -= r3*tr_s[iv];
+      seq[i][i*VVL+iv] -= r3*tr_seq[iv];
     }
   }
 
@@ -939,7 +939,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 
       __targetILP__(iv) {
 	s[i][j*VVL+iv] -= tc_rtau_shear*(s[i][j*VVL+iv] - seq[i][j*VVL+iv]);
-	s[i][j*VVL+iv] += tc_d_[i][j]*tc_r3_*tr_s[iv];
+	s[i][j*VVL+iv] += d[i][j]*r3*tr_s[iv];
       
 	/* Correction from body force (assumes equal relaxation times) */
       
@@ -1055,7 +1055,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       __targetILP__(iv) 
-	sphi[i][j*VVL+iv] = phi[iv]*u[i*VVL+iv]*u[j*VVL+iv] + mu[iv]*tc_d_[i][j];
+	sphi[i][j*VVL+iv] = phi[iv]*u[i*VVL+iv]*u[j*VVL+iv] + mu[iv]*d[i][j];
       /* sphi[i][j] = phi*u[i]*u[j] + cs2*mobility*mu*d_[i][j];*/
     }
     __targetILP__(iv)  jphi[i*VVL+iv] = jphi[i*VVL+iv] 
@@ -1161,7 +1161,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   copyConstToTarget(&tc_nmodes_, &nmodes_, sizeof(int));
   copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
   copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  copyConstToTarget(&tc_r3_, &r3_, sizeof(double));
   copyConstToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double));
   copyConstToTarget(tc_rtau_, rtau_, NVEL*sizeof(double));
   copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
@@ -1172,7 +1171,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   copyConstToTarget(tc_force_global,force_global, 3*sizeof(double));
-  copyConstToTarget(tc_d_, d_, 3*3*sizeof(double));
   copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
 
   checkTargetError("constants");

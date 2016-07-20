@@ -491,6 +491,7 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
   double n[3]={0.0,0.0,0.0};
   double q0_pitch;      /* Just q0 scalar */
   double amplitude0;
+  PI_DOUBLE(pi);
 
   assert(fq);
   assert(specs);
@@ -513,8 +514,8 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
     /* to get the same random numbers on all processes */
     for(in = 0; in < N; in++){
 
-      a[in] = 2.0*pi_ * ran_serial_uniform();
-      b[in] = 2.0*pi_ * ran_serial_uniform();
+      a[in] = 2.0*pi * ran_serial_uniform();
+      b[in] = 2.0*pi * ran_serial_uniform();
       C[3*in]   = N_total(X) * ran_serial_uniform(); 
       C[3*in+1] = N_total(Y) * ran_serial_uniform(); 
       C[3*in+2] = N_total(Z) * ran_serial_uniform(); 
@@ -529,8 +530,8 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
 
 	if (ENV == 0){
 
-	  phase1 = pi_*(0.5 - ran_parallel_uniform());
-	  phase2 = pi_*(0.5 - ran_parallel_uniform());
+	  phase1 = pi*(0.5 - ran_parallel_uniform());
+	  phase2 = pi*(0.5 - ran_parallel_uniform());
 
 	  n[X] = cos(phase1)*sin(phase2);
 	  n[Y] = sin(phase1)*sin(phase2);
@@ -802,7 +803,10 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
   double qkink1[3][3], qkink2[3][3];
 
   double x, y, z;
-  double ang=pi_/180.0*10.0;
+  double ang;
+  PI_DOUBLE(pi);
+
+  ang = pi/180.0*10.0;
 
   assert(modulus(n) > 0.0);
   coords_nlocal(nlocal);
@@ -985,6 +989,7 @@ int blue_phase_random_q_init(fe_lc_param_t * param, field_t * fq) {
 
   double ran1, ran2;
   noise_t * rng = NULL;
+  PI_DOUBLE(pi);
 
   assert(fq);
   
@@ -1002,7 +1007,7 @@ int blue_phase_random_q_init(fe_lc_param_t * param, field_t * fq) {
 	noise_uniform_double_reap(rng, index, &ran1);
 	noise_uniform_double_reap(rng, index, &ran2);
 
-	phase1 = 2.0*pi_*(0.5 - ran1);
+	phase1 = 2.0*pi*(0.5 - ran1);
 	phase2 = acos(2.0*ran2 - 1.0);
 
 	n[X] = cos(phase1)*sin(phase2);
@@ -1049,6 +1054,8 @@ int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[
 
   double ran1, ran2;
   noise_t * rng = NULL;
+  PI_DOUBLE(pi);
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fq);
 
@@ -1076,7 +1083,7 @@ int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[
 	noise_uniform_double_reap(rng, index, &ran1);
 	noise_uniform_double_reap(rng, index, &ran2);
 
-	phase1 = 2.0*pi_*(0.5 - ran1);
+	phase1 = 2.0*pi*(0.5 - ran1);
 	phase2 = acos(2.0*ran2 - 1.0);
 	    
 	n[X] = cos(phase1)*sin(phase2);
@@ -1086,7 +1093,7 @@ int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[
 	/* Uniaxial approximation using a0 */
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
-	    q[ia][ib] = 0.5*a0*(3.0*n[ia]*n[ib] - d_[ia][ib]);
+	    q[ia][ib] = 0.5*a0*(3.0*n[ia]*n[ib] - d[ia][ib]);
 	  }
 	}
 	field_tensor_set(fq, index, q);
@@ -1172,6 +1179,7 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   double q[3][3];
   double q0;
   double alpha, alpha0, beta;
+  PI_DOUBLE(pi);
 
   assert(fq);
   assert(axis == X || axis == Y || axis == Z);
@@ -1181,7 +1189,7 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   coords_ntotal(ntotal);
 
   q0 = param->q0;
-  alpha0 = 0.5*pi_; 
+  alpha0 = 0.5*pi; 
 
   n[X] = 0.0;
   n[Y] = 0.0;
@@ -1195,8 +1203,8 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
 
 	if (axis == X) {
 
-	    alpha = alpha0*sin(pi_*(noffset[Z]+kc)/ntotal[Z]);
-	    beta  = -2.0*(pi_*(noffset[Z]+kc)/ntotal[Z]-0.5*pi_);
+	    alpha = alpha0*sin(pi*(noffset[Z]+kc)/ntotal[Z]);
+	    beta  = -2.0*(pi*(noffset[Z]+kc)/ntotal[Z]-0.5*pi);
 
 	    n[X]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[Y]+jc)) -
 		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[Y]+jc)) +
@@ -1211,8 +1219,8 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
 
 	if (axis == Y) {
 
-	    alpha = alpha0*sin(pi_*(noffset[X]+ic)/ntotal[X]);
-	    beta  = -2.0*(pi_*(noffset[X]+ic)/ntotal[X]-0.5*pi_);
+	    alpha = alpha0*sin(pi*(noffset[X]+ic)/ntotal[X]);
+	    beta  = -2.0*(pi*(noffset[X]+ic)/ntotal[X]-0.5*pi);
 
 	    n[Y]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[Z]+kc)) -
 		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[Z]+kc)) +
@@ -1227,8 +1235,8 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
 
 	if (axis == Z) {
 
-	    alpha = alpha0*sin(pi_*(noffset[Y]+jc)/ntotal[Y]);
-	    beta  = -2.0*(pi_*(noffset[Y]+jc)/ntotal[Y]-0.5*pi_);
+	    alpha = alpha0*sin(pi*(noffset[Y]+jc)/ntotal[Y]);
+	    beta  = -2.0*(pi*(noffset[Y]+jc)/ntotal[Y]-0.5*pi);
 
 	    n[Z]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[X]+ic)) -
 		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[X]+ic)) +
@@ -1282,7 +1290,8 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   double var = 1e-1; /* variance of random fluctuation */
   int seed = DEFAULT_SEED;
   noise_t * rng = NULL;
-  
+  PI_DOUBLE(pi);
+
   assert(fq);
   assert(axis == X || axis == Y || axis == Z);
 
@@ -1291,7 +1300,7 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   coords_ntotal(ntotal);
 
   q0 = param->q0;
-  alpha0 = 0.5*pi_; 
+  alpha0 = 0.5*pi; 
 
   n[X] = 0.0;
   n[Y] = 0.0;
@@ -1308,8 +1317,8 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
 
 	if (axis == X) {
 
-	    alpha = alpha0*sin(pi_*(noffset[Z]+kc)/ntotal[Z]);
-	    beta  = -2.0*(pi_*(noffset[Z]+kc)/ntotal[Z]-0.5*pi_);
+	    alpha = alpha0*sin(pi*(noffset[Z]+kc)/ntotal[Z]);
+	    beta  = -2.0*(pi*(noffset[Z]+kc)/ntotal[Z]-0.5*pi);
 
 	    n[X]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[Y]+jc)) -
 		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[Y]+jc)) +
@@ -1324,8 +1333,8 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
 
 	if (axis == Y) {
 
-	    alpha = alpha0*sin(pi_*(noffset[X]+ic)/ntotal[X]);
-	    beta  = -2.0*(pi_*(noffset[X]+ic)/ntotal[X]-0.5*pi_);
+	    alpha = alpha0*sin(pi*(noffset[X]+ic)/ntotal[X]);
+	    beta  = -2.0*(pi*(noffset[X]+ic)/ntotal[X]-0.5*pi);
 
 	    n[Y]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[Z]+kc)) -
 		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[Z]+kc)) +
@@ -1340,8 +1349,8 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
 
 	if (axis == Z) {
 
-	    alpha = alpha0*sin(pi_*(noffset[Y]+jc)/ntotal[Y]);
-	    beta  = -2.0*(pi_*(noffset[Y]+jc)/ntotal[Y]-0.5*pi_);
+	    alpha = alpha0*sin(pi*(noffset[Y]+jc)/ntotal[Y]);
+	    beta  = -2.0*(pi*(noffset[Y]+jc)/ntotal[Y]-0.5*pi);
 
 	    n[Z]  =  cos(beta)* sin(alpha)*sin(q0*(noffset[X]+ic)) -
 		     cos(alpha)*sin(beta)*sin(alpha)*cos(q0*(noffset[X]+ic)) +

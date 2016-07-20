@@ -302,6 +302,7 @@ __host__ __device__ int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe,
   double delsq_phi;
   double dphi2;
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
   
@@ -312,7 +313,7 @@ __host__ __device__ int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe,
 
   for (ia = 0; ia < 3; ia++){
     for (ib = 0; ib < 3; ib++){
-      h[ia][ib] = -fe->param->w*(dphi[ia]*dphi[ib] - r3*d_[ia][ib]*dphi2);
+      h[ia][ib] = -fe->param->w*(dphi[ia]*dphi[ib] - r3*d[ia][ib]*dphi2);
     }
   }
 
@@ -442,6 +443,7 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
   double gamma;
   double xi, zeta;
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
 
   xi = fe->lc->param->xi;
   zeta = fe->lc->param->zeta;
@@ -472,7 +474,7 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
   
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] = 2.0*xi*(q[ia][ib] + r3*d_[ia][ib])*qh;
+      sth[ia][ib] = 2.0*xi*(q[ia][ib] + r3*d[ia][ib])*qh;
     }
   }
 
@@ -482,8 +484,8 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] +=
-	  -xi*h[ia][ic]*(q[ib][ic] + r3*d_[ib][ic])
-	  -xi*(q[ia][ic] + r3*d_[ia][ic])*h[ib][ic];
+	  -xi*h[ia][ic]*(q[ib][ic] + r3*d[ib][ic])
+	  -xi*(q[ia][ic] + r3*d[ia][ic])*h[ib][ic];
       }
     }
   }
@@ -492,7 +494,7 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] -= zeta*(q[ia][ib] + r3*d_[ia][ib]);
+      sth[ia][ib] -= zeta*(q[ia][ib] + r3*d[ia][ib]);
     }
   }
 

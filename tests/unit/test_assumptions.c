@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2014 The University of Edinburgh 
+ *  (c) 2008-2016 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -40,6 +40,10 @@ int test_assumptions_suite(void) {
 
   int n;
   int * p_int;
+
+  double pi;
+  PI_DOUBLE(pi_);
+
   /*
   printf("Testing assumptions...\n");
   printf("This code compiled at %s on %s\n", __TIME__, __DATE__);
@@ -99,6 +103,10 @@ int test_assumptions_suite(void) {
   printf("FLT_EPSILON is %14.7e\n", FLT_EPSILON);
   printf("M_PI        is %14.7e\n", M_PI);
   */
+  pi = 4.0*atan(1.0);
+  assert(fabs(pi - pi_) < DBL_EPSILON);
+
+
   test_util();
   test_macro_abuse();
 
@@ -133,6 +141,8 @@ void test_util(void) {
 
   int i, j, k, m, n;
   double sumd, sume;
+  KRONECKER_DELTA_CHAR(d_);
+  LEVI_CIVITA_CHAR(e_);
   
   /* Krocker delta and Levi-Civita tensor (floating point) */
 
@@ -160,9 +170,9 @@ void test_util(void) {
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       for (k = 0; k < 3; k++) {
-	assert(fabs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
-	assert(fabs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
-	assert(fabs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
+	assert(abs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
+	assert(abs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
+	assert(abs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
       }
     }
   }

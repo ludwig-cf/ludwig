@@ -17,42 +17,43 @@
 
 #include "targetDP.h"
 
-extern const double d_[3][3];
-extern const double e_[3][3][3];
-extern const char dc_[3][3];
-extern const char ec_[3][3][3];
-extern const double pi_;
-extern const double r3_;
+#define KRONECKER_DELTA_CHAR(d) const char d[3][3] = {{1,0,0},{0,1,0},{0,0,1}}
+#define LEVI_CIVITA_CHAR(e) const char e[3][3][3] =		\
+    {{{0, 0, 0}, { 0, 0, 1}, { 0,-1, 0}},			\
+     {{0, 0,-1}, { 0, 0, 0}, { 1, 0, 0}},			\
+     {{0, 1, 0}, {-1, 0, 0}, { 0, 0, 0}}}
 
-extern __targetConst__ double tc_d_[3][3];
-extern __targetConst__ double tc_r3_; 
+#define PI_DOUBLE(pi) const double pi = 3.1415926535897932385
 
-__targetHost__ int    is_bigendian(void);
-__targetHost__ double reverse_byte_order_double(char *);
-__host__ __target__ double dot_product(const double a[3], const double b[3]);
-__targetHost__ void   cross_product(const double a[3], const double b[3], double result[3]);
-__targetHost__ double modulus(const double a[3]);
-__targetHost__ void   rotate_vector(double [3], const double [3]);
 
-__targetHost__ int    imin(const int i, const int j);
-__targetHost__ int    imax(const int i, const int j);
-__targetHost__ double dmin(const double a, const double b);
-__targetHost__ double dmax(const double a, const double b);
+__host__ int    is_bigendian(void);
+__host__ double reverse_byte_order_double(char *);
 
-__targetHost__ int    util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
-__targetHost__ int    util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
-__targetHost__ int    util_discrete_volume_sphere(double r0[3], double a0, double * vn);
-__targetHost__ int    util_gauss_jordan(const int n, double * a, double * b);
-__targetHost__ int    util_dpythag(double a, double b, double * p);
-__targetHost__ int    util_svd(int m, int n, double ** u, double * w, double ** v);
-__targetHost__ int    util_svd_solve(int m, int n, double ** a, double * b, double * x);
-__targetHost__ int    util_matrix_create(int m, int n, double *** p);
-__targetHost__ int    util_vector_create(int m, double ** p);
-__targetHost__ int    util_matrix_free(int m, double *** p);
-__targetHost__ int    util_vector_free(double ** p);
-__targetHost__ int util_matrix_invert(int n, double ** a);
+__host__ __device__ double dot_product(const double a[3], const double b[3]);
+__host__ __device__ void cross_product(const double a[3], const double b[3],
+				       double result[3]);
+__host__ __device__ double modulus(const double a[3]);
+__host__ __device__ void   rotate_vector(double [3], const double [3]);
 
-__targetHost__ int util_ranlcg_reap_uniform(int * state, double * r);
-__targetHost__ int util_ranlcg_reap_gaussian(int * state, double r[2]);
+__host__ __device__ int    imin(const int i, const int j);
+__host__ __device__ int    imax(const int i, const int j);
+__host__ __device__ double dmin(const double a, const double b);
+__host__ __device__ double dmax(const double a, const double b);
+
+__host__ int util_jacobi(double a[3][3], double vals[3], double vecs[3][3]);
+__host__ int util_jacobi_sort(double a[3][3], double vals[3], double vecs[3][3]);
+__host__ int util_discrete_volume_sphere(double r0[3], double a0, double * vn);
+__host__ int util_gauss_jordan(const int n, double * a, double * b);
+__host__ int util_dpythag(double a, double b, double * p);
+__host__ int util_svd(int m, int n, double ** u, double * w, double ** v);
+__host__ int util_svd_solve(int m, int n, double ** a, double * b, double * x);
+__host__ int util_matrix_create(int m, int n, double *** p);
+__host__ int util_vector_create(int m, double ** p);
+__host__ int util_matrix_free(int m, double *** p);
+__host__ int util_vector_free(double ** p);
+__host__ int util_matrix_invert(int n, double ** a);
+
+__host__ int util_ranlcg_reap_uniform(int * state, double * r);
+__host__ int util_ranlcg_reap_gaussian(int * state, double r[2]);
 
 #endif

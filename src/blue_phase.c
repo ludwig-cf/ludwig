@@ -185,6 +185,8 @@ __host__ int fe_lc_param_commit(fe_lc_t * fe) {
 
 __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
 
+  PI_DOUBLE(pi);
+
   assert(fe);
 
   *fe->param = values;
@@ -192,7 +194,7 @@ __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
   /* The convention here is to non-dimensionalise the dielectric
    * anisotropy by factor (1/12pi) which appears in free energy. */
 
-  fe->param->epsilon *= (1.0/(12.0*pi_));
+  fe->param->epsilon *= (1.0/(12.0*pi));
 
   /* Must compute reciprocal of redshift */
   fe_lc_redshift_set(fe, fe->param->redshift);
@@ -260,6 +262,8 @@ __host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
   double dq0, dq1;
   double sum;
   double efield;
+  const double r3 = 1.0/3.0;
+  LEVI_CIVITA_CHAR(e);
 
   assert(fe);
   assert(fed);
@@ -313,7 +317,7 @@ __host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
       sum = 0.0;
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  sum += e_[ia][ic][id]*dq[ic][ib][id];
+	  sum += e[ia][ic][id]*dq[ic][ib][id];
 	}
       }
       sum += 2.0*q0*q[ia][ib];
@@ -332,7 +336,7 @@ __host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
 
   a0 = fe->param->a0;
 
-  *fed = 0.5*a0*(1.0 - r3_*gamma)*q2 - r3_*a0*gamma*q3 + 0.25*a0*gamma*q2*q2
+  *fed = 0.5*a0*(1.0 - r3*gamma)*q2 - r3*a0*gamma*q3 + 0.25*a0*gamma*q2*q2
     + 0.5*kappa0*dq0 + 0.5*kappa1*dq1
     - fe->param->epsilon*efield;
 
@@ -393,6 +397,8 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
   double qh;
   double p0;
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
 
   assert(fe);
 
@@ -420,8 +426,8 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] = -p0*d_[ia][ib]
-	+ 2.0*fe->param->xi*(q[ia][ib] + r3*d_[ia][ib])*qh;
+      sth[ia][ib] = -p0*d[ia][ib]
+	+ 2.0*fe->param->xi*(q[ia][ib] + r3*d[ia][ib])*qh;
     }
   }
 
@@ -431,8 +437,8 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
 	sth[ia][ib] +=
-	  -fe->param->xi*h[ia][ic]*(q[ib][ic] + r3*d_[ib][ic])
-	  -fe->param->xi*(q[ia][ic] + r3*d_[ia][ic])*h[ib][ic];
+	  -fe->param->xi*h[ia][ic]*(q[ib][ic] + r3*d[ib][ic])
+	  -fe->param->xi*(q[ia][ic] + r3*d[ia][ic])*h[ib][ic];
       }
     }
   }
@@ -451,7 +457,7 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
 
 	  for (ie = 0; ie < 3; ie++) {
 	    sth[ia][ib] +=
-	      -2.0*kappa1*q0*dq[ia][ic][id]*e_[ib][ic][ie]*q[id][ie];
+	      -2.0*kappa1*q0*dq[ia][ic][id]*e[ib][ic][ie]*q[id][ie];
 	  }
 	}
       }
@@ -473,7 +479,7 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] -= fe->param->zeta*(q[ia][ib] + r3*d_[ia][ib]);
+      sth[ia][ib] -= fe->param->zeta*(q[ia][ib] + r3*d[ia][ib]);
     }
   }
 
@@ -544,6 +550,8 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
   double eq;
   double sum;
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
 
   assert(fe);
 
@@ -568,7 +576,7 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
 	sum += q[ia][ic]*q[ib][ic];
       }
       h[ia][ib] = -fe->param->a0*(1.0 - r3*gamma)*q[ia][ib]
-	+ fe->param->a0*gamma*(sum - r3*q2*d_[ia][ib])
+	+ fe->param->a0*gamma*(sum - r3*q2*d[ia][ib])
 	- fe->param->a0*gamma*q2*q[ia][ib];
     }
   }
@@ -581,7 +589,7 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
   for (ib = 0; ib < 3; ib++) {
     for (ic = 0; ic < 3; ic++) {
       for (ia = 0; ia < 3; ia++) {
-	eq += e_[ib][ic][ia]*dq[ib][ic][ia];
+	eq += e[ib][ic][ia]*dq[ib][ic][ia];
       }
     }
   }
@@ -593,11 +601,11 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
 	  sum +=
-	    (e_[ia][ic][id]*dq[ic][ib][id] + e_[ib][ic][id]*dq[ic][ia][id]);
+	    (e[ia][ic][id]*dq[ic][ib][id] + e[ib][ic][id]*dq[ic][ia][id]);
 	}
       }
       h[ia][ib] += kappa0*dsq[ia][ib]
-	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d_[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d[ia][ib]
 	- 4.0*kappa1*q0*q0*q[ia][ib];
     }
   }
@@ -612,7 +620,7 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       h[ia][ib] +=  fe->param->epsilon
-	*(fe->param->electric[ia]*fe->param->electric[ib] - r3*d_[ia][ib]*e2);
+	*(fe->param->electric[ia]*fe->param->electric[ib] - r3*d[ia][ib]*e2);
     }
   }
 
@@ -637,6 +645,7 @@ int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
   double q0;
   double kappa1;
   double q2, q3;
+  const double r3 = 1.0/3.0;
 
   assert(fe);
 
@@ -666,8 +675,8 @@ int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
     }
   }
 
-  *fed = 0.5*fe->param->a0*(1.0 - r3_*fe->param->gamma)*q2
-    - r3_*fe->param->a0*fe->param->gamma*q3
+  *fed = 0.5*fe->param->a0*(1.0 - r3*fe->param->gamma)*q2
+    - r3*fe->param->a0*fe->param->gamma*q3
     + 0.25*fe->param->a0*fe->param->gamma*q2*q2;
 
   /* Add terms quadratic in q from gradient free energy */ 
@@ -698,6 +707,7 @@ int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
   double dq0, dq1;
   double q2;
   double sum;
+  LEVI_CIVITA_CHAR(e);
 
   assert(fe);
 
@@ -732,7 +742,7 @@ int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
 
       for (ic = 0; ic < 3; ic++) {
 	for (id = 0; id < 3; id++) {
-	  sum += e_[ia][ic][id]*dq[ic][ib][id];
+	  sum += e[ia][ic][id]*dq[ic][ib][id];
 	}
       }
       sum += 2.0*q0*q[ia][ib];
@@ -797,7 +807,7 @@ int fe_lc_reduced_temperature(fe_lc_t * fe, double * tau) {
   assert(tau);
 
   gamma = fe->param->gamma;
-  *tau = 27.0*(1.0 - r3_*gamma) / gamma;
+  *tau = 27.0*(1.0 - gamma/3.0) / gamma;
 
   return 0;
 }
@@ -819,6 +829,7 @@ int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * ered) {
   double gamma;
   double epsilon;
   double fieldsq;
+  PI_DOUBLE(pi);
 
   assert(fe);
 
@@ -831,9 +842,9 @@ int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * ered) {
 
   a0 = fe->param->a0;
   gamma = fe->param->gamma;
-  epsilon = 12.0*pi_*fe->param->epsilon;
+  epsilon = 12.0*pi*fe->param->epsilon;
 
-  *ered = sqrt(27.0*epsilon*fieldsq/(32.0*pi_*a0*gamma));
+  *ered = sqrt(27.0*epsilon*fieldsq/(32.0*pi*a0*gamma));
 
   return 0;
 }
@@ -916,10 +927,11 @@ __host__ __target__
 int fe_lc_q_uniaxial(fe_lc_param_t * param, const double n[3], double q[3][3]) {
 
   int ia, ib;
+  KRONECKER_DELTA_CHAR(d);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      q[ia][ib] = 0.5*param->amplitude0*(3.0*n[ia]*n[ib] - d_[ia][ib]);
+      q[ia][ib] = 0.5*param->amplitude0*(3.0*n[ia]*n[ib] - d[ia][ib]);
     }
   }
 
@@ -960,6 +972,7 @@ __host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
   double dq0, dq1, dq2, dq3, sum;
   double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
   double rnew;
+  LEVI_CIVITA_CHAR(e);
 
   if (fe->param->is_redshift_updated == 0) return 0;
 
@@ -1004,7 +1017,7 @@ __host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
 	      dq1 += dq[ia][ib][ig]*dq[ia][ib][ig];
 	      dq2 += dq[ia][ib][ig]*dq[ib][ia][ig];
 	      for (id = 0; id < 3; id++) {
-		sum += e_[ia][ig][id]*dq[ig][id][ib];
+		sum += e[ia][ig][id]*dq[ig][id][ib];
 	      }
 	    }
 	    dq3 += q[ia][ib]*sum;
@@ -2938,6 +2951,8 @@ void fe_lc_compute_h_v(fe_lc_t * fe, double q[3][3][NSIMDVL],
   double sum[VVL];
 
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
 
   /* Reshifted values */
 
@@ -2963,7 +2978,7 @@ void fe_lc_compute_h_v(fe_lc_t * fe, double q[3][3][NSIMDVL],
       }
       __targetILP__(iv) h[ia][ib][iv] =
 	- fe->param->a0*(1.0 - r3*fe->param->gamma)*q[ia][ib][iv]
-	+ fe->param->a0*fe->param->gamma*(sum[iv] - r3*q2[iv]*d_[ia][ib])
+	+ fe->param->a0*fe->param->gamma*(sum[iv] - r3*q2[iv]*d[ia][ib])
 	- fe->param->a0*fe->param->gamma*q2[iv]*q[ia][ib][iv];
     }
   }
@@ -2976,7 +2991,7 @@ void fe_lc_compute_h_v(fe_lc_t * fe, double q[3][3][NSIMDVL],
   for (ib = 0; ib < 3; ib++) {
     for (ic = 0; ic < 3; ic++) {
       for (ia = 0; ia < 3; ia++) {
-	__targetILP__(iv) eq[iv] += e_[ib][ic][ia]*dq[ib][ic][ia][iv];
+	__targetILP__(iv) eq[iv] += e[ib][ic][ia]*dq[ib][ic][ia][iv];
       }
     }
   }
@@ -2997,7 +3012,8 @@ void fe_lc_compute_h_v(fe_lc_t * fe, double q[3][3][NSIMDVL],
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       __targetILP__(iv) {
-	h[ia][ib][iv] +=  fe->param->epsilon*(fe->param->electric[ia]*fe->param->electric[ib] - r3*d_[ia][ib]*e2[iv]);
+	h[ia][ib][iv] +=  fe->param->epsilon*
+	  (fe->param->electric[ia]*fe->param->electric[ib] - r3*d[ia][ib]*e2[iv]);
       }
     }
   }
@@ -3020,6 +3036,7 @@ __target__ void h_loop_unrolled_be(fe_lc_t * fe, double dq[3][3][3][VVL],
   double q0;
   double kappa0, kappa1;
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d_);
 
   q0 = fe->param->rredshift*fe->param->q0;
   kappa0 = fe->param->redshift*fe->param->redshift*fe->param->kappa0;

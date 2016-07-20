@@ -789,6 +789,7 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
   double a[6][6];
 
   colloid_t * pc;
+  PI_DOUBLE(pi);
 
   assert(bbl);
   assert(cinfo);
@@ -806,7 +807,7 @@ int bbl_update_colloids(bbl_t * bbl, colloids_info_t * cinfo) {
     /* Mass and moment of inertia are those of a hard sphere
      * with the input radius */
 
-    mass = (4.0/3.0)*pi_*rho0*pow(pc->s.a0, 3);
+    mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
     moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
 
     /* Add inertial terms to diagonal elements */

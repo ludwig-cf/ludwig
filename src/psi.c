@@ -681,10 +681,12 @@ int psi_ionic_strength(psi_t * psi, int index, double * sion) {
 
 int psi_bjerrum_length(psi_t * obj, double * lb) {
 
+  PI_DOUBLE(pi);
+
   assert(obj);
   assert(lb);
 
-  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon);
+  *lb = obj->e*obj->e*obj->beta / (4.0*pi*obj->epsilon);
 
   return 0;
 }
@@ -701,10 +703,12 @@ int psi_bjerrum_length(psi_t * obj, double * lb) {
 
 int psi_bjerrum_length2(psi_t * obj, double * lb) {
 
+  PI_DOUBLE(pi);
+
   assert(obj);
   assert(lb);
 
-  *lb = obj->e*obj->e*obj->beta / (4.0*pi_*obj->epsilon2);
+  *lb = obj->e*obj->e*obj->beta / (4.0*pi*obj->epsilon2);
 
   return 0;
 }
@@ -722,12 +726,13 @@ int psi_bjerrum_length2(psi_t * obj, double * lb) {
 int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
 
   double lb;
+  PI_DOUBLE(pi);
 
   assert(obj);
   assert(ld);
 
   psi_bjerrum_length(obj, &lb);
-  *ld = 1.0 / sqrt(8.0*pi_*lb*rho_b);
+  *ld = 1.0 / sqrt(8.0*pi*lb*rho_b);
 
   return 0;
 }
@@ -746,12 +751,13 @@ int psi_debye_length(psi_t * obj, double rho_b, double * ld) {
 int psi_debye_length2(psi_t * obj, double rho_b, double * ld) {
 
   double lb;
+  PI_DOUBLE(pi);
 
   assert(obj);
   assert(ld);
 
   psi_bjerrum_length2(obj, &lb);
-  *ld = 1.0 / sqrt(8.0*pi_*lb*rho_b);
+  *ld = 1.0 / sqrt(8.0*pi*lb*rho_b);
 
   return 0;
 }
