@@ -4,9 +4,22 @@
  *
  *  Memory access descriptions of scalar, vector, tensor, ... fields.
  *
+ *  Meaningful Choices:
+ *
+ *    Forward/Reverse   Blocking   VECTOR LENGTH
+ * 1. Forward           No         1
+ * 2. Forward           No         N
+ * 3. Forward           Yes        1  -> Same as 1
+ * 4. Forward           Yes        N
+ * 5. Reverse           No         1
+ * 6. Reverse           No         N
+ * 7. Revsrse           Yes        1  -> Same as 5
+ * 8. Reverse           Yes        N  Not implemented.
+ *
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- *
+ * 
  *  (c) 2016 The University of Edinburgh
  *
  *  Contributing authors:
