@@ -24,15 +24,16 @@
 #include "pth_s.h"
 #include "phi_force_stress.h"
 
-__global__ void pth_compute_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
-					    fe_t * fe);
+__global__ void pth_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
+				    fe_t * fe);
+__global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
 
 /*****************************************************************************
  *
  *  pth_create
  *
  *  The stress is always 3x3 tensor (to allow an anti-symmetric
- *  contribution).
+ *  contribution), if it is required.
  *
  *****************************************************************************/
 
@@ -165,7 +166,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
-  __host_launch(pth_compute_kernel_novector, nblk, ntpb, ctxt->target,
+  __host_launch(pth_kernel_novector, nblk, ntpb, ctxt->target,
 		pth->target, fe_target);
 
   targetDeviceSynchronise();
@@ -177,12 +178,12 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
 /*****************************************************************************
  *
- *  pth_compute_kernel_novector
+ *  pth_kernel_novector
  *
  *****************************************************************************/
 
-__global__ void pth_compute_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
-					    fe_t * fe) {
+__global__ void pth_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
+				    fe_t * fe) {
 
   int kindex;
   __shared__ int kiter;
@@ -211,6 +212,56 @@ __global__ void pth_compute_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
   return;
 }
 
+/*****************************************************************************
+ *
+ *  pth_kernel
+ *
+ *****************************************************************************/
+
+#include "blue_phase.h"
+
+__global__
+void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
+
+  int kindex;
+  __shared__ int kiter;
+
+  assert(ktx);
+  assert(pth);
+  assert(fe);
+  /*assert(fe->func->stress_v);*/
+
+  kiter = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+
+    int ic, jc, kc, index;
+    int ia, ib, iv;
+
+    double s[3][3][NSIMDVL];
+    fe_lc_t * lc = (fe_lc_t *) fe;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    fe_lc_stress_v(lc, index, s);
+    /*fe->func->stress(fe, index, s);*/
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	for (iv = 0; iv < NSIMDVL; iv++) {
+	  pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)] = s[ia][ib][iv];
+	}
+      }
+    }
+    /* Next block */
+  }
+
+
+  return;
+}
 
 /*****************************************************************************
  *
