@@ -212,6 +212,21 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, int nsimdvl, kernel_
 
 /*****************************************************************************
  *
+ *  kernel_baseindex
+ *
+ *  Return the coordinate index associated with kernel index kindex.
+ *
+ *****************************************************************************/
+
+__host__ __target__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex) {
+
+  assert(obj);
+
+  return obj->param->kindex0 + kindex;
+}
+
+/*****************************************************************************
+ *
  *  kernel_coords_ic
  *
  *****************************************************************************/

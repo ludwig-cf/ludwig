@@ -49,6 +49,7 @@ __host__ int kernel_ctxt_free(kernel_ctxt_t * obj);
 
 __host__ __target__ int kernel_iterations(kernel_ctxt_t * ctxt);
 __host__ __target__ int kernel_vector_iterations(kernel_ctxt_t * ctxt);
+__host__ __target__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex);
 __host__ __target__ int kernel_coords_ic(kernel_ctxt_t * ctxt, int kindex);
 __host__ __target__ int kernel_coords_jc(kernel_ctxt_t * ctxt, int kindex);
 __host__ __target__ int kernel_coords_kc(kernel_ctxt_t * ctxt, int kindex);
