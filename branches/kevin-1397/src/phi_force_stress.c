@@ -166,7 +166,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
-  __host_launch(pth_kernel_novector, nblk, ntpb, ctxt->target,
+  __host_launch(pth_kernel, nblk, ntpb, ctxt->target,
 		pth->target, fe_target);
 
   targetDeviceSynchronise();
@@ -231,20 +231,17 @@ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
   assert(fe);
   /*assert(fe->func->stress_v);*/
 
-  kiter = kernel_iterations(ktx);
+  kiter = kernel_vector_iterations(ktx);
 
   __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
 
-    int ic, jc, kc, index;
+    int index;
     int ia, ib, iv;
 
     double s[3][3][NSIMDVL];
     fe_lc_t * lc = (fe_lc_t *) fe;
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
+    index = kernel_baseindex(ktx, kindex);
 
     fe_lc_stress_v(lc, index, s);
     /*fe->func->stress(fe, index, s);*/
@@ -256,9 +253,9 @@ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 	}
       }
     }
+
     /* Next block */
   }
-
 
   return;
 }
