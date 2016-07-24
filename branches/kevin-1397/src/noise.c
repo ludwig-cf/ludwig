@@ -59,7 +59,7 @@ static int noise_read(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int noise_create(noise_t ** pobj) {
+__host__ int noise_create(noise_t ** pobj) {
 
   noise_t * obj = NULL;
 
@@ -88,7 +88,7 @@ int noise_create(noise_t ** pobj) {
  *
  *****************************************************************************/
 
-void noise_free(noise_t * obj) {
+__host__ void noise_free(noise_t * obj) {
 
   assert(obj);
   free(obj->state);
@@ -112,7 +112,7 @@ void noise_free(noise_t * obj) {
  * 
  *****************************************************************************/
 
-int noise_init(noise_t * obj, int master_seed) {
+__host__ int noise_init(noise_t * obj, int master_seed) {
 
   int ic, jc, kc, index;
   int ig, jg, kg;
@@ -197,8 +197,8 @@ int noise_init(noise_t * obj, int master_seed) {
  *
  *****************************************************************************/
 
-int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
-		       int form_out) {
+__host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
+				int form_out) {
 
   const char * name = "Lattice noise RNG state";
   const char * stubname = "noise";
@@ -227,8 +227,8 @@ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
  *
  *****************************************************************************/
 
-int noise_state_set(noise_t * obj, int index,
-		    unsigned int newstate[NNOISE_STATE]) {
+__host__ int noise_state_set(noise_t * obj, int index,
+			     unsigned int newstate[NNOISE_STATE]) {
   int ia;
 
   assert(obj);
@@ -250,8 +250,8 @@ int noise_state_set(noise_t * obj, int index,
  *
  *****************************************************************************/
 
-int noise_state(noise_t * obj, int index,
-			unsigned int state[NNOISE_STATE]) {
+__host__ int noise_state(noise_t * obj, int index,
+			 unsigned int state[NNOISE_STATE]) {
   int ia;
 
   assert(obj);
@@ -273,6 +273,7 @@ int noise_state(noise_t * obj, int index,
  *
  *****************************************************************************/
 
+__host__ __device__
 int noise_reap(noise_t * obj, int index, double * reap) {
 
   assert(obj);
@@ -293,6 +294,7 @@ int noise_reap(noise_t * obj, int index, double * reap) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
 
   unsigned int iuniform;
@@ -326,6 +328,7 @@ int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
 
   unsigned int iuniform;
@@ -355,6 +358,7 @@ int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
  *
  *****************************************************************************/
 
+__host__ __device__
 unsigned int noise_uniform(unsigned int state[NNOISE_STATE]) {
 
   unsigned int b;
@@ -426,6 +430,7 @@ static int noise_read(FILE * fp, int index, void * self) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int noise_present(noise_t * noise, noise_enum_t type, int * present) {
 
   assert(noise);

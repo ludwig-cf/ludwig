@@ -103,9 +103,9 @@ __host__ int fe_symm_create(field_t * phi, field_grad_t * dphi,
     fe_symm_param_t * p;
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_symm_t));
-    targetConstAddress(&p, const_param);
+    targetConstAddress((void **) &p, const_param);
     copyToTarget(&obj->target->param, p, sizeof(fe_symm_param_t *));
-    targetConstAddress(&vt, fe_symm_dvt);
+    targetConstAddress((void **) &vt, fe_symm_dvt);
     copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
     assert(0); /* phi and dphi pointers */
   }

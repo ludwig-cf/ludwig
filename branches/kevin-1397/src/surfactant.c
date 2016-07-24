@@ -98,7 +98,7 @@ int fe_surfactant1_create(field_t * phi, field_grad_t * grad,
   else {
     fe_surfactant1_param_t * tmp;
     targetCalloc((void **) &obj->target, sizeof(fe_surfactant1_t));
-    targetConstAddress(&tmp, const_param);
+    targetConstAddress((void **) &tmp, const_param);
     copyToTarget(&obj->target->param, tmp, sizeof(fe_surfactant1_param_t *));
     /* Now copy. */
     assert(0);
@@ -168,8 +168,8 @@ __host__ int fe_surfactant1_param_set(fe_surfactant1_t * fe,
  *
  *****************************************************************************/
 
-__host__ __device__ int fe_surfactant1_param(fe_surfactant1_t * fe,
-					     fe_surfactant1_param_t * values) {
+__host__ int fe_surfactant1_param(fe_surfactant1_t * fe,
+				  fe_surfactant1_param_t * values) {
   assert(fe);
 
   *values = *fe->param;
@@ -185,8 +185,8 @@ __host__ __device__ int fe_surfactant1_param(fe_surfactant1_t * fe,
  *
  ****************************************************************************/
 
-__host__ __device__ int fe_surfactant1_sigma(fe_surfactant1_t * fe,
-					     double * sigma0) {
+__host__ int fe_surfactant1_sigma(fe_surfactant1_t * fe,
+				  double * sigma0) {
   double a, b, kappa;
 
   assert(fe);
@@ -209,8 +209,8 @@ __host__ __device__ int fe_surfactant1_sigma(fe_surfactant1_t * fe,
  *
  ****************************************************************************/
 
-__host__ __device__ int fe_surfactant1_xi0(fe_surfactant1_t * fe,
-					   double * xi0) {
+__host__ int fe_surfactant1_xi0(fe_surfactant1_t * fe,
+				double * xi0) {
   assert(fe);
   assert(xi0);
 
@@ -256,8 +256,8 @@ __host__ int fe_surfactant1_langmuir_isotherm(fe_surfactant1_t * fe,
  *
  ****************************************************************************/
 
-__host__ __device__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index,
-					   double * fed) {
+__host__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index,
+				double * fed) {
 
   double field[2];
   double phi;
@@ -309,8 +309,8 @@ __host__ __device__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index,
  *
  ****************************************************************************/
 
-__host__ __device__ int fe_surfactant_mu(fe_surfactant1_t * fe, int index,
-					 double * mu) {
+__host__ int fe_surfactant_mu(fe_surfactant1_t * fe, int index,
+			      double * mu) {
   double phi;
   double psi;
   double field[2];
@@ -323,6 +323,7 @@ __host__ __device__ int fe_surfactant_mu(fe_surfactant1_t * fe, int index,
   field_scalar_array(fe->phi, index, field);
   /* field_grad_pair_grad(fe->dphi, index, grad);
      field_grad_pair_delsq(fe->dphi, index, delsq);*/
+  delsq[0] = 0.0; delsq[1] = 0.0;
   assert(0);
   phi = field[0];
   psi = field[1];
@@ -368,8 +369,8 @@ __host__ __device__ int fe_surfactant_mu(fe_surfactant1_t * fe, int index,
  *
  ****************************************************************************/
 
-__host__ __device__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
-					   double s[3][3]) {
+__host__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
+				double s[3][3]) {
   int ia, ib;
   double field[2];
   double phi;
@@ -384,6 +385,7 @@ __host__ __device__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
   field_scalar_array(fe->phi, index, field);
   /* field_grad_pair_grad(fe->dp, index, grad);
      field_grad_pair_delsq(fe->dp, index, delsq);*/
+  delsq[0] = 0.0; delsq[1] = 0.0;
   assert(0);
   phi = field[0];
   psi = field[1];

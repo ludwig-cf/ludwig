@@ -38,10 +38,10 @@ typedef int (* fe_mu_solv_ft)(fe_t * fe, int index, int k, double * mu);
 typedef int (* fe_hvector_ft)(fe_t * fe, int index, double h[3]);
 typedef int (* fe_htensor_ft)(fe_t * fe, int index, double h[3][3]);
 /* Vectorised versions (htensor TBC)*/
-typedef int (* fe_htensor_v_ft)(fe_t * fe, double q[3][3][NSIMDVL],
-				double dq[3][3][3][NSIMDVL],
-				double dsq[3][3][NSIMDVL],
-				double h[3][3][NSIMDVL]);
+typedef void (* fe_htensor_v_ft)(fe_t * fe, double q[3][3][NSIMDVL],
+				 double dq[3][3][3][NSIMDVL],
+				 double dsq[3][3][NSIMDVL],
+				 double h[3][3][NSIMDVL]);
 typedef void (* fe_stress_v_ft)(fe_t * fe, int index, double s[3][3][NSIMDVL]);
 
 struct fe_vt_s {

@@ -116,9 +116,9 @@ __host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
     fe_brazovskii_param_t * tmp;
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_brazovskii_t));
-    targetConstAddress(&tmp, const_param);
+    targetConstAddress((void **) &tmp, const_param);
     copyToTarget(&obj->target->param, tmp, sizeof(fe_brazovskii_t *));
-    targetConstAddress(&vt, fe_braz_dvt);
+    targetConstAddress((void **) &vt, fe_braz_dvt);
     copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
   }
 

@@ -421,7 +421,7 @@ static void le_checks(void) {
  *
  *****************************************************************************/
 
-__targetHost__ __target__ int le_nsites(void) {
+__host__ __target__ int le_nsites(void) {
 
 #ifdef __CUDA_ARCH__
   return cle_nsites_;
@@ -824,7 +824,13 @@ void le_set_oscillatory(double period) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int le_site_index(const int ic, const int jc, const int kc) {
+
+#ifdef __CUDA_ARCH__
+  assert(0); /* No implementation */
+  return 0;
+#else
 
   int nhalo;
   int nlocal[3];
@@ -843,8 +849,8 @@ int le_site_index(const int ic, const int jc, const int kc) {
   index = (nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo)*(nhalo + ic - 1)
     +                           (nlocal[Z] + 2*nhalo)*(nhalo + jc - 1)
     +                                                  nhalo + kc - 1;
-
   return index;
+#endif
 }
 
 /*****************************************************************************

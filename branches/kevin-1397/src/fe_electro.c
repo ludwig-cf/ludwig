@@ -66,19 +66,21 @@ static fe_vt_t fe_electro_hvt = {
   (fe_str_ft)       fe_electro_stress_ex,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  NULL
 };
 
 static  __constant__ fe_vt_t fe_electro_dvt = {
   (fe_free_ft)      NULL,
   (fe_target_ft)    NULL,
-  (fe_fed_ft)       fe_electro_fed,
-  (fe_mu_ft)        fe_electro_mu,
-  (fe_mu_solv_ft)   fe_electro_mu_solv,
-  (fe_str_ft)       fe_electro_stress_ex,
+  (fe_fed_ft)       NULL,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  NULL
 };
 
 /*****************************************************************************
@@ -120,8 +122,8 @@ __host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
   else {
     fe_vt_t * vt;
     assert(0);
-    /* Device implementation please */
-    targetConstAddress(&vt, fe_electro_dvt);
+    /* Device implementation pending */
+    targetConstAddress((void **) &vt, fe_electro_dvt);
   }
 
   *pobj = fe;
@@ -174,7 +176,7 @@ __host__ int fe_electro_target(fe_electro_t * fe, fe_t ** target) {
  *
  *****************************************************************************/
 
-__host__ __device__
+__host__
 int fe_electro_fed(fe_electro_t * fe, int index, double * fed) {
 
   int n;
@@ -213,7 +215,7 @@ int fe_electro_fed(fe_electro_t * fe, int index, double * fed) {
  *
  *****************************************************************************/
 
-__host__ __device__
+__host__
 int fe_electro_mu(fe_electro_t * fe, int index, double * mu) {
 
   int n;
@@ -246,7 +248,7 @@ int fe_electro_mu(fe_electro_t * fe, int index, double * mu) {
  *
  ****************************************************************************/
 
-__host__ __device__
+__host__
 int fe_electro_mu_solv(fe_electro_t * fe, int index, int k, double * mu) {
 
   assert(mu);
@@ -268,7 +270,7 @@ int fe_electro_mu_solv(fe_electro_t * fe, int index, int k, double * mu) {
  *
  *****************************************************************************/
 
-__host__ __device__
+__host__
 int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
 
   int ia, ib, in;
@@ -322,7 +324,7 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
  *
  *****************************************************************************/
 
-__host__ __device__
+__host__
 int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
 
   int ia, ib;
