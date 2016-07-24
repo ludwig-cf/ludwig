@@ -338,12 +338,15 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
 __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
   dim3 nblk, ntpb;
+  double * u;
 
   assert(obj);
 
+  copyFromTarget(&u, &obj->target->u, sizeof(double *)); 
+
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
   __host_launch(hydro_field_set, nblk, ntpb,
-		obj->target, obj->target->u, uzero);
+		obj->target, u, uzero);
   targetDeviceSynchronise();
 
   return 0;
@@ -359,12 +362,16 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
 
   dim3 nblk, ntpb;
+  double * f;
 
   assert(obj);
+  assert(obj->target);
+
+  copyFromTarget(&f, &obj->target->f, sizeof(double *)); 
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
   __host_launch(hydro_field_set, nblk, ntpb,
-		obj->target, obj->target->f, fzero);
+		obj->target, f, fzero);
   targetDeviceSynchronise();
 
   return 0;
@@ -380,6 +387,9 @@ static __global__
 void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]) {
 
   int kindex;
+
+  assert(hydro);
+  assert(field);
 
   __target_simt_parallel_for(kindex, hydro->nsite, 1) {
     int ia;

@@ -182,6 +182,7 @@ __host__ int map_memcpy(map_t * map, int flag) {
  *
  *****************************************************************************/
 
+__host__
 int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
 
   size_t sz;
@@ -214,7 +215,7 @@ int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
  *
  *****************************************************************************/
 
-int map_io_info(map_t * obj, io_info_t ** info) {
+__host__ int map_io_info(map_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(info);
@@ -232,7 +233,7 @@ int map_io_info(map_t * obj, io_info_t ** info) {
  *
  *****************************************************************************/
 
-int map_halo(map_t * obj) {
+__host__ int map_halo(map_t * obj) {
 
   int nhalo;
   assert(obj);
@@ -255,12 +256,13 @@ int map_halo(map_t * obj) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_status(map_t * obj, int index, int * status) {
 
   assert(obj);
   assert(status);
 
-  *status = (int) obj->status[addr_rank0(coords_nsites(), index)];
+  *status = (int) obj->status[addr_rank0(obj->nsite, index)];
 
   return 0;
 }
@@ -271,13 +273,14 @@ int map_status(map_t * obj, int index, int * status) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_status_set(map_t * obj, int index, int status) {
 
   assert(obj);
   assert(status >= 0);
   assert(status < MAP_STATUS_MAX);
 
-  obj->status[addr_rank0(coords_nsites(), index)] = status;
+  obj->status[addr_rank0(obj->nsite, index)] = status;
 
   return 0;
 }
@@ -288,6 +291,7 @@ int map_status_set(map_t * obj, int index, int status) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_ndata(map_t * obj, int * ndata) {
 
   assert(obj);
@@ -304,6 +308,7 @@ int map_ndata(map_t * obj, int * ndata) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_data(map_t * obj, int index, double * data) {
 
   int n;
@@ -312,7 +317,7 @@ int map_data(map_t * obj, int index, double * data) {
   assert(data);
 
   for (n = 0; n < obj->ndata; n++) {
-    data[n] = obj->data[addr_rank1(coords_nsites(), obj->ndata, index, n)];
+    data[n] = obj->data[addr_rank1(obj->nsite, obj->ndata, index, n)];
   }
 
   return 0;
@@ -324,6 +329,7 @@ int map_data(map_t * obj, int index, double * data) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_data_set(map_t * obj, int index, double * data) {
 
   int n;
@@ -332,7 +338,7 @@ int map_data_set(map_t * obj, int index, double * data) {
   assert(data);
 
   for (n = 0; n < obj->ndata; n++) {
-    obj->data[addr_rank1(coords_nsites(), obj->ndata, index, n)] = data[n];
+    obj->data[addr_rank1(obj->nsite, obj->ndata, index, n)] = data[n];
   }
 
   return 0;

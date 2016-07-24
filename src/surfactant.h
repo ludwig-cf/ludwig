@@ -42,12 +42,10 @@ __host__ int fe_surfactant1_xi0(fe_surfactant1_t * fe,  double * xi0);
 __host__ int fe_surfactant1_langmuir_isotherm(fe_surfactant1_t * fe, double * psi_c);
 __host__ int fe_surfactant1_target(fe_surfactant1_t * fe, fe_t ** target);
 
-__host__ __device__ int fe_surfactant1_param(fe_surfactant1_t * fe, fe_surfactant1_param_t * param);
-__host__ __device__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index, double * fed);
-__host__ __device__ int fe_surfactant1_mu(fe_surfactant1_t * fe, int index, double * mu);
-__host__ __device__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index, double s[3][3]);
-
+__host__ int fe_surfactant1_param(fe_surfactant1_t * fe, fe_surfactant1_param_t * param);
+__host__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index, double * fed);
+__host__ int fe_surfactant1_mu(fe_surfactant1_t * fe, int index, double * mu);
+__host__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index, double s[3][3]);
 
 
 #endif
-

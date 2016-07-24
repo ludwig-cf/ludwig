@@ -128,7 +128,7 @@ __host__ int beris_edw_create(beris_edw_t ** pobj) {
   }
   else {
     targetCalloc((void **) &obj->target, sizeof(beris_edw_t));
-    targetConstAddress(&obj->target->param, static_param);
+    targetConstAddress((void **) &obj->target->param, static_param);
     assert(0); /* Awaiting a test */
   }
 

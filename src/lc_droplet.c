@@ -104,9 +104,9 @@ __host__ int fe_lc_droplet_create(fe_lc_t * lc, fe_symm_t * symm,
     fe_lc_droplet_param_t * tmp;
     fe_vt_t * vt;
     targetCalloc((void **) &fe->target, sizeof(fe_lc_droplet_t));
-    targetConstAddress(&tmp, const_param);
+    targetConstAddress((void **) &tmp, const_param);
     copyToTarget(&fe->target->param, tmp, sizeof(fe_lc_droplet_param_t *));
-    targetConstAddress(&vt, fe_drop_dvt);
+    targetConstAddress((void **) &vt, fe_drop_dvt);
     copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
     assert(0); /* Needs testing */
   }

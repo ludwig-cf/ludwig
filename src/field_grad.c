@@ -70,6 +70,8 @@ static int field_grad_init(field_grad_t * obj) {
   assert(obj);
 
   nsites = le_nsites();
+  obj->nsite = nsites;
+
   targetGetDeviceCount(&ndevice);
 
   if (obj->level >= 2) {
@@ -230,7 +232,7 @@ int field_grad_scalar_grad(field_grad_t * obj, int index, double grad[3]) {
   assert(grad);
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    grad[ia] = obj->grad[addr_rank2(le_nsites(), 1, NVECTOR, index, 0, ia)];
+    grad[ia] = obj->grad[addr_rank2(obj->nsite, 1, NVECTOR, index, 0, ia)];
   }
 
   return 0;
@@ -249,7 +251,7 @@ int field_grad_scalar_delsq(field_grad_t * obj, int index, double * delsq) {
   assert(obj->nf == 1);
   assert(delsq);
 
-  *delsq = obj->delsq[addr_rank1(le_nsites(), 1, index, 0)];
+  *delsq = obj->delsq[addr_rank1(obj->nsite, 1, index, 0)];
 
   return 0;
 }
@@ -270,7 +272,7 @@ int field_grad_scalar_grad_delsq(field_grad_t * obj, int index,
   assert(grad);
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    grad[ia] = obj->grad_delsq[addr_rank1(le_nsites(), NVECTOR, index, ia)];
+    grad[ia] = obj->grad_delsq[addr_rank1(obj->nsite, NVECTOR, index, ia)];
   }
 
   return 0;
@@ -289,7 +291,7 @@ int field_grad_scalar_delsq_delsq(field_grad_t * obj, int index, double * dd) {
   assert(obj->nf == 1);
   assert(dd);
 
-  *dd = obj->delsq_delsq[addr_rank1(le_nsites(), 1, index, 0)];
+  *dd = obj->delsq_delsq[addr_rank1(obj->nsite, 1, index, 0)];
 
   return 0;
 }
@@ -305,22 +307,18 @@ int field_grad_scalar_delsq_delsq(field_grad_t * obj, int index, double * dd) {
 __host__ __device__
 int field_grad_scalar_dab(field_grad_t * obj, int index, double dab[3][3]) {
 
-  int nsites;
-
   assert(obj);
   assert(obj->nf == 1);
 
-  nsites = le_nsites();
-
-  dab[X][X] = obj->d_ab[addr_dab(index, XX)];
-  dab[X][Y] = obj->d_ab[addr_dab(index, XY)];
-  dab[X][Z] = obj->d_ab[addr_dab(index, XZ)];
+  dab[X][X] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, XX)];
+  dab[X][Y] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, XY)];
+  dab[X][Z] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, XZ)];
   dab[Y][X] = dab[X][Y];
-  dab[Y][Y] = obj->d_ab[addr_dab(index, YY)];
-  dab[Y][Z] = obj->d_ab[addr_dab(index, YZ)];
+  dab[Y][Y] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, YY)];
+  dab[Y][Z] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, YZ)];
   dab[Z][X] = dab[X][Z];
   dab[Z][Y] = dab[Y][Z];
-  dab[Z][Z] = obj->d_ab[addr_dab(index, ZZ)];
+  dab[Z][Z] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, ZZ)];
 
   return 0;
 }
@@ -344,7 +342,7 @@ int field_grad_vector_grad(field_grad_t * obj, int index, double dp[3][3]) {
 
   for (ia = 0; ia < NVECTOR; ia++) {
     for (ib = 0; ib < obj->nf; ib++) {
-      dp[ia][ib] = obj->grad[addr_rank2(le_nsites(), obj->nf, NVECTOR, index, ib, ia)];
+      dp[ia][ib] = obj->grad[addr_rank2(obj->nsite, obj->nf, NVECTOR, index, ib, ia)];
     }
   }
 
@@ -367,7 +365,7 @@ int field_grad_vector_delsq(field_grad_t * obj, int index, double delsq[3]) {
   assert(delsq);
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    delsq[ia] = obj->delsq[addr_rank1(le_nsites(), NVECTOR, index, ia)];
+    delsq[ia] = obj->delsq[addr_rank1(obj->nsite, NVECTOR, index, ia)];
   }
 
   return 0;
@@ -385,21 +383,18 @@ __host__ __device__
 int field_grad_tensor_grad(field_grad_t * obj, int index, double dq[3][3][3]) {
 
   int ia;
-  int nsites;
 
   assert(obj);
   assert(obj->nf == NQAB);
   assert(dq);
 
-  nsites = le_nsites();
-
   for (ia = 0; ia < NVECTOR; ia++) {
-    dq[ia][X][X] = obj->grad[addr_rank2(nsites, NQAB, 3, index, XX, ia)];
-    dq[ia][X][Y] = obj->grad[addr_rank2(nsites, NQAB, 3, index, XY, ia)];
-    dq[ia][X][Z] = obj->grad[addr_rank2(nsites, NQAB, 3, index, XZ, ia)];
+    dq[ia][X][X] = obj->grad[addr_rank2(obj->nsite, NQAB, 3, index, XX, ia)];
+    dq[ia][X][Y] = obj->grad[addr_rank2(obj->nsite, NQAB, 3, index, XY, ia)];
+    dq[ia][X][Z] = obj->grad[addr_rank2(obj->nsite, NQAB, 3, index, XZ, ia)];
     dq[ia][Y][X] = dq[ia][X][Y];
-    dq[ia][Y][Y] = obj->grad[addr_rank2(nsites, NQAB, 3, index, YY, ia)];
-    dq[ia][Y][Z] = obj->grad[addr_rank2(nsites, NQAB, 3, index, YZ, ia)];
+    dq[ia][Y][Y] = obj->grad[addr_rank2(obj->nsite, NQAB, 3, index, YY, ia)];
+    dq[ia][Y][Z] = obj->grad[addr_rank2(obj->nsite, NQAB, 3, index, YZ, ia)];
     dq[ia][Z][X] = dq[ia][X][Z];
     dq[ia][Z][Y] = dq[ia][Y][Z];
     dq[ia][Z][Z] = 0.0 - dq[ia][X][X] - dq[ia][Y][Y];
@@ -419,20 +414,16 @@ int field_grad_tensor_grad(field_grad_t * obj, int index, double dq[3][3][3]) {
 __host__ __device__
 int field_grad_tensor_delsq(field_grad_t * obj, int index, double dsq[3][3]) {
 
-  int nsites;
-
   assert(obj);
   assert(obj->nf == NQAB);
   assert(dsq);
 
-  nsites = le_nsites();
-
-  dsq[X][X] = obj->delsq[addr_rank1(nsites, NQAB, index, XX)];
-  dsq[X][Y] = obj->delsq[addr_rank1(nsites, NQAB, index, XY)];
-  dsq[X][Z] = obj->delsq[addr_rank1(nsites, NQAB, index, XZ)];
+  dsq[X][X] = obj->delsq[addr_rank1(obj->nsite, NQAB, index, XX)];
+  dsq[X][Y] = obj->delsq[addr_rank1(obj->nsite, NQAB, index, XY)];
+  dsq[X][Z] = obj->delsq[addr_rank1(obj->nsite, NQAB, index, XZ)];
   dsq[Y][X] = dsq[X][Y];
-  dsq[Y][Y] = obj->delsq[addr_rank1(nsites, NQAB, index, YY)];
-  dsq[Y][Z] = obj->delsq[addr_rank1(nsites, NQAB, index, YZ)];
+  dsq[Y][Y] = obj->delsq[addr_rank1(obj->nsite, NQAB, index, YY)];
+  dsq[Y][Z] = obj->delsq[addr_rank1(obj->nsite, NQAB, index, YZ)];
   dsq[Z][X] = dsq[X][Z];
   dsq[Z][Y] = dsq[Y][Z];
   dsq[Z][Z] = 0.0 - dsq[X][X] - dsq[Y][Y];

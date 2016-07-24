@@ -78,10 +78,10 @@ static fe_vt_t fe_es_hvt = {
 static  __constant__ fe_vt_t fe_es_dvt = {
   (fe_free_ft)      NULL,
   (fe_target_ft)    NULL,
-  (fe_fed_ft)       fe_es_fed,
-  (fe_mu_ft)        fe_es_mu_phi,
-  (fe_mu_solv_ft)   fe_es_mu_ion_solv,
-  (fe_str_ft)       fe_es_stress_ex,
+  (fe_fed_ft)       NULL,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL
@@ -130,9 +130,9 @@ __host__ int fe_es_create(fe_symm_t * symm, fe_electro_t * elec,
     fe_es_param_t * tmp;
     assert(0); /* device implementation pending */
     targetCalloc((void **) &fe->target, sizeof(fe_es_t));
-    targetConstAddress(&tmp, const_param);
+    targetConstAddress((void **) &tmp, const_param);
     copyToTarget(&fe->target->param, tmp, sizeof(fe_es_param_t *));
-    targetConstAddress(&vt, fe_es_dvt);
+    targetConstAddress((void **) &vt, fe_es_dvt);
   }
 
   *pobj = fe;
@@ -180,7 +180,7 @@ __host__ int fe_es_target(fe_es_t * fe, fe_t ** target) {
  *
  *****************************************************************************/
 
-int fe_es_fed(fe_es_t * fe, int index, double * fed) {
+__host__ int fe_es_fed(fe_es_t * fe, int index, double * fed) {
 
   int n;
   double rho;
@@ -219,7 +219,7 @@ int fe_es_fed(fe_es_t * fe, int index, double * fed) {
  *
  *****************************************************************************/
 
-int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
+__host__ int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
 
   int in, ia;
   double e[3];         /* Total electric field */
@@ -272,7 +272,7 @@ int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
  *
  *****************************************************************************/
 
-int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu) {
+__host__ int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu) {
 
   double phi;
  
@@ -295,7 +295,7 @@ int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu) {
  *
  *****************************************************************************/
 
-int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2) {
+__host__ int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2) {
 
   assert(fe);
 
@@ -316,7 +316,7 @@ int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2) {
  *
  *****************************************************************************/
 
-int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu) {
+__host__ int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu) {
 
   int n;
 
@@ -345,7 +345,7 @@ int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu) {
  *
  *****************************************************************************/
 
-int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon) {
+__host__ int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon) {
 
   double phi;
 
@@ -389,7 +389,7 @@ int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon) {
  *
  *****************************************************************************/
 
-int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
+__host__ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
 
   int ia, ib;
 

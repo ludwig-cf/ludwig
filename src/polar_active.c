@@ -116,9 +116,9 @@ __host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe) {
     fe_polar_param_t * p;
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_polar_t));
-    targetConstAddress(&p, const_param);
+    targetConstAddress((void **) &p, const_param);
     copyToTarget(&obj->target->param, p, sizeof(fe_polar_param_t *));
-    targetConstAddress(&vt, fe_polar_dvt);
+    targetConstAddress((void **) &vt, fe_polar_dvt);
     copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
   }
 
@@ -368,7 +368,7 @@ int fe_polar_mol_field(fe_polar_t * fe, int index, double h[3]) {
  *
  *****************************************************************************/
 
-__host__ __device__
+__host__
 int polar_active_region(fe_polar_t * fe, int index) {
 
   int noffset[3];

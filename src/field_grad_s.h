@@ -23,6 +23,7 @@ struct field_grad_s {
   field_t * field;          /* Reference to the field */
   int nf;                   /* Number of field components */
   int level;                /* Maximum derivative required */
+  int nsite;                /* number of sites allocated */
   double * grad;            /* Gradient  \nabla f */
   double * delsq;           /* Laplacian \nabla^2 f */
   double * d_ab;            /* Gradient tensor d_a d_b f */
@@ -40,7 +41,6 @@ struct field_grad_s {
 /* Commpressed symmetric rank 2 tensor */
 
 #define addr_dab(index, ia) addr_rank1(le_nsites(), NSYMM, index, ia)
-#define vaddr_dab(index, ia, iv) vaddr_rank1(le_nsites(), NSYMM, index, ia, iv)
 #define mem_addr_dab(index, ia) mem_addr_rank1(le_nsites(), NSYMM, index, ia)
 
 #endif

@@ -42,25 +42,25 @@ __host__ int fe_es_create(fe_symm_t * fe_symm, fe_electro_t * fe_elec,
 __host__ int fe_es_free(fe_es_t * fe);
 __host__ int fe_es_target(fe_es_t * fe, fe_t ** target);
 
-__host__ __device__
+__host__
 int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu);
 
-__host__ __device__
+__host__
 int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu);
 
-__host__ __device__
+__host__
 int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2);
 
-__host__ __device__
+__host__
 int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon);
 
-__host__ __device__
+__host__
 int fe_es_fed(fe_es_t * fe, int index, double * fed);
 
-__host__ __device__
+__host__
 int fe_es_mu_phi(fe_es_t * fe, int index, double * mu);
 
-__host__ __device__
+__host__
 int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]);
 
 #endif

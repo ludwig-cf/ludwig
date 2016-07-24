@@ -107,9 +107,9 @@ __host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
     fe_lc_param_t * tmp;
     fe_vt_t * vt;
     targetCalloc((void **) &fe->target, sizeof(fe_lc_t));
-    targetConstAddress(&tmp, const_param);
+    targetConstAddress((void **) &tmp, const_param);
     copyToTarget(&fe->target->param, tmp, sizeof(fe_lc_param_t *));
-    targetConstAddress(&vt, fe_dvt);
+    targetConstAddress((void **) &vt, fe_dvt);
     copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
     assert(0); /* Requires a test */
   }
