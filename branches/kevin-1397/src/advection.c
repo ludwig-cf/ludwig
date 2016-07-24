@@ -41,16 +41,24 @@
 #include "hydro_s.h"
 #include "timer.h"
 
-static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
+__host__ int advection_le_1st(advflux_t * flux, hydro_t * hydro,
 			    field_t * field);
 static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
-static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
+__host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
 			    field_t * field);
 static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
 static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
+
+__global__
+void advection_le_1st_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
+			     hydro_t * hydro, field_t * field);
+__global__
+void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
+			       hydro_t * hydro, field_t * field);
+
 
 /* SCHEDULED FOR DELETION! */
 static int order_ = 1; /* Default is upwind (bad!) */
@@ -223,15 +231,16 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
 
   /* For given LE , and given order, compute fluxes */
 
+  TIMER_start(ADVECTION_X_KERNEL);
   switch (order_) {
   case 1:
-    advection_le_1st(obj, hydro, nf, field);
+    advection_le_1st(obj, hydro, field);
     break;
   case 2:
     advection_le_2nd(obj, hydro, nf, field->data);
     break;
   case 3:
-    advection_le_3rd(obj, hydro, nf, field);
+    advection_le_3rd(obj, hydro, field);
     break;
   case 4:
     advection_le_4th(obj, hydro, nf, field->data);
@@ -242,6 +251,7 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
   default:
     fatal("Unexpected advection scheme order\n");
   }
+  TIMER_stop(ADVECTION_X_KERNEL);
 
   return 0;
 }
@@ -249,6 +259,46 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
 /*****************************************************************************
  *
  *  advection_le_1st
+ *
+ *  Kernel driver routine
+ *
+ *****************************************************************************/
+
+__host__ int advection_le_1st(advflux_t * flux, hydro_t * hydro,
+			      field_t * field) {
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(flux);
+  assert(hydro);
+  assert(field);
+
+  coords_nlocal(nlocal);
+
+  /* Limits */
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  __host_launch(advection_le_1st_kernel, nblk, ntpb, ctxt->target,
+		flux->target, hydro->target, field->target);
+
+  targetSynchronize();
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advection_le_1st_kernel
  *
  *  The advective fluxes are computed via first order upwind
  *  allowing for LE planes.
@@ -262,172 +312,113 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
  *
  *****************************************************************************/
 
-__targetEntry__ void advection_le_1st_lattice(advflux_t * flux,
-					      hydro_t * hydro, int nf,
-					      field_t * field) {
+__global__ void advection_le_1st_kernel(kernel_ctxt_t * ktx,
+					advflux_t * flux,
+					hydro_t * hydro,
+					field_t * field) {
 
-  int index;
-  __targetTLPNoStride__(index, tc_nSites) {
+  int kindex;
+  __shared__ int kiter;
 
-    int index0, index1, n;
+  assert(ktx);
+  assert(flux);
+  assert(hydro);
+  assert(field);
+
+  kiter = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, 1) {
+
+    int ia;
+    int n;
+    int ic, jc, kc;
+    int index0, index1, index;
     int icm1, icp1;
-    int nsites;
     double u0[3], u1[3], u;
-    double phi0;
-    int i;
-    
-    int coords[3];
-    nsites = le_nsites();
-    targetCoords3D(coords,tc_Nall,index);
 
-    /* if not a halo site: */
-    if (coords[X] >= (tc_nhalo) &&
-    	coords[Y] >= (tc_nhalo-1) &&
-    	coords[Z] >= (tc_nhalo-1) &&
-    	coords[X] < (tc_Nall[X]-tc_nhalo) &&
-	coords[Y] < (tc_Nall[Y]-tc_nhalo)  &&
-	coords[Z] < (tc_Nall[Z]-tc_nhalo)) {
-
-      index0 = targetIndex3D(coords[X],coords[Y],coords[Z],tc_Nall);
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index0 = kernel_coords_index(ktx, ic, jc, kc);
 
 #ifdef __NVCC__
-      icm1 = coords[X]-1;
-      icp1 = coords[X]+1;
+    icm1 = ic-1;
+    icp1 = ic+1;
 #else
-      /* enable LE planes (not yet supported for CUDA) */
-      icm1 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, -1)+tc_nhalo-1;
-      icp1 = le_index_real_to_buffer(coords[X]-tc_nhalo+1, +1)+tc_nhalo-1;
+    /* enable LE planes (not yet supported for CUDA) */
+    icm1 = le_index_real_to_buffer(ic, -1);
+    icp1 = le_index_real_to_buffer(ic, +1);
 #endif
 
-      for (n = 0; n < nf; n++) {
+    /* west face (icm1 and ic) */
 
-	phi0 = field->data[addr_rank1(nsites, nf, index0, n)];
-	for (i = 0; i < 3; i++) {
-	  u0[i] = hydro->u[addr_hydro(index0, i)];
-	}
-
-	/* west face (icm1 and ic) */
-
-	index1 = targetIndex3D(icm1,coords[Y],coords[Z],tc_Nall);
-
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[addr_hydro(index1, i)];
-	}
-
-	u = 0.5*(u0[X] + u1[X]);
-
-	if (u > 0.0) {
-	  flux->fw[addr_rank1(nsites, nf, index0, n)]
-	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-	}
-	else {
-	  flux->fw[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-	}
-
-	/* east face (ic and icp1) */
-
-	index1 = targetIndex3D(icp1,coords[Y],coords[Z],tc_Nall);
-
-	for(i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[addr_hydro(index1, i)];
-	}
-
-	u = 0.5*(u0[X] + u1[X]);
-
-	if (u < 0.0) {
-	  flux->fe[addr_rank1(nsites, nf, index0, n)]
-	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-	}
-	else {
-	  flux->fe[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-	}
-
-	/* y direction */
-
-	index1 = targetIndex3D(coords[X],coords[Y]+1,coords[Z],tc_Nall);
-
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[addr_hydro(index1, i)];
-	}
-
-	u = 0.5*(u0[Y] + u1[Y]);
-
-	if (u < 0.0) {
-	  flux->fy[addr_rank1(nsites, nf, index0, n)]
-	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-	}
-	else {
-	  flux->fy[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-	}
-
-	/* z direction */
-
-	index1 = targetIndex3D(coords[X],coords[Y],coords[Z]+1,tc_Nall);
-
-	for (i = 0; i < 3; i++) {
-	  u1[i] = hydro->u[addr_hydro(index1, i)];
-	}
-
-	u = 0.5*(u0[Z] + u1[Z]);
-
-	if (u < 0.0) {
-	  flux->fz[addr_rank1(nsites, nf, index0, n)]
-	    = u*field->data[addr_rank1(nsites, nf, index1, n)];
-	}
-	else {
-	  flux->fz[addr_rank1(nsites, nf, index0, n)] = u*phi0;
-	}
-      }
-      /* Next site */
+    for (ia = 0; ia < 3; ia++) {
+      u0[ia] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index0, ia)];
     }
+
+    index1 = kernel_coords_index(ktx, icm1, jc, kc);
+
+    u1[X] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1, X)];
+    u = 0.5*(u0[X] + u1[X]);
+
+    index = index0;
+    if (u > 0.0) index = index1;
+
+    for (n = 0; n < field->nf; n++) {
+      flux->fw[addr_rank1(flux->nsite, flux->nf, index0, n)]
+	= u*field->data[addr_rank1(field->nsites, field->nf, index, n)];
+    }
+
+
+    /* east face (ic and icp1) */
+
+    index1 = kernel_coords_index(ktx, icp1, jc, kc);
+
+    u1[X] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1, X)];
+    u = 0.5*(u0[X] + u1[X]);
+
+    index = index0;
+    if (u < 0.0) index = index1;
+
+    for (n = 0; n < field->nf; n++) {
+      flux->fe[addr_rank1(flux->nsite, flux->nf, index0, n)]
+	= u*field->data[addr_rank1(field->nsites, field->nf, index, n)];
+    }
+
+    /* y direction */
+
+    index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+
+    u1[Y] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1, Y)];
+    u = 0.5*(u0[Y] + u1[Y]);
+
+    index = index0;
+    if (u < 0.0) index = index1;
+
+    for (n = 0; n < field->nf; n++) {
+      flux->fy[addr_rank1(flux->nsite, flux->nf, index0, n)]
+	= u*field->data[addr_rank1(field->nsites, field->nf, index, n)];
+    }
+
+    /* z direction */
+
+    index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+
+    u1[Z] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1, Z)];
+    u = 0.5*(u0[Z] + u1[Z]);
+
+    index = index0;
+    if (u < 0.0) index = index1;
+
+    for (n = 0; n < field->nf; n++) {
+      flux->fz[addr_rank1(flux->nsite, flux->nf, index0, n)]
+	= u*field->data[addr_rank1(field->nsites, field->nf, index, n)];
+    }
+
+    /* Next site */
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  advection_le_1st
- *
- *  Kernel driver routine
- *
- *****************************************************************************/
-
-static int advection_le_1st(advflux_t * flux, hydro_t * hydro, int nf,
-			    field_t * field) {
-  int nlocal[3];
-  int nhalo;
-  int nSites;
-  int Nall[3];
-
-  assert(flux);
-  assert(hydro);
-  assert(field->data);
-
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-
-  Nall[X] = nlocal[X] + 2*nhalo;
-  Nall[Y] = nlocal[Y] + 2*nhalo;
-  Nall[Z] = nlocal[Z] + 2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
-
-  /* copy lattice shape constants to target ahead of execution */
-
-  copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
-  copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
-
-  TIMER_start(ADVECTION_X_KERNEL);
-
-  advection_le_1st_lattice __targetLaunchNoStride__(nSites) (flux->target, hydro->target, nf, field->target);
-
-
-  targetSynchronize();
-
-  TIMER_stop(ADVECTION_X_KERNEL);
-
-  return 0;
 }
 
 /*****************************************************************************
@@ -527,6 +518,44 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
  *
  *  advection_le_3rd
  *
+ *  Kernel driver
+ *
+ *****************************************************************************/
+
+__host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
+			      field_t * field) {
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(flux);
+  assert(hydro);
+  assert(field->data);
+  assert(coords_nhalo() >= 2);
+
+  coords_nlocal(nlocal);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  __host_launch(advection_le_3rd_kernel_v, nblk, ntpb, ctxt->target,
+		flux->target, hydro->target, field->target);
+  targetSynchronize();
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advection_le_3rd_kernel_v
+ *
  *  Advective fluxes, allowing for LE planes.
  *
  *  In fact, formally second order wave-number extended scheme
@@ -537,332 +566,215 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
  *
  *****************************************************************************/
 
-__targetEntry__ void advection_le_3rd_lattice(advflux_t * flux, 
-					      hydro_t * hydro, int nf,
-					      field_t * field) {
+__global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
+					  advflux_t * flux, 
+					  hydro_t * hydro,
+					  field_t * field) {
 
-  int baseIndex;
+  int kindex;
+  __shared__ int kiter;
 
+  assert(ktx);
   assert(flux);
   assert(hydro);
   assert(field);
 
-  __targetTLP__(baseIndex, tc_nSites) {
+  kiter = kernel_vector_iterations(ktx);
 
-    int iv=0;
-    
-    int n;
-    int nsites;
-    double u0[3][VVL], u1[3][VVL], u[VVL];
-    int i;
+  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
 
-    int index0[VVL], index1[VVL], index2[VVL];
-    int icm2[VVL],  icm1[VVL], icp1[VVL], icp2[VVL];
+    int ia, iv;
+    int n, nf, nsites;
+    int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
+    int maskv[NSIMDVL];
+    int index0[NSIMDVL], index1[NSIMDVL], index2[NSIMDVL];
+    int icm2[NSIMDVL], icm1[NSIMDVL], icp1[NSIMDVL], icp2[NSIMDVL];
+    double u0[3][NSIMDVL], u1[3][NSIMDVL], u[NSIMDVL];
+
+    double fd1[NSIMDVL];
+    double fd2[NSIMDVL];
     
     const double a1 = -0.213933;
     const double a2 =  0.927865;
     const double a3 =  0.286067;
-	
-    int includeSite[VVL];
-    int coordschunk[3][VVL];
-    int coords[3];
 
-    double fd1[VVL];
-    double fd2[VVL];
+    nf = field->nf;
+    nsites = field->nsites;
 
-    nsites = le_nsites();
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    kernel_coords_index_v(ktx, ic, jc, kc, index0);
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    __targetILP__(iv) {      
-      for(i = 0; i < 3; i++) {
-	targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	coordschunk[i][iv] = coords[i];
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	u0[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index0[iv],ia)];
       }
     }
 
-#if VVL == 1
-    /* restrict operation to the interior lattice sites*/
-    if (coords[X] >= (tc_nhalo) &&
-    	coords[Y] >= (tc_nhalo-1) &&
-    	coords[Z] >= (tc_nhalo-1) &&
-    	coords[X] < (tc_Nall[X]-tc_nhalo) &&
-    	coords[Y] < (tc_Nall[Y]-tc_nhalo)  &&
-    	coords[Z] < (tc_Nall[Z]-tc_nhalo))
-#endif
-      {
-
-	/* work out which sites in this chunk should be included */
-	__targetILP__(iv) includeSite[iv] = 0;
-		
-	__targetILP__(iv) {
-	  for(i = 0; i < 3; i++) {
-	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	    coordschunk[i][iv] = coords[i];
-	  }
-	}
-
-	__targetILP__(iv) {
-	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
-	       coordschunk[1][iv] >= (tc_nhalo-1) &&
-	       coordschunk[2][iv] >= (tc_nhalo-1) &&
-	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
-	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
-	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo))) {
-	    includeSite[iv] = 1;
-	  }
-	}
-
-	__targetILP__(iv) {
-	  index0[iv] = targetIndex3D(coordschunk[X][iv],
-				     coordschunk[Y][iv],
-				     coordschunk[Z][iv],tc_Nall);
-	}
-
-	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      u0[i][iv] = hydro->u[addr_rank1(nsites,3,index0[iv],i)];
-	    }
-	  }
-	}
-
-	/* west face (icm1 and ic) */
+    /* west face (icm1 and ic) */
 
 #ifdef __NVCC__
-	__targetILP__(iv) icm2[iv] = coordschunk[X][iv]-2;
-	__targetILP__(iv) icm1[iv] = coordschunk[X][iv]-1;
-	__targetILP__(iv) icp1[iv] = coordschunk[X][iv]+1;
-	__targetILP__(iv) icp2[iv] = coordschunk[X][iv]+2;
+    __targetILP__(iv) icm2[iv] = ic[iv]-2;
+    __targetILP__(iv) icm1[iv] = ic[iv]-1;
+    __targetILP__(iv) icp1[iv] = ic[iv]+1;
+    __targetILP__(iv) icp2[iv] = ic[iv]+2;
 #else
-	/* enable LE planes (not yet supported for CUDA) */
-	__targetILP__(iv) {
-	  icm2[iv] = le_index_real_to_buffer(coordschunk[X][iv]-tc_nhalo+1, -2)+tc_nhalo-1;
-	}
-	__targetILP__(iv) {
-	  icm1[iv] = le_index_real_to_buffer(coordschunk[X][iv]-tc_nhalo+1, -1)+tc_nhalo-1;
-	}
-	__targetILP__(iv) {
-	  icp1[iv] = le_index_real_to_buffer(coordschunk[X][iv]-tc_nhalo+1, +1)+tc_nhalo-1;
-	}
-	__targetILP__(iv) {
-	  icp2[iv] = le_index_real_to_buffer(coordschunk[X][iv]-tc_nhalo+1, +2)+tc_nhalo-1;
-	}
+    /* enable LE planes (not yet supported for CUDA) */
+    __targetILP__(iv) icm2[iv] = le_index_real_to_buffer(ic[iv], -2);
+    __targetILP__(iv) icm1[iv] = le_index_real_to_buffer(ic[iv], -1);
+    __targetILP__(iv) icp1[iv] = le_index_real_to_buffer(ic[iv], +1);
+    __targetILP__(iv) icp2[iv] = le_index_real_to_buffer(ic[iv], +2);
 #endif
 
-	__targetILP__(iv) {
-	  index1[iv] = targetIndex3D(icm1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	}
+    kernel_coords_index_v(ktx, icm1, jc, kc, index1);
 
-	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      u1[i][iv] = hydro->u[addr_rank1(nsites,3,index1[iv],i)];
-	    }
+    /* MAY WANT TO RE_INSTATE ia LOOP to get missing vector loads */
+    __targetILP__(iv) {
+      if (maskv[iv]) {
+	u1[X][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],X)];
+      }
+    }
+
+    __targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
+
+    for (n = 0; n < nf; n++) {
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  if (u[iv] > 0.0) {
+	    index2[iv] = le_site_index(icm2[iv], jc[iv], kc[iv]);
+	    fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	    fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
 	  }
-	}
-
-	__targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
-
-	for (n = 0; n < nf; n++) {	    
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	    if (u[iv] > 0.0) {
-	      index2[iv] = targetIndex3D(icm2[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	    }
-	    else {
-	      index2[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	    }
-	    }
-	  }
-	
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      flux->fw[addr_rank1(nsites,nf,index0[iv],n)] =
-		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		       + a2*fd1[iv]
-		       + a3*fd2[iv]);
-	    }
-	  }
-	}
-	
-	/* east face (ic and icp1) */
-	
-	__targetILP__(iv) {
-	  index1[iv] = targetIndex3D(icp1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	}
-
-     	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      u1[i][iv] = hydro->u[addr_rank1(nsites,3,index1[iv],i)];
-	    }
-	  }
-	}
-
-	__targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
-
-	for (n = 0; n < nf; n++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	    if (u[iv] < 0.0) {
-	      index2[iv] = targetIndex3D(icp2[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	    }
-	    else {
-	      index2[iv] = targetIndex3D(icm1[iv],coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	    }
-	    }
-	  }
-	
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      flux->fe[addr_rank1(nsites,nf,index0[iv],n)] =
-		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		       + a2*fd1[iv]
-		       + a3*fd2[iv]);
-	    }
-	  }  
-	}
-
-
-	/* y direction */
-	
-	__targetILP__(iv) {
-	  index1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+1,coordschunk[Z][iv],tc_Nall);
-	}
-
-	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      u1[i][iv] = hydro->u[addr_rank1(nsites,3,index1[iv],i)];
-	    }
-	  }
-	}
-
-	__targetILP__(iv) u[iv] = 0.5*(u0[Y][iv] + u1[Y][iv]);
-
-	for (n = 0; n < nf; n++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	    if (u[iv] < 0.0) {
-	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+2,coordschunk[Z][iv],tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	    }
-	    else {
-	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	    }
-	    }
-	  }
-
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      flux->fy[addr_rank1(nsites,nf,index0[iv],n)] =
-		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		       + a2*fd1[iv]
-		       + a3*fd2[iv]);
-	    }
-	  }
-	}
-	
-	/* z direction */
-	
-	__targetILP__(iv) {
-	  index1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+1,tc_Nall);
-	}
-
-	for (i = 0; i < 3; i++) {
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      u1[i][iv] = hydro->u[addr_rank1(nsites,3,index1[iv],i)];
-	    }
-	  }
-	}
-
-	__targetILP__(iv) u[iv] = 0.5*(u0[Z][iv] + u1[Z][iv]);
-
-	for (n = 0; n < nf; n++) {	    
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	    if (u[iv] < 0.0) {
-	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+2,tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	    }
-	    else{
-	      index2[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
-	      fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	      fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	    }
-	    }
-	  }
-	
-	  __targetILP__(iv) {
-	    if (includeSite[iv]) {
-	      flux->fz[addr_rank1(nsites,nf,index0[iv],n)] =
-		u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		       + a2*fd1[iv]
-		       + a3*fd2[iv]);
-	    }
+	  else {
+	    index2[iv] = le_site_index(icp1[iv], jc[iv], kc[iv]);
+	    fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	    fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
 	  }
 	}
       }
-    /* Next site */
+	
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  flux->fw[addr_rank1(flux->nsite, flux->nf,index0[iv],n)] =
+	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
+		   + a2*fd1[iv] + a3*fd2[iv]);
+	}
+      }
+    }
+	
+    /* east face (ic and icp1) */
+
+    kernel_coords_index_v(ktx, icp1, jc, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
+	}
+      }
+    }
+
+    __targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
+
+    for (n = 0; n < nf; n++) {
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  if (u[iv] < 0.0) {
+	    index2[iv] = le_site_index(icp2[iv], jc[iv], kc[iv]);
+	    fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	    fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  }
+	  else {
+	    index2[iv] = le_site_index(icm1[iv], jc[iv], kc[iv]);
+	    fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	    fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  }
+	}
+      }
+	
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  flux->fe[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
+	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
+		   + a2*fd1[iv] + a3*fd2[iv]);
+	}
+      }  
+    }
+
+
+    /* y direction: jc+1 or ignore */
+	
+    __targetILP__(iv) {
+      index1[iv] = le_site_index(ic[iv], jc[iv]+maskv[iv], kc[iv]);
+    }
+
+    __targetILP__(iv) {
+      u1[Y][iv] = hydro->u[addr_rank1(nsites,NHDIM,index1[iv],Y)];
+    }
+
+    __targetILP__(iv) u[iv] = 0.5*(u0[Y][iv] + u1[Y][iv]);
+
+    for (n = 0; n < nf; n++) {
+      __targetILP__(iv) {
+	if (u[iv] < 0.0) {
+	  index2[iv] = le_site_index(ic[iv], jc[iv]+2*maskv[iv], kc[iv]);
+	  fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	}
+	else {
+	  index2[iv] = le_site_index(ic[iv], jc[iv]-1*maskv[iv], kc[iv]);
+	  fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	}
+      }
+
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  flux->fy[addr_rank1(nsites,nf,index0[iv],n)] =
+	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
+		   + a2*fd1[iv] + a3*fd2[iv]);
+	}
+      }
+    }
+	
+    /* z direction: kc+1 or ignore */
+	
+    __targetILP__(iv) {
+      index1[iv] = le_site_index(ic[iv], jc[iv], kc[iv]+maskv[iv]);
+    }
+
+    __targetILP__(iv) {
+      u1[Z][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],Z)];
+    }
+
+    __targetILP__(iv) u[iv] = 0.5*(u0[Z][iv] + u1[Z][iv]);
+
+    for (n = 0; n < nf; n++) {	    
+      __targetILP__(iv) {
+	if (u[iv] < 0.0) {
+	  index2[iv] = le_site_index(ic[iv], jc[iv], kc[iv]+2*maskv[iv]);
+	  fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	}
+	else {
+	  index2[iv] = le_site_index(ic[iv], jc[iv], kc[iv]-1*maskv[iv]);
+	  fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	}
+      }
+
+      __targetILP__(iv) {
+	if (maskv[iv]) {
+	  flux->fz[addr_rank1(nsites,nf,index0[iv],n)] =
+	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
+		   + a2*fd1[iv] + a3*fd2[iv]);
+	}
+      }
+    }
+    /* Next sites */
   }
-  
+
   return;
-}
-
-/*****************************************************************************
- *
- *  advection_le_3rd
- *
- *  Kernel driver
- *
- *****************************************************************************/
-
-static int advection_le_3rd(advflux_t * flux, hydro_t * hydro, int nf,
-			    field_t * field) {
-  int nlocal[3];
-  int nhalo;
-  int nSites;
-  int Nall[3];
-
-  assert(flux);
-  assert(hydro);
-  assert(field->data);
-  assert(coords_nhalo() >= 2);
-
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-
-  Nall[X] = nlocal[X] + 2*nhalo;
-  Nall[Y] = nlocal[Y] + 2*nhalo;
-  Nall[Z] = nlocal[Z] + 2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
-
-  /* copy lattice shape constants to target ahead of execution */
-
-  copyConstToTarget(&tc_nSites, &nSites, sizeof(int));
-  copyConstToTarget(&tc_nhalo, &nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
-
-  TIMER_start(ADVECTION_X_KERNEL);
-
-  advection_le_3rd_lattice __targetLaunch__(nSites) (flux->target, hydro,nf,field);
-  targetSynchronize();
-
-  TIMER_stop(ADVECTION_X_KERNEL);
-
-  return 0;
 }
 
 /****************************************************************************

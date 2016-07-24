@@ -66,13 +66,20 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, fe_t * fe, field_t * fq,
 				     field_grad_t * fq_grad,
 				     hydro_t * hydro,
 				     map_t * map, noise_t * noise); 
-__host__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro,
+__host__ int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro,
 			      map_t * map);
 __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 				   hydro_t * hydro, advflux_t * flux,
 				   map_t * map, noise_t * noise);
 
-__targetConst__ double tc_tmatrix[3][3][NQAB];
+__global__
+void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
+			field_t * fq, field_grad_t * fqgrad,
+			hydro_t * hydro, advflux_t * flux,
+			map_t * map, noise_t * noise);
+__global__
+void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
+			      hydro_t * hydro, map_t * map, int noffset[3]);
 
 struct beris_edw_s {
   beris_edw_param_t * param;       /* Parameters */ 
@@ -86,6 +93,9 @@ static __constant__ beris_edw_param_t static_param;
 /*****************************************************************************
  *
  *  beris_edw_create
+ *
+ *  Create; one-time initialisation of the constant noise matrices is
+ *  also here.
  *
  *****************************************************************************/
 
@@ -106,6 +116,8 @@ __host__ int beris_edw_create(beris_edw_t ** pobj) {
   advflux_create(NQAB, &flx);
   assert(flx);
   obj->flux = flx;
+
+  beris_edw_tmatrix(obj->param->tmatrix);
 
   /* Allocate a target copy, or alias */
 
@@ -156,7 +168,12 @@ __host__ int beris_edw_free(beris_edw_t * be) {
 
 __host__ int beris_edw_param_commit(beris_edw_t * be) {
 
+  double kt;
+
   assert(be);
+
+  physics_kt(&kt);
+  be->param->var = sqrt(2.0*kt*be->param->gamma);
 
   copyConstToTarget(&static_param, be->param, sizeof(beris_edw_param_t));
 
@@ -210,7 +227,7 @@ __host__ int beris_edw_update(beris_edw_t * be,
   assert(nf == NQAB);
 
   if (hydro) {
-    colloids_fix_swd(cinfo, hydro, map);
+    beris_edw_fix_swd(cinfo, hydro, map);
     hydro_lees_edwards(hydro);
     advection_x(be->flux, hydro, fq);
     advection_bcs_no_normal_flux(nf, be->flux, map);
@@ -232,6 +249,8 @@ __host__ int beris_edw_update(beris_edw_t * be,
  *
  *  hydro is allowed to be NULL, in which case we only have relaxational
  *  dynamics.
+ *
+ *  This is a explicit (ic,jc,kc) loop version retained for reference.
  *
  *****************************************************************************/
 
@@ -426,22 +445,15 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
 				     hydro_t * hydro,
 				     map_t * map,
 				     noise_t * noise) {
+  int ison;
   int nlocal[3];
-  int noise_on = 0;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
-  double tmatrix[3][3][NQAB];
-  double kt, var = 0.0;
-  hydro_t * hydrotarget = NULL;
   fe_t * fetarget = NULL;
-
-  __targetEntry__
-    void beris_edw_kernel(beris_edw_t * be, fe_t * fe, field_t * fq,
-			  field_grad_t * fqgrad,
-			  hydro_t * hydro,
-			  advflux_t * flux,
-			  map_t * map,
-			  int noise_on,
-			  noise_t * noise);
+  hydro_t * hydrotarget = NULL;
+  noise_t * noisetarget = NULL;
 
   assert(be);
   assert(fe);
@@ -450,50 +462,33 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
 
   coords_nlocal(nlocal);
 
-  /* Get kBT, variance of noise and set basis of traceless,
-   * symmetric matrices for contraction */
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  if (noise) noise_present(noise, NOISE_QAB, &noise_on);
-  if (noise_on) {
-    physics_kt(&kt);
-    var = sqrt(2.0*kt*be->param->gamma);
-    beris_edw_tmatrix(tmatrix);
-  }
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  int nhalo;
-  nhalo = coords_nhalo();
-
-
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-
-  int nSites;
-
-  nSites =Nall[X]*Nall[Y]*Nall[Z];
-
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   beris_edw_param_commit(be);
 
   fe->func->target(fe, &fetarget);
   if (hydro) hydrotarget = hydro->target;
 
+  ison = 0;
+  if (noise) noise_present(noise, NOISE_QAB, &ison);
+  if (ison) noisetarget = noise;
+
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
-  beris_edw_kernel __targetLaunch__(nSites) (be->target,
-					     fetarget,
-					     fq->target,
-					     fq_grad->tcopy,
-					     hydrotarget,
-					     be->flux->target,
-					     map->target,
-					     noise_on, noise);
-  
-  targetSynchronize();
+  __host_launch(beris_edw_kernel_v, nblk, ntpb, ctxt->target,
+		be->target, fetarget, fq->target, fq_grad->tcopy,
+		hydrotarget, be->flux->target, map->target, noisetarget);
+
+  targetDeviceSynchronise();
 
   TIMER_stop(BP_BE_UPDATE_KERNEL);
+
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
@@ -504,33 +499,39 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
  *
  *****************************************************************************/
 
-__targetEntry__
-void beris_edw_kernel(beris_edw_t * be, fe_t * fe,
-		      field_t * fq,
-		      field_grad_t * fqgrad,
-		      hydro_t * hydro,
-		      advflux_t * flux,
-		      map_t * map,
-		      int noise_on,
-		      noise_t * noise) {
+__global__
+void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
+			field_t * fq, field_grad_t * fqgrad,
+			hydro_t * hydro, advflux_t * flux,
+			map_t * map, noise_t * noise) {
 
-  int baseIndex;
+  int kindex;
+  __shared__ int kiterations;
+
+  const double dt = 1.0;
   const double r3 = (1.0/3.0);
   KRONECKER_DELTA_CHAR(d_);
 
+  assert(ktx);
+  assert(be);
   assert(fe);
   assert(fe->func->htensor_v);
   assert(fq);
   assert(fqgrad);
   assert(flux);
+  assert(map);
 
-  __targetTLP__(baseIndex,tc_nSites) {
+  kiterations = kernel_vector_iterations(ktx);
 
-    int iv=0;
-    int i;
+  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+
+    int iv;
 
     int ia, ib, id;
+    int index;
+    int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
     int indexj[VVL], indexk[VVL];
+    int maskv[NSIMDVL];
     int status;
 
     double q[3][3][VVL];
@@ -544,334 +545,282 @@ void beris_edw_kernel(beris_edw_t * be, fe_t * fe,
     double omega[3][3][VVL];
     double trace_qw[VVL];
     double chi[NQAB], chi_qab[3][3][VVL];
+    double tr[VVL];
+
+    index = kernel_baseindex(ktx, kindex);
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) s[ia][ib][iv] = 0.0;
+	__targetILP__(iv) chi_qab[ia][ib][iv] = 0.0;
+      }
+    }
+
+    /* Mask out non-fluid sites. */
+    __targetILP__(iv) {
+      if (maskv[iv]) map_status(map, index+iv, &status);
+      if (maskv[iv] && status != MAP_FLUID) maskv[iv] = 0;
+    }
+
+    /* Expand various tensors */
+
+    __targetILP__(iv) q[X][X][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)];
+    __targetILP__(iv) q[X][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)];
+    __targetILP__(iv) q[X][Z][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XZ)];
+    __targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
+    __targetILP__(iv) q[Y][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YY)];
+    __targetILP__(iv) q[Y][Z][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YZ)];
+    __targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
+    __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
+    __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
 
-    const double dt = 1.0;
+    for (ia = 0; ia < NVECTOR; ia++) {
+      __targetILP__(iv) dq[ia][X][X][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,XX,ia)];
+      __targetILP__(iv) dq[ia][X][Y][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,XY,ia)];
+      __targetILP__(iv) dq[ia][X][Z][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,XZ,ia)];
+      __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
+      __targetILP__(iv) dq[ia][Y][Y][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,YY,ia)];
+      __targetILP__(iv) dq[ia][Y][Z][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,YZ,ia)];
+      __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
+      __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
+      __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
+    }
+	
+    __targetILP__(iv) dsq[X][X][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,XX)];
+    __targetILP__(iv) dsq[X][Y][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,XY)];
+    __targetILP__(iv) dsq[X][Z][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,XZ)];
+    __targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
+    __targetILP__(iv) dsq[Y][Y][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,YY)];
+    __targetILP__(iv) dsq[Y][Z][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,YZ)];
+    __targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
+    __targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
+    __targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
-    int coords[3];
+    /* Compute the molecular field. */
 
+    fe->func->htensor_v(fe, q, dq, dsq, h);
 
-    targetCoords3D(coords,tc_Nall,baseIndex);
-  
-    
-#if VVL == 1    
-    /*restrict operation to the interior lattice sites*/ 
-    targetCoords3D(coords,tc_Nall,baseIndex); 
-    if (coords[0] >= (tc_nhalo) && 
-	coords[1] >= (tc_nhalo) && 
-	coords[2] >= (tc_nhalo) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo) &&  
-	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo) )
+    if (hydro) {
+      /* Velocity gradient tensor, symmetric and antisymmetric parts */
+
+      int im1[VVL];
+      int ip1[VVL];
+ 
+#ifdef __NVCC__
+      __targetILP__(iv) im1[iv] = ic[iv] - 1;
+      __targetILP__(iv) ip1[iv] = ic[iv] + 1;
+#else
+      __targetILP__(iv) im1[iv] = le_index_real_to_buffer(ic[iv], -1);
+      __targetILP__(iv) ip1[iv] = le_index_real_to_buffer(ic[iv], +1);
 #endif
-      
-      {
-	
-	/* work out which sites in this chunk should be included */
 
-	int includeSite[VVL];
-	__targetILP__(iv) includeSite[iv]=0;
-	
-	int coordschunk[3][VVL];
-		
-	__targetILP__(iv){
-	  for(i=0;i<3;i++){
-	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	    coordschunk[i][iv]=coords[i];
+      __targetILP__(iv) im1[iv] = le_site_index(im1[iv], jc[iv], kc[iv]);
+      __targetILP__(iv) ip1[iv] = le_site_index(ip1[iv], jc[iv], kc[iv]);
+
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  w[X][X][iv] = 0.5*
+	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
+	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
+	    }
+	  }
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  w[Y][X][iv] = 0.5*
+	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
+	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
+	}
+      }
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  w[Z][X][iv] = 0.5*
+	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
+	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
+	}
+      }
+
+      __targetILP__(iv) {
+	im1[iv] = le_site_index(ic[iv], jc[iv] - maskv[iv], kc[iv]);
+      }
+      __targetILP__(iv) {
+	ip1[iv] = le_site_index(ic[iv], jc[iv] + maskv[iv], kc[iv]);
+      }
+	  
+      __targetILP__(iv) { 
+	w[X][Y][iv] = 0.5*
+	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
+	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
+      }
+      __targetILP__(iv) { 
+	w[Y][Y][iv] = 0.5*
+	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
+	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
+      }
+      __targetILP__(iv) { 
+	w[Z][Y][iv] = 0.5*
+	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
+	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
+      }
+
+      __targetILP__(iv) {
+	im1[iv] = le_site_index(ic[iv], jc[iv], kc[iv] - maskv[iv]);
+      }
+      __targetILP__(iv) {
+	ip1[iv] = le_site_index(ic[iv], jc[iv], kc[iv] + maskv[iv]);
+      }
+	  
+      __targetILP__(iv) { 
+	w[X][Z][iv] = 0.5*
+	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
+	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
+      }
+      __targetILP__(iv) { 
+	w[Y][Z][iv] = 0.5*
+	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
+	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
+      }
+      __targetILP__(iv) { 
+	w[Z][Z][iv] = 0.5*
+	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
+	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
+      }
+
+      /* Enforce tracelessness */
+	  
+      __targetILP__(iv) tr[iv] = r3*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
+      __targetILP__(iv) w[X][X][iv] -= tr[iv];
+      __targetILP__(iv) w[Y][Y][iv] -= tr[iv];
+      __targetILP__(iv) w[Z][Z][iv] -= tr[iv];
+
+
+      __targetILP__(iv) trace_qw[iv] = 0.0;
+
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  __targetILP__(iv) trace_qw[iv] += q[ia][ib][iv]*w[ib][ia][iv];
+	  __targetILP__(iv) d[ia][ib][iv]     = 0.5*(w[ia][ib][iv] + w[ib][ia][iv]);
+	  __targetILP__(iv) omega[ia][ib][iv] = 0.5*(w[ia][ib][iv] - w[ib][ia][iv]);
+	}
+      }
+	  
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  __targetILP__(iv) {
+	    s[ia][ib][iv] =
+	      -2.0*be->param->xi*(q[ia][ib][iv] + r3*d_[ia][ib])*trace_qw[iv];
+	  }
+	  for (id = 0; id < 3; id++) {
+	    __targetILP__(iv) {
+	      s[ia][ib][iv] +=
+		(be->param->xi*d[ia][id][iv] + omega[ia][id][iv])
+		*(q[id][ib][iv] + r3*d_[id][ib])
+		+ (q[ia][id][iv] + r3*d_[ia][id])
+		*(be->param->xi*d[id][ib][iv] - omega[id][ib][iv]);
+	    }
 	  }
 	}
+      }
+    }
 
-	__targetILP__(iv){
-	  
-	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
-	       coordschunk[1][iv] >= (tc_nhalo) &&
-	       coordschunk[2][iv] >= (tc_nhalo) &&
-	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
-	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
-	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
-	    
-	    includeSite[iv]=1;
+    /* Fluctuating tensor order parameter */
+
+    if (noise) {
+
+      __targetILP__(iv) {
+	
+	noise_reap_n(noise, index+iv, NQAB, chi);
+	
+	for (id = 0; id < NQAB; id++) {
+	  chi[id] = be->param->var*chi[id];
 	}
 	
-
-      
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) s[ia][ib][iv] = 0.0;
-	    __targetILP__(iv) chi_qab[ia][ib][iv] = 0.0;
-	  }
-	}
-
-
-#ifndef __NVCC__
-#if VVL == 1
-	map_status(map, baseIndex, &status);
-	if (status != MAP_FLUID) continue;
-#else
-	/* SHIT: can we really ignore this? */
-	status = MAP_FLUID; /* Add to prevent compiler warning */
-#endif
-#endif /* else just calc all sites (and discard non-fluid results)*/
-
-	/* calculate molecular field	*/
-
-	int ia, ib;
-
-	__targetILP__(iv) q[X][X][iv] = fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)];
-	__targetILP__(iv) q[X][Y][iv] = fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)];
-	__targetILP__(iv) q[X][Z][iv] = fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)];
-	__targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
-	__targetILP__(iv) q[Y][Y][iv] = fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)];
-	__targetILP__(iv) q[Y][Z][iv] = fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)];
-	__targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
-	__targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
-	__targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
-
-
-	for (ia = 0; ia < NVECTOR; ia++) {
-	  __targetILP__(iv) dq[ia][X][X][iv] = fqgrad->grad[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,XX,ia)];
-	  __targetILP__(iv) dq[ia][X][Y][iv] = fqgrad->grad[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,XY,ia)];
-	  __targetILP__(iv) dq[ia][X][Z][iv] = fqgrad->grad[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,XZ,ia)];
-	  __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-	  __targetILP__(iv) dq[ia][Y][Y][iv] = fqgrad->grad[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,YY,ia)];
-	  __targetILP__(iv) dq[ia][Y][Z][iv] = fqgrad->grad[addr_rank2(tc_nSites,NQAB,NVECTOR,baseIndex+iv,YZ,ia)];
-	  __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
-	  __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
-	  __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
-	}
-	
-	__targetILP__(iv) dsq[X][X][iv] = fqgrad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)];
-	__targetILP__(iv) dsq[X][Y][iv] = fqgrad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)];
-	__targetILP__(iv) dsq[X][Z][iv] = fqgrad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)];
-	__targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
-	__targetILP__(iv) dsq[Y][Y][iv] = fqgrad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)];
-	__targetILP__(iv) dsq[Y][Z][iv] = fqgrad->delsq[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)];
-	__targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
-	__targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
-	__targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
-
-	/* Compute the molecular field. */
-
-	fe->func->htensor_v(fe, q, dq, dsq, h);
-
-	if (hydro) {
-	  /* Velocity gradient tensor, symmetric and antisymmetric parts */
-
-	  /* hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
-	   * inline above function
-	   * TODO add lees edwards support*/
-
-	  int im1[VVL];
-	  int ip1[VVL];
-	  __targetILP__(iv)  im1[iv] = targetIndex3D(coordschunk[X][iv]-1,coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	  __targetILP__(iv)  ip1[iv] = targetIndex3D(coordschunk[X][iv]+1,coordschunk[Y][iv],coordschunk[Z][iv],tc_Nall);
-	  
-
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[X][X][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],X)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],X)]);
-	    }
-	  }
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[Y][X][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],Y)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],Y)]);
-	    }
-	  }
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[Z][X][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],Z)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],Z)]);
-	    }
-	  }
-
-	  __targetILP__(iv) im1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
-	  __targetILP__(iv) ip1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]+1,coordschunk[Z][iv],tc_Nall);
-	  
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[X][Y][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],X)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],X)]);
-	    }
-	  }
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[Y][Y][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],Y)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],Y)]);
-	    }
-	  }
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[Z][Y][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],Z)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],Z)]);
-	    }
-	  }
-	  
-	  __targetILP__(iv) im1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
-	  __targetILP__(iv) ip1[iv] = targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]+1,tc_Nall);
-	  
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[X][Z][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],X)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],X)]);
-	    }
-	  }
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[Y][Z][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],Y)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],Y)]);
-	    }
-	  }
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      w[Z][Z][iv] = 0.5*
-		(hydro->u[addr_rank1(tc_nSites,3,ip1[iv],Z)] -
-		 hydro->u[addr_rank1(tc_nSites,3,im1[iv],Z)]);
-	    }
-	  }
-
-	  /* Enforce tracelessness */
-	  
-	  double tr[VVL];
-	  __targetILP__(iv) tr[iv] = r3*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
-	  __targetILP__(iv) w[X][X][iv] -= tr[iv];
-	  __targetILP__(iv) w[Y][Y][iv] -= tr[iv];
-	  __targetILP__(iv) w[Z][Z][iv] -= tr[iv];
-
-
-	  __targetILP__(iv) trace_qw[iv] = 0.0;
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      __targetILP__(iv) trace_qw[iv] += q[ia][ib][iv]*w[ib][ia][iv];
-	      __targetILP__(iv) d[ia][ib][iv]     = 0.5*(w[ia][ib][iv] + w[ib][ia][iv]);
-	      __targetILP__(iv) omega[ia][ib][iv] = 0.5*(w[ia][ib][iv] - w[ib][ia][iv]);
-	    }
-	  }
-	  
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      __targetILP__(iv) s[ia][ib][iv] = -2.0*be->param->xi*(q[ia][ib][iv] + r3*d_[ia][ib])*trace_qw[iv];
-	      for (id = 0; id < 3; id++) {
-		__targetILP__(iv) s[ia][ib][iv] +=
-		  (be->param->xi*d[ia][id][iv] + omega[ia][id][iv])*(q[id][ib][iv] + r3*d_[id][ib])
-		+ (q[ia][id][iv] + r3*d_[ia][id])*(be->param->xi*d[id][ib][iv] - omega[id][ib][iv]);
-	      }
-	    }
-	  }
-	}
-
-	/* Fluctuating tensor order parameter */
-
-	if (noise_on) {
-
-	  __targetILP__(iv) {
-	
-	    noise_reap_n(noise, baseIndex, NQAB, chi);
-	
+	    chi_qab[ia][ib][iv] = 0.0;
 	    for (id = 0; id < NQAB; id++) {
-	      assert(0); /* set var? */
-	      chi[id] = be->param->var*chi[id];
-	    }
-	
-	    for (ia = 0; ia < 3; ia++) {
-	      for (ib = 0; ib < 3; ib++) {
-		chi_qab[ia][ib][iv] = 0.0;
-		for (id = 0; id < NQAB; id++) {
-		  chi_qab[ia][ib][iv] += chi[id]*tc_tmatrix[ia][ib][id];
-		}
-	      }
+	      chi_qab[ia][ib][iv] += chi[id]*be->param->tmatrix[ia][ib][id];
 	    }
 	  }
 	}
-
-	/* Here's the full hydrodynamic update. */
-	  
-	__targetILP__(iv) indexj[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv]-1,coordschunk[Z][iv],tc_Nall);
-	__targetILP__(iv) indexk[iv]=targetIndex3D(coordschunk[X][iv],coordschunk[Y][iv],coordschunk[Z][iv]-1,tc_Nall);
-
-
-	__targetILP__(iv) {
-	  if (includeSite[iv]) {
-	    q[X][X][iv] += dt*
-	      (s[X][X][iv] + be->param->gamma*h[X][X][iv] + chi_qab[X][X][iv]
-	       - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
-	       + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
-	       - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
-	       + flux->fy[addr_rank1(tc_nSites,NQAB,indexj[iv],XX)]
-	       - flux->fz[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)]
-	       + flux->fz[addr_rank1(tc_nSites,NQAB,indexk[iv],XX)]);
       }
     }
 
+    /* Here's the full hydrodynamic update. */
+    /* The divergence of advective fluxes involves (jc-1) and (kc-1)
+     * which are masked out if not a valid kernel site */
+
     __targetILP__(iv) {
-      if (includeSite[iv]) {
-	q[X][Y][iv] += dt*
-	  (s[X][Y][iv] + be->param->gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
-	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
-	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
-	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
-	   + flux->fy[addr_rank1(tc_nSites,NQAB,indexj[iv],XY)]
-	   - flux->fz[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)]
-	   + flux->fz[addr_rank1(tc_nSites,NQAB,indexk[iv],XY)]);
-      }
+      indexj[iv] = le_site_index(ic[iv], jc[iv] - maskv[iv], kc[iv]);
+    }
+    __targetILP__(iv) {
+      indexk[iv] = le_site_index(ic[iv], jc[iv], kc[iv] - maskv[iv]);
+    }
+
+    __targetILP__(iv) {
+      q[X][X][iv] += dt*maskv[iv]*
+	(s[X][X][iv] + be->param->gamma*h[X][X][iv] + chi_qab[X][X][iv]
+	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
+	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
+	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
+	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],XX)]
+	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
+	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],XX)]);
+    }
+
+    __targetILP__(iv) {
+      q[X][Y][iv] += dt*maskv[iv]*
+	(s[X][Y][iv] + be->param->gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
+	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
+	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
+	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
+	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],XY)]
+	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
+	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],XY)]);
     }
 	
     __targetILP__(iv) {
-      if (includeSite[iv]) {
-	q[X][Z][iv] += dt*
-	  (s[X][Z][iv] + be->param->gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
-	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
-	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
-	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
-	   + flux->fy[addr_rank1(tc_nSites,NQAB,indexj[iv],XZ)]
-	   - flux->fz[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)]
-	   + flux->fz[addr_rank1(tc_nSites,NQAB,indexk[iv],XZ)]);
-      }
+      q[X][Z][iv] += dt*maskv[iv]*
+	(s[X][Z][iv] + be->param->gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
+	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
+	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
+	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
+	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],XZ)]
+	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
+	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],XZ)]);
     }
 	
     __targetILP__(iv) {
-      if (includeSite[iv]) {
-	q[Y][Y][iv] += dt*
-	  (s[Y][Y][iv] + be->param->gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
-	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
-	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
-	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
-	   + flux->fy[addr_rank1(tc_nSites,NQAB,indexj[iv],YY)]
-	   - flux->fz[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)]
-	   + flux->fz[addr_rank1(tc_nSites,NQAB,indexk[iv],YY)]);
-      }
+      q[Y][Y][iv] += dt*maskv[iv]*
+	(s[Y][Y][iv] + be->param->gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
+	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
+	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
+	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
+	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],YY)]
+	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
+	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],YY)]);
     }
 	
     __targetILP__(iv) {
-      if (includeSite[iv]) {
-	q[Y][Z][iv] += dt*
-	  (s[Y][Z][iv] + be->param->gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
-	   - flux->fe[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
-	   + flux->fw[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
-	   - flux->fy[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
-	   + flux->fy[addr_rank1(tc_nSites,NQAB,indexj[iv],YZ)]
-	   - flux->fz[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)]
-	   + flux->fz[addr_rank1(tc_nSites,NQAB,indexk[iv],YZ)]);
-      }
+      q[Y][Z][iv] += dt*maskv[iv]*
+	(s[Y][Z][iv] + be->param->gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
+	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
+	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
+	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
+	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],YZ)]
+	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
+	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],YZ)]);
     }
 
-    __targetILP__(iv) fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XX)] = q[X][X][iv];
-    __targetILP__(iv) fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XY)] = q[X][Y][iv];
-    __targetILP__(iv) fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,XZ)] = q[X][Z][iv];
-    __targetILP__(iv) fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YY)] = q[Y][Y][iv];
-    __targetILP__(iv) fq->data[addr_rank1(tc_nSites,NQAB,baseIndex+iv,YZ)] = q[Y][Z][iv];
+    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)] = q[X][X][iv];
+    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)] = q[X][Y][iv];
+    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XZ)] = q[X][Z][iv];
+    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YY)] = q[Y][Y][iv];
+    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YZ)] = q[Y][Z][iv];
 
-      }
+    /* Next sites. */
   }
 
   return;
@@ -932,23 +881,25 @@ __host__ __device__ int beris_edw_tmatrix(double t[3][3][NQAB]) {
 
 /*****************************************************************************
  *
- *  colloids_fix_swd
+ *  beris_fix_swd
  *
  *  The velocity gradient tensor used in the Beris-Edwards equations
- *  requires some approximation to the velocity at lattice sites
- *  inside particles. Here we set the lattice velocity based on
- *  the solid body rotation u = v + Omega x rb
+ *  requires some approximation to the velocity at solid lattice sites.
+ *
+ *  This makes an approximation only at solid sites (so cannot change
+ *  advective fluxes).
  *
  *****************************************************************************/
- 
-__host__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+
+__host__
+int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
   int nlocal[3];
   int noffset[3];
-  const int nextra = 1;
-  __global__ void colloids_fix_swd_lattice(colloids_info_t * cinfo,
-					   hydro_t * hydro,
-					   map_t * map);
+  int nextra;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
   assert(cinfo);
   assert(map);
@@ -958,117 +909,103 @@ __host__ int colloids_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  int nhalo = coords_nhalo();
+  nextra = 1;   /* Limits extend 1 point into halo to permit a gradient */
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
+  __host_launch(beris_edw_fix_swd_kernel, nblk, ntpb, ctxt->target,
+		cinfo->tcopy, hydro->target, map->target, noffset);
 
-  int nSites;
-
-  nSites =Nall[X]*Nall[Y]*Nall[Z];
-
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(tc_noffset,noffset, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
-
-  colloids_fix_swd_lattice __targetLaunch__(nSites) (cinfo->tcopy,
-						     hydro->target,
-						     map->target);
   targetSynchronize();
+
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  colloids_fix_swd_kernel
+ *  beris_edw_fix_swd_kernel
  *
  *  Device note: cinfo is coming from unified memory.
  *
- *  Issues: this routines is doing towo things: solid and colloid.
- *  these could be separate.
+ *  This routine is doing two things:
+ *    solid walls u -> zero
+ *    colloid     u -> solid body rotation v + Omega x r_b
+ *
+ *  (These could be separated, particularly if moving walls wanted.)
  *
  *****************************************************************************/
 
 __global__
-void colloids_fix_swd_lattice(colloids_info_t * cinfo, hydro_t * hydro,
-			      map_t * map) {
+void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
+			      hydro_t * hydro, map_t * map, int noffset[3]) {
 
-  int index;
+  int kindex;
+  __shared__ int kiterations;
 
-  __targetTLPNoStride__(index, tc_nSites) {
+  assert(ktx);
+  assert(cinfo);
+  assert(hydro);
+  assert(map);
 
-    int coords[3];
-    int ic, jc, kc, ia;
-    
+  kiterations = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiterations, 1) {
+
+    int ic, jc, kc, index;
+    int ia;
+
     double u[3];
     double rb[3];
     double x, y, z;
     
-    colloid_t * p_c;
-    
-    targetCoords3D(coords,tc_Nall,index);
-    
-    // if not a halo site:
-    if (coords[0] >= (tc_nhalo-tc_nextra) && 
-	coords[1] >= (tc_nhalo-tc_nextra) && 
-	coords[2] >= (tc_nhalo-tc_nextra) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
-	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) ){ 
-      
-      
-      int coords[3];
-      
-      targetCoords3D(coords,tc_Nall,index);
-      
-      ic=coords[0]-tc_nhalo+1;
-      jc=coords[1]-tc_nhalo+1;
-      kc=coords[2]-tc_nhalo+1;
+    colloid_t * pc = NULL;
 
-      x = tc_noffset[X]+ic;
-      y = tc_noffset[Y]+jc;
-      z = tc_noffset[Z]+kc;
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    /* To include stationary walls. */
+    if (map->status[index] != MAP_FLUID) {
+      for (ia = 0; ia < 3; ia++) {
+	hydro->u[addr_rank1(hydro->nsite, NHDIM, index, ia)] = 0.0;
+      }  
+    }
+
+    /* Colloids */
+    if (cinfo->map_new) pc = cinfo->map_new[index];
       
-      
-      if (map->status[index] != MAP_FLUID) {
-	u[X] = 0.0;
-	u[Y] = 0.0;
-	u[Z] = 0.0;
-	  
-	for (ia = 0; ia < 3; ia++) {
-	  hydro->u[addr_hydro(index, ia)] = u[ia];
-	}  
-      }
-      
-      p_c = NULL;
-      if (cinfo->map_new) p_c = cinfo->map_new[index];
-      
-      if (p_c) {
-	/* Set the lattice velocity here to the solid body
-	 * rotational velocity */
+    if (pc) {
+      /* Set the lattice velocity here to the solid body
+       * rotational velocity: v + Omega x r_b */
+
+      x = noffset[X] + ic;
+      y = noffset[Y] + jc;
+      z = noffset[Z] + kc;      
 	
-	rb[X] = x - p_c->s.r[X];
-	rb[Y] = y - p_c->s.r[Y];
-	rb[Z] = z - p_c->s.r[Z];
+      rb[X] = x - pc->s.r[X];
+      rb[Y] = y - pc->s.r[Y];
+      rb[Z] = z - pc->s.r[Z];
 	
-	u[X] = p_c->s.w[Y]*rb[Z] - p_c->s.w[Z]*rb[Y];
-	u[Y] = p_c->s.w[Z]*rb[X] - p_c->s.w[X]*rb[Z];
-	u[Z] = p_c->s.w[X]*rb[Y] - p_c->s.w[Y]*rb[X];
+      u[X] = pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+      u[Y] = pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+      u[Z] = pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
 
-	u[X] += p_c->s.v[X];
-	u[Y] += p_c->s.v[Y];
-	u[Z] += p_c->s.v[Z];
+      u[X] += pc->s.v[X];
+      u[Y] += pc->s.v[Y];
+      u[Z] += pc->s.v[Z];
 
-	for (ia = 0; ia < 3; ia++) {
-	  hydro->u[addr_hydro(index, ia)] = u[ia];
-	}
+      for (ia = 0; ia < 3; ia++) {
+	hydro->u[addr_rank1(hydro->nsite, NHDIM, index, ia)] = u[ia];
       }
     }
   }
-  
+
   return;
 }
-

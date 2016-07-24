@@ -25,7 +25,6 @@
 
 #define NDIST 2
 
-__global__ void phi_lb_to_field_kernel_old(field_t * phi, lb_t * lb);
 __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktxt, field_t * phi,
 				       lb_t * lb);
 
@@ -37,77 +36,6 @@ __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktxt, field_t * phi,
  *  values of phi and store.
  *
  *****************************************************************************/
-
-__host__ int phi_lb_to_field_old(field_t * phi, lb_t  * lb) {
-
-  int Nall[3];
-  int nlocal[3];
-  int nSites;
-  int nhalo = coords_nhalo();
-
-  assert(phi);
-  assert(lb);
-
-  coords_nlocal(nlocal);
-
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nDist;
-  copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
-
-  nSites = le_nsites();
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
-
-  nSites = Nall[X]*Nall[Y]*Nall[Z];
-
-  phi_lb_to_field_kernel_old __targetLaunchNoStride__(nSites) (phi->target, lb->target);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  phi_lb_to_field_kernel
- *
- *  Kernel: 1->nlocal[] each direction.
- *
- *****************************************************************************/
-
-__global__ void phi_lb_to_field_kernel_old(field_t * phi, lb_t * lb) {
-
-  int kindex;
-  double phit=0.0;
-  __targetTLPNoStride__(kindex, tc_nSites) {	  
-
-    int p;
-    int coords[3];
-    double phi0;
-
-    targetCoords3D(coords,tc_Nall, kindex);
-
-    /* if not a halo site:*/
-    if (coords[0] >= tc_nhalo &&
-	coords[1] >= tc_nhalo &&
-	coords[2] >= tc_nhalo &&
-	coords[0] < tc_Nall[X]-tc_nhalo &&
-	coords[1] < tc_Nall[Y]-tc_nhalo &&
-	coords[2] < tc_Nall[Z]-tc_nhalo){
-    
-      phi0 = 0.0;
-      for (p = 0; p < NVEL; p++) {
-	phi0 += lb->f[LB_ADDR(tc_nSites, tc_ndist, NVEL, kindex, LB_PHI, p)];
-      }
-      phit += phi0;
-      phi->data[addr_rank0(tc_nSites, kindex)] = phi0;    
-    }
-  }
-  printf("PHIT %14.7e\n", phit);
-
-  return;
-}
 
 __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
@@ -135,6 +63,12 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  phi_lb_to_field_kernel
+ *
+ *****************************************************************************/
 
 __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
 				       lb_t * lb) {
@@ -179,7 +113,7 @@ __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *****************************************************************************/
 
-__targetHost__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
+__host__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
   int p;
   int ic, jc, kc, index;
