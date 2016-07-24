@@ -50,7 +50,8 @@ static fe_vt_t fe_hvt = {
   (fe_str_ft)       fe_lc_stress,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_mol_field,
-  (fe_htensor_v_ft) fe_lc_compute_h_v
+  (fe_htensor_v_ft) fe_lc_compute_h_v,
+  (fe_stress_v_ft)  fe_lc_stress_v
 };
 
 static __constant__ fe_vt_t fe_dvt = {
@@ -62,7 +63,8 @@ static __constant__ fe_vt_t fe_dvt = {
   (fe_str_ft)       fe_lc_stress,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_mol_field,
-  (fe_htensor_v_ft) fe_lc_compute_h_v
+  (fe_htensor_v_ft) fe_lc_compute_h_v,
+  (fe_stress_v_ft)  fe_lc_stress_v
 };
 
 
@@ -1323,7 +1325,7 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
 
   __targetILP__(iv)  efield[iv] = 0.0;
 
-  assert(0); /* sort out electric field storage */
+  /* assert(0);  sort out electric field storage */
 #ifdef ELECTRIC_FIELD_SHIT
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

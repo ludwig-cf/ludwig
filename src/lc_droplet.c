@@ -39,7 +39,8 @@ static fe_vt_t fe_drop_hvt = {
   (fe_str_ft)       fe_lc_droplet_stress,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_droplet_mol_field,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  NULL
 };
 
 static __constant__ fe_vt_t fe_drop_dvt = {
@@ -51,7 +52,8 @@ static __constant__ fe_vt_t fe_drop_dvt = {
   (fe_str_ft)       fe_lc_droplet_stress,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_droplet_mol_field,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  NULL
 };
 
 __host__ __device__

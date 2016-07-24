@@ -30,6 +30,8 @@ struct beris_edw_param_s {
   double xi;     /* Effective aspect ratio (from relevant free energy) */
   double gamma;  /* Rotational diffusion constant */
   double var;    /* Noise variance */
+
+  double tmatrix[3][3][NQAB];  /* Constant noise tensor */
 };
 
 __host__ int beris_edw_create(beris_edw_t ** pobj);

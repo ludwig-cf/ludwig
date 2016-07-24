@@ -24,9 +24,8 @@
 #include "pth_s.h"
 #include "phi_force_stress.h"
 
-__global__ void pth_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
-				    fe_t * fe);
 __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
+__global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
 
 /*****************************************************************************
  *
@@ -178,12 +177,13 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
 /*****************************************************************************
  *
- *  pth_kernel_novector
+ *  pth_kernel
+ *
+ *  No-vectorised version retained for reference.
  *
  *****************************************************************************/
 
-__global__ void pth_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
-				    fe_t * fe) {
+__global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   int kindex;
   __shared__ int kiter;
@@ -214,14 +214,11 @@ __global__ void pth_kernel_novector(kernel_ctxt_t * ktx, pth_t * pth,
 
 /*****************************************************************************
  *
- *  pth_kernel
+ *  pth_kernel_v
  *
  *****************************************************************************/
 
-#include "blue_phase.h"
-
-__global__
-void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
+__global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   int kindex;
   __shared__ int kiter;
@@ -229,7 +226,7 @@ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
   assert(ktx);
   assert(pth);
   assert(fe);
-  /*assert(fe->func->stress_v);*/
+  assert(fe->func->stress_v);
 
   kiter = kernel_vector_iterations(ktx);
 
@@ -239,12 +236,10 @@ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
     int ia, ib, iv;
 
     double s[3][3][NSIMDVL];
-    fe_lc_t * lc = (fe_lc_t *) fe;
 
     index = kernel_baseindex(ktx, kindex);
 
-    fe_lc_stress_v(lc, index, s);
-    /*fe->func->stress(fe, index, s);*/
+    fe->func->stress_v(fe, index, s);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
