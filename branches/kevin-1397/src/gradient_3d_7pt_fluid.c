@@ -55,6 +55,12 @@ __host__ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg, int nextra);
 __host__ int grad_dab_le_correct(field_grad_t * df);
 __host__ int grad_dab_compute(field_grad_t * df);
 
+
+__global__
+void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
+				field_t * field, 
+				field_grad_t * fgrad);
+
 /*****************************************************************************
  *
  *  grad_3d_7pt_fluid_d2
@@ -137,154 +143,131 @@ __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
  *
  *****************************************************************************/
 
+__host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
 
-__targetEntry__
-void grad_3d_7pt_fluid_operator_lattice(int nop,
-					field_t * field, 
-					field_grad_t * fgrad) {
+  int nlocal[3];
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
-  int baseIndex;
+  coords_nlocal(nlocal);
+  coords_strides(&xs, &ys, &zs);
 
-  __targetTLP__(baseIndex, tc_nSites) {
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-    int iv=0;
-    int i;
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-    int coordschunk[3][VVL];
-    int coords[3];
+  TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
-    __targetILP__(iv){      
-      for(i=0;i<3;i++){
-	targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	coordschunk[i][iv]=coords[i];
-      }      
-    }
+  __host_launch(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, ctxt->target,
+		fg->field->nf, ys, fg->field->target, fg->tcopy);
+  targetDeviceSynchronise();
 
-  
-#if VVL == 1    
-    /*restrict operation to the interior lattice sites*/ 
+  TIMER_stop(TIMER_PHI_GRAD_KERNEL);
 
-    if (coords[0] >= (tc_nhalo-tc_nextra) && 
-	coords[1] >= (tc_nhalo-tc_nextra) && 
-	coords[2] >= (tc_nhalo-tc_nextra) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&  
-	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_7pt_fluid_kernel_v
+ *
+ *  Compute grad, delsq.
+ *
+ *****************************************************************************/
+
+__global__
+void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
+				field_t * field, 
+				field_grad_t * fgrad) {
+
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(field);
+  assert(fgrad);
+
+  kiterations = kernel_vector_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+
+    int n;
+    int iv;
+    int index;
+
+    int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
+    int im1[NSIMDVL];
+    int ip1[NSIMDVL];
+    int indexm1[NSIMDVL];
+    int indexp1[NSIMDVL];
+    int maskv[NSIMDVL];
+
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    index = kernel_baseindex(ktx, kindex);
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
+
+#ifdef __NVCC__
+    __targetILP__(iv) im1[iv] = ic[iv] - 1;
+    __targetILP__(iv) ip1[iv] = ic[iv] + 1;
+#else
+    __targetILP__(iv) im1[iv] = le_index_real_to_buffer(ic[iv], -1);
+    __targetILP__(iv) ip1[iv] = le_index_real_to_buffer(ic[iv], +1);
 #endif
-      { 
 
+    kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
+    kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
 
-	/* work out which sites in this chunk should be included */
-	int includeSite[VVL];
-	__targetILP__(iv) includeSite[iv]=0;
-      
-	int coordschunk[3][VVL];
-      
-	__targetILP__(iv){
-	  for (i = 0; i < 3; i++) {
-	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	    coordschunk[i][iv]=coords[i];
-	  }
-	}
-      
-	__targetILP__(iv) {
-	  if ((coordschunk[0][iv] >= (tc_nhalo-tc_nextra) &&
-	       coordschunk[1][iv] >= (tc_nhalo-tc_nextra) &&
-	       coordschunk[2][iv] >= (tc_nhalo-tc_nextra) &&
-	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
-	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
-	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo-tc_nextra)))
-	  
-	    includeSite[iv]=1;
-	}
-
-	int indexm1[VVL];
-	int indexp1[VVL];
-
-
-	__targetILP__(iv) indexm1[iv] = targetIndex3D(coordschunk[0][iv]-1,
-						      coordschunk[1][iv],
-						      coordschunk[2][iv],tc_Nall);
-	__targetILP__(iv) indexp1[iv] = targetIndex3D(coordschunk[0][iv]+1,
-						      coordschunk[1][iv],
-						      coordschunk[2][iv],tc_Nall);
-      
-	int n;
-	int ys=tc_Nall[Z];
-
-	for (n = 0; n < nop; n++) {
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      fgrad->grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,X)] = 0.5*
-	      (field->data[addr_rank1(tc_nSites,nop,indexp1[iv],n)] -
-	       field->data[addr_rank1(tc_nSites,nop,indexm1[iv],n)]); 
-	    }
-	  }
-      
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      fgrad->grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,Y)] = 0.5*
-		(field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+ys,n)] -
-		 field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-ys,n)]);
-	    }
-	  }
-      
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      fgrad->grad[addr_rank2(tc_nSites,nop,3,baseIndex+iv,n,Z)] = 0.5*
-		(field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+1,n)] -
-		 field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-1,n)]);
-	    }
-	  }
-
-	  __targetILP__(iv) { 
-	    if (includeSite[iv]) {
-	      fgrad->delsq[addr_rank1(tc_nSites,nop,baseIndex+iv,n)]
-		= field->data[addr_rank1(tc_nSites,nop,indexp1[iv],n)]
-		+ field->data[addr_rank1(tc_nSites,nop,indexm1[iv],n)]
-		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+ys,n)]
-		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-ys,n)]
-		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv+1,n)]
-		+ field->data[addr_rank1(tc_nSites,nop,baseIndex+iv-1,n)]
-		- 6.0*field->data[addr_rank1(tc_nSites,nop,baseIndex+iv,n)];
-	    }
-	  }
+    for (n = 0; n < nf; n++) {
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,X)] = 0.5*
+	    (field->data[addr_rank1(field->nsites,nf,indexp1[iv],n)] -
+	     field->data[addr_rank1(field->nsites,nf,indexm1[iv],n)]); 
 	}
       }
-    /* Next site */
+      
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,Y)] = 0.5*
+	    (field->data[addr_rank1(field->nsites,nf,index+iv+ys,n)] -
+	     field->data[addr_rank1(field->nsites,nf,index+iv-ys,n)]);
+	}
+      }
+      
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,Z)] = 0.5*
+	    (field->data[addr_rank1(field->nsites,nf,index+iv+1,n)] -
+	     field->data[addr_rank1(field->nsites,nf,index+iv-1,n)]);
+	}
+      }
+
+      __targetILP__(iv) { 
+	if (maskv[iv]) {
+	  fgrad->delsq[addr_rank1(fgrad->nsite,nf,index+iv,n)]
+	    = field->data[addr_rank1(field->nsites,nf,indexp1[iv],n)]
+	    + field->data[addr_rank1(field->nsites,nf,indexm1[iv],n)]
+	    + field->data[addr_rank1(field->nsites,nf,index+iv+ys,n)]
+	    + field->data[addr_rank1(field->nsites,nf,index+iv-ys,n)]
+	    + field->data[addr_rank1(field->nsites,nf,index+iv+1,n)]
+	    + field->data[addr_rank1(field->nsites,nf,index+iv-1,n)]
+	    - 6.0*field->data[addr_rank1(field->nsites,nf,index+iv,n)];
+	}
+      }
+    }
+    /* Next sites */
   }
 
   return;
 }
 
-__host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
-
-  int nlocal[3];
-  int nhalo;
-  int Nall[3];
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-
-  TIMER_start(TIMER_PHI_GRAD_KERNEL);
-
-  grad_3d_7pt_fluid_operator_lattice __targetLaunchNoStride__(nSites) 
-    (fg->field->nf, fg->field->target, fg->tcopy);
-  targetSynchronize();
-
-  TIMER_stop(TIMER_PHI_GRAD_KERNEL);
-
-  return 0;
-}
 
 /*****************************************************************************
  *
