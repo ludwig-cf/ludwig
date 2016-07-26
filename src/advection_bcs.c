@@ -24,7 +24,6 @@
 #include "wall.h"
 #include "coords.h"
 #include "kernel.h"
-#include "leesedwards.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
 #include "map_s.h"
@@ -138,18 +137,10 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
       __targetILP__(iv) {
 	index[iv] = addr_rank1(flux->nsite, flux->nf, index0 + iv, n);
       }
-      __targetILP__(iv) {
-	if (maskv[iv]) flux->fw[index[iv]] *= mask[iv]*maskw[iv];
-      }
-      __targetILP__(iv) {
-	if (maskv[iv]) flux->fe[index[iv]] *= mask[iv]*maske[iv];
-      }
-      __targetILP__(iv) {
-	if (maskv[iv]) flux->fy[index[iv]] *= mask[iv]*masky[iv];
-      }
-      __targetILP__(iv) {
-	if (maskv[iv]) flux->fz[index[iv]] *= mask[iv]*maskz[iv];
-      }
+      __targetILP__(iv) flux->fw[index[iv]] *= mask[iv]*maskw[iv];
+      __targetILP__(iv) flux->fe[index[iv]] *= mask[iv]*maske[iv];
+      __targetILP__(iv) flux->fy[index[iv]] *= mask[iv]*masky[iv];
+      __targetILP__(iv) flux->fz[index[iv]] *= mask[iv]*maskz[iv];
     }
     /* Next sites */
   }

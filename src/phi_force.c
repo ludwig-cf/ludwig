@@ -24,6 +24,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "wall.h"
@@ -97,229 +98,223 @@ __host__ int phi_force_calculation(pth_t * pth, fe_t * fe,
   return 0;
 }
 
+__global__
+void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+			      hydro_t * hydro);
+
 /*****************************************************************************
  *
  *  phi_force_calculation_fluid
  *
  *  Compute force from thermodynamic sector via
+ *
  *    F_alpha = nalba_beta Pth_alphabeta
+ *
  *  using a simple six-point stencil.
  *
- *  Side effect: increments the force at each local lattice site in
- *  preparation for the collision stage.
+ *  Kernel driver.
  *
  *****************************************************************************/
 
+__host__ int phi_force_calculation_fluid(pth_t * pth, fe_t * fe,
+					 field_t * q,
+					 field_grad_t * q_grad,
+					 hydro_t * hydro) {
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  
+  assert(pth);
+  assert(fe);
+  assert(hydro);
 
-__targetEntry__
-void phi_force_calculation_fluid_lattice(pth_t * pth, hydro_t * hydro) {
+  pth_stress_compute(pth, fe);
 
-  int baseIndex;
+  coords_nlocal(nlocal);
 
-  __targetTLP__(baseIndex, tc_nSites) {
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
 
-    int iv=0;
-    int i;
-    int index1[VVL], ia, ib;
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  TIMER_start(TIMER_PHI_FORCE_CALC);
+
+  __host_launch(phi_force_fluid_kernel_v, nblk, ntpb, ctxt->target,
+		pth->target, hydro->target);
+  targetSynchronize();
+
+  TIMER_stop(TIMER_PHI_FORCE_CALC);
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  phi_force_calculation
+ *
+ *  Increment force at each lattice site.
+ *
+ *****************************************************************************/
+
+__global__
+void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+			      hydro_t * hydro) {
+
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(pth);
+  assert(hydro);
+
+  kiterations = kernel_vector_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+
+    int iv;
+    int ia, ib;
+    int index;
+    int nsites;
+    int ic[NSIMDVL];
+    int jc[NSIMDVL];
+    int kc[NSIMDVL];
+    int pm[NSIMDVL];
+    int maskv[NSIMDVL];
+    int index1[VVL];
     double pth0[3][3][VVL];
     double pth1[3][3][VVL];
     double force[3][VVL];
-    
-    int coords[3];
-    
-    
-#if VVL == 1    
-    /*restrict operation to the interior lattice sites*/ 
-    targetCoords3D(coords,tc_Nall,baseIndex); 
-    if (coords[0] >= (tc_nhalo) && 
-	coords[1] >= (tc_nhalo) && 
-	coords[2] >= (tc_nhalo) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo) &&  
-	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo) )
-#endif
-      
-      { 
-	
-	/* work out which sites in this chunk should be included */
-	int includeSite[VVL];
-	__targetILP__(iv) includeSite[iv]=0;
-	
-	int coordschunk[3][VVL];
-		
-	__targetILP__(iv){
-	  for(i=0;i<3;i++){
-	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	    coordschunk[i][iv]=coords[i];
-	  }
-	}
 
+
+    index = kernel_baseindex(ktx, kindex);
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
+
+    nsites = pth->nsites;
+
+    /* Compute pth at current point */
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) {
-	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
-	       coordschunk[1][iv] >= (tc_nhalo) &&
-	       coordschunk[2][iv] >= (tc_nhalo) &&
-	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
-	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
-	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo))) {
-	    includeSite[iv]=1;
-	  }
-	}
-	
-	
-	/* Compute pth at current point */
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) {
-	      if (includeSite[iv]) pth0[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,baseIndex+iv,ia,ib)];
-	    }
-	  }
-	}
-	
-	/* Compute differences */
-	
-	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-	
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) {
-	      if (includeSite[iv]) pth1[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,index1[iv],ia,ib)];
-	    }
-	  }
-	}
-	
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) force[ia][iv] = -0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
-	}
-	
-	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) {
-	      if (includeSite[iv]) pth1[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,index1[iv],ia,ib)];
-	    }
-	  }
-	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
-	}
-
-	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) { 
-	      if (includeSite[iv]) pth1[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,index1[iv],ia,ib)];
-	    }
-	  }
-	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
-	}
-
-	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]-1,coordschunk[2][iv],tc_Nall);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) {
-	      if (includeSite[iv]) pth1[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,index1[iv],ia,ib)];
-	    }
-	  }
-	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
-	}
-
-	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
-
-	for (ia = 0; ia < 3; ia++){
-	  for (ib = 0; ib < 3; ib++){
-	    __targetILP__(iv) { 
-	      if (includeSite[iv]) pth1[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,index1[iv],ia,ib)];
-	    }
-	  }
-	}
-
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) force[ia][iv] -= 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
-	}
-
-	__targetILP__(iv) index1[iv] = targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]-1,tc_Nall);
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    __targetILP__(iv) { 
-	      if (includeSite[iv]) pth1[ia][ib][iv] = pth->str[addr_rank2(tc_nSites,3,3,index1[iv],ia,ib)];
-	    }
-	  }
-	}
-    
-	for (ia = 0; ia < 3; ia++) {
-	  __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
-	}
-
-	/* Store the force on lattice */
-
-	/* KS: Can we re-encapsulate this? There is only one addr_hydro() here */
-	for (ia = 0; ia < 3; ia++) { 
-	  __targetILP__(iv){ 
-	    if (includeSite[iv]) hydro->f[addr_rank1(le_nsites(), NHDIM, baseIndex+iv,ia)] += force[ia][iv];
-	  }
+	  pth0[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index+iv,ia,ib)];
 	}
       }
+    }
+
+    /* Compute differences */
+
+    __targetILP__(iv) pm[iv] = ic[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, pm, jc, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] = -0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
+    }
+
+
+    __targetILP__(iv) pm[iv] = ic[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, pm, jc, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
+    }
+
+    __targetILP__(iv) pm[iv] = jc[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ic, pm, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) { 
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
+    }
+
+    __targetILP__(iv) pm[iv] = jc[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, ic, pm, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
+    }
+
+    __targetILP__(iv) pm[iv] = kc[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ic, jc, pm, index1);
+
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+	__targetILP__(iv) { 
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] -= 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
+    }
+
+    __targetILP__(iv) pm[iv] = kc[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, ic, jc, pm, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) { 
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+    
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) force[ia][iv] += 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
+    }
+
+    /* Store the force on lattice */
+
+    for (ia = 0; ia < 3; ia++) { 
+      __targetILP__(iv) { 
+	hydro->f[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]
+	  += force[ia][iv]*maskv[iv];
+      }
+    }
     /* Next site */
   }
   
   return;
 }
 
-/*****************************************************************************
- *
- *  phi_force_calculation
- *
- *  Kernel driver.
- *
- *****************************************************************************/
-
-static int phi_force_calculation_fluid(pth_t * pth, fe_t * fe,
-				       field_t * q,
-				       field_grad_t * q_grad,
-				       hydro_t * hydro) {
-  int nhalo;
-  int nlocal[3];
-  int Nall[3];
-  int nSites;
-
-  assert(pth);
-  assert(fe);
-  assert(hydro);
-
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-
-  pth_stress_compute(pth, fe);
-
-  Nall[X] = nlocal[X] + 2*nhalo;
-  Nall[Y] = nlocal[Y] + 2*nhalo;
-  Nall[Z] = nlocal[Z] + 2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
-
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
-
-  TIMER_start(TIMER_PHI_FORCE_CALC);
-
-  phi_force_calculation_fluid_lattice __targetLaunch__(nSites) (pth->target, hydro->target);
-  targetSynchronize();
-
-  TIMER_stop(TIMER_PHI_FORCE_CALC);
-
-  return 0;
-}
 
 /*****************************************************************************
  *

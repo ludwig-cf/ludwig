@@ -26,12 +26,10 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "physics.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "blue_phase.h"
-#include "io_harness.h"
-#include "leesedwards.h"
-#include "physics.h"
 
 static __constant__ fe_lc_param_t const_param;
 
