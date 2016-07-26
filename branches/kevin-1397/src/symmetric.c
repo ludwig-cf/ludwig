@@ -29,7 +29,6 @@
 #include "coords.h"
 #include "field_s.h"
 #include "field_grad_s.h"
-#include "leesedwards.h"
 #include "symmetric.h"
 
 /* Defaults */
@@ -337,6 +336,8 @@ int fe_symm_str(fe_symm_t * fe, int index,  double s[3][3]) {
  *
  *  fe_symm_chemical_stress_target
  *
+ *  SHIT: to be s[3][3][NSIMDVL]
+ *
  *****************************************************************************/
 
 __target__
@@ -361,11 +362,11 @@ void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
 
   __targetILP__(iv) {
     for (ia = 0; ia < 3; ia++) {
-      grad[ia] = fe->dphi->grad[addr_rank2(le_nsites(), 1, 3, index + iv, 0, ia)];
+      grad[ia] = fe->dphi->grad[addr_rank2(fe->dphi->nsite,1,3,index+iv,0,ia)];
     }
 
-    phi = fe->phi->data[addr_rank1(le_nsites(), 1, index + iv, 0)];
-    delsq = fe->dphi->delsq[addr_rank1(le_nsites(), 1, index + iv, 0)];
+    phi = fe->phi->data[addr_rank1(fe->phi->nsites, 1, index + iv, 0)];
+    delsq = fe->dphi->delsq[addr_rank1(fe->dphi->nsite, 1, index + iv, 0)];
 
     p0 = 0.5*a*phi*phi + 0.75*b*phi*phi*phi*phi
       - kappa*phi*delsq 

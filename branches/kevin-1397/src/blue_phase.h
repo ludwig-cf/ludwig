@@ -33,7 +33,6 @@ struct fe_lc_s {
   fe_lc_param_t * param;      /* Parameters */
   field_t * q;                /* Q_ab (compresse rank 1 field) */
   field_grad_t * dq;          /* Gradients thereof */
-  io_info_t * io;             /* IO stuff */
   fe_lc_t * target;           /* Device structure */
 };
 
@@ -68,7 +67,7 @@ struct fe_lc_param_s {
 enum lc_anchoring_enum {LC_ANCHORING_PLANAR = 0,
 			LC_ANCHORING_NORMAL, 
 			LC_ANCHORING_FIXED,
-			LC_ANCHROING_TYPES /* Last entry */
+			LC_ANCHORING_TYPES /* Last entry */
 };
 
 

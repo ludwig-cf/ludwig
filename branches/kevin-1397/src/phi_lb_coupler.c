@@ -18,7 +18,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "kernel.h"
-#include "leesedwards.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 #include "phi_lb_coupler.h"
