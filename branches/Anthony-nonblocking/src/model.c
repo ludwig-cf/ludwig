@@ -601,11 +601,11 @@ int lb_halo(lb_t * lb) {
   assert(lb);
 
   if (lb_order(lb) == MODEL) {
-    lb_halo_via_struct(lb);
+    lb_halo_via_copy_nonblocking(lb);//lb_halo_via_copy(lb);//lb_halo_via_struct(lb);
   }
   else {
     /* MODEL_R only has ... */
-    lb_halo_via_copy(lb);
+    lb_halo_via_copy_nonblocking(lb);//lb_halo_via_copy(lb);//lb_halo_via_copy_nonblocking(lb);//
   }
 
   return 0;
@@ -1566,6 +1566,7 @@ int lb_halo_via_copy(lb_t * lb) {
   return 0;
 }
 
+
 /*****************************************************************************
  *
  *  lb_halo_via_copy_nonblocking
@@ -1653,9 +1654,29 @@ void halo_planes(lb_t * lb) {
   lb->hl .recvplanes = (double *) malloc(((nsendYZ*2*sizeof(double)) + (nsendXZ*2*sizeof(double)) + (nsendXY*2*sizeof(double))));
   if (lb->hl .recvplanes == NULL) fatal("malloc(recv) failed\n");
 
+  /* Receive planes in the x-direction */
+  /* PPM, NMM, P=Positive, M=Middle, N=Negative for the XYZ directions respectively */
+  pforwX = nonblocking_cart_neighb(PMM);
+  pbackX = nonblocking_cart_neighb(NMM);
 
-  /* The x-direction (YZ plane) */
+  MPI_Irecv(&lb->hl.recvplanes[0], nsendYZ, MPI_DOUBLE, pforwX, tagb, comm, &lb->hl.recvreq[0]);
+  MPI_Irecv(&lb->hl .recvplanes[nsendYZ], nsendYZ, MPI_DOUBLE, pbackX, tagf, comm, &lb->hl.recvreq[1]);
 
+  /* Receive planes in the y-direction */
+  pforwY = nonblocking_cart_neighb(MPM);
+  pbackY = nonblocking_cart_neighb(MNM);
+
+  MPI_Irecv(&lb->hl .recvplanes[2*nsendYZ], nsendXZ, MPI_DOUBLE, pforwY, tagb, comm, &lb->hl.recvreq[2]);
+  MPI_Irecv(&lb->hl .recvplanes[2*nsendYZ + nsendXZ], nsendXZ, MPI_DOUBLE, pbackY, tagf, comm, &lb->hl.recvreq[3]);
+
+  /* Receive planes in the z-direction */
+  pforwZ = nonblocking_cart_neighb(MMP);
+  pbackZ = nonblocking_cart_neighb(MMN);
+
+  MPI_Irecv(&lb->hl .recvplanes[2*nsendXZ + 2*nsendYZ], nsendXY, MPI_DOUBLE, pforwZ, tagb, comm, &lb->hl.recvreq[4]);
+  MPI_Irecv(&lb->hl .recvplanes[nsendXY + 2*nsendXZ + 2*nsendYZ], nsendXY, MPI_DOUBLE, pbackZ, tagf, comm, &lb->hl.recvreq[5]);
+
+  /* Send in the x-direction (YZ plane) */
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -1676,19 +1697,11 @@ void halo_planes(lb_t * lb) {
   }
   assert(count == nsendYZ);
 
-  /* PPM, NMM, P=Positive, M=Middle, N=Negative for the XYZ directions respectively */
-  pforwX = nonblocking_cart_neighb(PMM);
-  pbackX = nonblocking_cart_neighb(NMM);
-
-  MPI_Irecv(&lb->hl.recvplanes[0], nsendYZ, MPI_DOUBLE, pforwX, tagb, comm, &lb->hl.recvreq[0]);
-  MPI_Irecv(&lb->hl .recvplanes[nsendYZ], nsendYZ, MPI_DOUBLE, pbackX, tagf, comm, &lb->hl.recvreq[1]);
-
   MPI_Issend(&lb->hl .sendplanes[nsendYZ], nsendYZ, MPI_DOUBLE, pbackX, tagb, comm, &lb->hl.sendreq[0]);
   MPI_Issend(&lb->hl .sendplanes[0], nsendYZ, MPI_DOUBLE, pforwX, tagf, comm, &lb->hl.sendreq[1]);
 
 
-  /* The y-direction (XZ plane) */
-
+  /* Send in the y-direction (XZ plane) */
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -1709,18 +1722,11 @@ void halo_planes(lb_t * lb) {
   }
   assert(count == nsendXZ);
 
-  pforwY = nonblocking_cart_neighb(MPM);
-  pbackY = nonblocking_cart_neighb(MNM);
-
-  MPI_Irecv(&lb->hl .recvplanes[2*nsendYZ], nsendXZ, MPI_DOUBLE, pforwY, tagb, comm, &lb->hl.recvreq[2]);
-  MPI_Irecv(&lb->hl .recvplanes[2*nsendYZ + nsendXZ], nsendXZ, MPI_DOUBLE, pbackY, tagf, comm, &lb->hl.recvreq[3]);
-
   MPI_Issend(&lb->hl .sendplanes[2*nsendYZ + nsendXZ], nsendXZ, MPI_DOUBLE, pbackY, tagb, comm, &lb->hl.sendreq[2]);
   MPI_Issend(&lb->hl .sendplanes[2*nsendYZ], nsendXZ, MPI_DOUBLE, pforwY, tagf, comm, &lb->hl.sendreq[3]);
 
 
-  /* Finally, z-direction (XY plane) */
-
+  /* Finally, Send in the z-direction (XY plane) */
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -1740,12 +1746,6 @@ void halo_planes(lb_t * lb) {
     }
   }
   assert(count == nsendXY);
-
-  pforwZ = nonblocking_cart_neighb(MMP);
-  pbackZ = nonblocking_cart_neighb(MMN);
-
-  MPI_Irecv(&lb->hl .recvplanes[2*nsendXZ + 2*nsendYZ], nsendXY, MPI_DOUBLE, pforwZ, tagb, comm, &lb->hl.recvreq[4]);
-  MPI_Irecv(&lb->hl .recvplanes[nsendXY + 2*nsendXZ + 2*nsendYZ], nsendXY, MPI_DOUBLE, pbackZ, tagf, comm, &lb->hl.recvreq[5]);
 
   MPI_Issend(&lb->hl .sendplanes[nsendXY + 2*nsendXZ + 2*nsendYZ], nsendXY, MPI_DOUBLE, pbackZ, tagb, comm, &lb->hl.sendreq[4]);
   MPI_Issend(&lb->hl .sendplanes[2*nsendXZ + 2*nsendYZ], nsendXY, MPI_DOUBLE, pforwZ, tagf, comm, &lb->hl.sendreq[5]);
@@ -1802,8 +1802,40 @@ void halo_edges(lb_t * lb) {
   lb->hl .recvedges = (double *) malloc(((nsendX*4*sizeof(double)) + (nsendY*4*sizeof(double)) + (nsendZ*4*sizeof(double))));
   if (lb->hl .recvedges == NULL) fatal("malloc(recv) failed\n");
 
-  /* Edges parallel to x-direction */
+  /* Receive edges parallel to x-direction*/
+  Xnn = nonblocking_cart_neighb(MNN);
+  Xnp = nonblocking_cart_neighb(MNP);
+  Xpn = nonblocking_cart_neighb(MPN);
+  Xpp = nonblocking_cart_neighb(MPP);
 
+  MPI_Irecv(&lb->hl.recvedges[0], nsendX, MPI_DOUBLE, Xnn, tagpp, comm, &lb->hl.recvreq[6]);
+  MPI_Irecv(&lb->hl.recvedges[nsendX], nsendX, MPI_DOUBLE, Xnp, tagpn, comm, &lb->hl.recvreq[7]);
+  MPI_Irecv(&lb->hl.recvedges[2*nsendX], nsendX, MPI_DOUBLE, Xpn, tagnp, comm, &lb->hl.recvreq[8]);
+  MPI_Irecv(&lb->hl.recvedges[3*nsendX], nsendX, MPI_DOUBLE, Xpp, tagnn, comm, &lb->hl.recvreq[9]);
+
+  /* Receive edges parallel to y-direction*/
+  Ynn = nonblocking_cart_neighb(NMN);
+  Ynp = nonblocking_cart_neighb(NMP);
+  Ypn = nonblocking_cart_neighb(PMN);
+  Ypp = nonblocking_cart_neighb(PMP);
+
+  MPI_Irecv(&lb->hl.recvedges[4*nsendX], nsendY, MPI_DOUBLE, Ynn, tagpp, comm, &lb->hl.recvreq[10]);
+  MPI_Irecv(&lb->hl.recvedges[nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ynp, tagpn, comm, &lb->hl.recvreq[11]);
+  MPI_Irecv(&lb->hl.recvedges[2*nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ypn, tagnp, comm, &lb->hl.recvreq[12]);
+  MPI_Irecv(&lb->hl.recvedges[3*nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ypp, tagnn, comm, &lb->hl.recvreq[13]);
+
+  /* Receive edges parallel to z-direction*/
+  Znn = nonblocking_cart_neighb(NNM);
+  Znp = nonblocking_cart_neighb(NPM);
+  Zpn = nonblocking_cart_neighb(PNM);
+  Zpp = nonblocking_cart_neighb(PPM);
+
+  MPI_Irecv(&lb->hl.recvedges[4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Znn, tagpp, comm, &lb->hl.recvreq[14]);
+  MPI_Irecv(&lb->hl.recvedges[nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Znp, tagpn, comm, &lb->hl.recvreq[15]);
+  MPI_Irecv(&lb->hl.recvedges[2*nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Zpn, tagnp, comm, &lb->hl.recvreq[16]);
+  MPI_Irecv(&lb->hl.recvedges[3*nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Zpp, tagnn, comm, &lb->hl.recvreq[17]);
+
+  /* Send edges parallel to x-direction */
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -1830,23 +1862,12 @@ void halo_edges(lb_t * lb) {
   }
   assert(count == nsendX);
 
-  Xnn = nonblocking_cart_neighb(MNN);
-  Xnp = nonblocking_cart_neighb(MNP);
-  Xpn = nonblocking_cart_neighb(MPN);
-  Xpp = nonblocking_cart_neighb(MPP);
-
-  MPI_Irecv(&lb->hl.recvedges[0], nsendX, MPI_DOUBLE, Xnn, tagpp, comm, &lb->hl.recvreq[6]);
-  MPI_Irecv(&lb->hl.recvedges[nsendX], nsendX, MPI_DOUBLE, Xnp, tagpn, comm, &lb->hl.recvreq[7]);
-  MPI_Irecv(&lb->hl.recvedges[2*nsendX], nsendX, MPI_DOUBLE, Xpn, tagnp, comm, &lb->hl.recvreq[8]);
-  MPI_Irecv(&lb->hl.recvedges[3*nsendX], nsendX, MPI_DOUBLE, Xpp, tagnn, comm, &lb->hl.recvreq[9]);
-
   MPI_Issend(&lb->hl .sendedges[3*nsendX], nsendX, MPI_DOUBLE, Xpp, tagpp, comm, &lb->hl.sendreq[6]);
   MPI_Issend(&lb->hl .sendedges[2*nsendX], nsendX, MPI_DOUBLE, Xpn, tagpn, comm, &lb->hl.sendreq[7]);
   MPI_Issend(&lb->hl .sendedges[nsendX], nsendX, MPI_DOUBLE, Xnp, tagnp, comm, &lb->hl.sendreq[8]);
   MPI_Issend(&lb->hl .sendedges[0], nsendX, MPI_DOUBLE, Xnn, tagnn, comm, &lb->hl.sendreq[9]);
 
-  /* Edges parallel to y-direction */
-
+  /* Send edges parallel to y-direction */
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -1873,23 +1894,12 @@ void halo_edges(lb_t * lb) {
   }
   assert(count == nsendY);
 
-  Ynn = nonblocking_cart_neighb(NMN);
-  Ynp = nonblocking_cart_neighb(NMP);
-  Ypn = nonblocking_cart_neighb(PMN);
-  Ypp = nonblocking_cart_neighb(PMP);
-
-  MPI_Irecv(&lb->hl.recvedges[4*nsendX], nsendY, MPI_DOUBLE, Ynn, tagpp, comm, &lb->hl.recvreq[10]);
-  MPI_Irecv(&lb->hl.recvedges[nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ynp, tagpn, comm, &lb->hl.recvreq[11]);
-  MPI_Irecv(&lb->hl.recvedges[2*nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ypn, tagnp, comm, &lb->hl.recvreq[12]);
-  MPI_Irecv(&lb->hl.recvedges[3*nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ypp, tagnn, comm, &lb->hl.recvreq[13]);
-
   MPI_Issend(&lb->hl .sendedges[3*nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ypp, tagpp, comm, &lb->hl.sendreq[10]);
   MPI_Issend(&lb->hl .sendedges[2*nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ypn, tagpn, comm, &lb->hl.sendreq[11]);
   MPI_Issend(&lb->hl .sendedges[nsendY + 4*nsendX], nsendY, MPI_DOUBLE, Ynp, tagnp, comm, &lb->hl.sendreq[12]);
   MPI_Issend(&lb->hl .sendedges[4*nsendX], nsendY, MPI_DOUBLE, Ynn, tagnn, comm, &lb->hl.sendreq[13]);
 
-  /* Edges parallel to z-direction */
-
+  /* Send edges parallel to z-direction */
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -1915,17 +1925,6 @@ void halo_edges(lb_t * lb) {
     }
   }
   assert(count == nsendZ);
-
-  Znn = nonblocking_cart_neighb(NNM);
-  Znp = nonblocking_cart_neighb(NPM);
-  Zpn = nonblocking_cart_neighb(PNM);
-  Zpp = nonblocking_cart_neighb(PPM);
-
-  MPI_Irecv(&lb->hl.recvedges[4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Znn, tagpp, comm, &lb->hl.recvreq[14]);
-  MPI_Irecv(&lb->hl.recvedges[nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Znp, tagpn, comm, &lb->hl.recvreq[15]);
-  MPI_Irecv(&lb->hl.recvedges[2*nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Zpn, tagnp, comm, &lb->hl.recvreq[16]);
-  MPI_Irecv(&lb->hl.recvedges[3*nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Zpp, tagnn, comm, &lb->hl.recvreq[17]);
-
 
   MPI_Issend(&lb->hl .sendedges[3*nsendZ + 4*nsendY + 4*nsendX] , nsendZ, MPI_DOUBLE, Zpp, tagpp, comm, &lb->hl.sendreq[14]);
   MPI_Issend(&lb->hl .sendedges[2*nsendZ + 4*nsendY + 4*nsendX], nsendZ, MPI_DOUBLE, Zpn, tagpn, comm, &lb->hl.sendreq[15]);
@@ -1982,6 +1981,24 @@ void halo_corners(lb_t * lb) {
   lb->hl .recvcorners = (double *) malloc(nsend*8*sizeof(double));
   if (lb->hl .recvcorners == NULL) fatal("malloc(recv) failed\n");
 
+  nnn = nonblocking_cart_neighb(NNN);
+  nnp = nonblocking_cart_neighb(NNP);
+  npn = nonblocking_cart_neighb(NPN);
+  npp = nonblocking_cart_neighb(NPP);
+  pnn = nonblocking_cart_neighb(PNN);
+  pnp = nonblocking_cart_neighb(PNP);
+  ppn = nonblocking_cart_neighb(PPN);
+  ppp = nonblocking_cart_neighb(PPP);
+
+  MPI_Irecv(&lb->hl.recvcorners[0], nsend, MPI_DOUBLE, nnn, tagppp, comm, &lb->hl.recvreq[18]);
+  MPI_Irecv(&lb->hl.recvcorners[1*nsend], nsend, MPI_DOUBLE, nnp, tagppn, comm, &lb->hl.recvreq[19]);
+  MPI_Irecv(&lb->hl.recvcorners[2*nsend], nsend, MPI_DOUBLE, npn, tagpnp, comm, &lb->hl.recvreq[20]);
+  MPI_Irecv(&lb->hl.recvcorners[3*nsend], nsend, MPI_DOUBLE, npp, tagpnn, comm, &lb->hl.recvreq[21]);
+  MPI_Irecv(&lb->hl.recvcorners[4*nsend], nsend, MPI_DOUBLE, pnn, tagnpp, comm, &lb->hl.recvreq[22]);
+  MPI_Irecv(&lb->hl.recvcorners[5*nsend], nsend, MPI_DOUBLE, pnp, tagnpn, comm, &lb->hl.recvreq[23]);
+  MPI_Irecv(&lb->hl.recvcorners[6*nsend], nsend, MPI_DOUBLE, ppn, tagnnp, comm, &lb->hl.recvreq[24]);
+  MPI_Irecv(&lb->hl.recvcorners[7*nsend], nsend, MPI_DOUBLE, ppp, tagnnn, comm, &lb->hl.recvreq[25]);
+
   count = 0;
   for (p = 0; p < NVEL; p++) {
     for (n = 0; n < lb->ndist; n++) {
@@ -2020,24 +2037,6 @@ void halo_corners(lb_t * lb) {
       count++;
     }
   }
-
-  nnn = nonblocking_cart_neighb(NNN);
-  nnp = nonblocking_cart_neighb(NNP);
-  npn = nonblocking_cart_neighb(NPN);
-  npp = nonblocking_cart_neighb(NPP);
-  pnn = nonblocking_cart_neighb(PNN);
-  pnp = nonblocking_cart_neighb(PNP);
-  ppn = nonblocking_cart_neighb(PPN);
-  ppp = nonblocking_cart_neighb(PPP);
-
-  MPI_Irecv(&lb->hl.recvcorners[0], nsend, MPI_DOUBLE, nnn, tagppp, comm, &lb->hl.recvreq[18]);
-  MPI_Irecv(&lb->hl.recvcorners[1*nsend], nsend, MPI_DOUBLE, nnp, tagppn, comm, &lb->hl.recvreq[19]);
-  MPI_Irecv(&lb->hl.recvcorners[2*nsend], nsend, MPI_DOUBLE, npn, tagpnp, comm, &lb->hl.recvreq[20]);
-  MPI_Irecv(&lb->hl.recvcorners[3*nsend], nsend, MPI_DOUBLE, npp, tagpnn, comm, &lb->hl.recvreq[21]);
-  MPI_Irecv(&lb->hl.recvcorners[4*nsend], nsend, MPI_DOUBLE, pnn, tagnpp, comm, &lb->hl.recvreq[22]);
-  MPI_Irecv(&lb->hl.recvcorners[5*nsend], nsend, MPI_DOUBLE, pnp, tagnpn, comm, &lb->hl.recvreq[23]);
-  MPI_Irecv(&lb->hl.recvcorners[6*nsend], nsend, MPI_DOUBLE, ppn, tagnnp, comm, &lb->hl.recvreq[24]);
-  MPI_Irecv(&lb->hl.recvcorners[7*nsend], nsend, MPI_DOUBLE, ppp, tagnnn, comm, &lb->hl.recvreq[25]);
 
   MPI_Issend(&lb->hl .sendcorners[7*nsend], nsend, MPI_DOUBLE, ppp, tagppp, comm, &lb->hl.sendreq[18]);
   MPI_Issend(&lb->hl .sendcorners[6*nsend], nsend, MPI_DOUBLE, ppn, tagppn, comm, &lb->hl.sendreq[19]);
