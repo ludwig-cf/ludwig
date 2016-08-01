@@ -164,7 +164,7 @@ __host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
   TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
   __host_launch(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, ctxt->target,
-		fg->field->nf, ys, fg->field->target, fg->tcopy);
+		fg->field->nf, ys, fg->field->target, fg->target);
   targetDeviceSynchronise();
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);

@@ -481,7 +481,7 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
   __host_launch(beris_edw_kernel_v, nblk, ntpb, ctxt->target,
-		be->target, fetarget, fq->target, fq_grad->tcopy,
+		be->target, fetarget, fq->target, fq_grad->target,
 		hydrotarget, be->flux->target, map->target, noisetarget);
 
   targetDeviceSynchronise();

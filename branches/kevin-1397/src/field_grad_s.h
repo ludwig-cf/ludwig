@@ -30,7 +30,7 @@ struct field_grad_s {
   double * grad_delsq;      /* Gradient of Laplacian grad \nabla^2 f */
   double * delsq_delsq;     /* Laplacian^2           \nabla^4 f */
 
-  field_grad_t * tcopy;     /* copy of this structure on target */ 
+  field_grad_t * target;    /* copy of this structure on target */ 
 
   int (* d2)  (field_grad_t * fgrad);
   int (* d4)  (field_grad_t * fgrad);

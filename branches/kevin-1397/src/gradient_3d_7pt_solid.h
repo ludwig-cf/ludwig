@@ -20,8 +20,11 @@
 #include "field_grad.h"
 #include "lc_droplet.h"
 
+typedef struct grad_lc_anch_s grad_lc_anch_t;
+
+__host__ int grad_lc_anch_create(map_t * map, colloids_info_t * cinfo,
+				 fe_lc_t * fe, grad_lc_anch_t ** p);
 __host__ int grad_3d_7pt_solid_d2(field_grad_t * fg);
 __host__ int grad_3d_7pt_solid_set(map_t * map, colloids_info_t * cinfo);
-__host__ int grad_3d_7pt_fe_set(fe_lc_t * fe_lc, fe_lc_droplet_t * fe_drop);
 
 #endif
