@@ -48,19 +48,22 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "wall.h"
-#include "free_energy.h"
-#include "phi_force.h"
-#include "phi_force_colloid.h"
 #include "hydro_s.h" 
 #include "colloids_s.h"
 #include "map_s.h"
 #include "pth_s.h"
+#include "phi_force_colloid.h"
 #include "timer.h"
 
-static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
-				   hydro_t * hydro,
-				   map_t * map);
+int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
+			    hydro_t * hydro, map_t * map);
+
+__global__
+void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
+
 
 /*****************************************************************************
  *
@@ -72,8 +75,7 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
  *****************************************************************************/
 
 __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
-				     field_t * q, field_grad_t * q_grad,
-				     hydro_t * hydro, map_t * map) {
+			       hydro_t * hydro, map_t * map) {
 
   int ncolloid;
 
@@ -85,7 +87,7 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (pth->method == PTH_METHOD_DIVERGENCE) {
     pth_stress_compute(pth, fe);
-    phi_force_interpolation(pth, cinfo, hydro, map);
+    phi_force_driver(pth, cinfo, hydro, map);
   }
 
   return 0;
@@ -93,7 +95,7 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
 /*****************************************************************************
  *
- *  phi_force_interpolation
+ *  phi_force_driver
  *
  *  At solid interfaces use P^th from the adjacent fluid site.
  *
@@ -102,336 +104,49 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-
-
-__targetEntry__
-void phi_force_interpolation_lattice(pth_t * pth, colloids_info_t * cinfo,
-				     hydro_t * hydro,
-				     map_t * map) {
-
-  int index;
-
-  __targetTLPNoStride__(index, tc_nSites) {
-
-  int ia, ib;
-
-  int index1;
-  int status;
-
-  double pth0[3][3];
-  double pth1[3][3];
-  
-  double force[3];                  /* Accumulated force on fluid */
-  double fw[3];                     /* Accumulated force on wall */
-  
-  colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
-
-  
-  int coords[3];
-  targetCoords3D(coords,tc_Nall,index);
-  
-  /*  if not a halo site:*/
-    if (coords[0] >= (tc_nhalo) && 
-	coords[1] >= (tc_nhalo) && 
-	coords[2] >= (tc_nhalo) &&
-	coords[0] < tc_Nall[X]-(tc_nhalo) &&  
-	coords[1] < tc_Nall[Y]-(tc_nhalo)  &&  
-	coords[2] < tc_Nall[Z]-(tc_nhalo) ){ 
-
-
-    int coords[3];
-    targetCoords3D(coords,tc_Nall,index);
-
-
-    /* If this is solid, then there's no contribution here. */
-    
-    p_c = cinfo->map_new[index];
-
-    if (!p_c){
-
-      /* Compute pth at current point */
-
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
-	  pth0[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index,ia,ib)];
-	}
-      }
-
-      for (ia = 0; ia < 3; ia++) {
-	fw[ia] = 0.0;
-      }
-      
-      /* Compute differences */
-      
-      index1 = targetIndex3D(coords[0]+1,coords[1],coords[2],tc_Nall);	
-      
-      p_c = cinfo->map_new[index1];
-      
-      if (p_c) {
-	/* Compute the fluxes at solid/fluid boundary */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -pth0[ia][X];
-	}
-      }
-      else {
-	status=map->status[index1];	
-	if (status == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -pth0[ia][X];
-	    fw[ia] = pth0[ia][X];
-	  }
-	}
-	else {
-	  /* This flux is fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
-	  }
-	}
-      }
-      
-      index1 = targetIndex3D(coords[0]-1,coords[1],coords[2],tc_Nall);	
-      
-      p_c = cinfo->map_new[index1];
-      
-      if (p_c) {
-	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += pth0[ia][X];
-	}
-      }
-      else {
-	status=map->status[index1];	
-	if (status == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][X];
-	    fw[ia] -= pth0[ia][X];
-	  }
-	}
-	else {
-	  /* Fluid - fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
-	  }
-	}
-      }
-      
-      index1 = targetIndex3D(coords[0],coords[1]+1,coords[2],tc_Nall);	
-
-      p_c = cinfo->map_new[index1];
-      
-      if (p_c) {
-	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= pth0[ia][Y];
-	}
-      }
-      else {
-	status=map->status[index1];	
-	if (status == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Y];
-	    fw[ia] += pth0[ia][Y];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	  }
-	}
-      }
-      
-      index1 = targetIndex3D(coords[0],coords[1]-1,coords[2],tc_Nall);	
-
-      p_c = cinfo->map_new[index1];
-      
-      if (p_c) {
-	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += pth0[ia][Y];
-	}
-      }
-      else {
-	status=map->status[index1];	
-	if (status == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Y];
-	    fw[ia] -= pth0[ia][Y];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	  }
-	}
-      }
-      
-      index1 = targetIndex3D(coords[0],coords[1],coords[2]+1,tc_Nall);	
-
-      p_c = cinfo->map_new[index1];
-      
-      if (p_c) {
-	/* Fluid-solid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= pth0[ia][Z];
-	}
-      }
-      else {
-	status=map->status[index1];	
-	if (status == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Z];
-	    fw[ia] += pth0[ia][Z];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	  }
-	}
-      }
-      
-      index1 = targetIndex3D(coords[0],coords[1],coords[2]-1,tc_Nall);	
-
-      p_c = cinfo->map_new[index1];
-      
-      if (p_c) {
-	/* Fluid-solid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += pth0[ia][Z];
-	}
-      }
-      else {
-	status=map->status[index1];	
-	if (status == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Z];
-	    fw[ia] -= pth0[ia][Z];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(tc_nSites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	  }
-	}
-      }
-      
-      /* Store the force on lattice */
-
-      /* Can we re-encapsulate this? Only one instance */
-      for (ia = 0; ia < 3; ia++) {
-	hydro->f[addr_hydro(index, ia)] += force[ia];
-      }
-
-      /*TO DO
-       * from wall.c 
-       * "This is for accounting purposes only.
-       * There is no physical consequence." */
-
-#ifndef __NVCC__
-      wall_accumulate_force(fw);
-#endif
-      
-    }
-    /* Next site */
-    }
-  }
-  
-  
-  return;
-}
-
-
-
-static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
-				   hydro_t * hydro,
-				   map_t * map) {
+__host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
+			      hydro_t * hydro, map_t * map) {
   int ia;
   int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
-  colloid_t * colloid_at_site_index(int);
-
+  assert(pth);
   assert(cinfo);
+  assert(hydro);
   assert(map);
 
   coords_nlocal(nlocal);
 
-  int nhalo = coords_nhalo();
-  int Nall[3];
-  int nSites;
-  Nall[X] = nlocal[X] + 2*nhalo;
-  Nall[Y] = nlocal[Y] + 2*nhalo;
-  Nall[Z] = nlocal[Z] + 2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
 
-
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
-
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  phi_force_interpolation_lattice  __targetLaunch__(nSites) (pth->target, cinfo->tcopy, hydro->target, map->target);
+  __host_launch(phi_force_kernel, nblk, ntpb, ctxt->target,
+		pth->target, cinfo->tcopy, hydro->target, map->target);
 
-/* note that ideally we would delay this sync to overlap 
+  /* note that ideally we would delay this sync to overlap 
    with below colloid force updates, but this is not working on current GPU 
    architectures because colloids are in unified memory */
+
   targetSynchronize(); 
 
+  kernel_ctxt_free(ctxt);
 
+
+  /* A separate kernel is requred to allow reduction of the
+   * force on each particle. A truly parallel version is
+   pending... */
 
 #ifdef __NVCC__
 
-  assert(0);
-
-#ifdef OLD_SHIT
+  assert(0); /* Pending a test */
 
   /* update colloid-affected lattice sites from target*/
   int ncolsite=colloids_number_sites(cinfo);
@@ -445,10 +160,9 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
 
 
   /* get fluid data from this subset of sites */
-  copyFromTargetSubset(pth,t_pth_,colloidSiteList,ncolsite,nSites,9);
+  copyFromTargetSubset(pth->str,pth->target->str,colloidSiteList,ncolsite,nSites,9);
 
   free(colloidSiteList);
-#endif
 #endif
 
   colloid_t * pc;
@@ -506,7 +220,7 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
 
       /* update the colloid force using the relavent part of the potential */
 	for (ia = 0; ia < 3; ia++) {
-	  pc->force[ia] += fac*pth->str[addr_rank2(nSites,3,3,p_link->i,ia,idir)];
+	  pc->force[ia] += fac*pth->str[addr_rank2(pth->nsites,3,3,p_link->i,ia,idir)];
 	}
 
     }
@@ -516,4 +230,262 @@ static int phi_force_interpolation(pth_t * pth, colloids_info_t * cinfo,
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_kernel
+ *
+ *  This computes the force on the fluid, but not the colloids.
+ *
+ *  cinfo is currently through unified memory.
+ *
+ *****************************************************************************/
+
+__global__
+void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(pth);
+  assert(cinfo);
+  assert(hydro);
+  assert(map);
+
+  kiterations = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int ia, ib;
+    int index, index1;
+
+    double pth0[3][3];
+    double pth1[3][3];
+  
+    double force[3];                  /* Accumulated force on fluid */
+    double fw[3];                     /* Accumulated force on wall */
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    /* If this is solid, then there's no contribution here. */
+
+    if (cinfo->map_new[index] == NULL) {
+
+      /* Compute pth at current point */
+
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
+	}
+      }
+
+      for (ia = 0; ia < 3; ia++) {
+	fw[ia] = 0.0;
+      }
+      
+      /* Compute differences */
+      
+      index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      
+      if (cinfo->map_new[index1]) {
+	/* Compute the fluxes at solid/fluid boundary */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = -pth0[ia][X];
+	}
+      }
+      else {
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] = -pth0[ia][X];
+	    fw[ia] = pth0[ia][X];
+	  }
+	}
+	else {
+	  /* This flux is fluid-fluid */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	  }
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic-1, jc, kc);
+      
+      if (cinfo->map_new[index1]) {
+	/* Solid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += pth0[ia][X];
+	}
+      }
+      else {
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][X];
+	    fw[ia] -= pth0[ia][X];
+	  }
+	}
+	else {
+	  /* Fluid - fluid */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  }
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      
+      if (cinfo->map_new[index1]) {
+	/* Solid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= pth0[ia][Y];
+	}
+      }
+      else {
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= pth0[ia][Y];
+	    fw[ia] += pth0[ia][Y];
+	  }
+	}
+	else {
+	  /* Fluid-fluid */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  }
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc-1, kc);
+      
+      if (cinfo->map_new[index1]) {
+	/* Solid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += pth0[ia][Y];
+	}
+      }
+      else {
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][Y];
+	    fw[ia] -= pth0[ia][Y];
+	  }
+	}
+	else {
+	  /* Fluid-fluid */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  }
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      
+      if (cinfo->map_new[index1]) {
+	/* Fluid-solid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= pth0[ia][Z];
+	}
+      }
+      else {
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= pth0[ia][Z];
+	    fw[ia] += pth0[ia][Z];
+	  }
+	}
+	else {
+	  /* Fluid-fluid */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  }
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc, kc-1);
+      
+      if (cinfo->map_new[index1]) {
+	/* Fluid-solid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += pth0[ia][Z];
+	}
+      }
+      else {
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += pth0[ia][Z];
+	    fw[ia] -= pth0[ia][Z];
+	  }
+	}
+	else {
+	  /* Fluid-fluid */
+
+	  for (ia = 0; ia < 3; ia++) {
+	    for (ib = 0; ib < 3; ib++) {
+	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  }
+	}
+      }
+      
+      /* Store the force on lattice */
+
+      for (ia = 0; ia < 3; ia++) {
+	hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)] += force[ia];
+      }
+
+#ifdef __NVCC__
+      assert(0);
+#else
+      wall_accumulate_force(fw);
+#endif  
+    }
+    /* Next site */
+  }
+
+  return;
 }

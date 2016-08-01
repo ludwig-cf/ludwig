@@ -35,6 +35,10 @@
 #include "timer.h"
 #include "phi_force.h"
 
+__global__
+void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+			      hydro_t * hydro);
+
 static int phi_force_calculation_fluid(pth_t * pth, fe_t * fe, field_t * q, 
 				       field_grad_t * qgrad, hydro_t * hydro);
 
@@ -97,10 +101,6 @@ __host__ int phi_force_calculation(pth_t * pth, fe_t * fe,
 
   return 0;
 }
-
-__global__
-void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
-			      hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -179,17 +179,17 @@ void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
     int iv;
     int ia, ib;
-    int index;
+    int index;                   /* first index in vector block */
     int nsites;
-    int ic[NSIMDVL];
-    int jc[NSIMDVL];
-    int kc[NSIMDVL];
-    int pm[NSIMDVL];
-    int maskv[NSIMDVL];
-    int index1[VVL];
-    double pth0[3][3][VVL];
-    double pth1[3][3][VVL];
-    double force[3][VVL];
+    int ic[NSIMDVL];             /* ic for this iteration */
+    int jc[NSIMDVL];             /* jc for this iteration */
+    int kc[NSIMDVL];             /* kc ditto */
+    int pm[NSIMDVL];             /* ordinate +/- 1 */
+    int maskv[NSIMDVL];          /* = 0 if not kernel site, 1 otherwise */
+    int index1[NSIMDVL];
+    double pth0[3][3][NSIMDVL];
+    double pth1[3][3][NSIMDVL];
+    double force[3][NSIMDVL];
 
 
     index = kernel_baseindex(ktx, kindex);

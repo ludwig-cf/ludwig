@@ -85,19 +85,19 @@ static int field_grad_init(field_grad_t * obj) {
     /* Allocate data space on target (or alias) */
  
     if (ndevice == 0) {
-      obj->tcopy = obj;
+      obj->target = obj;
     }
     else {
 
-      targetCalloc((void **) &obj->tcopy, sizeof(field_grad_t));
+      targetCalloc((void **) &obj->target, sizeof(field_grad_t));
 
       targetCalloc((void **) &tmp, obj->nf*NVECTOR*nsites*sizeof(double));
-      copyToTarget(&obj->tcopy->grad, &tmp, sizeof(double *)); 
+      copyToTarget(&obj->target->grad, &tmp, sizeof(double *)); 
 
       targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
-      copyToTarget(&obj->tcopy->delsq, &tmp, sizeof(double *)); 
+      copyToTarget(&obj->target->delsq, &tmp, sizeof(double *)); 
 
-      copyToTarget(&obj->tcopy->nf, &obj->nf, sizeof(int));
+      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
     }
   }
 
@@ -170,11 +170,11 @@ __host__ void field_grad_free(field_grad_t * obj) {
   targetGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->tcopy->grad, sizeof(double *)); 
+    copyFromTarget(&tmp, &obj->target->grad, sizeof(double *)); 
     targetFree(tmp);
-    copyFromTarget(&tmp, &obj->tcopy->delsq, sizeof(double *)); 
+    copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *)); 
     targetFree(tmp);
-    targetFree(obj->tcopy);
+    targetFree(obj->target);
   }
 
   if (obj->grad) free(obj->grad);

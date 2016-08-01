@@ -453,7 +453,6 @@ void ludwig_run(const char * inputfile) {
 
 
 
-
     /* Order parameter gradients */
 
     TIMER_start(TIMER_PHI_GRADIENTS);
@@ -489,7 +488,7 @@ void ludwig_run(const char * inputfile) {
       fe_lc_redshift_compute(ludwig->fe_lc);
     }
     TIMER_stop(TIMER_PHI_GRADIENTS);
-
+    
     /* Electrokinetics (including electro/symmetric requiring above
      * gradients for phi) */
 
@@ -601,8 +600,7 @@ void ludwig_run(const char * inputfile) {
 	}
 	else {
 	  phi_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
-			    ludwig->q, ludwig->q_grad,ludwig->hydro,
-			    ludwig->map);
+			    ludwig->hydro, ludwig->map);
 	}
       }
 
@@ -1193,8 +1191,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
-    /* Not very elegant, but set fe here */
-    grad_3d_7pt_fe_set(fe, NULL);
+    /* Not very elegant, but here ... */
+    grad_lc_anch_create(NULL, NULL, fe, NULL);
 
     ludwig->fe_lc = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1304,6 +1302,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_lc_droplet_create(lc, symm, &fe);
     fe_lc_droplet_run_time(fe);
+
+    grad_lc_anch_create(NULL, NULL, lc, NULL);
 
     ludwig->fe_symm = symm;
     ludwig->fe_lc = lc;
