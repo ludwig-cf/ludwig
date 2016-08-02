@@ -52,6 +52,8 @@ struct psi_s {
   int maxits;               /* Maximum number of iterations */
   int multisteps;           /* Number of substeps in charge dynamics */
   int skipsteps;            /* Poisson equation solved every skipsteps timesteps */
+  int nfreq_io;             /* Field output */
+  int nfreq;                /* Residual statisics output */
   double diffacc;           /* Number of substeps in charge dynamics */
   MPI_Datatype psihalo[3];  /* psi field halo */
   MPI_Datatype rhohalo[3];  /* charge densities halo */

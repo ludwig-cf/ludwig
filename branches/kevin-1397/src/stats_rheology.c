@@ -759,7 +759,7 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
       fp = fopen(filename, "a");
       if (fp == NULL) fatal("fopen(%s) failed\n", filename);
 
-      fprintf(fp, "%9d ", get_step());
+      fprintf(fp, "%9d ", physics_control_timestep());
       stats_rheology_print_matrix(fp, stress);
       stats_rheology_print_matrix(fp, pchem);
       stats_rheology_print_matrix(fp, rhouu);

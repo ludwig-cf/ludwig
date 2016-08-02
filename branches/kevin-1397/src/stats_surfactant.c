@@ -40,6 +40,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   int index;
   int ic = 1, jc = 1, kc;
   int nlocal[3];
+  int nt;
   double e, e0;
   double psi_0, psi_b;
   double sigma, sigma0;
@@ -62,8 +63,13 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   index = coords_index(ic, jc, kc);
   fe_surfactant1_fed(fe, index, &e0);
 
-  /* field_scalar_array(fe->phi, index, phi);*/
-  assert(0); /* Incomplete type above*/
+#ifdef OLD_SHIT
+  field_scalar_array(fe->phi, index, phi);
+#else
+  assert(0);
+  phi[0] = 0.0;
+  phi[1] = 0.0;
+#endif
 
   psi_b = phi[1];
 
@@ -94,8 +100,10 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   /* The sqrt(t) is the usual dependance for analysis of the
    * diffusion problem, so is included here. */
 
-  info("Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", get_step(),
-       sqrt(1.0*get_step()), psi_b, psi_0, sigma);
+  nt = physics_control_timestep();
+
+  info("Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", nt,
+       sqrt(1.0*nt), psi_b, psi_0, sigma);
 
   return 0;
 }

@@ -39,6 +39,7 @@ int psi_rt_init_param(psi_t * obj) {
 
   int n;
   int nk;
+  int nfreq;
 
   int valency[2] = {+1, -1};  /* Valencies (should be +/-!)*/
   double diffusivity[2] = {0.01, 0.01};
@@ -131,6 +132,14 @@ int psi_rt_init_param(psi_t * obj) {
   info("Absolute tolerance:  %20.7e\n", tolerance);
   psi_maxits(obj, &niteration);
   info("Max. no. of iterations:  %16d\n", niteration);
+
+  /* Output */
+
+  n = 0;
+  n += RUN_get_int_parameter("freq_statistics", &nfreq);
+  n += RUN_get_int_parameter("freq_psi_resid", &nfreq);
+  if (n > 0) psi_nfreq_set(obj, nfreq);;
+
 
   /* I/O */
 

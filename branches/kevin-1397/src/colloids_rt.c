@@ -242,6 +242,7 @@ int colloids_rt_init_few(colloids_info_t * cinfo, int nc) {
 
 int colloids_rt_init_from_file(colloids_info_t * cinfo, colloid_io_t * cio) {
 
+  int ntstep;
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   char stub[FILENAME_MAX];
@@ -254,13 +255,15 @@ int colloids_rt_init_from_file(colloids_info_t * cinfo, colloid_io_t * cio) {
   strcpy(stub, "config.cds.init");
   RUN_get_string_parameter("colloid_file_stub", stub, FILENAME_MAX);
 
-  if (get_step() == 0) {
+  ntstep = physics_control_timestep();
+
+  if (ntstep == 0) {
     sprintf(filename, "%s%s", subdirectory, stub);
   }
   else {
     strcpy(stub, "config.cds");
     RUN_get_string_parameter("colloid_file_stub", stub, FILENAME_MAX);
-    sprintf(filename, "%s%s%8.8d", subdirectory, stub, get_step());
+    sprintf(filename, "%s%s%8.8d", subdirectory, stub, ntstep);
   }
 
   colloid_io_read(cio, filename);

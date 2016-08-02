@@ -46,7 +46,6 @@ static int test_io(psi_t * psi, int tstep);
 int test_nernst_planck_suite(void) {
 
   pe_init_quiet();
-  control_time_set(-1); /* Kludge to avoid SOR output */
 
   do_test_gouy_chapman();
 

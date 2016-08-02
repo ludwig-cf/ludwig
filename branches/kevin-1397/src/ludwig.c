@@ -160,6 +160,7 @@ int map_init_rt(map_t ** map);
 static int ludwig_rt(ludwig_t * ludwig) {
 
   int form;
+  int ntstep;
   int n, nstat;
   char filename[FILENAME_MAX];
   char subdirectory[FILENAME_MAX];
@@ -264,8 +265,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* NOW INITIAL CONDITIONS */
 
   pe_subdirectory(subdirectory);
+  ntstep = physics_control_timestep();
 
-  if (get_step() == 0) {
+  if (ntstep == 0) {
     n = 0;
     lb_rt_initial_conditions(ludwig->lb, ludwig->param);
 
@@ -275,9 +277,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   else {
     /* Distributions */
 
-    sprintf(filename, "%sdist-%8.8d", subdirectory, get_step());
+    sprintf(filename, "%sdist-%8.8d", subdirectory, ntstep);
     info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", get_step(), filename);
+	 "config\nfile(s) %s\n", ntstep, filename);
 
     lb_io_info(ludwig->lb, &iohandler);
     io_read_data(iohandler, filename, ludwig->lb);
@@ -285,33 +287,33 @@ static int ludwig_rt(ludwig_t * ludwig) {
     /* Restart t != 0 for order parameter */
 
     if (ludwig->phi) {
-      sprintf(filename, "%sphi-%8.8d", subdirectory, get_step());
+      sprintf(filename, "%sphi-%8.8d", subdirectory, ntstep);
       info("files(s) %s\n", filename);
       field_io_info(ludwig->phi, &iohandler);
       io_read_data(iohandler, filename, ludwig->phi);
     }
 
     if (ludwig->p) {
-      sprintf(filename, "%sp-%8.8d", subdirectory, get_step());
+      sprintf(filename, "%sp-%8.8d", subdirectory, ntstep);
       info("files(s) %s\n", filename);
       field_io_info(ludwig->p, &iohandler);
       io_read_data(iohandler, filename, ludwig->p);
     }
     if (ludwig->q) {
-      sprintf(filename, "%sq-%8.8d", subdirectory, get_step());
+      sprintf(filename, "%sq-%8.8d", subdirectory, ntstep);
       info("files(s) %s\n", filename);
       field_io_info(ludwig->q, &iohandler);
       io_read_data(iohandler, filename, ludwig->q);
     }
     if (ludwig->hydro) {
-      sprintf(filename, "%svel-%8.8d", subdirectory, get_step());
+      sprintf(filename, "%svel-%8.8d", subdirectory, ntstep);
       info("hydro files(s) %s\n", filename);
       hydro_io_info(ludwig->hydro, &iohandler);
       io_read_data(iohandler, filename, ludwig->hydro);
     }
     if (ludwig->psi) {
       psi_io_info(ludwig->psi, &iohandler);
-      sprintf(filename,"%spsi-%8.8d", subdirectory, get_step());
+      sprintf(filename,"%spsi-%8.8d", subdirectory, ntstep);
       info("electrokinetics files(s) %s\n", filename);
       io_read_data(iohandler, filename, ludwig->psi);
     }
@@ -340,7 +342,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
-  if (get_step() == 0) {
+  if (ntstep == 0) {
     stats_sigma_init(ludwig->fe_symm, ludwig->phi, nstat);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
@@ -348,17 +350,17 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* Initial Q_ab field required */
 
-  if (get_step() == 0 && ludwig->p) {
+  if (ntstep == 0 && ludwig->p) {
     polar_active_rt_initial_conditions(ludwig->p);
   }
 
-  if (get_step() == 0 && ludwig->q) {
+  if (ntstep == 0 && ludwig->q) {
     blue_phase_rt_initial_conditions(ludwig->fe_lc, ludwig->q);
   }
 
   /* Electroneutrality */
 
-  if (get_step() == 0 && ludwig->psi) {
+  if (ntstep == 0 && ludwig->psi) {
     info("Arranging initial charge neutrality.\n\n");
     psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
     psi_colloid_electroneutral(ludwig->psi, ludwig->collinfo);
@@ -438,11 +440,11 @@ void ludwig_run(const char * inputfile) {
   /* sync tasks before main loop for timing purposes */
   MPI_Barrier(pe_comm()); 
 
-  while (next_step()) {
+  while (physics_control_next_step()) {
 
     TIMER_start(TIMER_STEPS);
 
-    step = get_step();
+    step = physics_control_timestep();
 
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
@@ -498,7 +500,7 @@ void ludwig_run(const char * inputfile) {
 
       /* Poisson solve */
 
-      if(get_step() % psi_skipsteps(ludwig->psi) == 0){
+      if (step % psi_skipsteps(ludwig->psi) == 0){
 	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
 	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
@@ -737,8 +739,8 @@ void ludwig_run(const char * inputfile) {
       }
     }
 
-    if (is_psi_output_step()) {
-      if (ludwig->psi) {
+    if (ludwig->psi) {
+      if (psi_output_step(ludwig->psi)) {
 	psi_io_info(ludwig->psi, &iohandler);
 	info("Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
