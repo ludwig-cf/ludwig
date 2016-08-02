@@ -116,6 +116,7 @@ int psi_sor_poisson(psi_t * obj) {
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
   double eunit, beta;
+  physics_t * phys = NULL;
 
   /* int index_nbr, coords_nbr[3];*/
 
@@ -125,6 +126,7 @@ int psi_sor_poisson(psi_t * obj) {
   nsites = coords_nsites();
   coords_nlocal(nlocal);
   comm = cart_comm();
+  physics_ref(&phys);
 
   assert(nhalo >= 1);
 
@@ -241,7 +243,7 @@ int psi_sor_poisson(psi_t * obj) {
 
       if (rnorm[1] < tol_abs) {
 
-	if (physics_control_timestep() % obj->nfreq == 0) {
+	if (physics_control_timestep(phys) % obj->nfreq == 0) {
 	  info("\n");
 	  info("SOR solver converged to absolute tolerance\n");
 	  info("SOR residual per site %14.7e at %d iterations\n",
@@ -252,7 +254,7 @@ int psi_sor_poisson(psi_t * obj) {
 
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
 
-	if (physics_control_timestep() % obj->nfreq == 0) {
+	if (physics_control_timestep(phys) % obj->nfreq == 0) {
 	  info("\n");
 	  info("SOR solver converged to relative tolerance\n");
 	  info("SOR residual per site %14.7e at %d iterations\n",
@@ -314,6 +316,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   double eunit, beta;
 
+  physics_t * phys = NULL;
   MPI_Comm comm;               /* Cartesian communicator */
 
   assert(obj);
@@ -322,6 +325,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   coords_nlocal(nlocal);
   nsites = coords_nsites();
   comm = cart_comm();
+  physics_ref(&phys);
 
   assert(coords_nhalo() >= 1);
 
@@ -484,7 +488,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
       if (rnorm[1] < tol_abs) {
 
-	if (physics_control_timestep() % obj->nfreq == 0) {
+	if (physics_control_timestep(phys) % obj->nfreq == 0) {
 	  info("\n");
 	  info("SOR (heterogeneous) solver converged to absolute tolerance\n");
 	  info("SOR residual per site %14.7e at %d iterations\n",
@@ -495,7 +499,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
       if (rnorm[1] < tol_rel*rnorm[0]) {
 
-	if (physics_control_timestep() % obj->nfreq == 0) {
+	if (physics_control_timestep(phys) % obj->nfreq == 0) {
 	  info("\n");
 	  info("SOR (heterogeneous) solver converged to relative tolerance\n");
 	  info("SOR residual per site %14.7e at %d iterations\n",

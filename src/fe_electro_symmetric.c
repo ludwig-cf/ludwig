@@ -226,10 +226,12 @@ __host__ int fe_es_mu_phi(fe_es_t * fe, int index, double * mu) {
   double e2;
   double rho;          /* Charge density */
   double kt, eunit, reunit;
- 
- physics_kt(&kt);
- psi_unit_charge(fe->psi, &eunit);
- reunit = 1.0/eunit;
+  physics_t * phys = NULL;
+
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
+  psi_unit_charge(fe->psi, &eunit);
+  reunit = 1.0/eunit;
 
   assert(fe);
 
@@ -400,11 +402,13 @@ __host__ int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]) {
   double e[3];     /* Total electric field */
   double e2;
   double kt, eunit, reunit;
+  physics_t * phys = NULL;
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_unit_charge(fe->psi, &eunit);
   reunit = 1.0/eunit;
 

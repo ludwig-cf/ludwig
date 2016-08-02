@@ -61,6 +61,7 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
   double fe_local[NSTAT];
   double fe_total[NSTAT];
   double rv;
+  physics_t * phys = NULL;
 
   assert(map);
 
@@ -95,7 +96,8 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
 
   /* A robust mechanism is required to get the surface free energy */
 
-  ntstep = physics_control_timestep();
+  physics_ref(&phys);
+  ntstep = physics_control_timestep(phys);
 
   if (wall_present()) {
 

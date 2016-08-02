@@ -115,6 +115,7 @@ static int le_reproject(lb_t * lb) {
   double g[3], du[3];
   double fnew;
   double t;
+  physics_t * phys = NULL;
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
@@ -123,8 +124,9 @@ static int le_reproject(lb_t * lb) {
 
   lb_ndist(lb, &ndist);
   nplane = le_get_nplane_local();
+  physics_ref(&phys);
 
-  t = 1.0*physics_control_timestep();
+  t = 1.0*physics_control_timestep(phys);
   coords_nlocal(nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
@@ -224,14 +226,16 @@ static int le_reproject_all(lb_t * lb) {
   double rho;
   double g[3], du[3];
   double t;
+  physics_t * phys = NULL;
 
   assert(lb);
   assert(CVXBLOCK == 1);
 
   lb_ndist(lb, &ndist);
   nplane = le_get_nplane_local();
+  physics_ref(&phys);
 
-  t = 1.0*physics_control_timestep();
+  t = 1.0*physics_control_timestep(phys);
   coords_nlocal(nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
@@ -326,12 +330,14 @@ int le_displace_and_interpolate(lb_t * lb) {
   double dy, fr;
   double t;
   double * recv_buff;
+  physics_t * phys = NULL;
 
   coords_nlocal(nlocal);
   nhalo = coords_nhalo();
   nplane = le_get_nplane_local();
+  physics_ref(&phys);
 
-  t = 1.0*physics_control_timestep();
+  t = 1.0*physics_control_timestep(phys);
 
   /* We need to interpolate into a temporary buffer to make sure we
    * don't overwrite distributions taking part. The size is just
@@ -499,6 +505,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   double * send_buff;
   double * recv_buff;
 
+  physics_t * phys = NULL;
   MPI_Comm    comm;
   MPI_Request req[4];
   MPI_Status status[4];
@@ -512,8 +519,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   nplane = le_get_nplane_local();
 
   comm = le_communicator();
+  physics_ref(&phys);
 
-  t = 1.0*physics_control_timestep();
+  t = 1.0*physics_control_timestep(phys);
   lb_ndist(lb, &ndist);
   nprop = xblocklen_cv[0];
 
@@ -708,6 +716,7 @@ int lb_le_init_shear_profile(lb_t * lb) {
   int nlocal[3];
   double rho0, u[NDIM], gradu[NDIM][NDIM];
   double eta;
+  physics_t * phys = NULL;
 
   assert(lb);
 
@@ -715,8 +724,9 @@ int lb_le_init_shear_profile(lb_t * lb) {
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  physics_rho0(&rho0);
-  physics_eta_shear(&eta);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho0);
+  physics_eta_shear(phys, &eta);
 
   coords_nlocal(nlocal);
 

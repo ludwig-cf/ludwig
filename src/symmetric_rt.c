@@ -317,12 +317,14 @@ int symmetric_init_spinodal(field_t * phi) {
   double phi1;                        /* Final phi value */
   double noise0 = DEFAULT_NOISE;      /* Amplitude of random noise */
 
+  physics_t * phys = NULL;
   noise_t * rng = NULL;
 
   assert(phi);
 
   coords_nlocal(nlocal);
-  physics_phi0(&phi0);
+  physics_ref(&phys);
+  physics_phi0(phys, &phi0);
 
   RUN_get_int_parameter("random_seed", &seed);
   RUN_get_double_parameter("noise", &noise0);

@@ -680,6 +680,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   int nSites;
   int noise_on = 0;
   double force_global[3];
+  physics_t * phys = NULL;
 
   assert(lb);
   assert(hydro);
@@ -687,7 +688,8 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
-  physics_fbody(force_global);
+  physics_ref(&phys);
+  physics_fbody(phys, force_global);
 
   Nall[X] = nlocal[X]+2*nhalo;
   Nall[Y] = nlocal[Y]+2*nhalo;
@@ -1130,6 +1132,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   double rtau2;
   double mobility;
   double force_global[3];
+  physics_t * phys = NULL;
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
@@ -1140,7 +1143,8 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   assert(map);
 
   coords_nlocal(nlocal);
-  physics_fbody(force_global);
+  physics_ref(&phys);
+  physics_fbody(phys, force_global);
 
   noise_present(noise, NOISE_RHO, &noise_on);
 
@@ -1148,7 +1152,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
    * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
 
-  physics_mobility(&mobility);
+  physics_mobility(phys, &mobility);
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
 
   nhalo = coords_nhalo();
@@ -1211,6 +1215,7 @@ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
   double rrho;
   double gsite[3];
   double kt;
+  physics_t * phys = NULL;
 
   assert(lb);
   assert(map);
@@ -1218,6 +1223,9 @@ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
 
   noise_present(noise, NOISE_RHO, &status);
   if (status == 0) return 0;
+
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
 
   coords_nlocal(nlocal);
 
@@ -1262,7 +1270,6 @@ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map) {
   info("Isothermal fluctuations\n");
   info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
 
-  physics_kt(&kt);
   kt *= NDIM;
   info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z], kt);
 
@@ -1343,15 +1350,17 @@ int lb_collision_relaxation_times_set(noise_t * noise) {
   double tau_s;
   double tau_b;
   double tau_g;
+  physics_t * phys = NULL;
 
   assert(noise);
   noise_present(noise, NOISE_RHO, &noise_on);
-  physics_rho0(&rho0);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho0);
 
   /* Initialise the relaxation times */
  
-  physics_eta_shear(&eta_shear);
-  physics_eta_bulk(&eta_bulk);
+  physics_eta_shear(phys, &eta_shear);
+  physics_eta_bulk(phys, &eta_bulk);
 
   rtau_shear = 1.0/(0.5 + eta_shear / (rho0*cs2));
   rtau_bulk  = 1.0/(0.5 + eta_bulk / (rho0*cs2));
@@ -1405,7 +1414,7 @@ int lb_collision_relaxation_times_set(noise_t * noise) {
 
     /* Initialise the stress variances */
 
-    physics_kt(&kt);
+    physics_kt(phys, &kt);
     kt = kt*rcs2; /* Without normalisation kT = cs^2 */
 
     var_bulk =

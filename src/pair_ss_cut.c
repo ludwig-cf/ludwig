@@ -113,7 +113,7 @@ int pair_ss_cut_info(pair_ss_cut_t * obj) {
   double kt;
 
   physics_ref(&phys);
-  physics_kt(&kt);
+  physics_kt(phys, &kt);
 
   info("\n");
   info("Soft sphere potential\n");

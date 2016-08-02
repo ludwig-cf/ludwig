@@ -81,6 +81,7 @@ int stats_sigma_init(fe_symm_t * fe, field_t * phi, int nswitch) {
   double xi0;
   double datum;
   double mobility;
+  physics_t * phys = NULL;
   fe_symm_param_t param;
 
   if (nswitch == 0) {
@@ -96,7 +97,8 @@ int stats_sigma_init(fe_symm_t * fe, field_t * phi, int nswitch) {
     fe_symm_interfacial_width(fe, &xi0);
     drop.fe = fe;
 
-    physics_mobility(&mobility);
+    physics_ref(&phys);
+    physics_mobility(phys, &mobility);
 
     /* Check we have a cubic system, or a square system (2d) */
 

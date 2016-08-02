@@ -19,39 +19,35 @@
 
 typedef struct physics_s physics_t;
 
-__host__ int physics_ref(physics_t ** ref);
 __host__ int physics_free(void);
+__host__ int physics_rho0_set(physics_t * phys, double rho0);
+__host__ int physics_phi0_set(physics_t * phys, double phi0);
+__host__ int physics_eta_shear_set(physics_t * phys, double eta);
+__host__ int physics_eta_bulk_set(physics_t * phys, double zeta);
+__host__ int physics_kt_set(physics_t * phys, double kt);
+__host__ int physics_b0_set(physics_t * phys, double b0[3]);
+__host__ int physics_e0_set(physics_t * phys, double e0[3]);
+__host__ int physics_e0_frequency_set(physics_t * phys, double e0_frequency);
+__host__ int physics_fbody_set(physics_t * phys, double f[3]);
+__host__ int physics_fgrav_set(physics_t * phys, double g[3]);
+__host__ int physics_mobility_set(physics_t * phys, double mobility);
+__host__ int physics_control_next_step(physics_t * phys);
+__host__ int physics_control_init_time(physics_t * phys, int nstart, int nstep);
 
-__host__ int physics_rho0(double * rho);
-__host__ int physics_rho0_set(double rho0);
-__host__ int physics_phi0(double * phi0);
-__host__ int physics_phi0_set(double phi0);
-
-__host__ int physics_eta_shear(double * eta);
-__host__ int physics_eta_shear_set(double eta);
-__host__ int physics_eta_bulk(double * zeta);
-__host__ int physics_eta_bulk_set(double zeta);
-__host__ int physics_kt(double * kt);
-__host__ int physics_kt_set(double kt);
-
-__host__ int physics_b0(double b0[3]);
-__host__ int physics_b0_set(double b0[3]);
-__host__ int physics_e0(double e0[3]);
-__host__ int physics_e0_set(double e0[3]);
-__host__ int physics_e0_frequency(double * e0_frequency);
-__host__ int physics_e0_frequency_set(double e0_frequency);
-__host__ int is_physics_e0();
-__host__ int physics_fbody(double f[3]);
-__host__ int physics_fbody_set(double f[3]);
-__host__ int physics_fgrav(double g[3]);
-__host__ int physics_fgrav_set(double g[3]);
-
-__host__ int physics_mobility(double * mobility);
-__host__ int physics_mobility_set(double mobility);
-
-__host__ int physics_control_next_step();
-__host__ int physics_control_timestep();
-__host__ int physics_control_time(double * t);
-__host__ int physics_control_init_time(int nstart, int nstep);
+__host__ __device__ int physics_ref(physics_t ** ref);
+__host__ __device__ int physics_rho0(physics_t * phys, double * rho);
+__host__ __device__ int physics_phi0(physics_t * phys, double * phi0);
+__host__ __device__ int physics_eta_shear(physics_t * phys, double * eta);
+__host__ __device__ int physics_eta_bulk(physics_t * phys, double * zeta);
+__host__ __device__ int physics_kt(physics_t * phys, double * kt);
+__host__ __device__ int physics_b0(physics_t * phys, double b0[3]);
+__host__ __device__ int physics_e0(physics_t * phys, double e0[3]);
+__host__ __device__ int physics_e0_frequency(physics_t * phys, double * freq);
+__host__ __device__ int physics_e0_flag(physics_t * phys);
+__host__ __device__ int physics_fbody(physics_t * phys, double f[3]);
+__host__ __device__ int physics_fgrav(physics_t * phys, double g[3]);
+__host__ __device__ int physics_mobility(physics_t * phys, double * mobility);
+__host__ __device__ int physics_control_timestep(physics_t * phys);
+__host__ __device__ int physics_control_time(physics_t * phys, double * t);
 
 #endif

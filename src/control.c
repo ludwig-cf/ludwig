@@ -22,6 +22,7 @@
 #include "physics.h"
 #include "control.h"
 
+
 static int freq_statistics = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
@@ -49,6 +50,8 @@ void init_control() {
   int t_start;
   int t_steps;
   char tmp[128];
+  physics_t * phys = NULL;
+  physics_ref(&phys);
 
   n = RUN_get_int_parameter("N_start", &t_start);
   n = RUN_get_int_parameter("N_cycles", &t_steps);
@@ -68,7 +71,7 @@ void init_control() {
   n = RUN_get_string_parameter("config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
-  physics_control_init_time(t_start, t_steps);
+  physics_control_init_time(phys, t_start, t_steps);
 
   if (freq_statistics < 1) freq_statistics = t_start + t_steps + 1;
   if (freq_measure    < 1) freq_measure    = t_start + t_steps + 1;
@@ -87,19 +90,27 @@ void init_control() {
  *****************************************************************************/
 
 int is_statistics_step() {
-  return ((physics_control_timestep() % freq_statistics) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_statistics) == 0);
 }
 
 int is_measurement_step() {
-  return ((physics_control_timestep() % freq_measure) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_measure) == 0);
 }
 
 int is_config_step() {
-  return ((physics_control_timestep() % freq_config) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_config) == 0);
 }
 
 int is_colloid_io_step() {
-  return ((physics_control_timestep() % freq_colloid_io) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_colloid_io) == 0);
 }
 
 /*****************************************************************************
@@ -109,7 +120,9 @@ int is_colloid_io_step() {
  *****************************************************************************/
 
 int is_phi_output_step() {
-  return ((physics_control_timestep() % freq_phi) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_phi) == 0);
 }
 
 /*****************************************************************************
@@ -119,7 +132,9 @@ int is_phi_output_step() {
  *****************************************************************************/
 
 int is_vel_output_step() {
-  return ((physics_control_timestep() % freq_vel) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_vel) == 0);
 }
 
 /*****************************************************************************
@@ -129,7 +144,9 @@ int is_vel_output_step() {
  *****************************************************************************/
 
 int is_fed_output_step() {
-  return ((physics_control_timestep() % freq_fed) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_fed) == 0);
 }
 
 /*****************************************************************************
@@ -149,7 +166,9 @@ int is_config_at_end() {
  *****************************************************************************/
 
 int is_shear_measurement_step() {
-  return ((physics_control_timestep() % freq_shear_meas) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_shear_meas) == 0);
 }
 
 /*****************************************************************************
@@ -159,7 +178,9 @@ int is_shear_measurement_step() {
  *****************************************************************************/
 
 int is_shear_output_step() {
-  return ((physics_control_timestep() % freq_shear_io) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_shear_io) == 0);
 }
 
 /*****************************************************************************

@@ -623,13 +623,15 @@ static int build_remove_fluid(lb_t * lb, int index, colloid_t * p_colloid) {
   double rb[3];           /* Boundary vector at lattice site index */
   double rtmp[3];
   double rho0;
+  physics_t  * phys = NULL;
 
   assert(lb);
 
   coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, ib);
 
-  physics_rho0(&rho0);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho0);
 
   /* Get the properties of the old fluid at inode */
 
@@ -675,12 +677,14 @@ static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
   int ndist;
   double phi;
   double phi0;
+  physics_t * phys = NULL;
 
   assert(f);
   assert(lb);
   assert(pc);
 
-  physics_phi0(&phi0);
+  physics_ref(&phys);
+  physics_phi0(phys, &phi0);
   lb_ndist(lb, &ndist);
 
   if (ndist == 2) {
@@ -722,6 +726,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
   double newf[NVEL];          /* Replacement distributions */
   double rho0;
 
+  physics_t * phys = NULL;
   colloid_t * pc = NULL;
 
   assert(lb);
@@ -731,7 +736,8 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
   coords_nlocal_offset(noffset);
   coords_index_to_ijk(index, ib);
 
-  physics_rho0(&rho0);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho0);
 
   newrho = 0.0;
   weight = 0.0;
@@ -831,6 +837,7 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
   double qs[NQAB];
   double phi0;
 
+  physics_t * phys = NULL;
   colloid_t * pcmap = NULL;
 
   assert(map);
@@ -841,7 +848,8 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
   assert(nf <= NQAB);
 
   coords_index_to_ijk(index, ri);
-  physics_phi0(&phi0);
+  physics_ref(&phys);
+  physics_phi0(phys, &phi0);
 
   /* Check the surrounding sites that were linked to inode,
    * and accumulate a (weighted) average distribution. */

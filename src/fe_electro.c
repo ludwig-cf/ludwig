@@ -52,7 +52,6 @@
 struct fe_electro_s {
   fe_t super;
   psi_t * psi;           /* A reference to the electrokinetic quantities */
-  physics_t * param;     /* For external field, temperature */
   double * mu_ref;       /* Reference mu currently unused (i.e., zero). */ 
   fe_electro_t * target; /* Device copy */
 };
@@ -110,7 +109,6 @@ __host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
   if (fe == NULL) fatal("calloc() failed\n");
 
   fe->psi = psi;
-  physics_ref(&fe->param);
   fe->super.func = &fe_electro_hvt;
   fe->super.id = FE_ELECTRO;
 
@@ -182,7 +180,6 @@ int fe_electro_fed(fe_electro_t * fe, int index, double * fed) {
   int n;
   int nk;
   double e;
-  double kt;
   double psi;
   double rho;
 
@@ -190,7 +187,6 @@ int fe_electro_fed(fe_electro_t * fe, int index, double * fed) {
   assert(fe->psi);
 
   e = 0.0;
-  physics_kt(&kt);
   psi_nk(fe->psi, &nk);
   psi_psi(fe->psi, index, &psi);
 
@@ -222,12 +218,14 @@ int fe_electro_mu(fe_electro_t * fe, int index, double * mu) {
   double kt;
   double rho;
   double psi;
+  physics_t * phys = NULL;
 
   assert(fe);
   assert(fe->psi);
 
   psi_psi(fe->psi, index, &psi);
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
 
   for (n = 0; n < fe->psi->nk; n++) {
     psi_rho(fe->psi, index, n, &rho);
@@ -280,11 +278,13 @@ int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
   int nk;
   double rho;
   double kt, eunit, reunit;
+  physics_t * phys = NULL;
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_nk(fe->psi, &nk);
   psi_unit_charge(fe->psi, &eunit);	 
   reunit = 1.0/eunit;
@@ -332,11 +332,13 @@ int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
   double e[3];       /* Total electric field */
   double e2;         /* Magnitude squared */
   double kt, eunit, reunit;
+  physics_t * phys = NULL;
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_unit_charge(fe->psi, &eunit);	 
   reunit = 1.0/eunit;
 

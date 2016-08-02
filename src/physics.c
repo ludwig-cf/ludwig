@@ -5,6 +5,13 @@
  *  These data are broadly physical properties of the fluid, constant
  *  external fields, and so on.
  *
+ *  The host carries the true and correct current values of these
+ *  constants, including those related to time-stepping.
+ *
+ *  Device copy must be updated at least once per time step to
+ *  ensure a coherent view.
+ *
+ *
  *  $Id: physics.c,v 1.4 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -38,18 +45,24 @@ struct physics_s {
   double fgravity[3];  /* Gravitational force (on objects) */
   double mobility;     /* Order parameter mobility (binary fluid) */
 
-  int t_start;
-  int nsteps;
-  int t_current;
-  int e0_flag;
+  int t_start;         /* Start time step requested */
+  int nsteps;          /* Number of time steps requested by user */
+  int t_current;       /* The current time step */
+  int e0_flag;         /* = 1 if electric field is non-zero */
 };
 
+/* At the moment we have static instances */
+
 static physics_t * phys = NULL;
-static int physics_create(void);
+static __constant__ physics_t const_phys;
+
+__host__ int physics_create(void);
 
 /*****************************************************************************
  *
  *  physics_ref
+ *
+ *  Return an appropriate reference.
  *
  *****************************************************************************/
 
@@ -57,9 +70,13 @@ __host__ __device__ int physics_ref(physics_t ** ref) {
 
   assert(ref);
 
+#ifdef __CUDA_ARCH__
+  *ref = &const_phys;
+#else
   if (phys == NULL) physics_create();
 
   *ref = phys;
+#endif
 
   return 0;
 }
@@ -72,7 +89,7 @@ __host__ __device__ int physics_ref(physics_t ** ref) {
  *
  *****************************************************************************/
 
-static __host__ int physics_create(void) {
+__host__ int physics_create(void) {
 
   assert(phys == NULL);
 
@@ -112,11 +129,28 @@ __host__ int physics_free(void) {
 
 /*****************************************************************************
  *
+ *  physics_commit
+ *
+ *  To be called at least once per timestep.
+ *
+ *****************************************************************************/
+
+__host__ int physics_commit(physics_t * phys) {
+
+  assert(phys);
+
+  copyConstToTarget(&const_phys, phys, sizeof(physics_t));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  physics_eta_shear
  *
  *****************************************************************************/
 
-__host__ int physics_eta_shear(double * eta) {
+__host__ __device__ int physics_eta_shear(physics_t * phys, double * eta) {
 
   assert(phys);
   assert(eta);
@@ -132,7 +166,7 @@ __host__ int physics_eta_shear(double * eta) {
  *
  *****************************************************************************/
 
-__host__ int physics_eta_shear_set(double eta) {
+__host__ int physics_eta_shear_set(physics_t * phys, double eta) {
 
   assert(phys);
 
@@ -147,7 +181,7 @@ __host__ int physics_eta_shear_set(double eta) {
  *
  *****************************************************************************/
 
-__host__ int physics_eta_bulk(double * eta) {
+__host__ __device__ int physics_eta_bulk(physics_t * phys, double * eta) {
 
   assert(phys);
   assert(eta);
@@ -163,7 +197,7 @@ __host__ int physics_eta_bulk(double * eta) {
  *
  *****************************************************************************/
 
-__host__ int physics_eta_bulk_set(double eta) {
+__host__ int physics_eta_bulk_set(physics_t * phys, double eta) {
 
   assert(phys);
 
@@ -178,7 +212,7 @@ __host__ int physics_eta_bulk_set(double eta) {
  *
  *****************************************************************************/
 
-__host__ int physics_rho0(double * rho0) {
+__host__ __device__ int physics_rho0(physics_t * phys, double * rho0) {
 
   assert(phys);
   assert(rho0);
@@ -194,7 +228,7 @@ __host__ int physics_rho0(double * rho0) {
  *
  *****************************************************************************/
 
-__host__ int physics_rho0_set(double rho0) {
+__host__ int physics_rho0_set(physics_t * phys, double rho0) {
 
   assert(phys);
 
@@ -209,7 +243,7 @@ __host__ int physics_rho0_set(double rho0) {
  *
  *****************************************************************************/
 
-__host__ int physics_kt(double * kt) {
+__host__ __device__ int physics_kt(physics_t * phys, double * kt) {
 
   assert(phys);
   assert(kt);
@@ -225,7 +259,7 @@ __host__ int physics_kt(double * kt) {
  *
  *****************************************************************************/
 
-__host__ int physics_kt_set(double kt) {
+__host__ int physics_kt_set(physics_t * phys, double kt) {
 
   assert(phys);
 
@@ -240,7 +274,7 @@ __host__ int physics_kt_set(double kt) {
  *
  *****************************************************************************/
 
-__host__ int physics_phi0(double * phi0) {
+__host__ __device__ int physics_phi0(physics_t * phys, double * phi0) {
 
   assert(phys);
   assert(phi0);
@@ -256,7 +290,7 @@ __host__ int physics_phi0(double * phi0) {
  *
  *****************************************************************************/
 
-__host__ int physics_phi0_set(double phi0) {
+__host__ int physics_phi0_set(physics_t * phys, double phi0) {
 
   assert(phys);
 
@@ -271,7 +305,7 @@ __host__ int physics_phi0_set(double phi0) {
  *
  *****************************************************************************/
 
-__host__ int physics_b0(double b0[3]) {
+__host__ __device__ int physics_b0(physics_t * phys, double b0[3]) {
 
   assert(phys);
 
@@ -288,7 +322,7 @@ __host__ int physics_b0(double b0[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_b0_set(double b0[3]) {
+__host__ int physics_b0_set(physics_t * phys, double b0[3]) {
 
   assert(phys);
 
@@ -305,7 +339,7 @@ __host__ int physics_b0_set(double b0[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_e0(double e0[3]) {
+__host__ __device__ int physics_e0(physics_t * phys, double e0[3]) {
 
   assert(phys);
 
@@ -322,7 +356,7 @@ __host__ int physics_e0(double e0[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_e0_set(double e0[3]) {
+__host__ int physics_e0_set(physics_t * phys, double e0[3]) {
 
   assert(phys);
 
@@ -337,7 +371,7 @@ __host__ int physics_e0_set(double e0[3]) {
 
 /*****************************************************************************
  *
- *  is_physics_e0
+ *  physics_e0_flag
  *
  *  Returns flag if external electric field is set. This is required 
  *  when constraints are applied in the Poisson solve to generate
@@ -345,7 +379,7 @@ __host__ int physics_e0_set(double e0[3]) {
  *
  *****************************************************************************/
 
-__host__ int is_physics_e0() {
+__host__ __device__ int physics_e0_flag(physics_t * phys) {
 
   assert(phys);
 
@@ -358,7 +392,8 @@ __host__ int is_physics_e0() {
  *
  *****************************************************************************/
 
-__host__ int physics_e0_frequency(double * e0_frequency) {
+__host__ __device__ int physics_e0_frequency(physics_t * phys,
+					     double * e0_frequency) {
 
   assert(phys);
 
@@ -373,7 +408,7 @@ __host__ int physics_e0_frequency(double * e0_frequency) {
  *
  *****************************************************************************/
 
-__host__ int physics_e0_frequency_set(double e0_frequency) {
+__host__ int physics_e0_frequency_set(physics_t * phys, double e0_frequency) {
 
   assert(phys);
 
@@ -388,7 +423,7 @@ __host__ int physics_e0_frequency_set(double e0_frequency) {
  *
  *****************************************************************************/
 
-__host__ int physics_fbody(double f[3]) {
+__host__ __device__ int physics_fbody(physics_t * phys, double f[3]) {
 
   assert(phys);
 
@@ -405,7 +440,7 @@ __host__ int physics_fbody(double f[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_fbody_set(double f[3]) {
+__host__ int physics_fbody_set(physics_t * phys, double f[3]) {
 
   assert(phys);
 
@@ -422,7 +457,7 @@ __host__ int physics_fbody_set(double f[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_mobility(double * mobility) {
+__host__ __device__ int physics_mobility(physics_t * phys, double * mobility) {
 
   assert(phys);
   assert(mobility);
@@ -438,7 +473,7 @@ __host__ int physics_mobility(double * mobility) {
  *
  *****************************************************************************/
 
-__host__ int physics_mobility_set(double mobility) {
+__host__ int physics_mobility_set(physics_t * phys, double mobility) {
 
   assert(mobility);
 
@@ -453,7 +488,7 @@ __host__ int physics_mobility_set(double mobility) {
  *
  *****************************************************************************/
 
-__host__ int physics_fgrav(double g[3]) {
+__host__ __device__ int physics_fgrav(physics_t * phys, double g[3]) {
 
   assert(phys);
 
@@ -470,7 +505,7 @@ __host__ int physics_fgrav(double g[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_fgrav_set(double g[3]) {
+__host__ int physics_fgrav_set(physics_t * phys, double g[3]) {
 
   assert(phys);
 
@@ -489,7 +524,7 @@ __host__ int physics_fgrav_set(double g[3]) {
  *
  *****************************************************************************/
 
-__host__ int physics_control_timestep(void) {
+__host__ __device__ int physics_control_timestep(physics_t * phys) {
 
   assert(phys);
   return phys->t_current;
@@ -505,7 +540,7 @@ __host__ int physics_control_timestep(void) {
  *
  *****************************************************************************/
 
-__host__ int physics_control_time(double * t) {
+__host__ __device__ int physics_control_time(physics_t * phys, double * t) {
 
   assert(phys);
   assert(t);
@@ -524,7 +559,7 @@ __host__ int physics_control_time(double * t) {
  *
  *****************************************************************************/
 
-__host__ int physics_control_next_step(void) {
+__host__ int physics_control_next_step(physics_t * phys) {
 
   assert(phys);
 
@@ -541,7 +576,7 @@ __host__ int physics_control_next_step(void) {
  *
  *****************************************************************************/
 
-__host__ int physics_control_init_time(int nstart, int nstep) {
+__host__ int physics_control_init_time(physics_t * phys, int nstart, int nstep) {
 
   assert(phys);
 
@@ -552,4 +587,3 @@ __host__ int physics_control_init_time(int nstart, int nstep) {
 
   return 0;
 }
-

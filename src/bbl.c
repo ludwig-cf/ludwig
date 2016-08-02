@@ -431,6 +431,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double tans[3], vector1[3];
   double fdist;
 
+  physics_t * phys = NULL;
   colloid_t * pc;
   colloid_link_t * p_link;
 
@@ -438,7 +439,8 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   assert(lb);
   assert(cinfo);
 
-  physics_rho0(&rho0);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho0);
 
   /* All colloids, including halo */
 
@@ -618,14 +620,17 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double dgtm1;
   double rho0;
 
+  physics_t * phys = NULL;
   colloid_t * pc = NULL;
   colloid_link_t * p_link;
+
 
   assert(bbl);
   assert(lb);
   assert(cinfo);
 
-  physics_rho0(&rho0);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho0);
 
   ndist=lb->ndist;
 

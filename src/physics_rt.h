@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013 The University of Edinburgh
+ *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -17,7 +17,7 @@
 
 #include "physics.h"
 
-int physics_info(physics_t * phys);
-int physics_init_rt(physics_t * phys);
+__host__ int physics_info(physics_t * phys);
+__host__ int physics_init_rt(physics_t * phys);
 
 #endif

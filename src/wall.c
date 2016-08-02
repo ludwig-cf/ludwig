@@ -513,10 +513,12 @@ __host__ int wall_set_wall_velocity(lb_t * lb) {
   double   fp;
   double   rho;
   int      p;
+  physics_t * phys = NULL;
 
   assert(lb);
 
-  physics_rho0(&rho);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho);
   p_link = link_list_;
 
   while (p_link) {
@@ -592,6 +594,7 @@ static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
   double f;
   double cdotu;
   double sdotq;
+  physics_t * phys = NULL;
 
   assert(lb);
 
@@ -605,8 +608,9 @@ static int wall_shear_init(lb_t * lb, double uxtop, double uxbottom) {
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */
 
-  physics_rho0(&rho);
-  physics_eta_shear(&eta);
+  physics_ref(&phys);
+  physics_rho0(phys, &rho);
+  physics_eta_shear(phys, &eta);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -682,9 +686,11 @@ double wall_lubrication(const int dim, const double r[3], const double ah) {
   double hlub;
   double h;
   double eta;
+  physics_t * phys = NULL;
   PI_DOUBLE(pi);
 
-  physics_eta_shear(&eta);
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
   force = 0.0;
   hlub = lubrication_rcnormal_;
 

@@ -160,7 +160,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 
   /* get fluid data from this subset of sites */
-  copyFromTargetSubset(pth->str,pth->target->str,colloidSiteList,ncolsite,nSites,9);
+  copyFromTargetSubset(pth->str,pth->target->str,colloidSiteList,ncolsite,pth->nsites,9);
 
   free(colloidSiteList);
 #endif

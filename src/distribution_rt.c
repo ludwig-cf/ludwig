@@ -104,7 +104,7 @@ int lb_rt_initial_conditions(lb_t * lb, physics_t * phys) {
 
   assert(lb);
   assert(phys);
-  physics_rho0(&rho0);
+  physics_rho0(phys, &rho0);
 
   /* Default */
 
