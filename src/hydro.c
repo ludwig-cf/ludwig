@@ -441,26 +441,18 @@ int hydro_lees_edwards(hydro_t * obj) {
   }
   else {
 
-    ule[X] = 0.0;
-    ule[Y] = 0.0;  /* Only y component will be non-zero */
-    ule[Z] = 0.0;
-
     nhalo = coords_nhalo();
     coords_nlocal(nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
-    t = 1.0*get_step();
+    t = 1.0*physics_control_timestep();
 
     for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
       ic = le_index_buffer_to_real(ib);
+      le_buffer_du(ib, ule);
+
       dy = le_buffer_displacement(ib, t);
-
-      /* This is a slightly awkward way to compute the velocity
-       * jump: just the (+/-) displacement devided by time. */
-
-      ule[Y] = dy/t; /* STEADY SHEAR ONLY */
-
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
@@ -477,7 +469,7 @@ int hydro_lees_edwards(hydro_t * obj) {
 	/* If nhcomm < nhalo, we could use nhcomm here in the kc loop.
 	 * (As j1 and j2 are always in the domain proper, jc can use nhalo.) */
 
-	/* SHIT This kc loop was dubious +/- nhalo wrong */
+	/* Note +/- nhcomm */
 	for (kc = 1 - obj->nhcomm; kc <= nlocal[Z] + obj->nhcomm; kc++) {
 	  index0 = le_site_index(ib0 + ib, jc, kc);
 	  index1 = le_site_index(ic, j1, kc);
@@ -559,21 +551,18 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   if (sbuf == NULL) fatal("hydrodynamics: malloc(le sbuf) failed\n");
   if (rbuf == NULL) fatal("hydrodynamics: malloc(le rbuf) failed\n");
 
-  t = 1.0*get_step();
-
-  ule[X] = 0.0;
-  ule[Z] = 0.0;
+  t = 1.0*physics_control_timestep();
 
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
     ic = le_index_buffer_to_real(ib);
+    le_buffer_du(ib, ule);
 
     /* Work out the displacement-dependent quantities */
 
     dy = le_buffer_displacement(ib, t);
-    ule[Y] = dy/t; /* STEADY SHEAR ONLY */
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;

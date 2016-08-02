@@ -52,6 +52,7 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
 #define NSTAT 5
 
   int ic, jc, kc, index;
+  int ntstep;
   int nlocal[3];
   int status;
   int ncolloid;
@@ -94,6 +95,8 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
 
   /* A robust mechanism is required to get the surface free energy */
 
+  ntstep = physics_control_timestep();
+
   if (wall_present()) {
 
     if (q) stats_free_energy_wall(fe, q, fe_local + 3);
@@ -102,7 +105,7 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
 
     info("\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
     info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	 get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	 ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
 	 fe_total[3], fe_total[4]);
   }
   else if (ncolloid > 0) {
@@ -116,12 +119,12 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
     if (fe_total[4] > 0.0) {
       /* Area > 0 means the free energy is available */
       info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	   get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	   ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
 	   fe_total[3], fe_total[4], fe_total[3]/fe_total[4]);
     }
     else {
       info("[fe] %14d %17.10e %17.10e %17.10e %17.10e\n",
-	   get_step(), fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	   ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
 	   fe_total[3]);
     }
   }
@@ -130,7 +133,7 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
     rv = 1.0/(L(X)*L(Y)*L(Z));
 
     info("\nFree energy density - timestep total fluid\n");
-    info("[fed] %14d %17.10e %17.10e\n", get_step(), rv*fe_total[0],
+    info("[fed] %14d %17.10e %17.10e\n", ntstep, rv*fe_total[0],
 	 fe_total[1]/fe_total[2]);
   }
 

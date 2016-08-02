@@ -78,6 +78,8 @@ int psi_maxits(psi_t * obj, int * maxits);
 int psi_reltol_set(psi_t * obj, double reltol);
 int psi_abstol_set(psi_t * obj, double abstol);
 int psi_maxits_set(psi_t * obj, int maxits);
+int psi_nfreq_set(psi_t * psi, int nfreq);
+int psi_output_step(psi_t * psi);
 
 int psi_multisteps(psi_t * obj, int * multisteps);
 int psi_multisteps_set(psi_t * obj, int multisteps);

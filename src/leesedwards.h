@@ -23,14 +23,19 @@ __targetHost__ int le_plane_location(const int);
 __targetHost__ int le_get_nplane_total(void);
 __targetHost__ int le_get_nplane_local(void);
 __targetHost__ int le_nall(int nall[3]);
+
 __host__ __device__ int le_index_real_to_buffer(const int, const int);
 __host__ __device__ int le_nsites(void);
 __host__ __device__ int le_site_index(const int, const int, const int);
 
 __targetHost__ double    le_buffer_displacement(const int, const double);
+__host__ int le_buffer_dy(int ib, double * dy);
+__host__ int le_buffer_du(int ib, double ule[3]);
 __targetHost__ double    le_get_block_uy(int);
 __targetHost__ double    le_get_steady_uy(const int); 
 __targetHost__ double    le_plane_uy(const double);
+__host__ int le_plane_dy(double * dy);
+
 __targetHost__ double    le_plane_uy_max(void);
 __targetHost__ double    le_shear_rate(void);
 __targetHost__ MPI_Comm  le_communicator(void);

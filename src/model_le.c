@@ -124,7 +124,7 @@ static int le_reproject(lb_t * lb) {
   lb_ndist(lb, &ndist);
   nplane = le_get_nplane_local();
 
-  t = 1.0*get_step();
+  t = 1.0*physics_control_timestep();
   coords_nlocal(nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
@@ -231,7 +231,7 @@ static int le_reproject_all(lb_t * lb) {
   lb_ndist(lb, &ndist);
   nplane = le_get_nplane_local();
 
-  t = 1.0*get_step();
+  t = 1.0*physics_control_timestep();
   coords_nlocal(nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
@@ -331,7 +331,7 @@ int le_displace_and_interpolate(lb_t * lb) {
   nhalo = coords_nhalo();
   nplane = le_get_nplane_local();
 
-  t = 1.0*get_step();
+  t = 1.0*physics_control_timestep();
 
   /* We need to interpolate into a temporary buffer to make sure we
    * don't overwrite distributions taking part. The size is just
@@ -513,7 +513,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
   comm = le_communicator();
 
-  t = 1.0*get_step();
+  t = 1.0*physics_control_timestep();
   lb_ndist(lb, &ndist);
   nprop = xblocklen_cv[0];
 

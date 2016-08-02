@@ -31,9 +31,9 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Contributions:
- *  Thanks to Markus Gross, who hepled to validate the noise implemantation.
+ *  Thanks to Markus Gross, who hepled to validate the noise implementation.
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -43,7 +43,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "control.h"
 #include "leesedwards.h"
 #include "advection.h"
 #include "free_energy.h"
@@ -244,9 +243,7 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
 
   physics_mobility(&mobility);
 
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
-  xs = (nlocal[Y] + 2*nhalo)*ys;
+  coords_strides(&xs, &ys, &zs);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
@@ -403,7 +400,7 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
  *  This ensures uniqueness, by averaging the relevant
  *  contributions from each side of the plane.
  *
- *  I've retained nop here, as these functions might be useful
+ *  I've retained nf here, as these functions might be useful
  *  for general cases.
  *
  *****************************************************************************/
@@ -419,14 +416,11 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
   double dy;     /* Displacement for current plane */
   double fr;     /* Fractional displacement */
-  double t;      /* Time */
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
   double * bufferw;
   double * buffere;
-
-  int get_step(void);
 
   if (cart_size(Y) > 1) {
     /* Parallel */
@@ -445,16 +439,12 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
     for (ip = 0; ip < le_get_nplane_local(); ip++) {
 
-      /* -1.0 as zero required for first step; a 'feature' to
-       * maintain the regression tests */
-
-      t = 1.0*get_step() - 1.0;
-
       ic = le_plane_location(ip);
 
       /* Looking up */
-      dy = +t*le_plane_uy(t);
-      dy = fmod(dy, L(Y));
+
+      le_plane_dy(&dy);
+      dy = fmod(+dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
 
@@ -477,8 +467,8 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
       /* Looking down */
 
-      dy = -t*le_plane_uy(t);
-      dy = fmod(dy, L(Y));
+      le_plane_dy(&dy);
+      dy = fmod(-dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
 
@@ -544,7 +534,6 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   int index;
   double dy;               /* Displacement for current transforamtion */
   double fre, frw;         /* Fractional displacements */
-  double t;                /* Time */
   int jdy;                 /* Integral part of displacement */
 
   /* Messages */
@@ -588,11 +577,6 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   if (rbufe == NULL) fatal("malloc(rbufe) failed\n");
   if (rbufw == NULL) fatal("malloc(rbufw) failed\n");
 
-  /* -1.0 as zero required for fisrt step; this is a 'feature'
-   * to ensure the regression tests stay te same */
-
-  t = 1.0*get_step() - 1.0;
-
   /* One round of communication for each plane */
 
   for (ip = 0; ip < le_get_nplane_local(); ip++) {
@@ -601,8 +585,8 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
     /* Work out the displacement-dependent quantities */
 
-    dy = +t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
+    le_plane_dy(&dy);
+    dy = fmod(+dy, L(Y));
     jdy = floor(dy);
     frw  = dy - jdy;
 
@@ -654,8 +638,8 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
     kc = 1 - nhalo;
 
-    dy = -t*le_plane_uy(t);
-    dy = fmod(dy, L(Y));
+    le_plane_dy(&dy);
+    dy = fmod(-dy, L(Y));
     jdy = floor(dy);
     fre  = dy - jdy;
 
@@ -777,12 +761,12 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 	index = coords_index(ic, jc, kc);
 
 	field_scalar(phif, index, &phi);
-	phi -= (+ flux->fe[addr_rank0(le_nsites(), index)]
-		- flux->fw[addr_rank0(le_nsites(), index)]
-		+ flux->fy[addr_rank0(le_nsites(), index)]
-		- flux->fy[addr_rank0(le_nsites(), index - ys)]
-		+ wz*flux->fz[addr_rank0(le_nsites(), index)]
-		- wz*flux->fz[addr_rank0(le_nsites(), index - 1)]);
+	phi -= (+ flux->fe[addr_rank0(flux->nsite, index)]
+		- flux->fw[addr_rank0(flux->nsite, index)]
+		+ flux->fy[addr_rank0(flux->nsite, index)]
+		- flux->fy[addr_rank0(flux->nsite, index - ys)]
+		+ wz*flux->fz[addr_rank0(flux->nsite, index)]
+		- wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
 
 	field_scalar_set(phif, index, phi);
       }

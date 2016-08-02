@@ -31,7 +31,6 @@
 #include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
-#include "control.h" /* Can we move get_step() to LE please? */
 #include "field_s.h"
 
 static int field_write(FILE * fp, int index, void * self);
@@ -303,8 +302,6 @@ int field_leesedwards(field_t * obj) {
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
-  double t;      /* Time */
-
   const double r6 = (1.0/6.0);
 
   int jdy;               /* Integral part of displacement */
@@ -326,14 +323,11 @@ int field_leesedwards(field_t * obj) {
     coords_nlocal(nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
-    /* -1.0 as zero required for first step; a 'feature' to
-     * maintain the regression tests */
-    t = 1.0*get_step() - 1.0;
-
     for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
       ic = le_index_buffer_to_real(ib);
-      dy = le_buffer_displacement(ib, t);
+
+      le_buffer_dy(ib, &dy);
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = 1.0 - (dy - jdy);
@@ -404,7 +398,6 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
-  double t;                /* Time */
   const double r6 = (1.0/6.0);
 
   int      nsend;          /* Send buffer size */
@@ -443,11 +436,6 @@ static int field_leesedwards_parallel(field_t * obj) {
   if (sendbuf == NULL) fatal("malloc(sendbuf) failed\n");
   if (recvbuf == NULL) fatal("malloc(recvbuf) failed\n");
 
-  /* -1.0 as zero required for fisrt step; this is a 'feature'
-   * to ensure the regression tests stay te same */
-
-  t = 1.0*get_step() - 1.0;
-
   /* One round of communication for each buffer plane */
 
   for (ib = 0; ib < le_get_nxbuffer(); ib++) {
@@ -457,7 +445,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
     /* Work out the displacement-dependent quantities */
 
-    dy = le_buffer_displacement(ib, t);
+    le_buffer_dy(ib, &dy);
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = 1.0 - (dy - jdy);

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#include <limits.h>
 #include <mpi.h>
 
 #include "pe.h"
@@ -125,6 +126,9 @@ int psi_create(int nk, psi_t ** pobj) {
   psi->multisteps = multisteps_default;
   psi->skipsteps = skipsteps_default;
   psi->diffacc = diffacc_default;
+
+  psi->nfreq_io = INT_MAX; /* SHIT not picked up in input? */
+  psi->nfreq = INT_MAX;
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
   coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
@@ -1256,3 +1260,30 @@ int psi_force_method_set(psi_t * psi, int flag) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  psi_nfreq_set
+ *
+ *****************************************************************************/
+
+int psi_nfreq_set(psi_t * psi, int nfreq) {
+
+  assert(psi);
+
+  psi->nfreq = nfreq;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_output_step
+ *
+ *****************************************************************************/
+
+int psi_output_step(psi_t * psi) {
+
+  assert(psi);
+
+  return (physics_control_timestep() % psi->nfreq_io == 0);
+}

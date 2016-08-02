@@ -21,6 +21,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "control.h"
 #include "runtime.h"
 #include "leesedwards.h"
 
@@ -585,6 +586,26 @@ double le_plane_uy(double t) {
   return uy;
 }
 
+/****************************************************************************
+ *
+ *  le_plane_dy
+ *
+ *  Based on time = t-1
+ *
+ ****************************************************************************/
+
+__host__ int le_plane_dy(double * dy) {
+
+  double t;
+
+  assert(dy);
+
+  physics_control_time(&t);
+  *dy = t*le_plane_uy(t);
+
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  le_plane_uy_max
@@ -717,6 +738,50 @@ double le_buffer_displacement(int ib, double t) {
   }
 
   return dy;
+}
+
+/*****************************************************************************
+ *
+ *  le_buffer_dy
+ *
+ *  Displacement related to buffer point ib
+ *
+ *****************************************************************************/
+
+int le_buffer_dy(int ib, double * dy) {
+
+  double t;
+
+  physics_control_time(&t);
+  *dy = le_buffer_displacement(ib, t);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  le_buffer_du
+ *
+ *  Velocity jump associated with buffer point ib (with sign).
+ *
+ *****************************************************************************/
+
+int le_buffer_du(int ib, double ule[3]) {
+
+  double t;
+
+  t = 1.0*physics_control_timestep();
+
+  if (le_type_ == LINEAR) {
+    ule[X] = 0.0;
+    ule[Y] = le_plane_uy_max()*le_params_.buffer_duy[ib];
+    ule[Z] = 0.0;
+  }
+  else {
+    assert(0); /* Check delta u as function of (ib,t) */
+  }
+
+  return 0;
 }
 
 /*****************************************************************************

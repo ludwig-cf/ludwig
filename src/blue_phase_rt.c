@@ -200,6 +200,10 @@ __host__ int blue_phase_run_time(field_t * q, field_grad_t * dq,
 
     /* Walls (if present) separate type allowed but same strength */
 
+    w1_wall = 0.0;
+    w2_wall = 0.0;
+    strcpy(type_wall, type);
+
     RUN_get_string_parameter("lc_wall_anchoring", type_wall, FILENAME_MAX);
 
     if (strcmp(type_wall, "normal") == 0) {

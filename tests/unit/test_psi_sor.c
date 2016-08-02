@@ -52,8 +52,6 @@ int test_psi_sor_suite(void) {
   pe_init_quiet();
   physics_ref(&phys);
 
-  control_time_set(-1); /* Kludge to avoid SOR iteration output */
-
   do_test_sor1();
 
   info("PASS     ./unit/test_psi_sor\n");
