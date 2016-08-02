@@ -187,6 +187,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
 
+  physics_ref(&ludwig->param);
   free_energy_init_rt(ludwig);
 
   init_control();
@@ -265,7 +266,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* NOW INITIAL CONDITIONS */
 
   pe_subdirectory(subdirectory);
-  ntstep = physics_control_timestep();
+  ntstep = physics_control_timestep(ludwig->param);
 
   if (ntstep == 0) {
     n = 0;
@@ -440,11 +441,11 @@ void ludwig_run(const char * inputfile) {
   /* sync tasks before main loop for timing purposes */
   MPI_Barrier(pe_comm()); 
 
-  while (physics_control_next_step()) {
+  while (physics_control_next_step(ludwig->param)) {
 
     TIMER_start(TIMER_STEPS);
 
-    step = physics_control_timestep();
+    step = physics_control_timestep(ludwig->param);
 
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
@@ -988,8 +989,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   assert(ludwig);
 
-  physics_ref(&ludwig->param);
-
   lb_create(&ludwig->lb);
 
   noise_create(&ludwig->noise_rho);
@@ -1044,7 +1043,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard finite difference solver.\n");
 
     RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(value);
+    physics_mobility_set(ludwig->param, value);
     info("Mobility M            = %12.5e\n", value);
 
     /* Order parameter noise */
@@ -1102,7 +1101,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
 
     RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(value);
+    physics_mobility_set(ludwig->param, value);
     info("Mobility M            = %12.5e\n", value);
 
     /* No explicit force is relevant */
@@ -1139,7 +1138,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard solver:\n");
 
     RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(value);
+    physics_mobility_set(ludwig->param, value);
     info("Mobility M            = %12.5e\n", value);
 
     p = 1;
@@ -1274,7 +1273,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard finite difference solver.\n");
 
     RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(value);
+    physics_mobility_set(ludwig->param, value);
     info("Mobility M            = %12.5e\n", value);
 
     /* Force */
@@ -1394,7 +1393,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     info("Using Cahn-Hilliard finite difference solver.\n");
 
     RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(value);
+    physics_mobility_set(ludwig->param, value);
     info("Mobility M            = %12.5e\n", value);
 
     /* Electrokinetic part */

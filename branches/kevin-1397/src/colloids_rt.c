@@ -22,7 +22,7 @@
 #include "util.h"
 #include "coords.h"
 #include "runtime.h"
-#include "control.h"
+#include "physics.h"
 
 #include "lubrication.h"
 #include "pair_ss_cut.h"
@@ -246,16 +246,18 @@ int colloids_rt_init_from_file(colloids_info_t * cinfo, colloid_io_t * cio) {
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   char stub[FILENAME_MAX];
+  physics_t * phys = NULL;
 
   assert(cinfo);
   assert(cio);
 
   pe_subdirectory(subdirectory);
+  physics_ref(&phys);
 
   strcpy(stub, "config.cds.init");
   RUN_get_string_parameter("colloid_file_stub", stub, FILENAME_MAX);
 
-  ntstep = physics_control_timestep();
+  ntstep = physics_control_timestep(phys);
 
   if (ntstep == 0) {
     sprintf(filename, "%s%s", subdirectory, stub);
@@ -453,14 +455,16 @@ int colloids_rt_gravity(colloids_info_t * cinfo) {
   int isgrav = 0;
   double rho0;
   double g[3] = {0.0, 0.0, 0.0};
+  physics_t * phys = NULL;
 
   assert(cinfo);
 
+  physics_ref(&phys);
   colloids_info_ntotal(cinfo, &nc);
   if (nc == 0) return 0;
 
   nc = RUN_get_double_parameter_vector("colloid_gravity", g);
-  if (nc != 0) physics_fgrav_set(g);
+  if (nc != 0) physics_fgrav_set(phys, g);
 
   isgrav = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
 
@@ -659,9 +663,11 @@ int pair_ss_cut_init(interact_t * inter) {
   double kt;
   double cutoff;
 
+  physics_t * phys = NULL;
   pair_ss_cut_t * pair = NULL;
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
 
   n = RUN_get_int_parameter("soft_sphere_on", &on);
 

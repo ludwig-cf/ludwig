@@ -239,9 +239,11 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
   double rdotdu;
   double rhat[3];
   double kt;
+  physics_t * phys = NULL;
   PI_DOUBLE(pi);
 
   assert(lubr);
+  physics_ref(&phys);
 
   for (ia = 0; ia < 3; ia++) {
     f[ia] = 0.0;
@@ -253,8 +255,8 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
 
   if (hr < lubr->rch[LUBRICATION_SS_FNORM]) {
 
-    physics_kt(&kt);
-    physics_eta_shear(&eta);
+    physics_kt(phys, &kt);
+    physics_eta_shear(phys, &eta);
 
     rhr = 1.0/hr;
     rrc  = lubr->rrch[LUBRICATION_SS_FNORM];
@@ -280,8 +282,8 @@ int lubrication_single(lubr_t * lubr, double a1, double a2,
 
   if (hr < lubr->rch[LUBRICATION_SS_FTANG]) {
 
-    physics_kt(&kt);
-    physics_eta_shear(&eta);
+    physics_kt(phys, &kt);
+    physics_eta_shear(phys, &eta);
 
     rhr = 1.0/hr;
     rh  = 0.5*(a1 + a2)*rhr;

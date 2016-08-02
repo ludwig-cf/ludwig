@@ -418,6 +418,7 @@ void stats_rheology_stress_profile(const char * filename) {
   const int tag_token = 728;
   int rank;
   int token = 0;
+  physics_t * phys = NULL;
   MPI_Status status;
   MPI_Comm comm = cart_comm();
   FILE * fp_output;
@@ -426,7 +427,8 @@ void stats_rheology_stress_profile(const char * filename) {
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  physics_eta_shear(&eta);
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
   if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
@@ -534,6 +536,7 @@ void stats_rheology_stress_section(const char * filename) {
   double uy;
   double eta, viscous;
 
+  physics_t * phys = NULL;
   MPI_Comm comm = cart_comm();
   MPI_Status status;
   int token = 0;
@@ -543,7 +546,8 @@ void stats_rheology_stress_section(const char * filename) {
   assert(initialised_);
   coords_nlocal(nlocal);
 
-  physics_eta_shear(&eta);
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
@@ -678,13 +682,15 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
   double eta, viscous;
   int nlocal[3];
   int ic, jc, kc, index, ia, ib;
+  physics_t * phys = NULL;
   FILE * fp;
 
   assert(lb);
 
   rv = 1.0/(L(X)*L(Y)*L(Z));
 
-  physics_eta_shear(&eta);
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   coords_nlocal(nlocal);
@@ -759,7 +765,7 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
       fp = fopen(filename, "a");
       if (fp == NULL) fatal("fopen(%s) failed\n", filename);
 
-      fprintf(fp, "%9d ", physics_control_timestep());
+      fprintf(fp, "%9d ", physics_control_timestep(phys));
       stats_rheology_print_matrix(fp, stress);
       stats_rheology_print_matrix(fp, pchem);
       stats_rheology_print_matrix(fp, rhouu);

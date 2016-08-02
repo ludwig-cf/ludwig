@@ -53,6 +53,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
   double r[3], r0[3], force[3], g[3];
   double dr;
   colloid_t * p_colloid;
+  physics_t * phys = NULL;
 
   assert(cinfo);
   assert(hydro);
@@ -61,7 +62,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
   coords_nlocal_offset(offset);
   colloids_info_ncell(cinfo, ncell);
 
-  physics_fgrav(g);
+  physics_ref(&phys);
+  physics_fgrav(phys, g);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -146,7 +148,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   double eta;
   PI_DOUBLE(pi);
   colloid_t * p_colloid;
-
+  physics_t * phys = NULL;
 
   assert(cinfo);
   assert(hydro);
@@ -158,8 +160,9 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   /* Loop through all cells (including the halo cells) */
 
-  physics_eta_shear(&eta);
-  physics_fgrav(g);
+  physics_ref(&phys);
+  physics_eta_shear(phys, &eta);
+  physics_fgrav(phys, g);
   reta = 1.0/(6.0*pi*eta);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {

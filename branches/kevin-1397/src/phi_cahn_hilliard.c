@@ -153,6 +153,7 @@ static int phi_ch_flux_mu1(fe_t * fe, advflux_t * flux) {
   int nsites;
   double mu0, mu1;
   double mobility;
+  physics_t * phys = NULL;
 
   assert(fe);
   assert(fe->func->mu);
@@ -162,7 +163,8 @@ static int phi_ch_flux_mu1(fe_t * fe, advflux_t * flux) {
   assert(coords_nhalo() >= 2);
   nsites = le_nsites();
 
-  physics_mobility(&mobility);
+  physics_ref(&phys);
+  physics_mobility(phys, &mobility);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = le_index_real_to_buffer(ic, -1);
@@ -235,13 +237,15 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
   int xs, ys, zs;
   double mum2, mum1, mu00, mup1, mup2;
   double mobility;
+  physics_t * phys = NULL;
 
   nhalo = coords_nhalo();
   nsites = le_nsites();
   coords_nlocal(nlocal);
   assert(nhalo >= 3);
 
-  physics_mobility(&mobility);
+  physics_ref(&phys);
+  physics_mobility(phys, &mobility);
 
   coords_strides(&xs, &ys, &zs);
 
@@ -312,14 +316,16 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
   double * rflux;
   double reap[3];
   double kt, mobility, var;
+  physics_t * phys = NULL;
 
   assert(le_get_nplane_local() == 0);
   assert(coords_nhalo() >= 1);
 
   /* Variance of the noise from fluctuation dissipation relation */
 
-  physics_kt(&kt);
-  physics_mobility(&mobility);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
+  physics_mobility(phys, &mobility);
   var = sqrt(2.0*kt*mobility);
 
   nsites = coords_nsites();

@@ -75,6 +75,7 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
   double length;
   double fhasimoto;
   double f[3];
+  physics_t * phys = NULL;
   PI_DOUBLE(pi);
 
   if (nswitch == 0) {
@@ -86,6 +87,8 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
 
     assert(cinfo);
 
+    physics_ref(&phys);
+
     /* Make sure we have a cubic system with one particle */
 
     assert(N_total(X) == N_total(Y));
@@ -94,8 +97,8 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
     if (ntotal != 1) fatal("Calibration requires exactly one colloid\n");
 
     length = 1.0*L(Z);
-    physics_rho0(&rho);
-    physics_eta_shear(&eta);
+    physics_rho0(phys, &rho);
+    physics_eta_shear(phys, &eta);
 
     colloids_info_ahmax(cinfo, &a);
 
@@ -121,7 +124,7 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
     }
     calib_.ndata = 0;
 
-    physics_fgrav_set(f);
+    physics_fgrav_set(phys, f);
 
     info("\n\n");
     info("Calibration information:\n");
@@ -182,11 +185,13 @@ int stats_calibration_finish(void) {
   double f[3];
   double u[3];
   double fbar[3];
+  physics_t * phys = NULL;
   PI_DOUBLE(pi);
 
   if (calib_.nstart < INT_MAX) {
 
-    physics_eta_shear(&eta);
+    physics_ref(&phys);
+    physics_eta_shear(phys, &eta);
     t = 1.0*calib_.ndata*calib_.nfreq/calib_.nstokes;
 
     info("\n\n");

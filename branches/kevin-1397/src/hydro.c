@@ -431,9 +431,10 @@ int hydro_lees_edwards(hydro_t * obj) {
   int j1, j2;    /* j values in real system to interpolate between */
 
   double ule[3]; /* +/- velocity jump at plane */
+  physics_t * phys = NULL;
 
   assert(obj);
-
+  physics_ref(&phys);
 
   if (cart_size(Y) > 1) {
     if (le_get_nxbuffer())
@@ -445,7 +446,7 @@ int hydro_lees_edwards(hydro_t * obj) {
     coords_nlocal(nlocal);
     ib0 = nlocal[X] + nhalo + 1;
 
-    t = 1.0*physics_control_timestep();
+    t = 1.0*physics_control_timestep(phys);
 
     for (ib = 0; ib < le_get_nxbuffer(); ib++) {
 
@@ -527,11 +528,13 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   double * sbuf = NULL;   /* Send buffer */
   double * rbuf = NULL;   /* Interpolation buffer */
 
+  physics_t * phys = NULL;
   MPI_Comm    le_comm;
   MPI_Request request[6];
   MPI_Status  status[3];
 
   assert(obj);
+  physics_ref(&phys);
 
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
@@ -551,7 +554,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   if (sbuf == NULL) fatal("hydrodynamics: malloc(le sbuf) failed\n");
   if (rbuf == NULL) fatal("hydrodynamics: malloc(le rbuf) failed\n");
 
-  t = 1.0*physics_control_timestep();
+  t = 1.0*physics_control_timestep(phys);
 
   /* One round of communication for each buffer plane */
 

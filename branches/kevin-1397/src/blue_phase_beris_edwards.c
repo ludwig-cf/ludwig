@@ -169,10 +169,13 @@ __host__ int beris_edw_free(beris_edw_t * be) {
 __host__ int beris_edw_param_commit(beris_edw_t * be) {
 
   double kt;
+  physics_t * phys = NULL;
 
   assert(be);
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+
+  physics_kt(phys, &kt);
   be->param->var = sqrt(2.0*kt*be->param->gamma);
 
   copyConstToTarget(&static_param, be->param, sizeof(beris_edw_param_t));
@@ -277,7 +280,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 
   double chi[NQAB], chi_qab[3][3];
   double tmatrix[3][3][NQAB];
-  double kt, var = 0.0;
+  double var = 0.0;
 
   const double dt = 1.0;
   const double r3 = 1.0/3.0;
@@ -306,7 +309,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 
   if (noise) noise_present(noise, NOISE_QAB, &noise_on);
   if (noise_on) {
-    physics_kt(&kt);
+    assert(0); /* SHIT check noise kt */
     beris_edw_tmatrix(tmatrix);
   }
 

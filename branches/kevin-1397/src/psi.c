@@ -1084,6 +1084,8 @@ int psi_halo_psijump(psi_t * psi) {
   double e0[3];
   double eps;
   double beta;
+  physics_t * phys = NULL;
+
   assert(psi);
 
   nhalo = coords_nhalo();
@@ -1091,7 +1093,8 @@ int psi_halo_psijump(psi_t * psi) {
   coords_ntotal(ntotal);
   coords_nlocal_offset(noffset);
 
-  physics_e0(e0);
+  physics_ref(&phys);
+  physics_e0(phys, e0);
   psi_epsilon(psi, &eps);
   psi_beta(psi, &beta);
 
@@ -1283,7 +1286,10 @@ int psi_nfreq_set(psi_t * psi, int nfreq) {
 
 int psi_output_step(psi_t * psi) {
 
+  physics_t * phys = NULL;
+
   assert(psi);
 
-  return (physics_control_timestep() % psi->nfreq_io == 0);
+  physics_ref(&phys);
+  return (physics_control_timestep(phys) % psi->nfreq_io == 0);
 }

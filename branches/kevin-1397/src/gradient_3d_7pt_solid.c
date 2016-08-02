@@ -302,8 +302,12 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, grad_lc_anch_t * anch,
     kc = kernel_coords_kc(ktx, kindex);
     index = kernel_coords_index(ktx, ic, jc, kc);
 
+#ifdef __NVCC__
+    assert(0);
+#else
     coords_strides(str + X, str + Y, str + Z);
-      
+#endif
+
     if (map->status[index] == MAP_FLUID) {
 
       nsites = fg->field->nsites;
@@ -910,8 +914,12 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
 
   if (status == MAP_COLLOID) {
 
+#ifdef __NVCC__
+    assert(0);
+#else
     coords_nlocal_offset(noffset);
     index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
+#endif
     pc = cinfo->map_new[index];
     assert(pc);
 

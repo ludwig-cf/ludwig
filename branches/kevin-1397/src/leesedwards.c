@@ -597,10 +597,12 @@ double le_plane_uy(double t) {
 __host__ int le_plane_dy(double * dy) {
 
   double t;
+  physics_t * phys = NULL;
 
   assert(dy);
 
-  physics_control_time(&t);
+  physics_ref(&phys);
+  physics_control_time(phys, &t);
   *dy = t*le_plane_uy(t);
 
   return 0;
@@ -751,8 +753,10 @@ double le_buffer_displacement(int ib, double t) {
 int le_buffer_dy(int ib, double * dy) {
 
   double t;
+  physics_t * phys = NULL;
 
-  physics_control_time(&t);
+  physics_ref(&phys);
+  physics_control_time(phys, &t);
   *dy = le_buffer_displacement(ib, t);
 
   return 0;
@@ -768,9 +772,7 @@ int le_buffer_dy(int ib, double * dy) {
 
 int le_buffer_du(int ib, double ule[3]) {
 
-  double t;
-
-  t = 1.0*physics_control_timestep();
+  assert(initialised_);
 
   if (le_type_ == LINEAR) {
     ule[X] = 0.0;

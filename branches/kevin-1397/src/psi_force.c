@@ -90,6 +90,7 @@ int psi_force_gradmu_e(psi_t * psi, fe_t * fe, hydro_t * hydro,
   double flocal[4] = {0.0, 0.0, 0.0, 0.0};
   double fsum[4];
 
+  physics_t * phys = NULL;
   MPI_Comm comm;
 
   colloid_t * pc = NULL;
@@ -102,7 +103,8 @@ int psi_force_gradmu_e(psi_t * psi, fe_t * fe, hydro_t * hydro,
   coords_strides(&xs, &ys, &zs);
   comm = cart_comm();
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_unit_charge(psi, &eunit);
   reunit = 1.0/eunit;
 
@@ -210,6 +212,7 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
   double flocal[4] = {0.0, 0.0, 0.0, 0.0};
   double fsum[4];
 
+  physics_t * phys = NULL;
   MPI_Comm comm;
 
   colloid_t * pc = NULL;
@@ -223,7 +226,8 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
   coords_strides(&xs, &ys, &zs);
   comm = cart_comm();
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_unit_charge(psi, &eunit);
   reunit = 1.0/eunit;
 

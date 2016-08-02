@@ -20,7 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "field.h"
-#include "control.h"
+#include "physics.h"
 #include "util.h"
 #include "surfactant.h"
 #include "stats_surfactant.h"
@@ -45,6 +45,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   double psi_0, psi_b;
   double sigma, sigma0;
   double phi[2];
+  physics_t * phys = NULL;
 
   /* This is not run in parallel, so assert it's serial.
    * We also require surfactant */
@@ -53,6 +54,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   assert(0); /* Check nf = 2 in refactored version */
   assert(pe_size() == 1);
 
+  physics_ref(&phys);
   coords_nlocal(nlocal);
 
   /* We assume z = 1 is a reasonable choice for the background
@@ -100,7 +102,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   /* The sqrt(t) is the usual dependance for analysis of the
    * diffusion problem, so is included here. */
 
-  nt = physics_control_timestep();
+  nt = physics_control_timestep(phys);
 
   info("Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", nt,
        sqrt(1.0*nt), psi_b, psi_0, sigma);
