@@ -681,7 +681,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field[Y] = 0.0;
   field[Z] = 1.0;
 
-  physics_e0_set(field);
+  physics_e0_set(phys, field);
   assert(0); /* Electric field not set; time-dependent field not set */
 
 
@@ -697,7 +697,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field[Y] = 1.0;
   field[Z] = 1.0;
 
-  physics_e0_set(field);
+  physics_e0_set(phys, field);
 
   e = sqrt(27.0*epsilon*3.0/(32.0*pi_*a0*gamma));
 
@@ -713,7 +713,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field[Z] = field[X];
 
 
-  physics_e0_set(field);
+  physics_e0_set(phys, field);
   fe_lc_dimensionless_field_strength(fe, &value);
   info("Set dimensionless field 0.2...");
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
@@ -756,7 +756,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field[Y] = 0.0;
   field[Z] = 0.0;
 
-  physics_e0_set(field);
+  physics_e0_set(phys, field);
   fe_lc_dimensionless_field_strength(fe, &value);
   /* info("Set dimensionless field again 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);

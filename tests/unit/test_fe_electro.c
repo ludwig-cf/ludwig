@@ -26,9 +26,9 @@
 #include "fe_electro.h"
 #include "tests.h"
 
-static int do_test1(void);
-static int do_test2(void);
-static int do_test3(void);
+static int do_test1(physics_t * phys);
+static int do_test2(physics_t * phys);
+static int do_test3(physics_t * phys);
 
 /*****************************************************************************
  *
@@ -38,15 +38,15 @@ static int do_test3(void);
 
 int test_fe_electro_suite(void) {
 
-  physics_t * param = NULL;
+  physics_t * phys = NULL;
 
   pe_init_quiet();
   coords_init();
-  physics_ref(&param);
+  physics_ref(&phys);
 
-  do_test1();
-  do_test2();
-  do_test3();
+  do_test1(phys);
+  do_test2(phys);
+  do_test3(phys);
 
   info("PASS     ./unit/test_fe_electro\n");
   coords_finish();
@@ -63,7 +63,7 @@ int test_fe_electro_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test1(void) {
+static int do_test1(physics_t * phys) {
 
   int nk = 2;
   double valency[2] = {1, 2};
@@ -76,12 +76,12 @@ static int do_test1(void) {
   double fed0, fed1;     /* Expected free energy contributions */
   double psi0;           /* Test potential */
   double fed;
-
   fe_electro_t * fe = NULL;
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
-  physics_kt_set(kt);
+
+  physics_kt_set(phys, kt);
 
   fe_electro_create(psi, &fe);
   assert(fe);
@@ -140,7 +140,7 @@ static int do_test1(void) {
  *
  *****************************************************************************/
 
-int do_test2(void) {
+int do_test2(physics_t * phys) {
 
   int n;
   int nk = 3;
@@ -159,7 +159,7 @@ int do_test2(void) {
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
-  physics_kt_set(kt);
+  physics_kt_set(phys, kt);
 
   fe_electro_create(psi, &fe);
   assert(fe);
@@ -199,7 +199,7 @@ int do_test2(void) {
  *
  *****************************************************************************/
 
-static int do_test3(void) {
+static int do_test3(physics_t * phys) {
 
   int nk = 2;
   int index;
@@ -225,7 +225,7 @@ static int do_test3(void) {
   fe_electro_create(psi, &fe);
   assert(fe);
 
-  physics_kt_set(kt);
+  physics_kt_set(phys, kt);
 
   /* No external field, no potential; note index must allow for a
    * spatial gradient */
