@@ -114,6 +114,7 @@
 
 typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
+  pe_t * pe;                /* Parallel environment */
   physics_t * param;        /* Physical parameters */
   lb_t * lb;                /* Lattice Botlzmann */
   hydro_t * hydro;          /* Hydrodynamic quantities */
@@ -204,7 +205,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   map_init_rt(&ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
-  ran_init();
+  ran_init(ludwig->pe);
   hydro_rt(&ludwig->hydro);
 
   /* PHI I/O */
@@ -265,7 +266,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* NOW INITIAL CONDITIONS */
 
-  pe_subdirectory(subdirectory);
+  pe_subdirectory(ludwig->pe, subdirectory);
   ntstep = physics_control_timestep(ludwig->param);
 
   if (ntstep == 0) {
@@ -393,12 +394,14 @@ void ludwig_run(const char * inputfile) {
 
   io_info_t * iohandler = NULL;
   ludwig_t * ludwig = NULL;
+  MPI_Comm comm;
 
 
   ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
 
-  pe_init();
+  pe_create(MPI_COMM_WORLD, PE_VERBOSE, &ludwig->pe);
+  pe_mpi_comm(ludwig->pe, &comm);
 
   RUN_read_input_file(inputfile);
 
@@ -406,9 +409,9 @@ void ludwig_run(const char * inputfile) {
 
   /* Report initial statistics */
 
-  pe_subdirectory(subdirectory);
+  pe_subdirectory(ludwig->pe, subdirectory);
 
-  info("Initial conditions.\n");
+  pe_info(ludwig->pe, "Initial conditions.\n");
   wall_pm(&is_porous_media);
 
   stats_distribution_print(ludwig->lb, ludwig->map);
@@ -434,12 +437,12 @@ void ludwig_run(const char * inputfile) {
   
   /* Main time stepping loop */
 
-  info("\n");
-  info("Starting time step loop.\n");
+  pe_info(ludwig->pe, "\n");
+  pe_info(ludwig->pe, "Starting time step loop.\n");
   subgrid_on(&is_subgrid);
 
   /* sync tasks before main loop for timing purposes */
-  MPI_Barrier(pe_comm()); 
+  MPI_Barrier(comm);
 
   while (physics_control_next_step(ludwig->param)) {
 
@@ -567,7 +570,7 @@ void ludwig_run(const char * inputfile) {
     
       nernst_planck_adjust_multistep(ludwig->psi);
 
-      if (is_statistics_step()) info("%d multisteps\n",im);
+      if (is_statistics_step()) pe_info(ludwig->pe, "%d multisteps\n",im);
 
       psi_zero_mean(ludwig->psi);
 
@@ -718,7 +721,7 @@ void ludwig_run(const char * inputfile) {
 
     if (is_config_step() || is_measurement_step() || is_colloid_io_step()) {
       if (ncolloid > 0) {
-	info("Writing colloid output at step %d!\n", step);
+	pe_info(ludwig->pe, "Writing colloid output at step %d!\n", step);
 	sprintf(filename, "%s%s%8.8d", subdirectory, "config.cds", step);
 	colloid_io_write(ludwig->cio, filename);
       }
@@ -728,7 +731,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->phi) {
 	field_io_info(ludwig->phi, &iohandler);
-	info("Writing phi file at step %d!\n", step);
+	pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
 	sprintf(filename,"%sphi-%8.8d", subdirectory, step);
 	io_write_data(iohandler, filename, ludwig->phi);
       }
@@ -824,7 +827,7 @@ void ludwig_run(const char * inputfile) {
   /* To prevent any conflict between the last regular dump, and
    * a final dump, there's a barrier here. */
 
-  MPI_Barrier(pe_comm()); 
+  MPI_Barrier(comm); 
 
   /* Dump the final configuration if required. */
 
@@ -895,7 +898,7 @@ void ludwig_run(const char * inputfile) {
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
-  pe_finalise();
+  pe_free(ludwig->pe);
 
   return;
 }

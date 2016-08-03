@@ -45,11 +45,12 @@ static int test_bp_nonfield(void);
 int test_bp_suite(void) {
 
   int nhalo = 2;
+  pe_t * pe = NULL;
   field_t * fq = NULL;
   field_grad_t * fqgrad = NULL;
   fe_lc_t * fe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_nhalo_set(nhalo);
   coords_init();
   le_init(); /* Must be initialised to compute gradients. */
@@ -70,9 +71,9 @@ int test_bp_suite(void) {
   field_free(fq);
   le_finish();
 
-  info("PASS     ./unit/test_blue_phase\n");
+  pe_info(pe, "PASS     ./unit/test_blue_phase\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

@@ -38,7 +38,9 @@ static int do_test_io(int ndata, int io_format);
 
 int test_map_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /*info("Map tests\n\n");*/
 
@@ -52,8 +54,8 @@ int test_map_suite(void) {
   do_test_io(2, IO_FORMAT_BINARY);
   do_test_io(2, IO_FORMAT_ASCII);
 
-  info("PASS     ./unit/test_map\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_map\n");
+  pe_free(pe);
 
   return 0;
 }

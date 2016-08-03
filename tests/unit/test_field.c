@@ -39,7 +39,9 @@ static int test_field_halo(field_t * phi);
 
 int test_field_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("\nOrder parameter tests...\n");*/
 
@@ -52,8 +54,8 @@ int test_field_suite(void) {
   do_test_io(5, IO_FORMAT_ASCII);
   do_test_io(5, IO_FORMAT_BINARY);
 
-  info("PASS     ./unit/test_field\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_field\n");
+  pe_free(pe);
 
   return 0;
 }

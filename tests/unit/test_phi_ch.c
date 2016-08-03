@@ -51,11 +51,12 @@ int test_phi_ch_suite(void) {
   int nf = 1;
   int nhalo = 2;
 
+  pe_t * pe = NULL;
   hydro_t * hydro = NULL;
   field_t * phi = NULL;
   physics_t * phys = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_nhalo_set(nhalo);
   coords_init();
   physics_ref(&phys);
@@ -73,10 +74,10 @@ int test_phi_ch_suite(void) {
   hydro_free(hydro);
   field_free(phi);
 
-  info("PASS     ./unit/test_phi_ch\n");
+  pe_info(pe, "PASS     ./unit/test_phi_ch\n");
   le_finish();
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

@@ -38,9 +38,10 @@ static int do_test3(physics_t * phys);
 
 int test_fe_electro_suite(void) {
 
+  pe_t * pe = NULL;
   physics_t * phys = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
   physics_ref(&phys);
 
@@ -48,9 +49,9 @@ int test_fe_electro_suite(void) {
   do_test2(phys);
   do_test3(phys);
 
-  info("PASS     ./unit/test_fe_electro\n");
+  pe_info(pe, "PASS     ./unit/test_fe_electro\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

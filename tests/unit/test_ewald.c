@@ -51,13 +51,15 @@ int test_ewald_suite(void) {
   colloid_t * p_c1;
   colloid_t * p_c2;
   colloids_info_t * cinfo = NULL;
+
+  pe_t * pe = NULL;
   ewald_t * ewald = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  if (pe_size() > 1) {
-    info("SKIP     ./unit/test_ewald\n");
-    pe_finalise();
+  if (pe_mpi_size(pe) > 1) {
+    pe_info(pe, "SKIP     ./unit/test_ewald\n");
+    pe_free(pe);
     return 0;
   }
 
@@ -443,11 +445,11 @@ int test_ewald_suite(void) {
 
   ewald_free(ewald);
 
-  info("PASS     ./unit/test_ewald\n");
+  pe_info(pe, "PASS     ./unit/test_ewald\n");
 
   colloids_info_free(cinfo);
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

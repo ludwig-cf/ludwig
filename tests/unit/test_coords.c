@@ -47,8 +47,9 @@ int test_coords_suite(void) {
   int ntotal_test2[3] = {1024, 1024, 1024};
   int periods_test2[3] = {1, 1, 1};
   int decomposition_test2[3] = {4, 4, 4};
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Checking coords.c ...\n\n");*/
 
@@ -97,8 +98,8 @@ int test_coords_suite(void) {
   test_coords_periodic_comm();
   coords_finish();
 
-  info("PASS     ./unit/test_coords\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_coords\n");
+  pe_free(pe);
 
   return 0;
 }

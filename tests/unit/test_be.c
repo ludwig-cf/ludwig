@@ -53,9 +53,10 @@ int test_be_suite(void) {
 
 static int do_test_be1(void) {
 
+  pe_t * pe =  NULL;
   beris_edw_t * be = NULL;
 
-  pe_init();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
   le_init();
 
@@ -66,7 +67,7 @@ static int do_test_be1(void) {
 
   le_finish();
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
 
   return 0;

@@ -36,8 +36,9 @@ static void test_position(const double * r1, const double * r2);
 int test_colloids_halo_suite(void) {
 
   int ntotal[3] = {1024, 1024, 1024};
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_ntotal_set(ntotal);
   coords_init();
 
@@ -45,9 +46,9 @@ int test_colloids_halo_suite(void) {
   test_colloids_halo211();
   test_colloids_halo_repeat();
 
-  info("PASS     ./unit/test_colloids_halo\n");
+  pe_info(pe, "PASS     ./unit/test_colloids_halo\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

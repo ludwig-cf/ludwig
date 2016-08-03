@@ -34,18 +34,19 @@ int test_lubrication_ss_ftang(void);
 
 int test_lubrication_suite(void) {
 
+  pe_t * pe = NULL;
   physics_t * physics = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
   physics_ref(&physics);
 
   test_lubrication_ss_fnorm();
   test_lubrication_ss_ftang();
 
-  info("PASS     ./unit/test_lubrication\n");
   coords_finish();
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_lubrication\n");
+  pe_free(pe);
 
   return 0;
 }

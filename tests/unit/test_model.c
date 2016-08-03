@@ -41,7 +41,10 @@ static  int test_model_is_domain(const int ic, const int jc, const int kc);
 
 int test_model_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+
   coords_init();
 
   /* Test model structure (coordinate-independent stuff) */
@@ -57,9 +60,9 @@ int test_model_suite(void) {
   do_test_lb_model_io();
   do_test_d3q19_ghosts();
 
-  info("PASS     ./unit/test_model\n");
+  pe_info(pe, "PASS     ./unit/test_model\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2016 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -13,7 +13,9 @@
 #ifndef RAN_H
 #define RAN_H
 
-void   ran_init(void);
+#include "pe.h"
+
+__host__ int  ran_init(pe_t * pe);
 double ran_parallel_gaussian(void);
 double ran_parallel_uniform(void);
 void   ran_parallel_unit_vector(double []);

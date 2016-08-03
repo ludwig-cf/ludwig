@@ -39,7 +39,9 @@ static int do_test_io1(void);
 
 int test_hydro_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   do_test1();
   do_test_halo1(1, 1);
@@ -47,8 +49,8 @@ int test_hydro_suite(void) {
   do_test_halo1(2, 1);
   do_test_io1();
 
-  info("PASS     ./unit/test_hydro\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_hydro\n");
+  pe_free(pe);
 
   return 0;
 }

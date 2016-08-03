@@ -246,12 +246,14 @@ int colloids_rt_init_from_file(colloids_info_t * cinfo, colloid_io_t * cio) {
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   char stub[FILENAME_MAX];
+  pe_t * pe = NULL;
   physics_t * phys = NULL;
 
   assert(cinfo);
   assert(cio);
 
-  pe_subdirectory(subdirectory);
+  pe_ref(&pe);
+  pe_subdirectory(pe, subdirectory);
   physics_ref(&phys);
 
   strcpy(stub, "config.cds.init");

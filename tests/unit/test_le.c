@@ -31,15 +31,17 @@ static void test_le_parallel2(void);
 
 int test_le_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+
   coords_init();
 
   test_parallel1();
   test_le_parallel2();
 
-  info("PASS     ./unit/test_le\n");
+  pe_info(pe, "PASS     ./unit/test_le\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

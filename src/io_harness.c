@@ -419,6 +419,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   int token = 0;
   const int tag = 1293;
+  pe_t * pe = NULL; 
   MPI_Status status;
 
   /* Every group writes a file, ie., the information stub and
@@ -428,7 +429,8 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   assert(info);
   coords_nlocal_offset(noff);
 
-  pe_subdirectory(subdirectory);
+  pe_ref(&pe);
+  pe_subdirectory(pe, subdirectory);
 
   io_set_group_filename(filename, filename_stub, info);
   sprintf(filename_io, "%s%s.meta", subdirectory, filename);
@@ -507,12 +509,14 @@ int io_remove_metadata(io_info_t * obj, const char * file_stub) {
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   char filename_io[FILENAME_MAX];
+  pe_t * pe = NULL;
 
   assert(obj);
   assert(file_stub);
 
   if (obj->io_comm->rank == 0) {
-    pe_subdirectory(subdirectory);
+    pe_ref(&pe);
+    pe_subdirectory(pe, subdirectory);
     io_set_group_filename(filename, file_stub, obj);
     sprintf(filename_io, "%s%s.meta", subdirectory, filename);
     remove(filename_io);
@@ -533,12 +537,14 @@ int io_remove(const char * filename_stub, io_info_t * obj) {
 
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
+  pe_t * pe = NULL;
 
   assert(filename_stub);
   assert(obj);
 
   if (obj->io_comm->rank == 0) {
-    pe_subdirectory(subdirectory);
+    pe_ref(&pe);
+    pe_subdirectory(pe, subdirectory);
     io_set_group_filename(filename, filename_stub, obj);
     remove(filename);
   }

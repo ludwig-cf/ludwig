@@ -34,7 +34,9 @@ static int do_test_noise3(void);
 
 int test_noise_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Noise tests\n\n");*/
 
@@ -42,8 +44,8 @@ int test_noise_suite(void) {
   do_test_noise2();
   do_test_noise3();
 
-  info("PASS     ./unit/test_noise\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_noise\n");
+  pe_free(pe);
 
   return 0;
 }

@@ -47,15 +47,16 @@ static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon);
 
 int test_psi_sor_suite(void) {
 
+  pe_t * pe = NULL;
   physics_t * phys = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   physics_ref(&phys);
 
   do_test_sor1();
 
-  info("PASS     ./unit/test_psi_sor\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_psi_sor\n");
+  pe_free(pe);
 
   return 0;
 }

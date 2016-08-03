@@ -12,6 +12,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
@@ -47,20 +48,22 @@ static double ran_lecuyer(struct lecuyer *);
  *
  ****************************************************************************/
 
-void ran_init( void ) {
+__host__ int ran_init(pe_t * pe) {
 
   int n;
   int scalar_seed = 7361237;
+
+  assert(pe);
 
   /* Look for "random_seed" in the user input, or use a default. */ 
 
   n = RUN_get_int_parameter("random_seed", &scalar_seed);
 
   if (n == 0) {
-    info("[Default] Random number seed: %d\n", scalar_seed);
+    pe_info(pe, "[Default] Random number seed: %d\n", scalar_seed);
   }
   else {
-    info("[User   ] Random number seed: %d\n", scalar_seed);
+    pe_info(pe, "[User   ] Random number seed: %d\n", scalar_seed);
   }
 
   /* Serial generator */
@@ -78,12 +81,12 @@ void ran_init( void ) {
   p_rng.ispare = 0;
 
   p_rng.rstate[0] = scalar_seed;
-  p_rng.rstate[1] = pe_size();
-  p_rng.rstate[2] = pe_rank();
+  p_rng.rstate[1] = pe_mpi_size(pe);
+  p_rng.rstate[2] = pe_mpi_rank(pe);
   p_rng.rstate[3] = 3;
   p_rng.rstate[4] = 4;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************

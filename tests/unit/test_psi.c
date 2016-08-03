@@ -42,7 +42,9 @@ static int do_test_io1(void);
 
 int test_psi_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   do_test1();
   do_test2();
@@ -52,8 +54,8 @@ int test_psi_suite(void) {
   do_test_bjerrum();
   do_test_ionic_strength();
 
-  info("PASS     ./unit/test_psi\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_psi\n");
+  pe_free(pe);
 
   return 0;
 }
