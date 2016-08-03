@@ -37,17 +37,18 @@
 
 int test_random_suite(void) {
 
+  int n;
   double r;
   double rtot, rvar, rmin, rmax;
   double rhat[3], rmean[3];
-  int    n;
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Testing random number generators (may take a minute...)\n");
      info("Random sample size is %d\n\n", NLARGE);*/
 
-  ran_init();
+  ran_init(pe);
 
   /* Check first number from serial generators */
   /*
@@ -282,9 +283,8 @@ int test_random_suite(void) {
   /* info("Component <Z> is %g (ok)\n", rmean[2]);*/
 
 
-  info("PASS     ./unit/test_random\n");
-
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_random\n");
+  pe_free(pe);
 
   return 0;
 }

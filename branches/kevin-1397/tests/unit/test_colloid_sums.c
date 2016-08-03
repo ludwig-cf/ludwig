@@ -41,14 +41,16 @@ static int test_colloid_sums_conservation(void);
 
 int test_colloid_sums_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   test_colloid_sums_1d();
   test_colloid_sums_move();
   test_colloid_sums_conservation();
 
-  info("PASS     ./unit/test_colloid_sums\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_colloid_sums\n");
+  pe_free(pe);
 
   return 0;
 }

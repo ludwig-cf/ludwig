@@ -46,7 +46,9 @@ static double test_encode(int code, int nf, int n, int iv);
 
 int test_field_grad_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Field gradient object test\n");*/
 
@@ -55,8 +57,8 @@ int test_field_grad_suite(void) {
   do_test5();
   do_test_dab();
 
-  info("PASS     ./unit/test_field_grad\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_field_grad\n");
+  pe_free(pe);
 
   return 0;
 }

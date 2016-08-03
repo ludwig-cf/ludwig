@@ -34,8 +34,9 @@ int test_colloids_info_cell_coords(colloids_info_t * cinfo);
 int test_colloids_info_suite(void) {
 
   int ncell[3];
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
 
   ncell[X] = 2;
@@ -59,10 +60,10 @@ int test_colloids_info_suite(void) {
   ncell[Z] = 8;
   test_colloids_info_with_ncell(ncell);
 
-  info("PASS     ./unit/test_colloids\n");
+  pe_info(pe, "PASS     ./unit/test_colloids\n");
 
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

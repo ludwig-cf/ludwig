@@ -56,8 +56,9 @@ __host__ int test_kernel_suite(void) {
   data_t sdata;
   data_t * data = &sdata;
   kernel_info_t lim;
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
   coords_nlocal(nlocal);
 
@@ -77,9 +78,9 @@ __host__ int test_kernel_suite(void) {
 
   data_free(data);
 
-  info("PASS     ./unit/test_kernel\n");
   coords_finish();
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_kernel\n");
+  pe_free(pe);
 
   return 0;
 }

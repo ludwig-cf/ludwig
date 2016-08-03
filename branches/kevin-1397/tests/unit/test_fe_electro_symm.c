@@ -35,16 +35,18 @@ static int do_test1(void);
 
 int test_fe_electro_symm_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_nhalo_set(2);
   coords_init();
   le_init();
 
   do_test1();
 
-  info("PASS     ./unit/test_fe_electro_symm\n");
+  pe_info(pe, "PASS     ./unit/test_fe_electro_symm\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

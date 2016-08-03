@@ -43,15 +43,17 @@ int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
 
 int test_bonds_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
 
   test_bonds_dimers();
   test_bonds_trimers();
 
-  info("PASS     ./unit/test_bonds\n");
   coords_finish();
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_bonds\n");
+  pe_free(pe);
 
   return 0;
 }

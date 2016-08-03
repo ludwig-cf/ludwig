@@ -38,15 +38,17 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 
 int test_pair_lj_cut_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
 
   test_pair_lj_cut1();
   test_pair_lj_cut2();
 
-  info("PASS     ./unit/test_pair_lj_cut\n");
   coords_finish();
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_pair_lj_cut\n");
+  pe_free(pe);
 
   return 0;
 }

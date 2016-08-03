@@ -43,16 +43,18 @@ static int  test_io_write3(FILE *, int index, void * self);
 
 int test_io_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
 
   do_test_io_info_struct();
   /* if (pe_size() == cart_size(X)) test_processor_independent();
      test_ascii();*/
 
-  info("PASS     ./unit/test_io\n");
+  pe_info(pe, "PASS     ./unit/test_io\n");
   coords_finish();
-  pe_finalise();
+  pe_free(pe);
 
   return 0;
 }

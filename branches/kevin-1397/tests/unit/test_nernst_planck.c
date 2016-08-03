@@ -45,12 +45,14 @@ static int test_io(psi_t * psi, int tstep);
 
 int test_nernst_planck_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   do_test_gouy_chapman();
 
-  info("PASS     ./unit/test_nernst_planck\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_nernst_planck\n");
+  pe_free(pe);
 
   return 0;
 }

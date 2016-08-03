@@ -34,8 +34,9 @@ int test_rt_suite(void) {
   double dvalue;
   double dvector[3];
   char   string[256];
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Testing runtime.c...\n");
 
@@ -214,8 +215,8 @@ int test_rt_suite(void) {
   test_assert(n == 0);
   /* info("yes\n");*/
 
-  info("PASS     ./unit/test_runtime\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_runtime\n");
+  pe_free(pe);
 
   return 0;
 }
