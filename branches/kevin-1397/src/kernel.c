@@ -79,9 +79,11 @@ __host__ int kernel_ctxt_create(int nsimdvl, kernel_info_t info,
     obj->target = obj;
   }
   else {
+    kernel_param_t * tmp;
     /* Link to static device memory */
     targetConstAddress((void **) &obj->target, static_ctxt);
-    targetConstAddress((void **) &obj->target->param, static_param);
+    targetConstAddress((void **) &tmp, static_param);
+    copyToTarget(&obj->target->param, &tmp, sizeof(kernel_param_t *));
   }
 
   kernel_ctxt_commit(obj, nsimdvl, info);
@@ -204,7 +206,7 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, int nsimdvl, kernel_
   targetGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyConstToTarget(&obj->target->param, &obj->param, sizeof(kernel_ctxt_t));
+    copyConstToTarget(&static_param, obj->param, sizeof(kernel_param_t));
   }
 
   return 0;

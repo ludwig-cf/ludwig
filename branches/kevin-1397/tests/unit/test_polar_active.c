@@ -140,11 +140,12 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
   test_assert(fabs(p[X] - +9.0523694e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +4.2490714e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
+  /* info("ok\n"); */
 
   /* Gradient terms */
 
-  field_halo(fp);
+  field_halo_swap(fp, FIELD_HALO_HOST);
+  /* info("ok\n");*/
   field_grad_compute(fpgrad);
 
   /* Free energy density (not computed in independent code) */
@@ -251,7 +252,7 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
   fe_polar_param_set(fe, param);
 
   test_polar_active_init_aster(fp);
-  field_halo(fp);
+  field_halo_swap(fp, FIELD_HALO_HOST);
   field_grad_compute(fpgrad);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {

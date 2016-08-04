@@ -104,7 +104,7 @@ __host__ int hydro_create(int nhcomm, hydro_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ void hydro_free(hydro_t * obj) {
+__host__ int hydro_free(hydro_t * obj) {
 
   int ndevice;
   double * tmp;
@@ -126,7 +126,7 @@ __host__ void hydro_free(hydro_t * obj) {
   free(obj->u);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -177,11 +177,38 @@ __host__ int hydro_memcpy(hydro_t * obj, int flag) {
  *
  *****************************************************************************/
 
-int hydro_u_halo(hydro_t * obj) {
+__host__ int hydro_u_halo(hydro_t * obj) {
 
   assert(obj);
 
-  halo_swap_driver(obj->halo, obj->target->u);
+  hydro_halo_swap(obj, HYDRO_U_HALO_TARGET);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_halo_swap
+ *
+ *****************************************************************************/
+
+__host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag) {
+
+  double * data;
+
+  assert(obj);
+
+  switch (flag) {
+  case HYDRO_U_HALO_HOST:
+    halo_swap_host_rank1(obj->halo, obj->u, MPI_DOUBLE);
+    break;
+  case HYDRO_U_HALO_TARGET:
+    copyFromTarget(&data, &obj->target->u, sizeof(double *));
+    halo_swap_packed(obj->halo, data);
+    break;
+  default:
+    assert(0);
+  }
 
   return 0;
 }
@@ -195,7 +222,8 @@ int hydro_u_halo(hydro_t * obj) {
  *
  *****************************************************************************/
 
-int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
+__host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
+				int form_out) {
 
   assert(obj);
   assert(grid);
@@ -222,7 +250,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
  *
  *****************************************************************************/
 
-int hydro_io_info(hydro_t * obj, io_info_t ** info) {
+__host__ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(obj->info); /* Should have been initialised */
@@ -238,6 +266,7 @@ int hydro_io_info(hydro_t * obj, io_info_t ** info) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
@@ -257,6 +286,7 @@ int hydro_f_local_set(hydro_t * obj, int index, const double force[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int hydro_f_local(hydro_t * obj, int index, double force[3]) {
 
   int ia;
@@ -278,6 +308,7 @@ int hydro_f_local(hydro_t * obj, int index, double force[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 
   int ia;
@@ -297,6 +328,7 @@ int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
 
   int ia;
@@ -316,6 +348,7 @@ int hydro_u_set(hydro_t * obj, int index, const double u[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int hydro_u(hydro_t * obj, int index, double u[3]) {
 
   int ia;
@@ -414,7 +447,7 @@ void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]) {
  *
  *****************************************************************************/
 
-int hydro_lees_edwards(hydro_t * obj) {
+__host__ int hydro_lees_edwards(hydro_t * obj) {
 
   int nhalo;
   int nlocal[3]; /* Local system size */
@@ -731,8 +764,8 @@ int hydro_u_read(FILE * fp, int index, void * self) {
  *
  *****************************************************************************/
 
-int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
-			    double w[3][3]) {
+__host__ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
+				     double w[3][3]) {
 
   int im1, ip1;
   double tr;
@@ -778,7 +811,7 @@ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
  *
  *****************************************************************************/
 
-int hydro_correct_momentum(hydro_t * hydro) {
+__host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   int ic, jc, kc, index;
   int nlocal[3];

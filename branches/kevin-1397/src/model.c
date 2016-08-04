@@ -41,6 +41,9 @@ static int lb_set_displacements(lb_t * lb, int, MPI_Aint *, int, const int *);
 static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 
+
+static int isReduced_=0; /* SHIT WHAT IS THIS DOING? */
+
 __targetConst__ int tc_cv[NVEL][3];
 __targetConst__ int tc_ndist;
 
@@ -52,7 +55,7 @@ __targetConst__ int tc_ndist;
  *
  ****************************************************************************/
 
-int lb_create_ndist(int ndist, lb_t ** plb) {
+__host__ int lb_create_ndist(int ndist, lb_t ** plb) {
 
   lb_t * lb = NULL;
 
@@ -77,7 +80,7 @@ int lb_create_ndist(int ndist, lb_t ** plb) {
  *
  *****************************************************************************/
 
-int lb_create(lb_t ** plb) {
+__host__ int lb_create(lb_t ** plb) {
 
   assert(plb);
 
@@ -92,7 +95,7 @@ int lb_create(lb_t ** plb) {
  *
  *****************************************************************************/
 
-__host__ void lb_free(lb_t * lb) {
+__host__ int lb_free(lb_t * lb) {
 
   int ndevice;
   double * tmp;
@@ -133,7 +136,7 @@ __host__ void lb_free(lb_t * lb) {
   MPI_Type_free(&lb->site_z[0]);
   MPI_Type_free(&lb->site_z[1]);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -144,7 +147,6 @@ __host__ void lb_free(lb_t * lb) {
 
 __host__ int lb_model_copy(lb_t * lb, int flag) {
 
-  lb_t * target;
   int ndevice;
   double * tmpf = NULL;
 
@@ -159,13 +161,13 @@ __host__ int lb_model_copy(lb_t * lb, int flag) {
   else {
 
     assert(lb->target);
-    target = lb->target;
 
-    copyFromTarget(&tmpf, &target->f, sizeof(double *)); 
+    copyFromTarget(&tmpf, &lb->target->f, sizeof(double *));
+
     if (flag == cudaMemcpyHostToDevice) {
-      copyToTarget(&target->ndist, &lb->ndist, sizeof(int)); 
-      copyToTarget(&target->nsite, &lb->nsite, sizeof(int)); 
-      copyToTarget(&target->model, &lb->model, sizeof(int)); 
+      copyToTarget(&lb->target->ndist, &lb->ndist, sizeof(int)); 
+      copyToTarget(&lb->target->nsite, &lb->nsite, sizeof(int)); 
+      copyToTarget(&lb->target->model, &lb->model, sizeof(int)); 
       copyToTarget(tmpf, lb->f, NVEL*lb->nsite*lb->ndist*sizeof(double));
     }
     else {
@@ -186,7 +188,7 @@ __host__ int lb_model_copy(lb_t * lb, int flag) {
  *
  ***************************************************************************/
  
-int lb_init(lb_t * lb) {
+__host__ int lb_init(lb_t * lb) {
 
   int nlocal[3];
   int nx, ny, nz;
@@ -267,7 +269,7 @@ int lb_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_nvel(lb_t * lb, int * nvel) {
+__host__ int lb_nvel(lb_t * lb, int * nvel) {
 
   assert(nvel);
 
@@ -284,7 +286,7 @@ int lb_nvel(lb_t * lb, int * nvel) {
  *
  *****************************************************************************/
 
-int lb_ndim(lb_t * lb, int * ndim) {
+__host__ int lb_ndim(lb_t * lb, int * ndim) {
 
   assert(ndim);
 
@@ -301,7 +303,7 @@ int lb_ndim(lb_t * lb, int * ndim) {
  *
  *****************************************************************************/
 
-int lb_nblock(lb_t * lb, int dim, int * nblock) {
+__host__ int lb_nblock(lb_t * lb, int dim, int * nblock) {
 
   assert(dim == X || dim == Y || dim == Z);
   assert(nblock);
@@ -321,7 +323,7 @@ int lb_nblock(lb_t * lb, int dim, int * nblock) {
  *
  *****************************************************************************/
 
-int lb_init_rest_f(lb_t * lb, double rho0) {
+__host__ int lb_init_rest_f(lb_t * lb, double rho0) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -559,7 +561,7 @@ static int lb_set_displacements(lb_t * lb, int ndisp, MPI_Aint * disp,
  *
  *****************************************************************************/
 
-int lb_io_info_set(lb_t * lb, io_info_t * io_info) {
+__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info) {
 
   char string[FILENAME_MAX];
 
@@ -585,7 +587,7 @@ int lb_io_info_set(lb_t * lb, io_info_t * io_info) {
  *
  *****************************************************************************/
 
-int lb_io_info(lb_t * lb, io_info_t ** io_info) {
+__host__ int lb_io_info(lb_t * lb, io_info_t ** io_info) {
 
   assert(lb);
   assert(io_info);
@@ -600,20 +602,47 @@ int lb_io_info(lb_t * lb, io_info_t ** io_info) {
  *  lb_halo
  *
  *  Swap the distributions at the periodic/processor boundaries
- *  in each direction.
+ *  in each direction. Default target swap.
  *
  *****************************************************************************/
 
-int lb_halo(lb_t * lb) {
+__host__ int lb_halo(lb_t * lb) {
 
   assert(lb);
 
-  halo_swap_driver(lb->halo, lb->target->f);
+  lb_halo_swap(lb, LB_HALO_TARGET);
 
-  /* Also available */
-  /* lb_halo_via_copy(lb);*/
+  return 0;
+}
 
-  /* If MODEL order and NSIMDVL is 1 the struct
+/*****************************************************************************
+ *
+ *  lb_halo_swap
+ *
+ *  Specify the type of swap wanted.
+ *
+ *****************************************************************************/
+
+__host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
+
+  double * data;
+
+  assert(lb);
+
+  switch (flag) {
+  case LB_HALO_HOST:
+    lb_halo_via_copy(lb);
+    break;
+  case LB_HALO_TARGET:
+    copyFromTarget(&data, &lb->target->f, sizeof(double *));
+    halo_swap_packed(lb->halo, data);
+    break;
+  default:
+    /* Should not be here... */
+    assert(0);
+  }
+
+  /* In the limited case  MODEL order and NSIMDVL is 1 the struct
    * approach is still available. */
 
   return 0;
@@ -630,7 +659,7 @@ int lb_halo(lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_halo_via_struct(lb_t * lb) {
+__host__ int lb_halo_via_struct(lb_t * lb) {
 
   int ic, jc, kc;
   int ihalo, ireal;
@@ -815,8 +844,6 @@ static int lb_f_write(FILE * fp, int index, void * self) {
   return 0;
 }
 
-static int isReduced_=0;
-
 /*****************************************************************************
  *
  *  lb_halo_set
@@ -825,7 +852,7 @@ static int isReduced_=0;
  *
  *****************************************************************************/
 
-int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
+__host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
 
   assert(lb);
 
@@ -860,7 +887,7 @@ int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
  *
  *****************************************************************************/
 
-int lb_halo_reduced(lb_t * lb) {
+__host__ int lb_halo_reduced(lb_t * lb) {
 
   return isReduced_;
 
@@ -874,7 +901,7 @@ int lb_halo_reduced(lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_ndist(lb_t * lb, int * ndist) {
+__host__ __device__ int lb_ndist(lb_t * lb, int * ndist) {
 
   assert(lb);
   assert(ndist);
@@ -893,7 +920,7 @@ int lb_ndist(lb_t * lb, int * ndist) {
  *
  *****************************************************************************/
 
-int lb_ndist_set(lb_t * lb, int n) {
+__host__ int lb_ndist_set(lb_t * lb, int n) {
 
   assert(lb);
   assert(n > 0);
@@ -912,6 +939,7 @@ int lb_ndist_set(lb_t * lb, int n) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f(lb_t * lb, int index, int p, int n, double * f) {
 
   assert(lb);
@@ -932,6 +960,7 @@ int lb_f(lb_t * lb, int index, int p, int n, double * f) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_set(lb_t * lb, int index, int p, int n, double fvalue) {
 
   assert(lb);
@@ -952,6 +981,7 @@ int lb_f_set(lb_t * lb, int index, int p, int n, double fvalue) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
 
   int p;
@@ -978,6 +1008,7 @@ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
  *
  *****************************************************************************/
 
+__host__
 int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
 
   int p;
@@ -1008,6 +1039,7 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
  *
  *****************************************************************************/
 
+__host__
 int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
 
   int p, ia, ib;
@@ -1044,6 +1076,7 @@ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
  *
  *****************************************************************************/
 
+__host__
 int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho) {
 
   int p;
@@ -1067,6 +1100,7 @@ int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho) {
  *
  *****************************************************************************/
 
+__host__
 int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
 
   int ia, ib, p;
@@ -1101,6 +1135,7 @@ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]) {
 
   int p;
@@ -1126,6 +1161,7 @@ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL]) {
 
   int p, iv;
@@ -1152,6 +1188,7 @@ int lb_f_multi_index(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_multi_index_part(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL],
 			  int nv) {
 
@@ -1160,6 +1197,7 @@ int lb_f_multi_index_part(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL],
   assert(lb);
   assert(n >= 0 && n < lb->ndist);
   assert(index >= 0 && index < lb->nsite);
+  assert(0); /* Not used */
 
   for (p = 0; p < NVEL; p++) {
     for (iv = 0; iv < nv; iv++) {
@@ -1179,6 +1217,7 @@ int lb_f_multi_index_part(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL],
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]) {
 
   int p;
@@ -1204,6 +1243,7 @@ int lb_f_index_set(lb_t * lb, int index, int n, double f[NVEL]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL]){
 
   int p, iv;
@@ -1230,6 +1270,7 @@ int lb_f_multi_index_set(lb_t * lb, int index, int n, double fv[NVEL][NSIMDVL]){
  *
  *****************************************************************************/
 
+__host__ __device__
 int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
 			      double fv[NVEL][NSIMDVL], int nv) {
   int p, iv;
@@ -1255,7 +1296,7 @@ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
  *
  *****************************************************************************/
 
-int lb_order(lb_t * lb) {
+__host__ int lb_order(lb_t * lb) {
 
   assert(lb);
 
@@ -1275,7 +1316,7 @@ int lb_order(lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_halo_via_copy(lb_t * lb) {
+__host__ int lb_halo_via_copy(lb_t * lb) {
 
   int ic, jc, kc;
   int n, p;

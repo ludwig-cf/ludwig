@@ -119,7 +119,6 @@ __host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
   }
   else {
     fe_vt_t * vt;
-    assert(0);
     /* Device implementation pending */
     targetConstAddress((void **) &vt, fe_electro_dvt);
   }

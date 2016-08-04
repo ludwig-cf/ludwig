@@ -22,7 +22,7 @@
  * per-species quantities. It avoids allocation of  short arrays,
  * which is slightly tedious, particularly on the device. */
 
-#define PSI_NKMAX 2
+#define PSI_NKMAX 4
 
 /* Force computation method */
 

@@ -154,7 +154,7 @@ int do_test2(physics_t * phys) {
   double rho0;    /* Test charge density */
   double psi0;    /* Test potential */
   double mu0;     /* Expected chemical potential */
-  double mu[2];   /* Actual chemical potential */
+  double mu[3];   /* Actual chemical potential */
 
   fe_electro_t * fe = NULL;
 
@@ -165,7 +165,7 @@ int do_test2(physics_t * phys) {
   fe_electro_create(psi, &fe);
   assert(fe);
 
-  for (n = 0; n < nk; n++) {
+  for (n = 0; n < 3; n++) {
     rho0 = 1.0 + 1.0*n;
     psi_rho_set(psi, index, n, rho0);
     psi_valency_set(psi, n, valency[n]);

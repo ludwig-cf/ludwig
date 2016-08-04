@@ -358,13 +358,11 @@ static double test_encode(int code, int nf, int iv, int n) {
 static int test_dab(field_grad_t * fg) {
 
   int n, nf;
-  int nsites;
   int index = 1;
 
   assert(fg);
 
   field_nf(fg->field, &nf);
-  nsites = coords_nsites();
 
   assert(nf == 1);
 

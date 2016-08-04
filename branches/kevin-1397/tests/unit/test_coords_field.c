@@ -137,6 +137,7 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
             bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
             dact = *((double *) (bufc + sz*indexf));
+	    /*printf("%2d %2d %2d %14.7e %14.7e\n", ic, jc, kc, dref, dact);*/
             assert(fabs(dact - dref) < FLT_EPSILON);
           }
         }

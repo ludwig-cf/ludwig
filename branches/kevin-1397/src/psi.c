@@ -99,6 +99,7 @@ int psi_create(int nk, psi_t ** pobj) {
 
   assert(pobj);
   assert(nk > 1);
+  assert(nk <= PSI_NKMAX);
 
   nsites = coords_nsites();
   nhalo = coords_nhalo();

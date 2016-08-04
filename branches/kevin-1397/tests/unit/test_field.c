@@ -25,6 +25,7 @@
 #include "test_coords_field.h"
 #include "tests.h"
 
+static int do_test0(void);
 static int do_test1(void);
 static int do_test3(void);
 static int do_test5(void);
@@ -45,6 +46,7 @@ int test_field_suite(void) {
 
   /* info("\nOrder parameter tests...\n");*/
 
+  do_test0();
   do_test1();
   do_test3();
   do_test5();
@@ -56,6 +58,40 @@ int test_field_suite(void) {
 
   pe_info(pe, "PASS     ./unit/test_field\n");
   pe_free(pe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test0
+ *
+ *  Small system test.
+ *
+ *****************************************************************************/
+
+static int do_test0(void) {
+
+  int nfref = 1;
+  int nhalo = 2;
+  int ntotal[3] = {8, 8, 8};
+  field_t * phi = NULL;
+
+  
+  coords_nhalo_set(nhalo);
+  coords_ntotal_set(ntotal);
+  coords_init();
+  le_init();
+
+  field_create(nfref, "phi", &phi);
+  field_init(phi, nhalo);
+
+  /* Halo */
+  test_field_halo(phi);
+
+  field_free(phi);
+  le_finish();
+  coords_finish();
 
   return 0;
 }
@@ -107,7 +143,7 @@ int do_test1(void) {
 
   /* Halo */
   test_field_halo(phi);
-  
+
   field_free(phi);
   le_finish();
   coords_finish();
@@ -238,9 +274,13 @@ static int do_test5(void) {
 static int test_field_halo(field_t * phi) {
 
   assert(phi);
-
+  
   test_coords_field_set(phi->nf, phi->data, MPI_DOUBLE, test_ref_double1);
-  field_halo(phi);
+  field_memcpy(phi, cudaMemcpyHostToDevice);
+ 
+  field_halo_swap(phi, FIELD_HALO_TARGET);
+
+  field_memcpy(phi, cudaMemcpyDeviceToHost);
   test_coords_field_check(phi->nhcomm, phi->nf, phi->data, MPI_DOUBLE,
 			  test_ref_double1);
 
