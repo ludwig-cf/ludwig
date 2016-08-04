@@ -74,6 +74,15 @@ static int field_grad_init(field_grad_t * obj) {
 
   targetGetDeviceCount(&ndevice);
 
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    targetCalloc((void **) &obj->target, sizeof(field_grad_t));
+    copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
+    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+  }
+
   if (obj->level >= 2) {
 
     obj->grad = (double *) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
@@ -84,27 +93,23 @@ static int field_grad_init(field_grad_t * obj) {
 
     /* Allocate data space on target (or alias) */
  
-    if (ndevice == 0) {
-      obj->target = obj;
-    }
-    else {
-
-      targetCalloc((void **) &obj->target, sizeof(field_grad_t));
-
+    if (ndevice > 0) {
       targetCalloc((void **) &tmp, obj->nf*NVECTOR*nsites*sizeof(double));
       copyToTarget(&obj->target->grad, &tmp, sizeof(double *)); 
 
       targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
       copyToTarget(&obj->target->delsq, &tmp, sizeof(double *)); 
-
-      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
     }
   }
 
   if (obj->level == 3) {
     obj->d_ab = (double*) calloc(NSYMM*obj->nf*nsites, sizeof(double));
     if (obj->d_ab == NULL) fatal("calloc(fieldgrad->d_ab) failed\n");
-    assert(ndevice == 0);
+
+    if (ndevice > 0) {
+      targetCalloc((void **) &tmp, NSYMM*obj->nf*nsites*sizeof(double));
+      copyToTarget(&obj->target->d_ab, &tmp, sizeof(double *));
+    }
   }
 
   if (obj->level >= 4) {
@@ -112,7 +117,14 @@ static int field_grad_init(field_grad_t * obj) {
     obj->delsq_delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
     if (obj->grad_delsq == NULL) fatal("calloc(grad->grad_delsq) failed");
     if (obj->delsq_delsq == NULL) fatal("calloc(grad->delsq_delsq) failed");
-    assert(ndevice == 0);
+
+    if (ndevice > 0) {
+      targetCalloc((void **) &tmp, NVECTOR*obj->nf*nsites*sizeof(double));
+      copyToTarget(&obj->target->grad_delsq, &tmp, sizeof(double *)); 
+
+      targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+      copyToTarget(&obj->target->delsq_delsq, &tmp, sizeof(double *)); 
+    }
   }
 
   return 0;
@@ -174,6 +186,13 @@ __host__ void field_grad_free(field_grad_t * obj) {
     targetFree(tmp);
     copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *)); 
     targetFree(tmp);
+    copyFromTarget(&tmp, &obj->target->d_ab, sizeof(double *));
+    if (tmp) targetFree(tmp);
+    copyFromTarget(&tmp, &obj->target->grad_delsq, sizeof(double *));
+    if (tmp) targetFree(tmp);
+    copyFromTarget(&tmp, &obj->target->delsq_delsq, sizeof(double *));
+    if (tmp) targetFree(tmp);
+
     targetFree(obj->target);
   }
 

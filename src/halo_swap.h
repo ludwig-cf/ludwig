@@ -13,8 +13,8 @@
  *
  *****************************************************************************/
 
-#ifndef HALO_SWAP_H
-#define HALO_SWAP_H
+#ifndef LUDWIG_HALO_SWAP_H
+#define LUDWIG_HALO_SWAP_H
 
 
 #include "kernel.h"
@@ -30,8 +30,10 @@ __host__ int halo_swap_create_r1(int nhcomm, int naddr, int na, halo_swap_t ** p
 __host__ int halo_swap_create_r2(int nhcomm, int naddr, int na, int nb, halo_swap_t ** phalo);
 __host__ int halo_swap_free(halo_swap_t * halo);
 __host__ int halo_swap_commit(halo_swap_t * halo);
-__host__ int halo_swap_driver(halo_swap_t * halo, double * ddata);
 __host__ int halo_swap_handlers_set(halo_swap_t * halo, f_pack_t pack, f_unpack_t unpack);
+__host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
+				  MPI_Datatype mpidata);
+__host__ int halo_swap_packed(halo_swap_t * halo, double * data);
 
 __global__ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data);
 __global__ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data);

@@ -62,8 +62,6 @@ struct halo_swap_param_s {
 static __constant__ halo_swap_param_t const_param;
 
 __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb, halo_swap_t ** phalo);
-__host__ int halo_swap_device(halo_swap_t * halo, double * data);
-__host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf, MPI_Datatype mpidata);
 __host__ __target__ void halo_swap_coords(halo_swap_t * halo, int id, int index, int * ic, int * jc, int * kc);
 __host__ __target__ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc);
 __host__ __target__ int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, int jc, int kc);
@@ -183,6 +181,7 @@ __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb,
   }
   else {
     double * tmp;
+    halo_swap_param_t * tmpp;
 
     /* Target structure */
     targetCalloc((void **) &halo->target, sizeof(halo_swap_t));
@@ -223,6 +222,9 @@ __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb,
     copyToTarget(&halo->target->hzlo, &tmp, sizeof(double *));
     targetCalloc((void **) &tmp, sz);
     copyToTarget(&halo->target->hzhi, &tmp, sizeof(double *));
+
+    targetConstAddress((void **) &tmpp, const_param);
+    copyToTarget(&halo->target->param, &tmpp, sizeof(halo_swap_param_t *)); 
 
     /* Device constants */
     halo_swap_commit(halo);
@@ -337,16 +339,17 @@ __host__ int halo_swap_commit(halo_swap_t * halo) {
  *  "data" needs to be a device pointer
  *
  *****************************************************************************/
-
+#ifdef OLD_SHIT
 __host__ int halo_swap_driver(halo_swap_t * halo, double * data) {
 
   assert(halo);
   assert(data);
 
+  assert(0); /* Replace */
   if (halo->param->nswap > halo->param->nlocal[Z]) {
     /* Bit of a kludge: if 2d and host-only, use this ... */
     /* Not LB distributions */
-   halo_swap_host_rank1(halo, data, MPI_DOUBLE);
+    halo_swap_host_rank1(halo, data, MPI_DOUBLE);
   }
   else {
     halo_swap_device(halo, data);
@@ -354,7 +357,7 @@ __host__ int halo_swap_driver(halo_swap_t * halo, double * data) {
 
   return 0;
 }
-
+#endif
 /*****************************************************************************
  *
  *  halo_swap_host_rank1
@@ -659,15 +662,16 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
 /*****************************************************************************
  *
- *  halo_swap_device
+ *  halo_swap_packed
  *
- *  Version allowing for host/device copies.
+ *  Version allowing for host/device copies; data must be packed
+ *  and unpacked to/from device via appropriate kernels.
  *
  *  "data" must be a device pointer
  *
  *****************************************************************************/
 
-__host__ int halo_swap_device(halo_swap_t * halo, double * data) {
+__host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   int ncount;
   int ndevice;
@@ -680,6 +684,7 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
   int nd, nh;
   int hsz[3];
   dim3 nblk, ntpb;
+  double * tmp;
 
   MPI_Comm comm = cart_comm();
 
@@ -692,7 +697,7 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
   const int ftagx = 642, ftagy = 643, ftagz = 644;
 
   assert(halo);
- /* 2D systems require fix... in the meantime...*/
+  /* 2D systems require fix... in the meantime...*/
   assert(halo->param->nlocal[Z] >= halo->param->nswap);
 
   targetGetDeviceCount(&ndevice);
@@ -740,58 +745,70 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
   }
 
   /* pack X edges on accelerator */
-  /* pack Y edges on accelerator */
-  /* pack Z edges on accelerator */
 
   kernel_launch_param(hsz[X], &nblk, &ntpb);
   __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[X],
 		  halo->target, X, data);
 
   if (ndevice > 0) {
-    ncount = halo->param->hsz[X]*halo->param->nfel;
-    cudaMemcpyAsync(halo->fxlo, halo->target->fxlo, ncount*sizeof(double),
+    ncount = hsz[X]*halo->param->nfel;
+    copyFromTarget(&tmp, &halo->target->fxlo, sizeof(double *));
+    cudaMemcpyAsync(halo->fxlo, tmp, ncount*sizeof(double),
 		    cudaMemcpyDeviceToHost, halo->stream[X]);
-    cudaMemcpyAsync(halo->fxhi, halo->target->fxhi, ncount*sizeof(double),
+    copyFromTarget(&tmp, &halo->target->fxhi, sizeof(double *));
+    cudaMemcpyAsync(halo->fxhi, tmp, ncount*sizeof(double),
 		    cudaMemcpyDeviceToHost, halo->stream[X]);
   }
+
+  /* pack Y edges on accelerator */
 
   kernel_launch_param(hsz[Y], &nblk, &ntpb);
   __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[Y],
 		  halo->target, Y, data);
 
   if (ndevice > 0) {
-    ncount = halo->param->hsz[Y]*halo->param->nfel;
-    cudaMemcpyAsync(halo->fylo, halo->target->fylo, ncount*sizeof(double),
+    ncount = hsz[Y]*halo->param->nfel;
+    copyFromTarget(&tmp, &halo->target->fylo, sizeof(double *));
+    cudaMemcpyAsync(halo->fylo, tmp, ncount*sizeof(double),
 		    cudaMemcpyDeviceToHost, halo->stream[Y]);
-    cudaMemcpyAsync(halo->fyhi, halo->target->fyhi, ncount*sizeof(double),
+    copyFromTarget(&tmp, &halo->target->fyhi, sizeof(double *));
+    cudaMemcpyAsync(halo->fyhi, tmp, ncount*sizeof(double),
 		    cudaMemcpyDeviceToHost, halo->stream[Y]);
   }
+
+  /* pack Z edges on accelerator */
 
   kernel_launch_param(hsz[Z], &nblk, &ntpb);
   __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
   if (ndevice > 0) {
-    ncount = halo->param->hsz[Z]*halo->param->nfel;
-    cudaMemcpyAsync(halo->fzlo, halo->target->fzlo, ncount*sizeof(double),
+    ncount = hsz[Z]*halo->param->nfel;
+    copyFromTarget(&tmp, &halo->target->fzlo, sizeof(double *));
+    cudaMemcpyAsync(halo->fzlo, tmp, ncount*sizeof(double),
 		    cudaMemcpyDeviceToHost, halo->stream[Z]);
-    cudaMemcpyAsync(halo->fzhi, halo->fzhi, ncount*sizeof(double),
+    copyFromTarget(&tmp, &halo->target->fzhi, sizeof(double *));
+    cudaMemcpyAsync(halo->fzhi, tmp, ncount*sizeof(double),
 		    cudaMemcpyDeviceToHost, halo->stream[Z]);
   }
 
 
- /* Wait for X; copy or MPI recvs; put X halos back on device, and unpack */
+  /* Wait for X; copy or MPI recvs; put X halos back on device, and unpack */
 
   cudaStreamSynchronize(halo->stream[X]);
-  ncount = halo->param->hsz[X]*halo->param->nfel;
+  ncount = hsz[X]*halo->param->nfel;
 
   if (cart_size(X) == 1) {
     /* note these copies do not alias for ndevice == 1 */
     /* fxhi -> hxlo */
-    cudaMemcpyAsync(halo->target->hxlo, halo->fxhi, ncount*sizeof(double),
+    memcpy(halo->hxlo, halo->fxhi, ncount*sizeof(double));
+    copyFromTarget(&tmp, &halo->target->hxlo, sizeof(double *));
+    cudaMemcpyAsync(tmp, halo->fxhi, ncount*sizeof(double),
 		    cudaMemcpyHostToDevice, halo->stream[X]);
     /* fxlo -> hxhi */
-    cudaMemcpyAsync(halo->target->hxhi, halo->fxlo, ncount*sizeof(double),
+    memcpy(halo->hxhi, halo->fxlo, ncount*sizeof(double));
+    copyFromTarget(&tmp, &halo->target->hxhi, sizeof(double *));
+    cudaMemcpyAsync(tmp, halo->fxlo, ncount*sizeof(double),
 		    cudaMemcpyHostToDevice, halo->stream[X]);
   }
   else {
@@ -803,11 +820,13 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_x, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	cudaMemcpyAsync(halo->target->hxlo, halo->hxlo, ncount*sizeof(double),
+	copyFromTarget(&tmp, &halo->target->hxlo, sizeof(double *));
+	cudaMemcpyAsync(tmp, halo->hxlo, ncount*sizeof(double),
 			cudaMemcpyHostToDevice, halo->stream[X]);
       }
       if (mc == 1 && ndevice > 0) {
-	cudaMemcpyAsync(halo->target->hxhi, halo->hxhi, ncount*sizeof(double),
+	copyFromTarget(&tmp, &halo->target->hxhi, sizeof(double *));
+	cudaMemcpyAsync(tmp, halo->hxhi, ncount*sizeof(double),
 			cudaMemcpyHostToDevice, halo->stream[X]);
       }
     }
@@ -846,17 +865,20 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
     }
   }
 
-
   /* Swap in Y, send data back to device and unpack */
 
   ncount = halo->param->hsz[Y]*halo->param->nfel;
 
   if (cart_size(Y) == 1) {
     /* fyhi -> hylo */
-    cudaMemcpyAsync(halo->target->hylo, halo->fyhi, ncount*sizeof(double),
+    memcpy(halo->hylo, halo->fyhi, ncount*sizeof(double));
+    copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
+    cudaMemcpyAsync(tmp, halo->fyhi, ncount*sizeof(double),
 		    cudaMemcpyHostToDevice, halo->stream[Y]);
     /* fylo -> hyhi */
-    cudaMemcpyAsync(halo->target->hyhi, halo->fylo,ncount*sizeof(double),
+    memcpy(halo->hyhi, halo->fylo, ncount*sizeof(double));
+    copyFromTarget(&tmp, &halo->target->hyhi, sizeof(double *));
+    cudaMemcpyAsync(tmp, halo->fylo,ncount*sizeof(double),
 		    cudaMemcpyHostToDevice, halo->stream[Y]);
   }
   else {
@@ -868,15 +890,18 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_y, &mc, status);
       if (mc == 0 && ndevice > 0) {
+	copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
 	cudaMemcpyAsync(halo->target->hylo, halo->hylo, ncount*sizeof(double),
 			cudaMemcpyHostToDevice, halo->stream[Y]);
       }
       if (mc == 1 && ndevice > 0) {
+	copyFromTarget(&tmp, &halo->target->hyhi, sizeof(double *));
 	cudaMemcpyAsync(halo->target->hyhi, halo->hyhi, ncount*sizeof(double),
 			cudaMemcpyHostToDevice, halo->stream[Y]);
       }
     }
   }
+
 
   kernel_launch_param(hsz[Y], &nblk, &ntpb);
   __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[Y],
@@ -933,16 +958,19 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
     }
   }
 
+
   /* The z-direction swap  */
 
   ncount = halo->param->hsz[Z]*halo->param->nfel;
 
   if (cart_size(Z) == 1) {
     /* fzhi -> hzlo */
-    cudaMemcpyAsync(halo->target->hzlo, halo->fzhi, ncount*sizeof(double),
+    copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
+    cudaMemcpyAsync(tmp, halo->fzhi, ncount*sizeof(double),
 		    cudaMemcpyHostToDevice, halo->stream[Z]);
     /* fzlo -> hzhi */
-    cudaMemcpyAsync(halo->target->hzhi, halo->fzlo, ncount*sizeof(double),
+    copyFromTarget(&tmp, &halo->target->hzhi, sizeof(double *));
+    cudaMemcpyAsync(tmp, halo->fzlo, ncount*sizeof(double),
 		    cudaMemcpyHostToDevice, halo->stream[Z]);
   }
   else {
@@ -954,13 +982,15 @@ __host__ int halo_swap_device(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_z, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	cudaMemcpyAsync(halo->target->hzlo, halo->hzlo, ncount*sizeof(double),
+	copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
+	cudaMemcpyAsync(tmp, halo->hzlo, ncount*sizeof(double),
 			cudaMemcpyHostToDevice, halo->stream[Z]);
       }
     }
     if (mc == 1 && ndevice > 0) {
-	cudaMemcpyAsync(halo->target->hzhi, halo->hzhi, ncount*sizeof(double),
-			cudaMemcpyHostToDevice, halo->stream[Z]);
+      copyFromTarget(&tmp, &halo->target->hzhi, sizeof(double *));
+      cudaMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
+		      cudaMemcpyHostToDevice, halo->stream[Z]);
     }
   }
 
@@ -989,6 +1019,10 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
 
   int kindex;
 
+  assert(halo);
+  assert(id == X || id == Y || id == Z);
+  assert(data);
+
   __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
 
     int nh;
@@ -997,8 +1031,8 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
     int ia, indexl, indexh, ic, jc, kc;
     int hsz;
     int hi; /* high end offset */
-    double * __restrict__ buflo;
-    double * __restrict__ bufhi;
+    double * __restrict__ buflo = NULL;
+    double * __restrict__ bufhi = NULL;
 
     naddr = halo->param->naddr;
     na = halo->param->na;
@@ -1010,19 +1044,17 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
     nh = halo->param->nhalo;
     halo_swap_coords(halo, id, kindex, &ic, &jc, &kc);
 
+    indexl = 0;
+    indexh = 0;
+
     if (id == X) {
-      /* lo: nh + ic */
-      /* hi: nh + nlocal[X] - 1 - ic */
       hi = nh + halo->param->nlocal[X] - halo->param->nswap;
-      /* hi = halo->param->nlocal[X] - 1 - ic;*/
       indexl = halo_swap_index(halo, nh + ic, jc, kc);
       indexh = halo_swap_index(halo, hi + ic, jc, kc);
       buflo = halo->fxlo;
       bufhi = halo->fxhi;
     }
     if (id == Y) {
-      /* lo: nh + jc */
-      /* hi = halo->param->nlocal[Y] - 1 - jc;*/
       hi = nh + halo->param->nlocal[Y] - halo->param->nswap;
       indexl = halo_swap_index(halo, ic, nh + jc, kc);
       indexh = halo_swap_index(halo, ic, hi + jc, kc);
@@ -1031,13 +1063,6 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
     }
     if (id == Z) {
       hi = nh + halo->param->nlocal[Z] - halo->param->nswap;
-      /* Low : nh + imin(kc, nlocal[Z]-1)  */
-      /* High: nh + imax(nlocal[Z]-1-kc,0) */
-      /*lo = imin(kc, halo->param->nlocal[Z] - 1);
-	hi = imax(halo->param->nlocal[Z] - 1 - kc, 0);*/
-      /*lo = imin(kc, halo->param->nlocal[Z] - 1);
-	hi = imax(hi + kc, nh);*/
-      /* printf("%2d %2d %2d %2d %2d\n", ic, jc, kc, nh + lo, hi);*/
       indexl = halo_swap_index(halo, ic, jc, nh + kc);
       indexh = halo_swap_index(halo, ic, jc, hi + kc);
       buflo = halo->fzlo;
@@ -1097,6 +1122,10 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
   int kindex;
 
+  assert(halo);
+  assert(id == X || id == Y || id == Z);
+  assert(data);
+
   /* Unpack buffer this site. */
 
   __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
@@ -1108,8 +1137,8 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
     int nh;                          /* Full halo width */
     int ic, jc, kc;                  /* Lattice ooords */
     int lo, hi;                      /* Offset for low, high end */
-    double * __restrict__ buflo;
-    double * __restrict__ bufhi;
+    double * __restrict__ buflo = NULL;
+    double * __restrict__ bufhi = NULL;
 
     naddr = halo->param->naddr;
     na = halo->param->na;
@@ -1117,6 +1146,9 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
     nh = halo->param->nhalo;
     halo_swap_coords(halo, id, kindex, &ic, &jc, &kc);
+
+    indexl = 0;
+    indexh = 0;
 
     if (id == X) {
       lo = nh - halo->param->nswap;

@@ -95,7 +95,7 @@ int do_test_velocity(lb_halo_enum_t halo) {
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {
-	    lb_f_set(lb, index, p, nd, 1.0*(p + nd));
+	    lb_f_set(lb, index, p, nd, 1.0*(p + nd*NVEL));
 	  }
 	}
 
@@ -103,8 +103,10 @@ int do_test_velocity(lb_halo_enum_t halo) {
     }
   }
 
+  lb_model_copy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
   lb_propagation(lb);
+  lb_model_copy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
@@ -117,7 +119,8 @@ int do_test_velocity(lb_halo_enum_t halo) {
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {
 	    lb_f(lb, index, p, nd, &f_actual);
-	    assert(fabs(f_actual - 1.0*(p + nd)) < DBL_EPSILON);
+	    /*printf("%2d %2d %2d %d %2d %2d %f\n", ic, jc, kc, index, nd, p, f_actual);*/
+	    assert(fabs(f_actual - 1.0*(p + nd*NVEL)) < DBL_EPSILON);
 	  }
 	}
       }

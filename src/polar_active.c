@@ -46,6 +46,8 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "polar_active.h"
 #include "util.h"
 
@@ -112,14 +114,16 @@ __host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe) {
     obj->target = obj;
   }
   else {
-    assert(0); /* Arrange device implementation */
-    fe_polar_param_t * p;
+    fe_polar_param_t * tmp;
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_polar_t));
-    targetConstAddress((void **) &p, const_param);
-    copyToTarget(&obj->target->param, p, sizeof(fe_polar_param_t *));
+    targetConstAddress((void **) &tmp, const_param);
+    copyToTarget(&obj->target->param, tmp, sizeof(fe_polar_param_t *));
     targetConstAddress((void **) &vt, fe_polar_dvt);
     copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
+
+    copyToTarget(&obj->target->p, p->target, sizeof(field_t *));
+    copyToTarget(&obj->target->dp, dp->target, sizeof(field_grad_t *));
   }
 
   *fe = obj;

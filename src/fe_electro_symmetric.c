@@ -128,7 +128,7 @@ __host__ int fe_es_create(fe_symm_t * symm, fe_electro_t * elec,
   else {
     fe_vt_t * vt;
     fe_es_param_t * tmp;
-    assert(0); /* device implementation pending */
+
     targetCalloc((void **) &fe->target, sizeof(fe_es_t));
     targetConstAddress((void **) &tmp, const_param);
     copyToTarget(&fe->target->param, tmp, sizeof(fe_es_param_t *));
@@ -149,6 +149,8 @@ __host__ int fe_es_create(fe_symm_t * symm, fe_electro_t * elec,
 __host__ int fe_es_free(fe_es_t * fe) {
 
   assert(fe);
+
+  if (fe->target != fe) targetFree(fe->target);
 
   free(fe->param);
   free(fe);

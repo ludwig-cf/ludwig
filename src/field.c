@@ -27,7 +27,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "coords_field.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
@@ -84,7 +83,7 @@ __host__ int field_create(int nf, const char * name, field_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ void field_free(field_t * obj) {
+__host__ int field_free(field_t * obj) {
 
   int ndevice;
   double * tmp;
@@ -105,7 +104,7 @@ __host__ void field_free(field_t * obj) {
   if (obj->info) io_info_destroy(obj->info);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -205,7 +204,7 @@ __host__ int field_memcpy(field_t * obj, int flag) {
  *
  *****************************************************************************/
 
-int field_nf(field_t * obj, int * nf) {
+__host__ __device__ int field_nf(field_t * obj, int * nf) {
 
   assert(obj);
   assert(nf);
@@ -221,8 +220,8 @@ int field_nf(field_t * obj, int * nf) {
  *
  *****************************************************************************/
 
-int field_init_io_info(field_t * obj, int grid[3], int form_in,
-		       int form_out) {
+__host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
+				int form_out) {
   assert(obj);
   assert(grid);
   assert(obj->info == NULL);
@@ -249,7 +248,7 @@ int field_init_io_info(field_t * obj, int grid[3], int form_in,
  *
  *****************************************************************************/
 
-int field_io_info(field_t * obj, io_info_t ** info) {
+__host__ int field_io_info(field_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(obj->info);
@@ -266,12 +265,39 @@ int field_io_info(field_t * obj, io_info_t ** info) {
  *
  *****************************************************************************/
 
-int field_halo(field_t * obj) {
+__host__ int field_halo(field_t * obj) {
 
   assert(obj);
-  assert(obj->data);
 
-  halo_swap_driver(obj->halo, obj->target->data);
+  /* Default to ... */
+  field_halo_swap(obj, FIELD_HALO_TARGET);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_swap
+ *
+ *****************************************************************************/
+
+__host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
+
+  double * data;
+
+  assert(obj);
+
+  switch (flag) {
+  case FIELD_HALO_HOST:
+    halo_swap_host_rank1(obj->halo, obj->data, MPI_DOUBLE);
+    break;
+  case FIELD_HALO_TARGET:
+    copyFromTarget(&data, &obj->target->data, sizeof(double *));
+    halo_swap_packed(obj->halo, data);
+    break;
+  default:
+    assert(0);
+  }
 
   return 0;
 }
@@ -288,7 +314,7 @@ int field_halo(field_t * obj) {
  *
  *****************************************************************************/
 
-int field_leesedwards(field_t * obj) {
+__host__ int field_leesedwards(field_t * obj) {
 
   int nf;
   int nhalo;

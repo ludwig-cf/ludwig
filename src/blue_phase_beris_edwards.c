@@ -127,9 +127,10 @@ __host__ int beris_edw_create(beris_edw_t ** pobj) {
     obj->target = obj;
   }
   else {
+    beris_edw_param_t * tmp;
     targetCalloc((void **) &obj->target, sizeof(beris_edw_t));
-    targetConstAddress((void **) &obj->target->param, static_param);
-    assert(0); /* Awaiting a test */
+    targetConstAddress((void **) &tmp, static_param);
+    copyToTarget(&obj->target->param, &tmp, sizeof(beris_edw_param_t *));
   }
 
   *pobj = obj;

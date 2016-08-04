@@ -45,11 +45,11 @@ int main(int argc, char ** argv) {
 
 int tests_create() {
 
-  test_kernel_suite();
-  test_lb_prop_suite();
-
   test_pe_suite();
   test_coords_suite();
+
+  test_kernel_suite();
+  test_field_suite();
 
   test_angle_cosine_suite();
   test_assumptions_suite();
