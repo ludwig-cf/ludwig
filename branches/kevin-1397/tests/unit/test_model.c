@@ -56,7 +56,9 @@ int test_model_suite(void) {
 
   do_test_model_distributions();
   do_test_model_halo_swap();
-  do_test_model_reduced_halo_swap();
+  if (DATA_MODEL == ADDRESS_FORWARD && NSIMDVL == 1) {
+    do_test_model_reduced_halo_swap();
+  }
   do_test_lb_model_io();
   do_test_d3q19_ghosts();
 
@@ -427,7 +429,9 @@ int do_test_model_halo_swap() {
     }
   }
 
+  lb_model_copy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
+  lb_model_copy(lb, cudaMemcpyDeviceToHost);
 
   /* Test all the sites not in the interior */
 
@@ -513,7 +517,7 @@ int do_test_model_reduced_halo_swap(void) {
     }
   }
 
-  lb_halo(lb);
+  lb_halo_via_struct(lb);
 
   /* Now check that the interior sites are unchanged */
 

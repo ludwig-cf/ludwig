@@ -49,7 +49,6 @@ int tests_create() {
   test_coords_suite();
 
   test_kernel_suite();
-  test_field_suite();
 
   test_angle_cosine_suite();
   test_assumptions_suite();
@@ -65,7 +64,7 @@ int tests_create() {
   test_fe_electro_suite();
   test_fe_electro_symm_suite();
   test_field_suite();
-  test_field_grad_suite();           
+  test_field_grad_suite();
   test_halo_suite();
   test_hydro_suite();
   test_io_suite();
@@ -87,10 +86,10 @@ int tests_create() {
 
   /* Failing... pending investigation */
 
+  /* test_bp_suite(); Needs attention to electric field SHIT */
   /* test_nernst_planck_suite(); */
   /* test_psi_sor_suite();*/
   /* test_phi_ch_suite(); replace by advection without CH */
-  /* test_bp_suite(); Needs attention to electric field */
 
 
   return 0;

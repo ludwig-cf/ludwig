@@ -186,8 +186,10 @@ int do_test_source_destination(lb_halo_enum_t halo) {
     }
   }
 
+  lb_model_copy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
   lb_propagation(lb);
+  lb_model_copy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
