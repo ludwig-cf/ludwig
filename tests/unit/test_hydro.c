@@ -117,7 +117,11 @@ static int do_test_halo1(int nhalo, int nhcomm) {
   assert(hydro);
 
   test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
+  hydro_memcpy(hydro, cudaMemcpyHostToDevice);
+
   hydro_u_halo(hydro);
+
+  hydro_memcpy(hydro, cudaMemcpyDeviceToHost);
   test_coords_field_check(nhcomm, NHDIM, hydro->u, MPI_DOUBLE,
 			  test_ref_double1);
 

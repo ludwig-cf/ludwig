@@ -270,7 +270,9 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
     }
   }
 
+  lb_model_copy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
+  lb_model_copy(lb, cudaMemcpyDeviceToHost);
 
   /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the
