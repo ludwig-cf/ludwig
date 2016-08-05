@@ -267,10 +267,22 @@ __host__ int field_io_info(field_t * obj, io_info_t ** info) {
 
 __host__ int field_halo(field_t * obj) {
 
+  int nlocal[3];
   assert(obj);
 
-  /* Default to ... */
-  field_halo_swap(obj, FIELD_HALO_TARGET);
+  coords_nlocal(nlocal);
+
+  if (nlocal[Z] < obj->nhcomm) {
+    /* This constraint means can't use target method;
+     * this also requires a copy if the address spaces are distinct. */
+    field_memcpy(obj, cudaMemcpyDeviceToHost);
+    field_halo_swap(obj, FIELD_HALO_HOST);
+    field_memcpy(obj, cudaMemcpyHostToDevice);
+  }
+  else {
+    /* Default to ... */
+    field_halo_swap(obj, FIELD_HALO_TARGET);
+  }
 
   return 0;
 }
