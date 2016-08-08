@@ -27,9 +27,9 @@
 #include "test_coords_field.h"
 #include "tests.h"
 
-static int do_test1(void);
-static int do_test_halo1(int nhalo, int nhcomm);
-static int do_test_io1(void);
+static int do_test1(pe_t * pe);
+static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm);
+static int do_test_io1(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -43,11 +43,11 @@ int test_hydro_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  do_test1();
-  do_test_halo1(1, 1);
-  do_test_halo1(2, 2);
-  do_test_halo1(2, 1);
-  do_test_io1();
+  do_test1(pe);
+  do_test_halo1(pe, 1, 1);
+  do_test_halo1(pe, 2, 2);
+  do_test_halo1(pe, 2, 1);
+  do_test_io1(pe);
 
   pe_info(pe, "PASS     ./unit/test_hydro\n");
   pe_free(pe);
@@ -61,19 +61,21 @@ int test_hydro_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test1(void) {
-
-  hydro_t * hydro = NULL;
+static int do_test1(pe_t * pe) {
 
   int index;
   const double force[3] = {1.0, 2.0, 3.0};
   const double u[3] = {-1.0, -2.0, -3.0};
   double check[3] = {0.0, 0.0, 0.0};
 
+  lees_edw_t * le = NULL;
+  hydro_t * hydro = NULL;
+
+  assert(pe);
   assert(NHDIM == 3);
 
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   hydro_create(1, &hydro);
   assert(hydro);
@@ -93,7 +95,7 @@ static int do_test1(void) {
 
   hydro_free(hydro);
 
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -105,13 +107,16 @@ static int do_test1(void) {
  *
  *****************************************************************************/
 
-static int do_test_halo1(int nhalo, int nhcomm) {
+static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
 
   hydro_t * hydro = NULL;
+  lees_edw_t * le = NULL;
+
+  assert(pe);
 
   coords_nhalo_set(nhalo);
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   hydro_create(nhcomm, &hydro);
   assert(hydro);
@@ -127,7 +132,7 @@ static int do_test_halo1(int nhalo, int nhcomm) {
 
   hydro_free(hydro);
 
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -139,15 +144,23 @@ static int do_test_halo1(int nhalo, int nhcomm) {
  *
  *****************************************************************************/
 
-static int do_test_io1(void) {
+static int do_test_io1(pe_t * pe) {
 
   int grid[3] = {1, 1, 1};
   const char * filename = "hydro-test-io";
+
+  MPI_Comm comm;
+
   io_info_t * iohandler = NULL;
-  hydro_t * hydro;
+  lees_edw_t * le = NULL;
+  hydro_t * hydro = NULL;
+
+  assert(pe);
+
+  pe_mpi_comm(pe, &comm);
 
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   if (pe_size() == 8) {
     grid[X] = 2;
@@ -166,14 +179,13 @@ static int do_test_io1(void) {
 
   io_write_data(iohandler, filename, hydro);
 
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "vel");
 
   hydro_free(hydro);
-  le_finish();
+  le_free(le);
   coords_finish();
-
 
   return 0;
 }

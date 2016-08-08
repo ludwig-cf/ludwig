@@ -20,10 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "coords.h"
-#include "io_harness.h"
 #include "polar_active_rt.h"
 
 static int polar_active_init_code(field_t * p);
@@ -36,35 +33,37 @@ static int polar_active_init_code(field_t * p);
  *
  *****************************************************************************/
 
-__host__ int polar_active_run_time(fe_polar_t * fe) {
+int polar_active_run_time(pe_t * pe, rt_t * rt, fe_polar_t * fe) {
 
   fe_polar_param_t param;
 
+  assert(pe);
+  assert(rt);
   assert(fe);
 
-  info("Polar active free energy selected.\n");
+  pe_info(pe, "Polar active free energy selected.\n");
 
   /* PARAMETERS */
 
-  RUN_get_double_parameter("polar_active_a", &param.a);
-  RUN_get_double_parameter("polar_active_b", &param.b);
-  RUN_get_double_parameter("polar_active_k", &param.kappa1);
-  RUN_get_double_parameter("polar_active_dk", &param.delta);
+  rt_double_parameter(rt, "polar_active_a", &param.a);
+  rt_double_parameter(rt, "polar_active_b", &param.b);
+  rt_double_parameter(rt, "polar_active_k", &param.kappa1);
+  rt_double_parameter(rt, "polar_active_dk", &param.delta);
   param.delta = 0.0; /* Pending molecular field */
-  RUN_get_double_parameter("polar_active_klc", &param.kappa2);
-  RUN_get_double_parameter("polar_active_zeta", &param.zeta);
-  RUN_get_double_parameter("polar_active_lambda", &param.lambda);
+  rt_double_parameter(rt, "polar_active_klc", &param.kappa2);
+  rt_double_parameter(rt, "polar_active_zeta", &param.zeta);
+  rt_double_parameter(rt, "polar_active_lambda", &param.lambda);
 
-  info("\n");
+  pe_info(pe, "\n");
 
-  info("Parameters:\n");
-  info("Quadratic term a     = %14.7e\n", param.a);
-  info("Quartic term b       = %14.7e\n", param.b);
-  info("Elastic constant k   = %14.7e\n", param.kappa1);
-  info("Elastic constant dk  = %14.7e\n", param.delta);
-  info("Elastic constant klc = %14.7e\n", param.kappa2);
-  info("Activity zeta        = %14.7e\n", param.zeta);
-  info("Lambda               = %14.7e\n", param.lambda);
+  pe_info(pe, "Parameters:\n");
+  pe_info(pe, "Quadratic term a     = %14.7e\n", param.a);
+  pe_info(pe, "Quartic term b       = %14.7e\n", param.b);
+  pe_info(pe, "Elastic constant k   = %14.7e\n", param.kappa1);
+  pe_info(pe, "Elastic constant dk  = %14.7e\n", param.delta);
+  pe_info(pe, "Elastic constant klc = %14.7e\n", param.kappa2);
+  pe_info(pe, "Activity zeta        = %14.7e\n", param.zeta);
+  pe_info(pe, "Lambda               = %14.7e\n", param.lambda);
 
   fe_polar_param_set(fe, param);
 
@@ -77,13 +76,13 @@ __host__ int polar_active_run_time(fe_polar_t * fe) {
  *
  *****************************************************************************/
 
-int polar_active_rt_initial_conditions(field_t * p) {
+int polar_active_rt_initial_conditions(pe_t * pe, rt_t * rt, field_t * p) {
 
   char key[BUFSIZ];
 
   assert(p);
 
-  RUN_get_string_parameter("polar_active_initialisation", key, BUFSIZ);
+  rt_string_parameter(rt, "polar_active_initialisation", key, BUFSIZ);
 
   if (strcmp(key, "from_file") == 0) {
     assert(0);
@@ -91,12 +90,12 @@ int polar_active_rt_initial_conditions(field_t * p) {
   }
 
   if (strcmp(key, "from_code") == 0) {
-    info("Initial polar order parameter from code\n");
+    pe_info(pe, "Initial polar order parameter from code\n");
     polar_active_init_code(p);
   }
 
   if (strcmp(key, "aster") == 0) {
-    info("Initialise standard aster\n");
+    pe_info(pe, "Initialise standard aster\n");
     polar_active_init_aster(p);
   }
 

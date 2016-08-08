@@ -255,7 +255,7 @@ static int do_test_gouy_chapman(void) {
   fe_electro_free(fe);
   psi_free(psi);
   coords_finish();
-  physics_free();
+  physics_free(phys);
 
   return 0;
 }

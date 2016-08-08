@@ -115,7 +115,8 @@
 typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
   pe_t * pe;                /* Parallel environment */
-  physics_t * param;        /* Physical parameters */
+  rt_t * rt;                /* Run time input handler */
+  physics_t * phys;         /* Physical parameters */
   lb_t * lb;                /* Lattice Botlzmann */
   hydro_t * hydro;          /* Hydrodynamic quantities */
   field_t * phi;            /* Scalar order parameter */
@@ -148,7 +149,7 @@ static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
-int map_init_rt(map_t ** map);
+int map_init_rt(pe_t * pe, rt_t * rt, map_t ** map);
 
 /*****************************************************************************
  *
@@ -169,6 +170,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int io_grid_default[3] = {1, 1, 1};
   int io_grid[3];
 
+  pe_t * pe = NULL;
+  rt_t * rt = NULL;
   io_info_t * iohandler = NULL;
 
   assert(ludwig);
@@ -188,37 +191,41 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
 
-  physics_ref(&ludwig->param);
+  physics_create(ludwig->pe, &ludwig->phys);
   free_energy_init_rt(ludwig);
 
-  init_control();
+  /* Just convenience shorthand */
+  pe = ludwig->pe;
+  rt = ludwig->rt;
 
-  physics_init_rt(ludwig->param); 
-  physics_info(ludwig->param);
+  init_control(pe, rt);
+
+  physics_init_rt(rt, ludwig->phys); 
+  physics_info(pe, ludwig->phys);
 
 #ifdef PETSC
   if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->epsilon);
 #endif
 
-  lb_run_time(ludwig->lb);
-  collision_run_time(ludwig->noise_rho);
-  map_init_rt(&ludwig->map);
+  lb_run_time(pe, rt, ludwig->lb);
+  collision_run_time(pe, rt, ludwig->noise_rho);
+  map_init_rt(pe, rt, &ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
-  ran_init(ludwig->pe);
-  hydro_rt(&ludwig->hydro);
+  ran_init_rt(pe, rt);
+  hydro_rt(pe, rt, &ludwig->hydro);
 
   /* PHI I/O */
 
-  RUN_get_int_parameter_vector("default_io_grid", io_grid_default);
+  rt_int_parameter_vector(rt, "default_io_grid", io_grid_default);
   for (n = 0; n < 3; n++) {
     io_grid[n] = io_grid_default[n];
   }
-  RUN_get_int_parameter_vector("phi_io_grid", io_grid);
+  rt_int_parameter_vector(rt, "phi_io_grid", io_grid);
 
   form = IO_FORMAT_DEFAULT;
   strcpy(value, ""); /* Really need a way to get string from "form" */
-  n = RUN_get_string_parameter("phi_format", value, BUFSIZ);
+  n = rt_string_parameter(rt, "phi_format", value, BUFSIZ);
   if (n != 0 && strcmp(value, "ASCII") == 0) {
     form = IO_FORMAT_ASCII;
   }
@@ -238,50 +245,50 @@ static int ludwig_rt(ludwig_t * ludwig) {
     info("Order parameter I/O format:   %s\n", value);
     info("I/O decomposition:            %d %d %d\n", io_grid[0], io_grid[1],
 	 io_grid[2]);
-    advection_run_time();
+    advection_init_rt(pe, rt);
   }
 
   /* Can we move this down to t = 0 initialisation? */
 
   if (ludwig->fe_symm) {
-    fe_symmetric_rt_initial_conditions(ludwig->fe_symm, ludwig->phi);
+    fe_symmetric_phi_init_rt(pe, rt, ludwig->fe_symm, ludwig->phi);
   }
   if (ludwig->fe_braz) {
-    fe_brazovskii_rt_init_phi(ludwig->fe_braz, ludwig->phi);
+    fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
   }
 
   /* To be called before wall_init() */
   if (ludwig->psi) {
-    advection_run_time();
-    psi_rt_init_rho(ludwig->psi, ludwig->map);
+    advection_init_rt(pe, rt);
+    psi_rt_init_rho(pe, rt, ludwig->psi, ludwig->map);
   }
 
-  wall_init(ludwig->lb, ludwig->map);
-  colloids_init_rt(&ludwig->collinfo, &ludwig->cio, &ludwig->interact,
+  wall_init(rt, ludwig->lb, ludwig->map);
+  colloids_init_rt(pe, rt, &ludwig->collinfo, &ludwig->cio, &ludwig->interact,
 		   ludwig->map);
-  colloids_init_ewald_rt(ludwig->collinfo, &ludwig->ewald);
+  colloids_init_ewald_rt(pe, rt, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
   /* NOW INITIAL CONDITIONS */
 
-  pe_subdirectory(ludwig->pe, subdirectory);
-  ntstep = physics_control_timestep(ludwig->param);
+  pe_subdirectory(pe, subdirectory);
+  ntstep = physics_control_timestep(ludwig->phys);
 
   if (ntstep == 0) {
     n = 0;
-    lb_rt_initial_conditions(ludwig->lb, ludwig->param);
+    lb_rt_initial_conditions(pe, rt, ludwig->lb, ludwig->phys);
 
-    RUN_get_int_parameter("LE_init_profile", &n);
+    rt_int_parameter(rt, "LE_init_profile", &n);
     if (n != 0) lb_le_init_shear_profile(ludwig->lb);
   }
   else {
     /* Distributions */
 
     sprintf(filename, "%sdist-%8.8d", subdirectory, ntstep);
-    info("Re-starting simulation at step %d with data read from "
-	 "config\nfile(s) %s\n", ntstep, filename);
+    pe_info(pe, "Re-starting simulation at step %d with data read from "
+	    "config\nfile(s) %s\n", ntstep, filename);
 
     lb_io_info(ludwig->lb, &iohandler);
     io_read_data(iohandler, filename, ludwig->lb);
@@ -290,42 +297,48 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
     if (ludwig->phi) {
       sprintf(filename, "%sphi-%8.8d", subdirectory, ntstep);
-      info("files(s) %s\n", filename);
+      pe_info(pe, "files(s) %s\n", filename);
       field_io_info(ludwig->phi, &iohandler);
       io_read_data(iohandler, filename, ludwig->phi);
     }
 
     if (ludwig->p) {
       sprintf(filename, "%sp-%8.8d", subdirectory, ntstep);
-      info("files(s) %s\n", filename);
+      pe_info(pe, "files(s) %s\n", filename);
       field_io_info(ludwig->p, &iohandler);
       io_read_data(iohandler, filename, ludwig->p);
     }
     if (ludwig->q) {
       sprintf(filename, "%sq-%8.8d", subdirectory, ntstep);
-      info("files(s) %s\n", filename);
+      pe_info(pe, "files(s) %s\n", filename);
       field_io_info(ludwig->q, &iohandler);
       io_read_data(iohandler, filename, ludwig->q);
     }
     if (ludwig->hydro) {
       sprintf(filename, "%svel-%8.8d", subdirectory, ntstep);
-      info("hydro files(s) %s\n", filename);
+      pe_info(pe, "hydro files(s) %s\n", filename);
       hydro_io_info(ludwig->hydro, &iohandler);
       io_read_data(iohandler, filename, ludwig->hydro);
     }
     if (ludwig->psi) {
       psi_io_info(ludwig->psi, &iohandler);
       sprintf(filename,"%spsi-%8.8d", subdirectory, ntstep);
-      info("electrokinetics files(s) %s\n", filename);
+      pe_info(pe, "electrokinetics files(s) %s\n", filename);
       io_read_data(iohandler, filename, ludwig->psi);
     }
   }
 
   /* gradient initialisation for field stuff */
 
-  if (ludwig->phi) gradient_rt_init(ludwig->phi_grad, ludwig->map, ludwig->collinfo);
-  if (ludwig->p) gradient_rt_init(ludwig->p_grad, ludwig->map, ludwig->collinfo);
-  if (ludwig->q) gradient_rt_init(ludwig->q_grad, ludwig->map, ludwig->collinfo);
+  if (ludwig->phi) {
+    gradient_rt_init(pe, rt, ludwig->phi_grad, ludwig->map, ludwig->collinfo);
+  }
+  if (ludwig->p) {
+    gradient_rt_init(pe, rt, ludwig->p_grad, ludwig->map, ludwig->collinfo);
+  }
+  if (ludwig->q) {
+    gradient_rt_init(pe, rt, ludwig->q_grad, ludwig->map, ludwig->collinfo);
+  }
 
   stats_rheology_init();
   stats_turbulent_init();
@@ -333,7 +346,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Calibration statistics for ah required? */
 
   nstat = 0;
-  n = RUN_get_string_parameter("calibration", filename, FILENAME_MAX);
+  n = rt_string_parameter(rt, "calibration", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
   stats_calibration_init(ludwig->collinfo, nstat);
@@ -341,7 +354,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Calibration of surface tension required (symmetric only) */
 
   nstat = 0;
-  n = RUN_get_string_parameter("calibration_sigma", filename, FILENAME_MAX);
+  n = rt_string_parameter(rt, "calibration_sigma", filename, FILENAME_MAX);
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
   if (ntstep == 0) {
@@ -353,17 +366,17 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* Initial Q_ab field required */
 
   if (ntstep == 0 && ludwig->p) {
-    polar_active_rt_initial_conditions(ludwig->p);
+    polar_active_rt_initial_conditions(pe, rt, ludwig->p);
   }
 
   if (ntstep == 0 && ludwig->q) {
-    blue_phase_rt_initial_conditions(ludwig->fe_lc, ludwig->q);
+    blue_phase_rt_initial_conditions(pe, rt, ludwig->fe_lc, ludwig->q);
   }
 
   /* Electroneutrality */
 
   if (ntstep == 0 && ludwig->psi) {
-    info("Arranging initial charge neutrality.\n\n");
+    pe_info(pe, "Arranging initial charge neutrality.\n\n");
     psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
     psi_colloid_electroneutral(ludwig->psi, ludwig->collinfo);
   }
@@ -403,7 +416,9 @@ void ludwig_run(const char * inputfile) {
   pe_create(MPI_COMM_WORLD, PE_VERBOSE, &ludwig->pe);
   pe_mpi_comm(ludwig->pe, &comm);
 
-  RUN_read_input_file(inputfile);
+  rt_create(ludwig->pe, &ludwig->rt);
+  rt_read_input_file(ludwig->rt, inputfile);
+  rt_info(ludwig->rt);
 
   ludwig_rt(ludwig);
 
@@ -444,11 +459,11 @@ void ludwig_run(const char * inputfile) {
   /* sync tasks before main loop for timing purposes */
   MPI_Barrier(comm);
 
-  while (physics_control_next_step(ludwig->param)) {
+  while (physics_control_next_step(ludwig->phys)) {
 
     TIMER_start(TIMER_STEPS);
 
-    step = physics_control_timestep(ludwig->param);
+    step = physics_control_timestep(ludwig->phys);
 
     if (ludwig->hydro) {
       hydro_f_zero(ludwig->hydro, fzero);
@@ -898,6 +913,7 @@ void ludwig_run(const char * inputfile) {
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
+  rt_free(ludwig->rt);
   pe_free(ludwig->pe);
 
   return;
@@ -990,23 +1006,30 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   double value;
   char description[BUFSIZ];
 
+  pe_t * pe = NULL;
+  rt_t * rt = NULL;
+
   assert(ludwig);
+  assert(ludwig->pe);
+  assert(ludwig->rt);
+
+  pe = ludwig->pe;
+  rt = ludwig->rt;
 
   lb_create(&ludwig->lb);
-
   noise_create(&ludwig->noise_rho);
 
-  n = RUN_get_string_parameter("free_energy", description, BUFSIZ);
+  n = rt_string_parameter(rt, "free_energy", description, BUFSIZ);
 
   if (strcmp(description, "none") == 0) {
     /* Appropriate for single fluid */
-    info("\n");
-    info("No free energy selected\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "No free energy selected\n");
 
     nhalo = 1;
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
     pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
   }
@@ -1028,30 +1051,30 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     }
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
     fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe);
-    fe_symmetric_run_time(fe);
+    fe_symmetric_init_rt(pe, rt, fe);
 
-    info("\n");
-    info("Using Cahn-Hilliard finite difference solver.\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
-    RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(ludwig->param, value);
-    info("Mobility M            = %12.5e\n", value);
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     /* Order parameter noise */
 
-    RUN_get_int_parameter("fd_phi_fluctuations", &noise_on);
+    rt_int_parameter(rt, "fd_phi_fluctuations", &noise_on);
     info("Order parameter noise = %3s\n", (noise_on == 0) ? "off" : " on");
 
     if (noise_on) {
@@ -1064,7 +1087,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Force */
 
     p = 1; /* Default is to use divergence method */
-    RUN_get_int_parameter("fd_force_divergence", &p);
+    rt_int_parameter(rt, "fd_force_divergence", &p);
     info("Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
     if (p == 0) pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
@@ -1086,26 +1109,26 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ngrad = 2;   /* \nabla^2 required */
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
     fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe);
-    fe_symmetric_run_time(fe);
+    fe_symmetric_init_rt(pe, rt, fe);
 
-    info("\n");
-    info("Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Using full lattice Boltzmann solver for Cahn-Hilliard:\n");
 
-    RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(ludwig->param, value);
-    info("Mobility M            = %12.5e\n", value);
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     /* No explicit force is relevant */
     pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
@@ -1123,31 +1146,31 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ngrad = 4;   /* (\nabla^2)^2 required */
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
-    info("\n");
-    info("Free energy details\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
     info("-------------------\n\n");
     fe_brazovskii_create(ludwig->phi, ludwig->phi_grad, &fe);
-    fe_brazovskii_run_time(fe);
+    fe_brazovskii_init_rt(pe, rt, fe);
 
-    info("\n");
-    info("Using Cahn-Hilliard solver:\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
 
-    RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(ludwig->param, value);
-    info("Mobility M            = %12.5e\n", value);
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     p = 1;
-    RUN_get_int_parameter("fd_force_divergence", &p);
-    info("Force caluclation:      %s\n",
-         (p == 0) ? "phi grad mu method" : "divergence method");
+    rt_int_parameter(rt, "fd_force_divergence", &p);
+    pe_info(pe, "Force caluclation:      %s\n",
+	    (p == 0) ? "phi grad mu method" : "divergence method");
     if (p == 0) {
       pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
     }
@@ -1159,7 +1182,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if (strcmp(description, "surfactant") == 0) {
     /* Disable surfactant for the time being */
-    info("Surfactant free energy is disabled\n");
+    pe_info(pe, "Surfactant free energy is disabled\n");
     assert(0);
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
@@ -1173,25 +1196,25 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ngrad = 2;   /* (\nabla^2) required */
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
     field_create(nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
 
     fe_lc_create(ludwig->q, ludwig->q_grad, &fe);
-    blue_phase_run_time(ludwig->q, ludwig->q_grad, fe, &ludwig->be);
+    blue_phase_init_rt(pe, rt, fe, &ludwig->be);
 
     p = 0;
-    RUN_get_int_parameter("lc_noise", &p);
+    rt_int_parameter(rt, "lc_noise", &p);
     noise_present_set(ludwig->noise_rho, NOISE_QAB, p);
-    info("LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
+    pe_info(pe, "LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
@@ -1211,29 +1234,29 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ngrad = 2;   /* (\nabla^2) required */
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
     field_create(nf, "p", &ludwig->p);
     field_init(ludwig->p, nhalo);
     field_grad_create(ludwig->p, ngrad, &ludwig->p_grad);
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
 
     fe_polar_create(ludwig->p, ludwig->p_grad, &fe);
-    polar_active_run_time(fe);
+    polar_active_run_time(pe, rt, fe);
     ludwig->fe = (fe_t *) fe;
 
-    RUN_get_double_parameter("leslie_ericksen_gamma", &value);
+    rt_double_parameter(rt, "leslie_ericksen_gamma", &value);
     leslie_ericksen_gamma_set(value);
-    info("Rotational diffusion     = %12.5e\n", value);
+    pe_info(pe, "Rotational diffusion     = %12.5e\n", value);
 
-    RUN_get_double_parameter("leslie_ericksen_swim", &value);
+    rt_double_parameter(rt, "leslie_ericksen_swim", &value);
     leslie_ericksen_swim_set(value);
-    info("Self-advection parameter = %12.5e\n", value);
+    pe_info(pe, "Self-advection parameter = %12.5e\n", value);
 
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
@@ -1243,8 +1266,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_lc_droplet_t * fe = NULL;
 
     /* liquid crystal droplet */
-    info("\n");
-    info("Liquid crystal droplet free energy selected\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Liquid crystal droplet free energy selected\n");
     
     /* first do the symmetric */
     nf = 1;      /* 1 scalar order parameter */
@@ -1257,34 +1280,33 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     }
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
         
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
     fe_symm_create(ludwig->phi, ludwig->phi_grad, &symm);
-    fe_symmetric_run_time(symm);
+    fe_symmetric_init_rt(pe, rt, symm);
 
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
-    info("\n");
-    info("Using Cahn-Hilliard finite difference solver.\n");
-
-    RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(ludwig->param, value);
-    info("Mobility M            = %12.5e\n", value);
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     /* Force */
 
     p = 1; /* Default is to use divergence method */
-    RUN_get_int_parameter("fd_force_divergence", &p);
-    info("Force calculation:      %s\n",
-         (p == 0) ? "phi grad mu method" : "divergence method");
+    rt_int_parameter(rt, "fd_force_divergence", &p);
+    pe_info(pe, "Force calculation:      %s\n",
+	    (p == 0) ? "phi grad mu method" : "divergence method");
     assert(p != 0); /* Grad mu method not implemented! */
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
@@ -1297,15 +1319,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_init(ludwig->q, nhalo);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
 
     fe_lc_create(ludwig->q, ludwig->q_grad, &lc);
-    blue_phase_run_time(ludwig->q, ludwig->q_grad, lc, &ludwig->be);
+    blue_phase_init_rt(pe, rt, lc, &ludwig->be);
 
     fe_lc_droplet_create(lc, symm, &fe);
-    fe_lc_droplet_run_time(fe);
+    fe_lc_droplet_run_time(pe, rt, fe);
 
     grad_lc_anch_create(NULL, NULL, lc, NULL);
 
@@ -1323,29 +1345,29 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Default method is divergence of stress tensor */
     p = 1;
-    RUN_get_int_parameter("fd_force_divergence", &p);
+    rt_int_parameter(rt, "fd_force_divergence", &p);
 
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
-    info("\n");
-    info("Free energy details\n");
-    info("-------------------\n\n");
-    info("Electrokinetics (single fluid) selected\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
+    pe_info(pe, "Electrokinetics (single fluid) selected\n");
 
-    info("\n");
-    info("Parameters:\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Parameters:\n");
 
     psi_create(nk, &ludwig->psi);
-    psi_rt_init_param(ludwig->psi);
+    psi_rt_init_param(pe, rt, ludwig->psi);
 
-    info("Force calculation:          %s\n",
-         (p == 0) ? "psi grad mu method" : "Divergence method");
+    pe_info(pe, "Force calculation:          %s\n",
+	    (p == 0) ? "psi grad mu method" : "Divergence method");
     if (p == 0) psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
     if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
 
@@ -1373,58 +1395,58 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* First, the symmetric part. */
 
     coords_nhalo_set(nhalo);
-    coords_run_time();
-    le_init();
+    coords_run_time(pe, rt);
+    le_init(pe, rt);
     le_info();
 
     field_create(nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
-    info("\n");
-    info("Charged binary fluid 'Electrosymmetric' free energy\n");
-    info("---------------------------------------------------\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Charged binary fluid 'Electrosymmetric' free energy\n");
+    pe_info(pe, "---------------------------------------------------\n");
 
-    info("\n");
-    info("Symmetric part\n");
-    info("--------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Symmetric part\n");
+    pe_info(pe, "--------------\n\n");
 
     fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe_symm);
-    fe_symmetric_run_time(fe_symm);
+    fe_symmetric_init_rt(pe, rt, fe_symm);
 
-    info("\n");
-    info("Using Cahn-Hilliard finite difference solver.\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
 
-    RUN_get_double_parameter("mobility", &value);
-    physics_mobility_set(ludwig->param, value);
-    info("Mobility M            = %12.5e\n", value);
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     /* Electrokinetic part */
 
-    info("\n");
-    info("Electrokinetic part\n");
-    info("-------------------\n\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Electrokinetic part\n");
+    pe_info(pe, "-------------------\n\n");
 
-    info("Parameters:\n");
+    pe_info(pe, "Parameters:\n");
 
     psi_create(nk, &ludwig->psi);
-    psi_rt_init_param(ludwig->psi);
+    psi_rt_init_param(pe, rt, ludwig->psi);
 
     fe_electro_create(ludwig->psi, &fe_elec);
 
     /* Default method is divergence of stress tensor */
     p = 1;
-    RUN_get_int_parameter("fd_force_divergence", &p);
-    info("Force calculation:          %s\n",
-         (p == 0) ? "psi grad mu method" : "Divergence method");
+    rt_int_parameter(rt, "fd_force_divergence", &p);
+    pe_info(pe, "Force calculation:          %s\n",
+	    (p == 0) ? "psi grad mu method" : "Divergence method");
     if (p == 0) psi_force_method_set(ludwig->psi, PSI_FORCE_GRADMU);
     if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
 
     /* Coupling part */
 
-    info("\n");
-    info("Coupling part\n");
-    info("-------------\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Coupling part\n");
+    pe_info(pe, "-------------\n");
 
     /* Create FE objects and set function pointers */
     fe_es_create(fe_symm, fe_elec, ludwig->psi, &fes);
@@ -1436,7 +1458,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_epsilon2(ludwig->psi, &e2);
 
     /* Read the second permittivity */
-    n = RUN_get_double_parameter("electrosymmetric_epsilon2", &e2);
+    n = rt_double_parameter(rt, "electrosymmetric_epsilon2", &e2);
     if (n == 1) psi_epsilon2_set(ludwig->psi, e2);
 
     fe_es_epsilon_set(fes, e1, e2);
@@ -1446,24 +1468,24 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     mu[0] = 0.0;
     mu[1] = 0.0;
 
-    RUN_get_double_parameter("electrosymmetric_delta_mu0", mu);
-    RUN_get_double_parameter("electrosymmetric_delta_mu1", mu + 1);
+    rt_double_parameter(rt, "electrosymmetric_delta_mu0", mu);
+    rt_double_parameter(rt, "electrosymmetric_delta_mu1", mu + 1);
 
     fe_es_deltamu_set(fes, nk, mu);
 
     psi_bjerrum_length2(ludwig->psi, &lbjerrum2);
 
-    info("Second permittivity:      %15.7e\n", e2);
-    info("Dielectric average:       %15.7e\n", 0.5*(e1 + e2));
-    info("Dielectric contrast:      %15.7e\n", (e1-e2)/(e1+e2));
-    info("Second Bjerrum length:    %15.7e\n", lbjerrum2);
-    info("Solvation dmu species 0:  %15.7e\n", mu[0]);
-    info("Solvation dmu species 1:  %15.7e\n", mu[1]);
+    pe_info(pe, "Second permittivity:      %15.7e\n", e2);
+    pe_info(pe, "Dielectric average:       %15.7e\n", 0.5*(e1 + e2));
+    pe_info(pe, "Dielectric contrast:      %15.7e\n", (e1-e2)/(e1+e2));
+    pe_info(pe, "Second Bjerrum length:    %15.7e\n", lbjerrum2);
+    pe_info(pe, "Solvation dmu species 0:  %15.7e\n", mu[0]);
+    pe_info(pe, "Solvation dmu species 1:  %15.7e\n", mu[1]);
 
     /* f_vare_t function */
 
-    info("Poisson solver:           %15s\n",
-	 (e1 == e2) ? "uniform" : "heterogeneous");
+    pe_info(pe, "Poisson solver:           %15s\n",
+	    (e1 == e2) ? "uniform" : "heterogeneous");
     if (e1 != e2) ludwig->epsilon = (f_vare_t) fe_es_var_epsilon;
 
     ludwig->fe_symm = fe_symm;
@@ -1474,8 +1496,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (n == 1) {
       /* The user has put something which hasn't been recognised,
        * suggesting a spelling mistake */
-      info("free_energy %s not recognised.\n", description);
-      fatal("Please check and try again.\n");
+      pe_info(pe, "free_energy %s not recognised.\n", description);
+      pe_fatal(pe, "Please check and try again.\n");
     }
   }
 
@@ -1490,7 +1512,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
  *
  *****************************************************************************/
 
-int map_init_rt(map_t ** pmap) {
+int map_init_rt(pe_t * pe, rt_t * rt, map_t ** pmap) {
 
   int is_porous_media = 0;
   int ndata = 0;
@@ -1505,29 +1527,33 @@ int map_init_rt(map_t ** pmap) {
   io_info_t * iohandler = NULL;
   map_t * map = NULL;
 
-  is_porous_media = RUN_get_string_parameter("porous_media_file", filename,
-					     FILENAME_MAX);
+  assert(pe);
+  assert(rt);
+
+  is_porous_media = rt_string_parameter(rt, "porous_media_file", filename,
+					FILENAME_MAX);
   if (is_porous_media) {
 
-    RUN_get_string_parameter("porous_media_type", status, BUFSIZ);
+    rt_string_parameter(rt, "porous_media_type", status, BUFSIZ);
 
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
 
-    RUN_get_string_parameter("porous_media_format", format, BUFSIZ);
+    rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
 
     if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
     if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
 
-    RUN_get_int_parameter_vector("porous_media_io_grid", grid);
+    rt_int_parameter_vector(rt, "porous_media_io_grid", grid);
 
-    info("\n");
-    info("Porous media\n");
-    info("------------\n");
-    info("Porous media file requested:  %s\n", filename);
-    info("Porous media file type:       %s\n", status);
-    info("Porous media format (serial): %s\n", format);
-    info("Porous media io grid:         %d %d %d\n", grid[X], grid[Y], grid[Z]);
+    pe_info(pe, "\n");
+    pe_info(pe, "Porous media\n");
+    pe_info(pe, "------------\n");
+    pe_info(pe, "Porous media file requested:  %s\n", filename);
+    pe_info(pe, "Porous media file type:       %s\n", status);
+    pe_info(pe, "Porous media format (serial): %s\n", format);
+    pe_info(pe, "Porous media io grid:         %d %d %d\n",
+	    grid[X], grid[Y], grid[Z]);
   }
 
   map_create(ndata, &map);

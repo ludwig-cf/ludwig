@@ -13,7 +13,16 @@
 #ifndef LEESEDWARDS_H
 #define LEESEDWARDS_H
 
-__targetHost__ void le_init(void);
+#include "pe.h"
+#include "runtime.h"
+#include "coords.h"
+
+typedef struct lees_edw_s lees_edw_t;
+
+__host__ int le_create(pe_t * pe, coords_t * cs, lees_edw_t ** ple);
+__host__ int le_free(lees_edw_t * le);
+
+__targetHost__ int le_init(pe_t * pe, rt_t * rt);
 __targetHost__ void le_finish(void);
 
 __targetHost__ int le_info(void);

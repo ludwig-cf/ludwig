@@ -15,9 +15,11 @@
 #ifndef PHYSICS_RT_H
 #define PHYSICS_RT_H
 
+#include "pe.h"
 #include "physics.h"
+#include "runtime.h"
 
-__host__ int physics_info(physics_t * phys);
-__host__ int physics_init_rt(physics_t * phys);
+__host__ int physics_info(pe_t * pe, physics_t * phys);
+__host__ int physics_init_rt(rt_t * rt, physics_t * phys);
 
 #endif

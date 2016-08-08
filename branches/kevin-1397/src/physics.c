@@ -53,10 +53,8 @@ struct physics_s {
 
 /* At the moment we have static instances */
 
-static physics_t * phys = NULL;
+static physics_t * stat_phys = NULL;
 static __constant__ physics_t const_phys;
-
-__host__ int physics_create(void);
 
 /*****************************************************************************
  *
@@ -73,9 +71,8 @@ __host__ __device__ int physics_ref(physics_t ** ref) {
 #ifdef __CUDA_ARCH__
   *ref = &const_phys;
 #else
-  if (phys == NULL) physics_create();
-
-  *ref = phys;
+  assert(stat_phys);
+  *ref = stat_phys;
 #endif
 
   return 0;
@@ -89,24 +86,30 @@ __host__ __device__ int physics_ref(physics_t ** ref) {
  *
  *****************************************************************************/
 
-__host__ int physics_create(void) {
+__host__ int physics_create(pe_t * pe, physics_t ** phys) {
 
-  assert(phys == NULL);
+  physics_t * obj = NULL;
 
-  phys = (physics_t *) calloc(1, sizeof(physics_t));
-  if (phys == NULL) fatal("calloc(physics_t) failed\n");
+  assert(pe);
+  assert(phys);
 
-  phys->eta_shear = ETA_DEFAULT;
-  phys->eta_bulk  = ETA_DEFAULT;
-  phys->rho0      = RHO_DEFAULT;
+  obj = (physics_t *) calloc(1, sizeof(physics_t));
+  if (obj == NULL) pe_fatal(pe, "calloc(physics_t) failed\n");
+
+  obj->eta_shear = ETA_DEFAULT;
+  obj->eta_bulk  = ETA_DEFAULT;
+  obj->rho0      = RHO_DEFAULT;
 
   /* Everything else defaults to zero. */
 
   /* Time control */
 
-  phys->nsteps = 0;
-  phys->t_start = 0;
-  phys->t_current = 0;
+  obj->nsteps = 0;
+  obj->t_start = 0;
+  obj->t_current = 0;
+
+  if (stat_phys == NULL) stat_phys = obj;
+  *phys = obj;
 
   return 0;
 }
@@ -117,12 +120,12 @@ __host__ int physics_create(void) {
  *
  *****************************************************************************/
 
-__host__ int physics_free(void) {
+__host__ int physics_free(physics_t * phys) {
 
   assert(phys);
 
   free(phys);
-  phys = NULL;
+  stat_phys = NULL;
 
   return 0;
 }

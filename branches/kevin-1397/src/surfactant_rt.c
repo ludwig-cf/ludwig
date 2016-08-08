@@ -28,7 +28,8 @@
  *
  ****************************************************************************/
 
-__host__ int fe_surfactant1_run_time(field_t * phi, field_grad_t * dphi,
+__host__ int fe_surfactant1_run_time(rt_t * rt,
+				     field_t * phi, field_grad_t * dphi,
 				     fe_surfactant1_t ** pobj) {
 
 
@@ -40,14 +41,14 @@ __host__ int fe_surfactant1_run_time(field_t * phi, field_grad_t * dphi,
 
   /* Parameters */
 
-  RUN_get_double_parameter("surf_A", &param.a);
-  RUN_get_double_parameter("surf_B", &param.b);
-  RUN_get_double_parameter("surf_K", &param.kappa);
+  rt_double_parameter(rt, "surf_A", &param.a);
+  rt_double_parameter(rt, "surf_B", &param.b);
+  rt_double_parameter(rt, "surf_K", &param.kappa);
 
-  RUN_get_double_parameter("surf_kt", &param.kt);
-  RUN_get_double_parameter("surf_epsilon", &param.epsilon);
-  RUN_get_double_parameter("surf_beta", &param.beta);
-  RUN_get_double_parameter("surf_w", &param.w);
+  rt_double_parameter(rt, "surf_kt", &param.kt);
+  rt_double_parameter(rt, "surf_epsilon", &param.epsilon);
+  rt_double_parameter(rt, "surf_beta", &param.beta);
+  rt_double_parameter(rt, "surf_w", &param.w);
 
   info("Surfactant free energy parameters:\n");
   info("Bulk parameter A      = %12.5e\n", param.a);
@@ -80,14 +81,6 @@ __host__ int fe_surfactant1_run_time(field_t * phi, field_grad_t * dphi,
   info("Scale energy kT       = %12.5e\n", param.kt);
   info("Langmuir isotherm     = %12.5e\n", psi_c);
 
-  /* Set free energy function pointers. */
-
-  /*
-  fe_density_set(surfactant_free_energy_density);
-  fe_chemical_potential_set(surfactant_chemical_potential);
-  fe_isotropic_pressure_set(surfactant_isotropic_pressure);
-  fe_chemical_stress_set(surfactant_chemical_stress);
-  */
   assert(0);
 
   *pobj = fe;

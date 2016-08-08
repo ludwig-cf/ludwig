@@ -36,15 +36,17 @@ static int do_test1(void);
 int test_fe_electro_symm_suite(void) {
 
   pe_t * pe = NULL;
+  lees_edw_t * le = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_nhalo_set(2);
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le); /* SHIT Only to get past phi init */
 
   do_test1();
 
   pe_info(pe, "PASS     ./unit/test_fe_electro_symm\n");
+  le_free(le);
   coords_finish();
   pe_free(pe);
 

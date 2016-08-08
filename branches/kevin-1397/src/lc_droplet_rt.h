@@ -14,8 +14,10 @@
 #ifndef LC_DROPLET_RT_H
 #define LC_DROPLET_RT_H
 
+#include "pe.h"
+#include "runtime.h"
 #include "lc_droplet.h"
 
-__host__ int fe_lc_droplet_run_time(fe_lc_droplet_t * fe);
+int fe_lc_droplet_run_time(pe_t * pe, rt_t * rt, fe_lc_droplet_t * fe);
 
 #endif

@@ -61,7 +61,7 @@ static int wall_shear_init(lb_t * lb, double utop, double ubottom);
  *
  ****************************************************************************/
 
-int wall_init(lb_t * lb, map_t * map) {
+int wall_init(rt_t * rt, lb_t * lb, map_t * map) {
 
   int init_shear = 0;
   int ntotal;
@@ -70,9 +70,11 @@ int wall_init(lb_t * lb, map_t * map) {
   double ux_top = 0.0;
   double rc = 0.0;
 
-  RUN_get_double_parameter("boundary_speed_bottom", &ux_bottom);
-  RUN_get_double_parameter("boundary_speed_top", &ux_top);
-  RUN_get_double_parameter("boundary_lubrication_rcnormal", &rc);
+  assert(rt);
+
+  rt_double_parameter(rt, "boundary_speed_bottom", &ux_bottom);
+  rt_double_parameter(rt, "boundary_speed_top", &ux_top);
+  rt_double_parameter(rt, "boundary_lubrication_rcnormal", &rc);
 
   /* Set the wall status: default to no walls */
 
@@ -80,7 +82,7 @@ int wall_init(lb_t * lb, map_t * map) {
   is_boundary_[Y] = 0;
   is_boundary_[Z] = 0;
 
-  RUN_get_int_parameter_vector("boundary_walls", is_boundary_);
+  rt_int_parameter_vector(rt, "boundary_walls", is_boundary_);
 
   if (wall_present()) {
     info("\n");
@@ -94,7 +96,7 @@ int wall_init(lb_t * lb, map_t * map) {
     init_boundary_speeds(ux_bottom, ux_top);
     lubrication_rcnormal_ = rc;
 
-    RUN_get_int_parameter("boundary_shear_init", &init_shear);
+    rt_int_parameter(rt, "boundary_shear_init", &init_shear);
     if (init_shear) wall_shear_init(lb, ux_top, ux_bottom);
 
     info("Boundary walls:                  %1s %1s %1s\n",

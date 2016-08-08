@@ -25,11 +25,11 @@
 #include "test_coords_field.h"
 #include "tests.h"
 
-static int do_test0(void);
-static int do_test1(void);
-static int do_test3(void);
-static int do_test5(void);
-static int do_test_io(int nf, int io_format);
+static int do_test0(pe_t * pe);
+static int do_test1(pe_t * pe);
+static int do_test3(pe_t * pe);
+static int do_test5(pe_t * pe);
+static int do_test_io(pe_t * pe, int nf, int io_format);
 static int test_field_halo(field_t * phi);
 
 /*****************************************************************************
@@ -46,15 +46,15 @@ int test_field_suite(void) {
 
   /* info("\nOrder parameter tests...\n");*/
 
-  do_test0();
-  do_test1();
-  do_test3();
-  do_test5();
+  do_test0(pe);
+  do_test1(pe);
+  do_test3(pe);
+  do_test5(pe);
 
-  do_test_io(1, IO_FORMAT_ASCII);
-  do_test_io(1, IO_FORMAT_BINARY);
-  do_test_io(5, IO_FORMAT_ASCII);
-  do_test_io(5, IO_FORMAT_BINARY);
+  do_test_io(pe, 1, IO_FORMAT_ASCII);
+  do_test_io(pe, 1, IO_FORMAT_BINARY);
+  do_test_io(pe, 5, IO_FORMAT_ASCII);
+  do_test_io(pe, 5, IO_FORMAT_BINARY);
 
   pe_info(pe, "PASS     ./unit/test_field\n");
   pe_free(pe);
@@ -70,18 +70,20 @@ int test_field_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test0(void) {
+static int do_test0(pe_t * pe) {
 
   int nfref = 1;
   int nhalo = 2;
   int ntotal[3] = {8, 8, 8};
+
+  lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   
   coords_nhalo_set(nhalo);
   coords_ntotal_set(ntotal);
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nfref, "phi", &phi);
   field_init(phi, nhalo);
@@ -90,7 +92,7 @@ static int do_test0(void) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -104,7 +106,7 @@ static int do_test0(void) {
  *
  *****************************************************************************/
 
-int do_test1(void) {
+int do_test1(pe_t * pe) {
 
   int nfref = 1;
   int nf;
@@ -112,11 +114,15 @@ int do_test1(void) {
   int index = 1;
   double ref;
   double value;
+
+  lees_edw_t * le = NULL;
   field_t * phi = NULL;
+
+  assert(pe);
 
   coords_nhalo_set(nhalo);
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nfref, "phi", &phi);
   assert(phi);
@@ -145,7 +151,7 @@ int do_test1(void) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -159,7 +165,7 @@ int do_test1(void) {
  *
  *****************************************************************************/
 
-static int do_test3(void) {
+static int do_test3(pe_t * pe) {
 
   int nfref = 3;
   int nf;
@@ -168,11 +174,15 @@ static int do_test3(void) {
   double ref[3] = {1.0, 2.0, 3.0};
   double value[3];
   double array[3];
+
+  lees_edw_t * le = NULL;
   field_t * phi = NULL;
+
+  assert(pe);
 
   coords_nhalo_set(nhalo);
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nfref, "p", &phi);
   assert(phi);
@@ -197,7 +207,7 @@ static int do_test3(void) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -211,7 +221,7 @@ static int do_test3(void) {
  *
  *****************************************************************************/
 
-static int do_test5(void) {
+static int do_test5(pe_t * pe) {
 
   int nfref = 5;
   int nf;
@@ -220,11 +230,15 @@ static int do_test5(void) {
   double qref[3][3] = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, -5.0}};
   double qvalue[3][3];
   double array[NQAB];
+
+  lees_edw_t * le = NULL;
   field_t * phi = NULL;
+
+  assert(pe);
 
   coords_nhalo_set(nhalo);
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nfref, "q", &phi);
   assert(phi);
@@ -259,7 +273,7 @@ static int do_test5(void) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_init();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -293,16 +307,22 @@ static int test_field_halo(field_t * phi) {
  *
  *****************************************************************************/
 
-static int do_test_io(int nf, int io_format) {
+static int do_test_io(pe_t * pe, int nf, int io_format) {
 
   int grid[3] = {1, 1, 1};
   const char * filename = "phi-test-io";
 
+  /* MPI_Comm comm;*/
+
+  lees_edw_t * le = NULL;
   field_t * phi = NULL;
   io_info_t * iohandler = NULL;
 
+  assert(pe);
+
+  /* SHIT remove pe_comm() etc */
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   if (pe_size() == 8) {
     grid[X] = 2;
@@ -340,7 +360,7 @@ static int do_test_io(int nf, int io_format) {
   io_remove_metadata(iohandler, "phi-test");
 
   field_free(phi);
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;

@@ -55,6 +55,7 @@ int tests_create() {
   test_be_suite();
   test_bond_fene_suite();
   test_bonds_suite();
+  test_bp_suite();
   test_build_suite();
   test_colloid_suite();
   test_colloid_sums_suite();
@@ -86,7 +87,6 @@ int tests_create() {
 
   /* Failing... pending investigation */
 
-  /* test_bp_suite(); Needs attention to electric field SHIT */
   /* test_nernst_planck_suite(); */
   /* test_psi_sor_suite();*/
   /* test_phi_ch_suite(); replace by advection without CH */

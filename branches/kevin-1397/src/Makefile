@@ -72,6 +72,7 @@ OBJS = \
      control.o distribution_rt.o \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
+     field_phi_init.o field_phi_init_rt.o \
      fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \

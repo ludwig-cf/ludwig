@@ -14,8 +14,15 @@
 #define RAN_H
 
 #include "pe.h"
+#include "runtime.h"
 
-__host__ int  ran_init(pe_t * pe);
+/* This static generator is scheduled for removal. Prefer noise_t
+ * or routines in util.h */
+
+int ran_init(pe_t * pe);
+int ran_init_rt(pe_t * pe, rt_t * rt);
+int ran_init_seed(pe_t * pe, int scalar_seed);
+
 double ran_parallel_gaussian(void);
 double ran_parallel_uniform(void);
 void   ran_parallel_unit_vector(double []);

@@ -52,6 +52,7 @@ int test_phi_ch_suite(void) {
   int nhalo = 2;
 
   pe_t * pe = NULL;
+  lees_edw_t * le = NULL;
   hydro_t * hydro = NULL;
   field_t * phi = NULL;
   physics_t * phys = NULL;
@@ -60,7 +61,7 @@ int test_phi_ch_suite(void) {
   coords_nhalo_set(nhalo);
   coords_init();
   physics_ref(&phys);
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nf, "phi", &phi);
   assert(phi);
@@ -75,7 +76,7 @@ int test_phi_ch_suite(void) {
   field_free(phi);
 
   pe_info(pe, "PASS     ./unit/test_phi_ch\n");
-  le_finish();
+  le_free(le);
   coords_finish();
   pe_free(pe);
 

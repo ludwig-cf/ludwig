@@ -15,6 +15,8 @@
 #ifndef GRADIENT_RT_H
 #define GRADIENT_RT_H
 
+#include "pe.h"
+#include "runtime.h"
 #include "field_grad.h"
 #include "map.h"
 #include "colloids.h"
@@ -26,7 +28,7 @@
 #include "gradient_3d_27pt_fluid.h"
 #include "gradient_3d_27pt_solid.h"
 
-__host__ int gradient_rt_init(field_grad_t * grad, map_t * map,
-			      colloids_info_t * cinfo);
+__host__ int gradient_rt_init(pe_t * pe, rt_t * rt, field_grad_t * grad,
+			      map_t * map, colloids_info_t * cinfo);
 
 #endif

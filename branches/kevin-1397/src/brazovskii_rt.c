@@ -16,48 +16,50 @@
 
 #include <assert.h>
 
-#include "pe.h"
-#include "runtime.h"
+#include "field_phi_init_rt.h"
 #include "brazovskii_rt.h"
 
 /****************************************************************************
  *
- *  fe_brazovskii_run_time
+ *  fe_brazovskii_init_rt
  *
  ****************************************************************************/
 
-__host__ int  fe_brazovskii_run_time(fe_brazovskii_t * fe) {
+__host__
+int fe_brazovskii_init_rt(pe_t * pe, rt_t * rt, fe_brazovskii_t * fe) {
 
   fe_brazovskii_param_t param;
 
   double amplitude;
   double lambda;
 
+  assert(pe);
+  assert(rt);
   assert(fe);
 
-  info("Brazovskii free energy selected.\n");
-  info("\n");
+  pe_info(pe, "Brazovskii free energy selected.\n");
+  pe_info(pe, "\n");
 
   /* Parameters */
 
-  RUN_get_double_parameter("A", &param.a);
-  RUN_get_double_parameter("B", &param.b);
-  RUN_get_double_parameter("K", &param.kappa);
-  RUN_get_double_parameter("C", &param.c);
+  rt_double_parameter(rt, "A", &param.a);
+  rt_double_parameter(rt, "B", &param.b);
+  rt_double_parameter(rt, "K", &param.kappa);
+  rt_double_parameter(rt, "C", &param.c);
 
-  info("Brazovskii free energy parameters:\n");
-  info("Bulk parameter A      = %12.5e\n", param.a);
-  info("Bulk parameter B      = %12.5e\n", param.b);
-  info("Ext. parameter C      = %12.5e\n", param.c);
-  info("Surface penalty kappa = %12.5e\n", param.kappa);
+  pe_info(pe, "Brazovskii free energy parameters:\n");
+  pe_info(pe, "Bulk parameter A      = %12.5e\n", param.a);
+  pe_info(pe, "Bulk parameter B      = %12.5e\n", param.b);
+  pe_info(pe, "Ext. parameter C      = %12.5e\n", param.c);
+  pe_info(pe, "Surface penalty kappa = %12.5e\n", param.kappa);
 
   fe_brazovskii_param_set(fe, param);
 
   fe_brazovskii_wavelength(fe, &lambda);
   fe_brazovskii_amplitude(fe, &amplitude);
 
-  info("Wavelength 2pi/q_0    = %12.5e\n", lambda);
-  info("Amplitude             = %12.5e\n", amplitude);
+  pe_info(pe, "Wavelength 2pi/q_0    = %12.5e\n", lambda);
+  pe_info(pe, "Amplitude             = %12.5e\n", amplitude);
 
   /* For stability ... */
 
@@ -69,21 +71,27 @@ __host__ int  fe_brazovskii_run_time(fe_brazovskii_t * fe) {
 
 /*****************************************************************************
  *
- *  fe_brazovskii_rt_init_phi
+ *  fe_brazovskii_phi_init_rt
  *
  *****************************************************************************/
 
-__host__ int fe_brazovskii_rt_init_phi(fe_brazovskii_t * fe, field_t * phi) {
+__host__
+int fe_brazovskii_phi_init_rt(pe_t * pe, rt_t * rt, fe_brazovskii_t * fe,
+			      field_t * phi) {
 
-  double xi;
-  int field_phi_rt(field_t * phi, double xi); /* SHIT sort me out */
+  field_phi_info_t param = {0};
 
+  assert(pe);
+  assert(rt);
   assert(fe);
   assert(phi);
 
-  /* Only the spinodal condition is usually used for Brazovskii */
-  xi = -1.0;
-  field_phi_rt(phi, xi);
+  /* Actually no dependency on Brazovskii parameters at the moment. */
+  /* Force mean composition to be zero. */
+
+  param.phi0 = 0.0;
+
+  field_phi_init_rt(pe, rt, param, phi);
 
   return 0;
 }

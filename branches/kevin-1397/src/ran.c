@@ -50,14 +50,24 @@ static double ran_lecuyer(struct lecuyer *);
 
 __host__ int ran_init(pe_t * pe) {
 
+  int scalar_seed = 7361237;
+
+  ran_init_seed(pe, scalar_seed);
+
+  return 0;
+}
+
+__host__ int ran_init_rt(pe_t * pe, rt_t * rt) {
+
   int n;
   int scalar_seed = 7361237;
 
   assert(pe);
+  assert(rt);
 
   /* Look for "random_seed" in the user input, or use a default. */ 
 
-  n = RUN_get_int_parameter("random_seed", &scalar_seed);
+  n = rt_int_parameter(rt, "random_seed", &scalar_seed);
 
   if (n == 0) {
     pe_info(pe, "[Default] Random number seed: %d\n", scalar_seed);
@@ -65,6 +75,15 @@ __host__ int ran_init(pe_t * pe) {
   else {
     pe_info(pe, "[User   ] Random number seed: %d\n", scalar_seed);
   }
+
+  ran_init_seed(pe, scalar_seed);
+
+  return 0;
+}
+
+__host__ int ran_init_seed(pe_t * pe, int scalar_seed) {
+
+  assert(pe);
 
   /* Serial generator */
 

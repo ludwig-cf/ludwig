@@ -13,8 +13,6 @@
 
 #include <assert.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "lc_droplet_rt.h"
 
 /*****************************************************************************
@@ -28,28 +26,28 @@
  *
  *****************************************************************************/
 
-__host__ int fe_lc_droplet_run_time(fe_lc_droplet_t * fe) {
+int fe_lc_droplet_run_time(pe_t * pe, rt_t * rt, fe_lc_droplet_t * fe) {
 
   int n;
   fe_lc_droplet_param_t param;
 
   assert(fe);
 
-  info("\n");
-  info("Liquid crystal droplet coupling parameters\n");
+  pe_info(pe, "\n");
+  pe_info(pe, "Liquid crystal droplet coupling parameters\n");
 
-  n = RUN_get_double_parameter("lc_droplet_gamma", &param.gamma0);
-  if (n == 0) fatal("Please specify lc_droplet_gamma in input\n");
+  n = rt_double_parameter(rt, "lc_droplet_gamma", &param.gamma0);
+  if (n == 0) pe_fatal(pe, "Please specify lc_droplet_gamma in input\n");
 
-  n = RUN_get_double_parameter("lc_droplet_delta", &param.delta);
-  if (n == 0) fatal("Please specify lc_droplet_delta in input\n");
+  n = rt_double_parameter(rt, "lc_droplet_delta", &param.delta);
+  if (n == 0) pe_fatal(pe, "Please specify lc_droplet_delta in input\n");
 
-  n = RUN_get_double_parameter("lc_droplet_W", &param.w);
-  if (n == 0) fatal("Please specify lc_droplet_W in input\n");
+  n = rt_double_parameter(rt, "lc_droplet_W", &param.w);
+  if (n == 0) pe_fatal(pe, "Please specify lc_droplet_W in input\n");
   
-  info("Isotropic/LC control gamma0 = %12.5e\n", param.gamma0);
-  info("Isotropic/LC control delta  = %12.5e\n", param.delta);
-  info("Anchoring parameter  W      = %12.5e\n", param.w);
+  pe_info(pe, "Isotropic/LC control gamma0 = %12.5e\n", param.gamma0);
+  pe_info(pe, "Isotropic/LC control delta  = %12.5e\n", param.delta);
+  pe_info(pe, "Anchoring parameter  W      = %12.5e\n", param.w);
   
   fe_lc_droplet_param_set(fe, param);
 

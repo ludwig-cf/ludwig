@@ -33,7 +33,8 @@
 
 static void multiply_gradient(double [3][3][3], double);
 static void multiply_delsq(double [3][3], double);
-static int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad);
+static int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
+			   field_grad_t * fqgrad);
 static int test_bp_nonfield(void);
 
 /*****************************************************************************
@@ -46,6 +47,7 @@ int test_bp_suite(void) {
 
   int nhalo = 2;
   pe_t * pe = NULL;
+  lees_edw_t * le = NULL;
   field_t * fq = NULL;
   field_grad_t * fqgrad = NULL;
   fe_lc_t * fe = NULL;
@@ -53,7 +55,7 @@ int test_bp_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_nhalo_set(nhalo);
   coords_init();
-  le_init(); /* Must be initialised to compute gradients. */
+  le_create(pe, NULL, &le); /* Must be initialised to compute gradients. */
 
   test_bp_nonfield();
 
@@ -64,12 +66,12 @@ int test_bp_suite(void) {
 
   fe_lc_create(fq, fqgrad, &fe);
 
-  test_o8m_struct(fe, fq, fqgrad);
+  test_o8m_struct(pe, fe, fq, fqgrad);
 
   fe_lc_free(fe);
   field_grad_free(fqgrad);
   field_free(fq);
-  le_finish();
+  le_free(le);
 
   pe_info(pe, "PASS     ./unit/test_blue_phase\n");
   coords_finish();
@@ -158,7 +160,8 @@ static int test_bp_nonfield(void) {
  *
  *****************************************************************************/
 
-int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
+int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
+		    field_grad_t * fqgrad) {
 
   int nf;
   int ic, jc, kc, index;
@@ -186,7 +189,9 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   physics_t * phys = NULL;
   PI_DOUBLE(pi_);
 
-  physics_ref(&phys);
+  assert(pe);
+
+  physics_create(pe, &phys);
   coords_nlocal(nlocal);
   /*
   info("Blue phase O8M struct test\n");
@@ -212,6 +217,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   param.rredshift = 1.0;
   param.epsilon = epsilon;
   fe_lc_param_set(fe, param);
+  fe_lc_param_commit(fe);
 
   /* Check the chirality and the reduced temperature */
 
@@ -446,7 +452,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
 
   fe_lc_compute_h(fe, gamma, q, dq, dsq, h);
 
-  info("Check h( 1, 1, 2)...");
+  /* info("Check h( 1, 1, 2)...");*/
   test_assert(fabs(h[X][X] - -0.0205178) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Y] -  0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[X][Z] - +0.0000000) < TEST_FLOAT_TOLERANCE);
@@ -539,7 +545,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
 
   /* Finally, the stress. This is not necessarily symmetric. */
 
-  info("Thermodynamic contribution to stress\n");
+  /* info("Thermodynamic contribution to stress\n");*/
 
   ic = 1;
   jc = 1;
@@ -683,16 +689,15 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field[Z] = 1.0;
 
   physics_e0_set(phys, field);
-  assert(0); /* Electric field not set; time-dependent field not set */
+  fe_lc_param_commit(fe);
 
 
   e = sqrt(27.0*epsilon*1.0/(32.0*pi_*a0*gamma));
 
-  info("Electric field (0.0, 0.0, 1.0) gives dimensionless field %14.7e...", e);
+  /* info("Electric field (0.0, 0.0, 1.0) gives dimensionless field %14.7e...", e);*/
   fe_lc_dimensionless_field_strength(fe, &value);
-  printf("Got %14.7e\n", value);
   test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
-  info("ok\n");
+  /* info("ok\n");*/
 
   field[X] = 1.0;
   field[Y] = 1.0;
@@ -715,8 +720,10 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
 
 
   physics_e0_set(phys, field);
+  fe_lc_param_commit(fe);
+
   fe_lc_dimensionless_field_strength(fe, &value);
-  info("Set dimensionless field 0.2...");
+  /* info("Set dimensionless field 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
 
@@ -737,7 +744,7 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field_grad_tensor_grad(fqgrad, index, dq);
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
 
-  info("Check F( 1, 1, 1)... %14.7e\n ", value);
+  /* info("Check F( 1, 1, 1)... %14.7e\n ", value);*/
   test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
 
@@ -758,6 +765,8 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
   field[Z] = 0.0;
 
   physics_e0_set(phys, field);
+  fe_lc_param_commit(fe);
+
   fe_lc_dimensionless_field_strength(fe, &value);
   /* info("Set dimensionless field again 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
@@ -807,6 +816,9 @@ int test_o8m_struct(fe_lc_t * fe, field_t * fq, field_grad_t * fqgrad) {
 
   info("Blue phase O8M structure ok\n");
   */
+
+  physics_free(phys);
+
   return 0;
 }
 

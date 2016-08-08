@@ -15,11 +15,13 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
-#include "targetDP.h"
+#include "pe.h"
 
 typedef struct physics_s physics_t;
 
-__host__ int physics_free(void);
+__host__ int physics_create(pe_t * pe, physics_t ** phys);
+__host__ int physics_free(physics_t * phys);
+
 __host__ int physics_rho0_set(physics_t * phys, double rho0);
 __host__ int physics_phi0_set(physics_t * phys, double phi0);
 __host__ int physics_eta_shear_set(physics_t * phys, double eta);
