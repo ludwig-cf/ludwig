@@ -50,8 +50,8 @@ struct fe_lc_param_s {
   double redshift;                        /* Redshift */
   double rredshift;                       /* Reciprocal redshift */
   double epsilon;                         /* Dielectric anistropy */
-  double electric[3];                     /* Electric field */
   double amplitude0;                      /* Initial amplitude from input */
+  double e0coswt[3];                      /* Electric field */
 
   double w1_coll;                         /* Anchoring strength parameter */
   double w2_coll;                         /* Second anchoring parameter */

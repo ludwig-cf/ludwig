@@ -9,8 +9,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2016 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
  *
  *****************************************************************************/
 
@@ -19,6 +20,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
+#include "coords_rt.h"
 
 /*****************************************************************************
  *
@@ -26,32 +28,32 @@
  *
  *****************************************************************************/
 
-void coords_run_time(void) {
+int coords_run_time(pe_t * pe, rt_t * rt) {
 
   int n;
   int reorder;
   int vector[3];
 
-  info("\n");
-  info("System details\n");
-  info("--------------\n");
+  pe_info(pe, "\n");
+  pe_info(pe, "System details\n");
+  pe_info(pe, "--------------\n");
 
-  n = RUN_get_int_parameter_vector("size", vector);
+  n = rt_int_parameter_vector(rt, "size", vector);
   coords_ntotal_set(vector);
 
-  n = RUN_get_int_parameter_vector("periodicity", vector);
+  n = rt_int_parameter_vector(rt, "periodicity", vector);
   if (n != 0) coords_periodicity_set(vector);
 
   /* Look for a user-defined decomposition */
 
-  n = RUN_get_int_parameter_vector("grid", vector);
+  n = rt_int_parameter_vector(rt, "grid", vector);
   if (n != 0) coords_decomposition_set(vector);
 
-  n = RUN_get_int_parameter("reorder", &reorder);
+  n = rt_int_parameter(rt, "reorder", &reorder);
   if (n != 0) coords_reorder_set(reorder);
 
   coords_init();
   coords_info();
 
-  return;
+  return 0;
 }

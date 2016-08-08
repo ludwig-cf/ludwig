@@ -15,21 +15,22 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include "pe.h"
+#include "runtime.h"
 #include "physics.h"
 
-__targetHost__ void init_control(void);
-__targetHost__ int  is_statistics_step(void);
-__targetHost__ int  is_measurement_step(void);
-__targetHost__ int  is_config_step(void);
-__targetHost__ int  is_config_at_end(void);
-__targetHost__ int  is_colloid_io_step(void);
+int init_control(pe_t * pe, rt_t * rt);
+int is_statistics_step(void);
+int is_measurement_step(void);
+int is_config_step(void);
+int is_config_at_end(void);
+int is_colloid_io_step(void);
 
-__targetHost__ int  is_phi_output_step(void);
-__targetHost__ int  is_vel_output_step(void);
-__targetHost__ int  is_fed_output_step(void);
-__targetHost__ int  is_shear_measurement_step(void);
-__targetHost__ int  is_shear_output_step(void);
-
-__targetHost__ int control_freq_set(int freq);
+int is_phi_output_step(void);
+int is_vel_output_step(void);
+int is_fed_output_step(void);
+int is_shear_measurement_step(void);
+int is_shear_output_step(void);
+int control_freq_set(int freq);
 
 #endif

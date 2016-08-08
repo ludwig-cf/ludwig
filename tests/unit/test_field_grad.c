@@ -28,10 +28,10 @@
 enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,
              ENCODE_DAB};
 
-static int do_test1(void);
-static int do_test3(void);
-static int do_test5(void);
-static int do_test_dab(void);
+static int do_test1(pe_t * pe);
+static int do_test3(pe_t * pe);
+static int do_test5(pe_t * pe);
+static int do_test_dab(pe_t * pe);
 static int test_d2(field_grad_t * fgrad);
 static int test_d4(field_grad_t * fgrad);
 
@@ -52,10 +52,10 @@ int test_field_grad_suite(void) {
 
   /* info("Field gradient object test\n");*/
 
-  do_test1();
-  do_test3();
-  do_test5();
-  do_test_dab();
+  do_test1(pe);
+  do_test3(pe);
+  do_test5(pe);
+  do_test_dab(pe);
 
   pe_info(pe, "PASS     ./unit/test_field_grad\n");
   pe_free(pe);
@@ -69,17 +69,20 @@ int test_field_grad_suite(void) {
  *
  *****************************************************************************/
 
-int do_test1(void) {
+int do_test1(pe_t * pe) {
 
   int nfref = 1;
   double delsq;
   double grad[3];
 
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
+  assert(pe);
+
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nfref, "scalar-field-test", &field);
   assert(field);
@@ -109,7 +112,7 @@ int do_test1(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -121,17 +124,20 @@ int do_test1(void) {
  *
  *****************************************************************************/
 
-static int do_test3(void) {
+static int do_test3(pe_t * pe) {
 
   int nf = 3;
   double delsq[3];
   double grad[3][3];
 
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
+  assert(pe);
+
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nf, "vector-field-test", &field);
   assert(field);
@@ -155,7 +161,7 @@ static int do_test3(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -167,7 +173,7 @@ static int do_test3(void) {
  *
  *****************************************************************************/
 
-static int do_test5(void) {
+static int do_test5(pe_t * pe) {
 
   int nf = 5;
   int ia;
@@ -175,11 +181,14 @@ static int do_test5(void) {
   double delsq[3][3];
   double grad[3][3][3];
 
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
+  assert(pe);
+
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nf, "tensor-field-test", &field);
   assert(field);
@@ -217,7 +226,7 @@ static int do_test5(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;
@@ -229,17 +238,20 @@ static int do_test5(void) {
  *
  *****************************************************************************/
 
-int do_test_dab(void) {
+int do_test_dab(pe_t * pe) {
 
   int nf = 1;
   int index = 1;
   double dab[3][3];
 
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
+  assert(pe);
+
   coords_init();
-  le_init();
+  le_create(pe, NULL, &le);
 
   field_create(nf, "dab-field-test", &field);
   assert(field);
@@ -269,7 +281,7 @@ int do_test_dab(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
+  le_free(le);
   coords_finish();
 
   return 0;

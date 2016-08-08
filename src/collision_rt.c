@@ -10,6 +10,7 @@
  *
  *****************************************************************************/
 
+#include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
@@ -29,15 +30,15 @@
  *
  ****************************************************************************/
 
-int collision_run_time(noise_t * noise) {
+int collision_run_time(pe_t * pe, rt_t * rt, noise_t * noise) {
 
   int p;
   int noise_on = 0;
   int nghost;
-  char tmp[128];
+  char tmp[BUFSIZ];
   double rtau[NVEL];
 
-  p = RUN_get_string_parameter("isothermal_fluctuations", tmp, 128);
+  p = rt_string_parameter(rt, "isothermal_fluctuations", tmp, BUFSIZ);
 
   if (p == 1 && strcmp(tmp, "on") == 0) {
     noise_on = 1;
@@ -46,7 +47,7 @@ int collision_run_time(noise_t * noise) {
 
   /* Ghost modes */
 
-  p = RUN_get_string_parameter("ghost_modes", tmp, 128);
+  p = rt_string_parameter(rt, "ghost_modes", tmp, BUFSIZ);
   nghost = 1;
   if (p == 1 && strcmp(tmp, "off") == 0) {
     nghost = 0;
@@ -56,15 +57,15 @@ int collision_run_time(noise_t * noise) {
   lb_collision_relaxation_times_set(noise);
   collision_relaxation_times(rtau);
 
-  info("\n");
-  info("Lattice Boltzmann collision\n");
-  info("---------------------------\n");
-  info("Hydrodynamic modes:       on\n");
-  info("Ghost modes:              %s\n", (nghost == 1) ? "on" : "off");
-  info("Isothermal fluctuations:  %s\n", (noise_on == 1) ? "on" : "off");
-  info("Shear relaxation time:   %12.5e\n", 1.0/rtau[1 + NDIM]);
-  info("Bulk relaxation time:    %12.5e\n", 1.0/rtau[1 + NDIM + 1]);
-  info("Ghost relaxation time:   %12.5e\n", 1.0/rtau[NVEL-1]);
+  pe_info(pe, "\n");
+  pe_info(pe, "Lattice Boltzmann collision\n");
+  pe_info(pe, "---------------------------\n");
+  pe_info(pe, "Hydrodynamic modes:       on\n");
+  pe_info(pe, "Ghost modes:              %s\n", (nghost == 1) ? "on" : "off");
+  pe_info(pe, "Isothermal fluctuations:  %s\n", (noise_on == 1) ? "on" : "off");
+  pe_info(pe, "Shear relaxation time:   %12.5e\n", 1.0/rtau[1 + NDIM]);
+  pe_info(pe, "Bulk relaxation time:    %12.5e\n", 1.0/rtau[1 + NDIM + 1]);
+  pe_info(pe, "Ghost relaxation time:   %12.5e\n", 1.0/rtau[NVEL-1]);
 
   return 0;
 }

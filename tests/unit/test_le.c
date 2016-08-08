@@ -8,10 +8,11 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2104 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 
 #include "pe.h"
@@ -20,8 +21,8 @@
 #include "util.h"
 #include "tests.h"
 
-static void test_parallel1(void);
-static void test_le_parallel2(void);
+static void test_parallel1(pe_t * pe);
+static void test_le_parallel2(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -36,8 +37,8 @@ int test_le_suite(void) {
 
   coords_init();
 
-  test_parallel1();
-  test_le_parallel2();
+  test_parallel1(pe);
+  test_le_parallel2(pe);
 
   pe_info(pe, "PASS     ./unit/test_le\n");
   coords_finish();
@@ -54,7 +55,7 @@ int test_le_suite(void) {
  *
  *****************************************************************************/
 
-void test_parallel1(void) {
+void test_parallel1(pe_t * pe) {
 
   const int nplane = 2;
   int nplane_local;
@@ -74,11 +75,14 @@ void test_parallel1(void) {
 
   double dy;
 
+  lees_edw_t * le = NULL;
   MPI_Comm comm;
+
+  assert(pe);
 
   le_set_nplane_total(nplane);
   le_set_plane_uymax(uy_set);
-  le_init();
+  le_create(pe, NULL, &le);
 
   /*info("\nLees Edwards test (constant speed)...\n");
     info("Total number of planes in set correctly... ");*/
@@ -169,7 +173,7 @@ void test_parallel1(void) {
     MPI_Cart_rank(comm, &py, &precv_rank_right);
   }
 
-  le_finish();
+  le_free(le);
 
   return;
 }
@@ -182,7 +186,7 @@ void test_parallel1(void) {
  *
  *****************************************************************************/
 
-static void test_le_parallel2(void) {
+static void test_le_parallel2(pe_t * pe) {
 
   const int nplane = 2;
   int n;
@@ -199,9 +203,13 @@ static void test_le_parallel2(void) {
   double fr;
   double dy;
 
+  lees_edw_t * le = NULL;
+
+  assert(pe);
+
   le_set_nplane_total(nplane);
   le_set_plane_uymax(uy_set);
-  le_init();
+  le_create(pe, NULL, &le);
 
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
@@ -247,7 +255,7 @@ static void test_le_parallel2(void) {
     test_assert((n1 + n2 + n3) == nlocal[Y] + 2*nhalo + 3);
   }
 
-  le_finish();
+  le_free(le);
 
   return;
 }

@@ -43,7 +43,7 @@ int test_fe_electro_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
-  physics_ref(&phys);
+  physics_create(pe, &phys);
 
   do_test1(phys);
   do_test2(phys);
@@ -51,6 +51,7 @@ int test_fe_electro_suite(void) {
 
   pe_info(pe, "PASS     ./unit/test_fe_electro\n");
   coords_finish();
+  physics_free(phys);
   pe_free(pe);
 
   return 0;

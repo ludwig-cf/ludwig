@@ -19,6 +19,7 @@
 #define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
 
 #include "targetDP.h"
+#include "coords.h"
 #include "io_harness.h"
 
 typedef struct field_s field_t;

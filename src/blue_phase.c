@@ -162,11 +162,27 @@ __host__ int fe_lc_target(fe_lc_t * fe, fe_t ** target) {
  *
  *  fe_lc_param_commit
  *
+ *  Includes time-dependent electric field.
+ *
  *****************************************************************************/
 
 __host__ int fe_lc_param_commit(fe_lc_t * fe) {
 
+  int ia;
+  double e0_freq, t;
+  double e0[3];
+  physics_t * phys = NULL;
+  PI_DOUBLE(pi);
+
   assert(fe);
+
+  physics_ref(&phys);
+  physics_e0(phys, e0);
+  physics_e0_frequency(phys, &e0_freq);
+  physics_control_time(phys, &t);
+  for (ia = 0; ia < 3; ia++) {
+    fe->param->e0coswt[ia] = cos(2.0*pi*e0_freq*t)*e0[ia];
+  }
 
   copyConstToTarget(&const_param, fe->param, sizeof(fe_lc_param_t));
 
@@ -331,7 +347,7 @@ __host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
   efield = 0.0;
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      efield += fe->param->electric[ia]*q[ia][ib]*fe->param->electric[ib];
+      efield += fe->param->e0coswt[ia]*q[ia][ib]*fe->param->e0coswt[ib];
     }
   }
 
@@ -615,13 +631,13 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
 
   e2 = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    e2 += fe->param->electric[ia]*fe->param->electric[ia];
+    e2 += fe->param->e0coswt[ia]*fe->param->e0coswt[ia];
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       h[ia][ib] +=  fe->param->epsilon
-	*(fe->param->electric[ia]*fe->param->electric[ib] - r3*d[ia][ib]*e2);
+	*(fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2);
     }
   }
 
@@ -830,13 +846,18 @@ int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * ered) {
   double gamma;
   double epsilon;
   double fieldsq;
+  double e0[3];
+  physics_t * phys = NULL;
   PI_DOUBLE(pi);
 
   assert(fe);
 
+  physics_ref(&phys);
+  physics_e0(phys, e0);
+
   fieldsq = 0.0;
   for (ia = 0; ia < 3; ia++) {
-    fieldsq += fe->param->electric[ia]*fe->param->electric[ia];
+    fieldsq += e0[ia]*e0[ia];
   }
 
   /* Remember epsilon is stored with factor (1/12pi) */ 
@@ -1323,16 +1344,14 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
 
   __targetILP__(iv)  efield[iv] = 0.0;
 
-  /* assert(0);  sort out electric field storage */
-#ifdef ELECTRIC_FIELD_SHIT
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       __targetILP__(iv) {
-	efield[iv] += e0[ia]*q[ia][ib][iv]*e0[ib];
+	efield[iv] += fe->param->e0coswt[ia]*q[ia][ib][iv]*fe->param->e0coswt[ib];
       }
     }
   }
-#endif
+
 
   __targetILP__(iv) {
     fed[iv] = 0.5*fe->param->a0*(1.0 - r3*fe->param->gamma)*q2[iv]
@@ -1520,7 +1539,7 @@ void fe_lc_compute_h_v(fe_lc_t * fe,
 
   for (ia = 0; ia < 3; ia++) {
     __targetILP__(iv) {
-      e2[iv] += fe->param->electric[ia]*fe->param->electric[ia];
+      e2[iv] += fe->param->e0coswt[ia]*fe->param->e0coswt[ia];
     }
   }
 
@@ -1528,7 +1547,7 @@ void fe_lc_compute_h_v(fe_lc_t * fe,
     for (ib = 0; ib < 3; ib++) {
       __targetILP__(iv) {
 	h[ia][ib][iv] +=  fe->param->epsilon*
-	  (fe->param->electric[ia]*fe->param->electric[ib] - r3*d[ia][ib]*e2[iv]);
+	  (fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2[iv]);
       }
     }
   }

@@ -19,6 +19,8 @@
 
 #include "targetDP.h"
 
+typedef struct coords_s coords_t;
+
 #define NSYMM 6      /* Elements for general symmetric tensor */
 
 enum cartesian_directions {X, Y, Z};

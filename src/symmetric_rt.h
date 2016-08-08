@@ -15,9 +15,12 @@
 #ifndef SYMMETRIC_RT_H
 #define SYMMETRIC_RT_H
 
+#include "pe.h"
+#include "runtime.h"
 #include "symmetric.h"
 
-int fe_symmetric_run_time(fe_symm_t * fe);
-int fe_symmetric_rt_initial_conditions(fe_symm_t * fe, field_t * phi);
+int fe_symmetric_init_rt(pe_t * pe, rt_t * rt, fe_symm_t * fe);
+int fe_symmetric_phi_init_rt(pe_t * pe, rt_t * rt, fe_symm_t * fe,
+			     field_t * phi);
 
 #endif

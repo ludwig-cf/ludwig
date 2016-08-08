@@ -39,13 +39,14 @@ int test_lubrication_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   coords_init();
-  physics_ref(&physics);
+  physics_create(pe, &physics);
 
   test_lubrication_ss_fnorm();
   test_lubrication_ss_ftang();
 
   coords_finish();
   pe_info(pe, "PASS     ./unit/test_lubrication\n");
+  physics_free(physics);
   pe_free(pe);
 
   return 0;

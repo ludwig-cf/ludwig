@@ -25,6 +25,12 @@
 #include "runtime.h"
 #include "leesedwards.h"
 
+struct lees_edw_s {
+  pe_t * pe;
+  coords_t * cs;
+  int ntotal;
+};
+
 enum shear_type {LINEAR, OSCILLATORY};
 
 static void le_checks(void);
@@ -53,8 +59,6 @@ static int nplane_total_ = 0;     /* Total number of planes */
 static int le_type_ = LINEAR;
 static int initialised_ = 0;
 
-static __targetConst__ int cle_nsites_;
-
 /*****************************************************************************
  *
  *  le_init
@@ -68,19 +72,53 @@ static __targetConst__ int cle_nsites_;
  *
  *****************************************************************************/
 
-void le_init() {
+int le_create(pe_t * pe, coords_t * cs, lees_edw_t ** ple) {
+
+  int ntotal;
+  lees_edw_t * le = NULL;
+
+  le = (lees_edw_t *) calloc(1, sizeof(lees_edw_t));
+  if (le == NULL) pe_fatal(pe, "calloc(lees_edw_t) failed\n");
+
+  initialised_ = 1;
+  le_params_.nt0 = 0;
+  ntotal = le_get_nplane_total();
+
+  if (le_get_nplane_total() != 0) {
+
+    if (N_total(X) % ntotal) {
+      pe_info(pe, "System size x-direction: %d\n", N_total(X));
+      pe_info(pe, "Number of LE planes requested: %d\n", ntotal);
+      fatal("Number of planes must divide system size\n");
+    }
+
+    le_params_.dx_sep = L(X) / ntotal;
+    le_params_.dx_min = 0.5*le_params_.dx_sep;
+    le_params_.time0 = 1.0*le_params_.nt0;
+  }
+  le_checks();
+  le_init_tables();
+
+  *ple = le;
+
+  return 0;
+}
+
+int le_init(pe_t * pe, rt_t * rt) {
 
   int n;
   int ntotal;
 
+  assert(pe);
+
   /* initialise the state from input */
 
-  n = RUN_get_int_parameter("N_LE_plane", &ntotal);
+  n = rt_int_parameter(rt, "N_LE_plane", &ntotal);
   if (n != 0) nplane_total_ = ntotal;
 
-  n = RUN_get_double_parameter("LE_plane_vel", &le_params_.uy_plane);
+  n = rt_double_parameter(rt, "LE_plane_vel", &le_params_.uy_plane);
 
-  n = RUN_get_int_parameter("LE_oscillation_period", &le_params_.period);
+  n = rt_int_parameter(rt, "LE_oscillation_period", &le_params_.period);
 
   if (n == 1 && le_params_.period > 0) {
     le_type_ = OSCILLATORY;
@@ -91,50 +129,28 @@ void le_init() {
    * store in le_params as a double (below). */
 
   le_params_.nt0 = 0;
-  n = RUN_get_int_parameter("LE_time_offset", &le_params_.nt0);
+  n = rt_int_parameter(rt, "LE_time_offset", &le_params_.nt0);
 
   initialised_ = 1;
   ntotal = le_get_nplane_total();
 
   if (le_get_nplane_total() != 0) {
 
-    /*info("\nLees-Edwards boundary conditions are active:\n");*/
-
     if (N_total(X) % ntotal) {
-      info("System size x-direction: %d\n", N_total(X));
-      info("Number of LE planes requested: %d\n", ntotal);
+      pe_info(pe, "System size x-direction: %d\n", N_total(X));
+      pe_info(pe, "Number of LE planes requested: %d\n", ntotal);
       fatal("Number of planes must divide system size\n");
     }
 
     le_params_.dx_sep = L(X) / ntotal;
     le_params_.dx_min = 0.5*le_params_.dx_sep;
-    /*
-    for (n = 0; n < ntotal; n++) {
-      info("LE plane %d is at x = %d with speed %f\n", n+1,
-	   (int)(le_params_.dx_min + n*le_params_.dx_sep),
-	   le_plane_uy_max());
-    }
-
-    if (le_type_ == LINEAR) {
-      info("Overall shear rate = %f\n", le_shear_rate());
-    }
-    else {
-      info("Oscillation period: %d time steps\n", period);
-      info("Maximum shear rate = %f\n", le_shear_rate());
-    }
-    */
     le_params_.time0 = 1.0*le_params_.nt0;
-    /*info("\n");
-      info("Lees-Edwards time offset (time steps): %8d\n", time_zero);*/
   }
 
   le_checks();
   le_init_tables();
 
-  n = le_nsites();
-  copyConstToTarget(&cle_nsites_, &n, sizeof(int));
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -160,6 +176,27 @@ void le_finish() {
   le_params_.buffer_duy = NULL;
 
   return;
+}
+
+int le_free(lees_edw_t * le) {
+
+  assert(le);
+
+  free(le_params_.index_buffer_to_real);
+  free(le_params_.index_real_to_buffer);
+  free(le_params_.buffer_duy);
+
+  nplane_total_ = 0;
+  le_type_ = LINEAR;
+  initialised_ = 0;
+
+  le_params_.index_buffer_to_real = NULL;
+  le_params_.index_real_to_buffer = NULL;
+  le_params_.buffer_duy = NULL;
+
+  free(le);
+
+  return 0;
 }
 
 /*****************************************************************************

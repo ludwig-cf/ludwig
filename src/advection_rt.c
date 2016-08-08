@@ -10,10 +10,11 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -28,32 +29,35 @@
  *
  *****************************************************************************/
 
-void advection_run_time(void) {
+int advection_init_rt(pe_t * pe, rt_t * rt) {
 
   int n;
   int order;
   char key1[FILENAME_MAX];
 
-  RUN_get_string_parameter("free_energy", key1, FILENAME_MAX);
+  assert(pe);
+  assert(rt);
+
+  rt_string_parameter(rt, "free_energy", key1, FILENAME_MAX);
 
   if (strcmp(key1, "none") == 0 || strcmp(key1, "symmetric_lb") == 0) {
     /* No finite difference advection required. */
   }
   else {
 
-    info("\nAdvection scheme order: ");
+    pe_info(pe, "\nAdvection scheme order: ");
 
-    n = RUN_get_int_parameter("fd_advection_scheme_order", &order);
+    n = rt_int_parameter(rt, "fd_advection_scheme_order", &order);
 
     if (n == 0) {
       advection_order(&order);
-      info("%2d (default)\n", order);
+      pe_info(pe, "%2d (default)\n", order);
     }
     else {
-      info("%d\n", order);
+      pe_info(pe, "%d\n", order);
       advection_order_set(order);
     }
   }
 
-  return;
+  return 0;
 }

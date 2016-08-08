@@ -34,7 +34,7 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]);
  *
  *****************************************************************************/
 
-int lb_run_time(lb_t * lb) {
+int lb_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
 
   int ndist;
   int nreduced;
@@ -44,43 +44,45 @@ int lb_run_time(lb_t * lb) {
 
   io_info_t * io_info = NULL;
 
+  assert(pe);
+  assert(rt);
   assert(lb);
 
   nreduced = 0;
-  RUN_get_string_parameter("reduced_halo", string, FILENAME_MAX);
+  rt_string_parameter(rt,"reduced_halo", string, FILENAME_MAX);
   if (strcmp(string, "yes") == 0) nreduced = 1;
 
-  RUN_get_int_parameter_vector("distribution_io_grid", io_grid);
+  rt_int_parameter_vector(rt, "distribution_io_grid", io_grid);
   io_info = io_info_create_with_grid(io_grid);
   lb_io_info_set(lb, io_info);
 
-  RUN_get_string_parameter("distribution_io_format_input", string,
-			   FILENAME_MAX);
+  rt_string_parameter(rt,"distribution_io_format_input", string,
+		      FILENAME_MAX);
 
   /* Append R to the record if the model is the reverse implementation */ 
 
   if (DATA_MODEL == ADDRESS_REVERSE) memory = 'R';
   lb_ndist(lb, &ndist);
 
-  info("\n");
-  info("Lattice Boltzmann distributions\n");
-  info("-------------------------------\n");
+  pe_info(pe, "\n");
+  pe_info(pe, "Lattice Boltzmann distributions\n");
+  pe_info(pe, "-------------------------------\n");
 
-  info("Model:            d%dq%d %c\n", NDIM, NVEL, memory);
-  info("SIMD vector len:  %d\n", NSIMDVL);
-  info("Number of sets:   %d\n", ndist);
-  info("Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
+  pe_info(pe, "Model:            d%dq%d %c\n", NDIM, NVEL, memory);
+  pe_info(pe, "SIMD vector len:  %d\n", NSIMDVL);
+  pe_info(pe, "Number of sets:   %d\n", ndist);
+  pe_info(pe, "Halo type:        %s\n", (nreduced == 1) ? "reduced" : "full");
 
   if (strcmp("BINARY_SERIAL", string) == 0) {
-    info("Input format:     binary single serial file\n");
+    pe_info(pe, "Input format:     binary single serial file\n");
     io_info_set_processor_independent(io_info);
   }
   else {
-    info("Input format:     binary\n");
+    pe_info(pe, "Input format:     binary\n");
   }
 
-  info("Output format:    binary\n");
-  info("I/O grid:         %d %d %d\n", io_grid[0], io_grid[1], io_grid[2]);
+  pe_info(pe, "Output format:    binary\n");
+  pe_info(pe, "I/O grid:         %d %d %d\n", io_grid[0], io_grid[1], io_grid[2]);
 
   lb_init(lb);
 
@@ -96,21 +98,25 @@ int lb_run_time(lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_rt_initial_conditions(lb_t * lb, physics_t * phys) {
+int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
+			     physics_t * phys) {
 
   char key[FILENAME_MAX];
   double rho0;
   double u0[3] = {0.0, 0.0, 0.0};
 
+  assert(pe);
+  assert(rt);
   assert(lb);
   assert(phys);
+
   physics_rho0(phys, &rho0);
 
   /* Default */
 
   lb_init_rest_f(lb, rho0);
 
-  RUN_get_string_parameter("distribution_initialisation", key, FILENAME_MAX);
+  rt_string_parameter(rt, "distribution_initialisation", key, FILENAME_MAX);
 
   if (strcmp("2d_kelvin_helmholtz", key) == 0) {
     lb_rt_2d_kelvin_helmholtz(lb);
@@ -121,13 +127,27 @@ int lb_rt_initial_conditions(lb_t * lb, physics_t * phys) {
   }
 
   if (strcmp("3d_uniform_u", key) == 0) {
-    RUN_get_double_parameter_vector("distribution_uniform_u", u0);
+    rt_double_parameter_vector(rt, "distribution_uniform_u", u0);
     lb_init_uniform(lb, rho0, u0);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Initial distribution: 3d uniform desnity/velocity\n");
+    pe_info(pe, "Density:              %14.7e\n", rho0);
+    pe_info(pe, "Velocity:             %14.7e %14.7e %14.7e\n",
+	    u0[X], u0[Y], u0[Z]);
+    pe_info(pe, "\n");
   }
 
   if (strcmp("1d_poiseuille", key) == 0) {
-    RUN_get_double_parameter_vector("distribution_poiseuille_umax", u0);
+    rt_double_parameter_vector(rt, "distribution_poiseuille_umax", u0);
     lb_init_poiseuille(lb, rho0, u0);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Initial distribution: 1d Poiseuille profile\n");
+    pe_info(pe, "Density:              %14.7e\n", rho0);
+    pe_info(pe, "Velocity (max):       %14.7e %14.7e %14.7e\n",
+	    u0[X], u0[Y], u0[Z]);
+    pe_info(pe, "\n");
   }
 
   return 0;
@@ -293,12 +313,6 @@ static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]) {
     }
   }
 
-  info("\n");
-  info("Initial distribution: 3d uniform desnity/velocity\n");
-  info("Density:              %14.7e\n", rho0);
-  info("Velocity:             %14.7e %14.7e %14.7e\n", u0[X], u0[Y], u0[Z]);
-  info("\n");
-
   return 0;
 }
 
@@ -350,13 +364,6 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
       }
     }
   }
-
-  info("\n");
-  info("Initial distribution: 1d Poiseuille profile\n");
-  info("Density:              %14.7e\n", rho0);
-  info("Velocity (max):       %14.7e %14.7e %14.7e\n", umax[X], umax[Y],
-       umax[Z]);
-  info("\n");
 
   return 0;
 }
