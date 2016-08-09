@@ -1722,6 +1722,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     /* Removal or replacement of fluid requires a lattice halo update */
 
+    /* ANTHONY: STEP 1 Remove entirely the next 8 lines */
+
     TIMER_start(TIMER_HALO_LATTICE);
 
     #if defined(LB_DATA_SOA) ||  defined(KEEPFIELDONTARGET) ||  defined(KEEPHYDROONTARGET)
@@ -1734,6 +1736,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
    TIMER_stop(TIMER_HALO_LATTICE);
 
+   /* END STEP 1 */
+
     TIMER_start(TIMER_FREE1);
     if (iconserve && ludwig->phi) field_halo(ludwig->phi);
     if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
@@ -1741,7 +1745,12 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_REBUILD);
 
+    /* ANTHONY: STEP 2 */
+    /* START new lb_halo(lb) HERE */
+
     build_update_map(ludwig->collinfo, ludwig->map);
+
+    /* COMPLETE new lb_halo(lb) HERE */
     build_remove_replace(ludwig->collinfo, ludwig->lb->tcopy, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi, ludwig->map);
     build_update_links(ludwig->collinfo, ludwig->map);
