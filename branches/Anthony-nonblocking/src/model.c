@@ -601,12 +601,12 @@ int lb_halo(lb_t * lb) {
   assert(lb);
 
   if (lb_order(lb) == MODEL) {
-    lb_halo_via_copy_nonblocking_start(lb);//lb_halo_via_copy(lb);//lb_halo_via_struct(lb);
-    lb_halo_via_copy_nonblocking_end(lb);
+    lb_halo_via_copy(lb);
+
   }
   else {
     /* MODEL_R only has ... */
-    lb_halo_via_copy(lb);//lb_halo_via_copy_nonblocking(lb);//
+    lb_halo_via_copy(lb);
   }
 
   return 0;
