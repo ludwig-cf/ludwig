@@ -195,24 +195,27 @@ __targetHost__ __target__ void blue_phase_compute_h_vec_inline(double q[3][3][VV
   }
 
   /* d_c Q_db written as d_c Q_bd etc */
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     __targetILP__(iv) sum[iv] = 0.0; */
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	for (id = 0; id < 3; id++) { */
-  /* 	  __targetILP__(iv) sum[iv] += */
-  /* 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]); */
-  /* 	} */
-  /*     } */
+#ifdef NOLOOPUNROLLING
+  int id;
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) sum[iv] = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+  	for (id = 0; id < 3; id++) {
+  	  __targetILP__(iv) sum[iv] +=
+  	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]);
+  	}
+      }
       
-  /*     __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv] */
-  /* 	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib] */
-  /* 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv]; */
-  /*   } */
-  /* } */
-  //#include "h_loop.h"
+      __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv]
+  	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib]
+  	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv];
+    }
+  }
 
+#else
   h_loop_unrolled_be(sum,dq,dsq,q,h,eq,pbpc);
+#endif
 
   /* Electric field term */
 

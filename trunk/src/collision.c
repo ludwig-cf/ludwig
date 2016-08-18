@@ -255,7 +255,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
   
   /* Compute all the modes */
 
-#ifdef _D3Q19_
+#if defined(_D3Q19_) && !defined(NOLOOPUNROLLING)
     d3q19matmultchunk(mode, fchunk, baseIndex);
 #else
     for (m = 0; m < tc_nmodes_; m++) {
@@ -406,7 +406,7 @@ __target__ void lb_collision_mrt_site( double* __restrict__ t_f,
 
 
   /* Project post-collision modes back onto the distribution */
-#ifdef _D3Q19_
+#if defined(_D3Q19_) && !defined(NOLOOPUNROLLING)
     d3q19matmult2chunk(mode, fchunk, baseIndex);
 #else
     for (p = 0; p < NVEL; p++) {
@@ -500,7 +500,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
   
   /* Compute all the modes */
   
-#ifdef _D3Q19_
+#if defined(_D3Q19_) && !defined(NOLOOPUNROLLING)
   d3q19matmult(mode, t_f, 1, baseIndex);
 #else 
   for (m = 0; m < tc_nmodes_; m++) {
@@ -624,7 +624,7 @@ __targetEntry__ void lb_collision_mrt_lattice_fast( lb_t* lb,
   
   
   /* Project post-collision modes back onto the distribution */
-#ifdef _D3Q19_
+#if defined(_D3Q19_) && !defined(NOLOOPUNROLLING)
   d3q19matmult2(mode, t_f, 1, baseIndex);
 #else
   for (p = 0; p < NVEL; p++) {
@@ -882,7 +882,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   }
 
 
-#ifdef _D3Q19_
+#if defined(_D3Q19_) && !defined(NOLOOPUNROLLING)
   d3q19matmult(mode, t_f, 2, baseIndex);
 #else
     /* Compute all the modes */
@@ -1053,7 +1053,7 @@ __target__ void lb_collision_binary_site( double* __restrict__ t_f,
   
   /* Project post-collision modes back onto the distribution */
 
-#ifdef _D3Q19_  
+#if defined(_D3Q19_) && !defined(NOLOOPUNROLLING)  
   d3q19matmult2(mode, t_f,2, baseIndex);
 #else    
     for (p = 0; p < NVEL; p++) {
