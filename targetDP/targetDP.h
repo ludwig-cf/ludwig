@@ -44,7 +44,6 @@
 
 #ifdef __NVCC__ /* CUDA */
 
-
 /*
  * CUDA Settings 
  */
@@ -75,7 +74,8 @@
 
 /* The __targetHost__ keyword is used in a function declaration or definition to
  * specify that the function should be compiled for the host. */
-#define __targetHost__ extern "C" __host__
+
+#define __targetHost__ __host__
 
 
 /* The __targetConst__ keyword is used in a variable or array declaration to
@@ -161,7 +161,7 @@
 /* Language Extensions */
 
 #define HOST
-#define __targetHost__
+#define __targetHost__ 
 
 /* kernel function specifiers */
 #define __target__
@@ -257,8 +257,14 @@ _Pragma("omp simd")				\
 
 enum {TARGET_HALO,TARGET_EDGE};
 
+
+
 /* API */
 /* see specification or implementation for documentation on these */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 __targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
@@ -304,5 +310,10 @@ __targetHost__ double targetDoubleSum(double* array, size_t size);
 __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
 
 __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
