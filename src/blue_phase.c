@@ -485,20 +485,23 @@ __targetHost__ __target__ void blue_phase_compute_fed_vec(double sum[VVL], doubl
 
   __targetILP__(iv)  dq1[iv] = 0.0;
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     __targetILP__(iv)  sum[iv] = 0.0; */
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	for (id = 0; id < 3; id++) { */
-  /* 	  __targetILP__(iv)  sum[iv] += pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv]; */
-  /* 	} */
-  /*     } */
-  /*     __targetILP__(iv)  sum[iv] += 2.0*pbpc->q0*q[ia][ib][iv]; */
-  /*     __targetILP__(iv)  dq1[iv] += sum[iv]*sum[iv]; */
-  /*   } */
-  /* } */
-
+#ifdef NOLOOPUNROLLING
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv)  sum[iv] = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+  	for (id = 0; id < 3; id++) {
+  	  __targetILP__(iv)  sum[iv] += pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv];
+  	}
+      }
+      __targetILP__(iv)  sum[iv] += 2.0*pbpc->q0*q[ia][ib][iv];
+      __targetILP__(iv)  dq1[iv] += sum[iv]*sum[iv];
+    }
+  }
+#else
   fed_loop_unrolled(sum,dq, q, dq1,pbpc);
+#endif
+
 
 
   /* Electric field term (epsilon_ includes the factor 1/12pi) */
@@ -817,24 +820,27 @@ __targetHost__ __target__ void blue_phase_compute_h_vec(double q[3][3][VVL],
     }
   }
 
-  /* d_c Q_db written as d_c Q_bd etc */
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     __targetILP__(iv) sum[iv] = 0.0; */
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	for (id = 0; id < 3; id++) { */
-  /* 	  __targetILP__(iv) sum[iv] += */
-  /* 	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]); */
-  /* 	} */
-  /*     } */
-      
-  /*     __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv] */
-  /* 	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib] */
-  /* 	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv]; */
-  /*   } */
-  /* } */
 
+  /* d_c Q_db written as d_c Q_bd etc */
+#ifdef NOLOOPUNROLLING
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) sum[iv] = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+  	for (id = 0; id < 3; id++) {
+  	  __targetILP__(iv) sum[iv] +=
+  	    (pbpc->e_[ia][ic][id]*dq[ic][ib][id][iv] + pbpc->e_[ib][ic][id]*dq[ic][ia][id][iv]);
+  	}
+      }
+      
+      __targetILP__(iv) h[ia][ib][iv] += pbpc->kappa0*dsq[ia][ib][iv]
+  	- 2.0*pbpc->kappa1*pbpc->q0*sum[iv] + 4.0*pbpc->r3_*pbpc->kappa1*pbpc->q0*eq[iv]*pbpc->d_[ia][ib]
+  	- 4.0*pbpc->kappa1*pbpc->q0*pbpc->q0*q[ia][ib][iv];
+    }
+  }
+#else
   h_loop_unrolled(sum,dq,dsq,q,h,eq,pbpc);
+#endif
 
   /* Electric field term */
 
@@ -1142,7 +1148,7 @@ __targetHost__ __target__ void stress_body_unrolled(double dq[3][3][3][VVL],
 
 /* vectorised version of above */
 __targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL], double dq[3][3][3][VVL],
-					  double h[3][3][VVL], double* sth, 
+					  double h[3][3][VVL], double* sth_in, 
 							     bluePhaseKernelConstants_t* pbpc, int baseIndex) {
   int ia, ib, ic, id, ie;
   int iv=0;
@@ -1165,76 +1171,82 @@ __targetHost__ __target__ void blue_phase_compute_stress_vec(double q[3][3][VVL]
     }
   }
 
+
+#ifdef NOLOOPUNROLLING
+
+  double sth[3][3][VVL];
   /* The term in the isotropic pressure, plus that in qh */
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     __targetILP__(iv) sth[ia][ib][iv] = -p0[iv]*pbpc->d_[ia][ib] + 2.0*pbpc->xi_*(q[ia][ib][iv] */
-  /* 						 + pbpc->r3_*pbpc->d_[ia][ib])*qh[iv]; */
-  /*   } */
-  /* } */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) sth[ia][ib][iv] = -p0[iv]*pbpc->d_[ia][ib] + 2.0*pbpc->xi_*(q[ia][ib][iv]
+  						 + pbpc->r3_*pbpc->d_[ia][ib])*qh[iv];
+    }
+  }
 
-  /* /\* Remaining two terms in xi and molecular field *\/ */
+  /* Remaining two terms in xi and molecular field */
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	__targetILP__(iv) sth[ia][ib][iv] += */
-  /* 	  -pbpc->xi_*h[ia][ic][iv]*(q[ib][ic][iv] + pbpc->r3_*pbpc->d_[ib][ic]) */
-  /* 	  -pbpc->xi_*(q[ia][ic][iv] + pbpc->r3_*pbpc->d_[ia][ic])*h[ib][ic][iv]; */
-  /*     } */
-  /*   } */
-  /* } */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+  	__targetILP__(iv) sth[ia][ib][iv] +=
+  	  -pbpc->xi_*h[ia][ic][iv]*(q[ib][ic][iv] + pbpc->r3_*pbpc->d_[ib][ic])
+  	  -pbpc->xi_*(q[ia][ic][iv] + pbpc->r3_*pbpc->d_[ia][ic])*h[ib][ic][iv];
+      }
+    }
+  }
 
-  /* /\* Dot product term d_a Q_cd . dF/dQ_cd,b *\/ */
+  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
 
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	for (id = 0; id < 3; id++) { */
-  /* 	  __targetILP__(iv) sth[ia][ib][iv] += */
-  /* 	    - pbpc->kappa0*dq[ia][ib][ic][iv]*dq[id][ic][id][iv] */
-  /* 	    - pbpc->kappa1*dq[ia][ic][id][iv]*dq[ib][ic][id][iv] */
-  /* 	    + pbpc->kappa1*dq[ia][ic][id][iv]*dq[ic][ib][id][iv]; */
+      for (ic = 0; ic < 3; ic++) {
+  	for (id = 0; id < 3; id++) {
+  	  __targetILP__(iv) sth[ia][ib][iv] +=
+  	    - pbpc->kappa0*dq[ia][ib][ic][iv]*dq[id][ic][id][iv]
+  	    - pbpc->kappa1*dq[ia][ic][id][iv]*dq[ib][ic][id][iv]
+  	    + pbpc->kappa1*dq[ia][ic][id][iv]*dq[ic][ib][id][iv];
 
-  /* 	  for (ie = 0; ie < 3; ie++) { */
-  /* 	    __targetILP__(iv) sth[ia][ib][iv] += */
-  /* 	      -2.0*pbpc->kappa1*pbpc->q0*dq[ia][ic][id][iv]*pbpc->e_[ib][ic][ie]*q[id][ie][iv]; */
-  /* 	  } */
-  /* 	} */
-  /*     } */
-  /*   } */
-  /* } */
+  	  for (ie = 0; ie < 3; ie++) {
+  	    __targetILP__(iv) sth[ia][ib][iv] +=
+  	      -2.0*pbpc->kappa1*pbpc->q0*dq[ia][ic][id][iv]*pbpc->e_[ib][ic][ie]*q[id][ie][iv];
+  	  }
+  	}
+      }
+    }
+  }
 
-  /* /\* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can */
-  /*  * rewrite it as q_ac h_bc - h_ac q_bc. *\/ */
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     for (ic = 0; ic < 3; ic++) { */
-  /* 	__targetILP__(iv) sth[ia][ib][iv] += q[ia][ic][iv]*h[ib][ic][iv] - h[ia][ic][iv]*q[ib][ic][iv]; */
-  /*     } */
-  /*   } */
-  /* } */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+  	__targetILP__(iv) sth[ia][ib][iv] += q[ia][ic][iv]*h[ib][ic][iv] - h[ia][ic][iv]*q[ib][ic][iv];
+      }
+    }
+  }
 
-  /* /\* Additional active stress -zeta*(q_ab - 1/3 d_ab) *\/ */
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) sth[ia][ib][iv] -= pbpc->zeta_*(q[ia][ib][iv] + pbpc->r3_*pbpc->d_[ia][ib]);
+    }
+  }
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /*     __targetILP__(iv) sth[ia][ib][iv] -= pbpc->zeta_*(q[ia][ib][iv] + pbpc->r3_*pbpc->d_[ia][ib]); */
-  /*   } */
-  /* } */
+  /* This is the minus sign. */
 
-  /* /\* This is the minus sign. *\/ */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      //__targetILP__(iv) sth[ia][ib][iv] = -sth[ia][ib][iv];
+      __targetILP__(iv) sth_in[ADR3X3(tc_nSites,baseIndex+iv,ia,ib)] = -sth[ia][ib][iv];
+    }
+  }
 
-  /* for (ia = 0; ia < 3; ia++) { */
-  /*   for (ib = 0; ib < 3; ib++) { */
-  /* 	__targetILP__(iv) sth[ia][ib][iv] = -sth[ia][ib][iv]; */
-  /*   } */
-  /* } */
-
-  stress_body_unrolled( dq, q, h, sth, qh, p0, pbpc, baseIndex);
+#else
+  stress_body_unrolled( dq, q, h, sth_in, qh, p0, pbpc, baseIndex);
+#endif
 
   return;
 }
