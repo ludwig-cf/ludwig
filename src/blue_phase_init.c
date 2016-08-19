@@ -919,6 +919,123 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
 
 /*****************************************************************************
  *
+ *  lc_active_nematic_init_q2d
+ *
+ *  Intended for quasi-2d systems in which the z-direction is Lz = 1).
+ *
+ *  For istrip == X, the director looks like
+ *
+ *       - - - - - -     ^ 
+ *       / / / \ \ \     |
+ *       - - - - - -     | Y   ---> X
+ *
+ *  For istrip == Y, swap the labels in the above picture.
+ *
+ *****************************************************************************/
+
+int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
+			       int istrip) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double nhat[3];
+  double q[3][3];
+
+  double nkink1[3], nkink2[3];
+  double qkink1[3][3], qkink2[3][3];
+
+  double x, y, z;
+  double ang;
+  PI_DOUBLE(pi);
+
+  assert(param);
+  assert(fq);
+  assert(istrip == X || istrip == Y);
+
+  ang = pi/180.0*10.0;
+
+  coords_nlocal(nlocal);
+  coords_nlocal_offset(noffset);
+
+  if (istrip == X) {
+    nhat[X] = 1.0;
+    nhat[Y] = 0.0;
+    nhat[Z] = 0.0;
+    nkink1[X] = sin(ang);
+    nkink1[Y] = cos(ang);
+    nkink1[Z] = 0.0;
+    nkink2[X] = -sin(ang);
+    nkink2[Y] =  cos(ang);
+    nkink2[Z] = 0.0;
+  }
+
+  if (istrip == Y) {
+    nhat[X] = 0.0;
+    nhat[Y] = 1.0;
+    nhat[Z] = 0.0;
+    nkink1[X] = cos(ang);
+    nkink1[Y] = sin(ang);
+    nkink1[Z] = 0.0;
+    nkink2[X] =  cos(ang);
+    nkink2[Y] = -sin(ang);
+    nkink2[Z] =  0.0;
+  }
+
+  fe_lc_q_uniaxial(param, nhat, q);
+  fe_lc_q_uniaxial(param, nkink1, qkink1);
+  fe_lc_q_uniaxial(param, nkink2, qkink2);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	index = coords_index(ic, jc, kc);
+
+	/* Background */
+	field_tensor_set(fq, index, q);
+
+        /* Central strip parallel to X */
+ 
+	if (istrip == X) {
+	  if (y == N_total(Y)/2 || y == (N_total(Y)-1)/2) {
+	    if (x <= N_total(X)/2) {
+	      field_tensor_set(fq, index, qkink1);
+	    }
+	    else {
+	      field_tensor_set(fq, index, qkink2);
+	    }
+	  }
+	}
+
+        /* Central strip parallel to Y */
+
+	if (istrip == Y) {
+	  if (x == N_total(X)/2 || x == (N_total(X)-1)/2) {
+	    if (y <= N_total(Y)/2) {
+	      field_tensor_set(fq, index, qkink1);
+	    }
+	    else {
+	      field_tensor_set(fq, index, qkink2);
+	    }
+	  }
+	}
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_chi_edge
  *  Setting  chi edge disclination
  *  Using the current free energy parameter q0 (P=2pi/q0)

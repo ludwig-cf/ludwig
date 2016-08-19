@@ -381,6 +381,16 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
     blue_phase_active_nematic_init(feparam, q, nhat);
   }
 
+  if (strcmp(key1, "active_nematic_q2d_x") == 0) {
+    pe_info(pe, "Initialising Q_ab to quasi-2d with strip parallel to X\n");
+    lc_active_nematic_init_q2d(feparam, q, X);
+  }
+
+  if (strcmp(key1, "active_nematic_q2d_y") == 0) {
+    pe_info(pe, "Initialising Q_ab to quasi-2d with strip parallel to Y\n");
+    lc_active_nematic_init_q2d(feparam, q, Y);
+  }
+
   if (strcmp(key1, "o8m") == 0) {
     pe_info(pe, "Initialising Q_ab using O8M (BPI)\n");
     blue_phase_O8M_init(feparam, q);
