@@ -15,7 +15,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include "targetDP.h"
+#include "pe.h"
 
 #define KRONECKER_DELTA_CHAR(d) const char d[3][3] = {{1,0,0},{0,1,0},{0,0,1}}
 #define LEVI_CIVITA_CHAR(e) const char e[3][3][3] =		\
@@ -28,6 +28,7 @@
 
 __host__ int    is_bigendian(void);
 __host__ double reverse_byte_order_double(char *);
+__host__ int util_reverse_byte_order(void * arg, void * res, MPI_Datatype type);
 
 __host__ __device__ double dot_product(const double a[3], const double b[3]);
 __host__ __device__ void cross_product(const double a[3], const double b[3],
