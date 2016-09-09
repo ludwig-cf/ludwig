@@ -65,6 +65,60 @@ __host__ double reverse_byte_order_double(char * c) {
 
   return result;
 }
+/*****************************************************************************
+ *
+ *  util_reverse_byte_order
+ *
+ *  Converts a scalar big endian value to little endian and vice versa.
+ *
+ *  The data type is identified via the MPI_Datatype argument.
+ *  The input and result arguments may alias.
+ *
+ *****************************************************************************/
+
+__host__
+int util_reverse_byte_order(void * arg, void * result, MPI_Datatype type) {
+
+  char * p = NULL;
+  char * carg = NULL;
+  size_t b;
+
+  assert(arg);
+  assert(result);
+
+  carg = (char *) arg;
+
+  switch (type) {
+  case MPI_INT:
+    {
+      int iresult;
+      p = (char *) &iresult;
+      
+      for (b = 0; b < sizeof(int); b++) {
+        p[b] = carg[sizeof(int) - (b + 1)];
+      }
+
+      *((int *) result) = iresult;
+    }
+    break;
+  case MPI_DOUBLE:
+    {
+      double dresult;
+      p = (char *) &dresult;
+
+      for (b = 0; b < sizeof(double); b++) {
+        p[b] = carg[sizeof(double) - (b + 1)];
+      }
+
+      *((double *) result) = dresult;
+    }
+    break;
+  default:
+    fatal("Not implemented data type\n");
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
