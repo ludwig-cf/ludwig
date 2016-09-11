@@ -34,6 +34,8 @@
 #include "colloids_s.h"
 
 struct bbl_s {
+  pe_t * pe;            /* Parallel environment */
+  cs_t * cs;            /* Coordinate system */
   int active;           /* Global flag for active particles. */
   int ndist;            /* Number of LB distributions active */
   double deltag;        /* Excess or deficit of phi between steps */
@@ -45,6 +47,13 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo);
 static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo);
 
+__global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
+				 colloids_info_t * cinfo);
+
+extern __targetConst__ double tc_q_[NVEL][3][3];
+extern __targetConst__ double tc_rcs2;
+extern __targetConst__ double tc_wv[NVEL];
+
 /*****************************************************************************
  *
  *  bbl_create
@@ -53,16 +62,20 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, colloids_info_t * cinfo);
  *
  *****************************************************************************/
 
-int bbl_create(lb_t * lb, bbl_t ** pobj) {
+int bbl_create(pe_t * pe, cs_t * cs, lb_t * lb, bbl_t ** pobj) {
 
   bbl_t * bbl = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(lb);
   assert(pobj);
 
   bbl = (bbl_t *) calloc(1, sizeof(bbl_t));
-  if (bbl == NULL) fatal("calloc(bbl_t) failed\n");
+  if (bbl == NULL) pe_fatal(pe, "calloc(bbl_t) failed\n");
 
+  bbl->pe = pe;
+  bbl->cs = cs;
   lb_ndist(lb, &bbl->ndist);
 
   *pobj = bbl;
@@ -273,139 +286,119 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
  *
  *  bbl_pass0
  *
- *  Set missing 'internal' distributions
+ *  Set missing 'internal' distributions. Driver routine.
  *
  *****************************************************************************/
 
-extern __targetConst__ double tc_q_[NVEL][3][3];
-extern __targetConst__ double tc_rcs2;
-extern __targetConst__ double tc_wv[NVEL];
-
-__targetEntry__ void bbl_pass0_lattice( lb_t * t_lb, colloids_info_t * cinfo) {
-
-
- int baseIndex;
- __targetTLPNoStride__(baseIndex,tc_nSites){
-
-  int ia, ib, p;
-
-  double r[3], r0[3], rb[3], ub[3], wxrb[3];
-  double udotc, sdotq;
-
-  colloid_t * pc = NULL;
-
-
-    int coords[3];
-    targetCoords3D(coords,tc_Nall,baseIndex);
-    
-    /*  if not a halo site:*/
-    if (coords[0] >= (tc_nhalo-tc_nextra) &&
-    	coords[1] >= (tc_nhalo-tc_nextra) &&
-    	coords[2] >= (tc_nhalo-tc_nextra) &&
-    	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
-    	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
-    	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
-
-      {
-
-
-      	r[X] = 1.0*(coords[0]-(tc_nhalo-tc_nextra));
-      	r[Y] = 1.0*(coords[1]-(tc_nhalo-tc_nextra));
-      	r[Z] = 1.0*(coords[2]-(tc_nhalo-tc_nextra));
-
-
-      	pc = cinfo->map_new[baseIndex];
-	
-       	if (pc){ 
-      	  r0[X] = pc->s.r[X] - 1.0*tc_noffset[X];
-      	  r0[Y] = pc->s.r[Y] - 1.0*tc_noffset[Y];
-      	  r0[Z] = pc->s.r[Z] - 1.0*tc_noffset[Z];
-      	  //coords_minimum_distance(r, r0, rb);
-      	  for (ia = 0; ia < 3; ia++) {
-      	    rb[ia] = r0[ia] - r[ia];
-      	    if (rb[ia] >  0.5*tc_ntotal[ia]) rb[ia] -= 1.0*tc_ntotal[ia]*tc_periodic[ia];
-      	    if (rb[ia] < -0.5*tc_ntotal[ia]) rb[ia] += 1.0*tc_ntotal[ia]*tc_periodic[ia];
-      	  }
-
-      	  //cross_product(pc->s.w, rb, wxrb);
-
-	  wxrb[X] = pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
-	  wxrb[Y] = pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
-	  wxrb[Z] = pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
-  
-
-      	  ub[X] = pc->s.v[X] + wxrb[X];
-      	  ub[Y] = pc->s.v[Y] + wxrb[Y];
-      	  ub[Z] = pc->s.v[Z] + wxrb[Z];
-	  
-	  for (p = 1; p < NVEL; p++) {
-      	    udotc = tc_cv[p][X]*ub[X] + tc_cv[p][Y]*ub[Y] + tc_cv[p][Z]*ub[Z];
-      	    sdotq = 0.0;
-      	    for (ia = 0; ia < 3; ia++) {
-      	      for (ib = 0; ib < 3; ib++) {
-      	    	sdotq += tc_q_[p][ia][ib]*ub[ia]*ub[ib];
-      	      }
-      	    }
-	    
-	
-	    t_lb->f[ LB_ADDR(tc_nSites, t_lb->ndist, NVEL, baseIndex, 0, p) ]
-  	     = tc_wv[p]*(1.0 + tc_rcs2*udotc + 0.5*tc_rcs2*tc_rcs2*sdotq);
-	  }
-	  
-	}
-	
-      }
- }
- return;
-}
-
-
 int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
-
   int nlocal[3];
-  int ntotal[3];
-  int noffset[3];
-  int periodic[3];
-  int nextra = 1;
+  int nextra;
+  dim3 nblk, ntpb;
+  cs_t * cstarget = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
   assert(bbl);
   assert(lb);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
-  coords_nlocal(ntotal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(bbl->cs, nlocal);
+  cs_target(bbl->cs, &cstarget);
 
-  int nhalo = coords_nhalo();
-  int Nall[3];
-  int nSites;
-  Nall[X] = nlocal[X] + 2*nhalo;
-  Nall[Y] = nlocal[Y] + 2*nhalo;
-  Nall[Z] = nlocal[Z] + 2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
+  nextra = 1;
 
-  periodic[X]=is_periodic(X); 
-  periodic[Y]=is_periodic(Y); 
-  periodic[Z]=is_periodic(Z); 
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  /* set up constants on target */
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(tc_noffset,noffset, 3*sizeof(int)); 
-  copyConstToTarget(tc_ntotal,ntotal, 3*sizeof(int)); 
-  copyConstToTarget(tc_periodic,periodic, 3*sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int)); 
-  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));
-  copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
-  copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
-  copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
+  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  bbl_pass0_lattice __targetLaunchNoStride__(nSites)  (lb->target, cinfo->tcopy); 
+  __host_launch(bbl_pass0_kernel, nblk, ntpb, ctxt->target, cstarget,
+		lb->target, cinfo->tcopy);
+
   targetSynchronize();
 
+  kernel_ctxt_free(ctxt);
+
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  bbl_pass0_kernel
+ *
+ *  Set missing 'internal' distributions.
+ *
+ *****************************************************************************/
+
+__global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
+				 colloids_info_t * cinfo) {
+
+  int kindex;
+  __shared__ int kiter;
+
+  assert(ktxt);
+  assert(cs);
+  assert(lb);
+  assert(cinfo);
+
+  kiter = kernel_iterations(ktxt);
+
+  __target_simt_parallel_for(kindex, kiter, 1) {
+
+    int ic, jc, kc, index;
+    int ia, ib, p;
+    int noffset[3];
+
+    double r[3], r0[3], rb[3], ub[3];
+    double udotc, sdotq;
+
+    colloid_t * pc = NULL;
+
+    ic = kernel_coords_ic(ktxt, kindex);
+    jc = kernel_coords_jc(ktxt, kindex);
+    kc = kernel_coords_kc(ktxt, kindex);
+
+    index = kernel_coords_index(ktxt, ic, jc, kc);
+
+    pc = cinfo->map_new[index];
+	
+    if (pc) { 
+      cs_nlocal_offset(cs, noffset);
+      r[X] = 1.0*(noffset[X] + ic);
+      r[Y] = 1.0*(noffset[Y] + jc);
+      r[Z] = 1.0*(noffset[Z] + kc);
+
+      r0[X] = pc->s.r[X];
+      r0[Y] = pc->s.r[Y];
+      r0[Z] = pc->s.r[Z];
+
+      cs_minimum_distance(cs, r, r0, rb);
+
+      /* u_b = v + omega x r_b */
+
+      ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+      ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+      ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+
+      for (p = 1; p < NVEL; p++) {
+	udotc = tc_cv[p][X]*ub[X] + tc_cv[p][Y]*ub[Y] + tc_cv[p][Z]*ub[Z];
+	sdotq = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    sdotq += tc_q_[p][ia][ib]*ub[ia]*ub[ib];
+	  }
+	}
+
+	lb->f[ LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p) ]
+	  = tc_wv[p]*(1.0 + tc_rcs2*udotc + 0.5*tc_rcs2*tc_rcs2*sdotq);
+      }
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************

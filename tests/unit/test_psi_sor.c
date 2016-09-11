@@ -31,7 +31,7 @@
 
 #define fe_fake_t void
 
-static int do_test_sor1(void);
+static int do_test_sor1(pe_t * pe);
 static int test_charge1_set(psi_t * psi);
 static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon);
 
@@ -53,7 +53,7 @@ int test_psi_sor_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   physics_ref(&phys);
 
-  do_test_sor1();
+  do_test_sor1(pe);
 
   pe_info(pe, "PASS     ./unit/test_psi_sor\n");
   pe_free(pe);
@@ -73,12 +73,16 @@ int test_psi_sor_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test_sor1(void) {
+static int do_test_sor1(pe_t * pe) {
 
+  cs_t * cs = NULL;
   psi_t * psi = NULL;
 
-  coords_nhalo_set(1);
-  coords_init();
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, 1);
+  cs_init(cs);
 
   psi_create(2, &psi);
   assert(psi);
@@ -105,7 +109,7 @@ static int do_test_sor1(void) {
   if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_sinz);
   */
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }

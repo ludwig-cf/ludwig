@@ -53,6 +53,7 @@ int test_ewald_suite(void) {
   colloids_info_t * cinfo = NULL;
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
   ewald_t * ewald = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
@@ -63,7 +64,8 @@ int test_ewald_suite(void) {
     return 0;
   }
 
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   test_assert(fabs(L(X) - 64.0) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(L(Y) - 64.0) < TEST_DOUBLE_TOLERANCE);
@@ -122,7 +124,7 @@ int test_ewald_suite(void) {
        p_c2->s.r[X], p_c2->s.r[Y], p_c2->s.r[Z],
        p_c2->s.s[X], p_c2->s.s[Y], p_c2->s.s[Z]);
   */
-  coords_minimum_distance(r1, r2, r12);
+  cs_minimum_distance(cs, r1, r2, r12);
 
 
   ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);
@@ -448,7 +450,7 @@ int test_ewald_suite(void) {
   pe_info(pe, "PASS     ./unit/test_ewald\n");
 
   colloids_info_free(cinfo);
-  coords_finish();
+  cs_free(cs);
   pe_free(pe);
 
   return 0;

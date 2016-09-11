@@ -52,9 +52,12 @@
 static const double epsilon_ = 0.5;
 static const double epsilon1_ = 0.25;
 
-__host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg,  int nextra);
-__host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg, int nextra);
-__host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg, int nextra);
+__host__ int grad_2d_tomita_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					   int nextra);
+__host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				     int nextra);
+__host__ int grad_2d_tomita_fluid_wall(lees_edw_t * le, field_grad_t * fg,
+				       int nextra);
 
 /*****************************************************************************
  *
@@ -65,17 +68,20 @@ __host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg, int nextra)
 __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
   assert(fg);
+  assert(fg->field);
 
+  le = fg->field->le;
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
   assert(0);
 
-  grad_2d_tomita_fluid_operator(fg, nextra);
-  grad_2d_tomita_fluid_le_correction(fg, nextra);
-  grad_2d_tomita_fluid_wall_correction(fg, nextra);
+  grad_2d_tomita_fluid_operator(le, fg, nextra);
+  grad_2d_tomita_fluid_le(le, fg, nextra);
+  grad_2d_tomita_fluid_wall(le, fg, nextra);
 
   return 0;
 }
@@ -89,15 +95,16 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 __host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
-  assert(0);
+  assert(0); /* SHIT NEVER USED? */
 
-  grad_2d_tomita_fluid_operator(fg, nextra);
-  grad_2d_tomita_fluid_le_correction(fg, nextra);
-  grad_2d_tomita_fluid_wall_correction(fg, nextra);
+  grad_2d_tomita_fluid_operator(le, fg, nextra);
+  grad_2d_tomita_fluid_le(le, fg, nextra);
+  grad_2d_tomita_fluid_wall(le, fg, nextra);
 
   return 0;
 }
@@ -108,7 +115,8 @@ __host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
  *
  *****************************************************************************/
 
-__host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg, int nextra) {
+__host__ int grad_2d_tomita_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					   int nextra) {
 
   int nop;
   int nlocal[3];
@@ -126,8 +134,11 @@ __host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg, int nextra) {
   double * __restrict__ grad;
   double * __restrict__ del2;
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  assert(le);
+  assert(fg);
+
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -137,13 +148,13 @@ __host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg, int nextra) {
   del2 = fg->delsq;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
-      index = le_site_index(ic, jc, 1);
-      indexm1 = le_site_index(icm1, jc, 1);
-      indexp1 = le_site_index(icp1, jc, 1);
+      index = lees_edw_index(le, ic, jc, 1);
+      indexm1 = lees_edw_index(le, icm1, jc, 1);
+      indexp1 = lees_edw_index(le, icp1, jc, 1);
 
       for (n = 0; n < nop; n++) {
 	grad[3*(nop*index + n) + X] = 0.5*rfactor1*
@@ -176,15 +187,15 @@ __host__ int grad_2d_tomita_fluid_operator(field_grad_t * fg, int nextra) {
 
 /*****************************************************************************
  *
- *  grad_2d_tomita_le_correction
+ *  grad_2d_tomita_le
  *
  *  Additional gradient calculations near LE planes to account for
  *  sliding displacement.
  *
  *****************************************************************************/
 
-__host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg,
-						int nextra) {
+__host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				     int nextra) {
   int nop;
   int nlocal[3];
   int nhalo;
@@ -202,8 +213,11 @@ __host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg,
   double * __restrict__ grad;
   double * __restrict__ del2;
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  assert(le);
+  assert(fg);
+
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
 
   assert(nlocal[Z] == 1);
 
@@ -214,20 +228,20 @@ __host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg,
   grad = fg->grad;
   del2 = fg->delsq;
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
-    ic = le_plane_location(nplane);
+    ic = lees_edw_plane_location(le, nplane);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
+      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-	indexm1 = le_site_index(ic0, jc, 1);
-	index   = le_site_index(ic1, jc, 1);
-	indexp1 = le_site_index(ic2, jc, 1);
+	indexm1 = lees_edw_index(le, ic0, jc, 1);
+	index   = lees_edw_index(le, ic1, jc, 1);
+	indexp1 = lees_edw_index(le, ic2, jc, 1);
 
 	for (n = 0; n < nop; n++) {
 	  grad[3*(nop*index + n) + X] = 0.5*rfactor*
@@ -260,14 +274,14 @@ __host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
+      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-	indexm1 = le_site_index(ic0, jc, 1);
-	index   = le_site_index(ic1, jc, 1);
-	indexp1 = le_site_index(ic2, jc, 1);
+	indexm1 = lees_edw_index(le, ic0, jc, 1);
+	index   = lees_edw_index(le, ic1, jc, 1);
+	indexp1 = lees_edw_index(le, ic2, jc, 1);
 
 	for (n = 0; n < nop; n++) {
 	  grad[3*(nop*index + n) + X] = 0.5*rfactor*
@@ -304,14 +318,14 @@ __host__ int grad_2d_tomita_fluid_le_correction(field_grad_t * fg,
 
 /*****************************************************************************
  *
- *  grad_2d_tomita_fluid_wall_correction
+ *  grad_2d_tomita_fluid_wall
  *
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
 
-__host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg,
-						  int nextra) {
+__host__ int grad_2d_tomita_fluid_wall(lees_edw_t * le, field_grad_t * fg,
+				       int nextra) {
   int nop;
   int nlocal[3];
   int nhalo;
@@ -330,9 +344,13 @@ __host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg,
   double * __restrict__ grad;
   double * __restrict__ del2;
 
+  assert(le);
+  assert(fg);
+
   assert(wall_at_edge(X) == 0); /* NOT IMPLEMENTED */
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
 
   assert(nlocal[Z] == 1);
 
@@ -368,7 +386,7 @@ __host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg,
 
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
-      index = le_site_index(1, jc, 1);
+      index = lees_edw_index(le, 1, jc, 1);
 
       for (n = 0; n < nop; n++) {
 	gradp1 = field[nop*(index + xs) + n] - field[nop*index + n];
@@ -391,7 +409,7 @@ __host__ int grad_2d_tomita_fluid_wall_correction(field_grad_t * fg,
 
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
-      index = le_site_index(nlocal[X], jc, 1);
+      index = lees_edw_index(le, nlocal[X], jc, 1);
 
       for (n = 0; n < nop; n++) {
 	gradm1 = field[nop*index + n] - field[nop*(index - xs) + n];

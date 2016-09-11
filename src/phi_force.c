@@ -39,26 +39,26 @@ __global__
 void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 			      hydro_t * hydro);
 
-static int phi_force_calculation_fluid(pth_t * pth, fe_t * fe, field_t * q, 
-				       field_grad_t * qgrad, hydro_t * hydro);
+static int phi_force_calculation_fluid(pth_t * pth, fe_t * fe, hydro_t * hydro);
 
-static int phi_force_compute_fluxes(pth_t * pth, fe_t * fe, double * fxe,
+static int phi_force_compute_fluxes(lees_edw_t * le, pth_t * pth, fe_t * fe, double * fxe,
 				    double * fxw,
 				    double * fxy,
 				    double * fxz);
-static int phi_force_flux_divergence(pth_t * pth, hydro_t * hydro, double * fe,
+static int phi_force_flux_divergence(cs_t *cs, pth_t * pth, hydro_t * hydro, double * fe,
 				     double * fw, double * fy, double * fz);
-static int phi_force_flux_fix_local(pth_t * pth, double * fluxe, double * fluxw);
-static int phi_force_flux_divergence_with_fix(pth_t * pth,
+static int phi_force_flux_fix_local(lees_edw_t * le, pth_t * pth, double * fluxe, double * fluxw);
+static int phi_force_flux_divergence_with_fix(cs_t * cs, pth_t * pth,
 					      hydro_t * hydro, double * fe,
 					      double * fw,
 					      double * fy, double * fz);
-static int phi_force_flux(pth_t * pth, fe_t * fe, hydro_t * hydro);
-static int phi_force_wallx(pth_t * pth, fe_t * fe, double * fxe, double * fxw);
-static int phi_force_wally(pth_t * pth, fe_t * fe, double * fy);
-static int phi_force_wallz(pth_t * pth, fe_t * fe, double * fz);
+static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe, hydro_t * hydro);
+static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fxe, double * fxw);
+static int phi_force_wally(cs_t * cs, fe_t * fe, double * fy);
+static int phi_force_wallz(cs_t * cs, fe_t * fe, double * fz);
 
-static int phi_force_fluid_phi_gradmu(pth_t * pth, fe_t * fe, field_t * phi,
+static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
+				      field_t * phi,
 				      hydro_t * hydro);
 
 /*****************************************************************************
@@ -72,27 +72,27 @@ static int phi_force_fluid_phi_gradmu(pth_t * pth, fe_t * fe, field_t * phi,
  *
  *****************************************************************************/
 
-__host__ int phi_force_calculation(pth_t * pth, fe_t * fe,
-				   field_t * phi, field_t* q,
-				   field_grad_t* q_grad, hydro_t * hydro) {
+__host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le,
+				   pth_t * pth, fe_t * fe,
+				   field_t * phi, hydro_t * hydro) {
 
   if (pth == NULL) return 0;
   if (pth->method == PTH_METHOD_NO_FORCE) return 0;
   if (hydro == NULL) return 0; 
 
-  if (le_get_nplane_total() > 0 || wall_present()) {
+  if (lees_edw_nplane_total(le) > 0 || wall_present()) {
     /* Must use the flux method for LE planes */
     /* Also convenient for plane walls */
 
-    phi_force_flux(pth, fe, hydro);
+    phi_force_flux(cs, le, pth, fe, hydro);
   }
   else {
     switch (pth->method) {
     case PTH_METHOD_DIVERGENCE:
-      phi_force_calculation_fluid(pth, fe, q, q_grad, hydro);
+      phi_force_calculation_fluid(pth, fe, hydro);
       break;
     case PTH_METHOD_GRADMU:
-      phi_force_fluid_phi_gradmu(pth, fe, phi, hydro);
+      phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
       break;
     default:
       assert(0);
@@ -117,8 +117,6 @@ __host__ int phi_force_calculation(pth_t * pth, fe_t * fe,
  *****************************************************************************/
 
 __host__ int phi_force_calculation_fluid(pth_t * pth, fe_t * fe,
-					 field_t * q,
-					 field_grad_t * q_grad,
 					 hydro_t * hydro) {
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -332,7 +330,8 @@ void phi_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
  *
  *****************************************************************************/
 
-static int phi_force_fluid_phi_gradmu(pth_t * pth, fe_t * fe, field_t * fphi,
+static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
+				      fe_t * fe, field_t * fphi,
 				      hydro_t * hydro) {
 
   int ic, jc, kc, icm1, icp1;
@@ -343,11 +342,12 @@ static int phi_force_fluid_phi_gradmu(pth_t * pth, fe_t * fe, field_t * fphi,
   double phi, mum1, mup1;
   double force[3];
 
+  assert(le);
   assert(fphi);
   assert(hydro);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
   assert(nhalo >= 2);
 
   /* Memory strides */
@@ -355,16 +355,16 @@ static int phi_force_fluid_phi_gradmu(pth_t * pth, fe_t * fe, field_t * fphi,
   ys = (nlocal[Z] + 2*nhalo)*zs;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, jc, kc);
+	index0 = lees_edw_index(le, ic, jc, kc);
 	field_scalar(fphi, index0, &phi);
 
-        indexm1 = le_site_index(icm1, jc, kc);
-        indexp1 = le_site_index(icp1, jc, kc);
+        indexm1 = lees_edw_index(le, icm1, jc, kc);
+        indexp1 = lees_edw_index(le, icp1, jc, kc);
 
 	fe->func->mu(fe, indexm1, &mum1);
 	fe->func->mu(fe, indexp1, &mup1);
@@ -406,7 +406,8 @@ static int phi_force_fluid_phi_gradmu(pth_t * pth, fe_t * fe, field_t * fphi,
  *
  *****************************************************************************/
 
-static int phi_force_flux(pth_t * pth, fe_t * fe, hydro_t * hydro) {
+static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe,
+			  hydro_t * hydro) {
 
   int n;
   int fix_fluxes = 1;
@@ -430,18 +431,18 @@ static int phi_force_flux(pth_t * pth, fe_t * fe, hydro_t * hydro) {
   if (fluxy == NULL) fatal("malloc(fluxy) force failed");
   if (fluxz == NULL) fatal("malloc(fluxz) force failed");
 
-  phi_force_compute_fluxes(pth, fe, fluxe, fluxw, fluxy, fluxz);
+  phi_force_compute_fluxes(le, pth, fe, fluxe, fluxw, fluxy, fluxz);
 
-  if (wall_at_edge(X)) phi_force_wallx(pth, fe, fluxe, fluxw);
-  if (wall_at_edge(Y)) phi_force_wally(pth, fe, fluxy);
-  if (wall_at_edge(Z)) phi_force_wallz(pth, fe, fluxz);
+  if (wall_at_edge(X)) phi_force_wallx(cs, fe, fluxe, fluxw);
+  if (wall_at_edge(Y)) phi_force_wally(cs, fe, fluxy);
+  if (wall_at_edge(Z)) phi_force_wallz(cs, fe, fluxz);
 
   if (fix_fluxes || wall_present()) {
-    phi_force_flux_fix_local(pth, fluxe, fluxw);
-    phi_force_flux_divergence(pth, hydro, fluxe, fluxw, fluxy, fluxz);
+    phi_force_flux_fix_local(le, pth, fluxe, fluxw);
+    phi_force_flux_divergence(cs, pth, hydro, fluxe, fluxw, fluxy, fluxz);
   }
   else {
-    phi_force_flux_divergence_with_fix(pth, hydro, fluxe, fluxw, fluxy, fluxz);
+    phi_force_flux_divergence_with_fix(cs, pth, hydro, fluxe, fluxw, fluxy, fluxz);
   }
 
   free(fluxz);
@@ -465,69 +466,71 @@ static int phi_force_flux(pth_t * pth, fe_t * fe, hydro_t * hydro) {
  *****************************************************************************/
 
 
-static int phi_force_compute_fluxes(pth_t * pth, fe_t * fe,
+static int phi_force_compute_fluxes(lees_edw_t * le, pth_t * pth, fe_t * fe,
 				    double * fluxe, double * fluxw,
 				    double * fluxy, double * fluxz) {
 
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
   int nlocal[3];
+  int nsf;
+
   double pth0[3][3];
   double pth1[3][3];
 
-  int nsites;
+  assert(le);
+  assert(fe);
+  assert(fe->func->stress);
 
-  coords_nlocal(nlocal);
-  nsites = coords_nsites();
-
-  assert(coords_nhalo() >= 2);
+  lees_edw_nlocal(le, nlocal);
+  nsf = coords_nsites(); /* flux storage */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 
 	/* Compute pth at current point */
 	fe->func->stress(fe, index, pth0);
 
 	/* fluxw_a = (1/2)[P(i, j, k) + P(i-1, j, k)]_xa */
 	
-	index1 = le_site_index(icm1, jc, kc);
+	index1 = lees_edw_index(le, icm1, jc, kc);
 
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[addr_rank1(nsites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxw[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
 
-	index1 = le_site_index(icp1, jc, kc);
+	index1 = lees_edw_index(le, icp1, jc, kc);
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(nsites,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxe[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
 
-	index1 = le_site_index(ic, jc+1, kc);
+	index1 = lees_edw_index(le, ic, jc+1, kc);
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[addr_rank1(nsites,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  fluxy[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
 
-	index1 = le_site_index(ic, jc, kc+1);
+	index1 = lees_edw_index(le, ic, jc, kc+1);
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[addr_rank1(nsites,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  fluxz[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 	/* Next site */
       }
@@ -546,44 +549,40 @@ static int phi_force_compute_fluxes(pth_t * pth, fe_t * fe,
  *
  *****************************************************************************/
 
-static int phi_force_flux_divergence(pth_t * pth, hydro_t * hydro,
+static int phi_force_flux_divergence(cs_t * cs, pth_t * pth, hydro_t * hydro,
 				     double * fluxe, double * fluxw,
 				     double * fluxy, double * fluxz) {
   int nlocal[3];
+  int nsf;
   int ic, jc, kc, ia;
   int index, indexj, indexk;
 
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
-
+  assert(cs);
   assert(hydro);
   assert(fluxe);
   assert(fluxw);
   assert(fluxy);
   assert(fluxz);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsf);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = le_site_index(ic, jc, kc);
-
-	indexj = le_site_index(ic, jc-1, kc);
-	indexk = le_site_index(ic, jc, kc-1);
+        index  = cs_index(cs, ic, jc, kc);
+	indexj = cs_index(cs, ic, jc-1, kc);
+	indexk = cs_index(cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  hydro->f[addr_rank1(le_nsites(), NHDIM,index,ia)]
-	    += -(+ fluxe[addr_rank1(nSites,3,index,ia)]
-		 - fluxw[addr_rank1(nSites,3,index,ia)]
-		 + fluxy[addr_rank1(nSites,3,index,ia)]
-		 - fluxy[addr_rank1(nSites,3,indexj,ia)]
-		 + fluxz[addr_rank1(nSites,3,index,ia)]
-		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
-
+	  hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)]
+	    += -(+ fluxe[addr_rank1(nsf,3,index,ia)]
+		 - fluxw[addr_rank1(nsf,3,index,ia)]
+		 + fluxy[addr_rank1(nsf,3,index,ia)]
+		 - fluxy[addr_rank1(nsf,3,indexj,ia)]
+		 + fluxz[addr_rank1(nsf,3,index,ia)]
+		 - fluxz[addr_rank1(nsf,3,indexk,ia)]);
 	}
       }
     }
@@ -605,7 +604,7 @@ static int phi_force_flux_divergence(pth_t * pth, hydro_t * hydro,
  *
  *****************************************************************************/
 
-static int phi_force_flux_divergence_with_fix(pth_t * pth,
+static int phi_force_flux_divergence_with_fix(cs_t * cs, pth_t * pth,
 					      hydro_t * hydro,
 					      double * fluxe, double * fluxw,
 					      double * fluxy,
@@ -613,17 +612,14 @@ static int phi_force_flux_divergence_with_fix(pth_t * pth,
   int nlocal[3];
   int ic, jc, kc, index, ia;
   int indexj, indexk;
-  double f[3];
+  int nsf;
 
+  double f[3];
   double fsum_local[3];
   double fsum[3];
   double rv;
 
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
-
+  assert(cs);
   assert(hydro);
   assert(fluxe);
   assert(fluxw);
@@ -632,7 +628,8 @@ static int phi_force_flux_divergence_with_fix(pth_t * pth,
 
   assert(0); /* SHIT NO TEST? */
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsf);
 
   for (ia = 0; ia < 3; ia++) {
     fsum_local[ia] = 0.0;
@@ -642,18 +639,18 @@ static int phi_force_flux_divergence_with_fix(pth_t * pth,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = le_site_index(ic, jc, kc);
-	indexj = le_site_index(ic, jc-1, kc);
-	indexk = le_site_index(ic, jc, kc-1);
+        index  = cs_index(cs, ic, jc, kc);
+	indexj = cs_index(cs, ic, jc-1, kc);
+	indexk = cs_index(cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia]
-	    = - (+ fluxe[addr_rank1(nSites,3,index,ia)]
-		 - fluxw[addr_rank1(nSites,3,index,ia)]
-		 + fluxy[addr_rank1(nSites,3,index,ia)]
-		 - fluxy[addr_rank1(nSites,3,indexj,ia)]
-		 + fluxz[addr_rank1(nSites,3,index,ia)]
-		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
+	    = - (+ fluxe[addr_rank1(nsf,3,index,ia)]
+		 - fluxw[addr_rank1(nsf,3,index,ia)]
+		 + fluxy[addr_rank1(nsf,3,index,ia)]
+		 - fluxy[addr_rank1(nsf,3,indexj,ia)]
+		 + fluxz[addr_rank1(nsf,3,index,ia)]
+		 - fluxz[addr_rank1(nsf,3,indexk,ia)]);
 	  fsum_local[ia] += f[ia];
 	}
       }
@@ -672,18 +669,18 @@ static int phi_force_flux_divergence_with_fix(pth_t * pth,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = le_site_index(ic, jc, kc);
-	indexj = le_site_index(ic, jc-1, kc);
-	indexk = le_site_index(ic, jc, kc-1);
+        index  = cs_index(cs, ic, jc, kc);
+	indexj = cs_index(cs, ic, jc-1, kc);
+	indexk = cs_index(cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
 	  f[ia]
-	    = - (+ fluxe[addr_rank1(nSites,3,index,ia)]
-		 - fluxw[addr_rank1(nSites,3,index,ia)]
-		 + fluxy[addr_rank1(nSites,3,index,ia)]
-		 - fluxy[addr_rank1(nSites,3,indexj,ia)]
-		 + fluxz[addr_rank1(nSites,3,index,ia)]
-		 - fluxz[addr_rank1(nSites,3,indexk,ia)]);
+	    = - (+ fluxe[addr_rank1(nsf,3,index,ia)]
+		 - fluxw[addr_rank1(nsf,3,index,ia)]
+		 + fluxy[addr_rank1(nsf,3,index,ia)]
+		 - fluxy[addr_rank1(nsf,3,indexj,ia)]
+		 + fluxz[addr_rank1(nsf,3,index,ia)]
+		 - fluxz[addr_rank1(nsf,3,indexk,ia)]);
 	  f[ia] -= fsum[ia];
 	}
 	hydro_f_local_add(hydro, index, f);
@@ -706,10 +703,13 @@ static int phi_force_flux_divergence_with_fix(pth_t * pth,
  *
  *****************************************************************************/
 
-static int phi_force_flux_fix_local(pth_t * pth, double * fluxe, double * fluxw) {
+static int phi_force_flux_fix_local(lees_edw_t * le, pth_t * pth,
+				    double * fluxe, double * fluxw) {
 
   int nlocal[3];
   int nplane;
+  int nhalo;
+  int nsf;
   int ic, jc, kc, index, index1, ia, ip;
 
   double * fbar;     /* Local sum over plane */
@@ -717,17 +717,18 @@ static int phi_force_flux_fix_local(pth_t * pth, double * fluxe, double * fluxw)
   double ra;         /* Normaliser */
 
   MPI_Comm comm;
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
 
-  coords_nlocal(nlocal);
-  nplane = le_get_nplane_local();
+  assert(le);
+
+  nplane = lees_edw_nplane_local(le);
 
   if (nplane == 0) return 0;
 
-  comm = le_plane_comm();
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_plane_comm(le, &comm);
+  nsf = (nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo);
+
 
   fbar = (double *) calloc(3*nplane, sizeof(double));
   fcor = (double *) calloc(3*nplane, sizeof(double));
@@ -736,17 +737,17 @@ static int phi_force_flux_fix_local(pth_t * pth, double * fluxe, double * fluxw)
 
   for (ip = 0; ip < nplane; ip++) { 
 
-    ic = le_plane_location(ip);
+    ic = lees_edw_plane_location(le, ip);
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = le_site_index(ic, jc, kc);
-        index1 = le_site_index(ic + 1, jc, kc);
+        index = lees_edw_index(le, ic, jc, kc);
+        index1 = lees_edw_index(le, ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fbar[3*ip + ia] += - fluxe[addr_rank1(nSites,3,index,ia)]
-	    + fluxw[addr_rank1(nSites,3,index1,ia)];
+	  fbar[3*ip + ia] += - fluxe[addr_rank1(nsf,3,index,ia)]
+	    + fluxw[addr_rank1(nsf,3,index1,ia)];
 	}
       }
     }
@@ -758,17 +759,17 @@ static int phi_force_flux_fix_local(pth_t * pth, double * fluxe, double * fluxw)
 
   for (ip = 0; ip < nplane; ip++) { 
 
-    ic = le_plane_location(ip);
+    ic = lees_edw_plane_location(le, ip);
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index  = le_site_index(ic, jc, kc);
-        index1 = le_site_index(ic + 1, jc, kc);
+        index  = lees_edw_index(le, ic, jc, kc);
+        index1 = lees_edw_index(le, ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(nSites,3,index,ia)] += ra*fcor[3*ip + ia];
-	  fluxw[addr_rank1(nSites,3,index1,ia)] -= ra*fcor[3*ip +ia];
+	  fluxe[addr_rank1(nsf,3,index,ia)] += ra*fcor[3*ip + ia];
+	  fluxw[addr_rank1(nsf,3,index1,ia)] -= ra*fcor[3*ip +ia];
 	}
       }
     }
@@ -791,18 +792,23 @@ static int phi_force_flux_fix_local(pth_t * pth, double * fluxe, double * fluxw)
  *
  *****************************************************************************/
 
-static int phi_force_wallx(pth_t * pth, fe_t * fe, double * fluxe, double * fluxw) {
+static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fluxe,
+			   double * fluxw) {
 
   int ic, jc, kc;
   int index, ia;
+  int nsf;
   int nlocal[3];
+
   double fw[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
 
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  assert(cs);
+  assert(fe);
+  assert(fe->func->stress);
+
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsf);
 
   fw[X] = 0.0;
   fw[Y] = 0.0;
@@ -813,11 +819,12 @@ static int phi_force_wallx(pth_t * pth, fe_t * fe, double * fluxe, double * flux
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = le_site_index(ic,jc,kc);
+
+	index = cs_index(cs, ic, jc, kc);
 	fe->func->stress(fe, index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[addr_rank1(nSites,3,index,ia)] = pth0[ia][X];
+	  fluxw[addr_rank1(nsf,3,index,ia)] = pth0[ia][X];
 	  fw[ia] -= pth0[ia][X];
 	}
       }
@@ -829,11 +836,12 @@ static int phi_force_wallx(pth_t * pth, fe_t * fe, double * fluxe, double * flux
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = le_site_index(ic,jc,kc);
+
+	index = cs_index(cs, ic, jc, kc);
 	fe->func->stress(fe, index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(nSites,3,index,ia)] = pth0[ia][X];
+	  fluxe[addr_rank1(nsf,3,index,ia)] = pth0[ia][X];
 	  fw[ia] += pth0[ia][X];
 	}
       }
@@ -856,18 +864,22 @@ static int phi_force_wallx(pth_t * pth, fe_t * fe, double * fluxe, double * flux
  *
  *****************************************************************************/
 
-static int phi_force_wally(pth_t * pth, fe_t * fe, double * fluxy) {
+static int phi_force_wally(cs_t *cs, fe_t * fe, double * fluxy) {
 
   int ic, jc, kc;
   int index, index1, ia;
+  int nsf;
   int nlocal[3];
+
   double fy[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
 
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  assert(cs);
+  assert(fe);
+  assert(fe->func->stress);
+
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsf);
 
   fy[X] = 0.0;
   fy[Y] = 0.0;
@@ -878,15 +890,15 @@ static int phi_force_wally(pth_t * pth, fe_t * fe, double * fluxy) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = le_site_index(ic, jc, kc);
 
+	index = cs_index(cs, ic, jc, kc);
 	fe->func->stress(fe, index, pth0);
 
 	/* Face flux a jc - 1 */
-	index1 = le_site_index(ic, jc-1, kc);
+	index1 = cs_index(cs, ic, jc-1, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[addr_rank1(nSites,3,index1,ia)] = pth0[ia][Y];
+	  fluxy[addr_rank1(nsf,3,index1,ia)] = pth0[ia][Y];
 	  fy[ia] -= pth0[ia][Y];
 	}
       }
@@ -898,12 +910,12 @@ static int phi_force_wally(pth_t * pth, fe_t * fe, double * fluxy) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = le_site_index(ic, jc, kc);
 
+	index = cs_index(cs, ic, jc, kc);
 	fe->func->stress(fe, index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[addr_rank1(nSites,3,index,ia)] = pth0[ia][Y];
+	  fluxy[addr_rank1(nsf,3,index,ia)] = pth0[ia][Y];
 	  fy[ia] += pth0[ia][Y];
 	}
       }
@@ -926,18 +938,22 @@ static int phi_force_wally(pth_t * pth, fe_t * fe, double * fluxy) {
  *
  *****************************************************************************/
 
-static int phi_force_wallz(pth_t * pth, fe_t * fe, double * fluxz) {
+static int phi_force_wallz(cs_t * cs, fe_t * fe, double * fluxz) {
 
   int ic, jc, kc;
   int index, index1, ia;
+  int nsf;
   int nlocal[3];
+
   double fz[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
 
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
+  assert(cs);
+  assert(fe);
+  assert(fe->func->stress);
+
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsf);
 
   fz[X] = 0.0;
   fz[Y] = 0.0;
@@ -948,15 +964,15 @@ static int phi_force_wallz(pth_t * pth, fe_t * fe, double * fluxz) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
-	index = le_site_index(ic, jc, kc);
 
+	index = cs_index(cs, ic, jc, kc);
 	fe->func->stress(fe, index, pth0);
 
 	/* Face flux at kc-1 */
-	index1 = le_site_index(ic, jc, kc-1);
+	index1 = cs_index(cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[addr_rank1(nSites,3,index1,ia)] = pth0[ia][Z];
+	  fluxz[addr_rank1(nsf,3,index1,ia)] = pth0[ia][Z];
 	  fz[ia] -= pth0[ia][Z];
 	}
       }
@@ -968,12 +984,12 @@ static int phi_force_wallz(pth_t * pth, fe_t * fe, double * fluxz) {
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
-	index = le_site_index(ic, jc, kc);
 
+	index = cs_index(cs, ic, jc, kc);
 	fe->func->stress(fe, index, pth0);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[addr_rank1(nSites,3,index,ia)] = pth0[ia][Z];
+	  fluxz[addr_rank1(nsf,3,index,ia)] = pth0[ia][Z];
 	  fz[ia] += pth0[ia][Z];
 	}
       }

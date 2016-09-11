@@ -22,9 +22,9 @@
 #include "noise.h"
 #include "tests.h"
 
-static int do_test_noise1(void);
-static int do_test_noise2(void);
-static int do_test_noise3(void);
+static int do_test_noise1(pe_t * pe);
+static int do_test_noise2(pe_t * pe);
+static int do_test_noise3(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -40,9 +40,9 @@ int test_noise_suite(void) {
 
   /* info("Noise tests\n\n");*/
 
-  do_test_noise1();
-  do_test_noise2();
-  do_test_noise3();
+  do_test_noise1(pe);
+  do_test_noise2(pe);
+  do_test_noise3(pe);
 
   pe_info(pe, "PASS     ./unit/test_noise\n");
   pe_free(pe);
@@ -59,22 +59,25 @@ int test_noise_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test_noise1(void) {
+static int do_test_noise1(pe_t * pe) {
 
   noise_t * noise = NULL;
+  cs_t * cs = NULL;
 
   double a1, a2;
   double r[NNOISE_MAX];
   unsigned int state_ref[NNOISE_STATE] = {123, 456, 78, 9};
   unsigned int state[NNOISE_STATE] = {0, 0, 0, 0};
 
+  assert(pe);
   assert(NNOISE_MAX == 10);
   assert(NNOISE_STATE == 4);
 
   a1 = sqrt(2.0 + sqrt(2.0));
   a2 = sqrt(2.0 - sqrt(2.0));
 
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   noise_create(&noise);
   assert(noise);
@@ -114,7 +117,7 @@ static int do_test_noise1(void) {
   assert(fabs(r[9] - 0.0) < DBL_EPSILON);
 
   noise_free(noise);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -129,19 +132,24 @@ static int do_test_noise1(void) {
  *
  *****************************************************************************/
 
-static int do_test_noise2(void) {
+static int do_test_noise2(pe_t * pe) {
 
   int nlocal[3];
   int ic, jc, kc, index;
   int ir;
 
+  cs_t * cs = NULL;
   noise_t * noise = NULL;
 
   double r[NNOISE_MAX];
   double rstat[2], rstat_local[2] = {0.0, 0.0};
 
-  coords_init();
-  coords_nlocal(nlocal);
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+
   noise_create(&noise);
   noise_init(noise, 0);
 
@@ -149,7 +157,7 @@ static int do_test_noise2(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	noise_reap(noise, index, r);
 
 	for (ir = 0; ir < NNOISE_MAX; ir++) {
@@ -172,7 +180,7 @@ static int do_test_noise2(void) {
   assert(fabs(rstat[1] - 1.00177840)     < FLT_EPSILON);
 
   noise_free(noise);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -197,7 +205,7 @@ static int do_test_noise2(void) {
  *
  *****************************************************************************/
 
-static int do_test_noise3(void) {
+static int do_test_noise3(pe_t * pe) {
 
   int ic, jc, kc, index;
   int ntotal[3] = {4, 4, 4};
@@ -209,16 +217,20 @@ static int do_test_noise3(void) {
   double m1, m2, m3, m4, m5, m6;
 
   double r[NNOISE_MAX];
+  cs_t * cs = NULL;
   noise_t * noise = NULL;
+
+  assert(pe);
 
   /* Extent of the test */
   const int ntimes = 1000000;
   const double tolerance = 0.05;
 
-  coords_ntotal_set(ntotal);
-  coords_init();
-  coords_nlocal(nlocal);
-  nsites = coords_nsites();
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsites);
 
   noise_create(&noise);
   noise_init(noise, 0);
@@ -234,7 +246,7 @@ static int do_test_noise3(void) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(cs, ic, jc, kc);
 	  noise_reap(noise, index, r);
 
 	  for (n = 0; n < NNOISE_MAX; n++) {
@@ -261,7 +273,7 @@ static int do_test_noise3(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	/* Moments */
 	m1 = rnorm*moment6[0*nsites + index];
@@ -284,7 +296,7 @@ static int do_test_noise3(void) {
 
   free(moment6);
   noise_free(noise);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }

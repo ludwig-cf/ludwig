@@ -32,14 +32,14 @@ struct data_s {
   data_t * target;
 };
 
-__host__ int do_test_kernel(kernel_info_t limits, data_t * data);
+__host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data);
 __host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum);
 __host__ int do_check(int * iref, int * itarget);
 __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data);
 __global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data);
 __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data);
 
-__host__ int data_create(data_t * data);
+__host__ int data_create(int nsites, data_t * data);
 __host__ int data_free(data_t * data);
 __host__ int data_zero(data_t * data);
 __host__ int data_copy(data_t * data, int flag);
@@ -53,32 +53,37 @@ __host__ int data_copy(data_t * data, int flag);
 __host__ int test_kernel_suite(void) {
 
   int nlocal[3];
+  int nsites;
   data_t sdata;
   data_t * data = &sdata;
   kernel_info_t lim;
+  cs_t * cs = NULL;
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
-  coords_nlocal(nlocal);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
 
   target_thread_info();
 
-  data_create(data);
+  cs_nsites(cs, &nsites);
+  data_create(nsites, data);
 
   lim.imin = 1; lim.imax = nlocal[X];
   lim.jmin = 1; lim.jmax = nlocal[Y];
   lim.kmin = 1; lim.kmax = nlocal[Z];
-  do_test_kernel(lim, data);
+  do_test_kernel(cs, lim, data);
 
   lim.imin = 0; lim.imax = nlocal[X] + 1;
   lim.jmin = 0; lim.jmax = nlocal[Y] + 1;
   lim.kmin = 0; lim.kmax = nlocal[Z] + 1;
-  do_test_kernel(lim, data);
+
+  do_test_kernel(cs, lim, data);
 
   data_free(data);
 
-  coords_finish();
+  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_kernel\n");
   pe_free(pe);
 
@@ -96,7 +101,7 @@ __host__ int test_kernel_suite(void) {
  *
  *****************************************************************************/
 
-__host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
+__host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   int isum;
   int nsites;
@@ -105,9 +110,11 @@ __host__ int do_test_kernel(kernel_info_t limits, data_t * data) {
   dim3 nblk;
   kernel_ctxt_t * ctxt = NULL;
 
+  assert(cs);
+
   /* Allocate space for reference */
 
-  nsites = coords_nsites();
+  cs_nsites(cs, &nsites);
 
   /* Additional issue. The assertions in memory.c actaully catch
    * legal address owing to the division by NSIMDVL in the macros.
@@ -371,14 +378,12 @@ __host__ int do_check(int * iref, int * itarget) {
  *
  *****************************************************************************/
 
-__host__ int data_create(data_t * data) {
+__host__ int data_create(int nsites, data_t * data) {
 
   int ndevice;
-  int nsites;
-  int * tmp;
 
   /* host */
-  nsites = coords_nsites();
+
   data->nsites = nsites;
   data->idata = (int *) calloc(nsites, sizeof(int));
   assert(data->idata);
@@ -389,6 +394,7 @@ __host__ int data_create(data_t * data) {
     data->target = data;
   }
   else {
+    int * tmp;
     targetCalloc((void **) &(data->target), sizeof(data_t));
     targetCalloc((void **) &tmp, nsites*sizeof(int));
     copyToTarget(&(data->target->idata), &tmp, sizeof(int *));
@@ -434,14 +440,11 @@ __host__ int data_free(data_t * data) {
 __host__ int data_zero(data_t * data) {
 
   int n;
-  int nsites;
 
   assert(data);
 
-  nsites = coords_nsites();
-
   data->isum = 0;
-  for (n = 0; n < nsites; n++) {
+  for (n = 0; n < data->nsites; n++) {
     data->idata[n] = 0;
   }
 

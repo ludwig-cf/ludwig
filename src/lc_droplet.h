@@ -17,6 +17,7 @@
 #ifndef LC_DROPLET_H
 #define LC_DROPLET_H
 
+#include "leesedwards.h"
 #include "blue_phase.h"
 #include "symmetric.h"
 #include "field.h"
@@ -61,6 +62,7 @@ __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu);
 
-__host__ int  fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro);
+__host__ int  fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
+				      hydro_t * hydro);
 
 #endif

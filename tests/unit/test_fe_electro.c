@@ -26,9 +26,9 @@
 #include "fe_electro.h"
 #include "tests.h"
 
-static int do_test1(physics_t * phys);
-static int do_test2(physics_t * phys);
-static int do_test3(physics_t * phys);
+static int do_test1(cs_t * cs, physics_t * phys);
+static int do_test2(cs_t * cs, physics_t * phys);
+static int do_test3(cs_t * cs,physics_t * phys);
 
 /*****************************************************************************
  *
@@ -39,19 +39,21 @@ static int do_test3(physics_t * phys);
 int test_fe_electro_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
   physics_t * phys = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
   physics_create(pe, &phys);
 
-  do_test1(phys);
-  do_test2(phys);
-  do_test3(phys);
+  do_test1(cs, phys);
+  do_test2(cs, phys);
+  do_test3(cs, phys);
 
-  pe_info(pe, "PASS     ./unit/test_fe_electro\n");
-  coords_finish();
   physics_free(phys);
+  cs_free(cs);
+  pe_info(pe, "PASS     ./unit/test_fe_electro\n");
   pe_free(pe);
 
   return 0;
@@ -65,7 +67,7 @@ int test_fe_electro_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test1(physics_t * phys) {
+static int do_test1(cs_t * cs, physics_t * phys) {
 
   int nk = 2;
   double valency[2] = {1, 2};
@@ -79,6 +81,9 @@ static int do_test1(physics_t * phys) {
   double psi0;           /* Test potential */
   double fed;
   fe_electro_t * fe = NULL;
+
+  assert(cs);
+  assert(phys);
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
@@ -142,7 +147,7 @@ static int do_test1(physics_t * phys) {
  *
  *****************************************************************************/
 
-int do_test2(physics_t * phys) {
+int do_test2(cs_t * cs, physics_t * phys) {
 
   int n;
   int nk = 3;
@@ -158,6 +163,9 @@ int do_test2(physics_t * phys) {
   double mu[3];   /* Actual chemical potential */
 
   fe_electro_t * fe = NULL;
+
+  assert(cs);
+  assert(phys);
 
   psi_create(nk, &psi);
   psi_unit_charge_set(psi, eunit);
@@ -201,7 +209,7 @@ int do_test2(physics_t * phys) {
  *
  *****************************************************************************/
 
-static int do_test3(physics_t * phys) {
+static int do_test3(cs_t * cs, physics_t * phys) {
 
   int nk = 2;
   int index;
@@ -220,6 +228,9 @@ static int do_test3(physics_t * phys) {
   KRONECKER_DELTA_CHAR(d_);
 
   fe_electro_t * fe = NULL;
+
+  assert(cs);
+  assert(phys);
 
   psi_create(nk, &psi);
   psi_epsilon_set(psi, epsilon);

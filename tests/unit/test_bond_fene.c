@@ -39,14 +39,16 @@ int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
 int test_bond_fene_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   test_bond_fene1();
   test_bond_fene2();
 
-  coords_finish();
+  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_bond_fene\n");
   pe_free(pe);
 

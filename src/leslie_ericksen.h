@@ -15,10 +15,12 @@
 #ifndef LESLIE_ERICKSEN_H
 #define LESLIE_ERICKSEN_H
 
+#include "coords.h"
 #include "polar_active.h"
 #include "hydro.h"
 
-int leslie_ericksen_update(fe_polar_t * fe, field_t * p, hydro_t * hydro);
+int leslie_ericksen_update(cs_t * cs, fe_polar_t * fe, field_t * p,
+			   hydro_t * hydro);
 int leslie_ericksen_gamma_set(const double gamma);
 int leslie_ericksen_swim_set(const double gamma);
 

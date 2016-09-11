@@ -133,16 +133,19 @@ int stats_turbulent_ubar_accumulate(hydro_t * hydro) {
   int ic, jc, kc;
   int index, ia;
   double u[3];
+  lees_edw_t * le = NULL;
 
   assert(initialised_);
   assert(hydro);
+  assert(le);    /* NO TEST? */
+
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 	hydro_u(hydro, index, u);
 
 	for (ia = 0; ia < 3; ia++) {
@@ -213,7 +216,12 @@ void stats_turbulent_ubar_output(const char * filename) {
   int rank;
   const int tag_token = 4129;
 
+  lees_edw_t * le = NULL;
+
   assert(initialised_);
+  assert(le); /* NO TEST ? */ 
+
+
   coords_nlocal(nlocal);
 
   f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
@@ -259,7 +267,7 @@ void stats_turbulent_ubar_output(const char * filename) {
       /* Correct f1[Y] for leesedwards planes before output */
       /* Also take the average here. */
 
-      uy = le_get_block_uy(ic);
+      lees_edw_block_uy(le, ic, &uy);
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < 3; n++) {

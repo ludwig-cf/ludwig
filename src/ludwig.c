@@ -28,7 +28,7 @@
 #include "timer.h"
 #include "coords_rt.h"
 #include "coords.h"
-#include "leesedwards.h"
+#include "leesedwards_rt.h"
 #include "control.h"
 #include "util.h"
 
@@ -116,7 +116,9 @@ typedef struct ludwig_s ludwig_t;
 struct ludwig_s {
   pe_t * pe;                /* Parallel environment */
   rt_t * rt;                /* Run time input handler */
+  cs_t * cs;                /* Coordinate system */
   physics_t * phys;         /* Physical parameters */
+  lees_edw_t * le;          /* Lees Edwards sliding periodic boundaries */
   lb_t * lb;                /* Lattice Botlzmann */
   hydro_t * hydro;          /* Hydrodynamic quantities */
   field_t * phi;            /* Scalar order parameter */
@@ -132,6 +134,7 @@ struct ludwig_s {
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
   fe_t * fe;                   /* Free energy "polymorphic" version */
+  phi_ch_t * pch;              /* Cahn Hilliard dynamics */
   beris_edw_t * be;            /* Beris Edwards dynamics */
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
@@ -213,7 +216,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   noise_init(ludwig->noise_rho, 0);
   ran_init_rt(pe, rt);
-  hydro_rt(pe, rt, &ludwig->hydro);
+  hydro_rt(pe, rt, ludwig->cs, ludwig->le, &ludwig->hydro);
 
   /* PHI I/O */
 
@@ -268,7 +271,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 		   ludwig->map);
   colloids_init_ewald_rt(pe, rt, ludwig->collinfo, &ludwig->ewald);
 
-  bbl_create(ludwig->lb, &ludwig->bbl);
+  bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
   /* NOW INITIAL CONDITIONS */
@@ -281,7 +284,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     lb_rt_initial_conditions(pe, rt, ludwig->lb, ludwig->phys);
 
     rt_int_parameter(rt, "LE_init_profile", &n);
-    if (n != 0) lb_le_init_shear_profile(ludwig->lb);
+    if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
   }
   else {
     /* Distributions */
@@ -473,7 +476,6 @@ void ludwig_run(const char * inputfile) {
     ludwig_colloids_update(ludwig);
 
 
-
     /* Order parameter gradients */
 
     TIMER_start(TIMER_PHI_GRADIENTS);
@@ -610,12 +612,13 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
 
-	  phi_force_calculation(ludwig->pth, ludwig->fe, ludwig->phi,
-				ludwig->q, ludwig->q_grad, ludwig->hydro);
+	  phi_force_calculation(ludwig->cs, ludwig->le, ludwig->pth,
+				ludwig->fe, ludwig->phi, ludwig->hydro);
+
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
 	    fe_lc_droplet_t * fe = (fe_lc_droplet_t *) ludwig->fe;
-	    fe_lc_droplet_bodyforce(fe, ludwig->hydro);
+	    fe_lc_droplet_bodyforce(fe, ludwig->le, ludwig->hydro);
 	    hydro_correct_momentum(ludwig->hydro);
 	  }
 	}
@@ -629,15 +632,15 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
-      if (ludwig->phi) {
-	phi_cahn_hilliard(ludwig->fe, ludwig->phi,
+      if (ludwig->pch) {
+	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro,
 			  ludwig->map, ludwig->noise_phi);
       }
 
       if (ludwig->p) {
 	fe_polar_t * fe = (fe_polar_t *) ludwig->fe;
-	leslie_ericksen_update(fe, ludwig->p, ludwig->hydro);
+	leslie_ericksen_update(ludwig->cs, fe, ludwig->p, ludwig->hydro);
       }
 
       if (ludwig->q) {
@@ -676,7 +679,7 @@ void ludwig_run(const char * inputfile) {
       
       /* Boundary conditions */
 
-      lb_le_apply_boundary_conditions(ludwig->lb);
+      lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
 
       TIMER_start(TIMER_HALO_LATTICE);
 
@@ -909,10 +912,13 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
   if (ludwig->be)        beris_edw_free(ludwig->be);
+  if (ludwig->pch)       phi_ch_free(ludwig->pch);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
+  lees_edw_free(ludwig->le);
+  cs_free(ludwig->cs);
   rt_free(ludwig->rt);
   pe_free(ludwig->pe);
 
@@ -1008,6 +1014,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   pe_t * pe = NULL;
   rt_t * rt = NULL;
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
+
+  lees_edw_info_t le_info;
+  lees_edw_info_t * info = &le_info;
 
   assert(ludwig);
   assert(ludwig->pe);
@@ -1015,9 +1026,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   pe = ludwig->pe;
   rt = ludwig->rt;
+  cs_create(pe,&cs);
 
   lb_create(&ludwig->lb);
   noise_create(&ludwig->noise_rho);
+
+  lees_edw_init_rt(rt, info);
 
   n = rt_string_parameter(rt, "free_energy", description, BUFSIZ);
 
@@ -1027,10 +1041,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "No free energy selected\n");
 
     nhalo = 1;
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
     pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
   }
   else if (strcmp(description, "symmetric") == 0 ||
@@ -1050,14 +1064,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       nhalo = 3;
     }
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    field_create(nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1075,7 +1090,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Order parameter noise */
 
     rt_int_parameter(rt, "fd_phi_fluctuations", &noise_on);
-    info("Order parameter noise = %3s\n", (noise_on == 0) ? "off" : " on");
+    pe_info(pe, "Order parameter noise = %3s\n",
+	    (noise_on == 0) ? "off" : " on");
 
     if (noise_on) {
       noise_create(&ludwig->noise_phi);
@@ -1088,7 +1104,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     p = 1; /* Default is to use divergence method */
     rt_int_parameter(rt, "fd_force_divergence", &p);
-    info("Force calculation:      %s\n",
+    pe_info(pe, "Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
     if (p == 0) pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
     if (p == 1) pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
@@ -1108,13 +1124,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 1;   /* Require one point for LB. */
     ngrad = 2;   /* \nabla^2 required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    field_create(nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
 
     pe_info(pe, "\n");
@@ -1145,18 +1161,19 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 3;   /* Required for stress diveregnce. */
     ngrad = 4;   /* (\nabla^2)^2 required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    field_create(nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
-    info("-------------------\n\n");
+    pe_info(pe, "-------------------\n\n");
     fe_brazovskii_create(ludwig->phi, ludwig->phi_grad, &fe);
     fe_brazovskii_init_rt(pe, rt, fe);
 
@@ -1195,13 +1212,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    field_create(nf, "q", &ludwig->q);
-    field_init(ludwig->q, nhalo);
+    field_create(pe, cs, nf, "q", &ludwig->q);
+    field_init(ludwig->q, nhalo, le);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
     pe_info(pe, "\n");
@@ -1209,7 +1226,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "-------------------\n\n");
 
     fe_lc_create(ludwig->q, ludwig->q_grad, &fe);
-    blue_phase_init_rt(pe, rt, fe, &ludwig->be);
+    beris_edw_create(pe, le, &ludwig->be);
+    blue_phase_init_rt(pe, rt, fe, ludwig->be);
 
     p = 0;
     rt_int_parameter(rt, "lc_noise", &p);
@@ -1233,13 +1251,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    field_create(nf, "p", &ludwig->p);
-    field_init(ludwig->p, nhalo);
+    field_create(pe, cs, nf, "p", &ludwig->p);
+    field_init(ludwig->p, nhalo, le);
     field_grad_create(ludwig->p, ngrad, &ludwig->p_grad);
 
     pe_info(pe, "\n");
@@ -1279,14 +1297,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       nhalo = 3;
     }
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
         
-    field_create(nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1315,8 +1334,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
     
-    field_create(NQAB, "q", &ludwig->q);
-    field_init(ludwig->q, nhalo);
+    field_create(pe, cs, NQAB, "q", &ludwig->q);
+    field_init(ludwig->q, nhalo, le);
     field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
 
     pe_info(pe, "\n");
@@ -1324,7 +1343,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "-------------------\n\n");
 
     fe_lc_create(ludwig->q, ludwig->q_grad, &lc);
-    blue_phase_init_rt(pe, rt, lc, &ludwig->be);
+    beris_edw_create(pe, le, &ludwig->be);
+    blue_phase_init_rt(pe, rt, lc, ludwig->be);
 
     fe_lc_droplet_create(lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
@@ -1350,10 +1370,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (p == 0) nhalo = 1;
     if (p == 1) nhalo = 2;
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1394,14 +1414,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* First, the symmetric part. */
 
-    coords_nhalo_set(nhalo);
-    coords_run_time(pe, rt);
-    le_init(pe, rt);
-    le_info();
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
 
-    field_create(nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, le);
     field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Charged binary fluid 'Electrosymmetric' free energy\n");
@@ -1500,6 +1521,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       pe_fatal(pe, "Please check and try again.\n");
     }
   }
+
+  ludwig->cs = cs;
+  ludwig->le = le;
 
   return 0;
 }

@@ -334,32 +334,6 @@ __host__ int halo_swap_commit(halo_swap_t * halo) {
 
 /*****************************************************************************
  *
- *  halo_swap_driver
- *
- *  "data" needs to be a device pointer
- *
- *****************************************************************************/
-#ifdef OLD_SHIT
-__host__ int halo_swap_driver(halo_swap_t * halo, double * data) {
-
-  assert(halo);
-  assert(data);
-
-  assert(0); /* Replace */
-  if (halo->param->nswap > halo->param->nlocal[Z]) {
-    /* Bit of a kludge: if 2d and host-only, use this ... */
-    /* Not LB distributions */
-    halo_swap_host_rank1(halo, data, MPI_DOUBLE);
-  }
-  else {
-    halo_swap_device(halo, data);
-  }
-
-  return 0;
-}
-#endif
-/*****************************************************************************
- *
  *  halo_swap_host_rank1
  *
  *****************************************************************************/

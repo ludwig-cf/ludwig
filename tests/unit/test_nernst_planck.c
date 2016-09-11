@@ -34,7 +34,7 @@
 #include "nernst_planck.h"
 #include "tests.h"
 
-static int do_test_gouy_chapman(void);
+static int do_test_gouy_chapman(pe_t * pe);
 static int test_io(psi_t * psi, int tstep);
 
 /*****************************************************************************
@@ -49,7 +49,7 @@ int test_nernst_planck_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  do_test_gouy_chapman();
+  do_test_gouy_chapman(pe);
 
   pe_info(pe, "PASS     ./unit/test_nernst_planck\n");
   pe_free(pe);
@@ -86,7 +86,7 @@ int test_nernst_planck_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test_gouy_chapman(void) {
+static int do_test_gouy_chapman(pe_t * pe) {
 
   int nk = 2;          /* Number of species */
 
@@ -115,23 +115,28 @@ static int do_test_gouy_chapman(void) {
 
   int tmax = 200;
 
+  cs_t * cs = NULL;
   map_t * map = NULL;
   psi_t * psi = NULL;
   physics_t * phys = NULL;
   fe_electro_t * fe = NULL;
 
-  physics_ref(&phys);
-  coords_nhalo_set(1);
-  coords_ntotal_set(ntotal);
+  assert(pe);
+
+  physics_create(pe, &phys);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, 1);
+  cs_ntotal_set(cs, ntotal);
 
   grid[X] = pe_size();
   grid[Y] = 1;
   grid[Z] = 1;
-  coords_decomposition_set(grid);
+  cs_decomposition_set(cs, grid);
 
-  coords_init();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffst);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffst);
 
   map_create(0, &map);
   assert(map);
@@ -177,7 +182,7 @@ static int do_test_gouy_chapman(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY); 
 
 	psi_rho_set(psi, index, 0, rho_w);
@@ -192,7 +197,7 @@ static int do_test_gouy_chapman(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(psi, index, 0, rho_w);
@@ -254,7 +259,7 @@ static int do_test_gouy_chapman(void) {
   map_free(map);
   fe_electro_free(fe);
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
   physics_free(phys);
 
   return 0;

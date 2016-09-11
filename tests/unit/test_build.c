@@ -41,9 +41,11 @@ int test_build_suite(void) {
   double r0[3];
   double delta = 1.0;        /* A small lattice offset */
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   a0 = 2.3;
   r0[X] = 0.5*L(X); r0[Y] = 0.5*L(Y); r0[Z] = 0.5*L(Z);
@@ -66,7 +68,7 @@ int test_build_suite(void) {
   /* Some known cases: place the colloid in the centre and test only
    * in serial, as there is no quick way to compute in parallel. */
 
-  coords_finish();
+  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_build\n");
   pe_free(pe);
 

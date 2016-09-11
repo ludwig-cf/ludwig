@@ -16,42 +16,62 @@
 #include "pe.h"
 #include "runtime.h"
 #include "coords.h"
+#include "physics.h"
 
 typedef struct lees_edw_s lees_edw_t;
+typedef struct lees_edw_info_s lees_edw_info_t;
 
-__host__ int le_create(pe_t * pe, coords_t * cs, lees_edw_t ** ple);
-__host__ int le_free(lees_edw_t * le);
+struct lees_edw_info_s {
+  int nplanes;
+  int type;
+  int period;
+  int nt0;
+  double uy;
+};
 
-__targetHost__ int le_init(pe_t * pe, rt_t * rt);
-__targetHost__ void le_finish(void);
+typedef enum lees_edw_enum {LE_SHEAR_TYPE_STEADY,
+			    LE_SHEAR_TYPE_OSCILLATORY} lees_edw_enum_t;
 
-__targetHost__ int le_info(void);
-__targetHost__ int le_get_nxbuffer(void);
-__targetHost__ int le_index_buffer_to_real(const int);
-__targetHost__ int le_plane_location(const int);
-__targetHost__ int le_get_nplane_total(void);
-__targetHost__ int le_get_nplane_local(void);
-__targetHost__ int le_nall(int nall[3]);
 
-__host__ __device__ int le_index_real_to_buffer(const int, const int);
-__host__ __device__ int le_nsites(void);
-__host__ __device__ int le_site_index(const int, const int, const int);
+__host__ int lees_edw_create(pe_t * pe, cs_t * coords, lees_edw_info_t * info,
+			     lees_edw_t ** le);
+__host__ int lees_edw_free(lees_edw_t * le);
+__host__ int lees_edw_retain(lees_edw_t * le);
+__host__ int lees_edw_info(lees_edw_t * le);
+__host__ int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm);
+__host__ int lees_edw_plane_comm(lees_edw_t * le, MPI_Comm * comm);
+__host__ int lees_edw_jstart_to_mpi_ranks(lees_edw_t * le, int, int send[2], int recv[2]);
+__host__ int lees_edw_buffer_dy(lees_edw_t * le, int ib, double t0, double * dy);
+__host__ int lees_edw_buffer_du(lees_edw_t * le, int ib, double ule[3]);
 
-__targetHost__ double    le_buffer_displacement(const int, const double);
-__host__ int le_buffer_dy(int ib, double * dy);
-__host__ int le_buffer_du(int ib, double ule[3]);
-__targetHost__ double    le_get_block_uy(int);
-__targetHost__ double    le_get_steady_uy(const int); 
-__targetHost__ double    le_plane_uy(const double);
-__host__ int le_plane_dy(double * dy);
 
-__targetHost__ double    le_plane_uy_max(void);
-__targetHost__ double    le_shear_rate(void);
-__targetHost__ MPI_Comm  le_communicator(void);
-__targetHost__ MPI_Comm  le_plane_comm(void);
-__targetHost__ void      le_jstart_to_ranks(const int, int send[2], int recv[2]);
-__targetHost__ void      le_set_oscillatory(const double);
-__targetHost__ void      le_set_nplane_total(const int nplane);
-__targetHost__ void      le_set_plane_uymax(const double uy);
+/* coords 'inherited' interface host / device */
+
+__host__ __device__ int lees_edw_nhalo(lees_edw_t * le, int * nhalo);
+__host__ __device__ int lees_edw_nsites(lees_edw_t * le, int * nsites);
+__host__ __device__ int lees_edw_nlocal(lees_edw_t * le, int nlocal[3]);
+__host__ __device__ int lees_edw_index(lees_edw_t * le, int ic, int jc, int kc);
+__host__ __device__ int lees_edw_strides(lees_edw_t * le, int * xs, int * ys, int * zs);
+__host__ __device__ int lees_edw_ltot(lees_edw_t * le, double ltot[3]);
+__host__ __device__ int lees_edw_cartsz(lees_edw_t * le, int cartsz[3]);
+__host__ __device__ int lees_edw_ntotal(lees_edw_t * le, int ntotal[3]);
+__host__ __device__ int lees_edw_nlocal_offset(lees_edw_t * le, int offset[3]);
+__host__ __device__ int lees_edw_cart_coords(lees_edw_t * le, int cartcoords[3]);
+
+/* Additional host / device routines */
+
+__host__ __device__ int lees_edw_index_real_to_buffer(lees_edw_t * le, int ic, int idisplace);
+__host__ __device__ int lees_edw_index_buffer_to_real(lees_edw_t * le, int ibuf);
+__host__ __device__ int lees_edw_nplane_total(lees_edw_t * le);
+__host__ __device__ int lees_edw_nplane_local(lees_edw_t * le);
+__host__ __device__ int lees_edw_plane_uy(lees_edw_t * le, double * uy);
+__host__ __device__ int lees_edw_plane_uy_now(lees_edw_t * le, double t, double * uy);
+__host__ __device__ int lees_edw_plane_dy(lees_edw_t * le, double * dy);
+__host__ __device__ int lees_edw_nxbuffer(lees_edw_t * le, int * nxb);
+__host__ __device__ int lees_edw_shear_rate(lees_edw_t * le, double * gammadot);
+__host__ __device__ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy); 
+__host__ __device__ int lees_edw_plane_location(lees_edw_t * le, int plane);
+__host__ __device__ int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy);
+__host__ __device__ int lees_edw_block_uy(lees_edw_t * le, int , double * uy);
 
 #endif

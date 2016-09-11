@@ -32,13 +32,11 @@
  *
  *  Pick up the liquid crystal parameters from the input.
  *
- *  SHIT relocate Beris edwards
- *
  *****************************************************************************/
 
 __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 				fe_lc_t * fe,
-				beris_edw_t ** be) {
+				beris_edw_t * be) {
   int n;
   int redshift_update;
   char method[FILENAME_MAX];
@@ -72,6 +70,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   assert(pe);
   assert(rt);
   assert(fe);
+  assert(be);
 
   pe_info(pe, "Blue phase free energy selected.\n");
 
@@ -282,14 +281,8 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   if (strcmp(value, "ASCII") == 0) {
     io_format_out = IO_FORMAT_ASCII;
   }
-#ifdef OLD_SHIT
-  fed_io_info_set(io_grid, io_format_out);
-#endif
 
   /* Beris Edwards */
-
-  beris_edw_create(be);
-  assert(*be);
 
   pe_info(pe, "\n");
   pe_info(pe, "Using Beris-Edwards solver:\n");
@@ -302,7 +295,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   else {
     be_param.gamma = gamma;
     be_param.xi = fe_param.xi;
-    beris_edw_param_set(*be, be_param);
+    beris_edw_param_set(be, be_param);
     pe_info(pe, "Rotational diffusion const = %14.7e\n", gamma);
   }
 

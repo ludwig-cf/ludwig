@@ -83,6 +83,7 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
 
 struct beris_edw_s {
   beris_edw_param_t * param;       /* Parameters */ 
+  lees_edw_t * le;                 /* Lees Edwards */
   advflux_t * flux;                /* Advective fluxes */
 
   beris_edw_t * target;            /* Target memory */
@@ -99,22 +100,26 @@ static __constant__ beris_edw_param_t static_param;
  *
  *****************************************************************************/
 
-__host__ int beris_edw_create(beris_edw_t ** pobj) {
+__host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
 
   int ndevice;
   advflux_t * flx = NULL;
   beris_edw_t * obj = NULL;
 
+  assert(pe);
+  assert(le);
   assert(pobj);
 
   obj = (beris_edw_t *) calloc(1, sizeof(beris_edw_t));
-  if (obj == NULL) fatal("calloc(beris_edw) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(beris_edw) failed\n");
 
   obj->param = (beris_edw_param_t *) calloc(1, sizeof(beris_edw_param_t));
-  if (obj->param == NULL) fatal("calloc(beris_edw_param_t) failed\n");
+  if (obj->param == NULL) pe_fatal(pe, "calloc(beris_edw_param_t) failed\n");
 
-  advflux_create(NQAB, &flx);
+  advflux_le_create(le, NQAB, &flx);
   assert(flx);
+
+  obj->le = le;
   obj->flux = flx;
 
   beris_edw_tmatrix(obj->param->tmatrix);
@@ -315,13 +320,13 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   }
 
   coords_nlocal(nlocal);
-  nsites = le_nsites();
+  nsites = flux->nsite;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(be->le, ic, jc, kc);
 
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
@@ -377,8 +382,8 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 
 	/* Here's the full hydrodynamic update. */
 	  
-	indexj = le_site_index(ic, jc-1, kc);
-	indexk = le_site_index(ic, jc, kc-1);
+	indexj = lees_edw_index(be->le, ic, jc-1, kc);
+	indexk = lees_edw_index(be->le, ic, jc, kc-1);
 
 	q[X][X] += dt*(s[X][X] + gamma*h[X][X] + chi_qab[X][X]
 		       - flux->fe[addr_rank1(nsites, NQAB, index, XX)]
@@ -617,12 +622,12 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
       __targetILP__(iv) im1[iv] = ic[iv] - 1;
       __targetILP__(iv) ip1[iv] = ic[iv] + 1;
 #else
-      __targetILP__(iv) im1[iv] = le_index_real_to_buffer(ic[iv], -1);
-      __targetILP__(iv) ip1[iv] = le_index_real_to_buffer(ic[iv], +1);
+      __targetILP__(iv) im1[iv] = lees_edw_index_real_to_buffer(be->le, ic[iv], -1);
+      __targetILP__(iv) ip1[iv] = lees_edw_index_real_to_buffer(be->le, ic[iv], +1);
 #endif
 
-      __targetILP__(iv) im1[iv] = le_site_index(im1[iv], jc[iv], kc[iv]);
-      __targetILP__(iv) ip1[iv] = le_site_index(ip1[iv], jc[iv], kc[iv]);
+      __targetILP__(iv) im1[iv] = lees_edw_index(be->le, im1[iv], jc[iv], kc[iv]);
+      __targetILP__(iv) ip1[iv] = lees_edw_index(be->le, ip1[iv], jc[iv], kc[iv]);
 
       __targetILP__(iv) { 
 	if (maskv[iv]) {
@@ -647,10 +652,10 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
       }
 
       __targetILP__(iv) {
-	im1[iv] = le_site_index(ic[iv], jc[iv] - maskv[iv], kc[iv]);
+	im1[iv] = lees_edw_index(be->le, ic[iv], jc[iv] - maskv[iv], kc[iv]);
       }
       __targetILP__(iv) {
-	ip1[iv] = le_site_index(ic[iv], jc[iv] + maskv[iv], kc[iv]);
+	ip1[iv] = lees_edw_index(be->le, ic[iv], jc[iv] + maskv[iv], kc[iv]);
       }
 	  
       __targetILP__(iv) { 
@@ -670,10 +675,10 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
       }
 
       __targetILP__(iv) {
-	im1[iv] = le_site_index(ic[iv], jc[iv], kc[iv] - maskv[iv]);
+	im1[iv] = lees_edw_index(be->le, ic[iv], jc[iv], kc[iv] - maskv[iv]);
       }
       __targetILP__(iv) {
-	ip1[iv] = le_site_index(ic[iv], jc[iv], kc[iv] + maskv[iv]);
+	ip1[iv] = lees_edw_index(be->le, ic[iv], jc[iv], kc[iv] + maskv[iv]);
       }
 	  
       __targetILP__(iv) { 
@@ -757,10 +762,10 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
      * which are masked out if not a valid kernel site */
 
     __targetILP__(iv) {
-      indexj[iv] = le_site_index(ic[iv], jc[iv] - maskv[iv], kc[iv]);
+      indexj[iv] = lees_edw_index(be->le, ic[iv], jc[iv] - maskv[iv], kc[iv]);
     }
     __targetILP__(iv) {
-      indexk[iv] = le_site_index(ic[iv], jc[iv], kc[iv] - maskv[iv]);
+      indexk[iv] = lees_edw_index(be->le, ic[iv], jc[iv], kc[iv] - maskv[iv]);
     }
 
     __targetILP__(iv) {

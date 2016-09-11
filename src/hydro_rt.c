@@ -11,7 +11,8 @@
 #include "runtime.h"
 #include "hydro_rt.h"
 
-static int hydro_do_init(rt_t * rt, hydro_t ** phydro);
+static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
+			 hydro_t ** phydro);
 
 /*****************************************************************************
  *
@@ -19,7 +20,8 @@ static int hydro_do_init(rt_t * rt, hydro_t ** phydro);
  *
  ****************************************************************************/
 
-int hydro_rt(pe_t * pe, rt_t * rt, hydro_t ** phydro) {
+int hydro_rt(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
+	     hydro_t ** phydro) {
 
   int hswitch = 1;
   char value[BUFSIZ];
@@ -39,7 +41,7 @@ int hydro_rt(pe_t * pe, rt_t * rt, hydro_t ** phydro) {
   pe_info(pe, "-------------\n");
   pe_info(pe, "Hydrodynamics: %s\n", (hswitch) ? "on" : "off");
 
-  if (hswitch) hydro_do_init(rt, phydro);
+  if (hswitch) hydro_do_init(pe, rt, cs, le, phydro);
 
   return 0;
 }
@@ -53,7 +55,8 @@ int hydro_rt(pe_t * pe, rt_t * rt, hydro_t ** phydro) {
  *
  *****************************************************************************/
 
-static int hydro_do_init(rt_t * rt, hydro_t ** phydro) {
+static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
+			 hydro_t ** phydro) {
 
   hydro_t * obj = NULL;
 
@@ -66,7 +69,7 @@ static int hydro_do_init(rt_t * rt, hydro_t ** phydro) {
   assert(rt);
   assert(phydro);
 
-  hydro_create(nhcomm, &obj);
+  hydro_create(pe, cs, le, nhcomm, &obj);
   assert(obj);
 
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);

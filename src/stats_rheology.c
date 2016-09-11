@@ -167,11 +167,14 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
   double * fexmean;
   double raverage;
 
+  lees_edw_t * le = NULL;
+
   FILE * fp_output;
   MPI_Status status;
   MPI_Comm comm = cart_comm();
 
   assert(initialised_);
+  assert(le); /* NO TEST? */
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -189,7 +192,7 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 	fe->func->fed(fe, index, &fed);
 	fex[ic-1] += fed; 
       }
@@ -299,16 +302,20 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
   double u[3];
   double s[3][3];
 
+  lees_edw_t * le = NULL;
+
   assert(initialised_);
   assert(lb);
   assert(hydro);
+  assert(le); /* NO TEST? */
+
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 
 	/* Set up the (inverse) density, velocity */
 
@@ -418,12 +425,17 @@ void stats_rheology_stress_profile(const char * filename) {
   const int tag_token = 728;
   int rank;
   int token = 0;
+
   physics_t * phys = NULL;
+  lees_edw_t * le = NULL;
+
   MPI_Status status;
   MPI_Comm comm = cart_comm();
   FILE * fp_output;
 
   assert(initialised_);
+  assert(le); /* NO TEST? */
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
@@ -460,7 +472,7 @@ void stats_rheology_stress_profile(const char * filename) {
       /* This is an average over (y,z) so don't care about the
        * Lees Edwards places, but correct uy */
 
-      uy = le_get_block_uy(ic);
+      lees_edw_block_uy(le, ic, &uy);
 
       fprintf(fp_output,
 	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
@@ -537,6 +549,8 @@ void stats_rheology_stress_section(const char * filename) {
   double eta, viscous;
 
   physics_t * phys = NULL;
+  lees_edw_t * le = NULL;
+
   MPI_Comm comm = cart_comm();
   MPI_Status status;
   int token = 0;
@@ -544,6 +558,8 @@ void stats_rheology_stress_section(const char * filename) {
   const int tag_token = 1012;
 
   assert(initialised_);
+  assert(le);  /* NO TEST ? */
+
   coords_nlocal(nlocal);
 
   physics_ref(&phys);
@@ -598,7 +614,7 @@ void stats_rheology_stress_section(const char * filename) {
       /* Correct f1[Y] for leesedwards planes before output. */
       /* Viscous stress likewise. Also take the average here. */
 
-      uy = le_get_block_uy(ic);
+      lees_edw_block_uy(le, ic, &uy);
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < NSTAT2; n++) {

@@ -40,14 +40,16 @@ int test_pair_yukawa_config1(colloids_info_t * cinfo, interact_t * interact,
 int test_pair_yukawa_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   test_pair_yukawa1();
   test_pair_yukawa2();
 
-  coords_finish();
+  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_pair_yakawa\n");
   pe_free(pe);
 

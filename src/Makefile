@@ -60,6 +60,7 @@ endif
 ###############################################################################
 
 OBJS = \
+     coords.o leesedwards.o \
      physics.o physics_rt.o advection.o advection_rt.o advection_bcs.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
@@ -79,7 +80,7 @@ OBJS = \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
      halo_swap.o hydro.o hydro_rt.o interaction.o io_harness.o \
-     kernel.o leslie_ericksen.o \
+     kernel.o leesedwards_rt.o leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o memory.o model.o model_le.o map.o \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
      angle_cosine.o bond_fene.o \

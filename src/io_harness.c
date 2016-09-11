@@ -22,7 +22,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007-2014 The University of Edinburgh
+ *  (c) 2007-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -419,6 +419,10 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   int token = 0;
   const int tag = 1293;
+
+  int le_nplane;
+  double le_uy;
+
   pe_t * pe = NULL; 
   MPI_Status status;
 
@@ -431,6 +435,9 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   pe_ref(&pe);
   pe_subdirectory(pe, subdirectory);
+
+  le_nplane = 0;
+  le_uy = 0.0;
 
   io_set_group_filename(filename, filename_stub, info);
   sprintf(filename_io, "%s%s.meta", subdirectory, filename);
@@ -456,10 +463,8 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
 	    N_total(X), N_total(Y), N_total(Z));
     /* Lees Edwards hardwired until refactor LE code dependencies */
-    fprintf(fp_meta, "Lees-Edwards planes:             %d\n",
-	    le_get_nplane_total());
-    fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n",
-	    le_plane_uy_max());
+    fprintf(fp_meta, "Lees-Edwards planes:             %d\n", le_nplane);
+    fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n", le_uy);
     fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
     fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n",
 	    nx, ny, nz);

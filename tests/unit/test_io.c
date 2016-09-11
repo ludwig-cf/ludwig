@@ -29,7 +29,7 @@ struct test_io_s {
   double dref;
 };
 
-int do_test_io_info_struct(void);
+int do_test_io_info_struct(pe_t * pe, cs_t * cs);
 static int  test_io_read1(FILE *, int index, void * self);
 static int  test_io_write1(FILE *, int index, void * self);
 static int  test_io_read3(FILE *, int index, void * self);
@@ -44,16 +44,18 @@ static int  test_io_write3(FILE *, int index, void * self);
 int test_io_suite(void) {
 
   pe_t * pe = NULL;
-
+  cs_t * cs = NULL;
+  
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
-  do_test_io_info_struct();
+  do_test_io_info_struct(pe, cs);
   /* if (pe_size() == cart_size(X)) test_processor_independent();
      test_ascii();*/
 
   pe_info(pe, "PASS     ./unit/test_io\n");
-  coords_finish();
+  cs_free(cs);
   pe_free(pe);
 
   return 0;
@@ -65,11 +67,14 @@ int test_io_suite(void) {
  *
  *****************************************************************************/
 
-int do_test_io_info_struct(void) {
+int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
 
   char stubp[FILENAME_MAX];
   test_io_t data = {2, 1.0};
   io_info_t * io_info = NULL;
+
+  assert(pe);
+  assert(cs);
 
   sprintf(stubp, "/tmp/temp-test-io-file");
 

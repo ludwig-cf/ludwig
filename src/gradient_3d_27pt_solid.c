@@ -146,6 +146,7 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
   int ic, jc, kc, ic1, jc1, kc1;
   int ia, index, p;
   int n;
+  int nsites;
 
   int isite[NGRAD_];
 
@@ -167,6 +168,7 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
   coords_nlocal(nlocal);
 
   nop = fg->field->nf;
+  nsites = fg->field->nsites;
   field = fg->field->data;
   rk = 1.0/kappa;
 
@@ -202,8 +204,8 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
 	    if (isite[p] == -1) continue;
 
 	    dphi
-	      = field[addr_rank1(le_nsites(), nop, isite[p], n)]
-	      - field[addr_rank1(le_nsites(), nop, index,    n)];
+	      = field[addr_rank1(nsites, nop, isite[p], n)]
+	      - field[addr_rank1(nsites, nop, index,    n)];
 	    gradt[p] = dphi;
 
 	    for (ia = 0; ia < 3; ia++) {
@@ -221,7 +223,7 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
 	  for (p = 1; p < NGRAD_; p++) {
 
 	    if (isite[p] == -1) {
-	      phi_b = field[addr_rank1(le_nsites(), nop, index, n)]
+	      phi_b = field[addr_rank1(nsites, nop, index, n)]
 		+ 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
 		       + bs_cv[p][Z]*gradn[Z]);
 
@@ -256,9 +258,9 @@ __host__ int grad_3d_27pt_solid_op(field_grad_t * fg, map_t * map,
 	    }
 	  }
 
-	  fg->delsq[addr_rank1(le_nsites(), nop, index, n)] = r9*dphi;
+	  fg->delsq[addr_rank1(nsites, nop, index, n)] = r9*dphi;
 	  for (ia = 0; ia < 3; ia++) {
-	    fg->grad[addr_rank2(le_nsites(),nop,3,index,n,ia)] = r18*gradn[ia];
+	    fg->grad[addr_rank2(nsites,nop,3,index,n,ia)] = r18*gradn[ia];
 	  }
 	}
 
