@@ -586,7 +586,8 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
  *
  *****************************************************************************/
   
-int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
+int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
+			    hydro_t * hydro) {
 
   int ic, jc, kc, icm1, icp1;
   int ia, ib;
@@ -601,9 +602,13 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
   double q[3][3];
   double dq[3][3][3];
   double phi;
-  
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+
+  assert(fe);
+  assert(le);
+  assert(hydro);
+
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
   assert(nhalo >= 2);
 
   /* Memory strides */
@@ -612,13 +617,13 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
   ys = (nlocal[Z] + 2*nhalo)*zs;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
     
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, jc, kc);
+	index0 = lees_edw_index(le, ic, jc, kc);
 	
 	field_scalar(fe->symm->phi, index0, &phi);
 	field_tensor(fe->lc->q, index0, q);
@@ -626,8 +631,8 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
 	field_grad_tensor_grad(fe->lc->dq, index0, dq);
 	fe_lc_droplet_mol_field(fe, index0, h);
   
-        indexm1 = le_site_index(icm1, jc, kc);
-        indexp1 = le_site_index(icp1, jc, kc);
+        indexm1 = lees_edw_index(le, icm1, jc, kc);
+        indexp1 = lees_edw_index(le, icp1, jc, kc);
 
 	fe_lc_droplet_mu(fe, indexm1, &mum1);
         fe_lc_droplet_mu(fe, indexp1, &mup1);

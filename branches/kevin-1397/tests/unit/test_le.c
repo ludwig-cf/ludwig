@@ -21,8 +21,8 @@
 #include "util.h"
 #include "tests.h"
 
-static void test_parallel1(pe_t * pe);
-static void test_le_parallel2(pe_t * pe);
+static int test_parallel1(pe_t * pe, cs_t * cs);
+static int test_le_parallel2(pe_t * pe, cs_t * cs);
 
 /*****************************************************************************
  *
@@ -33,15 +33,18 @@ static void test_le_parallel2(pe_t * pe);
 int test_le_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
+
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
-  test_parallel1(pe);
-  test_le_parallel2(pe);
+  test_parallel1(pe, cs);
+  test_le_parallel2(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_le\n");
-  coords_finish();
+  cs_free(cs);
   pe_free(pe);
 
   return 0;
@@ -55,7 +58,7 @@ int test_le_suite(void) {
  *
  *****************************************************************************/
 
-void test_parallel1(pe_t * pe) {
+int test_parallel1(pe_t * pe, cs_t * cs) {
 
   const int nplane = 2;
   int nplane_local;
@@ -66,23 +69,30 @@ void test_parallel1(pe_t * pe) {
   int py;
   int precv_rank_left, precv_rank_right;
 
+  int ntotal[3];
   int nlocal[3];
   int noffset[3];
+  int cartsz[3];
 
   const double uy_set = 0.25;
   double uy;
   double fr;
 
   double dy;
+  double len[3];
 
+  lees_edw_info_t myinfo = {0};
+  lees_edw_info_t * info = &myinfo;
   lees_edw_t * le = NULL;
   MPI_Comm comm;
 
   assert(pe);
+  assert(cs);
 
-  le_set_nplane_total(nplane);
-  le_set_plane_uymax(uy_set);
-  le_create(pe, NULL, &le);
+  info->nplanes = nplane;
+  info->uy = uy_set;
+
+  lees_edw_create(pe, cs, info, &le);
 
   /*info("\nLees Edwards test (constant speed)...\n");
     info("Total number of planes in set correctly... ");*/
@@ -103,10 +113,13 @@ void test_parallel1(pe_t * pe) {
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ltot(cs, len);
+  cs_ntotal(cs, ntotal);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+  cs_cartsz(cs, cartsz);
 
-  comm = le_communicator();
+  lees_edw_comm(le, &comm);
 
   for (n = -5000; n <= 5000; n++) {
 
@@ -114,10 +127,10 @@ void test_parallel1(pe_t * pe) {
      * give -L(Y) < dy < +L(Y) */
 
     dy = uy_set*n;
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, len[Y]);
 
-    test_assert(dy > -L(Y));
-    test_assert(dy < +L(Y));
+    test_assert(dy > -len[Y]);
+    test_assert(dy < +len[Y]);
 
     /* The integral part of the displacement jdy and the fractional
      * part are... */
@@ -125,8 +138,8 @@ void test_parallel1(pe_t * pe) {
     jdy = floor(dy);
     fr = dy - jdy;
 
-    test_assert(jdy < N_total(Y));
-    test_assert(jdy >= - N_total(Y));
+    test_assert(jdy < ntotal[Y]);
+    test_assert(jdy >= - ntotal[Y]);
     test_assert(fr >= 0.0);
     test_assert(fr <= 1.0);
 
@@ -135,10 +148,10 @@ void test_parallel1(pe_t * pe) {
      * point. Modular arithmetic ensures 1 <= j1 <= N_y.  */
 
     jlocal = noffset[Y] + 1;
-    j1 = 1 + (jlocal - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jlocal - jdy - 2 + 2*ntotal[Y]) % ntotal[Y];
 
     test_assert(j1 >= 1);
-    test_assert(j1 <= N_total(Y));
+    test_assert(j1 <= ntotal[Y]);
 
     /* The corresponding local coordinate is j1mod */
 
@@ -165,58 +178,55 @@ void test_parallel1(pe_t * pe) {
 
     py = (j1 - 1) / nlocal[Y];
     test_assert(py >= 0);
-    test_assert(py < cart_size(Y));
+    test_assert(py < cartsz[Y]);
     MPI_Cart_rank(comm, &py, &precv_rank_left);
     py = 1 + (j1 - 1) / nlocal[Y];
     test_assert(py >= 1);
-    test_assert(py <= cart_size(Y));
+    test_assert(py <= cartsz[Y]);
     MPI_Cart_rank(comm, &py, &precv_rank_right);
   }
 
-  le_free(le);
+  lees_edw_free(le);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  test_le_parallel2
  *
- *  Deisgned for the 4-point interpolation.
+ *  Designed for the 4-point interpolation.
  *
  *****************************************************************************/
 
-static void test_le_parallel2(pe_t * pe) {
+static int test_le_parallel2(pe_t * pe, cs_t * cs) {
 
-  const int nplane = 2;
   int n;
   int jdy;
   int jc, j1, j2;
   int n1, n2, n3;
   int nhalo;
 
+  int ntotal[3];
   int nlocal[3];
   int noffset[3];
 
-  const double uy_set = 0.25;
-
+  double len[3];
   double fr;
   double dy;
-
-  lees_edw_t * le = NULL;
+  double uy_set = 0.25;
 
   assert(pe);
-
-  le_set_nplane_total(nplane);
-  le_set_plane_uymax(uy_set);
-  le_create(pe, NULL, &le);
+  assert(cs);
 
   /* Check displacement calculations. Run to a displacement which is
    * at least a couple of periodic images. */
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  nhalo = coords_nhalo();
+  cs_ntotal(cs, ntotal);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+  cs_nhalo(cs, &nhalo);
+  cs_ltot(cs, len);
 
   for (n = -5000; n <= 5000; n++) {
 
@@ -224,10 +234,10 @@ static void test_le_parallel2(pe_t * pe) {
      * give -L(Y) < dy < +L(Y) */
 
     dy = uy_set*n;
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, len[Y]);
 
-    test_assert(dy > -L(Y));
-    test_assert(dy < +L(Y));
+    test_assert(dy > -len[Y]);
+    test_assert(dy < +len[Y]);
 
     /* The integral part of the displacement jdy and the fractional
      * part are... */
@@ -235,13 +245,13 @@ static void test_le_parallel2(pe_t * pe) {
     jdy = floor(dy);
     fr = dy - jdy;
 
-    test_assert(jdy < N_total(Y));
-    test_assert(jdy >= - N_total(Y));
+    test_assert(jdy < ntotal[Y]);
+    test_assert(jdy >= - ntotal[Y]);
     test_assert(fr >= 0.0);
     test_assert(fr <= 1.0);
 
     jc = noffset[Y] + 1;
-    j1 = 1 + (jc - jdy - 3 - nhalo + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 3 - nhalo + 2*ntotal[Y]) % ntotal[Y];
     j2 = 1 + (j1 - 1) % nlocal[Y];
 
     test_assert(j2 >= 1);
@@ -251,11 +261,8 @@ static void test_le_parallel2(pe_t * pe) {
     n2 = imin(nlocal[Y], j2 + 2 + 2*nhalo);
     n3 = imax(0, j2 - nlocal[Y] + 2 + 2*nhalo);
 
-    /* info("n: %3d %3d %3d total: %3d\n", n1, n2, n3, n1+n2+n3);*/
     test_assert((n1 + n2 + n3) == nlocal[Y] + 2*nhalo + 3);
   }
 
-  le_free(le);
-
-  return;
+  return 0;
 }

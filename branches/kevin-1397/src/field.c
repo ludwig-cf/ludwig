@@ -6,6 +6,11 @@
  *
  *  The data storage order is determined in memory.h.
  *
+ *  Lees-Edwards transformation is supported provided the lees_edw_t
+ *  object is supplied at initialisation time. Otherwise, the normal
+ *  cs_t coordinate system applies.
+ *
+ *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -53,24 +58,32 @@ static int field_leesedwards_parallel(field_t * obj);
  *
  *****************************************************************************/
 
-__host__ int field_create(int nf, const char * name, field_t ** pobj) {
+__host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
+			  field_t ** pobj) {
 
   field_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(nf > 0);
   assert(pobj);
 
-  obj = (field_t*) calloc(1, sizeof(field_t));
+  obj = (field_t *) calloc(1, sizeof(field_t));
   if (obj == NULL) fatal("calloc(obj) failed\n");
 
   obj->nf = nf;
 
-  obj->name = (char*) calloc(strlen(name) + 1, sizeof(char));
+  obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
   if (obj->name == NULL) fatal("calloc(name) failed\n");
 
   assert(strlen(name) < BUFSIZ);
   strncpy(obj->name, name, strlen(name));
   obj->name[strlen(name)] = '\0';
+
+  obj->pe = pe;
+  obj->cs = cs;
+  pe_retain(pe);
+  cs_retain(cs);
 
   *pobj = obj;
 
@@ -102,6 +115,8 @@ __host__ int field_free(field_t * obj) {
   if (obj->name) free(obj->name);
   if (obj->halo) halo_swap_free(obj->halo);
   if (obj->info) io_info_destroy(obj->info);
+  cs_free(obj->cs);
+  pe_free(obj->pe);
   free(obj);
 
   return 0;
@@ -112,10 +127,12 @@ __host__ int field_free(field_t * obj) {
  *  field_init
  *
  *  Initialise the lattice data, MPI halo information.
+ *  The le_t may be NULL, in which case create an instance with
+ *  no planes. SHIT 
  *
  *****************************************************************************/
 
-__host__ int field_init(field_t * obj, int nhcomm) {
+__host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 
   int ndevice;
   int nsites;
@@ -123,12 +140,12 @@ __host__ int field_init(field_t * obj, int nhcomm) {
 
   assert(obj);
   assert(obj->data == NULL);
-  assert(nhcomm <= coords_nhalo());
 
-  nsites = le_nsites();
+  cs_nsites(obj->cs, &nsites);
+  if (le) lees_edw_nsites(le, &nsites);
+
   obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
-
-  if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
+  if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 
   /* Allocate target copy of structure (or alias) */
 
@@ -147,6 +164,7 @@ __host__ int field_init(field_t * obj, int nhcomm) {
 
   /* MPI datatypes for halo */
 
+  obj->le = le;
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
 
@@ -190,7 +208,7 @@ __host__ int field_memcpy(field_t * obj, int flag) {
       copyFromTarget(obj->data, tmp, obj->nf*obj->nsites*sizeof(double));
       break;
     default:
-      fatal("Bad flag in field_memcpy\n");
+      pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
       break;
     }
   }
@@ -270,7 +288,7 @@ __host__ int field_halo(field_t * obj) {
   int nlocal[3];
   assert(obj);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
 
   if (nlocal[Z] < obj->nhcomm) {
     /* This constraint means can't use target method;
@@ -332,6 +350,7 @@ __host__ int field_leesedwards(field_t * obj) {
   int nhalo;
   int nsites;
   int nlocal[3]; /* Local system size */
+  int nxbuffer;  /* Number of buffer planes */
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
@@ -348,6 +367,8 @@ __host__ int field_leesedwards(field_t * obj) {
   assert(obj);
   assert(obj->data);
 
+  if (obj->le == NULL) return 0;
+
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);
@@ -355,17 +376,18 @@ __host__ int field_leesedwards(field_t * obj) {
   else {
     /* No messages are required... */
 
-    field_nf(obj, &nf);
-    nhalo = coords_nhalo();
-    nsites = le_nsites();
-    coords_nlocal(nlocal);
+    nf = obj->nf;
+    nsites = obj->nsites;
+    cs_nhalo(obj->cs, &nhalo);
+    cs_nlocal(obj->cs, nlocal);
+    lees_edw_nxbuffer(obj->le, &nxbuffer);
     ib0 = nlocal[X] + nhalo + 1;
 
-    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+    for (ib = 0; ib < nxbuffer; ib++) {
 
-      ic = le_index_buffer_to_real(ib);
+      ic = lees_edw_index_buffer_to_real(obj->le, ib);
 
-      le_buffer_dy(ib, &dy);
+      lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = 1.0 - (dy - jdy);
@@ -382,11 +404,11 @@ __host__ int field_leesedwards(field_t * obj) {
         j3 = 1 + j2 % nlocal[Y];
 
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-          index  = le_site_index(ib0 + ib, jc, kc);
-          index0 = le_site_index(ic, j0, kc);
-          index1 = le_site_index(ic, j1, kc);
-          index2 = le_site_index(ic, j2, kc);
-          index3 = le_site_index(ic, j3, kc);
+          index  = lees_edw_index(obj->le, ib0 + ib, jc, kc);
+          index0 = lees_edw_index(obj->le, ic, j0, kc);
+          index1 = lees_edw_index(obj->le, ic, j1, kc);
+          index2 = lees_edw_index(obj->le, ic, j2, kc);
+          index3 = lees_edw_index(obj->le, ic, j3, kc);
           for (n = 0; n < nf; n++) {
             obj->data[addr_rank1(nsites, nf, index, n)] =
               -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index0, n)]
@@ -422,8 +444,9 @@ __host__ int field_leesedwards(field_t * obj) {
 static int field_leesedwards_parallel(field_t * obj) {
 
   int nf;
-  int      nlocal[3];      /* Local system size */
-  int      noffset[3];     /* Local starting offset */
+  int nlocal[3];           /* Local system size */
+  int noffset[3];          /* Local starting offset */
+  int nxbuffer;            /* Number of buffer planes */
   int ib;                  /* Index in buffer region */
   int ib0;                 /* buffer region offset */
   int ic;                  /* Index corresponding x location in real system */
@@ -454,14 +477,16 @@ static int field_leesedwards_parallel(field_t * obj) {
   MPI_Status  status[3];
 
   assert(obj);
+  assert(obj->le);
 
   field_nf(obj, &nf);
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nhalo(obj->cs, &nhalo);
+  cs_nlocal(obj->cs, nlocal);
+  cs_nlocal_offset(obj->cs, noffset);
   ib0 = nlocal[X] + nhalo + 1;
 
-  le_comm = le_communicator();
+  lees_edw_comm(obj->le, &le_comm);
+  lees_edw_nxbuffer(obj->le, &nxbuffer);
 
   /* Allocate buffer space */
 
@@ -476,14 +501,14 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   /* One round of communication for each buffer plane */
 
-  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+  for (ib = 0; ib < nxbuffer; ib++) {
 
-    ic = le_index_buffer_to_real(ib);
+    ic = lees_edw_index_buffer_to_real(obj->le, ib);
     kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
 
-    le_buffer_dy(ib, &dy);
+    lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = 1.0 - (dy - jdy);
@@ -497,7 +522,7 @@ static int field_leesedwards_parallel(field_t * obj) {
     assert(j1 >= 1);
     assert(j1 <= N_total(Y));
 
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    lees_edw_jstart_to_mpi_ranks(obj->le, j1, nrank_s, nrank_r);
 
     /* Local quantities: j2 is the position of j1 in local coordinates.
      * The three sections to send/receive are organised as follows:
@@ -526,12 +551,12 @@ static int field_leesedwards_parallel(field_t * obj) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(obj->le, ic, jc, kc);
 	for (n = 0; n < nf; n++) {
 	  j0 = nf*(jc - 1)*(nlocal[Z] + 2*nhalo);
 	  j1 = j0 + nf*(kc + nhalo - 1);
 	  assert((j1+n) >= 0 && (j1+n) < nsend);
-	  sendbuf[j1+n] = obj->data[addr_rank1(le_nsites(), nf, index, n)];
+	  sendbuf[j1+n] = obj->data[addr_rank1(obj->nsites, nf, index, n)];
 	}
       }
     }
@@ -563,9 +588,9 @@ static int field_leesedwards_parallel(field_t * obj) {
       j3 = (jc + nhalo - 1 + 3)*(nlocal[Z] + 2*nhalo);
 
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-        index = le_site_index(ib0 + ib, jc, kc);
+        index = lees_edw_index(obj->le, ib0 + ib, jc, kc);
         for (n = 0; n < nf; n++) {
-          obj->data[addr_rank1(le_nsites(), nf, index, n)] =
+          obj->data[addr_rank1(obj->nsites, nf, index, n)] =
             -  r6*fr*(fr-1.0)*(fr-2.0)*recvbuf[nf*(j0 + kc+nhalo-1) + n]
             + 0.5*(fr*fr-1.0)*(fr-2.0)*recvbuf[nf*(j1 + kc+nhalo-1) + n]
             - 0.5*fr*(fr+1.0)*(fr-2.0)*recvbuf[nf*(j2 + kc+nhalo-1) + n]
@@ -766,7 +791,7 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
   assert(array);
 
   for (n = 0; n < obj->nf; n++) {
-    obj->data[addr_rank1(le_nsites(), obj->nf, index, n)] = array[n];
+    obj->data[addr_rank1(obj->nsites, obj->nf, index, n)] = array[n];
   }
 
   return 0;

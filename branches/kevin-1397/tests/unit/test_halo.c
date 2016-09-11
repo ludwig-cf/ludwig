@@ -38,10 +38,11 @@ int do_test_halo(int dim, const lb_halo_enum_t halo);
 int test_halo_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   do_test_const_blocks();
 
@@ -58,8 +59,9 @@ int test_halo_suite(void) {
     do_test_halo(Z, LB_HALO_REDUCED);
   }
 
-  coords_finish();
+
   pe_info(pe, "PASS     ./unit/test_halo\n");
+  cs_free(cs);
   pe_free(pe);
 
   return 0;

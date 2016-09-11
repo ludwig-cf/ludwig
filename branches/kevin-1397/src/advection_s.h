@@ -14,6 +14,7 @@
 #define ADVECTION_S_H
 
 #include "memory.h"
+#include "leesedwards.h"
 #include "advection.h"
 
 struct advflux_s {
@@ -25,6 +26,8 @@ struct advflux_s {
   double * fy;   /* y-face fluxes */
   double * fz;   /* z-face fluxes */
 
+  cs_t * cs;           /* Coordinate system */
+  lees_edw_t * le;     /* Lees Edwards */
   advflux_t * target;  /* copy of this structure on target */ 
 };
 

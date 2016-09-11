@@ -75,14 +75,16 @@ int do_test1(pe_t * pe) {
   double delsq;
   double grad[3];
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
   assert(pe);
 
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nfref, "scalar-field-test", &field);
   assert(field);
@@ -112,8 +114,8 @@ int do_test1(pe_t * pe) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -130,14 +132,16 @@ static int do_test3(pe_t * pe) {
   double delsq[3];
   double grad[3][3];
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
   assert(pe);
 
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nf, "vector-field-test", &field);
   assert(field);
@@ -161,8 +165,8 @@ static int do_test3(pe_t * pe) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -181,14 +185,16 @@ static int do_test5(pe_t * pe) {
   double delsq[3][3];
   double grad[3][3][3];
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
   assert(pe);
 
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nf, "tensor-field-test", &field);
   assert(field);
@@ -226,8 +232,8 @@ static int do_test5(pe_t * pe) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -244,14 +250,16 @@ int do_test_dab(pe_t * pe) {
   int index = 1;
   double dab[3][3];
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
   assert(pe);
 
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nf, "dab-field-test", &field);
   assert(field);
@@ -281,8 +289,8 @@ int do_test_dab(pe_t * pe) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -323,23 +331,21 @@ static int test_d2(field_grad_t * fg) {
 static int test_d4(field_grad_t * fg) {
 
   int n, nf;
-  int nsites;
   int index;
   int index0 = 1;
 
   assert(fg);
 
   field_nf(fg->field, &nf);
-  nsites = le_nsites();
 
   for (n = 0; n < nf; n++) {
-    index = mem_addr_rank2(nsites, nf, NVECTOR, index0, n, X);
+    index = mem_addr_rank2(fg->nsite, nf, NVECTOR, index0, n, X);
     fg->grad_delsq[index] = test_encode(ENCODE_GRAD4, nf, X, n);
-    index = mem_addr_rank2(nsites, nf, NVECTOR, index0, n, Y);
+    index = mem_addr_rank2(fg->nsite, nf, NVECTOR, index0, n, Y);
     fg->grad_delsq[index] = test_encode(ENCODE_GRAD4, nf, Y, n);
-    index = mem_addr_rank2(nsites, nf, NVECTOR, index0, n, Z);
+    index = mem_addr_rank2(fg->nsite, nf, NVECTOR, index0, n, Z);
     fg->grad_delsq[index] = test_encode(ENCODE_GRAD4, nf, Z, n);
-    index = mem_addr_rank1(nsites, nf, index0, n);
+    index = mem_addr_rank1(fg->nsite, nf, index0, n);
     fg->delsq_delsq[index] = test_encode(ENCODE_DELSQ4, nf, X, n);
   }
 

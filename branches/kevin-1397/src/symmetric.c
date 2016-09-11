@@ -282,8 +282,8 @@ int fe_symm_mu(fe_symm_t * fe, int index, double * mu) {
   double phi;
   double delsq;
 
-  phi = fe->phi->data[addr_rank0(le_nsites(), index)];
-  delsq = fe->dphi->delsq[addr_rank0(le_nsites(), index)];
+  phi = fe->phi->data[addr_rank0(fe->phi->nsites, index)];
+  delsq = fe->dphi->delsq[addr_rank0(fe->phi->nsites, index)];
 
   *mu = fe->param->a*phi + fe->param->b*phi*phi*phi - fe->param->kappa*delsq;
 

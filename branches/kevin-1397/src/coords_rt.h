@@ -18,7 +18,8 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "coords.h"
 
-int coords_run_time(pe_t * pe, rt_t * rt);
+int coords_init_rt(pe_t * pe, rt_t * rt, cs_t * cs);
 
 #endif

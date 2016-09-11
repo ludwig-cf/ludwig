@@ -68,14 +68,16 @@ static int do_test1(pe_t * pe) {
   const double u[3] = {-1.0, -2.0, -3.0};
   double check[3] = {0.0, 0.0, 0.0};
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   hydro_t * hydro = NULL;
 
   assert(pe);
   assert(NHDIM == 3);
 
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   hydro_create(1, &hydro);
   assert(hydro);
@@ -95,8 +97,8 @@ static int do_test1(pe_t * pe) {
 
   hydro_free(hydro);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -110,13 +112,15 @@ static int do_test1(pe_t * pe) {
 static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
 
   hydro_t * hydro = NULL;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(pe);
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   hydro_create(nhcomm, &hydro);
   assert(hydro);
@@ -132,8 +136,8 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
 
   hydro_free(hydro);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -151,6 +155,7 @@ static int do_test_io1(pe_t * pe) {
 
   MPI_Comm comm;
 
+  cs_t * cs = NULL;
   io_info_t * iohandler = NULL;
   lees_edw_t * le = NULL;
   hydro_t * hydro = NULL;
@@ -159,10 +164,11 @@ static int do_test_io1(pe_t * pe) {
 
   pe_mpi_comm(pe, &comm);
 
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
-  if (pe_size() == 8) {
+  if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
     grid[Y] = 2;
     grid[Z] = 2;
@@ -184,8 +190,8 @@ static int do_test_io1(pe_t * pe) {
   io_remove_metadata(iohandler, "vel");
 
   hydro_free(hydro);
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }

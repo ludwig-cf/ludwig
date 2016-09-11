@@ -9,8 +9,11 @@
 
 #include "pe.h"
 #include "runtime.h"
+#include "coords.h"
+#include "leesedwards.h"
 #include "hydro.h"
 
-int hydro_rt(pe_t * pe, rt_t * rt, hydro_t ** phydro);
+int hydro_rt(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
+	     hydro_t ** phydro);
 
 #endif

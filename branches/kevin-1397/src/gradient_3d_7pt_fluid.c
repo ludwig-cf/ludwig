@@ -48,16 +48,20 @@
 
 #define NSTENCIL 1 /* +/- 1 point in each direction */
 
-__host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra);
-__host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra);
-__host__ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg, int nextra);
+__host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					int nextra);
+__host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				  int nextra);
+__host__ int grad_3d_7pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,
+				    int nextra);
 
-__host__ int grad_dab_le_correct(field_grad_t * df);
-__host__ int grad_dab_compute(field_grad_t * df);
+__host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df);
+__host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df);
 
 
 __global__
 void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
+				lees_edw_t * le,
 				field_t * field, 
 				field_grad_t * fgrad);
 
@@ -70,15 +74,21 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
 __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->le);
+
+  le = fgrad->field->le;
   nextra = coords_nhalo() - NSTENCIL;
   assert(nextra >= 0);
 
   assert(fgrad);
 
-  grad_3d_7pt_fluid_operator(fgrad, nextra);
-  grad_3d_7pt_fluid_le_correction(fgrad, nextra);
-  grad_3d_7pt_fluid_wall_correction(fgrad, nextra);
+  grad_3d_7pt_fluid_operator(le, fgrad, nextra);
+  grad_3d_7pt_fluid_le(le, fgrad, nextra);
+  grad_3d_7pt_fluid_wall(le, fgrad, nextra);
 
   return 0;
 }
@@ -92,6 +102,13 @@ __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
 __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
   int nextra;
+  lees_edw_t * le = NULL;
+
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->le);
+
+  le = fgrad->field->le;
 
   nextra = coords_nhalo() - 2*NSTENCIL;
   assert(nextra >= 0);
@@ -99,9 +116,9 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
   assert(0); /* SHIT NO TEST? */
   assert(0); /* Needs double call. Brazovskii */
-  grad_3d_7pt_fluid_operator(fgrad, nextra);
-  grad_3d_7pt_fluid_le_correction(fgrad, nextra);
-  grad_3d_7pt_fluid_wall_correction(fgrad, nextra);
+  grad_3d_7pt_fluid_operator(le, fgrad, nextra);
+  grad_3d_7pt_fluid_le(le, fgrad, nextra);
+  grad_3d_7pt_fluid_wall(le, fgrad, nextra);
 
   return 0;
 }
@@ -127,12 +144,15 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
 __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
 
+  lees_edw_t * le = NULL;
+
   assert(fgrad);
   assert(fgrad->field);
   assert(fgrad->field->nf == 1); /* Scalars only; host only */
 
-  grad_dab_compute(fgrad);
-  grad_dab_le_correct(fgrad);
+  le = fgrad->field->le;
+  grad_dab_compute(le, fgrad);
+  grad_dab_le_correct(le, fgrad);
 
   return 0;
 }
@@ -143,13 +163,16 @@ __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
  *
  *****************************************************************************/
 
-__host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
+__host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					int nextra) {
 
   int nlocal[3];
   int xs, ys, zs;
   dim3 nblk, ntpb;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
+
+  assert(le);
 
   coords_nlocal(nlocal);
   coords_strides(&xs, &ys, &zs);
@@ -164,7 +187,7 @@ __host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
   TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
   __host_launch(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, ctxt->target,
-		fg->field->nf, ys, fg->field->target, fg->target);
+		fg->field->nf, ys, le, fg->field->target, fg->target);
   targetDeviceSynchronise();
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);
@@ -184,6 +207,7 @@ __host__ int grad_3d_7pt_fluid_operator(field_grad_t * fg, int nextra) {
 
 __global__
 void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
+				lees_edw_t * le,
 				field_t * field, 
 				field_grad_t * fgrad) {
 
@@ -191,6 +215,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
   __shared__ int kiterations;
 
   assert(ktx);
+  assert(le);
   assert(field);
   assert(fgrad);
 
@@ -213,13 +238,8 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
     index = kernel_baseindex(ktx, kindex);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-#ifdef __NVCC__
-    __targetILP__(iv) im1[iv] = ic[iv] - 1;
-    __targetILP__(iv) ip1[iv] = ic[iv] + 1;
-#else
-    __targetILP__(iv) im1[iv] = le_index_real_to_buffer(ic[iv], -1);
-    __targetILP__(iv) ip1[iv] = le_index_real_to_buffer(ic[iv], +1);
-#endif
+    __targetILP__(iv) im1[iv] = lees_edw_index_real_to_buffer(le, ic[iv], -1);
+    __targetILP__(iv) ip1[iv] = lees_edw_index_real_to_buffer(le, ic[iv], +1);
 
     kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
     kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
@@ -271,14 +291,15 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 
 /*****************************************************************************
  *
- *  grad_3d_7pt_le_correction
+ *  grad_3d_7pt_le
  *
  *  Additional gradient calculations near LE planes to account for
  *  sliding displacement.
  *
  *****************************************************************************/
 
-__host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra) {
+__host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				  int nextra) {
 
   int nop;
   int nlocal[3];
@@ -296,9 +317,13 @@ __host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra) {
   double * __restrict__ del2;
   double * __restrict__ field;
 
-  nhalo = coords_nhalo();
-  nsites = le_nsites();
-  coords_nlocal(nlocal);
+  assert(le);
+  assert(fg);
+
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nsites(le, &nsites);
+
   ys = (nlocal[Z] + 2*nhalo);
 
   nop = fg->field->nf;
@@ -306,22 +331,22 @@ __host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra) {
   grad = fg->grad;
   del2 = fg->delsq;
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
-    ic = le_plane_location(nplane);
+    ic = lees_edw_plane_location(le, nplane);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
+      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
 	  for (n = 0; n < nop; n++) {
 	    grad[addr_rank2(nsites, nop, 3, index, n, X)]
@@ -350,16 +375,16 @@ __host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra) {
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
+      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
 	  for (n = 0; n < nop; n++) {
 	    grad[addr_rank2(nsites, nop, 3, index, n, X)]
@@ -391,14 +416,14 @@ __host__ int grad_3d_7pt_fluid_le_correction(field_grad_t * fg, int nextra) {
 
 /*****************************************************************************
  *
- *  grad_3d_7pt_fluid_wall_correction
+ *  grad_3d_7pt_fluid_wall
  *
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
 
 __host__
-int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
+int grad_3d_7pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,  int nextra) {
 
   int nop;
   int nlocal[3];
@@ -418,10 +443,13 @@ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
   double * __restrict__ grad;
   double * __restrict__ del2;
 
+  assert(le);
+  assert(fg);
+
   if (wall_at_edge(X) == 0) return 0;
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
 
   ys = (nlocal[Z] + 2*nhalo);
   xs = ys*(nlocal[Y] + 2*nhalo);
@@ -456,7 +484,7 @@ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(1, jc, kc);
+	index = lees_edw_index(le, 1, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  gradp1 = field[nop*(index + xs) + n] - field[nop*index + n];
@@ -482,7 +510,7 @@ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = coords_index(nlocal[X], jc, kc);
+	index = lees_edw_index(le, nlocal[X], jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  gradm1 = field[nop*index + n] - field[nop*(index - xs) + n];
@@ -512,7 +540,7 @@ int grad_3d_7pt_fluid_wall_correction(field_grad_t * fg,  int nextra) {
  *
  *****************************************************************************/
 
-__host__ int grad_dab_compute(field_grad_t * df) {
+__host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
@@ -525,54 +553,55 @@ __host__ int grad_dab_compute(field_grad_t * df) {
   double * __restrict__ dab;
   double * __restrict__ field;
 
+  assert(le);
   assert(df);
 
-  nextra = coords_nhalo() - 1;
+  lees_edw_nhalo(le, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nsites(le, &nsites);
 
   ys = nlocal[Z] + 2*nhalo;
 
-  nsites = le_nsites();
   field = df->field->data;
   dab = df->d_ab;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = le_site_index(ic, jc, kc);
-	indexm1 = le_site_index(icm1, jc, kc);
-	indexp1 = le_site_index(icp1, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
+	indexm1 = lees_edw_index(le, icm1, jc, kc);
+	indexp1 = lees_edw_index(le, icp1, jc, kc);
 
-	dab[addr_dab(index, XX)] =
+	dab[addr_rank1(nsites, NSYMM, index, XX)] =
 	  (+ 1.0*field[addr_rank0(nsites, indexp1)]
 	   + 1.0*field[addr_rank0(nsites, indexm1)]
 	   - 2.0*field[addr_rank0(nsites, index)]);
-	dab[addr_dab(index, XY)] = 0.25*
+	dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
 	  (+ field[addr_rank0(nsites, indexp1 + ys)]
 	   - field[addr_rank0(nsites, indexp1 - ys)]
 	   - field[addr_rank0(nsites, indexm1 + ys)]
 	   + field[addr_rank0(nsites, indexm1 - ys)]);
-	dab[addr_dab(index, XZ)] = 0.25*
+	dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
 	  (+ field[addr_rank0(nsites, indexp1 + 1)]
 	   - field[addr_rank0(nsites, indexp1 - 1)]
 	   - field[addr_rank0(nsites, indexm1 + 1)]
 	   + field[addr_rank0(nsites, indexm1 - 1)]);
-	dab[addr_dab(index, YY)] =
+	dab[addr_rank1(nsites, NSYMM, index, YY)] =
 	  (+ 1.0*field[addr_rank0(nsites, index + ys)]
 	   + 1.0*field[addr_rank0(nsites, index - ys)]
 	   - 2.0*field[addr_rank0(nsites, index)]);
-	dab[addr_dab(index, YZ)] = 0.25*
+	dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
 	  (+ field[addr_rank0(nsites, index + ys + 1)]
 	   - field[addr_rank0(nsites, index + ys - 1)]
 	   - field[addr_rank0(nsites, index - ys + 1)]
 	   + field[addr_rank0(nsites, index - ys - 1)]);
-	dab[addr_dab(index, ZZ)] =
+	dab[addr_rank1(nsites, NSYMM, index, ZZ)] =
 	  (+ 1.0*field[addr_rank0(nsites, index + 1)]
 	   + 1.0*field[addr_rank0(nsites, index - 1)]
 	   - 2.0*field[addr_rank0(nsites, index)]);
@@ -589,7 +618,7 @@ __host__ int grad_dab_compute(field_grad_t * df) {
  *
  *****************************************************************************/
 
-__host__ int grad_dab_le_correct(field_grad_t * df) {
+__host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
@@ -604,60 +633,61 @@ __host__ int grad_dab_le_correct(field_grad_t * df) {
   double * __restrict__ dab;
   double * __restrict__ field;
 
+  assert(le);
   assert(df);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nsites(le, &nsites);
   ys = (nlocal[Z] + 2*nhalo);
 
   nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  nsites = le_nsites();
   dab = df->d_ab;
   field = df->field->data;
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
-    ic = le_plane_location(nplane);
+    ic = lees_edw_plane_location(le, nplane);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
+      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
-	  dab[addr_dab(index, XX)] =
+	  dab[addr_rank1(nsites, NSYMM, index, XX)] =
 	    (+ 1.0*field[addr_rank0(nsites, indexp1)]
 	     + 1.0*field[addr_rank0(nsites, indexm1)]
 	     - 2.0*field[addr_rank0(nsites, index)]);
-	  dab[addr_dab(index, XY)] = 0.25*
+	  dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
 	    (+ field[addr_rank0(nsites, indexp1 + ys)]
 	     - field[addr_rank0(nsites, indexp1 - ys)]
 	     - field[addr_rank0(nsites, indexm1 + ys)]
 	     + field[addr_rank0(nsites, indexm1 - ys)]);
-	  dab[addr_dab(index, XZ)] = 0.25*
+	  dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
 	    (+ field[addr_rank0(nsites, indexp1 + 1)]
 	     - field[addr_rank0(nsites, indexp1 - 1)]
 	     - field[addr_rank0(nsites, indexm1 + 1)]
 	     + field[addr_rank0(nsites, indexm1 - 1)]);
-	  dab[addr_dab(index, YY)] =
+	  dab[addr_rank1(nsites, NSYMM, index, YY)] =
 	    (+ 1.0*field[addr_rank0(nsites, index + ys)]
 	     + 1.0*field[addr_rank0(nsites, index - ys)]
 	     - 2.0*field[addr_rank0(nsites, index)]);
-	  dab[addr_dab(index, YZ)] = 0.25*
+	  dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
 	    (+ field[addr_rank0(nsites, index + ys + 1)]
 	     - field[addr_rank0(nsites, index + ys - 1)]
 	     - field[addr_rank0(nsites, index - ys + 1)]
 	     + field[addr_rank0(nsites, index - ys - 1)]);
-	  dab[addr_dab(index, ZZ)] =
+	  dab[addr_rank1(nsites, NSYMM, index, ZZ)] =
 	    (+ 1.0*field[addr_rank0(nsites, index + 1)]
 	     + 1.0*field[addr_rank0(nsites, index - 1)]
 	     - 2.0*field[addr_rank0(nsites, index)]);
@@ -669,41 +699,41 @@ __host__ int grad_dab_le_correct(field_grad_t * df) {
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
+      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
-	  dab[addr_dab(index, XX)] =
+	  dab[addr_rank1(nsites, NSYMM, index, XX)] =
 	    (+ 1.0*field[addr_rank0(nsites, indexp1)]
 	     + 1.0*field[addr_rank0(nsites, indexm1)]
 	     - 2.0*field[addr_rank0(nsites, index)]);
-	  dab[addr_dab(index, XY)] = 0.25*
+	  dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
 	    (+ field[addr_rank0(nsites, indexp1 + ys)]
 	     - field[addr_rank0(nsites, indexp1 - ys)]
 	     - field[addr_rank0(nsites, indexm1 + ys)]
 	     + field[addr_rank0(nsites, indexm1 - ys)]);
-	  dab[addr_dab(index, XZ)] = 0.25*
+	  dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
 	    (+ field[addr_rank0(nsites, indexp1 + 1)]
 	     - field[addr_rank0(nsites, indexp1 - 1)]
 	     - field[addr_rank0(nsites, indexm1 + 1)]
 	     + field[addr_rank0(nsites, indexm1 - 1)]);
-	  dab[addr_dab(index, YY)] =
+	  dab[addr_rank1(nsites, NSYMM, index, YY)] =
 	    (+ 1.0*field[addr_rank0(nsites, index + ys)]
 	     + 1.0*field[addr_rank0(nsites, index - ys)]
 	     - 2.0*field[addr_rank0(nsites, index)]);
-	  dab[addr_dab(index, YZ)] = 0.25*
+	  dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
 	    (+ field[addr_rank0(nsites, index + ys + 1)]
 	     - field[addr_rank0(nsites, index + ys - 1)]
 	     - field[addr_rank0(nsites, index - ys + 1)]
 	     + field[addr_rank0(nsites, index - ys - 1)]);
-	  dab[addr_dab(index, ZZ)] =
+	  dab[addr_rank1(nsites, NSYMM, index, ZZ)] =
 	    (+ 1.0*field[addr_rank0(nsites, index + 1)]
 	     + 1.0*field[addr_rank0(nsites, index - 1)]
 	     - 2.0*field[addr_rank0(nsites, index)]);

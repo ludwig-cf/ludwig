@@ -31,7 +31,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Contributions:
- *  Thanks to Markus Gross, who hepled to validate the noise implementation.
+ *  Thanks to Markus Gross, who helped to validate the noise implementation.
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2010-2016 The University of Edinburgh
  *
@@ -44,21 +44,79 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "advection.h"
+#include "field_s.h"
 #include "free_energy.h"
 #include "physics.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 #include "phi_cahn_hilliard.h"
 
-static int phi_ch_flux_mu1(fe_t * fes, advflux_t * flux);
-static int phi_ch_flux_mu2(fe_t * fes, double * fe, double * fw, double * fy, double * fz);
-static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux);
+struct phi_ch_s {
+  pe_t * pe;
+  lees_edw_t * le;
+  advflux_t * flux;
+};
 
-static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw);
-static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw);
-static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
-			      double * fy, double * fz);
+struct phi_ch_info_s {
+  int placeholder;
+};
+
+static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes);
+static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
+static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
+
+static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
+static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
+static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise);
+
+/*****************************************************************************
+ *
+ *  phi_ch_create
+ *
+ *****************************************************************************/
+
+__host__ int phi_ch_create(pe_t * pe, lees_edw_t * le, phi_ch_info_t * info,
+			   phi_ch_t ** pch) {
+
+  phi_ch_t * obj = NULL;
+
+  assert(pe);
+  assert(le);
+  assert(pch);
+
+  obj = (phi_ch_t *) calloc(1, sizeof(phi_ch_t));
+  if (obj == NULL) pe_fatal(pe, "calloc(phi_ch_t) failed\n");
+
+  obj->pe = pe;
+  obj->le = le;
+  advflux_le_create(le, 1, &obj->flux);
+
+  pe_retain(pe);
+  lees_edw_retain(le);
+
+  *pch = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_free
+ *
+ *****************************************************************************/
+
+__host__ int phi_ch_free(phi_ch_t * pch) {
+
+  assert(pch);
+
+  lees_edw_free(pch->le);
+  pe_free(pch->pe);
+
+  advflux_free(pch->flux);
+  free(pch);
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -85,12 +143,13 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
  *
  *****************************************************************************/
 
-int phi_cahn_hilliard(fe_t * fe, field_t * phi, hydro_t * hydro, map_t * map,
+int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
+		      hydro_t * hydro, map_t * map,
 		      noise_t * noise) {
   int nf;
   int noise_phi = 0;
-  advflux_t * fluxes = NULL;
 
+  assert(pch);
   assert(fe);
   assert(phi);
 
@@ -99,8 +158,6 @@ int phi_cahn_hilliard(fe_t * fe, field_t * phi, hydro_t * hydro, map_t * map,
   field_nf(phi, &nf);
   assert(nf == 1);
 
-  advflux_create(nf, &fluxes);
-
   /* Compute any advective fluxes first, then accumulate diffusive
    * and random fluxes. */
 
@@ -108,25 +165,23 @@ int phi_cahn_hilliard(fe_t * fe, field_t * phi, hydro_t * hydro, map_t * map,
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */
     advection_bcs_wall(phi);
-    advection_x(fluxes, hydro, phi);
+    advection_x(pch->flux, hydro, phi);
   }
 
   if (noise_phi) {
-    phi_ch_flux_mu2(fe, fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
-    phi_ch_random_flux(noise, fluxes->fe, fluxes->fw, fluxes->fy, fluxes->fz);
+    phi_ch_flux_mu2(pch, fe);
+    phi_ch_random_flux(pch, noise);
   }
   else {
-    phi_ch_flux_mu1(fe, fluxes);
+    phi_ch_flux_mu1(pch, fe);
   }
 
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
 
-  if (map) advection_bcs_no_normal_flux(nf, fluxes, map);
+  if (map) advection_bcs_no_normal_flux(nf, pch->flux, map);
 
-  phi_ch_le_fix_fluxes(nf, fluxes->fe, fluxes->fw);
-  phi_ch_update_forward_step(phi, fluxes);
-
-  advflux_free(fluxes);
+  phi_ch_le_fix_fluxes(pch, nf);
+  phi_ch_update_forward_step(pch, phi);
 
   return 0;
 }
@@ -144,7 +199,7 @@ int phi_cahn_hilliard(fe_t * fe, field_t * phi, hydro_t * hydro, map_t * map,
  *
  *****************************************************************************/
 
-static int phi_ch_flux_mu1(fe_t * fe, advflux_t * flux) {
+static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
 
   int nlocal[3];
   int ic, jc, kc;
@@ -155,50 +210,50 @@ static int phi_ch_flux_mu1(fe_t * fe, advflux_t * flux) {
   double mobility;
   physics_t * phys = NULL;
 
+  assert(pch);
   assert(fe);
   assert(fe->func->mu);
-  assert(flux);
 
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 2);
-  nsites = le_nsites();
+  nsites = pch->flux->nsite;
 
   physics_ref(&phys);
   physics_mobility(phys, &mobility);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(pch->le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(pch->le, ic, +1);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, jc, kc);
+	index0 = lees_edw_index(pch->le, ic, jc, kc);
 
 	fe->func->mu(fe, index0, &mu0);
 
 	/* x-direction (between ic-1 and ic) */
 
-	index1 = le_site_index(icm1, jc, kc);
+	index1 = lees_edw_index(pch->le, icm1, jc, kc);
 	fe->func->mu(fe, index1, &mu1);
-	flux->fw[addr_rank0(nsites, index0)] -= mobility*(mu0 - mu1);
+	pch->flux->fw[addr_rank0(nsites, index0)] -= mobility*(mu0 - mu1);
 
 	/* ...and between ic and ic+1 */
 
-	index1 = le_site_index(icp1, jc, kc);
+	index1 = lees_edw_index(pch->le, icp1, jc, kc);
 	fe->func->mu(fe, index1, &mu1);
-	flux->fe[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
+	pch->flux->fe[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* y direction */
 
-	index1 = le_site_index(ic, jc+1, kc);
+	index1 = lees_edw_index(pch->le, ic, jc+1, kc);
 	fe->func->mu(fe, index1, &mu1);
-	flux->fy[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
+	pch->flux->fy[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* z direction */
 
-	index1 = le_site_index(ic, jc, kc+1);
+	index1 = lees_edw_index(pch->le, ic, jc, kc+1);
 	fe->func->mu(fe, index1, &mu1);
-	flux->fz[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
+	pch->flux->fz[addr_rank0(nsites, index0)] -= mobility*(mu1 - mu0);
 
 	/* Next site */
       }
@@ -226,9 +281,8 @@ static int phi_ch_flux_mu1(fe_t * fe, advflux_t * flux) {
  *
  *****************************************************************************/
 
-static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
-			   double * fy,
-			   double * fz) {
+static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fesymm) {
+
   int nhalo;
   int nsites;
   int nlocal[3];
@@ -239,8 +293,13 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
   double mobility;
   physics_t * phys = NULL;
 
+  assert(pch);
+  assert(fesymm);
+  assert(fesymm->func->mu);
+
   nhalo = coords_nhalo();
-  nsites = le_nsites();
+  nsites = pch->flux->nsite;
+
   coords_nlocal(nlocal);
   assert(nhalo >= 3);
 
@@ -262,12 +321,12 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
 
 	/* x-direction (between ic-1 and ic) */
 
-	fw[addr_rank0(nsites, index0)]
+	pch->flux->fw[addr_rank0(nsites, index0)]
 	  -= 0.25*mobility*(mup1 + mu00 - mum1 - mum2);
 
 	/* ...and between ic and ic+1 */
 
-	fe[addr_rank0(nsites, index0)]
+	pch->flux->fe[addr_rank0(nsites, index0)]
 	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* y direction between jc and jc+1 */
@@ -276,7 +335,7 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
 	fesymm->func->mu(fesymm, index0 + 1*ys, &mup1);
 	fesymm->func->mu(fesymm, index0 + 2*ys, &mup2);
 
-	fy[addr_rank0(nsites, index0)]
+	pch->flux->fy[addr_rank0(nsites, index0)]
 	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* z direction between kc and kc+1 */
@@ -285,7 +344,7 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
 	fesymm->func->mu(fesymm, index0 + 1*zs, &mup1);
 	fesymm->func->mu(fesymm, index0 + 2*zs, &mup2);
 
-	fz[addr_rank0(nsites, index0)]
+	pch->flux->fz[addr_rank0(nsites, index0)]
 	  -= 0.25*mobility*(mup2 + mup1 - mu00 - mum1);
 
 	/* Next site */
@@ -305,8 +364,7 @@ static int phi_ch_flux_mu2(fe_t * fesymm, double * fe, double * fw,
  *
  *****************************************************************************/
 
-static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
-			      double * fy, double * fz) {
+static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
 
   int ic, jc, kc, index0, index1;
   int nsites, nextra;
@@ -318,7 +376,9 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
   double kt, mobility, var;
   physics_t * phys = NULL;
 
-  assert(le_get_nplane_local() == 0);
+  assert(pch);
+
+  assert(lees_edw_nplane_local(pch->le) == 0);
   assert(coords_nhalo() >= 1);
 
   /* Variance of the noise from fluctuation dissipation relation */
@@ -336,6 +396,7 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
 
   /* We go one site into the halo region to allow all the fluxes to
    * be comupted locally. */
+
   nextra = 1;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
@@ -364,26 +425,26 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
 	/* x-direction */
 
 	index1 = coords_index(ic-1, jc, kc);
-	fw[addr_rank0(nsites, index0)]
+	pch->flux->fw[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, X)] +
 		  rflux[addr_rank1(nsites, 3, index1, X)]);
 
 	index1 = coords_index(ic+1, jc, kc);
-	fe[addr_rank0(nsites, index0)]
+	pch->flux->fe[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, X)] +
 		  rflux[addr_rank1(nsites, 3, index1, X)]);
 
 	/* y direction */
 
 	index1 = coords_index(ic, jc+1, kc);
-	fy[addr_rank0(nsites, index0)]
+	pch->flux->fy[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, Y)] +
 		  rflux[addr_rank1(nsites, 3, index1, Y)]);
 
 	/* z direction */
 
 	index1 = coords_index(ic, jc, kc+1);
-	fz[addr_rank0(nsites, index0)]
+	pch->flux->fz[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, Z)] +
 		  rflux[addr_rank1(nsites, 3, index1, Z)]);
       }
@@ -411,14 +472,15 @@ static int phi_ch_random_flux(noise_t * noise, double * fe, double * fw,
  *
  *****************************************************************************/
 
-static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
+static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf) {
 
   int nlocal[3]; /* Local system size */
   int ip;        /* Index of the plane */
   int ic;        /* Index x location in real system */
   int jc, kc, n;
-  int index, index1;
+  int index, index1, index2;
   int nbuffer;
+  int nsites;
 
   double dy;     /* Displacement for current plane */
   double fr;     /* Fractional displacement */
@@ -428,14 +490,17 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
   double * bufferw;
   double * buffere;
 
+  assert(pch);
+
   if (cart_size(Y) > 1) {
     /* Parallel */
-    phi_ch_le_fix_fluxes_parallel(nf, fe, fw);
+    phi_ch_le_fix_fluxes_parallel(pch, nf);
   }
   else {
     /* Can do it directly */
 
     coords_nlocal(nlocal);
+    nsites = pch->flux->nsite;
 
     nbuffer = nf*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
@@ -443,13 +508,13 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
     if (buffere == NULL) fatal("malloc(buffere) failed\n");
     if (bufferw == NULL) fatal("malloc(bufferw) failed\n");
 
-    for (ip = 0; ip < le_get_nplane_local(); ip++) {
+    for (ip = 0; ip < lees_edw_nplane_local(pch->le); ip++) {
 
-      ic = le_plane_location(ip);
+      ic = lees_edw_plane_location(pch->le, ip);
 
       /* Looking up */
 
-      le_plane_dy(&dy);
+      lees_edw_plane_dy(pch->le, &dy);
       dy = fmod(+dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
@@ -463,9 +528,12 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	  for (n = 0; n < nf; n++) {
 	    /* This could be replaced by just count++ (check) to addr buffer */
 	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
+	    index1 = lees_edw_index(pch->le, ic+1, j1, kc);
+	    index2 = lees_edw_index(pch->le, ic+1, j2, kc);
 
-	    bufferw[index] = fr*fw[addr_rank1(le_nsites(), nf, le_site_index(ic+1,j1,kc), n)]
-	      + (1.0-fr)*fw[addr_rank1(le_nsites(), nf, le_site_index(ic+1,j2,kc), n)];
+	    bufferw[index] =
+	      pch->flux->fw[addr_rank1(nsites, nf, index1, n)]*fr +
+	      pch->flux->fw[addr_rank1(nsites, nf, index2, n)]*(1.0-fr);
 	  }
 	}
       }
@@ -473,7 +541,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 
       /* Looking down */
 
-      le_plane_dy(&dy);
+      lees_edw_plane_dy(pch->le, &dy);
       dy = fmod(-dy, L(Y));
       jdy = floor(dy);
       fr  = dy - jdy;
@@ -486,8 +554,12 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
 	    index = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
-	    buffere[index] = fr*fe[addr_rank1(le_nsites(), nf, le_site_index(ic,j1,kc), n)]
-	      + (1.0-fr)*fe[addr_rank1(le_nsites(), nf, le_site_index(ic,j2,kc), n)];
+	    index1 = lees_edw_index(pch->le, ic, j1, kc);
+	    index2 = lees_edw_index(pch->le, ic, j2, kc);
+
+	    buffere[index] =
+	      pch->flux->fe[addr_rank1(nsites, nf, index1, n)]*fr +
+	      pch->flux->fe[addr_rank1(nsites, nf, index2, n)]*(1.0-fr);
 	  }
 	}
       }
@@ -497,13 +569,12 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  for (n = 0; n < nf; n++) {
-	    index = nf*le_site_index(ic,jc,kc) + n;
 	    index1 = nf*(nlocal[Z]*(jc-1) + (kc-1)) + n;
 
-	    index = addr_rank1(le_nsites(), nf, le_site_index(ic,jc,kc), n);
-	    fe[index] = 0.5*(fe[index] + bufferw[index1]);
-	    index = addr_rank1(le_nsites(), nf, le_site_index(ic+1,jc,kc), n);
-	    fw[index] = 0.5*(fw[index] + buffere[index1]);
+	    index = addr_rank1(nsites, nf, lees_edw_index(pch->le,ic,jc,kc), n);
+	    pch->flux->fe[index] = 0.5*(pch->flux->fe[index] + bufferw[index1]);
+	    index = addr_rank1(nsites, nf, lees_edw_index(pch->le,ic+1,jc,kc), n);
+	    pch->flux->fw[index] = 0.5*(pch->flux->fw[index] + buffere[index1]);
 	  }
 	}
       }
@@ -528,7 +599,7 @@ static int phi_ch_le_fix_fluxes(int nf, double * fe, double * fw) {
  *****************************************************************************/
 
 
-static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
+static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf) {
 
   int      nhalo;
   int      nlocal[3];      /* Local system size */
@@ -541,6 +612,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   double dy;               /* Displacement for current transforamtion */
   double fre, frw;         /* Fractional displacements */
   int jdy;                 /* Integral part of displacement */
+  int nsites;
 
   /* Messages */
 
@@ -560,11 +632,14 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
   MPI_Request rreq[4], sreq[4];
   MPI_Status  status[4];
 
+  assert(pch);
+
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
+  nsites = pch->flux->nsite;
 
-  le_comm = le_communicator();
+  lees_edw_comm(pch->le, &le_comm);
 
   /* Allocate the temporary buffer */
 
@@ -585,13 +660,13 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
   /* One round of communication for each plane */
 
-  for (ip = 0; ip < le_get_nplane_local(); ip++) {
+  for (ip = 0; ip < lees_edw_nplane_local(pch->le); ip++) {
 
-    ic = le_plane_location(ip);
+    ic = lees_edw_plane_location(pch->le, ip);
 
     /* Work out the displacement-dependent quantities */
 
-    le_plane_dy(&dy);
+    lees_edw_plane_dy(pch->le, &dy);
     dy = fmod(+dy, L(Y));
     jdy = floor(dy);
     frw  = dy - jdy;
@@ -604,7 +679,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
     assert(j1 > 0);
     assert(j1 <= N_total(Y));
 
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    lees_edw_jstart_to_mpi_ranks(pch->le, j1, nrank_s, nrank_r);
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
@@ -627,11 +702,11 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	index = le_site_index(ic+1, jc, kc);
+	index = lees_edw_index(pch->le, ic+1, jc, kc);
 	for (n = 0; n < nf; n++) {
 	  j1 = nf*(jc - 1)*(nlocal[Z] + 2*nhalo) + nf*(kc + nhalo - 1) + n;
 	  assert(j1 >= 0 && j1 < nsend);
-	  sbufw[j1] = fw[addr_rank1(le_nsites(), nf, index, n)];
+	  sbufw[j1] = pch->flux->fw[addr_rank1(nsites, nf, index, n)];
 	}
       }
     }
@@ -644,7 +719,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
     kc = 1 - nhalo;
 
-    le_plane_dy(&dy);
+    lees_edw_plane_dy(pch->le, &dy);
     dy = fmod(-dy, L(Y));
     jdy = floor(dy);
     fre  = dy - jdy;
@@ -655,7 +730,7 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
     jc = noffset[Y] + 1;
     j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
 
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    lees_edw_jstart_to_mpi_ranks(pch->le, j1, nrank_s, nrank_r);
 
     /* Local quantities: given a local starting index j2, we receive
      * n1 + n2 sites into the buffer, and send n1 sites starting with
@@ -675,11 +750,11 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(pch->le, ic, jc, kc);
 	for (n = 0; n < nf; n++) {
 	  j1 = (jc - 1)*nf*(nlocal[Z] + 2*nhalo) + nf*(kc + nhalo - 1) + n;
 	  assert(j1 >= 0 && jc < nsend);
-	  sbufe[j1] = fe[addr_rank1(le_nsites(), nf, index, n)];
+	  sbufe[j1] = pch->flux->fe[addr_rank1(nsites, nf, index, n)];
 	}
       }
     }
@@ -699,14 +774,14 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
       j2 = (jc - 1 + 1)*(nlocal[Z] + 2*nhalo);
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < nf; n++) {
-	  index = le_site_index(ic,jc,kc);
-	  fe[addr_rank1(le_nsites(), nf, index, n)]
-	    = 0.5*(fe[addr_rank1(le_nsites(), nf, index, n)]
+	  index = lees_edw_index(pch->le, ic, jc, kc);
+	  pch->flux->fe[addr_rank1(nsites, nf, index, n)]
+	    = 0.5*(pch->flux->fe[addr_rank1(nsites, nf, index, n)]
 		   + frw*rbufw[nf*(j1 + kc+nhalo-1) + n]
 		   + (1.0-frw)*rbufw[nf*(j2 + kc+nhalo-1) + n]);
-	  index = le_site_index(ic+1,jc,kc);
-	  fw[addr_rank1(le_nsites(), nf, index, n)]
-	    = 0.5*(fw[addr_rank1(le_nsites(), nf, index, n)]
+	  index = lees_edw_index(pch->le, ic+1, jc, kc);
+	  pch->flux->fw[addr_rank1(nsites, nf, index, n)]
+	    = 0.5*(pch->flux->fw[addr_rank1(nsites, nf, index, n)]
 		   + fre*rbufe[nf*(j1 + kc+nhalo-1) + n]
 		   + (1.0-fre)*rbufe[nf*(j2 + kc+nhalo-1) + n]);
 	}
@@ -742,23 +817,26 @@ static int phi_ch_le_fix_fluxes_parallel(int nf, double * fe, double * fw) {
  *
  *****************************************************************************/
 
-static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
+static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif) {
 
   int nlocal[3];
   int ic, jc, kc, index;
   int ys;
+  int nsite;
   double wz = 1.0;
   double phi;
 
   assert(phif);
-  assert(flux);
+  assert(pch);
 
   coords_nlocal(nlocal);
   ys = nlocal[Z] + 2*coords_nhalo();
 
   /* In 2-d systems need to eliminate the z fluxes (no chemical
    * potential computed in halo region for 2d_5pt_fluid) */
+
   if (nlocal[Z] == 1) wz = 0.0;
+  nsite = pch->flux->nsite;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -767,12 +845,12 @@ static int phi_ch_update_forward_step(field_t * phif, advflux_t * flux) {
 	index = coords_index(ic, jc, kc);
 
 	field_scalar(phif, index, &phi);
-	phi -= (+ flux->fe[addr_rank0(flux->nsite, index)]
-		- flux->fw[addr_rank0(flux->nsite, index)]
-		+ flux->fy[addr_rank0(flux->nsite, index)]
-		- flux->fy[addr_rank0(flux->nsite, index - ys)]
-		+ wz*flux->fz[addr_rank0(flux->nsite, index)]
-		- wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
+	phi -= (+ pch->flux->fe[addr_rank0(nsite, index)]
+		- pch->flux->fw[addr_rank0(nsite, index)]
+		+ pch->flux->fy[addr_rank0(nsite, index)]
+		- pch->flux->fy[addr_rank0(nsite, index - ys)]
+		+ wz*pch->flux->fz[addr_rank0(nsite, index)]
+		- wz*pch->flux->fz[addr_rank0(nsite, index - 1)]);
 
 	field_scalar_set(phif, index, phi);
       }

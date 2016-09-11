@@ -41,14 +41,16 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 int test_pair_ss_cut_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   test_pair_ss_cut1();
   test_pair_ss_cut2();
 
-  coords_finish();
+  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_pair_ss_cut\n");
   pe_free(pe);
 

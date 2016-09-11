@@ -69,16 +69,18 @@ int leslie_ericksen_swim_set(const double s) {
  *
  *****************************************************************************/
 
-int leslie_ericksen_update(fe_polar_t * fe, field_t * p, hydro_t * hydro) {
+int leslie_ericksen_update(cs_t * cs, fe_polar_t * fe, field_t * p,
+			   hydro_t * hydro) {
 
   int nf;
   advflux_t * flux = NULL;
 
+  assert(cs);
   assert(p);
 
   field_nf(p, &nf);
   assert(nf == NVECTOR);
-  advflux_create(nf, &flux);
+  advflux_cs_create(cs, nf, &flux);
 
   if (hydro) {
     if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(p, hydro);

@@ -17,14 +17,17 @@
 #ifndef LUDWIG_HYDRO_H
 #define LUDWIG_HYDRO_H
 
-#include "targetDP.h"
+#include "pe.h"
+#include "coords.h"
+#include "leesedwards.h"
 #include "io_harness.h"
 
 typedef struct hydro_s hydro_t;
 
 typedef enum {HYDRO_U_HALO_HOST, HYDRO_U_HALO_TARGET} hydro_halo_enum_t;
 
-__host__ int hydro_create(int nhalocomm, hydro_t ** pobj);
+__host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, 
+			  int nhalocomm, hydro_t ** pobj);
 __host__ int hydro_free(hydro_t * obj);
 __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
 				int form_out);

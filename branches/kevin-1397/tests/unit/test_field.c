@@ -76,14 +76,17 @@ static int do_test0(pe_t * pe) {
   int nhalo = 2;
   int ntotal[3] = {8, 8, 8};
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
+  assert(pe);
   
-  coords_nhalo_set(nhalo);
-  coords_ntotal_set(ntotal);
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nfref, "phi", &phi);
   field_init(phi, nhalo);
@@ -92,8 +95,8 @@ static int do_test0(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -115,14 +118,16 @@ int do_test1(pe_t * pe) {
   double ref;
   double value;
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nfref, "phi", &phi);
   assert(phi);
@@ -151,8 +156,8 @@ int do_test1(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -175,14 +180,16 @@ static int do_test3(pe_t * pe) {
   double value[3];
   double array[3];
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nfref, "p", &phi);
   assert(phi);
@@ -207,8 +214,8 @@ static int do_test3(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -231,14 +238,16 @@ static int do_test5(pe_t * pe) {
   double qvalue[3][3];
   double array[NQAB];
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nfref, "q", &phi);
   assert(phi);
@@ -273,8 +282,8 @@ static int do_test5(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -312,8 +321,9 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   int grid[3] = {1, 1, 1};
   const char * filename = "phi-test-io";
 
-  /* MPI_Comm comm;*/
+  MPI_Comm comm;
 
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * phi = NULL;
   io_info_t * iohandler = NULL;
@@ -321,10 +331,13 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   assert(pe);
 
   /* SHIT remove pe_comm() etc */
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
-  if (pe_size() == 8) {
+  cs_cart_comm(cs, &comm);
+
+  if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
     grid[Y] = 2;
     grid[Z] = 2;
@@ -342,7 +355,7 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   io_write_data(iohandler, filename, phi);
 
   field_free(phi);
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
 
   field_create(nf, "phi-test", &phi);
   field_init(phi, coords_nhalo());
@@ -360,8 +373,8 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   io_remove_metadata(iohandler, "phi-test");
 
   field_free(phi);
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }

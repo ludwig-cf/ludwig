@@ -16,7 +16,7 @@
 #ifndef LUDWIG_HALO_SWAP_H
 #define LUDWIG_HALO_SWAP_H
 
-
+#include "pe.h"
 #include "kernel.h"
 
 typedef struct halo_swap_s halo_swap_t;

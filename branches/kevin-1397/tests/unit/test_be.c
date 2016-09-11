@@ -54,20 +54,22 @@ int test_be_suite(void) {
 static int do_test_be1(void) {
 
   pe_t * pe =  NULL;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   beris_edw_t * be = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_init();
-  le_create(pe, NULL, &le); /* SHIT not required unless actually LE planes. */
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le); /* SHIT not required*/
 
   beris_edw_create(&be);
   assert(be);
 
   beris_edw_free(be);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
   pe_free(pe);
 
 

@@ -22,7 +22,7 @@
 
 __host__ int blue_phase_init_rt(pe_t * pe, rt_t * rt,
 				 fe_lc_t * fe,
-				 beris_edw_t ** be);
+				 beris_edw_t * be);
 __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
 					      fe_lc_t * fe, field_t * q);
 

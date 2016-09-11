@@ -12,7 +12,6 @@
 #include <mpi.h>
 #include "memory.h"
 
-#include "leesedwards.h"
 #include "io_harness.h"
 #include "halo_swap.h"
 #include "hydro.h"
@@ -26,12 +25,13 @@ struct hydro_s {
   int nhcomm;              /* Width of halo region for u field */
   double * u;              /* Velocity field (on host)*/
   double * f;              /* Body force field (on host) */
+
+  pe_t * pe;               /* Parallel environment */
+  cs_t * cs;               /* Coordinate system */
+  lees_edw_t * le;         /* Lees Edwards */
   io_info_t * info;        /* I/O handler. */
   halo_swap_t * halo;      /* Halo driver object */
-
   hydro_t * target;        /* structure on target */ 
 };
-
-#define addr_hydro(index, ia) addr_rank1(le_nsites(), NHDIM, index, ia)
 
 #endif

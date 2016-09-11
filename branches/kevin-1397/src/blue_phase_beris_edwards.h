@@ -16,6 +16,7 @@
 #ifndef BLUE_PHASE_BERIS_EDWARDS_H
 #define BLUE_PHASE_BERIS_EDWARDS_H
 
+#include "leesedwards.h"
 #include "free_energy.h"
 #include "hydro.h"
 #include "field.h"
@@ -34,7 +35,7 @@ struct beris_edw_param_s {
   double tmatrix[3][3][NQAB];  /* Constant noise tensor */
 };
 
-__host__ int beris_edw_create(beris_edw_t ** pobj);
+__host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj);
 __host__ int beris_edw_free(beris_edw_t * be);
 __host__ int beris_edw_memcpy(beris_edw_t * be, int flag);
 __host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t values);

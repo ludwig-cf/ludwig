@@ -69,7 +69,7 @@ static int field_grad_init(field_grad_t * obj) {
 
   assert(obj);
 
-  nsites = le_nsites();
+  nsites = obj->field->nsites;
   obj->nsite = nsites;
 
   targetGetDeviceCount(&ndevice);

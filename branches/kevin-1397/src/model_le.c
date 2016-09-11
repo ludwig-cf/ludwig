@@ -33,10 +33,10 @@
 #include "physics.h"
 #include "leesedwards.h"
 
-static int le_reproject(lb_t * lb);
-static int le_reproject_all(lb_t * lb);
-static int le_displace_and_interpolate(lb_t * lb);
-static int le_displace_and_interpolate_parallel(lb_t * lb);
+static int le_reproject(lb_t * lb, lees_edw_t * le);
+static int le_reproject_all(lb_t * lb, lees_edw_t * le);
+static int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le);
+static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le);
 
 /*****************************************************************************
  *
@@ -57,23 +57,25 @@ static int le_displace_and_interpolate_parallel(lb_t * lb);
  *
  *****************************************************************************/
 
-__host__ int lb_le_apply_boundary_conditions(lb_t * lb) {
+__host__ int lb_le_apply_boundary_conditions(lb_t * lb, lees_edw_t * le) {
 
-  assert(lb);
   const int irepro = 0;
 
-  if (le_get_nplane_local() > 0) {
+  assert(lb);
+  assert(le);
+
+  if (lees_edw_nplane_local(le) > 0) {
 
     TIMER_start(TIMER_LE);
 
-    if (irepro == 0) le_reproject(lb);
-    if (irepro != 0) le_reproject_all(lb);
+    if (irepro == 0) le_reproject(lb, le);
+    if (irepro != 0) le_reproject_all(lb, le);
 
     if (cart_size(Y) > 1) {
-      le_displace_and_interpolate_parallel(lb);
+      le_displace_and_interpolate_parallel(lb, le);
     }
     else {
-      le_displace_and_interpolate(lb);
+      le_displace_and_interpolate(lb, le);
     }
 
     TIMER_stop(TIMER_LE);
@@ -102,7 +104,7 @@ __host__ int lb_le_apply_boundary_conditions(lb_t * lb) {
  * 	    	  
  *****************************************************************************/
 
-static int le_reproject(lb_t * lb) {
+static int le_reproject(lb_t * lb, lees_edw_t * le) {
 
   int    ic, jc, kc, index;
   int    nplane, plane, side;
@@ -120,14 +122,15 @@ static int le_reproject(lb_t * lb) {
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   assert(lb);
+  assert(le);
   assert(CVXBLOCK == 1);
 
   lb_ndist(lb, &ndist);
-  nplane = le_get_nplane_local();
+  nplane = lees_edw_nplane_local(le);
   physics_ref(&phys);
 
   t = 1.0*physics_control_timestep(phys);
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(le, nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
@@ -138,21 +141,22 @@ static int le_reproject(lb_t * lb) {
 
       if (side == 0) {
 	/* Start with plane below Lees-Edwards BC */
-	du[Y] = -le_plane_uy(t);
-	ic = le_plane_location(plane);
+	lees_edw_plane_uy_now(le, t, &du[Y]);
+	du[Y] *= -1.0;
+	ic = lees_edw_plane_location(le, plane);
 	poffset = xdisp_fwd_cv[0];
       }
       else {
 	/* Finally, deal with plane above LEBC */
-	du[Y] = +le_plane_uy(t);
-	ic = le_plane_location(plane) + 1;
+	lees_edw_plane_uy_now(le, t, &du[Y]);
+	ic = lees_edw_plane_location(le, plane) + 1;
 	poffset = xdisp_bwd_cv[0];
       }
 
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
-	  index = le_site_index(ic, jc, kc);
+	  index = lees_edw_index(le, ic, jc, kc);
 
 	  for (n = 0; n < ndist; n++) {
 
@@ -214,7 +218,7 @@ static int le_reproject(lb_t * lb) {
  *
  ****************************************************************************/
  
-static int le_reproject_all(lb_t * lb) {
+static int le_reproject_all(lb_t * lb, lees_edw_t * le) {
 
   int    ic, jc, kc, index;
   int    nplane, plane, side;
@@ -228,15 +232,16 @@ static int le_reproject_all(lb_t * lb) {
   double t;
   physics_t * phys = NULL;
 
+  assert(le);
   assert(lb);
   assert(CVXBLOCK == 1);
 
   lb_ndist(lb, &ndist);
-  nplane = le_get_nplane_local();
+  nplane = lees_edw_nplane_local(le);
   physics_ref(&phys);
 
   t = 1.0*physics_control_timestep(phys);
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(le, nlocal);
 
   for (plane = 0; plane < nplane; plane++) {
     for (side = 0; side < 2; side++) {
@@ -247,21 +252,22 @@ static int le_reproject_all(lb_t * lb) {
 
       if (side == 0) {
 	/* Start with plane below Lees-Edwards BC */
-	du[Y] = -le_plane_uy(t);
-	ic = le_plane_location(plane);
+	lees_edw_plane_uy_now(le, t, &du[Y]);
+	du[Y] = -du[Y];
+	ic = lees_edw_plane_location(le, plane);
 	poffset = xdisp_fwd_cv[0];
       }
       else {
 	/* Finally, deal with plane above LEBC */
-	du[Y] = +le_plane_uy(t);
-	ic = le_plane_location(plane) + 1;
+	lees_edw_plane_uy_now(le, t, &du[Y]);
+	ic = lees_edw_plane_location(le, plane) + 1;
 	poffset = xdisp_bwd_cv[0];
       }
 
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
 	  
-	  index = le_site_index(ic, jc, kc);
+	  index = lees_edw_index(le, ic, jc, kc);
 
 	  /* Compute modes */
 
@@ -315,7 +321,7 @@ static int le_reproject_all(lb_t * lb) {
  *
  *****************************************************************************/
 
-int le_displace_and_interpolate(lb_t * lb) {
+int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
 
   int    ic, jc, kc;
   int    index0, index1;
@@ -332,9 +338,12 @@ int le_displace_and_interpolate(lb_t * lb) {
   double * recv_buff;
   physics_t * phys = NULL;
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nplane = le_get_nplane_local();
+  assert(lb);
+  assert(le);
+
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
+  nplane = lees_edw_nplane_local(le);
   physics_ref(&phys);
 
   t = 1.0*physics_control_timestep(phys);
@@ -352,9 +361,9 @@ int le_displace_and_interpolate(lb_t * lb) {
 
   for (plane = 0; plane < nplane; plane++) {
  
-    ic  = le_plane_location(plane);
+    ic  = lees_edw_plane_location(le, plane);
 
-    dy  = le_buffer_displacement(nhalo, t);
+    lees_edw_buffer_displacement(le, nhalo, t, &dy);
     dy  = fmod(dy, L(Y));
     jdy = floor(dy);
     fr = dy - jdy;
@@ -367,8 +376,8 @@ int le_displace_and_interpolate(lb_t * lb) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, j1, kc);
-	index1 = le_site_index(ic, j2, kc);
+	index0 = lees_edw_index(le, ic, j1, kc);
+	index1 = lees_edw_index(le, ic, j2, kc);
 		  
 	/* xdisp_fwd_cv[0] identifies cv[p][X] = +1 */
 
@@ -376,9 +385,9 @@ int le_displace_and_interpolate(lb_t * lb) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
 	    recv_buff[ndata++] = (1.0 - fr)*
-	      lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index0,n, pcv)]
+	      lb->f[LB_ADDR(lb->nsite,ndist,NVEL,index0,n, pcv)]
 	      + fr*
-	      lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index1,n, pcv)];
+	      lb->f[LB_ADDR(lb->nsite,ndist,NVEL,index1,n, pcv)];
 	  }
 	}
 	/* Next site */
@@ -391,12 +400,12 @@ int le_displace_and_interpolate(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, jc, kc);
+	index0 = lees_edw_index(le, ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
-	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
 	  }
 	}
 	/* Next site */
@@ -406,10 +415,10 @@ int le_displace_and_interpolate(lb_t * lb) {
 
     /* OTHER DIRECTION */
  
-    ic  = le_plane_location(plane) + 1;
+    ic  = lees_edw_plane_location(le, plane) + 1;
 
-    dy  = -le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, L(Y));
+    lees_edw_buffer_displacement(le, nhalo, t, &dy);
+    dy  = fmod(-dy, L(Y));
     jdy = floor(dy);
     fr = dy - jdy;
 
@@ -421,15 +430,15 @@ int le_displace_and_interpolate(lb_t * lb) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, j1, kc);
-	index1 = le_site_index(ic, j2, kc);
+	index0 = lees_edw_index(le, ic, j1, kc);
+	index1 = lees_edw_index(le, ic, j2, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
 	    recv_buff[ndata++] = (1.0 - fr)*
-	      lb->f[LB_ADDR(coords_nsites(),ndist,NVEL,index0, n, pcv)] + fr*
-	      lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index1, n, pcv)];
+	      lb->f[LB_ADDR(lb->nsite,ndist,NVEL,index0, n, pcv)] + fr*
+	      lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index1, n, pcv)];
 	  }
 	}
 	/* Next site */
@@ -442,12 +451,12 @@ int le_displace_and_interpolate(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = le_site_index(ic, jc, kc);
+	index0 = lees_edw_index(le, ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
-	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
 	  }
 	}
       }
@@ -479,7 +488,7 @@ int le_displace_and_interpolate(lb_t * lb) {
  *
  *****************************************************************************/
 
-static int le_displace_and_interpolate_parallel(lb_t * lb) {
+static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 
   int ic, jc, kc;
   int j1, j1mod;
@@ -511,14 +520,16 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
   MPI_Status status[4];
 
   assert(lb);
+  assert(le);
   assert(CVXBLOCK == 1);
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  coords_nlocal_offset(offset);
-  nplane = le_get_nplane_local();
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal_offset(le, offset);
 
-  comm = le_communicator();
+  nplane = lees_edw_nplane_local(le);
+  lees_edw_comm(le, &comm);
+
   physics_ref(&phys);
 
   t = 1.0*physics_control_timestep(phys);
@@ -535,9 +546,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
   for (plane = 0; plane < nplane; plane++) {
 
-    ic  = le_plane_location(plane);
+    ic  = lees_edw_plane_location(le, plane);
 
-    dy  = le_buffer_displacement(nhalo, t);
+    lees_edw_buffer_displacement(le, nhalo, t, &dy);
     dy  = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;
@@ -546,7 +557,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
     jc = offset[Y] + 1;
     j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    lees_edw_jstart_to_mpi_ranks(le, j1, nrank_s, nrank_r);
 
     j1mod = 1 + (j1 - 1) % nlocal[Y];
     n1 = (nlocal[Y] - j1mod + 1);
@@ -569,11 +580,11 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	/* cv[p][X] = +1 identified by disp_fwd[] */
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)];
+	    send_buff[ndata++] = lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)];
 	  }
 	}
 	/* Next site */
@@ -594,7 +605,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
 	for (n = 0; n < ndist; n++) {
@@ -602,7 +613,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 
 	  for (p = 0; p < nprop; p++) {
-	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
+	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
 	}
 	/* Next site */
@@ -616,10 +627,10 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
     /* NOW THE OTHER DIRECTION */
 
-    ic  = le_plane_location(plane) + 1;
+    ic  = lees_edw_plane_location(le, plane) + 1;
 
-    dy  = -le_buffer_displacement(nhalo, t);
-    dy  = fmod(dy, L(Y));
+    lees_edw_buffer_displacement(le, nhalo, t, &dy);
+    dy  = fmod(-dy, L(Y));
     jdy = floor(dy);
     fr  = dy - jdy;
 
@@ -627,7 +638,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 
     jc = offset[Y] + 1;
     j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    lees_edw_jstart_to_mpi_ranks(le, j1, nrank_s, nrank_r);
 
     j1mod = 1 + (j1 - 1) % nlocal[Y];
     n1 = (nlocal[Y] - j1mod + 1);
@@ -650,11 +661,11 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	/* cv[p][X] = -1 identified by disp_bwd[] */
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)];
+	    send_buff[ndata++] = lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)];
 	  }
 	}
 	/* Next site */
@@ -675,7 +686,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = le_site_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 	ind0 = ndist*nprop*((jc-1)*nlocal[Z] + (kc-1));
 
 	for (n = 0; n < ndist; n++) {
@@ -683,7 +694,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 
 	  for (p = 0; p < nprop; p++) {
-	    lb->f[LB_ADDR(coords_nsites(), ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
+	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
 	}
 	/* Next site */
@@ -709,7 +720,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_le_init_shear_profile(lb_t * lb) {
+int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
 
   int ic, jc, kc, index;
   int i, j, p;
@@ -719,6 +730,7 @@ int lb_le_init_shear_profile(lb_t * lb) {
   physics_t * phys = NULL;
 
   assert(lb);
+  assert(le);
 
   info("Initialising shear profile\n");
 
@@ -728,7 +740,7 @@ int lb_le_init_shear_profile(lb_t * lb) {
   physics_rho0(phys, &rho0);
   physics_eta_shear(phys, &eta);
 
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(le, nlocal);
 
   for (i = 0; i< NDIM; i++) {
     u[i] = 0.0;
@@ -737,20 +749,20 @@ int lb_le_init_shear_profile(lb_t * lb) {
     }
   }
 
-  gradu[X][Y] = le_shear_rate();
+  lees_edw_shear_rate(le, &gradu[X][Y]);
 
   /* Loop trough the sites */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-      
-    u[Y] = le_get_steady_uy(ic);
+
+    lees_edw_steady_uy(le, ic, &u[Y]);
 
     /* We can now project the physical quantities to the distribution */
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 
 	for (p = 0; p < NVEL; p++) {
 	  double f = 0.0;

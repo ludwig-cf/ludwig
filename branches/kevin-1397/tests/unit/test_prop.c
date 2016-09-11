@@ -28,7 +28,6 @@ static __host__ int do_test_velocity(lb_halo_enum_t halo);
 static __host__ int do_test_source_destination(lb_halo_enum_t halo);
 
 
-
 /*****************************************************************************
  *
  *  test_lb_prop_suite
@@ -38,10 +37,12 @@ static __host__ int do_test_source_destination(lb_halo_enum_t halo);
 int test_lb_prop_suite(void) {
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_init(cs);
 
-  coords_init();
   do_test_velocity(LB_HALO_FULL);
   do_test_velocity(LB_HALO_REDUCED);
 
@@ -49,7 +50,7 @@ int test_lb_prop_suite(void) {
   do_test_source_destination(LB_HALO_REDUCED);
 
   pe_info(pe, "PASS     ./unit/test_prop\n");
-  coords_finish();
+  cs_free(cs);
   pe_free(pe);
 
   return 0;

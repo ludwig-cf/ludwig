@@ -45,7 +45,6 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "coords.h"
 #include "memory.h"
 #include "leesedwards.h"
 #include "wall.h"
@@ -53,9 +52,11 @@
 #include "field_grad_s.h"
 #include "gradient_3d_27pt_fluid.h"
 
-__host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra);
-__host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra);
-__host__ int grad_3d_27pt_fluid_wall_correction(field_grad_t * fg,  int nextra);
+__host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					 int nextra);
+__host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				   int nextra);
+__host__ int grad_3d_27pt_fluid_wall(field_grad_t * fg,  int nextra);
 
 /*****************************************************************************
  *
@@ -66,13 +67,19 @@ __host__ int grad_3d_27pt_fluid_wall_correction(field_grad_t * fg,  int nextra);
 __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->le);
+
+  le = fgrad->field->le;
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  grad_3d_27pt_fluid_operator(fgrad, nextra);
-  grad_3d_27pt_fluid_le_correction(fgrad, nextra);
-  grad_3d_27pt_fluid_wall_correction(fgrad, nextra);
+  grad_3d_27pt_fluid_operator(le, fgrad, nextra);
+  grad_3d_27pt_fluid_le(le, fgrad, nextra);
+  grad_3d_27pt_fluid_wall(fgrad, nextra);
 
   return 0;
 }
@@ -89,14 +96,15 @@ __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
   assert(0); /* We need this to work for d4. See 2d_5pt. */
-  grad_3d_27pt_fluid_operator(fgrad, nextra);
-  grad_3d_27pt_fluid_le_correction(fgrad, nextra);
-  grad_3d_27pt_fluid_wall_correction(fgrad, nextra);
+  grad_3d_27pt_fluid_operator(le, fgrad, nextra);
+  grad_3d_27pt_fluid_le(le, fgrad, nextra);
+  grad_3d_27pt_fluid_wall(fgrad, nextra);
 
   return 0;
 }
@@ -107,7 +115,8 @@ __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
  *
  *****************************************************************************/
 
-__host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra) {
+__host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					 int nextra) {
 
   int nop;
   int nlocal[3];
@@ -125,9 +134,12 @@ __host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra) {
   double * __restrict__ grad;
   double * __restrict__ del2;
 
-  nhalo = coords_nhalo();
-  nsites = le_nsites();
-  coords_nlocal(nlocal);
+  assert(le);
+  assert(fg);
+
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_nsites(le, &nsites);
 
   ys = nlocal[Z] + 2*nhalo;
 
@@ -137,14 +149,14 @@ __host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra) {
   del2 = fg->delsq;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
+    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
+    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	index = le_site_index(ic, jc, kc);
-	indexm1 = le_site_index(icm1, jc, kc);
-	indexp1 = le_site_index(icp1, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
+	indexm1 = lees_edw_index(le, icm1, jc, kc);
+	indexp1 = lees_edw_index(le, icp1, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
@@ -245,7 +257,7 @@ __host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra) {
 
 /*****************************************************************************
  *
- *  grad_3d_27pt_le_correction
+ *  grad_3d_27pt_le
  *
  *  The gradients of the order parameter need to be computed in the
  *  buffer region (nextra points). This is so that gradients at all
@@ -253,7 +265,8 @@ __host__ int grad_3d_27pt_fluid_operator(field_grad_t * fg, int nextra) {
  *
  *****************************************************************************/
 
-__host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
+__host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				   int nextra) {
 
   int nop;
   int nlocal[3];
@@ -273,9 +286,12 @@ __host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
   double * __restrict__ grad;
   double * __restrict__ del2;
 
-  nhalo = coords_nhalo();
-  nsites = le_nsites();
-  coords_nlocal(nlocal);
+  assert(le);
+  assert(fg);
+
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nsites(le, &nsites);
+  lees_edw_nlocal(le, nlocal);
 
   ys = (nlocal[Z] + 2*nhalo);
 
@@ -284,22 +300,22 @@ __host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
   grad = fg->grad;
   del2 = fg->delsq;
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
-    ic = le_plane_location(nplane);
+    ic = lees_edw_plane_location(le, nplane);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
+      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
@@ -399,16 +415,16 @@ __host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
+      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
+      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
 	for (n = 0; n < nop; n++) {
 	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
@@ -500,9 +516,7 @@ __host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
 	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
 	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
 	}
-	/* SHIT
-	   printf("%2d %2d %2d %14.7e %14.7e %14.7e\n", ic, jc, kc, grad[addr_rank2(nsites, 1, 3, index,0, X)], grad[addr_rank2(nsites,1,3,index,0,Y)], grad[nsites, 1,3, index, 0,X]);*/
-	/* Halo region z wrong in 2d? */
+
 	}
       }
     }
@@ -514,14 +528,14 @@ __host__ int grad_3d_27pt_fluid_le_correction(field_grad_t * fg, int nextra) {
 
 /*****************************************************************************
  *
- *  grad_3d_27pt_fluid_wall_correction
+ *  grad_3d_27pt_fluid_wall
  *
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
 
-__host__ int grad_3d_27pt_fluid_wall_correction(field_grad_t * fg,
-						int nextra) {
+__host__ int grad_3d_27pt_fluid_wall(field_grad_t * fg,
+				     int nextra) {
 
   if (wall_present()) {
     fatal("Wall not implemented in 3d 27pt gradients yet (use 7pt)\n");

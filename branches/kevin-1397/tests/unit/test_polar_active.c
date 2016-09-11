@@ -49,6 +49,7 @@ int test_polar_active_suite(void) {
   int ntotal[3] = {100, 100, 1};
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
   field_t * fp = NULL;
   field_grad_t * fpgrad = NULL;
@@ -62,10 +63,11 @@ int test_polar_active_suite(void) {
     return 0;
   }
 
-  coords_nhalo_set(nhalo);
-  coords_ntotal_set(ntotal);
-  coords_init();
-  le_create(pe, NULL, &le);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
   field_create(nf, "p", &fp);
   field_init(fp, nhalo);
@@ -81,8 +83,8 @@ int test_polar_active_suite(void) {
   field_grad_free(fpgrad);
   field_free(fp);
 
-  le_free(le);
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_polar_active\n");
   pe_free(pe);
 

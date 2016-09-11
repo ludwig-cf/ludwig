@@ -18,19 +18,21 @@
 #define NVECTOR 3    /* Storage requirement for vector (per site) */
 #define NQAB 5       /* Storage requirement for symmetric, traceless tensor */
 
-#include "targetDP.h"
+#include "pe.h"
 #include "coords.h"
 #include "io_harness.h"
+#include "leesedwards.h"
 
 typedef struct field_s field_t;
 
 typedef enum {FIELD_HALO_HOST = 0, FIELD_HALO_TARGET} field_halo_enum_t;
 
-__host__ int field_create(int nf, const char * name, field_t ** pobj);
+__host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
+			  field_t ** pobj);
 __host__ int field_free(field_t * obj);
 
 __host__ int field_memcpy(field_t * obj, int flag);
-__host__ int field_init(field_t * obj, int nhcomm);
+__host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out);
 __host__ int field_io_info(field_t * obj, io_info_t ** info);

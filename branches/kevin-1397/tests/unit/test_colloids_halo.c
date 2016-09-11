@@ -37,17 +37,19 @@ int test_colloids_halo_suite(void) {
 
   int ntotal[3] = {1024, 1024, 1024};
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  coords_ntotal_set(ntotal);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
 
   test_colloids_halo111();
   test_colloids_halo211();
   test_colloids_halo_repeat();
 
   pe_info(pe, "PASS     ./unit/test_colloids_halo\n");
-  coords_finish();
+  cs_free(cs);
   pe_free(pe);
 
   return 0;
