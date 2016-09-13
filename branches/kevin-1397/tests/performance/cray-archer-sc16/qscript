@@ -1,0 +1,13 @@
+#!/bin/bash --login
+
+#PBS -N qscript
+#PBS -l select=1
+#PBS -l walltime=00:20:00
+#PBS -A ecse0102
+
+cd $PBS_O_WORKDIR
+export KMP_AFFINITY=disabled
+export OMP_NUM_THREADS=12
+
+aprun -n 1 hostname
+aprun -n 1 -d 12 -cc numa_node ./Ludwig.exe
