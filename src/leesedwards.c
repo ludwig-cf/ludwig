@@ -63,8 +63,8 @@ static int lees_edw_init_tables(lees_edw_t * le);
  *
  *****************************************************************************/
 
-int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
-		    lees_edw_t ** ple) {
+__host__ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
+			     lees_edw_t ** ple) {
 
   lees_edw_t * le = NULL;
 
@@ -97,7 +97,7 @@ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
  *
  *****************************************************************************/
 
-int lees_edw_retain(lees_edw_t * le) {
+__host__ int lees_edw_retain(lees_edw_t * le) {
 
   assert(le);
 
@@ -112,7 +112,7 @@ int lees_edw_retain(lees_edw_t * le) {
  *
  *****************************************************************************/
 
-int lees_edw_free(lees_edw_t * le) {
+__host__ int lees_edw_free(lees_edw_t * le) {
 
   assert(le);
 
@@ -245,6 +245,7 @@ static int lees_edw_init(lees_edw_t * le, lees_edw_info_t * info) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nplane_total(lees_edw_t * le) {
 
   assert(le);
@@ -258,6 +259,7 @@ int lees_edw_nplane_total(lees_edw_t * le) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nplane_local(lees_edw_t * le) {
 
   assert(le);
@@ -271,6 +273,7 @@ int lees_edw_nplane_local(lees_edw_t * le) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_plane_uy(lees_edw_t * le, double * uy) {
 
   assert(le);
@@ -286,6 +289,7 @@ int lees_edw_plane_uy(lees_edw_t * le, double * uy) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nxbuffer(lees_edw_t * le, int * nxb) {
 
   assert(le);
@@ -303,7 +307,7 @@ int lees_edw_nxbuffer(lees_edw_t * le, int * nxb) {
  *
  *****************************************************************************/
 
-int lees_edw_info(lees_edw_t * le) {
+__host__ int lees_edw_info(lees_edw_t * le) {
 
   int np;
   double gammadot;
@@ -563,6 +567,7 @@ static int lees_edw_checks(lees_edw_t * le) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nsites(lees_edw_t * le, int * nsites) {
 
   int nhalo;
@@ -590,6 +595,7 @@ int lees_edw_nsites(lees_edw_t * le, int * nsites) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy) {
 
   int offset[3];
@@ -629,6 +635,7 @@ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_block_uy(lees_edw_t * le, int ic, double * uy) {
 
   int offset[3];
@@ -668,6 +675,7 @@ int lees_edw_block_uy(lees_edw_t * le, int ic, double * uy) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_plane_uy_now(lees_edw_t * le, double t, double * uy) {
 
   double tle;
@@ -692,6 +700,7 @@ int lees_edw_plane_uy_now(lees_edw_t * le, double t, double * uy) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_plane_location(lees_edw_t * le, int np) {
 
   int offset[3];
@@ -720,6 +729,7 @@ int lees_edw_plane_location(lees_edw_t * le, int np) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_index_real_to_buffer(lees_edw_t * le,  int ic,  int idisplace) {
 
   int ib;
@@ -747,6 +757,7 @@ int lees_edw_index_real_to_buffer(lees_edw_t * le,  int ic,  int idisplace) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_index_buffer_to_real(lees_edw_t * le, int ib) {
 
   assert(le);
@@ -769,6 +780,7 @@ int lees_edw_index_buffer_to_real(lees_edw_t * le, int ib) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy) {
 
   double tle;
@@ -797,7 +809,7 @@ int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy)
  *
  *****************************************************************************/
 
-int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm) {
+__host__ int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm) {
 
   assert(le);
 
@@ -812,7 +824,7 @@ int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm) {
  *
  *****************************************************************************/
 
-int lees_edw_plane_comm(lees_edw_t * le, MPI_Comm * comm) {
+__host__ int lees_edw_plane_comm(lees_edw_t * le, MPI_Comm * comm) {
 
   assert(le);
 
@@ -831,6 +843,7 @@ int lees_edw_plane_comm(lees_edw_t * le, MPI_Comm * comm) {
  *
  *****************************************************************************/
 
+__host__
 int lees_edw_jstart_to_mpi_ranks(lees_edw_t * le, const int j1, int send[3],
 				 int recv[3]) {
 
@@ -874,6 +887,7 @@ int lees_edw_jstart_to_mpi_ranks(lees_edw_t * le, const int j1, int send[3],
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_shear_rate(lees_edw_t * le, double * gammadot) {
 
   double ltot[3];
@@ -896,6 +910,7 @@ int lees_edw_shear_rate(lees_edw_t * le, double * gammadot) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_index(lees_edw_t * le, int ic, int jc, int kc) {
 
   int nhalo;
@@ -927,6 +942,7 @@ int lees_edw_index(lees_edw_t * le, int ic, int jc, int kc) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nlocal(lees_edw_t * le, int nlocal[3]) {
 
   assert(le);
@@ -940,6 +956,7 @@ int lees_edw_nlocal(lees_edw_t * le, int nlocal[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_strides(lees_edw_t * le, int * xs, int * ys, int * zs) {
 
   assert(le);
@@ -953,6 +970,7 @@ int lees_edw_strides(lees_edw_t * le, int * xs, int * ys, int * zs) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nhalo(lees_edw_t * le, int * nhalo) {
 
   assert(le);
@@ -966,6 +984,7 @@ int lees_edw_nhalo(lees_edw_t * le, int * nhalo) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_ltot(lees_edw_t * le, double ltot[3]) {
 
   assert(le);
@@ -979,6 +998,7 @@ int lees_edw_ltot(lees_edw_t * le, double ltot[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_cartsz(lees_edw_t * le, int cartsz[3]) {
 
   assert(le);
@@ -992,6 +1012,7 @@ int lees_edw_cartsz(lees_edw_t * le, int cartsz[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_ntotal(lees_edw_t * le, int ntotal[3]) {
 
   assert(le);
@@ -1005,6 +1026,7 @@ int lees_edw_ntotal(lees_edw_t * le, int ntotal[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_nlocal_offset(lees_edw_t * le, int noffset[3]) {
 
   assert(le);
@@ -1018,6 +1040,7 @@ int lees_edw_nlocal_offset(lees_edw_t * le, int noffset[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int lees_edw_cart_coords(lees_edw_t * le, int cartcoord[3]) {
 
   assert(le);

@@ -10,8 +10,8 @@
  *
  *****************************************************************************/
 
-#ifndef LEESEDWARDS_H
-#define LEESEDWARDS_H
+#ifndef LUDWIG_LEES_EDWARDS_H
+#define LUDWIG_LEES_EDWARDS_H
 
 #include "pe.h"
 #include "runtime.h"
