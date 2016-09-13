@@ -12,8 +12,8 @@
  *
  *****************************************************************************/
 
-#ifndef COORDS_H
-#define COORDS_H
+#ifndef LUDWIG_COORDS_H
+#define LUDWIG_COORDS_H
 
 #include "pe.h"
 
@@ -24,7 +24,6 @@ typedef struct coords_s cs_t;
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
-
 
 /* Host interface */
 
@@ -97,4 +96,5 @@ __host__ void   coords_minimum_distance(const double r1[3], const double r2[3],
 __host__ void   coords_index_to_ijk(const int index, int coords[3]);
 __host__ int    coords_strides(int * xs, int * ys, int * zs);
 __host__ int    coords_nall(int nall[3]);
+
 #endif
