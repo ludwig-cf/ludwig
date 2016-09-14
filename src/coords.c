@@ -136,6 +136,9 @@ __host__ int cs_free(cs_t * cs) {
   cs->nref -= 1;
 
   if (cs->nref <= 0) {
+
+    if (cs->target != cs) targetFree(cs->target);
+
     MPI_Comm_free(&cs->commcart);
     MPI_Comm_free(&cs->commperiodic);
     pe_free(cs->pe);
@@ -252,9 +255,27 @@ __host__ int cs_init(cs_t * cs) {
     cs->target = cs;
   }
   else {
-    assert(0);
-    /* Required. */
+    cs_param_t * tmp;
+    targetCalloc((void **) &cs->target, sizeof(cs_t));
+    targetConstAddress((void **) &tmp, const_param);
+    copyToTarget(&cs->target->cp, (const void *) &tmp, sizeof(cs_param_t *));
+    cs_commit(cs);
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  cs_commit
+ *
+ *****************************************************************************/
+
+__host__ int cs_commit(cs_t * cs) {
+
+  assert(cs);
+
+  copyConstToTarget(&const_param, cs->cp, sizeof(cs_param_t));
 
   return 0;
 }
@@ -826,6 +847,17 @@ __host__ __device__ int cs_nall(cs_t * cs, int nall[3]) {
   nall[Z] = cs->cp->nlocal[Z] + 2*cs->cp->nhalo;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  cs_cart_rank access function
+ *
+ *****************************************************************************/
+
+__host__ int cs_cart_rank(cs_t * cs) {
+  assert(cs);
+  return stat_ref->mpi_cartrank;
 }
 
 /*****************************************************************************

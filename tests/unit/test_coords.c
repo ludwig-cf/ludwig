@@ -8,16 +8,18 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2014 The University of Edinburgh
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <stdio.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "tests.h"
 
 static int test_coords_constants(void);
@@ -28,6 +30,10 @@ static int test_coords_cart_info(cs_t * cs);
 static int test_coords_sub_communicator(cs_t * cs);
 static int test_coords_periodic_comm(cs_t * cs);
 static int neighbour_rank(int, int, int);
+
+__host__ int do_test_coords_device1(pe_t * pe);
+__global__ void do_test_coords_kernel1(cs_t * cs);
+
 
 /*****************************************************************************
  *
@@ -54,7 +60,7 @@ int test_coords_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Checking coords.c ...\n\n");*/
-
+  
   test_coords_constants();
 
   /* Check the defaults, an the correct resetting of defaults. */
@@ -100,6 +106,10 @@ int test_coords_suite(void) {
   test_coords_periodic_comm(cs);
   cs_free(cs);
 
+  /* Device tests */
+
+  do_test_coords_device1(pe);
+
   pe_info(pe, "PASS     ./unit/test_coords\n");
   pe_free(pe);
 
@@ -134,9 +144,11 @@ int test_coords_constants(void) {
   /* info("ok\n");*/
 
   /* info("Checking Lmin()... ");*/
+  /*
   test_assert(fabs(Lmin(X) - 0.5) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(Lmin(Y) - 0.5) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(Lmin(Z) - 0.5) < TEST_DOUBLE_TOLERANCE);
+  */
   /* info("ok\n");*/
 
   return 0;
@@ -185,25 +197,35 @@ int test_coords_system(cs_t * cs, int ntotal_ref[3], int period_ref[3]) {
  *
  *****************************************************************************/
 
-int test_coords_decomposition(cs_t * cs, int decomp_request[3]) {
+int test_coords_decomposition(cs_t * cs, int mpi_sz_req[3]) {
 
   int ok = 1;
+  int ntask;
+  int ntask_req;
   int ntotal[3];
   int mpisz[3];
 
+  MPI_Comm comm;
+
   assert(cs);
+
+  ntask_req = mpi_sz_req[X]*mpi_sz_req[Y]*mpi_sz_req[Z];
 
   cs_ntotal(cs, ntotal);
   cs_cartsz(cs, mpisz);
+  cs_cart_comm(cs, &comm);
 
-  if (ntotal[X] % decomp_request[X] != 0) ok = 0;
-  if (ntotal[Y] % decomp_request[Y] != 0) ok = 0;
-  if (ntotal[Z] % decomp_request[Z] != 0) ok = 0;
+  MPI_Comm_size(comm, &ntask);
+
+  if (ntask != ntask_req) ok = 0;
+  if (ntotal[X] % mpi_sz_req[X] != 0) ok = 0;
+  if (ntotal[Y] % mpi_sz_req[Y] != 0) ok = 0;
+  if (ntotal[Z] % mpi_sz_req[Z] != 0) ok = 0;
 
   if (ok) {
-    test_assert(mpisz[X] == decomp_request[X]);
-    test_assert(mpisz[Y] == decomp_request[Y]);
-    test_assert(mpisz[Z] == decomp_request[Z]);
+    test_assert(mpisz[X] == mpi_sz_req[X]);
+    test_assert(mpisz[Y] == mpi_sz_req[Y]);
+    test_assert(mpisz[Z] == mpi_sz_req[Z]);
   }
 
   return 0;
@@ -509,4 +531,95 @@ static int test_coords_periodic_comm(cs_t * cs) {
   test_assert(pback == nsource);
 
   return 0;
+}
+
+/******************************************************************************
+ *
+ *  do_test_coords_device1
+ *
+ *  Test default system size.
+ *
+ ******************************************************************************/
+
+__host__ int do_test_coords_device1(pe_t * pe) {
+
+  dim3 nblk, ntpb;
+  cs_t * cstarget = NULL;
+  cs_t * cs = NULL;
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_target(cs, &cstarget);
+
+  kernel_launch_param(1, &nblk, &ntpb);
+  ntpb.x = 1;
+
+  __host_launch(do_test_coords_kernel1, nblk, ntpb, cstarget);
+  targetDeviceSynchronise();
+
+  cs_free(cs);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  do_test_coords_kernel1
+ *
+ ******************************************************************************/
+
+__global__ void do_test_coords_kernel1(cs_t * cs) {
+
+  int nhalo;
+  int nsites;
+  int mpisz[3];
+  int mpicoords[3];
+  int ntotal[3];
+  int nlocal[3];
+  int noffset[3];
+  double lmin[3];
+  double ltot[3];
+
+  assert(cs);
+
+  cs_nhalo(cs, &nhalo);
+  assert(nhalo == 1);
+
+  cs_ntotal(cs, ntotal);
+  assert(ntotal[X] == 64);
+  assert(ntotal[Y] == 64);
+  assert(ntotal[Z] == 64);
+
+  cs_nlocal(cs, nlocal);
+  cs_cartsz(cs, mpisz);
+
+  assert(nlocal[X] == ntotal[X]/mpisz[X]);
+  assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
+  assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
+
+  cs_nsites(cs, &nsites);
+
+  assert(nsites == (nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo));
+
+  cs_cart_coords(cs, mpicoords);
+  cs_nlocal_offset(cs, noffset);
+
+  assert(noffset[X] == mpicoords[X]*nlocal[X]);
+  assert(noffset[Y] == mpicoords[Y]*nlocal[Y]);
+  assert(noffset[Z] == mpicoords[Z]*nlocal[Z]);
+
+  cs_lmin(cs, lmin);
+  cs_ltot(cs, ltot);
+
+  assert(fabs(lmin[X] - 0.5) < DBL_EPSILON);
+  assert(fabs(lmin[Y] - 0.5) < DBL_EPSILON);
+  assert(fabs(lmin[Z] - 0.5) < DBL_EPSILON);
+
+  assert(fabs(ltot[X] - ntotal[X]) < DBL_EPSILON);
+  assert(fabs(ltot[Y] - ntotal[Y]) < DBL_EPSILON);
+  assert(fabs(ltot[Z] - ntotal[Z]) < DBL_EPSILON);
+
+  return;
 }

@@ -144,6 +144,9 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   cs_nsites(obj->cs, &nsites);
   if (le) lees_edw_nsites(le, &nsites);
 
+
+  obj->nhcomm = nhcomm;
+  obj->nsites = nsites;
   obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
   if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 
@@ -159,7 +162,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
     targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
 
     copyToTarget(&obj->target->data, &tmp, sizeof(double *)); 
-    copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
+    field_memcpy(obj, cudaMemcpyHostToDevice);
   }
 
   /* MPI datatypes for halo */

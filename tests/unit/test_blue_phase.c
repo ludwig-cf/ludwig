@@ -27,15 +27,22 @@
 #include "gradient_3d_27pt_fluid.h"
 #include "blue_phase.h"
 #include "blue_phase_init.h"
+#include "kernel.h"
 #include "leesedwards.h"
 #include "physics.h"
 #include "tests.h"
 
 static void multiply_gradient(double [3][3][3], double);
 static void multiply_delsq(double [3][3], double);
-static int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
+static int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe,
+			   field_t * fq,
 			   field_grad_t * fqgrad);
 static int test_bp_nonfield(void);
+
+
+__host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe);
+__global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref);
+
 
 /*****************************************************************************
  *
@@ -61,14 +68,15 @@ int test_bp_suite(void) {
 
   test_bp_nonfield();
 
-  field_create(NQAB, "q", &fq);
-  field_init(fq, nhalo);
+  field_create(pe, cs, NQAB, "q", &fq);
+  field_init(fq, nhalo, le);
   field_grad_create(fq, 2, &fqgrad);
   field_grad_set(fqgrad, grad_3d_27pt_fluid_d2, NULL);
 
   fe_lc_create(fq, fqgrad, &fe);
 
-  test_o8m_struct(pe, fe, fq, fqgrad);
+  test_o8m_struct(pe, le, fe, fq, fqgrad);
+  do_test_fe_lc_device1(pe, cs, fe);
 
   fe_lc_free(fe);
   field_grad_free(fqgrad);
@@ -162,7 +170,7 @@ static int test_bp_nonfield(void) {
  *
  *****************************************************************************/
 
-int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
+int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
 		    field_grad_t * fqgrad) {
 
   int nf;
@@ -192,9 +200,10 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   PI_DOUBLE(pi_);
 
   assert(pe);
+  assert(le);
 
   physics_create(pe, &phys);
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(le, nlocal);
   /*
   info("Blue phase O8M struct test\n");
   info("Must have q order parameter (nop = 5)...");
@@ -246,9 +255,8 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
-
   /* info("Check q( 1, 1, 1)...");*/
   test_assert(fabs(q[X][X] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[X][Y] - -0.28284271247462) < TEST_DOUBLE_TOLERANCE);
@@ -260,7 +268,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 2;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
 
   /* info("Check q( 1, 1, 2)...");*/
@@ -274,7 +282,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 3;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
 
   /* info("Check q( 1, 1, 3)...");*/
@@ -288,7 +296,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 12;
   kc = 4;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
 
   /* info("Check q( 1,12, 4)...");*/
@@ -302,7 +310,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 2;
   jc = 7;
   kc = 6;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
 
   /* info("Check q( 2, 7, 6)...");*/
@@ -322,7 +330,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 	field_tensor(fq, index, q);
 
 	value = q[X][X] + q[Y][Y] + q[Z][Z];
@@ -342,13 +350,17 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
 
   /* info("Free energy density\n");*/
 
-  field_halo(fq);
+
+  field_halo_swap(fq, FIELD_HALO_HOST);
+
+  field_memcpy(fq, cudaMemcpyHostToDevice);
   field_grad_compute(fqgrad);
+  field_grad_memcpy(fqgrad, cudaMemcpyDeviceToHost);
 
   ic = 1;
   jc = 1;
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
@@ -361,7 +373,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 2;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
@@ -374,7 +386,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 3;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
@@ -388,7 +400,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 12;
   kc = 4;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
@@ -402,7 +414,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 2;
   jc = 7;
   kc = 6;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   multiply_gradient(dq, 3.0);
@@ -422,7 +434,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -444,7 +456,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 2;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -465,7 +477,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 3;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -486,7 +498,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 12;
   kc = 4;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -507,7 +519,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 2;
   jc = 7;
   kc = 6;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -532,7 +544,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = lees_edw_index(le, ic, jc, kc);
 	fe_lc_mol_field(fe, index, h);
 
 	test_assert(fabs(h[X][Y] - h[Y][X]) < TEST_DOUBLE_TOLERANCE);
@@ -552,7 +564,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -580,7 +592,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 2;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -606,7 +618,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 3;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -632,7 +644,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 12;
   kc = 4;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -658,7 +670,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 2;
   jc = 7;
   kc = 6;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -740,7 +752,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
 
   field_grad_tensor_grad(fqgrad, index, dq);
@@ -753,7 +765,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 2;
   jc = 7;
   kc = 6;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
 
@@ -780,7 +792,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 1;
   jc = 1;
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -800,7 +812,7 @@ int test_o8m_struct(pe_t * pe, fe_lc_t * fe, field_t * fq,
   ic = 2;
   jc = 7;
   kc = 6;
-  index = coords_index(ic, jc, kc);
+  index = lees_edw_index(le, ic, jc, kc);
   field_tensor(fq, index, q);
   field_grad_tensor_grad(fqgrad, index, dq);
   field_grad_tensor_delsq(fqgrad, index, dsq);
@@ -864,6 +876,79 @@ void multiply_delsq(double dsq[3][3], double factor) {
 	dsq[ia][ib] *= factor;
     }
   }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_fe_lc_device1
+ *
+ *****************************************************************************/
+
+__host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe) {
+
+  /* Some parameters */
+  double a0 = 0.014384711;
+  double gamma = 3.1764706;
+  double kappa = 0.01;
+  double epsilon = 41.4;
+  double redshift = 1.0;
+  fe_lc_param_t param = {0};
+
+  dim3 nblk, ntpb;
+  physics_t * phys = NULL;
+  fe_lc_t * fetarget = NULL;
+
+  assert(pe);
+  assert(cs);
+  assert(fe);
+
+  physics_create(pe, &phys);
+
+  param.a0 = a0;
+  param.gamma = gamma;
+  param.kappa0 = kappa;
+  param.epsilon = epsilon;
+  param.redshift = redshift;
+  fe_lc_param_set(fe, param);
+  fe_lc_param_commit(fe);
+
+  fe_lc_target(fe, (fe_t **) &fetarget);
+
+  kernel_launch_param(1, &nblk, &ntpb);
+  ntpb.x = 1;
+
+  __host_launch(do_test_fe_lc_kernel1, nblk, ntpb, fetarget, param);
+  targetDeviceSynchronise();
+
+  physics_free(phys);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_fe_lc_kernel1
+ *
+ *****************************************************************************/
+
+__global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref) {
+
+  fe_lc_param_t p;
+  PI_DOUBLE(pi);
+
+  assert(fe);
+
+  fe_lc_param(fe, &p);
+
+  /* epsilon is sclaed by a factor of 12pi within fe_lc */
+
+  assert(fabs(p.a0 - ref.a0) < DBL_EPSILON);
+  assert(fabs(p.gamma - ref.gamma) < DBL_EPSILON);
+  assert(fabs(p.kappa0 - ref.kappa0) < DBL_EPSILON);
+  assert(fabs(12.0*pi*p.epsilon - ref.epsilon) < FLT_EPSILON);
+  assert(fabs(p.redshift - ref.redshift) < DBL_EPSILON);
 
   return;
 }

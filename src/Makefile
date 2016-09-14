@@ -69,7 +69,7 @@ OBJS = \
      colloid.o colloid_link.o colloids_halo.o colloid_io_rt.o \
      colloid_sums.o bbl.o build.o collision.o collision_rt.o \
      colloids.o colloids_rt.o lubrication.o \
-     coords.o coords_field.o coords_rt.o \
+     coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
@@ -92,7 +92,7 @@ OBJS = \
      psi_force.o psi_colloid.o propagation.o \
      nernst_planck.o \
      psi_petsc.o psi_gradients.o \
-     leesedwards.o pe.o ran.o runtime.o \
+     pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric_rt.o subgrid.o \
      stats_calibration.o stats_colloid.o \

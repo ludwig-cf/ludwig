@@ -18,6 +18,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "physics.h"
 #include "util.h"
 #include "tests.h"
 
@@ -34,17 +35,22 @@ int test_le_suite(void) {
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
+  physics_t * phys = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   cs_create(pe, &cs);
   cs_init(cs);
 
+  physics_create(pe, &phys);
+
   test_parallel1(pe, cs);
   test_le_parallel2(pe, cs);
 
-  pe_info(pe, "PASS     ./unit/test_le\n");
+  physics_free(phys);
   cs_free(cs);
+
+  pe_info(pe, "PASS     ./unit/test_le\n");
   pe_free(pe);
 
   return 0;
@@ -96,16 +102,16 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
 
   /*info("\nLees Edwards test (constant speed)...\n");
     info("Total number of planes in set correctly... ");*/
-  test_assert(le_get_nplane_total() == nplane);
+  test_assert(lees_edw_nplane_total(le) == nplane);
   /*info("yes\n");*/
 
   /* info("Local number of planes set correctly... ");*/
   nplane_local = nplane / cart_size(X);
-  test_assert(le_get_nplane_local() == nplane_local);
+  test_assert(lees_edw_nplane_local(le) == nplane_local);
   /* info("yes\n");*/
 
   /* info("Plane maximum velocity set correctly... ");*/
-  uy = le_plane_uy_max();
+  lees_edw_plane_uy(le, &uy);
   test_assert(fabs(uy - uy_set) < TEST_DOUBLE_TOLERANCE);
   /* info("yes\n");*/
 

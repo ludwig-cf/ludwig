@@ -79,10 +79,10 @@ static int do_test1(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  hydro_create(1, &hydro);
+  hydro_create(pe, cs, le, 1, &hydro);
   assert(hydro);
 
-  index = coords_index(1, 1, 1);
+  index = cs_index(cs, 1, 1, 1);
   hydro_f_local_set(hydro, index, force);
   hydro_f_local(hydro, index, check);
   assert(fabs(force[X] - check[X]) < DBL_EPSILON);
@@ -122,7 +122,7 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  hydro_create(nhcomm, &hydro);
+  hydro_create(pe, cs, le, nhcomm, &hydro);
   assert(hydro);
 
   test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
@@ -157,7 +157,6 @@ static int do_test_io1(pe_t * pe) {
 
   cs_t * cs = NULL;
   io_info_t * iohandler = NULL;
-  lees_edw_t * le = NULL;
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -166,7 +165,6 @@ static int do_test_io1(pe_t * pe) {
 
   cs_create(pe, &cs);
   cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le);
 
   if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
@@ -174,7 +172,7 @@ static int do_test_io1(pe_t * pe) {
     grid[Z] = 2;
   }
 
-  hydro_create(1, &hydro);
+  hydro_create(pe, cs, NULL, 1, &hydro);
   assert(hydro);
 
   hydro_init_io_info(hydro, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
@@ -190,7 +188,6 @@ static int do_test_io1(pe_t * pe) {
   io_remove_metadata(iohandler, "vel");
 
   hydro_free(hydro);
-  lees_edw_free(le);
   cs_free(cs);
 
   return 0;

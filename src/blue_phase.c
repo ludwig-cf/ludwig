@@ -85,7 +85,7 @@ __host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
   if (fe == NULL) fatal("calloc(fe_lc_t) failed\n");
 
   fe->param = (fe_lc_param_t *) calloc(1, sizeof(fe_lc_param_t));
-  if (fe->param == NULL) fatal("");
+  if (fe->param == NULL) fatal("calloc(fe_lc_param_t) failed\n");
 
   fe->q = q;
   fe->dq = dq;
@@ -106,10 +106,9 @@ __host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
     fe_vt_t * vt;
     targetCalloc((void **) &fe->target, sizeof(fe_lc_t));
     targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&fe->target->param, tmp, sizeof(fe_lc_param_t *));
+    copyToTarget(&fe->target->param, &tmp, sizeof(fe_lc_param_t *));
     targetConstAddress((void **) &vt, fe_dvt);
     copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
-    assert(0); /* Requires a test */
   }
 
   *pobj = fe;
