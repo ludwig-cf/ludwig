@@ -19,6 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "leesedwards.h"
 #include "field_s.h"
 
@@ -31,6 +32,8 @@ static int do_test3(pe_t * pe);
 static int do_test5(pe_t * pe);
 static int do_test_io(pe_t * pe, int nf, int io_format);
 static int test_field_halo(field_t * phi);
+
+int do_test_device1(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -50,6 +53,7 @@ int test_field_suite(void) {
   do_test1(pe);
   do_test3(pe);
   do_test5(pe);
+  do_test_device1(pe);
 
   do_test_io(pe, 1, IO_FORMAT_ASCII);
   do_test_io(pe, 1, IO_FORMAT_BINARY);
@@ -77,7 +81,6 @@ static int do_test0(pe_t * pe) {
   int ntotal[3] = {8, 8, 8};
 
   cs_t * cs = NULL;
-  lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
@@ -86,16 +89,14 @@ static int do_test0(pe_t * pe) {
   cs_nhalo_set(cs, nhalo);
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nfref, "phi", &phi);
-  field_init(phi, nhalo);
+  field_create(pe, cs, nfref, "phi", &phi);
+  field_init(phi, nhalo, NULL);
 
   /* Halo */
   test_field_halo(phi);
 
   field_free(phi);
-  lees_edw_free(le);
   cs_free(cs);
 
   return 0;
@@ -119,7 +120,6 @@ int do_test1(pe_t * pe) {
   double value;
 
   cs_t * cs = NULL;
-  lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
@@ -127,15 +127,14 @@ int do_test1(pe_t * pe) {
   cs_create(pe, &cs);
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nfref, "phi", &phi);
+  field_create(pe, cs, nfref, "phi", &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
 
-  field_init(phi, nhalo);
+  field_init(phi, nhalo, NULL);
 
   ref = 1.0;
   field_scalar_set(phi, index, ref);
@@ -156,10 +155,67 @@ int do_test1(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  lees_edw_free(le);
   cs_free(cs);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_device1
+ *
+ *****************************************************************************/
+
+int do_test_device1(pe_t * pe) {
+
+  int nfref = 1;
+  int nf;
+  int nhalo = 2;
+  dim3 nblk, ntpb;
+
+  cs_t * cs = NULL;
+  field_t * phi = NULL;
+  __global__ void do_test_field_kernel1(field_t * phi);
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+
+  field_create(pe, cs, nfref, "phi", &phi);
+  assert(phi);
+
+  field_nf(phi, &nf);
+  assert(nf == nfref);
+
+  field_init(phi, nhalo, NULL);
+
+  kernel_launch_param(1, &nblk, &ntpb);
+  ntpb.x = 1;
+  __host_launch(do_test_field_kernel1, nblk, ntpb, phi->target);
+
+  field_free(phi);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_field_kernel1
+ *
+ *****************************************************************************/
+
+__global__ void do_test_field_kernel1(field_t * phi) {
+
+  int nf;
+
+  field_nf(phi, &nf);
+  assert(nf == 1);
+  assert(phi->nsites == 314432);
+
+  return;
 }
 
 /*****************************************************************************
@@ -181,7 +237,6 @@ static int do_test3(pe_t * pe) {
   double array[3];
 
   cs_t * cs = NULL;
-  lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
@@ -189,15 +244,14 @@ static int do_test3(pe_t * pe) {
   cs_create(pe, &cs);
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nfref, "p", &phi);
+  field_create(pe, cs, nfref, "p", &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
 
-  field_init(phi, nhalo);
+  field_init(phi, nhalo, NULL);
 
   field_vector_set(phi, index, ref);
   field_vector(phi, index, value);
@@ -214,7 +268,6 @@ static int do_test3(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  lees_edw_free(le);
   cs_free(cs);
 
   return 0;
@@ -239,7 +292,6 @@ static int do_test5(pe_t * pe) {
   double array[NQAB];
 
   cs_t * cs = NULL;
-  lees_edw_t * le = NULL;
   field_t * phi = NULL;
 
   assert(pe);
@@ -247,15 +299,14 @@ static int do_test5(pe_t * pe) {
   cs_create(pe, &cs);
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nfref, "q", &phi);
+  field_create(pe, cs, nfref, "q", &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
 
-  field_init(phi, nhalo);
+  field_init(phi, nhalo, NULL);
 
   field_tensor_set(phi, index, qref);
   field_tensor(phi, index, qvalue);
@@ -282,7 +333,6 @@ static int do_test5(pe_t * pe) {
   test_field_halo(phi);
 
   field_free(phi);
-  lees_edw_free(le);
   cs_free(cs);
 
   return 0;
@@ -319,21 +369,20 @@ static int test_field_halo(field_t * phi) {
 static int do_test_io(pe_t * pe, int nf, int io_format) {
 
   int grid[3] = {1, 1, 1};
+  int nhalo;
   const char * filename = "phi-test-io";
 
   MPI_Comm comm;
 
   cs_t * cs = NULL;
-  lees_edw_t * le = NULL;
   field_t * phi = NULL;
   io_info_t * iohandler = NULL;
 
   assert(pe);
 
-  /* SHIT remove pe_comm() etc */
   cs_create(pe, &cs);
   cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le);
+  cs_nhalo(cs, &nhalo);
 
   cs_cart_comm(cs, &comm);
 
@@ -343,9 +392,9 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
     grid[Z] = 2;
   }
 
-  field_create(nf, "phi-test", &phi);
+  field_create(pe, cs, nf, "phi-test", &phi);
   assert(phi);
-  field_init(phi, coords_nhalo());
+  field_init(phi, nhalo, NULL);
   field_init_io_info(phi, grid, io_format, io_format); 
 
   test_coords_field_set(nf, phi->data, MPI_DOUBLE, test_ref_double1);
@@ -357,8 +406,8 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   field_free(phi);
   MPI_Barrier(comm);
 
-  field_create(nf, "phi-test", &phi);
-  field_init(phi, coords_nhalo());
+  field_create(pe, cs, nf, "phi-test", &phi);
+  field_init(phi, nhalo, NULL);
   field_init_io_info(phi, grid, io_format, io_format);
 
   field_io_info(phi, &iohandler);
@@ -373,7 +422,6 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   io_remove_metadata(iohandler, "phi-test");
 
   field_free(phi);
-  lees_edw_free(le);
   cs_free(cs);
 
   return 0;

@@ -25,7 +25,7 @@
 #include "fe_electro_symmetric.h"
 #include "tests.h"
 
-static int do_test1(void);
+static int do_test1(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -36,19 +36,11 @@ static int do_test1(void);
 int test_fe_electro_symm_suite(void) {
 
   pe_t * pe = NULL;
-  cs_t * cs = NULL;
-  lees_edw_t * le = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  cs_create(pe, &cs);
-  cs_nhalo_set(cs, 2);
-  cs_init(cs);
-  lees_edw_create(pe, cs, NULL, &le); /* SHIT Only to get past phi init */
 
-  do_test1();
+  do_test1(pe);
 
-  lees_edw_free(le);
-  cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_fe_electro_symm\n");
   pe_free(pe);
 
@@ -61,7 +53,7 @@ int test_fe_electro_symm_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test1(void) {
+static int do_test1(pe_t * pe) {
 
   int nk = 2;
   int index = 1;
@@ -75,6 +67,7 @@ static int do_test1(void) {
   double eps_test, eps_expect;
   double phi0;
 
+  cs_t * cs = NULL;
   psi_t * psi = NULL;
   field_t * phi = NULL;
   field_grad_t * dphi = NULL;
@@ -82,13 +75,19 @@ static int do_test1(void) {
   fe_electro_t * fe_elec = NULL;
   fe_es_t * fe = NULL;
 
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, 2);
+  cs_init(cs);
+
   psi_create(nk, &psi);
   assert(psi);
   fe_electro_create(psi, &fe_elec);
 
-  field_create(1, "phi", &phi);
+  field_create(pe, cs, 1, "phi", &phi);
   assert(phi);
-  field_init(phi, 1);
+  field_init(phi, 1, NULL);
 
   field_grad_create(phi, 2, &dphi);
   assert(dphi);
@@ -138,6 +137,7 @@ static int do_test1(void) {
   field_grad_free(dphi);
   field_free(phi);
   psi_free(psi);
+  cs_free(cs);
 
   return 0;
 }

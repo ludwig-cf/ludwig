@@ -69,8 +69,8 @@ int test_polar_active_suite(void) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nf, "p", &fp);
-  field_init(fp, nhalo);
+  field_create(pe, cs, nf, "p", &fp);
+  field_init(fp, nhalo, le);
   field_grad_create(fp, 2, &fpgrad);
   field_grad_set(fpgrad, grad_2d_5pt_fluid_d2, NULL);
 

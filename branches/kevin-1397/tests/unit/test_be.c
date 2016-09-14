@@ -63,7 +63,7 @@ static int do_test_be1(void) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le); /* SHIT not required*/
 
-  beris_edw_create(&be);
+  beris_edw_create(pe, le, &be);
   assert(be);
 
   beris_edw_free(be);

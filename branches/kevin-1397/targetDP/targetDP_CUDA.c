@@ -1234,8 +1234,20 @@ __targetHost__ void checkTargetError(const char *msg)
 
 __host__ int target_thread_info(void) {
 
+  int mydevice;
+  struct cudaDeviceProp prop;
+  cudaError_t ifail;
+
+  cudaGetDevice(&mydevice);
+  ifail = cudaGetDeviceProperties(&prop, mydevice);
+  if (ifail != cudaSuccess) printf("FAIL!\n");
+
   printf("Thread implementation: CUDA x blocks; %d threads per block\n",
 	 CUDA_MAX_THREADS_PER_BLOCK);
+
+  printf("DeviceMaxThreadsPerBLock %d\n", prop.maxThreadsPerBlock);
+  printf("Max blocks %d %d %d\n",
+	 prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
 
   return 0;
 }

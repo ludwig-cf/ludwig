@@ -37,10 +37,4 @@ struct field_grad_s {
   int (* dab) (field_grad_t * fgrad);
 };
 
-
-/* Commpressed symmetric rank 2 tensor */
-
-#define addr_dab(index, ia) addr_rank1(le_nsites(), NSYMM, index, ia)
-#define mem_addr_dab(index, ia) mem_addr_rank1(le_nsites(), NSYMM, index, ia)
-
 #endif

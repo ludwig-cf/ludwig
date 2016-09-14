@@ -132,6 +132,57 @@ static int field_grad_init(field_grad_t * obj) {
 
 /*****************************************************************************
  *
+ *  field_grad_memcpy
+ *
+ *  ONLY grad and delsq at the moment.
+ *
+ *****************************************************************************/
+
+__host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
+
+  int ndevice;
+  int nsz;
+  double * tmp;
+
+  assert(obj);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(obj->target == obj);
+  }
+  else {
+
+    nsz = obj->nf*obj->nsite*sizeof(double);
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
+      copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+
+      copyFromTarget(&tmp, &obj->target->grad, sizeof(double *));
+      copyToTarget(tmp, obj->grad, NVECTOR*nsz);
+      copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *));
+      copyToTarget(tmp, obj->delsq, nsz);
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(&tmp, &obj->target->grad, sizeof(double *));
+      copyFromTarget(obj->grad, tmp, NVECTOR*nsz);
+      copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *));
+      copyFromTarget(obj->delsq, tmp, nsz);
+      break;
+    default:
+      fatal("Bad flag in field_memcpy\n");
+      break;
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  field_grad_set
  *
  *****************************************************************************/

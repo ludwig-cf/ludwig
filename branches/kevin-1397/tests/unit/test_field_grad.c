@@ -22,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "field_s.h"
 #include "field_grad_s.h"
 #include "tests.h"
 
@@ -86,9 +87,9 @@ int do_test1(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nfref, "scalar-field-test", &field);
+  field_create(pe, cs, nfref, "scalar-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 4, &gradient);
   assert(gradient);
@@ -143,9 +144,9 @@ static int do_test3(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nf, "vector-field-test", &field);
+  field_create(pe, cs, nf, "vector-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 4, &gradient);
   assert(gradient);
@@ -196,9 +197,9 @@ static int do_test5(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nf, "tensor-field-test", &field);
+  field_create(pe, cs, nf, "tensor-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 4, &gradient);
   assert(gradient);
@@ -261,9 +262,9 @@ int do_test_dab(pe_t * pe) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nf, "dab-field-test", &field);
+  field_create(pe, cs, nf, "dab-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 3, &gradient);
   assert(gradient);
@@ -310,7 +311,7 @@ static int test_d2(field_grad_t * fg) {
   assert(fg);
 
   field_nf(fg->field, &nf);
-  nsites = le_nsites();
+  nsites = fg->field->nsites;
 
   for (n = 0; n < nf; n++) {
     fg->grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD, nf, X, n);
@@ -375,22 +376,23 @@ static double test_encode(int code, int nf, int iv, int n) {
 
 static int test_dab(field_grad_t * fg) {
 
-  int n, nf;
+  int n, nf, ns;
   int index = 1;
 
   assert(fg);
 
   field_nf(fg->field, &nf);
+  ns = fg->field->nsites;
 
   assert(nf == 1);
 
   for (n = 0; n < nf; n++) {
-    fg->d_ab[mem_addr_dab(index, XX)] = test_encode(ENCODE_DAB, nf, XX, n);
-    fg->d_ab[mem_addr_dab(index, XY)] = test_encode(ENCODE_DAB, nf, XY, n);
-    fg->d_ab[mem_addr_dab(index, XZ)] = test_encode(ENCODE_DAB, nf, XZ, n);
-    fg->d_ab[mem_addr_dab(index, YY)] = test_encode(ENCODE_DAB, nf, YY, n);
-    fg->d_ab[mem_addr_dab(index, YZ)] = test_encode(ENCODE_DAB, nf, YZ, n);
-    fg->d_ab[mem_addr_dab(index, ZZ)] = test_encode(ENCODE_DAB, nf, ZZ, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,XX)] = test_encode(ENCODE_DAB, nf, XX, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,XY)] = test_encode(ENCODE_DAB, nf, XY, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,XZ)] = test_encode(ENCODE_DAB, nf, XZ, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,YY)] = test_encode(ENCODE_DAB, nf, YY, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,YZ)] = test_encode(ENCODE_DAB, nf, YZ, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,ZZ)] = test_encode(ENCODE_DAB, nf, ZZ, n);
   }
 
   return 0;
