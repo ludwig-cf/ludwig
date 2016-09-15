@@ -37,6 +37,9 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * coords, lees_edw_info_t * info,
 			     lees_edw_t ** le);
 __host__ int lees_edw_free(lees_edw_t * le);
 __host__ int lees_edw_retain(lees_edw_t * le);
+__host__ int lees_edw_commit(lees_edw_t * le);
+__host__ int lees_edw_target(lees_edw_t * le, lees_edw_t ** target);
+
 __host__ int lees_edw_info(lees_edw_t * le);
 __host__ int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm);
 __host__ int lees_edw_plane_comm(lees_edw_t * le, MPI_Comm * comm);
