@@ -58,7 +58,8 @@ __global__
 void advection_3rd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux, 
 			    hydro_t * hydro, field_t * field);
 __global__
-void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
+void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
+			       advflux_t * flux,
 			       hydro_t * hydro, field_t * field);
 
 
@@ -559,6 +560,7 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
   dim3 nblk, ntpb;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
+  lees_edw_t * letarget = NULL;
 
   assert(flux);
   assert(hydro);
@@ -575,8 +577,9 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   if (flux->le) {
+    lees_edw_target(flux->le, &letarget);
     __host_launch(advection_le_3rd_kernel_v, nblk, ntpb, ctxt->target,
-		  flux->target, hydro->target, field->target);
+		  letarget, flux->target, hydro->target, field->target);
   }
   else {
     __host_launch(advection_3rd_kernel_v, nblk, ntpb, ctxt->target,
@@ -604,210 +607,193 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
  *****************************************************************************/
 
 __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
-					  advflux_t * flux,
+					  lees_edw_t * le,
+					  advflux_t * flux, 
 					  hydro_t * hydro,
-					  field_t * field) {
-
+					  field_t * fld) {
   int kindex;
   __shared__ int kiter;
 
   assert(ktx);
+  assert(le);
   assert(flux);
   assert(hydro);
-  assert(field);
+  assert(f);
 
   kiter = kernel_vector_iterations(ktx);
 
   __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
 
-    int ia, iv;
-    int n, nf, nsites;
+    int ia, iv, n;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
     int maskv[NSIMDVL];
-    int index0[NSIMDVL], index1[NSIMDVL], index2[NSIMDVL];
-    int icm2[NSIMDVL], icm1[NSIMDVL], icp1[NSIMDVL], icp2[NSIMDVL];
+    int index0[NSIMDVL], index1[NSIMDVL], index2[NSIMDVL], index3[NSIMDVL];
+    int m2[NSIMDVL], m1[NSIMDVL], p1[NSIMDVL], p2[NSIMDVL];
     double u0[3][NSIMDVL], u1[3][NSIMDVL], u[NSIMDVL];
 
     double fd1[NSIMDVL];
     double fd2[NSIMDVL];
-    lees_edw_t * le = NULL;
-
+    double fd3[NSIMDVL];
+    
     const double a1 = -0.213933;
     const double a2 =  0.927865;
     const double a3 =  0.286067;
-
-    nf = field->nf;
-    nsites = field->nsites;
-    le = flux->le;
 
     kernel_coords_v(ktx, kindex, ic, jc, kc);
     kernel_coords_index_v(ktx, ic, jc, kc, index0);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    for (ia = 0; ia < 3; ia++) {
+    for (ia = 0; ia < NHDIM; ia++) {
       __targetILP__(iv) {
 	u0[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index0[iv],ia)];
       }
     }
 
-    /* west face (icm1 and ic) */
+    /* Flux at west face (between icm1 and ic) */
 
-#ifdef __NVCC__
-    __targetILP__(iv) icm2[iv] = ic[iv]-2;
-    __targetILP__(iv) icm1[iv] = ic[iv]-1;
-    __targetILP__(iv) icp1[iv] = ic[iv]+1;
-    __targetILP__(iv) icp2[iv] = ic[iv]+2;
-#else
-    /* enable LE planes (not yet supported for CUDA) */
-    __targetILP__(iv) icm2[iv] = lees_edw_index_real_to_buffer(le, ic[iv], -2);
-    __targetILP__(iv) icm1[iv] = lees_edw_index_real_to_buffer(le, ic[iv], -1);
-    __targetILP__(iv) icp1[iv] = lees_edw_index_real_to_buffer(le, ic[iv], +1);
-    __targetILP__(iv) icp2[iv] = lees_edw_index_real_to_buffer(le, ic[iv], +2);
-#endif
+    __targetILP__(iv) m2[iv] = lees_edw_ic_to_buff(le, ic[iv], -2*maskv[iv]);
+    __targetILP__(iv) m1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1*maskv[iv]);
+    __targetILP__(iv) p1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1*maskv[iv]);
+    __targetILP__(iv) p2[iv] = lees_edw_ic_to_buff(le, ic[iv], +2*maskv[iv]);
 
-    kernel_coords_index_v(ktx, icm1, jc, kc, index1);
+    lees_edw_index_v(le, m2, jc, kc, index2);
+    lees_edw_index_v(le, m1, jc, kc, index1);
+    lees_edw_index_v(le, p1, jc, kc, index3);
 
-    /* MAY WANT TO RE_INSTATE ia LOOP to get missing vector loads */
-    __targetILP__(iv) {
-      if (maskv[iv]) {
-	u1[X][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],X)];
+    for (ia = 0; ia < NHDIM; ia++) {
+      __targetILP__(iv) {
+	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
+    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
 
-    for (n = 0; n < nf; n++) {
+    for (n = 0; n < fld->nf; n++) {
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  if (u[iv] > 0.0) {
-	    index2[iv] = lees_edw_index(le, icm2[iv], jc[iv], kc[iv]);
-	    fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	    fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  }
-	  else {
-	    index2[iv] = lees_edw_index(le, icp1[iv], jc[iv], kc[iv]);
-	    fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	    fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  }
+	if (u[iv] > 0.0) {
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
+	}
+	else {
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index3[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
 	}
       }
-	
+
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  flux->fw[addr_rank1(flux->nsite, flux->nf,index0[iv],n)] =
-	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		   + a2*fd1[iv] + a3*fd2[iv]);
-	}
+	flux->fw[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
+	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
     }
 	
     /* east face (ic and icp1) */
 
-    kernel_coords_index_v(ktx, icp1, jc, kc, index1);
+    lees_edw_index_v(le, p2, jc, kc, index2);
 
-    for (ia = 0; ia < 3; ia++) {
+    for (ia = 0; ia < NHDIM; ia++) {
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
-	}
+	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index3[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*(u0[X][iv] + u1[X][iv]);
+    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
 
-    for (n = 0; n < nf; n++) {
+    for (n = 0; n < fld->nf; n++) {
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  if (u[iv] < 0.0) {
-	    index2[iv] = lees_edw_index(le, icp2[iv], jc[iv], kc[iv]);
-	    fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	    fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  }
-	  else {
-	    index2[iv] = lees_edw_index(le, icm1[iv], jc[iv], kc[iv]);
-	    fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	    fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  }
+	if (u[iv] < 0.0) {
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index3[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
+	}
+	else {
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index3[iv],n)];
 	}
       }
-	
+
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  flux->fe[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
-	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		   + a2*fd1[iv] + a3*fd2[iv]);
-	}
+	flux->fe[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
+	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }  
     }
 
 
     /* y direction: jc+1 or ignore */
-	
-    __targetILP__(iv) {
-      index1[iv] = lees_edw_index(le, ic[iv], jc[iv]+maskv[iv], kc[iv]);
+
+    __targetILP__(iv) m1[iv] = jc[iv] - 1*maskv[iv];
+    __targetILP__(iv) p1[iv] = jc[iv] + 1*maskv[iv];
+    __targetILP__(iv) p2[iv] = jc[iv] + 2*maskv[iv];
+
+    lees_edw_index_v(le, ic, m1, kc, index3);
+    lees_edw_index_v(le, ic, p1, kc, index1);
+    lees_edw_index_v(le, ic, p2, kc, index2);
+ 
+    for (ia = 0; ia < NHDIM; ia++) {
+      __targetILP__(iv) {
+	u1[ia][iv] = hydro->u[addr_rank1(fld->nsites,NHDIM,index1[iv],ia)];
+      }
     }
 
-    __targetILP__(iv) {
-      u1[Y][iv] = hydro->u[addr_rank1(nsites,NHDIM,index1[iv],Y)];
-    }
+    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[Y][iv] + u1[Y][iv]);
 
-    __targetILP__(iv) u[iv] = 0.5*(u0[Y][iv] + u1[Y][iv]);
-
-    for (n = 0; n < nf; n++) {
+    for (n = 0; n < fld->nf; n++) {
       __targetILP__(iv) {
 	if (u[iv] < 0.0) {
-	  index2[iv] = lees_edw_index(le, ic[iv], jc[iv]+2*maskv[iv], kc[iv]);
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
 	}
 	else {
-	  index2[iv] = lees_edw_index(le, ic[iv], jc[iv]-1*maskv[iv], kc[iv]);
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index3[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
 	}
       }
 
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  flux->fy[addr_rank1(nsites,nf,index0[iv],n)] =
-	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		   + a2*fd1[iv] + a3*fd2[iv]);
-	}
+	flux->fy[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
+	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
     }
 	
     /* z direction: kc+1 or ignore */
-	
-    __targetILP__(iv) {
-      index1[iv] = lees_edw_index(le, ic[iv], jc[iv], kc[iv]+maskv[iv]);
+
+    __targetILP__(iv) m1[iv] = kc[iv] - 1*maskv[iv];
+    __targetILP__(iv) p1[iv] = kc[iv] + 1*maskv[iv];
+    __targetILP__(iv) p2[iv] = kc[iv] + 2*maskv[iv];
+
+    lees_edw_index_v(le, ic, jc, m1, index3);
+    lees_edw_index_v(le, ic, jc, p1, index1);
+    lees_edw_index_v(le, ic, jc, p2, index2);
+
+    for (ia = 0; ia < NHDIM; ia++) {
+      __targetILP__(iv) {
+	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
+      }
     }
 
-    __targetILP__(iv) {
-      u1[Z][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],Z)];
-    }
+    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[Z][iv] + u1[Z][iv]);
 
-    __targetILP__(iv) u[iv] = 0.5*(u0[Z][iv] + u1[Z][iv]);
-
-    for (n = 0; n < nf; n++) {	    
+    for (n = 0; n < fld->nf; n++) {	    
       __targetILP__(iv) {
 	if (u[iv] < 0.0) {
-	  index2[iv] = lees_edw_index(le, ic[iv], jc[iv], kc[iv]+2*maskv[iv]);
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
 	}
 	else {
-	  index2[iv] = lees_edw_index(le, ic[iv], jc[iv], kc[iv]-1*maskv[iv]);
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index3[iv],n)];
+	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index0[iv],n)];
+	  fd3[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
 	}
       }
 
       __targetILP__(iv) {
-	if (maskv[iv]) {
-	  flux->fz[addr_rank1(nsites,nf,index0[iv],n)] =
-	    u[iv]*(a1*field->data[addr_rank1(nsites,nf,index2[iv],n)]
-		   + a2*fd1[iv] + a3*fd2[iv]);
-	}
+	flux->fz[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
+	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
     }
     /* Next sites */

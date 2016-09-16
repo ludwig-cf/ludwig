@@ -242,9 +242,7 @@ __host__ int beris_edw_update(beris_edw_t * be,
     advection_bcs_no_normal_flux(nf, be->flux, map);
   }
 
-  /* SHIT sort this out */
-  /* beris_edw_update_driver(be, fe, fq, fq_grad, hydro, map, noise);*/
-  beris_edw_update_host(be, fe, fq, hydro, be->flux, map, noise);
+  beris_edw_update_driver(be, fe, fq, fq_grad, hydro, map, noise);
 
   return 0;
 }

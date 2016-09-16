@@ -14,6 +14,7 @@
 #define LUDWIG_LEES_EDWARDS_H
 
 #include "pe.h"
+#include "memory.h"
 #include "runtime.h"
 #include "coords.h"
 #include "physics.h"
@@ -76,5 +77,10 @@ __host__ __device__ int lees_edw_steady_uy(lees_edw_t * le, int ic, double * uy)
 __host__ __device__ int lees_edw_plane_location(lees_edw_t * le, int plane);
 __host__ __device__ int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy);
 __host__ __device__ int lees_edw_block_uy(lees_edw_t * le, int , double * uy);
+
+__host__ __device__ int lees_edw_ic_to_buff(lees_edw_t * le, int ic, int di);
+__host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
+					  int jc[NSIMDVL], int kc[NSIMDVL],
+					  int index[NSIMDVL]);
 
 #endif

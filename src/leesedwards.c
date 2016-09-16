@@ -73,7 +73,6 @@ static int lees_edw_init_tables(lees_edw_t * le);
 static __constant__ lees_edw_param_t static_param;
 
 int lees_edw_icbuff_to_real(lees_edw_t * le, int ib);
-int lees_edw_icreal_to_buff(lees_edw_t * le, int ic, int di);
 int lees_edw_buffer_duy(lees_edw_t * le, int ib);
 
 /*****************************************************************************
@@ -807,7 +806,7 @@ int lees_edw_index_real_to_buffer(lees_edw_t * le,  int ic,  int idisplace) {
 
   assert(ib >= 0 && ib < le->param->index_real_nbuffer);
 
-  assert(le->icreal_to_buff[ib] == lees_edw_icreal_to_buff(le, ic, idisplace));
+  assert(le->icreal_to_buff[ib] == lees_edw_ic_to_buff(le, ic, idisplace));
   return le->icreal_to_buff[ib];
 }
 
@@ -992,6 +991,25 @@ int lees_edw_index(lees_edw_t * le, int ic, int jc, int kc) {
 	  le->param->str[Y]*(le->param->nhalo + jc - 1) +
 	  le->param->str[Z]*(le->param->nhalo + kc - 1));
 }
+
+/*****************************************************************************
+ *
+ *  lees_edw_index_v
+ *
+ *****************************************************************************/
+
+__host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
+					  int jc[NSIMDVL], int kc[NSIMDVL],
+					  int index[NSIMDVL]) {
+  int iv;
+  assert(le);
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    index[iv] = lees_edw_index(le, ic[iv], jc[iv], kc[iv]);
+  }
+
+  return;
+} 
 
 /*****************************************************************************
  *
@@ -1200,12 +1218,12 @@ __host__ int lees_edw_icbuff_to_real(lees_edw_t * le, int ib) {
 
 /******************************************************************************
  *
- *  lees_edw_icreal_to_buff
+ *  lees_edw_ic_to_buff
  *
  ******************************************************************************/
 
 __host__ __device__
-int lees_edw_icreal_to_buff(lees_edw_t * le, int ic, int di) {
+int lees_edw_ic_to_buff(lees_edw_t * le, int ic, int di) {
 
   int ib;
   int p, ip;
