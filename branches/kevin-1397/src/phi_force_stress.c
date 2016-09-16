@@ -165,7 +165,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
-  __host_launch(pth_kernel, nblk, ntpb, ctxt->target,
+  __host_launch(pth_kernel_v, nblk, ntpb, ctxt->target,
 		pth->target, fe_target);
 
   targetDeviceSynchronise();
