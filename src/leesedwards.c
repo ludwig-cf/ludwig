@@ -72,8 +72,8 @@ static int lees_edw_init_tables(lees_edw_t * le);
 
 static __constant__ lees_edw_param_t static_param;
 
-int lees_edw_icbuff_to_real(lees_edw_t * le, int ib);
-int lees_edw_buffer_duy(lees_edw_t * le, int ib);
+__host__ __device__ int lees_edw_ibuff_to_real(lees_edw_t * le, int ib);
+__host__ __device__ int lees_edw_buffer_duy(lees_edw_t * le, int ib);
 
 /*****************************************************************************
  *
@@ -826,7 +826,7 @@ int lees_edw_index_buffer_to_real(lees_edw_t * le, int ib) {
   assert(le->icbuff_to_real);
   assert(ib >=0 && ib < le->param->nxbuffer);
 
-  assert(le->icbuff_to_real[ib] == lees_edw_icbuff_to_real(le, ib));
+  assert(le->icbuff_to_real[ib] == lees_edw_ibuff_to_real(le, ib));
   return le->icbuff_to_real[ib];
 }
 
@@ -1196,11 +1196,11 @@ __host__ int lees_edw_buffer_du(lees_edw_t * le, int ib, double ule[3]) {
 
 /*****************************************************************************
  *
- *  lees_edw_icbuff_to_real
+ *  lees_edw_ic_to_real
  *
  *****************************************************************************/
 
-__host__ int lees_edw_icbuff_to_real(lees_edw_t * le, int ib) {
+__host__ __device__ int lees_edw_ibuff_to_real(lees_edw_t * le, int ib) {
 
   int ic;
   int p;

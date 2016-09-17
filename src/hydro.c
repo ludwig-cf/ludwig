@@ -374,11 +374,11 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
 __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
 
   dim3 nblk, ntpb;
-  double * u;
+  double * u = NULL;
 
   assert(obj);
 
-  copyFromTarget(&u, &obj->target->u, sizeof(double *)); 
+  copyFromTarget(&u, &obj->target->u, sizeof(double *));
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
   __host_launch(hydro_field_set, nblk, ntpb, obj->target, u, uzero);
