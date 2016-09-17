@@ -618,7 +618,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
   assert(le);
   assert(flux);
   assert(hydro);
-  assert(f);
+  assert(fld);
 
   kiter = kernel_vector_iterations(ktx);
 
