@@ -39,8 +39,8 @@ static fe_vt_t fe_drop_hvt = {
   (fe_str_ft)       fe_lc_droplet_stress,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_droplet_mol_field,
-  (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  NULL
+  (fe_htensor_v_ft) fe_lc_droplet_mol_field_v,
+  (fe_stress_v_ft)  fe_lc_droplet_stress_v
 };
 
 static __constant__ fe_vt_t fe_drop_dvt = {
@@ -52,8 +52,8 @@ static __constant__ fe_vt_t fe_drop_dvt = {
   (fe_str_ft)       fe_lc_droplet_stress,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_droplet_mol_field,
-  (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  NULL
+  (fe_htensor_v_ft) fe_lc_droplet_mol_field_v,
+  (fe_stress_v_ft)  fe_lc_droplet_stress_v
 };
 
 __host__ __device__
@@ -290,6 +290,35 @@ __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
 
 /*****************************************************************************
  *
+ *  fe_lc_droplet_mol_field_v
+ *
+ *  Vectorisation needs attention.
+ *
+ *****************************************************************************/
+
+__host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
+						   int index,
+						   double h[3][3][NSIMDVL]) {
+  int ia, ib, iv;
+  double h1[3][3];
+
+  assert(fe);
+  assert(0); /* Pending resolution of fe interface issue */
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_lc_droplet_mol_field(fe, index+iv, h1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	h[ia][ib][iv] = h1[ia][ib];
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  fe_lc_droplet_anchoring_h
  *
  *  Return the molcular field h[3][3] at lattice site index.
@@ -426,6 +455,33 @@ __host__ __device__ int fe_lc_droplet_stress(fe_lc_droplet_t * fe,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  fe_lc_droplet_stress_v
+ *
+ *  Vectorisation needs attention with called routines.
+ *
+ *****************************************************************************/
+
+__host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
+						int index,
+						double sth[3][3][NSIMDVL]) {
+  int ia, ib, iv;
+  double s1[3][3];
+  double s2[3][3];
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_lc_droplet_symmetric_stress(fe, index+iv, s1);
+    fe_lc_droplet_antisymmetric_stress(fe, index+iv, s2);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib][iv] = s1[ia][ib] + s2[ia][ib];
+      }
+    }
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -617,8 +673,8 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
   ys = (nlocal[Z] + 2*nhalo)*zs;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {

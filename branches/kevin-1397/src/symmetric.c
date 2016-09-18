@@ -48,7 +48,8 @@ static fe_vt_t fe_symm_hvt = {
   (fe_str_ft)       fe_symm_str,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_symm_str_v
 };
 
 static  __constant__ fe_vt_t fe_symm_dvt = {
@@ -60,7 +61,8 @@ static  __constant__ fe_vt_t fe_symm_dvt = {
   (fe_str_ft)       fe_symm_str,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_symm_str_v
 };
 
 /****************************************************************************
@@ -336,15 +338,13 @@ int fe_symm_str(fe_symm_t * fe, int index,  double s[3][3]) {
 
 /*****************************************************************************
  *
- *  fe_symm_chemical_stress_target
- *
- *  SHIT: to be s[3][3][NSIMDVL]
+ *  fe_symm_str_v
  *
  *****************************************************************************/
 
-__target__
-void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
-				    double s[3][3*NSIMDVL]) {
+__host__ __device__
+void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
+
   int ia, ib;
   int iv;
   double a;
@@ -376,7 +376,7 @@ void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ib*NSIMDVL+iv] = p0*d[ia][ib] + kappa*grad[ia]*grad[ib];
+	s[ia][ib][iv] = p0*d[ia][ib] + kappa*grad[ia]*grad[ib];
       }
     }
   }

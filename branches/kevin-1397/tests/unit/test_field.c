@@ -194,6 +194,7 @@ int do_test_device1(pe_t * pe) {
   kernel_launch_param(1, &nblk, &ntpb);
   ntpb.x = 1;
   __host_launch(do_test_field_kernel1, nblk, ntpb, phi->target);
+  targetDeviceSynchronise();
 
   field_free(phi);
   cs_free(cs);
@@ -210,10 +211,19 @@ int do_test_device1(pe_t * pe) {
 __global__ void do_test_field_kernel1(field_t * phi) {
 
   int nf;
+  int index = 1;
+  double q;
+  double qref = 1.2;
+
+  assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == 1);
   assert(phi->nsites == 314432);
+
+  field_scalar_set(phi, index, qref);
+  field_scalar(phi, index, &q);
+  assert(fabs(q - qref) < DBL_EPSILON);
 
   return;
 }

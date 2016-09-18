@@ -51,5 +51,7 @@ __host__ __device__ int fe_brazovskii_mu(fe_brazovskii_t * fe, int index,
 					 double * mu);
 __host__ __device__ int fe_brazovskii_str(fe_brazovskii_t * fe, int index,
 					  double s[3][3]);
+__host__ __device__ void fe_brazovskii_str_v(fe_brazovskii_t * fe, int index,
+					     double s[3][3][NSIMDVL]);
 
 #endif

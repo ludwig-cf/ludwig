@@ -169,13 +169,15 @@ __host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   int nlocal[3];
   int xs, ys, zs;
   dim3 nblk, ntpb;
+  lees_edw_t * letarget = NULL;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
   assert(le);
 
-  coords_nlocal(nlocal);
-  coords_strides(&xs, &ys, &zs);
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_strides(le, &xs, &ys, &zs);
+  lees_edw_target(le, &letarget);
 
   limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
@@ -187,7 +189,7 @@ __host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
   __host_launch(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, ctxt->target,
-		fg->field->nf, ys, le, fg->field->target, fg->target);
+		fg->field->nf, ys, letarget, fg->field->target, fg->target);
   targetDeviceSynchronise();
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);
@@ -238,8 +240,8 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
     index = kernel_baseindex(ktx, kindex);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    __targetILP__(iv) im1[iv] = lees_edw_index_real_to_buffer(le, ic[iv], -1);
-    __targetILP__(iv) ip1[iv] = lees_edw_index_real_to_buffer(le, ic[iv], +1);
+    __targetILP__(iv) im1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1);
+    __targetILP__(iv) ip1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1);
 
     kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
     kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
@@ -337,9 +339,9 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
-      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
+      ic0 = lees_edw_ic_to_buff(le, ic, nh-1);
+      ic1 = lees_edw_ic_to_buff(le, ic, nh  );
+      ic2 = lees_edw_ic_to_buff(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
@@ -375,9 +377,9 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
-      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
+      ic2 = lees_edw_ic_to_buff(le, ic, -nh+1);
+      ic1 = lees_edw_ic_to_buff(le, ic, -nh  );
+      ic0 = lees_edw_ic_to_buff(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
@@ -569,8 +571,8 @@ __host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df) {
   dab = df->d_ab;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
@@ -653,9 +655,9 @@ __host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
-      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
+      ic0 = lees_edw_ic_to_buff(le, ic, nh-1);
+      ic1 = lees_edw_ic_to_buff(le, ic, nh  );
+      ic2 = lees_edw_ic_to_buff(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
@@ -699,9 +701,9 @@ __host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
-      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
+      ic2 = lees_edw_ic_to_buff(le, ic, -nh+1);
+      ic1 = lees_edw_ic_to_buff(le, ic, -nh  );
+      ic0 = lees_edw_ic_to_buff(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {

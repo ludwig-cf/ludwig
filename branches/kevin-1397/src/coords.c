@@ -1125,17 +1125,3 @@ __host__ int coords_strides(int * xs, int * ys, int * zs) {
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  coords_nall
- *
- *****************************************************************************/
-
-__host__ int coords_nall(int nall[3]) {
-
-  assert(stat_ref);
-  cs_nall(stat_ref, nall);
-
-  return 0;
-}

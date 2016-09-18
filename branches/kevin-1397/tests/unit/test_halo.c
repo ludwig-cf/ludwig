@@ -26,8 +26,8 @@
 #include "tests.h"
 
 int do_test_const_blocks(void);
-int do_test_halo_null(lb_halo_enum_t halo);
-int do_test_halo(int dim, const lb_halo_enum_t halo);
+int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo);
+int do_test_halo(pe_t * pe, cs_t * cs, int dim, const lb_halo_enum_t halo);
 
 /*****************************************************************************
  *
@@ -46,17 +46,17 @@ int test_halo_suite(void) {
 
   do_test_const_blocks();
 
-  do_test_halo_null(LB_HALO_FULL);
-  do_test_halo_null(LB_HALO_REDUCED);
+  do_test_halo_null(pe, cs, LB_HALO_FULL);
+  do_test_halo_null(pe, cs, LB_HALO_REDUCED);
 
-  do_test_halo(X, LB_HALO_FULL);
-  do_test_halo(Y, LB_HALO_FULL);
-  do_test_halo(Z, LB_HALO_FULL);
+  do_test_halo(pe, cs, X, LB_HALO_FULL);
+  do_test_halo(pe, cs, Y, LB_HALO_FULL);
+  do_test_halo(pe, cs, Z, LB_HALO_FULL);
 
-  if (pe_size() == 1) {
-    do_test_halo(X, LB_HALO_REDUCED);
-    do_test_halo(Y, LB_HALO_REDUCED);
-    do_test_halo(Z, LB_HALO_REDUCED);
+  if (pe_mpi_size(pe) == 1) {
+    do_test_halo(pe, cs, X, LB_HALO_REDUCED);
+    do_test_halo(pe, cs, Y, LB_HALO_REDUCED);
+    do_test_halo(pe, cs, Z, LB_HALO_REDUCED);
   }
 
 
@@ -104,7 +104,7 @@ int do_test_const_blocks(void) {
  *
  *****************************************************************************/
 
-int do_test_halo_null(lb_halo_enum_t halo) {
+int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   int nlocal[3], n[3];
   int index, nd, p;
@@ -116,14 +116,17 @@ int do_test_halo_null(lb_halo_enum_t halo) {
   MPI_Comm comm = MPI_COMM_WORLD;
   lb_t * lb = NULL;
 
+  assert(pe);
+  assert(cs);
+
   MPI_Comm_rank(comm, &rank);
 
-  lb_create(&lb);
+  lb_create(pe, cs, &lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
   lb_halo_set(lb, halo);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   /* Set entire distribution (all sites including halos) to 1.0 */
 
@@ -131,7 +134,7 @@ int do_test_halo_null(lb_halo_enum_t halo) {
     for (n[Y] = 1 - nextra; n[Y] <= nlocal[Y] + nextra; n[Y]++) {
       for (n[Z] = 1 - nextra; n[Z] <= nlocal[Z] + nextra; n[Z]++) {
 
-	index = coords_index(n[X], n[Y], n[Z]);
+	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -149,7 +152,7 @@ int do_test_halo_null(lb_halo_enum_t halo) {
     for (n[Y] = 1; n[Y] <= nlocal[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= nlocal[Z]; n[Z]++) {
 
-	index = coords_index(n[X], n[Y], n[Z]);
+	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -171,7 +174,7 @@ int do_test_halo_null(lb_halo_enum_t halo) {
     for (n[Y] = 1; n[Y] <= nlocal[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= nlocal[Z]; n[Z]++) {
 
-	index = coords_index(n[X], n[Y], n[Z]);
+	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -202,7 +205,7 @@ int do_test_halo_null(lb_halo_enum_t halo) {
  *
  *****************************************************************************/
 
-int do_test_halo(int dim, lb_halo_enum_t halo) {
+int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
   int nhalo;
   int nlocal[3], n[3];
@@ -216,19 +219,21 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
   double f_expect, f_actual;
   lb_t * lb = NULL;
 
-  test_assert(dim == X || dim == Y || dim == Z);
+  assert(pe);
+  assert(cs);
+  assert(dim == X || dim == Y || dim == Z);
 
 
-  lb_create(&lb);
+  lb_create(pe, cs, &lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
   lb_halo_set(lb, halo);
 
-  nhalo = coords_nhalo();
+  cs_nhalo(cs, &nhalo);
   nextra = nhalo;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, offset);
 
   /* Zero entire distribution (all sites including halos) */
 
@@ -236,7 +241,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
     for (n[Y] = 1 - nextra; n[Y] <= nlocal[Y] + nextra; n[Y]++) {
       for (n[Z] = 1 - nextra; n[Z] <= nlocal[Z] + nextra; n[Z]++) {
 
-	index = coords_index(n[X], n[Y], n[Z]);
+	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -255,7 +260,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
     for (n[Y] = 1; n[Y] <= nlocal[Y]; n[Y]++) {
       for (n[Z] = 1; n[Z] <= nlocal[Z]; n[Z]++) {
 
-	index = coords_index(n[X], n[Y], n[Z]);
+	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	if (n[X] <= nhalo || n[X] > nlocal[X] - nhalo ||
 	    n[Y] <= nhalo || n[Y] > nlocal[Y] - nhalo ||
@@ -287,7 +292,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
     for (n[Y] = 0; n[Y] <= nlocal[Y] + 1; n[Y]++) {
       for (n[Z] = 0; n[Z] <= nlocal[Z] + 1; n[Z]++) {
 
-	index = coords_index(n[X], n[Y], n[Z]);
+	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (d = 0; d < 3; d++) {
@@ -335,7 +340,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
       for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
 
 	/* left hand edge */
-	index = coords_index(0, jc, kc);
+	index = cs_index(cs, 0, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -351,7 +356,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
 
 	  /* right hand edge */
 	  ic = nlocal[X] + 1;
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(cs, ic, jc, kc);
 
 	  for (p = 0; p < NVEL; p++) {
 	    lb_f(lb, index, p, nd, &f_actual);
@@ -378,7 +383,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
       for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
 
 	/* left hand edge */
-	index = coords_index(ic, 0, kc);
+	index = cs_index(cs, ic, 0, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -393,7 +398,7 @@ int do_test_halo(int dim, lb_halo_enum_t halo) {
 
 	  /* right hand edge */
 	  jc = nlocal[Y] + 1;
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(cs, ic, jc, kc);
 
 	  for (p = 0; p < NVEL; p++) {
 	    lb_f(lb, index, p, nd, &f_actual);

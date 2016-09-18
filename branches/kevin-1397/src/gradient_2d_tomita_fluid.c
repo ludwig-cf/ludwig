@@ -148,8 +148,8 @@ __host__ int grad_2d_tomita_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   del2 = fg->delsq;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 
       index = lees_edw_index(le, ic, jc, 1);
@@ -234,9 +234,9 @@ __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
-      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
+      ic0 = lees_edw_ic_to_buff(le, ic, nh-1);
+      ic1 = lees_edw_ic_to_buff(le, ic, nh  );
+      ic2 = lees_edw_ic_to_buff(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	indexm1 = lees_edw_index(le, ic0, jc, 1);
@@ -274,9 +274,9 @@ __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
-      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
+      ic2 = lees_edw_ic_to_buff(le, ic, -nh+1);
+      ic1 = lees_edw_ic_to_buff(le, ic, -nh  );
+      ic0 = lees_edw_ic_to_buff(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	indexm1 = lees_edw_index(le, ic0, jc, 1);

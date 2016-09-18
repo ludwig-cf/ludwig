@@ -109,6 +109,9 @@ __host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
     copyToTarget(&fe->target->param, &tmp, sizeof(fe_lc_param_t *));
     targetConstAddress((void **) &vt, fe_dvt);
     copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
+
+    copyToTarget(&fe->target->q, &q->target, sizeof(field_t *));
+    copyToTarget(&fe->target->dq, &dq->target, sizeof(field_grad_t *));
   }
 
   *pobj = fe;
@@ -376,6 +379,8 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
   double dsq[3][3];
 
   assert(fe);
+  assert(fe->q);
+  assert(fe->dq);
 
   field_tensor(fe->q, index, q);
   field_grad_tensor_grad(fe->dq, index, dq);

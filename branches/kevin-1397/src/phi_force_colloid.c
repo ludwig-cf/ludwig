@@ -219,9 +219,9 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
       }
 
       /* update the colloid force using the relavent part of the potential */
-	for (ia = 0; ia < 3; ia++) {
-	  pc->force[ia] += fac*pth->str[addr_rank2(pth->nsites,3,3,p_link->i,ia,idir)];
-	}
+      for (ia = 0; ia < 3; ia++) {
+	pc->force[ia] += fac*pth->str[addr_rank2(pth->nsites,3,3,p_link->i,ia,idir)];
+      }
 
     }
   }

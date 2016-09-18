@@ -70,7 +70,8 @@ static fe_vt_t fe_polar_hvt = {
   (fe_str_ft)       fe_polar_stress,
   (fe_hvector_ft)   fe_polar_mol_field,
   (fe_htensor_ft)   NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_polar_stress_v
 };
 
 static  __constant__ fe_vt_t fe_polar_dvt = {
@@ -82,7 +83,8 @@ static  __constant__ fe_vt_t fe_polar_dvt = {
   (fe_str_ft)       fe_polar_stress,
   (fe_hvector_ft)   fe_polar_mol_field,
   (fe_htensor_ft)   NULL,
-  (fe_htensor_v_ft) NULL
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_polar_stress_v
 };
 
 
@@ -324,6 +326,34 @@ int fe_polar_stress(fe_polar_t * fe, int index, double s[3][3]) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_stress_v
+ *
+ *  Requires optimisation.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+void fe_polar_stress_v(fe_polar_t * fe, int index, double s[3][3][NSIMDVL]) {
+
+  int ia, ib, iv;
+  double s1[3][3];
+
+  assert(fe);
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_polar_stress(fe, index+iv, s1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib][iv] = s1[ia][ib];
+      }
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************

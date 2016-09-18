@@ -21,14 +21,18 @@
 #include "halo_swap.h"
 #include "io_harness.h"
 
-extern __targetConst__ int tc_cv[NVEL][3];
-extern __targetConst__ int tc_ndist;
+extern __constant__ int tc_cv[NVEL][3];
+extern __constant__ int tc_ndist;
 
 struct lb_data_s {
 
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
   int model;             /* MODEL or MODEL_R */
+
+  pe_t * pe;             /* parallel environment */
+  cs_t * cs;             /* coordinate system */
+  halo_swap_t * halo;    /* halo swap driver */
   io_info_t * io_info; 
 
   double * f;            /* Distributions */
@@ -50,10 +54,7 @@ struct lb_data_s {
   MPI_Datatype site_y[2];
   MPI_Datatype site_z[2];
 
-  halo_swap_t * halo;
-
   lb_t * target;              /* copy of this structure on target */ 
-
 };
 
 /* Data storage: A rank two object */

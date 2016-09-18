@@ -20,6 +20,7 @@
 
 typedef struct advflux_s advflux_t;
 
+__host__ int advflux_create(cs_t * cs, lees_edw_t * le, int nf, advflux_t ** pobj);
 __host__ int advflux_cs_create(cs_t * cs, int nf, advflux_t **obj);
 __host__ int advflux_le_create(lees_edw_t * le, int nf, advflux_t ** pobj);
 __host__ int advflux_free(advflux_t * obj);

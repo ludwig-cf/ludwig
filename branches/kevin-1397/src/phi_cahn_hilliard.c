@@ -163,7 +163,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
-    hydro_lees_edwards(hydro); /* Repoistion to main ditto */
+    hydro_lees_edwards(hydro); /* Repoistion to main ditto */ 
     advection_bcs_wall(phi);
     advection_x(pch->flux, hydro, phi);
   }
@@ -214,7 +214,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   assert(fe);
   assert(fe->func->mu);
 
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(pch->le, nlocal);
   assert(coords_nhalo() >= 2);
   nsites = pch->flux->nsite;
 
@@ -222,8 +222,8 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   physics_mobility(phys, &mobility);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(pch->le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(pch->le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(pch->le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(pch->le, ic, +1);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
@@ -297,22 +297,22 @@ static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fesymm) {
   assert(fesymm);
   assert(fesymm->func->mu);
 
-  nhalo = coords_nhalo();
+  lees_edw_nhalo(pch->le, &nhalo);
   nsites = pch->flux->nsite;
 
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(pch->le, nlocal);
   assert(nhalo >= 3);
 
   physics_ref(&phys);
   physics_mobility(phys, &mobility);
 
-  coords_strides(&xs, &ys, &zs);
+  lees_edw_strides(pch->le, &xs, &ys, &zs);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = lees_edw_index(pch->le, ic, jc, kc);
 	fesymm->func->mu(fesymm, index0 - 2*xs, &mum2);
 	fesymm->func->mu(fesymm, index0 - 1*xs, &mum1);
 	fesymm->func->mu(fesymm, index0,        &mu00);
@@ -377,9 +377,7 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
   physics_t * phys = NULL;
 
   assert(pch);
-
   assert(lees_edw_nplane_local(pch->le) == 0);
-  assert(coords_nhalo() >= 1);
 
   /* Variance of the noise from fluctuation dissipation relation */
 
@@ -392,7 +390,7 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
   rflux = (double *) malloc(3*nsites*sizeof(double));
   if (rflux == NULL) fatal("malloc(rflux) failed\n");
 
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(pch->le, nlocal);
 
   /* We go one site into the halo region to allow all the fluxes to
    * be comupted locally. */
@@ -403,7 +401,7 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-        index0 = coords_index(ic, jc, kc);
+        index0 = lees_edw_index(pch->le, ic, jc, kc);
         noise_reap_n(noise, index0, 3, reap);
 
         for (ia = 0; ia < 3; ia++) {
@@ -420,30 +418,30 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = lees_edw_index(pch->le, ic, jc, kc);
 
 	/* x-direction */
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = lees_edw_index(pch->le, ic-1, jc, kc);
 	pch->flux->fw[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, X)] +
 		  rflux[addr_rank1(nsites, 3, index1, X)]);
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = lees_edw_index(pch->le, ic+1, jc, kc);
 	pch->flux->fe[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, X)] +
 		  rflux[addr_rank1(nsites, 3, index1, X)]);
 
 	/* y direction */
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = lees_edw_index(pch->le, ic, jc+1, kc);
 	pch->flux->fy[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, Y)] +
 		  rflux[addr_rank1(nsites, 3, index1, Y)]);
 
 	/* z direction */
 
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = lees_edw_index(pch->le, ic, jc, kc+1);
 	pch->flux->fz[addr_rank0(nsites, index0)]
 	  += 0.5*(rflux[addr_rank1(nsites, 3, index0, Z)] +
 		  rflux[addr_rank1(nsites, 3, index1, Z)]);
@@ -491,6 +489,7 @@ static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf) {
   double * buffere;
 
   assert(pch);
+  assert(pch->le);
 
   if (cart_size(Y) > 1) {
     /* Parallel */

@@ -76,6 +76,7 @@ __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
   le = fgrad->field->le;
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
+  assert(fgrad->target == fgrad); /* No target implementation */
 
   grad_3d_27pt_fluid_operator(le, fgrad, nextra);
   grad_3d_27pt_fluid_le(le, fgrad, nextra);
@@ -149,8 +150,8 @@ __host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   del2 = fg->delsq;
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
       for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
@@ -306,9 +307,9 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = lees_edw_index_real_to_buffer(le, ic, nh-1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, nh  );
-      ic2 = lees_edw_index_real_to_buffer(le, ic, nh+1);
+      ic0 = lees_edw_ic_to_buff(le, ic, nh-1);
+      ic1 = lees_edw_ic_to_buff(le, ic, nh  );
+      ic2 = lees_edw_ic_to_buff(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
@@ -415,9 +416,9 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = lees_edw_index_real_to_buffer(le, ic, -nh+1);
-      ic1 = lees_edw_index_real_to_buffer(le, ic, -nh  );
-      ic0 = lees_edw_index_real_to_buffer(le, ic, -nh-1);
+      ic2 = lees_edw_ic_to_buff(le, ic, -nh+1);
+      ic1 = lees_edw_ic_to_buff(le, ic, -nh  );
+      ic0 = lees_edw_ic_to_buff(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {

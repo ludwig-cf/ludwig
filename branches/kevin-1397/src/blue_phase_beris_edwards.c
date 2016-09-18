@@ -133,9 +133,14 @@ __host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
   }
   else {
     beris_edw_param_t * tmp;
+    lees_edw_t * letarget = NULL;
     targetCalloc((void **) &obj->target, sizeof(beris_edw_t));
     targetConstAddress((void **) &tmp, static_param);
     copyToTarget(&obj->target->param, &tmp, sizeof(beris_edw_param_t *));
+
+    lees_edw_target(le, &letarget);
+    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
+    copyToTarget(&obj->target->flux, &flx->target, sizeof(advflux_t *));
   }
 
   *pobj = obj;
@@ -242,7 +247,15 @@ __host__ int beris_edw_update(beris_edw_t * be,
     advection_bcs_no_normal_flux(nf, be->flux, map);
   }
 
-  beris_edw_update_driver(be, fe, fq, fq_grad, hydro, map, noise);
+  /* Pending resolution of fe interface for vectorised molecular
+   * field calls we need to use one or other ... */
+
+  if (fe->id == FE_LC_DROPLET) {
+    beris_edw_update_host(be, fe, fq, hydro, be->flux, map, noise);
+  }
+  else {
+    beris_edw_update_driver(be, fe, fq, fq_grad, hydro, map, noise);
+  }
 
   return 0;
 }
@@ -615,14 +628,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 
       int im1[VVL];
       int ip1[VVL];
- 
-#ifdef __NVCC__
-      __targetILP__(iv) im1[iv] = ic[iv] - 1;
-      __targetILP__(iv) ip1[iv] = ic[iv] + 1;
-#else
-      __targetILP__(iv) im1[iv] = lees_edw_index_real_to_buffer(be->le, ic[iv], -1);
-      __targetILP__(iv) ip1[iv] = lees_edw_index_real_to_buffer(be->le, ic[iv], +1);
-#endif
+
+      __targetILP__(iv) im1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], -1);
+      __targetILP__(iv) ip1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], +1);
 
       __targetILP__(iv) im1[iv] = lees_edw_index(be->le, im1[iv], jc[iv], kc[iv]);
       __targetILP__(iv) ip1[iv] = lees_edw_index(be->le, ip1[iv], jc[iv], kc[iv]);

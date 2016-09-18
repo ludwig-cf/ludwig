@@ -63,6 +63,8 @@
 typedef struct param_s param_t;
 
 struct grad_lc_anch_s {
+  pe_t * pe;
+  cs_t * cs;
   param_t * param;           /* Boundary condition parameters */
   map_t * map;               /* Supports a map */
   colloids_info_t * cinfo;   /* Supports colloids */
@@ -80,11 +82,12 @@ static grad_lc_anch_t * static_grad = NULL;
 static __constant__ param_t static_param;
 
 
+__host__ int gradient_param_init(grad_lc_anch_t * anch);
 __host__ int gradient_param_commit(grad_lc_anch_t * anch);
 __host__ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t *grad,
 			  int nextra);
 __global__
-void gradient_6x6_kernel(kernel_ctxt_t * ktx, grad_lc_anch_t * anch,
+void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 			 fe_lc_t * fe, field_grad_t * fg,
 			 map_t * map, colloids_info_t * cinfo);
 __host__ __device__
@@ -106,23 +109,29 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
  *
  *****************************************************************************/
 
-__host__ int grad_lc_anch_create(map_t * map, colloids_info_t * cinfo,
+__host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
+				 colloids_info_t * cinfo,
 				 fe_lc_t * fe, grad_lc_anch_t ** pobj) {
 
   int ndevice;
   grad_lc_anch_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(fe);
 
   obj = (grad_lc_anch_t *) calloc(1, sizeof(grad_lc_anch_t));
-  if (obj == NULL) fatal("calloc(grad_lc_anch_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(grad_lc_anch_t) failed\n");
 
   obj->param = (param_t *) calloc(1, sizeof(param_t));
-  if (obj->param == NULL) fatal("calloc(param_t) failed\n");
+  if (obj->param == NULL) pe_fatal(pe, "calloc(param_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->map = map;
   obj->cinfo = cinfo;
   obj->fe = fe;
+  gradient_param_init(obj);
 
   targetGetDeviceCount(&ndevice);
 
@@ -130,7 +139,11 @@ __host__ int grad_lc_anch_create(map_t * map, colloids_info_t * cinfo,
     obj->target = obj;
   }
   else {
-    assert(0);
+    param_t * tmp = NULL;
+    targetCalloc((void **) &obj->target, sizeof(grad_lc_anch_t));
+    targetConstAddress((void **) &tmp, static_param);
+    copyToTarget(&obj->target->param, (const void *) &tmp, sizeof(param_t *));
+    gradient_param_commit(obj);
   }
 
   static_grad = obj;
@@ -152,6 +165,21 @@ __host__ int grad_lc_anch_free(grad_lc_anch_t * grad) {
 
   free(grad->param);
   free(grad);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  gradient_param_commit
+ *
+ *****************************************************************************/
+
+__host__ int gradient_param_commit(grad_lc_anch_t * anch) {
+
+  assert(anch);
+
+  copyConstToTarget(&static_param, anch->param, sizeof(param_t));
 
   return 0;
 }
@@ -183,6 +211,7 @@ __host__ int grad_3d_7pt_solid_set(map_t * map, colloids_info_t * cinfo) {
 
 __host__ int grad_3d_7pt_solid_d2(field_grad_t * fg) {
 
+  int nhalo;
   int nextra;
   grad_lc_anch_t * grad = NULL; /* get static instance and use */
 
@@ -191,7 +220,8 @@ __host__ int grad_3d_7pt_solid_d2(field_grad_t * fg) {
 
   grad = static_grad;
 
-  nextra = coords_nhalo() - 1;
+  cs_nhalo(grad->cs, &nhalo);
+  nextra = nhalo - 1;
 
   gradient_6x6(grad, fg, nextra);
 
@@ -214,13 +244,14 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
+  cs_t * cstarget = NULL;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
   assert(anch);
   assert(fg);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(anch->cs, nlocal);
 
   limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
@@ -232,7 +263,9 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
   gradient_param_commit(anch);
   fe_lc_param_commit(anch->fe);
 
-  __host_launch(gradient_6x6_kernel, nblk, ntpb, ctxt->target,
+  cs_target(anch->cs, &cstarget);
+
+  __host_launch(gradient_6x6_kernel, nblk, ntpb, ctxt->target, cstarget,
 		anch->target, anch->fe->target, fg->target,
 		anch->map->target, anch->cinfo->tcopy);
 
@@ -254,7 +287,7 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
  *****************************************************************************/
 
 __global__
-void gradient_6x6_kernel(kernel_ctxt_t * ktx, grad_lc_anch_t * anch,
+void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 			 fe_lc_t * fe, field_grad_t * fg,
 			 map_t * map, colloids_info_t * cinfo) {
 
@@ -266,6 +299,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, grad_lc_anch_t * anch,
   assert(ktx);
   assert(anch);
   assert(fg);
+  assert(fg->field);
 
   __target_simt_parallel_for(kindex, kiterations, 1) {
 
@@ -302,11 +336,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, grad_lc_anch_t * anch,
     kc = kernel_coords_kc(ktx, kindex);
     index = kernel_coords_index(ktx, ic, jc, kc);
 
-#ifdef __NVCC__
-    assert(0);
-#else
-    coords_strides(str + X, str + Y, str + Z);
-#endif
+    cs_strides(cs, str + X, str + Y, str + Z);
 
     if (map->status[index] == MAP_FLUID) {
 
@@ -611,14 +641,14 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, grad_lc_anch_t * anch,
 
 /*****************************************************************************
  *
- *  gradient_param_commit
+ *  gradient_param_init
  *
  *  Compute and store the inverse matrices used in the boundary conditions.
  *
  *****************************************************************************/
 
 __host__
-int gradient_param_commit(grad_lc_anch_t * anch) {
+int gradient_param_init(grad_lc_anch_t * anch) {
 
   int ia, n1, n2;
   const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
@@ -705,8 +735,6 @@ int gradient_param_commit(grad_lc_anch_t * anch) {
   util_matrix_free(12, &(a12inv[2]));
   util_matrix_free(12, &(a12inv[1]));
   util_matrix_free(12, &(a12inv[0]));
-
-  copyConstToTarget(&static_param, anch->param, sizeof(param_t));
 
   return 0;
 }

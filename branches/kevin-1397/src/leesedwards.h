@@ -63,9 +63,6 @@ __host__ __device__ int lees_edw_nlocal_offset(lees_edw_t * le, int offset[3]);
 __host__ __device__ int lees_edw_cart_coords(lees_edw_t * le, int cartcoords[3]);
 
 /* Additional host / device routines */
-
-__host__ __device__ int lees_edw_index_real_to_buffer(lees_edw_t * le, int ic, int idisplace);
-__host__ __device__ int lees_edw_index_buffer_to_real(lees_edw_t * le, int ibuf);
 __host__ __device__ int lees_edw_nplane_total(lees_edw_t * le);
 __host__ __device__ int lees_edw_nplane_local(lees_edw_t * le);
 __host__ __device__ int lees_edw_plane_uy(lees_edw_t * le, double * uy);
@@ -78,7 +75,9 @@ __host__ __device__ int lees_edw_plane_location(lees_edw_t * le, int plane);
 __host__ __device__ int lees_edw_buffer_displacement(lees_edw_t * le, int ib, double t, double * dy);
 __host__ __device__ int lees_edw_block_uy(lees_edw_t * le, int , double * uy);
 
+__host__ __device__ int lees_edw_ibuff_to_real(lees_edw_t * le, int ib);
 __host__ __device__ int lees_edw_ic_to_buff(lees_edw_t * le, int ic, int di);
+
 __host__ __device__ void lees_edw_index_v(lees_edw_t * le, int ic[NSIMDVL],
 					  int jc[NSIMDVL], int kc[NSIMDVL],
 					  int index[NSIMDVL]);

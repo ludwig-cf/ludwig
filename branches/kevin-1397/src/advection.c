@@ -39,8 +39,6 @@
 #include "timer.h"
 
 __host__
-int advflux_create(cs_t * cs, lees_edw_t * le, int nf, advflux_t ** pobj);
-__host__
 int advection_le_1st(advflux_t * flux, hydro_t * hydro, field_t * field);
 static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
@@ -165,6 +163,8 @@ __host__ int advflux_create(cs_t * cs, lees_edw_t * le, int nf,
     obj->target = obj;
   }
   else {
+    cs_t * cstarget = NULL;
+    lees_edw_t * letarget = NULL;
 
     targetMalloc((void **) &obj->target, sizeof(advflux_t));
 
@@ -180,7 +180,13 @@ __host__ int advflux_create(cs_t * cs, lees_edw_t * le, int nf,
     targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
     copyToTarget(&obj->target->fz, &tmp, sizeof(double *)); 
 
+    copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
     copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+
+    if (cs) cs_target(cs, &cstarget);
+    if (le) lees_edw_target(le, &letarget);
+    copyToTarget(&obj->target->cs, &cstarget, sizeof(cs_t *));
+    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
   }
 
   *pobj = obj;
@@ -375,8 +381,8 @@ __global__ void advection_le_1st_kernel(kernel_ctxt_t * ktx,
     kc = kernel_coords_kc(ktx, kindex);
     index0 = kernel_coords_index(ktx, ic, jc, kc);
 
-    icm1 = lees_edw_index_real_to_buffer(flux->le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(flux->le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(flux->le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(flux->le, ic, +1);
 
     /* west face (icm1 and ic) */
 
@@ -480,8 +486,8 @@ static int advection_le_2nd(advflux_t * flux, hydro_t * hydro, int nf,
   lees_edw_nlocal(le, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 
@@ -585,7 +591,7 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
     __host_launch(advection_3rd_kernel_v, nblk, ntpb, ctxt->target,
 		  flux->target, hydro->target, field->target);
   }
-  targetSynchronize();
+  targetDeviceSynchronise();
 
   kernel_ctxt_free(ctxt);
 
@@ -1045,10 +1051,10 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
   assert(0); /* SHIT NO TEST? */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm2 = lees_edw_index_real_to_buffer(le, ic, -2);
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
-    icp2 = lees_edw_index_real_to_buffer(le, ic, +2);
+    icm2 = lees_edw_ic_to_buff(le, ic, -2);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
+    icp2 = lees_edw_ic_to_buff(le, ic, +2);
 
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
@@ -1172,12 +1178,12 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
   lees_edw_nlocal(le, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm3 = lees_edw_index_real_to_buffer(le, ic, -3);
-    icm2 = lees_edw_index_real_to_buffer(le, ic, -2);
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
-    icp2 = lees_edw_index_real_to_buffer(le, ic, +2);
-    icp3 = lees_edw_index_real_to_buffer(le, ic, +3);
+    icm3 = lees_edw_ic_to_buff(le, ic, -3);
+    icm2 = lees_edw_ic_to_buff(le, ic, -2);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
+    icp2 = lees_edw_ic_to_buff(le, ic, +2);
+    icp3 = lees_edw_ic_to_buff(le, ic, +3);
 
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {

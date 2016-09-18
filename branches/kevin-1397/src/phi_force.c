@@ -355,8 +355,8 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   ys = (nlocal[Z] + 2*nhalo)*zs;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
@@ -486,8 +486,8 @@ static int phi_force_compute_fluxes(lees_edw_t * le, pth_t * pth, fe_t * fe,
   nsf = coords_nsites(); /* flux storage */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_index_real_to_buffer(le, ic, -1);
-    icp1 = lees_edw_index_real_to_buffer(le, ic, +1);
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
     for (jc = 0; jc <= nlocal[Y]; jc++) {
       for (kc = 0; kc <= nlocal[Z]; kc++) {
 

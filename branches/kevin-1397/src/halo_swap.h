@@ -17,6 +17,7 @@
 #define LUDWIG_HALO_SWAP_H
 
 #include "pe.h"
+#include "coords.h"
 #include "kernel.h"
 
 typedef struct halo_swap_s halo_swap_t;
@@ -26,8 +27,10 @@ typedef struct halo_swap_s halo_swap_t;
 typedef void (*f_pack_t)(halo_swap_t * halo, int id, double * data);
 typedef void (*f_unpack_t)(halo_swap_t * halo, int id, double * data);
 
-__host__ int halo_swap_create_r1(int nhcomm, int naddr, int na, halo_swap_t ** phalo);
-__host__ int halo_swap_create_r2(int nhcomm, int naddr, int na, int nb, halo_swap_t ** phalo);
+__host__ int halo_swap_create_r1(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
+				 int na, halo_swap_t ** phalo);
+__host__ int halo_swap_create_r2(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
+				 int na, int nb, halo_swap_t ** phalo);
 __host__ int halo_swap_free(halo_swap_t * halo);
 __host__ int halo_swap_commit(halo_swap_t * halo);
 __host__ int halo_swap_handlers_set(halo_swap_t * halo, f_pack_t pack, f_unpack_t unpack);
