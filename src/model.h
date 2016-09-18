@@ -30,6 +30,8 @@
 #include "d3q19.h"
 #endif
 
+#include "pe.h"
+#include "coords.h"
 #include "io_harness.h"
 #include "memory.h"
 
@@ -47,8 +49,8 @@ typedef enum lb_halo_enum_type {LB_HALO_FULL,
 				LB_HALO_HOST,
 				LB_HALO_TARGET} lb_halo_enum_t;
 
-__host__ int lb_create_ndist(int ndist, lb_t ** lb);
-__host__ int lb_create(lb_t ** lb);
+__host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** lb);
+__host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** lb);
 __host__ int lb_init(lb_t * lb);
 __host__ int lb_free(lb_t * lb);
 __host__ int lb_model_copy(lb_t * lb, int flag);

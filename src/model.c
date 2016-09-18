@@ -55,16 +55,20 @@ __targetConst__ int tc_ndist;
  *
  ****************************************************************************/
 
-__host__ int lb_create_ndist(int ndist, lb_t ** plb) {
+__host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** plb) {
 
   lb_t * lb = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(ndist > 0);
   assert(plb);
 
   lb = (lb_t *) calloc(1, sizeof(lb_t));
-  if (lb == NULL) fatal("calloc(1, lb_t) failed\n");
+  if (lb == NULL) pe_fatal(pe, "calloc(1, lb_t) failed\n");
 
+  lb->pe = pe;
+  lb->cs = cs;
   lb->ndist = ndist;
   lb->model = DATA_MODEL;
   *plb = lb;
@@ -80,11 +84,13 @@ __host__ int lb_create_ndist(int ndist, lb_t ** plb) {
  *
  *****************************************************************************/
 
-__host__ int lb_create(lb_t ** plb) {
+__host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** plb) {
 
+  assert(pe);
+  assert(cs);
   assert(plb);
 
-  return lb_create_ndist(1, plb);
+  return lb_create_ndist(pe, cs, 1, plb);
 }
 
 /*****************************************************************************
@@ -463,7 +469,7 @@ static int lb_mpi_init(lb_t * lb) {
   free(disp_bwd);
   free(types);
 
-  halo_swap_create_r2(1, lb->nsite, lb->ndist, NVEL, &lb->halo);
+  halo_swap_create_r2(lb->pe, lb->cs, 1, lb->nsite, lb->ndist, NVEL,&lb->halo);
   halo_swap_handlers_set(lb->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
 
   return 0;

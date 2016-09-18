@@ -81,6 +81,7 @@ static int field_grad_init(field_grad_t * obj) {
     targetCalloc((void **) &obj->target, sizeof(field_grad_t));
     copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
     copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    copyToTarget(&obj->target->field, &obj->field->target, sizeof(field_t *));
   }
 
   if (obj->level >= 2) {
@@ -141,8 +142,8 @@ static int field_grad_init(field_grad_t * obj) {
 __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
 
   int ndevice;
-  int nsz;
-  double * tmp;
+  size_t nsz;
+  double * tmp = NULL;
 
   assert(obj);
 

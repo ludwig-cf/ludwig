@@ -52,10 +52,8 @@ __host__ __device__ int fe_symm_interfacial_width(fe_symm_t * fe, double * xi);
 __host__ __device__ int fe_symm_fed(fe_symm_t * fe, int index, double * fed);
 __host__ __device__ int fe_symm_mu(fe_symm_t * fe, int index, double * mu);
 __host__ __device__ int fe_symm_str(fe_symm_t * fe, int index, double s[3][3]);
-
-__target__
-void fe_symm_chemical_stress_target(fe_symm_t * fe, int index,
-						 double s[3][3*NSIMDVL]);
+__host__ __device__ void fe_symm_str_v(fe_symm_t * fe, int index,
+				       double s[3][3][NSIMDVL]);
 
 #endif
 

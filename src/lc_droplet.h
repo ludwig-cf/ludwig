@@ -62,6 +62,13 @@ __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu);
 
+__host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
+						int index,
+						double sth[3][3][NSIMDVL]);
+__host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
+						   int index,
+						   double h[3][3][NSIMDVL]);
+
 __host__ int  fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
 				      hydro_t * hydro);
 

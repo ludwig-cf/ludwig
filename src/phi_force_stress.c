@@ -2,7 +2,8 @@
  *
  *  phi_force_stress.c
  *  
- *  Wrapper functions for stress computation.
+ *  Storage and computation of the "thermodynamic" stress which
+ *  depends on the choice of free energy.
  *
  *  $Id$
  *
@@ -116,6 +117,7 @@ __host__ int pth_free(pth_t * pth) {
 __host__ int pth_memcpy(pth_t * pth, int flag) {
 
   int ndevice;
+  size_t nsz;
 
   assert(pth);
 
@@ -126,7 +128,19 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
     assert(pth->target == pth);
   }
   else {
-    assert(0); /* Copy */
+
+    nsz = 9*pth->nsites*sizeof(double);
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(pth->target->str, pth->str, nsz);
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(pth->str, pth->target->str, nsz);
+      break;
+    default:
+      assert(0);
+    }
   }
 
   return 0;

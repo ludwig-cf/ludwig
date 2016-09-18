@@ -15,14 +15,14 @@
  *
  *****************************************************************************/
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "halo_swap.h"
 
 typedef struct halo_swap_param_s halo_swap_param_t;
 
 struct halo_swap_s {
+  pe_t * pe;
+  cs_t * cs;
   halo_swap_param_t * param; 
   double * fxlo;
   double * fxhi;
@@ -61,7 +61,8 @@ struct halo_swap_param_s {
 
 static __constant__ halo_swap_param_t const_param;
 
-__host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb, halo_swap_t ** phalo);
+__host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
+			      int na, int nb, halo_swap_t ** phalo);
 __host__ __target__ void halo_swap_coords(halo_swap_t * halo, int id, int index, int * ic, int * jc, int * kc);
 __host__ __target__ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc);
 __host__ __target__ int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, int jc, int kc);
@@ -74,10 +75,11 @@ __host__ __target__ int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, i
  *
  *****************************************************************************/
 
-__host__ int halo_swap_create_r1(int nhcomm, int naddr, int na,
+__host__ int halo_swap_create_r1(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
+				 int na,
 				 halo_swap_t ** p) {
 
-  return halo_swap_create(nhcomm, naddr, na, 1, p);
+  return halo_swap_create(pe, cs, nhcomm, naddr, na, 1, p);
 }
 
 /*****************************************************************************
@@ -88,10 +90,11 @@ __host__ int halo_swap_create_r1(int nhcomm, int naddr, int na,
  *
  *****************************************************************************/
 
-__host__ int halo_swap_create_r2(int nhcomm, int naddr, int na, int nb,
+__host__ int halo_swap_create_r2(pe_t * pe, cs_t *cs, int nhcomm, int naddr,
+				 int na, int nb,
 				 halo_swap_t ** p) {
 
-  return halo_swap_create(nhcomm, naddr, na, nb, p);
+  return halo_swap_create(pe, cs, nhcomm, naddr, na, nb, p);
 }
 
 /*****************************************************************************
@@ -100,7 +103,8 @@ __host__ int halo_swap_create_r2(int nhcomm, int naddr, int na, int nb,
  *
  *****************************************************************************/
 
-__host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb,
+__host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
+			      int na, int nb,
 			      halo_swap_t ** phalo) {
 
   int sz;
@@ -110,6 +114,8 @@ __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb,
 
   halo_swap_t * halo = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(phalo);
 
   halo = (halo_swap_t *) calloc(1, sizeof(halo_swap_t));
@@ -121,7 +127,10 @@ __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb,
   /* Template for distributions, which is used to allocate buffers;
    * assumed to be large enough for any halo transfer... */
 
-  nhalo = coords_nhalo();
+  halo->pe = pe;
+  halo->cs = cs;
+
+  cs_nhalo(cs, &nhalo);
 
   halo->param->na = na;
   halo->param->nb = nb;
@@ -129,8 +138,8 @@ __host__ int halo_swap_create(int nhcomm, int naddr, int na, int nb,
   halo->param->nswap = nhcomm;
   halo->param->nfel = na*nb;
   halo->param->naddr = naddr;
-  coords_nlocal(halo->param->nlocal);
-  coords_nall(halo->param->nall);
+  cs_nlocal(cs, halo->param->nlocal);
+  cs_nall(cs, halo->param->nall);
 
   halo->param->nsite = halo->param->nall[X]*halo->param->nall[Y]*halo->param->nall[Z];
 
@@ -352,6 +361,7 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   int icount, nsend;
   int pforw, pback;
   int nlocal[3];
+  int mpicartsz[3];
 
   unsigned char * buf;
   unsigned char * sendforw;
@@ -372,7 +382,9 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   buf = (unsigned char *) mbuf;
 
-  comm = cart_comm();
+  cs_cart_comm(halo->cs, &comm);
+  cs_cartsz(halo->cs, mpicartsz);
+
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
@@ -380,7 +392,7 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   nhcomm = halo->param->nswap;
   na = halo->param->na;
 
-  coords_nlocal(nlocal);
+  cs_nlocal(halo->cs, nlocal);
 
   /* X-direction */
 
@@ -403,11 +415,11 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
 	  /* Backward going... */
-	  index = coords_index(1 + nh, jc, kc);
+	  index = cs_index(halo->cs, 1 + nh, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  /* ...and forward going. */
-	  index = coords_index(nlocal[X] - nh, jc, kc);
+	  index = cs_index(halo->cs, nlocal[X] - nh, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
@@ -418,15 +430,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   assert(icount == nsend);
 
-  if (cart_size(X) == 1) {
+  if (mpicartsz[X] == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, X);
-    pback = cart_neighb(BACKWARD, X);
+    pforw = cs_cart_neighb(halo->cs, FORWARD, X);
+    pback = cs_cart_neighb(halo->cs, BACKWARD, X);
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -443,10 +455,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(nlocal[X] + 1 + nh, jc, kc);
+	  index = cs_index(halo->cs, nlocal[X] + 1 + nh, jc, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
-	  index = coords_index(0 - nh, jc, kc);
+	  index = cs_index(halo->cs, 0 - nh, jc, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  icount += 1;
@@ -485,10 +497,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, 1 + nh, kc);
+	  index = cs_index(halo->cs, ic, 1 + nh, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
-	  index = coords_index(ic, nlocal[Y] - nh, kc);
+	  index = cs_index(halo->cs, ic, nlocal[Y] - nh, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
@@ -499,15 +511,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   assert(icount == nsend);
 
-  if (cart_size(Y) == 1) {
+  if (mpicartsz[Y] == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, Y);
-    pback = cart_neighb(BACKWARD, Y);
+    pforw = cs_cart_neighb(halo->cs, FORWARD, Y);
+    pback = cs_cart_neighb(halo->cs, BACKWARD, Y);
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -524,10 +536,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, 0 - nh, kc);
+	  index = cs_index(halo->cs, ic, 0 - nh, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
-	  index = coords_index(ic, nlocal[Y] + 1 + nh, kc);
+	  index = cs_index(halo->cs, ic, nlocal[Y] + 1 + nh, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;
@@ -568,11 +580,11 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
 	  kc = imin(1 + nh, nlocal[Z]);
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(halo->cs, ic, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  kc = imax(nlocal[Z] - nh, 1);
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(halo->cs, ic, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
@@ -583,15 +595,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   assert(icount == nsend);
 
-  if (cart_size(Z) == 1) {
+  if (mpicartsz[Z] == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, Z);
-    pback = cart_neighb(BACKWARD, Z);
+    pforw = cs_cart_neighb(halo->cs, FORWARD, Z);
+    pback = cs_cart_neighb(halo->cs, BACKWARD, Z);
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -608,10 +620,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, jc, 0 - nh);
+	  index = cs_index(halo->cs, ic, jc, 0 - nh);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
-	  index = coords_index(ic, jc, nlocal[Z] + 1 + nh);
+	  index = cs_index(halo->cs, ic, jc, nlocal[Z] + 1 + nh);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;
@@ -657,11 +669,11 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   int m, mc, p;
   int nd, nh;
   int hsz[3];
+  int mpicartsz[3];
   dim3 nblk, ntpb;
   double * tmp;
 
-  MPI_Comm comm = cart_comm();
-
+  MPI_Comm comm;
   MPI_Request req_x[4];
   MPI_Request req_y[4];
   MPI_Request req_z[4];
@@ -671,11 +683,15 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   const int ftagx = 642, ftagy = 643, ftagz = 644;
 
   assert(halo);
+
   /* 2D systems require fix... in the meantime...*/
   assert(halo->param->nlocal[Z] >= halo->param->nswap);
 
   targetGetDeviceCount(&ndevice);
   halo_swap_commit(halo);
+
+  cs_cart_comm(halo->cs, &comm);
+  cs_cartsz(halo->cs, mpicartsz);
 
   /* hsz[] is just shorthand for local halo sizes */
   /* An offset nd is required if nswap < nhalo */
@@ -694,28 +710,28 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     req_z[p] = MPI_REQUEST_NULL;
   }
 
-  if (cart_size(X) > 1) {
+  if (mpicartsz[X] > 1) {
     ncount = halo->param->hsz[X]*halo->param->nfel;
     MPI_Irecv(halo->hxlo, ncount, MPI_DOUBLE,
-	      cart_neighb(BACKWARD,X), ftagx, comm, req_x);
+	      cs_cart_neighb(halo->cs,BACKWARD,X), ftagx, comm, req_x);
     MPI_Irecv(halo->hxhi, ncount, MPI_DOUBLE,
-	      cart_neighb(FORWARD,X), btagx, comm, req_x + 1);
+	      cs_cart_neighb(halo->cs,FORWARD,X), btagx, comm, req_x + 1);
   }
 
-  if (cart_size(Y) > 1) {
+  if (mpicartsz[Y] > 1) {
     ncount = halo->param->hsz[Y]*halo->param->nfel;
     MPI_Irecv(halo->hylo, ncount, MPI_DOUBLE,
-	      cart_neighb(BACKWARD,Y), ftagy, comm, req_y);
+	      cs_cart_neighb(halo->cs,BACKWARD,Y), ftagy, comm, req_y);
     MPI_Irecv(halo->hyhi, ncount, MPI_DOUBLE,
-	      cart_neighb(FORWARD,Y), btagy, comm, req_y + 1);
+	      cs_cart_neighb(halo->cs,FORWARD,Y), btagy, comm, req_y + 1);
   }
 
-  if (cart_size(Z) > 1) {
+  if (mpicartsz[Z] > 1) {
     ncount = halo->param->hsz[Z]*halo->param->nfel;
     MPI_Irecv(halo->hzlo, ncount, MPI_DOUBLE,
-	      cart_neighb(BACKWARD,Z), ftagz, comm, req_z);
+	      cs_cart_neighb(halo->cs,BACKWARD,Z), ftagz, comm, req_z);
     MPI_Irecv(halo->hzhi, ncount, MPI_DOUBLE,
-	      cart_neighb(FORWARD,Z), btagz, comm, req_z + 1);
+	      cs_cart_neighb(halo->cs,FORWARD,Z), btagz, comm, req_z + 1);
   }
 
   /* pack X edges on accelerator */
@@ -772,7 +788,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   cudaStreamSynchronize(halo->stream[X]);
   ncount = hsz[X]*halo->param->nfel;
 
-  if (cart_size(X) == 1) {
+  if (mpicartsz[X] == 1) {
     /* note these copies do not alias for ndevice == 1 */
     /* fxhi -> hxlo */
     memcpy(halo->hxlo, halo->fxhi, ncount*sizeof(double));
@@ -787,9 +803,9 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   }
   else {
     MPI_Isend(halo->fxhi, ncount, MPI_DOUBLE,
-	      cart_neighb(FORWARD,X), ftagx, comm, req_x + 2);
+	      cs_cart_neighb(halo->cs,FORWARD,X), ftagx, comm, req_x + 2);
     MPI_Isend(halo->fxlo, ncount, MPI_DOUBLE,
-	      cart_neighb(BACKWARD,X), btagx, comm, req_x + 3);
+	      cs_cart_neighb(halo->cs,BACKWARD,X), btagx, comm, req_x + 3);
 
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_x, &mc, status);
@@ -843,7 +859,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   ncount = halo->param->hsz[Y]*halo->param->nfel;
 
-  if (cart_size(Y) == 1) {
+  if (mpicartsz[Y] == 1) {
     /* fyhi -> hylo */
     memcpy(halo->hylo, halo->fyhi, ncount*sizeof(double));
     copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
@@ -937,7 +953,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   ncount = halo->param->hsz[Z]*halo->param->nfel;
 
-  if (cart_size(Z) == 1) {
+  if (mpicartsz[Z] == 1) {
     /* fzhi -> hzlo */
     copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
     cudaMemcpyAsync(tmp, halo->fzhi, ncount*sizeof(double),

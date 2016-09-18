@@ -127,6 +127,7 @@ __host__ int field_free(field_t * obj) {
  *  field_init
  *
  *  Initialise the lattice data, MPI halo information.
+ *
  *  The le_t may be NULL, in which case create an instance with
  *  no planes. SHIT 
  *
@@ -144,7 +145,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   cs_nsites(obj->cs, &nsites);
   if (le) lees_edw_nsites(le, &nsites);
 
-
+  obj->le = le;
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
   obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
@@ -158,20 +159,22 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
     obj->target = obj;
   }
   else {
+    cs_t * cstarget = NULL;
+    lees_edw_t * letarget = NULL;
     targetCalloc((void **) &obj->target, sizeof(field_t));
     targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+    copyToTarget(&obj->target->data, &tmp, sizeof(double *));
 
-    copyToTarget(&obj->target->data, &tmp, sizeof(double *)); 
+    cs_target(obj->cs, &cstarget);
+    if (le) lees_edw_target(obj->le, &letarget);
+    copyToTarget(&obj->target->cs, &cstarget, sizeof(cs_t *));
+    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
     field_memcpy(obj, cudaMemcpyHostToDevice);
   }
 
   /* MPI datatypes for halo */
 
-  obj->le = le;
-  obj->nhcomm = nhcomm;
-  obj->nsites = nsites;
-
-  halo_swap_create_r1(nhcomm, nsites, obj->nf, &obj->halo);
+  halo_swap_create_r1(obj->pe, obj->cs, nhcomm, nsites, obj->nf, &obj->halo);
   assert(obj->halo);
 
   halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
@@ -388,7 +391,7 @@ __host__ int field_leesedwards(field_t * obj) {
 
     for (ib = 0; ib < nxbuffer; ib++) {
 
-      ic = lees_edw_index_buffer_to_real(obj->le, ib);
+      ic = lees_edw_ibuff_to_real(obj->le, ib);
 
       lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
       dy = fmod(dy, L(Y));
@@ -506,7 +509,7 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   for (ib = 0; ib < nxbuffer; ib++) {
 
-    ic = lees_edw_index_buffer_to_real(obj->le, ib);
+    ic = lees_edw_ibuff_to_real(obj->le, ib);
     kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */

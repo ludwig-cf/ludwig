@@ -72,8 +72,11 @@ static int lees_edw_init_tables(lees_edw_t * le);
 
 static __constant__ lees_edw_param_t static_param;
 
-__host__ __device__ int lees_edw_ibuff_to_real(lees_edw_t * le, int ib);
 __host__ __device__ int lees_edw_buffer_duy(lees_edw_t * le, int ib);
+
+/* Scheduled for removal */
+__host__ __device__ int lees_edw_index_real_to_buffer(lees_edw_t * le, int ic, int idisplace);
+__host__ __device__ int lees_edw_index_buffer_to_real(lees_edw_t * le, int ibuf);
 
 /*****************************************************************************
  *
@@ -108,7 +111,7 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
 
   targetGetDeviceCount(&ndevice);
 
-  if (ndevice == 1) {
+  if (ndevice == 0) {
     le->target = le;
   }
   else {
@@ -772,6 +775,7 @@ int lees_edw_plane_location(lees_edw_t * le, int np) {
   int ix;
 
   assert(le);
+  assert(le->cs);
   assert(np >= 0 && np < le->param->nplanelocal);
 
   cs_cart_coords(le->cs, cartcoords);
@@ -918,6 +922,7 @@ int lees_edw_jstart_to_mpi_ranks(lees_edw_t * le, const int j1, int send[3],
   int pe_carty1, pe_carty2, pe_carty3;
 
   assert(le);
+  assert(le->cs);
 
   cs_cart_coords(le->cs, cartcoords);
 
@@ -1077,6 +1082,7 @@ __host__ __device__
 int lees_edw_cartsz(lees_edw_t * le, int cartsz[3]) {
 
   assert(le);
+  assert(le->cs);
 
   return cs_cartsz(le->cs, cartsz);
 }

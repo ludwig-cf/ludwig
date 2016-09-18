@@ -350,7 +350,6 @@ int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
 
   /* info("Free energy density\n");*/
 
-
   field_halo_swap(fq, FIELD_HALO_HOST);
 
   field_memcpy(fq, cudaMemcpyHostToDevice);

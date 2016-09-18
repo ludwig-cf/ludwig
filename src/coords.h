@@ -95,6 +95,5 @@ __host__ void   coords_minimum_distance(const double r1[3], const double r2[3],
 			       double r12[3]);
 __host__ void   coords_index_to_ijk(const int index, int coords[3]);
 __host__ int    coords_strides(int * xs, int * ys, int * zs);
-__host__ int    coords_nall(int nall[3]);
 
 #endif

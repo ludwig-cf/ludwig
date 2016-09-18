@@ -450,7 +450,12 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
+
+  /* Move initilaised data to target for time stepping loop */
+
   lb_model_copy(ludwig->lb, cudaMemcpyHostToDevice);
+  if (ludwig->phi) field_memcpy(ludwig->phi, cudaMemcpyHostToDevice);
+  if (ludwig->q)   field_memcpy(ludwig->q, cudaMemcpyHostToDevice);
 
   
   /* Main time stepping loop */
@@ -474,7 +479,6 @@ void ludwig_run(const char * inputfile) {
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
     ludwig_colloids_update(ludwig);
-
 
     /* Order parameter gradients */
 
@@ -658,7 +662,6 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_ORDER_PARAMETER_UPDATE);
     }
 
-
     if (ludwig->hydro) {
       /* Zero velocity field here, as velocity at collision is used
        * at next time step for FD above. Strictly, we only need to
@@ -800,15 +803,26 @@ void ludwig_run(const char * inputfile) {
       lb_model_copy(ludwig->lb, cudaMemcpyDeviceToHost);
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
-      if (im == 2) {
-	phi_lb_to_field(ludwig->phi, ludwig->lb);
-	stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
+
+      if (ludwig->phi) {
+	field_grad_memcpy(ludwig->phi_grad, cudaMemcpyDeviceToHost);
+	if (im == 2) {
+	  phi_lb_to_field(ludwig->phi, ludwig->lb);
+	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
+	}
+	else {
+	  field_memcpy(ludwig->phi, cudaMemcpyDeviceToHost);
+	  stats_field_info(ludwig->phi, ludwig->map);
+	}
       }
-      else {
-	if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
-      }
+
       if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
-      if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
+
+      if (ludwig->q) {
+	field_memcpy(ludwig->q, cudaMemcpyDeviceToHost);
+	field_grad_memcpy(ludwig->q_grad, cudaMemcpyDeviceToHost);
+	stats_field_info(ludwig->q, ludwig->map);
+      }
 
       if (ludwig->psi) {
 	double psi_zeta;
@@ -825,6 +839,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->hydro) {
 	wall_pm(&is_pm);
+	hydro_memcpy(ludwig->hydro, cudaMemcpyDeviceToHost);
 	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
       }
 
@@ -1028,7 +1043,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   rt = ludwig->rt;
   cs_create(pe,&cs);
 
-  lb_create(&ludwig->lb);
+  lb_create(pe, cs, &ludwig->lb);
   noise_create(&ludwig->noise_rho);
 
   lees_edw_init_rt(rt, info);
@@ -1237,7 +1252,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
     /* Not very elegant, but here ... */
-    grad_lc_anch_create(NULL, NULL, fe, NULL);
+    grad_lc_anch_create(pe, cs, NULL, NULL, fe, NULL);
 
     ludwig->fe_lc = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1349,7 +1364,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_lc_droplet_create(lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
 
-    grad_lc_anch_create(NULL, NULL, lc, NULL);
+    grad_lc_anch_create(pe, cs, NULL, NULL, lc, NULL);
 
     ludwig->fe_symm = symm;
     ludwig->fe_lc = lc;

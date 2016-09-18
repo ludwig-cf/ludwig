@@ -71,7 +71,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
   obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
 
-  halo_swap_create_r1(nhcomm, obj->nsite, NHDIM, &obj->halo);
+  halo_swap_create_r1(pe, cs, nhcomm, obj->nsite, NHDIM, &obj->halo);
   assert(obj->halo);
 
   halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
@@ -483,7 +483,7 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
 
     for (ib = 0; ib < nxbuffer; ib++) {
 
-      ic = lees_edw_index_buffer_to_real(obj->le, ib);
+      ic = lees_edw_ibuff_to_real(obj->le, ib);
       lees_edw_buffer_du(obj->le, ib, ule);
 
       lees_edw_buffer_dy(obj->le, ib, 1.0, &dy);
@@ -591,7 +591,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   for (ib = 0; ib < nxbuffer; ib++) {
 
-    ic = lees_edw_index_buffer_to_real(obj->le, ib);
+    ic = lees_edw_ibuff_to_real(obj->le, ib);
     lees_edw_buffer_du(obj->le, ib, ule);
 
     /* Work out the displacement-dependent quantities */
@@ -770,9 +770,9 @@ __host__ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
 
   assert(obj);
 
-  im1 = lees_edw_index_real_to_buffer(obj->le, ic, -1);
+  im1 = lees_edw_ic_to_buff(obj->le, ic, -1);
   im1 = lees_edw_index(obj->le, im1, jc, kc);
-  ip1 = lees_edw_index_real_to_buffer(obj->le, ic, +1);
+  ip1 = lees_edw_ic_to_buff(obj->le, ic, +1);
   ip1 = lees_edw_index(obj->le, ip1, jc, kc);
 
   w[X][X] = 0.5*(obj->u[addr_rank1(obj->nsite, NHDIM, ip1, X)] -
