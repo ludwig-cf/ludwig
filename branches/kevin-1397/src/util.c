@@ -74,6 +74,9 @@ __host__ double reverse_byte_order_double(char * c) {
  *  The data type is identified via the MPI_Datatype argument.
  *  The input and result arguments may alias.
  *
+ *  Comparison of MPI_Datatype is formally dubious, but should be ok
+ *  for intrinsic types.
+ *
  *****************************************************************************/
 
 __host__
@@ -88,32 +91,29 @@ int util_reverse_byte_order(void * arg, void * result, MPI_Datatype type) {
 
   carg = (char *) arg;
 
-  switch (type) {
-  case MPI_INT:
-    {
-      int iresult;
-      p = (char *) &iresult;
+  if (type == MPI_INT) {
+    
+    int iresult;
+    p = (char *) &iresult;
       
-      for (b = 0; b < sizeof(int); b++) {
-        p[b] = carg[sizeof(int) - (b + 1)];
-      }
-
-      *((int *) result) = iresult;
+    for (b = 0; b < sizeof(int); b++) {
+      p[b] = carg[sizeof(int) - (b + 1)];
     }
-    break;
-  case MPI_DOUBLE:
-    {
-      double dresult;
-      p = (char *) &dresult;
 
-      for (b = 0; b < sizeof(double); b++) {
-        p[b] = carg[sizeof(double) - (b + 1)];
-      }
+    *((int *) result) = iresult;
+  }
+  else if (type == MPI_DOUBLE) {
 
-      *((double *) result) = dresult;
+    double dresult;
+    p = (char *) &dresult;
+
+    for (b = 0; b < sizeof(double); b++) {
+      p[b] = carg[sizeof(double) - (b + 1)];
     }
-    break;
-  default:
+
+    *((double *) result) = dresult;
+  }
+  else {
     fatal("Not implemented data type\n");
   }
 
