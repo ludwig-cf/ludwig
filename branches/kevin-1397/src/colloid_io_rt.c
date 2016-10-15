@@ -28,7 +28,8 @@
  *
  *****************************************************************************/
 
-int colloid_io_run_time(rt_t * rt, colloids_info_t * cinfo,
+int colloid_io_run_time(pe_t * pe, rt_t * rt, cs_t * cs,
+			colloids_info_t * cinfo,
 			colloid_io_t ** pcio) {
 
   int io_grid[3] = {1, 1, 1};
@@ -36,13 +37,15 @@ int colloid_io_run_time(rt_t * rt, colloids_info_t * cinfo,
 
   colloid_io_t * cio = NULL;
 
+  assert(pe);
   assert(rt);
+  assert(cs);
   assert(cinfo);
 
   rt_int_parameter_vector(rt, "default_io_grid", io_grid);
   rt_int_parameter_vector(rt, "colloid_io_grid", io_grid);
 
-  colloid_io_create(io_grid, cinfo, &cio);
+  colloid_io_create(pe, cs, io_grid, cinfo, &cio);
   assert(cio);
 
   /* Default format to ascii, parallel; then check user input */

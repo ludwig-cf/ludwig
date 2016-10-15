@@ -228,11 +228,17 @@ __host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag) {
 __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
 				int form_out) {
 
+  io_info_arg_t args;
+
   assert(obj);
   assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
+  args.grid[X] = grid[X];
+  args.grid[Y] = grid[Y];
+  args.grid[Z] = grid[Z];
+
+  io_info_create(obj->pe, obj->cs, &args, &obj->info);
   if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(hydro) failed\n");
 
   io_info_set_name(obj->info, "Velocity field");

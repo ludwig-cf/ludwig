@@ -7,9 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2016 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -25,9 +26,9 @@
 #include "build.h"
 #include "tests.h"
 
-static int test_build_links_model_c1(double a0, double r0[3]);
-static int test_build_links_model_c2(double a0, double r0[3]);
-static int test_build_rebuild_c1(double a0, double r0[3]);
+static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]);
+static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[3]);
+static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]);
 
 /*****************************************************************************
  *
@@ -49,21 +50,21 @@ int test_build_suite(void) {
 
   a0 = 2.3;
   r0[X] = 0.5*L(X); r0[Y] = 0.5*L(Y); r0[Z] = 0.5*L(Z);
-  test_build_links_model_c1(a0, r0);
-  test_build_links_model_c2(a0, r0);
-  test_build_rebuild_c1(a0, r0);
+  test_build_links_model_c1(pe, cs, a0, r0);
+  test_build_links_model_c2(pe, cs, a0, r0);
+  test_build_rebuild_c1(pe, cs, a0, r0);
 
   a0 = 4.77;
   r0[X] = Lmin(X) + delta; r0[Y] = 0.5*L(Y); r0[Z] = 0.5*L(Z);
-  test_build_links_model_c1(a0, r0);
-  test_build_links_model_c2(a0, r0);
-  test_build_rebuild_c1(a0, r0);
+  test_build_links_model_c1(pe, cs, a0, r0);
+  test_build_links_model_c2(pe, cs, a0, r0);
+  test_build_rebuild_c1(pe, cs, a0, r0);
 
   a0 = 3.84;
   r0[X] = L(X); r0[Y] = L(Y); r0[Z] = L(Z);
-  test_build_links_model_c1(a0, r0);
-  test_build_links_model_c2(a0, r0);
-  test_build_rebuild_c1(a0, r0);
+  test_build_links_model_c1(pe, cs, a0, r0);
+  test_build_links_model_c2(pe, cs, a0, r0);
+  test_build_rebuild_c1(pe, cs, a0, r0);
 
   /* Some known cases: place the colloid in the centre and test only
    * in serial, as there is no quick way to compute in parallel. */
@@ -92,7 +93,7 @@ int test_build_suite(void) {
  *
  *****************************************************************************/
 
-static int test_build_links_model_c1(double a0, double r0[3]) {
+static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) {
 
   int ncolloid;
   int ncell[3] = {2, 2, 2};
@@ -101,9 +102,12 @@ static int test_build_links_model_c1(double a0, double r0[3]) {
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
+  assert(pe);
+  assert(cs);
+
   colloids_info_create(ncell, &cinfo);
   colloids_info_map_init(cinfo);
-  map_create(0, &map);
+  map_create(pe, cs, 0, &map);
 
   /* Place the single colloid and construct the links */
 
@@ -147,7 +151,7 @@ static int test_build_links_model_c1(double a0, double r0[3]) {
  *
  *****************************************************************************/
 
-static int test_build_links_model_c2(double a0, double r0[3]) {
+static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[3]) {
 
   int ic, jc, kc;
   int ncolloid;
@@ -157,9 +161,12 @@ static int test_build_links_model_c2(double a0, double r0[3]) {
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
+  assert(pe);
+  assert(cs);
+
   colloids_info_create(ncell, &cinfo);
   colloids_info_map_init(cinfo);
-  map_create(0, &map);
+  map_create(pe, cs, 0, &map);
 
   /* Place the single colloid and construct the links */
 
@@ -213,7 +220,7 @@ static int test_build_links_model_c2(double a0, double r0[3]) {
  *
  *****************************************************************************/
 
-static int test_build_rebuild_c1(double a0, double r0[3]) {
+static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) {
 
   int ic, jc, kc;
   int ncolloid;
@@ -223,9 +230,12 @@ static int test_build_rebuild_c1(double a0, double r0[3]) {
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
+  assert(pe);
+  assert(cs);
+
   colloids_info_create(ncell, &cinfo);
   colloids_info_map_init(cinfo);
-  map_create(0, &map);
+  map_create(pe, cs, 0, &map);
 
   /* Place the single colloid and construct the links */
 

@@ -868,32 +868,6 @@ __host__ int cs_cart_rank(cs_t * cs) {
 
 /*****************************************************************************
  *
- *  coords_info()
- *
- *****************************************************************************/
-
-__host__ void coords_info(void) {
-
-  assert(stat_ref);
-
-  cs_info(stat_ref);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  cart_rank access function
- *
- *****************************************************************************/
-
-__host__ int cart_rank() {
-  assert(stat_ref);
-  return stat_ref->mpi_cartrank;
-}
-
-/*****************************************************************************
- *
  *  cart_size access function
  *
  *****************************************************************************/
@@ -1110,18 +1084,4 @@ __host__ void coords_index_to_ijk(const int index, int coords[3]) {
   cs_index_to_ijk(stat_ref, index, coords);
 
   return;
-}
-
-/*****************************************************************************
- *
- *  coords_strides
- *
- *****************************************************************************/
-
-__host__ int coords_strides(int * xs, int * ys, int * zs) {
-
-  assert(stat_ref);
-  cs_strides(stat_ref, xs, ys, zs);
-
-  return 0;
 }

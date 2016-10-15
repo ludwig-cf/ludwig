@@ -118,27 +118,24 @@ int psi_sor_poisson(psi_t * obj) {
   double eunit, beta;
   physics_t * phys = NULL;
 
-  /* int index_nbr, coords_nbr[3];*/
-
   MPI_Comm comm;               /* Cartesian communicator */
 
-  nhalo = coords_nhalo();
-  nsites = coords_nsites();
-  coords_nlocal(nlocal);
-  comm = cart_comm();
   physics_ref(&phys);
+
+  cs_nhalo(obj->cs, &nhalo);
+  cs_nsites(obj->cs, &nsites);
+  cs_nlocal(obj->cs, nlocal);
+  cs_cart_comm(obj->cs, &comm);
+  cs_strides(obj->cs, &xs, &ys, &zs);
 
   assert(nhalo >= 1);
 
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
+
   assert(nlocal[X] % 2 == 0);
   assert(nlocal[Y] % 2 == 0);
   assert(nlocal[Z] % 2 == 0);
-
-  zs = 1;
-  ys = zs*(nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
 
   /* Compute initial norm of the residual */
 
@@ -158,7 +155,7 @@ int psi_sor_poisson(psi_t * obj) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	psi_rho_elec(obj, index, &rho_elec);
 
@@ -196,7 +193,7 @@ int psi_sor_poisson(psi_t * obj) {
 	  kst = 1 + (ic + jc + pass) % 2;
 	  for (kc = kst; kc <= nlocal[Z]; kc += 2) {
 
-	    index = coords_index(ic, jc, kc);
+	    index = cs_index(obj->cs, ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
 
@@ -244,10 +241,10 @@ int psi_sor_poisson(psi_t * obj) {
       if (rnorm[1] < tol_abs) {
 
 	if (physics_control_timestep(phys) % obj->nfreq == 0) {
-	  info("\n");
-	  info("SOR solver converged to absolute tolerance\n");
-	  info("SOR residual per site %14.7e at %d iterations\n",
-	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+	  pe_info(obj->pe, "\n");
+	  pe_info(obj->pe, "SOR solver converged to absolute tolerance\n");
+	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
+		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
 	}
 	break;
       }
@@ -255,19 +252,19 @@ int psi_sor_poisson(psi_t * obj) {
       if (rnorm[1] < tol_abs || rnorm[1] < tol_rel*rnorm[0]) {
 
 	if (physics_control_timestep(phys) % obj->nfreq == 0) {
-	  info("\n");
-	  info("SOR solver converged to relative tolerance\n");
-	  info("SOR residual per site %14.7e at %d iterations\n",
-	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+	  pe_info(obj->pe, "\n");
+	  pe_info(obj->pe, "SOR solver converged to relative tolerance\n");
+	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
+		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
 	}
 	break;
       }
     }
  
     if (n == niteration-1) {
-      info("\n");
-      info("SOR solver exceeded %d iterations\n", n+1);
-      info("SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+      pe_info(obj->pe, "\n");
+      pe_info(obj->pe, "SOR solver exceeded %d iterations\n", n+1);
+      pe_info(obj->pe, "SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
     }
   }
 
@@ -322,12 +319,12 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   assert(obj);
   assert(fepsilon);
 
-  coords_nlocal(nlocal);
-  nsites = coords_nsites();
-  comm = cart_comm();
   physics_ref(&phys);
 
-  assert(coords_nhalo() >= 1);
+  cs_nlocal(obj->cs, nlocal);
+  cs_nsites(obj->cs, &nsites);
+  cs_cart_comm(obj->cs, &comm);
+  cs_strides(obj->cs, &xs, &ys, &zs);
 
   /* The red/black operation needs to be tested for odd numbers
    * of points in parallel. */
@@ -335,8 +332,6 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   assert(nlocal[X] % 2 == 0);
   assert(nlocal[Y] % 2 == 0);
   assert(nlocal[Z] % 2 == 0);
-
-  coords_strides(&xs, &ys, &zs);
 
   /* Compute initial norm of the residual */
 
@@ -356,7 +351,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
 	depsi = 0.0;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	psi_rho_elec(obj, index, &rho_elec);
 	fepsilon(fe, index, &eps0);
@@ -422,7 +417,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
 	    depsi  = 0.0;
 
-	    index = coords_index(ic, jc, kc);
+	    index = cs_index(obj->cs, ic, jc, kc);
 
 	    psi_rho_elec(obj, index, &rho_elec);
 	    fepsilon(fe, index, &eps0);
@@ -489,10 +484,10 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
       if (rnorm[1] < tol_abs) {
 
 	if (physics_control_timestep(phys) % obj->nfreq == 0) {
-	  info("\n");
-	  info("SOR (heterogeneous) solver converged to absolute tolerance\n");
-	  info("SOR residual per site %14.7e at %d iterations\n",
-	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+	  pe_info(obj->pe, "\n");
+	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to absolute tolerance\n");
+	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
+		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
 	}
 	break;
       }
@@ -500,18 +495,18 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
       if (rnorm[1] < tol_rel*rnorm[0]) {
 
 	if (physics_control_timestep(phys) % obj->nfreq == 0) {
-	  info("\n");
-	  info("SOR (heterogeneous) solver converged to relative tolerance\n");
-	  info("SOR residual per site %14.7e at %d iterations\n",
-	       rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+	  pe_info(obj->pe, "\n");
+	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to relative tolerance\n");
+	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
+		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
 	}
 	break;
       }
 
       if (n == niteration-1) {
-	info("\n");
-	info("SOR solver (heterogeneous) exceeded %d iterations\n", n+1);
-	info("SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
+	pe_info(obj->pe, "\n");
+	pe_info(obj->pe, "SOR solver (heterogeneous) exceeded %d iterations\n", n+1);
+	pe_info(obj->pe, "SOR residual %le (initial) %le (final)\n\n", rnorm[0], rnorm[1]);
       }
     }
   }

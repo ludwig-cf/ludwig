@@ -86,7 +86,7 @@ static int do_test1(pe_t * pe) {
   cs_init(cs);
 
   nk = 3;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_nk(psi, &n);
   assert(n == 3);
@@ -138,7 +138,7 @@ static int do_test2(pe_t * pe) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_nk(psi, &n);
   assert(n == 2);
@@ -198,7 +198,7 @@ static int do_test_halo1(pe_t * pe) {
   cs_init(cs);
 
   nk = 3;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
 
   test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
@@ -250,7 +250,7 @@ static int do_test_halo2(pe_t * pe) {
   cs_init(cs);
 
   nk = 2;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
 
   test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
@@ -299,7 +299,7 @@ static int do_test_io1(pe_t * pe) {
   }
 
   nk = 2;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
@@ -316,7 +316,7 @@ static int do_test_io1(pe_t * pe) {
   /* Recreate, and read. This zeros out all the fields, so they
    * must be read correctly to pass. */
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   psi_init_io_info(psi, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
 
   psi_io_info(psi, &iohandler);
@@ -374,7 +374,7 @@ static int do_test_bjerrum(pe_t * pe) {
 
   cs_create(pe, &cs);
   cs_init(cs);
-  psi_create(2, &psi);
+  psi_create(pe, cs, 2, &psi);
 
   psi_beta_set(psi, 1.0/ktref);
   psi_beta(psi, &tmp);
@@ -428,7 +428,7 @@ static int do_test_ionic_strength(pe_t * pe) {
 
   cs_create(pe, &cs);
   cs_init(cs);
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
 
   for (n = 0; n < nk; n++) {
     psi_valency_set(psi, n, valency[n]);

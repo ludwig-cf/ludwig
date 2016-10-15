@@ -81,7 +81,7 @@ static int do_test1(pe_t * pe) {
   cs_nhalo_set(cs, 2);
   cs_init(cs);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   fe_electro_create(psi, &fe_elec);
 

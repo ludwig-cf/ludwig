@@ -74,7 +74,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_init_rt(pe_t * pe, rt_t * rt, colloids_info_t ** pinfo,
+int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** pcio,
 		     interact_t ** interact, map_t * map) {
   int nc;
@@ -87,6 +87,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, colloids_info_t ** pinfo,
   char keyvalue[BUFSIZ];
 
   assert(pe);
+  assert(cs);
   assert(rt);
 
   /* Colloid info object always created with ncell = 2;
@@ -112,7 +113,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, colloids_info_t ** pinfo,
   pe_info(pe, "Colloid information\n");
   pe_info(pe, "-------------------\n");
 
-  colloid_io_run_time(rt, *pinfo, pcio);
+  colloid_io_run_time(pe, rt, cs, *pinfo, pcio);
 
   if (init_one) colloids_rt_init_few(pe, rt, *pinfo, 1);
   if (init_two) colloids_rt_init_few(pe, rt, *pinfo, 2);

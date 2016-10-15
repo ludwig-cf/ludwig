@@ -37,7 +37,11 @@
  */
 
 struct psi_s {
+  pe_t * pe;                /* Parallel environment */
+  cs_t * cs;                /* Coordinate system */
+
   int nk;                   /* Number of species */
+  int nsites;               /* Number sites storage */
   double * psi;             /* Electric potential */
   double * rho;             /* Charge densities */
   double * diffusivity;     /* Diffusivity for each species */

@@ -15,6 +15,8 @@
 #ifndef COLLOIDS_RT_H
 #define COLLOIDS_RT_H
 
+#include "pe.h"
+#include "coords.h"
 #include "runtime.h"
 #include "colloids.h"
 #include "colloid_io.h"
@@ -22,7 +24,7 @@
 #include "map.h"
 #include "ewald.h"
 
-int colloids_init_rt(pe_t * pe, rt_t * rt, colloids_info_t ** pinfo,
+int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** cio,
 		     interact_t ** interact, map_t * map);
 int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,

@@ -1105,14 +1105,18 @@ int blue_phase_random_q_init(fe_lc_param_t * param, field_t * fq) {
   double phase1, phase2;
 
   double ran1, ran2;
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
   noise_t * rng = NULL;
   PI_DOUBLE(pi);
 
   assert(fq);
   
+  pe_ref(&pe);
+  cs_ref(&cs);
   coords_nlocal(nlocal);
 
-  noise_create(&rng);
+  noise_create(pe, cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -1170,16 +1174,22 @@ int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[
   double a0 = 0.01;             /* Initial amplitude of order in 'box' */
 
   double ran1, ran2;
+
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
   noise_t * rng = NULL;
   PI_DOUBLE(pi);
   KRONECKER_DELTA_CHAR(d);
 
   assert(fq);
 
+  pe_ref(&pe);
+  cs_ref(&cs);
+
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
 
-  noise_create(&rng);
+  noise_create(pe, cs, &rng);
   noise_init(rng, seed);
 
   /* Adjust min, max to allow for parallel offset of box */
@@ -1406,11 +1416,17 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   double chi[NQAB], chi_qab[3][3];
   double var = 1e-1; /* variance of random fluctuation */
   int seed = DEFAULT_SEED;
+
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
   noise_t * rng = NULL;
   PI_DOUBLE(pi);
 
   assert(fq);
   assert(axis == X || axis == Y || axis == Z);
+
+  pe_ref(&pe);
+  cs_ref(&cs);
 
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
@@ -1423,7 +1439,7 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   n[Y] = 0.0;
   n[Z] = 0.0;
 
-  noise_create(&rng);
+  noise_create(pe, cs, &rng);
   noise_init(rng, seed);
  
   for (ic = 1; ic <= nlocal[X]; ic++) {

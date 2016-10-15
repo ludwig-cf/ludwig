@@ -84,7 +84,7 @@ static int do_test_sor1(pe_t * pe) {
   cs_nhalo_set(cs, 1);
   cs_init(cs);
 
-  psi_create(2, &psi);
+  psi_create(pe, cs, 2, &psi);
   assert(psi);
   psi_valency_set(psi, 0, +1.0);
   psi_valency_set(psi, 1, -1.0);

@@ -179,13 +179,17 @@ int field_phi_init_spinodal(int seed, double phi0, double amp,
   double ran;
   double phi1;
 
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
   noise_t * rng = NULL;
 
   assert(phi);
 
+  pe_ref(&pe);
+  cs_ref(&cs);
   coords_nlocal(nlocal);
 
-  noise_create(&rng);
+  noise_create(pe, cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -236,13 +240,17 @@ int field_phi_init_spinodal_patches(int seed, int patch,
   double phi1;
   double ran_uniform;
 
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
   noise_t * rng = NULL;
 
   assert(phi);
 
+  pe_ref(&pe);
+  cs_ref(&cs);
   coords_nlocal(nlocal);
 
-  noise_create(&rng);
+  noise_create(pe, cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic += patch) {

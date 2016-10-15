@@ -35,7 +35,7 @@
 #include "tests.h"
 
 static int do_test_gouy_chapman(pe_t * pe);
-static int test_io(psi_t * psi, int tstep);
+static int test_io(cs_t * cs, psi_t * psi, int tstep);
 
 /*****************************************************************************
  *
@@ -129,7 +129,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
   cs_nhalo_set(cs, 1);
   cs_ntotal_set(cs, ntotal);
 
-  grid[X] = pe_size();
+  grid[X] = pe_mpi_size(pe);
   grid[Y] = 1;
   grid[Z] = 1;
   cs_decomposition_set(cs, grid);
@@ -138,10 +138,10 @@ static int do_test_gouy_chapman(pe_t * pe) {
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffst);
 
-  map_create(0, &map);
+  map_create(pe, cs, 0, &map);
   assert(map);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
 
   psi_valency_set(psi, 0, valency[0]);
@@ -221,7 +221,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
 
       info("%d\n", tstep);
       psi_stats_info(psi);
-      if (test_output_required) test_io(psi, tstep);
+      if (test_output_required) test_io(cs, psi, tstep);
     }
   }
 
@@ -271,7 +271,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
  *
  *****************************************************************************/
 
-static int test_io(psi_t * psi, int tstep) {
+static int test_io(cs_t * cs, psi_t * psi, int tstep) {
 
   int ntotalx;
   int nlocal[3];
@@ -328,7 +328,7 @@ static int test_io(psi_t * psi, int tstep) {
   MPI_Gather(field, nlocal[X], MPI_DOUBLE,
 	     rho1field, nlocal[X], MPI_DOUBLE, 0, cart_comm());
 
-  if (cart_rank() == 0) {
+  if (cs_cart_rank(cs) == 0) {
 
     sprintf(filename, "np_test-%d.dat", tstep);
     out = fopen(filename, "w");

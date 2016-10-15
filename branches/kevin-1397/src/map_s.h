@@ -12,8 +12,8 @@
  *
  *****************************************************************************/
 
-#ifndef MAP_S_H
-#define MAP_S_H
+#ifndef LUDWIG_MAP_S_H
+#define LUDWIG_MAP_S_H
 
 #include <mpi.h>
 #include "map.h"
@@ -25,6 +25,9 @@ struct map_s {
   int ndata;                  /* Additional fields associated with map */
   char * status;              /* Status (one of enum_status) */
   double * data;              /* Additional site lattice property */
+
+  pe_t * pe;                  /* Parallel environment */
+  cs_t * cs;                  /* Coordinate system */
   MPI_Datatype halostatus[3]; /* Halo datatype for status */
   MPI_Datatype halodata[3];   /* Halo datatype for data */
   io_info_t * info;           /* I/O handler */

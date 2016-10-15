@@ -5,9 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -34,7 +35,7 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]);
  *
  *****************************************************************************/
 
-int lb_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
+int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 
   int ndist;
   int nreduced;
@@ -42,9 +43,11 @@ int lb_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
   char string[FILENAME_MAX];
   char memory = ' '; 
 
+  io_info_arg_t param;
   io_info_t * io_info = NULL;
 
   assert(pe);
+  assert(cs);
   assert(rt);
   assert(lb);
 
@@ -53,7 +56,14 @@ int lb_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
   if (strcmp(string, "yes") == 0) nreduced = 1;
 
   rt_int_parameter_vector(rt, "distribution_io_grid", io_grid);
+#ifdef OLD_SHIT
   io_info = io_info_create_with_grid(io_grid);
+#else
+  param.grid[X] = io_grid[X];
+  param.grid[Y] = io_grid[Y];
+  param.grid[Z] = io_grid[Z];
+  io_info_create(pe, cs, &param, &io_info);
+#endif
   lb_io_info_set(lb, io_info);
 
   rt_string_parameter(rt,"distribution_io_format_input", string,
@@ -82,7 +92,7 @@ int lb_run_time(pe_t * pe, rt_t * rt, lb_t * lb) {
   }
 
   pe_info(pe, "Output format:    binary\n");
-  pe_info(pe, "I/O grid:         %d %d %d\n", io_grid[0], io_grid[1], io_grid[2]);
+  pe_info(pe, "I/O grid:         %d %d %d\n", io_grid[X], io_grid[Y], io_grid[Z]);
 
   lb_init(lb);
 

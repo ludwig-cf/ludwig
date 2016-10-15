@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -89,7 +89,7 @@ int do_test1(pe_t * pe) {
   cs_nlocal(cs, nlocal);
   cs_ntotal(cs, ntotal);
 
-  map_create(ndataref, &map);
+  map_create(pe, cs, ndataref, &map);
   assert(map);
 
   map_ndata(map, &ndata);
@@ -169,7 +169,7 @@ int do_test2(pe_t * pe) {
   cs_init(cs);
   cs_nlocal(cs, nlocal);
 
-  map_create(ndataref, &map);
+  map_create(pe, cs, ndataref, &map);
   assert(map);
 
   map_ndata(map, &ndata);
@@ -205,7 +205,7 @@ int do_test_halo(pe_t * pe, int ndata) {
   cs_init(cs);
   cs_nhalo(cs, &nhalo);
 
-  map_create(ndata, &map);
+  map_create(pe, cs, ndata, &map);
   assert(map);
 
   test_coords_field_set(1, map->status, MPI_CHAR, test_ref_char1);
@@ -231,8 +231,9 @@ int do_test_halo(pe_t * pe, int ndata) {
 
 static int do_test_io(pe_t * pe, int ndata, int io_format) {
 
-  int grid[3] = {1, 1, 1};
+  int grid[3];
   const char * filename = "map-io-test";
+  MPI_Comm comm;
 
   cs_t * cs = NULL;
   map_t * map = NULL;
@@ -240,7 +241,13 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
 
   assert(pe);
 
-  if (pe_size() == 8) {
+  pe_mpi_comm(pe, &comm);
+
+  grid[X] = 1;
+  grid[Y] = 1;
+  grid[Z] = 1;
+
+  if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
     grid[Y] = 2;
     grid[Z] = 2;
@@ -248,7 +255,7 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
 
   cs_create(pe, &cs);
   cs_init(cs);
-  map_create(ndata, &map);
+  map_create(pe, cs, ndata, &map);
   assert(map);
 
   map_init_io_info(map, grid, io_format, io_format);
@@ -262,11 +269,11 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
   map_free(map);
   iohandler = NULL;
   map = NULL;
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
 
   /* Recreate, and read from file, and check. */
 
-  map_create(ndata, &map);
+  map_create(pe, cs, ndata, &map);
   assert(map);
 
   map_init_io_info(map, grid, io_format, io_format);
@@ -278,7 +285,7 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
   test_coords_field_check(0, ndata, map->data, MPI_DOUBLE, test_ref_double1);
 
   /* Wait before removing file(s) */
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "map");
 

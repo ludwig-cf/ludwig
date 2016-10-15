@@ -8,15 +8,17 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007 The University of Edinburgh
+ *  (c) 2007-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef IOHARNESS_H
-#define IOHARNESS_H
+#ifndef LUDWIG_IOHARNESS_H
+#define LUDWIG_IOHARNESS_H
 
 #include <stdio.h>
-#include "targetDP.h"
+
+#include "pe.h"
+#include "coords.h"
 
 enum io_format_flag {IO_FORMAT_NULL,
                      IO_FORMAT_ASCII,
@@ -25,12 +27,21 @@ enum io_format_flag {IO_FORMAT_NULL,
                      IO_FORMAT_BINARY_SERIAL,
                      IO_FORMAT_DEFAULT};
 
+/* io_info_arg_t to eventually include all relevant parameters */
+typedef struct io_info_arg_s io_info_arg_t;
 typedef struct io_info_s io_info_t;
+
+struct io_info_arg_s {
+  int grid[3];
+};
+
+/* Callback signature for lattice site I/O */
 typedef int (*io_rw_cb_ft)(FILE * fp, int index, void * self);
 
-__host__ io_info_t * io_info_create(void);
-__host__ io_info_t * io_info_create_with_grid(const int *);
-__host__ void io_info_destroy(io_info_t *);
+
+__host__ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg,
+			    io_info_t ** pinfo);
+__host__ int io_info_free(io_info_t *);
 
 __host__ void io_info_set_name(io_info_t *, const char *);
 __host__ void io_info_set_write(io_info_t *, int (*) (FILE *, int, int, int));
