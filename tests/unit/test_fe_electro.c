@@ -26,9 +26,9 @@
 #include "fe_electro.h"
 #include "tests.h"
 
-static int do_test1(cs_t * cs, physics_t * phys);
-static int do_test2(cs_t * cs, physics_t * phys);
-static int do_test3(cs_t * cs,physics_t * phys);
+static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys);
+static int do_test2(pe_t * pe, cs_t * cs, physics_t * phys);
+static int do_test3(pe_t * pe, cs_t * cs,physics_t * phys);
 
 /*****************************************************************************
  *
@@ -47,9 +47,9 @@ int test_fe_electro_suite(void) {
   cs_init(cs);
   physics_create(pe, &phys);
 
-  do_test1(cs, phys);
-  do_test2(cs, phys);
-  do_test3(cs, phys);
+  do_test1(pe, cs, phys);
+  do_test2(pe, cs, phys);
+  do_test3(pe, cs, phys);
 
   physics_free(phys);
   cs_free(cs);
@@ -67,7 +67,7 @@ int test_fe_electro_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test1(cs_t * cs, physics_t * phys) {
+static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   int nk = 2;
   double valency[2] = {1, 2};
@@ -82,10 +82,11 @@ static int do_test1(cs_t * cs, physics_t * phys) {
   double fed;
   fe_electro_t * fe = NULL;
 
+  assert(pe);
   assert(cs);
   assert(phys);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   psi_unit_charge_set(psi, eunit);
 
   physics_kt_set(phys, kt);
@@ -147,7 +148,7 @@ static int do_test1(cs_t * cs, physics_t * phys) {
  *
  *****************************************************************************/
 
-int do_test2(cs_t * cs, physics_t * phys) {
+int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   int n;
   int nk = 3;
@@ -164,10 +165,11 @@ int do_test2(cs_t * cs, physics_t * phys) {
 
   fe_electro_t * fe = NULL;
 
+  assert(pe);
   assert(cs);
   assert(phys);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   psi_unit_charge_set(psi, eunit);
   physics_kt_set(phys, kt);
 
@@ -209,7 +211,7 @@ int do_test2(cs_t * cs, physics_t * phys) {
  *
  *****************************************************************************/
 
-static int do_test3(cs_t * cs, physics_t * phys) {
+static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   int nk = 2;
   int index;
@@ -229,10 +231,11 @@ static int do_test3(cs_t * cs, physics_t * phys) {
 
   fe_electro_t * fe = NULL;
 
+  assert(pe);
   assert(cs);
   assert(phys);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   psi_epsilon_set(psi, epsilon);
   psi_unit_charge_set(psi, eunit);
   fe_electro_create(psi, &fe);

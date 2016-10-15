@@ -8,20 +8,23 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef COLLOID_IO_H
 #define COLLOID_IO_H
 
+#include "pe.h"
+#include "coords.h"
 #include "colloids.h"
 
 typedef struct colloid_io_s colloid_io_t;
 
-int  colloid_io_create(int io_grid[3], colloids_info_t * info,
+int  colloid_io_create(pe_t * pe, cs_t * cs, int io_grid[3],
+		       colloids_info_t * info,
 		       colloid_io_t ** cio);
-void colliod_io_free(colloid_io_t * cio);
+int colliod_io_free(colloid_io_t * cio);
 int colloid_io_info_set(colloid_io_t * cio, colloids_info_t * info);
 int colloid_io_info(colloid_io_t * cio);
 

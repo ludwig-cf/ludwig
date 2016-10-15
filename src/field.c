@@ -114,7 +114,7 @@ __host__ int field_free(field_t * obj) {
   if (obj->data) free(obj->data);
   if (obj->name) free(obj->name);
   if (obj->halo) halo_swap_free(obj->halo);
-  if (obj->info) io_info_destroy(obj->info);
+  if (obj->info) io_info_free(obj->info);
   cs_free(obj->cs);
   pe_free(obj->pe);
   free(obj);
@@ -246,12 +246,18 @@ __host__ __device__ int field_nf(field_t * obj, int * nf) {
 
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out) {
+
+  io_info_arg_t args;
+
   assert(obj);
-  assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
-  if (obj->info == NULL) fatal("io_info_create(field) failed\n");
+  args.grid[X] = grid[X];
+  args.grid[Y] = grid[Y];
+  args.grid[Z] = grid[Z];
+
+  io_info_create(obj->pe, obj->cs, &args, &obj->info);
+  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(field) failed\n");
 
   io_info_set_name(obj->info, obj->name);
   io_info_write_set(obj->info, IO_FORMAT_BINARY, field_write);

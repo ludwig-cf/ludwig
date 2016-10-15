@@ -15,11 +15,14 @@
 #ifndef COLLOID_IO_RT_H
 #define COLLOID_IO_RT_H
 
+#include "pe.h"
+#include "coords.h"
 #include "runtime.h"
 #include "colloids.h"
 #include "colloid_io.h"
 
-int colloid_io_run_time(rt_t * rt, colloids_info_t * cinfo,
+int colloid_io_run_time(pe_t * pe, rt_t * rt, cs_t * cs,
+			colloids_info_t * cinfo,
 			colloid_io_t ** pcio);
 
 #endif

@@ -51,6 +51,82 @@ static int psi_write_ascii(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
+ *  psi_create
+ *
+ *  Initialise the electric potential, nk charge density fields.
+ *
+ *****************************************************************************/
+
+int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
+
+  int nsites;
+  int nhalo;
+  psi_t * psi = NULL;
+
+  assert(pe);
+  assert(cs);
+  assert(pobj);
+  assert(nk > 1);
+  assert(nk <= PSI_NKMAX);
+
+  cs_nsites(cs, &nsites);
+  cs_nhalo(cs, &nhalo);
+
+  psi = (psi_t *) calloc(1, sizeof(psi_t));
+  if (psi == NULL) pe_fatal(pe, "Allocation of psi failed\n");
+
+  psi->pe = pe;
+  psi->cs = cs;
+
+  psi->nk = nk;
+  psi->nsites = nsites;
+  psi->psi = (double *) calloc(nsites, sizeof(double));
+  psi->rho = (double *) calloc(nk*nsites, sizeof(double));
+  psi->diffusivity = (double *) calloc(nk, sizeof(double));
+  psi->valency = (int *) calloc(nk, sizeof(int));
+
+  if (psi->psi == NULL) pe_fatal(pe, "Allocation of psi->psi failed\n");
+  if (psi->rho == NULL) pe_fatal(pe, "Allocation of psi->rho failed\n");
+  if (psi->diffusivity == NULL) pe_fatal(pe, "psi->diffusivity failed\n");
+  if (psi->valency == NULL) pe_fatal(pe, "calloc(psi->valency) failed\n");
+
+  psi->e = e_unit_default;
+  psi->reltol = reltol_default;
+  psi->abstol = abstol_default;
+  psi->maxits = maxits_default;
+  psi->multisteps = multisteps_default;
+  psi->skipsteps = skipsteps_default;
+  psi->diffacc = diffacc_default;
+
+  psi->nfreq_io = INT_MAX; /* SHIT not picked up in input? */
+  psi->nfreq = INT_MAX;
+
+  coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
+  coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
+
+  *pobj = psi; 
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  psi_io_info
+ *
+ *****************************************************************************/
+
+int psi_io_info(psi_t * obj, io_info_t ** info) {
+
+  assert(obj);
+  assert(info);
+
+  *info = obj->info;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  psi_halo_psi
  *
  *****************************************************************************/
@@ -79,77 +155,6 @@ int psi_halo_rho(psi_t * psi) {
 
   nhalo = coords_nhalo();
   coords_field_halo_rank1(coords_nsites(), nhalo, psi->nk, psi->rho, MPI_DOUBLE);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_create
- *
- *  Initialise the electric potential, nk charge density fields.
- *
- *****************************************************************************/
-
-int psi_create(int nk, psi_t ** pobj) {
-
-  int nsites;
-  int nhalo;
-  psi_t * psi = NULL;
-
-  assert(pobj);
-  assert(nk > 1);
-  assert(nk <= PSI_NKMAX);
-
-  nsites = coords_nsites();
-  nhalo = coords_nhalo();
-
-  psi = (psi_t*) calloc(1, sizeof(psi_t));
-  if (psi == NULL) fatal("Allocation of psi failed\n");
-
-  psi->nk = nk;
-  psi->psi = (double*) calloc(nsites, sizeof(double));
-  if (psi->psi == NULL) fatal("Allocation of psi->psi failed\n");
-
-  psi->rho = (double*) calloc(nk*nsites, sizeof(double));
-  if (psi->rho == NULL) fatal("Allocation of psi->rho failed\n");
-
-  psi->diffusivity = (double*) calloc(nk, sizeof(double));
-  if (psi->diffusivity == NULL) fatal("calloc(psi->diffusivity) failed\n");
-
-  psi->valency = (int*) calloc(nk, sizeof(int));
-  if (psi->valency == NULL) fatal("calloc(psi->valency) failed\n");
-
-  psi->e = e_unit_default;
-  psi->reltol = reltol_default;
-  psi->abstol = abstol_default;
-  psi->maxits = maxits_default;
-  psi->multisteps = multisteps_default;
-  psi->skipsteps = skipsteps_default;
-  psi->diffacc = diffacc_default;
-
-  psi->nfreq_io = INT_MAX; /* SHIT not picked up in input? */
-  psi->nfreq = INT_MAX;
-
-  coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
-  coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
-  *pobj = psi; 
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  psi_io_info
- *
- *****************************************************************************/
-
-int psi_io_info(psi_t * obj, io_info_t ** info) {
-
-  assert(obj);
-  assert(info);
-
-  *info = obj->info;
 
   return 0;
 }
@@ -248,12 +253,18 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
 
 int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
+  io_info_arg_t args;
+
   assert(obj);
   assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
-  if (obj->info == NULL) fatal("io_info_create(psi) failed\n");
+  args.grid[X] = grid[X];
+  args.grid[Y] = grid[Y];
+  args.grid[Z] = grid[Z];
+
+  io_info_create(obj->pe, obj->cs, &args, &obj->info);
+  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(psi) failed\n");
 
   io_info_set_name(obj->info, "Potential and charge densities");
 
@@ -287,7 +298,7 @@ void psi_free(psi_t * obj) {
     MPI_Type_free(&obj->rhohalo[n]);
   }
 
-  if (obj->info) io_info_destroy(obj->info);
+  if (obj->info) io_info_free(obj->info);
 
   free(obj->valency);
   free(obj->diffusivity);
@@ -310,26 +321,33 @@ void psi_free(psi_t * obj) {
 static int psi_write_ascii(FILE * fp, int index, void * self) {
 
   int n, nwrite;
+  int nsites;
   double rho_el;
   psi_t * obj = (psi_t*) self;
 
   assert(obj);
   assert(fp);
 
-  nwrite = fprintf(fp, "%22.15e ", obj->psi[addr_rank0(coords_nsites(),index)]);
-  if (nwrite != 23) fatal("fprintf(psi) failed at index %d\n", index);
+  cs_nsites(obj->cs, &nsites);
+
+  nwrite = fprintf(fp, "%22.15e ", obj->psi[addr_rank0(nsites,index)]);
+  if (nwrite != 23) {
+    pe_fatal(obj->pe, "fprintf(psi) failed at index %d\n", index);
+  }
 
   for (n = 0; n < obj->nk; n++) {
-    nwrite = fprintf(fp, "%22.15e ", obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)]);
-    if (nwrite != 23) fatal("fprintf(rho) failed at index %d %d\n", index, n);
+    nwrite = fprintf(fp, "%22.15e ", obj->rho[addr_rank1(nsites, obj->nk, index, n)]);
+    if (nwrite != 23) pe_fatal(obj->pe, "fprintf(rho) failed at index %d %d\n", index, n);
   }
   
   psi_rho_elec(obj, index, &rho_el);
   nwrite = fprintf(fp, "%22.15e ", rho_el);
-  if (nwrite != 23) fatal("fprintf(rho_el) failed at index %d\n", index);
+  if (nwrite != 23) {
+    pe_fatal(obj->pe, "fprintf(rho_el) failed at index %d\n", index);
+  }
 
   nwrite = fprintf(fp, "\n");
-  if (nwrite != 1) fatal("fprintf() failed at index %d\n", index);
+  if (nwrite != 1) pe_fatal(obj->pe, "fprintf() failed at index %d\n", index);
 
   return 0;
 }
@@ -345,6 +363,7 @@ static int psi_write_ascii(FILE * fp, int index, void * self) {
 static int psi_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
+  int nsites;
   int indexf;
   double rho_el;
   psi_t * obj = (psi_t*) self;
@@ -352,18 +371,20 @@ static int psi_read_ascii(FILE * fp, int index, void * self) {
   assert(fp);
   assert(self);
 
-  indexf = addr_rank0(coords_nsites(), index);
+  cs_nsites(obj->cs, &nsites);
+
+  indexf = addr_rank0(nsites, index);
   nread = fscanf(fp, "%le", obj->psi + indexf);
-  if (nread != 1) fatal("fscanf(psi) failed for %d\n", index);
+  if (nread != 1) pe_fatal(obj->pe, "fscanf(psi) failed %d\n", index);
 
   for (n = 0; n < obj->nk; n++) {
-    indexf = addr_rank1(coords_nsites(), obj->nk, index, n);
+    indexf = addr_rank1(nsites, obj->nk, index, n);
     nread = fscanf(fp, "%le", obj->rho + indexf);
-    if (nread != 1) fatal("fscanf(rho) failed for %d %d\n", index, n);
+    if (nread != 1) pe_fatal(obj->pe, "fscanf(rho) failed %d %d\n", index, n);
   }
 
   nread = fscanf(fp, "%le", &rho_el);
-  if (nread != 1) fatal("fscanf(rho_el) failed for %d %d\n", index, n);
+  if (nread != 1) pe_fatal(obj->pe, "fscanf(rho_el) failed %d %d\n", index, n);
 
   return 0;
 }
@@ -380,6 +401,7 @@ static int psi_write(FILE * fp, int index, void * self) {
 
   int n;
   int na;
+  int nsites;
   int indexf;
   double rho_el;
   psi_t * obj = (psi_t*) self;
@@ -387,19 +409,21 @@ static int psi_write(FILE * fp, int index, void * self) {
   assert(fp);
   assert(obj);
 
-  indexf = addr_rank0(coords_nsites(), index);
+  cs_nsites(obj->cs, &nsites);
+
+  indexf = addr_rank0(nsites, index);
   n = fwrite(obj->psi + indexf, sizeof(double), 1, fp);
-  if (n != 1) fatal("fwrite(psi) failed at index %d\n", index);
+  if (n != 1) pe_fatal(obj->pe, "fwrite(psi) failed at index %d\n", index);
 
   for (na = 0; na < obj->nk; na++) {
-    indexf = addr_rank1(coords_nsites(), obj->nk, index, na);
+    indexf = addr_rank1(nsites, obj->nk, index, na);
     n = fwrite(obj->rho + indexf, sizeof(double), 1, fp);
-    if (n != 1) fatal("fwrite(rho) failed at index %d\n", index);
+    if (n != 1) pe_fatal(obj->pe, "fwrite(rho) failed at index %d\n", index);
   }
 
   psi_rho_elec(obj, index, &rho_el);
   n = fwrite(&rho_el, sizeof(double), 1, fp);
-  if (n != 1) fatal("fwrite(rho_el) failed at index %d", index);
+  if (n != 1) pe_fatal(obj->pe, "fwrite(rho_el) failed at index %d", index);
 
   return 0;
 }
@@ -416,6 +440,7 @@ static int psi_read(FILE * fp, int index, void * self) {
 
   int n;
   int na;
+  int nsites;
   int indexf;
   double rho_el;
   psi_t * obj = (psi_t*) self;
@@ -423,18 +448,20 @@ static int psi_read(FILE * fp, int index, void * self) {
   assert(fp);
   assert(obj);
 
-  indexf = addr_rank0(coords_nsites(), index);
+  cs_nsites(obj->cs, &nsites);
+
+  indexf = addr_rank0(nsites, index);
   n = fread(obj->psi + indexf, sizeof(double), 1, fp);
-  if (n != 1) fatal("fread(psi) failed at index %d\n", index);
+  if (n != 1) pe_fatal(obj->pe, "fread(psi) failed at index %d\n", index);
 
   for (na = 0; na < obj->nk; na++) {
-    indexf = addr_rank1(coords_nsites(), obj->nk, index, na);
+    indexf = addr_rank1(nsites, obj->nk, index, na);
     n = fread(obj->rho + indexf, sizeof(double), 1, fp);
-    if (n != 1) fatal("fread(rho) failed at index %d\n", index);
+    if (n != 1) pe_fatal(obj->pe, "fread(rho) failed at index %d\n", index);
   }
 
   n = fread(&rho_el, sizeof(double), 1, fp);
-  if (n != 1) fatal("fread(rho_el) failed at index %d\n", index);
+  if (n != 1) pe_fatal(obj->pe, "fread(rho_el) failed at index %d\n", index);
 
   return 0;
 }
@@ -456,7 +483,7 @@ int psi_rho_elec(psi_t * obj, int index, double * rho) {
   assert(rho);
 
   for (n = 0; n < obj->nk; n++) {
-    rho_elec += obj->e*obj->valency[n]*obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)];
+    rho_elec += obj->e*obj->valency[n]*obj->rho[addr_rank1(obj->nsites, obj->nk, index, n)];
   }
   *rho = rho_elec;
 
@@ -475,7 +502,7 @@ int psi_rho(psi_t * obj, int index, int n, double * rho) {
   assert(rho);
   assert(n < obj->nk);
 
-  *rho = obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)];
+  *rho = obj->rho[addr_rank1(obj->nsites, obj->nk, index, n)];
 
   return 0;
 }
@@ -491,7 +518,7 @@ int psi_rho_set(psi_t * obj, int index, int n, double rho) {
   assert(obj);
   assert(n < obj->nk);
 
-  obj->rho[addr_rank1(coords_nsites(), obj->nk, index, n)] = rho;
+  obj->rho[addr_rank1(obj->nsites, obj->nk, index, n)] = rho;
 
   return 0;
 }
@@ -507,7 +534,7 @@ int psi_psi(psi_t * obj, int index, double * psi) {
   assert(obj);
   assert(psi);
 
-  *psi = obj->psi[addr_rank0(coords_nsites(), index)];
+  *psi = obj->psi[addr_rank0(obj->nsites, index)];
 
   return 0;
 }
@@ -522,7 +549,7 @@ int psi_psi_set(psi_t * obj, int index, double psi) {
 
   assert(obj);
 
-  obj->psi[addr_rank0(coords_nsites(), index)] = psi;
+  obj->psi[addr_rank0(obj->nsites, index)] = psi;
 
   return 0;
 }
@@ -1025,9 +1052,9 @@ int psi_zero_mean(psi_t * psi) {
 
   assert(psi);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);  
-  comm = cart_comm();
+  cs_nhalo(psi->cs, &nhalo);
+  cs_nlocal(psi->cs, nlocal);  
+  cs_cart_comm(psi->cs, &comm);
 
   sum_local = 0.0;
 
@@ -1035,7 +1062,7 @@ int psi_zero_mean(psi_t * psi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 
 	psi_psi(psi, index, &psi0);
 	sum_local += psi0;
@@ -1051,7 +1078,7 @@ int psi_zero_mean(psi_t * psi) {
     for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 
 	psi_psi(psi, index, &psi0);
 	psi0 -= psi_offset;
@@ -1082,6 +1109,7 @@ int psi_halo_psijump(psi_t * psi) {
   int nlocal[3], ntotal[3], noffset[3];
   int index, index1;
   int ic, jc, kc, nh;
+  int mpicoords[3];
   double e0[3];
   double eps;
   double beta;
@@ -1089,31 +1117,32 @@ int psi_halo_psijump(psi_t * psi) {
 
   assert(psi);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_ntotal(ntotal);
-  coords_nlocal_offset(noffset);
+  cs_nhalo(psi->cs, &nhalo);
+  cs_nlocal(psi->cs, nlocal);
+  cs_ntotal(psi->cs, ntotal);
+  cs_nlocal_offset(psi->cs, noffset);
+  cs_cart_coords(psi->cs, mpicoords);
 
   physics_ref(&phys);
   physics_e0(phys, e0);
   psi_epsilon(psi, &eps);
   psi_beta(psi, &beta);
 
-  if (cart_coords(X) == 0) {
+  if (mpicoords[X] == 0) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	  index = coords_index(0 - nh, jc, kc);
+	  index = cs_index(psi->cs, 0 - nh, jc, kc);
 
 	  if (is_periodic(X)) {
-	    psi->psi[addr_rank0(coords_nsites(), index)] += e0[X]*ntotal[X];   
+	    psi->psi[addr_rank0(psi->nsites, index)] += e0[X]*ntotal[X];   
 	  }
 	  else{
 	    index1 = coords_index(1, jc, kc);
-	    psi->psi[addr_rank0(coords_nsites(), index)] =
-	      psi->psi[addr_rank0(coords_nsites(), index1)];   
+	    psi->psi[addr_rank0(psi->nsites, index)] =
+	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1127,36 +1156,36 @@ int psi_halo_psijump(psi_t * psi) {
       for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	  index = coords_index(nlocal[0] + 1 + nh, jc, kc);
+	  index = cs_index(psi->cs, nlocal[0] + 1 + nh, jc, kc);
 
 	  if (is_periodic(X)) {
-	    psi->psi[addr_rank0(coords_nsites(), index)] -= e0[X]*ntotal[X];   
+	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[X]*ntotal[X];   
 	  }
 	  else {
-	    index1 = coords_index(nlocal[0], jc, kc);
-	    psi->psi[addr_rank0(coords_nsites(), index)] =
-	      psi->psi[addr_rank0(coords_nsites(), index1)];   
+	    index1 = cs_index(psi->cs, nlocal[0], jc, kc);
+	    psi->psi[addr_rank0(psi->nsites, index)] =
+	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
     }  
   }
 
-  if (cart_coords(Y) == 0) {
+  if (mpicoords[Y] == 0) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	    index = coords_index(ic, 0 - nh, kc);
+	  index = cs_index(psi->cs, ic, 0 - nh, kc);
 
 	    if (is_periodic(Y)) {
-	      psi->psi[addr_rank0(coords_nsites(), index)] += e0[Y]*ntotal[Y];   
+	      psi->psi[addr_rank0(psi->nsites, index)] += e0[Y]*ntotal[Y];   
 	    }
 	    else{
 	      index1 = coords_index(ic, 1, kc);
-	      psi->psi[addr_rank0(coords_nsites(), index)] =
-		psi->psi[addr_rank0(coords_nsites(), index1)];   
+	      psi->psi[addr_rank0(psi->nsites, index)] =
+		psi->psi[addr_rank0(psi->nsites, index1)];   
 	    }
 	}
       }
@@ -1164,21 +1193,21 @@ int psi_halo_psijump(psi_t * psi) {
 
   }
 
-  if (cart_coords(Y) == cart_size(Y)-1) {
+  if (mpicoords[Y] == cart_size(Y)-1) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	  index = coords_index(ic, nlocal[1] + 1 + nh, kc);
+	  index = cs_index(psi->cs, ic, nlocal[1] + 1 + nh, kc);
 
 	  if (is_periodic(Y)) {
-	    psi->psi[addr_rank0(coords_nsites(), index)] -= e0[Y]*ntotal[Y];   
+	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[Y]*ntotal[Y];   
 	  }
 	  else {
-	    index1 = coords_index(ic, nlocal[1], kc);
-	    psi->psi[addr_rank0(coords_nsites(), index)] =
-	      psi->psi[addr_rank0(coords_nsites(), index1)];   
+	    index1 = cs_index(psi->cs, ic, nlocal[1], kc);
+	    psi->psi[addr_rank0(psi->nsites, index)] =
+	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1186,21 +1215,21 @@ int psi_halo_psijump(psi_t * psi) {
 
   }
 
-  if (cart_coords(Z) == 0) {
+  if (mpicoords[Z] == 0) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 
-	  index = coords_index(ic, jc, 0 - nh);
+	  index = cs_index(psi->cs, ic, jc, 0 - nh);
 
 	  if (is_periodic(Z)) {
-	    psi->psi[addr_rank0(coords_nsites(), index)] += e0[Z]*ntotal[Z];   
+	    psi->psi[addr_rank0(psi->nsites, index)] += e0[Z]*ntotal[Z];   
 	  }
-	  else{
-	    index1 = coords_index(ic, jc, 1);
-	    psi->psi[addr_rank0(coords_nsites(), index)] =
-	      psi->psi[addr_rank0(coords_nsites(), index1)];   
+	  else {
+	    index1 = cs_index(psi->cs, ic, jc, 1);
+	    psi->psi[addr_rank0(psi->nsites, index)] =
+	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }
@@ -1208,21 +1237,21 @@ int psi_halo_psijump(psi_t * psi) {
 
   }
 
-  if (cart_coords(Z) == cart_size(Z)-1) {
+  if (mpicoords[Z] == cart_size(Z)-1) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
 	for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 
-	  index = coords_index(ic, jc, nlocal[2] + 1 + nh);
+	  index = cs_index(psi->cs, ic, jc, nlocal[2] + 1 + nh);
 
 	  if (is_periodic(Z)) {
-	    psi->psi[addr_rank0(coords_nsites(), index)] -= e0[Z]*ntotal[Z];   
+	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[Z]*ntotal[Z];   
 	  }
 	  else{
-	    index1 = coords_index(ic, jc, nlocal[2]);
-	    psi->psi[addr_rank0(coords_nsites(), index)] =
-	      psi->psi[addr_rank0(coords_nsites(), index1)];   
+	    index1 = cs_index(psi->cs, ic, jc, nlocal[2]);
+	    psi->psi[addr_rank0(psi->nsites, index)] =
+	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
 	}
       }

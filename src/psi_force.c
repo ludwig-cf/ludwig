@@ -99,9 +99,9 @@ int psi_force_gradmu_e(psi_t * psi, fe_t * fe, hydro_t * hydro,
   assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
-  coords_strides(&xs, &ys, &zs);
-  comm = cart_comm();
+  cs_nlocal(psi->cs, nlocal);
+  cs_strides(psi->cs, &xs, &ys, &zs);
+  cs_cart_comm(psi->cs, &comm);
 
   physics_ref(&phys);
   physics_kt(phys, &kt);
@@ -112,7 +112,7 @@ int psi_force_gradmu_e(psi_t * psi, fe_t * fe, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(psi->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	/* Contribution from ionic electrostatic part
@@ -164,7 +164,7 @@ int psi_force_gradmu_e(psi_t * psi, fe_t * fe, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(psi->cs, ic, jc, kc);
 
 	colloids_info_map(cinfo, index, &pc);
 	if (pc) continue;
@@ -222,9 +222,9 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
   assert(phi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
-  coords_strides(&xs, &ys, &zs);
-  comm = cart_comm();
+  cs_nlocal(psi->cs, nlocal);
+  cs_strides(psi->cs, &xs, &ys, &zs);
+  cs_cart_comm(psi->cs, &comm);
 
   physics_ref(&phys);
   physics_kt(phys, &kt);
@@ -238,7 +238,7 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(psi->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	/* X-direction */
@@ -341,7 +341,7 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(psi->cs, ic, jc, kc);
 
 	colloids_info_map(cinfo, index, &pc);
 	if (pc) continue;

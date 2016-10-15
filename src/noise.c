@@ -21,7 +21,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2103 Kevin Stratford
+ *  (c) 2013-2016 Kevin Stratford
  *
  *****************************************************************************/
 
@@ -41,7 +41,8 @@
  * values. */
 
 struct noise_s {
-  void * pe_t;              /* Placeholder for pe_t */
+  pe_t * pe;                /* Parallel environment */
+  cs_t * cs;                /* Coordinate system */
   int master_seed;          /* Overall noise seed */
   int nsites;               /* Total number of lattice sites */
   int on[NOISE_END];        /* Noise on or off for different noise_enum_t */
@@ -59,12 +60,19 @@ static int noise_read(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-__host__ int noise_create(noise_t ** pobj) {
+__host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
 
   noise_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
+  assert(pobj);
+
   obj = (noise_t *) calloc(1, sizeof(noise_t));
-  if (obj == NULL) fatal("calloc(noise_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(noise_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   /* Here are the tabulated discrete random values with unit variance */
 
@@ -88,13 +96,13 @@ __host__ int noise_create(noise_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ void noise_free(noise_t * obj) {
+__host__ int noise_free(noise_t * obj) {
 
   assert(obj);
   free(obj->state);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -127,11 +135,11 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
 
   assert(obj);
 
-  obj->nsites = coords_nsites();
+  cs_nsites(obj->cs, &obj->nsites);
   nstat = NNOISE_STATE*obj->nsites;
 
   obj->state = (unsigned int *) calloc(nstat, sizeof(unsigned int));
-  if (obj->state == NULL) fatal("calloc(obj->state) failed\n");
+  if (obj->state == NULL) pe_fatal(obj->pe, "calloc(obj->state) failed\n");
 
   /* Can take the full default if valid seed is not provided */
 
@@ -141,9 +149,9 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
   }
 
   nextra = 1;
-  coords_ntotal(ntotal);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ntotal(obj->cs, ntotal);
+  cs_nlocal(obj->cs, nlocal);
+  cs_nlocal_offset(obj->cs, noffset);
 
   for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
 
@@ -180,7 +188,7 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
 	state[2] = noise_uniform(state_local);
 	state[3] = noise_uniform(state_local);
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	noise_state_set(obj, index, state);
       }
     }
@@ -202,11 +210,16 @@ __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
 
   const char * name = "Lattice noise RNG state";
   const char * stubname = "noise";
+  io_info_arg_t args;
 
   assert(obj);
 
-  obj->info = io_info_create_with_grid(grid);
-  if (obj->info == NULL) fatal("io_info_create(noise) failed\n");
+  args.grid[X] = grid[X];
+  args.grid[Y] = grid[Y];
+  args.grid[Z] = grid[Z];
+
+  io_info_create(obj->pe, obj->cs, &args, &obj->info);
+  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(noise) failed\n");
 
   io_info_set_name(obj->info, name);
   io_info_write_set(obj->info, IO_FORMAT_BINARY, noise_write);
@@ -394,7 +407,7 @@ static int noise_write(FILE * fp, int index, void * self) {
 
   n = fwrite(&obj->state[NNOISE_STATE*index], sizeof(unsigned int),
 	     NNOISE_STATE, fp);
-  if (n != NNOISE_STATE) fatal("fwrite(noise) failed at index %d\n", index);
+  if (n != NNOISE_STATE) pe_fatal(obj->pe, "fwrite(noise) index %d\n", index);
 
   return 0;
 }
@@ -409,7 +422,7 @@ static int noise_write(FILE * fp, int index, void * self) {
 
 static int noise_read(FILE * fp, int index, void * self) {
 
-  noise_t * obj = (noise_t*) self;
+  noise_t * obj = (noise_t *) self;
   int n;
 
   assert(obj);
@@ -417,7 +430,7 @@ static int noise_read(FILE * fp, int index, void * self) {
 
   n = fread(&obj->state[NNOISE_STATE*index], sizeof(unsigned int),
 	    NNOISE_STATE, fp);
-  if (n != NNOISE_STATE) fatal("fread(noise) failed at %d\n", index);
+  if (n != NNOISE_STATE) pe_fatal(obj->pe, "fread(noise) index %d\n", index);
 
   return 0;
 }

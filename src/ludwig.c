@@ -152,7 +152,7 @@ static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
-int map_init_rt(pe_t * pe, rt_t * rt, map_t ** map);
+int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 
 /*****************************************************************************
  *
@@ -174,6 +174,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int io_grid[3];
 
   pe_t * pe = NULL;
+  cs_t * cs = NULL;
   rt_t * rt = NULL;
   io_info_t * iohandler = NULL;
 
@@ -199,6 +200,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   /* Just convenience shorthand */
   pe = ludwig->pe;
+  cs = ludwig->cs;
   rt = ludwig->rt;
 
   init_control(pe, rt);
@@ -210,13 +212,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->epsilon);
 #endif
 
-  lb_run_time(pe, rt, ludwig->lb);
+  lb_run_time(pe, cs, rt, ludwig->lb);
   collision_run_time(pe, rt, ludwig->noise_rho);
-  map_init_rt(pe, rt, &ludwig->map);
+  map_init_rt(pe, cs, rt, &ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
   ran_init_rt(pe, rt);
-  hydro_rt(pe, rt, ludwig->cs, ludwig->le, &ludwig->hydro);
+  hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
 
   /* PHI I/O */
 
@@ -267,8 +269,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   wall_init(rt, ludwig->lb, ludwig->map);
-  colloids_init_rt(pe, rt, &ludwig->collinfo, &ludwig->cio, &ludwig->interact,
-		   ludwig->map);
+  colloids_init_rt(pe, rt, ludwig->cs, &ludwig->collinfo, &ludwig->cio,
+		   &ludwig->interact, ludwig->map);
   colloids_init_ewald_rt(pe, rt, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -1044,7 +1046,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   cs_create(pe,&cs);
 
   lb_create(pe, cs, &ludwig->lb);
-  noise_create(&ludwig->noise_rho);
+  noise_create(pe, cs, &ludwig->noise_rho);
 
   lees_edw_init_rt(rt, info);
 
@@ -1109,7 +1111,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 	    (noise_on == 0) ? "off" : " on");
 
     if (noise_on) {
-      noise_create(&ludwig->noise_phi);
+      noise_create(pe, cs, &ludwig->noise_phi);
       noise_init(ludwig->noise_phi, 0);
       noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
       if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
@@ -1398,7 +1400,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "\n");
     pe_info(pe, "Parameters:\n");
 
-    psi_create(nk, &ludwig->psi);
+    psi_create(pe, cs, nk, &ludwig->psi);
     psi_rt_init_param(pe, rt, ludwig->psi);
 
     pe_info(pe, "Force calculation:          %s\n",
@@ -1465,7 +1467,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     pe_info(pe, "Parameters:\n");
 
-    psi_create(nk, &ludwig->psi);
+    psi_create(pe, cs, nk, &ludwig->psi);
     psi_rt_init_param(pe, rt, ludwig->psi);
 
     fe_electro_create(ludwig->psi, &fe_elec);
@@ -1551,7 +1553,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
  *
  *****************************************************************************/
 
-int map_init_rt(pe_t * pe, rt_t * rt, map_t ** pmap) {
+int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 
   int is_porous_media = 0;
   int ndata = 0;
@@ -1595,7 +1597,7 @@ int map_init_rt(pe_t * pe, rt_t * rt, map_t ** pmap) {
 	    grid[X], grid[Y], grid[Z]);
   }
 
-  map_create(ndata, &map);
+  map_create(pe, cs, ndata, &map);
   map_init_io_info(map, grid, form_in, form_out);
   map_io_info(map, &iohandler);
 

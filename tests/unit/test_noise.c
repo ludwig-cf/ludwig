@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -79,7 +79,7 @@ static int do_test_noise1(pe_t * pe) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  noise_create(&noise);
+  noise_create(pe, cs, &noise);
   assert(noise);
   noise_init(noise, 0);
 
@@ -150,7 +150,7 @@ static int do_test_noise2(pe_t * pe) {
   cs_init(cs);
   cs_nlocal(cs, nlocal);
 
-  noise_create(&noise);
+  noise_create(pe, cs, &noise);
   noise_init(noise, 0);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -232,7 +232,7 @@ static int do_test_noise3(pe_t * pe) {
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsites);
 
-  noise_create(&noise);
+  noise_create(pe, cs, &noise);
   noise_init(noise, 0);
 
   moment6 = (double *) calloc(6*nsites, sizeof(double));

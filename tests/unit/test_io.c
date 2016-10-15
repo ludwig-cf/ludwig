@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -71,6 +71,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
 
   char stubp[FILENAME_MAX];
   test_io_t data = {2, 1.0};
+  io_info_arg_t args;
   io_info_t * io_info = NULL;
 
   assert(pe);
@@ -83,7 +84,11 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
   info("Allocating one io_info object...");
   */
 
-  io_info = io_info_create();
+  args.grid[X] = 1;
+  args.grid[Y] = 1;
+  args.grid[Z] = 1;
+
+  io_info_create(pe, cs, &args, &io_info);
   assert(io_info);
 
   /* info("Address of write function %p\n", test_write_1);*/
@@ -128,7 +133,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
 
   io_remove_metadata(io_info, stubp);
 
-  io_info_destroy(io_info);
+  io_info_free(io_info);
 
   return 0;
 }

@@ -120,7 +120,7 @@ __host__ int lb_free(lb_t * lb) {
   }
 
   if (lb->halo) halo_swap_free(lb->halo);
-  if (lb->io_info) io_info_destroy(lb->io_info);
+  if (lb->io_info) io_info_free(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->fprime) free(lb->fprime);
 

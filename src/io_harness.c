@@ -37,7 +37,9 @@
 #include "leesedwards.h"
 #include "io_harness.h"
 
-struct io_decomposition_t {
+typedef struct io_decomposition_s io_decomposition_t;
+
+struct io_decomposition_s {
   int n_io;         /* Total number of I/O groups (files) in decomposition */
   int index;        /* Index of this I/O group {0, 1, ...} */
   MPI_Comm comm;    /* MPI communicator for this group */
@@ -50,7 +52,9 @@ struct io_decomposition_t {
 };
 
 struct io_info_s {
-  struct io_decomposition_t * io_comm;
+  pe_t * pe;
+  cs_t * cs;
+  io_decomposition_t * io_comm;
   size_t bytesize;
   int metadata_written;
   int processor_independent;
@@ -72,52 +76,44 @@ struct io_info_s {
   io_rw_cb_ft read_binary;
 };
 
-static io_info_t * io_info_allocate(void);
 static void io_set_group_filename(char *, const char *, io_info_t *);
 static long int io_file_offset(int, int, io_info_t *);
-static struct io_decomposition_t * io_decomposition_allocate(void);
-static struct io_decomposition_t * io_decomposition_create(const int grid[3]);
-static void io_decomposition_destroy(struct io_decomposition_t *);
+static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
+				   io_decomposition_t ** p);
+static int io_decomposition_free(io_decomposition_t *);
 
 /*****************************************************************************
  *
  *  io_info_create
  *
- *  Return a pointer to an io_info object with default decomposition.
+ *  Retrun a pointer to a new io_info_t with specified arguments.
  *
  *****************************************************************************/
 
-io_info_t * io_info_create() {
+int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
 
-  int io_grid[3] = {1, 1, 1}; /* Default i/o grid */
-  io_info_t * p_info;
+  io_info_t * info = NULL;
 
-  p_info = io_info_create_with_grid(io_grid);
+  assert(pe);
+  assert(cs);
+  assert(arg);
+  assert(p);
 
-  return p_info;
+  info = (io_info_t *) calloc(1, sizeof(io_info_t));
+  if (info == NULL) pe_fatal(pe, "Failed to allocate io_info_t struct\n");
+
+  info->pe = pe;
+  info->cs = cs;
+
+  io_decomposition_create(pe, cs, arg->grid, &info->io_comm);
+  io_info_set_processor_dependent(info);
+  info->single_file_read = 0;
+
+  *p = info;
+
+  return 0;
 }
 
-/*****************************************************************************
- *
- *  io_info_create_with_grid
- *
- *  Retrun a pointer to a new io_info object with specified decomposition.
- *
- *****************************************************************************/
-
-io_info_t * io_info_create_with_grid(const int grid[3]) {
-
-  io_info_t * p_info;
-  struct io_decomposition_t * p_decomp;
-
-  p_info = io_info_allocate();
-  p_decomp = io_decomposition_create(grid);
-  p_info->io_comm = p_decomp;
-  io_info_set_processor_dependent(p_info);
-  p_info->single_file_read = 0;
-
-  return p_info;
-}
 
 /*****************************************************************************
  *
@@ -127,25 +123,40 @@ io_info_t * io_info_create_with_grid(const int grid[3]) {
  *
  *****************************************************************************/
 
-static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
+static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
+				   io_decomposition_t ** pobj) {
 
   int i, colour;
+  int ntotal[3];
   int noffset[3];
-  struct io_decomposition_t * p = NULL;
-  MPI_Comm comm = cart_comm();
+  int mpisz[3];
+  int mpicoords[3];
+  io_decomposition_t * p = NULL;
+  MPI_Comm comm;
 
-  assert(comm != MPI_COMM_NULL);
-  coords_nlocal_offset(noffset);
+  assert(pe);
+  assert(cs);
+  assert(pobj);
 
-  p = io_decomposition_allocate();
+  p = (io_decomposition_t *) calloc(1, sizeof(io_decomposition_t));
+  if (p == NULL) pe_fatal(pe, "Failed to allocate io_decomposition_t\n");
+
   p->n_io = 1;
 
+  cs_cart_comm(cs, &comm);
+  cs_nlocal_offset(cs, noffset);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
+  cs_ntotal(cs, ntotal);
+
   for (i = 0; i < 3; i++) {
-    if (cart_size(i) % grid[i] != 0) fatal("Bad I/O grid (dim %d)\n", i);
+    if (mpisz[i] % grid[i] != 0) {
+      pe_fatal(pe, "Bad I/O grid (dim %d)\n", i);
+    }
     p->ngroup[i] = grid[i];
     p->n_io *= grid[i];
-    p->coords[i] = grid[i]*cart_coords(i)/cart_size(i);
-    p->nsite[i] = N_total(i)/grid[i];
+    p->coords[i] = grid[i]*mpicoords[i]/mpisz[i];
+    p->nsite[i] = ntotal[i]/grid[i];
     p->offset[i] = noffset[i] - p->coords[i]*p->nsite[i];
   }
 
@@ -155,11 +166,13 @@ static struct io_decomposition_t * io_decomposition_create(const int grid[3]) {
 
   p->index = colour;
 
-  MPI_Comm_split(comm, colour, cart_rank(), &p->comm);
+  MPI_Comm_split(comm, colour, cs_cart_rank(cs), &p->comm);
   MPI_Comm_rank(p->comm, &p->rank);
   MPI_Comm_size(p->comm, &p->size);
 
-  return p;
+  *pobj = p;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -192,70 +205,35 @@ static void io_set_group_filename(char * filename_io, const char * stub,
 
 /*****************************************************************************
  *
- *  io_decomposition_allocate
- *
- *  Allocate an io_decomposition_t object or fail gracefully.
+ *  io_decomposition_free
  *
  *****************************************************************************/
 
-static struct io_decomposition_t * io_decomposition_allocate() {
-
-  struct io_decomposition_t * p = NULL;
-
-  p = (struct io_decomposition_t*) calloc(1, sizeof(struct io_decomposition_t));
-  if (p == NULL) fatal("Failed to allocate io_decomposition_t\n");
-
-  return p;
-}
-
-/*****************************************************************************
- *
- *  io_decomposition_destroy
- *
- *****************************************************************************/
-
-static void io_decomposition_destroy(struct io_decomposition_t * p) {
+static int io_decomposition_free(io_decomposition_t * p) {
 
   assert(p);
   MPI_Comm_free(&p->comm);
   free(p);
  
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  io_info_allocate
- *
- *  Return a pointer to newly allocated io_info object.
- *
- *****************************************************************************/
-
-io_info_t * io_info_allocate() {
-
-  io_info_t * p = NULL;
-
-  p = (io_info_t*) calloc(1, sizeof(io_info_t));
-  if (p == NULL) fatal("Failed to allocate io_info_t struct\n");
-
-  return p;
-}
-
-/*****************************************************************************
- *
- *  io_info_destroy
+ *  io_info_free
  *
  *  Deallocate io_info_t struct.
  *
  *****************************************************************************/
 
-void io_info_destroy(io_info_t * p) {
+int io_info_free(io_info_t * p) {
 
-  assert(p != (io_info_t *) NULL);
-  io_decomposition_destroy(p->io_comm);
+  assert(p);
+
+  io_decomposition_free(p->io_comm);
   free(p);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -374,7 +352,7 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
   /* Single file offset */
 
   if (info->single_file_read) {
-    coords_nlocal_offset(noffset);
+    cs_nlocal_offset(info->cs, noffset);
     ifo = noffset[X] + ic - 1;
     jfo = noffset[Y] + jc - 1;
     kfo = noffset[Z];
@@ -415,15 +393,15 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   int  nx, ny, nz;
-  int n[3], noff[3];
+  int mpisz[3], mpicoords[3];
+  int nlocal[3], noff[3], ntotal[3];
 
   int token = 0;
   const int tag = 1293;
 
+  int sz;
   int le_nplane;
   double le_uy;
-
-  pe_t * pe = NULL; 
   MPI_Status status;
 
   /* Every group writes a file, ie., the information stub and
@@ -431,10 +409,15 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
    * be unmangled. */
 
   assert(info);
-  coords_nlocal_offset(noff);
 
-  pe_ref(&pe);
-  pe_subdirectory(pe, subdirectory);
+  pe_subdirectory(info->pe, subdirectory);
+  sz = pe_mpi_size(info->pe);
+
+  cs_ntotal(info->cs, ntotal);
+  cs_nlocal(info->cs, nlocal);
+  cs_nlocal_offset(info->cs, noff);
+  cs_cartsz(info->cs, mpisz);
+  cs_cart_coords(info->cs, mpicoords);
 
   le_nplane = 0;
   le_uy = 0.0;
@@ -450,18 +433,18 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     nz = info->io_comm->ngroup[Z];
 
     fp_meta = fopen(filename_io, "w");
-    if (fp_meta == NULL) fatal("fopen(%s) failed\n", filename_io);
+    if (fp_meta == NULL) pe_fatal(info->pe, "fopen(%s) failed\n", filename_io);
 
     fprintf(fp_meta, "Metadata for file set prefix:    %s\n", filename_stub);
     fprintf(fp_meta, "Data description:                %s\n", info->name);
     fprintf(fp_meta, "Data size per site (bytes):      %d\n",
 	    (int) info->bytesize);
     fprintf(fp_meta, "is_bigendian():                  %d\n", is_bigendian());
-    fprintf(fp_meta, "Number of processors:            %d\n", pe_size());
+    fprintf(fp_meta, "Number of processors:            %d\n", sz);
     fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
-	    cart_size(X), cart_size(Y), cart_size(Z));
+	    mpisz[X], mpisz[Y], mpisz[Z]);
     fprintf(fp_meta, "Total system size:               %d %d %d\n",
-	    N_total(X), N_total(Y), N_total(Z));
+	    ntotal[X], ntotal[Y], ntotal[Z]);
     /* Lees Edwards hardwired until refactor LE code dependencies */
     fprintf(fp_meta, "Lees-Edwards planes:             %d\n", le_nplane);
     fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n", le_uy);
@@ -475,19 +458,18 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
     MPI_Recv(&token, 1, MPI_INT, info->io_comm->rank - 1, tag,
 	     info->io_comm->comm, &status);
     fp_meta = fopen(filename_io, "a");
-    if (fp_meta == NULL) fatal("fopen(%s) failed\n", filename_io);
+    if (fp_meta == NULL) pe_fatal(info->pe, "fopen(%s) failed\n", filename_io);
   }
 
   /* Local decomposition information */
 
-  coords_nlocal(n);
   fprintf(fp_meta, "%3d %3d %3d %3d %d %d %d %d %d %d\n", info->io_comm->rank,
-          cart_coords(X), cart_coords(Y), cart_coords(Z),
-          n[X], n[Y], n[Z], noff[X], noff[Y], noff[Z]);
+          mpicoords[X], mpicoords[Y], mpicoords[Z],
+          nlocal[X], nlocal[Y], nlocal[Z], noff[X], noff[Y], noff[Z]);
 
   if (ferror(fp_meta)) {
     perror("perror: ");
-    fatal("File error on writing %s\n", filename_io);
+    pe_fatal(info->pe, "File error on writing %s\n", filename_io);
   }
   fclose(fp_meta);
 
@@ -514,14 +496,12 @@ int io_remove_metadata(io_info_t * obj, const char * file_stub) {
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
   char filename_io[FILENAME_MAX];
-  pe_t * pe = NULL;
 
   assert(obj);
   assert(file_stub);
 
   if (obj->io_comm->rank == 0) {
-    pe_ref(&pe);
-    pe_subdirectory(pe, subdirectory);
+    pe_subdirectory(obj->pe, subdirectory);
     io_set_group_filename(filename, file_stub, obj);
     sprintf(filename_io, "%s%s.meta", subdirectory, filename);
     remove(filename_io);
@@ -542,14 +522,12 @@ int io_remove(const char * filename_stub, io_info_t * obj) {
 
   char subdirectory[FILENAME_MAX];
   char filename[FILENAME_MAX];
-  pe_t * pe = NULL;
 
   assert(filename_stub);
   assert(obj);
 
   if (obj->io_comm->rank == 0) {
-    pe_ref(&pe);
-    pe_subdirectory(pe, subdirectory);
+    pe_subdirectory(obj->pe, subdirectory);
     io_set_group_filename(filename, filename_stub, obj);
     remove(filename);
   }
@@ -719,7 +697,7 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (obj->metadata_written == 0) io_write_metadata(obj);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
   io_set_group_filename(filename_io, filename_stub, obj);
 
   if (obj->io_comm->rank == 0) {
@@ -737,12 +715,12 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
     fp_state = fopen(filename_io, "ab");
   }
 
-  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+  if (fp_state == NULL) pe_fatal(obj->pe, "Failed to open %s\n", filename_io);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	obj->write_data(fp_state, index, data);
       }
     }
@@ -752,7 +730,7 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (ferror(fp_state)) {
     perror("perror: ");
-    fatal("File error on writing %s\n", filename_io);
+    pe_fatal(obj->pe, "File error on writing %s\n", filename_io);
   }
   fclose(fp_state);
 
@@ -790,7 +768,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   assert(filename_stub);
   assert(data);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
 
   io_set_group_filename(filename_io, filename_stub, obj);
 
@@ -808,7 +786,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
     fp_state = fopen(filename_io, "r");
   }
 
-  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+  if (fp_state == NULL) pe_fatal(obj->pe, "Failed to open %s\n", filename_io);
   fseek(fp_state, token, SEEK_SET);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -819,7 +797,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
       if (obj->processor_independent) fseek(fp_state, offset, SEEK_SET);
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	obj->read_data(fp_state, index, data);
       }
     }
@@ -833,7 +811,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (ferror(fp_state)) {
     perror("perror: ");
-    fatal("File error on reading %s\n", filename_io);
+    pe_fatal(obj->pe, "File error on reading %s\n", filename_io);
   }
   fclose(fp_state);
 

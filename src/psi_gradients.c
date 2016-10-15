@@ -129,13 +129,15 @@ const double psi_gr_rcs2 = 3.0;
 
 int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
+  int nsites;
   int xs, ys, zs;
 
   assert(psi);
   assert(0); /* SHIT NO TEST? */
 
-  coords_strides(&xs, &ys, &zs);
-  int nsites = coords_nsites();
+  cs_nsites(psi->cs, &nsites);
+  cs_strides(psi->cs, &xs, &ys, &zs);
+
   e[X] = -0.5*(psi->psi[addr_rank0(nsites, index + xs)] - psi->psi[addr_rank0(nsites, index - xs)]);
   e[Y] = -0.5*(psi->psi[addr_rank0(nsites, index + ys)] - psi->psi[addr_rank0(nsites, index - ys)]);
   e[Z] = -0.5*(psi->psi[addr_rank0(nsites, index + zs)] - psi->psi[addr_rank0(nsites, index - zs)]);
@@ -163,8 +165,8 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
 
   assert(psi);
 
-  nsites = coords_nsites();
-  coords_index_to_ijk(index, coords);
+  cs_nsites(psi->cs, &nsites);
+  cs_index_to_ijk(psi->cs, index, coords);
 
   e[X] = 0;  
   e[Y] = 0;
@@ -176,7 +178,7 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
     coords_nbr[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords_nbr[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
+    index_nbr = cs_index(psi->cs, coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
     aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi[addr_rank0(nsites, index_nbr)];
 
     e[X] -= aux * psi_gr_cv[p][X]; 
@@ -221,8 +223,8 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   assert(grad_rho);
   assert(0); /* SHIT NO TEST? */
 
-  nsites = coords_nsites();
-  coords_strides(&xs, &ys, &zs);
+  cs_nsites(psi->cs, &nsites);
+  cs_strides(psi->cs, &xs, &ys, &zs);
 
   grad_rho[X] = 0.0;
   grad_rho[Y] = 0.0;
@@ -333,8 +335,8 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
   assert(grad_rho);
   assert(0); /* SHIT NO TEST? */
 
-  nsites = coords_nsites();
-  coords_index_to_ijk(index, coords);
+  cs_nsites(psi->cs, &nsites);
+  cs_index_to_ijk(psi->cs, index, coords);
   map_status(map, index, &status);
 
   grad_rho[X] = 0;  
@@ -347,7 +349,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
     coords1[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+    index1 = cs_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
     map_status(map, index1, &status1);
 
     if(status == MAP_FLUID && status1 == MAP_FLUID) { 
@@ -365,13 +367,13 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
       coords1[X] = coords[X] - psi_gr_cv[p][X];
       coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
       coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
-      index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+      index1 = cs_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
       map_status(map, index1, &status1);
 
       coords2[X] = coords[X] - 2*psi_gr_cv[p][X];
       coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
       coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
-      index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+      index2 = cs_index(psi->cs, coords2[X], coords2[Y], coords2[Z]);
       map_status(map, index2, &status2);
 	
       if(status == MAP_FLUID && status1 == MAP_FLUID && status2 == MAP_FLUID) {
