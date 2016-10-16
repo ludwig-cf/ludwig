@@ -843,6 +843,9 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   /* index for SIMD vectors */
   int iv=0;        
 
+  assert(t_f);
+  assert(hydro);
+
   /* switch fluctuations off */
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
@@ -964,7 +967,6 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   }
   
 
-
   if (noise_on) {
     
 #ifdef __NVCC__
@@ -1041,7 +1043,6 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 #endif
   
   
-
 
   /* Now, the order parameter distribution */
     __targetILP__(iv) {

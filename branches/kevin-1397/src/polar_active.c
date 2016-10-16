@@ -120,12 +120,12 @@ __host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe) {
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_polar_t));
     targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&obj->target->param, tmp, sizeof(fe_polar_param_t *));
+    copyToTarget(&obj->target->param, &tmp, sizeof(fe_polar_param_t *));
     targetConstAddress((void **) &vt, fe_polar_dvt);
     copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
 
-    copyToTarget(&obj->target->p, p->target, sizeof(field_t *));
-    copyToTarget(&obj->target->dp, dp->target, sizeof(field_grad_t *));
+    copyToTarget(&obj->target->p, &p->target, sizeof(field_t *));
+    copyToTarget(&obj->target->dp, &dp->target, sizeof(field_grad_t *));
   }
 
   *fe = obj;
@@ -184,6 +184,23 @@ __host__ int fe_polar_param_set(fe_polar_t * fe, fe_polar_param_t values) {
 
   assert(fe->param->delta == 0.0);
   assert(fe->param->kappa2 == 0.0);
+
+  fe_polar_param_commit(fe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_param_commit
+ *
+ *****************************************************************************/
+
+__host__ int fe_polar_param_commit(fe_polar_t * fe) {
+
+  assert(fe);
+
+  copyConstToTarget(&const_param, fe->param, sizeof(fe_polar_param_t));
 
   return 0;
 }
@@ -289,6 +306,9 @@ int fe_polar_stress(fe_polar_t * fe, int index, double s[3][3]) {
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
+  assert(fe->p);
+  assert(fe->dp);
+  assert(fe->param);
 
   field_vector(fe->p, index, p);
   field_grad_vector_grad(fe->dp, index, dp);

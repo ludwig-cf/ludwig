@@ -56,14 +56,12 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   if (strcmp(string, "yes") == 0) nreduced = 1;
 
   rt_int_parameter_vector(rt, "distribution_io_grid", io_grid);
-#ifdef OLD_SHIT
-  io_info = io_info_create_with_grid(io_grid);
-#else
+
   param.grid[X] = io_grid[X];
   param.grid[Y] = io_grid[Y];
   param.grid[Z] = io_grid[Z];
   io_info_create(pe, cs, &param, &io_info);
-#endif
+
   lb_io_info_set(lb, io_info);
 
   rt_string_parameter(rt,"distribution_io_format_input", string,

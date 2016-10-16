@@ -116,10 +116,15 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
   }
   else {
     lees_edw_param_t * tmp;
+    cs_t * cst;
     targetCalloc((void **) &le->target, sizeof(lees_edw_t));
     targetConstAddress((void **) &tmp, static_param);
     copyToTarget(&le->target->param, (const void *) &tmp,
 		 sizeof(lees_edw_param_t *));
+
+    cs_target(cs, &cst);
+    copyToTarget(&le->target->cs, &cst, sizeof(cs_t *));
+
     lees_edw_commit(le);
   }
 

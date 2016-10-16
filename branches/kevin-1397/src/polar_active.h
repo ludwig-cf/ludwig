@@ -39,6 +39,7 @@ struct fe_polar_param_s {
 __host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe);
 __host__ int fe_polar_free(fe_polar_t * fe);
 __host__ int fe_polar_param_set(fe_polar_t * fe, fe_polar_param_t values);
+__host__ int fe_polar_param_commit(fe_polar_t * fe);
 __host__ int fe_polar_param(fe_polar_t * fe, fe_polar_param_t * values);
 __host__ int fe_polar_target(fe_polar_t * fe, fe_t ** target);
 

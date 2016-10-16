@@ -53,7 +53,7 @@ __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** lb);
 __host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** lb);
 __host__ int lb_init(lb_t * lb);
 __host__ int lb_free(lb_t * lb);
-__host__ int lb_model_copy(lb_t * lb, int flag);
+__host__ int lb_memcpy(lb_t * lb, int flag);
 __host__ int lb_halo(lb_t * lb);
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
 __host__ int lb_halo_via_copy(lb_t * lb);

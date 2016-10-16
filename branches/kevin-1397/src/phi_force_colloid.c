@@ -146,8 +146,6 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 #ifdef __NVCC__
 
-  assert(0); /* Pending a test */
-
   /* update colloid-affected lattice sites from target*/
   int ncolsite=colloids_number_sites(cinfo);
 
@@ -155,7 +153,6 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   /* allocate space */
   int* colloidSiteList =  (int*) malloc(ncolsite*sizeof(int));
 
-  /* populate list with all site indices */
   colloids_list_sites(colloidSiteList,cinfo);
 
 
@@ -163,6 +160,9 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   copyFromTargetSubset(pth->str,pth->target->str,colloidSiteList,ncolsite,pth->nsites,9);
 
   free(colloidSiteList);
+#else
+  /* Again, pending true device solution */
+  pth_memcpy(pth, cudaMemcpyDeviceToHost);
 #endif
 
   colloid_t * pc;

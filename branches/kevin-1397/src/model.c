@@ -147,11 +147,11 @@ __host__ int lb_free(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_model_copy
+ *  lb_memcpy
  *
  *****************************************************************************/
 
-__host__ int lb_model_copy(lb_t * lb, int flag) {
+__host__ int lb_memcpy(lb_t * lb, int flag) {
 
   int ndevice;
   double * tmpf = NULL;
@@ -262,7 +262,7 @@ __host__ int lb_init(lb_t * lb) {
 
   lb_mpi_init(lb);
   lb_halo_set(lb, LB_HALO_FULL);
-  lb_model_copy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
 
   return 0;
 }

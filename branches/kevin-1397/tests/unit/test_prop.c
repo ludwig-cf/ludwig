@@ -106,10 +106,10 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
     }
   }
 
-  lb_model_copy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
   lb_propagation(lb);
-  lb_model_copy(lb, cudaMemcpyDeviceToHost);
+  lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
@@ -191,10 +191,10 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
     }
   }
 
-  lb_model_copy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
   lb_propagation(lb);
-  lb_model_copy(lb, cudaMemcpyDeviceToHost);
+  lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
