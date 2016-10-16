@@ -121,6 +121,7 @@ __host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
     fe_vt_t * vt;
     /* Device implementation pending */
     targetConstAddress((void **) &vt, fe_electro_dvt);
+    fatal("No device implementation for fe_electro\n");
   }
 
   *pobj = fe;

@@ -105,10 +105,12 @@ __host__ int fe_lc_droplet_create(fe_lc_t * lc, fe_symm_t * symm,
     fe_vt_t * vt;
     targetCalloc((void **) &fe->target, sizeof(fe_lc_droplet_t));
     targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&fe->target->param, tmp, sizeof(fe_lc_droplet_param_t *));
+    copyToTarget(&fe->target->param, &tmp, sizeof(fe_lc_droplet_param_t *));
     targetConstAddress((void **) &vt, fe_drop_dvt);
     copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
-    assert(0); /* Needs testing */
+
+    copyToTarget(&fe->target->lc, &lc->target, sizeof(fe_lc_t *));
+    copyToTarget(&fe->target->symm, &symm->target, sizeof(fe_symm_t *));
   }
 
   *p = fe;

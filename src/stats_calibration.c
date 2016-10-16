@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -157,6 +157,8 @@ int stats_calibration_accumulate(colloids_info_t * cinfo, int ntime,
   if (ntime >= calib_.nstart) {
     if ((ntime % calib_.nfreq) == 0) {
       ++calib_.ndata;
+      hydro_memcpy(hydro, cudaMemcpyDeviceToHost);
+      map_memcpy(map, cudaMemcpyDeviceToHost);
       stats_calibration_measure(cinfo, hydro, map);
     }
   }

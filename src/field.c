@@ -673,7 +673,6 @@ int field_vector(field_t * obj, int index, double p[3]) {
   assert(obj);
   assert(obj->nf == 3);
   assert(obj->data);
-  assert(p);
 
   for (ia = 0; ia < 3; ia++) {
     p[ia] = obj->data[addr_rank1(obj->nsites, 3, index, ia)];

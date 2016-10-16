@@ -105,12 +105,12 @@ __host__ int fe_symm_create(field_t * phi, field_grad_t * dphi,
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_symm_t));
     targetConstAddress((void **) &p, const_param);
-    copyToTarget(&obj->target->param, p, sizeof(fe_symm_param_t *));
+    copyToTarget(&obj->target->param, &p, sizeof(fe_symm_param_t *));
     targetConstAddress((void **) &vt, fe_symm_dvt);
-    copyToTarget(&obj->target->super.func, vt, sizeof(fe_vt_t *));
+    copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
 
-    copyToTarget(&obj->target->phi, phi->target, sizeof(field_t *));
-    copyToTarget(&obj->target->dphi, dphi->target, sizeof(field_grad_t *));
+    copyToTarget(&obj->target->phi, &phi->target, sizeof(field_t *));
+    copyToTarget(&obj->target->dphi, &dphi->target, sizeof(field_grad_t *));
   }
 
   *p = obj;
@@ -187,6 +187,8 @@ __host__ int fe_symm_param_set(fe_symm_t * fe, fe_symm_param_t values) {
   assert(fe);
 
   *fe->param = values;
+
+  fe_symm_kernel_commit(fe);
 
   return 0;
 }
@@ -357,6 +359,9 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
+  assert(fe->phi);
+  assert(fe->dphi);
+  assert(fe->param);
 
   a = fe->param->a;
   b = fe->param->b;

@@ -37,8 +37,8 @@
 #include <math.h>
 
 #include "pe.h"
-#include "field.h"
-#include "field_grad.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "util.h"
 #include "brazovskii.h"
 
@@ -119,9 +119,12 @@ __host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
     fe_vt_t * vt;
     targetCalloc((void **) &obj->target, sizeof(fe_brazovskii_t));
     targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&obj->target->param, tmp, sizeof(fe_brazovskii_t *));
+    copyToTarget(&obj->target->param, &tmp, sizeof(fe_brazovskii_t *));
     targetConstAddress((void **) &vt, fe_braz_dvt);
     copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
+
+    copyToTarget(&obj->target->phi, &phi->target, sizeof(field_t *));
+    copyToTarget(&obj->target->dphi, &dphi->target, sizeof(field_grad_t *));
   }
 
   *p = obj;
