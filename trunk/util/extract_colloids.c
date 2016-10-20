@@ -18,7 +18,7 @@
  *  $ make serial
  *  $ cd ../util
  *  $ $(CC) -I../mpi_s -I../src -I../targetDP extract_colloids.c \
- *          -L../mpi_s -lmpi -L../src -lludwig -lm
+ *          -L../mpi_s -lmpi -L../src -lludwig -lm -o extract_colloids
  *
  *  $ ./a.out <colloid file name> <nfile> <csv file name>
  *
