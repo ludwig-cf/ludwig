@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  colloid_file.c
+ *  colloid_init.c
  *
  *  Produce a file of colloid information suitable for reading into
  *  the main code.
@@ -65,9 +65,9 @@ int main(int argc, char ** argv) {
 
   double a0 = 3.5;                      /* Input radius */
   double ah = 3.5;                      /* Hydrodynamic radius */ 
-  double vf = 0.1;                       /* Volume fraction */
-  double dh = 1.0;                       /* "grace' distance */
-  double q0 = 150.0; 
+  double vf = 0.1;                      /* Volume fraction */
+  double dh = 1.0;                      /* "grace' distance */
+  double q0 = 0.0; 
   double q1 = 0.0;
 
   colloid_state_t * state;

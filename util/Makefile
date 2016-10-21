@@ -26,3 +26,7 @@ INC = -I. -I../src -I../targetDP -I../mpi_s
 
 colloid_init:	colloid_init.c
 	$(CC) $(CFLAGS) $(INC) colloid_init.c $(LIBS)
+
+extract_colloids:	extract_colloids.c
+	$(CC) $(CFLAGS) $(INC) extract_colloids.c $(LIBS)
+
