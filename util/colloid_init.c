@@ -10,12 +10,9 @@
  *  distance dh may be specified to prevent the initial colloid
  *  positions being too close together, or too close to the wall.
  *
- *  Compile against the ludwig library, e.g.,
- *  $ cd ../src
- *  $ make lib
- *  $ cd ../util
- *  $ $(CC) -I../mpi_s -I../src colloid_init.c -L../mpi_s -lmpi \
- *          -L../src -lludwig -lm
+ *  For compilation instructions see the Makefile.
+ *
+ *  $ make colloid_init
  *
  *  $ ./a.out
  *  should produce a file colloid-00000000.001-001 in the specified format.
@@ -24,7 +21,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
