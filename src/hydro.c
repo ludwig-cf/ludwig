@@ -32,6 +32,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
 static int hydro_u_write_ascii(FILE * fp, int index, void * self);
 static int hydro_u_read(FILE * fp, int index, void * self);
+static int hydro_u_read_ascii(FILE * fp, int index, void * self);
 
 /*****************************************************************************
  *
@@ -179,6 +180,7 @@ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in, int form_out) {
   io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
+  io_info_read_set(obj->info, IO_FORMAT_ASCII, hydro_u_read_ascii);
   io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
@@ -685,10 +687,12 @@ static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
 int hydro_u_read(FILE * fp, int index, void * self) {
 
   int n;
-  hydro_t * obj = (hydro_t *) self;
+  hydro_t * obj = NULL;
 
   assert(fp);
-  assert(obj);
+  assert(self);
+
+  obj = (hydro_t *) self;
 
   #ifdef LB_DATA_SOA
   fatal("LB_SATA_SOA not supported with hydro_lees_edwards_parallel\n");
@@ -699,6 +703,30 @@ int hydro_u_read(FILE * fp, int index, void * self) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  hydro_u_read_ascii
+ *
+ *****************************************************************************/
+
+static int hydro_u_read_ascii(FILE * fp, int index, void * self) {
+
+  int n;
+  double u[3];
+  hydro_t * obj = (hydro_t *) self;
+
+  assert(fp);
+  assert(obj);
+
+  n = fscanf(fp, "%le %le %le", &u[X], &u[Y], &u[Z]);
+  if (n != 3) fatal("fread(hydro->u) failed\n");
+
+  hydro_u_set(obj, index, u);
+
+  return 0;
+}
+
 
 /*****************************************************************************
  *
