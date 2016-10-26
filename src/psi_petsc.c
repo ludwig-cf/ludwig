@@ -304,7 +304,12 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
     info("\nPETSc output matrix\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "matrix.log", &viewer);
+#if PETSC_VERSION_GE(3, 7, 0)
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    PetscViewerPopFormat(viewer);
+#else
     PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+#endif
     MatView(A,viewer);;
     PetscViewerDestroy(&viewer);
   }
@@ -560,7 +565,12 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
     info("\nPETSc output matrix\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "matrix.log", &viewer);
+#if PETSC_VERSION_GE(3, 7, 0)
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    PetscViewerPopFormat(viewer);
+#else
     PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+#endif
     MatView(A,viewer);;
     PetscViewerDestroy(&viewer);
   }
@@ -612,7 +622,12 @@ int psi_petsc_copy_psi_to_da(psi_t * obj) {
     info("\nPETSc output DA vector\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "da.log", &viewer);
+#if PETSC_VERSION_GE(3, 7, 0)
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    PetscViewerPopFormat(viewer);
+#else
     PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+#endif
     VecView(x,viewer);
     PetscViewerDestroy(&viewer);
   }
@@ -791,7 +806,12 @@ int psi_petsc_set_rhs(psi_t * obj) {
     info("\nPETSc output RHS\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "rhs.log", &viewer);
+#if PETSC_VERSION_GE(3, 7, 0)
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    PetscViewerPopFormat(viewer);
+#else
     PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+#endif
     VecView(b,viewer);;
     PetscViewerDestroy(&viewer);
   }
@@ -972,7 +992,12 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
     info("\nPETSc output RHS\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "rhs.log", &viewer);
+#if PETSC_VERSION_GE(3, 7, 0)
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+    PetscViewerPopFormat(viewer);
+#else
     PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_INDEX);
+#endif
     VecView(b,viewer);;
     PetscViewerDestroy(&viewer);
   }
