@@ -114,6 +114,8 @@ int fe_lc_reduced_temperature(fe_lc_t * fe,  double * tau);
 __host__ __device__
 int fe_lc_dimensionless_field_strength(fe_lc_t * fe, double * edm);
 
+__host__ __device__
+void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]);
 
 __host__ __device__
 void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]);

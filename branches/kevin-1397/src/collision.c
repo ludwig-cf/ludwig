@@ -833,7 +833,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 
   double jphi[3*VVL]; 
 
-  double sth[3][3][VVL];
+  double sth[3][3][NSIMDVL];
   double sphi[3][3*VVL];
 
   double mu[VVL];   /* Chemical potential */
@@ -916,6 +916,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   }
   
   /* Compute the thermodynamic component of the stress */
+
   fe_symm_str_v(fe, baseIndex, sth);
 
   /* Relax stress with different shear and bulk viscosity */

@@ -29,7 +29,7 @@
 
 static int do_test1(pe_t * pe);
 static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm);
-static int do_test_io1(pe_t * pe);
+static int do_test_io1(pe_t * pe, int io_format);
 
 /*****************************************************************************
  *
@@ -47,7 +47,10 @@ int test_hydro_suite(void) {
   do_test_halo1(pe, 1, 1);
   do_test_halo1(pe, 2, 2);
   do_test_halo1(pe, 2, 1);
-  do_test_io1(pe);
+
+  do_test_io1(pe, IO_FORMAT_DEFAULT);
+  do_test_io1(pe, IO_FORMAT_ASCII);
+  do_test_io1(pe, IO_FORMAT_BINARY);
 
   pe_info(pe, "PASS     ./unit/test_hydro\n");
   pe_free(pe);
@@ -148,7 +151,7 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
  *
  *****************************************************************************/
 
-static int do_test_io1(pe_t * pe) {
+static int do_test_io1(pe_t * pe, int io_format) {
 
   int grid[3] = {1, 1, 1};
   const char * filename = "hydro-test-io";
@@ -175,7 +178,7 @@ static int do_test_io1(pe_t * pe) {
   hydro_create(pe, cs, NULL, 1, &hydro);
   assert(hydro);
 
-  hydro_init_io_info(hydro, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
+  hydro_init_io_info(hydro, grid, io_format, io_format);
   test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
 
   hydro_io_info(hydro, &iohandler);
