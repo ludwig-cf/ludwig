@@ -68,7 +68,7 @@ int gradient_rt_init(field_grad_t * grad, map_t * map) {
     fatal("Please check and try again\n");
   }
   else {
-    info("Gradient calcaulation: ");
+    info("Gradient calculation: ");
     if (strcmp(keyvalue, "2d_5pt_fluid") == 0) {
       info("2d_5pt_fluid\n");
       f2 = gradient_2d_5pt_fluid_d2;
