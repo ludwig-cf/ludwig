@@ -50,15 +50,22 @@ __host__ int fe_lc_droplet_param_set(fe_lc_droplet_t * fe,
 				     fe_lc_droplet_param_t param);
 __host__ int fe_lc_droplet_target(fe_lc_droplet_t * fe, fe_t ** target);
 
-__host__ __device__ int fe_lc_droplet_gamma(fe_lc_droplet_t * fe, int index,
-					    double * gamma);
+__host__ __device__
+int fe_lc_droplet_gamma(fe_lc_droplet_t * fe, int index,  double * gamma);
+
 __host__ __device__ int fe_lc_droplet_fed(fe_lc_droplet_t * fe, int index,
 					  double * fed);
 __host__ __device__ int fe_lc_droplet_stress(fe_lc_droplet_t * fe, int index,
 					     double s[3][3]);
+__host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
+						int index,
+					       double s[3][3][NSIMDVL]);
 __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
 						int index,
 						double h[3][3]);
+__host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
+						   int index,
+						   double h[3][3][NSIMDVL]);
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu);
 

@@ -28,6 +28,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
 static int hydro_u_write_ascii(FILE * fp, int index, void * self);
 static int hydro_u_read(FILE * fp, int index, void * self);
+static int hydro_u_read_ascii(FILE * fp, int index, void * self);
 
 static __global__
 void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]);
@@ -245,6 +246,7 @@ __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
   io_info_write_set(obj->info, IO_FORMAT_BINARY, hydro_u_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
+  io_info_read_set(obj->info, IO_FORMAT_ASCII, hydro_u_read_ascii);
   io_info_set_bytesize(obj->info, NHDIM*sizeof(double));
 
   io_info_format_set(obj->info, form_in, form_out);
@@ -749,6 +751,29 @@ int hydro_u_read(FILE * fp, int index, void * self) {
 
   n = fread(u, sizeof(double), NHDIM, fp);
   if (n != NHDIM) fatal("fread(hydro->u) failed\n");
+
+  hydro_u_set(obj, index, u);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_u_read_ascii
+ *
+ *****************************************************************************/
+
+static int hydro_u_read_ascii(FILE * fp, int index, void * self) {
+
+  int n;
+  double u[3];
+  hydro_t * obj = (hydro_t *) self;
+
+  assert(fp);
+  assert(obj);
+
+  n = fscanf(fp, "%le %le %le", &u[X], &u[Y], &u[Z]);
+  if (n != NHDIM) pe_fatal(obj->pe, "fread(hydro->u) failed\n");
 
   hydro_u_set(obj, index, u);
 

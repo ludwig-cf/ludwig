@@ -550,22 +550,20 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
     int ia, ib, id;
     int index;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
-    int indexj[VVL], indexk[VVL];
+    int indexj[NSIMDVL], indexk[NSIMDVL];
     int maskv[NSIMDVL];
     int status;
 
-    double q[3][3][VVL];
-    double dq[3][3][3][VVL];
-    double dsq[3][3][VVL];
-    double w[3][3][VVL];
-    double d[3][3][VVL];
-    double h[3][3][VVL];
-    double s[3][3][VVL];
+    double q[3][3][NSIMDVL];
+    double w[3][3][NSIMDVL];
+    double d[3][3][NSIMDVL];
+    double h[3][3][NSIMDVL];
+    double s[3][3][NSIMDVL];
 
-    double omega[3][3][VVL];
-    double trace_qw[VVL];
-    double chi[NQAB], chi_qab[3][3][VVL];
-    double tr[VVL];
+    double omega[3][3][NSIMDVL];
+    double trace_qw[NSIMDVL];
+    double chi[NQAB], chi_qab[3][3][NSIMDVL];
+    double tr[NSIMDVL];
 
     index = kernel_baseindex(ktx, kindex);
     kernel_coords_v(ktx, kindex, ic, jc, kc);
@@ -584,7 +582,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
       if (maskv[iv] && status != MAP_FLUID) maskv[iv] = 0;
     }
 
-    /* Expand various tensors */
+    /* Expand q tensor */
 
     __targetILP__(iv) q[X][X][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)];
     __targetILP__(iv) q[X][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)];
@@ -596,38 +594,15 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
     __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
     __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
+   /* Compute the molecular field. */
 
-    for (ia = 0; ia < NVECTOR; ia++) {
-      __targetILP__(iv) dq[ia][X][X][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,XX,ia)];
-      __targetILP__(iv) dq[ia][X][Y][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,XY,ia)];
-      __targetILP__(iv) dq[ia][X][Z][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,XZ,ia)];
-      __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-      __targetILP__(iv) dq[ia][Y][Y][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,YY,ia)];
-      __targetILP__(iv) dq[ia][Y][Z][iv] = fqgrad->grad[addr_rank2(fq->nsites,NQAB,NVECTOR,index+iv,YZ,ia)];
-      __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
-      __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
-      __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
-    }
-	
-    __targetILP__(iv) dsq[X][X][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,XX)];
-    __targetILP__(iv) dsq[X][Y][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,XY)];
-    __targetILP__(iv) dsq[X][Z][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,XZ)];
-    __targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
-    __targetILP__(iv) dsq[Y][Y][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,YY)];
-    __targetILP__(iv) dsq[Y][Z][iv] = fqgrad->delsq[addr_rank1(fq->nsites,NQAB,index+iv,YZ)];
-    __targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
-    __targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
-    __targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
-
-    /* Compute the molecular field. */
-
-    fe->func->htensor_v(fe, q, dq, dsq, h);
+     fe->func->htensor_v(fe, index, h);
 
     if (hydro) {
       /* Velocity gradient tensor, symmetric and antisymmetric parts */
 
-      int im1[VVL];
-      int ip1[VVL];
+      int im1[NSIMDVL];
+      int ip1[NSIMDVL];
 
       __targetILP__(iv) im1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], -1);
       __targetILP__(iv) ip1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], +1);
