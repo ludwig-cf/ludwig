@@ -323,7 +323,7 @@ __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
-
+#ifdef OLD_SHIT
 __host__ int grad_2d_tomita_fluid_wall(lees_edw_t * le, field_grad_t * fg,
 				       int nextra) {
   int nop;
@@ -430,3 +430,4 @@ __host__ int grad_2d_tomita_fluid_wall(lees_edw_t * le, field_grad_t * fg,
 
   return 0;
 }
+#endif

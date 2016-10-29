@@ -42,7 +42,7 @@
 #include "collision_rt.h"
 
 #include "map.h"
-#include "wall.h"
+#include "wall_rt.h"
 #include "interaction.h"
 #include "physics_rt.h"
 
@@ -129,6 +129,7 @@ struct ludwig_s {
   field_grad_t * q_grad;    /* Gradients for q */
   psi_t * psi;              /* Electrokinetics */
   map_t * map;              /* Site map for fluid/solid status etc. */
+  wall_t * wall;            /* Side walls / Porous media */
   noise_t * noise_rho;      /* Lattice fluctuation generator (rho) */
   noise_t * noise_phi;      /* Binary fluid noise generation (fluxes) */
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
@@ -243,13 +244,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
   if (ludwig->phi || ludwig->p || ludwig->q) {
-    info("\n");
-    info("Order parameter I/O\n");
-    info("-------------------\n");
+    pe_info(pe, "\n");
+    pe_info(pe, "Order parameter I/O\n");
+    pe_info(pe, "-------------------\n");
     
-    info("Order parameter I/O format:   %s\n", value);
-    info("I/O decomposition:            %d %d %d\n", io_grid[0], io_grid[1],
-	 io_grid[2]);
+    pe_info(pe, "Order parameter I/O format:   %s\n", value);
+    pe_info(pe, "I/O decomposition:            %d %d %d\n",
+	    io_grid[X], io_grid[Y], io_grid[Z]);
     advection_init_rt(pe, rt);
   }
 
@@ -268,9 +269,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_rt_init_rho(pe, rt, ludwig->psi, ludwig->map);
   }
 
-  wall_init(rt, ludwig->lb, ludwig->map);
-  colloids_init_rt(pe, rt, ludwig->cs, &ludwig->collinfo, &ludwig->cio,
-		   &ludwig->interact, ludwig->map);
+  wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
+  colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
+		   &ludwig->interact, ludwig->wall, ludwig->map);
   colloids_init_ewald_rt(pe, rt, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -432,7 +433,7 @@ void ludwig_run(const char * inputfile) {
   pe_subdirectory(ludwig->pe, subdirectory);
 
   pe_info(ludwig->pe, "Initial conditions.\n");
-  wall_pm(&is_porous_media);
+  wall_is_pm(ludwig->wall, &is_porous_media);
 
   stats_distribution_print(ludwig->lb, ludwig->map);
 
@@ -618,7 +619,8 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 0) {
 	  /* Force calculation as divergence of stress tensor */
 
-	  phi_force_calculation(ludwig->cs, ludwig->le, ludwig->pth,
+	  phi_force_calculation(ludwig->cs, ludwig->le, ludwig->wall,
+				ludwig->pth,
 				ludwig->fe, ludwig->phi, ludwig->hydro);
 
 	  /* LC-droplet requires partial body force input and momentum correction */
@@ -630,7 +632,7 @@ void ludwig_run(const char * inputfile) {
 	}
 	else {
 	  phi_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
-			    ludwig->hydro, ludwig->map);
+			    ludwig->hydro, ludwig->map, ludwig->wall);
 	}
       }
 
@@ -700,9 +702,10 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	TIMER_start(TIMER_BBL);
-	wall_set_wall_velocity(ludwig->lb);
-	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->collinfo);
-	wall_bounce_back(ludwig->lb, ludwig->map);
+	wall_set_wall_distributions(ludwig->wall);
+	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
+			     ludwig->collinfo);
+	wall_bbl(ludwig->wall);
 	TIMER_stop(TIMER_BBL);
       }
     }
@@ -710,7 +713,7 @@ void ludwig_run(const char * inputfile) {
       /* No hydrodynamics, but update colloids in response to
        * external forces. */
 
-      bbl_update_colloids(ludwig->bbl, ludwig->collinfo);
+      bbl_update_colloids(ludwig->bbl, ludwig->wall, ludwig->collinfo);
     }
 
 
@@ -838,12 +841,14 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
-      stats_free_energy_density(ludwig->fe, ludwig->q, ludwig->map, ludwig->collinfo);
+      stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
+				ludwig->fe, ludwig->q, ludwig->map,
+				ludwig->collinfo);
 //      blue_phase_stats(ludwig->q, ludwig->q_grad, ludwig->map, step);
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
-	wall_pm(&is_pm);
+	wall_is_pm(ludwig->wall, &is_pm);
 	hydro_memcpy(ludwig->hydro, cudaMemcpyDeviceToHost);
 	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
       }
@@ -916,8 +921,6 @@ void ludwig_run(const char * inputfile) {
   stats_turbulent_finish();
   stats_calibration_finish();
 
-  wall_finish();
-
   if (ludwig->phi_grad) field_grad_free(ludwig->phi_grad);
   if (ludwig->p_grad)   field_grad_free(ludwig->p_grad);
   if (ludwig->q_grad)   field_grad_free(ludwig->q_grad);
@@ -928,6 +931,7 @@ void ludwig_run(const char * inputfile) {
   bbl_free(ludwig->bbl);
   colloids_info_free(ludwig->collinfo);
 
+  if (ludwig->wall)      wall_free(ludwig->wall);
   if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
   if (ludwig->be)        beris_edw_free(ludwig->be);
@@ -963,7 +967,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   double gwall[3];     /* Wall momentum (for accounting purposes only) */
   double gtotal[3];
 
-  wall_pm(&is_pm);
+  wall_is_pm(ludwig->wall, &is_pm);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = 0.0;
@@ -976,7 +980,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   stats_colloid_momentum(ludwig->collinfo, gc);
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
-  if (wall_present() || is_pm) wall_net_momentum(gwall);
+  if (wall_present(ludwig->wall) || is_pm) wall_momentum(ludwig->wall, gwall);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
@@ -989,7 +993,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   if (ncolloid > 0) {
     info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
   }
-  if (wall_present() || is_pm) {
+  if (wall_present(ludwig->wall) || is_pm) {
     info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 
@@ -1673,7 +1677,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     build_update_map(ludwig->collinfo, ludwig->map);
     build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi, ludwig->map);
-    build_update_links(ludwig->collinfo, ludwig->map);
+    build_update_links(ludwig->collinfo, ludwig->wall, ludwig->map);
     
 
     TIMER_stop(TIMER_REBUILD);
@@ -1718,4 +1722,3 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   return 0;
 }
-

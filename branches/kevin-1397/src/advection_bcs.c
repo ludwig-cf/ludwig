@@ -283,8 +283,9 @@ int advection_bcs_wall(field_t * fphi) {
   int nf;
   double q[NQAB];
 
-  if (wall_at_edge(X) == 0) return 0;
+  /* if (wall_at_edge(X) == 0) return 0;*/
 
+  assert(0); /* Sort out line above */
   assert(fphi);
 
   field_nf(fphi, &nf);

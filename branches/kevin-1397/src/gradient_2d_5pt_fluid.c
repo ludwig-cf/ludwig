@@ -66,8 +66,9 @@ __host__ int grad_2d_5pt_fluid_d2(field_grad_t * fg) {
 
   grad_2d_5pt_fluid_operator(le, fg, nextra, GRAD_DEL2);
   grad_2d_5pt_fluid_le(le, fg, nextra, GRAD_DEL2);
+#ifdef OLD_SHIT
   grad_2d_5pt_fluid_wall(le, fg, nextra, GRAD_DEL2);
-
+#endif
   return 0;
 }
 
@@ -91,8 +92,9 @@ __host__ int grad_2d_5pt_fluid_d4(field_grad_t * fg) {
 
   grad_2d_5pt_fluid_operator(le, fg, nextra, GRAD_DEL4);
   grad_2d_5pt_fluid_le(le, fg, nextra, GRAD_DEL4);
+#ifdef OLD_SHIT
   grad_2d_5pt_fluid_wall(le, fg, nextra, GRAD_DEL4);
-
+#endif
   return 0;
 }
 
@@ -301,7 +303,7 @@ __host__ int grad_2d_5pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
-
+#ifdef OLD_SHIT
 __host__ int grad_2d_5pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,
 				    int nextra, int type) {
 
@@ -420,3 +422,4 @@ __host__ int grad_2d_5pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,
 
   return 0;
 }
+#endif

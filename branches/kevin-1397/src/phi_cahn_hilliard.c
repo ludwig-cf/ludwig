@@ -167,7 +167,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
   if (hydro) {
     hydro_u_halo(hydro); /* Reposition to main to prevent repeat */
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */ 
-    advection_bcs_wall(phi);
+    /* advection_bcs_wall(phi); SHIT NO TEST? */
     advection_x(pch->flux, hydro, phi);
   }
 

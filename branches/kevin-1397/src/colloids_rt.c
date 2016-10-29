@@ -48,12 +48,13 @@ int pair_lj_cut_init(pe_t * pe, rt_t * rt, interact_t * inter);
 int bond_fene_init(pe_t * pe, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, rt_t * rt, interact_t * interact);
 
-int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map);
+int colloids_rt_dynamics(colloids_info_t * cinfo, wall_t * wall, map_t * map);
 int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo, int nc);
 int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio);
-int colloids_rt_init_random(pe_t * pe, rt_t * rt, colloids_info_t * cinfo);
+int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
+			    colloids_info_t * cinfo);
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
@@ -76,7 +77,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
 
 int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** pcio,
-		     interact_t ** interact, map_t * map) {
+		     interact_t ** interact, wall_t * wall, map_t * map) {
   int nc;
   int init_one = 0;
   int init_two = 0;
@@ -119,7 +120,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   if (init_two) colloids_rt_init_few(pe, rt, *pinfo, 2);
   if (init_three) colloids_rt_init_few(pe, rt, *pinfo, 3);
   if (init_from_file) colloids_rt_init_from_file(pe, rt, *pinfo, *pcio);
-  if (init_random) colloids_rt_init_random(pe, rt, *pinfo);
+  if (init_random) colloids_rt_init_random(pe, cs, rt, wall, *pinfo);
 
   /* At this point, we know number of colloids */
 
@@ -153,7 +154,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   colloids_info_map_init(*pinfo);
   colloids_halo_state(*pinfo);
 
-  colloids_rt_dynamics(*pinfo, map);
+  colloids_rt_dynamics(*pinfo, wall, map);
   colloids_rt_gravity(pe, rt, *pinfo);
   pe_info(pe, "\n");
   
@@ -166,7 +167,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map) {
+int colloids_rt_dynamics(colloids_info_t * cinfo, wall_t * wall, map_t * map) {
 
   int nsubgrid_local = 0;
   int nsubgrid;
@@ -182,7 +183,7 @@ int colloids_rt_dynamics(colloids_info_t * cinfo, map_t * map) {
   }
   else {
     build_update_map(cinfo, map);
-    build_update_links(cinfo, map);
+    build_update_links(cinfo, wall, map);
   }  
 
   return 0;
@@ -293,7 +294,8 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_init_random(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
+int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
+			    colloids_info_t * cinfo) {
 
   int nc;
   double dh = 0.0;
@@ -311,7 +313,7 @@ int colloids_rt_init_random(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
   rt_int_parameter(rt, "colloid_random_no", &nc);
   rt_double_parameter(rt, "colloid_random_dh", &dh);
 
-  colloids_init_random(cinfo, nc, state0, dh);
+  colloids_init_random(pe, cs, cinfo, nc, state0, wall, dh);
 
   pe_info(pe, "Requested   %d colloid%s at random\n", nc, (nc > 1) ? "s" : "");
   pe_info(pe, "Colloid  radius a0 = %le\n", state0->a0);

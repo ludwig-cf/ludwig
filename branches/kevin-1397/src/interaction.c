@@ -34,7 +34,6 @@
 #include "control.h"
 #include "stats_colloid.h"
 #include "driven_colloid.h"
-#include "wall.h"
 #include "interaction.h"
 
 struct interact_s {
@@ -453,16 +452,18 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
   return 0;
 }
 
+
 /*****************************************************************************
-* colloid_forces_fluid_driven                                                                      
-*                                                                                                       
-* Set the current drive force on the fluid. This should                                                
-* match, exactly, the force on the colloids and so depends on the                                      
-* current number of fluid sites globally (fluid volume).                                               
-*                                                                                                       
-* Note the calculation involves a collective communication.
-*                          
-*****************************************************************************/
+ *
+ *  colloid_forces_fluid_driven
+ *
+ *  Set the current drive force on the fluid. This should
+ *  match, exactly, the force on the colloids and so depends on the
+ *  current number of fluid sites globally (fluid volume).
+ *
+ *  Note the calculation involves a collective communication.
+ *
+ *****************************************************************************/
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
                                          map_t * map) {
@@ -470,7 +471,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
   int ia;
   int nsfluid;
   double rvolume;
-  double fd[3], fw[3] ,f[3];
+  double fd[3], fw[3], f[3];
   physics_t * phys = NULL;
 
   assert(cinfo);
@@ -496,7 +497,11 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     }
 
     physics_fbody_set(phys, f);
+#ifdef OLD_SHIT
     wall_accumulate_force(fw);
+#else
+    assert(0);
+#endif
   }
 
   return 0;

@@ -16,16 +16,13 @@
 
 #include <assert.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "control.h"
-#include "wall.h"
-#include "free_energy.h"
 #include "blue_phase.h"
 #include "util.h"
 #include "stats_free_energy.h"
 
-static int stats_free_energy_wall(fe_t * fe, field_t * q, double * fs);
+static int stats_free_energy_wall(cs_t * cs, wall_t * wall, fe_t * fe,
+				  field_t * q, double * fs);
 static int stats_free_energy_colloid(fe_t * fe, colloids_info_t * cinfo,
 				     field_t * q, map_t * map, double * fs);
 
@@ -46,7 +43,8 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
  *
  ****************************************************************************/
 
-int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
+int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall, fe_t * fe,
+			      field_t * q, map_t * map,
 			      colloids_info_t * cinfo) {
 
 #define NSTAT 5
@@ -63,11 +61,13 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
   double rv;
   physics_t * phys = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(map);
 
   if (fe == NULL) return 0;
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
   colloids_info_ntotal(cinfo, &ncolloid);
 
   fe_local[0] = 0.0; /* Total free energy (fluid all sites) */
@@ -80,7 +80,7 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 
 	fe->func->fed(fe, index, &fed);
@@ -99,16 +99,16 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
   physics_ref(&phys);
   ntstep = physics_control_timestep(phys);
 
-  if (wall_present()) {
+  if (wall_present(wall)) {
 
-    if (q) stats_free_energy_wall(fe, q, fe_local + 3);
+    if (q) stats_free_energy_wall(cs, wall, fe, q, fe_local + 3);
 
     MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
-    info("\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
-    info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	 ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	 fe_total[3], fe_total[4]);
+    pe_info(pe, "\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
+    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+	    ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	    fe_total[3], fe_total[4]);
   }
   else if (ncolloid > 0) {
 
@@ -116,27 +116,27 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
 
     MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
-    info("\nFree energies - timestep f v f/v f_s a f_s/a\n");
+    pe_info(pe, "\nFree energies - timestep f v f/v f_s a f_s/a\n");
 
     if (fe_total[4] > 0.0) {
       /* Area > 0 means the free energy is available */
-      info("[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	   ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	   fe_total[3], fe_total[4], fe_total[3]/fe_total[4]);
+      pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+	      ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	      fe_total[3], fe_total[4], fe_total[3]/fe_total[4]);
     }
     else {
-      info("[fe] %14d %17.10e %17.10e %17.10e %17.10e\n",
-	   ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	   fe_total[3]);
+      pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e\n",
+	      ntstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
+	      fe_total[3]);
     }
   }
   else {
     MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
     rv = 1.0/(L(X)*L(Y)*L(Z));
 
-    info("\nFree energy density - timestep total fluid\n");
-    info("[fed] %14d %17.10e %17.10e\n", ntstep, rv*fe_total[0],
-	 fe_total[1]/fe_total[2]);
+    pe_info(pe, "\nFree energy density - timestep total fluid\n");
+    pe_info(pe, "[fed] %14d %17.10e %17.10e\n", ntstep, rv*fe_total[0],
+	    fe_total[1]/fe_total[2]);
   }
 
 #undef NSTAT
@@ -152,14 +152,22 @@ int stats_free_energy_density(fe_t * fe, field_t * q, map_t * map,
  *
  *****************************************************************************/
 
-static int stats_free_energy_wall(fe_t * fe, field_t * q, double * fs) {
+static int stats_free_energy_wall(cs_t * cs, wall_t * wall, fe_t * fe,
+				  field_t * q,
+				  double * fs) {
 
+  int iswall[3];
+
+  assert(cs);
+  assert(wall);
   assert(fe);
   assert(q);
 
-  int stats_free_energy_wallx(fe_lc_param_t * fe, field_t * q, double * fs);
-  int stats_free_energy_wally(fe_lc_param_t * fe, field_t * q, double * fs);
-  int stats_free_energy_wallz(fe_lc_param_t * fe, field_t * q, double * fs);
+  int stats_free_energy_wallx(cs_t * cs, fe_lc_param_t * fe, field_t * q, double * fs);
+  int stats_free_energy_wally(cs_t * cs, fe_lc_param_t * fe, field_t * q, double * fs);
+  int stats_free_energy_wallz(cs_t * cs, fe_lc_param_t * fe, field_t * q, double * fs);
+
+  wall_present_dim(wall, iswall);
 
   if (fe->id == FE_LC) {
     /* Slightly inelegant: aka SHIT */
@@ -168,9 +176,9 @@ static int stats_free_energy_wall(fe_t * fe, field_t * q, double * fs) {
 
     fe_lc_param((fe_lc_t *) fe, param);
 
-    if (wall_at_edge(X)) stats_free_energy_wallx(param, q, fs);
-    if (wall_at_edge(Y)) stats_free_energy_wally(param, q, fs);
-    if (wall_at_edge(Z)) stats_free_energy_wallz(param, q, fs);
+    if (iswall[X]) stats_free_energy_wallx(cs, param, q, fs);
+    if (iswall[Y]) stats_free_energy_wally(cs, param, q, fs);
+    if (iswall[Z]) stats_free_energy_wallz(cs, param, q, fs);
   }
 
   return 0;
@@ -184,28 +192,34 @@ static int stats_free_energy_wall(fe_t * fe, field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-int stats_free_energy_wallx(fe_lc_param_t * fep, field_t * q, double * fs) {
+int stats_free_energy_wallx(cs_t * cs, fe_lc_param_t * fep,
+			    field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int mpisz[3];
+  int mpicoords[3];
 
   double dn[3];
   double qs[3][3];
   double fes;
 
-  fs[0] = 0.0;
-  fs[1] = 0.0;
-
+  assert(cs);
   assert(fep);
   assert(q);
   assert(fs);
 
-  coords_nlocal(nlocal);
+  fs[0] = 0.0;
+  fs[1] = 0.0;
+
+  cs_nlocal(cs, nlocal);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
 
   dn[Y] = 0.0;
   dn[Z] = 0.0;
 
-  if (cart_coords(X) == 0) {
+  if (mpicoords[X] == 0) {
 
     ic = 1;
     dn[X] = +1.0;
@@ -213,7 +227,7 @@ int stats_free_energy_wallx(fe_lc_param_t * fep, field_t * q, double * fs) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(fep, dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
@@ -221,7 +235,7 @@ int stats_free_energy_wallx(fe_lc_param_t * fep, field_t * q, double * fs) {
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (mpicoords[X] == mpisz[X] - 1) {
 
     ic = nlocal[X];
     dn[X] = -1;
@@ -229,7 +243,7 @@ int stats_free_energy_wallx(fe_lc_param_t * fep, field_t * q, double * fs) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(fep, dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
@@ -248,27 +262,34 @@ int stats_free_energy_wallx(fe_lc_param_t * fep, field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-int stats_free_energy_wally(fe_lc_param_t * fep, field_t * q, double * fs) {
+int stats_free_energy_wally(cs_t * cs, fe_lc_param_t * fep,
+			    field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int mpisz[3];
+  int mpicoords[3];
 
   double dn[3];
   double qs[3][3];
   double fes;
 
-  fs[0] = 0.0;
-  fs[1] = 0.0;
-
+  assert(cs);
   assert(fep);
   assert(q);
   assert(fs);
 
-  coords_nlocal(nlocal);
+  fs[0] = 0.0;
+  fs[1] = 0.0;
+
+  cs_nlocal(cs, nlocal);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
+
   dn[X] = 0.0;
   dn[Z] = 0.0;
 
-  if (cart_coords(Y) == 0) {
+  if (mpicoords[Y] == 0) {
 
     jc = 1;
     dn[Y] = +1.0;
@@ -276,7 +297,7 @@ int stats_free_energy_wally(fe_lc_param_t * fep, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(fep, dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
@@ -284,7 +305,7 @@ int stats_free_energy_wally(fe_lc_param_t * fep, field_t * q, double * fs) {
     }
   }
 
-  if (cart_coords(Y) == cart_size(Y) - 1) {
+  if (mpicoords[Y] == mpisz[Y] - 1) {
 
     jc = nlocal[Y];
     dn[Y] = -1;
@@ -292,7 +313,7 @@ int stats_free_energy_wally(fe_lc_param_t * fep, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(fep, dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
@@ -311,10 +332,13 @@ int stats_free_energy_wally(fe_lc_param_t * fep, field_t * q, double * fs) {
  *
  *****************************************************************************/
 
-int stats_free_energy_wallz(fe_lc_param_t * fep, field_t * q, double * fs) {
+int stats_free_energy_wallz(cs_t * cs, fe_lc_param_t * fep,
+			    field_t * q, double * fs) {
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int mpisz[3];
+  int mpicoords[3];
 
   double dn[3];
   double qs[3][3];
@@ -323,15 +347,19 @@ int stats_free_energy_wallz(fe_lc_param_t * fep, field_t * q, double * fs) {
   fs[0] = 0.0;
   fs[1] = 0.0;
 
+  assert(cs);
   assert(fep);
   assert(q);
   assert(fs);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
+
   dn[X] = 0.0;
   dn[Y] = 0.0;
 
-  if (cart_coords(Z) == 0) {
+  if (mpicoords[Z] == 0) {
 
     kc = 1;
     dn[Z] = +1.0;
@@ -339,7 +367,7 @@ int stats_free_energy_wallz(fe_lc_param_t * fep, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(fep, dn, qs, MAP_BOUNDARY, &fes);
 	fs[0] += fes;
@@ -347,7 +375,7 @@ int stats_free_energy_wallz(fe_lc_param_t * fep, field_t * q, double * fs) {
     }
   }
 
-  if (cart_coords(Z) == cart_size(Z) - 1) {
+  if (mpicoords[Z] == mpisz[Z] - 1) {
 
     kc = nlocal[Z];
     dn[Z] = -1;
@@ -355,7 +383,7 @@ int stats_free_energy_wallz(fe_lc_param_t * fep, field_t * q, double * fs) {
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	field_tensor(q, index, qs);
 	blue_phase_fs(fep, dn, qs, MAP_BOUNDARY, &fes);
 	fs[1] += fes;
