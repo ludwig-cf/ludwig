@@ -22,12 +22,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "kernel.h"
-#include "leesedwards.h"
-#include "free_energy.h"
-#include "wall.h"
 #include "field_grad_s.h"
 #include "field_s.h"
 #include "hydro_s.h"
@@ -52,10 +47,11 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs, pth_t * pth,
 					      hydro_t * hydro, double * fe,
 					      double * fw,
 					      double * fy, double * fz);
-static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe, hydro_t * hydro);
-static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fxe, double * fxw);
-static int phi_force_wally(cs_t * cs, fe_t * fe, double * fy);
-static int phi_force_wallz(cs_t * cs, fe_t * fe, double * fz);
+static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe,
+			  wall_t * wall, hydro_t * hydro);
+static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double * fxe, double * fxw);
+static __host__ int phi_force_wally(cs_t * cs, wall_t * wall, fe_t * fe, double * fy);
+static __host__ int phi_force_wallz(cs_t * cs, wall_t * wall, fe_t * fe, double * fz);
 
 static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
 				      field_t * phi,
@@ -72,7 +68,7 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
  *
  *****************************************************************************/
 
-__host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le,
+__host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
 				   pth_t * pth, fe_t * fe,
 				   field_t * phi, hydro_t * hydro) {
 
@@ -80,11 +76,11 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le,
   if (pth->method == PTH_METHOD_NO_FORCE) return 0;
   if (hydro == NULL) return 0; 
 
-  if (lees_edw_nplane_total(le) > 0 || wall_present()) {
+  if (lees_edw_nplane_total(le) > 0 || wall_present(wall)) {
     /* Must use the flux method for LE planes */
     /* Also convenient for plane walls */
 
-    phi_force_flux(cs, le, pth, fe, hydro);
+    phi_force_flux(cs, le, pth, fe, wall, hydro);
   }
   else {
     switch (pth->method) {
@@ -407,9 +403,10 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
  *****************************************************************************/
 
 static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe,
-			  hydro_t * hydro) {
+			  wall_t * wall, hydro_t * hydro) {
 
   int n;
+  int iswall[3];
   int fix_fluxes = 1;
 
   double * fluxe;
@@ -419,7 +416,8 @@ static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe,
 
   assert(hydro);
 
-  n = coords_nsites();
+  wall_present_dim(wall, iswall);
+  cs_nsites(cs, &n);
 
   fluxe = (double *) malloc(3*n*sizeof(double));
   fluxw = (double *) malloc(3*n*sizeof(double));
@@ -433,11 +431,11 @@ static int phi_force_flux(cs_t * cs, lees_edw_t * le, pth_t * pth, fe_t * fe,
 
   phi_force_compute_fluxes(le, pth, fe, fluxe, fluxw, fluxy, fluxz);
 
-  if (wall_at_edge(X)) phi_force_wallx(cs, fe, fluxe, fluxw);
-  if (wall_at_edge(Y)) phi_force_wally(cs, fe, fluxy);
-  if (wall_at_edge(Z)) phi_force_wallz(cs, fe, fluxz);
+  if (iswall[X]) phi_force_wallx(cs, wall, fe, fluxe, fluxw);
+  if (iswall[Y]) phi_force_wally(cs, wall, fe, fluxy);
+  if (iswall[Z]) phi_force_wallz(cs, wall, fe, fluxz);
 
-  if (fix_fluxes || wall_present()) {
+  if (fix_fluxes || wall_present(wall)) {
     phi_force_flux_fix_local(le, pth, fluxe, fluxw);
     phi_force_flux_divergence(cs, pth, hydro, fluxe, fluxw, fluxy, fluxz);
   }
@@ -792,29 +790,35 @@ static int phi_force_flux_fix_local(lees_edw_t * le, pth_t * pth,
  *
  *****************************************************************************/
 
-static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fluxe,
+static __host__
+int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double * fluxe,
 			   double * fluxw) {
 
   int ic, jc, kc;
   int index, ia;
   int nsf;
   int nlocal[3];
+  int mpisz[3];
+  int mpicoords[3];
 
   double fw[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
 
   assert(cs);
+  assert(wall);
   assert(fe);
   assert(fe->func->stress);
 
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsf);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
 
   fw[X] = 0.0;
   fw[Y] = 0.0;
   fw[Z] = 0.0;
 
-  if (cart_coords(X) == 0) {
+  if (mpicoords[X] == 0) {
     ic = 1;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -831,7 +835,7 @@ static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fluxe,
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (mpicoords[X] == mpisz[X] - 1) {
     ic = nlocal[X];
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -848,7 +852,7 @@ static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fluxe,
     }
   }
 
-  wall_accumulate_force(fw);
+  wall_momentum_add(wall, fw);
 
   return 0;
 }
@@ -864,28 +868,34 @@ static int phi_force_wallx(cs_t * cs, fe_t * fe, double * fluxe,
  *
  *****************************************************************************/
 
-static int phi_force_wally(cs_t *cs, fe_t * fe, double * fluxy) {
+static __host__
+int phi_force_wally(cs_t *cs, wall_t * wall, fe_t * fe, double * fluxy) {
 
   int ic, jc, kc;
   int index, index1, ia;
   int nsf;
   int nlocal[3];
+  int mpisz[3];
+  int mpicoords[3];
 
   double fy[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
 
   assert(cs);
+  assert(wall);
   assert(fe);
   assert(fe->func->stress);
 
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsf);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
 
   fy[X] = 0.0;
   fy[Y] = 0.0;
   fy[Z] = 0.0;
 
-  if (cart_coords(Y) == 0) {
+  if (mpicoords[Y] == 0) {
     jc = 1;
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -905,7 +915,7 @@ static int phi_force_wally(cs_t *cs, fe_t * fe, double * fluxy) {
     }
   }
 
-  if (cart_coords(Y) == cart_size(Y) - 1) {
+  if (mpicoords[Y] == mpisz[Y] - 1) {
     jc = nlocal[Y];
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -922,7 +932,7 @@ static int phi_force_wally(cs_t *cs, fe_t * fe, double * fluxy) {
     }
   }
 
-  wall_accumulate_force(fy);
+  wall_momentum_add(wall, fy);
 
   return 0;
 }
@@ -938,28 +948,34 @@ static int phi_force_wally(cs_t *cs, fe_t * fe, double * fluxy) {
  *
  *****************************************************************************/
 
-static int phi_force_wallz(cs_t * cs, fe_t * fe, double * fluxz) {
+static __host__
+int phi_force_wallz(cs_t * cs, wall_t * wall, fe_t * fe, double * fluxz) {
 
   int ic, jc, kc;
   int index, index1, ia;
   int nsf;
   int nlocal[3];
+  int mpisz[3];
+  int mpicoords[3];
 
   double fz[3];         /* Net force on wall */
   double pth0[3][3];    /* Chemical stress at fluid point next to wall */
 
   assert(cs);
+  assert(wall);
   assert(fe);
   assert(fe->func->stress);
 
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsf);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, mpicoords);
 
   fz[X] = 0.0;
   fz[Y] = 0.0;
   fz[Z] = 0.0;
 
-  if (cart_coords(Z) == 0) {
+  if (mpicoords[Z] == 0) {
     kc = 1;
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -979,7 +995,7 @@ static int phi_force_wallz(cs_t * cs, fe_t * fe, double * fluxz) {
     }
   }
 
-  if (cart_coords(Z) == cart_size(Z) - 1) {
+  if (mpicoords[Z] == mpisz[Z] - 1) {
     kc = nlocal[Z];
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -996,7 +1012,7 @@ static int phi_force_wallz(cs_t * cs, fe_t * fe, double * fluxz) {
     }
   }
 
-  wall_accumulate_force(fz);
+  wall_momentum_add(wall, fz);
 
   return 0;
 }

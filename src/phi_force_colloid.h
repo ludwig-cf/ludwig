@@ -13,16 +13,17 @@
  *
  *****************************************************************************/
 
-#ifndef PHI_FORCE_COLLOID_H
-#define PHI_FORCE_COLLOID_H
+#ifndef LUDWIG_PHI_FORCE_COLLOID_H
+#define LUDWIG_PHI_FORCE_COLLOID_H
 
 #include "phi_force_stress.h"
 #include "free_energy.h"
 #include "colloids.h"
 #include "hydro.h"
 #include "map.h"
+#include "wall.h"
 
 __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
-			       hydro_t * hydro, map_t * map);
+			       hydro_t * hydro, map_t * map, wall_t * wall);
 
 #endif

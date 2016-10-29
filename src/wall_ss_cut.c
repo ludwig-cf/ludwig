@@ -23,7 +23,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *  Juho Lintuvuori (juho.lintuvuori@u-psud.fr)
  *
  *****************************************************************************/
@@ -32,14 +32,15 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
-#include "wall.h"
 #include "wall_ss_cut.h"
 
 struct wall_ss_cut_s {
+  pe_t * pe;             /* parallel environment */
+  cs_t * cs;             /* coordinate system */
+  wall_t * wall;         /* wall information */
+
   double epsilon;        /* epsilon (energy) */
   double sigma;          /* sigma (length) */
   double nu;             /* exponent */
@@ -55,14 +56,21 @@ struct wall_ss_cut_s {
  *
  *****************************************************************************/
 
-int wall_ss_cut_create(wall_ss_cut_t ** pobj) {
+int wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall,
+		       wall_ss_cut_t ** pobj) {
 
   wall_ss_cut_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (wall_ss_cut_t *) calloc(1, sizeof(wall_ss_cut_t));
-  if (obj == NULL) fatal("calloc(wall_ss_cut_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(wall_ss_cut_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
+  obj->wall = wall;
 
   *pobj = obj;
 
@@ -75,13 +83,13 @@ int wall_ss_cut_create(wall_ss_cut_t ** pobj) {
  *
  *****************************************************************************/
 
-void wall_ss_cut_free(wall_ss_cut_t * obj) {
+int wall_ss_cut_free(wall_ss_cut_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -116,14 +124,14 @@ int wall_ss_cut_info(wall_ss_cut_t * obj) {
   physics_ref(&phys);
   physics_kt(phys, &kt);
 
-  info("\n");
-  info("Soft sphere for wall potential\n");
-  info("epsilon:                  %14.7e\n", obj->epsilon);
-  info("sigma:                    %14.7e\n", obj->sigma);
-  info("exponent nu:              %14.7e\n", obj->nu);
-  info("cut off (surface-surface) %14.7e\n", obj->hc);
+  pe_info(obj->pe, "\n");
+  pe_info(obj->pe, "Soft sphere for wall potential\n");
+  pe_info(obj->pe, "epsilon:                  %14.7e\n", obj->epsilon);
+  pe_info(obj->pe, "sigma:                    %14.7e\n", obj->sigma);
+  pe_info(obj->pe, "exponent nu:              %14.7e\n", obj->nu);
+  pe_info(obj->pe, "cut off (surface-surface) %14.7e\n", obj->hc);
   if (kt > 0.0) {
-    info("epsilon / kT              %14.7e\n", obj->epsilon/kt);
+    pe_info(obj->pe, "epsilon / kT              %14.7e\n", obj->epsilon/kt);
   }
 
   return 0;
@@ -160,6 +168,7 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   int ic1, jc1, kc1;
   int ncell[3];
   int ia;
+  int iswall[3];
   
   double r;                             /* centre-centre sepration */
   double h;                             /* surface-surface separation */
@@ -186,7 +195,8 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   forcewall[X] = 0.0;
   forcewall[Y] = 0.0;
   forcewall[Z] = 0.0;
-  
+
+  wall_present_dim(self->wall, iswall);
   colloids_info_ncell(cinfo, ncell);
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
@@ -197,7 +207,7 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
         for (; pc1; pc1 = pc1->next) {
 
 	  for (ia = 0; ia < 3; ia++){
-	    if(wall_at_edge(ia)){
+	    if (iswall[ia]) {
 	      
 	      f = 0.0;
 	      /* lower wall */
@@ -240,7 +250,8 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
     }
   }
 
-  wall_accumulate_force(forcewall);
+  wall_momentum_add(self->wall, forcewall);
+
   return 0;
 }
 

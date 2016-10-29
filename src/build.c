@@ -216,7 +216,7 @@ int build_update_map(colloids_info_t * cinfo, map_t * map) {
  *
  *****************************************************************************/
 
-int build_update_links(colloids_info_t * cinfo, map_t * map) {
+int build_update_links(colloids_info_t * cinfo, wall_t * wall, map_t * map) {
 
   int ia;
   int ic, jc, kc;
@@ -247,7 +247,7 @@ int build_update_links(colloids_info_t * cinfo, map_t * map) {
 	  if (pc->s.rebuild) {
 	    /* The shape has changed, so need to reconstruct */
 	    build_reconstruct_links(cinfo, pc, map);
-	    if (wall_present()) build_colloid_wall_links(cinfo, pc, map);
+	    if (wall) build_colloid_wall_links(cinfo, pc, map);
 	  }
 	  else {
 	    /* Shape unchanged, so just reset existing links */

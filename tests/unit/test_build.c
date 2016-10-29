@@ -117,7 +117,7 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
 
   colloids_halo_state(cinfo);
   build_update_map(cinfo, map);
-  build_update_links(cinfo, map);
+  build_update_links(cinfo, NULL, map);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   colloids_info_ntotal(cinfo, &ncolloid);
@@ -176,7 +176,7 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
 
   colloids_halo_state(cinfo);
   build_update_map(cinfo, map);
-  build_update_links(cinfo, map);
+  build_update_links(cinfo, NULL, map);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   colloids_info_ntotal(cinfo, &ncolloid);
@@ -252,7 +252,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
 
   colloids_halo_state(cinfo);
   build_update_map(cinfo, map);
-  build_update_links(cinfo, map);
+  build_update_links(cinfo, NULL, map);
 
   colloids_info_ntotal(cinfo, &ncolloid);
   assert(ncolloid == 1);
@@ -264,7 +264,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
   colloids_halo_state(cinfo);
 
   build_update_map(cinfo, map);
-  build_update_links(cinfo, map);
+  build_update_links(cinfo, NULL, map);
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {

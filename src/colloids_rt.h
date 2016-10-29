@@ -12,8 +12,8 @@
  *
  *****************************************************************************/
 
-#ifndef COLLOIDS_RT_H
-#define COLLOIDS_RT_H
+#ifndef LUDWIG_COLLOIDS_RT_H
+#define LUDWIG_COLLOIDS_RT_H
 
 #include "pe.h"
 #include "coords.h"
@@ -23,10 +23,11 @@
 #include "interaction.h"
 #include "map.h"
 #include "ewald.h"
+#include "wall.h"
 
 int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** cio,
-		     interact_t ** interact, map_t * map);
+		     interact_t ** interact, wall_t * wall, map_t * map);
 int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   ewald_t ** pewald);
 int colloids_init_halo_range_check(pe_t * pe, colloids_info_t * cinfo);

@@ -85,8 +85,9 @@ __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 
   grad_3d_27pt_fluid_operator(le, fgrad, nextra);
   grad_3d_27pt_fluid_le(le, fgrad, nextra);
+#ifdef OLD_SHIT
   grad_3d_27pt_fluid_wall(fgrad, nextra);
-
+#endif
   return 0;
 }
 
@@ -110,8 +111,9 @@ __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
   assert(0); /* We need this to work for d4. See 2d_5pt. */
   grad_3d_27pt_fluid_operator(le, fgrad, nextra);
   grad_3d_27pt_fluid_le(le, fgrad, nextra);
+#ifdef OLD_SHIT
   grad_3d_27pt_fluid_wall(fgrad, nextra);
-
+#endif
   return 0;
 }
 
@@ -576,7 +578,7 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
  *  Correct the gradients near the X boundary wall, if necessary.
  *
  *****************************************************************************/
-
+#ifdef OLD_SHIT
 __host__ int grad_3d_27pt_fluid_wall(field_grad_t * fg,
 				     int nextra) {
 
@@ -586,3 +588,4 @@ __host__ int grad_3d_27pt_fluid_wall(field_grad_t * fg,
 
   return 0;
 }
+#endif

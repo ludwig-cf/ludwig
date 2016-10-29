@@ -58,11 +58,12 @@
 #include "timer.h"
 
 int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
-			    hydro_t * hydro, map_t * map);
+		     hydro_t * hydro, map_t * map, wall_t * wall);
 
 __global__
 void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map);
+		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
+		      wall_t * wall);
 
 
 /*****************************************************************************
@@ -75,7 +76,7 @@ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
  *****************************************************************************/
 
 __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
-			       hydro_t * hydro, map_t * map) {
+			       hydro_t * hydro, map_t * map, wall_t * wall) {
 
   int ncolloid;
 
@@ -87,7 +88,7 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (pth->method == PTH_METHOD_DIVERGENCE) {
     pth_stress_compute(pth, fe);
-    phi_force_driver(pth, cinfo, hydro, map);
+    phi_force_driver(pth, cinfo, hydro, map, wall);
   }
 
   return 0;
@@ -105,10 +106,11 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *****************************************************************************/
 
 __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
-			      hydro_t * hydro, map_t * map) {
+			      hydro_t * hydro, map_t * map, wall_t * wall) {
   int ia;
   int nlocal[3];
   dim3 nblk, ntpb;
+  wall_t * wallt = NULL;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
@@ -118,6 +120,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   assert(map);
 
   coords_nlocal(nlocal);
+  wall_target(wall, &wallt);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
@@ -129,7 +132,8 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
   __host_launch(phi_force_kernel, nblk, ntpb, ctxt->target,
-		pth->target, cinfo->tcopy, hydro->target, map->target);
+		pth->target, cinfo->tcopy, hydro->target, map->target,
+		wallt);
 
   /* note that ideally we would delay this sync to overlap 
    with below colloid force updates, but this is not working on current GPU 
@@ -244,7 +248,8 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 __global__
 void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
+		      wall_t * wall) {
 
   int kindex;
   __shared__ int kiterations;
@@ -478,11 +483,7 @@ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 	hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)] += force[ia];
       }
 
-#ifdef __NVCC__
-      assert(0);
-#else
-      wall_accumulate_force(fw);
-#endif  
+      wall_momentum_add(wall, fw);
     }
     /* Next site */
   }
