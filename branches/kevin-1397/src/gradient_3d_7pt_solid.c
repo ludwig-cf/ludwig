@@ -98,7 +98,8 @@ int colloids_q_boundary(fe_lc_param_t * param, const double n[3],
 			double qs[3][3], double q0[3][3],
 			int map_status);
 __host__ __device__
-int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
+int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
+			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
 			 colloids_info_t * cinfo);
@@ -416,8 +417,8 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  - fg->field->data[addr_rank1(nsites, NQAB, index, XX)]
 	  - fg->field->data[addr_rank1(nsites, NQAB, index, YY)];
 	
-	q_boundary_constants(fe->param, ic, jc, kc, qs, bcs[normal[0]],
-			     status[normal[0]], c, cinfo);
+	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+			     bcs[normal[0]], status[normal[0]], c, cinfo);
 	
 	/* Constant terms all move to RHS (hence -ve sign). Factors
 	 * of two in off-diagonals agree with matrix coefficients. */
@@ -440,8 +441,8 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       
       if (nunknown > 1) {
 	
-	q_boundary_constants(fe->param, ic, jc, kc, qs, bcs[normal[1]],
-			     status[normal[1]], c, cinfo);
+	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+			     bcs[normal[1]], status[normal[1]], c, cinfo);
 	
 	b18[1*NSYMM + XX] = -1.0*c[X][X];
 	b18[1*NSYMM + XY] = -2.0*c[X][Y];
@@ -460,8 +461,8 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       
       if (nunknown > 2) {
 	
-	q_boundary_constants(fe->param, ic, jc, kc, qs, bcs[normal[2]],
-			     status[normal[2]], c, cinfo);
+	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+			     bcs[normal[2]], status[normal[2]], c, cinfo);
 	
 	b18[2*NSYMM + XX] = -1.0*c[X][X];
 	b18[2*NSYMM + XY] = -2.0*c[X][Y];
@@ -908,7 +909,8 @@ int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
  *****************************************************************************/
 
 __host__ __device__
-int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
+int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
+			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
 			 colloids_info_t * cinfo) {
@@ -929,6 +931,10 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
 
   colloid_t * pc = NULL;
 
+  assert(cs);
+  assert(param);
+  assert(cinfo);
+
   /* Default -> outward normal, ie., flat wall */
 
   w1 = param->w1_wall;
@@ -942,12 +948,9 @@ int q_boundary_constants(fe_lc_param_t * param, int ic, int jc, int kc,
 
   if (status == MAP_COLLOID) {
 
-#ifdef __NVCC__
-    assert(0);
-#else
-    coords_nlocal_offset(noffset);
-    index = coords_index(ic - di[X], jc - di[Y], kc - di[Z]);
-#endif
+    cs_nlocal_offset(cs, noffset);
+    index = cs_index(cs, ic - di[X], jc - di[Y], kc - di[Z]);
+
     pc = cinfo->map_new[index];
     assert(pc);
 

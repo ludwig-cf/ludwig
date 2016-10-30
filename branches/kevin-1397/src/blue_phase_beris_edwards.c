@@ -66,8 +66,8 @@ __host__ int beris_edw_update_driver(beris_edw_t * be, fe_t * fe, field_t * fq,
 				     field_grad_t * fq_grad,
 				     hydro_t * hydro,
 				     map_t * map, noise_t * noise); 
-__host__ int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro,
-			      map_t * map);
+__host__ int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
+			       hydro_t * hydro, map_t * map);
 __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 				   hydro_t * hydro, advflux_t * flux,
 				   map_t * map, noise_t * noise);
@@ -79,7 +79,8 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 			map_t * map, noise_t * noise);
 __global__
 void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
-			      hydro_t * hydro, map_t * map, int noffset[3]);
+			      hydro_t * hydro, map_t * map, int noffsetx,
+			      int noffsety, int noffsetz);
 
 struct beris_edw_s {
   beris_edw_param_t * param;       /* Parameters */ 
@@ -241,7 +242,7 @@ __host__ int beris_edw_update(beris_edw_t * be,
   assert(nf == NQAB);
 
   if (hydro) {
-    beris_edw_fix_swd(cinfo, hydro, map);
+    beris_edw_fix_swd(be, cinfo, hydro, map);
     hydro_lees_edwards(hydro);
     advection_x(be->flux, hydro, fq);
     advection_bcs_no_normal_flux(nf, be->flux, map);
@@ -882,7 +883,8 @@ __host__ __device__ int beris_edw_tmatrix(double t[3][3][NQAB]) {
  *****************************************************************************/
 
 __host__
-int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
+int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
+		      hydro_t * hydro, map_t * map) {
 
   int nlocal[3];
   int noffset[3];
@@ -891,13 +893,14 @@ int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
+  assert(be);
   assert(cinfo);
   assert(map);
 
   if (hydro == NULL) return 0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  lees_edw_nlocal(be->le, nlocal);
+  lees_edw_nlocal_offset(be->le, noffset);
 
   nextra = 1;   /* Limits extend 1 point into halo to permit a gradient */
   limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
@@ -908,7 +911,8 @@ int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(beris_edw_fix_swd_kernel, nblk, ntpb, ctxt->target,
-		cinfo->tcopy, hydro->target, map->target, noffset);
+		cinfo->tcopy, hydro->target, map->target,
+		noffset[X], noffset[Y], noffset[Z]);
 
   targetSynchronize();
 
@@ -933,7 +937,8 @@ int beris_edw_fix_swd(colloids_info_t * cinfo, hydro_t * hydro, map_t * map) {
 
 __global__
 void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
-			      hydro_t * hydro, map_t * map, int noffset[3]) {
+			      hydro_t * hydro, map_t * map, int noffsetx,
+			      int noffsety, int noffsetz) {
 
   int kindex;
   __shared__ int kiterations;
@@ -970,14 +975,14 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
 
     /* Colloids */
     if (cinfo->map_new) pc = cinfo->map_new[index];
-      
+ 
     if (pc) {
       /* Set the lattice velocity here to the solid body
        * rotational velocity: v + Omega x r_b */
 
-      x = noffset[X] + ic;
-      y = noffset[Y] + jc;
-      z = noffset[Z] + kc;      
+      x = noffsetx + ic;
+      y = noffsety + jc;
+      z = noffsetz + kc;      
 	
       rb[X] = x - pc->s.r[X];
       rb[Y] = y - pc->s.r[Y];

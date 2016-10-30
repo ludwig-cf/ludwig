@@ -98,6 +98,10 @@ static int do_test1(pe_t * pe) {
   assert(fabs(u[Y] - check[Y]) < DBL_EPSILON);
   assert(fabs(u[Z] - check[Z]) < DBL_EPSILON);
 
+  /* Smoke tests */
+  hydro_u_zero(hydro, u);
+  hydro_f_zero(hydro, force);
+
   hydro_free(hydro);
 
   lees_edw_free(le);

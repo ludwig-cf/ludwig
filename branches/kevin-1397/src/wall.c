@@ -51,13 +51,16 @@ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init);
 int wall_init_map(wall_t * wall);
 int wall_init_uw(wall_t * wall);
 
+static __constant__ wall_param_t static_param;
+
 /*****************************************************************************
  *
  *  wall_create
  *
  *****************************************************************************/
 
-int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb, wall_t ** p) {
+__host__ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb,
+			 wall_t ** p) {
 
   int ndevice;
   wall_t * wall = NULL;
@@ -87,7 +90,11 @@ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb, wall_t ** p) {
     wall->target = wall;
   }
   else {
-    assert(0); /* Pending */
+    wall_param_t * tmp = NULL;
+
+    targetCalloc((void **) &wall->target, sizeof(wall_t));
+    targetConstAddress((void **) &tmp, static_param);
+    copyToTarget(&wall->target->param, &tmp, sizeof(wall_param_t *));
   }
 
   *p = wall;
@@ -101,9 +108,13 @@ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb, wall_t ** p) {
  *
  *****************************************************************************/
 
-int wall_free(wall_t * wall) {
+__host__ int wall_free(wall_t * wall) {
 
   assert(wall);
+
+  if (wall->target != wall) {
+    targetFree(wall->target);
+  }
 
   cs_free(wall->cs);
   free(wall->param);
@@ -122,7 +133,7 @@ int wall_free(wall_t * wall) {
  *
  *****************************************************************************/
 
-int wall_commit(wall_t * wall, wall_param_t param) {
+__host__ int wall_commit(wall_t * wall, wall_param_t param) {
 
   assert(wall);
 
@@ -211,7 +222,7 @@ __host__ int wall_target(wall_t * wall, wall_t ** target) {
  *
  *****************************************************************************/
 
-int wall_param_set(wall_t * wall, wall_param_t values) {
+__host__ int wall_param_set(wall_t * wall, wall_param_t values) {
 
   assert(wall);
 
@@ -226,7 +237,7 @@ int wall_param_set(wall_t * wall, wall_param_t values) {
  *
  *****************************************************************************/
 
-int wall_param(wall_t * wall, wall_param_t * values) {
+__host__ int wall_param(wall_t * wall, wall_param_t * values) {
 
   assert(wall);
   assert(values);
@@ -242,7 +253,7 @@ int wall_param(wall_t * wall, wall_param_t * values) {
  *
  *****************************************************************************/
 
-int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
+__host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
 
   int ic, jc, kc;
   int ic1, jc1, kc1;
@@ -354,7 +365,7 @@ __host__ int wall_init_uw(wall_t * wall) {
  *
  *****************************************************************************/
 
-int wall_set_wall_distributions(wall_t * wall) {
+__host__ int wall_set_wall_distributions(wall_t * wall) {
 
   int n;
   int p;              /* Outward going component of link velocity */
@@ -381,7 +392,7 @@ int wall_set_wall_distributions(wall_t * wall) {
  *
  *****************************************************************************/
 
-int wall_bbl(wall_t * wall) {
+__host__ int wall_bbl(wall_t * wall) {
 
   int i, j, ij, ji, ia;
   int n, ndist;
@@ -529,7 +540,7 @@ __host__ int wall_init_map(wall_t * wall) {
  *
  *****************************************************************************/
 
-int wall_momentum_add(wall_t * wall, const double f[3]) {
+__host__ __device__ int wall_momentum_add(wall_t * wall, const double f[3]) {
 
   assert(wall);
 
@@ -546,7 +557,7 @@ int wall_momentum_add(wall_t * wall, const double f[3]) {
  *
  *****************************************************************************/
 
-int wall_momentum(wall_t * wall, double f[3]) {
+__host__ __device__ int wall_momentum(wall_t * wall, double f[3]) {
 
   assert(wall);
 
@@ -722,8 +733,8 @@ __host__ int wall_shear_init(wall_t * wall) {
  *
  *****************************************************************************/
 
-int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
-		     double * drag) {
+__host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
+			      double * drag) {
 
   double hlub;
   double h;
