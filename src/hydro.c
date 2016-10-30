@@ -31,7 +31,7 @@ static int hydro_u_read(FILE * fp, int index, void * self);
 static int hydro_u_read_ascii(FILE * fp, int index, void * self);
 
 static __global__
-void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]);
+void hydro_field_set(hydro_t * hydro, double * field, double, double, double);
 
 
 /*****************************************************************************
@@ -379,7 +379,7 @@ int hydro_u(hydro_t * obj, int index, double u[3]) {
  *
  *****************************************************************************/
 
-__host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
+__host__ int hydro_u_zero(hydro_t * obj, const double uzero[NHDIM]) {
 
   dim3 nblk, ntpb;
   double * u = NULL;
@@ -389,7 +389,8 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
   copyFromTarget(&u, &obj->target->u, sizeof(double *));
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
-  __host_launch(hydro_field_set, nblk, ntpb, obj->target, u, uzero);
+  __host_launch(hydro_field_set, nblk, ntpb, obj->target, u,
+		uzero[X], uzero[Y], uzero[Z]);
   targetDeviceSynchronise();
 
   return 0;
@@ -402,7 +403,7 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]) {
  *
  *****************************************************************************/
 
-__host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
+__host__ int hydro_f_zero(hydro_t * obj, const double fzero[NHDIM]) {
 
   dim3 nblk, ntpb;
   double * f;
@@ -413,7 +414,8 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
   copyFromTarget(&f, &obj->target->f, sizeof(double *)); 
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
-  __host_launch(hydro_field_set, nblk, ntpb, obj->target, f, fzero);
+  __host_launch(hydro_field_set, nblk, ntpb, obj->target, f,
+		fzero[X], fzero[Y], fzero[Z]);
   targetDeviceSynchronise();
 
   return 0;
@@ -426,7 +428,8 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]) {
  *****************************************************************************/
 
 static __global__
-void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]) {
+void hydro_field_set(hydro_t * hydro, double * field, double zx, double zy,
+		     double zz) {
 
   int kindex;
 
@@ -434,10 +437,9 @@ void hydro_field_set(hydro_t * hydro, double * field, const double z[NHDIM]) {
   assert(field);
 
   __target_simt_parallel_for(kindex, hydro->nsite, 1) {
-    int ia;
-    for (ia = 0; ia < NHDIM; ia++) {
-      field[addr_rank1(hydro->nsite, NHDIM, kindex, ia)] = z[ia];
-    }
+    field[addr_rank1(hydro->nsite, NHDIM, kindex, X)] = zx;
+    field[addr_rank1(hydro->nsite, NHDIM, kindex, Y)] = zy;
+    field[addr_rank1(hydro->nsite, NHDIM, kindex, Z)] = zz;
   }
 
   return;

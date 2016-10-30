@@ -148,7 +148,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
    * force on each particle. A truly parallel version is
    pending... */
 
-#ifdef __NVCC__
+#ifdef __OLD_SHIT__
 
   /* update colloid-affected lattice sites from target*/
   int ncolsite=colloids_number_sites(cinfo);
@@ -229,7 +229,6 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
     }
   }
-
 
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 

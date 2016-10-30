@@ -128,15 +128,17 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
     assert(pth->target == pth);
   }
   else {
+    double * tmp = NULL;
 
     nsz = 9*pth->nsites*sizeof(double);
+    copyFromTarget(&tmp, &pth->target->str, sizeof(double *));
 
     switch (flag) {
     case cudaMemcpyHostToDevice:
-      copyToTarget(pth->target->str, pth->str, nsz);
+      copyToTarget(tmp, pth->str, nsz);
       break;
     case cudaMemcpyDeviceToHost:
-      copyFromTarget(pth->str, pth->target->str, nsz);
+      copyFromTarget(pth->str, tmp, nsz);
       break;
     default:
       assert(0);

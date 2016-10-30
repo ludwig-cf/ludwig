@@ -173,7 +173,9 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   bbl_pass0(bbl, lb, cinfo);
 
 #ifdef __NVCC__
-
+#ifndef OLD_SHIT
+  lb_memcpy(lb, cudaMemcpyDeviceToHost);
+#else
   lb_t* lb;
 
   lb = lb_in;
@@ -198,7 +200,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   lb_t* t_lb = lb->tcopy; 
   copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
   copyFromTargetSubset(lb->f,tmpptr,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
-
+#endif
 #else
   lb_memcpy(lb, cudaMemcpyDeviceToHost);
 #endif
@@ -217,7 +219,9 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   bbl_pass2(bbl, lb, cinfo);
 
 #ifdef __NVCC__
-
+#ifndef OLD_SHIT
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
+#else
   copyToTargetPointerMap3D(lb->t_f, lb->f,
 			   Nall, nFields, 0, (void **) cinfo->map_new); 
 
@@ -226,6 +230,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   copyToTargetSubset(tmpptr,lb->f,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
   
   free(colloidSiteList);
+#endif
 #else
   lb_memcpy(lb, cudaMemcpyHostToDevice);
 #endif
