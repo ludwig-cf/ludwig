@@ -105,7 +105,7 @@ int next_step() {
 }
 
 int is_last_step() {
-  if (get_step()==t_steps)
+  if (get_step() == (t_steps + t_start))
     return 1;
   return 0;
 }
