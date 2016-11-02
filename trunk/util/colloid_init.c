@@ -223,7 +223,7 @@ void colloid_init_trial(double r[3], double dh) {
 void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 			     const int form) {
   int n;
-  const char * filename = "config.cds00000000.001-001";
+  const char * filename = "config.cds.init.001-001";
   FILE * fp;
 
   fp = fopen(filename, "w");
