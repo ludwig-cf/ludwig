@@ -2,6 +2,9 @@
 #
 #  cirrus-mpi.mk
 #
+#  Intel Xeon E5-2695 v4 2.1 GhZ ("Broadwell").
+#  2 sockets x 18 cores (2 hardware threads per core).
+#
 #  module load mpt
 #  module load intel-compilers-16
 #
