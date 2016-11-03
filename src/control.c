@@ -57,6 +57,10 @@ int init_control(pe_t * pe, rt_t * rt) {
   assert(rt);
   physics_ref(&phys);
 
+  /* Care: t_start (in particular) might not appear in the input */
+  t_start = 0;
+  t_steps = 0;
+
   n = rt_int_parameter(rt, "N_start", &t_start);
   n = rt_int_parameter(rt, "N_cycles", &t_steps);
   if (n == 0) pe_fatal(pe, "Please set N_cycles in input\n");

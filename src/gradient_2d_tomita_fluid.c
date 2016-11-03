@@ -81,7 +81,9 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 
   grad_2d_tomita_fluid_operator(le, fg, nextra);
   grad_2d_tomita_fluid_le(le, fg, nextra);
+#ifdef OLD_SHIT
   grad_2d_tomita_fluid_wall(le, fg, nextra);
+#endif
 
   return 0;
 }
@@ -104,7 +106,9 @@ __host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
 
   grad_2d_tomita_fluid_operator(le, fg, nextra);
   grad_2d_tomita_fluid_le(le, fg, nextra);
+#ifdef OLD_SHIT
   grad_2d_tomita_fluid_wall(le, fg, nextra);
+#endif
 
   return 0;
 }
