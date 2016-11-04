@@ -354,7 +354,7 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
   double kappa;
   double phi;
   double delsq;
-  double grad[3];
+  double grad[3][NSIMDVL];
   double p0;
   KRONECKER_DELTA_CHAR(d);
 
@@ -367,21 +367,23 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
   b = fe->param->b;
   kappa = fe->param->kappa;
 
-  __targetILP__(iv) {
-    for (ia = 0; ia < 3; ia++) {
-      grad[ia] = fe->dphi->grad[addr_rank2(fe->dphi->nsite,1,3,index+iv,0,ia)];
+  for (ia = 0; ia < 3; ia++) {
+    __targetILP__(iv) {
+      grad[ia][iv] = fe->dphi->grad[addr_rank2(fe->dphi->nsite,1,3,index+iv,0,ia)];
     }
+  }
 
+  __targetILP__(iv) {
     phi = fe->phi->data[addr_rank1(fe->phi->nsites, 1, index + iv, 0)];
     delsq = fe->dphi->delsq[addr_rank1(fe->dphi->nsite, 1, index + iv, 0)];
 
-    p0 = 0.5*a*phi*phi + 0.75*b*phi*phi*phi*phi
-      - kappa*phi*delsq 
-      - 0.5*kappa*(grad[X]*grad[X] + grad[Y]*grad[Y] + grad[Z]*grad[Z]);
+    p0 = 0.5*a*phi*phi + 0.75*b*phi*phi*phi*phi - kappa*phi*delsq 
+      - 0.5*kappa*(grad[X][iv]*grad[X][iv] + grad[Y][iv]*grad[Y][iv]
+		   + grad[Z][iv]*grad[Z][iv]);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	s[ia][ib][iv] = p0*d[ia][ib] + kappa*grad[ia]*grad[ib];
+	s[ia][ib][iv] = p0*d[ia][ib] + kappa*grad[ia][iv]*grad[ib][iv];
       }
     }
   }
