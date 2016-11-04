@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.4.6 (Serial version running on 1 process)
+Welcome to Ludwig v0.4.8 (Serial version running on 1 process)
 
-The SVN revision details are: 
+The SVN revision details are: 2987M
 Note assertions via standard C assert() are on.
 
 Read 23 user parameters from serial-relx-bp1.inp
@@ -53,7 +53,7 @@ External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
 Lattice Boltzmann distributions
 -------------------------------
 Model:            d3q19  
-SIMD vector len:  2
+SIMD vector len:  1
 Number of sets:   1
 Halo type:        full
 Input format:     binary
@@ -80,7 +80,7 @@ Order parameter I/O format:
 I/O decomposition:            1 1 1
 
 Advection scheme order:  1 (default)
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
 
 
 Initialising Q_ab using O8M (BPI)
@@ -88,11 +88,11 @@ Initial conditions.
 
 Scalars - total mean variance min max
 [rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
-[phi] -2.5424107e-14 -7.7588218e-19 6.0000000e-02 -4.4966058e-01 4.4966058e-01
-[phi] -1.4029333e-12 -4.2814127e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
-[phi] -1.2380652e-12 -3.7782752e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
-[phi] -1.8471336e-14 -5.6370043e-19 6.0000000e-02 -4.4966058e-01 4.4966058e-01
-[phi] -1.4698798e-12 -4.4857171e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -7.4301676e-14 -2.2675072e-18 6.0000000e-02 -4.4966058e-01 4.4966058e-01
+[phi] -1.4009349e-12 -4.2753141e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -1.2735923e-12 -3.8866954e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -2.5340841e-14 -7.7334108e-19 6.0000000e-02 -4.4966058e-01 4.4966058e-01
+[phi] -1.4913071e-12 -4.5511080e-17 5.0000000e-02 -6.0000000e-01 6.0000000e-01
 
 Momentum - x y z
 [total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
@@ -102,11 +102,11 @@ Starting time step loop.
 
 Scalars - total mean variance min max
 [rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
-[phi]  5.0575139e-14  1.5434308e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
+[phi]  3.3311646e-14  1.0165907e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
 [phi]  4.1711698e-06  1.2729400e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
 [phi]  4.1711700e-06  1.2729401e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
-[phi]  1.9072334e-14  5.8204144e-19 4.2061932e-02 -3.3730903e-01 4.2727217e-01
-[phi]  4.1711695e-06  1.2729399e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
+[phi]  6.5709473e-14  2.0052940e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
+[phi]  4.1711696e-06  1.2729399e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
 
 Free energy density - timestep total fluid
 [fed]            100  1.2417404107e-03  1.2417404107e-03
@@ -121,12 +121,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.710      2.710      2.710   2.710000 (1 call)
-      Time step loop:      0.020      0.050      2.640   0.026400 (100 calls)
-       phi gradients:      0.000      0.030      0.910   0.009100 (100 calls)
-    phi grad (krnl) :      0.000      0.020      0.550   0.005500 (100 calls)
+               Total:      0.948      0.948      0.948   0.948319 (1 call)
+      Time step loop:      0.009      0.022      0.925   0.009250 (100 calls)
+       phi gradients:      0.003      0.008      0.266   0.002661 (100 calls)
+    phi grad (krnl) :      0.001      0.003      0.119   0.001193 (100 calls)
+           phi halos:      0.001      0.001      0.070   0.000698 (100 calls)
    Force calculation:      0.000      0.000      0.000   0.000000 (100 calls)
-          phi update:      0.010      0.020      1.730   0.017300 (100 calls)
-BP BE update (krnl) :      0.010      0.020      1.210   0.012100 (100 calls)
-   BP BE alloc/free :      0.000      0.000      0.000   0.000000 (200 calls)
+          phi update:      0.006      0.013      0.659   0.006586 (100 calls)
+BP BE update (krnl) :      0.005      0.006      0.490   0.004901 (100 calls)
+   BP BE alloc/free :      0.000      0.000      0.000   0.000001 (200 calls)
 Ludwig finished normally.
