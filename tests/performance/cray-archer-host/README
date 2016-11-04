@@ -51,9 +51,14 @@ Weak scaling Summary
 All aprun -N 24 input_stub1
 
 Node        Decomp     MPI  Local       System  Time step (s)  Updates/core/s
-2_1_1        8_3_2      48   32^3    256_96_64
-                             40^3   320_120_80 
-3_2_3       12_6_6     432   32^3  384_192_192          0.599     5.47 10^5
+2_1_1        8_3_2      48   32^3    256_96_64          0.0490    6.69 10^5
+                             40^3   320_120_80          0.0950    6.74 10^5
+3_2_3       12_6_6     432   32^3  384_192_192          0.0607    5.40 10^5
                              40^3  480_240_240          0.113     5.66 10^5
-3_4_6     12_12_12    1728   32^2  384_384_384          0.613     5.35 10^5
+3_4_6     12_12_12    1728   32^2  384_384_384          0.0613    5.35 10^5
                              40^3  480_480_480          0.113     5.66 10^5
+
+Note.
+Broadly repeatable to 3 sig. fig.
+Cray Aries: 2 nodes should hit the router card; 18 nodes will hit at
+least the rank 1 network; 72 nodes will hit at least the rank 2 network.

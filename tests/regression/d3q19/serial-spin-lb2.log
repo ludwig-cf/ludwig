@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+Welcome to Ludwig v0.4.8 (Serial version running on 1 process)
 
-The SVN revision details are: 2638M
+The SVN revision details are: 2987M
 Note assertions via standard C assert() are on.
 
 Read 22 user parameters from serial-spin-lb2.inp
@@ -80,7 +80,7 @@ Boundary normal lubrication rc:  0.0000000e+00
 Wall boundary links allocated:   30336
 Memory (total, bytes):           970752
 Boundary shear initialise:       0
-Gradient calcaulation: 3d_27pt_solid
+Gradient calculation: 3d_27pt_solid
 Initial conditions.
 
 Scalars - total mean variance min max
@@ -116,11 +116,14 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      4.233      4.233      4.233   4.233315 (1 call)
-      Time step loop:      0.102      0.111      4.172   0.104289 (40 calls)
-         Propagation:      0.023      0.029      0.947   0.023685 (40 calls)
-           Collision:      0.041      0.043      1.697   0.042430 (40 calls)
-       Lattice halos:      0.000      0.000      0.000   0.000002 (40 calls)
-       phi gradients:      0.032      0.033      1.301   0.032514 (40 calls)
-                 BBL:      0.003      0.004      0.137   0.003416 (40 calls)
+               Total:      1.547      1.547      1.547   1.547456 (1 call)
+      Time step loop:      0.037      0.045      1.513   0.037818 (40 calls)
+         Propagation:      0.004      0.009      0.190   0.004757 (40 calls)
+    Propagtn (krnl) :      0.004      0.009      0.190   0.004753 (40 calls)
+           Collision:      0.017      0.019      0.676   0.016899 (40 calls)
+   Collision (krnl) :      0.016      0.018      0.661   0.016527 (40 calls)
+       Lattice halos:      0.000      0.000      0.000   0.000001 (40 calls)
+       phi gradients:      0.013      0.016      0.526   0.013156 (40 calls)
+           phi halos:      0.000      0.000      0.003   0.000070 (40 calls)
+                 BBL:      0.002      0.002      0.081   0.002037 (40 calls)
 Ludwig finished normally.

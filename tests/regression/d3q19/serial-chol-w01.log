@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+Welcome to Ludwig v0.4.8 (Serial version running on 1 process)
 
-The SVN revision details are: 2647M
+The SVN revision details are: 2987M
 Note assertions via standard C assert() are on.
 
 Read 35 user parameters from serial-chol-w01.inp
@@ -102,7 +102,7 @@ Boundary normal lubrication rc:  0.0000000e+00
 Wall boundary links allocated:   40960
 Memory (total, bytes):           1310720
 Boundary shear initialise:       0
-Gradient calcaulation: 3d_7pt_solid
+Gradient calculation: 3d_7pt_solid
 
 
 Initialising Q_ab to nematic
@@ -150,13 +150,21 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      4.522      4.522      4.522   4.522182 (1 call)
-      Time step loop:      2.003      2.139      4.142   2.071036 (2 calls)
-         Propagation:      0.099      0.124      0.223   0.111648 (2 calls)
-           Collision:      0.300      0.326      0.626   0.312960 (2 calls)
-       Lattice halos:      0.001      0.001      0.002   0.001169 (2 calls)
-       phi gradients:      0.085      0.107      0.192   0.096027 (2 calls)
-                 BBL:      0.003      0.003      0.005   0.002648 (2 calls)
-   Force calculation:      0.943      0.987      1.930   0.964871 (2 calls)
-          phi update:      0.555      0.571      1.125   0.562747 (2 calls)
+               Total:      3.511      3.511      3.511   3.511156 (1 call)
+      Time step loop:      1.601      1.712      3.312   1.656217 (2 calls)
+         Propagation:      0.020      0.037      0.057   0.028690 (2 calls)
+    Propagtn (krnl) :      0.020      0.037      0.057   0.028684 (2 calls)
+           Collision:      0.103      0.106      0.208   0.104110 (2 calls)
+   Collision (krnl) :      0.098      0.102      0.200   0.100152 (2 calls)
+       Lattice halos:      0.001      0.001      0.002   0.001033 (2 calls)
+       phi gradients:      0.049      0.067      0.116   0.058211 (2 calls)
+           phi halos:      0.003      0.004      0.007   0.003716 (2 calls)
+                 BBL:      0.001      0.002      0.003   0.001518 (2 calls)
+   Force calculation:      1.278      1.303      2.580   1.290221 (2 calls)
+          phi update:      0.135      0.190      0.325   0.162503 (2 calls)
+      Velocity Halo :      0.001      0.003      0.004   0.002212 (2 calls)
+BP BE update (krnl) :      0.058      0.059      0.117   0.058664 (2 calls)
+     Advectn (krnl) :      0.021      0.038      0.059   0.029336 (2 calls)
+ Advectn BCS (krnl) :      0.009      0.009      0.018   0.009031 (2 calls)
+   BP BE alloc/free :      0.000      0.008      0.008   0.002004 (4 calls)
 Ludwig finished normally.
