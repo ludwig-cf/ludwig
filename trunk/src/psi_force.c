@@ -104,7 +104,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe_mu_solv(index - xs, in, &musm1);
 	  fe_mu_solv(index + xs, in, &musp1);
-	  force[X] -= rho*0.5*(musp1 - musm1)*kt;
+	  force[X] -= rho*0.5*(musp1 - musm1);
 
 	}
 
@@ -121,7 +121,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe_mu_solv(index - ys, in, &musm1);
 	  fe_mu_solv(index + ys, in, &musp1);
-	  force[Y] -= rho*0.5*(musp1 - musm1)*kt;
+	  force[Y] -= rho*0.5*(musp1 - musm1);
 
 	}
 
@@ -138,7 +138,7 @@ int psi_force_gradmu(psi_t * psi, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe_mu_solv(index - zs, in, &musm1);
 	  fe_mu_solv(index + zs, in, &musp1);
-	  force[Z] -= rho*0.5*(musp1 - musm1)*kt;
+	  force[Z] -= rho*0.5*(musp1 - musm1);
 
 	}
 

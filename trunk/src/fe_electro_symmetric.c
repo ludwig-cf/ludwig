@@ -190,7 +190,7 @@ double fe_es_mu_phi(const int index, const int nop) {
 
   for (in = 0; in < fe->nk; in++) {
     psi_rho(fe->psi, index, in, &rho);
-    mu += 0.5*rho*fe->deltamu[in]*kt;
+    mu += 0.5*rho*fe->deltamu[in];
   }
 
   /* Electric field contribution */
@@ -373,13 +373,13 @@ void fe_es_stress_ex(const int index, double s[3][3]) {
   
   /* Dielectric part */
 
-  s_couple = 0.5*fe->epsilonbar*fe->gamma*e2;
+  s_couple = 0.5*phi*fe->epsilonbar*fe->gamma*e2;
 
   /* Solvation part */
 
   for (ia = 0; ia < fe->nk; ia++) {
     psi_rho(fe->psi, index, ia, &rho);
-    s_couple += 0.5*rho*fe->deltamu[ia]*kt;
+    s_couple += 0.5*phi*rho*fe->deltamu[ia];
   }
 
   /* Electrostatic part
