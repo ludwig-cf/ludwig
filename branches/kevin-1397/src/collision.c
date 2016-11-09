@@ -344,7 +344,11 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
 	
     double shattmp[3][3];
     double ghattmp[NVEL];
-    __targetILP__(iv) {
+
+    /* This loop is not safe for vectorisation if fluctuations
+     * are present */
+
+    for (iv = 0; iv < NSIMDVL; iv++) {
 
       if (includeSite[iv]) {
 
@@ -969,12 +973,10 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
   
 
   if (noise_on) {
-    
-#ifdef __NVCC__
-    printf("Error: noise_on is not yet supported for CUDA\n");
-#else      
-    
-     __targetILP__(iv){
+
+    /* Not vectorised */
+
+    for (iv = 0; iv < NSIMDVL; iv++) {
       
       double shattmp[3][3];
       double ghattmp[NVEL];
@@ -987,12 +989,7 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
 
       for(i=0;i<NVEL;i++)
 	ghat[i*VVL+iv]=ghattmp[i];
-      
-
     }    
-
-#endif
-    
   }    
   
   /* Now reset the hydrodynamic modes to post-collision values */

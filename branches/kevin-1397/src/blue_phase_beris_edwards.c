@@ -578,7 +578,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
     }
 
     /* Mask out non-fluid sites. */
-    __targetILP__(iv) {
+
+    /* No vectorisation here at the moment */
+    for (iv = 0; iv < NSIMDVL; iv++) {
       if (maskv[iv]) map_status(map, index+iv, &status);
       if (maskv[iv] && status != MAP_FLUID) maskv[iv] = 0;
     }
@@ -595,9 +597,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
     __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
     __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
-   /* Compute the molecular field. */
+    /* Compute the molecular field. */
 
-     fe->func->htensor_v(fe, index, h);
+    fe->func->htensor_v(fe, index, h);
 
     if (hydro) {
       /* Velocity gradient tensor, symmetric and antisymmetric parts */
