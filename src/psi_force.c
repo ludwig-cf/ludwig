@@ -256,7 +256,7 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho);
 	  fe->func->mu_solv(fe, index - xs, in, &musm1);
 	  fe->func->mu_solv(fe, index + xs, in, &musp1);
-	  force[X] -= rho*0.5*(musp1 - musm1)*kt;
+	  force[X] -= rho*0.5*(musp1 - musm1);
 	}
 
 	/* Y-direction */
@@ -272,7 +272,7 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe->func->mu_solv(fe, index - ys, in, &musm1);
 	  fe->func->mu_solv(fe, index + ys, in, &musp1);
-	  force[Y] -= rho*0.5*(musp1 - musm1)*kt;
+	  force[Y] -= rho*0.5*(musp1 - musm1);
 	}
 
 	/* Z-direction */
@@ -287,7 +287,7 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
 	  psi_rho(psi, index, in, &rho); 
 	  fe->func->mu_solv(fe, index - zs, in, &musm1);
 	  fe->func->mu_solv(fe, index + zs, in, &musp1);
-	  force[Z] -= rho*0.5*(musp1 - musm1)*kt;
+	  force[Z] -= rho*0.5*(musp1 - musm1);
 	}
 
 	/* Contribution from ionic electrostatic part
