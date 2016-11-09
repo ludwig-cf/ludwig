@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.53 (Serial version running on 1 process)
 
-The SVN revision details are: 2757:2758M
+The SVN revision details are: 2986M
 Note assertions via standard C assert() are on.
 
-Read 56 user parameters from serial-elec-droplet1.inp
+Read 56 user parameters from serial-elec-dr1.inp
 
 System details
 --------------
@@ -138,27 +138,27 @@ Momentum - x y z
 Starting time step loop.
 
 SOR (heterogeneous) solver converged to relative tolerance
-SOR residual per site  6.5003157e-11 at 167 iterations
+SOR residual per site  6.3283734e-11 at 169 iterations
 1 multisteps
 
 Scalars - total mean variance min max
-[rho]       49152.00  6.00000000000  4.6090776e-09  5.99982993055  6.00009864785
-[phi] -3.1097409e+03 -3.7960704e-01 7.0558867e-01 -1.0000052e+00 1.0000129e+00
-[psi]  5.6559202e-12 -2.3625000e+01  2.4078442e+01
+[rho]       49152.00  6.00000000000  2.1285373e-09  5.99988495191  6.00006641940
+[phi] -3.1097409e+03 -3.7960704e-01 7.0558847e-01 -1.0000007e+00 1.0000091e+00
+[psi]  1.6697754e-12 -2.3625000e+01  2.4078442e+01
 [rho]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [rho]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 [elc]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Free energy density - timestep total fluid
-[fed]            100 -2.0075174422e-04 -2.0075174422e-04
+[fed]            100 -2.0075169434e-04 -2.0075169434e-04
 
 Momentum - x y z
-[total   ] -2.1066482e-14  5.9396932e-14  0.0000000e+00
-[fluid   ] -2.1066482e-14  5.9396932e-14  0.0000000e+00
+[total   ] -1.3819501e-13  3.0583869e-13  0.0000000e+00
+[fluid   ] -1.3819501e-13  3.0583869e-13  0.0000000e+00
 
 Velocity - x y z
-[minimum ] -3.6438449e-05 -3.9639372e-05  0.0000000e+00
-[maximum ]  3.6438449e-05  3.9639372e-05  1.1754944e-38
+[minimum ] -3.5066329e-05 -4.0134367e-05  0.0000000e+00
+[maximum ]  3.5066329e-05  4.0134367e-05  1.1754944e-38
 
 Completed cycle 100
 
@@ -166,17 +166,22 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     35.344     35.344     35.344  35.343546 (1 call)
-      Time step loop:      0.296      0.678     35.330   0.353303 (100 calls)
-         Propagation:      0.005      0.007      0.514   0.005145 (100 calls)
-           Collision:      0.027      0.030      2.764   0.027644 (100 calls)
-       Lattice halos:      0.000      0.001      0.322   0.000806 (400 calls)
-       phi gradients:      0.001      0.002      0.105   0.001049 (100 calls)
-           phi halos:      0.000      0.000      0.035   0.000346 (100 calls)
-                 BBL:      0.000      0.000      0.000   0.000001 (100 calls)
-   Force calculation:      0.000      0.010      0.957   0.004785 (200 calls)
-          phi update:      0.011      0.012      1.111   0.011109 (100 calls)
-    Poisson equation:      0.219      0.594     27.642   0.276418 (100 calls)
-       Nernst Planck:      0.018      0.020      1.841   0.018414 (100 calls)
-  Collision (kernel):      0.025      0.028      2.589   0.025888 (100 calls)
+               Total:     48.611     48.611     48.611  48.610510 (1 call)
+      Time step loop:      0.389      1.076     48.591   0.485915 (100 calls)
+         Propagation:      0.008      0.015      0.876   0.008761 (100 calls)
+    Propagtn (krnl) :      0.008      0.015      0.875   0.008753 (100 calls)
+           Collision:      0.014      0.020      1.514   0.015142 (100 calls)
+   Collision (krnl) :      0.014      0.020      1.514   0.015136 (100 calls)
+       Lattice halos:      0.001      0.006      0.784   0.001959 (400 calls)
+       phi gradients:      0.002      0.004      0.273   0.002728 (100 calls)
+    phi grad (krnl) :      0.002      0.004      0.217   0.002171 (100 calls)
+           phi halos:      0.000      0.001      0.055   0.000549 (100 calls)
+                 BBL:      0.000      0.000      0.000   0.000002 (100 calls)
+   Force calculation:      0.000      0.014      0.982   0.004909 (200 calls)
+          phi update:      0.015      0.023      1.659   0.016586 (100 calls)
+     Advectn (krnl) :      0.005      0.009      0.594   0.005937 (100 calls)
+ Advectn BCS (krnl) :      0.001      0.002      0.128   0.001276 (100 calls)
+    Poisson equation:      0.309      0.978     40.372   0.403721 (100 calls)
+       Nernst Planck:      0.018      0.025      2.025   0.020245 (100 calls)
+               Free1:      0.000      0.006      0.006   0.000061 (100 calls)
 Ludwig finished normally.
