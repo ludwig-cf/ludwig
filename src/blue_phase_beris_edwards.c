@@ -270,16 +270,8 @@ __host__ int beris_edw_update(beris_edw_t * be,
     advection_bcs_no_normal_flux(nf, be->flux, map);
   }
 
-  /* Pending resolution of fe interface for vectorised molecular
-   * field calls we need to use one or other ... */
-
-  if (fe->id == FE_LC_DROPLET) {
-    beris_edw_update_host(be, fe, fq, hydro, be->flux, map, noise);
-  }
-  else {
-    beris_edw_h_driver(be, fe);
-    beris_edw_update_driver(be, fq, fq_grad, hydro, map, noise);
-  }
+  beris_edw_h_driver(be, fe);
+  beris_edw_update_driver(be, fq, fq_grad, hydro, map, noise);
 
   return 0;
 }
@@ -917,7 +909,7 @@ __host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  TIMER_start(TIMER_FREE2);
+  TIMER_start(TIMER_BE_MOL_FIELD);
 
   kernel_ctxt_create(NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
@@ -929,7 +921,7 @@ __host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
 
   targetSynchronize();
 
-  TIMER_stop(TIMER_FREE2);
+  TIMER_stop(TIMER_BE_MOL_FIELD);
 
   kernel_ctxt_free(ctxt);
 

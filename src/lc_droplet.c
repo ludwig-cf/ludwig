@@ -265,12 +265,10 @@ __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
   double dq[3][3][3];
   double dsq[3][3];
   double h1[3][3], h2[3][3];
-  double phi;
   double gamma;
   
   assert(fe);
 
-  field_scalar(fe->symm->phi, index, &phi);
   fe_lc_droplet_gamma(fe, index, &gamma);
 
   field_tensor(fe->lc->q, index, q);
@@ -305,7 +303,7 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
   double h1[3][3];
 
   assert(fe);
-  assert(0); /* Pending resolution of fe interface issue */
+  /*assert(0); Pending resolution of fe interface issue */
 
   for (iv = 0; iv < NSIMDVL; iv++) {
     fe_lc_droplet_mol_field(fe, index+iv, h1);
