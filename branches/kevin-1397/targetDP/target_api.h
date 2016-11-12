@@ -19,6 +19,7 @@
 
   #include "target_cuda.h"
   #include "cuda_runtime_api.h"
+  #define __inline__ __forceinline__
 
   #define TARGET_MAX_THREADS_PER_BLOCK CUDA_MAX_THREADS_PER_BLOCK
   #define __target_simt_parallel_region()
@@ -40,6 +41,7 @@
 
   #include "target_x86.h"
   #include "cuda_stub_api.h"
+  #define __inline__ __forceinline__
 
   /* Private interface wanted for these helper functions? */
 

@@ -1451,7 +1451,7 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
  *
  *****************************************************************************/
 
-__host__ __device__
+__host__ __device__ __inline__
 void fe_lc_compute_h_v(fe_lc_t * fe,
 		       double q[3][3][NSIMDVL], 
 		       double dq[3][3][3][NSIMDVL],
