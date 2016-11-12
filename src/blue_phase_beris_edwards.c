@@ -62,7 +62,7 @@
 #include "map_s.h"
 #include "timer.h"
 
-__host__ int beris_edw_update_driver(beris_edw_t * be, fe_t * fe, field_t * fq,
+__host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,
 				     field_grad_t * fq_grad,
 				     hydro_t * hydro,
 				     map_t * map, noise_t * noise); 
@@ -71,9 +71,12 @@ __host__ int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
 __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 				   hydro_t * hydro, advflux_t * flux,
 				   map_t * map, noise_t * noise);
+__host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe);
 
 __global__
-void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
+void beris_edw_h_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe);
+__global__
+void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 			field_t * fq, field_grad_t * fqgrad,
 			hydro_t * hydro, advflux_t * flux,
 			map_t * map, noise_t * noise);
@@ -86,6 +89,8 @@ struct beris_edw_s {
   beris_edw_param_t * param;       /* Parameters */ 
   lees_edw_t * le;                 /* Lees Edwards */
   advflux_t * flux;                /* Advective fluxes */
+  int nall;                        /* Allocated sites */
+  double * h;                      /* Molecular Field */
 
   beris_edw_t * target;            /* Target memory */
 };
@@ -120,6 +125,10 @@ __host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
   advflux_le_create(le, NQAB, &flx);
   assert(flx);
 
+  lees_edw_nsites(le, &obj->nall);
+  obj->h = (double *) calloc(obj->nall*NQAB, sizeof(double));
+  assert(obj->h);
+
   obj->le = le;
   obj->flux = flx;
 
@@ -133,8 +142,10 @@ __host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
     obj->target = obj;
   }
   else {
+    double * htmp = NULL;
     beris_edw_param_t * tmp;
     lees_edw_t * letarget = NULL;
+
     targetCalloc((void **) &obj->target, sizeof(beris_edw_t));
     targetConstAddress((void **) &tmp, static_param);
     copyToTarget(&obj->target->param, &tmp, sizeof(beris_edw_param_t *));
@@ -142,6 +153,10 @@ __host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
     lees_edw_target(le, &letarget);
     copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
     copyToTarget(&obj->target->flux, &flx->target, sizeof(advflux_t *));
+
+    copyToTarget(&obj->target->nall, &obj->nall, sizeof(int));
+    targetCalloc((void **) &htmp, obj->nall*NQAB*sizeof(double));
+    copyToTarget(&obj->target->h, &htmp, sizeof(double *));
   }
 
   *pobj = obj;
@@ -163,9 +178,16 @@ __host__ int beris_edw_free(beris_edw_t * be) {
 
   targetGetDeviceCount(&ndevice);
 
-  if (ndevice > 0) targetFree(be->target);
+  if (ndevice > 0) {
+    double * htmp;
+
+    copyFromTarget(&htmp, &be->target->h, sizeof(double *));
+    targetFree(htmp);
+    targetFree(be->target);
+  }
 
   advflux_free(be->flux);
+  free(be->h);
   free(be->param);
   free(be);
 
@@ -255,7 +277,8 @@ __host__ int beris_edw_update(beris_edw_t * be,
     beris_edw_update_host(be, fe, fq, hydro, be->flux, map, noise);
   }
   else {
-    beris_edw_update_driver(be, fe, fq, fq_grad, hydro, map, noise);
+    beris_edw_h_driver(be, fe);
+    beris_edw_update_driver(be, fq, fq_grad, hydro, map, noise);
   }
 
   return 0;
@@ -460,7 +483,6 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
  *****************************************************************************/
 
 __host__ int beris_edw_update_driver(beris_edw_t * be,
-				     fe_t * fe,
 				     field_t * fq,
 				     field_grad_t * fq_grad,
 				     hydro_t * hydro,
@@ -472,12 +494,10 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
-  fe_t * fetarget = NULL;
   hydro_t * hydrotarget = NULL;
   noise_t * noisetarget = NULL;
 
   assert(be);
-  assert(fe);
   assert(fq);
   assert(map);
 
@@ -491,8 +511,6 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   beris_edw_param_commit(be);
-
-  fe->func->target(fe, &fetarget);
   if (hydro) hydrotarget = hydro->target;
 
   ison = 0;
@@ -502,7 +520,7 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
   __host_launch(beris_edw_kernel_v, nblk, ntpb, ctxt->target,
-		be->target, fetarget, fq->target, fq_grad->target,
+		be->target, fq->target, fq_grad->target,
 		hydrotarget, be->flux->target, map->target, noisetarget);
 
   targetDeviceSynchronise();
@@ -521,7 +539,7 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
  *****************************************************************************/
 
 __global__
-void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
+void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 			field_t * fq, field_grad_t * fqgrad,
 			hydro_t * hydro, advflux_t * flux,
 			map_t * map, noise_t * noise) {
@@ -535,8 +553,6 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 
   assert(ktx);
   assert(be);
-  assert(fe);
-  assert(fe->func->htensor_v);
   assert(fq);
   assert(fqgrad);
   assert(flux);
@@ -558,7 +574,6 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
     double q[3][3][NSIMDVL];
     double w[3][3][NSIMDVL];
     double d[3][3][NSIMDVL];
-    double h[3][3][NSIMDVL];
     double s[3][3][NSIMDVL];
 
     double omega[3][3][NSIMDVL];
@@ -597,9 +612,6 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
     __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
     __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
-    /* Compute the molecular field. */
-
-    fe->func->htensor_v(fe, index, h);
 
     if (hydro) {
       /* Velocity gradient tensor, symmetric and antisymmetric parts */
@@ -754,7 +766,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 
     __targetILP__(iv) {
       q[X][X][iv] += dt*maskv[iv]*
-	(s[X][X][iv] + be->param->gamma*h[X][X][iv] + chi_qab[X][X][iv]
+	(s[X][X][iv]
+	 + chi_qab[X][X][iv]
+	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, XX)]
 	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
 	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
 	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
@@ -765,7 +779,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 
     __targetILP__(iv) {
       q[X][Y][iv] += dt*maskv[iv]*
-	(s[X][Y][iv] + be->param->gamma*h[X][Y][iv] + chi_qab[X][Y][iv]
+	(s[X][Y][iv]
+	 + chi_qab[X][Y][iv]
+	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, XY)]
 	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
 	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
 	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
@@ -776,7 +792,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 	
     __targetILP__(iv) {
       q[X][Z][iv] += dt*maskv[iv]*
-	(s[X][Z][iv] + be->param->gamma*h[X][Z][iv] + chi_qab[X][Z][iv]
+	(s[X][Z][iv]
+	 + chi_qab[X][Z][iv]
+	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, XZ)]
 	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
 	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
 	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
@@ -787,7 +805,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 	
     __targetILP__(iv) {
       q[Y][Y][iv] += dt*maskv[iv]*
-	(s[Y][Y][iv] + be->param->gamma*h[Y][Y][iv]+ chi_qab[Y][Y][iv]
+	(s[Y][Y][iv]
+	 + chi_qab[Y][Y][iv]
+	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, YY)]
 	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
 	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
 	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
@@ -798,7 +818,9 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be, fe_t * fe,
 	
     __targetILP__(iv) {
       q[Y][Z][iv] += dt*maskv[iv]*
-	(s[Y][Z][iv] + be->param->gamma*h[Y][Z][iv] + chi_qab[Y][Z][iv]
+	(s[Y][Z][iv]
+	 + chi_qab[Y][Z][iv]
+	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, YZ)]
 	 - flux->fe[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
 	 + flux->fw[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
 	 - flux->fy[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
@@ -870,6 +892,100 @@ __host__ __device__ int beris_edw_tmatrix(double t[3][3][NQAB]) {
   t[Z][Y][YZ] = t[Y][Z][YZ];
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  beris_edw_h_driver
+ *
+ *****************************************************************************/
+
+__host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  fe_t * fe_target = NULL;
+
+  assert(be);
+  assert(fe);
+
+  lees_edw_nlocal(be->le, nlocal);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  TIMER_start(TIMER_FREE2);
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  fe->func->target(fe, &fe_target);
+
+  __host_launch(beris_edw_h_kernel_v, nblk, ntpb, ctxt->target,
+		be->target, fe_target);
+
+  targetSynchronize();
+
+  TIMER_stop(TIMER_FREE2);
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  beris_edw_h_kernel_v
+ *
+ *  Compute and store the relevant molecular field
+ *
+ *****************************************************************************/
+
+__global__ void beris_edw_h_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
+				     fe_t * fe) {
+
+  int kindex;
+  __shared__ int kiter;
+
+  assert(ktx);
+  assert(be);
+  assert(fe);
+  assert(fe->func->htensor_v);
+
+  kiter = kernel_vector_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+
+    int index;
+    int iv;
+
+    double h[3][3][NSIMDVL];
+
+    index  = kernel_baseindex(ktx, kindex);
+
+    fe->func->htensor_v(fe, index, h);
+
+    __targetILP__(iv) {
+      be->h[addr_rank1(be->nall, NQAB, index + iv, XX)] = h[X][X][iv];
+    }
+    __targetILP__(iv) {
+      be->h[addr_rank1(be->nall, NQAB, index + iv, XY)] = h[X][Y][iv];
+    }
+    __targetILP__(iv) {
+      be->h[addr_rank1(be->nall, NQAB, index + iv, XZ)] = h[X][Z][iv];
+    }
+    __targetILP__(iv) {
+      be->h[addr_rank1(be->nall, NQAB, index + iv, YY)] = h[Y][Y][iv];
+    }
+    __targetILP__(iv) {
+      be->h[addr_rank1(be->nall, NQAB, index + iv, YZ)] = h[Y][Z][iv];
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************

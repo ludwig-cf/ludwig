@@ -352,8 +352,9 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
 
       if (includeSite[iv]) {
 
-#ifndef __NVCC__
-	/* this is needed to allow GPU compilation at the moment */
+#ifdef __NVCC__
+	assert(0);
+#else
 	collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);
 #endif
 
@@ -980,9 +981,11 @@ __target__ void lb_collision_binary_site(double * __restrict__ t_f,
       
       double shattmp[3][3];
       double ghattmp[NVEL];
-      
-      collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);      
-
+#ifdef __NVCC__
+      assert(0);
+#else
+      collision_fluctuations(noise, baseIndex+iv, shattmp, ghattmp);
+#endif
       for(i=0;i<3;i++)
 	for(j=0;j<3;j++)
 	  shat[i][j*VVL+iv]=shattmp[i][j];
