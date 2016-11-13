@@ -1,0 +1,47 @@
+
+Initial Investigation (Novemeber 2016)
+
+kevin@login:/work/knl-users/kevin/sc16> module list
+Currently Loaded Modulefiles:
+  1) modules/3.2.10.5                 14) lustre-utils/2.3.4-6.74
+  2) alps/6.1.6-20.1                  15) Base-opts/2.1.3-2.16
+  3) nodestat/2.2-2.40                16) intel/17.0.0.098
+  4) sdb/2.2.1-3.119                  17) craype-mic-knl
+  5) udreg/2.3.2-4.6                  18) craype-network-aries
+  6) ugni/6.0.12-2.1                  19) craype/2.5.7
+  7) gni-headers/5.0.7-3.1            20) cray-mpich/7.4.4
+  8) dmapp/7.1.0-12.37                21) pbs/default
+  9) xpmem/0.1-4.5                    22) cray-libsci/16.09.1
+ 10) llm/20.2.4-3.18                  23) pmi/5.0.10-1.0000.11050.0.0.ari
+ 11) nodehealth/5.2.0-5.46            24) atp/2.0.3
+ 12) system-config/2.2.18-3.38        25) PrgEnv-intel/6.0.3
+ 13) sysadm/2.2.2-3.39
+
+All KNL quad_0 mode using 64 or 128 threads with 1 MPI task
+numactl -m 1
+(preliminary investigations show little or no improvement at 256 threads)
+
+* -DNDEBUG -O2 -qopenmp -no-vec  => c. --- and 149 sec
+* -DNDEBUG -O2 -qopenmp          => c. --- and 152 sec
+* -DNDEBUG -O2 -qopenmp -DVVL=2  => c. 182 and 148 sec
+* -DNDEBUG -O2 -qopenmp -DVVL=4  => c. 129 and 101 sec
+* -DNDEBUG -O2 -qopenmp -DVVL=8  => c. 114 and  69 sec
+* -DNDEBUG -O2 -qopenmp -DVVL=16 => c. 119 and  72 sec
+
+* -DNDEBUG -O3 -qopenmp -DVVL=8    => c. 115 and  69 sec
+* -DNDEBUG -fast -qopenmp -DVVL=8  => c. 108 and  58 sec
+
+
+1, 2, 4, 8, 16, 32, 64, and 128 threads
+* -DNDEBUG -fast -qopenmp -DVVL=8  =>
+                  c. 3260, 1656, 837, 424, 220, 129, 107, 58  seconds
+                  c. 3253, 1657, 835, 424, 219, 129, 108, 105 sec
+                  c. 3257, 1658, 837, 424, 220, 129, 108, 110 sec
+
+Using quad_100
+
+1, 2, 4, 8, 16, 32, 64, and 128 threads
+* -DNDEBUG -fast -qopenmp -DVVL=8  =>
+                  c. 3356, 1708, 857, 434, 221, 116, 66.6, 56.4 
+                  c. 3355, 1708, 857, 434, 223, 116, 68.1, 55.9
+                  c. 3352, 1707, 857, 433, 222, 116, 66.7, 57.2
