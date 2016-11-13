@@ -1,0 +1,12 @@
+#!/bin/bash
+
+#PBS -N qscript
+#PBS -l nodes=1
+#PBS -l walltime=00:20:00
+#PBS -A csc206
+
+cd $PBS_O_WORKDIR
+pwd
+
+aprun -n 1 hostname
+aprun -n 1 ./Ludwig.exe
