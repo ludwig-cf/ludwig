@@ -54,24 +54,13 @@ int colloids_init_random(colloids_info_t * cinfo, int np,
 
   assert(cinfo);
 
-  if (np == 1) {
-    colloids_info_add_local(cinfo, 1, s0->r, &pc);
-    if (pc) {
-      pc->s = *s0;
-      pc->s.index = 1;
-      pc->s.rng = pc->s.index;
-      pc->s.rebuild = 1;
-    }
-  }
-  else {
-    /* Assume maximum size set by ah and small separation dh */
-    amax = s0->ah + dh;
-    hmax = 2.0*s0->ah + dh;
+  /* Assume maximum size set by ah and small separation dh */
+  amax = s0->ah + dh;
+  hmax = 2.0*s0->ah + dh;
 
-    colloids_init_random_set(cinfo, np, s0, amax);
-    colloids_halo_state(cinfo);
-    colloids_init_check_state(cinfo, hmax);
-  }
+  colloids_init_random_set(cinfo, np, s0, amax);
+  colloids_halo_state(cinfo);
+  colloids_init_check_state(cinfo, hmax);
 
   if (wall_present()) colloids_init_check_wall(cinfo, dh);
   colloids_info_ntotal_set(cinfo);
