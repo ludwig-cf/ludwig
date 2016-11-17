@@ -1066,8 +1066,20 @@ int colloids_q_boundary(fe_lc_param_t * param,
 
   fe_lc_amplitude_compute(param, &amplitude);
 
-  if (anchoring == LC_ANCHORING_FIXED) fe_lc_q_uniaxial(param, nfix, q0);
-  if (anchoring == LC_ANCHORING_NORMAL) fe_lc_q_uniaxial(param, nhat, q0);
+  if (anchoring == LC_ANCHORING_FIXED) {
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.5*amplitude*(3.0*nfix[ia]*nfix[ib] - d[ia][ib]);
+      }
+    }
+  }
+  if (anchoring == LC_ANCHORING_NORMAL) {
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	q0[ia][ib] = 0.5*amplitude*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
+      }
+    }
+  }
 
   if (anchoring == LC_ANCHORING_PLANAR) {
 
