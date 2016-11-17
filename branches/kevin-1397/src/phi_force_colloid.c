@@ -172,10 +172,6 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   colloid_t * pc;
   colloid_link_t * p_link;
 
-  int p;
-  int cmod;
-  int id;
-
   /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
  
@@ -185,20 +181,22 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
     for (; p_link; p_link = p_link->next) {
 
-      if (p_link->status == LINK_UNUSED) continue;
-      if (p_link->status == LINK_COLLOID) continue;
+      if (p_link->status == LINK_FLUID) {
+	int id, p;
+	int cmod;
 
-      p = p_link->p;
-      cmod = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+	p = p_link->p;
+	cmod = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
 
-      if (cmod != 1) continue;
-      if (cv[p][X]) id = X;
-      if (cv[p][Y]) id = Y;
-      if (cv[p][Z]) id = Z;
+	if (cmod != 1) continue;
+	if (cv[p][X]) id = X;
+	if (cv[p][Y]) id = Y;
+	if (cv[p][Z]) id = Z;
 
-      for (ia = 0; ia < 3; ia++) {
-	pc->force[ia] += 1.0*cv[p][id]
-	  *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
+	for (ia = 0; ia < 3; ia++) {
+	  pc->force[ia] += 1.0*cv[p][id]
+	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
+	}
       }
     }
   }
@@ -215,6 +213,9 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
  *  This computes the force on the fluid, but not the colloids.
  *
  *  cinfo is currently through unified memory.
+ *
+ *  TODO: The accumulation for the wall momentum is unsafe in shared
+ *  memory.
  *
  *****************************************************************************/
 
