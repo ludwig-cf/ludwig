@@ -980,7 +980,11 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   stats_colloid_momentum(ludwig->collinfo, gc);
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
 
-  if (wall_present(ludwig->wall) || is_pm) wall_momentum(ludwig->wall, gwall);
+  if (wall_present(ludwig->wall) || is_pm) {
+    double gtmp[3];
+    wall_momentum(ludwig->wall, gtmp);
+    MPI_Reduce(gtmp, gwall, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  }
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
