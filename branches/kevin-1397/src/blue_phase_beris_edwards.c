@@ -692,7 +692,6 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       __targetILP__(iv) w[Y][Y][iv] -= tr[iv];
       __targetILP__(iv) w[Z][Z][iv] -= tr[iv];
 
-
       __targetILP__(iv) trace_qw[iv] = 0.0;
 
       for (ia = 0; ia < 3; ia++) {
@@ -757,7 +756,8 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
     }
 
     __targetILP__(iv) {
-      q[X][X][iv] += dt*maskv[iv]*
+      if (maskv[iv]) {
+      q[X][X][iv] += dt*
 	(s[X][X][iv]
 	 + chi_qab[X][X][iv]
 	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, XX)]
@@ -767,10 +767,12 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],XX)]
 	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,XX)]
 	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],XX)]);
+      }
     }
 
     __targetILP__(iv) {
-      q[X][Y][iv] += dt*maskv[iv]*
+      if (maskv[iv]) {
+      q[X][Y][iv] += dt*
 	(s[X][Y][iv]
 	 + chi_qab[X][Y][iv]
 	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, XY)]
@@ -780,10 +782,12 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],XY)]
 	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,XY)]
 	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],XY)]);
+      }
     }
 	
     __targetILP__(iv) {
-      q[X][Z][iv] += dt*maskv[iv]*
+      if (maskv[iv]) {
+      q[X][Z][iv] += dt*
 	(s[X][Z][iv]
 	 + chi_qab[X][Z][iv]
 	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, XZ)]
@@ -793,10 +797,12 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],XZ)]
 	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,XZ)]
 	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],XZ)]);
+      }
     }
 	
     __targetILP__(iv) {
-      q[Y][Y][iv] += dt*maskv[iv]*
+      if (maskv[iv]) {
+      q[Y][Y][iv] += dt*
 	(s[Y][Y][iv]
 	 + chi_qab[Y][Y][iv]
 	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, YY)]
@@ -806,10 +812,12 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],YY)]
 	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,YY)]
 	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],YY)]);
+      }
     }
 	
     __targetILP__(iv) {
-      q[Y][Z][iv] += dt*maskv[iv]*
+      if (maskv[iv]) {
+      q[Y][Z][iv] += dt*
 	(s[Y][Z][iv]
 	 + chi_qab[Y][Z][iv]
 	 + be->param->gamma*be->h[addr_rank1(be->nall, NQAB, index+iv, YZ)]
@@ -819,6 +827,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	 + flux->fy[addr_rank1(flux->nsite,NQAB,indexj[iv],YZ)]
 	 - flux->fz[addr_rank1(flux->nsite,NQAB,index + iv,YZ)]
 	 + flux->fz[addr_rank1(flux->nsite,NQAB,indexk[iv],YZ)]);
+      }
     }
 
     __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)] = q[X][X][iv];
