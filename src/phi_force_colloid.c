@@ -172,6 +172,10 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   colloid_t * pc;
   colloid_link_t * p_link;
 
+  int p;
+  int cmod;
+  int id;
+
   /* All colloids, including halo */
   colloids_info_all_head(cinfo, &pc);
  
@@ -182,51 +186,20 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
     for (; p_link; p_link = p_link->next) {
 
       if (p_link->status == LINK_UNUSED) continue;
+      if (p_link->status == LINK_COLLOID) continue;
 
-      int coordsOutside[3];
-      coords_index_to_ijk(p_link->i,coordsOutside);
+      p = p_link->p;
+      cmod = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
 
-      int coordsInside[3];
-      coords_index_to_ijk(p_link->j,coordsInside);
+      if (cmod != 1) continue;
+      if (cv[p][X]) id = X;
+      if (cv[p][Y]) id = Y;
+      if (cv[p][Z]) id = Z;
 
-      int hopsApart=0;
-
-      /* only include those inside-outside pairs that fall
-	 on th 7-point stencil */
-
-      for (ia = 0; ia < 3; ia++) 
-	hopsApart+=abs(coordsOutside[ia]-coordsInside[ia]);
-
-      if (hopsApart>1) continue;
-
-
-      /* work out which X,Y or Z direction they are neighbours in
-	 and the +ve or -ve direction */
-      int idir=0,fac=0;
-      if ((coordsOutside[0]-coordsInside[0])==1){
-	idir=0;fac=-1;
-      }
-      if ((coordsOutside[0]-coordsInside[0])==-1){
-	idir=0;fac=1;
-      }
-      if ((coordsOutside[1]-coordsInside[1])==1){
-	idir=1;fac=-1;
-      }
-      if ((coordsOutside[1]-coordsInside[1])==-1){
-	idir=1;fac=1;
-      }
-      if ((coordsOutside[2]-coordsInside[2])==1){
-	idir=2;fac=-1;
-      }
-      if ((coordsOutside[2]-coordsInside[2])==-1){
-	idir=2;fac=1;
-      }
-
-      /* update the colloid force using the relavent part of the potential */
       for (ia = 0; ia < 3; ia++) {
-	pc->force[ia] += fac*pth->str[addr_rank2(pth->nsites,3,3,p_link->i,ia,idir)];
+	pc->force[ia] += 1.0*cv[p][id]
+	  *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
       }
-
     }
   }
 
