@@ -483,7 +483,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 
     for (; p_link; p_link = p_link->next) {
 
-      if (p_link->status == LINK_UNUSED) continue;
+      if (p_link->status == LINK_FLUID) {
 
       int coordsOutside[3];
       coords_index_to_ijk(p_link->i,coordsOutside);
@@ -528,7 +528,7 @@ static int phi_force_interpolation(colloids_info_t * cinfo, hydro_t * hydro,
 	for (ia = 0; ia < 3; ia++) {
 	  pc->force[ia]+=fac*pth[PTHADR(nSites,p_link->i,ia,idir)];
 	}
-
+      }
     }
   }
 
