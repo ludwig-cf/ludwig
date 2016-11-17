@@ -555,6 +555,9 @@ __host__ __device__ int wall_momentum_add(wall_t * wall, const double f[3]) {
  *
  *  wall_momentum
  *
+ *  If a global total is required, the caller is responsible for
+ *  the reduction. This is the local contribution.
+ *
  *****************************************************************************/
 
 __host__ __device__ int wall_momentum(wall_t * wall, double f[3]) {
