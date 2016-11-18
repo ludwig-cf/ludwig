@@ -90,6 +90,7 @@ __targetHost__ int gradient_3d_7pt_fluid_d2(const int nop,
   assert(field);
   assert(grad);
   assert(delsq);
+  if (le_get_nplane_total() > 0) fatal("NOT AVAILABLE\n");
 
   gradient_3d_7pt_fluid_operator(nop, field, t_field, grad, t_grad,
 				 delsq, t_delsq, nextra);
