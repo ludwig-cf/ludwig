@@ -1,0 +1,136 @@
+Welcome to Ludwig v0.5.63 (Serial version running on 1 process)
+
+The SVN revision details are: 3007
+Note assertions via standard C assert() are on.
+
+Read 22 user parameters from serial-le3d-st1.inp
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  1 1 1
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Lees-Edwards boundary conditions are active:
+LE plane 1 is at x = 8 with speed 0.050000
+LE plane 2 is at x = 24 with speed 0.050000
+Overall shear rate = 0.003125
+
+Lees-Edwards time offset (time steps):        0
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  1.50000e-01
+Order parameter noise = off
+Force calculation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 1
+Initialising phi for spinodal
+Initialising shear profile
+Gradient calcaulation: 3d_7pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+[phi]  1.1826252e+01  3.6090857e-04 8.3228431e-04 -4.9999491e-02 4.9993448e-02
+
+Momentum - x y z
+[total   ] -2.1316282e-14 -1.2861240e-14  0.0000000e+00
+[fluid   ] -2.1316282e-14 -1.2861240e-14  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  7.8326723e-10  0.99987654314  1.00009286219
+[phi]  1.1826252e+01  3.6090857e-04 1.3860530e-04 -4.2224937e-02 4.5599278e-02
+
+Free energy density - timestep total fluid
+[fed]             10 -2.7313211783e-07 -2.7313211783e-07
+
+Momentum - x y z
+[total   ] -5.4990734e-15 -3.6611930e-04 -2.9282132e-15
+[fluid   ] -5.4990734e-15 -3.6611930e-04 -2.9282132e-15
+
+Velocity - x y z
+[minimum ] -5.3311394e-05 -2.3479050e-02 -5.9509797e-05
+[maximum ]  5.5872491e-05  2.3479701e-02  4.9062199e-05
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.848      0.848      0.848   0.848069 (1 call)
+      Time step loop:      0.079      0.087      0.798   0.079779 (10 calls)
+         Propagation:      0.012      0.017      0.143   0.014293 (10 calls)
+    Propagtn (krnl) :      0.012      0.017      0.143   0.014286 (10 calls)
+           Collision:      0.024      0.026      0.245   0.024510 (10 calls)
+   Collision (krnl) :      0.024      0.026      0.245   0.024504 (10 calls)
+       Lattice halos:      0.002      0.004      0.027   0.002726 (10 calls)
+       phi gradients:      0.007      0.010      0.074   0.007413 (10 calls)
+    phi grad (krnl) :      0.006      0.009      0.062   0.006221 (10 calls)
+           phi halos:      0.000      0.001      0.004   0.000424 (10 calls)
+     Lees Edwards BC:      0.002      0.002      0.024   0.002384 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000002 (10 calls)
+   Force calculation:      0.012      0.014      0.128   0.012753 (10 calls)
+          phi update:      0.014      0.015      0.145   0.014512 (10 calls)
+     Advectn (krnl) :      0.005      0.005      0.050   0.005025 (10 calls)
+ Advectn BCS (krnl) :      0.002      0.002      0.018   0.001829 (10 calls)
+               Free1:      0.000      0.016      0.016   0.001617 (10 calls)
+Ludwig finished normally.
