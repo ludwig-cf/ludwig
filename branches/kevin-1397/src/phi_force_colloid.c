@@ -66,6 +66,13 @@ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 		      wall_t * wall);
 
 
+__global__
+void phi_force_divf_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+			   hydro_t * hydro, map_t * map);
+__global__
+void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+			   map_t * map, wall_t * wall);
+
 /*****************************************************************************
  *
  *  phi_force_colloid
@@ -130,11 +137,18 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
-
+#ifdef OLD_SHIT
   __host_launch(phi_force_kernel, nblk, ntpb, ctxt->target,
 		pth->target, cinfo->tcopy, hydro->target, map->target,
 		wallt);
+#else
+  __host_launch(phi_force_divf_kernel, nblk, ntpb, ctxt->target,
+		pth->target, hydro->target, map->target);
 
+  __host_launch(phi_force_wall_kernel, nblk, ntpb, ctxt->target,
+		pth->target, map->target, wallt);
+
+#endif
   /* note that ideally we would delay this sync to overlap 
    with below colloid force updates, but this is not working on current GPU 
    architectures because colloids are in unified memory */
@@ -169,6 +183,8 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   pth_memcpy(pth, cudaMemcpyDeviceToHost);
 #endif
 
+  TIMER_start(TIMER_FREE2);
+
   colloid_t * pc;
   colloid_link_t * p_link;
 
@@ -201,6 +217,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
     }
   }
 
+  TIMER_stop(TIMER_FREE2);
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 
   return 0;
@@ -459,6 +476,307 @@ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
       wall_momentum_add(wall, fw);
     }
     /* Next site */
+  }
+
+  return;
+}
+
+__global__
+void phi_force_divf_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+			   hydro_t * hydro, map_t * map) {
+
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(pth);
+  assert(hydro);
+  assert(map);
+
+  kiterations = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int ia, ib;
+    int index, index1;
+
+    double pth0[3][3];
+    double pth1[3][3];
+    double force[3];
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    if (map->status[index] == MAP_FLUID) {
+
+      /* Compute pth at current point */
+
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
+	}
+      }
+      
+      /* Compute differences */
+      
+      index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      
+      if (map->status[index1] != MAP_FLUID) {
+	/* Compute the fluxes at solid/fluid boundary */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = -pth0[ia][X];
+	}
+      }
+      else {
+	/* This flux is fluid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	  }
+	}
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic-1, jc, kc);
+      
+      if (map->status[index1] != MAP_FLUID) {
+	/* Solid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += pth0[ia][X];
+	}
+      }
+      else {
+	/* Fluid - fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	  }
+	}
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      
+      if (map->status[index1] != MAP_FLUID) {
+	/* Solid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= pth0[ia][Y];
+	}
+      }
+      else {
+	/* Fluid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	  }
+	}
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc-1, kc);
+      
+      if (map->status[index1] != MAP_FLUID) {
+	/* Solid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += pth0[ia][Y];
+	}
+      }
+      else {
+	/* Fluid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	  }
+	}
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      
+      if (map->status[index1] != MAP_FLUID) {
+	/* Fluid-solid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= pth0[ia][Z];
+	}
+      }
+      else {
+	/* Fluid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	  }
+	}
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	}
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc, kc-1);
+      
+      if (map->status[index1] != MAP_FLUID) {
+	/* Fluid-solid */
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += pth0[ia][Z];
+	}
+      }
+      else {
+	/* Fluid-fluid */
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
+	  }
+	}
+	for (ia = 0; ia < 3; ia++) {
+	  force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	}
+      }
+      
+      /* Store the force on lattice */
+
+      for (ia = 0; ia < 3; ia++) {
+	hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)] += force[ia];
+      }
+    }
+    /* Next site */
+  }
+
+  return;
+}
+
+__global__
+void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+			   map_t * map, wall_t * wall) {
+
+  __shared__ int kiterations;
+  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(pth);
+  assert(map);
+  assert(wall);
+
+  kiterations = kernel_iterations(ktx);
+
+  __target_simt_parallel_region() {
+
+    int ic, jc, kc;
+    int ia, ib;
+    int kindex;
+    int index, index1;
+    int tid;
+
+    double pth0[3][3];
+    double f[3];
+    double fxb, fyb, fzb;
+
+    __target_simt_threadIdx_init();
+    __target_simt_blockIdx_init();
+    tid = threadIdx.x;
+
+    fx[tid] = 0.0;
+    fy[tid] = 0.0;
+    fz[tid] = 0.0;
+
+    __target_simt_for(kindex, kiterations, 1) {
+
+      ic = kernel_coords_ic(ktx, kindex);
+      jc = kernel_coords_jc(ktx, kindex);
+      kc = kernel_coords_kc(ktx, kindex);
+      index = kernel_coords_index(ktx, ic, jc, kc);
+
+      if (map->status[index] == MAP_FLUID) {
+
+	/* Compute pth at current point */
+
+	for (ia = 0; ia < 3; ia++) {
+	  for (ib = 0; ib < 3; ib++) {
+	    pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
+	  }
+	}
+      
+	/* Contributions to surface stress */
+      
+	index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  fx[tid] += -pth0[X][X];
+	  fy[tid] += -pth0[Y][X];
+	  fz[tid] += -pth0[Z][X];
+	}
+      
+	index1 = kernel_coords_index(ktx, ic-1, jc, kc);
+      
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  fx[tid] += pth0[X][X];
+	  fy[tid] += pth0[Y][X];
+	  fz[tid] += pth0[Z][X];
+	}
+      
+	index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  fx[tid] += -pth0[X][Y];
+	  fy[tid] += -pth0[Y][Y];
+	  fz[tid] += -pth0[Z][Y];
+	}
+      
+	index1 = kernel_coords_index(ktx, ic, jc-1, kc);
+      
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  fx[tid] += pth0[X][Y];
+	  fy[tid] += pth0[Y][Y];
+	  fz[tid] += pth0[Z][Y];
+	}
+      
+	index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  fx[tid] += -pth0[X][Z];
+	  fy[tid] += -pth0[Y][Z];
+	  fz[tid] += -pth0[Z][Z];
+	}
+      
+	index1 = kernel_coords_index(ktx, ic, jc, kc-1);
+      
+	if (map->status[index1] == MAP_BOUNDARY) {
+	  fx[tid] += pth0[X][Z];
+	  fy[tid] += pth0[Y][Z];
+	  fz[tid] += pth0[Z][Z];
+	}      
+      }
+      /* Next site */
+    }
+
+    /* Reduction */
+
+    fxb = target_block_reduce_sum_double(fx);
+    fyb = target_block_reduce_sum_double(fy);
+    fzb = target_block_reduce_sum_double(fz);
+
+    if (tid == 0) {
+      /*
+      target_atomic_add_double(f+X, -fxb);
+      target_atomic_add_double(f+Y, -fyb);
+      target_atomic_add_double(f+Z, -fzb);
+      */
+      f[X] = fxb;
+      f[Y] = fyb;
+      f[Z] = fzb;
+      if (blockIdx.x == 0) wall_momentum_add(wall, f);
+    }
   }
 
   return;

@@ -31,6 +31,8 @@
 __host__ int target_thread_info(void);
 __device__ int target_block_reduce_sum_int(int * val);
 __device__ void target_atomic_add_int(int * sum, int  val);
+__device__ double target_block_reduce_sum_double(double * val);
+__device__ void target_atomic_add_double(double * sum, double  val);
 
 /*
 
