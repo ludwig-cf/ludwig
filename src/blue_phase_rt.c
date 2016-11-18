@@ -39,9 +39,9 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 				beris_edw_t * be) {
   int n;
   int redshift_update;
-  char method[FILENAME_MAX];
-  char type[FILENAME_MAX];
-  char type_wall[FILENAME_MAX];
+  char method[BUFSIZ] = "none";
+  char type[BUFSIZ] = "none";
+  char type_wall[BUFSIZ] = "none";
 
   double epsilon;
   double redshift;
