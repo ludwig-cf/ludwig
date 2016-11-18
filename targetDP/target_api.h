@@ -27,6 +27,7 @@
   #define __target_simt_parallel_for(index, ndata, stride) __cuda_simt_parallel_for(index, ndata, stride)
 
   #define __target_simt_threadIdx_init()
+  #define __target_simt_blockIdx_init()
   #define __target_syncthreads() __syncthreads()
 
   /* Additional host-side API */
@@ -71,6 +72,9 @@
     uint3 threadIdx;					\
     threadIdx = __x86_builtin_threadIdx_init();
 
+  #define __host_simt_blockIdx_init()                   \
+    uint3 blockIdx = {0, 0, 0};
+
   /* May want another for blockIdx */
 
   #define TARGET_MAX_THREADS_PER_BLOCK X86_MAX_THREADS_PER_BLOCK
@@ -80,6 +84,7 @@
 
   #define __target_simt_parallel_for(index, ndata, stride) __host_simt_parallel_for(index, ndata, stride)
   #define __target_simt_threadIdx_init()  __host_simt_threadIdx_init()
+  #define __target_simt_blockIdx_init()   __host_simt_blockIdx_init()
   #define __target_syncthreads()          __host_barrier()
   #define __target_atomic()               __host_atomic()
 

@@ -101,6 +101,28 @@ int target_block_reduce_sum_int(int * partsum) {
   return partsum[0];
 }
 
+__target__
+double target_block_reduce_sum_double(double * partsum) {
+
+#ifdef _OPENMP
+  int istr;
+  int nblock;
+  int nthread = omp_get_num_threads();
+  int idx = omp_get_thread_num();
+
+  nblock = pow(2, ceil(log(1.0*nthread)/log(2)));
+
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    #pragma omp barrier
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
+  }
+#endif
+
+  return partsum[0];
+}
+
 /*****************************************************************************
  *
  *  target_atomic_add_int
@@ -110,6 +132,18 @@ int target_block_reduce_sum_int(int * partsum) {
  *****************************************************************************/
 
 __target__ void target_atomic_add_int(int * sum, int val) {
+
+#ifdef _OPENMP
+  #pragma omp atomic
+  *sum += val;
+#else
+  *sum += val;
+#endif
+
+  return;
+}
+
+__target__ void target_atomic_add_double(double * sum,  double val) {
 
 #ifdef _OPENMP
   #pragma omp atomic

@@ -15,7 +15,7 @@
   /* Have OpenMP */
 
   #include <omp.h>
-  #define X86_MAX_THREADS_PER_BLOCK 64
+  #define X86_MAX_THREADS_PER_BLOCK 256
 
   /* Some additional definitions provide a level of abstraction
    * and prevent  "unrecognised pragma" warnings at compile time
