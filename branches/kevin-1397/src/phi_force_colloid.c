@@ -408,7 +408,6 @@ __global__ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
     int tid;
 
     double pth0[3][3];
-    double f[3];
     double fxb, fyb, fzb;
 
     __target_simt_threadIdx_init();
