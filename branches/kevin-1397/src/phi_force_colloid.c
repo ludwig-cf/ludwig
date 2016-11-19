@@ -60,24 +60,16 @@
 int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 		     hydro_t * hydro, map_t * map, wall_t * wall);
 
-__global__
-void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
-		      wall_t * wall);
-
-
-__global__
-void phi_force_divf_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-			   hydro_t * hydro, map_t * map);
-__global__
-void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-			   map_t * map, wall_t * wall);
+__global__ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+				 hydro_t * hydro, map_t * map);
+__global__ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+				      map_t * map, wall_t * wall,
+				      double fw[3]);
 
 /*****************************************************************************
  *
  *  phi_force_colloid
  *
- *  Driver routine. For fractional timesteps, dt < 1.
  *  If no colloids, and no hydrodynamics, no action is required.
  *
  *****************************************************************************/
@@ -105,10 +97,9 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *
  *  phi_force_driver
  *
- *  At solid interfaces use P^th from the adjacent fluid site.
- *
- *  hydro may be null, in which case fluid force is ignored;
- *  however, we still compute the colloid force.
+ *  TODO: hydro == NULL case for relaxational dynamicss?
+ *  TODO: if no wall, wall kernel not required!
+ *  TODO: Fix up a kernel for the colloids.
  *
  *****************************************************************************/
 
@@ -120,6 +111,9 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   wall_t * wallt = NULL;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
+
+  /* Net momentum balance for wall */
+  double fw[3] = {0.0, 0.0, 0.0};
 
   assert(pth);
   assert(cinfo);
@@ -137,53 +131,28 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
-#ifdef OLD_SHIT
+
   __host_launch(phi_force_kernel, nblk, ntpb, ctxt->target,
-		pth->target, cinfo->tcopy, hydro->target, map->target,
-		wallt);
-#else
-  __host_launch(phi_force_divf_kernel, nblk, ntpb, ctxt->target,
 		pth->target, hydro->target, map->target);
 
   __host_launch(phi_force_wall_kernel, nblk, ntpb, ctxt->target,
-		pth->target, map->target, wallt);
+		pth->target, map->target, wallt, fw);
 
-#endif
-  /* note that ideally we would delay this sync to overlap 
-   with below colloid force updates, but this is not working on current GPU 
-   architectures because colloids are in unified memory */
-
-  targetSynchronize(); 
-
+  cudaDeviceSynchronize(); 
   kernel_ctxt_free(ctxt);
 
+  wall_momentum_add(wall, fw);
 
   /* A separate kernel is requred to allow reduction of the
    * force on each particle. A truly parallel version is
    pending... */
 
-#ifdef __OLD_SHIT__
+  TIMER_start(TIMER_FREE3);
 
-  /* update colloid-affected lattice sites from target*/
-  int ncolsite=colloids_number_sites(cinfo);
-
-
-  /* allocate space */
-  int* colloidSiteList =  (int*) malloc(ncolsite*sizeof(int));
-
-  colloids_list_sites(colloidSiteList,cinfo);
-
-
-  /* get fluid data from this subset of sites */
-  copyFromTargetSubset(pth->str,pth->target->str,colloidSiteList,ncolsite,pth->nsites,9);
-
-  free(colloidSiteList);
-#else
-  /* Again, pending true device solution */
+#ifdef __NVCC__
+  /* Get stress back! */
   pth_memcpy(pth, cudaMemcpyDeviceToHost);
 #endif
-
-  TIMER_start(TIMER_FREE2);
 
   colloid_t * pc;
   colloid_link_t * p_link;
@@ -217,7 +186,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
     }
   }
 
-  TIMER_stop(TIMER_FREE2);
+  TIMER_stop(TIMER_FREE3);
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 
   return 0;
@@ -229,261 +198,10 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
  *
  *  This computes the force on the fluid, but not the colloids.
  *
- *  cinfo is currently through unified memory.
- *
- *  TODO: The accumulation for the wall momentum is unsafe in shared
- *  memory.
- *
  *****************************************************************************/
 
-__global__
-void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-		      colloids_info_t * cinfo, hydro_t * hydro, map_t * map,
-		      wall_t * wall) {
-
-  int kindex;
-  __shared__ int kiterations;
-
-  assert(ktx);
-  assert(pth);
-  assert(cinfo);
-  assert(hydro);
-  assert(map);
-
-  kiterations = kernel_iterations(ktx);
-
-  __target_simt_parallel_for(kindex, kiterations, 1) {
-
-    int ic, jc, kc;
-    int ia, ib;
-    int index, index1;
-
-    double pth0[3][3];
-    double pth1[3][3];
-  
-    double force[3];                  /* Accumulated force on fluid */
-    double fw[3];                     /* Accumulated force on wall */
-
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    index = kernel_coords_index(ktx, ic, jc, kc);
-
-    /* If this is solid, then there's no contribution here. */
-
-    if (cinfo->map_new[index] == NULL) {
-
-      /* Compute pth at current point */
-
-      for (ia = 0; ia < 3; ia++) {
-	for (ib = 0; ib < 3; ib++) {
-	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
-	}
-      }
-
-      for (ia = 0; ia < 3; ia++) {
-	fw[ia] = 0.0;
-      }
-      
-      /* Compute differences */
-      
-      index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-      
-      if (cinfo->map_new[index1]) {
-	/* Compute the fluxes at solid/fluid boundary */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] = -pth0[ia][X];
-	}
-      }
-      else {
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -pth0[ia][X];
-	    fw[ia] = pth0[ia][X];
-	  }
-	}
-	else {
-	  /* This flux is fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] = -0.5*(pth1[ia][X] + pth0[ia][X]);
-	  }
-	}
-      }
-      
-      index1 = kernel_coords_index(ktx, ic-1, jc, kc);
-      
-      if (cinfo->map_new[index1]) {
-	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += pth0[ia][X];
-	}
-      }
-      else {
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][X];
-	    fw[ia] -= pth0[ia][X];
-	  }
-	}
-	else {
-	  /* Fluid - fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][X] + pth0[ia][X]);
-	  }
-	}
-      }
-      
-      index1 = kernel_coords_index(ktx, ic, jc+1, kc);
-      
-      if (cinfo->map_new[index1]) {
-	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= pth0[ia][Y];
-	}
-      }
-      else {
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Y];
-	    fw[ia] += pth0[ia][Y];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	  }
-	}
-      }
-      
-      index1 = kernel_coords_index(ktx, ic, jc-1, kc);
-      
-      if (cinfo->map_new[index1]) {
-	/* Solid-fluid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += pth0[ia][Y];
-	}
-      }
-      else {
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Y];
-	    fw[ia] -= pth0[ia][Y];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][Y] + pth0[ia][Y]);
-	  }
-	}
-      }
-      
-      index1 = kernel_coords_index(ktx, ic, jc, kc+1);
-      
-      if (cinfo->map_new[index1]) {
-	/* Fluid-solid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] -= pth0[ia][Z];
-	}
-      }
-      else {
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= pth0[ia][Z];
-	    fw[ia] += pth0[ia][Z];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] -= 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	  }
-	}
-      }
-      
-      index1 = kernel_coords_index(ktx, ic, jc, kc-1);
-      
-      if (cinfo->map_new[index1]) {
-	/* Fluid-solid */
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia] += pth0[ia][Z];
-	}
-      }
-      else {
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += pth0[ia][Z];
-	    fw[ia] -= pth0[ia][Z];
-	  }
-	}
-	else {
-	  /* Fluid-fluid */
-
-	  for (ia = 0; ia < 3; ia++) {
-	    for (ib = 0; ib < 3; ib++) {
-	      pth1[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index1,ia,ib)];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    force[ia] += 0.5*(pth1[ia][Z] + pth0[ia][Z]);
-	  }
-	}
-      }
-      
-      /* Store the force on lattice */
-
-      for (ia = 0; ia < 3; ia++) {
-	hydro->f[addr_rank1(hydro->nsite, NHDIM, index, ia)] += force[ia];
-      }
-
-      wall_momentum_add(wall, fw);
-    }
-    /* Next site */
-  }
-
-  return;
-}
-
-__global__
-void phi_force_divf_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-			   hydro_t * hydro, map_t * map) {
+__global__ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+				 hydro_t * hydro, map_t * map) {
 
   int kindex;
   __shared__ int kiterations;
@@ -654,11 +372,23 @@ void phi_force_divf_kernel(kernel_ctxt_t * ktx, pth_t * pth,
   return;
 }
 
-__global__
-void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-			   map_t * map, wall_t * wall) {
+/*****************************************************************************
+ *
+ *  phi_force_wall_kernel
+ *
+ *  Tally contributions of the stress divergence transfered to
+ *  the wall. This needs to agree with phi_force_kernel().
+ *
+ *  This is for accounting only; there's no dynamics.
+ *
+ *****************************************************************************/
 
-  __shared__ int kiterations;
+__global__ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+				      map_t * map, wall_t * wall,
+				      double fw[3]) {
+
+  int kindex;
+  int kiterations;
   __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
@@ -674,7 +404,6 @@ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 
     int ic, jc, kc;
     int ia, ib;
-    int kindex;
     int index, index1;
     int tid;
 
@@ -683,7 +412,6 @@ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
     double fxb, fyb, fzb;
 
     __target_simt_threadIdx_init();
-    __target_simt_blockIdx_init();
     tid = threadIdx.x;
 
     fx[tid] = 0.0;
@@ -767,15 +495,9 @@ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
     fzb = target_block_reduce_sum_double(fz);
 
     if (tid == 0) {
-      /*
-      target_atomic_add_double(f+X, -fxb);
-      target_atomic_add_double(f+Y, -fyb);
-      target_atomic_add_double(f+Z, -fzb);
-      */
-      f[X] = fxb;
-      f[Y] = fyb;
-      f[Z] = fzb;
-      if (blockIdx.x == 0) wall_momentum_add(wall, f);
+      target_atomic_add_double(fw+X, -fxb);
+      target_atomic_add_double(fw+Y, -fyb);
+      target_atomic_add_double(fw+Z, -fzb);
     }
   }
 
