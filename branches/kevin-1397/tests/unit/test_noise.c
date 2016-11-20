@@ -236,7 +236,7 @@ static int do_test_noise3(pe_t * pe) {
   noise_init(noise, 0);
 
   moment6 = (double *) calloc(6*nsites, sizeof(double));
-  if (moment6 == NULL) fatal("calloc(moment6) failed\n");
+  assert(moment6);
 
   /* Loop */
 

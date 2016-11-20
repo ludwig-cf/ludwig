@@ -46,6 +46,7 @@ static int isReduced_=0; /* SHIT WHAT IS THIS DOING? */
 
 __targetConst__ int tc_cv[NVEL][3];
 __targetConst__ int tc_ndist;
+static __constant__ lb_collide_param_t static_param;
 
 /****************************************************************************
  *
@@ -66,6 +67,9 @@ __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** plb) {
 
   lb = (lb_t *) calloc(1, sizeof(lb_t));
   if (lb == NULL) pe_fatal(pe, "calloc(1, lb_t) failed\n");
+
+  lb->p = (lb_collide_param_t *) calloc(1, sizeof(lb_collide_param_t));
+  if (lb->p == NULL) pe_fatal(pe, "calloc(1, lb_collide_param_t) failed\n");
 
   lb->pe = pe;
   lb->cs = cs;
@@ -141,6 +145,9 @@ __host__ int lb_free(lb_t * lb) {
   MPI_Type_free(&lb->site_y[1]);
   MPI_Type_free(&lb->site_z[0]);
   MPI_Type_free(&lb->site_z[1]);
+
+  free(lb->p);
+  free(lb);
 
   return 0;
 }
@@ -233,6 +240,8 @@ __host__ int lb_init(lb_t * lb) {
     lb->target = lb;
   }
   else {
+    lb_collide_param_t * ptmp  = NULL;
+
     targetMalloc((void **) &lb->target, sizeof(lb_t));
 
     targetCalloc((void **) &tmp, ndata*sizeof(double));
@@ -240,6 +249,9 @@ __host__ int lb_init(lb_t * lb) {
  
     targetCalloc((void **) &tmp, ndata*sizeof(double));
     copyToTarget(&lb->target->fprime, &tmp, sizeof(double *));
+
+    targetConstAddress((void **) &ptmp, static_param);
+    copyToTarget(&lb->target->p, &ptmp, sizeof(lb_collide_param_t *));
   }
 
   /* Set up the MPI Datatypes used for full halo messages:
@@ -263,6 +275,21 @@ __host__ int lb_init(lb_t * lb) {
   lb_mpi_init(lb);
   lb_halo_set(lb, LB_HALO_FULL);
   lb_memcpy(lb, cudaMemcpyHostToDevice);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_collide_param_commit
+ *
+ *****************************************************************************/
+
+__host__ int lb_collide_param_commit(lb_t * lb) {
+
+  assert(lb);
+
+  copyConstToTarget(&static_param, lb->p, sizeof(lb_collide_param_t));
 
   return 0;
 }
@@ -1024,7 +1051,8 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
   assert(index >= 0 && index < lb->nsite);
   assert(nd >= 0 && nd < lb->ndist);
 
-  for (n = 0; n < NDIM; n++) {
+  /* Loop to 3 here to cover initialisation in D2Q9 (appears in momentum) */
+  for (n = 0; n < 3; n++) {
     g[n] = 0.0;
   }
 

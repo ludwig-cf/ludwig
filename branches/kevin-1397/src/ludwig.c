@@ -214,10 +214,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
 #endif
 
   lb_run_time(pe, cs, rt, ludwig->lb);
-  collision_run_time(pe, rt, ludwig->noise_rho);
+  collision_run_time(pe, rt, ludwig->lb, ludwig->noise_rho);
   map_init_rt(pe, cs, rt, &ludwig->map);
 
   noise_init(ludwig->noise_rho, 0);
+
   ran_init_rt(pe, rt);
   hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
 

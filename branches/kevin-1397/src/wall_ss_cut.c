@@ -177,6 +177,8 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   double vcut;                          /* potential at cut off */
   double dvcut;                         /* derivative at cut off */
   double forcewall[3];                  /* force on the wall for accounting purposes */
+  double lmin[3];
+  double ltot[3];
   double f;
 
   colloid_t * pc1;
@@ -184,8 +186,11 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   assert(cinfo);
   assert(self);
 
+  cs_lmin(self->cs, lmin);
+  cs_ltot(self->cs, ltot);
+
   self->vlocal = 0.0;
-  self->hminlocal = dmax(L(X), dmax(L(Y), L(Z)));
+  self->hminlocal = dmax(ltot[X], dmax(ltot[Y], ltot[Z]));
   self->rminlocal = self->hminlocal;
 
   rsigma = 1.0/self->sigma;
@@ -206,19 +211,19 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
         colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
         for (; pc1; pc1 = pc1->next) {
 
-	  for (ia = 0; ia < 3; ia++){
+	  for (ia = 0; ia < 3; ia++) {
 	    if (iswall[ia]) {
 	      
 	      f = 0.0;
 	      /* lower wall */
-	      r = pc1->s.r[ia] - Lmin(ia);
+	      r = pc1->s.r[ia] - lmin[ia];
 	      if (r < self->rminlocal) self->rminlocal = r;
 	      
 	      h = r - pc1->s.ah;
 	      assert(h > 0.0);
 	      if (h < self->hminlocal) self->hminlocal = h;
 	      
-	      if (h < self->hc){
+	      if (h < self->hc) {
 		rh = 1.0/h;
 		self->vlocal += self->epsilon*pow(rh*self->sigma, self->nu)
 		  - vcut - (h - self->hc)*dvcut;
@@ -227,19 +232,19 @@ int wall_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
 	      }
 	      
 	      /*upper wall*/
-	      r = Lmin(ia) + L(ia) - pc1->s.r[ia];
+	      r = lmin[ia] + ltot[ia] - pc1->s.r[ia];
 	      if (r < self->rminlocal) self->rminlocal = r;
 	      
 	      h = r - pc1->s.ah;
 	      assert(h > 0.0);
 	      if (h < self->hminlocal) self->hminlocal = h;
 	      
-	      if (h < self->hc){
+	      if (h < self->hc) {
 		rh = 1.0/h;
 		self->vlocal += self->epsilon*pow(rh*self->sigma, self->nu)
 		  - vcut - (h - self->hc)*dvcut;
 		f -= -(-self->epsilon*self->nu*rsigma
-		       *pow(rh*self->sigma, self->nu+1) - dvcut); /*the sign armageddon matters*/
+		       *pow(rh*self->sigma, self->nu+1) - dvcut);
 	      }
 	      pc1->force[ia] += f;
 	      forcewall[ia] -= f;

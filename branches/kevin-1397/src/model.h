@@ -42,6 +42,7 @@ extern const double cs2;
 extern const double rcs2;
 
 typedef enum lb_dist_enum_type{LB_RHO = 0, LB_PHI = 1} lb_dist_enum_t;
+typedef enum lb_mode_enum_type{LB_GHOST_ON = 0, LB_GHOST_OFF = 1} lb_mode_enum_t;
 
 typedef struct lb_data_s lb_t;
 typedef enum lb_halo_enum_type {LB_HALO_FULL,
@@ -54,6 +55,7 @@ __host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** lb);
 __host__ int lb_init(lb_t * lb);
 __host__ int lb_free(lb_t * lb);
 __host__ int lb_memcpy(lb_t * lb, int flag);
+__host__ int lb_collide_param_commit(lb_t * lb);
 __host__ int lb_halo(lb_t * lb);
 __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
 __host__ int lb_halo_via_copy(lb_t * lb);

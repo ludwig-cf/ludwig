@@ -840,18 +840,6 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
     nkink2[2] =  nhat[1]*cos(ang);
   }
 
-  /* Kink for primary alignment along z */	 
-/*
-  if (nhat[2] == 1.0) {
-    nkink1[0] = nhat[2]*cos(ang);
-    nkink1[1] = nhat[1];
-    nkink1[2] = nhat[2]*sin(ang);
-
-    nkink2[0] =  nhat[2]*cos(ang);
-    nkink2[1] =  nhat[1];
-    nkink2[2] = -nhat[2]*sin(ang);
-  }
-*/
   fe_lc_q_uniaxial(param, nhat, q);
   fe_lc_q_uniaxial(param, nkink1, qkink1);
   fe_lc_q_uniaxial(param, nkink2, qkink2);
@@ -894,21 +882,6 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
 	  }
 	}
 
-        /* If alignment along z region around 
-	   x=N_total(X)/2 is being replaced */
-/*
-	if(nhat[2] == 1.0){
-	  if(x==N_total(X)/2.0 || x==(N_total(X)-1)/2.0) {
-	    if(z<=N_total(Z)/2.0) {
-	      phi_set_q_tensor(index, qkink1);
-	    }
-	    else {
-	      phi_set_q_tensor(index, qkink2);
-	    }
-	  }
-	}
-*/
-
       }
     }
   }
@@ -947,7 +920,7 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
   double nkink1[3], nkink2[3];
   double qkink1[3][3], qkink2[3][3];
 
-  double x, y, z;
+  double x, y;
   double ang;
   PI_DOUBLE(pi);
 
@@ -993,7 +966,6 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       y = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
 
 	index = coords_index(ic, jc, kc);
 

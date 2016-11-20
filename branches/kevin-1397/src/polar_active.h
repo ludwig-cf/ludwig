@@ -12,8 +12,8 @@
  *
  *****************************************************************************/
 
-#ifndef POLAR_ACTIVE_H
-#define POLAR_ACTIVE_H
+#ifndef LUDWIG_POLAR_ACTIVE_H
+#define LUDWIG_POLAR_ACTIVE_H
 
 #include "free_energy.h"
 #include "field.h"
@@ -47,7 +47,5 @@ __host__ __device__ int fe_polar_fed(fe_polar_t * fe, int index, double * fed);
 __host__ __device__ int fe_polar_mol_field(fe_polar_t * fe, int index, double h[3]);
 __host__ __device__ int fe_polar_stress(fe_polar_t * fe, int index, double s[3][3]);
 __host__ __device__ void fe_polar_stress_v(fe_polar_t * fe, int index, double s[3][3][NSIMDVL]);
-
-__host__ int fe_polar_active_region(fe_polar_t * fe, int index);
 
 #endif

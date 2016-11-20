@@ -412,38 +412,3 @@ int fe_polar_mol_field(fe_polar_t * fe, int index, double h[3]) {
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  fe_polar_active_region
- *
- *  Returns 1 in the 'region' and zero outside. The 'region' is a
- *  spherical volume centred at the centre of the grid.
- *
- *****************************************************************************/
-
-__host__
-int polar_active_region(fe_polar_t * fe, int index) {
-
-  int noffset[3];
-  int coords[3];
-  int active;
-
-  double r;
-  double x, y, z;
-
-  assert(fe);
-
-  r = fe->param->radius;
-  coords_nlocal_offset(noffset);
-  coords_index_to_ijk(index, coords);
-
-  x = 1.0*(noffset[X] + coords[X]) - (Lmin(X) + 0.5*L(X));
-  y = 1.0*(noffset[Y] + coords[Y]) - (Lmin(Y) + 0.5*L(Y));
-  z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
-
-  active = 1;
-  if ((x*x + y*y + z*z) > r*r) active = 0;
-
-  return active;
-}

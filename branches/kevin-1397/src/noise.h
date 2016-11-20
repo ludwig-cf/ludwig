@@ -10,8 +10,8 @@
  *
  *****************************************************************************/
 
-#ifndef NOISE_H
-#define NOISE_H
+#ifndef LUDWIG_NOISE_H
+#define LUDWIG_NOISE_H
 
 #define NNOISE_MAX 10
 #define NNOISE_STATE 4
@@ -31,6 +31,8 @@ typedef struct noise_s noise_t;
 __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj);
 __host__ int noise_free(noise_t * obj);
 __host__ int noise_init(noise_t * obj, int master_seed);
+__host__ int noise_memcpy(noise_t * obj, int flag);
+__host__ int noise_target(noise_t * nosie, noise_t ** target);
 __host__ int noise_state_set(noise_t * obj, int index, unsigned int s[NNOISE_STATE]);
 __host__ int noise_state(noise_t * obj, int index, unsigned int s[NNOISE_STATE]);
 __host__ int noise_present_set(noise_t * obj, noise_enum_t type, int present);

@@ -33,6 +33,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "memory.h"
 #include "noise.h"
 
 /* The implementation is based on the following opaque object, which
@@ -49,6 +50,7 @@ struct noise_s {
   unsigned int * state;     /* Local state */
   double rtable[8];         /* Look up table following Ladd (2009). */
   io_info_t * info;
+  noise_t * target;
 };
 
 static int noise_write(FILE * fp, int index, void * self);
@@ -58,10 +60,15 @@ static int noise_read(FILE * fp, int index, void * self);
  *
  *  noise_create
  *
+ *  TODO: remove separate create/init in favour of create => use;
+ *        separation can cause confusion.
+ *        Note if cs is not initialised then cannot allocate state here. 
+ *
  *****************************************************************************/
 
 __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
 
+  int ndevice;
   noise_t * obj = NULL;
 
   assert(pe);
@@ -85,6 +92,16 @@ __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
   obj->rtable[6] = +sqrt(2.0 - sqrt(2.0));
   obj->rtable[7] = +sqrt(2.0 + sqrt(2.0));
 
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    targetCalloc((void **) &obj->target, sizeof(noise_t));
+    copyToTarget(&obj->target->rtable, &obj->rtable, 8*sizeof(unsigned int));
+  }
+
   *pobj = obj;
 
   return 0;
@@ -99,6 +116,13 @@ __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
 __host__ int noise_free(noise_t * obj) {
 
   assert(obj);
+
+  if (obj->target != obj) {
+    unsigned int * tmp = NULL;
+    copyFromTarget(&tmp, obj->target->state, sizeof(unsigned int *));
+    targetFree(obj->target);
+  }
+
   free(obj->state);
   free(obj);
 
@@ -124,7 +148,9 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
 
   int ic, jc, kc, index;
   int ig, jg, kg;
-  int nstat, nextra;
+  int ndevice;
+  int nextra;
+  int nstat;
   int nlocal[3];
   int noffset[3];
   int ntotal[3];
@@ -135,18 +161,19 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
 
   assert(obj);
 
-  cs_nsites(obj->cs, &obj->nsites);
-  nstat = NNOISE_STATE*obj->nsites;
-
-  obj->state = (unsigned int *) calloc(nstat, sizeof(unsigned int));
-  if (obj->state == NULL) pe_fatal(obj->pe, "calloc(obj->state) failed\n");
-
   /* Can take the full default if valid seed is not provided */
 
   if (master_seed > 0) {
     obj->master_seed = master_seed;
     state0[0] = master_seed;
   }
+
+  cs_nsites(obj->cs, &obj->nsites);
+  nstat = NNOISE_STATE*obj->nsites;
+  assert(obj->nsites > 0);
+
+  obj->state = (unsigned int *) calloc(nstat, sizeof(unsigned int));
+  if (obj->state == NULL) pe_fatal(obj->pe, "calloc(obj->state) failed\n");
 
   nextra = 1;
   cs_ntotal(obj->cs, ntotal);
@@ -191,6 +218,73 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
 	index = cs_index(obj->cs, ic, jc, kc);
 	noise_state_set(obj, index, state);
       }
+    }
+  }
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    unsigned int * tmp = NULL;
+    targetMalloc((void **) &tmp, nstat*sizeof(unsigned int));
+    copyToTarget(&obj->target->state, &tmp, sizeof(unsigned int *));
+  }
+
+  noise_memcpy(obj, cudaMemcpyHostToDevice);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  noise_target
+ *
+ *****************************************************************************/
+
+__host__ int noise_target(noise_t * obj, noise_t ** target) {
+
+  assert(obj);
+  assert(target);
+
+  *target = obj->target;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  noise_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int noise_memcpy(noise_t * obj, int flag) {
+
+  int ndevice;
+
+  assert(obj);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    assert(obj->target == obj);
+  }
+  else {
+    int nstat;
+    unsigned int * tmp = NULL;
+
+    nstat = NNOISE_STATE*obj->nsites;
+    copyFromTarget(&tmp, &obj->target->state, sizeof(unsigned int *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
+      copyToTarget(tmp, obj->state, nstat*sizeof(unsigned int));
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(obj->state, tmp, nstat*sizeof(unsigned int));
+      break;
+    default:
+      pe_fatal(obj->pe, "Bad flag in noise_memcpy\n");
+      break;
     }
   }
 
@@ -249,7 +343,7 @@ __host__ int noise_state_set(noise_t * obj, int index,
   assert(index < obj->nsites);
 
   for (ia = 0; ia < NNOISE_STATE; ia++) {
-    obj->state[NNOISE_STATE*index + ia] = newstate[ia];
+    obj->state[addr_rank1(obj->nsites,NNOISE_STATE,index,ia)] = newstate[ia];
   }
 
   return 0;
@@ -272,7 +366,7 @@ __host__ int noise_state(noise_t * obj, int index,
   assert(index < obj->nsites);
 
   for (ia = 0; ia < NNOISE_STATE; ia++) {
-    state[ia] = obj->state[NNOISE_STATE*index + ia];
+    state[ia] = obj->state[addr_rank1(obj->nsites, NNOISE_STATE, index, ia)];
   }
 
   return 0;
@@ -311,6 +405,7 @@ __host__ __device__
 int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
 
   unsigned int iuniform;
+  unsigned int state[NNOISE_STATE];
   int ia;
 
   assert(obj);
@@ -318,7 +413,9 @@ int noise_reap_n(noise_t * obj, int index, int nmax, double * reap) {
   assert(index < obj->nsites);
   assert(nmax <= NNOISE_MAX);
 
-  iuniform = noise_uniform(obj->state + NNOISE_STATE*index);
+  noise_state(obj, index, state);
+  iuniform = noise_uniform(state);
+  noise_state_set(obj, index, state);
 
   /* Remove the leading two bits, and index the table using each of the
    * remaining three bits in turn. */
@@ -345,12 +442,15 @@ __host__ __device__
 int noise_uniform_double_reap(noise_t * obj, int index, double * reap) {
 
   unsigned int iuniform;
+  unsigned int state[NNOISE_STATE];
 
   assert(obj);
   assert(index >= 0);
   assert(index < obj->nsites);
 
-  iuniform = noise_uniform(obj->state + NNOISE_STATE*index);
+  noise_state(obj, index, state);
+  iuniform = noise_uniform(state);
+  noise_state_set(obj, index, state);
 
   *reap = (1.0/UINT_MAX)*iuniform;
 
@@ -399,14 +499,15 @@ unsigned int noise_uniform(unsigned int state[NNOISE_STATE]) {
 
 static int noise_write(FILE * fp, int index, void * self) {
 
-  noise_t * obj = (noise_t*) self;
+  noise_t * obj = (noise_t *) self;
   int n;
+  unsigned int state[NNOISE_STATE];
 
   assert(fp);
   assert(obj);
 
-  n = fwrite(&obj->state[NNOISE_STATE*index], sizeof(unsigned int),
-	     NNOISE_STATE, fp);
+  noise_state(obj, index, state);
+  n = fwrite(state, sizeof(unsigned int), NNOISE_STATE, fp);
   if (n != NNOISE_STATE) pe_fatal(obj->pe, "fwrite(noise) index %d\n", index);
 
   return 0;
@@ -424,13 +525,14 @@ static int noise_read(FILE * fp, int index, void * self) {
 
   noise_t * obj = (noise_t *) self;
   int n;
+  unsigned int state[NNOISE_STATE];
 
   assert(obj);
   assert(fp);
 
-  n = fread(&obj->state[NNOISE_STATE*index], sizeof(unsigned int),
-	    NNOISE_STATE, fp);
+  n = fread(state, sizeof(unsigned int), NNOISE_STATE, fp);
   if (n != NNOISE_STATE) pe_fatal(obj->pe, "fread(noise) index %d\n", index);
+  noise_state_set(obj, index, state);
 
   return 0;
 }
