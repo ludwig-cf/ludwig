@@ -49,7 +49,7 @@ __target__ int target_atomic_sum_double(double * sum, double val);
 __target__ int target_atomic_min_double(double * dmin, double val);
 __target__ int target_atomic_max_double(double * dmax, double val);
 
- */
+*/
 
 __host__ __device__ int targetGetDeviceCount(int * device);
 __host__ __device__ int targetDeviceSynchronise(void);

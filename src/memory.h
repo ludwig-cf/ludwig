@@ -6,13 +6,13 @@
  *
  *  Meaningful Choices:
  *
- *    Forward/Reverse   Blocking   VECTOR LENGTH
- * 1. Forward           No         1
- * 2. Forward           No         N
+ *    Forward/Reverse   Blocking   VECTOR LENGTH         PREPROCESSOR
+ * 1. Forward (AOS)     No         1                     
+ * 2. Forward           No         N                     -DVVL=N
  * 3. Forward           Yes        1  -> Same as 1
- * 4. Forward           Yes        N
- * 5. Reverse           No         1
- * 6. Reverse           No         N
+ * 4. Forward           Yes        N                     -DVVL=N -DADDR_AOSOA
+ * 5. Reverse (SOA)     No         1                     -DADDR_SOA
+ * 6. Reverse           No         N  Not tested.
  * 7. Revsrse           Yes        1  -> Same as 5
  * 8. Reverse           Yes        N  Not implemented.
  *
@@ -42,20 +42,10 @@
 
 /*
 
-For non-vectorised loops:
-
 addr_rank0(nsites, index);
 addr_rank1(nsites, na, index, ia)
 addr_rank2(nsites, na, nb, index, ia, ib)
 addr_rank3(nsites, na, nb, nc, index, ia, ib, ic)
-...
-
-For vectorised loops:
-
-vaddr_rank0(nsites, index, iv)
-vaddr_rank1(nsites, na, index, ia, iv)
-vaddr_rank2(nsites, na, nb, index, ia, ib, iv)
-vaddr_rank3(nsites, na, nb, nc, index, ia, ib, ic, iv)
 ...
 
 */
@@ -102,7 +92,7 @@ int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
  *   baseindex = coords_index(ic, jc, kc);
  *   for (ia = 0; ia < na; ia++) {
  *     for (iv = 0; iv < NSIMDVL; iv++) {
- *       array[vaddr_rank1(nsites, na, baseindex, ia, iv)] = ...
+ *       array[addr_rank1(nsites, na, baseindex + iv, ia)] = ...
  *     }
  *     ...
  */
@@ -123,6 +113,8 @@ typedef enum data_model_enum_type {ADDRESS_FORWARD, ADDRESS_REVERSE}
   data_model_enum_t;
 
 #ifdef NDEBUG
+
+/* Forward, or AOS order. */
 
 #define forward_addr_rank0(nsites, index) (index)
 
@@ -172,7 +164,7 @@ int forward_addr_rank4_assert(int line, const char * file,
 
 #endif /* NDEBUG */
 
-/* 'Reverse' or coallescing order */
+/* 'Reverse' or SOA, or coallescing order */
 
 /* Effectively, we have:
  *
@@ -233,7 +225,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
 
 /* Here is the choise of direction */
 
-#ifndef ADDR_MODEL_R
+#ifndef ADDR_SOA
 #define base_addr_rank0 forward_addr_rank0
 #define base_addr_rank1 forward_addr_rank1
 #define base_addr_rank2 forward_addr_rank2
@@ -252,7 +244,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
 
 /* Macro definitions for the interface */
 
-#ifndef ADDR_VBLOCK
+#ifndef ADDR_AOSOA
 
 #define addr_rank0 base_addr_rank0
 #define addr_rank1 base_addr_rank1

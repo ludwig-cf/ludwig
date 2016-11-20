@@ -63,10 +63,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   fe_lc_param_t fe_param = {0};
   beris_edw_param_t be_param = {0};
 
-  int io_grid[3] = {1,1,1};
-  int io_format_out = IO_FORMAT_DEFAULT;
-  char value[BUFSIZ] = "BINARY";
-
   assert(pe);
   assert(rt);
   assert(fe);
@@ -274,13 +270,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
   fe_lc_param_set(fe, fe_param);
 
-  /* initialise the free energy io */
-  n = rt_int_parameter_vector(rt, "default_io_grid", io_grid);
-  n = rt_string_parameter(rt, "fed_format", value, BUFSIZ);
-
-  if (strcmp(value, "ASCII") == 0) {
-    io_format_out = IO_FORMAT_ASCII;
-  }
 
   /* Beris Edwards */
 

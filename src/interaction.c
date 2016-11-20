@@ -463,6 +463,8 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
  *
  *  Note the calculation involves a collective communication.
  *
+ *  TODO: sort out wall momentum account fw.
+ *
  *****************************************************************************/
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
@@ -471,7 +473,8 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
   int ia;
   int nsfluid;
   double rvolume;
-  double fd[3], fw[3], f[3];
+  double fd[3], f[3];
+  /* double fw[3]; */
   physics_t * phys = NULL;
 
   assert(cinfo);
@@ -493,15 +496,13 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -1.0*fd[ia]*rvolume*is_periodic(ia);
-      fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());
+      /* fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());*/
     }
 
     physics_fbody_set(phys, f);
-#ifdef OLD_SHIT
-    wall_accumulate_force(fw);
-#else
-    assert(0);
-#endif
+
+    /* Need to account for wall momentum transfer */
+    assert(0); /* SHIT NO TEST */
   }
 
   return 0;

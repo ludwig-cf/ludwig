@@ -24,6 +24,17 @@
 extern __constant__ int tc_cv[NVEL][3];
 extern __constant__ int tc_ndist;
 
+typedef struct lb_collide_param_s lb_collide_param_t;
+
+struct lb_collide_param_s {
+  int isnoise;                      /* switch for fluctuations */
+  int isghost;                      /* switch for ghost modes */
+  double var_shear;
+  double var_bulk;
+  double var_noise[NVEL];
+  double rtau[NVEL];
+};
+
 struct lb_data_s {
 
   int ndist;             /* Number of distributions (default one) */
@@ -37,6 +48,8 @@ struct lb_data_s {
 
   double * f;            /* Distributions */
   double * fprime;       /* used in propagation only */
+
+  lb_collide_param_t * p;
 
   /* MPI data types for halo swaps; these are comupted at runtime
    * to conform to the model selected at compile time */

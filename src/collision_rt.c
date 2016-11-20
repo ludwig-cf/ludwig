@@ -6,7 +6,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -28,15 +28,21 @@
  *  Note that the fluid properties must be set to get sensible
  *  values out at this stage.
  *
+ *  TODO: Subsume into lb_distribution_rt
+ *
  ****************************************************************************/
 
-int collision_run_time(pe_t * pe, rt_t * rt, noise_t * noise) {
+int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
 
   int p;
   int noise_on = 0;
   int nghost;
   char tmp[BUFSIZ];
   double rtau[NVEL];
+
+  assert(pe);
+  assert(rt);
+  assert(lb);
 
   p = rt_string_parameter(rt, "isothermal_fluctuations", tmp, BUFSIZ);
 
@@ -51,11 +57,11 @@ int collision_run_time(pe_t * pe, rt_t * rt, noise_t * noise) {
   nghost = 1;
   if (p == 1 && strcmp(tmp, "off") == 0) {
     nghost = 0;
-    collision_ghost_modes_off();
+    lb_collision_ghost_modes_off(lb);
   }
 
-  lb_collision_relaxation_times_set(noise);
-  collision_relaxation_times(rtau);
+  lb_collision_relaxation_times_set(lb, noise);
+  lb_collision_relaxation_times(lb, rtau);
 
   pe_info(pe, "\n");
   pe_info(pe, "Lattice Boltzmann collision\n");

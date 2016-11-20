@@ -149,10 +149,9 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   TIMER_start(TIMER_FREE3);
 
-#ifdef __NVCC__
   /* Get stress back! */
   pth_memcpy(pth, cudaMemcpyDeviceToHost);
-#endif
+
 
   colloid_t * pc;
   colloid_link_t * p_link;
@@ -174,6 +173,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 	cmod = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
 
 	if (cmod != 1) continue;
+	id = -1;
 	if (cv[p][X]) id = X;
 	if (cv[p][Y]) id = Y;
 	if (cv[p][Z]) id = Z;
