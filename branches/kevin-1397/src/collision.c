@@ -52,7 +52,7 @@ static int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * n
 static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
 			       noise_t * noise, fe_symm_t * fe);
 
-static __device__ __inline__ 
+static __host__ __device__ __inline__ 
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 			       double shat[3][3], double ghat[NVEL]);
 
@@ -1272,7 +1272,7 @@ __host__ int lb_collision_relaxation_times(lb_t * lb, double * tau) {
  *
  *****************************************************************************/
 
-static __device__ __inline__
+static __host__ __device__ __inline__
   void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 				 double shat[3][3], double ghat[NVEL]) {
   int ia;

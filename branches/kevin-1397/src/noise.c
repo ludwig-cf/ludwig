@@ -117,13 +117,13 @@ __host__ int noise_free(noise_t * obj) {
 
   assert(obj);
 
-  if (obj->target != obj) {
+  if (obj->target != obj && obj->state) {
     unsigned int * tmp = NULL;
-    copyFromTarget(&tmp, obj->target->state, sizeof(unsigned int *));
+    copyFromTarget(&tmp, &obj->target->state, sizeof(unsigned int *));
     targetFree(obj->target);
   }
 
-  free(obj->state);
+  if (obj->state) free(obj->state);
   free(obj);
 
   return 0;
@@ -334,8 +334,8 @@ __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
  *
  *****************************************************************************/
 
-__host__ int noise_state_set(noise_t * obj, int index,
-			     unsigned int newstate[NNOISE_STATE]) {
+__host__ __device__ int noise_state_set(noise_t * obj, int index,
+					unsigned int newstate[NNOISE_STATE]) {
   int ia;
 
   assert(obj);
@@ -357,8 +357,8 @@ __host__ int noise_state_set(noise_t * obj, int index,
  *
  *****************************************************************************/
 
-__host__ int noise_state(noise_t * obj, int index,
-			 unsigned int state[NNOISE_STATE]) {
+__host__ __device__ int noise_state(noise_t * obj, int index,
+				    unsigned int state[NNOISE_STATE]) {
   int ia;
 
   assert(obj);
