@@ -1741,30 +1741,15 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
 int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
 
-  int ia,ib;
-  double val_s, val_v[3],val_t[3][3];
+  int ic, jc, kc, index;
+  int n, nf;
   int nlocal[3];
-  int ic,jc,kc;
-  int index,status;
+  int status;
 
-  if (field->nf == 1) {
-      val_s = value;
-  } 
+  assert(field);
+  assert(map);
 
-  if (field->nf == 3) {
-    for (ia = 0; ia < 3; ia++) {
-      val_v[ia] = value;
-    } 
-  } 
-
-  if (field->nf == NQAB) {
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-      val_t[ia][ib] = value;
-      } 
-    } 
-  }
-
+  nf = field->nf;
   coords_nlocal(nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -1775,11 +1760,10 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
         map_status(map, index, &status);
 
 	if (status == map_id) {
-	  if (field->nf == 1)    field_scalar_set(field,index,val_s);
-	  if (field->nf == 3)    field_vector_set(field,index,val_v);
-	  if (field->nf == NQAB) field_tensor_set(field,index,val_t);
+	  for (n = 0; n < nf; n++) {
+	    field->data[addr_rank1(field->nsites, nf, index, n)] = value;
+	  }
 	}
-
       }
     }
   }
