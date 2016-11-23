@@ -154,6 +154,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
+int io_replace_values(field_t * field, map_t * map, int map_id, double value);
 
 /*****************************************************************************
  *
@@ -406,7 +407,7 @@ void ludwig_run(const char * inputfile) {
   int     step = 0;
   int     is_subgrid = 0;
   int     is_pm = 0;
-  int ncolloid = 0;
+  int     ncolloid = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
   double  uzero[3] = {0.0, 0.0, 0.0};
   int     im, multisteps;
@@ -764,6 +765,8 @@ void ludwig_run(const char * inputfile) {
       }
       if (ludwig->q) {
 	field_io_info(ludwig->q, &iohandler);
+	/* replace q-tensor on former colloid sites */
+	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
 	info("Writing q file at step %d!\n", step);
 	sprintf(filename,"%sq-%8.8d", subdirectory, step);
 	io_write_data(iohandler, filename, ludwig->q);
@@ -1723,6 +1726,62 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     colloid_t* tmpcol;
     copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
     copyToTarget(tmpcol,ludwig->collinfo->map_new,nSites*sizeof(colloid_t*));
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_replace_values
+ *
+ *  Replaces order parameter values at internal colloid or sites 
+ *
+ *****************************************************************************/
+
+int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
+
+  int ia,ib;
+  double val_s, val_v[3],val_t[3][3];
+  int nlocal[3];
+  int ic,jc,kc;
+  int index,status;
+
+  if (field->nf == 1) {
+      val_s = value;
+  } 
+
+  if (field->nf == 3) {
+    for (ia = 0; ia < 3; ia++) {
+      val_v[ia] = value;
+    } 
+  } 
+
+  if (field->nf == NQAB) {
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+      val_t[ia][ib] = value;
+      } 
+    } 
+  }
+
+  coords_nlocal(nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+        map_status(map, index, &status);
+
+	if (status == map_id) {
+	  if (field->nf == 1)    field_scalar_set(field,index,val_s);
+	  if (field->nf == 3)    field_vector_set(field,index,val_v);
+	  if (field->nf == NQAB) field_tensor_set(field,index,val_t);
+	}
+
+      }
+    }
   }
 
   return 0;
