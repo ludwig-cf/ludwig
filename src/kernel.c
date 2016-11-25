@@ -318,7 +318,7 @@ __host__ __target__ int kernel_coords_v(kernel_ctxt_t * obj,
   assert(obj);
   xs = obj->param->nkv_local[Y]*obj->param->nkv_local[Z];
 
-  for (iv = 0; iv < NSIMDVL; iv++) {
+  __target_simd_for(iv, NSIMDVL) {
     index = obj->param->kindex0 + kindex0 + iv;
 
     icv[iv] = index/xs;
@@ -326,7 +326,7 @@ __host__ __target__ int kernel_coords_v(kernel_ctxt_t * obj,
     kcv[iv] = index - icv[iv]*xs - jcv[iv]*obj->param->nkv_local[Z];
   }
 
-  for (iv = 0; iv < NSIMDVL; iv++) {
+  __target_simd_for(iv, NSIMDVL) {
     icv[iv] = icv[iv] - (obj->param->nhalo - 1);
     jcv[iv] = jcv[iv] - (obj->param->nhalo - 1);
     kcv[iv] = kcv[iv] - (obj->param->nhalo - 1);
@@ -376,11 +376,11 @@ __host__ __target__ int kernel_mask_v(kernel_ctxt_t * obj,
 
   assert(obj);
 
-  for (iv = 0; iv < NSIMDVL; iv++) {
+  __target_simd_for(iv, NSIMDVL) {
     maskv[iv] = 1;
   }
 
-  for (iv = 0; iv < NSIMDVL; iv++) {
+  __target_simd_for(iv, NSIMDVL) {
     if (icv[iv] < obj->param->lim.imin || icv[iv] > obj->param->lim.imax ||
 	jcv[iv] < obj->param->lim.jmin || jcv[iv] > obj->param->lim.jmax ||
 	kcv[iv] < obj->param->lim.kmin || kcv[iv] > obj->param->lim.kmax) {
@@ -439,7 +439,7 @@ __host__ __target__ int kernel_coords_index_v(kernel_ctxt_t * obj,
   yfac = obj->param->nlocal[Z] + 2*nhalo;
   xfac = yfac*(obj->param->nlocal[Y] + 2*nhalo);
 
-  for (iv = 0; iv < NSIMDVL; iv++) {
+  __target_simd_for(iv, NSIMDVL) {
     index[iv] = xfac*(nhalo + icv[iv] - 1)
       + yfac*(nhalo + jcv[iv] - 1) + nhalo + kcv[iv] - 1; 
   }

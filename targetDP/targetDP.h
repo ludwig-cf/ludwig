@@ -253,6 +253,9 @@ _Pragma("omp simd")				\
 
 #endif
 
+/* KS addition alias to be formalised... */
+#define __target_simd_for(iv, nsimdvl) __targetILP__((iv))
+/* KS end addition */
 
 /* functions */
 
