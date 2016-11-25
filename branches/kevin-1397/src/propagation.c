@@ -159,23 +159,24 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
 
     int iv;
     int n, p;
+    int index0;
     int ic[NSIMDVL], icp[NSIMDVL];
     int jc[NSIMDVL], jcp[NSIMDVL];
     int kc[NSIMDVL], kcp[NSIMDVL];
     int maskv[NSIMDVL];
-    int index[NSIMDVL];
     int indexp[NSIMDVL];
 
     kernel_coords_v(ktx, kindex, ic, jc, kc);
-    kernel_coords_index_v(ktx, ic, jc, kc, index);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
+
+    index0 = kernel_coords_index(ktx, ic[0], jc[0], kc[0]);
 
     for (n = 0; n < lb->ndist; n++) {
       for (p = 0; p < NVEL; p++) {
 
 	/* If this is a halo site, just copy, else pull from neighbour */ 
 
-	__targetILP__(iv) {
+	__target_simd_for(iv, NSIMDVL) {
 	  icp[iv] = ic[iv] - maskv[iv]*tc_cv[p][X];
 	  jcp[iv] = jc[iv] - maskv[iv]*tc_cv[p][Y];
 	  kcp[iv] = kc[iv] - maskv[iv]*tc_cv[p][Z];
@@ -183,8 +184,8 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
 
 	kernel_coords_index_v(ktx, icp, jcp, kcp, indexp);
 
-	__targetILP__(iv) {
-	  lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index[iv], n, p)] 
+	__target_simd_for(iv, NSIMDVL) {
+	  lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index0 + iv, n, p)] 
 	    = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp[iv], n, p)];
 	}
       }
