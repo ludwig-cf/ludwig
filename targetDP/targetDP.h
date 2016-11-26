@@ -253,10 +253,6 @@ _Pragma("omp simd")				\
 
 #endif
 
-/* KS addition alias to be formalised... */
-#define __target_simd_for(iv, nsimdvl) __targetILP__((iv))
-/* KS end addition */
-
 /* functions */
 
 #define targetConstAddress(addr_of_ptr,const_object) \
@@ -341,5 +337,9 @@ __targetHost__ double targetDoubleSum(double* array, size_t size);
 __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
 
 __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
+
+/* KS addition alias to be formalised... */
+#define __target_simd_for(iv, nsimdvl) __targetILP__((iv))
+/* KS end addition */
 
 #endif
