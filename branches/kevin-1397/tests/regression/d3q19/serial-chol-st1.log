@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.5.60 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.71 (Serial version running on 1 process)
 
-The SVN revision details are: 3002M
+The SVN revision details are: 3020M
 Note assertions via standard C assert() are on.
 
 Read 52 user parameters from serial-chol-st1.inp
@@ -164,28 +164,28 @@ Pair potential minimum h is:  4.4042689e-01
 Pair potential energy is:     0.0000000e+00
 
 Colloid velocities - x y z
-[minimum ] -1.4093227e-03 -3.4110693e-08 -4.2283606e-08
-[maximum ] -1.3941845e-03  6.9528555e-08 -9.0085587e-09
+[minimum ] -1.4093227e-03 -3.1709857e-08 -4.1768345e-08
+[maximum ] -1.3941845e-03  6.7453707e-08 -9.4553996e-09
 
 Scalars - total mean variance min max
-[rho]       32662.00  1.00000000000  9.8038289e-10  0.99950225520  1.00032483604
-[phi] -2.3253103e-01 -7.1193140e-06 7.2047424e-08 -8.7209249e-03 9.7276954e-03
-[phi]  1.0763451e-02  3.2954047e-07 9.2035557e-08 -1.0627204e-02 1.0556469e-02
-[phi] -1.6512964e-02 -5.0557111e-07 9.2101818e-08 -1.0591286e-02 1.0606404e-02
+[rho]       32662.00  1.00000000000  9.8038422e-10  0.99950225520  1.00032483656
+[phi] -2.3253103e-01 -7.1193140e-06 7.2047424e-08 -8.7209250e-03 9.7276954e-03
+[phi]  1.0763449e-02  3.2954043e-07 9.2035557e-08 -1.0627204e-02 1.0556469e-02
+[phi] -1.6512964e-02 -5.0557112e-07 9.2101818e-08 -1.0591286e-02 1.0606404e-02
 [phi]  1.0771971e-01  3.2980132e-06 1.0113391e-07 -5.8549799e-03 1.3610596e-02
-[phi]  2.1670320e-03  6.6347194e-08 1.3270983e-07 -1.3455773e-02 1.3464589e-02
+[phi]  2.1670320e-03  6.6347194e-08 1.3270983e-07 -1.3455774e-02 1.3464588e-02
 
 Free energies - timestep f v f/v f_s a f_s/a
 [fe]             20  8.5627643742e-04  3.2662000000e+04  2.6216289187e-08  3.5558486805e-02  2.1800000000e+02  1.6311232479e-04
 
 Momentum - x y z
-[total   ]  4.4231285e-13 -8.6712512e-15 -9.2439458e-15
-[fluid   ]  1.4903502e-01 -1.8806253e-06  2.5629357e-06
-[colloids] -1.4903502e-01  1.8806253e-06 -2.5629357e-06
+[total   ]  4.5208282e-13 -9.0357913e-15 -6.1432183e-15
+[fluid   ]  1.4903502e-01 -1.8996811e-06  2.5588599e-06
+[colloids] -1.4903502e-01  1.8996811e-06 -2.5588599e-06
 
 Velocity - x y z
-[minimum ] -1.4081431e-03 -5.8972210e-04 -5.8953440e-04
-[maximum ]  2.8948265e-04  5.8955897e-04  5.8949430e-04
+[minimum ] -1.4081449e-03 -5.8972384e-04 -5.8953478e-04
+[maximum ]  2.8948305e-04  5.8955723e-04  5.8949392e-04
 
 Completed cycle 20
 
@@ -193,26 +193,27 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.719      2.719      2.719   2.719031 (1 call)
-      Time step loop:      0.130      0.152      2.665   0.133230 (20 calls)
-         Propagation:      0.012      0.016      0.248   0.012419 (20 calls)
-    Propagtn (krnl) :      0.012      0.016      0.248   0.012414 (20 calls)
-           Collision:      0.024      0.029      0.492   0.024579 (20 calls)
-   Collision (krnl) :      0.024      0.029      0.491   0.024574 (20 calls)
-       Lattice halos:      0.002      0.004      0.106   0.002638 (40 calls)
-       phi gradients:      0.018      0.021      0.366   0.018280 (20 calls)
-           phi halos:      0.001      0.002      0.022   0.001120 (20 calls)
-              Forces:      0.000      0.000      0.004   0.000220 (20 calls)
-             Rebuild:      0.001      0.001      0.020   0.000993 (20 calls)
-                 BBL:      0.001      0.001      0.019   0.000959 (20 calls)
-      Particle halos:      0.000      0.000      0.000   0.000017 (20 calls)
-   Force calculation:      0.031      0.036      0.635   0.031771 (20 calls)
-   Phi force (krnl) :      0.011      0.014      0.228   0.011415 (20 calls)
-          phi update:      0.037      0.046      0.754   0.037718 (20 calls)
-      Velocity Halo :      0.000      0.001      0.009   0.000461 (20 calls)
-BE mol field (krnl) :      0.008      0.013      0.174   0.008709 (20 calls)
-BP BE update (krnl) :      0.014      0.015      0.284   0.014191 (20 calls)
-     Advectn (krnl) :      0.010      0.013      0.210   0.010479 (20 calls)
- Advectn BCS (krnl) :      0.003      0.004      0.061   0.003039 (20 calls)
-               Free1:      0.000      0.025      0.025   0.000411 (60 calls)
+               Total:      2.826      2.826      2.826   2.826287 (1 call)
+      Time step loop:      0.133      0.158      2.769   0.138459 (20 calls)
+         Propagation:      0.012      0.016      0.249   0.012460 (20 calls)
+    Propagtn (krnl) :      0.012      0.016      0.249   0.012455 (20 calls)
+           Collision:      0.023      0.028      0.476   0.023819 (20 calls)
+   Collision (krnl) :      0.023      0.028      0.476   0.023813 (20 calls)
+       Lattice halos:      0.002      0.004      0.107   0.002681 (40 calls)
+       phi gradients:      0.018      0.022      0.370   0.018509 (20 calls)
+           phi halos:      0.001      0.002      0.023   0.001161 (20 calls)
+              Forces:      0.000      0.000      0.005   0.000234 (20 calls)
+             Rebuild:      0.001      0.002      0.021   0.001054 (20 calls)
+                 BBL:      0.001      0.001      0.019   0.000932 (20 calls)
+      Particle halos:      0.000      0.000      0.000   0.000018 (20 calls)
+   Force calculation:      0.033      0.038      0.676   0.033777 (20 calls)
+   Phi force (krnl) :      0.013      0.013      0.260   0.012998 (20 calls)
+          phi update:      0.040      0.046      0.825   0.041249 (20 calls)
+      Velocity Halo :      0.000      0.001      0.009   0.000437 (20 calls)
+BE mol field (krnl) :      0.008      0.009      0.169   0.008454 (20 calls)
+BP BE update (krnl) :      0.014      0.019      0.293   0.014655 (20 calls)
+     Advectn (krnl) :      0.013      0.018      0.278   0.013887 (20 calls)
+ Advectn BCS (krnl) :      0.003      0.004      0.060   0.003007 (20 calls)
+               Free1:      0.000      0.024      0.024   0.000400 (60 calls)
+               Free3:      0.000      0.000      0.000   0.000018 (20 calls)
 Ludwig finished normally.
