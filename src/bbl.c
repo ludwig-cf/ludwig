@@ -373,7 +373,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
       r0[Y] = pc->s.r[Y];
       r0[Z] = pc->s.r[Z];
 
-      cs_minimum_distance(cs, r, r0, rb);
+      cs_minimum_distance(cs, r0, r, rb);
 
       /* u_b = v + omega x r_b */
 
