@@ -27,8 +27,11 @@ extern __constant__ int tc_ndist;
 typedef struct lb_collide_param_s lb_collide_param_t;
 
 struct lb_collide_param_s {
+  int nsite;
+  int ndist;
   int isnoise;                      /* switch for fluctuations */
   int isghost;                      /* switch for ghost modes */
+  double rho0;
   double var_shear;
   double var_bulk;
   double var_noise[NVEL];

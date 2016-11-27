@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,9 +22,9 @@
 #include "colloids_halo.h"
 #include "tests.h"
 
-int test_colloids_halo111(void);
-int test_colloids_halo211(void);
-int test_colloids_halo_repeat(void);
+int test_colloids_halo111(pe_t * pe, cs_t * cs);
+int test_colloids_halo211(pe_t * pe, cs_t * cs);
+int test_colloids_halo_repeat(pe_t * pe, cs_t * cs);
 static void test_position(const double * r1, const double * r2);
 
 /*****************************************************************************
@@ -44,9 +44,9 @@ int test_colloids_halo_suite(void) {
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
 
-  test_colloids_halo111();
-  test_colloids_halo211();
-  test_colloids_halo_repeat();
+  test_colloids_halo111(pe, cs);
+  test_colloids_halo211(pe, cs);
+  test_colloids_halo_repeat(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_colloids_halo\n");
   cs_free(cs);
@@ -64,7 +64,7 @@ int test_colloids_halo_suite(void) {
  *
  *****************************************************************************/
 
-int test_colloids_halo111(void) {
+int test_colloids_halo111(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
   int noffset[3];
@@ -78,7 +78,10 @@ int test_colloids_halo111(void) {
   colloids_info_t * cinfo = NULL;
   colloid_halo_t * halo = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   colloids_halo_create(cinfo, &halo);
@@ -204,7 +207,7 @@ int test_colloids_halo111(void) {
  *
  *****************************************************************************/
 
-int test_colloids_halo211(void) {
+int test_colloids_halo211(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
   int noffset[3];
@@ -219,7 +222,10 @@ int test_colloids_halo211(void) {
   colloid_halo_t * halo = NULL;
   colloids_info_t * cinfo = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   colloids_halo_create(cinfo, &halo);
@@ -339,7 +345,7 @@ int test_colloids_halo211(void) {
  *
  *****************************************************************************/
 
-int test_colloids_halo_repeat(void) {
+int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
   int noffset[3];
@@ -350,7 +356,10 @@ int test_colloids_halo_repeat(void) {
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   coords_nlocal_offset(noffset);

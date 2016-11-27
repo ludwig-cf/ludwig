@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2016 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -25,11 +25,12 @@
 #include "colloids.h"
 #include "tests.h"
 
-int test_bonds_dimers(void);
-int test_bonds_trimers(void);
-int test_bonds_dimer_instance(double a0, double r1[3], double r2[3]);
-int test_bonds_trimer_instance(double a0, double r1[3], double r2[3],
-			       double r3[3]);
+int test_bonds_dimers(pe_t * pe, cs_t * cs);
+int test_bonds_trimers(pe_t * pe, cs_t * cs);
+int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
+			      double r2[3]);
+int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
+			       double r2[3], double r3[3]);
 int colloid_forces_bonds_count_local(colloids_info_t * cinfo, int * nbond,
 				     int * nangle);
 int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
@@ -50,8 +51,8 @@ int test_bonds_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  test_bonds_dimers();
-  test_bonds_trimers();
+  test_bonds_dimers(pe, cs);
+  test_bonds_trimers(pe, cs);
 
   cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_bonds\n");
@@ -66,7 +67,7 @@ int test_bonds_suite(void) {
  *
  *****************************************************************************/
 
-int test_bonds_dimers(void) {
+int test_bonds_dimers(pe_t * pe, cs_t * cs) {
 
   double a0 = 2.3;  /* Colloid radius doubling as 'bond length' */
   double r1[3];
@@ -79,8 +80,8 @@ int test_bonds_dimers(void) {
   r2[Y] = 0.5*L(X) + a0;
   r2[Z] = 0.5*L(X) + a0;
 
-  test_bonds_dimer_instance(a0, r1, r2);
-  test_bonds_dimer_instance(a0, r2, r1);
+  test_bonds_dimer_instance(pe, cs, a0, r1, r2);
+  test_bonds_dimer_instance(pe, cs, a0, r2, r1);
 
   r1[X] = a0;
   r1[Y] = a0;
@@ -89,8 +90,8 @@ int test_bonds_dimers(void) {
   r2[Y] = L(Y) - a0;
   r2[Z] = L(Z) - a0;
 
-  test_bonds_dimer_instance(a0, r1, r2);
-  test_bonds_dimer_instance(a0, r2, r1);
+  test_bonds_dimer_instance(pe, cs, a0, r1, r2);
+  test_bonds_dimer_instance(pe, cs, a0, r2, r1);
 
   return 0;
 }
@@ -101,7 +102,7 @@ int test_bonds_dimers(void) {
  *
  *****************************************************************************/
 
-int test_bonds_trimers(void) {
+int test_bonds_trimers(pe_t * pe, cs_t * cs) {
 
   double a0 = 2.3;
   double r0[3];
@@ -122,8 +123,8 @@ int test_bonds_trimers(void) {
   r2[Y] = r0[Y];
   r2[Z] = r0[Z];
 
-  test_bonds_trimer_instance(a0, r0, r1, r2);
-  test_bonds_trimer_instance(a0, r0, r2, r1);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r2, r1);
 
   /* L-shape trimer */
 
@@ -139,13 +140,13 @@ int test_bonds_trimers(void) {
   r2[Y] = a0;
   r2[Z] = r1[Z];
 
-  test_bonds_trimer_instance(a0, r0, r1, r2);
-  test_bonds_trimer_instance(a0, r0, r2, r1);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r2, r1);
 
   r2[Z] = a0;
 
-  test_bonds_trimer_instance(a0, r0, r1, r2);
-  test_bonds_trimer_instance(a0, r0, r2, r1);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r2, r1);
 
   /* Small angle */
 
@@ -161,7 +162,7 @@ int test_bonds_trimers(void) {
   r2[Y] = r0[Y] - 0.1;
   r2[Z] = r0[Z];
 
-  test_bonds_trimer_instance(a0, r0, r1, r2);
+  test_bonds_trimer_instance(pe, cs, a0, r0, r1, r2);
 
   return 0;
 }
@@ -176,7 +177,8 @@ int test_bonds_trimers(void) {
  *
  *****************************************************************************/
 
-int test_bonds_dimer_instance(double a0, double r1[3], double r2[3]) {
+int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
+			      double r2[3]) {
 
   int nc;
   int nbond, nbond_local;
@@ -190,10 +192,15 @@ int test_bonds_dimer_instance(double a0, double r1[3], double r2[3]) {
   colloid_state_t state2;
   colloid_state_t * state0;
 
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
+
+  cs_cart_comm(cs, &comm);
 
   state0 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
   assert(state0);
@@ -267,8 +274,8 @@ int test_bonds_dimer_instance(double a0, double r1[3], double r2[3]) {
  *
  *****************************************************************************/
 
-int test_bonds_trimer_instance(double a0, double r0[3], double r1[3],
-			       double r2[3]) {
+int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
+			       double r1[3], double r2[3]) {
 
   int nc;
   int nbond, nbond_local;
@@ -284,10 +291,15 @@ int test_bonds_trimer_instance(double a0, double r0[3], double r1[3],
   colloid_state_t state2;
   colloid_state_t * state_null;
 
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
+
+  cs_cart_comm(cs, &comm);
 
   state_null = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
   assert(state_null);

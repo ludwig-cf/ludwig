@@ -105,7 +105,7 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
   assert(pe);
   assert(cs);
 
-  colloids_info_create(ncell, &cinfo);
+  colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
   map_create(pe, cs, 0, &map);
 
@@ -164,7 +164,7 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
   assert(pe);
   assert(cs);
 
-  colloids_info_create(ncell, &cinfo);
+  colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
   map_create(pe, cs, 0, &map);
 
@@ -233,7 +233,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
   assert(pe);
   assert(cs);
 
-  colloids_info_create(ncell, &cinfo);
+  colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
   map_create(pe, cs, 0, &map);
 
