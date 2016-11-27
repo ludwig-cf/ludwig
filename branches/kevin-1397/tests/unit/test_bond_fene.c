@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh
+ *  (c) 2014-2016 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -26,7 +26,7 @@
 #define BOND_R0   7.0
 
 int test_bond_fene1(void);
-int test_bond_fene2(void);
+int test_bond_fene2(pe_t * pe, cs_t * cs);
 int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
 		      double r2[3], colloid_t * pc[2]);
 
@@ -46,7 +46,7 @@ int test_bond_fene_suite(void) {
   cs_init(cs);
 
   test_bond_fene1();
-  test_bond_fene2();
+  test_bond_fene2(pe, cs);
 
   cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_bond_fene\n");
@@ -89,7 +89,7 @@ int test_bond_fene1(void) {
  *
  *****************************************************************************/
 
-int test_bond_fene2(void) {
+int test_bond_fene2(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
 
@@ -104,7 +104,10 @@ int test_bond_fene2(void) {
   bond_fene_t * bond = NULL;
   colloid_t * pc[2];
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   interact_create(&interact);
 
   assert(cinfo);
@@ -125,7 +128,7 @@ int test_bond_fene2(void) {
   interact_find_bonds(interact, cinfo);
   interact_bonds(interact, cinfo);
 
-  coords_minimum_distance(r1, r2, r12);
+  cs_minimum_distance(cs, r1, r2, r12);
   dr = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
   bond_fene_single(bond, dr, &v, &f);
 

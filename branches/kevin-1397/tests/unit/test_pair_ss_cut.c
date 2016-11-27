@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2016 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -18,6 +18,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloids_s.h"
 #include "colloids_halo.h"
 #include "pair_ss_cut.h"
 #include "tests.h"
@@ -28,7 +29,7 @@
 #define PAIR_HC      0.25
 
 static int test_pair_ss_cut1(void);
-static int test_pair_ss_cut2(void);
+static int test_pair_ss_cut2(pe_t * pe, cs_t * cs);
 static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 			     pair_ss_cut_t * pair);
 
@@ -48,7 +49,7 @@ int test_pair_ss_cut_suite(void) {
   cs_init(cs);
 
   test_pair_ss_cut1();
-  test_pair_ss_cut2();
+  test_pair_ss_cut2(pe, cs);
 
   cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_pair_ss_cut\n");
@@ -94,7 +95,7 @@ static int test_pair_ss_cut1(void) {
  *
  *****************************************************************************/
 
-static int test_pair_ss_cut2(void) {
+static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
 
@@ -102,7 +103,10 @@ static int test_pair_ss_cut2(void) {
   interact_t * interact = NULL;
   pair_ss_cut_t * pair = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
   interact_create(&interact);
   assert(interact);
@@ -140,8 +144,12 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   double h, f, v;
   double r1[3];
   double r2[3];
+  double lmin[3];
+  double ltot[3];
   double stats[INTERACT_STAT_MAX];
   double stats_local[INTERACT_STAT_MAX];
+
+  MPI_Comm comm;
 
   colloid_t * pc1 = NULL;
   colloid_t * pc2 = NULL;
@@ -150,11 +158,15 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   assert(interact);
   assert(pair);
 
+  cs_lmin(cinfo->cs, lmin);
+  cs_ltot(cinfo->cs, ltot);
+  cs_cart_comm(cinfo->cs, &comm);
+
   h = 2*ah + dh;
   /* The sqrt(3)*sqrt(4) gives separation h in 3d */
-  r1[X] = Lmin(X) + h/sqrt(12.0);
-  r1[Y] = Lmin(Y) + h/sqrt(12.0);
-  r1[Z] = Lmin(Z) + h/sqrt(12.0);
+  r1[X] = lmin[X] + h/sqrt(12.0);
+  r1[Y] = lmin[Y] + h/sqrt(12.0);
+  r1[Z] = lmin[Z] + h/sqrt(12.0);
 
   colloids_info_add_local(cinfo, 1, r1, &pc1);
   if (pc1) {
@@ -162,9 +174,9 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
     pc1->s.ah = ah;
   }
 
-  r2[X] = Lmin(X) + L(X) - h/sqrt(12.0);
-  r2[Y] = Lmin(Y) + L(Y) - h/sqrt(12.0);
-  r2[Z] = Lmin(Z) + L(Z) - h/sqrt(12.0);
+  r2[X] = lmin[X] + ltot[X] - h/sqrt(12.0);
+  r2[Y] = lmin[Y] + ltot[Y] - h/sqrt(12.0);
+  r2[Z] = lmin[Z] + ltot[Z] - h/sqrt(12.0);
 
   colloids_info_add_local(cinfo, 2, r2, &pc2);
   if (pc2) {
@@ -198,7 +210,7 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   pair_ss_cut_stats(pair, stats_local);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
-		cart_comm());
+		comm);
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
 
   return 0;

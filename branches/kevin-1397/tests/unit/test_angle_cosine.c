@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh 2014
+ *  (c) 2014-2016 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -24,8 +24,8 @@
 
 #define ANGLE_KAPPA 2.0
 
-int test_angle_cosine1(void);
-int test_angle_cosine2(void);
+int test_angle_cosine1(pe_t * pe, cs_t * cs);
+int test_angle_cosine2(pe_t * pe, cs_t * cs);
 int test_create_trimer(colloids_info_t * cinfo, double a, double r1[3],
 		       double r2[3], double r3[3], colloid_t * pc[3]);
 
@@ -44,8 +44,8 @@ int test_angle_cosine_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  test_angle_cosine1();
-  test_angle_cosine2();
+  test_angle_cosine1(pe, cs);
+  test_angle_cosine2(pe, cs);
 
   cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_angle_cosine\n");
@@ -62,7 +62,7 @@ int test_angle_cosine_suite(void) {
  *
  *****************************************************************************/
 
-int test_angle_cosine1(void) {
+int test_angle_cosine1(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
   double a = 2.3;                   /* colloid size */
@@ -75,7 +75,10 @@ int test_angle_cosine1(void) {
   interact_t * interact = NULL;
   angle_cosine_t * angle = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   interact_create(&interact);
   angle_cosine_create(&angle);
   angle_cosine_param_set(angle, ANGLE_KAPPA);
@@ -114,7 +117,7 @@ int test_angle_cosine1(void) {
  *
  *****************************************************************************/
 
-int test_angle_cosine2(void) {
+int test_angle_cosine2(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
   double a = 2.3;                   /* colloid size */
@@ -129,7 +132,10 @@ int test_angle_cosine2(void) {
   interact_t * interact = NULL;
   angle_cosine_t * angle = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   interact_create(&interact);
   angle_cosine_create(&angle);
   angle_cosine_param_set(angle, ANGLE_KAPPA);

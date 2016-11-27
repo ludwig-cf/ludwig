@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2016 The University of Edinburgh
  *  Contributing authors;
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -18,6 +18,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloids_s.h"
 #include "colloids_halo.h"
 #include "pair_lj_cut.h"
 
@@ -26,7 +27,7 @@
 #define PAIR_RC      3.0
 
 int test_pair_lj_cut1(void);
-int test_pair_lj_cut2(void);
+int test_pair_lj_cut2(pe_t * pe, cs_t * cs);
 int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 		      pair_lj_cut_t * lj);
 
@@ -46,7 +47,7 @@ int test_pair_lj_cut_suite(void) {
   cs_init(cs);
 
   test_pair_lj_cut1();
-  test_pair_lj_cut2();
+  test_pair_lj_cut2(pe, cs);
 
   cs_free(cs);
   pe_info(pe, "PASS     ./unit/test_pair_lj_cut\n");
@@ -93,11 +94,11 @@ int test_pair_lj_cut1(void) {
 
 /*****************************************************************************
  *
- *  test_pair_ss_cut2
+ *  test_pair_lj_cut2
  *
  *****************************************************************************/
 
-int test_pair_lj_cut2(void) {
+int test_pair_lj_cut2(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
 
@@ -105,7 +106,10 @@ int test_pair_lj_cut2(void) {
   interact_t * interact = NULL;
   pair_lj_cut_t * lj = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   interact_create(&interact);
   pair_lj_cut_create(&lj);
 
@@ -146,12 +150,16 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   double stats[INTERACT_STAT_MAX];
   double stats_local[INTERACT_STAT_MAX];
 
+  MPI_Comm comm;
+
   colloid_t * pc1 = NULL;
   colloid_t * pc2 = NULL;
 
   assert(cinfo);
   assert(interact);
   assert(lj);
+
+  cs_cart_comm(cinfo->cs, &comm);
 
   h = 2.0*ah + dh;
   r1[X] = 0.5*L(X) - 0.5*h;
@@ -198,12 +206,12 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   pair_lj_cut_stats(lj, stats_local);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
-		cart_comm());
+		comm);
 
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_MIN,
-		cart_comm());
+		comm);
 
   assert(fabs(stats[INTERACT_STAT_RMINLOCAL] - h) < FLT_EPSILON);
   assert(fabs(stats[INTERACT_STAT_HMINLOCAL] - dh) < FLT_EPSILON);

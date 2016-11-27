@@ -94,7 +94,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   /* Colloid info object always created with ncell = 2;
    * later we check if this is ok and adjust if necesaary/possible. */
 
-  colloids_info_create(ncell, pinfo);
+  colloids_info_create(pe, cs, ncell, pinfo);
 
   rt_string_parameter(rt, "colloid_init", keyvalue, BUFSIZ);
 

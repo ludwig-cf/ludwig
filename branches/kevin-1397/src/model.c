@@ -283,12 +283,17 @@ __host__ int lb_init(lb_t * lb) {
  *
  *  lb_collide_param_commit
  *
+ *  TODO: responsibility for initialisation of various parameters
+ *        is rather diffuse; needs checking.
+ *
  *****************************************************************************/
 
 __host__ int lb_collide_param_commit(lb_t * lb) {
 
   assert(lb);
 
+  lb->p->nsite = lb->nsite;
+  lb->p->ndist = lb->ndist;
   copyConstToTarget(&static_param, lb->p, sizeof(lb_collide_param_t));
 
   return 0;

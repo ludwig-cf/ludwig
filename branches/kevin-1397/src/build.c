@@ -22,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
+#include "lb_model_s.h"
 #include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
@@ -29,6 +30,8 @@
 #include "build.h"
 
 
+int build_replace_fluid_local(colloids_info_t * info, colloid_t * pc,
+			      int index, lb_t * lb);
 static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
 static int build_replace_fluid(lb_t * lb, colloids_info_t * info, int index,
 			       colloid_t * pc, map_t * map);
@@ -597,6 +600,88 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  build_remove_replace_policy
+ *
+ *****************************************************************************/
+
+int build_bbl_rebuild_flag(colloids_info_t * cinfo) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int nhalo;
+  cs_t * cs = NULL;
+  colloid_t * pcold;
+  colloid_t * pcnew;
+
+  assert(cinfo);
+
+  cs_ref(&cs);
+  cs_nhalo(cs, &nhalo);
+  cs_nlocal(cs, nlocal);
+
+  for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
+    for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+
+	index = cs_index(cs, ic, jc, kc);
+
+	colloids_info_map_old(cinfo, index, &pcold);
+	colloids_info_map(cinfo, index, &pcnew);
+
+	if (pcold == NULL && pcnew != NULL) pcnew->s.rebuild = 1;
+	if (pcold != NULL && pcnew == NULL) pcold->s.rebuild = 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+int build_remove_replace_policy_local(colloids_info_t * cinfo, lb_t * lb,
+				      field_t * phi,
+				      field_t * p,
+				      field_t * q,
+				      psi_t * psi,
+				      map_t * map) {
+  int ic, jc, kc, index;
+  int nlocal[3];
+  cs_t * cs = NULL;
+  colloid_t * pcold;
+  colloid_t * pcnew;
+
+  assert(lb);
+  assert(cinfo);
+
+  cs_ref(&cs);
+  cs_nlocal(cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(cs, ic, jc, kc);
+
+	colloids_info_map_old(cinfo, index, &pcold);
+	colloids_info_map(cinfo, index, &pcnew);
+
+	if (pcold == NULL && pcnew != NULL) {
+	  build_remove_fluid(lb, index, pcnew);
+	}
+
+	if (pcold != NULL && pcnew == NULL) {
+	  build_replace_fluid_local(cinfo, pcold, index, lb);
+	  /* if (q) build_replace_q_local(cinfo, pcold, index, q);*/
+	}
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
 /******************************************************************************
  *
  *  build_remove_fluid
@@ -774,6 +859,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 
   /* Set new fluid distributions */
 
+  assert(weight > 0.0);
   weight = 1.0/weight;
 
   for (p = 0; p < NVEL; p++) {
@@ -808,6 +894,65 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
 
   for (ia = 0; ia < 3; ia++) {
     p_colloid->t0[ia] += rtmp[ia];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_replace_fluid_local
+ *
+ *  For COLLOID_REPLACE_POLICY_LOCAL, replace distributions
+ *  by using a reprojection based on the local solid body
+ *  velocity of the colloid that has just vacated the site.
+ *
+ *  This has the advantage (cf interpolation) of being local.
+ *
+ *****************************************************************************/
+
+int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
+			      int index, lb_t * lb) {
+
+  int ia, ib, p;
+  double rho0;
+  double f, sdotq, udotc;
+  double rb[3], ub[3];
+  double gnew[3] = {0.0, 0.0, 0.0};
+  double tnew[3] = {0.0, 0.0, 0.0};
+
+  assert(cinfo);
+  assert(pc);
+  assert(lb);
+
+  /* Compute new distribution */
+
+  rho0 = lb->p->rho0; /* fluid density */
+  colloid_rb_ub(cinfo, pc, index, rb, ub);
+
+  for (p = 0; p < NVEL; p++) {
+    udotc = cv[p][X]*ub[X] + cv[p][Y]*ub[Y] + cv[p][Z]*ub[Z];
+    sdotq = 0.0;
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	sdotq += q_[p][ia][ib]*ub[ia]*ub[ib];
+      }
+    }
+
+    f = wv[p]*(rho0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+    lb_f_set(lb, index, p, LB_RHO, f);
+
+    /* Subtract momentum from colloid (contribution to) */
+    gnew[X] -= f*cv[p][X];
+    gnew[Y] -= f*cv[p][Y];
+    gnew[Z] -= f*cv[p][Z];
+  }
+
+  cross_product(rb, gnew, tnew);
+
+  for (ia = 0; ia < 3; ia++) {
+    pc->f0[ia] += gnew[ia];
+    pc->t0[ia] += tnew[ia];
   }
 
   return 0;
@@ -884,6 +1029,7 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 
     /* Set new fluid distributions */
 
+    assert(weight > 0.0);
     weight = 1.0/weight;
     phi[0] = 0.0;
 
@@ -922,6 +1068,7 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
       weight += wv[p];
     }
 
+    assert(weight > 0.0);
     weight = 1.0 / weight;
     for (n = 0; n < nf; n++) {
       phi[n] *= weight;

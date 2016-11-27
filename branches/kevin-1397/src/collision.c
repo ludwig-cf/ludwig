@@ -1123,6 +1123,8 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
   physics_ref(&phys);
   physics_rho0(phys, &rho0);
 
+  lb->p->rho0 = rho0;
+
   /* Initialise the relaxation times */
  
   physics_eta_shear(phys, &eta_shear);

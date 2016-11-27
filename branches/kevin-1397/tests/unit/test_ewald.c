@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -71,7 +71,7 @@ int test_ewald_suite(void) {
   test_assert(fabs(L(Y) - 64.0) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(L(Z) - 64.0) < TEST_DOUBLE_TOLERANCE);
 
-  colloids_info_create(ncell, &cinfo);
+  colloids_info_create(pe, cs, ncell, &cinfo);
   test_assert(cinfo != NULL);
 
   ewald_create(mu, rc, cinfo, &ewald);
