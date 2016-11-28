@@ -1637,6 +1637,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 int ludwig_colloids_update(ludwig_t * ludwig) {
 
   int ndist;
+  int ndevice;
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
   int is_subgrid = 0;    /* subgrid particle switch */
@@ -1645,6 +1646,11 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
+
+  targetGetDeviceCount(&ndevice);
+
+  /* __NVCC__ TODO: remove */
+  lb_memcpy(ludwig->lb, cudaMemcpyDeviceToHost);
 
   subgrid_on(&is_subgrid);
 
@@ -1671,7 +1677,13 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_HALO_LATTICE);
 
-    lb_halo(ludwig->lb);
+    /* __NVCC__ */
+    if (ndevice == 0) {
+      lb_halo(ludwig->lb);
+    }
+    else {
+      lb_halo_swap(ludwig->lb, LB_HALO_HOST);
+    }
 
     TIMER_stop(TIMER_HALO_LATTICE);
 
@@ -1705,28 +1717,11 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     TIMER_stop(TIMER_FORCES);
   }
 
+  /* __NVCC__ TODO: remove */
 
-  /* update target copy of map structure */
-  int nhalo = coords_nhalo();
-  int nlocal[3];
-  coords_nlocal(nlocal);
-  int Nall[3];
-  int nSites;
-  Nall[X] = nlocal[X] + 2*nhalo;
-  Nall[Y] = nlocal[Y] + 2*nhalo;
-  Nall[Z] = nlocal[Z] + 2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
-
+  colloids_memcpy(ludwig->collinfo, cudaMemcpyHostToDevice);
   map_memcpy(ludwig->map, cudaMemcpyHostToDevice);
-  
-  /* set up colloids such that they can be accessed from target
-   * noting that each actual colloid structure stays resident on the host */
-  if (ludwig->collinfo->map_new){
-    colloids_info_t* t_cinfo=ludwig->collinfo->tcopy;
-    colloid_t* tmpcol;
-    copyFromTarget(&tmpcol,&(t_cinfo->map_new),sizeof(colloid_t**)); 
-    copyToTarget(tmpcol,ludwig->collinfo->map_new,nSites*sizeof(colloid_t*));
-  }
+  lb_memcpy(ludwig->lb, cudaMemcpyHostToDevice);
 
   return 0;
 }

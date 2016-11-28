@@ -268,7 +268,7 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
 
   __host_launch(gradient_6x6_kernel, nblk, ntpb, ctxt->target, cstarget,
 		anch->target, anch->fe->target, fg->target,
-		anch->map->target, anch->cinfo->tcopy);
+		anch->map->target, anch->cinfo->target);
 
   targetDeviceSynchronise();
 

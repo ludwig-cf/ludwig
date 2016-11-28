@@ -65,6 +65,7 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
 				  colloids_info_t ** pinfo);
 __host__ void colloids_info_free(colloids_info_t * info);
 __host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo);
+__host__ int colloids_memcpy(colloids_info_t * info, int flag);
 __host__ int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated);
 __host__ int colloids_info_rho0(colloids_info_t * cinfo, double * rho0);
 __host__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0);

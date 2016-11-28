@@ -41,6 +41,7 @@ __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
 				  colloids_info_t ** pinfo) {
 
+  int ndevice;
   int nhalo = 1;                   /* Always exactly one halo cell each side */
   int nlist;
   colloids_info_t * obj = NULL;
@@ -54,10 +55,6 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
 
   obj->pe = pe;
   obj->cs = cs;
-
-  /* allocate target copy of structure */
-
-  targetCalloc((void**) &(obj->tcopy), sizeof(colloids_info_t));
 
   /* Defaults */
 
@@ -77,6 +74,15 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
   obj->ncells = nlist;
   obj->rho0 = RHO_DEFAULT;
   obj->drmax = DRMAX_DEFAULT;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    targetCalloc((void**) &(obj->target), sizeof(colloids_info_t));
+  }
 
   *pinfo = obj;
 
@@ -99,7 +105,7 @@ __host__ void colloids_info_free(colloids_info_t * info) {
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
 
-  if (info->tcopy) targetFree(info->tcopy);
+  if (info->target != info) targetFree(info->target);
 
   free(info);
 
@@ -141,6 +147,33 @@ __host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
 
   colloids_info_free(*pinfo);
   *pinfo = newinfo;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int colloids_memcpy(colloids_info_t * info, int flag) {
+
+  int ndevice;
+
+  assert(info);
+  assert(info->map_new);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    assert(info->target == info);
+  }
+  else {
+    colloid_t * tmp;
+    copyFromTarget(&tmp, &info->target->map_new, sizeof(colloid_t **)); 
+    copyToTarget(tmp, info->map_new, info->nsites*sizeof(colloid_t *));
+  }
 
   return 0;
 }
@@ -208,10 +241,10 @@ __host__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0) {
 __host__ int colloids_info_map_init(colloids_info_t * info) {
 
   int nsites;
-  void * tmpptr;
+  int ndevice;
 
   assert(info);
-  assert(info->tcopy);
+  assert(info->target);
 
   cs_nsites(info->cs, &nsites);
 
@@ -226,10 +259,15 @@ __host__ int colloids_info_map_init(colloids_info_t * info) {
     pe_fatal(info->pe, "calloc (map_new) failed");
   }
 
-  /* allocate data space on target */
+  /* Allocate data space on target */
 
-  targetCalloc((void**) &tmpptr, nsites*sizeof(colloid_t*));
-  copyToTarget(&(info->tcopy->map_new), &tmpptr, sizeof(colloid_t**)); 
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    void * tmp;
+    targetCalloc((void **) &tmp, nsites*sizeof(colloid_t *));
+    copyToTarget(&info->target->map_new, &tmp, sizeof(colloid_t **)); 
+  }
 
   return 0;
 }
