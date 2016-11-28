@@ -49,6 +49,11 @@ __host__ __target__ int targetGetDeviceCount(int * device) {
 
   *device = 0;
 
+#ifdef FAKE_DEVICE
+  /* "Fake" device */
+  *device = 1;
+#endif
+
   return 0;
 }
 

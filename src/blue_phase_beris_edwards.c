@@ -1030,7 +1030,7 @@ int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(beris_edw_fix_swd_kernel, nblk, ntpb, ctxt->target,
-		cinfo->tcopy, hydro->target, map->target,
+		cinfo->target, hydro->target, map->target,
 		noffset[X], noffset[Y], noffset[Z]);
 
   targetSynchronize();

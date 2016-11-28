@@ -164,38 +164,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
 
   bbl_pass0(bbl, lb, cinfo);
 
-#ifdef __NVCC__
-#ifndef OLD_SHIT
+  /* __NVCC__ TODO: remove */
   lb_memcpy(lb, cudaMemcpyDeviceToHost);
-#else
-  lb_t* lb;
-
-  lb = lb_in;
-
-  /* update colloid-affected lattice sites from target, including neighbours */
-
-  copyFromTargetPointerMap3D(lb->f, lb->t_f,
-			     Nall, nFields, 1, (void **) cinfo->map_new);
-
-
-  /* update colloid-affected lattice sites from target*/
-  int ncolsite=colloids_number_sites(cinfo);
-
-  /* allocate space */
-  int* colloidSiteList =  (int*) malloc(ncolsite*sizeof(int));
-
-  /* populate list with all site indices */
-  colloids_list_sites(colloidSiteList,cinfo);
-
-  /* get fluid data from this subset of sites */
-  double* tmpptr;
-  lb_t* t_lb = lb->tcopy; 
-  copyFromTarget(&tmpptr,&(t_lb->f),sizeof(double*)); 
-  copyFromTargetSubset(lb->f,tmpptr,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
-#endif
-#else
-  lb_memcpy(lb, cudaMemcpyDeviceToHost);
-#endif
 
   bbl_pass1(bbl, lb, cinfo);
 
@@ -210,22 +180,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
 
   bbl_pass2(bbl, lb, cinfo);
 
-#ifdef __NVCC__
-#ifndef OLD_SHIT
+  /* __NVCC__ TODO: remove */
   lb_memcpy(lb, cudaMemcpyHostToDevice);
-#else
-  copyToTargetPointerMap3D(lb->t_f, lb->f,
-			   Nall, nFields, 0, (void **) cinfo->map_new); 
-
-  /* update target with colloid-affected lattice sites*/
-
-  copyToTargetSubset(tmpptr,lb->f,colloidSiteList,ncolsite,lb->nsite,NVEL*lb->ndist);
-  
-  free(colloidSiteList);
-#endif
-#else
-  lb_memcpy(lb, cudaMemcpyHostToDevice);
-#endif
 
   return 0;
 }
@@ -314,7 +270,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(bbl_pass0_kernel, nblk, ntpb, ctxt->target, cstarget,
-		lb->target, cinfo->tcopy);
+		lb->target, cinfo->target);
 
   targetSynchronize();
 

@@ -39,7 +39,7 @@ struct colloids_info_s {
 
   pe_t * pe;                  /* Parallel environment */
   cs_t * cs;                  /* Coordinate system */
-  colloids_info_t * tcopy;              /* copy of this structure on target */ 
+  colloids_info_t * target;   /* Copy of this structure on target */ 
 };
 
 

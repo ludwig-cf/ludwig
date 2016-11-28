@@ -141,6 +141,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   cudaDeviceSynchronize(); 
   kernel_ctxt_free(ctxt);
 
+  /* __NVCC__ TODO: check fw return values */
   wall_momentum_add(wall, fw);
 
   /* A separate kernel is requred to allow reduction of the
