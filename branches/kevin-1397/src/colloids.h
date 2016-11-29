@@ -114,6 +114,8 @@ __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
 					       const int index,
 					       const int di[3],
 					       double dn[3]);
+__host__ int colloid_rb(colloids_info_t * info, colloid_t * pc, int index,
+			double rb[3]);
 __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
 			   double rb[3], double ub[3]);
 #endif

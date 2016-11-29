@@ -1432,18 +1432,14 @@ __host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
 
 /*****************************************************************************
  *
- *  colloid_rhubarb
+ *  colloid_rb
  *
- *  Return, for a given position index, the boundary vector and the
- *  boundary velocity for a colloid.
- *
- *  It is the callers responsibility to ensure this makes sense,
- *  ie., point index really is on the boundary.
+ *  Return the boundary vector at point index.
  *
  *****************************************************************************/
 
-__host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
-			   double rb[3], double ub[3]) {
+__host__ int colloid_rb(colloids_info_t * info, colloid_t * pc, int index,
+			double rb[3]) {
 
   int ilocal[3];
   int noffset[3];
@@ -1460,6 +1456,29 @@ __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
   r[Z] = 1.0*(noffset[Z] + ilocal[Z]);
 
   cs_minimum_distance(info->cs, pc->s.r, r, rb);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_rhubarb
+ *
+ *  Return, for a given position index, the boundary vector and the
+ *  boundary velocity for a colloid.
+ *
+ *  It is the callers responsibility to ensure this makes sense,
+ *  ie., point index really is on the boundary.
+ *
+ *****************************************************************************/
+
+__host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
+			   double rb[3], double ub[3]) {
+
+  assert(info);
+  assert(pc);
+
+  colloid_rb(info, pc, index, rb);
 
   /* u_b = v + omega x r_b */
 
