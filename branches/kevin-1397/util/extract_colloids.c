@@ -44,11 +44,11 @@
 
 #include "colloid.h"
 
-#define NX 48
-#define NY 48
-#define NZ 48
+#define NX 66
+#define NY 128
+#define NZ 256
 
-static const int  iread_ascii = 1;       /* Read ascii or binary */
+static const int  iread_ascii = 0;       /* Read ascii or binary */
 static const int  reverse_cds = 0;       /* Reverse component order in output */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f,";
