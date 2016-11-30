@@ -1,0 +1,168 @@
+##############################################################################
+#
+#  Benchmark
+#  Based on Nature Comms. 2014 "sandwiches"
+#  This is 56_128_128, whereas sandwiches were 56_256_256
+#
+#  Liquid crystal, fluctuations (rho), particles, walls
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_start  0
+N_cycles 1000
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 56_128_128
+grid 1_8_8
+periodicity 0_1_1
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.01
+viscosity_bulk 0.1
+
+isothermal_fluctuations on
+temperature 0.000000002133333
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_blue_phase
+
+fd_advection_scheme_order 2
+fd_gradient_calculation 3d_7pt_solid
+
+
+###############################################################################
+#
+#  Blue Phase free energy
+#
+###############################################################################
+
+lc_a0      0.01
+lc_gamma   3.085714286
+lc_q0      0.09817477
+lc_kappa0  0.018971957
+lc_kappa1  0.018971957
+lc_xi      0.0
+
+lc_Gamma   0.5
+lc_active_zeta 0.0
+
+lc_q_init_amplitude 0.0001
+lc_q_initialisation random
+lc_init_redshift 1.0
+lc_redshift_update 0
+lc_init_nematic 1.0_0.0_0.0
+
+lc_anchoring_method two
+lc_wall_anchoring normal
+lc_coll_anchoring normal
+lc_anchoring_strength_wall 0.0018971957
+lc_anchoring_strength_colloid 0.0018971957
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_type        inactive
+colloid_init        from_file
+
+# Constant body force on all colloids ("gravity") [default is zero]
+# Uniform magnetic field [default is zero]
+
+colloid_gravity  0.0_0.0_0.0
+magnetic_b0      0.0_0.0_0.0
+
+# Colloid-colloid lubrication corrections
+
+lubrication_on 0
+
+###############################################################################
+#
+# Colloid-colloid soft-sphere potential parameters
+# The soft sphere is always needed
+#
+###############################################################################
+
+soft_sphere_on 1
+soft_sphere_epsilon 0.0004
+soft_sphere_sigma 0.1
+soft_sphere_nu 1.0
+soft_sphere_cutoff 0.25
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+
+boundary_walls 1_0_0
+boundary_lubrication_rcnormal 0.2
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 1000
+freq_measure 50000
+freq_config 25000000
+freq_phi    10000000
+freq_vel    10000000
+freq_shear_measurement 1000000
+freq_shear_output      1000000
+config_at_end no
+
+default_io_grid 1_1_1
+
+distribution_io_grid 1_1_1
+distribution_io_input_format BINARY
+
+phi_io_grid 1_1_1
+phi_format    BINARY
+vel_format    BINARY
+
+##############################################################################
+#
+#  colloid i/o
+#
+##############################################################################
+
+colloid_io_freq 50000
+colloid_io_grid 1_2_2
+colloid_io_format_input  ASCII_SERIAL
+colloid_io_format_output BINARY
+
+qs_dir_io_grid 1_4_4
+qs_dir_format BINARY
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235
