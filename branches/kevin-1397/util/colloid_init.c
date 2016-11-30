@@ -70,7 +70,7 @@ int main(int argc, char ** argv) {
   double ah = 3.5;                      /* Hydrodynamic radius */ 
   double vf = 0.1;                       /* Volume fraction */
   double dh = 1.0;                       /* "grace' distance */
-  double q0 = 150.0; 
+  double q0 = 0.0; 
   double q1 = 0.0;
 
   colloid_state_t * state;
@@ -226,7 +226,7 @@ void colloid_init_trial(double r[3], double dh) {
 void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 			     const int form) {
   int n;
-  const char * filename = "config.cds00000000.001-001";
+  const char * filename = "config.cds.init.001-001";
   FILE * fp;
 
   fp = fopen(filename, "w");
