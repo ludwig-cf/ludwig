@@ -224,6 +224,7 @@ surf_psi_b 0.01
 #                       hexagonal BPs: h2d, h3da, h3db
 #                       amorphous BP: bp3
 #			active_nematic
+#			random
 #
 #  lc_q_init_amplitude  scalar order parameter amplitude for initialisation
 #

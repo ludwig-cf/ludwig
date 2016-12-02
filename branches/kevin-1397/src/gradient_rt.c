@@ -52,7 +52,7 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, field_grad_t * grad, map_t * map,
     pe_fatal(pe, "Please check and try again\n");
   }
   else {
-    pe_info(pe, "Gradient calcaulation: ");
+    pe_info(pe, "Gradient calculation: ");
     if (strcmp(keyvalue, "2d_5pt_fluid") == 0) {
       pe_info(pe, "2d_5pt_fluid\n");
       f2 = grad_2d_5pt_fluid_d2;
