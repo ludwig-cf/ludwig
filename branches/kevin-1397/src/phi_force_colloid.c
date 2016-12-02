@@ -103,6 +103,8 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
+static __device__ double fs[3];
+
 __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 			      hydro_t * hydro, map_t * map, wall_t * wall) {
   int ia;
@@ -113,6 +115,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   kernel_ctxt_t * ctxt = NULL;
 
   /* Net momentum balance for wall */
+  double * fwd = NULL;
   double fw[3] = {0.0, 0.0, 0.0};
 
   assert(pth);
@@ -130,18 +133,21 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   kernel_ctxt_create(NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
+  targetConstAddress((void **) &fwd, fs);
+  copyToTarget(fwd, fw, 3*sizeof(double));
+
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
   __host_launch(phi_force_kernel, nblk, ntpb, ctxt->target,
 		pth->target, hydro->target, map->target);
 
   __host_launch(phi_force_wall_kernel, nblk, ntpb, ctxt->target,
-		pth->target, map->target, wallt, fw);
+		pth->target, map->target, wallt, fwd);
 
-  cudaDeviceSynchronize(); 
+  targetDeviceSynchronise(); 
   kernel_ctxt_free(ctxt);
 
-  /* __NVCC__ TODO: check fw return values */
+  copyFromTarget(fw, fwd, 3*sizeof(double));
   wall_momentum_add(wall, fw);
 
   /* A separate kernel is requred to allow reduction of the

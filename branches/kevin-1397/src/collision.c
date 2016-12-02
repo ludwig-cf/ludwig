@@ -171,7 +171,7 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
   KRONECKER_DELTA_CHAR(d);
 
   assert(lb);
-  assert(lb->p);
+  assert(lb->param);
   assert(hydro);
 
   /* Determine whether this chunk of lattice sites are all active
@@ -385,8 +385,8 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
 
   for (m = NHYDRO; m < NVEL; m++) {  
     __targetILP__(iv) {
-      mode[m*VVL+iv] = mode[m*VVL+iv] - lb->p->rtau[m]*(mode[m*VVL+iv] - 0.0)
-	                              + ghat[m*VVL+iv];
+      mode[m*VVL+iv] = mode[m*VVL+iv]
+	- lb->param->rtau[m]*(mode[m*VVL+iv] - 0.0) + ghat[m*VVL+iv];
     }
   }
 
@@ -484,6 +484,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   int nSites;
   int noise_on = 0;
   double force_global[3];
+  noise_t * noiset = NULL;
   physics_t * phys = NULL;
 
   assert(lb);
@@ -516,10 +517,11 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   checkTargetError("constants");
 
   noise_present(noise, NOISE_RHO, &noise_on);
+  noise_target(noise, &noiset);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
-  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->target, hydro->target, map->target, noise,noise_on,nSites);
+  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->target, hydro->target, map->target, noiset, noise_on,nSites);
 
   targetSynchronize();
 
@@ -782,7 +784,7 @@ __target__ void lb_collision_binary_site(lb_t * lb,
 
   for (m = NHYDRO; m < NVEL; m++) { 
     __targetILP__(iv)  mode[m*VVL+iv] = mode[m*VVL+iv] 
-	- lb->p->rtau[m]*(mode[m*VVL+iv] - 0.0) + ghat[m*VVL+iv];
+	- lb->param->rtau[m]*(mode[m*VVL+iv] - 0.0) + ghat[m*VVL+iv];
   }
 
   /* Project post-collision modes back onto the distribution */
@@ -1043,9 +1045,9 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
  __host__ int lb_collision_ghost_modes_on(lb_t * lb) {
 
    assert(lb);
-   assert(lb->p);
+   assert(lb->param);
 
-  lb->p->isghost = LB_GHOST_ON;
+  lb->param->isghost = LB_GHOST_ON;
 
   return 0;
 }
@@ -1059,9 +1061,9 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
  __host__ int lb_collision_ghost_modes_off(lb_t * lb) {
 
    assert(lb);
-   assert(lb->p);
+   assert(lb->param);
 
-  lb->p->isghost = LB_GHOST_OFF;
+  lb->param->isghost = LB_GHOST_OFF;
 
   return 0;
 }
@@ -1116,14 +1118,14 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
   physics_t * phys = NULL;
 
   assert(lb);
-  assert(lb->p);
+  assert(lb->param);
   assert(noise);
 
   noise_present(noise, NOISE_RHO, &noise_on);
   physics_ref(&phys);
   physics_rho0(phys, &rho0);
 
-  lb->p->rho0 = rho0;
+  lb->param->rho0 = rho0;
 
   /* Initialise the relaxation times */
  
@@ -1135,13 +1137,13 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
 
   if (nrelax_ == RELAXATION_M10) {
     for (p = NHYDRO; p < NVEL; p++) {
-      lb->p->rtau[p] = 1.0;
+      lb->param->rtau[p] = 1.0;
     }
   }
 
   if (nrelax_ == RELAXATION_BGK) {
     for (p = 0; p < NVEL; p++) {
-      lb->p->rtau[p] = rtau_shear;
+      lb->param->rtau[p] = rtau_shear;
     }
   }
 
@@ -1154,24 +1156,24 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
     if (rtau > 2.0) rtau = 2.0;
 
     if (NVEL == 15) {
-      lb->p->rtau[10] = rtau_shear;
-      lb->p->rtau[11] = rtau;
-      lb->p->rtau[12] = rtau;
-      lb->p->rtau[13] = rtau;
-      lb->p->rtau[14] = rtau_shear;
+      lb->param->rtau[10] = rtau_shear;
+      lb->param->rtau[11] = rtau;
+      lb->param->rtau[12] = rtau;
+      lb->param->rtau[13] = rtau;
+      lb->param->rtau[14] = rtau_shear;
     }
 
     if (NVEL == 19) {
-      lb->p->rtau[10] = rtau_shear;
-      lb->p->rtau[14] = rtau_shear;
-      lb->p->rtau[18] = rtau_shear;
+      lb->param->rtau[10] = rtau_shear;
+      lb->param->rtau[14] = rtau_shear;
+      lb->param->rtau[18] = rtau_shear;
 
-      lb->p->rtau[11] = rtau;
-      lb->p->rtau[12] = rtau;
-      lb->p->rtau[13] = rtau;
-      lb->p->rtau[15] = rtau;
-      lb->p->rtau[16] = rtau;
-      lb->p->rtau[17] = rtau;
+      lb->param->rtau[11] = rtau;
+      lb->param->rtau[12] = rtau;
+      lb->param->rtau[13] = rtau;
+      lb->param->rtau[15] = rtau;
+      lb->param->rtau[16] = rtau;
+      lb->param->rtau[17] = rtau;
     }
   }
 
@@ -1185,28 +1187,28 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
     physics_kt(phys, &kt);
     kt = kt*rcs2; /* Without normalisation kT = cs^2 */
 
-    lb->p->var_bulk =
+    lb->param->var_bulk =
       sqrt(kt)*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
-    lb->p->var_shear =
+    lb->param->var_shear =
       sqrt(kt)*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
 
     /* Noise variances */
 
     for (p = NHYDRO; p < NVEL; p++) {
-      tau_g = 1.0/lb->p->rtau[p];
-      lb->p->var_noise[p] =
+      tau_g = 1.0/lb->param->rtau[p];
+      lb->param->var_noise[p] =
 	sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
     }
   }
 
 
-  if (lb->p->isghost == LB_GHOST_OFF) {
+  if (lb->param->isghost == LB_GHOST_OFF) {
     /* This option is intended to check the M10 without the correct
      * noise terms. Should not be used for a real simulation. */
     /* Eliminate ghost modes and ghost mode noise */
     for (p = NHYDRO; p < NVEL; p++) {
-      lb->p->rtau[p] = 1.0;
-      lb->p->var_noise[p] = 0.0;
+      lb->param->rtau[p] = 1.0;
+      lb->param->var_noise[p] = 0.0;
     }
   }
 
@@ -1256,7 +1258,7 @@ __host__ int lb_collision_relaxation_times(lb_t * lb, double * tau) {
   /* Ghosts */
 
   for (ia = NHYDRO; ia < NVEL; ia++) {
-    tau[ia] = lb->p->rtau[ia];
+    tau[ia] = lb->param->rtau[ia];
   }
 
   return 0;
@@ -1282,7 +1284,7 @@ static __host__ __device__ __inline__
   double random[NNOISE_MAX];
 
   assert(lb);
-  assert(lb->p);
+  assert(lb->param);
   assert(noise);
   assert(NNOISE_MAX >= NDIM*(NDIM+1)/2);
   assert(NNOISE_MAX >= (NVEL - NHYDRO));
@@ -1314,21 +1316,21 @@ static __host__ __device__ __inline__
 
   /* Set variance of the traceless part */
 
-  shat[X][X] *= lb->p->var_shear*sqrt(2.0);
-  shat[X][Y] *= lb->p->var_shear;
-  shat[X][Z] *= lb->p->var_shear;
+  shat[X][X] *= lb->param->var_shear*sqrt(2.0);
+  shat[X][Y] *= lb->param->var_shear;
+  shat[X][Z] *= lb->param->var_shear;
 
-  shat[Y][X] *= lb->p->var_shear;
-  shat[Y][Y] *= lb->p->var_shear*sqrt(2.0);
-  shat[Y][Z] *= lb->p->var_shear;
+  shat[Y][X] *= lb->param->var_shear;
+  shat[Y][Y] *= lb->param->var_shear*sqrt(2.0);
+  shat[Y][Z] *= lb->param->var_shear;
 
-  shat[Z][X] *= lb->p->var_shear;
-  shat[Z][Y] *= lb->p->var_shear;
-  shat[Z][Z] *= lb->p->var_shear*sqrt(2.0);
+  shat[Z][X] *= lb->param->var_shear;
+  shat[Z][Y] *= lb->param->var_shear;
+  shat[Z][Z] *= lb->param->var_shear*sqrt(2.0);
 
   /* Set variance of trace and recombine... */
 
-  tr *= (lb->p->var_bulk);
+  tr *= (lb->param->var_bulk);
 
   shat[X][X] += tr;
   shat[Y][Y] += tr;
@@ -1340,11 +1342,11 @@ static __host__ __device__ __inline__
     ghat[ia] = 0.0;
   }
 
-  if (lb->p->isghost == LB_GHOST_ON) {
+  if (lb->param->isghost == LB_GHOST_ON) {
     noise_reap_n(noise, index, NVEL-NHYDRO, random);
 
     for (ia = NHYDRO; ia < NVEL; ia++) {
-      ghat[ia] = lb->p->var_noise[ia]*random[ia - NHYDRO];
+      ghat[ia] = lb->param->var_noise[ia]*random[ia - NHYDRO];
     }
   }
 

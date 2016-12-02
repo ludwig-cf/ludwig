@@ -939,7 +939,7 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
 
   /* Compute new distribution */
 
-  rho0 = lb->p->rho0; /* fluid density */
+  rho0 = lb->param->rho0; /* fluid density */
   colloid_rb_ub(cinfo, pc, index, rb, ub);
 
   for (p = 0; p < NVEL; p++) {
