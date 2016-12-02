@@ -99,7 +99,7 @@ __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
   }
   else {
     targetCalloc((void **) &obj->target, sizeof(noise_t));
-    copyToTarget(&obj->target->rtable, &obj->rtable, 8*sizeof(unsigned int));
+    copyToTarget(obj->target->rtable, obj->rtable, 8*sizeof(double));
   }
 
   *pobj = obj;
