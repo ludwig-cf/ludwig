@@ -40,7 +40,7 @@ static int lb_set_blocks(lb_t * lb, int, int *, int, const int *);
 static int lb_set_displacements(lb_t * lb, int, MPI_Aint *, int, const int *);
 static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
-
+static int lb_model_param_init(lb_t * lb);
 
 static int isReduced_=0; /* SHIT WHAT IS THIS DOING? */
 
@@ -68,8 +68,8 @@ __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** plb) {
   lb = (lb_t *) calloc(1, sizeof(lb_t));
   if (lb == NULL) pe_fatal(pe, "calloc(1, lb_t) failed\n");
 
-  lb->p = (lb_collide_param_t *) calloc(1, sizeof(lb_collide_param_t));
-  if (lb->p == NULL) pe_fatal(pe, "calloc(1, lb_collide_param_t) failed\n");
+  lb->param = (lb_collide_param_t *) calloc(1, sizeof(lb_collide_param_t));
+  if (lb->param == NULL) pe_fatal(pe, "calloc(1, lb_collide_param_t) failed\n");
 
   lb->pe = pe;
   lb->cs = cs;
@@ -146,7 +146,7 @@ __host__ int lb_free(lb_t * lb) {
   MPI_Type_free(&lb->site_z[0]);
   MPI_Type_free(&lb->site_z[1]);
 
-  free(lb->p);
+  free(lb->param);
   free(lb);
 
   return 0;
@@ -251,7 +251,7 @@ __host__ int lb_init(lb_t * lb) {
     copyToTarget(&lb->target->fprime, &tmp, sizeof(double *));
 
     targetConstAddress((void **) &ptmp, static_param);
-    copyToTarget(&lb->target->p, &ptmp, sizeof(lb_collide_param_t *));
+    copyToTarget(&lb->target->param, &ptmp, sizeof(lb_collide_param_t *));
   }
 
   /* Set up the MPI Datatypes used for full halo messages:
@@ -273,6 +273,7 @@ __host__ int lb_init(lb_t * lb) {
   MPI_Type_commit(&lb->plane_yz_full);
 
   lb_mpi_init(lb);
+  lb_model_param_init(lb);
   lb_halo_set(lb, LB_HALO_FULL);
   lb_memcpy(lb, cudaMemcpyHostToDevice);
 
@@ -292,9 +293,33 @@ __host__ int lb_collide_param_commit(lb_t * lb) {
 
   assert(lb);
 
-  lb->p->nsite = lb->nsite;
-  lb->p->ndist = lb->ndist;
-  copyConstToTarget(&static_param, lb->p, sizeof(lb_collide_param_t));
+  copyConstToTarget(&static_param, lb->param, sizeof(lb_collide_param_t));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_model_param_init
+ *
+ *****************************************************************************/
+
+static int lb_model_param_init(lb_t * lb) {
+
+  int ia, p;
+
+  assert(lb);
+  assert(lb->param);
+
+  lb->param->nsite = lb->nsite;
+  lb->param->ndist = lb->ndist;
+
+  for (p = 0; p < NVEL; p++) {
+    for (ia = 0; ia < 3; ia++) {
+      lb->param->cv[p][ia] = cv[p][ia];
+    }
+    lb->param->wv[p] = wv[p];
+  }
 
   return 0;
 }

@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "kernel.h"
+#include "lb_model_s.h"
+#include "map_s.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"
@@ -50,6 +53,9 @@ struct wall_s {
 int wall_init_boundaries(wall_t * wall, wall_init_enum_t init);
 int wall_init_map(wall_t * wall);
 int wall_init_uw(wall_t * wall);
+
+__global__ void wall_setu_kernel(wall_t * wall, lb_t * lb);
+__global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map);
 
 static __constant__ wall_param_t static_param;
 
@@ -113,6 +119,15 @@ __host__ int wall_free(wall_t * wall) {
   assert(wall);
 
   if (wall->target != wall) {
+    int * tmp;
+    copyFromTarget(&tmp, &wall->target->linki, sizeof(int *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &wall->target->linkj, sizeof(int *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &wall->target->linkp, sizeof(int *));
+    targetFree(tmp);
+    copyFromTarget(&tmp, &wall->target->linku, sizeof(int *));
+    targetFree(tmp);
     targetFree(wall->target);
   }
 
@@ -262,8 +277,11 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
   int nlink;
   int nlocal[3];
   int status;
+  int ndevice;
 
   assert(wall);
+
+  targetGetDeviceCount(&ndevice);
 
   if (init == WALL_INIT_ALLOCATE) {
     wall->linki = (int *) calloc(wall->nlink, sizeof(int));
@@ -274,6 +292,17 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
     if (wall->linkj == NULL) pe_fatal(wall->pe,"calloc(wall->linkj) failed\n");
     if (wall->linkp == NULL) pe_fatal(wall->pe,"calloc(wall->linkp) failed\n");
     if (wall->linku == NULL) pe_fatal(wall->pe,"calloc(wall->linku) failed\n");
+    if (ndevice > 0) {
+      int tmp;
+      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      copyToTarget(&wall->target->linki, &tmp, sizeof(int *));
+      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      copyToTarget(&wall->target->linkj, &tmp, sizeof(int *));
+      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      copyToTarget(&wall->target->linkp, &tmp, sizeof(int *));
+      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      copyToTarget(&wall->target->linku, &tmp, sizeof(int *));
+    }
   }
 
   nlink = 0;
@@ -313,10 +342,64 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
     }
   }
 
-  if (init) {
+  if (init == WALL_INIT_ALLOCATE) {
     assert(nlink == wall->nlink);
+    wall_memcpy(wall, cudaMemcpyHostToDevice);
   }
   wall->nlink = nlink;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int wall_memcpy(wall_t * wall, int flag) {
+
+  int ndevice;
+
+  assert(wall);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    assert(wall->target == wall);
+  }
+  else {
+
+    int * tmp = NULL;
+    int nlink;
+
+    nlink = wall->nlink;
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(&wall->target->nlink, &wall->nlink, sizeof(int));
+      copyToTarget(wall->target->fnet, wall->fnet, 3*sizeof(double));
+
+      /* In turn, linki, linkj, linkp, linku */
+      copyFromTarget(&tmp, &wall->target->linki, sizeof(int *));
+      copyToTarget(tmp, wall->linki, nlink*sizeof(int));
+
+      copyFromTarget(&tmp, &wall->target->linkj, sizeof(int *));
+      copyToTarget(tmp, wall->linkj, nlink*sizeof(int));
+
+      copyFromTarget(&tmp, &wall->target->linkp, sizeof(int *));
+      copyToTarget(tmp, wall->linkp, nlink*sizeof(int));
+
+      copyFromTarget(&tmp, &wall->target->linku, sizeof(int *));
+      copyToTarget(tmp, wall->linku, nlink*sizeof(int));
+      break;
+    case cudaMemcpyDeviceToHost:
+      assert(0); /* Not required */
+      break;
+    default:
+      pe_fatal(wall->pe, "Should definitely not be here\n");
+    }
+  }
 
   return 0;
 }
@@ -359,119 +442,212 @@ __host__ int wall_init_uw(wall_t * wall) {
  *
  *  wall_set_wall_distribution
  *
- *  Set distribution at solid sites to reflect the solid body velocity.
- *  This allows 'solid-solid' exchange of distributions between wall
- *  and colloids.
+ *  Driver routine.
  *
  *****************************************************************************/
 
 __host__ int wall_set_wall_distributions(wall_t * wall) {
 
-  int n;
-  int p;              /* Outward going component of link velocity */
-  double rho, fp;
-  double ux = 0.0;    /* PENDING initialisation */
-  physics_t * phys = NULL;
+  dim3 nblk, ntpb;
 
   assert(wall);
-  physics_ref(&phys);
-  physics_rho0(phys, &rho);
+  assert(wall->target);
 
-  for (n = 0; n < wall->nlink; n++) {
-    p = NVEL - wall->linkp[n];
-    fp = wv[p]*(rho + rcs2*ux*cv[p][X]);
-    lb_f_set(wall->lb, wall->linkj[n], p, LB_RHO, fp);
-  }
+  if (wall->nlink == 0) return 0;
+
+  kernel_launch_param(wall->nlink, &nblk, &ntpb);
+
+  __host_launch(wall_setu_kernel, nblk, ntpb, wall->target, wall->lb->target);
+
+  targetDeviceSynchronise();
 
   return 0;
 }
 
 /*****************************************************************************
  *
+ *  wall_setu_kernel
+ *
+ *  Set distribution at solid sites to reflect the solid body velocity.
+ *  This allows 'solid-solid' exchange of distributions between wall
+ *  and colloids.
+ *
+ *****************************************************************************/
+
+__global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
+
+  int n;
+  const double rcs2 = 3.0; /* macro? */
+
+  assert(wall);
+  assert(lb);
+
+  __target_simt_parallel_for(n, wall->nlink, 1) {
+
+    int p;              /* Outward going component of link velocity */
+    double fp;          /* f = w_p (rho0 + (1/cs2) u_a c_pa) No sdotq */
+    double ux = 0.0;    /* PENDING initialisation */
+
+    p = NVEL - wall->linkp[n];
+    fp = lb->param->wv[p]*(lb->param->rho0 + rcs2*ux*lb->param->cv[p][X]);
+    lb_f_set(lb, wall->linkj[n], p, LB_RHO, fp);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  wall_bbl
+ *
+ *  Driver routine.
  *
  *****************************************************************************/
 
 __host__ int wall_bbl(wall_t * wall) {
 
-  int i, j, ij, ji, ia;
-  int n, ndist;
-  int status;
-
-  double uw[WALL_UWMAX][3];
-  double rho, cdotu;
-  double fp, fp0, fp1;
-  double force;
+  dim3 nblk, ntpb;
 
   assert(wall);
+  assert(wall->target);
+
+  if (wall->nlink == 0) return 0;
+
+  /* Update kernel constants */
+  copyConstToTarget(&static_param, wall->param, sizeof(wall_param_t));
+
+  kernel_launch_param(wall->nlink, &nblk, &ntpb);
+
+  __host_launch(wall_bbl_kernel, nblk, ntpb, wall->target, wall->lb->target,
+		wall->map->target);
+
+  targetDeviceSynchronise();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_bbl_kernel
+ *
+ *  Bounce-back on links for the walls.
+ *  A reduction is required to tally the net momentum transfer.
+ *
+ *****************************************************************************/
+
+__global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
+
+  int n;
+  int ib;
+  double uw[WALL_UWMAX][3];
+
+  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+  const double rcs2 = 3.0;
+
+  assert(wall);
+  assert(lb);
+  assert(map);
 
   /* Load the current wall velocities into the uw table */
 
-  for (ia = 0; ia < 3; ia++) {
-    uw[WALL_UZERO][ia] = 0.0;
-    uw[WALL_UWTOP][ia] = wall->param->utop[ia];
-    uw[WALL_UWBOT][ia] = wall->param->ubot[ia];
+  for (ib = 0; ib < 3; ib++) {
+    uw[WALL_UZERO][ib] = 0.0;
+    uw[WALL_UWTOP][ib] = wall->param->utop[ib];
+    uw[WALL_UWBOT][ib] = wall->param->ubot[ib];
   }
 
-  lb_ndist(wall->lb, &ndist);
+  __target_simt_parallel_region() {
 
-  for (n = 0; n < wall->nlink; n++) {
+    int tid;
+    double fxb, fyb, fzb;
 
-    i  = wall->linki[n];
-    j  = wall->linkj[n];
-    ij = wall->linkp[n];   /* Link index direction solid->fluid */
-    ji = NVEL - ij;        /* Opposite direction index */
-    ia = wall->linku[n];   /* Wall velocity lookup */
+    __target_simt_threadIdx_init();
+    tid = threadIdx.x;
 
-    cdotu = cv[ij][X]*uw[ia][X] + cv[ij][Y]*uw[ia][Y] + cv[ij][Z]*uw[ia][Z]; 
+    fx[tid] = 0.0;
+    fy[tid] = 0.0;
+    fz[tid] = 0.0;
 
-    map_status(wall->map, i, &status);
+    __target_simt_for(n, wall->nlink, 1) {
 
-    if (status == MAP_COLLOID) {
+      int i, j, ij, ji, ia;
+      int status;
+      double rho, cdotu;
+      double fp, fp0, fp1;
+      double force;
 
-      /* This matches the momentum exchange in colloid BBL. */
-      /* This only affects the accounting (via anomaly, as below) */
+      i  = wall->linki[n];
+      j  = wall->linkj[n];
+      ij = wall->linkp[n];   /* Link index direction solid->fluid */
+      ji = NVEL - ij;        /* Opposite direction index */
+      ia = wall->linku[n];   /* Wall velocity lookup */
 
-      lb_f(wall->lb, i, ij, LB_RHO, &fp0);
-      lb_f(wall->lb, j, ji, LB_RHO, &fp1);
-      fp = fp0 + fp1;
-      for (ia = 0; ia < 3; ia++) {
-	wall->fnet[ia] += (fp - 2.0*wv[ij])*cv[ij][ia];
+      cdotu = lb->param->cv[ij][X]*uw[ia][X] +
+	      lb->param->cv[ij][Y]*uw[ia][Y] +
+              lb->param->cv[ij][Z]*uw[ia][Z]; 
+
+      map_status(map, i, &status);
+
+      if (status == MAP_COLLOID) {
+
+	/* This matches the momentum exchange in colloid BBL. */
+	/* This only affects the accounting (via anomaly, as below) */
+
+	lb_f(lb, i, ij, LB_RHO, &fp0);
+	lb_f(lb, j, ji, LB_RHO, &fp1);
+	fp = fp0 + fp1;
+
+	fx[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+	fy[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+	fz[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
       }
+      else {
 
+	/* This is the momentum. To prevent accumulation of round-off
+	 * in the running total (fnet_), we subtract the equilibrium
+	 * wv[ij]. This is ok for walls where there are exactly
+	 * equal and opposite links at each side of the system. */
+
+	lb_f(lb, i, ij, LB_RHO, &fp);
+	lb_0th_moment(lb, i, LB_RHO, &rho);
+
+	force = 2.0*fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
+
+	fx[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+	fy[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+	fz[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+
+	fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
+	lb_f_set(lb, j, ji, LB_RHO, fp);
+
+	if (lb->param->ndist > 1) {
+	  /* Order parameter */
+	  lb_f(lb, i, ij, LB_PHI, &fp);
+	  lb_0th_moment(lb, i, LB_PHI, &rho);
+
+	  fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
+	  lb_f_set(lb, j, ji, LB_PHI, fp);
+	}
+      }
+      /* Next link */
     }
-    else {
 
-      /* This is the momentum. To prevent accumulation of round-off
-       * in the running total (fnet_), we subtract the equilibrium
-       * wv[ij]. This is ok for walls where there are exactly
-       * equal and opposite links at each side of the system. */
+    /* Reduction for momentum transfer */
 
-      lb_f(wall->lb, i, ij, LB_RHO, &fp);
-      lb_0th_moment(wall->lb, i, LB_RHO, &rho);
+    fxb = target_block_reduce_sum_double(fx);
+    fyb = target_block_reduce_sum_double(fy);
+    fzb = target_block_reduce_sum_double(fz);
 
-      force = 2.0*fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-      for (ia = 0; ia < 3; ia++) {
-	wall->fnet[ia] += (force - 2.0*wv[ij])*cv[ij][ia];
-      }
-
-      fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-      lb_f_set(wall->lb, j, ji, LB_RHO, fp);
-
-      if (ndist > 1) {
-	/* Order parameter */
-	lb_f(wall->lb, i, ij, LB_PHI, &fp);
-	lb_0th_moment(wall->lb, i, LB_PHI, &rho);
-
-	fp = fp - 2.0*rcs2*wv[ij]*rho*cdotu;
-	lb_f_set(wall->lb, j, ji, LB_PHI, fp);
-      }
-
+    if (tid == 0) {
+      target_atomic_add_double(&wall->fnet[X], fxb);
+      target_atomic_add_double(&wall->fnet[Y], fyb);
+      target_atomic_add_double(&wall->fnet[Z], fzb);
     }
-    /* Next link */
   }
 
-  return 0;
+  return;
 }
 
 /*****************************************************************************
@@ -540,7 +716,7 @@ __host__ int wall_init_map(wall_t * wall) {
  *
  *****************************************************************************/
 
-__host__ __device__ int wall_momentum_add(wall_t * wall, const double f[3]) {
+__host__ int wall_momentum_add(wall_t * wall, const double f[3]) {
 
   assert(wall);
 
@@ -556,13 +732,37 @@ __host__ __device__ int wall_momentum_add(wall_t * wall, const double f[3]) {
  *  wall_momentum
  *
  *  If a global total is required, the caller is responsible for
- *  the reduction. This is the local contribution.
+ *  any MPI reduction. This is the local contribution.
  *
  *****************************************************************************/
 
-__host__ __device__ int wall_momentum(wall_t * wall, double f[3]) {
+__host__ int wall_momentum(wall_t * wall, double f[3]) {
+
+  int ndevice;
+  double ftmp[3];
 
   assert(wall);
+
+  /* Some care at the moment. Accumulate the device total to the
+   * host and zero the device fnet so that we don't double-count
+   * it next time. */
+
+  /* This is required as long as some contributions are made on
+   * the host via wall_momentum_add() and others are on the
+   * device. */
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    copyFromTarget(ftmp, wall->target->fnet, 3*sizeof(double));
+    wall->fnet[X] += ftmp[X];
+    wall->fnet[Y] += ftmp[Y];
+    wall->fnet[Z] += ftmp[Z];
+    ftmp[X] = 0.0; ftmp[Y] = 0.0; ftmp[Z] = 0.0;
+    copyToTarget(wall->target->fnet, ftmp, 3*sizeof(double));
+  }
+
+  /* Return the current net */
 
   f[X] = wall->fnet[X];
   f[Y] = wall->fnet[Y];
