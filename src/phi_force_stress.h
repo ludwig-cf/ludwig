@@ -18,13 +18,15 @@
 #ifndef PHI_FORCE_STRESS_H
 #define PHI_FORCE_STRESS_H
 
+#include "pe.h"
+#include "coords.h"
 #include "free_energy.h"
 
 enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU};
 
 typedef struct pth_s pth_t;
 
-__host__ int pth_create(int method, pth_t ** pth);
+__host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pth);
 __host__ int pth_free(pth_t * pth);
 __host__ int pth_memcpy(pth_t * pth, int flag);
 __host__ int pth_stress_compute(pth_t * pth, fe_t * fe);

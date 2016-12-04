@@ -623,7 +623,7 @@ void ludwig_run(const char * inputfile) {
 
 	  phi_force_calculation(ludwig->cs, ludwig->le, ludwig->wall,
 				ludwig->pth,
-				ludwig->fe, ludwig->phi, ludwig->hydro);
+				ludwig->fe, ludwig->map, ludwig->phi, ludwig->hydro);
 
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
@@ -633,7 +633,7 @@ void ludwig_run(const char * inputfile) {
 	  }
 	}
 	else {
-	  phi_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
+	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
 			    ludwig->hydro, ludwig->map, ludwig->wall);
 	}
       }
@@ -816,7 +816,9 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->phi) {
 	field_grad_memcpy(ludwig->phi_grad, cudaMemcpyDeviceToHost);
 	if (im == 2) {
+	  /* Recompute phi (kernel) and copy back if required */
 	  phi_lb_to_field(ludwig->phi, ludwig->lb);
+	  field_memcpy(ludwig->phi, cudaMemcpyDeviceToHost);
 	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
 	}
 	else {
@@ -1076,7 +1078,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_init_rt(pe, rt, cs);
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
-    pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
+    pth_create(pe, cs, PTH_METHOD_NO_FORCE, &ludwig->pth);
   }
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
@@ -1137,8 +1139,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     rt_int_parameter(rt, "fd_force_divergence", &p);
     pe_info(pe, "Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
-    if (p == 0) pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
-    if (p == 1) pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+    if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
     ludwig->fe_symm = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1178,7 +1180,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Mobility M            = %12.5e\n", value);
 
     /* No explicit force is relevant */
-    pth_create(PTH_METHOD_NO_FORCE, &ludwig->pth);
+    pth_create(pe, cs, PTH_METHOD_NO_FORCE, &ludwig->pth);
 
     ludwig->fe_symm = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1220,10 +1222,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Force caluclation:      %s\n",
 	    (p == 0) ? "phi grad mu method" : "divergence method");
     if (p == 0) {
-      pth_create(PTH_METHOD_GRADMU, &ludwig->pth);
+      pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
     }
     else {
-      pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+      pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
     }
     ludwig->fe_braz = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1265,7 +1267,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     noise_present_set(ludwig->noise_rho, NOISE_QAB, p);
     pe_info(pe, "LC fluctuations:           =  %s\n", (p == 0) ? "off" : "on");
 
-    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
     /* Not very elegant, but here ... */
     grad_lc_anch_create(pe, cs, NULL, NULL, fe, NULL);
@@ -1307,7 +1309,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     leslie_ericksen_swim_set(value);
     pe_info(pe, "Self-advection parameter = %12.5e\n", value);
 
-    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
   else if(strcmp(description, "lc_droplet") == 0){
     fe_symm_t * symm = NULL;
@@ -1358,7 +1360,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Force calculation:      %s\n",
 	    (p == 0) ? "phi grad mu method" : "divergence method");
     assert(p != 0); /* Grad mu method not implemented! */
-    pth_create(PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
 
     /* Liquid crystal part */

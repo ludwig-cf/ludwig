@@ -39,8 +39,7 @@ static int colloids_init_check_wall(pe_t * pe, cs_t * cs,
  *  colloids_init_random
  *
  *  Run the initialisation with a total of np particles.
- *  If np = 1, use the position of the given particle;
- *  otherwise, use random positions.
+ *  Use random positions.
  *
  *****************************************************************************/
 
@@ -49,7 +48,6 @@ int colloids_init_random(pe_t * pe, cs_t * cs, colloids_info_t * cinfo, int np,
 
   double amax;
   double hmax;
-  colloid_t * pc;
 
   assert(pe);
   assert(cs);

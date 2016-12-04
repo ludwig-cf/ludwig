@@ -23,7 +23,10 @@
 #include "map.h"
 #include "wall.h"
 
-__host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
+__host__ int pth_force_fluid_driver(pth_t * pth, hydro_t * hydro);
+__host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
+					 map_t * map, wall_t * wall);
+__host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 			       hydro_t * hydro, map_t * map, wall_t * wall);
 
 #endif

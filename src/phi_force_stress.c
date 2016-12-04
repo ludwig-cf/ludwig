@@ -37,7 +37,7 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
  *
  *****************************************************************************/
 
-__host__ int pth_create(int method, pth_t ** pobj) {
+__host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
 
   int ndevice;
   double * tmp;
@@ -46,16 +46,18 @@ __host__ int pth_create(int method, pth_t ** pobj) {
   assert(pobj);
 
   obj = (pth_t *) calloc(1, sizeof(pth_t));
-  if (obj == NULL) fatal("calloc(pth_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(pth_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->method = method;
-  obj->nsites = coords_nsites();
+  cs_nsites(cs, &obj->nsites);
 
   /* If memory required */
 
   if (method == PTH_METHOD_DIVERGENCE) {
     obj->str = (double *) calloc(3*3*obj->nsites, sizeof(double));
-    if (obj->str == NULL) fatal("calloc(pth->str) failed\n");
+    if (obj->str == NULL) pe_fatal(pe, "calloc(pth->str) failed\n");
   }
 
   /* Allocate target memory, or alias */
@@ -141,7 +143,7 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
       copyFromTarget(pth->str, tmp, nsz);
       break;
     default:
-      assert(0);
+      pe_fatal(pth->pe, "Should not be here\n");
     }
   }
 
@@ -169,7 +171,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
   assert(fe);
   assert(fe->func->target);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(pth->cs, nlocal);
   nextra = 1; /* Limits extend one point into the halo */
 
   limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
