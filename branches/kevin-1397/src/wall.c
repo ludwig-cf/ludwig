@@ -159,6 +159,9 @@ __host__ int wall_commit(wall_t * wall, wall_param_t param) {
   wall_init_boundaries(wall, WALL_INIT_ALLOCATE);
   wall_init_uw(wall);
 
+  /* As we have initialised the map on the host, ... */
+  map_memcpy(wall->map, cudaMemcpyHostToDevice);
+
   return 0;
 }
 
@@ -265,6 +268,10 @@ __host__ int wall_param(wall_t * wall, wall_param_t * values) {
 /*****************************************************************************
  *
  *  wall_init_boundaries
+ *
+ *  To be called twice:
+ *     1. with WALL_INIT_COUNT_ONLY
+ *     2. with WALL_INIT_ALLOCATE
  *
  *****************************************************************************/
 

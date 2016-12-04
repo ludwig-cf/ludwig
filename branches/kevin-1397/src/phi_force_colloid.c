@@ -2,6 +2,12 @@
  *
  *  phi_force_colloid.c
  *
+ *  TODO: there are actually three routines in here:
+ *  fluid/colloids/wall
+ *  All use divergence of the stress pth. The file should
+ *  be renamed.
+ *
+ *
  *  The case of force from the thermodynamic sector on both fluid and
  *  colloid via the divergence of the chemical stress.
  *
@@ -57,24 +63,26 @@
 #include "phi_force_colloid.h"
 #include "timer.h"
 
-int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
+int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 		     hydro_t * hydro, map_t * map, wall_t * wall);
 
-__global__ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-				 hydro_t * hydro, map_t * map);
-__global__ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+				     hydro_t * hydro, map_t * map);
+__global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 				      map_t * map, wall_t * wall,
 				      double fw[3]);
+__global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+					 hydro_t * hydro);
 
 /*****************************************************************************
  *
- *  phi_force_colloid
+ *  pth_force_colloid
  *
  *  If no colloids, and no hydrodynamics, no action is required.
  *
  *****************************************************************************/
 
-__host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
+__host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 			       hydro_t * hydro, map_t * map, wall_t * wall) {
 
   int ncolloid;
@@ -87,7 +95,7 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (pth->method == PTH_METHOD_DIVERGENCE) {
     pth_stress_compute(pth, fe);
-    phi_force_driver(pth, cinfo, hydro, map, wall);
+    pth_force_driver(pth, cinfo, hydro, map, wall);
   }
 
   return 0;
@@ -95,9 +103,11 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
 /*****************************************************************************
  *
- *  phi_force_driver
+ *  pth_force_driver
  *
- *  TODO: hydro == NULL case for relaxational dynamicss?
+ *  Kernel driver. Allows fluid, colloids, walls.
+ *
+ *  TODO: hydro == NULL case for relaxational dynamics?
  *  TODO: if no wall, wall kernel not required!
  *  TODO: Fix up a kernel for the colloids.
  *
@@ -105,7 +115,7 @@ __host__ int phi_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
 static __device__ double fs[3];
 
-__host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
+__host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 			      hydro_t * hydro, map_t * map, wall_t * wall) {
   int ia;
   int nlocal[3];
@@ -123,7 +133,7 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
   assert(hydro);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(pth->cs, nlocal);
   wall_target(wall, &wallt);
 
   limits.imin = 1; limits.imax = nlocal[X];
@@ -138,10 +148,10 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  __host_launch(phi_force_kernel, nblk, ntpb, ctxt->target,
+  __host_launch(pth_force_map_kernel, nblk, ntpb, ctxt->target,
 		pth->target, hydro->target, map->target);
 
-  __host_launch(phi_force_wall_kernel, nblk, ntpb, ctxt->target,
+  __host_launch(pth_force_wall_kernel, nblk, ntpb, ctxt->target,
 		pth->target, map->target, wallt, fwd);
 
   targetDeviceSynchronise(); 
@@ -155,6 +165,8 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
    pending... */
 
   TIMER_start(TIMER_FREE3);
+
+  /* COLLOID "KERNEL" */
 
   /* Get stress back! */
   pth_memcpy(pth, cudaMemcpyDeviceToHost);
@@ -201,14 +213,281 @@ __host__ int phi_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 /*****************************************************************************
  *
- *  phi_force_kernel
+ *  pth_force_fuild_wall_driver
  *
- *  This computes the force on the fluid, but not the colloids.
+ *  Kernel driver. Fluid in presence of walls.
  *
  *****************************************************************************/
 
-__global__ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
-				 hydro_t * hydro, map_t * map) {
+__host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
+					 map_t * map, wall_t * wall) {
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  wall_t * wallt = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  /* Net momentum balance for wall */
+  double * fwd = NULL;
+  double fw[3] = {0.0, 0.0, 0.0};
+
+  assert(pth);
+  assert(hydro);
+  assert(map);
+
+  cs_nlocal(pth->cs, nlocal);
+  wall_target(wall, &wallt);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  targetConstAddress((void **) &fwd, fs);
+  copyToTarget(fwd, fw, 3*sizeof(double));
+
+  __host_launch(pth_force_map_kernel, nblk, ntpb, ctxt->target,
+		pth->target, hydro->target, map->target);
+
+  __host_launch(pth_force_wall_kernel, nblk, ntpb, ctxt->target,
+		pth->target, map->target, wallt, fwd);
+
+  targetDeviceSynchronise(); 
+  kernel_ctxt_free(ctxt);
+
+  copyFromTarget(fw, fwd, 3*sizeof(double));
+  wall_momentum_add(wall, fw);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pth_force_fluid_driver
+ *
+ *  Kernel driver. Fluid only. Nothing else.
+ *
+ *****************************************************************************/
+
+__host__ int pth_force_fluid_driver(pth_t * pth,  hydro_t * hydro) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  
+  assert(pth);
+  assert(hydro);
+
+  cs_nlocal(pth->cs, nlocal);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  TIMER_start(TIMER_PHI_FORCE_CALC);
+
+  __host_launch(pth_force_fluid_kernel_v, nblk, ntpb, ctxt->target,
+		pth->target, hydro->target);
+  targetSynchronize();
+
+  TIMER_stop(TIMER_PHI_FORCE_CALC);
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pth_force_fluid_kernel_v
+ *
+ *  Compute force at each lattice site F_a = d_b Pth_ab.
+ *
+ *  Fluid only present. Vectorised version.
+ *
+ *  TODO: check residual device constants "nsites".
+ *
+ *****************************************************************************/
+
+__global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
+					 hydro_t * hydro) {
+  int kindex;
+  int kiterations;
+
+  assert(ktx);
+  assert(pth);
+  assert(hydro);
+
+  kiterations = kernel_vector_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+
+    int iv;
+    int ia, ib;
+    int index;                   /* first index in vector block */
+    int nsites;
+    int ic[NSIMDVL];             /* ic for this iteration */
+    int jc[NSIMDVL];             /* jc for this iteration */
+    int kc[NSIMDVL];             /* kc ditto */
+    int pm[NSIMDVL];             /* ordinate +/- 1 */
+    int maskv[NSIMDVL];          /* = 0 if not kernel site, 1 otherwise */
+    int index1[NSIMDVL];
+    double pth0[3][3][NSIMDVL];
+    double pth1[3][3][NSIMDVL];
+    double force[3][NSIMDVL];
+
+
+    index = kernel_baseindex(ktx, kindex);
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
+
+    nsites = pth->nsites;
+
+    /* Compute pth at current point */
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth0[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index+iv,ia,ib)];
+	}
+      }
+    }
+
+    /* Compute differences */
+
+    __targetILP__(iv) pm[iv] = ic[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, pm, jc, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia][iv] = -0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
+      }
+    }
+
+
+    __targetILP__(iv) pm[iv] = ic[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, pm, jc, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia][iv] += 0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
+      }
+    }
+
+    __targetILP__(iv) pm[iv] = jc[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ic, pm, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) { 
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
+      }
+    }
+
+    __targetILP__(iv) pm[iv] = jc[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, ic, pm, kc, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) {
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia][iv] += 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
+      }
+    }
+
+    __targetILP__(iv) pm[iv] = kc[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ic, jc, pm, index1);
+
+    for (ia = 0; ia < 3; ia++){
+      for (ib = 0; ib < 3; ib++){
+	__targetILP__(iv) { 
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia][iv] -= 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
+      }
+    }
+
+    __targetILP__(iv) pm[iv] = kc[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, ic, jc, pm, index1);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	__targetILP__(iv) { 
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	}
+      }
+    }
+    
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	force[ia][iv] += 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
+      }
+    }
+
+    /* Store the force on lattice */
+
+    for (ia = 0; ia < 3; ia++) { 
+      __targetILP__(iv) { 
+	hydro->f[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]
+	  += force[ia][iv]*maskv[iv];
+      }
+    }
+    /* Next site */
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  pth_force_map_kernel
+ *
+ *  This computes the force on the fluid, but does not concern solids.
+ *
+ *****************************************************************************/
+
+__global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+				     hydro_t * hydro, map_t * map) {
 
   int kindex;
   __shared__ int kiterations;
@@ -381,16 +660,18 @@ __global__ void phi_force_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 
 /*****************************************************************************
  *
- *  phi_force_wall_kernel
+ *  pth_force_wall_kernel
  *
  *  Tally contributions of the stress divergence transfered to
  *  the wall. This needs to agree with phi_force_kernel().
  *
  *  This is for accounting only; there's no dynamics.
  *
+ *  TODO: expose wall->fnet and remove actual/dummy argument fw.
+ *
  *****************************************************************************/
 
-__global__ void phi_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
+__global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 				      map_t * map, wall_t * wall,
 				      double fw[3]) {
 
