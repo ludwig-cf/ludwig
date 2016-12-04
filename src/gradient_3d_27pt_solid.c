@@ -53,7 +53,7 @@ static struct solid_s static_solid = {0};
 /* These are the 'links' used to form the gradients at boundaries. */
 
 #define NGRAD_ 27
-static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
+static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
                                  {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
                                  {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
@@ -252,8 +252,8 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 
 	    /* Set gradient phi at boundary following wetting properties */
 
-	    ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
-			      kc + bs_cv[p][Z]);
+	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
+				     kc + bs_cv[p][Z]);
 	    map_data(map, ia, wet);
 	    c = wet[0];
 	    h = wet[1];
