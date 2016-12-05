@@ -415,21 +415,20 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
 /*****************************************************************************
  *
  *  psi_grad_eps_d3qx
+ *  'SHIT NO TEST'?
+ *  Note: This could be tested in psi_sor_vare_poisson() (see psi_sor.h) 
  *
  *****************************************************************************/
 
-int psi_grad_eps_d3qx(f_vare_t fepsilon, int index, double grad_eps[3]) {
+int psi_grad_eps_d3qx(fe_t * fe, f_vare_t fepsilon, int index, double grad_eps[3]) {
 
   int p;
   int coords[3], coords1[3]; 
   int index1;
   double aux, eps1;
 
-  fe_t * fe = NULL;
-
   assert(fepsilon);
   assert(grad_eps);
-  assert(0); /* SHIT NO TEST? */
 
   coords_index_to_ijk(index, coords);
 

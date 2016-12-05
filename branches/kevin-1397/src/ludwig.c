@@ -211,7 +211,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   physics_info(pe, ludwig->phys);
 
 #ifdef PETSC
-  if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->epsilon);
+  if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #endif
 
   lb_run_time(pe, cs, rt, ludwig->lb);
@@ -534,7 +534,7 @@ void ludwig_run(const char * inputfile) {
       if (step % psi_skipsteps(ludwig->psi) == 0){
 	TIMER_start(TIMER_ELECTRO_POISSON);
 #ifdef PETSC
-	psi_petsc_solve(ludwig->psi, ludwig->epsilon);
+	psi_petsc_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #else
 	psi_sor_solve(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #endif
@@ -774,7 +774,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->psi) {
-      if (psi_output_step(ludwig->psi)) {
+      if (is_psi_output_step()) {
 	psi_io_info(ludwig->psi, &iohandler);
 	info("Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
