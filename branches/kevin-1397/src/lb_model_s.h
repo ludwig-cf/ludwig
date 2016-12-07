@@ -20,6 +20,7 @@
 #include "model.h"
 #include "halo_swap.h"
 #include "io_harness.h"
+#include "stdint.h"
 
 extern __constant__ int tc_cv[NVEL][3];
 extern __constant__ int tc_ndist;
