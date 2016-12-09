@@ -424,6 +424,7 @@ boundary_lubrication_rcnormal 0.0
 #porous_media_format BINARY
 #porous_media_file   capillary_8_8_32.dat
 #porous_media_type   status_only
+#porous_media_io_grid 1_1_1
 
 ###############################################################################
 #
