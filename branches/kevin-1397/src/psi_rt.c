@@ -189,8 +189,6 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   double ld2;                 /* Second Debye length for dielectric contrast */
   double eps1, eps2;          /* Dielectric permittivities */
 
-  io_info_t * iohandler;
-
   assert(pe);
   assert(rt);
 
@@ -215,7 +213,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
     pe_info(pe, "Initial condition sigma:   %14.7e\n", sigma);
 
-    psi_init_gouy_chapman_set(obj, map, rho_el, sigma);
+    psi_init_gouy_chapman(obj, map, rho_el, sigma);
   }
 
   if (strcmp(value, "liquid_junction") == 0) {
@@ -231,7 +229,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_delta_el\n");
     pe_info(pe, "Initial condition delta_el: %14.7e\n", delta_el);
 
-    psi_init_liquid_junction_set(obj, rho_el, delta_el);
+    psi_init_liquid_junction(obj, rho_el, delta_el);
   }
 
   if (strcmp(value, "uniform") == 0) {
@@ -257,10 +255,31 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   }
 
   if (strcmp(value, "from_file") == 0) {
-    sprintf(filestub, "%s", "psi-00000000");
-    pe_info(pe, "Initialisation requested from file %s.001-001\n", filestub);
-    psi_io_info(obj, &iohandler);
-    io_read_data(iohandler, filestub, obj);
+
+    pe_info(pe, "Initial conditions:        %s\n", "Charge from file");
+
+    n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
+    if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
+    pe_info(pe, "Initial condition rho_el: %14.7e\n", rho_el);
+    psi_debye_length(obj, rho_el, &ld);
+    pe_info(pe, "Debye length:             %14.7e\n", ld);
+
+    /* Call permittivities and check for dielectric contrast */
+    psi_epsilon(obj, &eps1);
+    psi_epsilon2(obj, &eps2);
+
+    if (eps1 != eps2) {
+      psi_debye_length2(obj, rho_el, &ld2);
+      pe_info(pe, "Second Debye length:      %14.7e\n", ld2);
+    }
+    /* Set background charge densities */
+    psi_init_uniform(obj, rho_el);
+
+    /* Set surface charge */
+    n = rt_string_parameter(rt, "porous_media_file", filestub, FILENAME_MAX);
+    if (n == 0) pe_fatal(pe, " ... please provide porous media file\n");
+    pe_info(pe, "\nInitialisation of charge from file %s.001-001\n", filestub);
+    psi_init_sigma(obj,map);
   }
 
   return 0;

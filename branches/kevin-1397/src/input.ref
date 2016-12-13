@@ -409,7 +409,7 @@ lj_epsilon 0.0003
 #  porous_media_file filestub    If present, the file filestub.001-001
 #                                should contain porous media data
 #  porous_media_format           [ASCII|BINARY] file format [default BINARY]
-#  porous_media_type             [status_only|status_with_h]
+#  porous_media_type             [status_only|status_with_h|status_with_sigma]
 #                                determines type of porous media data to be
 #                                supplied
 #
