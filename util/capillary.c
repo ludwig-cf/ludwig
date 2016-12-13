@@ -53,17 +53,17 @@ enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 /* Set the system size as desired. Clearly, this must match the system
  * set in the main input file for Ludwig. */
 
-const int xmax = 10;
-const int ymax = 10;
+const int xmax = 32;
+const int ymax = 32;
 const int zmax = 32;
 
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
 enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL};
-const int xsection = SQUARE;
+const int xsection = XWALL;
 
-/* FREE ENRGY PARAMETERS */
+/* FREE ENERGY PARAMETERS */
 /* Set the fluid and solid free energy parameters. The fluid parameters
  * must match those used in the main calculation. See Desplat et al.
  * Comp. Phys. Comm. (2001) for details. */
@@ -72,19 +72,23 @@ const double kappa = 0.04;
 const double B = 0.0625;
 const double H = 0.01;
 
-/* WETTING. */
+/* WETTING */
 /* A section of capillary between z1 and z2 (inclusive) will have
  * wetting property H = H, the remainder H = 0 */
 
 const int z1 = 1;
 const int z2 = 16;
 
+/* SURFACE CHARGE */
+
+const double sigma = 0.03125;
+
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
- * or one which includes the wetting parameter H. */
+ * or one which includes the wetting parameter H or charge Q. */
 
-enum {STATUS_ONLY, STATUS_WITH_H};
-const int output_type = STATUS_ONLY;
+enum {STATUS_ONLY, STATUS_WITH_H, STATUS_WITH_SIGMA};
+const int output_type = STATUS_WITH_SIGMA;
 
 /* OUTPUT FILENAME */
 
@@ -112,25 +116,38 @@ int main(int argc, char ** argv) {
   double x, y, r;
   double h, h1, theta;
 
+  double * map_sig;
+
   if (argc == 2) profile(argv[1]);
 
-  printf("Free energy parameters:\n");
-  printf("free energy parameter kappa = %f\n", kappa);
-  printf("free energy parameter B     = %f\n", B);
-  printf("surface free energy   H     = %f\n", H);
-  h = H*sqrt(1.0/(kappa*B));
-  printf("dimensionless parameter h   = %f\n", h);
-  h1 = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
-  theta = acos(h1);
-  printf("contact angle theta         = %f radians\n", theta);
-  theta = theta*180.0/(4.0*atan(1.0));
-  printf("                            = %f degrees\n", theta);
+  if (output_type == STATUS_WITH_H) {
+
+    printf("Free energy parameters:\n");
+    printf("free energy parameter kappa = %f\n", kappa);
+    printf("free energy parameter B     = %f\n", B);
+    printf("surface free energy   H     = %f\n", H);
+    h = H*sqrt(1.0/(kappa*B));
+    printf("dimensionless parameter h   = %f\n", h);
+    h1 = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
+    theta = acos(h1);
+    printf("contact angle theta         = %f radians\n", theta);
+    theta = theta*180.0/(4.0*atan(1.0));
+    printf("                            = %f degrees\n", theta);
+
+  }
+
+  if (output_type == STATUS_WITH_SIGMA) {
+    printf("Surface charge sigma = %f\n", sigma);
+  }
 
   map_in = (char *) malloc(xmax*ymax*zmax*sizeof(char));
   if (map_in == NULL) exit(-1);
 
   map_h = (double *) malloc(xmax*ymax*zmax*sizeof(double));
   if (map_h == NULL) exit(-1);
+
+  map_sig = (double *) malloc(xmax*ymax*zmax*sizeof(double));
+  if (map_sig == NULL) exit(-1);
 
   switch (xsection) {
   case CIRCLE:
@@ -143,6 +160,8 @@ int main(int argc, char ** argv) {
 
 	  map_in[n] = MAP_BOUNDARY;
 	  map_h[n] = 0.0;
+	  map_sig[n] = 0.0;
+
 	  /* Fluid if r(x,y) <= capillary width (L/2) */
 	  r = sqrt(x*x + y*y);
 	  if (r <= rc) {
@@ -153,6 +172,7 @@ int main(int argc, char ** argv) {
 	    nsolid++;
 	    if (k >= z1 && k <= z2) {
 	      map_h[n] = H;
+	      map_sig[n] = sigma;
 	    }
 	  }
 	}
@@ -172,6 +192,8 @@ int main(int argc, char ** argv) {
 	  n = ymax*zmax*i + zmax*j + k;
 
 	  map_in[n] = MAP_FLUID;
+	  map_h[n] = 0.0;
+	  map_sig[n] = 0.0;
 	  
 	  if (i == 0 || j == 0 || i == xmax - 1 || j == ymax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
@@ -181,6 +203,7 @@ int main(int argc, char ** argv) {
 	    nsolid++;
 	    if (k >= z1 && k <= z2) {
 	      map_h[n] = H;
+	      map_sig[n] = sigma;
 	    }
 	  }
 	}
@@ -194,9 +217,13 @@ int main(int argc, char ** argv) {
       for (j = 0; j < ymax; j++) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
-	  map_in[n] = MAP_FLUID;
+	  map_in[n]  = MAP_FLUID;
+	  map_sig[n] = 0.0;
 	  if (i == 0 || i == xmax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
+	    if (output_type == STATUS_WITH_SIGMA) {
+	      map_sig[n] = sigma;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -212,8 +239,12 @@ int main(int argc, char ** argv) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
 	  map_in[n] = MAP_FLUID;
+	  map_sig[n] = 0.0;
 	  if (j == 0 || j == ymax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
+	    if (output_type == STATUS_WITH_SIGMA) {
+	      map_sig[n] = sigma;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -228,8 +259,12 @@ int main(int argc, char ** argv) {
 	for (k = 0; k < zmax; k++) {
 	  n = ymax*zmax*i + zmax*j + k;
 	  map_in[n] = MAP_FLUID;
+	  map_sig[n] = 0.0;
 	  if (k == 0 || k == zmax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
+	    if (output_type == STATUS_WITH_SIGMA) {
+	      map_sig[n] = sigma;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -277,6 +312,9 @@ int main(int argc, char ** argv) {
 	fputc(map_in[n], fp_orig);
 	if (output_type == STATUS_WITH_H) {
 	  fwrite(map_h + n, sizeof(double), 1, fp_orig);
+	}
+	if (output_type == STATUS_WITH_SIGMA) {
+	  fwrite(map_sig + n, sizeof(double), 1, fp_orig);
 	}
       }
     }
