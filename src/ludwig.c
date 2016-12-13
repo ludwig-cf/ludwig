@@ -265,7 +265,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
   }
 
-  /* To be called before wall_init() */
+  /* To be called before wall_rt_init() */
   if (ludwig->psi) {
     advection_init_rt(pe, rt);
     psi_rt_init_rho(pe, rt, ludwig->psi, ludwig->map);
@@ -381,12 +381,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
     blue_phase_rt_initial_conditions(pe, rt, ludwig->fe_lc, ludwig->q);
   }
 
-  /* Electroneutrality */
-
   if (ntstep == 0 && ludwig->psi) {
-    pe_info(pe, "Arranging initial charge neutrality.\n\n");
     psi_colloid_rho_set(ludwig->psi, ludwig->collinfo);
-    psi_colloid_electroneutral(ludwig->psi, ludwig->collinfo);
+    pe_info(pe, "\nArranging initial charge neutrality.\n\n");
+    psi_electroneutral(ludwig->psi, ludwig->map);
   }
 
   return 0;
@@ -1595,6 +1593,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
+    if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
 
     rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
 

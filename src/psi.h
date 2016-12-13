@@ -93,4 +93,6 @@ int psi_skipsteps_set(psi_t * obj, double skipsteps);
 int psi_zero_mean(psi_t * obj);
 int psi_force_method(psi_t * obj, int * flag);
 int psi_force_method_set(psi_t * obj, int flag);
+
+int psi_electroneutral(psi_t * obj, map_t * map);
 #endif

@@ -9,8 +9,8 @@
 *  Edinburgh Soft Matter and Statistical Physics Group and
 *  Edinburgh Parallel Computing Centre
 *
-*  Oliver Henrich (o.henrich@ucl.ac.uk) wrote most of these.
-*  (c) 2012 The University of Edinburgh
+*  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+*  (c) 2012-16 The University of Edinburgh
 *
 *****************************************************************************/
 
@@ -21,6 +21,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "psi_init.h"
+#include "psi_s.h"
 
 /*****************************************************************************
  *
@@ -64,7 +65,7 @@ int psi_init_uniform(psi_t * obj, double rho_el) {
 
 /*****************************************************************************
  *
- * psi_init_gouy_chapman_set
+ * psi_init_gouy_chapman
  *
  *  Set rho(x = 1)  = + (1/2NyNz)
  *      rho(x = Lx) = + (1/2NyNz)
@@ -77,7 +78,7 @@ int psi_init_uniform(psi_t * obj, double rho_el) {
  *
  *****************************************************************************/
 
-int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
+int psi_init_gouy_chapman(psi_t * obj, map_t * map, double rho_el,
 			      double sigma) {
 
   int ic, jc, kc, index;
@@ -149,7 +150,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
 
 /*****************************************************************************
  *
- *  psi_init_liquid_junction_set
+ *  psi_init_liquid_junction
  *
  *  Set rho(1 <= x <= Lx/2)    = 1.01 * electrolyte
  *      rho(Lx/2+1 <= x <= Lx) = 0.99 * electrolyte
@@ -161,7 +162,7 @@ int psi_init_gouy_chapman_set(psi_t * obj, map_t * map, double rho_el,
  *
  *****************************************************************************/
 
-int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el) {
+int psi_init_liquid_junction(psi_t * obj, double rho_el, double delta_el) {
 
   int ic, jc, kc, index;
   int nlocal[3], noff[3];
@@ -195,3 +196,52 @@ int psi_init_liquid_junction_set(psi_t * obj, double rho_el, double delta_el) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ * psi_init_sigma
+ *
+ *  This sets up surface charges as specified in the porous media file.
+ *
+ *****************************************************************************/
+
+int psi_init_sigma(psi_t * psi, map_t * map) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  double sigma;
+
+  assert(psi);
+  assert(map);
+
+  cs_nlocal(psi->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(psi->cs, ic, jc, kc);
+	map_data(map, index, &sigma);
+
+	psi_psi_set(psi, index, 0.0);
+
+	if (sigma) {
+	  if (sigma > 0) {
+	    psi_rho_set(psi, index, 0, sigma);
+	    psi_rho_set(psi, index, 1, 0);
+	  }
+	  if (sigma < 0) {
+	    psi_rho_set(psi, index, 0, 0);
+	    psi_rho_set(psi, index, 1, sigma);
+	  }
+	}
+
+      }
+    }
+  }
+
+  map_halo(map);
+
+  return 0;
+}
+

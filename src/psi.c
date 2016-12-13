@@ -1323,3 +1323,111 @@ int psi_output_step(psi_t * psi) {
   physics_ref(&phys);
   return (physics_control_timestep(phys) % psi->nfreq_io == 0);
 }
+
+/*****************************************************************************
+ *
+ *  psi_electroneutral
+ *
+ *  To ensure overall electroneutrality, we consider the following:
+ *
+ *   (1) assume surface charges have been assigned
+ *   (2) assume the fluid is initialised with the backgound charge density
+ *       of the electrolyte 
+ *   (3) assume some number of colloids has been initialised, each
+ *       with a given charge.
+ *
+ *  We can then:
+ *
+ *   (1) compute the total charge in the system along with the
+ *       total discrete solid volume, i.e. colloid and boundary sites
+ *   (2) add the appropriate countercharge to the fluid sites to
+ *       make the system overall electroneutral.
+ *
+ *  Note:
+ *   (1) net colloid charge \sum_k z_k q_k is computed for k = 2.
+ *   (2) the countercharge is distributed only in one fluid species.
+ *
+ *  This is a collective call in MPI.
+ *
+ *****************************************************************************/
+
+int psi_electroneutral(psi_t * psi, map_t * map) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int n, nk;
+
+  int vf = 0; /* total fluid volume */
+  int vc = 0; /* total colloid volume */
+  int vb = 0; /* total boundary volume */
+
+  int nc;             /* species for countercharge */
+  int valency[2];
+  double qloc, qtot;  /* local and global charge */
+  double rho, rhoi;   /* charge and countercharge densities */
+  int status;
+
+  MPI_Comm comm;
+
+  psi_nk(psi, &nk);
+  assert(nk == 2);
+
+  cs_cart_comm(psi->cs, &comm);
+  cs_nlocal(psi->cs, nlocal);
+
+  /* determine total fluid, colloid and boundary volume */
+  map_volume_allreduce(map, MAP_FLUID, &vf);
+  map_volume_allreduce(map, MAP_COLLOID, &vc);
+  map_volume_allreduce(map, MAP_BOUNDARY, &vb);
+
+  qloc = 0.0;
+  qtot = 0.0;
+
+  /* accumulate local charge */
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(psi->cs, ic, jc, kc);
+
+	for (n = 0; n < nk; n++) {
+	  psi_valency(psi, n, valency + n);
+	  psi_rho(psi, index, n, &rho);
+	  qloc += valency[n]*rho;
+	}
+
+      }
+    }
+  }
+
+  MPI_Allreduce(&qloc, &qtot, 1, MPI_DOUBLE, MPI_SUM, comm);
+
+  /* calculate and apply countercharge on fluid */
+  rhoi = fabs(qtot) / vf;
+
+  nc = -1;
+  if (qtot*valency[0] >= 0) nc = 1;
+  if (qtot*valency[1] >= 0) nc = 0;
+  assert(nc == 0 || nc == 1);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = cs_index(psi->cs, ic, jc, kc);
+	map_status(map, index, &status);
+
+        if (status == MAP_FLUID) {
+          psi_rho(psi, index, nc, &rho);
+          rho += rhoi;
+          psi_rho_set(psi, index, nc, rho);
+        }
+
+        /* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
