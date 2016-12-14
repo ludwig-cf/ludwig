@@ -209,7 +209,7 @@ int psi_init_sigma(psi_t * psi, map_t * map) {
 
   int ic, jc, kc, index;
   int nlocal[3];
-  double sigma;
+  double sigma; /* point charge or surface charge density */
 
   assert(psi);
   assert(map);
