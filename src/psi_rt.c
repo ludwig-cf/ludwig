@@ -189,6 +189,8 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   double ld2;                 /* Second Debye length for dielectric contrast */
   double eps1, eps2;          /* Dielectric permittivities */
 
+  io_info_t * iohandler;
+
   assert(pe);
   assert(rt);
 
@@ -256,7 +258,16 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
 
   if (strcmp(value, "from_file") == 0) {
 
-    pe_info(pe, "Initial conditions:        %s\n", "Charge from file");
+    sprintf(filestub, "%s", "psi-00000000");	 
+    pe_info(pe, "Initialisation requested from file %s.001-001\n", filestub);
+    psi_io_info(obj, &iohandler);	 
+    io_read_data(iohandler, filestub, obj);
+
+  }
+
+  if (strcmp(value, "point_charges") == 0) {
+
+    pe_info(pe, "Initial conditions:        %s\n", "Point or surface charges from file");
 
     n = rt_double_parameter(rt, "electrokinetics_init_rho_el", &rho_el);
     if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_rho_el\n");
@@ -278,7 +289,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     /* Set surface charge */
     n = rt_string_parameter(rt, "porous_media_file", filestub, FILENAME_MAX);
     if (n == 0) pe_fatal(pe, " ... please provide porous media file\n");
-    pe_info(pe, "\nInitialisation of charge from file %s.001-001\n", filestub);
+    pe_info(pe, "\nInitialisation of point or surface charges from file %s.001-001\n", filestub);
     psi_init_sigma(obj,map);
   }
 
