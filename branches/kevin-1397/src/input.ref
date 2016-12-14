@@ -536,7 +536,11 @@ colloid_io_format_output BINARY
 #  electrokinetics_eunit      unit charge        default +1.0
 #  electrokinetics_epsilon    permeativity (ref) default 0.0
 #
-#  electrokinetics_init		[gouy_chapman|liquid_junction|uniform]
+#  electrokinetics_init       gouy_chapman
+#                             liquid_junction
+#                             uniform
+#                             point_charges
+#
 #  electrokinetics_init_rho_el	electrolyte concentration
 #  electrokinetics_init_sigma	surface charge density
 #
