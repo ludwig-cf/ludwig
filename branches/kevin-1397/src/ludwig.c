@@ -1599,6 +1599,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 
     if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
     if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
+    if (strcmp(format, "BINARY_SERIAL") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
 
     rt_int_parameter_vector(rt, "porous_media_io_grid", grid);
 
@@ -1617,6 +1618,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
   map_io_info(map, &iohandler);
 
   if (is_porous_media) {
+    io_info_set_processor_independent(iohandler);
     io_read_data(iohandler, filename, map);
     map_pm_set(map, 1);
   }
