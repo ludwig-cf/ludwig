@@ -53,15 +53,28 @@ enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 /* Set the system size as desired. Clearly, this must match the system
  * set in the main input file for Ludwig. */
 
-const int xmax = 32;
+const int xmax = 64;
 const int ymax = 32;
 const int zmax = 32;
 
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
-enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL};
-const int xsection = XWALL;
+enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES};
+const int xsection = XWALL_OBSTACLES;
+
+/*Modify the local geometry of the wall*/
+
+int obstacle_number = 1; /* number of obstacles per wall */
+int obstacle_length = 6; /* along the wall direction */
+int obstacle_height = 10; /* perpendicular from wall */
+int obstacle_depth  = 6; /* perpendicular to length and height */
+			 /* NOTE: obstacle_depth == xmax/ymax/zmax 
+				  means obstacles don't have a z-boundary */
+
+/* SURFACE CHARGE */
+
+const double sigma = 0.125;
 
 /* FREE ENERGY PARAMETERS */
 /* Set the fluid and solid free energy parameters. The fluid parameters
@@ -78,10 +91,6 @@ const double H = 0.01;
 
 const int z1 = 1;
 const int z2 = 16;
-
-/* SURFACE CHARGE */
-
-const double sigma = 0.03125;
 
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
@@ -116,7 +125,15 @@ int main(int argc, char ** argv) {
   double x, y, r;
   double h, h1, theta;
 
+  int iobst;
+  int obst_start[2*obstacle_number][3];
+  int obst_stop[2*obstacle_number][3];
+  int gap_length;
+
   double * map_sig;
+
+  FILE  *WriteFile;	
+  char  file[800];
 
   if (argc == 2) profile(argv[1]);
 
@@ -211,6 +228,7 @@ int main(int argc, char ** argv) {
     }
 
     break;
+
   case XWALL:
 
     for (i = 0; i < xmax; i++) {
@@ -231,6 +249,147 @@ int main(int argc, char ** argv) {
     }
 
     break;
+
+  case XWALL_OBSTACLES:
+
+    printf("\n%d obstacles per x-wall of length %d, height %d and depth %d\n\n", 
+	      obstacle_number, obstacle_length, obstacle_height, obstacle_depth);
+
+    /* define obstacles on bottom wall */
+    for (iobst = 0; iobst < obstacle_number; iobst++) {
+
+      /* height of obstacle */
+      obst_start[iobst][0] = 1;
+      obst_stop[iobst][0]  = obst_start[iobst][0] + obstacle_height - 1;
+
+      /* y-gap between two obstacles along x-wall */
+      gap_length = (ymax-obstacle_number*obstacle_length)/(obstacle_number);
+      obst_start[iobst][1] = gap_length/2 + iobst*(gap_length+obstacle_length);
+      obst_stop[iobst][1]  = obst_start[iobst][1] + obstacle_length - 1;
+
+      /* gap between boundary and obstacle if centrally positioned along z */
+      gap_length = (zmax-obstacle_depth)/2;
+      obst_start[iobst][2] = gap_length;
+      obst_stop[iobst][2]  = obst_start[iobst][2] + obstacle_depth - 1;
+
+      printf("Obstacle %d x-position %d to %d, y-position %d to %d, z-position %d to %d\n", iobst, 
+	obst_start[iobst][0],obst_stop[iobst][0],obst_start[iobst][1],obst_stop[iobst][1],obst_start[iobst][2],obst_stop[iobst][2]);
+    }
+
+    /* define obstacles on top wall */
+    for (iobst = obstacle_number; iobst < 2*obstacle_number; iobst++) {
+
+      /* height of obstacle */
+      obst_start[iobst][0] = xmax - 1 - obstacle_height;
+      obst_stop[iobst][0]  = xmax - 1 - 1;
+
+      /* y-gap between two obstacles along x-wall */
+      gap_length = (ymax-obstacle_number*obstacle_length)/(obstacle_number);
+      obst_start[iobst][1] = gap_length/2 + (iobst-obstacle_number)*(gap_length+obstacle_length);
+      obst_stop[iobst][1]  = obst_start[iobst][1] + obstacle_length - 1;
+
+      /* gap between boundary and obstacle if centrally positioned along z */
+      gap_length = (zmax-obstacle_depth)/2;
+      obst_start[iobst][2] = gap_length;
+      obst_stop[iobst][2]  = obst_start[iobst][2] + obstacle_depth - 1;
+
+      printf("Obstacle %d x-position %d to %d, y-position %d to %d, z-position %d to %d\n", iobst, 
+	obst_start[iobst][0],obst_stop[iobst][0],obst_start[iobst][1],obst_stop[iobst][1],obst_start[iobst][2],obst_stop[iobst][2]);
+    }
+
+    sprintf(file,"Configuration_capillary.dat");
+    WriteFile=fopen(file,"w");
+    fprintf(WriteFile,"#i j k map sigma\n");
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	for (k = 0; k < zmax; k++) {
+
+	  n = ymax*zmax*i + zmax*j + k;
+	  map_in[n]  = MAP_FLUID;
+	  map_sig[n] = 0.0;
+
+	  /* x-walls */
+
+	  if (i == 0 || i == xmax-1) {
+
+	    map_in[n] = MAP_BOUNDARY;
+	    ++nsolid;
+
+	    if (output_type == STATUS_WITH_SIGMA) {
+
+	      /* set wall charge */
+	      map_sig[n] = sigma; 
+
+	      /* remove charge at contact lines with obstacles */
+	      for (iobst = 0; iobst < 2*obstacle_number ; iobst++) {
+		if (j >= obst_start[iobst][1] && j <= obst_stop[iobst][1] 
+		    && k >= obst_start[iobst][2] && k <= obst_stop[iobst][2]){
+		  map_sig[n] = 0.0;
+		}
+	      }
+
+	    }
+
+	  }
+
+	  /* obstacles on bottom wall */
+	  for (iobst = 0; iobst < obstacle_number ; iobst++) {
+
+	    if (i >= obst_start[iobst][0] && i <= obst_stop[iobst][0]
+	     && j >= obst_start[iobst][1] && j <= obst_stop[iobst][1]
+	     && k >= obst_start[iobst][2] && k <= obst_stop[iobst][2]) {
+
+	      map_in[n] = MAP_BOUNDARY;
+	      ++nsolid;
+
+	      if (output_type == STATUS_WITH_SIGMA) { 
+
+		// add charge to x-boundary of obstacle
+		if (i == obst_stop[iobst][0]) map_sig[n] = sigma; 
+		// add charge to y-boundary of obstacle
+		if (j == obst_start[iobst][1] || j == obst_stop[iobst][1]) map_sig[n] = sigma;		
+		// add charge to z-boundary of obstacle, no boundary for obstacle_depth == zmax
+		if ((k == obst_start[iobst][2] || k == obst_stop[iobst][2]) && obstacle_depth != zmax) map_sig[n] = sigma;		
+
+	      }
+	    }
+	  } 
+
+	  /* obstacles on top wall */
+	  for (iobst = obstacle_number; iobst < 2*obstacle_number ; iobst++) {
+
+	    if (i >= obst_start[iobst][0] && i <= obst_stop[iobst][0]
+	     && j >= obst_start[iobst][1] && j <= obst_stop[iobst][1]
+	     && k >= obst_start[iobst][2] && k <= obst_stop[iobst][2]) {
+
+	      map_in[n] = MAP_BOUNDARY;
+	      ++nsolid;
+
+	      if (output_type == STATUS_WITH_SIGMA) { 
+
+		// add charge to x-boundary of obstacle
+		if (i == obst_start[iobst][0]) map_sig[n] = sigma; 
+		// add charge to y-boundary of obstacle
+		if (j == obst_start[iobst][1] || j == obst_stop[iobst][1]) map_sig[n] = sigma;		
+		// add charge to z-boundary of obstacl, no boundary for obstacle_depth == zmax
+		if ((k == obst_start[iobst][2] || k == obst_stop[iobst][2]) && obstacle_depth != zmax) map_sig[n] = sigma;		
+
+	      }
+	    }
+	  }
+
+	  fprintf(WriteFile,"%d %d %d %d %f\n", i, j, k, map_in[n], map_sig[n]);
+
+
+	}
+      }
+    }
+
+    fclose(WriteFile);
+
+    break;
+
 
   case YWALL:
 
@@ -281,7 +440,7 @@ int main(int argc, char ** argv) {
 
   printf("\nCross section (%d = fluid, %d = solid)\n", MAP_FLUID, MAP_BOUNDARY);
 
-  k = 0;
+  k = zmax/2;
   for (i = 0; i < xmax; i++) {
     for (j = 0; j < ymax; j++) {
 	n = ymax*zmax*i + zmax*j + k;
