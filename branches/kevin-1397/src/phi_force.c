@@ -266,7 +266,6 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
   int ia, ic, jc, kc, icm1, icp1;
   int index, index1;
   int nlocal[3];
-  int nsf;
 
   double pth0[3][3];
   double pth1[3][3];
@@ -276,7 +275,6 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
   assert(fe->func->stress);
 
   lees_edw_nlocal(le, nlocal);
-  nsf = coords_nsites(); /* flux storage */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = lees_edw_ic_to_buff(le, ic, -1);
@@ -296,7 +294,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxw[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
@@ -305,7 +303,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxe[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
@@ -314,7 +312,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  fluxy[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
@@ -323,7 +321,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[addr_rank1(nsf,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  fluxz[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 	/* Next site */
       }
@@ -395,6 +393,10 @@ static int phi_force_flux_divergence(cs_t * cs, hydro_t * hydro,
  *  global constraint on the total force is enforced. This costs
  *  one Allreduce in pe_comm() per call. 
  *
+ *  TODO:
+ *  The assert(0) indicates this routine is unused; the "local"
+ *  version below is preferred.
+ *
  *****************************************************************************/
 
 static int phi_force_flux_divergence_with_fix(cs_t * cs,
@@ -419,7 +421,7 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
   assert(fluxy);
   assert(fluxz);
 
-  assert(0); /* SHIT NO TEST? */
+  assert(0); /* NO TEST? */
 
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsf);
@@ -502,7 +504,6 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
   int nlocal[3];
   int nplane;
   int nhalo;
-  int nsf;
   int ic, jc, kc, index, index1, ia, ip;
 
   double * fbar;     /* Local sum over plane */
@@ -520,8 +521,6 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal(le, nlocal);
   lees_edw_plane_comm(le, &comm);
-  nsf = (nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo);
-
 
   fbar = (double *) calloc(3*nplane, sizeof(double));
   fcor = (double *) calloc(3*nplane, sizeof(double));
@@ -539,8 +538,8 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
         index1 = lees_edw_index(le, ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fbar[3*ip + ia] += - fluxe[addr_rank1(nsf,3,index,ia)]
-	    + fluxw[addr_rank1(nsf,3,index1,ia)];
+	  fbar[3*ip + ia] += - fluxe[addr_rank1(coords_nsites(),3,index,ia)]
+	    + fluxw[addr_rank1(coords_nsites(),3,index1,ia)];
 	}
       }
     }
@@ -561,8 +560,8 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
         index1 = lees_edw_index(le, ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(nsf,3,index,ia)] += ra*fcor[3*ip + ia];
-	  fluxw[addr_rank1(nsf,3,index1,ia)] -= ra*fcor[3*ip +ia];
+	  fluxe[addr_rank1(coords_nsites(),3,index,ia)] += ra*fcor[3*ip + ia];
+	  fluxw[addr_rank1(coords_nsites(),3,index1,ia)] -= ra*fcor[3*ip +ia];
 	}
       }
     }

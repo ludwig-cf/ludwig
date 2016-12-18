@@ -34,7 +34,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -56,12 +56,13 @@ __host__ int grad_2d_tomita_fluid_operator(lees_edw_t * le, field_grad_t * fg,
 					   int nextra);
 __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				     int nextra);
-__host__ int grad_2d_tomita_fluid_wall(lees_edw_t * le, field_grad_t * fg,
-				       int nextra);
 
 /*****************************************************************************
  *
  *  grad_2d_tomita_fluid_d2
+ *
+ *  TODO:
+ *  The assert(0) indicates no regression test.
  *
  *****************************************************************************/
 
@@ -77,13 +78,10 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  assert(0);
+  assert(0); /* NO TEST */
 
   grad_2d_tomita_fluid_operator(le, fg, nextra);
   grad_2d_tomita_fluid_le(le, fg, nextra);
-#ifdef OLD_SHIT
-  grad_2d_tomita_fluid_wall(le, fg, nextra);
-#endif
 
   return 0;
 }
@@ -91,6 +89,9 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 /*****************************************************************************
  *
  *  grad_2d_tomita_fluid_d4
+ *
+ *  TODO:
+ *  The assert(0) indicates no test available.
  *
  *****************************************************************************/
 
@@ -102,13 +103,10 @@ __host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
   nextra = coords_nhalo() - 2;
   assert(nextra >= 0);
 
-  assert(0); /* SHIT NEVER USED? */
+  assert(0); /* NO TEST */
 
   grad_2d_tomita_fluid_operator(le, fg, nextra);
   grad_2d_tomita_fluid_le(le, fg, nextra);
-#ifdef OLD_SHIT
-  grad_2d_tomita_fluid_wall(le, fg, nextra);
-#endif
 
   return 0;
 }
@@ -319,119 +317,3 @@ __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  grad_2d_tomita_fluid_wall
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-#ifdef OLD_SHIT
-__host__ int grad_2d_tomita_fluid_wall(lees_edw_t * le, field_grad_t * fg,
-				       int nextra) {
-  int nop;
-  int nlocal[3];
-  int nhalo;
-  int n;
-  int jc;
-  int index;
-  int xs, ys;
-
-  double fb;                    /* Extrapolated value of field at boundary */
-  double gradm1, gradp1;        /* gradient terms */
-  double rk;                    /* Fluid free energy parameter (reciprocal) */
-  double * c;                   /* Solid free energy parameters C */
-  double * h;                   /* Solid free energy parameters H */
-
-  double * __restrict__ field;
-  double * __restrict__ grad;
-  double * __restrict__ del2;
-
-  assert(le);
-  assert(fg);
-
-  assert(wall_at_edge(X) == 0); /* NOT IMPLEMENTED */
-
-  lees_edw_nlocal(le, nlocal);
-  lees_edw_nhalo(le, &nhalo);
-
-  assert(nlocal[Z] == 1);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  assert(wall_at_edge(Y) == 0);
-  assert(wall_at_edge(Z) == 0);
-
-  nop = fg->field->nf;
-  field = fg->field->data;
-  grad = fg->grad;
-  del2 = fg->delsq;
-
-  /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
-   * is currently no mechanism to obtain the free energy parameters. */
-
-  c = (double *) malloc(nop*sizeof(double));
-  h = (double *) malloc(nop*sizeof(double));
-
-  if (c == NULL) fatal("malloc(c) failed\n");
-  if (h == NULL) fatal("malloc(h) failed\n");
-
-  for (n = 0; n < nop; n++) {
-    c[n] = 0.0;
-    h[n] = 0.0;
-  }
-  rk = 0.0;
-
-  if (wall_at_edge(X) && cart_coords(X) == 0) {
-
-    /* Correct the lower wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = lees_edw_index(le, 1, jc, 1);
-
-      for (n = 0; n < nop; n++) {
-	gradp1 = field[nop*(index + xs) + n] - field[nop*index + n];
-	fb = field[nop*index + n] - 0.5*gradp1;
-	gradm1 = -(c[n]*fb + h[n])*rk;
-	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	del2[nop*index + n]
-	  = gradp1 - gradm1
-	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
-	  - 2.0*field[nop*index + n];
-      }
-
-      /* Next site */
-    }
-  }
-
-  if (wall_at_edge(X) && cart_coords(X) == cart_size(X) - 1) {
-
-    /* Correct the upper wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = lees_edw_index(le, nlocal[X], jc, 1);
-
-      for (n = 0; n < nop; n++) {
-	gradm1 = field[nop*index + n] - field[nop*(index - xs) + n];
-	fb = field[nop*index + n] + 0.5*gradm1;
-	gradp1 = -(c[n]*fb + h[n])*rk;
-	grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	del2[nop*index + n]
-	  = gradp1 - gradm1
-	  + field[nop*(index + ys) + n] + field[nop*(index  - ys) + n]
-	  - 2.0*field[nop*index + n];
-      }
-      /* Next site */
-    }
-  }
-
-  free(c);
-  free(h);
-
-  return 0;
-}
-#endif

@@ -112,7 +112,6 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
   int indexj, indexk;
   int ia, ib;
   int nlocal[3];
-  int nsites;
 
   double p[3];
   double h[3];
@@ -128,7 +127,6 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
   assert(flux);
 
   fe_polar_param(fe, &param);
-  nsites = coords_nsites();
   coords_nlocal(nlocal);
 
   for (ia = 0; ia < 3; ia++) {
@@ -170,12 +168,12 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
 	    sum += param.lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
 	  }
 
-	  p[ia] += dt*(- flux->fe[addr_rank1(nsites, 3, index,  ia)]
-		       + flux->fw[addr_rank1(nsites, 3, index,  ia)]
-		       - flux->fy[addr_rank1(nsites, 3, index,  ia)]
-		       + flux->fy[addr_rank1(nsites, 3, indexj, ia)]
-		       - flux->fz[addr_rank1(nsites, 3, index,  ia)]
-		       + flux->fz[addr_rank1(nsites, 3, indexk, ia)]
+	  p[ia] += dt*(- flux->fe[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       + flux->fw[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       - flux->fy[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       + flux->fy[addr_rank1(coords_nsites(), 3, indexj, ia)]
+		       - flux->fz[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       + flux->fz[addr_rank1(coords_nsites(), 3, indexk, ia)]
 		       + sum + Gamma_*h[ia]);
 	}
 

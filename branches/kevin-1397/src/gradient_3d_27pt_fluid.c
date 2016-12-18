@@ -53,14 +53,16 @@
 #include "field_grad_s.h"
 #include "gradient_3d_27pt_fluid.h"
 
+typedef enum grad_enum_type {GRAD_DEL2, GRAD_DEL4} grad_enum_t;
+
 __host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
-					 int nextra);
+					 int nextra, grad_enum_t type);
 __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
-				   int nextra);
-__host__ int grad_3d_27pt_fluid_wall(field_grad_t * fg,  int nextra);
+				   int nextra, grad_enum_t type);
 
 __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 				    lees_edw_t * le,
+				    grad_enum_t type,
 				    field_t * f,
 				    field_grad_t * fgrad);
 
@@ -83,11 +85,9 @@ __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  grad_3d_27pt_fluid_operator(le, fgrad, nextra);
-  grad_3d_27pt_fluid_le(le, fgrad, nextra);
-#ifdef OLD_SHIT
-  grad_3d_27pt_fluid_wall(fgrad, nextra);
-#endif
+  grad_3d_27pt_fluid_operator(le, fgrad, nextra, GRAD_DEL2);
+  grad_3d_27pt_fluid_le(le, fgrad, nextra, GRAD_DEL2);
+
   return 0;
 }
 
@@ -98,6 +98,8 @@ __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
  *  Higher derivatives are obtained by using the same operation
  *  on appropriate field.
  *
+ *  TODO: There's no test for this at the moment.
+ *
  *****************************************************************************/
 
 __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
@@ -105,15 +107,18 @@ __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
   int nextra;
   lees_edw_t * le = NULL;
 
-  nextra = coords_nhalo() - 2;
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->le);
+
+  le = fgrad->field->le;
+  lees_edw_nhalo(le, &nextra);
+  nextra -= 2;
   assert(nextra >= 0);
 
-  assert(0); /* We need this to work for d4. See 2d_5pt. */
-  grad_3d_27pt_fluid_operator(le, fgrad, nextra);
-  grad_3d_27pt_fluid_le(le, fgrad, nextra);
-#ifdef OLD_SHIT
-  grad_3d_27pt_fluid_wall(fgrad, nextra);
-#endif
+  grad_3d_27pt_fluid_operator(le, fgrad, nextra, GRAD_DEL4);
+  grad_3d_27pt_fluid_le(le, fgrad, nextra, GRAD_DEL4);
+
   return 0;
 }
 
@@ -126,7 +131,7 @@ __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
  *****************************************************************************/
 
 __host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
-					 int nextra) {
+					 int nextra, grad_enum_t type) {
   int nlocal[3];
   int xs, ys, zs;
   dim3 nblk, ntpb;
@@ -146,7 +151,8 @@ __host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(grad_3d_27pt_kernel, nblk, ntpb, ctxt->target,
-		fg->field->nf, ys, letarget, fg->field->target, fg->target);
+		fg->field->nf, ys, letarget, type,
+		fg->field->target, fg->target);
   targetDeviceSynchronise();
 
   kernel_ctxt_free(ctxt);
@@ -164,6 +170,7 @@ __host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
 
 __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 				    lees_edw_t * le,
+				    grad_enum_t type,
 				    field_t * f,
 				    field_grad_t * fgrad) {
 
@@ -173,6 +180,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 
   assert(ktx);
   assert(le);
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
   assert(f);
   assert(fgrad);
 
@@ -189,9 +197,16 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
     double * __restrict__ grad;
     double * __restrict__ del2;
 
-    field = f->data;
-    grad = fgrad->grad;
-    del2 = fgrad->delsq;
+    if (type == GRAD_DEL2) {
+      field = f->data;
+      grad = fgrad->grad;
+      del2 = fgrad->delsq;
+    }
+    else {
+      field = fgrad->delsq;
+      grad = fgrad->grad_delsq;
+      del2 = fgrad->delsq_delsq;
+    }
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -311,7 +326,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
  *****************************************************************************/
 
 __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
-				   int nextra) {
+				   int nextra, grad_enum_t type) {
 
   int nop;
   int nlocal[3];
@@ -333,6 +348,7 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
   assert(le);
   assert(fg);
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
 
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nsites(le, &nsites);
@@ -341,9 +357,16 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
   ys = (nlocal[Z] + 2*nhalo);
 
   nop = fg->field->nf;
-  field = fg->field->data;
-  grad = fg->grad;
-  del2 = fg->delsq;
+  if (type == GRAD_DEL2) {
+    field = fg->field->data;
+    grad = fg->grad;
+    del2 = fg->delsq;
+  }
+  else {
+    field = fg->delsq;
+    grad = fg->grad_delsq;
+    del2 = fg->delsq_delsq;
+  }
 
   for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
@@ -570,22 +593,3 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  grad_3d_27pt_fluid_wall
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-#ifdef OLD_SHIT
-__host__ int grad_3d_27pt_fluid_wall(field_grad_t * fg,
-				     int nextra) {
-
-  if (wall_present()) {
-    fatal("Wall not implemented in 3d 27pt gradients yet (use 7pt)\n");
-  }
-
-  return 0;
-}
-#endif

@@ -125,6 +125,8 @@ const double psi_gr_rcs2 = 3.0;
  *      E_x = - (1/2) [ psi(i+1,j,k) - psi(i-1,j,k ]
  *  etc
  *
+ *  TODO: The assert(0) indicates that there is no test of this code.
+ *
  *****************************************************************************/
 
 int psi_electric_field(psi_t * psi, int index, double e[3]) {
@@ -133,7 +135,7 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
   int xs, ys, zs;
 
   assert(psi);
-  assert(0); /* SHIT NO TEST? */
+  assert(0); /* NO TEST? */
 
   cs_nsites(psi->cs, &nsites);
   cs_strides(psi->cs, &xs, &ys, &zs);
@@ -209,6 +211,8 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
  *    grad_rho_x = 3/2*psi->rho(i,j,k)-2*psi->rho(i-1,k,j)+1/2*psi->rho(i-2,k,j)
  *  etc.
  *
+ *  TODO: The assert(0) indicates there is no test in place.
+ *
  *****************************************************************************/
 
 int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
@@ -221,7 +225,7 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   assert(psi);
   assert(n < psi->nk);
   assert(grad_rho);
-  assert(0); /* SHIT NO TEST? */
+  assert(0); /* NO TEST? */
 
   cs_nsites(psi->cs, &nsites);
   cs_strides(psi->cs, &xs, &ys, &zs);
@@ -319,6 +323,8 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
  *    grad_rho_x = 3/2*psi->rho(i,j,k)-2*psi->rho(i-1,k,j)+1/2*psi->rho(i-2,k,j)
  *  etc.
  *
+ *  TODO: The assert(0) indicates there is no test for this code.
+ *
  *****************************************************************************/
 
 int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
@@ -333,7 +339,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
   assert(psi);
   assert(n < psi->nk);
   assert(grad_rho);
-  assert(0); /* SHIT NO TEST? */
+  assert(0); /* NO TEST? */
 
   cs_nsites(psi->cs, &nsites);
   cs_index_to_ijk(psi->cs, index, coords);
@@ -415,8 +421,8 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
 /*****************************************************************************
  *
  *  psi_grad_eps_d3qx
- *  'SHIT NO TEST'?
- *  Note: This could be tested in psi_sor_vare_poisson() (see psi_sor.h) 
+ *
+ *  TODO: This could be tested in psi_sor_vare_poisson() (see psi_sor.h) 
  *
  *****************************************************************************/
 

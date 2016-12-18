@@ -129,7 +129,11 @@ __host__ int field_free(field_t * obj) {
  *  Initialise the lattice data, MPI halo information.
  *
  *  The le_t may be NULL, in which case create an instance with
- *  no planes. SHIT 
+ *  no planes.
+ *
+ *  TODO:
+ *  The behaviour with no planes (cs_t only) could be refactored
+ *  into two separate classes. 
  *
  *****************************************************************************/
 
@@ -360,7 +364,6 @@ __host__ int field_leesedwards(field_t * obj) {
 
   int nf;
   int nhalo;
-  int nsites;
   int nlocal[3]; /* Local system size */
   int nxbuffer;  /* Number of buffer planes */
   int ib;        /* Index in buffer region */
@@ -389,7 +392,6 @@ __host__ int field_leesedwards(field_t * obj) {
     /* No messages are required... */
 
     nf = obj->nf;
-    nsites = obj->nsites;
     cs_nhalo(obj->cs, &nhalo);
     cs_nlocal(obj->cs, nlocal);
     lees_edw_nxbuffer(obj->le, &nxbuffer);
@@ -422,11 +424,11 @@ __host__ int field_leesedwards(field_t * obj) {
           index2 = lees_edw_index(obj->le, ic, j2, kc);
           index3 = lees_edw_index(obj->le, ic, j3, kc);
           for (n = 0; n < nf; n++) {
-            obj->data[addr_rank1(nsites, nf, index, n)] =
-              -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index0, n)]
-              + 0.5*(fr*fr-1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index1, n)]
-              - 0.5*fr*(fr+1.0)*(fr-2.0)*obj->data[addr_rank1(nsites, nf, index2, n)]
-              +        r6*fr*(fr*fr-1.0)*obj->data[addr_rank1(nsites, nf, index3, n)];
+            obj->data[addr_rank1(obj->nsites, nf, index, n)] =
+              -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[addr_rank1(obj->nsites, nf, index0, n)]
+              + 0.5*(fr*fr-1.0)*(fr-2.0)*obj->data[addr_rank1(obj->nsites, nf, index1, n)]
+              - 0.5*fr*(fr+1.0)*(fr-2.0)*obj->data[addr_rank1(obj->nsites, nf, index2, n)]
+              +        r6*fr*(fr*fr-1.0)*obj->data[addr_rank1(obj->nsites, nf, index3, n)];
           }
         }
       }

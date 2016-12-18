@@ -104,7 +104,7 @@ int test_assumptions_suite(void) {
   printf("M_PI        is %14.7e\n", M_PI);
   */
   pi = 4.0*atan(1.0);
-  assert(fabs(pi - pi_) < DBL_EPSILON);
+  test_assert(fabs(pi - pi_) < DBL_EPSILON);
 
 
   test_util();
@@ -186,7 +186,7 @@ void test_util(void) {
 	    sume += e_[i][j][k]*e_[i][m][n];
 	  }
 	  sumd = (d_[j][m]*d_[k][n] - d_[j][n]*d_[k][m]);
-	  assert(fabs(sume - sumd) < TEST_DOUBLE_TOLERANCE);
+	  test_assert(fabs(sume - sumd) < TEST_DOUBLE_TOLERANCE);
 	}
       }
     }
@@ -284,9 +284,9 @@ int test_macro_abuse(void) {
   int sum;
 
   blah_parallel(sum, 2);
-  assert(sum == 3);
+  test_assert(sum == 3);
   blah_parallel(sum, 4, 99);
-  assert(sum == 103);
+  test_assert(sum == 103);
 
   return 0;
 }

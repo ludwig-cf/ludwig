@@ -331,7 +331,6 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     int iv;
     int ia, ib;
     int index;                   /* first index in vector block */
-    int nsites;
     int ic[NSIMDVL];             /* ic for this iteration */
     int jc[NSIMDVL];             /* jc for this iteration */
     int kc[NSIMDVL];             /* kc ditto */
@@ -348,13 +347,11 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    nsites = pth->nsites;
-
     /* Compute pth at current point */
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) {
-	  pth0[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index+iv,ia,ib)];
+	  pth0[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)];
 	}
       }
     }
@@ -367,7 +364,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) {
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
@@ -385,7 +382,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) {
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
@@ -402,7 +399,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) { 
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
@@ -419,7 +416,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) {
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
@@ -436,7 +433,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     for (ia = 0; ia < 3; ia++){
       for (ib = 0; ib < 3; ib++){
 	__targetILP__(iv) { 
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
@@ -453,7 +450,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	__targetILP__(iv) { 
-	  pth1[ia][ib][iv] = pth->str[addr_rank2(nsites,3,3,index1[iv],ia,ib)];
+	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }

@@ -288,6 +288,9 @@ __host__ int beris_edw_update(beris_edw_t * be,
  *
  *  This is a explicit (ic,jc,kc) loop version retained for reference.
  *
+ *  TODO: The assert(0) in the noise section indicates this requires
+ *        a test. The rest of the code is unaffected.
+ *
  *****************************************************************************/
 
 __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
@@ -297,7 +300,6 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   int ia, ib, id;
   int index, indexj, indexk;
   int nlocal[3];
-  int nsites;
   int status;
   int noise_on = 0;
 
@@ -342,12 +344,11 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 
   if (noise) noise_present(noise, NOISE_QAB, &noise_on);
   if (noise_on) {
-    assert(0); /* SHIT check noise kt */
+    assert(0); /* check noise kt */
     beris_edw_tmatrix(tmatrix);
   }
 
   coords_nlocal(nlocal);
-  nsites = flux->nsite;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -413,44 +414,44 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
 	indexk = lees_edw_index(be->le, ic, jc, kc-1);
 
 	q[X][X] += dt*(s[X][X] + gamma*h[X][X] + chi_qab[X][X]
-		       - flux->fe[addr_rank1(nsites, NQAB, index, XX)]
-		       + flux->fw[addr_rank1(nsites, NQAB, index, XX)]
-		       - flux->fy[addr_rank1(nsites, NQAB, index, XX)]
-		       + flux->fy[addr_rank1(nsites, NQAB, indexj, XX)]
-		       - flux->fz[addr_rank1(nsites, NQAB, index, XX)]
-		       + flux->fz[addr_rank1(nsites, NQAB, indexk, XX)]);
+		       - flux->fe[addr_rank1(flux->nsite, NQAB, index, XX)]
+		       + flux->fw[addr_rank1(flux->nsite, NQAB, index, XX)]
+		       - flux->fy[addr_rank1(flux->nsite, NQAB, index, XX)]
+		       + flux->fy[addr_rank1(flux->nsite, NQAB, indexj, XX)]
+		       - flux->fz[addr_rank1(flux->nsite, NQAB, index, XX)]
+		       + flux->fz[addr_rank1(flux->nsite, NQAB, indexk, XX)]);
 
 	q[X][Y] += dt*(s[X][Y] + gamma*h[X][Y] + chi_qab[X][Y]
-		       - flux->fe[addr_rank1(nsites, NQAB, index, XY)]
-		       + flux->fw[addr_rank1(nsites, NQAB, index, XY)]
-		       - flux->fy[addr_rank1(nsites, NQAB, index, XY)]
-		       + flux->fy[addr_rank1(nsites, NQAB, indexj, XY)]
-		       - flux->fz[addr_rank1(nsites, NQAB, index,  XY)]
-		       + flux->fz[addr_rank1(nsites, NQAB, indexk, XY)]);
+		       - flux->fe[addr_rank1(flux->nsite, NQAB, index, XY)]
+		       + flux->fw[addr_rank1(flux->nsite, NQAB, index, XY)]
+		       - flux->fy[addr_rank1(flux->nsite, NQAB, index, XY)]
+		       + flux->fy[addr_rank1(flux->nsite, NQAB, indexj, XY)]
+		       - flux->fz[addr_rank1(flux->nsite, NQAB, index,  XY)]
+		       + flux->fz[addr_rank1(flux->nsite, NQAB, indexk, XY)]);
 
 	q[X][Z] += dt*(s[X][Z] + gamma*h[X][Z] + chi_qab[X][Z]
-		       - flux->fe[addr_rank1(nsites, NQAB, index, XZ)]
-		       + flux->fw[addr_rank1(nsites, NQAB, index, XZ)]
-		       - flux->fy[addr_rank1(nsites, NQAB, index, XZ)]
-		       + flux->fy[addr_rank1(nsites, NQAB, indexj, XZ)]
-		       - flux->fz[addr_rank1(nsites, NQAB, index, XZ)]
-		       + flux->fz[addr_rank1(nsites, NQAB, indexk, XZ)]);
+		       - flux->fe[addr_rank1(flux->nsite, NQAB, index, XZ)]
+		       + flux->fw[addr_rank1(flux->nsite, NQAB, index, XZ)]
+		       - flux->fy[addr_rank1(flux->nsite, NQAB, index, XZ)]
+		       + flux->fy[addr_rank1(flux->nsite, NQAB, indexj, XZ)]
+		       - flux->fz[addr_rank1(flux->nsite, NQAB, index, XZ)]
+		       + flux->fz[addr_rank1(flux->nsite, NQAB, indexk, XZ)]);
 
 	q[Y][Y] += dt*(s[Y][Y] + gamma*h[Y][Y] + chi_qab[Y][Y]
-		       - flux->fe[addr_rank1(nsites, NQAB, index, YY)]
-		       + flux->fw[addr_rank1(nsites, NQAB, index, YY)]
-		       - flux->fy[addr_rank1(nsites, NQAB, index, YY)]
-		       + flux->fy[addr_rank1(nsites, NQAB, indexj, YY)]
-		       - flux->fz[addr_rank1(nsites, NQAB, index, YY)]
-		       + flux->fz[addr_rank1(nsites, NQAB, indexk, YY)]);
+		       - flux->fe[addr_rank1(flux->nsite, NQAB, index, YY)]
+		       + flux->fw[addr_rank1(flux->nsite, NQAB, index, YY)]
+		       - flux->fy[addr_rank1(flux->nsite, NQAB, index, YY)]
+		       + flux->fy[addr_rank1(flux->nsite, NQAB, indexj, YY)]
+		       - flux->fz[addr_rank1(flux->nsite, NQAB, index, YY)]
+		       + flux->fz[addr_rank1(flux->nsite, NQAB, indexk, YY)]);
 
 	q[Y][Z] += dt*(s[Y][Z] + gamma*h[Y][Z] + chi_qab[Y][Z]
-		       - flux->fe[addr_rank1(nsites, NQAB, index, YZ)]
-		       + flux->fw[addr_rank1(nsites, NQAB, index, YZ)]
-		       - flux->fy[addr_rank1(nsites, NQAB, index, YZ)]
-		       + flux->fy[addr_rank1(nsites, NQAB, indexj, YZ)]
-		       - flux->fz[addr_rank1(nsites, NQAB, index, YZ)]
-		       + flux->fz[addr_rank1(nsites, NQAB, indexk, YZ)]);
+		       - flux->fe[addr_rank1(flux->nsite, NQAB, index, YZ)]
+		       + flux->fw[addr_rank1(flux->nsite, NQAB, index, YZ)]
+		       - flux->fy[addr_rank1(flux->nsite, NQAB, index, YZ)]
+		       + flux->fy[addr_rank1(flux->nsite, NQAB, indexj, YZ)]
+		       - flux->fz[addr_rank1(flux->nsite, NQAB, index, YZ)]
+		       + flux->fz[addr_rank1(flux->nsite, NQAB, indexk, YZ)]);
 
 	field_tensor_set(fq, index, q);
 
