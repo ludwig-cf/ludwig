@@ -1008,7 +1008,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
   __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv;
-    int n, nf, nsites;
+    int n, nf;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
     int maskv[NSIMDVL];
     int index0[NSIMDVL], index1[NSIMDVL], index2[NSIMDVL], index3[NSIMDVL];
@@ -1024,7 +1024,6 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     const double a3 =  0.286067;
 
     nf = field->nf;
-    nsites = field->nsites;
 
     kernel_coords_v(ktx, kindex, ic, jc, kc);
     kernel_coords_index_v(ktx, ic, jc, kc, index0);
@@ -1058,14 +1057,14 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     for (n = 0; n < nf; n++) {
       __targetILP__(iv) {
 	if (u[iv] > 0.0) {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index2[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
 	}
 	else {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index3[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index3[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
 	}
       }
 
@@ -1090,14 +1089,14 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     for (n = 0; n < nf; n++) {
       __targetILP__(iv) {
 	if (u[iv] < 0.0) {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index2[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index3[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index3[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
 	}
 	else {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index3[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index3[iv],n)];
 	}
       }
 
@@ -1120,7 +1119,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 
     for (ia = 0; ia < NHDIM; ia++) {
       __targetILP__(iv) {
-	u1[ia][iv] = hydro->u[addr_rank1(nsites,NHDIM,index1[iv],ia)];
+	u1[ia][iv] = hydro->u[addr_rank1(field->nsites,NHDIM,index1[iv],ia)];
       }
     }
 
@@ -1129,19 +1128,19 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     for (n = 0; n < nf; n++) {
       __targetILP__(iv) {
 	if (u[iv] < 0.0) {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index2[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
 	}
 	else {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index3[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index3[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
 	}
       }
 
       __targetILP__(iv) {
-	flux->fy[addr_rank1(nsites,nf,index0[iv],n)] =
+	flux->fy[addr_rank1(field->nsites,nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
     }
@@ -1167,19 +1166,19 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     for (n = 0; n < nf; n++) {	    
       __targetILP__(iv) {
 	if (u[iv] < 0.0) {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index2[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
 	}
 	else {
-	  fd1[iv] = field->data[addr_rank1(nsites,nf,index3[iv],n)];
-	  fd2[iv] = field->data[addr_rank1(nsites,nf,index0[iv],n)];
-	  fd3[iv] = field->data[addr_rank1(nsites,nf,index1[iv],n)];
+	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index3[iv],n)];
+	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index0[iv],n)];
+	  fd3[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
 	}
       }
 
       __targetILP__(iv) {
-	flux->fz[addr_rank1(nsites,nf,index0[iv],n)] =
+	flux->fz[addr_rank1(field->nsites,nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
     }
@@ -1204,7 +1203,6 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
   int nlocal[3];
   int ic, jc, kc;
   int n;
-  int nsite;
   int index0, index1, index2, index3;
   int icm2, icm1, icp1, icp2;
   double u0[3], u1[3], u;
@@ -1218,7 +1216,6 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
   assert(f);
 
   le = flux->le;
-  nsite = flux->nsite;
 
   lees_edw_nlocal(le, nlocal);
 
@@ -1244,11 +1241,11 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 	index3 = lees_edw_index(le, icp1, jc, kc);
 
 	for (n = 0; n < nf; n++) {
-	  flux->fw[addr_rank1(nsite, nf, index0,  n)] =
-	    u*(- a1*f[addr_rank1(nsite, nf, index2, n)]
-	       + a2*f[addr_rank1(nsite, nf, index1, n)]
-	       + a2*f[addr_rank1(nsite, nf, index0, n)]
-	       - a1*f[addr_rank1(nsite, nf, index3, n)]);
+	  flux->fw[addr_rank1(flux->nsite, nf, index0,  n)] =
+	    u*(- a1*f[addr_rank1(flux->nsite, nf, index2, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index1, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index0, n)]
+	       - a1*f[addr_rank1(flux->nsite, nf, index3, n)]);
 	}
 
 	/* east face */
@@ -1261,11 +1258,11 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 	index3 = lees_edw_index(le, icp2, jc, kc);
 
 	for (n = 0; n < nf; n++) {
-	  flux->fe[addr_rank1(nsite, nf, index0, n)] =
-	    u*(- a1*f[addr_rank1(nsite, nf, index2, n)]
-	       + a2*f[addr_rank1(nsite, nf, index0, n)]
-	       + a2*f[addr_rank1(nsite, nf, index1, n)]
-	       - a1*f[addr_rank1(nsite, nf, index3, n)]);
+	  flux->fe[addr_rank1(flux->nsite, nf, index0, n)] =
+	    u*(- a1*f[addr_rank1(flux->nsite, nf, index2, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index0, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index1, n)]
+	       - a1*f[addr_rank1(flux->nsite, nf, index3, n)]);
 	}
 
 	/* y-direction */
@@ -1278,11 +1275,11 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 	index3 = lees_edw_index(le, ic, jc+2, kc);
 
 	for (n = 0; n < nf; n++) {
-	  flux->fy[addr_rank1(nsite, nf, index0, n)] =
-	    u*(- a1*f[addr_rank1(nsite, nf, index2, n)]
-	       + a2*f[addr_rank1(nsite, nf, index0, n)]
-	       + a2*f[addr_rank1(nsite, nf, index1, n)]
-	       - a1*f[addr_rank1(nsite, nf, index3, n)]);
+	  flux->fy[addr_rank1(flux->nsite, nf, index0, n)] =
+	    u*(- a1*f[addr_rank1(flux->nsite, nf, index2, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index0, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index1, n)]
+	       - a1*f[addr_rank1(flux->nsite, nf, index3, n)]);
 	}
 
 	/* z-direction */
@@ -1295,11 +1292,11 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 	index3 = lees_edw_index(le, ic, jc, kc+2);
 
 	for (n = 0; n < nf; n++) {
-	  flux->fz[addr_rank1(nsite, nf, index0, n)] =
-	    u*(- a1*f[addr_rank1(nsite, nf, index2, n)]
-	       + a2*f[addr_rank1(nsite, nf, index0, n)]
-	       + a2*f[addr_rank1(nsite, nf, index1, n)]
-	       - a1*f[addr_rank1(nsite, nf, index3, n)]);
+	  flux->fz[addr_rank1(flux->nsite, nf, index0, n)] =
+	    u*(- a1*f[addr_rank1(flux->nsite, nf, index2, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index0, n)]
+	       + a2*f[addr_rank1(flux->nsite, nf, index1, n)]
+	       - a1*f[addr_rank1(flux->nsite, nf, index3, n)]);
 	}
 
 	/* Next interface. */
@@ -1326,7 +1323,6 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 
 static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f) {
-  int nsites;
   int nlocal[3];
   int ic, jc, kc;
   int n;
@@ -1346,7 +1342,6 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
   assert(f);
 
   le = flux->le;
-  nsites = flux->nsite;
   lees_edw_nlocal(le, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -1371,22 +1366,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u > 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fw[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,icm3,jc,kc), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,icm2,jc,kc), n)] +
-               a3*f[addr_rank1(nsites, nf, index1, n)] +
-               a4*f[addr_rank1(nsites, nf, index0, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,icp1,jc,kc), n)]);
+            flux->fw[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icm3,jc,kc), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icm2,jc,kc), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index1, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index0, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icp1,jc,kc), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fw[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,icp2,jc,kc), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,icp1,jc,kc), n)] +
-               a3*f[addr_rank1(nsites, nf, index0, n)] +
-               a4*f[addr_rank1(nsites, nf, index1, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,icm2,jc,kc), n)]);
+            flux->fw[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icp2,jc,kc), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icp1,jc,kc), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index0, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index1, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icm2,jc,kc), n)]);
           }
 	}
 
@@ -1398,22 +1393,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u < 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fe[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,icp3,jc,kc), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,icp2,jc,kc), n)] +
-               a3*f[addr_rank1(nsites, nf, index1, n)] +
-               a4*f[addr_rank1(nsites, nf, index0, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,icm1,jc,kc), n)]);
+            flux->fe[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icp3,jc,kc), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icp2,jc,kc), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index1, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index0, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icm1,jc,kc), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fe[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,icm2,jc,kc), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,icm1,jc,kc), n)] +
-               a3*f[addr_rank1(nsites, nf, index0, n)] +
-               a4*f[addr_rank1(nsites, nf, index1, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,icp2,jc,kc), n)]);
+            flux->fe[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icm2,jc,kc), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icm1,jc,kc), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index0, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index1, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,icp2,jc,kc), n)]);
           }
         }
 
@@ -1425,22 +1420,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u < 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fy[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc+3,kc), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc+2,kc), n)] +
-               a3*f[addr_rank1(nsites, nf, index1, n)] +
-               a4*f[addr_rank1(nsites, nf, index0, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc-1,kc), n)]);
+            flux->fy[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc+3,kc), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc+2,kc), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index1, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index0, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc-1,kc), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fy[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc-2,kc), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc-1,kc), n)] +
-               a3*f[addr_rank1(nsites, nf, index0, n)] +
-               a4*f[addr_rank1(nsites, nf, index1, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc+2,kc), n)]);
+            flux->fy[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc-2,kc), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc-1,kc), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index0, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index1, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc+2,kc), n)]);
           }
         }
 
@@ -1452,22 +1447,22 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
         if (u < 0.0) {
           for (n = 0; n < nf; n++) {
-            flux->fz[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc,kc+3), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc,kc+2), n)] +
-               a3*f[addr_rank1(nsites, nf, index1, n)] +
-               a4*f[addr_rank1(nsites, nf, index0, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc,kc-1), n)]);
+            flux->fz[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc,kc+3), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc,kc+2), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index1, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index0, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc,kc-1), n)]);
           }
         }
         else {
           for (n = 0; n < nf; n++) {
-            flux->fz[addr_rank1(nsites, nf, index0, n)] = u*
-	      (a1*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc,kc-2), n)] +
-	       a2*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc,kc-1), n)] +
-               a3*f[addr_rank1(nsites, nf, index0, n)] +
-               a4*f[addr_rank1(nsites, nf, index1, n)] +
-	       a5*f[addr_rank1(nsites, nf, lees_edw_index(le,ic,jc,kc+2), n)]);
+            flux->fz[addr_rank1(flux->nsite, nf, index0, n)] = u*
+	      (a1*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc,kc-2), n)] +
+	       a2*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc,kc-1), n)] +
+               a3*f[addr_rank1(flux->nsite, nf, index0, n)] +
+               a4*f[addr_rank1(flux->nsite, nf, index1, n)] +
+	       a5*f[addr_rank1(flux->nsite, nf, lees_edw_index(le,ic,jc,kc+2), n)]);
           }
         }
 
@@ -1514,6 +1509,10 @@ int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
  *
  *  Symmetric two-point stencil.
  *
+ *  TODO:
+ *  The assert(0) indicates there is no path to this code.
+ *  Could be refactored.
+ *
  *****************************************************************************/
 
 int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
@@ -1524,7 +1523,7 @@ int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
   int index0, index1;
   double u0[3], u1[3], u;
 
-  assert(0); /* SHIT NO TEST */
+  assert(0); /* NO TEST */
   assert(hydro);
   assert(nf > 0);
   assert(f);
@@ -1621,7 +1620,6 @@ int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f,
 int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f, 
 					double ** flx) {
 
-  int nsites;
   int nlocal[3];
   int ic, jc, kc, c;
   int n;
@@ -1633,7 +1631,6 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
   assert(f);
   assert(flx);
 
-  nsites = coords_nsites();
   coords_nlocal(nlocal);
   assert(coords_nhalo() >= 1);
 
@@ -1652,9 +1649,9 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
 	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);
 
 	  for (n = 0; n < nf; n++) {
-	    flx[addr_rank1(nsites, nf, index0, n)][c - 1]
-	      = u*0.5*(f[addr_rank1(nsites, nf, index1, n)]
-		       + f[addr_rank1(nsites, nf, index0, n)]);
+	    flx[addr_rank1(coords_nsites(), nf, index0, n)][c - 1]
+	      = u*0.5*(f[addr_rank1(coords_nsites(), nf, index1, n)]
+		       + f[addr_rank1(coords_nsites(), nf, index0, n)]);
 	  }
 	}
 

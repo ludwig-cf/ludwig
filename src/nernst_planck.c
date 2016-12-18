@@ -103,6 +103,10 @@ static double max_acc;
  *  The map object is allowed to be NULL, in which case no boundary
  *  condition corrections are attempted.
  *
+ *  TODO:
+ *  The assert(0) indicates this routine is not in use.
+ *  The nernst_planck_driver_d3qx version is preferred.
+ *
  *****************************************************************************/
 
 int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) {
@@ -114,7 +118,7 @@ int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) 
   double * fy = NULL;
   double * fz = NULL;
 
-  assert(0); /* Not in use. SHIT NO TEST ?*/
+  assert(0); /* Not in use. */
 
   psi_nk(psi, &nk);
   nsites = coords_nsites();
@@ -165,6 +169,10 @@ int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) 
  *  there is an extra minus sign in the fluxes here. This conincides
  *  with the sign of the advective fluxes, if present.
  *
+ *  TODO:
+ *  The assert(0) indicates this code is not in use. The 
+ *  analogoues _d3qx version is preferred.
+ *
  *****************************************************************************/
 
 static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fe,
@@ -183,7 +191,7 @@ static int nernst_planck_fluxes(psi_t * psi, fe_t * fel, double * fe,
   double rho0, rho1;
   double mu_s0, mu_s1;   /* Solvation chemical potential, from free energy */
 
-  assert(0); /* Not in use SHIT NO TEST? */
+  assert(0); /* Not in use. */
   assert(psi);
   assert(fe);
   assert(fy);

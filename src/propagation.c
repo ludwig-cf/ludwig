@@ -70,7 +70,6 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  /* SHIT Encapsulate or remove requirement. */
   copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int)); 
 
   kernel_ctxt_create(NSIMDVL, limits, &ctxt);

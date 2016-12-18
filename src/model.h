@@ -61,7 +61,6 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag);
 __host__ int lb_halo_via_copy(lb_t * lb);
 __host__ int lb_halo_via_struct(lb_t * lb);
 __host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
-__host__ int lb_halo_reduced(lb_t * lb);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info);
 

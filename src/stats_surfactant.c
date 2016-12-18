@@ -33,6 +33,8 @@
  *  composition, work out the profile of the free energy, and hence
  *  the current interfacial tension.
  *
+ *  TODO: surfactant code to be entirely refactored.
+ *
  *****************************************************************************/
 
 int stats_surfactant_1d(fe_surfactant1_t * fe) {
@@ -65,13 +67,9 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   index = coords_index(ic, jc, kc);
   fe_surfactant1_fed(fe, index, &e0);
 
-#ifdef OLD_SHIT
-  field_scalar_array(fe->phi, index, phi);
-#else
-  assert(0);
+  assert(0); /* phi and psi required from relevant field */
   phi[0] = 0.0;
   phi[1] = 0.0;
-#endif
 
   psi_b = phi[1];
 
@@ -87,6 +85,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
     index = coords_index(ic, jc, kc);
 
     fe_surfactant1_fed(fe, index, &e0);
+    e = 0.0; /* Check what e should be. */
     sigma += 0.5*(e - e0);
     /* field_scalar_array(fe->phi, index, phi);*/
     assert(0); /* Incomplete type above*/

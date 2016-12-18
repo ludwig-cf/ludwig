@@ -19,7 +19,7 @@
  *              + phi(ic,jc,kc+1) + phi(ic,jc,kc-1)
  *              - 6 phi(ic,jc,kc)
  *
- *  Corrections for Lees-Edwards planes and plane wall in X are included.
+ *  Corrections for Lees-Edwards planes are included.
  *
  *  $Id: gradient_3d_7pt_fluid.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
  *
@@ -38,9 +38,7 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "coords.h"
 #include "leesedwards.h"
-#include "wall.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "timer.h"
@@ -52,8 +50,6 @@ __host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
 					int nextra);
 __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				  int nextra);
-__host__ int grad_3d_7pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,
-				    int nextra);
 
 __host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df);
 __host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df);
@@ -73,7 +69,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
 
 __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
 
-  int nextra;
+  int nhalo, nextra;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
@@ -81,16 +77,14 @@ __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
   assert(fgrad->field->le);
 
   le = fgrad->field->le;
-  nextra = coords_nhalo() - NSTENCIL;
-  assert(nextra >= 0);
+  lees_edw_nhalo(le, &nhalo);
 
-  assert(fgrad);
+  nextra = nhalo - NSTENCIL;
+  assert(nextra >= 0);
 
   grad_3d_7pt_fluid_operator(le, fgrad, nextra);
   grad_3d_7pt_fluid_le(le, fgrad, nextra);
-#ifdef OLD_SHIT
-  grad_3d_7pt_fluid_wall(le, fgrad, nextra);
-#endif
+
   return 0;
 }
 
@@ -98,11 +92,15 @@ __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
  *
  *  grad_3d_7pt_fluid_d4
  *
+ *  TODO:
+ *  The assert(0) indicates refactoring is required to make the
+ *  extra derivative (cf, 2d_5pt etc). There's no test.
+ *
  *****************************************************************************/
 
 __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
-  int nextra;
+  int nhalo, nextra;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
@@ -110,18 +108,15 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
   assert(fgrad->field->le);
 
   le = fgrad->field->le;
+  lees_edw_nhalo(le, &nhalo);
 
-  nextra = coords_nhalo() - 2*NSTENCIL;
+  nextra = nhalo - 2*NSTENCIL;
   assert(nextra >= 0);
-  assert(fgrad);
 
-  assert(0); /* SHIT NO TEST? */
-  assert(0); /* Needs double call. Brazovskii */
+  assert(0); /* NO TEST? */
   grad_3d_7pt_fluid_operator(le, fgrad, nextra);
   grad_3d_7pt_fluid_le(le, fgrad, nextra);
-#ifdef OLD_SHIT
-  grad_3d_7pt_fluid_wall(le, fgrad, nextra);
-#endif
+
   return 0;
 }
 
@@ -418,126 +413,6 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
   return 0;
 }
 
-/*****************************************************************************
- *
- *  grad_3d_7pt_fluid_wall
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-#ifdef OLD_SHIT
-__host__
-int grad_3d_7pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,  int nextra) {
-
-  int nop;
-  int nlocal[3];
-  int nhalo;
-  int n;
-  int jc, kc;
-  int index;
-  int xs, ys;
-
-  double fb;                    /* Extrapolated value of field at boundary */
-  double gradm1, gradp1;        /* gradient terms */
-  double rk;                    /* Fluid free energy parameter (reciprocal) */
-  double * c;                   /* Solid free energy parameters C */
-  double * h;                   /* Solid free energy parameters H */
-
-  double * __restrict__ field;
-  double * __restrict__ grad;
-  double * __restrict__ del2;
-
-  assert(le);
-  assert(fg);
-
-  if (wall_at_edge(X) == 0) return 0;
-
-  lees_edw_nlocal(le, nlocal);
-  lees_edw_nhalo(le, &nhalo);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  assert(wall_at_edge(Y) == 0);
-  assert(wall_at_edge(Z) == 0);
-
-  nop = fg->field->nf;
-  field = fg->field->data;
-  grad = fg->grad;
-  del2 = fg->delsq;
-
-  /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
-   * is currently no mechanism to obtain the free energy parameters. */
-
-  c = (double *) malloc(nop*sizeof(double));
-  h = (double *) malloc(nop*sizeof(double));
-
-  if (c == NULL) fatal("malloc(c) failed\n");
-  if (h == NULL) fatal("malloc(h) failed\n");
-
-  for (n = 0; n < nop; n++) {
-    c[n] = 0.0;
-    h[n] = 0.0;
-  }
-  rk = 0.0;
-
-  if (cart_coords(X) == 0) {
-
-    /* Correct the lower wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-	index = lees_edw_index(le, 1, jc, kc);
-
-	for (n = 0; n < nop; n++) {
-	  gradp1 = field[nop*(index + xs) + n] - field[nop*index + n];
-	  fb = field[nop*index + n] - 0.5*gradp1;
-	  gradm1 = -(c[n]*fb + h[n])*rk;
-	  grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	  del2[nop*index + n]
-	    = gradp1 - gradm1
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    + field[nop*(index + 1 ) + n] + field[nop*(index - 1 ) + n] 
-	    - 4.0*field[nop*index + n];
-	}
-
-	/* Next site */
-      }
-    }
-  }
-
-  if (cart_coords(X) == cart_size(X) - 1) {
-
-    /* Correct the upper wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
-
-	index = lees_edw_index(le, nlocal[X], jc, kc);
-
-	for (n = 0; n < nop; n++) {
-	  gradm1 = field[nop*index + n] - field[nop*(index - xs) + n];
-	  fb = field[nop*index + n] + 0.5*gradm1;
-	  gradp1 = -(c[n]*fb + h[n])*rk;
-	  grad[3*(nop*index + n) + X] = 0.5*(gradp1 - gradm1);
-	  del2[nop*index + n]
-	    = gradp1 - gradm1
-	    + field[nop*(index + ys) + n] + field[nop*(index - ys) + n]
-	    + field[nop*(index + 1 ) + n] + field[nop*(index - 1 ) + n]
-	    - 4.0*field[nop*index + n];
-	}
-	/* Next site */
-      }
-    }
-  }
-
-  free(c);
-  free(h);
-
-  return 0;
-}
-#endif
 /*****************************************************************************
  *
  *  grad_dab_compute

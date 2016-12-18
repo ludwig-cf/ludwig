@@ -98,7 +98,7 @@ int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
   psi->skipsteps = skipsteps_default;
   psi->diffacc = diffacc_default;
 
-  psi->nfreq_io = INT_MAX; /* SHIT not picked up in input? */
+  psi->nfreq_io = INT_MAX;
   psi->nfreq = INT_MAX;
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);

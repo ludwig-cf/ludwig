@@ -463,7 +463,8 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
  *
  *  Note the calculation involves a collective communication.
  *
- *  TODO: sort out wall momentum account fw.
+ *  TODO: sort out wall momentum account fw. This is the reason
+ *  for the commented-out code and assert(0).
  *
  *****************************************************************************/
 
@@ -502,7 +503,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     physics_fbody_set(phys, f);
 
     /* Need to account for wall momentum transfer */
-    assert(0); /* SHIT NO TEST */
+    assert(0); /* NO TEST */
   }
 
   return 0;

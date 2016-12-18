@@ -54,21 +54,20 @@ __host__ int grad_2d_5pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,
 
 __host__ int grad_2d_5pt_fluid_d2(field_grad_t * fg) {
 
-  int nextra;
+  int nhalo, nextra;
   lees_edw_t * le = NULL;
 
   assert(fg);
   assert(fg->field);
 
   le = fg->field->le;
-  nextra = coords_nhalo() - 1;
+  lees_edw_nhalo(le, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
   grad_2d_5pt_fluid_operator(le, fg, nextra, GRAD_DEL2);
   grad_2d_5pt_fluid_le(le, fg, nextra, GRAD_DEL2);
-#ifdef OLD_SHIT
-  grad_2d_5pt_fluid_wall(le, fg, nextra, GRAD_DEL2);
-#endif
+
   return 0;
 }
 
@@ -80,21 +79,20 @@ __host__ int grad_2d_5pt_fluid_d2(field_grad_t * fg) {
 
 __host__ int grad_2d_5pt_fluid_d4(field_grad_t * fg) {
 
-  int nextra;
+  int nhalo, nextra;
   lees_edw_t * le = NULL;
 
   assert(fg);
   assert(fg->field);
 
   le = fg->field->le;
-  nextra = coords_nhalo() - 2;
+  lees_edw_nhalo(le, &nhalo);
+  nextra = nhalo - 2;
   assert(nextra >= 0);
 
   grad_2d_5pt_fluid_operator(le, fg, nextra, GRAD_DEL4);
   grad_2d_5pt_fluid_le(le, fg, nextra, GRAD_DEL4);
-#ifdef OLD_SHIT
-  grad_2d_5pt_fluid_wall(le, fg, nextra, GRAD_DEL4);
-#endif
+
   return 0;
 }
 
@@ -118,9 +116,9 @@ __host__ int grad_2d_5pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   int icm1, icp1;
   int index, indexm1, indexp1;
 
-  double * __restrict__ field;
-  double * __restrict__ grad;
-  double * __restrict__ del2;
+  double * __restrict__ field = NULL;
+  double * __restrict__ grad = NULL;
+  double * __restrict__ del2 = NULL;
 
   assert(le);
   assert(fg);
@@ -199,9 +197,9 @@ __host__ int grad_2d_5pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
   int index, indexm1, indexp1;            /* 1d addresses involved */
   int ys;                                 /* y-stride for 1d address */
 
-  double * __restrict__ field;
-  double * __restrict__ grad;
-  double * __restrict__ del2;
+  double * __restrict__ field = NULL;
+  double * __restrict__ grad = NULL;
+  double * __restrict__ del2 = NULL;
 
   assert(le);
   assert(fg);
@@ -295,131 +293,3 @@ __host__ int grad_2d_5pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  grad_2d_5pt_fluid_wall
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-#ifdef OLD_SHIT
-__host__ int grad_2d_5pt_fluid_wall(lees_edw_t * le, field_grad_t * fg,
-				    int nextra, int type) {
-
-  int nop;
-  int nlocal[3];
-  int nhalo;
-  int nsites;
-  int n;
-  int jc;
-  int index;
-  int xs, ys;
-
-  double fb;                    /* Extrapolated value of field at boundary */
-  double gradm1, gradp1;        /* gradient terms */
-  double rk;                    /* Fluid free energy parameter (reciprocal) */
-  double * c;                   /* Solid free energy parameters C */
-  double * h;                   /* Solid free energy parameters H */
-
-  double * __restrict__ field;
-  double * __restrict__ grad;
-  double * __restrict__ del2;
-
-  assert(le);
-  assert(fg);
-
-  lees_edw_nlocal(le, nlocal);
-  lees_edw_nhalo(le, &nhalo);
-  lees_edw_nsites(le, &nsites);
-
-  assert(nlocal[Z] == 1);
-
-  ys = (nlocal[Z] + 2*nhalo);
-  xs = ys*(nlocal[Y] + 2*nhalo);
-
-  assert(wall_at_edge(Y) == 0);
-  assert(wall_at_edge(Z) == 0);
-
-  nop = fg->field->nf;
-  if (type == GRAD_DEL2) {
-    field = fg->field->data;
-    grad  = fg->grad;
-    del2  = fg->delsq;
-  }
-  if (type == GRAD_DEL4) {
-    field = fg->delsq;
-    grad  = fg->grad_delsq;
-    del2 =  fg->delsq_delsq;
-  }
-  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
-
-  /* This enforces C = 0 and H = 0, ie., neutral wetting, as there
-   * is currently no mechanism to obtain the free energy parameters. */
-
-  c = (double *) malloc(nop*sizeof(double));
-  h = (double *) malloc(nop*sizeof(double));
-
-  if (c == NULL) fatal("malloc(c) failed\n");
-  if (h == NULL) fatal("malloc(h) failed\n");
-
-  for (n = 0; n < nop; n++) {
-    c[n] = 0.0;
-    h[n] = 0.0;
-  }
-  rk = 0.0;
-
-  if (wall_at_edge(X) && cart_coords(X) == 0) {
-
-    /* Correct the lower wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = lees_edw_index(le, 1, jc, 1);
-
-      for (n = 0; n < nop; n++) {
-	gradp1 = field[addr_rank1(nsites, nop, index + xs, n)]
-	       - field[addr_rank1(nsites, nop, index, n)];
-	fb = field[addr_rank1(nsites, nop, index, n)] - 0.5*gradp1;
-	gradm1 = -(c[n]*fb + h[n])*rk;
-	grad[addr_rank2(nsites, nop, NVECTOR, index, n, X)] = 0.5*(gradp1 - gradm1);
-	del2[addr_rank1(nsites, nop, index, n)]
-	  = gradp1 - gradm1
-	  + field[addr_rank1(nsites, nop, (index + ys), n)]
-	  + field[addr_rank1(nsites, nop, (index - ys), n)]
-	  - 2.0*field[addr_rank1(nsites, nop, index, n)];
-      }
-      /* Next site */
-    }
-  }
-
-  if (wall_at_edge(X) && cart_coords(X) == cart_size(X) - 1) {
-
-    /* Correct the upper wall */
-
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-
-      index = lees_edw_index(le, nlocal[X], jc, 1);
-
-      for (n = 0; n < nop; n++) {
-	gradm1 = field[addr_rank1(nsites, nop, index, n)]
-	       - field[addr_rank1(nsites, nop, (index - xs), n)];
-	fb = field[addr_rank1(nsites, nop, index, n)] + 0.5*gradm1;
-	gradp1 = -(c[n]*fb + h[n])*rk;
-	grad[addr_rank2(nsites, nop, NVECTOR, index, n, X)] = 0.5*(gradp1 - gradm1);
-	del2[addr_rank1(nsites, nop, index, n)]
-	  = gradp1 - gradm1
-	  + field[addr_rank1(nsites, nop, (index + ys), n)]
-	  + field[addr_rank1(nsites, nop, (index - ys), n)]
-	  - 2.0*field[addr_rank1(nsites, nop, index, n)];
-      }
-      /* Next site */
-    }
-  }
-
-  free(c);
-  free(h);
-
-  return 0;
-}
-#endif

@@ -339,7 +339,7 @@ __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* 
 __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
 
 /* KS addition alias to be formalised... */
-#define __target_simd_for(iv, nsimdvl) __targetILP__((iv))
+#define __target_simd_for(iv, nsimdvl) __targetILP__(iv)
 /* KS end addition */
 
 #endif

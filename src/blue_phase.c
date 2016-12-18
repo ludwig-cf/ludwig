@@ -1137,7 +1137,6 @@ __host__ __device__
 void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]) {
 
   int ia, iv;
-  int nsites;
 
   double q[3][3][NSIMDVL];
   double dq[3][3][3][NSIMDVL];
@@ -1152,39 +1151,38 @@ void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]) {
   data = fe->q->data;
   grad = fe->dq->grad;
   delsq = fe->dq->delsq;
-  nsites = fe->q->nsites; /* Same for all three */
 
   /* Expand various tensors */
 
-  __targetILP__(iv) q[X][X][iv] = data[addr_rank1(nsites,NQAB,index+iv,XX)];
-  __targetILP__(iv) q[X][Y][iv] = data[addr_rank1(nsites,NQAB,index+iv,XY)];
-  __targetILP__(iv) q[X][Z][iv] = data[addr_rank1(nsites,NQAB,index+iv,XZ)];
+  __targetILP__(iv) q[X][X][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  __targetILP__(iv) q[X][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  __targetILP__(iv) q[X][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
   __targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
-  __targetILP__(iv) q[Y][Y][iv] = data[addr_rank1(nsites,NQAB,index+iv,YY)];
-  __targetILP__(iv) q[Y][Z][iv] = data[addr_rank1(nsites,NQAB,index+iv,YZ)];
+  __targetILP__(iv) q[Y][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  __targetILP__(iv) q[Y][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
   __targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
   __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
   __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    __targetILP__(iv) dq[ia][X][X][iv] = grad[addr_rank2(nsites,NQAB,NVECTOR,index+iv,XX,ia)];
-    __targetILP__(iv) dq[ia][X][Y][iv] = grad[addr_rank2(nsites,NQAB,NVECTOR,index+iv,XY,ia)];
-    __targetILP__(iv) dq[ia][X][Z][iv] = grad[addr_rank2(nsites,NQAB,NVECTOR,index+iv,XZ,ia)];
+    __targetILP__(iv) dq[ia][X][X][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XX,ia)];
+    __targetILP__(iv) dq[ia][X][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XY,ia)];
+    __targetILP__(iv) dq[ia][X][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XZ,ia)];
     __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-    __targetILP__(iv) dq[ia][Y][Y][iv] = grad[addr_rank2(nsites,NQAB,NVECTOR,index+iv,YY,ia)];
-    __targetILP__(iv) dq[ia][Y][Z][iv] = grad[addr_rank2(nsites,NQAB,NVECTOR,index+iv,YZ,ia)];
+    __targetILP__(iv) dq[ia][Y][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,YY,ia)];
+    __targetILP__(iv) dq[ia][Y][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,YZ,ia)];
     __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
     __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
     __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
   }
 
-  __targetILP__(iv) dsq[X][X][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,XX)];
-  __targetILP__(iv) dsq[X][Y][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,XY)];
-  __targetILP__(iv) dsq[X][Z][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,XZ)];
+  __targetILP__(iv) dsq[X][X][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  __targetILP__(iv) dsq[X][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  __targetILP__(iv) dsq[X][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
   __targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
-  __targetILP__(iv) dsq[Y][Y][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,YY)];
-  __targetILP__(iv) dsq[Y][Z][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,YZ)];
+  __targetILP__(iv) dsq[Y][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  __targetILP__(iv) dsq[Y][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
   __targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
   __targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
   __targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
@@ -1208,7 +1206,6 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
 
   int iv;
   int ia;
-  int nsites;
  
   double q[3][3][NSIMDVL];
   double h[3][3][NSIMDVL];
@@ -1222,36 +1219,35 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
   data = fe->q->data;
   grad = fe->dq->grad;
   delsq = fe->dq->delsq;
-  nsites = fe->q->nsites; /* Same for all three */
 
-  __targetILP__(iv) q[X][X][iv] = data[addr_rank1(nsites,NQAB,index+iv,XX)];
-  __targetILP__(iv) q[X][Y][iv] = data[addr_rank1(nsites,NQAB,index+iv,XY)];
-  __targetILP__(iv) q[X][Z][iv] = data[addr_rank1(nsites,NQAB,index+iv,XZ)];
+  __targetILP__(iv) q[X][X][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  __targetILP__(iv) q[X][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  __targetILP__(iv) q[X][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
   __targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
-  __targetILP__(iv) q[Y][Y][iv] = data[addr_rank1(nsites,NQAB,index+iv,YY)];
-  __targetILP__(iv) q[Y][Z][iv] = data[addr_rank1(nsites,NQAB,index+iv,YZ)];
+  __targetILP__(iv) q[Y][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  __targetILP__(iv) q[Y][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
   __targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
   __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
   __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    __targetILP__(iv) dq[ia][X][X][iv] = grad[addr_rank2(nsites,NQAB,3,index+iv,XX,ia)];
-    __targetILP__(iv) dq[ia][X][Y][iv] = grad[addr_rank2(nsites,NQAB,3,index+iv,XY,ia)];
-    __targetILP__(iv) dq[ia][X][Z][iv] = grad[addr_rank2(nsites,NQAB,3,index+iv,XZ,ia)];
+    __targetILP__(iv) dq[ia][X][X][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XX,ia)];
+    __targetILP__(iv) dq[ia][X][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XY,ia)];
+    __targetILP__(iv) dq[ia][X][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XZ,ia)];
     __targetILP__(iv) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-    __targetILP__(iv) dq[ia][Y][Y][iv] = grad[addr_rank2(nsites,NQAB,3,index+iv,YY,ia)];
-    __targetILP__(iv) dq[ia][Y][Z][iv] = grad[addr_rank2(nsites,NQAB,3,index+iv,YZ,ia)];
+    __targetILP__(iv) dq[ia][Y][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,YY,ia)];
+    __targetILP__(iv) dq[ia][Y][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,YZ,ia)];
     __targetILP__(iv) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
     __targetILP__(iv) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
     __targetILP__(iv) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
   }
 
-  __targetILP__(iv) dsq[X][X][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,XX)];
-  __targetILP__(iv) dsq[X][Y][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,XY)];
-  __targetILP__(iv) dsq[X][Z][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,XZ)];
+  __targetILP__(iv) dsq[X][X][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  __targetILP__(iv) dsq[X][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  __targetILP__(iv) dsq[X][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
   __targetILP__(iv) dsq[Y][X][iv] = dsq[X][Y][iv];
-  __targetILP__(iv) dsq[Y][Y][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,YY)];
-  __targetILP__(iv) dsq[Y][Z][iv] = delsq[addr_rank1(nsites,NQAB,index+iv,YZ)];
+  __targetILP__(iv) dsq[Y][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  __targetILP__(iv) dsq[Y][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
   __targetILP__(iv) dsq[Z][X][iv] = dsq[X][Z][iv];
   __targetILP__(iv) dsq[Z][Y][iv] = dsq[Y][Z][iv];
   __targetILP__(iv) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];

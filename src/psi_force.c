@@ -367,6 +367,9 @@ int psi_force_gradmu_es(psi_t * psi, fe_t * fe, field_t * phi, hydro_t * hydro,
  *
  *  The stress is to include the full electric field.
  *
+ *  TODO: The assert(0) indicates there is no test for this;
+ *        the _d3qx version is preferred.
+ *
  *****************************************************************************/
 
 int psi_force_divstress(psi_t * psi, fe_t * fe, hydro_t * hydro,
@@ -388,7 +391,7 @@ int psi_force_divstress(psi_t * psi, fe_t * fe, hydro_t * hydro,
 
   coords_nlocal(nlocal);
 
-  assert(0); /* SHIT NO TEST? */
+  assert(0); /* NO TEST? */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -552,7 +555,7 @@ int psi_force_divstress_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
  *  with X=6, 18 or 26. The stress is to include the full 
  *  electric field. 
  *
- *  NOTE
+ *  TODO
  *  This routine has not been refactored as no test exists. The
  *  refactoring has retained hardwired references to fe_electro
  *  (only).
@@ -581,7 +584,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 
   coords_nlocal(nlocal);
 
-  assert(0); /* SHIT NO TEST? */
+  assert(0); /* NO TEST? */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

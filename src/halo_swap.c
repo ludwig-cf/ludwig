@@ -351,9 +351,6 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 				  MPI_Datatype mpidata) {
 
   int sz;
-  int nall;
-  int nhcomm;
-  int na;
   int ic, jc, kc;
   int ia, index;
   int nh;
@@ -376,6 +373,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   const int tagf = 2015;
   const int tagb = 2016;
 
+  halo_swap_param_t * hp;
+
   assert(halo);
   assert(mbuf);
   assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
@@ -388,15 +387,12 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  nall = halo->param->naddr;
-  nhcomm = halo->param->nswap;
-  na = halo->param->na;
-
+  hp = halo->param;
   cs_nlocal(halo->cs, nlocal);
 
   /* X-direction */
 
-  nsend = nhcomm*na*nlocal[Y]*nlocal[Z];
+  nsend = hp->nswap*hp->na*nlocal[Y]*nlocal[Z];
   sendforw = (unsigned char *) malloc(nsend*sz);
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
@@ -410,17 +406,17 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   icount = 0;
 
-  for (nh = 0; nh < nhcomm; nh++) {
+  for (nh = 0; nh < hp->nswap; nh++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (ia = 0; ia < na; ia++) {
+	for (ia = 0; ia < hp->na; ia++) {
 	  /* Backward going... */
 	  index = cs_index(halo->cs, 1 + nh, jc, kc);
-	  ireal = addr_rank1(nall, na, index, ia);
+	  ireal = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  /* ...and forward going. */
 	  index = cs_index(halo->cs, nlocal[X] - nh, jc, kc);
-	  ireal = addr_rank1(nall, na, index, ia);
+	  ireal = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
 	}
@@ -451,15 +447,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   icount = 0;
 
-  for (nh = 0; nh < nhcomm; nh++) {
+  for (nh = 0; nh < hp->nswap; nh++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (ia = 0; ia < na; ia++) {
+	for (ia = 0; ia < hp->na; ia++) {
 	  index = cs_index(halo->cs, nlocal[X] + 1 + nh, jc, kc);
-	  ihalo = addr_rank1(nall, na, index, ia);
+	  ihalo = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  index = cs_index(halo->cs, 0 - nh, jc, kc);
-	  ihalo = addr_rank1(nall, na, index, ia);
+	  ihalo = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  icount += 1;
 	}
@@ -479,7 +475,7 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   /* Y direction */
 
-  nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*nlocal[Z];
+  nsend = hp->nswap*hp->na*(nlocal[X] + 2*hp->nswap)*nlocal[Z];
   sendforw = (unsigned char *) malloc(nsend*sz);
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
@@ -493,15 +489,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   icount = 0;
 
-  for (nh = 0; nh < nhcomm; nh++) {
-    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+  for (nh = 0; nh < hp->nswap; nh++) {
+    for (ic = 1 - hp->nswap; ic <= nlocal[X] + hp->nswap; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (ia = 0; ia < na; ia++) {
+	for (ia = 0; ia < hp->na; ia++) {
 	  index = cs_index(halo->cs, ic, 1 + nh, kc);
-	  ireal = addr_rank1(nall, na, index, ia);
+	  ireal = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  index = cs_index(halo->cs, ic, nlocal[Y] - nh, kc);
-	  ireal = addr_rank1(nall, na, index, ia);
+	  ireal = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
 	}
@@ -532,15 +528,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   icount = 0;
 
-  for (nh = 0; nh < nhcomm; nh++) {
-    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
+  for (nh = 0; nh < hp->nswap; nh++) {
+    for (ic = 1 - hp->nswap; ic <= nlocal[X] + hp->nswap; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	for (ia = 0; ia < na; ia++) {
+	for (ia = 0; ia < hp->na; ia++) {
 	  index = cs_index(halo->cs, ic, 0 - nh, kc);
-	  ihalo = addr_rank1(nall, na, index, ia);
+	  ihalo = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  index = cs_index(halo->cs, ic, nlocal[Y] + 1 + nh, kc);
-	  ihalo = addr_rank1(nall, na, index, ia);
+	  ihalo = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;
 	}
@@ -560,7 +556,7 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   /* Z direction */
 
-  nsend = nhcomm*na*(nlocal[X] + 2*nhcomm)*(nlocal[Y] + 2*nhcomm);
+  nsend = hp->nswap*hp->na*(nlocal[X] + 2*hp->nswap)*(nlocal[Y] + 2*hp->nswap);
   sendforw = (unsigned char *) malloc(nsend*sz);
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
@@ -575,17 +571,17 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   icount = 0;
 
-  for (nh = 0; nh < nhcomm; nh++) {
-    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
-      for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
-	for (ia = 0; ia < na; ia++) {
+  for (nh = 0; nh < hp->nswap; nh++) {
+    for (ic = 1 - hp->nswap; ic <= nlocal[X] + hp->nswap; ic++) {
+      for (jc = 1 - hp->nswap; jc <= nlocal[Y] + hp->nswap; jc++) {
+	for (ia = 0; ia < hp->na; ia++) {
 	  kc = imin(1 + nh, nlocal[Z]);
 	  index = cs_index(halo->cs, ic, jc, kc);
-	  ireal = addr_rank1(nall, na, index, ia);
+	  ireal = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  kc = imax(nlocal[Z] - nh, 1);
 	  index = cs_index(halo->cs, ic, jc, kc);
-	  ireal = addr_rank1(nall, na, index, ia);
+	  ireal = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
 	}
@@ -616,15 +612,15 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 
   icount = 0;
 
-  for (nh = 0; nh < nhcomm; nh++) {
-    for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
-      for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
-	for (ia = 0; ia < na; ia++) {
+  for (nh = 0; nh < hp->nswap; nh++) {
+    for (ic = 1 - hp->nswap; ic <= nlocal[X] + hp->nswap; ic++) {
+      for (jc = 1 - hp->nswap; jc <= nlocal[Y] + hp->nswap; jc++) {
+	for (ia = 0; ia < hp->na; ia++) {
 	  index = cs_index(halo->cs, ic, jc, 0 - nh);
-	  ihalo = addr_rank1(nall, na, index, ia);
+	  ihalo = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  index = cs_index(halo->cs, ic, jc, nlocal[Z] + 1 + nh);
-	  ihalo = addr_rank1(nall, na, index, ia);
+	  ihalo = addr_rank1(hp->naddr, hp->na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;
 	}
@@ -1016,16 +1012,14 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
   __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
 
     int nh;
-    int na;
-    int naddr;
-    int ia, indexl, indexh, ic, jc, kc;
     int hsz;
+    int ia, indexl, indexh, ic, jc, kc;
     int hi; /* high end offset */
     double * __restrict__ buflo = NULL;
     double * __restrict__ bufhi = NULL;
+    halo_swap_param_t * hp;
 
-    naddr = halo->param->naddr;
-    na = halo->param->na;
+    hp = halo->param;
     hsz = halo->param->hsz[id];
 
     /* Load two buffers for this site */
@@ -1038,21 +1032,21 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
     indexh = 0;
 
     if (id == X) {
-      hi = nh + halo->param->nlocal[X] - halo->param->nswap;
-      indexl = halo_swap_index(halo, nh + ic, jc, kc);
+      hi = nh + hp->nlocal[X] - hp->nswap;
+      indexl = halo_swap_index(halo, hp->nhalo + ic, jc, kc);
       indexh = halo_swap_index(halo, hi + ic, jc, kc);
       buflo = halo->fxlo;
       bufhi = halo->fxhi;
     }
     if (id == Y) {
-      hi = nh + halo->param->nlocal[Y] - halo->param->nswap;
+      hi = nh + hp->nlocal[Y] - hp->nswap;
       indexl = halo_swap_index(halo, ic, nh + jc, kc);
       indexh = halo_swap_index(halo, ic, hi + jc, kc);
       buflo = halo->fylo;
       bufhi = halo->fyhi;
     }
     if (id == Z) {
-      hi = nh + halo->param->nlocal[Z] - halo->param->nswap;
+      hi = nh + hp->nlocal[Z] - hp->nswap;
       indexl = halo_swap_index(halo, ic, jc, nh + kc);
       indexh = halo_swap_index(halo, ic, jc, hi + kc);
       buflo = halo->fzlo;
@@ -1065,30 +1059,31 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
 
       /* Low end, and high end */
 
-      for (ia = 0; ia < na; ia++) {
-	buflo[hsz*ia + kindex] = data[addr_rank1(naddr, na, indexl, ia)];
+      for (ia = 0; ia < hp->na; ia++) {
+	buflo[hsz*ia + kindex] = data[addr_rank1(hp->naddr, hp->na, indexl, ia)];
       }
 
-      for (ia = 0; ia < na; ia++) {
-	bufhi[hsz*ia + kindex] = data[addr_rank1(naddr, na, indexh, ia)];
+      for (ia = 0; ia < hp->na; ia++) {
+	bufhi[hsz*ia + kindex] = data[addr_rank1(hp->naddr, hp->na, indexh, ia)];
       }
     }
     else {
-      int nb = halo->param->nb;
       int ib, nel;
 
       nel = 0;
-      for (ia = 0; ia < na; ia++) {
-	for (ib = 0; ib < nb; ib++) {
-	  buflo[hsz*nel + kindex] = data[addr_rank2(naddr, na, nb, indexl, ia, ib)];
+      for (ia = 0; ia < hp->na; ia++) {
+	for (ib = 0; ib < hp->nb; ib++) {
+	  buflo[hsz*nel + kindex] =
+	    data[addr_rank2(hp->naddr, hp->na, hp->nb, indexl, ia, ib)];
 	  nel += 1;
 	}
       }
 
       nel = 0;
-      for (ia = 0; ia < na; ia++) {
-	for (ib = 0; ib < nb; ib++) {
-	  bufhi[hsz*nel + kindex] = data[addr_rank2(naddr, na, nb, indexh, ia, ib)];
+      for (ia = 0; ia < hp->na; ia++) {
+	for (ib = 0; ib < hp->nb; ib++) {
+	  bufhi[hsz*nel + kindex] =
+	    data[addr_rank2(hp->naddr, hp->na, hp->nb, indexh, ia, ib)];
 	  nel += 1;
 	}
       }
@@ -1120,8 +1115,6 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
   __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
 
-    int naddr;
-    int na;
     int hsz;
     int ia, indexl, indexh;
     int nh;                          /* Full halo width */
@@ -1129,9 +1122,9 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
     int lo, hi;                      /* Offset for low, high end */
     double * __restrict__ buflo = NULL;
     double * __restrict__ bufhi = NULL;
+    halo_swap_param_t * hp;
 
-    naddr = halo->param->naddr;
-    na = halo->param->na;
+    hp = halo->param;
     hsz = halo->param->hsz[id];
 
     nh = halo->param->nhalo;
@@ -1141,8 +1134,8 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
     indexh = 0;
 
     if (id == X) {
-      lo = nh - halo->param->nswap;
-      hi = nh + halo->param->nlocal[X];
+      lo = nh - hp->nswap;
+      hi = nh + hp->nlocal[X];
       indexl = halo_swap_index(halo, lo + ic, jc, kc);
       indexh = halo_swap_index(halo, hi + ic, jc, kc);
       buflo = halo->hxlo;
@@ -1150,8 +1143,8 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
     }
 
     if (id == Y) {
-      lo = nh - halo->param->nswap;
-      hi = nh + halo->param->nlocal[Y];
+      lo = nh - hp->nswap;
+      hi = nh + hp->nlocal[Y];
       indexl = halo_swap_index(halo, ic, lo + jc, kc);
       indexh = halo_swap_index(halo, ic, hi + jc, kc);
       buflo = halo->hylo;
@@ -1159,8 +1152,8 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
     }
 
     if (id == Z) {
-      lo = nh - halo->param->nswap;
-      hi = nh + halo->param->nlocal[Z];
+      lo = nh - hp->nswap;
+      hi = nh + hp->nlocal[Z];
       indexl = halo_swap_index(halo, ic, jc, lo + kc);
       indexh = halo_swap_index(halo, ic, jc, hi + kc);
       buflo = halo->hzlo;
@@ -1173,32 +1166,32 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
       /* Rank 1 */
       /* Low end, then high end */
 
-      for (ia = 0; ia < na; ia++) {
-	data[addr_rank1(naddr, na, indexl, ia)] = buflo[hsz*ia + kindex];
+      for (ia = 0; ia < hp->na; ia++) {
+	data[addr_rank1(hp->naddr, hp->na, indexl, ia)] = buflo[hsz*ia + kindex];
       }
 
-      for (ia = 0; ia < na; ia++) {
-	data[addr_rank1(naddr, na, indexh, ia)] = bufhi[hsz*ia + kindex];
+      for (ia = 0; ia < hp->na; ia++) {
+	data[addr_rank1(hp->naddr, hp->na, indexh, ia)] = bufhi[hsz*ia + kindex];
       }
 
     }
     else {
-
-      int nb = halo->param->nb;
       int ib, nel;
 
       nel = 0;
-      for (ia = 0; ia < na; ia++) {
-	for (ib = 0; ib < nb; ib++) {
-	  data[addr_rank2(naddr, na, nb, indexl, ia, ib)] = buflo[hsz*nel + kindex];
+      for (ia = 0; ia < hp->na; ia++) {
+	for (ib = 0; ib < hp->nb; ib++) {
+	  data[addr_rank2(hp->naddr, hp->na, hp->nb, indexl, ia, ib)] =
+	    buflo[hsz*nel + kindex];
 	  nel += 1;
 	}
       }
 
       nel = 0;
-      for (ia = 0; ia < na; ia++) {
-	for (ib = 0; ib < nb; ib++) {
-	  data[addr_rank2(naddr, na, nb, indexh, ia, ib)] = bufhi[hsz*nel + kindex];
+      for (ia = 0; ia < hp->na; ia++) {
+	for (ib = 0; ib < hp->nb; ib++) {
+	  data[addr_rank2(hp->naddr, hp->na, hp->nb, indexh, ia, ib)] =
+	    bufhi[hsz*nel + kindex];
 	  nel += 1;
 	}
       }

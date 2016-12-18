@@ -309,7 +309,6 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
     int ia, ib, n1, n2;
     int ih, ig;
     int n, nunknown;
-    int nsites;
     int status[6];
     int normal[3];
     const int bcs[6][3] = {{-1,0,0},{1,0,0},{0,-1,0},{0,1,0},{0,0,-1},{0,0,1}};
@@ -328,6 +327,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 
     double kappa0;
     double kappa1;
+    field_t * q;
 
     kappa0 = fe->param->kappa0;
     kappa1 = fe->param->kappa1;
@@ -341,7 +341,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 
     if (map->status[index] == MAP_FLUID) {
 
-      nsites = fg->field->nsites;
+      q = fg->field;
 
       /* Set up partial gradients and identify solid neighbours
        * (unknowns) in various directions. If both neighbours
@@ -373,11 +373,11 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	for (n1 = 0; n1 < NQAB; n1++) {
 
 	  gradn[n1][ia][0] =
-	    + fg->field->data[addr_rank1(nsites, NQAB, index+str[ia], n1)]
-	    - fg->field->data[addr_rank1(nsites, NQAB, index,         n1)];
+	    + q->data[addr_rank1(q->nsites, NQAB, index+str[ia], n1)]
+	    - q->data[addr_rank1(q->nsites, NQAB, index,         n1)];
 	  gradn[n1][ia][1] =
-	    + fg->field->data[addr_rank1(nsites, NQAB, index,         n1)]
-	    - fg->field->data[addr_rank1(nsites, NQAB, index-str[ia], n1)];
+	    + q->data[addr_rank1(q->nsites, NQAB, index,         n1)]
+	    - q->data[addr_rank1(q->nsites, NQAB, index-str[ia], n1)];
 	}
 	
 	gradn[ZZ][ia][0] = -gradn[XX][ia][0] - gradn[YY][ia][0];
@@ -405,17 +405,17 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	
 	/* Fluid Qab at surface */
 
-	qs[X][X] = fg->field->data[addr_rank1(nsites, NQAB, index, XX)];
-	qs[X][Y] = fg->field->data[addr_rank1(nsites, NQAB, index, XY)];
-	qs[X][Z] = fg->field->data[addr_rank1(nsites, NQAB, index, XZ)];
-	qs[Y][X] = fg->field->data[addr_rank1(nsites, NQAB, index, XY)];
-	qs[Y][Y] = fg->field->data[addr_rank1(nsites, NQAB, index, YY)];
-	qs[Y][Z] = fg->field->data[addr_rank1(nsites, NQAB, index, YZ)];
-	qs[Z][X] = fg->field->data[addr_rank1(nsites, NQAB, index, XZ)];
-	qs[Z][Y] = fg->field->data[addr_rank1(nsites, NQAB, index, YZ)];
+	qs[X][X] = q->data[addr_rank1(q->nsites, NQAB, index, XX)];
+	qs[X][Y] = q->data[addr_rank1(q->nsites, NQAB, index, XY)];
+	qs[X][Z] = q->data[addr_rank1(q->nsites, NQAB, index, XZ)];
+	qs[Y][X] = q->data[addr_rank1(q->nsites, NQAB, index, XY)];
+	qs[Y][Y] = q->data[addr_rank1(q->nsites, NQAB, index, YY)];
+	qs[Y][Z] = q->data[addr_rank1(q->nsites, NQAB, index, YZ)];
+	qs[Z][X] = q->data[addr_rank1(q->nsites, NQAB, index, XZ)];
+	qs[Z][Y] = q->data[addr_rank1(q->nsites, NQAB, index, YZ)];
 	qs[Z][Z] = 0.0
-	  - fg->field->data[addr_rank1(nsites, NQAB, index, XX)]
-	  - fg->field->data[addr_rank1(nsites, NQAB, index, YY)];
+	  - q->data[addr_rank1(q->nsites, NQAB, index, XX)]
+	  - q->data[addr_rank1(q->nsites, NQAB, index, YY)];
 	
 	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
 			     bcs[normal[0]], status[normal[0]], c, cinfo);
@@ -624,11 +624,11 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       /* The final answer is the sum of partial gradients */
 
       for (n1 = 0; n1 < NQAB; n1++) {
-	fg->delsq[addr_rank1(nsites, NQAB, index, n1)] = 0.0;
+	fg->delsq[addr_rank1(q->nsites, NQAB, index, n1)] = 0.0;
 	for (ia = 0; ia < 3; ia++) {
-	  fg->grad[addr_rank2(nsites, NQAB, 3, index, n1, ia)] =
+	  fg->grad[addr_rank2(q->nsites, NQAB, 3, index, n1, ia)] =
 	    0.5*(gradn[n1][ia][0] + gradn[n1][ia][1]);
-	  fg->delsq[addr_rank1(nsites, NQAB, index, n1)]
+	  fg->delsq[addr_rank1(q->nsites, NQAB, index, n1)]
 	    += gradn[n1][ia][0] - gradn[n1][ia][1];
 	}
       }

@@ -42,8 +42,6 @@ static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 
-static int isReduced_=0; /* SHIT WHAT IS THIS DOING? */
-
 __targetConst__ int tc_cv[NVEL][3];
 __targetConst__ int tc_ndist;
 static __constant__ lb_collide_param_t static_param;
@@ -926,8 +924,6 @@ __host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
     lb->plane_xz[BACKWARD] = lb->plane_xz_reduced[BACKWARD];
     lb->plane_yz[FORWARD]  = lb->plane_yz_reduced[FORWARD];
     lb->plane_yz[BACKWARD] = lb->plane_yz_reduced[BACKWARD];
-
-    isReduced_=1;
   }
   else {
     /* Default to full halo. */
@@ -940,20 +936,6 @@ __host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t type) {
   }
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_halo_reduced
- *
- *  Return 1 if halo is reduced, 0 otherwise.
- *
- *****************************************************************************/
-
-__host__ int lb_halo_reduced(lb_t * lb) {
-
-  return isReduced_;
-
 }
 
 /*****************************************************************************
