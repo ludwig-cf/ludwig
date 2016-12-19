@@ -10,7 +10,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "pe.h"
-#include "coords.h"
+#include "coords_s.h"
 #include "kernel.h"
 #include "propagation.h"
 #include "lb_model_s.h"
@@ -29,6 +29,9 @@ __host__ int lb_model_swapf(lb_t * lb);
 
 __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb);
 __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb);
+
+static __constant__ cs_param_t coords;
+static __constant__ lb_collide_param_t lbp;
 
 /*****************************************************************************
  *
@@ -70,7 +73,8 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int)); 
+  copyConstToTarget(&coords, lb->cs->param, sizeof(cs_param_t));
+  copyConstToTarget(&lbp, lb->param, sizeof(lb_collide_param_t));
 
   kernel_ctxt_create(NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
@@ -100,7 +104,7 @@ __host__ int lb_propagation_driver(lb_t * lb) {
 __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
 
   int kindex;
-  __shared__ int kiter;
+  int kiter;
 
   assert(ktx);
   assert(lb);
@@ -122,11 +126,13 @@ __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
     for (n = 0; n < lb->ndist; n++) {
       for (p = 0; p < NVEL; p++) {
 
-	/* Pull from neighbour */ 
-	icp = ic - tc_cv[p][X];
-	jcp = jc - tc_cv[p][Y];
-	kcp = kc - tc_cv[p][Z];
+	/* Pull from neighbour */
+
+	icp = ic - lbp.cv[p][X];
+	jcp = jc - lbp.cv[p][Y];
+	kcp = kc - lbp.cv[p][Z];
 	indexp = kernel_coords_index(ktx, icp, jcp, kcp);
+
 	lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] 
 	  = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp, n, p)];
       }
@@ -143,49 +149,57 @@ __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
  *
  *  A vectorised version.
  *
+ *  Notes.
+ *  GPU: Constants must come from __constant__ memory
+ *  GPU: f and fprime must be declared __restrict__
+ *  TODO: a unified routine to compute the maskv[] may be advantageous
+ *        on GPU e.g., kernel_mask_v(ktx, kindex, maskv)
+ *
  *****************************************************************************/
 
 __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
 
   int kindex;
-  __shared__ int kiter;
+  int kiter;
+  double * __restrict__ f;
+  double * __restrict__ fprime;
 
   assert(lb);
 
   kiter = kernel_vector_iterations(ktx);
+  f = lb->f;
+  fprime = lb->fprime;
 
-  __targetTLP__ (kindex, kiter) {
+  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
 
     int iv;
     int n, p;
     int index0;
-    int ic[NSIMDVL], icp[NSIMDVL];
-    int jc[NSIMDVL], jcp[NSIMDVL];
-    int kc[NSIMDVL], kcp[NSIMDVL];
+    int ic[NSIMDVL];
+    int jc[NSIMDVL];
+    int kc[NSIMDVL];
     int maskv[NSIMDVL];
     int indexp[NSIMDVL];
 
     kernel_coords_v(ktx, kindex, ic, jc, kc);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    index0 = kernel_coords_index(ktx, ic[0], jc[0], kc[0]);
+    index0 = kernel_baseindex(ktx, kindex);
 
-    for (n = 0; n < lb->ndist; n++) {
+    for (n = 0; n < lbp.ndist; n++) {
       for (p = 0; p < NVEL; p++) {
 
 	/* If this is a halo site, just copy, else pull from neighbour */ 
 
 	__target_simd_for(iv, NSIMDVL) {
-	  icp[iv] = ic[iv] - maskv[iv]*tc_cv[p][X];
-	  jcp[iv] = jc[iv] - maskv[iv]*tc_cv[p][Y];
-	  kcp[iv] = kc[iv] - maskv[iv]*tc_cv[p][Z];
+	  indexp[iv] = index0 - maskv[iv]*(lbp.cv[p][X]*coords.str[X] +
+					   lbp.cv[p][Y]*coords.str[Y] +
+					   lbp.cv[p][Z]*coords.str[Z]);
 	}
 
-	kernel_coords_index_v(ktx, icp, jcp, kcp, indexp);
-
 	__target_simd_for(iv, NSIMDVL) {
-	  lb->fprime[LB_ADDR(lb->nsite, lb->ndist, NVEL, index0 + iv, n, p)] 
-	    = lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, indexp[iv], n, p)];
+	  fprime[LB_ADDR(lbp.nsite, lbp.ndist, NVEL, index0 + iv, n, p)] 
+	    = f[LB_ADDR(lbp.nsite, lbp.ndist, NVEL, indexp[iv], n, p)];
 	}
       }
     }
@@ -200,7 +214,7 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
  *  lb_model_swapf
  *
  *  Switch the "f" and "fprime" pointers.
- *  Intended for use after the propagation step.
+ *  Intended for use directly after the propagation step.
  *
  *****************************************************************************/
 

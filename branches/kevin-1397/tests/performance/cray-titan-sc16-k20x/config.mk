@@ -13,7 +13,7 @@
 
 CC=nvcc
 MPICC=nvcc
-CFLAGS=-O2 -arch=sm_35 -x cu -dc -DNDEBUG -DADDR_MODEL_R -Xptxas -v
+CFLAGS=-O2 -arch=sm_35 -x cu -dc -DNDEBUG -DADDR_SOA
 
 AR = ar
 ARFLAGS = -cru
