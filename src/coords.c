@@ -18,41 +18,7 @@
 #include <float.h>
 #include <stdlib.h>
 
-#include "coords.h"
-
-typedef struct coords_param_s cs_param_t;
-
-struct coords_param_s {
-  int nhalo;                       /* Width of halo region */
-  int nsites;                      /* Total sites (incl. halo) */
-  int ntotal[3];                   /* System (physical) size */
-  int nlocal[3];                   /* Local system size */
-  int noffset[3];                  /* Local system offset */
-  int str[3];                      /* Memory strides */
-  int periodic[3];                 /* Periodic boundary (non-periodic = 0) */
-
-  int mpi_cartsz[3];               /* Cartesian size */
-  int mpi_cartcoords[3];           /* Cartesian coordinates lookup */
-
-  double lmin[3];                  /* System L_min */
-};
-
-struct coords_s {
-  pe_t * pe;                       /* Retain a reference to pe */
-  int nref;                        /* Reference count */
-
-  cs_param_t * cp;                 /* Constants */
-
-  /* Host data */
-  int mpi_cartrank;                /* MPI Cartesian rank */
-  int reorder;                     /* MPI reorder flag */
-  int mpi_cart_neighbours[2][3];   /* Ranks of Cartesian neighbours lookup */
-
-  MPI_Comm commcart;               /* Cartesian communicator */
-  MPI_Comm commperiodic;           /* Cartesian periodic communicator */
-
-  cs_t * target;                   /* Host pointer to target memory */
-};
+#include "coords_s.h"
 
 static __host__ int cs_default_decomposition(cs_t * cs);
 static __host__ int cs_is_ok_decomposition(cs_t * cs);
@@ -76,30 +42,30 @@ __host__ int cs_create(pe_t * pe, cs_t ** pcs) {
 
   cs = (cs_t *) calloc(1, sizeof(cs_t));
   if (cs == NULL) fatal("calloc(cs_t) failed\n");
-  cs->cp = (cs_param_t *) calloc(1, sizeof(cs_param_t));
-  if (cs->cp == NULL) fatal("calloc(cs_param_t) failed\n");
+  cs->param = (cs_param_t *) calloc(1, sizeof(cs_param_t));
+  if (cs->param == NULL) fatal("calloc(cs_param_t) failed\n");
 
   cs->pe = pe;
   pe_retain(cs->pe);
 
   /* Default values for non-zero quatities. */
 
-  cs->cp->ntotal[X]   = 64;
-  cs->cp->ntotal[Y]   = 64;
-  cs->cp->ntotal[Z]   = 64;
-  cs->cp->periodic[X] = 1;
-  cs->cp->periodic[Y] = 1;
-  cs->cp->periodic[Z] = 1;
+  cs->param->ntotal[X]   = 64;
+  cs->param->ntotal[Y]   = 64;
+  cs->param->ntotal[Z]   = 64;
+  cs->param->periodic[X] = 1;
+  cs->param->periodic[Y] = 1;
+  cs->param->periodic[Z] = 1;
 
-  cs->cp->mpi_cartsz[X] = 1;
-  cs->cp->mpi_cartsz[Y] = 1;
-  cs->cp->mpi_cartsz[Z] = 1;
+  cs->param->mpi_cartsz[X] = 1;
+  cs->param->mpi_cartsz[Y] = 1;
+  cs->param->mpi_cartsz[Z] = 1;
 
-  cs->cp->nhalo = 1;
+  cs->param->nhalo = 1;
   cs->reorder = 1;
   cs->commcart = MPI_COMM_NULL;
   cs->commperiodic = MPI_COMM_NULL;
-  cs->cp->lmin[X] = 0.5; cs->cp->lmin[Y] = 0.5; cs->cp->lmin[Z] = 0.5;
+  cs->param->lmin[X] = 0.5; cs->param->lmin[Y] = 0.5; cs->param->lmin[Z] = 0.5;
 
   cs->nref = 1;
   *pcs = cs;
@@ -142,7 +108,7 @@ __host__ int cs_free(cs_t * cs) {
     MPI_Comm_free(&cs->commcart);
     MPI_Comm_free(&cs->commperiodic);
     pe_free(cs->pe);
-    free(cs->cp);
+    free(cs->param);
     free(cs);
     stat_ref = NULL;
   }
@@ -210,20 +176,20 @@ __host__ int cs_init(cs_t * cs) {
 
   /* A communicator which is always periodic: */
 
-  MPI_Cart_create(comm, 3, cs->cp->mpi_cartsz, iperiodic, cs->reorder,
+  MPI_Cart_create(comm, 3, cs->param->mpi_cartsz, iperiodic, cs->reorder,
 		  &cs->commperiodic);
 
   /* Set up the communicator and the Cartesian neighbour lists for
    * the requested communicator. */
 
-  iperiodic[X] = cs->cp->periodic[X];
-  iperiodic[Y] = cs->cp->periodic[Y];
-  iperiodic[Z] = cs->cp->periodic[Z];
+  iperiodic[X] = cs->param->periodic[X];
+  iperiodic[Y] = cs->param->periodic[Y];
+  iperiodic[Z] = cs->param->periodic[Z];
 
-  MPI_Cart_create(comm, 3, cs->cp->mpi_cartsz, iperiodic, cs->reorder,
+  MPI_Cart_create(comm, 3, cs->param->mpi_cartsz, iperiodic, cs->reorder,
 		  &cs->commcart);
   MPI_Comm_rank(cs->commcart, &cs->mpi_cartrank);
-  MPI_Cart_coords(cs->commcart, cs->mpi_cartrank, 3, cs->cp->mpi_cartcoords);
+  MPI_Cart_coords(cs->commcart, cs->mpi_cartrank, 3, cs->param->mpi_cartcoords);
 
   for (n = 0; n < 3; n++) {
     MPI_Cart_shift(cs->commcart, n, 1,
@@ -233,19 +199,19 @@ __host__ int cs_init(cs_t * cs) {
 
   /* Set local number of lattice sites and offsets. */
 
-  cs->cp->nlocal[X] = cs->cp->ntotal[X] / cs->cp->mpi_cartsz[X];
-  cs->cp->nlocal[Y] = cs->cp->ntotal[Y] / cs->cp->mpi_cartsz[Y];
-  cs->cp->nlocal[Z] = cs->cp->ntotal[Z] / cs->cp->mpi_cartsz[Z];
+  cs->param->nlocal[X] = cs->param->ntotal[X] / cs->param->mpi_cartsz[X];
+  cs->param->nlocal[Y] = cs->param->ntotal[Y] / cs->param->mpi_cartsz[Y];
+  cs->param->nlocal[Z] = cs->param->ntotal[Z] / cs->param->mpi_cartsz[Z];
 
-  cs->cp->noffset[X] = cs->cp->mpi_cartcoords[X]*cs->cp->nlocal[X];
-  cs->cp->noffset[Y] = cs->cp->mpi_cartcoords[Y]*cs->cp->nlocal[Y];
-  cs->cp->noffset[Z] = cs->cp->mpi_cartcoords[Z]*cs->cp->nlocal[Z];
+  cs->param->noffset[X] = cs->param->mpi_cartcoords[X]*cs->param->nlocal[X];
+  cs->param->noffset[Y] = cs->param->mpi_cartcoords[Y]*cs->param->nlocal[Y];
+  cs->param->noffset[Z] = cs->param->mpi_cartcoords[Z]*cs->param->nlocal[Z];
 
-  cs->cp->str[Z] = 1;
-  cs->cp->str[Y] = cs->cp->str[Z]*(cs->cp->nlocal[Z] + 2*cs->cp->nhalo);
-  cs->cp->str[X] = cs->cp->str[Y]*(cs->cp->nlocal[Y] + 2*cs->cp->nhalo);
+  cs->param->str[Z] = 1;
+  cs->param->str[Y] = cs->param->str[Z]*(cs->param->nlocal[Z] + 2*cs->param->nhalo);
+  cs->param->str[X] = cs->param->str[Y]*(cs->param->nlocal[Y] + 2*cs->param->nhalo);
 
-  cs->cp->nsites = cs->cp->str[X]*(cs->cp->nlocal[X] + 2*cs->cp->nhalo);
+  cs->param->nsites = cs->param->str[X]*(cs->param->nlocal[X] + 2*cs->param->nhalo);
 
   /* Device side */
 
@@ -258,7 +224,7 @@ __host__ int cs_init(cs_t * cs) {
     cs_param_t * tmp;
     targetCalloc((void **) &cs->target, sizeof(cs_t));
     targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&cs->target->cp, (const void *) &tmp, sizeof(cs_param_t *));
+    copyToTarget(&cs->target->param, (const void *) &tmp, sizeof(cs_param_t *));
     cs_commit(cs);
   }
 
@@ -275,7 +241,7 @@ __host__ int cs_commit(cs_t * cs) {
 
   assert(cs);
 
-  copyConstToTarget(&const_param, cs->cp, sizeof(cs_param_t));
+  copyConstToTarget(&const_param, cs->param, sizeof(cs_param_t));
 
   return 0;
 }
@@ -295,14 +261,14 @@ __host__ int cs_info(cs_t * cs) {
   pe_info(cs->pe, "--------------\n");
 
   pe_info(cs->pe, "System size:    %d %d %d\n",
-	  cs->cp->ntotal[X], cs->cp->ntotal[Y], cs->cp->ntotal[Z]);
+	  cs->param->ntotal[X], cs->param->ntotal[Y], cs->param->ntotal[Z]);
   pe_info(cs->pe, "Decomposition:  %d %d %d\n",
-	  cs->cp->mpi_cartsz[X], cs->cp->mpi_cartsz[Y], cs->cp->mpi_cartsz[Z]);
+	  cs->param->mpi_cartsz[X], cs->param->mpi_cartsz[Y], cs->param->mpi_cartsz[Z]);
   pe_info(cs->pe, "Local domain:   %d %d %d\n",
-	  cs->cp->nlocal[X], cs->cp->nlocal[Y], cs->cp->nlocal[Z]);
+	  cs->param->nlocal[X], cs->param->nlocal[Y], cs->param->nlocal[Z]);
   pe_info(cs->pe, "Periodic:       %d %d %d\n",
-	  cs->cp->periodic[X], cs->cp->periodic[Y], cs->cp->periodic[Z]);
-  pe_info(cs->pe, "Halo nhalo:     %d\n", cs->cp->nhalo);
+	  cs->param->periodic[X], cs->param->periodic[Y], cs->param->periodic[Z]);
+  pe_info(cs->pe, "Halo nhalo:     %d\n", cs->param->nhalo);
   pe_info(cs->pe, "Reorder:        %s\n", cs->reorder ? "true" : "false");
   pe_info(cs->pe, "Initialised:    %d\n", 1);
 
@@ -320,9 +286,9 @@ int cs_cartsz(cs_t * cs, int sz[3]) {
 
   assert(cs);
 
-  sz[X] = cs->cp->mpi_cartsz[X];
-  sz[Y] = cs->cp->mpi_cartsz[Y];
-  sz[Z] = cs->cp->mpi_cartsz[Z];
+  sz[X] = cs->param->mpi_cartsz[X];
+  sz[Y] = cs->param->mpi_cartsz[Y];
+  sz[Z] = cs->param->mpi_cartsz[Z];
 
   return 0;
 }
@@ -338,9 +304,9 @@ int cs_cart_coords(cs_t * cs, int coords[3]) {
 
   assert(cs);
 
-  coords[X] = cs->cp->mpi_cartcoords[X];
-  coords[Y] = cs->cp->mpi_cartcoords[Y];
-  coords[Z] = cs->cp->mpi_cartcoords[Z];
+  coords[X] = cs->param->mpi_cartcoords[X];
+  coords[Y] = cs->param->mpi_cartcoords[Y];
+  coords[Z] = cs->param->mpi_cartcoords[Z];
 
   return 0;
 }
@@ -392,9 +358,9 @@ int cs_periodic(cs_t * cs, int periodic[3]) {
 
   assert(cs);
 
-  periodic[X] = cs->cp->periodic[X];
-  periodic[Y] = cs->cp->periodic[Y];
-  periodic[Z] = cs->cp->periodic[Z];
+  periodic[X] = cs->param->periodic[X];
+  periodic[Y] = cs->param->periodic[Y];
+  periodic[Z] = cs->param->periodic[Z];
 
   return 0;
 }
@@ -410,9 +376,9 @@ int cs_ltot(cs_t * cs, double ltotal[3]) {
 
   assert(cs);
 
-  ltotal[X] = (double) cs->cp->ntotal[X];
-  ltotal[Y] = (double) cs->cp->ntotal[Y];
-  ltotal[Z] = (double) cs->cp->ntotal[Z];
+  ltotal[X] = (double) cs->param->ntotal[X];
+  ltotal[Y] = (double) cs->param->ntotal[Y];
+  ltotal[Z] = (double) cs->param->ntotal[Z];
 
   return 0;
 }
@@ -428,9 +394,9 @@ int cs_lmin(cs_t * cs, double lmin[3]) {
 
   assert(cs);
 
-  lmin[X] = cs->cp->lmin[X];
-  lmin[Y] = cs->cp->lmin[Y];
-  lmin[Z] = cs->cp->lmin[Z];
+  lmin[X] = cs->param->lmin[X];
+  lmin[Y] = cs->param->lmin[Y];
+  lmin[Z] = cs->param->lmin[Z];
 
   return 0;
 }
@@ -450,9 +416,9 @@ int cs_nlocal(cs_t * cs, int n[3]) {
 
   assert(cs);
 
-  n[X] = cs->cp->nlocal[X];
-  n[Y] = cs->cp->nlocal[Y];
-  n[Z] = cs->cp->nlocal[Z];
+  n[X] = cs->param->nlocal[X];
+  n[Y] = cs->param->nlocal[Y];
+  n[Z] = cs->param->nlocal[Z];
 
   return 0;
 }
@@ -471,7 +437,7 @@ int cs_nsites(cs_t * cs, int * nsites) {
 
   assert(cs);
 
-  *nsites = cs->cp->nsites;
+  *nsites = cs->param->nsites;
 
   return 0;
 }
@@ -490,9 +456,9 @@ int cs_nlocal_offset(cs_t * cs, int n[3]) {
 
   assert(cs);
 
-  n[X] = cs->cp->noffset[X];
-  n[Y] = cs->cp->noffset[Y];
-  n[Z] = cs->cp->noffset[Z];
+  n[X] = cs->param->noffset[X];
+  n[Y] = cs->param->noffset[Y];
+  n[Z] = cs->param->noffset[Z];
 
   return 0;
 }
@@ -513,15 +479,15 @@ static __host__ int cs_default_decomposition(cs_t * cs) {
   assert(cs);
 
   /* Trap 2-d systems */
-  if (cs->cp->ntotal[X] == 1) pe0[X] = 1;
-  if (cs->cp->ntotal[Y] == 1) pe0[Y] = 1;
-  if (cs->cp->ntotal[Z] == 1) pe0[Z] = 1;
+  if (cs->param->ntotal[X] == 1) pe0[X] = 1;
+  if (cs->param->ntotal[Y] == 1) pe0[Y] = 1;
+  if (cs->param->ntotal[Z] == 1) pe0[Z] = 1;
 
   MPI_Dims_create(pe_mpi_size(cs->pe), 3, pe0);
 
-  cs->cp->mpi_cartsz[X] = pe0[X];
-  cs->cp->mpi_cartsz[Y] = pe0[Y];
-  cs->cp->mpi_cartsz[Z] = pe0[Z];
+  cs->param->mpi_cartsz[X] = pe0[X];
+  cs->param->mpi_cartsz[Y] = pe0[Y];
+  cs->param->mpi_cartsz[Z] = pe0[Z];
   
   if (cs_is_ok_decomposition(cs) == 0) {
     fatal("No default decomposition available!\n");
@@ -545,12 +511,12 @@ static __host__ int cs_is_ok_decomposition(cs_t * cs) {
 
   assert(cs);
 
-  if (cs->cp->ntotal[X] % cs->cp->mpi_cartsz[X]) ok = 0;
-  if (cs->cp->ntotal[Y] % cs->cp->mpi_cartsz[Y]) ok = 0;
-  if (cs->cp->ntotal[Z] % cs->cp->mpi_cartsz[Z]) ok = 0;
+  if (cs->param->ntotal[X] % cs->param->mpi_cartsz[X]) ok = 0;
+  if (cs->param->ntotal[Y] % cs->param->mpi_cartsz[Y]) ok = 0;
+  if (cs->param->ntotal[Z] % cs->param->mpi_cartsz[Z]) ok = 0;
 
   /*  The Cartesian decomposition must use all processors in COMM_WORLD. */
-  nnodes = cs->cp->mpi_cartsz[X]*cs->cp->mpi_cartsz[Y]*cs->cp->mpi_cartsz[Z];
+  nnodes = cs->param->mpi_cartsz[X]*cs->param->mpi_cartsz[Y]*cs->param->mpi_cartsz[Z];
   if (nnodes != pe_mpi_size(cs->pe)) ok = 0;
 
   return ok;
@@ -569,16 +535,16 @@ int cs_index(cs_t * cs,  int ic, int jc, int kc) {
 
   assert(cs);
 
-  assert(ic >= 1 - cs->cp->nhalo);
-  assert(jc >= 1 - cs->cp->nhalo);
-  assert(kc >= 1 - cs->cp->nhalo);
-  assert(ic <= cs->cp->nlocal[X] + cs->cp->nhalo);
-  assert(jc <= cs->cp->nlocal[Y] + cs->cp->nhalo);
-  assert(kc <= cs->cp->nlocal[Z] + cs->cp->nhalo);
+  assert(ic >= 1 - cs->param->nhalo);
+  assert(jc >= 1 - cs->param->nhalo);
+  assert(kc >= 1 - cs->param->nhalo);
+  assert(ic <= cs->param->nlocal[X] + cs->param->nhalo);
+  assert(jc <= cs->param->nlocal[Y] + cs->param->nhalo);
+  assert(kc <= cs->param->nlocal[Z] + cs->param->nhalo);
 
-  return (cs->cp->str[X]*(cs->cp->nhalo + ic - 1) +
-	  cs->cp->str[Y]*(cs->cp->nhalo + jc - 1) +
-	  cs->cp->str[Z]*(cs->cp->nhalo + kc - 1));
+  return (cs->param->str[X]*(cs->param->nhalo + ic - 1) +
+	  cs->param->str[Y]*(cs->param->nhalo + jc - 1) +
+	  cs->param->str[Z]*(cs->param->nhalo + kc - 1));
 }
 
 /*****************************************************************************
@@ -592,7 +558,7 @@ __host__ int cs_nhalo_set(cs_t * cs, int nhalo) {
   assert(nhalo > 0);
   assert(cs);
 
-  cs->cp->nhalo = nhalo;
+  cs->param->nhalo = nhalo;
 
   return 0;
 }
@@ -609,7 +575,7 @@ int cs_nhalo(cs_t * cs, int * nhalo) {
   assert(cs);
   assert(nhalo);
 
-  *nhalo = cs->cp->nhalo;
+  *nhalo = cs->param->nhalo;
 
   return 0;
 }
@@ -625,9 +591,9 @@ int cs_ntotal(cs_t * cs, int ntotal[3]) {
 
   assert(cs);
 
-  ntotal[X] = cs->cp->ntotal[X];
-  ntotal[Y] = cs->cp->ntotal[Y];
-  ntotal[Z] = cs->cp->ntotal[Z];
+  ntotal[X] = cs->param->ntotal[X];
+  ntotal[Y] = cs->param->ntotal[Y];
+  ntotal[Z] = cs->param->ntotal[Z];
 
   return 0;
 }
@@ -642,9 +608,9 @@ __host__ int cs_ntotal_set(cs_t * cs, const int ntotal[3]) {
 
   assert(cs);
 
-  cs->cp->ntotal[X] = ntotal[X];
-  cs->cp->ntotal[Y] = ntotal[Y];
-  cs->cp->ntotal[Z] = ntotal[Z];
+  cs->param->ntotal[X] = ntotal[X];
+  cs->param->ntotal[Y] = ntotal[Y];
+  cs->param->ntotal[Z] = ntotal[Z];
 
   return 0;
 }
@@ -659,9 +625,9 @@ __host__ int cs_periodicity_set(cs_t * cs, const int period[3]) {
 
   assert(cs);
 
-  cs->cp->periodic[X] = period[X];
-  cs->cp->periodic[Y] = period[Y];
-  cs->cp->periodic[Z] = period[Z];
+  cs->param->periodic[X] = period[X];
+  cs->param->periodic[Y] = period[Y];
+  cs->param->periodic[Z] = period[Z];
 
   return 0;
 }
@@ -676,9 +642,9 @@ __host__ int cs_decomposition_set(cs_t * cs, const int irequest[3]) {
 
   assert(cs);
 
-  cs->cp->mpi_cartsz[X] = irequest[X];
-  cs->cp->mpi_cartsz[Y] = irequest[Y];
-  cs->cp->mpi_cartsz[Z] = irequest[Z];
+  cs->param->mpi_cartsz[X] = irequest[X];
+  cs->param->mpi_cartsz[Y] = irequest[Y];
+  cs->param->mpi_cartsz[Z] = irequest[Z];
 
   return 0;
 }
@@ -718,12 +684,12 @@ int cs_minimum_distance(cs_t * cs, const double r1[3],
   r12[Y] = r2[Y] - r1[Y];
   r12[Z] = r2[Z] - r1[Z];
 
-  if (r12[X] >  0.5*cs->cp->ntotal[X]) r12[X] -= 1.0*cs->cp->ntotal[X]*cs->cp->periodic[X];
-  if (r12[X] < -0.5*cs->cp->ntotal[X]) r12[X] += 1.0*cs->cp->ntotal[X]*cs->cp->periodic[X];
-  if (r12[Y] >  0.5*cs->cp->ntotal[Y]) r12[Y] -= 1.0*cs->cp->ntotal[Y]*cs->cp->periodic[Y];
-  if (r12[Y] < -0.5*cs->cp->ntotal[Y]) r12[Y] += 1.0*cs->cp->ntotal[Y]*cs->cp->periodic[Y];
-  if (r12[Z] >  0.5*cs->cp->ntotal[Z]) r12[Z] -= 1.0*cs->cp->ntotal[Z]*cs->cp->periodic[Z];
-  if (r12[Z] < -0.5*cs->cp->ntotal[Z]) r12[Z] += 1.0*cs->cp->ntotal[Z]*cs->cp->periodic[Z];
+  if (r12[X] >  0.5*cs->param->ntotal[X]) r12[X] -= 1.0*cs->param->ntotal[X]*cs->param->periodic[X];
+  if (r12[X] < -0.5*cs->param->ntotal[X]) r12[X] += 1.0*cs->param->ntotal[X]*cs->param->periodic[X];
+  if (r12[Y] >  0.5*cs->param->ntotal[Y]) r12[Y] -= 1.0*cs->param->ntotal[Y]*cs->param->periodic[Y];
+  if (r12[Y] < -0.5*cs->param->ntotal[Y]) r12[Y] += 1.0*cs->param->ntotal[Y]*cs->param->periodic[Y];
+  if (r12[Z] >  0.5*cs->param->ntotal[Z]) r12[Z] -= 1.0*cs->param->ntotal[Z]*cs->param->periodic[Z];
+  if (r12[Z] < -0.5*cs->param->ntotal[Z]) r12[Z] += 1.0*cs->param->ntotal[Z]*cs->param->periodic[Z];
 
   return 0;
 }
@@ -742,9 +708,9 @@ int cs_index_to_ijk(cs_t * cs, int index, int coords[3]) {
 
   assert(cs);
 
-  coords[X] = (1 - cs->cp->nhalo) + index / cs->cp->str[X];
-  coords[Y] = (1 - cs->cp->nhalo) + (index % cs->cp->str[X]) / cs->cp->str[Y];
-  coords[Z] = (1 - cs->cp->nhalo) + index % cs->cp->str[Y];
+  coords[X] = (1 - cs->param->nhalo) + index / cs->param->str[X];
+  coords[Y] = (1 - cs->param->nhalo) + (index % cs->param->str[X]) / cs->param->str[Y];
+  coords[Z] = (1 - cs->param->nhalo) + index % cs->param->str[Y];
 
   assert(cs_index(cs, coords[X], coords[Y], coords[Z]) == index);
 
@@ -762,9 +728,9 @@ int cs_strides(cs_t * cs, int * xs, int * ys, int * zs) {
 
   assert(cs);
 
-  *xs = cs->cp->str[X];
-  *ys = cs->cp->str[Y];
-  *zs = cs->cp->str[Z];
+  *xs = cs->param->str[X];
+  *ys = cs->param->str[Y];
+  *zs = cs->param->str[Z];
 
   return 0;
 }
@@ -842,9 +808,9 @@ __host__ __device__ int cs_nall(cs_t * cs, int nall[3]) {
 
   assert(cs);
 
-  nall[X] = cs->cp->nlocal[X] + 2*cs->cp->nhalo;
-  nall[Y] = cs->cp->nlocal[Y] + 2*cs->cp->nhalo;
-  nall[Z] = cs->cp->nlocal[Z] + 2*cs->cp->nhalo;
+  nall[X] = cs->param->nlocal[X] + 2*cs->param->nhalo;
+  nall[Y] = cs->param->nlocal[Y] + 2*cs->param->nhalo;
+  nall[Z] = cs->param->nlocal[Z] + 2*cs->param->nhalo;
 
   return 0;
 }
@@ -874,7 +840,7 @@ __host__ int cs_cart_rank(cs_t * cs) {
 
 __host__ int cart_size(const int dim) {
   assert(stat_ref);
-  return stat_ref->cp->mpi_cartsz[dim];
+  return stat_ref->param->mpi_cartsz[dim];
 }
 
 /*****************************************************************************
@@ -885,7 +851,7 @@ __host__ int cart_size(const int dim) {
 
 __host__ int cart_coords(const int dim) {
   assert(stat_ref);
-  return stat_ref->cp->mpi_cartcoords[dim];
+  return stat_ref->param->mpi_cartcoords[dim];
 }
 
 /*****************************************************************************
@@ -919,7 +885,7 @@ __host__ MPI_Comm cart_comm() {
 __host__ int N_total(const int dim) {
   assert(stat_ref);
   assert(dim == X || dim == Y || dim == Z);
-  return stat_ref->cp->ntotal[dim];
+  return stat_ref->param->ntotal[dim];
 }
 
 /*****************************************************************************
@@ -931,7 +897,7 @@ __host__ int N_total(const int dim) {
 __host__ int is_periodic(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
   assert(stat_ref);
-  return stat_ref->cp->periodic[dim];
+  return stat_ref->param->periodic[dim];
 }
 
 /*****************************************************************************
@@ -943,7 +909,7 @@ __host__ int is_periodic(const int dim) {
 __host__ double L(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
   assert(stat_ref);
-  return ((double) stat_ref->cp->ntotal[dim]);
+  return ((double) stat_ref->param->ntotal[dim]);
 }
 
 /*****************************************************************************
@@ -955,7 +921,7 @@ __host__ double L(const int dim) {
 __host__ double Lmin(const int dim) {
   assert(dim == X || dim == Y || dim == Z);
   assert(stat_ref);
-  return stat_ref->cp->lmin[dim];
+  return stat_ref->param->lmin[dim];
 }
 
 /*****************************************************************************
@@ -989,7 +955,7 @@ __host__ int coords_nsites(void) {
 
   assert(stat_ref);
 
-  return stat_ref->cp->nsites;
+  return stat_ref->param->nsites;
 }
 
 /*****************************************************************************
@@ -1034,7 +1000,7 @@ __host__ int coords_index(const int ic, const int jc, const int kc) {
 
 __host__ int coords_nhalo(void) {
   assert(stat_ref);
-  return stat_ref->cp->nhalo;
+  return stat_ref->param->nhalo;
 }
 
 /*****************************************************************************
