@@ -192,9 +192,9 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
 	/* If this is a halo site, just copy, else pull from neighbour */ 
 
 	__target_simd_for(iv, NSIMDVL) {
-	  indexp[iv] = index0 - maskv[iv]*(lbp.cv[p][X]*coords.str[X] +
-					   lbp.cv[p][Y]*coords.str[Y] +
-					   lbp.cv[p][Z]*coords.str[Z]);
+	  indexp[iv] = index0 + iv - maskv[iv]*(lbp.cv[p][X]*coords.str[X] +
+						lbp.cv[p][Y]*coords.str[Y] +
+						lbp.cv[p][Z]*coords.str[Z]);
 	}
 
 	__target_simd_for(iv, NSIMDVL) {
