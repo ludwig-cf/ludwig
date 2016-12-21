@@ -116,7 +116,7 @@ Initial charge densities
 Initial conditions:         Uniform
 Initial condition rho_el:  4.7000000e-04
 Debye length:              1.0314161e+01
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
 Arranging initial charge neutrality.
 
 Initial conditions.

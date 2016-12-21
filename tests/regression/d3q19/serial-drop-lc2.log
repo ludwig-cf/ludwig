@@ -104,8 +104,8 @@ I/O decomposition:            1 1 1
 Advection scheme order: 3
 Initialising droplet radius:      9.2000000e+00
 Initialising droplet amplitude:   1.0000000e+00
-Gradient calcaulation: 3d_7pt_fluid
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
 
 
 Initialising Q_ab to nematic
