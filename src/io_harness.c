@@ -765,6 +765,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   MPI_Status status;
 
   assert(obj);
+  assert(obj->read_data);
   assert(filename_stub);
   assert(data);
 

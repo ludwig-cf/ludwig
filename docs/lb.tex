@@ -477,7 +477,68 @@ and fluid.
 
 \subsubsection{Moving objects}
 
+Colloidal particles are assumed to be spherical with a geometrical
+centre $\mathbf{r}_c$, which is also the centre of mass. The
+centre is allowed to move continuously across the lattice
+with velocity $\mathbf{U}$; the particle has an angular velocity
+$\mathbf{\Omega}$. The surface of the colloid is defined by an
+input radius, $a_0$, which determines which lattice nodes are
+inside or outside the colloid. (The hydrodynamic properties of
+the colloid are specified by a different radius $a_h$ --- more
+of this later.) The boundary links are then the set of vectors
+joining lattice nodes which intersect the spherical surface
+$\{\mathbf{c}_b\}$. Note that a lattice node exactly at
+the solid-fluid interface is defined to be outside the colloid.
+
+In the original approach of Ladd, fluid occupied nodes both inside
+and outside the particle. The effect of the ``internal fluid'' is
+known to be restricted to short time scales (compared to the
+characteristic time $a_0^2/\nu$), on which the fluid inside the
+particle relaxes to a solid body rotation \cite{heemels}. However,
+we use fully solid particles via the approach introduced by
+Nguyen and Ladd \cite{nguyen-ladd2002}.
 
 
+
+A boundary link is defined as joining a node $\mathbf{r}$
+inside the particle to one outside at $\mathbf{r} + \mathbf{c}_b \Delta t$.
+If the post-collision distributions are denoted by $f^\ast$, then
+the distributions must be reflected at the solid surface so that
+\begin{equation}
+\label{eq:colloid_bbl1}
+f_{b'}(\mathbf{r}; t + \Delta t) = f_b^\ast (\mathbf{r}; t)
+- \frac{2w_{c_b} \rho_0 \mathbf{u}_b.\mathbf{c}_b}{c_s^2}
+\end{equation}
+where the boundary link $\mathbf{c}_{b'} = -\mathbf{c}_b$.
+Note that the local density at the fluid site $\rho(\mathbf{r};t)$
+is replaced by
+the mean fluid density $\rho_0$. in the second term on the right-hand side.
+The velocity at the boundary is
+\begin{equation}
+\label{eq-colloid-ub}
+\mathbf{u}_b = \mathbf{U} + \mathbf{\Omega}\times\mathbf{r}_b.
+\end{equation}
+
+The force exerted on a
+single link is
+\begin{equation}
+\mathbf{F}_b(\mathbf{r} + {\scriptstyle\frac{1}{2}}\mathbf{c}_b\Delta t;
+t + {\scriptstyle\frac{1}{2}}\Delta t) = \frac{\Delta x^3}{\Delta t}
+\Big[ 2f_b^\ast(\mathbf{r}; t) - \frac{2w_{c_b}\rho_0 \mathbf{u}_b .
+\mathbf{c}_b}{c_s^2} \Big] \mathbf{c}_b,
+\label{eq-colloid-fb}
+\end{equation}
+with corresponding torque $\mathbf{T}_b = \mathbf{r}_b \times \mathbf{F}_b$.
+The total hydrodynamic force on the particle is then found by taking
+the sum of
+$\mathbf{F}_b$ over all the boundary links defining the particle.
+There is an associated torque on each link of $\mathbf{r}_b\times\mathbf{F}_b$,
+which again is summed over all links to give the total torque on the colloid.
+Colloid dynamics is discussed in more detail in Section~\ref{section:colloids}.
+
+
+
+
+% End section
 \vfill
 \pagebreak
