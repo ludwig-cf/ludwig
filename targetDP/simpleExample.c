@@ -38,7 +38,7 @@ __targetEntry__ void scale(double* t_field) {
    int baseIndex;
    __targetTLP__(baseIndex, N) {
 
-    int iDim, vecIndex;
+    int iDim, vecIndex=0;
     for (iDim = 0; iDim < 3; iDim++) {
 
          __targetILP__(vecIndex)  \
@@ -63,7 +63,7 @@ int main(){
   size_t datasize=N*3*sizeof(double);
 
   field = (double*) malloc(datasize);
-  for (i=0;i<N;i++) field[i]=i;
+  for (i=0;i<(N*3);i++) field[i]=i;
 			   
   targetMalloc((void **) &t_field, datasize);
   
