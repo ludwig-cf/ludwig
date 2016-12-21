@@ -7,7 +7,7 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2014 The University of Edinburgh
+%  (c) 2014-2017 The University of Edinburgh
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -100,6 +100,15 @@ explicit specification of the vector length at compile time.
 targetDP does not automatically identify parallelism; this must still be
 added appropriately by the developer. It is merely a concise way to include
 different threaded models. It is only available in the development version.
+
+\subsubsection{Array address models}
+
+In a related issue, the code allows different data layout to be used
+to improve performance. The default layout is array of structures (AOS)
+which is suitable for most CPU architectures. (A blocked version AOSOA
+is also available which may promote vectorisation.) For GPU machines, a
+structure of arrays (SOA) format can be selected at compile time.
+
 
 \subsubsection{Coordinate system}
 
@@ -245,6 +254,16 @@ slower execution in some instances, so production runs should
 switch off the assertions with the standard \texttt{NDEBUG}
 preprocessor flag. Add \texttt{-DNDEBUG} to \texttt{CFLAGS} in
 the \texttt{config.mk}.
+
+\subsubsection{Address models}
+
+The default memory layout is array of structures (AOS). Compiler
+preprocessor macros for blocked SOA (\texttt{-DADDR\_AOSOA}) or
+structure of arrays (\texttt{-DADDR\_SOA})
+may be appropriate for different platforms.
+
+Add the relevant flags to the \texttt{config.mk} file before
+compilation to effect the given address model.
 
 \subsubsection{Targets for serial and parallel code}
 
