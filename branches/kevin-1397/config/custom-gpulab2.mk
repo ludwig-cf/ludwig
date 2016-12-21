@@ -23,8 +23,9 @@
 
 CC=nvcc
 MPICC=nvcc
-CFLAGS=-O2 -arch=sm_35 -x cu -dc -Xcompiler -fopenmp  -Xptxas -v  -DKEEPFIELDONTARGET -DKEEPHYDROONTARGET -DFASTCOLLISION #-DVERBOSE_PERF_REPORT  #-maxrregcount=127 #-maxrregcount=255
-#CFLAGS=-O2 -arch=sm_35 -x cu -dc  -Xptxas -v  -DKEEPFIELDONTARGET -DKEEPHYDROONTARGET -DVERBOSE_PERF_REPORT  #-maxrregcount=127 #-maxrregcount=255
+CFLAGS=-O2 -arch=sm_35 -x cu -dc -Xcompiler -fopenmp  -Xptxas -v
+#-maxrregcount=127 #-maxrregcount=255
+
 
 
 AR = ar
