@@ -118,7 +118,7 @@ Initial conditions:         Uniform
 Initial condition rho_el:  0.0000000e+00
 Debye length:                        inf
 Second Debye length:                 inf
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
 Arranging initial charge neutrality.
 
 Initial conditions.

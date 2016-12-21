@@ -102,7 +102,7 @@ Boundary normal lubrication rc:  0.0000000e+00
 Wall boundary links allocated:   40960
 Memory (total, bytes):           655360
 Boundary shear initialise:       0
-Gradient calcaulation: 3d_7pt_solid
+Gradient calculation: 3d_7pt_solid
 
 
 Initialising Q_ab to nematic

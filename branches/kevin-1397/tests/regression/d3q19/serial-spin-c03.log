@@ -102,7 +102,7 @@ Centre-centre interaction:    0.0000000e+00
 Final cell list:              13 13 13
 Final cell lengths:           4.9230769e+00  4.9230769e+00  4.9230769e+00
 
-Gradient calcaulation: 3d_27pt_solid
+Gradient calculation: 3d_27pt_solid
 Initial conditions.
 
 Scalars - total mean variance min max

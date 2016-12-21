@@ -109,8 +109,8 @@ Initial distribution: 1d Poiseuille profile
 Density:               1.0000000e+00
 Velocity (max):        0.0000000e+00  0.0000000e+00  0.0000000e+00
 
-Gradient calcaulation: 3d_7pt_fluid
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
 
 
 Initialising Q_ab to cholesteric

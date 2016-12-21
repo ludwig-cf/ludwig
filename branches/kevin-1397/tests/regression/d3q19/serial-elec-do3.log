@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.5.56 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.82 (Serial version running on 1 process)
 
-The SVN revision details are: 2994
+The SVN revision details are: 3052
 Note assertions via standard C assert() are on.
 
 Read 50 user parameters from serial-elec-do3.inp
@@ -116,7 +116,8 @@ Initial charge densities
 Initial conditions:         Uniform
 Initial condition rho_el:  4.7000000e-04
 Debye length:              1.0314161e+01
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
+
 Arranging initial charge neutrality.
 
 Initial conditions.
@@ -164,22 +165,22 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     40.930     40.930     40.930  40.930177 (1 call)
-      Time step loop:      0.044      0.918     40.922   0.818446 (50 calls)
-         Propagation:      0.002      0.005      0.147   0.002940 (50 calls)
-    Propagtn (krnl) :      0.002      0.005      0.147   0.002935 (50 calls)
-           Collision:      0.009      0.013      0.494   0.009885 (50 calls)
-   Collision (krnl) :      0.009      0.013      0.494   0.009881 (50 calls)
-       Lattice halos:      0.000      0.004      0.260   0.001302 (200 calls)
-       phi gradients:      0.001      0.003      0.077   0.001549 (50 calls)
-    phi grad (krnl) :      0.001      0.002      0.055   0.001095 (50 calls)
-           phi halos:      0.000      0.001      0.022   0.000449 (50 calls)
+               Total:     41.192     41.192     41.192  41.191929 (1 call)
+      Time step loop:      0.043      0.906     41.184   0.823683 (50 calls)
+         Propagation:      0.002      0.004      0.108   0.002154 (50 calls)
+    Propagtn (krnl) :      0.002      0.004      0.107   0.002146 (50 calls)
+           Collision:      0.008      0.013      0.487   0.009736 (50 calls)
+   Collision (krnl) :      0.008      0.013      0.486   0.009730 (50 calls)
+       Lattice halos:      0.000      0.005      0.277   0.001385 (200 calls)
+       phi gradients:      0.001      0.003      0.080   0.001591 (50 calls)
+    phi grad (krnl) :      0.001      0.002      0.056   0.001130 (50 calls)
+           phi halos:      0.000      0.001      0.023   0.000455 (50 calls)
                  BBL:      0.000      0.000      0.000   0.000002 (50 calls)
-   Force calculation:      0.000      0.008      0.250   0.002502 (100 calls)
-          phi update:      0.006      0.009      0.322   0.006435 (50 calls)
-     Advectn (krnl) :      0.002      0.003      0.099   0.001974 (50 calls)
- Advectn BCS (krnl) :      0.000      0.001      0.021   0.000411 (50 calls)
-    Poisson equation:      0.001      0.866     38.834   0.776689 (50 calls)
-       Nernst Planck:      0.009      0.013      0.506   0.010128 (50 calls)
-               Free1:      0.000      0.003      0.003   0.000068 (50 calls)
+   Force calculation:      0.000      0.007      0.247   0.002467 (100 calls)
+          phi update:      0.006      0.009      0.344   0.006873 (50 calls)
+     Advectn (krnl) :      0.002      0.003      0.103   0.002056 (50 calls)
+ Advectn BCS (krnl) :      0.000      0.001      0.022   0.000435 (50 calls)
+    Poisson equation:      0.001      0.864     39.086   0.781713 (50 calls)
+       Nernst Planck:      0.009      0.015      0.524   0.010482 (50 calls)
+               Free1:      0.000      0.003      0.003   0.000060 (50 calls)
 Ludwig finished normally.
