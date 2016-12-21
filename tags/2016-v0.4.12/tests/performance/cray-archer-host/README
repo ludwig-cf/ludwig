@@ -1,0 +1,64 @@
+ARCHER CRAY XC30 2x12 2.7 GHz E5-2697 v2 (Ivy Bridge) per node
+Router card per 4 nodes; rank 1 network 64 nodes rank 2 network 384 nodes
+http://www.archer.ac.uk/
+
+18 Feb 2016
+
+Currently Loaded Modulefiles:
+  1) modules/3.2.10.2
+  2) eswrap/1.1.0-1.020200.1231.0
+  3) switch/1.0-1.0502.57058.1.58.ari
+  4) craype-network-aries
+  5) craype/2.2.1
+  6) pbs/12.2.401.141761
+  7) craype-ivybridge
+  8) cray-mpich/7.1.1
+  9) packages-archer
+ 10) bolt/0.6
+ 11) nano/2.2.6
+ 12) leave_time/1.0.0
+ 13) quickstart/1.0
+ 14) ack/2.14
+ 15) epcc-tools/6.0
+ 16) intel/15.0.2.164
+ 17) cray-libsci/13.0.1
+ 18) udreg/2.3.2-1.0502.9889.2.20.ari
+ 19) ugni/6.0-1.0502.10245.9.9.ari
+ 20) pmi/5.0.6-1.0000.10439.140.2.ari
+ 21) dmapp/7.0.1-1.0502.10246.8.47.ari
+ 22) gni-headers/4.0-1.0502.10317.9.2.ari
+ 23) xpmem/0.1-2.0502.57015.1.15.ari
+ 24) dvs/2.5_0.9.0-1.0502.1958.2.55.ari
+ 25) alps/5.2.3-2.0502.9295.14.14.ari
+ 26) rca/1.0.0-2.0502.57212.2.56.ari
+ 27) atp/1.7.5
+ 28) PrgEnv-intel/5.2.56
+
+Single Node Strong scaling summary qscript1
+All aprun -n 24 -N 24 with 4_3_2 decomposition input_stub1
+
+System     Local  Time step (s)   Updates/core/s
+64_48_32    16^3         0.0072        5.69 10^5
+96_72_48    24^3         0.0212        6.52 10^5
+128_96_64   32^3         0.0488        6.71 10^5
+160_120_80  40^3         0.0954        6.71 10^5
+192_144_96  48^3         0.1650        6.70 10^5
+
+Comments: repeatability looks ok to < 1%
+
+
+Weak scaling Summary
+All aprun -N 24 input_stub1
+
+Node        Decomp     MPI  Local       System  Time step (s)  Updates/core/s
+2_1_1        8_3_2      48   32^3    256_96_64          0.0490    6.69 10^5
+                             40^3   320_120_80          0.0950    6.74 10^5
+3_2_3       12_6_6     432   32^3  384_192_192          0.0607    5.40 10^5
+                             40^3  480_240_240          0.113     5.66 10^5
+3_4_6     12_12_12    1728   32^2  384_384_384          0.0613    5.35 10^5
+                             40^3  480_480_480          0.113     5.66 10^5
+
+Note.
+Broadly repeatable to 3 sig. fig.
+Cray Aries: 2 nodes should hit the router card; 18 nodes will hit at
+least the rank 1 network; 72 nodes will hit at least the rank 2 network.

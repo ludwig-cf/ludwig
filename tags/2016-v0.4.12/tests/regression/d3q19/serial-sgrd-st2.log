@@ -1,0 +1,136 @@
+Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+
+The SVN revision details are: 2638M
+Note assertions via standard C assert() are on.
+
+Read 24 user parameters from serial-sgrd-st2.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    16 16 16
+Decomposition:  1 1 1
+Local domain:   16 16 16
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e-01
+Bulk viscosity                1.66667e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    1.00000e+00
+Bulk relaxation time:     1.00000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+Requested one colloid via input:
+colloid_one                   subgrid
+colloid_one_a0                1.0000000e-01
+colloid_one_ah                2.0000000e-01
+colloid_one_r                 6.1000000e+00  6.1000000e+00  6.1000000e+00
+Requested second colloid via input:
+colloid_two                   subgrid
+colloid_two_a0                1.0000000e-01
+colloid_two_ah                2.0000000e-01
+colloid_two_r                 6.1000000e+00  6.1000000e+00  3.1000000e+00
+
+Initialised 2 colloids
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         1.0000000e+00
+Hydrodynamic radius maximum:  2.0000000e-01
+Surface-surface interaction:  0.0000000e+00
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              10 10 10
+Final cell lengths:           1.6000000e+00  1.6000000e+00  1.6000000e+00
+
+Sedimentation force on:       yes
+Sedimentation force:          0.0000000e+00  0.0000000e+00  1.0000000e-05
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  5.6843419e-14  0.0000000e+00  0.0000000e+00
+[fluid   ]  5.6843419e-14  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ]  8.1029544e-15  8.1201477e-15  1.8639947e-05
+[maximum ]  8.1420468e-15  8.1661491e-15  1.8640040e-05
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  2.2204460e-15  0.99999920121  1.00000075569
+
+Momentum - x y z
+[total   ] -6.1981670e-14 -7.1505302e-15  1.6858182e-12
+[fluid   ] -6.1981670e-14 -7.1505302e-15  1.6858182e-12
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.8090284e-07 -4.8090284e-07 -4.8461488e-07
+[maximum ]  4.7103067e-07  4.7103067e-07  3.7680411e-06
+
+Completed cycle 2000
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     10.053     10.053     10.053  10.053126 (1 call)
+      Time step loop:      0.005      0.006     10.047   0.005024 (2000 calls)
+         Propagation:      0.001      0.002      2.646   0.001323 (2000 calls)
+           Collision:      0.003      0.004      6.232   0.003116 (2000 calls)
+       Lattice halos:      0.000      0.000      0.100   0.000050 (2000 calls)
+       phi gradients:      0.000      0.000      0.001   0.000000 (2000 calls)
+      Particle halos:      0.000      0.000      0.133   0.000067 (2000 calls)
+   Force calculation:      0.000      0.000      0.001   0.000001 (2000 calls)
+          phi update:      0.000      0.000      0.001   0.000000 (2000 calls)
+Ludwig finished normally.

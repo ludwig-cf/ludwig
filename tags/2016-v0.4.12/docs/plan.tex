@@ -1,0 +1,229 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  plan.tex
+%
+%  Software Configuration Management Plan
+%
+%  See, for example, Annex D of IEEE 828-2012
+%  IEEE Standard for Configuration Management in Systems and Software
+%  Engineering
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  (c) 2011-2015 The University of Edinburgh
+%  Contributing authors:
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Software Configuration Management Plan}
+
+\subsection{Introduction}
+
+\subsubsection{Purpose}
+
+This section contains information on the \textit{Software Configuration
+Management Plan} for the \textit{Ludwig} code.
+It is to provide users of the code a background on the way in which
+the code is developed, how bugs are dealt with, the way in which
+new features may be added, how correctness is ensured and tested, and so on.
+It is therefore a part
+of the process by which the code is maintained. The Software Configuration
+Management Plan will be referred to as `The Plan' throughout the remainder
+of the section.
+
+\subsubsection{Scope}
+
+The \textit{Ludwig} code is designed to study simple and complex fluids
+based around the numerical solution of the Navier-Stokes equations.
+Components of \textit{Ludwig} include the main program, unit and
+regression tests, and a small number support libraries, and a small
+number of utility programs used to prepare
+input and post-process output. The Plan is limited to these
+software components.
+
+% IEEE section to be completed
+\subsubsection{Relationship to organisation and other projects}
+
+\textit{Ludwig} is an on-going research project, and relies mainly
+on funding for the United Kingdom Engineering and Physical Sciences Research
+Council to provide support for staff time to work on maintenance and
+development.
+
+% IEEE section to be completed
+%\subsubsection{Definition of key terms}
+
+\subsubsection{References}
+
+This section is based on the IEEE standard for Configuration
+Management IEEE 828-2012 \cite{ieee-828-2012}, and follows the format
+set out therein.
+Relevant references are included and can be found in the main References
+section at the end of the document.
+%
+
+
+% Criteria for identication
+
+\subsection{Identification}
+
+The material under control of the project includes a number of sets
+of files: this documentation, the source code, the build and test
+suite which is used to monitor the status of the code, and so on.
+Control of project files is via a single on-line repository which
+uses the subversion (SVN) revision control system. The SVN repository
+is currently located at
+
+\texttt{http://ccpforge.cse.rl.ac.uk/}
+
+which is maintained at the Rutherford Appleton Laboratory on behalf
+of Collaborative Computational Physics 5 (The Computer Simulation of
+Condensed Phases). Subversion identifies different revisions by a
+unique revision number. A given version of a file is then uniquely
+identified by its path in the repository as it exists at a given
+revision number.
+
+Specifically, configuration items are taken to include files in the
+trunk of the repository
+
+\texttt{http://ccpforge.cse.rl.ac.uk/svn/ludwig/trunk}
+
+Other branches in the repository are not considered to be 
+under configuration management.
+
+
+% IEEE section
+% Limitations and assumptions
+% Deliberately empty at the moment.
+
+\subsection{Responsibility and authority}
+
+While the Soft Matter Physics Group is responsible for the overall
+scientific direction and development of the code and concomitant
+priorities, all Configuration Management activities will
+be the responsibility of EPCC at The University of Edinburgh.
+
+\subsection{Project organisation}
+
+
+\subsubsection{Organisations}
+
+\textit{Ludwig} is developed by a team based in the School of Physics at
+The University of Edinburgh. This involves two groups: the Soft Matter
+Physics Group, and Edinburgh Parallel Computing Centre (EPCC). These
+groups collaborate with a number of workers at different Universities
+around the world on different aspects of the code.
+
+\subsubsection{Process Management}
+
+EPCC is responsible for the Software Configuration Management process.
+It is anticipated that the cost of this process will be small as the
+project team can communicate informally on a regular basis. There is
+currently no independent
+surveillance of activities to ensure compliance with The Plan.
+
+
+
+% Add pointer to standard manifest (README)
+
+%All access to the code is via the CCPForge repository. CCPForge identifies
+%three different levels of access:
+
+%\textit{Administrators:} allows administration of the site itself and
+%registered members;
+
+%\textit{Developers:} members who have write access to the source code repository;
+
+%\textit{Users:} have read only access to the source code via SVN (either
+%as a member or via anonymous download). Member users also have access to
+%the tracker.
+
+%As CCPForge is not physically under the control of EPCC, a
+%complete dump of the repository to a local resource is undertaken on a
+%regular basis for security.
+
+
+
+\subsubsection{Control}
+
+Requests for changes or additions to the code should be made via
+the issue tracker at CCPForge. The project team will then decide
+whether the change is possible and/or desirable. If so, the
+implementation and testing of the change will take place, and the
+new code committed back to the repository.
+
+\textit{Submitting a change request:} A description of the proposed change
+will be submitted to the CCPForge issue tracker as a change request to
+provide a record of the change process.
+
+\textit{Evaluating a change request:} The request, together with any
+additional information, will be evaluated by the SCM team. The request
+will be accepted, refined, or rejected as appropriate. The change owner
+will make necessary updates to the change record.
+
+\textit{Implementation of change:} Important changes to behaviour of code
+related to a change will be
+accompanied by a relevant descriptive record in the change request.
+
+\textit{Version control:} A \texttt{MAJOR.MINOR.PATCH} numerical version
+name scheme is used \cite{apacheAPR}.
+It is expected that bug fixes and relatively
+small changes will be accompanied by a unit increment in the patch level;
+more significant changes will be reflected at the minor version number;
+major reconstructions will occur rarely and incur a change of major version
+number.
+
+\subsubsection{Status}
+
+% Privides tracability of changes, pending completed, etc
+% Configuration reports, release notes
+
+The status of changes will be tracked at the CCPForge issue tracker
+with a named SCM team member owning the change. The relevant tracker
+item will be closed when successfully implemented and tested.
+
+The tracker is available to CPPForge member users to provide a record
+of changes to the code. Anonymous users will be alerted to changes via
+release notes.
+
+%\subsubsection{Evaluation and review}
+%There are currently no formal mechna audit the code?
+
+% \subsubsection{Interface control}
+% This section discusses other organisations the developers must
+% ``interface'' with.
+
+% IEEE section not relevant
+%\subsubsection{Subcontractor / vendor control}
+
+
+\subsubsection{Release management and delivery}
+
+There are currently no formal releases of the \textit{Ludwig} code.
+Any release management and  delivery will be via the SVN repository.
+
+
+% IEEE section. We don't really have any schedules.
+%\subsection{Schedules}
+
+%\subsection{Resources}
+
+% Software resources (dependencies, etc)
+% Hardware resources
+% Human resources
+
+\subsection{Plan Maintenance}
+
+The Plan is currently under review to consider organisational changes
+affecting the responsibilities different stakeholders.
+
+
+
+%\begin{thebibliography}{99}
+
+%Software Configuration Management Plans''
+%\bibitem{mpi-standard} Message Passing Interface Forum. MPI: A Message
+%Passing Interface Standard Version 1.3 (1998).
+%\bibitem{paraview} Paraview is a standard visualisation package. 
