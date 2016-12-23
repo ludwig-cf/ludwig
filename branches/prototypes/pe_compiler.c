@@ -38,6 +38,16 @@ int main(int argc, char *argv[]) {
 
 #endif
 
+#ifdef __clang__
+
+  printf("__clang__ %d\n", __clang__);
+  printf("__clang_major__ %d\n", __clang_major__);
+  printf("__clang_minor__ %d\n", __clang_minor__);
+  printf("__clang_patchlevel__ %d\n", __clang_patchlevel__);
+  printf("__clang_version__ %s\n", __clang_version__);
+
+#endif
+
   return 0;
 }
 
