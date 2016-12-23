@@ -1,0 +1,8 @@
+# Hydra is a test system. Benchmark is recorded for interest.
+#
+# Log into the back end with
+# srun -p general -w kepler0 --pty bash -i
+#
+# Eg., run the serial version
+
+./Ludwig.exe input

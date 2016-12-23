@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinbrugh
+ *  (c) 2010-2016 The University of Edinbrugh
  *
  *****************************************************************************/
 
@@ -28,8 +28,10 @@
 #include "gradient_2d_5pt_fluid.h"
 #include "polar_active.h"
 
-static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad);
-static int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad);
+static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
+				   field_grad_t * fpgrad);
+static int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
+				   field_grad_t * fpgrad);
 static int test_polar_active_init_aster(field_t * fp);
 
 /*****************************************************************************
@@ -46,38 +48,45 @@ int test_polar_active_suite(void) {
   int nhalo = 2;
   int ntotal[3] = {100, 100, 1};
 
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
   field_t * fp = NULL;
   field_grad_t * fpgrad = NULL;
+  fe_polar_t * fe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  if (pe_size() > 1) {
-    info("SKIP     ./unit/test_polar_active\n");
-    pe_finalise();
+  if (pe_mpi_size(pe) > 1) {
+    pe_info(pe, "SKIP     ./unit/test_polar_active\n");
+    pe_free(pe);
     return 0;
   }
 
-  coords_nhalo_set(nhalo);
-  coords_ntotal_set(ntotal);
-  coords_init();
-  le_init();
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nf, "p", &fp);
-  field_init(fp, nhalo);
+  field_create(pe, cs, nf, "p", &fp);
+  field_init(fp, nhalo, le);
   field_grad_create(fp, 2, &fpgrad);
-  field_grad_set(fpgrad, gradient_2d_5pt_fluid_d2, NULL);
-  polar_active_p_set(fp, fpgrad);
+  field_grad_set(fpgrad, grad_2d_5pt_fluid_d2, NULL);
 
-  test_polar_active_aster(fp, fpgrad);
-  test_polar_active_terms(fp, fpgrad);
+  fe_polar_create(fp, fpgrad, &fe);
 
+  test_polar_active_aster(fe, fp, fpgrad);
+  test_polar_active_terms(fe, fp, fpgrad);
+
+  fe_polar_free(fe);
   field_grad_free(fpgrad);
   field_free(fp);
 
-  le_finish();
-  coords_finish();
-  info("PASS     ./unit/test_polar_active\n");
-  pe_finalise();
+  lees_edw_free(le);
+  cs_free(cs);
+  pe_info(pe, "PASS     ./unit/test_polar_active\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -91,7 +100,8 @@ int test_polar_active_suite(void) {
  *
  *****************************************************************************/
 
-static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
+static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
+				   field_grad_t * fpgrad) {
 
   int index;
 
@@ -99,12 +109,18 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   double p[3];
   double h[3];
   double s[3][3];
+  fe_polar_param_t param = {0};
 
   /* Note that the k2 = 0.02 here is not effective, as all the terms
    * the the polar active are not currently compluted. If all terms
    * were present, the relevant results would be changed. */
 
-  polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
+  param.a = -0.1;
+  param.b = +0.1;
+  param.kappa1 = 0.01;
+  param.kappa2 = 0.02;
+  fe_polar_param_set(fe, param);
+
   test_polar_active_init_aster(fp);
 
   /* Order parameter */
@@ -114,7 +130,7 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   index = coords_index(1, 1, 1);
   field_vector(fp, index, p);
 
-  /*info("p_a(1, 1, 1) ...");*/
+  /* info("p_a(1, 1, 1) ...");*/
   test_assert(fabs(p[X] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
@@ -127,11 +143,12 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   test_assert(fabs(p[X] - +9.0523694e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +4.2490714e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
+  /* info("ok\n"); */
 
   /* Gradient terms */
 
-  field_halo(fp);
+  field_halo_swap(fp, FIELD_HALO_HOST);
+  /* info("ok\n");*/
   field_grad_compute(fpgrad);
 
   /* Free energy density (not computed in independent code) */
@@ -139,12 +156,12 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   /* info("\nFree energy density\n\n");*/
 
   index = coords_index(1, 50, 1);
-  fed = polar_active_free_energy_density(index);
-  /*info("free energy density at (1, 50, 1) ...");
-    info("ok\n");*/
+  fe_polar_fed(fe, index, &fed);
+  /*   info("free energy density at (1, 50, 1) ...");
+       info("ok\n");*/
 
   index = coords_index(100, 3, 1);
-  fed = polar_active_free_energy_density(index);
+  fe_polar_fed(fe, index, &fed);
   /* info("free energy density at (100, 3, 1) ...");*/
   test_assert(fabs(fed - -2.2448448e-02) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -154,7 +171,7 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   /* info("\nMolecular field\n\n");*/
 
   index = coords_index(4, 78, 1);
-  polar_active_molecular_field(index, h);
+  fe_polar_mol_field(fe, index, h);
   /* info("h_a(4, 78, 1) ...");*/
   test_assert(fabs(h[X] - -2.9526261e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y] - +1.6947361e-06) < TEST_FLOAT_TOLERANCE);
@@ -162,7 +179,7 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   /* info("ok\n");*/
 
   index = coords_index(49, 49, 1);
-  polar_active_molecular_field(index, h);
+  fe_polar_mol_field(fe, index, h);
   /* info("h_a(49, 49, 1) ...");*/
   test_assert(fabs(h[X] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
@@ -174,7 +191,8 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   /* info("\nStress\n\n");*/
 
   index = coords_index(3, 90, 1);
-  polar_active_chemical_stress(index, s);
+  fe_polar_stress(fe, index, s);
+
   /* info("s_ab(3, 90, 1) ...");*/
   test_assert(fabs(s[X][X] - +1.0398195e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[X][Y] - +1.2798462e-06) < TEST_FLOAT_TOLERANCE);
@@ -188,7 +206,8 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   /* info("ok\n");*/
 
   index = coords_index(100, 1, 1);
-  polar_active_chemical_stress(index, s);
+  fe_polar_stress(fe, index, s);
+
   /* info("s_ab(100, 1, 1) ...");*/
   test_assert(fabs(s[X][X] - +4.8979804e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(s[X][Y] - -4.9469398e-05) < TEST_FLOAT_TOLERANCE);
@@ -199,9 +218,9 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");
+  /* info("ok\n");*/
 
-     info("2-d test ok\n\n");*/
+  /* info("2-d test ok\n\n");*/
 
   return 0;
 }
@@ -215,22 +234,28 @@ static int test_polar_active_aster(field_t * fp, field_grad_t * fpgrad) {
  *
  *****************************************************************************/
 
-int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad) {
+int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
+			    field_grad_t * fpgrad) {
 
   int index;
   int ic, jc, kc;
   int nlocal[3];
 
   double s[3][3];
+  fe_polar_param_t param = {0};
 
   coords_nlocal(nlocal);
 
-  fe_v_lambda_set(2.1);
-  polar_active_parameters_set(-0.1, +0.1, 0.01, 0.02);
-  polar_active_zeta_set(0.001);
+  param.a = -0.1;
+  param.b = +0.1;
+  param.kappa1 = 0.01;
+  param.kappa2 = 0.02;
+  param.lambda = 2.1;
+  param.zeta   = 0.001;
+  fe_polar_param_set(fe, param);
 
   test_polar_active_init_aster(fp);
-  field_halo(fp);
+  field_halo_swap(fp, FIELD_HALO_HOST);
   field_grad_compute(fpgrad);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -238,7 +263,7 @@ int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	polar_active_chemical_stress(index, s);
+	fe_polar_stress(fe, index, s);
 
 	test_assert(fabs(s[Y][Z] - 0.0) < TEST_DOUBLE_TOLERANCE);
 	test_assert(fabs(s[Z][Y] - 0.0) < TEST_DOUBLE_TOLERANCE);
@@ -250,7 +275,8 @@ int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad) {
   }
 
   index = coords_index(3, 90, 1);
-  polar_active_chemical_stress(index, s);
+  fe_polar_stress(fe, index, s);
+
   /* info("s_ab(3, 90, 1) ...");*/
 
   test_assert(fabs(s[X][X] - +2.6858170e-04) < TEST_FLOAT_TOLERANCE);
@@ -265,7 +291,7 @@ int test_polar_active_terms(field_t * fp, field_grad_t * fpgrad) {
   /* info("ok\n");*/
 
   index = coords_index(100, 1, 1);
-  polar_active_chemical_stress(index, s);
+  fe_polar_stress(fe, index, s);
 
   /* info("s_ab(100, 1, 1) ...");*/
   test_assert(fabs(s[X][X] - -1.5237375e-03) < TEST_FLOAT_TOLERANCE);

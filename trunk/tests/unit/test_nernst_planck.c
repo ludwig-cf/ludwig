@@ -7,8 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich (o.henrich@ucl.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,8 +34,8 @@
 #include "nernst_planck.h"
 #include "tests.h"
 
-static int do_test_gouy_chapman(void);
-static int test_io(psi_t * psi, int tstep);
+static int do_test_gouy_chapman(pe_t * pe);
+static int test_io(cs_t * cs, psi_t * psi, int tstep);
 
 /*****************************************************************************
  *
@@ -42,13 +45,14 @@ static int test_io(psi_t * psi, int tstep);
 
 int test_nernst_planck_suite(void) {
 
-  pe_init_quiet();
-  control_time_set(-1); /* Kludge to avoid SOR output */
+  pe_t * pe = NULL;
 
-  do_test_gouy_chapman();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  info("PASS     ./unit/test_nernst_planck\n");
-  pe_finalise();
+  do_test_gouy_chapman(pe);
+
+  pe_info(pe, "PASS     ./unit/test_nernst_planck\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -82,7 +86,7 @@ int test_nernst_planck_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test_gouy_chapman(void) {
+static int do_test_gouy_chapman(pe_t * pe) {
 
   int nk = 2;          /* Number of species */
 
@@ -111,27 +115,33 @@ static int do_test_gouy_chapman(void) {
 
   int tmax = 200;
 
+  cs_t * cs = NULL;
   map_t * map = NULL;
   psi_t * psi = NULL;
   physics_t * phys = NULL;
+  fe_electro_t * fe = NULL;
 
-  physics_ref(&phys);
-  coords_nhalo_set(1);
-  coords_ntotal_set(ntotal);
+  assert(pe);
 
-  grid[X] = pe_size();
+  physics_create(pe, &phys);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, 1);
+  cs_ntotal_set(cs, ntotal);
+
+  grid[X] = pe_mpi_size(pe);
   grid[Y] = 1;
   grid[Z] = 1;
-  coords_decomposition_set(grid);
+  cs_decomposition_set(cs, grid);
 
-  coords_init();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffst);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffst);
 
-  map_create(0, &map);
+  map_create(pe, cs, 0, &map);
   assert(map);
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
 
   psi_valency_set(psi, 0, valency[0]);
@@ -142,7 +152,7 @@ static int do_test_gouy_chapman(void) {
   psi_epsilon_set(psi, epsilon);
   psi_beta_set(psi, beta);
 
-  fe_electro_create(psi);
+  fe_electro_create(psi, &fe);
 
   /* wall charge density */
   rho_w = 1.e+0 / (2.0*L(Y)*L(Z));
@@ -172,7 +182,7 @@ static int do_test_gouy_chapman(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY); 
 
 	psi_rho_set(psi, index, 0, rho_w);
@@ -187,7 +197,7 @@ static int do_test_gouy_chapman(void) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(psi, index, 0, rho_w);
@@ -205,13 +215,13 @@ static int do_test_gouy_chapman(void) {
     psi_sor_poisson(psi);
     psi_halo_rho(psi);
     /* The test is run with no hydrodynamics, hence NULL here. */
-    nernst_planck_driver(psi, NULL, map);
+    nernst_planck_driver(psi, (fe_t *) fe, NULL, map);
 
     if (tstep % 1000 == 0) {
 
       info("%d\n", tstep);
       psi_stats_info(psi);
-      if (test_output_required) test_io(psi, tstep);
+      if (test_output_required) test_io(cs, psi, tstep);
     }
   }
 
@@ -247,10 +257,10 @@ static int do_test_gouy_chapman(void) {
   assert(fabs(yd     - 5.1997576e-05) < FLT_EPSILON);
 
   map_free(map);
-  fe_electro_free();
+  fe_electro_free(fe);
   psi_free(psi);
-  coords_finish();
-  physics_free();
+  cs_free(cs);
+  physics_free(phys);
 
   return 0;
 }
@@ -261,7 +271,7 @@ static int do_test_gouy_chapman(void) {
  *
  *****************************************************************************/
 
-static int test_io(psi_t * psi, int tstep) {
+static int test_io(cs_t * cs, psi_t * psi, int tstep) {
 
   int ntotalx;
   int nlocal[3];
@@ -318,7 +328,7 @@ static int test_io(psi_t * psi, int tstep) {
   MPI_Gather(field, nlocal[X], MPI_DOUBLE,
 	     rho1field, nlocal[X], MPI_DOUBLE, 0, cart_comm());
 
-  if (cart_rank() == 0) {
+  if (cs_cart_rank(cs) == 0) {
 
     sprintf(filename, "np_test-%d.dat", tstep);
     out = fopen(filename, "w");

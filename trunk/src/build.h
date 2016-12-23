@@ -6,23 +6,24 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef BUILD_H
-#define BUILD_H
+#ifndef LUDWIG_BUILD_H
+#define LUDWIG_BUILD_H
 
 #include "field.h"
 #include "map.h"
 #include "psi.h"
 #include "colloids.h"
 #include "model.h"
+#include "wall.h"
 
 int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 			 field_t * p, field_t * q, psi_t * psi, map_t * map);
 
-int build_update_links(colloids_info_t * cinfo, map_t * map);
+int build_update_links(colloids_info_t * cinfo, wall_t * wall, map_t * map);
 int build_update_map(colloids_info_t * cinfo, map_t * map);
 int build_conservation(colloids_info_t * info, field_t * phi, psi_t * psi);
 

@@ -38,8 +38,9 @@ int test_util_suite(void) {
   double ** a = NULL;
   double b[3] = {1.0, 2.0, 3.0};
   double x[2];
+  pe_t * pe = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   ifail = util_matrix_create(m, n, &a);
   assert(ifail == 0);
@@ -59,8 +60,8 @@ int test_util_suite(void) {
 
   util_matrix_free(m, &a);
 
-  info("PASS     ./unit/test_util\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_util\n");
+  pe_free(pe);
 
   return 0;
 }

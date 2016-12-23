@@ -9,7 +9,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,37 +22,21 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "field.h"
-#include "field_grad.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "tests.h"
 
 enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,
              ENCODE_DAB};
 
-static int do_test1(void);
-static int do_test3(void);
-static int do_test5(void);
-static int do_test_dab(void);
-//static int test_d2(int nf, const double * data, double * grad, double * delsq);
-//static int test_d4(int nf, const double * data, double * grad, double * delsq);
-static int test_d2(int nf, const double * field, 
-		   double * t_field,
-		   double * grad,
-		   double * t_grad,
-		   double * delsq,
-		   double * t_delsq
-		   );
+static int do_test1(pe_t * pe);
+static int do_test3(pe_t * pe);
+static int do_test5(pe_t * pe);
+static int do_test_dab(pe_t * pe);
+static int test_d2(field_grad_t * fgrad);
+static int test_d4(field_grad_t * fgrad);
 
-
-static int test_d4(int nf, const double * field, 
-		   double * t_field,
-		   double * grad,
-		   double * t_grad,
-		   double * delsq,
-		   double * t_delsq
-		   );
-
-static int test_dab(int nf, const double * field, double * dab);
+static int test_dab(field_grad_t * fgrad);
 static double test_encode(int code, int nf, int n, int iv);
 
 /*****************************************************************************
@@ -63,17 +47,19 @@ static double test_encode(int code, int nf, int n, int iv);
 
 int test_field_grad_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Field gradient object test\n");*/
 
-  do_test1();
-  do_test3();
-  do_test5();
-  do_test_dab();
+  do_test1(pe);
+  do_test3(pe);
+  do_test5(pe);
+  do_test_dab(pe);
 
-  info("PASS     ./unit/test_field_grad\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_field_grad\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -84,21 +70,26 @@ int test_field_grad_suite(void) {
  *
  *****************************************************************************/
 
-int do_test1(void) {
+int do_test1(pe_t * pe) {
 
   int nfref = 1;
   double delsq;
   double grad[3];
 
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nfref, "scalar-field-test", &field);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
+
+  field_create(pe, cs, nfref, "scalar-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 4, &gradient);
   assert(gradient);
@@ -124,8 +115,8 @@ int do_test1(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -136,21 +127,26 @@ int do_test1(void) {
  *
  *****************************************************************************/
 
-static int do_test3(void) {
+static int do_test3(pe_t * pe) {
 
   int nf = 3;
   double delsq[3];
   double grad[3][3];
 
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nf, "vector-field-test", &field);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
+
+  field_create(pe, cs, nf, "vector-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 4, &gradient);
   assert(gradient);
@@ -170,8 +166,8 @@ static int do_test3(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -182,7 +178,7 @@ static int do_test3(void) {
  *
  *****************************************************************************/
 
-static int do_test5(void) {
+static int do_test5(pe_t * pe) {
 
   int nf = 5;
   int ia;
@@ -190,15 +186,20 @@ static int do_test5(void) {
   double delsq[3][3];
   double grad[3][3][3];
 
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nf, "tensor-field-test", &field);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
+
+  field_create(pe, cs, nf, "tensor-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 4, &gradient);
   assert(gradient);
@@ -232,8 +233,8 @@ static int do_test5(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -244,21 +245,26 @@ static int do_test5(void) {
  *
  *****************************************************************************/
 
-int do_test_dab(void) {
+int do_test_dab(pe_t * pe) {
 
   int nf = 1;
   int index = 1;
   double dab[3][3];
 
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
   field_t * field = NULL;
   field_grad_t * gradient = NULL;
 
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nf, "dab-field-test", &field);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  lees_edw_create(pe, cs, NULL, &le);
+
+  field_create(pe, cs, nf, "dab-field-test", &field);
   assert(field);
-  field_init(field, 0);
+  field_init(field, 0, le);
 
   field_grad_create(field, 3, &gradient);
   assert(gradient);
@@ -284,8 +290,8 @@ int do_test_dab(void) {
   field_grad_free(gradient);
   field_free(field);
 
-  le_finish();
-  coords_finish();
+  lees_edw_free(le);
+  cs_free(cs);
 
   return 0;
 }
@@ -296,22 +302,22 @@ int do_test_dab(void) {
  *
  *****************************************************************************/
 
-static int test_d2(int nf, const double * field, 
-	      double * t_field,
-	      double * grad,
-	      double * t_grad,
-	      double * delsq,
-	      double * t_delsq
-		   ){
+static int test_d2(field_grad_t * fg) {
 
-  int n;
+  int n, nf;
+  int nsites;
   int index = 1;
 
+  assert(fg);
+
+  field_nf(fg->field, &nf);
+  nsites = fg->field->nsites;
+
   for (n = 0; n < nf; n++) {
-    grad[NVECTOR*(nf*index + n) + X] = test_encode(ENCODE_GRAD, nf, X, n);
-    grad[NVECTOR*(nf*index + n) + Y] = test_encode(ENCODE_GRAD, nf, Y, n);
-    grad[NVECTOR*(nf*index + n) + Z] = test_encode(ENCODE_GRAD, nf, Z, n);
-    delsq[nf*index + n] = test_encode(ENCODE_DELSQ, nf, X, n);
+    fg->grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, X)] = test_encode(ENCODE_GRAD, nf, X, n);
+    fg->grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, Y)] = test_encode(ENCODE_GRAD, nf, Y, n);
+    fg->grad[mem_addr_rank2(nsites, nf, NVECTOR, index, n, Z)] = test_encode(ENCODE_GRAD, nf, Z, n);
+    fg->delsq[mem_addr_rank1(nsites, nf, index, n)] = test_encode(ENCODE_DELSQ, nf, X, n);
   }
 
   return 0;
@@ -323,21 +329,25 @@ static int test_d2(int nf, const double * field,
  *
  *****************************************************************************/
 
-static int test_d4(int nf, const double * field, 
-	      double * t_field,
-	      double * grad,
-	      double * t_grad,
-	      double * delsq,
-	      double * t_delsq
-		   ){
-  int n;
-  int index = 1;
+static int test_d4(field_grad_t * fg) {
+
+  int n, nf;
+  int index;
+  int index0 = 1;
+
+  assert(fg);
+
+  field_nf(fg->field, &nf);
 
   for (n = 0; n < nf; n++) {
-    grad[NVECTOR*(nf*index + n) + X] = test_encode(ENCODE_GRAD4, nf, X, n);
-    grad[NVECTOR*(nf*index + n) + Y] = test_encode(ENCODE_GRAD4, nf, Y, n);
-    grad[NVECTOR*(nf*index + n) + Z] = test_encode(ENCODE_GRAD4, nf, Z, n);
-    delsq[nf*index + n] = test_encode(ENCODE_DELSQ4, nf, X, n);
+    index = mem_addr_rank2(fg->nsite, nf, NVECTOR, index0, n, X);
+    fg->grad_delsq[index] = test_encode(ENCODE_GRAD4, nf, X, n);
+    index = mem_addr_rank2(fg->nsite, nf, NVECTOR, index0, n, Y);
+    fg->grad_delsq[index] = test_encode(ENCODE_GRAD4, nf, Y, n);
+    index = mem_addr_rank2(fg->nsite, nf, NVECTOR, index0, n, Z);
+    fg->grad_delsq[index] = test_encode(ENCODE_GRAD4, nf, Z, n);
+    index = mem_addr_rank1(fg->nsite, nf, index0, n);
+    fg->delsq_delsq[index] = test_encode(ENCODE_DELSQ4, nf, X, n);
   }
 
   return 0;
@@ -364,22 +374,25 @@ static double test_encode(int code, int nf, int iv, int n) {
  *
  *****************************************************************************/
 
-static int test_dab(int nf, const double * field, double * dab) {
+static int test_dab(field_grad_t * fg) {
 
-  int n;
+  int n, nf, ns;
   int index = 1;
 
+  assert(fg);
+
+  field_nf(fg->field, &nf);
+  ns = fg->field->nsites;
+
   assert(nf == 1);
-  assert(field);
-  assert(dab);
 
   for (n = 0; n < nf; n++) {
-    dab[NSYMM*(nf*index + n) + XX] = test_encode(ENCODE_DAB, nf, XX, n);
-    dab[NSYMM*(nf*index + n) + XY] = test_encode(ENCODE_DAB, nf, XY, n);
-    dab[NSYMM*(nf*index + n) + XZ] = test_encode(ENCODE_DAB, nf, XZ, n);
-    dab[NSYMM*(nf*index + n) + YY] = test_encode(ENCODE_DAB, nf, YY, n);
-    dab[NSYMM*(nf*index + n) + YZ] = test_encode(ENCODE_DAB, nf, YZ, n);
-    dab[NSYMM*(nf*index + n) + ZZ] = test_encode(ENCODE_DAB, nf, ZZ, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,XX)] = test_encode(ENCODE_DAB, nf, XX, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,XY)] = test_encode(ENCODE_DAB, nf, XY, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,XZ)] = test_encode(ENCODE_DAB, nf, XZ, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,YY)] = test_encode(ENCODE_DAB, nf, YY, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,YZ)] = test_encode(ENCODE_DAB, nf, YZ, n);
+    fg->d_ab[mem_addr_rank1(ns,NSYMM,index,ZZ)] = test_encode(ENCODE_DAB, nf, ZZ, n);
   }
 
   return 0;

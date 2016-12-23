@@ -7,18 +7,26 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2009)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef PHI_FORCE_COLLOID_H
-#define PHI_FORCE_COLLOID_H
+#ifndef LUDWIG_PHI_FORCE_COLLOID_H
+#define LUDWIG_PHI_FORCE_COLLOID_H
 
+#include "phi_force_stress.h"
+#include "free_energy.h"
 #include "colloids.h"
 #include "hydro.h"
 #include "map.h"
+#include "wall.h"
 
-__targetHost__ int phi_force_colloid(colloids_info_t * cinfo, field_t* q, field_grad_t* q_grad, hydro_t * hydro, map_t * map);
+__host__ int pth_force_fluid_driver(pth_t * pth, hydro_t * hydro);
+__host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
+					 map_t * map, wall_t * wall);
+__host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
+			       hydro_t * hydro, map_t * map, wall_t * wall);
 
 #endif

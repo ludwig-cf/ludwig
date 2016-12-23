@@ -264,7 +264,7 @@ int main(int argc, char ** argv) {
   /* Electrokinetic quantities */
   if (nrec_ == 4 && strncmp(stub_, "psi", 3) == 0) {
 
-    if (output_ek_elc_ != 0 || output_ek_elf_ != 0) {
+    if (output_ek_elf_ != 0) {
       electric_field(datasection, ppsection);
     }
 

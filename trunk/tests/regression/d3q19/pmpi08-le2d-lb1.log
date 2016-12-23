@@ -78,7 +78,7 @@ Order parameter I/O format:
 I/O decomposition:            1 1 1
 Initialising phi for spinodal
 Initialising shear profile
-Gradient calcaulation: 3d_27pt_fluid
+Gradient calculation: 3d_27pt_fluid
 Initial conditions.
 
 Scalars - total mean variance min max

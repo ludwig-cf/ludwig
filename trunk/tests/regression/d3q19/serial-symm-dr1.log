@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.4.8 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.82 (Serial version running on 1 process)
 
-The SVN revision details are: 2987M
+The SVN revision details are: 3052
 Note assertions via standard C assert() are on.
 
 Read 21 user parameters from serial-symm-dr1.inp
@@ -109,19 +109,20 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.429      0.429      0.429   0.428788 (1 call)
-      Time step loop:      0.303      0.303      0.303   0.302616 (1 call)
-         Propagation:      0.037      0.037      0.037   0.036931 (1 call)
-    Propagtn (krnl) :      0.037      0.037      0.037   0.036925 (1 call)
-           Collision:      0.102      0.102      0.102   0.101803 (1 call)
-   Collision (krnl) :      0.100      0.100      0.100   0.099879 (1 call)
-       Lattice halos:      0.001      0.001      0.001   0.001125 (1 call)
-       phi gradients:      0.029      0.029      0.029   0.028605 (1 call)
-           phi halos:      0.001      0.001      0.001   0.001261 (1 call)
-                 BBL:      0.000      0.000      0.000   0.000005 (1 call)
-   Force calculation:      0.042      0.042      0.042   0.042111 (1 call)
- Chem stress (krnl) :      0.017      0.017      0.017   0.016827 (1 call)
-   Phi force (krnl) :      0.008      0.008      0.008   0.008120 (1 call)
-          phi update:      0.082      0.082      0.082   0.082178 (1 call)
- Advectn BCS (krnl) :      0.006      0.006      0.006   0.006137 (1 call)
+               Total:      1.045      1.045      1.045   1.045245 (1 call)
+      Time step loop:      0.709      0.709      0.709   0.709420 (1 call)
+         Propagation:      0.098      0.098      0.098   0.097778 (1 call)
+    Propagtn (krnl) :      0.098      0.098      0.098   0.097755 (1 call)
+           Collision:      0.200      0.200      0.200   0.200015 (1 call)
+   Collision (krnl) :      0.200      0.200      0.200   0.199997 (1 call)
+       Lattice halos:      0.017      0.017      0.017   0.016525 (1 call)
+       phi gradients:      0.110      0.110      0.110   0.110392 (1 call)
+           phi halos:      0.002      0.002      0.002   0.001925 (1 call)
+                 BBL:      0.000      0.000      0.000   0.000008 (1 call)
+   Force calculation:      0.153      0.153      0.153   0.152655 (1 call)
+   Phi force (krnl) :      0.122      0.122      0.122   0.122300 (1 call)
+          phi update:      0.123      0.123      0.123   0.122649 (1 call)
+     Advectn (krnl) :      0.053      0.053      0.053   0.052826 (1 call)
+ Advectn BCS (krnl) :      0.018      0.018      0.018   0.017884 (1 call)
+               Free1:      0.155      0.155      0.155   0.154928 (1 call)
 Ludwig finished normally.

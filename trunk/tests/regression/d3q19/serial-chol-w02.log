@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.4.8 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.48 (Serial version running on 1 process)
 
-The SVN revision details are: 2987M
+The SVN revision details are: 2982
 Note assertions via standard C assert() are on.
 
 Read 35 user parameters from serial-chol-w02.inp
@@ -95,14 +95,12 @@ Advection scheme order: 1
 
 Boundary walls
 --------------
-Untested boundary wall configuration.
-Please check documentation and try again.
 Boundary walls:                  - Y -
 Boundary speed u_x (bottom):     0.0000000e+00
 Boundary speed u_x (top):        0.0000000e+00
 Boundary normal lubrication rc:  0.0000000e+00
 Wall boundary links allocated:   40960
-Memory (total, bytes):           1310720
+Memory (total, bytes):           655360
 Boundary shear initialise:       0
 Gradient calculation: 3d_7pt_solid
 
@@ -138,9 +136,9 @@ Free energies - timestep f v f/v f_s1 fs_s2
 [fe]              2 -1.4672998738e+01  2.6214400000e+05 -5.5973048163e-05  3.0965027533e+00  3.0965027533e+00
 
 Momentum - x y z
-[total   ] -1.7263968e-13 -1.4637111e-12 -1.1768364e-14
+[total   ] -1.8052226e-13 -1.4636669e-12 -1.9650948e-14
 [fluid   ] -7.8453030e-01 -1.2931878e-12  7.8453030e-01
-[walls   ]  7.8453030e-01 -1.7052332e-13 -7.8453030e-01
+[walls   ]  7.8453030e-01 -1.7047908e-13 -7.8453030e-01
 
 Velocity - x y z
 [minimum ] -7.9780502e-05 -1.7340399e-05  0.0000000e+00
@@ -152,21 +150,21 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.497      3.497      3.497   3.496920 (1 call)
-      Time step loop:      1.600      1.692      3.292   1.646030 (2 calls)
-         Propagation:      0.021      0.037      0.057   0.028650 (2 calls)
-    Propagtn (krnl) :      0.021      0.037      0.057   0.028644 (2 calls)
-           Collision:      0.101      0.102      0.203   0.101499 (2 calls)
-   Collision (krnl) :      0.097      0.100      0.196   0.098192 (2 calls)
-       Lattice halos:      0.001      0.001      0.002   0.000909 (2 calls)
-       phi gradients:      0.054      0.067      0.121   0.060712 (2 calls)
-           phi halos:      0.003      0.004      0.007   0.003596 (2 calls)
-                 BBL:      0.001      0.002      0.003   0.001542 (2 calls)
-   Force calculation:      1.283      1.289      2.572   1.285981 (2 calls)
-          phi update:      0.131      0.186      0.317   0.158263 (2 calls)
-      Velocity Halo :      0.001      0.003      0.005   0.002269 (2 calls)
-BP BE update (krnl) :      0.056      0.056      0.112   0.056223 (2 calls)
-     Advectn (krnl) :      0.021      0.035      0.056   0.027932 (2 calls)
- Advectn BCS (krnl) :      0.009      0.009      0.018   0.009126 (2 calls)
-   BP BE alloc/free :      0.000      0.007      0.007   0.001683 (4 calls)
+               Total:      4.308      4.308      4.308   4.307615 (1 call)
+      Time step loop:      1.854      2.001      3.854   1.927130 (2 calls)
+         Propagation:      0.090      0.114      0.204   0.102183 (2 calls)
+    Propagtn (krnl) :      0.090      0.114      0.204   0.102175 (2 calls)
+           Collision:      0.153      0.157      0.310   0.155190 (2 calls)
+   Collision (krnl) :      0.153      0.157      0.310   0.155179 (2 calls)
+       Lattice halos:      0.009      0.014      0.023   0.011738 (2 calls)
+       phi gradients:      0.132      0.153      0.285   0.142545 (2 calls)
+           phi halos:      0.004      0.006      0.011   0.005388 (2 calls)
+                 BBL:      0.005      0.005      0.010   0.005194 (2 calls)
+   Force calculation:      1.205      1.265      2.469   1.234646 (2 calls)
+          phi update:      0.253      0.283      0.536   0.267934 (2 calls)
+      Velocity Halo :      0.002      0.005      0.006   0.003135 (2 calls)
+BP BE update (krnl) :      0.166      0.170      0.337   0.168357 (2 calls)
+     Advectn (krnl) :      0.059      0.080      0.138   0.069159 (2 calls)
+ Advectn BCS (krnl) :      0.021      0.022      0.043   0.021460 (2 calls)
+               Free1:      0.000      0.173      0.173   0.086706 (2 calls)
 Ludwig finished normally.

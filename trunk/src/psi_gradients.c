@@ -125,19 +125,24 @@ const double psi_gr_rcs2 = 3.0;
  *      E_x = - (1/2) [ psi(i+1,j,k) - psi(i-1,j,k ]
  *  etc
  *
+ *  TODO: The assert(0) indicates that there is no test of this code.
+ *
  *****************************************************************************/
 
 int psi_electric_field(psi_t * psi, int index, double e[3]) {
 
+  int nsites;
   int xs, ys, zs;
 
   assert(psi);
+  assert(0); /* NO TEST? */
 
-  coords_strides(&xs, &ys, &zs);
+  cs_nsites(psi->cs, &nsites);
+  cs_strides(psi->cs, &xs, &ys, &zs);
 
-  e[X] = -0.5*(psi->psi[index + xs] - psi->psi[index - xs]);
-  e[Y] = -0.5*(psi->psi[index + ys] - psi->psi[index - ys]);
-  e[Z] = -0.5*(psi->psi[index + zs] - psi->psi[index - zs]);
+  e[X] = -0.5*(psi->psi[addr_rank0(nsites, index + xs)] - psi->psi[addr_rank0(nsites, index - xs)]);
+  e[Y] = -0.5*(psi->psi[addr_rank0(nsites, index + ys)] - psi->psi[addr_rank0(nsites, index - ys)]);
+  e[Z] = -0.5*(psi->psi[addr_rank0(nsites, index + zs)] - psi->psi[addr_rank0(nsites, index - zs)]);
 
   return 0;
 }
@@ -156,12 +161,14 @@ int psi_electric_field(psi_t * psi, int index, double e[3]) {
 int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
 
   int p;
+  int nsites;
   int coords[3], coords_nbr[3], index_nbr;
   double aux;
 
   assert(psi);
 
-  coords_index_to_ijk(index, coords);
+  cs_nsites(psi->cs, &nsites);
+  cs_index_to_ijk(psi->cs, index, coords);
 
   e[X] = 0;  
   e[Y] = 0;
@@ -173,9 +180,8 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
     coords_nbr[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords_nbr[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index_nbr = coords_index(coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
-
-    aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi[index_nbr];
+    index_nbr = cs_index(psi->cs, coords_nbr[X], coords_nbr[Y], coords_nbr[Z]);
+    aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->psi[addr_rank0(nsites, index_nbr)];
 
     e[X] -= aux * psi_gr_cv[p][X]; 
     e[Y] -= aux * psi_gr_cv[p][Y];  
@@ -205,10 +211,13 @@ int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]) {
  *    grad_rho_x = 3/2*psi->rho(i,j,k)-2*psi->rho(i-1,k,j)+1/2*psi->rho(i-2,k,j)
  *  etc.
  *
+ *  TODO: The assert(0) indicates there is no test in place.
+ *
  *****************************************************************************/
 
 int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
 
+  int nsites;
   int xs, ys, zs;
   int index0, index1;
   int status0, status1;
@@ -216,8 +225,10 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   assert(psi);
   assert(n < psi->nk);
   assert(grad_rho);
+  assert(0); /* NO TEST? */
 
-  coords_strides(&xs, &ys, &zs);
+  cs_nsites(psi->cs, &nsites);
+  cs_strides(psi->cs, &xs, &ys, &zs);
 
   grad_rho[X] = 0.0;
   grad_rho[Y] = 0.0;
@@ -230,18 +241,18 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   map_status(map, index1, &status1);
 
   if (status0 == MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[X] = 0.5*(psi->rho[psi->nk*(index + xs) + n] - 
-		  psi->rho[psi->nk*(index - xs) + n]);
+    grad_rho[X] = 0.5*(psi->rho[addr_rank1(nsites, psi->nk, (index + xs), n)]
+		     - psi->rho[addr_rank1(nsites, psi->nk, (index - xs), n)]);
   } 
   if (status0 != MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[X] = - 1.5*psi->rho[psi->nk*index + n] 
-		  + 2.0*psi->rho[psi->nk*(index + xs) + n]
-		  - 0.5*psi->rho[psi->nk*(index + 2*xs) + n]; 
+    grad_rho[X] = - 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
+      + 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index + xs), n)]
+      - 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index + 2*xs), n)]; 
   }
   if (status0 == MAP_FLUID && status1 != MAP_FLUID){
-    grad_rho[X] = + 1.5*psi->rho[psi->nk*index + n]
-                  - 2.0*psi->rho[psi->nk*(index - xs) + n]
-                  + 0.5*psi->rho[psi->nk*(index - 2*xs) + n];
+    grad_rho[X] = + 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)]
+      - 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index - xs), n)]
+      + 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index - 2*xs), n)];
   }
 
   /* y-direction */
@@ -250,19 +261,21 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   index1 = index + ys;
   map_status(map, index1, &status1);
 
-  if (status0 == MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[Y] = 0.5*(psi->rho[psi->nk*(index+ys) + n] - 
-		  psi->rho[psi->nk*(index-ys) + n]);
+  if (status0 == MAP_FLUID && status1 == MAP_FLUID) {
+    grad_rho[Y]
+      = 0.5*(+ psi->rho[addr_rank1(nsites, psi->nk, (index+ys), n)]
+	     - psi->rho[addr_rank1(nsites, psi->nk, (index-ys), n)]);
   }
-  if (status0 != MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[Y] = - 1.5*psi->rho[psi->nk*index + n] 
-		  + 2.0*psi->rho[psi->nk*(index + ys) + n]
-		  - 0.5*psi->rho[psi->nk*(index + 2*ys) + n]; 
+  if (status0 != MAP_FLUID && status1 == MAP_FLUID) {
+    grad_rho[Y]
+      = - 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
+      + 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index + ys), n)]
+      - 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index + 2*ys), n)]; 
   }
-  if (status0 == MAP_FLUID && status1 != MAP_FLUID){
-    grad_rho[Y] = + 1.5*psi->rho[psi->nk*index + n]
-                  - 2.0*psi->rho[psi->nk*(index - ys) + n]
-                  + 0.5*psi->rho[psi->nk*(index - 2*ys) + n];
+  if (status0 == MAP_FLUID && status1 != MAP_FLUID) {
+    grad_rho[Y] = + 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)]
+      - 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index - ys), n)]
+      + 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index - 2*ys), n)];
   }
 
   /* z-direction */
@@ -271,19 +284,19 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
   index1 = index + zs;
   map_status(map, index1, &status1);
 
-  if (status0 == MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[Z] = 0.5*(psi->rho[psi->nk*(index+zs) + n] - 
-		  psi->rho[psi->nk*(index-zs) + n]);
+  if (status0 == MAP_FLUID && status1 == MAP_FLUID) {
+    grad_rho[Z] = 0.5*(psi->rho[addr_rank1(nsites, psi->nk, (index+zs), n)] - 
+		       psi->rho[addr_rank1(nsites, psi->nk, (index-zs), n)]);
   }
-  if (status0 != MAP_FLUID && status1 == MAP_FLUID){
-    grad_rho[Z] = - 1.5*psi->rho[psi->nk*index + n] 
-		  + 2.0*psi->rho[psi->nk*(index + zs) + n]
-		  - 0.5*psi->rho[psi->nk*(index + 2*zs) + n]; 
+  if (status0 != MAP_FLUID && status1 == MAP_FLUID) {
+    grad_rho[Z] = - 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
+      + 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index + zs), n)]
+      - 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index + 2*zs), n)]; 
   }
-  if (status0 == MAP_FLUID && status1 != MAP_FLUID){
-    grad_rho[Z] = + 1.5*psi->rho[psi->nk*index + n]
-                  - 2.0*psi->rho[psi->nk*(index - zs) + n]
-                  + 0.5*psi->rho[psi->nk*(index - 2*zs) + n];
+  if (status0 == MAP_FLUID && status1 != MAP_FLUID) {
+    grad_rho[Z] = + 1.5*psi->rho[addr_rank1(nsites, psi->nk, index, n)]
+      - 2.0*psi->rho[addr_rank1(nsites, psi->nk, (index - zs), n)]
+      + 0.5*psi->rho[addr_rank1(nsites, psi->nk, (index - 2*zs), n)];
   }
 
   return 0;
@@ -310,11 +323,14 @@ int psi_grad_rho(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]
  *    grad_rho_x = 3/2*psi->rho(i,j,k)-2*psi->rho(i-1,k,j)+1/2*psi->rho(i-2,k,j)
  *  etc.
  *
+ *  TODO: The assert(0) indicates there is no test for this code.
+ *
  *****************************************************************************/
 
 int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_rho[3]) {
 
   int p;
+  int nsites;
   int coords[3], coords1[3], coords2[3]; 
   int index1, index2;
   int status, status1, status2;
@@ -323,8 +339,10 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
   assert(psi);
   assert(n < psi->nk);
   assert(grad_rho);
+  assert(0); /* NO TEST? */
 
-  coords_index_to_ijk(index, coords);
+  cs_nsites(psi->cs, &nsites);
+  cs_index_to_ijk(psi->cs, index, coords);
   map_status(map, index, &status);
 
   grad_rho[X] = 0;  
@@ -337,7 +355,7 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
     coords1[Y] = coords[Y] + psi_gr_cv[p][Y];
     coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+    index1 = cs_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
     map_status(map, index1, &status1);
 
     if(status == MAP_FLUID && status1 == MAP_FLUID) { 
@@ -355,20 +373,21 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
       coords1[X] = coords[X] - psi_gr_cv[p][X];
       coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
       coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
-      index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+      index1 = cs_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
       map_status(map, index1, &status1);
 
       coords2[X] = coords[X] - 2*psi_gr_cv[p][X];
       coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
       coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
-      index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+      index2 = cs_index(psi->cs, coords2[X], coords2[Y], coords2[Z]);
       map_status(map, index2, &status2);
 	
       if(status == MAP_FLUID && status1 == MAP_FLUID && status2 == MAP_FLUID) {
 
         /* Subtract the above 'fluid' half of the incomplete two-point formula. */
         /* Note: subtracting means adding here because of inverse lattice vectors. */
-	aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->rho[psi->nk*index1 + n];
+
+	aux = psi_gr_wv[p]* psi_gr_rcs2 * psi->rho[addr_rank1(nsites, psi->nk, index1, n)];
 
 	grad_rho[X] += aux * psi_gr_cv[p][X]; 
 	grad_rho[Y] += aux * psi_gr_cv[p][Y];  
@@ -376,27 +395,24 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
 
         /* Use one-sided derivative instead */
 	grad_rho[X] += psi_gr_wv[p] * psi_gr_rcs2 * 
-			(3.0*psi->rho[psi->nk*index  + n] 
-		       - 4.0*psi->rho[psi->nk*index1 + n] 
-                       + 1.0*psi->rho[psi->nk*index2 + n]) 
-		       * psi_gr_rnorm[p]* psi_gr_cv[p][X];
+	  (3.0*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
+	   - 4.0*psi->rho[addr_rank1(nsites, psi->nk, index1, n)] 
+	   + 1.0*psi->rho[addr_rank1(nsites, psi->nk, index2, n)]) 
+	  * psi_gr_rnorm[p]* psi_gr_cv[p][X];
 
 	grad_rho[Y] += psi_gr_wv[p] * psi_gr_rcs2 * 
-			(3.0*psi->rho[psi->nk*index  + n] 
-		       - 4.0*psi->rho[psi->nk*index1 + n] 
-	               + 1.0*psi->rho[psi->nk*index2 + n]) 
-		       * psi_gr_rnorm[p] * psi_gr_cv[p][Y];
+	  (3.0*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
+	   - 4.0*psi->rho[addr_rank1(nsites, psi->nk, index1, n)] 
+	   + 1.0*psi->rho[addr_rank1(nsites, psi->nk, index2, n)]) 
+	  * psi_gr_rnorm[p] * psi_gr_cv[p][Y];
 
 	grad_rho[Z] += psi_gr_wv[p] * psi_gr_rcs2 * 
-			(3.0*psi->rho[psi->nk*index  + n] 
-                       - 4.0*psi->rho[psi->nk*index1 + n] 
-	               + 1.0*psi->rho[psi->nk*index2 + n]) 
-		       * psi_gr_rnorm[p] * psi_gr_cv[p][Z];
-
+	  (3.0*psi->rho[addr_rank1(nsites, psi->nk, index, n)] 
+	   - 4.0*psi->rho[addr_rank1(nsites, psi->nk, index1, n)] 
+	   + 1.0*psi->rho[addr_rank1(nsites, psi->nk, index2, n)]) 
+	  * psi_gr_rnorm[p] * psi_gr_cv[p][Z];
       }
-
     }
-
   }
 
   return 0;
@@ -406,9 +422,11 @@ int psi_grad_rho_d3qx(psi_t * psi,  map_t * map, int index, int n, double grad_r
  *
  *  psi_grad_eps_d3qx
  *
+ *  TODO: This could be tested in psi_sor_vare_poisson() (see psi_sor.h) 
+ *
  *****************************************************************************/
 
-int psi_grad_eps_d3qx(f_vare_t fepsilon, int index, double grad_eps[3]) {
+int psi_grad_eps_d3qx(fe_t * fe, f_vare_t fepsilon, int index, double grad_eps[3]) {
 
   int p;
   int coords[3], coords1[3]; 
@@ -431,7 +449,7 @@ int psi_grad_eps_d3qx(f_vare_t fepsilon, int index, double grad_eps[3]) {
     coords1[Z] = coords[Z] + psi_gr_cv[p][Z];
 
     index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
-    fepsilon(index1, &eps1);
+    fepsilon(fe, index1, &eps1);
 
     aux = psi_gr_wv[p]* psi_gr_rcs2 * eps1;
 

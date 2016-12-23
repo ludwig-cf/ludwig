@@ -20,18 +20,18 @@
 #include "pe.h"
 #include "coords.h"
 #include "util.h"
-#include "model.h"
+#include "lb_model_s.h"
 #include "tests.h"
 
 static void test_model_constants(void);
 static void test_model_velocity_set(void);
 
-int do_test_model_distributions(void);
-int do_test_model_halo_swap(void);
-int do_test_model_reduced_halo_swap(void);
-int do_test_lb_model_io(void);
+int do_test_model_distributions(pe_t * pe, cs_t * cs);
+int do_test_model_halo_swap(pe_t * pe, cs_t * cs);
+int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs);
+int do_test_lb_model_io(pe_t * pe, cs_t * cs);
 int do_test_d3q19_ghosts(void);
-static  int test_model_is_domain(const int ic, const int jc, const int kc);
+static  int test_model_is_domain(cs_t * cs, int ic, int jc, int kc);
 
 /*****************************************************************************
  *
@@ -41,8 +41,12 @@ static  int test_model_is_domain(const int ic, const int jc, const int kc);
 
 int test_model_suite(void) {
 
-  pe_init_quiet();
-  coords_init();
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   /* Test model structure (coordinate-independent stuff) */
 
@@ -51,15 +55,17 @@ int test_model_suite(void) {
 
   /* Now test actual distributions */
 
-  do_test_model_distributions();
-  do_test_model_halo_swap();
-  do_test_model_reduced_halo_swap();
-  do_test_lb_model_io();
+  do_test_model_distributions(pe, cs);
+  do_test_model_halo_swap(pe, cs);
+  if (DATA_MODEL == ADDRESS_FORWARD && NSIMDVL == 1) {
+    do_test_model_reduced_halo_swap(pe, cs);
+  }
+  do_test_lb_model_io(pe, cs);
   do_test_d3q19_ghosts();
 
-  info("PASS     ./unit/test_model\n");
-  coords_finish();
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_model\n");
+  cs_free(cs);
+  pe_free(pe);
 
   return 0;
 }
@@ -128,6 +134,7 @@ static void test_model_velocity_set(void) {
   int i, j, k, p;
   double dij;
   double sum, sumx, sumy, sumz;
+  KRONECKER_DELTA_CHAR(d_);
 
   /*
   info("Checking velocities cv etc...\n\n");
@@ -317,7 +324,7 @@ static void test_model_velocity_set(void) {
  *
  *****************************************************************************/
 
-int do_test_model_distributions(void) {
+int do_test_model_distributions(pe_t * pe, cs_t * cs) {
 
   int i, n, p;
   int index = 1;
@@ -327,9 +334,12 @@ int do_test_model_distributions(void) {
 
   lb_t * lb;
 
+  assert(pe);
+  assert(cs);
+
   /* Tests of the basic distribution functions. */
 
-  lb_create(&lb);
+  lb_create(pe, cs, &lb);
   assert(lb);
   lb_ndist(lb, &n);
   assert(n == 1); /* Default */
@@ -340,7 +350,7 @@ int do_test_model_distributions(void) {
   /* Report the number of distributions */
 
   lb_ndist(lb, &n);
-  test_assert(n == ndist);
+  assert(n == ndist);
 
   for (n = 0; n < ndist; n++) {
     for (p = 0; p < NVEL; p++) {
@@ -365,7 +375,6 @@ int do_test_model_distributions(void) {
     }
   }
 
-  /* info("passed 1st lb check\n");*/
   lb_free(lb);
 
   return 0;
@@ -379,7 +388,7 @@ int do_test_model_distributions(void) {
  *
  *****************************************************************************/
 
-int do_test_model_halo_swap() {
+int do_test_model_halo_swap(pe_t * pe, cs_t * cs) {
 
   int i, j, k, p;
   int n, ndist = 2;
@@ -390,12 +399,15 @@ int do_test_model_halo_swap() {
 
   lb_t * lb = NULL;
 
-  lb_create(&lb);
+  assert(pe);
+  assert(cs);
+
+  lb_create(pe, cs, &lb);
   assert(lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   /* The test relies on a uniform decomposition in parallel:
    *
@@ -408,7 +420,7 @@ int do_test_model_halo_swap() {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
 
-	index = coords_index(i, j, k);
+	index = cs_index(cs, i, j, k);
 
 	for (n = 0; n < ndist; n++) {
 	  lb_f_set(lb, index, X, n, (double) (i));
@@ -423,7 +435,9 @@ int do_test_model_halo_swap() {
     }
   }
 
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
+  lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
   /* Test all the sites not in the interior */
 
@@ -434,7 +448,7 @@ int do_test_model_halo_swap() {
       for (k = 1 - nextra; k <= nlocal[Z] + nextra; k++) {
 	if (k >= 1 && k <= nlocal[Z]) continue;
 
-	index = coords_index(i, j, k);
+	index = cs_index(cs, i, j, k);
 
 	for (n = 0; n < ndist; n++) {
 
@@ -460,7 +474,6 @@ int do_test_model_halo_swap() {
     }
   }
 
-  /* info("lb check halo swap\n");*/
   lb_free(lb);
 
   return 0;
@@ -472,7 +485,7 @@ int do_test_model_halo_swap() {
  *
  *****************************************************************************/
 
-int do_test_model_reduced_halo_swap(void) {  
+int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {  
 
   int i, j, k, p;
   int icdt, jcdt, kcdt;
@@ -485,20 +498,23 @@ int do_test_model_reduced_halo_swap(void) {
 
   lb_t * lb = NULL;
 
-  lb_create(&lb);
+  assert(pe);
+  assert(cs);
+
+  lb_create(pe, cs, &lb);
   assert(lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
   lb_halo_set(lb, LB_HALO_REDUCED);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   /* Set everything which is NOT in a halo */
 
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
-	index = coords_index(i, j, k);
+	index = cs_index(cs, i, j, k);
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
 	    f_expect = 1.0*(n*NVEL + p);
@@ -509,14 +525,14 @@ int do_test_model_reduced_halo_swap(void) {
     }
   }
 
-  lb_halo(lb);
+  lb_halo_via_struct(lb);
 
   /* Now check that the interior sites are unchanged */
 
   for (i = 1; i <= nlocal[X]; i++) {
     for (j = 1; j <= nlocal[Y]; j++) {
       for (k = 1; k <= nlocal[Z]; k++) {
-	index = coords_index(i, j, k);
+	index = cs_index(cs, i, j, k);
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
 	    lb_f(lb, index, p, n, &f_actual);
@@ -539,7 +555,7 @@ int do_test_model_reduced_halo_swap(void) {
       for (k = 1 - nextra; k <= nlocal[Z] + nextra; k++) {
 	if (k >= 1 && k <= nlocal[Z]) continue;
 
-	index = coords_index(i, j, k);
+	index = cs_index(cs, i, j, k);
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < NVEL; p++) {
@@ -551,7 +567,7 @@ int do_test_model_reduced_halo_swap(void) {
 	    jcdt = j + cv[p][Y];
 	    kcdt = k + cv[p][Z];
 
-	    if (test_model_is_domain(icdt, jcdt, kcdt)) {
+	    if (test_model_is_domain(cs, icdt, jcdt, kcdt)) {
 	      assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	    }
 	  }
@@ -562,7 +578,6 @@ int do_test_model_reduced_halo_swap(void) {
     }
   }
 
-  /* info("lb check reduced\n");*/
   lb_free(lb);
 
   return 0;
@@ -576,12 +591,14 @@ int do_test_model_reduced_halo_swap(void) {
  *
  *****************************************************************************/
 
-static int test_model_is_domain(const int ic, const int jc, const int kc) {
+static int test_model_is_domain(cs_t * cs, int ic, int jc, int kc) {
 
   int nlocal[3];
   int iam = 1;
 
-  coords_nlocal(nlocal);
+  assert(cs);
+
+  cs_nlocal(cs, nlocal);
 
   if (ic < 1) iam = 0;
   if (jc < 1) iam = 0;
@@ -599,14 +616,17 @@ static int test_model_is_domain(const int ic, const int jc, const int kc) {
  *
  *****************************************************************************/
 
-int do_test_lb_model_io(void) {
+int do_test_lb_model_io(pe_t * pe, cs_t * cs) {
 
   int ndist = 2;
   lb_t * lbrd = NULL;
   lb_t * lbwr = NULL;
 
-  lb_create_ndist(ndist, &lbrd);
-  lb_create_ndist(ndist, &lbwr);
+  assert(pe);
+  assert(cs);
+
+  lb_create_ndist(pe, cs, ndist, &lbrd);
+  lb_create_ndist(pe, cs, ndist, &lbwr);
 
   lb_init(lbwr);
   lb_init(lbrd);
@@ -661,8 +681,6 @@ int do_test_d3q19_ghosts(void) {
 
   if (NVEL != 19) return 0;
 
-  /* info("D3Q19 ghost tests...");*/
-
   for (p = 0; p < NVEL; p++) {
 
     cs2 = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
@@ -690,8 +708,6 @@ int do_test_d3q19_ghosts(void) {
     test_assert(fabs(ma_[16][p] - jchi2[Y]) < TEST_DOUBLE_TOLERANCE);
     test_assert(fabs(ma_[17][p] - jchi2[Z]) < TEST_DOUBLE_TOLERANCE);
   }
-
-  /* info("ok\n");*/
 
   return 0;
 }

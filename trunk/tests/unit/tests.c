@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -48,12 +48,14 @@ int tests_create() {
   test_pe_suite();
   test_coords_suite();
 
+  test_kernel_suite();
+
   test_angle_cosine_suite();
   test_assumptions_suite();
   test_be_suite();
   test_bond_fene_suite();
   test_bonds_suite();
-  /* test_bp_suite(); failing pending uniform gradient addressing scheme */
+  test_bp_suite();
   test_build_suite();
   test_colloid_suite();
   test_colloid_sums_suite();
@@ -63,8 +65,9 @@ int tests_create() {
   test_fe_electro_suite();
   test_fe_electro_symm_suite();
   test_field_suite();
+  test_field_grad_suite();
   test_halo_suite();
-  /* test_hydro_suite(); failing pending model R halo in coords_field_test */
+  test_hydro_suite();
   test_io_suite();
   test_le_suite();
   test_lubrication_suite();
@@ -74,7 +77,6 @@ int tests_create() {
   test_pair_lj_cut_suite();
   test_pair_ss_cut_suite();
   test_pair_yukawa_suite();
-  test_phi_ch_suite();
   test_polar_active_suite();
   test_psi_suite();
   test_lb_prop_suite();
@@ -82,12 +84,12 @@ int tests_create() {
   test_rt_suite();
   test_timer_suite();
   test_util_suite();
-  test_field_grad_suite();           
 
   /* Failing... pending investigation */
 
   /* test_nernst_planck_suite(); */
   /* test_psi_sor_suite();*/
+  /* test_phi_ch_suite(); replace by advection without CH */
 
 
   return 0;

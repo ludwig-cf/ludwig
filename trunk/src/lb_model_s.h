@@ -7,7 +7,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -17,65 +18,44 @@
 #define LB_MODEL_S_H
 
 #include "model.h"
+#include "halo_swap.h"
 #include "io_harness.h"
+#include "stdint.h"
 
-/* Data storage */
-/* A preprocessor macro is provided to switch between two options
- * for the arrangement of the distributions in memory:
- *
- *   MODEL_R is 'structure of arrays'
- *   MODEL   is 'array of structures'
- *
- * The following macros  allow the distribution to ba addressed in
- * terms of:
- *
- *  lattice spatial index = coords_index(ic, jc, kc) 0 ... nsite
- *  distribution n (LB_RHO and optionally LB_PHI)    0 ... ndist
- *  discrete velocity p                              0 ... NVEL
- */
+extern __constant__ int tc_cv[NVEL][3];
+extern __constant__ int tc_ndist;
 
-/* Distribution 'array of structures' for 'MODEL' (independent of nsite) */
-#define LB_ADDR_MODEL(nsite, ndist, nvel, index, n, p) \
-  ((ndist)*nvel*(index) + (n)*nvel + (p))
+typedef struct lb_collide_param_s lb_collide_param_t;
 
-/* Distribution 'structure of arrays' for 'MODEL_R' (independent of NVEL) */
-#define LB_ADDR_MODEL_R(nsite, ndist, nvel, index, n, p) \
-  ((p)*ndist*nsite + (n)*nsite + (index))
-
-/* Distribution 'array of structure of short arrays' */
-#define SAN VVL
-#define LB_ADDR_MODEL_AoSoA(nsite, ndist, nvel, index, n, p) \
-  (((index)/SAN)*(ndist)*(nvel)*SAN + (n)*(nvel)*SAN + (p)*SAN + ((index)-((index)/SAN)*SAN))
-
-
-#ifdef LB_DATA_SOA
-#define LB_DATA_MODEL MODEL_R
-
-#ifdef AOSOA
-#define LB_ADDR LB_ADDR_MODEL_AoSoA
-#else
-#define LB_ADDR LB_ADDR_MODEL_R
-#endif
-
-#else
-#define LB_DATA_MODEL MODEL
-#define LB_ADDR LB_ADDR_MODEL
-#endif
+struct lb_collide_param_s {
+  int8_t isnoise;                      /* switch for fluctuations */
+  int8_t isghost;                      /* switch for ghost modes */
+  int8_t cv[NVEL][3];
+  int nsite;
+  int ndist;
+  double rho0;
+  double var_shear;
+  double var_bulk;
+  double var_noise[NVEL];
+  double rtau[NVEL];
+  double wv[NVEL];
+};
 
 struct lb_data_s {
 
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
   int model;             /* MODEL or MODEL_R */
+
+  pe_t * pe;             /* parallel environment */
+  cs_t * cs;             /* coordinate system */
+  halo_swap_t * halo;    /* halo swap driver */
   io_info_t * io_info; 
 
-  double * f;            /* Distributions (on host)*/
-  double * fprime;            /* data staging space */
+  double * f;            /* Distributions */
+  double * fprime;       /* used in propagation only */
 
-  double * t_f;            /* Distributions (on target)*/
-
-  double * t_fprime;            /* data staging space (on target)*/
-
+  lb_collide_param_t * param;
 
   /* MPI data types for halo swaps; these are comupted at runtime
    * to conform to the model selected at compile time */
@@ -93,11 +73,12 @@ struct lb_data_s {
   MPI_Datatype site_y[2];
   MPI_Datatype site_z[2];
 
-  lb_t * tcopy;              /* copy of this structure on target */ 
-
+  lb_t * target;              /* copy of this structure on target */ 
 };
 
-extern __targetConst__ int tc_cv[NVEL][3];
-extern __targetConst__ int tc_ndist;
+/* Data storage: A rank two object */
+
+#define LB_ADDR(nsites, ndist, nvel, index, n, p) \
+  addr_rank2(nsites, ndist, nvel, index, n, p)
 
 #endif

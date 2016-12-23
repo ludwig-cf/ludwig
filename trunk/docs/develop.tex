@@ -7,7 +7,10 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2014-2015 The University of Edinburgh
+%  (c) 2014-2017 The University of Edinburgh
+%
+%  Contributing authors:
+%  Kevin Stratford (kevin@epcc.ed.ac.uk)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -16,8 +19,11 @@
 \subsection{Address models for 3-dimensional fields}
 
 The code allows for different order of storage associated with 3-dimensional
-fields (scalars, vectors, and so on). For historical reasons these are
-referred to as `Model' and `Model~R' options, which correspond
+fields (scalars, vectors, and so on). These storage schemes are usually
+referred to as array of structures (AOS), structure of arrays (SOA), and
+for the blocked version array of structures of (short) arrays (AOSOA).
+For historical reasons these are
+also sometimes referred to as `Model' and `Model~R' options, which correspond
 to array-of-structures and structure-of-arrays layout, respectively. Early
 versions of the code for CPU were written to favour summation of LB
 distributions on a per lattice site basis in operations such as
@@ -35,7 +41,7 @@ sites (including halo points).
 \subsubsection{Rank 1 objects (to include scalar fields)}
 \label{subsection:addressing-model-rank1}
 
-\textbf{ADDR\_MODEL}: The array-of-structures or Model order for an
+\textbf{ADDR\_AOS}: The array-of-structures order for an
 $n-$vector field
 with components $ v_\alpha = (v_0, v_1, \ldots, v_{n-1})$ is, schematically:
 \[
@@ -49,7 +55,7 @@ with components $ v_\alpha = (v_0, v_1, \ldots, v_{n-1})$ is, schematically:
 \boxed{\ldots\vphantom{v_{n-1}}} \boxed{v_{n-1}} }_{r_{n_s-1}}
 \]
 
-\textbf{ADDR\_MODEL\_R}: The Model~R version is:
+\textbf{ADDR\_SOA}: The structure-of-arrays version is:
 \[
 \overbrace{
 \begin{array}{cc} \boxed{v_0} \\  _{r_0} \end{array} \mkern-17mu
@@ -79,7 +85,7 @@ A scalar field has $n=1$.
 
 \subsubsection{Rank 2 objects (to include dyadic tensor fields)}
 
-\textbf{ADDR\_MODEL}:
+\textbf{ADDR\_AOS}:
 A general rank 2 tensor $t_{\alpha\beta}$ with components $(t_{0,0},
 \ldots, t_{m-1,n-1})$ is stored as:
 \begin{gather*}
@@ -110,7 +116,7 @@ $\partial_\alpha v_\beta$ in three dimensions, are stored in corresponding
 fashion with $m=3$ and
 $\partial_\alpha = (\partial_x, \partial_y, \partial_z)$.
 
-\textbf{ADDR\_MODEL\_R}: The Model R version is
+\textbf{ADDR\_SOA}: The structure-of-arrays version is
 \[
 \overbrace{
 \begin{array}{cc} \boxed{t_{0,0}} \\  _{r_0} \end{array} \mkern-17mu
@@ -156,7 +162,7 @@ the full representation to five components.
 The general rank 3 object $t_{\alpha\beta\gamma}$ with components
 $(t_{0,0,0}, \ldots, t_{m-1,n-1,p-1})$ is stored in a manner which
 generalises from the above, i.e., with the rightmost index running
-fastest. Diagrams are omitted, but Model and Model R storage patterns
+fastest. Diagrams are omitted, but AOS and SOA storage patterns
 follow the same form as seen above.
 
 A triadic tensor, for example the general second derivative of a vector
@@ -177,10 +183,10 @@ on the construction of the tensor.
 
 \subsubsection{LB distribution data}
 
-\textbf{ADDR\_MODEL}: For the LB distributions, up to two distinct
+\textbf{ADDR\_AOS}: For the LB distributions, up to two distinct
 distributions can be accommodated to allow for a binary fluid
 implementation, although the usual situation is to have only one.
-The Model order for two $N$-velocity distributions $f$ and $g$ is:
+The AOS order for two $N$-velocity distributions $f$ and $g$ is:
 \[
 \underbrace{
 \boxed{f_0\vphantom{f_{N-1}}}    \boxed{f_1\vphantom{f_{N-1}}}
@@ -195,7 +201,7 @@ The Model order for two $N$-velocity distributions $f$ and $g$ is:
 \boxed{\ldots\vphantom{f_{N-1}}} \boxed{g_{N-1}\vphantom{f_{N-1}}}}_{r_{n_s=1}}
 \]
 
-\textbf{ADDR\_MODEL\_R}: The Model R order is:
+\textbf{ADDR\_SOA}: The strucuture-of-arrays order is:
 
 \[
 \overbrace{
@@ -242,16 +248,16 @@ lattice sites, which is adjusted according to the vector length;
 see Section \ref{subsection:addressing-how-to} below for practical
 examples.
 
-The Model R picture, which targets coalescene, can be viewed as
+The SOA picture, which targets coalescence, can be viewed as
 naturally supporting SIMD vectorisation by virtue of allowing
 contiguous access to individual quantities as a function of lattice
 index. (If SIMD vectorisation is wanted at all on GPU architecture,
-it can be as a means to releive register pressure.) Model R therefore
-remains unaltered and we concentrate on the Model picture.
+it can be as a means to relieve register pressure.) SOA therefore
+remains unaltered and we concentrate on the AOS picture.
 
 \subsubsection{Rank 1 objects}
 
-\textbf{VADDR\_MODEL}: The structure of short vectors is based on the
+\textbf{ADDR\_AOSOA}: The structure of short vectors is based on the
 SIMD vector length which we here denote $V$:
 \[
 \underbrace{
@@ -288,6 +294,28 @@ follows the corresponding Model implementation.
 \subsection{Addressing: How to?}
 \label{subsection:addressing-how-to}
 
+\subsubsection{Compilation}
+
+A number of options exist to control at compilation time the choice
+of the address model. If no options are specified the default
+addressing model is AOS. Two additional C preprocessor directives
+exist:
+
+\texttt{-DADDR\_SOA} selects structure-of-arrays order (e.g., for
+coallescing on GPU platforms).
+
+\texttt{-DADDR\_AOSOA} block SOA pattern (usually combined with
+a non-unit vector length).
+
+For development purposes, the address functions allow the array indices
+to be checked against the correct range. For production runs, the
+relevant functions are replaced by macros if \texttt{-DNDEBUG} is
+specified.
+
+The targetDP vector length is specified via, e.g.,  \texttt{-DVVL=4}.
+
+\subsubsection{Kernels}
+
 To provide a transparent interface for addressing vector fields,
 a single API is provided which implements the addressing order
 selected at compile time. This interface is always based
@@ -311,7 +339,10 @@ for (ic = 1; ic <= nlocal[X]; ic++) {
 \end{lstlisting}
 where final array indexing is based on the coordinate index and is
 specific to the object at hand. To allow transparent switching
-between Model and Model R versions, the indexing must be abstracted.
+between different addressing models, the indexing must be abstracted.
+The abstraction is provided in \texttt{memory.h}, where functions
+(or function-like macros) are provided to make the appropriate
+address computation.
 As a concrete example, the following considers a rank 1 3-vector:
 \begin{lstlisting}
 for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -333,28 +364,51 @@ address model. We note that
 this can be implemented to operate appropriately when the SIMD vector
 length is an arbitrary number.
 
-An equivalent vectorised version may be constructed as follows:
+This will usually be carried out in computational kernels, where the
+\texttt{kernel.h} interface can be used to help to manage the
+one-dimensional loop structure required the the targetDP threading
+model. In this way, the kernel launch stage will specify the limits
+of the kernel in terms of local $x$-coordinates, $y$-coordinates, and
+$z$-coordinates in the usual way. The kernel itself is then written
+in terms of a one-dimensions kernel index.
+
+In the following schematic, the launch stage defines a kernel context
+to be passed to the kernel along with the other actual arguments:
 \begin{lstlisting}
-for (n = 0; n < nsites; n += SIMDVL) {
-  index = coords_indexv(n, nextra);       /* Proposal */
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt;
+
+  limits.xmin = 1; limits.xmax = nlocal[X];
+  limits.ymin = 1; limits.ymax = nlocal[Y];
+  limits.zmin = 1; limits,zmax = nlocal[Z];
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+
+  __host_launch(kernel_function, nblk, ntpb, ktx, ...);
+\end{lstlisting}
+
+
+An suitable  vectorised kernel may be constructed as follows with the
+appropriate base index for the loop computed via the utility
+\texttt{kernel\_baseindex()}:
+\begin{lstlisting}
+for (kindex = 0; kindex < kiterations; kindex += SIMDVL) {
+  index = kernel_baseindex(ctxt, kindex);
   for (ia = 0; ia < 3; ia++) {
     for (iv = 0; iv < SIMDVL; iv++) {
-      iref = vaddr_rank1(nsites, 3, index, ia, iv);
+      iref = addr_rank1(nsites, 3, index + iv, ia);
       array[iref] = ...;
     }
   }
 }
 \end{lstlisting}
-Note that a different function \texttt{vaddr\_rank1()} with an additional
+Note that the same function \texttt{addr\_rank1()} with the 
 argument which is the index of the vector loop is used. Note also that
-vectorisaed versions must take into account the extent that the kernel
-extends into the halo region (here \texttt{nextra}), which involves
-logic to avoid lattice sites which are not required (not shown in this
+vectorised versions must take into account the extent that the kernel
+extends into the halo region, which involves
+logic to avoid lattice sites which are not required (this type of
+masking operation is not shown in this
 example).
-
-Note that, in practice, 
-the loop over lattice sites is further abstracted in the code to
-accommodate thread-level parallelism via targetDP interface.
 
 \vfill
 \pagebreak

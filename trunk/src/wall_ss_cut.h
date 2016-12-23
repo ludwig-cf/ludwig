@@ -10,16 +10,20 @@
  *
  *****************************************************************************/
 
-#ifndef WALL_SS_CUT_H
-#define WALL_SS_CUT_H
+#ifndef LUDWIG_WALL_SS_CUT_H
+#define LUDWIG_WALL_SS_CUT_H
 
+#include "pe.h"
+#include "coords.h"
+#include "wall.h"
 #include "colloids.h"
 #include "interaction.h"
 
 typedef struct wall_ss_cut_s wall_ss_cut_t;
 
-int wall_ss_cut_create(wall_ss_cut_t ** pobj);
-void wall_ss_cut_free(wall_ss_cut_t * obj);
+int wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall,
+		       wall_ss_cut_t ** pobj);
+int wall_ss_cut_free(wall_ss_cut_t * obj);
 int wall_ss_cut_info(wall_ss_cut_t * obj);
 int wall_ss_cut_register(wall_ss_cut_t * obj, interact_t * parent);
 int wall_ss_cut_compute(colloids_info_t * cinfo, void * self);

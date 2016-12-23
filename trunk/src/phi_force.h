@@ -8,20 +8,23 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef PHI_FORCE_H
-#define PHI_FORCE_H
+#ifndef LUDWIG_PHI_FORCE_H
+#define LUDWIG_PHI_FORCE_H
 
+#include "leesedwards.h"
+#include "free_energy.h"
 #include "field.h"
 #include "hydro.h"
 #include "field_grad_s.h"
+#include "phi_force_stress.h"
+#include "wall.h"
 
-__targetHost__ int phi_force_calculation(field_t * phi, field_t* q_, field_grad_t* q_grad_, hydro_t * hydro);
-__targetHost__ int phi_force_required(int * flag);
-__targetHost__ int phi_force_required_set(const int flag);
-__targetHost__ int phi_force_divergence_set(const int flag);
+__host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
+				   pth_t * pth, fe_t * fe, map_t * map,
+				   field_t * phi, hydro_t * hydro);
 
 #endif

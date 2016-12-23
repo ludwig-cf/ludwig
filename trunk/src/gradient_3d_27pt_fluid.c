@@ -37,7 +37,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -45,179 +45,279 @@
 #include <stdlib.h>
 
 #include "pe.h"
-#include "coords.h"
+#include "memory.h"
+#include "kernel.h"
 #include "leesedwards.h"
 #include "wall.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "gradient_3d_27pt_fluid.h"
 
-static void gradient_3d_27pt_fluid_operator(const int nop,
-					    const double * field,
-					    double * grad, double * delsq,
-					    const int nextra);
-static void gradient_3d_27pt_fluid_le_correction(const int nop,
-						 const double * field,
-						 double * grad, double * delsq,
-						 const int nextra);
-static void gradient_3d_27pt_fluid_wall_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * delsq,
-						   const int nextra);
+typedef enum grad_enum_type {GRAD_DEL2, GRAD_DEL4} grad_enum_t;
+
+__host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					 int nextra, grad_enum_t type);
+__host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				   int nextra, grad_enum_t type);
+
+__global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
+				    lees_edw_t * le,
+				    grad_enum_t type,
+				    field_t * f,
+				    field_grad_t * fgrad);
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_d2
+ *  grad_3d_27pt_fluid_d2
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_fluid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->le);
+
+  le = fgrad->field->le;
   nextra = coords_nhalo() - 1;
   assert(nextra >= 0);
 
-  gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  grad_3d_27pt_fluid_operator(le, fgrad, nextra, GRAD_DEL2);
+  grad_3d_27pt_fluid_le(le, fgrad, nextra, GRAD_DEL2);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_d4
+ *  grad_3d_27pt_fluid_d4
  *
  *  Higher derivatives are obtained by using the same operation
  *  on appropriate field.
  *
+ *  TODO: There's no test for this at the moment.
+ *
  *****************************************************************************/
 
-int gradient_3d_27pt_fluid_d4(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
 
   int nextra;
+  lees_edw_t * le = NULL;
 
-  nextra = coords_nhalo() - 2;
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->le);
+
+  le = fgrad->field->le;
+  lees_edw_nhalo(le, &nextra);
+  nextra -= 2;
   assert(nextra >= 0);
 
-  gradient_3d_27pt_fluid_operator(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_le_correction(nop, field, grad, delsq, nextra);
-  gradient_3d_27pt_fluid_wall_correction(nop, field, grad, delsq, nextra);
+  grad_3d_27pt_fluid_operator(le, fgrad, nextra, GRAD_DEL4);
+  grad_3d_27pt_fluid_le(le, fgrad, nextra, GRAD_DEL4);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_fluid_operator
+ *  grad_3d_27pt_fluid_operator
+ *
+ *  Kernel driver.
  *
  *****************************************************************************/
 
-static void gradient_3d_27pt_fluid_operator(const int nop,
-					    const double * field,
-					   double * grad,
-					   double * del2,
-					   const int nextra) {
+__host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+					 int nextra, grad_enum_t type) {
   int nlocal[3];
-  int nhalo;
-  int n;
-  int ic, jc, kc;
-  int ys;
-  int icm1, icp1;
-  int index, indexm1, indexp1;
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  lees_edw_t * letarget = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
+  lees_edw_nlocal(le, nlocal);
+  lees_edw_strides(le, &xs, &ys, &zs);
+  lees_edw_target(le, &letarget);
+
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+
+  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  __host_launch(grad_3d_27pt_kernel, nblk, ntpb, ctxt->target,
+		fg->field->nf, ys, letarget, type,
+		fg->field->target, fg->target);
+  targetDeviceSynchronise();
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_27pt_kernel
+ *
+ *  Unvectorised kernel to compute grad, delsq.
+ *
+ *****************************************************************************/
+
+__global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
+				    lees_edw_t * le,
+				    grad_enum_t type,
+				    field_t * f,
+				    field_grad_t * fgrad) {
+
+  int kindex;
+  __shared__ int kiterations;
   const double r9 = (1.0/9.0);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  assert(ktx);
+  assert(le);
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
+  assert(f);
+  assert(fgrad);
 
-  ys = nlocal[Z] + 2*nhalo;
+  kiterations = kernel_iterations(ktx);
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = le_index_real_to_buffer(ic, -1);
-    icp1 = le_index_real_to_buffer(ic, +1);
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+  __target_simt_parallel_for(kindex, kiterations, 1) {
 
-	index = le_site_index(ic, jc, kc);
-	indexm1 = le_site_index(icm1, jc, kc);
-	indexp1 = le_site_index(icp1, jc, kc);
+    int n;
+    int ic, jc, kc;
+    int icm1, icp1;
+    int index, indexm1, indexp1;
 
-	for (n = 0; n < nop; n++) {
-	    grad[3*(nop*index + n) + X] = 0.5*r9*
-	      (+ field[nop*(indexp1-ys-1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexp1-ys  ) + n] - field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexp1-ys+1) + n] - field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(indexp1   -1) + n] - field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexp1     ) + n] - field[nop*(indexm1     ) + n]
-	       + field[nop*(indexp1   +1) + n] - field[nop*(indexm1   +1) + n]
-	       + field[nop*(indexp1+ys-1) + n] - field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n] - field[nop*(indexm1+ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexm1+ys+1) + n]
-	       );
-	    grad[3*(nop*index + n) + Y] = 0.5*r9*
-	      (+ field[nop*(indexm1+ys-1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1+ys  ) + n] - field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexm1+ys+1) + n] - field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(index  +ys-1) + n] - field[nop*(index  -ys-1) + n]
-	       + field[nop*(index  +ys  ) + n] - field[nop*(index  -ys  ) + n]
-	       + field[nop*(index  +ys+1) + n] - field[nop*(index  -ys+1) + n]
-	       + field[nop*(indexp1+ys-1) + n] - field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n] - field[nop*(indexp1-ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexp1-ys+1) + n]
-	       );
-	    grad[3*(nop*index + n) + Z] = 0.5*r9*
-	      (+ field[nop*(indexm1-ys+1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1   +1) + n] - field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexm1+ys+1) + n] - field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(index  -ys+1) + n] - field[nop*(index  -ys-1) + n]
-	       + field[nop*(index     +1) + n] - field[nop*(index     -1) + n]
-	       + field[nop*(index  +ys+1) + n] - field[nop*(index  +ys-1) + n]
-	       + field[nop*(indexp1-ys+1) + n] - field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1   +1) + n] - field[nop*(indexp1   -1) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexp1+ys-1) + n]
-	       );
-	    del2[nop*index + n] = r9*
-	      (+ field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexm1     ) + n]
-	       + field[nop*(indexm1   +1) + n]
-	       + field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(indexm1+ys  ) + n]
-	       + field[nop*(indexm1+ys+1) + n]
-	       + field[nop*(index  -ys-1) + n]
-	       + field[nop*(index  -ys  ) + n]
-	       + field[nop*(index  -ys+1) + n]
-	       + field[nop*(index     -1) + n]
-	       + field[nop*(index     +1) + n]
-	       + field[nop*(index  +ys-1) + n]
-	       + field[nop*(index  +ys  ) + n]
-	       + field[nop*(index  +ys+1) + n]
-	       + field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1-ys  ) + n]
-	       + field[nop*(indexp1-ys+1) + n]
-	       + field[nop*(indexp1   -1) + n]
-	       + field[nop*(indexp1     ) + n]
-	       + field[nop*(indexp1   +1) + n]
-	       + field[nop*(indexp1+ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n]
-	       - 26.0*field[nop*index + n]);
-	}
-      }
+    double * __restrict__ field;
+    double * __restrict__ grad;
+    double * __restrict__ del2;
+
+    if (type == GRAD_DEL2) {
+      field = f->data;
+      grad = fgrad->grad;
+      del2 = fgrad->delsq;
+    }
+    else {
+      field = fgrad->delsq;
+      grad = fgrad->grad_delsq;
+      del2 = fgrad->delsq_delsq;
+    }
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
+    indexm1 = lees_edw_index(le, icm1, jc, kc);
+    indexp1 = lees_edw_index(le, icp1, jc, kc);
+
+    for (n = 0; n < nf; n++) {
+      grad[addr_rank2(f->nsites, nf, 3, index, n, X)] = 0.5*r9*
+	(+ field[addr_rank1(f->nsites, nf, (indexp1-ys-1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1-ys  ), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1-ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1   -1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1   -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1     ), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1     ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1   +1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1   +1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys-1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1+ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys  ), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1+ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1+ys+1), n)]
+	 );
+      grad[addr_rank2(f->nsites, nf, 3, index, n, Y)] = 0.5*r9*
+	(+ field[addr_rank1(f->nsites, nf, (indexm1+ys-1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1+ys  ), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1+ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys-1), n)]
+	 - field[addr_rank1(f->nsites, nf, (index  -ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys  ), n)]
+	 - field[addr_rank1(f->nsites, nf, (index  -ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (index  -ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys-1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexp1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys  ), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexp1-ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexp1-ys+1), n)]
+	 );
+      grad[addr_rank2(f->nsites, nf, 3, index, n, Z)] = 0.5*r9*
+	(+ field[addr_rank1(f->nsites, nf, (indexm1-ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1   +1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1   -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1+ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexm1+ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  -ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (index  -ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index     +1), n)]
+	 - field[addr_rank1(f->nsites, nf, (index     -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (index  +ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1-ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexp1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1   +1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexp1   -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
+	 - field[addr_rank1(f->nsites, nf, (indexp1+ys-1), n)]
+	 );
+      del2[addr_rank1(f->nsites, nf, index, n)] = r9*
+	(+ field[addr_rank1(f->nsites, nf, (indexm1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1-ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1-ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1   -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1     ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1   +1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1+ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1+ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexm1+ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  -ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  -ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  -ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index     -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index     +1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (index  +ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1-ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1-ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1-ys+1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1   -1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1     ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1   +1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys-1), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys  ), n)]
+	 + field[addr_rank1(f->nsites, nf, (indexp1+ys+1), n)]
+	 - 26.0*field[addr_rank1(f->nsites, nf, index, n)]);
     }
   }
 
   return;
 }
 
+
 /*****************************************************************************
  *
- *  gradient_3d_27pt_le_correction
+ *  grad_3d_27pt_le
  *
  *  The gradients of the order parameter need to be computed in the
  *  buffer region (nextra points). This is so that gradients at all
@@ -225,12 +325,12 @@ static void gradient_3d_27pt_fluid_operator(const int nop,
  *
  *****************************************************************************/
 
-static void gradient_3d_27pt_fluid_le_correction(const int nop,
-						 const double * field,
-						 double * grad,
-						 double * del2,
-						 int nextra) {
+__host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
+				   int nextra, grad_enum_t type) {
+
+  int nop;
   int nlocal[3];
+  int nsites;
   int nhalo;
   int nh;                                 /* counter over halo extent */
   int n;
@@ -242,91 +342,139 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
 
   const double r9 = (1.0/9.0);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  double * __restrict__ field;
+  double * __restrict__ grad;
+  double * __restrict__ del2;
+
+  assert(le);
+  assert(fg);
+  assert(type == GRAD_DEL2 || type == GRAD_DEL4);
+
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nsites(le, &nsites);
+  lees_edw_nlocal(le, nlocal);
 
   ys = (nlocal[Z] + 2*nhalo);
 
-  for (nplane = 0; nplane < le_get_nplane_local(); nplane++) {
+  nop = fg->field->nf;
+  if (type == GRAD_DEL2) {
+    field = fg->field->data;
+    grad = fg->grad;
+    del2 = fg->delsq;
+  }
+  else {
+    field = fg->delsq;
+    grad = fg->grad_delsq;
+    del2 = fg->delsq_delsq;
+  }
 
-    ic = le_plane_location(nplane);
+  for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
+
+    ic = lees_edw_plane_location(le, nplane);
 
     /* Looking across in +ve x-direction */
     for (nh = 1; nh <= nextra; nh++) {
-      ic0 = le_index_real_to_buffer(ic, nh-1);
-      ic1 = le_index_real_to_buffer(ic, nh  );
-      ic2 = le_index_real_to_buffer(ic, nh+1);
+      ic0 = lees_edw_ic_to_buff(le, ic, nh-1);
+      ic1 = lees_edw_ic_to_buff(le, ic, nh  );
+      ic2 = lees_edw_ic_to_buff(le, ic, nh+1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
-	  for (n = 0; n < nop; n++) {
-	    grad[3*(nop*index + n) + X] = 0.5*r9*
-	      (+ field[nop*(indexp1-ys-1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexp1-ys  ) + n] - field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexp1-ys+1) + n] - field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(indexp1   -1) + n] - field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexp1     ) + n] - field[nop*(indexm1     ) + n]
-	       + field[nop*(indexp1   +1) + n] - field[nop*(indexm1   +1) + n]
-	       + field[nop*(indexp1+ys-1) + n] - field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n] - field[nop*(indexm1+ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexm1+ys+1) + n]
-	       );
-	    grad[3*(nop*index + n) + Y] = 0.5*r9*
-	      (+ field[nop*(indexm1+ys-1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1+ys  ) + n] - field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexm1+ys+1) + n] - field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(index  +ys-1) + n] - field[nop*(index  -ys-1) + n]
-	       + field[nop*(index  +ys  ) + n] - field[nop*(index  -ys  ) + n]
-	       + field[nop*(index  +ys+1) + n] - field[nop*(index  -ys+1) + n]
-	       + field[nop*(indexp1+ys-1) + n] - field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n] - field[nop*(indexp1-ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexp1-ys+1) + n]
-	       );
-	    grad[3*(nop*index + n) + Z] = 0.5*r9*
-	      (+ field[nop*(indexm1-ys+1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1   +1) + n] - field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexm1+ys+1) + n] - field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(index  -ys+1) + n] - field[nop*(index  -ys-1) + n]
-	       + field[nop*(index     +1) + n] - field[nop*(index     -1) + n]
-	       + field[nop*(index  +ys+1) + n] - field[nop*(index  +ys-1) + n]
-	       + field[nop*(indexp1-ys+1) + n] - field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1   +1) + n] - field[nop*(indexp1   -1) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexp1+ys-1) + n]
-	       );
-	    del2[nop*index + n] = r9*
-	      (+ field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexm1     ) + n]
-	       + field[nop*(indexm1   +1) + n]
-	       + field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(indexm1+ys  ) + n]
-	       + field[nop*(indexm1+ys+1) + n]
-	       + field[nop*(index  -ys-1) + n]
-	       + field[nop*(index  -ys  ) + n]
-	       + field[nop*(index  -ys+1) + n]
-	       + field[nop*(index     -1) + n]
-	       + field[nop*(index     +1) + n]
-	       + field[nop*(index  +ys-1) + n]
-	       + field[nop*(index  +ys  ) + n]
-	       + field[nop*(index  +ys+1) + n]
-	       + field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1-ys  ) + n]
-	       + field[nop*(indexp1-ys+1) + n]
-	       + field[nop*(indexp1   -1) + n]
-	       + field[nop*(indexp1     ) + n]
-	       + field[nop*(indexp1   +1) + n]
-	       + field[nop*(indexp1+ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n]
-	       - 26.0*field[nop*index + n]);
-	  }
+	for (n = 0; n < nop; n++) {
+	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Y)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Z)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     - field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     );
+	  del2[addr_rank1(nsites, nop, index, n)] = r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
+	}
 	}
       }
     }
@@ -335,106 +483,113 @@ static void gradient_3d_27pt_fluid_le_correction(const int nop,
     ic += 1;
 
     for (nh = 1; nh <= nextra; nh++) {
-      ic2 = le_index_real_to_buffer(ic, -nh+1);
-      ic1 = le_index_real_to_buffer(ic, -nh  );
-      ic0 = le_index_real_to_buffer(ic, -nh-1);
+      ic2 = lees_edw_ic_to_buff(le, ic, -nh+1);
+      ic1 = lees_edw_ic_to_buff(le, ic, -nh  );
+      ic0 = lees_edw_ic_to_buff(le, ic, -nh-1);
 
       for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
 	for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
 
-	  indexm1 = le_site_index(ic0, jc, kc);
-	  index   = le_site_index(ic1, jc, kc);
-	  indexp1 = le_site_index(ic2, jc, kc);
+	  indexm1 = lees_edw_index(le, ic0, jc, kc);
+	  index   = lees_edw_index(le, ic1, jc, kc);
+	  indexp1 = lees_edw_index(le, ic2, jc, kc);
 
-	  for (n = 0; n < nop; n++) {
-	    grad[3*(nop*index + n) + X] = 0.5*r9*
-	      (+ field[nop*(indexp1-ys-1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexp1-ys  ) + n] - field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexp1-ys+1) + n] - field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(indexp1   -1) + n] - field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexp1     ) + n] - field[nop*(indexm1     ) + n]
-	       + field[nop*(indexp1   +1) + n] - field[nop*(indexm1   +1) + n]
-	       + field[nop*(indexp1+ys-1) + n] - field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n] - field[nop*(indexm1+ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexm1+ys+1) + n]
-	       );
-	    grad[3*(nop*index + n) + Y] = 0.5*r9*
-	      (+ field[nop*(indexm1+ys-1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1+ys  ) + n] - field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexm1+ys+1) + n] - field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(index  +ys-1) + n] - field[nop*(index  -ys-1) + n]
-	       + field[nop*(index  +ys  ) + n] - field[nop*(index  -ys  ) + n]
-	       + field[nop*(index  +ys+1) + n] - field[nop*(index  -ys+1) + n]
-	       + field[nop*(indexp1+ys-1) + n] - field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n] - field[nop*(indexp1-ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexp1-ys+1) + n]
-	       );
-	    grad[3*(nop*index + n) + Z] = 0.5*r9*
-	      (+ field[nop*(indexm1-ys+1) + n] - field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1   +1) + n] - field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexm1+ys+1) + n] - field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(index  -ys+1) + n] - field[nop*(index  -ys-1) + n]
-	       + field[nop*(index     +1) + n] - field[nop*(index     -1) + n]
-	       + field[nop*(index  +ys+1) + n] - field[nop*(index  +ys-1) + n]
-	       + field[nop*(indexp1-ys+1) + n] - field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1   +1) + n] - field[nop*(indexp1   -1) + n]
-	       + field[nop*(indexp1+ys+1) + n] - field[nop*(indexp1+ys-1) + n]
-	       );
-	    del2[nop*index + n] = r9*
-	      (+ field[nop*(indexm1-ys-1) + n]
-	       + field[nop*(indexm1-ys  ) + n]
-	       + field[nop*(indexm1-ys+1) + n]
-	       + field[nop*(indexm1   -1) + n]
-	       + field[nop*(indexm1     ) + n]
-	       + field[nop*(indexm1   +1) + n]
-	       + field[nop*(indexm1+ys-1) + n]
-	       + field[nop*(indexm1+ys  ) + n]
-	       + field[nop*(indexm1+ys+1) + n]
-	       + field[nop*(index  -ys-1) + n]
-	       + field[nop*(index  -ys  ) + n]
-	       + field[nop*(index  -ys+1) + n]
-	       + field[nop*(index     -1) + n]
-	       + field[nop*(index     +1) + n]
-	       + field[nop*(index  +ys-1) + n]
-	       + field[nop*(index  +ys  ) + n]
-	       + field[nop*(index  +ys+1) + n]
-	       + field[nop*(indexp1-ys-1) + n]
-	       + field[nop*(indexp1-ys  ) + n]
-	       + field[nop*(indexp1-ys+1) + n]
-	       + field[nop*(indexp1   -1) + n]
-	       + field[nop*(indexp1     ) + n]
-	       + field[nop*(indexp1   +1) + n]
-	       + field[nop*(indexp1+ys-1) + n]
-	       + field[nop*(indexp1+ys  ) + n]
-	       + field[nop*(indexp1+ys+1) + n]
-	       - 26.0*field[nop*index + n]);
-	  }
+	for (n = 0; n < nop; n++) {
+	  grad[addr_rank2(nsites, nop, 3, index, n, X)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Y)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     );
+	  grad[addr_rank2(nsites, nop, 3, index, n, Z)] = 0.5*r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     - field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     );
+	  del2[addr_rank1(nsites, nop, index, n)] = r9*
+	    (+ field[addr_rank1(nsites, nop, (indexm1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexm1+ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  -ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (index     -1), n)]
+	     + field[addr_rank1(nsites, nop, (index     +1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (index  +ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1-ys+1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   -1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1     ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1   +1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys-1), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys  ), n)]
+	     + field[addr_rank1(nsites, nop, (indexp1+ys+1), n)]
+	     - 26.0*field[addr_rank1(nsites, nop, index, n)]);
+	}
+
 	}
       }
     }
     /* Next plane */
   }
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  gradient_3d_27pt_fluid_wall_correction
- *
- *  Correct the gradients near the X boundary wall, if necessary.
- *
- *****************************************************************************/
-
-static void gradient_3d_27pt_fluid_wall_correction(const int nop,
-						   const double * field,
-						   double * grad,
-						   double * del2,
-						   const int nextra) {
-
-  if (wall_present()) {
-    fatal("Wall not implemented in 3d 27pt gradients yet (use 7pt)\n");
-  }
-
-  return;
+  return 0;
 }

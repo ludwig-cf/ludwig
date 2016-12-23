@@ -1,0 +1,37 @@
+
+* Cray Titan with the "SC16" benchmark
+
+The 'host' version here is 2 MPI tasks x 8 threads 
+cf Gray and Stratford 2016.
+
+This version is about the same as Alan's trunk version appearing
+in the paper, although exact distribution of time is not the same.
+
+
+Currently Loaded Modulefiles:
+  1) eswrap/1.3.3-1.020200.1278.0
+  2) craype-network-gemini
+  3) cray-mpich/7.4.0
+  4) craype-interlagos
+  5) lustredu/1.4
+  6) xalt/0.5.3
+  7) module_msg/0.1
+  8) modulator/1.2.0
+  9) hsi/5.0.2.p1
+ 10) DefApps
+ 11) cudatoolkit/7.5.18-1.0502.10743.2.1
+ 12) craype-accel-nvidia35
+ 13) intel/16.0.3.210
+ 14) craype/2.5.5
+ 15) cray-libsci/16.06.1
+ 16) udreg/2.3.2-1.0502.10518.2.17.gem
+ 17) ugni/6.0-1.0502.10863.8.28.gem
+ 18) pmi/5.0.9-1.0000.10911.175.4.gem
+ 19) dmapp/7.0.1-1.0502.11080.8.74.gem
+ 20) gni-headers/4.0-1.0502.10859.7.8.gem
+ 21) xpmem/0.1-2.0502.64982.5.3.gem
+ 22) dvs/2.5_0.9.0-1.0502.2188.1.113.gem
+ 23) alps/5.2.4-2.0502.9774.31.12.gem
+ 24) rca/1.0.0-2.0502.60530.1.63.gem
+ 25) atp/2.0.2
+ 26) PrgEnv-intel/5.2.82

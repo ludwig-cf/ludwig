@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.26 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.48 (Serial version running on 1 process)
 
-The SVN revision details are: 2784M
+The SVN revision details are: 2982
 Note assertions via standard C assert() are on.
 
 Read 41 user parameters from serial-elec-gc2.inp
@@ -87,7 +87,11 @@ Advection scheme order: 3
 Initial charge densities
 ------------------------
 Initialisation requested from file psi-00000000.001-001
-Porous media boundary links allocated:  160
+
+Porous Media
+------------
+Wall boundary links allocated:   160
+Memory (total, bytes):           2560
 Arranging initial charge neutrality.
 
 Initial conditions.
@@ -102,13 +106,14 @@ Scalars - total mean variance min max
 Momentum - x y z
 [total   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
 [fluid   ]  1.3766766e-14  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
 1 multisteps
 
 Scalars - total mean variance min max
 [rho]         992.00  1.00000000000  1.5210055e-14  0.99999998294  1.00000011145
-[psi] -1.1080026e-12 -1.5210888e+00  2.9128003e+00
+[psi] -1.4122037e-12 -1.5210888e+00  2.9128003e+00
 [rho]  1.9920000e+00  8.2093661e-04  3.1250000e-02
 [rho]  1.9920000e+00  0.0000000e+00  2.4098347e-03
 [elc]  4.9960036e-16 -1.5888981e-03  3.1250000e-02
@@ -117,12 +122,14 @@ Free energy density - timestep total fluid
 [fed]            100 -2.4613216884e-02 -2.2373587017e-02
 
 Momentum - x y z
-[total   ] -1.4899193e-13  3.3306691e-16  0.0000000e+00
+[total   ] -1.1102230e-15  3.3306691e-16  0.0000000e+00
 [fluid   ] -1.4899193e-13  3.3306691e-16  0.0000000e+00
+[walls   ]  1.4788171e-13  0.0000000e+00  0.0000000e+00
 
 Velocity - x y z
 [minimum ] -4.7355583e-08 -6.9388940e-18  0.0000000e+00
 [maximum ]  4.7355582e-08  6.9388940e-18  1.1754944e-38
+[vol flux] -1.4543921e-13 -2.2204458e-16  0.0000000e+00
 
 Completed cycle 100
 
@@ -130,17 +137,18 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.419      2.419      2.419   2.419403 (1 call)
-      Time step loop:      0.023      0.026      2.417   0.024165 (100 calls)
-         Propagation:      0.000      0.000      0.035   0.000354 (100 calls)
-    Propagtn (krnl) :      0.000      0.000      0.035   0.000353 (100 calls)
-           Collision:      0.001      0.001      0.133   0.001326 (100 calls)
-   Collision (krnl) :      0.001      0.001      0.131   0.001313 (100 calls)
-       Lattice halos:      0.000      0.000      0.027   0.000067 (400 calls)
-       phi gradients:      0.000      0.000      0.000   0.000000 (100 calls)
-                 BBL:      0.000      0.000      0.001   0.000010 (100 calls)
-   Force calculation:      0.000      0.000      0.029   0.000145 (200 calls)
+               Total:      3.383      3.383      3.383   3.382850 (1 call)
+      Time step loop:      0.031      0.045      3.380   0.033796 (100 calls)
+         Propagation:      0.001      0.001      0.069   0.000694 (100 calls)
+    Propagtn (krnl) :      0.001      0.001      0.069   0.000692 (100 calls)
+           Collision:      0.001      0.002      0.123   0.001227 (100 calls)
+   Collision (krnl) :      0.001      0.002      0.123   0.001225 (100 calls)
+       Lattice halos:      0.000      0.001      0.073   0.000183 (400 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (100 calls)
+                 BBL:      0.000      0.000      0.002   0.000022 (100 calls)
+   Force calculation:      0.000      0.000      0.015   0.000073 (200 calls)
           phi update:      0.000      0.000      0.000   0.000000 (100 calls)
-    Poisson equation:      0.020      0.021      2.017   0.020168 (100 calls)
-       Nernst Planck:      0.002      0.002      0.163   0.001634 (100 calls)
+    Poisson equation:      0.027      0.039      2.927   0.029268 (100 calls)
+       Nernst Planck:      0.001      0.003      0.161   0.001611 (100 calls)
+               Free1:      0.000      0.001      0.001   0.000007 (100 calls)
 Ludwig finished normally.

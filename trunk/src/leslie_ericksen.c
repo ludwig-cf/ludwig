@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,7 +20,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "free_energy_vector.h"
 #include "field.h"
 #include "advection_s.h"
 #include "leslie_ericksen.h"
@@ -28,7 +27,8 @@
 static double Gamma_;       /* Rotational diffusion constant */
 static double swim_ = 0.0;  /* Self-advection parameter */
 
-static int leslie_ericksen_update_fluid(field_t * p, hydro_t * hydro,
+static int leslie_ericksen_update_fluid(fe_polar_t *fe,
+					field_t * p, hydro_t * hydro,
 					advflux_t * flux);
 static int leslie_ericksen_add_swimming_velocity(field_t * p,
 						 hydro_t * hydro);
@@ -69,16 +69,18 @@ int leslie_ericksen_swim_set(const double s) {
  *
  *****************************************************************************/
 
-int leslie_ericksen_update(field_t * p, hydro_t * hydro) {
+int leslie_ericksen_update(cs_t * cs, fe_polar_t * fe, field_t * p,
+			   hydro_t * hydro) {
 
   int nf;
   advflux_t * flux = NULL;
 
+  assert(cs);
   assert(p);
 
   field_nf(p, &nf);
   assert(nf == NVECTOR);
-  advflux_create(nf, &flux);
+  advflux_cs_create(cs, nf, &flux);
 
   if (hydro) {
     if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(p, hydro);
@@ -86,7 +88,7 @@ int leslie_ericksen_update(field_t * p, hydro_t * hydro) {
     advection_x(flux, hydro, p);
   }
 
-  leslie_ericksen_update_fluid(p, hydro, flux);
+  leslie_ericksen_update_fluid(fe, p, hydro, flux);
 
   advflux_free(flux);
 
@@ -102,31 +104,30 @@ int leslie_ericksen_update(field_t * p, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
+static int leslie_ericksen_update_fluid(fe_polar_t * fe,
+					field_t * fp,
+					hydro_t * hydro,
 					advflux_t * flux) {
   int ic, jc, kc, index;
   int indexj, indexk;
   int ia, ib;
   int nlocal[3];
 
-  double lambda;
   double p[3];
   double h[3];
   double d[3][3];
   double omega[3][3];
   double w[3][3];
   double sum;
-
+  fe_polar_param_t param;
   const double dt = 1.0;
 
-  void (* fe_molecular_field_function)(int index, double h[3]);
-
+  assert(fe);
   assert(fp);
   assert(flux);
 
+  fe_polar_param(fe, &param);
   coords_nlocal(nlocal);
-  fe_molecular_field_function = fe_v_molecular_field();
-  lambda = fe_v_lambda();
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -140,7 +141,7 @@ static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
 
 	index = coords_index(ic, jc, kc);
 	field_vector(fp, index, p);
-	fe_molecular_field_function(index, h);
+	fe_polar_mol_field(fe, index, h);
 	if (hydro) hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
 
 	/* Note that the convection for Leslie Ericksen is that
@@ -164,12 +165,15 @@ static int leslie_ericksen_update_fluid(field_t * fp, hydro_t * hydro,
 
 	  sum = 0.0;
 	  for (ib = 0; ib < 3; ib++) {
-	    sum += lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
+	    sum += param.lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
 	  }
 
-	  p[ia] += dt*(-flux->fe[3*index + ia] + flux->fw[3*index  + ia]
-		       -flux->fy[3*index + ia] + flux->fy[3*indexj + ia]
-		       -flux->fz[3*index + ia] + flux->fz[3*indexk + ia]
+	  p[ia] += dt*(- flux->fe[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       + flux->fw[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       - flux->fy[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       + flux->fy[addr_rank1(coords_nsites(), 3, indexj, ia)]
+		       - flux->fz[addr_rank1(coords_nsites(), 3, index,  ia)]
+		       + flux->fz[addr_rank1(coords_nsites(), 3, indexk, ia)]
 		       + sum + Gamma_*h[ia]);
 	}
 

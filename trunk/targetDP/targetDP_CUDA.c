@@ -1225,3 +1225,151 @@ __targetHost__ void checkTargetError(const char *msg)
 	}                         
 }
 
+
+/*****************************************************************************
+ *
+ *  Revisit
+ *
+ *****************************************************************************/
+
+__host__ int target_thread_info(void) {
+
+  int mydevice;
+  struct cudaDeviceProp prop;
+  cudaError_t ifail;
+
+  cudaGetDevice(&mydevice);
+  ifail = cudaGetDeviceProperties(&prop, mydevice);
+  if (ifail != cudaSuccess) printf("FAIL!\n");
+
+  printf("Thread implementation: CUDA x blocks; %d threads per block\n",
+	 CUDA_MAX_THREADS_PER_BLOCK);
+
+  printf("DeviceMaxThreadsPerBLock %d\n", prop.maxThreadsPerBlock);
+  printf("Max blocks %d %d %d\n",
+	 prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  target_atomic_add_int
+ *
+ *****************************************************************************/
+
+__target__ void target_atomic_add_int(int * sum, int val) {
+
+  atomicAdd(sum, val);
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  target_atomic_add_double
+ *
+ *  The original (I think) from:
+ *  https://devtalk.nvidia.com/default/topic/529341/?comment=3739638
+ *
+ *****************************************************************************/
+
+__target__ void target_atomic_add_double(double * sum, double val) {
+
+#if __CUDA_ARCH__ >= 600
+
+  atomicAdd(sum, val);
+
+#else
+
+  unsigned long long int * address_as_ull = (unsigned long long int *) sum;
+  unsigned long long int old = *address_as_ull;
+  unsigned long long int assumed;
+
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+		    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+
+  /* The original returns the old value... */
+  /* return __longlong_as_double(old); */
+
+#endif
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  target_block_reduce_sum_int
+ *
+ *  partsum is per-thread contribution on input
+ *  Returns on thread 0 the sum for block (other elements destroyed).
+ *
+ *****************************************************************************/
+
+__target__ int target_block_reduce_sum_int(int * partsum) {
+
+  int istr;
+  int nblock;
+  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
+  int idx = threadIdx.x;
+
+  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
+
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    __syncthreads();
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
+  }
+
+  return partsum[0];
+}
+
+__target__ double target_block_reduce_sum_double(double * partsum) {
+
+  int istr;
+  int nblock;
+  int nthread = TARGET_MAX_THREADS_PER_BLOCK;
+  int idx = threadIdx.x;
+
+  nblock = pow(2.0, ceil(log(1.0*nthread)/log(2.0)));
+
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    __syncthreads();
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
+  }
+
+  return partsum[0];
+}
+
+/*****************************************************************************
+ *
+ *  targetDeviceSynhronise
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetDeviceSynchronise(void) {
+
+  cudaDeviceSynchronize();
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  targetGetDeviceCount
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetGetDeviceCount(int * device) {
+
+  cudaGetDeviceCount(device);
+
+  return 0;
+}
+

@@ -40,6 +40,8 @@ struct colloid_io_s {
   int (* f_list_write)   (colloid_io_t * cio, int, int, int, FILE * fp);
   int (* f_list_read)    (colloid_io_t * cio, int ndata, FILE * fp);
 
+  pe_t * pe;                     /* Parallel environment */
+  cs_t * cs;                     /* Coordinate system */
   colloids_info_t * info;        /* Keep a reference to this */
 };
 
@@ -73,22 +75,34 @@ static int colloid_io_check_read(colloid_io_t * cio, int ngroup);
  *
  *****************************************************************************/
 
-int colloid_io_create(int io_grid[3], colloids_info_t * info,
+int colloid_io_create(pe_t * pe, cs_t * cs, int io_grid[3],
+		      colloids_info_t * info,
 		      colloid_io_t ** pcio) {
   int ia;
   int ncart;
+  int mpicartsz[3];
+  int mpicoords[3];
   colloid_io_t * obj = NULL;
+  MPI_Comm cartcomm;
 
+  assert(pe);
+  assert(cs);
   assert(info);
   assert(pcio);
 
   obj = (colloid_io_t*) calloc(1, sizeof(colloid_io_t));
-  if (obj == NULL) fatal("calloc(colloid_io_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(colloid_io_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->n_io = 1;
 
+  cs_cart_comm(cs, &cartcomm);
+  cs_cartsz(cs, mpicartsz);
+  cs_cart_coords(cs, mpicoords);
+
   for (ia = 0; ia < 3; ia++) {
-    ncart = cart_size(ia);
+    ncart = mpicartsz[ia];
 
     if (io_grid[ia] > ncart) io_grid[ia] = ncart;
 
@@ -98,19 +112,19 @@ int colloid_io_create(int io_grid[3], colloids_info_t * info,
 
     obj->nd[ia] = io_grid[ia];
     obj->n_io *= io_grid[ia];
-    obj->coords[ia] = io_grid[ia]*cart_coords(ia)/ncart;
+    obj->coords[ia] = io_grid[ia]*mpicoords[ia]/ncart;
   }
 
   obj->index = obj->coords[X] + obj->coords[Y]*io_grid[X]
     + obj->coords[Z]*io_grid[X]*io_grid[Y];
 
-  MPI_Comm_split(cart_comm(), obj->index, cart_rank(), &obj->comm);
+  MPI_Comm_split(cartcomm, obj->index, cs_cart_rank(cs), &obj->comm);
   MPI_Comm_rank(obj->comm, &obj->rank);
   MPI_Comm_size(obj->comm, &obj->size);
 
   /* 'Cross' communicator between same rank in different groups. */
 
-  MPI_Comm_split(cart_comm(), obj->rank, cart_rank(), &obj->xcomm);
+  MPI_Comm_split(cartcomm, obj->rank, cs_cart_rank(cs), &obj->xcomm);
 
   obj->info = info;
   *pcio = obj;
@@ -124,7 +138,7 @@ int colloid_io_create(int io_grid[3], colloids_info_t * info,
  *
  *****************************************************************************/
 
-void colloid_io_finish(colloid_io_t * cio) {
+int colloid_io_free(colloid_io_t * cio) {
 
   assert(cio);
 
@@ -133,7 +147,7 @@ void colloid_io_finish(colloid_io_t * cio) {
 
   free(cio);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -174,16 +188,16 @@ int colloid_io_info(colloid_io_t * cio) {
   if (cio->f_header_write == colloid_io_write_header_ascii) strcpy(fout, "ascii");
   if (cio->f_header_write == colloid_io_write_header_binary) strcpy(fout, "binary");
 
-  info("\n");
-  info("Colloid I/O settings\n");
-  info("--------------------\n");
-  info("Decomposition:               %2d %2d %2d\n",
-       cio->nd[X], cio->nd[Y], cio->nd[Z]);
-  info("Number of files:              %d\n", cio->n_io);
-  info("Input format:                 %s\n", fin);
-  info("Output format:                %s\n", fout);
-  info("Single file read flag:        %d\n", cio->single_file_read);
-  info("\n");
+  pe_info(cio->pe, "\n");
+  pe_info(cio->pe, "Colloid I/O settings\n");
+  pe_info(cio->pe, "--------------------\n");
+  pe_info(cio->pe, "Decomposition:               %2d %2d %2d\n",
+	  cio->nd[X], cio->nd[Y], cio->nd[Z]);
+  pe_info(cio->pe, "Number of files:              %d\n", cio->n_io);
+  pe_info(cio->pe, "Input format:                 %s\n", fin);
+  pe_info(cio->pe, "Output format:                %s\n", fout);
+  pe_info(cio->pe, "Single file read flag:        %d\n", cio->single_file_read);
+  pe_info(cio->pe, "\n");
 
   return 0;
 }
@@ -247,9 +261,9 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
 
   colloid_io_filename(cio, filename_io, filename);
 
-  info("\n");
-  info("colloid_io_write:\n");
-  info("writing colloid information to %s etc\n", filename_io);
+  pe_info(cio->pe, "\n");
+  pe_info(cio->pe, "colloid_io_write:\n");
+  pe_info(cio->pe, "writing colloid information to %s etc\n", filename_io);
 
   /* Make sure everyone has their current number of particles
    * up-to-date */
@@ -263,8 +277,9 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
      * group. */
 
     fp_state = fopen(filename_io, "w+b");
-    if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
-
+    if (fp_state == NULL) {
+      pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
+    }
     cio->f_header_write(fp_state, ngroup);
   }
   else {
@@ -274,7 +289,9 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
 
     MPI_Recv(&token, 1, MPI_INT, cio->rank - 1, tag, cio->comm, &status);
     fp_state = fopen(filename_io, "a+b");
-    if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+    if (fp_state == NULL) {
+      pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
+    }
   }
 
   /* Write the local colloid state. */
@@ -291,7 +308,7 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
 
   if (ferror(fp_state)) {
     perror("perror: ");
-    fatal("Error on writing file %s\n", filename_io);
+    pe_fatal(cio->pe, "Error on writing file %s\n", filename_io);
   }
 
   fclose(fp_state);
@@ -335,23 +352,23 @@ int colloid_io_read(colloid_io_t * cio, const char * filename) {
   if (cio->single_file_read) {
     /* All groups read for single 'serial' file */
     sprintf(filename_io, "%s.%3.3d-%3.3d", filename, 1, 1);
-    info("colloid_io_read: reading from single file %s\n", filename_io);
+    pe_info(cio->pe, "colloid_io_read: reading from single file %s\n", filename_io);
   }
   else {
-    info("colloid_io_read: reading from %s etc\n", filename_io);
+    pe_info(cio->pe, "colloid_io_read: reading from %s etc\n", filename_io);
   }
 
   /* Open the file and read the information */
 
   fp_state = fopen(filename_io, "r");
-  if (fp_state == NULL) fatal("Failed to open %s\n", filename_io);
+  if (fp_state == NULL) pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
 
   cio->f_header_read(fp_state, &ngroup);
   cio->f_list_read(cio, ngroup, fp_state);
 
   if (ferror(fp_state)) {
     perror("perror: ");
-    fatal("Error on reading %s\n", filename_io);
+    pe_fatal(cio->pe, "Error on reading %s\n", filename_io);
   }
 
   fclose(fp_state);
@@ -478,7 +495,9 @@ static int colloid_io_read_list_ascii(colloid_io_t * cio, int ndata,
   }
 
   /* Deliver a warning, but continue */
-  if (ifail) verbose("Possible error in colloid_io_read_list_ascii\n");
+  if (ifail) {
+    pe_verbose(cio->pe, "Possible error in colloid_io_read_list_ascii\n");
+  }
 
   return ifail;
 }
@@ -622,7 +641,9 @@ static int colloid_io_filename(colloid_io_t * cio, char * filename,
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX/2);  /* Check stub not too long */
 
-  if (cio->index >= 1000) fatal("Format botch for cio stub %s\n", stub);
+  if (cio->index >= 1000) {
+    pe_fatal(cio->pe, "Format botch for cio stub %s\n", stub);
+  }
 
   sprintf(filename, "%s.%3.3d-%3.3d", stub, cio->n_io, cio->index + 1);
 
@@ -660,15 +681,15 @@ static int colloid_io_check_read(colloid_io_t * cio, int ngroup) {
 
   if (cio->rank == 0) {
     if (ntotal != ngroup) {
-      verbose("Colloid I/O group %d\n", cio->index);
-      verbose("Colloids in file: %d Got %d\n", ngroup, ntotal);
-      fatal("Total number of colloids not consistent with file\n");
+      pe_verbose(cio->pe, "Colloid I/O group %d\n", cio->index);
+      pe_verbose(cio->pe, "Colloids in file: %d Got %d\n", ngroup, ntotal);
+      pe_fatal(cio->pe, "Total number of colloids not consistent with file\n");
     }
   }
 
   colloids_info_ntotal_set(cio->info);
   colloids_info_ntotal(cio->info, &ntotal);
-  info("Read a total of %d colloids from file\n", ntotal);
+  pe_info(cio->pe, "Read a total of %d colloids from file\n", ntotal);
 
   return 0;
 }

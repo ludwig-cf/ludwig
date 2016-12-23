@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,6 +20,7 @@
 
 #include "util.h"
 #include "coords.h"
+#include "memory.h"
 #include "coords_field.h"
 #include "test_coords_field.h"
 
@@ -66,7 +67,7 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
         index = coords_index(ic, jc, kc);
 
         for (n = 0; n < nf; n++) {
-          coords_field_index(index, n, nf, &indexf);
+	  indexf = mem_addr_rank1(coords_nsites(), nf, index, n); 
           bufset(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n,
                  fc + sz*indexf);
         }
@@ -124,7 +125,7 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
         if (mpidata == MPI_CHAR) {
           for (n = 0; n < nf; n++) {
-            coords_field_index(index, n, nf, &indexf);
+	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
             bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &cref);
             cact =  bufc[sz*indexf];
             assert(cref == cact);
@@ -133,9 +134,10 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
         if (mpidata == MPI_DOUBLE) {
           for (n = 0; n < nf; n++) {
-            coords_field_index(index, n, nf, &indexf);
+	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
             bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
             dact = *((double *) (bufc + sz*indexf));
+	    /*printf("%2d %2d %2d %14.7e %14.7e\n", ic, jc, kc, dref, dact);*/
             assert(fabs(dact - dref) < FLT_EPSILON);
           }
         }
@@ -190,10 +192,11 @@ int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
 int test_ref_double1(int ic, int jc, int kc, int n, void * ref) {
 
   double * d = (double *) ref;
+  PI_DOUBLE(pi);
 
   assert(d);
 
-  *d = cos(2.0*pi_*ic/L(X)) + cos(2.0*pi_*jc/L(Y)) + cos(2.0*pi_*kc/L(Z));
+  *d = cos(2.0*pi*ic/L(X)) + cos(2.0*pi*jc/L(Y)) + cos(2.0*pi*kc/L(Z));
   *d += 1.0*n;
 
   return 0;

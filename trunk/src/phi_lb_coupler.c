@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
@@ -17,138 +17,90 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "kernel.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 #include "phi_lb_coupler.h"
+
+#define NDIST 2
+
+__global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktxt, field_t * phi,
+				       lb_t * lb);
 
 /*****************************************************************************
  *
  *  phi_lb_to_field
  *
+ *  Driver function: compute from the distribution the current
+ *  values of phi and store.
+ *
  *****************************************************************************/
 
-__target__ int phi_lb_to_field_site(double * phi, double * f, const int baseIndex) {
+__host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
-  int iv=0; 
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
-  double phi0[VVL];
+  assert(phi);
+  assert(lb);
 
-  __targetILP__(iv) phi0[iv]=0.;
+  coords_nlocal(nlocal);
 
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
 
-#if VVL == 1
-  /*restrict operation to the interiour lattice sites*/
-  int coords[3];
-  targetCoords3D(coords,tc_Nall,baseIndex);
-  
-  // if not a halo site:
-  if (coords[0] >= tc_nhalo &&
-      coords[1] >= tc_nhalo &&
-      coords[2] >= tc_nhalo &&
-      coords[0] < tc_Nall[X]-tc_nhalo &&
-      coords[1] < tc_Nall[Y]-tc_nhalo &&
-      coords[2] < tc_Nall[Z]-tc_nhalo)
-#endif
+  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
+  __host_launch(phi_lb_to_field_kernel, nblk, ntpb, ctxt->target,
+		phi->target, lb->target);
 
-    {
-    
-    
-    int p;
-     for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) phi0[iv] += f[LB_ADDR(tc_nSites, tc_ndist, NVEL, baseIndex+iv, LB_PHI, p)];
-    }
-    
-     __targetILP__(iv) phi[baseIndex+iv]=phi0[iv];
-    
-    
-    }
-  
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  phi_lb_to_field_kernel
+ *
+ *****************************************************************************/
 
-__targetEntry__ void phi_lb_to_field_lattice(double * phi, lb_t * lb) {
+__global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
+				       lb_t * lb) {
+  int kindex;
+  __shared__ int kiter;
 
-  int baseIndex=0;
+  assert(ktx);
+  assert(phi);
+  assert(lb);
 
-  __targetTLP__(baseIndex,tc_nSites){	  
-    phi_lb_to_field_site(phi, lb->f, baseIndex);
+  kiter = kernel_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, 1) {
+
+    int ic, jc, kc, index;
+    int p;
+    double phi0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+    
+    phi0 = 0.0;
+    for (p = 0; p < NVEL; p++) {
+      phi0 += lb->f[LB_ADDR(lb->nsite, NDIST, NVEL, index, LB_PHI, p)];
+    }
+
+    phi->data[addr_rank0(phi->nsites, index)] = phi0;
   }
-
 
   return;
 }
-
-
-
-__targetHost__ int phi_lb_to_field(field_t * phi, lb_t  *lb) {
-
-  int Nall[3];
-  int nlocal[3];
-  int nSites;
-  int nhalo = coords_nhalo();
-
-  assert(phi);
-  assert(lb);
-
-  coords_nlocal(nlocal);
-
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  nSites = Nall[X]*Nall[Y]*Nall[Z];
-
-  int nDist;
-  copyFromTarget(&nDist,&(lb->ndist),sizeof(int)); 
-
-  //start constant setup
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int)); 
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int)); 
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int)); 
-  copyConstToTarget(&tc_ndist,&nDist, sizeof(int)); 
-  //end constant setup
-
-  phi_lb_to_field_lattice __targetLaunch__(nSites) (phi->t_data, lb);
-
-#ifndef KEEPFIELDONTARGET   //temporary optimisation specific to GPU code for benchmarking
-  copyFromTarget(phi->data,phi->t_data,nSites*sizeof(double)); 
-#endif
-
-  return 0;
-}
-
-
-
-/* Host-only version of the above */
-__targetHost__ int phi_lb_to_field_host(field_t * phi, lb_t  *lb) {
-
-  int ic, jc, kc, index;
-  int nlocal[3];
-
-  double phi0;
-
-  assert(phi);
-  assert(lb);
-  coords_nlocal(nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic, jc, kc);
-
-	lb_0th_moment(lb, index, LB_PHI, &phi0);
-	field_scalar_set(phi, index, phi0);
-
-      }
-    }
-  }
-
-  return 0;
-}
-
 
 /*****************************************************************************
  *
@@ -160,7 +112,7 @@ __targetHost__ int phi_lb_to_field_host(field_t * phi, lb_t  *lb) {
  *
  *****************************************************************************/
 
-__targetHost__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
+__host__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
   int p;
   int ic, jc, kc, index;
@@ -180,11 +132,10 @@ __targetHost__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
 	field_scalar(phi, index, &phi0);
 
-	lb_f_set(lb, index, 0, 1, phi0);
+	lb_f_set(lb, index, 0, LB_PHI, phi0);
 	for (p = 1; p < NVEL; p++) {
-	  lb_f_set(lb, index, p, 1, 0.0);
+	  lb_f_set(lb, index, p, LB_PHI, 0.0);
 	}
-
       }
     }
   }

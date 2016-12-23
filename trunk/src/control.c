@@ -14,19 +14,17 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
+#include "physics.h"
 #include "control.h"
 
-static int t_start   = 0;
-static int t_steps   = 0;
-static int t_current = 0;
 
 static int freq_statistics = 100;
-static int freq_psi_resid  = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
@@ -47,30 +45,41 @@ static int config_at_end   = 1;
  *
  *****************************************************************************/
 
-void init_control() {
+int init_control(pe_t * pe, rt_t * rt) {
 
   int n;
+  int t_start;
+  int t_steps;
   char tmp[128];
+  physics_t * phys = NULL;
 
-  n = RUN_get_int_parameter("N_start", &t_start);
-  n = RUN_get_int_parameter("N_cycles", &t_steps);
-  if (n == 0) fatal("Please set N_cycles in input\n");
+  assert(pe);
+  assert(rt);
+  physics_ref(&phys);
 
-  n = RUN_get_int_parameter("freq_statistics", &freq_statistics);
+  /* Care: t_start (in particular) might not appear in the input */
+  t_start = 0;
+  t_steps = 0;
 
-  n = RUN_get_int_parameter("freq_measure", &freq_measure);
-  n = RUN_get_int_parameter("freq_config", &freq_config);
-  n = RUN_get_int_parameter("freq_phi", &freq_phi);
-  n = RUN_get_int_parameter("freq_psi", &freq_psi);
-  n = RUN_get_int_parameter("freq_vel", &freq_vel);
-  n = RUN_get_int_parameter("freq_fed", &freq_fed);
-  n = RUN_get_int_parameter("freq_shear_measurement", &freq_shear_meas);
-  n = RUN_get_int_parameter("freq_shear_output", &freq_shear_io);
-  n = RUN_get_int_parameter("colloid_io_freq", &freq_colloid_io);
-  n = RUN_get_string_parameter("config_at_end", tmp, 128);
+  n = rt_int_parameter(rt, "N_start", &t_start);
+  n = rt_int_parameter(rt, "N_cycles", &t_steps);
+  if (n == 0) pe_fatal(pe, "Please set N_cycles in input\n");
+
+  n = rt_int_parameter(rt, "freq_statistics", &freq_statistics);
+
+  n = rt_int_parameter(rt, "freq_measure", &freq_measure);
+  n = rt_int_parameter(rt, "freq_config", &freq_config);
+  n = rt_int_parameter(rt, "freq_phi", &freq_phi);
+  n = rt_int_parameter(rt, "freq_psi", &freq_psi);
+  n = rt_int_parameter(rt, "freq_vel", &freq_vel);
+  n = rt_int_parameter(rt, "freq_fed", &freq_fed);
+  n = rt_int_parameter(rt, "freq_shear_measurement", &freq_shear_meas);
+  n = rt_int_parameter(rt, "freq_shear_output", &freq_shear_io);
+  n = rt_int_parameter(rt, "colloid_io_freq", &freq_colloid_io);
+  n = rt_string_parameter(rt, "config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
-  t_current = t_start;
+  physics_control_init_time(phys, t_start, t_steps);
 
   if (freq_statistics < 1) freq_statistics = t_start + t_steps + 1;
   if (freq_measure    < 1) freq_measure    = t_start + t_steps + 1;
@@ -79,34 +88,6 @@ void init_control() {
   if (freq_shear_io   < 1) freq_shear_io   = t_start + t_steps + 1;
   if (freq_shear_meas < 1) freq_shear_meas = t_start + t_steps + 1;
 
-  /* Default to freq_statisitics if not present */
-
-  n = RUN_get_int_parameter("freq_psi_resid", &freq_psi_resid);
-  if (n == 0) freq_psi_resid = freq_statistics;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  get_step
- *  next step
- *  is last step
- *
- *****************************************************************************/
-
-int get_step() {
-  return t_current;
-}
-
-int next_step() {
-  ++t_current;
-  return (t_start + t_steps - t_current + 1);
-}
-
-int is_last_step() {
-  if (get_step() == (t_steps + t_start))
-    return 1;
   return 0;
 }
 
@@ -117,23 +98,27 @@ int is_last_step() {
  *****************************************************************************/
 
 int is_statistics_step() {
-  return ((t_current % freq_statistics) == 0);
-}
-
-int is_psi_resid_step() {
-  return ((t_current % freq_psi_resid) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_statistics) == 0);
 }
 
 int is_measurement_step() {
-  return ((t_current % freq_measure) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_measure) == 0);
 }
 
 int is_config_step() {
-  return ((t_current % freq_config) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_config) == 0);
 }
 
 int is_colloid_io_step() {
-  return ((t_current % freq_colloid_io) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_colloid_io) == 0);
 }
 
 /*****************************************************************************
@@ -143,17 +128,9 @@ int is_colloid_io_step() {
  *****************************************************************************/
 
 int is_phi_output_step() {
-  return ((t_current % freq_phi) == 0);
-}
-
-/*****************************************************************************
- *
- *  is_psi_output_step
- *
- *****************************************************************************/
-
-int is_psi_output_step() {
-  return ((t_current % freq_psi) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_phi) == 0);
 }
 
 /*****************************************************************************
@@ -163,7 +140,21 @@ int is_psi_output_step() {
  *****************************************************************************/
 
 int is_vel_output_step() {
-  return ((t_current % freq_vel) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_vel) == 0);
+}
+
+/*****************************************************************************
+ *
+ *  is_psi_output_step
+ *
+ *****************************************************************************/
+
+int is_psi_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_psi) == 0);
 }
 
 /*****************************************************************************
@@ -173,7 +164,9 @@ int is_vel_output_step() {
  *****************************************************************************/
 
 int is_fed_output_step() {
-  return ((t_current % freq_fed) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_fed) == 0);
 }
 
 /*****************************************************************************
@@ -193,7 +186,9 @@ int is_config_at_end() {
  *****************************************************************************/
 
 int is_shear_measurement_step() {
-  return ((t_current % freq_shear_meas) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_shear_meas) == 0);
 }
 
 /*****************************************************************************
@@ -203,7 +198,9 @@ int is_shear_measurement_step() {
  *****************************************************************************/
 
 int is_shear_output_step() {
-  return ((t_current % freq_shear_io) == 0);
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_shear_io) == 0);
 }
 
 /*****************************************************************************
@@ -217,13 +214,6 @@ int is_shear_output_step() {
 int control_freq_set(int freq) {
 
   freq_statistics = freq;
-
-  return 0;
-}
-
-int control_time_set(int it) {
-
-  t_current = it;
 
   return 0;
 }

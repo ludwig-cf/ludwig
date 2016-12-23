@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -34,7 +34,7 @@
 #include "tests.h"
 
 static int test_u_zero(hydro_t * hydro, const double *);
-static int test_advection(field_t * phi, hydro_t * hydro);
+static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro);
 static int test_set_drop(field_t * phi, const double rc[3], double radius,
 			 double xi0);
 static int test_drop_difference(field_t * phi, const double rc[3],
@@ -51,33 +51,42 @@ int test_phi_ch_suite(void) {
   int nf = 1;
   int nhalo = 2;
 
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
+  lees_edw_t * le = NULL;
   hydro_t * hydro = NULL;
   field_t * phi = NULL;
   physics_t * phys = NULL;
+  phi_ch_t * pch = NULL;
 
-  pe_init_quiet();
-  coords_nhalo_set(nhalo);
-  coords_init();
-  physics_ref(&phys);
-  le_init();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+  physics_create(pe, &phys);
+  lees_edw_create(pe, cs, NULL, &le);
 
-  field_create(nf, "phi", &phi);
+  field_create(pe, cs, nf, "phi", &phi);
   assert(phi);
-  field_init(phi, nhalo);
-  fe_create();
+  field_init(phi, nhalo, le);
 
-  hydro_create(1, &hydro);
+  hydro_create(pe, cs, le, 1, &hydro);
   assert(hydro);
 
-  test_advection(phi, hydro);
+  phi_ch_create(pe, le, NULL, &pch);
+  assert(pch);
+
+  test_advection(pch, phi, hydro);
 
   hydro_free(hydro);
   field_free(phi);
+  physics_free(phys);
 
-  info("PASS     ./unit/test_phi_ch\n");
-  le_finish();
-  coords_finish();
-  pe_finalise();
+  phi_ch_free(pch);
+  lees_edw_free(le);
+  cs_free(cs);
+  pe_info(pe, "PASS     ./unit/test_phi_ch\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -90,7 +99,7 @@ int test_phi_ch_suite(void) {
  *
  *****************************************************************************/
 
-static int test_advection(field_t * phi, hydro_t * hydro) {
+static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
 
   int n, ntmax;
   double u[3];
@@ -99,6 +108,7 @@ static int test_advection(field_t * phi, hydro_t * hydro) {
   double xi0;
   double ell[3];
 
+  assert(pch);
   assert(phi);
   assert(hydro);
 
@@ -125,7 +135,7 @@ static int test_advection(field_t * phi, hydro_t * hydro) {
     field_halo(phi);
     /* The map_t argument can be NULL here, as there is no solid;
      * the same is true for noise */
-    phi_cahn_hilliard(phi, hydro, NULL, NULL);
+    phi_cahn_hilliard(pch, NULL, phi, hydro, NULL, NULL);
   }
 
   /* Exact solution has position: */

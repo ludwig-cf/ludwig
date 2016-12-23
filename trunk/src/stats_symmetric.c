@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2013 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,7 +37,8 @@
  *
  *****************************************************************************/
 
-int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
+int stats_symmetric_length(fe_symm_t * fe, field_grad_t * phi_grad,
+			   map_t * map,
 			   int timestep) {
 
 #define NSTAT 7
@@ -46,7 +47,6 @@ int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
   int nlocal[3];
   int status;
 
-  double a, b;                          /* Free energy parameters */
   double xi0;                           /* interfacial width */
 
   double dphi[3];                       /* grad phi */
@@ -61,6 +61,7 @@ int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
   double eigenvals[3], eigenvecs[3][3];
   double rvolume;
 
+  fe_symm_param_t param;
   MPI_Comm comm;
 
   assert(phi_grad);
@@ -69,9 +70,8 @@ int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
   coords_nlocal(nlocal);
   comm = pe_comm();
 
-  a = symmetric_a();
-  b = symmetric_b();
-  xi0 = symmetric_interfacial_width();
+  fe_symm_param(fe, &param);
+  fe_symm_interfacial_width(fe, &xi0);
 
   for (ia = 0; ia < NSTAT; ia++) {
     dphi_local[ia] = 0.0;
@@ -118,13 +118,13 @@ int stats_symmetric_length(field_grad_t * phi_grad, map_t * map,
   /* Length scales in coordinate directions, and natural directions */
 
   for (ia = 0; ia < 3; ia++) {
-    lcoordinate[ia] = -4.0*a/(3.0*b*xi0*dphiab[ia][ia]);
+    lcoordinate[ia] = -4.0*param.a/(3.0*param.b*xi0*dphiab[ia][ia]);
   }
 
   util_jacobi_sort(dphiab, eigenvals, eigenvecs);
 
   for (ia = 0; ia < 3; ia++) {
-    lnatural[ia] = -4.0*a/(3.0*b*xi0*eigenvals[ia]);
+    lnatural[ia] = -4.0*param.a/(3.0*param.b*xi0*eigenvals[ia]);
   }
 
   /* Angles are defined... */

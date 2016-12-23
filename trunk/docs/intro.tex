@@ -7,7 +7,7 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2016 The University of Edinburgh
+%  (c) 2016-2017 The University of Edinburgh
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -101,7 +101,7 @@ Code releases may be downloaded via anonymous download
 \begin{lstlisting}[style=terminalverbatim]
 http://ccpforge.cse.rl.ac.uk/gf/project/ludwig/frs/
 \end{lstlisting}
-The current release is available as \texttt{ludwig-0.4.0.tar.gz}.
+The current release is available as \texttt{ludwig-0.6.0.tar.gz}.
 Alternatively, registered users can obtain the code via svn checkout
 in the same way as developers.
 
@@ -321,7 +321,6 @@ of the time take by various parts of the code, and finally by
 Ludwig finished normally.
 \end{lstlisting}
 
-%\paragraph{Parallel: }
 \textbf{Parallel: }
 The executable compiled and linked against the MPI library can
 be run with the MPI launcher for the local system, often
@@ -388,12 +387,13 @@ description to recombine the parallel output. This utility is described
 ELSEWHERE.
 
 Output for colloidal particle data is again to file with a name encoding
-the time step and parallel docomposition of the output. For example,
+the time step and parallel decomposition of the output. For example,
 \begin{lstlisting}
 bash-3.2$ ls config*
 config.cds00000020.001-001
 \end{lstlisting}
-contains particle data for time step 20 in a format described ELSEWHERE.
+contains particle data for time step 20 in a format described in
+Section~\ref{examples}.
 These data may be requested in ASCII or raw binary format.
 
 \subsubsection{Errors and run time failures}

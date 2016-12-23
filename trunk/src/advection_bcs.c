@@ -9,8 +9,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2016 The University of Edinburgh
+*
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
@@ -20,217 +23,131 @@
 #include "pe.h"
 #include "wall.h"
 #include "coords.h"
-#include "coords_field.h"
+#include "kernel.h"
 #include "advection_s.h"
-#include "advection_bcs.h"
 #include "psi_gradients.h"
 #include "map_s.h"
 #include "timer.h"
+#include "advection_bcs.h"
+
+__global__
+void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
+				    map_t * map);
 
 /*****************************************************************************
  *
- *  advection_bcs_no_normal_fluxes
+ *  advection_bcs_no_normal_flux
  *
- *  Set normal fluxes at solid fluid interfaces to zero.
+ *  Kernel driver for no-flux boundary conditions.
  *
  *****************************************************************************/
 
-__targetEntry__ void advection_bcs_no_normal_flux_lattice(int nf, advflux_t * flux, map_t * map) {
-
-
-  int baseIndex;
-  __targetTLP__(baseIndex,tc_nSites){
-
-    int iv=0;
-    int i;
-
-    int n;
-    int indexf[VVL];
-    
-    double mask[VVL], maskw[VVL], maske[VVL], masky[VVL], maskz[VVL];
-    
-    int coords[3];
-    targetCoords3D(coords,tc_Nall,baseIndex);
-    
-    // if not a halo site:
-
-
-#if VVL == 1    
-    /*restrict operation to the interior lattice sites*/ 
-    if (coords[0] >= (tc_nhalo) &&
-    	coords[1] >= (tc_nhalo-1) &&
-    	coords[2] >= (tc_nhalo-1) &&
-    	coords[0] < (tc_Nall[X]-tc_nhalo) &&
-	coords[1] < (tc_Nall[Y]-tc_nhalo)  &&
-	coords[2] < (tc_Nall[Z]-tc_nhalo)) 
-#endif
-{
-
-
-	/* work out which sites in this chunk should be included */
-	int includeSite[VVL];
-	__targetILP__(iv) includeSite[iv]=0;
-	
-	int coordschunk[3][VVL];
-		
-	__targetILP__(iv){
-	  for(i=0;i<3;i++){
-	    targetCoords3D(coords,tc_Nall,baseIndex+iv);
-	    coordschunk[i][iv]=coords[i];
-	  }
-	}
-
-	__targetILP__(iv){
-	  
-	  if ((coordschunk[0][iv] >= (tc_nhalo) &&
-	       coordschunk[1][iv] >= (tc_nhalo-1) &&
-	       coordschunk[2][iv] >= (tc_nhalo-1) &&
-	       coordschunk[0][iv] < tc_Nall[X]-(tc_nhalo) &&
-	       coordschunk[1][iv] < tc_Nall[Y]-(tc_nhalo)  &&
-	       coordschunk[2][iv] < tc_Nall[Z]-(tc_nhalo)))
-	    
-	    includeSite[iv]=1;
-	}
-
-	
-
-      int index1[VVL];
-      
-      
-      __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]-1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  maskw[iv] = (map->status[index1[iv]]==MAP_FLUID);    
-      }
-      
-      __targetILP__(iv) index1[iv]=targetIndex3D(coordschunk[0][iv]+1,coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  maske[iv] = (map->status[index1[iv]]==MAP_FLUID);
-      }    
-      
-      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv]+1,coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  masky[iv] = (map->status[index1[iv]]==MAP_FLUID);
-      }    
-      
-      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv]+1,tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv]) 
-	  maskz[iv] = (map->status[index1[iv]]==MAP_FLUID);    
-      }      
-      
-      __targetILP__(iv) index1[iv]= targetIndex3D(coordschunk[0][iv],coordschunk[1][iv],coordschunk[2][iv],tc_Nall);
-      __targetILP__(iv){
-	if (includeSite[iv])
-	  mask[iv] = (map->status[index1[iv]]==MAP_FLUID);  
-      }  
-      
-      for (n = 0;  n < nf; n++) {
-	
-	__targetILP__(iv) indexf[iv] = ADVADR(tc_nSites,nf,baseIndex+iv,n);
-
-
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fw[indexf[iv]] *= mask[iv]*maskw[iv];
-	}
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fe[indexf[iv]] *= mask[iv]*maske[iv];
-	}
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fy[indexf[iv]] *= mask[iv]*masky[iv];
-	}
-	__targetILP__(iv){
-	  if (includeSite[iv])
-	    flux->fz[indexf[iv]] *= mask[iv]*maskz[iv];
-	}
-      }
- }
-  }
-  
-
-  return;
-}
-
-
+__host__
 int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
-  int n;
   int nlocal[3];
-  int ic, jc, kc, index, indexf;
-  int status;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
-  assert(nf > 0);
   assert(flux);
   assert(map);
 
   coords_nlocal(nlocal);
 
-  int nhalo;
-  nhalo = coords_nhalo();
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
 
-
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
-
-
-  //copy lattice shape constants to target ahead of execution
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
-
-  double* tmpptr;
-
-#ifndef KEEPFIELDONTARGET
-  map_t* t_map = map->tcopy; //target copy of field structure
-
-
-  copyFromTarget(&tmpptr,&(t_map->status),sizeof(char*)); 
-  copyToTarget(tmpptr,map->status,nSites*sizeof(char));
-
-
-  advflux_t* t_flux = flux->tcopy; //target copy of flux structure
-
-  copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*));
-  copyToTarget(tmpptr,flux->fe,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fw),sizeof(double*));
-  copyToTarget(tmpptr,flux->fw,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fy),sizeof(double*));
-  copyToTarget(tmpptr,flux->fy,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fz),sizeof(double*));
-  copyToTarget(tmpptr,flux->fz,nf*nSites*sizeof(double));
-#endif
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(ADVECTION_BCS_KERNEL);
-  advection_bcs_no_normal_flux_lattice  __targetLaunch__(nSites) (nf,flux->tcopy, map->tcopy);
+
+  __host_launch(advection_bcs_no_flux_kernel_v, nblk, ntpb, ctxt->target,
+		flux->target, map->target);
+
   targetSynchronize();
+
   TIMER_stop(ADVECTION_BCS_KERNEL);
 
-#ifndef KEEPFIELDONTARGET
-  copyFromTarget(&tmpptr,&(t_flux->fe),sizeof(double*));
-  copyFromTarget(flux->fe,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fw),sizeof(double*));
-  copyFromTarget(flux->fw,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fy),sizeof(double*));
-  copyFromTarget(flux->fy,tmpptr,nf*nSites*sizeof(double));
-
-  copyFromTarget(&tmpptr,&(t_flux->fz),sizeof(double*));
-  copyFromTarget(flux->fz,tmpptr,nf*nSites*sizeof(double));
-#endif
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  advection_bcs_no_flux_kernel_v
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+__global__
+void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
+				    advflux_t * flux,
+				    map_t * map) {
+  int kindex;
+  __shared__ int kiter;
+
+  kiter = kernel_vector_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+
+    int n;
+    int iv;
+    int index0;
+    int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
+    int ix[NSIMDVL];
+    int index[NSIMDVL];
+    int maskv[NSIMDVL];     /* = 0 if vector entry not within kernel limits */
+
+    double mask[NSIMDVL];   /* mask for current (ic, jc, kc) */
+    double maskw[NSIMDVL];  /* mask for flux->fw */
+    double maske[NSIMDVL];  /* mask for flux->fe */
+    double masky[NSIMDVL];  /* mask for flux->fy */
+    double maskz[NSIMDVL];  /* mask for flux->fz */
+
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
+      
+    kernel_coords_index_v(ktx, ic, jc, kc, index);
+    __targetILP__(iv) mask[iv] = (map->status[index[iv]] == MAP_FLUID);  
+
+    __targetILP__(iv) ix[iv] = ic[iv] - maskv[iv];
+    kernel_coords_index_v(ktx, ix, jc, kc, index);
+    __targetILP__(iv) maskw[iv] = (map->status[index[iv]] == MAP_FLUID);    
+
+    __targetILP__(iv) ix[iv] = ic[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ix, jc, kc, index);
+    __targetILP__(iv) maske[iv] = (map->status[index[iv]] == MAP_FLUID);
+
+    __targetILP__(iv) ix[iv] = jc[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ic, ix, kc, index);
+    __targetILP__(iv) masky[iv] = (map->status[index[iv]] == MAP_FLUID);
+
+    __targetILP__(iv) ix[iv] = kc[iv] + maskv[iv];
+    kernel_coords_index_v(ktx, ic, jc, ix, index);
+    __targetILP__(iv) maskz[iv] = (map->status[index[iv]] == MAP_FLUID);
+
+    index0 = kernel_baseindex(ktx, kindex);
+
+    for (n = 0;  n < flux->nf; n++) {
+      __targetILP__(iv) {
+	index[iv] = addr_rank1(flux->nsite, flux->nf, index0 + iv, n);
+      }
+      __targetILP__(iv) flux->fw[index[iv]] *= mask[iv]*maskw[iv];
+      __targetILP__(iv) flux->fe[index[iv]] *= mask[iv]*maske[iv];
+      __targetILP__(iv) flux->fy[index[iv]] *= mask[iv]*masky[iv];
+      __targetILP__(iv) flux->fz[index[iv]] *= mask[iv]*maskz[iv];
+    }
+    /* Next sites */
+  }
+
+  return;
+}
+
 
 /*****************************************************************************
  *
@@ -279,7 +196,7 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 
 	for (n = 0;  n < nf; n++) {
 
-	  coords_field_index(index, n, nf, &indexf);
+	  indexf = addr_rank1(coords_nsites(), nf, index, n);
 	  fx[indexf] *= mask*maskx;
 	  fy[indexf] *= mask*masky;
 	  fz[indexf] *= mask*maskz;
@@ -308,13 +225,11 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
   int ic, jc, kc, index0, index1;
   int status;
   int c;
-  double * mask;
+  double mask[PSI_NGRAD];
 
   assert(nf > 0);
   assert(flx);
   assert(map);
-
-  mask = (double*) calloc(PSI_NGRAD, sizeof(double)); 
 
   coords_nlocal(nlocal);
 
@@ -333,17 +248,16 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 	  mask[c] = (status == MAP_FLUID);
 
 	  for (n = 0;  n < nf; n++) {
-	    flx[nf*index0 + n][c - 1] *= mask[0]*mask[c];
+	    flx[addr_rank1(coords_nsites(), nf, index0, n)][c - 1] *= mask[0]*mask[c];
 	  }
-
 	}
-
       }
     }
   }
 
   return 0;
 }
+
 /*****************************************************************************
  *
  *  advection_bcs_wall
@@ -367,8 +281,9 @@ int advection_bcs_wall(field_t * fphi) {
   int nf;
   double q[NQAB];
 
-  if (wall_at_edge(X) == 0) return 0;
+  /* if (wall_at_edge(X) == 0) return 0;*/
 
+  assert(0); /* Sort out line above */
   assert(fphi);
 
   field_nf(fphi, &nf);

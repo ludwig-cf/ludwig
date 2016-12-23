@@ -8,35 +8,52 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
 #ifndef SYMMETRIC_H
 #define SYMMETRIC_H
 
-#include "targetDP.h"
-
+#include "memory.h"
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
 
-//TO DO: refactor these type definitions
-typedef double (*mu_fntype)(const int, const int, const double*, const double*);
-typedef void (*pth_fntype)(const int, double(*)[3*NILP], const double*, const double*, const double*);
+typedef struct fe_symm_param_s fe_symm_param_t;
+typedef struct fe_symm_s fe_symm_t;
 
+/* Free energy structure */
 
-__targetHost__ int symmetric_phi_set(field_t * phi, field_grad_t * dphi);
+struct fe_symm_s {
+  fe_t super;
+  fe_symm_param_t * param;     /* Parameters */
+  field_t * phi;               /* Scalar order parameter or composition */
+  field_grad_t * dphi;         /* Gradients thereof */
+  fe_symm_t * target;          /* Target copy */
+};
 
-__targetHost__ void   symmetric_free_energy_parameters_set(double a, double b, double kappa);
-__targetHost__ double symmetric_a(void);
-__targetHost__ double symmetric_b(void);
-__targetHost__ double symmetric_interfacial_tension(void);
-__targetHost__ double symmetric_interfacial_width(void);
-__targetHost__ double symmetric_free_energy_density(const int index);
-__targetHost__ double symmetric_chemical_potential(const int index, const int nop);
-__targetHost__ double symmetric_isotropic_pressure(const int index);
-__targetHost__ void   symmetric_chemical_stress(const int index, double s[3][3]);
+/* Parameters */
+
+struct fe_symm_param_s {
+  double a;
+  double b;
+  double kappa;
+};
+
+__host__ int fe_symm_create(field_t * f, field_grad_t * grd, fe_symm_t ** p);
+__host__ int fe_symm_free(fe_symm_t * fe);
+__host__ int fe_symm_param_set(fe_symm_t * fe, fe_symm_param_t values);
+__host__ int fe_symm_target(fe_symm_t * fe, fe_t ** target);
+
+__host__ __device__ int fe_symm_param(fe_symm_t * fe, fe_symm_param_t * values);
+__host__ __device__ int fe_symm_interfacial_tension(fe_symm_t * fe, double * s);
+__host__ __device__ int fe_symm_interfacial_width(fe_symm_t * fe, double * xi);
+__host__ __device__ int fe_symm_fed(fe_symm_t * fe, int index, double * fed);
+__host__ __device__ int fe_symm_mu(fe_symm_t * fe, int index, double * mu);
+__host__ __device__ int fe_symm_str(fe_symm_t * fe, int index, double s[3][3]);
+__host__ __device__ void fe_symm_str_v(fe_symm_t * fe, int index,
+				       double s[3][3][NSIMDVL]);
 
 #endif
 

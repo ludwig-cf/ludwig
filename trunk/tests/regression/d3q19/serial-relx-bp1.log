@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.4.8 (Serial version running on 1 process)
+Welcome to Ludwig v0.5.48 (Serial version running on 1 process)
 
-The SVN revision details are: 2987M
+The SVN revision details are: 2982
 Note assertions via standard C assert() are on.
 
 Read 23 user parameters from serial-relx-bp1.inp
@@ -102,10 +102,10 @@ Starting time step loop.
 
 Scalars - total mean variance min max
 [rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
-[phi]  3.3311646e-14  1.0165907e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
+[phi]  4.0195028e-14  1.2266549e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
 [phi]  4.1711698e-06  1.2729400e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
 [phi]  4.1711700e-06  1.2729401e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
-[phi]  6.5709473e-14  2.0052940e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
+[phi]  7.9920265e-14  2.4389729e-18 4.2061932e-02 -3.3730903e-01 4.2727217e-01
 [phi]  4.1711696e-06  1.2729399e-10 2.9266368e-02 -4.2308335e-01 4.2308335e-01
 
 Free energy density - timestep total fluid
@@ -121,13 +121,13 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.948      0.948      0.948   0.948319 (1 call)
-      Time step loop:      0.009      0.022      0.925   0.009250 (100 calls)
-       phi gradients:      0.003      0.008      0.266   0.002661 (100 calls)
-    phi grad (krnl) :      0.001      0.003      0.119   0.001193 (100 calls)
-           phi halos:      0.001      0.001      0.070   0.000698 (100 calls)
-   Force calculation:      0.000      0.000      0.000   0.000000 (100 calls)
-          phi update:      0.006      0.013      0.659   0.006586 (100 calls)
-BP BE update (krnl) :      0.005      0.006      0.490   0.004901 (100 calls)
-   BP BE alloc/free :      0.000      0.000      0.000   0.000001 (200 calls)
+               Total:      3.124      3.124      3.124   3.124474 (1 call)
+      Time step loop:      0.030      0.037      3.078   0.030783 (100 calls)
+       phi gradients:      0.015      0.018      1.501   0.015008 (100 calls)
+    phi grad (krnl) :      0.014      0.016      1.395   0.013954 (100 calls)
+           phi halos:      0.001      0.002      0.105   0.001048 (100 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (100 calls)
+          phi update:      0.016      0.019      1.577   0.015771 (100 calls)
+BP BE update (krnl) :      0.016      0.019      1.577   0.015765 (100 calls)
+               Free1:      0.000      0.021      0.021   0.000207 (100 calls)
 Ludwig finished normally.

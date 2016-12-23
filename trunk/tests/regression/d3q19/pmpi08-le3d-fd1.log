@@ -82,7 +82,7 @@ I/O decomposition:            1 1 1
 Advection scheme order: 3
 Initialising phi for spinodal
 Initialising shear profile
-Gradient calcaulation: 3d_27pt_fluid
+Gradient calculation: 3d_27pt_fluid
 Initial conditions.
 
 Scalars - total mean variance min max

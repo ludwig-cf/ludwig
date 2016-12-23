@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "pe.h"
+#include "psi_s.h"
 #include "util.h"
 #include "coords.h"
 #include "psi_colloid.h"
@@ -56,13 +57,13 @@ int psi_colloid_rho_set(psi_t * obj, colloids_info_t * cinfo) {
   assert(obj);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	if (pc) {
@@ -128,7 +129,7 @@ int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
   psi_nk(obj, &nk);
   assert(nk == 2);
 
-  comm = cart_comm();
+  cs_cart_comm(obj->cs, &comm);
 
   colloids_info_q_local(cinfo, qvlocal);      /* 2 charge densities */
   colloids_info_v_local(cinfo, qvlocal + 2);  /* solid volume */
@@ -160,13 +161,13 @@ int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
 
   /* Loop over lattice and accumulate the countercharge */
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	colloids_info_map(cinfo, index, &pc);
 
 	if (pc == NULL) {
@@ -230,7 +231,7 @@ int psi_colloid_replace_charge(psi_t * psi, colloids_info_t * cinfo,
   psi_nk(psi, &nk);
   assert(nk == 2);
 
-  coords_strides(&xs, &ys, &zs);
+  cs_strides(psi->cs, &xs, &ys, &zs);
 
   weight = 0.0;
   for (n = 0; n < nk; n++) {
@@ -329,11 +330,13 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
   colloid_t * p_c;
   colloid_t * colloid_at_site_index(int);
 
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
   assert(obj);
   assert(cinfo);
-  coords_nlocal(nlocal);
+
+  cs_cart_comm(obj->cs, &comm);
+  cs_nlocal(obj->cs, nlocal);
 
   /* Set result to zero and escape if there is not one particle. */
 
@@ -351,7 +354,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	/* If this is a solid site, there's no contribution here. */
 
@@ -363,7 +366,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
 
 	/* Check if adjacent site is solid and add contribution */
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = cs_index(obj->cs, ic+1, jc, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -372,7 +375,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = cs_index(obj->cs, ic-1, jc, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -381,7 +384,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = cs_index(obj->cs, ic, jc+1, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -390,7 +393,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic, jc-1, kc);
+	index1 = cs_index(obj->cs, ic, jc-1, kc);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -399,7 +402,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
 	  nsl_local ++;
 	}
 	
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = cs_index(obj->cs, ic, jc, kc+1);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {
@@ -408,7 +411,7 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
 	  nsl_local ++;
 	}
 
-	index1 = coords_index(ic, jc, kc-1);
+	index1 = cs_index(obj->cs, ic, jc, kc-1);
 	colloids_info_map(cinfo, index1, &p_c);
 
 	if (p_c) {

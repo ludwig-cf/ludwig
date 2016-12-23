@@ -8,14 +8,17 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef COLLOIDS_S_H
-#define COLLOIDS_S_H
+#ifndef LUDWIG_COLLOIDS_S_H
+#define LUDWIG_COLLOIDS_S_H
 
-#include <mpi.h>
+#include "pe.h"
+#include "coords.h"
+#include "colloids.h"
+
 
 struct colloids_info_s {
   int nhalo;                  /* Halo extent in cell list */
@@ -34,7 +37,9 @@ struct colloids_info_s {
   colloid_t * headall;        /* All colloid list (incl. halo) head */
   colloid_t * headlocal;      /* Local list (excl. halo) head */
 
-  colloids_info_t * tcopy;              /* copy of this structure on target */ 
+  pe_t * pe;                  /* Parallel environment */
+  cs_t * cs;                  /* Coordinate system */
+  colloids_info_t * target;   /* Copy of this structure on target */ 
 };
 
 

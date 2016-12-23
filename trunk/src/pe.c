@@ -8,9 +8,12 @@
  *  the parallel environment. In serial, the MPI stub library is
  *  required.
  *
+ *  A static reference is retained to provide access deep in the
+ *  call tree via pe_ref(). This should ultimately be removed.
+ *
  *  $Id$
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -32,28 +35,29 @@ struct pe_s {
   int unquiet;                       /* Print version information etc */
   int mpi_rank;                      /* Rank in dup'd comm */
   int mpi_size;                      /* Size of comm */
+  int nref;                          /* Retained reference count */
   MPI_Comm parent_comm;              /* Reference to parrent entering dup */
   MPI_Comm comm;                     /* Communicator for pe */
   char subdirectory[FILENAME_MAX];
 };
 
-static pe_t * pe = NULL;
-static int pe_create(MPI_Comm parent);
+static pe_t * pe_static = NULL;
 
 /*****************************************************************************
  *
  *  pe_create
  *
- *  Single static instance. MPI must be initialised.
+ *  Create a duplicate of the parent. Initialise error handling.
  *
  *****************************************************************************/
 
-static int pe_create(MPI_Comm parent) {
+__host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
 
   int ifail_local = 0;
   int ifail;
+  pe_t * pe = NULL;
 
-  assert(pe == NULL);
+  assert(ppe);
 
   MPI_Initialized(&ifail);
 
@@ -71,27 +75,99 @@ static int pe_create(MPI_Comm parent) {
     exit(0);
   }
 
+  pe->unquiet = 0; /* Quiet */
   pe->parent_comm = parent;
+  pe->nref = 1;
   strcpy(pe->subdirectory, "");
+
+  MPI_Comm_dup(parent, &pe->comm);
+  MPI_Comm_set_errhandler(pe->comm, MPI_ERRORS_ARE_FATAL);
+
+  MPI_Comm_size(pe->comm, &pe->mpi_size);
+  MPI_Comm_rank(pe->comm, &pe->mpi_rank);
+
+  if (flag == PE_VERBOSE) {
+    pe->unquiet = 1;
+    pe_message(pe);
+  }
+
+  pe_static = pe;
+  *ppe = pe;
+  
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_ref
+ *
+ *****************************************************************************/
+
+__host__ int pe_ref(pe_t ** ppe) {
+
+  assert(pe_static);
+
+  *ppe = pe_static;
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  pe_init
+ *  pe_retain
  *
- *  Initialise the model. If it's MPI, we choose that all errors
- *  be terminal.
+ *  Increment reference count by one.
  *
  *****************************************************************************/
 
-void pe_init(void) {
+__host__ int pe_retain(pe_t * pe) {
 
-  pe_init_quiet();
-  pe->unquiet = 1;
+  assert(pe);
 
-  info("Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n\n",
+  pe->nref += 1;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_free
+ *
+ *  Release a reference; if that's the last reference, close down.
+ *
+ *****************************************************************************/
+
+__host__ int pe_free(pe_t * pe) {
+
+  assert(pe);
+
+  pe->nref -= 1;
+
+  if (pe->nref <= 0) {
+    MPI_Comm_free(&pe->comm);
+    if (pe->unquiet) pe_info(pe, "Ludwig finished normally.\n");
+    free(pe);
+    pe = NULL;
+    pe_static = NULL;
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_message
+ *
+ *  Banner message shown at start of execution.
+ *
+ *****************************************************************************/
+
+__host__ int pe_message(pe_t * pe) {
+
+  assert(pe);
+
+  pe_info(pe,
+       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n\n",
        LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
        (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
        (pe->mpi_size == 1) ? "" : "es");
@@ -101,117 +177,18 @@ void pe_init(void) {
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
   }
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  pe_init_quiet
- *
- *****************************************************************************/
-
-int pe_init_quiet(void) {
-
-  if (pe == NULL) pe_create(MPI_COMM_WORLD);
-
-  MPI_Comm_dup(pe->parent_comm, &pe->comm);
-
-  MPI_Errhandler_set(pe->comm, MPI_ERRORS_ARE_FATAL);
-
-  MPI_Comm_size(pe->comm, &pe->mpi_size);
-  MPI_Comm_rank(pe->comm, &pe->mpi_rank);
-
   return 0;
 }
 
 /*****************************************************************************
  *
- *  pe_finalise
- *
- *  This is the final executable statement.
- *
- *****************************************************************************/
-
-void pe_finalise() {
-
-  assert(pe);
-
-  MPI_Comm_free(&pe->comm);
-  if (pe->unquiet) info("Ludwig finished normally.\n");
-
-  free(pe);
-  pe = NULL;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  pe_redirect_stdout
- *
- *****************************************************************************/
-
-void pe_redirect_stdout(const char * filename) {
-
-  int rank;
-  FILE * stream;
-
-  assert(pe);
-
-  MPI_Comm_rank(pe->parent_comm, &rank);
-
-  if (rank == 0) {
-    printf("Redirecting stdout to file %s\n", filename);
-  }
-
-  stream = freopen(filename, "w", stdout);
-  if (stream == NULL) {
-    printf("[%d] ffreopen(%s) failed\n", rank, filename);
-    fatal("Stop.\n");
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  pe_comm
- *
- *****************************************************************************/
-
-MPI_Comm pe_comm(void) {
-
-  assert(pe);
-  return pe->comm;
-}
-
-/*****************************************************************************
- *
- *  pe_rank, pe_size
- *
- *  "Getter" functions.
- *
- *****************************************************************************/
-
-int pe_rank() {
-  assert(pe);
-  return pe->mpi_rank;
-}
-
-int pe_size() {
-  assert(pe);
-  return pe->mpi_size;
-}
-
-/*****************************************************************************
- *
- *  info
+ *  pe_info
  *
  *  Print arguments on process 0 only (important stuff!).
  *
  *****************************************************************************/
 
-void info(const char * fmt, ...) {
+__host__ int pe_info(pe_t * pe, const char * fmt, ...) {
 
   va_list args;
 
@@ -223,18 +200,18 @@ void info(const char * fmt, ...) {
     va_end(args);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  fatal
+ *  pe_fatal
  *
  *  Terminate the program with a message from the offending process.
  *
  *****************************************************************************/
 
-void fatal(const char * fmt, ...) {
+__host__ int pe_fatal(pe_t * pe, const char * fmt, ...) {
 
   va_list args;
 
@@ -250,18 +227,18 @@ void fatal(const char * fmt, ...) {
 
   MPI_Abort(pe->comm, 0);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  verbose
+ *  pe_verbose
  *
  *  Always prints a message.
  *
  *****************************************************************************/
 
-void verbose(const char * fmt, ...) {
+__host__ int pe_verbose(pe_t * pe, const char * fmt, ...) {
 
   va_list args;
 
@@ -273,21 +250,7 @@ void verbose(const char * fmt, ...) {
   vprintf(fmt, args);
   va_end(args);
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  pe_parent_comm_set
- *
- *****************************************************************************/
-
-void pe_parent_comm_set(MPI_Comm parent) {
-
-  assert(pe);
-  pe->parent_comm = parent;
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -296,12 +259,12 @@ void pe_parent_comm_set(MPI_Comm parent) {
  *
  *****************************************************************************/
 
-void pe_subdirectory_set(const char * name) {
+__host__ int pe_subdirectory_set(pe_t * pe, const char * name) {
 
   assert(pe);
   if (name != NULL) sprintf(pe->subdirectory, "%s/", name);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -310,12 +273,151 @@ void pe_subdirectory_set(const char * name) {
  *
  *****************************************************************************/
 
-void pe_subdirectory(char * name) {
+__host__ int pe_subdirectory(pe_t * pe, char * name) {
 
   assert(pe);
   assert(name);
 
   sprintf(name, "%s", pe->subdirectory);
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_set
+ *
+ *****************************************************************************/
+
+__host__ int pe_set(pe_t * pe, pe_enum_t option) {
+
+  assert(pe);
+
+  switch (option) {
+  case PE_QUIET:
+    pe->unquiet = 0;
+    break;
+  case PE_VERBOSE:
+    pe->unquiet = 1;
+    break;
+  default:
+    assert(0);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_mpi_comm
+ *
+ *****************************************************************************/
+
+__host__ int pe_mpi_comm(pe_t * pe, MPI_Comm * comm) {
+
+  assert(pe);
+  assert(comm);
+
+  *comm = pe->comm;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pe_mpi_rank
+ *
+ *****************************************************************************/
+
+__host__ int pe_mpi_rank(pe_t * pe) {
+
+  assert(pe);
+
+  return pe->mpi_rank;
+}
+
+/*****************************************************************************
+ *
+ *  pe_mpi_size
+ *
+ *****************************************************************************/
+
+__host__ int pe_mpi_size(pe_t * pe) {
+
+  assert(pe);
+
+  return pe->mpi_size;
+}
+
+/*****************************************************************************
+ *
+ *  pe_comm, pe_rank, pe_size, ...
+ *
+ *****************************************************************************/
+
+__host__ MPI_Comm pe_comm(void) {
+  MPI_Comm comm;
+  assert(pe_static);
+  pe_mpi_comm(pe_static, &comm);
+  return comm;
+}
+
+__host__ int pe_rank(void) {
+  assert(pe_static);
+  return pe_mpi_rank(pe_static);
+}
+
+__host__ int pe_size(void) {
+  assert(pe_static);
+  return pe_mpi_size(pe_static);
+}
+
+__host__ void info(const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe_static);
+
+  if (pe_static->mpi_rank == 0) {
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+  }
+
   return;
 }
+
+__host__ void fatal(const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe_static);
+
+  printf("[%d] ", pe_static->mpi_rank);
+
+  va_start(args, fmt);
+  vprintf(fmt, args);
+  va_end(args);
+
+  /* Considered a successful exit (code 0). */
+
+  MPI_Abort(pe_static->comm, 0);
+
+  return;
+}
+
+__host__ void verbose(const char * fmt, ...) {
+
+  va_list args;
+
+  assert(pe_static);
+
+  printf("[%d] ", pe_static->mpi_rank);
+
+  va_start(args, fmt);
+  vprintf(fmt, args);
+  va_end(args);
+
+  return;
+}
+

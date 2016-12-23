@@ -119,7 +119,7 @@ Input radius maximum:         7.2500000e+00
 Final cell list:              3 3 3
 Final cell lengths:           1.0666667e+01  1.0666667e+01  1.0666667e+01
 
-Gradient calcaulation: 3d_7pt_solid
+Gradient calculation: 3d_7pt_solid
 
 
 Initialising Q_ab to cholesteric

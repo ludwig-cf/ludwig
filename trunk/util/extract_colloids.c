@@ -11,20 +11,17 @@
  *  to arrange the header, and the output appropriately. The read
  *  can be ascii or binary and is set by the switch below.
  *
- *  Compile against the ludwig library, e.g.,
- *  $ cd ../targetDP
- *  $ make
- *  $ cd ../src
- *  $ make serial
- *  $ cd ../util
- *  $ $(CC) -I../mpi_s -I../src -I../targetDP extract_colloids.c \
- *          -L../mpi_s -lmpi -L../src -lludwig -lm -o extract_colloids
+ *  For compilation instructions see the Makefile.
  *
- *  $ ./a.out <colloid file name> <nfile> <csv file name>
+ *  $ make extract_colloids
  *
- *  where the first argument is the file name stub
- *        the second is the number of parallel files
- *        and the third is the (single) ouput file name
+ *  $ ./a.out <colloid file name stub> <nfile> <csv file name>
+ *
+ *  where the
+ *    
+ *  1st argument is the file name stub (in front of the last dot),
+ *  2nd argument is the number of parallel files (as set with XXX_io_grid),
+ *  3rd argyment is the (single) ouput file name.
  *
  *  If you have a set of files, try (eg. here with 4 parallel output files),
  *
@@ -35,7 +32,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -44,12 +41,13 @@
 
 #include "colloid.h"
 
-#define NX 48
-#define NY 48
-#define NZ 48
+#define NX 66
+#define NY 128
+#define NZ 256
 
-static const int  iread_ascii = 0;       /* Read ascii or binary */
+static const int  iread_ascii = 0;       /* Read ascii or binary (default) */
 static const int  reverse_cds = 0;       /* Reverse component order in output */
+					 /* (default is no) */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f,";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
@@ -59,7 +57,7 @@ void colloids_to_csv_header_with_m(FILE * fp);
 
 int main(int argc, char ** argv) {
 
-  int n, np;
+  int n;
   int nf, nfile;
   int ncolloid;
   int ncount = 0;
@@ -67,8 +65,8 @@ int main(int argc, char ** argv) {
   colloid_state_t s1;
   colloid_state_t s2;
 
-  FILE * fp_colloids;
-  FILE * fp_csv;
+  FILE * fp_colloids = NULL;
+  FILE * fp_csv = NULL;
   char filename[FILENAME_MAX];
 
   if (argc != 4) {

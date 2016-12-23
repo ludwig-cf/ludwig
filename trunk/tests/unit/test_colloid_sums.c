@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -25,13 +25,14 @@
 
 static int dim_; /* Current direction */
 
-static int test_colloid_sums_1d(void);
+static int test_colloid_sums_1d(pe_t * pe);
 static int test_colloid_sums_reference_set(colloid_t * cref, int seed);
 static int test_colloid_sums_copy(colloid_t ref, colloid_t * pc);
 static int test_colloid_sums_assert(colloid_t c1, colloid_t * c2);
-static int test_colloid_sums_edge(int ncell[3], const double r0[3]);
-static int test_colloid_sums_move(void);
-static int test_colloid_sums_conservation(void);
+static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
+				  const double r0[3]);
+static int test_colloid_sums_move(pe_t * pe);
+static int test_colloid_sums_conservation(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -41,14 +42,16 @@ static int test_colloid_sums_conservation(void);
 
 int test_colloid_sums_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
 
-  test_colloid_sums_1d();
-  test_colloid_sums_move();
-  test_colloid_sums_conservation();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  info("PASS     ./unit/test_colloid_sums\n");
-  pe_finalise();
+  test_colloid_sums_1d(pe);
+  test_colloid_sums_move(pe);
+  test_colloid_sums_conservation(pe);
+
+  pe_info(pe, "PASS     ./unit/test_colloid_sums\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -62,21 +65,25 @@ int test_colloid_sums_suite(void) {
  *
  *****************************************************************************/
 
-static int test_colloid_sums_1d(void) {
+static int test_colloid_sums_1d(pe_t * pe) {
 
   int ntotal[3] = {1024, 512, 256};
   int nlocal[3];
   int ncell[3];
 
   double r0[3];
+  cs_t * cs = NULL;
 
-  coords_ntotal_set(ntotal);
-  coords_init();
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
 
   /* We use cells > 2 to prevent copies in directions other than dim_
    * when a call to colloids_halo_state() is made. */
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   dim_ = X;
   ncell[X] = 4;
@@ -87,29 +94,29 @@ static int test_colloid_sums_1d(void) {
   r0[Y] = Lmin(Y) + 0.5*nlocal[Y];
   r0[Z] = Lmin(Z) + 0.5*nlocal[Z];
 
-  test_colloid_sums_edge(ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   ncell[X] = 2;
   ncell[Y] = 4;
   ncell[Z] = 3;
 
-  test_colloid_sums_edge(ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   dim_ = Y;
   r0[X] = Lmin(X) + 0.5*nlocal[X];
   r0[Y] = Lmin(Y) + 0.5;
   r0[Z] = Lmin(Z) + 0.5*nlocal[Z];
 
-  test_colloid_sums_edge(ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
   dim_ = Z;
   r0[X] = Lmin(X) + 0.5*nlocal[X];
   r0[Y] = Lmin(Y) + 0.5*nlocal[Y];
   r0[Z] = Lmin(Z) + 0.5;
 
-  test_colloid_sums_edge(ncell, r0);
+  test_colloid_sums_edge(pe, cs, ncell, r0);
 
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -122,8 +129,8 @@ static int test_colloid_sums_1d(void) {
  *
  *****************************************************************************/
 
-static int test_colloid_sums_edge(int ncell[3], const double r0[3]) {
-
+static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
+				  const double r0[3]) {
   int index;
   int ic, jc, kc;
 
@@ -136,7 +143,7 @@ static int test_colloid_sums_edge(int ncell[3], const double r0[3]) {
   test_colloid_sums_reference_set(&cref1, 1);
   test_colloid_sums_reference_set(&cref2, 2);
 
-  colloids_info_create(ncell, &cinfo);
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
   colloid_sums_create(cinfo, &halosum);
   assert(halosum);
@@ -344,7 +351,7 @@ static int test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
  *
  *****************************************************************************/
 
-static int test_colloid_sums_move(void) {
+static int test_colloid_sums_move(pe_t * pe) {
 
   int index;
   int ic, jc, kc;
@@ -354,13 +361,17 @@ static int test_colloid_sums_move(void) {
   double r0[3] = {56.55, 8.55, 3.0};
   double dx;
 
+  cs_t * cs = NULL;
   colloid_t * pc;
   colloids_info_t * cinfo = NULL;
 
-  coords_ntotal_set(ntotal);
-  coords_init();
+  assert(pe);
 
-  colloids_info_create(ncell, &cinfo);
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   dx = 1.0*ntotal[X]/nstep;
@@ -398,7 +409,7 @@ static int test_colloid_sums_move(void) {
   /* Success */
 
   colloids_info_free(cinfo);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -412,7 +423,7 @@ static int test_colloid_sums_move(void) {
  *
  *****************************************************************************/
 
-int test_colloid_sums_conservation(void) {
+int test_colloid_sums_conservation(pe_t * pe) {
 
   int index;
   int ic, jc, kc;
@@ -420,13 +431,17 @@ int test_colloid_sums_conservation(void) {
   int ncell[3] = {8, 8, 8};
   double r0[3] = {32.0, 32.0, 32.0};
 
+  cs_t * cs = NULL;
   colloid_t * pc;
   colloids_info_t * cinfo = NULL;
 
-  coords_ntotal_set(ntotal);
-  coords_init();
+  assert(pe);
 
-  colloids_info_create(ncell, &cinfo);
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   index = 1;
@@ -467,7 +482,7 @@ int test_colloid_sums_conservation(void) {
   /* Success */
 
   colloids_info_free(cinfo);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }

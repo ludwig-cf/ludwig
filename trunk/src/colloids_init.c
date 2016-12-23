@@ -16,42 +16,41 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <math.h>
 #include <assert.h>
 
-#include "pe.h"
 #include "ran.h"
-#include "coords.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
-#include "wall.h"
 
 static int colloids_init_check_state(colloids_info_t * cinfo, double hmax);
 static int colloids_init_random_set(colloids_info_t * cinfo, int n,
 				    const colloid_state_t * s,  double amax);
-static int colloids_init_check_wall(colloids_info_t * cinfo, double dh);
+static int colloids_init_check_wall(pe_t * pe, cs_t * cs,
+				    colloids_info_t * cinfo, wall_t * wall,
+				    double dh);
 
 /*****************************************************************************
  *
  *  colloids_init_random
  *
  *  Run the initialisation with a total of np particles.
- *  If np = 1, use the position of the given particle;
- *  otherwise, use random positions.
+ *  Use random positions.
  *
  *****************************************************************************/
 
-int colloids_init_random(colloids_info_t * cinfo, int np,
-			 const colloid_state_t * s0, double dh) {
+int colloids_init_random(pe_t * pe, cs_t * cs, colloids_info_t * cinfo, int np,
+			 const colloid_state_t * s0, wall_t * wall, double dh) {
 
   double amax;
   double hmax;
-  colloid_t * pc;
 
+  assert(pe);
+  assert(cs);
   assert(cinfo);
 
   /* Assume maximum size set by ah and small separation dh */
@@ -62,7 +61,7 @@ int colloids_init_random(colloids_info_t * cinfo, int np,
   colloids_halo_state(cinfo);
   colloids_init_check_state(cinfo, hmax);
 
-  if (wall_present()) colloids_init_check_wall(cinfo, dh);
+  colloids_init_check_wall(pe, cs, cinfo, wall, dh);
   colloids_info_ntotal_set(cinfo);
 
   return 0;
@@ -196,40 +195,43 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
  *
  *****************************************************************************/
 
-static int colloids_init_check_wall(colloids_info_t * cinfo, double dh) {
-
-  int ic, jc, kc, ia;
-  int ncell[3];
+static int colloids_init_check_wall(pe_t * pe, cs_t * cs,
+				    colloids_info_t * cinfo, wall_t * wall,
+				    double dh) {
+  int ia;
   int ifailocal = 0;
   int ifail;
+  int iswall[3];
+  double lmin[3];
+  double ltot[3];
+  MPI_Comm comm;
 
   colloid_t * pc = NULL;
 
+  assert(pe);
+  assert(cs);
+  assert(wall);
   assert(cinfo);
   assert(dh >= 0.0);
-  colloids_info_ncell(cinfo, ncell);
 
-  for (ic = 1; ic <= ncell[X]; ic++) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
+  cs_lmin(cs, lmin);
+  cs_ltot(cs, ltot);
+  wall_present_dim(wall, iswall);
 
-	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
+  colloids_info_local_head(cinfo, &pc);
 
-	while (pc) {
-	  for (ia = 0; ia < 3; ia++) {
-	    if (pc->s.r[ia] <= Lmin(ia) + pc->s.ah + dh) ifailocal = 1;
-	    if (pc->s.r[ia] >= Lmin(ia) + L(ia) - pc->s.ah - dh) ifailocal = 1;
-	  }
-	  pc = pc->next;
-	}
-
-      }
+  for ( ; pc; pc = pc->nextlocal) {
+    for (ia = 0; ia < 3; ia++) {
+      if (iswall[ia] == 0) continue;
+      if (pc->s.r[ia] <= lmin[ia] + pc->s.ah + dh) ifailocal = 1;
+      if (pc->s.r[ia] >= lmin[ia] + ltot[ia] - pc->s.ah - dh) ifailocal = 1;
     }
   }
 
-  MPI_Allreduce(&ifailocal, &ifail, 1, MPI_INT, MPI_SUM, pe_comm());
+  pe_mpi_comm(pe, &comm);
+  MPI_Allreduce(&ifailocal, &ifail, 1, MPI_INT, MPI_SUM, comm);
 
-  if (ifail) fatal("Colloid initial position overlaps wall\n");
+  if (ifail) pe_fatal(pe, "Colloid initial position overlaps wall\n");
 
   return 0;
 }

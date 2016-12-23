@@ -26,13 +26,13 @@
 #include "tests.h"
 
 static int testf2(int ic, int jc, int kc, int n, void * ref);
-static int do_test1(void);
-static int do_test2(void);
-static int do_test_halo1(void);
-static int do_test_halo2(void);
-static int do_test_bjerrum(void);
-static int do_test_ionic_strength(void);
-static int do_test_io1(void);
+static int do_test1(pe_t * pe);
+static int do_test2(pe_t * pe);
+static int do_test_halo1(pe_t * pe);
+static int do_test_halo2(pe_t * pe);
+static int do_test_bjerrum(pe_t * pe);
+static int do_test_ionic_strength(pe_t * pe);
+static int do_test_io1(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -42,18 +42,20 @@ static int do_test_io1(void);
 
 int test_psi_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
 
-  do_test1();
-  do_test2();
-  do_test_halo1();
-  do_test_halo2();
-  do_test_io1();
-  do_test_bjerrum();
-  do_test_ionic_strength();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  info("PASS     ./unit/test_psi\n");
-  pe_finalise();
+  do_test1(pe);
+  do_test2(pe);
+  do_test_halo1(pe);
+  do_test_halo2(pe);
+  do_test_io1(pe);
+  do_test_bjerrum(pe);
+  do_test_ionic_strength(pe);
+
+  pe_info(pe, "PASS     ./unit/test_psi\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -66,7 +68,7 @@ int test_psi_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test1(void) {
+static int do_test1(pe_t * pe) {
 
   int nk;
   int iv, n;
@@ -75,12 +77,16 @@ static int do_test1(void) {
   double diffusivity[3] = {1.0, 2.0, 3.0};
   double eunit = -1.0;
 
+  cs_t * cs;
   psi_t * psi;
 
-  coords_init();
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   nk = 3;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_nk(psi, &n);
   assert(n == 3);
@@ -101,8 +107,7 @@ static int do_test1(void) {
   assert(fabs(eunit - e) < DBL_EPSILON);
 
   psi_free(psi);
-
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -115,7 +120,7 @@ static int do_test1(void) {
  *
  *****************************************************************************/
 
-static int do_test2(void) {
+static int do_test2(pe_t * pe) {
 
   int nk = 2;
   int iv, n;
@@ -125,11 +130,15 @@ static int do_test2(void) {
   double valency[2] = {1, 2};
   double diffusivity[2] = {1.0, 2.0};
 
-  psi_t * psi;
+  cs_t * cs = NULL;
+  psi_t * psi = NULL;
 
-  coords_init();
+  assert(pe);
 
-  psi_create(nk, &psi);
+  cs_create(pe, &cs);
+  cs_init(cs);
+
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_nk(psi, &n);
   assert(n == 2);
@@ -161,7 +170,7 @@ static int do_test2(void) {
   assert(fabs(value - ref) < DBL_EPSILON);
 
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -175,17 +184,21 @@ static int do_test2(void) {
  *
  *****************************************************************************/
 
-static int do_test_halo1(void) {
+static int do_test_halo1(pe_t * pe) {
 
   int nk;
   int nhalo = 2;
-  psi_t * psi;
+  cs_t * cs = NULL;
+  psi_t * psi = NULL;
 
-  coords_nhalo_set(nhalo);
-  coords_init();
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
 
   nk = 3;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
 
   test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
@@ -201,7 +214,7 @@ static int do_test_halo1(void) {
   test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, testf2);
 
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -214,12 +227,15 @@ static int do_test_halo1(void) {
  *
  *****************************************************************************/
 
-static int do_test_halo2(void) {
+static int do_test_halo2(pe_t * pe) {
 
   int nk;
   int grid[3];
   int nhalo = 3;
+  cs_t * cs = NULL;
   psi_t * psi;
+
+  assert(pe);
 
   /* Use a 1-d decomposition, which increases the number of
    * MPI tasks in one direction cf. the default. */
@@ -228,12 +244,13 @@ static int do_test_halo2(void) {
   grid[1] = pe_size();
   grid[2] = 1;
 
-  coords_decomposition_set(grid);
-  coords_nhalo_set(nhalo);
-  coords_init();
+  cs_create(pe, &cs);
+  cs_decomposition_set(cs, grid);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
 
   nk = 2;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
 
   test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
@@ -245,7 +262,7 @@ static int do_test_halo2(void) {
   test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -260,16 +277,20 @@ static int do_test_halo2(void) {
  * 
  *****************************************************************************/
 
-static int do_test_io1(void) {
+static int do_test_io1(pe_t * pe) {
 
   int nk;
   int grid[3] = {1, 1, 1};
-  char * filename = "psi-test-io";
+  const char * filename = "psi-test-io";
 
+  cs_t * cs = NULL;
   psi_t * psi = NULL;
   io_info_t * iohandler = NULL;
 
-  coords_init();
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   if (pe_size() == 8) {
     grid[X] = 2;
@@ -278,7 +299,7 @@ static int do_test_io1(void) {
   }
 
   nk = 2;
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
@@ -295,7 +316,7 @@ static int do_test_io1(void) {
   /* Recreate, and read. This zeros out all the fields, so they
    * must be read correctly to pass. */
 
-  psi_create(nk, &psi);
+  psi_create(pe, cs, nk, &psi);
   psi_init_io_info(psi, grid, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
 
   psi_io_info(psi, &iohandler);
@@ -314,7 +335,7 @@ static int do_test_io1(void) {
   io_remove_metadata(iohandler, "psi");
 
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -338,7 +359,7 @@ static int do_test_io1(void) {
  *
  *****************************************************************************/
 
-static int do_test_bjerrum(void) {
+static int do_test_bjerrum(pe_t * pe) {
 
   psi_t * psi = NULL;
   double eref = 1.0;
@@ -346,8 +367,14 @@ static int do_test_bjerrum(void) {
   double ktref = 0.00001;
   double tmp, lbref, ldebyeref;
 
-  coords_init();
-  psi_create(2, &psi);
+  cs_t * cs = NULL;
+  PI_DOUBLE(pi_);
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  psi_create(pe, cs, 2, &psi);
 
   psi_beta_set(psi, 1.0/ktref);
   psi_beta(psi, &tmp);
@@ -371,7 +398,7 @@ static int do_test_bjerrum(void) {
   assert(fabs(ldebyeref - tmp) < DBL_EPSILON);
 
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -385,7 +412,7 @@ static int do_test_bjerrum(void) {
  *
  *****************************************************************************/
 
-static int do_test_ionic_strength(void) {
+static int do_test_ionic_strength(pe_t * pe) {
 
   int n, nk = 2;
   psi_t * psi = NULL;
@@ -395,9 +422,13 @@ static int do_test_ionic_strength(void) {
   double rho[2] = {1.0, 2.0};
   double rhoi;
   double expect;
+  cs_t * cs = NULL;
 
-  coords_init();
-  psi_create(nk, &psi);
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  psi_create(pe, cs, nk, &psi);
 
   for (n = 0; n < nk; n++) {
     psi_valency_set(psi, n, valency[n]);
@@ -410,7 +441,7 @@ static int do_test_ionic_strength(void) {
   assert(fabs(expect - rhoi) < DBL_EPSILON);
 
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }

@@ -1,0 +1,18 @@
+#!/bin/bash --login
+
+#PBS -N qscript
+#PBS -l select=72
+#PBS -l walltime=00:20:00
+#PBS -l place=excl
+#PBS -A z04
+
+# Change to the directory that the job was submitted from
+cd $PBS_O_WORKDIR
+
+export OMP_NUM_THREADS=36
+
+module load mpt
+module load intel-compilers-16
+module list
+
+mpiexec_mpt -n 1 -ppn 1 omplace -nt 36 -c 0-17,36-53 ./Ludwig.exe

@@ -409,7 +409,7 @@ lj_epsilon 0.0003
 #  porous_media_file filestub    If present, the file filestub.001-001
 #                                should contain porous media data
 #  porous_media_format           [ASCII|BINARY] file format [default BINARY]
-#  porous_media_type             [status_only|status_with_h]
+#  porous_media_type             [status_only|status_with_h|status_with_sigma]
 #                                determines type of porous media data to be
 #                                supplied
 #
@@ -424,6 +424,7 @@ boundary_lubrication_rcnormal 0.0
 #porous_media_format BINARY
 #porous_media_file   capillary_8_8_32.dat
 #porous_media_type   status_only
+#porous_media_io_grid 1_1_1
 
 ###############################################################################
 #
@@ -535,7 +536,11 @@ colloid_io_format_output BINARY
 #  electrokinetics_eunit      unit charge        default +1.0
 #  electrokinetics_epsilon    permeativity (ref) default 0.0
 #
-#  electrokinetics_init		[gouy_chapman|liquid_junction|uniform]
+#  electrokinetics_init       gouy_chapman
+#                             liquid_junction
+#                             uniform
+#                             point_charges
+#
 #  electrokinetics_init_rho_el	electrolyte concentration
 #  electrokinetics_init_sigma	surface charge density
 #
