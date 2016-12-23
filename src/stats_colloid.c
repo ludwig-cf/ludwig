@@ -44,6 +44,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
   double glocal[3] = {0.0, 0.0, 0.0};
   double rho0;
   double mass;
+  PI_DOUBLE(pi);
 
   colloid_t * pc = NULL;
 
@@ -62,7 +63,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
-	  mass = 4.0*pi_*pow(pc->s.a0, 3)*rho0/3.0;
+	  mass = 4.0*pi*pow(pc->s.a0, 3)*rho0/3.0;
 	  if (pc->s.type == COLLOID_TYPE_SUBGRID) mass = 0.0; /* No inertia */
 
 	  glocal[X] += mass*pc->s.v[X];

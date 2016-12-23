@@ -8,17 +8,19 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef LESLIE_ERICKSEN_H
 #define LESLIE_ERICKSEN_H
 
-#include "field.h"
+#include "coords.h"
+#include "polar_active.h"
 #include "hydro.h"
 
-int leslie_ericksen_update(field_t * p, hydro_t * hydro);
+int leslie_ericksen_update(cs_t * cs, fe_polar_t * fe, field_t * p,
+			   hydro_t * hydro);
 int leslie_ericksen_gamma_set(const double gamma);
 int leslie_ericksen_swim_set(const double gamma);
 

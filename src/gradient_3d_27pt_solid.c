@@ -29,7 +29,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,15 +37,23 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "free_energy.h"
+#include "kernel.h"
+#include "map_s.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "gradient_3d_27pt_solid.h"
 
-static map_t * map = NULL;
+struct solid_s {
+  map_t * map;
+  fe_symm_t * fe_symm;
+};
+
+static struct solid_s static_solid = {0};
 
 /* These are the 'links' used to form the gradients at boundaries. */
 
 #define NGRAD_ 27
-static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
+static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
                                  {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
                                  {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
@@ -56,24 +64,24 @@ static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
 				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
 
-static void gradient_3d_27pt_solid_op(const int nop,
-				      const double * field,
-				      double * gradient,
-				      double * delsq,
-				      const int nextra);
+
+__global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
+					  field_grad_t * fg,
+					  map_t * map,
+					  double rkappa);
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_solid_map_set
+ *  grad_3d_27pt_solid_map_set
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_solid_map_set(map_t * map_in) {
+__host__ int grad_3d_27pt_solid_map_set(map_t * map) {
 
   int ndata;
-  assert(map_in);
+  assert(map);
 
-  map = map_in;
+  static_solid.map = map;
 
   /* We expect at most two wetting parameters; if present
    * first should be C, second H. Default to zero. */
@@ -86,150 +94,198 @@ int gradient_3d_27pt_solid_map_set(map_t * map_in) {
 
 /*****************************************************************************
  *
- *  gradient_3d_27pt_solid_d2
+ *  grad_3d_27pt_solid_fe_set
  *
  *****************************************************************************/
 
-int gradient_3d_27pt_solid_d2(const int nop, const double * field,double * t_field,
-				double * grad,double * t_grad, double * delsq, double * t_delsq) {
+__host__ int grad_3d_27pt_solid_fe_set(fe_symm_t * fe) {
+
+  assert(fe);
+
+  static_solid.fe_symm = fe;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_27pt_solid_d2
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   int nextra;
+  int nlocal[3];
+  double rkappa;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  fe_symm_param_t param;
 
   nextra = coords_nhalo() - 1;
+  coords_nlocal(nlocal);
   assert(nextra >= 0);
+  assert(static_solid.map);
+  assert(static_solid.fe_symm);
 
-  gradient_3d_27pt_solid_op(nop, field, grad, delsq, nextra);
+  fe_symm_param(static_solid.fe_symm, &param);
+  rkappa = 1.0/param.kappa;
+
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  __host_launch(grad_3d_27pt_solid_kernel, nblk, ntpb, ctxt->target,
+		fgrad->target, static_solid.map->target, rkappa);
+
+  targetDeviceSynchronise();
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
 
 /****************************************************************************
  *
- *  gradient_3d_27pt_solid_op
+ *  grad_3d_27pt_solid_kernel
  *
- *  This calculation can be extended into the halo region by
- *  nextra points in each direction.
+ *  kappa is the interfacial energy penalty in the symmetric picture.
+ *  rkappa is (1.0/kappa). 
  *
  ****************************************************************************/
 
-static void gradient_3d_27pt_solid_op(const int nop, const double * field,
-				      double * grad, double * delsq,
-				      int nextra) {
-  int nlocal[3];
-  int ic, jc, kc, ic1, jc1, kc1;
-  int ia, index, p;
-  int n;
-
-  int isite[NGRAD_];
-
-  double count[NGRAD_];
-  double gradt[NGRAD_];
-  double gradn[3];
-  double dphi;
-  double rk;
-  double c, h, phi_b;
-
-  int status;
-  double wet[2] = {0.0, 0.0};
-
+__global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
+					  field_grad_t * fg,
+					  map_t * map,
+					  double rkappa) {
+  int kindex;
+  int kiterations;
   const double r9 = (1.0/9.0);     /* normaliser for grad */
   const double r18 = (1.0/18.0);   /* normaliser for delsq */
 
-  coords_nlocal(nlocal);
 
-  rk = 1.0/fe_kappa();
+  kiterations = kernel_iterations(ktx);
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+  __target_simt_parallel_for(kindex, kiterations, 1) {
 
-	index = coords_index(ic, jc, kc);
-	map_status(map, index, &status);
-	if (status != MAP_FLUID) continue;
+    int nop;
+    int ic, jc, kc, ic1, jc1, kc1;
+    int ia, index, p;
+    int n;
 
-	/* Set solid/fluid flag to index neighbours */
+    int isite[NGRAD_];
+
+    double count[NGRAD_];
+    double gradt[NGRAD_];
+    double gradn[3];
+    double dphi;
+    double c, h, phi_b;
+
+    int status;
+    double wet[2] = {0.0, 0.0};
+
+    field_t * phi = NULL;
+
+    nop = fg->field->nf;
+    phi = fg->field;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = kernel_coords_index(ktx, ic, jc, kc);
+    map_status(map, index, &status);
+
+    if (status == MAP_FLUID) {
+
+      /* Set solid/fluid flag to index neighbours */
+
+      for (p = 1; p < NGRAD_; p++) {
+	ic1 = ic + bs_cv[p][X];
+	jc1 = jc + bs_cv[p][Y];
+	kc1 = kc + bs_cv[p][Z];
+
+	isite[p] = kernel_coords_index(ktx, ic1, jc1, kc1);
+	map_status(map, isite[p], &status);
+	if (status != MAP_FLUID) isite[p] = -1;
+      }
+
+      for (n = 0; n < nop; n++) {
+
+	for (ia = 0; ia < 3; ia++) {
+	  count[ia] = 0.0;
+	  gradn[ia] = 0.0;
+	}
+	  
+	for (p = 1; p < NGRAD_; p++) {
+
+	  if (isite[p] == -1) continue;
+
+	  dphi
+	    = phi->data[addr_rank1(phi->nsites, nop, isite[p], n)]
+	    - phi->data[addr_rank1(phi->nsites, nop, index,    n)];
+	  gradt[p] = dphi;
+
+	  for (ia = 0; ia < 3; ia++) {
+	    gradn[ia] += bs_cv[p][ia]*dphi;
+	    count[ia] += bs_cv[p][ia]*bs_cv[p][ia];
+	  }
+	}
+
+	for (ia = 0; ia < 3; ia++) {
+	  if (count[ia] > 0.0) gradn[ia] /= count[ia];
+	}
+
+	/* Estimate gradient at boundaries */
 
 	for (p = 1; p < NGRAD_; p++) {
-	  ic1 = ic + bs_cv[p][X];
-	  jc1 = jc + bs_cv[p][Y];
-	  kc1 = kc + bs_cv[p][Z];
 
-	  isite[p] = coords_index(ic1, jc1, kc1);
-	  map_status(map, isite[p], &status);
-	  if (status != MAP_FLUID) isite[p] = -1;
+	  if (isite[p] == -1) {
+	    phi_b = phi->data[addr_rank1(phi->nsites, nop, index, n)]
+	      + 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
+		     + bs_cv[p][Z]*gradn[Z]);
+
+	    /* Set gradient phi at boundary following wetting properties */
+
+	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
+				     kc + bs_cv[p][Z]);
+	    map_data(map, ia, wet);
+	    c = wet[0];
+	    h = wet[1];
+
+	    /* kludge: if nop is 2, set h[1] = 0 */
+	    /* This is for Langmuir Hinshelwood */
+	    c = (1 - n)*c;
+	    h = (1 - n)*h;
+
+	    gradt[p] = -(c*phi_b + h)*rkappa;
+	  }
 	}
-
-	for (n = 0; n < nop; n++) {
-
-	  for (ia = 0; ia < 3; ia++) {
-	    count[ia] = 0.0;
-	    gradn[ia] = 0.0;
-	  }
-	  
-	  for (p = 1; p < NGRAD_; p++) {
-
-	    if (isite[p] == -1) continue;
-	    dphi = field[nop*isite[p] + n] - field[nop*index + n];
-	    gradt[p] = dphi;
-
-	    for (ia = 0; ia < 3; ia++) {
-	      gradn[ia] += bs_cv[p][ia]*dphi;
-	      count[ia] += bs_cv[p][ia]*bs_cv[p][ia];
-	    }
-	  }
-
-	  for (ia = 0; ia < 3; ia++) {
-	    if (count[ia] > 0.0) gradn[ia] /= count[ia];
-	  }
-
-	  /* Estimate gradient at boundaries */
-
-	  for (p = 1; p < NGRAD_; p++) {
-
-	    if (isite[p] == -1) {
-	      phi_b = field[nop*index + n]
-		+ 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
-		       + bs_cv[p][Z]*gradn[Z]);
-
-	      /* Set gradient phi at boundary following wetting properties */
-
-	      ia = coords_index(ic + bs_cv[p][X], jc + bs_cv[p][Y],
-				 kc + bs_cv[p][Z]);
-	      map_data(map, ia, wet);
-	      c = wet[0];
-	      h = wet[1];
-
-	      /* kludge: if nop is 2, set h[1] = 0 */
-	      /* This is for Langmuir Hinshelwood */
-	      c = (1 - n)*c;
-	      h = (1 - n)*h;
-
-	      gradt[p] = -(c*phi_b + h)*rk;
-	    }
-	  }
  
-	  /* Accumulate the final gradients */
+	/* Accumulate the final gradients */
 
-	  dphi = 0.0;
+	dphi = 0.0;
+	for (ia = 0; ia < 3; ia++) {
+	  gradn[ia] = 0.0;
+	}
+
+	for (p = 1; p < NGRAD_; p++) {
+	  dphi += gradt[p];
 	  for (ia = 0; ia < 3; ia++) {
-	    gradn[ia] = 0.0;
-	  }
-
-	  for (p = 1; p < NGRAD_; p++) {
-	    dphi += gradt[p];
-	    for (ia = 0; ia < 3; ia++) {
-	      gradn[ia] += gradt[p]*bs_cv[p][ia];
-	    }
-	  }
-
-	  delsq[nop*index + n] = r9*dphi;
-	  for (ia = 0; ia < 3; ia++) {
-	    grad[3*(nop*index + n) + ia]  = r18*gradn[ia];
+	    gradn[ia] += gradt[p]*bs_cv[p][ia];
 	  }
 	}
 
-	/* Next site */
+	fg->delsq[addr_rank1(phi->nsites, nop, index, n)] = r9*dphi;
+	for (ia = 0; ia < 3; ia++) {
+	  fg->grad[addr_rank2(phi->nsites,nop,3,index,n,ia)] = r18*gradn[ia];
+	}
       }
+
+      /* Next fluid site */
     }
   }
 

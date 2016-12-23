@@ -2,22 +2,25 @@
  *
  *  field.c
  *
- *  Data layout.
+ *  Rank 1 objects: scalar fields, vector fields, and compressed tensor Q_ab.
  *
- *  We store (conceptually) data[nsites][nf], so that components of
- *  a field are stored contiguously. A flattened 1d addressing is
- *  used so that data[index][n] becomes data[nf*index + 1*n].
+ *  The data storage order is determined in memory.h.
  *
- *  To reverse this, use data[nf][nsites], so that addressing
- *  becomes data[n][index] -> data[1*index + nsites*n].
+ *  Lees-Edwards transformation is supported provided the lees_edw_t
+ *  object is supplied at initialisation time. Otherwise, the normal
+ *  cs_t coordinate system applies.
+ *
  *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  Aln Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -29,13 +32,10 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "coords_field.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
-#include "control.h" /* Can we move get_step() to LE please? */
 #include "field_s.h"
-#include "targetDP.h"
 
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
@@ -58,27 +58,32 @@ static int field_leesedwards_parallel(field_t * obj);
  *
  *****************************************************************************/
 
-int field_create(int nf, const char * name, field_t ** pobj) {
+__host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
+			  field_t ** pobj) {
 
   field_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(nf > 0);
   assert(pobj);
 
-  obj = (field_t*) calloc(1, sizeof(field_t));
+  obj = (field_t *) calloc(1, sizeof(field_t));
   if (obj == NULL) fatal("calloc(obj) failed\n");
 
   obj->nf = nf;
-  obj->halo[0] = MPI_DATATYPE_NULL;
-  obj->halo[1] = MPI_DATATYPE_NULL;
-  obj->halo[2] = MPI_DATATYPE_NULL;
 
-  obj->name = (char*) calloc(strlen(name) + 1, sizeof(char));
+  obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
   if (obj->name == NULL) fatal("calloc(name) failed\n");
 
   assert(strlen(name) < BUFSIZ);
   strncpy(obj->name, name, strlen(name));
   obj->name[strlen(name)] = '\0';
+
+  obj->pe = pe;
+  obj->cs = cs;
+  pe_retain(pe);
+  cs_retain(cs);
 
   *pobj = obj;
 
@@ -91,33 +96,30 @@ int field_create(int nf, const char * name, field_t ** pobj) {
  *
  *****************************************************************************/
 
-void field_free(field_t * obj) {
+__host__ int field_free(field_t * obj) {
+
+  int ndevice;
+  double * tmp;
 
   assert(obj);
 
-  if (obj->data) free(obj->data);
+  targetGetDeviceCount(&ndevice);
 
-  if (obj->tcopy) {
-
-    //free data space on target 
-    double* tmpptr;
-    field_t* t_obj = obj->tcopy;
-    copyFromTarget(&tmpptr,&(t_obj->data),sizeof(double*)); 
-    targetFree(tmpptr);
-    
-    //free target copy of structure
-    targetFree(obj->tcopy);
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &obj->target->data, sizeof(double *));
+    targetFree(tmp);
+    targetFree(obj->target);
   }
 
-  if (obj->halo[0] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[0]);
-  if (obj->halo[1] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[1]);
-  if (obj->halo[2] != MPI_DATATYPE_NULL) MPI_Type_free(&obj->halo[2]);
-
+  if (obj->data) free(obj->data);
   if (obj->name) free(obj->name);
-  if (obj->info) io_info_destroy(obj->info);
+  if (obj->halo) halo_swap_free(obj->halo);
+  if (obj->info) io_info_free(obj->info);
+  cs_free(obj->cs);
+  pe_free(obj->pe);
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -126,38 +128,100 @@ void field_free(field_t * obj) {
  *
  *  Initialise the lattice data, MPI halo information.
  *
+ *  The le_t may be NULL, in which case create an instance with
+ *  no planes.
+ *
+ *  TODO:
+ *  The behaviour with no planes (cs_t only) could be refactored
+ *  into two separate classes. 
+ *
  *****************************************************************************/
 
-int field_init(field_t * obj, int nhcomm) {
+__host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 
+  int ndevice;
   int nsites;
+  double * tmp;
 
   assert(obj);
   assert(obj->data == NULL);
-  assert(nhcomm <= coords_nhalo());
 
-  nsites = le_nsites();
-  obj->data = (double*) calloc(obj->nf*nsites, sizeof(double));
+  cs_nsites(obj->cs, &nsites);
+  if (le) lees_edw_nsites(le, &nsites);
 
-  if (obj->data == NULL) fatal("calloc(obj->data) failed\n");
+  obj->le = le;
+  obj->nhcomm = nhcomm;
+  obj->nsites = nsites;
+  obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
+  if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 
-  /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(field_t));
+  /* Allocate target copy of structure (or alias) */
 
-  /* allocate data space on target */
-  double* tmpptr;
-  field_t* t_obj = obj->tcopy;
-  targetCalloc((void**) &tmpptr,obj->nf*nsites*sizeof(double));
-  copyToTarget(&(t_obj->data),&tmpptr,sizeof(double*)); 
+  targetGetDeviceCount(&ndevice);
 
-  copyToTarget(&(t_obj->nf),&(obj->nf),sizeof(int)); //integer with number of field components
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    cs_t * cstarget = NULL;
+    lees_edw_t * letarget = NULL;
+    targetCalloc((void **) &obj->target, sizeof(field_t));
+    targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+    copyToTarget(&obj->target->data, &tmp, sizeof(double *));
 
-  obj->t_data= tmpptr; //DEPRECATED direct access to target data.
+    cs_target(obj->cs, &cstarget);
+    if (le) lees_edw_target(obj->le, &letarget);
+    copyToTarget(&obj->target->cs, &cstarget, sizeof(cs_t *));
+    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
+    field_memcpy(obj, cudaMemcpyHostToDevice);
+  }
 
   /* MPI datatypes for halo */
 
-  obj->nhcomm = nhcomm;
-  coords_field_init_mpi_indexed(obj->nhcomm, obj->nf, MPI_DOUBLE, obj->halo);
+  halo_swap_create_r1(obj->pe, obj->cs, nhcomm, nsites, obj->nf, &obj->halo);
+  assert(obj->halo);
+
+  halo_swap_handlers_set(obj->halo, halo_swap_pack_rank1, halo_swap_unpack_rank1);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int field_memcpy(field_t * obj, int flag) {
+
+  int ndevice;
+  double * tmp;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(obj->target == obj);
+  }
+  else {
+
+    copyFromTarget(&tmp, &obj->target->data, sizeof(double *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
+      copyToTarget(&obj->target->nhcomm, &obj->nhcomm, sizeof(int));
+      copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
+      copyToTarget(tmp, obj->data, obj->nf*obj->nsites*sizeof(double));
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(obj->data, tmp, obj->nf*obj->nsites*sizeof(double));
+      break;
+    default:
+      pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
+      break;
+    }
+  }
 
   return 0;
 }
@@ -168,7 +232,7 @@ int field_init(field_t * obj, int nhcomm) {
  *
  *****************************************************************************/
 
-int field_nf(field_t * obj, int * nf) {
+__host__ __device__ int field_nf(field_t * obj, int * nf) {
 
   assert(obj);
   assert(nf);
@@ -184,14 +248,20 @@ int field_nf(field_t * obj, int * nf) {
  *
  *****************************************************************************/
 
-int field_init_io_info(field_t * obj, int grid[3], int form_in,
-			     int form_out) {
+__host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
+				int form_out) {
+
+  io_info_arg_t args;
+
   assert(obj);
-  assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
-  if (obj->info == NULL) fatal("io_info_create(field) failed\n");
+  args.grid[X] = grid[X];
+  args.grid[Y] = grid[Y];
+  args.grid[Z] = grid[Z];
+
+  io_info_create(obj->pe, obj->cs, &args, &obj->info);
+  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(field) failed\n");
 
   io_info_set_name(obj->info, obj->name);
   io_info_write_set(obj->info, IO_FORMAT_BINARY, field_write);
@@ -212,7 +282,7 @@ int field_init_io_info(field_t * obj, int grid[3], int form_in,
  *
  *****************************************************************************/
 
-int field_io_info(field_t * obj, io_info_t ** info) {
+__host__ int field_io_info(field_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(obj->info);
@@ -229,11 +299,51 @@ int field_io_info(field_t * obj, io_info_t ** info) {
  *
  *****************************************************************************/
 
-int field_halo(field_t * obj) {
+__host__ int field_halo(field_t * obj) {
+
+  int nlocal[3];
+  assert(obj);
+
+  cs_nlocal(obj->cs, nlocal);
+
+  if (nlocal[Z] < obj->nhcomm) {
+    /* This constraint means can't use target method;
+     * this also requires a copy if the address spaces are distinct. */
+    field_memcpy(obj, cudaMemcpyDeviceToHost);
+    field_halo_swap(obj, FIELD_HALO_HOST);
+    field_memcpy(obj, cudaMemcpyHostToDevice);
+  }
+  else {
+    /* Default to ... */
+    field_halo_swap(obj, FIELD_HALO_TARGET);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_halo_swap
+ *
+ *****************************************************************************/
+
+__host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
+
+  double * data;
 
   assert(obj);
-  assert(obj->data);
-  coords_field_halo(obj->nhcomm, obj->nf, obj->data, MPI_DOUBLE, obj->halo);
+
+  switch (flag) {
+  case FIELD_HALO_HOST:
+    halo_swap_host_rank1(obj->halo, obj->data, MPI_DOUBLE);
+    break;
+  case FIELD_HALO_TARGET:
+    copyFromTarget(&data, &obj->target->data, sizeof(double *));
+    halo_swap_packed(obj->halo, data);
+    break;
+  default:
+    assert(0);
+  }
 
   return 0;
 }
@@ -250,11 +360,12 @@ int field_halo(field_t * obj) {
  *
  *****************************************************************************/
 
-int field_leesedwards(field_t * obj) {
+__host__ int field_leesedwards(field_t * obj) {
 
   int nf;
   int nhalo;
   int nlocal[3]; /* Local system size */
+  int nxbuffer;  /* Number of buffer planes */
   int ib;        /* Index in buffer region */
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
@@ -263,8 +374,6 @@ int field_leesedwards(field_t * obj) {
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
-  double t;      /* Time */
-
   const double r6 = (1.0/6.0);
 
   int jdy;               /* Integral part of displacement */
@@ -273,6 +382,8 @@ int field_leesedwards(field_t * obj) {
   assert(obj);
   assert(obj->data);
 
+  if (obj->le == NULL) return 0;
+
   if (cart_size(Y) > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);
@@ -280,19 +391,17 @@ int field_leesedwards(field_t * obj) {
   else {
     /* No messages are required... */
 
-    field_nf(obj, &nf);
-    nhalo = coords_nhalo();
-    coords_nlocal(nlocal);
+    nf = obj->nf;
+    cs_nhalo(obj->cs, &nhalo);
+    cs_nlocal(obj->cs, nlocal);
+    lees_edw_nxbuffer(obj->le, &nxbuffer);
     ib0 = nlocal[X] + nhalo + 1;
 
-    /* -1.0 as zero required for first step; a 'feature' to
-     * maintain the regression tests */
-    t = 1.0*get_step() - 1.0;
+    for (ib = 0; ib < nxbuffer; ib++) {
 
-    for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+      ic = lees_edw_ibuff_to_real(obj->le, ib);
 
-      ic = le_index_buffer_to_real(ib);
-      dy = le_buffer_displacement(ib, t);
+      lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
       dy = fmod(dy, L(Y));
       jdy = floor(dy);
       fr  = 1.0 - (dy - jdy);
@@ -309,17 +418,17 @@ int field_leesedwards(field_t * obj) {
         j3 = 1 + j2 % nlocal[Y];
 
         for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-          index  = nf*le_site_index(ib0 + ib, jc, kc);
-          index0 = nf*le_site_index(ic, j0, kc);
-          index1 = nf*le_site_index(ic, j1, kc);
-          index2 = nf*le_site_index(ic, j2, kc);
-          index3 = nf*le_site_index(ic, j3, kc);
+          index  = lees_edw_index(obj->le, ib0 + ib, jc, kc);
+          index0 = lees_edw_index(obj->le, ic, j0, kc);
+          index1 = lees_edw_index(obj->le, ic, j1, kc);
+          index2 = lees_edw_index(obj->le, ic, j2, kc);
+          index3 = lees_edw_index(obj->le, ic, j3, kc);
           for (n = 0; n < nf; n++) {
-            obj->data[index + n] =
-              -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[index0 + n]
-              + 0.5*(fr*fr-1.0)*(fr-2.0)*obj->data[index1 + n]
-              - 0.5*fr*(fr+1.0)*(fr-2.0)*obj->data[index2 + n]
-              +        r6*fr*(fr*fr-1.0)*obj->data[index3 + n];
+            obj->data[addr_rank1(obj->nsites, nf, index, n)] =
+              -  r6*fr*(fr-1.0)*(fr-2.0)*obj->data[addr_rank1(obj->nsites, nf, index0, n)]
+              + 0.5*(fr*fr-1.0)*(fr-2.0)*obj->data[addr_rank1(obj->nsites, nf, index1, n)]
+              - 0.5*fr*(fr+1.0)*(fr-2.0)*obj->data[addr_rank1(obj->nsites, nf, index2, n)]
+              +        r6*fr*(fr*fr-1.0)*obj->data[addr_rank1(obj->nsites, nf, index3, n)];
           }
         }
       }
@@ -349,8 +458,9 @@ int field_leesedwards(field_t * obj) {
 static int field_leesedwards_parallel(field_t * obj) {
 
   int nf;
-  int      nlocal[3];      /* Local system size */
-  int      noffset[3];     /* Local starting offset */
+  int nlocal[3];           /* Local system size */
+  int noffset[3];          /* Local starting offset */
+  int nxbuffer;            /* Number of buffer planes */
   int ib;                  /* Index in buffer region */
   int ib0;                 /* buffer region offset */
   int ic;                  /* Index corresponding x location in real system */
@@ -363,12 +473,14 @@ static int field_leesedwards_parallel(field_t * obj) {
 
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
-  double t;                /* Time */
-  double * buffer;         /* Interpolation buffer */
   const double r6 = (1.0/6.0);
 
+  int      nsend;          /* Send buffer size */
+  int      nrecv;          /* Recv buffer size */
   int      nrank_s[3];     /* send ranks */
   int      nrank_r[3];     /* recv ranks */
+  double * sendbuf = NULL; /* Send buffer */
+  double * recvbuf = NULL; /* Interpolation buffer */
 
   const int tag0 = 1256;
   const int tag1 = 1257;
@@ -379,36 +491,38 @@ static int field_leesedwards_parallel(field_t * obj) {
   MPI_Status  status[3];
 
   assert(obj);
+  assert(obj->le);
 
   field_nf(obj, &nf);
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nhalo(obj->cs, &nhalo);
+  cs_nlocal(obj->cs, nlocal);
+  cs_nlocal_offset(obj->cs, noffset);
   ib0 = nlocal[X] + nhalo + 1;
 
-  le_comm = le_communicator();
+  lees_edw_comm(obj->le, &le_comm);
+  lees_edw_nxbuffer(obj->le, &nxbuffer);
 
-  /* Allocate the temporary buffer */
+  /* Allocate buffer space */
 
-  n = nf*(nlocal[Y] + 2*nhalo + 3)*(nlocal[Z] + 2*nhalo);
+  nsend = nf*nlocal[Y]*(nlocal[Z] + 2*nhalo);
+  nrecv = nf*(nlocal[Y] + 2*nhalo + 3)*(nlocal[Z] + 2*nhalo);
 
-  buffer = (double *) malloc(n*sizeof(double));
-  if (buffer == NULL) fatal("malloc(buffer) failed\n");
-  /* -1.0 as zero required for fisrt step; this is a 'feature'
-   * to ensure the regression tests stay te same */
+  sendbuf = (double *) malloc(nsend*sizeof(double));
+  recvbuf = (double *) malloc(nrecv*sizeof(double));
 
-  t = 1.0*get_step() - 1.0;
+  if (sendbuf == NULL) fatal("malloc(sendbuf) failed\n");
+  if (recvbuf == NULL) fatal("malloc(recvbuf) failed\n");
 
   /* One round of communication for each buffer plane */
 
-  for (ib = 0; ib < le_get_nxbuffer(); ib++) {
+  for (ib = 0; ib < nxbuffer; ib++) {
 
-    ic = le_index_buffer_to_real(ib);
+    ic = lees_edw_ibuff_to_real(obj->le, ib);
     kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
 
-    dy = le_buffer_displacement(ib, t);
+    lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
     dy = fmod(dy, L(Y));
     jdy = floor(dy);
     fr  = 1.0 - (dy - jdy);
@@ -422,7 +536,7 @@ static int field_leesedwards_parallel(field_t * obj) {
     assert(j1 >= 1);
     assert(j1 <= N_total(Y));
 
-    le_jstart_to_ranks(j1, nrank_s, nrank_r);
+    lees_edw_jstart_to_mpi_ranks(obj->le, j1, nrank_s, nrank_r);
 
     /* Local quantities: j2 is the position of j1 in local coordinates.
      * The three sections to send/receive are organised as follows:
@@ -435,34 +549,46 @@ static int field_leesedwards_parallel(field_t * obj) {
 
     jc = nlocal[Y] - j2 + 1;
     n1 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer, n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
+    MPI_Irecv(recvbuf, n1, MPI_DOUBLE, nrank_r[0], tag0, le_comm, request);
 
     jc = imin(nlocal[Y], j2 + 2*nhalo + 2);
     n2 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
+    MPI_Irecv(recvbuf + n1, n2, MPI_DOUBLE, nrank_r[1], tag1, le_comm,
               request + 1);
 
     jc = imax(0, j2 - nlocal[Y] + 2*nhalo + 2);
     n3 = nf*jc*(nlocal[Z] + 2*nhalo);
-    MPI_Irecv(buffer + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, le_comm,
+    MPI_Irecv(recvbuf + n1 + n2, n3, MPI_DOUBLE, nrank_r[2], tag2, le_comm,
               request + 2);
+
+    /* Load contiguous send buffer */
+
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
+	index = lees_edw_index(obj->le, ic, jc, kc);
+	for (n = 0; n < nf; n++) {
+	  j0 = nf*(jc - 1)*(nlocal[Z] + 2*nhalo);
+	  j1 = j0 + nf*(kc + nhalo - 1);
+	  assert((j1+n) >= 0 && (j1+n) < nsend);
+	  sendbuf[j1+n] = obj->data[addr_rank1(obj->nsites, nf, index, n)];
+	}
+      }
+    }
 
     /* Post sends and wait for receives. */
 
-    index = nf*le_site_index(ic, j2, kc);
-    MPI_Issend(&obj->data[index], n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm,
+    index = nf*(j2 - 1)*(nlocal[Z] + 2*nhalo);
+    MPI_Issend(sendbuf+index, n1, MPI_DOUBLE, nrank_s[0], tag0, le_comm,
                request + 3);
-    index = nf*le_site_index(ic, 1, kc);
-    MPI_Issend(&obj->data[index], n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm,
+    MPI_Issend(sendbuf, n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm,
                request + 4);
-    MPI_Issend(&obj->data[index], n3, MPI_DOUBLE, nrank_s[2], tag2, le_comm,
+    MPI_Issend(sendbuf, n3, MPI_DOUBLE, nrank_s[2], tag2, le_comm,
                request + 5);
 
     MPI_Waitall(3, request, status);
 
 
-    /* Perform the actual interpolation from temporary buffer to
-     * phi_site[] buffer region. */
+    /* Perform the actual interpolation from temporary buffer. */
 
     for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
 
@@ -476,13 +602,13 @@ static int field_leesedwards_parallel(field_t * obj) {
       j3 = (jc + nhalo - 1 + 3)*(nlocal[Z] + 2*nhalo);
 
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
-        index = nf*le_site_index(ib0 + ib, jc, kc);
+        index = lees_edw_index(obj->le, ib0 + ib, jc, kc);
         for (n = 0; n < nf; n++) {
-          obj->data[index + n] =
-            -  r6*fr*(fr-1.0)*(fr-2.0)*buffer[nf*(j0 + kc+nhalo-1) + n]
-            + 0.5*(fr*fr-1.0)*(fr-2.0)*buffer[nf*(j1 + kc+nhalo-1) + n]
-            - 0.5*fr*(fr+1.0)*(fr-2.0)*buffer[nf*(j2 + kc+nhalo-1) + n]
-            +        r6*fr*(fr*fr-1.0)*buffer[nf*(j3 + kc+nhalo-1) + n];
+          obj->data[addr_rank1(obj->nsites, nf, index, n)] =
+            -  r6*fr*(fr-1.0)*(fr-2.0)*recvbuf[nf*(j0 + kc+nhalo-1) + n]
+            + 0.5*(fr*fr-1.0)*(fr-2.0)*recvbuf[nf*(j1 + kc+nhalo-1) + n]
+            - 0.5*fr*(fr+1.0)*(fr-2.0)*recvbuf[nf*(j2 + kc+nhalo-1) + n]
+            +        r6*fr*(fr*fr-1.0)*recvbuf[nf*(j3 + kc+nhalo-1) + n];
         }
       }
     }
@@ -492,11 +618,11 @@ static int field_leesedwards_parallel(field_t * obj) {
     MPI_Waitall(3, request + 3, status);
   }
 
-  free(buffer);
+  free(recvbuf);
+  free(sendbuf);
 
   return 0;
 }
-
 
 /*****************************************************************************
  *
@@ -504,6 +630,7 @@ static int field_leesedwards_parallel(field_t * obj) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_scalar(field_t * obj, int index, double * phi) {
 
   assert(obj);
@@ -511,7 +638,7 @@ int field_scalar(field_t * obj, int index, double * phi) {
   assert(obj->data);
   assert(phi);
 
-  *phi = obj->data[index];
+  *phi = obj->data[addr_rank1(obj->nsites, 1, index, 0)];
 
   return 0;
 }
@@ -522,13 +649,14 @@ int field_scalar(field_t * obj, int index, double * phi) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_scalar_set(field_t * obj, int index, double phi) {
 
   assert(obj);
   assert(obj->nf == 1);
   assert(obj->data);
 
-  obj->data[index] = phi;
+  obj->data[addr_rank1(obj->nsites, 1, index, 0)] = phi;
 
   return 0;
 }
@@ -539,6 +667,7 @@ int field_scalar_set(field_t * obj, int index, double phi) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_vector(field_t * obj, int index, double p[3]) {
 
   int ia;
@@ -546,10 +675,9 @@ int field_vector(field_t * obj, int index, double p[3]) {
   assert(obj);
   assert(obj->nf == 3);
   assert(obj->data);
-  assert(p);
 
   for (ia = 0; ia < 3; ia++) {
-    p[ia] = obj->data[3*index + ia];
+    p[ia] = obj->data[addr_rank1(obj->nsites, 3, index, ia)];
   }
 
   return 0;
@@ -561,6 +689,7 @@ int field_vector(field_t * obj, int index, double p[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_vector_set(field_t * obj, int index, const double p[3]) {
 
   int ia;
@@ -571,7 +700,7 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
   assert(p);
 
   for (ia = 0; ia < 3; ia++) {
-    obj->data[3*index + ia] = p[ia];
+    obj->data[addr_rank1(obj->nsites, 3, index, ia)] = p[ia];
   }
 
   return 0;
@@ -585,25 +714,20 @@ int field_vector_set(field_t * obj, int index, const double p[3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_tensor(field_t * obj, int index, double q[3][3]) {
-
-  int nlocal[3];
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
 
   assert(obj);
   assert(obj->nf == NQAB);
   assert(obj->data);
   assert(q);
 
-  q[X][X] = obj->data[FLDADR(nSites,NQAB,index,XX)];
-  q[X][Y] = obj->data[FLDADR(nSites,NQAB,index,XY)];
-  q[X][Z] = obj->data[FLDADR(nSites,NQAB,index,XZ)];
+  q[X][X] = obj->data[addr_rank1(obj->nsites, NQAB, index, XX)];
+  q[X][Y] = obj->data[addr_rank1(obj->nsites, NQAB, index, XY)];
+  q[X][Z] = obj->data[addr_rank1(obj->nsites, NQAB, index, XZ)];
   q[Y][X] = q[X][Y];
-  q[Y][Y] = obj->data[FLDADR(nSites,NQAB,index,YY)];
-  q[Y][Z] = obj->data[FLDADR(nSites,NQAB,index,YZ)];
+  q[Y][Y] = obj->data[addr_rank1(obj->nsites, NQAB, index, YY)];
+  q[Y][Z] = obj->data[addr_rank1(obj->nsites, NQAB, index, YZ)];
   q[Z][X] = q[X][Z];
   q[Z][Y] = q[Y][Z];
   q[Z][Z] = 0.0 - q[X][X] - q[Y][Y];
@@ -620,24 +744,19 @@ int field_tensor(field_t * obj, int index, double q[3][3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_tensor_set(field_t * obj, int index, double q[3][3]) {
-
-  int nlocal[3];
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
 
   assert(obj);
   assert(obj->nf == NQAB);
   assert(obj->data);
   assert(q);
 
-  obj->data[FLDADR(nSites,NQAB,index,XX)] = q[X][X];
-  obj->data[FLDADR(nSites,NQAB,index,XY)] = q[X][Y];
-  obj->data[FLDADR(nSites,NQAB,index,XZ)] = q[X][Z];
-  obj->data[FLDADR(nSites,NQAB,index,YY)] = q[Y][Y];
-  obj->data[FLDADR(nSites,NQAB,index,YZ)] = q[Y][Z];
+  obj->data[addr_rank1(obj->nsites, NQAB, index, XX)] = q[X][X];
+  obj->data[addr_rank1(obj->nsites, NQAB, index, XY)] = q[X][Y];
+  obj->data[addr_rank1(obj->nsites, NQAB, index, XZ)] = q[X][Z];
+  obj->data[addr_rank1(obj->nsites, NQAB, index, YY)] = q[Y][Y];
+  obj->data[addr_rank1(obj->nsites, NQAB, index, YZ)] = q[Y][Z];
 
   return 0;
 }
@@ -653,23 +772,17 @@ int field_tensor_set(field_t * obj, int index, double q[3][3]) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_scalar_array(field_t * obj, int index, double * array) {
 
   int n;
-
-  int nlocal[3];
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
 
   assert(obj);
   assert(obj->data);
   assert(array);
 
   for (n = 0; n < obj->nf; n++) {
-    array[n] = obj->data[FLDADR(nSites,obj->nf,index,n)];
-
+    array[n] = obj->data[addr_rank1(obj->nsites, obj->nf, index, n)];
   }
 
   return 0;
@@ -681,21 +794,17 @@ int field_scalar_array(field_t * obj, int index, double * array) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_scalar_array_set(field_t * obj, int index, const double * array) {
 
   int n;
 
-  int nlocal[3];
-  int nhalo, nSites;
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
-  nSites  = (nlocal[X] + 2*nhalo)*(nlocal[Y] + 2*nhalo)*(nlocal[Z] + 2*nhalo);
-
   assert(obj);
   assert(obj->data);
   assert(array);
+
   for (n = 0; n < obj->nf; n++) {
-    obj->data[FLDADR(nSites,obj->nf,index,n)] = array[n];
+    obj->data[addr_rank1(obj->nsites, obj->nf, index, n)] = array[n];
   }
 
   return 0;
@@ -710,13 +819,17 @@ int field_scalar_array_set(field_t * obj, int index, const double * array) {
 static int field_read(FILE * fp, int index, void * self) {
 
   int n;
+  double array[NQAB];              /* Largest field currently expected */
   field_t * obj = (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
 
-  n = fread(&obj->data[obj->nf*index], sizeof(double), obj->nf, fp);
+  n = fread(array, sizeof(double), obj->nf, fp);
   if (n != obj->nf) fatal("fread(field) failed at index %d", index);
+
+  field_scalar_array_set(obj, index, array);
 
   return 0;
 }
@@ -730,15 +843,19 @@ static int field_read(FILE * fp, int index, void * self) {
 static int field_read_ascii(FILE * fp, int index, void * self) {
 
   int n, nread;
+  double array[NQAB];                /* Largest currently expected */
   field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
 
   for (n = 0; n < obj->nf; n++) {
-    nread = fscanf(fp, "%le", obj->data + obj->nf*index + n);
+    nread = fscanf(fp, "%le", array + n);
     if (nread != 1) fatal("fscanf(field) failed at index %d\n", index);
   }
+
+  field_scalar_array_set(obj, index, array);
 
   return 0;
 }
@@ -752,12 +869,16 @@ static int field_read_ascii(FILE * fp, int index, void * self) {
 static int field_write(FILE * fp, int index, void * self) {
 
   int n;
+  double array[NQAB];               /* Largest currently expected */
   field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
 
-  n = fwrite(&obj->data[obj->nf*index], sizeof(double), obj->nf, fp);
+  field_scalar_array(obj, index, array);
+
+  n = fwrite(array, sizeof(double), obj->nf, fp);
   if (n != obj->nf) fatal("fwrite(field) failed at index %d\n", index);
 
   return 0;
@@ -772,13 +893,17 @@ static int field_write(FILE * fp, int index, void * self) {
 static int field_write_ascii(FILE * fp, int index, void * self) {
 
   int n, nwrite;
+  double array[NQAB];               /* Largest currently expected */
   field_t * obj =  (field_t*) self;
 
   assert(fp);
   assert(obj);
+  assert(obj->nf <= NQAB);
+
+  field_scalar_array(obj, index, array);
 
   for (n = 0; n < obj->nf; n++) {
-    nwrite = fprintf(fp, "%22.15e ", obj->data[obj->nf*index + n]);
+    nwrite = fprintf(fp, "%22.15e ", array[n]);
     if (nwrite != 23) fatal("fprintf(%s) failed at index %d\n", obj->name,
 			    index);
   }

@@ -2,32 +2,33 @@
  *
  *  advection_s.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2016 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef ADVECTION_S_H
 #define ADVECTION_S_H
 
+#include "memory.h"
+#include "leesedwards.h"
 #include "advection.h"
 
 struct advflux_s {
-  double * fe;   /* For LE planes */
-  double * fw;   /* For LE planes */
-  double * fy;
-  double * fz;
 
-  advflux_t * tcopy;  /* copy of this structure on target */ 
+  int nf;        /* Number of fields (1 for scalar etc) */
+  int nsite;     /* Number of sites allocated */
+  double * fe;   /* East face flxues */
+  double * fw;   /* West face flxues */
+  double * fy;   /* y-face fluxes */
+  double * fz;   /* z-face fluxes */
+
+  cs_t * cs;           /* Coordinate system */
+  lees_edw_t * le;     /* Lees Edwards */
+  advflux_t * target;  /* copy of this structure on target */ 
 };
-
-
-#define ADVADR VECADR
-
 
 #endif

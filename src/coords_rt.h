@@ -7,14 +7,19 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2016 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
  *
  *****************************************************************************/
 
 #ifndef COORDS_RT_H
 #define COORDS_RT_H
 
-void coords_run_time(void);
+#include "pe.h"
+#include "runtime.h"
+#include "coords.h"
+
+int coords_init_rt(pe_t * pe, rt_t * rt, cs_t * cs);
 
 #endif

@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,17 +19,21 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "leesedwards.h"
 #include "field_s.h"
 
 #include "test_coords_field.h"
 #include "tests.h"
 
-static int do_test1(void);
-static int do_test3(void);
-static int do_test5(void);
-static int do_test_io(int nf, int io_format);
+static int do_test0(pe_t * pe);
+static int do_test1(pe_t * pe);
+static int do_test3(pe_t * pe);
+static int do_test5(pe_t * pe);
+static int do_test_io(pe_t * pe, int nf, int io_format);
 static int test_field_halo(field_t * phi);
+
+int do_test_device1(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -39,21 +43,61 @@ static int test_field_halo(field_t * phi);
 
 int test_field_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("\nOrder parameter tests...\n");*/
 
-  do_test1();
-  do_test3();
-  do_test5();
+  do_test0(pe);
+  do_test1(pe);
+  do_test3(pe);
+  do_test5(pe);
+  do_test_device1(pe);
 
-  do_test_io(1, IO_FORMAT_ASCII);
-  do_test_io(1, IO_FORMAT_BINARY);
-  do_test_io(5, IO_FORMAT_ASCII);
-  do_test_io(5, IO_FORMAT_BINARY);
+  do_test_io(pe, 1, IO_FORMAT_ASCII);
+  do_test_io(pe, 1, IO_FORMAT_BINARY);
+  do_test_io(pe, 5, IO_FORMAT_ASCII);
+  do_test_io(pe, 5, IO_FORMAT_BINARY);
 
-  info("PASS     ./unit/test_field\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_field\n");
+  pe_free(pe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test0
+ *
+ *  Small system test.
+ *
+ *****************************************************************************/
+
+static int do_test0(pe_t * pe) {
+
+  int nfref = 1;
+  int nhalo = 2;
+  int ntotal[3] = {8, 8, 8};
+
+  cs_t * cs = NULL;
+  field_t * phi = NULL;
+
+  assert(pe);
+  
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_ntotal_set(cs, ntotal);
+  cs_init(cs);
+
+  field_create(pe, cs, nfref, "phi", &phi);
+  field_init(phi, nhalo, NULL);
+
+  /* Halo */
+  test_field_halo(phi);
+
+  field_free(phi);
+  cs_free(cs);
 
   return 0;
 }
@@ -66,7 +110,7 @@ int test_field_suite(void) {
  *
  *****************************************************************************/
 
-int do_test1(void) {
+int do_test1(pe_t * pe) {
 
   int nfref = 1;
   int nf;
@@ -74,19 +118,23 @@ int do_test1(void) {
   int index = 1;
   double ref;
   double value;
+
+  cs_t * cs = NULL;
   field_t * phi = NULL;
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nfref, "phi", &phi);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+
+  field_create(pe, cs, nfref, "phi", &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
 
-  field_init(phi, nhalo);
+  field_init(phi, nhalo, NULL);
 
   ref = 1.0;
   field_scalar_set(phi, index, ref);
@@ -105,12 +153,79 @@ int do_test1(void) {
 
   /* Halo */
   test_field_halo(phi);
-  
+
   field_free(phi);
-  le_finish();
-  coords_finish();
+  cs_free(cs);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_device1
+ *
+ *****************************************************************************/
+
+int do_test_device1(pe_t * pe) {
+
+  int nfref = 1;
+  int nf;
+  int nhalo = 2;
+  dim3 nblk, ntpb;
+
+  cs_t * cs = NULL;
+  field_t * phi = NULL;
+  __global__ void do_test_field_kernel1(field_t * phi);
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+
+  field_create(pe, cs, nfref, "phi", &phi);
+  assert(phi);
+
+  field_nf(phi, &nf);
+  assert(nf == nfref);
+
+  field_init(phi, nhalo, NULL);
+
+  kernel_launch_param(1, &nblk, &ntpb);
+  ntpb.x = 1;
+  __host_launch(do_test_field_kernel1, nblk, ntpb, phi->target);
+  targetDeviceSynchronise();
+
+  field_free(phi);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_field_kernel1
+ *
+ *****************************************************************************/
+
+__global__ void do_test_field_kernel1(field_t * phi) {
+
+  int nf;
+  int index = 1;
+  double q;
+  double qref = 1.2;
+
+  assert(phi);
+
+  field_nf(phi, &nf);
+  assert(nf == 1);
+  assert(phi->nsites == 314432);
+
+  field_scalar_set(phi, index, qref);
+  field_scalar(phi, index, &q);
+  assert(fabs(q - qref) < DBL_EPSILON);
+
+  return;
 }
 
 /*****************************************************************************
@@ -121,7 +236,7 @@ int do_test1(void) {
  *
  *****************************************************************************/
 
-static int do_test3(void) {
+static int do_test3(pe_t * pe) {
 
   int nfref = 3;
   int nf;
@@ -130,19 +245,23 @@ static int do_test3(void) {
   double ref[3] = {1.0, 2.0, 3.0};
   double value[3];
   double array[3];
+
+  cs_t * cs = NULL;
   field_t * phi = NULL;
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nfref, "p", &phi);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+
+  field_create(pe, cs, nfref, "p", &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
 
-  field_init(phi, nhalo);
+  field_init(phi, nhalo, NULL);
 
   field_vector_set(phi, index, ref);
   field_vector(phi, index, value);
@@ -159,8 +278,7 @@ static int do_test3(void) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_finish();
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -173,7 +291,7 @@ static int do_test3(void) {
  *
  *****************************************************************************/
 
-static int do_test5(void) {
+static int do_test5(pe_t * pe) {
 
   int nfref = 5;
   int nf;
@@ -182,19 +300,23 @@ static int do_test5(void) {
   double qref[3][3] = {{1.0, 2.0, 3.0}, {2.0, 4.0, 5.0}, {3.0, 5.0, -5.0}};
   double qvalue[3][3];
   double array[NQAB];
+
+  cs_t * cs = NULL;
   field_t * phi = NULL;
 
-  coords_nhalo_set(nhalo);
-  coords_init();
-  le_init();
+  assert(pe);
 
-  field_create(nfref, "q", &phi);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, nhalo);
+  cs_init(cs);
+
+  field_create(pe, cs, nfref, "q", &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
 
-  field_init(phi, nhalo);
+  field_init(phi, nhalo, NULL);
 
   field_tensor_set(phi, index, qref);
   field_tensor(phi, index, qvalue);
@@ -221,8 +343,7 @@ static int do_test5(void) {
   test_field_halo(phi);
 
   field_free(phi);
-  le_init();
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -236,9 +357,13 @@ static int do_test5(void) {
 static int test_field_halo(field_t * phi) {
 
   assert(phi);
-
+  
   test_coords_field_set(phi->nf, phi->data, MPI_DOUBLE, test_ref_double1);
-  field_halo(phi);
+  field_memcpy(phi, cudaMemcpyHostToDevice);
+ 
+  field_halo_swap(phi, FIELD_HALO_TARGET);
+
+  field_memcpy(phi, cudaMemcpyDeviceToHost);
   test_coords_field_check(phi->nhcomm, phi->nf, phi->data, MPI_DOUBLE,
 			  test_ref_double1);
 
@@ -251,26 +376,35 @@ static int test_field_halo(field_t * phi) {
  *
  *****************************************************************************/
 
-static int do_test_io(int nf, int io_format) {
+static int do_test_io(pe_t * pe, int nf, int io_format) {
 
   int grid[3] = {1, 1, 1};
-  char * filename = "phi-test-io";
+  int nhalo;
+  const char * filename = "phi-test-io";
 
+  MPI_Comm comm;
+
+  cs_t * cs = NULL;
   field_t * phi = NULL;
   io_info_t * iohandler = NULL;
 
-  coords_init();
-  le_init();
+  assert(pe);
 
-  if (pe_size() == 8) {
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_nhalo(cs, &nhalo);
+
+  cs_cart_comm(cs, &comm);
+
+  if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
     grid[Y] = 2;
     grid[Z] = 2;
   }
 
-  field_create(nf, "phi-test", &phi);
+  field_create(pe, cs, nf, "phi-test", &phi);
   assert(phi);
-  field_init(phi, coords_nhalo());
+  field_init(phi, nhalo, NULL);
   field_init_io_info(phi, grid, io_format, io_format); 
 
   test_coords_field_set(nf, phi->data, MPI_DOUBLE, test_ref_double1);
@@ -280,10 +414,10 @@ static int do_test_io(int nf, int io_format) {
   io_write_data(iohandler, filename, phi);
 
   field_free(phi);
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
 
-  field_create(nf, "phi-test", &phi);
-  field_init(phi, coords_nhalo());
+  field_create(pe, cs, nf, "phi-test", &phi);
+  field_init(phi, nhalo, NULL);
   field_init_io_info(phi, grid, io_format, io_format);
 
   field_io_info(phi, &iohandler);
@@ -298,8 +432,7 @@ static int do_test_io(int nf, int io_format) {
   io_remove_metadata(iohandler, "phi-test");
 
   field_free(phi);
-  le_finish();
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }

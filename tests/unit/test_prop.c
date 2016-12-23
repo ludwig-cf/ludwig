@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  * 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 Ths University of Edinburgh
+ *  (c) 2010-2016 Ths University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,12 +18,14 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "kernel.h"
+#include "memory.h"
+#include "lb_model_s.h"
 #include "propagation.h"
 #include "tests.h"
 
-static int do_test_velocity(lb_halo_enum_t halo);
-static int do_test_source_destination(lb_halo_enum_t halo);
+__host__ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo);
+__host__ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo);
 
 /*****************************************************************************
  *
@@ -33,18 +35,22 @@ static int do_test_source_destination(lb_halo_enum_t halo);
 
 int test_lb_prop_suite(void) {
 
-  pe_init_quiet();
-  coords_init();
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
-  do_test_velocity(LB_HALO_FULL);
-  do_test_velocity(LB_HALO_REDUCED);
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_init(cs);
 
-  do_test_source_destination(LB_HALO_FULL);
-  do_test_source_destination(LB_HALO_REDUCED);
+  do_test_velocity(pe, cs, LB_HALO_FULL);
+  do_test_velocity(pe, cs, LB_HALO_REDUCED);
 
-  info("PASS     ./unit/test_prop\n");
-  coords_finish();
-  pe_finalise();
+  do_test_source_destination(pe, cs, LB_HALO_FULL);
+  do_test_source_destination(pe, cs, LB_HALO_REDUCED);
+
+  pe_info(pe, "PASS     ./unit/test_prop\n");
+  cs_free(cs);
+  pe_free(pe);
 
   return 0;
 }
@@ -58,7 +64,7 @@ int test_lb_prop_suite(void) {
  *
  *****************************************************************************/
 
-int do_test_velocity(lb_halo_enum_t halo) {
+int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   int nlocal[3];
   int ic, jc, kc, index, p;
@@ -69,7 +75,10 @@ int do_test_velocity(lb_halo_enum_t halo) {
 
   lb_t * lb = NULL;
 
-  lb_create(&lb);
+  assert(pe);
+  assert(cs);
+
+  lb_create(pe, cs, &lb);
   assert(lb);
 
   lb_ndist_set(lb, ndist);
@@ -77,7 +86,7 @@ int do_test_velocity(lb_halo_enum_t halo) {
   lb_halo_set(lb, halo);
   lb_nvel(lb, &nvel);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   /* Set test values */
 
@@ -85,11 +94,11 @@ int do_test_velocity(lb_halo_enum_t halo) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {
-	    lb_f_set(lb, index, p, nd, 1.0*(p + nd));
+	    lb_f_set(lb, index, p, nd, 1.0*(p + nd*NVEL));
 	  }
 	}
 
@@ -97,8 +106,10 @@ int do_test_velocity(lb_halo_enum_t halo) {
     }
   }
 
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
   lb_propagation(lb);
+  lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
@@ -106,12 +117,12 @@ int do_test_velocity(lb_halo_enum_t halo) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {
 	    lb_f(lb, index, p, nd, &f_actual);
-	    assert(fabs(f_actual - 1.0*(p + nd)) < DBL_EPSILON);
+	    assert(fabs(f_actual - 1.0*(p + nd*NVEL)) < DBL_EPSILON);
 	  }
 	}
       }
@@ -134,7 +145,7 @@ int do_test_velocity(lb_halo_enum_t halo) {
  *  
  *****************************************************************************/
 
-int do_test_source_destination(lb_halo_enum_t halo) {
+int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   int nlocal[3], offset[3];
   int ic, jc, kc, index, p;
@@ -146,15 +157,18 @@ int do_test_source_destination(lb_halo_enum_t halo) {
 
   lb_t * lb = NULL;
 
-  lb_create(&lb);
+  assert(pe);
+  assert(cs);
+
+  lb_create(pe, cs, &lb);
   assert(lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
   lb_halo_set(lb, halo);
   lb_nvel(lb, &nvel);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, offset);
 
   /* Set test values */
 
@@ -162,7 +176,7 @@ int do_test_source_destination(lb_halo_enum_t halo) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	f_actual = L(Y)*L(Z)*(offset[X] + ic) + L(Z)*(offset[Y] + jc) +
 	  (offset[Z] + kc);
@@ -177,8 +191,10 @@ int do_test_source_destination(lb_halo_enum_t halo) {
     }
   }
 
+  lb_memcpy(lb, cudaMemcpyHostToDevice);
   lb_halo(lb);
   lb_propagation(lb);
+  lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
   /* Test */
 
@@ -186,7 +202,7 @@ int do_test_source_destination(lb_halo_enum_t halo) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {

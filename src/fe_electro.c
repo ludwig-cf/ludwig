@@ -29,9 +29,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2013)
  *
  *****************************************************************************/
 
@@ -47,16 +49,38 @@
 #include "psi_gradients.h"
 #include "fe_electro.h"
 
-typedef struct fe_electro_s fe_electro_t;
-
 struct fe_electro_s {
-  psi_t * psi;       /* A reference to the electrokinetic quantities */
-  physics_t * param; /* For external field, temperature */
-  double * mu_ref;   /* Reference potential currently unused (set to zero). */ 
+  fe_t super;
+  psi_t * psi;           /* A reference to the electrokinetic quantities */
+  double * mu_ref;       /* Reference mu currently unused (i.e., zero). */ 
+  fe_electro_t * target; /* Device copy */
 };
 
-/* A static implementation that holds relevant quantities for this model */
-static fe_electro_t * fe = NULL;
+static fe_vt_t fe_electro_hvt = {
+  (fe_free_ft)      fe_electro_free,
+  (fe_target_ft)    fe_electro_target,
+  (fe_fed_ft)       fe_electro_fed,
+  (fe_mu_ft)        fe_electro_mu,
+  (fe_mu_solv_ft)   fe_electro_mu_solv,
+  (fe_str_ft)       fe_electro_stress_ex,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  NULL
+};
+
+static  __constant__ fe_vt_t fe_electro_dvt = {
+  (fe_free_ft)      NULL,
+  (fe_target_ft)    NULL,
+  (fe_fed_ft)       NULL,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       NULL,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  NULL
+};
 
 /*****************************************************************************
  *
@@ -73,20 +97,34 @@ static fe_electro_t * fe = NULL;
  *
  *****************************************************************************/
 
-int fe_electro_create(psi_t * psi) {
+__host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
 
-  assert(fe == NULL);
+  int ndevice;
+  fe_electro_t * fe = NULL;
+
+  assert(pobj);
   assert(psi);
 
   fe = (fe_electro_t *) calloc(1, sizeof(fe_electro_t));
   if (fe == NULL) fatal("calloc() failed\n");
 
   fe->psi = psi;
-  physics_ref(&fe->param);
+  fe->super.func = &fe_electro_hvt;
+  fe->super.id = FE_ELECTRO;
 
-  fe_create();
-  fe_density_set(fe_electro_fed);
-  fe_chemical_stress_set(fe_electro_stress_ex);
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    fe->target = fe;
+  }
+  else {
+    fe_vt_t * vt;
+    /* Device implementation pending */
+    targetConstAddress((void **) &vt, fe_electro_dvt);
+    fatal("No device implementation for fe_electro\n");
+  }
+
+  *pobj = fe;
 
   return 0;
 }
@@ -97,13 +135,28 @@ int fe_electro_create(psi_t * psi) {
  *
  *****************************************************************************/
 
-int fe_electro_free(void) {
+__host__ int fe_electro_free(fe_electro_t * fe) {
 
   assert(fe);
 
   if (fe->mu_ref) free(fe->mu_ref);
   free(fe);
-  fe = NULL;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_electro_target
+ *
+ *****************************************************************************/
+
+__host__ int fe_electro_target(fe_electro_t * fe, fe_t ** target) {
+
+  assert(fe);
+  assert(target);
+
+  *target = (fe_t *) fe->target;
 
   return 0;
 }
@@ -121,63 +174,85 @@ int fe_electro_free(void) {
  *
  *****************************************************************************/
 
-double fe_electro_fed(const int index) {
+__host__
+int fe_electro_fed(fe_electro_t * fe, int index, double * fed) {
 
   int n;
   int nk;
-  double kt;
-  double fed;
+  double e;
   double psi;
   double rho;
 
   assert(fe);
   assert(fe->psi);
 
-  fed = 0.0;
-  physics_kt(&kt);
+  e = 0.0;
   psi_nk(fe->psi, &nk);
   psi_psi(fe->psi, index, &psi);
 
   for (n = 0; n < nk; n++) {
-
     psi_rho(fe->psi, index, n, &rho);
     assert(rho >= 0.0); /* For log(rho + epsilon) */
-    fed += rho*((log(rho + DBL_EPSILON) - 1.0) + 0.5*fe->psi->valency[n]*psi);
-
+    e += rho*((log(rho + DBL_EPSILON) - 1.0) + 0.5*fe->psi->valency[n]*psi);
   }
 
-  return fed;
+  *fed = e;
+
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  fe_electro_mu
  *
- *  Here is the checmical potential for species n at position index.
+ *  Here is the checmical potential for each species at position index.
  *  Performance sensitive, so we use direct references to fe->psi->rho
  *  etc.
  *
  *****************************************************************************/
 
-double fe_electro_mu(const int index, const int n) {
+__host__
+int fe_electro_mu(fe_electro_t * fe, int index, double * mu) {
 
-  double mu;
+  int n;
   double kt;
   double rho;
+  double psi;
+  physics_t * phys = NULL;
 
   assert(fe);
   assert(fe->psi);
-  assert(n < fe->psi->nk);
 
-  rho = fe->psi->rho[fe->psi->nk*index + n];
-  physics_kt(&kt);
+  psi_psi(fe->psi, index, &psi);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
 
-  assert(rho >= 0.0); /* For log(rho + epsilon) */
+  for (n = 0; n < fe->psi->nk; n++) {
+    psi_rho(fe->psi, index, n, &rho);
+    assert(rho >= 0.0); /* For log(rho + epsilon) */
   
-  mu = kt*log(rho + DBL_EPSILON)
-    + fe->psi->valency[n]*fe->psi->e*fe->psi->psi[index];
+    mu[n] = kt*log(rho + DBL_EPSILON) + fe->psi->valency[n]*fe->psi->e*psi;
+  }
 
-  return mu;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_electro_mu_solv
+ *
+ *  This is a dummy which just returns zero, as an implementation is
+ *  required. Physically, there is no solvation chemical potential.
+ *
+ ****************************************************************************/
+
+__host__
+int fe_electro_mu_solv(fe_electro_t * fe, int index, int k, double * mu) {
+
+  assert(mu);
+  *mu = 0.0;
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -193,7 +268,8 @@ double fe_electro_mu(const int index, const int n) {
  *
  *****************************************************************************/
 
-void fe_electro_stress(const int index, double s[3][3]) {
+__host__
+int fe_electro_stress(fe_electro_t * fe, int index, double s[3][3]) {
 
   int ia, ib, in;
   double epsilon;    /* Permittivity */
@@ -202,10 +278,13 @@ void fe_electro_stress(const int index, double s[3][3]) {
   int nk;
   double rho;
   double kt, eunit, reunit;
+  physics_t * phys = NULL;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_nk(fe->psi, &nk);
   psi_unit_charge(fe->psi, &eunit);	 
   reunit = 1.0/eunit;
@@ -222,18 +301,18 @@ void fe_electro_stress(const int index, double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d[ia][ib]*e2);
 
       /* Ideal gas contribution */
       for (in = 0; in < nk; in++) {
 	psi_rho(fe->psi, index, in, &rho);
-	s[ia][ib] += d_[ia][ib] * kt * rho;
+	s[ia][ib] += d[ia][ib] * kt * rho;
 
       }
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -245,17 +324,21 @@ void fe_electro_stress(const int index, double s[3][3]) {
  *
  *****************************************************************************/
 
-void fe_electro_stress_ex(const int index, double s[3][3]) {
+__host__
+int fe_electro_stress_ex(fe_electro_t * fe, int index, double s[3][3]) {
 
   int ia, ib;
   double epsilon;    /* Permittivity */
   double e[3];       /* Total electric field */
   double e2;         /* Magnitude squared */
   double kt, eunit, reunit;
+  physics_t * phys = NULL;
+  KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
 
-  physics_kt(&kt);
+  physics_ref(&phys);
+  physics_kt(phys, &kt);
   psi_unit_charge(fe->psi, &eunit);	 
   reunit = 1.0/eunit;
 
@@ -271,9 +354,9 @@ void fe_electro_stress_ex(const int index, double s[3][3]) {
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d_[ia][ib]*e2);
+      s[ia][ib] = -epsilon*(e[ia]*e[ib] - 0.5*d[ia][ib]*e2);
     }
   }
 
-  return;
+  return 0;
 }

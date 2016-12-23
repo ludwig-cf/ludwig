@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -29,13 +29,15 @@
 #include "psi_stats.h"
 #include "tests.h"
 
-static int do_test_sor1(void);
+#define fe_fake_t void
+
+static int do_test_sor1(pe_t * pe);
 static int test_charge1_set(psi_t * psi);
 static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon);
 
 #define REF_PERMEATIVITY 1.0
-static int fepsilon_constant(int index, double * epsilon);
-static int fepsilon_sinz(int index, double * epsilon);
+static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon);
+static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon);
 
 /*****************************************************************************
  *
@@ -45,17 +47,16 @@ static int fepsilon_sinz(int index, double * epsilon);
 
 int test_psi_sor_suite(void) {
 
+  pe_t * pe = NULL;
   physics_t * phys = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   physics_ref(&phys);
 
-  control_time_set(-1); /* Kludge to avoid SOR iteration output */
+  do_test_sor1(pe);
 
-  do_test_sor1();
-
-  info("PASS     ./unit/test_psi_sor\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_psi_sor\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -72,14 +73,18 @@ int test_psi_sor_suite(void) {
  *
  *****************************************************************************/
 
-static int do_test_sor1(void) {
+static int do_test_sor1(pe_t * pe) {
 
-   psi_t * psi = NULL;
+  cs_t * cs = NULL;
+  psi_t * psi = NULL;
 
-  coords_nhalo_set(1);
-  coords_init();
+  assert(pe);
 
-  psi_create(2, &psi);
+  cs_create(pe, &cs);
+  cs_nhalo_set(cs, 1);
+  cs_init(cs);
+
+  psi_create(pe, cs, 2, &psi);
   assert(psi);
   psi_valency_set(psi, 0, +1.0);
   psi_valency_set(psi, 1, -1.0);
@@ -97,13 +102,14 @@ static int do_test_sor1(void) {
   test_charge1_set(psi);
   psi_halo_psi(psi);
   psi_halo_rho(psi);
+
   /* Following broken in latest vare solver */
-  psi_sor_vare_poisson(psi, fepsilon_sinz);
+  psi_sor_vare_poisson(psi, NULL, fepsilon_sinz);
   /*
   if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_sinz);
   */
   psi_free(psi);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -273,7 +279,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   for (k = 0; k < n; k++) {
     index = coords_index(1, 1, 1+k);
-    fepsilon(index, epsilon + k);
+    fepsilon(NULL, index, epsilon + k);
   }
 
   /* Allocate space for exact solution */
@@ -365,7 +371,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
  *
  *****************************************************************************/
 
-static int fepsilon_constant(int index, double * epsilon) {
+static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
 
   assert(epsilon);
 
@@ -386,13 +392,14 @@ static int fepsilon_constant(int index, double * epsilon) {
  *
  *****************************************************************************/
 
-static int fepsilon_sinz(int index, double * epsilon) {
+static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon) {
 
   int coords[3];
+  PI_DOUBLE(pi);
 
   coords_index_to_ijk(index, coords);
 
-  *epsilon = REF_PERMEATIVITY*sin(pi_*(1.0*coords[Z] - 0.5)/L(Z));
+  *epsilon = REF_PERMEATIVITY*sin(pi*(1.0*coords[Z] - 0.5)/L(Z));
 
   return 0;
 }

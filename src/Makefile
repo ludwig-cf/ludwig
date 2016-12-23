@@ -60,28 +60,28 @@ endif
 ###############################################################################
 
 OBJS = \
+     coords.o leesedwards.o \
      physics.o physics_rt.o advection.o advection_rt.o advection_bcs.o \
      blue_phase.o blue_phase_init.o blue_phase_rt.o \
      blue_phase_beris_edwards.o \
      brazovskii.o brazovskii_rt.o \
      colloid_io.o colloids_init.o \
      colloid.o colloid_link.o colloids_halo.o colloid_io_rt.o \
-     colloids_Q_tensor.o \
      colloid_sums.o bbl.o build.o collision.o collision_rt.o \
      colloids.o colloids_rt.o lubrication.o \
-     coords.o coords_field.o coords_rt.o \
+     coords_field.o coords_rt.o \
      control.o distribution_rt.o \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
-     free_energy.o free_energy_vector.o free_energy_tensor.o \
+     field_phi_init.o field_phi_init_rt.o \
      fe_electro.o fe_electro_symmetric.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-     hydro.o hydro_rt.o interaction.o io_harness.o \
-     leslie_ericksen.o \
-     lc_droplet.o lc_droplet_rt.o model.o model_le.o map.o \
+     halo_swap.o hydro.o hydro_rt.o interaction.o io_harness.o \
+     kernel.o leesedwards_rt.o leslie_ericksen.o \
+     lc_droplet.o lc_droplet_rt.o memory.o model.o model_le.o map.o \
      noise.o pair_lj_cut.o pair_ss_cut.o pair_yukawa.o \
      angle_cosine.o bond_fene.o \
      phi_cahn_hilliard.o phi_force.o phi_force_colloid.o \
@@ -92,14 +92,14 @@ OBJS = \
      psi_force.o psi_colloid.o propagation.o \
      nernst_planck.o \
      psi_petsc.o psi_gradients.o \
-     leesedwards.o pe.o ran.o runtime.o \
+     pe.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric_rt.o subgrid.o \
      stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
      stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
-     symmetric.o timer.o util.o wall.o wall_ss_cut.o comms_gpu.o ludwig.o
+     symmetric.o timer.o util.o wall.o wall_rt.o wall_ss_cut.o ludwig.o
 
 
 ###############################################################################
@@ -140,13 +140,13 @@ serial-d3q19:
 	$(MAKE) serial-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
 
 serial-d2q9r:
-	$(MAKE) serial-d2q9 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) serial-d2q9 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 serial-d3q15r:
-	$(MAKE) serial-d3q15 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) serial-d3q15 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 serial-d3q19r:
-	$(MAKE) serial-d3q19 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) serial-d3q19 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 
 serial-model:
@@ -169,13 +169,13 @@ mpi-d3q19:
 	$(MAKE) mpi-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
 
 mpi-d2q9r:
-	$(MAKE) mpi-d2q9 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) mpi-d2q9 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 mpi-d3q15r:
-	$(MAKE) mpi-d3q15 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) mpi-d3q15 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 mpi-d3q19r:
-	$(MAKE) mpi-d3q19 "OPTS= -DLB_DATA_SOA $(OPTS)"
+	$(MAKE) mpi-d3q19 "OPTS= -DADDR_MODEL_R $(OPTS)"
 
 
 mpi-model:

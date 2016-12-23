@@ -17,12 +17,191 @@
  * limitations under the License. 
  */
 
-
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include "targetDP.h"
+
+/* Utilities */
+
+/*****************************************************************************
+ *
+ *  targetDeviceSynchronise
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetDeviceSynchronise(void) {
+
+  /* No operation */
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  targetGetDeviceCount
+ *
+ *****************************************************************************/
+
+__host__ __target__ int targetGetDeviceCount(int * device) {
+
+  *device = 0;
+
+#ifdef FAKE_DEVICE
+  /* "Fake" device */
+  *device = 1;
+#endif
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Revisit to look more like cuda, or ...
+ *
+ *  Some information on the implementation...
+ *
+ *****************************************************************************/
+
+__host__ int target_thread_info(void) {
+
+  printf("Thread implementation: OpenMP 1 block, %d threads per block.\n",
+         __host_get_max_threads());
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Note to self
+ *https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
+ *
+ *  The partial sums partsum must be __shared__; they are destroyed
+ *  on exit.
+ *  The result is only significant at thread zero.
+ *
+ *****************************************************************************/
+
+__target__
+int target_block_reduce_sum_int(int * partsum) {
+
+#ifdef _OPENMP
+  int istr;
+  int nblock;
+  int nthread = omp_get_num_threads();
+  int idx = omp_get_thread_num();
+
+  nblock = pow(2, ceil(log(1.0*nthread)/log(2)));
+
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    #pragma omp barrier
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
+  }
+#endif
+
+  return partsum[0];
+}
+
+__target__
+double target_block_reduce_sum_double(double * partsum) {
+
+#ifdef _OPENMP
+  int istr;
+  int nblock;
+  int nthread = omp_get_num_threads();
+  int idx = omp_get_thread_num();
+
+  nblock = pow(2, ceil(log(1.0*nthread)/log(2)));
+
+  for (istr = nblock/2; istr > 0; istr /= 2) {
+    #pragma omp barrier
+    if (idx < istr && idx + istr < nthread) {
+      partsum[idx] += partsum[idx + istr];
+    }
+  }
+#endif
+
+  return partsum[0];
+}
+
+/*****************************************************************************
+ *
+ *  target_atomic_add_int
+ *
+ *  Add val to sum.
+ *
+ *****************************************************************************/
+
+__target__ void target_atomic_add_int(int * sum, int val) {
+
+#ifdef _OPENMP
+  #pragma omp atomic
+  *sum += val;
+#else
+  *sum += val;
+#endif
+
+  return;
+}
+
+__target__ void target_atomic_add_double(double * sum,  double val) {
+
+#ifdef _OPENMP
+  #pragma omp atomic
+  *sum += val;
+#else
+  *sum += val;
+#endif
+
+  return;
+}
+
+
+uint3 __x86_builtin_threadIdx_init(void) {
+  uint3 threads = {1, 1, 1};
+  threads.x = __host_get_thread_num();
+  return threads;
+}
+
+uint3 __x86_builtin_blockIdx_init(void) {
+  uint3 blocks = {1, 1, 1};
+  return blocks;
+}
+
+__host__ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
+
+  gridDim = nblocks;
+  blockDim = nthreads;
+
+  /* sanity checks on user settings here... */
+
+  gridDim.x = 1; /* Assert this for host implementation */
+
+  /* In case we request fewer threads than are available: */
+
+  __host_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+
+  return;
+}
+
+void __x86_postlaunch(void) {
+
+  /* Reset the default number of threads. */
+
+  /* int nthreads;
+
+
+  nthreads = __host_get_max_threads();
+  __host_set_num_threads(nthreads);*/
+
+  __host_set_num_threads(__host_get_max_threads());
+
+  return;
+}
 
 
 

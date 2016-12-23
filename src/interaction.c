@@ -34,7 +34,6 @@
 #include "control.h"
 #include "stats_colloid.h"
 #include "driven_colloid.h"
-#include "wall.h"
 #include "interaction.h"
 
 struct interact_s {
@@ -369,12 +368,14 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
   double btorque[3];
   double dforce[3];
   colloid_t * pc;
+  physics_t * phys = NULL;
 
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
 
-  physics_b0(b0);
-  physics_fgrav(g);
+  physics_ref(&phys);
+  physics_b0(phys, b0);
+  physics_fgrav(phys, g);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
@@ -422,13 +423,15 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
   int is_gravity = 0;
   double rvolume;
   double g[3], f[3];
+  physics_t * phys = NULL;
 
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &nc);
   if (nc == 0) return 0;
 
-  physics_fgrav(g);
+  physics_ref(&phys);
+  physics_fgrav(phys, g);
   is_gravity = (g[X] != 0.0 || g[Y] != 0.0 || g[Z] != 0.0);
 
   if (is_gravity) {
@@ -443,21 +446,27 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
       f[ia] = -g[ia]*rvolume*nc;
     }
 
-    physics_fbody_set(f);
+    physics_fbody_set(phys, f);
   }
 
   return 0;
 }
+
+
 /*****************************************************************************
-* colloid_forces_fluid_driven                                                                      
-*                                                                                                       
-* Set the current drive force on the fluid. This should                                                
-* match, exactly, the force on the colloids and so depends on the                                      
-* current number of fluid sites globally (fluid volume).                                               
-*                                                                                                       
-* Note the calculation involves a collective communication.
-*                          
-*****************************************************************************/
+ *
+ *  colloid_forces_fluid_driven
+ *
+ *  Set the current drive force on the fluid. This should
+ *  match, exactly, the force on the colloids and so depends on the
+ *  current number of fluid sites globally (fluid volume).
+ *
+ *  Note the calculation involves a collective communication.
+ *
+ *  TODO: sort out wall momentum account fw. This is the reason
+ *  for the commented-out code and assert(0).
+ *
+ *****************************************************************************/
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
                                          map_t * map) {
@@ -465,13 +474,17 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
   int ia;
   int nsfluid;
   double rvolume;
-  double fd[3], fw[3] ,f[3];
+  double fd[3], f[3];
+  /* double fw[3]; */
+  physics_t * phys = NULL;
 
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &nc);
 
   if (nc == 0) return 0;
+
+  physics_ref(&phys);
 
   if (is_driven()) {
 
@@ -484,11 +497,13 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -1.0*fd[ia]*rvolume*is_periodic(ia);
-      fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());
+      /* fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());*/
     }
 
-    physics_fbody_set(f);
-    wall_accumulate_force(fw);
+    physics_fbody_set(phys, f);
+
+    /* Need to account for wall momentum transfer */
+    assert(0); /* NO TEST */
   }
 
   return 0;

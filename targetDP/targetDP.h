@@ -24,6 +24,39 @@
 #ifndef _TDP_INCLUDED
 #define _TDP_INCLUDED
 
+/* KS. Additions */
+
+#include "target_api.h"
+
+__host__ int target_thread_info(void);
+__device__ int target_block_reduce_sum_int(int * val);
+__device__ void target_atomic_add_int(int * sum, int  val);
+__device__ double target_block_reduce_sum_double(double * val);
+__device__ void target_atomic_add_double(double * sum, double  val);
+
+/*
+
+__host__ int host block_reduce_sum_double(double * sum, double val);
+__host__ int host_block_reduce_min_double(double * dmin, double val);
+__host__ int host_block_reduce_max_double(double * dmax, double val);
+
+__target__ int target_block_reduce_sum_int(int * isum, int ival)
+__target__ int target_block_reduce_sum_double(double * sum, double val);
+__target__ int target_block_reduce_min_double(double * dmin, double val);
+__target__ int target_block_reduce_max_double(double * dmax, double val);
+
+__target__ int target_atomic_sum_double(double * sum, double val);
+__target__ int target_atomic_min_double(double * dmin, double val);
+__target__ int target_atomic_max_double(double * dmax, double val);
+
+*/
+
+__host__ __device__ int targetGetDeviceCount(int * device);
+__host__ __device__ int targetDeviceSynchronise(void);
+
+/* KS. End additions */
+
+
 /* Main settings */
 
 #ifndef VVL
@@ -43,6 +76,7 @@
 
 
 #ifdef __NVCC__ /* CUDA */
+
 
 /*
  * CUDA Settings 
@@ -74,8 +108,7 @@
 
 /* The __targetHost__ keyword is used in a function declaration or definition to
  * specify that the function should be compiled for the host. */
-
-#define __targetHost__ __host__
+#define __targetHost__ extern "C" __host__
 
 
 /* The __targetConst__ keyword is used in a variable or array declaration to
@@ -116,7 +149,7 @@
  * instruction level parallelism (ILP), where the extent of the ILP is defined by the
  * virtual vector length (VVL) in the targetDP implementation. */
 #if VVL == 1
-#define __targetILP__(vecIndex)  
+#define __targetILP__(vecIndex)  vecIndex = 0;
 #else
 #define __targetILP__(vecIndex)  for (vecIndex = 0; vecIndex < VVL; vecIndex++) 
 #endif
@@ -154,6 +187,7 @@
 /* Settings */
 
 /* Instruction-level-parallelism vector length  - to be tuned to hardware*/
+
 #ifndef VVL
 #define VVL VVL_C
 #endif
@@ -161,7 +195,7 @@
 /* Language Extensions */
 
 #define HOST
-#define __targetHost__ 
+#define __targetHost__
 
 /* kernel function specifiers */
 #define __target__
@@ -205,7 +239,7 @@ for(simtIndex=0;simtIndex<extent;simtIndex++)
  * instruction level parallelism (ILP), where the extent of the ILP is defined by the
  * virtual vector length (VVL) in the targetDP implementation. */
 #if VVL == 1
-#define __targetILP__(vecIndex) 
+#define __targetILP__(vecIndex) vecIndex = 0;
 #else
 
 #ifdef _OPENMP
@@ -218,7 +252,6 @@ _Pragma("omp simd")				\
 #endif
 
 #endif
-
 
 /* functions */
 
@@ -257,14 +290,8 @@ _Pragma("omp simd")				\
 
 enum {TARGET_HALO,TARGET_EDGE};
 
-
-
 /* API */
 /* see specification or implementation for documentation on these */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 __targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
 __targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
@@ -311,9 +338,8 @@ __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* 
 
 __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
 
-#ifdef __cplusplus
-}
-#endif
-
+/* KS addition alias to be formalised... */
+#define __target_simd_for(iv, nsimdvl) __targetILP__(iv)
+/* KS end addition */
 
 #endif

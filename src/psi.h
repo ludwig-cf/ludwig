@@ -15,16 +15,32 @@
 #ifndef PSI_H
 #define PSI_H
 
+#include "pe.h"
+#include "coords.h"
 #include "io_harness.h"
 #include "map.h"
+
+/* PSI_NKMAX is here to allow us to declare arrays to hold
+ * per-species quantities. It avoids allocation of  short arrays,
+ * which is slightly tedious, particularly on the device. */
+
+#define PSI_NKMAX 4
+
+/* Force computation method */
+
+enum psi_force_method {PSI_FORCE_NONE = 0,
+		       PSI_FORCE_DIVERGENCE,
+		       PSI_FORCE_GRADMU,
+		       PSI_FORCE_NTYPES
+};
 
 typedef struct psi_s psi_t;
 
 /* f_vare_t describes the signature of the function expected
-* to return the permittivity as a function of position index. */
-typedef int (* f_vare_t)(int index, double * epsilon);
+ * to return the permittivity as a function of position index. */
+typedef int (* f_vare_t)(void * fe, int index, double * epsilon);
 
-int psi_create(int nk, psi_t ** pobj);
+int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj);
 void psi_free(psi_t * obj);
 int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out);
 int psi_io_info(psi_t * obj, io_info_t ** info);
@@ -64,6 +80,8 @@ int psi_maxits(psi_t * obj, int * maxits);
 int psi_reltol_set(psi_t * obj, double reltol);
 int psi_abstol_set(psi_t * obj, double abstol);
 int psi_maxits_set(psi_t * obj, int maxits);
+int psi_nfreq_set(psi_t * psi, int nfreq);
+int psi_output_step(psi_t * psi);
 
 int psi_multisteps(psi_t * obj, int * multisteps);
 int psi_multisteps_set(psi_t * obj, int multisteps);
@@ -73,5 +91,8 @@ int psi_diffacc_set(psi_t * obj, double diffacc);
 int psi_skipsteps(psi_t * obj);
 int psi_skipsteps_set(psi_t * obj, double skipsteps);
 int psi_zero_mean(psi_t * obj);
+int psi_force_method(psi_t * obj, int * flag);
+int psi_force_method_set(psi_t * obj, int flag);
 
+int psi_electroneutral(psi_t * obj, map_t * map);
 #endif

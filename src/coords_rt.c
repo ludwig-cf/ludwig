@@ -9,49 +9,48 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2016 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
  *
  *****************************************************************************/
 
 #include <assert.h>
 
-#include "pe.h"
-#include "coords.h"
-#include "runtime.h"
+#include "coords_rt.h"
 
 /*****************************************************************************
  *
- *  coords_run_time
+ *  coords_init_rt
  *
  *****************************************************************************/
 
-void coords_run_time(void) {
+int coords_init_rt(pe_t * pe, rt_t * rt, cs_t * cs) {
 
   int n;
   int reorder;
   int vector[3];
 
-  info("\n");
-  info("System details\n");
-  info("--------------\n");
+  assert(pe);
+  assert(rt);
+  assert(cs);
 
-  n = RUN_get_int_parameter_vector("size", vector);
-  coords_ntotal_set(vector);
+  n = rt_int_parameter_vector(rt, "size", vector);
+  cs_ntotal_set(cs, vector);
 
-  n = RUN_get_int_parameter_vector("periodicity", vector);
-  if (n != 0) coords_periodicity_set(vector);
+  n = rt_int_parameter_vector(rt, "periodicity", vector);
+  if (n != 0) cs_periodicity_set(cs, vector);
 
   /* Look for a user-defined decomposition */
 
-  n = RUN_get_int_parameter_vector("grid", vector);
-  if (n != 0) coords_decomposition_set(vector);
+  n = rt_int_parameter_vector(rt, "grid", vector);
+  if (n != 0) cs_decomposition_set(cs, vector);
 
-  n = RUN_get_int_parameter("reorder", &reorder);
-  if (n != 0) coords_reorder_set(reorder);
+  n = rt_int_parameter(rt, "reorder", &reorder);
+  if (n != 0) cs_reorder_set(cs, reorder);
 
-  coords_init();
-  coords_info();
+  cs_init(cs);
+  cs_info(cs);
 
-  return;
+  return 0;
 }

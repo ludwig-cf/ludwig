@@ -2,16 +2,18 @@
  *
  *  pe.h
  *
- *  (c) 2010-2014 The University of Edinburgh
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2010-2016 The University of Edinburgh
+ *
+ *  Contribtuing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef PE_H
-#define PE_H
+#ifndef LUGWIG_PE_H
+#define LUGWIG_PE_H
 
 #include "../version.h"
 #include <mpi.h>
@@ -19,20 +21,31 @@
 
 typedef struct pe_s pe_t;
 
-__targetHost__ void pe_init(void);
-__targetHost__ void pe_finalise(void);
-__targetHost__ int  pe_init_quiet(void);
-__targetHost__ int  pe_rank(void);
-__targetHost__ int  pe_size(void);
-__targetHost__ void pe_parent_comm_set(const MPI_Comm parent);
-__targetHost__ void pe_redirect_stdout(const char * filename);
-__targetHost__ void pe_subdirectory_set(const char * name);
-__targetHost__ void pe_subdirectory(char * name);
+typedef enum {PE_QUIET = 0, PE_VERBOSE, PE_OPTION_MAX} pe_enum_t;
 
-__targetHost__ MPI_Comm pe_comm(void);
+__host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe);
+__host__ int pe_free(pe_t * pe);
+__host__ int pe_ref(pe_t ** ppe);
+__host__ int pe_retain(pe_t * pe);
+__host__ int pe_set(pe_t * pe, pe_enum_t option);
+__host__ int pe_message(pe_t * pe);
+__host__ int pe_mpi_comm(pe_t * pe, MPI_Comm * comm);
+__host__ int pe_mpi_rank(pe_t * pe);
+__host__ int pe_mpi_size(pe_t * pe);
+__host__ int pe_subdirectory(pe_t * pe, char * name);
+__host__ int pe_subdirectory_set(pe_t * pe, const char * name);
+__host__ int pe_info(pe_t * pe, const char * fmt, ...);
+__host__ int pe_fatal(pe_t * pe, const char * fmt, ...);
+__host__ int pe_verbose(pe_t * pe, const char * fmt, ...);
 
-__targetHost__ void info(const char * fmt, ...);
-__targetHost__ void fatal(const char * fmt, ...);
-__targetHost__ void verbose(const char * fmt, ...);
+/* Static interface scheduled for removal.
+ * Please use the functions above. */
+
+__host__ MPI_Comm pe_comm(void);
+__host__ int pe_rank(void);
+__host__ int pe_size(void);
+__host__ void info(const char * fmt, ...);
+__host__ void fatal(const char * fmt, ...);
+__host__ void verbose(const char * fmt, ...);
 
 #endif

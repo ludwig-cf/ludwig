@@ -80,7 +80,7 @@ Order parameter I/O format:
 I/O decomposition:            1 1 1
 
 Advection scheme order:  1 (default)
-Gradient calcaulation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
 
 
 Initialising Q_ab using O2 (BPII)

@@ -10,26 +10,28 @@
 #define HYDRO_S_H
 
 #include <mpi.h>
+#include "memory.h"
 
 #include "io_harness.h"
+#include "halo_swap.h"
 #include "hydro.h"
 
-/* Data storage */
+/* Data storage: Always a 3-vector NHDIM */
 
-#define HYADR VECADR
+#define NHDIM 3
 
 struct hydro_s {
-  int nf;                  /* Extent of fields = 3 for vectors */
+  int nsite;               /* Allocated sites (local) */
   int nhcomm;              /* Width of halo region for u field */
   double * u;              /* Velocity field (on host)*/
   double * f;              /* Body force field (on host) */
-  double * t_u;              /* Velocity field (on target) */
-  double * t_f;              /* Body force field (on target) */
-  MPI_Datatype uhalo[3];   /* Halo exchange datatypes for velocity */
+
+  pe_t * pe;               /* Parallel environment */
+  cs_t * cs;               /* Coordinate system */
+  lees_edw_t * le;         /* Lees Edwards */
   io_info_t * info;        /* I/O handler. */
-
-  hydro_t * tcopy;              /* copy of this structure on target */ 
-
+  halo_swap_t * halo;      /* Halo driver object */
+  hydro_t * target;        /* structure on target */ 
 };
 
 #endif

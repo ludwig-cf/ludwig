@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -25,10 +25,10 @@
 #include "test_coords_field.h"
 #include "tests.h"
 
-static int do_test1(void);
-static int do_test2(void);
-static int do_test_halo(int ndata);
-static int do_test_io(int ndata, int io_format);
+static int do_test1(pe_t * pe);
+static int do_test2(pe_t * pe);
+static int do_test_halo(pe_t * pe, int ndata);
+static int do_test_io(pe_t * pe, int ndata, int io_format);
 
 /*****************************************************************************
  *
@@ -38,22 +38,23 @@ static int do_test_io(int ndata, int io_format);
 
 int test_map_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
 
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   /*info("Map tests\n\n");*/
 
-  do_test1();
-  do_test2();
-  do_test_halo(1);
-  do_test_halo(2);
+  do_test1(pe);
+  do_test2(pe);
+  do_test_halo(pe, 1);
+  do_test_halo(pe, 2);
 
-  do_test_io(0, IO_FORMAT_BINARY);
-  do_test_io(0, IO_FORMAT_ASCII);
-  do_test_io(2, IO_FORMAT_BINARY);
-  do_test_io(2, IO_FORMAT_ASCII);
+  do_test_io(pe, 0, IO_FORMAT_BINARY);
+  do_test_io(pe, 0, IO_FORMAT_ASCII);
+  do_test_io(pe, 2, IO_FORMAT_BINARY);
+  do_test_io(pe, 2, IO_FORMAT_ASCII);
 
-  info("PASS     ./unit/test_map\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_map\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -66,7 +67,7 @@ int test_map_suite(void) {
  *
  *****************************************************************************/
 
-int do_test1(void) {
+int do_test1(pe_t * pe) {
 
   int ndataref = 0;
   int ndata;
@@ -78,13 +79,17 @@ int do_test1(void) {
 
   int status;
   int vol;
+  cs_t * cs = NULL;
   map_t * map = NULL;
 
-  coords_init();
-  coords_nlocal(nlocal);
-  coords_ntotal(ntotal);
+  assert(pe);
 
-  map_create(ndataref, &map);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+  cs_ntotal(cs, ntotal);
+
+  map_create(pe, cs, ndataref, &map);
   assert(map);
 
   map_ndata(map, &ndata);
@@ -132,7 +137,7 @@ int do_test1(void) {
   assert(status == MAP_BOUNDARY);
 
   map_free(map);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -145,7 +150,7 @@ int do_test1(void) {
  *
  *****************************************************************************/
 
-int do_test2(void) {
+int do_test2(pe_t * pe) {
 
   int ndataref = 2;
   int ndata;
@@ -155,12 +160,16 @@ int do_test2(void) {
   double dataref[2] = {1.0, 2.0};
   double data[2];
 
+  cs_t * cs = NULL;
   map_t * map = NULL;
 
-  coords_init();
-  coords_nlocal(nlocal);
+  assert(pe);
 
-  map_create(ndataref, &map);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_nlocal(cs, nlocal);
+
+  map_create(pe, cs, ndataref, &map);
   assert(map);
 
   map_ndata(map, &ndata);
@@ -172,7 +181,7 @@ int do_test2(void) {
   assert(fabs(data[1] - dataref[1]) < DBL_EPSILON);
 
   map_free(map);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -183,17 +192,20 @@ int do_test2(void) {
  *
  *****************************************************************************/
 
-int do_test_halo(int ndata) {
+int do_test_halo(pe_t * pe, int ndata) {
 
   int nhalo;
+  cs_t * cs = NULL;
   map_t * map  = NULL;
 
+  assert(pe);
   assert(ndata > 0);
 
-  coords_init();
-  nhalo = coords_nhalo();
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_nhalo(cs, &nhalo);
 
-  map_create(ndata, &map);
+  map_create(pe, cs, ndata, &map);
   assert(map);
 
   test_coords_field_set(1, map->status, MPI_CHAR, test_ref_char1);
@@ -206,7 +218,7 @@ int do_test_halo(int ndata) {
 			  test_ref_double1);
 
   map_free(map);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }
@@ -217,22 +229,33 @@ int do_test_halo(int ndata) {
  *
  *****************************************************************************/
 
-static int do_test_io(int ndata, int io_format) {
+static int do_test_io(pe_t * pe, int ndata, int io_format) {
 
-  int grid[3] = {1, 1, 1};
-  char * filename = "map-io-test";
+  int grid[3];
+  const char * filename = "map-io-test";
+  MPI_Comm comm;
 
+  cs_t * cs = NULL;
   map_t * map = NULL;
   io_info_t * iohandler = NULL;
 
-  if (pe_size() == 8) {
+  assert(pe);
+
+  pe_mpi_comm(pe, &comm);
+
+  grid[X] = 1;
+  grid[Y] = 1;
+  grid[Z] = 1;
+
+  if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
     grid[Y] = 2;
     grid[Z] = 2;
   }
 
-  coords_init();
-  map_create(ndata, &map);
+  cs_create(pe, &cs);
+  cs_init(cs);
+  map_create(pe, cs, ndata, &map);
   assert(map);
 
   map_init_io_info(map, grid, io_format, io_format);
@@ -246,11 +269,11 @@ static int do_test_io(int ndata, int io_format) {
   map_free(map);
   iohandler = NULL;
   map = NULL;
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
 
   /* Recreate, and read from file, and check. */
 
-  map_create(ndata, &map);
+  map_create(pe, cs, ndata, &map);
   assert(map);
 
   map_init_io_info(map, grid, io_format, io_format);
@@ -262,12 +285,12 @@ static int do_test_io(int ndata, int io_format) {
   test_coords_field_check(0, ndata, map->data, MPI_DOUBLE, test_ref_double1);
 
   /* Wait before removing file(s) */
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "map");
 
   map_free(map);
-  coords_finish();
+  cs_free(cs);
 
   return 0;
 }

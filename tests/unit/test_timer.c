@@ -27,23 +27,16 @@
 
 int test_timer_suite(void) {
 
-  pe_init_quiet();
+  pe_t * pe = NULL;
 
-  /*info("\nTesting timer routines...\n");
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  info("sizeof(clock_t) is %d bytes\n", sizeof(clock_t));
-  info("CLOCKS_PER_SEC is %d\n", CLOCKS_PER_SEC);
-  info("LONG_MAX is %ld\n", LONG_MAX);
-  info("Estimate maximum serial realaible times %f seconds\n",
-       ((double) (LONG_MAX))/CLOCKS_PER_SEC);
-  */
   TIMER_init();
   TIMER_start(TIMER_TOTAL);
   TIMER_stop(TIMER_TOTAL);
-  /* TIMER_statistics();*/
 
-  info("PASS     ./unit/test_timer\n");
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_timer\n");
+  pe_free(pe);
 
   return 0;
 }

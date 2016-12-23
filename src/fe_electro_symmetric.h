@@ -7,9 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2013)
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *
+ *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -17,19 +19,48 @@
 #define FE_ELECTRO_SYMMETRIC_H
 
 #include "free_energy.h"
-#include "field.h"
-#include "field_grad.h"
+#include "symmetric.h"
+#include "fe_electro.h"
 #include "psi.h"
 
-int fe_es_create(field_t * phi, field_grad_t * gradphi, psi_t * psi);
-int fe_es_free(void);
-int fe_es_mu_ion_solv(int index, int n, double * mu);
-int fe_es_deltamu_set(int nk, double * deltamu);
-int fe_es_epsilon_set(double e1, double e2);
-int fe_es_var_epsilon(int index, double * epsilon);
+typedef struct fe_electro_symmetric_s fe_es_t;
+typedef struct fe_electro_symmetric_param_s fe_es_param_t;
 
-double fe_es_fed(const int index);
-double fe_es_mu_phi(const int index, const int nop);
-void fe_es_stress_ex(const int index, double s[3][3]);
+struct fe_electro_symmetric_param_s {
+
+  double epsilon1;            /* Dielectric constant phase 1 */
+  double epsilon2;            /* Dielectric constant phase 2 */
+  double epsilonbar;          /* Mean dielectric */
+  double gamma;               /* Dielectric contrast */
+
+  double deltamu[PSI_NKMAX];  /* Solvation free energy difference [species] */
+  int nk;                     /* Number of species - same os psi_nk() */
+};
+
+__host__ int fe_es_create(fe_symm_t * fe_symm, fe_electro_t * fe_elec,
+			  psi_t * psi, fe_es_t ** fe);
+__host__ int fe_es_free(fe_es_t * fe);
+__host__ int fe_es_target(fe_es_t * fe, fe_t ** target);
+
+__host__
+int fe_es_mu_ion_solv(fe_es_t * fe, int index, int n, double * mu);
+
+__host__
+int fe_es_deltamu_set(fe_es_t * fe, int nk, double * deltamu);
+
+__host__
+int fe_es_epsilon_set(fe_es_t * fe, double e1, double e2);
+
+__host__
+int fe_es_var_epsilon(fe_es_t * fe, int index, double * epsilon);
+
+__host__
+int fe_es_fed(fe_es_t * fe, int index, double * fed);
+
+__host__
+int fe_es_mu_phi(fe_es_t * fe, int index, double * mu);
+
+__host__
+int fe_es_stress_ex(fe_es_t * fe, int index, double s[3][3]);
 
 #endif

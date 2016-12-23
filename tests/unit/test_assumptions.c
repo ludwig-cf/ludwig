@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2014 The University of Edinburgh 
+ *  (c) 2008-2016 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -28,6 +28,7 @@ void (* p_function)(void);
 void test_util(void);
 int test_util_discrete_volume(void);
 int test_discrete_volume_sphere(double r0[3], double a0, double answer);
+int test_macro_abuse(void);
 
 /*****************************************************************************
  *
@@ -39,6 +40,10 @@ int test_assumptions_suite(void) {
 
   int n;
   int * p_int;
+
+  double pi;
+  PI_DOUBLE(pi_);
+
   /*
   printf("Testing assumptions...\n");
   printf("This code compiled at %s on %s\n", __TIME__, __DATE__);
@@ -98,7 +103,12 @@ int test_assumptions_suite(void) {
   printf("FLT_EPSILON is %14.7e\n", FLT_EPSILON);
   printf("M_PI        is %14.7e\n", M_PI);
   */
+  pi = 4.0*atan(1.0);
+  test_assert(fabs(pi - pi_) < DBL_EPSILON);
+
+
   test_util();
+  test_macro_abuse();
 
 
   /* Information */
@@ -131,6 +141,8 @@ void test_util(void) {
 
   int i, j, k, m, n;
   double sumd, sume;
+  KRONECKER_DELTA_CHAR(d_);
+  LEVI_CIVITA_CHAR(e_);
   
   /* Krocker delta and Levi-Civita tensor (floating point) */
 
@@ -158,9 +170,9 @@ void test_util(void) {
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       for (k = 0; k < 3; k++) {
-	assert(fabs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
-	assert(fabs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
-	assert(fabs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
+	assert(abs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
+	assert(abs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
+	assert(abs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
       }
     }
   }
@@ -174,7 +186,7 @@ void test_util(void) {
 	    sume += e_[i][j][k]*e_[i][m][n];
 	  }
 	  sumd = (d_[j][m]*d_[k][n] - d_[j][n]*d_[k][m]);
-	  assert(fabs(sume - sumd) < TEST_DOUBLE_TOLERANCE);
+	  test_assert(fabs(sume - sumd) < TEST_DOUBLE_TOLERANCE);
 	}
       }
     }
@@ -253,4 +265,28 @@ int test_discrete_volume_sphere(double r0[3], double a0, double answer) {
   if (fabs(vn - answer) > TEST_DOUBLE_TOLERANCE) ifail++;
 
   return ifail;
+}
+
+#define CONCAT_(a, b) a##b
+#define CONCAT(a, b) CONCAT_(a, b)
+
+#define MARGS_(_2, _1, N, ...) N 
+#define MARGS(...) MARGS_(__VA_ARGS__, 3arg, 2arg, not_allowed)
+
+#define blah_parallel_3arg(index, ndata, stride) \
+  index = (ndata) + (stride)
+#define blah_parallel_2arg(index, ndata) blah_parallel_3arg(index, ndata, 1)
+#define blah_parallel(index, ...) \
+  CONCAT(blah_parallel_, MARGS(__VA_ARGS__))(index, __VA_ARGS__)
+
+int test_macro_abuse(void) {
+
+  int sum;
+
+  blah_parallel(sum, 2);
+  test_assert(sum == 3);
+  blah_parallel(sum, 4, 99);
+  test_assert(sum == 103);
+
+  return 0;
 }

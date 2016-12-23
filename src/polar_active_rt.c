@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,14 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "pe.h"
-#include "runtime.h"
 #include "coords.h"
-#include "field.h"
-#include "field_grad.h"
-#include "io_harness.h"
-#include "free_energy_vector.h"
-#include "polar_active.h"
 #include "polar_active_rt.h"
 
 static int polar_active_init_code(field_t * p);
@@ -40,49 +33,41 @@ static int polar_active_init_code(field_t * p);
  *
  *****************************************************************************/
 
-void polar_active_run_time(void) {
+int polar_active_run_time(pe_t * pe, rt_t * rt, fe_polar_t * fe) {
 
-  double a;
-  double b;
-  double k1;
-  double delta;
-  double klc;
-  double zeta;
-  double lambda;
+  fe_polar_param_t param;
 
-  info("Polar active free energy selected.\n");
+  assert(pe);
+  assert(rt);
+  assert(fe);
+
+  pe_info(pe, "Polar active free energy selected.\n");
 
   /* PARAMETERS */
 
-  RUN_get_double_parameter("polar_active_a", &a);
-  RUN_get_double_parameter("polar_active_b", &b);
-  RUN_get_double_parameter("polar_active_k", &k1);
-  RUN_get_double_parameter("polar_active_dk", &delta);
-  delta = 0.0; /* Pending molecular field */
-  RUN_get_double_parameter("polar_active_klc", &klc);
-  RUN_get_double_parameter("polar_active_zeta", &zeta);
-  RUN_get_double_parameter("polar_active_lambda", &lambda);
+  rt_double_parameter(rt, "polar_active_a", &param.a);
+  rt_double_parameter(rt, "polar_active_b", &param.b);
+  rt_double_parameter(rt, "polar_active_k", &param.kappa1);
+  rt_double_parameter(rt, "polar_active_dk", &param.delta);
+  param.delta = 0.0; /* Pending molecular field */
+  rt_double_parameter(rt, "polar_active_klc", &param.kappa2);
+  rt_double_parameter(rt, "polar_active_zeta", &param.zeta);
+  rt_double_parameter(rt, "polar_active_lambda", &param.lambda);
 
-  info("\n");
+  pe_info(pe, "\n");
 
-  info("Parameters:\n");
-  info("Quadratic term a     = %14.7e\n", a);
-  info("Quartic term b       = %14.7e\n", b);
-  info("Elastic constant k   = %14.7e\n", k1);
-  info("Elastic constant dk  = %14.7e\n", delta);
-  info("Elastic constant klc = %14.7e\n", klc);
-  info("Activity zeta        = %14.7e\n", zeta);
-  info("Lambda               = %14.7e\n", lambda);
+  pe_info(pe, "Parameters:\n");
+  pe_info(pe, "Quadratic term a     = %14.7e\n", param.a);
+  pe_info(pe, "Quartic term b       = %14.7e\n", param.b);
+  pe_info(pe, "Elastic constant k   = %14.7e\n", param.kappa1);
+  pe_info(pe, "Elastic constant dk  = %14.7e\n", param.delta);
+  pe_info(pe, "Elastic constant klc = %14.7e\n", param.kappa2);
+  pe_info(pe, "Activity zeta        = %14.7e\n", param.zeta);
+  pe_info(pe, "Lambda               = %14.7e\n", param.lambda);
 
-  polar_active_parameters_set(a, b, k1, klc);
-  polar_active_zeta_set(zeta);
+  fe_polar_param_set(fe, param);
 
-  fe_density_set(polar_active_free_energy_density);
-  fe_chemical_stress_set(polar_active_chemical_stress);
-  fe_v_lambda_set(lambda);
-  fe_v_molecular_field_set(polar_active_molecular_field);
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -91,13 +76,13 @@ void polar_active_run_time(void) {
  *
  *****************************************************************************/
 
-int polar_active_rt_initial_conditions(field_t * p) {
+int polar_active_rt_initial_conditions(pe_t * pe, rt_t * rt, field_t * p) {
 
   char key[BUFSIZ];
 
   assert(p);
 
-  RUN_get_string_parameter("polar_active_initialisation", key, BUFSIZ);
+  rt_string_parameter(rt, "polar_active_initialisation", key, BUFSIZ);
 
   if (strcmp(key, "from_file") == 0) {
     assert(0);
@@ -105,12 +90,12 @@ int polar_active_rt_initial_conditions(field_t * p) {
   }
 
   if (strcmp(key, "from_code") == 0) {
-    info("Initial polar order parameter from code\n");
+    pe_info(pe, "Initial polar order parameter from code\n");
     polar_active_init_code(p);
   }
 
   if (strcmp(key, "aster") == 0) {
-    info("Initialise standard aster\n");
+    pe_info(pe, "Initialise standard aster\n");
     polar_active_init_aster(p);
   }
 

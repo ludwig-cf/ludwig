@@ -7,7 +7,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2015 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -28,8 +29,8 @@
 #define DRMAX_DEFAULT 0.8
 
 
-__targetHost__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc);
-__targetHost__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
+__host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc);
+__host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
 
 /*****************************************************************************
  *
@@ -37,20 +38,23 @@ __targetHost__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc);
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) {
+__host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
+				  colloids_info_t ** pinfo) {
 
+  int ndevice;
   int nhalo = 1;                   /* Always exactly one halo cell each side */
   int nlist;
   colloids_info_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pinfo);
 
   obj = (colloids_info_t*) calloc(1, sizeof(colloids_info_t));
-  if (obj == NULL) fatal("calloc(colloids_info_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(colloids_info_t) failed\n");
 
-  /* allocate target copy of structure */
-
-  targetCalloc((void**) &(obj->tcopy), sizeof(colloids_info_t));
+  obj->pe = pe;
+  obj->cs = cs;
 
   /* Defaults */
 
@@ -65,11 +69,20 @@ __targetHost__ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) 
 
   nlist = (ncell[X] + 2*nhalo)*(ncell[Y] + 2*nhalo)*(ncell[Z] + 2*nhalo);
   obj->clist = (colloid_t**) calloc(nlist, sizeof(colloid_t *));
-  if (obj->clist == NULL) fatal("calloc(nlist, colloid_t *) failed\n");
+  if (obj->clist == NULL) pe_fatal(pe, "calloc(nlist, colloid_t *) failed\n");
 
   obj->ncells = nlist;
   obj->rho0 = RHO_DEFAULT;
   obj->drmax = DRMAX_DEFAULT;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    targetCalloc((void**) &(obj->target), sizeof(colloids_info_t));
+  }
 
   *pinfo = obj;
 
@@ -82,7 +95,7 @@ __targetHost__ int colloids_info_create(int ncell[3], colloids_info_t ** pinfo) 
  *
  *****************************************************************************/
 
-__targetHost__ void colloids_info_free(colloids_info_t * info) {
+__host__ void colloids_info_free(colloids_info_t * info) {
 
   assert(info);
 
@@ -92,7 +105,7 @@ __targetHost__ void colloids_info_free(colloids_info_t * info) {
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
 
-  if (info->tcopy) targetFree(info->tcopy);
+  if (info->target != info) targetFree(info->target);
 
   free(info);
 
@@ -107,15 +120,17 @@ __targetHost__ void colloids_info_free(colloids_info_t * info) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
+__host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
 
+  colloids_info_t * oldinfo;
   colloids_info_t * newinfo = NULL;
   colloid_t * pc;
   colloid_t * pcnew;
 
   assert(pinfo);
 
-  colloids_info_create(newcell, &newinfo);
+  oldinfo = *pinfo;
+  colloids_info_create(oldinfo->pe, oldinfo->cs, newcell, &newinfo);
 
   colloids_info_list_local_build(*pinfo);
   colloids_info_local_head(*pinfo, &pc);
@@ -138,6 +153,33 @@ __targetHost__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pin
 
 /*****************************************************************************
  *
+ *  colloids_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int colloids_memcpy(colloids_info_t * info, int flag) {
+
+  int ndevice;
+
+  assert(info);
+  assert(info->map_new);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    assert(info->target == info);
+  }
+  else {
+    colloid_t * tmp;
+    copyFromTarget(&tmp, &info->target->map_new, sizeof(colloid_t **)); 
+    copyToTarget(tmp, info->map_new, info->nsites*sizeof(colloid_t *));
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  colloids_info_nallocated
  *
  *  Return number of colloid_t allocated.
@@ -145,7 +187,8 @@ __targetHost__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pin
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated) {
+__host__
+int colloids_info_nallocated(colloids_info_t * cinfo, int * nallocated) {
 
   assert(cinfo);
   assert(nallocated);
@@ -161,7 +204,7 @@ __targetHost__ int colloids_info_nallocated(colloids_info_t * cinfo, int * nallo
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_rho0(colloids_info_t * cinfo, double * rho0) {
+__host__ int colloids_info_rho0(colloids_info_t * cinfo, double * rho0) {
 
   assert(cinfo);
   assert(rho0);
@@ -177,7 +220,7 @@ __targetHost__ int colloids_info_rho0(colloids_info_t * cinfo, double * rho0) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0) {
+__host__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0) {
 
   assert(cinfo);
 
@@ -195,27 +238,36 @@ __targetHost__ int colloids_info_rho0_set(colloids_info_t * cinfo, double rho0) 
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_map_init(colloids_info_t * info) {
+__host__ int colloids_info_map_init(colloids_info_t * info) {
 
   int nsites;
-  void * tmpptr;
+  int ndevice;
 
   assert(info);
-  assert(info->tcopy);
+  assert(info->target);
 
-  nsites = coords_nsites();
+  cs_nsites(info->cs, &nsites);
 
   info->nsites = nsites;
   info->map_old = (colloid_t **) calloc(nsites, sizeof(colloid_t *));
   info->map_new = (colloid_t **) calloc(nsites, sizeof(colloid_t *));
 
-  if (info->map_old == (colloid_t **) NULL) fatal("calloc (map_old) failed");
-  if (info->map_new == (colloid_t **) NULL) fatal("calloc (map_new) failed");
+  if (info->map_old == (colloid_t **) NULL) {
+    pe_fatal(info->pe, "calloc (map_old) failed");
+  }
+  if (info->map_new == (colloid_t **) NULL) {
+    pe_fatal(info->pe, "calloc (map_new) failed");
+  }
 
-  /* allocate data space on target */
+  /* Allocate data space on target */
 
-  targetCalloc((void**) &tmpptr, nsites*sizeof(colloid_t*));
-  copyToTarget(&(info->tcopy->map_new), &tmpptr, sizeof(colloid_t**)); 
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    void * tmp;
+    targetCalloc((void **) &tmp, nsites*sizeof(colloid_t *));
+    copyToTarget(&info->target->map_new, &tmp, sizeof(colloid_t **)); 
+  }
 
   return 0;
 }
@@ -226,7 +278,7 @@ __targetHost__ int colloids_info_map_init(colloids_info_t * info) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal) {
+__host__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal) {
 
   assert(info);
   assert(ntotal);
@@ -242,7 +294,7 @@ __targetHost__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_ncell(colloids_info_t * info, int ncell[3]) {
+__host__ int colloids_info_ncell(colloids_info_t * info, int ncell[3]) {
 
   assert(info);
 
@@ -261,14 +313,20 @@ __targetHost__ int colloids_info_ncell(colloids_info_t * info, int ncell[3]) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]) {
+__host__ int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3]) {
+
+  int mpicartsz[3];
+  double ltot[3];
 
   assert(cinfo);
   assert(lcell);
 
-  lcell[X] = L(X)/(cart_size(X)*cinfo->ncell[X]);
-  lcell[Y] = L(Y)/(cart_size(Y)*cinfo->ncell[Y]);
-  lcell[Z] = L(Z)/(cart_size(Z)*cinfo->ncell[Z]);
+  cs_ltot(cinfo->cs, ltot);
+  cs_cartsz(cinfo->cs, mpicartsz);
+
+  lcell[X] = ltot[X]/(mpicartsz[X]*cinfo->ncell[X]);
+  lcell[Y] = ltot[Y]/(mpicartsz[Y]*cinfo->ncell[Y]);
+  lcell[Z] = ltot[Z]/(mpicartsz[Z]*cinfo->ncell[Z]);
 
   return 0;
 }
@@ -279,7 +337,7 @@ __targetHost__ int colloids_info_lcell(colloids_info_t * cinfo, double lcell[3])
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc) {
+__host__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc) {
 
   int index;
 
@@ -301,7 +359,7 @@ __targetHost__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc) {
+__host__ int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc) {
 
   assert(info);
   assert(pc);
@@ -320,7 +378,7 @@ __targetHost__ int colloids_info_map(colloids_info_t * info, int index, colloid_
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc) {
+__host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc) {
 
   assert(info);
   assert(pc);
@@ -339,7 +397,7 @@ __targetHost__ int colloids_info_map_old(colloids_info_t * info, int index, coll
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_map_set(colloids_info_t * cinfo, int index, colloid_t * pc) {
+__host__ int colloids_info_map_set(colloids_info_t * cinfo, int index, colloid_t * pc) {
 
   assert(cinfo);
   assert(cinfo->map_new);
@@ -357,7 +415,7 @@ __targetHost__ int colloids_info_map_set(colloids_info_t * cinfo, int index, col
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_map_update(colloids_info_t * cinfo) {
+__host__ int colloids_info_map_update(colloids_info_t * cinfo) {
 
   int n;
   colloid_t ** maptmp;
@@ -383,7 +441,7 @@ __targetHost__ int colloids_info_map_update(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_nhalo(colloids_info_t * cinfo, int * nhalo) {
+__host__ int colloids_info_nhalo(colloids_info_t * cinfo, int * nhalo) {
 
   assert(cinfo);
   assert(nhalo);
@@ -402,7 +460,7 @@ __targetHost__ int colloids_info_nhalo(colloids_info_t * cinfo, int * nhalo) {
  *
  ****************************************************************************/
 
-__targetHost__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
+__host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
 
   int ic, jc, kc;
   colloid_t * pc = NULL;
@@ -434,14 +492,17 @@ __targetHost__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_ntotal_set(colloids_info_t * cinfo) {
+__host__ int colloids_info_ntotal_set(colloids_info_t * cinfo) {
 
   int nlocal;
+  MPI_Comm comm;
 
   assert(cinfo);
 
+  cs_cart_comm(cinfo->cs, &comm);
+
   colloids_info_nlocal(cinfo, &nlocal);
-  MPI_Allreduce(&nlocal, &cinfo->ntotal, 1, MPI_INT, MPI_SUM, cart_comm());
+  MPI_Allreduce(&nlocal, &cinfo->ntotal, 1, MPI_INT, MPI_SUM, comm);
 
   return 0;
 }
@@ -452,7 +513,7 @@ __targetHost__ int colloids_info_ntotal_set(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_cell_list_head(colloids_info_t * cinfo,
+__host__ int colloids_info_cell_list_head(colloids_info_t * cinfo,
 				 int ic, int jc, int kc, colloid_t ** pc) {
   int index;
 
@@ -481,17 +542,26 @@ __targetHost__ int colloids_info_cell_list_head(colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_cell_coords(colloids_info_t * cinfo,
+__host__ int colloids_info_cell_coords(colloids_info_t * cinfo,
 					     const double r[3], int icell[3]) {
   int ia;
+  int mpicartsz[3];
+  int mpi_coords[3];
   double lcell;
+  double lmin[3];
+  double ltot[3];
 
   assert(cinfo);
 
+  cs_lmin(cinfo->cs, lmin);
+  cs_ltot(cinfo->cs, ltot);
+  cs_cartsz(cinfo->cs, mpicartsz);
+  cs_cart_coords(cinfo->cs, mpi_coords);
+
   for (ia = 0; ia < 3; ia++) {
-    lcell = L(ia) / (cart_size(ia)*cinfo->ncell[ia]);
-    icell[ia] = (int) floor((r[ia] - Lmin(ia) + lcell) / lcell);
-    icell[ia] -= cart_coords(ia)*cinfo->ncell[ia];
+    lcell = ltot[ia] / (mpicartsz[ia]*cinfo->ncell[ia]);
+    icell[ia] = (int) floor((r[ia] - lmin[ia] + lcell) / lcell);
+    icell[ia] -= mpi_coords[ia]*cinfo->ncell[ia];
   }
 
   return 0;
@@ -506,7 +576,8 @@ __targetHost__ int colloids_info_cell_coords(colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll) {
+__host__
+int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll) {
 
   int index;
   int newcell[3];
@@ -548,7 +619,7 @@ __targetHost__ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_cell_list_clean(colloids_info_t * cinfo) {
+__host__ int colloids_info_cell_list_clean(colloids_info_t * cinfo) {
 
   int ic, jc, kc;
   colloid_t * pc;
@@ -584,7 +655,7 @@ __targetHost__ int colloids_info_cell_list_clean(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
+__host__ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
 
   int ic, jc, kc;
   int cell[3];
@@ -686,7 +757,7 @@ __targetHost__ int colloids_info_update_cell_list(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
+__host__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
 			    const double r[3], colloid_t ** pc) {
   int is_local = 1;
   int icell[3];
@@ -716,7 +787,7 @@ __targetHost__ int colloids_info_add_local(colloids_info_t * cinfo, int index,
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_add(colloids_info_t * cinfo, int index,
+__host__ int colloids_info_add(colloids_info_t * cinfo, int index,
 				     const double r[3], colloid_t ** pc) {
 
   int icell[3];
@@ -757,7 +828,7 @@ __targetHost__ int colloids_info_add(colloids_info_t * cinfo, int index,
  *
  *****************************************************************************/
 
-__targetHost__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
+__host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
 
   colloid_t * obj = NULL;
 
@@ -775,7 +846,7 @@ __targetHost__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
  *
  *****************************************************************************/
 
-__targetHost__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
+__host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
 
   assert(cinfo);
   assert(pc);
@@ -796,7 +867,7 @@ __targetHost__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_q_local(colloids_info_t * cinfo, double q[2]) {
+__host__ int colloids_info_q_local(colloids_info_t * cinfo, double q[2]) {
 
   int ic, jc, kc;
   colloid_t * pc = NULL;
@@ -873,7 +944,7 @@ int colloids_info_v_local(colloids_info_t * cinfo, double * v) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
+__host__ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int jc, int kc,
 			     int * ncount) {
 
   colloid_t * pc = NULL;
@@ -894,7 +965,8 @@ __targetHost__ int colloids_info_cell_count(colloids_info_t * cinfo, int ic, int
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_local_head(colloids_info_t * cinfo, colloid_t ** pc) {
+__host__
+int colloids_info_local_head(colloids_info_t * cinfo, colloid_t ** pc) {
 
   assert(cinfo);
   assert(pc);
@@ -910,7 +982,7 @@ __targetHost__ int colloids_info_local_head(colloids_info_t * cinfo, colloid_t *
  *
  *****************************************************************************/
 
-int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc) {
+__host__ int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc) {
 
   assert(cinfo);
   assert(pc);
@@ -933,7 +1005,7 @@ int colloids_info_all_head(colloids_info_t * cinfo, colloid_t ** pc) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_position_update(colloids_info_t * cinfo) {
+__host__ int colloids_info_position_update(colloids_info_t * cinfo) {
 
   int ia;
   int ic, jc, kc;
@@ -968,7 +1040,7 @@ __targetHost__ int colloids_info_position_update(colloids_info_t * cinfo) {
 	    if (ifail == 1) {
 	      verbose("Colloid velocity exceeded max %14.7e\n", cinfo->drmax);
 	      colloid_state_write_ascii(coll->s, stdout);
-	      fatal("Stopping\n");
+	      pe_fatal(cinfo->pe, "Stopping\n");
 	    }
 	  }
 
@@ -987,7 +1059,7 @@ __targetHost__ int colloids_info_position_update(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_update_lists(colloids_info_t * cinfo) {
+__host__ int colloids_info_update_lists(colloids_info_t * cinfo) {
 
   colloids_info_list_local_build(cinfo);
   colloids_info_list_all_build(cinfo);
@@ -1003,7 +1075,7 @@ __targetHost__ int colloids_info_update_lists(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_list_all_build(colloids_info_t * cinfo) {
+__host__ int colloids_info_list_all_build(colloids_info_t * cinfo) {
 
   int n;
   colloid_t * pc;
@@ -1052,7 +1124,7 @@ __targetHost__ int colloids_info_list_all_build(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_list_local_build(colloids_info_t * cinfo) {
+__host__ int colloids_info_list_local_build(colloids_info_t * cinfo) {
 
   int ic, jc, kc;
   colloid_t * pc;
@@ -1115,16 +1187,19 @@ __targetHost__ int colloids_info_list_local_build(colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic,
+__host__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic,
 			  int * lim) {
 
   int irange, halo;
+  int mpicartsz[3];
 
   assert(cinfo);
   assert(ia == X || ia == Y || ia == Z);
 
+  cs_cartsz(cinfo->cs, mpicartsz);
+
   irange = 1 + (cinfo->ncell[ia] == 2);
-  halo = (cart_size(ia) > 1 || irange == 1);
+  halo = (mpicartsz[ia] > 1 || irange == 1);
 
   lim[0] = imax(1 - halo, ic - irange);
   lim[1] = imin(ic + irange, cinfo->ncell[ia] + halo);
@@ -1140,13 +1215,16 @@ __targetHost__ int colloids_info_climits(colloids_info_t * cinfo, int ia, int ic
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
+__host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
 
   double a0_local = 0.0;
+  MPI_Comm comm;
   colloid_t * pc = NULL;
 
   assert(cinfo);
   assert(a0max);
+
+  cs_cart_comm(cinfo->cs, &comm);
 
   /* Make sure lists are up-to-date */
   colloids_info_update_lists(cinfo);
@@ -1154,7 +1232,7 @@ __targetHost__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) 
   colloids_info_local_head(cinfo, &pc);
   for (; pc; pc = pc->next) a0_local = dmax(a0_local, pc->s.a0);
 
-  MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, cart_comm());
+  MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, comm);
 
   return 0;
 }
@@ -1167,14 +1245,16 @@ __targetHost__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) 
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
+__host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
 
   double ahmax_local;
+  MPI_Comm comm;
   colloid_t * pc = NULL;
 
   assert(cinfo);
 
   ahmax_local = 0.0;
+  pe_mpi_comm(cinfo->pe, &comm);
 
   /* Make sure lists are up-to-date */
   colloids_info_update_lists(cinfo);
@@ -1182,7 +1262,7 @@ __targetHost__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) 
   colloids_info_local_head(cinfo, &pc);
   for (; pc; pc = pc->next) ahmax_local = dmax(ahmax_local, pc->s.ah);
 
-  MPI_Allreduce(&ahmax_local, ahmax, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
+  MPI_Allreduce(&ahmax_local, ahmax, 1, MPI_DOUBLE, MPI_MAX, comm);
 
   return 0;
 }
@@ -1195,9 +1275,9 @@ __targetHost__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) 
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_type_enum_t it,
-			      int * count) {
-
+__host__ int colloids_info_count_local(colloids_info_t * cinfo,
+				       colloid_type_enum_t it,
+				       int * count) {
   int nlocal = 0;
   int ic, jc, kc;
   colloid_t * pc = NULL;
@@ -1229,13 +1309,8 @@ __targetHost__ int colloids_info_count_local(colloids_info_t * cinfo, colloid_ty
  *
  *****************************************************************************/
 
-__targetHost__ int colloids_number_sites(colloids_info_t *cinfo)
-{
+__host__ int colloids_number_sites(colloids_info_t *cinfo) {
   
-
-  int ia;
-  int i, j, ij, ji;
-
   colloid_t * pc;
   colloid_link_t * p_link;
 
@@ -1254,7 +1329,6 @@ __targetHost__ int colloids_number_sites(colloids_info_t *cinfo)
 
       /* increment by 2 (outward and inward sites) */
       ncolsite+=2;
-
      
     }
   }
@@ -1271,12 +1345,8 @@ __targetHost__ int colloids_number_sites(colloids_info_t *cinfo)
  *
  *****************************************************************************/
 
-__targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo)
+__host__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *cinfo)
 {
-  
-
-  int ia;
-  int i, j, ij, ji;
 
   colloid_t * pc;
   colloid_link_t * p_link;
@@ -1300,4 +1370,121 @@ __targetHost__ void colloids_list_sites(int* colloidSiteList, colloids_info_t *c
     }
   }
   return;
+}
+
+
+/*****************************************************************************
+ *
+ *  colloids_q_boundary_normal
+ *
+ *  Find the 'true' outward unit normal at fluid site index. Note that
+ *  the half-way point is not used to provide a simple unique value in
+ *  the gradient calculation.
+ *
+ *  The unit lattice vector which is the discrete outward normal is di[3].
+ *  The result is returned in unit vector dn.
+ *
+ *****************************************************************************/
+
+__host__ void colloids_q_boundary_normal(colloids_info_t * cinfo,
+					 const int index,
+					 const int di[3],
+					 double dn[3]) {
+  int ia, index1;
+  int isite[3];
+  int noffset[3];
+
+  double rd;
+  colloid_t * pc;
+
+  assert(cinfo);
+
+  cs_index_to_ijk(cinfo->cs, index, isite);
+
+  index1 = cs_index(cinfo->cs, isite[X]-di[X], isite[Y]-di[Y], isite[Z]-di[Z]);
+
+  colloids_info_map(cinfo, index1, &pc);
+
+  if (pc) {
+    cs_nlocal_offset(cinfo->cs, noffset);
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] = 1.0*(noffset[ia] + isite[ia]);
+      dn[ia] -= pc->s.r[ia];
+    }
+
+    rd = modulus(dn);
+    assert(rd > 0.0);
+    rd = 1.0/rd;
+
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] *= rd;
+    }
+  }
+  else {
+    /* Assume di is the true outward normal (e.g., flat wall) */
+    for (ia = 0; ia < 3; ia++) {
+      dn[ia] = 1.0*di[ia];
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_rb
+ *
+ *  Return the boundary vector at point index.
+ *
+ *****************************************************************************/
+
+__host__ int colloid_rb(colloids_info_t * info, colloid_t * pc, int index,
+			double rb[3]) {
+
+  int ilocal[3];
+  int noffset[3];
+  double r[3];
+
+  assert(info);
+  assert(pc);
+
+  cs_nlocal_offset(info->cs, noffset);
+  cs_index_to_ijk(info->cs, index, ilocal);
+
+  r[X] = 1.0*(noffset[X] + ilocal[X]);
+  r[Y] = 1.0*(noffset[Y] + ilocal[Y]);
+  r[Z] = 1.0*(noffset[Z] + ilocal[Z]);
+
+  cs_minimum_distance(info->cs, pc->s.r, r, rb);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_rhubarb
+ *
+ *  Return, for a given position index, the boundary vector and the
+ *  boundary velocity for a colloid.
+ *
+ *  It is the callers responsibility to ensure this makes sense,
+ *  ie., point index really is on the boundary.
+ *
+ *****************************************************************************/
+
+__host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
+			   double rb[3], double ub[3]) {
+
+  assert(info);
+  assert(pc);
+
+  colloid_rb(info, pc, index, rb);
+
+  /* u_b = v + omega x r_b */
+
+  ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+  ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+  ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+
+  return 0;
 }

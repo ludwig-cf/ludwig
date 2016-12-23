@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2016 The University of Edinburgh
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -27,7 +27,7 @@
 #define PAIR_RC      10.0
 
 int test_pair_yukawa1(void);
-int test_pair_yukawa2(void);
+int test_pair_yukawa2(pe_t * pe, cs_t * cs);
 int test_pair_yukawa_config1(colloids_info_t * cinfo, interact_t * interact,
 			     pair_yukawa_t * pair);
 
@@ -39,15 +39,19 @@ int test_pair_yukawa_config1(colloids_info_t * cinfo, interact_t * interact,
 
 int test_pair_yukawa_suite(void) {
 
-  pe_init_quiet();
-  coords_init();
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  cs_create(pe, &cs);
+  cs_init(cs);
 
   test_pair_yukawa1();
-  test_pair_yukawa2();
+  test_pair_yukawa2(pe, cs);
 
-  info("PASS     ./unit/test_pair_yakawa\n");
-  coords_finish();
-  pe_finalise();
+  cs_free(cs);
+  pe_info(pe, "PASS     ./unit/test_pair_yakawa\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -84,7 +88,7 @@ int test_pair_yukawa1(void) {
  *
  *****************************************************************************/
 
-int test_pair_yukawa2(void) {
+int test_pair_yukawa2(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
 
@@ -92,7 +96,10 @@ int test_pair_yukawa2(void) {
   interact_t * interact = NULL;
   pair_yukawa_t * pair = NULL;
 
-  colloids_info_create(ncell, &cinfo);
+  assert(pe);
+  assert(cs);
+
+  colloids_info_create(pe, cs, ncell, &cinfo);
   interact_create(&interact);
   pair_yukawa_create(&pair);
 

@@ -29,215 +29,351 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009 The University of Edinburgh
+ *  (c) 2009-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
 #include <assert.h>
 #include <math.h>
 
-
-#include "field.h"
-#include "field_grad.h"
+#include "pe.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "util.h"
 #include "brazovskii.h"
 
-static double a_     = -0.00;
-static double b_     = +0.00;
-static double kappa_ = +0.00;
-static double c_     = -0.00;
+struct fe_brazovskii_s {
+  fe_t super;
+  fe_brazovskii_param_t * param;    /* Parameters */
+  field_t * phi;                    /* Reference to order parameter field */
+  field_grad_t * dphi;              /* Reference to gradient field */
+  fe_brazovskii_t * target;         /* Device copy */
+};
 
-static field_t * phi_ = NULL;
-static field_grad_t * grad_phi_ = NULL;
+static __constant__ fe_brazovskii_param_t const_param;
+
+
+static fe_vt_t fe_braz_hvt = {
+  (fe_free_ft)      fe_brazovskii_free,
+  (fe_target_ft)    fe_brazovskii_target,
+  (fe_fed_ft)       fe_brazovskii_fed,
+  (fe_mu_ft)        fe_brazovskii_mu,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_brazovskii_str,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_brazovskii_str_v
+};
+
+static  __constant__ fe_vt_t fe_braz_dvt = {
+  (fe_free_ft)      NULL,
+  (fe_target_ft)    NULL,
+  (fe_fed_ft)       fe_brazovskii_fed,
+  (fe_mu_ft)        fe_brazovskii_mu,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_brazovskii_str,
+  (fe_hvector_ft)   NULL,
+  (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_brazovskii_str_v
+};
+
 
 /*****************************************************************************
  *
- *  brazovskii_phi_set
- *
- *  Attach a reference to the order parameter field object, and the
- *  associated field gradient object.
+ *  fe_brazovskii_create
  *
  *****************************************************************************/
 
-int brazovskii_phi_set(field_t * phi, field_grad_t * phi_grad) {
+__host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
+				  fe_brazovskii_t ** p) {
+
+  int ndevice;
+  fe_brazovskii_t * obj = NULL;
 
   assert(phi);
-  assert(phi_grad);
+  assert(dphi);
 
-  phi_ = phi;
-  grad_phi_ = phi_grad;
+  obj = (fe_brazovskii_t *) calloc(1, sizeof(fe_brazovskii_t));
+  if (obj == NULL) fatal("calloc(fe_brazovskii_t) failed\n");
+
+  obj->param =
+    (fe_brazovskii_param_t *) calloc(1, sizeof(fe_brazovskii_param_t));
+  if (obj->param == NULL) fatal("calloc(fe_brazovskii_param_t) failed\n");
+
+  obj->phi = phi;
+  obj->dphi = dphi;
+  obj->super.func = &fe_braz_hvt;
+  obj->super.id = FE_BRAZOVSKII;
+
+  /* Allocate device memory, or alias */
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    fe_brazovskii_param_t * tmp;
+    fe_vt_t * vt;
+    targetCalloc((void **) &obj->target, sizeof(fe_brazovskii_t));
+    targetConstAddress((void **) &tmp, const_param);
+    copyToTarget(&obj->target->param, &tmp, sizeof(fe_brazovskii_t *));
+    targetConstAddress((void **) &vt, fe_braz_dvt);
+    copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
+
+    copyToTarget(&obj->target->phi, &phi->target, sizeof(field_t *));
+    copyToTarget(&obj->target->dphi, &dphi->target, sizeof(field_grad_t *));
+  }
+
+  *p = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_brazovskii_free
+ *
+ *****************************************************************************/
+
+__host__ int fe_brazovskii_free(fe_brazovskii_t * fe) {
+
+  int ndevice;
+
+  assert(fe);
+
+  targetGetDeviceCount(&ndevice);
+  if (ndevice > 0) targetFree(fe->target);
+
+  free(fe->param);
+  free(fe);
 
   return 0;
 }
 
 /****************************************************************************
  *
- *  brazovskii_free_energy_parameters_set
- *
- *  No constrints on the parameters are enforced, but see comments
- *  above.
+ *  fe_brazovskii_target
  *
  ****************************************************************************/
 
-void brazovskii_free_energy_parameters_set(double a, double b, double kappa,
-					   double c) {
-  a_ = a;
-  b_ = b;
-  kappa_ = kappa;
-  c_ = c;
+__host__ int fe_brazovskii_target(fe_brazovskii_t * fe, fe_t ** target) {
 
-  return;
+  assert(fe);
+  assert(target);
+
+  *target = (fe_t *) fe->target;
+
+  return 0;
 }
 
 /****************************************************************************
  *
- *  brazovskii_amplitude
+ *  fe_brazovskii_param_set
+ *
+ *  No constraints on the parameters are enforced, but see comments
+ *  above.
+ *
+ ****************************************************************************/
+
+__host__ int fe_brazovskii_param_set(fe_brazovskii_t * fe,
+				     fe_brazovskii_param_t values) {
+  assert(fe);
+
+  *fe->param = values;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_brazovskii_param
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_brazovskii_param(fe_brazovskii_t * fe,
+					    fe_brazovskii_param_t * values) {
+  assert(fe);
+  assert(values);
+
+  *values = *fe->param;
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  fe_brazovskii_amplitude
  *
  *  Return the single-mode approximation amplitude.
  *
  ****************************************************************************/
 
-double brazovskii_amplitude(void) {
+__host__ __device__ int fe_brazovskii_amplitude(fe_brazovskii_t * fe,
+						double * a0) {
+  double b, c, kappa;
 
-  double a;
+  assert(fe);
 
-  a = sqrt(4.0*(1.0 + kappa_*kappa_/(4.0*b_*c_))/3.0);
+  b = fe->param->b;
+  c = fe->param->c;
+  kappa = fe->param->kappa;
 
-  return a;
+  *a0 = sqrt((4.0/3.0)*(1.0 + kappa*kappa/(4.0*b*c)));
+
+  return 0;
 }
 
 /****************************************************************************
  *
- *  brazovskii_wavelength
+ *  fe_brazovskii_wavelength
  *
  *  Return the single-mode approximation wavelength 2\pi / k_0.
  *
  ****************************************************************************/
 
-double brazovskii_wavelength(void) {
+__host__ __device__ int fe_brazovskii_wavelength(fe_brazovskii_t * fe,
+						 double * lambda) {
+  assert(fe);
 
-  double lambda;
+  *lambda = 2.0*4.0*atan(1.0) / sqrt(-fe->param->kappa/(2.0*fe->param->c));
 
-  lambda = 2.0*4.0*atan(1.0) / sqrt(-kappa_/(2.0*c_));
-
-  return lambda;
+  return 0;
 }
 
 /****************************************************************************
  *
- *  brazovskii_free_energy_density
+ *  fe_brazovskii_fed
  *
- *  The free energy density.
+ *  The free energy density at position index.
  *
  ****************************************************************************/
 
-double brazovskii_free_energy_density(const int index) {
+__host__ __device__
+int fe_brazovskii_fed(fe_brazovskii_t * fe, int index, double * fed) {
 
   double phi;
   double dphi[3];
   double delsq;
-  double e;
 
-  field_scalar(phi_, index, &phi);
-  field_grad_scalar_grad(grad_phi_, index, dphi);
-  field_grad_scalar_delsq(grad_phi_, index, &delsq);
+  assert(fe);
 
-  e = 0.5*a_*phi*phi + 0.25*b_*phi*phi*phi*phi
-    + 0.5*kappa_*dot_product(dphi, dphi) + 0.5*c_*delsq*delsq;
+  field_scalar(fe->phi, index, &phi);
+  field_grad_scalar_grad(fe->dphi, index, dphi);
+  field_grad_scalar_delsq(fe->dphi, index, &delsq);
 
-  return e;
+  *fed = 0.5*fe->param->a*phi*phi + 0.25*fe->param->b*phi*phi*phi*phi
+    + 0.5*fe->param->kappa*dot_product(dphi, dphi)
+    + 0.5*fe->param->c*delsq*delsq;
+
+  return 0;
 }
 
 /****************************************************************************
  *
- *  brazovskii_chemical_potential
+ *  fe_brazovskii_mu
  *
- *  The chemical potential \mu = \delta F / \delta \phi
- *                             = a\phi + b\phi^3 - \kappa\nabla^2 \phi
- *                                               + c (\nabla^2)(\nabla^2 \phi)
+ *  The chemical potential at position index
+ *
+ *     \mu = \delta F / \delta \phi
+ *         = a\phi + b\phi^3 - \kappa\nabla^2 \phi
+ *         + c (\nabla^2)(\nabla^2 \phi)
  *
  ****************************************************************************/
 
-double brazovskii_chemical_potential(const int index, const int nop) {
+__host__ __device__
+int fe_brazovskii_mu(fe_brazovskii_t * fe, int index, double * mu) {
 
   double phi;
   double del2_phi;
   double del4_phi;
-  double mu;
 
-  field_scalar(phi_, index, &phi);
-  field_grad_scalar_delsq(grad_phi_, index, &del2_phi);
-  field_grad_scalar_delsq_delsq(grad_phi_, index, &del4_phi);
+  assert(fe);
 
-  mu = a_*phi + b_*phi*phi*phi - kappa_*del2_phi + c_*del4_phi;
+  field_scalar(fe->phi, index, &phi);
+  field_grad_scalar_delsq(fe->dphi, index, &del2_phi);
+  field_grad_scalar_delsq_delsq(fe->dphi, index, &del4_phi);
 
-  return mu;
+  *mu = fe->param->a*phi + fe->param->b*phi*phi*phi
+    - fe->param->kappa*del2_phi + fe->param->c*del4_phi;
+
+  return 0;
 }
 
 /****************************************************************************
  *
- *  brazovskii_isotropic_pressure
- *
- *  This ignores the term in the density (assumed to be uniform).
- *
- ****************************************************************************/
-
-double brazovskii_isotropic_pressure(const int index) {
-
-  double phi;
-  double del2_phi;
-  double del4_phi;
-  double grad_phi[3];
-  double grad_del2_phi[3];
-  double p0;
-
-  field_scalar(phi_, index, &phi);
-  field_grad_scalar_grad(grad_phi_, index, grad_phi);
-  field_grad_scalar_delsq(grad_phi_, index, &del2_phi);
-  field_grad_scalar_delsq_delsq(grad_phi_, index, &del4_phi);
-  field_grad_scalar_grad_delsq(grad_phi_, index, grad_del2_phi);
-
-  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi - kappa_*phi*del2_phi
-    + 0.5*kappa_*dot_product(grad_phi, grad_phi) + c_*phi*del4_phi
-    + 0.5*c_*del2_phi*del2_phi+ c_*dot_product(grad_phi, grad_del2_phi);
-
-  return p0;
-}
-
-/****************************************************************************
- *
- *  brazovskii_chemical_stress
+ *  fe_brazovskii_str
  *
  *  Return the chemical stress tensor for given position index.
  *
  ****************************************************************************/
 
-void brazovskii_chemical_stress(const int index, double s[3][3]) {
+__host__ __device__
+int fe_brazovskii_str(fe_brazovskii_t * fe, int index,  double s[3][3]) {
 
   int ia, ib;
+  double c, kappa;
   double phi;
   double del2_phi;
   double del4_phi;
   double grad_phi[3];
   double grad_del2_phi[3];
   double p0;
+  KRONECKER_DELTA_CHAR(d);
 
-  field_scalar(phi_, index, &phi);
-  field_grad_scalar_grad(grad_phi_, index, grad_phi);
-  field_grad_scalar_delsq(grad_phi_, index, &del2_phi);
-  field_grad_scalar_delsq_delsq(grad_phi_, index, &del4_phi);
-  field_grad_scalar_grad_delsq(grad_phi_, index, grad_del2_phi);
+  assert(fe);
+
+  c = fe->param->c;
+  kappa = fe->param->kappa;
+
+  field_scalar(fe->phi, index, &phi);
+  field_grad_scalar_grad(fe->dphi, index, grad_phi);
+  field_grad_scalar_delsq(fe->dphi, index, &del2_phi);
+  field_grad_scalar_delsq_delsq(fe->dphi, index, &del4_phi);
+  field_grad_scalar_grad_delsq(fe->dphi, index, grad_del2_phi);
 
   /* Isotropic part and tensor part */
 
-  p0 = 0.5*a_*phi*phi + 0.75*b_*phi*phi*phi*phi - kappa_*phi*del2_phi
-    + 0.5*kappa_*dot_product(grad_phi, grad_phi) + c_*phi*del4_phi
-    + 0.5*c_*del2_phi*del2_phi + c_*dot_product(grad_phi, grad_del2_phi);
+  p0 = 0.5*fe->param->a*phi*phi + 0.75*fe->param->b*phi*phi*phi*phi
+    - kappa*phi*del2_phi
+    + 0.5*kappa*dot_product(grad_phi, grad_phi)
+    + c*phi*del4_phi + 0.5*c*del2_phi*del2_phi
+    + c*dot_product(grad_phi, grad_del2_phi);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      s[ia][ib] = p0*d_[ia][ib] + kappa_*grad_phi[ia]*grad_phi[ib]
-      - c_*(grad_phi[ia]*grad_del2_phi[ib] + grad_phi[ib]*grad_del2_phi[ia]);
+      s[ia][ib] = p0*d[ia][ib] + kappa*grad_phi[ia]*grad_phi[ib]
+      - c*(grad_phi[ia]*grad_del2_phi[ib] + grad_phi[ib]*grad_del2_phi[ia]);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_brazovskii_str_v
+ *
+ *  May require optimisation.
+ *
+ *****************************************************************************/
+
+__host__ __device__ void fe_brazovskii_str_v(fe_brazovskii_t * fe, int index,
+					     double s[3][3][NSIMDVL]) {
+
+  int ia, ib, iv;
+  double s1[3][3];
+
+  assert(fe);
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_brazovskii_str(fe, index+iv, s1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib][iv] = s1[ia][ib];
+      }
     }
   }
 

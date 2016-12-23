@@ -8,9 +8,11 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
+
+#include <assert.h>
 
 #include "pe.h"
 #include "tests.h"
@@ -25,33 +27,22 @@ int test_pe_suite(void) {
 
   int my_rank = 0;
   int my_size = 1;
+  pe_t * pe = NULL;
 
-  pe_init();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  assert(pe);
 
-  /* info("Checking pe_init() (post-hoc)...");*/
   test_assert(1);
-  /*info("ok\n");*/
 
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &my_size);
 
-  /* info("Checking pe_rank() is correct...");*/
-  test_assert(pe_rank() == my_rank);
-  /* info("yes\n");*/
+  test_assert(pe_mpi_rank(pe) == my_rank);
 
-  /* info("Checking pe_size() is correct...");*/
-  test_assert(pe_size() == my_size);
-  /* info("yes\n");*/
+  test_assert(pe_mpi_size(pe) == my_size);
 
-  /* verbose("Checking verbose()\n");*/
-
-  /*info("Verbose working ok...");
-  test_assert(1);
-  info("yes\n");*/
-
-  info("PASS     ./unit/test_pe\n");
-  /* info("About to do pe_finalise()...\n");*/
-  pe_finalise();
+  pe_info(pe, "PASS     ./unit/test_pe\n");
+  pe_free(pe);
 
   return 0;
 }

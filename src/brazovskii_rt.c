@@ -10,63 +10,88 @@
  *  and Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
+ *  (c) 2009-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
 #include <assert.h>
 
-#include "pe.h"
-#include "runtime.h"
-#include "free_energy.h"
-#include "brazovskii.h"
+#include "field_phi_init_rt.h"
 #include "brazovskii_rt.h"
 
 /****************************************************************************
  *
- *  brazovskii_run_time
+ *  fe_brazovskii_init_rt
  *
  ****************************************************************************/
 
-void brazovskii_run_time(void) {
+__host__
+int fe_brazovskii_init_rt(pe_t * pe, rt_t * rt, fe_brazovskii_t * fe) {
 
-  double a;
-  double b;
-  double c;
-  double kappa;
+  fe_brazovskii_param_t param;
 
-  info("Brazovskii free energy selected.\n");
-  info("\n");
+  double amplitude;
+  double lambda;
+
+  assert(pe);
+  assert(rt);
+  assert(fe);
+
+  pe_info(pe, "Brazovskii free energy selected.\n");
+  pe_info(pe, "\n");
 
   /* Parameters */
 
-  RUN_get_double_parameter("A", &a);
-  RUN_get_double_parameter("B", &b);
-  RUN_get_double_parameter("K", &kappa);
-  RUN_get_double_parameter("C", &c);
+  rt_double_parameter(rt, "A", &param.a);
+  rt_double_parameter(rt, "B", &param.b);
+  rt_double_parameter(rt, "K", &param.kappa);
+  rt_double_parameter(rt, "C", &param.c);
 
-  info("Brazovskii free energy parameters:\n");
-  info("Bulk parameter A      = %12.5e\n", a);
-  info("Bulk parameter B      = %12.5e\n", b);
-  info("Ext. parameter C      = %12.5e\n", c);
-  info("Surface penalty kappa = %12.5e\n", kappa);
+  pe_info(pe, "Brazovskii free energy parameters:\n");
+  pe_info(pe, "Bulk parameter A      = %12.5e\n", param.a);
+  pe_info(pe, "Bulk parameter B      = %12.5e\n", param.b);
+  pe_info(pe, "Ext. parameter C      = %12.5e\n", param.c);
+  pe_info(pe, "Surface penalty kappa = %12.5e\n", param.kappa);
 
-  brazovskii_free_energy_parameters_set(a, b, kappa, c);
+  fe_brazovskii_param_set(fe, param);
 
-  info("Wavelength 2pi/q_0    = %12.5e\n", brazovskii_wavelength());
-  info("Amplitude             = %12.5e\n", brazovskii_amplitude());
+  fe_brazovskii_wavelength(fe, &lambda);
+  fe_brazovskii_amplitude(fe, &amplitude);
+
+  pe_info(pe, "Wavelength 2pi/q_0    = %12.5e\n", lambda);
+  pe_info(pe, "Amplitude             = %12.5e\n", amplitude);
 
   /* For stability ... */
 
-  assert(b > 0.0);
-  assert(c > 0.0);
+  assert(param.b > 0.0);
+  assert(param.c > 0.0);
 
-  /* Set free energy function pointers. */
+  return 0;
+}
 
-  fe_density_set(brazovskii_free_energy_density);
-  fe_chemical_potential_set(brazovskii_chemical_potential);
-  fe_isotropic_pressure_set(brazovskii_isotropic_pressure);
-  fe_chemical_stress_set(brazovskii_chemical_stress);
+/*****************************************************************************
+ *
+ *  fe_brazovskii_phi_init_rt
+ *
+ *****************************************************************************/
 
-  return;
+__host__
+int fe_brazovskii_phi_init_rt(pe_t * pe, rt_t * rt, fe_brazovskii_t * fe,
+			      field_t * phi) {
+
+  field_phi_info_t param = {0};
+
+  assert(pe);
+  assert(rt);
+  assert(fe);
+  assert(phi);
+
+  /* Actually no dependency on Brazovskii parameters at the moment. */
+  /* Force mean composition to be zero. */
+
+  param.phi0 = 0.0;
+
+  field_phi_init_rt(pe, rt, param, phi);
+
+  return 0;
 }

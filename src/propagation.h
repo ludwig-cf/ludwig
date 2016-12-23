@@ -5,10 +5,11 @@
  *  Edinburgh Solft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2005-2014 The University of Edinburgh
+ *  (c) 2005-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Sean Murphy worked on optimisation for original propagation code.
+ *    Alan Gray (alang@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -18,6 +19,6 @@
 #include "model.h"
 #include "targetDP.h"
 
-__targetHost__ int lb_propagation(lb_t * lb);
+__host__ int lb_propagation(lb_t * lb);
 
 #endif

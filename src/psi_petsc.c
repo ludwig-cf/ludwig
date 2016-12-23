@@ -68,7 +68,7 @@ int view_vector = 0;
  *
  *****************************************************************************/
 
-int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
+int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
 
   MPI_Comm new_comm;
   int new_rank, nhalo;
@@ -82,6 +82,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   int maxits;
 
   assert(obj);
+  assert(fe);
 
   /* In order for the DMDA and the Cartesian MPI communicator 
      to share the same part of the domain decomposition it is 
@@ -103,7 +104,7 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   nhalo = coords_nhalo();
 
   DMDACreate3d(PETSC_COMM_WORLD, \
-	DM_BOUNDARY_PERIODIC,	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,	\
+	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,	\
 	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
 	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
 	NULL, NULL, NULL, &da);
@@ -144,8 +145,8 @@ int psi_petsc_init(psi_t * obj, f_vare_t fepsilon){
   info("Preconditioner type %s\n", pc_type);
 
   if (fepsilon == NULL) psi_petsc_compute_laplacian(obj);
-  if (fepsilon != NULL) psi_petsc_compute_matrix(obj,fepsilon);
- 
+  if (fepsilon != NULL) psi_petsc_compute_matrix(obj, (fe_es_t *) fe, fepsilon);
+
   return 0;
 }
 
@@ -327,7 +328,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
+int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   int ic, jc, kc, p;
   int index;
@@ -383,6 +384,8 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 #endif
 
   assert(obj);
+  assert(fe);
+  assert(fepsilon);
 
   /* Get details of the distributed array data structure.
      The PETSc directives return global indices, but 
@@ -420,8 +423,8 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	kc = (col[0].k + 1) - noffset[Z];
 	index = coords_index(ic, jc, kc);
 
-	fepsilon(index, &eps); 
-	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
+	fepsilon(fe, index, &eps); 
+	psi_grad_eps_d3qx((fe_t *) fe, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 
@@ -466,8 +469,8 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	kc = (col[0].k + 1) - noffset[Z];
 	index = coords_index(ic, jc, kc);
 
-	fepsilon(index, &eps); 
-	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
+	fepsilon(fe, index, &eps); 
+	psi_grad_eps_d3qx((fe_t *) fe, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 
@@ -520,8 +523,8 @@ int psi_petsc_compute_matrix(psi_t * obj, f_vare_t fepsilon) {
 	kc = (col[0].k + 1) - noffset[Z];
 	index = coords_index(ic, jc, kc);
 
-	fepsilon(index, &eps); 
-	psi_grad_eps_d3qx(fepsilon, index, grad_eps);
+	fepsilon(fe, index, &eps); 
+	psi_grad_eps_d3qx((fe_t *) fe, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 
@@ -700,6 +703,8 @@ int psi_petsc_set_rhs(psi_t * obj) {
    double rho_elec;
    double eunit, beta;
    double epsilon, e0[3];
+
+   physics_t * phys = NULL;
  
    assert(obj);
    coords_nlocal_offset(noffset);
@@ -732,10 +737,13 @@ int psi_petsc_set_rhs(psi_t * obj) {
    }
 
   /* Modify right hand side for external electric field */
-  if (is_physics_e0()) {
+  physics_ref(&phys);
+  physics_e0(phys, e0);
+
+  if (e0[X] || e0[Y] || e0[Z]) {
 
     coords_ntotal(ntotal);
-    physics_e0(e0);
+
     psi_epsilon(obj, &epsilon);
 
     if (is_periodic(X)) {
@@ -829,7 +837,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
  *
  *****************************************************************************/
 
-int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) { 
+int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) { 
 
    int    ic,jc,kc,index;
    int    ntotal[3], noffset[3];
@@ -839,8 +847,13 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
    double rho_elec;
    double eunit, beta;
    double eps, e0[3];
+
+   physics_t * phys = NULL;
  
    assert(obj);
+   assert(fe);
+   assert(fepsilon);
+
    coords_nlocal_offset(noffset);
  
    DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
@@ -870,10 +883,12 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
    }
 
   /* Modify right hand side for external electric field */
-  if (is_physics_e0()) {
+  physics_ref(&phys);
+  physics_e0(phys, e0);
+
+  if (e0[X] || e0[Y] || e0[Z]) {
 
     coords_ntotal(ntotal);
-    physics_e0(e0);
 
     if (is_periodic(X)) {
 
@@ -886,7 +901,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 	    jc = j - noffset[Y] + 1;
 
 	    index = coords_index(ic,jc,kc);
-	    fepsilon(index, &eps);
+	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] += eps * e0[X] * ntotal[X];
 
 	  }
@@ -902,7 +917,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 	    jc = j - noffset[Y] + 1;
 
 	    index = coords_index(ic,jc,kc);
-	    fepsilon(index, &eps);
+	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] -= eps * e0[X] * ntotal[X];
 
 	  }
@@ -922,7 +937,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 	    ic = i - noffset[X] + 1;
 
 	    index = coords_index(ic,jc,kc);
-	    fepsilon(index, &eps);
+	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] += eps * e0[Y] * ntotal[Y];
 
 	  }
@@ -938,7 +953,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 	    ic = i - noffset[X] + 1;
 
 	    index = coords_index(ic,jc,kc);
-	    fepsilon(index, &eps);
+	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] -= eps * e0[Y] * ntotal[Y];
 
 	  }
@@ -958,7 +973,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 	    ic = i - noffset[X] + 1;
 
 	    index = coords_index(ic,jc,kc);
-	    fepsilon(index, &eps);
+	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] += eps * e0[Z] * ntotal[Z];
 
 	  }
@@ -974,7 +989,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
 	    ic = i - noffset[X] + 1;
 
 	    index = coords_index(ic,jc,kc);
-	    fepsilon(index, &eps);
+	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] -= eps * e0[Z] * ntotal[Z];
 
 	  }
@@ -1015,17 +1030,18 @@ int psi_petsc_set_rhs_vare(psi_t * obj, f_vare_t fepsilon) {
  *
  *****************************************************************************/
 
-int psi_petsc_solve(psi_t * obj, f_vare_t fepsilon) {
+int psi_petsc_solve(psi_t * obj, fe_t * fe, f_vare_t fepsilon) {
 
   assert(obj);
+  assert(fe);
 
   if(fepsilon == NULL) {
     psi_petsc_set_rhs(obj);
   }
 
   if(fepsilon != NULL) {
-    psi_petsc_compute_matrix(obj,fepsilon);
-    psi_petsc_set_rhs_vare(obj,fepsilon);
+    psi_petsc_compute_matrix(obj, (fe_es_t *) fe, fepsilon);
+    psi_petsc_set_rhs_vare(obj, (fe_es_t *) fe, fepsilon);
   }
 
   psi_petsc_copy_psi_to_da(obj);

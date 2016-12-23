@@ -2,7 +2,8 @@
  *
  *  phi_force_stress.c
  *  
- *  Wrapper functions for stress computation.
+ *  Storage and computation of the "thermodynamic" stress which
+ *  depends on the choice of free energy.
  *
  *  $Id$
  *
@@ -10,27 +11,144 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "pe.h"
 #include "coords.h"
-#include "free_energy.h"
-#include "field_s.h"
-#include "field_grad_s.h"
-#include "phi_force_stress.h"
-#include "util.h"
-#include "math.h"
-#include "blue_phase.h"
 #include "timer.h"
+#include "kernel.h"
+#include "pth_s.h"
+#include "phi_force_stress.h"
 
-double * pth_;
-double * t_pth_;
+__global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
+__global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
+
+/*****************************************************************************
+ *
+ *  pth_create
+ *
+ *  The stress is always 3x3 tensor (to allow an anti-symmetric
+ *  contribution), if it is required.
+ *
+ *****************************************************************************/
+
+__host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
+
+  int ndevice;
+  double * tmp;
+  pth_t * obj = NULL;
+
+  assert(pobj);
+
+  obj = (pth_t *) calloc(1, sizeof(pth_t));
+  if (obj == NULL) pe_fatal(pe, "calloc(pth_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
+  obj->method = method;
+  cs_nsites(cs, &obj->nsites);
+
+  /* If memory required */
+
+  if (method == PTH_METHOD_DIVERGENCE) {
+    obj->str = (double *) calloc(3*3*obj->nsites, sizeof(double));
+    if (obj->str == NULL) pe_fatal(pe, "calloc(pth->str) failed\n");
+  }
+
+  /* Allocate target memory, or alias */
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+
+    targetCalloc((void **) &obj->target, sizeof(pth_t));
+    copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
+
+    if (method == PTH_METHOD_DIVERGENCE) {
+      targetCalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double));
+      copyToTarget(&obj->target->str, &tmp, sizeof(double *));
+    }
+  }
+
+  *pobj = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pth_free
+ *
+ *****************************************************************************/
+
+__host__ int pth_free(pth_t * pth) {
+
+  int ndevice;
+  double * tmp = NULL;
+
+  assert(pth);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &pth->target->str, sizeof(double *));
+    if (tmp) targetFree(tmp);
+    targetFree(pth->target);
+  }
+
+  if (pth->str) free(pth->str);
+  free(pth);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pth_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int pth_memcpy(pth_t * pth, int flag) {
+
+  int ndevice;
+  size_t nsz;
+
+  assert(pth);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(pth->target == pth);
+  }
+  else {
+    double * tmp = NULL;
+
+    nsz = 9*pth->nsites*sizeof(double);
+    copyFromTarget(&tmp, &pth->target->str, sizeof(double *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(tmp, pth->str, nsz);
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(pth->str, tmp, nsz);
+      break;
+    default:
+      pe_fatal(pth->pe, "Should not be here\n");
+    }
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -40,142 +158,116 @@ double * t_pth_;
  *
  *****************************************************************************/
 
-__targetEntry__ void chemical_stress_lattice(double pth_local[3][3], field_t* t_q, field_grad_t* t_q_grad, double* t_pth, void* pcon, void (* chemical_stress)(const int index, double s[3][3]),int isBPCS){ 
+__host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
-  int baseIndex;
+  int nextra;
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  fe_t * fe_target = NULL;
 
-__targetTLP__(baseIndex,tc_nSites){
+  assert(pth);
+  assert(fe);
+  assert(fe->func->target);
 
-#if VVL == 1    
-/*restrict operation to the interior lattice sites*/ 
-    int coords[3];
-    targetCoords3D(coords,tc_Nall,baseIndex);
-    
-    /*  if not a halo site:*/
-    if (coords[0] >= (tc_nhalo-tc_nextra) &&
-    	coords[1] >= (tc_nhalo-tc_nextra) &&
-    	coords[2] >= (tc_nhalo-tc_nextra) &&
-    	coords[0] < tc_Nall[X]-(tc_nhalo-tc_nextra) &&
-    	coords[1] < tc_Nall[Y]-(tc_nhalo-tc_nextra)  &&
-    	coords[2] < tc_Nall[Z]-(tc_nhalo-tc_nextra) )
-#endif
+  cs_nlocal(pth->cs, nlocal);
+  nextra = 1; /* Limits extend one point into the halo */
 
-{ 
-      
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-      if (isBPCS){
-	/* we are using blue_phase_chemical_stress which is ported to targetDP
-	 * for the time being we are explicitly calling
-	 * blue_phase_chemical_stress
-	 * ultimitely this will be generic when the other options are
-	 * ported to targetDP */
-	 int calledFromPhiForceStress=1;
-	 blue_phase_chemical_stress_dev_vec(baseIndex, t_q, t_q_grad, t_pth, pcon, 
-					calledFromPhiForceStress);
-      }
-      else{
+  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
+  fe->func->target(fe, &fe_target);
 
-#ifndef __NVCC__
+  __host_launch(pth_kernel_v, nblk, ntpb, ctxt->target,
+		pth->target, fe_target);
 
-#if VVL > 1
-	fatal("Vectorisation not yet supported for this chemical stress");
-#endif
+  targetDeviceSynchronise();
 
-	/* only blue_phase_chemical_stress support for CUDA. */
-        /* TO DO: support vectorisation for these routines */  
-	chemical_stress(baseIndex, pth_local);
-	phi_force_stress_set(baseIndex, pth_local); 
-#endif
+  kernel_ctxt_free(ctxt);
 
-      }
-      
-    }
-  }
-
-return;
+  return 0;
 }
 
-__targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) {
+/*****************************************************************************
+ *
+ *  pth_kernel
+ *
+ *  No-vectorised version retained for reference.
+ *
+ *****************************************************************************/
 
-  int nlocal[3];
-  int nextra = 1;
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 2);
+__global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
-  int nhalo = coords_nhalo();
-  int Nall[3];
-  Nall[X]=nlocal[X]+2*nhalo;  Nall[Y]=nlocal[Y]+2*nhalo;  Nall[Z]=nlocal[Z]+2*nhalo;
-  int nSites=Nall[X]*Nall[Y]*Nall[Z];
+  int kindex;
+  __shared__ int kiter;
 
-  double pth_local[3][3];
-  void (* chemical_stress)(const int index, double s[3][3]);
+  assert(ktx);
+  assert(pth);
+  assert(fe);
+  assert(fe->func->stress);
 
+  kiter = kernel_iterations(ktx);
 
-  chemical_stress = fe_chemical_stress_function();
+  __target_simt_parallel_for(kindex, kiter, 1) {
 
-  
-  /* initialise kernel constants on both host and target */
-  blue_phase_set_kernel_constants();
+    int ic, jc, kc, index;
+    double s[3][3];
 
-  void* pcon=NULL;
-  blue_phase_target_constant_ptr(&pcon);
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
 
-  field_t* t_q = NULL;
-  field_grad_t* t_q_grad = NULL;
-
-
-  /* isBPCS is 1 if we are using  blue_phase_chemical_stress 
-   * (which is ported to targetDP), 0 otherwise*/
-
-  int isBPCS=((void*)chemical_stress)==((void*) blue_phase_chemical_stress);
-
-#ifdef __NVCC__
-    if (!isBPCS) fatal("only Blue Phase chemical stress is currently supported for CUDA");
-#endif
-
-  if (isBPCS){ 
-
-    t_q = q->tcopy; 
-    t_q_grad = q_grad->tcopy;
-
-    #ifndef KEEPFIELDONTARGET    
-    double* tmpptr;
-    copyFromTarget(&tmpptr,&(t_q->data),sizeof(double*)); 
-    copyToTarget(tmpptr,q->data,q->nf*nSites*sizeof(double));
-    
-    copyFromTarget(&tmpptr,&(t_q_grad->grad),sizeof(double*)); 
-    copyToTarget(tmpptr,q_grad->grad,q_grad->nf*NVECTOR*nSites*sizeof(double));
-    
-    copyFromTarget(&tmpptr,&(t_q_grad->delsq),sizeof(double*)); 
-    copyToTarget(tmpptr,q_grad->delsq,q_grad->nf*nSites*sizeof(double));
-    #endif
-
+    fe->func->stress(fe, index, s);
+    pth_stress_set(pth, index, s);
   }
 
+  return;
+}
 
-  /* copy lattice shape constants to target ahead of execution*/
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nextra,&nextra, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_Nall,Nall, 3*sizeof(int));
-  
-  TIMER_start(TIMER_CHEMICAL_STRESS_KERNEL);
+/*****************************************************************************
+ *
+ *  pth_kernel_v
+ *
+ *****************************************************************************/
 
-  /* execute lattice-based operation on target*/
-  chemical_stress_lattice __targetLaunch__(nSites) (pth_local, t_q, t_q_grad, t_pth_, pcon, chemical_stress, isBPCS);
-  targetSynchronize();
+__global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
-  TIMER_stop(TIMER_CHEMICAL_STRESS_KERNEL);
-  
+  int kindex;
+  __shared__ int kiter;
 
-  if (isBPCS){
-    /* we are using blue_phase_chemical_stress which is ported to targetDP
-       copy result from target back to host */
+  assert(ktx);
+  assert(pth);
+  assert(fe);
+  assert(fe->func->stress_v);
 
-#ifndef KEEPFIELDONTARGET    
-    copyFromTarget(pth_,t_pth_,3*3*nSites*sizeof(double));      
-#endif
+  kiter = kernel_vector_iterations(ktx);
+
+  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+
+    int index;
+    int ia, ib, iv;
+
+    double s[3][3][NSIMDVL];
+
+    index = kernel_baseindex(ktx, kindex);
+
+    fe->func->stress_v(fe, index, s);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	for (iv = 0; iv < NSIMDVL; iv++) {
+	  pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)] = s[ia][ib][iv];
+	}
+      }
+    }
+
+    /* Next block */
   }
 
   return;
@@ -187,15 +279,16 @@ __targetHost__ void phi_force_stress_compute(field_t * q, field_grad_t* q_grad) 
  *
  *****************************************************************************/
 
-__targetHost__  void phi_force_stress_set(const int index, double p[3][3]) {
+__host__  __device__
+void pth_stress_set(pth_t * pth, int index, double p[3][3]) {
 
   int ia, ib;
 
-  assert(pth_);
+  assert(pth);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      pth_[PTHADR(tc_nSites,index,ia,ib)] = p[ia][ib];
+      pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)] = p[ia][ib];
     }
   }
 
@@ -208,55 +301,18 @@ __targetHost__  void phi_force_stress_set(const int index, double p[3][3]) {
  *
  *****************************************************************************/
 
-__targetHost__  void phi_force_stress(const int index, double p[3][3]) {
+__host__  __device__
+void pth_stress(pth_t * pth, int index, double p[3][3]) {
 
   int ia, ib;
 
-  assert(pth_);
+  assert(pth);
 
-  
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      p[ia][ib] = pth_[PTHADR(tc_nSites,index,ia,ib)];
+      p[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
     }
   }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_stress_allocate
- *
- *****************************************************************************/
-
-__targetHost__  void phi_force_stress_allocate() {
-
-  int n;
-
-  assert(coords_nhalo() >= 2);
-
-  n = coords_nsites();
-
-  pth_ = (double *) malloc(9*n*sizeof(double));
-  if (pth_ == NULL) fatal("malloc(pth_) failed\n");
-
-  targetMalloc((void**) &t_pth_,9*n*sizeof(double));
-
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  phi_force_stress_free
- *
- *****************************************************************************/
-
-__targetHost__  void phi_force_stress_free() {
-
-  free(pth_);
-  targetFree(t_pth_);
 
   return;
 }

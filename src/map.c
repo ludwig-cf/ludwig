@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -38,33 +40,37 @@ static int map_write_ascii(FILE * fp, int index, void * self);
  *
  *****************************************************************************/
 
-int map_create(int ndata, map_t ** pobj) {
+__host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 
   int nsites;
   int nhalo;
+  int ndevice;
+  char * tmp;
   map_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(ndata >= 0);
   assert(pobj);
 
-  nsites = coords_nsites();
-  nhalo = coords_nhalo();
+  cs_nsites(cs, &nsites);
+  cs_nhalo(cs, &nhalo);
 
   obj = (map_t*) calloc(1, sizeof(map_t));
-  if (obj == NULL) fatal("calloc(map_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(map_t) failed\n");
 
   obj->status = (char*) calloc(nsites, sizeof(char));
-  if (obj->status == NULL) fatal("calloc(map->status) failed\n");
+  if (obj->status == NULL) pe_fatal(pe, "calloc(map->status) failed\n");
 
- /* allocate target copy */
-  //targetCalloc((void **) &obj->t_status, nsites*sizeof(char));
-
+  obj->pe = pe;
+  obj->cs = cs;
+  obj->nsite = nsites;
   obj->ndata = ndata;
 
   /* Could be zero-sized array */
 
   obj->data = (double*) calloc(ndata*nsites, sizeof(double));
-  if (ndata > 0 && obj->data == NULL) fatal("calloc(map->data) failed\n");
+  if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
 
   coords_field_init_mpi_indexed(nhalo, 1, MPI_CHAR, obj->halostatus);
   if (obj->ndata) {
@@ -73,21 +79,23 @@ int map_create(int ndata, map_t ** pobj) {
   }
 
 
-  /* allocate target copy of structure */
-  targetMalloc((void**) &(obj->tcopy),sizeof(map_t));
+  /* Allocate target copy of structure (or alias) */
 
-  /* allocate data space on target */
-  char* tmpptr;
-  map_t* t_obj = obj->tcopy;
-  targetCalloc((void**) &tmpptr,nsites*sizeof(char));
-  copyToTarget(&(t_obj->status),&tmpptr,sizeof(char*)); 
+  targetGetDeviceCount(&ndevice);
 
-  copyToTarget(&(t_obj->is_porous_media),&(obj->is_porous_media),sizeof(int)); 
-  copyToTarget(&(t_obj->ndata),&(obj->ndata),sizeof(int)); 
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
 
-  obj->t_status= tmpptr; //DEPRECATED direct access to target data.
+    targetMalloc((void **) &obj->target, sizeof(map_t));
+    targetCalloc((void **) &tmp, nsites*sizeof(char));
 
-
+    copyToTarget(&obj->target->status, &tmp, sizeof(char *)); 
+    copyToTarget(&obj->target->is_porous_media, &obj->is_porous_media, sizeof(int)); 
+    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    copyToTarget(&obj->target->ndata, &obj->ndata, sizeof(int)); 
+  }
 
   *pobj = obj;
 
@@ -100,9 +108,20 @@ int map_create(int ndata, map_t ** pobj) {
  *
  *****************************************************************************/
 
-void map_free(map_t * obj) {
+__host__ int map_free(map_t * obj) {
+
+  int ndevice;
+  char * tmp;
 
   assert(obj);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    copyFromTarget(&tmp, &obj->target->status, sizeof(char *)); 
+    targetFree(tmp);
+    targetFree(obj->target);
+  }
 
   MPI_Type_free(&obj->halostatus[X]);
   MPI_Type_free(&obj->halostatus[Y]);
@@ -115,25 +134,50 @@ void map_free(map_t * obj) {
     MPI_Type_free(&obj->halodata[Z]);
   }
 
-  if (obj->info) io_info_destroy(obj->info);
+  if (obj->info) io_info_free(obj->info);
   free(obj->status);
-  //  targetFree(obj->t_status);
 
- if (obj->tcopy) {
-
-    //free data space on target 
-    char* tmpptr;
-    map_t* t_obj = obj->tcopy;
-    copyFromTarget(&tmpptr,&(t_obj->status),sizeof(char*)); 
-    targetFree(tmpptr);
-    
-    //free target copy of structure
-    targetFree(obj->tcopy);
-  }
 
   free(obj);
 
-  return;
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  map_memcpy
+ *
+ *****************************************************************************/
+
+__host__ int map_memcpy(map_t * map, int flag) {
+
+  int ndevice;
+  char * tmp;
+
+  assert(map);
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    /* Ensure we alias */
+    assert(map->target == map);
+  }
+  else {
+    copyFromTarget(&tmp, &map->target->status, sizeof(char *));
+
+    switch (flag) {
+    case cudaMemcpyHostToDevice:
+      copyToTarget(tmp, map->status, map->nsite*sizeof(char));
+      break;
+    case cudaMemcpyDeviceToHost:
+      copyFromTarget(map->status, tmp, map->nsite*sizeof(char));
+      break;
+    default:
+      pe_fatal(map->pe, "Bad flag in map_memcpy()\n");
+    }
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -142,16 +186,21 @@ void map_free(map_t * obj) {
  *
  *****************************************************************************/
 
+__host__
 int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
 
+  io_info_arg_t args;
   size_t sz;
 
   assert(obj);
-  assert(grid);
   assert(obj->info == NULL);
 
-  obj->info = io_info_create_with_grid(grid);
-  if (obj->info == NULL) fatal("io_info_create(map) failed\n");
+  args.grid[X] = grid[X];
+  args.grid[Y] = grid[Y];
+  args.grid[Z] = grid[Z];
+  
+  io_info_create(obj->pe, obj->cs, &args, &obj->info);
+  if (obj->info == NULL) pe_fatal(obj->pe, "io_info_create(map) failed\n");
 
   io_info_set_name(obj->info, "map");
   io_info_write_set(obj->info, IO_FORMAT_BINARY, map_write);
@@ -174,7 +223,7 @@ int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
  *
  *****************************************************************************/
 
-int map_io_info(map_t * obj, io_info_t ** info) {
+__host__ int map_io_info(map_t * obj, io_info_t ** info) {
 
   assert(obj);
   assert(info);
@@ -192,17 +241,17 @@ int map_io_info(map_t * obj, io_info_t ** info) {
  *
  *****************************************************************************/
 
-int map_halo(map_t * obj) {
+__host__ int map_halo(map_t * obj) {
 
   int nhalo;
+
   assert(obj);
 
-  nhalo = coords_nhalo();
+  cs_nhalo(obj->cs, &nhalo);
 
-  coords_field_halo(nhalo, 1, obj->status, MPI_CHAR, obj->halostatus);
+  coords_field_halo_rank1(obj->nsite, nhalo, 1, obj->status, MPI_CHAR);
   if (obj->ndata) {
-    coords_field_halo(nhalo, obj->ndata, obj->data, MPI_DOUBLE,
-		      obj->halodata);
+    coords_field_halo_rank1(obj->nsite, nhalo, obj->ndata, obj->data, MPI_DOUBLE);
   }
 
   return 0;
@@ -216,12 +265,13 @@ int map_halo(map_t * obj) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_status(map_t * obj, int index, int * status) {
 
   assert(obj);
   assert(status);
 
-  *status = (int) obj->status[index];
+  *status = (int) obj->status[addr_rank0(obj->nsite, index)];
 
   return 0;
 }
@@ -232,13 +282,14 @@ int map_status(map_t * obj, int index, int * status) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_status_set(map_t * obj, int index, int status) {
 
   assert(obj);
   assert(status >= 0);
   assert(status < MAP_STATUS_MAX);
 
-  obj->status[index] = status;
+  obj->status[addr_rank0(obj->nsite, index)] = status;
 
   return 0;
 }
@@ -249,6 +300,7 @@ int map_status_set(map_t * obj, int index, int status) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_ndata(map_t * obj, int * ndata) {
 
   assert(obj);
@@ -265,6 +317,7 @@ int map_ndata(map_t * obj, int * ndata) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_data(map_t * obj, int index, double * data) {
 
   int n;
@@ -273,7 +326,7 @@ int map_data(map_t * obj, int index, double * data) {
   assert(data);
 
   for (n = 0; n < obj->ndata; n++) {
-    data[n] = obj->data[obj->ndata*index + n];
+    data[n] = obj->data[addr_rank1(obj->nsite, obj->ndata, index, n)];
   }
 
   return 0;
@@ -285,6 +338,7 @@ int map_data(map_t * obj, int index, double * data) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int map_data_set(map_t * obj, int index, double * data) {
 
   int n;
@@ -293,7 +347,7 @@ int map_data_set(map_t * obj, int index, double * data) {
   assert(data);
 
   for (n = 0; n < obj->ndata; n++) {
-    obj->data[obj->ndata*index + n] = data[n];
+    obj->data[addr_rank1(obj->nsite, obj->ndata, index, n)] = data[n];
   }
 
   return 0;
@@ -305,7 +359,7 @@ int map_data_set(map_t * obj, int index, double * data) {
  *
  *****************************************************************************/
 
-int map_pm(map_t * obj, int * flag) {
+__host__ int map_pm(map_t * obj, int * flag) {
 
   assert(obj);
   assert(flag);
@@ -321,7 +375,7 @@ int map_pm(map_t * obj, int * flag) {
  *
  *****************************************************************************/
 
-int map_pm_set(map_t * obj, int flag) {
+__host__ int map_pm_set(map_t * obj, int flag) {
 
   assert(obj);
 
@@ -336,7 +390,7 @@ int map_pm_set(map_t * obj, int flag) {
  *
  *****************************************************************************/
 
-int map_volume_allreduce(map_t * obj, int status, int * volume) {
+__host__ int map_volume_allreduce(map_t * obj, int status, int * volume) {
 
   int vol_local;
   MPI_Comm comm;
@@ -368,14 +422,14 @@ int map_volume_local(map_t * obj, int status_wanted, int * volume) {
   assert(obj);
   assert(volume);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
   vol_local = 0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	map_status(obj, index, &status);
 	if (status == status_wanted) vol_local += 1;
       }
@@ -395,20 +449,21 @@ int map_volume_local(map_t * obj, int status_wanted, int * volume) {
 
 static int map_write(FILE * fp, int index, void * self) {
 
-  int nw;
+  int n, nw;
   int indexf;
   map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
 
-  nw = fwrite(&obj->status[index], sizeof(char), 1, fp);
-  if (nw != 1) fatal("fwrite(map->status) failed\n");
+  indexf = addr_rank0(obj->nsite, index);
+  nw = fwrite(&obj->status[indexf], sizeof(char), 1, fp);
+  if (nw != 1) pe_fatal(obj->pe, "fwrite(map->status) failed\n");
 
-  if (obj->ndata > 0) {
-    coords_field_index(index, 0, obj->ndata, &indexf);
-    nw = fwrite(&obj->data[indexf], sizeof(double), obj->ndata, fp);
-    if (nw != obj->ndata) fatal("fwrite(map->data) failed\n");
+  for (n = 0; n < obj->ndata; n++) {
+    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
+    nw = fwrite(&obj->data[indexf], sizeof(double), 1, fp);
+    if (nw != 1) pe_fatal(obj->pe, "fwrite(map->data) failed\n");
   }
 
   return 0;
@@ -422,20 +477,21 @@ static int map_write(FILE * fp, int index, void * self) {
 
 static int map_read(FILE * fp, int index, void * self) {
 
-  int nr;
+  int n, nr;
   int indexf;
   map_t * obj = (map_t*) self;
 
   assert(fp);
   assert(obj);
 
-  nr = fread(&obj->status[index], sizeof(char), 1, fp);
-  if (nr != 1) fatal("fread(map->status) failed");
+  indexf = addr_rank0(obj->nsite, index);
+  nr = fread(&obj->status[indexf], sizeof(char), 1, fp);
+  if (nr != 1) pe_fatal(obj->pe, "fread(map->status) failed");
 
-  if (obj->ndata > 0) {
-    coords_field_index(index, 0, obj->ndata, &indexf);
-    nr = fread(&obj->data[indexf], sizeof(double), obj->ndata, fp);
-    if (nr != obj->ndata) fatal("fread(map->data) failed\n");
+  for (n = 0; n < obj->ndata; n++) {
+    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
+    nr = fread(&obj->data[indexf], sizeof(double), 1, fp);
+    if (nr != 1) pe_fatal(obj->pe, "fread(map->data) failed\n");
   }
 
   return 0;
@@ -452,24 +508,24 @@ static int map_write_ascii(FILE * fp, int index, void * self) {
   int n, nw;
   int indexf;
   int status;
-  map_t * obj = (map_t*) self;
+  map_t * obj = (map_t *) self;
 
   assert(fp);
   assert(obj);
 
-  status = obj->status[index];
+  status = obj->status[addr_rank0(obj->nsite, index)];
   assert(status < 99); /* Fixed format check. */
 
   nw = fprintf(fp, "%2d", status);
-  if (nw != 2) fatal("fprintf(map->status) failed\n");
+  if (nw != 2) pe_fatal(obj->pe, "fprintf(map->status) failed\n");
 
   for (n = 0; n < obj->ndata; n++) {
-    coords_field_index(index, n, obj->ndata, &indexf);
+    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
     fprintf(fp, " %22.15e", obj->data[indexf]);
   }
 
   nw = fprintf(fp, "\n");
-  if (nw != 1) fatal("fprintf(map) failed\n");
+  if (nw != 1) pe_fatal(obj->pe, "fprintf(map) failed\n");
 
   return 0;
 }
@@ -491,13 +547,13 @@ static int map_read_ascii(FILE * fp, int index, void * self) {
   assert(obj);
 
   nr = fscanf(fp, "%2d", &status);
-  if (nr != 1) fatal("fscanf(map->status) failed\n");
-  obj->status[index] = status;
+  if (nr != 1) pe_fatal(obj->pe, "fscanf(map->status) failed\n");
+  obj->status[addr_rank0(obj->nsite, index)] = status;
 
   for (n = 0; n < obj->ndata; n++) {
-    coords_field_index(index, n, obj->ndata, &indexf);
+    indexf = addr_rank1(obj->nsite, obj->ndata, index, n);
     nr = fscanf(fp, " %le", obj->data + indexf);
-    if (nr != 1) fatal("fscanf(map->data[%d]) failed\n", n);
+    if (nr != 1) pe_fatal(obj->pe, "fscanf(map->data[%d]) failed\n", n);
   }
 
   return 0;

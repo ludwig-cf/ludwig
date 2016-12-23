@@ -25,6 +25,11 @@
  *                           + P_a P_b d^2 P_b]
  *  and so can be computed from P_a, d_b P_a, and d^2 P_a (only).
  *
+ *  There is an additional parameter lambda in the stress which is a
+ *  material parameter:
+ *     | lambda | < 1 => flow aligning
+ *     | lambda | > 1 => flow tumbling
+ *
  *
  *  $Id$
  *
@@ -32,7 +37,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -41,66 +46,184 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "field.h"
-#include "field_grad.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "polar_active.h"
 #include "util.h"
 
-static double a_;                 /* Free energy parameter */
-static double b_;                 /* Free energy parameter */
-static double kappa1_;            /* Free energy elastic constant */
-static double delta_;             /* Free energy elastic constant */
-static double kappa2_;            /* Free energy elastic constant */
+struct fe_polar_s {
+  fe_t super;               /* Superclass */
+  fe_polar_param_t * param; /* Parameters */
+  field_t * p;              /* Vector order parameter */
+  field_grad_t * dp;        /* Gradients thereof */
+  fe_polar_t * target;      /* Device pointer */
+};
 
-static double zeta_ = 0.0;        /* 'Activity' parameter */
-static double radius_ = FLT_MAX;  /* Used for spherical 'active region' */
+static __constant__ fe_polar_param_t const_param;
 
-static field_t * p_ = NULL;           /* A reference to the order parameter */
-static field_grad_t * grad_p_ = NULL; /* Ditto for gradients */
+static fe_vt_t fe_polar_hvt = {
+  (fe_free_ft)      fe_polar_free,
+  (fe_target_ft)    fe_polar_target,
+  (fe_fed_ft)       fe_polar_fed,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_polar_stress,
+  (fe_hvector_ft)   fe_polar_mol_field,
+  (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_polar_stress_v
+};
+
+static  __constant__ fe_vt_t fe_polar_dvt = {
+  (fe_free_ft)      NULL,
+  (fe_target_ft)    NULL,
+  (fe_fed_ft)       fe_polar_fed,
+  (fe_mu_ft)        NULL,
+  (fe_mu_solv_ft)   NULL,
+  (fe_str_ft)       fe_polar_stress,
+  (fe_hvector_ft)   fe_polar_mol_field,
+  (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_stress_v_ft)  fe_polar_stress_v
+};
+
 
 /*****************************************************************************
  *
- *  polar_active_p_set
- *
- *  Attach a reference to the order parameter field object and the
- *  associated field gradient object.
+ *  fe_polar_create
  *
  *****************************************************************************/
 
-int polar_active_p_set(field_t * p, field_grad_t * p_grad) {
+__host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe) {
 
-  assert(p);
-  assert(p_grad);
+  int ndevice;
+  fe_polar_t * obj = NULL;
 
-  p_ = p;
-  grad_p_ = p_grad;
+  obj = (fe_polar_t *) calloc(1, sizeof(fe_polar_t));
+  if (obj == NULL) fatal("calloc(fe_polar_t) failed\n");
+
+  obj->param = (fe_polar_param_t *) calloc(1, sizeof(fe_polar_param_t));
+  if (obj->param == NULL) fatal("calloc(fe_polar_param_t) failed\n");
+
+  obj->p = p;
+  obj->dp = dp;
+  obj->super.func = &fe_polar_hvt;
+  obj->super.id = FE_POLAR;
+
+  targetGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    obj->target = obj;
+  }
+  else {
+    fe_polar_param_t * tmp;
+    fe_vt_t * vt;
+    targetCalloc((void **) &obj->target, sizeof(fe_polar_t));
+    targetConstAddress((void **) &tmp, const_param);
+    copyToTarget(&obj->target->param, &tmp, sizeof(fe_polar_param_t *));
+    targetConstAddress((void **) &vt, fe_polar_dvt);
+    copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
+
+    copyToTarget(&obj->target->p, &p->target, sizeof(field_t *));
+    copyToTarget(&obj->target->dp, &dp->target, sizeof(field_grad_t *));
+  }
+
+  *fe = obj;
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  polar_active_parameters_set
+ *  fe_polar_free
  *
  *****************************************************************************/
 
-void polar_active_parameters_set(const double a, const double b,
-				 const double k1, const double k2) {
-  a_ = a;
-  b_ = b;
-  kappa1_ = k1;
-  delta_  = 0.0;
-  kappa2_ = 0.0;
+__host__ int fe_polar_free(fe_polar_t * fe) {
 
-  assert(delta_ == 0.0);
-  assert(kappa2_ == 0.0);
+  assert(fe);
 
-  return;
+  if (fe->target != fe) targetFree(fe->target);
+
+  free(fe->param);
+  free(fe);
+
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  polar_active_free_energy_density
+ *  fe_polar_target
+ *
+ *****************************************************************************/
+
+__host__ int fe_polar_target(fe_polar_t * fe, fe_t ** target) {
+
+  assert(fe);
+  assert(target);
+
+  *target = (fe_t *) fe->target;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_param_set
+ *
+ *****************************************************************************/
+
+__host__ int fe_polar_param_set(fe_polar_t * fe, fe_polar_param_t values) {
+
+  assert(fe);
+
+  *(fe->param) = values;
+
+  fe->param->delta = 0.0;
+  fe->param->kappa2 = 0.0;
+
+  assert(fe->param->delta == 0.0);
+  assert(fe->param->kappa2 == 0.0);
+
+  fe_polar_param_commit(fe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_param_commit
+ *
+ *****************************************************************************/
+
+__host__ int fe_polar_param_commit(fe_polar_t * fe) {
+
+  assert(fe);
+
+  copyConstToTarget(&const_param, fe->param, sizeof(fe_polar_param_t));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_param
+ *
+ *****************************************************************************/
+
+__host__ int fe_polar_param(fe_polar_t * fe, fe_polar_param_t * values) {
+
+  assert(fe);
+  assert(values);
+
+  *values = *fe->param;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_fed
  *
  *  The free energy density is:
  *
@@ -110,19 +233,22 @@ void polar_active_parameters_set(const double a, const double b,
  *
  *****************************************************************************/
 
-double polar_active_free_energy_density(const int index) {
+__host__ __device__
+int fe_polar_fed(fe_polar_t * fe, int index, double * fed) {
 
   int ia, ib, ic;
 
-  double e;
   double p2;
   double dp1, dp3;
   double p[3];
   double dp[3][3];
   double sum;
+  LEVI_CIVITA_CHAR(e);
 
-  field_vector(p_, index, p);
-  field_grad_vector_grad(grad_p_, index, dp);
+  assert(fe);
+
+  field_vector(fe->p, index, p);
+  field_grad_vector_grad(fe->dp, index, dp);
 
   p2  = 0.0;
   dp1 = 0.0;
@@ -134,20 +260,22 @@ double polar_active_free_energy_density(const int index) {
     for (ib = 0; ib < 3; ib++) {
       dp1 += dp[ia][ib]*dp[ia][ib];
       for (ic = 0; ic < 3; ic++) {
-        sum += e_[ia][ib][ic]*dp[ib][ic];
+        sum += e[ia][ib][ic]*dp[ib][ic];
       }
     }
     dp3 += sum*sum;
   }
 
-  e = 0.5*a_*p2 + 0.25*b_*p2*p2 + 0.5*kappa1_*dp1 + 0.5*delta_*kappa1_*dp3;
+  *fed = 0.5*fe->param->a*p2 + 0.25*fe->param->b*p2*p2
+    + 0.5*fe->param->kappa1*dp1
+    + 0.5*fe->param->delta*fe->param->kappa1*dp3;
 
-  return e;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  polar_active_chemical_stress
+ *  fe_polar_stress
  *
  *  The stress is
  *
@@ -162,12 +290,12 @@ double polar_active_free_energy_density(const int index) {
  *
  *****************************************************************************/
 
-void polar_active_chemical_stress(const int index, double s[3][3]) {
+__host__ __device__
+int fe_polar_stress(fe_polar_t * fe, int index, double s[3][3]) {
 
   int ia, ib, ic;
 
   double sum;
-  double lambda;
   double pdoth;
   double p2;
   double p[3];
@@ -175,12 +303,16 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
   double dp[3][3];
 
   const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
 
-  lambda = fe_v_lambda();
+  assert(fe);
+  assert(fe->p);
+  assert(fe->dp);
+  assert(fe->param);
 
-  field_vector(p_, index, p);
-  field_grad_vector_grad(grad_p_, index, dp);
-  polar_active_molecular_field(index, h);
+  field_vector(fe->p, index, p);
+  field_grad_vector_grad(fe->dp, index, dp);
+  fe_polar_mol_field(fe, index, h);
 
   p2 = 0.0;
   pdoth = 0.0;
@@ -197,8 +329,10 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
 	sum += dp[ia][ic]*dp[ib][ic];
       }
       s[ia][ib] = 0.5*(p[ia]*h[ib] - p[ib]*h[ia])
-	- lambda*(0.5*(p[ia]*h[ib] + p[ib]*h[ia]) - r3*d_[ia][ib]*pdoth)
-	- kappa1_*sum - zeta_*(p[ia]*p[ib] - r3*d_[ia][ib]*p2);
+	- fe->param->lambda*(0.5*(p[ia]*h[ib] + p[ib]*h[ia])
+			     - r3*d[ia][ib]*pdoth)
+	- fe->param->kappa1*sum
+	- fe->param->zeta*(p[ia]*p[ib] - r3*d[ia][ib]*p2);
     }
   }
 
@@ -211,19 +345,48 @@ void polar_active_chemical_stress(const int index, double s[3][3]) {
     }
   }
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_polar_stress_v
+ *
+ *  Requires optimisation.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+void fe_polar_stress_v(fe_polar_t * fe, int index, double s[3][3][NSIMDVL]) {
+
+  int ia, ib, iv;
+  double s1[3][3];
+
+  assert(fe);
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_polar_stress(fe, index+iv, s1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib][iv] = s1[ia][ib];
+      }
+    }
+  }
+
   return;
 }
 
 /*****************************************************************************
  *
- *  polar_active_molecular_field
+ *  fe_polar_mol_field
  *
  *  H_a = - A P_a - B (P_b)^2 P_a + kappa1 \nabla^2 P_a
  *        + 2 kappa2 P_c \nabla^2 P_c P_a 
  *  
  *****************************************************************************/
 
-void polar_active_molecular_field(const int index, double h[3]) {
+__host__ __device__
+int fe_polar_mol_field(fe_polar_t * fe, int index, double h[3]) {
 
   int ia;
 
@@ -231,8 +394,10 @@ void polar_active_molecular_field(const int index, double h[3]) {
   double p[3];
   double dsqp[3];
 
-  field_vector(p_, index, p);
-  field_grad_vector_delsq(grad_p_, index, dsqp);
+  assert(fe);
+
+  field_vector(fe->p, index, p);
+  field_grad_vector_delsq(fe->dp, index, dsqp);
 
   p2 = 0.0;
 
@@ -241,74 +406,9 @@ void polar_active_molecular_field(const int index, double h[3]) {
   }
 
   for (ia = 0; ia < 3; ia++) {
-    h[ia] = -a_*p[ia] + -b_*p2*p[ia] + kappa1_*dsqp[ia];
+    h[ia] = -fe->param->a*p[ia] + -fe->param->b*p2*p[ia]
+      + fe->param->kappa1*dsqp[ia];
   }
 
-  return;
-}
-
-/*****************************************************************************
- *
- *  polar_active_zeta_set
- *
- *****************************************************************************/
-
-void polar_active_zeta_set(const double zeta_new) {
-
-  zeta_ = zeta_new;
-  return;
-}
-
-/*****************************************************************************
- *
- *  polar_active_zeta
- *
- *****************************************************************************/
-
-double polar_active_zeta(void) {
-
-  return zeta_;
-}
-
-/*****************************************************************************
- *
- *  polar_active_region_radius_set
- *
- *****************************************************************************/
-
-void polar_active_region_radius_set(const double r) {
-
-  radius_ = r;
-  return;
-}
-
-/*****************************************************************************
- *
- *  polar_active_region
- *
- *  Returns 1 in the 'region' and zero outside. The 'region' is a
- *  spherical volume of radius raduis_, centred at the centre of
- *  the grid.
- *
- *****************************************************************************/
-
-double polar_active_region(const int index) {
-
-  int noffset[3];
-  int coords[3];
-
-  double x, y, z;
-  double active;
-
-  coords_nlocal_offset(noffset);
-  coords_index_to_ijk(index, coords);
-
-  x = 1.0*(noffset[X] + coords[X]) - (Lmin(X) + 0.5*L(X));
-  y = 1.0*(noffset[Y] + coords[Y]) - (Lmin(Y) + 0.5*L(Y));
-  z = 1.0*(noffset[Z] + coords[Z]) - (Lmin(Z) + 0.5*L(Z));
-
-  active = 1.0;
-  if ((x*x + y*y + z*z) > radius_*radius_) active = 0.0;
-
-  return active;
+  return 0;
 }

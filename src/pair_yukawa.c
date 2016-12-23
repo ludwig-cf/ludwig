@@ -87,7 +87,7 @@ int pair_yukawa_info(pair_yukawa_t * obj) {
   assert(obj);
 
   physics_ref(&phys);
-  physics_kt(&kt);
+  physics_kt(phys, &kt);
 
   info("\n");
   info("Yukawa potential\n");

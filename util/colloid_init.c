@@ -12,10 +12,10 @@
  *
  *  For compilation instructions see the Makefile.
  *
- *  $ make colloid_init
+ *  $ make colloid_init 
  *
  *  $ ./a.out
- *  should produce a file colloid-00000000.001-001 in the specified format.
+ *  should produce a file config.cds.init.001-001 in the specified format.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -54,34 +54,37 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {128.0, 128.0, 128.0};  /* Total system size (cf. input) */
-  int periodic[3] = {1, 1, 1};           /* 0 = wall, 1 = periodic */
+  int ntotal[3] = {66.0, 128.0, 256.0};  /* Total system size (cf. input) */
+  int periodic[3] = {0, 1, 1};           /* 0 = wall, 1 = periodic */
   int file_format = BINARY;
 
   int n;
-  int index;
   int nrequest;
   int nactual;
 
-  double a0 = 3.5;                      /* Input radius */
-  double ah = 3.5;                      /* Hydrodynamic radius */ 
-  double vf = 0.1;                      /* Volume fraction */
-  double dh = 1.0;                      /* "grace' distance */
+  double a0 = 5.0;                      /* Input radius */
+  double ah = 5.0;                      /* Hydrodynamic radius */ 
+  double vf = 0.1;                       /* Volume fraction */
+  double dh = 1.0;                       /* "grace' distance */
   double q0 = 0.0; 
   double q1 = 0.0;
 
   colloid_state_t * state;
+  pe_t * pe;
+  cs_t * cs;
 
   MPI_Init(&argc, &argv);
-  pe_init();
-  ran_init();
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  ran_init(pe);
 
   /* This program is intended to be serial */
   assert(pe_size() == 1);
 
-  coords_ntotal_set(ntotal);
-  coords_periodicity_set(periodic);
-  coords_init();
+  cs_create(pe,&cs);
+  cs_ntotal_set(cs, ntotal);
+  cs_periodicity_set(cs, periodic);
+  cs_init(cs);
 
   /* Allocate required number of state objects, and set state
      to zero; initialise indices (position set later) */
@@ -108,8 +111,8 @@ int main(int argc, char ** argv) {
 
   free(state);
 
-  coords_finish();
-  pe_finalise();
+  cs_free(cs);
+  pe_free(pe);
   MPI_Finalize();
 
   return 0;
@@ -127,9 +130,11 @@ int colloid_init_vf_n(const double ah, const double vf) {
 
   int n;
   double volume;
+  PI_DOUBLE(pi);
+
 
   volume = L(X)*L(Y)*L(Z);
-  n = vf*volume/(4.0*pi_*ah*ah*ah/3.0);
+  n = vf*volume/(4.0*pi*ah*ah*ah/3.0);
 
   return n;
 }
@@ -182,7 +187,7 @@ int colloid_init_random(const int nc, colloid_state_t * state, double dh) {
     if (n == nc) break;
   }
 
-  printf("Ramdonly placed %d colloids in %d attempts\n", n, nattempt+1);
+  printf("Randomly placed %d colloids in %d attempts\n", n, nattempt+1);
 
   return n;
 }

@@ -8,25 +8,32 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2014 The University of Edinburgh
+ *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
+#include <float.h>
 #include <stdio.h>
 #include <math.h>
 
 #include "pe.h"
 #include "coords.h"
+#include "kernel.h"
 #include "tests.h"
 
-static void test_coords_constants(void);
-static void test_coords_system(const int ntotal[3], const int period[3]);
-static void test_coords_decomposition(const int decomp_request[3]);
-static void test_coords_communicator(void);
-static void test_coords_cart_info(void);
-static void test_coords_sub_communicator(void);
-static int test_coords_periodic_comm(void);
+static int test_coords_constants(void);
+static int test_coords_system(cs_t * cs, int ntotal[3], int period[3]);
+static int test_coords_decomposition(cs_t * cs, int decomp_request[3]);
+static int test_coords_communicator(cs_t * cs);
+static int test_coords_cart_info(cs_t * cs);
+static int test_coords_sub_communicator(cs_t * cs);
+static int test_coords_periodic_comm(cs_t * cs);
 static int neighbour_rank(int, int, int);
+
+__host__ int do_test_coords_device1(pe_t * pe);
+__global__ void do_test_coords_kernel1(cs_t * cs);
+
 
 /*****************************************************************************
  *
@@ -47,58 +54,64 @@ int test_coords_suite(void) {
   int ntotal_test2[3] = {1024, 1024, 1024};
   int periods_test2[3] = {1, 1, 1};
   int decomposition_test2[3] = {4, 4, 4};
+  pe_t * pe = NULL;
+  cs_t * cs = NULL;
 
-  pe_init_quiet();
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   /* info("Checking coords.c ...\n\n");*/
-
+  
   test_coords_constants();
 
   /* Check the defaults, an the correct resetting of defaults. */
 
   /* info("\nCheck defaults...\n\n");*/
-  test_coords_system(ntotal_default, periods_default);
+  cs_create(pe, &cs);
+  test_coords_system(cs, ntotal_default, periods_default);
 
-  coords_init();
-  test_coords_system(ntotal_default, periods_default);
-  test_coords_decomposition(decomposition_default);
-  test_coords_communicator();
-  coords_finish();
-
-  /* info("\nCheck reset of defaults...\n\n");*/
-  test_coords_system(ntotal_default, periods_default);
+  cs_init(cs);
+  test_coords_system(cs, ntotal_default, periods_default);
+  test_coords_decomposition(cs, decomposition_default);
+  test_coords_communicator(cs);
+  cs_free(cs);
 
 
   /* Now test 1 */
 
-  coords_ntotal_set(ntotal_test1);
-  coords_periodicity_set(periods_test1);
-  coords_decomposition_set(decomposition_test1);
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal_test1);
+  cs_periodicity_set(cs, periods_test1);
+  cs_decomposition_set(cs, decomposition_test1);
 
-  coords_init();
-  test_coords_system(ntotal_test1, periods_test1);
-  test_coords_decomposition(decomposition_test1);
-  test_coords_communicator();
-  test_coords_cart_info();
-  coords_finish();
+  cs_init(cs);
+  test_coords_system(cs, ntotal_test1, periods_test1);
+  test_coords_decomposition(cs, decomposition_test1);
+  test_coords_communicator(cs);
+  test_coords_cart_info(cs);
+  cs_free(cs);
 
   /* Now test 2 */
 
-  coords_ntotal_set(ntotal_test2);
-  coords_periodicity_set(periods_test2);
-  coords_decomposition_set(decomposition_test2);
+  cs_create(pe, &cs);
+  cs_ntotal_set(cs, ntotal_test2);
+  cs_periodicity_set(cs, periods_test2);
+  cs_decomposition_set(cs, decomposition_test2);
 
-  coords_init();
-  test_coords_system(ntotal_test2, periods_test2);
-  test_coords_decomposition(decomposition_test2);
-  test_coords_communicator();
-  test_coords_cart_info();
-  test_coords_sub_communicator();
-  test_coords_periodic_comm();
-  coords_finish();
+  cs_init(cs);
+  test_coords_system(cs, ntotal_test2, periods_test2);
+  test_coords_decomposition(cs, decomposition_test2);
+  test_coords_communicator(cs);
+  test_coords_cart_info(cs);
+  test_coords_sub_communicator(cs);
+  test_coords_periodic_comm(cs);
+  cs_free(cs);
 
-  info("PASS     ./unit/test_coords\n");
-  pe_finalise();
+  /* Device tests */
+
+  do_test_coords_device1(pe);
+
+  pe_info(pe, "PASS     ./unit/test_coords\n");
+  pe_free(pe);
 
   return 0;
 }
@@ -111,7 +124,7 @@ int test_coords_suite(void) {
  *
  *****************************************************************************/
 
-void test_coords_constants(void) {
+int test_coords_constants(void) {
 
   /* info("Checking X Y Z enum... ");*/
   test_assert(X == 0);
@@ -131,12 +144,14 @@ void test_coords_constants(void) {
   /* info("ok\n");*/
 
   /* info("Checking Lmin()... ");*/
+  /*
   test_assert(fabs(Lmin(X) - 0.5) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(Lmin(Y) - 0.5) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(Lmin(Z) - 0.5) < TEST_DOUBLE_TOLERANCE);
+  */
   /* info("ok\n");*/
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -147,27 +162,31 @@ void test_coords_constants(void) {
  *
  *****************************************************************************/
 
-void test_coords_system(const int ntotal_ref[3], const int period_ref[3]) {
+int test_coords_system(cs_t * cs, int ntotal_ref[3], int period_ref[3]) {
 
-  /* info("Checking system N_total...");*/
-  test_assert(N_total(X) == ntotal_ref[X]);
-  test_assert(N_total(Y) == ntotal_ref[Y]);
-  test_assert(N_total(Z) == ntotal_ref[Z]);
-  /* info("yes\n");*/
+  int ntotal[3];
+  int periodic[3];
+  double len[3];
 
-  /* info("Checking periodicity ...");*/
-  test_assert(is_periodic(X) == period_ref[X]);
-  test_assert(is_periodic(Y) == period_ref[Y]);
-  test_assert(is_periodic(Z) == period_ref[Z]);
-  /* info("correct\n");*/
+  assert(cs);
 
-  /* info("Checking system L()...");*/
-  test_assert(fabs(L(X) - 1.0*ntotal_ref[X]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(L(Y) - 1.0*ntotal_ref[Y]) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(L(Z) - 1.0*ntotal_ref[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("(ok)\n");*/
+  cs_ntotal(cs, ntotal);
+  cs_periodic(cs, periodic);
+  cs_ltot(cs, len);
 
-  return;
+  test_assert(ntotal[X] == ntotal_ref[X]);
+  test_assert(ntotal[Y] == ntotal_ref[Y]);
+  test_assert(ntotal[Z] == ntotal_ref[Z]);
+
+  test_assert(periodic[X] == period_ref[X]);
+  test_assert(periodic[Y] == period_ref[Y]);
+  test_assert(periodic[Z] == period_ref[Z]);
+
+  test_assert(fabs(len[X] - 1.0*ntotal_ref[X]) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(len[Y] - 1.0*ntotal_ref[Y]) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(len[Z] - 1.0*ntotal_ref[Z]) < TEST_DOUBLE_TOLERANCE);
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -178,24 +197,38 @@ void test_coords_system(const int ntotal_ref[3], const int period_ref[3]) {
  *
  *****************************************************************************/
 
-void test_coords_decomposition(const int decomp_request[3]) {
+int test_coords_decomposition(cs_t * cs, int mpi_sz_req[3]) {
 
-  int nproc;
   int ok = 1;
+  int ntask;
+  int ntask_req;
+  int ntotal[3];
+  int mpisz[3];
 
-  nproc = decomp_request[X]*decomp_request[Y]*decomp_request[Z];
-  if (pe_size() != nproc) ok = 0;
-  if (N_total(X) % decomp_request[X] != 0) ok = 0;
-  if (N_total(Y) % decomp_request[Y] != 0) ok = 0;
-  if (N_total(Z) % decomp_request[Z] != 0) ok = 0;
+  MPI_Comm comm;
+
+  assert(cs);
+
+  ntask_req = mpi_sz_req[X]*mpi_sz_req[Y]*mpi_sz_req[Z];
+
+  cs_ntotal(cs, ntotal);
+  cs_cartsz(cs, mpisz);
+  cs_cart_comm(cs, &comm);
+
+  MPI_Comm_size(comm, &ntask);
+
+  if (ntask != ntask_req) ok = 0;
+  if (ntotal[X] % mpi_sz_req[X] != 0) ok = 0;
+  if (ntotal[Y] % mpi_sz_req[Y] != 0) ok = 0;
+  if (ntotal[Z] % mpi_sz_req[Z] != 0) ok = 0;
 
   if (ok) {
-    test_assert(cart_size(X) == decomp_request[X]);
-    test_assert(cart_size(Y) == decomp_request[Y]);
-    test_assert(cart_size(Z) == decomp_request[Z]);
+    test_assert(mpisz[X] == mpi_sz_req[X]);
+    test_assert(mpisz[Y] == mpi_sz_req[Y]);
+    test_assert(mpisz[Z] == mpi_sz_req[Z]);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -208,9 +241,7 @@ void test_coords_decomposition(const int decomp_request[3]) {
  *
  *****************************************************************************/
 
-void test_coords_communicator(void) {
-
-  MPI_Comm communicator;
+int test_coords_communicator(cs_t * cs) {
 
   int nlocal[3];
   int ntotal[3];
@@ -218,36 +249,43 @@ void test_coords_communicator(void) {
   int dims[3];
   int periods[3];
   int coords[3];
+  int cart_coords[3];
+  int mpisz[3];
   int rank;
   int n;
 
-  ntotal[X] = N_total(X);
-  ntotal[Y] = N_total(Y);
-  ntotal[Z] = N_total(Z);
+  MPI_Comm comm;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  assert(cs);
+
+  cs_ntotal(cs, ntotal);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+  cs_cartsz(cs, mpisz);
+  cs_cart_coords(cs, cart_coords);
 
   /* info("Checking Cartesian communicator initialised...");*/
-  communicator = cart_comm();
-  MPI_Cart_get(communicator, 3, dims, periods, coords);
-  MPI_Comm_rank(communicator, &rank);
+
+  cs_cart_comm(cs, &comm);
+
+  MPI_Cart_get(comm, 3, dims, periods, coords);
+  MPI_Comm_rank(comm, &rank);
   /* info("yes\n");*/
 
   /* info("Checking Cartesian rank...");*/
-  test_assert(cart_rank() == rank);
+  test_assert(cs_cart_rank(cs) == rank);
   /* info("ok\n");*/
 
   /* info("Checking cart_size() ...");*/
-  test_assert(cart_size(X) == dims[X]);
-  test_assert(cart_size(Y) == dims[Y]);
-  test_assert(cart_size(Z) == dims[Z]);
+  test_assert(mpisz[X] == dims[X]);
+  test_assert(mpisz[Y] == dims[Y]);
+  test_assert(mpisz[Z] == dims[Z]);
   /* info("ok\n");*/
 
   /* info("Checking cart_coords() ...");*/
-  test_assert(cart_coords(X) == coords[X]);
-  test_assert(cart_coords(Y) == coords[Y]);
-  test_assert(cart_coords(Z) == coords[Z]);
+  test_assert(cart_coords[X] == coords[X]);
+  test_assert(cart_coords[Y] == coords[Y]);
+  test_assert(cart_coords[Z] == coords[Z]);
   /* info("ok\n");*/
 
   /* info("Checking periodity...");*/
@@ -263,44 +301,44 @@ void test_coords_communicator(void) {
   /* info("ok\n");*/
 
   /* info("Checking n_offset()...");*/
-  test_assert(noffset[X] == cart_coords(X)*nlocal[X]);
-  test_assert(noffset[Y] == cart_coords(Y)*nlocal[Y]);
-  test_assert(noffset[Z] == cart_coords(Z)*nlocal[Z]);
+  test_assert(noffset[X] == cart_coords[X]*nlocal[X]);
+  test_assert(noffset[Y] == cart_coords[Y]*nlocal[Y]);
+  test_assert(noffset[Z] == cart_coords[Z]*nlocal[Z]);
   /* info("ok\n");*/
 
   /* Check the neighbours */
 
   /* info("Checking FORWARD neighbours in X...");*/
-  n = neighbour_rank(cart_coords(X)+1, cart_coords(Y), cart_coords(Z));
+  n = neighbour_rank(cart_coords[X]+1, cart_coords[Y], cart_coords[Z]);
   test_assert(n == cart_neighb(FORWARD, X));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in X...");*/
-  n = neighbour_rank(cart_coords(X)-1, cart_coords(Y), cart_coords(Z));
+  n = neighbour_rank(cart_coords[X]-1, cart_coords[Y], cart_coords[Z]);
   test_assert(n == cart_neighb(BACKWARD, X));
   /* info("ok\n");*/
 
   /* info("Checking FORWARD neighbours in Y...");*/
-  n = neighbour_rank(cart_coords(X), cart_coords(Y)+1, cart_coords(Z));
+  n = neighbour_rank(cart_coords[X], cart_coords[Y]+1, cart_coords[Z]);
   test_assert(n == cart_neighb(FORWARD, Y));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in Y...");*/
-  n = neighbour_rank(cart_coords(X), cart_coords(Y)-1, cart_coords(Z));
+  n = neighbour_rank(cart_coords[X], cart_coords[Y]-1, cart_coords[Z]);
   test_assert(n == cart_neighb(BACKWARD, Y));
   /* info("ok\n");*/
 
   /* info("Checking FORWARD neighbours in Z...");*/
-  n = neighbour_rank(cart_coords(X), cart_coords(Y), cart_coords(Z)+1);
+  n = neighbour_rank(cart_coords[X], cart_coords[Y], cart_coords[Z]+1);
   test_assert(n == cart_neighb(FORWARD, Z));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in Z...");*/
-  n = neighbour_rank(cart_coords(X), cart_coords(Y), cart_coords(Z)-1);
+  n = neighbour_rank(cart_coords[X], cart_coords[Y], cart_coords[Z]-1);
   test_assert(n == cart_neighb(BACKWARD, Z));
   /* info("ok\n");*/
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -311,13 +349,15 @@ void test_coords_communicator(void) {
  *
  *****************************************************************************/
 
-static void test_coords_cart_info(void) {
+static int test_coords_cart_info(cs_t * cs) {
 
   int n;
   const int tag = 100;
   char string[FILENAME_MAX];
 
   MPI_Status status[1];
+
+  assert(cs);
 
   /* info("\n");
   info("Overview\n");
@@ -344,7 +384,7 @@ static void test_coords_cart_info(void) {
     }
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -355,7 +395,7 @@ static void test_coords_cart_info(void) {
  *
  *****************************************************************************/
 
-static void test_coords_sub_communicator(void) {
+static int test_coords_sub_communicator(cs_t * cs) {
 
   int remainder[3];
   int n, rank1, rank2;
@@ -365,6 +405,8 @@ static void test_coords_sub_communicator(void) {
   MPI_Comm sub_comm1;
   MPI_Comm sub_comm2;
   MPI_Status status[1];
+
+  assert(cs);
 
   /* One-dimensional ub-communicator in Y */
 
@@ -410,7 +452,7 @@ static void test_coords_sub_communicator(void) {
   MPI_Comm_free(&sub_comm2);
   MPI_Comm_free(&sub_comm1);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -454,7 +496,7 @@ int neighbour_rank(int nx, int ny, int nz) {
  *
  *****************************************************************************/
 
-static int test_coords_periodic_comm(void) {
+static int test_coords_periodic_comm(cs_t * cs) {
 
   int rank;
   int pforw, pback;
@@ -462,30 +504,122 @@ static int test_coords_periodic_comm(void) {
   int coords[3];
   MPI_Comm pcomm;
 
-  coords_periodic_comm(&pcomm);
+  assert(cs);
+  cs_periodic_comm(cs, &pcomm);
   MPI_Comm_rank(pcomm, &rank);
   MPI_Cart_coords(pcomm, rank, 3, coords);
 
-  coords_cart_shift(pcomm, X, FORWARD, &pforw);
-  coords_cart_shift(pcomm, X, BACKWARD, &pback);
+  cs_cart_shift(pcomm, X, FORWARD, &pforw);
+  cs_cart_shift(pcomm, X, BACKWARD, &pback);
 
   MPI_Cart_shift(pcomm, X, 1, &nsource, &ndest);
   test_assert(pforw == ndest);
   test_assert(pback == nsource);
 
-  coords_cart_shift(pcomm, Y, FORWARD, &pforw);
-  coords_cart_shift(pcomm, Y, BACKWARD, &pback);
+  cs_cart_shift(pcomm, Y, FORWARD, &pforw);
+  cs_cart_shift(pcomm, Y, BACKWARD, &pback);
 
   MPI_Cart_shift(pcomm, Y, 1, &nsource, &ndest);
   test_assert(pforw == ndest);
   test_assert(pback == nsource);
 
-  coords_cart_shift(pcomm, Z, FORWARD, &pforw);
-  coords_cart_shift(pcomm, Z, BACKWARD, &pback);
+  cs_cart_shift(pcomm, Z, FORWARD, &pforw);
+  cs_cart_shift(pcomm, Z, BACKWARD, &pback);
 
   MPI_Cart_shift(pcomm, Z, 1, &nsource, &ndest);
   test_assert(pforw == ndest);
   test_assert(pback == nsource);
 
   return 0;
+}
+
+/******************************************************************************
+ *
+ *  do_test_coords_device1
+ *
+ *  Test default system size.
+ *
+ ******************************************************************************/
+
+__host__ int do_test_coords_device1(pe_t * pe) {
+
+  dim3 nblk, ntpb;
+  cs_t * cstarget = NULL;
+  cs_t * cs = NULL;
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+  cs_target(cs, &cstarget);
+
+  kernel_launch_param(1, &nblk, &ntpb);
+  ntpb.x = 1;
+
+  __host_launch(do_test_coords_kernel1, nblk, ntpb, cstarget);
+  targetDeviceSynchronise();
+
+  cs_free(cs);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  do_test_coords_kernel1
+ *
+ ******************************************************************************/
+
+__global__ void do_test_coords_kernel1(cs_t * cs) {
+
+  int nhalo;
+  int nsites;
+  int mpisz[3];
+  int mpicoords[3];
+  int ntotal[3];
+  int nlocal[3];
+  int noffset[3];
+  double lmin[3];
+  double ltot[3];
+
+  assert(cs);
+
+  cs_nhalo(cs, &nhalo);
+  assert(nhalo == 1);
+
+  cs_ntotal(cs, ntotal);
+  assert(ntotal[X] == 64);
+  assert(ntotal[Y] == 64);
+  assert(ntotal[Z] == 64);
+
+  cs_nlocal(cs, nlocal);
+  cs_cartsz(cs, mpisz);
+
+  assert(nlocal[X] == ntotal[X]/mpisz[X]);
+  assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
+  assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
+
+  cs_nsites(cs, &nsites);
+
+  assert(nsites == (nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo));
+
+  cs_cart_coords(cs, mpicoords);
+  cs_nlocal_offset(cs, noffset);
+
+  assert(noffset[X] == mpicoords[X]*nlocal[X]);
+  assert(noffset[Y] == mpicoords[Y]*nlocal[Y]);
+  assert(noffset[Z] == mpicoords[Z]*nlocal[Z]);
+
+  cs_lmin(cs, lmin);
+  cs_ltot(cs, ltot);
+
+  assert(fabs(lmin[X] - 0.5) < DBL_EPSILON);
+  assert(fabs(lmin[Y] - 0.5) < DBL_EPSILON);
+  assert(fabs(lmin[Z] - 0.5) < DBL_EPSILON);
+
+  assert(fabs(ltot[X] - ntotal[X]) < DBL_EPSILON);
+  assert(fabs(ltot[Y] - ntotal[Y]) < DBL_EPSILON);
+  assert(fabs(ltot[Z] - ntotal[Z]) < DBL_EPSILON);
+
+  return;
 }
