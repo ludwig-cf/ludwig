@@ -21,17 +21,18 @@
 
 import sys, os, re, math
 
-nstart=1000	# Start timestep
-nint=1000	# Increment
-nend=13000	# End timestep
+nstart=0	# Start timestep
+nint=5000	# Increment
+nend=60000	# End timestep
 ngroup=1	# Number of output groups
 
-vel=0		# Switch for velocity 
-q=0		# Switch for Q-tensor postprocessing
+vel=1		# Switch for velocity 
+q=0		# Switch for Q-tensor
 phi=0		# Switch for binary fluid
 psi=0		# Switch for electrokinetics
 fed=0		# Switch for free energy
-colloid=1	# Switch for colloid postprocessing
+colcds=0	# Switch for colloid coordinate
+colcdsvel=1	# Switch for colloid coordinate and lattice velocity
 
 # Set lists for analysis
 metafile=[]
@@ -74,7 +75,7 @@ if fed==1:
 
 os.system('gcc -o vtk_extract vtk_extract.c -lm')
 
-if colloid==1:
+if (colcds==1) or (colcdsvel==1):
 	metafile.append('')
 	filelist.append('filelist_colloid')
 	os.system('rm filelist_colloid')
@@ -108,9 +109,14 @@ for i in range(len(filelist)):
 
 			stub=line.split('.',2)
 			datafilename = ('%s.%s' % (stub[0], stub[1]))
-			outputfilename = ('col-%s.csv' % stub[1])
-			os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename))
-	
+			outputfilename1 = ('col-%s.csv' % stub[1])
+			outputfilename2 = ('velcol-%s.vtk' % stub[1])
+
+			if colcds==1:
+				os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename1))
+			if colcdsvel==1:
+				os.system('./extract_colloids %s %d %s %s' % (datafilename,ngroup,outputfilename1,outputfilename2))	
+
 os.system('rm filelist*')
 
 print('# Done')
