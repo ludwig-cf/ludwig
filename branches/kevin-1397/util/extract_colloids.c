@@ -42,11 +42,11 @@
 
 #include "colloid.h"
 
-#define NX 32
-#define NY 32
-#define NZ 32
+#define NX 66
+#define NY 128
+#define NZ 256
 
-static const int  iread_ascii = 1;       /* Read ascii or binary (default) */
+static const int  iread_ascii = 0;       /* Read ascii or binary (default) */
 static const int  reverse_cds = 0;       /* Reverse component order in output */
 					 /* (default is no) */
 static const char * format3_    = "%10.5f, %10.5f, %10.5f,";
@@ -99,7 +99,7 @@ int main(int argc, char ** argv) {
     for (ix = 0; ix < NX; ix++) {
       vel[ix] = calloc(NY, sizeof(double));
       for (iy = 0; iy < NY; iy++) {
-	vel[ix][iy] = calloc(NY, sizeof(double));
+	vel[ix][iy] = calloc(NZ, sizeof(double));
 	for (iz = 0; iz < NZ; iz++) {
 	  vel[ix][iy][iz] = calloc(3, sizeof(double));
 	}
