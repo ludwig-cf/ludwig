@@ -174,16 +174,17 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 #ifdef NP_D3Q18
   double v[19];
   MatStencil  row, col[19];
-  double r3 = 0.333333333333333, r6 = 0.166666666666667;
+  const double r3 = (1.0/3.0);
+  const double r6 = (1.0/6.0);
 #endif
 
 #ifdef NP_D3Q26
   double v[27];
   MatStencil  row, col[27];
-  double r10 = 0.1;
-  double r30 = 0.033333333333333;
-  double r15_7  = 0.46666666666666;
-  double r15_64 = 4.26666666666666;
+  const double r10 = 0.1;
+  const double r30 = (1.0/30.0);
+  const double r15_7  = (7.0/15.0);
+  const double r15_64 = (64.0/15.0);
 #endif
 
   assert(obj);
@@ -351,8 +352,8 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   double v[19];
   MatStencil  row, col[19];
 
-#define r3 (0.333333333333333)
-#define r6 (0.166666666666666)
+  const double r3 = (1.0/3.0);
+  const double r6 = (1.0/6.0);
   const double  matval[19] = {4.0,
 			  -r6, -r6, -r3,
 			  -r6, -r6, -r6,
@@ -366,10 +367,10 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   double v[27];
   MatStencil  row, col[27];
 
-#define r10 (0.1)
-#define r30 (0.033333333333333)
-#define r15_7 (0.46666666666666)
-#define r15_64 (4.26666666666666)
+  const double r10 = 0.1;
+  const double r30 = (1.0/30.0);
+  const double r15_7  = (7.0/15.0);
+  const double r15_64 = (64.0/15.0);
 
   const double  matval[27] = {r15_64, 
 			 -r30,  -r10  , -r30, 
