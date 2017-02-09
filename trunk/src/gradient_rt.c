@@ -80,6 +80,7 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, field_grad_t * grad, map_t * map,
       pe_info(pe, "3d_27pt_fluid\n");
       f2 = grad_3d_27pt_fluid_d2;
       f4 = grad_3d_27pt_fluid_d4;
+      field_grad_dab_set(grad, grad_3d_27pt_fluid_dab);
     }
     else if (strcmp(keyvalue, "3d_27pt_solid") == 0) {
       pe_info(pe, "3d_27pt_solid\n");

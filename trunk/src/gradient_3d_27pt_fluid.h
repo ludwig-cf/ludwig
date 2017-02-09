@@ -19,5 +19,6 @@
 
 __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fg);
 __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fg);
+__host__ int grad_3d_27pt_fluid_dab(field_grad_t * fg);
 
 #endif
