@@ -51,8 +51,8 @@ __host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
 __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				  int nextra);
 
-__host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df);
-__host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df);
+__host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df);
+__host__ int grad_3d_7pt_dab_compute(lees_edw_t * le, field_grad_t * df);
 
 
 __global__
@@ -148,8 +148,8 @@ __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
   assert(fgrad->field->nf == 1); /* Scalars only; host only */
 
   le = fgrad->field->le;
-  grad_dab_compute(le, fgrad);
-  grad_dab_le_correct(le, fgrad);
+  grad_3d_7pt_dab_compute(le, fgrad);
+  grad_3d_7pt_dab_le_correct(le, fgrad);
 
   return 0;
 }
@@ -419,7 +419,7 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
  *
  *****************************************************************************/
 
-__host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df) {
+__host__ int grad_3d_7pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
@@ -497,7 +497,7 @@ __host__ int grad_dab_compute(lees_edw_t * le, field_grad_t * df) {
  *
  *****************************************************************************/
 
-__host__ int grad_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
+__host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
