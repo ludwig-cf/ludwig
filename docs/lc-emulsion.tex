@@ -58,17 +58,21 @@ uniformly mixed components in equal proportion have $\phi = 0$.
 
 The second contribution is the liquid crystal bulk free energy density
 (Equation~\ref{eq-lc-fed-bulk}):
-\begin{equation}
-f_{\rm lc} =
+\begin{eqnarray}
+f_{\rm lc} &=&
   {\textstyle\frac{1}{2}}A_0 \left(1-\gamma(\phi)/3\right) Q_{\alpha\beta}^2
 - {\textstyle\frac{1}{3}}A_0 \gamma(\phi)
   Q_{\alpha\beta} Q_{\beta\pi} Q_{\pi\alpha}
-+ {\textstyle\frac{1}{4}} A_0 \gamma(\phi) (Q_{\alpha\beta})^2,
-\end{equation}
-where the composition enters parametrically through the control
++ {\textstyle\frac{1}{4}} A_0 \gamma(\phi) (Q_{\alpha\beta})^2\nonumber\\
+&+&{\textstyle\frac{1}{2}} \kappa_0 (\partial_\alpha Q_{\alpha\beta})^2
++ {\textstyle\frac{1}{2}} \kappa_1
+(\epsilon_{\alpha\mu\nu} \partial_\mu Q_{\nu\beta} + 2q_0 Q_{\alpha\beta})^2,
+\label{eq-lc-fed}
+\end{eqnarray}
+where in the first line of Equation~\ref{eq-lc-fed} the composition enters parametrically through the control
 parameter $\gamma = \gamma(\phi)$. This will be discussion further
 below. The distortion terms in the
-free energy related to the elastic constants $\kappa_0$ and $\kappa_1$
+second line of Equation~\ref{eq-lc-fed} related to the elastic constants $\kappa_0$ and $\kappa_1$
 are unchanged (and are as appear in Equation~\ref{equation-lc-gradient-fe}).
 
 Finally, there is a coupling between the liquid crystal and the
@@ -99,10 +103,17 @@ $\gamma_0=2.5$ and $\delta=0.25$ is a suitable choice.
 
 The chemical potential $\mu(\phi,Q_{\alpha\beta})$ resulting from the
 combined free energy density is the functional derivative of the
-total energy with respect to the composition~$\phi$. In the
+total energy with respect to the composition~$\phi$, 
+
+\begin{equation}
+\mu = \mu_{\rm c} + \mu_{\rm lc} + \mu_{\rm anchoring} = \frac{\delta F}{\delta \phi} 
+= \frac{\partial F}{\partial \phi} - \partial_\alpha \frac{\partial F}{\partial (\partial_\alpha \phi)}  
+\end{equation}
+
+In the
 case that $\gamma(\phi) \sim \delta\phi$ we generate terms
 \begin{equation}
-A\phi + B\phi^3 -\kappa \partial_{\gamma}\partial_{\gamma}\phi
+\mu_{\rm c} + \mu_{\rm lc} = A\phi + B\phi^3 -\kappa \partial_{\gamma}\partial_{\gamma}\phi
 - \textstyle{\frac{1}{6}} A_0 \delta Q_{\alpha\beta}^2
 - \textstyle{\frac{1}{3}} A_0 \delta
                           Q_{\alpha\beta} Q_{\beta\pi} Q_{\pi\alpha}
@@ -111,7 +122,7 @@ A\phi + B\phi^3 -\kappa \partial_{\gamma}\partial_{\gamma}\phi
 from $f_{\rm c}(\phi)$ and $f_{\rm lc}(Q_{\alpha\beta})$.
 The interfacial or anchoring contribution to the chemical potential is
 \begin{equation} 
--W \left(
+\mu_{\rm anchoring}=-W \left(
  \partial_{\alpha}\phi\partial_{\beta}Q_{\alpha\beta}
 +\partial_{\beta}\phi\partial_{\alpha}Q_{\alpha\beta}\right)
 - 2W Q_{\alpha\beta} \partial_\alpha\partial_\beta\phi.
@@ -119,10 +130,18 @@ The interfacial or anchoring contribution to the chemical potential is
 
 \subsubsection{Molecular field}
 
-The terms in the molecular field resulting from the bulk free energy
-density are:
+The molecular field resulting from the combined free energy is the functional
+derivative of the total free energy with respect to the tensor order parameter $Q_{\alpha\beta}$,
+
 \begin{equation}
--A_0 (1 - \gamma(\phi)/3) Q_{\alpha\beta}
+H_{\alpha\beta} = H_{\alpha\beta,{\rm lc}} + H_{\alpha\beta, {\rm anchoring}}  = \frac{\delta F}{\delta Q_{\alpha\beta}} 
+= \frac{\partial F}{\partial Q_{\alpha\beta}} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma Q_{\alpha\beta})}  
+\end{equation}
+
+The terms in the molecular field resulting from the bulk free energy
+density of the liquid crystalline part are:
+\begin{equation}
+H_{\alpha\beta,{\rm lc}} = -A_0 (1 - \gamma(\phi)/3) Q_{\alpha\beta}
 +A_0 \gamma(\phi)\left[ Q_{\alpha\pi} Q_{\pi\beta}
      - {\textstyle\frac{1}{3}} \delta_{\alpha\beta} Q_{\pi\sigma}^2\right]
 -A_0 \gamma (\phi)Q_{\pi\nu}^2 Q_{\alpha\beta} \\ \nonumber
@@ -131,7 +150,7 @@ where the terms related to the elastic contants $\kappa_0$ and $\kappa_1$
 have been omitted (cf. Equation~\ref{eq-lc-h-full}). The interfacial
 contribution to the molecular field is
 \begin{equation}
--W \left( \partial_{\alpha}\phi\partial_{\beta}\phi
+H_{\alpha\beta, {\rm anchoring}}  = -W \left( \partial_{\alpha}\phi\partial_{\beta}\phi
 - {\textstyle\frac{1}{3}}
   \partial_{\pi}\phi \partial_{\pi}\phi \delta_{\alpha\beta} \right).
 \end{equation}
@@ -173,7 +192,7 @@ complicated than in the bare liquid crystal case:
 P_{\alpha\beta} =
 -\left( \phi\frac{\delta  F}{\delta\phi} - F \right) \delta_{\alpha\beta}
 -\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\partial_{\alpha}\phi
--\frac{\delta F}{\delta\left(\partial_{\beta}Q_{\gamma\nu}\right)}\partial_{\alpha}Q_{\gamma\nu}.
+-\frac{\delta F}{\delta\left(\partial_{\beta}Q_{\gamma\nu}\right)}\partial_{\alpha}Q_{\gamma\nu},
 \end{eqnarray}
 where we have re-introduced the full free energy functional $F$.
 This term is discussed in the following section.
@@ -186,29 +205,26 @@ Equation~\ref{eq-lc-emulsion-pab}. This force can be expanded in full as
 
 \begin{equation}
 \partial_{\alpha}\left(\phi\mu - F\right)
-+\partial_{\beta}\frac{\delta F}{\delta Q_{\pi\nu,\beta}}
++\partial_{\beta} \left(\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi
++\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\partial_{\beta}\left(\partial_{\alpha}\phi\right)
++\partial_{\beta}\left(\frac{\delta F}{\delta Q_{\pi\nu,\beta}}\right)
  \partial_{\alpha} Q_{\pi\nu}
-+\frac{\delta F}{\delta Q_{\pi\nu,\beta}} \partial_{\alpha}\partial_{\beta}
- Q_{\pi\nu}
-+\partial_{\beta} \frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\partial_{\alpha}\phi
-+\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\partial_{\alpha}\partial_{\beta}\phi.
++\frac{\delta F}{\delta Q_{\pi\nu,\beta}} \partial_{\beta}\left(\partial_{\alpha} Q_{\pi\nu}\right).
 \nonumber
 \end{equation}
-With some manipulation this can be recast as 
-\begin{equation}
--\left( \frac{\partial F}{\partial Q_{\pi\nu}} 
-       - \partial_{\beta}\frac{\delta F}{\delta Q_{\pi\nu,\beta}}
+With some manipulation and using $$\frac{\partial F}{\partial (\partial_\alpha\partial_\beta\phi)} = \frac{\partial F}{\partial (\partial_\alpha Q_{\mu\nu,\beta})}=0$$
+this can be recast as 
+\begin{eqnarray}
+-\partial_\beta P_{\alpha\beta} &=& -\left( \frac{\partial F}{\partial Q_{\pi\nu}} 
+       - \partial_{\beta}\frac{\partial F}{\partial Q_{\pi\nu,\beta}}
  \right) \partial_{\alpha}Q_{\pi\nu}
 - \left(\frac{\partial F}{\partial\phi} 
-- \partial_{\beta} \frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi + \partial_{\alpha}\left(\mu\phi\right)
-\nonumber
-\end{equation}
-which is a local force on the fluid
-\begin{equation}
+- \partial_{\beta} \frac{\partial F}{\partial \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi + \partial_{\alpha}\left(\mu\phi\right)\nonumber\\
+&=& -\left(\frac{\delta F}{\delta Q_{\pi\nu}}\right) \partial_{\alpha}Q_{\pi\nu} - \left(\frac{\delta F}{\delta \phi}\right) \partial_{\alpha} \phi + \partial_{\alpha}\left(\mu\phi\right)\nonumber\\ 
+&=& H_{\pi\nu}\; \partial_{\alpha} Q_{\pi\nu} + \phi \;\partial_{\alpha}\mu,
 \label{eq-lc-emulsion-hgradq}
-H_{\pi\nu} \partial_{\alpha} Q_{\pi\nu} + \phi \partial_{\alpha}\mu.
-\end{equation}
-
+\end{eqnarray}
+which is a local force on the fluid.
 The total force on the fluid locally is the divergence of the stress,
 where the total stress is $\Pi_{\alpha\beta}$
 given by equation~(\ref{eq-lc-emulsion-stress}).
