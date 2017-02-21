@@ -7,7 +7,7 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2016 The University of Edinburgh
+%  (c) 2016-2017 The University of Edinburgh
 %
 %  Contributing authors:
 %  Kevin Stratford (kevin@epcc.ed.ac.uk) and I've taken material from
@@ -16,6 +16,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Binary Fluids}
+\label{section-binary}
 
 In this section we discuss symmetric two-component fluids, and the closely
 related subject of Brazovskii smectics.\ \textit{Ludwig} was first developed
@@ -177,7 +178,22 @@ of standard integrals, to give
 \end{equation}
 Further discussion of the practical choice of the free energy parameters,
 and their
-impact on interfacial width and tension is deferred until LATER.
+impact on interfacial width and tension is deferred until
+Section~\ref{section-examples}.
+
+\subsubsection{The free energy density in practice}
+
+Writing the free energy density in full, we have
+\begin{equation}
+\label{eq-binary-fed}
+f(\phi, \partial_\alpha \phi) =
+{\textstyle\frac{1}{2}} A \phi^2 +
+{\textstyle\frac{1}{4}} B \phi^4 +
+{\textstyle\frac{1}{2}} \kappa (\partial_\alpha \phi)^2.
+\end{equation}
+Note that some authors define $A$ to be a positive constant in which case
+a negtive sign appears in the quadratic term above. We retain $A$ negative
+to describe the separated case.
 
 \subsubsection{Dynamics}
 

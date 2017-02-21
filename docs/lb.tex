@@ -11,7 +11,7 @@
 \label{section:lb-hydrodynamics}
 
 We review here the lattice Boltzmann method applied to a simple
-Newtonian fluid with particular emphsis on the relevant
+Newtonian fluid with particular emphasis on the relevant
 implementation in \textit{Ludwig}.
 
 \subsection{The Navier Stokes Equation}
@@ -115,7 +115,7 @@ M^a(\mathbf{r};t) = \sum_i m_i^a f_i(\mathbf{r};t),
 where the $m_i$ are the eigenvectors of the collision matrix in the LBE.
 For example, in the case of the density, all the 
 $m_i^a = 1$ and the mode $M^a$ is the density $\rho = \sum_i f_i$. Note
-that the number of modes supported by a given basis will generally excceed the
+that the number of modes supported by a given basis will generally exceed the
 number of hydrodynamic modes; the excess modes have no direct physical
 interpretation and are variously referred to as non-hydrodynamic, kinetic,
 or ghost, modes.
@@ -194,7 +194,7 @@ in two dimensions. The nine modes $M^a$ include six hydrodynamic modes,
 one scalar kinetic mode $\chi^1$, and one vector kinetic mode $J_{i\alpha}$.
 The weights in the equilibrium distribution function are $w_i$ and the
 normaliser for each mode is $N^a$. The eigenvectors of the collision
-matrix are the columns of the transformation matrix $m^a_i$. The prefactor
+matrix are the columns of the transformation matrix $m^a_i$. The pre-factor
 $p$ (where present) multiplies all the elements to the right in that row.}
 \label{table-d2q9-spec}
 \end{table}
@@ -289,7 +289,7 @@ in three dimensions. The fifteen modes $M^a$ include two scalar kinetic
 modes $\chi^1$ and $\chi^3$, and one vector kinetic mode $J_{i\alpha}$.
 The weights in the equilibrium distribution are $w_i$ and the normaliser
 for each mode is $N^a$. The eigenvectors of the collision matrix are the
-columns of the transformation matrix $m_i^a$. The prefactor $p$ simply
+columns of the transformation matrix $m_i^a$. The pre-factor $p$ simply
 multiplies all elements of $m_i^a$ in that row as a convenience.
 \label{table-d3q15-spec}
 }
@@ -394,7 +394,7 @@ $w_i$ & 12 & 2 & 2 & 2 & 2 & 2 & 2 &
 \end{tabular}
 \caption{Table showing the details of the basis used for the D3Q19 model in
 three dimensions. The nineteen modes $M^a$ include ten hydrodynamic modes,
-three scalr kinetic modes $\chi^1$, $\chi^2$, and $\chi^3$; there are also
+three scalar kinetic modes $\chi^1$, $\chi^2$, and $\chi^3$; there are also
 two vector kinetic modes $\chi^1 \rho c_{i\alpha}$
 and $\chi^2 \rho c_{i\alpha}$. The weights in the equilibrium distribution
 function are $w_i$, and the normaliser for each mode is $N^a$. The
@@ -428,7 +428,7 @@ i.e., those with dissipation, the fluctuating part may be written
 \begin{equation}
 \xi_i (\mathbf{r}; t) = w_i m_i^a \hat{\xi}^a (\mathbf{r}; t) N^a
 \end{equation}
-where $\hat{\xi}^a$ is a noise termwhich has a variance determined
+where $\hat{\xi}^a$ is a noise term which has a variance determined
 by the relaxation time for given mode
 \begin{equation}
 \left< \hat{\xi}^a \hat{\xi}^b \right> =
@@ -443,7 +443,7 @@ For the stress, the random contribution to the distributions is
 \begin{equation}
 \xi_i = w_i \frac{Q_{i\alpha\beta} \hat{\sigma}_{\alpha\beta}}{4c_s^2}
 \end{equation}
-where $\hat{\sigma}_{\alpha\beta}$ is a symmtric matrix of random
+where $\hat{\sigma}_{\alpha\beta}$ is a symmetric matrix of random
 variates drawn from a Gaussian distribution with variance given
 by equation~\ref{eq_fvar}. In the case that the shear and bulk
 viscosities are the same, i.e., there is a single relaxation
