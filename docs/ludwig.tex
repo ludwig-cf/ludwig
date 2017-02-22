@@ -15,7 +15,7 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\documentclass[11pt,twoside]{article}
+\documentclass[11pt,twoside,a4paper]{article}
 
 \usepackage{amsmath}
 \usepackage{moreverb}
@@ -28,21 +28,17 @@
 \usepackage{listings}
 \usepackage{mathtools}
 
-\setlength{\hoffset}{-1in}
-\setlength{\voffset}{-1in}
-
-\setlength{\topmargin}{2cm}
-\setlength{\evensidemargin}{3.1cm}
-\setlength{\oddsidemargin}{3.1cm}
-
-\setlength{\textwidth}{14.8cm}
-\setlength{\textheight}{23cm}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ left=3.1cm,
+ right=3.1cm,
+ top=2.25cm,
+ bottom=2.25cm 
+}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{\smallskipamount}
-
-
-
 
 \newcommand{\inputkey}[1]{\framebox{\textbf{\texttt{#1}}}}
 \newcommand{\e}[1]{\cdot10^{#1}}
@@ -98,7 +94,15 @@
   {\normalfont\normalsize\bfseries}%
 }
 
+% Table of Contents
+\pagenumbering{roman}
+\title{Ludwig User Manual}
+\maketitle 
+\tableofcontents
+\clearpage
+
 % Sections
+\pagenumbering{arabic}
 
 \input{intro.tex}
 \input{devel.tex}
@@ -112,7 +116,6 @@
 \input{input.tex}
 \input{examples.tex}
 \input{develop.tex}
-\input{input.tex}
 \input{plan.tex}
 
 \clearpage
