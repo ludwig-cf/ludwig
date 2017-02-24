@@ -89,15 +89,15 @@ The function $\gamma(\phi)$ allows control of the liquid crystal
 ordering as the composition changes. An appropriate choice of function
 for the case of $\phi^\star = 1$ is
 \begin{equation}
-\gamma(\phi)=\gamma_0+\delta\left(1+\phi\right)
+\gamma(\phi)=\gamma_0+\Delta\left(1+\phi\right)
 \end{equation}
-so that $\gamma(\phi=-1)=\gamma_0$, and $\gamma(\phi=1)=\gamma_0+2\delta$.
-We should choose $\gamma_0$ and $\delta$ such that $\gamma(\phi=-1)$ 
+so that $\gamma(\phi=-1)=\gamma_0$, and $\gamma(\phi=1)=\gamma_0+2\Delta$.
+We should choose $\gamma_0$ and $\Delta$ such that $\gamma(\phi=-1)$ 
 is smaller than 2.7 (so that for $\phi=-1$ the fluid is isotropic)
 and $\gamma(\phi=+1)$ is larger than 2.7 (so that when $\phi=1$ the
 liquid crystal is in the ordered phase, nematic or cholesteric etc.).
 Experience suggests that for example 
-$\gamma_0=2.5$ and $\delta=0.25$ is a suitable choice.
+$\gamma_0=2.5$ and $\Delta=0.25$ is a suitable choice.
 
 \subsubsection{Chemical potential}
 
@@ -111,13 +111,13 @@ total energy with respect to the composition~$\phi$,
 \end{equation}
 
 In the
-case that $\gamma(\phi) \sim \delta\phi$ we generate terms
+case that $\gamma(\phi) \sim \Delta\cdot\phi$ we generate terms
 \begin{equation}
 \mu_{\rm c} + \mu_{\rm lc} = A\phi + B\phi^3 -\kappa \partial_{\gamma}\partial_{\gamma}\phi
-- \textstyle{\frac{1}{6}} A_0 \delta Q_{\alpha\beta}^2
-- \textstyle{\frac{1}{3}} A_0 \delta
+- \textstyle{\frac{1}{6}} A_0 \Delta Q_{\alpha\beta}^2
+- \textstyle{\frac{1}{3}} A_0 \Delta
                           Q_{\alpha\beta} Q_{\beta\pi} Q_{\pi\alpha}
-+ \textstyle{\frac{1}{4}} A_0 \delta (Q_{\alpha\beta}^2)^2
++ \textstyle{\frac{1}{4}} A_0 \Delta (Q_{\alpha\beta}^2)^2
 \end{equation}
 from $f_{\rm c}(\phi)$ and $f_{\rm lc}(Q_{\alpha\beta})$.
 The interfacial or anchoring contribution to the chemical potential is
@@ -202,7 +202,6 @@ This term is discussed in the following section.
 It is convenient \cite{sulaiman2006} to rewrite a divergence of the
 stress  $-\partial_\beta P_{\alpha\beta}$ with the stress defined in
 Equation~\ref{eq-lc-emulsion-pab}. This force can be expanded in full as
-
 \begin{equation}
 \partial_{\alpha}\left(\phi\mu - F\right)
 +\partial_{\beta} \left(\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi
@@ -210,17 +209,32 @@ Equation~\ref{eq-lc-emulsion-pab}. This force can be expanded in full as
 +\partial_{\beta}\left(\frac{\delta F}{\delta Q_{\pi\nu,\beta}}\right)
  \partial_{\alpha} Q_{\pi\nu}
 +\frac{\delta F}{\delta Q_{\pi\nu,\beta}} \partial_{\beta}\left(\partial_{\alpha} Q_{\pi\nu}\right).
-\nonumber
+\label{eq-lc-emulsion-force}
 \end{equation}
-With some manipulation and using $$\frac{\partial F}{\partial (\partial_\alpha\partial_\beta\phi)} = \frac{\partial F}{\partial (\partial_\alpha Q_{\mu\nu,\beta})}=0$$
-this can be recast as 
+Applying the chain rule on the first bracket in Equation \ref{eq-lc-emulsion-force} leads to
+\begin{equation}
+\partial_{\alpha}(\phi\mu) 
+- \frac{\partial F}{\partial \phi} \partial_\alpha \phi
+- \frac{\partial F}{\partial(\partial_\beta \phi)} \partial_\alpha (\partial_\beta\phi)
+- \frac{\partial F}{\partial Q_{\pi\nu}} \partial_\alpha Q_{\pi\nu}  
+- \frac{\partial F}{\partial Q_{\pi\nu,\beta}} \partial_\alpha Q_{\pi\nu,\beta}\nonumber.
+\end{equation}
+The expansion of the functional derivatives in Equation \ref{eq-lc-emulsion-force} gives
+\begin{eqnarray}
+&&\partial_{\beta} \left(\frac{\partial F}{\partial (\partial_{\beta}\phi)} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma\partial_\beta\phi)}\right) \partial_{\alpha}\phi
++\left(\frac{\partial F}{\partial (\partial_{\beta}\phi)} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma\partial_\beta\phi)}\right) \partial_\beta\left(\partial_{\alpha}\phi\right)\nonumber\\
+&&\partial_{\beta} \left(\frac{\partial F}{\partial Q_{\pi\nu,\beta}} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma Q_{\pi\nu,\beta)}}\right) \partial_{\alpha}Q_{\pi\nu}
++ \left(\frac{\partial F}{\partial Q_{\pi\nu,\beta}} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma Q_{\pi\nu,\beta)}}\right) \partial_\beta Q_{\pi\nu,\alpha}\nonumber.
+\end{eqnarray}
+Using the symmetry of partial derivatives and $$\frac{\partial F}{\partial (\partial_\gamma\partial_\beta\phi)} = \frac{\partial F}{\partial (\partial_\gamma Q_{\mu\nu,\beta})}=0$$
+this can be recast with some manipulation as 
 \begin{eqnarray}
 -\partial_\beta P_{\alpha\beta} &=& -\left( \frac{\partial F}{\partial Q_{\pi\nu}} 
        - \partial_{\beta}\frac{\partial F}{\partial Q_{\pi\nu,\beta}}
  \right) \partial_{\alpha}Q_{\pi\nu}
 - \left(\frac{\partial F}{\partial\phi} 
-- \partial_{\beta} \frac{\partial F}{\partial \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi + \partial_{\alpha}\left(\mu\phi\right)\nonumber\\
-&=& -\left(\frac{\delta F}{\delta Q_{\pi\nu}}\right) \partial_{\alpha}Q_{\pi\nu} - \left(\frac{\delta F}{\delta \phi}\right) \partial_{\alpha} \phi + \partial_{\alpha}\left(\mu\phi\right)\nonumber\\ 
+- \partial_{\beta} \frac{\partial F}{\partial \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi + \partial_{\alpha}\left(\phi\mu\right)\nonumber\\
+&=& -\left(\frac{\delta F}{\delta Q_{\pi\nu}}\right) \partial_{\alpha}Q_{\pi\nu} - \left(\frac{\delta F}{\delta \phi}\right) \partial_{\alpha} \phi + \partial_{\alpha}\left(\phi\mu\right)\nonumber\\ 
 &=& H_{\pi\nu}\; \partial_{\alpha} Q_{\pi\nu} + \phi \;\partial_{\alpha}\mu,
 \label{eq-lc-emulsion-hgradq}
 \end{eqnarray}
