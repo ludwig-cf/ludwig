@@ -13,11 +13,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    J.-C. Desplat and Ronojoy Adhikari developed the reprojection method.
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  J.-C. Desplat and Ronojoy Adhikari developed the reprojection method.
  * 
  *****************************************************************************/
 
@@ -60,9 +60,12 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le);
 __host__ int lb_le_apply_boundary_conditions(lb_t * lb, lees_edw_t * le) {
 
   const int irepro = 0;
+  int mpi_cartsz[3];
 
   assert(lb);
   assert(le);
+
+  lees_edw_cartsz(le, mpi_cartsz);
 
   if (lees_edw_nplane_local(le) > 0) {
 
@@ -71,7 +74,7 @@ __host__ int lb_le_apply_boundary_conditions(lb_t * lb, lees_edw_t * le) {
     if (irepro == 0) le_reproject(lb, le);
     if (irepro != 0) le_reproject_all(lb, le);
 
-    if (cart_size(Y) > 1) {
+    if (mpi_cartsz[Y] > 1) {
       le_displace_and_interpolate_parallel(lb, le);
     }
     else {
@@ -335,12 +338,14 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
   int    nhalo;
   double dy, fr;
   double t;
+  double ltot[3];
   double * recv_buff;
   physics_t * phys = NULL;
 
   assert(lb);
   assert(le);
 
+  lees_edw_ltot(le, ltot);
   lees_edw_nlocal(le, nlocal);
   lees_edw_nhalo(le, &nhalo);
   nplane = lees_edw_nplane_local(le);
@@ -357,14 +362,14 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
   nprop = xblocklen_cv[0];
   ndata = ndist*nprop*nlocal[Y]*nlocal[Z];
   recv_buff = (double *) malloc(ndata*sizeof(double));
-  if(recv_buff == NULL) fatal("malloc(recv_buff) failed\n");
+  if(recv_buff == NULL) pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
 
   for (plane = 0; plane < nplane; plane++) {
  
     ic  = lees_edw_plane_location(le, plane);
 
     lees_edw_buffer_displacement(le, nhalo, t, &dy);
-    dy  = fmod(dy, L(Y));
+    dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr = dy - jdy;
 
@@ -418,7 +423,7 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
     ic  = lees_edw_plane_location(le, plane) + 1;
 
     lees_edw_buffer_displacement(le, nhalo, t, &dy);
-    dy  = fmod(-dy, L(Y));
+    dy  = fmod(-dy, ltot[Y]);
     jdy = floor(dy);
     fr = dy - jdy;
 
@@ -499,6 +504,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
   int ind0, ind1, ind2, index;
   int n, nplane, plane;
   int p;
+  int ntotal[3];
   int nlocal[3];
   int offset[3];
   int nrank_s[3], nrank_r[3];
@@ -511,6 +517,7 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
   double fr;
   double dy;
   double t;
+  double ltot[3];
   double * send_buff;
   double * recv_buff;
 
@@ -523,6 +530,8 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
   assert(le);
   assert(CVXBLOCK == 1);
 
+  lees_edw_ltot(le, ltot);
+  lees_edw_ntotal(le, ntotal);
   lees_edw_nlocal(le, nlocal);
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal_offset(le, offset);
@@ -538,25 +547,25 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 
   ndata = ndist*nprop*nlocal[Y]*nlocal[Z];
   send_buff = (double *) malloc(ndata*sizeof(double));
-  if (send_buff == NULL) fatal("malloc(send_buff) failed\n");
+  if (send_buff == NULL) pe_fatal(lb->pe, "malloc(send_buff) failed\n");
 
   ndata = ndist*nprop*(nlocal[Y] + 1)*nlocal[Z];
   recv_buff = (double *) malloc(ndata*sizeof(double));
-  if (recv_buff == NULL) fatal("malloc(recv_buff) failed\n");
+  if (recv_buff == NULL) pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
 
   for (plane = 0; plane < nplane; plane++) {
 
     ic  = lees_edw_plane_location(le, plane);
 
     lees_edw_buffer_displacement(le, nhalo, t, &dy);
-    dy  = fmod(dy, L(Y));
+    dy  = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 
-    /* Starting y coordinate is j1: 1 <= j1 <= N_total.y */
+    /* Starting y coordinate is j1: 1 <= j1 <= ntotal[y] */
 
     jc = offset[Y] + 1;
-    j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc + jdy - 1 + 2*ntotal[Y]) % ntotal[Y];
     lees_edw_jstart_to_mpi_ranks(le, j1, nrank_s, nrank_r);
 
     j1mod = 1 + (j1 - 1) % nlocal[Y];
@@ -630,14 +639,14 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
     ic  = lees_edw_plane_location(le, plane) + 1;
 
     lees_edw_buffer_displacement(le, nhalo, t, &dy);
-    dy  = fmod(-dy, L(Y));
+    dy  = fmod(-dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 
-    /* Starting y coordinate (global address): range 1 <= j1 <= N_total.y */
+    /* Starting y coordinate (global address): range 1 <= j1 <= ntotal[Y] */
 
     jc = offset[Y] + 1;
-    j1 = 1 + (jc + jdy - 1 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc + jdy - 1 + 2*ntotal[Y]) % ntotal[Y];
     lees_edw_jstart_to_mpi_ranks(le, j1, nrank_s, nrank_r);
 
     j1mod = 1 + (j1 - 1) % nlocal[Y];
@@ -732,7 +741,7 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
   assert(lb);
   assert(le);
 
-  info("Initialising shear profile\n");
+  pe_info(lb->pe, "Initialising shear profile\n");
 
   /* Initialise the density, velocity, gradu; ghost modes are zero */
 

@@ -16,8 +16,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
+ *  Early versions date to Desplat, Pagonabarraga and Bladon
  *
  ****************************************************************************/
 
@@ -73,21 +76,25 @@ static  __constant__ fe_vt_t fe_symm_dvt = {
  *
  ****************************************************************************/
 
-__host__ int fe_symm_create(field_t * phi, field_grad_t * dphi,
-			    fe_symm_t ** p) {
+__host__ int fe_symm_create(pe_t * pe, cs_t * cs, field_t * phi,
+			    field_grad_t * dphi, fe_symm_t ** p) {
 
   int ndevice;
   fe_symm_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(phi);
   assert(dphi);
 
   obj = (fe_symm_t *) calloc(1, sizeof(fe_symm_t));
-  if (obj == NULL) fatal("calloc(fe_symm_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(fe_symm_t) failed\n");
 
   obj->param = (fe_symm_param_t *) calloc(1, sizeof(fe_symm_param_t));
-  if (obj->param == NULL) fatal("calloc(fe_symm_param_t failed\n");
+  if (obj->param == NULL) pe_fatal(pe, "calloc(fe_symm_param_t failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->phi = phi;
   obj->dphi = dphi;
   obj->super.func = &fe_symm_hvt;

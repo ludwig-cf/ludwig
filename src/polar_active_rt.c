@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,6 +23,7 @@
 #include <string.h>
 
 #include "coords.h"
+#include "field_s.h"
 #include "polar_active_rt.h"
 
 static int polar_active_init_code(field_t * p);
@@ -121,8 +124,8 @@ static int polar_active_init_code(field_t * fp) {
 
   assert(fp);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(fp->cs, nlocal);
+  cs_nlocal_offset(fp->cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = 1.0*(noffset[X] + ic);
@@ -131,7 +134,7 @@ static int polar_active_init_code(field_t * fp) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = 1.0*(noffset[Z] + kc);
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(fp->cs, ic, jc, kc);
 
         /* Set p as a function of true position (x,y,z) as required */
 
@@ -159,18 +162,20 @@ int polar_active_init_aster(field_t * fp) {
     int noffset[3];
     int ic, jc, kc, index;
 
+    double ltot[3];
     double p[3];
     double r;
     double x, y, z, x0, y0, z0;
 
     assert(fp);
 
-    coords_nlocal(nlocal);
-    coords_nlocal_offset(noffset);
+    cs_nlocal(fp->cs, nlocal);
+    cs_nlocal_offset(fp->cs, noffset);
+    cs_ltot(fp->cs, ltot);
 
-    x0 = 0.5*L(X);
-    y0 = 0.5*L(Y);
-    z0 = 0.5*L(Z);
+    x0 = 0.5*ltot[X];
+    y0 = 0.5*ltot[Y];
+    z0 = 0.5*ltot[Z];
 
     if (nlocal[Z] == 1) z0 = 0.0;
 
@@ -191,7 +196,7 @@ int polar_active_init_aster(field_t * fp) {
 	    p[Y] = -(y - y0)/r;
 	    p[Z] = -(z - z0)/r;
 	  }
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(fp->cs, ic, jc, kc);
 	  field_vector_set(fp, index, p);
 	}
       }

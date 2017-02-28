@@ -2,13 +2,13 @@
  *
  *  field_grad_s.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,6 +20,7 @@
 #include "field_grad.h"
 
 struct field_grad_s {
+  pe_t * pe;                /* Parallel environment */
   field_t * field;          /* Reference to the field */
   int nf;                   /* Number of field components */
   int level;                /* Maximum derivative required */

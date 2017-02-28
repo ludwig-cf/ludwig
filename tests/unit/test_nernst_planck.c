@@ -7,11 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich (o.henrich@ucl.ac.uk)
- *
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -95,6 +95,9 @@ static int do_test_gouy_chapman(pe_t * pe) {
   int noffst[3];
   int test_output_required = 0;
   int tstep;
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
+
   double rho_w;               /* wall charge density */
   double rho_i;               /* Interior charge density */
   double rho_b, rho_b_local;  /* background ionic strength */
@@ -109,6 +112,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
   double ldebye;               /* Debye length */
   double rho_el = 1.0e-3;      /* charge density */
   double yd;                   /* Dimensionless surface potential */
+  double ltot[3];
 
   int ntotal[3] = {64, 4, 4};  /* Quasi-one-dimensional system */
   int grid[3];                 /* Processor decomposition */
@@ -120,6 +124,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
   psi_t * psi = NULL;
   physics_t * phys = NULL;
   fe_electro_t * fe = NULL;
+  MPI_Comm comm;
 
   assert(pe);
 
@@ -128,6 +133,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
   cs_create(pe, &cs);
   cs_nhalo_set(cs, 1);
   cs_ntotal_set(cs, ntotal);
+  cs_cart_comm(cs, &comm);
 
   grid[X] = pe_mpi_size(pe);
   grid[Y] = 1;
@@ -135,8 +141,12 @@ static int do_test_gouy_chapman(pe_t * pe) {
   cs_decomposition_set(cs, grid);
 
   cs_init(cs);
+
+  cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffst);
+  cs_cartsz(cs, mpi_cartsz);
+  cs_cart_coords(cs, mpi_cartcoords);
 
   map_create(pe, cs, 0, &map);
   assert(map);
@@ -152,13 +162,13 @@ static int do_test_gouy_chapman(pe_t * pe) {
   psi_epsilon_set(psi, epsilon);
   psi_beta_set(psi, beta);
 
-  fe_electro_create(psi, &fe);
+  fe_electro_create(pe, psi, &fe);
 
   /* wall charge density */
-  rho_w = 1.e+0 / (2.0*L(Y)*L(Z));
+  rho_w = 1.e+0 / (2.0*ltot[Y]*ltot[Z]);
 
   /* counter charge density */
-  rho_i = rho_w * (2.0*L(Y)*L(Z)) / ((L(X) - 2.0)*L(Y)*L(Z));
+  rho_i = rho_w * (2.0*ltot[Y]*ltot[Z]) / ((ltot[X] - 2.0)*ltot[Y]*ltot[Z]);
 
 
   /* apply counter charges & electrolyte */
@@ -166,7 +176,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	psi_psi_set(psi, index, 0.0);
 	psi_rho_set(psi, index, 0, rho_el);
@@ -177,7 +187,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
   }
 
   /* apply wall charges */
-  if (cart_coords(X) == 0) {
+  if (mpi_cartcoords[X] == 0) {
     ic = 1;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -192,7 +202,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) {
     ic = nlocal[X];
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -219,7 +229,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
 
     if (tstep % 1000 == 0) {
 
-      info("%d\n", tstep);
+      pe_info(pe, "%d\n", tstep);
       psi_stats_info(psi);
       if (test_output_required) test_io(cs, psi, tstep);
     }
@@ -237,14 +247,14 @@ static int do_test_gouy_chapman(pe_t * pe) {
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
 
-    index = coords_index(ic, jc, kc);
+    index = cs_index(cs, ic, jc, kc);
  
     if (noffst[X] + ic == ntotal[X] / 2) {
       psi_ionic_strength(psi, index, &rho_b_local);
     }
   }
 
-  MPI_Allreduce(&rho_b_local, &rho_b, 1, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(&rho_b_local, &rho_b, 1, MPI_DOUBLE, MPI_SUM, comm);
 
   psi_bjerrum_length(psi, &lb);
   psi_debye_length(psi, rho_b, &ldebye);
@@ -273,7 +283,7 @@ static int do_test_gouy_chapman(pe_t * pe) {
 
 static int test_io(cs_t * cs, psi_t * psi, int tstep) {
 
-  int ntotalx;
+  int ntotal[3];
   int nlocal[3];
   int ic, jc, kc, index;
 
@@ -284,9 +294,11 @@ static int test_io(cs_t * cs, psi_t * psi, int tstep) {
 
   char filename[BUFSIZ];
   FILE * out;
+  MPI_Comm comm;
 
-  coords_nlocal(nlocal);
-  ntotalx = N_total(X);
+  cs_nlocal(cs, nlocal);
+  cs_ntotal(cs, ntotal);
+  cs_cart_comm(cs, &comm);
 
   jc = 2;
   kc = 2;
@@ -295,46 +307,46 @@ static int test_io(cs_t * cs, psi_t * psi, int tstep) {
    * MPI_Gather to get complete picture. */
 
   field = (double *) calloc(nlocal[X], sizeof(double));
-  psifield = (double *) calloc(ntotalx, sizeof(double));
-  rho0field = (double *) calloc(ntotalx, sizeof(double));
-  rho1field = (double *) calloc(ntotalx, sizeof(double));
-  if (field == NULL) fatal("calloc(field) failed\n");
-  if (psifield == NULL) fatal("calloc(psifield) failed\n");
-  if (rho0field == NULL) fatal("calloc(rho0field) failed\n");
-  if (rho1field == NULL) fatal("calloc(rho1field) failed\n");
+  psifield = (double *) calloc(ntotal[X], sizeof(double));
+  rho0field = (double *) calloc(ntotal[X], sizeof(double));
+  rho1field = (double *) calloc(ntotal[X], sizeof(double));
+  if (field == NULL) pe_fatal(psi->pe, "calloc(field) failed\n");
+  if (psifield == NULL) pe_fatal(psi->pe, "calloc(psifield) failed\n");
+  if (rho0field == NULL) pe_fatal(psi->pe, "calloc(rho0field) failed\n");
+  if (rho1field == NULL) pe_fatal(psi->pe, "calloc(rho1field) failed\n");
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
 
-    index = coords_index(ic, jc, kc);
+    index = cs_index(cs, ic, jc, kc);
     psi_psi(psi, index, field + ic - 1);
   }
 
   MPI_Gather(field, nlocal[X], MPI_DOUBLE,
-	     psifield, nlocal[X], MPI_DOUBLE, 0, cart_comm());
+	     psifield, nlocal[X], MPI_DOUBLE, 0, comm);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    index = coords_index(ic, jc, kc);
+    index = cs_index(cs, ic, jc, kc);
     psi_rho(psi, index, 0, field + ic - 1);
   }
 
   MPI_Gather(field, nlocal[X], MPI_DOUBLE,
-	     rho0field, nlocal[X], MPI_DOUBLE, 0, cart_comm());
+	     rho0field, nlocal[X], MPI_DOUBLE, 0, comm);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    index = coords_index(ic, jc, kc);
+    index = cs_index(cs, ic, jc, kc);
     psi_rho(psi, index, 1, field + ic - 1);
   }
 
   MPI_Gather(field, nlocal[X], MPI_DOUBLE,
-	     rho1field, nlocal[X], MPI_DOUBLE, 0, cart_comm());
+	     rho1field, nlocal[X], MPI_DOUBLE, 0, comm);
 
   if (cs_cart_rank(cs) == 0) {
 
     sprintf(filename, "np_test-%d.dat", tstep);
     out = fopen(filename, "w");
-    if (out == NULL) fatal("Could not open %s\n", filename);
+    if (out == NULL) pe_fatal(psi->pe, "Could not open %s\n", filename);
 
-    for (ic = 1; ic <= ntotalx; ic++) {
+    for (ic = 1; ic <= ntotal[X]; ic++) {
       fprintf(out, "%d %14.7e %14.7e %14.7e\n", ic, psifield[ic-1],
 	      rho0field[ic-1], rho1field[ic-1]);
     }

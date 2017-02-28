@@ -7,10 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
  *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 

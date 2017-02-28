@@ -2,13 +2,15 @@
  *
  *  coords_field.c
  *
+ *  Additional routines for halo swaps.
+ *
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,7 +21,7 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords.h"
+#include "coords_s.h"
 #include "memory.h"
 #include "coords_field.h"
 
@@ -77,7 +79,8 @@
  *
  *****************************************************************************/
 
-int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
+int coords_field_init_mpi_indexed(cs_t * cs, int nhcomm, int nf,
+				  MPI_Datatype mpidata,
 				  MPI_Datatype halo[3]) {
 
   int ic, jc, n;
@@ -89,9 +92,11 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
   int * blocklen;        /* Array of block lengths */
   int * displace;        /* Array of displacements */
 
+  assert(cs);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  cs_nhalo(cs, &nhalo);
+  cs_nlocal(cs, nlocal);
+
   nh[X] = nlocal[X] + 2*nhalo;
   nh[Y] = nlocal[Y] + 2*nhalo;
   nh[Z] = nlocal[Z] + 2*nhalo;
@@ -107,8 +112,8 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
 
   blocklen = (int*) calloc(ncount, sizeof(int));
   displace = (int*) calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
+  if (blocklen == NULL) pe_fatal(cs->pe, "calloc(blocklen) failed\n");
+  if (displace == NULL) pe_fatal(cs->pe, "calloc(displace) failed\n");
 
   for (n = 0; n < ncount; n++) {
     blocklen[n] = nf*nlocal[Z];
@@ -136,8 +141,8 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
 
   blocklen = (int*) calloc(ncount, sizeof(int));
   displace = (int*) calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
+  if (blocklen == NULL) pe_fatal(cs->pe, "calloc(blocklen) failed\n");
+  if (displace == NULL) pe_fatal(cs->pe, "calloc(displace) failed\n");
 
   for (n = 0; n < ncount; n++) {
     blocklen[n] = nf*nlocal[Z];
@@ -166,8 +171,8 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
 
   blocklen = (int*) calloc(ncount, sizeof(int));
   displace = (int*) calloc(ncount, sizeof(int));
-  if (blocklen == NULL) fatal("calloc(blocklen) failed\n");
-  if (displace == NULL) fatal("calloc(displace) failed\n");
+  if (blocklen == NULL) pe_fatal(cs->pe, "calloc(blocklen) failed\n");
+  if (displace == NULL) pe_fatal(cs->pe, "calloc(displace) failed\n");
 
   for (n = 0; n < ncount; n++) {
     blocklen[n] = nf*nhcomm;
@@ -190,336 +195,12 @@ int coords_field_init_mpi_indexed(int nhcomm, int nf, MPI_Datatype mpidata,
 
 /*****************************************************************************
  *
- *  coords_field_halo_d
- *
- *  General halo swap for lattice field quantities (double).
- *
- *  We expect a coords object appropriate for local system nlocal with
- *  full halo extent nhalo. The field requires nhcomm halo layers to
- *  be communicated with 0 < nhcomm <= nhalo. The field haas nf elements
- *  per lattice site and the ordering is field[index][nf] with index
- *  the spatial index returned by coords_index().
- *
- *  The three coordinate directions are transfered in turn with
- *  coorsponding halo data types halo[]. The field has starting
- *  address f.
- *
- *****************************************************************************/
-
-int coords_field_halo_d(int nhcomm, int nf, double * f, MPI_Datatype halo[3]) {
-
-  int nlocal[3];
-  int ic, jc, kc, ihalo, ireal;
-  int pforw, pback;
-  int n, nh;
-
-  MPI_Request req_send[6];
-  MPI_Request req_recv[6];
-  MPI_Status  status[6];
-  MPI_Comm    comm;
-
-  const int btagx = 639, btagy = 640, btagz = 641;
-  const int ftagx = 642, ftagy = 643, ftagz = 644;
-
-  assert(f);
-  assert(halo);
-
-  coords_nlocal(nlocal);
-  comm = cart_comm();
-
-  for (n = 0; n < 6; n++) {
-    req_send[n] = MPI_REQUEST_NULL;
-    req_recv[n] = MPI_REQUEST_NULL;
-  }
-
-  /* Post all receives */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ihalo = nf*coords_index(nlocal[X] + 1, 1, 1);
-    MPI_Irecv(f + ihalo, 1, halo[X], pforw, btagx, comm, req_recv);
-    ihalo = nf*coords_index(1 - nhcomm, 1, 1);
-    MPI_Irecv(f + ihalo, 1, halo[X], pback, ftagx, comm, req_recv + 1);
-  }
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ihalo = nf*coords_index(1 - nhcomm, nlocal[Y] + 1, 1);
-    MPI_Irecv(f + ihalo, 1, halo[Y], pforw, btagy, comm, req_recv + 2);
-    ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
-    MPI_Irecv(f + ihalo, 1, halo[Y], pback, ftagy, comm, req_recv + 3);
-  }
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
-    MPI_Irecv(f + ihalo, 1, halo[Z], pforw, btagz, comm, req_recv + 4);
-    ihalo = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
-    MPI_Irecv(f + ihalo, 1, halo[Z], pback, ftagz, comm, req_recv + 5);
-  }
-
-
-  /* X sends */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ireal = nf*coords_index(1, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[X], pback, btagx, comm, req_send);
-    ireal = nf*coords_index(nlocal[X] - nhcomm + 1, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[X], pforw, ftagx, comm, req_send + 1);
-  }
-  else {
-    for (nh = 0; nh < nhcomm; nh++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
-	    ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc, kc);
-	    ireal = n + nf*coords_index(1 + nh, jc, kc);
-	    f[ihalo] = f[ireal];
-	  }
-	}
-      }
-    }
-  }
-
-  /* X recvs to be complete before Y sends */
-  MPI_Waitall(2, req_recv, status);
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ireal = nf*coords_index(1 - nhcomm, 1, 1);
-    MPI_Issend(f + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
-    ireal = nf*coords_index(1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
-    MPI_Issend(f + ireal, 1, halo[Y], pforw, ftagy, comm, req_send + 3);
-  }
-  else {
-    for (nh = 0; nh < nhcomm; nh++) {
-      for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
-	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
-	    f[ihalo] = f[ireal];
-	  }
-	}
-      }
-    }
-  }
-
-  /* Y recvs to be complete before Z sends */
-  MPI_Waitall(2, req_recv + 2, status);
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ireal = nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
-    MPI_Issend(f + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
-    ireal = nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
-    MPI_Issend(f + ireal, 1, halo[Z], pforw, ftagz, comm, req_send + 5);
-  }
-  else {
-    for (nh = 0; nh < nhcomm; nh++) {
-      for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
-	for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
-	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
-	    f[ihalo] = f[ireal];
-	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
-	    f[ihalo] = f[ireal];
-	  }
-	}
-      }
-    }
-  }
-
-  /* Finish */
-  MPI_Waitall(2, req_recv + 4, status);
-  MPI_Waitall(6, req_send, status);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  coords_field_halo
- *
- *  Here is a general case allowing MPI_CHAR or MPI_DOUBLE
- *
- *****************************************************************************/
-
-int coords_field_halo(int nhcomm, int nf, void * buf, MPI_Datatype mpidata,
-		      MPI_Datatype halo[3]) {
-
-  int nlocal[3];
-  int ic, jc, kc, ihalo, ireal;
-  int pforw, pback;
-  int n, nh;
-  size_t sz;
-  unsigned char * mbuf = (unsigned char*) buf;
-
-  MPI_Request req_send[6];
-  MPI_Request req_recv[6];
-  MPI_Status  status[6];
-  MPI_Comm    comm;
-
-  const int btagx = 639, btagy = 640, btagz = 641;
-  const int ftagx = 642, ftagy = 643, ftagz = 644;
-
-  assert(mbuf);
-  assert(halo);
-  assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
-
-  if (mpidata == MPI_CHAR) sz = sizeof(char);
-  if (mpidata == MPI_DOUBLE) sz = sizeof(double);
-
-  coords_nlocal(nlocal);
-  comm = cart_comm();
-
-  for (n = 0; n < 6; n++) {
-    req_send[n] = MPI_REQUEST_NULL;
-    req_recv[n] = MPI_REQUEST_NULL;
-  }
-
-  /* Post all receives */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ihalo = sz*nf*coords_index(nlocal[X] + 1, 1, 1);
-    MPI_Irecv(mbuf + ihalo, 1, halo[X], pforw, btagx, comm, req_recv);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1, 1);
-    MPI_Irecv(mbuf + ihalo, 1, halo[X], pback, ftagx, comm, req_recv + 1);
-  }
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ihalo = sz*nf*coords_index(1 - nhcomm, nlocal[Y] + 1, 1);
-    MPI_Irecv(mbuf + ihalo, 1, halo[Y], pforw, btagy, comm, req_recv + 2);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
-    MPI_Irecv(mbuf + ihalo, 1, halo[Y], pback, ftagy, comm, req_recv + 3);
-  }
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] + 1);
-    MPI_Irecv(mbuf + ihalo, 1, halo[Z], pforw, btagz, comm, req_recv + 4);
-    ihalo = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1 - nhcomm);
-    MPI_Irecv(mbuf + ihalo, 1, halo[Z], pback, ftagz, comm, req_recv + 5);
-  }
-
-
-  /* X sends */
-
-  if (cart_size(X) > 1) {
-    pback = cart_neighb(BACKWARD, X);
-    pforw = cart_neighb(FORWARD, X);
-    ireal = sz*nf*coords_index(1, 1, 1);
-    MPI_Issend(mbuf + ireal, 1, halo[X], pback, btagx, comm, req_send);
-    ireal = sz*nf*coords_index(nlocal[X] - nhcomm + 1, 1, 1);
-    MPI_Issend(mbuf + ireal, 1, halo[X], pforw, ftagx, comm, req_send + 1);
-  }
-  else {
-    for (nh = 0; nh < nhcomm; nh++) {
-      for (jc = 1; jc <= nlocal[Y]; jc++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(0 - nh, jc, kc);
-	    ireal = n + nf*coords_index(nlocal[X] - nh, jc, kc);
-	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	    ihalo = n + nf*coords_index(nlocal[X] + 1 + nh, jc, kc);
-	    ireal = n + nf*coords_index(1 + nh, jc, kc);
-	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	  }
-	}
-      }
-    }
-  }
-
-  /* X recvs to be complete before Y sends */
-  MPI_Waitall(2, req_recv, status);
-
-  if (cart_size(Y) > 1) {
-    pback = cart_neighb(BACKWARD, Y);
-    pforw = cart_neighb(FORWARD, Y);
-    ireal = sz*nf*coords_index(1 - nhcomm, 1, 1);
-    MPI_Issend(mbuf + ireal, 1, halo[Y], pback, btagy, comm, req_send + 2);
-    ireal = sz*nf*coords_index(1 - nhcomm, nlocal[Y] - nhcomm + 1, 1);
-    MPI_Issend(mbuf + ireal, 1, halo[Y], pforw, ftagy, comm, req_send + 3);
-  }
-  else {
-    for (nh = 0; nh < nhcomm; nh++) {
-      for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
-	for (kc = 1; kc <= nlocal[Z]; kc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, 0 - nh, kc);
-	    ireal = n + nf*coords_index(ic, nlocal[Y] - nh, kc);
-	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	    ihalo = n + nf*coords_index(ic, nlocal[Y] + 1 + nh, kc);
-	    ireal = n + nf*coords_index(ic, 1 + nh, kc);
-	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	  }
-	}
-      }
-    }
-  }
-
-  /* Y recvs to be complete before Z sends */
-  MPI_Waitall(2, req_recv + 2, status);
-
-  if (cart_size(Z) > 1) {
-    pback = cart_neighb(BACKWARD, Z);
-    pforw = cart_neighb(FORWARD, Z);
-    ireal = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, 1);
-    MPI_Issend(mbuf + ireal, 1, halo[Z], pback, btagz, comm, req_send + 4);
-    ireal = sz*nf*coords_index(1 - nhcomm, 1 - nhcomm, nlocal[Z] - nhcomm + 1);
-    MPI_Issend(mbuf + ireal, 1, halo[Z], pforw, ftagz, comm, req_send + 5);
-  }
-  else {
-    for (nh = 0; nh < nhcomm; nh++) {
-      for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
-	for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
-	  for (n = 0; n < nf; n++) {
-	    ihalo = n + nf*coords_index(ic, jc, 0 - nh);
-	    ireal = n + nf*coords_index(ic, jc, nlocal[Z] - nh);
-	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	    ihalo = n + nf*coords_index(ic, jc, nlocal[Z] + 1 + nh);
-	    ireal = n + nf*coords_index(ic, jc, 1 + nh);
-	    memcpy(mbuf + sz*ihalo, mbuf + sz*ireal, sz);
-	  }
-	}
-      }
-    }
-  }
-
-  /* Finish */
-  MPI_Waitall(2, req_recv + 4, status);
-  MPI_Waitall(6, req_send, status);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  coords_field_halo_rank1
  *
  *****************************************************************************/
 
-int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
+int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
+			    void * mbuf,
 			    MPI_Datatype mpidata) {
   int sz;
   int ic, jc, kc;
@@ -543,16 +224,17 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
   const int tagf = 2015;
   const int tagb = 2016;
 
+  assert(cs);
   assert(mbuf);
   assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
 
   buf = (unsigned char *) mbuf;
 
-  comm = cart_comm();
+  comm = cs->commcart;
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   /* X-direction */
 
@@ -561,10 +243,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
-  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
-  if (sendback == NULL) fatal("malloc(sendback) failed\n");
-  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
-  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+  if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(cs->pe, "malloc(recvback) failed\n");
 
   /* Load send buffers */
 
@@ -575,11 +257,11 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
 	  /* Backward going... */
-	  index = coords_index(1 + nh, jc, kc);
+	  index = cs_index(cs, 1 + nh, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  /* ...and forward going. */
-	  index = coords_index(nlocal[X] - nh, jc, kc);
+	  index = cs_index(cs, nlocal[X] - nh, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
@@ -590,15 +272,15 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
 
   assert(icount == nsend);
 
-  if (cart_size(X) == 1) {
+  if (cs->param->mpi_cartsz[X] == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, X);
-    pback = cart_neighb(BACKWARD, X);
+    pforw = cs->mpi_cart_neighbours[CS_FORW][X];
+    pback = cs->mpi_cart_neighbours[CS_BACK][X];
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -615,10 +297,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(nlocal[X] + 1 + nh, jc, kc);
+	  index = cs_index(cs, nlocal[X] + 1 + nh, jc, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
-	  index = coords_index(0 - nh, jc, kc);
+	  index = cs_index(cs, 0 - nh, jc, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
 	  icount += 1;
@@ -644,10 +326,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
-  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
-  if (sendback == NULL) fatal("malloc(sendback) failed\n");
-  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
-  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+  if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(cs->pe, "malloc(recvback) failed\n");
 
   /* Load buffers */
 
@@ -657,10 +339,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, 1 + nh, kc);
+	  index = cs_index(cs, ic, 1 + nh, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
-	  index = coords_index(ic, nlocal[Y] - nh, kc);
+	  index = cs_index(cs, ic, nlocal[Y] - nh, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
@@ -671,15 +353,15 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
 
   assert(icount == nsend);
 
-  if (cart_size(Y) == 1) {
+  if (cs->param->mpi_cartsz[Y] == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, Y);
-    pback = cart_neighb(BACKWARD, Y);
+    pforw = cs->mpi_cart_neighbours[CS_FORW][Y];
+    pback = cs->mpi_cart_neighbours[CS_BACK][Y];
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -696,10 +378,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, 0 - nh, kc);
+	  index = cs_index(cs, ic, 0 - nh, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
-	  index = coords_index(ic, nlocal[Y] + 1 + nh, kc);
+	  index = cs_index(cs, ic, nlocal[Y] + 1 + nh, kc);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;
@@ -725,10 +407,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
-  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
-  if (sendback == NULL) fatal("malloc(sendback) failed\n");
-  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
-  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+  if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(cs->pe, "malloc(recvback) failed\n");
 
   /* Load */
   /* Some adjustment in the load required for 2d systems (X-Y) */
@@ -740,11 +422,11 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
 	  kc = imin(1 + nh, nlocal[Z]);
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(cs, ic, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendback + icount*sz, buf + ireal*sz, sz);
 	  kc = imax(nlocal[Z] - nh, 1);
-	  index = coords_index(ic, jc, kc);
+	  index = cs_index(cs, ic, jc, kc);
 	  ireal = addr_rank1(nall, na, index, ia);
 	  memcpy(sendforw + icount*sz, buf + ireal*sz, sz);
 	  icount += 1;
@@ -755,15 +437,15 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
 
   assert(icount == nsend);
 
-  if (cart_size(Z) == 1) {
+  if (cs->param->mpi_cartsz[Z] == 1) {
     memcpy(recvback, sendforw, nsend*sz);
     memcpy(recvforw, sendback, nsend*sz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
   else {
-    pforw = cart_neighb(FORWARD, Z);
-    pback = cart_neighb(BACKWARD, Z);
+    pforw = cs->mpi_cart_neighbours[CS_FORW][Z];
+    pback = cs->mpi_cart_neighbours[CS_BACK][Z];
     MPI_Irecv(recvforw, nsend, mpidata, pforw, tagb, comm, req);
     MPI_Irecv(recvback, nsend, mpidata, pback, tagf, comm, req + 1);
     MPI_Issend(sendback, nsend, mpidata, pback, tagb, comm, req + 2);
@@ -780,10 +462,10 @@ int coords_field_halo_rank1(int nall, int nhcomm, int na, void * mbuf,
     for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
       for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
 	for (ia = 0; ia < na; ia++) {
-	  index = coords_index(ic, jc, 0 - nh);
+	  index = cs_index(cs, ic, jc, 0 - nh);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvback + icount*sz, sz);
-	  index = coords_index(ic, jc, nlocal[Z] + 1 + nh);
+	  index = cs_index(cs, ic, jc, nlocal[Z] + 1 + nh);
 	  ihalo = addr_rank1(nall, na, index, ia);
 	  memcpy(buf + ihalo*sz, recvforw + icount*sz, sz);
 	  icount += 1;

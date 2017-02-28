@@ -16,9 +16,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -28,9 +29,12 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloids.h"
 #include "bond_fene.h"
 
 struct bond_fene_s {
+  pe_t * pe;           /* Parallel environment */
+  cs_t * cs;           /* Coordinate system */
   double k;            /* 'spring' constant */
   double r0;           /* Maximum separation */
   double vlocal;       /* Bond potential contribution */
@@ -45,14 +49,19 @@ struct bond_fene_s {
  *
  *****************************************************************************/
 
-int bond_fene_create(bond_fene_t ** pobj) {
+int bond_fene_create(pe_t * pe, cs_t * cs, bond_fene_t ** pobj) {
 
   bond_fene_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (bond_fene_t *) calloc(1, sizeof(bond_fene_t));
-  if (obj == NULL) fatal("calloc(bond_fene_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(bond_fene_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   *pobj = obj;
 
@@ -65,13 +74,13 @@ int bond_fene_create(bond_fene_t ** pobj) {
  *
  *****************************************************************************/
 
-void bond_fene_free(bond_fene_t * obj) {
+int bond_fene_free(bond_fene_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -100,9 +109,9 @@ int bond_fene_info(bond_fene_t * obj) {
 
   assert(obj);
 
-  info("FENE bond\n");
-  info("Spring constant:             %14.7e\n", obj->k);
-  info("Equilibrium separation:      %14.7e\n", obj->r0);
+  pe_info(obj->pe, "FENE bond\n");
+  pe_info(obj->pe, "Spring constant:             %14.7e\n", obj->k);
+  pe_info(obj->pe, "Equilibrium separation:      %14.7e\n", obj->r0);
 
   return 0;
 }
@@ -162,12 +171,12 @@ int bond_fene_compute(colloids_info_t * cinfo, void * self) {
 
       /* Compute force arising on each particle from single bond */
 
-      coords_minimum_distance(pc->s.r, pc->bonded[n]->s.r, r12);
+      cs_minimum_distance(obj->cs, pc->s.r, pc->bonded[n]->s.r, r12);
       r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 
       if (r2 < r2min) r2min = r2;
       if (r2 > r2max) r2max = r2;
-      if (r2 > obj->r0*obj->r0) fatal("Broken fene bond\n");
+      if (r2 > obj->r0*obj->r0) pe_fatal(obj->pe, "Broken fene bond\n");
 
       obj->vlocal += -0.5*obj->k*obj->r0*obj->r0*log(1.0 - r2*rr02);
       obj->bondlocal += 1.0;

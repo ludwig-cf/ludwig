@@ -5,9 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -25,7 +26,7 @@
 #define BOND_K    3.0
 #define BOND_R0   7.0
 
-int test_bond_fene1(void);
+int test_bond_fene1(pe_t * pe, cs_t * cs);
 int test_bond_fene2(pe_t * pe, cs_t * cs);
 int test_create_dimer(colloids_info_t * cinfo, double a, double r1[3],
 		      double r2[3], colloid_t * pc[2]);
@@ -45,7 +46,7 @@ int test_bond_fene_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  test_bond_fene1();
+  test_bond_fene1(pe, cs);
   test_bond_fene2(pe, cs);
 
   cs_free(cs);
@@ -61,14 +62,17 @@ int test_bond_fene_suite(void) {
  *
  *****************************************************************************/
 
-int test_bond_fene1(void) {
+int test_bond_fene1(pe_t * pe, cs_t * cs) {
 
   bond_fene_t * bond = NULL;
 
   double r = 1.0;
   double v, f;
 
-  bond_fene_create(&bond);
+  assert(pe);
+  assert(cs);
+
+  bond_fene_create(pe, cs, &bond);
   assert(bond);
 
   bond_fene_param_set(bond, BOND_K, BOND_R0);
@@ -96,6 +100,7 @@ int test_bond_fene2(pe_t * pe, cs_t * cs) {
   double r1[3], r2[3];
   double v, f, dr;
   double r12[3];
+  double ltot[3];
   double stats_local[INTERACT_STAT_MAX];
   double stats[INTERACT_STAT_MAX];
 
@@ -103,23 +108,31 @@ int test_bond_fene2(pe_t * pe, cs_t * cs) {
   interact_t * interact = NULL;
   bond_fene_t * bond = NULL;
   colloid_t * pc[2];
+  MPI_Comm comm;
 
   assert(pe);
   assert(cs);
 
+  cs_ltot(cs, ltot);
+  cs_cart_comm(cs, &comm);
+
   colloids_info_create(pe, cs, ncell, &cinfo);
-  interact_create(&interact);
+  interact_create(pe, cs, &interact);
 
   assert(cinfo);
   assert(interact);
 
-  bond_fene_create(&bond);
+  bond_fene_create(pe, cs, &bond);
   bond_fene_param_set(bond, BOND_K, BOND_R0);
   bond_fene_register(bond, interact);
 
   dr = 1.0/sqrt(3.0); /* Set separation 1.0 */
-  r1[X] = 0.5*(L(X) - dr); r1[Y] = 0.5*(L(Y) - dr); r1[Z] = 0.5*(L(Z) - dr);
-  r2[X] = 0.5*(L(X) + dr); r2[Y] = 0.5*(L(Y) + dr); r2[Z] = 0.5*(L(Z) + dr);
+  r1[X] = 0.5*(ltot[X] - dr);
+  r1[Y] = 0.5*(ltot[Y] - dr);
+  r1[Z] = 0.5*(ltot[Z] - dr);
+  r2[X] = 0.5*(ltot[X] + dr);
+  r2[Y] = 0.5*(ltot[Y] + dr);
+  r2[Z] = 0.5*(ltot[Z] + dr);
 
   test_create_dimer(cinfo, dr, r1, r2, pc);
 
@@ -149,15 +162,15 @@ int test_bond_fene2(pe_t * pe, cs_t * cs) {
   bond_fene_stats(bond, stats_local);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_SUM,
-		cart_comm());
+		comm);
   assert(fabs(stats[INTERACT_STAT_VLOCAL] - v) < FLT_EPSILON);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_MIN,
-		cart_comm());
+		comm);
   assert(fabs(stats[INTERACT_STAT_RMINLOCAL] - dr) < FLT_EPSILON);
 
   MPI_Allreduce(stats_local, stats, INTERACT_STAT_MAX, MPI_DOUBLE, MPI_MAX,
-		cart_comm());
+		comm);
   assert(fabs(stats[INTERACT_STAT_RMAXLOCAL] - dr) < FLT_EPSILON);
 
   /* Finish */

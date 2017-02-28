@@ -5,9 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors;
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -26,7 +27,7 @@
 #define PAIR_SIGMA   1.0
 #define PAIR_RC      3.0
 
-int test_pair_lj_cut1(void);
+int test_pair_lj_cut1(pe_t * pe, cs_t * cs);
 int test_pair_lj_cut2(pe_t * pe, cs_t * cs);
 int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 		      pair_lj_cut_t * lj);
@@ -46,7 +47,7 @@ int test_pair_lj_cut_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  test_pair_lj_cut1();
+  test_pair_lj_cut1(pe, cs);
   test_pair_lj_cut2(pe, cs);
 
   cs_free(cs);
@@ -62,12 +63,12 @@ int test_pair_lj_cut_suite(void) {
  *
  *****************************************************************************/
 
-int test_pair_lj_cut1(void) {
+int test_pair_lj_cut1(pe_t * pe, cs_t * cs) {
 
   pair_lj_cut_t * lj = NULL;
   double h, f, v;
 
-  pair_lj_cut_create(&lj);
+  pair_lj_cut_create(pe, cs, &lj);
   assert(lj);
 
   pair_lj_cut_param_set(lj, PAIR_EPSILON, PAIR_SIGMA, PAIR_RC);
@@ -110,8 +111,8 @@ int test_pair_lj_cut2(pe_t * pe, cs_t * cs) {
   assert(cs);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
-  interact_create(&interact);
-  pair_lj_cut_create(&lj);
+  interact_create(pe, cs, &interact);
+  pair_lj_cut_create(pe, cs, &lj);
 
   assert(cinfo);
   assert(interact);
@@ -137,7 +138,8 @@ int test_pair_lj_cut2(pe_t * pe, cs_t * cs) {
  *
  *****************************************************************************/
 
-int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
+int test_pair_config1(colloids_info_t * cinfo,
+		      interact_t * interact,
 		      pair_lj_cut_t * lj) {
 
   int nc;
@@ -147,6 +149,7 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   double h, f, v;
   double r1[3];
   double r2[3];
+  double ltot[3];
   double stats[INTERACT_STAT_MAX];
   double stats_local[INTERACT_STAT_MAX];
 
@@ -159,12 +162,13 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   assert(interact);
   assert(lj);
 
+  cs_ltot(cinfo->cs, ltot);
   cs_cart_comm(cinfo->cs, &comm);
 
   h = 2.0*ah + dh;
-  r1[X] = 0.5*L(X) - 0.5*h;
-  r1[Y] = 0.5*L(Y);
-  r1[Z] = 0.5*L(Z);
+  r1[X] = 0.5*ltot[X] - 0.5*h;
+  r1[Y] = 0.5*ltot[Y];
+  r1[Z] = 0.5*ltot[Z];
 
   colloids_info_add_local(cinfo, 1, r1, &pc1);
   if (pc1) {
@@ -193,7 +197,7 @@ int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   interact_pairwise(interact, cinfo);
   pair_lj_cut_single(lj, h, &f, &v);
 
-  if (pe_size() == 1) {
+  if (pe_mpi_size(cinfo->pe) == 1) {
     assert(fabs(pc1->force[X] - 0.018743896) < FLT_EPSILON);
     assert(fabs(pc1->force[Y] - 0.0)         < FLT_EPSILON);
     assert(fabs(pc1->force[Z] - 0.0)         < FLT_EPSILON);

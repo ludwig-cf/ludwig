@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -101,8 +101,8 @@ int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
   psi->nfreq_io = INT_MAX;
   psi->nfreq = INT_MAX;
 
-  coords_field_init_mpi_indexed(nhalo, 1, MPI_DOUBLE, psi->psihalo);
-  coords_field_init_mpi_indexed(nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
+  coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_DOUBLE, psi->psihalo);
+  coords_field_init_mpi_indexed(cs, nhalo, psi->nk, MPI_DOUBLE, psi->rhohalo);
 
   *pobj = psi; 
 
@@ -133,11 +133,12 @@ int psi_io_info(psi_t * obj, io_info_t ** info) {
 
 int psi_halo_psi(psi_t * psi) {
 
-  int nhalo;
+  int nh;
+
   assert(psi);
 
-  nhalo = coords_nhalo();
-  coords_field_halo_rank1(coords_nsites(), nhalo, 1, psi->psi, MPI_DOUBLE);
+  cs_nhalo(psi->cs, &nh); /* Swap full halo */
+  coords_field_halo_rank1(psi->cs, psi->nsites, nh, 1, psi->psi, MPI_DOUBLE);
 
   return 0;
 }
@@ -150,12 +151,13 @@ int psi_halo_psi(psi_t * psi) {
 
 int psi_halo_rho(psi_t * psi) {
 
-  int nhalo;
+  int nh;
+
   assert(psi);
 
-  nhalo = coords_nhalo();
-  coords_field_halo_rank1(coords_nsites(), nhalo, psi->nk, psi->rho, MPI_DOUBLE);
-
+  cs_nhalo(psi->cs, &nh); /* Swap full halo */
+  coords_field_halo_rank1(psi->cs, psi->nsites, nh, psi->nk, psi->rho,
+			  MPI_DOUBLE);
   return 0;
 }
 
@@ -697,7 +699,7 @@ int psi_ionic_strength(psi_t * psi, int index, double * sion) {
   *sion = 0.0;
   for (n = 0; n < psi->nk; n++) {
     *sion += 0.5*psi->valency[n]*psi->valency[n]
-      *psi->rho[addr_rank1(coords_nsites(), psi->nk, index, n)];
+      *psi->rho[addr_rank1(psi->nsites, psi->nk, index, n)];
   }
 
   return 0;
@@ -1046,12 +1048,14 @@ int psi_zero_mean(psi_t * psi) {
 
   double psi0;
   double sum_local;
-  double psi_offset;                  
+  double psi_offset;
+  double ltot[3];
 
   MPI_Comm comm;
 
   assert(psi);
 
+  cs_ltot(psi->cs, ltot);
   cs_nhalo(psi->cs, &nhalo);
   cs_nlocal(psi->cs, nlocal);  
   cs_cart_comm(psi->cs, &comm);
@@ -1072,7 +1076,7 @@ int psi_zero_mean(psi_t * psi) {
 
   MPI_Allreduce(&sum_local, &psi_offset, 1, MPI_DOUBLE, MPI_SUM, comm);
 
-  psi_offset /= (L(X)*L(Y)*L(Z));
+  psi_offset /= (ltot[X]*ltot[Y]*ltot[Z]);
 
   for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
     for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
@@ -1109,7 +1113,9 @@ int psi_halo_psijump(psi_t * psi) {
   int nlocal[3], ntotal[3], noffset[3];
   int index, index1;
   int ic, jc, kc, nh;
+  int mpi_cartsz[3];
   int mpicoords[3];
+  int periodic[3];
   double e0[3];
   double eps;
   double beta;
@@ -1121,7 +1127,9 @@ int psi_halo_psijump(psi_t * psi) {
   cs_nlocal(psi->cs, nlocal);
   cs_ntotal(psi->cs, ntotal);
   cs_nlocal_offset(psi->cs, noffset);
+  cs_cartsz(psi->cs, mpi_cartsz);
   cs_cart_coords(psi->cs, mpicoords);
+  cs_periodic(psi->cs, periodic);
 
   physics_ref(&phys);
   physics_e0(phys, e0);
@@ -1136,11 +1144,11 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  index = cs_index(psi->cs, 0 - nh, jc, kc);
 
-	  if (is_periodic(X)) {
+	  if (periodic[X]) {
 	    psi->psi[addr_rank0(psi->nsites, index)] += e0[X]*ntotal[X];   
 	  }
 	  else{
-	    index1 = coords_index(1, jc, kc);
+	    index1 = cs_index(psi->cs, 1, jc, kc);
 	    psi->psi[addr_rank0(psi->nsites, index)] =
 	      psi->psi[addr_rank0(psi->nsites, index1)];   
 	  }
@@ -1150,7 +1158,7 @@ int psi_halo_psijump(psi_t * psi) {
 
   }
 
-  if (cart_coords(X) == cart_size(X)-1) {
+  if (mpicoords[X] == mpi_cartsz[X]-1) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
@@ -1158,7 +1166,7 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  index = cs_index(psi->cs, nlocal[0] + 1 + nh, jc, kc);
 
-	  if (is_periodic(X)) {
+	  if (periodic[X]) {
 	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[X]*ntotal[X];   
 	  }
 	  else {
@@ -1179,11 +1187,11 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  index = cs_index(psi->cs, ic, 0 - nh, kc);
 
-	    if (is_periodic(Y)) {
+	    if (periodic[Y]) {
 	      psi->psi[addr_rank0(psi->nsites, index)] += e0[Y]*ntotal[Y];   
 	    }
 	    else{
-	      index1 = coords_index(ic, 1, kc);
+	      index1 = cs_index(psi->cs, ic, 1, kc);
 	      psi->psi[addr_rank0(psi->nsites, index)] =
 		psi->psi[addr_rank0(psi->nsites, index1)];   
 	    }
@@ -1193,7 +1201,7 @@ int psi_halo_psijump(psi_t * psi) {
 
   }
 
-  if (mpicoords[Y] == cart_size(Y)-1) {
+  if (mpicoords[Y] == mpi_cartsz[Y]-1) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
@@ -1201,7 +1209,7 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  index = cs_index(psi->cs, ic, nlocal[1] + 1 + nh, kc);
 
-	  if (is_periodic(Y)) {
+	  if (periodic[Y]) {
 	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[Y]*ntotal[Y];   
 	  }
 	  else {
@@ -1223,7 +1231,7 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  index = cs_index(psi->cs, ic, jc, 0 - nh);
 
-	  if (is_periodic(Z)) {
+	  if (periodic[Z]) {
 	    psi->psi[addr_rank0(psi->nsites, index)] += e0[Z]*ntotal[Z];   
 	  }
 	  else {
@@ -1237,7 +1245,7 @@ int psi_halo_psijump(psi_t * psi) {
 
   }
 
-  if (mpicoords[Z] == cart_size(Z)-1) {
+  if (mpicoords[Z] == mpi_cartsz[Z]-1) {
 
     for (nh = 0; nh < nhalo; nh++) {
       for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
@@ -1245,7 +1253,7 @@ int psi_halo_psijump(psi_t * psi) {
 
 	  index = cs_index(psi->cs, ic, jc, nlocal[2] + 1 + nh);
 
-	  if (is_periodic(Z)) {
+	  if (periodic[Z]) {
 	    psi->psi[addr_rank0(psi->nsites, index)] -= e0[Z]*ntotal[Z];   
 	  }
 	  else{

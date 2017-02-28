@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -41,14 +41,15 @@
 #include "build.h"
 #include "subgrid.h"
 
-int lubrication_init(pe_t * pe, rt_t * rt, interact_t * inter);
-int pair_ss_cut_init(pe_t * pe, rt_t * rt, interact_t * inter);
-int pair_yukawa_init(pe_t * pe, rt_t * rt, interact_t * inter);
-int pair_lj_cut_init(pe_t * pe, rt_t * rt, interact_t * inter);
-int bond_fene_init(pe_t * pe, rt_t * rt, interact_t * interact);
-int angle_cosine_init(pe_t * pe, rt_t * rt, interact_t * interact);
+int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
+int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
+int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
+int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
+int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 
-int colloids_rt_dynamics(colloids_info_t * cinfo, wall_t * wall, map_t * map);
+int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
+			 map_t * map);
 int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo, int nc);
 int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
@@ -58,7 +59,7 @@ int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state);
-int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
+int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
 				 interact_t * interact);
 
 /*****************************************************************************
@@ -105,7 +106,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   if (strcmp(keyvalue, "from_file") == 0) init_from_file = 1;
 
   /* Trap old input files */
-  if (strcmp(keyvalue, "random") == 0) fatal("check input file: random\n");
+  if (strcmp(keyvalue, "random") == 0) pe_fatal(pe, "check input file: random\n");
   
   if ((init_one + init_two + init_three + init_random + init_from_file) < 1)
     return 0;
@@ -130,18 +131,18 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   pe_info(pe, "\n");
   pe_info(pe, "Initialised %d colloid%s\n", nc, (nc == 1) ? "" : "s");
 
-  interact_create(interact);
+  interact_create(pe, cs, interact);
   assert(*interact);
 
-  lubrication_init(pe, rt, *interact);
-  pair_ss_cut_init(pe, rt, *interact);
-  pair_lj_cut_init(pe, rt, *interact);
-  pair_yukawa_init(pe, rt, *interact);
-  bond_fene_init(pe, rt, *interact);
-  angle_cosine_init(pe, rt, *interact);
+  lubrication_init(pe, cs, rt, *interact);
+  pair_ss_cut_init(pe, cs, rt, *interact);
+  pair_lj_cut_init(pe, cs, rt, *interact);
+  pair_yukawa_init(pe, cs, rt, *interact);
+  bond_fene_init(pe, cs, rt, *interact);
+  angle_cosine_init(pe, cs, rt, *interact);
 
-  colloids_rt_cell_list_checks(pe, pinfo, *interact);
-  colloids_init_halo_range_check(pe, *pinfo);
+  colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
+  colloids_init_halo_range_check(pe, cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
 
   /* As the cell list has potentially changed, update I/O reference */
@@ -154,7 +155,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   colloids_info_map_init(*pinfo);
   colloids_halo_state(*pinfo);
 
-  colloids_rt_dynamics(*pinfo, wall, map);
+  colloids_rt_dynamics(cs, *pinfo, wall, map);
   colloids_rt_gravity(pe, rt, *pinfo);
   pe_info(pe, "\n");
   
@@ -167,23 +168,27 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_rt_dynamics(colloids_info_t * cinfo, wall_t * wall, map_t * map) {
+int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
+			 map_t * map) {
 
   int nsubgrid_local = 0;
   int nsubgrid;
+  MPI_Comm comm;
 
+  assert(cs);
   assert(cinfo);
 
   colloids_info_count_local(cinfo, COLLOID_TYPE_SUBGRID, &nsubgrid_local);
 
-  MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, pe_comm());
+  cs_cart_comm(cs, &comm);
+  MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
   if (nsubgrid > 0) {
     subgrid_on_set();
   }
   else {
-    build_update_map(cinfo, map);
-    build_update_links(cinfo, wall, map);
+    build_update_map(cs, cinfo, map);
+    build_update_links(cs, cinfo, wall, map);
   }  
 
   return 0;
@@ -518,7 +523,8 @@ int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo) {
  *
  *****************************************************************************/
 
-int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
+int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs,
+				 colloids_info_t ** pinfo,
 				 interact_t * interact) {
   int nc;
   int nlocal[3];
@@ -531,6 +537,7 @@ int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
   double wcell[3];      /* Final cell widths */
 
   assert(pe);
+  assert(cs);
   assert(pinfo);
   assert(*pinfo);
 
@@ -538,8 +545,8 @@ int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
 
   if (nc == 0) return 0;
 
-  coords_nlocal(nlocal);
-  nhalo = coords_nhalo();
+  cs_nlocal(cs, nlocal);
+  cs_nhalo(cs, &nhalo);
   colloids_info_a0max(*pinfo, &a0max);
 
   /* For nhalo = 1, we require an additional + 0.5 to identify BBL;
@@ -598,7 +605,8 @@ int colloids_rt_cell_list_checks(pe_t * pe, colloids_info_t ** pinfo,
  *
  *****************************************************************************/
 
-int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
+int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, cs_t * cs,
+			   colloids_info_t * cinfo,
 			   ewald_t ** pewald) {
 
   int ncolloid;
@@ -621,7 +629,7 @@ int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     iarg = rt_double_parameter(rt, "ewald_rc", &rc);
     if (iarg == 0) pe_fatal(pe, "Ewald sum requires a real space cut off\n");
 
-    ewald_create(mu, rc, cinfo, pewald);
+    ewald_create(pe, cs, mu, rc, cinfo, pewald);
     assert(*pewald);
     ewald_info(*pewald); 
   }
@@ -638,7 +646,7 @@ int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
  *
  *****************************************************************************/
 
-int lubrication_init(pe_t * pe, rt_t * rt, interact_t * inter) {
+int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
   int n, on = 0;
   double rcnorm = 0.0;
@@ -661,7 +669,7 @@ int lubrication_init(pe_t * pe, rt_t * rt, interact_t * inter) {
     pe_info(pe, (n == 0) ? "[Default] " : "[User   ] ");
     pe_info(pe, "Tangential force cutoff is %f\n", rctang);
 
-    lubrication_create(&lubr);
+    lubrication_create(pe, cs, &lubr);
     lubrication_rch_set(lubr, LUBRICATION_SS_FNORM, rcnorm);
     lubrication_rch_set(lubr, LUBRICATION_SS_FTANG, rctang);
     lubrication_register(lubr, inter);
@@ -679,7 +687,7 @@ int lubrication_init(pe_t * pe, rt_t * rt, interact_t * inter) {
  *
  *****************************************************************************/
 
-int pair_ss_cut_init(pe_t * pe, rt_t * rt, interact_t * inter) {
+int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
   int n;
   int on = 0;
@@ -715,7 +723,7 @@ int pair_ss_cut_init(pe_t * pe, rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "soft_sphere_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Check soft_sphere_cutoff appears in input\n");
 
-    pair_ss_cut_create(&pair);
+    pair_ss_cut_create(pe, cs, &pair);
     pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);
     pair_ss_cut_register(pair, inter);
     pair_ss_cut_info(pair);
@@ -730,7 +738,7 @@ int pair_ss_cut_init(pe_t * pe, rt_t * rt, interact_t * inter) {
  *
  *****************************************************************************/
 
-int pair_yukawa_init(pe_t * pe, rt_t * rt, interact_t * interact) {
+int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
 
   int n;
   int on = 0;
@@ -754,7 +762,7 @@ int pair_yukawa_init(pe_t * pe, rt_t * rt, interact_t * interact) {
     n = rt_double_parameter(rt, "yukawa_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Please check yukawa_cutoff appears in input\n");
 
-    pair_yukawa_create(&yukawa);
+    pair_yukawa_create(pe, cs, &yukawa);
     pair_yukawa_param_set(yukawa, epsilon, kappa, cutoff);
     pair_yukawa_register(yukawa, interact);
     pair_yukawa_info(yukawa);
@@ -769,7 +777,7 @@ int pair_yukawa_init(pe_t * pe, rt_t * rt, interact_t * interact) {
  *
  *****************************************************************************/
 
-int pair_lj_cut_init(pe_t * pe, rt_t * rt, interact_t * inter) {
+int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
   int n;
   int on = 0;
@@ -793,7 +801,7 @@ int pair_lj_cut_init(pe_t * pe, rt_t * rt, interact_t * inter) {
     n = rt_double_parameter(rt, "lj_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Must set lj_cutoff in input for LJ potential\n");
 
-    pair_lj_cut_create(&lj);
+    pair_lj_cut_create(pe, cs, &lj);
     pair_lj_cut_param_set(lj, epsilon, sigma, cutoff);
     pair_lj_cut_register(lj, inter);
     pair_lj_cut_info(lj);
@@ -808,7 +816,7 @@ int pair_lj_cut_init(pe_t * pe, rt_t * rt, interact_t * inter) {
  *
  *****************************************************************************/
 
-int bond_fene_init(pe_t * pe, rt_t * rt, interact_t * interact) {
+int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
 
   int n;
   int on = 0;
@@ -829,7 +837,7 @@ int bond_fene_init(pe_t * pe, rt_t * rt, interact_t * interact) {
     n = rt_double_parameter(rt, "bond_fene_r0", &r0);
     if (n == 0) pe_fatal(pe, "Must set bond_fene_r0 in input for fene bond\n");
 
-    bond_fene_create(&fene);
+    bond_fene_create(pe, cs,&fene);
     bond_fene_param_set(fene, kappa, r0);
     bond_fene_register(fene, interact);
     bond_fene_info(fene);
@@ -844,7 +852,7 @@ int bond_fene_init(pe_t * pe, rt_t * rt, interact_t * interact) {
  *
  *****************************************************************************/
 
-int angle_cosine_init(pe_t * pe, rt_t * rt, interact_t * interact) {
+int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
 
   int n;
   int on = 0;
@@ -861,7 +869,7 @@ int angle_cosine_init(pe_t * pe, rt_t * rt, interact_t * interact) {
     n = rt_double_parameter(rt, "angle_cosine_k", &kappa);
     if (n == 0) pe_fatal(pe, "Must set anagle_cosine_k int input for angle\n");
 
-    angle_cosine_create(&angle);
+    angle_cosine_create(pe, cs, &angle);
     angle_cosine_param_set(angle, kappa);
     angle_cosine_register(angle, interact);
     angle_cosine_info(angle);
@@ -890,7 +898,8 @@ int angle_cosine_init(pe_t * pe, rt_t * rt, interact_t * interact) {
  *
  *****************************************************************************/
 
-int colloids_init_halo_range_check(pe_t * pe, colloids_info_t * cinfo) {
+int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,
+				   colloids_info_t * cinfo) {
 
   int ifail = 0;
   int ncolloid;
@@ -901,12 +910,13 @@ int colloids_init_halo_range_check(pe_t * pe, colloids_info_t * cinfo) {
   double a0max = 0.0;  /* Maximum colloid a0 present */
   double lcell[3];
 
+  assert(cs);
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
   colloids_info_ncell(cinfo, ncell);
   colloids_info_lcell(cinfo, lcell);
 
@@ -936,7 +946,7 @@ int colloids_init_halo_range_check(pe_t * pe, colloids_info_t * cinfo) {
 
   /* Halo region colloid map constraint */
 
-  nhalo = coords_nhalo();
+  cs_nhalo(cs, &nhalo);
 
   if (lcell[X] < (a0max + nhalo - 0.5)) ifail = 1;
   if (lcell[Y] < (a0max + nhalo - 0.5)) ifail = 1;

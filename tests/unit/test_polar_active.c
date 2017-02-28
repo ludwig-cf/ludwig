@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinbrugh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinbrugh
  *
  *****************************************************************************/
 
@@ -28,11 +30,11 @@
 #include "gradient_2d_5pt_fluid.h"
 #include "polar_active.h"
 
-static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
+static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
 				   field_grad_t * fpgrad);
-static int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
+static int test_polar_active_terms(fe_polar_t * fe, cs_t * cs, field_t * fp,
 				   field_grad_t * fpgrad);
-static int test_polar_active_init_aster(field_t * fp);
+static int test_polar_active_init_aster(cs_t * cs, field_t * fp);
 
 /*****************************************************************************
  *
@@ -71,13 +73,13 @@ int test_polar_active_suite(void) {
 
   field_create(pe, cs, nf, "p", &fp);
   field_init(fp, nhalo, le);
-  field_grad_create(fp, 2, &fpgrad);
+  field_grad_create(pe, fp, 2, &fpgrad);
   field_grad_set(fpgrad, grad_2d_5pt_fluid_d2, NULL);
 
-  fe_polar_create(fp, fpgrad, &fe);
+  fe_polar_create(pe, cs, fp, fpgrad, &fe);
 
-  test_polar_active_aster(fe, fp, fpgrad);
-  test_polar_active_terms(fe, fp, fpgrad);
+  test_polar_active_aster(fe, cs, fp, fpgrad);
+  test_polar_active_terms(fe, cs, fp, fpgrad);
 
   fe_polar_free(fe);
   field_grad_free(fpgrad);
@@ -100,7 +102,7 @@ int test_polar_active_suite(void) {
  *
  *****************************************************************************/
 
-static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
+static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
 				   field_grad_t * fpgrad) {
 
   int index;
@@ -121,13 +123,13 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
   param.kappa2 = 0.02;
   fe_polar_param_set(fe, param);
 
-  test_polar_active_init_aster(fp);
+  test_polar_active_init_aster(cs, fp);
 
   /* Order parameter */
 
   /* info("\nOrder parameter\n\n");*/
 
-  index = coords_index(1, 1, 1);
+  index = cs_index(cs, 1, 1, 1);
   field_vector(fp, index, p);
 
   /* info("p_a(1, 1, 1) ...");*/
@@ -136,7 +138,7 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
   /* info("ok\n");*/
 
-  index = coords_index(2, 28, 1);
+  index = cs_index(cs, 2, 28, 1);
   field_vector(fp, index, p);
 
   /* info("p_a(2, 27, 1) ...");*/
@@ -155,12 +157,12 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
 
   /* info("\nFree energy density\n\n");*/
 
-  index = coords_index(1, 50, 1);
+  index = cs_index(cs, 1, 50, 1);
   fe_polar_fed(fe, index, &fed);
   /*   info("free energy density at (1, 50, 1) ...");
        info("ok\n");*/
 
-  index = coords_index(100, 3, 1);
+  index = cs_index(cs, 100, 3, 1);
   fe_polar_fed(fe, index, &fed);
   /* info("free energy density at (100, 3, 1) ...");*/
   test_assert(fabs(fed - -2.2448448e-02) < TEST_FLOAT_TOLERANCE);
@@ -170,7 +172,7 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
 
   /* info("\nMolecular field\n\n");*/
 
-  index = coords_index(4, 78, 1);
+  index = cs_index(cs, 4, 78, 1);
   fe_polar_mol_field(fe, index, h);
   /* info("h_a(4, 78, 1) ...");*/
   test_assert(fabs(h[X] - -2.9526261e-06) < TEST_FLOAT_TOLERANCE);
@@ -178,7 +180,7 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
   test_assert(fabs(h[Z]) < TEST_DOUBLE_TOLERANCE);
   /* info("ok\n");*/
 
-  index = coords_index(49, 49, 1);
+  index = cs_index(cs, 49, 49, 1);
   fe_polar_mol_field(fe, index, h);
   /* info("h_a(49, 49, 1) ...");*/
   test_assert(fabs(h[X] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
@@ -190,7 +192,7 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
 
   /* info("\nStress\n\n");*/
 
-  index = coords_index(3, 90, 1);
+  index = cs_index(cs, 3, 90, 1);
   fe_polar_stress(fe, index, s);
 
   /* info("s_ab(3, 90, 1) ...");*/
@@ -205,7 +207,7 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
   test_assert(fabs(s[Z][Z]) < TEST_DOUBLE_TOLERANCE);
   /* info("ok\n");*/
 
-  index = coords_index(100, 1, 1);
+  index = cs_index(cs, 100, 1, 1);
   fe_polar_stress(fe, index, s);
 
   /* info("s_ab(100, 1, 1) ...");*/
@@ -234,7 +236,7 @@ static int test_polar_active_aster(fe_polar_t * fe, field_t * fp,
  *
  *****************************************************************************/
 
-int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
+int test_polar_active_terms(fe_polar_t * fe, cs_t * cs, field_t * fp,
 			    field_grad_t * fpgrad) {
 
   int index;
@@ -244,7 +246,7 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
   double s[3][3];
   fe_polar_param_t param = {0};
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   param.a = -0.1;
   param.b = +0.1;
@@ -254,7 +256,7 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
   param.zeta   = 0.001;
   fe_polar_param_set(fe, param);
 
-  test_polar_active_init_aster(fp);
+  test_polar_active_init_aster(cs, fp);
   field_halo_swap(fp, FIELD_HALO_HOST);
   field_grad_compute(fpgrad);
 
@@ -262,7 +264,7 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	fe_polar_stress(fe, index, s);
 
 	test_assert(fabs(s[Y][Z] - 0.0) < TEST_DOUBLE_TOLERANCE);
@@ -274,7 +276,7 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
     }
   }
 
-  index = coords_index(3, 90, 1);
+  index = cs_index(cs, 3, 90, 1);
   fe_polar_stress(fe, index, s);
 
   /* info("s_ab(3, 90, 1) ...");*/
@@ -290,7 +292,7 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
   test_assert(fabs(s[Z][Z] - -3.3150277e-04) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
 
-  index = coords_index(100, 1, 1);
+  index = cs_index(cs, 100, 1, 1);
   fe_polar_stress(fe, index, s);
 
   /* info("s_ab(100, 1, 1) ...");*/
@@ -319,20 +321,22 @@ int test_polar_active_terms(fe_polar_t * fe, field_t * fp,
  *
  *****************************************************************************/
 
-int test_polar_active_init_aster(field_t * fp) {
+int test_polar_active_init_aster(cs_t * cs, field_t * fp) {
 
   int nlocal[3];
   int ic, jc, kc, index;
 
+  double ltot[3];
   double p[3];
   double r;
   double x, y, z, x0, y0, z0;
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
+  cs_ltot(cs, ltot);
 
-  x0 = 0.5*L(X);
-  y0 = 0.5*L(Y);
-  z0 = 0.5*L(Z);
+  x0 = 0.5*ltot[X];
+  y0 = 0.5*ltot[Y];
+  z0 = 0.5*ltot[Z];
 
   if (nlocal[Z] == 1) z0 = 0.0;
 
@@ -353,7 +357,7 @@ int test_polar_active_init_aster(field_t * fp) {
 	  p[Y] = -(y - y0)/r;
 	  p[Z] = -(z - z0)/r;
 	}
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	field_vector_set(fp, index, p);
       }
     }

@@ -7,14 +7,18 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
 #ifndef FE_BRAZOVSKII_H
 #define FE_BRAZOVSKII_H
 
+#include "pe.h"
+#include "coords.h"
 #include "memory.h"
 #include "free_energy.h"
 #include "field.h"
@@ -30,7 +34,8 @@ struct fe_brazovskii_param_s {
   double kappa;
 };
 
-__host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
+__host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
+				  field_grad_t * dphi,
 				  fe_brazovskii_t ** p);
 __host__ int fe_brazovskii_free(fe_brazovskii_t * fe);
 __host__ int fe_brazovskii_param_set(fe_brazovskii_t * fe,

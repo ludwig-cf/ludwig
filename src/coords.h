@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,6 +25,7 @@ typedef struct coords_s cs_t;
 
 enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
+enum cs_mpi_cart_neighbours {CS_FORW=0,CS_BACK=1};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};
 
 /* Host interface */
@@ -68,30 +71,5 @@ __host__ __device__ int cs_nall(cs_t * cs, int nall[3]);
 /* A "class" function */
 
 __host__ int cs_cart_shift(MPI_Comm comm, int dim, int direction, int * rank);
-
-
-
-/* Static interface scheduled for deletion. Please use functions above */
-
-__host__ int cs_ref(cs_t ** cs);
-__host__ int    N_total(const int);
-__host__ int    is_periodic(const int);
-__host__ double L(const int);
-__host__ double Lmin(const int);
-__host__ int    cart_size(const int);
-__host__ int    cart_coords(const int);
-__host__ int    cart_neighb(const int direction, const int dimension);
-
-__host__ MPI_Comm cart_comm(void);
-
-__host__ void   coords_nlocal(int n[3]);
-__host__ void   coords_nlocal_offset(int n[3]);
-__host__ int    coords_nhalo(void);
-__host__ int    coords_ntotal(int ntotal[3]);
-__host__ int    coords_nsites(void);
-__host__ int    coords_index(const int ic, const int jc, const int kc);
-__host__ void   coords_minimum_distance(const double r1[3], const double r2[3],
-			       double r12[3]);
-__host__ void   coords_index_to_ijk(const int index, int coords[3]);
 
 #endif

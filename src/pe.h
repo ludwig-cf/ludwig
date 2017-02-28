@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *  Contribtuing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,7 +25,6 @@ typedef enum {PE_QUIET = 0, PE_VERBOSE, PE_OPTION_MAX} pe_enum_t;
 
 __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe);
 __host__ int pe_free(pe_t * pe);
-__host__ int pe_ref(pe_t ** ppe);
 __host__ int pe_retain(pe_t * pe);
 __host__ int pe_set(pe_t * pe, pe_enum_t option);
 __host__ int pe_message(pe_t * pe);
@@ -37,15 +36,5 @@ __host__ int pe_subdirectory_set(pe_t * pe, const char * name);
 __host__ int pe_info(pe_t * pe, const char * fmt, ...);
 __host__ int pe_fatal(pe_t * pe, const char * fmt, ...);
 __host__ int pe_verbose(pe_t * pe, const char * fmt, ...);
-
-/* Static interface scheduled for removal.
- * Please use the functions above. */
-
-__host__ MPI_Comm pe_comm(void);
-__host__ int pe_rank(void);
-__host__ int pe_size(void);
-__host__ void info(const char * fmt, ...);
-__host__ void fatal(const char * fmt, ...);
-__host__ void verbose(const char * fmt, ...);
 
 #endif

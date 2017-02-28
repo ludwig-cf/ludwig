@@ -46,7 +46,8 @@
 
 #define NSTENCIL 1 /* +/- 1 point in each direction */
 
-__host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+__host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
+					field_grad_t * fg,
 					int nextra);
 __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				  int nextra);
@@ -70,19 +71,22 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
 __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
 
   int nhalo, nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
   assert(fgrad->field);
+  assert(fgrad->field->cs);
   assert(fgrad->field->le);
 
+  cs = fgrad->field->cs;
   le = fgrad->field->le;
   lees_edw_nhalo(le, &nhalo);
 
   nextra = nhalo - NSTENCIL;
   assert(nextra >= 0);
 
-  grad_3d_7pt_fluid_operator(le, fgrad, nextra);
+  grad_3d_7pt_fluid_operator(cs, le, fgrad, nextra);
   grad_3d_7pt_fluid_le(le, fgrad, nextra);
 
   return 0;
@@ -101,12 +105,15 @@ __host__ int grad_3d_7pt_fluid_d2(field_grad_t * fgrad) {
 __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
   int nhalo, nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
   assert(fgrad->field);
+  assert(fgrad->field->cs);
   assert(fgrad->field->le);
 
+  cs = fgrad->field->cs;
   le = fgrad->field->le;
   lees_edw_nhalo(le, &nhalo);
 
@@ -114,7 +121,7 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
   assert(nextra >= 0);
 
   assert(0); /* NO TEST? */
-  grad_3d_7pt_fluid_operator(le, fgrad, nextra);
+  grad_3d_7pt_fluid_operator(cs, le, fgrad, nextra);
   grad_3d_7pt_fluid_le(le, fgrad, nextra);
 
   return 0;
@@ -160,7 +167,8 @@ __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
  *
  *****************************************************************************/
 
-__host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+__host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
+					field_grad_t * fg,
 					int nextra) {
 
   int nlocal[3];
@@ -180,7 +188,7 @@ __host__ int grad_3d_7pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(TIMER_PHI_GRAD_KERNEL);

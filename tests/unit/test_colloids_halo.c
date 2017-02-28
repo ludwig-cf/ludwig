@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -25,7 +27,7 @@
 int test_colloids_halo111(pe_t * pe, cs_t * cs);
 int test_colloids_halo211(pe_t * pe, cs_t * cs);
 int test_colloids_halo_repeat(pe_t * pe, cs_t * cs);
-static void test_position(const double * r1, const double * r2);
+static void test_position(cs_t * cs, const double * r1, const double * r2);
 
 /*****************************************************************************
  *
@@ -67,12 +69,15 @@ int test_colloids_halo_suite(void) {
 int test_colloids_halo111(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
+  int ntotal[3];
   int noffset[3];
+  int mpi_cartsz[3];
   int ncount[2];
   int index;
   int ncolloid;
   double r0[3];
   double r1[3];
+  double lmin[3];
 
   colloid_t * pc;
   colloids_info_t * cinfo = NULL;
@@ -81,19 +86,23 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  cs_lmin(cs, lmin);
+  cs_ntotal(cs, ntotal);
+  cs_cartsz(cs, mpi_cartsz);
+
   colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   colloids_halo_create(cinfo, &halo);
   assert(halo);
 
-  coords_nlocal_offset(noffset);
+  cs_nlocal_offset(cs, noffset);
 
-  r0[X] = Lmin(X) + 1.0*(noffset[X] + 1);
-  r0[Y] = Lmin(Y) + 1.0*(noffset[Y] + 1);
-  r0[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
+  r0[X] = lmin[X] + 1.0*(noffset[X] + 1);
+  r0[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
+  r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
-  index = 1 + pe_rank();
+  index = 1 + pe_mpi_rank(pe);
   colloids_info_add_local(cinfo, index, r0, &pc);
   assert(pc);
 
@@ -127,11 +136,11 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
   test_assert(pc != NULL);
 
 
-  r1[X] = r0[X] + 1.0*N_total(X)/cart_size(X);
+  r1[X] = r0[X] + 1.0*ntotal[X]/mpi_cartsz[X];
   r1[Y] = r0[Y];
   r1[Z] = r0[Z];
 
-  test_position(r1, pc->s.r);
+  test_position(cs, r1, pc->s.r);
 
   colloids_halo_send_count(halo, Y, ncount);
 
@@ -160,10 +169,10 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
 
 
   r1[X] = r0[X];
-  r1[Y] = r0[Y] + 1.0*N_total(Y)/cart_size(Y);
+  r1[Y] = r0[Y] + 1.0*ntotal[Y]/mpi_cartsz[Y];
   r1[Z] = r0[Z];
 
-  test_position(r1, pc->s.r);
+  test_position(cs, r1, pc->s.r);
 
   colloids_halo_send_count(halo, Z, ncount);
   test_assert(ncount[FORWARD] == 0);
@@ -210,12 +219,15 @@ int test_colloids_halo111(pe_t * pe, cs_t * cs) {
 int test_colloids_halo211(pe_t * pe, cs_t * cs) {
 
   int ncell[3] = {2, 2, 2};
+  int ntotal[3];
   int noffset[3];
+  int mpi_cartsz[3];
   int ncount[2];
   int index;
   int ncolloid;
   double r0[3];
   double r1[3];
+  double lmin[3];
   double lcell[3];
 
   colloid_t * pc = NULL;
@@ -225,20 +237,24 @@ int test_colloids_halo211(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  cs_lmin(cs, lmin);
+  cs_ntotal(cs, ntotal);
+  cs_cartsz(cs, mpi_cartsz);
+
   colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
   colloids_halo_create(cinfo, &halo);
   assert(halo);
 
-  coords_nlocal_offset(noffset);
+  cs_nlocal_offset(cs, noffset);
   colloids_info_lcell(cinfo, lcell);
 
-  r0[X] = Lmin(X) + 1.0*noffset[X] + lcell[X];
-  r0[Y] = Lmin(Y) + 1.0*(noffset[Y] + 1);
-  r0[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
+  r0[X] = lmin[X] + 1.0*noffset[X] + lcell[X];
+  r0[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
+  r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
-  index = 1 + pe_rank();
+  index = 1 + pe_mpi_rank(pe);
   colloids_info_add_local(cinfo, index, r0, &pc);
   assert(pc);
 
@@ -271,10 +287,10 @@ int test_colloids_halo211(pe_t * pe, cs_t * cs) {
   colloids_info_cell_list_head(cinfo, 0, 1, 1, &pc);
   test_assert(pc != NULL);
 
-  r1[X] = r0[X] - 1.0*N_total(X)/cart_size(X);
+  r1[X] = r0[X] - 1.0*ntotal[X]/mpi_cartsz[X];
   r1[Y] = r0[Y];
   r1[Z] = r0[Z];
-  test_position(r1, pc->s.r);
+  test_position(cs, r1, pc->s.r);
 
   colloids_halo_send_count(halo, Y, ncount);
   test_assert(ncount[FORWARD] == 0);
@@ -301,9 +317,9 @@ int test_colloids_halo211(pe_t * pe, cs_t * cs) {
   test_assert(pc != NULL);
 
   r1[X] = r0[X];
-  r1[Y] = r0[Y] + 1.0*N_total(Y)/cart_size(Y);
+  r1[Y] = r0[Y] + 1.0*ntotal[Y]/mpi_cartsz[Y];
   r1[Z] = r0[Z];
-  test_position(r1, pc->s.r);
+  test_position(cs, r1, pc->s.r);
 
   colloids_halo_send_count(halo, Z, ncount);
   test_assert(ncount[FORWARD] == 0);
@@ -352,6 +368,7 @@ int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
   int index;
   int ncolloid;
   double r0[3];
+  double lmin[3];
 
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
@@ -359,22 +376,24 @@ int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  cs_lmin(cs, lmin);
+
   colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
 
-  coords_nlocal_offset(noffset);
+  cs_nlocal_offset(cs, noffset);
 
-  r0[X] = Lmin(X) + 1.0*(noffset[X] + 1);
-  r0[Y] = Lmin(Y) + 1.0*(noffset[Y] + 1);
-  r0[Z] = Lmin(Z) + 1.0*(noffset[Z] + 1);
+  r0[X] = lmin[X] + 1.0*(noffset[X] + 1);
+  r0[Y] = lmin[Y] + 1.0*(noffset[Y] + 1);
+  r0[Z] = lmin[Z] + 1.0*(noffset[Z] + 1);
 
-  index = 1 + pe_rank();
+  index = 1 + pe_mpi_rank(pe);
   colloids_info_add_local(cinfo, index, r0, &pc);
   assert(pc);
 
-  index = 1 + pe_size() + pe_rank();
+  index = 1 + pe_mpi_size(pe) + pe_mpi_rank(pe);
   colloids_info_add_local(cinfo, index, r0, &pc);
-  index = 1 + 2*pe_size() + pe_rank();
+  index = 1 + 2*pe_mpi_size(pe) + pe_mpi_rank(pe);
   colloids_info_add_local(cinfo, index, r0, &pc);
 
   colloids_halo_state(cinfo);
@@ -401,15 +420,19 @@ int test_colloids_halo_repeat(pe_t * pe, cs_t * cs) {
  *
  *****************************************************************************/
 
-void test_position(const double r1[3], const double r2[3]) {
+void test_position(cs_t * cs, const double r1[3], const double r2[3]) {
 
   double tolerance;
+  double ltot[3];
 
-  tolerance = (1.0 + DBL_EPSILON)*DBL_EPSILON*L(X);
+  assert(cs);
+  cs_ltot(cs, ltot);
+
+  tolerance = (1.0 + DBL_EPSILON)*DBL_EPSILON*ltot[X];
   test_assert(fabs(r1[X] - r2[X]) < tolerance);
-  tolerance = (1.0 + DBL_EPSILON)*DBL_EPSILON*L(Y);
+  tolerance = (1.0 + DBL_EPSILON)*DBL_EPSILON*ltot[Y];
   test_assert(fabs(r1[Y] - r2[Y]) < tolerance);
-  tolerance = (1.0 + DBL_EPSILON)*DBL_EPSILON*L(Z);
+  tolerance = (1.0 + DBL_EPSILON)*DBL_EPSILON*ltot[Z];
   test_assert(fabs(r1[Z] - r2[Z]) < tolerance);
 
   return;

@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,7 +33,7 @@ int test_timer_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  TIMER_init();
+  TIMER_init(pe);
   TIMER_start(TIMER_TOTAL);
   TIMER_stop(TIMER_TOTAL);
 

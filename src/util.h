@@ -7,15 +7,21 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk) 
- *  (c) 2010-2016 The University of Edinburgh
  *  
  ****************************************************************************/
 
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef LUDWIG_UTIL_H
+#define LUDWIG_UTIL_H
+
+/* These are needed for a number of declarations [X,Y,Z] etc
+ * but there are no functional dependencies. */
 
 #include "pe.h"
+#include "coords.h"
 
 #define KRONECKER_DELTA_CHAR(d) const char d[3][3] = {{1,0,0},{0,1,0},{0,0,1}}
 #define LEVI_CIVITA_CHAR(e) const char e[3][3][3] =		\

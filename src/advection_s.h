@@ -5,13 +5,15 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef ADVECTION_S_H
-#define ADVECTION_S_H
+#ifndef LUDWIG_ADVECTION_S_H
+#define LUDWIG_ADVECTION_S_H
 
 #include "memory.h"
 #include "leesedwards.h"
@@ -26,6 +28,7 @@ struct advflux_s {
   double * fy;   /* y-face fluxes */
   double * fz;   /* z-face fluxes */
 
+  pe_t * pe;           /* Parallel environment */
   cs_t * cs;           /* Coordinate system */
   lees_edw_t * le;     /* Lees Edwards */
   advflux_t * target;  /* copy of this structure on target */ 

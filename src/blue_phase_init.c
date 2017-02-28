@@ -12,10 +12,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Oliver Henrich (o.henrich@ucl.ac.uk)
  *  Juho Lintuvuori
- *
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -26,7 +27,7 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
-#include "field.h"
+#include "field_s.h"
 #include "field_grad.h"
 #include "blue_phase.h"
 #include "blue_phase_init.h"
@@ -46,7 +47,7 @@ void blue_phase_M_rot(double M[3][3], int dim, double alpha);
  *
  *****************************************************************************/
 
-int blue_phase_O8M_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -60,10 +61,11 @@ int blue_phase_O8M_init(fe_lc_param_t * param, field_t * fq) {
   double q0;
   double amplitude0;
 
+  assert(cs);
   assert(fq);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   r2 = sqrt(2.0);
   q0 = param->q0;
@@ -76,7 +78,7 @@ int blue_phase_O8M_init(fe_lc_param_t * param, field_t * fq) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	cosx = cos(r2*q0*x);
 	cosy = cos(r2*q0*y);
@@ -112,7 +114,7 @@ int blue_phase_O8M_init(fe_lc_param_t * param, field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_O2_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -124,10 +126,12 @@ int blue_phase_O2_init(fe_lc_param_t * param, field_t * fq) {
   double q0;
   double amplitude0;
 
+  assert(cs);
   assert(fq);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
@@ -138,7 +142,7 @@ int blue_phase_O2_init(fe_lc_param_t * param, field_t * fq) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	q[X][X] = amplitude0*(cos(2.0*q0*z) - cos(2.0*q0*y));
 	q[X][Y] = amplitude0*sin(2.0*q0*z);
@@ -166,7 +170,7 @@ int blue_phase_O2_init(fe_lc_param_t * param, field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_H2D_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_H2D_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -179,14 +183,15 @@ int blue_phase_H2D_init(fe_lc_param_t * param, field_t * fq) {
   double q0;
   double amplitude0;
 
+  assert(cs);
   assert(fq);
 
   r3 = sqrt(3.0);
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = noffset[X] + ic;
@@ -194,7 +199,7 @@ int blue_phase_H2D_init(fe_lc_param_t * param, field_t * fq) {
       y = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	q[X][X] = amplitude0*(-1.5*   cos(q0*x)*cos(q0*r3*y));
 	q[X][Y] = amplitude0*(-0.5*r3*sin(q0*x)*sin(q0*r3*y));
@@ -222,7 +227,7 @@ int blue_phase_H2D_init(fe_lc_param_t * param, field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_H3DA_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_H3DA_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -234,15 +239,18 @@ int blue_phase_H3DA_init(fe_lc_param_t * param, field_t * fq) {
   double r3;
   double q0;
   double amplitude0;
+  double ltot[3];
 
+  assert(cs);
   assert(fq);
 
   r3 = sqrt(3.0);
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ltot(cs, ltot);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = noffset[X] + ic;
@@ -251,16 +259,16 @@ int blue_phase_H3DA_init(fe_lc_param_t * param, field_t * fq) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	q[X][X] = amplitude0*(-1.5*cos(q0*x)*cos(q0*r3*y)
-			       + 0.25*cos(q0*L(X)/L(Z)*z)); 
+			       + 0.25*cos(q0*ltot[X]/ltot[Z]*z)); 
 	q[X][Y] = amplitude0*(-0.5*r3*sin(q0*x)*sin(q0*r3*y)
-			       + 0.25*sin(q0*L(X)/L(Z)*z));
+			       + 0.25*sin(q0*ltot[X]/ltot[Z]*z));
 	q[X][Z] = amplitude0*(r3*cos(q0*x)*sin(q0*r3*y));
 	q[Y][X] = q[X][Y];
 	q[Y][Y] = amplitude0*(-cos(2.0*q0*x)-0.5*cos(q0*x)*cos(q0*r3*y)
-			       -0.25*cos(q0*L(X)/L(Z)*z));
+			       -0.25*cos(q0*ltot[X]/ltot[Z]*z));
 	q[Y][Z] = amplitude0*(-sin(2.0*q0*x)-sin(q0*x)*cos(q0*r3*y));
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
@@ -282,7 +290,7 @@ int blue_phase_H3DA_init(fe_lc_param_t * param, field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_H3DB_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_H3DB_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -294,15 +302,18 @@ int blue_phase_H3DB_init(fe_lc_param_t * param, field_t * fq) {
   double r3;
   double q0;
   double amplitude0;
+  double ltot[3];
 
+  assert(cs);
   assert(fq);
 
   r3 = sqrt(3.0);
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ltot(cs, ltot);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     x = noffset[X] + ic;
@@ -311,16 +322,16 @@ int blue_phase_H3DB_init(fe_lc_param_t * param, field_t * fq) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	q[X][X] = amplitude0*(1.5*cos(q0*x)*cos(q0*r3*y)
-			       + 0.25*cos(q0*L(X)/L(Z)*z)); 
+			       + 0.25*cos(q0*ltot[X]/ltot[Z]*z)); 
 	q[X][Y] = amplitude0*(0.5*r3*sin(q0*x)*sin(q0*r3*y)
-			       + 0.25*sin(q0*L(X)/L(Z)*z));
+			       + 0.25*sin(q0*ltot[X]/ltot[Z]*z));
 	q[X][Z] = amplitude0*(-r3*cos(q0*x)*sin(q0*r3*y));
 	q[Y][X] = q[X][Y];
 	q[Y][Y] = amplitude0*(cos(2.0*q0*x) + 0.5*cos(q0*x)*cos(q0*r3*y)
-			       - 0.25*cos(q0*L(X)/L(Z)*z));
+			       - 0.25*cos(q0*ltot[X]/ltot[Z]*z));
 	q[Y][Z] = amplitude0*(sin(2.0*q0*x) + sin(q0*x)*cos(q0*r3*y));
 	q[Z][X] = q[X][Z];
 	q[Z][Y] = q[Y][Z];
@@ -342,7 +353,7 @@ int blue_phase_H3DB_init(fe_lc_param_t * param, field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_O5_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_O5_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -356,8 +367,8 @@ int blue_phase_O5_init(fe_lc_param_t * param, field_t * fq) {
 
   assert(fq);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   q0 = param->q0;
   amplitude0 = param->amplitude0;
@@ -369,7 +380,7 @@ int blue_phase_O5_init(fe_lc_param_t * param, field_t * fq) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	q[X][X] = amplitude0*
             (2.0*cos(sqrt(2.0)*q0*y)*cos(sqrt(2.0)*q0*z)-
@@ -412,7 +423,7 @@ int blue_phase_O5_init(fe_lc_param_t * param, field_t * fq) {
  *
  *****************************************************************************/
 
-int blue_phase_DTC_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_DTC_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -424,10 +435,11 @@ int blue_phase_DTC_init(fe_lc_param_t * param, field_t * fq) {
   double q0;
   double amplitude0;
 
+  assert(cs);
   assert(fq);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   q0 = param->q0;
   amplitude0 = param->amplitude0;
@@ -438,7 +450,7 @@ int blue_phase_DTC_init(fe_lc_param_t * param, field_t * fq) {
       y = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	q[X][X] = -amplitude0*cos(2*q0*y);
 	q[X][Y] = 0.0;
@@ -471,12 +483,14 @@ int blue_phase_DTC_init(fe_lc_param_t * param, field_t * fq) {
  *        
  *****************************************************************************/
 
-int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double specs[3]) {
+int blue_phase_BPIII_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			  const double specs[3]) {
 
   int ic, jc, kc;
   int ir, jr, kr; 	/* indices for rotated output */
   int ia, ib, ik, il, in;
   int nlocal[3];
+  int ntotal[3];
   int noffset[3];
   int index;
   double q[3][3], q0[3][3];
@@ -493,6 +507,7 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
   double amplitude0;
   PI_DOUBLE(pi);
 
+  assert(cs);
   assert(fq);
   assert(specs);
 
@@ -504,8 +519,9 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
   b = (double*)calloc(N, sizeof(double));
   C = (double*)calloc(3*N, sizeof(double));
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_ntotal(cs, ntotal);
+  cs_nlocal_offset(cs, noffset);
 
   q0_pitch = param->q0;
   amplitude0 = param->amplitude0;
@@ -516,9 +532,9 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
 
       a[in] = 2.0*pi * ran_serial_uniform();
       b[in] = 2.0*pi * ran_serial_uniform();
-      C[3*in]   = N_total(X) * ran_serial_uniform(); 
-      C[3*in+1] = N_total(Y) * ran_serial_uniform(); 
-      C[3*in+2] = N_total(Z) * ran_serial_uniform(); 
+      C[3*in]   = ntotal[X] * ran_serial_uniform(); 
+      C[3*in+1] = ntotal[Y] * ran_serial_uniform(); 
+      C[3*in+2] = ntotal[Z] * ran_serial_uniform(); 
 
     }
 
@@ -565,7 +581,7 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
 	  
 	}
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	field_tensor_set(fq, index, q);
       }
     }
@@ -641,7 +657,7 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
 	      q[Z][Y] = q[Y][Z];
 	      q[Z][Z] = - q[X][X] - q[Y][Y];
 
-	      index = coords_index(ir, jr, kr);
+	      index = cs_index(cs, ir, jr, kr);
 	      field_tensor_set(fq, index, q);
 	    }
 
@@ -672,7 +688,8 @@ int blue_phase_BPIII_init(fe_lc_param_t * param, field_t * fq, const double spec
  *
  *****************************************************************************/
 
-int blue_phase_twist_init(fe_lc_param_t * param, field_t * fq, int helical_axis) {
+int blue_phase_twist_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			  int helical_axis) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -684,12 +701,13 @@ int blue_phase_twist_init(fe_lc_param_t * param, field_t * fq, int helical_axis)
   double x, y, z;
   double q0;
 
+  assert(cs);
   assert(param);
   assert(fq);
   assert(helical_axis == X || helical_axis == Y || helical_axis == Z);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   q0 = param->q0;
 
@@ -715,7 +733,7 @@ int blue_phase_twist_init(fe_lc_param_t * param, field_t * fq, int helical_axis)
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	if (helical_axis == Z) {
 	  z = noffset[Z] + kc;
@@ -743,7 +761,8 @@ int blue_phase_twist_init(fe_lc_param_t * param, field_t * fq, int helical_axis)
  *
  *****************************************************************************/
 
-int blue_phase_nematic_init(fe_lc_param_t * param, field_t * fq, const double n[3]) {
+int blue_phase_nematic_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			    const double n[3]) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -753,11 +772,13 @@ int blue_phase_nematic_init(fe_lc_param_t * param, field_t * fq, const double n[
   double nhat[3];
   double q[3][3];
 
+  assert(cs);
   assert(fq);
   assert(n);
   assert(modulus(n) > 0.0);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   for (ia = 0; ia < 3; ia++) {
     nhat[ia] = n[ia] / modulus(n);
@@ -769,7 +790,7 @@ int blue_phase_nematic_init(fe_lc_param_t * param, field_t * fq, const double n[
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	field_tensor_set(fq, index, q);
       }
     }
@@ -789,10 +810,12 @@ int blue_phase_nematic_init(fe_lc_param_t * param, field_t * fq, const double n[
  *
  *****************************************************************************/
 
-int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const double n[3]) {
+int blue_phase_active_nematic_init(cs_t * cs, fe_lc_param_t * param,
+				   field_t * fq, const double n[3]) {
 
   int ic, jc, kc;
   int nlocal[3];
+  int ntotal[3];
   int noffset[3];
   int ia, index;
 
@@ -808,9 +831,12 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
 
   ang = pi/180.0*10.0;
 
+  assert(cs);
   assert(modulus(n) > 0.0);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+
+  cs_nlocal(cs, nlocal);
+  cs_ntotal(cs, ntotal);
+  cs_nlocal_offset(cs, noffset);
 
   for (ia = 0; ia < 3; ia++) {
     nhat[ia] = n[ia] / modulus(n);
@@ -851,15 +877,15 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	field_tensor_set(fq, index, q);
 
         /* If alignment along x region around 
-	   z=N_total(Z)/2 is being replaced */
+	   z = ntotal[Z]/2 is being replaced */
  
 	if(nhat[0] == 1.0) {
-	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
-	    if(x<=N_total(X)/2.0) {
+	  if(z==ntotal[Z]/2.0 || z==(ntotal[Z]-1)/2.0) {
+	    if(x<=ntotal[X]/2.0) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -869,11 +895,11 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
 	}
 
         /* If alignment along y region around 
-	   z=N_total(Z)/2 is being replaced */
+	   z=ntotal[Z]/2 is being replaced */
 
 	if(nhat[1] == 1.0){
-	  if(z==N_total(Z)/2.0 || z==(N_total(Z)-1)/2.0) {
-	    if(y<=N_total(Y)/2.0) {
+	  if (z == ntotal[Z]/2 || z == (ntotal[Z]-1)/2.0) {
+	    if(y<=ntotal[Y]/2.0) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -906,11 +932,12 @@ int blue_phase_active_nematic_init(fe_lc_param_t * param, field_t * fq, const do
  *
  *****************************************************************************/
 
-int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
+int lc_active_nematic_init_q2d(cs_t * cs, fe_lc_param_t * param, field_t * fq,
 			       int istrip) {
 
   int ic, jc, kc;
   int nlocal[3];
+  int ntotal[3];
   int noffset[3];
   int index;
 
@@ -924,14 +951,16 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
   double ang;
   PI_DOUBLE(pi);
 
+  assert(cs);
   assert(param);
   assert(fq);
   assert(istrip == X || istrip == Y);
 
   ang = pi/180.0*10.0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_ntotal(cs, ntotal);
+  cs_nlocal_offset(cs, noffset);
 
   if (istrip == X) {
     nhat[X] = 1.0;
@@ -967,7 +996,7 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
       y = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	/* Background */
 	field_tensor_set(fq, index, q);
@@ -975,8 +1004,8 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
         /* Central strip parallel to X */
  
 	if (istrip == X) {
-	  if (y == N_total(Y)/2 || y == (N_total(Y)-1)/2) {
-	    if (x <= N_total(X)/2) {
+	  if (y == ntotal[Y]/2 || y == (ntotal[Y]-1)/2) {
+	    if (x <= ntotal[X]/2) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -988,8 +1017,8 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
         /* Central strip parallel to Y */
 
 	if (istrip == Y) {
-	  if (x == N_total(X)/2 || x == (N_total(X)-1)/2) {
-	    if (y <= N_total(Y)/2) {
+	  if (x == ntotal[X]/2 || x == (ntotal[X]-1)/2) {
+	    if (y <= ntotal[Y]/2) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -1014,7 +1043,8 @@ int lc_active_nematic_init_q2d(fe_lc_param_t * param, field_t * fq,
  *
  *****************************************************************************/
 
-int blue_phase_chi_edge(fe_lc_param_t * param, field_t * fq, int N, double z0, double x0) {
+int blue_phase_chi_edge(cs_t * cs, fe_lc_param_t * param, field_t * fq, int N,
+			double z0, double x0) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -1027,10 +1057,11 @@ int blue_phase_chi_edge(fe_lc_param_t * param, field_t * fq, int N, double z0, d
   double theta;
   double q0;
 
+  assert(cs);
   assert(fq);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   q0 = param->q0;
 
@@ -1040,7 +1071,7 @@ int blue_phase_chi_edge(fe_lc_param_t * param, field_t * fq, int N, double z0, d
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 	
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	theta = 1.0*N/2.0*atan2((1.0*z-z0),(1.0*x-x0)) + q0*(z-z0);	
 	n[X] = cos(theta);
@@ -1066,7 +1097,7 @@ int blue_phase_chi_edge(fe_lc_param_t * param, field_t * fq, int N, double z0, d
  *
  *****************************************************************************/
 
-int blue_phase_random_q_init(fe_lc_param_t * param, field_t * fq) {
+int blue_phase_random_q_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -1077,25 +1108,21 @@ int blue_phase_random_q_init(fe_lc_param_t * param, field_t * fq) {
   double phase1, phase2;
 
   double ran1, ran2;
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
   noise_t * rng = NULL;
   PI_DOUBLE(pi);
 
   assert(fq);
-  
-  pe_ref(&pe);
-  cs_ref(&cs);
-  coords_nlocal(nlocal);
 
-  noise_create(pe, cs, &rng);
+  cs_nlocal(cs, nlocal);
+
+  noise_create(fq->pe, cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	    
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	noise_uniform_double_reap(rng, index, &ran1);
 	noise_uniform_double_reap(rng, index, &ran2);
@@ -1131,7 +1158,8 @@ int blue_phase_random_q_init(fe_lc_param_t * param, field_t * fq) {
  * 
  *****************************************************************************/
 
-int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[3],
+int blue_phase_random_q_rectangle(cs_t * cs, fe_lc_param_t * param,
+				  field_t * fq, int rmin[3],
 				  int rmax[3]) {
 
   int ic, jc, kc, index;
@@ -1147,21 +1175,17 @@ int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[
 
   double ran1, ran2;
 
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
   noise_t * rng = NULL;
   PI_DOUBLE(pi);
   KRONECKER_DELTA_CHAR(d);
 
+  assert(cs);
   assert(fq);
 
-  pe_ref(&pe);
-  cs_ref(&cs);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-
-  noise_create(pe, cs, &rng);
+  noise_create(fq->pe, cs, &rng);
   noise_init(rng, seed);
 
   /* Adjust min, max to allow for parallel offset of box */
@@ -1177,7 +1201,7 @@ int blue_phase_random_q_rectangle(fe_lc_param_t * param, field_t * fq, int rmin[
 	if (ic < rmin[X] || ic > rmax[X] || jc < rmin[Y] || jc > rmax[Y] ||
 	    kc < rmin[Z] || kc > rmax[Z]) continue;
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	noise_uniform_double_reap(rng, index, &ran1);
 	noise_uniform_double_reap(rng, index, &ran2);
@@ -1266,7 +1290,8 @@ void blue_phase_M_rot(double M[3][3], int dim, double alpha){
  *
  *****************************************************************************/
 
-int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
+int blue_phase_cf1_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			int axis) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -1283,9 +1308,9 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   assert(fq);
   assert(axis == X || axis == Y || axis == Z);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  coords_ntotal(ntotal);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+  cs_ntotal(cs, ntotal);
 
   q0 = param->q0;
   alpha0 = 0.5*pi; 
@@ -1298,7 +1323,7 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	if (axis == X) {
 
@@ -1370,7 +1395,8 @@ int blue_phase_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
  *
  *****************************************************************************/
 
-int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
+int blue_phase_random_cf1_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			       int axis) {
 
   int ic, jc, kc;
   int nlocal[3];
@@ -1389,20 +1415,16 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   double var = 1e-1; /* variance of random fluctuation */
   int seed = DEFAULT_SEED;
 
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
   noise_t * rng = NULL;
   PI_DOUBLE(pi);
 
+  assert(cs);
   assert(fq);
   assert(axis == X || axis == Y || axis == Z);
 
-  pe_ref(&pe);
-  cs_ref(&cs);
-
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  coords_ntotal(ntotal);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+  cs_ntotal(cs, ntotal);
 
   q0 = param->q0;
   alpha0 = 0.5*pi; 
@@ -1411,14 +1433,14 @@ int blue_phase_random_cf1_init(fe_lc_param_t * param, field_t * fq, int axis) {
   n[Y] = 0.0;
   n[Z] = 0.0;
 
-  noise_create(pe, cs, &rng);
+  noise_create(fq->pe, cs, &rng);
   noise_init(rng, seed);
  
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	if (axis == X) {
 

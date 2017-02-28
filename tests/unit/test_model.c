@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -57,7 +59,7 @@ int test_model_suite(void) {
 
   do_test_model_distributions(pe, cs);
   do_test_model_halo_swap(pe, cs);
-  if (DATA_MODEL == ADDRESS_FORWARD && NSIMDVL == 1) {
+  if (DATA_MODEL == DATA_MODEL_AOS && NSIMDVL == 1) {
     do_test_model_reduced_halo_swap(pe, cs);
   }
   do_test_lb_model_io(pe, cs);

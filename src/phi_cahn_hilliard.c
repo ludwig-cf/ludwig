@@ -33,7 +33,8 @@
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -49,6 +50,7 @@
 
 struct phi_ch_s {
   pe_t * pe;
+  cs_t * cs;
   lees_edw_t * le;
   advflux_t * flux;
 };
@@ -78,12 +80,14 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
  *
  *****************************************************************************/
 
-__host__ int phi_ch_create(pe_t * pe, lees_edw_t * le, phi_ch_info_t * info,
+__host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+			   phi_ch_info_t * info,
 			   phi_ch_t ** pch) {
 
   phi_ch_t * obj = NULL;
 
   assert(pe);
+  assert(cs);
   assert(le);
   assert(pch);
 
@@ -91,8 +95,9 @@ __host__ int phi_ch_create(pe_t * pe, lees_edw_t * le, phi_ch_info_t * info,
   if (obj == NULL) pe_fatal(pe, "calloc(phi_ch_t) failed\n");
 
   obj->pe = pe;
+  obj->cs = cs;
   obj->le = le;
-  advflux_le_create(le, 1, &obj->flux);
+  advflux_le_create(pe, cs, le, 1, &obj->flux);
 
   pe_retain(pe);
   lees_edw_retain(le);
@@ -226,7 +231,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(phi_ch_flux_mu1_kernel, nblk, ntpb, ctxt->target,
@@ -893,7 +898,7 @@ static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif) {
   limits.kmin = 1; limits.kmax = nlocal[Z];
   if (nlocal[Z] == 1) wz = 0.0;
 
-  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(phi_ch_ufs_kernel, nblk, ntpb, ctxt->target,

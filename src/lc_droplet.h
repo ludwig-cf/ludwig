@@ -10,7 +10,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Juho Lintuvuori
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -29,6 +33,8 @@ typedef struct fe_lc_droplet_param_s fe_lc_droplet_param_t;
 
 struct fe_lc_droplet_s {
   fe_t super;
+  pe_t * pe;                      /* Parallel environment */
+  cs_t * cs;                      /* Coordinate system */
   fe_lc_droplet_param_t * param;  /* Coupling parameters */
   fe_lc_t * lc;                   /* LC free energy  etc */
   fe_symm_t * symm;               /* Symmetric free energy etc */
@@ -41,7 +47,8 @@ struct fe_lc_droplet_param_s {
   double w;      /* Surface nchoring constant */
 };
 
-__host__ int fe_lc_droplet_create(fe_lc_t * lc, fe_symm_t * symm,
+__host__ int fe_lc_droplet_create(pe_t * pe, cs_t * cs, fe_lc_t * lc,
+				  fe_symm_t * symm,
 				  fe_lc_droplet_t ** p);
 __host__ int fe_lc_droplet_free(fe_lc_droplet_t * fe);
 __host__ int fe_lc_droplet_param(fe_lc_droplet_t * fe,

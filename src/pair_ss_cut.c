@@ -23,7 +23,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -36,9 +38,12 @@
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
+#include "colloids.h"
 #include "pair_ss_cut.h"
 
 struct pair_ss_cut_s {
+  pe_t * pe;             /* Parallel environemnt */
+  cs_t * cs;             /* Coordinate system */
   double epsilon;        /* epsilon (energy) */
   double sigma;          /* sigma (length) */
   double nu;             /* exponent */
@@ -54,15 +59,19 @@ struct pair_ss_cut_s {
  *
  *****************************************************************************/
 
-int pair_ss_cut_create(pair_ss_cut_t ** pobj) {
+int pair_ss_cut_create(pe_t * pe, cs_t * cs, pair_ss_cut_t ** pobj) {
 
   pair_ss_cut_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (pair_ss_cut_t *) calloc(1, sizeof(pair_ss_cut_t));
-  if (obj == NULL) fatal("calloc(pair_ss_cut_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(pair_ss_cut_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   *pobj = obj;
 
   return 0;
@@ -74,13 +83,13 @@ int pair_ss_cut_create(pair_ss_cut_t ** pobj) {
  *
  *****************************************************************************/
 
-void pair_ss_cut_free(pair_ss_cut_t * obj) {
+int pair_ss_cut_free(pair_ss_cut_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -115,14 +124,14 @@ int pair_ss_cut_info(pair_ss_cut_t * obj) {
   physics_ref(&phys);
   physics_kt(phys, &kt);
 
-  info("\n");
-  info("Soft sphere potential\n");
-  info("epsilon:                  %14.7e\n", obj->epsilon);
-  info("sigma:                    %14.7e\n", obj->sigma);
-  info("exponent nu:              %14.7e\n", obj->nu);
-  info("cut off (surface-surface) %14.7e\n", obj->hc);
+  pe_info(obj->pe, "\n");
+  pe_info(obj->pe, "Soft sphere potential\n");
+  pe_info(obj->pe, "epsilon:                  %14.7e\n", obj->epsilon);
+  pe_info(obj->pe, "sigma:                    %14.7e\n", obj->sigma);
+  pe_info(obj->pe, "exponent nu:              %14.7e\n", obj->nu);
+  pe_info(obj->pe, "cut off (surface-surface) %14.7e\n", obj->hc);
   if (kt > 0.0) {
-    info("epsilon / kT              %14.7e\n", obj->epsilon/kt);
+    pe_info(obj->pe, "epsilon / kT              %14.7e\n", obj->epsilon/kt);
   }
 
   return 0;
@@ -168,6 +177,7 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   double dvcut;                         /* derivative at cut off */
   double r12[3];                        /* centre-centre min distance 1->2 */
   double f;
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -175,8 +185,10 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
   assert(cinfo);
   assert(self);
 
+  cs_ltot(self->cs, ltot);
+
   self->vlocal = 0.0;
-  self->hminlocal = dmax(L(X), dmax(L(Y), L(Z)));
+  self->hminlocal = dmax(ltot[X], dmax(ltot[Y], ltot[Z]));
   self->rminlocal = self->hminlocal;
 
   rsigma = 1.0/self->sigma;
@@ -204,7 +216,7 @@ int pair_ss_cut_compute(colloids_info_t * cinfo, void * obj) {
 
                   if (pc1->s.index >= pc2->s.index) continue;
 
-		  coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+		  cs_minimum_distance(self->cs, pc1->s.r, pc2->s.r, r12);
 		  r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 		  if (r < self->rminlocal) self->rminlocal = r;
 

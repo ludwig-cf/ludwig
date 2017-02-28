@@ -7,9 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -33,7 +34,8 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
 			       double r2[3], double r3[3]);
 int colloid_forces_bonds_count_local(colloids_info_t * cinfo, int * nbond,
 				     int * nangle);
-int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
+int colloid_forces_bonds_check(cs_t * cs, colloids_info_t * cinfo,
+			       int * nbondfound,
 			       int * nbondpair);
 
 /*****************************************************************************
@@ -72,13 +74,16 @@ int test_bonds_dimers(pe_t * pe, cs_t * cs) {
   double a0 = 2.3;  /* Colloid radius doubling as 'bond length' */
   double r1[3];
   double r2[3];
+  double ltot[3];
 
-  r1[X] = 0.5*L(X) - a0;
-  r1[Y] = 0.5*L(Y) - a0;
-  r1[Z] = 0.5*L(Z) - a0;
-  r2[X] = 0.5*L(X) + a0;
-  r2[Y] = 0.5*L(X) + a0;
-  r2[Z] = 0.5*L(X) + a0;
+  cs_ltot(cs, ltot);
+
+  r1[X] = 0.5*ltot[X] - a0;
+  r1[Y] = 0.5*ltot[Y] - a0;
+  r1[Z] = 0.5*ltot[Z] - a0;
+  r2[X] = 0.5*ltot[X] + a0;
+  r2[Y] = 0.5*ltot[X] + a0;
+  r2[Z] = 0.5*ltot[X] + a0;
 
   test_bonds_dimer_instance(pe, cs, a0, r1, r2);
   test_bonds_dimer_instance(pe, cs, a0, r2, r1);
@@ -86,9 +91,9 @@ int test_bonds_dimers(pe_t * pe, cs_t * cs) {
   r1[X] = a0;
   r1[Y] = a0;
   r1[Z] = a0;
-  r2[X] = L(X) - a0;
-  r2[Y] = L(Y) - a0;
-  r2[Z] = L(Z) - a0;
+  r2[X] = ltot[X] - a0;
+  r2[Y] = ltot[Y] - a0;
+  r2[Z] = ltot[Z] - a0;
 
   test_bonds_dimer_instance(pe, cs, a0, r1, r2);
   test_bonds_dimer_instance(pe, cs, a0, r2, r1);
@@ -108,12 +113,15 @@ int test_bonds_trimers(pe_t * pe, cs_t * cs) {
   double r0[3];
   double r1[3];
   double r2[3];
+  double ltot[3];
+
+  cs_ltot(cs, ltot);
 
   /* Straight trimer */
 
-  r0[X] = 0.5*L(X) - a0;
-  r0[Y] = 0.5*L(Y);
-  r0[Z] = 0.5*L(Z);
+  r0[X] = 0.5*ltot[X] - a0;
+  r0[Y] = 0.5*ltot[Y];
+  r0[Z] = 0.5*ltot[Z];
 
   r1[X] = r0[X] + 3.0*a0;
   r1[Y] = r0[Y];
@@ -128,9 +136,9 @@ int test_bonds_trimers(pe_t * pe, cs_t * cs) {
 
   /* L-shape trimer */
 
-  r1[X] = L(X) - a0;
-  r1[Y] = L(Y) - a0;
-  r1[Z] = L(Z) - a0;
+  r1[X] = ltot[X] - a0;
+  r1[Y] = ltot[Y] - a0;
+  r1[Z] = ltot[Z] - a0;
 
   r0[X] = a0;
   r0[Y] = r1[Y];
@@ -150,9 +158,9 @@ int test_bonds_trimers(pe_t * pe, cs_t * cs) {
 
   /* Small angle */
 
-  r1[X] = 0.4*L(X);
-  r1[Y] = 0.4*L(Y);
-  r1[Z] = 0.4*L(Z);
+  r1[X] = 0.4*ltot[X];
+  r1[Y] = 0.4*ltot[Y];
+  r1[Z] = 0.4*ltot[Z];
 
   r0[X] = r1[X] - 1.5*a0;
   r0[Y] = r1[Y] - 0.1;
@@ -252,7 +260,7 @@ int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
   assert(nbond == 1);
   assert(nangle == 0);
 
-  colloid_forces_bonds_check(cinfo, &nbond_local, &npair_local);
+  colloid_forces_bonds_check(cs, cinfo, &nbond_local, &npair_local);
 
   MPI_Allreduce(&nbond_local, &nbond, 1, MPI_INT, MPI_SUM, comm);
   MPI_Allreduce(&npair_local, &npair, 1, MPI_INT, MPI_SUM, comm);
@@ -374,7 +382,7 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
   assert(nbond == 2);
   assert(nangle == 1);
 
-  colloid_forces_bonds_check(cinfo, &nbond_local, &npair_local);
+  colloid_forces_bonds_check(cs, cinfo, &nbond_local, &npair_local);
 
   MPI_Allreduce(&nbond_local, &nbond, 1, MPI_INT, MPI_SUM, comm);
   MPI_Allreduce(&npair_local, &npair, 1, MPI_INT, MPI_SUM, comm);
@@ -429,7 +437,8 @@ int colloid_forces_bonds_count_local(colloids_info_t * cinfo, int * nbond,
  *
  *****************************************************************************/
 
-int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
+int colloid_forces_bonds_check(cs_t * cs, colloids_info_t * cinfo,
+			       int * nbondfound,
 			       int * nbondpair) {
 
   int ic, jc, kc;
@@ -440,12 +449,14 @@ int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
   int ic1, ic2, jc1, jc2, kc1, kc2;
   int range[3];
   int halo [3];
+  int mpi_cartsz[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
 
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
+  cs_cartsz(cs, mpi_cartsz);
 
   *nbondfound = 0;
   *nbondpair  = 0;
@@ -453,9 +464,9 @@ int colloid_forces_bonds_check(colloids_info_t * cinfo, int * nbondfound,
   range[X] = 1 + (ncell[X] == 2);
   range[Y] = 1 + (ncell[Y] == 2);
   range[Z] = 1 + (ncell[Z] == 2);
-  halo[X] = (cart_size(X) > 1 || range[X] == 1);
-  halo[Y] = (cart_size(Y) > 1 || range[Y] == 1);
-  halo[Z] = (cart_size(Z) > 1 || range[Z] == 1);
+  halo[X] = (mpi_cartsz[X] > 1 || range[X] == 1);
+  halo[Y] = (mpi_cartsz[Y] > 1 || range[Y] == 1);
+  halo[Z] = (mpi_cartsz[Z] > 1 || range[Z] == 1);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     ic1 = imax(1 - halo[X], ic - range[X]);

@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -98,6 +100,7 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
   info->nplanes = nplane;
   info->uy = uy_set;
 
+  cs_cartsz(cs, cartsz);
   lees_edw_create(pe, cs, info, &le);
 
   /*info("\nLees Edwards test (constant speed)...\n");
@@ -106,7 +109,7 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
   /*info("yes\n");*/
 
   /* info("Local number of planes set correctly... ");*/
-  nplane_local = nplane / cart_size(X);
+  nplane_local = nplane / cartsz[X];
   test_assert(lees_edw_nplane_local(le) == nplane_local);
   /* info("yes\n");*/
 
@@ -123,7 +126,6 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
   cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
-  cs_cartsz(cs, cartsz);
 
   lees_edw_comm(le, &comm);
 

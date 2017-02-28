@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,16 +33,19 @@ static int field_grad_init(field_grad_t * obj);
  *
  *****************************************************************************/
 
-__host__ int field_grad_create(field_t * f, int level, field_grad_t ** pobj) {
+__host__ int field_grad_create(pe_t * pe, field_t * f, int level,
+			       field_grad_t ** pobj) {
 
   field_grad_t * obj =  (field_grad_t *) NULL;
 
+  assert(pe);
   assert(f);
   assert(pobj);
 
   obj = (field_grad_t*) calloc(1, sizeof(field_grad_t));
-  if (obj == NULL) fatal("calloc(field_grad_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(field_grad_t) failed\n");
 
+  obj->pe = pe;
   obj->field = f;
   obj->level = level;
 
@@ -89,8 +92,8 @@ static int field_grad_init(field_grad_t * obj) {
     obj->grad = (double *) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
     obj->delsq = (double *) calloc(obj->nf*nsites, sizeof(double));
 
-    if (obj->grad == NULL) fatal("calloc(field_grad->grad) failed");
-    if (obj->delsq == NULL) fatal("calloc(field_grad->delsq) failed");
+    if (obj->grad == NULL) pe_fatal(obj->pe, "calloc(field_grad->grad) failed");
+    if (obj->delsq == NULL) pe_fatal(obj->pe, "calloc(field_grad->delsq) failed");
 
     /* Allocate data space on target (or alias) */
  
@@ -105,7 +108,7 @@ static int field_grad_init(field_grad_t * obj) {
 
   if (obj->level == 3) {
     obj->d_ab = (double*) calloc(NSYMM*obj->nf*nsites, sizeof(double));
-    if (obj->d_ab == NULL) fatal("calloc(fieldgrad->d_ab) failed\n");
+    if (obj->d_ab == NULL) pe_fatal(obj->pe, "calloc(fieldgrad->d_ab) failed\n");
 
     if (ndevice > 0) {
       targetCalloc((void **) &tmp, NSYMM*obj->nf*nsites*sizeof(double));
@@ -116,8 +119,8 @@ static int field_grad_init(field_grad_t * obj) {
   if (obj->level >= 4) {
     obj->grad_delsq = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
     obj->delsq_delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
-    if (obj->grad_delsq == NULL) fatal("calloc(grad->grad_delsq) failed");
-    if (obj->delsq_delsq == NULL) fatal("calloc(grad->delsq_delsq) failed");
+    if (obj->grad_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->grad_delsq) failed");
+    if (obj->delsq_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->delsq_delsq) failed");
 
     if (ndevice > 0) {
       targetCalloc((void **) &tmp, NVECTOR*obj->nf*nsites*sizeof(double));
@@ -174,7 +177,7 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
       copyFromTarget(obj->delsq, tmp, nsz);
       break;
     default:
-      fatal("Bad flag in field_memcpy\n");
+      pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
       break;
     }
   }

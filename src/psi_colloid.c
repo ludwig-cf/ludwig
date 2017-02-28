@@ -8,10 +8,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -122,6 +123,7 @@ int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
   double qtot;               /* net colloid charge */
   double vf;                 /* total volume of fluid */
   double rho, rhoi;          /* charge and countercharge densities */
+  double ltot[3];
 
   colloid_t * pc = NULL;
   MPI_Comm comm;
@@ -129,6 +131,7 @@ int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
   psi_nk(obj, &nk);
   assert(nk == 2);
 
+  cs_ltot(obj->cs, ltot);
   cs_cart_comm(obj->cs, &comm);
 
   colloids_info_q_local(cinfo, qvlocal);      /* 2 charge densities */
@@ -138,7 +141,7 @@ int psi_colloid_electroneutral(psi_t * obj, colloids_info_t * cinfo) {
 
   /* Volume of fluid, assuming no other solid is present */
 
-  vf = L(X)*L(Y)*L(Z) - qv[2];
+  vf = ltot[X]*ltot[Y]*ltot[Z] - qv[2];
 
   /* Net colloid charge is 'qtot'; the required countercharge density
    * is 'rhoi' */

@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2010-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -71,6 +73,7 @@ static int test_colloid_sums_1d(pe_t * pe) {
   int nlocal[3];
   int ncell[3];
 
+  double lmin[3];
   double r0[3];
   cs_t * cs = NULL;
 
@@ -83,6 +86,7 @@ static int test_colloid_sums_1d(pe_t * pe) {
   /* We use cells > 2 to prevent copies in directions other than dim_
    * when a call to colloids_halo_state() is made. */
 
+  cs_lmin(cs, lmin);
   cs_nlocal(cs, nlocal);
 
   dim_ = X;
@@ -90,9 +94,9 @@ static int test_colloid_sums_1d(pe_t * pe) {
   ncell[Y] = 3;
   ncell[Z] = 3;
 
-  r0[X] = Lmin(X) + 0.5;
-  r0[Y] = Lmin(Y) + 0.5*nlocal[Y];
-  r0[Z] = Lmin(Z) + 0.5*nlocal[Z];
+  r0[X] = lmin[X] + 0.5;
+  r0[Y] = lmin[Y] + 0.5*nlocal[Y];
+  r0[Z] = lmin[Z] + 0.5*nlocal[Z];
 
   test_colloid_sums_edge(pe, cs, ncell, r0);
 
@@ -103,16 +107,16 @@ static int test_colloid_sums_1d(pe_t * pe) {
   test_colloid_sums_edge(pe, cs, ncell, r0);
 
   dim_ = Y;
-  r0[X] = Lmin(X) + 0.5*nlocal[X];
-  r0[Y] = Lmin(Y) + 0.5;
-  r0[Z] = Lmin(Z) + 0.5*nlocal[Z];
+  r0[X] = lmin[X] + 0.5*nlocal[X];
+  r0[Y] = lmin[Y] + 0.5;
+  r0[Z] = lmin[Z] + 0.5*nlocal[Z];
 
   test_colloid_sums_edge(pe, cs, ncell, r0);
 
   dim_ = Z;
-  r0[X] = Lmin(X) + 0.5*nlocal[X];
-  r0[Y] = Lmin(Y) + 0.5*nlocal[Y];
-  r0[Z] = Lmin(Z) + 0.5;
+  r0[X] = lmin[X] + 0.5*nlocal[X];
+  r0[Y] = lmin[Y] + 0.5*nlocal[Y];
+  r0[Z] = lmin[Z] + 0.5;
 
   test_colloid_sums_edge(pe, cs, ncell, r0);
 

@@ -100,8 +100,8 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
   /* Override default PETSc communicator */
   PETSC_COMM_WORLD = new_comm;
 
- /* Create 3D distributed array */ 
-  nhalo = coords_nhalo();
+  /* Create 3D distributed array */ 
+  cs_nhalo(psi->cs, &nhalo);
 
   DMDACreate3d(PETSC_COMM_WORLD, \
 	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,	\
@@ -398,7 +398,7 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   ye = ys + yw;
   ze = zs + zw;
 
-  coords_nlocal_offset(noffset);
+  cs_nlocal_offset(obj->cs, noffset);
 
   /* 3D-operator with periodic BCs */
   for(k=zs; k<ze; k++){
@@ -422,10 +422,10 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	ic = (col[0].i + 1) - noffset[X];
 	jc = (col[0].j + 1) - noffset[Y];
 	kc = (col[0].k + 1) - noffset[Z];
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	fepsilon(fe, index, &eps); 
-	psi_grad_eps_d3qx((fe_t *) fe, fepsilon, index, grad_eps);
+	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 
@@ -468,10 +468,10 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	ic = (col[0].i + 1) - noffset[X];
 	jc = (col[0].j + 1) - noffset[Y];
 	kc = (col[0].k + 1) - noffset[Z];
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	fepsilon(fe, index, &eps); 
-	psi_grad_eps_d3qx((fe_t *) fe, fepsilon, index, grad_eps);
+	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 
@@ -522,10 +522,10 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	ic = (col[0].i + 1) - noffset[X];
 	jc = (col[0].j + 1) - noffset[Y];
 	kc = (col[0].k + 1) - noffset[Z];
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	fepsilon(fe, index, &eps); 
-	psi_grad_eps_d3qx((fe_t *) fe, fepsilon, index, grad_eps);
+	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
 
 	for (p = 0; p < PSI_NGRAD; p++){
 

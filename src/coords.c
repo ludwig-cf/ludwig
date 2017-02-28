@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,8 +25,6 @@
 static __host__ int cs_default_decomposition(cs_t * cs);
 static __host__ int cs_is_ok_decomposition(cs_t * cs);
 
-
-static cs_t * stat_ref = NULL;
 static __constant__ cs_param_t const_param;
 
 /*****************************************************************************
@@ -41,9 +41,9 @@ __host__ int cs_create(pe_t * pe, cs_t ** pcs) {
   assert(pcs);
 
   cs = (cs_t *) calloc(1, sizeof(cs_t));
-  if (cs == NULL) fatal("calloc(cs_t) failed\n");
+  if (cs == NULL) pe_fatal(pe, "calloc(cs_t) failed\n");
   cs->param = (cs_param_t *) calloc(1, sizeof(cs_param_t));
-  if (cs->param == NULL) fatal("calloc(cs_param_t) failed\n");
+  if (cs->param == NULL) pe_fatal(pe, "calloc(cs_param_t) failed\n");
 
   cs->pe = pe;
   pe_retain(cs->pe);
@@ -65,11 +65,12 @@ __host__ int cs_create(pe_t * pe, cs_t ** pcs) {
   cs->reorder = 1;
   cs->commcart = MPI_COMM_NULL;
   cs->commperiodic = MPI_COMM_NULL;
-  cs->param->lmin[X] = 0.5; cs->param->lmin[Y] = 0.5; cs->param->lmin[Z] = 0.5;
+  cs->param->lmin[X] = 0.5;
+  cs->param->lmin[Y] = 0.5;
+  cs->param->lmin[Z] = 0.5;
 
   cs->nref = 1;
   *pcs = cs;
-  stat_ref = cs;
 
   return 0;
 }
@@ -110,7 +111,6 @@ __host__ int cs_free(cs_t * cs) {
     pe_free(cs->pe);
     free(cs->param);
     free(cs);
-    stat_ref = NULL;
   }
 
   return 0;
@@ -130,22 +130,6 @@ __host__ int cs_target(cs_t * cs, cs_t ** target) {
   assert(target);
 
   *target = cs->target;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  cs_ref
- *
- *****************************************************************************/
-
-__host__ int cs_ref(cs_t ** ref) {
-
-  assert(stat_ref);
-  assert(ref);
-
-  *ref = stat_ref;
 
   return 0;
 }
@@ -490,7 +474,7 @@ static __host__ int cs_default_decomposition(cs_t * cs) {
   cs->param->mpi_cartsz[Z] = pe0[Z];
   
   if (cs_is_ok_decomposition(cs) == 0) {
-    fatal("No default decomposition available!\n");
+    pe_fatal(cs->pe, "No default decomposition available!\n");
   }
 
   return 0;
@@ -823,231 +807,5 @@ __host__ __device__ int cs_nall(cs_t * cs, int nall[3]) {
 
 __host__ int cs_cart_rank(cs_t * cs) {
   assert(cs);
-  return stat_ref->mpi_cartrank;
-}
-
-/*****************************************************************************
- *
- * Static interface schuedled for deletion.
- *
- *****************************************************************************/
-
-/*****************************************************************************
- *
- *  cart_size access function
- *
- *****************************************************************************/
-
-__host__ int cart_size(const int dim) {
-  assert(stat_ref);
-  return stat_ref->param->mpi_cartsz[dim];
-}
-
-/*****************************************************************************
- *
- *  cart_coords access function
- *
- *****************************************************************************/
-
-__host__ int cart_coords(const int dim) {
-  assert(stat_ref);
-  return stat_ref->param->mpi_cartcoords[dim];
-}
-
-/*****************************************************************************
- *
- *  cart_neighb access function
- *
- *****************************************************************************/
-
-__host__ int cart_neighb(const int dir, const int dim) {
-  assert(stat_ref);
-  return stat_ref->mpi_cart_neighbours[dir][dim];
-}
-
-/*****************************************************************************
- *
- *  Cartesian communicator
- *
- *****************************************************************************/
-
-__host__ MPI_Comm cart_comm() {
-  assert(stat_ref);
-  return stat_ref->commcart;
-}
-
-/*****************************************************************************
- *
- *  N_total access function
- *
- *****************************************************************************/
-
-__host__ int N_total(const int dim) {
-  assert(stat_ref);
-  assert(dim == X || dim == Y || dim == Z);
-  return stat_ref->param->ntotal[dim];
-}
-
-/*****************************************************************************
- *
- *  is_periodic
- *
- *****************************************************************************/
-
-__host__ int is_periodic(const int dim) {
-  assert(dim == X || dim == Y || dim == Z);
-  assert(stat_ref);
-  return stat_ref->param->periodic[dim];
-}
-
-/*****************************************************************************
- *
- *  L access function
- *
- *****************************************************************************/
-
-__host__ double L(const int dim) {
-  assert(dim == X || dim == Y || dim == Z);
-  assert(stat_ref);
-  return ((double) stat_ref->param->ntotal[dim]);
-}
-
-/*****************************************************************************
- *
- *  Lmin access function
- *
- *****************************************************************************/
-
-__host__ double Lmin(const int dim) {
-  assert(dim == X || dim == Y || dim == Z);
-  assert(stat_ref);
-  return stat_ref->param->lmin[dim];
-}
-
-/*****************************************************************************
- *
- *  coords_nlocal
- *
- *  These quantities are used in performance-critical regions, so
- *  the strategy at the moment is to unload the 3-vector into a
- *  local array via these functions when required.
- *
- *****************************************************************************/
-
-__host__ void coords_nlocal(int n[3]) {
-
-  assert(stat_ref);
-  cs_nlocal(stat_ref, n);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  coords_nsites
- *
- *  Return the total number of lattice sites, including the
- *  halo regions.
- *
- *****************************************************************************/
-
-__host__ int coords_nsites(void) {
-
-  assert(stat_ref);
-
-  return stat_ref->param->nsites;
-}
-
-/*****************************************************************************
- *
- *  coords_nlocal_offset
- *
- *  For the local domain, return the location of the first latttice
- *  site in the global domain.
- *
- *****************************************************************************/
-
-__host__ void coords_nlocal_offset(int n[3]) {
-
-  assert(stat_ref);
-
-  cs_nlocal_offset(stat_ref, n);
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  coords_index
- *
- *  Compute the one-dimensional index from coordinates ic, jc, kc.
- *
- *****************************************************************************/
-
-__host__ int coords_index(const int ic, const int jc, const int kc) {
-
-  assert(stat_ref);
-
-  return cs_index(stat_ref, ic, jc, kc);
-}
-
-
-/*****************************************************************************
- *
- *  coords_nhalo
- *
- *****************************************************************************/
-
-__host__ int coords_nhalo(void) {
-  assert(stat_ref);
-  return stat_ref->param->nhalo;
-}
-
-/*****************************************************************************
- *
- *  coords_ntotal
- *
- *****************************************************************************/
-
-__host__ int coords_ntotal(int ntotal[3]) {
-
-  assert(stat_ref);
-  cs_ntotal(stat_ref, ntotal);
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  coords_minimum_distance
- *
- *  Returns the minimum image separation r1 -> r2 (in that direction)
- *  in periodic boundary conditions.
- *
- *****************************************************************************/
-
-__host__ void coords_minimum_distance(const double r1[3], const double r2[3],
-				      double r12[3]) {
-
-  assert(stat_ref);
-  cs_minimum_distance(stat_ref, r1, r2, r12);
-  return;
-}
-
-/*****************************************************************************
- *
- *  coords_index_to_ijk
- *
- *  For given local index, return the corresponding local (ic,jc,kc)
- *  coordinates.
- *
- *****************************************************************************/
-
-__host__ void coords_index_to_ijk(const int index, int coords[3]) {
-
-  assert(stat_ref);
-  cs_index_to_ijk(stat_ref, index, coords);
-
-  return;
+  return cs->mpi_cartrank;
 }

@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -75,6 +77,7 @@ int test_psi_sor_suite(void) {
 
 static int do_test_sor1(pe_t * pe) {
 
+  int mpi_cartsz[3];
   cs_t * cs = NULL;
   psi_t * psi = NULL;
 
@@ -83,6 +86,8 @@ static int do_test_sor1(pe_t * pe) {
   cs_create(pe, &cs);
   cs_nhalo_set(cs, 1);
   cs_init(cs);
+
+  cs_cartsz(cs, mpi_cartsz);
 
   psi_create(pe, cs, 2, &psi);
   assert(psi);
@@ -95,7 +100,7 @@ static int do_test_sor1(pe_t * pe) {
   psi_halo_rho(psi);
   psi_sor_poisson(psi);
 
-  if (cart_size(Z) == 1) test_charge1_exact(psi, fepsilon_constant);
+  if (mpi_cartsz[Z] == 1) test_charge1_exact(psi, fepsilon_constant);
 
   /* Varying permeativity */
 
@@ -132,17 +137,25 @@ static int test_charge1_set(psi_t * psi) {
   int nk;
   int ic, jc, kc, index;
   int nlocal[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   
+  double ltot[3];
   double rho0, rho1;
 
   double rho_min[4];  /* For psi_stats */
   double rho_max[4];  /* For psi_stats */
   double rho_tot[4];  /* For psi_stats */
+  MPI_Comm comm;
 
-  coords_nlocal(nlocal);
+  cs_ltot(psi->cs, ltot);
+  cs_nlocal(psi->cs, nlocal);
+  cs_cartsz(psi->cs, mpi_cartsz);
+  cs_cart_coords(psi->cs, mpi_cartcoords);
+  cs_cart_comm(psi->cs, &comm);
 
-  rho0 = 1.0 / (2.0*L(X)*L(Y));           /* Edge values */
-  rho1 = 1.0 / (L(X)*L(Y)*(L(Z) - 2.0));  /* Interior values */
+  rho0 = 1.0 / (2.0*ltot[X]*ltot[Y]);              /* Edge values */
+  rho1 = 1.0 / (ltot[X]*ltot[Y]*(ltot[Z] - 2.0));  /* Interior values */
 
   psi_nk(psi, &nk);
   assert(nk == 2);
@@ -153,7 +166,7 @@ static int test_charge1_set(psi_t * psi) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 
 	psi_psi_set(psi, index, 0.0);
 	psi_rho_set(psi, index, 0, 0.0);
@@ -164,12 +177,12 @@ static int test_charge1_set(psi_t * psi) {
 
   /* Now overwrite at the edges with rho0 */
 
-  if (cart_coords(Z) == 0) {
+  if (mpi_cartcoords[Z] == 0) {
 
     kc = 1;
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 
 	psi_rho_set(psi, index, 0, rho0);
 	psi_rho_set(psi, index, 1, 0.0);
@@ -177,12 +190,12 @@ static int test_charge1_set(psi_t * psi) {
     }
   }
 
-  if (cart_coords(Z) == cart_size(Z) - 1) {
+  if (mpi_cartcoords[Z] == mpi_cartsz[Z] - 1) {
 
     kc = nlocal[Z];
     for (ic = 1; ic <= nlocal[X]; ic++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 
 	psi_rho_set(psi, index, 0, rho0);
 	psi_rho_set(psi, index, 1, 0.0);
@@ -190,9 +203,9 @@ static int test_charge1_set(psi_t * psi) {
     }
   }
 
-  psi_stats_reduce(psi, rho_min, rho_max, rho_tot, 0, pe_comm());
+  psi_stats_reduce(psi, rho_min, rho_max, rho_tot, 0, comm);
 
-  if (pe_rank() == 0) {
+  if (pe_mpi_rank(psi->pe) == 0) {
     /* psi all zero */
     assert(fabs(rho_min[0] - 0.0) < DBL_EPSILON);
     assert(fabs(rho_max[0] - 0.0) < DBL_EPSILON);
@@ -267,18 +280,18 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   double * b = NULL;                   /* B is RHS / solution vector */
   double * c = NULL;                   /* Copy of the original RHS. */
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
 
-  assert(cart_size(Z) == 1);
+  /* assert(cart_size(Z) == 1); Rewrite elsewhere? */
   n = nlocal[Z];
 
   /* Compute and store the permeativity values for convenience */
 
   epsilon = (double *) calloc(n, sizeof(double));
-  if (epsilon == NULL) fatal("calloc(epsilon) failed\n");
+  if (epsilon == NULL) pe_fatal(obj->pe, "calloc(epsilon) failed\n");
 
   for (k = 0; k < n; k++) {
-    index = coords_index(1, 1, 1+k);
+    index = cs_index(obj->cs, 1, 1, 1+k);
     fepsilon(NULL, index, epsilon + k);
   }
 
@@ -287,9 +300,9 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   a = (double *) calloc(n*n, sizeof(double));
   b = (double *) calloc(n, sizeof(double));
   c = (double *) calloc(n, sizeof(double));
-  if (a == NULL) fatal("calloc(a) failed\n");
-  if (b == NULL) fatal("calloc(b) failed\n");
-  if (c == NULL) fatal("calloc(c) failed\n");
+  if (a == NULL) pe_fatal(obj->pe, "calloc(a) failed\n");
+  if (b == NULL) pe_fatal(obj->pe, "calloc(b) failed\n");
+  if (c == NULL) pe_fatal(obj->pe, "calloc(c) failed\n");
 
   /* Set tridiagonal elements for periodic solution for the
    * three-point stencil. The logic is to remove the perioidic end
@@ -315,7 +328,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   /* Set the right hand side and solve the linear system. */
 
   for (k = 0; k < n; k++) {
-    index = coords_index(1, 1, k + 1);
+    index = cs_index(obj->cs, 1, 1, k + 1);
     psi_rho_elec(obj, index, b + k);
     b[k] *= -1.0; /* Minus sign in RHS Poisson equation */
 
@@ -332,7 +345,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   psi0 = 0.0;
 
   for (k = 0; k < n; k++) {
-    index = coords_index(1, 1, 1+k);
+    index = cs_index(obj->cs, 1, 1, 1+k);
     psi_psi(obj, index, &psi);
     if (k == 0) psi0 = psi;
 
@@ -393,13 +406,19 @@ static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
  *****************************************************************************/
 
 static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon) {
-
+  assert(0);
+#ifdef OLD_SHIT
   int coords[3];
+  double ltot[3];
+  cs_t * cs = NULL;
   PI_DOUBLE(pi);
+  assert(0);
 
-  coords_index_to_ijk(index, coords);
+  cs_ref(&cs); /* SHIT */
+  cs_index_to_ijk(cs, index, coords);
+  cs_ltot(cs, ltot);
 
-  *epsilon = REF_PERMEATIVITY*sin(pi*(1.0*coords[Z] - 0.5)/L(Z));
-
+  *epsilon = REF_PERMEATIVITY*sin(pi*(1.0*coords[Z] - 0.5)/ltot[Z]);
+#endif
   return 0;
 }

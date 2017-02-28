@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -47,6 +49,8 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   double psi_0, psi_b;
   double sigma, sigma0;
   double phi[2];
+
+  cs_t * cs = NULL;
   physics_t * phys = NULL;
 
   /* This is not run in parallel, so assert it's serial.
@@ -54,17 +58,17 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
 
   assert(fe);
   assert(0); /* Check nf = 2 in refactored version */
-  assert(pe_size() == 1);
+  /* assert(pe_size() == 1);*/
 
   physics_ref(&phys);
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   /* We assume z = 1 is a reasonable choice for the background
    * free energy level, which we need to subtract to find the
    * excess. */
 
   kc = 1;
-  index = coords_index(ic, jc, kc);
+  index = cs_index(cs, ic, jc, kc);
   fe_surfactant1_fed(fe, index, &e0);
 
   assert(0); /* phi and psi required from relevant field */
@@ -82,7 +86,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
 
   for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-    index = coords_index(ic, jc, kc);
+    index = cs_index(cs, ic, jc, kc);
 
     fe_surfactant1_fed(fe, index, &e0);
     e = 0.0; /* Check what e should be. */
@@ -103,8 +107,9 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
 
   nt = physics_control_timestep(phys);
 
-  info("Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", nt,
-       sqrt(1.0*nt), psi_b, psi_0, sigma);
+  /* Move to fe_surf? */
+  pe_info(NULL, "Surfactant: %d %12.5e %12.5e %12.5e %12.5e\n", nt,
+	  sqrt(1.0*nt), psi_b, psi_0, sigma);
 
   return 0;
 }

@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2010-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
@@ -18,7 +20,7 @@
 #include "runtime.h"
 #include "surfactant.h"
 
-__host__ int fe_surfactant1_run_time(rt_t * rt,
+__host__ int fe_surfactant1_run_time(pe_t * pe, cs_t * cs, rt_t * rt,
 				     field_t * phi, field_grad_t * dphi,
 				     fe_surfactant1_t ** fe);
 

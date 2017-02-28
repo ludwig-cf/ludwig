@@ -11,7 +11,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -178,7 +178,7 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   fe->func->target(fe, &fe_target);

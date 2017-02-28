@@ -2,6 +2,7 @@
  *
  *  phi_stats.c
  *
+ *  TODO: a misnomer - rename to field_stats.c
  *  Order parameter statistics.
  *
  *  $Id: phi_stats.c,v 1.9 2010-10-15 12:40:03 kevin Exp $
@@ -9,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2008-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,6 +24,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "field_s.h"
 #include "util.h"
 #include "phi_stats.h"
 
@@ -48,7 +52,7 @@ int stats_field_info(field_t * obj, map_t * map) {
   field_nf(obj, &nf);
   assert(nf <= NQAB);
 
-  comm = pe_comm();
+  pe_mpi_comm(obj->pe, &comm);
   stats_field_reduce(obj, map, fmin, fmax, fsum, fvar, &fvol, 0, comm);
 
   rvol = 1.0 / fvol;
@@ -58,8 +62,8 @@ int stats_field_info(field_t * obj, map_t * map) {
     fbar = rvol*fsum[n];                 /* mean */
     f2   = rvol*fvar[n]  - fbar*fbar;    /* variance */
 
-    info("[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n", fsum[n], fbar, f2,
-	 fmin[n], fmax[n]);
+    pe_info(obj->pe, "[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n",
+	    fsum[n], fbar, f2, fmin[n], fmax[n]);
   }
 
   return 0;
@@ -95,7 +99,7 @@ int stats_field_info_bbl(field_t * obj, map_t * map, bbl_t * bbl) {
   field_nf(obj, &nf);
   assert(nf <= NQAB);
 
-  comm = pe_comm();
+  pe_mpi_comm(obj->pe, &comm);
   stats_field_reduce(obj, map, fmin, fmax, fsum, fvar, &fvol, 0, comm);
 
   /* BBL corrections to be added */
@@ -115,8 +119,8 @@ int stats_field_info_bbl(field_t * obj, map_t * map, bbl_t * bbl) {
     fbar = rvol*fsum[n];                 /* mean */
     f2   = rvol*fvar[n]  - fbar*fbar;    /* variance */
 
-    info("[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n", fsum[n], fbar, f2,
-	 fmin[n], fmax[n]);
+    pe_info(obj->pe, "[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n",
+	    fsum[n], fbar, f2, fmin[n], fmax[n]);
   }
 
   return 0;
@@ -195,7 +199,7 @@ int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
   assert(fsum);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
   field_nf(obj, &nf);
   assert(nf <= NQAB);
 
@@ -214,7 +218,7 @@ int stats_field_local(field_t * obj, map_t * map, double * fmin, double * fmax,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(obj->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 

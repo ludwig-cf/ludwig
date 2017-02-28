@@ -104,11 +104,12 @@ int advection_order(int * order) {
  *
  *****************************************************************************/
 
-__host__ int advflux_cs_create(cs_t * cs, int nf, advflux_t ** pobj) {
+__host__ int advflux_cs_create(pe_t * pe, cs_t * cs, int nf, advflux_t ** pobj) {
 
+  assert(pe);
   assert(cs);
 
-  return advflux_create(cs, NULL, nf, pobj);
+  return advflux_create(pe, cs, NULL, nf, pobj);
 }
 
 /*****************************************************************************
@@ -117,10 +118,13 @@ __host__ int advflux_cs_create(cs_t * cs, int nf, advflux_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ int advflux_le_create(lees_edw_t * le, int nf, advflux_t ** pobj) {
+__host__ int advflux_le_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
+			       advflux_t ** pobj) {
 
+  assert(pe);
+  assert(cs);
   assert(le);
-  return advflux_create(NULL, le, nf, pobj);
+  return advflux_create(pe, cs, le, nf, pobj);
 }
 
 /*****************************************************************************
@@ -129,7 +133,7 @@ __host__ int advflux_le_create(lees_edw_t * le, int nf, advflux_t ** pobj) {
  *
  *****************************************************************************/
 
-__host__ int advflux_create(cs_t * cs, lees_edw_t * le, int nf,
+__host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
 			    advflux_t ** pobj) {
 
   int ndevice;
@@ -137,15 +141,17 @@ __host__ int advflux_create(cs_t * cs, lees_edw_t * le, int nf,
   double * tmp;
   advflux_t * obj = NULL;
 
-  assert(cs || le);
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (advflux_t *) calloc(1, sizeof(advflux_t));
-  if (obj == NULL) fatal("calloc(advflux) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(advflux) failed\n");
 
   if (cs) cs_nsites(cs, &nsites);
   if (le) lees_edw_nsites(le, &nsites);
 
+  obj->pe = pe;
   obj->cs = cs;
   obj->le = le;
   obj->nf = nf;
@@ -156,10 +162,10 @@ __host__ int advflux_create(cs_t * cs, lees_edw_t * le, int nf,
   obj->fy = (double *) calloc(nsites*nf, sizeof(double));
   obj->fz = (double *) calloc(nsites*nf, sizeof(double));
 
-  if (obj->fe == NULL) fatal("calloc(advflux->fe) failed\n");
-  if (obj->fw == NULL) fatal("calloc(advflux->fw) failed\n");
-  if (obj->fy == NULL) fatal("calloc(advflux->fy) failed\n");
-  if (obj->fz == NULL) fatal("calloc(advflux->fz) failed\n");
+  if (obj->fe == NULL) pe_fatal(pe, "calloc(advflux->fe) failed\n");
+  if (obj->fw == NULL) pe_fatal(pe, "calloc(advflux->fw) failed\n");
+  if (obj->fy == NULL) pe_fatal(pe, "calloc(advflux->fy) failed\n");
+  if (obj->fz == NULL) pe_fatal(pe, "calloc(advflux->fz) failed\n");
 
 
   /* Allocate target copy of structure (or alias) */
@@ -296,7 +302,7 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
     advection_le_5th(obj, hydro, nf, field->data);
     break; 
   default:
-    fatal("Unexpected advection scheme order\n");
+    pe_fatal(obj->pe, "Unexpected advection scheme order\n");
   }
   TIMER_stop(ADVECTION_X_KERNEL);
 
@@ -322,7 +328,7 @@ __host__ int advection_le_1st(advflux_t * flux, hydro_t * hydro,
   assert(hydro);
   assert(field);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(flux->cs, nlocal);
 
   /* Limits */
 
@@ -330,7 +336,7 @@ __host__ int advection_le_1st(advflux_t * flux, hydro_t * hydro,
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(advection_le_1st_kernel, nblk, ntpb, ctxt->target,
@@ -481,7 +487,7 @@ __host__ int advection_le_2nd(advflux_t * flux, hydro_t * hydro,
   assert(hydro);
   assert(field);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(flux->cs, nlocal);
 
   /* Limits */
 
@@ -489,7 +495,7 @@ __host__ int advection_le_2nd(advflux_t * flux, hydro_t * hydro,
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(advection_2nd_kernel_v, nblk, ntpb, ctxt->target,
@@ -745,15 +751,14 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
   assert(flux);
   assert(hydro);
   assert(field->data);
-  assert(coords_nhalo() >= 2);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(flux->cs, nlocal);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   if (flux->le) {
@@ -1476,114 +1481,6 @@ static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 
 /*****************************************************************************
  *
- *  advective_fluxes
- *
- *  General routine for nf fields at starting address f.
- *  No Lees Edwards boundaries.
- *
- *  The storage of the field(s) for all the related routines is
- *  assumed to be f[index][nf], where index is the spatial index.
- *
- *****************************************************************************/
-
-int advective_fluxes(hydro_t * hydro, int nf, double * f, double * fe,
-		     double * fy, double * fz) {
-
-  assert(hydro);
-  assert(nf > 0);
-  assert(f);
-  assert(fe);
-  assert(fy);
-  assert(fz);
-
-  advective_fluxes_2nd(hydro, nf, f, fe, fy, fz);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  advective_fluxes_2nd
- *
- *  'Centred difference' advective fluxes. No LE planes.
- *
- *  Symmetric two-point stencil.
- *
- *  TODO:
- *  The assert(0) indicates there is no path to this code.
- *  Could be refactored.
- *
- *****************************************************************************/
-
-int advective_fluxes_2nd(hydro_t * hydro, int nf, double * f, double * fe,
-			 double * fy, double * fz) {
-  int nlocal[3];
-  int ic, jc, kc;
-  int n;
-  int index0, index1;
-  double u0[3], u1[3], u;
-
-  assert(0); /* NO TEST */
-  assert(hydro);
-  assert(nf > 0);
-  assert(f);
-  assert(fe);
-  assert(fy);
-  assert(fz);
-
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
-
-  for (ic = 0; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index0 = coords_index(ic, jc, kc);
-	hydro_u(hydro, index0, u0);
-
-	/* east face (ic and icp1) */
-
-	index1 = coords_index(ic+1, jc, kc);
-
-	hydro_u(hydro, index1, u1);
-	u = 0.5*(u0[X] + u1[X]);
-
-	for (n = 0; n < nf; n++) {
-	  fe[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-
-	/* y direction */
-
-	index1 = coords_index(ic, jc+1, kc);
-
-	hydro_u(hydro, index1, u1);
-	u = 0.5*(u0[Y] + u1[Y]);
-
-	for (n = 0; n < nf; n++) {
-	  fy[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-
-	/* z direction */
-
-	index1 = coords_index(ic, jc, kc+1);
-
-	hydro_u(hydro, index1, u1);
-	u = 0.5*(u0[Z] + u1[Z]);
-
-	for (n = 0; n < nf; n++) {
-	  fz[nf*index0 + n] = u*0.5*(f[nf*index1 + n] + f[nf*index0 + n]);
-	}
-
-	/* Next site */
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  advective_fluxes_d3qx
  *
  *  General routine for nf fields at starting address f.
@@ -1612,6 +1509,7 @@ int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f,
  *  advective_fluxes_2nd_d3qx
  *
  *  'Centred difference' advective fluxes. No LE planes.
+ *  TODO: belongs to Nernst Planck.
  *
  *  Symmetric two-point stencil.
  *
@@ -1624,34 +1522,37 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
   int ic, jc, kc, c;
   int n;
   int index0, index1;
+  int nsites;
   double u0[3], u1[3], u;
 
   assert(hydro);
+  assert(hydro->cs);
   assert(nf > 0);
   assert(f);
   assert(flx);
 
-  coords_nlocal(nlocal);
-  assert(coords_nhalo() >= 1);
+  cs_nlocal(hydro->cs, nlocal);
+  cs_nsites(hydro->cs, &nsites);
+  /* assert(nhalo >= 1); */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = cs_index(hydro->cs, ic, jc, kc);
 	hydro_u(hydro, index0, u0);
 
         for (c = 1; c < PSI_NGRAD; c++) {
 
-	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  index1 = cs_index(hydro->cs, ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  hydro_u(hydro, index1, u1);
 
 	  u = 0.5*((u0[X] + u1[X])*psi_gr_cv[c][X] + (u0[Y] + u1[Y])*psi_gr_cv[c][Y] + (u0[Z] + u1[Z])*psi_gr_cv[c][Z]);
 
 	  for (n = 0; n < nf; n++) {
-	    flx[addr_rank1(coords_nsites(), nf, index0, n)][c - 1]
-	      = u*0.5*(f[addr_rank1(coords_nsites(), nf, index1, n)]
-		       + f[addr_rank1(coords_nsites(), nf, index0, n)]);
+	    flx[addr_rank1(nsites, nf, index0, n)][c - 1]
+	      = u*0.5*(f[addr_rank1(nsites, nf, index1, n)]
+		       + f[addr_rank1(nsites, nf, index0, n)]);
 	  }
 	}
 

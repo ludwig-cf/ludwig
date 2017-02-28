@@ -21,8 +21,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2007-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -336,6 +338,7 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
 
   long int offset;
   int ifo, jfo, kfo;
+  int ntotal[3];
   int noffset[3];
 
   assert(info);
@@ -352,11 +355,12 @@ static long int io_file_offset(int ic, int jc, io_info_t * info) {
   /* Single file offset */
 
   if (info->single_file_read) {
+    cs_ntotal(info->cs, ntotal);
     cs_nlocal_offset(info->cs, noffset);
     ifo = noffset[X] + ic - 1;
     jfo = noffset[Y] + jc - 1;
     kfo = noffset[Z];
-    offset = info->bytesize*(ifo*N_total(Y)*N_total(Z) + jfo*N_total(Z) + kfo);
+    offset = info->bytesize*(ifo*ntotal[Y]*ntotal[Z] + jfo*ntotal[Z] + kfo);
   }
 
   return offset;
@@ -590,7 +594,7 @@ int io_info_format_in_set(io_info_t * obj, int form_in) {
     obj->processor_independent = 0;
     break;
   default:
-    fatal("Bad i/o input format\n");
+    pe_fatal(obj->pe, "Bad i/o input format\n");
   }
 
   return 0;
@@ -623,7 +627,7 @@ int io_info_format_out_set(io_info_t * obj, int form_out) {
     obj->processor_independent = 0;
     break;
   default:
-    fatal("Bad i/o output format\n");
+    pe_fatal(obj->pe, "Bad i/o output format\n");
   }
 
   return 0;

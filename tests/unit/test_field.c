@@ -31,7 +31,7 @@ static int do_test1(pe_t * pe);
 static int do_test3(pe_t * pe);
 static int do_test5(pe_t * pe);
 static int do_test_io(pe_t * pe, int nf, int io_format);
-static int test_field_halo(field_t * phi);
+static int test_field_halo(cs_t * cs, field_t * phi);
 
 int do_test_device1(pe_t * pe);
 
@@ -94,7 +94,7 @@ static int do_test0(pe_t * pe) {
   field_init(phi, nhalo, NULL);
 
   /* Halo */
-  test_field_halo(phi);
+  test_field_halo(cs, phi);
 
   field_free(phi);
   cs_free(cs);
@@ -152,7 +152,7 @@ int do_test1(pe_t * pe) {
   assert(fabs(value - ref) < DBL_EPSILON);
 
   /* Halo */
-  test_field_halo(phi);
+  test_field_halo(cs, phi);
 
   field_free(phi);
   cs_free(cs);
@@ -212,6 +212,7 @@ __global__ void do_test_field_kernel1(field_t * phi) {
 
   int nf;
   int index = 1;
+  int nsites;
   double q;
   double qref = 1.2;
 
@@ -219,7 +220,9 @@ __global__ void do_test_field_kernel1(field_t * phi) {
 
   field_nf(phi, &nf);
   assert(nf == 1);
-  assert(phi->nsites == 314432);
+
+  cs_nsites(phi->cs, &nsites);
+  assert(phi->nsites == nsites);
 
   field_scalar_set(phi, index, qref);
   field_scalar(phi, index, &q);
@@ -275,7 +278,7 @@ static int do_test3(pe_t * pe) {
   assert(fabs(array[2] - ref[2]) < DBL_EPSILON);
 
   /* Halo */
-  test_field_halo(phi);
+  test_field_halo(cs, phi);
 
   field_free(phi);
   cs_free(cs);
@@ -340,7 +343,7 @@ static int do_test5(pe_t * pe) {
   assert(fabs(array[YZ] - qref[Y][Z]) < DBL_EPSILON);
 
   /* Halo */
-  test_field_halo(phi);
+  test_field_halo(cs, phi);
 
   field_free(phi);
   cs_free(cs);
@@ -354,17 +357,17 @@ static int do_test5(pe_t * pe) {
  *
  *****************************************************************************/
 
-static int test_field_halo(field_t * phi) {
+static int test_field_halo(cs_t * cs, field_t * phi) {
 
   assert(phi);
   
-  test_coords_field_set(phi->nf, phi->data, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, phi->nf, phi->data, MPI_DOUBLE, test_ref_double1);
   field_memcpy(phi, cudaMemcpyHostToDevice);
  
   field_halo_swap(phi, FIELD_HALO_TARGET);
 
   field_memcpy(phi, cudaMemcpyDeviceToHost);
-  test_coords_field_check(phi->nhcomm, phi->nf, phi->data, MPI_DOUBLE,
+  test_coords_field_check(cs, phi->nhcomm, phi->nf, phi->data, MPI_DOUBLE,
 			  test_ref_double1);
 
   return 0;
@@ -393,7 +396,6 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   cs_create(pe, &cs);
   cs_init(cs);
   cs_nhalo(cs, &nhalo);
-
   cs_cart_comm(cs, &comm);
 
   if (pe_mpi_size(pe) == 8) {
@@ -407,7 +409,7 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   field_init(phi, nhalo, NULL);
   field_init_io_info(phi, grid, io_format, io_format); 
 
-  test_coords_field_set(nf, phi->data, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, nf, phi->data, MPI_DOUBLE, test_ref_double1);
   field_io_info(phi, &iohandler);
   assert(iohandler);
 
@@ -425,9 +427,9 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   io_read_data(iohandler, filename, phi);
 
   field_halo(phi);
-  test_coords_field_check(0, nf, phi->data, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, 0, nf, phi->data, MPI_DOUBLE, test_ref_double1);
 
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "phi-test");
 

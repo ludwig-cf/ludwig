@@ -7,14 +7,18 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef LUDWIG_POLAR_ACTIVE_H
 #define LUDWIG_POLAR_ACTIVE_H
 
+#include "pe.h"
+#include "coords.h"
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
@@ -36,7 +40,8 @@ struct fe_polar_param_s {
 };
 
 
-__host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe);
+__host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
+			     field_grad_t * dp, fe_polar_t ** fe);
 __host__ int fe_polar_free(fe_polar_t * fe);
 __host__ int fe_polar_param_set(fe_polar_t * fe, fe_polar_param_t values);
 __host__ int fe_polar_param_commit(fe_polar_t * fe);

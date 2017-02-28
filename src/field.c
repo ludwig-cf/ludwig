@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -69,12 +69,12 @@ __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
   assert(pobj);
 
   obj = (field_t *) calloc(1, sizeof(field_t));
-  if (obj == NULL) fatal("calloc(obj) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(obj) failed\n");
 
   obj->nf = nf;
 
   obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
-  if (obj->name == NULL) fatal("calloc(name) failed\n");
+  if (obj->name == NULL) pe_fatal(pe, "calloc(name) failed\n");
 
   assert(strlen(name) < BUFSIZ);
   strncpy(obj->name, name, strlen(name));
@@ -152,8 +152,14 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   obj->le = le;
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
+#ifdef OLD_DATA
   obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
   if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
+#else
+  obj->data = (double *) mem_aligned_calloc(MEM_PAGESIZE, obj->nf*nsites,
+					    sizeof(double));
+  if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
+#endif
 
   /* Allocate target copy of structure (or alias) */
 
@@ -371,9 +377,11 @@ __host__ int field_leesedwards(field_t * obj) {
   int ic;        /* Index corresponding x location in real system */
   int jc, kc, n;
   int index, index0, index1, index2, index3;
+  int mpi_cartsz[3];
 
   double dy;     /* Displacement for current ic->ib pair */
   double fr;     /* Fractional displacement */
+  double ltot[3];
   const double r6 = (1.0/6.0);
 
   int jdy;               /* Integral part of displacement */
@@ -384,7 +392,10 @@ __host__ int field_leesedwards(field_t * obj) {
 
   if (obj->le == NULL) return 0;
 
-  if (cart_size(Y) > 1) {
+  cs_ltot(obj->cs, ltot);
+  cs_cartsz(obj->cs, mpi_cartsz);
+
+  if (mpi_cartsz[Y] > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);
   }
@@ -402,7 +413,7 @@ __host__ int field_leesedwards(field_t * obj) {
       ic = lees_edw_ibuff_to_real(obj->le, ib);
 
       lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = 1.0 - (dy - jdy);
 
@@ -470,9 +481,11 @@ static int field_leesedwards_parallel(field_t * obj) {
   int nhalo;
   int jdy;                 /* Integral part of displacement */
   int index;
+  int ntotal[3];
 
   double dy;               /* Displacement for current ic->ib pair */
   double fr;               /* Fractional displacement */
+  double ltot[3];
   const double r6 = (1.0/6.0);
 
   int      nsend;          /* Send buffer size */
@@ -494,8 +507,10 @@ static int field_leesedwards_parallel(field_t * obj) {
   assert(obj->le);
 
   field_nf(obj, &nf);
+  cs_ltot(obj->cs, ltot);
   cs_nhalo(obj->cs, &nhalo);
   cs_nlocal(obj->cs, nlocal);
+  cs_ntotal(obj->cs, ntotal);
   cs_nlocal_offset(obj->cs, noffset);
   ib0 = nlocal[X] + nhalo + 1;
 
@@ -510,8 +525,8 @@ static int field_leesedwards_parallel(field_t * obj) {
   sendbuf = (double *) malloc(nsend*sizeof(double));
   recvbuf = (double *) malloc(nrecv*sizeof(double));
 
-  if (sendbuf == NULL) fatal("malloc(sendbuf) failed\n");
-  if (recvbuf == NULL) fatal("malloc(recvbuf) failed\n");
+  if (sendbuf == NULL) pe_fatal(obj->pe, "malloc(sendbuf) failed\n");
+  if (recvbuf == NULL) pe_fatal(obj->pe, "malloc(recvbuf) failed\n");
 
   /* One round of communication for each buffer plane */
 
@@ -523,18 +538,18 @@ static int field_leesedwards_parallel(field_t * obj) {
     /* Work out the displacement-dependent quantities */
 
     lees_edw_buffer_dy(obj->le, ib, 0.0, &dy);
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = 1.0 - (dy - jdy);
     /* In the real system the first point we require is
      * j1 = jc - jdy - 3
      * with jc = noffset[Y] + 1 - nhalo in the global coordinates.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y) */
+     * Modular arithmetic ensures 1 <= j1 <= ntotal[Y] */
 
     jc = noffset[Y] + 1 - nhalo;
-    j1 = 1 + (jc - jdy - 3 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 3 + 2*ntotal[Y]) % ntotal[Y];
     assert(j1 >= 1);
-    assert(j1 <= N_total(Y));
+    assert(j1 <= ntotal[Y]);
 
     lees_edw_jstart_to_mpi_ranks(obj->le, j1, nrank_s, nrank_r);
 
@@ -827,7 +842,9 @@ static int field_read(FILE * fp, int index, void * self) {
   assert(obj->nf <= NQAB);
 
   n = fread(array, sizeof(double), obj->nf, fp);
-  if (n != obj->nf) fatal("fread(field) failed at index %d", index);
+  if (n != obj->nf) {
+    pe_fatal(obj->pe, "fread(field) failed at index %d", index);
+  }
 
   field_scalar_array_set(obj, index, array);
 
@@ -852,7 +869,9 @@ static int field_read_ascii(FILE * fp, int index, void * self) {
 
   for (n = 0; n < obj->nf; n++) {
     nread = fscanf(fp, "%le", array + n);
-    if (nread != 1) fatal("fscanf(field) failed at index %d\n", index);
+    if (nread != 1) {
+      pe_fatal(obj->pe, "fscanf(field) failed at index %d\n", index);
+    }
   }
 
   field_scalar_array_set(obj, index, array);
@@ -879,7 +898,9 @@ static int field_write(FILE * fp, int index, void * self) {
   field_scalar_array(obj, index, array);
 
   n = fwrite(array, sizeof(double), obj->nf, fp);
-  if (n != obj->nf) fatal("fwrite(field) failed at index %d\n", index);
+  if (n != obj->nf) {
+    pe_fatal(obj->pe, "fwrite(field) failed at index %d\n", index);
+  }
 
   return 0;
 }
@@ -904,12 +925,15 @@ static int field_write_ascii(FILE * fp, int index, void * self) {
 
   for (n = 0; n < obj->nf; n++) {
     nwrite = fprintf(fp, "%22.15e ", array[n]);
-    if (nwrite != 23) fatal("fprintf(%s) failed at index %d\n", obj->name,
-			    index);
+    if (nwrite != 23) {
+      pe_fatal(obj->pe, "fprintf(%s) failed at index %d\n", obj->name, index);
+    }
   }
 
   nwrite = fprintf(fp, "\n");
-  if (nwrite != 1) fatal("fprintf(%s) failed at index %d\n", obj->name, index);
+  if (nwrite != 1) {
+    pe_fatal(obj->pe, "fprintf(%s) failed at index %d\n", obj->name, index);
+  }
 
   return 0;
 }

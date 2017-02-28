@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,7 +22,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "field.h"
+#include "field_s.h"
 #include "advection_s.h"
 #include "leslie_ericksen.h"
 
@@ -80,7 +82,7 @@ int leslie_ericksen_update(cs_t * cs, fe_polar_t * fe, field_t * p,
 
   field_nf(p, &nf);
   assert(nf == NVECTOR);
-  advflux_cs_create(cs, nf, &flux);
+  advflux_cs_create(p->pe, cs, nf, &flux); /* TODO: remove p->pe */
 
   if (hydro) {
     if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(p, hydro);
@@ -127,7 +129,7 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
   assert(flux);
 
   fe_polar_param(fe, &param);
-  coords_nlocal(nlocal);
+  cs_nlocal(flux->cs, nlocal);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -139,7 +141,7 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(flux->cs, ic, jc, kc);
 	field_vector(fp, index, p);
 	fe_polar_mol_field(fe, index, h);
 	if (hydro) hydro_u_gradient_tensor(hydro, ic, jc, kc, w);
@@ -158,8 +160,8 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
 
 	/* update */
 
-	indexj = coords_index(ic, jc-1, kc);
-	indexk = coords_index(ic, jc, kc-1);
+	indexj = cs_index(flux->cs, ic, jc-1, kc);
+	indexk = cs_index(flux->cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
 
@@ -168,12 +170,12 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
 	    sum += param.lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
 	  }
 
-	  p[ia] += dt*(- flux->fe[addr_rank1(coords_nsites(), 3, index,  ia)]
-		       + flux->fw[addr_rank1(coords_nsites(), 3, index,  ia)]
-		       - flux->fy[addr_rank1(coords_nsites(), 3, index,  ia)]
-		       + flux->fy[addr_rank1(coords_nsites(), 3, indexj, ia)]
-		       - flux->fz[addr_rank1(coords_nsites(), 3, index,  ia)]
-		       + flux->fz[addr_rank1(coords_nsites(), 3, indexk, ia)]
+	  p[ia] += dt*(- flux->fe[addr_rank1(flux->nsite, 3, index,  ia)]
+		       + flux->fw[addr_rank1(flux->nsite, 3, index,  ia)]
+		       - flux->fy[addr_rank1(flux->nsite, 3, index,  ia)]
+		       + flux->fy[addr_rank1(flux->nsite, 3, indexj, ia)]
+		       - flux->fz[addr_rank1(flux->nsite, 3, index,  ia)]
+		       + flux->fz[addr_rank1(flux->nsite, 3, indexk, ia)]
 		       + sum + Gamma_*h[ia]);
 	}
 
@@ -205,13 +207,13 @@ static int leslie_ericksen_add_swimming_velocity(field_t * fp,
   assert(fp);
   assert(hydro);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(fp->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(fp->cs, ic, jc, kc);
 	field_vector(fp, index, p);
 	hydro_u(hydro, index, u);
 

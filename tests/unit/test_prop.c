@@ -6,9 +6,11 @@
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- * 
+ *
+ *  (c) 2010-2017 Ths University of Edinburgh
+ *
+ *  Contributing authors: 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 Ths University of Edinburgh
  *
  *****************************************************************************/
 
@@ -42,11 +44,19 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  do_test_velocity(pe, cs, LB_HALO_FULL);
-  do_test_velocity(pe, cs, LB_HALO_REDUCED);
+  if (NSIMDVL == 1 && DATA_MODEL != DATA_MODEL_AOS) { 
+    do_test_velocity(pe, cs, LB_HALO_FULL);
+    do_test_velocity(pe, cs, LB_HALO_REDUCED);
 
-  do_test_source_destination(pe, cs, LB_HALO_FULL);
-  do_test_source_destination(pe, cs, LB_HALO_REDUCED);
+    do_test_source_destination(pe, cs, LB_HALO_FULL);
+    do_test_source_destination(pe, cs, LB_HALO_REDUCED);
+  }
+
+  do_test_velocity(pe, cs, LB_HALO_HOST);
+  do_test_velocity(pe, cs, LB_HALO_TARGET);
+
+  do_test_source_destination(pe, cs, LB_HALO_HOST);
+  do_test_source_destination(pe, cs, LB_HALO_TARGET);
 
   pe_info(pe, "PASS     ./unit/test_prop\n");
   cs_free(cs);
@@ -83,7 +93,6 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   lb_ndist_set(lb, ndist);
   lb_init(lb);
-  lb_halo_set(lb, halo);
   lb_nvel(lb, &nvel);
 
   cs_nlocal(cs, nlocal);
@@ -107,7 +116,7 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   }
 
   lb_memcpy(lb, cudaMemcpyHostToDevice);
-  lb_halo(lb);
+  lb_halo_swap(lb, halo);
   lb_propagation(lb);
   lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
@@ -148,12 +157,14 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   int nlocal[3], offset[3];
+  int ntotal[3];
   int ic, jc, kc, index, p;
   int nd;
   int ndist = 2;
   int nvel;
   int isource, jsource, ksource;
   double f_actual, f_expect;
+  double ltot[3];
 
   lb_t * lb = NULL;
 
@@ -164,9 +175,10 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   assert(lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
-  lb_halo_set(lb, halo);
   lb_nvel(lb, &nvel);
 
+  cs_ltot(cs, ltot);
+  cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, offset);
 
@@ -178,8 +190,8 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
 	index = cs_index(cs, ic, jc, kc);
 
-	f_actual = L(Y)*L(Z)*(offset[X] + ic) + L(Z)*(offset[Y] + jc) +
-	  (offset[Z] + kc);
+	f_actual = ltot[Y]*ltot[Z]*(offset[X] + ic) +
+	  ltot[Z]*(offset[Y] + jc) + (offset[Z] + kc);
 
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {
@@ -192,7 +204,7 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   }
 
   lb_memcpy(lb, cudaMemcpyHostToDevice);
-  lb_halo(lb);
+  lb_halo_swap(lb, halo);
   lb_propagation(lb);
   lb_memcpy(lb, cudaMemcpyDeviceToHost);
 
@@ -207,16 +219,16 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	for (nd = 0; nd < ndist; nd++) {
 	  for (p = 0; p < nvel; p++) {
 	    isource = offset[X] + ic - cv[p][X];
-	    if (isource == 0) isource += N_total(X);
-	    if (isource == N_total(X) + 1) isource = 1;
+	    if (isource == 0) isource += ntotal[X];
+	    if (isource == ntotal[X] + 1) isource = 1;
 	    jsource = offset[Y] + jc - cv[p][Y];
-	    if (jsource == 0) jsource += N_total(Y);
-	    if (jsource == N_total(Y) + 1) jsource = 1;
+	    if (jsource == 0) jsource += ntotal[Y];
+	    if (jsource == ntotal[Y] + 1) jsource = 1;
 	    ksource = offset[Z] + kc - cv[p][Z];
-	    if (ksource == 0) ksource += N_total(Z);
-	    if (ksource == N_total(Z) + 1) ksource = 1;
+	    if (ksource == 0) ksource += ntotal[Z];
+	    if (ksource == ntotal[Z] + 1) ksource = 1;
 
-	    f_expect = L(Y)*L(Z)*isource + L(Z)*jsource + ksource;
+	    f_expect = ltot[Y]*ltot[Z]*isource + ltot[Z]*jsource + ksource;
 	    lb_f(lb, index, p, nd, &f_actual);
 
 	    /* In case of d2q9, propagation is only for kc = 1 */

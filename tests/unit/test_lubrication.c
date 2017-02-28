@@ -7,10 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
  *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -23,8 +23,8 @@
 #include "lubrication.h"
 #include "tests.h"
 
-int test_lubrication_ss_fnorm(void);
-int test_lubrication_ss_ftang(void);
+int test_lubrication_ss_fnorm(pe_t * pe, cs_t * cs);
+int test_lubrication_ss_ftang(pe_t * pe, cs_t * cs);
 
 /*****************************************************************************
  *
@@ -43,8 +43,8 @@ int test_lubrication_suite(void) {
   cs_init(cs);
   physics_create(pe, &physics);
 
-  test_lubrication_ss_fnorm();
-  test_lubrication_ss_ftang();
+  test_lubrication_ss_fnorm(pe, cs);
+  test_lubrication_ss_ftang(pe, cs);
 
   physics_free(physics);
   cs_free(cs);
@@ -62,7 +62,7 @@ int test_lubrication_suite(void) {
  *
  *****************************************************************************/
 
-int test_lubrication_ss_fnorm(void) {
+int test_lubrication_ss_fnorm(pe_t * pe, cs_t * cs) {
 
   double rc = 0.75;
   double rchmax;
@@ -79,7 +79,7 @@ int test_lubrication_ss_fnorm(void) {
   double factual[3];
   double fexpect[3];
 
-  lubrication_create(&lubr);
+  lubrication_create(pe, cs, &lubr);
   assert(lubr);
 
   lubrication_rch_set(lubr, LUBRICATION_SS_FNORM, rc);
@@ -116,7 +116,7 @@ int test_lubrication_ss_fnorm(void) {
  *
  *****************************************************************************/
 
-int test_lubrication_ss_ftang(void) {
+int test_lubrication_ss_ftang(pe_t * pe, cs_t * cs) {
 
   double rc = 0.25;
   double rchmax;
@@ -133,7 +133,10 @@ int test_lubrication_ss_ftang(void) {
   double fexpect[3] = {0.0, 0.0, 0.0};
   double factual[3];
 
-  lubrication_create(&lubr);
+  assert(pe);
+  assert(cs);
+
+  lubrication_create(pe, cs, &lubr);
   assert(lubr);
 
   lubrication_rch_set(lubr, LUBRICATION_SS_FTANG, rc);

@@ -43,8 +43,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  Alan Gray (alang@epcc.ed.ac.uk) provided device implementations.
+ *
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -140,7 +143,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   targetConstAddress((void **) &fwd, fs);
@@ -242,7 +245,7 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   targetConstAddress((void **) &fwd, fs);
@@ -287,7 +290,7 @@ __host__ int pth_force_fluid_driver(pth_t * pth,  hydro_t * hydro) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(TIMER_PHI_FORCE_CALC);

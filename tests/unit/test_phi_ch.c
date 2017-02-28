@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,11 +35,12 @@
 #include "util.h"
 #include "tests.h"
 
-static int test_u_zero(hydro_t * hydro, const double *);
-static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro);
-static int test_set_drop(field_t * phi, const double rc[3], double radius,
-			 double xi0);
-static int test_drop_difference(field_t * phi, const double rc[3],
+static int test_u_zero(cs_t * cs, hydro_t * hydro, const double *);
+static int test_advection(cs_t * cs, phi_ch_t * pch, field_t * phi,
+			  hydro_t * hydro);
+static int test_set_drop(cs_t * cs, field_t * phi, const double rc[3],
+			 double radius, double xi0);
+static int test_drop_difference(cs_t * cs, field_t * phi, const double rc[3],
 				double radius, double xi0, double elnorm[3]);
 
 /*****************************************************************************
@@ -73,10 +76,10 @@ int test_phi_ch_suite(void) {
   hydro_create(pe, cs, le, 1, &hydro);
   assert(hydro);
 
-  phi_ch_create(pe, le, NULL, &pch);
+  phi_ch_create(pe, cs, le, NULL, &pch);
   assert(pch);
 
-  test_advection(pch, phi, hydro);
+  test_advection(cs, pch, phi, hydro);
 
   hydro_free(hydro);
   field_free(phi);
@@ -99,7 +102,7 @@ int test_phi_ch_suite(void) {
  *
  *****************************************************************************/
 
-static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
+static int test_advection(cs_t * cs, phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
 
   int n, ntmax;
   double u[3];
@@ -107,18 +110,24 @@ static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
   double r0;
   double xi0;
   double ell[3];
+  double lmin[3];
+  double ltot[3];
 
+  assert(cs);
   assert(pch);
   assert(phi);
   assert(hydro);
 
-  r0 = 0.25*L(X); /* Drop should fit */
+  cs_lmin(cs, lmin);
+  cs_ltot(cs, ltot);
+
+  r0 = 0.25*ltot[X]; /* Drop should fit */
   xi0 = 0.1*r0;   /* Cahn number = 1 / 10 (say) */
 
   /* Initial position is central */
-  rc[X] = Lmin(X) + 0.5*L(X);
-  rc[Y] = Lmin(Y) + 0.5*L(Y);
-  rc[Z] = Lmin(Z) + 0.5*L(Z);
+  rc[X] = lmin[X] + 0.5*ltot[X];
+  rc[Y] = lmin[Y] + 0.5*ltot[Y];
+  rc[Z] = lmin[Z] + 0.5*ltot[Z];
 
   u[X] = -0.25;
   u[Y] = 0.25;
@@ -126,8 +135,8 @@ static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
 
   ntmax = 10;
 
-  test_u_zero(hydro, u);
-  test_set_drop(phi, rc, r0, xi0);
+  test_u_zero(cs, hydro, u);
+  test_set_drop(cs, phi, rc, r0, xi0);
 
   /* Steps */
 
@@ -143,7 +152,7 @@ static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
   rc[Y] += u[Y]*ntmax;
   rc[Z] += u[Z]*ntmax;
 
-  test_drop_difference(phi, rc, r0, xi0, ell);
+  test_drop_difference(cs, phi, rc, r0, xi0, ell);
 
   /* For these particular values... */
   assert(fabs(ell[0] - 1.1448194e-02) < FLT_EPSILON);
@@ -162,20 +171,20 @@ static int test_advection(phi_ch_t * pch, field_t * phi, hydro_t * hydro) {
  *
  ****************************************************************************/
 
-static int test_u_zero(hydro_t * hydro, const double u[3]) {
+static int test_u_zero(cs_t * cs, hydro_t * hydro, const double u[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
 
   assert(hydro);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	hydro_u_set(hydro, index, u);
       }
     }
@@ -193,7 +202,8 @@ static int test_u_zero(hydro_t * hydro, const double u[3]) {
  *
  *****************************************************************************/
 
-static int test_set_drop(field_t * fphi, const double rc[3], double radius,
+static int test_set_drop(cs_t * cs, field_t * fphi, const double rc[3],
+			 double radius,
 			 double xi0) {
 
   int nlocal[3];
@@ -205,8 +215,8 @@ static int test_set_drop(field_t * fphi, const double rc[3], double radius,
 
   double phi, r;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
 
   assert(fphi);
   rzeta = 1.0 / xi0;
@@ -215,7 +225,7 @@ static int test_set_drop(field_t * fphi, const double rc[3], double radius,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	position[X] = 1.0*(noffset[X] + ic) - rc[X];
 	position[Y] = 1.0*(noffset[Y] + jc) - rc[Y];
 	position[Z] = 1.0*(noffset[Z] + kc) - rc[Z];
@@ -240,24 +250,29 @@ static int test_set_drop(field_t * fphi, const double rc[3], double radius,
  *
  *****************************************************************************/
 
-static int test_drop_difference(field_t * fphi, const double rc[3],
+static int test_drop_difference(cs_t * cs, field_t * fphi, const double rc[3],
 				double radius, double xi0, double elnorm[3]) {
 
   int nlocal[3];
   int noffset[3];
   int index, ic, jc, kc;
 
+  double ltot[3];
   double position[3];
   double phi, phi0, r, rzeta, dphi;
   double ell_local[2], ell[2];
   double ell_inf_local, ell_inf;
+  MPI_Comm comm;
 
+  assert(cs);
   assert(fphi);
   assert(xi0 > 0.0);
   rzeta = 1.0 / xi0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ltot(cs, ltot);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+  cs_cart_comm(cs, &comm);
 
   ell_local[0]  = 0.0;
   ell_local[1]  = 0.0;
@@ -267,7 +282,7 @@ static int test_drop_difference(field_t * fphi, const double rc[3],
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	position[X] = 1.0*(noffset[X] + ic) - rc[X];
 	position[Y] = 1.0*(noffset[Y] + jc) - rc[Y];
 	position[Z] = 1.0*(noffset[Z] + kc) - rc[Z];
@@ -286,11 +301,11 @@ static int test_drop_difference(field_t * fphi, const double rc[3],
     }
   }
 
-  MPI_Allreduce(ell_local, ell, 2, MPI_DOUBLE, MPI_SUM, pe_comm());
-  MPI_Allreduce(&ell_inf_local, &ell_inf, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
+  MPI_Allreduce(ell_local, ell, 2, MPI_DOUBLE, MPI_SUM, comm);
+  MPI_Allreduce(&ell_inf_local, &ell_inf, 1, MPI_DOUBLE, MPI_MAX, comm);
 
-  ell[0] /= L(X)*L(Y)*L(Z);
-  ell[1] /= L(X)*L(Y)*L(Z);
+  ell[0] /= ltot[X]*ltot[Y]*ltot[Z];
+  ell[1] /= ltot[X]*ltot[Y]*ltot[Z];
 
   elnorm[0] = ell[0];
   elnorm[1] = ell[1];

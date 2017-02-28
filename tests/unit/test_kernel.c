@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016 The University of Edinburgh
+ *  (c) 2016-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -33,8 +33,8 @@ struct data_s {
 };
 
 __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data);
-__host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum);
-__host__ int do_check(int * iref, int * itarget);
+__host__ int do_host_kernel(cs_t * cs, kernel_info_t limits, int * mask, int * isum);
+__host__ int do_check(cs_t * cs, int * iref, int * itarget);
 __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data);
 __global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data);
 __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data);
@@ -131,8 +131,8 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   /* Here we need a context, as we use it in this particular
    * host kernel */
-  kernel_ctxt_create(1, limits, &ctxt);
-  do_host_kernel(limits, iref, &isum);
+  kernel_ctxt_create(cs, 1, limits, &ctxt);
+  do_host_kernel(cs, limits, iref, &isum);
 
   printf("Host kernel returns isum = %d\n", isum);
 
@@ -145,7 +145,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   printf("Finish kernel 1\n");
   data_copy(data, 1);
-  do_check(iref, data->idata);
+  do_check(cs, iref, data->idata);
 
 
   /* Reduction kernel */
@@ -155,7 +155,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   targetDeviceSynchronise();
 
   data_copy(data, 1);
-  do_check(iref, data->idata);
+  do_check(cs, iref, data->idata);
   printf("isum %d data->Isum %d\n", isum, data->isum);
   assert(isum == data->isum);
 
@@ -164,7 +164,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   /* Vectorised */
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   data_zero(data);
@@ -173,7 +173,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   printf("Finish kernel 2\n");
   data_copy(data, 1);
-  do_check(iref, data->idata);
+  do_check(cs, iref, data->idata);
 
   kernel_ctxt_free(ctxt);
 
@@ -190,7 +190,8 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
  *
  *****************************************************************************/
 
-__host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum) {
+__host__ int do_host_kernel(cs_t * cs, kernel_info_t limits, int * mask,
+			    int * isum) {
 
   int index;
   int ifail;
@@ -200,7 +201,7 @@ __host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum) {
   assert(mask);
   assert(isum);
 
-  nsites = coords_nsites();
+  cs_nsites(cs, &nsites);
 
   *isum = 0;
 
@@ -210,7 +211,7 @@ __host__ int do_host_kernel(kernel_info_t limits, int * mask, int * isum) {
 
 	/* We are at ic,jc,kc */
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	ifail = addr_rank0(nsites, index);
 	assert(ifail >= 0 && ifail < nsites);
 
@@ -340,7 +341,7 @@ __global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data) {
  *
  *****************************************************************************/
 
-__host__ int do_check(int * iref, int * itarget) {
+__host__ int do_check(cs_t * cs, int * iref, int * itarget) {
 
   int ic, jc, kc, index;
   int nhalo;
@@ -349,14 +350,14 @@ __host__ int do_check(int * iref, int * itarget) {
   assert(iref);
   assert(itarget);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  cs_nhalo(cs, &nhalo);
+  cs_nlocal(cs, nlocal);
  
   for (ic = 1 - nhalo; ic <= nlocal[X] + nhalo; ic++) {
     for (jc = 1 - nhalo; jc <= nlocal[Y] + nhalo; jc++) {
       for (kc = 1 - nhalo; kc <= nlocal[Z] + nhalo; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	if (iref[index] == itarget[index]) {
 	  /* ok */
 	}

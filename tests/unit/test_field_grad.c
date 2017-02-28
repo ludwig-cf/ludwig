@@ -8,8 +8,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -91,7 +93,7 @@ int do_test1(pe_t * pe) {
   assert(field);
   field_init(field, 0, le);
 
-  field_grad_create(field, 4, &gradient);
+  field_grad_create(pe, field, 4, &gradient);
   assert(gradient);
   field_grad_set(gradient, test_d2, test_d4);
   field_grad_compute(gradient);
@@ -148,7 +150,7 @@ static int do_test3(pe_t * pe) {
   assert(field);
   field_init(field, 0, le);
 
-  field_grad_create(field, 4, &gradient);
+  field_grad_create(pe, field, 4, &gradient);
   assert(gradient);
   field_grad_set(gradient, test_d2, test_d4);
   field_grad_compute(gradient);
@@ -201,7 +203,7 @@ static int do_test5(pe_t * pe) {
   assert(field);
   field_init(field, 0, le);
 
-  field_grad_create(field, 4, &gradient);
+  field_grad_create(pe, field, 4, &gradient);
   assert(gradient);
   field_grad_set(gradient, test_d2, test_d4);
   field_grad_compute(gradient);
@@ -266,7 +268,7 @@ int do_test_dab(pe_t * pe) {
   assert(field);
   field_init(field, 0, le);
 
-  field_grad_create(field, 3, &gradient);
+  field_grad_create(pe, field, 3, &gradient);
   assert(gradient);
 
   field_grad_set(gradient, test_d2, NULL);

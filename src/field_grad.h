@@ -5,8 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,7 +21,8 @@
 typedef struct field_grad_s field_grad_t;
 typedef int (* grad_ft)(field_grad_t * fgrad);
 
-__host__ int field_grad_create(field_t * f, int level, field_grad_t ** pobj);
+__host__ int field_grad_create(pe_t * pe, field_t * f, int level,
+			       field_grad_t ** pobj);
 __host__ void field_grad_free(field_grad_t * obj);
 __host__ int field_grad_set(field_grad_t * obj, grad_ft d2, grad_ft d4);
 __host__ int field_grad_dab_set(field_grad_t * obj, grad_ft dab);

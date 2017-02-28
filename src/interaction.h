@@ -7,13 +7,14 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef INTERACTION_H
-#define INTERACTION_H
+#ifndef LUDWIG_INTERACTION_H
+#define LUDWIG_INTERACTION_H
 
 #include "map.h"
 #include "psi.h"
@@ -43,7 +44,7 @@ typedef int (*range_ft)(void * self, double * rchmax);
 typedef int (*compute_ft)(colloids_info_t * cinfo, void * self);
 typedef int (*stat_ft)(void * self, double * stats);
 
-int interact_create(interact_t ** pobj);
+int interact_create(pe_t * pe, cs_t * cs, interact_t ** pobj);
 void interact_free(interact_t * obj);
 int interact_potential_add(interact_t * obj, interact_enum_t it,
 			   void * potential, compute_ft compute);

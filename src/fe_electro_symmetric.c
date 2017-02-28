@@ -32,11 +32,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
- *
- *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -53,7 +53,9 @@
 
 struct fe_electro_symmetric_s {
   fe_t super;
-  psi_t * psi;
+  pe_t * pe;               /* Parallel environment */
+  cs_t * cs;               /* Coordinate system */
+  psi_t * psi;             /* Charge densities etc */
   fe_symm_t * fe_symm;     /* Symmetric part */
   fe_electro_t * fe_elec;  /* Electro part */
   fe_es_param_t * param;   /* Constant parameters */
@@ -96,21 +98,26 @@ static  __constant__ fe_vt_t fe_es_dvt = {
  *
  *****************************************************************************/
 
-__host__ int fe_es_create(fe_symm_t * symm, fe_electro_t * elec,
+__host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
+			  fe_electro_t * elec,
 			  psi_t * psi, fe_es_t ** pobj) {
 
   int ndevice;
   fe_es_t * fe = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(symm);
   assert(elec);
   assert(psi);
 
   fe = (fe_es_t*) calloc(1, sizeof(fe_es_t));
-  if (fe == NULL) fatal("calloc(fe_es_t) failed\n");
+  if (fe == NULL) pe_fatal(pe, "calloc(fe_es_t) failed\n");
   fe->param = (fe_es_param_t *) calloc(1, sizeof(fe_es_param_t));
-  if (fe->param == NULL) fatal("calloc(fe_es_param_t) failed\n");
+  if (fe->param == NULL) pe_fatal(pe, "calloc(fe_es_param_t) failed\n");
 
+  fe->pe = pe;
+  fe->cs = cs;
   fe->fe_symm = symm;
   fe->fe_elec = elec;
   fe->psi = psi;

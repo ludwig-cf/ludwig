@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2016 The University of Edinburgh
+ *  (c) 2011-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -491,8 +491,9 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   assert(hydro);
   assert(map);
 
-  nhalo = coords_nhalo();
-  coords_nlocal(nlocal);
+  cs_nhalo(lb->cs, &nhalo);
+  cs_nlocal(lb->cs, nlocal);
+
   physics_ref(&phys);
   physics_fbody(phys, force_global);
 
@@ -905,13 +906,14 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
 
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
-
   assert (NDIM == 3);
   assert(lb);
   assert(hydro);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nhalo(lb->cs, &nhalo);
+  cs_nlocal(lb->cs, nlocal);
+
   physics_ref(&phys);
   physics_fbody(phys, force_global);
 
@@ -924,7 +926,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   physics_mobility(phys, &mobility);
   rtau2 = 2.0 / (1.0 + 2.0*mobility);
 
-  nhalo = coords_nhalo();
   Nall[X] = nlocal[X]+2*nhalo;
   Nall[Y] = nlocal[Y]+2*nhalo;
   Nall[Z] = nlocal[Z]+2*nhalo;
@@ -976,6 +977,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   double gsite[3];
   double kt;
   physics_t * phys = NULL;
+  MPI_Comm comm;
 
   assert(lb);
   assert(map);
@@ -987,7 +989,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   physics_ref(&phys);
   physics_kt(phys, &kt);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(lb->cs, nlocal);
 
   glocal[X] = 0.0;
   glocal[Y] = 0.0;
@@ -998,7 +1000,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(lb->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -1018,20 +1020,23 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   }
 
   /* Divide by the actual fluid volume. The reduction is to rank 0 in
-   * pe_comm() for output. */
+   * pe_mpi_comm() for output. */
 
-  MPI_Reduce(glocal, gtotal, 4, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  pe_mpi_comm(lb->pe, &comm);
+  MPI_Reduce(glocal, gtotal, 4, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   for (n = 0; n < 3; n++) {
     gtotal[n] /= gtotal[3];
   }
 
-  info("\n");
-  info("Isothermal fluctuations\n");
-  info("[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
+  pe_info(lb->pe, "\n");
+  pe_info(lb->pe, "Isothermal fluctuations\n");
+  pe_info(lb->pe, "[eqipart.] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y],
+	  gtotal[Z]);
 
   kt *= NDIM;
-  info("[measd/kT] %14.7e %14.7e\n", gtotal[X] + gtotal[Y] + gtotal[Z], kt);
+  pe_info(lb->pe, "[measd/kT] %14.7e %14.7e\n",
+	  gtotal[X] + gtotal[Y] + gtotal[Z], kt);
 
   return 0;
 }

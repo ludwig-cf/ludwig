@@ -28,8 +28,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -87,7 +89,7 @@ __host__ int grad_3d_27pt_solid_map_set(map_t * map) {
    * first should be C, second H. Default to zero. */
 
   map_ndata(map, &ndata);
-  if (ndata > 2) fatal("Two many wetting parameters for gradient %d\n", ndata);
+  if (ndata > 2) pe_fatal(map->pe, "Two many wetting parameters for gradient %d\n", ndata);
 
   return 0;
 }
@@ -123,8 +125,10 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
   kernel_ctxt_t * ctxt = NULL;
   fe_symm_param_t param;
 
-  nextra = coords_nhalo() - 1;
-  coords_nlocal(nlocal);
+  cs_nhalo(fgrad->field->cs, &nextra);
+  nextra -= 1;
+  cs_nlocal(fgrad->field->cs, nlocal);
+
   assert(nextra >= 0);
   assert(static_solid.map);
   assert(static_solid.fe_symm);
@@ -136,7 +140,7 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(fgrad->field->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(grad_3d_27pt_solid_kernel, nblk, ntpb, ctxt->target,

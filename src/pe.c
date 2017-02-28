@@ -5,19 +5,20 @@
  *  The parallel environment.
  *
  *  This is responsible for initialisation and finalisation of
- *  the parallel environment. In serial, the MPI stub library is
- *  required.
+ *  information on the parallel environment (MPI, thread model).
  *
- *  A static reference is retained to provide access deep in the
- *  call tree via pe_ref(). This should ultimately be removed.
+ *  Prints basic information to a root process, or verbosely.
+ *
+ *  In serial, the MPI stub library is required.
  *
  *  $Id$
- *
- *  (c) 2010-2016 The University of Edinburgh
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -36,12 +37,10 @@ struct pe_s {
   int mpi_rank;                      /* Rank in dup'd comm */
   int mpi_size;                      /* Size of comm */
   int nref;                          /* Retained reference count */
-  MPI_Comm parent_comm;              /* Reference to parrent entering dup */
-  MPI_Comm comm;                     /* Communicator for pe */
+  MPI_Comm parent_comm;              /* Reference to parent communicator */
+  MPI_Comm comm;                     /* Communicator for pe itself */
   char subdirectory[FILENAME_MAX];
 };
-
-static pe_t * pe_static = NULL;
 
 /*****************************************************************************
  *
@@ -91,24 +90,8 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
     pe_message(pe);
   }
 
-  pe_static = pe;
   *ppe = pe;
   
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  pe_ref
- *
- *****************************************************************************/
-
-__host__ int pe_ref(pe_t ** ppe) {
-
-  assert(pe_static);
-
-  *ppe = pe_static;
-
   return 0;
 }
 
@@ -148,7 +131,6 @@ __host__ int pe_free(pe_t * pe) {
     if (pe->unquiet) pe_info(pe, "Ludwig finished normally.\n");
     free(pe);
     pe = NULL;
-    pe_static = NULL;
   }
 
   return 0;
@@ -234,7 +216,7 @@ __host__ int pe_fatal(pe_t * pe, const char * fmt, ...) {
  *
  *  pe_verbose
  *
- *  Always prints a message.
+ *  Always prints a message (prefixed by MPI rank).
  *
  *****************************************************************************/
 
@@ -348,76 +330,3 @@ __host__ int pe_mpi_size(pe_t * pe) {
 
   return pe->mpi_size;
 }
-
-/*****************************************************************************
- *
- *  pe_comm, pe_rank, pe_size, ...
- *
- *****************************************************************************/
-
-__host__ MPI_Comm pe_comm(void) {
-  MPI_Comm comm;
-  assert(pe_static);
-  pe_mpi_comm(pe_static, &comm);
-  return comm;
-}
-
-__host__ int pe_rank(void) {
-  assert(pe_static);
-  return pe_mpi_rank(pe_static);
-}
-
-__host__ int pe_size(void) {
-  assert(pe_static);
-  return pe_mpi_size(pe_static);
-}
-
-__host__ void info(const char * fmt, ...) {
-
-  va_list args;
-
-  assert(pe_static);
-
-  if (pe_static->mpi_rank == 0) {
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-  }
-
-  return;
-}
-
-__host__ void fatal(const char * fmt, ...) {
-
-  va_list args;
-
-  assert(pe_static);
-
-  printf("[%d] ", pe_static->mpi_rank);
-
-  va_start(args, fmt);
-  vprintf(fmt, args);
-  va_end(args);
-
-  /* Considered a successful exit (code 0). */
-
-  MPI_Abort(pe_static->comm, 0);
-
-  return;
-}
-
-__host__ void verbose(const char * fmt, ...) {
-
-  va_list args;
-
-  assert(pe_static);
-
-  printf("[%d] ", pe_static->mpi_rank);
-
-  va_start(args, fmt);
-  vprintf(fmt, args);
-  va_end(args);
-
-  return;
-}
-

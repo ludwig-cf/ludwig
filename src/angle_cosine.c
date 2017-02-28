@@ -13,9 +13,10 @@
  *   Edinburgh Soft Matter and Statistical Physics Group and
  *   Edinburgh Parallel Computing Centre
  *
- *   (c) The University of Edinburgh (2014)
+ *   (c) 2014-2017 The University of Edinburgh
+ *
  *   Contributing authors:
- *     Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *   Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -27,9 +28,12 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "colloids.h"
 #include "angle_cosine.h"
 
 struct angle_cosine_s {
+  pe_t * pe;
+  cs_t * cs;
   double kappa;
   double vlocal;
   double cosine_max;
@@ -42,14 +46,19 @@ struct angle_cosine_s {
  *
  *****************************************************************************/
 
-int angle_cosine_create(angle_cosine_t ** pobj) {
+int angle_cosine_create(pe_t * pe, cs_t * cs, angle_cosine_t ** pobj) {
 
   angle_cosine_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (angle_cosine_t *) calloc(1, sizeof(angle_cosine_t));
-  if (obj == NULL) fatal("calloc(angle_cosine) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(angle_cosine) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   *pobj = obj;
 
@@ -62,13 +71,13 @@ int angle_cosine_create(angle_cosine_t ** pobj) {
  *
  *****************************************************************************/
 
-void angle_cosine_free(angle_cosine_t * obj) {
+int angle_cosine_free(angle_cosine_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -96,9 +105,9 @@ int angle_cosine_info(angle_cosine_t * obj) {
 
   assert(obj);
 
-  info("Bond angle\n");
-  info("Type:                         cosine\n");
-  info("kappa:                       %14.7e\n", obj->kappa);
+  pe_info(obj->pe, "Bond angle\n");
+  pe_info(obj->pe, "Type:                         cosine\n");
+  pe_info(obj->pe, "kappa:                       %14.7e\n", obj->kappa);
 
   return 0;
 }
@@ -158,13 +167,13 @@ int angle_cosine_compute(colloids_info_t * cinfo, void * self) {
 
     /* Bond 0 is pc -> bonded[0] */
 
-    coords_minimum_distance(pc->s.r, pc->bonded[0]->s.r, r0);
+    cs_minimum_distance(obj->cs, pc->s.r, pc->bonded[0]->s.r, r0);
     r0sq = r0[X]*r0[X] + r0[Y]*r0[Y] + r0[Z]*r0[Z];
     r0md = sqrt(r0sq);
 
     /* Bond 2 is pc -> bonded[1] */
 
-    coords_minimum_distance(pc->s.r, pc->bonded[1]->s.r, r1);
+    cs_minimum_distance(obj->cs, pc->s.r, pc->bonded[1]->s.r, r1);
     r1sq = r1[X]*r1[X] + r1[Y]*r1[Y] + r1[Z]*r1[Z];
     r1md = sqrt(r1sq);
 

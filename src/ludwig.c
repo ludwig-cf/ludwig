@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -147,6 +149,11 @@ struct ludwig_s {
   ewald_t * ewald;             /* Ewald sum for dipoles */
   interact_t * interact;       /* Colloid-colloid interaction handler */
   bbl_t * bbl;                 /* Bounce-back on links boundary condition */
+
+  stats_sigma_t * stat_sigma;  /* Interfacial tension calibration */
+  stats_ahydro_t * stat_ah;    /* Hydrodynamic radius calibration */
+  stats_rheo_t * stat_rheo;    /* Rheology diagnostics */
+  stats_turb_t * stat_turb;    /* Turbulent diagnostics */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -182,14 +189,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   assert(ludwig);
   
-  TIMER_init();
+  TIMER_init(ludwig->pe);
   TIMER_start(TIMER_TOTAL);
 
 #ifdef __NVCC__
-  info("GPU INFO: ***GPU ACCELERATION ENABLED***\n");
-  info("GPU INFO: Running GPU build which is under development.\n");
-  info("GPU INFO: Please check results against CPU build.\n\n");  
-
   /* make maximum L1 cache available on GPU */
   cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 #endif
@@ -274,7 +277,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->wall, ludwig->map);
-  colloids_init_ewald_rt(pe, rt, ludwig->collinfo, &ludwig->ewald);
+  colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
@@ -348,16 +351,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
     gradient_rt_init(pe, rt, ludwig->q_grad, ludwig->map, ludwig->collinfo);
   }
 
-  stats_rheology_init();
-  stats_turbulent_init();
+  stats_rheology_create(pe, cs, &ludwig->stat_rheo);
+  stats_turbulent_create(pe, cs, &ludwig->stat_turb);
 
   /* Calibration statistics for ah required? */
 
-  nstat = 0;
   n = rt_string_parameter(rt, "calibration", filename, FILENAME_MAX);
-  if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
-
-  stats_calibration_init(ludwig->collinfo, nstat);
+  if (n == 1 && strcmp(filename, "on") == 0) {
+    stats_ahydro_create(pe, cs, ludwig->collinfo, ludwig->hydro,
+			ludwig->map, &ludwig->stat_ah);
+  }
 
   /* Calibration of surface tension required (symmetric only) */
 
@@ -366,7 +369,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (n == 1 && strcmp(filename, "on") == 0) nstat = 1;
 
   if (ntstep == 0) {
-    stats_sigma_init(ludwig->fe_symm, ludwig->phi, nstat);
+    if (nstat) stats_sigma_create(pe, cs, ludwig->fe_symm, ludwig->phi,
+				  &ludwig->stat_sigma);
     lb_ndist(ludwig->lb, &n);
     if (n == 2) phi_lb_from_field(ludwig->phi, ludwig->lb); 
   }
@@ -378,7 +382,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   if (ntstep == 0 && ludwig->q) {
-    blue_phase_rt_initial_conditions(pe, rt, ludwig->fe_lc, ludwig->q);
+    blue_phase_rt_initial_conditions(pe, rt, cs, ludwig->fe_lc, ludwig->q);
   }
 
   if (ntstep == 0 && ludwig->psi) {
@@ -453,7 +457,6 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
-
   /* Move initilaised data to target for time stepping loop */
 
   lb_memcpy(ludwig->lb, cudaMemcpyHostToDevice);
@@ -516,7 +519,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_PHI_HALO);
       
       field_grad_compute(ludwig->q_grad);
-      fe_lc_redshift_compute(ludwig->fe_lc);
+      fe_lc_redshift_compute(ludwig->cs, ludwig->fe_lc);
     }
     TIMER_stop(TIMER_PHI_GRADIENTS);
     
@@ -736,7 +739,7 @@ void ludwig_run(const char * inputfile) {
 
     if (is_config_step()) {
       lb_memcpy(ludwig->lb, cudaMemcpyDeviceToHost);
-      info("Writing distribution output at step %d!\n", step);
+      pe_info(ludwig->pe, "Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
       lb_io_info(ludwig->lb, &iohandler);
       io_write_data(iohandler, filename, ludwig->lb);
@@ -765,7 +768,7 @@ void ludwig_run(const char * inputfile) {
 	field_io_info(ludwig->q, &iohandler);
 	/* replace q-tensor on former colloid sites */
 	io_replace_values(ludwig->q, ludwig->map, MAP_COLLOID, 0.00001);
-	info("Writing q file at step %d!\n", step);
+	pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
 	sprintf(filename,"%sq-%8.8d", subdirectory, step);
 	io_write_data(iohandler, filename, ludwig->q);
       }
@@ -774,7 +777,7 @@ void ludwig_run(const char * inputfile) {
     if (ludwig->psi) {
       if (is_psi_output_step()) {
 	psi_io_info(ludwig->psi, &iohandler);
-	info("Writing psi file at step %d!\n", step);
+	pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
 	sprintf(filename,"%spsi-%8.8d", subdirectory, step);
 	io_write_data(iohandler, filename, ludwig->psi);
       }
@@ -783,23 +786,25 @@ void ludwig_run(const char * inputfile) {
     /* Measurements */
 
     if (is_measurement_step()) {
-      stats_sigma_measure(ludwig->phi, step);
+      /* TODO: Allow calibration to be taken its own measurment frequency */
+      stats_sigma_measure(ludwig->stat_sigma, step);
     }
 
     if (is_shear_measurement_step()) {
       lb_memcpy(ludwig->lb, cudaMemcpyDeviceToDevice);
-      stats_rheology_stress_profile_accumulate(ludwig->lb, ludwig->fe, ludwig->hydro);
+      stats_rheology_stress_profile_accumulate(ludwig->stat_rheo, ludwig->lb,
+					       ludwig->fe, ludwig->hydro);
     }
 
     if (is_shear_output_step()) {
       sprintf(filename, "%sstr-%8.8d.dat", subdirectory, step);
-      stats_rheology_stress_section(filename);
-      stats_rheology_stress_profile_zero();
+      stats_rheology_stress_section(ludwig->stat_rheo, filename);
+      stats_rheology_stress_profile_zero(ludwig->stat_rheo);
     }
 
     if (is_vel_output_step() || is_config_step()) {
       hydro_io_info(ludwig->hydro, &iohandler);
-      info("Writing velocity output at step %d!\n", step);
+      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->hydro);
     }
@@ -842,7 +847,7 @@ void ludwig_run(const char * inputfile) {
 	psi_stats_info(ludwig->psi);
 	/* Zeta potential for one colloid only to follow psi_stats()*/
 	psi_colloid_zetapotential(ludwig->psi, ludwig->collinfo, &psi_zeta);
-	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
+	if (ncolloid == 1) pe_info(ludwig->pe, "[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
       stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
@@ -859,11 +864,10 @@ void ludwig_run(const char * inputfile) {
 
       lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
 
-      info("\nCompleted cycle %d\n", step);
+      pe_info(ludwig->pe, "\nCompleted cycle %d\n", step);
     }
 
-    stats_calibration_accumulate(ludwig->collinfo, step, ludwig->hydro,
-				 ludwig->map);
+    stats_ahydro_accumulate(ludwig->stat_ah, step);
 
     TIMER_stop(TIMER_FREE1);
 
@@ -888,14 +892,14 @@ void ludwig_run(const char * inputfile) {
 
     if (ludwig->phi) {
       field_io_info(ludwig->phi, &iohandler);
-      info("Writing phi file at step %d!\n", step);
+      pe_info(ludwig->pe, "Writing phi file at step %d!\n", step);
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->phi);
     }
 
     if (ludwig->q) {
       field_io_info(ludwig->q, &iohandler);
-      info("Writing q file at step %d!\n", step);
+      pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
       sprintf(filename,"%sq-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->q);
     }
@@ -904,13 +908,13 @@ void ludwig_run(const char * inputfile) {
 
       hydro_memcpy(ludwig->hydro, cudaMemcpyDeviceToHost);
       hydro_io_info(ludwig->hydro, &iohandler);
-      info("Writing velocity output at step %d!\n", step);
+      pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->hydro);
     }
     if (ludwig->psi) {
       psi_io_info(ludwig->psi, &iohandler);
-      info("Writing psi file at step %d!\n", step);
+      pe_info(ludwig->pe, "Writing psi file at step %d!\n", step);
       sprintf(filename,"%spsi-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->psi);
     }
@@ -921,9 +925,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->psi) psi_petsc_finish();
 #endif
 
-  stats_rheology_finish();
-  stats_turbulent_finish();
-  stats_calibration_finish();
+  if (ludwig->stat_rheo) stats_rheology_free(ludwig->stat_rheo);
+  if (ludwig->stat_turb) stats_turbulent_free(ludwig->stat_turb);
+  if (ludwig->stat_ah)   stats_ahydro_free(ludwig->stat_ah);
 
   if (ludwig->phi_grad) field_grad_free(ludwig->phi_grad);
   if (ludwig->p_grad)   field_grad_free(ludwig->p_grad);
@@ -940,6 +944,8 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
   if (ludwig->be)        beris_edw_free(ludwig->be);
   if (ludwig->pch)       phi_ch_free(ludwig->pch);
+
+  if (ludwig->stat_sigma) stats_sigma_free(ludwig->stat_sigma);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
@@ -971,6 +977,11 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   double gwall[3];     /* Wall momentum (for accounting purposes only) */
   double gtotal[3];
 
+  MPI_Comm comm;
+  pe_t * pe = NULL;
+
+  pe = ludwig->pe;
+  pe_mpi_comm(pe, &comm);
   wall_is_pm(ludwig->wall, &is_pm);
 
   for (n = 0; n < 3; n++) {
@@ -987,22 +998,22 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
   if (wall_present(ludwig->wall) || is_pm) {
     double gtmp[3];
     wall_momentum(ludwig->wall, gtmp);
-    MPI_Reduce(gtmp, gwall, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(gtmp, gwall, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
   }
 
   for (n = 0; n < 3; n++) {
     gtotal[n] = g[n] + gc[n] + gwall[n];
   }
 
-  info("\n");
-  info("Momentum - x y z\n");
-  info("[total   ] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
-  info("[fluid   ] %14.7e %14.7e %14.7e\n", g[X], g[Y], g[Z]);
+  pe_info(pe, "\n");
+  pe_info(pe, "Momentum - x y z\n");
+  pe_info(pe, "[total   ] %14.7e %14.7e %14.7e\n", gtotal[X], gtotal[Y], gtotal[Z]);
+  pe_info(pe, "[fluid   ] %14.7e %14.7e %14.7e\n", g[X], g[Y], g[Z]);
   if (ncolloid > 0) {
-    info("[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
+    pe_info(pe, "[colloids] %14.7e %14.7e %14.7e\n", gc[X], gc[Y], gc[Z]);
   }
   if (wall_present(ludwig->wall) || is_pm) {
-    info("[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
+    pe_info(pe, "[walls   ] %14.7e %14.7e %14.7e\n", gwall[X], gwall[Y], gwall[Z]);
   }
 
   return 0;
@@ -1102,13 +1113,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
-    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, le, NULL, &ludwig->pch);
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
-    fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe);
+    fe_symm_create(pe, cs, ludwig->phi, ludwig->phi_grad, &fe);
     fe_symmetric_init_rt(pe, rt, fe);
 
     pe_info(pe, "\n");
@@ -1128,7 +1139,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       noise_create(pe, cs, &ludwig->noise_phi);
       noise_init(ludwig->noise_phi, 0);
       noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
-      if (nhalo != 3) fatal("Fluctuations: use symmetric_noise\n");
+      if (nhalo != 3) pe_fatal(pe, "Fluctuations: use symmetric_noise\n");
     }
 
     /* Force */
@@ -1162,12 +1173,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
-    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
-    fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe);
+    fe_symm_create(pe, cs, ludwig->phi, ludwig->phi_grad, &fe);
     fe_symmetric_init_rt(pe, rt, fe);
 
     pe_info(pe, "\n");
@@ -1199,13 +1210,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
-    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, le, NULL, &ludwig->pch);
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
-    fe_brazovskii_create(ludwig->phi, ludwig->phi_grad, &fe);
+    fe_brazovskii_create(pe, cs, ludwig->phi, ludwig->phi_grad, &fe);
     fe_brazovskii_init_rt(pe, rt, fe);
 
     pe_info(pe, "\n");
@@ -1250,14 +1261,14 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "q", &ludwig->q);
     field_init(ludwig->q, nhalo, le);
-    field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
+    field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
 
-    fe_lc_create(ludwig->q, ludwig->q_grad, &fe);
-    beris_edw_create(pe, le, &ludwig->be);
+    fe_lc_create(pe, cs, ludwig->q, ludwig->q_grad, &fe);
+    beris_edw_create(pe, cs, le, &ludwig->be);
     blue_phase_init_rt(pe, rt, fe, ludwig->be);
 
     p = 0;
@@ -1289,13 +1300,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "p", &ludwig->p);
     field_init(ludwig->p, nhalo, le);
-    field_grad_create(ludwig->p, ngrad, &ludwig->p_grad);
+    field_grad_create(pe, ludwig->p, ngrad, &ludwig->p_grad);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
 
-    fe_polar_create(ludwig->p, ludwig->p_grad, &fe);
+    fe_polar_create(pe, cs, ludwig->p, ludwig->p_grad, &fe);
     polar_active_run_time(pe, rt, fe);
     ludwig->fe = (fe_t *) fe;
 
@@ -1335,13 +1346,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
         
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
-    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, le, NULL, &ludwig->pch);
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
-    fe_symm_create(ludwig->phi, ludwig->phi_grad, &symm);
+    fe_symm_create(pe, cs, ludwig->phi, ludwig->phi_grad, &symm);
     fe_symmetric_init_rt(pe, rt, symm);
 
     pe_info(pe, "\n");
@@ -1367,17 +1378,17 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     
     field_create(pe, cs, NQAB, "q", &ludwig->q);
     field_init(ludwig->q, nhalo, le);
-    field_grad_create(ludwig->q, ngrad, &ludwig->q_grad);
+    field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
 
-    fe_lc_create(ludwig->q, ludwig->q_grad, &lc);
-    beris_edw_create(pe, le, &ludwig->be);
+    fe_lc_create(pe, cs, ludwig->q, ludwig->q_grad, &lc);
+    beris_edw_create(pe, cs, le, &ludwig->be);
     blue_phase_init_rt(pe, rt, lc, ludwig->be);
 
-    fe_lc_droplet_create(lc, symm, &fe);
+    fe_lc_droplet_create(pe, cs, lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
 
     grad_lc_anch_create(pe, cs, NULL, NULL, lc, NULL);
@@ -1423,7 +1434,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (p == 1) psi_force_method_set(ludwig->psi, PSI_FORCE_DIVERGENCE);
 
     /* Create FE objects and set function pointers */
-    fe_electro_create(ludwig->psi, &fe);
+    fe_electro_create(pe, ludwig->psi, &fe);
     ludwig->fe = (fe_t *) fe;
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
@@ -1452,8 +1463,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
-    field_grad_create(ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, le, NULL, &ludwig->pch);
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Charged binary fluid 'Electrosymmetric' free energy\n");
@@ -1463,7 +1474,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Symmetric part\n");
     pe_info(pe, "--------------\n\n");
 
-    fe_symm_create(ludwig->phi, ludwig->phi_grad, &fe_symm);
+    fe_symm_create(pe, cs, ludwig->phi, ludwig->phi_grad, &fe_symm);
     fe_symmetric_init_rt(pe, rt, fe_symm);
 
     pe_info(pe, "\n");
@@ -1484,7 +1495,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     psi_create(pe, cs, nk, &ludwig->psi);
     psi_rt_init_param(pe, rt, ludwig->psi);
 
-    fe_electro_create(ludwig->psi, &fe_elec);
+    fe_electro_create(pe, ludwig->psi, &fe_elec);
 
     /* Default method is divergence of stress tensor */
     p = 1;
@@ -1501,7 +1512,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "-------------\n");
 
     /* Create FE objects and set function pointers */
-    fe_es_create(fe_symm, fe_elec, ludwig->psi, &fes);
+    fe_es_create(pe, cs, fe_symm, fe_elec, ludwig->psi, &fes);
 
     /* Dielectric contrast */
 
@@ -1697,10 +1708,10 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
     TIMER_start(TIMER_REBUILD);
 
-    build_update_map(ludwig->collinfo, ludwig->map);
+    build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
     build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi, ludwig->map);
-    build_update_links(ludwig->collinfo, ludwig->wall, ludwig->map);
+    build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
     
 
     TIMER_stop(TIMER_REBUILD);
@@ -1748,13 +1759,13 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
   assert(map);
 
   nf = field->nf;
-  coords_nlocal(nlocal);
+  cs_nlocal(field->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(field->cs, ic, jc, kc);
         map_status(map, index, &status);
 
 	if (status == map_id) {

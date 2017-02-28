@@ -18,8 +18,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,6 +39,8 @@
 #include "interaction.h"
 
 struct interact_s {
+  pe_t * pe;
+  cs_t * cs;
   double vlocal[INTERACT_MAX];       /* Local potential contributions */
   double vtotal[INTERACT_MAX];       /* Total potential contributions */
 
@@ -57,14 +61,19 @@ struct interact_s {
  *
  *****************************************************************************/
 
-int interact_create(interact_t ** pobj) {
+int interact_create(pe_t * pe, cs_t * cs, interact_t ** pobj) {
 
   interact_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (interact_t *) calloc(1, sizeof(interact_t));
-  if (obj == NULL) fatal("calloc(interact_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(interact_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   *pobj = obj;
 
@@ -200,10 +209,10 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
 
     if (is_statistics_step()) {
 
-      info("\nParticle statistics:\n");
+      pe_info(interact->pe, "\nParticle statistics:\n");
 
       interact_stats(interact, cinfo);
-      info("\n");
+      pe_info(interact->pe, "\n");
       stats_colloid_velocity_minmax(cinfo);
     }
   }
@@ -226,8 +235,10 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
   double rminlocal, rmin;
   double rmaxlocal, rmax;
   double vlocal, v;
+  MPI_Comm comm;
 
   colloids_info_ntotal(cinfo, &nc);
+  pe_mpi_comm(obj->pe, &comm);
   
   if (nc > 0) {
 
@@ -239,12 +250,12 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
       
       hminlocal = stats[INTERACT_STAT_HMINLOCAL];
       vlocal = stats[INTERACT_STAT_VLOCAL];
+
+      MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+      MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
       
-      MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-      MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-      
-      info("Wall potential minimum h is: %14.7e\n", hmin);
-      info("Wall potential energy is:    %14.7e\n", v);
+      pe_info(obj->pe, "Wall potential minimum h is: %14.7e\n", hmin);
+      pe_info(obj->pe, "Wall potential energy is:    %14.7e\n", v);
     }
 
     if (nc > 1) {
@@ -256,8 +267,8 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	obj->stats[INTERACT_LUBR](intr, stats);
 
 	hminlocal = stats[INTERACT_STAT_HMINLOCAL];
-	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-	info("Lubrication minimum h is:    %14.7e\n", hmin);
+	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	pe_info(obj->pe, "Lubrication minimum h is:    %14.7e\n", hmin);
       }
 
       intr = obj->abstr[INTERACT_PAIR];
@@ -269,11 +280,11 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	hminlocal = stats[INTERACT_STAT_HMINLOCAL];
 	vlocal = stats[INTERACT_STAT_VLOCAL];
 
-	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-	info("Pair potential minimum h is: %14.7e\n", hmin);
-	info("Pair potential energy is:    %14.7e\n", v);
+	pe_info(obj->pe, "Pair potential minimum h is: %14.7e\n", hmin);
+	pe_info(obj->pe, "Pair potential energy is:    %14.7e\n", v);
       }
 
       intr = obj->abstr[INTERACT_BOND];
@@ -286,13 +297,13 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
 	vlocal = stats[INTERACT_STAT_VLOCAL];
 
-	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
-	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-	info("Bond potential minimum r is: %14.7e\n", rmin);
-	info("Bond potential maximum r is: %14.7e\n", rmax);
-	info("Bond potential energy is:    %14.7e\n", v);
+	pe_info(obj->pe, "Bond potential minimum r is: %14.7e\n", rmin);
+	pe_info(obj->pe, "Bond potential maximum r is: %14.7e\n", rmax);
+	pe_info(obj->pe, "Bond potential energy is:    %14.7e\n", v);
       }
 
       intr = obj->abstr[INTERACT_ANGLE];
@@ -305,13 +316,13 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	rmaxlocal = stats[INTERACT_STAT_RMAXLOCAL];
 	vlocal = stats[INTERACT_STAT_VLOCAL];
 
-	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
-	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, pe_comm());
-	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+	MPI_Reduce(&rminlocal, &rmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
+	MPI_Reduce(&rmaxlocal, &rmax, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
+	MPI_Reduce(&vlocal, &v, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-	info("Angle minimum angle is:      %14.7e\n", rmin);
-	info("Angle maximum angle is:      %14.7e\n", rmax);
-	info("Angle potential energy is:   %14.7e\n", v);
+	pe_info(obj->pe, "Angle minimum angle is:      %14.7e\n", rmin);
+	pe_info(obj->pe, "Angle maximum angle is:      %14.7e\n", rmax);
+	pe_info(obj->pe, "Angle potential energy is:   %14.7e\n", v);
       }
     }
   }
@@ -470,6 +481,7 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
                                          map_t * map) {
+#ifdef OLD_SHIT
   int nc;
   int ia;
   int nsfluid;
@@ -497,7 +509,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     
     for (ia = 0; ia < 3; ia++) {
       f[ia] = -1.0*fd[ia]*rvolume*is_periodic(ia);
-      /* fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());*/
+      fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());
     }
 
     physics_fbody_set(phys, f);
@@ -505,7 +517,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     /* Need to account for wall momentum transfer */
     assert(0); /* NO TEST */
   }
-
+#endif
   return 0;
 }
 
@@ -659,7 +671,7 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
 
   if (nbondfound != nbondpair) {
     /* There is a mismatch in the bond information (treat as fatal) */
-    fatal("Find bonds: bond not reciprocated\n");
+    pe_fatal(obj->pe, "Find bonds: bond not reciprocated\n");
   }
 
   return 0;
@@ -763,10 +775,11 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
   lmin = dmin(lmin, lcell[Z]);
 
   if (rmax > lmin) {
-    info("Cell list width too small to capture specified interactions!\n");
-    info("The maximum interaction range is: %f\n", rmax);
-    info("The minumum cell width is only:   %f\n", lmin);
-    fatal("Please check and try again\n");
+    pe_info(obj->pe,
+	    "Cell list width too small to capture specified interactions!\n");
+    pe_info(obj->pe, "The maximum interaction range is: %f\n", rmax);
+    pe_info(obj->pe, "The minumum cell width is only:   %f\n", lmin);
+    pe_fatal(obj->pe, "Please check and try again\n");
   }
 
   return 0;

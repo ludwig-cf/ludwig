@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -23,7 +25,8 @@
 
 static int stats_free_energy_wall(cs_t * cs, wall_t * wall, fe_t * fe,
 				  field_t * q, double * fs);
-static int stats_free_energy_colloid(fe_t * fe, colloids_info_t * cinfo,
+static int stats_free_energy_colloid(fe_t * fe, cs_t * cs,
+				     colloids_info_t * cinfo,
 				     field_t * q, map_t * map, double * fs);
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
@@ -59,7 +62,9 @@ int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall, fe_t * fe,
   double fe_local[NSTAT];
   double fe_total[NSTAT];
   double rv;
+  double ltot[3];
   physics_t * phys = NULL;
+  MPI_Comm comm;
 
   assert(pe);
   assert(cs);
@@ -67,6 +72,9 @@ int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall, fe_t * fe,
 
   if (fe == NULL) return 0;
 
+  pe_mpi_comm(pe, &comm);
+
+  cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
   colloids_info_ntotal(cinfo, &ncolloid);
 
@@ -103,7 +111,7 @@ int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall, fe_t * fe,
 
     if (q) stats_free_energy_wall(cs, wall, fe, q, fe_local + 3);
 
-    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
     pe_info(pe, "\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
     pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
@@ -112,9 +120,9 @@ int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall, fe_t * fe,
   }
   else if (ncolloid > 0) {
 
-    if (q) stats_free_energy_colloid(fe, cinfo, q, map, fe_local + 3);
+    if (q) stats_free_energy_colloid(fe, cs, cinfo, q, map, fe_local + 3);
 
-    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+    MPI_Reduce(fe_local, fe_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
     pe_info(pe, "\nFree energies - timestep f v f/v f_s a f_s/a\n");
 
@@ -131,8 +139,8 @@ int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall, fe_t * fe,
     }
   }
   else {
-    MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-    rv = 1.0/(L(X)*L(Y)*L(Z));
+    MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
+    rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
     pe_info(pe, "\nFree energy density - timestep total fluid\n");
     pe_info(pe, "[fed] %14d %17.10e %17.10e\n", ntstep, rv*fe_total[0],
@@ -410,7 +418,7 @@ int stats_free_energy_wallz(cs_t * cs, fe_lc_param_t * fep,
  *
  *****************************************************************************/
 
-static int stats_free_energy_colloid(fe_t * fe,
+static int stats_free_energy_colloid(fe_t * fe, cs_t * cs,
 				     colloids_info_t * cinfo,
 				     field_t * q,
 				     map_t * map, double * fs) {
@@ -426,7 +434,7 @@ static int stats_free_energy_colloid(fe_t * fe,
   fe_lc_param_t param;
   fe_lc_param_t * fep = &param;
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
   fs[0] = 0.0;
   fs[1] = 0.0;
@@ -442,7 +450,7 @@ static int stats_free_energy_colloid(fe_t * fe,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -451,7 +459,7 @@ static int stats_free_energy_colloid(fe_t * fe,
         nhat[Y] = 0;
         nhat[Z] = 0;
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = cs_index(cs, ic+1, jc, kc);
 	map_status(map, index1, &status);
 
 	if (status == MAP_COLLOID) {
@@ -462,7 +470,7 @@ static int stats_free_energy_colloid(fe_t * fe,
 	  fs[1] += 1.0;
         }
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = cs_index(cs, ic-1, jc, kc);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -476,7 +484,7 @@ static int stats_free_energy_colloid(fe_t * fe,
 	nhat[X] = 0;
 	nhat[Z] = 0;
 
-	index1 = coords_index(ic, jc+1, kc);
+	index1 = cs_index(cs, ic, jc+1, kc);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -487,7 +495,7 @@ static int stats_free_energy_colloid(fe_t * fe,
 	  fs[1] += 1.0;
         }
 
-	index1 = coords_index(ic, jc-1, kc);
+	index1 = cs_index(cs, ic, jc-1, kc);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -501,7 +509,7 @@ static int stats_free_energy_colloid(fe_t * fe,
 	nhat[X] = 0;
 	nhat[Y] = 0;
 
-	index1 = coords_index(ic, jc, kc+1);
+	index1 = cs_index(cs, ic, jc, kc+1);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {
@@ -512,7 +520,7 @@ static int stats_free_energy_colloid(fe_t * fe,
 	  fs[1] += 1.0;
         }
 
-	index1 = coords_index(ic, jc, kc-1);
+	index1 = cs_index(cs, ic, jc, kc-1);
 	map_status(map, index1, &status);
 
         if (status == MAP_COLLOID) {

@@ -10,10 +10,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Juho Lituvuori
- *
- *  (c) 2012-2016 The University of Edinburgh
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -74,21 +75,26 @@ static __constant__ fe_lc_droplet_param_t const_param;
  *
  *****************************************************************************/
 
-__host__ int fe_lc_droplet_create(fe_lc_t * lc, fe_symm_t * symm,
+__host__ int fe_lc_droplet_create(pe_t * pe, cs_t * cs, fe_lc_t * lc,
+				  fe_symm_t * symm,
 				  fe_lc_droplet_t ** p) {
 
   int ndevice;
   fe_lc_droplet_t * fe = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(lc);
   assert(symm);
 
   fe = (fe_lc_droplet_t *) calloc(1, sizeof(fe_lc_droplet_t));
-  if (fe == NULL) fatal("calloc(fe_lc_droplet_t) failed\n");
+  if (fe == NULL) pe_fatal(pe, "calloc(fe_lc_droplet_t) failed\n");
 
   fe->param = (fe_lc_droplet_param_t *) calloc(1, sizeof(fe_lc_droplet_param_t));
-  if (fe->param == NULL) fatal("calloc(fe_lc_droplet_param_t) failed\n");
+  if (fe->param == NULL) pe_fatal(pe, "calloc(fe_lc_droplet_param_t) failed\n");
 
+  fe->pe = pe;
+  fe->cs = cs;
   fe->lc = lc;
   fe->symm = symm;
 

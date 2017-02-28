@@ -5,7 +5,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2014 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Juho Lintuvuori (juho.lintuvuori@u-psud.fr)
  *
@@ -15,6 +16,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "colloids_s.h"
 #include "driven_colloid.h"
 
 static double fmod_ = 0.0;
@@ -78,6 +80,8 @@ void driven_colloid_total_force(colloids_info_t * cinfo, double ftotal[3]) {
   double flocal[3],f[3];
   colloid_t * pc = NULL;
 
+  MPI_Comm comm;
+
   assert(cinfo);
 
   for (ia = 0; ia < 3; ia++) {
@@ -95,8 +99,9 @@ void driven_colloid_total_force(colloids_info_t * cinfo, double ftotal[3]) {
       flocal[ia] += f[ia];
     }
   }
-  
-  MPI_Allreduce(flocal, ftotal, 3, MPI_DOUBLE, MPI_SUM, cart_comm());
+
+  cs_cart_comm(cinfo->cs, &comm);
+  MPI_Allreduce(flocal, ftotal, 3, MPI_DOUBLE, MPI_SUM, comm);
 
   return;
 }

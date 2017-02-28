@@ -7,10 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2014-2017 The University of Edinburgh
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -91,7 +91,7 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   physics_kt_set(phys, kt);
 
-  fe_electro_create(psi, &fe);
+  fe_electro_create(pe, psi, &fe);
   assert(fe);
 
   /* psi = 0 so have \sum rho (log(rho) - 1) */
@@ -173,7 +173,7 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
   psi_unit_charge_set(psi, eunit);
   physics_kt_set(phys, kt);
 
-  fe_electro_create(psi, &fe);
+  fe_electro_create(pe, psi, &fe);
   assert(fe);
 
   for (n = 0; n < 3; n++) {
@@ -238,7 +238,7 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
   psi_create(pe, cs, nk, &psi);
   psi_epsilon_set(psi, epsilon);
   psi_unit_charge_set(psi, eunit);
-  fe_electro_create(psi, &fe);
+  fe_electro_create(pe, psi, &fe);
   assert(fe);
 
   physics_kt_set(phys, kt);
@@ -246,7 +246,7 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
   /* No external field, no potential; note index must allow for a
    * spatial gradient */
 
-  index = coords_index(1, 1, 1);
+  index = cs_index(cs, 1, 1, 1);
   fe_electro_stress(fe, index, s);
 
   for (ia = 0; ia < 3; ia++) {
@@ -261,24 +261,24 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   psi0 = 1.0;
   psi1 = 2.0;
-  psi_psi_set(psi, coords_index(1+1, 1, 1), psi1);
-  psi_psi_set(psi, coords_index(1-1, 1, 1), psi0);
+  psi_psi_set(psi, cs_index(cs, 1+1, 1, 1), psi1);
+  psi_psi_set(psi, cs_index(cs, 1-1, 1, 1), psi0);
   e0[X] = -0.5*(psi1 - psi0)*kt/eunit;
 
   psi0 = 3.0;
   psi1 = 4.0;
-  psi_psi_set(psi, coords_index(1, 1+1, 1), psi1);
-  psi_psi_set(psi, coords_index(1, 1-1, 1), psi0);
+  psi_psi_set(psi, cs_index(cs, 1, 1+1, 1), psi1);
+  psi_psi_set(psi, cs_index(cs, 1, 1-1, 1), psi0);
   e0[Y] = -0.5*(psi1 - psi0)*kt/eunit;
 
   psi0 = 6.0;
   psi1 = 5.0;
-  psi_psi_set(psi, coords_index(1, 1, 1+1), psi1);
-  psi_psi_set(psi, coords_index(1, 1, 1-1), psi0);
+  psi_psi_set(psi, cs_index(cs, 1, 1, 1+1), psi1);
+  psi_psi_set(psi, cs_index(cs, 1, 1, 1-1), psi0);
   e0[Z] = -0.5*(psi1 - psi0)*kt/eunit;
   emod = modulus(e0);
 
-  fe_electro_stress(fe, coords_index(1, 1, 1), s);
+  fe_electro_stress(fe, cs_index(cs, 1, 1, 1), s);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

@@ -5,15 +5,18 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef LUBRICATION_H
-#define LUBRICATION_H
+#ifndef LUDWIG_LUBRICATION_H
+#define LUDWIG_LUBRICATION_H
 
+#include "pe.h"
+#include "coords.h"
 #include "physics.h"
 #include "colloids.h"
 #include "interaction.h"
@@ -26,8 +29,8 @@ typedef enum lubr_ss_enum {
   
 typedef struct lubrication_s lubr_t;
 
-int lubrication_create(lubr_t ** pobj);
-void lubrication_free(lubr_t * obj);
+int lubrication_create(pe_t * pe, cs_t * cs, lubr_t ** pobj);
+int lubrication_free(lubr_t * obj);
 int lubrication_register(lubr_t * obj, interact_t * parent);
 int lubrication_compute(colloids_info_t * cinfo, void * self);
 int lubrication_stats(void * obj, double * stats);

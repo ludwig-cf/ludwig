@@ -11,8 +11,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -22,7 +23,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "lb_model_s.h"
 #include "util.h"
 #include "stats_distribution.h"
 
@@ -52,8 +53,8 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
   assert(lb);
   assert(map);
 
-  coords_nlocal(nlocal);
-  comm = pe_comm();
+  cs_nlocal(lb->cs, nlocal);
+  pe_mpi_comm(lb->pe, &comm);
 
   stat_local[0] = 0.0;       /* Volume */
   stat_local[1] = 0.0;       /* total mass (or density) */
@@ -65,7 +66,7 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(lb->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -92,8 +93,8 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
   rhomean = stat_total[1]/stat_total[0];
   rhovar  = (stat_total[2]/stat_total[0]) - rhomean*rhomean;
 
-  info("\nScalars - total mean variance min max\n");
-  info("[rho] %14.2f %14.11f %14.7e %14.11f %14.11f\n",
+  pe_info(lb->pe, "\nScalars - total mean variance min max\n");
+  pe_info(lb->pe, "[rho] %14.2f %14.11f %14.7e %14.11f %14.11f\n",
        stat_total[1], rhomean, fabs(rhovar), stat_total[3], stat_total[4]); 
 
   return 0;
@@ -115,12 +116,14 @@ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
 
   double g_local[3];
   double g_site[3];
+  MPI_Comm comm;
 
   assert(lb);
   assert(map);
   assert(g);
 
-  coords_nlocal(nlocal);
+  pe_mpi_comm(lb->pe, &comm);
+  cs_nlocal(lb->cs, nlocal);
 
   g_local[X] = 0.0;
   g_local[Y] = 0.0;
@@ -130,7 +133,7 @@ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(lb->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -142,8 +145,7 @@ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
     }
   }
 
-  MPI_Reduce(g_local, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  MPI_Reduce(g_local, g, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   return 0;
 }
-

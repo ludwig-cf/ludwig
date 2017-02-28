@@ -5,22 +5,25 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef PAIR_YUKAWA_H
-#define PAIR_YUKAWA_H
+#ifndef LUDWIG_PAIR_YUKAWA_H
+#define LUDWIG_PAIR_YUKAWA_H
 
 typedef struct pair_yukawa_s pair_yukawa_t;
 
+#include "pe.h"
+#include "coords.h"
 #include "colloids.h"
 #include "interaction.h"
 
-int pair_yukawa_create(pair_yukawa_t ** pobj);
-void pair_yukawa_free(pair_yukawa_t * obj);
+int pair_yukawa_create(pe_t * pe, cs_t * cs, pair_yukawa_t ** pobj);
+int pair_yukawa_free(pair_yukawa_t * obj);
 int pair_yukawa_info(pair_yukawa_t * obj);
 int pair_yukawa_param_set(pair_yukawa_t * obj, double epsilon, double kappa,
                           double rc);

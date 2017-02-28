@@ -112,7 +112,7 @@ int do_test1(pe_t * pe) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 	map_status(map, index, &status);
 	assert(status == MAP_FLUID);
       }
@@ -131,7 +131,7 @@ int do_test1(pe_t * pe) {
 
   /* Test status set */
 
-  index = coords_index(1, 1, 1);
+  index = cs_index(cs, 1, 1, 1);
   map_status_set(map, index, MAP_BOUNDARY);
   map_status(map, index, &status);
   assert(status == MAP_BOUNDARY);
@@ -208,13 +208,13 @@ int do_test_halo(pe_t * pe, int ndata) {
   map_create(pe, cs, ndata, &map);
   assert(map);
 
-  test_coords_field_set(1, map->status, MPI_CHAR, test_ref_char1);
-  test_coords_field_set(map->ndata, map->data, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, 1, map->status, MPI_CHAR, test_ref_char1);
+  test_coords_field_set(cs, map->ndata, map->data, MPI_DOUBLE, test_ref_double1);
 
   map_halo(map);
 
-  test_coords_field_check(nhalo, 1, map->status, MPI_CHAR, test_ref_char1);
-  test_coords_field_check(nhalo, map->ndata, map->data, MPI_DOUBLE,
+  test_coords_field_check(cs, nhalo, 1, map->status, MPI_CHAR, test_ref_char1);
+  test_coords_field_check(cs, nhalo, map->ndata, map->data, MPI_DOUBLE,
 			  test_ref_double1);
 
   map_free(map);
@@ -262,8 +262,8 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
   map_io_info(map, &iohandler);
   assert(iohandler);
 
-  test_coords_field_set(1, map->status, MPI_CHAR, test_ref_char1);
-  test_coords_field_set(ndata, map->data, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, 1, map->status, MPI_CHAR, test_ref_char1);
+  test_coords_field_set(cs, ndata, map->data, MPI_DOUBLE, test_ref_double1);
 
   io_write_data(iohandler, filename, map);
   map_free(map);
@@ -281,8 +281,8 @@ static int do_test_io(pe_t * pe, int ndata, int io_format) {
   assert(iohandler);
 
   io_read_data(iohandler, filename, map);
-  test_coords_field_check(0, 1, map->status, MPI_CHAR, test_ref_char1);
-  test_coords_field_check(0, ndata, map->data, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, 0, 1, map->status, MPI_CHAR, test_ref_char1);
+  test_coords_field_check(cs, 0, ndata, map->data, MPI_DOUBLE, test_ref_double1);
 
   /* Wait before removing file(s) */
   MPI_Barrier(comm);

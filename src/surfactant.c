@@ -56,6 +56,8 @@
 
 struct fe_surfactant1_s {
   fe_t super;
+  pe_t * pe;
+  cs_t * cs;
   fe_surfactant1_param_t * param;   /* Parameters */
   field_t * phi;                    /* Single field with {phi,psi} */
   field_grad_t * dphi;              /* gradients thereof */
@@ -70,19 +72,24 @@ static __constant__ fe_surfactant1_param_t const_param;
  *
  ****************************************************************************/
 
-int fe_surfactant1_create(field_t * phi, field_grad_t * grad,
+int fe_surfactant1_create(pe_t * pe, cs_t * cs, field_t * phi,
+			  field_grad_t * grad,
 			  fe_surfactant1_t ** fe) {
 
   int ndevice;
   fe_surfactant1_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(fe);
   assert(phi);
   assert(grad);
 
   obj = (fe_surfactant1_t *) calloc(1, sizeof(fe_surfactant1_t));
-  if (obj == NULL) fatal("calloc(fe_surfactant1_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(fe_surfactant1_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->phi = phi;
   obj->dphi = grad;
 

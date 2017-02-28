@@ -7,10 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2013-2017 The University of Edinburgh
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -83,18 +83,18 @@ static int do_test1(pe_t * pe) {
 
   psi_create(pe, cs, nk, &psi);
   assert(psi);
-  fe_electro_create(psi, &fe_elec);
+  fe_electro_create(pe, psi, &fe_elec);
 
   field_create(pe, cs, 1, "phi", &phi);
   assert(phi);
   field_init(phi, 1, NULL);
 
-  field_grad_create(phi, 2, &dphi);
+  field_grad_create(pe, phi, 2, &dphi);
   assert(dphi);
-  fe_symm_create(phi, dphi, &fe_symm);
+  fe_symm_create(pe, cs, phi, dphi, &fe_symm);
 
 
-  fe_es_create(fe_symm, fe_elec, psi, &fe);
+  fe_es_create(pe, cs, fe_symm, fe_elec, psi, &fe);
 
   /* Check delta mu  = dmu [ 1 + phi ] / 2 */
 

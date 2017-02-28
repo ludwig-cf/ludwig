@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -72,9 +72,9 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   obj->data = (double*) calloc(ndata*nsites, sizeof(double));
   if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
 
-  coords_field_init_mpi_indexed(nhalo, 1, MPI_CHAR, obj->halostatus);
+  coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_CHAR, obj->halostatus);
   if (obj->ndata) {
-    coords_field_init_mpi_indexed(nhalo, obj->ndata, MPI_DOUBLE,
+    coords_field_init_mpi_indexed(cs, nhalo, obj->ndata, MPI_DOUBLE,
 				  obj->halodata);
   }
 
@@ -249,9 +249,11 @@ __host__ int map_halo(map_t * obj) {
 
   cs_nhalo(obj->cs, &nhalo);
 
-  coords_field_halo_rank1(obj->nsite, nhalo, 1, obj->status, MPI_CHAR);
+  coords_field_halo_rank1(obj->cs, obj->nsite, nhalo, 1, obj->status,
+			  MPI_CHAR);
   if (obj->ndata) {
-    coords_field_halo_rank1(obj->nsite, nhalo, obj->ndata, obj->data, MPI_DOUBLE);
+    coords_field_halo_rank1(obj->cs, obj->nsite, nhalo, obj->ndata, obj->data,
+			    MPI_DOUBLE);
   }
 
   return 0;
@@ -400,7 +402,7 @@ __host__ int map_volume_allreduce(map_t * obj, int status, int * volume) {
 
   map_volume_local(obj, status, &vol_local);
 
-  comm = cart_comm();
+  cs_cart_comm(obj->cs, &comm);
   MPI_Allreduce(&vol_local, volume, 1, MPI_INT, MPI_SUM, comm);
 
   return 0;

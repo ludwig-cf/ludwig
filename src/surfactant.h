@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -34,7 +36,9 @@ struct fe_surfactant1_param_s {
   double w;              /* Surfactant w */
 };
 
-__host__ int fe_surfactant1_create(field_t * phi, field_grad_t * dphi, fe_surfactant1_t ** fe);
+__host__ int fe_surfactant1_create(pe_t * pe, cs_t * cs, field_t * phi,
+				   field_grad_t * dphi,
+				   fe_surfactant1_t ** fe);
 __host__ int fe_surfactant1_free(fe_surfactant1_t * fe);
 __host__ int fe_surfactant1_param_set(fe_surfactant1_t * fe, fe_surfactant1_param_t vals);
 __host__ int fe_surfactant1_sigma(fe_surfactant1_t * fe, double * sigma);

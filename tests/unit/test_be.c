@@ -10,7 +10,7 @@
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -63,7 +63,7 @@ static int do_test_be1(void) {
   cs_init(cs);
   lees_edw_create(pe, cs, NULL, &le); /* SHIT not required*/
 
-  beris_edw_create(pe, le, &be);
+  beris_edw_create(pe, cs, le, &be);
   assert(be);
 
   beris_edw_free(be);

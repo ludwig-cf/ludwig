@@ -2,18 +2,18 @@
  *
  *  symmetric.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  ****************************************************************************/
 
-#ifndef SYMMETRIC_H
-#define SYMMETRIC_H
+#ifndef LUDWIG_SYMMETRIC_H
+#define LUDWIG_SYMMETRIC_H
 
 #include "memory.h"
 #include "free_energy.h"
@@ -27,6 +27,8 @@ typedef struct fe_symm_s fe_symm_t;
 
 struct fe_symm_s {
   fe_t super;
+  pe_t * pe;                   /* Parallel environment */
+  cs_t * cs;                   /* Coordinate system */
   fe_symm_param_t * param;     /* Parameters */
   field_t * phi;               /* Scalar order parameter or composition */
   field_grad_t * dphi;         /* Gradients thereof */
@@ -41,7 +43,8 @@ struct fe_symm_param_s {
   double kappa;
 };
 
-__host__ int fe_symm_create(field_t * f, field_grad_t * grd, fe_symm_t ** p);
+__host__ int fe_symm_create(pe_t * pe, cs_t * cs, field_t * f,
+			    field_grad_t * grd, fe_symm_t ** p);
 __host__ int fe_symm_free(fe_symm_t * fe);
 __host__ int fe_symm_param_set(fe_symm_t * fe, fe_symm_param_t values);
 __host__ int fe_symm_target(fe_symm_t * fe, fe_t ** target);

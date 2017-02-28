@@ -28,8 +28,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2009-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
@@ -44,6 +46,8 @@
 
 struct fe_brazovskii_s {
   fe_t super;
+  pe_t * pe;                        /* Parallel environment */
+  cs_t * cs;                        /* Coordinate system */
   fe_brazovskii_param_t * param;    /* Parameters */
   field_t * phi;                    /* Reference to order parameter field */
   field_grad_t * dphi;              /* Reference to gradient field */
@@ -86,22 +90,27 @@ static  __constant__ fe_vt_t fe_braz_dvt = {
  *
  *****************************************************************************/
 
-__host__ int fe_brazovskii_create(field_t * phi, field_grad_t * dphi,
+__host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
+				  field_grad_t * dphi,
 				  fe_brazovskii_t ** p) {
 
   int ndevice;
   fe_brazovskii_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(phi);
   assert(dphi);
 
   obj = (fe_brazovskii_t *) calloc(1, sizeof(fe_brazovskii_t));
-  if (obj == NULL) fatal("calloc(fe_brazovskii_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(fe_brazovskii_t) failed\n");
 
   obj->param =
     (fe_brazovskii_param_t *) calloc(1, sizeof(fe_brazovskii_param_t));
-  if (obj->param == NULL) fatal("calloc(fe_brazovskii_param_t) failed\n");
+  if (obj->param == NULL) pe_fatal(pe, "calloc(fe_brazovskii_param_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->phi = phi;
   obj->dphi = dphi;
   obj->super.func = &fe_braz_hvt;

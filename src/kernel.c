@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016 The University of Edinburgh
+ *  (c) 2016-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,10 +19,8 @@
 #include <stdio.h>
 
 #include "pe.h"
-#include "coords.h"
+#include "coords_s.h"
 #include "kernel.h"
-#include "memory.h"
-
 
 /* Static kernel context information */
 
@@ -48,7 +46,8 @@ struct kernel_param_s {
 static __device__   kernel_ctxt_t  static_ctxt;   
 static __constant__ kernel_param_t static_param;
 
-static __host__ int kernel_ctxt_commit(kernel_ctxt_t * ctxt, int nsimdvl,
+static __host__ int kernel_ctxt_commit(kernel_ctxt_t * ctxt, cs_t * cs,
+				       int nsimdvl,
 				       kernel_info_t lim);
 
 /*****************************************************************************
@@ -57,21 +56,22 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * ctxt, int nsimdvl,
  *
  *****************************************************************************/
 
-__host__ int kernel_ctxt_create(int nsimdvl, kernel_info_t info,
+__host__ int kernel_ctxt_create(cs_t * cs, int nsimdvl, kernel_info_t info,
 				kernel_ctxt_t ** p) {
 
   int ndevice;
   kernel_ctxt_t * obj = NULL;
 
   assert(p);
+  assert(cs);
 
   obj = (kernel_ctxt_t *) calloc(1, sizeof(kernel_ctxt_t));
-  if (obj == NULL) fatal("calloc(kernel_ctxt_t) failed\n");
+  if (obj == NULL) pe_fatal(cs->pe, "calloc(kernel_ctxt_t) failed\n");
 
   assert(nsimdvl == 1 || nsimdvl == NSIMDVL);
 
   obj->param = (kernel_param_t *) calloc(1, sizeof(kernel_param_t));
-  if (obj->param == NULL) fatal("calloc(kernel_param_t) failed\n");
+  if (obj->param == NULL) pe_fatal(cs->pe, "calloc(kernel_param_t) failed\n");
 
   targetGetDeviceCount(&ndevice);
 
@@ -86,7 +86,7 @@ __host__ int kernel_ctxt_create(int nsimdvl, kernel_info_t info,
     copyToTarget(&obj->target->param, &tmp, sizeof(kernel_param_t *));
   }
 
-  kernel_ctxt_commit(obj, nsimdvl, info);
+  kernel_ctxt_commit(obj, cs, nsimdvl, info);
 
   *p = obj;
 
@@ -161,7 +161,8 @@ __host__ int kernel_launch_param(int iterations, dim3 * nblk, dim3 * ntpb) {
  *
  *****************************************************************************/
 
-static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, int nsimdvl, kernel_info_t lim) {
+static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, cs_t * cs,
+				       int nsimdvl, kernel_info_t lim) {
 
   int ndevice;
   int kiter;
@@ -169,9 +170,11 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, int nsimdvl, kernel_
   int kv_jmin;
   int kv_kmin;
 
-  obj->param->nhalo = coords_nhalo();
-  obj->param->nsites = coords_nsites();
-  coords_nlocal(obj->param->nlocal);
+  assert(cs);
+
+  cs_nhalo(cs, &obj->param->nhalo);
+  cs_nsites(cs, &obj->param->nsites);
+  cs_nlocal(cs, obj->param->nlocal);
 
   obj->param->nsimdvl = nsimdvl;
   obj->param->lim = lim;
@@ -194,7 +197,8 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, int nsimdvl, kernel_
   obj->param->nkv_local[Z] = obj->param->nlocal[Z] + 2*obj->param->nhalo;
 
   /* Offset of first site must be start of a SIMD vector block */
-  kiter = coords_index(kv_imin, kv_jmin, kv_kmin);
+
+  kiter = cs_index(cs, kv_imin, kv_jmin, kv_kmin);
   obj->param->kindex0 = (kiter/NSIMDVL)*NSIMDVL;
 
   /* Extent of the contiguous block ... */

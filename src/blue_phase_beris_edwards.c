@@ -32,7 +32,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2016 The University of Edinburgh
+ *  (c) 2009-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -87,6 +87,7 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
 
 struct beris_edw_s {
   beris_edw_param_t * param;       /* Parameters */ 
+  cs_t * cs;                       /* Coordinate object */
   lees_edw_t * le;                 /* Lees Edwards */
   advflux_t * flux;                /* Advective fluxes */
   int nall;                        /* Allocated sites */
@@ -106,13 +107,15 @@ static __constant__ beris_edw_param_t static_param;
  *
  *****************************************************************************/
 
-__host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
+__host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+			      beris_edw_t ** pobj) {
 
   int ndevice;
   advflux_t * flx = NULL;
   beris_edw_t * obj = NULL;
 
   assert(pe);
+  assert(cs);
   assert(le);
   assert(pobj);
 
@@ -122,13 +125,14 @@ __host__ int beris_edw_create(pe_t * pe, lees_edw_t * le, beris_edw_t ** pobj) {
   obj->param = (beris_edw_param_t *) calloc(1, sizeof(beris_edw_param_t));
   if (obj->param == NULL) pe_fatal(pe, "calloc(beris_edw_param_t) failed\n");
 
-  advflux_le_create(le, NQAB, &flx);
+  advflux_le_create(pe, cs, le, NQAB, &flx);
   assert(flx);
 
   lees_edw_nsites(le, &obj->nall);
   obj->h = (double *) calloc(obj->nall*NQAB, sizeof(double));
   assert(obj->h);
 
+  obj->cs = cs;
   obj->le = le;
   obj->flux = flx;
 
@@ -348,7 +352,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
     beris_edw_tmatrix(tmatrix);
   }
 
-  coords_nlocal(nlocal);
+  lees_edw_nlocal(be->le, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -494,13 +498,13 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
   assert(fq);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(be->cs, nlocal);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(be->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   beris_edw_param_commit(be);
@@ -913,7 +917,7 @@ __host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
   assert(be);
   assert(fe);
 
-  lees_edw_nlocal(be->le, nlocal);
+  cs_nlocal(be->cs, nlocal);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
@@ -921,7 +925,7 @@ __host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
 
   TIMER_start(TIMER_BE_MOL_FIELD);
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(be->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   fe->func->target(fe, &fe_target);
@@ -1027,7 +1031,7 @@ int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(be->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(beris_edw_fix_swd_kernel, nblk, ntpb, ctxt->target,

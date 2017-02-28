@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -467,6 +467,7 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
   int ib0;       /* buffer region offset */
   int ic;        /* Index corresponding x location in real system */
 
+  int mpi_cartsz[3];
   int jc, kc, ia, index0, index1, index2;
 
   double dy;     /* Displacement for current ic->ib pair */
@@ -474,13 +475,17 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
   int jdy;       /* Integral part of displacement */
   int j1, j2;    /* j values in real system to interpolate between */
 
+  double ltot[3];
   double ule[3]; /* +/- velocity jump at plane */
 
   assert(obj);
 
   if (obj->le == NULL) return 0;
 
-  if (cart_size(Y) > 1) {
+  cs_ltot(obj->cs, ltot);
+  cs_cartsz(obj->cs, mpi_cartsz);
+
+  if (mpi_cartsz[Y] > 1) {
     hydro_lees_edwards_parallel(obj);
   }
   else {
@@ -497,7 +502,7 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
       lees_edw_buffer_du(obj->le, ib, ule);
 
       lees_edw_buffer_dy(obj->le, ib, 1.0, &dy);
-      dy = fmod(dy, L(Y));
+      dy = fmod(dy, ltot[Y]);
       jdy = floor(dy);
       fr  = dy - jdy;
 
@@ -545,6 +550,7 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
 
 static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
+  int ntotal[3];
   int nlocal[3];           /* Local system size */
   int noffset[3];          /* Local starting offset */
   int nxbuffer;            /* Number of buffer planes */
@@ -559,6 +565,7 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
   int index, ia;
   int nhalo;
   double ule[3];
+  double ltot[3];
 
   int nsend;
   int nrecv;
@@ -577,7 +584,9 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
 
   assert(obj);
 
+  cs_ltot(obj->cs, ltot);
   cs_nhalo(obj->cs, &nhalo);
+  cs_ntotal(obj->cs, ntotal);
   cs_nlocal(obj->cs, nlocal);
   cs_nlocal_offset(obj->cs, noffset);
   ib0 = nlocal[X] + nhalo + 1;
@@ -607,15 +616,15 @@ static int hydro_lees_edwards_parallel(hydro_t * obj) {
     /* Work out the displacement-dependent quantities */
 
     lees_edw_buffer_dy(obj->le, ib, 1.0, &dy);
-    dy = fmod(dy, L(Y));
+    dy = fmod(dy, ltot[Y]);
     jdy = floor(dy);
     fr  = dy - jdy;
 
     /* First j1 required is j1 = jc - jdy - 1 with jc = 1 - nhalo.
-     * Modular arithmetic ensures 1 <= j1 <= N_total(Y). */
+     * Modular arithmetic ensures 1 <= j1 <= ntotal[Y]. */
 
     jc = noffset[Y] + 1 - nhalo;
-    j1 = 1 + (jc - jdy - 2 + 2*N_total(Y)) % N_total(Y);
+    j1 = 1 + (jc - jdy - 2 + 2*ntotal[Y]) % ntotal[Y];
 
     lees_edw_jstart_to_mpi_ranks(obj->le, j1, nrank_s, nrank_r);
 
@@ -706,7 +715,7 @@ static int hydro_u_write(FILE * fp, int index, void * arg) {
 
   hydro_u(obj, index, u);
   n = fwrite(u, sizeof(double), NHDIM, fp);
-  if (n != NHDIM) fatal("fwrite(hydro->u) failed\n");
+  if (n != NHDIM) pe_fatal(obj->pe, "fwrite(hydro->u) failed\n");
 
   return 0;
 }
@@ -731,7 +740,7 @@ static int hydro_u_write_ascii(FILE * fp, int index, void * arg) {
   n = fprintf(fp, "%22.15e %22.15e %22.15e\n", u[X], u[Y], u[Z]);
 
   /* Expect total of 69 characters ... */
-  if (n != 69) fatal("fprintf(hydro->u) failed\n");
+  if (n != 69) pe_fatal(obj->pe, "fprintf(hydro->u) failed\n");
 
   return 0;
 }
@@ -752,7 +761,7 @@ int hydro_u_read(FILE * fp, int index, void * self) {
   assert(obj);
 
   n = fread(u, sizeof(double), NHDIM, fp);
-  if (n != NHDIM) fatal("fread(hydro->u) failed\n");
+  if (n != NHDIM) pe_fatal(obj->pe, "fread(hydro->u) failed\n");
 
   hydro_u_set(obj, index, u);
 
@@ -859,12 +868,14 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   double f[3];
   double flocal[3] = {0.0, 0.0, 0.0};
   double fsum[3];
+  double ltot[3];
   double rv; 
   
   MPI_Comm comm;
 
   if (hydro == NULL) return 0;
 
+  cs_ltot(hydro->cs, ltot);
   cs_nlocal(hydro->cs, nlocal);
   cs_cart_comm(hydro->cs, &comm);
 
@@ -889,7 +900,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
   f[X] = -fsum[X]*rv;
   f[Y] = -fsum[Y]*rv;
   f[Z] = -fsum[Z]*rv;

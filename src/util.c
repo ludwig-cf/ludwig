@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,8 +25,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pe.h"
-#include "coords.h"
 #include "util.h"
 
 static void util_swap(int ia, int ib, double a[3], double b[3][3]);
@@ -114,7 +114,8 @@ int util_reverse_byte_order(void * arg, void * result, MPI_Datatype type) {
     *((double *) result) = dresult;
   }
   else {
-    fatal("Not implemented data type\n");
+    printf("Not implemented data type\n");
+    assert(0);
   }
 
   return 0;

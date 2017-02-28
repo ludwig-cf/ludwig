@@ -7,20 +7,26 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
- *    Contributing authors:
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Grace Kim
  *
  *****************************************************************************/
 
-#ifndef EWALD_H
-#define EWALD_H
+#ifndef LUDWIG_EWALD_H
+#define LUDWIG_EWALD_H
 
 typedef struct ewald_s ewald_t;
 
-int ewald_create(double mu, double rc, colloids_info_t * cinfo, ewald_t ** e);
-void ewald_free(ewald_t * ewald);
+#include "pe.h"
+#include "coords.h"
+#include "colloids.h"
+
+int ewald_create(pe_t * pe, cs_t * cs, double mu, double rc,
+		 colloids_info_t * cinfo, ewald_t ** e);
+int ewald_free(ewald_t * ewald);
 int ewald_info(ewald_t * ewald);
 int ewald_kappa(ewald_t * ewald, double * kappa);
 int ewald_sum(ewald_t * ewald);

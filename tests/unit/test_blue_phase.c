@@ -8,8 +8,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -34,7 +36,7 @@
 
 static void multiply_gradient(double [3][3][3], double);
 static void multiply_delsq(double [3][3], double);
-static int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe,
+static int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 			   field_t * fq,
 			   field_grad_t * fqgrad);
 static int test_bp_nonfield(void);
@@ -70,12 +72,12 @@ int test_bp_suite(void) {
 
   field_create(pe, cs, NQAB, "q", &fq);
   field_init(fq, nhalo, le);
-  field_grad_create(fq, 2, &fqgrad);
+  field_grad_create(pe, fq, 2, &fqgrad);
   field_grad_set(fqgrad, grad_3d_27pt_fluid_d2, NULL);
 
-  fe_lc_create(fq, fqgrad, &fe);
+  fe_lc_create(pe, cs, fq, fqgrad, &fe);
 
-  test_o8m_struct(pe, le, fe, fq, fqgrad);
+  test_o8m_struct(pe, cs, le, fe, fq, fqgrad);
   do_test_fe_lc_device1(pe, cs, fe);
 
   fe_lc_free(fe);
@@ -170,7 +172,8 @@ static int test_bp_nonfield(void) {
  *
  *****************************************************************************/
 
-int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
+int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
+		    field_t * fq,
 		    field_grad_t * fqgrad) {
 
   int nf;
@@ -195,6 +198,7 @@ int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
   double field[3];
   double value, vtest;
   double e;
+  double ltot[3];
   fe_lc_param_t param = {0};
   physics_t * phys = NULL;
   PI_DOUBLE(pi_);
@@ -203,6 +207,8 @@ int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
   assert(le);
 
   physics_create(pe, &phys);
+
+  lees_edw_ltot(le, ltot);
   lees_edw_nlocal(le, nlocal);
   /*
   info("Blue phase O8M struct test\n");
@@ -215,7 +221,7 @@ int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
 
   /* info("ok\n");*/
 
-  q0 = sqrt(2.0)*4.0*atan(1.0)*numhalftwists*numunitcells / L(Y);
+  q0 = sqrt(2.0)*4.0*atan(1.0)*numhalftwists*numunitcells / ltot[Y];
 
   param.a0 = a0;
   param.gamma = gamma;
@@ -250,7 +256,7 @@ int test_o8m_struct(pe_t * pe, lees_edw_t * le, fe_lc_t * fe, field_t * fq,
    * Note there are a limited number of unique order parameter values,
    * so an exhaustive test is probably not worth while. */
 
-  blue_phase_O8M_init(&param, fq);
+  blue_phase_O8M_init(cs, &param, fq);
 
   ic = 1;
   jc = 1;

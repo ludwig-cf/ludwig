@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
@@ -46,13 +46,13 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
   assert(phi);
   assert(lb);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(phi->cs, nlocal);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_create(phi->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(phi_lb_to_field_kernel, nblk, ntpb, ctxt->target,
@@ -122,13 +122,14 @@ __host__ int phi_lb_from_field(field_t * phi, lb_t * lb) {
 
   assert(phi);
   assert(lb);
-  coords_nlocal(nlocal);
+
+  cs_nlocal(phi->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 
 	field_scalar(phi, index, &phi0);
 

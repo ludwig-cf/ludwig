@@ -14,9 +14,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -27,9 +28,12 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
+#include "colloids.h"
 #include "pair_yukawa.h"
 
 struct pair_yukawa_s {
+  pe_t * pe;             /* Parallel environment */
+  cs_t * cs;             /* Coordinate system */
   double epsilon;        /* Energy */
   double kappa;          /* Reciprocal length */
   double rc;             /* Cut off distance */
@@ -44,14 +48,19 @@ struct pair_yukawa_s {
  *
  *****************************************************************************/
 
-int pair_yukawa_create(pair_yukawa_t ** pobj) {
+int pair_yukawa_create(pe_t * pe, cs_t * cs, pair_yukawa_t ** pobj) {
 
   pair_yukawa_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (pair_yukawa_t *) calloc(1, sizeof(pair_yukawa_t));
-  if (obj == NULL) fatal("calloc(pair_yukawa_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(pair_yukawa_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   *pobj = obj;
 
@@ -64,13 +73,13 @@ int pair_yukawa_create(pair_yukawa_t ** pobj) {
  *
  *****************************************************************************/
 
-void pair_yukawa_free(pair_yukawa_t * obj) {
+int pair_yukawa_free(pair_yukawa_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -89,13 +98,13 @@ int pair_yukawa_info(pair_yukawa_t * obj) {
   physics_ref(&phys);
   physics_kt(phys, &kt);
 
-  info("\n");
-  info("Yukawa potential\n");
-  info("epsilon:                %14.7e\n", obj->epsilon);
-  if (kt > 0.0) info("epsilon / kt            %14.7e\n", obj->epsilon/kt);
-  info("kappa:                  %14.7e\n", obj->kappa);
-  info("cut off (centre-centre) %14.7e\n", obj->rc);
-  info("cut off / kappa         %14.7e\n", obj->rc/obj->kappa);
+  pe_info(obj->pe, "\n");
+  pe_info(obj->pe, "Yukawa potential\n");
+  pe_info(obj->pe, "epsilon:                %14.7e\n", obj->epsilon);
+  if (kt > 0.0) pe_info(obj->pe, "epsilon / kt            %14.7e\n", obj->epsilon/kt);
+  pe_info(obj->pe, "kappa:                  %14.7e\n", obj->kappa);
+  pe_info(obj->pe, "cut off (centre-centre) %14.7e\n", obj->rc);
+  pe_info(obj->pe, "cut off / kappa         %14.7e\n", obj->rc/obj->kappa);
 
   return 0;
 }
@@ -155,6 +164,7 @@ int pair_yukawa_compute(colloids_info_t * cinfo, void * self) {
   double r, h, rr;
   double vcut;
   double dvcut;
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -162,14 +172,15 @@ int pair_yukawa_compute(colloids_info_t * cinfo, void * self) {
   assert(cinfo);
   assert(obj);
 
+  cs_ltot(obj->cs, ltot);
   colloids_info_ncell(cinfo, ncell);
 
   vcut = obj->epsilon*exp(-obj->kappa*obj->rc)/obj->rc;
   dvcut = -vcut*(1.0/obj->rc + obj->kappa);
 
   obj->vlocal = 0.0;
-  obj->rminlocal = L(X);
-  obj->hminlocal = L(X);
+  obj->rminlocal = ltot[X];
+  obj->hminlocal = ltot[X];
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
     colloids_info_climits(cinfo, X, ic1, di); 
@@ -190,7 +201,7 @@ int pair_yukawa_compute(colloids_info_t * cinfo, void * self) {
 
                   if (pc1->s.index >= pc2->s.index) continue;
 
-                  coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+                  cs_minimum_distance(obj->cs, pc1->s.r, pc2->s.r, r12);
 		  r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
 		  if (r < obj->rminlocal) obj->rminlocal = r;

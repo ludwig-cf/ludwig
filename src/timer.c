@@ -12,11 +12,14 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <time.h>
 #include <float.h>
 
@@ -33,6 +36,7 @@ struct timer_struct {
   unsigned int    nsteps;
 };
 
+static pe_t * pe_stat = NULL;
 static struct timer_struct timer[TIMER_NTIMERS];
 
 static const char * timer_name[] = {"Total",
@@ -83,9 +87,11 @@ static const char * timer_name[] = {"Total",
  *
  ****************************************************************************/
 
-void TIMER_init() {
+int TIMER_init(pe_t * pe) {
 
   int n;
+
+  pe_stat = pe;
 
   for (n = 0; n < TIMER_NTIMERS; n++) {
     timer[n].t_sum  = 0.0;
@@ -95,7 +101,7 @@ void TIMER_init() {
     timer[n].nsteps = 0;
   }
 
-  return;
+  return 0;
 }
 
 
@@ -156,13 +162,15 @@ void TIMER_statistics() {
   double t_min, t_max, t_sum;
   double r;
 
-  MPI_Comm comm = pe_comm();
+  MPI_Comm comm;
 
+  assert(pe_stat);
   r = MPI_Wtick();
 
-  info("\nTimer resolution: %g second\n", r);
-  info("\nTimer statistics\n");
-  info("%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
+  pe_mpi_comm(pe_stat, &comm);
+  pe_info(pe_stat, "\nTimer resolution: %g second\n", r);
+  pe_info(pe_stat, "\nTimer statistics\n");
+  pe_info(pe_stat, "%20s: %10s %10s %10s\n", "Section", "  tmin", "  tmax", " total");
 
   for (n = 0; n < TIMER_NTIMERS; n++) {
 
@@ -178,11 +186,11 @@ void TIMER_statistics() {
       MPI_Reduce(&(timer[n].t_max), &t_max, 1, MPI_DOUBLE, MPI_MAX, 0, comm);
       MPI_Reduce(&(timer[n].t_sum), &t_sum, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-      t_sum /= pe_size();
+      t_sum /= pe_mpi_size(pe_stat);
 
-      info("%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
+      pe_info(pe_stat, "%20s: %10.3f %10.3f %10.3f %10.6f", timer_name[n],
 	   t_min, t_max, t_sum, t_sum/(double) timer[n].nsteps);
-      info(" (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
+      pe_info(pe_stat, " (%d call%s)\n", timer[n].nsteps, timer[n].nsteps > 1 ? "s" : ""); 
     }
   }
 

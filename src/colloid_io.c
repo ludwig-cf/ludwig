@@ -4,13 +4,13 @@
  *
  *  Colloid parallel I/O driver.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2013 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -107,7 +107,7 @@ int colloid_io_create(pe_t * pe, cs_t * cs, int io_grid[3],
     if (io_grid[ia] > ncart) io_grid[ia] = ncart;
 
     if (ncart % io_grid[ia] != 0) {
-      fatal("Bad colloid io grid (dim %d = %d)\n", ia, io_grid[ia]);
+      pe_fatal(pe, "Bad colloid io grid (dim %d = %d)\n", ia, io_grid[ia]);
     }
 
     obj->nd[ia] = io_grid[ia];

@@ -4,13 +4,13 @@
  *
  *  Statistics for the electrokintic quantities.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -21,6 +21,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "util.h"
+#include "psi_s.h"
 #include "psi_stats.h"
 
 /*****************************************************************************
@@ -40,26 +41,30 @@ int psi_stats_info(psi_t * obj) {
 
   assert(obj);
 
+  pe_mpi_comm(obj->pe, &comm);
+
   psi_nk(obj, &nk);
   nrho = 2 + nk;
-  comm = pe_comm();
 
   rho_min = (double*) calloc(nrho, sizeof(double));
   rho_max = (double*) calloc(nrho, sizeof(double));
   rho_tot = (double*) calloc(nrho, sizeof(double));
-  if (rho_min == NULL) fatal("calloc(rho_min) failed\n");
-  if (rho_max == NULL) fatal("calloc(rho_max) failed\n");
-  if (rho_tot == NULL) fatal("calloc(rho_tot) failed\n");
+  if (rho_min == NULL) pe_fatal(obj->pe, "calloc(rho_min) failed\n");
+  if (rho_max == NULL) pe_fatal(obj->pe, "calloc(rho_max) failed\n");
+  if (rho_tot == NULL) pe_fatal(obj->pe, "calloc(rho_tot) failed\n");
 
   /* Reduce to rank 0 in pe_comm for info */
 
   psi_stats_reduce(obj, rho_min, rho_max, rho_tot, 0, comm);
 
-  info("[psi] %14.7e %14.7e %14.7e\n", rho_tot[0], rho_min[0], rho_max[0]);
+  pe_info(obj->pe, "[psi] %14.7e %14.7e %14.7e\n",
+	           rho_tot[0], rho_min[0], rho_max[0]);
   for (n = 0; n < nk; n++) {
-    info("[rho] %14.7e %14.7e %14.7e\n", rho_tot[1+n], rho_min[1+n], rho_max[1+n]);
+    pe_info(obj->pe, "[rho] %14.7e %14.7e %14.7e\n",
+	             rho_tot[1+n], rho_min[1+n], rho_max[1+n]);
   }
-  info("[elc] %14.7e %14.7e %14.7e\n",  rho_tot[1+nk], rho_min[1+nk], rho_max[1+nk]);
+  pe_info(obj->pe, "[elc] %14.7e %14.7e %14.7e\n",
+	           rho_tot[1+nk], rho_min[1+nk], rho_max[1+nk]);
 
   free(rho_tot);
   free(rho_max);
@@ -100,9 +105,9 @@ int psi_stats_reduce(psi_t * obj, double * rho_min, double * rho_max,
   rho_min_local = (double*) calloc(nrho, sizeof(double));
   rho_max_local = (double*) calloc(nrho, sizeof(double));
   rho_tot_local = (double*) calloc(nrho, sizeof(double));
-  if (rho_min_local == NULL) fatal("calloc(rho_min_local) failed\n");
-  if (rho_max_local == NULL) fatal("calloc(rho_max_local) failed\n");
-  if (rho_tot_local == NULL) fatal("calloc(rho_tot_local) failed\n");
+  if (rho_min_local == NULL) pe_fatal(obj->pe, "calloc(rho_min_local) failed\n");
+  if (rho_max_local == NULL) pe_fatal(obj->pe, "calloc(rho_max_local) failed\n");
+  if (rho_tot_local == NULL) pe_fatal(obj->pe, "calloc(rho_tot_local) failed\n");
 
   psi_stats_local(obj, rho_min_local, rho_max_local, rho_tot_local);
 
@@ -150,7 +155,7 @@ int psi_stats_local(psi_t * obj, double * rho_min, double * rho_max,
   assert(rho_max);
   assert(rho_tot);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
   psi_nk(obj, &nk);
   nrho = 2 + nk;
 
@@ -164,7 +169,7 @@ int psi_stats_local(psi_t * obj, double * rho_min, double * rho_max,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	psi_psi(obj, index, &psi);
 	rho_min[0] = dmin(psi, rho_min[0]);

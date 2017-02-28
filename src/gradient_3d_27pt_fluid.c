@@ -55,7 +55,8 @@
 
 typedef enum grad_enum_type {GRAD_DEL2, GRAD_DEL4} grad_enum_t;
 
-__host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+__host__ int grad_3d_27pt_fluid_operator(cs_t * cs, lees_edw_t * le,
+					 field_grad_t * fg,
 					 int nextra, grad_enum_t type);
 __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				   int nextra, grad_enum_t type);
@@ -77,18 +78,24 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 
 __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 
+  int nhalo;
   int nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
   assert(fgrad->field);
+  assert(fgrad->field->cs);
   assert(fgrad->field->le);
 
+  cs = fgrad->field->cs;
   le = fgrad->field->le;
-  nextra = coords_nhalo() - 1;
+
+  cs_nhalo(cs, &nhalo);
+  nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  grad_3d_27pt_fluid_operator(le, fgrad, nextra, GRAD_DEL2);
+  grad_3d_27pt_fluid_operator(cs, le, fgrad, nextra, GRAD_DEL2);
   grad_3d_27pt_fluid_le(le, fgrad, nextra, GRAD_DEL2);
 
   return 0;
@@ -108,18 +115,22 @@ __host__ int grad_3d_27pt_fluid_d2(field_grad_t * fgrad) {
 __host__ int grad_3d_27pt_fluid_d4(field_grad_t * fgrad) {
 
   int nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
   assert(fgrad->field);
+  assert(fgrad->field->cs);
   assert(fgrad->field->le);
 
+  cs = fgrad->field->cs;
   le = fgrad->field->le;
-  lees_edw_nhalo(le, &nextra);
+
+  cs_nhalo(cs, &nextra);
   nextra -= 2;
   assert(nextra >= 0);
 
-  grad_3d_27pt_fluid_operator(le, fgrad, nextra, GRAD_DEL4);
+  grad_3d_27pt_fluid_operator(cs, le, fgrad, nextra, GRAD_DEL4);
   grad_3d_27pt_fluid_le(le, fgrad, nextra, GRAD_DEL4);
 
   return 0;
@@ -166,7 +177,8 @@ __host__ int grad_3d_27pt_fluid_dab(field_grad_t * fgrad) {
  *
  *****************************************************************************/
 
-__host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
+__host__ int grad_3d_27pt_fluid_operator(cs_t * cs, lees_edw_t * le,
+					 field_grad_t * fg,
 					 int nextra, grad_enum_t type) {
   int nlocal[3];
   int xs, ys, zs;
@@ -183,7 +195,7 @@ __host__ int grad_3d_27pt_fluid_operator(lees_edw_t * le, field_grad_t * fg,
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_create(cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(grad_3d_27pt_kernel, nblk, ntpb, ctxt->target,

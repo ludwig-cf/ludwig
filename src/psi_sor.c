@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2015 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
  *
  *  Contributing Authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -35,7 +35,6 @@
 #include "physics.h"
 #include "psi_s.h"
 #include "psi_sor.h"
-#include "psi.h"
 #include "control.h"
 #include "util.h"
 
@@ -116,12 +115,14 @@ int psi_sor_poisson(psi_t * obj) {
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
   double eunit, beta;
+  double ltot[3];
   physics_t * phys = NULL;
 
   MPI_Comm comm;               /* Cartesian communicator */
 
   physics_ref(&phys);
 
+  cs_ltot(obj->cs, ltot);
   cs_nhalo(obj->cs, &nhalo);
   cs_nsites(obj->cs, &nsites);
   cs_nlocal(obj->cs, nlocal);
@@ -139,7 +140,7 @@ int psi_sor_poisson(psi_t * obj) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/imax(L(X),L(Z)), 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/dmax(ltot[X],ltot[Z]), 2);
 
   psi_epsilon(obj, &epsilon);
   psi_reltol(obj, &tol_rel);
@@ -244,7 +245,7 @@ int psi_sor_poisson(psi_t * obj) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR solver converged to absolute tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
 	}
 	break;
       }
@@ -255,7 +256,7 @@ int psi_sor_poisson(psi_t * obj) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR solver converged to relative tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
 	}
 	break;
       }
@@ -311,6 +312,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
 
+  double ltot[3];
   double eunit, beta;
 
   physics_t * phys = NULL;
@@ -321,6 +323,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   physics_ref(&phys);
 
+  cs_ltot(obj->cs, ltot);
   cs_nlocal(obj->cs, nlocal);
   cs_nsites(obj->cs, &nsites);
   cs_cart_comm(obj->cs, &comm);
@@ -335,7 +338,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   /* Compute initial norm of the residual */
 
-  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/imax(L(X),L(Z)), 2);
+  radius = 1.0 - 0.5*pow(4.0*atan(1.0)/imax(ltot[X],ltot[Z]), 2);
 
   psi_reltol(obj, &tol_rel);
   psi_abstol(obj, &tol_abs);
@@ -487,7 +490,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to absolute tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
 	}
 	break;
       }
@@ -498,7 +501,7 @@ int psi_sor_vare_poisson(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  pe_info(obj->pe, "\n");
 	  pe_info(obj->pe, "SOR (heterogeneous) solver converged to relative tolerance\n");
 	  pe_info(obj->pe, "SOR residual per site %14.7e at %d iterations\n",
-		  rnorm[1]/(L(X)*L(Y)*L(Z)), n);
+		  rnorm[1]/(ltot[X]*ltot[Y]*ltot[Z]), n);
 	}
 	break;
       }

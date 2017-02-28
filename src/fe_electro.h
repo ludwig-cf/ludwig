@@ -7,22 +7,23 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2013-2017 The University of Edinburgh
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
 #ifndef FE_ELECTRO_H
 #define FE_ELECTRO_H
 
+#include "pe.h"
 #include "free_energy.h"
 #include "psi.h"
 
 typedef struct fe_electro_s fe_electro_t;
 
-__host__ int fe_electro_create(psi_t * psi, fe_electro_t ** fe);
+__host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** fe);
 __host__ int fe_electro_free(fe_electro_t * fe);
 __host__ int fe_electro_ext_set(fe_electro_t * fe, double ext_field[3]);
 __host__ int fe_electro_target(fe_electro_t * fe, fe_t ** target);

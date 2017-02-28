@@ -12,10 +12,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
- *
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -212,7 +213,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
     pe_info(pe, "Debye length:              %14.7e\n", ld);
 
     n = rt_double_parameter(rt, "electrokinetics_init_sigma", &sigma);
-    if (n == 0) fatal("... please set electrokinetics_init_sigma\n");
+    if (n == 0) pe_fatal(pe, "... please set electrokinetics_init_sigma\n");
     pe_info(pe, "Initial condition sigma:   %14.7e\n", sigma);
 
     psi_init_gouy_chapman(obj, map, rho_el, sigma);

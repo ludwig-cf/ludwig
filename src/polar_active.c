@@ -36,8 +36,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
+ *  Davide Marenduzzo provided a template.
  *
  *****************************************************************************/
 
@@ -53,6 +56,8 @@
 
 struct fe_polar_s {
   fe_t super;               /* Superclass */
+  pe_t * pe;                /* Parallel environment */
+  cs_t * cs;                /* Coordinate system */
   fe_polar_param_t * param; /* Parameters */
   field_t * p;              /* Vector order parameter */
   field_grad_t * dp;        /* Gradients thereof */
@@ -94,17 +99,23 @@ static  __constant__ fe_vt_t fe_polar_dvt = {
  *
  *****************************************************************************/
 
-__host__ int fe_polar_create(field_t * p, field_grad_t * dp, fe_polar_t ** fe) {
+__host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
+			     field_grad_t * dp, fe_polar_t ** fe) {
 
   int ndevice;
   fe_polar_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
+
   obj = (fe_polar_t *) calloc(1, sizeof(fe_polar_t));
-  if (obj == NULL) fatal("calloc(fe_polar_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(fe_polar_t) failed\n");
 
   obj->param = (fe_polar_param_t *) calloc(1, sizeof(fe_polar_param_t));
-  if (obj->param == NULL) fatal("calloc(fe_polar_param_t) failed\n");
+  if (obj->param == NULL) pe_fatal(pe, "calloc(fe_polar_param_t) failed\n");
 
+  obj->pe = pe;
+  obj->cs = cs;
   obj->p = p;
   obj->dp = dp;
   obj->super.func = &fe_polar_hvt;

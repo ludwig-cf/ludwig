@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,13 +21,15 @@
 #include "util.h"
 #include "runtime.h"
 #include "coords.h"
+#include "lb_model_s.h"
 #include "io_harness.h"
 #include "distribution_rt.h"
 
 static int lb_rt_2d_kelvin_helmholtz(lb_t * lb);
 static int lb_rt_2d_shear_wave(lb_t * lb);
 static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]);
-static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]);
+static int lb_init_poiseuille(lb_t * lb, double rho0,
+			      const double umax[3]);
 
 /*****************************************************************************
  *
@@ -69,7 +71,8 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 
   /* Append R to the record if the model is the reverse implementation */ 
 
-  if (DATA_MODEL == ADDRESS_REVERSE) memory = 'R';
+  /* TODO: r -> "AOS" or "SOA" or "AOSOA" */
+  if (DATA_MODEL == DATA_MODEL_SOA) memory = 'R';
   lb_ndist(lb, &ndist);
 
   pe_info(pe, "\n");
@@ -200,18 +203,23 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
   double delta = 0.05;
   double kappa = 80.0;
   double u[3];
+  double lmin[3];
+  double ltot[3];
 
   double x, y;
   PI_DOUBLE(pi);
 
   assert(lb);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+
+  cs_nlocal(lb->cs, nlocal);
+  cs_nlocal_offset(lb->cs, noffset);
+  cs_lmin(lb->cs, lmin);
+  cs_ltot(lb->cs, ltot);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = (1.0*(noffset[X] + ic) - Lmin(X))/L(X);
+    x = (1.0*(noffset[X] + ic) - lmin[X])/ltot[X];
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+      y = (1.0*(noffset[Y] + jc) - lmin[Y])/ltot[Y];
 
       if (y >  0.5) u[X] = u0*tanh(kappa*(0.75 - y));
       if (y <= 0.5) u[X] = u0*tanh(kappa*(y - 0.25));
@@ -220,18 +228,18 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(lb->cs, ic, jc, kc);
         lb_1st_moment_equilib_set(lb, index, rho, u);
       }
     }
   }
 
-  info("\n");
-  info("Initial distribution: 2d kelvin helmholtz\n");
-  info("Velocity magnitude:   %14.7e\n", u0);
-  info("Shear layer kappa:    %14.7e\n", kappa);
-  info("Perturbation delta:   %14.7e\n", delta);
-  info("\n");
+  pe_info(lb->pe, "\n");
+  pe_info(lb->pe, "Initial distribution: 2d kelvin helmholtz\n");
+  pe_info(lb->pe, "Velocity magnitude:   %14.7e\n", u0);
+  pe_info(lb->pe, "Shear layer kappa:    %14.7e\n", kappa);
+  pe_info(lb->pe, "Perturbation delta:   %14.7e\n", delta);
+  pe_info(lb->pe, "\n");
 
   return 0;
 }
@@ -259,19 +267,24 @@ static int lb_rt_2d_shear_wave(lb_t * lb) {
   double u0 = 0.04;
   double kappa;
   double u[3];
+  double lmin[3];
+  double ltot[3];
 
   double y;
   PI_DOUBLE(pi);
 
   assert(lb);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+
+  cs_nlocal(lb->cs, nlocal);
+  cs_nlocal_offset(lb->cs, noffset);
+  cs_lmin(lb->cs, lmin);
+  cs_ltot(lb->cs, ltot);
 
   kappa = 2.0*pi;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = (1.0*(noffset[Y] + jc) - Lmin(Y))/L(Y);
+      y = (1.0*(noffset[Y] + jc) - lmin[Y])/ltot[Y];
 
       u[X] = u0*sin(kappa * y);
       u[Y] = 0.0;
@@ -279,17 +292,17 @@ static int lb_rt_2d_shear_wave(lb_t * lb) {
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(lb->cs, ic, jc, kc);
         lb_1st_moment_equilib_set(lb, index, rho, u);
       }
     }
   }
 
-  info("\n");
-  info("Initial distribution: 2d shear wave\n");
-  info("Velocity magnitude:   %14.7e\n", u0);
-  info("Shear layer kappa:    %14.7e\n", kappa);
-  info("\n");
+  pe_info(lb->pe, "\n");
+  pe_info(lb->pe, "Initial distribution: 2d shear wave\n");
+  pe_info(lb->pe, "Velocity magnitude:   %14.7e\n", u0);
+  pe_info(lb->pe, "Shear layer kappa:    %14.7e\n", kappa);
+  pe_info(lb->pe, "\n");
 
   return 0;
 }
@@ -308,13 +321,14 @@ static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]) {
   int nlocal[3];
 
   assert(lb);
-  coords_nlocal(nlocal);
+
+  cs_nlocal(lb->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(lb->cs, ic, jc, kc);
 	lb_1st_moment_equilib_set(lb, index, rho0, u0);
 
       }
@@ -341,32 +355,37 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
   int nlocal[3];
   int noffset[3];
 
+  double lmin[3];
+  double ltot[3];
   double u0[3];
   double x, y, z;
 
   assert(lb);
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+
+  cs_nlocal(lb->cs, nlocal);
+  cs_nlocal_offset(lb->cs, noffset);
+  cs_lmin(lb->cs, lmin);
+  cs_ltot(lb->cs, ltot);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
 
     /* The - Lmin() in each direction centres the profile symmetrically,
      * and the 4/L^2 normalises to umax at centre */
 
-    x = 1.0*(noffset[X] + ic) - Lmin(X);
-    u0[X] = umax[X]*x*(L(X) - x)*4.0/(L(X)*L(X));
+    x = 1.0*(noffset[X] + ic) - lmin[X];
+    u0[X] = umax[X]*x*(ltot[X] - x)*4.0/(ltot[X]*ltot[X]);
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
 
-      y = 1.0*(noffset[Y] + jc) - Lmin(Y);
-      u0[Y] = umax[Y]*y*(L(Y) - y)*4.0/(L(Y)*L(Y));
+      y = 1.0*(noffset[Y] + jc) - lmin[Y];
+      u0[Y] = umax[Y]*y*(ltot[Y] - y)*4.0/(ltot[Y]*ltot[Y]);
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	z = 1.0*(noffset[Z] + kc) - Lmin(Z);
-	u0[Z] = umax[Z]*z*(L(Z) - z)*4.0/(L(Z)*L(Z));
+	z = 1.0*(noffset[Z] + kc) - lmin[Z];
+	u0[Z] = umax[Z]*z*(ltot[Z] - z)*4.0/(ltot[Z]*ltot[Z]);
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(lb->cs, ic, jc, kc);
 	lb_1st_moment_equilib_set(lb, index, rho0, u0);
 
       }

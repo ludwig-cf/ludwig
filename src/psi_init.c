@@ -1,18 +1,20 @@
 /*****************************************************************************
-*
-*  psi_init.c
-*
-*  Various initial states for electrokinetics.
-*
-*  $Id$
-*
-*  Edinburgh Soft Matter and Statistical Physics Group and
-*  Edinburgh Parallel Computing Centre
-*
-*  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
-*  (c) 2012-16 The University of Edinburgh
-*
-*****************************************************************************/
+ *
+ *  psi_init.c
+ *
+ *  Various initial states for electrokinetics.
+ *
+ *  $Id$
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2012-16 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
+ *
+ *****************************************************************************/
 
 #include <assert.h>
 #include <stdio.h>
@@ -41,14 +43,14 @@ int psi_init_uniform(psi_t * obj, double rho_el) {
   assert(obj);
   assert(rho_el >= 0.0);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
   psi_nk(obj, &nk);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	psi_psi_set(obj, index, 0.0);
 
@@ -83,25 +85,31 @@ int psi_init_gouy_chapman(psi_t * obj, map_t * map, double rho_el,
 
   int ic, jc, kc, index;
   int nlocal[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   double rho_w, rho_i;
+  double ltot[3];
 
   assert(obj);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(obj->cs, nlocal);
+  cs_ltot(obj->cs, ltot);
+  cs_cartsz(obj->cs, mpi_cartsz);
+  cs_cart_coords(obj->cs, mpi_cartcoords);
 
   /* wall surface charge density */
   rho_w = sigma;
 
   /* counter charge density */
-  rho_i = rho_w * 2.0 *L(Y)*L(Z) / (L(Y)*L(Z)*(L(X) - 2.0));
+  rho_i = rho_w * 2.0 *ltot[Y]*ltot[Z] / (ltot[Y]*ltot[Z]*(ltot[X] - 2.0));
 
   /* apply counter charges & electrolyte */
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	psi_psi_set(obj, index, 0.0);
 	psi_rho_set(obj, index, 0, rho_el);
@@ -112,12 +120,12 @@ int psi_init_gouy_chapman(psi_t * obj, map_t * map, double rho_el,
   }
 
   /* apply wall charges */
-  if (cart_coords(X) == 0) {
+  if (mpi_cartcoords[X] == 0) {
     ic = 1;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(obj, index, 0, rho_w);
@@ -127,12 +135,12 @@ int psi_init_gouy_chapman(psi_t * obj, map_t * map, double rho_el,
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) {
     ic = nlocal[X];
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 	map_status_set(map, index, MAP_BOUNDARY);
 
 	psi_rho_set(obj, index, 0, rho_w);
@@ -165,12 +173,14 @@ int psi_init_gouy_chapman(psi_t * obj, map_t * map, double rho_el,
 int psi_init_liquid_junction(psi_t * obj, double rho_el, double delta_el) {
 
   int ic, jc, kc, index;
+  int ntotal[3];
   int nlocal[3], noff[3];
 
   assert(obj);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noff);
+  cs_nlocal(obj->cs, nlocal);
+  cs_ntotal(obj->cs, ntotal);
+  cs_nlocal_offset(obj->cs, noff);
 
   /* Set electrolyte densities */
 
@@ -178,11 +188,11 @@ int psi_init_liquid_junction(psi_t * obj, double rho_el, double delta_el) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(obj->cs, ic, jc, kc);
 
 	psi_psi_set(obj, index, 0.0);
 
-	if ((1 <= noff[0] + ic) && (noff[0] + ic < N_total(X)/2)) {
+	if ((1 <= noff[0] + ic) && (noff[0] + ic < ntotal[X]/2)) {
 	  psi_rho_set(obj, index, 0, rho_el * (1.0 + delta_el));
 	  psi_rho_set(obj, index, 1, rho_el * (1.0 + delta_el));
 	}

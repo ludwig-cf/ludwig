@@ -65,7 +65,7 @@ __host__ int lb_propagation_driver(lb_t * lb) {
 
   assert(lb);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(lb->cs, nlocal);
 
   /* The kernel is local domain only */
 
@@ -76,7 +76,7 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   copyConstToTarget(&coords, lb->cs->param, sizeof(cs_param_t));
   copyConstToTarget(&lbp, lb->param, sizeof(lb_collide_param_t));
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(TIMER_PROP_KERNEL);

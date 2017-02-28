@@ -9,11 +9,18 @@
  *  over y,z), the stress_xy profile (averaged over y,z,t). There is
  *  also an instantaneous stress (averaged over the system).
  *
+ *  TODO:
+ *  mean stress function belongs to lb_t (no averages stored)
+ *  cs could be replaced by lees_edw?
+ *
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -24,23 +31,25 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "lb_model_s.h"
 #include "util.h"
 #include "control.h"
 #include "physics.h"
-#include "leesedwards.h"
 #include "free_energy.h"
 #include "stats_rheology.h"
 
-static int initialised_ = 0;
-static int counter_sxy_ = 0;
-static double * sxy_;
-static double * stat_xz_;
-static MPI_Comm comm_yz_;
-static MPI_Comm comm_y_;
-static MPI_Comm comm_z_;
+struct stats_rheo_s {
+  pe_t * pe;
+  cs_t * cs;
+  int counter_sxy;
+  double * sxy;
+  double * stat_xz;
+  MPI_Comm comm_yz;
+  MPI_Comm comm_y;
+  MPI_Comm comm_z;
+};
 
-static void stats_rheology_print_s(const char *, double s[3][3]);
+static void stats_rheology_print_s(pe_t * pe, const char *, double s[3][3]);
 static void stats_rheology_print_matrix(FILE *, double s[3][3]);
 
 #define NSTAT1 7  /* Number of data items for stess statistics */
@@ -51,33 +60,50 @@ static void stats_rheology_print_matrix(FILE *, double s[3][3]);
 
 /*****************************************************************************
  *
- *  stats_rheology_init
+ *  stats_rheology_create
  *
  *  Set up communicator in YZ plane. For the output strategy to work,
  *  rank zero in the new communicator should correspond to
- *  cart_coords(Y) = 0 and cart_coords(Z) = 0.
+ *  mpi_cart_coords[Y] = 0 and mpi_cart_coords[Z] = 0.
  *
  *****************************************************************************/
 
-void stats_rheology_init(void) {
+int stats_rheology_create(pe_t * pe, cs_t * cs, stats_rheo_t ** pobj) {
 
+  stats_rheo_t * obj = NULL;
   int rank;
   int remainder[3];
   int nlocal[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
+  MPI_Comm comm;
+
+  assert(pe);
+  assert(cs);
+
+  obj = (stats_rheo_t *) calloc(1, sizeof(stats_rheo_t));
+  if (obj == NULL) pe_fatal(pe, "calloc(stats_rheo_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
+
+  cs_cart_comm(cs, &comm);
+  cs_cartsz(cs, mpi_cartsz);
+  cs_cart_coords(cs, mpi_cartcoords);
 
   remainder[X] = 0;
   remainder[Y] = 1;
   remainder[Z] = 1;
 
-  MPI_Cart_sub(cart_comm(), remainder, &comm_yz_);
-  MPI_Comm_rank(comm_yz_, &rank);
+  MPI_Cart_sub(comm, remainder, &obj->comm_yz);
+  MPI_Comm_rank(obj->comm_yz, &rank);
 
   if (rank == 0) {
-    if (cart_coords(Y) != 0) {
-      fatal("rank 0 in stats_rheology comm_yz_ not cart_coords(Y) zero\n");
+    if (mpi_cartcoords[Y] != 0) {
+      pe_fatal(pe, "rank 0 in rheology comm_yz_ not cartcoords[Y] zero\n");
     }
-    if (cart_coords(Z) != 0) {
-      fatal("rank 0 in stats_rheology comm_yz_ not cart_coords(Z) zero\n");
+    if (mpi_cartcoords[Z] != 0) {
+      pe_fatal(pe, "rank 0 in rheology comm_yz_ not cartcoords[Z] zero\n");
     }
   }
 
@@ -85,63 +111,61 @@ void stats_rheology_init(void) {
   remainder[Y] = 1;
   remainder[Z] = 0;
 
-  MPI_Cart_sub(cart_comm(), remainder, &comm_y_);
+  MPI_Cart_sub(comm, remainder, &obj->comm_y);
 
   remainder[X] = 0;
   remainder[Y] = 0;
   remainder[Z] = 1;
 
-  MPI_Cart_sub(cart_comm(), remainder, &comm_z_);
+  MPI_Cart_sub(comm, remainder, &obj->comm_z);
 
-  MPI_Comm_rank(comm_y_, &rank);
+  MPI_Comm_rank(obj->comm_y, &rank);
 
-  if (rank != cart_coords(Y)) {
-    fatal("rank not equal to cart_coords(Y) in rheology stats\n");
+  if (rank != mpi_cartcoords[Y]) {
+    pe_fatal(pe, "rank not equal to cart_coords(Y) in rheology stats\n");
   }
 
-  MPI_Comm_rank(comm_z_, &rank);
+  MPI_Comm_rank(obj->comm_z, &rank);
 
-  if (rank != cart_coords(Z)) {
-    fatal("rank not equal to cart_coords(Z) in rheology stats\n");
+  if (rank != mpi_cartcoords[Z]) {
+    pe_fatal(pe, "rank not equal to cart_coords(Z) in rheology stats\n");
   }
 
   /* sxy_ */
 
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
 
-  sxy_ = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
-  if (sxy_ == NULL) fatal("malloc(sxy_) failed\n");
+  obj->sxy = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
+  if (obj->sxy == NULL) pe_fatal(pe, "malloc(sxy) failed\n");
 
   /* stat_xz_ */
 
-  stat_xz_ = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
-  if (stat_xz_ == NULL) fatal("malloc(stat_xz_) failed\n");
+  obj->stat_xz = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  if (obj->stat_xz == NULL) pe_fatal(pe, "malloc(stat_xz) failed\n");
 
-  initialised_ = 1;
+  stats_rheology_stress_profile_zero(obj);
 
-  stats_rheology_stress_profile_zero();
+  *pobj = obj;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
- *  stats_rheology_finish
+ *  stats_rheology_free
  *
  *****************************************************************************/
 
-void stats_rheology_finish(void) {
+int stats_rheology_free(stats_rheo_t * stat) {
 
-  assert(initialised_);
+  MPI_Comm_free(&stat->comm_yz);
+  MPI_Comm_free(&stat->comm_y);
+  MPI_Comm_free(&stat->comm_z);
+  free(stat->sxy);
+  free(stat->stat_xz);
+  free(stat);
 
-  MPI_Comm_free(&comm_yz_);
-  MPI_Comm_free(&comm_y_);
-  MPI_Comm_free(&comm_z_);
-  free(sxy_);
-  free(stat_xz_);
-  initialised_ = 0;
-
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -153,11 +177,14 @@ void stats_rheology_finish(void) {
  *
  *****************************************************************************/
 
-void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename) {
+int stats_rheology_free_energy_density_profile(stats_rheo_t * stat, fe_t * fe,
+					       const char * filename) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int noffset[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   int rank;
   int token = 0;
   const int tag_token = 28125;
@@ -166,23 +193,25 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
   double * fex;
   double * fexmean;
   double raverage;
-
-  lees_edw_t * le = NULL;
+  double ltot[3];
 
   FILE * fp_output;
   MPI_Status status;
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
 
-  assert(initialised_);
-  assert(le); /* NO TEST? */
+  assert(stat);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ltot(stat->cs, ltot);
+  cs_nlocal(stat->cs, nlocal);
+  cs_nlocal_offset(stat->cs, noffset);
+  cs_cartsz(stat->cs, mpi_cartsz);
+  cs_cart_coords(stat->cs, mpi_cartcoords);
+  cs_cart_comm(stat->cs, &comm);
 
   fex = (double *) malloc(nlocal[X]*sizeof(double));
-  if (fex == NULL) fatal("malloc(fex) failed\n");
+  if (fex == NULL) pe_fatal(stat->pe, "malloc(fex) failed\n");
   fexmean = (double *) malloc(nlocal[X]*sizeof(double));
-  if (fexmean == NULL) fatal("malloc(fexmean failed\n");
+  if (fexmean == NULL) pe_fatal(stat->pe, "malloc(fexmean failed\n");
 
   /* Accumulate the local average over y,z */
   /* Do the reduction in (y,z) to give local f(x) */
@@ -192,22 +221,22 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = lees_edw_index(le, ic, jc, kc);
+	index = cs_index(stat->cs, ic, jc, kc);
 	fe->func->fed(fe, index, &fed);
 	fex[ic-1] += fed; 
       }
     }
   }
 
-  MPI_Reduce(fex, fexmean, nlocal[X], MPI_DOUBLE, MPI_SUM, 0, comm_yz_);
+  MPI_Reduce(fex, fexmean, nlocal[X], MPI_DOUBLE, MPI_SUM, 0, stat->comm_yz);
 
   /* Write f(x) to file in order */
 
-  raverage = 1.0/(L(Y)*L(Z));
+  raverage = 1.0/(ltot[Y]*ltot[Z]);
 
-  if (cart_coords(Y) == 0 && cart_coords(Z) == 0) {
+  if (mpi_cartcoords[Y] == 0 && mpi_cartcoords[Z] == 0) {
 
-    if (cart_coords(X) == 0) {
+    if (mpi_cartcoords[X] == 0) {
       /* First to write ... */
       fp_output = fopen(filename, "w");
     }
@@ -215,12 +244,12 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
       /* Block unitl the token is received from the previous process,
        * then reopen the file */
 
-      rank = cart_neighb(BACKWARD, X);
+      rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
       fp_output = fopen(filename, "a");
     }
 
-    if (fp_output == NULL) fatal("fopen(%s) failed\n");
+    if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n");
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       /* This is an average over (y,z) so don't care about the
@@ -234,12 +263,12 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
 
     if (ferror(fp_output)) {
       perror("perror: ");
-      fatal("File error on writing %s\n", filename);
+      pe_fatal(stat->pe, "File error on writing %s\n", filename);
     }
     fclose(fp_output);
 
-    if (cart_coords(X) < cart_size(X) - 1) {
-      rank = cart_neighb(FORWARD, X);
+    if (mpi_cartcoords[X] < mpi_cartsz[X] - 1) {
+      rank = cs_cart_neighb(stat->cs, CS_FORW, X);
       MPI_Ssend(&token, 1, MPI_INT, rank, tag_token, comm);
     }
   }
@@ -247,7 +276,7 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
   free(fex);
   free(fexmean);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -258,29 +287,30 @@ void stats_rheology_free_energy_density_profile(fe_t * fe, const char * filename
  *
  *****************************************************************************/
 
-void stats_rheology_stress_profile_zero(void) {
+int stats_rheology_stress_profile_zero(stats_rheo_t * stat) {
 
   int ic, kc, n;
   int nlocal[3];
 
-  assert(initialised_);
-  coords_nlocal(nlocal);
+  assert(stat);
+
+  cs_nlocal(stat->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (n = 0; n < NSTAT1; n++) {
-      sxy_[NSTAT1*(ic-1) + n] = 0.0;
+      stat->sxy[NSTAT1*(ic-1) + n] = 0.0;
     }
     for (kc = 1; kc <= nlocal[Z]; kc++) {
       for (n = 0; n < NSTAT2; n++) {
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] = 0.0;
+	stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] = 0.0;
       }
     }
   }
 
 
-  counter_sxy_ = 0;
+  stat->counter_sxy = 0;
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -292,7 +322,8 @@ void stats_rheology_stress_profile_zero(void) {
  *
  *****************************************************************************/
 
-int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
+int stats_rheology_stress_profile_accumulate(stats_rheo_t * stat, lb_t * lb,
+					     fe_t * fe,
 					     hydro_t * hydro) {
 
   int ic, jc, kc, index;
@@ -302,20 +333,17 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
   double u[3];
   double s[3][3];
 
-  lees_edw_t * le = NULL;
-
-  assert(initialised_);
+  assert(stat);
   assert(lb);
   assert(hydro);
-  assert(le); /* NO TEST? */
 
-  coords_nlocal(nlocal);
+  cs_nlocal(stat->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = lees_edw_index(le, ic, jc, kc);
+	index = cs_index(stat->cs, ic, jc, kc);
 
 	/* Set up the (inverse) density, velocity */
 
@@ -330,13 +358,13 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
 
 	lb_2nd_moment(lb, index, LB_RHO, s);
 
-	sxy_[NSTAT1*(ic-1)] += s[X][Y];
+	stat->sxy[NSTAT1*(ic-1)] += s[X][Y];
 
 	ndata = 0;
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = ia; ib < 3; ib++) {
 	    s[ia][ib] = s[ia][ib] - rrho*u[ia]*u[ib];
-	    stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += s[ia][ib];
+	    stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += s[ia][ib];
 	  }
 	}
 	assert(ndata == 6);
@@ -345,46 +373,46 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
 
 	fe->func->stress(fe, index, s);
 
-	sxy_[NSTAT1*(ic-1) + 1] += s[X][Y];
+	stat->sxy[NSTAT1*(ic-1) + 1] += s[X][Y];
 
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = ia; ib < 3; ib++) {
-	    stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += s[ia][ib];
+	    stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += s[ia][ib];
 	  }
 	}
 
-	sxy_[NSTAT1*(ic-1) + 2] += rrho*u[X]*u[Y];
-	sxy_[NSTAT1*(ic-1) + 3] += rrho*u[X];
-	sxy_[NSTAT1*(ic-1) + 4] += rrho*u[Y];
-	sxy_[NSTAT1*(ic-1) + 5] += rrho*u[Z];
+	stat->sxy[NSTAT1*(ic-1) + 2] += rrho*u[X]*u[Y];
+	stat->sxy[NSTAT1*(ic-1) + 3] += rrho*u[X];
+	stat->sxy[NSTAT1*(ic-1) + 4] += rrho*u[Y];
+	stat->sxy[NSTAT1*(ic-1) + 5] += rrho*u[Z];
 
 	/* Trivial part. */
 
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = ia; ib < 3; ib++) {
-	    stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++]
+	    stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++]
 	      += rrho*u[ia]*u[ib];
 	  }
 	}
 
 	/* Finally, three components of velocity */
 
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[X];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[Y];
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[Z];
+	stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[X];
+	stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[Y];
+	stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] += rrho*u[Z];
 
 	/* Placeholder for isotropic part of chemical stress (set zero) */
-	stat_xz_[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] = 0.0;
+	stat->stat_xz[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + ndata++] = 0.0;
 
 	assert(ndata == NSTAT2);
 
 	hydro_u_gradient_tensor(hydro, ic, jc, kc, s);
-	sxy_[NSTAT1*(ic-1) + 6] += (s[X][Y] + s[Y][X]);
+	stat->sxy[NSTAT1*(ic-1) + 6] += (s[X][Y] + s[Y][X]);
       }
     }
   }
 
-  counter_sxy_++;
+  stat->counter_sxy += 1;
 
   return 0;
 }
@@ -412,48 +440,53 @@ int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
  *
  *****************************************************************************/
 
-void stats_rheology_stress_profile(const char * filename) {
+int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
 
   int ic;
   int nlocal[3];
   int noffset[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   double * sxymean;
   double rmean;
-  double uy;
   double eta;
+  double ltot[3];
 
   const int tag_token = 728;
   int rank;
   int token = 0;
 
   physics_t * phys = NULL;
-  lees_edw_t * le = NULL;
 
   MPI_Status status;
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
   FILE * fp_output;
 
-  assert(initialised_);
-  assert(le); /* NO TEST? */
+  assert(stat);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_ltot(stat->cs, ltot);
+  cs_nlocal(stat->cs, nlocal);
+  cs_nlocal_offset(stat->cs, noffset);
+  cs_cartsz(stat->cs, mpi_cartsz);
+  cs_cart_coords(stat->cs, mpi_cartcoords);
+  cs_cart_comm(stat->cs, &comm);
 
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
-  if (sxymean == NULL) fatal("malloc(sxymean) failed\n");
+  if (sxymean == NULL) pe_fatal(stat->pe, "malloc(sxymean) failed\n");
 
-  MPI_Reduce(sxy_, sxymean, NSTAT1*nlocal[X], MPI_DOUBLE, MPI_SUM, 0, comm_yz_);
+  MPI_Reduce(stat->sxy, sxymean, NSTAT1*nlocal[X], MPI_DOUBLE, MPI_SUM, 0,
+	     stat->comm_yz);
 
-  rmean = 1.0/(L(Y)*L(Z)*counter_sxy_);
+  rmean = 1.0/(ltot[Y]*ltot[Z]*stat->counter_sxy);
 
   /* Write to file in order of x */
 
-  if (cart_coords(Y) == 0 && cart_coords(Z) == 0) {
+  if (mpi_cartcoords[Y] == 0 && mpi_cartcoords[Z] == 0) {
 
-    if (cart_coords(X) == 0) {
+    if (mpi_cartcoords[X] == 0) {
       /* First to write ... */
       fp_output = fopen(filename, "w");
     }
@@ -461,18 +494,18 @@ void stats_rheology_stress_profile(const char * filename) {
       /* Block unitl the token is received from the previous process,
        * then reopen the file */
 
-      rank = cart_neighb(BACKWARD, X);
+      rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
       fp_output = fopen(filename, "a");
     }
 
-    if (fp_output == NULL) fatal("fopen(%s) failed\n");
+    if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n");
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       /* This is an average over (y,z) so don't care about the
        * Lees Edwards places, but correct uy */
 
-      lees_edw_block_uy(le, ic, &uy);
+      double uy = 0.0; /* Correct in post-processing is wanted at all */
 
       fprintf(fp_output,
 	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
@@ -484,26 +517,25 @@ void stats_rheology_stress_profile(const char * filename) {
 	      rmean*sxymean[NSTAT1*(ic-1)+4] + uy,
 	      rmean*sxymean[NSTAT1*(ic-1)+5],
 	      rmean*sxymean[NSTAT1*(ic-1)+6]*eta);
-
     }
 
     /* Close the file and send the token to next process */
 
     if (ferror(fp_output)) {
       perror("perror: ");
-      fatal("File error on writing %s\n", filename);
+      pe_fatal(stat->pe, "File error on writing %s\n", filename);
     }
     fclose(fp_output);
 
-    if (cart_coords(X) < cart_size(X) - 1) {
-      rank = cart_neighb(FORWARD, X);
+    if (mpi_cartcoords[X] < mpi_cartsz[X] - 1) {
+      rank = cs_cart_neighb(stat->cs, CS_FORW, X);
       MPI_Ssend(&token, 1, MPI_INT, rank, tag_token, comm);
     }
   }
 
   free(sxymean);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -536,10 +568,13 @@ void stats_rheology_stress_profile(const char * filename) {
  *
  *****************************************************************************/
 
-void stats_rheology_stress_section(const char * filename) {
+int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
 
   int ic, kc;
   int nlocal[3];
+  int ntotal[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   int n, is_writing;
   FILE   * fp_output = NULL;
   double * stat_2d;
@@ -547,66 +582,70 @@ void stats_rheology_stress_section(const char * filename) {
   double raverage;
   double uy;
   double eta, viscous;
+  double ltot[3];
 
   physics_t * phys = NULL;
-  lees_edw_t * le = NULL;
 
-  MPI_Comm comm = cart_comm();
+  MPI_Comm comm;
   MPI_Status status;
   int token = 0;
   int rank;
   const int tag_token = 1012;
 
-  assert(initialised_);
-  assert(le);  /* NO TEST ? */
+  assert(stat);
 
-  coords_nlocal(nlocal);
+  cs_ltot(stat->cs, ltot);
+  cs_nlocal(stat->cs, nlocal);
+  cs_ntotal(stat->cs, ntotal);
+  cs_cartsz(stat->cs, mpi_cartsz);
+  cs_cart_coords(stat->cs, mpi_cartcoords);
+  cs_cart_comm(stat->cs, &comm);
 
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
-  if (stat_2d == NULL) fatal("malloc(stat_2d) failed\n");
+  if (stat_2d == NULL) pe_fatal(stat->pe, "malloc(stat_2d) failed\n");
 
-  stat_1d = (double *) malloc(NSTAT2*N_total(Z)*sizeof(double));
-  if (stat_1d == NULL) fatal("malloc(stat_1d) failed\n");
+  stat_1d = (double *) malloc(NSTAT2*ntotal[Z]*sizeof(double));
+  if (stat_1d == NULL) pe_fatal(stat->pe, "malloc(stat_1d) failed\n");
 
   /* Set the averaging factor (if no data, set to zero) */
 
   raverage = 0.0;
-  if (counter_sxy_ > 0) raverage = 1.0/(L(Y)*counter_sxy_); 
+  if (stat->counter_sxy > 0) raverage = 1.0/(ltot[Y]*stat->counter_sxy); 
 
   /* Take the sum in the y-direction and store in stat_2d(x,z) */
 
-  MPI_Reduce(stat_xz_, stat_2d, NSTAT2*nlocal[X]*nlocal[Z], MPI_DOUBLE,
-	     MPI_SUM, 0, comm_y_);
+  MPI_Reduce(stat->stat_xz, stat_2d, NSTAT2*nlocal[X]*nlocal[Z], MPI_DOUBLE,
+	     MPI_SUM, 0, stat->comm_y);
 
-  /* Output now only involves cart_coords(Y) = 0 */
+  /* Output now only involves mpi_cartcoords[Y] = 0 */
 
-  if (cart_coords(Y) == 0) {
+  if (mpi_cartcoords[Y] == 0) {
 
     /* The strategy is to gather strip-wise in the z-direction,
      * and only write from the first process in this direction.
      * We then sweep over x to give an xz section. */
 
-    is_writing = (cart_coords(Z) == 0);
+    is_writing = (mpi_cartcoords[Z] == 0);
 
-    if (cart_coords(X) == 0) {
+    if (mpi_cartcoords[X] == 0) {
       /* Open the file */
       if (is_writing) fp_output = fopen(filename, "w");
     }
     else {
       /* Block until we get the token from the previous process and
        * then can reopen the file... */
-      rank = cart_neighb(BACKWARD, X);
+      rank = cs_cart_neighb(stat->cs, CS_BACK, X);
       MPI_Recv(&token, 1, MPI_INT, rank, tag_token, comm, &status);
 
       if (is_writing) fp_output = fopen(filename, "a");
     }
 
     if (is_writing) {
-      if (fp_output == NULL) fatal("fopen(%s) failed\n", filename);
+      if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n", filename);
     }
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
@@ -614,7 +653,7 @@ void stats_rheology_stress_section(const char * filename) {
       /* Correct f1[Y] for leesedwards planes before output. */
       /* Viscous stress likewise. Also take the average here. */
 
-      lees_edw_block_uy(le, ic, &uy);
+      /* lees_edw_block_uy(le, ic, &uy); TODO */ 
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	for (n = 0; n < NSTAT2; n++) {
@@ -626,17 +665,18 @@ void stats_rheology_stress_section(const char * filename) {
 	  stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] *= viscous;
 	}
 
+	assert(0); /* U_LE too be added here or elsewhere? */
 	/* u_y must be corrected */
 	stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 19] += uy;
       }
 
       MPI_Gather(stat_2d + NSTAT2*nlocal[Z]*(ic-1), NSTAT2*nlocal[Z],
 		 MPI_DOUBLE, stat_1d, NSTAT2*nlocal[Z], MPI_DOUBLE, 0,
-		 comm_z_);
+		 stat->comm_z);
 
       /* write data */
       if (is_writing) {
-	for (kc = 1; kc <= N_total(Z); kc++) {
+	for (kc = 1; kc <= ntotal[Z]; kc++) {
 	  for (n = 0; n < NSTAT2; n++) {
 	    fprintf(fp_output, " %15.8e", stat_1d[NSTAT2*(kc-1) + n]);
 	  }
@@ -650,13 +690,13 @@ void stats_rheology_stress_section(const char * filename) {
     if (is_writing) {
       if (ferror(fp_output)) {
 	perror("perror: ");
-	fatal("File error on writing %s\n", filename);
+	pe_fatal(stat->pe, "File error on writing %s\n", filename);
       }
       fclose(fp_output);
     }
 
-    if (cart_coords(X) < cart_size(X) - 1) {
-      rank = cart_neighb(FORWARD, X);
+    if (mpi_cartcoords[X] < mpi_cartsz[X] - 1) {
+      rank = cs_cart_neighb(stat->cs, CS_FORW, X);
       MPI_Ssend(&token, 1, MPI_INT, rank, tag_token, comm);
     }
   }
@@ -664,14 +704,14 @@ void stats_rheology_stress_section(const char * filename) {
   free(stat_1d);
   free(stat_2d);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
  *
  *  stats_rheology_mean_stress
  *
- *  Provide a summary of the instantaneous mean stress to info().
+ *  Provide a summary of the instantaneous mean stress to stdout.
  *  We have:
  *
  *  Viscous stress               + eta (d_a u_b + d_b u_a)
@@ -687,6 +727,8 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
 
 #define NCOMP 27
 
+  int nlocal[3];
+  int ic, jc, kc, index, ia, ib;
   double stress[3][3];
   double rhouu[3][3];
   double pchem[3][3], plocal[3][3];
@@ -696,20 +738,22 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
   double recv[NCOMP];
   double rho, rrho, rv;
   double eta, viscous;
-  int nlocal[3];
-  int ic, jc, kc, index, ia, ib;
+  double ltot[3];
   physics_t * phys = NULL;
   FILE * fp;
+  MPI_Comm comm;
 
   assert(lb);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  pe_mpi_comm(lb->pe, &comm);
+  cs_ltot(lb->cs, ltot);
+  cs_nlocal(lb->cs, nlocal);
+
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
-
-  coords_nlocal(nlocal);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -725,7 +769,7 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(lb->cs, ic, jc, kc);
 
 	lb_0th_moment(lb, index, LB_RHO, &rho);
 	lb_1st_moment(lb, index, LB_RHO, u);
@@ -756,7 +800,7 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
     }
   }
 
-  MPI_Reduce(send, recv, NCOMP, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  MPI_Reduce(send, recv, NCOMP, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   kc = 0;
   for (ia = 0; ia < 3; ia++) {
@@ -770,16 +814,16 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
 
   if (filename == NULL || strcmp(filename, "") == 0) {
     /* Use info() */
-    stats_rheology_print_s("stress_viscs", stress);
-    stats_rheology_print_s("stress_pchem", pchem);
-    stats_rheology_print_s("stress_rhouu", rhouu);
+    stats_rheology_print_s(lb->pe, "stress_viscs", stress);
+    stats_rheology_print_s(lb->pe, "stress_pchem", pchem);
+    stats_rheology_print_s(lb->pe, "stress_rhouu", rhouu);
   }
   else {
     /* Use filename supplied */
 
-    if (pe_rank() == 0) {
+    if (pe_mpi_rank(lb->pe) == 0) {
       fp = fopen(filename, "a");
-      if (fp == NULL) fatal("fopen(%s) failed\n", filename);
+      if (fp == NULL) pe_fatal(lb->pe, "fopen(%s) failed\n", filename);
 
       fprintf(fp, "%9d ", physics_control_timestep(phys));
       stats_rheology_print_matrix(fp, stress);
@@ -820,11 +864,11 @@ static void stats_rheology_print_matrix(FILE * fp, double s[3][3]) {
  *
  *****************************************************************************/
 
-static void stats_rheology_print_s(const char * label, double s[3][3]) {
+static void stats_rheology_print_s(pe_t * pe, const char * label, double s[3][3]) {
 
-  info("%s x %15.8e %15.8e %15.8e\n", label, s[X][X], s[X][Y], s[X][Z]);
-  info("%s y %15.8e %15.8e %15.8e\n", label, s[Y][X], s[Y][Y], s[Y][Z]);
-  info("%s z %15.8e %15.8e %15.8e\n", label, s[Z][X], s[Z][Y], s[Z][Z]);
+  pe_info(pe, "%s x %15.8e %15.8e %15.8e\n", label, s[X][X], s[X][Y], s[X][Z]);
+  pe_info(pe, "%s y %15.8e %15.8e %15.8e\n", label, s[Y][X], s[Y][Y], s[Y][Z]);
+  pe_info(pe, "%s z %15.8e %15.8e %15.8e\n", label, s[Z][X], s[Z][Y], s[Z][Z]);
 
   return;
 }

@@ -132,13 +132,13 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
   hydro_create(pe, cs, le, nhcomm, &hydro);
   assert(hydro);
 
-  test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
   hydro_memcpy(hydro, cudaMemcpyHostToDevice);
 
   hydro_u_halo(hydro);
 
   hydro_memcpy(hydro, cudaMemcpyDeviceToHost);
-  test_coords_field_check(nhcomm, NHDIM, hydro->u, MPI_DOUBLE,
+  test_coords_field_check(cs, nhcomm, NHDIM, hydro->u, MPI_DOUBLE,
 			  test_ref_double1);
 
   hydro_free(hydro);
@@ -183,7 +183,7 @@ static int do_test_io1(pe_t * pe, int io_format) {
   assert(hydro);
 
   hydro_init_io_info(hydro, grid, io_format, io_format);
-  test_coords_field_set(NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
 
   hydro_io_info(hydro, &iohandler);
   assert(iohandler);

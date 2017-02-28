@@ -197,6 +197,13 @@ int MPI_Abort(MPI_Comm comm, int errorcode);
  * See MPI 3 standard */
 
 int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler erhandler);
+int MPI_Get_address(const void * location, MPI_Aint * address);
+int MPI_Type_create_struct(int count, int * arry_of_blocklens,
+			   const MPI_Aint * array_of_displacements,
+			   const MPI_Datatype * array_of_datatypes,
+			   MPI_Datatype * newtype);
+int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint ub, MPI_Aint extent,
+			    MPI_Datatype * newtype);
 
 #ifdef __cplusplus
 }

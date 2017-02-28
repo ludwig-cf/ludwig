@@ -15,8 +15,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -24,6 +26,7 @@
 #include <assert.h>
 
 #include "ran.h"
+#include "colloids_s.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
 
@@ -79,20 +82,29 @@ int colloids_init_random(pe_t * pe, cs_t * cs, colloids_info_t * cinfo, int np,
 static int colloids_init_random_set(colloids_info_t * cinfo, int npart,
 				    const colloid_state_t * s,  double amax) {
   int n;
+  int periodic[3];
   double r0[3];
+  double lmin[3];
+  double ltot[3];
   double lex[3];
   colloid_t * pc;
 
+  assert(cinfo);
+
+  cs_periodic(cinfo->cs, periodic);
+  cs_lmin(cinfo->cs, lmin);
+  cs_ltot(cinfo->cs, ltot);
+
   /* If boundaries are not perioidic, some of the volume must be excluded */
 
-  lex[X] = amax*(1.0 - is_periodic(X));
-  lex[Y] = amax*(1.0 - is_periodic(Y));
-  lex[Z] = amax*(1.0 - is_periodic(Z));
+  lex[X] = amax*(1.0 - periodic[X]);
+  lex[Y] = amax*(1.0 - periodic[Y]);
+  lex[Z] = amax*(1.0 - periodic[Z]);
 
   for (n = 1; n <= npart; n++) {
-    r0[X] = Lmin(X) + lex[X] + ran_serial_uniform()*(L(X) - 2.0*lex[X]);
-    r0[Y] = Lmin(Y) + lex[Y] + ran_serial_uniform()*(L(Y) - 2.0*lex[Y]);
-    r0[Z] = Lmin(Z) + lex[Z] + ran_serial_uniform()*(L(Z) - 2.0*lex[Z]);
+    r0[X] = lmin[X] + lex[X] + ran_serial_uniform()*(ltot[X] - 2.0*lex[X]);
+    r0[Y] = lmin[Y] + lex[Y] + ran_serial_uniform()*(ltot[Y] - 2.0*lex[Y]);
+    r0[Z] = lmin[Z] + lex[Z] + ran_serial_uniform()*(ltot[Z] - 2.0*lex[Z]);
     colloids_info_add_local(cinfo, n, r0, &pc);
 
     if (pc) {
@@ -130,8 +142,11 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
 
   colloid_t * p_c1;
   colloid_t * p_c2;
+  MPI_Comm comm;
 
   assert(cinfo);
+
+  pe_mpi_comm(cinfo->pe, &comm);
   colloids_info_ncell(cinfo, ncell);
 
   noverlap_local = 0;
@@ -154,7 +169,7 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
 
 		while (p_c2) {
 		  if (p_c2 != p_c1) {
-		    coords_minimum_distance(p_c1->s.r, p_c2->s.r, r12);
+		    cs_minimum_distance(cinfo->cs, p_c1->s.r, p_c2->s.r, r12);
 		    hh = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 		    if (hh < hmax*hmax) noverlap_local += 1;
 		  }
@@ -173,12 +188,13 @@ static int colloids_init_check_state(colloids_info_t * cinfo, double hmax) {
     }
   }
 
-  MPI_Allreduce(&noverlap_local, &noverlap, 1, MPI_INT, MPI_SUM, pe_comm());
+  MPI_Allreduce(&noverlap_local, &noverlap, 1, MPI_INT, MPI_SUM, comm);
 
   if (noverlap > 0) {
-    info("This appears to include at least one hard sphere overlap.\n");
-    info("Please check the colloid parameters and try again\n");
-    fatal("Stop.\n");
+    pe_info(cinfo->pe,
+	    "This appears to include at least one hard sphere overlap.\n");
+    pe_info(cinfo->pe, "Please check the colloid parameters and try again\n");
+    pe_fatal(cinfo->pe, "Stop.\n");
   }
 
   return 0;

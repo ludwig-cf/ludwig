@@ -39,6 +39,7 @@ extern const double psi_gr_rcs2;
 int psi_electric_field(psi_t * psi, int index, double e[3]);
 int psi_electric_field_d3qx(psi_t * psi, int index, double e[3]);
 int psi_grad_rho_d3qx(psi_t * obj,  map_t * map, int index, int n, double * grad_rho);
-int psi_grad_eps_d3qx(fe_t * fe, f_vare_t fepsilon, int index, double * grad_eps);
+int psi_grad_eps_d3qx(psi_t * psi, fe_t * fe, f_vare_t fepsilon, int index,
+		      double * grad_eps);
 
 #endif                               

@@ -7,11 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Squimer code from Isaac Llopis and Ricard Matas Navarro (U. Barcelona).
- *
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -109,13 +109,15 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
 
   int nactive;
   int nactive_local;
+  MPI_Comm comm;
 
   assert(bbl);
   assert(cinfo);
 
   colloids_info_count_local(cinfo, COLLOID_TYPE_ACTIVE, &nactive_local);
 
-  MPI_Allreduce(&nactive_local, &nactive, 1, MPI_INT, MPI_SUM, pe_comm());
+  cs_cart_comm(bbl->cs, &comm);
+  MPI_Allreduce(&nactive_local, &nactive, 1, MPI_INT, MPI_SUM, comm);
 
   bbl->active = nactive;
 
@@ -155,7 +157,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   assert(lb);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(bbl->cs, nlocal);
 
   colloids_info_ntotal(cinfo, &ntotal);
   if (ntotal == 0) return 0;
@@ -266,7 +268,7 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
-  kernel_ctxt_create(1, limits, &ctxt);
+  kernel_ctxt_create(bbl->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   __host_launch(bbl_pass0_kernel, nblk, ntpb, ctxt->target, cstarget,
@@ -845,7 +847,7 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
       /* divide pivot row by the pivot element a[iprow][k] */
 
       if (a[iprow][k] == 0.0) {
-	fatal("Gaussain elimination failed in COLL_update\n");
+	pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
       }
 
       tmp = 1.0 / a[iprow][k];
@@ -1001,10 +1003,13 @@ int bbl_surface_stress(bbl_t * bbl, double slocal[3][3]) {
 
   int ia, ib;
   double rv;
+  double ltot[3];
 
   assert(bbl);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  cs_ltot(bbl->cs, ltot);
+
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

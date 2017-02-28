@@ -7,28 +7,35 @@
  *
  *  $Id: stats_rheology.h,v 1.3 2009-10-14 17:16:01 kevin Exp $
  *
+ *  (c) 2009-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) The University of Edinburgh (2009)
  *
  *****************************************************************************/
 
-#ifndef STATS_RHEOLOGY_H
-#define STATS_RHEOLOGY_H
+#ifndef LUDWIG_STATS_RHEOLOGY_H
+#define LUDWIG_STATS_RHEOLOGY_H
 
 #include "free_energy.h"
 #include "model.h"
 #include "hydro.h"
 
-void stats_rheology_init(void);
-void stats_rheology_finish(void);
+typedef struct stats_rheo_s stats_rheo_t;
 
-int stats_rheology_stress_profile_accumulate(lb_t * lb, fe_t * fe,
+int stats_rheology_create(pe_t * pe, cs_t * cs, stats_rheo_t ** prheo);
+int stats_rheology_free(stats_rheo_t * rheo);
+
+int stats_rheology_stress_profile_accumulate(stats_rheo_t * rheo,
+					     lb_t * lb, fe_t * fe,
 					     hydro_t * hydro);
-int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename);
+int stats_rheology_mean_stress(lb_t * lb, fe_t * fe,
+			       const char * filename);
 
-void stats_rheology_free_energy_density_profile(fe_t * fe, const char *);
-void stats_rheology_stress_profile_zero(void);
-void stats_rheology_stress_profile(const char *);
-void stats_rheology_stress_section(const char *);
+int stats_rheology_free_energy_density_profile(stats_rheo_t * rheo, fe_t * fe,
+					       const char *);
+int stats_rheology_stress_profile_zero(stats_rheo_t * rheo);
+int stats_rheology_stress_profile(stats_rheo_t * rheo, const char *);
+int stats_rheology_stress_section(stats_rheo_t * rheo, const char *);
 
 #endif

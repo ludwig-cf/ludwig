@@ -20,11 +20,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  * 
- *  (c) 2016 The University of Edinburgh
+ *  (c) 2016-2017 The University of Edinburgh
  *
  *  Contributing authors:
- *    Alan Gray (alang@epcc.ed.ac.uk)
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Alan Gray (alang@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -109,7 +109,9 @@ int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
 
 /* Implementation */
 
-typedef enum data_model_enum_type {ADDRESS_FORWARD, ADDRESS_REVERSE}
+typedef enum data_model_enum_type {DATA_MODEL_AOS,
+				   DATA_MODEL_SOA,
+				   DATA_MODEL_AOSOA}
   data_model_enum_t;
 
 #ifdef NDEBUG
@@ -231,14 +233,14 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define base_addr_rank2 forward_addr_rank2
 #define base_addr_rank3 forward_addr_rank3
 #define base_addr_rank4 forward_addr_rank4
-#define DATA_MODEL ADDRESS_FORWARD
-#else /* REVERSE */
+#define DATA_MODEL DATA_MODEL_AOS
+#else /* then it is SOA */
 #define base_addr_rank0 reverse_addr_rank0
 #define base_addr_rank1 reverse_addr_rank1
 #define base_addr_rank2 reverse_addr_rank2
 #define base_addr_rank3 reverse_addr_rank3
 #define base_addr_rank4 reverse_addr_rank4
-#define DATA_MODEL ADDRESS_REVERSE
+#define DATA_MODEL DATA_MODEL_SOA
 #endif
 
 
@@ -252,6 +254,8 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define addr_rank3 base_addr_rank3
 
 #else
+
+#define DATA_MODEL DATA_MODEL_AOSOA
 
 /* Blocked version. Block length always vector length. */
 
@@ -276,6 +280,13 @@ int reverse_addr_rank4_assert(int line, const char * file,
   base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, pseudo_iv(index))
 
 #endif /* ADDR_VBLOCK */
+
+/* Alignment */
+
+#define MEM_PAGESIZE 4096
+void * mem_aligned_malloc(size_t alignment, size_t size);
+void * mem_aligned_calloc(size_t alignment, size_t count, size_t size);
+void * mem_aligned_realloc(void * ptr, size_t alignment, size_t size);
 
 
 #endif

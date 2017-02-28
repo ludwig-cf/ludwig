@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -29,7 +31,7 @@ static int test_coords_communicator(cs_t * cs);
 static int test_coords_cart_info(cs_t * cs);
 static int test_coords_sub_communicator(cs_t * cs);
 static int test_coords_periodic_comm(cs_t * cs);
-static int neighbour_rank(int, int, int);
+static int neighbour_rank(cs_t * cs, int nx, int ny, int nz);
 
 __host__ int do_test_coords_device1(pe_t * pe);
 __global__ void do_test_coords_kernel1(cs_t * cs);
@@ -74,7 +76,7 @@ int test_coords_suite(void) {
   test_coords_decomposition(cs, decomposition_default);
   test_coords_communicator(cs);
   cs_free(cs);
-
+  printf("OK1\n");
 
   /* Now test 1 */
 
@@ -85,10 +87,14 @@ int test_coords_suite(void) {
 
   cs_init(cs);
   test_coords_system(cs, ntotal_test1, periods_test1);
+  printf("OK2\n");
   test_coords_decomposition(cs, decomposition_test1);
+  printf("OK3\n");
   test_coords_communicator(cs);
+  printf("OK4\n");
   test_coords_cart_info(cs);
   cs_free(cs);
+  printf("OK5\n");
 
   /* Now test 2 */
 
@@ -251,6 +257,7 @@ int test_coords_communicator(cs_t * cs) {
   int coords[3];
   int cart_coords[3];
   int mpisz[3];
+  int periodic[3];
   int rank;
   int n;
 
@@ -261,8 +268,6 @@ int test_coords_communicator(cs_t * cs) {
   cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
-  cs_cartsz(cs, mpisz);
-  cs_cart_coords(cs, cart_coords);
 
   /* info("Checking Cartesian communicator initialised...");*/
 
@@ -273,31 +278,34 @@ int test_coords_communicator(cs_t * cs) {
   /* info("yes\n");*/
 
   /* info("Checking Cartesian rank...");*/
-  test_assert(cs_cart_rank(cs) == rank);
+  assert(cs_cart_rank(cs) == rank);
   /* info("ok\n");*/
 
   /* info("Checking cart_size() ...");*/
-  test_assert(mpisz[X] == dims[X]);
-  test_assert(mpisz[Y] == dims[Y]);
-  test_assert(mpisz[Z] == dims[Z]);
+  cs_cartsz(cs, mpisz);
+  assert(mpisz[X] == dims[X]);
+  assert(mpisz[Y] == dims[Y]);
+  assert(mpisz[Z] == dims[Z]);
   /* info("ok\n");*/
 
   /* info("Checking cart_coords() ...");*/
-  test_assert(cart_coords[X] == coords[X]);
-  test_assert(cart_coords[Y] == coords[Y]);
-  test_assert(cart_coords[Z] == coords[Z]);
+  cs_cart_coords(cs, cart_coords);
+  assert(cart_coords[X] == coords[X]);
+  assert(cart_coords[Y] == coords[Y]);
+  assert(cart_coords[Z] == coords[Z]);
   /* info("ok\n");*/
 
   /* info("Checking periodity...");*/
-  test_assert(is_periodic(X) == periods[X]);
-  test_assert(is_periodic(Y) == periods[Y]);
-  test_assert(is_periodic(Z) == periods[Z]);
+  cs_periodic(cs, periodic);
+  assert(periodic[X] == periods[X]);
+  assert(periodic[Y] == periods[Y]);
+  assert(periodic[Z] == periods[Z]);
   /* info("ok\n");*/
 
   /* info("Checking n_local[] ...");*/
-  test_assert(nlocal[X] == ntotal[X]/cart_size(X));
-  test_assert(nlocal[Y] == ntotal[Y]/cart_size(Y));
-  test_assert(nlocal[Z] == ntotal[Z]/cart_size(Z));
+  assert(nlocal[X] == ntotal[X]/mpisz[X]);
+  assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
+  assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
   /* info("ok\n");*/
 
   /* info("Checking n_offset()...");*/
@@ -309,33 +317,33 @@ int test_coords_communicator(cs_t * cs) {
   /* Check the neighbours */
 
   /* info("Checking FORWARD neighbours in X...");*/
-  n = neighbour_rank(cart_coords[X]+1, cart_coords[Y], cart_coords[Z]);
-  test_assert(n == cart_neighb(FORWARD, X));
+  n = neighbour_rank(cs, cart_coords[X]+1, cart_coords[Y], cart_coords[Z]);
+  assert(n == cs_cart_neighb(cs, CS_FORW, X));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in X...");*/
-  n = neighbour_rank(cart_coords[X]-1, cart_coords[Y], cart_coords[Z]);
-  test_assert(n == cart_neighb(BACKWARD, X));
+  n = neighbour_rank(cs, cart_coords[X]-1, cart_coords[Y], cart_coords[Z]);
+  assert(n == cs_cart_neighb(cs, CS_BACK, X));
   /* info("ok\n");*/
 
   /* info("Checking FORWARD neighbours in Y...");*/
-  n = neighbour_rank(cart_coords[X], cart_coords[Y]+1, cart_coords[Z]);
-  test_assert(n == cart_neighb(FORWARD, Y));
+  n = neighbour_rank(cs, cart_coords[X], cart_coords[Y]+1, cart_coords[Z]);
+  assert(n == cs_cart_neighb(cs, CS_FORW, Y));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in Y...");*/
-  n = neighbour_rank(cart_coords[X], cart_coords[Y]-1, cart_coords[Z]);
-  test_assert(n == cart_neighb(BACKWARD, Y));
+  n = neighbour_rank(cs, cart_coords[X], cart_coords[Y]-1, cart_coords[Z]);
+  assert(n == cs_cart_neighb(cs, CS_BACK, Y));
   /* info("ok\n");*/
 
   /* info("Checking FORWARD neighbours in Z...");*/
-  n = neighbour_rank(cart_coords[X], cart_coords[Y], cart_coords[Z]+1);
-  test_assert(n == cart_neighb(FORWARD, Z));
+  n = neighbour_rank(cs, cart_coords[X], cart_coords[Y], cart_coords[Z]+1);
+  assert(n == cs_cart_neighb(cs, CS_FORW, Z));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in Z...");*/
-  n = neighbour_rank(cart_coords[X], cart_coords[Y], cart_coords[Z]-1);
-  test_assert(n == cart_neighb(BACKWARD, Z));
+  n = neighbour_rank(cs, cart_coords[X], cart_coords[Y], cart_coords[Z]-1);
+  assert(n == cs_cart_neighb(cs, CS_BACK, Z));
   /* info("ok\n");*/
 
   return 0;
@@ -352,6 +360,7 @@ int test_coords_communicator(cs_t * cs) {
 static int test_coords_cart_info(cs_t * cs) {
 
   int n;
+  int rank, sz;
   const int tag = 100;
   char string[FILENAME_MAX];
 
@@ -374,11 +383,14 @@ static int test_coords_cart_info(cs_t * cs) {
   */
   /* Pass everything to root to print in order. */
 
-  if (pe_rank() != 0) {
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &sz);
+
+  if (rank != 0) {
     MPI_Ssend(string, FILENAME_MAX, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
   }
   else {
-    for (n = 1; n < pe_size(); n++) {
+    for (n = 1; n < sz; n++) {
       MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
       /* info(string);*/
     }
@@ -397,11 +409,13 @@ static int test_coords_cart_info(cs_t * cs) {
 
 static int test_coords_sub_communicator(cs_t * cs) {
 
+  int rank, sz;
   int remainder[3];
   int n, rank1, rank2;
   const int tag = 100;
   char string[FILENAME_MAX];
 
+  MPI_Comm cartcomm;
   MPI_Comm sub_comm1;
   MPI_Comm sub_comm2;
   MPI_Status status[1];
@@ -414,7 +428,8 @@ static int test_coords_sub_communicator(cs_t * cs) {
   remainder[Y] = 1;
   remainder[Z] = 0;
 
-  MPI_Cart_sub(cart_comm(), remainder, &sub_comm1);
+  cs_cart_comm(cs, &cartcomm);
+  MPI_Cart_sub(cartcomm, remainder, &sub_comm1);
   MPI_Comm_rank(sub_comm1, &rank1);
 
   /* Two-dimensional sub-comminucator in YZ */
@@ -423,7 +438,7 @@ static int test_coords_sub_communicator(cs_t * cs) {
   remainder[Y] = 1;
   remainder[Z] = 1;
 
-  MPI_Cart_sub(cart_comm(), remainder, &sub_comm2);
+  MPI_Cart_sub(cartcomm, remainder, &sub_comm2);
   MPI_Comm_rank(sub_comm2, &rank2);
 
   /*
@@ -439,11 +454,14 @@ static int test_coords_sub_communicator(cs_t * cs) {
   */
   /* Pass everything to root to print in order. */
 
-  if (pe_rank() != 0) {
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &sz);
+
+  if (rank != 0) {
     MPI_Ssend(string, FILENAME_MAX, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
   }
   else {
-    for (n = 1; n < pe_size(); n++) {
+    for (n = 1; n < sz; n++) {
       MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
       /* info(string);*/
     }
@@ -467,25 +485,36 @@ static int test_coords_sub_communicator(cs_t * cs) {
  *
  *****************************************************************************/
 
-int neighbour_rank(int nx, int ny, int nz) {
+int neighbour_rank(cs_t * cs, int nx, int ny, int nz) {
 
+  int sz;
   int rank = 0;
   int coords[3];
   int periodic = 1;
+  int is_periodic[3];
+  int mpi_cartsz[3];
+  MPI_Comm comm;
 
-  if (is_periodic(X) == 0 && (nx < 0 || nx >= cart_size(X))) periodic = 0;
-  if (is_periodic(Y) == 0 && (ny < 0 || ny >= cart_size(Y))) periodic = 0;
-  if (is_periodic(Z) == 0 && (nz < 0 || nz >= cart_size(Z))) periodic = 0;
+  assert(cs);
+
+  cs_periodic(cs, is_periodic);
+  cs_cartsz(cs, mpi_cartsz);
+  cs_cart_comm(cs, &comm);
+
+  if (is_periodic[X] == 0 && (nx < 0 || nx >= mpi_cartsz[X])) periodic = 0;
+  if (is_periodic[Y] == 0 && (ny < 0 || ny >= mpi_cartsz[Y])) periodic = 0;
+  if (is_periodic[Z] == 0 && (nz < 0 || nz >= mpi_cartsz[Z])) periodic = 0;
 
   coords[X] = nx;
   coords[Y] = ny;
   coords[Z] = nz;
 
   rank = MPI_PROC_NULL;
-  if (periodic) MPI_Cart_rank(cart_comm(), coords, &rank);
+  if (periodic) MPI_Cart_rank(comm, coords, &rank);
 
   /* Serial doesn't quite work out with the above */
-  if (pe_size() == 1) rank = 0;
+  MPI_Comm_size(comm, &sz);
+  if (sz == 1) rank = 0; /* Fails in true MPI Comm_size = 1 */
 
   return rank;
 }

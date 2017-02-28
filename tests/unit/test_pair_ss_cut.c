@@ -5,9 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -28,7 +29,7 @@
 #define PAIR_NU      2
 #define PAIR_HC      0.25
 
-static int test_pair_ss_cut1(void);
+static int test_pair_ss_cut1(pe_t * pe, cs_t * cs);
 static int test_pair_ss_cut2(pe_t * pe, cs_t * cs);
 static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 			     pair_ss_cut_t * pair);
@@ -48,7 +49,7 @@ int test_pair_ss_cut_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  test_pair_ss_cut1();
+  test_pair_ss_cut1(pe, cs);
   test_pair_ss_cut2(pe, cs);
 
   cs_free(cs);
@@ -64,12 +65,15 @@ int test_pair_ss_cut_suite(void) {
  *
  *****************************************************************************/
 
-static int test_pair_ss_cut1(void) {
+static int test_pair_ss_cut1(pe_t * pe, cs_t * cs) {
 
   pair_ss_cut_t * pair = NULL;
   double h, f, v;
 
-  pair_ss_cut_create(&pair);
+  assert(pe);
+  assert(cs);
+
+  pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
   pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC);
@@ -108,10 +112,10 @@ static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
 
   colloids_info_create(pe, cs, ncell, &cinfo);
   assert(cinfo);
-  interact_create(&interact);
+  interact_create(pe, cs, &interact);
   assert(interact);
 
-  pair_ss_cut_create(&pair);
+  pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
   pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC);
@@ -197,7 +201,7 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
 
   f = f/sqrt(3.0);
  
-  if (pe_size() == 1) {
+  if (pe_mpi_size(cinfo->pe) == 1) {
     assert(fabs(pc1->force[X] - f) < FLT_EPSILON);
     assert(fabs(pc1->force[Y] - f) < FLT_EPSILON);
     assert(fabs(pc1->force[Z] - f) < FLT_EPSILON);

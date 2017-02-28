@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -97,7 +97,7 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {
-    info("Initial order parameter requested from file\n");
+    pe_info(pe, "Initial order parameter requested from file\n");
     strcpy(filestub, "phi.init"); /* A default */
     rt_string_parameter(rt, "phi_file_stub", filestub, FILENAME_MAX);
     pe_info(pe, "Attempting to read phi from file: %s\n", filestub);

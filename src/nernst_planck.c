@@ -61,7 +61,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
  *
- *  (c) 2012-2016 The University of Edinbrugh
+ *  (c) 2012-2017 The University of Edinbrugh
  *
  *****************************************************************************/
 
@@ -121,29 +121,29 @@ int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) 
   assert(0); /* Not in use. */
 
   psi_nk(psi, &nk);
-  nsites = coords_nsites();
+  cs_nsites(psi->cs, &nsites);
 
  /* Allocate fluxes and initialise to zero */
   fe = (double*) calloc(nsites*nk, sizeof(double));
   fy = (double*) calloc(nsites*nk, sizeof(double));
   fz = (double*) calloc(nsites*nk, sizeof(double));
-  if (fe == NULL) fatal("calloc(fe) failed\n");
-  if (fy == NULL) fatal("calloc(fy) failed\n");
-  if (fz == NULL) fatal("calloc(fz) failed\n");
+  if (fe == NULL) pe_fatal(psi->pe, "calloc(fe) failed\n");
+  if (fy == NULL) pe_fatal(psi->pe, "calloc(fy) failed\n");
+  if (fz == NULL) pe_fatal(psi->pe, "calloc(fz) failed\n");
 
   /* The order of these calls is important, as the diffusive
    * (Nernst Planck) fluxes are added to the advective. The
    * whole lot are then subject to no normal flux BCs. */
-
+#ifdef OLD_SHIT
   /* Add advective fluxes based on six-point stencil */
   if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
-
+#endif
   /* Add diffusive fluxes based on six-point stencil */
   nernst_planck_fluxes(psi, fel, fe, fy, fz);
-
+#ifdef OLD_SHIT
   /* Apply no flux BC for six-point stencil */
   if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
-  
+#endif  
   /* Update charge distribution */
   nernst_planck_update(psi, fe, fy, fz);
 
@@ -348,7 +348,7 @@ int nernst_planck_driver_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
   for (ia = 0; ia < psi->nsites*nk; ia++) {
     flx[ia] = (double *) calloc(PSI_NGRAD-1, sizeof(double));
   }
-  if (flx == NULL) fatal("calloc(flx) failed\n");
+  if (flx == NULL) pe_fatal(psi->pe, "calloc(flx) failed\n");
 
   /* Add advective fluxes */
   if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho, flx);
@@ -631,7 +631,7 @@ int nernst_planck_fluxes_force_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = cs_index(psi->cs, ic, jc, kc);
         colloids_info_map(cinfo, index0, &pc);
 
 	if (pc) {
@@ -755,12 +755,14 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
   double maxacc_local[1], maxacc[1], diffacc; /* actual and preset value of diffusive accuracy */
   double diff, diffmax=0.0;                   /* diffusivity of species and maximal value      */ 
   int n, nk, multisteps;
+  MPI_Comm comm;
 
   psi_diffacc(psi, &diffacc);
 
   /* Take local maximum and reduce for global maximum */
   nernst_planck_maxacc(&maxacc_local[0]);
-  MPI_Allreduce(maxacc_local, maxacc, 1, MPI_DOUBLE, MPI_MAX, pe_comm());
+  cs_cart_comm(psi->cs, &comm);
+  MPI_Allreduce(maxacc_local, maxacc, 1, MPI_DOUBLE, MPI_MAX, comm);
 
   /* Compare maximal accuracy with preset value for */ 
   /*   diffusion and adjust number of multisteps    */
@@ -770,7 +772,8 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
     psi_multisteps(psi, &multisteps);
     multisteps *= 2;
     psi_multisteps_set(psi, multisteps);
-    info("\nMaxacc > diffacc: changing no. of multisteps to %d\n", multisteps);
+    pe_info(psi->pe, "\nMaxacc > diffacc: changing no. of multisteps to %d\n",
+	    multisteps);
   }    
 
   /* Reduce no. of multisteps */
@@ -789,7 +792,7 @@ int nernst_planck_adjust_multistep(psi_t * psi) {
     if (multisteps > 1 && diffmax/multisteps < 0.05) { 
       multisteps *= 0.5; 
       psi_multisteps_set(psi, multisteps);
-      info("\nMaxacc << diffacc: changing no. of multisteps to %d\n", multisteps);
+      pe_info(psi->pe, "\nMaxacc << diffacc: changing no. of multisteps to %d\n", multisteps);
     }    
 
   }    

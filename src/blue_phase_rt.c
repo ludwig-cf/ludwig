@@ -10,9 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2009-2017 The University of Edinburgh
  *
- *  (c) 2009-2016 The University of Edinburgh
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -299,7 +300,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
  *
  *****************************************************************************/
 
-__host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
+__host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
 					      fe_lc_t * fe, field_t * q) {
 
   int  n1, n2;
@@ -312,6 +313,8 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
   fe_lc_param_t param;
   fe_lc_param_t * feparam = &param;
 
+  assert(pe);
+  assert(cs);
   assert(fe);
   assert(q);
 
@@ -328,84 +331,84 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
     /* This gives cholesteric_z (for backwards compatibility) */
     pe_info(pe, "Initialising Q_ab to cholesteric\n");
     pe_info(pe, "Helical axis Z\n");
-    blue_phase_twist_init(feparam, q, Z);
+    blue_phase_twist_init(cs, feparam, q, Z);
   }
 
   if (strcmp(key1, "cholesteric_x") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric\n");
     pe_info(pe, "Helical axis X\n");
-    blue_phase_twist_init(feparam, q, X);
+    blue_phase_twist_init(cs, feparam, q, X);
   }
 
   if (strcmp(key1, "cholesteric_y") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric\n");
     pe_info(pe, "Helical axis Y\n");
-    blue_phase_twist_init(feparam, q, Y);
+    blue_phase_twist_init(cs, feparam, q, Y);
   }
 
   if (strcmp(key1, "cholesteric_z") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric\n");
     pe_info(pe, "Helical axis Z\n");
-    blue_phase_twist_init(feparam, q, Z);
+    blue_phase_twist_init(cs, feparam, q, Z);
   }
 
   if (strcmp(key1, "nematic") == 0) {
     pe_info(pe, "Initialising Q_ab to nematic\n");
     rt_double_parameter_vector(rt, "lc_init_nematic", nhat);
     pe_info(pe, "Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
-    blue_phase_nematic_init(feparam, q, nhat);
+    blue_phase_nematic_init(cs, feparam, q, nhat);
   }
 
   if (strcmp(key1, "active_nematic") == 0) {
     pe_info(pe, "Initialising Q_ab to active nematic\n");
     rt_double_parameter_vector(rt, "lc_init_nematic", nhat);
     pe_info(pe, "Director:  %14.7e %14.7e %14.7e\n", nhat[X], nhat[Y], nhat[Z]);
-    blue_phase_active_nematic_init(feparam, q, nhat);
+    blue_phase_active_nematic_init(cs, feparam, q, nhat);
   }
 
   if (strcmp(key1, "active_nematic_q2d_x") == 0) {
     pe_info(pe, "Initialising Q_ab to quasi-2d with strip parallel to X\n");
-    lc_active_nematic_init_q2d(feparam, q, X);
+    lc_active_nematic_init_q2d(cs, feparam, q, X);
   }
 
   if (strcmp(key1, "active_nematic_q2d_y") == 0) {
     pe_info(pe, "Initialising Q_ab to quasi-2d with strip parallel to Y\n");
-    lc_active_nematic_init_q2d(feparam, q, Y);
+    lc_active_nematic_init_q2d(cs, feparam, q, Y);
   }
 
   if (strcmp(key1, "o8m") == 0) {
     pe_info(pe, "Initialising Q_ab using O8M (BPI)\n");
-    blue_phase_O8M_init(feparam, q);
+    blue_phase_O8M_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "o2") == 0) {
     pe_info(pe, "Initialising Q_ab using O2 (BPII)\n");
-    blue_phase_O2_init(feparam, q);
+    blue_phase_O2_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "o5") == 0) {
     pe_info(pe, "Initialising Q_ab using O5\n");
-    blue_phase_O5_init(feparam, q);
+    blue_phase_O5_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "h2d") == 0) {
     pe_info(pe, "Initialising Q_ab using H2D\n");
-    blue_phase_H2D_init(feparam, q);
+    blue_phase_H2D_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "h3da") == 0) {
     pe_info(pe, "Initialising Q_ab using H3DA\n");
-    blue_phase_H3DA_init(feparam, q);
+    blue_phase_H3DA_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "h3db") == 0) {
     pe_info(pe, "Initialising Q_ab using H3DB\n");
-    blue_phase_H3DB_init(feparam, q);
+    blue_phase_H3DB_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "dtc") == 0) {
     pe_info(pe, "Initialising Q_ab using DTC\n");
-    blue_phase_DTC_init(feparam, q);
+    blue_phase_DTC_init(cs, feparam, q);
   }
 
   if (strcmp(key1, "bp3") == 0) {
@@ -414,51 +417,51 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
     pe_info(pe, "BPIII specifications: N_DTC=%g,  R_DTC=%g,  ", nhat2[0], nhat2[1]);
     if (nhat2[2] == 0) pe_info(pe, "isotropic environment\n");
     if (nhat2[2] == 1) pe_info(pe, "cholesteric environment\n");
-    blue_phase_BPIII_init(feparam, q, nhat2);
+    blue_phase_BPIII_init(cs, feparam, q, nhat2);
   }
 
   if (strcmp(key1, "cf1_x") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric finger (1st kind)\n");
     pe_info(pe, "Finger axis X, helical axis Y\n");
-    blue_phase_cf1_init(feparam, q, X);
+    blue_phase_cf1_init(cs, feparam, q, X);
   }
 
   if (strcmp(key1, "cf1_y") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric finger (1st kind)\n");
     pe_info(pe, "Finger axis Y, helical axis Z\n");
-    blue_phase_cf1_init(feparam, q, Y);
+    blue_phase_cf1_init(cs, feparam, q, Y);
   }
 
   if (strcmp(key1, "cf1_z") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric finger (1st kind)\n");
     pe_info(pe, "Finger axis Z, helical axis X\n");
-    blue_phase_cf1_init(feparam, q, Z);
+    blue_phase_cf1_init(cs, feparam, q, Z);
   }
 
   if (strcmp(key1, "cf1_fluc_x") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric finger (1st kind)\n");
     pe_info(pe, "with added traceless symmetric random fluctuation.\n");
     pe_info(pe, "Finger axis X, helical axis Y\n");
-    blue_phase_random_cf1_init(feparam, q, X);
+    blue_phase_random_cf1_init(cs, feparam, q, X);
   }
 
   if (strcmp(key1, "cf1_fluc_y") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric finger (1st kind)\n");
     pe_info(pe, "with added traceless symmetric random fluctuation.\n");
     pe_info(pe, "Finger axis Y, helical axis Z\n");
-    blue_phase_random_cf1_init(feparam, q, Y);
+    blue_phase_random_cf1_init(cs, feparam, q, Y);
   }
 
   if (strcmp(key1, "cf1_fluc_z") == 0) {
     pe_info(pe, "Initialising Q_ab to cholesteric finger (1st kind)\n");
     pe_info(pe, "with added traceless symmetric random fluctuation.\n");
     pe_info(pe, "Finger axis Z, helical axis X\n");
-    blue_phase_random_cf1_init(feparam, q, Z);
+    blue_phase_random_cf1_init(cs, feparam, q, Z);
   }
 
   if (strcmp(key1, "random") == 0) {
     pe_info(pe, "Initialising Q_ab randomly\n");
-    blue_phase_random_q_init(feparam, q);
+    blue_phase_random_q_init(cs, feparam, q);
   }
 
   /* Superpose a rectangle of random Q_ab on whatever was above */
@@ -468,7 +471,7 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt,
 
   if (n1 == 1 && n2 == 1) {
     pe_info(pe, "Superposing random rectangle\n");
-    blue_phase_random_q_rectangle(feparam, q, rmin, rmax);
+    blue_phase_random_q_rectangle(cs, feparam, q, rmin, rmax);
   }
 
   return 0;

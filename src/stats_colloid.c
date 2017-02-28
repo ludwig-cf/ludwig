@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,7 +22,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids.h"
+#include "colloids_s.h"
 #include "util.h"
 #include "stats_colloid.h"
 
@@ -47,6 +49,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
   PI_DOUBLE(pi);
 
   colloid_t * pc = NULL;
+  MPI_Comm comm;
 
   assert(cinfo);
 
@@ -55,6 +58,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
 
   colloids_info_ncell(cinfo, ncell);
   colloids_info_rho0(cinfo, &rho0);
+  pe_mpi_comm(cinfo->pe, &comm);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
@@ -79,7 +83,7 @@ int stats_colloid_momentum(colloids_info_t * cinfo, double g[3]) {
     }
   }
 
-  MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+  MPI_Reduce(glocal, g, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
 
   return 0;
 }
@@ -100,6 +104,7 @@ int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
   double vmin[6];
   double vminlocal[6];
   colloid_t * pc;
+  MPI_Comm comm;
 
   for (ia = 0; ia < 6; ia++) {
     vminlocal[ia] = FLT_MAX;
@@ -107,6 +112,7 @@ int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
 
   assert(cinfo);
   colloids_info_ncell(cinfo, ncell);
+  pe_mpi_comm(cinfo->pe, &comm);
 
   for (ic = 1; ic <= ncell[X]; ic++) {
     for (jc = 1; jc <= ncell[Y]; jc++) {
@@ -125,11 +131,13 @@ int stats_colloid_velocity_minmax(colloids_info_t * cinfo) {
     }
   }
 
-  MPI_Reduce(vminlocal, vmin, 6, MPI_DOUBLE, MPI_MIN, 0, pe_comm());
+  MPI_Reduce(vminlocal, vmin, 6, MPI_DOUBLE, MPI_MIN, 0, comm);
 
-  info("Colloid velocities - x y z\n");
-  info("[minimum ] %14.7e %14.7e %14.7e\n", vmin[X], vmin[Y], vmin[Z]);
-  info("[maximum ] %14.7e %14.7e %14.7e\n", -vmin[3+X],-vmin[3+Y],-vmin[3+Z]);
+  pe_info(cinfo->pe, "Colloid velocities - x y z\n");
+  pe_info(cinfo->pe, "[minimum ] %14.7e %14.7e %14.7e\n",
+	             vmin[X], vmin[Y], vmin[Z]);
+  pe_info(cinfo->pe, "[maximum ] %14.7e %14.7e %14.7e\n",
+	             -vmin[3+X],-vmin[3+Y],-vmin[3+Z]);
 
   return 0;
 }

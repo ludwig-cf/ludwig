@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,6 +20,7 @@
 
 #include "noise.h"
 #include "util.h"
+#include "field_s.h"
 #include "field_phi_init.h"
 
 /*****************************************************************************
@@ -38,26 +39,28 @@ int field_phi_init_drop(double xi, double radius,
   int noffset[3];
   int index, ic, jc, kc;
 
+  double ltot[3];
   double position[3];
   double centre[3];
   double phival, r, rxi0;
 
   assert(phi);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+  cs_ltot(phi->cs, ltot);
 
   rxi0 = 1.0/xi;
 
-  centre[X] = 0.5*L(X);
-  centre[Y] = 0.5*L(Y);
-  centre[Z] = 0.5*L(Z);
+  centre[X] = 0.5*ltot[X];
+  centre[Y] = 0.5*ltot[Y];
+  centre[Z] = 0.5*ltot[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(phi->cs, ic, jc, kc);
         position[X] = 1.0*(noffset[X] + ic) - centre[X];
         position[Y] = 1.0*(noffset[Y] + jc) - centre[Y];
         position[Z] = 1.0*(noffset[Z] + kc) - centre[Z];
@@ -90,20 +93,25 @@ int field_phi_init_block(double xi, field_t * phi) {
   double z, z1, z2;
   double phi0;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  double ltot[3];
 
-  z1 = 0.25*L(Z);
-  z2 = 0.75*L(Z);
+  assert(phi);
+
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+  cs_ltot(phi->cs, ltot);
+
+  z1 = 0.25*ltot[Z];
+  z2 = 0.75*ltot[Z];
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 	z = noffset[Z] + kc;
 
-	if (z > 0.5*L(Z)) {
+	if (z > 0.5*ltot[Z]) {
 	  phi0 = tanh((z-z2)/xi);
 	}
 	else {
@@ -135,19 +143,22 @@ int field_phi_init_bath(field_t * phi) {
   double z, z0;
   double phi0, xi0;
 
+  double ltot[3];
+
   assert(phi);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+  cs_ltot(phi->cs, ltot);
 
-  z0 = 0.25*L(Z);
+  z0 = 0.25*ltot[Z];
   xi0 = 1.13;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) { 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 	z = noffset[Z] + kc;
 	phi0 = tanh((z-z0)/xi0);
 
@@ -179,24 +190,20 @@ int field_phi_init_spinodal(int seed, double phi0, double amp,
   double ran;
   double phi1;
 
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
   noise_t * rng = NULL;
 
   assert(phi);
 
-  pe_ref(&pe);
-  cs_ref(&cs);
-  coords_nlocal(nlocal);
+  cs_nlocal(phi->cs, nlocal);
 
-  noise_create(pe, cs, &rng);
+  noise_create(phi->pe, phi->cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 
 	noise_uniform_double_reap(rng, index, &ran);
 	phi1 = phi0 + amp*(ran - 0.5);
@@ -240,24 +247,20 @@ int field_phi_init_spinodal_patches(int seed, int patch,
   double phi1;
   double ran_uniform;
 
-  pe_t * pe = NULL;
-  cs_t * cs = NULL;
   noise_t * rng = NULL;
 
   assert(phi);
 
-  pe_ref(&pe);
-  cs_ref(&cs);
-  coords_nlocal(nlocal);
+  cs_nlocal(phi->cs, nlocal);
 
-  noise_create(pe, cs, &rng);
+  noise_create(phi->pe, phi->cs, &rng);
   noise_init(rng, seed);
 
   for (ic = 1; ic <= nlocal[X]; ic += patch) {
     for (jc = 1; jc <= nlocal[Y]; jc += patch) {
       for (kc = 1; kc <= nlocal[Z]; kc += patch) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 
 	/* Uniform patch */
 	phi1 = 1.0;
@@ -272,7 +275,7 @@ int field_phi_init_spinodal_patches(int seed, int patch,
 	  for (jp = jc; jp <= jpatch; jp++) {
 	    for (kp = kc; kp <= kpatch; kp++) {
 
-	      index = coords_index(ip, jp, kp);
+	      index = cs_index(phi->cs, ip, jp, kp);
 	      field_scalar_set(phi, index, phi1);
 	      count += 1;
 	    }

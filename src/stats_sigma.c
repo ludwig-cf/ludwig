@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computeing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,16 +21,14 @@
 #include <float.h>
 #include <math.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
-#include "field.h"
 #include "physics.h"
-#include "symmetric.h"
+#include "field_phi_init.h"
+#include "stats_sigma.h"
  
-#define NBIN      128
+#define NBIN      128     /* Bins used in radial profile */
 #define NFITMAX   2000
-#define XIINIT    2.0
+#define XIINIT    2.0     /* Factor controlling initial interfacial width */
 #define XIPROFILE 10.0
 
 struct drop_type {
@@ -42,16 +42,21 @@ struct drop_type {
 
 typedef struct drop_type drop_t;
 
-static int initialised_ = 0;
-static void stats_sigma_find_sigma(drop_t * drop);
-static int stats_sigma_init_drop(field_t * phi, drop_t drop);
-static int stats_sigma_find_drop(field_t * phi, drop_t * drop);
-static int stats_sigma_find_radius(field_t * phi, drop_t * drop);
-static int stats_sigma_find_xi0(field_t * phi, drop_t * drop);
+struct stats_sigma_s {
+  pe_t * pe;
+  cs_t * cs;
+  drop_t drop;
+  field_t * phi;
+};
+
+static int stats_sigma_find_sigma(stats_sigma_t * stat);
+static int stats_sigma_find_drop(stats_sigma_t * stat);
+static int stats_sigma_find_radius(stats_sigma_t * stat);
+static int stats_sigma_find_xi0(stats_sigma_t * stat);
 
 /*****************************************************************************
  *
- *  stats_sigma_init
+ *  stats_sigma_create
  *
  *  1. We initialise a drop of raduis L/4, and initial interfacial
  *     width XIINIT*\xi_0, in the middle of the system.
@@ -71,77 +76,95 @@ static int stats_sigma_find_xi0(field_t * phi, drop_t * drop);
  *
  *  These values are reported below at run time.
  *
- *  The field phi may be NULL if nswitch == 0.
- *
  *****************************************************************************/
 
-int stats_sigma_init(fe_symm_t * fe, field_t * phi, int nswitch) {
+int stats_sigma_create(pe_t * pe, cs_t * cs, fe_symm_t * fe, field_t * phi,
+		       stats_sigma_t ** pobj) {
 
-  drop_t drop;
+  stats_sigma_t * obj = NULL;
+  int ntotal[3];
   double xi0;
-  double datum;
+  double tdiff;
   double mobility;
   physics_t * phys = NULL;
   fe_symm_param_t param;
 
-  if (nswitch == 0) {
-    /* No measurement required. */
-    initialised_ = 0;
+  assert(pe);
+  assert(cs);
+  assert(pobj);
+
+  obj = (stats_sigma_t *) calloc(1, sizeof(stats_sigma_t));
+  if (obj == NULL) pe_fatal(pe, "calloc(stats_sigma_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
+  obj->drop.fe = fe;
+  obj->phi = phi;
+
+  cs_ntotal(cs, ntotal);
+  physics_ref(&phys);
+  physics_mobility(phys, &mobility);
+
+  /* Check we have a cubic system, or a square system (2d) */
+
+  if (ntotal[X] != ntotal[Y]) {
+    pe_info(pe, "Surface tension calibration expects Lx = Ly\n");
+    pe_info(pe, "You have: %4d %4d\n", ntotal[X], ntotal[Y]);
+    pe_fatal(pe, "Please check and try again\n");
   }
-  else {
 
-    assert(phi);
-    assert(fe);
-
-    fe_symm_param(fe, &param);
-    fe_symm_interfacial_width(fe, &xi0);
-    drop.fe = fe;
-
-    physics_ref(&phys);
-    physics_mobility(phys, &mobility);
-
-    /* Check we have a cubic system, or a square system (2d) */
-
-    if (N_total(X) != N_total(Y)) {
-      info("Surface tension calibration expects Lx = Ly\n");
-      info("You have: %4d %4d\n", N_total(X), N_total(Y));
-      fatal("Please check and try again\n");
-    }
-
-    if (N_total(Z) != 1 && (N_total(Z) != N_total(Y))) {
-      info("Surface tension calibration expects Lx = Ly = Lz\n");
-      info("You have: %4d %4d %4d\n", N_total(X), N_total(Y), N_total(Z));
-      fatal("Please check and try again\n");
-    }
-
-    /* Initialise the drop properties. */
-
-    initialised_ = 1;
-    drop.radius    = L(X)/4.0;
-    drop.xi0       = XIINIT*xi0;
-    drop.centre[X] = L(X)/2.0;
-    drop.centre[Y] = L(Y)/2.0;
-    drop.centre[Z] = L(Z)/2.0;
-    drop.phimax    = sqrt(-param.a/param.b);
-
-    /* Initialise the order parameter field */
-
-    stats_sigma_init_drop(phi, drop);
-
-    /* Print some information */
-
-    info("\n");
-    info("Surface tension calibration via droplet initialised\n");
-    info("---------------------------------------------------\n");
-    info("Drop radius:     %14.7e\n", drop.radius);
-    datum = xi0/drop.radius;
-    info("Cahn number:     %14.7e\n", datum);
-    datum = -mobility*param.a;
-    info("Diffusivity:     %14.7e\n", datum);
-    /* The relevant diffusion time is for the interfacial width ... */
-    datum = XIINIT*drop.xi0*XIINIT*drop.xi0/datum;
-    info("Diffusion time:  %14.7e\n", datum); 
+  if (ntotal[Z] != 1 && (ntotal[Z] != ntotal[Y])) {
+    pe_info(pe, "Surface tension calibration expects Lx = Ly = Lz\n");
+    pe_info(pe, "You have: %4d %4d %4d\n", ntotal[X], ntotal[Y], ntotal[Z]);
+    pe_fatal(pe, "Please check and try again\n");
   }
+
+  /* Initialise the drop properties. */
+
+  fe_symm_param(fe, &param);
+  fe_symm_interfacial_width(fe, &xi0);
+
+  obj->drop.radius    = 0.25*ntotal[X];
+  obj->drop.xi0       = XIINIT*xi0;
+  obj->drop.centre[X] = 0.5*ntotal[X];
+  obj->drop.centre[Y] = 0.5*ntotal[Y];
+  obj->drop.centre[Z] = 0.5*ntotal[Z];
+  obj->drop.phimax    = sqrt(-param.a/param.b);
+
+  /* Initialise the order parameter field */
+
+  field_phi_init_drop(obj->drop.xi0, obj->drop.radius, obj->drop.phimax, phi);
+
+  /* Print some information */
+  /* The diffusivity is mobility/A (with A < 0) */
+  /* The relevant diffusion time is for the initial interfacial width. */
+
+  tdiff = XIINIT*xi0*XIINIT*xi0/(-mobility/param.a);
+
+  pe_info(pe, "\n");
+  pe_info(pe, "Surface tension calibration via droplet initialised\n");
+  pe_info(pe, "---------------------------------------------------\n");
+  pe_info(pe, "Drop radius:     %14.7e\n", obj->drop.radius);
+  pe_info(pe, "Cahn number:     %14.7e\n", xi0/obj->drop.radius);
+  pe_info(pe, "Diffusivity:     %14.7e\n", -mobility/param.a);
+  pe_info(pe, "Diffusion time:  %14.7e\n", tdiff); 
+
+  *pobj = obj;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  stats_sigma_free
+ *
+ *****************************************************************************/
+
+int stats_sigma_free(stats_sigma_t * stat) {
+
+  assert(stat);
+
+  free(stat);
 
   return 0;
 }
@@ -155,22 +178,19 @@ int stats_sigma_init(fe_symm_t * fe, field_t * phi, int nswitch) {
  *
  *****************************************************************************/
 
-int stats_sigma_measure(field_t * fphi, int ntime) {
+int stats_sigma_measure(stats_sigma_t * stat, int ntime) {
 
-  drop_t drop;
+  if (stat) {
 
-  if (initialised_) {
+    stats_sigma_find_drop(stat);
+    stats_sigma_find_radius(stat);
+    stats_sigma_find_xi0(stat);
+    stats_sigma_find_sigma(stat);
 
-    assert(fphi);
-    stats_sigma_find_drop(fphi, &drop);
-    stats_sigma_find_radius(fphi, &drop);
-    stats_sigma_find_xi0(fphi, &drop);
-    stats_sigma_find_sigma(&drop);
-
-    info("\n");
-    info("Surface tension calibration - radius xi0 surface tension\n");
-    info("[sigma] %14d %14.7e %14.7e %14.7e\n", ntime, drop.radius, drop.xi0,
-	 drop.sigma);
+    pe_info(stat->pe, "\n");
+    pe_info(stat->pe, "Surface tension calibration - radius xi0 surface tension\n");
+    pe_info(stat->pe, "[sigma] %14d %14.7e %14.7e %14.7e\n", ntime,
+	    stat->drop.radius, stat->drop.xi0, stat->drop.sigma);
   }
 
   return 0;
@@ -184,8 +204,9 @@ int stats_sigma_measure(field_t * fphi, int ntime) {
  *  Note phi = -drop.phimax in the centre.
  *
  *****************************************************************************/
-
-static int stats_sigma_init_drop(field_t * fphi, drop_t drop) {
+#ifdef OLD_SHIT
+/* Can be removed when tested with field_phi_int() */
+static int stats_sigma_init_drop(stats_sigma_t * stat, field_t * fphi) {
 
   int nlocal[3];
   int noffset[3];
@@ -196,26 +217,27 @@ static int stats_sigma_init_drop(field_t * fphi, drop_t drop) {
   double r;            /* radial distance */
   double rxi0;         /* 1/xi0 */
 
+  assert(stat);
   assert(fphi);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(stat->cs, nlocal);
+  cs_nlocal_offset(stat->cs, noffset);
 
-  rxi0 = 1.0/drop.xi0;
+  rxi0 = 1.0/stat.drop.xi0;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(stat->cs, ic, jc, kc);
 
-        position[X] = 1.0*(noffset[X] + ic) - drop.centre[X];
-        position[Y] = 1.0*(noffset[Y] + jc) - drop.centre[Y];
-        position[Z] = 1.0*(noffset[Z] + kc) - drop.centre[Z];
+        position[X] = 1.0*(noffset[X] + ic) - stat.drop.centre[X];
+        position[Y] = 1.0*(noffset[Y] + jc) - stat.drop.centre[Y];
+        position[Z] = 1.0*(noffset[Z] + kc) - stat.drop.centre[Z];
 
         r = modulus(position);
 
-        phi = drop.phimax*tanh(rxi0*(r - drop.radius));
+        phi = stat.drop.phimax*tanh(rxi0*(r - stat.drop.radius));
 	field_scalar_set(fphi, index, phi);
       }
     }
@@ -223,7 +245,7 @@ static int stats_sigma_init_drop(field_t * fphi, drop_t drop) {
 
   return 0;
 }
-
+#endif
 /*****************************************************************************
  *
  *  stats_sigma_find_drop
@@ -233,7 +255,7 @@ static int stats_sigma_init_drop(field_t * fphi, drop_t drop) {
  *
  *****************************************************************************/
 
-static int stats_sigma_find_drop(field_t * fphi, drop_t * drop) {
+static int stats_sigma_find_drop(stats_sigma_t * stat) {
 
   int nlocal[3];
   int noffset[3];
@@ -242,11 +264,13 @@ static int stats_sigma_find_drop(field_t * fphi, drop_t * drop) {
   double c[3+1];              /* 3 space dimensions plus counter */
   double ctotal[3+1];
   double phi;
+  MPI_Comm comm;
 
-  assert(fphi);
+  assert(stat);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  cs_nlocal(stat->cs, nlocal);
+  cs_nlocal_offset(stat->cs, noffset);
+  cs_cart_comm(stat->cs, &comm);
 
   for (ic = 0; ic <= 3; ic++) {
     c[ic] =0.0;
@@ -257,8 +281,8 @@ static int stats_sigma_find_drop(field_t * fphi, drop_t * drop) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
-	field_scalar(fphi, index, &phi);
+        index = cs_index(stat->cs, ic, jc, kc);
+	field_scalar(stat->phi, index, &phi);
 
         if (phi <= 0.0) {
           c[X] += 1.0*(noffset[X] + ic);
@@ -271,11 +295,11 @@ static int stats_sigma_find_drop(field_t * fphi, drop_t * drop) {
     }
   }
 
-  MPI_Allreduce(c, ctotal, 4, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(c, ctotal, 4, MPI_DOUBLE, MPI_SUM, comm);
 
-  drop->centre[X] = ctotal[X]/ctotal[3];
-  drop->centre[Y] = ctotal[Y]/ctotal[3];
-  drop->centre[Z] = ctotal[Z]/ctotal[3];
+  stat->drop.centre[X] = ctotal[X]/ctotal[3];
+  stat->drop.centre[Y] = ctotal[Y]/ctotal[3];
+  stat->drop.centre[Z] = ctotal[Z]/ctotal[3];
 
   return 0;
 }
@@ -289,7 +313,7 @@ static int stats_sigma_find_drop(field_t * fphi, drop_t * drop) {
  *
  *****************************************************************************/
 
-static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
+static int stats_sigma_find_radius(stats_sigma_t * stat) {
 
   int nlocal[3];
   int noffset[3];
@@ -301,10 +325,13 @@ static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
   double phi0, phi1;                   /* order parameter values */ 
   double fraction, r[3];               /* lengths */
 
-  assert(fphi);
+  MPI_Comm comm;
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
+  assert(stat);
+
+  cs_nlocal(stat->cs, nlocal);
+  cs_nlocal_offset(stat->cs, noffset);
+  cs_cart_comm(stat->cs, &comm);
 
   result[0] = 0.0;
   result[1] = 0.0;
@@ -315,8 +342,8 @@ static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
-	field_scalar(fphi, index, &phi0);
+        index = cs_index(stat->cs, ic, jc, kc);
+	field_scalar(stat->phi, index, &phi0);
 
         /* Look around at the neighbours */
 
@@ -327,8 +354,8 @@ static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
               /* Avoid self (ic, jc, kc) */
 	      if (!(ip || jp || kp)) continue;
 
-              index = coords_index(ip, jp, kp);
-	      field_scalar(fphi, index, &phi1);
+              index = cs_index(stat->cs, ip, jp, kp);
+	      field_scalar(stat->phi, index, &phi1);
 
 	      /* Look for change in sign */
 
@@ -338,9 +365,9 @@ static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
                 r[X] = 1.0*(noffset[X] + ic) + fraction*(ip-ic);
                 r[Y] = 1.0*(noffset[Y] + jc) + fraction*(jp-jc);
                 r[Z] = 1.0*(noffset[Z] + kc) + fraction*(kp-kc);
-                r[X] -= drop->centre[X];
-                r[Y] -= drop->centre[Y];
-                r[Z] -= drop->centre[Z];
+                r[X] -= stat->drop.centre[X];
+                r[Y] -= stat->drop.centre[Y];
+                r[Z] -= stat->drop.centre[Z];
 
                 result[0] += modulus(r);
                 result[1] += 1.0;
@@ -354,9 +381,9 @@ static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
     }
   }
 
-  MPI_Allreduce(result, result_total, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(result, result_total, 2, MPI_DOUBLE, MPI_SUM, comm);
 
-  drop->radius = result_total[0]/result_total[1];
+  stat->drop.radius = result_total[0]/result_total[1];
 
   return 0;
 }
@@ -376,7 +403,7 @@ static int stats_sigma_find_radius(field_t * fphi, drop_t * drop) {
  *
  *****************************************************************************/
 
-static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
+static int stats_sigma_find_xi0(stats_sigma_t * stat) {
 
   int nlocal[3], noffset[3];
   int ic, jc, kc, index, n;
@@ -394,19 +421,18 @@ static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
 
   MPI_Comm comm;
 
-  assert(fphi);
-  assert(drop);
+  assert(stat);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  comm = pe_comm();
+  cs_nlocal(stat->cs, nlocal);
+  cs_nlocal_offset(stat->cs, noffset);
+  pe_mpi_comm(stat->pe, &comm);
 
   /* Set the bin widths based on the expected xi0 */
 
-  fe_symm_interfacial_width(drop->fe, &xi0);
+  fe_symm_interfacial_width(stat->drop.fe, &xi0);
 
-  rmin = drop->radius - XIPROFILE*xi0;
-  rmax = drop->radius + XIPROFILE*xi0;
+  rmin = stat->drop.radius - XIPROFILE*xi0;
+  rmax = stat->drop.radius + XIPROFILE*xi0;
   dr = (rmax - rmin)/NBIN;
 
   for (n = 0; n < NBIN; n++) {
@@ -418,20 +444,20 @@ static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(stat->cs, ic, jc, kc);
 
         /* Work out the displacement from the drop centre
            and hence the bin number */
 
-        r[X] = 1.0*(noffset[X] + ic) - drop->centre[X];
-        r[Y] = 1.0*(noffset[Y] + jc) - drop->centre[Y];
-        r[Z] = 1.0*(noffset[Z] + kc) - drop->centre[Z];
+        r[X] = 1.0*(noffset[X] + ic) - stat->drop.centre[X];
+        r[Y] = 1.0*(noffset[Y] + jc) - stat->drop.centre[Y];
+        r[Z] = 1.0*(noffset[Z] + kc) - stat->drop.centre[Z];
 
         r0 = modulus(r);
         n = (r0 - rmin)/dr;
 
         if (n >= 0 && n < NBIN) {
-	  field_scalar(fphi, index, &phi);
+	  field_scalar(stat->phi, index, &phi);
 	  phir_local[n] += phi;
           nphi_local[n] += 1;
         }
@@ -461,7 +487,7 @@ static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
     xi0fit = 2.0*(nfit + 1)*xi0/NFITMAX;
     for (n = 0; n < NBIN; n++) {
       r0 = rmin + (n + 0.5)*dr;
-      phi = tanh((r0 - drop->radius)/xi0fit);
+      phi = tanh((r0 - stat->drop.radius)/xi0fit);
       if (nphi[n] > 0) cost += (phir[n] - phi)*(phir[n] - phi);
     }
     if (cost < costmin) {
@@ -474,7 +500,7 @@ static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
 
   assert(nbestfit > 0);
   xi0fit = 2.0*(nbestfit + 1)*xi0/NFITMAX;
-  drop->xi0 = xi0fit;
+  stat->drop.xi0 = xi0fit;
 
   return 0;
 }
@@ -491,7 +517,7 @@ static int stats_sigma_find_xi0(field_t * fphi, drop_t * drop) {
  *
  *****************************************************************************/
 
-static void stats_sigma_find_sigma(drop_t * drop) {
+static int stats_sigma_find_sigma(stats_sigma_t * stat) {
 
   int nlocal[3];
   int ic, jc, kc, index;
@@ -503,8 +529,10 @@ static void stats_sigma_find_sigma(drop_t * drop) {
 
   MPI_Comm comm;
 
-  coords_nlocal(nlocal);
-  comm = pe_comm();
+  assert(stat);
+
+  cs_nlocal(stat->cs, nlocal);
+  pe_mpi_comm(stat->pe, &comm);
 
   /* Find the local minimum of the free energy density */
 
@@ -514,9 +542,9 @@ static void stats_sigma_find_sigma(drop_t * drop) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(stat->cs, ic, jc, kc);
 
-	fe_symm_fed(drop->fe, index, &fe);
+	fe_symm_fed(stat->drop.fe, index, &fe);
 	if (fe < fmin_local) fmin_local = fe;
 
       }
@@ -533,8 +561,8 @@ static void stats_sigma_find_sigma(drop_t * drop) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
-	fe_symm_fed(drop->fe, index, &fe);
+        index = cs_index(stat->cs, ic, jc, kc);
+	fe_symm_fed(stat->drop.fe, index, &fe);
         excess_local += (fe - fmin);
       }
     }
@@ -546,12 +574,11 @@ static void stats_sigma_find_sigma(drop_t * drop) {
 
   if (nlocal[Z] == 1) {
     /* Assume 2d system */
-    drop->sigma = excess / (2.0*pi*drop->radius);
+    stat->drop.sigma = excess / (2.0*pi*stat->drop.radius);
   }
   else {
-    drop->sigma = excess / (4.0*pi*drop->radius*drop->radius);
+    stat->drop.sigma = excess / (4.0*pi*stat->drop.radius*stat->drop.radius);
   }
 
-  return;
+  return 0;
 }
-

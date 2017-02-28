@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -39,9 +41,10 @@
  *
  *****************************************************************************/
 
-int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
+int test_coords_field_set(cs_t * cs, int nf, void * buf, MPI_Datatype mpidata,
 			  halo_ft bufset) {
   int n;
+  int nsites;
   int nlocal[3];
   int noffst[3];
   int ic, jc, kc, index, indexf;
@@ -49,14 +52,16 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
   size_t sz;
   unsigned char * fc = (unsigned char *) buf;
 
+  assert(cs);
   assert (nf >= 0);
   assert(fc);
   assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffst);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffst);
+  cs_nsites(cs, &nsites);
 
   /* Set values in the domain proper (not halo regions) */
 
@@ -64,11 +69,11 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 
         for (n = 0; n < nf; n++) {
-	  indexf = mem_addr_rank1(coords_nsites(), nf, index, n); 
-          bufset(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n,
+	  indexf = mem_addr_rank1(nsites, nf, index, n); 
+          bufset(cs, noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n,
                  fc + sz*indexf);
         }
 
@@ -95,9 +100,10 @@ int test_coords_field_set(int nf, void * buf, MPI_Datatype mpidata,
  *
  *****************************************************************************/
 
-int test_coords_field_check(int nhcomm, int nf, void * buf,
+int test_coords_field_check(cs_t * cs, int nhcomm, int nf, void * buf,
 			    MPI_Datatype mpidata, halo_ft bufref) {
   int n;
+  int nsites;
   int nlocal[3];
   int noffst[3];
   int ic, jc, kc, index, indexf;
@@ -107,26 +113,27 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
   double dref, dact;            /* Reference, actual, function value */
   unsigned char * bufc = (unsigned char *) buf;
 
-  assert(nhcomm <= coords_nhalo());
+  assert(cs);
   assert(nf >= 0);
   assert(bufc);
   assert(mpidata == MPI_CHAR || mpidata == MPI_DOUBLE);
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffst);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffst);
+  cs_nsites(cs, &nsites);
 
   for (ic = 1 - nhcomm; ic <= nlocal[X] + nhcomm; ic++) {
     for (jc = 1 - nhcomm; jc <= nlocal[Y] + nhcomm; jc++) {
       for (kc = 1 - nhcomm; kc <= nlocal[Z] + nhcomm; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(cs, ic, jc, kc);
 
         if (mpidata == MPI_CHAR) {
           for (n = 0; n < nf; n++) {
-	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
-            bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &cref);
+	    indexf = mem_addr_rank1(nsites, nf, index, n);
+            bufref(cs, noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &cref);
             cact =  bufc[sz*indexf];
             assert(cref == cact);
           }
@@ -134,8 +141,8 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
 
         if (mpidata == MPI_DOUBLE) {
           for (n = 0; n < nf; n++) {
-	    indexf = mem_addr_rank1(coords_nsites(), nf, index, n);
-            bufref(noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
+	    indexf = mem_addr_rank1(nsites, nf, index, n);
+            bufref(cs, noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
             dact = *((double *) (bufc + sz*indexf));
 	    /*printf("%2d %2d %2d %14.7e %14.7e\n", ic, jc, kc, dref, dact);*/
             assert(fabs(dact - dref) < FLT_EPSILON);
@@ -159,14 +166,16 @@ int test_coords_field_check(int nhcomm, int nf, void * buf,
  *
  *****************************************************************************/
 
-int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
+int test_ref_char1(cs_t * cs, int ic, int jc, int kc, int n, void * ref) {
 
   int ntotal[3];
   int iref;
   char * c = (char *) ref;
 
+  assert(cs);
   assert(c);
-  coords_ntotal(ntotal);
+
+  cs_ntotal(cs, ntotal);
 
   iref = ic;
   if (iref <= 0) iref += ntotal[X];
@@ -189,14 +198,17 @@ int test_ref_char1(int ic, int jc, int kc, int n, void * ref) {
  *
  *****************************************************************************/
 
-int test_ref_double1(int ic, int jc, int kc, int n, void * ref) {
+int test_ref_double1(cs_t * cs, int ic, int jc, int kc, int n, void * ref) {
 
   double * d = (double *) ref;
+  double ltot[3];
   PI_DOUBLE(pi);
 
   assert(d);
 
-  *d = cos(2.0*pi*ic/L(X)) + cos(2.0*pi*jc/L(Y)) + cos(2.0*pi*kc/L(Z));
+  cs_ltot(cs, ltot);
+
+  *d = cos(2.0*pi*ic/ltot[X]) + cos(2.0*pi*jc/ltot[Y]) + cos(2.0*pi*kc/ltot[Z]);
   *d += 1.0*n;
 
   return 0;

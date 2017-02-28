@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -47,6 +49,7 @@ int test_ewald_suite(void) {
   double efourier;
   double eself;
   double kappa;
+  double ltot[3];
 
   colloid_t * p_c1;
   colloid_t * p_c2;
@@ -66,15 +69,16 @@ int test_ewald_suite(void) {
 
   cs_create(pe, &cs);
   cs_init(cs);
+  cs_ltot(cs, ltot);
 
-  test_assert(fabs(L(X) - 64.0) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(L(Y) - 64.0) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(L(Z) - 64.0) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(ltot[X] - 64.0) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(ltot[Y] - 64.0) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(ltot[Z] - 64.0) < TEST_DOUBLE_TOLERANCE);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
   test_assert(cinfo != NULL);
 
-  ewald_create(mu, rc, cinfo, &ewald);
+  ewald_create(pe, cs, mu, rc, cinfo, &ewald);
   test_assert(ewald != NULL);
   ewald_kappa(ewald, &kappa);
 
@@ -427,7 +431,7 @@ int test_ewald_suite(void) {
 
   /* Now set cut-off = 8.0. */
 
-  ewald_create(0.285, 8.0, cinfo, &ewald);
+  ewald_create(pe, cs, 0.285, 8.0, cinfo, &ewald);
   test_assert(ewald != NULL);
 
   ewald_real_space_energy(ewald, p_c1->s.s, p_c2->s.s, r12, &e);

@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2013-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -141,14 +143,19 @@ static int do_test_noise2(pe_t * pe) {
   cs_t * cs = NULL;
   noise_t * noise = NULL;
 
+  double ltot[3];
   double r[NNOISE_MAX];
   double rstat[2], rstat_local[2] = {0.0, 0.0};
+  MPI_Comm comm;
 
   assert(pe);
 
   cs_create(pe, &cs);
   cs_init(cs);
+
+  cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
+  cs_cart_comm(cs, &comm);
 
   noise_create(pe, cs, &noise);
   noise_init(noise, 0);
@@ -170,10 +177,10 @@ static int do_test_noise2(pe_t * pe) {
 
   /* Mean and variance */
 
-  MPI_Allreduce(rstat_local, rstat, 2, MPI_DOUBLE, MPI_SUM, pe_comm());
+  MPI_Allreduce(rstat_local, rstat, 2, MPI_DOUBLE, MPI_SUM, comm);
 
-  rstat[0] = rstat[0] / (L(X)*L(Y)*L(Z));
-  rstat[1] = rstat[1] / (NNOISE_MAX*L(X)*L(Y)*L(Z)) - rstat[0]*rstat[0];
+  rstat[0] = rstat[0]/(ltot[X]*ltot[Y]*ltot[Z]);
+  rstat[1] = rstat[1]/(NNOISE_MAX*ltot[X]*ltot[Y]*ltot[Z]) - rstat[0]*rstat[0];
 
   /* These are the results for the default seeds, system size */
   assert(fabs(rstat[0] - 4.10105573e-03) < FLT_EPSILON);

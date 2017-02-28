@@ -11,8 +11,10 @@
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -23,7 +25,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "colloids.h"
+#include "colloids_s.h"
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
@@ -53,13 +55,14 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
   double r[3], r0[3], force[3], g[3];
   double dr;
   colloid_t * p_colloid;
+
   physics_t * phys = NULL;
 
   assert(cinfo);
   assert(hydro);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
+  cs_nlocal(cinfo->cs, nlocal);
+  cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
   physics_ref(&phys);
@@ -97,7 +100,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = coords_index(i, j, k);
+		index = cs_index(cinfo->cs, i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */
@@ -214,8 +217,8 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
   assert(cinfo);
   assert(hydro);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(offset);
+  cs_nlocal(cinfo->cs, nlocal);
+  cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
   /* Loop through all cells (including the halo cells) and set
@@ -269,7 +272,7 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
             for (j = j_min; j <= j_max; j++) {
 	      for (k = k_min; k <= k_max; k++) {
 
-		index = coords_index(i, j, k);
+		index = cs_index(cinfo->cs, i, j, k);
 
                 /* Separation between r0 and the coordinate position of
 		 * this site */

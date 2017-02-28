@@ -5,9 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -79,8 +80,8 @@ int test_angle_cosine1(pe_t * pe, cs_t * cs) {
   assert(cs);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
-  interact_create(&interact);
-  angle_cosine_create(&angle);
+  interact_create(pe, cs, &interact);
+  angle_cosine_create(pe, cs, &angle);
   angle_cosine_param_set(angle, ANGLE_KAPPA);
   angle_cosine_register(angle, interact);
 
@@ -88,7 +89,7 @@ int test_angle_cosine1(pe_t * pe, cs_t * cs) {
   interact_find_bonds(interact, cinfo);
   interact_angles(interact, cinfo);
 
-  if (pe_size() == 1) {
+  if (pe_mpi_size(pe) == 1) {
     assert(fabs(pc3[0]->force[X] - 0.0) < DBL_EPSILON);
     assert(fabs(pc3[0]->force[Y] - 0.0) < DBL_EPSILON);
     assert(fabs(pc3[0]->force[Z] - 0.0) < DBL_EPSILON);
@@ -136,8 +137,8 @@ int test_angle_cosine2(pe_t * pe, cs_t * cs) {
   assert(cs);
 
   colloids_info_create(pe, cs, ncell, &cinfo);
-  interact_create(&interact);
-  angle_cosine_create(&angle);
+  interact_create(pe, cs, &interact);
+  angle_cosine_create(pe, cs, &angle);
   angle_cosine_param_set(angle, ANGLE_KAPPA);
   angle_cosine_register(angle, interact);
 
@@ -147,7 +148,7 @@ int test_angle_cosine2(pe_t * pe, cs_t * cs) {
 
   /* A comunication would be required in parallel */
 
-  if (pe_size() == 1) {
+  if (pe_mpi_size(pe) == 1) {
     fexpect = sqrt(2.0);
 
     assert(fabs(pc3[0]->force[X] - -fexpect) < FLT_EPSILON);

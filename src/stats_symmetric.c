@@ -9,11 +9,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2016 The University of Edinburgh
+ *  (c) 2011-2017 The University of Edinburgh
  *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Ignacio Pagonabarraga (ipagonabarraga@ub.edu)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Ignacio Pagonabarraga (ipagonabarraga@ub.edu)
  *
  *****************************************************************************/
 
@@ -23,6 +23,8 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "field_s.h"
+#include "field_grad_s.h"
 #include "symmetric.h"
 #include "stats_symmetric.h"
 
@@ -61,14 +63,18 @@ int stats_symmetric_length(fe_symm_t * fe, field_grad_t * phi_grad,
   double eigenvals[3], eigenvecs[3][3];
   double rvolume;
 
+  pe_t * pe = NULL;
   fe_symm_param_t param;
   MPI_Comm comm;
 
   assert(phi_grad);
   assert(map);
 
-  coords_nlocal(nlocal);
-  comm = pe_comm();
+  /* TODO: immediate owner required to locate pe */
+  pe = phi_grad->field->pe;
+
+  cs_nlocal(phi_grad->field->cs, nlocal);
+  pe_mpi_comm(pe, &comm);
 
   fe_symm_param(fe, &param);
   fe_symm_interfacial_width(fe, &xi0);
@@ -81,7 +87,7 @@ int stats_symmetric_length(fe_symm_t * fe, field_grad_t * phi_grad,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi_grad->field->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -132,12 +138,12 @@ int stats_symmetric_length(fe_symm_t * fe, field_grad_t * phi_grad,
   alpha = atan2(eigenvecs[0][0], eigenvecs[1][0]);
   beta  = atan2(eigenvecs[2][0], eigenvecs[1][0]);
 
-  info("\n");
-  info("[length xyz] %8d %14.7e %14.7e %14.7e\n", timestep,
+  pe_info(pe, "\n");
+  pe_info(pe, "[length xyz] %8d %14.7e %14.7e %14.7e\n", timestep,
        lcoordinate[X], lcoordinate[Y], lcoordinate[Z]);
-  info("[length abc] %8d %14.7e %14.7e %14.7e\n", timestep,
+  pe_info(pe, "[length abc] %8d %14.7e %14.7e %14.7e\n", timestep,
        lnatural[0], lnatural[1], lnatural[2]);
-  info("[angles abc] %8d %14.7e %14.7e\n", timestep, alpha, beta);
+  pe_info(pe, "[angles abc] %8d %14.7e %14.7e\n", timestep, alpha, beta);
 
 #undef NSTAT
 
@@ -181,9 +187,9 @@ int stats_symmetric_moment_inertia(field_t * phi, map_t * map, int timestep) {
   assert(phi);
   assert(map);
 
-  coords_nlocal(nlocal);
-  coords_nlocal_offset(noffset);
-  comm = cart_comm();
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+  cs_cart_comm(phi->cs, &comm);
 
   rr[X] = rr[Y] = rr[Z] = rr[3] = 0.0;
 
@@ -191,7 +197,7 @@ int stats_symmetric_moment_inertia(field_t * phi, map_t * map, int timestep) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -219,7 +225,7 @@ int stats_symmetric_moment_inertia(field_t * phi, map_t * map, int timestep) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(phi->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	if (status != MAP_FLUID) continue;
 
@@ -259,12 +265,12 @@ int stats_symmetric_moment_inertia(field_t * phi, map_t * map, int timestep) {
   alpha = atan2(eigenvecs[0][0], eigenvecs[1][0]);
   beta  = atan2(eigenvecs[2][0], eigenvecs[1][0]);
 
-  info("\n");
-  info("Droplet shape at time - %8d\n", timestep);
-  info("[Droplet eigenvalues]   %8d %14.7e %14.7e %14.7e\n",
-       timestep, eigenvals[X], eigenvals[Y], eigenvals[Z]);
-  info("[Droplet angles]        %8d %14.7e %14.7e\n",
-       timestep, alpha, beta);
+  pe_info(phi->pe, "\n");
+  pe_info(phi->pe, "Droplet shape at time - %8d\n", timestep);
+  pe_info(phi->pe, "[Droplet eigenvalues]   %8d %14.7e %14.7e %14.7e\n",
+	           timestep, eigenvals[X], eigenvals[Y], eigenvals[Z]);
+  pe_info(phi->pe, "[Droplet angles]        %8d %14.7e %14.7e\n",
+	           timestep, alpha, beta);
 
   return 0;
 }

@@ -8,9 +8,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -22,9 +23,12 @@
 #include "util.h"
 #include "coords.h"
 #include "physics.h"
+#include "colloids.h"
 #include "lubrication.h"
 
 struct lubrication_s {
+  pe_t * pe;
+  cs_t * cs;
   double hminlocal;
   double rch[LUBRICATION_SS_MAX];    /* Cut offs for different components */
   double rrch[LUBRICATION_SS_MAX];   /* Table of reciprocal cut offs */
@@ -37,14 +41,18 @@ struct lubrication_s {
  *
  *****************************************************************************/
 
-int lubrication_create(lubr_t ** pobj) {
+int lubrication_create(pe_t * pe, cs_t * cs, lubr_t ** pobj) {
 
   lubr_t * obj = NULL;
 
+  assert(pe);
   assert(pobj);
 
   obj = (lubr_t *) calloc(1, sizeof(lubr_t));
-  if (obj == NULL) fatal("calloc(lubr_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(lubr_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   *pobj = obj;
 
@@ -57,13 +65,13 @@ int lubrication_create(lubr_t ** pobj) {
  *
  *****************************************************************************/
 
-void lubrication_free(lubr_t * obj) {
+int lubrication_free(lubr_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -85,6 +93,7 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
   double ran[2];  /* Random numbers for fluctuation dissipation correction */
   double r12[3];
   double f[3];
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -92,7 +101,9 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
   assert(cinfo);
   assert(obj);
 
-  obj->hminlocal = L(X);
+  cs_ltot(obj->cs, ltot);
+
+  obj->hminlocal = ltot[X];
   colloids_info_ncell(cinfo, ncell);
 
   for (ic1 = 1; ic1 <= ncell[X]; ic1++) {
@@ -114,7 +125,7 @@ int lubrication_compute(colloids_info_t * cinfo, void * self) {
 
                   if (pc1->s.index >= pc2->s.index) continue;
 
-                  coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+                  cs_minimum_distance(obj->cs, pc1->s.r, pc2->s.r, r12);
 		  util_ranlcg_reap_gaussian(&pc1->s.rng, ran);
 
 		  lubrication_single(obj, pc1->s.ah, pc2->s.ah, pc1->s.v,

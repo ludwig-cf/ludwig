@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016 The University of Edinburgh
+ *  (c) 2016-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -46,7 +46,7 @@ struct halo_swap_s {
  * plane buffers. */
 
 struct halo_swap_param_s {
-  int nhalo;                /* coords_nhalo() */
+  int nhalo;                /* cs_nhalo */
   int nswap;                /* Width of actual halo swap <= nhalo */
   int nsite;                /* Total nall[X]*nall[Y]*nall[Z] */
   int na;                   /* Extent (rank 1 fields) */
@@ -54,7 +54,7 @@ struct halo_swap_param_s {
   int naddr;                /* Extenet (nsite for address calculation) */
   int nfel;                 /* Field elements per site (double) */
   int nlocal[3];            /* local domain extent */
-  int nall[3];              /* ... including 2*coords_nhalo */
+  int nall[3];              /* ... including 2*cs_nhalo */
   int hext[3][3];           /* halo extents ... see below */
   int hsz[3];               /* halo size in lattice sites each direction */
 };
@@ -63,9 +63,9 @@ static __constant__ halo_swap_param_t const_param;
 
 __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
 			      int na, int nb, halo_swap_t ** phalo);
-__host__ __target__ void halo_swap_coords(halo_swap_t * halo, int id, int index, int * ic, int * jc, int * kc);
-__host__ __target__ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc);
-__host__ __target__ int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, int jc, int kc);
+__host__ __device__ void halo_swap_coords(halo_swap_t * halo, int id, int index, int * ic, int * jc, int * kc);
+__host__ __device__ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc);
+__host__ __device__ int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, int jc, int kc);
 
 /*****************************************************************************
  *
@@ -397,10 +397,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
-  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
-  if (sendback == NULL) fatal("malloc(sendback) failed\n");
-  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
-  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+  if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(halo->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(halo->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(halo->pe, "malloc(recvback) failed\n");
 
   /* Load send buffers */
 
@@ -480,10 +480,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
-  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
-  if (sendback == NULL) fatal("malloc(sendback) failed\n");
-  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
-  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+  if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(halo->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(halo->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(halo->pe, "malloc(recvback) failed\n");
 
   /* Load buffers */
 
@@ -561,10 +561,10 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
-  if (sendforw == NULL) fatal("malloc(sendforw) failed\n");
-  if (sendback == NULL) fatal("malloc(sendback) failed\n");
-  if (recvforw == NULL) fatal("malloc(recvforw) failed\n");
-  if (recvback == NULL) fatal("malloc(recvback) failed\n");
+  if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
+  if (sendback == NULL) pe_fatal(halo->pe, "malloc(sendback) failed\n");
+  if (recvforw == NULL) pe_fatal(halo->pe, "malloc(recvforw) failed\n");
+  if (recvback == NULL) pe_fatal(halo->pe, "malloc(recvback) failed\n");
 
   /* Load */
   /* Some adjustment in the load required for 2d systems (X-Y) */
@@ -869,9 +869,9 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   }
   else {
     MPI_Isend(halo->fyhi, ncount, MPI_DOUBLE,
-	      cart_neighb(FORWARD,Y), ftagy, comm, req_y + 2);
+	      cs_cart_neighb(halo->cs, FORWARD,Y), ftagy, comm, req_y + 2);
     MPI_Isend(halo->fylo, ncount, MPI_DOUBLE,
-	      cart_neighb(BACKWARD,Y), btagy, comm, req_y + 3);
+	      cs_cart_neighb(halo->cs, BACKWARD,Y), btagy, comm, req_y + 3);
 
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_y, &mc, status);
@@ -961,9 +961,9 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   }
   else {
     MPI_Isend(halo->fzhi, ncount, MPI_DOUBLE,
-	      cart_neighb(FORWARD,Z), ftagz, comm, req_z + 2);
+	      cs_cart_neighb(halo->cs,FORWARD,Z), ftagz, comm, req_z + 2);
     MPI_Isend(halo->fzlo,  ncount, MPI_DOUBLE,
-	      cart_neighb(BACKWARD,Z), btagz, comm, req_z + 3);
+	      cs_cart_neighb(halo->cs,BACKWARD,Z), btagz, comm, req_z + 3);
 
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_z, &mc, status);
@@ -1211,7 +1211,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
  *
  *****************************************************************************/
 
-__host__ __target__
+__host__ __device__
 void halo_swap_coords(halo_swap_t * halo, int id, int index,
 		      int * ic, int * jc, int * kc) {
   int xstr;
@@ -1233,11 +1233,11 @@ void halo_swap_coords(halo_swap_t * halo, int id, int index,
  *
  *  halo_swap_index
  *
- *  A special case of coords_index().
+ *  A special case of cs_index().
  *
  *****************************************************************************/
 
-__host__ __target__
+__host__ __device__
 int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc) {
 
   int xstr;
@@ -1259,7 +1259,7 @@ int halo_swap_index(halo_swap_t * halo, int ic, int jc, int kc) {
  *
  *****************************************************************************/
 
-__host__ __target__
+__host__ __device__
 int halo_swap_bufindex(halo_swap_t * halo, int id, int ic, int jc, int kc) {
 
   int xstr;

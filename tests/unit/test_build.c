@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -41,6 +41,9 @@ int test_build_suite(void) {
   double a0;
   double r0[3];
   double delta = 1.0;        /* A small lattice offset */
+  double lmin[3];
+  double ltot[3];
+
   pe_t * pe = NULL;
   cs_t * cs = NULL;
 
@@ -48,20 +51,23 @@ int test_build_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
+  cs_lmin(cs, lmin);
+  cs_ltot(cs, ltot);
+
   a0 = 2.3;
-  r0[X] = 0.5*L(X); r0[Y] = 0.5*L(Y); r0[Z] = 0.5*L(Z);
+  r0[X] = 0.5*ltot[X]; r0[Y] = 0.5*ltot[Y]; r0[Z] = 0.5*ltot[Z];
   test_build_links_model_c1(pe, cs, a0, r0);
   test_build_links_model_c2(pe, cs, a0, r0);
   test_build_rebuild_c1(pe, cs, a0, r0);
 
   a0 = 4.77;
-  r0[X] = Lmin(X) + delta; r0[Y] = 0.5*L(Y); r0[Z] = 0.5*L(Z);
+  r0[X] = lmin[X] + delta; r0[Y] = 0.5*ltot[Y]; r0[Z] = 0.5*ltot[Z];
   test_build_links_model_c1(pe, cs, a0, r0);
   test_build_links_model_c2(pe, cs, a0, r0);
   test_build_rebuild_c1(pe, cs, a0, r0);
 
   a0 = 3.84;
-  r0[X] = L(X); r0[Y] = L(Y); r0[Z] = L(Z);
+  r0[X] = ltot[X]; r0[Y] = ltot[Y]; r0[Z] = ltot[Z];
   test_build_links_model_c1(pe, cs, a0, r0);
   test_build_links_model_c2(pe, cs, a0, r0);
   test_build_rebuild_c1(pe, cs, a0, r0);
@@ -116,8 +122,8 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
   colloids_info_ntotal_set(cinfo);
 
   colloids_halo_state(cinfo);
-  build_update_map(cinfo, map);
-  build_update_links(cinfo, NULL, map);
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, NULL, map);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   colloids_info_ntotal(cinfo, &ncolloid);
@@ -175,8 +181,8 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
   colloids_info_ntotal_set(cinfo);
 
   colloids_halo_state(cinfo);
-  build_update_map(cinfo, map);
-  build_update_links(cinfo, NULL, map);
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, NULL, map);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   colloids_info_ntotal(cinfo, &ncolloid);
@@ -251,8 +257,8 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
   colloids_info_ntotal_set(cinfo);
 
   colloids_halo_state(cinfo);
-  build_update_map(cinfo, map);
-  build_update_links(cinfo, NULL, map);
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, NULL, map);
 
   colloids_info_ntotal(cinfo, &ncolloid);
   assert(ncolloid == 1);
@@ -263,8 +269,8 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
   colloids_info_update_cell_list(cinfo);
   colloids_halo_state(cinfo);
 
-  build_update_map(cinfo, map);
-  build_update_links(cinfo, NULL, map);
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, NULL, map);
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {

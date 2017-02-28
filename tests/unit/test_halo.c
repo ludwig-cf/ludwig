@@ -8,8 +8,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -110,7 +112,8 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   int index, nd, p;
   int ndist = 2;
   int rank;
-  int nextra = coords_nhalo() - 1;
+  int nhalo;
+  int nextra;
   double f_actual;
 
   MPI_Comm comm = MPI_COMM_WORLD;
@@ -118,6 +121,9 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   assert(pe);
   assert(cs);
+
+  cs_nhalo(cs, &nhalo);
+  nextra = nhalo - 1;
 
   MPI_Comm_rank(comm, &rank);
 
@@ -210,12 +216,15 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
   int nhalo;
   int nlocal[3], n[3];
   int offset[3];
+  int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   int ic, jc, kc;
   int nd;
   int ndist = 2;
   int nextra;
   int index, p, d;
 
+  double ltot[3];
   double f_expect, f_actual;
   lb_t * lb = NULL;
 
@@ -232,8 +241,11 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
   cs_nhalo(cs, &nhalo);
   nextra = nhalo;
 
+  cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, offset);
+  cs_cartsz(cs, mpi_cartsz);
+  cs_cart_coords(cs, mpi_cartcoords);
 
   /* Zero entire distribution (all sites including halos) */
 
@@ -301,7 +313,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	    if (dim == d && n[d] == 0) {
 
 	      f_expect = offset[dim];
-	      if (cart_coords(dim) == 0) f_expect = L(dim);
+	      if (mpi_cartcoords[dim] == 0) f_expect = ltot[dim];
 
 	      for (p = 0; p < NVEL; p++) {
 		lb_f(lb, index, p, nd, &f_actual);
@@ -313,7 +325,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	    if (dim == d && n[d] == nlocal[d] + 1) {
 
 	      f_expect = offset[dim] + nlocal[dim] + 1.0;
-	      if (cart_coords(dim) == cart_size(dim) - 1) f_expect = 1.0;
+	      if (mpi_cartcoords[dim] == mpi_cartsz[dim] - 1) f_expect = 1.0;
 
 	      for (p = 0; p < NVEL; p++) {
 		lb_f(lb, index, p, nd, &f_actual);
@@ -334,7 +346,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
    * missed. The true test is therefore in the propagation
    * (see test_prop.c). */
    
-  if (halo == LB_HALO_REDUCED && dim == X && cart_size(X) > 1) {
+  if (halo == LB_HALO_REDUCED && dim == X && mpi_cartsz[X] > 1) {
 
     for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
       for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
@@ -349,7 +361,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
 	    if (cv[p][X] > 0) {
 	      f_expect = offset[X];
-	      if (cart_coords(dim) == 0) f_expect = L(X);
+	      if (mpi_cartcoords[dim] == 0) f_expect = ltot[X];
 	    }
 
 	  }
@@ -364,7 +376,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
 	    if (cv[p][X] < 0) {
 	      f_expect = offset[X] + ic;
-	      if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
+	      if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) f_expect = 1.0;
 	    }
 	  }
 	}
@@ -377,7 +389,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
   /* Y-DIRECTION */
 
-  if (halo == LB_HALO_REDUCED && dim == Y && cart_size(Y) > 1) {
+  if (halo == LB_HALO_REDUCED && dim == Y && mpi_cartsz[Y] > 1) {
 
     for (ic = 0; ic <= nlocal[X] + 1; ic++) {
       for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
@@ -392,7 +404,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
 	    if (cv[p][Y] > 0) {
 	      f_expect = offset[X];
-	      if (cart_coords(dim) == 0) f_expect = L(X);
+	      if (mpi_cartcoords[dim] == 0) f_expect = ltot[X];
 	    }
 	  }
 
@@ -406,7 +418,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
 	    if (cv[p][Y] < 0) {
 	      f_expect = offset[X] + ic;
-	      if (cart_coords(X) == cart_size(X) - 1) f_expect = 1.0;
+	      if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) f_expect = 1.0;
 	    }
 	  }
 	}

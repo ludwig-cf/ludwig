@@ -7,12 +7,12 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2016 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Ignacio Pagonabarraga
  *    Oliver Henrich
- *
- *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -56,7 +56,7 @@ int psi_force_gradmu(psi_t * psi, fe_t * fe, field_t * phi,
     psi_force_gradmu_es(psi, fe, phi, hydro, cinfo);
    break;
   default:
-    fatal("Wrong free energy\n");
+    pe_fatal(psi->pe, "Wrong free energy\n");
   }
 
   return 0;
@@ -389,7 +389,7 @@ int psi_force_divstress(psi_t * psi, fe_t * fe, hydro_t * hydro,
   assert(fe);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(psi->cs, nlocal);
 
   assert(0); /* NO TEST? */
 
@@ -397,42 +397,42 @@ int psi_force_divstress(psi_t * psi, fe_t * fe, hydro_t * hydro,
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(psi->cs, ic, jc, kc);
  
        /* Calculate divergence based on 6-pt stencil */
 
-	index1 = coords_index(ic+1, jc, kc);
+	index1 = cs_index(psi->cs, ic+1, jc, kc);
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = -0.5*(pth1[ia][X]);
 	}
 
-	index1 = coords_index(ic-1, jc, kc);
+	index1 = cs_index(psi->cs, ic-1, jc, kc);
         fe->func->stress(fe, index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] += 0.5*(pth1[ia][X]);
         }
 
-        index1 = coords_index(ic, jc+1, kc);
+        index1 = cs_index(psi->cs, ic, jc+1, kc);
         fe->func->stress(fe, index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] -= 0.5*(pth1[ia][Y]);
         }
 
-        index1 = coords_index(ic, jc-1, kc);
+        index1 = cs_index(psi->cs, ic, jc-1, kc);
         fe->func->stress(fe, index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] += 0.5*(pth1[ia][Y]);
         }
 
-        index1 = coords_index(ic, jc, kc+1);
+        index1 = cs_index(psi->cs, ic, jc, kc+1);
         fe->func->stress(fe, index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] -= 0.5*(pth1[ia][Z]);
         }
 
-        index1 = coords_index(ic, jc, kc-1);
+        index1 = cs_index(psi->cs, ic, jc, kc-1);
         fe->func->stress(fe, index1, pth1);
         for (ia = 0; ia < 3; ia++) {
           force[ia] += 0.5*(pth1[ia][Z]);
@@ -489,17 +489,17 @@ int psi_force_divstress_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
   assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(psi->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	colloids_info_map(cinfo, index, &pc);
 
-	coords_index_to_ijk(index, coords);
+	cs_index_to_ijk(psi->cs, index, coords);
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = 0.0;
@@ -512,7 +512,7 @@ int psi_force_divstress_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
 	  coords_nb[Y] = coords[Y] + psi_gr_cv[p][Y];
 	  coords_nb[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-	  index_nb = coords_index(coords_nb[X], coords_nb[Y], coords_nb[Z]);
+	  index_nb = cs_index(psi->cs, coords_nb[X], coords_nb[Y], coords_nb[Z]);
 	  map_status(map, index_nb, &status_nb);
 
 	  fe->func->stress(fe, index_nb, pth_nb);
@@ -582,7 +582,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
   assert(psi);
   assert(cinfo);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(psi->cs, nlocal);
 
   assert(0); /* NO TEST? */
 
@@ -590,11 +590,11 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(psi->cs, ic, jc, kc);
 	map_status(map, index, &status);
 	colloids_info_map(cinfo, index, &pc);
 
-	coords_index_to_ijk(index, coords);
+	cs_index_to_ijk(psi->cs, index, coords);
 
 	for (ia = 0; ia < 3; ia++) {
 	  force[ia] = 0.0;
@@ -607,7 +607,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 	  coords_nb[Y] = coords[Y] + psi_gr_cv[p][Y];
 	  coords_nb[Z] = coords[Z] + psi_gr_cv[p][Z];
 
-	  index_nb = coords_index(coords_nb[X], coords_nb[Y], coords_nb[Z]);
+	  index_nb = cs_index(psi->cs, coords_nb[X], coords_nb[Y], coords_nb[Z]);
 	  map_status(map, index_nb, &status_nb);
 
           if (status != MAP_FLUID) {
@@ -643,7 +643,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 	    coords1[Y] = coords[Y] - psi_gr_cv[p][Y];
 	    coords1[Z] = coords[Z] - psi_gr_cv[p][Z];
 
-	    index1 = coords_index(coords1[X], coords1[Y], coords1[Z]);
+	    index1 = cs_index(psi->cs, coords1[X], coords1[Y], coords1[Z]);
 
 	    fe_electro_stress(fe, index1, pth1);
 
@@ -660,7 +660,7 @@ int psi_force_divstress_one_sided_d3qx(psi_t * psi, hydro_t * hydro, map_t * map
 	    coords2[Y] = coords[Y] - 2*psi_gr_cv[p][Y];
 	    coords2[Z] = coords[Z] - 2*psi_gr_cv[p][Z];
 
-	    index2 = coords_index(coords2[X], coords2[Y], coords2[Z]);
+	    index2 = cs_index(psi->cs, coords2[X], coords2[Y], coords2[Z]);
 
 	    fe_electro_stress(fe, index2, pth2);
 

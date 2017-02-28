@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -25,7 +27,7 @@
 #include "test_coords_field.h"
 #include "tests.h"
 
-static int testf2(int ic, int jc, int kc, int n, void * ref);
+static int testf2(cs_t * cs, int ic, int jc, int kc, int n, void * ref);
 static int do_test1(pe_t * pe);
 static int do_test2(pe_t * pe);
 static int do_test_halo1(pe_t * pe);
@@ -201,17 +203,17 @@ static int do_test_halo1(pe_t * pe) {
   psi_create(pe, cs, nk, &psi);
   assert(psi);
 
-  test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
   psi_halo_psi(psi);
-  test_coords_field_check(nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
 
-  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
   psi_halo_rho(psi);
-  test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
-  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, testf2);
+  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, testf2);
   psi_halo_rho(psi);
-  test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, testf2);
+  test_coords_field_check(cs, nhalo, nk, psi->rho, MPI_DOUBLE, testf2);
 
   psi_free(psi);
   cs_free(cs);
@@ -241,7 +243,7 @@ static int do_test_halo2(pe_t * pe) {
    * MPI tasks in one direction cf. the default. */
 
   grid[0] = 1;
-  grid[1] = pe_size();
+  grid[1] = pe_mpi_size(pe);
   grid[2] = 1;
 
   cs_create(pe, &cs);
@@ -253,13 +255,13 @@ static int do_test_halo2(pe_t * pe) {
   psi_create(pe, cs, nk, &psi);
   assert(psi);
 
-  test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
   psi_halo_psi(psi);
-  test_coords_field_check(nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, nhalo, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
 
-  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
   psi_halo_rho(psi);
-  test_coords_field_check(nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, nhalo, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
   psi_free(psi);
   cs_free(cs);
@@ -286,13 +288,15 @@ static int do_test_io1(pe_t * pe) {
   cs_t * cs = NULL;
   psi_t * psi = NULL;
   io_info_t * iohandler = NULL;
+  MPI_Comm comm;
 
   assert(pe);
 
   cs_create(pe, &cs);
   cs_init(cs);
+  cs_cart_comm(cs, &comm);
 
-  if (pe_size() == 8) {
+  if (pe_mpi_size(pe) == 8) {
     grid[X] = 2;
     grid[Y] = 2;
     grid[Z] = 2;
@@ -303,15 +307,15 @@ static int do_test_io1(pe_t * pe) {
   assert(psi);
   psi_init_io_info(psi, grid, IO_FORMAT_DEFAULT, IO_FORMAT_DEFAULT);
 
-  test_coords_field_set(1, psi->psi, MPI_DOUBLE, test_ref_double1);
-  test_coords_field_set(nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_set(cs, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
   psi_io_info(psi, &iohandler);
   assert(iohandler);
   io_write_data(iohandler, filename,  psi);
 
   psi_free(psi);
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
 
   /* Recreate, and read. This zeros out all the fields, so they
    * must be read correctly to pass. */
@@ -327,10 +331,10 @@ static int do_test_io1(pe_t * pe) {
   psi_halo_rho(psi);
 
   /* Zero halo region required */
-  test_coords_field_check(0, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
-  test_coords_field_check(0, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, 0, 1, psi->psi, MPI_DOUBLE, test_ref_double1);
+  test_coords_field_check(cs, 0, nk, psi->rho, MPI_DOUBLE, test_ref_double1);
 
-  MPI_Barrier(pe_comm());
+  MPI_Barrier(comm);
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "psi");
 
@@ -450,20 +454,25 @@ static int do_test_ionic_strength(pe_t * pe) {
  *
  *  testf2
  *
+ *  With signature halo_ft from test_coords_field.h
  *  A 'wall' function perioidic in z-direction.
  *
  *****************************************************************************/
 
-static int testf2(int ic, int jc, int kc, int n, void * buf) {
+static int testf2(cs_t * cs, int ic, int jc, int kc, int n, void * buf) {
 
+  int ntotal[3];
   double * ref = (double *) buf;
 
+  assert(cs);
   assert(ref);
+
+  cs_ntotal(cs, ntotal);
 
   *ref = -1.0;
 
   if (kc == 1 || kc == 0) *ref = 1.0;
-  if (kc == N_total(Z) || kc == N_total(Z) + 1) *ref = 1.0;
+  if (kc == ntotal[Z] || kc == ntotal[Z] + 1) *ref = 1.0;
 
   return 0;
 }

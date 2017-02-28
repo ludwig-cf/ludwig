@@ -29,7 +29,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich  (ohenrich@epcc.ed.ac.uk)
@@ -51,6 +51,7 @@
 
 struct fe_electro_s {
   fe_t super;
+  pe_t * pe;             /* Parallel environment */
   psi_t * psi;           /* A reference to the electrokinetic quantities */
   double * mu_ref;       /* Reference mu currently unused (i.e., zero). */ 
   fe_electro_t * target; /* Device copy */
@@ -97,17 +98,19 @@ static  __constant__ fe_vt_t fe_electro_dvt = {
  *
  *****************************************************************************/
 
-__host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
+__host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** pobj) {
 
   int ndevice;
   fe_electro_t * fe = NULL;
 
+  assert(pe);
   assert(pobj);
   assert(psi);
 
   fe = (fe_electro_t *) calloc(1, sizeof(fe_electro_t));
-  if (fe == NULL) fatal("calloc() failed\n");
+  if (fe == NULL) pe_fatal(pe, "calloc() failed\n");
 
+  fe->pe = pe;
   fe->psi = psi;
   fe->super.func = &fe_electro_hvt;
   fe->super.id = FE_ELECTRO;
@@ -121,7 +124,7 @@ __host__ int fe_electro_create(psi_t * psi, fe_electro_t ** pobj) {
     fe_vt_t * vt;
     /* Device implementation pending */
     targetConstAddress((void **) &vt, fe_electro_dvt);
-    fatal("No device implementation for fe_electro\n");
+    pe_fatal(pe, "No device implementation for fe_electro\n");
   }
 
   *pobj = fe;

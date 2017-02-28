@@ -5,19 +5,21 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
  *    Juho Lintuvuori
  *    Davide Marenduzzo
  *
- *  (c) 2010-2016 The University of Edinburgh
- *
  *****************************************************************************/
 
 #ifndef BLUEPHASE_H
 #define BLUEPHASE_H
 
+#include "pe.h"
+#include "coords.h"
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
@@ -30,6 +32,8 @@ typedef struct fe_lc_param_s fe_lc_param_t;
 
 struct fe_lc_s {
   fe_t super;
+  pe_t * pe;                  /* Parallel environment */
+  cs_t * cs;                  /* Coordinate system */
   fe_lc_param_t * param;      /* Parameters */
   field_t * q;                /* Q_ab (compresse rank 1 field) */
   field_grad_t * dq;          /* Gradients thereof */
@@ -71,12 +75,13 @@ enum lc_anchoring_enum {LC_ANCHORING_PLANAR = 0,
 };
 
 
-__host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** fe);
+__host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
+			  fe_lc_t ** fe);
 __host__ int fe_lc_free(fe_lc_t * fe);
 __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values);
 __host__ int fe_lc_param_commit(fe_lc_t * fe);
 __host__ int fe_lc_redshift_set(fe_lc_t * fe,  double redshift);
-__host__ int fe_lc_redshift_compute(fe_lc_t * fe);
+__host__ int fe_lc_redshift_compute(cs_t * cs, fe_lc_t * fe);
 __host__ int fe_lc_target(fe_lc_t * fe, fe_t ** target);
 
 /* Host / device functions */

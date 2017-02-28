@@ -20,8 +20,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -38,13 +40,15 @@
 #include "phi_force.h"
 #include "phi_force_colloid.h"
 
-static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe, double * fxe,
+static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe, int nall,
+				    double * fxe,
 				    double * fxw,
 				    double * fxy,
 				    double * fxz);
 static int phi_force_flux_divergence(cs_t * cs, hydro_t * hydro, double * fe,
 				     double * fw, double * fy, double * fz);
-static int phi_force_flux_fix_local(lees_edw_t * le, double * fluxe, double * fluxw);
+static int phi_force_flux_fix_local(lees_edw_t * le, int nall, double * fluxe,
+				    double * fluxw);
 static int phi_force_flux_divergence_with_fix(cs_t * cs,
 					      hydro_t * hydro, double * fe,
 					      double * fw,
@@ -196,6 +200,9 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
  *  The flux form is used to ensure conservation, and to allow
  *  the appropriate corrections when LE planes are present.
  *
+ *  TODO: the "ownership" is not very clear here. Where does it
+ *        belong?
+ *
  *****************************************************************************/
 
 static int phi_force_flux(cs_t * cs, lees_edw_t * le, fe_t * fe,
@@ -219,19 +226,19 @@ static int phi_force_flux(cs_t * cs, lees_edw_t * le, fe_t * fe,
   fluxy = (double *) malloc(3*n*sizeof(double));
   fluxz = (double *) malloc(3*n*sizeof(double));
 
-  if (fluxe == NULL) fatal("malloc(fluxe) force failed");
-  if (fluxw == NULL) fatal("malloc(fluxw) force failed");
-  if (fluxy == NULL) fatal("malloc(fluxy) force failed");
-  if (fluxz == NULL) fatal("malloc(fluxz) force failed");
+  if (fluxe == NULL) pe_fatal(hydro->pe, "malloc(fluxe) force failed");
+  if (fluxw == NULL) pe_fatal(hydro->pe, "malloc(fluxw) force failed");
+  if (fluxy == NULL) pe_fatal(hydro->pe, "malloc(fluxy) force failed");
+  if (fluxz == NULL) pe_fatal(hydro->pe, "malloc(fluxz) force failed");
 
-  phi_force_compute_fluxes(le, fe, fluxe, fluxw, fluxy, fluxz);
+  phi_force_compute_fluxes(le, fe, n, fluxe, fluxw, fluxy, fluxz);
 
   if (iswall[X]) phi_force_wallx(cs, wall, fe, fluxe, fluxw);
-  if (iswall[Y]) fatal("Not allowed\n");
-  if (iswall[Z]) fatal("Not allowed\n");
+  if (iswall[Y]) pe_fatal(hydro->pe, "Not allowed\n");
+  if (iswall[Z]) pe_fatal(hydro->pe, "Not allowed\n");
 
   if (fix_fluxes || wall_present(wall)) {
-    phi_force_flux_fix_local(le, fluxe, fluxw);
+    phi_force_flux_fix_local(le, n, fluxe, fluxw);
     phi_force_flux_divergence(cs, hydro, fluxe, fluxw, fluxy, fluxz);
   }
   else {
@@ -259,7 +266,7 @@ static int phi_force_flux(cs_t * cs, lees_edw_t * le, fe_t * fe,
  *****************************************************************************/
 
 
-static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
+static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe, int nall,
 				    double * fluxe, double * fluxw,
 				    double * fluxy, double * fluxz) {
 
@@ -294,7 +301,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxw[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxw[addr_rank1(nall,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxe_a = (1/2)[P(i, j, k) + P(i+1, j, k)_xa */
@@ -303,7 +310,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
+	  fluxe[addr_rank1(nall,3,index,ia)] = 0.5*(pth1[ia][X] + pth0[ia][X]);
 	}
 
 	/* fluxy_a = (1/2)[P(i, j, k) + P(i, j+1, k)]_ya */
@@ -312,7 +319,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxy[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
+	  fluxy[addr_rank1(nall,3,index,ia)] = 0.5*(pth1[ia][Y] + pth0[ia][Y]);
 	}
 
 	/* fluxz_a = (1/2)[P(i, j, k) + P(i, j, k+1)]_za */
@@ -321,7 +328,7 @@ static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe,
 	fe->func->stress(fe, index1, pth1);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxz[addr_rank1(coords_nsites(),3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
+	  fluxz[addr_rank1(nall,3,index,ia)] = 0.5*(pth1[ia][Z] + pth0[ia][Z]);
 	}
 	/* Next site */
       }
@@ -391,7 +398,7 @@ static int phi_force_flux_divergence(cs_t * cs, hydro_t * hydro,
  *
  *  It is intended that these fluxes are uncorrected, and that a
  *  global constraint on the total force is enforced. This costs
- *  one Allreduce in pe_comm() per call. 
+ *  one Allreduce per call. 
  *
  *  TODO:
  *  The assert(0) indicates this routine is unused; the "local"
@@ -413,6 +420,8 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
   double fsum_local[3];
   double fsum[3];
   double rv;
+  double ltot[3];
+  MPI_Comm comm;
 
   assert(cs);
   assert(hydro);
@@ -423,6 +432,7 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
 
   assert(0); /* NO TEST? */
 
+  cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsf);
 
@@ -452,9 +462,9 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
     }
   }
 
-  MPI_Allreduce(fsum_local, fsum, 3, MPI_DOUBLE, MPI_SUM, pe_comm());
+  MPI_Allreduce(fsum_local, fsum, 3, MPI_DOUBLE, MPI_SUM, comm);
 
-  rv = 1.0/(L(X)*L(Y)*L(Z));
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
 
   for (ia = 0; ia < 3; ia++) {
     fsum[ia] *= rv;
@@ -498,7 +508,7 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
  *
  *****************************************************************************/
 
-static int phi_force_flux_fix_local(lees_edw_t * le,
+static int phi_force_flux_fix_local(lees_edw_t * le, int nall,
 				    double * fluxe, double * fluxw) {
 
   int nlocal[3];
@@ -509,10 +519,13 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
   double * fbar;     /* Local sum over plane */
   double * fcor;     /* Global correction */
   double ra;         /* Normaliser */
+  double ltot[3];
 
   MPI_Comm comm;
 
   assert(le);
+
+  lees_edw_ltot(le, ltot);
 
   nplane = lees_edw_nplane_local(le);
 
@@ -524,9 +537,11 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
 
   fbar = (double *) calloc(3*nplane, sizeof(double));
   fcor = (double *) calloc(3*nplane, sizeof(double));
+#ifdef OLD_SHIT
+  /* TODO: decide "ownership" to find pe */
   if (fbar == NULL) fatal("calloc(%d, fbar) failed\n", 3*nplane);
   if (fcor == NULL) fatal("calloc(%d, fcor) failed\n", 3*nplane);
-
+#endif
   for (ip = 0; ip < nplane; ip++) { 
 
     ic = lees_edw_plane_location(le, ip);
@@ -538,8 +553,8 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
         index1 = lees_edw_index(le, ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fbar[3*ip + ia] += - fluxe[addr_rank1(coords_nsites(),3,index,ia)]
-	    + fluxw[addr_rank1(coords_nsites(),3,index1,ia)];
+	  fbar[3*ip + ia] += - fluxe[addr_rank1(nall,3,index,ia)]
+	    + fluxw[addr_rank1(nall,3,index1,ia)];
 	}
       }
     }
@@ -547,7 +562,7 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
 
   MPI_Allreduce(fbar, fcor, 3*nplane, MPI_DOUBLE, MPI_SUM, comm);
 
-  ra = 0.5/(L(Y)*L(Z));
+  ra = 0.5/(ltot[Y]*ltot[Z]);
 
   for (ip = 0; ip < nplane; ip++) { 
 
@@ -560,8 +575,8 @@ static int phi_force_flux_fix_local(lees_edw_t * le,
         index1 = lees_edw_index(le, ic + 1, jc, kc);
 
 	for (ia = 0; ia < 3; ia++) {
-	  fluxe[addr_rank1(coords_nsites(),3,index,ia)] += ra*fcor[3*ip + ia];
-	  fluxw[addr_rank1(coords_nsites(),3,index1,ia)] -= ra*fcor[3*ip +ia];
+	  fluxe[addr_rank1(nall,3,index,ia)] += ra*fcor[3*ip + ia];
+	  fluxw[addr_rank1(nall,3,index1,ia)] -= ra*fcor[3*ip +ia];
 	}
       }
     }

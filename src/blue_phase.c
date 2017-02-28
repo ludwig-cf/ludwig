@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2016 The University of Edinburgh
+ *  (c) 2011-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *
@@ -72,21 +72,26 @@ static __constant__ fe_vt_t fe_dvt = {
  *
  *****************************************************************************/
 
-__host__ int fe_lc_create(field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
+__host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
+			  fe_lc_t ** pobj) {
 
   int ndevice;
   fe_lc_t * fe = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(q);
   assert(dq);
   assert(pobj);
 
   fe = (fe_lc_t *) calloc(1, sizeof(fe_lc_t));
-  if (fe == NULL) fatal("calloc(fe_lc_t) failed\n");
+  if (fe == NULL) pe_fatal(pe, "calloc(fe_lc_t) failed\n");
 
   fe->param = (fe_lc_param_t *) calloc(1, sizeof(fe_lc_param_t));
-  if (fe->param == NULL) fatal("calloc(fe_lc_param_t) failed\n");
+  if (fe->param == NULL) pe_fatal(pe, "calloc(fe_lc_param_t) failed\n");
 
+  fe->pe = pe;
+  fe->cs = cs;
   fe->q = q;
   fe->dq = dq;
 
@@ -987,7 +992,7 @@ int fe_lc_q_uniaxial(fe_lc_param_t * param, const double n[3], double q[3][3]) {
  *
  *****************************************************************************/
 
-__host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
+__host__ int fe_lc_redshift_compute(cs_t * cs, fe_lc_t * fe) {
 
   int ic, jc, kc, index;
   int ia, ib, id, ig;
@@ -998,11 +1003,16 @@ __host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
   double dq0, dq1, dq2, dq3, sum;
   double egrad_local[2], egrad[2];    /* Gradient terms for redshift calc. */
   double rnew;
+
+  MPI_Comm comm;
   LEVI_CIVITA_CHAR(e);
 
   if (fe->param->is_redshift_updated == 0) return 0;
 
-  coords_nlocal(nlocal);
+  assert(cs);
+
+  cs_cart_comm(cs, &comm);
+  cs_nlocal(cs, nlocal);
 
   egrad_local[0] = 0.0;
   egrad_local[1] = 0.0;
@@ -1013,7 +1023,7 @@ __host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
 
 	field_tensor(fe->q, index, q);
 	field_grad_tensor_grad(fe->dq, index, dq);
@@ -1063,7 +1073,7 @@ __host__ int fe_lc_redshift_compute(fe_lc_t * fe) {
   /* Allreduce the gradient results, and compute a new redshift (we
    * keep the old one if problematic). */
 
-  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, cart_comm());
+  MPI_Allreduce(egrad_local, egrad, 2, MPI_DOUBLE, MPI_SUM, comm);
 
   rnew = fe->param->redshift;
   if (egrad[1] != 0.0) rnew = -0.5*egrad[0]/egrad[1];

@@ -10,18 +10,22 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef TIMER_H
-#define TIMER_H
+#ifndef LUDWIG_TIMER_H
+#define LUDWIG_TIMER_H
 
-__targetHost__ void TIMER_init(void);
-__targetHost__ void TIMER_start(const int);
-__targetHost__ void TIMER_stop(const int);
-__targetHost__ void TIMER_statistics(void);
+#include "pe.h"
+
+__host__ int TIMER_init(pe_t * pe);
+__host__ void TIMER_start(const int);
+__host__ void TIMER_stop(const int);
+__host__ void TIMER_statistics(void);
 
 enum timer_id {TIMER_TOTAL = 0,
 	       TIMER_STEPS,

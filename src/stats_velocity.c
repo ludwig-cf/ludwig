@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -20,6 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "util.h"
+#include "hydro_s.h"
 #include "stats_velocity.h"
 
 /****************************************************************************
@@ -51,8 +54,8 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
   assert(hydro);
   assert(map);
 
-  coords_nlocal(nlocal);
-  comm = pe_comm();
+  cs_nlocal(hydro->cs, nlocal);
+  pe_mpi_comm(hydro->pe, &comm);
 
   for (ia = 0; ia < 3; ia++) {
     umin[ia] = FLT_MAX;
@@ -64,7 +67,7 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-        index = coords_index(ic, jc, kc);
+        index = cs_index(hydro->cs, ic, jc, kc);
 	map_status(map, index, &status);
 
 	if (status == MAP_FLUID) {
@@ -95,13 +98,13 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
 
   MPI_Reduce(usum_local, usum, 3, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-  info("\n");
-  info("Velocity - x y z\n");
-  info("[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
-  info("[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
+  pe_info(hydro->pe, "\n");
+  pe_info(hydro->pe, "Velocity - x y z\n");
+  pe_info(hydro->pe, "[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
+  pe_info(hydro->pe, "[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
 
   if (print_vol_flux) {
-    info("[vol flux] %14.7e %14.7e %14.7e\n", usum[X], usum[Y], usum[Z]);
+    pe_info(hydro->pe, "[vol flux] %14.7e %14.7e %14.7e\n", usum[X], usum[Y], usum[Z]);
   }
 
   return 0;

@@ -16,7 +16,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Juho Lintuvuori (jlintuvu@ph.ed.ac.uk)
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,9 +31,12 @@
 #include "pe.h"
 #include "util.h"
 #include "coords.h"
+#include "colloids.h"
 #include "pair_lj_cut.h"
 
 struct pair_lj_cut_s {
+  pe_t * pe;
+  cs_t * cs;
   double epsilon;
   double sigma;
   double rc;
@@ -47,14 +51,19 @@ struct pair_lj_cut_s {
  *
  *****************************************************************************/
 
-int pair_lj_cut_create(pair_lj_cut_t ** pobj) {
+int pair_lj_cut_create(pe_t * pe, cs_t * cs, pair_lj_cut_t ** pobj) {
 
   pair_lj_cut_t * obj = NULL;
 
+  assert(pe);
+  assert(cs);
   assert(pobj);
 
   obj = (pair_lj_cut_t *) calloc(1, sizeof(pair_lj_cut_t));
-  if (obj == NULL) fatal("calloc(pair_lj_cut_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(pair_lj_cut_t) failed\n");
+
+  obj->pe = pe;
+  obj->cs = cs;
 
   *pobj = obj;
 
@@ -67,13 +76,13 @@ int pair_lj_cut_create(pair_lj_cut_t ** pobj) {
  *
  *****************************************************************************/
 
-void pair_lj_cut_free(pair_lj_cut_t * obj) {
+int pair_lj_cut_free(pair_lj_cut_t * obj) {
 
   assert(obj);
 
   free(obj);
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -103,10 +112,10 @@ int pair_lj_cut_info(pair_lj_cut_t * obj) {
 
   assert(obj);
 
-  info("Lennard-Jones potential\n");
-  info("epsilon:                  %14.7e\n", obj->epsilon);
-  info("sigma:                    %14.7e\n", obj->sigma);
-  info("cut off (centre-centre)   %14.7e\n", obj->rc);
+  pe_info(obj->pe, "Lennard-Jones potential\n");
+  pe_info(obj->pe, "epsilon:                  %14.7e\n", obj->epsilon);
+  pe_info(obj->pe, "sigma:                    %14.7e\n", obj->sigma);
+  pe_info(obj->pe, "cut off (centre-centre)   %14.7e\n", obj->rc);
 
   return 0;
 }
@@ -151,6 +160,7 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
   double dvcut;
   double r12[3];
   double f, h;
+  double ltot[3];
 
   colloid_t * pc1;
   colloid_t * pc2;
@@ -158,10 +168,11 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
   assert(cinfo);
   assert(self);
 
+  cs_ltot(obj->cs, ltot);
   colloids_info_ncell(cinfo, ncell);
 
   obj->vlocal = 0.0;
-  obj->rminlocal = dmax(L(X), dmax(L(Y), L(Z)));
+  obj->rminlocal = dmax(ltot[X], dmax(ltot[Y], ltot[Z]));
   obj->hminlocal = obj->rminlocal;
 
   rr = 1.0/obj->rc;
@@ -189,7 +200,7 @@ int pair_lj_cut_compute(colloids_info_t * cinfo, void * self) {
 
 		  if (pc1->s.index >= pc2->s.index) continue;
 
-		  coords_minimum_distance(pc1->s.r, pc2->s.r, r12);
+		  cs_minimum_distance(obj->cs, pc1->s.r, pc2->s.r, r12);
 		  r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 
 		  r = sqrt(r2);

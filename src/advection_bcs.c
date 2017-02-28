@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2016 The University of Edinburgh
+ *  (c) 2009-2017 The University of Edinburgh
 *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -53,13 +53,13 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
   assert(flux);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nlocal(flux->cs, nlocal);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(NSIMDVL, limits, &ctxt);
+  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   TIMER_start(ADVECTION_BCS_KERNEL);
@@ -148,68 +148,6 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
   return;
 }
 
-
-/*****************************************************************************
- *
- *  advective_bcs_no_flux
- *
- *  Set normal fluxes at solid fluid interfaces to zero.
- *
- *****************************************************************************/
-
-int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
-			  map_t * map) {
-  int n;
-  int nlocal[3];
-  int ic, jc, kc, index, indexf;
-  int status;
-
-  double mask, maskx, masky, maskz;
-
-  assert(nf > 0);
-  assert(fx);
-  assert(fy);
-  assert(fz);
-  assert(map);
-
-  coords_nlocal(nlocal);
-
-  for (ic = 0; ic <= nlocal[X]; ic++) {
-    for (jc = 0; jc <= nlocal[Y]; jc++) {
-      for (kc = 0; kc <= nlocal[Z]; kc++) {
-
-	index = coords_index(ic + 1, jc, kc);
-	map_status(map, index, &status);
-	maskx = (status == MAP_FLUID);
-
-	index = coords_index(ic, jc + 1, kc);
-	map_status(map, index, &status);
-	masky = (status == MAP_FLUID);
-
-	index = coords_index(ic, jc, kc + 1);
-	map_status(map, index, &status);
-	maskz = (status == MAP_FLUID);
-
-	index = coords_index(ic, jc, kc);
-	map_status(map, index, &status);
-	mask = (status == MAP_FLUID);
-
-	for (n = 0;  n < nf; n++) {
-
-	  indexf = addr_rank1(coords_nsites(), nf, index, n);
-	  fx[indexf] *= mask*maskx;
-	  fy[indexf] *= mask*masky;
-	  fz[indexf] *= mask*maskz;
-
-	}
-
-      }
-    }
-  }
-
-  return 0;
-}
-
 /*****************************************************************************
  *
  *  advective_bcs_no_flux_d3qx
@@ -221,6 +159,7 @@ int advective_bcs_no_flux(int nf, double * fx, double * fy, double * fz,
 int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
 
   int n;
+  int nsites;
   int nlocal[3];
   int ic, jc, kc, index0, index1;
   int status;
@@ -231,24 +170,25 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
   assert(flx);
   assert(map);
 
-  coords_nlocal(nlocal);
+  cs_nsites(map->cs, &nsites);
+  cs_nlocal(map->cs, nlocal);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index0 = coords_index(ic, jc, kc);
+	index0 = cs_index(map->cs, ic, jc, kc);
 	map_status(map, index0, &status);
 	mask[0] = (status == MAP_FLUID);
 
 	for (c = 1; c < PSI_NGRAD; c++) {
 
-	  index1 = coords_index(ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
+	  index1 = cs_index(map->cs, ic + psi_gr_cv[c][X], jc + psi_gr_cv[c][Y], kc + psi_gr_cv[c][Z]);
 	  map_status(map, index1, &status);
 	  mask[c] = (status == MAP_FLUID);
 
 	  for (n = 0;  n < nf; n++) {
-	    flx[addr_rank1(coords_nsites(), nf, index0, n)][c - 1] *= mask[0]*mask[c];
+	    flx[addr_rank1(nsites, nf, index0, n)][c - 1] *= mask[0]*mask[c];
 	  }
 	}
       }
@@ -279,7 +219,10 @@ int advection_bcs_wall(field_t * fphi) {
   int ic, jc, kc, index, index1;
   int nlocal[3];
   int nf;
+  int mpi_cartcoords[3];
+  int mpi_cartsz[3];
   double q[NQAB];
+  cs_t * cs = NULL; /* To be required */
 
   /* if (wall_at_edge(X) == 0) return 0;*/
 
@@ -287,17 +230,17 @@ int advection_bcs_wall(field_t * fphi) {
   assert(fphi);
 
   field_nf(fphi, &nf);
-  coords_nlocal(nlocal);
+  cs_nlocal(cs, nlocal);
   assert(nf <= NQAB);
 
-  if (cart_coords(X) == 0) {
+  if (mpi_cartcoords[X] == 0) {
     ic = 1;
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index  = coords_index(ic, jc, kc);
-	index1 = coords_index(ic-1, jc, kc);
+	index  = cs_index(cs, ic, jc, kc);
+	index1 = cs_index(cs, ic-1, jc, kc);
 
 	field_scalar_array(fphi, index, q);
 	field_scalar_array_set(fphi, index1, q);
@@ -305,15 +248,15 @@ int advection_bcs_wall(field_t * fphi) {
     }
   }
 
-  if (cart_coords(X) == cart_size(X) - 1) {
+  if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) {
 
     ic = nlocal[X];
 
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-	index = coords_index(ic, jc, kc);
-	index1 = coords_index(ic+1, jc, kc);
+	index = cs_index(cs, ic, jc, kc);
+	index1 = cs_index(cs, ic+1, jc, kc);
 
 	field_scalar_array(fphi, index, q);
 	field_scalar_array_set(fphi, index1, q);

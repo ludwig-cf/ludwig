@@ -69,13 +69,17 @@ __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
 __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 
   int nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(fg);
   assert(fg->field);
 
+  cs = fg->field->cs;
   le = fg->field->le;
-  nextra = coords_nhalo() - 1;
+
+  cs_nhalo(cs, &nextra);
+  nextra -= 1;
   assert(nextra >= 0);
 
   assert(0); /* NO TEST */
@@ -97,10 +101,15 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
 
 __host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
 
+  int nhalo;
   int nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
-  nextra = coords_nhalo() - 2;
+  cs = fg->field->cs;
+
+  cs_nhalo(cs, &nhalo);
+  nextra = nhalo - 2;
   assert(nextra >= 0);
 
   assert(0); /* NO TEST */

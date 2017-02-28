@@ -5,22 +5,25 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) The University of Edinburgh (2014)
+ *  (c) 2014-2017 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef BOND_FENE_H
-#define BOND_FENE_H
+#ifndef LUDWIG_BOND_FENE_H
+#define LUDWIG_BOND_FENE_H
 
+#include "pe.h"
+#include "coords.h"
 #include "colloids.h"
 #include "interaction.h"
 
 typedef struct bond_fene_s bond_fene_t;
 
-int bond_fene_create(bond_fene_t ** pobj);
-void bond_fene_free(bond_fene_t * obj);
+int bond_fene_create(pe_t * pe, cs_t * cs, bond_fene_t ** pobj);
+int bond_fene_free(bond_fene_t * obj);
 int bond_fene_param_set(bond_fene_t * obj, double k, double r0);
 int bond_fene_info(bond_fene_t * obj);
 int bond_fene_register(bond_fene_t * obj, interact_t * parent);

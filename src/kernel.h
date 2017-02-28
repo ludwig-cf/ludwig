@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016 The University of Edinburgh
+ *  (c) 2016-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -15,6 +15,7 @@
 #ifndef LUDWIG_KERNEL_H
 #define LUDWIG_KERNEL_H
 
+#include "coords.h"
 #include "memory.h"
 
 typedef struct kernel_ctxt_s kernel_ctxt_t;
@@ -42,7 +43,9 @@ struct kernel_info_s {
   int kmax;
 };
 
-__host__ int kernel_ctxt_create(int nsimdvl, kernel_info_t info, kernel_ctxt_t ** p);
+
+__host__ int kernel_ctxt_create(cs_t * cs, int nsimdvl, kernel_info_t info,
+				kernel_ctxt_t ** p);
 __host__ int kernel_ctxt_launch_param(kernel_ctxt_t * obj, dim3 * nblk, dim3 * ntpb);
 __host__ int kernel_ctxt_info(kernel_ctxt_t * obj, kernel_info_t * lim);
 __host__ int kernel_ctxt_free(kernel_ctxt_t * obj);

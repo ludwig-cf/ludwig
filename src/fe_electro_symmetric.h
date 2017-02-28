@@ -7,11 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2017 The University of Edinburgh
+ *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
- *
- *  (c) 2013-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,7 +37,8 @@ struct fe_electro_symmetric_param_s {
   int nk;                     /* Number of species - same os psi_nk() */
 };
 
-__host__ int fe_es_create(fe_symm_t * fe_symm, fe_electro_t * fe_elec,
+__host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * fe_symm,
+			  fe_electro_t * fe_elec,
 			  psi_t * psi, fe_es_t ** fe);
 __host__ int fe_es_free(fe_es_t * fe);
 __host__ int fe_es_target(fe_es_t * fe, fe_t ** target);
