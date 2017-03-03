@@ -924,8 +924,8 @@ __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe) {
   kernel_launch_param(1, &nblk, &ntpb);
   ntpb.x = 1;
 
-  __host_launch(do_test_fe_lc_kernel1, nblk, ntpb, fetarget, param);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(do_test_fe_lc_kernel1, nblk, ntpb, 0, 0, fetarget, param);
+  tdpDeviceSynchronize();
 
   physics_free(phys);
 

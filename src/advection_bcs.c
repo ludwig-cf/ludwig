@@ -64,10 +64,10 @@ int advection_bcs_no_normal_flux(int nf, advflux_t * flux, map_t * map) {
 
   TIMER_start(ADVECTION_BCS_KERNEL);
 
-  __host_launch(advection_bcs_no_flux_kernel_v, nblk, ntpb, ctxt->target,
-		flux->target, map->target);
+  tdpLaunchKernel(advection_bcs_no_flux_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, flux->target, map->target);
 
-  targetSynchronize();
+  tdpDeviceSynchronize();
 
   TIMER_stop(ADVECTION_BCS_KERNEL);
 
@@ -93,7 +93,7 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     int n;
     int iv;

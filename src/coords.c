@@ -199,16 +199,17 @@ __host__ int cs_init(cs_t * cs) {
 
   /* Device side */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     cs->target = cs;
   }
   else {
     cs_param_t * tmp;
-    targetCalloc((void **) &cs->target, sizeof(cs_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&cs->target->param, (const void *) &tmp, sizeof(cs_param_t *));
+    tdpMalloc((void **) &cs->target, sizeof(cs_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&cs->target->param, (const void *) &tmp, sizeof(cs_param_t *),
+	      tdpMemcpyHostToDevice);
     cs_commit(cs);
   }
 
@@ -225,7 +226,9 @@ __host__ int cs_commit(cs_t * cs) {
 
   assert(cs);
 
-  copyConstToTarget(&const_param, cs->param, sizeof(cs_param_t));
+  /* copyConstToTarget(&const_param, cs->param, sizeof(cs_param_t));*/
+  tdpMemcpyToSymbol(tdpSymbol(const_param), cs->param, sizeof(cs_param_t), 0,
+		    tdpMemcpyHostToDevice);
 
   return 0;
 }

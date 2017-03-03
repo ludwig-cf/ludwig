@@ -34,26 +34,6 @@ __device__ void target_atomic_add_int(int * sum, int  val);
 __device__ double target_block_reduce_sum_double(double * val);
 __device__ void target_atomic_add_double(double * sum, double  val);
 
-/*
-
-__host__ int host block_reduce_sum_double(double * sum, double val);
-__host__ int host_block_reduce_min_double(double * dmin, double val);
-__host__ int host_block_reduce_max_double(double * dmax, double val);
-
-__target__ int target_block_reduce_sum_int(int * isum, int ival)
-__target__ int target_block_reduce_sum_double(double * sum, double val);
-__target__ int target_block_reduce_min_double(double * dmin, double val);
-__target__ int target_block_reduce_max_double(double * dmax, double val);
-
-__target__ int target_atomic_sum_double(double * sum, double val);
-__target__ int target_atomic_min_double(double * dmin, double val);
-__target__ int target_atomic_max_double(double * dmax, double val);
-
-*/
-
-__host__ __device__ int targetGetDeviceCount(int * device);
-__host__ __device__ int targetDeviceSynchronise(void);
-
 /* KS. End additions */
 
 

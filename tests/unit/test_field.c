@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -193,8 +195,9 @@ int do_test_device1(pe_t * pe) {
 
   kernel_launch_param(1, &nblk, &ntpb);
   ntpb.x = 1;
-  __host_launch(do_test_field_kernel1, nblk, ntpb, phi->target);
-  targetDeviceSynchronise();
+
+  tdpLaunchKernel(do_test_field_kernel1, nblk, ntpb, 0, 0, phi->target);
+  tdpDeviceSynchronize();
 
   field_free(phi);
   cs_free(cs);

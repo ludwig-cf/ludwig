@@ -9,7 +9,9 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2016 The University of Edinburgh
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -464,9 +466,10 @@ __host__ int wall_set_wall_distributions(wall_t * wall) {
 
   kernel_launch_param(wall->nlink, &nblk, &ntpb);
 
-  __host_launch(wall_setu_kernel, nblk, ntpb, wall->target, wall->lb->target);
+  tdpLaunchKernel(wall_setu_kernel, nblk, ntpb, 0, 0,
+		  wall->target, wall->lb->target);
 
-  targetDeviceSynchronise();
+  tdpDeviceSynchronize();
 
   return 0;
 }
@@ -484,20 +487,20 @@ __host__ int wall_set_wall_distributions(wall_t * wall) {
 __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
 
   int n;
+  int p;                   /* Outward going component of link velocity */
+  double fp;               /* f = w_p (rho0 + (1/cs2) u_a c_pa) No sdotq */
+  double ux = 0.0;         /* PENDING initialisation */
   const double rcs2 = 3.0; /* macro? */
 
   assert(wall);
   assert(lb);
 
-  __target_simt_parallel_for(n, wall->nlink, 1) {
-
-    int p;              /* Outward going component of link velocity */
-    double fp;          /* f = w_p (rho0 + (1/cs2) u_a c_pa) No sdotq */
-    double ux = 0.0;    /* PENDING initialisation */
+  __target_simt_for(n, wall->nlink, 1) {
 
     p = NVEL - wall->linkp[n];
     fp = lb->param->wv[p]*(lb->param->rho0 + rcs2*ux*lb->param->cv[p][X]);
     lb_f_set(lb, wall->linkj[n], p, LB_RHO, fp);
+
   }
 
   return;
@@ -525,10 +528,9 @@ __host__ int wall_bbl(wall_t * wall) {
 
   kernel_launch_param(wall->nlink, &nblk, &ntpb);
 
-  __host_launch(wall_bbl_kernel, nblk, ntpb, wall->target, wall->lb->target,
-		wall->map->target);
-
-  targetDeviceSynchronise();
+  tdpLaunchKernel(wall_bbl_kernel, nblk, ntpb, 0, 0,
+		  wall->target, wall->lb->target, wall->map->target);
+  tdpDeviceSynchronize();
 
   return 0;
 }
@@ -546,11 +548,14 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
   int n;
   int ib;
+  int tid;
+  double fxb, fyb, fzb;
   double uw[WALL_UWMAX][3];
 
   __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+
   const double rcs2 = 3.0;
 
   assert(wall);
@@ -565,93 +570,86 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
     uw[WALL_UWBOT][ib] = wall->param->ubot[ib];
   }
 
-  __target_simt_parallel_region() {
+  tid = threadIdx.x;
 
-    int tid;
-    double fxb, fyb, fzb;
+  fx[tid] = 0.0;
+  fy[tid] = 0.0;
+  fz[tid] = 0.0;
 
-    __target_simt_threadIdx_init();
-    tid = threadIdx.x;
+  __target_simt_for(n, wall->nlink, 1) {
 
-    fx[tid] = 0.0;
-    fy[tid] = 0.0;
-    fz[tid] = 0.0;
+    int i, j, ij, ji, ia;
+    int status;
+    double rho, cdotu;
+    double fp, fp0, fp1;
+    double force;
 
-    __target_simt_for(n, wall->nlink, 1) {
+    i  = wall->linki[n];
+    j  = wall->linkj[n];
+    ij = wall->linkp[n];   /* Link index direction solid->fluid */
+    ji = NVEL - ij;        /* Opposite direction index */
+    ia = wall->linku[n];   /* Wall velocity lookup */
 
-      int i, j, ij, ji, ia;
-      int status;
-      double rho, cdotu;
-      double fp, fp0, fp1;
-      double force;
+    cdotu = lb->param->cv[ij][X]*uw[ia][X] +
+            lb->param->cv[ij][Y]*uw[ia][Y] +
+            lb->param->cv[ij][Z]*uw[ia][Z]; 
 
-      i  = wall->linki[n];
-      j  = wall->linkj[n];
-      ij = wall->linkp[n];   /* Link index direction solid->fluid */
-      ji = NVEL - ij;        /* Opposite direction index */
-      ia = wall->linku[n];   /* Wall velocity lookup */
+    map_status(map, i, &status);
 
-      cdotu = lb->param->cv[ij][X]*uw[ia][X] +
-	      lb->param->cv[ij][Y]*uw[ia][Y] +
-              lb->param->cv[ij][Z]*uw[ia][Z]; 
+    if (status == MAP_COLLOID) {
 
-      map_status(map, i, &status);
+      /* This matches the momentum exchange in colloid BBL. */
+      /* This only affects the accounting (via anomaly, as below) */
 
-      if (status == MAP_COLLOID) {
+      lb_f(lb, i, ij, LB_RHO, &fp0);
+      lb_f(lb, j, ji, LB_RHO, &fp1);
+      fp = fp0 + fp1;
 
-	/* This matches the momentum exchange in colloid BBL. */
-	/* This only affects the accounting (via anomaly, as below) */
+      fx[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+    }
+    else {
 
-	lb_f(lb, i, ij, LB_RHO, &fp0);
-	lb_f(lb, j, ji, LB_RHO, &fp1);
-	fp = fp0 + fp1;
+      /* This is the momentum. To prevent accumulation of round-off
+       * in the running total (fnet_), we subtract the equilibrium
+       * wv[ij]. This is ok for walls where there are exactly
+       * equal and opposite links at each side of the system. */
 
-	fx[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
-	fy[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
-	fz[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
-      }
-      else {
+      lb_f(lb, i, ij, LB_RHO, &fp);
+      lb_0th_moment(lb, i, LB_RHO, &rho);
 
-	/* This is the momentum. To prevent accumulation of round-off
-	 * in the running total (fnet_), we subtract the equilibrium
-	 * wv[ij]. This is ok for walls where there are exactly
-	 * equal and opposite links at each side of the system. */
+      force = 2.0*fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
 
-	lb_f(lb, i, ij, LB_RHO, &fp);
-	lb_0th_moment(lb, i, LB_RHO, &rho);
+      fx[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
 
-	force = 2.0*fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
+      fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
+      lb_f_set(lb, j, ji, LB_RHO, fp);
 
-	fx[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
-	fy[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
-	fz[tid] += (force - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+      if (lb->param->ndist > 1) {
+	/* Order parameter */
+	lb_f(lb, i, ij, LB_PHI, &fp);
+	lb_0th_moment(lb, i, LB_PHI, &rho);
 
 	fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
-	lb_f_set(lb, j, ji, LB_RHO, fp);
-
-	if (lb->param->ndist > 1) {
-	  /* Order parameter */
-	  lb_f(lb, i, ij, LB_PHI, &fp);
-	  lb_0th_moment(lb, i, LB_PHI, &rho);
-
-	  fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
-	  lb_f_set(lb, j, ji, LB_PHI, fp);
-	}
+	lb_f_set(lb, j, ji, LB_PHI, fp);
       }
-      /* Next link */
     }
+    /* Next link */
+  }
 
-    /* Reduction for momentum transfer */
+  /* Reduction for momentum transfer */
 
-    fxb = target_block_reduce_sum_double(fx);
-    fyb = target_block_reduce_sum_double(fy);
-    fzb = target_block_reduce_sum_double(fz);
+  fxb = target_block_reduce_sum_double(fx);
+  fyb = target_block_reduce_sum_double(fy);
+  fzb = target_block_reduce_sum_double(fz);
 
-    if (tid == 0) {
-      target_atomic_add_double(&wall->fnet[X], fxb);
-      target_atomic_add_double(&wall->fnet[Y], fyb);
-      target_atomic_add_double(&wall->fnet[Z], fzb);
-    }
+  if (tid == 0) {
+    target_atomic_add_double(&wall->fnet[X], fxb);
+    target_atomic_add_double(&wall->fnet[Y], fyb);
+    target_atomic_add_double(&wall->fnet[Z], fzb);
   }
 
   return;

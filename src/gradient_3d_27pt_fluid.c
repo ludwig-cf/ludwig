@@ -198,10 +198,10 @@ __host__ int grad_3d_27pt_fluid_operator(cs_t * cs, lees_edw_t * le,
   kernel_ctxt_create(cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(grad_3d_27pt_kernel, nblk, ntpb, ctxt->target,
-		fg->field->nf, ys, letarget, type,
-		fg->field->target, fg->target);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(grad_3d_27pt_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, fg->field->nf, ys, letarget, type,
+		  fg->field->target, fg->target);
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -223,7 +223,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 				    field_grad_t * fgrad) {
 
   int kindex;
-  __shared__ int kiterations;
+  int kiterations;
   const double r9 = (1.0/9.0);
 
   assert(ktx);
@@ -234,7 +234,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
+  __target_simt_for(kindex, kiterations, 1) {
 
     int n;
     int ic, jc, kc;

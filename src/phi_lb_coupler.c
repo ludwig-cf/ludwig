@@ -9,6 +9,8 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
@@ -55,8 +57,8 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
   kernel_ctxt_create(phi->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(phi_lb_to_field_kernel, nblk, ntpb, ctxt->target,
-		phi->target, lb->target);
+  tdpLaunchKernel(phi_lb_to_field_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, phi->target, lb->target);
 
   kernel_ctxt_free(ctxt);
 
@@ -71,8 +73,11 @@ __host__ int phi_lb_to_field(field_t * phi, lb_t  * lb) {
 
 __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
 				       lb_t * lb) {
+  int kiter;
   int kindex;
-  __shared__ int kiter;
+  int ic, jc, kc, index;
+  int p;
+  double phi0;
 
   assert(ktx);
   assert(phi);
@@ -80,11 +85,7 @@ __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, 1) {
-
-    int ic, jc, kc, index;
-    int p;
-    double phi0;
+  __target_simt_for(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

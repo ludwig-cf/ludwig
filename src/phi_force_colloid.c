@@ -151,13 +151,13 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  __host_launch(pth_force_map_kernel, nblk, ntpb, ctxt->target,
-		pth->target, hydro->target, map->target);
+  tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, pth->target, hydro->target, map->target);
 
-  __host_launch(pth_force_wall_kernel, nblk, ntpb, ctxt->target,
-		pth->target, map->target, wallt, fwd);
-
-  targetDeviceSynchronise(); 
+  tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, pth->target, map->target, wallt, fwd);
+  tdpDeviceSynchronize();
+ 
   kernel_ctxt_free(ctxt);
 
   copyFromTarget(fw, fwd, 3*sizeof(double));
@@ -251,13 +251,13 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
   targetConstAddress((void **) &fwd, fs);
   copyToTarget(fwd, fw, 3*sizeof(double));
 
-  __host_launch(pth_force_map_kernel, nblk, ntpb, ctxt->target,
-		pth->target, hydro->target, map->target);
+  tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, pth->target, hydro->target, map->target);
 
-  __host_launch(pth_force_wall_kernel, nblk, ntpb, ctxt->target,
-		pth->target, map->target, wallt, fwd);
-
-  targetDeviceSynchronise(); 
+  tdpLaunchKernel(pth_force_wall_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, pth->target, map->target, wallt, fwd);
+  tdpDeviceSynchronize();
+ 
   kernel_ctxt_free(ctxt);
 
   copyFromTarget(fw, fwd, 3*sizeof(double));
@@ -295,9 +295,9 @@ __host__ int pth_force_fluid_driver(pth_t * pth,  hydro_t * hydro) {
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
-  __host_launch(pth_force_fluid_kernel_v, nblk, ntpb, ctxt->target,
-		pth->target, hydro->target);
-  targetSynchronize();
+  tdpLaunchKernel(pth_force_fluid_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, pth->target, hydro->target);
+  tdpDeviceSynchronize();
 
   TIMER_stop(TIMER_PHI_FORCE_CALC);
 
@@ -329,7 +329,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+  __target_simt_for(kindex, kiterations, NSIMDVL) {
 
     int iv;
     int ia, ib;
@@ -490,7 +490,7 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 				     hydro_t * hydro, map_t * map) {
 
   int kindex;
-  __shared__ int kiterations;
+  int kiterations;
 
   assert(ktx);
   assert(pth);
@@ -499,7 +499,7 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
+  __target_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc;
     int ia, ib;
@@ -674,9 +674,17 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 				      map_t * map, wall_t * wall,
 				      double fw[3]) {
-
   int kindex;
   int kiterations;
+
+  int ic, jc, kc;
+  int ia, ib;
+  int index, index1;
+  int tid;
+
+  double pth0[3][3];
+  double fxb, fyb, fzb;
+
   __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
@@ -688,104 +696,92 @@ __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_region() {
+  tid = threadIdx.x;
 
-    int ic, jc, kc;
-    int ia, ib;
-    int index, index1;
-    int tid;
+  fx[tid] = 0.0;
+  fy[tid] = 0.0;
+  fz[tid] = 0.0;
 
-    double pth0[3][3];
-    double fxb, fyb, fzb;
+  __target_simt_for(kindex, kiterations, 1) {
 
-    __target_simt_threadIdx_init();
-    tid = threadIdx.x;
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
 
-    fx[tid] = 0.0;
-    fy[tid] = 0.0;
-    fz[tid] = 0.0;
+    if (map->status[index] == MAP_FLUID) {
 
-    __target_simt_for(kindex, kiterations, 1) {
+      /* Compute pth at current point */
 
-      ic = kernel_coords_ic(ktx, kindex);
-      jc = kernel_coords_jc(ktx, kindex);
-      kc = kernel_coords_kc(ktx, kindex);
-      index = kernel_coords_index(ktx, ic, jc, kc);
-
-      if (map->status[index] == MAP_FLUID) {
-
-	/* Compute pth at current point */
-
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
-	  }
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  pth0[ia][ib] = pth->str[addr_rank2(pth->nsites,3,3,index,ia,ib)];
 	}
-      
-	/* Contributions to surface stress */
-      
-	index1 = kernel_coords_index(ktx, ic+1, jc, kc);
-      
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  fx[tid] += -pth0[X][X];
-	  fy[tid] += -pth0[Y][X];
-	  fz[tid] += -pth0[Z][X];
-	}
-      
-	index1 = kernel_coords_index(ktx, ic-1, jc, kc);
-      
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  fx[tid] += pth0[X][X];
-	  fy[tid] += pth0[Y][X];
-	  fz[tid] += pth0[Z][X];
-	}
-      
-	index1 = kernel_coords_index(ktx, ic, jc+1, kc);
-      
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  fx[tid] += -pth0[X][Y];
-	  fy[tid] += -pth0[Y][Y];
-	  fz[tid] += -pth0[Z][Y];
-	}
-      
-	index1 = kernel_coords_index(ktx, ic, jc-1, kc);
-      
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  fx[tid] += pth0[X][Y];
-	  fy[tid] += pth0[Y][Y];
-	  fz[tid] += pth0[Z][Y];
-	}
-      
-	index1 = kernel_coords_index(ktx, ic, jc, kc+1);
-      
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  fx[tid] += -pth0[X][Z];
-	  fy[tid] += -pth0[Y][Z];
-	  fz[tid] += -pth0[Z][Z];
-	}
-      
-	index1 = kernel_coords_index(ktx, ic, jc, kc-1);
-      
-	if (map->status[index1] == MAP_BOUNDARY) {
-	  fx[tid] += pth0[X][Z];
-	  fy[tid] += pth0[Y][Z];
-	  fz[tid] += pth0[Z][Z];
-	}      
       }
-      /* Next site */
+      
+      /* Contributions to surface stress */
+      
+      index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+      
+      if (map->status[index1] == MAP_BOUNDARY) {
+	fx[tid] += -pth0[X][X];
+	fy[tid] += -pth0[Y][X];
+	fz[tid] += -pth0[Z][X];
+      }
+      
+      index1 = kernel_coords_index(ktx, ic-1, jc, kc);
+      
+      if (map->status[index1] == MAP_BOUNDARY) {
+	fx[tid] += pth0[X][X];
+	fy[tid] += pth0[Y][X];
+	fz[tid] += pth0[Z][X];
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+      
+      if (map->status[index1] == MAP_BOUNDARY) {
+	fx[tid] += -pth0[X][Y];
+	fy[tid] += -pth0[Y][Y];
+	fz[tid] += -pth0[Z][Y];
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc-1, kc);
+      
+      if (map->status[index1] == MAP_BOUNDARY) {
+	fx[tid] += pth0[X][Y];
+	fy[tid] += pth0[Y][Y];
+	fz[tid] += pth0[Z][Y];
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+      
+      if (map->status[index1] == MAP_BOUNDARY) {
+	fx[tid] += -pth0[X][Z];
+	fy[tid] += -pth0[Y][Z];
+	fz[tid] += -pth0[Z][Z];
+      }
+      
+      index1 = kernel_coords_index(ktx, ic, jc, kc-1);
+      
+      if (map->status[index1] == MAP_BOUNDARY) {
+	fx[tid] += pth0[X][Z];
+	fy[tid] += pth0[Y][Z];
+	fz[tid] += pth0[Z][Z];
+      }      
     }
+    /* Next site */
+  }
 
-    /* Reduction */
+  /* Reduction */
 
-    fxb = target_block_reduce_sum_double(fx);
-    fyb = target_block_reduce_sum_double(fy);
-    fzb = target_block_reduce_sum_double(fz);
+  fxb = target_block_reduce_sum_double(fx);
+  fyb = target_block_reduce_sum_double(fy);
+  fzb = target_block_reduce_sum_double(fz);
 
-    if (tid == 0) {
-      target_atomic_add_double(fw+X, -fxb);
-      target_atomic_add_double(fw+Y, -fyb);
-      target_atomic_add_double(fw+Z, -fzb);
-    }
+  if (tid == 0) {
+    target_atomic_add_double(fw+X, -fxb);
+    target_atomic_add_double(fw+Y, -fyb);
+    target_atomic_add_double(fw+Z, -fzb);
   }
 
   return;

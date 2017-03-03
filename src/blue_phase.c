@@ -101,7 +101,7 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
 
   /* Allocate device memory, or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -109,14 +109,19 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
   else {
     fe_lc_param_t * tmp;
     fe_vt_t * vt;
-    targetCalloc((void **) &fe->target, sizeof(fe_lc_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&fe->target->param, &tmp, sizeof(fe_lc_param_t *));
-    targetConstAddress((void **) &vt, fe_dvt);
-    copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
 
-    copyToTarget(&fe->target->q, &q->target, sizeof(field_t *));
-    copyToTarget(&fe->target->dq, &dq->target, sizeof(field_grad_t *));
+    tdpMalloc((void **) &fe->target, sizeof(fe_lc_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&fe->target->param, &tmp, sizeof(fe_lc_param_t *),
+	      tdpMemcpyHostToDevice);
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_dvt));
+    tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
+	      tdpMemcpyHostToDevice);
+
+    tdpMemcpy(&fe->target->q, &q->target, sizeof(field_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&fe->target->dq, &dq->target, sizeof(field_grad_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   *pobj = fe;
@@ -136,9 +141,9 @@ __host__ int fe_lc_free(fe_lc_t * fe) {
 
   assert(fe);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
-  if (ndevice > 0) targetFree(fe->target);
+  if (ndevice > 0) tdpFree(fe->target);
 
   free(fe->param);
   free(fe);
@@ -191,7 +196,9 @@ __host__ int fe_lc_param_commit(fe_lc_t * fe) {
     fe->param->e0coswt[ia] = cos(2.0*pi*e0_freq*t)*e0[ia];
   }
 
-  copyConstToTarget(&const_param, fe->param, sizeof(fe_lc_param_t));
+  /* copyConstToTarget(&const_param, fe->param, sizeof(fe_lc_param_t));*/
+  tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param, sizeof(fe_lc_param_t),
+		    0, tdpMemcpyHostToDevice);
 
   return 0;
 }

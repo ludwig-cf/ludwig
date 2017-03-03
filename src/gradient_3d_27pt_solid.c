@@ -143,10 +143,11 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
   kernel_ctxt_create(fgrad->field->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(grad_3d_27pt_solid_kernel, nblk, ntpb, ctxt->target,
-		fgrad->target, static_solid.map->target, rkappa);
+  tdpLaunchKernel(grad_3d_27pt_solid_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target,
+		  fgrad->target, static_solid.map->target, rkappa);
+  tdpDeviceSynchronize();
 
-  targetDeviceSynchronise();
   kernel_ctxt_free(ctxt);
 
   return 0;
@@ -173,7 +174,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
+  __target_simt_for(kindex, kiterations, 1) {
 
     int nop;
     int ic, jc, kc, ic1, jc1, kc1;

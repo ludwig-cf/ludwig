@@ -140,7 +140,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   /* Allocate a target copy, or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -150,17 +150,22 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
     beris_edw_param_t * tmp;
     lees_edw_t * letarget = NULL;
 
-    targetCalloc((void **) &obj->target, sizeof(beris_edw_t));
-    targetConstAddress((void **) &tmp, static_param);
-    copyToTarget(&obj->target->param, &tmp, sizeof(beris_edw_param_t *));
+    tdpMalloc((void **) &obj->target, sizeof(beris_edw_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
+    tdpMemcpy(&obj->target->param, &tmp, sizeof(beris_edw_param_t *),
+	      tdpMemcpyHostToDevice);
 
     lees_edw_target(le, &letarget);
-    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
-    copyToTarget(&obj->target->flux, &flx->target, sizeof(advflux_t *));
+    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->flux, &flx->target, sizeof(advflux_t *),
+	      tdpMemcpyHostToDevice);
 
-    copyToTarget(&obj->target->nall, &obj->nall, sizeof(int));
-    targetCalloc((void **) &htmp, obj->nall*NQAB*sizeof(double));
-    copyToTarget(&obj->target->h, &htmp, sizeof(double *));
+    tdpMemcpy(&obj->target->nall, &obj->nall, sizeof(int),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) &htmp, obj->nall*NQAB*sizeof(double));
+    tdpMemcpy(&obj->target->h, &htmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
   }
 
   *pobj = obj;
@@ -180,14 +185,14 @@ __host__ int beris_edw_free(beris_edw_t * be) {
 
   assert(be);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
     double * htmp;
 
-    copyFromTarget(&htmp, &be->target->h, sizeof(double *));
-    targetFree(htmp);
-    targetFree(be->target);
+    tdpMemcpy(&htmp, &be->target->h, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpFree(htmp);
+    tdpFree(be->target);
   }
 
   advflux_free(be->flux);
@@ -216,7 +221,8 @@ __host__ int beris_edw_param_commit(beris_edw_t * be) {
   physics_kt(phys, &kt);
   be->param->var = sqrt(2.0*kt*be->param->gamma);
 
-  copyConstToTarget(&static_param, be->param, sizeof(beris_edw_param_t));
+  tdpMemcpyToSymbol(tdpSymbol(static_param), be->param,
+		    sizeof(beris_edw_param_t), 0, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -516,11 +522,11 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
 
   TIMER_start(BP_BE_UPDATE_KERNEL);
 
-  __host_launch(beris_edw_kernel_v, nblk, ntpb, ctxt->target,
-		be->target, fq->target, fq_grad->target,
-		hydrotarget, be->flux->target, map->target, noisetarget);
+  tdpLaunchKernel(beris_edw_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, be->target, fq->target, fq_grad->target,
+		  hydrotarget, be->flux->target, map->target, noisetarget);
 
-  targetDeviceSynchronise();
+  tdpDeviceSynchronize();
 
   TIMER_stop(BP_BE_UPDATE_KERNEL);
 
@@ -557,7 +563,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+  __target_simt_for(kindex, kiterations, NSIMDVL) {
 
     int iv;
 
@@ -930,10 +936,9 @@ __host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
-  __host_launch(beris_edw_h_kernel_v, nblk, ntpb, ctxt->target,
-		be->target, fe_target);
-
-  targetSynchronize();
+  tdpLaunchKernel(beris_edw_h_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, be->target, fe_target);
+  tdpDeviceSynchronize();
 
   TIMER_stop(TIMER_BE_MOL_FIELD);
 
@@ -963,7 +968,7 @@ __global__ void beris_edw_h_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     int index;
     int iv;
@@ -1034,9 +1039,9 @@ int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
   kernel_ctxt_create(be->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(beris_edw_fix_swd_kernel, nblk, ntpb, ctxt->target,
-		cinfo->target, hydro->target, map->target,
-		noffset[X], noffset[Y], noffset[Z]);
+  tdpLaunchKernel(beris_edw_fix_swd_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, cinfo->target, hydro->target, map->target,
+		  noffset[X], noffset[Y], noffset[Z]);
 
   targetSynchronize();
 
@@ -1074,7 +1079,7 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
+  __target_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc, index;
     int ia;

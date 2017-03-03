@@ -271,10 +271,10 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   kernel_ctxt_create(bbl->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(bbl_pass0_kernel, nblk, ntpb, ctxt->target, cstarget,
-		lb->target, cinfo->target);
+  tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, cstarget, lb->target, cinfo->target);
 
-  targetSynchronize();
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -302,7 +302,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 
   kiter = kernel_iterations(ktxt);
 
-  __target_simt_parallel_for(kindex, kiter, 1) {
+  __target_simt_for(kindex, kiter, 1) {
 
     int ic, jc, kc, index;
     int ia, ib, p;

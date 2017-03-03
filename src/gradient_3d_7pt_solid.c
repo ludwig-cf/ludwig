@@ -266,11 +266,11 @@ int gradient_6x6(grad_lc_anch_t * anch, field_grad_t * fg, int nextra) {
 
   cs_target(anch->cs, &cstarget);
 
-  __host_launch(gradient_6x6_kernel, nblk, ntpb, ctxt->target, cstarget,
-		anch->target, anch->fe->target, fg->target,
-		anch->map->target, anch->cinfo->target);
-
-  targetDeviceSynchronise();
+  tdpLaunchKernel(gradient_6x6_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, cstarget,
+		  anch->target, anch->fe->target, fg->target,
+		  anch->map->target, anch->cinfo->target);
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -302,7 +302,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
   assert(fg);
   assert(fg->field);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
+  __target_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc, index;
     int str[3];

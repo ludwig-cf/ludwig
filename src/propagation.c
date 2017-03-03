@@ -7,10 +7,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
- *
- *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -81,8 +82,9 @@ __host__ int lb_propagation_driver(lb_t * lb) {
 
   TIMER_start(TIMER_PROP_KERNEL);
 
-  __host_launch(lb_propagation_kernel, nblk, ntpb, ctxt->target, lb->target);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(lb_propagation_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, lb->target);
+  tdpDeviceSynchronize();
 
   TIMER_stop(TIMER_PROP_KERNEL);
 
@@ -111,7 +113,7 @@ __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, 1) {
+  __target_simt_for(kindex, kiter, 1) {
 
     int n, p;
     int ic, jc, kc;
@@ -152,8 +154,6 @@ __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
  *  Notes.
  *  GPU: Constants must come from __constant__ memory
  *  GPU: f and fprime must be declared __restrict__
- *  TODO: a unified routine to compute the maskv[] may be advantageous
- *        on GPU e.g., kernel_mask_v(ktx, kindex, maskv)
  *
  *****************************************************************************/
 
@@ -170,7 +170,7 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
   f = lb->f;
   fprime = lb->fprime;
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     int iv;
     int n, p;

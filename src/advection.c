@@ -21,7 +21,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016  The University of Edinburgh
+ *  (c) 2010-2017  The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -339,10 +339,10 @@ __host__ int advection_le_1st(advflux_t * flux, hydro_t * hydro,
   kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(advection_le_1st_kernel, nblk, ntpb, ctxt->target,
-		flux->target, hydro->target, field->target);
+  tdpLaunchKernel(advection_le_1st_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, flux->target, hydro->target, field->target);
 
-  targetSynchronize();
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -380,7 +380,7 @@ __global__ void advection_le_1st_kernel(kernel_ctxt_t * ktx,
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, 1) {
+  __target_simt_for(kindex, kiter, 1) {
 
     int ia;
     int n;
@@ -498,10 +498,10 @@ __host__ int advection_le_2nd(advflux_t * flux, hydro_t * hydro,
   kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(advection_2nd_kernel_v, nblk, ntpb, ctxt->target,
-		flux->target, hydro->target, field->target);
+  tdpLaunchKernel(advection_2nd_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, flux->target, hydro->target, field->target);
 
-  targetSynchronize();
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -532,7 +532,7 @@ __global__ void advection_2nd_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, 1) {
+  __target_simt_for(kindex, kiter, 1) {
 
     int ia, n;
     int ic, jc, kc;
@@ -626,7 +626,7 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv, n;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -763,14 +763,15 @@ __host__ int advection_le_3rd(advflux_t * flux, hydro_t * hydro,
 
   if (flux->le) {
     lees_edw_target(flux->le, &letarget);
-    __host_launch(advection_le_3rd_kernel_v, nblk, ntpb, ctxt->target,
-		  letarget, flux->target, hydro->target, field->target);
+    tdpLaunchKernel(advection_le_3rd_kernel_v, nblk, ntpb, 0, 0,
+		    ctxt->target,
+		    letarget, flux->target, hydro->target, field->target);
   }
   else {
-    __host_launch(advection_3rd_kernel_v, nblk, ntpb, ctxt->target,
-		  flux->target, hydro->target, field->target);
+    tdpLaunchKernel(advection_3rd_kernel_v, nblk, ntpb, 0, 0,
+		    ctxt->target, flux->target, hydro->target, field->target);
   }
-  targetDeviceSynchronise();
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -807,7 +808,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv, n;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -1010,7 +1011,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv;
     int n, nf;

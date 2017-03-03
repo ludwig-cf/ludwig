@@ -28,37 +28,6 @@
 
 /*****************************************************************************
  *
- *  targetDeviceSynchronise
- *
- *****************************************************************************/
-
-__host__ __target__ int targetDeviceSynchronise(void) {
-
-  /* No operation */
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  targetGetDeviceCount
- *
- *****************************************************************************/
-
-__host__ __target__ int targetGetDeviceCount(int * device) {
-
-  *device = 0;
-
-#ifdef FAKE_DEVICE
-  /* "Fake" device */
-  *device = 1;
-#endif
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  Revisit to look more like cuda, or ...
  *
  *  Some information on the implementation...
@@ -160,18 +129,6 @@ __target__ void target_atomic_add_double(double * sum,  double val) {
   return;
 }
 
-
-uint3 __x86_builtin_threadIdx_init(void) {
-  uint3 threads = {1, 1, 1};
-  threads.x = __host_get_thread_num();
-  return threads;
-}
-
-uint3 __x86_builtin_blockIdx_init(void) {
-  uint3 blocks = {1, 1, 1};
-  return blocks;
-}
-
 __host__ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   gridDim = nblocks;
@@ -184,6 +141,11 @@ __host__ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
   /* In case we request fewer threads than are available: */
 
   __host_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+
+  /* Check blockDim, blockIdx ? */
+  threadIdx.x = __host_get_thread_num();
+  threadIdx.y = 1;
+  threadIdx.z = 1;
 
   return;
 }

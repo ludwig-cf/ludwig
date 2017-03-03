@@ -12,10 +12,12 @@
 
 /* Globally reserved names. */
 
+dim3 threadIdx;
+dim3 blockIdx;
 dim3 gridDim = {1, 1, 1};
 dim3 blockDim = {1, 1, 1};
 
-static cudaError_t lastError;
+static tdpError_t lastError;
 static int staticStream;
 
 #define error_return_if(expr, error) \
@@ -29,27 +31,28 @@ static int staticStream;
   error_return_if(1, error)
 
 
-cudaError_t cudaDeviceSynchronize(void) {
+
+tdpError_t tdpDeviceSynchronize(void) {
 
   /* do nothing */
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaFree(void ** devPtr) {
+tdpError_t tdpFree(void * devPtr) {
 
-  error_return_if(devPtr == NULL, cudaErrorInvalidDevicePointer);
+  error_return_if(devPtr == NULL, tdpErrorInvalidDevicePointer);
 
-  free(*devPtr);
+  free(devPtr);
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaFreeHost(void * ptr) {
+tdpError_t tdpFreeHost(void * ptr) {
 
   free(ptr);
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
 /*****************************************************************************
@@ -58,14 +61,14 @@ cudaError_t cudaFreeHost(void * ptr) {
  *
  *****************************************************************************/
 
-cudaError_t cudaGetDevice(int * device) {
+tdpError_t tdpGetDevice(int * device) {
 
   assert(device);
   assert(0);       /* Should not be here if no device */
 
   *device = -1;
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
 /*****************************************************************************
@@ -74,206 +77,210 @@ cudaError_t cudaGetDevice(int * device) {
  *
  *****************************************************************************/
 
-cudaError_t cudaGetDeviceCount(int * count) {
+tdpError_t tdpGetDeviceCount(int * device) {
 
-  assert(count);
+  *device = 0;
 
-  *count = 0;
+#ifdef FAKE_DEVICE /* "Fake" device */
+  *device = 1;
+#endif
 
-  return cudaErrorInsufficientDriver;
+  /* Strictly, we should return tdpErrorInsufficientDriver or ... */
+
+  return tdpErrorNoDevice;
 }
 
-const char *  cudaGetErrorString(cudaError_t error) {
+const char *  tdpGetErrorString(tdpError_t error) {
 
   /* Need some strings */
 
   return "Oh dear";
 }
 
-cudaError_t cudaGetLastError(void) {
+tdpError_t tdpGetLastError(void) {
 
   return lastError;
 }
 
-cudaError_t cudaGetSymbolAddress(void ** devPtr, const void * symbol) {
+tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol) {
 
   /* No device symbols available... */
-  error_return(cudaErrorInvalidSymbol);
+  error_return(tdpErrorInvalidSymbol);
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaHostAlloc(void ** phost, size_t size, unsigned int flags) {
+tdpError_t tdpHostAlloc(void ** phost, size_t size, unsigned int flags) {
 
   void * ptr = NULL;
 
-  error_return_if(phost == NULL, cudaErrorInvalidValue);
+  error_return_if(phost == NULL, tdpErrorInvalidValue);
 
   switch (flags) {
-  case cudaHostAllocDefault:
-  case cudaHostAllocPortable:
-  case cudaHostAllocMapped:
-  case cudaHostAllocWriteCombined:
+  case tdpHostAllocDefault:
+  case tdpHostAllocPortable:
+  case tdpHostAllocMapped:
+  case tdpHostAllocWriteCombined:
 
     ptr = malloc(size);
-    error_return_if(ptr == NULL, cudaErrorMemoryAllocation);
+    error_return_if(ptr == NULL, tdpErrorMemoryAllocation);
 
     *phost = ptr;
     break;
 
   default:
-    error_return(cudaErrorInvalidValue);
+    error_return(tdpErrorInvalidValue);
   }
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaMalloc(void ** devPtr, size_t size) {
+tdpError_t tdpMalloc(void ** devPtr, size_t size) {
 
   assert(devPtr);
 
   *devPtr = malloc(size);
 
-  error_return_if(*devPtr == NULL, cudaErrorMemoryAllocation);
+  error_return_if(*devPtr == NULL, tdpErrorMemoryAllocation);
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
 
-cudaError_t cudaMemcpy(void * dst, const void * src, size_t count,
-		       cudaMemcpyKind kind) {
+tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
+		       tdpMemcpyKind kind) {
 
   assert(dst);
   assert(src);
 
-  error_return_if(count < 1, cudaErrorInvalidValue);
+  error_return_if(count < 1, tdpErrorInvalidValue);
 
   switch (kind) {
-  case cudaMemcpyHostToDevice:
-    error_return_if(dst == NULL, cudaErrorInvalidDevicePointer);
+  case tdpMemcpyHostToDevice:
+    error_return_if(dst == NULL, tdpErrorInvalidDevicePointer);
     memcpy(dst, src, count);
     break;
-  case cudaMemcpyDeviceToHost:
-    error_return_if(src == NULL, cudaErrorInvalidDevicePointer);
+  case tdpMemcpyDeviceToHost:
+    error_return_if(src == NULL, tdpErrorInvalidDevicePointer);
     memcpy(dst, src, count);
     break;
-  case cudaMemcpyHostToHost:
+  case tdpMemcpyHostToHost:
     memcpy(dst, src, count);
     break;
-  case cudaMemcpyDeviceToDevice:
+  case tdpMemcpyDeviceToDevice:
     memcpy(dst, src, count);
     break;
-  case cudaMemcpyDefault:
+  case tdpMemcpyDefault:
   default:
-    error_return(cudaErrorInvalidMemcpyDirection);
+    error_return(tdpErrorInvalidMemcpyDirection);
   }
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaMemcpyFromSymbol(void * dst, const void * symbol,
+tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
 				 size_t count, size_t offset,
-				 cudaMemcpyKind kind) {
+				 tdpMemcpyKind kind) {
   assert(dst);
   assert(symbol);
 
-  error_return_if(count < 1, cudaErrorInvalidValue);
-  error_return_if(offset != 0, cudaErrorInvalidValue);
+  error_return_if(count < 1, tdpErrorInvalidValue);
+  error_return_if(offset != 0, tdpErrorInvalidValue);
 
   switch (kind) {
-  case cudaMemcpyDefault:
-  case cudaMemcpyDeviceToHost:
-    error_return_if(symbol == NULL, cudaErrorInvalidSymbol);
+  case tdpMemcpyDefault:
+  case tdpMemcpyDeviceToHost:
+    error_return_if(symbol == NULL, tdpErrorInvalidSymbol);
     memcpy(dst, symbol, count);
     break;
-  case cudaMemcpyDeviceToDevice:
-    error_return_if(dst == NULL, cudaErrorInvalidDevicePointer);
-    error_return_if(symbol == NULL, cudaErrorInvalidSymbol);
+  case tdpMemcpyDeviceToDevice:
+    error_return_if(dst == NULL, tdpErrorInvalidDevicePointer);
+    error_return_if(symbol == NULL, tdpErrorInvalidSymbol);
     memcpy(dst, symbol, count);
     break;
-  case cudaMemcpyHostToDevice:
-  case cudaMemcpyHostToHost:
+  case tdpMemcpyHostToDevice:
+  case tdpMemcpyHostToHost:
   default:
-    error_return(cudaErrorInvalidMemcpyDirection);
+    error_return(tdpErrorInvalidMemcpyDirection);
   }
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-/* Cuda wants "const void * symbol", but this is avoided as we need
+/* Tdp wants "const void * symbol", but this is avoided as we need
  * a memset(void * dst, const void * src, ...) . */
 
-cudaError_t cudaMemcpyToSymbol(void * symbol, const void * src,
+tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
 			       size_t count, size_t offset,
-			       cudaMemcpyKind kind) {
+			       tdpMemcpyKind kind) {
   assert(symbol);
   assert(src);
 
-  error_return_if(count < 1, cudaErrorInvalidValue);
-  error_return_if(offset != 0, cudaErrorInvalidValue);
+  error_return_if(count < 1, tdpErrorInvalidValue);
+  error_return_if(offset != 0, tdpErrorInvalidValue);
 
   switch (kind) {
-  case cudaMemcpyDefault:
-  case cudaMemcpyHostToDevice:
-    error_return_if(symbol == NULL, cudaErrorInvalidSymbol);
+  case tdpMemcpyDefault:
+  case tdpMemcpyHostToDevice:
+    error_return_if(symbol == NULL, tdpErrorInvalidSymbol);
     memcpy(symbol, src, count);
     break;
-  case cudaMemcpyDeviceToDevice:
-    error_return_if(src == NULL, cudaErrorInvalidDevicePointer);
+  case tdpMemcpyDeviceToDevice:
+    error_return_if(src == NULL, tdpErrorInvalidDevicePointer);
     memcpy(symbol, src, count);
     break;
-  case cudaMemcpyDeviceToHost:
-  case cudaMemcpyHostToHost:
+  case tdpMemcpyDeviceToHost:
+  case tdpMemcpyHostToHost:
   default:
-    error_return(cudaErrorInvalidMemcpyDirection);
+    error_return(tdpErrorInvalidMemcpyDirection);
   }
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaMemset(void * devPtr, int value, size_t count) {
+tdpError_t tdpMemset(void * devPtr, int value, size_t count) {
 
-  error_return_if(devPtr == NULL, cudaErrorInvalidDevicePointer);
-  error_return_if(value < 0, cudaErrorInvalidValue);
-  error_return_if(value > 255, cudaErrorInvalidValue);
+  error_return_if(devPtr == NULL, tdpErrorInvalidDevicePointer);
+  error_return_if(value < 0, tdpErrorInvalidValue);
+  error_return_if(value > 255, tdpErrorInvalidValue);
 
   memset(devPtr, value, count);
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
 
-cudaError_t cudaStreamCreate(cudaStream_t * stream) {
+tdpError_t tdpStreamCreate(tdpStream_t * stream) {
 
-  error_return_if(stream == NULL, cudaErrorInvalidValue);
+  error_return_if(stream == NULL, tdpErrorInvalidValue);
 
   *stream = &staticStream;
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaStreamDestroy(cudaStream_t stream) {
+tdpError_t tdpStreamDestroy(tdpStream_t stream) {
 
-  error_return_if(stream != &staticStream, cudaErrorInvalidResourceHandle);
+  error_return_if(stream != &staticStream, tdpErrorInvalidResourceHandle);
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
-cudaError_t cudaStreamSynchronize(cudaStream_t stream) {
+tdpError_t tdpStreamSynchronize(tdpStream_t stream) {
 
-  error_return_if(stream != &staticStream, cudaErrorInvalidResourceHandle);
+  error_return_if(stream != &staticStream, tdpErrorInvalidResourceHandle);
 
   /* Success */
 
-  return cudaSuccess;
+  return tdpSuccess;
 }
 
 /* No optional arguments */
 
-cudaError_t cudaMemcpyAsync(void * dst, const void * src, size_t count,
-			    cudaMemcpyKind kind, cudaStream_t stream) {
+tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
+			  tdpMemcpyKind kind, tdpStream_t stream) {
 
   /* Just ignore the stream argument and copy immediately */
 
-  return cudaMemcpy(dst, src, count, kind);
+  return tdpMemcpy(dst, src, count, kind);
 }

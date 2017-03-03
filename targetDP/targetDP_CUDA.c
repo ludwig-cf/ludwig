@@ -1269,6 +1269,8 @@ __target__ void target_atomic_add_int(int * sum, int val) {
  *
  *  target_atomic_add_double
  *
+ *  See CUDA C programming guide section on atomics.
+ *
  *  The original (I think) from:
  *  https://devtalk.nvidia.com/default/topic/529341/?comment=3739638
  *
@@ -1298,6 +1300,23 @@ __target__ void target_atomic_add_double(double * sum, double val) {
 #endif
 
   return;
+}
+
+/* Simlarly */
+
+__device__ double atomicMinDouble(double * minval, double val) {
+
+  unsigned long long int * address_as_ull = (unsigned long long int *) minval;
+  unsigned long long int old = *address_as_ull;
+  unsigned long long int assumed;
+
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed, __double_as_longlong
+		    (fminf(val, __longlong_as_double(assumed))));
+  } while (assumed != old);
+
+  return __longlong_as_double(old);
 }
 
 /*****************************************************************************

@@ -5,56 +5,65 @@
 
 #include <stdlib.h>
 
-typedef enum cudaMemcpyKind_enum {
-  cudaMemcpyHostToHost = 0,
-  cudaMemcpyHostToDevice = 1,
-  cudaMemcpyDeviceToHost = 2,
-  cudaMemcpyDeviceToDevice = 3,
-  cudaMemcpyDefault = 4}
-  cudaMemcpyKind;
+typedef enum tdpFuncCache_enum {
+  tdpFuncCachePreferNone = 0,
+  tdpFuncCachePreferShared = 1,
+  tdpFuncCachePreferL1 = 2,
+  tdpFuncCachePreferEqual = 3}
+  tdpFuncCache;
+
+typedef enum tdpMemcpyKind_enum {
+  tdpMemcpyHostToHost = 0,
+  tdpMemcpyHostToDevice = 1,
+  tdpMemcpyDeviceToHost = 2,
+  tdpMemcpyDeviceToDevice = 3,
+  tdpMemcpyDefault = 4}
+  tdpMemcpyKind;
 
 
-/* cudaGetLastError() can return... */
+/* tdpGetLastError() can return... */
 
-enum cudaError {
-  cudaSuccess = 0,
-  cudaErrorMissingConfiguration = 1,
-  cudaErrorMemoryAllocation = 2,
-  cudaErrorInitializationError = 3,
-  cudaErrorLaunchFailure = 4,
-  cudaErrorLaunchTimeout = 6,
-  cudaErrorLaunchOutOfResources = 7,
-  cudaErrorInvalidDeviceFunction = 8,
-  cudaErrorInvalidConfiguration = 9,
-  cudaErrorInvalidDevice = 10,
-  cudaErrorInvalidValue = 11,
-  cudaErrorInvalidPitchValue = 12,
-  cudaErrorInvalidSymbol = 13,
-  cudaErrorUnmapBufferObjectFailed = 15,
-  cudaErrorInvalidHostPointer = 16,
-  cudaErrorInvalidDevicePointer = 17,
-  cudaErrorInvalidTexture = 18,
-  cudaErrorInvalidTextureBinding = 19,
-  cudaErrorInvalidChannelDescriptor = 20,
-  cudaErrorInvalidMemcpyDirection = 21,
-  cudaErrorInvalidFilterSetting = 26,
-  cudaErrorUnknown = 30,
-  cudaErrorInvalidResourceHandle = 33,
-  cudaErrorInsufficientDriver = 35,
-  cudaErrorSetOnActiveProcess = 36,
-  cudaErrorStartupFailure = 0x7f
+enum tdpError {
+  tdpSuccess = 0,
+  tdpErrorMissingConfiguration = 1,
+  tdpErrorMemoryAllocation = 2,
+  tdpErrorInitializationError = 3,
+  tdpErrorLaunchFailure = 4,
+  tdpErrorLaunchTimeout = 6,
+  tdpErrorLaunchOutOfResources = 7,
+  tdpErrorInvalidDeviceFunction = 8,
+  tdpErrorInvalidConfiguration = 9,
+  tdpErrorInvalidDevice = 10,
+  tdpErrorInvalidValue = 11,
+  tdpErrorInvalidPitchValue = 12,
+  tdpErrorInvalidSymbol = 13,
+  tdpErrorUnmapBufferObjectFailed = 15,
+  tdpErrorInvalidHostPointer = 16,
+  tdpErrorInvalidDevicePointer = 17,
+  tdpErrorInvalidTexture = 18,
+  tdpErrorInvalidTextureBinding = 19,
+  tdpErrorInvalidChannelDescriptor = 20,
+  tdpErrorInvalidMemcpyDirection = 21,
+  tdpErrorInvalidFilterSetting = 26,
+  tdpErrorUnknown = 30,
+  tdpErrorInvalidResourceHandle = 33,
+  tdpErrorInsufficientDriver = 35,
+  tdpErrorSetOnActiveProcess = 36,
+  tdpErrorInvalidSurface = 37,
+  tdpErrorNoDevice = 38,
+  tdpErrorStartupFailure = 0x7f
 };
 
-#define cudaHostAllocDefault       0x00
-#define cudaHostAllocMapped        0x02
-#define cudaHostAllocPortable      0x01
-#define cudaHostAllocWriteCombined 0x04
+#define tdpHostAllocDefault       0x00
+#define tdpHostAllocMapped        0x02
+#define tdpHostAllocPortable      0x01
+#define tdpHostAllocWriteCombined 0x04
 
 /* Device memory qualifiers / executation space qualifiers */
 
 #define __host__
 #define __global__
-#define __shared__
+#define __shared__ static
 #define __device__
 #define __constant__
 
@@ -84,52 +93,66 @@ struct __dim3_s {
 };
 
 /* Smuggle in gridDim and blockDim here; names must be reserved. */
+/* Storage actually in cuda_stub_api.c */
 
 extern dim3 gridDim;
 extern dim3 blockDim;
+extern dim3 threadIdx;
+extern dim3 blockIdx;
 
-typedef enum cudaError cudaError_t;     /* an enum type */
-typedef int * cudaStream_t;             /* an opaque handle */
+#ifdef _OPENMP
+  /* Globals must be ... */ 
+  #pragma omp threadprivate(gridDim, blockDim, threadIdx, blockIdx)
+#endif
+
+typedef enum tdpError tdpError_t;     /* an enum type */
+typedef int * tdpStream_t;            /* an opaque handle */
 
 /* API */
 
-__host__ __device__ cudaError_t cudaDeviceSynchronize(void);
-__host__ __device__ cudaError_t cudaFree(void ** devPtr);
-__host__            cudaError_t cudaFreeHost(void * phost);
-__host__ __device__ cudaError_t cudaGetDevice(int * device);
-__host__ __device__ cudaError_t cudaGetDeviceCount(int * count);
-__host__ __device__ const char* cudaGetErrorString(cudaError_t error);
-__host__ __device__ cudaError_t cudaGetLastError(void);
-__host__            cudaError_t cudaGetSymbolAddress(void ** devPtr,
-						     const void * symbol);
-__host__ __device__ cudaError_t cudaHostAlloc(void ** phost, size_t size,
-					      unsigned int flags);
-__host__ __device__ cudaError_t cudaMalloc(void ** devRtr, size_t size);
-__host__            cudaError_t cudaMemcpy(void * dst, const void * src,
-					   size_t count,
-					   cudaMemcpyKind kind);
-__host__            cudaError_t cudaMemcpyFromSymbol(void * dst,
-						     const void * symbol,
-						     size_t count,
-						     size_t offset,
-						     cudaMemcpyKind kind);
-__host__            cudaError_t cudaMemcpyToSymbol(void * symbol,
-						   const void * src,
-						   size_t count, size_t offset,
-						   cudaMemcpyKind kind);
-__host__            cudaError_t cudaMemset(void * devPtr, int value,
-					   size_t count);
+/* Device management */
 
-__host__            cudaError_t cudaStreamCreate(cudaStream_t * stream);
-__host__            cudaError_t cudaStreamDestroy(cudaStream_t stream);
-__host__            cudaError_t cudaStreamSynchronize(cudaStream_t stream);
+__host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig);
 
-/* No optional arguments */
+__host__ __device__ tdpError_t tdpDeviceSynchronize(void);
+__host__ __device__ tdpError_t tdpGetDevice(int * device);
+__host__ __device__ tdpError_t tdpGetDeviceCount(int * count);
 
-__host__            cudaError_t cudaMemcpyAsync(void * dst, const void * src,
-						size_t count,
-						cudaMemcpyKind kind,
-						cudaStream_t stream);
-						
+/* Error handling */
+
+__host__ __device__ const char* tdpGetErrorString(tdpError_t error);
+__host__ __device__ tdpError_t tdpGetLastError(void);
+
+/* Stream management */
+
+__host__ tdpError_t tdpStreamCreate(tdpStream_t * stream);
+__host__ tdpError_t tdpStreamDestroy(tdpStream_t stream);
+__host__ tdpError_t tdpStreamSynchronize(tdpStream_t stream);
+
+/* Execution control */
+
+/* See target_api.h for tdpLaunchKernel() */
+
+/* Memory management */
+
+__host__ tdpError_t tdpFreeHost(void * phost);
+__host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
+__host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
+			      tdpMemcpyKind kind);
+__host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
+				   tdpMemcpyKind kind, tdpStream_t stream);
+__host__ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
+					size_t count, size_t offset,
+					tdpMemcpyKind kind);
+__host__ tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
+				      size_t count, size_t offset,
+				      tdpMemcpyKind kind);
+__host__ tdpError_t tdpMemset(void * devPtr, int value, size_t count);
+
+
+__host__ __device__ tdpError_t tdpFree(void * devPtr);
+__host__ __device__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
+					    unsigned int flags);
+__host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
 
 #endif

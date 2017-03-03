@@ -585,8 +585,8 @@ __host__ int do_test_coords_device1(pe_t * pe) {
   kernel_launch_param(1, &nblk, &ntpb);
   ntpb.x = 1;
 
-  __host_launch(do_test_coords_kernel1, nblk, ntpb, cstarget);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(do_test_coords_kernel1, nblk, ntpb, 0, 0, cstarget);
+  tdpDeviceSynchronize();
 
   cs_free(cs);
 

@@ -193,9 +193,10 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
 
   TIMER_start(TIMER_PHI_GRAD_KERNEL);
 
-  __host_launch(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, ctxt->target,
-		fg->field->nf, ys, letarget, fg->field->target, fg->target);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target,
+		  fg->field->nf, ys, letarget, fg->field->target, fg->target);
+  tdpDeviceSynchronize();
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);
 
@@ -219,7 +220,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 				field_grad_t * fgrad) {
 
   int kindex;
-  __shared__ int kiterations;
+  int kiterations;
 
   assert(ktx);
   assert(le);
@@ -228,7 +229,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, NSIMDVL) {
+  __target_simt_for(kindex, kiterations, NSIMDVL) {
 
     int n;
     int iv;

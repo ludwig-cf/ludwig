@@ -10,8 +10,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -183,10 +185,9 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
-  __host_launch(pth_kernel_v, nblk, ntpb, ctxt->target,
-		pth->target, fe_target);
-
-  targetDeviceSynchronise();
+  tdpLaunchKernel(pth_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, pth->target, fe_target);
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -203,8 +204,10 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
 __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
+  int kiter;
   int kindex;
-  __shared__ int kiter;
+  int ic, jc, kc, index;
+  double s[3][3];
 
   assert(ktx);
   assert(pth);
@@ -213,10 +216,7 @@ __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, 1) {
-
-    int ic, jc, kc, index;
-    double s[3][3];
+  __target_simt_for(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -238,8 +238,12 @@ __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
 __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
+  int kiter;
   int kindex;
-  __shared__ int kiter;
+  int index;
+  int ia, ib, iv;
+
+  double s[3][3][NSIMDVL];
 
   assert(ktx);
   assert(pth);
@@ -248,12 +252,7 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiter, NSIMDVL) {
-
-    int index;
-    int ia, ib, iv;
-
-    double s[3][3][NSIMDVL];
+  __target_simt_for(kindex, kiter, NSIMDVL) {
 
     index = kernel_baseindex(ktx, kindex);
 

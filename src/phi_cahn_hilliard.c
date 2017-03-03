@@ -234,9 +234,9 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(phi_ch_flux_mu1_kernel, nblk, ntpb, ctxt->target,
-		letarget, fetarget, pch->flux->target, mobility);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(phi_ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, letarget, fetarget, pch->flux->target, mobility);
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -272,7 +272,7 @@ __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
+  __target_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc;
     int index0, index1;
@@ -901,9 +901,9 @@ static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif) {
   kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  __host_launch(phi_ch_ufs_kernel, nblk, ntpb, ctxt->target,
-		le, phif->target, pch->flux->target, ys, wz);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(phi_ch_ufs_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, le, phif->target, pch->flux->target, ys, wz);
+  tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
 
@@ -924,7 +924,9 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				  field_t * field, advflux_t * flux,
 				  int ys, double wz) {
   int kindex;
-  __shared__ int kiterations;
+  int kiterations;
+  int ic, jc, kc, index;
+  double phi;
 
   assert(ktx);
   assert(le);
@@ -933,10 +935,7 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_parallel_for(kindex, kiterations, 1) {
-
-    int ic, jc, kc, index;
-    double phi;
+  __target_simt_for(kindex, kiterations, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

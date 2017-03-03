@@ -389,9 +389,9 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[NHDIM]) {
   copyFromTarget(&u, &obj->target->u, sizeof(double *));
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
-  __host_launch(hydro_field_set, nblk, ntpb, obj->target, u,
-		uzero[X], uzero[Y], uzero[Z]);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(hydro_field_set, nblk, ntpb, 0, 0,
+		  obj->target, u, uzero[X], uzero[Y], uzero[Z]);
+  tdpDeviceSynchronize();
 
   return 0;
 }
@@ -414,9 +414,9 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[NHDIM]) {
   copyFromTarget(&f, &obj->target->f, sizeof(double *)); 
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
-  __host_launch(hydro_field_set, nblk, ntpb, obj->target, f,
-		fzero[X], fzero[Y], fzero[Z]);
-  targetDeviceSynchronise();
+  tdpLaunchKernel(hydro_field_set, nblk, ntpb, 0, 0,
+		  obj->target, f, fzero[X], fzero[Y], fzero[Z]);
+  tdpDeviceSynchronize();
 
   return 0;
 }
@@ -436,7 +436,7 @@ void hydro_field_set(hydro_t * hydro, double * field, double zx, double zy,
   assert(hydro);
   assert(field);
 
-  __target_simt_parallel_for(kindex, hydro->nsite, 1) {
+  __target_simt_for(kindex, hydro->nsite, 1) {
     field[addr_rank1(hydro->nsite, NHDIM, kindex, X)] = zx;
     field[addr_rank1(hydro->nsite, NHDIM, kindex, Y)] = zy;
     field[addr_rank1(hydro->nsite, NHDIM, kindex, Z)] = zz;

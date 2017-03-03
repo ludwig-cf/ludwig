@@ -733,7 +733,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* pack X edges on accelerator */
 
   kernel_launch_param(hsz[X], &nblk, &ntpb);
-  __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[X],
+  tdpLaunchKernel(halo->data_pack, nblk, ntpb, 0, halo->stream[X],
 		  halo->target, X, data);
 
   if (ndevice > 0) {
@@ -749,7 +749,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* pack Y edges on accelerator */
 
   kernel_launch_param(hsz[Y], &nblk, &ntpb);
-  __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[Y],
+  tdpLaunchKernel(halo->data_pack, nblk, ntpb, 0, halo->stream[Y],
 		  halo->target, Y, data);
 
   if (ndevice > 0) {
@@ -765,7 +765,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* pack Z edges on accelerator */
 
   kernel_launch_param(hsz[Z], &nblk, &ntpb);
-  __host_launch4s(halo->data_pack, nblk, ntpb, 0, halo->stream[Z],
+  tdpLaunchKernel(halo->data_pack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
   if (ndevice > 0) {
@@ -819,7 +819,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[X], &nblk, &ntpb);
-  __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[X],
+  tdpLaunchKernel(halo->data_unpack, nblk, ntpb, 0, halo->stream[X],
 		  halo->target, X, data);
 
   /* Now wait for Y data to arrive from device */
@@ -890,7 +890,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
 
   kernel_launch_param(hsz[Y], &nblk, &ntpb);
-  __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[Y],
+  tdpLaunchKernel(halo->data_unpack, nblk, ntpb, 0, halo->stream[Y],
 		  halo->target, Y, data);
 
   /* Wait for Z data from device */
@@ -981,7 +981,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   }
 
   kernel_launch_param(hsz[Z], &nblk, &ntpb);
-  __host_launch4s(halo->data_unpack, nblk, ntpb, 0, halo->stream[Z],
+  tdpLaunchKernel(halo->data_unpack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
   cudaStreamSynchronize(halo->stream[X]);
@@ -1009,7 +1009,7 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
   assert(id == X || id == Y || id == Z);
   assert(data);
 
-  __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
+  __target_simt_for(kindex, halo->param->hsz[id], 1) {
 
     int nh;
     int hsz;
@@ -1113,7 +1113,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
   /* Unpack buffer this site. */
 
-  __target_simt_parallel_for(kindex, halo->param->hsz[id], 1) {
+  __target_simt_for(kindex, halo->param->hsz[id], 1) {
 
     int hsz;
     int ia, indexl, indexh;
