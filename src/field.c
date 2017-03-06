@@ -903,9 +903,9 @@ static int field_write_ascii(FILE * fp, int index, void * self) {
   field_scalar_array(obj, index, array);
 
   for (n = 0; n < obj->nf; n++) {
-    nwrite = fprintf(fp, "%22.15e ", array[n]);
-    if (nwrite != 23) fatal("fprintf(%s) failed at index %d\n", obj->name,
-			    index);
+    nwrite = fprintf(fp, "%23.15e ", array[n]);
+    if (nwrite != 24) 
+	fatal("fprintf(%s) failed at index %d\n", obj->name, index);
   }
 
   nwrite = fprintf(fp, "\n");
