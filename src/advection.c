@@ -170,7 +170,7 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
 
   /* Allocate target copy of structure (or alias) */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -179,27 +179,30 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
 
-    targetMalloc((void **) &obj->target, sizeof(advflux_t));
+    tdpMalloc((void **) &obj->target, sizeof(advflux_t));
+    tdpMemset(obj->target, 0, sizeof(advflux_t));
+    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMemcpy(&obj->target->fe, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
-    copyToTarget(&obj->target->fe, &tmp, sizeof(double *)); 
+    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMemcpy(&obj->target->fw, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
-    copyToTarget(&obj->target->fw, &tmp, sizeof(double *)); 
+    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMemcpy(&obj->target->fy, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
-    copyToTarget(&obj->target->fy, &tmp, sizeof(double *)); 
+    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMemcpy(&obj->target->fz, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) &tmp, nf*nsites*sizeof(double));
-    copyToTarget(&obj->target->fz, &tmp, sizeof(double *)); 
-
-    copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
-    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+	      tdpMemcpyHostToDevice);
 
     if (cs) cs_target(cs, &cstarget);
     if (le) lees_edw_target(le, &letarget);
-    copyToTarget(&obj->target->cs, &cstarget, sizeof(cs_t *));
-    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
+    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   *pobj = obj;
@@ -220,18 +223,18 @@ __host__ int advflux_free(advflux_t * obj) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->target->fe, sizeof(double *)); 
-    targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->fw, sizeof(double *)); 
-    targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->fy, sizeof(double *)); 
-    targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->fz, sizeof(double *)); 
-    targetFree(tmp);
-    targetFree(obj->target);
+    tdpMemcpy(&tmp, &obj->target->fe, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->fw, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->fy, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->fz, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpFree(obj->target);
   }
 
   free(obj->fe);
@@ -253,14 +256,14 @@ __host__ int advection_memcpy(advflux_t * obj) {
 
   int ndevice;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
     assert(obj->target == obj);
   }
   else {
-    assert(0); /* Please fill me in */
+    assert(0); /* Please fill me in if needed. */
   }
 
   return 0;

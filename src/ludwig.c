@@ -459,10 +459,10 @@ void ludwig_run(const char * inputfile) {
 
   /* Move initilaised data to target for time stepping loop */
 
-  lb_memcpy(ludwig->lb, cudaMemcpyHostToDevice);
-  if (ludwig->phi) field_memcpy(ludwig->phi, cudaMemcpyHostToDevice);
-  if (ludwig->p)   field_memcpy(ludwig->p, cudaMemcpyHostToDevice);
-  if (ludwig->q)   field_memcpy(ludwig->q, cudaMemcpyHostToDevice);
+  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
+  if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+  if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
+  if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
   
   /* Main time stepping loop */
@@ -497,7 +497,6 @@ void ludwig_run(const char * inputfile) {
     lb_ndist(ludwig->lb, &im);
 
     if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
-
 
     if (ludwig->phi) {
 
@@ -603,7 +602,6 @@ void ludwig_run(const char * inputfile) {
       psi_zero_mean(ludwig->psi);
 
     }
-
 
     /* order parameter dynamics (not if symmetric_lb) */
 
@@ -738,7 +736,7 @@ void ludwig_run(const char * inputfile) {
     /* Configuration dump */
 
     if (is_config_step()) {
-      lb_memcpy(ludwig->lb, cudaMemcpyDeviceToHost);
+      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
       pe_info(ludwig->pe, "Writing distribution output at step %d!\n", step);
       sprintf(filename, "%sdist-%8.8d", subdirectory, step);
       lb_io_info(ludwig->lb, &iohandler);
@@ -791,7 +789,7 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (is_shear_measurement_step()) {
-      lb_memcpy(ludwig->lb, cudaMemcpyDeviceToDevice);
+      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToDevice);
       stats_rheology_stress_profile_accumulate(ludwig->stat_rheo, ludwig->lb,
 					       ludwig->fe, ludwig->hydro);
     }
@@ -812,32 +810,32 @@ void ludwig_run(const char * inputfile) {
     /* Print progress report */
 
     if (is_statistics_step()) {
-      lb_memcpy(ludwig->lb, cudaMemcpyDeviceToHost);
+      lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
 
       if (ludwig->phi) {
-	field_grad_memcpy(ludwig->phi_grad, cudaMemcpyDeviceToHost);
+	field_grad_memcpy(ludwig->phi_grad, tdpMemcpyDeviceToHost);
 	if (im == 2) {
 	  /* Recompute phi (kernel) and copy back if required */
 	  phi_lb_to_field(ludwig->phi, ludwig->lb);
-	  field_memcpy(ludwig->phi, cudaMemcpyDeviceToHost);
+	  field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
 	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
 	}
 	else {
-	  field_memcpy(ludwig->phi, cudaMemcpyDeviceToHost);
+	  field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
 	  stats_field_info(ludwig->phi, ludwig->map);
 	}
       }
 
       if (ludwig->p) {
-	field_memcpy(ludwig->p, cudaMemcpyDeviceToHost);
+	field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->p, ludwig->map);
       }
 
       if (ludwig->q) {
-	field_memcpy(ludwig->q, cudaMemcpyDeviceToHost);
-	field_grad_memcpy(ludwig->q_grad, cudaMemcpyDeviceToHost);
+	field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
+	field_grad_memcpy(ludwig->q_grad, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->q, ludwig->map);
       }
 
@@ -858,7 +856,7 @@ void ludwig_run(const char * inputfile) {
 
       if (ludwig->hydro) {
 	wall_is_pm(ludwig->wall, &is_pm);
-	hydro_memcpy(ludwig->hydro, cudaMemcpyDeviceToHost);
+	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
 	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
       }
 
@@ -882,7 +880,7 @@ void ludwig_run(const char * inputfile) {
   /* Dump the final configuration if required. */
 
   if (is_config_at_end()) {
-    lb_memcpy(ludwig->lb, cudaMemcpyDeviceToHost);
+    lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
     sprintf(filename, "%sdist-%8.8d", subdirectory, step);
     lb_io_info(ludwig->lb, &iohandler);
     io_write_data(iohandler, filename, ludwig->lb);
@@ -906,7 +904,7 @@ void ludwig_run(const char * inputfile) {
     /* Only strictly required if have order parameter dynamics */ 
     if (ludwig->hydro) {
 
-      hydro_memcpy(ludwig->hydro, cudaMemcpyDeviceToHost);
+      hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
       hydro_io_info(ludwig->hydro, &iohandler);
       pe_info(ludwig->pe, "Writing velocity output at step %d!\n", step);
       sprintf(filename, "%svel-%8.8d", subdirectory, step);
@@ -1661,10 +1659,10 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   /* __NVCC__ TODO: remove */
-  lb_memcpy(ludwig->lb, cudaMemcpyDeviceToHost);
+  lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
 
   subgrid_on(&is_subgrid);
 
@@ -1733,9 +1731,9 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* __NVCC__ TODO: remove */
 
-  colloids_memcpy(ludwig->collinfo, cudaMemcpyHostToDevice);
-  map_memcpy(ludwig->map, cudaMemcpyHostToDevice);
-  lb_memcpy(ludwig->lb, cudaMemcpyHostToDevice);
+  colloids_memcpy(ludwig->collinfo, tdpMemcpyHostToDevice);
+  map_memcpy(ludwig->map, tdpMemcpyHostToDevice);
+  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
   return 0;
 }

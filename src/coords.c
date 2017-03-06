@@ -207,6 +207,7 @@ __host__ int cs_init(cs_t * cs) {
   else {
     cs_param_t * tmp;
     tdpMalloc((void **) &cs->target, sizeof(cs_t));
+    tdpMemset(cs->target, 0, sizeof(cs_t));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
     tdpMemcpy(&cs->target->param, (const void *) &tmp, sizeof(cs_param_t *),
 	      tdpMemcpyHostToDevice);

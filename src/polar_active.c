@@ -121,7 +121,7 @@ __host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
   obj->super.func = &fe_polar_hvt;
   obj->super.id = FE_POLAR;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -129,14 +129,19 @@ __host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
   else {
     fe_polar_param_t * tmp;
     fe_vt_t * vt;
-    targetCalloc((void **) &obj->target, sizeof(fe_polar_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&obj->target->param, &tmp, sizeof(fe_polar_param_t *));
-    targetConstAddress((void **) &vt, fe_polar_dvt);
-    copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
+    tdpMalloc((void **) &obj->target, sizeof(fe_polar_t));
+    tdpMemset(obj->target, 0, sizeof(fe_polar_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_polar_param_t *),
+	      tdpMemcpyHostToDevice);
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_polar_dvt));
+    tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
+	      tdpMemcpyHostToDevice);
 
-    copyToTarget(&obj->target->p, &p->target, sizeof(field_t *));
-    copyToTarget(&obj->target->dp, &dp->target, sizeof(field_grad_t *));
+    tdpMemcpy(&obj->target->p, &p->target, sizeof(field_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->dp, &dp->target, sizeof(field_grad_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   *fe = obj;

@@ -81,20 +81,26 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 
   /* Allocate target copy of structure (or alias) */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
 
-    targetMalloc((void **) &obj->target, sizeof(map_t));
-    targetCalloc((void **) &tmp, nsites*sizeof(char));
+    tdpMalloc((void **) &obj->target, sizeof(map_t));
+    tdpMemset(obj->target, 0, sizeof(map_t));
+    tdpMalloc((void **) &tmp, nsites*sizeof(char));
+    tdpMemset(tmp, 0, nsites*sizeof(char));
 
-    copyToTarget(&obj->target->status, &tmp, sizeof(char *)); 
-    copyToTarget(&obj->target->is_porous_media, &obj->is_porous_media, sizeof(int)); 
-    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
-    copyToTarget(&obj->target->ndata, &obj->ndata, sizeof(int)); 
+    tdpMemcpy(&obj->target->status, &tmp, sizeof(char *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->is_porous_media, &obj->is_porous_media,
+	      sizeof(int), tdpMemcpyHostToDevice); 
+    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->ndata, &obj->ndata, sizeof(int),
+	      tdpMemcpyHostToDevice); 
   }
 
   *pobj = obj;
@@ -115,12 +121,12 @@ __host__ int map_free(map_t * obj) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->target->status, sizeof(char *)); 
-    targetFree(tmp);
-    targetFree(obj->target);
+    tdpMemcpy(&tmp, &obj->target->status, sizeof(char *), tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+    tdpFree(obj->target);
   }
 
   MPI_Type_free(&obj->halostatus[X]);
@@ -156,21 +162,22 @@ __host__ int map_memcpy(map_t * map, int flag) {
 
   assert(map);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
     assert(map->target == map);
   }
   else {
-    copyFromTarget(&tmp, &map->target->status, sizeof(char *));
+    tdpMemcpy(&tmp, &map->target->status, sizeof(char *),
+	      tdpMemcpyDeviceToHost);
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(tmp, map->status, map->nsite*sizeof(char));
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(tmp, map->status, map->nsite*sizeof(char), flag);
       break;
-    case cudaMemcpyDeviceToHost:
-      copyFromTarget(map->status, tmp, map->nsite*sizeof(char));
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(map->status, tmp, map->nsite*sizeof(char), flag);
       break;
     default:
       pe_fatal(map->pe, "Bad flag in map_memcpy()\n");

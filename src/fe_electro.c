@@ -115,7 +115,7 @@ __host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** pobj) {
   fe->super.func = &fe_electro_hvt;
   fe->super.id = FE_ELECTRO;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -123,7 +123,7 @@ __host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** pobj) {
   else {
     fe_vt_t * vt;
     /* Device implementation pending */
-    targetConstAddress((void **) &vt, fe_electro_dvt);
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_electro_dvt));
     pe_fatal(pe, "No device implementation for fe_electro\n");
   }
 

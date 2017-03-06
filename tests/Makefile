@@ -44,6 +44,8 @@ verbose:
 
 # Compilation only
 
+.PHONY:	compile-serial compile-mpi compile-serial-base compile-mpi-base
+
 compile-mpi-base:
 	$(MAKE) -C ../targetDP
 	$(MAKE) -C ../src $(LBMODEL)
@@ -73,6 +75,8 @@ compile-mpi-%:
 #
 # That means there should be no further targets ending in "r".
 
+.PHONY:	run-serial-unit run-mpi-unit
+
 run-serial-unit:
 	$(MAKE) -k -C unit run-serial
 run-serial-regr-%r:
@@ -87,6 +91,10 @@ run-mpi-regr-%r:
 run-mpi-regr-%:
 	$(MAKE) -k -C regression/$* mpix08
 
+# Clean
+
+.PHONY:	clean test-clean
+
 clean:
 	$(MAKE) -C ../targetDP clean
 	$(MAKE) -C ../mpi_s    clean
@@ -99,6 +107,8 @@ test-clean:
 
 # Compile and run tests (targets of convenience...)
 # "-i" to ignore errors and let the tests continue
+
+.PHONY:	compile-run-serial compile-run-mpi
 
 compile-run-serial-%:
 	$(MAKE) clean
@@ -123,3 +133,29 @@ compile-run-serial:
 
 compile-run-mpi:
 	make compile-run-mpi-d3q19
+
+# Targets to run all the tests in various configurations
+# Expects a default config.mk file to set CFLAGS
+
+.PHONY:	all all-serial all-mpi
+
+AOS4 = -DVVL=4
+SOA1 = -DADDR_SOA
+AOSOA4 = -DADDR_AOSOA -DVVL=4
+
+all:
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(AOS4)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(SOA1)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(AOSOA4)"
+
+all-serial:
+	$(MAKE) compile-run-serial-d2q9 "CFLAGS = $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d3q15 "CFLAGS = $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d3q19 "CFLAGS = $(CFLAGS_TEST)"
+
+all-mpi:
+	$(MAKE) compile-run-mpi-d3q19 "CFLAGS = $(CFLAGS)"
+
+
+

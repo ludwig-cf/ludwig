@@ -73,7 +73,7 @@ __host__ int kernel_ctxt_create(cs_t * cs, int nsimdvl, kernel_info_t info,
   obj->param = (kernel_param_t *) calloc(1, sizeof(kernel_param_t));
   if (obj->param == NULL) pe_fatal(cs->pe, "calloc(kernel_param_t) failed\n");
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -81,9 +81,10 @@ __host__ int kernel_ctxt_create(cs_t * cs, int nsimdvl, kernel_info_t info,
   else {
     kernel_param_t * tmp;
     /* Link to static device memory */
-    targetConstAddress((void **) &obj->target, static_ctxt);
-    targetConstAddress((void **) &tmp, static_param);
-    copyToTarget(&obj->target->param, &tmp, sizeof(kernel_param_t *));
+    tdpGetSymbolAddress((void **) &obj->target, tdpSymbol(static_ctxt));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
+    tdpMemcpy(&obj->target->param, &tmp, sizeof(kernel_param_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   kernel_ctxt_commit(obj, cs, nsimdvl, info);
@@ -207,10 +208,11 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, cs_t * cs,
 
   /* Copy the results to device memory */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyConstToTarget(&static_param, obj->param, sizeof(kernel_param_t));
+    tdpMemcpyToSymbol(tdpSymbol(static_param), obj->param,
+		      sizeof(kernel_param_t), 0, tdpMemcpyHostToDevice);
   }
 
   return 0;

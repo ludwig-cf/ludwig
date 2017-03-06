@@ -74,8 +74,10 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  copyConstToTarget(&coords, lb->cs->param, sizeof(cs_param_t));
-  copyConstToTarget(&lbp, lb->param, sizeof(lb_collide_param_t));
+  tdpMemcpyToSymbol(tdpSymbol(coords), lb->cs->param, sizeof(cs_param_t), 0,
+		    tdpMemcpyHostToDevice);
+  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
+		    tdpMemcpyHostToDevice);
 
   kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
@@ -152,7 +154,7 @@ __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
  *  A vectorised version.
  *
  *  Notes.
- *  GPU: Constants must come from __constant__ memory
+ *  GPU: Constants must come from static __constant__ memory
  *  GPU: f and fprime must be declared __restrict__
  *
  *****************************************************************************/
@@ -227,7 +229,7 @@ __host__ int lb_model_swapf(lb_t * lb) {
   assert(lb);
   assert(lb->target);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     tmp1 = lb->f;
@@ -235,11 +237,13 @@ __host__ int lb_model_swapf(lb_t * lb) {
     lb->fprime = tmp1;
   }
   else {
-    copyFromTarget(&tmp1, &lb->target->f, sizeof(double *)); 
-    copyFromTarget(&tmp2, &lb->target->fprime, sizeof(double *)); 
+    tdpMemcpy(&tmp1, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpMemcpy(&tmp2, &lb->target->fprime, sizeof(double *),
+	      tdpMemcpyDeviceToHost); 
 
-    copyToTarget(&lb->target->f, &tmp2, sizeof(double *));
-    copyToTarget(&lb->target->fprime, &tmp1, sizeof(double *));
+    tdpMemcpy(&lb->target->f, &tmp2, sizeof(double *), tdpMemcpyHostToDevice);
+    tdpMemcpy(&lb->target->fprime, &tmp1, sizeof(double *),
+	      tdpMemcpyHostToDevice);
   }
 
   return 0;

@@ -64,19 +64,22 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
 
   /* Allocate target memory, or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
 
-    targetCalloc((void **) &obj->target, sizeof(pth_t));
-    copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
+    tdpMalloc((void **) &obj->target, sizeof(pth_t));
+    tdpMemset(obj->target, 0, sizeof(pth_t));
+    tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int),
+	      tdpMemcpyHostToDevice);
 
     if (method == PTH_METHOD_DIVERGENCE) {
-      targetCalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double));
-      copyToTarget(&obj->target->str, &tmp, sizeof(double *));
+      tdpMalloc((void **) &tmp, 3*3*obj->nsites*sizeof(double));
+      tdpMemcpy(&obj->target->str, &tmp, sizeof(double *),
+		tdpMemcpyHostToDevice);
     }
   }
 
@@ -98,12 +101,13 @@ __host__ int pth_free(pth_t * pth) {
 
   assert(pth);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &pth->target->str, sizeof(double *));
-    if (tmp) targetFree(tmp);
-    targetFree(pth->target);
+    tdpMemcpy(&tmp, &pth->target->str, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    if (tmp) tdpFree(tmp);
+    tdpFree(pth->target);
   }
 
   if (pth->str) free(pth->str);
@@ -125,7 +129,7 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
 
   assert(pth);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -135,17 +139,18 @@ __host__ int pth_memcpy(pth_t * pth, int flag) {
     double * tmp = NULL;
 
     nsz = 9*pth->nsites*sizeof(double);
-    copyFromTarget(&tmp, &pth->target->str, sizeof(double *));
+    tdpMemcpy(&tmp, &pth->target->str, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(tmp, pth->str, nsz);
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(tmp, pth->str, nsz, flag);
       break;
-    case cudaMemcpyDeviceToHost:
-      copyFromTarget(pth->str, tmp, nsz);
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(pth->str, tmp, nsz, flag);
       break;
     default:
-      pe_fatal(pth->pe, "Should not be here\n");
+      pe_fatal(pth->pe, "Bad flag in pth_memcpy\n");
     }
   }
 

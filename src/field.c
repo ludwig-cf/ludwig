@@ -103,12 +103,13 @@ __host__ int field_free(field_t * obj) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->target->data, sizeof(double *));
-    targetFree(tmp);
-    targetFree(obj->target);
+    tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpFree(obj->target);
   }
 
   if (obj->data) free(obj->data);
@@ -163,7 +164,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 
   /* Allocate target copy of structure (or alias) */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -171,15 +172,18 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   else {
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
-    targetCalloc((void **) &obj->target, sizeof(field_t));
-    targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
-    copyToTarget(&obj->target->data, &tmp, sizeof(double *));
+    tdpMalloc((void **) &obj->target, sizeof(field_t));
+    tdpMalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+    tdpMemcpy(&obj->target->data, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
     cs_target(obj->cs, &cstarget);
     if (le) lees_edw_target(obj->le, &letarget);
-    copyToTarget(&obj->target->cs, &cstarget, sizeof(cs_t *));
-    copyToTarget(&obj->target->le, &letarget, sizeof(lees_edw_t *));
-    field_memcpy(obj, cudaMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+	      tdpMemcpyHostToDevice);
+    field_memcpy(obj, tdpMemcpyHostToDevice);
   }
 
   /* MPI datatypes for halo */
@@ -203,7 +207,7 @@ __host__ int field_memcpy(field_t * obj, int flag) {
   int ndevice;
   double * tmp;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -211,17 +215,18 @@ __host__ int field_memcpy(field_t * obj, int flag) {
   }
   else {
 
-    copyFromTarget(&tmp, &obj->target->data, sizeof(double *));
+    tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
-      copyToTarget(&obj->target->nhcomm, &obj->nhcomm, sizeof(int));
-      copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
-      copyToTarget(tmp, obj->data, obj->nf*obj->nsites*sizeof(double));
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), flag);
+      tdpMemcpy(&obj->target->nhcomm, &obj->nhcomm, sizeof(int), flag);
+      tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
+      tdpMemcpy(tmp, obj->data, obj->nf*obj->nsites*sizeof(double), flag);
       break;
-    case cudaMemcpyDeviceToHost:
-      copyFromTarget(obj->data, tmp, obj->nf*obj->nsites*sizeof(double));
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(obj->data, tmp, obj->nf*obj->nsites*sizeof(double), flag);
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
@@ -315,9 +320,9 @@ __host__ int field_halo(field_t * obj) {
   if (nlocal[Z] < obj->nhcomm) {
     /* This constraint means can't use target method;
      * this also requires a copy if the address spaces are distinct. */
-    field_memcpy(obj, cudaMemcpyDeviceToHost);
+    field_memcpy(obj, tdpMemcpyDeviceToHost);
     field_halo_swap(obj, FIELD_HALO_HOST);
-    field_memcpy(obj, cudaMemcpyHostToDevice);
+    field_memcpy(obj, tdpMemcpyHostToDevice);
   }
   else {
     /* Default to ... */
@@ -344,7 +349,8 @@ __host__ int field_halo_swap(field_t * obj, field_halo_enum_t flag) {
     halo_swap_host_rank1(obj->halo, obj->data, MPI_DOUBLE);
     break;
   case FIELD_HALO_TARGET:
-    copyFromTarget(&data, &obj->target->data, sizeof(double *));
+    tdpMemcpy(&data, &obj->target->data, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
     halo_swap_packed(obj->halo, data);
     break;
   default:

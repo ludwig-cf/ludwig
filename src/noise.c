@@ -20,8 +20,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2013-2017 Kevin Stratford
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013-2016 Kevin Stratford
  *
  *****************************************************************************/
 
@@ -92,14 +94,16 @@ __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
   obj->rtable[6] = +sqrt(2.0 - sqrt(2.0));
   obj->rtable[7] = +sqrt(2.0 + sqrt(2.0));
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
-    targetCalloc((void **) &obj->target, sizeof(noise_t));
-    copyToTarget(obj->target->rtable, obj->rtable, 8*sizeof(double));
+    tdpMalloc((void **) &obj->target, sizeof(noise_t));
+    tdpMemset(obj->target, 0, sizeof(noise_t));
+    tdpMemcpy(obj->target->rtable, obj->rtable, 8*sizeof(double),
+	      tdpMemcpyHostToDevice);
   }
 
   *pobj = obj;
@@ -119,8 +123,9 @@ __host__ int noise_free(noise_t * obj) {
 
   if (obj->target != obj && obj->state) {
     unsigned int * tmp = NULL;
-    copyFromTarget(&tmp, &obj->target->state, sizeof(unsigned int *));
-    targetFree(obj->target);
+    tdpMemcpy(&tmp, &obj->target->state, sizeof(unsigned int *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(obj->target);
   }
 
   if (obj->state) free(obj->state);
@@ -221,15 +226,16 @@ __host__ int noise_init(noise_t * obj, int master_seed) {
     }
   }
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
     unsigned int * tmp = NULL;
-    targetMalloc((void **) &tmp, nstat*sizeof(unsigned int));
-    copyToTarget(&obj->target->state, &tmp, sizeof(unsigned int *));
+    tdpMalloc((void **) &tmp, nstat*sizeof(unsigned int));
+    tdpMemcpy(&obj->target->state, &tmp, sizeof(unsigned int *),
+	      tdpMemcpyHostToDevice);
   }
 
-  noise_memcpy(obj, cudaMemcpyHostToDevice);
+  noise_memcpy(obj, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -262,7 +268,7 @@ __host__ int noise_memcpy(noise_t * obj, int flag) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     assert(obj->target == obj);
@@ -272,15 +278,16 @@ __host__ int noise_memcpy(noise_t * obj, int flag) {
     unsigned int * tmp = NULL;
 
     nstat = NNOISE_STATE*obj->nsites;
-    copyFromTarget(&tmp, &obj->target->state, sizeof(unsigned int *));
+    tdpMemcpy(&tmp, &obj->target->state, sizeof(unsigned int *),
+	      tdpMemcpyDeviceToHost);
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(&obj->target->nsites, &obj->nsites, sizeof(int));
-      copyToTarget(tmp, obj->state, nstat*sizeof(unsigned int));
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
+      tdpMemcpy(tmp, obj->state, nstat*sizeof(unsigned int), flag);
       break;
-    case cudaMemcpyDeviceToHost:
-      copyFromTarget(obj->state, tmp, nstat*sizeof(unsigned int));
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(obj->state, tmp, nstat*sizeof(unsigned int), flag);
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in noise_memcpy\n");

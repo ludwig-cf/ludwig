@@ -7,15 +7,17 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef COLLOID_H
-#define COLLOID_H
+#ifndef LUDWIG_COLLOID_H
+#define LUDWIG_COLLOID_H
 
-#include "targetDP.h"
+#include <stdio.h>
 
 /* Tag to describe I/O format version appearing in files */
 
@@ -30,8 +32,6 @@ typedef enum colloid_io_version colloid_io_version_t;
 #define NPAD_INT  20
 #define NPAD_DBL  16
 #define NBOND_MAX  2
-
-#include <stdio.h>
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
 			COLLOID_TYPE_ACTIVE,
@@ -96,9 +96,9 @@ struct colloid_state_type {
 			 * for future expansion. */
 };
 
-__targetHost__ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp);
-__targetHost__ int colloid_state_read_binary(colloid_state_t * ps, FILE * fp);
-__targetHost__ int colloid_state_write_ascii(colloid_state_t ps, FILE * fp);
-__targetHost__ int colloid_state_write_binary(colloid_state_t ps, FILE * fp);
+int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp);
+int colloid_state_read_binary(colloid_state_t * ps, FILE * fp);
+int colloid_state_write_ascii(colloid_state_t ps, FILE * fp);
+int colloid_state_write_binary(colloid_state_t ps, FILE * fp);
 
 #endif

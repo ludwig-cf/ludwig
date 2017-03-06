@@ -101,7 +101,7 @@ __host__ int fe_lc_droplet_create(pe_t * pe, cs_t * cs, fe_lc_t * lc,
   fe->super.func = &fe_drop_hvt;
   fe->super.id = FE_LC_DROPLET;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -109,14 +109,19 @@ __host__ int fe_lc_droplet_create(pe_t * pe, cs_t * cs, fe_lc_t * lc,
   else {
     fe_lc_droplet_param_t * tmp;
     fe_vt_t * vt;
-    targetCalloc((void **) &fe->target, sizeof(fe_lc_droplet_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&fe->target->param, &tmp, sizeof(fe_lc_droplet_param_t *));
-    targetConstAddress((void **) &vt, fe_drop_dvt);
-    copyToTarget(&fe->target->super.func, &vt, sizeof(fe_vt_t *));
+    tdpMalloc((void **) &fe->target, sizeof(fe_lc_droplet_t));
+    tdpMemset(fe->target, 0, sizeof(fe_lc_droplet_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&fe->target->param, &tmp, sizeof(fe_lc_droplet_param_t *),
+	      tdpMemcpyHostToDevice);
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_drop_dvt));
+    tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
+	      tdpMemcpyHostToDevice);
 
-    copyToTarget(&fe->target->lc, &lc->target, sizeof(fe_lc_t *));
-    copyToTarget(&fe->target->symm, &symm->target, sizeof(fe_symm_t *));
+    tdpMemcpy(&fe->target->lc, &lc->target, sizeof(fe_lc_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&fe->target->symm, &symm->target, sizeof(fe_symm_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   *p = fe;
@@ -134,7 +139,7 @@ __host__ int fe_lc_droplet_free(fe_lc_droplet_t * fe) {
 
   assert(fe);
 
-  if (fe->target != fe) targetFree(fe->target);
+  if (fe->target != fe) tdpFree(fe->target);
 
   free(fe->param);
   free(fe);

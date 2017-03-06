@@ -16,6 +16,7 @@
   __cuda_simt_for_all(index, ndata, stride) \
   if (index < (ndata))
 
+
 #define __cuda_simt_parallel_for(index, ndata, stride) \
   __cuda_simt_for(index, ndata, stride)
 

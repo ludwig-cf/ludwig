@@ -20,6 +20,17 @@ typedef enum tdpMemcpyKind_enum {
   tdpMemcpyDefault = 4}
   tdpMemcpyKind;
 
+/* Device attributes (potentially a lot of them) */
+
+typedef enum tdpDeviceAttr_enum {
+  tdpDevAttrMaxThreadsPerBlock = 1,
+  tdpDevAttrMaxBlockDimX = 2,
+  tdpDevAttrMaxBlockDimY = 3,
+  tdpDevAttrMaxBlockDimZ = 4,
+  tdpDevAttrMaxGridDimX = 5,
+  tdpDevAttrMaxGridDimY = 6,
+  tdpDevAttrMaxGridDimZ = 7
+} tdpDeviceAttr;
 
 /* tdpGetLastError() can return... */
 
@@ -58,6 +69,10 @@ enum tdpError {
 #define tdpHostAllocMapped        0x02
 #define tdpHostAllocPortable      0x01
 #define tdpHostAllocWriteCombined 0x04
+
+#define tdpMemAttachGlobal        0x01
+#define tdpMemAttachHost          0x02
+#define tdpMemAttachSingle        0x04
 
 /* Device memory qualifiers / executation space qualifiers */
 
@@ -114,13 +129,16 @@ typedef int * tdpStream_t;            /* an opaque handle */
 
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig);
 
+__host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
+						     tdpDeviceAttr attr,
+						     int device);
 __host__ __device__ tdpError_t tdpDeviceSynchronize(void);
 __host__ __device__ tdpError_t tdpGetDevice(int * device);
 __host__ __device__ tdpError_t tdpGetDeviceCount(int * count);
 
 /* Error handling */
 
-__host__ __device__ const char* tdpGetErrorString(tdpError_t error);
+__host__ __device__ const char * tdpGetErrorName(tdpError_t error);
 __host__ __device__ tdpError_t tdpGetLastError(void);
 
 /* Stream management */
@@ -137,6 +155,8 @@ __host__ tdpError_t tdpStreamSynchronize(tdpStream_t stream);
 
 __host__ tdpError_t tdpFreeHost(void * phost);
 __host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
+__host__ tdpError_t tdpMallocManaged(void ** devptr, size_t size,
+				     unsigned int flag);
 __host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
 			      tdpMemcpyKind kind);
 __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
@@ -154,5 +174,19 @@ __host__ __device__ tdpError_t tdpFree(void * devPtr);
 __host__ __device__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
 					    unsigned int flags);
 __host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
+
+/* Type-specific atomic operations */
+
+__device__ int atomicAddInt(int * sum, int val);
+__device__ int atomicMaxInt(int * maxval, int val);
+__device__ int atomicMinInt(int * minval, int val);
+__device__ double atomicAddDouble(double * sum, double val);
+__device__ double atomicMaxDouble(double * maxval, double val);
+__device__ double atomicMinDouble(double * minval, double val);
+
+/* Type-specific intra-block reductions. */
+
+__device__ int atomicBlockAddInt(int * partsum);
+__device__ double atomicBlockAddDouble(double * partsum);
 
 #endif

@@ -21,17 +21,16 @@
   #include "cuda_runtime_api.h"
   #define __inline__ __forceinline__
 
-  #define tdpSymbol(x) x
+  #define tdpSymbol(x) (x)
 
   #define TARGET_MAX_THREADS_PER_BLOCK CUDA_MAX_THREADS_PER_BLOCK
+  #define __target_simd_for(iv, nsimdvl) __cuda_simd_for(iv, nsimdvl)
   #define __target_simt_for(index, ndata, stride) __cuda_simt_for(index, ndata, stride)
-  #define __target_syncthreads() __syncthreads()
 
   /* Additional host-side API */
 
   #define __host_threads_per_block() DEFAULT_TPB
-  #define __host_launch(...) __cuda_launch(__VA_ARGS__)
-  #define __host_launch4s(...) __cuda_launch4s(__VA_ARGS__)
+  #define tdpLaunchKernel(...) __cuda_launch(__VA_ARGS__)
 
 #else
 
@@ -64,11 +63,12 @@
 
   #define TARGET_MAX_THREADS_PER_BLOCK X86_MAX_THREADS_PER_BLOCK
 
+  #define __target_simd_for(iv, nsimdvl) __host_simd_for(iv, nsimdvl)
   #define __target_simt_for(index, ndata, stride) __host_simt_for(index, ndata, stride)
-  #define __target_syncthreads()          __host_barrier()
-
+  #define __syncthreads()                 __host_barrier()
   #define __host_threads_per_block()      __host_get_max_threads()
-  #define __host_launch_kernel(...)       __host_launch(__VA_ARGS__)
+
+
 
 #endif /* __NVCC__ */
 

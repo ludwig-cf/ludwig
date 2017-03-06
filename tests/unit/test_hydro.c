@@ -8,7 +8,10 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2016 The University of Edinburgh
+ *  (c) 2014-2017 The University of Edinburgh
+ *
+ *  Contributing authors
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -133,11 +136,11 @@ static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm) {
   assert(hydro);
 
   test_coords_field_set(cs, NHDIM, hydro->u, MPI_DOUBLE, test_ref_double1);
-  hydro_memcpy(hydro, cudaMemcpyHostToDevice);
+  hydro_memcpy(hydro, tdpMemcpyHostToDevice);
 
   hydro_u_halo(hydro);
 
-  hydro_memcpy(hydro, cudaMemcpyDeviceToHost);
+  hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
   test_coords_field_check(cs, nhcomm, NHDIM, hydro->u, MPI_DOUBLE,
 			  test_ref_double1);
 

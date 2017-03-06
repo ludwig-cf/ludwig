@@ -127,12 +127,12 @@ static int test_bp_nonfield(void) {
   verbose("q5[4] = %14.7e\n", q5[4]);
   verbose("ifail = %d\n", ifail);
   */
-  test_assert(ifail == 0);
-  test_assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
-  test_assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
-  test_assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
-  test_assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
-  test_assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
+  assert(ifail == 0);
+  assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
+  assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
+  assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
+  assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
+  assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
 
   return 0;
 }
@@ -358,9 +358,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   field_halo_swap(fq, FIELD_HALO_HOST);
 
-  field_memcpy(fq, cudaMemcpyHostToDevice);
+  field_memcpy(fq, tdpMemcpyHostToDevice);
   field_grad_compute(fqgrad);
-  field_grad_memcpy(fqgrad, cudaMemcpyDeviceToHost);
+  field_grad_memcpy(fqgrad, tdpMemcpyDeviceToHost);
 
   ic = 1;
   jc = 1;
@@ -739,9 +739,9 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
 
   physics_e0_set(phys, field);
-  fe_lc_param_commit(fe);
 
   fe_lc_dimensionless_field_strength(fe, &value);
+  fe_lc_param_commit(fe);
   /* info("Set dimensionless field 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
   /* info("ok\n");*/
@@ -752,7 +752,10 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   field_halo(fq);
   field_grad_set(fqgrad, grad_3d_7pt_fluid_d2, NULL);
+
+  field_memcpy(fq, tdpMemcpyHostToDevice);
   field_grad_compute(fqgrad);
+  field_grad_memcpy(fqgrad, tdpMemcpyDeviceToHost);
 
   ic = 1;
   jc = 1;

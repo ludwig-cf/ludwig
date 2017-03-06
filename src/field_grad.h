@@ -15,8 +15,8 @@
 #ifndef FIELD_GRAD_H
 #define FIELD_GRAD_H
 
+#include "pe.h"
 #include "field.h"
-#include "targetDP.h"
 
 typedef struct field_grad_s field_grad_t;
 typedef int (* grad_ft)(field_grad_t * fgrad);

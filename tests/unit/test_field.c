@@ -365,11 +365,11 @@ static int test_field_halo(cs_t * cs, field_t * phi) {
   assert(phi);
   
   test_coords_field_set(cs, phi->nf, phi->data, MPI_DOUBLE, test_ref_double1);
-  field_memcpy(phi, cudaMemcpyHostToDevice);
+  field_memcpy(phi, tdpMemcpyHostToDevice);
  
   field_halo_swap(phi, FIELD_HALO_TARGET);
 
-  field_memcpy(phi, cudaMemcpyDeviceToHost);
+  field_memcpy(phi, tdpMemcpyDeviceToHost);
   test_coords_field_check(cs, phi->nhcomm, phi->nf, phi->data, MPI_DOUBLE,
 			  test_ref_double1);
 

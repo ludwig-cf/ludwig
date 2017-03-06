@@ -146,8 +146,8 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
   kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  targetConstAddress((void **) &fwd, fs);
-  copyToTarget(fwd, fw, 3*sizeof(double));
+  tdpGetSymbolAddress((void **) &fwd, tdpSymbol(fs));
+  tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice);
 
   TIMER_start(TIMER_PHI_FORCE_CALC);
 
@@ -160,7 +160,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
  
   kernel_ctxt_free(ctxt);
 
-  copyFromTarget(fw, fwd, 3*sizeof(double));
+  tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost);
   wall_momentum_add(wall, fw);
 
   /* A separate kernel is requred to allow reduction of the
@@ -172,7 +172,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
   /* COLLOID "KERNEL" */
 
   /* Get stress back! */
-  pth_memcpy(pth, cudaMemcpyDeviceToHost);
+  pth_memcpy(pth, tdpMemcpyDeviceToHost);
 
 
   colloid_t * pc;
@@ -248,8 +248,8 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
   kernel_ctxt_create(pth->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  targetConstAddress((void **) &fwd, fs);
-  copyToTarget(fwd, fw, 3*sizeof(double));
+  tdpGetSymbolAddress((void **) &fwd, tdpSymbol(fs));
+  tdpMemcpy(fwd, fw, 3*sizeof(double), tdpMemcpyHostToDevice);
 
   tdpLaunchKernel(pth_force_map_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, pth->target, hydro->target, map->target);
@@ -260,7 +260,7 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
  
   kernel_ctxt_free(ctxt);
 
-  copyFromTarget(fw, fwd, 3*sizeof(double));
+  tdpMemcpy(fw, fwd, 3*sizeof(double), tdpMemcpyDeviceToHost);
   wall_momentum_add(wall, fw);
 
   return 0;
@@ -774,14 +774,14 @@ __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 
   /* Reduction */
 
-  fxb = target_block_reduce_sum_double(fx);
-  fyb = target_block_reduce_sum_double(fy);
-  fzb = target_block_reduce_sum_double(fz);
+  fxb = atomicBlockAddDouble(fx);
+  fyb = atomicBlockAddDouble(fy);
+  fzb = atomicBlockAddDouble(fz);
 
   if (tid == 0) {
-    target_atomic_add_double(fw+X, -fxb);
-    target_atomic_add_double(fw+Y, -fyb);
-    target_atomic_add_double(fw+Z, -fzb);
+    atomicAddDouble(fw+X, -fxb);
+    atomicAddDouble(fw+Y, -fyb);
+    atomicAddDouble(fw+Z, -fzb);
   }
 
   return;

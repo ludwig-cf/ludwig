@@ -75,13 +75,14 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
   obj->rho0 = RHO_DEFAULT;
   obj->drmax = DRMAX_DEFAULT;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
-    targetCalloc((void**) &(obj->target), sizeof(colloids_info_t));
+    tdpMalloc((void**) &(obj->target), sizeof(colloids_info_t));
+    tdpMemset(obj->target, 0, sizeof(colloids_info_t));
   }
 
   *pinfo = obj;
@@ -105,7 +106,7 @@ __host__ void colloids_info_free(colloids_info_t * info) {
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
 
-  if (info->target != info) targetFree(info->target);
+  if (info->target != info) tdpFree(info->target);
 
   free(info);
 
@@ -164,15 +165,17 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
   assert(info);
   assert(info->map_new);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     assert(info->target == info);
   }
   else {
     colloid_t * tmp;
-    copyFromTarget(&tmp, &info->target->map_new, sizeof(colloid_t **)); 
-    copyToTarget(tmp, info->map_new, info->nsites*sizeof(colloid_t *));
+    tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
+	      tdpMemcpyDeviceToHost); 
+    tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   return 0;
@@ -261,12 +264,15 @@ __host__ int colloids_info_map_init(colloids_info_t * info) {
 
   /* Allocate data space on target */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
     void * tmp;
-    targetCalloc((void **) &tmp, nsites*sizeof(colloid_t *));
-    copyToTarget(&info->target->map_new, &tmp, sizeof(colloid_t **)); 
+    tdpMalloc((void **) &tmp, nsites*sizeof(colloid_t *));
+    assert(tmp);
+    tdpMemset(tmp, 0, nsites*sizeof(colloid_t *));
+    tdpMemcpy(&info->target->map_new, &tmp, sizeof(colloid_t **),
+	      tdpMemcpyHostToDevice);
   }
 
   return 0;
@@ -832,7 +838,13 @@ __host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
 
   colloid_t * obj = NULL;
 
-  targetCallocUnified((void**) &obj, sizeof(colloid_t));  
+  assert(cinfo);
+
+  tdpMallocManaged((void**) &obj, sizeof(colloid_t), tdpMemAttachGlobal);
+  assert(obj);
+
+  /* Important .. remember to nullify pointers. */
+  tdpMemset(obj, 0, sizeof(colloid_t));
 
   cinfo->nallocated += 1;
   *pc = obj;

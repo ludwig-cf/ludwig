@@ -369,7 +369,7 @@ static int lb_init_poiseuille(lb_t * lb, double rho0, const double umax[3]) {
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
 
-    /* The - Lmin() in each direction centres the profile symmetrically,
+    /* The - lmin[] in each direction centres the profile symmetrically,
      * and the 4/L^2 normalises to umax at centre */
 
     x = 1.0*(noffset[X] + ic) - lmin[X];

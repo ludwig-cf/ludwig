@@ -92,7 +92,7 @@ __host__ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb,
 
   /* Target copy */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     wall->target = wall;
@@ -100,9 +100,11 @@ __host__ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb,
   else {
     wall_param_t * tmp = NULL;
 
-    targetCalloc((void **) &wall->target, sizeof(wall_t));
-    targetConstAddress((void **) &tmp, static_param);
-    copyToTarget(&wall->target->param, &tmp, sizeof(wall_param_t *));
+    tdpMalloc((void **) &wall->target, sizeof(wall_t));
+    tdpMemset(wall->target, 0, sizeof(wall_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
+    tdpMemcpy(&wall->target->param, &tmp, sizeof(wall_param_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   *p = wall;
@@ -122,15 +124,19 @@ __host__ int wall_free(wall_t * wall) {
 
   if (wall->target != wall) {
     int * tmp;
-    copyFromTarget(&tmp, &wall->target->linki, sizeof(int *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &wall->target->linkj, sizeof(int *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &wall->target->linkp, sizeof(int *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &wall->target->linku, sizeof(int *));
-    targetFree(tmp);
-    targetFree(wall->target);
+    tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpFree(wall->target);
   }
 
   cs_free(wall->cs);
@@ -162,7 +168,7 @@ __host__ int wall_commit(wall_t * wall, wall_param_t param) {
   wall_init_uw(wall);
 
   /* As we have initialised the map on the host, ... */
-  map_memcpy(wall->map, cudaMemcpyHostToDevice);
+  map_memcpy(wall->map, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -290,7 +296,7 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
 
   assert(wall);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (init == WALL_INIT_ALLOCATE) {
     wall->linki = (int *) calloc(wall->nlink, sizeof(int));
@@ -303,14 +309,18 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
     if (wall->linku == NULL) pe_fatal(wall->pe,"calloc(wall->linku) failed\n");
     if (ndevice > 0) {
       int tmp;
-      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
-      copyToTarget(&wall->target->linki, &tmp, sizeof(int *));
-      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
-      copyToTarget(&wall->target->linkj, &tmp, sizeof(int *));
-      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
-      copyToTarget(&wall->target->linkp, &tmp, sizeof(int *));
-      targetMalloc((void **) &tmp, wall->nlink*sizeof(int));
-      copyToTarget(&wall->target->linku, &tmp, sizeof(int *));
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      tdpMemcpy(&wall->target->linki, &tmp, sizeof(int *),
+		tdpMemcpyHostToDevice);
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      tdpMemcpy(&wall->target->linkj, &tmp, sizeof(int *),
+		tdpMemcpyHostToDevice);
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      tdpMemcpy(&wall->target->linkp, &tmp, sizeof(int *),
+		tdpMemcpyHostToDevice);
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      tdpMemcpy(&wall->target->linku, &tmp, sizeof(int *),
+		tdpMemcpyHostToDevice);
     }
   }
 
@@ -353,7 +363,7 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
 
   if (init == WALL_INIT_ALLOCATE) {
     assert(nlink == wall->nlink);
-    wall_memcpy(wall, cudaMemcpyHostToDevice);
+    wall_memcpy(wall, tdpMemcpyHostToDevice);
   }
   wall->nlink = nlink;
 
@@ -372,7 +382,7 @@ __host__ int wall_memcpy(wall_t * wall, int flag) {
 
   assert(wall);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     assert(wall->target == wall);
@@ -385,24 +395,28 @@ __host__ int wall_memcpy(wall_t * wall, int flag) {
     nlink = wall->nlink;
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(&wall->target->nlink, &wall->nlink, sizeof(int));
-      copyToTarget(wall->target->fnet, wall->fnet, 3*sizeof(double));
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(&wall->target->nlink, &wall->nlink, sizeof(int), flag);
+      tdpMemcpy(wall->target->fnet, wall->fnet, 3*sizeof(double), flag);
 
       /* In turn, linki, linkj, linkp, linku */
-      copyFromTarget(&tmp, &wall->target->linki, sizeof(int *));
-      copyToTarget(tmp, wall->linki, nlink*sizeof(int));
+      tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(tmp, wall->linki, nlink*sizeof(int), flag);
 
-      copyFromTarget(&tmp, &wall->target->linkj, sizeof(int *));
-      copyToTarget(tmp, wall->linkj, nlink*sizeof(int));
+      tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(tmp, wall->linkj, nlink*sizeof(int), flag);
 
-      copyFromTarget(&tmp, &wall->target->linkp, sizeof(int *));
-      copyToTarget(tmp, wall->linkp, nlink*sizeof(int));
+      tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(tmp, wall->linkp, nlink*sizeof(int), flag);
 
-      copyFromTarget(&tmp, &wall->target->linku, sizeof(int *));
-      copyToTarget(tmp, wall->linku, nlink*sizeof(int));
+      tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(tmp, wall->linku, nlink*sizeof(int), flag);
       break;
-    case cudaMemcpyDeviceToHost:
+    case tdpMemcpyDeviceToHost:
       assert(0); /* Not required */
       break;
     default:
@@ -642,14 +656,14 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
   /* Reduction for momentum transfer */
 
-  fxb = target_block_reduce_sum_double(fx);
-  fyb = target_block_reduce_sum_double(fy);
-  fzb = target_block_reduce_sum_double(fz);
+  fxb = atomicBlockAddDouble(fx);
+  fyb = atomicBlockAddDouble(fy);
+  fzb = atomicBlockAddDouble(fz);
 
   if (tid == 0) {
-    target_atomic_add_double(&wall->fnet[X], fxb);
-    target_atomic_add_double(&wall->fnet[Y], fyb);
-    target_atomic_add_double(&wall->fnet[Z], fzb);
+    atomicAddDouble(&wall->fnet[X], fxb);
+    atomicAddDouble(&wall->fnet[Y], fyb);
+    atomicAddDouble(&wall->fnet[Z], fzb);
   }
 
   return;
@@ -756,15 +770,17 @@ __host__ int wall_momentum(wall_t * wall, double f[3]) {
    * the host via wall_momentum_add() and others are on the
    * device. */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(ftmp, wall->target->fnet, 3*sizeof(double));
+    tdpMemcpy(ftmp, wall->target->fnet, 3*sizeof(double),
+	      tdpMemcpyDeviceToHost);
     wall->fnet[X] += ftmp[X];
     wall->fnet[Y] += ftmp[Y];
     wall->fnet[Z] += ftmp[Z];
     ftmp[X] = 0.0; ftmp[Y] = 0.0; ftmp[Z] = 0.0;
-    copyToTarget(wall->target->fnet, ftmp, 3*sizeof(double));
+    tdpMemcpy(wall->target->fnet, ftmp, 3*sizeof(double),
+	      tdpMemcpyHostToDevice);
   }
 
   /* Return the current net */

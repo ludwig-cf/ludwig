@@ -35,13 +35,20 @@ static int do_test1(pe_t * pe);
 
 int test_fe_electro_symm_suite(void) {
 
+  int ndevice;
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  tdpGetDeviceCount(&ndevice);
 
-  do_test1(pe);
+  if (ndevice) {
+    pe_info(pe, "SKIP     ./unit/test_fe_electro_symm\n");
+  }
+  else {
+    do_test1(pe);
+    pe_info(pe, "PASS     ./unit/test_fe_electro_symm\n");
+  }
 
-  pe_info(pe, "PASS     ./unit/test_fe_electro_symm\n");
   pe_free(pe);
 
   return 0;

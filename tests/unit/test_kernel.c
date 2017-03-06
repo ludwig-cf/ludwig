@@ -65,7 +65,7 @@ __host__ int test_kernel_suite(void) {
   cs_init(cs);
   cs_nlocal(cs, nlocal);
 
-  target_thread_info();
+  /* target_thread_info(); */
 
   cs_nsites(cs, &nsites);
   data_create(nsites, data);
@@ -145,7 +145,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   tdpDeviceSynchronize();
 
   printf("Finish kernel 1\n");
-  data_copy(data, 1);
+  data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
 
 
@@ -156,7 +156,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 		 ctxt->target, data->target);
   tdpDeviceSynchronize();
 
-  data_copy(data, 1);
+  data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
   printf("isum %d data->Isum %d\n", isum, data->isum);
   assert(isum == data->isum);
@@ -175,7 +175,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   tdpDeviceSynchronize();
 
   printf("Finish kernel 2\n");
-  data_copy(data, 1);
+  data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
 
   kernel_ctxt_free(ctxt);
@@ -292,10 +292,10 @@ __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
 
   /* Reduction, two part */
 
-  block_sum = target_block_reduce_sum_int(psum);
+  block_sum = atomicBlockAddInt(psum);
 
   if (threadIdx.x == 0) {
-    target_atomic_add_int(&data->isum, block_sum);
+    atomicAddInt(&data->isum, block_sum);
   }
 
   return;
@@ -393,17 +393,19 @@ __host__ int data_create(int nsites, data_t * data) {
   data->idata = (int *) calloc(nsites, sizeof(int));
   assert(data->idata);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     data->target = data;
   }
   else {
     int * tmp;
-    targetCalloc((void **) &(data->target), sizeof(data_t));
-    targetCalloc((void **) &tmp, nsites*sizeof(int));
-    copyToTarget(&(data->target->idata), &tmp, sizeof(int *));
-    copyToTarget(&data->target->nsites, &nsites, sizeof(int));
+    tdpMalloc((void **) &(data->target), sizeof(data_t));
+    tdpMalloc((void **) &tmp, nsites*sizeof(int));
+    tdpMemcpy(&data->target->idata, &tmp, sizeof(int *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&data->target->nsites, &nsites, sizeof(int),
+	      tdpMemcpyHostToDevice);
   }
 
   return 0;
@@ -422,15 +424,16 @@ __host__ int data_free(data_t * data) {
 
   free(data->idata);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* No action */
   }
   else {
-    copyFromTarget(&tmp, &(data->target->idata), sizeof(int *));
-    targetFree(tmp);
-    targetFree(data->target);
+    tdpMemcpy(&tmp, &(data->target->idata), sizeof(int *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpFree(data->target);
   }
 
   return 0;
@@ -453,7 +456,7 @@ __host__ int data_zero(data_t * data) {
     data->idata[n] = 0;
   }
 
-  data_copy(data, 0);
+  data_copy(data, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -470,22 +473,23 @@ __host__ int data_copy(data_t * data, int flag) {
   int nsites;
   int * tmp;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Alias is enough */
   }
   else {
     nsites = data->nsites;
-    copyFromTarget(&tmp, &(data->target->idata), sizeof(int *));
-    if (flag == 0) {
-      copyToTarget(&data->target->nsites, &nsites, sizeof(int));
-      copyToTarget(&data->target->isum, &data->isum, sizeof(int));
-      copyToTarget(tmp, data->idata, nsites*sizeof(int));
+    tdpMemcpy(&tmp, &(data->target->idata), sizeof(int *),
+	      tdpMemcpyDeviceToHost);
+    if (flag == tdpMemcpyHostToDevice) {
+      tdpMemcpy(&data->target->nsites, &nsites, sizeof(int), flag);
+      tdpMemcpy(&data->target->isum, &data->isum, sizeof(int), flag);
+      tdpMemcpy(tmp, data->idata, nsites*sizeof(int), flag);
     }
-    if (flag == 1) {
-      copyFromTarget(&data->isum, &data->target->isum, sizeof(int));
-      copyFromTarget(data->idata, tmp, nsites*sizeof(int));
+    if (flag == tdpMemcpyDeviceToHost) {
+      tdpMemcpy(&data->isum, &data->target->isum, sizeof(int), flag);
+      tdpMemcpy(data->idata, tmp, nsites*sizeof(int), flag);
     }
   }
 

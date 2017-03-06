@@ -134,16 +134,17 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   obj->fe = fe;
   gradient_param_init(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
     param_t * tmp = NULL;
-    targetCalloc((void **) &obj->target, sizeof(grad_lc_anch_t));
-    targetConstAddress((void **) &tmp, static_param);
-    copyToTarget(&obj->target->param, (const void *) &tmp, sizeof(param_t *));
+    tdpMalloc((void **) &obj->target, sizeof(grad_lc_anch_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
+    tdpMemcpy(&obj->target->param, (const void *) &tmp, sizeof(param_t *),
+	      tdpMemcpyHostToDevice);
     gradient_param_commit(obj);
   }
 
@@ -162,7 +163,7 @@ __host__ int grad_lc_anch_free(grad_lc_anch_t * grad) {
 
   assert(grad);
 
-  if (grad->target != grad) targetFree(grad->target);
+  if (grad->target != grad) tdpFree(grad->target);
 
   free(grad->param);
   free(grad);
@@ -180,7 +181,9 @@ __host__ int gradient_param_commit(grad_lc_anch_t * anch) {
 
   assert(anch);
 
-  copyConstToTarget(&static_param, anch->param, sizeof(param_t));
+  /* copyConstToTarget(&static_param, anch->param, sizeof(param_t));*/
+  tdpMemcpyToSymbol(tdpSymbol(static_param), anch->param, sizeof(param_t), 0,
+		    tdpMemcpyHostToDevice);
 
   return 0;
 }

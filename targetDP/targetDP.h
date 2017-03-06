@@ -28,12 +28,6 @@
 
 #include "target_api.h"
 
-__host__ int target_thread_info(void);
-__device__ int target_block_reduce_sum_int(int * val);
-__device__ void target_atomic_add_int(int * sum, int  val);
-__device__ double target_block_reduce_sum_double(double * val);
-__device__ void target_atomic_add_double(double * sum, double  val);
-
 /* KS. End additions */
 
 
@@ -317,9 +311,5 @@ __targetHost__ double targetDoubleSum(double* array, size_t size);
 __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
 
 __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
-
-/* KS addition alias to be formalised... */
-#define __target_simd_for(iv, nsimdvl) __targetILP__(iv)
-/* KS end addition */
 
 #endif

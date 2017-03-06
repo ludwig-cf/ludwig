@@ -167,7 +167,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   bbl_pass0(bbl, lb, cinfo);
 
   /* __NVCC__ TODO: remove */
-  lb_memcpy(lb, cudaMemcpyDeviceToHost);
+  lb_memcpy(lb, tdpMemcpyDeviceToHost);
 
   bbl_pass1(bbl, lb, cinfo);
 
@@ -183,7 +183,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   bbl_pass2(bbl, lb, cinfo);
 
   /* __NVCC__ TODO: remove */
-  lb_memcpy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
 
   return 0;
 }

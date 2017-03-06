@@ -79,22 +79,26 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
 
   /* Allocate target copy of structure (or alias) */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
 
-    targetCalloc((void **) &obj->target, sizeof(hydro_t));
+    tdpMalloc((void **) &obj->target, sizeof(hydro_t));
+    tdpMemset(obj->target, 0, sizeof(hydro_t));
 
-    targetCalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
-    copyToTarget(&obj->target->u, &tmp, sizeof(double *)); 
+    tdpMalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
+    tdpMemset(tmp, 0, NHDIM*obj->nsite*sizeof(double));
+    tdpMemcpy(&obj->target->u, &tmp, sizeof(double *), tdpMemcpyHostToDevice); 
 
-    targetCalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
-    copyToTarget(&obj->target->f, &tmp, sizeof(double *)); 
+    tdpMalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double));
+    tdpMemset(tmp, 0, NHDIM*obj->nsite*sizeof(double));
+    tdpMemcpy(&obj->target->f, &tmp, sizeof(double *), tdpMemcpyHostToDevice); 
 
-    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+	      tdpMemcpyHostToDevice);
   }
 
   *pobj = obj;
@@ -115,14 +119,14 @@ __host__ int hydro_free(hydro_t * obj) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->target->u, sizeof(double *)); 
-    targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->f, sizeof(double *)); 
-    targetFree(tmp);
-    targetFree(obj->target);
+    tdpMemcpy(&tmp, &obj->target->u, sizeof(double *), tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->f, sizeof(double *), tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+    tdpFree(obj->target);
   }
 
   halo_swap_free(obj->halo);
@@ -147,25 +151,25 @@ __host__ int hydro_memcpy(hydro_t * obj, int flag) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
     assert(obj->target == obj);
   }
   else {
-    copyFromTarget(&tmpf, &obj->target->f, sizeof(double *));
-    copyFromTarget(&tmpu, &obj->target->u, sizeof(double *));
+    tdpMemcpy(&tmpf, &obj->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
+    tdpMemcpy(&tmpu, &obj->target->u, sizeof(double *), tdpMemcpyDeviceToHost);
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double));
-      copyToTarget(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double));
-      copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double), flag);
+      tdpMemcpy(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double), flag);
+      tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int), flag);
       break;
-    case cudaMemcpyDeviceToHost:
-      copyFromTarget(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double));
-      copyFromTarget(obj->u, tmpu, NHDIM*obj->nsite*sizeof(double));
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double), flag);
+      tdpMemcpy(obj->u, tmpu, NHDIM*obj->nsite*sizeof(double), flag);
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in hydro_memcpy\n");
@@ -207,7 +211,7 @@ __host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag) {
     halo_swap_host_rank1(obj->halo, obj->u, MPI_DOUBLE);
     break;
   case HYDRO_U_HALO_TARGET:
-    copyFromTarget(&data, &obj->target->u, sizeof(double *));
+    tdpMemcpy(&data, &obj->target->u, sizeof(double *), tdpMemcpyDeviceToHost);
     halo_swap_packed(obj->halo, data);
     break;
   default:
@@ -386,7 +390,7 @@ __host__ int hydro_u_zero(hydro_t * obj, const double uzero[NHDIM]) {
 
   assert(obj);
 
-  copyFromTarget(&u, &obj->target->u, sizeof(double *));
+  tdpMemcpy(&u, &obj->target->u, sizeof(double *), tdpMemcpyDeviceToHost);
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
   tdpLaunchKernel(hydro_field_set, nblk, ntpb, 0, 0,
@@ -411,7 +415,7 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[NHDIM]) {
   assert(obj);
   assert(obj->target);
 
-  copyFromTarget(&f, &obj->target->f, sizeof(double *)); 
+  tdpMemcpy(&f, &obj->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
 
   kernel_launch_param(obj->nsite, &nblk, &ntpb);
   tdpLaunchKernel(hydro_field_set, nblk, ntpb, 0, 0,

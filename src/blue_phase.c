@@ -111,6 +111,7 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
     fe_vt_t * vt;
 
     tdpMalloc((void **) &fe->target, sizeof(fe_lc_t));
+    tdpMemset(fe->target, 0, sizeof(fe_lc_t));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
     tdpMemcpy(&fe->target->param, &tmp, sizeof(fe_lc_param_t *),
 	      tdpMemcpyHostToDevice);

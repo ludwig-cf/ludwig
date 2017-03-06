@@ -23,7 +23,6 @@
 #include "leesedwards.h"
 #include "field_s.h"
 #include "field_grad_s.h"
-#include "targetDP.h"
 
 static int field_grad_init(field_grad_t * obj);
 
@@ -75,16 +74,19 @@ static int field_grad_init(field_grad_t * obj) {
   nsites = obj->field->nsites;
   obj->nsite = nsites;
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
-    targetCalloc((void **) &obj->target, sizeof(field_grad_t));
-    copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
-    copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
-    copyToTarget(&obj->target->field, &obj->field->target, sizeof(field_t *));
+    tdpMalloc((void **) &obj->target, sizeof(field_grad_t));
+    tdpMemset(obj->target, 0, sizeof(field_grad_t));
+    tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->field, &obj->field->target, sizeof(field_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   if (obj->level >= 2) {
@@ -98,11 +100,13 @@ static int field_grad_init(field_grad_t * obj) {
     /* Allocate data space on target (or alias) */
  
     if (ndevice > 0) {
-      targetCalloc((void **) &tmp, obj->nf*NVECTOR*nsites*sizeof(double));
-      copyToTarget(&obj->target->grad, &tmp, sizeof(double *)); 
+      tdpMalloc((void **) &tmp, obj->nf*NVECTOR*nsites*sizeof(double));
+      tdpMemcpy(&obj->target->grad, &tmp, sizeof(double *),
+		tdpMemcpyHostToDevice);
 
-      targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
-      copyToTarget(&obj->target->delsq, &tmp, sizeof(double *)); 
+      tdpMalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+      tdpMemcpy(&obj->target->delsq, &tmp, sizeof(double *),
+		tdpMemcpyHostToDevice);
     }
   }
 
@@ -111,8 +115,9 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->d_ab == NULL) pe_fatal(obj->pe, "calloc(fieldgrad->d_ab) failed\n");
 
     if (ndevice > 0) {
-      targetCalloc((void **) &tmp, NSYMM*obj->nf*nsites*sizeof(double));
-      copyToTarget(&obj->target->d_ab, &tmp, sizeof(double *));
+      tdpMalloc((void **) &tmp, NSYMM*obj->nf*nsites*sizeof(double));
+      tdpMemcpy(&obj->target->d_ab, &tmp, sizeof(double *),
+		tdpMemcpyHostToDevice);
     }
   }
 
@@ -123,11 +128,13 @@ static int field_grad_init(field_grad_t * obj) {
     if (obj->delsq_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->delsq_delsq) failed");
 
     if (ndevice > 0) {
-      targetCalloc((void **) &tmp, NVECTOR*obj->nf*nsites*sizeof(double));
-      copyToTarget(&obj->target->grad_delsq, &tmp, sizeof(double *)); 
+      tdpMalloc((void **) &tmp, NVECTOR*obj->nf*nsites*sizeof(double));
+      tdpMemcpy(&obj->target->grad_delsq, &tmp, sizeof(double *),
+		tdpMemcpyHostToDevice); 
 
-      targetCalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
-      copyToTarget(&obj->target->delsq_delsq, &tmp, sizeof(double *)); 
+      tdpMalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+      tdpMemcpy(&obj->target->delsq_delsq, &tmp, sizeof(double *),
+		tdpMemcpyHostToDevice); 
     }
   }
 
@@ -150,7 +157,7 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
@@ -161,20 +168,26 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
     nsz = obj->nf*obj->nsite*sizeof(double);
 
     switch (flag) {
-    case cudaMemcpyHostToDevice:
-      copyToTarget(&obj->target->nf, &obj->nf, sizeof(int));
-      copyToTarget(&obj->target->nsite, &obj->nsite, sizeof(int));
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int),
+		tdpMemcpyHostToDevice);
+      tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+		tdpMemcpyHostToDevice);
 
-      copyFromTarget(&tmp, &obj->target->grad, sizeof(double *));
-      copyToTarget(tmp, obj->grad, NVECTOR*nsz);
-      copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *));
-      copyToTarget(tmp, obj->delsq, nsz);
+      tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(tmp, obj->grad, NVECTOR*nsz, tdpMemcpyHostToDevice);
+      tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(tmp, obj->delsq, nsz, tdpMemcpyHostToDevice);
       break;
-    case cudaMemcpyDeviceToHost:
-      copyFromTarget(&tmp, &obj->target->grad, sizeof(double *));
-      copyFromTarget(obj->grad, tmp, NVECTOR*nsz);
-      copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *));
-      copyFromTarget(obj->delsq, tmp, nsz);
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(obj->grad, tmp, NVECTOR*nsz, tdpMemcpyDeviceToHost);
+      tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpy(obj->delsq, tmp, nsz, tdpMemcpyDeviceToHost);
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
@@ -234,21 +247,26 @@ __host__ void field_grad_free(field_grad_t * obj) {
 
   assert(obj);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &obj->target->grad, sizeof(double *)); 
-    targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->delsq, sizeof(double *)); 
-    targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->d_ab, sizeof(double *));
-    if (tmp) targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->grad_delsq, sizeof(double *));
-    if (tmp) targetFree(tmp);
-    copyFromTarget(&tmp, &obj->target->delsq_delsq, sizeof(double *));
-    if (tmp) targetFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
+	      tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
+	      tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->d_ab, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    if (tmp) tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->grad_delsq, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    if (tmp) tdpFree(tmp);
+    tdpMemcpy(&tmp, &obj->target->delsq_delsq, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    if (tmp) tdpFree(tmp);
 
-    targetFree(obj->target);
+    tdpFree(obj->target);
   }
 
   if (obj->grad) free(obj->grad);

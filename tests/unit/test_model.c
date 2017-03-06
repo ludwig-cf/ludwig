@@ -437,9 +437,9 @@ int do_test_model_halo_swap(pe_t * pe, cs_t * cs) {
     }
   }
 
-  lb_memcpy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
   lb_halo(lb);
-  lb_memcpy(lb, cudaMemcpyDeviceToHost);
+  lb_memcpy(lb, tdpMemcpyDeviceToHost);
 
   /* Test all the sites not in the interior */
 

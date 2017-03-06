@@ -97,18 +97,19 @@ int fe_surfactant1_create(pe_t * pe, cs_t * cs, field_t * phi,
 
   /* Allocate target memory, or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
   }
   else {
     fe_surfactant1_param_t * tmp;
-    targetCalloc((void **) &obj->target, sizeof(fe_surfactant1_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&obj->target->param, tmp, sizeof(fe_surfactant1_param_t *));
+    tdpMalloc((void **) &obj->target, sizeof(fe_surfactant1_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&obj->target->param, tmp, sizeof(fe_surfactant1_param_t *),
+	      tdpMemcpyHostToDevice);
     /* Now copy. */
-    assert(0);
+    assert(0); /* No implementation */
   }
 
   *fe = obj;
@@ -128,8 +129,8 @@ __host__ int fe_surfactant1_free(fe_surfactant1_t * fe) {
 
   assert(fe);
 
-  targetGetDeviceCount(&ndevice);
-  if (ndevice > 0) targetFree(fe->target);
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) tdpFree(fe->target);
 
   free(fe->param);
   free(fe);

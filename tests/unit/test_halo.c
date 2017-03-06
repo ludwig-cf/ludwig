@@ -289,9 +289,9 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
     }
   }
 
-  lb_memcpy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
   lb_halo(lb);
-  lb_memcpy(lb, cudaMemcpyDeviceToHost);
+  lb_memcpy(lb, tdpMemcpyDeviceToHost);
 
   /* Check the results (all sites for distribution halo).
    * The halo regions should contain a copy of the above, while the

@@ -38,7 +38,7 @@ struct halo_swap_s {
   double * hzhi;
   f_pack_t data_pack;       /* Pack buffer kernel function */
   f_unpack_t data_unpack;   /* Unpack buffer kernel function */
-  cudaStream_t stream[3];   /* Stream for each of X,Y,Z */
+  tdpStream_t stream[3];    /* Stream for each of X,Y,Z */
   halo_swap_t * target;     /* Device memory */
 };
 
@@ -110,7 +110,7 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
   int sz;
   int nhalo;
   int ndevice;
-  unsigned int mflag = cudaHostAllocDefault;
+  unsigned int mflag = tdpHostAllocDefault;
 
   halo_swap_t * halo = NULL;
 
@@ -164,26 +164,30 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
   /* Host buffers, actual and halo regions */
 
   sz = halo->param->hsz[X]*na*nb*sizeof(double);
-  cudaHostAlloc((void **) &halo->fxlo, sz, mflag);
-  cudaHostAlloc((void **) &halo->fxhi, sz, mflag);
-  cudaHostAlloc((void **) &halo->hxlo, sz, mflag);
-  cudaHostAlloc((void **) &halo->hxhi, sz, mflag);
+  tdpHostAlloc((void **) &halo->fxlo, sz, mflag);
+  tdpHostAlloc((void **) &halo->fxhi, sz, mflag);
+  tdpHostAlloc((void **) &halo->hxlo, sz, mflag);
+  tdpHostAlloc((void **) &halo->hxhi, sz, mflag);
 
   sz = halo->param->hsz[Y]*na*nb*sizeof(double);
-  cudaHostAlloc((void **) &halo->fylo, sz, mflag);
-  cudaHostAlloc((void **) &halo->fyhi, sz, mflag);
-  cudaHostAlloc((void **) &halo->hylo, sz, mflag);
-  cudaHostAlloc((void **) &halo->hyhi, sz, mflag);
+  tdpHostAlloc((void **) &halo->fylo, sz, mflag);
+  tdpHostAlloc((void **) &halo->fyhi, sz, mflag);
+  tdpHostAlloc((void **) &halo->hylo, sz, mflag);
+  tdpHostAlloc((void **) &halo->hyhi, sz, mflag);
 
   sz = halo->param->hsz[Z]*na*nb*sizeof(double);
-  cudaHostAlloc((void **) &halo->fzlo, sz, mflag);
-  cudaHostAlloc((void **) &halo->fzhi, sz, mflag);
-  cudaHostAlloc((void **) &halo->hzlo, sz, mflag);
-  cudaHostAlloc((void **) &halo->hzhi, sz, mflag);
+  tdpHostAlloc((void **) &halo->fzlo, sz, mflag);
+  tdpHostAlloc((void **) &halo->fzhi, sz, mflag);
+  tdpHostAlloc((void **) &halo->hzlo, sz, mflag);
+  tdpHostAlloc((void **) &halo->hzhi, sz, mflag);
+
+  tdpStreamCreate(&halo->stream[X]);
+  tdpStreamCreate(&halo->stream[Y]);
+  tdpStreamCreate(&halo->stream[Z]);
 
   /* Device buffers: allocate or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     halo->target = halo;
@@ -193,47 +197,61 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
     halo_swap_param_t * tmpp;
 
     /* Target structure */
-    targetCalloc((void **) &halo->target, sizeof(halo_swap_t));
+    tdpMalloc((void **) &halo->target, sizeof(halo_swap_t));
+    tdpMemset(halo->target, 0, sizeof(halo_swap_t));
 
     /* Buffers */
     sz = halo->param->hsz[X]*na*nb*sizeof(double);
 
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->fxlo, &tmp, sizeof(double *));
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->fxhi, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->fxlo, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->fxhi, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) & tmp, sz);
-    copyToTarget(&halo->target->hxlo, &tmp, sizeof(double *));
-    targetCalloc((void **) & tmp, sz);
-    copyToTarget(&halo->target->hxhi, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->hxlo, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) & tmp, sz);
+    tdpMemcpy(&halo->target->hxhi, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
     sz = halo->param->hsz[Y]*na*nb*sizeof(double);
 
-    targetCalloc((void ** ) &tmp, sz);
-    copyToTarget(&halo->target->fylo, &tmp, sizeof(double *));
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->fyhi, &tmp, sizeof(double *));
+    tdpMalloc((void ** ) &tmp, sz);
+    tdpMemcpy(&halo->target->fylo, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->fyhi, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->hylo, &tmp, sizeof(double *));
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->hyhi, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->hylo, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->hyhi, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
     sz = halo->param->hsz[Z]*na*nb*sizeof(double);
 
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->fzlo, &tmp, sizeof(double *));
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->fzhi, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->fzlo, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->fzhi, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->hzlo, &tmp, sizeof(double *));
-    targetCalloc((void **) &tmp, sz);
-    copyToTarget(&halo->target->hzhi, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->hzlo, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
+    tdpMalloc((void **) &tmp, sz);
+    tdpMemcpy(&halo->target->hzhi, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
-    targetConstAddress((void **) &tmpp, const_param);
-    copyToTarget(&halo->target->param, &tmpp, sizeof(halo_swap_param_t *)); 
+    tdpGetSymbolAddress((void **) &tmpp, tdpSymbol(const_param));
+    tdpMemcpy(&halo->target->param, &tmpp, sizeof(halo_swap_param_t *),
+	      tdpMemcpyHostToDevice); 
 
     /* Device constants */
     halo_swap_commit(halo);
@@ -256,53 +274,70 @@ __host__ int halo_swap_free(halo_swap_t * halo) {
 
   assert(halo);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
     double * tmp;
 
-    copyFromTarget(&tmp, &halo->target->fxlo, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->fxhi, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->fylo, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->fyhi, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->fzlo, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->fzhi, sizeof(double *));
-    targetFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->fxlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->fxhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->fylo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->fyhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->fzlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->fzhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
 
-    copyFromTarget(&tmp, &halo->target->hxlo, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->hxhi, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->hyhi, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
-    targetFree(tmp);
-    copyFromTarget(&tmp, &halo->target->hzhi, sizeof(double *));
-    targetFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
+    tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpFree(tmp);
 
-    targetFree(halo->target);
+    tdpFree(halo->target);
   }
 
-  cudaFreeHost(halo->fxlo);
-  cudaFreeHost(halo->fxhi);
-  cudaFreeHost(halo->fylo);
-  cudaFreeHost(halo->fyhi);
-  cudaFreeHost(halo->fzlo);
-  cudaFreeHost(halo->fzhi);
+  tdpFreeHost(halo->fxlo);
+  tdpFreeHost(halo->fxhi);
+  tdpFreeHost(halo->fylo);
+  tdpFreeHost(halo->fyhi);
+  tdpFreeHost(halo->fzlo);
+  tdpFreeHost(halo->fzhi);
 
-  cudaFreeHost(halo->hxlo);
-  cudaFreeHost(halo->hxhi);
-  cudaFreeHost(halo->hylo);
-  cudaFreeHost(halo->hyhi);
-  cudaFreeHost(halo->hzlo);
-  cudaFreeHost(halo->hzhi);
+  tdpFreeHost(halo->hxlo);
+  tdpFreeHost(halo->hxhi);
+  tdpFreeHost(halo->hylo);
+  tdpFreeHost(halo->hyhi);
+  tdpFreeHost(halo->hzlo);
+  tdpFreeHost(halo->hzhi);
+
+  tdpStreamDestroy(halo->stream[X]);
+  tdpStreamDestroy(halo->stream[Y]);
+  tdpStreamDestroy(halo->stream[Z]);
+
   free(halo->param);
   free(halo);
 
@@ -336,7 +371,8 @@ __host__ int halo_swap_commit(halo_swap_t * halo) {
 
   assert(halo);
 
-  copyConstToTarget(&const_param, halo->param, sizeof(halo_swap_param_t));
+  tdpMemcpyToSymbol(tdpSymbol(const_param), halo->param,
+		    sizeof(halo_swap_param_t), 0, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -683,7 +719,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* 2D systems require fix... in the meantime...*/
   assert(halo->param->nlocal[Z] >= halo->param->nswap);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
   halo_swap_commit(halo);
 
   cs_cart_comm(halo->cs, &comm);
@@ -738,12 +774,14 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (ndevice > 0) {
     ncount = hsz[X]*halo->param->nfel;
-    copyFromTarget(&tmp, &halo->target->fxlo, sizeof(double *));
-    cudaMemcpyAsync(halo->fxlo, tmp, ncount*sizeof(double),
-		    cudaMemcpyDeviceToHost, halo->stream[X]);
-    copyFromTarget(&tmp, &halo->target->fxhi, sizeof(double *));
-    cudaMemcpyAsync(halo->fxhi, tmp, ncount*sizeof(double),
-		    cudaMemcpyDeviceToHost, halo->stream[X]);
+    tdpMemcpy(&tmp, &halo->target->fxlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(halo->fxlo, tmp, ncount*sizeof(double),
+		   tdpMemcpyDeviceToHost, halo->stream[X]);
+    tdpMemcpy(&tmp, &halo->target->fxhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(halo->fxhi, tmp, ncount*sizeof(double),
+		   tdpMemcpyDeviceToHost, halo->stream[X]);
   }
 
   /* pack Y edges on accelerator */
@@ -754,12 +792,14 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (ndevice > 0) {
     ncount = hsz[Y]*halo->param->nfel;
-    copyFromTarget(&tmp, &halo->target->fylo, sizeof(double *));
-    cudaMemcpyAsync(halo->fylo, tmp, ncount*sizeof(double),
-		    cudaMemcpyDeviceToHost, halo->stream[Y]);
-    copyFromTarget(&tmp, &halo->target->fyhi, sizeof(double *));
-    cudaMemcpyAsync(halo->fyhi, tmp, ncount*sizeof(double),
-		    cudaMemcpyDeviceToHost, halo->stream[Y]);
+    tdpMemcpy(&tmp, &halo->target->fylo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(halo->fylo, tmp, ncount*sizeof(double),
+		   tdpMemcpyDeviceToHost, halo->stream[Y]);
+    tdpMemcpy(&tmp, &halo->target->fyhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(halo->fyhi, tmp, ncount*sizeof(double),
+		   tdpMemcpyDeviceToHost, halo->stream[Y]);
   }
 
   /* pack Z edges on accelerator */
@@ -770,32 +810,36 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (ndevice > 0) {
     ncount = hsz[Z]*halo->param->nfel;
-    copyFromTarget(&tmp, &halo->target->fzlo, sizeof(double *));
-    cudaMemcpyAsync(halo->fzlo, tmp, ncount*sizeof(double),
-		    cudaMemcpyDeviceToHost, halo->stream[Z]);
-    copyFromTarget(&tmp, &halo->target->fzhi, sizeof(double *));
-    cudaMemcpyAsync(halo->fzhi, tmp, ncount*sizeof(double),
-		    cudaMemcpyDeviceToHost, halo->stream[Z]);
+    tdpMemcpy(&tmp, &halo->target->fzlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(halo->fzlo, tmp, ncount*sizeof(double),
+		   tdpMemcpyDeviceToHost, halo->stream[Z]);
+    tdpMemcpy(&tmp, &halo->target->fzhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(halo->fzhi, tmp, ncount*sizeof(double),
+		   tdpMemcpyDeviceToHost, halo->stream[Z]);
   }
 
 
   /* Wait for X; copy or MPI recvs; put X halos back on device, and unpack */
 
-  cudaStreamSynchronize(halo->stream[X]);
+  tdpStreamSynchronize(halo->stream[X]);
   ncount = hsz[X]*halo->param->nfel;
 
   if (mpicartsz[X] == 1) {
     /* note these copies do not alias for ndevice == 1 */
     /* fxhi -> hxlo */
     memcpy(halo->hxlo, halo->fxhi, ncount*sizeof(double));
-    copyFromTarget(&tmp, &halo->target->hxlo, sizeof(double *));
-    cudaMemcpyAsync(tmp, halo->fxhi, ncount*sizeof(double),
-		    cudaMemcpyHostToDevice, halo->stream[X]);
+    tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(tmp, halo->fxhi, ncount*sizeof(double),
+		    tdpMemcpyHostToDevice, halo->stream[X]);
     /* fxlo -> hxhi */
     memcpy(halo->hxhi, halo->fxlo, ncount*sizeof(double));
-    copyFromTarget(&tmp, &halo->target->hxhi, sizeof(double *));
-    cudaMemcpyAsync(tmp, halo->fxlo, ncount*sizeof(double),
-		    cudaMemcpyHostToDevice, halo->stream[X]);
+    tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(tmp, halo->fxlo, ncount*sizeof(double),
+		    tdpMemcpyHostToDevice, halo->stream[X]);
   }
   else {
     MPI_Isend(halo->fxhi, ncount, MPI_DOUBLE,
@@ -806,14 +850,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_x, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	copyFromTarget(&tmp, &halo->target->hxlo, sizeof(double *));
-	cudaMemcpyAsync(tmp, halo->hxlo, ncount*sizeof(double),
-			cudaMemcpyHostToDevice, halo->stream[X]);
+	tdpMemcpy(&tmp, &halo->target->hxlo, sizeof(double *),
+		  tdpMemcpyDeviceToHost);
+	tdpMemcpyAsync(tmp, halo->hxlo, ncount*sizeof(double),
+		       tdpMemcpyHostToDevice, halo->stream[X]);
       }
       if (mc == 1 && ndevice > 0) {
-	copyFromTarget(&tmp, &halo->target->hxhi, sizeof(double *));
-	cudaMemcpyAsync(tmp, halo->hxhi, ncount*sizeof(double),
-			cudaMemcpyHostToDevice, halo->stream[X]);
+	tdpMemcpy(&tmp, &halo->target->hxhi, sizeof(double *),
+		  tdpMemcpyDeviceToHost);
+	tdpMemcpyAsync(tmp, halo->hxhi, ncount*sizeof(double),
+		       tdpMemcpyHostToDevice, halo->stream[X]);
       }
     }
   }
@@ -825,7 +871,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* Now wait for Y data to arrive from device */
   /* Fill in 4 corners of Y edge data from X halo */
 
-  cudaStreamSynchronize(halo->stream[Y]);
+  tdpStreamSynchronize(halo->stream[Y]);
 
   ih = halo->param->hext[Y][X] - nh;
   jh = halo->param->hext[X][Y] - nh - halo->param->nswap;
@@ -858,14 +904,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   if (mpicartsz[Y] == 1) {
     /* fyhi -> hylo */
     memcpy(halo->hylo, halo->fyhi, ncount*sizeof(double));
-    copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
-    cudaMemcpyAsync(tmp, halo->fyhi, ncount*sizeof(double),
-		    cudaMemcpyHostToDevice, halo->stream[Y]);
+    tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(tmp, halo->fyhi, ncount*sizeof(double),
+		   tdpMemcpyHostToDevice, halo->stream[Y]);
     /* fylo -> hyhi */
     memcpy(halo->hyhi, halo->fylo, ncount*sizeof(double));
-    copyFromTarget(&tmp, &halo->target->hyhi, sizeof(double *));
-    cudaMemcpyAsync(tmp, halo->fylo,ncount*sizeof(double),
-		    cudaMemcpyHostToDevice, halo->stream[Y]);
+    tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(tmp, halo->fylo,ncount*sizeof(double),
+		   tdpMemcpyHostToDevice, halo->stream[Y]);
   }
   else {
     MPI_Isend(halo->fyhi, ncount, MPI_DOUBLE,
@@ -876,14 +924,16 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_y, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	copyFromTarget(&tmp, &halo->target->hylo, sizeof(double *));
-	cudaMemcpyAsync(halo->target->hylo, halo->hylo, ncount*sizeof(double),
-			cudaMemcpyHostToDevice, halo->stream[Y]);
+	tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
+		  tdpMemcpyDeviceToHost);
+	tdpMemcpyAsync(halo->target->hylo, halo->hylo, ncount*sizeof(double),
+		       tdpMemcpyHostToDevice, halo->stream[Y]);
       }
       if (mc == 1 && ndevice > 0) {
-	copyFromTarget(&tmp, &halo->target->hyhi, sizeof(double *));
-	cudaMemcpyAsync(halo->target->hyhi, halo->hyhi, ncount*sizeof(double),
-			cudaMemcpyHostToDevice, halo->stream[Y]);
+	tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
+		  tdpMemcpyDeviceToHost);
+	tdpMemcpyAsync(halo->target->hyhi, halo->hyhi, ncount*sizeof(double),
+			tdpMemcpyHostToDevice, halo->stream[Y]);
       }
     }
   }
@@ -896,7 +946,7 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   /* Wait for Z data from device */
   /* Fill in 4 corners of Z edge data from X halo  */
 
-  cudaStreamSynchronize(halo->stream[Z]);
+  tdpStreamSynchronize(halo->stream[Z]);
 
   ih = halo->param->hext[Z][X] - nh;
   kh = halo->param->hext[X][Z] - nh - halo->param->nswap;
@@ -951,13 +1001,15 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 
   if (mpicartsz[Z] == 1) {
     /* fzhi -> hzlo */
-    copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
-    cudaMemcpyAsync(tmp, halo->fzhi, ncount*sizeof(double),
-		    cudaMemcpyHostToDevice, halo->stream[Z]);
+    tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(tmp, halo->fzhi, ncount*sizeof(double),
+		   tdpMemcpyHostToDevice, halo->stream[Z]);
     /* fzlo -> hzhi */
-    copyFromTarget(&tmp, &halo->target->hzhi, sizeof(double *));
-    cudaMemcpyAsync(tmp, halo->fzlo, ncount*sizeof(double),
-		    cudaMemcpyHostToDevice, halo->stream[Z]);
+    tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+	      tdpMemcpyDeviceToHost);
+    tdpMemcpyAsync(tmp, halo->fzlo, ncount*sizeof(double),
+		   tdpMemcpyHostToDevice, halo->stream[Z]);
   }
   else {
     MPI_Isend(halo->fzhi, ncount, MPI_DOUBLE,
@@ -968,15 +1020,17 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
     for (m = 0; m < 4; m++) {
       MPI_Waitany(4, req_z, &mc, status);
       if (mc == 0 && ndevice > 0) {
-	copyFromTarget(&tmp, &halo->target->hzlo, sizeof(double *));
-	cudaMemcpyAsync(tmp, halo->hzlo, ncount*sizeof(double),
-			cudaMemcpyHostToDevice, halo->stream[Z]);
+	tdpMemcpy(&tmp, &halo->target->hzlo, sizeof(double *),
+		  tdpMemcpyDeviceToHost);
+	tdpMemcpyAsync(tmp, halo->hzlo, ncount*sizeof(double),
+		       tdpMemcpyHostToDevice, halo->stream[Z]);
       }
     }
     if (mc == 1 && ndevice > 0) {
-      copyFromTarget(&tmp, &halo->target->hzhi, sizeof(double *));
-      cudaMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
-		      cudaMemcpyHostToDevice, halo->stream[Z]);
+      tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+		tdpMemcpyDeviceToHost);
+      tdpMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
+		      tdpMemcpyHostToDevice, halo->stream[Z]);
     }
   }
 
@@ -984,9 +1038,9 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
   tdpLaunchKernel(halo->data_unpack, nblk, ntpb, 0, halo->stream[Z],
 		  halo->target, Z, data);
 
-  cudaStreamSynchronize(halo->stream[X]);
-  cudaStreamSynchronize(halo->stream[Y]);
-  cudaStreamSynchronize(halo->stream[Z]);
+  tdpStreamSynchronize(halo->stream[X]);
+  tdpStreamSynchronize(halo->stream[Y]);
+  tdpStreamSynchronize(halo->stream[Z]);
 
   return 0;
 }

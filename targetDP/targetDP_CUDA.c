@@ -1254,20 +1254,18 @@ __host__ int target_thread_info(void) {
 
 /*****************************************************************************
  *
- *  target_atomic_add_int
+ *  atomicAddInt
  *
  *****************************************************************************/
 
-__target__ void target_atomic_add_int(int * sum, int val) {
+__device__ int atomicAddInt(int * sum, int val) {
 
-  atomicAdd(sum, val);
-
-  return;
+  return atomicAdd(sum, val);
 }
 
 /*****************************************************************************
  *
- *  target_atomic_add_double
+ *  atomicAddDouble
  *
  *  See CUDA C programming guide section on atomics.
  *
@@ -1276,11 +1274,11 @@ __target__ void target_atomic_add_int(int * sum, int val) {
  *
  *****************************************************************************/
 
-__target__ void target_atomic_add_double(double * sum, double val) {
+__device__ double atomicAddDouble(double * sum, double val) {
 
 #if __CUDA_ARCH__ >= 600
 
-  atomicAdd(sum, val);
+  return atomicAdd(sum, val);
 
 #else
 
@@ -1294,15 +1292,16 @@ __target__ void target_atomic_add_double(double * sum, double val) {
 		    __double_as_longlong(val + __longlong_as_double(assumed)));
   } while (assumed != old);
 
-  /* The original returns the old value... */
-  /* return __longlong_as_double(old); */
+  return __longlong_as_double(old);
 
 #endif
-
-  return;
 }
 
-/* Simlarly */
+/*****************************************************************************
+ *
+ *  atomicMinDouble
+ *
+ *****************************************************************************/
 
 __device__ double atomicMinDouble(double * minval, double val) {
 
@@ -1368,27 +1367,16 @@ __target__ double target_block_reduce_sum_double(double * partsum) {
 
 /*****************************************************************************
  *
- *  targetDeviceSynhronise
+ *  tdpGetDeviceCount
  *
  *****************************************************************************/
 
-__host__ __target__ int targetDeviceSynchronise(void) {
+__host__ __device__ cudaError_t tdpGetDeviceCount(int * device) {
 
-  cudaDeviceSynchronize();
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  targetGetDeviceCount
- *
- *****************************************************************************/
-
-__host__ __target__ int targetGetDeviceCount(int * device) {
+  /* tdp_assert_return(cudaGetDeviceCount(device)); */
 
   cudaGetDeviceCount(device);
 
-  return 0;
+  return cudaSuccess;
 }
 

@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2016 The University of Edinburgh
+ *  (c) 2009-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -118,7 +118,7 @@ __host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
 
   /* Allocate device memory, or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     obj->target = obj;
@@ -126,14 +126,19 @@ __host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
   else {
     fe_brazovskii_param_t * tmp;
     fe_vt_t * vt;
-    targetCalloc((void **) &obj->target, sizeof(fe_brazovskii_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&obj->target->param, &tmp, sizeof(fe_brazovskii_t *));
-    targetConstAddress((void **) &vt, fe_braz_dvt);
-    copyToTarget(&obj->target->super.func, &vt, sizeof(fe_vt_t *));
+    tdpMalloc((void **) &obj->target, sizeof(fe_brazovskii_t));
+    tdpMemset(obj->target, 0, sizeof(fe_brazovskii_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_brazovskii_t *),
+	      tdpMemcpyHostToDevice);
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_braz_dvt));
+    tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
+	      tdpMemcpyHostToDevice);
 
-    copyToTarget(&obj->target->phi, &phi->target, sizeof(field_t *));
-    copyToTarget(&obj->target->dphi, &dphi->target, sizeof(field_grad_t *));
+    tdpMemcpy(&obj->target->phi, &phi->target, sizeof(field_t *),
+	      tdpMemcpyHostToDevice);
+    tdpMemcpy(&obj->target->dphi, &dphi->target, sizeof(field_grad_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   *p = obj;
@@ -153,8 +158,8 @@ __host__ int fe_brazovskii_free(fe_brazovskii_t * fe) {
 
   assert(fe);
 
-  targetGetDeviceCount(&ndevice);
-  if (ndevice > 0) targetFree(fe->target);
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) tdpFree(fe->target);
 
   free(fe->param);
   free(fe);

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -14,15 +14,14 @@
  *
  *****************************************************************************/
 
-#ifndef LUDWIG_COLLISION_H
-#define LUDWIG_COLLISION_H
+#ifndef LUDWIG_LB_COLLISION_H
+#define LUDWIG_LB_COLLISION_H
 
 #include "hydro.h"
 #include "map.h"
 #include "noise.h"
 #include "model.h"
 #include "free_energy.h"
-#include "targetDP.h"
 
 typedef enum {RELAXATION_M10, RELAXATION_BGK, RELAXATION_TRT}
   lb_relaxation_enum_t;

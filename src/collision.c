@@ -1358,6 +1358,7 @@ static __host__ __device__ __inline__
   return;
 }
 
+#ifdef _D3Q19_
 
 /*  below are specialized fast unrolled version of the d3q19 19x19 matrix 
  *  multiplications. These are significantly faster because there is 
@@ -3374,3 +3375,4 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   return;
 
  }
+#endif

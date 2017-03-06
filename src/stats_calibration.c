@@ -168,8 +168,8 @@ int stats_ahydro_accumulate(stats_ahydro_t * stat, int ntime) {
   if (ntime >= stat->nstart) {
     if ((ntime % stat->nfreq) == 0) {
       ++stat->ndata;
-      hydro_memcpy(stat->hydro, cudaMemcpyDeviceToHost);
-      map_memcpy(stat->map, cudaMemcpyDeviceToHost);
+      hydro_memcpy(stat->hydro, tdpMemcpyDeviceToHost);
+      map_memcpy(stat->map, tdpMemcpyDeviceToHost);
       stats_ahydro_measure(stat);
     }
   }

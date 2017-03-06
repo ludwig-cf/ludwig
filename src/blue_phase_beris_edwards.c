@@ -54,7 +54,6 @@
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
-#include "free_energy_tensor.h"
 #include "hydro_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
@@ -151,6 +150,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
     lees_edw_t * letarget = NULL;
 
     tdpMalloc((void **) &obj->target, sizeof(beris_edw_t));
+    tdpMemset(obj->target, 0, sizeof(beris_edw_t));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
     tdpMemcpy(&obj->target->param, &tmp, sizeof(beris_edw_param_t *),
 	      tdpMemcpyHostToDevice);

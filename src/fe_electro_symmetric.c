@@ -127,7 +127,7 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
 
   psi_nk(psi, &fe->param->nk);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     fe->target = fe;
@@ -136,10 +136,11 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
     fe_vt_t * vt;
     fe_es_param_t * tmp;
 
-    targetCalloc((void **) &fe->target, sizeof(fe_es_t));
-    targetConstAddress((void **) &tmp, const_param);
-    copyToTarget(&fe->target->param, tmp, sizeof(fe_es_param_t *));
-    targetConstAddress((void **) &vt, fe_es_dvt);
+    tdpMalloc((void **) &fe->target, sizeof(fe_es_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&fe->target->param, tmp, sizeof(fe_es_param_t *),
+	      tdpMemcpyHostToDevice);
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_es_dvt));
   }
 
   *pobj = fe;
@@ -157,7 +158,7 @@ __host__ int fe_es_free(fe_es_t * fe) {
 
   assert(fe);
 
-  if (fe->target != fe) targetFree(fe->target);
+  if (fe->target != fe) tdpFree(fe->target);
 
   free(fe->param);
   free(fe);

@@ -35,6 +35,17 @@
   #define __host_get_max_threads()  omp_get_max_threads()
   #define __host_set_num_threads(n) omp_set_num_threads(n)
 
+  /* OpenMP work sharing */
+  #define __host_simt_for(index, ndata, stride)		\
+  __host_for()						\
+  for (index = 0; index < (ndata); index += (stride))
+
+  /* SIMD safe loops */
+  #define __host_simd_for(iv, nsimdvl) \
+  _Pragma("omp simd") \
+  for (iv = 0; iv < (nsimdvl); ++iv)
+
+
 #else
 
   /* NULL OpenMP implementation (macros for brevity here) */
@@ -50,16 +61,12 @@
   #define __host_get_max_threads()  1
   #define __host_set_num_threads(n)
 
-#endif /* _OPENMP */
-
-#define __host_simt_parallel_region() __host_parallel_region()
-
-#define __host_simt_for(index, ndata, simdvl)		\
-  __host_for()						\
-  for (index = 0; index < (ndata); index += (simdvl))
-
-#define __host_simt_parallel_for(index, ndata, stride) \
-  __host_parallel_for() \
+  /* "Worksharing" is provided by a loop */
+  #define __host_simt_for(index, ndata, stride)	\
   for (index = 0; index < (ndata); index += (stride))
+
+  #define __host_simd_for(iv, nsimdvl) for (iv = 0; iv < (nsimdvl); ++iv)
+
+#endif /* _OPENMP */
 
 #endif

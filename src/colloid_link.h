@@ -9,15 +9,15 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef COLLOID_LINK_H
-#define COLLOID_LINK_H
-
-#include "targetDP.h"
+#ifndef LUDWIG_COLLOID_LINK_H
+#define LUDWIG_COLLOID_LINK_H
 
 typedef struct colloid_link_type colloid_link_t;
 
@@ -36,9 +36,9 @@ struct colloid_link_type {
 
 enum link_status {LINK_FLUID, LINK_COLLOID, LINK_BOUNDARY, LINK_UNUSED}; 
 
-__targetHost__ colloid_link_t * colloid_link_allocate(void);
-__targetHost__ void             colloid_link_free_list(colloid_link_t * link);
-__targetHost__ int              colloid_link_count(colloid_link_t * link);
-__targetHost__ int              colloid_link_total(void);
+colloid_link_t * colloid_link_allocate(void);
+void             colloid_link_free_list(colloid_link_t * link);
+int              colloid_link_count(colloid_link_t * link);
+int              colloid_link_total(void);
 
 #endif

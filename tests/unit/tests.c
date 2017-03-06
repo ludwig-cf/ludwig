@@ -103,7 +103,7 @@ int tests_create() {
  *
  *****************************************************************************/
 
-void test_assert(const int lvalue) {
+void test_assert_info(const int lvalue, int line, const char * file) {
 
   int rank;
 
@@ -114,7 +114,7 @@ void test_assert(const int lvalue) {
     /* Who has failed? */
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    printf("[%d] ***************** Failed test assertion\n", rank);
+    printf("[%d] Line %d file %s Failed test assertion\n", rank, line, file);
     MPI_Abort(MPI_COMM_WORLD, 0);
   }
 

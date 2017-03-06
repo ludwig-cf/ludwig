@@ -390,6 +390,8 @@ int io_write_metadata(io_info_t * info) {
  *
  *****************************************************************************/
 
+#ifdef OLD_METADATA_WRITE
+
 int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   FILE * fp_meta;
@@ -486,6 +488,109 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   return 0;
 }
+
+#else
+
+int io_write_metadata_file(io_info_t * info, char * filename_stub) {
+
+  FILE * fp_meta;
+  char filename_io[FILENAME_MAX];
+  char buf[BUFSIZ], rbuf[BUFSIZ];
+  char filename[FILENAME_MAX];
+  int nr;
+  int nx, ny, nz;
+  int mpisz[3], mpicoords[3];
+  int nlocal[3], noff[3], ntotal[3];
+
+  const int tag = 1293;
+
+  int sz;
+  int le_nplane;
+  double le_uy;
+  MPI_Status status;
+
+  /* Every group writes a file, ie., the information stub and
+   * the details of the local group which allow the output to
+   * be unmangled. */
+
+  assert(info);
+
+  sz = pe_mpi_size(info->pe);
+
+  cs_ntotal(info->cs, ntotal);
+  cs_nlocal(info->cs, nlocal);
+  cs_nlocal_offset(info->cs, noff);
+  cs_cartsz(info->cs, mpisz);
+  cs_cart_coords(info->cs, mpicoords);
+
+  le_nplane = 0;
+  le_uy = 0.0;
+
+  io_set_group_filename(filename, filename_stub, info);
+  sprintf(filename_io, "%s.meta", filename);
+
+  /* Write local decomposition information to the buffer */
+
+  sprintf(buf, "%3d %3d %3d %3d %d %d %d %d %d %d",
+	  info->io_comm->rank,
+	  mpicoords[X], mpicoords[Y], mpicoords[Z],
+	  nlocal[X], nlocal[Y], nlocal[Z], noff[X], noff[Y], noff[Z]);
+
+  if (info->io_comm->rank > 0) {
+    MPI_Send(buf, BUFSIZ, MPI_CHAR, 0, tag, info->io_comm->comm);
+  }
+  else {
+      
+    /* Root: write the information stub */
+
+    nx = info->io_comm->ngroup[X];
+    ny = info->io_comm->ngroup[Y];
+    nz = info->io_comm->ngroup[Z];
+
+    fp_meta = fopen(filename_io, "w");
+    if (fp_meta == NULL) pe_fatal(info->pe, "fopen(%s) failed\n", filename_io);
+
+    fprintf(fp_meta, "Metadata for file set prefix:    %s\n", filename_stub);
+    fprintf(fp_meta, "Data description:                %s\n", info->name);
+    fprintf(fp_meta, "Data size per site (bytes):      %d\n",
+	    (int) info->bytesize);
+    fprintf(fp_meta, "is_bigendian():                  %d\n", is_bigendian());
+    fprintf(fp_meta, "Number of processors:            %d\n", sz);
+    fprintf(fp_meta, "Cartesian communicator topology: %d %d %d\n",
+	    mpisz[X], mpisz[Y], mpisz[Z]);
+    fprintf(fp_meta, "Total system size:               %d %d %d\n",
+	    ntotal[X], ntotal[Y], ntotal[Z]);
+    /* Lees Edwards hardwired until refactor LE code dependencies */
+    fprintf(fp_meta, "Lees-Edwards planes:             %d\n", le_nplane);
+    fprintf(fp_meta, "Lees-Edwards plane speed         %16.14f\n", le_uy);
+    fprintf(fp_meta, "Number of I/O groups (files):    %d\n", nx*ny*nz);
+    fprintf(fp_meta, "I/O communicator topology:       %d %d %d\n",
+	    nx, ny, nz);
+    fprintf(fp_meta, "Write order:\n");
+
+    /* Local information at root, and then in turn ... */
+
+    fprintf(fp_meta, "%s\n", buf);
+
+    for (nr = 1; nr < info->io_comm->size; nr++) {
+      MPI_Recv(rbuf, BUFSIZ, MPI_CHAR, nr, tag, info->io_comm->comm,
+	       &status);
+      fprintf(fp_meta, "%s\n", rbuf);
+    }
+
+    if (ferror(fp_meta)) {
+      perror("perror: ");
+      pe_fatal(info->pe, "File error on writing %s\n", filename_io);
+    }
+    fclose(fp_meta);
+  }
+
+  info->metadata_written = 1;
+
+  return 0;
+}
+
+#endif
 
 /*****************************************************************************
  *

@@ -38,22 +38,32 @@ static int do_test3(pe_t * pe, cs_t * cs,physics_t * phys);
 
 int test_fe_electro_suite(void) {
 
+  int ndevice;
   pe_t * pe = NULL;
   cs_t * cs = NULL;
   physics_t * phys = NULL;
 
+  tdpGetDeviceCount(&ndevice);
+
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  cs_create(pe, &cs);
-  cs_init(cs);
-  physics_create(pe, &phys);
 
-  do_test1(pe, cs, phys);
-  do_test2(pe, cs, phys);
-  do_test3(pe, cs, phys);
+  if (ndevice) {
+    pe_info(pe, "SKIP     ./unit/test_fe_electro\n");
+  }
+  else {
 
-  physics_free(phys);
-  cs_free(cs);
-  pe_info(pe, "PASS     ./unit/test_fe_electro\n");
+    cs_create(pe, &cs);
+    cs_init(cs);
+    physics_create(pe, &phys);
+
+    do_test1(pe, cs, phys);
+    do_test2(pe, cs, phys);
+    do_test3(pe, cs, phys);
+
+    physics_free(phys);
+    cs_free(cs);
+    pe_info(pe, "PASS     ./unit/test_fe_electro\n");
+  }
   pe_free(pe);
 
   return 0;

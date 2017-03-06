@@ -111,15 +111,16 @@ __host__ int lb_free(lb_t * lb) {
 
   assert(lb);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    copyFromTarget(&tmp, &lb->target->f, sizeof(double *)); 
-    targetFree(tmp);
+    tdpMemcpy(&tmp, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
 
-    copyFromTarget(&tmp, &lb->target->fprime, sizeof(double *)); 
-    targetFree(tmp);
-    targetFree(lb->target);
+    tdpMemcpy(&tmp, &lb->target->fprime, sizeof(double *),
+	      tdpMemcpyDeviceToHost); 
+    tdpFree(tmp);
+    tdpFree(lb->target);
   }
 
   if (lb->halo) halo_swap_free(lb->halo);
@@ -164,7 +165,7 @@ __host__ int lb_memcpy(lb_t * lb, int flag) {
 
   assert(lb);
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Make sure we alias */
@@ -174,16 +175,20 @@ __host__ int lb_memcpy(lb_t * lb, int flag) {
 
     assert(lb->target);
 
-    copyFromTarget(&tmpf, &lb->target->f, sizeof(double *));
+    tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
 
-    if (flag == cudaMemcpyHostToDevice) {
-      copyToTarget(&lb->target->ndist, &lb->ndist, sizeof(int)); 
-      copyToTarget(&lb->target->nsite, &lb->nsite, sizeof(int)); 
-      copyToTarget(&lb->target->model, &lb->model, sizeof(int)); 
-      copyToTarget(tmpf, lb->f, NVEL*lb->nsite*lb->ndist*sizeof(double));
-    }
-    else {
-      copyFromTarget(lb->f, tmpf, NVEL*lb->nsite*lb->ndist*sizeof(double));
+    switch (flag) {
+    case tdpMemcpyHostToDevice:
+      tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag); 
+      tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag); 
+      tdpMemcpy(&lb->target->model, &lb->model, sizeof(int), flag);
+      tdpMemcpy(tmpf, lb->f, NVEL*lb->nsite*lb->ndist*sizeof(double), flag);
+      break;
+    case tdpMemcpyDeviceToHost:
+      tdpMemcpy(lb->f, tmpf, NVEL*lb->nsite*lb->ndist*sizeof(double), flag);
+      break;
+    default:
+      pe_fatal(lb->pe, "Bad flag in lb_memcpy\n");
     }
   }
 
@@ -239,7 +244,7 @@ __host__ int lb_init(lb_t * lb) {
 
   /* Allocate target copy of structure or alias */
 
-  targetGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     lb->target = lb;
@@ -247,16 +252,21 @@ __host__ int lb_init(lb_t * lb) {
   else {
     lb_collide_param_t * ptmp  = NULL;
 
-    targetMalloc((void **) &lb->target, sizeof(lb_t));
+    tdpMalloc((void **) &lb->target, sizeof(lb_t));
+    tdpMemset(lb->target, 0, sizeof(lb_t));
 
-    targetCalloc((void **) &tmp, ndata*sizeof(double));
-    copyToTarget(&lb->target->f, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, ndata*sizeof(double));
+    tdpMemset(tmp, 0, ndata*sizeof(double));
+    tdpMemcpy(&lb->target->f, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
  
-    targetCalloc((void **) &tmp, ndata*sizeof(double));
-    copyToTarget(&lb->target->fprime, &tmp, sizeof(double *));
+    tdpMalloc((void **) &tmp, ndata*sizeof(double));
+    tdpMemset(tmp, 0, ndata*sizeof(double));
+    tdpMemcpy(&lb->target->fprime, &tmp, sizeof(double *),
+	      tdpMemcpyHostToDevice);
 
-    targetConstAddress((void **) &ptmp, static_param);
-    copyToTarget(&lb->target->param, &ptmp, sizeof(lb_collide_param_t *));
+    tdpGetSymbolAddress((void **) &ptmp, tdpSymbol(static_param));
+    tdpMemcpy(&lb->target->param, &ptmp, sizeof(lb_collide_param_t *),
+	      tdpMemcpyHostToDevice);
   }
 
   /* Set up the MPI Datatypes used for full halo messages:
@@ -280,7 +290,7 @@ __host__ int lb_init(lb_t * lb) {
   lb_mpi_init(lb);
   lb_model_param_init(lb);
   lb_halo_set(lb, LB_HALO_FULL);
-  lb_memcpy(lb, cudaMemcpyHostToDevice);
+  lb_memcpy(lb, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -298,7 +308,8 @@ __host__ int lb_collide_param_commit(lb_t * lb) {
 
   assert(lb);
 
-  copyConstToTarget(&static_param, lb->param, sizeof(lb_collide_param_t));
+  tdpMemcpyToSymbol(tdpSymbol(static_param), lb->param,
+		    sizeof(lb_collide_param_t), 0, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -718,7 +729,7 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
     lb_halo_via_copy(lb);
     break;
   case LB_HALO_TARGET:
-    copyFromTarget(&data, &lb->target->f, sizeof(double *));
+    tdpMemcpy(&data, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
     halo_swap_packed(lb->halo, data);
     break;
   case LB_HALO_FULL:

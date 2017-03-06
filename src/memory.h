@@ -32,9 +32,9 @@
 #define MEMORY_MODEL_H
 
 #include <assert.h>
-#include "targetDP.h"
+#include "pe.h"
 
-/* The targetDP SIMD vector length */
+/* The target SIMD vector length */
 
 #define NSIMDVL VVL
 
@@ -279,7 +279,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define addr_rank3(nsites, na, nb, nc, index, ia, ib, ic) \
   base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, pseudo_iv(index))
 
-#endif /* ADDR_VBLOCK */
+#endif
 
 /* Alignment */
 
