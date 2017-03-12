@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2015 The University of Edinburgh
+ *  (c) 2017 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -364,6 +364,29 @@ int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
   assert(sendtype == recvtype);
   
   mpi_copy(sendbuf, recvbuf, sendcount, sendtype);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Gatherv
+ *
+ *  The various assertions should be true in serial.
+ *
+ *****************************************************************************/
+
+int MPI_Gatherv(const void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		void * recvbuf, const int * recvcounts, const int * displ,
+		MPI_Datatype recvtype, int root, MPI_Comm comm) {
+
+  assert(sendbuf);
+  assert(recvbuf);
+  assert(root == 0);
+  assert(sendtype == recvtype);
+  assert(sendcount == recvcounts[0]);
+
+  mpi_copy((void *) sendbuf, recvbuf, sendcount, sendtype);
 
   return MPI_SUCCESS;
 }

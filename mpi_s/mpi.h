@@ -153,6 +153,9 @@ int MPI_Waitany(int count, MPI_Request array_of_req[], int * index,
 int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 	       void * recvbuf, int recvcount, MPI_Datatype recvtype,
 	       int root, MPI_Comm comm);
+int MPI_Gatherv(const void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		void * recvbuf, const int * recvcounts, const int * displ,
+		MPI_Datatype recvtype, int root, MPI_Comm comm);
 int MPI_Allgather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 		  void * recvbuf, int recvcount, MPI_Datatype recvtype,
 		  MPI_Comm comm);
