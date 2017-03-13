@@ -219,8 +219,8 @@ int advection_bcs_wall(field_t * fphi) {
   int ic, jc, kc, index, index1;
   int nlocal[3];
   int nf;
-  int mpi_cartcoords[3];
   int mpi_cartsz[3];
+  int mpi_cartcoords[3];
   double q[NQAB];
   cs_t * cs = NULL; /* To be required */
 
@@ -231,6 +231,9 @@ int advection_bcs_wall(field_t * fphi) {
 
   field_nf(fphi, &nf);
   cs_nlocal(cs, nlocal);
+  cs_cartsz(cs, mpi_cartsz);
+  cs_cart_coords(cs, mpi_cartcoords);
+
   assert(nf <= NQAB);
 
   if (mpi_cartcoords[X] == 0) {

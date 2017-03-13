@@ -556,7 +556,6 @@ __host__ __device__
 int noise_present(noise_t * noise, noise_enum_t type, int * present) {
 
   assert(noise);
-  assert(type >= 0);
   assert(type < NOISE_END);
   assert(present);
 
@@ -576,7 +575,6 @@ int noise_present(noise_t * noise, noise_enum_t type, int * present) {
 int noise_present_set(noise_t * noise, noise_enum_t type, int present) {
 
   assert(noise);
-  assert(type >= 0);
   assert(type < NOISE_END);
 
   noise->on[type] = present;

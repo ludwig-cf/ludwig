@@ -228,12 +228,12 @@ __host__ int lb_init(lb_t * lb) {
   /* The total number of distribution data is then... */
 
   ndata = lb->nsite*lb->ndist*NVEL;
-#ifdef OLD_DATA
+#ifndef OLD_DATA
   lb->f = (double  *) malloc(ndata*sizeof(double));
-  if (lb->f == NULL) fatal("malloc(distributions) failed\n");
+  if (lb->f == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
 
   lb->fprime = (double  *) malloc(ndata*sizeof(double));
-  if (lb->fprime == NULL) fatal("malloc(distributions) failed\n");
+  if (lb->fprime == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
 #else
   lb->f = (double  *) mem_aligned_malloc(MEM_PAGESIZE, ndata*sizeof(double));
   if (lb->f == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
@@ -1091,7 +1091,7 @@ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd, double * rho) {
   assert(lb);
   assert(rho);
   assert(index >= 0 && index < lb->nsite);
-  assert(nd >= 0 && nd < lb->ndist);
+  assert(nd < lb->ndist);
 
   *rho = 0.0;
 
@@ -1118,7 +1118,7 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
 
   assert(lb);
   assert(index >= 0 && index < lb->nsite);
-  assert(nd >= 0 && nd < lb->ndist);
+  assert(nd < lb->ndist);
 
   /* Loop to 3 here to cover initialisation in D2Q9 (appears in momentum) */
   for (n = 0; n < 3; n++) {

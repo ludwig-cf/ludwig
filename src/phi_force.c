@@ -435,6 +435,7 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
   cs_ltot(cs, ltot);
   cs_nlocal(cs, nlocal);
   cs_nsites(cs, &nsf);
+  cs_cart_comm(cs, &comm);
 
   for (ia = 0; ia < 3; ia++) {
     fsum_local[ia] = 0.0;

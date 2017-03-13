@@ -580,7 +580,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   double * stat_2d;
   double * stat_1d;
   double raverage;
-  double uy;
+  double uy = 0.0;
   double eta, viscous;
   double ltot[3];
 

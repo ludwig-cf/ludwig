@@ -591,7 +591,7 @@ __device__ double atomicMaxDouble(double * maxval, double val) {
   }
 #else
   old = *maxval;
-  *maxval = double max(*maxval, val);
+  *maxval = double_max(*maxval, val);
 #endif
 
   return old;
@@ -684,3 +684,4 @@ __device__ double atomicBlockAddDouble(double * partsum) {
 
   return partsum[0];
 }
+

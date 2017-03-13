@@ -237,9 +237,12 @@ __host__ int do_host_kernel(cs_t * cs, kernel_info_t limits, int * mask,
 
 __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data) {
 
+  int kiter;
   int kindex;
 
-  __target_simt_for(kindex, kernel_iterations(ktx), 1) {
+  kiter = kernel_iterations(ktx);
+
+  __target_simt_for(kindex, kiter, 1) {
 
     int ic, jc, kc;
     int index;
@@ -268,6 +271,7 @@ __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data) {
 
 __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
 
+  int kiter;
   int kindex;
   int ic, jc, kc;
   int index;
@@ -275,8 +279,9 @@ __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
   __shared__ int psum[TARGET_MAX_THREADS_PER_BLOCK];
 
   psum[threadIdx.x] = 0;
+  kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kernel_iterations(ktx), 1) {
+  __target_simt_for(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

@@ -177,7 +177,6 @@ int lubrication_stats(void * obj, double * stats) {
 int lubrication_rch_set(lubr_t * obj, lubr_ss_enum_t type, double rc) {
 
   assert(obj);
-  assert(type >= 0);
   assert(type < LUBRICATION_SS_MAX);
   assert(rc >= 0.0);
 

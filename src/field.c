@@ -153,11 +153,11 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   obj->le = le;
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
-#ifdef OLD_DATA
+#ifndef OLD_DATA
   obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
   if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 #else
-  obj->data = (double *) mem_aligned_calloc(MEM_PAGESIZE, obj->nf*nsites,
+  obj->data = (double *) mem_aligned_malloc(MEM_PAGESIZE, obj->nf*nsites*
 					    sizeof(double));
   if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 #endif

@@ -49,6 +49,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
 
   int ndevice;
   double * tmp;
+  double zero[3] = {0.0, 0.0, 0.0};
   hydro_t * obj = (hydro_t *) NULL;
 
   assert(pe);
@@ -65,13 +66,19 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
 
   cs_nsites(cs, &obj->nsite);
   if (le) lees_edw_nsites(le, &obj->nsite);
-
+#ifdef OLD_DATA
   obj->u = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
 
   obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
+#else
+  obj->u = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,sizeof(double));
+  if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
 
+  obj->f = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,sizeof(double));
+  if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
+#endif
   halo_swap_create_r1(pe, cs, nhcomm, obj->nsite, NHDIM, &obj->halo);
   assert(obj->halo);
 
@@ -100,7 +107,10 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
     tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
 	      tdpMemcpyHostToDevice);
   }
-
+  /*
+  hydro_u_zero(obj, zero);
+  hydro_f_zero(obj, zero);
+  */
   *pobj = obj;
 
   return 0;

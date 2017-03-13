@@ -170,7 +170,7 @@ int colloid_sums_1d(colloid_sum_t * sum, int dim, colloid_sum_enum_t mtype) {
 
   assert(sum);
   assert(sum->cinfo);
-  assert(mtype >=0 && mtype < COLLOID_SUM_MAX);
+  assert(mtype < COLLOID_SUM_MAX);
 
   /* Count how many colloids are relevant */
 

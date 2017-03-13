@@ -104,7 +104,6 @@ void interact_free(interact_t * obj) {
 int interact_rc_set(interact_t * obj, interact_enum_t it, double rc) {
 
   assert(obj);
-  assert(it >= 0);
   assert(it < INTERACT_MAX);
 
   obj->rcset[it] = 1;
@@ -122,7 +121,6 @@ int interact_rc_set(interact_t * obj, interact_enum_t it, double rc) {
 int interact_hc_set(interact_t * obj, interact_enum_t it, double hc) {
 
   assert(obj);
-  assert(it >= 0);
   assert(it < INTERACT_MAX);
 
   obj->hcset[it] = 1;
@@ -141,7 +139,6 @@ int interact_potential_add(interact_t * obj, interact_enum_t it,
 			   void * potential, compute_ft compute) {
 
   assert(obj);
-  assert(it >= 0);
   assert(it < INTERACT_MAX);
   assert(potential);
   assert(compute);
@@ -162,7 +159,6 @@ int interact_statistic_add(interact_t * obj, interact_enum_t it, void * pot,
 			   stat_ft stats) {
 
   assert(obj);
-  assert(it >= 0);
   assert(it < INTERACT_MAX);
   assert(pot);
   assert(stats);
