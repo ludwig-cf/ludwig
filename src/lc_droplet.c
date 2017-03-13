@@ -548,7 +548,7 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
     }
   }
 
-  /* Additional active stress -zeta*(q_ab - 1/3 d_ab)Â */
+  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {

@@ -102,6 +102,7 @@ int main(int argc, char ** argv) {
     state[n].ah = ah;
     state[n].q0 = q0;
     state[n].q1 = q1;
+    state[n].rng = 1 + n;
   }
 
   /* Set positions and write out */
