@@ -386,17 +386,19 @@ int io_write_metadata(io_info_t * info) {
  *
  *****************************************************************************/
 
+#define MY_BUFSIZ 128
+
 int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   FILE * fp_meta;
   char filename_io[FILENAME_MAX];
-  char subdirectory[FILENAME_MAX];
+  char buf[MY_BUFSIZ], rbuf[MY_BUFSIZ];
   char filename[FILENAME_MAX];
-  int  nx, ny, nz;
+  int nr;
+  int nx, ny, nz;
   int mpisz[3], mpicoords[3];
   int nlocal[3], noff[3], ntotal[3];
 
-  int token = 0;
   const int tag = 1293;
 
   int sz;
@@ -410,7 +412,6 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   assert(info);
 
-  pe_subdirectory(info->pe, subdirectory);
   sz = pe_mpi_size(info->pe);
 
   cs_ntotal(info->cs, ntotal);
@@ -423,10 +424,21 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   le_uy = 0.0;
 
   io_set_group_filename(filename, filename_stub, info);
-  sprintf(filename_io, "%s%s.meta", subdirectory, filename);
+  sprintf(filename_io, "%s.meta", filename);
 
-  if (info->io_comm->rank == 0) {
-    /* Write the information stub */
+  /* Write local decomposition information to the buffer */
+
+  nr = sprintf(buf, "%3d %3d %3d %3d %d %d %d %d %d %d", info->io_comm->rank,
+	       mpicoords[X], mpicoords[Y], mpicoords[Z],
+	       nlocal[X], nlocal[Y], nlocal[Z], noff[X], noff[Y], noff[Z]);
+  assert(nr < MY_BUFSIZ);
+
+  if (info->io_comm->rank > 0) {
+    MPI_Send(buf, MY_BUFSIZ, MPI_CHAR, 0, tag, info->io_comm->comm);
+  }
+  else {
+      
+    /* Root: write the information stub */
 
     nx = info->io_comm->ngroup[X];
     ny = info->io_comm->ngroup[Y];
@@ -453,32 +465,24 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 	    nx, ny, nz);
     fprintf(fp_meta, "Write order:\n");
 
+    /* Local information at root, and then in turn ... */
+
+    fprintf(fp_meta, "%s\n", buf);
+
+    for (nr = 1; nr < info->io_comm->size; nr++) {
+      MPI_Recv(rbuf, MY_BUFSIZ, MPI_CHAR, nr, tag, info->io_comm->comm,
+	       &status);
+      fprintf(fp_meta, "%s\n", rbuf);
+    }
+
+    if (ferror(fp_meta)) {
+      perror("perror: ");
+      pe_fatal(info->pe, "File error on writing %s\n", filename_io);
+    }
+    fclose(fp_meta);
   }
-  else {
-    MPI_Recv(&token, 1, MPI_INT, info->io_comm->rank - 1, tag,
-	     info->io_comm->comm, &status);
-    fp_meta = fopen(filename_io, "a");
-    if (fp_meta == NULL) pe_fatal(info->pe, "fopen(%s) failed\n", filename_io);
-  }
 
-  /* Local decomposition information */
-
-  fprintf(fp_meta, "%3d %3d %3d %3d %d %d %d %d %d %d\n", info->io_comm->rank,
-          mpicoords[X], mpicoords[Y], mpicoords[Z],
-          nlocal[X], nlocal[Y], nlocal[Z], noff[X], noff[Y], noff[Z]);
-
-  if (ferror(fp_meta)) {
-    perror("perror: ");
-    pe_fatal(info->pe, "File error on writing %s\n", filename_io);
-  }
-  fclose(fp_meta);
-
- if(info->io_comm->rank < info->io_comm->size - 1) {
-   MPI_Ssend(&token, 1, MPI_INT, info->io_comm->rank + 1, tag,
-	     info->io_comm->comm);
- }
-
- info->metadata_written = 1;
+  info->metadata_written = 1;
 
   return 0;
 }

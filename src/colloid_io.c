@@ -39,11 +39,17 @@ struct colloid_io_s {
   int (* f_header_read)  (FILE * fp, int * nfile);
   int (* f_list_write)   (colloid_io_t * cio, int, int, int, FILE * fp);
   int (* f_list_read)    (colloid_io_t * cio, int ndata, FILE * fp);
+  int (* f_buffer_write) (FILE * fp, int nc, colloid_state_t * buf);
 
   pe_t * pe;                     /* Parallel environment */
   cs_t * cs;                     /* Coordinate system */
   colloids_info_t * info;        /* Keep a reference to this */
 };
+
+int colloid_io_pack_buffer(colloid_io_t * cio, int nc, colloid_state_t * buf);
+int colloid_io_write_buffer_ascii(FILE * fp, int nc, colloid_state_t * buf);
+int colloid_io_write_buffer_binary(FILE * fp, int nc, colloid_state_t * buf);
+int colloid_io_count_colloids(colloid_io_t * cio, int * ngroup);
 
 static int colloid_io_read_header_binary(FILE * fp, int * nfile);
 static int colloid_io_read_header_ascii(FILE * fp, int * nfile);
@@ -57,7 +63,6 @@ static int colloid_io_write_list_ascii(colloid_io_t * cio,
 static int colloid_io_write_list_binary(colloid_io_t * cio,
 					int ic , int jc, int kc, FILE * fp);
 
-static int colloid_io_count_colloids(colloid_io_t * cio, int * ngroup);
 static int colloid_io_filename(colloid_io_t * cio, char * filename,
 			       const char * stub);
 static int colloid_io_check_read(colloid_io_t * cio, int ngroup);
@@ -233,22 +238,21 @@ int colloid_io_count_colloids(colloid_io_t * cio, int * ngroup) {
  *  including the halos) to the specified file.
  *
  *  In parallel, one file per io group is used. Processes within a
- *  group write to the same file on reciept of the token.
+ *  group aggregate data to root, and root writes.
  *
  *****************************************************************************/
 
 int colloid_io_write(colloid_io_t * cio, const char * filename) {
 
   int ntotal;
-  int ngroup;
-  int token = 0;
-  int ic, jc, kc;
-  int ncell[3];
-  const int tag = 9572;
+  int n, nc;
+  int * nclist = NULL;
+  int * displ = NULL;
 
   char filename_io[FILENAME_MAX];
+  colloid_state_t * cbuf = NULL;
+  colloid_state_t * rbuf = NULL;
   FILE * fp_state = NULL;
-  MPI_Status status;
 
   assert(cio);
 
@@ -256,7 +260,8 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
   if (ntotal == 0) return 0;
 
   assert(cio->f_header_write);
-  assert(cio->f_list_write);
+  assert(cio->f_buffer_write);
+
   /* Set the filename */
 
   colloid_io_filename(cio, filename_io, filename);
@@ -265,62 +270,141 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
   pe_info(cio->pe, "colloid_io_write:\n");
   pe_info(cio->pe, "writing colloid information to %s etc\n", filename_io);
 
-  /* Make sure everyone has their current number of particles
-   * up-to-date */
+  /* Gather a list of colloid numbers from each rank in the group */
 
-  colloid_io_count_colloids(cio, &ngroup);
+  nclist = (int *) calloc(cio->size, sizeof(int));
+  if (nclist == NULL) pe_fatal(cio->pe, "malloc(nclist) failed\n");
+
+  colloids_info_nlocal(cio->info, &nc);
+  MPI_Gather(&nc, 1, MPI_INT, nclist, 1, MPI_INT, 0, cio->comm);
+
+  /* Allocate local buffer, pack. */
+
+  cbuf = (colloid_state_t *) malloc(nc*sizeof(colloid_state_t));
+  if (cbuf == NULL) pe_fatal(cio->pe, "malloc(cbuf) failed\n");
+
+  colloid_io_pack_buffer(cio, nc, cbuf);
 
   if (cio->rank == 0) {
 
-    /* Open the file, and write the header, followed by own colloids.
-     * When this is done, pass the token to the next processs in the
-     * group. */
+    /* Work out displacements and the total */
+    /* Allocate total recieve buffer */
 
-    fp_state = fopen(filename_io, "w+b");
+    displ = (int *) malloc(cio->size*sizeof(int));
+    if (displ == NULL) pe_fatal(cio->pe, "malloc(displ) failed\n");
+
+    displ[0] = 0;
+    for (n = 1; n < cio->size; n++) {
+      displ[n] = displ[n-1] + nclist[n-1];
+    }
+
+    ntotal = 0;
+    for (n = 0; n < cio->size; n++) {
+      ntotal += nclist[n];
+      displ[n] *= sizeof(colloid_state_t);   /* to bytes */
+      nclist[n] *= sizeof(colloid_state_t);  /* ditto */
+    }
+
+    rbuf = (colloid_state_t *) malloc(ntotal*sizeof(colloid_state_t));
+    if (rbuf == NULL) pe_fatal(cio->pe, "malloc(rbuf) failed\n");
+  }
+
+  MPI_Gatherv(cbuf, nc*sizeof(colloid_state_t), MPI_BYTE, rbuf, nclist,
+	      displ, MPI_BYTE, 0, cio->comm);
+
+  if (cio->rank == 0) {
+
+    fp_state = fopen(filename_io, "w");
     if (fp_state == NULL) {
       pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
     }
-    cio->f_header_write(fp_state, ngroup);
-  }
-  else {
-    /* Non-io-root process. Block until we receive the token from the
-     * previous process, after which we can go ahead and append our own
-     * colloids to the file. */
+    cio->f_header_write(fp_state, ntotal);
+    cio->f_buffer_write(fp_state, ntotal, rbuf);
 
-    MPI_Recv(&token, 1, MPI_INT, cio->rank - 1, tag, cio->comm, &status);
-    fp_state = fopen(filename_io, "a+b");
-    if (fp_state == NULL) {
-      pe_fatal(cio->pe, "Failed to open %s\n", filename_io);
+    if (ferror(fp_state)) {
+      perror("perror: ");
+      pe_fatal(cio->pe, "Error on writing file %s\n", filename_io);
     }
+
+    fclose(fp_state);
+    free(rbuf);
+    free(displ);
   }
 
-  /* Write the local colloid state. */
+  free(cbuf);
+  free(nclist);
 
-  colloids_info_ncell(cio->info, ncell);
+  return 0;
+}
 
-  for (ic = 1; ic <= ncell[X]; ic++) {
-    for (jc = 1; jc <= ncell[Y]; jc++) {
-      for (kc = 1; kc <= ncell[Z]; kc++) {
-	cio->f_list_write(cio, ic, jc, kc, fp_state);
-      }
-    }
+/*****************************************************************************
+ *
+ *  colloid_io_pack_buffer
+ *
+ *  Transfer list content to contiguous buffer (nc colloids).
+ *
+ *****************************************************************************/
+
+int colloid_io_pack_buffer(colloid_io_t * cio, int nc, colloid_state_t * buf) {
+
+  int n = 0;
+  colloid_t * pc = NULL;
+
+  assert(cio);
+  assert(buf);
+
+  colloids_info_local_head(cio->info, &pc);
+
+  while (pc) {
+    assert(n < nc);
+    memcpy(buf + n, &pc->s, sizeof(colloid_state_t));
+    n += 1;
+    pc = pc->nextlocal;
   }
 
-  if (ferror(fp_state)) {
-    perror("perror: ");
-    pe_fatal(cio->pe, "Error on writing file %s\n", filename_io);
+  /* Check the size did match exactly. */
+  if (n != nc) pe_fatal(cio->pe, "Internal error in cio_pack_buffer\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_io_write_buffer_ascii
+ *
+ *  Write nc states to file. Return number of bytes written.
+ *
+ *****************************************************************************/
+
+int colloid_io_write_buffer_ascii(FILE * fp, int nc, colloid_state_t * buf) {
+
+  int n;
+  int ifail = 0;
+
+  assert(fp);
+  assert(buf);
+
+  for (n = 0; n < nc; n++) {
+    ifail += colloid_state_write_ascii(buf[n], fp);
   }
 
-  fclose(fp_state);
+  return ifail;
+}
 
-  /* This process has finished, so we can pass the token to the
-   * next process in the group. If this is the last process in the
-   * group, we've completed the file. */
+/*****************************************************************************
+ *
+ *  colloid_io_write_buffer_binary
+ *
+ *  Write nc states to file.
+ *
+ *****************************************************************************/
 
-  if (cio->rank < cio->size - 1) {
-    /* Send the token */
-    MPI_Ssend(&token, 1, MPI_INT, cio->rank + 1, tag, cio->comm);
-  }
+int colloid_io_write_buffer_binary(FILE * fp, int nc, colloid_state_t * buf) {
+
+  assert(fp);
+  assert(buf);
+
+  fwrite(buf, sizeof(colloid_state_t), nc, fp);
 
   return 0;
 }
@@ -607,6 +691,7 @@ int colloid_io_format_output_ascii_set(colloid_io_t * cio) {
 
   assert(cio);
 
+  cio->f_buffer_write = colloid_io_write_buffer_ascii;
   cio->f_header_write = colloid_io_write_header_ascii;
   cio->f_list_write   = colloid_io_write_list_ascii;
 
@@ -621,6 +706,7 @@ int colloid_io_format_output_ascii_set(colloid_io_t * cio) {
 
 int colloid_io_format_output_binary_set(colloid_io_t * cio) {
 
+  cio->f_buffer_write = colloid_io_write_buffer_binary;
   cio->f_header_write = colloid_io_write_header_binary;
   cio->f_list_write   = colloid_io_write_list_binary;
 
