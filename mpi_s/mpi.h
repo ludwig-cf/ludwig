@@ -153,6 +153,9 @@ int MPI_Waitany(int count, MPI_Request array_of_req[], int * index,
 int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 	       void * recvbuf, int recvcount, MPI_Datatype recvtype,
 	       int root, MPI_Comm comm);
+int MPI_Gatherv(const void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		void * recvbuf, const int * recvcounts, const int * displ,
+		MPI_Datatype recvtype, int root, MPI_Comm comm);
 int MPI_Allgather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 		  void * recvbuf, int recvcount, MPI_Datatype recvtype,
 		  MPI_Comm comm);
@@ -197,6 +200,13 @@ int MPI_Abort(MPI_Comm comm, int errorcode);
  * See MPI 3 standard */
 
 int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler erhandler);
+int MPI_Get_address(const void * location, MPI_Aint * address);
+int MPI_Type_create_struct(int count, int * arry_of_blocklens,
+			   const MPI_Aint * array_of_displacements,
+			   const MPI_Datatype * array_of_datatypes,
+			   MPI_Datatype * newtype);
+int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint ub, MPI_Aint extent,
+			    MPI_Datatype * newtype);
 
 #ifdef __cplusplus
 }

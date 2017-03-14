@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2015 The University of Edinburgh
+ *  (c) 2017 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -370,6 +370,29 @@ int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 
 /*****************************************************************************
  *
+ *  MPI_Gatherv
+ *
+ *  The various assertions should be true in serial.
+ *
+ *****************************************************************************/
+
+int MPI_Gatherv(const void * sendbuf, int sendcount, MPI_Datatype sendtype,
+		void * recvbuf, const int * recvcounts, const int * displ,
+		MPI_Datatype recvtype, int root, MPI_Comm comm) {
+
+  assert(sendbuf);
+  assert(recvbuf);
+  assert(root == 0);
+  assert(sendtype == recvtype);
+  assert(sendcount == recvcounts[0]);
+
+  mpi_copy((void *) sendbuf, recvbuf, sendcount, sendtype);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Allreduce
  *
  *****************************************************************************/
@@ -515,6 +538,8 @@ int MPI_Type_struct(int count, int * array_of_blocklengths,
 /*****************************************************************************
  *
  *  MPI_Address
+ *
+ *  Please use MPI_Get_Address().
  *
  *****************************************************************************/
 
@@ -766,3 +791,100 @@ int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
 
   return MPI_SUCCESS;
 }
+
+
+#ifdef _DO_NOT_INCLUDE_MPI2_INTERFACE
+/*
+ * The following are removed from MPI3... and have an apprpriate
+ * MPI2 replacement.
+ *
+ * MPI_Address           ->    MPI_Get_address
+ * MPI_Type_hindexed     ->    MPI_Type_create_hindexed
+ * MPI_Type_hvector      ->    MPI_Type_create_hvector
+ * MPI_Type_struct       ->    MPI_Type_create_struct
+ * MPI_Type_ub           ->    MPI_Type_get_extent
+ * MPI_Type_lb           ->    MPI_Type_get_extent
+ * MPI_LB                ->    MPI_Type_create_resized
+ * MPI_UB                ->    MPI_Type_create_resized
+ * MPI_Errhandler_create ->    MPI_Comm_create_errhandler
+ * MPI_Errhandler_get    ->    MPI_Comm_get_errhandler
+ * MPI_Errhandler_set    ->    MPI_Comm_set_errhandler
+ * MPI_Handler_function  ->    MPI_Comm_errhandler_function
+ * MPI_Keyval_create     ->    MPI_Comm_create_keyval
+ * MPI_Keyval_free       ->    MPI_Comm_free_keyval
+ * MPI_Dup_fn            ->    MPI_Comm_dup_fn
+ * MPI_Null_copy_fn      ->    MPI_Comm_null_copy_fn
+ * MPI_Null_delete_fn    ->    MPI_Comm_null_delete_fn
+ * MPI_Copy_function     ->    MPI_Comm_copy_attr_function
+ * COPY_FUNCTION         ->    COMM_COPY_ATTR_FN
+ * MPI_Delete_function   ->    MPI_Comm_delete_attr_function
+ * DELETE_FUNCTION       ->    COMM_DELETE_ATTR_FN
+ * MPI_ATTR_DELETE       ->    MPI_Comm_delete_attr
+ * MPI_Attr_get          ->    MPI_Comm_get_attr
+ * MPI_Attr_put          ->    MPI_Comm_set_atrr
+ */
+#else
+
+/*****************************************************************************
+ *
+ *  MPI_Get_address
+ *
+ *  Supercedes MPI_Address
+ *
+ *****************************************************************************/
+
+int MPI_Get_address(const void * location, MPI_Aint * address) {
+
+  *address = 0;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Type_create_resized
+ *
+ *****************************************************************************/
+
+int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint lb, MPI_Aint extent,
+			    MPI_Datatype * newtype) {
+
+  *newtype = oldtype;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Type_create_struct
+ *
+ *  Supercedes MPI_Type_struct()
+ *
+ *****************************************************************************/
+
+int MPI_Type_create_struct(int count, int array_of_blocklengths[],
+			   const MPI_Aint array_of_displacements[],
+			   const MPI_Datatype array_of_types[],
+			   MPI_Datatype * newtype) {
+
+  *newtype = MPI_UNDEFINED;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Type_get_extent
+ *
+ *****************************************************************************/
+
+int MPI_Type_get_extent(MPI_Datatype dataype, MPI_Aint * lb,
+			MPI_Aint * extent) {
+
+  *lb = 0;
+  *extent = -1;
+
+  return MPI_SUCCESS;
+}
+
+#endif /* _DO_NOT_INCLUDE_MPI2_INTERFACE */
