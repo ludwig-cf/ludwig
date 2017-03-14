@@ -212,6 +212,8 @@ int advective_bcs_no_flux_d3qx(int nf, double ** flx, map_t * map) {
  *  to be computed at interface one cell away from wall. Fluxes at
  *  the wall will always be zero.
  *
+ *  TODO: relocate this to wall field interaction?
+ *
  ****************************************************************************/
 
 int advection_bcs_wall(field_t * fphi) {

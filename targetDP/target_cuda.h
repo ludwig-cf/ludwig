@@ -26,4 +26,7 @@
 #define __cuda_launch4s(kernel_function, nblocks, ntpb, shmem, stream, ...) \
   kernel_function<<<nblocks, ntpb, shmem, stream>>>(__VA_ARGS__)
 
+#define __cuda_simd_for(iv, nsimdvl) \
+  for (iv = 0; iv < (nsimdvl); iv++)
+
 #endif

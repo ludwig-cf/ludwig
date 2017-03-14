@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -31,7 +31,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 __host__ int hydro_free(hydro_t * obj);
 __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
 				int form_out);
-__host__ int hydro_memcpy(hydro_t * ibj, int flag);
+__host__ int hydro_memcpy(hydro_t * ibj, tdpMemcpyKind flag);
 __host__ int hydro_io_info(hydro_t * obj, io_info_t ** info);
 __host__ int hydro_u_halo(hydro_t * obj);
 __host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag);

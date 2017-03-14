@@ -376,7 +376,7 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
  *
  *****************************************************************************/
 
-__host__ int wall_memcpy(wall_t * wall, int flag) {
+__host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag) {
 
   int ndevice;
 

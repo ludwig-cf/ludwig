@@ -5,8 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -42,7 +44,7 @@ __host__ int wall_target(wall_t * wall, wall_t ** target);
 __host__ int wall_param(wall_t * wall, wall_param_t * param);
 __host__ int wall_param_set(wall_t * wall, wall_param_t values);
 __host__ int wall_shear_init(wall_t * wall);
-__host__ int wall_memcpy(wall_t * wall, int flag);
+__host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag);
 
 __host__ int wall_bbl(wall_t * wall);
 __host__ int wall_set_wall_distributions(wall_t * wall);

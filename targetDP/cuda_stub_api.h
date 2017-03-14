@@ -5,6 +5,8 @@
 
 #include <stdlib.h>
 
+#ifndef __NVCC__
+
 typedef enum tdpFuncCache_enum {
   tdpFuncCachePreferNone = 0,
   tdpFuncCachePreferShared = 1,
@@ -123,6 +125,27 @@ extern dim3 blockIdx;
 typedef enum tdpError tdpError_t;     /* an enum type */
 typedef int * tdpStream_t;            /* an opaque handle */
 
+#else
+
+typedef cudaFuncCache tdpFuncCache;
+typedef cudaMemcpyKind tdpMemcpyKind;
+typedef cudaDeviceAttr tdpDeviceAttr;
+
+#define tdpSuccess cudaSuccess
+#define tdpMemcpyHostToDevice cudaMemcpyHostToDevice
+#define tdpMemcpyDeviceToHost cudaMemcpyDeviceToHost
+#define tdpMemcpyHostToHost cudaMemcpyHostToHost
+#define tdpMemcpyDeviceToDevice cudaMemcpyDeviceToDevice
+
+#define tdpMemAttachGlobal cudaMemAttachGlobal
+
+#define tdpHostAllocDefault cudaHostAllocDefault
+
+typedef cudaStream_t tdpStream_t;
+typedef cudaError_t tdpError_t;
+
+#endif /* __NVCC__ */
+
 /* API */
 
 /* Device management */
@@ -154,26 +177,33 @@ __host__ tdpError_t tdpStreamSynchronize(tdpStream_t stream);
 /* Memory management */
 
 __host__ tdpError_t tdpFreeHost(void * phost);
-__host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
+__host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
+				 unsigned int flags);
 __host__ tdpError_t tdpMallocManaged(void ** devptr, size_t size,
 				     unsigned int flag);
 __host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
 			      tdpMemcpyKind kind);
 __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
 				   tdpMemcpyKind kind, tdpStream_t stream);
+__host__ tdpError_t tdpMemset(void * devPtr, int value, size_t count);
+
+
+__host__ __device__ tdpError_t tdpFree(void * devPtr);
+__host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
+
+/* Memory management involving symbols
+ * These are slightly awkward as there is never a host pointer to
+ * device symbols, The implementation is via macro abuse. */
+
+__host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
 __host__ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
 					size_t count, size_t offset,
 					tdpMemcpyKind kind);
 __host__ tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
 				      size_t count, size_t offset,
 				      tdpMemcpyKind kind);
-__host__ tdpError_t tdpMemset(void * devPtr, int value, size_t count);
 
-
-__host__ __device__ tdpError_t tdpFree(void * devPtr);
-__host__ __device__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
-					    unsigned int flags);
-__host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
+/* Additional API */
 
 /* Type-specific atomic operations */
 
@@ -188,5 +218,12 @@ __device__ double atomicMinDouble(double * minval, double val);
 
 __device__ int atomicBlockAddInt(int * partsum);
 __device__ double atomicBlockAddDouble(double * partsum);
+
+/* Help for error checking */
+
+__host__ __device__ tdpError_t tdpErrorHandler(tdpError_t ifail,
+					       const char * file,
+					       int line, int fatal);
+#define tdpAssert(call) tdpErrorHandler((call), __FILE__, __LINE__, 1)
 
 #endif

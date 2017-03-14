@@ -122,7 +122,7 @@ __host__ int pth_free(pth_t * pth) {
  *
  *****************************************************************************/
 
-__host__ int pth_memcpy(pth_t * pth, int flag) {
+__host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag) {
 
   int ndevice;
   size_t nsz;

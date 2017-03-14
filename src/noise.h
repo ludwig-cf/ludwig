@@ -5,8 +5,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2013-2016 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -31,7 +33,7 @@ typedef struct noise_s noise_t;
 __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj);
 __host__ int noise_free(noise_t * obj);
 __host__ int noise_init(noise_t * obj, int master_seed);
-__host__ int noise_memcpy(noise_t * obj, int flag);
+__host__ int noise_memcpy(noise_t * obj, tdpMemcpyKind flag);
 __host__ int noise_target(noise_t * nosie, noise_t ** target);
 __host__ int noise_present_set(noise_t * obj, noise_enum_t type, int present);
 __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in, int form_out);

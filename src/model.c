@@ -158,7 +158,7 @@ __host__ int lb_free(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_memcpy(lb_t * lb, int flag) {
+__host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
 
   int ndevice;
   double * tmpf = NULL;

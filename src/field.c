@@ -202,7 +202,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
  *
  *****************************************************************************/
 
-__host__ int field_memcpy(field_t * obj, int flag) {
+__host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
   double * tmp;

@@ -42,7 +42,7 @@ __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data);
 __host__ int data_create(int nsites, data_t * data);
 __host__ int data_free(data_t * data);
 __host__ int data_zero(data_t * data);
-__host__ int data_copy(data_t * data, int flag);
+__host__ int data_copy(data_t * data, tdpMemcpyKind flag);
 
 /*****************************************************************************
  *
@@ -407,6 +407,7 @@ __host__ int data_create(int nsites, data_t * data) {
     int * tmp;
     tdpMalloc((void **) &(data->target), sizeof(data_t));
     tdpMalloc((void **) &tmp, nsites*sizeof(int));
+    tdpMemset(tmp, 0, nsites*sizeof(int));
     tdpMemcpy(&data->target->idata, &tmp, sizeof(int *),
 	      tdpMemcpyHostToDevice);
     tdpMemcpy(&data->target->nsites, &nsites, sizeof(int),
@@ -472,7 +473,7 @@ __host__ int data_zero(data_t * data) {
  *
  *****************************************************************************/
 
-__host__ int data_copy(data_t * data, int flag) {
+__host__ int data_copy(data_t * data, tdpMemcpyKind flag) {
 
   int ndevice;
   int nsites;

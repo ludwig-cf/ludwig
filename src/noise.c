@@ -262,7 +262,7 @@ __host__ int noise_target(noise_t * obj, noise_t ** target) {
  *
  *****************************************************************************/
 
-__host__ int noise_memcpy(noise_t * obj, int flag) {
+__host__ int noise_memcpy(noise_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
 

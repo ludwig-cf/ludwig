@@ -844,7 +844,8 @@ __host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
   assert(obj);
 
   /* Important .. remember to nullify pointers. */
-  tdpMemset(obj, 0, sizeof(colloid_t));
+
+  memset(obj, 0, sizeof(colloid_t));
 
   cinfo->nallocated += 1;
   *pc = obj;

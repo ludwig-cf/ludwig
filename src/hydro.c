@@ -153,7 +153,7 @@ __host__ int hydro_free(hydro_t * obj) {
  *
  *****************************************************************************/
 
-__host__ int hydro_memcpy(hydro_t * obj, int flag) {
+__host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
   double * tmpu;

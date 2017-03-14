@@ -155,7 +155,7 @@ __host__ int map_free(map_t * obj) {
  *
  *****************************************************************************/
 
-__host__ int map_memcpy(map_t * map, int flag) {
+__host__ int map_memcpy(map_t * map, tdpMemcpyKind flag) {
 
   int ndevice;
   char * tmp;

@@ -26,6 +26,7 @@
 
 /* KS. Additions */
 
+#include "cuda_stub_api.h" /* To be merged with target_api.h */
 #include "target_api.h"
 
 /* KS. End additions */

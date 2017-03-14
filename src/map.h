@@ -7,13 +7,15 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef MAP_H
-#define MAP_H
+#ifndef LUDWIG_MAP_H
+#define LUDWIG_MAP_H
 
 #include "pe.h"
 #include "coords.h"
@@ -25,7 +27,7 @@ typedef struct map_s map_t;
 
 __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj);
 __host__ int map_free(map_t * obj);
-__host__ int map_memcpy(map_t * map, int flag);
+__host__ int map_memcpy(map_t * map, tdpMemcpyKind flag);
 
 __host__ int map_pm(map_t * map, int * porous_media_flag);
 __host__ int map_pm_set(map_t * map, int porous_media_flag);

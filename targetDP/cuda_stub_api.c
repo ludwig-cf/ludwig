@@ -317,8 +317,8 @@ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
  *****************************************************************************/
 
 tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
-				 size_t count, size_t offset,
-				 tdpMemcpyKind kind) {
+			       size_t count, size_t offset,
+			       tdpMemcpyKind kind) {
   assert(dst);
   assert(symbol);
 
@@ -357,8 +357,8 @@ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
  *****************************************************************************/
 
 tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
-			       size_t count, size_t offset,
-			       tdpMemcpyKind kind) {
+			     size_t count, size_t offset,
+			     tdpMemcpyKind kind) {
   assert(symbol);
   assert(src);
 

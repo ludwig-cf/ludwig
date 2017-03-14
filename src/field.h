@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -31,7 +33,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
 			  field_t ** pobj);
 __host__ int field_free(field_t * obj);
 
-__host__ int field_memcpy(field_t * obj, int flag);
+__host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag);
 __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out);
