@@ -31,7 +31,8 @@ typedef enum tdpDeviceAttr_enum {
   tdpDevAttrMaxBlockDimZ = 4,
   tdpDevAttrMaxGridDimX = 5,
   tdpDevAttrMaxGridDimY = 6,
-  tdpDevAttrMaxGridDimZ = 7
+  tdpDevAttrMaxGridDimZ = 7,
+  tdpDevAttrManagedMemory = 83
 } tdpDeviceAttr;
 
 /* tdpGetLastError() can return... */
@@ -131,6 +132,8 @@ typedef cudaFuncCache tdpFuncCache;
 typedef cudaMemcpyKind tdpMemcpyKind;
 typedef cudaDeviceAttr tdpDeviceAttr;
 
+#define tdpDevAttrManagedMemory cudaDevAttrManagedMemory
+
 #define tdpSuccess cudaSuccess
 #define tdpMemcpyHostToDevice cudaMemcpyHostToDevice
 #define tdpMemcpyDeviceToHost cudaMemcpyDeviceToHost
@@ -162,7 +165,9 @@ __host__ __device__ tdpError_t tdpGetDeviceCount(int * count);
 /* Error handling */
 
 __host__ __device__ const char * tdpGetErrorName(tdpError_t error);
+__host__ __device__ const char * tdpGetErrorString(tdpError_t error);
 __host__ __device__ tdpError_t tdpGetLastError(void);
+__host__ __device__ tdpError_t tdpPeekAtLastError(void);
 
 /* Stream management */
 
@@ -221,9 +226,8 @@ __device__ double atomicBlockAddDouble(double * partsum);
 
 /* Help for error checking */
 
-__host__ __device__ tdpError_t tdpErrorHandler(tdpError_t ifail,
-					       const char * file,
-					       int line, int fatal);
-#define tdpAssert(call) tdpErrorHandler((call), __FILE__, __LINE__, 1)
+__host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
+					 int line, int fatal);
+#define tdpAssert(call) { tdpErrorHandler((call), __FILE__, __LINE__, 1); }
 
 #endif

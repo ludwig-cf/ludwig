@@ -110,19 +110,21 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
     fe_lc_param_t * tmp;
     fe_vt_t * vt;
 
-    tdpMalloc((void **) &fe->target, sizeof(fe_lc_t));
-    tdpMemset(fe->target, 0, sizeof(fe_lc_t));
-    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&fe->target->param, &tmp, sizeof(fe_lc_param_t *),
-	      tdpMemcpyHostToDevice);
-    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_dvt));
-    tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMalloc((void **) &fe->target, sizeof(fe_lc_t)));
+    tdpAssert(tdpMemset(fe->target, 0, sizeof(fe_lc_t)));
 
-    tdpMemcpy(&fe->target->q, &q->target, sizeof(field_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&fe->target->dq, &dq->target, sizeof(field_grad_t *),
-	      tdpMemcpyHostToDevice);
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+
+    tdpAssert(tdpMemcpy(&fe->target->param, &tmp, sizeof(fe_lc_param_t *),
+			tdpMemcpyHostToDevice));
+    tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_dvt));
+    tdpAssert(tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
+			tdpMemcpyHostToDevice));
+
+    tdpAssert(tdpMemcpy(&fe->target->q, &q->target, sizeof(field_t *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&fe->target->dq, &dq->target, sizeof(field_grad_t *),
+			tdpMemcpyHostToDevice));
   }
 
   *pobj = fe;
@@ -144,7 +146,7 @@ __host__ int fe_lc_free(fe_lc_t * fe) {
 
   tdpGetDeviceCount(&ndevice);
 
-  if (ndevice > 0) tdpFree(fe->target);
+  if (ndevice > 0) tdpAssert(tdpFree(fe->target));
 
   free(fe->param);
   free(fe);
@@ -197,7 +199,6 @@ __host__ int fe_lc_param_commit(fe_lc_t * fe) {
     fe->param->e0coswt[ia] = cos(2.0*pi*e0_freq*t)*e0[ia];
   }
 
-  /* copyConstToTarget(&const_param, fe->param, sizeof(fe_lc_param_t));*/
   tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param, sizeof(fe_lc_param_t),
 		    0, tdpMemcpyHostToDevice);
 

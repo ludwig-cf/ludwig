@@ -236,7 +236,8 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
 
   tdpLaunchKernel(phi_ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, letarget, fetarget, pch->flux->target, mobility);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 
@@ -903,7 +904,9 @@ static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif) {
 
   tdpLaunchKernel(phi_ch_ufs_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, le, phif->target, pch->flux->target, ys, wz);
-  tdpDeviceSynchronize();
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 

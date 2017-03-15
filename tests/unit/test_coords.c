@@ -76,7 +76,6 @@ int test_coords_suite(void) {
   test_coords_decomposition(cs, decomposition_default);
   test_coords_communicator(cs);
   cs_free(cs);
-  printf("OK1\n");
 
   /* Now test 1 */
 
@@ -87,14 +86,10 @@ int test_coords_suite(void) {
 
   cs_init(cs);
   test_coords_system(cs, ntotal_test1, periods_test1);
-  printf("OK2\n");
   test_coords_decomposition(cs, decomposition_test1);
-  printf("OK3\n");
   test_coords_communicator(cs);
-  printf("OK4\n");
   test_coords_cart_info(cs);
   cs_free(cs);
-  printf("OK5\n");
 
   /* Now test 2 */
 

@@ -24,11 +24,12 @@
   /* Macros for calls involing device symbols */
 
   #define tdpSymbol(x) x
-  #define tdpGetSymbolAddress(dst, symbol) tdpAssert(cudaGetSymbolAddress(dst, symbol))
+  #define tdpGetSymbolAddress(dst, symbol) \
+          tdpAssert(cudaGetSymbolAddress(dst, symbol))
   #define tdpMemcpyToSymbol(symbol, src, count, offset, kind)	\
-tdpAssert(cudaMemcpyToSymbol(symbol, src, count, offset, kind))
+          tdpAssert(cudaMemcpyToSymbol(symbol, src, count, offset, kind))
   #define tdpMemcpyFromSymbol(dst, symbol, count, offset, kind) \
-tdpAssert(cudaMemcpyFromSymbol(dst, symbol, count, offset, kind))
+          tdpAssert(cudaMemcpyFromSymbol(dst, symbol, count, offset, kind))
 
   #define TARGET_MAX_THREADS_PER_BLOCK CUDA_MAX_THREADS_PER_BLOCK
   #define __target_simd_for(iv, nsimdvl) __cuda_simd_for(iv, nsimdvl)

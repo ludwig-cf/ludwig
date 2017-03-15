@@ -149,23 +149,23 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
     beris_edw_param_t * tmp;
     lees_edw_t * letarget = NULL;
 
-    tdpMalloc((void **) &obj->target, sizeof(beris_edw_t));
-    tdpMemset(obj->target, 0, sizeof(beris_edw_t));
+    tdpAssert(tdpMalloc((void **) &obj->target, sizeof(beris_edw_t)));
+    tdpAssert(tdpMemset(obj->target, 0, sizeof(beris_edw_t)));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
-    tdpMemcpy(&obj->target->param, &tmp, sizeof(beris_edw_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&obj->target->param, &tmp, sizeof(beris_edw_param_t *),
+			tdpMemcpyHostToDevice));
 
     lees_edw_target(le, &letarget);
-    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->flux, &flx->target, sizeof(advflux_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->flux, &flx->target, sizeof(advflux_t *),
+			tdpMemcpyHostToDevice));
 
-    tdpMemcpy(&obj->target->nall, &obj->nall, sizeof(int),
-	      tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &htmp, obj->nall*NQAB*sizeof(double));
-    tdpMemcpy(&obj->target->h, &htmp, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&obj->target->nall, &obj->nall, sizeof(int),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMalloc((void **) &htmp, obj->nall*NQAB*sizeof(double)));
+    tdpAssert(tdpMemcpy(&obj->target->h, &htmp, sizeof(double *),
+			tdpMemcpyHostToDevice));
   }
 
   *pobj = obj;
@@ -190,9 +190,10 @@ __host__ int beris_edw_free(beris_edw_t * be) {
   if (ndevice > 0) {
     double * htmp;
 
-    tdpMemcpy(&htmp, &be->target->h, sizeof(double *), tdpMemcpyDeviceToHost);
-    tdpFree(htmp);
-    tdpFree(be->target);
+    tdpAssert(tdpMemcpy(&htmp, &be->target->h, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpFree(htmp));
+    tdpAssert(tdpFree(be->target));
   }
 
   advflux_free(be->flux);
@@ -526,7 +527,8 @@ __host__ int beris_edw_update_driver(beris_edw_t * be,
 		  ctxt->target, be->target, fq->target, fq_grad->target,
 		  hydrotarget, be->flux->target, map->target, noisetarget);
 
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(BP_BE_UPDATE_KERNEL);
 
@@ -938,7 +940,8 @@ __host__ int beris_edw_h_driver(beris_edw_t * be, fe_t * fe) {
 
   tdpLaunchKernel(beris_edw_h_kernel_v, nblk, ntpb, 0, 0,
 		  ctxt->target, be->target, fe_target);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(TIMER_BE_MOL_FIELD);
 
@@ -1042,8 +1045,8 @@ int beris_edw_fix_swd(beris_edw_t * be, colloids_info_t * cinfo,
   tdpLaunchKernel(beris_edw_fix_swd_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, cinfo->target, hydro->target, map->target,
 		  noffset[X], noffset[Y], noffset[Z]);
-
-  targetSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 

@@ -83,8 +83,8 @@ __host__ int kernel_ctxt_create(cs_t * cs, int nsimdvl, kernel_info_t info,
     /* Link to static device memory */
     tdpGetSymbolAddress((void **) &obj->target, tdpSymbol(static_ctxt));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(static_param));
-    tdpMemcpy(&obj->target->param, &tmp, sizeof(kernel_param_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&obj->target->param, &tmp, sizeof(kernel_param_t *),
+			tdpMemcpyHostToDevice));
   }
 
   kernel_ctxt_commit(obj, cs, nsimdvl, info);

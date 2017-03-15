@@ -35,6 +35,8 @@ struct data_s {
 __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data);
 __host__ int do_host_kernel(cs_t * cs, kernel_info_t limits, int * mask, int * isum);
 __host__ int do_check(cs_t * cs, int * iref, int * itarget);
+__host__ int do_test_attributes(pe_t * pe);
+
 __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data);
 __global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data);
 __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data);
@@ -64,6 +66,8 @@ __host__ int test_kernel_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
   cs_nlocal(cs, nlocal);
+
+  do_test_attributes(pe);
 
   /* target_thread_info(); */
 
@@ -142,7 +146,8 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   tdpLaunchKernel(do_target_kernel1, nblk, ntpb, 0, 0,
 		  ctxt->target, data->target);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   printf("Finish kernel 1\n");
   data_copy(data, tdpMemcpyDeviceToHost);
@@ -154,7 +159,8 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   data_zero(data);
   tdpLaunchKernel(do_target_kernel1r, nblk, ntpb, 0, 0,
 		 ctxt->target, data->target);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
@@ -172,7 +178,8 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   data_zero(data);
   tdpLaunchKernel(do_target_kernel2, nblk, ntpb, 0, 0,
 		  ctxt->target, data->target);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   printf("Finish kernel 2\n");
   data_copy(data, tdpMemcpyDeviceToHost);
@@ -405,13 +412,13 @@ __host__ int data_create(int nsites, data_t * data) {
   }
   else {
     int * tmp;
-    tdpMalloc((void **) &(data->target), sizeof(data_t));
-    tdpMalloc((void **) &tmp, nsites*sizeof(int));
-    tdpMemset(tmp, 0, nsites*sizeof(int));
-    tdpMemcpy(&data->target->idata, &tmp, sizeof(int *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&data->target->nsites, &nsites, sizeof(int),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMalloc((void **) &(data->target), sizeof(data_t)));
+    tdpAssert(tdpMalloc((void **) &tmp, nsites*sizeof(int)));
+    tdpAssert(tdpMemset(tmp, 0, nsites*sizeof(int)));
+    tdpAssert(tdpMemcpy(&data->target->idata, &tmp, sizeof(int *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&data->target->nsites, &nsites, sizeof(int),
+			tdpMemcpyHostToDevice));
   }
 
   return 0;
@@ -436,10 +443,10 @@ __host__ int data_free(data_t * data) {
     /* No action */
   }
   else {
-    tdpMemcpy(&tmp, &(data->target->idata), sizeof(int *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpFree(data->target);
+    tdpAssert(tdpMemcpy(&tmp, &(data->target->idata), sizeof(int *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpFree(tmp));
+    tdpAssert(tdpFree(data->target));
   }
 
   return 0;
@@ -486,17 +493,43 @@ __host__ int data_copy(data_t * data, tdpMemcpyKind flag) {
   }
   else {
     nsites = data->nsites;
-    tdpMemcpy(&tmp, &(data->target->idata), sizeof(int *),
-	      tdpMemcpyDeviceToHost);
+    tdpAssert(tdpMemcpy(&tmp, &(data->target->idata), sizeof(int *),
+			tdpMemcpyDeviceToHost));
     if (flag == tdpMemcpyHostToDevice) {
-      tdpMemcpy(&data->target->nsites, &nsites, sizeof(int), flag);
-      tdpMemcpy(&data->target->isum, &data->isum, sizeof(int), flag);
-      tdpMemcpy(tmp, data->idata, nsites*sizeof(int), flag);
+      tdpAssert(tdpMemcpy(&data->target->nsites, &nsites, sizeof(int), flag));
+      tdpAssert(tdpMemcpy(&data->target->isum, &data->isum, sizeof(int), flag));
+      tdpAssert(tdpMemcpy(tmp, data->idata, nsites*sizeof(int), flag));
     }
     if (flag == tdpMemcpyDeviceToHost) {
-      tdpMemcpy(&data->isum, &data->target->isum, sizeof(int), flag);
-      tdpMemcpy(data->idata, tmp, nsites*sizeof(int), flag);
+      tdpAssert(tdpMemcpy(&data->isum, &data->target->isum, sizeof(int), flag));
+      tdpAssert(tdpMemcpy(data->idata, tmp, nsites*sizeof(int), flag));
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  do_test_attributes
+ *
+ *****************************************************************************/
+
+int do_test_attributes(pe_t * pe) {
+
+  int ndevice;
+  int device;
+  int value;
+
+  assert(pe);
+
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice > 0) {
+    tdpAssert(tdpGetDevice(&device));
+    tdpAssert(tdpDeviceGetAttribute(&value, tdpDevAttrManagedMemory, device));
+    pe_info(pe, "Device:                 %d\n", device);
+    pe_info(pe, "tdpDevAttrManagedMemory %d\n", value);
   }
 
   return 0;

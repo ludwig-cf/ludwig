@@ -1379,10 +1379,8 @@ __device__ double atomicBlockAddDouble(double * partsum) {
  *
  *****************************************************************************/
 
-__host__ __device__ tdpError_t tdpErrorHandler(tdpError_t ifail,
-					       const char * file,
-					       int line,
-					       int fatal) {
+__host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
+					 int line, int fatal) {
 #ifdef __CUDA_ARCH__
 
   if (ifail != tdpSuccess) {
@@ -1394,11 +1392,18 @@ __host__ __device__ tdpError_t tdpErrorHandler(tdpError_t ifail,
   if (ifail != tdpSuccess) {
     fprintf(stderr, "Line %d (%s): %s: %s\n", line, file,
 	    cudaGetErrorName(ifail), cudaGetErrorString(ifail));
-    if (fatal) exit(0);
+    if (fatal) exit(ifail);
   }
 #endif
 
-  return ifail;
+  return;
+}
+
+__host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
+						     tdpDeviceAttr attr,
+						     int device) {
+
+  return cudaDeviceGetAttribute(value, attr, device);
 }
 
 __host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
@@ -1418,65 +1423,87 @@ __host__ __device__ tdpError_t tdpGetDeviceCount(int * count) {
 
 /* Error handling */
 
+__host__ __device__ const char * tdpGetErrorName(tdpError_t error) {
+
+  return cudaGetErrorName(error);
+}
+
+
+__host__ __device__ const char * tdpGetErrorString(tdpError_t error) {
+
+  return cudaGetErrorString(error);
+}
+
+__host__ __device__ tdpError_t tdpGetLastError(void) {
+
+  return cudaGetLastError();
+}
+
+__host__ __device__ tdpError_t tdpPeekAtLastError(void) {
+
+  return cudaPeekAtLastError();
+}
+
+
 /* Stream management */
 
 __host__ tdpError_t tdpStreamCreate(tdpStream_t * stream) {
 
-  return tdpAssert(cudaStreamCreate(stream));
+  return cudaStreamCreate(stream);
 }
 
 __host__ tdpError_t tdpStreamDestroy(tdpStream_t stream) {
 
-  return tdpAssert(cudaStreamDestroy(stream));
+  return cudaStreamDestroy(stream);
 }
 
 __host__ tdpError_t tdpStreamSynchronize(tdpStream_t stream) {
 
-  return tdpAssert(cudaStreamSynchronize(stream));
+  return cudaStreamSynchronize(stream);
 }
 
 /* Memory management */
 
 __host__ tdpError_t tdpFreeHost(void * phost) {
 
-  return tdpAssert(cudaFreeHost(phost));
+  return cudaFreeHost(phost);
 }
 
 __host__ tdpError_t tdpMallocManaged(void ** devptr, size_t size,
 				     unsigned int flag) {
 
-  return tdpAssert(cudaMallocManaged(devptr, size, flag));
+  return cudaMallocManaged(devptr, size, flag);
 }
 
 __host__ tdpError_t tdpMemcpy(void * dst, const void * src, size_t count,
 			      tdpMemcpyKind kind) {
 
-  return tdpAssert(cudaMemcpy(dst, src, count, kind));
+  return cudaMemcpy(dst, src, count, kind);
 }
 
 __host__ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
 				   tdpMemcpyKind kind, tdpStream_t stream) {
 
-  return tdpAssert(cudaMemcpyAsync(dst, src, count, kind, stream));
+  return cudaMemcpyAsync(dst, src, count, kind, stream);
 }
 
 __host__ __device__ tdpError_t tdpMalloc(void ** devptr, size_t size) {
 
-  return tdpAssert(cudaMalloc(devptr, size));
+  return cudaMalloc(devptr, size);
 }
 
 __host__ tdpError_t tdpMemset(void * devptr, int value, size_t count) {
 
-  return tdpAssert(cudaMemset(devptr, value, count));
+  return cudaMemset(devptr, value, count);
 }
 
 __host__ __device__ tdpError_t tdpFree(void * devptr) {
 
-  return tdpAssert(cudaFree(devptr));
+  return cudaFree(devptr);
 }
 
 __host__ tdpError_t tdpHostAlloc(void ** phost, size_t size,
 				 unsigned int flags) {
 
-  return tdpAssert(cudaHostAlloc(phost, size, flags));
+  return cudaHostAlloc(phost, size, flags);
 }

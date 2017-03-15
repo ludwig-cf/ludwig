@@ -74,9 +74,10 @@ __host__ int lb_propagation_driver(lb_t * lb) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  tdpMemcpyToSymbol(tdpSymbol(coords), lb->cs->param, sizeof(cs_param_t), 0,
-		    tdpMemcpyHostToDevice);
-  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
+  tdpMemcpyToSymbol(tdpSymbol(coords), lb->cs->param,
+		    sizeof(cs_param_t), 0, tdpMemcpyHostToDevice);
+  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param,
+		    sizeof(lb_collide_param_t), 0,
 		    tdpMemcpyHostToDevice);
 
   kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
@@ -86,7 +87,8 @@ __host__ int lb_propagation_driver(lb_t * lb) {
 
   tdpLaunchKernel(lb_propagation_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, lb->target);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(TIMER_PROP_KERNEL);
 
@@ -237,13 +239,15 @@ __host__ int lb_model_swapf(lb_t * lb) {
     lb->fprime = tmp1;
   }
   else {
-    tdpMemcpy(&tmp1, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
-    tdpMemcpy(&tmp2, &lb->target->fprime, sizeof(double *),
-	      tdpMemcpyDeviceToHost); 
+    tdpAssert(tdpMemcpy(&tmp1, &lb->target->f, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&tmp2, &lb->target->fprime, sizeof(double *),
+			tdpMemcpyDeviceToHost)); 
 
-    tdpMemcpy(&lb->target->f, &tmp2, sizeof(double *), tdpMemcpyHostToDevice);
-    tdpMemcpy(&lb->target->fprime, &tmp1, sizeof(double *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&lb->target->f, &tmp2, sizeof(double *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&lb->target->fprime, &tmp1, sizeof(double *),
+			tdpMemcpyHostToDevice));
   }
 
   return 0;

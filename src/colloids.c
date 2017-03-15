@@ -81,8 +81,8 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
     obj->target = obj;
   }
   else {
-    tdpMalloc((void**) &(obj->target), sizeof(colloids_info_t));
-    tdpMemset(obj->target, 0, sizeof(colloids_info_t));
+    tdpAssert(tdpMalloc((void**) &(obj->target), sizeof(colloids_info_t)));
+    tdpAssert(tdpMemset(obj->target, 0, sizeof(colloids_info_t)));
   }
 
   *pinfo = obj;
@@ -106,7 +106,7 @@ __host__ void colloids_info_free(colloids_info_t * info) {
   if (info->map_old) free(info->map_old);
   if (info->map_new) free(info->map_new);
 
-  if (info->target != info) tdpFree(info->target);
+  if (info->target != info) tdpAssert(tdpFree(info->target));
 
   free(info);
 
@@ -172,10 +172,10 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
   }
   else {
     colloid_t * tmp;
-    tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
-	      tdpMemcpyDeviceToHost); 
-    tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&tmp, &info->target->map_new, sizeof(colloid_t **),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp, info->map_new, info->nsites*sizeof(colloid_t *),
+			tdpMemcpyHostToDevice));
   }
 
   return 0;
@@ -268,11 +268,10 @@ __host__ int colloids_info_map_init(colloids_info_t * info) {
 
   if (ndevice > 0) {
     void * tmp;
-    tdpMalloc((void **) &tmp, nsites*sizeof(colloid_t *));
-    assert(tmp);
-    tdpMemset(tmp, 0, nsites*sizeof(colloid_t *));
-    tdpMemcpy(&info->target->map_new, &tmp, sizeof(colloid_t **),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMalloc((void **) &tmp, nsites*sizeof(colloid_t *)));
+    tdpAssert(tdpMemset(tmp, 0, nsites*sizeof(colloid_t *)));
+    tdpAssert(tdpMemcpy(&info->target->map_new, &tmp, sizeof(colloid_t **),
+			tdpMemcpyHostToDevice));
   }
 
   return 0;
@@ -840,12 +839,12 @@ __host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
 
   assert(cinfo);
 
-  tdpMallocManaged((void**) &obj, sizeof(colloid_t), tdpMemAttachGlobal);
-  assert(obj);
+  tdpAssert(tdpMallocManaged((void **) &obj, sizeof(colloid_t),
+			     tdpMemAttachGlobal));
 
   /* Important .. remember to nullify pointers. */
 
-  memset(obj, 0, sizeof(colloid_t));
+  tdpAssert(tdpMemset((void *) obj, 0, sizeof(colloid_t)));
 
   cinfo->nallocated += 1;
   *pc = obj;

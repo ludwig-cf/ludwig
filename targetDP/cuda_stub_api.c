@@ -28,7 +28,8 @@ dim3 blockIdx;
 dim3 gridDim = {1, 1, 1};
 dim3 blockDim = {1, 1, 1};
 
-static tdpError_t lastError;
+static tdpError_t lastError = tdpSuccess;
+static char lastErrorString[BUFSIZ] = "";
 static int staticStream;
 
 static void error_boke(int line, tdpError_t error) {
@@ -51,6 +52,17 @@ static void error_boke(int line, tdpError_t error) {
 
 #define error_return(error) \
   error_return_if(1, error)
+
+void tdpErrorHandler(tdpError_t ifail, const char * file, int line, int fatal) {
+
+  if (ifail != tdpSuccess) {
+    printf("tdpErrorHandler: %s:%d %s %s\n", file, line, tdpGetErrorName(ifail),
+	   tdpGetErrorString(ifail));
+    if (fatal) exit(ifail);
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
@@ -174,13 +186,39 @@ const char *  tdpGetErrorName(tdpError_t error) {
 
 /*****************************************************************************
  *
+ *  tdpGetErrorString
+ *
+ *****************************************************************************/
+
+const char * tdpGetErrorString(tdpError_t ifail) {
+
+  return "";
+}
+
+/*****************************************************************************
+ *
+ *  tdpPeekAtLastError
+ *
+ *****************************************************************************/
+
+tdpError_t tdpPeekAtLastError(void) {
+
+  return lastError;
+}
+
+/*****************************************************************************
+ *
  *  tdpGetLastError
  *
  *****************************************************************************/
 
 tdpError_t tdpGetLastError(void) {
 
-  return lastError;
+  tdpError_t last = lastError;
+
+  lastError = tdpSuccess;
+
+  return last;
 }
 
 /*****************************************************************************
