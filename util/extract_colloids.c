@@ -47,8 +47,9 @@
 #define NZ 256
 
 static const int  iread_ascii = 0;       /* Read ascii or binary (default) */
-static const int  reverse_cds = 0;       /* Reverse component order in output */
-					 /* (default is no) */
+static const int  reverse_cds = 0;       /* Reverse component order in output (default is no) */
+static const int  include_ref = 0;	 /* Include reference colloids at far x-,y-,z-corners */
+
 static const char * format3_    = "%10.5f, %10.5f, %10.5f,";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 static const char * formate3end_ = "%13.6e  %13.6e  %13.6e\n";
@@ -266,26 +267,30 @@ void colloids_to_csv_header(FILE * fp) {
 
   fprintf(fp, "%s", "x, y, z\n");
 
-  r[0] = 1.0*NX - 1.0;
-  r[1] = 0.0;
-  r[2] = 0.0;
+  if (include_ref) {
 
-  fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, "\n");
+    r[0] = 1.0*NX - 1.0;
+    r[1] = 0.0;
+    r[2] = 0.0;
 
-  r[0] = 0.0;
-  r[1] = 1.0*NY - 1.0;
-  r[2] = 0.0;
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, "\n");
 
-  fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, "\n");
+    r[0] = 0.0;
+    r[1] = 1.0*NY - 1.0;
+    r[2] = 0.0;
 
-  r[0] = 0.0;
-  r[1] = 0.0;
-  r[2] = 1.0*NZ - 1.0;
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, "\n");
 
-  fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, "\n");
+    r[0] = 0.0;
+    r[1] = 0.0;
+    r[2] = 1.0*NZ - 1.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, "\n");
+
+  }
 
   return;
 }
@@ -303,38 +308,42 @@ void colloids_to_csv_header_with_m(FILE * fp) {
 
   fprintf(fp, "%s", "x, y, z, mx, my, mz\n");
 
-  r[0] = 1.0*NX - 1.0;
-  r[1] = 0.0;
-  r[2] = 0.0;
+  if (include_ref) {
 
-  m[0] = 1.0;
-  m[1] = 0.0;
-  m[2] = 0.0;
+    r[0] = 1.0*NX - 1.0;
+    r[1] = 0.0;
+    r[2] = 0.0;
 
-  fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, format3end_, m[0], m[1], m[2]);
+    m[0] = 1.0;
+    m[1] = 0.0;
+    m[2] = 0.0;
 
-  r[0] = 0.0;
-  r[1] = 1.0*NY - 1.0;
-  r[2] = 0.0;
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, m[0], m[1], m[2]);
 
-  m[0] = 0.0;
-  m[1] = 1.0;
-  m[2] = 0.0;
+    r[0] = 0.0;
+    r[1] = 1.0*NY - 1.0;
+    r[2] = 0.0;
 
-  fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, format3end_, m[0], m[1], m[2]);
+    m[0] = 0.0;
+    m[1] = 1.0;
+    m[2] = 0.0;
 
-  r[0] = 0.0;
-  r[1] = 0.0;
-  r[2] = 1.0*NZ - 1.0;
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, m[0], m[1], m[2]);
 
-  m[0] = 0.0;
-  m[1] = 0.0;
-  m[2] = 1.0;
+    r[0] = 0.0;
+    r[1] = 0.0;
+    r[2] = 1.0*NZ - 1.0;
 
-  fprintf(fp, format3_, r[0], r[1], r[2]);
-  fprintf(fp, format3end_, m[0], m[1], m[2]);
+    m[0] = 0.0;
+    m[1] = 0.0;
+    m[2] = 1.0;
+
+    fprintf(fp, format3_, r[0], r[1], r[2]);
+    fprintf(fp, format3end_, m[0], m[1], m[2]);
+
+  }
 
   return;
 }
