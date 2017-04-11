@@ -229,7 +229,12 @@ int main(int argc, char ** argv) {
 
   /* Finish colloid coordinate output */
   fclose(fp_csv);
-  printf("Wrote %d actual colloids + 3 reference colloids in header\n", ncount);
+  if (include_ref) {
+    printf("Wrote %d actual colloids + 3 reference colloids in header\n", ncount);
+  }
+  else {
+    printf("Wrote %d colloids\n", ncount);
+  }
 
   /* Write velocity output in column-major format and finish */
   if (argc == 5) {
