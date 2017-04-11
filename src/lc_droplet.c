@@ -516,7 +516,7 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
   field_grad_tensor_grad(fe->lc->dq, index, dq);
   field_grad_tensor_delsq(fe->lc->dq, index, dsq);
 
-  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h);
+  fe_lc_droplet_mol_field(fe, index, h);
   
   qh = 0.0;
 
@@ -595,7 +595,7 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
   field_grad_tensor_grad(fe->lc->dq, index, dq);
   field_grad_tensor_delsq(fe->lc->dq, index, dsq);
 
-  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h);
+  fe_lc_droplet_mol_field(fe, index, h);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
