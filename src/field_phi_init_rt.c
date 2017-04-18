@@ -81,6 +81,51 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     field_phi_init_block(param.xi0, phi);
   }
 
+  if (p != 0 && strcmp(value, "block_X") == 0) {
+    double block_dimension = 10.0;
+    rt_double_parameter(rt, "block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block  of size %0.2f along the X axis\n", block_dimension);
+    field_phi_init_block_X(param.xi0, phi, block_dimension);
+  }
+
+  if (p != 0 && strcmp(value, "block_Y") == 0) {
+    double block_dimension = 10.0;
+    rt_double_parameter(rt, "block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block  of size %0.2f along the Y axis\n", block_dimension);
+    field_phi_init_block_Y(param.xi0, phi, block_dimension);
+  }
+
+  if (p != 0 && strcmp(value, "block_Z") == 0) {
+    double block_dimension = 10.0;
+    rt_double_parameter(rt, "block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block  of size %0.2f along the Z axis\n", block_dimension);
+    field_phi_init_block_Z(param.xi0, phi, block_dimension);
+  }
+
+  if (p != 0 && strcmp(value, "layer_X") == 0) {
+    double layer_size = 0.50;
+    rt_double_parameter(rt, "layer_size", &layer_size);
+    if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
+    pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the X axis\n", layer_size*100.0);
+    field_phi_init_layer_X(param.xi0, phi, layer_size);
+  }
+
+  if (p != 0 && strcmp(value, "layer_Y") == 0) {
+     double layer_size = 0.50;
+    rt_double_parameter(rt, "layer_size", &layer_size);
+    if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
+    pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the Y axis\n", layer_size*100.0);
+    field_phi_init_layer_Y(param.xi0, phi, layer_size);
+  }
+
+  if (p != 0 && strcmp(value, "layer_Z") == 0) {
+    double layer_size = 0.50;
+    rt_double_parameter(rt, "layer_size", &layer_size);
+    if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
+    pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the Z axis\n", layer_size*100.0);
+    field_phi_init_layer_Z(param.xi0, phi, layer_size);
+  }
+
   if (p != 0 && strcmp(value, "bath") == 0) {
     pe_info(pe, "Initialising phi for bath\n");
     field_phi_init_bath(phi);
@@ -94,6 +139,26 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     pe_info(pe, "Initialising droplet radius:     %14.7e\n", radius);
     pe_info(pe, "Initialising droplet amplitude:  %14.7e\n", phistar);
     field_phi_init_drop(param.xi0, radius, phistar, phi);
+  }
+
+  if (p != 0 && strcmp(value, "emulsion") == 0) {
+    pe_info(pe, "Initialising phi for emulsion\n");
+    int ndrops = 1;
+    radius = DEFAULT_RADIUS;
+    double d_centre = 20.0;   // distance between drop centres
+    double phistar = -1.0;   // Value of the order parameter inside the droplets
+    rt_int_parameter(rt, "phi_init_emulsion_ndrops", &ndrops);
+    rt_double_parameter(rt, "phi_init_emulsion_radius", &radius);
+    rt_double_parameter(rt, "phi_init_emulsion_d_centre", &d_centre);
+    rt_double_parameter(rt, "phi_init_emulsion_amplitude", &phistar);
+
+    if (2.0*radius > d_centre + 5.0) pe_info(pe, "Overlapping droplets\n"); 
+    
+    pe_info(pe, "Intialising emulsion with %i droplets of radius %f\n", ndrops, radius);   
+    pe_info(pe, "Centre to centre distance: %f\n",d_centre);
+    pe_info(pe, "Value of phi inside droplets: %0.2f\n",phistar); 
+
+    field_phi_init_emulsion(param.xi0, radius, phistar, ndrops, d_centre, phi);
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {
