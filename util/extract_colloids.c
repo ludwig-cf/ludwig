@@ -54,6 +54,7 @@ static const int  cds_with_v  = 1;  /* Output coordinates and velocity */
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 static const char * formate3end_ = "%14.6e, %14.6e, %14.6e\n";
+static const char * formate3end2_ = "%13.6e  %13.6e  %13.6e\n";
 
 double **** vel;
 int ix,iy,iz,ixc,iyc,izc;
@@ -239,7 +240,7 @@ int main(int argc, char ** argv) {
       for (iy = 0; iy < NY; iy++) {
 	for (ix = 0; ix < NX; ix++) {
 
-	    fprintf(fp_velo, formate3end_, vel[ix][iy][iz][0],vel[ix][iy][iz][1],vel[ix][iy][iz][2]);
+	    fprintf(fp_velo, formate3end2_, vel[ix][iy][iz][0],vel[ix][iy][iz][1],vel[ix][iy][iz][2]);
 
 	}
       }
