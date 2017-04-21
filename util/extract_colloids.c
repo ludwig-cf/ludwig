@@ -55,11 +55,14 @@ static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 static const char * formate3end_ = "%14.6e, %14.6e, %14.6e\n";
 static const char * formate3end2_ = "%13.6e  %13.6e  %13.6e\n";
+static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 
 double **** vel;
 int ix,iy,iz,ixc,iyc,izc;
 int xstart,xstop,ystart,ystop,zstart,zstop;
 double dist;
+
+double normv;
 
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
@@ -173,7 +176,10 @@ int main(int argc, char ** argv) {
       /* Write coordinates and orientation 's' or velocity */
       fprintf(fp_csv, format3_, s2.r[0], s2.r[1], s2.r[2]);
       if (cds_with_m) fprintf(fp_csv, format3end_, s1.s[0], s1.s[1], s1.s[2]);
-      if (cds_with_v) fprintf(fp_csv, formate3end_, s1.v[0], s1.v[1], s1.v[2]);
+      if (cds_with_v) {
+	normv = sqrt(s1.v[0]*s1.v[0] + s1.v[1]*s1.v[1] + s1.v[2]*s1.v[2]);
+	fprintf(fp_csv, formate4end_, s1.v[0], s1.v[1], s1.v[2], normv);
+      }
 
       /* Write colloid velocity on lattice */
       if (argc == 5) {
@@ -359,9 +365,8 @@ void colloids_to_csv_header_with_m(FILE * fp) {
 void colloids_to_csv_header_with_v(FILE * fp) {
 
   double r[3];
-  double v[3];
 
-  fprintf(fp, "%s", "x, y, z, vx, vy, vz\n");
+  fprintf(fp, "%s", "x, y, z, vx, vy, vz, normv\n");
 
   if (include_ref) {
 
@@ -369,34 +374,22 @@ void colloids_to_csv_header_with_v(FILE * fp) {
     r[1] = 0.0;
     r[2] = 0.0;
 
-    v[0] = 0.0;
-    v[1] = 0.0;
-    v[2] = 0.0;
-
     fprintf(fp, format3_, r[0], r[1], r[2]);
-    fprintf(fp, format3end_, v[0], v[1], v[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
 
     r[0] = 0.0;
     r[1] = 1.0*NY - 1.0;
     r[2] = 0.0;
 
-    v[0] = 0.0;
-    v[1] = 0.0;
-    v[2] = 0.0;
-
     fprintf(fp, format3_, r[0], r[1], r[2]);
-    fprintf(fp, format3end_, v[0], v[1], v[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
 
     r[0] = 0.0;
     r[1] = 0.0;
     r[2] = 1.0*NZ - 1.0;
 
-    v[0] = 0.0;
-    v[1] = 0.0;
-    v[2] = 0.0;
-
     fprintf(fp, format3_, r[0], r[1], r[2]);
-    fprintf(fp, format3end_, v[0], v[1], v[2]);
+    fprintf(fp, format3end_, 0, 0, 0, 0);
 
   }
 
