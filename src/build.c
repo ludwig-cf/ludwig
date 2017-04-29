@@ -544,9 +544,12 @@ int build_reset_links(colloid_t * p_colloid, map_t * map) {
  *  Correction terms are added for the appropriate colloids to be
  *  implemented at the next step.
  *
+ *  The 'abstract' free energy fe may be NULL for single fluid.
+ *
  *****************************************************************************/
 
-int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb, field_t * phi,
+int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
+			 field_t * phi,
 			 field_t * p, field_t * q, psi_t * psi, map_t * map) {
 
   int ic, jc, kc, index;
@@ -556,7 +559,6 @@ int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb, field_t 
   colloid_t * pcold;
   colloid_t * pcnew;
 
-  assert(fe);
   assert(lb);
   assert(cinfo);
 
@@ -980,7 +982,8 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
  *
  *****************************************************************************/
 
-static int build_replace_order_parameter(fe_t * fe, lb_t * lb, colloids_info_t * cinfo,
+static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
+					 colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc, map_t * map) {
   int indexn, n, p, pdash;
@@ -1115,13 +1118,11 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb, colloids_info_t *
  *  build_replace_q_local
  *
  *  ASSUME NORMAL ANCHORING AMPLITUDE = 1/3
- *  TODO:
- *  We need the free energy at this point.
  *
  *****************************************************************************/
 
-int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc, int index,
-			  field_t * q) {
+int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
+			  int index, field_t * q) {
 
   int ia, ib;
   double rb[3], rbp[3], rhat[3];

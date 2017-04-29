@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2014 The University of Edinburgh
+ *  (c) 2012-2016 The University of Edinburgh
  *  
  *****************************************************************************/
 
@@ -21,7 +21,13 @@
 /* For SVD tests, SVD_EPSILON is increased according to matrix elements... */
 #define SVD_EPSILON (2.0*DBL_EPSILON)
 
+/* For RNG tests */
+#define NLARGE         10000000
+#define STAT_TOLERANCE 0.001
+
+
 int util_svd_check(int m, int n, double ** a);
+int util_random_unit_vector_check(void);
 
 /*****************************************************************************
  *
@@ -59,6 +65,7 @@ int test_util_suite(void) {
   assert(ifail == 0);
 
   util_matrix_free(m, &a);
+  util_random_unit_vector_check();
 
   pe_info(pe, "PASS     ./unit/test_util\n");
   pe_free(pe);
@@ -148,4 +155,65 @@ int util_svd_check(int m, int n, double **a) {
   util_matrix_free(m, &u);
 
   return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  util_random_unit_vector_check
+ *
+ *  Check a known case, and some simple statistics.
+ *
+ *****************************************************************************/
+
+int util_random_unit_vector_check(void) {
+
+  int n;
+  int state = 1;
+  double rhat[3];
+  double rvar;
+  double rmin, rmax, rmean[3];
+
+  rmin = 0.0;
+  rmax = 0.0;
+  rmean[0] = 0.0;
+  rmean[1] = 0.0;
+  rmean[2] = 0.0;
+
+  for (n = 0; n < NLARGE; n++) {
+    util_random_unit_vector(&state, rhat);
+    rvar = rhat[0]*rhat[0] + rhat[1]*rhat[1] + rhat[2]*rhat[2];
+    /* The algorithm is ok to about 5x10^-16 */
+    assert(fabs(rvar - 1.0) < 4.0*DBL_EPSILON);
+    rmean[0] += rhat[0];
+    rmean[1] += rhat[1];
+    rmean[2] += rhat[2];
+    rmin = dmin(rmin, rhat[0]);
+    rmin = dmin(rmin, rhat[1]);
+    rmin = dmin(rmin, rhat[2]);
+    rmax = dmax(rmax, rhat[0]);
+    rmax = dmax(rmax, rhat[1]);
+    rmax = dmax(rmax, rhat[2]);
+  }
+
+  /*info("Unit vector modulus is %f (ok)\n", rvar);*/
+
+  assert(rmin >= -1.0);
+  /*info("Component min is %g (ok)\n", rmin);*/
+  
+  assert(rmax <= +1.0);
+  /*info("Component max is %g (ok)\n", rmax);*/
+
+  rmean[0] /= NLARGE;
+  rmean[1] /= NLARGE;
+  rmean[2] /= NLARGE;
+
+  assert(fabs(rmean[0]) < STAT_TOLERANCE);
+  /*info("Component <X> is %g (ok)\n", rmean[0]);*/
+  assert(fabs(rmean[1]) < STAT_TOLERANCE);
+  /*info("Component <Y> is %g (ok)\n", rmean[1]);*/
+  assert(fabs(rmean[2]) < STAT_TOLERANCE);
+  /*info("Component <Z> is %g (ok)\n", rmean[2]);*/
+
+
+  return 0;
 }

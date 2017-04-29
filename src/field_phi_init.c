@@ -119,7 +119,7 @@ int field_phi_init_block(double xi, field_t * phi) {
 
 /*****************************************************************************
  *
- * field_phi_init_block_X
+ *  field_phi_init_block_X
  *
  *  Initialise one block of chosen thickness at central position on X
  *
@@ -163,7 +163,7 @@ int field_phi_init_block_X(double xi, field_t * phi, double block_dimension) {
 
 /*****************************************************************************
  *
- * field_phi_init_block_Y
+ *  field_phi_init_block_Y
  *
  *  Initialise one block of chosen thickness at central position on Y
  *
@@ -207,7 +207,7 @@ int field_phi_init_block_Y(double xi, field_t * phi, double block_dimension) {
 
 /*****************************************************************************
  *
- * field_phi_init_block_Z
+ *  field_phi_init_block_Z
  *
  *  Initialise one block of chosen thickness at central position on Z
  *
@@ -251,7 +251,7 @@ int field_phi_init_block_Z(double xi, field_t * phi, double block_dimension) {
 
 /*****************************************************************************
  *
- * field_phi_init_layer_X
+ *  field_phi_init_layer_X
  *
  *  Initialise two layers with an interface at chosen position on X
  *
@@ -288,7 +288,7 @@ int field_phi_init_layer_X(double xi, field_t * phi, double layer_size) {
 
 /*****************************************************************************
  *
- * field_phi_init_layer_Y
+ *  field_phi_init_layer_Y
  *
  *  Initialise two layers with an interface at chosen position on Y
  *
@@ -325,7 +325,7 @@ int field_phi_init_layer_Y(double xi, field_t * phi, double layer_size) {
 
 /*****************************************************************************
  *
- * field_phi_init_layer_Z
+ *  field_phi_init_layer_Z
  *
  *  Initialise two layers with an interface at chosen position on Z
  *
@@ -542,27 +542,27 @@ int field_phi_init_spinodal_patches(int seed, int patch,
  *
  *****************************************************************************/
 
-int field_phi_init_emulsion(double xi, double radius, double phistar, int N_drops, 
-     double d_centre, field_t * phi) {
+int field_phi_init_emulsion(double xi, double radius, double phistar,
+			    int N_drops, 
+			    double d_centre, field_t * phi) {
 
   int ntotal[3];
   int nlocal[3];
   int noffset[3];
   int ic, jc, kc, index;
 
-  int i, j, k, x, y, z;
-  int id, drop_temp;
+  int i, j, k, y, z;
+  int id;
   double dy, dz;
   int cy, cz;
 
   int PosY[N_drops], PosZ[N_drops];
   int PosY0, PosZ0;
   double Rclosest; 
-  int Nclosest;
 
   double r;
-  int ny, nz; // number of drops on each dimension
-  double rxi0; // Interface width
+  int ny, nz;  /* number of drops on each dimension */
+  double rxi0; /* Interface width */
   double phi1; /* Final phi value */
 
   assert(phi);
@@ -570,8 +570,6 @@ int field_phi_init_emulsion(double xi, double radius, double phistar, int N_drop
   coords_ntotal(ntotal);
   coords_nlocal(nlocal);
   coords_nlocal_offset(noffset);
-
-  double Phi[ntotal[0]][ntotal[1]][ntotal[2]];
 
   info("Starting function symmetric_init_emulsion\n");
 
@@ -623,19 +621,9 @@ int field_phi_init_emulsion(double xi, double radius, double phistar, int N_drop
     for (j=0; j<ntotal[Y]; j++) {
       for (k=0; k<ntotal[Z]; k++) {
 
-	drop_temp = 0;
-	Phi[i][j][k] = -(phistar);
-
 	for (id=0; id<N_drops; id++) {
 
 	  r = sqrt((j-PosY[id])*(j-PosY[id]) + (k-PosZ[id])*(k-PosZ[id]));
-	  if (r <= d_centre/2.0) {
-	    Phi[i][j][k] = -1.0*phistar*tanh(rxi0*(r-radius));
-	  }
-	  if (r <= radius) {
-	    drop_temp = id+1; 
-	  }
-
 	} 
 
       }
@@ -647,19 +635,16 @@ int field_phi_init_emulsion(double xi, double radius, double phistar, int N_drop
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = coords_index(ic, jc, kc);
-	x = noffset[X] + ic;
 	y = noffset[Y] + jc;
 	z = noffset[Z] + kc;
 
 	phi1 = -(phistar);
-	Nclosest = 0;
 	Rclosest = ntotal[Y]*ntotal[Z];
 
 	for (id=0; id<N_drops; id++) {
 
 	  r = sqrt((y-PosY[id])*(y-PosY[id]) + (z-PosZ[id])*(z-PosZ[id]));
 	  if (r < Rclosest) {
-	    Nclosest = id;
 	    Rclosest = r;
 	  }
 

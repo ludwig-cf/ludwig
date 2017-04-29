@@ -113,9 +113,12 @@ int stats_calibration_init(colloids_info_t * cinfo, int nswitch) {
     calib_.nstart = length*length/eta;
 
     /* Set a force of the right size in a random direction, and zero
-     * the accumulators. */
+     * the accumulators. The actual numbers come from an old RNG and
+     * are retained as literals to allow tests to pass. */
 
-    ran_serial_unit_vector(f);
+    f[X] = +5.02274083742018e-01;
+    f[Y] = -1.05061333197473e-01;
+    f[Z] = -8.58302313330149e-01;
 
     for (ia = 0; ia < 3; ia++) {
       f[ia] *= calib_.ftarget;

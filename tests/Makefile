@@ -123,3 +123,29 @@ compile-run-serial:
 
 compile-run-mpi:
 	make compile-run-mpi-d3q19
+
+# Targets to run all the tests in various configurations
+# Expects a default config.mk file to set CFLAGS
+
+AOS4 = -DVVL=4
+SOA1 = -DADDR_SOA
+AOSOA4 = -DADDR_AOSOA -DVVL=4
+
+all:
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(AOS4)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(SOA1)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(AOSOA4)"
+
+all-serial:
+	$(MAKE) compile-run-serial-d2q9 "CFLAGS = $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d3q15 "CFLAGS = $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d3q19 "CFLAGS = $(CFLAGS_TEST)"
+
+
+env1:
+	export OMP_NUM_THREADS=1
+	echo "$${OMP_NUM_THREADS}"
+
+
+
