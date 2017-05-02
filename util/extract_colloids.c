@@ -46,15 +46,14 @@
 #define NY 128
 #define NZ 256
 
-static const int  iread_ascii = 0;  /* Read ascii or binary (default) */
+static const int  iread_ascii = 1;  /* Read ascii or binary (default) */
 static const int  include_ref = 0;  /* Include reference colloids at far x-,y-,z-corners */
 static const int  cds_with_m  = 0;  /* Output coordinates and orientation */
 static const int  cds_with_v  = 1;  /* Output coordinates and velocity */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
-static const char * formate3end_ = "%14.6e, %14.6e, %14.6e\n";
-static const char * formate3end2_ = "%13.6e  %13.6e  %13.6e\n";
+static const char * formate3end_ = "%13.6e  %13.6e  %13.6e\n";
 static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 
 double **** vel;
@@ -246,7 +245,7 @@ int main(int argc, char ** argv) {
       for (iy = 0; iy < NY; iy++) {
 	for (ix = 0; ix < NX; ix++) {
 
-	    fprintf(fp_velo, formate3end2_, vel[ix][iy][iz][0],vel[ix][iy][iz][1],vel[ix][iy][iz][2]);
+	    fprintf(fp_velo, formate3end_, vel[ix][iy][iz][0],vel[ix][iy][iz][1],vel[ix][iy][iz][2]);
 
 	}
       }
