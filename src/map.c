@@ -216,7 +216,8 @@ int map_init_io_info(map_t * obj, int grid[3], int form_in, int form_out) {
   io_info_read_set(obj->info, IO_FORMAT_ASCII, map_read_ascii);
 
   sz = sizeof(char) + obj->ndata*sizeof(double);
-  io_info_set_bytesize(obj->info, sz);
+  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, sz);
+  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, 2 + 23*obj->ndata + 1);
 
   io_info_format_set(obj->info, form_in, form_out);
   io_info_metadata_filestub_set(obj->info, "map");

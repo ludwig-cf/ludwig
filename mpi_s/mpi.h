@@ -24,6 +24,7 @@ extern "C" {
 
 typedef int MPI_Handle;
 typedef MPI_Handle MPI_Comm;
+typedef MPI_Handle MPI_Group;
 typedef MPI_Handle MPI_Datatype;
 typedef MPI_Handle MPI_Request;
 typedef MPI_Handle MPI_Op;
@@ -106,6 +107,7 @@ int MPI_Bcast(void * buffer, int count, MPI_Datatype datatype, int root,
 	      MPI_Comm comm);
 int MPI_Comm_rank(MPI_Comm comm, int * rank);
 int MPI_Comm_size(MPI_Comm comm, int * size);
+int MPI_Comm_group(MPI_Comm comm, MPI_Group * grp);
 
 int MPI_Send(void * buf, int count, MPI_Datatype type, int dest, int tag,
 	     MPI_Comm comm);
@@ -201,6 +203,8 @@ int MPI_Abort(MPI_Comm comm, int errorcode);
 
 int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler erhandler);
 int MPI_Get_address(const void * location, MPI_Aint * address);
+int MPI_Group_translate_ranks(MPI_Group grp1, int n, const int * ranks1,
+			      MPI_Group grp2, int * ranks2);
 int MPI_Type_create_struct(int count, int * arry_of_blocklens,
 			   const MPI_Aint * array_of_displacements,
 			   const MPI_Datatype * array_of_datatypes,

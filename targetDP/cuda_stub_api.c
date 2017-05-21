@@ -217,6 +217,7 @@ tdpError_t tdpGetLastError(void) {
   tdpError_t last = lastError;
 
   lastError = tdpSuccess;
+  strcpy(lastErrorString, "");
 
   return last;
 }

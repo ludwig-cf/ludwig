@@ -279,7 +279,10 @@ __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
   io_info_write_set(obj->info, IO_FORMAT_ASCII, field_write_ascii);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, field_read);
   io_info_read_set(obj->info, IO_FORMAT_ASCII, field_read_ascii);
-  io_info_set_bytesize(obj->info, obj->nf*sizeof(double));
+
+  /* ASCII format size is 23 bytes per element plus a '\n' */
+  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, obj->nf*sizeof(double));
+  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, (obj->nf*23 + 1));
 
   io_info_format_set(obj->info, form_in, form_out);
   io_info_metadata_filestub_set(obj->info, obj->name);

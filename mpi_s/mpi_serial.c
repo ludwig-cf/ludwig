@@ -108,6 +108,21 @@ int MPI_Finalize(void) {
 
 /*****************************************************************************
  *
+ *  MPI_Comm_group
+ *
+ *****************************************************************************/
+
+int MPI_Comm_group(MPI_Comm comm, MPI_Group * group) {
+
+  assert(group);
+
+  *group = 0;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Comm_rank
  *
  *****************************************************************************/
@@ -836,6 +851,22 @@ int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
 int MPI_Get_address(const void * location, MPI_Aint * address) {
 
   *address = 0;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Group_translate_ranks
+ *
+ *****************************************************************************/
+
+int MPI_Group_translate_ranks(MPI_Group grp1, int n, const int * ranks1,
+			      MPI_Group grp2, int * ranks2) {
+  assert(ranks1);
+  assert(ranks2);
+
+  memcpy(ranks2, ranks1, n*sizeof(int));
 
   return MPI_SUCCESS;
 }

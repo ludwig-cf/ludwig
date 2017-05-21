@@ -20,10 +20,11 @@
 #include <float.h>
 #include <stdlib.h>
 
+#include "util.h"
 #include "coords_s.h"
 
-static __host__ int cs_default_decomposition(cs_t * cs);
 static __host__ int cs_is_ok_decomposition(cs_t * cs);
+static __host__ int cs_rectilinear_decomposition(cs_t * cs);
 
 static __constant__ cs_param_t const_param;
 
@@ -108,6 +109,12 @@ __host__ int cs_free(cs_t * cs) {
 
     MPI_Comm_free(&cs->commcart);
     MPI_Comm_free(&cs->commperiodic);
+    free(cs->listnlocal[X]);
+    free(cs->listnlocal[Y]);
+    free(cs->listnlocal[Z]);
+    free(cs->listnoffset[X]);
+    free(cs->listnoffset[Y]);
+    free(cs->listnoffset[Z]);
     pe_free(cs->pe);
     free(cs->param);
     free(cs);
@@ -154,9 +161,18 @@ __host__ int cs_init(cs_t * cs) {
     /* The user decomposition is selected */
   }
   else {
-    /* Look for a default */
-    cs_default_decomposition(cs);
+    /* Reset the decomposition and look for a default */
+    cs->param->mpi_cartsz[X] = 0;
+    cs->param->mpi_cartsz[Y] = 0;
+    cs->param->mpi_cartsz[Z] = 0;
+    if (cs->param->ntotal[X] == 1) cs->param->mpi_cartsz[X] = 1;
+    if (cs->param->ntotal[Y] == 1) cs->param->mpi_cartsz[Y] = 1;
+    if (cs->param->ntotal[Z] == 1) cs->param->mpi_cartsz[Z] = 1;
+
+    MPI_Dims_create(pe_mpi_size(cs->pe), 3, cs->param->mpi_cartsz);
   }
+
+  cs_rectilinear_decomposition(cs);
 
   /* A communicator which is always periodic: */
 
@@ -177,19 +193,19 @@ __host__ int cs_init(cs_t * cs) {
 
   for (n = 0; n < 3; n++) {
     MPI_Cart_shift(cs->commcart, n, 1,
-		   &(cs->mpi_cart_neighbours[BACKWARD][n]),
-		   &(cs->mpi_cart_neighbours[FORWARD][n]));
+		   &(cs->mpi_cart_neighbours[CS_BACK][n]),
+		   &(cs->mpi_cart_neighbours[CS_FORW][n]));
   }
 
   /* Set local number of lattice sites and offsets. */
 
-  cs->param->nlocal[X] = cs->param->ntotal[X] / cs->param->mpi_cartsz[X];
-  cs->param->nlocal[Y] = cs->param->ntotal[Y] / cs->param->mpi_cartsz[Y];
-  cs->param->nlocal[Z] = cs->param->ntotal[Z] / cs->param->mpi_cartsz[Z];
+  cs->param->nlocal[X] = cs->listnlocal[X][cs->param->mpi_cartcoords[X]];
+  cs->param->nlocal[Y] = cs->listnlocal[Y][cs->param->mpi_cartcoords[Y]];
+  cs->param->nlocal[Z] = cs->listnlocal[Z][cs->param->mpi_cartcoords[Z]];
 
-  cs->param->noffset[X] = cs->param->mpi_cartcoords[X]*cs->param->nlocal[X];
-  cs->param->noffset[Y] = cs->param->mpi_cartcoords[Y]*cs->param->nlocal[Y];
-  cs->param->noffset[Z] = cs->param->mpi_cartcoords[Z]*cs->param->nlocal[Z];
+  cs->param->noffset[X] = cs->listnoffset[X][cs->param->mpi_cartcoords[X]];
+  cs->param->noffset[Y] = cs->listnoffset[Y][cs->param->mpi_cartcoords[Y]];
+  cs->param->noffset[Z] = cs->listnoffset[Z][cs->param->mpi_cartcoords[Z]];  
 
   cs->param->str[Z] = 1;
   cs->param->str[Y] = cs->param->str[Z]*(cs->param->nlocal[Z] + 2*cs->param->nhalo);
@@ -227,7 +243,6 @@ __host__ int cs_commit(cs_t * cs) {
 
   assert(cs);
 
-  /* copyConstToTarget(&const_param, cs->param, sizeof(cs_param_t));*/
   tdpMemcpyToSymbol(tdpSymbol(const_param), cs->param, sizeof(cs_param_t), 0,
 		    tdpMemcpyHostToDevice);
 
@@ -242,7 +257,25 @@ __host__ int cs_commit(cs_t * cs) {
 
 __host__ int cs_info(cs_t * cs) {
 
+  int idim;
+  int n, uniform;
+  int nmin[3], nmax[3];
+
   assert(cs);
+
+  /* Non-uniform decompositions give additional output */
+
+  for (idim = 0; idim < 3; idim++) {
+    nmin[idim] = cs->param->ntotal[idim];
+    nmax[idim] = 0;
+    for (n = 0; n < cs->param->mpi_cartsz[idim]; n++) {
+      nmin[idim] = imin(nmin[idim], cs->listnlocal[idim][n]);
+      nmax[idim] = imax(nmax[idim], cs->listnlocal[idim][n]);
+    }
+  }
+
+  uniform = (nmin[X] == nmax[X] && nmin[Y] == nmax[Y] && nmin[Z] == nmax[Z]); 
+
 
   pe_info(cs->pe, "\n");
   pe_info(cs->pe, "System details\n");
@@ -252,8 +285,30 @@ __host__ int cs_info(cs_t * cs) {
 	  cs->param->ntotal[X], cs->param->ntotal[Y], cs->param->ntotal[Z]);
   pe_info(cs->pe, "Decomposition:  %d %d %d\n",
 	  cs->param->mpi_cartsz[X], cs->param->mpi_cartsz[Y], cs->param->mpi_cartsz[Z]);
-  pe_info(cs->pe, "Local domain:   %d %d %d\n",
+  if (uniform) {
+    pe_info(cs->pe, "Local domain:   %d %d %d\n",
 	  cs->param->nlocal[X], cs->param->nlocal[Y], cs->param->nlocal[Z]);
+  }
+  else {
+
+    pe_info(cs->pe, "Local domain X: ");
+    for (n = 0; n < cs->param->mpi_cartsz[X]; n++) {
+      pe_info(cs->pe, "%d ", cs->listnlocal[X][n]);
+    }
+    pe_info(cs->pe, "\n");
+
+    pe_info(cs->pe, "Local domain Y: ");
+    for (n = 0; n < cs->param->mpi_cartsz[Y]; n++) {
+      pe_info(cs->pe, "%d ", cs->listnlocal[Y][n]);
+    }
+    pe_info(cs->pe, "\n");
+
+    pe_info(cs->pe, "Local domain Z: ");
+    for (n = 0; n < cs->param->mpi_cartsz[Z]; n++) {
+      pe_info(cs->pe, "%d ", cs->listnlocal[Z][n]);
+    }
+    pe_info(cs->pe, "\n");
+  }
   pe_info(cs->pe, "Periodic:       %d %d %d\n",
 	  cs->param->periodic[X], cs->param->periodic[Y], cs->param->periodic[Z]);
   pe_info(cs->pe, "Halo nhalo:     %d\n", cs->param->nhalo);
@@ -453,42 +508,9 @@ int cs_nlocal_offset(cs_t * cs, int n[3]) {
 
 /*****************************************************************************
  *
- *  cs_default_decomposition
- *
- *  This does not, at the moment, take account of the system size,
- *  so user-defined decomposition prefered for high aspect ratio systems.
- *
- *****************************************************************************/
-
-static __host__ int cs_default_decomposition(cs_t * cs) {
-
-  int pe0[3] = {0, 0, 0};
-
-  assert(cs);
-
-  /* Trap 2-d systems */
-  if (cs->param->ntotal[X] == 1) pe0[X] = 1;
-  if (cs->param->ntotal[Y] == 1) pe0[Y] = 1;
-  if (cs->param->ntotal[Z] == 1) pe0[Z] = 1;
-
-  MPI_Dims_create(pe_mpi_size(cs->pe), 3, pe0);
-
-  cs->param->mpi_cartsz[X] = pe0[X];
-  cs->param->mpi_cartsz[Y] = pe0[Y];
-  cs->param->mpi_cartsz[Z] = pe0[Z];
-  
-  if (cs_is_ok_decomposition(cs) == 0) {
-    pe_fatal(cs->pe, "No default decomposition available!\n");
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  cs_is_ok_decomposition
  *
- *  Sanity check for the current processor / lattice decomposition.
+ *  Sanity check for user-specified decomposition.
  *
  *****************************************************************************/
 
@@ -499,15 +521,78 @@ static __host__ int cs_is_ok_decomposition(cs_t * cs) {
 
   assert(cs);
 
-  if (cs->param->ntotal[X] % cs->param->mpi_cartsz[X]) ok = 0;
-  if (cs->param->ntotal[Y] % cs->param->mpi_cartsz[Y]) ok = 0;
-  if (cs->param->ntotal[Z] % cs->param->mpi_cartsz[Z]) ok = 0;
-
   /*  The Cartesian decomposition must use all processors in COMM_WORLD. */
-  nnodes = cs->param->mpi_cartsz[X]*cs->param->mpi_cartsz[Y]*cs->param->mpi_cartsz[Z];
+
+  nnodes = cs->param->mpi_cartsz[X]*cs->param->mpi_cartsz[Y]
+    *cs->param->mpi_cartsz[Z];
   if (nnodes != pe_mpi_size(cs->pe)) ok = 0;
 
   return ok;
+}
+
+/*****************************************************************************
+ *
+ *  cs_rectilinear_decomposition
+ *
+ *  For given mpisz, ntotal, work out a decomposition. If the division
+ *  is not uniform, we try to distribute the remainder evenly away
+ *  from root (assumed to be at Cartesian coordinates zero).
+ *
+ *****************************************************************************/
+
+static __host__ int cs_rectilinear_decomposition(cs_t * cs) {
+
+  int idim;
+  int n, ntot, nremainder;
+  int mpisz[3];
+  int ntotal[3];
+
+  assert(cs);
+
+  cs_cartsz(cs, mpisz);
+  cs_ntotal(cs, ntotal);
+
+  /* For each direction in turn:
+   * - allocate appropriate 1-d lists
+   * - decompose ntotal to find the local domain sizes
+   * - work out local domain offsets */
+
+  for (idim = 0; idim < 3; idim++) {
+
+    cs->listnlocal[idim] = (int *) calloc(mpisz[idim], sizeof(int));
+    cs->listnoffset[idim] = (int *) calloc(mpisz[idim], sizeof(int));
+
+    if (cs->listnlocal[idim] == NULL || cs->listnoffset[idim] == NULL) {
+      pe_fatal(cs->pe, "calloc(listlocal) failed\n");
+    }
+
+    for (n = 0; n < mpisz[idim]; n++) {
+      cs->listnlocal[idim][n] = ntotal[idim] / mpisz[idim];
+    }
+
+    nremainder = ntotal[idim] % mpisz[idim];
+    for (n = 0; n < nremainder; n++) {
+      cs->listnlocal[idim][1 + n*(mpisz[idim]/nremainder)] += 1;
+    }
+
+    cs->listnoffset[idim][0] = 0;
+    for (n = 1; n < mpisz[idim]; n++) {
+      cs->listnoffset[idim][n] =
+	cs->listnoffset[idim][n-1] + cs->listnlocal[idim][n-1];
+    }
+
+    /* Check */
+
+    ntot = 0;
+    for (n = 0; n < mpisz[idim]; n++) {
+      ntot += cs->listnlocal[idim][n];
+    }
+    if (ntot != ntotal[idim]) {
+      pe_fatal(cs->pe, "Internal Error bad decomposition\n");
+    }
+  }
+
+  return 0;
 }
 
 /*****************************************************************************

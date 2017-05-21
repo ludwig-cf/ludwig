@@ -255,6 +255,7 @@ int reverse_addr_rank4_assert(int line, const char * file,
 
 #else
 
+#undef DATA_MODEL
 #define DATA_MODEL DATA_MODEL_AOSOA
 
 /* Blocked version. Block length always vector length. */

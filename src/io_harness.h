@@ -7,8 +7,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2007-2017 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2007-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,12 +21,12 @@
 #include "pe.h"
 #include "coords.h"
 
-enum io_format_flag {IO_FORMAT_NULL,
-                     IO_FORMAT_ASCII,
-		     IO_FORMAT_BINARY,
-                     IO_FORMAT_ASCII_SERIAL,
-                     IO_FORMAT_BINARY_SERIAL,
-                     IO_FORMAT_DEFAULT};
+typedef enum io_format_enum {IO_FORMAT_NULL,
+			     IO_FORMAT_ASCII,
+			     IO_FORMAT_BINARY,
+			     IO_FORMAT_ASCII_SERIAL,
+			     IO_FORMAT_BINARY_SERIAL,
+			     IO_FORMAT_DEFAULT} io_format_enum_t;
 
 /* io_info_arg_t to eventually include all relevant parameters */
 typedef struct io_info_arg_s io_info_arg_t;
@@ -46,11 +47,11 @@ __host__ int io_info_free(io_info_t *);
 __host__ void io_info_set_name(io_info_t *, const char *);
 __host__ void io_info_set_write(io_info_t *, int (*) (FILE *, int, int, int));
 __host__ void io_info_set_read(io_info_t *, int (*) (FILE *, int, int, int));
-__host__ void io_info_set_bytesize(io_info_t * p, size_t);
 __host__ void io_info_set_processor_independent(io_info_t *);
 __host__ void io_info_set_processor_dependent(io_info_t *);
 __host__ void io_info_single_file_set(io_info_t * info);
 
+__host__ int io_info_set_bytesize(io_info_t * p, io_format_enum_t t, size_t);
 __host__ int io_write_metadata(io_info_t * info);
 __host__ int io_write_metadata_file(io_info_t * info, char * filestub);
 __host__ int io_info_metadata_filestub_set(io_info_t * info, const char * filestub);

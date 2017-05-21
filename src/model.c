@@ -74,6 +74,8 @@ __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** plb) {
   lb->cs = cs;
   lb->ndist = ndist;
   lb->model = DATA_MODEL;
+  lb->nrelax = LB_RELAXATION_M10;
+
   *plb = lb;
 
   return 0;
@@ -669,7 +671,7 @@ __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info) {
   io_info_set_name(lb->io_info, string);
   io_info_read_set(lb->io_info, IO_FORMAT_BINARY, lb_f_read);
   io_info_write_set(lb->io_info, IO_FORMAT_BINARY, lb_f_write);
-  io_info_set_bytesize(lb->io_info, lb->ndist*NVEL*sizeof(double));
+  io_info_set_bytesize(lb->io_info, IO_FORMAT_BINARY, lb->ndist*NVEL*sizeof(double));
   io_info_format_set(lb->io_info, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
 
   return 0;

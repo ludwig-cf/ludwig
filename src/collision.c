@@ -42,9 +42,6 @@
 
 #include "symmetric.h"
 
-static int nrelax_ = RELAXATION_M10;     /* [RELAXATION_M10|TRT|BGK] */
-                                         /* Default is M10 */
-
 static double rtau_shear;       /* Inverse relaxation time for shear modes */
 static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
 
@@ -55,7 +52,7 @@ static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
 static __host__ __device__ __inline__ 
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 			       double shat[3][3], double ghat[NVEL]);
-
+int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
 
 /* TODO refactor these type definitions and forward declarations */
 
@@ -115,7 +112,8 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   assert(map);
 
   lb_ndist(lb, &ndist);
-  lb_collision_relaxation_times_set(lb, noise);
+  lb_collision_relaxation_times_set(lb);
+  lb_collision_noise_var_set(lb, noise);
   lb_collide_param_commit(lb);
 
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
@@ -584,7 +582,7 @@ __target__ void lb_collision_binary_site(lb_t * lb,
 					 const int baseIndex){
 
 
-  int i, ia, j,m,p;
+  int i, ia, ib, j,m,p;
 
   
   double mode[NVEL*VVL]; /* Modes; hydrodynamic + ghost */
@@ -655,23 +653,24 @@ __target__ void lb_collision_binary_site(lb_t * lb,
   for (i = 0; i < 3; i++) {
     __targetILP__(iv) u[i*VVL+iv] = mode[(1 + i)*VVL+iv];
   }
-  
-  __targetILP__(iv) {
-    s[X][X*VVL+iv] = mode[4*VVL+iv];
-    s[X][Y*VVL+iv] = mode[5*VVL+iv];
-    s[X][Z*VVL+iv] = mode[6*VVL+iv];
-    s[Y][X*VVL+iv] = s[X][Y*VVL+iv];
-    s[Y][Y*VVL+iv] = mode[7*VVL+iv];
-    s[Y][Z*VVL+iv] = mode[8*VVL+iv];
-    s[Z][X*VVL+iv] = s[X][Z*VVL+iv];
-    s[Z][Y*VVL+iv] = s[Y][Z*VVL+iv];
-    s[Z][Z*VVL+iv] = mode[9*VVL+iv];
+
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      __targetILP__(iv) s[ia][ib*VVL+iv] = mode[(1 + NDIM + m)*VVL+iv];
+      m++;
+    }
+  }
+
+  for (ia = 1; ia < NDIM; ia++) {
+    for (ib = 0; ib < ia; ib++) {
+      __targetILP__(iv) s[ia][ib*VVL+iv] = s[ib][ia*VVL+iv];
+    }
   }
 
   /* Compute the local velocity, taking account of any body force */
   
-  __targetILP__(iv) rrho[iv] 
-    = 1.0/rho[iv];
+  __targetILP__(iv) rrho[iv] = 1.0/rho[iv];
 
 
   
@@ -766,21 +765,24 @@ __target__ void lb_collision_binary_site(lb_t * lb,
     }    
   }    
   
-  /* Now reset the hydrodynamic modes to post-collision values */
-  
-  __targetILP__(iv) {
-    mode[1*VVL+iv] = mode[1*VVL+iv] + force[X*VVL+iv];    /* Conserved if no force */
-    mode[2*VVL+iv] = mode[2*VVL+iv] + force[Y*VVL+iv];    /* Conserved if no force */
-    mode[3*VVL+iv] = mode[3*VVL+iv] + force[Z*VVL+iv];    /* Conserved if no force */
-    mode[4*VVL+iv] = s[X][X*VVL+iv] + shat[X][X*VVL+iv];
-    mode[5*VVL+iv] = s[X][Y*VVL+iv] + shat[X][Y*VVL+iv];
-    mode[6*VVL+iv] = s[X][Z*VVL+iv] + shat[X][Z*VVL+iv];
-    mode[7*VVL+iv] = s[Y][Y*VVL+iv] + shat[Y][Y*VVL+iv];
-    mode[8*VVL+iv] = s[Y][Z*VVL+iv] + shat[Y][Z*VVL+iv];
-    mode[9*VVL+iv] = s[Z][Z*VVL+iv] + shat[Z][Z*VVL+iv];
+  /* Now reset the hydrodynamic modes to post-collision values:
+   * rho is unchanged, velocity unchanged if no force,
+   * independent components of stress, and ghosts. */
+    
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv) mode[(1 + ia)*VVL+iv] += force[ia*VVL+iv];
   }
-  
-  
+    
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib*VVL+iv] + shat[ia][ib*VVL+iv];
+      }
+      m++;
+    }
+  }
+
   /* Ghost modes are relaxed toward zero equilibrium. */
 
   for (m = NHYDRO; m < NVEL; m++) { 
@@ -1078,14 +1080,16 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
  *  lb_collision_relaxation_set
  *
  *****************************************************************************/
- 
- __host__ int lb_collision_relaxation_set(lb_t * lb, int nrelax) {
 
-  assert(nrelax == RELAXATION_M10 ||
-         nrelax == RELAXATION_BGK ||
-         nrelax == RELAXATION_TRT);
+__host__ int lb_collision_relaxation_set(lb_t * lb, lb_relaxation_enum_t nrelax) {
 
-  nrelax_ = nrelax;
+  assert(nrelax == LB_RELAXATION_M10 ||
+         nrelax == LB_RELAXATION_BGK ||
+         nrelax == LB_RELAXATION_TRT);
+
+  assert(lb);
+
+  lb->nrelax = nrelax;
 
   return 0;
 }
@@ -1103,30 +1107,20 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
  *
  *  Bulk viscosity = -rho0 c_s^2 dt (1/3) ( 2 / lambda + 1 )
  *
- *  Note there is an extra normalisation in the lattice fluctuations
- *  which would otherwise give effective kT = cs2
- *
  *****************************************************************************/
 
-__host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
+__host__ int lb_collision_relaxation_times_set(lb_t * lb) {
 
   int p;
-  int noise_on = 0;
   double rho0;
-  double kt;
   double eta_shear;
   double eta_bulk;
   double tau, rtau;
-  double tau_s;
-  double tau_b;
-  double tau_g;
   physics_t * phys = NULL;
 
   assert(lb);
   assert(lb->param);
-  assert(noise);
 
-  noise_present(noise, NOISE_RHO, &noise_on);
   physics_ref(&phys);
   physics_rho0(phys, &rho0);
 
@@ -1140,21 +1134,28 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
   rtau_shear = 1.0/(0.5 + eta_shear / (rho0*cs2));
   rtau_bulk  = 1.0/(0.5 + eta_bulk / (rho0*cs2));
 
-  if (nrelax_ == RELAXATION_M10) {
+  if (lb->nrelax == LB_RELAXATION_M10) {
+    lb->param->rtau[LB_TAU_SHEAR] = rtau_shear;
+    lb->param->rtau[LB_TAU_BULK]  = rtau_bulk;
     for (p = NHYDRO; p < NVEL; p++) {
       lb->param->rtau[p] = 1.0;
     }
   }
 
-  if (nrelax_ == RELAXATION_BGK) {
+  if (lb->nrelax == LB_RELAXATION_BGK) {
+    lb->param->rtau[LB_TAU_SHEAR] = rtau_shear;
+    lb->param->rtau[LB_TAU_BULK]  = rtau_shear; /* No separate bulk visocity */
     for (p = 0; p < NVEL; p++) {
       lb->param->rtau[p] = rtau_shear;
     }
   }
 
-  if (nrelax_ == RELAXATION_TRT) {
+  if (lb->nrelax == LB_RELAXATION_TRT) {
 
     assert(NVEL != 9);
+
+    lb->param->rtau[LB_TAU_SHEAR] = rtau_shear;
+    lb->param->rtau[LB_TAU_BULK]  = rtau_bulk;
 
     tau  = eta_shear / (rho0*cs2);
     rtau = 0.5 + 2.0*tau/(tau + 3.0/8.0);
@@ -1182,7 +1183,37 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
     }
   }
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_collision_noise_var_set
+ *
+ *  Note there is an extra normalisation in the lattice fluctuations
+ *  which would otherwise give effective kT = cs2
+ *
+ *****************************************************************************/
+
+__host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
+
+  int p;
+  int noise_on = 0;
+  double kt;
+  double tau_s;
+  double tau_b;
+  double tau_g;
+  physics_t * phys = NULL;
+
+  assert(lb);
+  assert(noise);
+
+  noise_present(noise, NOISE_RHO, &noise_on);
+
   if (noise_on) {
+
+    physics_ref(&phys);
+    physics_kt(phys, &kt);
 
     tau_s = 1.0/rtau_shear;
     tau_b = 1.0/rtau_bulk;
@@ -1206,7 +1237,6 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
     }
   }
 
-
   if (lb->param->isghost == LB_GHOST_OFF) {
     /* This option is intended to check the M10 without the correct
      * noise terms. Should not be used for a real simulation. */
@@ -1224,18 +1254,17 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb, noise_t * noise) {
  *
  *  lb_collision_relaxation_times
  *
- *  Return NVEL (inverse) relaxation times. This is really just for
- *  information, so I've put the bulk viscosity of the diagonal of
- *  the stress elements and the shear on the off-diagonal.
+ *  Return NVEL relaxation times. This is really just for information.
+ *  The relaxation times are computed, so viscosities must be available.
  *
  *****************************************************************************/
 
 __host__ int lb_collision_relaxation_times(lb_t * lb, double * tau) {
 
-  int ia, ib;
-  int mode;
+  int ia;
 
-  assert(nrelax_ == RELAXATION_M10);
+  assert(lb);
+  assert(tau);
 
   /* Density and momentum (modes 0, 1, .. NDIM) */
 
@@ -1243,27 +1272,11 @@ __host__ int lb_collision_relaxation_times(lb_t * lb, double * tau) {
     tau[ia] = 0.0;
   }
 
-  /* Stress */
+  lb_collision_relaxation_times_set(lb);
 
-  mode = 0;
-  for (ia = 0; ia < NDIM; ia++) {
-    for (ib = ia; ib < NDIM; ib++) {
-      if (ia == ib) tau[1 + NDIM + mode++] = rtau_shear;
-      if (ia != ib) tau[1 + NDIM + mode++] = rtau_bulk;
-    }
-  }
-
-  for (ia = 1; ia < NDIM; ia++) {
-    for (ib = 0; ib < ia; ib++) {
-      if (ia == ib) tau[1 + NDIM + mode++] = rtau_shear;
-      if (ia != ib) tau[1 + NDIM + mode++] = rtau_bulk;
-    }
-  }
-
-  /* Ghosts */
-
-  for (ia = NHYDRO; ia < NVEL; ia++) {
-    tau[ia] = lb->param->rtau[ia];
+  for (ia = NDIM+1; ia < NVEL; ia++) {
+    tau[ia] = 1.0/lb->param->rtau[ia];
+    /* printf("RELAXATION TIME %2d %f\n", ia, 1.0/lb->param->rtau[ia]);*/
   }
 
   return 0;

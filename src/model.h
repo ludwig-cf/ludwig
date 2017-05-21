@@ -40,6 +40,12 @@
 /* Number of hydrodynamic modes */
 enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
+/* Labels to locate relaxation times in array[NVEL] */
+/* Bulk viscosity is XX in stress */
+/* Shear is XY in stress */
+
+enum {LB_TAU_BULK = 1 + NDIM + XX, LB_TAU_SHEAR = 1 + NDIM + XY};
+
 extern const double cs2;
 extern const double rcs2;
 
@@ -51,6 +57,9 @@ typedef enum lb_halo_enum_type {LB_HALO_FULL,
 				LB_HALO_REDUCED,
 				LB_HALO_HOST,
 				LB_HALO_TARGET} lb_halo_enum_t;
+
+typedef enum {LB_RELAXATION_M10, LB_RELAXATION_BGK, LB_RELAXATION_TRT}
+  lb_relaxation_enum_t;
 
 __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** lb);
 __host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** lb);

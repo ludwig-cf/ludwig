@@ -72,10 +72,12 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
   obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
   if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
 #else
-  obj->u = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,sizeof(double));
+  obj->u = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
+					 sizeof(double));
   if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
 
-  obj->f = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,sizeof(double));
+  obj->f = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
+					 sizeof(double));
   if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
 #endif
   halo_swap_create_r1(pe, cs, nhcomm, obj->nsite, NHDIM, &obj->halo);
@@ -264,7 +266,10 @@ __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
   io_info_write_set(obj->info, IO_FORMAT_ASCII, hydro_u_write_ascii);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, hydro_u_read);
   io_info_read_set(obj->info, IO_FORMAT_ASCII, hydro_u_read_ascii);
-  io_info_set_bytesize(obj->info, NHDIM*sizeof(double));
+
+  /* ASCII output size (see write_ascii) is 69 bytes */
+  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, NHDIM*sizeof(double));
+  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, 69);
 
   io_info_format_set(obj->info, form_in, form_out);
   io_info_metadata_filestub_set(obj->info, "vel");

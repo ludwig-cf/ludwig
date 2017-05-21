@@ -477,7 +477,7 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
                                          map_t * map) {
-#ifdef OLD_SHIT
+#ifdef SHIT_THIS_NEEDS_TO_BE_REFACTORED
   int nc;
   int ia;
   int nsfluid;

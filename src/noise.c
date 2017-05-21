@@ -327,7 +327,8 @@ __host__ int noise_init_io_info(noise_t * obj, int grid[3], int form_in,
   io_info_write_set(obj->info, IO_FORMAT_ASCII, noise_write);
   io_info_read_set(obj->info, IO_FORMAT_BINARY, noise_read);
   io_info_read_set(obj->info, IO_FORMAT_ASCII, noise_read);
-  io_info_set_bytesize(obj->info, NNOISE_STATE*sizeof(unsigned int));
+  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY,
+		       NNOISE_STATE*sizeof(unsigned int));
 
   io_info_format_set(obj->info, form_in, form_out);
   io_info_metadata_filestub_set(obj->info, stubname);

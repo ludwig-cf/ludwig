@@ -31,6 +31,8 @@ struct coords_s {
   int mpi_cartrank;                /* MPI Cartesian rank */
   int reorder;                     /* MPI reorder flag */
   int mpi_cart_neighbours[2][3];   /* Ranks of Cartesian neighbours lookup */
+  int * listnlocal[3];             /* Rectilinear decomposition */
+  int * listnoffset[3];            /* Rectilinear offsets */
 
   MPI_Comm commcart;               /* Cartesian communicator */
   MPI_Comm commperiodic;           /* Cartesian periodic communicator */

@@ -7,8 +7,9 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2017 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -94,7 +95,8 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
   /* info("Address of write function %p\n", test_write_1);*/
 
   io_info_set_name(io_info, "Test double data");
-  io_info_set_bytesize(io_info, sizeof(double));
+  io_info_set_bytesize(io_info, IO_FORMAT_BINARY, sizeof(double));
+  io_info_set_bytesize(io_info, IO_FORMAT_ASCII, 8); /* See below */
   io_info_write_set(io_info, IO_FORMAT_BINARY, test_io_write1);
   io_info_read_set(io_info, IO_FORMAT_BINARY, test_io_read1);
 
@@ -207,7 +209,7 @@ int test_io_read3(FILE * fp, int index, void * self) {
  *
  *  test_write_3
  *
- *  ASCII write (int data)
+ *  ASCII write (int data) Must have a fixed format.
  *
  *****************************************************************************/
 
@@ -216,8 +218,8 @@ int test_io_write3(FILE * fp, int index, void * self) {
   int n;
   test_io_t * data = (test_io_t *) self;
 
-  n = fprintf(fp, "%d\n", index*data->iref);
-  assert(n >= 2);
+  n = fprintf(fp, "%7d\n", index*data->iref);
+  assert(n == 8);
 
   return n;
 }

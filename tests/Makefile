@@ -144,18 +144,18 @@ SOA1 = -DADDR_SOA
 AOSOA4 = -DADDR_AOSOA -DVVL=4
 
 all:
-	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS)"
-	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(AOS4)"
-	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(SOA1)"
-	$(MAKE) all-serial "CFLAGS_TEST = $(CFLAGS) $(AOSOA4)"
+	$(MAKE) all-serial
+	$(MAKE) all-serial "CFLAGS_TEST = $(AOS4)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(SOA1)"
+	$(MAKE) all-serial "CFLAGS_TEST = $(AOSOA4)"
 
 all-serial:
-	$(MAKE) compile-run-serial-d2q9 "CFLAGS = $(CFLAGS_TEST)"
-	$(MAKE) compile-run-serial-d3q15 "CFLAGS = $(CFLAGS_TEST)"
-	$(MAKE) compile-run-serial-d3q19 "CFLAGS = $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d2q9  "CFLAGS = $(CFLAGS) $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d3q15 "CFLAGS = $(CFLAGS) $(CFLAGS_TEST)"
+	$(MAKE) compile-run-serial-d3q19 "CFLAGS = $(CFLAGS) $(CFLAGS_TEST)"
 
 all-mpi:
-	$(MAKE) compile-run-mpi-d3q19 "CFLAGS = $(CFLAGS)"
+	$(MAKE) compile-run-mpi-d3q19 "CFLAGS = $(CFLAGS) $(CFLAGS_TEST)"
 
 
 

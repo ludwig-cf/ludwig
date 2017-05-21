@@ -46,6 +46,7 @@ struct lb_data_s {
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
   int model;             /* MODEL or MODEL_R */
+  int nrelax;            /* Relaxation scheme */
 
   pe_t * pe;             /* parallel environment */
   cs_t * cs;             /* coordinate system */

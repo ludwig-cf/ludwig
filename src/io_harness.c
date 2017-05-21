@@ -35,7 +35,7 @@
 
 #include "pe.h"
 #include "util.h"
-#include "coords.h"
+#include "coords_s.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 
@@ -44,8 +44,9 @@ typedef struct io_decomposition_s io_decomposition_t;
 struct io_decomposition_s {
   int n_io;         /* Total number of I/O groups (files) in decomposition */
   int index;        /* Index of this I/O group {0, 1, ...} */
+  MPI_Comm xcomm;   /* Cross-communicator for same rank in different groups */
   MPI_Comm comm;    /* MPI communicator for this group */
-  int rank;         /* Rank of this process in communicator */
+  int rank;         /* Rank of this process in group communicator */
   int size;         /* Size of this group in processes */
   int ngroup[3];    /* Global I/O group topology XYZ */
   int coords[3];    /* Coordinates of this group in I/O topology XYZ */
@@ -57,19 +58,17 @@ struct io_info_s {
   pe_t * pe;
   cs_t * cs;
   io_decomposition_t * io_comm;
-  size_t bytesize;
+  io_format_enum_t output_format;
+  size_t bytesize;                   /* Actual output per site */
+  size_t bytesize_ascii;             /* ASCII line size */
+  size_t bytesize_binary;            /* Binary record size */
+  int nsites;                        /* No. sites this rank */
+  int maxlocal;                      /* Max. no. sites per rank this group */
   int metadata_written;
   int processor_independent;
   int single_file_read;
   char metadata_stub[FILENAME_MAX];
   char name[FILENAME_MAX];
-
-  int (* write_function)   (FILE *, const int, const int, const int);
-  int (* read_function)    (FILE *, const int, const int, const int);
-  int (* write_function_a) (FILE *, const int, const int, const int);
-  int (* read_function_a)  (FILE *, const int, const int, const int);
-  int (* write_function_b) (FILE *, const int, const int, const int);
-  int (* read_function_b)  (FILE *, const int, const int, const int);
   io_rw_cb_ft write_data;
   io_rw_cb_ft write_ascii;
   io_rw_cb_ft write_binary;
@@ -83,6 +82,12 @@ static long int io_file_offset(int, int, io_info_t *);
 static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
 				   io_decomposition_t ** p);
 static int io_decomposition_free(io_decomposition_t *);
+
+
+int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data);
+int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data);
+int io_unpack_local_buf(io_info_t * obj, int mpi_sender, const char * buf,
+			char * io_buf);
 
 /*****************************************************************************
  *
@@ -111,6 +116,14 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
   io_info_set_processor_dependent(info);
   info->single_file_read = 0;
 
+  /* Local rank and group counts */
+
+  info->nsites = info->io_comm->nsite[X]*info->io_comm->nsite[Y]
+    *info->io_comm->nsite[Z];
+
+  MPI_Reduce(&info->nsites, &info->maxlocal, 1, MPI_INT, MPI_MAX, 0,
+	     info->io_comm->comm);
+
   *p = info;
 
   return 0;
@@ -129,6 +142,7 @@ static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
 				   io_decomposition_t ** pobj) {
 
   int i, colour;
+  int n, offset;
   int ntotal[3];
   int noffset[3];
   int mpisz[3];
@@ -158,8 +172,14 @@ static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
     p->ngroup[i] = grid[i];
     p->n_io *= grid[i];
     p->coords[i] = grid[i]*mpicoords[i]/mpisz[i];
-    p->nsite[i] = ntotal[i]/grid[i];
-    p->offset[i] = noffset[i] - p->coords[i]*p->nsite[i];
+
+    /* Offset and size, allowing for non-uniform decomposition */
+    offset = mpicoords[i] / (mpisz[i]/grid[i]);
+    p->offset[i] = cs->listnoffset[i][offset];
+    p->nsite[i] = 0;
+    for (n = offset; n < offset + (mpisz[i]/grid[i]); n++) {
+      p->nsite[i] += cs->listnlocal[i][n];
+    }
   }
 
   colour = p->coords[X]
@@ -171,6 +191,10 @@ static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
   MPI_Comm_split(comm, colour, cs_cart_rank(cs), &p->comm);
   MPI_Comm_rank(p->comm, &p->rank);
   MPI_Comm_size(p->comm, &p->size);
+
+  /* Cross-communicator */
+
+  MPI_Comm_split(comm, p->rank, cs_cart_rank(cs), &p->xcomm);
 
   *pobj = p;
 
@@ -240,36 +264,6 @@ int io_info_free(io_info_t * p) {
 
 /*****************************************************************************
  *
- *  io_info_set_write
- *
- *****************************************************************************/
-
-void io_info_set_write(io_info_t * p,
-		       int (* writer) (FILE *, int, int, int)) {
-
-  assert(p != (io_info_t *) NULL);
-  p->write_function = writer;
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  io_info_set_read
- *
- *****************************************************************************/
-
-void io_info_set_read(io_info_t * p,
-		      int (* reader) (FILE *, int, int, int)) {
-
-  assert(p);
-  p->read_function = reader;
-
-  return;
-}
-
-/*****************************************************************************
- *
  *  io_info_set_name
  *
  *****************************************************************************/
@@ -317,12 +311,22 @@ void io_info_set_processor_independent(io_info_t * p) {
  *
  *****************************************************************************/
 
-void io_info_set_bytesize(io_info_t * p, size_t size) {
+int io_info_set_bytesize(io_info_t * p, io_format_enum_t t, size_t size) {
 
   assert(p);
-  p->bytesize = size;
 
-  return;
+  switch (t) {
+  case IO_FORMAT_ASCII:
+    p->bytesize_ascii = size;
+    break;
+  case IO_FORMAT_BINARY:
+    p->bytesize_binary = size;
+    break;
+  default:
+    pe_fatal(p->pe, "Bad io format %d\n", t);
+  }
+
+  return 0;
 }
 
 /*****************************************************************************
@@ -608,8 +612,6 @@ int io_info_format_in_set(io_info_t * obj, int form_in) {
  *
  *  io_info_format_out_set
  *
- *  No serial output at the moment (unless one MPI task).
- *
  *****************************************************************************/
 
 int io_info_format_out_set(io_info_t * obj, int form_out) {
@@ -618,17 +620,21 @@ int io_info_format_out_set(io_info_t * obj, int form_out) {
   assert(form_out >= 0);
   assert(form_out <= IO_FORMAT_DEFAULT);
 
+  obj->output_format = form_out;
+
   if (form_out == IO_FORMAT_NULL) return 0;
 
   switch (form_out) {
   case IO_FORMAT_ASCII:
     obj->write_data = obj->write_ascii;
     obj->processor_independent = 0;
+    obj->bytesize = obj->bytesize_ascii;
     break;
   case IO_FORMAT_BINARY:
   case IO_FORMAT_DEFAULT:
     obj->write_data = obj->write_binary;
     obj->processor_independent = 0;
+    obj->bytesize = obj->bytesize_binary;
     break;
   default:
     pe_fatal(obj->pe, "Bad i/o output format\n");
@@ -675,7 +681,7 @@ int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
 
 /*****************************************************************************
  *
- *  io_write
+ *  io_write_data
  *
  *  This is the driver to write lattice quantities on the lattice.
  *  The arguments are the filename stub and the io_info struct
@@ -684,11 +690,42 @@ int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
  *  The third argument is an opaque pointer to the data object,
  *  which will be passed to the callback which does the write.
  *
- *  All writes are processor decomposition dependent at the moment.
- *
  *****************************************************************************/
 
 int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
+
+  double t0, t1;
+
+  assert(obj);
+  assert(data);
+
+  if (1) {
+    /* Use the standard method for the time being. */
+    io_write_data_p(obj, filename_stub, data);
+  }
+  else {
+    /* This is in testing.*/
+    t0 = MPI_Wtime();
+    io_write_data_s(obj, filename_stub, data);
+    t1 = MPI_Wtime();
+    pe_info(obj->pe, "Write %lu bytes in %f secs %f\n",
+	    obj->nsites*obj->bytesize, t1-t0,
+	    obj->nsites*obj->bytesize/(1.0e+09*(t1-t0)));
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_write_p
+ *
+ *  All writes are processor decomposition dependent in this
+ *  version, which also has a potentially unsafe fopen("a").
+ *
+ *****************************************************************************/
+
+int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data) {
 
   FILE *    fp_state;
   char      filename_io[FILENAME_MAX];
@@ -751,6 +788,209 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   return 0;
 }
+
+/******************************************************************************
+ *
+ *  io_write_data_s
+ *
+ *  Write data to file in decomposition-independent fashion. Data
+ *  are aggregated to a contiguous buffer internally, and tranferred
+ *  to a single block at rank 0 per I/O group before output to file.
+ *
+ *****************************************************************************/
+
+/* TODO */
+/* Write I/O documentation */
+/* Appropriate switch in io-write-data */
+/* Meta data files need to match actual output format */
+/* Run time check for x only io decomposition */
+/* Check behaviour of code against documentation */
+
+int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
+
+  int nr;
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int itemsz;                      /* Data size per site (bytes) */
+  int iosz;                        /* Data size io_buf (bytes) */
+  int localsz;                     /* Data size local buffer (bytes) */
+  char * buf = NULL;               /* Local buffer for this rank */
+  char * io_buf = NULL;            /* I/O buffer for whole group */
+  char * rbuf = NULL;              /* Recv buffer */
+  char filename_io[FILENAME_MAX];
+  long int offset;
+  FILE * fp_state = NULL;
+  FILE * fp_buf;
+
+  const int tag = 2017;
+  MPI_Status status;
+
+  assert(obj);
+  assert(data);
+  assert(obj->write_data);
+
+  if (obj->metadata_written == 0) io_write_metadata(obj);
+
+  cs_nlocal(obj->cs, nlocal);
+  io_set_group_filename(filename_io, filename_stub, obj);
+  sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
+
+  itemsz = obj->bytesize;
+
+  /* Local buffer to be assoicated with file handle for write... */
+
+  localsz = itemsz*nlocal[X]*nlocal[Y]*nlocal[Z];
+  buf = (char *) malloc(localsz*sizeof(char));
+  fp_buf = fopen("/dev/null", "w"); /* TODO: de-hardwire this */
+  setvbuf(fp_buf, buf, _IOFBF, localsz);
+
+  if (buf == NULL || fp_buf == NULL) {
+    pe_fatal(obj->pe, "Buffer initialisation failed\n");
+  }
+
+  /* Write to the local buffer in local order */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	index = cs_index(obj->cs, ic, jc, kc);
+	obj->write_data(fp_buf, index, data);
+      }
+    }
+  }
+
+  /* Send local buffer to root. */
+
+  if (obj->io_comm->rank > 0) {
+    MPI_Send(buf, localsz, MPI_BYTE, 0, tag, obj->io_comm->comm);
+  }
+  else {
+
+    /* I/O buff */
+
+    iosz = itemsz*obj->nsites;
+    io_buf = (char *) malloc(iosz*sizeof(char));
+    if (io_buf == NULL) pe_fatal(obj->pe, "malloc(io_buf)\n");
+
+    rbuf = (char *) malloc(itemsz*obj->maxlocal*sizeof(char));
+    if (rbuf == NULL) pe_fatal(obj->pe, "malloc(rbuf)");
+
+    /* Unpack own buffer to correct position in the io buffer, and
+     * then do it for incoming messages. */
+
+    io_unpack_local_buf(obj, 0, buf, io_buf);
+
+    for (nr = 0; nr < obj->io_comm->size - 1; nr++) {
+      MPI_Recv(rbuf, itemsz*obj->maxlocal, MPI_BYTE, MPI_ANY_SOURCE, tag,
+	       obj->io_comm->comm, &status);
+      io_unpack_local_buf(obj, status.MPI_SOURCE, rbuf, io_buf);
+    }
+
+    free(rbuf);
+
+    /* Write the file for this group. Group zero creates the file
+     * before allowing other groups to write at appropriate offset. */
+
+    if (obj->io_comm->index == 0) {
+      fp_state = fopen(filename_io, "w");
+    }
+
+    MPI_Bcast(&itemsz, 1, MPI_INT, 0, obj->io_comm->xcomm);
+
+    if (obj->io_comm->index > 0) {
+      fp_state = fopen(filename_io, "r+");
+      offset = obj->io_comm->offset[X]*
+	       obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z];
+      fseek(fp_state, offset*itemsz, SEEK_SET);
+    }
+
+    if (fp_state == NULL) {
+      pe_fatal(obj->pe, "Failed to open %s\n", filename_io);
+    }
+
+    fwrite(io_buf, sizeof(char), iosz, fp_state);
+
+    if (ferror(fp_state)) {
+      perror("perror: ");
+      pe_fatal(obj->pe, "File error on writing %s\n", filename_io);
+    }
+    fclose(fp_state);
+    free(io_buf);
+  }
+
+  fclose(fp_buf);
+  free(buf);
+
+  return 0;
+}
+
+/****************************************************************************
+ *
+ *  io_unpack_local_buf
+ *
+ *  Used in aggregating data to the group output buffer for decomposition
+ *  indenpendent I/O.
+ *
+ *  Copy data (buf) from the sender (in the io group communicator) to the
+ *  group buffer (io_buf).
+ *
+ ****************************************************************************/ 
+
+int io_unpack_local_buf(io_info_t * obj, int mpi_sender, const char * buf,
+			char * io_buf) {
+  int ib = 0;
+  int rank;
+  int offset;
+  int ic, jc;
+  int itemsz;
+  int coords[3];
+  int nsendlocal[3];
+  int nsendoffset[3];
+  int ifo, jfo, kfo;
+  MPI_Comm cartcomm;
+  MPI_Group iogrp, cartgrp;
+
+  assert(obj);
+  assert(buf);
+  assert(io_buf);
+
+  cs_cart_comm(obj->cs, &cartcomm);
+
+  /* We need to work out nlocal and noffset in the sender
+   * via the Cartesian coordinates of the sender. */
+
+  MPI_Comm_group(obj->io_comm->comm, &iogrp);
+  MPI_Comm_group(cartcomm, &cartgrp);
+  MPI_Group_translate_ranks(iogrp, 1, &mpi_sender, cartgrp, &rank);
+  MPI_Cart_coords(obj->cs->commcart, rank, 3, coords);
+
+  for (ic = 0; ic < 3; ic++) {
+    nsendlocal[ic] = obj->cs->listnlocal[ic][coords[ic]];
+    nsendoffset[ic] = obj->cs->listnoffset[ic][coords[ic]];
+  }
+
+  itemsz = obj->bytesize;
+
+  /* Copy the local data into the correct position in the group
+   * buffer. Contiguous strips in z-direction. */
+
+  for (ic = 1; ic <= nsendlocal[X]; ic++) {
+    for (jc = 1; jc <= nsendlocal[Y]; jc++) {
+      ifo = (nsendoffset[X] + ic - 1) - obj->io_comm->offset[X];
+      jfo = (nsendoffset[Y] + jc - 1) - obj->io_comm->offset[Y];
+      kfo = nsendoffset[Z] - obj->io_comm->offset[Z];
+
+      offset = ifo*obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z]
+	+ jfo*obj->io_comm->nsite[Z] + kfo;
+
+      memcpy(io_buf + itemsz*offset, buf + ib, itemsz*nsendlocal[Z]);
+      ib += itemsz*nsendlocal[Z];
+    }
+  }
+
+  return 0;
+}
+
 
 /*****************************************************************************
  *

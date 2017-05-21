@@ -275,7 +275,8 @@ int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
   io_info_write_set(obj->info, IO_FORMAT_BINARY, psi_write);
   io_info_write_set(obj->info, IO_FORMAT_ASCII, psi_write_ascii);
 
-  io_info_set_bytesize(obj->info, (2 + obj->nk)*sizeof(double));
+  io_info_set_bytesize(obj->info, IO_FORMAT_BINARY, (2+obj->nk)*sizeof(double));
+  io_info_set_bytesize(obj->info, IO_FORMAT_ASCII, (2+obj->nk)*23 + 1);
 
   io_info_format_set(obj->info, form_in, form_out);
   io_info_metadata_filestub_set(obj->info, "psi");
