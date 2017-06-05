@@ -504,12 +504,10 @@ __host__ __device__
 int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
 				   double sth[3][3]){
 
-  double q[3][3], dq[3][3][3];
-  double h[3][3], dsq[3][3];
-  double phi;
+  double q[3][3];
+  double h[3][3];
   int ia, ib, ic;
   double qh;
-  double gamma;
   double xi, zeta;
   const double r3 = (1.0/3.0);
   KRONECKER_DELTA_CHAR(d);
@@ -519,16 +517,9 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
   
   /* No redshift at the moment */
   
-  field_scalar(fe->symm->phi, index, &phi);
   field_tensor(fe->lc->q, index, q);
+  fe_lc_droplet_mol_field(fe, index, h);
 
-  fe_lc_droplet_gamma(fe, index, &gamma);
-  
-  field_grad_tensor_grad(fe->lc->dq, index, dq);
-  field_grad_tensor_delsq(fe->lc->dq, index, dsq);
-
-  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h);
-  
   qh = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
@@ -567,7 +558,7 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
     }
   }
 
-  /* This is the minus sign. */
+  /* Additional minus sign. */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -589,24 +580,15 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
 				       double sth[3][3]) {
 
   int ia, ib, ic;
-  double q[3][3], dq[3][3][3];
-  double h[3][3], dsq[3][3];
-  double phi;
-  double gamma;
+  double q[3][3];
+  double h[3][3];
 
   assert(fe);
 
   /* No redshift at the moment */
   
-  field_scalar(fe->symm->phi, index, &phi);
   field_tensor(fe->lc->q, index, q);
-
-  fe_lc_droplet_gamma(fe, index, &gamma);
-
-  field_grad_tensor_grad(fe->lc->dq, index, dq);
-  field_grad_tensor_delsq(fe->lc->dq, index, dsq);
-
-  fe_lc_compute_h(fe->lc, gamma, q, dq, dsq, h);
+  fe_lc_droplet_mol_field(fe, index, h);
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -624,7 +606,7 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
     }
   }
   
-  /*  This is the minus sign. */
+  /*  Additional minus sign. */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] = -sth[ia][ib];

@@ -53,11 +53,11 @@ addr_rank3(nsites, na, nb, nc, index, ia, ib, ic)
 /* Interface not dependent on preprocessor directives at compile time.
    For non-performance critical use. */
 
-__host__ __target__
+__host__ __device__
 int mem_addr_rank0(int nsites, int index);
-__host__ __target__
+__host__ __device__
 int mem_addr_rank1(int nsites, int na, int index, int ia);
-__host__ __target__
+__host__ __device__
 int mem_addr_rank2(int nsites, int na, int nb, int index, int ia, int ib);
 
 /* End of interface */
@@ -134,21 +134,21 @@ typedef enum data_model_enum_type {DATA_MODEL_AOS,
 
 #else
 
-__host__ __target__
+__host__ __device__
 int forward_addr_rank0_assert(int line, const char * file,
 			      int nsites, int index);
-__host__ __target__
+__host__ __device__
 int forward_addr_rank1_assert(int line, const char * file,
 			      int nsites, int na, int index, int ia);
-__host__ __target__
+__host__ __device__
 int forward_addr_rank2_assert(int line, const char * file,
 			      int nsites, int na, int nb, int index,
 			      int ia, int ib);
-__host__ __target__
+__host__ __device__
 int forward_addr_rank3_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc,
 			      int index, int ia, int ib, int ic);
-__host__ __target__
+__host__ __device__
 int forward_addr_rank4_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc, int nd,
 			      int index, int ia, int ib, int ic, int id);
@@ -193,21 +193,21 @@ int forward_addr_rank4_assert(int line, const char * file,
 
 #else
 
-__host__ __target__
+__host__ __device__
 int reverse_addr_rank0_assert(int line, const char * file,
 			      int nsites, int index);
-__host__ __target__
+__host__ __device__
 int reverse_addr_rank1_assert(int line, const char * file,
 			      int nsites, int na, int index, int ia);
-__host__ __target__
+__host__ __device__
 int reverse_addr_rank2_assert(int line, const char * file,
 			      int nsites, int na, int nb,
 			      int index, int ia, int ib);
-__host__ __target__
+__host__ __device__
 int reverse_addr_rank3_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc,
 			      int index, int ia, int ib, int ic);
-__host__ __target__
+__host__ __device__
 int reverse_addr_rank4_assert(int line, const char * file,
 			      int nsites, int na, int nb, int nc, int nd,
 			      int index, int ia, int ib, int ic, int id);
@@ -225,37 +225,37 @@ int reverse_addr_rank4_assert(int line, const char * file,
 
 #endif
 
-/* Here is the choise of direction */
+/* Here is the choise of direction (default AOS) */
 
-#ifndef ADDR_SOA
-#define base_addr_rank0 forward_addr_rank0
-#define base_addr_rank1 forward_addr_rank1
-#define base_addr_rank2 forward_addr_rank2
-#define base_addr_rank3 forward_addr_rank3
-#define base_addr_rank4 forward_addr_rank4
-#define DATA_MODEL DATA_MODEL_AOS
-#else /* then it is SOA */
-#define base_addr_rank0 reverse_addr_rank0
-#define base_addr_rank1 reverse_addr_rank1
-#define base_addr_rank2 reverse_addr_rank2
-#define base_addr_rank3 reverse_addr_rank3
-#define base_addr_rank4 reverse_addr_rank4
-#define DATA_MODEL DATA_MODEL_SOA
+#if defined ADDR_SOA || defined ADDR_AOSOA
+/* User has selected one of the above */
+#else
+/* Pick up default */
+#define ADDR_AOS
 #endif
 
+#if defined ADDR_AOS
 
-/* Macro definitions for the interface */
+#define DATA_MODEL DATA_MODEL_AOS
 
-#ifndef ADDR_AOSOA
+#define addr_rank0 forward_addr_rank0
+#define addr_rank1 forward_addr_rank1
+#define addr_rank2 forward_addr_rank2
+#define addr_rank3 forward_addr_rank3
+#define addr_rank4 forward_addr_rank4
 
-#define addr_rank0 base_addr_rank0
-#define addr_rank1 base_addr_rank1
-#define addr_rank2 base_addr_rank2
-#define addr_rank3 base_addr_rank3
+#elif defined ADDR_SOA
 
-#else
+#define DATA_MODEL DATA_MODEL_SOA
 
-#undef DATA_MODEL
+#define addr_rank0 reverse_addr_rank0
+#define addr_rank1 reverse_addr_rank1
+#define addr_rank2 reverse_addr_rank2
+#define addr_rank3 reverse_addr_rank3
+#define addr_rank4 reverse_addr_rank4
+
+#elif defined ADDR_AOSOA
+
 #define DATA_MODEL DATA_MODEL_AOSOA
 
 /* Blocked version. Block length always vector length. */
@@ -269,16 +269,21 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define pseudo_iv(index) ( (index) - ((index)/NVBLOCK)*NVBLOCK )
 
 #define addr_rank0(nsites, index) \
-  base_addr_rank1((nsites)/NVBLOCK, NVBLOCK, (index)/NVBLOCK, pseudo_iv(index))
+  forward_addr_rank1((nsites)/NVBLOCK, NVBLOCK, (index)/NVBLOCK, pseudo_iv(index))
 
 #define addr_rank1(nsites, na, index, ia) \
-  base_addr_rank2((nsites)/NVBLOCK, na, NVBLOCK, (index)/NVBLOCK, ia, pseudo_iv(index))
+  forward_addr_rank2((nsites)/NVBLOCK, na, NVBLOCK, (index)/NVBLOCK, ia, pseudo_iv(index))
 
 #define addr_rank2(nsites, na, nb, index, ia, ib) \
-  base_addr_rank3((nsites)/NVBLOCK, na, nb, NVBLOCK, (index)/NVBLOCK, ia, ib, pseudo_iv(index))
+  forward_addr_rank3((nsites)/NVBLOCK, na, nb, NVBLOCK, (index)/NVBLOCK, ia, ib, pseudo_iv(index))
 
 #define addr_rank3(nsites, na, nb, nc, index, ia, ib, ic) \
-  base_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, pseudo_iv(index))
+  forward_addr_rank4((nsites)/NVBLOCK, na, nb, nc, NVBLOCK, (index)/NVBLOCK, ia, ib, ic, pseudo_iv(index))
+
+#else
+
+/* We should not be here. */
+#error "Internal error in memory.h"
 
 #endif
 
