@@ -13,7 +13,7 @@
  *  (c) 2012-2017 The University of Edinburgh
  *
  *  Contributing authors:
- *  Juho Lituvuori
+ *  Juho Lituvuori  (juho.lintuvuori@u-bordeaux.fr)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -28,7 +28,8 @@
 #include "coords.h"
 #include "blue_phase.h"
 #include "symmetric.h"
-#include "leesedwards.h"
+#include "hydro_s.h" 
+#include "kernel.h"
 #include "lc_droplet.h"
 
 static fe_vt_t fe_drop_hvt = {
@@ -66,6 +67,11 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
 __host__ __device__
 int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
 				       double sth[3][3]);
+
+__global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
+					fe_lc_droplet_t * fe,
+					hydro_t * hydro);
+
 
 static __constant__ fe_lc_droplet_param_t const_param;
 
@@ -314,7 +320,6 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
   double h1[3][3];
 
   assert(fe);
-  /*assert(0); Pending resolution of fe interface issue */
 
   for (iv = 0; iv < NSIMDVL; iv++) {
     fe_lc_droplet_mol_field(fe, index+iv, h1);
@@ -620,6 +625,44 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
  *
  *  fe_lc_droplet_bodyforce
  *
+ *  The driver for the bodyforce calculation.
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, hydro_t * hydro) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(fe);
+  assert(hydro);
+
+  cs_nlocal(fe->cs, nlocal);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(fe->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(fe_lc_droplet_bf_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, fe->target, hydro->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_droplet_bf_kernel
+ *
  *  This computes and stores the force on the fluid via
  *
  *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
@@ -631,104 +674,97 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
  *
  *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
  *
- *  Lees-Edwards planes are allowed for.
- *
- *****************************************************************************/
-  
-int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
-			    hydro_t * hydro) {
+ ****************************************************************************/
 
-  int ic, jc, kc, icm1, icp1;
-  int ia, ib;
-  int index0, indexm1, indexp1;
-  int nhalo;
-  int nlocal[3];
-  int zs, ys;
-  double mum1, mup1;
-  double force[3];
+__global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
+					fe_lc_droplet_t * fe,
+					hydro_t * hydro) {
+  int kindex;
+  int kiterations;
 
-  double h[3][3];
-  double q[3][3];
-  double dq[3][3][3];
-  double phi;
-
+  assert(ktx);
   assert(fe);
-  assert(le);
   assert(hydro);
 
-  lees_edw_nhalo(le, &nhalo);
-  lees_edw_nlocal(le, nlocal);
-  assert(nhalo >= 2);
+  kiterations = kernel_iterations(ktx);
 
-  /* Memory strides */
+  __target_simt_for(kindex, kiterations, 1) {
 
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
+    int ic, jc, kc;
+    int ia, ib;
+    int index0, indexm1, indexp1;
+    double mum1, mup1;
+    double force[3];
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_ic_to_buff(le, ic, -1);
-    icp1 = lees_edw_ic_to_buff(le, ic, +1);
-    
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    double h[3][3];
+    double q[3][3];
+    double dq[3][3][3];
+    double phi;
 
-	index0 = lees_edw_index(le, ic, jc, kc);
-	
-	field_scalar(fe->symm->phi, index0, &phi);
-	field_tensor(fe->lc->q, index0, q);
-  
-	field_grad_tensor_grad(fe->lc->dq, index0, dq);
-	fe_lc_droplet_mol_field(fe, index0, h);
-  
-        indexm1 = lees_edw_index(le, icm1, jc, kc);
-        indexp1 = lees_edw_index(le, icp1, jc, kc);
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
 
-	fe_lc_droplet_mu(fe, indexm1, &mum1);
-        fe_lc_droplet_mu(fe, indexp1, &mup1);
-	
-	/* X */
+    index0 = kernel_coords_index(ktx, ic, jc, kc);
 
-	force[X] = - phi*0.5*(mup1 - mum1);
-	
-	for (ia = 0; ia < 3; ia++ ) {
-	  for(ib = 0; ib < 3; ib++ ) {
-	    force[X] -= h[ia][ib]*dq[X][ia][ib];
-	  }
-	}
-	
-	/* Y */
+    field_scalar(fe->symm->phi, index0, &phi);
+    field_tensor(fe->lc->q, index0, q);
 
-	fe_lc_droplet_mu(fe, index0 - ys, &mum1);
-        fe_lc_droplet_mu(fe, index0 + ys, &mup1);
+    field_grad_tensor_grad(fe->lc->dq, index0, dq);
+    fe_lc_droplet_mol_field(fe, index0, h);
 
-        force[Y] = -phi*0.5*(mup1 - mum1);
-	
-	for (ia = 0; ia < 3; ia++ ) {
-	  for(ib = 0; ib < 3; ib++ ) {
-	    force[Y] -= h[ia][ib]*dq[Y][ia][ib];
-	  }
-	}
+    indexm1 = kernel_coords_index(ktx, ic-1, jc, kc);
+    indexp1 = kernel_coords_index(ktx, ic+1, jc, kc);
 
-	/* Z */
+    fe_lc_droplet_mu(fe, indexm1, &mum1);
+    fe_lc_droplet_mu(fe, indexp1, &mup1);
+ 
+    /* X */
 
-	fe_lc_droplet_mu(fe, index0 - zs, &mum1);
-        fe_lc_droplet_mu(fe, index0 + zs, &mup1);
-
-        force[Z] = -phi*0.5*(mup1 - mum1);
-	
-	for (ia = 0; ia < 3; ia++ ) {
-	  for(ib = 0; ib < 3; ib++ ) {
-	    force[Z] -= h[ia][ib]*dq[Z][ia][ib];
-	  }
-	}
-
-	/* Store the force on lattice */
-
-	hydro_f_local_add(hydro, index0, force);
-	
+    force[X] = - phi*0.5*(mup1 - mum1);
+ 
+    for (ia = 0; ia < 3; ia++ ) {
+      for(ib = 0; ib < 3; ib++ ) {
+	force[X] -= h[ia][ib]*dq[X][ia][ib];
       }
     }
+ 
+    /* Y */
+
+    indexm1 = kernel_coords_index(ktx, ic, jc-1, kc);
+    indexp1 = kernel_coords_index(ktx, ic, jc+1, kc);
+
+    fe_lc_droplet_mu(fe, indexm1, &mum1);
+    fe_lc_droplet_mu(fe, indexp1, &mup1);
+
+    force[Y] = -phi*0.5*(mup1 - mum1);
+ 
+    for (ia = 0; ia < 3; ia++ ) {
+      for(ib = 0; ib < 3; ib++ ) {
+	force[Y] -= h[ia][ib]*dq[Y][ia][ib];
+      }
+    }
+
+    /* Z */
+
+    indexm1 = kernel_coords_index(ktx, ic, jc, kc-1);
+    indexp1 = kernel_coords_index(ktx, ic, jc, kc+1);
+
+    fe_lc_droplet_mu(fe, indexm1, &mum1);
+    fe_lc_droplet_mu(fe, indexp1, &mup1);
+
+    force[Z] = -phi*0.5*(mup1 - mum1);
+ 
+    for (ia = 0; ia < 3; ia++ ) {
+      for(ib = 0; ib < 3; ib++ ) {
+	force[Z] -= h[ia][ib]*dq[Z][ia][ib];
+      }
+    }
+
+    /* Store the force on lattice */
+
+    hydro_f_local_add(hydro, index0, force);
   }
 
-  return 0;
+  return;
 }
