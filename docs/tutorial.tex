@@ -1,0 +1,221 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  ludwigTutorial.tex
+%
+%  Introductory tutorial for new users of Ludwig. 
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre and
+%  Department of Physics, University of Strathclyde
+%
+%  Contributing authors:
+%  Oliver Henrich (oliver.henrich@strath.ac.uk)
+%  Fraser Mackay (s1026487@sms.ed.ac.uk)
+%
+%  (c) 2008-2017 The University of Edinburgh
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[11pt,twoside,a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{moreverb}
+\usepackage{lscape}
+\usepackage{epic}
+\usepackage[pdftex]{graphicx}
+\usepackage{bm}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{enumerate}
+
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ left=3.1cm,
+ right=3.1cm,
+ top=2.25cm,
+ bottom=2.25cm 
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{\smallskipamount}
+
+\newcommand{\inputkey}[1]{\framebox{\textbf{\texttt{#1}}}}
+\newcommand{\e}[1]{\cdot10^{#1}}
+\newcommand{\beq}{\begin{equation}}
+\newcommand{\eeq}{\end{equation}}
+\newcommand{\beqa}{\begin{eqnarray}}
+\newcommand{\eeqa}{\end{eqnarray}}
+\newcommand{\com}[1]{\textcolor{red}{#1}}
+\newcommand{\plag}[1]{\textcolor{green}{#1}}
+\newcommand{\cur}[1]{{\textit{#1}}}
+
+\definecolor{terminalcolour}{gray}{0.96}
+
+\lstdefinestyle{terminalverbatim}{
+  basicstyle=\small\ttfamily,
+  columns=flexible,
+  backgroundcolor=\color{terminalcolour},
+  xleftmargin=0pt
+}
+
+
+\begin{document}
+
+
+\setcounter{page}{1}
+
+% We're not including the table of contents just at the moment
+%\tableofcontents
+
+\newpage
+\lstset{style=terminalverbatim}
+
+\setcounter{page}{1}
+
+% These redefinitions are just compressing the spacing a little.
+
+\makeatletter
+\renewcommand*{\section}{%
+\@startsection {section}{1}{\z@}%
+  {-1.75ex \@plus -0.5ex \@minus -.1ex}%
+  {1.15ex \@plus.1ex}%
+  {\normalfont\Large\bfseries}%
+}
+\renewcommand*{\subsection}{%
+\@startsection {subsection}{2}{\z@}%
+  {-1.75ex \@plus -0.5ex \@minus -.1ex}%
+  {1.15ex \@plus.1ex}%
+  {\normalfont\large\bfseries}%
+}
+\renewcommand*{\subsubsection}{%
+\@startsection {subsubsection}{1}{\z@}%
+  {-1.75ex \@plus -0.5ex \@minus -.1ex}%
+  {1.15ex \@plus.1ex}%
+  {\normalfont\normalsize\bfseries}%
+}
+
+% Table of Contents
+\pagenumbering{roman}
+\title{Ludwig User Tutorial}
+\author{Fraser Mackay and Oliver Henrich}
+\maketitle 
+\tableofcontents
+\clearpage
+
+% Sections
+\pagenumbering{arabic}
+
+\section{Introduction}
+
+This tutorial document takes new users of the \texttt{Ludwig} code through the process of how to obtain 
+and build the code before outlining some short tutorial exercises where simulations 
+of simple example cases will be run and visualised.
+It is assumed that the reader is familar with UNIX-based operationg systems and has 
+a basic knowledge of hydrodynamics, complex fluids, and to some extent statistical physics. 
+This knowledge will be required to make sense of the input and output involved in using the code. 
+
+The system requirements are an up-to-date version of a C compiler as well as working installations 
+of Apache's Subversion (SVN) version control system, the visualisation tool
+ParaView (\hyperref[ParaView]{https://www.paraview.org}) and the MPI-library 
+for compiling the parallel version of the code.
+
+\section{Access and Compilation}
+
+\subsection{Obtaining the Code}
+\label{sec:getCode}
+
+The \texttt{Ludwig} project is currently hosted at our central repository 
+at CCPForge:\\
+(\hyperref[CCPForge]{https://ccpforge.cse.rl.ac.uk}).\\
+For full access to the repository please open a CCPForge account and request
+to join the project \texttt{Ludwig}. The following command grants anonymous access:
+
+\begin{lstlisting}[style=terminalverbatim]
+$ svn checkout https://ccpforge.cse.rl.ac.uk/svn/ludwig
+\end{lstlisting}
+
+A copy of the \texttt{Ludwig} repository will now be available in your current directory. 
+You should see:
+
+\begin{lstlisting}
+$ ls ludwig
+branches  tags  trunk
+\end{lstlisting}
+which is the usual svn layout for trunk, branches and tagged versions.
+
+A full documentation of \texttt{Ludwig} can be obtained by running 
+the command \texttt{make pdf} twice in the \texttt{/trunk/docs} directory:
+
+\begin{lstlisting}[style=terminalverbatim]
+$ cd /ludwig/trunk/docs/
+$ make pdf
+\end{lstlisting}
+
+\subsection{Configuration and Build}
+
+The following section outlines the configuration and compilation 
+procedure. The configuration step is based on the GNU Compiler Collection gcc.
+
+\begin{enumerate}
+\item Go to the directory \texttt{/ludwig/trunk/}: \\
+\begin{lstlisting}
+$ cd ludwig/trunk
+\end{lstlisting}
+\item Copy the configuration file \texttt{lunix-gcc-default.mk} to the \texttt{/trunk} directory 
+and rename to \texttt{config.mk}: \\
+\begin{lstlisting}
+$ cp config/lunix-gcc-default.mk ./config.mk
+\end{lstlisting}
+\item Issue \texttt{make} in \texttt{/targetDP}: \\
+\begin{lstlisting}
+$ cd targetDP/
+$ make 
+\end{lstlisting}
+This creates dummy functions for calls to the targetDP library.
+\item Issue \texttt{make} in \texttt{/mpi\_s}: \\
+\begin{lstlisting}
+$ cd ../mpi_s/
+$ make 
+\end{lstlisting}
+This creates dummy functions for calls to the MPI-library,
+which is required for serial compilation.
+\item Edit \texttt{Makefile} in \texttt{/src}. To switch off 
+the assertions set \texttt{OPTS = -DNP\_D3Q6 -DNDEBUG}. This is
+important for production runs (see also comment in \texttt{Makefile}): \\
+\begin{lstlisting}
+$ cd ../src/
+$ vim Makefile
+...
+
+include ../Makefile.mk
+
+MAIN = main
+EXECUTABLE = Ludwig.exe
+LIBRARY = libludwig.a
+
+OPTS = -DNP_D3Q6 -DNDEBUG
+LIBS = -L../targetDP -ltarget -lm
+INC = -I. -I ../targetDP
+...
+\end{lstlisting}
+\item To compile the code in serial issue: \\
+\begin{lstlisting}
+$ make serial
+\end{lstlisting} 
+To compile the parallel version of the code issue: \\
+\begin{lstlisting}
+$ make mpi
+\end{lstlisting} 
+This creates the executable file \texttt{Ludwig.exe} in \texttt{/src}.
+\end{enumerate}
+
+
+
+%\clearpage
+%\vfill\pagebreak
+%\input{references.tex}
+
+\end{document}
