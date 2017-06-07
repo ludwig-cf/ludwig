@@ -128,7 +128,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
 
 /*****************************************************************************
  *
- *  lb_collision_mrt
+ *  lb_collision_mrt_site
  *
  *  Collision with (potentially) different relaxation times for each
  *  different mode.
@@ -483,7 +483,18 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   int Nall[3];
   int nSites;
   int noise_on = 0;
+  int ia,t;
+
+  double force_constant[3];
   double force_global[3];
+
+  double fpulse_frequency;
+  double fpulse_frequency_rad;
+  double fpulse_amplitude[3] = {0.0, 0.0, 0.0};
+  double force_pulsatile[3]= {0.0, 0.0, 0.0};
+
+  PI_DOUBLE(pi);
+
   noise_t * noiset = NULL;
   physics_t * phys = NULL;
 
@@ -494,7 +505,19 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   nhalo = coords_nhalo();
   coords_nlocal(nlocal);
   physics_ref(&phys);
-  physics_fbody(phys, force_global);
+  physics_fbody(phys, force_constant);
+
+  physics_fpulse(phys, fpulse_amplitude);
+  physics_fpulse_frequency(phys, &fpulse_frequency);
+
+  t = physics_control_timestep(phys);
+
+  fpulse_frequency_rad =  2.0*pi*fpulse_frequency; 
+
+  for (ia = 0; ia < 3; ia++) {
+    force_pulsatile[ia] = fpulse_amplitude[ia]*sin(fpulse_frequency_rad*t);
+    force_global[ia] = force_constant[ia]+force_pulsatile[ia];
+  }
 
   Nall[X] = nlocal[X]+2*nhalo;
   Nall[Y] = nlocal[Y]+2*nhalo;
@@ -529,7 +552,6 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   return 0;
 }
-
 
 /*****************************************************************************
  *

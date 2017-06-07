@@ -49,6 +49,9 @@ struct physics_s {
   int nsteps;          /* Number of time steps requested by user */
   int t_current;       /* The current time step */
   int e0_flag;         /* = 1 if electric field is non-zero */
+
+  double fpulse_frequency; /* Frequency of external body forcing */ 
+  double fpulse[3];        /* Amplitude of external electric field */
 };
 
 /* At the moment we have static instances */
@@ -450,6 +453,74 @@ __host__ int physics_fbody_set(physics_t * phys, double f[3]) {
   phys->fbody[0] = f[0];
   phys->fbody[1] = f[1];
   phys->fbody[2] = f[2];
+
+
+  info("\nREAD external forcing Intensity f0: f0=%0.5f  %0.5f  %0.5f\n", f[0], f[1], f[2]);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fpulse
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_fpulse(physics_t * phys, double fpulse[3]) {
+
+  assert(phys);
+
+  fpulse[0] = phys->fpulse[0];
+  fpulse[1] = phys->fpulse[1];
+  fpulse[2] = phys->fpulse[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fpulse_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_fpulse_set(physics_t * phys, double fpulse[3]) {
+
+  assert(phys);
+
+  phys->fpulse[0] = fpulse[0];
+  phys->fpulse[1] = fpulse[1];
+  phys->fpulse[2] = fpulse[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fpulse_frequency
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_fpulse_frequency(physics_t * phys,
+					     double * fpulse_frequency) {
+
+  assert(phys);
+
+  *fpulse_frequency = phys->fpulse_frequency;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_fpulse_frequency_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_fpulse_frequency_set(physics_t * phys, double fpulse_frequency) {
+
+  assert(phys);
+
+  phys->fpulse_frequency = fpulse_frequency;
 
   return 0;
 }
