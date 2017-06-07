@@ -91,6 +91,8 @@ temperature 3.33333333333333333e-5
 
 # ghost_modes off
 # force 0.00_0.0_0.0
+# fpulse_amplitude 0.0_0.0_0.00005
+# fpulse_frequency 0.00004
 
 distribution_initialisation   1d_poiseuille
 distribution_uniform_u        0.0_0.0_0.00
