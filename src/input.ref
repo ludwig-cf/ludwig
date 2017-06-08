@@ -73,6 +73,8 @@ reduced_halo no
 #
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
+#  fpulse_amplitude	 Amplitude of time-dependent force
+#  fpulse_frequency	 Frequency of time-dependent force
 #
 #  distribution_initialisation    Default is fluid uniformly at rest
 #                                 3d_uniform_u   uniform velocity
