@@ -1,0 +1,1503 @@
+Welcome to Ludwig v0.6.5 (MPI version running on 4 processes)
+
+The SVN revision details are: 3128
+Read 15 user parameters from input
+
+No free energy selected
+
+System details
+--------------
+System size:    64 1 1
+Decomposition:  4 1 1
+Local domain:   16 1 1
+Periodic:       0 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+READ external forcing Intensity f0: f0=0.00000  0.00001  0.00000
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-01
+Bulk viscosity                8.33333e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  1.00000e-05  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    3.00000e+00
+Bulk relaxation time:     3.00000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Boundary walls
+--------------
+Boundary walls:                  X - -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   10
+Memory (total, bytes):           160
+Boundary shear initialise:       0
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  8.8817842e-16  0.0000000e+00  0.0000000e+00
+[fluid   ]  8.8817842e-16  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.2404635e-15  6.4000000e-02  0.0000000e+00
+[fluid   ]  5.2527427e-15  5.0510564e-02  0.0000000e+00
+[walls   ] -8.4932061e-15  1.3489436e-02  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.7408631e-16  6.8650149e-05  0.0000000e+00
+[maximum ]  4.5102810e-16  9.9147192e-04  1.1754944e-38
+
+Completed cycle 100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.5673907e-15  1.2800000e-01  0.0000000e+00
+[fluid   ] -1.1199375e-14  8.9502713e-02  0.0000000e+00
+[walls   ]  8.6319840e-15  3.8497287e-02  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.6490589e-16  9.4278447e-05  0.0000000e+00
+[maximum ]  3.0531133e-16  1.9083050e-03  1.1754944e-38
+
+Completed cycle 200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.5084101e-15  1.9200000e-01  0.0000000e+00
+[fluid   ]  1.1175089e-14  1.2109980e-01  0.0000000e+00
+[walls   ] -1.3683499e-14  7.0900205e-02  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -7.6327833e-17  1.1366827e-04  0.0000000e+00
+[maximum ]  5.3429483e-16  2.6785667e-03  1.1754944e-38
+
+Completed cycle 300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.7832957e-15  2.5600000e-01  0.0000000e+00
+[fluid   ] -1.0998147e-14  1.4688852e-01  0.0000000e+00
+[walls   ]  9.2148511e-15  1.0911148e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -6.4184769e-16  1.2928125e-04  0.0000000e+00
+[maximum ]  1.6306401e-16  3.3115305e-03  1.1754944e-38
+
+Completed cycle 400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.9647786e-15  3.2000000e-01  0.0000000e+00
+[fluid   ]  6.9701189e-15  1.6796527e-01  0.0000000e+00
+[walls   ] -1.1934898e-14  1.5203473e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.1510571e-16  1.4200852e-04  0.0000000e+00
+[maximum ]  4.8225313e-16  3.8295104e-03  1.1754944e-38
+
+Completed cycle 500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -6.9805273e-15  3.8400000e-01  0.0000000e+00
+[fluid   ] -9.0344399e-15  1.8519545e-01  0.0000000e+00
+[walls   ]  2.0539126e-15  1.9880455e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5041414e-16  1.5240790e-04  0.0000000e+00
+[maximum ]  2.1163626e-16  4.2530609e-03  1.1754944e-38
+
+Completed cycle 600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -6.9250161e-15  4.4800000e-01  0.0000000e+00
+[fluid   ]  2.2898350e-15  1.9928175e-01  0.0000000e+00
+[walls   ] -9.2148511e-15  2.4871825e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.9551695e-16  1.6090898e-04  0.0000000e+00
+[maximum ]  3.6082248e-16  4.5993452e-03  1.1754944e-38
+
+Completed cycle 700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -5.6898930e-15  5.1200000e-01  0.0000000e+00
+[fluid   ]  1.7347235e-15  2.1079794e-01  0.0000000e+00
+[walls   ] -7.4246165e-15  3.0120206e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.9898640e-16  1.6785886e-04  0.0000000e+00
+[maximum ]  3.4000580e-16  4.8824504e-03  1.1754944e-38
+
+Completed cycle 800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.4339532e-15  5.7600000e-01  0.0000000e+00
+[fluid   ] -7.3205331e-15  2.2021294e-01  0.0000000e+00
+[walls   ]  2.8865799e-15  3.5578706e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.5796700e-16  1.7354070e-04  0.0000000e+00
+[maximum ]  2.0469737e-16  5.1139024e-03  1.1754944e-38
+
+Completed cycle 900
+Writing velocity output at step 1000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.6386506e-15  6.4000000e-01  0.0000000e+00
+[fluid   ]  1.1501217e-14  2.2791015e-01  0.0000000e+00
+[walls   ] -1.6139867e-14  4.1208985e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.2551405e-16  1.7818586e-04  0.0000000e+00
+[maximum ]  4.6143644e-16  5.3031251e-03  1.1754944e-38
+
+Completed cycle 1000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.0453751e-15  7.0400000e-01  0.0000000e+00
+[fluid   ] -1.5175361e-14  2.3420297e-01  0.0000000e+00
+[walls   ]  1.1129986e-14  4.6979703e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.4817262e-16  1.8198349e-04  0.0000000e+00
+[maximum ]  2.6020852e-16  5.4578235e-03  1.1754944e-38
+
+Completed cycle 1100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.3792413e-15  7.6800000e-01  0.0000000e+00
+[fluid   ]  1.3176960e-14  2.3934764e-01  0.0000000e+00
+[walls   ] -1.6556201e-14  5.2865236e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.0061396e-16  1.8508823e-04  0.0000000e+00
+[maximum ]  6.4184769e-16  5.5842966e-03  1.1754944e-38
+
+Completed cycle 1200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.2647496e-15  8.3200000e-01  0.0000000e+00
+[fluid   ] -9.7456765e-15  2.4355365e-01  0.0000000e+00
+[walls   ]  6.4809269e-15  5.8844635e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.1000870e-16  1.8762650e-04  0.0000000e+00
+[maximum ]  1.8735014e-16  5.6876942e-03  1.1754944e-38
+
+Completed cycle 1300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.0253577e-15  8.9600000e-01  0.0000000e+00
+[fluid   ]  1.0116907e-14  2.4699225e-01  0.0000000e+00
+[walls   ] -1.3142265e-14  6.4900775e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.5612511e-16  1.8970165e-04  0.0000000e+00
+[maximum ]  4.8572257e-16  5.7722265e-03  1.1754944e-38
+
+Completed cycle 1400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.9073965e-15  9.6000000e-01  0.0000000e+00
+[fluid   ] -2.5465741e-15  2.4980347e-01  0.0000000e+00
+[walls   ] -3.6082248e-16  7.1019653e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.3021142e-16  1.9139818e-04  0.0000000e+00
+[maximum ]  3.4000580e-16  5.8413356e-03  1.1754944e-38
+
+Completed cycle 1500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.7755576e-15  1.0240000e+00  0.0000000e+00
+[fluid   ]  2.5535130e-15  2.5210178e-01  0.0000000e+00
+[walls   ] -5.3290705e-15  7.7189822e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.1571967e-16  1.9278517e-04  0.0000000e+00
+[maximum ]  3.8510861e-16  5.8978354e-03  1.1754944e-38
+
+Completed cycle 1600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.4243441e-15  1.0880000e+00  0.0000000e+00
+[fluid   ] -3.7574110e-15  2.5398074e-01  0.0000000e+00
+[walls   ]  3.3306691e-16  8.3401926e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5041414e-16  1.9391911e-04  0.0000000e+00
+[maximum ]  2.3939184e-16  5.9440267e-03  1.1754944e-38
+
+Completed cycle 1700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.9759862e-15  1.1520000e+00  0.0000000e+00
+[fluid   ] -2.3522850e-15  2.5551689e-01  0.0000000e+00
+[walls   ] -1.6237012e-15  8.9648311e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.3306691e-16  1.9484615e-04  0.0000000e+00
+[maximum ]  2.0469737e-16  5.9817902e-03  1.1754944e-38
+
+Completed cycle 1800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.1876225e-15  1.2160000e+00  0.0000000e+00
+[fluid   ]  2.1545266e-15  2.5677276e-01  0.0000000e+00
+[walls   ] -6.3421490e-15  9.5922724e-01  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.1571967e-16  1.9560405e-04  0.0000000e+00
+[maximum ]  5.5164207e-16  6.0126636e-03  1.1754944e-38
+
+Completed cycle 1900
+Writing velocity output at step 2000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -5.8460181e-15  1.2800000e+00  0.0000000e+00
+[fluid   ] -9.6068986e-15  2.5779949e-01  0.0000000e+00
+[walls   ]  3.7608805e-15  1.0222005e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.3715032e-16  1.9622367e-04  0.0000000e+00
+[maximum ]  2.5673907e-16  6.0379040e-03  1.1754944e-38
+
+Completed cycle 2000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -5.0966176e-15  1.3440000e+00  0.0000000e+00
+[fluid   ]  1.1417950e-14  2.5863889e-01  0.0000000e+00
+[walls   ] -1.6514567e-14  1.0853611e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.2836954e-16  1.9673023e-04  0.0000000e+00
+[maximum ]  4.8225313e-16  6.0585393e-03  1.1754944e-38
+
+Completed cycle 2100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -6.2380656e-15  1.4080000e+00  0.0000000e+00
+[fluid   ] -1.6861512e-15  2.5932513e-01  0.0000000e+00
+[walls   ] -4.5519144e-15  1.1486749e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.9143354e-16  1.9714437e-04  0.0000000e+00
+[maximum ]  2.8102520e-16  6.0754095e-03  1.1754944e-38
+
+Completed cycle 2200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.8617668e-15  1.4720000e+00  0.0000000e+00
+[fluid   ]  1.3183898e-16  2.5988617e-01  0.0000000e+00
+[walls   ] -7.9936058e-15  1.2121138e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5041414e-16  1.9748295e-04  0.0000000e+00
+[maximum ]  4.3021142e-16  6.0892017e-03  1.1754944e-38
+
+Completed cycle 2300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.0182827e-14  1.5360000e+00  0.0000000e+00
+[fluid   ] -4.6178339e-15  2.6034485e-01  0.0000000e+00
+[walls   ] -5.5649929e-15  1.2756551e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.9266147e-16  1.9775976e-04  0.0000000e+00
+[maximum ]  3.1571967e-16  6.1004775e-03  1.1754944e-38
+
+Completed cycle 2400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2836954e-14  1.6000000e+00  0.0000000e+00
+[fluid   ]  9.5617958e-15  2.6071984e-01  0.0000000e+00
+[walls   ] -2.2398750e-14  1.3392802e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.4000580e-16  1.9798606e-04  0.0000000e+00
+[maximum ]  6.6960326e-16  6.1096960e-03  1.1754944e-38
+
+Completed cycle 2500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2771034e-14  1.6640000e+00  0.0000000e+00
+[fluid   ] -1.4436369e-14  2.6102641e-01  0.0000000e+00
+[walls   ]  1.6653345e-15  1.4029736e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.2735594e-16  1.9817107e-04  0.0000000e+00
+[maximum ]  1.3183898e-16  6.1172325e-03  1.1754944e-38
+
+Completed cycle 2600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.5022705e-14  1.7280000e+00  0.0000000e+00
+[fluid   ]  4.2674198e-15  2.6127705e-01  0.0000000e+00
+[walls   ] -1.9290125e-14  1.4667230e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.1163626e-16  1.9832232e-04  0.0000000e+00
+[maximum ]  3.3306691e-16  6.1233939e-03  1.1754944e-38
+
+Completed cycle 2700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2601031e-14  1.7920000e+00  0.0000000e+00
+[fluid   ]  3.7053693e-15  2.6148195e-01  0.0000000e+00
+[walls   ] -1.6306401e-14  1.5305180e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.2551405e-16  1.9844598e-04  0.0000000e+00
+[maximum ]  3.4000580e-16  6.1284312e-03  1.1754944e-38
+
+Completed cycle 2800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2181228e-14  1.8560000e+00  0.0000000e+00
+[fluid   ] -1.6802532e-14  2.6164947e-01  0.0000000e+00
+[walls   ]  4.6213033e-15  1.5943505e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.8633653e-16  1.9854708e-04  0.0000000e+00
+[maximum ]  9.3675068e-17  6.1325494e-03  1.1754944e-38
+
+Completed cycle 2900
+Writing velocity output at step 3000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.3562068e-14  1.9200000e+00  0.0000000e+00
+[fluid   ]  1.3277573e-14  2.6178643e-01  0.0000000e+00
+[walls   ] -2.6839642e-14  1.6582136e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.3592239e-16  1.9862973e-04  0.0000000e+00
+[maximum ]  6.3490879e-16  6.1359162e-03  1.1754944e-38
+
+Completed cycle 3000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  5.5511151e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2739809e-14  1.9840000e+00  0.0000000e+00
+[fluid   ] -3.2890357e-15  2.6189840e-01  0.0000000e+00
+[walls   ] -9.4507735e-15  1.7221016e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.0592529e-16  1.9869730e-04  0.0000000e+00
+[maximum ]  2.2204460e-16  6.1386688e-03  1.1754944e-38
+
+Completed cycle 3100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.1549789e-14  2.0480000e+00  0.0000000e+00
+[fluid   ]  1.1084883e-14  2.6198993e-01  0.0000000e+00
+[walls   ] -2.2634672e-14  1.7860101e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.1449175e-16  1.9875254e-04  0.0000000e+00
+[maximum ]  5.6898930e-16  6.1409191e-03  1.1754944e-38
+
+Completed cycle 3200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -9.5826125e-15  2.1120000e+00  0.0000000e+00
+[fluid   ] -1.0290380e-14  2.6206477e-01  0.0000000e+00
+[walls   ]  7.0776718e-16  1.8499352e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5388359e-16  1.9879771e-04  0.0000000e+00
+[maximum ]  1.7694179e-16  6.1427589e-03  1.1754944e-38
+
+Completed cycle 3300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -9.5236319e-15  2.1760000e+00  0.0000000e+00
+[fluid   ]  9.4611818e-15  2.6212595e-01  0.0000000e+00
+[walls   ] -1.8984814e-14  1.9138740e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.4286129e-16  1.9883463e-04  0.0000000e+00
+[maximum ]  5.7939764e-16  6.1442629e-03  1.1754944e-38
+
+Completed cycle 3400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -9.7526154e-15  2.2400000e+00  0.0000000e+00
+[fluid   ] -6.6717465e-15  2.6217597e-01  0.0000000e+00
+[walls   ] -3.0808689e-15  1.9778240e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.4408921e-16  1.9886482e-04  0.0000000e+00
+[maximum ]  1.7347235e-16  6.1454926e-03  1.1754944e-38
+
+Completed cycle 3500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -8.8921925e-15  2.3040000e+00  0.0000000e+00
+[fluid   ]  9.4264874e-15  2.6221687e-01  0.0000000e+00
+[walls   ] -1.8318680e-14  2.0417831e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.7000290e-16  1.9888949e-04  0.0000000e+00
+[maximum ]  5.6205041e-16  6.1464979e-03  1.1754944e-38
+
+Completed cycle 3600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.2060413e-15  2.3680000e+00  0.0000000e+00
+[fluid   ] -4.0280279e-15  2.6225030e-01  0.0000000e+00
+[walls   ] -3.1780134e-15  2.1057497e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.0592529e-16  1.9890967e-04  0.0000000e+00
+[maximum ]  2.2898350e-16  6.1473198e-03  1.1754944e-38
+
+Completed cycle 3700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.6223750e-15  2.4320000e+00  0.0000000e+00
+[fluid   ]  1.6358442e-14  2.6227763e-01  0.0000000e+00
+[walls   ] -2.3980817e-14  2.1697224e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -6.2450045e-17  1.9892617e-04  0.0000000e+00
+[maximum ]  6.9041994e-16  6.1479917e-03  1.1754944e-38
+
+Completed cycle 3800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -8.1046281e-15  2.4960000e+00  0.0000000e+00
+[fluid   ] -1.9012569e-14  2.6229998e-01  0.0000000e+00
+[walls   ]  1.0907941e-14  2.2337000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -6.8695050e-16  1.9893965e-04  0.0000000e+00
+[maximum ]  5.2041704e-17  6.1485410e-03  1.1754944e-38
+
+Completed cycle 3900
+Writing velocity output at step 4000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -9.4126096e-15  2.5600000e+00  0.0000000e+00
+[fluid   ]  1.9772378e-14  2.6231825e-01  0.0000000e+00
+[walls   ] -2.9184988e-14  2.2976818e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.1102230e-16  1.9895068e-04  0.0000000e+00
+[maximum ]  8.0491169e-16  6.1489901e-03  1.1754944e-38
+
+Completed cycle 4000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.0168949e-14  2.6240000e+00  0.0000000e+00
+[fluid   ] -1.2417151e-14  2.6233318e-01  0.0000000e+00
+[walls   ]  2.2482016e-15  2.3616668e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.1694760e-16  1.9895969e-04  0.0000000e+00
+[maximum ]  1.1796120e-16  6.1493573e-03  1.1754944e-38
+
+Completed cycle 4100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.0821205e-14  2.6880000e+00  0.0000000e+00
+[fluid   ]  1.2465723e-14  2.6234539e-01  0.0000000e+00
+[walls   ] -2.3286928e-14  2.4256546e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.9081958e-16  1.9896706e-04  0.0000000e+00
+[maximum ]  5.0653925e-16  6.1496574e-03  1.1754944e-38
+
+Completed cycle 4200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.0755286e-14  2.7520000e+00  0.0000000e+00
+[fluid   ] -9.1038288e-15  2.6235537e-01  0.0000000e+00
+[walls   ] -1.6514567e-15  2.4896446e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.7531423e-16  1.9897308e-04  0.0000000e+00
+[maximum ]  1.9775848e-16  6.1499028e-03  1.1754944e-38
+
+Completed cycle 4300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2895934e-14  2.8160000e+00  0.0000000e+00
+[fluid   ] -1.5612511e-16  2.6236354e-01  0.0000000e+00
+[walls   ] -1.2739809e-14  2.5536365e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.3306691e-16  1.9897801e-04  0.0000000e+00
+[maximum ]  2.4633073e-16  6.1501035e-03  1.1754944e-38
+
+Completed cycle 4400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2587154e-14  2.8800000e+00  0.0000000e+00
+[fluid   ]  7.4801276e-15  2.6237021e-01  0.0000000e+00
+[walls   ] -2.0067281e-14  2.6176298e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.4980018e-16  1.9898203e-04  0.0000000e+00
+[maximum ]  4.4061976e-16  6.1502675e-03  1.1754944e-38
+
+Completed cycle 4500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2476131e-14  2.9440000e+00  0.0000000e+00
+[fluid   ] -1.3641865e-14  2.6237566e-01  0.0000000e+00
+[walls   ]  1.1657342e-15  2.6816243e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.6551985e-16  1.9898533e-04  0.0000000e+00
+[maximum ]  6.5919492e-17  6.1504016e-03  1.1754944e-38
+
+Completed cycle 4600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.4856172e-14  3.0080000e+00  0.0000000e+00
+[fluid   ]  7.3066553e-15  2.6238012e-01  0.0000000e+00
+[walls   ] -2.2162827e-14  2.7456199e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.8102520e-16  1.9898802e-04  0.0000000e+00
+[maximum ]  5.2388649e-16  6.1505112e-03  1.1754944e-38
+
+Completed cycle 4700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2951445e-14  3.0720000e+00  0.0000000e+00
+[fluid   ]  8.5695340e-16  2.6238377e-01  0.0000000e+00
+[walls   ] -1.3808399e-14  2.8096162e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.1286419e-16  1.9899022e-04  0.0000000e+00
+[maximum ]  4.2327253e-16  6.1506008e-03  1.1754944e-38
+
+Completed cycle 4800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.1463053e-14  3.1360000e+00  0.0000000e+00
+[fluid   ] -2.8171909e-15  2.6238675e-01  0.0000000e+00
+[walls   ] -8.6458618e-15  2.8736133e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.6776138e-16  1.9899202e-04  0.0000000e+00
+[maximum ]  2.4633073e-16  6.1506741e-03  1.1754944e-38
+
+Completed cycle 4900
+Writing velocity output at step 5000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.1074475e-14  3.2000000e+00  0.0000000e+00
+[fluid   ]  5.4817262e-15  2.6238919e-01  0.0000000e+00
+[walls   ] -1.6556201e-14  2.9376108e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.4347525e-16  1.9899349e-04  0.0000000e+00
+[maximum ]  4.1980308e-16  6.1507340e-03  1.1754944e-38
+
+Completed cycle 5000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -9.3987318e-15  3.2640000e+00  0.0000000e+00
+[fluid   ] -5.6517291e-15  2.6239118e-01  0.0000000e+00
+[walls   ] -3.7470027e-15  3.0016088e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.8225313e-16  1.9899469e-04  0.0000000e+00
+[maximum ]  2.8449465e-16  6.1507830e-03  1.1754944e-38
+
+Completed cycle 5100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.3309414e-15  3.3280000e+00  0.0000000e+00
+[fluid   ]  3.5631220e-15  2.6239281e-01  0.0000000e+00
+[walls   ] -1.0894063e-14  3.0656072e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.4286129e-16  1.9899567e-04  0.0000000e+00
+[maximum ]  4.1633363e-16  6.1508230e-03  1.1754944e-38
+
+Completed cycle 5200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.1123663e-15  3.3920000e+00  0.0000000e+00
+[fluid   ] -1.7347235e-16  2.6239414e-01  0.0000000e+00
+[walls   ] -6.9388939e-15  3.1296059e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.6714742e-16  1.9899647e-04  0.0000000e+00
+[maximum ]  4.4061976e-16  6.1508558e-03  1.1754944e-38
+
+Completed cycle 5300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.6189055e-15  3.4560000e+00  0.0000000e+00
+[fluid   ]  3.1918912e-15  2.6239523e-01  0.0000000e+00
+[walls   ] -1.0810797e-14  3.1936048e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.3592239e-16  1.9899713e-04  0.0000000e+00
+[maximum ]  3.3306691e-16  6.1508825e-03  1.1754944e-38
+
+Completed cycle 5400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -8.4689200e-15  3.5200000e+00  0.0000000e+00
+[fluid   ]  5.2041704e-17  2.6239612e-01  0.0000000e+00
+[walls   ] -8.5209617e-15  3.2576039e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.3653635e-16  1.9899767e-04  0.0000000e+00
+[maximum ]  4.2327253e-16  6.1509044e-03  1.1754944e-38
+
+Completed cycle 5500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -7.9207474e-15  3.5840000e+00  0.0000000e+00
+[fluid   ]  8.8713759e-15  2.6239684e-01  0.0000000e+00
+[walls   ] -1.6792123e-14  3.3216032e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.4633073e-16  1.9899811e-04  0.0000000e+00
+[maximum ]  5.7939764e-16  6.1509223e-03  1.1754944e-38
+
+Completed cycle 5600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.8025139e-15  3.6480000e+00  0.0000000e+00
+[fluid   ] -9.5340402e-15  2.6239744e-01  0.0000000e+00
+[walls   ]  5.7315264e-15  3.3856026e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.4470317e-16  1.9899847e-04  0.0000000e+00
+[maximum ]  1.3183898e-16  6.1509369e-03  1.1754944e-38
+
+Completed cycle 5700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.1772141e-15  3.7120000e+00  0.0000000e+00
+[fluid   ]  1.0505485e-14  2.6239793e-01  0.0000000e+00
+[walls   ] -1.4682700e-14  3.4496021e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.1633363e-17  1.9899876e-04  0.0000000e+00
+[maximum ]  3.3653635e-16  6.1509489e-03  1.1754944e-38
+
+Completed cycle 5800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.8033131e-15  3.7760000e+00  0.0000000e+00
+[fluid   ]  4.7739590e-15  2.6239832e-01  0.0000000e+00
+[walls   ] -7.5772721e-15  3.5136017e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.4980018e-16  1.9899900e-04  0.0000000e+00
+[maximum ]  3.3306691e-16  6.1509587e-03  1.1754944e-38
+
+Completed cycle 5900
+Writing velocity output at step 6000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.5631220e-15  3.8400000e+00  0.0000000e+00
+[fluid   ] -9.2391372e-15  2.6239865e-01  0.0000000e+00
+[walls   ]  5.6760152e-15  3.5776014e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.2388649e-16  1.9899920e-04  0.0000000e+00
+[maximum ]  3.8163916e-16  6.1509667e-03  1.1754944e-38
+
+Completed cycle 6000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.3827108e-15  3.9040000e+00  0.0000000e+00
+[fluid   ]  1.1868978e-14  2.6239891e-01  0.0000000e+00
+[walls   ] -1.5251689e-14  3.6416011e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.2836954e-16  1.9899936e-04  0.0000000e+00
+[maximum ]  4.7531423e-16  6.1509732e-03  1.1754944e-38
+
+Completed cycle 6100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.5222879e-15  3.9680000e+00  0.0000000e+00
+[fluid   ] -7.8929918e-15  2.6239913e-01  0.0000000e+00
+[walls   ]  5.3707039e-15  3.7056009e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.3715032e-16  1.9899949e-04  0.0000000e+00
+[maximum ]  2.3592239e-16  6.1509785e-03  1.1754944e-38
+
+Completed cycle 6200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.8719028e-15  4.0320000e+00  0.0000000e+00
+[fluid   ]  8.2295282e-15  2.6239931e-01  0.0000000e+00
+[walls   ] -1.2101431e-14  3.7696007e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.1163626e-16  1.9899960e-04  0.0000000e+00
+[maximum ]  4.0592529e-16  6.1509829e-03  1.1754944e-38
+
+Completed cycle 6300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.7277846e-15  4.0960000e+00  0.0000000e+00
+[fluid   ] -7.9034002e-15  2.6239945e-01  0.0000000e+00
+[walls   ]  6.1756156e-15  3.8336005e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.9960036e-16  1.9899968e-04  0.0000000e+00
+[maximum ]  2.7061686e-16  6.1509865e-03  1.1754944e-38
+
+Completed cycle 6400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.1286419e-16  4.1600000e+00  0.0000000e+00
+[fluid   ]  1.0078743e-14  2.6239957e-01  0.0000000e+00
+[walls   ] -1.0491608e-14  3.8976004e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -8.3266727e-17  1.9899975e-04  0.0000000e+00
+[maximum ]  4.1633363e-16  6.1509894e-03  1.1754944e-38
+
+Completed cycle 6500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.2281842e-15  4.2240000e+00  0.0000000e+00
+[fluid   ] -5.7384653e-15  2.6239967e-01  0.0000000e+00
+[walls   ]  6.9666495e-15  3.9616003e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.2265857e-16  1.9899981e-04  0.0000000e+00
+[maximum ]  2.1857516e-16  6.1509918e-03  1.1754944e-38
+
+Completed cycle 6600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  9.1246455e-16  4.2880000e+00  0.0000000e+00
+[fluid   ]  2.1753432e-15  2.6239975e-01  0.0000000e+00
+[walls   ] -1.2628787e-15  4.0256003e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.3653635e-16  1.9899986e-04  0.0000000e+00
+[maximum ]  3.5735304e-16  6.1509937e-03  1.1754944e-38
+
+Completed cycle 6700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.8804402e-15  4.3520000e+00  0.0000000e+00
+[fluid   ] -1.8943180e-15  2.6239981e-01  0.0000000e+00
+[walls   ]  3.7747583e-15  4.0896002e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.6776138e-16  1.9899990e-04  0.0000000e+00
+[maximum ]  2.5326963e-16  6.1509953e-03  1.1754944e-38
+
+Completed cycle 6800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  4.3888504e-15  4.4160000e+00  0.0000000e+00
+[fluid   ]  1.9775848e-16  2.6239987e-01  0.0000000e+00
+[walls   ]  4.1910919e-15  4.1536001e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5388359e-16  1.9899993e-04  0.0000000e+00
+[maximum ]  2.3939184e-16  6.1509966e-03  1.1754944e-38
+
+Completed cycle 6900
+Writing velocity output at step 7000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  5.2145788e-15  4.4800000e+00  0.0000000e+00
+[fluid   ] -6.5572547e-16  2.6239991e-01  0.0000000e+00
+[walls   ]  5.8703042e-15  4.2176001e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5735304e-16  1.9899996e-04  0.0000000e+00
+[maximum ]  3.9898640e-16  6.1509977e-03  1.1754944e-38
+
+Completed cycle 7000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  4.7878368e-15  4.5440000e+00  0.0000000e+00
+[fluid   ]  3.2751579e-15  2.6239995e-01  0.0000000e+00
+[walls   ]  1.5126789e-15  4.2816001e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.5326963e-16  1.9899998e-04  0.0000000e+00
+[maximum ]  3.6776138e-16  6.1509986e-03  1.1754944e-38
+
+Completed cycle 7100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  5.6205041e-15  4.6080000e+00  0.0000000e+00
+[fluid   ] -5.3845817e-15  2.6239997e-01  0.0000000e+00
+[walls   ]  1.1005086e-14  4.3456000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.5388359e-16  1.9900000e-04  0.0000000e+00
+[maximum ]  1.9775848e-16  6.1509993e-03  1.1754944e-38
+
+Completed cycle 7200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  4.8155924e-15  4.6720000e+00  0.0000000e+00
+[fluid   ]  8.7430063e-16  2.6240000e-01  0.0000000e+00
+[walls   ]  3.9412917e-15  4.4096000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.2204460e-16  1.9900001e-04  0.0000000e+00
+[maximum ]  3.9204751e-16  6.1509998e-03  1.1754944e-38
+
+Completed cycle 7300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.6098234e-15  4.7360000e+00  0.0000000e+00
+[fluid   ] -2.9698466e-15  2.6240002e-01  0.0000000e+00
+[walls   ]  4.5796700e-15  4.4736000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.4755866e-16  1.9900002e-04  0.0000000e+00
+[maximum ]  2.2898350e-16  6.1510003e-03  1.1754944e-38
+
+Completed cycle 7400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  2.2516711e-15  4.8000000e+00  0.0000000e+00
+[fluid   ]  9.7179209e-15  2.6240003e-01  0.0000000e+00
+[walls   ] -7.4662498e-15  4.5376000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.0061396e-16  1.9900003e-04  0.0000000e+00
+[maximum ]  4.7531423e-16  6.1510007e-03  1.1754944e-38
+
+Completed cycle 7500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  3.6602665e-15  4.8640000e+00  0.0000000e+00
+[fluid   ] -4.7774285e-15  2.6240005e-01  0.0000000e+00
+[walls   ]  8.4376950e-15  4.6016000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.6143644e-16  1.9900004e-04  0.0000000e+00
+[maximum ]  2.5326963e-16  6.1510010e-03  1.1754944e-38
+
+Completed cycle 7600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  4.3680337e-15  4.9280000e+00  0.0000000e+00
+[fluid   ] -1.8908486e-15  2.6240006e-01  0.0000000e+00
+[walls   ]  6.2588823e-15  4.6655999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.4694470e-16  1.9900005e-04  0.0000000e+00
+[maximum ]  3.5388359e-16  6.1510013e-03  1.1754944e-38
+
+Completed cycle 7700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.3183898e-15  4.9920000e+00  0.0000000e+00
+[fluid   ]  2.7894353e-15  2.6240007e-01  0.0000000e+00
+[walls   ] -1.4710455e-15  4.7295999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.1163626e-16  1.9900005e-04  0.0000000e+00
+[maximum ]  4.6490589e-16  6.1510015e-03  1.1754944e-38
+
+Completed cycle 7800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.7694179e-16  5.0560000e+00  0.0000000e+00
+[fluid   ]  1.2941037e-15  2.6240007e-01  0.0000000e+00
+[walls   ] -1.4710455e-15  4.7935999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.0878078e-16  1.9900006e-04  0.0000000e+00
+[maximum ]  2.9490299e-16  6.1510017e-03  1.1754944e-38
+
+Completed cycle 7900
+Writing velocity output at step 8000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.2767565e-15  5.1200000e+00  0.0000000e+00
+[fluid   ] -4.7462034e-15  2.6240008e-01  0.0000000e+00
+[walls   ]  3.4694470e-15  4.8575999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.2327253e-16  1.9900006e-04  0.0000000e+00
+[maximum ]  2.7408631e-16  6.1510018e-03  1.1754944e-38
+
+Completed cycle 8000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.6567971e-15  5.1840000e+00  0.0000000e+00
+[fluid   ]  4.6559978e-15  2.6240008e-01  0.0000000e+00
+[walls   ] -8.3127949e-15  4.9215999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.2490009e-16  1.9900006e-04  0.0000000e+00
+[maximum ]  3.7123082e-16  6.1510019e-03  1.1754944e-38
+
+Completed cycle 8100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.3723024e-15  5.2480000e+00  0.0000000e+00
+[fluid   ] -3.2057690e-15  2.6240009e-01  0.0000000e+00
+[walls   ] -1.6653345e-16  4.9855999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.0245585e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  1.9428903e-16  6.1510020e-03  1.1754944e-38
+
+Completed cycle 8200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  5.5511151e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -1.9532986e-15  5.3120000e+00  0.0000000e+00
+[fluid   ]  4.3610948e-15  2.6240009e-01  0.0000000e+00
+[walls   ] -6.3143935e-15  5.0495999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.8449465e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  3.6776138e-16  6.1510021e-03  1.1754944e-38
+
+Completed cycle 8300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -3.4694470e-17  5.3760000e+00  0.0000000e+00
+[fluid   ]  4.5033421e-15  2.6240009e-01  0.0000000e+00
+[walls   ] -4.5380366e-15  5.1135999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.4633073e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  4.7184479e-16  6.1510022e-03  1.1754944e-38
+
+Completed cycle 8400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.9143354e-16  5.4400000e+00  0.0000000e+00
+[fluid   ] -5.7870375e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  5.4956040e-15  5.1775999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.5449755e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  3.5388359e-16  6.1510022e-03  1.1754944e-38
+
+Completed cycle 8500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -4.4061976e-16  5.5040000e+00  0.0000000e+00
+[fluid   ]  1.7000290e-16  2.6240010e-01  0.0000000e+00
+[walls   ] -6.1062266e-16  5.2415999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.9204751e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  4.9960036e-16  6.1510023e-03  1.1754944e-38
+
+Completed cycle 8600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  2.4251434e-15  5.5680000e+00  0.0000000e+00
+[fluid   ] -5.1798843e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  7.6050277e-15  5.3055999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.1633363e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  2.8102520e-16  6.1510023e-03  1.1754944e-38
+
+Completed cycle 8700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  6.5572547e-16  5.6320000e+00  0.0000000e+00
+[fluid   ]  8.5001450e-16  2.6240010e-01  0.0000000e+00
+[walls   ] -1.9428903e-16  5.3695999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.0469737e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  2.8796410e-16  6.1510023e-03  1.1754944e-38
+
+Completed cycle 8800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  9.3675068e-17  5.6960000e+00  0.0000000e+00
+[fluid   ] -2.9490299e-16  2.6240010e-01  0.0000000e+00
+[walls   ]  3.8857806e-16  5.4335999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.1633363e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  3.4347525e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 8900
+Writing velocity output at step 9000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.8041124e-15  5.7600000e+00  0.0000000e+00
+[fluid   ]  1.4432899e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  3.6082248e-16  5.4975999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.0469737e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  2.4980018e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9000
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  4.6698756e-15  5.8240000e+00  0.0000000e+00
+[fluid   ]  4.2327253e-16  2.6240010e-01  0.0000000e+00
+[walls   ]  4.2466031e-15  5.5615999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.4408921e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  3.9898640e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9100
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  4.6490589e-15  5.8880000e+00  0.0000000e+00
+[fluid   ]  3.5110803e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  1.1379786e-15  5.6255999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -5.3776428e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  6.2450045e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9200
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  5.7107097e-15  5.9520000e+00  0.0000000e+00
+[fluid   ] -2.7963742e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  8.5070839e-15  5.6895999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -6.4878658e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  4.7184479e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9300
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  6.4705186e-15  6.0160000e+00  0.0000000e+00
+[fluid   ]  3.6533276e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  2.8171909e-15  5.7535999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.9490299e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  4.1980308e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9400
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  7.1574691e-15  6.0800000e+00  0.0000000e+00
+[fluid   ] -7.0950190e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  1.4252488e-14  5.8175999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.8510861e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  1.9428903e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9500
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  4.4408921e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  9.1870955e-15  6.1440000e+00  0.0000000e+00
+[fluid   ]  8.5348395e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  6.5225603e-16  5.8815999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -1.7347235e-16  1.9900007e-04  0.0000000e+00
+[maximum ]  4.8919202e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9600
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  9.7005737e-15  6.2080000e+00  0.0000000e+00
+[fluid   ]  4.3159920e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  5.3845817e-15  5.9455999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.2204460e-16  1.9900008e-04  0.0000000e+00
+[maximum ]  3.6429193e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9700
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  9.0934205e-15  6.2720000e+00  0.0000000e+00
+[fluid   ] -9.9330266e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  1.9026447e-14  6.0095999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -6.4184769e-16  1.9900008e-04  0.0000000e+00
+[maximum ]  4.1633363e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9800
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.0647733e-14  6.3360000e+00  0.0000000e+00
+[fluid   ]  2.9733160e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  7.6744167e-15  6.0735999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -2.8449465e-16  1.9900008e-04  0.0000000e+00
+[maximum ]  3.4000580e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 9900
+Writing velocity output at step 10000!
+
+Scalars - total mean variance min max
+[rho]          64.00  1.00000000000  3.3306691e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.1039780e-14  6.4000000e+00  0.0000000e+00
+[fluid   ] -1.0061396e-15  2.6240010e-01  0.0000000e+00
+[walls   ]  1.2045920e-14  6.1375999e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.2327253e-16  1.9900008e-04  0.0000000e+00
+[maximum ]  3.5388359e-16  6.1510024e-03  1.1754944e-38
+
+Completed cycle 10000
+Writing velocity output at step 10000!
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      1.045      1.046      1.046   1.045750 (1 call)
+      Time step loop:      0.000      0.001      1.026   0.000103 (10000 calls)
+         Propagation:      0.000      0.000      0.123   0.000012 (10000 calls)
+    Propagtn (krnl) :      0.000      0.000      0.117   0.000012 (10000 calls)
+           Collision:      0.000      0.000      0.639   0.000064 (10000 calls)
+   Collision (krnl) :      0.000      0.000      0.631   0.000063 (10000 calls)
+       Lattice halos:      0.000      0.001      0.251   0.000025 (10000 calls)
+       phi gradients:      0.000      0.000      0.001   0.000000 (10000 calls)
+                 BBL:      0.000      0.000      0.003   0.000000 (10000 calls)
+   Force calculation:      0.000      0.000      0.001   0.000000 (10000 calls)
+          phi update:      0.000      0.000      0.001   0.000000 (10000 calls)
+               Free1:      0.000      0.002      0.014   0.000001 (10000 calls)
+Ludwig finished normally.

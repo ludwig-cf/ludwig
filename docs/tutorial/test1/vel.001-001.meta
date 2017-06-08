@@ -1,0 +1,16 @@
+Metadata for file set prefix:    vel
+Data description:                Velocity field
+Data size per site (bytes):      24
+is_bigendian():                  0
+Number of processors:            4
+Cartesian communicator topology: 4 1 1
+Total system size:               64 1 1
+Lees-Edwards planes:             0
+Lees-Edwards plane speed         0.00000000000000
+Number of I/O groups (files):    1
+I/O communicator topology:       1 1 1
+Write order:
+  0   0   0   0 16 1 1 0 0 0
+  1   1   0   0 16 1 1 16 0 0
+  2   2   0   0 16 1 1 32 0 0
+  3   3   0   0 16 1 1 48 0 0
