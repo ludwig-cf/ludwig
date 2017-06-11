@@ -33,7 +33,9 @@ typedef struct io_info_arg_s io_info_arg_t;
 typedef struct io_info_s io_info_t;
 
 struct io_info_arg_s {
-  int grid[3];
+  int grid[3];                   /* Current */
+  io_format_enum_t ioformat;     /* Future */
+  int is_asynchronous;
 };
 
 /* Callback signature for lattice site I/O */

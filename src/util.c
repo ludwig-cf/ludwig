@@ -57,7 +57,7 @@ __host__ double reverse_byte_order_double(char * c) {
 
   double result;
   char * p = (char *) &result;
-  int b;
+  unsigned int b;
 
   for (b = 0; b < sizeof(double); b++) {
     p[b] = c[sizeof(double) - (b + 1)];

@@ -200,7 +200,7 @@ void targetFinalize(){
 void copyToTargetMasked(double *targetData,const double* data,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
-  int i,j;
+  size_t i,j;
   for (i=0;i<nfields;i++){
     for (j=0;j<nsites;j++){
       if(siteMask[j]) targetData[i*nsites+j]=data[i*nsites+j];
@@ -214,7 +214,7 @@ void copyToTargetMasked(double *targetData,const double* data,const size_t nsite
 void copyToTargetMaskedAoS(double *targetData,const double* data,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
-  int i,j;
+  size_t i,j;
   for (j=0;j<nsites;j++){
     if(siteMask[j]){
       for (i=0;i<nfields;i++){
@@ -230,7 +230,7 @@ void copyToTargetMaskedAoS(double *targetData,const double* data,const size_t ns
 void copyFromTargetMasked(double *data,const double* targetData,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
-  int i, j;
+  size_t i, j;
   for (i=0;i<nfields;i++){
     for (j=0;j<nsites;j++){
        if(siteMask[j]) data[i*nsites+j]=targetData[i*nsites+j];
@@ -244,7 +244,7 @@ void copyFromTargetMasked(double *data,const double* targetData,const size_t nsi
 void copyFromTargetMaskedAoS(double *data,const double* targetData,const size_t nsites,
 			const size_t nfields,char* siteMask){
 
-  int i, j;
+  size_t i, j;
   for (j=0;j<nsites;j++){
     if(siteMask[j]){
       for (i=0;i<nfields;i++){
@@ -266,7 +266,7 @@ void targetSynchronize(){
 //
 void targetZero(double* array,size_t size){
 
-  int i;
+  size_t i;
 
 #ifdef _OPENMP
 #pragma omp parallel for 
@@ -282,7 +282,7 @@ void targetZero(double* array,size_t size){
 
 void targetSetConstant(double* array,double value,size_t size){
 
-  int i;
+  size_t i;
 
 #ifdef _OPENMP
 #pragma omp parallel for 
@@ -299,7 +299,7 @@ void targetSetConstant(double* array,double value,size_t size){
 __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 {
   
-  int i,k;
+  size_t i,k;
   double* tmpbuf = (double*) malloc(nsites*nfields*sizeof(double));
   double* tmpbuf2 = (double*) malloc(nsites*nfields*sizeof(double));
   copyFromTarget(tmpbuf,array,nsites*nfields*sizeof(double));	  
@@ -317,7 +317,7 @@ __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 __targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
 {
   
-  int i,k;
+  size_t i,k;
   double* tmpbuf = (double*) malloc(nsites*nfields*sizeof(double));
   double* tmpbuf2 = (double*) malloc(nsites*nfields*sizeof(double));
   copyFromTarget(tmpbuf,array,nsites*nfields*sizeof(double));	  
@@ -383,7 +383,7 @@ __targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* 
 
 double targetDoubleSum(double* array, size_t size){
 
-  int i;
+  size_t i;
 
   double result=0.;
 

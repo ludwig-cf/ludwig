@@ -620,18 +620,18 @@ int io_info_format_out_set(io_info_t * obj, int form_out) {
   assert(form_out >= 0);
   assert(form_out <= IO_FORMAT_DEFAULT);
 
-  obj->output_format = form_out;
-
   if (form_out == IO_FORMAT_NULL) return 0;
 
   switch (form_out) {
   case IO_FORMAT_ASCII:
+    obj->output_format = IO_FORMAT_ASCII;
     obj->write_data = obj->write_ascii;
     obj->processor_independent = 0;
     obj->bytesize = obj->bytesize_ascii;
     break;
   case IO_FORMAT_BINARY:
   case IO_FORMAT_DEFAULT:
+    obj->output_format = IO_FORMAT_BINARY;
     obj->write_data = obj->write_binary;
     obj->processor_independent = 0;
     obj->bytesize = obj->bytesize_binary;

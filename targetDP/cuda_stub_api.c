@@ -513,6 +513,7 @@ __device__ int atomicAddInt(int * sum, int val) {
   assert(sum);
 
 #ifdef _OPENMP
+  /* Some compilers dislike capture: use #pragma omp critical(atomicAddInt) */
   #pragma omp atomic capture
   {
     old = *sum;
@@ -594,7 +595,8 @@ __device__ double atomicAddDouble(double * sum, double val) {
   assert(sum);
 
 #ifdef _OPENMP
-#pragma omp atomic capture
+  /* Some compilers dislike capture: use #pragma omp critical(atomicAddD) */
+  #pragma omp atomic capture
   {
     old = *sum;
     *sum += val;
