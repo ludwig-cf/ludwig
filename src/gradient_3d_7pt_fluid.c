@@ -52,8 +52,11 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
 __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				  int nextra);
 
-__host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df);
-__host__ int grad_3d_7pt_dab_compute(lees_edw_t * le, field_grad_t * df);
+__host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df,
+					int nextra);
+__host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
+				     field_grad_t * df,
+				     int nextra);
 
 
 __global__
@@ -61,6 +64,10 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nop, int ys,
 				lees_edw_t * le,
 				field_t * field, 
 				field_grad_t * fgrad);
+__global__
+void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
+			      field_grad_t * df, int nsites,
+			      int ys);
 
 /*****************************************************************************
  *
@@ -148,15 +155,25 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
 
 __host__ int grad_3d_7pt_fluid_dab(field_grad_t * fgrad) {
 
+  int nhalo;
+  int nextra;
+  cs_t * cs = NULL;
   lees_edw_t * le = NULL;
 
   assert(fgrad);
   assert(fgrad->field);
-  assert(fgrad->field->nf == 1); /* Scalars only; host only */
-
+  assert(fgrad->field->le);
+  assert(fgrad->field->nf == 1); /* Scalars only */
+  
+  cs = fgrad->field->cs;
   le = fgrad->field->le;
-  grad_3d_7pt_dab_compute(le, fgrad);
-  grad_3d_7pt_dab_le_correct(le, fgrad);
+  lees_edw_nhalo(le, &nhalo);
+
+  nextra = nhalo - NSTENCIL;
+  assert(nextra >= 0);
+
+  grad_3d_7pt_dab_compute(cs, le, fgrad, nextra);
+  grad_3d_7pt_dab_le_correct(le, fgrad, nextra);
 
   return 0;
 }
@@ -196,7 +213,8 @@ __host__ int grad_3d_7pt_fluid_operator(cs_t * cs, lees_edw_t * le,
   tdpLaunchKernel(grad_3d_7pt_fluid_kernel_v, nblk, ntpb, 0, 0,
 		  ctxt->target,
 		  fg->field->nf, ys, letarget, fg->field->target, fg->target);
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(TIMER_PHI_GRAD_KERNEL);
 
@@ -424,80 +442,138 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 
 /*****************************************************************************
  *
- *  grad_dab_compute
+ *  grad_3d_7pt_dab_compute
+ *
+ *  Kernel driver.
  *
  *****************************************************************************/
 
-__host__ int grad_3d_7pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
-
+__host__ int grad_3d_7pt_dab_compute(cs_t * cs, lees_edw_t * le,
+				     field_grad_t * df,
+				     int nextra) {
   int nlocal[3];
-  int nhalo;
-  int nextra;
-  int nsites;
-  int ic, jc, kc;
-  int ys;
-  int icm1, icp1;
-  int index, indexm1, indexp1;
-  double * __restrict__ dab;
-  double * __restrict__ field;
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  lees_edw_t * letarget = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
+  assert(cs);
   assert(le);
   assert(df);
 
-  lees_edw_nhalo(le, &nhalo);
-  nextra = nhalo - 1;
-  assert(nextra >= 0);
-
   lees_edw_nlocal(le, nlocal);
-  lees_edw_nsites(le, &nsites);
+  lees_edw_strides(le, &xs, &ys, &zs);
+  lees_edw_target(le, &letarget);
 
-  ys = nlocal[Z] + 2*nhalo;
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
+
+  kernel_ctxt_create(cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(grad_3d_7pt_dab_kernel_v, nblk, ntpb, 0, 0,
+		  ctxt->target, letarget, df->target, df->field->nsites, ys);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_7pt_dab_kernel_v
+ *
+ *  Vectorised kernel for d_a d_b field
+ *
+ *****************************************************************************/
+
+__global__ void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
+					 field_grad_t * df, int nsites,
+					 int ys) {
+  int kindex;
+  int kiterations;
+  int index;
+  double * __restrict__ dab;
+  double * __restrict__ field;
+
+  assert(ktx);
+  assert(le);
+  assert(df);
 
   field = df->field->data;
   dab = df->d_ab;
 
-  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
-    icm1 = lees_edw_ic_to_buff(le, ic, -1);
-    icp1 = lees_edw_ic_to_buff(le, ic, +1);
-    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
-      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+  kiterations = kernel_vector_iterations(ktx);
 
-	index = lees_edw_index(le, ic, jc, kc);
-	indexm1 = lees_edw_index(le, icm1, jc, kc);
-	indexp1 = lees_edw_index(le, icp1, jc, kc);
+  __target_simt_for(kindex, kiterations, NSIMDVL) {
 
-	dab[addr_rank1(nsites, NSYMM, index, XX)] =
-	  (+ 1.0*field[addr_rank0(nsites, indexp1)]
-	   + 1.0*field[addr_rank0(nsites, indexm1)]
-	   - 2.0*field[addr_rank0(nsites, index)]);
-	dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
-	  (+ field[addr_rank0(nsites, indexp1 + ys)]
-	   - field[addr_rank0(nsites, indexp1 - ys)]
-	   - field[addr_rank0(nsites, indexm1 + ys)]
-	   + field[addr_rank0(nsites, indexm1 - ys)]);
-	dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
-	  (+ field[addr_rank0(nsites, indexp1 + 1)]
-	   - field[addr_rank0(nsites, indexp1 - 1)]
-	   - field[addr_rank0(nsites, indexm1 + 1)]
-	   + field[addr_rank0(nsites, indexm1 - 1)]);
-	dab[addr_rank1(nsites, NSYMM, index, YY)] =
-	  (+ 1.0*field[addr_rank0(nsites, index + ys)]
-	   + 1.0*field[addr_rank0(nsites, index - ys)]
-	   - 2.0*field[addr_rank0(nsites, index)]);
-	dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
-	  (+ field[addr_rank0(nsites, index + ys + 1)]
-	   - field[addr_rank0(nsites, index + ys - 1)]
-	   - field[addr_rank0(nsites, index - ys + 1)]
-	   + field[addr_rank0(nsites, index - ys - 1)]);
-	dab[addr_rank1(nsites, NSYMM, index, ZZ)] =
-	  (+ 1.0*field[addr_rank0(nsites, index + 1)]
-	   + 1.0*field[addr_rank0(nsites, index - 1)]
-	   - 2.0*field[addr_rank0(nsites, index)]);
+    int iv;
+    int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
+    int im1[NSIMDVL];
+    int ip1[NSIMDVL];
+    int indexm1[NSIMDVL];
+    int indexp1[NSIMDVL];
+    int maskv[NSIMDVL];
+
+    kernel_coords_v(ktx, kindex, ic, jc, kc);
+    index = kernel_baseindex(ktx, kindex);
+    kernel_mask_v(ktx, ic, jc, kc, maskv);
+
+    __target_simd_for(iv, NSIMDVL) {
+      im1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1);
+    }
+    __target_simd_for(iv, NSIMDVL) {
+      ip1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1);
+    }
+
+    kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
+    kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
+
+    __target_simd_for(iv, NSIMDVL) { 
+      if (maskv[iv]) {
+	dab[addr_rank1(nsites, NSYMM, index+iv, XX)] =
+	  (+ 1.0*field[addr_rank0(nsites, indexp1[iv])]
+	   + 1.0*field[addr_rank0(nsites, indexm1[iv])]
+	   - 2.0*field[addr_rank0(nsites, index + iv)]);
+
+	dab[addr_rank1(nsites, NSYMM, index+iv, XY)] = 0.25*
+	  (+ field[addr_rank0(nsites, indexp1[iv] + ys)]
+	   - field[addr_rank0(nsites, indexp1[iv] - ys)]
+	   - field[addr_rank0(nsites, indexm1[iv] + ys)]
+	   + field[addr_rank0(nsites, indexm1[iv] - ys)]);
+
+	dab[addr_rank1(nsites, NSYMM, index+iv, XZ)] = 0.25*
+	  (+ field[addr_rank0(nsites, indexp1[iv] + 1)]
+	   - field[addr_rank0(nsites, indexp1[iv] - 1)]
+	   - field[addr_rank0(nsites, indexm1[iv] + 1)]
+	   + field[addr_rank0(nsites, indexm1[iv] - 1)]);
+
+	dab[addr_rank1(nsites, NSYMM, index+iv, YY)] =
+	  (+ 1.0*field[addr_rank0(nsites, index+iv + ys)]
+	   + 1.0*field[addr_rank0(nsites, index+iv - ys)]
+	   - 2.0*field[addr_rank0(nsites, index+iv     )]);
+
+	dab[addr_rank1(nsites, NSYMM, index+iv, YZ)] = 0.25*
+	  (+ field[addr_rank0(nsites, index+iv + ys + 1)]
+	   - field[addr_rank0(nsites, index+iv + ys - 1)]
+	   - field[addr_rank0(nsites, index+iv - ys + 1)]
+	   + field[addr_rank0(nsites, index+iv - ys - 1)]);
+
+	dab[addr_rank1(nsites, NSYMM, index+iv, ZZ)] =
+	  (+ 1.0*field[addr_rank0(nsites, index+iv + 1)]
+	   + 1.0*field[addr_rank0(nsites, index+iv - 1)]
+	   - 2.0*field[addr_rank0(nsites, index+iv    )]);
       }
     }
+    /* Next site */
   }
 
-  return 0;
+  return;
 }
 
 /*****************************************************************************
@@ -506,11 +582,11 @@ __host__ int grad_3d_7pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
  *
  *****************************************************************************/
 
-__host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
+__host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df,
+					int nextra) {
 
   int nlocal[3];
   int nhalo;
-  int nextra;
   int nsites;
   int nh;                                 /* counter over halo extent */
   int nplane;                             /* Number LE planes */
@@ -523,14 +599,13 @@ __host__ int grad_3d_7pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 
   assert(le);
   assert(df);
+  assert(nextra >= 0);
 
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal(le, nlocal);
   lees_edw_nsites(le, &nsites);
   ys = (nlocal[Z] + 2*nhalo);
 
-  nextra = nhalo - 1;
-  assert(nextra >= 0);
 
   dab = df->d_ab;
   field = df->field->data;
