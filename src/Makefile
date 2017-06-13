@@ -34,7 +34,7 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-OPTS = -DNP_D3Q6 -DNDEBUG
+OPTS = -DNP_D3Q6
 LIBS = -L../targetDP -ltarget -lm
 INC = -I. -I ../targetDP
 
