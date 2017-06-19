@@ -46,10 +46,11 @@
 #define NY 128
 #define NZ 256
 
-static const int  iread_ascii = 1;  /* Read ascii or binary (default) */
+static const int  iread_ascii = 0;  /* Read ascii or binary (default) */
 static const int  include_ref = 0;  /* Include reference colloids at far x-,y-,z-corners */
-static const int  cds_with_m  = 0;  /* Output coordinates and orientation */
-static const int  cds_with_v  = 1;  /* Output coordinates and velocity */
+static const int  id = 1;  	    /* Output colloid id */
+static const int  cds_with_m  = 0;  /* Output coordinate and orientation */
+static const int  cds_with_v  = 1;  /* Output coordinate, velocity vector and magnitude */
 
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
@@ -173,6 +174,7 @@ int main(int argc, char ** argv) {
       s2.r[2] = s1.r[2] - 0.5;
 
       /* Write coordinates and orientation 's' or velocity */
+      if (id) fprintf(fp_csv, "%4d, ", s1.index);
       fprintf(fp_csv, format3_, s2.r[0], s2.r[1], s2.r[2]);
       if (cds_with_m) fprintf(fp_csv, format3end_, s1.s[0], s1.s[1], s1.s[2]);
       if (cds_with_v) {
@@ -272,6 +274,7 @@ void colloids_to_csv_header(FILE * fp) {
 
   double r[3];
 
+  if (id) fprintf(fp, "%s", "id, ");
   fprintf(fp, "%s", "x, y, z\n");
 
   if (include_ref) {
@@ -313,6 +316,7 @@ void colloids_to_csv_header_with_m(FILE * fp) {
   double r[3];
   double m[3];
 
+  if (id) fprintf(fp, "%s", "id, ");
   fprintf(fp, "%s", "x, y, z, mx, my, mz\n");
 
   if (include_ref) {
@@ -365,6 +369,7 @@ void colloids_to_csv_header_with_v(FILE * fp) {
 
   double r[3];
 
+  if (id) fprintf(fp, "%s", "id, ");
   fprintf(fp, "%s", "x, y, z, vx, vy, vz, normv\n");
 
   if (include_ref) {
