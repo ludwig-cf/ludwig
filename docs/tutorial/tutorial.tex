@@ -120,8 +120,8 @@ This knowledge will be required to make sense of the input and output involved i
 
 The system requirements are an up-to-date version of a C compiler as well as working installations 
 of Apache's Subversion (SVN) version control system, the visualisation tool
-ParaView (\hyperref[ParaView]{https://www.paraview.org}) and the MPI-library 
-for compiling the parallel version of the code.
+ParaView (\hyperref[ParaView]{https://www.paraview.org}), the MPI-library 
+for compiling the parallel version of the code and \texttt{gnuplot} for simple visualisations.
 
 \section{Access and Compilation}
 
@@ -217,41 +217,59 @@ This creates the executable file \texttt{Ludwig.exe} in \texttt{/src}.
 
 \subsection{Test 1: Poiseuille Flow of a Simple Fluid in a Cavity}
 
-In this section, the first test exercise example, the Poiseuille flow of a simple fluid in a cavity, is outlined. This example gives a step-by-step guide example for performing a short run ($10,000$ time-steps) of the \texttt{Ludwig} code for a simple system and provides a short introduction to the post-processing and data analysis procedure. Before starting, the code should be compiled in parallel and the executable \texttt{Ludwig.exe} should be copied to your working directory.
+In this section the Poiseuille flow of a simple fluid in a cavity, is outlined. 
+The example is a step-by-step guide for performing a short run ($10,000$ time-steps) 
+with \texttt{Ludwig} code, followed by a short introduction to the post-processing 
+and data analysis procedures. Before starting, the code should be compiled in 
+parallel and the executable \texttt{Ludwig.exe} should be copied into your working directory.
 
 \begin{enumerate}
-\item Copy the file \texttt{input} located in the directory \texttt{ludwig/docs/tutorial/test1} to your working directory. Note that this input file is a modified version of the reference input file \texttt{input.ref} located in \texttt{/src} containing the required \com{variables??} for this run. 
+\item Copy the input file \texttt{input} located in the directory \texttt{/trunk/docs/tutorial/test1} 
+to your working directory. Note that this input file is a modified version of the 
+reference input file \texttt{input.ref} located in \texttt{/trunk/src} with a limited set of parameters
+for this run. 
 \item Run the code in your working directory by issuing the command:
 \begin{lstlisting}
 $ mpirun -np 4 ./Ludwig.exe input
 \end{lstlisting}
-\item You should now see output files with names of the form \texttt{vel-XXXXXXXX.001-001} where \texttt{XXXXXXXX} is replaced by the time-step number in increments of $1000$. These files contain the components of the velocity vectors in Cartesian coordinates at each lattice point in the simulation. 
-\item The first step to the post-processing of these data is to copy the files \texttt{vtk\_extract.c} and \texttt{vtk\_extract\_script.py} from \texttt{/trunk/util} into your working directory.
+\item You should now see statistics being reported on your standard output and 
+output files being created with names of the form \texttt{vel-XXXXXXXX.001-001}. 
+These files contain the components of the velocity vectors in Cartesian coordinates at each lattice point in the simulation. 
+\item The first step to the post-processing of these data is to copy the files \texttt{vtk\_extract.c} 
+and \texttt{vtk\_extract\_script.py} from \texttt{/trunk/util} into your working directory.
 \item Edit \texttt{vtk\_extract.c}. Specifically, set the flags for:
 \begin{enumerate}
-\item \texttt{input\_binary\_=0} \\ i.e. The data in the velocity files (\texttt{vel-XXXXXXXX.001-001}) are in ASCII format.
-\item \texttt{output\_binary\_=0} \\ i.e. The output should also be in ASCII format.
-\item \texttt{output\_index=1} \\ i.e. Produce the output data with lattice identifiers in the text files.
-\item \texttt{vtk\_header=0} \\ i.e. The data files should not have column headers (these will be required later for visualisation in \textit{ParaView})
-\item \texttt{output\_cmf=0} \\ i.e. The data should not be in column-major format (also required for \textit{ParaView}).
+\item \texttt{input\_binary\_=0} \\ if the velocity data is in ASCII format (see flag in input file),
+\item \texttt{output\_binary\_=0} \\ as the output of the postprocessing routines should also be in ASCII format,
+\item \texttt{output\_index=1} \\ to obtain Cartesian lattice indices \textit{i, j, k}, 
+\item \texttt{vtk\_header=0} \\ to omit headers (these will be required later for visualisation in \textit{ParaView})
+\item \texttt{output\_cmf=0} to produce data in row-major format (column-major format is required for \textit{ParaView}).
 \end{enumerate}
 \item Edit \texttt{vtk\_extract\_script.py}. Set:
 \begin{enumerate}
-\item \texttt{nstart=1000}, \texttt{nint=1000} and \texttt{nend=10000} to set the range and increments of the velocity data.
-\item \texttt{vel=1} for velocity post-processing. 
+\item \texttt{nstart=1000}, \texttt{nint=1000} and \texttt{nend=10000} to set the range and increments of the velocity data
+to be processed.
+\item \texttt{vel=1} for velocity post-processing, 
+\item The other flags should be set to zero, e.g. \texttt{phi=0}. 
 \end{enumerate}
-\item You should now see files named \texttt{vel-XXXXXXXX.vtk}. The first three columns of these text files are the spacial lattice indices followed by the components of the velocity vectors in Cartesian coordinates. To plot the velocity profile of the system, you can plot the $y$-component of the velocity against the spacial $x$-coordinate on the lattice with the command:
+\item You should now see files named \texttt{vel-XXXXXXXX.vtk} (Note: The extension \texttt{.vtk} is only used here for simplicity.
+It does not mean the generated data is in vtk-format). 
+The first three columns of these ASCII files are the spatial lattice indices followed by the Cartesian components of the velocity vectors.\\
+
+To plot the velocity profile of the system, you can plot the $y$-component of the velocity against 
+the spatial $x$-coordinate on the lattice with the command:
 \begin{lstlisting}
 gnuplot> p`vel-XXXXXXXX.vtk' u 1:5
 \end{lstlisting} 
-By plotting the data in each file, you should be able to see the velocity profile converging to the final profile as shown in Fig. \ref{fig:velocityProfile}. For reference, an reference example of the final output at $10,000$ time-steps can be found, in addition to a file containing the standard terminal output of the code in the directory \texttt{/trunk/docs/tutorial/test1/}.
+By plotting the data in each file, you should be able to see the velocity profile converging to the final profile 
+as shown in Fig. \ref{fig:velocityProfile}. In the directory \texttt{/trunk/docs/tutorial/test1} a reference file of the final 
+output at time step $10,000$ can be found, in addition to a file containing the standard output of the code.
 \end{enumerate} 
-
 
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=0.6\linewidth]{velProf.png}
-  \caption{Plot of the parabolic velocity profile of a simple fluid in a cavity after $10,000$ time-steps}
+  \caption{The parabolic velocity profile of a simple fluid in a cavity after $10,000$ time-steps}.
   \label{fig:velocityProfile}
   \end{center}
 \end{figure}
