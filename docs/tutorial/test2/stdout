@@ -1,0 +1,1832 @@
+Welcome to Ludwig v0.6.5 (MPI version running on 8 processes)
+
+The SVN revision details are: 3140
+Note assertions via standard C assert() are on.
+
+Read 25 user parameters from input
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  2 2 2
+Local domain:   16 16 16
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-03
+Bulk parameter B      =  6.25000e-03
+Surface penalty kappa =  4.00000e-03
+Surface tension       =  4.71405e-03
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  1.25000e+00
+Order parameter noise = off
+Force calculation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33330e-01
+Bulk viscosity                8.33330e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    2.99999e+00
+Bulk relaxation time:     2.99999e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   BINARY
+I/O decomposition:            1 1 1
+
+Advection scheme order: 1
+Initialising phi for spinodal
+Gradient calculation: 3d_27pt_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -5.9892076e+00 -1.8277611e-04 8.3100414e-04 -4.9989121e-02 4.9997941e-02
+
+Momentum - x y z
+[total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.7097435e-13  0.99999597100  1.00000224425
+[phi] -5.9892076e+00 -1.8277611e-04 8.4736999e-05 -3.7913090e-02 3.4553839e-02
+
+Free energy density - timestep total fluid
+[fed]            100 -1.6003803788e-07 -1.6003803788e-07
+
+Momentum - x y z
+[total   ]  4.5677351e-13  1.7208457e-14 -2.2870594e-14
+[fluid   ]  4.5677351e-13  1.7208457e-14 -2.2870594e-14
+
+Velocity - x y z
+[minimum ] -2.8195285e-07 -2.7984482e-07 -2.7511604e-07
+[maximum ]  2.9871396e-07  3.2025753e-07  3.1333488e-07
+
+Completed cycle 100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.5232260e-13  0.99999670920  1.00000335066
+[phi] -5.9892076e+00 -1.8277611e-04 1.1045141e-04 -4.1119558e-02 3.9049863e-02
+
+Free energy density - timestep total fluid
+[fed]            200 -2.1166939546e-07 -2.1166939546e-07
+
+Momentum - x y z
+[total   ]  4.3739665e-13  1.1893264e-14  1.2934098e-14
+[fluid   ]  4.3739665e-13  1.1893264e-14  1.2934098e-14
+
+Velocity - x y z
+[minimum ] -3.5782155e-07 -3.3708348e-07 -3.1246038e-07
+[maximum ]  3.3883987e-07  4.4844919e-07  3.5427676e-07
+
+Completed cycle 200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  3.0375702e-13  0.99999675733  1.00000529794
+[phi] -5.9892076e+00 -1.8277611e-04 1.7194304e-04 -4.8845813e-02 5.0039839e-02
+
+Free energy density - timestep total fluid
+[fed]            300 -3.3293730614e-07 -3.3293730614e-07
+
+Momentum - x y z
+[total   ]  4.9479518e-13 -3.1061959e-14 -1.6299462e-14
+[fluid   ]  4.9479518e-13 -3.1061959e-14 -1.6299462e-14
+
+Velocity - x y z
+[minimum ] -5.6663924e-07 -5.1289673e-07 -4.8532584e-07
+[maximum ]  4.8566893e-07  6.7468130e-07  5.0790183e-07
+
+Completed cycle 300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  7.6316731e-13  0.99999636660  1.00000847477
+[phi] -5.9892076e+00 -1.8277611e-04 2.8490523e-04 -6.5339489e-02 6.4690253e-02
+
+Free energy density - timestep total fluid
+[fed]            400 -5.5467543213e-07 -5.5467543213e-07
+
+Momentum - x y z
+[total   ]  4.7328114e-13 -2.7623737e-14 -3.1301350e-14
+[fluid   ]  4.7328114e-13 -2.7623737e-14 -3.1301350e-14
+
+Velocity - x y z
+[minimum ] -9.2606434e-07 -8.3892858e-07 -8.2672027e-07
+[maximum ]  7.6166467e-07  1.0701992e-06  7.9513744e-07
+
+Completed cycle 400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  2.1176394e-12  0.99999553363  1.00001371173
+[phi] -5.9892076e+00 -1.8277611e-04 4.8718426e-04 -8.6230872e-02 8.3870553e-02
+
+Free energy density - timestep total fluid
+[fed]            500 -9.5113387392e-07 -9.5113387392e-07
+
+Momentum - x y z
+[total   ]  3.7670561e-13 -2.0438512e-14 -1.9706459e-15
+[fluid   ]  3.7670561e-13 -2.0438512e-14 -1.9706459e-15
+
+Velocity - x y z
+[minimum ] -1.5213472e-06 -1.3906223e-06 -1.4460630e-06
+[maximum ]  1.2441757e-06  1.7638482e-06  1.3140333e-06
+
+Completed cycle 500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  6.1979311e-12  0.99999409447  1.00002234909
+[phi] -5.9892076e+00 -1.8277611e-04 8.4874129e-04 -1.1293117e-01 1.0881489e-01
+
+Free energy density - timestep total fluid
+[fed]            600 -1.6589269429e-06 -1.6589269429e-06
+
+Momentum - x y z
+[total   ]  3.4471384e-13 -4.9623500e-14  2.3342439e-14
+[fluid   ]  3.4471384e-13 -4.9623500e-14  2.3342439e-14
+
+Velocity - x y z
+[minimum ] -2.5105422e-06 -2.3296874e-06 -2.5656221e-06
+[maximum ]  2.0817873e-06  2.9398285e-06  2.2041674e-06
+
+Completed cycle 600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.8600010e-11  0.99999122790  1.00003787823
+[phi] -5.9892076e+00 -1.8277611e-04 1.4957928e-03 -1.4699277e-01 1.4101269e-01
+
+Free energy density - timestep total fluid
+[fed]            700 -2.9231794916e-06 -2.9231794916e-06
+
+Momentum - x y z
+[total   ]  3.7551212e-13 -2.8737429e-14  3.9496184e-14
+[fluid   ]  3.7551212e-13 -2.8737429e-14  3.9496184e-14
+
+Velocity - x y z
+[minimum ] -4.3643705e-06 -3.9379776e-06 -4.5252998e-06
+[maximum ]  3.5199722e-06  4.9355771e-06  3.7450094e-06
+
+Completed cycle 700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  5.6160854e-11  0.99998636169  1.00006512538
+[phi] -5.9892076e+00 -1.8277611e-04 2.6530835e-03 -1.8994335e-01 1.8203992e-01
+
+Free energy density - timestep total fluid
+[fed]            800 -5.1763760514e-06 -5.1763760514e-06
+
+Momentum - x y z
+[total   ]  3.7715664e-13 -2.1850577e-14  3.0933589e-14
+[fluid   ]  3.7715664e-13 -2.1850577e-14  3.0933589e-14
+
+Velocity - x y z
+[minimum ] -7.7112587e-06 -6.7001329e-06 -7.9264262e-06
+[maximum ]  5.9961651e-06  8.3053065e-06  6.7454790e-06
+
+Completed cycle 800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.6718404e-10  0.99997685440  1.00010968285
+[phi] -5.9892076e+00 -1.8277611e-04 4.7125431e-03 -2.4288645e-01 2.3433704e-01
+
+Free energy density - timestep total fluid
+[fed]            900 -9.1605026959e-06 -9.1605026959e-06
+
+Momentum - x y z
+[total   ]  3.4339892e-13  5.3290705e-15  1.8318680e-14
+[fluid   ]  3.4339892e-13  5.3290705e-15  1.8318680e-14
+
+Velocity - x y z
+[minimum ] -1.3605055e-05 -1.1431695e-05 -1.3743350e-05
+[maximum ]  1.0254963e-05  1.3911689e-05  1.2316458e-05
+
+Completed cycle 900
+Writing phi file at step 1000!
+Writing velocity output at step 1000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  4.7816662e-10  0.99995964285  1.00017786147
+[phi] -5.9892076e+00 -1.8277611e-04 8.3323309e-03 -3.0584417e-01 3.0376499e-01
+
+Free energy density - timestep total fluid
+[fed]           1000 -1.6085949744e-05 -1.6085949744e-05
+
+Momentum - x y z
+[total   ]  3.1832870e-13  4.7219173e-14  1.4092894e-14
+[fluid   ]  3.1832870e-13  4.7219173e-14  1.4092894e-14
+
+Velocity - x y z
+[minimum ] -2.3844024e-05 -1.9451814e-05 -2.3457745e-05
+[maximum ]  1.7526618e-05  2.2962094e-05  2.2062255e-05
+
+Completed cycle 1000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2734762e-09  0.99992961011  1.00027173542
+[phi] -5.9892076e+00 -1.8277611e-04 1.4546646e-02 -3.7942017e-01 3.8365780e-01
+
+Free energy density - timestep total fluid
+[fed]           1100 -2.7759431109e-05 -2.7759431109e-05
+
+Momentum - x y z
+[total   ]  3.2480962e-13  4.5508736e-14  6.8695050e-16
+[fluid   ]  3.2480962e-13  4.5508736e-14  6.8695050e-16
+
+Velocity - x y z
+[minimum ] -4.1187553e-05 -3.3030063e-05 -3.9121286e-05
+[maximum ]  2.9730061e-05  3.7671092e-05  3.8507659e-05
+
+Completed cycle 1100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  3.0611935e-09  0.99987885973  1.00038214337
+[phi] -5.9892076e+00 -1.8277611e-04 2.4805304e-02 -4.7217263e-01 4.6920074e-01
+
+Free energy density - timestep total fluid
+[fed]           1200 -4.6487867780e-05 -4.6487867780e-05
+
+Momentum - x y z
+[total   ]  3.2484085e-13  3.1641356e-14  2.3765712e-14
+[fluid   ]  3.2484085e-13  3.1641356e-14  2.3765712e-14
+
+Velocity - x y z
+[minimum ] -6.9320212e-05 -5.7326406e-05 -6.3236647e-05
+[maximum ]  4.9546848e-05  6.4683951e-05  6.4734192e-05
+
+Completed cycle 1200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  6.5221648e-09  0.99979872526  1.00049859044
+[phi] -5.9892076e+00 -1.8277611e-04 4.0771304e-02 -5.6361095e-01 5.5385116e-01
+
+Free energy density - timestep total fluid
+[fed]           1300 -7.4451116718e-05 -7.4451116718e-05
+
+Momentum - x y z
+[total   ]  3.1287473e-13 -4.3021142e-15  1.2337353e-14
+[fluid   ]  3.1287473e-13 -4.3021142e-15  1.2337353e-14
+
+Velocity - x y z
+[minimum ] -1.1192839e-04 -9.5461422e-05 -9.8364928e-05
+[maximum ]  7.9992116e-05  1.0695713e-04  1.0320197e-04
+
+Completed cycle 1300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2381934e-08  0.99967056513  1.00075184277
+[phi] -5.9892076e+00 -1.8277611e-04 6.3693889e-02 -6.4643005e-01 6.3147635e-01
+
+Free energy density - timestep total fluid
+[fed]           1400 -1.1241463288e-04 -1.1241463288e-04
+
+Momentum - x y z
+[total   ]  3.4504691e-13 -3.6456949e-14  4.9044102e-14
+[fluid   ]  3.4504691e-13 -3.6456949e-14  4.9044102e-14
+
+Velocity - x y z
+[minimum ] -1.7030817e-04 -1.4974956e-04 -1.4632369e-04
+[maximum ]  1.2303755e-04  1.6784643e-04  1.5344713e-04
+
+Completed cycle 1400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  2.1323726e-08  0.99952245400  1.00104155252
+[phi] -5.9892076e+00 -1.8277611e-04 9.3456275e-02 -7.1598586e-01 7.0179497e-01
+
+Free energy density - timestep total fluid
+[fed]           1500 -1.5839325740e-04 -1.5839325740e-04
+
+Momentum - x y z
+[total   ]  3.5005332e-13 -2.8393954e-14  3.6901038e-14
+[fluid   ]  3.5005332e-13 -2.8393954e-14  3.6901038e-14
+
+Velocity - x y z
+[minimum ] -2.4021427e-04 -2.1783912e-04 -2.0674707e-04
+[maximum ]  1.7751775e-04  2.4625330e-04  2.1190198e-04
+
+Completed cycle 1500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  3.3567837e-08  0.99936467043  1.00127692931
+[phi] -5.9892076e+00 -1.8277611e-04 1.2795908e-01 -7.7039086e-01 7.5884040e-01
+
+Free energy density - timestep total fluid
+[fed]           1600 -2.0764082960e-04 -2.0764082960e-04
+
+Momentum - x y z
+[total   ]  3.2735620e-13 -6.3449246e-14  4.1411319e-14
+[fluid   ]  3.2735620e-13 -6.3449246e-14  4.1411319e-14
+
+Velocity - x y z
+[minimum ] -3.1103588e-04 -2.9863543e-04 -2.7548567e-04
+[maximum ]  2.4352880e-04  3.3344295e-04  2.7531399e-04
+
+Completed cycle 1600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  4.8378821e-08  0.99924274225  1.00135954647
+[phi] -5.9892076e+00 -1.8277611e-04 1.6365546e-01 -8.0976437e-01 8.0306698e-01
+
+Free energy density - timestep total fluid
+[fed]           1700 -2.5465038414e-04 -2.5465038414e-04
+
+Momentum - x y z
+[total   ]  3.3517633e-13 -3.4416914e-14  4.8488991e-14
+[fluid   ]  3.3517633e-13 -3.4416914e-14  4.8488991e-14
+
+Velocity - x y z
+[minimum ] -3.6977684e-04 -3.7603175e-04 -3.4478297e-04
+[maximum ]  3.1486237e-04  4.1384234e-04  3.3063352e-04
+
+Completed cycle 1700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  6.4429195e-08  0.99911660566  1.00130264123
+[phi] -5.9892076e+00 -1.8277611e-04 1.9710202e-01 -8.3556704e-01 8.3457392e-01
+
+Free energy density - timestep total fluid
+[fed]           1800 -2.9568815377e-04 -2.9568815377e-04
+
+Momentum - x y z
+[total   ]  4.0657755e-13 -3.1669112e-14  6.3060668e-14
+[fluid   ]  4.0657755e-13 -3.1669112e-14  6.3060668e-14
+
+Velocity - x y z
+[minimum ] -4.2250139e-04 -4.3775053e-04 -4.0569514e-04
+[maximum ]  3.9741321e-04  4.7160991e-04  3.9922188e-04
+
+Completed cycle 1800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  8.0103727e-08  0.99900321957  1.00129560595
+[phi] -5.9892076e+00 -1.8277611e-04 2.2626608e-01 -8.5608999e-01 8.5432419e-01
+
+Free energy density - timestep total fluid
+[fed]           1900 -3.2969781596e-04 -3.2969781596e-04
+
+Momentum - x y z
+[total   ]  4.5209669e-13  2.0511370e-14  9.3841601e-14
+[fluid   ]  4.5209669e-13  2.0511370e-14  9.3841601e-14
+
+Velocity - x y z
+[minimum ] -4.8820353e-04 -5.1059547e-04 -4.4955466e-04
+[maximum ]  4.6181670e-04  4.9815574e-04  4.6269428e-04
+
+Completed cycle 1900
+Writing phi file at step 2000!
+Writing velocity output at step 2000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  9.3823653e-08  0.99893767334  1.00137892040
+[phi] -5.9892076e+00 -1.8277611e-04 2.5069554e-01 -8.8036232e-01 8.7050296e-01
+
+Free energy density - timestep total fluid
+[fed]           2000 -3.5743943403e-04 -3.5743943403e-04
+
+Momentum - x y z
+[total   ]  4.5642656e-13  3.4021397e-14  1.1854406e-13
+[fluid   ]  4.5642656e-13  3.4021397e-14  1.1854406e-13
+
+Velocity - x y z
+[minimum ] -5.3161790e-04 -5.6909095e-04 -5.0341812e-04
+[maximum ]  4.9891957e-04  5.4994342e-04  5.2608588e-04
+
+Completed cycle 2000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0492001e-07  0.99892873392  1.00163561841
+[phi] -5.9892076e+00 -1.8277611e-04 2.7091264e-01 -8.9673509e-01 8.8495338e-01
+
+Free energy density - timestep total fluid
+[fed]           2100 -3.8030380903e-04 -3.8030380903e-04
+
+Momentum - x y z
+[total   ]  4.0088766e-13 -6.7168493e-15  1.1812773e-13
+[fluid   ]  4.0088766e-13 -6.7168493e-15  1.1812773e-13
+
+Velocity - x y z
+[minimum ] -5.8967138e-04 -6.0804985e-04 -5.6840897e-04
+[maximum ]  5.6966821e-04  6.1567386e-04  5.8090958e-04
+
+Completed cycle 2100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1352758e-07  0.99898207379  1.00167026489
+[phi] -5.9892076e+00 -1.8277611e-04 2.8777788e-01 -9.0719587e-01 8.9508313e-01
+
+Free energy density - timestep total fluid
+[fed]           2200 -3.9961992143e-04 -3.9961992143e-04
+
+Momentum - x y z
+[total   ]  3.5843550e-13  2.6117997e-14  1.1629586e-13
+[fluid   ]  3.5843550e-13  2.6117997e-14  1.1629586e-13
+
+Velocity - x y z
+[minimum ] -6.6396259e-04 -6.3847100e-04 -6.1683250e-04
+[maximum ]  6.3849451e-04  6.6893210e-04  6.3196324e-04
+
+Completed cycle 2200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2014658e-07  0.99893494343  1.00153722889
+[phi] -5.9892076e+00 -1.8277611e-04 3.0211710e-01 -9.1348347e-01 9.0405194e-01
+
+Free energy density - timestep total fluid
+[fed]           2300 -4.1640588236e-04 -4.1640588236e-04
+
+Momentum - x y z
+[total   ]  3.6401437e-13  3.5665915e-15  8.5320639e-14
+[fluid   ]  3.6401437e-13  3.5665915e-15  8.5320639e-14
+
+Velocity - x y z
+[minimum ] -7.3291753e-04 -6.6486556e-04 -6.3693388e-04
+[maximum ]  7.0366358e-04  7.0933731e-04  6.6499627e-04
+
+Completed cycle 2300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2556538e-07  0.99890191577  1.00142456663
+[phi] -5.9892076e+00 -1.8277611e-04 3.1459222e-01 -9.1773801e-01 9.1218611e-01
+
+Free energy density - timestep total fluid
+[fed]           2400 -4.3139276720e-04 -4.3139276720e-04
+
+Momentum - x y z
+[total   ]  3.5682568e-13  2.6478819e-14  7.0055073e-14
+[fluid   ]  3.5682568e-13  2.6478819e-14  7.0055073e-14
+
+Velocity - x y z
+[minimum ] -7.9328336e-04 -6.8204057e-04 -6.9062259e-04
+[maximum ]  7.6220286e-04  7.3621463e-04  6.8036355e-04
+
+Completed cycle 2400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.3051302e-07  0.99890852341  1.00167805823
+[phi] -5.9892076e+00 -1.8277611e-04 3.2569962e-01 -9.2428349e-01 9.1809411e-01
+
+Free energy density - timestep total fluid
+[fed]           2500 -4.4510185331e-04 -4.4510185331e-04
+
+Momentum - x y z
+[total   ]  2.8554936e-13 -2.4244495e-14  7.0110584e-14
+[fluid   ]  2.8554936e-13 -2.4244495e-14  7.0110584e-14
+
+Velocity - x y z
+[minimum ] -8.5241659e-04 -7.1624144e-04 -7.4971797e-04
+[maximum ]  8.1087399e-04  7.4995229e-04  6.8135338e-04
+
+Completed cycle 2500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.3482637e-07  0.99888249619  1.00195068492
+[phi] -5.9892076e+00 -1.8277611e-04 3.3579870e-01 -9.3311267e-01 9.2395856e-01
+
+Free energy density - timestep total fluid
+[fed]           2600 -4.5788029540e-04 -4.5788029540e-04
+
+Momentum - x y z
+[total   ]  2.9265479e-13 -1.6937840e-14  1.2889689e-13
+[fluid   ]  2.9265479e-13 -1.6937840e-14  1.2889689e-13
+
+Velocity - x y z
+[minimum ] -8.9660599e-04 -7.3285507e-04 -7.8827216e-04
+[maximum ]  8.6550454e-04  7.5294004e-04  7.2054486e-04
+
+Completed cycle 2600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.3791803e-07  0.99884886192  1.00178520479
+[phi] -5.9892076e+00 -1.8277611e-04 3.4512745e-01 -9.3984796e-01 9.2975812e-01
+
+Free energy density - timestep total fluid
+[fed]           2700 -4.6990915587e-04 -4.6990915587e-04
+
+Momentum - x y z
+[total   ]  3.5560443e-13 -2.0494023e-14  1.2823076e-13
+[fluid   ]  3.5560443e-13 -2.0494023e-14  1.2823076e-13
+
+Velocity - x y z
+[minimum ] -9.2449734e-04 -7.3498427e-04 -8.0221295e-04
+[maximum ]  9.2003070e-04  7.5176682e-04  7.6625030e-04
+
+Completed cycle 2700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.4052704e-07  0.99886228699  1.00156820311
+[phi] -5.9892076e+00 -1.8277611e-04 3.5383191e-01 -9.4468637e-01 9.3347334e-01
+
+Free energy density - timestep total fluid
+[fed]           2800 -4.8131459723e-04 -4.8131459723e-04
+
+Momentum - x y z
+[total   ]  3.1363800e-13  1.3281043e-14  1.4577228e-13
+[fluid   ]  3.1363800e-13  1.3281043e-14  1.4577228e-13
+
+Velocity - x y z
+[minimum ] -9.6171328e-04 -7.2638476e-04 -8.0661498e-04
+[maximum ]  9.6572562e-04  7.3381316e-04  8.0794983e-04
+
+Completed cycle 2800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.4367666e-07  0.99886659498  1.00174717660
+[phi] -5.9892076e+00 -1.8277611e-04 3.6202596e-01 -9.4780821e-01 9.3563292e-01
+
+Free energy density - timestep total fluid
+[fed]           2900 -4.9224983337e-04 -4.9224983337e-04
+
+Momentum - x y z
+[total   ]  3.1441516e-13  2.0233815e-14  1.4943602e-13
+[fluid   ]  3.1441516e-13  2.0233815e-14  1.4943602e-13
+
+Velocity - x y z
+[minimum ] -9.9692693e-04 -7.2141695e-04 -8.2570924e-04
+[maximum ]  9.9848375e-04  6.9442672e-04  8.4221101e-04
+
+Completed cycle 2900
+Writing phi file at step 3000!
+Writing velocity output at step 3000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.4747264e-07  0.99885588882  1.00199412998
+[phi] -5.9892076e+00 -1.8277611e-04 3.6981970e-01 -9.4938370e-01 9.3667633e-01
+
+Free energy density - timestep total fluid
+[fed]           3000 -5.0286105589e-04 -5.0286105589e-04
+
+Momentum - x y z
+[total   ]  2.8521630e-13 -2.1177504e-14  2.0139446e-13
+[fluid   ]  2.8521630e-13 -2.1177504e-14  2.0139446e-13
+
+Velocity - x y z
+[minimum ] -1.0282932e-03 -7.1849432e-04 -8.7258355e-04
+[maximum ]  1.0152072e-03  6.4125082e-04  8.7321311e-04
+
+Completed cycle 3000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.5130260e-07  0.99886345967  1.00215725787
+[phi] -5.9892076e+00 -1.8277611e-04 3.7731822e-01 -9.5070784e-01 9.3787398e-01
+
+Free energy density - timestep total fluid
+[fed]           3100 -5.1325502587e-04 -5.1325502587e-04
+
+Momentum - x y z
+[total   ]  3.2718273e-13 -1.8318680e-14  2.2692959e-13
+[fluid   ]  3.2718273e-13 -1.8318680e-14  2.2692959e-13
+
+Velocity - x y z
+[minimum ] -1.0380846e-03 -7.0991436e-04 -9.1252013e-04
+[maximum ]  1.0168212e-03  6.0423947e-04  9.0619660e-04
+
+Completed cycle 3100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.5403362e-07  0.99888266425  1.00230544795
+[phi] -5.9892076e+00 -1.8277611e-04 3.8460207e-01 -9.5429555e-01 9.3945552e-01
+
+Free energy density - timestep total fluid
+[fed]           3200 -5.2347310258e-04 -5.2347310258e-04
+
+Momentum - x y z
+[total   ]  2.9765079e-13 -9.1038288e-15  2.1771474e-13
+[fluid   ]  2.9765079e-13 -9.1038288e-15  2.1771474e-13
+
+Velocity - x y z
+[minimum ] -1.0248215e-03 -7.1329700e-04 -9.4048576e-04
+[maximum ]  1.0096630e-03  6.2405656e-04  9.1406696e-04
+
+Completed cycle 3200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.5447081e-07  0.99887119416  1.00239065551
+[phi] -5.9892076e+00 -1.8277611e-04 3.9170339e-01 -9.5740503e-01 9.4439205e-01
+
+Free energy density - timestep total fluid
+[fed]           3300 -5.3348188801e-04 -5.3348188801e-04
+
+Momentum - x y z
+[total   ]  3.1086245e-13  1.3655743e-14  2.1105340e-13
+[fluid   ]  3.1086245e-13  1.3655743e-14  2.1105340e-13
+
+Velocity - x y z
+[minimum ] -9.9692717e-04 -7.4171687e-04 -9.5192752e-04
+[maximum ]  1.0123090e-03  6.7332795e-04  8.8843920e-04
+
+Completed cycle 3300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.5248306e-07  0.99886121313  1.00220173809
+[phi] -5.9892076e+00 -1.8277611e-04 3.9860237e-01 -9.5980904e-01 9.4855860e-01
+
+Free energy density - timestep total fluid
+[fed]           3400 -5.4320227640e-04 -5.4320227640e-04
+
+Momentum - x y z
+[total   ]  2.7478020e-13 -5.3845817e-15  1.9206858e-13
+[fluid   ]  2.7478020e-13 -5.3845817e-15  1.9206858e-13
+
+Velocity - x y z
+[minimum ] -9.8713261e-04 -7.6033120e-04 -9.4727910e-04
+[maximum ]  1.0215926e-03  7.2472550e-04  8.7886703e-04
+
+Completed cycle 3400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.4907845e-07  0.99885952314  1.00191229627
+[phi] -5.9892076e+00 -1.8277611e-04 4.0526490e-01 -9.6120764e-01 9.5210827e-01
+
+Free energy density - timestep total fluid
+[fed]           3500 -5.5257952580e-04 -5.5257952580e-04
+
+Momentum - x y z
+[total   ]  2.5945912e-13 -7.1054274e-15  2.0750068e-13
+[fluid   ]  2.5945912e-13 -7.1054274e-15  2.0750068e-13
+
+Velocity - x y z
+[minimum ] -9.7366374e-04 -7.6956770e-04 -9.4056566e-04
+[maximum ]  1.0244738e-03  7.7837299e-04  8.6954592e-04
+
+Completed cycle 3500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.4550994e-07  0.99886689467  1.00199228518
+[phi] -5.9892076e+00 -1.8277611e-04 4.1167190e-01 -9.6131767e-01 9.5522618e-01
+
+Free energy density - timestep total fluid
+[fed]           3600 -5.6160991815e-04 -5.6160991815e-04
+
+Momentum - x y z
+[total   ]  2.9620750e-13 -1.5765167e-14  2.0283775e-13
+[fluid   ]  2.9620750e-13 -1.5765167e-14  2.0283775e-13
+
+Velocity - x y z
+[minimum ] -9.7627892e-04 -7.9065320e-04 -9.2266455e-04
+[maximum ]  1.0137057e-03  8.5106238e-04  8.6382815e-04
+
+Completed cycle 3600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.4224885e-07  0.99887267041  1.00193339317
+[phi] -5.9892076e+00 -1.8277611e-04 4.1782167e-01 -9.5993932e-01 9.5802405e-01
+
+Free energy density - timestep total fluid
+[fed]           3700 -5.7030517223e-04 -5.7030517223e-04
+
+Momentum - x y z
+[total   ]  2.6578739e-13 -2.2870594e-14  2.2604141e-13
+[fluid   ]  2.6578739e-13 -2.2870594e-14  2.2604141e-13
+
+Velocity - x y z
+[minimum ] -9.9586301e-04 -8.0775523e-04 -9.1639905e-04
+[maximum ]  9.9062030e-04  9.2146853e-04  8.5869874e-04
+
+Completed cycle 3700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.3882076e-07  0.99886071121  1.00217583160
+[phi] -5.9892076e+00 -1.8277611e-04 4.2371270e-01 -9.5967246e-01 9.6049541e-01
+
+Free energy density - timestep total fluid
+[fed]           3800 -5.7863504929e-04 -5.7863504929e-04
+
+Momentum - x y z
+[total   ]  2.2737368e-13 -2.1760371e-14  2.3314684e-13
+[fluid   ]  2.2737368e-13 -2.1760371e-14  2.3314684e-13
+
+Velocity - x y z
+[minimum ] -1.0013199e-03 -8.1011543e-04 -9.0231714e-04
+[maximum ]  9.6408176e-04  9.7457416e-04  8.3646770e-04
+
+Completed cycle 3800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.3483909e-07  0.99886528900  1.00206048881
+[phi] -5.9892076e+00 -1.8277611e-04 4.2933467e-01 -9.6033089e-01 9.6255914e-01
+
+Free energy density - timestep total fluid
+[fed]           3900 -5.8655093315e-04 -5.8655093315e-04
+
+Momentum - x y z
+[total   ]  2.3325786e-13 -6.2616579e-14  1.8385293e-13
+[fluid   ]  2.3325786e-13 -6.2616579e-14  1.8385293e-13
+
+Velocity - x y z
+[minimum ] -9.9460579e-04 -7.9559461e-04 -8.7783218e-04
+[maximum ]  9.4319841e-04  1.0134694e-03  8.0724000e-04
+
+Completed cycle 3900
+Writing phi file at step 4000!
+Writing velocity output at step 4000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.3122333e-07  0.99886357464  1.00183815212
+[phi] -5.9892076e+00 -1.8277611e-04 4.3468078e-01 -9.6092085e-01 9.6447995e-01
+
+Free energy density - timestep total fluid
+[fed]           4000 -5.9406770779e-04 -5.9406770779e-04
+
+Momentum - x y z
+[total   ]  1.9351187e-13 -2.2870594e-14  1.9290125e-13
+[fluid   ]  1.9351187e-13 -2.2870594e-14  1.9290125e-13
+
+Velocity - x y z
+[minimum ] -9.7476646e-04 -7.9646965e-04 -8.5686130e-04
+[maximum ]  9.2862332e-04  1.0382664e-03  7.6923673e-04
+
+Completed cycle 4000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2876740e-07  0.99884351557  1.00168593641
+[phi] -5.9892076e+00 -1.8277611e-04 4.3977434e-01 -9.6203559e-01 9.6703030e-01
+
+Free energy density - timestep total fluid
+[fed]           4100 -6.0128847152e-04 -6.0128847152e-04
+
+Momentum - x y z
+[total   ]  2.1027624e-13 -1.2545520e-14  2.2093438e-13
+[fluid   ]  2.1027624e-13 -1.2545520e-14  2.2093438e-13
+
+Velocity - x y z
+[minimum ] -9.4801376e-04 -8.0172997e-04 -8.2518101e-04
+[maximum ]  9.1698257e-04  1.0304225e-03  7.3410692e-04
+
+Completed cycle 4100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2705821e-07  0.99885978852  1.00200454110
+[phi] -5.9892076e+00 -1.8277611e-04 4.4465925e-01 -9.6423379e-01 9.6915714e-01
+
+Free energy density - timestep total fluid
+[fed]           4200 -6.0828227333e-04 -6.0828227333e-04
+
+Momentum - x y z
+[total   ]  2.0983215e-13  9.7699626e-15  2.1038726e-13
+[fluid   ]  2.0983215e-13  9.7699626e-15  2.1038726e-13
+
+Velocity - x y z
+[minimum ] -9.3368757e-04 -8.0106728e-04 -7.8398941e-04
+[maximum ]  9.1114694e-04  9.9898848e-04  7.0392153e-04
+
+Completed cycle 4200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2556747e-07  0.99891675142  1.00211437371
+[phi] -5.9892076e+00 -1.8277611e-04 4.4937845e-01 -9.6657162e-01 9.7071726e-01
+
+Free energy density - timestep total fluid
+[fed]           4300 -6.1507481459e-04 -6.1507481459e-04
+
+Momentum - x y z
+[total   ]  2.0217161e-13  4.3298698e-15  2.1632696e-13
+[fluid   ]  2.0217161e-13  4.3298698e-15  2.1632696e-13
+
+Velocity - x y z
+[minimum ] -9.1137936e-04 -7.9411351e-04 -7.4706526e-04
+[maximum ]  8.9460779e-04  9.7518127e-04  6.6365371e-04
+
+Completed cycle 4300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2402180e-07  0.99895883906  1.00201758884
+[phi] -5.9892076e+00 -1.8277611e-04 4.5396780e-01 -9.6840360e-01 9.7179277e-01
+
+Free energy density - timestep total fluid
+[fed]           4400 -6.2169732216e-04 -6.2169732216e-04
+
+Momentum - x y z
+[total   ]  2.1305180e-13  4.6962434e-14  2.1366242e-13
+[fluid   ]  2.1305180e-13  4.6962434e-14  2.1366242e-13
+
+Velocity - x y z
+[minimum ] -9.1329632e-04 -7.7956479e-04 -7.1505624e-04
+[maximum ]  8.6735228e-04  9.5505581e-04  6.3452630e-04
+
+Completed cycle 4400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2245017e-07  0.99895760272  1.00182578005
+[phi] -5.9892076e+00 -1.8277611e-04 4.5845272e-01 -9.6980835e-01 9.7250800e-01
+
+Free energy density - timestep total fluid
+[fed]           4500 -6.2818015585e-04 -6.2818015585e-04
+
+Momentum - x y z
+[total   ]  1.9240165e-13  3.8524739e-14  2.0586310e-13
+[fluid   ]  1.9240165e-13  3.8524739e-14  2.0586310e-13
+
+Velocity - x y z
+[minimum ] -9.1929130e-04 -7.5542037e-04 -6.8538634e-04
+[maximum ]  8.3393075e-04  9.3944716e-04  6.2402757e-04
+
+Completed cycle 4500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.2089187e-07  0.99897281852  1.00162602217
+[phi] -5.9892076e+00 -1.8277611e-04 4.6284426e-01 -9.7089152e-01 9.7461036e-01
+
+Free energy density - timestep total fluid
+[fed]           4600 -6.3452462819e-04 -6.3452462819e-04
+
+Momentum - x y z
+[total   ]  2.3081537e-13  7.3385742e-14  1.8110513e-13
+[fluid   ]  2.3081537e-13  7.3385742e-14  1.8110513e-13
+
+Velocity - x y z
+[minimum ] -9.2629448e-04 -7.3820236e-04 -6.8483897e-04
+[maximum ]  8.0071471e-04  9.2530850e-04  6.0898780e-04
+
+Completed cycle 4600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1954037e-07  0.99898031696  1.00145998123
+[phi] -5.9892076e+00 -1.8277611e-04 4.6713653e-01 -9.7175838e-01 9.7682632e-01
+
+Free energy density - timestep total fluid
+[fed]           4700 -6.4070401052e-04 -6.4070401052e-04
+
+Momentum - x y z
+[total   ]  2.3891999e-13  1.0036416e-13  1.9140245e-13
+[fluid   ]  2.3891999e-13  1.0036416e-13  1.9140245e-13
+
+Velocity - x y z
+[minimum ] -9.3096935e-04 -7.4937634e-04 -7.1287911e-04
+[maximum ]  7.9886606e-04  9.0784834e-04  6.0111420e-04
+
+Completed cycle 4700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1882286e-07  0.99899383106  1.00144226380
+[phi] -5.9892076e+00 -1.8277611e-04 4.7131854e-01 -9.7247601e-01 9.7889614e-01
+
+Free energy density - timestep total fluid
+[fed]           4800 -6.4671154431e-04 -6.4671154431e-04
+
+Momentum - x y z
+[total   ]  2.2215563e-13  9.9031894e-14  1.7011392e-13
+[fluid   ]  2.2215563e-13  9.9031894e-14  1.7011392e-13
+
+Velocity - x y z
+[minimum ] -9.3155057e-04 -7.4764220e-04 -7.6292132e-04
+[maximum ]  8.0263686e-04  8.8719566e-04  6.1369457e-04
+
+Completed cycle 4800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1877355e-07  0.99896921832  1.00174059772
+[phi] -5.9892076e+00 -1.8277611e-04 4.7538568e-01 -9.7306785e-01 9.8079359e-01
+
+Free energy density - timestep total fluid
+[fed]           4900 -6.5256660086e-04 -6.5256660086e-04
+
+Momentum - x y z
+[total   ]  2.2581936e-13  1.0658141e-13  1.8718360e-13
+[fluid   ]  2.2581936e-13  1.0658141e-13  1.8718360e-13
+
+Velocity - x y z
+[minimum ] -9.2100134e-04 -7.3696988e-04 -8.0931406e-04
+[maximum ]  8.0952614e-04  8.8239399e-04  6.2694070e-04
+
+Completed cycle 4900
+Writing phi file at step 5000!
+Writing velocity output at step 5000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1881698e-07  0.99889323555  1.00187450842
+[phi] -5.9892076e+00 -1.8277611e-04 4.7933845e-01 -9.7406728e-01 9.8253696e-01
+
+Free energy density - timestep total fluid
+[fed]           5000 -6.5828010521e-04 -6.5828010521e-04
+
+Momentum - x y z
+[total   ]  1.8607338e-13  1.0569323e-13  2.2926105e-13
+[fluid   ]  1.8607338e-13  1.0569323e-13  2.2926105e-13
+
+Velocity - x y z
+[minimum ] -9.0143402e-04 -7.2983090e-04 -8.4081680e-04
+[maximum ]  8.0902548e-04  8.7873874e-04  6.3512283e-04
+
+Completed cycle 5000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1827394e-07  0.99885087488  1.00182029676
+[phi] -5.9892076e+00 -1.8277611e-04 4.8317219e-01 -9.7495583e-01 9.8416532e-01
+
+Free energy density - timestep total fluid
+[fed]           5100 -6.6382764111e-04 -6.6382764111e-04
+
+Momentum - x y z
+[total   ]  2.0039526e-13  1.0969003e-13  2.0128343e-13
+[fluid   ]  2.0039526e-13  1.0969003e-13  2.0128343e-13
+
+Velocity - x y z
+[minimum ] -8.7667232e-04 -7.3692769e-04 -8.5101086e-04
+[maximum ]  8.0219565e-04  8.6660386e-04  6.3746759e-04
+
+Completed cycle 5100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1698797e-07  0.99885303779  1.00175691762
+[phi] -5.9892076e+00 -1.8277611e-04 4.8687448e-01 -9.7552005e-01 9.8570435e-01
+
+Free energy density - timestep total fluid
+[fed]           5200 -6.6917203555e-04 -6.6917203555e-04
+
+Momentum - x y z
+[total   ]  2.2415403e-13  6.8389738e-14  1.8551827e-13
+[fluid   ]  2.2415403e-13  6.8389738e-14  1.8551827e-13
+
+Velocity - x y z
+[minimum ] -8.4972983e-04 -7.3891432e-04 -8.6731588e-04
+[maximum ]  7.9090218e-04  8.5096605e-04  6.3439658e-04
+
+Completed cycle 5200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1532656e-07  0.99882934542  1.00168229999
+[phi] -5.9892076e+00 -1.8277611e-04 4.9043091e-01 -9.7667525e-01 9.8714720e-01
+
+Free energy density - timestep total fluid
+[fed]           5300 -6.7429355544e-04 -6.7429355544e-04
+
+Momentum - x y z
+[total   ]  1.8596236e-13  8.2711615e-14  1.7374990e-13
+[fluid   ]  1.8596236e-13  8.2711615e-14  1.7374990e-13
+
+Velocity - x y z
+[minimum ] -8.2180389e-04 -7.3300320e-04 -8.7961984e-04
+[maximum ]  8.0052955e-04  8.3697347e-04  6.2644181e-04
+
+Completed cycle 5300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1375438e-07  0.99882846582  1.00155549529
+[phi] -5.9892076e+00 -1.8277611e-04 4.9383471e-01 -9.7787938e-01 9.8845497e-01
+
+Free energy density - timestep total fluid
+[fed]           5400 -6.7920222496e-04 -6.7920222496e-04
+
+Momentum - x y z
+[total   ]  1.6797674e-13  9.9475983e-14  1.0913492e-13
+[fluid   ]  1.6797674e-13  9.9475983e-14  1.0913492e-13
+
+Velocity - x y z
+[minimum ] -7.9812112e-04 -7.2209643e-04 -8.7287723e-04
+[maximum ]  8.1392674e-04  8.2679630e-04  6.1447007e-04
+
+Completed cycle 5400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1250329e-07  0.99886179286  1.00151630863
+[phi] -5.9892076e+00 -1.8277611e-04 4.9708837e-01 -9.7884833e-01 9.8958402e-01
+
+Free energy density - timestep total fluid
+[fed]           5500 -6.8392653381e-04 -6.8392653381e-04
+
+Momentum - x y z
+[total   ]  1.1801671e-13  1.0613732e-13  1.3244961e-13
+[fluid   ]  1.1801671e-13  1.0613732e-13  1.3244961e-13
+
+Velocity - x y z
+[minimum ] -8.2213503e-04 -7.0830584e-04 -8.4736395e-04
+[maximum ]  8.2549795e-04  8.1944510e-04  5.9949725e-04
+
+Completed cycle 5500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1161248e-07  0.99893643871  1.00148518330
+[phi] -5.9892076e+00 -1.8277611e-04 5.0020138e-01 -9.7958450e-01 9.9051068e-01
+
+Free energy density - timestep total fluid
+[fed]           5600 -6.8850147400e-04 -6.8850147400e-04
+
+Momentum - x y z
+[total   ]  1.7175150e-13  5.9396932e-14  1.4976909e-13
+[fluid   ]  1.7175150e-13  5.9396932e-14  1.4976909e-13
+
+Velocity - x y z
+[minimum ] -8.4075132e-04 -7.0212255e-04 -8.1536956e-04
+[maximum ]  8.3567873e-04  8.1231527e-04  5.8711097e-04
+
+Completed cycle 5600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1098654e-07  0.99897236584  1.00157146059
+[phi] -5.9892076e+00 -1.8277611e-04 5.0318654e-01 -9.8051476e-01 9.9199165e-01
+
+Free energy density - timestep total fluid
+[fed]           5700 -6.9295542311e-04 -6.9295542311e-04
+
+Momentum - x y z
+[total   ]  1.4388490e-13  6.6169292e-14  1.2367884e-13
+[fluid   ]  1.4388490e-13  6.6169292e-14  1.2367884e-13
+
+Velocity - x y z
+[minimum ] -8.4593427e-04 -7.0475552e-04 -7.8586595e-04
+[maximum ]  8.4642936e-04  8.1132530e-04  5.9901918e-04
+
+Completed cycle 5700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1056258e-07  0.99896540654  1.00165689324
+[phi] -5.9892076e+00 -1.8277611e-04 5.0605600e-01 -9.8205776e-01 9.9340852e-01
+
+Free energy density - timestep total fluid
+[fed]           5800 -6.9730189620e-04 -6.9730189620e-04
+
+Momentum - x y z
+[total   ]  1.5032420e-13  2.9309888e-14  1.0746959e-13
+[fluid   ]  1.5032420e-13  2.9309888e-14  1.0746959e-13
+
+Velocity - x y z
+[minimum ] -8.4315615e-04 -7.0670258e-04 -7.5673755e-04
+[maximum ]  8.5782939e-04  8.0826592e-04  6.1186614e-04
+
+Completed cycle 5800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1045573e-07  0.99894217163  1.00182041879
+[phi] -5.9892076e+00 -1.8277611e-04 5.0882043e-01 -9.8352008e-01 9.9460120e-01
+
+Free energy density - timestep total fluid
+[fed]           5900 -7.0154899700e-04 -7.0154899700e-04
+
+Momentum - x y z
+[total   ]  1.1457502e-13 -3.7747583e-14  1.3344881e-13
+[fluid   ]  1.1457502e-13 -3.7747583e-14  1.3344881e-13
+
+Velocity - x y z
+[minimum ] -8.4616123e-04 -7.0754159e-04 -7.3456956e-04
+[maximum ]  8.7113672e-04  8.0123197e-04  6.2209844e-04
+
+Completed cycle 5900
+Writing phi file at step 6000!
+Writing velocity output at step 6000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1076609e-07  0.99894037489  1.00208778944
+[phi] -5.9892076e+00 -1.8277611e-04 5.1149067e-01 -9.8490788e-01 9.9555033e-01
+
+Free energy density - timestep total fluid
+[fed]           6000 -7.0571261526e-04 -7.0571261526e-04
+
+Momentum - x y z
+[total   ]  1.5043522e-13 -2.6423308e-14  1.3744561e-13
+[fluid   ]  1.5043522e-13 -2.6423308e-14  1.3744561e-13
+
+Velocity - x y z
+[minimum ] -8.4709557e-04 -7.0717499e-04 -7.3331802e-04
+[maximum ]  8.9175487e-04  8.1115474e-04  6.3780458e-04
+
+Completed cycle 6000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1121398e-07  0.99895338347  1.00227342998
+[phi] -5.9892076e+00 -1.8277611e-04 5.1407788e-01 -9.8622464e-01 9.9622722e-01
+
+Free energy density - timestep total fluid
+[fed]           6100 -7.0980943393e-04 -7.0980943393e-04
+
+Momentum - x y z
+[total   ]  1.1879386e-13 -3.9301895e-14  1.0436096e-13
+[fluid   ]  1.1879386e-13 -3.9301895e-14  1.0436096e-13
+
+Velocity - x y z
+[minimum ] -8.4528576e-04 -7.0579044e-04 -7.2881594e-04
+[maximum ]  9.1323160e-04  8.2607054e-04  6.4961319e-04
+
+Completed cycle 6100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1148151e-07  0.99897832727  1.00223507832
+[phi] -5.9892076e+00 -1.8277611e-04 5.1659131e-01 -9.8747885e-01 9.9661849e-01
+
+Free energy density - timestep total fluid
+[fed]           6200 -7.1385365736e-04 -7.1385365736e-04
+
+Momentum - x y z
+[total   ]  6.3615779e-14  2.7533531e-14  1.4921397e-13
+[fluid   ]  6.3615779e-14  2.7533531e-14  1.4921397e-13
+
+Velocity - x y z
+[minimum ] -8.4144322e-04 -7.0469359e-04 -7.2152507e-04
+[maximum ]  9.3539236e-04  8.0928451e-04  6.5921214e-04
+
+Completed cycle 6200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1151883e-07  0.99900916388  1.00206686245
+[phi] -5.9892076e+00 -1.8277611e-04 5.1904149e-01 -9.8868847e-01 9.9673480e-01
+
+Free energy density - timestep total fluid
+[fed]           6300 -7.1786624559e-04 -7.1786624559e-04
+
+Momentum - x y z
+[total   ]  8.6486374e-14  1.2212453e-14  1.4344081e-13
+[fluid   ]  8.6486374e-14  1.2212453e-14  1.4344081e-13
+
+Velocity - x y z
+[minimum ] -8.3204427e-04 -7.0551546e-04 -7.1403335e-04
+[maximum ]  9.5849442e-04  7.9647170e-04  6.6941483e-04
+
+Completed cycle 6300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1128266e-07  0.99901640963  1.00185784990
+[phi] -5.9892076e+00 -1.8277611e-04 5.2143956e-01 -9.8988268e-01 9.9661381e-01
+
+Free energy density - timestep total fluid
+[fed]           6400 -7.2185709930e-04 -7.2185709930e-04
+
+Momentum - x y z
+[total   ]  5.3956839e-14  2.8199665e-14  1.7208457e-13
+[fluid   ]  5.3956839e-14  2.8199665e-14  1.7208457e-13
+
+Velocity - x y z
+[minimum ] -8.2147115e-04 -7.0596855e-04 -7.0651851e-04
+[maximum ]  9.8339487e-04  7.7790730e-04  6.8288476e-04
+
+Completed cycle 6400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1084627e-07  0.99898377327  1.00166425147
+[phi] -5.9892076e+00 -1.8277611e-04 5.2379254e-01 -9.9109526e-01 9.9629639e-01
+
+Free energy density - timestep total fluid
+[fed]           6500 -7.2581938148e-04 -7.2581938148e-04
+
+Momentum - x y z
+[total   ]  4.0301096e-14  3.9301895e-14  1.9539925e-13
+[fluid   ]  4.0301096e-14  3.9301895e-14  1.9539925e-13
+
+Velocity - x y z
+[minimum ] -8.2336157e-04 -7.0720608e-04 -6.9614013e-04
+[maximum ]  1.0109515e-03  7.5302914e-04  7.0049373e-04
+
+Completed cycle 6500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1040085e-07  0.99899534558  1.00167255864
+[phi] -5.9892076e+00 -1.8277611e-04 5.2610302e-01 -9.9235185e-01 9.9580841e-01
+
+Free energy density - timestep total fluid
+[fed]           6600 -7.2974215204e-04 -7.2974215204e-04
+
+Momentum - x y z
+[total   ]  1.0436096e-14  7.7271523e-14  2.2937208e-13
+[fluid   ]  1.0436096e-14  7.7271523e-14  2.2937208e-13
+
+Velocity - x y z
+[minimum ] -8.2461601e-04 -7.1514377e-04 -6.8463728e-04
+[maximum ]  1.0407215e-03  7.3705369e-04  7.2067010e-04
+
+Completed cycle 6600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1022796e-07  0.99904059936  1.00161884010
+[phi] -5.9892076e+00 -1.8277611e-04 5.2837139e-01 -9.9364396e-01 9.9516623e-01
+
+Free energy density - timestep total fluid
+[fed]           6700 -7.3362364642e-04 -7.3362364642e-04
+
+Momentum - x y z
+[total   ] -2.3314684e-15  1.2190249e-13  2.2271074e-13
+[fluid   ] -2.3314684e-15  1.2190249e-13  2.2271074e-13
+
+Velocity - x y z
+[minimum ] -8.2369286e-04 -7.1904593e-04 -6.7910907e-04
+[maximum ]  1.0706496e-03  7.3050793e-04  7.4008277e-04
+
+Completed cycle 6700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1058757e-07  0.99904075345  1.00184536738
+[phi] -5.9892076e+00 -1.8277611e-04 5.3060219e-01 -9.9491027e-01 9.9506099e-01
+
+Free energy density - timestep total fluid
+[fed]           6800 -7.3749174717e-04 -7.3749174717e-04
+
+Momentum - x y z
+[total   ] -6.4448447e-14  1.3145041e-13  2.0006219e-13
+[fluid   ] -6.4448447e-14  1.3145041e-13  2.0006219e-13
+
+Velocity - x y z
+[minimum ] -8.1946292e-04 -7.2315050e-04 -6.7767174e-04
+[maximum ]  1.0983487e-03  7.2220875e-04  7.5708733e-04
+
+Completed cycle 6800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1133268e-07  0.99903494247  1.00189496476
+[phi] -5.9892076e+00 -1.8277611e-04 5.3280571e-01 -9.9604965e-01 9.9545548e-01
+
+Free energy density - timestep total fluid
+[fed]           6900 -7.4138381873e-04 -7.4138381873e-04
+
+Momentum - x y z
+[total   ] -1.0791368e-13  1.3344881e-13  2.2759572e-13
+[fluid   ] -1.0791368e-13  1.3344881e-13  2.2759572e-13
+
+Velocity - x y z
+[minimum ] -8.1174889e-04 -7.2684792e-04 -6.7302108e-04
+[maximum ]  1.1191141e-03  7.2025669e-04  7.7165852e-04
+
+Completed cycle 6900
+Writing phi file at step 7000!
+Writing velocity output at step 7000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1217043e-07  0.99899239320  1.00183086300
+[phi] -5.9892076e+00 -1.8277611e-04 5.3499311e-01 -9.9696624e-01 9.9575691e-01
+
+Free energy density - timestep total fluid
+[fed]           7000 -7.4531744328e-04 -7.4531744328e-04
+
+Momentum - x y z
+[total   ] -1.2784218e-13  1.0880186e-13  2.1227464e-13
+[fluid   ] -1.2784218e-13  1.0880186e-13  2.1227464e-13
+
+Velocity - x y z
+[minimum ] -8.0170847e-04 -7.2572061e-04 -6.7040516e-04
+[maximum ]  1.1229630e-03  7.1666215e-04  7.8619143e-04
+
+Completed cycle 7000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1308083e-07  0.99898799072  1.00187754362
+[phi] -5.9892076e+00 -1.8277611e-04 5.3717462e-01 -9.9761442e-01 9.9595345e-01
+
+Free energy density - timestep total fluid
+[fed]           7100 -7.4930197673e-04 -7.4930197673e-04
+
+Momentum - x y z
+[total   ] -1.1590728e-13  1.3322676e-13  2.1427304e-13
+[fluid   ] -1.1590728e-13  1.3322676e-13  2.1427304e-13
+
+Velocity - x y z
+[minimum ] -7.9142336e-04 -7.2012375e-04 -6.7968814e-04
+[maximum ]  1.1052106e-03  7.2155136e-04  7.9498949e-04
+
+Completed cycle 7100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1407121e-07  0.99898020091  1.00180699588
+[phi] -5.9892076e+00 -1.8277611e-04 5.3936141e-01 -9.9800086e-01 9.9603545e-01
+
+Free energy density - timestep total fluid
+[fed]           7200 -7.5334297806e-04 -7.5334297806e-04
+
+Momentum - x y z
+[total   ] -1.1668444e-13  1.6497914e-13  2.3714364e-13
+[fluid   ] -1.1668444e-13  1.6497914e-13  2.3714364e-13
+
+Velocity - x y z
+[minimum ] -7.8788069e-04 -7.2248780e-04 -6.8807574e-04
+[maximum ]  1.0711998e-03  7.3196110e-04  8.0037954e-04
+
+Completed cycle 7200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1523475e-07  0.99895745319  1.00165517902
+[phi] -5.9892076e+00 -1.8277611e-04 5.4156233e-01 -9.9816306e-01 9.9600457e-01
+
+Free energy density - timestep total fluid
+[fed]           7300 -7.5743502496e-04 -7.5743502496e-04
+
+Momentum - x y z
+[total   ] -1.1340928e-13  1.1513013e-13  1.9562130e-13
+[fluid   ] -1.1340928e-13  1.1513013e-13  1.9562130e-13
+
+Velocity - x y z
+[minimum ] -7.8212896e-04 -7.2610133e-04 -6.9621146e-04
+[maximum ]  1.0372762e-03  7.4433453e-04  8.0968361e-04
+
+Completed cycle 7300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1671767e-07  0.99895399147  1.00203809286
+[phi] -5.9892076e+00 -1.8277611e-04 5.4378402e-01 -9.9814154e-01 9.9604854e-01
+
+Free energy density - timestep total fluid
+[fed]           7400 -7.6156877786e-04 -7.6156877786e-04
+
+Momentum - x y z
+[total   ] -1.0169643e-13  1.1701751e-13  1.6142643e-13
+[fluid   ] -1.0169643e-13  1.1701751e-13  1.6142643e-13
+
+Velocity - x y z
+[minimum ] -7.8172958e-04 -7.2882879e-04 -7.2222331e-04
+[maximum ]  1.0187738e-03  7.5698762e-04  8.2642794e-04
+
+Completed cycle 7400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1807683e-07  0.99896815919  1.00221569442
+[phi] -5.9892076e+00 -1.8277611e-04 5.4603071e-01 -9.9796395e-01 9.9605037e-01
+
+Free energy density - timestep total fluid
+[fed]           7500 -7.6572970465e-04 -7.6572970465e-04
+
+Momentum - x y z
+[total   ] -1.1529666e-13  8.4376950e-14  1.4299673e-13
+[fluid   ] -1.1529666e-13  8.4376950e-14  1.4299673e-13
+
+Velocity - x y z
+[minimum ] -7.8584377e-04 -7.3065420e-04 -7.5341686e-04
+[maximum ]  9.9198296e-04  7.7251001e-04  8.4368548e-04
+
+Completed cycle 7500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1837500e-07  0.99900396637  1.00215838451
+[phi] -5.9892076e+00 -1.8277611e-04 5.4829605e-01 -9.9763747e-01 9.9597996e-01
+
+Free energy density - timestep total fluid
+[fed]           7600 -7.6987187907e-04 -7.6987187907e-04
+
+Momentum - x y z
+[total   ] -1.0394463e-13  5.9507954e-14  1.5010215e-13
+[fluid   ] -1.0394463e-13  5.9507954e-14  1.5010215e-13
+
+Velocity - x y z
+[minimum ] -7.8747662e-04 -7.3151322e-04 -7.7568442e-04
+[maximum ]  9.5584850e-04  7.9471494e-04  8.5853875e-04
+
+Completed cycle 7600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1761317e-07  0.99903173518  1.00196991662
+[phi] -5.9892076e+00 -1.8277611e-04 5.5056319e-01 -9.9716421e-01 9.9585746e-01
+
+Free energy density - timestep total fluid
+[fed]           7700 -7.7395401887e-04 -7.7395401887e-04
+
+Momentum - x y z
+[total   ] -6.5031314e-14  8.6153307e-14  1.4743762e-13
+[fluid   ] -6.5031314e-14  8.6153307e-14  1.4743762e-13
+
+Velocity - x y z
+[minimum ] -7.8546216e-04 -7.3447149e-04 -7.8730448e-04
+[maximum ]  9.1169722e-04  8.1920927e-04  8.6722532e-04
+
+Completed cycle 7700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1640822e-07  0.99899761579  1.00175270272
+[phi] -5.9892076e+00 -1.8277611e-04 5.5282203e-01 -9.9654741e-01 9.9570067e-01
+
+Free energy density - timestep total fluid
+[fed]           7800 -7.7798227665e-04 -7.7798227665e-04
+
+Momentum - x y z
+[total   ] -7.8242968e-14  8.1712415e-14  1.4743762e-13
+[fluid   ] -7.8242968e-14  8.1712415e-14  1.4743762e-13
+
+Velocity - x y z
+[minimum ] -7.7932239e-04 -7.4553930e-04 -7.9874951e-04
+[maximum ]  8.6520133e-04  8.3329245e-04  8.7289014e-04
+
+Completed cycle 7800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1507548e-07  0.99899061012  1.00156138190
+[phi] -5.9892076e+00 -1.8277611e-04 5.5507312e-01 -9.9593554e-01 9.9552356e-01
+
+Free energy density - timestep total fluid
+[fed]           7900 -7.8198024118e-04 -7.8198024118e-04
+
+Momentum - x y z
+[total   ] -8.7374552e-14  5.6621374e-14  1.2567725e-13
+[fluid   ] -8.7374552e-14  5.6621374e-14  1.2567725e-13
+
+Velocity - x y z
+[minimum ] -7.6935654e-04 -7.5443734e-04 -8.0366148e-04
+[maximum ]  8.2491021e-04  8.3808624e-04  8.7921970e-04
+
+Completed cycle 7900
+Writing phi file at step 8000!
+Writing velocity output at step 8000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1368022e-07  0.99901572281  1.00145313471
+[phi] -5.9892076e+00 -1.8277611e-04 5.5731993e-01 -9.9567927e-01 9.9533746e-01
+
+Free energy density - timestep total fluid
+[fed]           8000 -7.8595081742e-04 -7.8595081742e-04
+
+Momentum - x y z
+[total   ] -4.8003268e-14  2.8976821e-14  1.0480505e-13
+[fluid   ] -4.8003268e-14  2.8976821e-14  1.0480505e-13
+
+Velocity - x y z
+[minimum ] -7.6264147e-04 -7.6103495e-04 -8.0149803e-04
+[maximum ]  7.9192302e-04  8.3626939e-04  8.8450782e-04
+
+Completed cycle 8000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1234074e-07  0.99902811615  1.00156722930
+[phi] -5.9892076e+00 -1.8277611e-04 5.5956374e-01 -9.9533306e-01 9.9515123e-01
+
+Free energy density - timestep total fluid
+[fed]           8100 -7.8987950230e-04 -7.8987950230e-04
+
+Momentum - x y z
+[total   ] -1.8554602e-14  4.7739590e-14  1.1768364e-13
+[fluid   ] -1.8554602e-14  4.7739590e-14  1.1768364e-13
+
+Velocity - x y z
+[minimum ] -7.5789317e-04 -7.6524721e-04 -7.9356831e-04
+[maximum ]  7.6494656e-04  8.3645259e-04  8.8832292e-04
+
+Completed cycle 8100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1109720e-07  0.99902556421  1.00149748229
+[phi] -5.9892076e+00 -1.8277611e-04 5.6180130e-01 -9.9491953e-01 9.9497064e-01
+
+Free energy density - timestep total fluid
+[fed]           8200 -7.9374963577e-04 -7.9374963577e-04
+
+Momentum - x y z
+[total   ] -3.7164716e-14  1.5543122e-14  1.2745360e-13
+[fluid   ] -3.7164716e-14  1.5543122e-14  1.2745360e-13
+
+Velocity - x y z
+[minimum ] -7.4923006e-04 -7.6716283e-04 -7.8177069e-04
+[maximum ]  7.4561450e-04  8.5943908e-04  8.8951876e-04
+
+Completed cycle 8200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1000665e-07  0.99902524954  1.00143157663
+[phi] -5.9892076e+00 -1.8277611e-04 5.6402503e-01 -9.9454227e-01 9.9485565e-01
+
+Free energy density - timestep total fluid
+[fed]           8300 -7.9755148706e-04 -7.9755148706e-04
+
+Momentum - x y z
+[total   ] -3.6137759e-14  3.1974423e-14  1.2079227e-13
+[fluid   ] -3.6137759e-14  3.1974423e-14  1.2079227e-13
+
+Velocity - x y z
+[minimum ] -7.3839413e-04 -7.6707062e-04 -7.6798312e-04
+[maximum ]  7.2754483e-04  8.7033021e-04  8.8827934e-04
+
+Completed cycle 8300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0915719e-07  0.99901876733  1.00137625434
+[phi] -5.9892076e+00 -1.8277611e-04 5.6623113e-01 -9.9410641e-01 9.9490914e-01
+
+Free energy density - timestep total fluid
+[fed]           8400 -8.0129742135e-04 -8.0129742135e-04
+
+Momentum - x y z
+[total   ] -8.0879747e-14  1.8429702e-14  1.2656542e-13
+[fluid   ] -8.0879747e-14  1.8429702e-14  1.2656542e-13
+
+Velocity - x y z
+[minimum ] -7.3370095e-04 -7.6542862e-04 -7.6045611e-04
+[maximum ]  7.0551971e-04  8.8040619e-04  8.9052074e-04
+
+Completed cycle 8400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0847465e-07  0.99899940362  1.00139971215
+[phi] -5.9892076e+00 -1.8277611e-04 5.6842250e-01 -9.9361592e-01 9.9495612e-01
+
+Free energy density - timestep total fluid
+[fed]           8500 -8.0501259763e-04 -8.0501259763e-04
+
+Momentum - x y z
+[total   ] -1.0860757e-13  4.3298698e-14  1.3455903e-13
+[fluid   ] -1.0860757e-13  4.3298698e-14  1.3455903e-13
+
+Velocity - x y z
+[minimum ] -7.2344387e-04 -7.6275390e-04 -7.5475345e-04
+[maximum ]  6.9129608e-04  8.7755944e-04  8.9323749e-04
+
+Completed cycle 8500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0783685e-07  0.99899031345  1.00151210915
+[phi] -5.9892076e+00 -1.8277611e-04 5.7060258e-01 -9.9306844e-01 9.9499819e-01
+
+Free energy density - timestep total fluid
+[fed]           8600 -8.0870793886e-04 -8.0870793886e-04
+
+Momentum - x y z
+[total   ] -1.2639889e-13  6.0063066e-14  1.1457502e-13
+[fluid   ] -1.2639889e-13  6.0063066e-14  1.1457502e-13
+
+Velocity - x y z
+[minimum ] -7.0820369e-04 -7.7146775e-04 -7.4943049e-04
+[maximum ]  7.1853298e-04  8.5849542e-04  9.0575437e-04
+
+Completed cycle 8600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0717245e-07  0.99899400283  1.00155748094
+[phi] -5.9892076e+00 -1.8277611e-04 5.7277057e-01 -9.9245564e-01 9.9503929e-01
+
+Free energy density - timestep total fluid
+[fed]           8700 -8.1237290353e-04 -8.1237290353e-04
+
+Momentum - x y z
+[total   ] -1.0064172e-13  1.1446399e-13  1.1946000e-13
+[fluid   ] -1.0064172e-13  1.1446399e-13  1.1946000e-13
+
+Velocity - x y z
+[minimum ] -6.8988652e-04 -7.8197513e-04 -7.4370669e-04
+[maximum ]  7.4386671e-04  8.2957745e-04  9.1675204e-04
+
+Completed cycle 8700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0638883e-07  0.99899884002  1.00154726589
+[phi] -5.9892076e+00 -1.8277611e-04 5.7491762e-01 -9.9176833e-01 9.9508333e-01
+
+Free energy density - timestep total fluid
+[fed]           8800 -8.1597345547e-04 -8.1597345547e-04
+
+Momentum - x y z
+[total   ] -9.8532293e-14  1.0946799e-13  1.0613732e-13
+[fluid   ] -9.8532293e-14  1.0946799e-13  1.0613732e-13
+
+Velocity - x y z
+[minimum ] -6.7071073e-04 -7.9407470e-04 -7.3671334e-04
+[maximum ]  7.6434501e-04  7.9990066e-04  9.1859799e-04
+
+Completed cycle 8800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0552985e-07  0.99901203624  1.00147462605
+[phi] -5.9892076e+00 -1.8277611e-04 5.7703033e-01 -9.9161911e-01 9.9513278e-01
+
+Free energy density - timestep total fluid
+[fed]           8900 -8.1947951561e-04 -8.1947951561e-04
+
+Momentum - x y z
+[total   ] -6.9999562e-14  9.0927266e-14  1.0613732e-13
+[fluid   ] -6.9999562e-14  9.0927266e-14  1.0613732e-13
+
+Velocity - x y z
+[minimum ] -6.5903188e-04 -8.0839659e-04 -7.3096442e-04
+[maximum ]  7.8144397e-04  7.7351185e-04  9.1529459e-04
+
+Completed cycle 8900
+Writing phi file at step 9000!
+Writing velocity output at step 9000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0467953e-07  0.99903220711  1.00146282247
+[phi] -5.9892076e+00 -1.8277611e-04 5.7909691e-01 -9.9227756e-01 9.9518788e-01
+
+Free energy density - timestep total fluid
+[fed]           9000 -8.2287647705e-04 -8.2287647705e-04
+
+Momentum - x y z
+[total   ] -7.2830630e-14  5.8175686e-14  1.0125234e-13
+[fluid   ] -7.2830630e-14  5.8175686e-14  1.0125234e-13
+
+Velocity - x y z
+[minimum ] -6.4495937e-04 -8.2567761e-04 -7.2841974e-04
+[maximum ]  7.9770894e-04  7.4888333e-04  9.1277396e-04
+
+Completed cycle 9000
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0401151e-07  0.99905788673  1.00151887676
+[phi] -5.9892076e+00 -1.8277611e-04 5.8110843e-01 -9.9296434e-01 9.9524799e-01
+
+Free energy density - timestep total fluid
+[fed]           9100 -8.2616253867e-04 -8.2616253867e-04
+
+Momentum - x y z
+[total   ] -7.6466611e-14  6.0840222e-14  8.7485574e-14
+[fluid   ] -7.6466611e-14  6.0840222e-14  8.7485574e-14
+
+Velocity - x y z
+[minimum ] -6.2906105e-04 -8.5011866e-04 -7.2561621e-04
+[maximum ]  8.1405920e-04  7.4002049e-04  9.0326334e-04
+
+Completed cycle 9100
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0372185e-07  0.99908039910  1.00155927298
+[phi] -5.9892076e+00 -1.8277611e-04 5.8306174e-01 -9.9355670e-01 9.9531696e-01
+
+Free energy density - timestep total fluid
+[fed]           9200 -8.2935618367e-04 -8.2935618367e-04
+
+Momentum - x y z
+[total   ] -5.3457239e-14  8.0491169e-14  1.0480505e-13
+[fluid   ] -5.3457239e-14  8.0491169e-14  1.0480505e-13
+
+Velocity - x y z
+[minimum ] -6.2122356e-04 -8.8121278e-04 -7.2109381e-04
+[maximum ]  8.2840245e-04  7.3205821e-04  8.9066925e-04
+
+Completed cycle 9200
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0388821e-07  0.99907705781  1.00158871036
+[phi] -5.9892076e+00 -1.8277611e-04 5.8495981e-01 -9.9401425e-01 9.9550604e-01
+
+Free energy density - timestep total fluid
+[fed]           9300 -8.3248300181e-04 -8.3248300181e-04
+
+Momentum - x y z
+[total   ] -4.8377968e-14  9.9920072e-14  1.2567725e-13
+[fluid   ] -4.8377968e-14  9.9920072e-14  1.2567725e-13
+
+Velocity - x y z
+[minimum ] -6.0956654e-04 -9.1665049e-04 -7.1353905e-04
+[maximum ]  8.3736863e-04  7.1944775e-04  8.8511924e-04
+
+Completed cycle 9300
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0452053e-07  0.99907409930  1.00169077732
+[phi] -5.9892076e+00 -1.8277611e-04 5.8680856e-01 -9.9429721e-01 9.9573388e-01
+
+Free energy density - timestep total fluid
+[fed]           9400 -8.3556215469e-04 -8.3556215469e-04
+
+Momentum - x y z
+[total   ] -4.7961635e-14  1.5154544e-13  1.6031620e-13
+[fluid   ] -4.7961635e-14  1.5154544e-13  1.6031620e-13
+
+Velocity - x y z
+[minimum ] -5.9448804e-04 -9.5619302e-04 -7.0195213e-04
+[maximum ]  8.5203877e-04  7.0940296e-04  8.8403322e-04
+
+Completed cycle 9400
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0559961e-07  0.99906126354  1.00179575984
+[phi] -5.9892076e+00 -1.8277611e-04 5.8861452e-01 -9.9436481e-01 9.9601783e-01
+
+Free energy density - timestep total fluid
+[fed]           9500 -8.3860798056e-04 -8.3860798056e-04
+
+Momentum - x y z
+[total   ] -1.1174395e-13  1.6298074e-13  1.4810375e-13
+[fluid   ] -1.1174395e-13  1.6298074e-13  1.4810375e-13
+
+Velocity - x y z
+[minimum ] -6.2631535e-04 -9.9990504e-04 -6.8582361e-04
+[maximum ]  8.7149203e-04  7.1574939e-04  8.8027954e-04
+
+Completed cycle 9500
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0712909e-07  0.99905500291  1.00188685122
+[phi] -5.9892076e+00 -1.8277611e-04 5.9038515e-01 -9.9418449e-01 9.9636205e-01
+
+Free energy density - timestep total fluid
+[fed]           9600 -8.4163812744e-04 -8.4163812744e-04
+
+Momentum - x y z
+[total   ] -1.0219603e-13  9.9920072e-14  1.6608936e-13
+[fluid   ] -1.0219603e-13  9.9920072e-14  1.6608936e-13
+
+Velocity - x y z
+[minimum ] -6.4378469e-04 -1.0482407e-03 -6.7496878e-04
+[maximum ]  8.8261274e-04  7.1818850e-04  8.7230391e-04
+
+Completed cycle 9600
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.0910492e-07  0.99906140512  1.00202844923
+[phi] -5.9892076e+00 -1.8277611e-04 5.9212999e-01 -9.9376125e-01 9.9673551e-01
+
+Free energy density - timestep total fluid
+[fed]           9700 -8.4467624785e-04 -8.4467624785e-04
+
+Momentum - x y z
+[total   ] -1.5781820e-13  1.3300472e-13  1.7741364e-13
+[fluid   ] -1.5781820e-13  1.3300472e-13  1.7741364e-13
+
+Velocity - x y z
+[minimum ] -6.3985227e-04 -1.1011704e-03 -6.6898585e-04
+[maximum ]  8.8958912e-04  7.1514177e-04  8.6494082e-04
+
+Completed cycle 9700
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1149351e-07  0.99907868514  1.00242566335
+[phi] -5.9892076e+00 -1.8277611e-04 5.9385955e-01 -9.9313502e-01 9.9707358e-01
+
+Free energy density - timestep total fluid
+[fed]           9800 -8.4774207100e-04 -8.4774207100e-04
+
+Momentum - x y z
+[total   ] -1.9639845e-13  1.1690648e-13  1.7230661e-13
+[fluid   ] -1.9639845e-13  1.1690648e-13  1.7230661e-13
+
+Velocity - x y z
+[minimum ] -6.1950455e-04 -1.1561307e-03 -6.6385462e-04
+[maximum ]  8.9649353e-04  7.0528462e-04  8.5974716e-04
+
+Completed cycle 9800
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1404064e-07  0.99910460953  1.00266023194
+[phi] -5.9892076e+00 -1.8277611e-04 5.9558559e-01 -9.9236566e-01 9.9730945e-01
+
+Free energy density - timestep total fluid
+[fed]           9900 -8.5085111878e-04 -8.5085111878e-04
+
+Momentum - x y z
+[total   ] -2.1266322e-13  1.2589929e-13  1.7119639e-13
+[fluid   ] -2.1266322e-13  1.2589929e-13  1.7119639e-13
+
+Velocity - x y z
+[minimum ] -5.9822672e-04 -1.2050207e-03 -6.6125896e-04
+[maximum ]  9.0251580e-04  6.8800372e-04  8.4879996e-04
+
+Completed cycle 9900
+Writing phi file at step 10000!
+Writing velocity output at step 10000!
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  1.1595536e-07  0.99911095563  1.00274736900
+[phi] -5.9892076e+00 -1.8277611e-04 5.9731595e-01 -9.9174620e-01 9.9739837e-01
+
+Free energy density - timestep total fluid
+[fed]          10000 -8.5399505820e-04 -8.5399505820e-04
+
+Momentum - x y z
+[total   ] -2.1738167e-13  8.5709218e-14  1.5631940e-13
+[fluid   ] -2.1738167e-13  8.5709218e-14  1.5631940e-13
+
+Velocity - x y z
+[minimum ] -5.8662322e-04 -1.2361346e-03 -6.5612134e-04
+[maximum ]  9.0382317e-04  7.0361355e-04  8.3541062e-04
+
+Completed cycle 10000
+Writing phi file at step 10000!
+Writing velocity output at step 10000!
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    303.716    303.755    303.741 303.741143 (1 call)
+      Time step loop:      0.026      0.080    303.106   0.030311 (10000 calls)
+         Propagation:      0.002      0.007     29.719   0.002972 (10000 calls)
+    Propagtn (krnl) :      0.002      0.007     29.662   0.002966 (10000 calls)
+           Collision:      0.004      0.044     77.239   0.007724 (10000 calls)
+   Collision (krnl) :      0.004      0.044     77.211   0.007721 (10000 calls)
+       Lattice halos:      0.001      0.036     29.140   0.002914 (10000 calls)
+       phi gradients:      0.003      0.033     61.320   0.006132 (10000 calls)
+           phi halos:      0.000      0.018      7.532   0.000753 (10000 calls)
+                 BBL:      0.000      0.000      0.010   0.000001 (10000 calls)
+   Force calculation:      0.003      0.026     60.313   0.006031 (10000 calls)
+   Phi force (krnl) :      0.002      0.022     49.247   0.004925 (10000 calls)
+          phi update:      0.002      0.043     41.644   0.004164 (10000 calls)
+     Advectn (krnl) :      0.000      0.012      9.455   0.000946 (10000 calls)
+ Advectn BCS (krnl) :      0.000      0.033      5.448   0.000545 (10000 calls)
+               Free1:      0.000      0.048      0.541   0.000054 (10000 calls)
+Ludwig finished normally.
