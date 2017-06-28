@@ -29,6 +29,7 @@
 \usepackage{listings}
 \usepackage{mathtools}
 \usepackage{enumerate}
+\usepackage{float}
 \graphicspath{{./tutorialFigs/}}
 
 \usepackage{geometry}
@@ -242,7 +243,7 @@ and \texttt{vtk\_extract\_script.py} from \texttt{/trunk/util} into your working
 \item \texttt{input\_binary\_=0} \\ if the velocity data is in ASCII format (see flag in input file),
 \item \texttt{output\_binary\_=0} \\ as the output of the postprocessing routines should also be in ASCII format,
 \item \texttt{output\_index=1} \\ to obtain Cartesian lattice indices \textit{i, j, k}, 
-\item \texttt{vtk\_header=0} \\ to omit headers (these will be required later for visualisation in \textit{ParaView})
+\item \texttt{vtk\_header=0} \\ to omit headers (these will be required later for visualisation in \textit{ParaView}),
 \item \texttt{output\_cmf=0} to produce data in row-major format (column-major format is required for \textit{ParaView}).
 \end{enumerate}
 \item Edit \texttt{vtk\_extract\_script.py}. Set:
@@ -252,6 +253,10 @@ to be processed.
 \item \texttt{vel=1} for velocity post-processing, 
 \item The other flags should be set to zero, e.g. \texttt{phi=0}. 
 \end{enumerate}
+\item Issue the command:
+\begin{lstlisting}
+$ python vtk_extract_script.py
+\end{lstlisting}
 \item You should now see files named \texttt{vel-XXXXXXXX.vtk} (Note: The extension \texttt{.vtk} is only used here for simplicity.
 It does not mean the generated data is in vtk-format). 
 The first three columns of these ASCII files are the spatial lattice indices followed by the Cartesian components of the velocity vectors.\\
@@ -271,10 +276,121 @@ output at time step $10,000$ can be found, in addition to a file containing the 
 \begin{figure}[h]
 \begin{center}
 \includegraphics[width=0.6\linewidth]{velProf.png}
-  \caption{The parabolic velocity profile of a simple fluid in a cavity after $10,000$ time-steps}.
+  \caption{The parabolic velocity profile of a simple fluid in a cavity after $10,000$ time-steps.}
   \label{fig:velocityProfile}
   \end{center}
 \end{figure}
+
+\subsection{Test 1: Spinodal Decomposition of a Binary Fluid}
+
+This section outlines the second example, the spinodal decomposition of a binary fluid in 
+three-dimensions.
+The example describes the post-processing procedure for this system and a brief guide to 
+the visualisation of a 3D system using ParaView.
+As in the previous example, the code should be compiled in parallel and the executable 
+\texttt{Ludwig.exe} should be copied into your working directory.
+
+\begin{enumerate}
+\item Copy the input file \texttt{input} located in the directory 
+\texttt{/trunk/docs/tutorial/test2} 
+to your working directory. This input file contains the parameters required for this run. 
+\item Run the code in your working directory by issuing the command:
+\begin{lstlisting}
+$ mpirun -np 8 ./Ludwig.exe input
+\end{lstlisting}
+\item As before, you should now see statistics being reported on your standard output but 
+in this case two sets of output files being created containing the velocity and compositional
+order parameter ($\phi$) data at each lattice point in the simulation. In this example, these 
+data are in binary format.
+\item The post-processing of these data again requires the files \texttt{vtk\_extract.c} 
+and \texttt{vtk\_extract\_script.py} from \texttt{/trunk/util}.
+\item Edit \texttt{vtk\_extract.c}. Specifically, set the flags for:
+\begin{enumerate}
+\item \texttt{input\_binary\_=1} \\ if the velocity and $\phi$ data are in binary format (see 
+flag in input file),
+\item \texttt{output\_binary\_=0} \\ as the output of the post-processing routines should be 
+in ASCII format,
+\item \texttt{output\_index=0} \\ as Cartesian lattice indices are not required, 
+\item \texttt{vtk\_header=1} \\ to include headers,
+\item \texttt{output\_cmf=1} to produce data in column-major format.
+\end{enumerate}
+\item Edit \texttt{vtk\_extract\_script.py}. Set:
+\begin{enumerate}
+\item \texttt{nstart=1000}, \texttt{nint=1000} and \texttt{nend=10000} to set the range and 
+increments of the velocity data
+to be processed.
+\item \texttt{vel=1} for velocity post-processing, 
+\item \texttt{phi=1} for $\phi$ post-processing,
+\item The other flags should be set to zero. 
+\end{enumerate}
+\item Issue the command:
+\begin{lstlisting}
+$ python vtk_extract_script.py
+\end{lstlisting}
+\item You should now see files with the extension \texttt{.vtk} corresponding to the velocity 
+and $\phi$ data ready to be visualised using ParaView.
+\begin{enumerate}
+\item Open the files containing the $\phi$ data.
+\item Click on the group of files in the pipeline browser and apply a contour map using 
+Filters/Common/Contour or in the tool bar: 
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\linewidth]{contour.png}
+  \caption{The contour button in the toolbar.}
+  \label{fig:contour}
+  \end{center}
+\end{figure}
+
+You should now see a three-dimensional rendering of the binary fluid.
+\item Open the files containing the velocity data.
+\item Click on the group of files in the pipeline browser and apply the glyph filter using 
+Filters/Common/Glyph or in the tool bar: 
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\linewidth]{glyph.png}
+  \caption{The glyph button in the toolbar}
+  \label{fig:glyph}
+  \end{center}
+\end{figure}
+
+\item Change the colour code to GlyphVector Magnitude.
+\item In the pipeline browser, you should see:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.6\linewidth]{pipeline.png}
+  \caption{The complete pipline browser for the visualisation of spinodal decomposition.}
+  \label{fig:pipeline}
+  \end{center}
+\end{figure}
+
+A 3D visualisation of the system should also now be shown:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.6\linewidth]{system.png}
+  \caption{A visualisation of a separating binary fluid using ParaView.}
+  \label{fig:sysVisualisation}
+  \end{center}
+\end{figure}
+
+\item You can move through different frames of the simulation with the arrow buttons:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.4\linewidth]{arrows.png}
+  \caption{A visualisation of a separating binary fluid using ParaView.}
+  \label{fig:sysVisualisation}
+  \end{center}
+\end{figure}
+
+as you do this, you should see the coarsening of the binary fluid.
+
+\item In the File menu you can save a screen shot of the visualisation or save the state of the system in order to reload the entire visualisation.
+\end{enumerate}
+\end{enumerate} 
 
 %\clearpage
 %\vfill\pagebreak
