@@ -13,12 +13,12 @@
   index = (stride)*(blockIdx.x*blockDim.x + threadIdx.x);
 
 #define tdp_cuda_simt_for(index, ndata, stride) \
-  __cuda_simt_for_all(index, ndata, stride) \
+  tdp_cuda_simt_for_all(index, ndata, stride) \
   if (index < (ndata))
 
 
 #define tdp_cuda_simt_parallel_for(index, ndata, stride) \
-  __cuda_simt_for(index, ndata, stride)
+  tdp_cuda_simt_for(index, ndata, stride)
 
 #define tdp_cuda_launch(kernel_function, nblocks, ntpb, ...) \
   kernel_function<<<nblocks, ntpb>>>(__VA_ARGS__)

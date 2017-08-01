@@ -32,8 +32,8 @@
           tdpAssert(cudaMemcpyFromSymbol(dst, symbol, count, offset, kind))
 
   #define TARGET_MAX_THREADS_PER_BLOCK CUDA_MAX_THREADS_PER_BLOCK
-  #define tdp_simd_for(iv, nsimdvl) tdp_cuda_simd_for(iv, nsimdvl)
-  #define tdp_simt_for(index, ndata, stride) tdp_cuda_simt_for(index, ndata, stride)
+  #define targetdp_simd_for(iv, nsimdvl) tdp_cuda_simd_for(iv, nsimdvl)
+  #define targetdp_simt_for(index, ndata, stride) tdp_cuda_simt_for(index, ndata, stride)
 
   /* Additional host-side API */
 
