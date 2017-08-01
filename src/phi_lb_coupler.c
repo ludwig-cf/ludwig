@@ -85,7 +85,7 @@ __global__ void phi_lb_to_field_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

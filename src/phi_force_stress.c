@@ -221,7 +221,7 @@ __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -257,7 +257,7 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     index = kernel_baseindex(ktx, kindex);
 

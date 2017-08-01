@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <omp.h>
+
 #include <math.h>
 
 #include "targetDP.h"
@@ -46,7 +46,7 @@ static int b3Dhalosize_=0;
 int haloEdge(int index, int extents[3],int offset, int depth);
 
 //The targetMalloc function allocates memory on the target.
-__targetHost__ void targetMalloc(void **address_of_ptr,size_t size){
+__host__ void targetMalloc(void **address_of_ptr,size_t size){
 
  
   cudaMalloc(address_of_ptr,size);
@@ -58,7 +58,7 @@ __targetHost__ void targetMalloc(void **address_of_ptr,size_t size){
 
 // The targetMalloc function allocates unified memory that can be accessed
 // on the host or the target.
-__targetHost__ void targetMallocUnified(void **address_of_ptr,size_t size){
+__host__ void targetMallocUnified(void **address_of_ptr,size_t size){
 
  
   cudaMallocManaged(address_of_ptr,size);
@@ -69,7 +69,7 @@ __targetHost__ void targetMallocUnified(void **address_of_ptr,size_t size){
 
 
 //The targetCalloc function allocates, and initialises to zero, memory on the target.
-__targetHost__ void targetCalloc(void **address_of_ptr,size_t size){
+__host__ void targetCalloc(void **address_of_ptr,size_t size){
 
  
   cudaMalloc(address_of_ptr,size);
@@ -83,7 +83,7 @@ __targetHost__ void targetCalloc(void **address_of_ptr,size_t size){
 
 // The targetCalloc function allocates unified memory that can be accessed
 // on the host or the target, and is initialised to 0
-__targetHost__ void targetCallocUnified(void **address_of_ptr,size_t size){
+__host__ void targetCallocUnified(void **address_of_ptr,size_t size){
 
  
   cudaMallocManaged(address_of_ptr,size);
@@ -94,7 +94,7 @@ __targetHost__ void targetCallocUnified(void **address_of_ptr,size_t size){
   return;
 }
 
-__targetHost__ void targetMallocHost(void **address_of_ptr,size_t size){
+__host__ void targetMallocHost(void **address_of_ptr,size_t size){
 
 
   cudaMallocHost(address_of_ptr,size);
@@ -104,7 +104,7 @@ __targetHost__ void targetMallocHost(void **address_of_ptr,size_t size){
 }
 
 //The copyToTarget function copies data from the host to the target.
-__targetHost__ void copyToTarget(void *targetData,const void* data,size_t size){
+__host__ void copyToTarget(void *targetData,const void* data,size_t size){
 
   cudaMemcpy(targetData,data,size,cudaMemcpyHostToDevice);
   checkTargetError("copyToTarget");
@@ -112,7 +112,7 @@ __targetHost__ void copyToTarget(void *targetData,const void* data,size_t size){
 }
 
 //The copyFromTarget function copies data from the target to the host.
-__targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size){
+__host__ void copyFromTarget(void *data,const void* targetData,size_t size){
 
   cudaMemcpy(data,targetData,size,cudaMemcpyDeviceToHost);
   checkTargetError("copyFromTarget");
@@ -123,7 +123,7 @@ __targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size
 
 // The targetInit3D initialises the environment required to perform any of the
 // “3D” operations defined below.
-__targetHost__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo){
+__host__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo){
 
   int nsites=extents[0]*extents[1]*extents[2];
   // allocate internal work space
@@ -198,13 +198,13 @@ __targetHost__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo){
 }
 
 //deprecated
-__targetHost__ void targetInit(int extents[3], size_t nfieldsmax, int nhalo){
+__host__ void targetInit(int extents[3], size_t nfieldsmax, int nhalo){
   targetInit3D(extents,nfieldsmax,nhalo);
   return;
 }
 
 // The targetFinalize3D finalises the targetDP 3D environment.
-__targetHost__ void targetFinalize3D(){
+__host__ void targetFinalize3D(){
 
   free(iwork);
   free(dwork);
@@ -220,7 +220,7 @@ __targetHost__ void targetFinalize3D(){
 }
 
 //deprecated
-__targetHost__ void targetFinalize(){
+__host__ void targetFinalize(){
 
   targetFinalize3D();
   return;
@@ -297,7 +297,7 @@ __global__ static void copy_field_partial_gpu_AoS_d(double* f_out, const double*
 
 
 //
-__targetHost__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
+__host__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -362,7 +362,7 @@ __targetHost__ void copyToTargetMasked(double *targetData,const double* data,siz
 
 
 //
-__targetHost__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+__host__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -463,7 +463,7 @@ int haloEdge(int index, int extents[3],int offset, int depth){
 
 
 //
-__targetHost__ void copyFromTarget3DEdge(double *data,const double* targetData,int extents[3], size_t nfields){
+__host__ void copyFromTarget3DEdge(double *data,const double* targetData,int extents[3], size_t nfields){
 
 
   size_t nsites=extents[0]*extents[1]*extents[2];
@@ -506,7 +506,7 @@ __targetHost__ void copyFromTarget3DEdge(double *data,const double* targetData,i
 }
 
 //
-__targetHost__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields){
+__host__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields){
 
   size_t nsites=extents[0]*extents[1]*extents[2];
 
@@ -555,7 +555,7 @@ static int neighb3D[19][3] = {{ 0,  0,  0},
 
 
 //
-__targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData,int extents[3], size_t nfields, int includeNeighbours,  void** ptrarray){
+__host__ void copyFromTargetPointerMap3D(double *data,const double* targetData,int extents[3], size_t nfields, int includeNeighbours,  void** ptrarray){
 
 
   size_t nsites=extents[0]*extents[1]*extents[2];
@@ -659,7 +659,7 @@ __targetHost__ void copyFromTargetPointerMap3D(double *data,const double* target
 
 }
 //
-__targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray){
+__host__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray){
 
   size_t nsites=extents[0]*extents[1]*extents[2];
 
@@ -764,7 +764,7 @@ __targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* da
 
 
 
-__targetHost__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields){
+__host__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields){
 
   int* sites_d = iwork_d;
   double* tmpGrid = dwork;
@@ -801,7 +801,7 @@ __targetHost__ void copyFromTargetSubset(double *data,const double* targetData, 
 }
 
 
-__targetHost__ void copyToTargetSubset(double* targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields){
+__host__ void copyToTargetSubset(double* targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields){
 
   int* sites_d = iwork_d;
   double* tmpGrid = dwork;
@@ -841,7 +841,7 @@ __targetHost__ void copyToTargetSubset(double* targetData,const double* data, in
 
 
 //
-__targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
+__host__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -906,7 +906,7 @@ __targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,
 }
 
 //
-__targetHost__ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
+__host__ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask){
 
 
@@ -973,14 +973,14 @@ __targetHost__ void copyFromTargetMaskedAoS(double *data,const double* targetDat
 
 // The targetSynchronize function is used to block until 
 // the preceding __targetLaunch__ has completed.
-__targetHost__ void targetSynchronize(){
+__host__ void targetSynchronize(){
   cudaThreadSynchronize();
   checkTargetError("syncTarget");
   return;
 }
 
 //The targetFree function deallocates memory on the target.
-__targetHost__ void targetFree(void *ptr){
+__host__ void targetFree(void *ptr){
   
   cudaFree(ptr);
   checkTargetError("targetFree");
@@ -1049,7 +1049,7 @@ void targetSetConstant(double* array,double value, size_t size){
 }
 
 
-__targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
+__host__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 {
   
   int i,k;
@@ -1067,7 +1067,7 @@ __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
   free(tmpbuf2);
 }
 
-__targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
+__host__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
 {
   
   int i,k;
@@ -1086,7 +1086,7 @@ __targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
 }
 
 
-__targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size)
+__host__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size)
 {
 
   //calculate the offset between the object start and the component of interest
@@ -1107,7 +1107,7 @@ __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* 
 }
 
 
-__targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size)
+__host__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size)
 {
 
   //calculate the offset between the object start and the component of interest
@@ -1212,7 +1212,7 @@ double targetDoubleSum(double* t_array, size_t size){
 
 
 //
-__targetHost__ void checkTargetError(const char *msg)
+__host__ void checkTargetError(const char *msg)
 {
 	cudaError_t err = cudaGetLastError();
 	if( cudaSuccess != err) 

@@ -305,7 +305,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
   assert(fg);
   assert(fg->field);
 
-  __target_simt_for(kindex, kiterations, 1) {
+  targetdp_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc, index;
     int str[3];

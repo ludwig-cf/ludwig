@@ -249,7 +249,7 @@ __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data) {
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     int ic, jc, kc;
     int index;
@@ -288,7 +288,7 @@ __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
   psum[threadIdx.x] = 0;
   kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -337,13 +337,13 @@ __global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data) {
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     kernel_coords_v(ktx, kindex, ic, jc, kc);
     kernel_coords_index_v(ktx, ic, jc, kc, index);
     kernel_mask_v(ktx, ic, jc, kc, kmask);
 
-    __target_simd_for(iv, NSIMDVL) {
+    targetdp_simd_for(iv, NSIMDVL) {
       data->idata[mem_addr_rank0(data->nsites, index[iv])] = kmask[iv]*index[iv];
     }
   }

@@ -51,9 +51,9 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo);
 
-extern __targetConst__ double tc_q_[NVEL][3][3];
-extern __targetConst__ double tc_rcs2;
-extern __targetConst__ double tc_wv[NVEL];
+extern __constant__ double tc_q_[NVEL][3][3];
+extern __constant__ double tc_rcs2;
+extern __constant__ double tc_wv[NVEL];
 
 /*****************************************************************************
  *
@@ -302,7 +302,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 
   kiter = kernel_iterations(ktxt);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     int ic, jc, kc, index;
     int ia, ib, p;

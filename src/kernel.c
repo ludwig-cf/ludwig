@@ -145,7 +145,7 @@ __host__ int kernel_launch_param(int iterations, dim3 * nblk, dim3 * ntpb) {
 
   assert(iterations > 0);
 
-  ntpb->x = __host_threads_per_block();
+  ntpb->x = tdp_host_threads_per_block();
   ntpb->y = 1;
   ntpb->z = 1;
 
@@ -226,7 +226,7 @@ static __host__ int kernel_ctxt_commit(kernel_ctxt_t * obj, cs_t * cs,
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex) {
+__host__ __device__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex) {
 
   assert(obj);
 
@@ -239,7 +239,7 @@ __host__ __target__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_coords_ic(kernel_ctxt_t * obj, int kindex) {
+__host__ __device__ int kernel_coords_ic(kernel_ctxt_t * obj, int kindex) {
 
   int ic;
 
@@ -260,7 +260,7 @@ __host__ __target__ int kernel_coords_ic(kernel_ctxt_t * obj, int kindex) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_coords_jc(kernel_ctxt_t * obj, int kindex) {
+__host__ __device__ int kernel_coords_jc(kernel_ctxt_t * obj, int kindex) {
 
   int ic;
   int jc;
@@ -285,7 +285,7 @@ __host__ __target__ int kernel_coords_jc(kernel_ctxt_t * obj, int kindex) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_coords_kc(kernel_ctxt_t * obj, int kindex) {
+__host__ __device__ int kernel_coords_kc(kernel_ctxt_t * obj, int kindex) {
 
   int ic;
   int jc;
@@ -310,7 +310,7 @@ __host__ __target__ int kernel_coords_kc(kernel_ctxt_t * obj, int kindex) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_coords_v(kernel_ctxt_t * obj,
+__host__ __device__ int kernel_coords_v(kernel_ctxt_t * obj,
 					int kindex0,
 					int ic[NSIMDVL],
 					int jc[NSIMDVL], int kc[NSIMDVL]) {
@@ -324,7 +324,7 @@ __host__ __target__ int kernel_coords_v(kernel_ctxt_t * obj,
   assert(obj);
   xs = obj->param->nkv_local[Y]*obj->param->nkv_local[Z];
 
-  __target_simd_for(iv, NSIMDVL) {
+  targetdp_simd_for(iv, NSIMDVL) {
     index = obj->param->kindex0 + kindex0 + iv;
 
     icv[iv] = index/xs;
@@ -332,7 +332,7 @@ __host__ __target__ int kernel_coords_v(kernel_ctxt_t * obj,
     kcv[iv] = index - icv[iv]*xs - jcv[iv]*obj->param->nkv_local[Z];
   }
 
-  __target_simd_for(iv, NSIMDVL) {
+  targetdp_simd_for(iv, NSIMDVL) {
     icv[iv] = icv[iv] - (obj->param->nhalo - 1);
     jcv[iv] = jcv[iv] - (obj->param->nhalo - 1);
     kcv[iv] = kcv[iv] - (obj->param->nhalo - 1);
@@ -353,7 +353,7 @@ __host__ __target__ int kernel_coords_v(kernel_ctxt_t * obj,
  *
  *****************************************************************************/
 
-__host__ __target__
+__host__ __device__
 int kernel_mask(kernel_ctxt_t * obj, int ic, int jc, int kc) {
 
   if (ic < obj->param->lim.imin || ic > obj->param->lim.imax ||
@@ -369,7 +369,7 @@ int kernel_mask(kernel_ctxt_t * obj, int ic, int jc, int kc) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_mask_v(kernel_ctxt_t * obj,
+__host__ __device__ int kernel_mask_v(kernel_ctxt_t * obj,
 				      int ic[NSIMDVL],
 				      int jc[NSIMDVL],
 				      int kc[NSIMDVL],
@@ -382,11 +382,11 @@ __host__ __target__ int kernel_mask_v(kernel_ctxt_t * obj,
 
   assert(obj);
 
-  __target_simd_for(iv, NSIMDVL) {
+  targetdp_simd_for(iv, NSIMDVL) {
     maskv[iv] = 1;
   }
 
-  __target_simd_for(iv, NSIMDVL) {
+  targetdp_simd_for(iv, NSIMDVL) {
     if (icv[iv] < obj->param->lim.imin || icv[iv] > obj->param->lim.imax ||
 	jcv[iv] < obj->param->lim.jmin || jcv[iv] > obj->param->lim.jmax ||
 	kcv[iv] < obj->param->lim.kmin || kcv[iv] > obj->param->lim.kmax) {
@@ -403,7 +403,7 @@ __host__ __target__ int kernel_mask_v(kernel_ctxt_t * obj,
  *
  *****************************************************************************/
 
-__host__ __target__
+__host__ __device__
 int kernel_coords_index(kernel_ctxt_t * obj, int ic, int jc, int kc) {
 
   int index;
@@ -427,7 +427,7 @@ int kernel_coords_index(kernel_ctxt_t * obj, int ic, int jc, int kc) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_coords_index_v(kernel_ctxt_t * obj,
+__host__ __device__ int kernel_coords_index_v(kernel_ctxt_t * obj,
 					      int ic[NSIMDVL],
 					      int jc[NSIMDVL],
 					      int kc[NSIMDVL],
@@ -445,7 +445,7 @@ __host__ __target__ int kernel_coords_index_v(kernel_ctxt_t * obj,
   yfac = obj->param->nlocal[Z] + 2*nhalo;
   xfac = yfac*(obj->param->nlocal[Y] + 2*nhalo);
 
-  __target_simd_for(iv, NSIMDVL) {
+  targetdp_simd_for(iv, NSIMDVL) {
     index[iv] = xfac*(nhalo + icv[iv] - 1)
       + yfac*(nhalo + jcv[iv] - 1) + nhalo + kcv[iv] - 1; 
   }
@@ -459,7 +459,7 @@ __host__ __target__ int kernel_coords_index_v(kernel_ctxt_t * obj,
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_iterations(kernel_ctxt_t * obj) {
+__host__ __device__ int kernel_iterations(kernel_ctxt_t * obj) {
 
   assert(obj);
 
@@ -472,7 +472,7 @@ __host__ __target__ int kernel_iterations(kernel_ctxt_t * obj) {
  *
  *****************************************************************************/
 
-__host__ __target__ int kernel_vector_iterations(kernel_ctxt_t * obj) {
+__host__ __device__ int kernel_vector_iterations(kernel_ctxt_t * obj) {
 
   assert(obj);
 

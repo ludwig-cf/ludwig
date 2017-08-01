@@ -464,7 +464,7 @@ void hydro_field_set(hydro_t * hydro, double * field, double zx, double zy,
   assert(hydro);
   assert(field);
 
-  __target_simt_for(kindex, hydro->nsite, 1) {
+  targetdp_simt_for(kindex, hydro->nsite, 1) {
     field[addr_rank1(hydro->nsite, NHDIM, kindex, X)] = zx;
     field[addr_rank1(hydro->nsite, NHDIM, kindex, Y)] = zy;
     field[addr_rank1(hydro->nsite, NHDIM, kindex, Z)] = zz;

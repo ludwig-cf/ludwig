@@ -57,38 +57,38 @@ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
 /* TODO refactor these type definitions and forward declarations */
 
 
-__target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int ndist, int baseIndex);
-__target__ void d3q19matmult2(double* mode, double* f_d, int ndist, int baseIndex);
+__device__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int ndist, int baseIndex);
+__device__ void d3q19matmult2(double* mode, double* f_d, int ndist, int baseIndex);
 
 
-__target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex);
-__target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex);
+__device__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex);
+__device__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex);
 
-__target__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL],double jphi[3*VVL],double* t_f,int baseIndex);
+__device__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL],double jphi[3*VVL],double* t_f,int baseIndex);
 
 
 
 /* Constants */
 
-__targetConst__ int tc_nSites;
-__targetConst__ int tc_noffset[3]; 
-__targetConst__ int tc_Nall[3];
-__targetConst__ int tc_ntotal[3];
-__targetConst__ int tc_periodic[3];
-__targetConst__ int tc_nhalo;
-__targetConst__ int tc_nextra;
+__constant__ int tc_nSites;
+__constant__ int tc_noffset[3]; 
+__constant__ int tc_Nall[3];
+__constant__ int tc_ntotal[3];
+__constant__ int tc_periodic[3];
+__constant__ int tc_nhalo;
+__constant__ int tc_nextra;
 
-__targetConst__ double tc_rtau_shear;
-__targetConst__ double tc_rtau_bulk;
-__targetConst__ double tc_rtau_[NVEL];
-__targetConst__ double tc_wv[NVEL];
-__targetConst__ double tc_ma_[NVEL][NVEL];
-__targetConst__ double tc_mi_[NVEL][NVEL];
-__targetConst__ double tc_rtau2;
-__targetConst__ double tc_rcs2;
-__targetConst__ double tc_r2rcs4;
-__targetConst__ double tc_force_global[3];
-__targetConst__ double tc_q_[NVEL][3][3];
+__constant__ double tc_rtau_shear;
+__constant__ double tc_rtau_bulk;
+__constant__ double tc_rtau_[NVEL];
+__constant__ double tc_wv[NVEL];
+__constant__ double tc_ma_[NVEL][NVEL];
+__constant__ double tc_mi_[NVEL][NVEL];
+__constant__ double tc_rtau2;
+__constant__ double tc_rcs2;
+__constant__ double tc_r2rcs4;
+__constant__ double tc_force_global[3];
+__constant__ double tc_q_[NVEL][3][3];
 
 /*****************************************************************************
  *
@@ -143,7 +143,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
  *
  *****************************************************************************/
 
-__target__ void lb_collision_mrt_site(lb_t * lb, 
+__device__ void lb_collision_mrt_site(lb_t * lb, 
 				      hydro_t * hydro, map_t * map,
 				      noise_t * noise, int noise_on,
 				      const int baseIndex){
@@ -450,11 +450,11 @@ __target__ void lb_collision_mrt_site(lb_t * lb,
  *
  *****************************************************************************/
 
-__targetEntry__ void lb_collision_mrt_lattice(lb_t * lb, 
-					      hydro_t * hydro, 
-					      map_t * map,
-					      noise_t * noise, int noise_on,
-					      int nSites) {
+__global__ void lb_collision_mrt_lattice(lb_t * lb, 
+					 hydro_t * hydro, 
+					 map_t * map,
+					 noise_t * noise, int noise_on,
+					 int nSites) {
   int baseIndex = 0;
 
   __targetTLP__(baseIndex, nSites) {
@@ -575,7 +575,7 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 #define NDIST 2 /* for binary collision */
 
 
-__target__ void lb_collision_binary_site(lb_t * lb, 
+__device__ void lb_collision_binary_site(lb_t * lb, 
 					 hydro_t * hydro,
 					 fe_symm_t * fe,
 					 noise_t * noise, int noise_on,
@@ -878,10 +878,10 @@ __target__ void lb_collision_binary_site(lb_t * lb,
   
 }
 
-__targetEntry__ void lb_collision_binary_lattice(lb_t * lb, 
-						 hydro_t * hydro,
-						 fe_symm_t * fe,
-					       noise_t * noise, int noise_on){
+__global__ void lb_collision_binary_lattice(lb_t * lb, 
+					    hydro_t * hydro,
+					    fe_symm_t * fe,
+					    noise_t * noise, int noise_on){
   int baseIndex = 0;
 
   __targetTLP__(baseIndex, tc_nSites) {
@@ -1400,7 +1400,7 @@ static __host__ __device__ __inline__
 #define we ( 3.0/48.0)
 
 
- __target__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int ndist, int baseIndex)
+ __device__ void d3q19matmult(double* mode, const double* __restrict__ ftmp_d, int ndist, int baseIndex)
 {
 
   int m, il=0;
@@ -1812,7 +1812,7 @@ static __host__ __device__ __inline__
 }
 
 
- __target__ void d3q19matmult2(double* mode, double* f_d, int ndist, int baseIndex)
+ __device__ void d3q19matmult2(double* mode, double* f_d, int ndist, int baseIndex)
 {
 
   double ftmp[VVL];
@@ -2259,7 +2259,7 @@ static __host__ __device__ __inline__
 
 }
 
-__target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex)
+__device__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchunk, int baseIndex)
 {
 
   int m, il=0;
@@ -2670,7 +2670,7 @@ __target__ void d3q19matmultchunk(double* mode, const double* __restrict__ fchun
  
 }
 
-__target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex)
+__device__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex)
 {
 
   double ftmp[VVL];
@@ -3118,7 +3118,7 @@ __target__ void d3q19matmult2chunk(double* mode, double* fchunk, int baseIndex)
 }
 
 
- __target__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL], double jphi[3*VVL], double* t_f, int baseIndex){
+ __device__ void updateDistD3Q19(double jdotc[3*VVL],double sphidotq[VVL],double sphi[3][3*VVL],double phi[VVL], double jphi[3*VVL], double* t_f, int baseIndex){
 
   int iv=0;
 

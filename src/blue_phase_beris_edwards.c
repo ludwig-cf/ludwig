@@ -565,7 +565,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, NSIMDVL) {
+  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
 
     int iv;
 
@@ -592,8 +592,8 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) s[ia][ib][iv] = 0.0;
-	__targetILP__(iv) chi_qab[ia][ib][iv] = 0.0;
+	targetdp_simd_for(iv, NSIMDVL) s[ia][ib][iv] = 0.0;
+	targetdp_simd_for(iv, NSIMDVL) chi_qab[ia][ib][iv] = 0.0;
       }
     }
 
@@ -607,15 +607,15 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
     /* Expand q tensor */
 
-    __targetILP__(iv) q[X][X][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)];
-    __targetILP__(iv) q[X][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)];
-    __targetILP__(iv) q[X][Z][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XZ)];
-    __targetILP__(iv) q[Y][X][iv] = q[X][Y][iv];
-    __targetILP__(iv) q[Y][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YY)];
-    __targetILP__(iv) q[Y][Z][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YZ)];
-    __targetILP__(iv) q[Z][X][iv] = q[X][Z][iv];
-    __targetILP__(iv) q[Z][Y][iv] = q[Y][Z][iv];
-    __targetILP__(iv) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
+    targetdp_simd_for(iv, NSIMDVL) q[X][X][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)];
+    targetdp_simd_for(iv, NSIMDVL) q[X][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)];
+    targetdp_simd_for(iv, NSIMDVL) q[X][Z][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XZ)];
+    targetdp_simd_for(iv, NSIMDVL) q[Y][X][iv] = q[X][Y][iv];
+    targetdp_simd_for(iv, NSIMDVL) q[Y][Y][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YY)];
+    targetdp_simd_for(iv, NSIMDVL) q[Y][Z][iv] = fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YZ)];
+    targetdp_simd_for(iv, NSIMDVL) q[Z][X][iv] = q[X][Z][iv];
+    targetdp_simd_for(iv, NSIMDVL) q[Z][Y][iv] = q[Y][Z][iv];
+    targetdp_simd_for(iv, NSIMDVL) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
 
     if (hydro) {
@@ -624,27 +624,27 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       int im1[NSIMDVL];
       int ip1[NSIMDVL];
 
-      __targetILP__(iv) im1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], -1);
-      __targetILP__(iv) ip1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], +1);
+      targetdp_simd_for(iv, NSIMDVL) im1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], -1);
+      targetdp_simd_for(iv, NSIMDVL) ip1[iv] = lees_edw_ic_to_buff(be->le, ic[iv], +1);
 
-      __targetILP__(iv) im1[iv] = lees_edw_index(be->le, im1[iv], jc[iv], kc[iv]);
-      __targetILP__(iv) ip1[iv] = lees_edw_index(be->le, ip1[iv], jc[iv], kc[iv]);
+      targetdp_simd_for(iv, NSIMDVL) im1[iv] = lees_edw_index(be->le, im1[iv], jc[iv], kc[iv]);
+      targetdp_simd_for(iv, NSIMDVL) ip1[iv] = lees_edw_index(be->le, ip1[iv], jc[iv], kc[iv]);
 
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  w[X][X][iv] = 0.5*
 	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
 	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
 	    }
 	  }
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  w[Y][X][iv] = 0.5*
 	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
 	     hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
 	}
       }
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  w[Z][X][iv] = 0.5*
 	    (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
@@ -652,47 +652,47 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	im1[iv] = lees_edw_index(be->le, ic[iv], jc[iv] - maskv[iv], kc[iv]);
       }
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	ip1[iv] = lees_edw_index(be->le, ic[iv], jc[iv] + maskv[iv], kc[iv]);
       }
 	  
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	w[X][Y][iv] = 0.5*
 	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
 	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
       }
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	w[Y][Y][iv] = 0.5*
 	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
 	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
       }
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	w[Z][Y][iv] = 0.5*
 	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
 	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	im1[iv] = lees_edw_index(be->le, ic[iv], jc[iv], kc[iv] - maskv[iv]);
       }
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	ip1[iv] = lees_edw_index(be->le, ic[iv], jc[iv], kc[iv] + maskv[iv]);
       }
 	  
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	w[X][Z][iv] = 0.5*
 	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], X)] -
 	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], X)]);
       }
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	w[Y][Z][iv] = 0.5*
 	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Y)] -
 	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Y)]);
       }
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	w[Z][Z][iv] = 0.5*
 	  (hydro->u[addr_rank1(hydro->nsite, NHDIM, ip1[iv], Z)] -
 	   hydro->u[addr_rank1(hydro->nsite, NHDIM, im1[iv], Z)]);
@@ -700,29 +700,29 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
       /* Enforce tracelessness */
 	  
-      __targetILP__(iv) tr[iv] = r3*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
-      __targetILP__(iv) w[X][X][iv] -= tr[iv];
-      __targetILP__(iv) w[Y][Y][iv] -= tr[iv];
-      __targetILP__(iv) w[Z][Z][iv] -= tr[iv];
+      targetdp_simd_for(iv, NSIMDVL) tr[iv] = r3*(w[X][X][iv] + w[Y][Y][iv] + w[Z][Z][iv]);
+      targetdp_simd_for(iv, NSIMDVL) w[X][X][iv] -= tr[iv];
+      targetdp_simd_for(iv, NSIMDVL) w[Y][Y][iv] -= tr[iv];
+      targetdp_simd_for(iv, NSIMDVL) w[Z][Z][iv] -= tr[iv];
 
-      __targetILP__(iv) trace_qw[iv] = 0.0;
+      targetdp_simd_for(iv, NSIMDVL) trace_qw[iv] = 0.0;
 
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
-	  __targetILP__(iv) trace_qw[iv] += q[ia][ib][iv]*w[ib][ia][iv];
-	  __targetILP__(iv) d[ia][ib][iv]     = 0.5*(w[ia][ib][iv] + w[ib][ia][iv]);
-	  __targetILP__(iv) omega[ia][ib][iv] = 0.5*(w[ia][ib][iv] - w[ib][ia][iv]);
+	  targetdp_simd_for(iv, NSIMDVL) trace_qw[iv] += q[ia][ib][iv]*w[ib][ia][iv];
+	  targetdp_simd_for(iv, NSIMDVL) d[ia][ib][iv]     = 0.5*(w[ia][ib][iv] + w[ib][ia][iv]);
+	  targetdp_simd_for(iv, NSIMDVL) omega[ia][ib][iv] = 0.5*(w[ia][ib][iv] - w[ib][ia][iv]);
 	}
       }
 	  
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
-	  __targetILP__(iv) {
+	  targetdp_simd_for(iv, NSIMDVL) {
 	    s[ia][ib][iv] =
 	      -2.0*be->param->xi*(q[ia][ib][iv] + r3*d_[ia][ib])*trace_qw[iv];
 	  }
 	  for (id = 0; id < 3; id++) {
-	    __targetILP__(iv) {
+	    targetdp_simd_for(iv, NSIMDVL) {
 	      s[ia][ib][iv] +=
 		(be->param->xi*d[ia][id][iv] + omega[ia][id][iv])
 		*(q[id][ib][iv] + r3*d_[id][ib])
@@ -738,7 +738,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
     if (noise) {
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	
 	noise_reap_n(noise, index+iv, NQAB, chi);
 	
@@ -761,14 +761,14 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
     /* The divergence of advective fluxes involves (jc-1) and (kc-1)
      * which are masked out if not a valid kernel site */
 
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       indexj[iv] = lees_edw_index(be->le, ic[iv], jc[iv] - maskv[iv], kc[iv]);
     }
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       indexk[iv] = lees_edw_index(be->le, ic[iv], jc[iv], kc[iv] - maskv[iv]);
     }
 
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       if (maskv[iv]) {
       q[X][X][iv] += dt*
 	(s[X][X][iv]
@@ -783,7 +783,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       }
     }
 
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       if (maskv[iv]) {
       q[X][Y][iv] += dt*
 	(s[X][Y][iv]
@@ -798,7 +798,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       }
     }
 	
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       if (maskv[iv]) {
       q[X][Z][iv] += dt*
 	(s[X][Z][iv]
@@ -813,7 +813,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       }
     }
 	
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       if (maskv[iv]) {
       q[Y][Y][iv] += dt*
 	(s[Y][Y][iv]
@@ -828,7 +828,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       }
     }
 	
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       if (maskv[iv]) {
       q[Y][Z][iv] += dt*
 	(s[Y][Z][iv]
@@ -843,11 +843,11 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
       }
     }
 
-    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)] = q[X][X][iv];
-    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)] = q[X][Y][iv];
-    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XZ)] = q[X][Z][iv];
-    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YY)] = q[Y][Y][iv];
-    __targetILP__(iv) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YZ)] = q[Y][Z][iv];
+    targetdp_simd_for(iv, NSIMDVL) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XX)] = q[X][X][iv];
+    targetdp_simd_for(iv, NSIMDVL) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XY)] = q[X][Y][iv];
+    targetdp_simd_for(iv, NSIMDVL) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,XZ)] = q[X][Z][iv];
+    targetdp_simd_for(iv, NSIMDVL) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YY)] = q[Y][Y][iv];
+    targetdp_simd_for(iv, NSIMDVL) fq->data[addr_rank1(fq->nsites,NQAB,index+iv,YZ)] = q[Y][Z][iv];
 
     /* Next sites. */
   }
@@ -971,7 +971,7 @@ __global__ void beris_edw_h_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     int index;
     int iv;
@@ -982,19 +982,19 @@ __global__ void beris_edw_h_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
 
     fe->func->htensor_v(fe, index, h);
 
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       be->h[addr_rank1(be->nall, NQAB, index + iv, XX)] = h[X][X][iv];
     }
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       be->h[addr_rank1(be->nall, NQAB, index + iv, XY)] = h[X][Y][iv];
     }
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       be->h[addr_rank1(be->nall, NQAB, index + iv, XZ)] = h[X][Z][iv];
     }
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       be->h[addr_rank1(be->nall, NQAB, index + iv, YY)] = h[Y][Y][iv];
     }
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       be->h[addr_rank1(be->nall, NQAB, index + iv, YZ)] = h[Y][Z][iv];
     }
   }
@@ -1082,7 +1082,7 @@ void beris_edw_fix_swd_kernel(kernel_ctxt_t * ktx, colloids_info_t * cinfo,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, 1) {
+  targetdp_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc, index;
     int ia;

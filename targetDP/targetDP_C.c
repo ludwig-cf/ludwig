@@ -26,7 +26,7 @@
 
 /* Utilities */
 
-__host__ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
+__host__ void tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   gridDim = nblocks;
   blockDim = nthreads;
@@ -37,21 +37,21 @@ __host__ void __x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   /* In case we request fewer threads than are available: */
 
-  __host_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
+  tdp_host_set_num_threads(blockDim.x*blockDim.y*blockDim.z);
 
   /* Check blockDim, blockIdx ? */
-  threadIdx.x = __host_get_thread_num();
+  threadIdx.x = tdp_host_get_thread_num();
   threadIdx.y = 1;
   threadIdx.z = 1;
 
   return;
 }
 
-void __x86_postlaunch(void) {
+void tdp_x86_postlaunch(void) {
 
   /* Reset the default number of threads. */
 
-  __host_set_num_threads(__host_get_max_threads());
+  tdp_host_set_num_threads(tdp_host_get_max_threads());
 
   return;
 }
@@ -296,7 +296,7 @@ void targetSetConstant(double* array,double value,size_t size){
 }
 
 
-__targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
+__host__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
 {
   
   size_t i,k;
@@ -314,7 +314,7 @@ __targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields)
   free(tmpbuf2);
 }
 
-__targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
+__host__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields)
 {
   
   size_t i,k;
@@ -340,7 +340,7 @@ void checkTargetError(const char *msg){
 }
 
 
-__targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size)
+__host__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size)
 {
 
   //calculate the offset between the object start and the component of interest
@@ -361,7 +361,7 @@ __targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* 
 }
 
 
-__targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size)
+__host__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size)
 {
 
   //calculate the offset between the object start and the component of interest

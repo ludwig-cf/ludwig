@@ -247,7 +247,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, NSIMDVL) {
+  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
 
     int n;
     int iv;
@@ -271,7 +271,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
     kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
 
     for (n = 0; n < nf; n++) {
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,X)] = 0.5*
 	    (field->data[addr_rank1(field->nsites,nf,indexp1[iv],n)] -
@@ -279,7 +279,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 	}
       }
       
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,Y)] = 0.5*
 	    (field->data[addr_rank1(field->nsites,nf,index+iv+ys,n)] -
@@ -287,7 +287,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 	}
       }
       
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  fgrad->grad[addr_rank2(fgrad->nsite,nf,3,index+iv,n,Z)] = 0.5*
 	    (field->data[addr_rank1(field->nsites,nf,index+iv+1,n)] -
@@ -295,7 +295,7 @@ void grad_3d_7pt_fluid_kernel_v(kernel_ctxt_t * ktx, int nf, int ys,
 	}
       }
 
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	if (maskv[iv]) {
 	  fgrad->delsq[addr_rank1(fgrad->nsite,nf,index+iv,n)]
 	    = field->data[addr_rank1(field->nsites,nf,indexp1[iv],n)]
@@ -510,7 +510,7 @@ __global__ void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, NSIMDVL) {
+  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
 
     int iv;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -524,17 +524,17 @@ __global__ void grad_3d_7pt_dab_kernel_v(kernel_ctxt_t * ktx, lees_edw_t * le,
     index = kernel_baseindex(ktx, kindex);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    __target_simd_for(iv, NSIMDVL) {
+    targetdp_simd_for(iv, NSIMDVL) {
       im1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1);
     }
-    __target_simd_for(iv, NSIMDVL) {
+    targetdp_simd_for(iv, NSIMDVL) {
       ip1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1);
     }
 
     kernel_coords_index_v(ktx, im1, jc, kc, indexm1);
     kernel_coords_index_v(ktx, ip1, jc, kc, indexp1);
 
-    __target_simd_for(iv, NSIMDVL) { 
+    targetdp_simd_for(iv, NSIMDVL) { 
       if (maskv[iv]) {
 	dab[addr_rank1(nsites, NSYMM, index+iv, XX)] =
 	  (+ 1.0*field[addr_rank0(nsites, indexp1[iv])]

@@ -25,23 +25,23 @@
    * features of OpenMP are to be supported.
    */
 
-  #define __host_parallel_region()  _Pragma("omp parallel")
-  #define __host_for()              _Pragma("omp for nowait")
-  #define __host_parallel_for()     _Pragma("omp parallel for")
-  #define __host_barrier()          _Pragma("omp barrier")
+  #define tdp_host_parallel_region()  _Pragma("omp parallel")
+  #define tdp_host_for()              _Pragma("omp for nowait")
+  #define tdp_host_parallel_for()     _Pragma("omp parallel for")
+  #define tdp_host_barrier()          _Pragma("omp barrier")
 
-  #define __host_get_num_threads()  omp_get_num_threads()
-  #define __host_get_thread_num()   omp_get_thread_num()
-  #define __host_get_max_threads()  omp_get_max_threads()
-  #define __host_set_num_threads(n) omp_set_num_threads(n)
+  #define tdp_host_get_num_threads()  omp_get_num_threads()
+  #define tdp_host_get_thread_num()   omp_get_thread_num()
+  #define tdp_host_get_max_threads()  omp_get_max_threads()
+  #define tdp_host_set_num_threads(n) omp_set_num_threads(n)
 
   /* OpenMP work sharing */
-  #define __host_simt_for(index, ndata, stride)		\
-  __host_for()						\
+  #define tdp_host_simt_for(index, ndata, stride)		\
+  tdp_host_for()						\
   for (index = 0; index < (ndata); index += (stride))
 
   /* SIMD safe loops */
-  #define __host_simd_for(iv, nsimdvl) \
+  #define tdp_host_simd_for(iv, nsimdvl) \
   _Pragma("omp simd") \
   for (iv = 0; iv < (nsimdvl); ++iv)
 
@@ -51,21 +51,21 @@
   /* NULL OpenMP implementation (macros for brevity here) */
 
   #define X86_MAX_THREADS_PER_BLOCK 1
-  #define __host_parallel_region()
-  #define __host_for()
-  #define __host_parallel_for()
-  #define __host_barrier()
+  #define tdp_host_parallel_region()
+  #define tdp_host_for()
+  #define tdp_host_parallel_for()
+  #define tdp_host_barrier()
 
-  #define __host_get_thread_num()   0
-  #define __host_get_num_threads()  1
-  #define __host_get_max_threads()  1
-  #define __host_set_num_threads(n)
+  #define tdp_host_get_thread_num()   0
+  #define tdp_host_get_num_threads()  1
+  #define tdp_host_get_max_threads()  1
+  #define tdp_host_set_num_threads(n)
 
   /* "Worksharing" is provided by a loop */
-  #define __host_simt_for(index, ndata, stride)	\
+  #define tdp_host_simt_for(index, ndata, stride)	\
   for (index = 0; index < (ndata); index += (stride))
 
-  #define __host_simd_for(iv, nsimdvl) for (iv = 0; iv < (nsimdvl); ++iv)
+  #define tdp_host_simd_for(iv, nsimdvl) for (iv = 0; iv < (nsimdvl); ++iv)
 
 #endif /* _OPENMP */
 

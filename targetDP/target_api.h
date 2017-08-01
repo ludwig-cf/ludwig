@@ -32,12 +32,12 @@
           tdpAssert(cudaMemcpyFromSymbol(dst, symbol, count, offset, kind))
 
   #define TARGET_MAX_THREADS_PER_BLOCK CUDA_MAX_THREADS_PER_BLOCK
-  #define __target_simd_for(iv, nsimdvl) __cuda_simd_for(iv, nsimdvl)
-  #define __target_simt_for(index, ndata, stride) __cuda_simt_for(index, ndata, stride)
+  #define tdp_simd_for(iv, nsimdvl) tdp_cuda_simd_for(iv, nsimdvl)
+  #define tdp_simt_for(index, ndata, stride) tdp_cuda_simt_for(index, ndata, stride)
 
   /* Additional host-side API */
 
-  #define __host_threads_per_block() DEFAULT_TPB
+  #define tdp_host_threads_per_block() DEFAULT_TPB
   #define \
     tdpLaunchKernel(kernel_function, nblocks, nthreads, shmem, stream, ...) \
     kernel_function<<<nblocks, nthreads, shmem, stream>>>(__VA_ARGS__);
@@ -56,8 +56,8 @@
 
   /* Private interface wanted for these helper functions? */
 
-  void  __x86_prelaunch(dim3 nblocks, dim3 nthreads);
-  void  __x86_postlaunch(void);
+  void  tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads);
+  void  tdp_x86_postlaunch(void);
 
   /* ... execution configuration should  set the global
    * gridDim and blockDim so they are available in kernel, and
@@ -66,19 +66,19 @@
 
   #define \
     tdpLaunchKernel(kernel_function, nblocks, nthreads, shmem, stream, ...)\
-    __host_parallel_region()\
+    tdp_host_parallel_region()\
     { \
-    __x86_prelaunch(nblocks, nthreads);\
+    tdp_x86_prelaunch(nblocks, nthreads);\
     kernel_function(__VA_ARGS__);\
-    __x86_postlaunch();\
+    tdp_x86_postlaunch();\
     }
 
   #define TARGET_MAX_THREADS_PER_BLOCK X86_MAX_THREADS_PER_BLOCK
 
-  #define __target_simd_for(iv, nsimdvl) __host_simd_for(iv, nsimdvl)
-  #define __target_simt_for(index, ndata, stride) __host_simt_for(index, ndata, stride)
-  #define __syncthreads()                 __host_barrier()
-  #define __host_threads_per_block()      __host_get_max_threads()
+  #define targetdp_simd_for(iv, nsimdvl) tdp_host_simd_for(iv, nsimdvl)
+  #define targetdp_simt_for(index, ndata, stride) tdp_host_simt_for(index, ndata, stride)
+  #define __syncthreads()                 tdp_host_barrier()
+  #define tdp_host_threads_per_block()    tdp_host_get_max_threads()
 
 
 

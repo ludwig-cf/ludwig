@@ -73,23 +73,23 @@
  * to specify that the function should be compiled for the target, and that it will be
  * called directly from host code. */
 
-#define __targetEntry__ __global__
+/* KS remove #define __targetEntry__ __global__*/
 
 /* The __target__ keyword is used in a function declaration or definition to spec-
  * ify that the function should be compiled for the target, and that it will be called
  * from a targetEntry or another target function. */
-#define __target__ __device__ 
+/* KS remove #define __target__ __device__  */
 
 
 /* The __targetHost__ keyword is used in a function declaration or definition to
  * specify that the function should be compiled for the host. */
-#define __targetHost__ extern "C" __host__
+/* KS remove #define __targetHost__ extern "C" __host__ */
 
 
 /* The __targetConst__ keyword is used in a variable or array declaration to
  *  specify that the corresponding data can be treated as constant 
  * (read-only) on the target. */
-#define __targetConst__ __constant__
+/* KS remove #define __targetConst__ __constant__ */
 
 /* The __targetLaunch__ syntax is used to launch a function across 
  * a data parallel target architecture. */
@@ -170,11 +170,11 @@
 /* Language Extensions */
 
 #define HOST
-#define __targetHost__
+/* KS remove #define __targetHost__ */
 
 /* kernel function specifiers */
-#define __target__
-#define __targetEntry__
+/* KS remove #define __target__ */
+/* KS remove #define __targetEntry__ */
 
 /* constant data specifier */
 #define __targetConst__ 
@@ -267,50 +267,48 @@ enum {TARGET_HALO,TARGET_EDGE};
 
 /* API */
 /* see specification or implementation for documentation on these */
-__targetHost__ void targetMalloc(void **address_of_ptr,const size_t size);
-__targetHost__ void targetCalloc(void **address_of_ptr,const size_t size);
-__targetHost__ void targetMallocUnified(void **address_of_ptr,const size_t size);
-__targetHost__ void targetCallocUnified(void **address_of_ptr,const size_t size);
-__targetHost__ void targetMallocHost(void **address_of_ptr,size_t size);
-__targetHost__ void copyToTarget(void *targetData,const void* data,size_t size);
-__targetHost__ void copyFromTarget(void *data,const void* targetData,size_t size);
-__targetHost__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo);
-__targetHost__ void targetFinalize3D();
-__targetHost__ void targetInit(int extents[3], size_t nfieldsmax, int nhalo);
-__targetHost__ void targetFinalize();
-__targetHost__ void checkTargetError(const char *msg);
+__host__ void targetMalloc(void **address_of_ptr,const size_t size);
+__host__ void targetCalloc(void **address_of_ptr,const size_t size);
+__host__ void targetMallocUnified(void **address_of_ptr,const size_t size);
+__host__ void targetCallocUnified(void **address_of_ptr,const size_t size);
+__host__ void targetMallocHost(void **address_of_ptr,size_t size);
+__host__ void copyToTarget(void *targetData,const void* data,size_t size);
+__host__ void copyFromTarget(void *data,const void* targetData,size_t size);
+__host__ void targetInit3D(int extents[3], size_t nfieldsmax, int nhalo);
+__host__ void targetFinalize3D();
+__host__ void targetInit(int extents[3], size_t nfieldsmax, int nhalo);
+__host__ void targetFinalize();
+__host__ void checkTargetError(const char *msg);
 
-__targetHost__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
+__host__ void copyToTargetMasked(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
-__targetHost__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
+__host__ void copyFromTargetMasked(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask);
-__targetHost__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
+__host__ void copyToTargetMaskedAoS(double *targetData,const double* data,size_t nsites,
 			size_t nfields,char* siteMask);
-__targetHost__ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
+__host__ void copyFromTargetMaskedAoS(double *data,const double* targetData,size_t nsites,
 			size_t nfields,char* siteMask);
 
-//__targetHost__ void copyFromTargetBoundary3D(double *data,const double* targetData,int extents[3], size_t nfields, int offset,int depth);
-__targetHost__ void copyFromTarget3DEdge(double *data,const double* targetData,int extents[3], size_t nfields);
-__targetHost__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields);
-__targetHost__ void copyFromTargetPointerMap3D(double *data,const double* targetData, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
-__targetHost__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
-__targetHost__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields);
-__targetHost__ void copyToTargetSubset(double *targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields);
-__targetHost__ void targetSynchronize();
-__targetHost__ void targetFree(void *ptr);
-__targetHost__ void checkTargetError(const char *msg);
-__targetHost__ void targetFree(void *ptr);
-__targetHost__ void targetZero(double* array,size_t size);
-__targetHost__ void targetSetConstant(double* array,double value,size_t size);
-//__targetHost__ double targetDoubleSum(double* array, size_t size);
-__targetHost__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields);
-__targetHost__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields);
+__host__ void copyFromTarget3DEdge(double *data,const double* targetData,int extents[3], size_t nfields);
+__host__ void copyToTarget3DHalo(double *targetData,const double* data, int extents[3], size_t nfields);
+__host__ void copyFromTargetPointerMap3D(double *data,const double* targetData, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
+__host__ void copyToTargetPointerMap3D(double *targetData,const double* data, int extents[3], size_t nfields, int includeNeighbours, void** ptrarray);
+__host__ void copyFromTargetSubset(double *data,const double* targetData, int* sites, int nsitessubset, int nsites, int nfields);
+__host__ void copyToTargetSubset(double *targetData,const double* data, int* sites, int nsitessubset, int nsites, int nfields);
+__host__ void targetSynchronize();
+__host__ void targetFree(void *ptr);
+__host__ void checkTargetError(const char *msg);
+__host__ void targetFree(void *ptr);
+__host__ void targetZero(double* array,size_t size);
+__host__ void targetSetConstant(double* array,double value,size_t size);
+__host__ void targetAoS2SoA(double* array, size_t nsites, size_t nfields);
+__host__ void targetSoA2AoS(double* array, size_t nsites, size_t nfields);
 
 
-__targetHost__ double targetDoubleSum(double* array, size_t size);
+__host__ double targetDoubleSum(double* array, size_t size);
 
-__targetHost__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
+__host__ void copyDeepDoubleArrayToTarget(void* targetObjectAddress,void* hostObjectAddress,void* hostComponentAddress,int size);
 
-__targetHost__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
+__host__ void copyDeepDoubleArrayFromTarget(void* hostObjectAddress,void* targetObjectAddress,void* hostComponentAddress,int size);
 
 #endif

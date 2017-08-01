@@ -688,7 +688,7 @@ __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, 1) {
+  targetdp_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc;
     int ia, ib;

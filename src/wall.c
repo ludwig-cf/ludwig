@@ -509,7 +509,7 @@ __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
   assert(wall);
   assert(lb);
 
-  __target_simt_for(n, wall->nlink, 1) {
+  targetdp_simt_for(n, wall->nlink, 1) {
 
     p = NVEL - wall->linkp[n];
     fp = lb->param->wv[p]*(lb->param->rho0 + rcs2*ux*lb->param->cv[p][X]);
@@ -590,7 +590,7 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
   fy[tid] = 0.0;
   fz[tid] = 0.0;
 
-  __target_simt_for(n, wall->nlink, 1) {
+  targetdp_simt_for(n, wall->nlink, 1) {
 
     int i, j, ij, ji, ia;
     int status;

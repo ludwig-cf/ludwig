@@ -234,7 +234,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, 1) {
+  targetdp_simt_for(kindex, kiterations, 1) {
 
     int n;
     int ic, jc, kc;

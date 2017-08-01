@@ -50,26 +50,26 @@ __host__ int kernel_ctxt_launch_param(kernel_ctxt_t * obj, dim3 * nblk, dim3 * n
 __host__ int kernel_ctxt_info(kernel_ctxt_t * obj, kernel_info_t * lim);
 __host__ int kernel_ctxt_free(kernel_ctxt_t * obj);
 
-__host__ __target__ int kernel_iterations(kernel_ctxt_t * ctxt);
-__host__ __target__ int kernel_vector_iterations(kernel_ctxt_t * ctxt);
-__host__ __target__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex);
-__host__ __target__ int kernel_coords_ic(kernel_ctxt_t * ctxt, int kindex);
-__host__ __target__ int kernel_coords_jc(kernel_ctxt_t * ctxt, int kindex);
-__host__ __target__ int kernel_coords_kc(kernel_ctxt_t * ctxt, int kindex);
-__host__ __target__ int kernel_coords_v(kernel_ctxt_t * ctxt, int kindex,
+__host__ __device__ int kernel_iterations(kernel_ctxt_t * ctxt);
+__host__ __device__ int kernel_vector_iterations(kernel_ctxt_t * ctxt);
+__host__ __device__ int kernel_baseindex(kernel_ctxt_t * obj, int kindex);
+__host__ __device__ int kernel_coords_ic(kernel_ctxt_t * ctxt, int kindex);
+__host__ __device__ int kernel_coords_jc(kernel_ctxt_t * ctxt, int kindex);
+__host__ __device__ int kernel_coords_kc(kernel_ctxt_t * ctxt, int kindex);
+__host__ __device__ int kernel_coords_v(kernel_ctxt_t * ctxt, int kindex,
 					int ic[NSIMDVL],
 					int jc[NSIMDVL],
 					int kc[NSIMDVL]);
 
-__host__ __target__ int kernel_mask(kernel_ctxt_t * ctxt,
+__host__ __device__ int kernel_mask(kernel_ctxt_t * ctxt,
 				    int ic, int jc, int kc);
-__host__ __target__ int kernel_mask_v(kernel_ctxt_t * ctxt,
+__host__ __device__ int kernel_mask_v(kernel_ctxt_t * ctxt,
 				      int ic[NSIMDVL], int jc[NSIMDVL],
 				      int kc[NSIMDVL], int mask[NSIMDVL]);
 
-__host__ __target__ int kernel_coords_index(kernel_ctxt_t * ctxt,
+__host__ __device__ int kernel_coords_index(kernel_ctxt_t * ctxt,
 					    int ic, int jc, int kc);
-__host__ __target__ int kernel_coords_index_v(kernel_ctxt_t * ctxt,
+__host__ __device__ int kernel_coords_index_v(kernel_ctxt_t * ctxt,
 					      int ic[NSIMDVL],
 					      int jc[NSIMDVL],
 					      int kc[NSIMDVL],

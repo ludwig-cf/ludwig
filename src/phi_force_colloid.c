@@ -329,7 +329,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, NSIMDVL) {
+  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
 
     int iv;
     int ia, ib;
@@ -353,7 +353,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     /* Compute pth at current point */
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) {
+	targetdp_simd_for(iv, NSIMDVL) {
 	  pth0[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)];
 	}
       }
@@ -361,105 +361,105 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
 
     /* Compute differences */
 
-    __targetILP__(iv) pm[iv] = ic[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) pm[iv] = ic[iv] + maskv[iv];
     kernel_coords_index_v(ktx, pm, jc, kc, index1);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) {
+	targetdp_simd_for(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	force[ia][iv] = -0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
       }
     }
 
 
-    __targetILP__(iv) pm[iv] = ic[iv] - maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) pm[iv] = ic[iv] - maskv[iv];
     kernel_coords_index_v(ktx, pm, jc, kc, index1);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) {
+	targetdp_simd_for(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	force[ia][iv] += 0.5*(pth1[ia][X][iv] + pth0[ia][X][iv]);
       }
     }
 
-    __targetILP__(iv) pm[iv] = jc[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) pm[iv] = jc[iv] + maskv[iv];
     kernel_coords_index_v(ktx, ic, pm, kc, index1);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) { 
+	targetdp_simd_for(iv, NSIMDVL) { 
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	force[ia][iv] -= 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
       }
     }
 
-    __targetILP__(iv) pm[iv] = jc[iv] - maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) pm[iv] = jc[iv] - maskv[iv];
     kernel_coords_index_v(ktx, ic, pm, kc, index1);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) {
+	targetdp_simd_for(iv, NSIMDVL) {
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	force[ia][iv] += 0.5*(pth1[ia][Y][iv] + pth0[ia][Y][iv]);
       }
     }
 
-    __targetILP__(iv) pm[iv] = kc[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) pm[iv] = kc[iv] + maskv[iv];
     kernel_coords_index_v(ktx, ic, jc, pm, index1);
 
     for (ia = 0; ia < 3; ia++){
       for (ib = 0; ib < 3; ib++){
-	__targetILP__(iv) { 
+	targetdp_simd_for(iv, NSIMDVL) { 
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
 
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	force[ia][iv] -= 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
       }
     }
 
-    __targetILP__(iv) pm[iv] = kc[iv] - maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) pm[iv] = kc[iv] - maskv[iv];
     kernel_coords_index_v(ktx, ic, jc, pm, index1);
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) { 
+	targetdp_simd_for(iv, NSIMDVL) { 
 	  pth1[ia][ib][iv] = pth->str[addr_rank2(pth->nsites,3,3,index1[iv],ia,ib)];
 	}
       }
     }
     
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	force[ia][iv] += 0.5*(pth1[ia][Z][iv] + pth0[ia][Z][iv]);
       }
     }
@@ -467,7 +467,7 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
     /* Store the force on lattice */
 
     for (ia = 0; ia < 3; ia++) { 
-      __targetILP__(iv) { 
+      targetdp_simd_for(iv, NSIMDVL) { 
 	hydro->f[addr_rank1(hydro->nsite,NHDIM,index+iv,ia)]
 	  += force[ia][iv]*maskv[iv];
       }
@@ -499,7 +499,7 @@ __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 
   kiterations = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiterations, 1) {
+  targetdp_simt_for(kindex, kiterations, 1) {
 
     int ic, jc, kc;
     int ia, ib;
@@ -702,7 +702,7 @@ __global__ void pth_force_wall_kernel(kernel_ctxt_t * ktx, pth_t * pth,
   fy[tid] = 0.0;
   fz[tid] = 0.0;
 
-  __target_simt_for(kindex, kiterations, 1) {
+  targetdp_simt_for(kindex, kiterations, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

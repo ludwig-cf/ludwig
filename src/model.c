@@ -43,8 +43,8 @@ static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 
-__targetConst__ int tc_cv[NVEL][3];
-__targetConst__ int tc_ndist;
+__constant__ int tc_cv[NVEL][3];
+__constant__ int tc_ndist;
 static __constant__ lb_collide_param_t static_param;
 
 /****************************************************************************

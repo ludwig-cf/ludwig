@@ -93,7 +93,7 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     int n;
     int iv;
@@ -113,34 +113,34 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
     kernel_mask_v(ktx, ic, jc, kc, maskv);
       
     kernel_coords_index_v(ktx, ic, jc, kc, index);
-    __targetILP__(iv) mask[iv] = (map->status[index[iv]] == MAP_FLUID);  
+    targetdp_simd_for(iv, NSIMDVL) mask[iv] = (map->status[index[iv]] == MAP_FLUID);  
 
-    __targetILP__(iv) ix[iv] = ic[iv] - maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) ix[iv] = ic[iv] - maskv[iv];
     kernel_coords_index_v(ktx, ix, jc, kc, index);
-    __targetILP__(iv) maskw[iv] = (map->status[index[iv]] == MAP_FLUID);    
+    targetdp_simd_for(iv, NSIMDVL) maskw[iv] = (map->status[index[iv]] == MAP_FLUID);    
 
-    __targetILP__(iv) ix[iv] = ic[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) ix[iv] = ic[iv] + maskv[iv];
     kernel_coords_index_v(ktx, ix, jc, kc, index);
-    __targetILP__(iv) maske[iv] = (map->status[index[iv]] == MAP_FLUID);
+    targetdp_simd_for(iv, NSIMDVL) maske[iv] = (map->status[index[iv]] == MAP_FLUID);
 
-    __targetILP__(iv) ix[iv] = jc[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) ix[iv] = jc[iv] + maskv[iv];
     kernel_coords_index_v(ktx, ic, ix, kc, index);
-    __targetILP__(iv) masky[iv] = (map->status[index[iv]] == MAP_FLUID);
+    targetdp_simd_for(iv, NSIMDVL) masky[iv] = (map->status[index[iv]] == MAP_FLUID);
 
-    __targetILP__(iv) ix[iv] = kc[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) ix[iv] = kc[iv] + maskv[iv];
     kernel_coords_index_v(ktx, ic, jc, ix, index);
-    __targetILP__(iv) maskz[iv] = (map->status[index[iv]] == MAP_FLUID);
+    targetdp_simd_for(iv, NSIMDVL) maskz[iv] = (map->status[index[iv]] == MAP_FLUID);
 
     index0 = kernel_baseindex(ktx, kindex);
 
     for (n = 0;  n < flux->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	index[iv] = addr_rank1(flux->nsite, flux->nf, index0 + iv, n);
       }
-      __targetILP__(iv) flux->fw[index[iv]] *= mask[iv]*maskw[iv];
-      __targetILP__(iv) flux->fe[index[iv]] *= mask[iv]*maske[iv];
-      __targetILP__(iv) flux->fy[index[iv]] *= mask[iv]*masky[iv];
-      __targetILP__(iv) flux->fz[index[iv]] *= mask[iv]*maskz[iv];
+      targetdp_simd_for(iv, NSIMDVL) flux->fw[index[iv]] *= mask[iv]*maskw[iv];
+      targetdp_simd_for(iv, NSIMDVL) flux->fe[index[iv]] *= mask[iv]*maske[iv];
+      targetdp_simd_for(iv, NSIMDVL) flux->fy[index[iv]] *= mask[iv]*masky[iv];
+      targetdp_simd_for(iv, NSIMDVL) flux->fz[index[iv]] *= mask[iv]*maskz[iv];
     }
     /* Next sites */
   }

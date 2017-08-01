@@ -383,7 +383,7 @@ __global__ void advection_le_1st_kernel(kernel_ctxt_t * ktx,
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     int ia;
     int n;
@@ -535,7 +535,7 @@ __global__ void advection_2nd_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
 
   kiter = kernel_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, 1) {
+  targetdp_simt_for(kindex, kiter, 1) {
 
     int ia, n;
     int ic, jc, kc;
@@ -629,7 +629,7 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv, n;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -642,12 +642,16 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
     kernel_coords_index_v(ktx, ic, jc, kc, index0);
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
-    __targetILP__(iv) m1[iv] = lees_edw_ic_to_buff(flux->le, ic[iv], -maskv[iv]);
-    __targetILP__(iv) p1[iv] = lees_edw_ic_to_buff(flux->le, ic[iv], +maskv[iv]);
+    targetdp_simd_for(iv, NSIMDVL) {
+      m1[iv] = lees_edw_ic_to_buff(flux->le, ic[iv], -maskv[iv]);
+    }
+    targetdp_simd_for(iv, NSIMDVL) {
+      p1[iv] = lees_edw_ic_to_buff(flux->le, ic[iv], +maskv[iv]);
+    }
 
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u0[ia][iv] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index0[iv], ia)];
       }
     }
@@ -657,13 +661,13 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
     lees_edw_index_v(flux->le, m1, jc, kc, index1);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1[iv], ia)];
       }
     }
 
     for (n = 0; n < field->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fw[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
 	  0.5*(u0[X][iv] + u1[X][iv])*maskv[iv]*0.5*
 	  (field->data[addr_rank1(field->nsites, field->nf, index1[iv], n)]
@@ -676,13 +680,13 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
     lees_edw_index_v(flux->le, p1, jc, kc, index1);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1[iv], ia)];
       }
     }
 
     for (n = 0; n < flux->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fe[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
 	  0.5*(u0[X][iv] + u1[X][iv])*maskv[iv]*0.5*
 	  (field->data[addr_rank1(field->nsites, field->nf, index0[iv], n)] +
@@ -692,17 +696,17 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
 
     /* y direction */
 
-    __targetILP__(iv) p1[iv] = jc[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = jc[iv] + maskv[iv];
     lees_edw_index_v(flux->le, ic, p1, kc, index1);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1[iv], ia)];
       }
     }
 
     for (n = 0; n < flux->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
       flux->fy[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
 	0.5*(u0[Y][iv] + u1[Y][iv])*maskv[iv]*0.5*
 	(field->data[addr_rank1(field->nsites, field->nf, index0[iv], n)] +
@@ -712,17 +716,17 @@ __global__ void advection_2nd_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
 
     /* z direction */
 
-    __targetILP__(iv) p1[iv] = kc[iv] + maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = kc[iv] + maskv[iv];
     lees_edw_index_v(flux->le, ic, jc, p1, index1);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite, NHDIM, index1[iv], ia)];
       }
     }
 
     for (n = 0; n < flux->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fz[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
 	  0.5*(u0[Z][iv] + u1[Z][iv])*maskv[iv]*0.5*
 	  (field->data[addr_rank1(field->nsites, field->nf, index0[iv], n)] +
@@ -811,7 +815,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv, n;
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
@@ -833,32 +837,32 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u0[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index0[iv],ia)];
       }
     }
 
     /* Flux at west face (between icm1 and ic) */
 
-    __targetILP__(iv) m2[iv] = lees_edw_ic_to_buff(le, ic[iv], -2*maskv[iv]);
-    __targetILP__(iv) m1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1*maskv[iv]);
-    __targetILP__(iv) p1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1*maskv[iv]);
-    __targetILP__(iv) p2[iv] = lees_edw_ic_to_buff(le, ic[iv], +2*maskv[iv]);
+    targetdp_simd_for(iv, NSIMDVL) m2[iv] = lees_edw_ic_to_buff(le, ic[iv], -2*maskv[iv]);
+    targetdp_simd_for(iv, NSIMDVL) m1[iv] = lees_edw_ic_to_buff(le, ic[iv], -1*maskv[iv]);
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = lees_edw_ic_to_buff(le, ic[iv], +1*maskv[iv]);
+    targetdp_simd_for(iv, NSIMDVL) p2[iv] = lees_edw_ic_to_buff(le, ic[iv], +2*maskv[iv]);
 
     lees_edw_index_v(le, m2, jc, kc, index2);
     lees_edw_index_v(le, m1, jc, kc, index1);
     lees_edw_index_v(le, p1, jc, kc, index3);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
 
     for (n = 0; n < fld->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] > 0.0) {
 	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
 	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
@@ -871,7 +875,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fw[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
@@ -882,15 +886,15 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
     lees_edw_index_v(le, p2, jc, kc, index2);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index3[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
 
     for (n = 0; n < fld->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] < 0.0) {
 	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
 	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index3[iv],n)];
@@ -903,7 +907,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fe[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }  
@@ -912,24 +916,24 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 
     /* y direction: jc+1 or ignore */
 
-    __targetILP__(iv) m1[iv] = jc[iv] - 1*maskv[iv];
-    __targetILP__(iv) p1[iv] = jc[iv] + 1*maskv[iv];
-    __targetILP__(iv) p2[iv] = jc[iv] + 2*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) m1[iv] = jc[iv] - 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = jc[iv] + 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p2[iv] = jc[iv] + 2*maskv[iv];
 
     lees_edw_index_v(le, ic, m1, kc, index3);
     lees_edw_index_v(le, ic, p1, kc, index1);
     lees_edw_index_v(le, ic, p2, kc, index2);
  
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(fld->nsites,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[Y][iv] + u1[Y][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[Y][iv] + u1[Y][iv]);
 
     for (n = 0; n < fld->nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] < 0.0) {
 	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
 	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
@@ -942,7 +946,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fy[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
@@ -950,24 +954,24 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 	
     /* z direction: kc+1 or ignore */
 
-    __targetILP__(iv) m1[iv] = kc[iv] - 1*maskv[iv];
-    __targetILP__(iv) p1[iv] = kc[iv] + 1*maskv[iv];
-    __targetILP__(iv) p2[iv] = kc[iv] + 2*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) m1[iv] = kc[iv] - 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = kc[iv] + 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p2[iv] = kc[iv] + 2*maskv[iv];
 
     lees_edw_index_v(le, ic, jc, m1, index3);
     lees_edw_index_v(le, ic, jc, p1, index1);
     lees_edw_index_v(le, ic, jc, p2, index2);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[Z][iv] + u1[Z][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[Z][iv] + u1[Z][iv]);
 
     for (n = 0; n < fld->nf; n++) {	    
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] < 0.0) {
 	  fd1[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index2[iv],n)];
 	  fd2[iv] = fld->data[addr_rank1(fld->nsites,fld->nf,index1[iv],n)];
@@ -980,7 +984,7 @@ __global__ void advection_le_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fz[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
@@ -1014,7 +1018,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 
   kiter = kernel_vector_iterations(ktx);
 
-  __target_simt_for(kindex, kiter, NSIMDVL) {
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
 
     int ia, iv;
     int n, nf;
@@ -1039,32 +1043,32 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     kernel_mask_v(ktx, ic, jc, kc, maskv);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u0[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index0[iv],ia)];
       }
     }
 
     /* Flux at west face (between icm1 and ic) */
 
-    __targetILP__(iv) m2[iv] = ic[iv] - 2*maskv[iv];
-    __targetILP__(iv) m1[iv] = ic[iv] - 1*maskv[iv];
-    __targetILP__(iv) p1[iv] = ic[iv] + 1*maskv[iv];
-    __targetILP__(iv) p2[iv] = ic[iv] + 2*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) m2[iv] = ic[iv] - 2*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) m1[iv] = ic[iv] - 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = ic[iv] + 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p2[iv] = ic[iv] + 2*maskv[iv];
 
     kernel_coords_index_v(ktx, m2, jc, kc, index2);
     kernel_coords_index_v(ktx, m1, jc, kc, index1);
     kernel_coords_index_v(ktx, p1, jc, kc, index3);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
 
     for (n = 0; n < nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] > 0.0) {
 	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
 	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
@@ -1077,7 +1081,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fw[addr_rank1(flux->nsite, flux->nf, index0[iv], n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
@@ -1088,15 +1092,15 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
     kernel_coords_index_v(ktx, p2, jc, kc, index2);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index3[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[X][iv] + u1[X][iv]);
 
     for (n = 0; n < nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] < 0.0) {
 	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
 	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index3[iv],n)];
@@ -1109,7 +1113,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fe[addr_rank1(flux->nsite,flux->nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }  
@@ -1118,24 +1122,24 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 
     /* y direction: jc+1 or ignore */
 
-    __targetILP__(iv) m1[iv] = jc[iv] - 1*maskv[iv];
-    __targetILP__(iv) p1[iv] = jc[iv] + 1*maskv[iv];
-    __targetILP__(iv) p2[iv] = jc[iv] + 2*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) m1[iv] = jc[iv] - 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = jc[iv] + 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p2[iv] = jc[iv] + 2*maskv[iv];
 
     kernel_coords_index_v(ktx, ic, m1, kc, index3);
     kernel_coords_index_v(ktx, ic, p1, kc, index1);
     kernel_coords_index_v(ktx, ic, p2, kc, index2);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(field->nsites,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[Y][iv] + u1[Y][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[Y][iv] + u1[Y][iv]);
 
     for (n = 0; n < nf; n++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] < 0.0) {
 	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
 	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
@@ -1148,7 +1152,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fy[addr_rank1(field->nsites,nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }
@@ -1156,24 +1160,24 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 	
     /* z direction: kc+1 or ignore */
 
-    __targetILP__(iv) m1[iv] = kc[iv] - 1*maskv[iv];
-    __targetILP__(iv) p1[iv] = kc[iv] + 1*maskv[iv];
-    __targetILP__(iv) p2[iv] = kc[iv] + 2*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) m1[iv] = kc[iv] - 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p1[iv] = kc[iv] + 1*maskv[iv];
+    targetdp_simd_for(iv, NSIMDVL) p2[iv] = kc[iv] + 2*maskv[iv];
 
     kernel_coords_index_v(ktx, ic, jc, m1, index3);
     kernel_coords_index_v(ktx, ic, jc, p1, index1);
     kernel_coords_index_v(ktx, ic, jc, p2, index2);
 
     for (ia = 0; ia < NHDIM; ia++) {
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	u1[ia][iv] = hydro->u[addr_rank1(hydro->nsite,NHDIM,index1[iv],ia)];
       }
     }
 
-    __targetILP__(iv) u[iv] = 0.5*maskv[iv]*(u0[Z][iv] + u1[Z][iv]);
+    targetdp_simd_for(iv, NSIMDVL) u[iv] = 0.5*maskv[iv]*(u0[Z][iv] + u1[Z][iv]);
 
     for (n = 0; n < nf; n++) {	    
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	if (u[iv] < 0.0) {
 	  fd1[iv] = field->data[addr_rank1(field->nsites,nf,index2[iv],n)];
 	  fd2[iv] = field->data[addr_rank1(field->nsites,nf,index1[iv],n)];
@@ -1186,7 +1190,7 @@ __global__ void advection_3rd_kernel_v(kernel_ctxt_t * ktx,
 	}
       }
 
-      __targetILP__(iv) {
+      targetdp_simd_for(iv, NSIMDVL) {
 	flux->fz[addr_rank1(field->nsites,nf,index0[iv],n)] =
 	  u[iv]*(a1*fd1[iv] + a2*fd2[iv] + a3*fd3[iv]);
       }

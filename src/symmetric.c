@@ -381,12 +381,12 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
   kappa = fe->param->kappa;
 
   for (ia = 0; ia < 3; ia++) {
-    __targetILP__(iv) {
+    targetdp_simd_for(iv, NSIMDVL) {
       grad[ia][iv] = fe->dphi->grad[addr_rank2(fe->dphi->nsite,1,3,index+iv,0,ia)];
     }
   }
 
-  __targetILP__(iv) {
+  targetdp_simd_for(iv, NSIMDVL) {
     phi = fe->phi->data[addr_rank1(fe->phi->nsites, 1, index + iv, 0)];
     delsq = fe->dphi->delsq[addr_rank1(fe->dphi->nsite, 1, index + iv, 0)];
 

@@ -1063,7 +1063,7 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
   assert(id == X || id == Y || id == Z);
   assert(data);
 
-  __target_simt_for(kindex, halo->param->hsz[id], 1) {
+  targetdp_simt_for(kindex, halo->param->hsz[id], 1) {
 
     int nh;
     int hsz;
@@ -1167,7 +1167,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
   /* Unpack buffer this site. */
 
-  __target_simt_for(kindex, halo->param->hsz[id], 1) {
+  targetdp_simt_for(kindex, halo->param->hsz[id], 1) {
 
     int hsz;
     int ia, indexl, indexh;
