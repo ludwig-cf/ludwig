@@ -72,6 +72,8 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
 
   MPI_Comm new_comm;
   int new_rank, nhalo;
+  int mpi_cartsz[3], mpi_coords[3];
+  int ntotal[3];
   char version[256];
   double tol_rel;              /* Relative tolerance */
   double tol_abs;              /* Absolute tolerance */
@@ -90,9 +92,13 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
      PETSc communicator. Default PETSc is column major decomposition. 
   */
 
+  cs_cartsz(obj->cs, mpi_cartsz);
+  cs_cart_coords(obj->cs, mpi_coords);
+  cs_ntotal(obj->cs, ntotal);
+
   /* Set new rank according to PETSc ordering */
-  new_rank = cart_coords(Z)*cart_size(Y)*cart_size(X) \
-	+ cart_coords(Y)*cart_size(X) + cart_coords(X);
+  new_rank = mpi_coords[Z]*mpi_cartsz[Y]*mpi_cartsz[X] \
+	+ mpi_coords[Y]*mpi_cartsz[X] + mpi_coords[X];
 
   /* Create communicator with new ranks according to PETSc ordering */
   MPI_Comm_split(PETSC_COMM_WORLD, 1, new_rank, &new_comm);
@@ -101,12 +107,12 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
   PETSC_COMM_WORLD = new_comm;
 
   /* Create 3D distributed array */ 
-  cs_nhalo(psi->cs, &nhalo);
+  cs_nhalo(obj->cs, &nhalo);
 
   DMDACreate3d(PETSC_COMM_WORLD, \
 	DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC, DM_BOUNDARY_PERIODIC,	\
-	DMDA_STENCIL_BOX, N_total(X), N_total(Y), N_total(Z), \
-	cart_size(X), cart_size(Y), cart_size(Z), 1, nhalo, \
+	DMDA_STENCIL_BOX, ntotal[X], ntotal[Y], ntotal[Z], \
+	mpi_cartsz[X], mpi_cartsz[Y], mpi_cartsz[Z], 1, nhalo, \
 	NULL, NULL, NULL, &da);
 
   /* Create global vectors on DM */
@@ -131,18 +137,18 @@ int psi_petsc_init(psi_t * obj, fe_t * fe, f_vare_t fepsilon){
   KSPSetUp(ksp);
 
   PetscGetVersion(version, 256);
-  info("\n%s\n", version);
+  pe_info(obj->pe, "\n%s\n", version);
    
   KSPGetType(ksp, &solver_type);
   KSPGetTolerances(ksp, &rtol, &abstol, &dtol, &maxits);
   KSPGetPC(ksp, &pc);
   PCGetType(pc, &pc_type);
 
-  info("\nUsing Krylov subspace solver\n");
-  info("----------------------------\n");
-  info("Solver type %s\n", solver_type);
-  info("Tolerances rtol %g  abstol %g  maxits %d\n", rtol, abstol, maxits);
-  info("Preconditioner type %s\n", pc_type);
+  pe_info(obj->pe, "\nUsing Krylov subspace solver\n");
+  pe_info(obj->pe, "----------------------------\n");
+  pe_info(obj->pe, "Solver type %s\n", solver_type);
+  pe_info(obj->pe, "Tolerances rtol %g  abstol %g  maxits %d\n", rtol, abstol, maxits);
+  pe_info(obj->pe, "Preconditioner type %s\n", pc_type);
 
   if (fepsilon == NULL) psi_petsc_compute_laplacian(obj);
   if (fepsilon != NULL) psi_petsc_compute_matrix(obj, (fe_es_t *) fe, fepsilon);
@@ -303,7 +309,7 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   KSPSetFromOptions(ksp);
 
   if (view_matrix) {
-    info("\nPETSc output matrix\n");
+    pe_info(obj->pe, "\nPETSc output matrix\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "matrix.log", &viewer);
 #if PETSC_VERSION_GE(3, 7, 0)
@@ -334,11 +340,9 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   int ic, jc, kc, p;
   int index;
   int noffset[3];
-
   int i, j, k, ia;
   int xs, ys, zs, xw, yw, zw, xe, ye, ze;
   double eps, grad_eps[3];
-  
 
 #ifdef NP_D3Q6
   double  v[7];
@@ -566,7 +570,7 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   KSPSetFromOptions(ksp);
 
   if (view_matrix) {
-    info("\nPETSc output matrix\n");
+    pe_info(obj->pe, "\nPETSc output matrix\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "matrix.log", &viewer);
 #if PETSC_VERSION_GE(3, 7, 0)
@@ -590,14 +594,14 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
 int psi_petsc_copy_psi_to_da(psi_t * obj) {
 
-  int    ic,jc,kc,index;
-  int    noffset[3];
-  int    i,j,k;
-  int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+  int ic,jc,kc,index;
+  int noffset[3];
+  int i,j,k;
+  int xs,ys,zs,xw,yw,zw,xe,ye,ze;
   double *** psi_3d;
 
   assert(obj);
-  coords_nlocal_offset(noffset);
+  cs_nlocal_offset(obj->cs, noffset);
 
   DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
   DMDAVecGetArray(da, x, &psi_3d);
@@ -613,7 +617,7 @@ int psi_petsc_copy_psi_to_da(psi_t * obj) {
       for (i=xs; i<xe; i++) {
 	ic = i - noffset[X] + 1;
 
-	index = coords_index(ic,jc,kc);
+	index = cs_index(obj->cs, ic,jc,kc);
 	psi_3d[k][j][i] = obj->psi[index];
 
       }
@@ -623,7 +627,7 @@ int psi_petsc_copy_psi_to_da(psi_t * obj) {
   DMDAVecRestoreArray(da, x, &psi_3d);
 
   if (view_vector) {
-    info("\nPETSc output DA vector\n");
+    pe_info(obj->pe, "\nPETSc output DA vector\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "da.log", &viewer);
 #if PETSC_VERSION_GE(3, 7, 0)
@@ -647,14 +651,14 @@ int psi_petsc_copy_psi_to_da(psi_t * obj) {
 
 int psi_petsc_copy_da_to_psi(psi_t * obj) {
 
-  int    ic,jc,kc,index;
-  int    noffset[3];
-  int    i,j,k;
-  int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+  int ic,jc,kc,index;
+  int noffset[3];
+  int i,j,k;
+  int xs,ys,zs,xw,yw,zw,xe,ye,ze;
   double *** psi_3d;
 
   assert(obj);
-  coords_nlocal_offset(noffset);
+  cs_nlocal_offset(obj->cs, noffset);
 
   DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
   DMDAVecGetArray(da, x, &psi_3d);
@@ -670,7 +674,7 @@ int psi_petsc_copy_da_to_psi(psi_t * obj) {
       for (i=xs; i<xe; i++)  {
 	ic = i - noffset[X] + 1;
 
-	index = coords_index(ic,jc,kc);
+	index = cs_index(obj->cs, ic,jc,kc);
 	obj->psi[index] = psi_3d[k][j][i];
 
       }
@@ -696,10 +700,12 @@ int psi_petsc_copy_da_to_psi(psi_t * obj) {
 
 int psi_petsc_set_rhs(psi_t * obj) {
 
-   int    ic,jc,kc,index;
-   int    ntotal[3], noffset[3];
-   int    i,j,k;
-   int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+   int ic,jc,kc,index;
+   int mpi_cartsz[3], mpi_coords[3];
+   int ntotal[3], noffset[3];
+   int periodic[3];
+   int i,j,k;
+   int xs,ys,zs,xw,yw,zw,xe,ye,ze;
    double *** rho_3d;
    double rho_elec;
    double eunit, beta;
@@ -708,14 +714,17 @@ int psi_petsc_set_rhs(psi_t * obj) {
    physics_t * phys = NULL;
  
    assert(obj);
-   coords_nlocal_offset(noffset);
+
+   cs_cartsz(obj->cs, mpi_cartsz);
+   cs_cart_coords(obj->cs, mpi_coords);
+   cs_nlocal_offset(obj->cs, noffset);
+   cs_periodic(obj->cs, periodic);
  
    DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
    DMDAVecGetArray(da, b, &rho_3d);
 
    psi_unit_charge(obj, &eunit);
    psi_beta(obj, &beta);
-
  
    xe = xs + xw;
    ye = ys + yw;
@@ -728,7 +737,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
        for (i=xs; i<xe; i++) {
          ic = i - noffset[X] + 1;
  
-         index = coords_index(ic,jc,kc);
+         index = cs_index(obj->cs, ic,jc,kc);
 	 psi_rho_elec(obj, index, &rho_elec);
 	 /* Non-dimensional potential in Poisson eqn requires e/kT */
          rho_3d[k][j][i] = rho_elec * eunit * beta;
@@ -743,13 +752,13 @@ int psi_petsc_set_rhs(psi_t * obj) {
 
   if (e0[X] || e0[Y] || e0[Z]) {
 
-    coords_ntotal(ntotal);
+    cs_ntotal(obj->cs, ntotal);
 
     psi_epsilon(obj, &epsilon);
 
-    if (is_periodic(X)) {
+    if (periodic[X]) {
 
-      if (cart_coords(X) == 0) {
+      if (mpi_coords[X] == 0) {
 	for (k=zs; k<ze; k++) {
 	  for (j=ys; j<ye; j++) {
 	    rho_3d[k][j][0] += epsilon * e0[X] * ntotal[X];
@@ -757,7 +766,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
 	}
       }
 
-      if (cart_coords(X) == cart_size(X)-1) {
+      if (mpi_coords[X] == mpi_cartsz[X]-1) {
 	for (k=zs; k<ze; k++) {
 	  for (j=ys; j<ye; j++) {
 	    rho_3d[k][j][xe-1] -= epsilon * e0[X] * ntotal[X];
@@ -767,9 +776,9 @@ int psi_petsc_set_rhs(psi_t * obj) {
 
     } 
 
-    if (is_periodic(Y)) {
+    if (periodic[Y]) {
 
-      if (cart_coords(Y) == 0) {
+      if (mpi_coords[Y] == 0) {
 	for (k=zs; k<ze; k++) {
 	  for (i=xs; i<xe; i++) {
 	    rho_3d[k][0][i] += epsilon * e0[Y] * ntotal[Y];
@@ -777,7 +786,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
 	}
       }
 
-      if (cart_coords(Y) == cart_size(Y)-1) {
+      if (mpi_coords[Y] == mpi_cartsz[Y]-1) {
 	for (k=zs; k<ze; k++) {
 	  for (i=xs; i<xe; i++) {
 	    rho_3d[k][ye-1][i] -= epsilon * e0[Y] * ntotal[Y];
@@ -787,9 +796,9 @@ int psi_petsc_set_rhs(psi_t * obj) {
 
     } 
 
-    if (is_periodic(Z)) {
+    if (periodic[Z]) {
 
-      if (cart_coords(Z) == 0) {
+      if (mpi_coords[Z] == 0) {
 	for (j=ys; j<ye; j++) {
 	  for (i=xs; i<xe; i++) {
 	    rho_3d[0][j][i] += epsilon * e0[Z] * ntotal[Z];
@@ -797,7 +806,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
 	}
       }
 
-      if (cart_coords(Z) == cart_size(Z)-1) {
+      if (mpi_coords[Z] == mpi_cartsz[Z]-1) {
 	for (j=ys; j<ye; j++) {
 	  for (i=xs; i<xe; i++) {
 	    rho_3d[ze-1][j][i] -= epsilon * e0[Z] * ntotal[Z];
@@ -812,7 +821,7 @@ int psi_petsc_set_rhs(psi_t * obj) {
    DMDAVecRestoreArray(da, b, &rho_3d);
 
   if (view_vector) {
-    info("\nPETSc output RHS\n");
+    pe_info(obj->pe, "\nPETSc output RHS\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "rhs.log", &viewer);
 #if PETSC_VERSION_GE(3, 7, 0)
@@ -840,10 +849,12 @@ int psi_petsc_set_rhs(psi_t * obj) {
 
 int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) { 
 
-   int    ic,jc,kc,index;
-   int    ntotal[3], noffset[3];
-   int    i,j,k;
-   int    xs,ys,zs,xw,yw,zw,xe,ye,ze;
+   int ic,jc,kc,index;
+   int mpi_cartsz[3], mpi_coords[3];
+   int ntotal[3], noffset[3];
+   int periodic[3];
+   int i,j,k;
+   int xs,ys,zs,xw,yw,zw,xe,ye,ze;
    double *** rho_3d;
    double rho_elec;
    double eunit, beta;
@@ -855,8 +866,11 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
    assert(fe);
    assert(fepsilon);
 
-   coords_nlocal_offset(noffset);
- 
+   cs_cartsz(obj->cs, mpi_cartsz);
+   cs_cart_coords(obj->cs, mpi_coords);
+   cs_nlocal_offset(obj->cs, noffset);
+   cs_periodic(obj->cs, periodic);  
+  
    DMDAGetCorners(da,&xs,&ys,&zs,&xw,&yw,&zw);
    DMDAVecGetArray(da, b, &rho_3d);
 
@@ -874,7 +888,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
        for (i=xs; i<xe; i++) {
          ic = i - noffset[X] + 1;
  
-         index = coords_index(ic,jc,kc);
+         index = cs_index(obj->cs, ic,jc,kc);
 	 psi_rho_elec(obj, index, &rho_elec);
 	 /* Non-dimensional potential in Poisson eqn requires e/kT */
          rho_3d[k][j][i] = rho_elec * eunit * beta;
@@ -889,11 +903,11 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
   if (e0[X] || e0[Y] || e0[Z]) {
 
-    coords_ntotal(ntotal);
+    cs_ntotal(obj->cs, ntotal);
 
-    if (is_periodic(X)) {
+    if (periodic[X]) {
 
-      if (cart_coords(X) == 0) {
+      if (mpi_coords[X] == 0) {
 	i = 0;
 	ic = i - noffset[X] + 1;
 	for (k=zs; k<ze; k++) {
@@ -901,7 +915,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  for (j=ys; j<ye; j++) {
 	    jc = j - noffset[Y] + 1;
 
-	    index = coords_index(ic,jc,kc);
+	    index = cs_index(obj->cs, ic,jc,kc);
 	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] += eps * e0[X] * ntotal[X];
 
@@ -909,7 +923,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	}
       }
 
-      if (cart_coords(X) == cart_size(X)-1) {
+      if (mpi_coords[X] == mpi_cartsz[X]-1) {
 	i = xe - 1;
 	ic = i - noffset[X] + 1;
 	for (k=zs; k<ze; k++) {
@@ -917,7 +931,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  for (j=ys; j<ye; j++) {
 	    jc = j - noffset[Y] + 1;
 
-	    index = coords_index(ic,jc,kc);
+	    index = cs_index(obj->cs, ic,jc,kc);
 	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] -= eps * e0[X] * ntotal[X];
 
@@ -927,9 +941,9 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
     } 
 
-    if (is_periodic(Y)) {
+    if (periodic[Y]) {
 
-      if (cart_coords(Y) == 0) {
+      if (mpi_coords[Y] == 0) {
 	j = 0;
 	jc = j - noffset[Y] + 1;
 	for (k=zs; k<ze; k++) {
@@ -937,7 +951,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  for (i=xs; i<xe; i++) {
 	    ic = i - noffset[X] + 1;
 
-	    index = coords_index(ic,jc,kc);
+	    index = cs_index(obj->cs, ic,jc,kc);
 	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] += eps * e0[Y] * ntotal[Y];
 
@@ -945,7 +959,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	}
       }
 
-      if (cart_coords(Y) == cart_size(Y)-1) {
+      if (mpi_coords[Y] == mpi_cartsz[Y]-1) {
 	j = ye - 1;
 	jc = j - noffset[Y] + 1;
 	for (k=zs; k<ze; k++) {
@@ -953,7 +967,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  for (i=xs; i<xe; i++) {
 	    ic = i - noffset[X] + 1;
 
-	    index = coords_index(ic,jc,kc);
+	    index = cs_index(obj->cs, ic,jc,kc);
 	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] -= eps * e0[Y] * ntotal[Y];
 
@@ -963,9 +977,9 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 
     }
 
-    if (is_periodic(Z)) {
+    if (periodic[Z]) {
 
-      if (cart_coords(Z) == 0) {
+      if (mpi_coords[Z] == 0) {
 	k = 0;
 	kc = k - noffset[Z] + 1;
 	for (j=ys; j<ye; j++) {
@@ -973,7 +987,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  for (i=xs; i<xe; i++) {
 	    ic = i - noffset[X] + 1;
 
-	    index = coords_index(ic,jc,kc);
+	    index = cs_index(obj->cs, ic,jc,kc);
 	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] += eps * e0[Z] * ntotal[Z];
 
@@ -981,7 +995,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	}
       }
 
-      if (cart_coords(Z) == cart_size(Z)-1) {
+      if (mpi_coords[Z] == mpi_cartsz[Z]-1) {
 	k = ze - 1;
 	kc = k - noffset[Z] + 1;
 	for (j=ys; j<ye; j++) {
@@ -989,7 +1003,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	  for (i=xs; i<xe; i++) {
 	    ic = i - noffset[X] + 1;
 
-	    index = coords_index(ic,jc,kc);
+	    index = cs_index(obj->cs, ic,jc,kc);
 	    fepsilon(fe, index, &eps);
 	    rho_3d[k][j][i] -= eps * e0[Z] * ntotal[Z];
 
@@ -1005,7 +1019,7 @@ int psi_petsc_set_rhs_vare(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
    DMDAVecRestoreArray(da, b, &rho_3d);
 
   if (view_vector) {
-    info("\nPETSc output RHS\n");
+    pe_info(obj->pe, "\nPETSc output RHS\n");
     PetscViewer viewer;
     PetscViewerASCIIOpen(PETSC_COMM_WORLD, "rhs.log", &viewer);
 #if PETSC_VERSION_GE(3, 7, 0)
@@ -1071,7 +1085,7 @@ int psi_petsc_poisson(psi_t * obj) {
   if (is_statistics_step()) {
     KSPGetResidualNorm(ksp,&norm);
     KSPGetIterationNumber(ksp,&its);
-    info("\nKrylov solver\nNorm of residual %g at %d iterations\n",norm,its);
+    pe_info(obj->pe, "\nKrylov solver\nNorm of residual %g at %d iterations\n",norm,its);
   }
 
   return 0;
