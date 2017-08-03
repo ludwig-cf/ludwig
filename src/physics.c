@@ -454,9 +454,6 @@ __host__ int physics_fbody_set(physics_t * phys, double f[3]) {
   phys->fbody[1] = f[1];
   phys->fbody[2] = f[2];
 
-
-  info("\nREAD external forcing Intensity f0: f0=%0.5f  %0.5f  %0.5f\n", f[0], f[1], f[2]);
-
   return 0;
 }
 
