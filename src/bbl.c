@@ -51,9 +51,7 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo);
 
-extern __constant__ double tc_q_[NVEL][3][3];
-extern __constant__ double tc_rcs2;
-extern __constant__ double tc_wv[NVEL];
+static __constant__ lb_collide_param_t lbp;
 
 /*****************************************************************************
  *
@@ -268,13 +266,16 @@ int bbl_pass0(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
   limits.kmin = 1 - nextra; limits.kmax = nlocal[Z] + nextra;
 
+  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
+		    tdpMemcpyHostToDevice);
+
   kernel_ctxt_create(bbl->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(bbl_pass0_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, cstarget, lb->target, cinfo->target);
-
-  tdpDeviceSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 
@@ -293,7 +294,8 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 				 colloids_info_t * cinfo) {
 
   int kindex;
-  __shared__ int kiter;
+  int kiter;
+  const double rcs2 = 3.0;
 
   assert(ktxt);
   assert(cs);
@@ -340,16 +342,16 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
       ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
 
       for (p = 1; p < NVEL; p++) {
-	udotc = tc_cv[p][X]*ub[X] + tc_cv[p][Y]*ub[Y] + tc_cv[p][Z]*ub[Z];
+	udotc = lbp.cv[p][X]*ub[X] + lbp.cv[p][Y]*ub[Y] + lbp.cv[p][Z]*ub[Z];
 	sdotq = 0.0;
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
-	    sdotq += tc_q_[p][ia][ib]*ub[ia]*ub[ib];
+	    sdotq += lbp.q[p][ia][ib]*ub[ia]*ub[ib];
 	  }
 	}
 
 	lb->f[ LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p) ]
-	  = tc_wv[p]*(1.0 + tc_rcs2*udotc + 0.5*tc_rcs2*tc_rcs2*sdotq);
+	  = lbp.wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
       }
     }
   }

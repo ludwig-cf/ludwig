@@ -324,7 +324,7 @@ __host__ int lb_collide_param_commit(lb_t * lb) {
 
 static int lb_model_param_init(lb_t * lb) {
 
-  int ia, p;
+  int ia, ib, p;
 
   assert(lb);
   assert(lb->param);
@@ -333,10 +333,15 @@ static int lb_model_param_init(lb_t * lb) {
   lb->param->ndist = lb->ndist;
 
   for (p = 0; p < NVEL; p++) {
+    lb->param->wv[p] = wv[p];
     for (ia = 0; ia < 3; ia++) {
       lb->param->cv[p][ia] = cv[p][ia];
     }
-    lb->param->wv[p] = wv[p];
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	lb->param->q[p][ia][ib] = q_[p][ia][ib];
+      }
+    }
   }
 
   return 0;

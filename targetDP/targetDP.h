@@ -68,29 +68,6 @@
  * Language Extensions 
  */
 
-
-/* The __targetEntry__ keyword is used in a function declaration or definition
- * to specify that the function should be compiled for the target, and that it will be
- * called directly from host code. */
-
-/* KS remove #define __targetEntry__ __global__*/
-
-/* The __target__ keyword is used in a function declaration or definition to spec-
- * ify that the function should be compiled for the target, and that it will be called
- * from a targetEntry or another target function. */
-/* KS remove #define __target__ __device__  */
-
-
-/* The __targetHost__ keyword is used in a function declaration or definition to
- * specify that the function should be compiled for the host. */
-/* KS remove #define __targetHost__ extern "C" __host__ */
-
-
-/* The __targetConst__ keyword is used in a variable or array declaration to
- *  specify that the corresponding data can be treated as constant 
- * (read-only) on the target. */
-/* KS remove #define __targetConst__ __constant__ */
-
 /* The __targetLaunch__ syntax is used to launch a function across 
  * a data parallel target architecture. */
 #define __targetLaunch__(extent) \
@@ -168,16 +145,6 @@
 #endif
 
 /* Language Extensions */
-
-#define HOST
-/* KS remove #define __targetHost__ */
-
-/* kernel function specifiers */
-/* KS remove #define __target__ */
-/* KS remove #define __targetEntry__ */
-
-/* constant data specifier */
-#define __targetConst__ 
 
 /* special kernel launch syntax */
 #define __targetLaunch__(extent)

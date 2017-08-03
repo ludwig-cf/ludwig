@@ -39,6 +39,7 @@ struct lb_collide_param_s {
   double var_noise[NVEL];
   double rtau[NVEL];
   double wv[NVEL];
+  double q[NVEL][3][3];
 };
 
 struct lb_data_s {

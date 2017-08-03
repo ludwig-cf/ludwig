@@ -232,6 +232,10 @@ int test_util_discrete_volume(void) {
   r[0] = 0.52; r[1] = 0.25; r[2] = 0.99;
   assert(test_discrete_volume_sphere(r, 4.77, 453.0) == 0);
 
+  /* Keep a non-asserted call to prevent compiler warnings
+   * about unused r under -DNDEBUG */
+  test_discrete_volume_sphere(r, 4.77, 453.0);
+
   return 0;
 }
 
