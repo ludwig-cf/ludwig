@@ -1,30 +1,28 @@
 /****************************************************************************
  *
- *  stats_free_energy.h
- *
- *  $Id$
+ *  fe_lc_stats.h
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2017 The University of Edinburgh
  *
  ****************************************************************************/
 
-#ifndef LUDWIG_STATS_FREE_ENERGY_H
-#define LUDWIG_STATS_FREE_ENERGY_H
+#ifndef LUDWIG_FE_LC_STATS_H
+#define LUDWIG_FE_LC_STATS_H
 
 #include "pe.h"
 #include "coords.h"
+#include "blue_phase.h"
 #include "wall.h"
-#include "free_energy.h" 
-#include "field.h"
-#include "field_grad.h"
 #include "map.h"
 #include "colloids.h"
 
-int stats_free_energy_density(pe_t * pe, cs_t * cs, wall_t * wall,
-			      fe_t * fe, map_t * map,
-			      colloids_info_t * cinfo);
+int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
+		     wall_t * wall, map_t * map,
+		     colloids_info_t * cinfo, int step);
 #endif

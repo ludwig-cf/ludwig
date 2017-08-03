@@ -24,7 +24,7 @@
 # Edinburgh Parallel Computing Centre
 #
 # Kevin Stratford (kevin@epcc.ed.ac.uk)
-# (c) 2010-2015 The University of Edinburgh
+# (c) 2010-2017 The University of Edinburgh
 #
 ###############################################################################
 
@@ -51,8 +51,8 @@ HAVE_PETSC =
 
 ifdef HAVE_PETSC
 OPTS += -DPETSC
-INC  += $(PETSC_INC) -I/Users/ohenrich/petsc-3.7.4/include -I/Users/ohenrich/petsc-3.7.4/arch-darwin-c-debug/include -I/opt/local/include -I/opt/X11/include
-LIBS += $(PETSC_LIB) -Wl,-rpath,/Users/ohenrich/petsc-3.7.4/arch-darwin-c-debug/lib -Wl,-rpath,/Users/ohenrich/petsc-3.7.4/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.7.4/arch-darwin-c-debug/lib -lpetsc -llapack -lblas -Wl,-rpath,/opt/local/lib -L/opt/local/lib -lhwloc -Wl,-rpath,/opt/X11/lib -L/opt/X11/lib -lX11 -Wl,-rpath,/opt/local/lib/openmpi-mp -L/opt/local/lib/openmpi-mp -Wl,-rpath,/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.0.2/lib/darwin -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/7.0.2/lib/darwin -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lgfortran -Wl,-rpath,/opt/local/lib/gcc5/gcc/x86_64-apple-darwin15/5.4.0 -L/opt/local/lib/gcc5/gcc/x86_64-apple-darwin15/5.4.0 -Wl,-rpath,/opt/local/lib/gcc5 -L/opt/local/lib/gcc5 -lgfortran -lgcc_ext.10.5 -lquadmath -lm -lclang_rt.osx -lmpi_cxx -lc++ -Wl,-rpath,/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.2/lib/darwin -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.2/lib/darwin -lclang_rt.osx -Wl,-rpath,/opt/local/lib/openmpi-mp -L/opt/local/lib/openmpi-mp -ldl -lmpi -lSystem -Wl,-rpath,/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.2/lib/darwin -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/7.0.2/lib/darwin -lclang_rt.osx -ldl
+INC  += $(PETSC_INC)
+LIBS += $(PETSC_LIB)
 endif 
 
 ###############################################################################
@@ -76,7 +76,7 @@ OBJS = \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
      field_phi_init.o field_phi_init_rt.o \
-     fe_electro.o fe_electro_symmetric.o \
+     fe_electro.o fe_electro_symmetric.o fe_lc_stats.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \

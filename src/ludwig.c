@@ -9,8 +9,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2017 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -105,6 +107,8 @@
 #include "stats_velocity.h"
 #include "stats_sigma.h"
 #include "stats_symmetric.h"
+
+#include "fe_lc_stats.h"
 
 #include "hydro_s.h"
 #include "lb_model_s.h"
@@ -845,10 +849,18 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 1) info("[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
-      stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
-				ludwig->fe, ludwig->q, ludwig->map,
-				ludwig->collinfo);
-//      blue_phase_stats(ludwig->q, ludwig->q_grad, ludwig->map, step);
+      if (ludwig->fe) {
+	switch (ludwig->fe->id) {
+	case FE_LC:
+	  fe_lc_stats_info(ludwig->pe, ludwig->cs, ludwig->fe_lc,
+			   ludwig->wall, ludwig->map, ludwig->collinfo, step);
+	  break;
+	default:
+	  stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
+				    ludwig->fe, ludwig->map,
+				    ludwig->collinfo);
+	}
+      }
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
