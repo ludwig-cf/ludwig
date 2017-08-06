@@ -30,6 +30,23 @@ typedef enum {NOISE_RHO = 0,
 
 typedef struct noise_s noise_t;
 
+/* The implementation is based on the following opaque object, which
+ * holds the uniform random number generator state for all sites
+ * (here 4*4 byte integer). It also holds a table of the discrete
+ * values. */
+
+struct noise_s {
+  pe_t * pe;                /* Parallel environment */
+  cs_t * cs;                /* Coordinate system */
+  int master_seed;          /* Overall noise seed */
+  int nsites;               /* Total number of lattice sites */
+  int on[NOISE_END];        /* Noise on or off for different noise_enum_t */
+  unsigned int * state;     /* Local state */
+  double rtable[8];         /* Look up table following Ladd (2009). */
+  io_info_t * info;
+  noise_t * target;
+};
+
 __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj);
 __host__ int noise_free(noise_t * obj);
 __host__ int noise_init(noise_t * obj, int master_seed);

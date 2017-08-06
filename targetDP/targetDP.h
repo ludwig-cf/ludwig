@@ -21,8 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef _TDP_INCLUDED
-#define _TDP_INCLUDED
+#ifndef TDP_INCLUDED_
+#define TDP_INCLUDED_
 
 /* KS. Additions */
 

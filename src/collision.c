@@ -38,6 +38,7 @@
 #include "collision.h"
 #include "field_s.h"
 #include "map_s.h"
+#include "kernel.h"
 #include "timer.h"
 
 #include "symmetric.h"
@@ -53,7 +54,7 @@ static __host__ __device__ __inline__
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 			       double shat[3][3], double ghat[NVEL]);
 int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
-
+static __host__ int lb_collision_parameters_commit(lb_t * lb);
 
 /* TODO refactor these type definitions and forward declarations */
 
@@ -73,25 +74,29 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
 				 double jphi[3][NSIMDVL],
 				 double * f, int baseIndex);
 
+/* Additional file scope collide time constants */
+
+typedef struct collide_param_s collide_param_t;
+
+struct collide_param_s {
+  double force_global[3];
+  double mobility;
+  double rtau2;
+};
+
 /* Constants */
 
 static __constant__ cs_param_t coords;
-static __constant__ lb_collide_param_t lbp;
+static __constant__ lb_collide_param_t _lbp;
+static __constant__ collide_param_t _cp;
 
 static __constant__ int tc_nSites;
-static __constant__ int tc_Nall[3];
-static __constant__ int tc_nhalo;
 
 static __constant__ double tc_rtau_shear;
 static __constant__ double tc_rtau_bulk;
-static __constant__ double tc_wv[NVEL];
-static __constant__ double tc_ma_[NVEL][NVEL];
-static __constant__ double tc_mi_[NVEL][NVEL];
-static __constant__ double tc_rtau2;
-static __constant__ double tc_rcs2;
-static __constant__ double tc_r2rcs4;
-static __constant__ double tc_force_global[3];
-static __constant__ double tc_q_[NVEL][3][3];
+/* static __constant__ double tc_rtau2;*/
+/* static __constant__ double tc_rcs2;*/
+/* static __constant__ double tc_r2rcs4;*/
 
 /*****************************************************************************
  *
@@ -120,12 +125,16 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collide_param_commit(lb);
 
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
-  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise,
-				      (fe_symm_t *) fe);
+  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise, (fe_symm_t *) fe);
 
   return 0;
 }
 
+#ifdef OLD_SHIT
+static __constant__ int tc_Nall[3];
+static __constant__ int tc_nhalo;
+/*static __constant__ double tc_wv[NVEL];*/
+/*static __constant__ double tc_q_[NVEL][3][3];*/
 
 /*****************************************************************************
  *
@@ -213,7 +222,7 @@ __device__ void lb_collision_mrt_site(lb_t * lb,
     /* distribution */
     for (p = 0; p < NVEL; p++) {
       __targetILP__(iv) fchunk[p*NSIMDVL+iv] = 
-	lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
+	lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, LB_RHO, p) ];
     }
     /* force */
 
@@ -504,15 +513,15 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 
   copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
   copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
+  /*copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));*/
   copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
   copyConstToTarget(tc_mi_, mi_, NVEL*NVEL*sizeof(double));
-  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));
-  copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  /*  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));*/
+  /* copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));*/
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
   copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
   copyConstToTarget(tc_force_global,force_global, 3*sizeof(double));
-  copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
+  /*copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));*/
   copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
 
   checkTargetError("constants");
@@ -531,6 +540,368 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
   return 0;
 }
 
+#else
+
+/*****************************************************************************
+ *
+ *  lb_collision_mrt
+ *
+ *  Collision with (potentially) different relaxation times for each
+ *  different mode.
+ *
+ *  This code is per lattice site. To be called from
+ *  lb_collision_mrt_lattice().
+ *
+ *  The matrices ma_ and mi_ project the distributions onto the
+ *  modes, and vice-versa, respectively, for the current LB model.
+ *
+ *  The collision conserves density, and momentum (to within any
+ *  body force present). The stress modes, and ghost modes, are
+ *  relaxed toward their equilibrium values.
+ *
+ *****************************************************************************/
+
+__device__ void lb_mrt_ndist1_site(lb_t * lb, hydro_t * hydro, map_t * map,
+				   noise_t * noise, const int index0) {
+  
+  int p, m;                               /* velocity index */
+  int ia, ib;                             /* indices ("alphabeta") */
+  int iv=0;                               /* SIMD loop counter */
+  double mode[NVEL*NSIMDVL];              /* Modes; hydrodynamic + ghost */
+  double rho[NSIMDVL], rrho[NSIMDVL];     /* Density, reciprocal density */
+  double u[3][NSIMDVL];                   /* Velocity */
+  double s[3][3][NSIMDVL];                /* Stress */
+  double seq[3][3][NSIMDVL];              /* Equilibrium stress */
+  double shat[3][3][NSIMDVL];             /* random stress */
+  double ghat[NVEL][NSIMDVL];             /* noise for ghosts */
+
+  double force[3][NSIMDVL];               /* External force */
+  double tr_s[NSIMDVL], tr_seq[NSIMDVL];  /* Vectors for stress trace */
+  double fchunk[NVEL*NSIMDVL];            /* 1-d SIMD distribution vector */
+
+  char fullchunk=1;
+  char includeSite[NSIMDVL];
+
+  const double rdim = (1.0/NDIM);         /* 1 / dimension */
+  KRONECKER_DELTA_CHAR(d);                /* delta_ab */
+
+  assert(lb);
+  assert(lb->param);
+  assert(hydro);
+
+  /* Determine whether this chunk of lattice sites are all active
+   * and if not, which should be included */
+
+  __targetILP__(iv) includeSite[iv] = 1;
+
+  __targetILP__(iv) {
+    if (map->status[index0+iv] != MAP_FLUID) {
+      includeSite[iv] = 0;
+      fullchunk = 0;
+    }
+  }
+
+  /* Default to fluctuations off; shat, ghat are zero */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      __targetILP__(iv) shat[ia][ib][iv] = 0.0;
+    }
+  }
+
+  for (ia = 0; ia < NVEL; ia++) {
+    __targetILP__(iv) ghat[ia][iv] = 0.0;
+  }
+
+  /* Load SIMD vectors for distribution and force */
+
+  for (p = 0; p < NVEL; p++) {
+    __targetILP__(iv) fchunk[p*NSIMDVL+iv] = 
+      lb->f[ LB_ADDR(_lbp.nsite, 1, NVEL, index0 + iv, LB_RHO, p) ];
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    __targetILP__(iv) {
+      force[ia][iv] = _cp.force_global[ia] 
+	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
+    }
+  }
+  
+  /* Compute all the modes */
+
+#ifdef _D3Q19_
+    d3q19_f2mode_chunk(mode, fchunk, index0);
+#else
+    for (m = 0; m < NVEL; m++) {
+      __targetILP__(iv) mode[m*NSIMDVL+iv] = 0.0;
+      for (p = 0; p < NVEL; p++) {
+	__targetILP__(iv) {
+	  mode[m*NSIMDVL+iv] += fchunk[p*NSIMDVL+iv]*_lbp.ma[m][p];
+	}
+      }
+    }
+#endif
+
+  /* For convenience, write out the physical modes, that is,
+   * rho, NDIM components of velocity, independent components
+   * of stress (upper triangle), and lower triangle. */
+
+  __targetILP__(iv) rho[iv] = mode[0*NSIMDVL+iv];
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
+  }
+
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      __targetILP__(iv) s[ia][ib][iv] = mode[(1 + NDIM + m)*NSIMDVL+iv];
+      m++;
+    }
+  }
+    
+  for (ia = 1; ia < NDIM; ia++) {
+    for (ib = 0; ib < ia; ib++) {
+      __targetILP__(iv) s[ia][ib][iv] = s[ib][ia][iv];
+    }
+  }
+
+  /* Compute the local velocity, taking account of any body force */
+    
+  __targetILP__(iv) rrho[iv] = 1.0/rho[iv];
+
+  for (ia = 0; ia < NDIM; ia++) {      
+    __targetILP__(iv) {
+      u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
+    }
+  }
+   
+  /* Relax stress with different shear and bulk viscosity */
+
+  __targetILP__(iv) {
+    tr_s[iv]   = 0.0;
+    tr_seq[iv] = 0.0;
+  }
+    
+  for (ia = 0; ia < NDIM; ia++) {
+    /* Set equilibrium stress */
+    for (ib = 0; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv];
+      }
+    }
+    /* Compute trace */
+    __targetILP__(iv){
+      tr_s[iv]   += s[ia][ia][iv];
+      tr_seq[iv] += seq[ia][ia][iv];
+    }
+  }
+    
+  /* Form traceless parts */
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv){
+      s[ia][ia][iv]   -= rdim*tr_s[iv];
+      seq[ia][ia][iv] -= rdim*tr_seq[iv];
+    }
+  }
+    
+  /* Relax each mode */
+  __targetILP__(iv) {
+    tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
+  }
+
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = 0; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
+	s[ia][ib][iv] += d[ia][ib]*rdim*tr_s[iv];
+	  
+	/* Correction from body force (assumes equal relaxation times) */
+	      
+	s[ia][ib][iv] += (2.0 - _lbp.rtau[LB_TAU_SHEAR])
+	  *(u[ia][iv]*force[ib][iv] + force[ia][iv]*u[ib][iv]);
+      }
+    }
+  }
+
+  if (noise->on[NOISE_RHO]) {
+	
+    double shat1[3][3];
+    double ghat1[NVEL];
+
+    /* This does not vectorise at the moment. Needs revisiting.
+     * Note that there is a mask here to prevent random number
+     * generation at solid sites, which is to maintain results
+     * in regression tests. Not strictly necessary. */
+
+    for (iv = 0; iv < NSIMDVL; iv++) {
+
+      if (includeSite[iv]) {
+
+	lb_collision_fluctuations(lb, noise, index0 + iv, shat1, ghat1);
+
+	for (ia = 0; ia < NDIM; ia++) {
+	  for (ib = 0; ib < NDIM; ib++) {
+	    shat[ia][ib][iv] = shat1[ia][ib];
+	  }
+	}
+
+	for (ia = 0; ia < NVEL; ia++) {
+	  ghat[ia][iv] = ghat1[ia];
+	}
+      }
+    }
+  }
+
+  /* Now reset the hydrodynamic modes to post-collision values:
+   * rho is unchanged, velocity unchanged if no force,
+   * independent components of stress, and ghosts. */
+    
+  for (ia = 0; ia < NDIM; ia++) {
+    __targetILP__(iv) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
+  }
+
+  m = 0;
+  for (ia = 0; ia < NDIM; ia++) {
+    for (ib = ia; ib < NDIM; ib++) {
+      __targetILP__(iv) {
+	mode[(1 + NDIM + m)*NSIMDVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
+      }
+      m++;
+    }
+  }
+
+  /* Ghost modes are relaxed toward zero equilibrium. */
+
+  for (m = NHYDRO; m < NVEL; m++) {  
+    __targetILP__(iv) {
+      mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
+	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
+    }
+  }
+
+
+  /* Project post-collision modes back onto the distribution */
+#ifdef _D3Q19_
+  d3q19_mode2f_chunk(mode, fchunk, index0);
+#else
+    for (p = 0; p < NVEL; p++) {
+      double ftmp[VVL];
+      __targetILP__(iv) ftmp[iv] = 0.0;
+      for (m = 0; m < NVEL; m++) {
+	__targetILP__(iv) ftmp[iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
+      }
+      __targetILP__(iv) fchunk[p*NSIMDVL+iv] = ftmp[iv];
+    }
+#endif
+
+  /* Write SIMD chunks back to main arrays. */
+
+  if (fullchunk) {
+    /* distribution */
+    for (p = 0; p < NVEL; p++) {
+      __targetILP__(iv) { 
+	lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_RHO, p)] = fchunk[p*NSIMDVL+iv];
+      }
+    }
+    /* velocity */
+    for (ia = 0; ia < 3; ia++) {
+      __targetILP__(iv) {
+	hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
+      }
+    }
+  }
+  else {
+    __targetILP__(iv) {
+      if (includeSite[iv]) {
+	/* distribution */
+	for (p = 0; p < NVEL; p++) {
+	  lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)]
+	    = fchunk[p*NSIMDVL+iv]; 
+	}
+	/* velocity */
+
+	for (ia = 0; ia < 3; ia++) {
+	  hydro->u[addr_rank1(hydro->nsite, NHDIM, index0 + iv, ia)] = u[ia][iv];
+	}
+      }
+    }
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  lb_collision_mrt_lattice
+ *
+ *  Kernel driver for thread-decomposed collision routine; this generates
+ *  a loop over all lattice sites.
+ *
+ *****************************************************************************/
+
+__global__ void lb_mrt_ndist1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
+			      map_t * map, noise_t * noise) {
+  int kindex;
+  int kiter;
+
+  kiter = kernel_vector_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+    int index0;
+    index0 = kernel_baseindex(ktx, kindex);
+    lb_mrt_ndist1_site(lb, hydro, map, noise, index0);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  lb_collision_mrt
+ *
+ *  Single fluid collision driver (multiple relaxation time).
+ *
+ *****************************************************************************/
+
+int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(lb);
+  assert(hydro);
+  assert(map);
+
+  cs_nlocal(lb->cs, nlocal);
+
+  /* Local extent */
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  lb_collision_parameters_commit(lb);
+
+  TIMER_start(TIMER_COLLIDE_KERNEL);
+
+  tdpLaunchKernel(lb_mrt_ndist1, nblk, ntpb, 0, 0, ctxt->target,
+		  lb->target, hydro->target, map->target, noise->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  TIMER_stop(TIMER_COLLIDE_KERNEL);
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+
+#endif
 
 /*****************************************************************************
  *
@@ -637,7 +1008,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
       for (p = 0; p < NVEL; p++) {
 	__targetILP__(iv) mode[m*NSIMDVL+iv] +=
 	  lb->f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + iv, LB_RHO, p) ]
-	  *tc_ma_[m][p];
+	  *_lbp.ma[m][p];
       }
     }
 #endif
@@ -669,7 +1040,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   
   for (ia = 0; ia < 3; ia++) {
     __targetILP__(iv) {
-      force[ia][iv] = tc_force_global[ia] 
+      force[ia][iv] = _cp.force_global[ia] 
 	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, baseIndex+iv, ia)];
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
     }
@@ -733,7 +1104,6 @@ __device__ void lb_collision_binary_site(lb_t * lb,
       }
     }
   }
-  
 
   if (noise_on) {
 
@@ -791,7 +1161,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
     double ftmp[NSIMDVL];
     __targetILP__(iv) ftmp[iv]=0.;
     for (m = 0; m < NVEL; m++) {
-      __targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*NSIMDVL+iv];
+      __targetILP__(iv) ftmp[iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
     }
     __targetILP__(iv) {
       lb->f[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_RHO, p)] = ftmp[iv];
@@ -814,7 +1184,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   for (p = 1; p < NVEL; p++) {
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) {
-	jphi[ia][iv] += tc_cv[p][ia]* 
+	jphi[ia][iv] += _lbp.cv[p][ia]* 
 	lb->f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, p) ];
       }
     }
@@ -830,7 +1200,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
       }
     }
     __targetILP__(iv) {
-      jphi[ia][iv] = jphi[ia][iv] - tc_rtau2*(jphi[ia][iv] - phi[iv]*u[ia][iv]);
+      jphi[ia][iv] = jphi[ia][iv] - _cp.rtau2*(jphi[ia][iv] - phi[iv]*u[ia][iv]);
       /* jphi[ia] = phi*u[ia]; */
     }
   }
@@ -851,17 +1221,17 @@ __device__ void lb_collision_binary_site(lb_t * lb,
     }
     
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv)  jdotc[iv] += jphi[ia][iv]*tc_cv[p][ia];
+      __targetILP__(iv) jdotc[iv] += jphi[ia][iv]*_lbp.cv[p][ia];
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv)  sphidotq[iv] += sphi[ia][ib][iv]*tc_q_[p][ia][ib];
+	__targetILP__(iv) sphidotq[iv] += sphi[ia][ib][iv]*_lbp.q[p][ia][ib];
       }
     }
     
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
     __targetILP__(iv) { 
-      lb->f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, p) ] 
-      = tc_wv[p]*(jdotc[iv]*tc_rcs2 + sphidotq[iv]*tc_r2rcs4) + phi[iv]*dp0;
+      lb->f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, p) ] 
+      = _lbp.wv[p]*(jdotc[iv]*3.0 + sphidotq[iv]*4.5) + phi[iv]*dp0;
     }
   }
 #endif
@@ -892,13 +1262,6 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   int nhalo;
   int noise_on = 0;                  /* Fluctuations switch */
 
-  double rtau2;
-  double mobility;
-  double force_global[3];
-  physics_t * phys = NULL;
-
-  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
   assert (NDIM == 3);
   assert(lb);
   assert(hydro);
@@ -907,17 +1270,9 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
   cs_nhalo(lb->cs, &nhalo);
   cs_nlocal(lb->cs, nlocal);
 
-  physics_ref(&phys);
-  physics_fbody(phys, force_global);
-
   noise_present(noise, NOISE_RHO, &noise_on);
 
-
-  /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
-   * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
-
-  physics_mobility(phys, &mobility);
-  rtau2 = 2.0 / (1.0 + 2.0*mobility);
+  lb_collision_parameters_commit(lb);
 
   Nall[X] = nlocal[X]+2*nhalo;
   Nall[Y] = nlocal[Y]+2*nhalo;
@@ -926,21 +1281,18 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
 
   tdpMemcpyToSymbol(tdpSymbol(coords), lb->cs->param, sizeof(cs_param_t), 0,
 		    tdpMemcpyHostToDevice);
-  tdpMemcpyToSymbol(tdpSymbol(lbp), lb->param, sizeof(lb_collide_param_t), 0,
-		    tdpMemcpyHostToDevice);
 
   copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
   copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  copyConstToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double));
-  copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));
-  copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
-  copyConstToTarget(tc_mi_, mi_, NVEL*NVEL*sizeof(double));
-  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));
-  copyConstToTarget(&tc_rtau2, &rtau2, sizeof(double));
-  copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));
+  /* copyConstToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double));*/
+  /*copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));*/
+  /*copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));*/
+  /* copyConstToTarget(tc_mi_, mi_, NVEL*NVEL*sizeof(double));*/
+  /*copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));*/
+  /* copyConstToTarget(&tc_rtau2, &rtau2, sizeof(double));*/
+  /* copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));*/
   copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(tc_force_global,force_global, 3*sizeof(double));
-  copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));
+  /*copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));*/
 
   checkTargetError("constants");
 
@@ -1366,6 +1718,37 @@ static __host__ __device__ __inline__
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  lb_collision_parameters_commit
+ *
+ *****************************************************************************/
+
+static __host__ int lb_collision_parameters_commit(lb_t * lb) {
+
+  collide_param_t p;
+  physics_t * phys = NULL;
+
+  assert(lb);
+
+  physics_ref(&phys);
+  physics_fbody(phys, p.force_global);
+
+  /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
+   * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */
+
+  physics_mobility(phys, &p.mobility);
+  p.rtau2 = 2.0 / (1.0 + 2.0*p.mobility);
+
+  tdpMemcpyToSymbol(tdpSymbol(_lbp), lb->param, sizeof(lb_collide_param_t),
+		    0, tdpMemcpyHostToDevice);
+  tdpMemcpyToSymbol(tdpSymbol(_cp), &p, sizeof(collide_param_t), 0,
+		    tdpMemcpyHostToDevice);
+  return 0;
+}
+
+
 
 #ifdef _D3Q19_
 
@@ -3125,18 +3508,18 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   const double rcs2 = 3.0;
   const double r2rcs4 = (9.0/2.0);
 
-__targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+  __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
   __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
   __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 0) ] 
+  __targetILP__(iv) 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 0) ] 
         = w0*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4) + phi[iv];
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+  __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
   __targetILP__(iv)  jdotc[iv] += jphi[X][iv];
   __targetILP__(iv)  jdotc[iv] += jphi[Y][iv];
@@ -3147,7 +3530,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 1) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 1) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3162,7 +3545,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 2) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 2) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3174,7 +3557,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 3) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 3) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3189,7 +3572,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 4) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 4) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3204,7 +3587,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 5) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 5) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3219,7 +3602,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 6) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 6) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3231,7 +3614,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 7) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 7) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3246,7 +3629,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 8) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 8) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3258,7 +3641,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 9) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 9) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3270,7 +3653,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 10) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 10) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3285,7 +3668,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 11) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 11) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3297,7 +3680,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 12) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 12) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3312,7 +3695,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 13) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 13) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3327,7 +3710,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 14) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 14) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3342,7 +3725,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 15) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 15) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3354,7 +3737,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 16) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 16) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3369,7 +3752,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 17) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 17) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
@@ -3384,7 +3767,7 @@ __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;}
   __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
  __targetILP__(iv) 
-     f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, 18) ] 
+     f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 18) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
   return;

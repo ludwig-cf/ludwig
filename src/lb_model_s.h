@@ -22,13 +22,9 @@
 #include "io_harness.h"
 #include "stdint.h"
 
-extern __constant__ int tc_cv[NVEL][3];
-extern __constant__ int tc_ndist;
-
 typedef struct lb_collide_param_s lb_collide_param_t;
 
 struct lb_collide_param_s {
-  int8_t isnoise;                      /* switch for fluctuations */
   int8_t isghost;                      /* switch for ghost modes */
   int8_t cv[NVEL][3];
   int nsite;
@@ -40,6 +36,8 @@ struct lb_collide_param_s {
   double rtau[NVEL];
   double wv[NVEL];
   double q[NVEL][3][3];
+  double ma[NVEL][NVEL];
+  double mi[NVEL][NVEL];
 };
 
 struct lb_data_s {

@@ -43,8 +43,6 @@ static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 
-__constant__ int tc_cv[NVEL][3];
-__constant__ int tc_ndist;
 static __constant__ lb_collide_param_t static_param;
 
 /****************************************************************************
@@ -341,6 +339,13 @@ static int lb_model_param_init(lb_t * lb) {
       for (ib = 0; ib < 3; ib++) {
 	lb->param->q[p][ia][ib] = q_[p][ia][ib];
       }
+    }
+  }
+
+  for (ia = 0; ia < NVEL; ia++) {
+    for (ib = 0; ib < NVEL; ib++) {
+      lb->param->ma[ia][ib] = ma_[ia][ib];
+      lb->param->mi[ia][ib] = mi_[ia][ib];
     }
   }
 

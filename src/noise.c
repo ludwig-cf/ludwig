@@ -38,23 +38,6 @@
 #include "memory.h"
 #include "noise.h"
 
-/* The implementation is based on the following opaque object, which
- * holds the uniform random number generator state for all sites
- * (here 4*4 byte integer). It also holds a table of the discrete
- * values. */
-
-struct noise_s {
-  pe_t * pe;                /* Parallel environment */
-  cs_t * cs;                /* Coordinate system */
-  int master_seed;          /* Overall noise seed */
-  int nsites;               /* Total number of lattice sites */
-  int on[NOISE_END];        /* Noise on or off for different noise_enum_t */
-  unsigned int * state;     /* Local state */
-  double rtable[8];         /* Look up table following Ladd (2009). */
-  io_info_t * info;
-  noise_t * target;
-};
-
 static int noise_write(FILE * fp, int index, void * self);
 static int noise_read(FILE * fp, int index, void * self);
 
