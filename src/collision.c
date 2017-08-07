@@ -43,12 +43,11 @@
 
 #include "symmetric.h"
 
-static double rtau_shear;       /* Inverse relaxation time for shear modes */
-static double rtau_bulk;        /* Inverse relaxation time for bulk modes */
+/* TODO tidy forward declarations */
 
-static int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
-static int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
-			       noise_t * noise, fe_symm_t * fe);
+int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
+int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
+			fe_symm_t * fe);
 
 static __host__ __device__ __inline__ 
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
@@ -56,7 +55,12 @@ void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
 static __host__ int lb_collision_parameters_commit(lb_t * lb);
 
-/* TODO refactor these type definitions and forward declarations */
+__global__
+void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
+		       map_t * map, noise_t * noise);
+static __device__
+void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
+			    noise_t * noise, const int index0);
 
 __device__ void d3q19_f2mode_hydro(double * mode, 
 				   const double * __restrict__ f,
@@ -84,19 +88,8 @@ struct collide_param_s {
   double rtau2;
 };
 
-/* Constants */
-
-static __constant__ cs_param_t coords;
 static __constant__ lb_collide_param_t _lbp;
 static __constant__ collide_param_t _cp;
-
-static __constant__ int tc_nSites;
-
-static __constant__ double tc_rtau_shear;
-static __constant__ double tc_rtau_bulk;
-/* static __constant__ double tc_rtau2;*/
-/* static __constant__ double tc_rcs2;*/
-/* static __constant__ double tc_r2rcs4;*/
 
 /*****************************************************************************
  *
@@ -125,356 +118,9 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collide_param_commit(lb);
 
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
-  if (ndist == 2) lb_collision_binary(lb, hydro, map, noise, (fe_symm_t *) fe);
+  if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe);
 
   return 0;
-}
-
-#ifdef OLD_SHIT
-static __constant__ int tc_Nall[3];
-static __constant__ int tc_nhalo;
-/*static __constant__ double tc_wv[NVEL];*/
-/*static __constant__ double tc_q_[NVEL][3][3];*/
-
-/*****************************************************************************
- *
- *  lb_collision_mrt
- *
- *  Collision with (potentially) different relaxation times for each
- *  different mode.
- *
- *  This code is per lattice site. To be called from
- *  lb_collision_mrt_lattice().
- *
- *  The matrices ma_ and mi_ project the distributions onto the
- *  modes, and vice-versa, respectively, for the current LB model.
- *
- *  The collision conserves density, and momentum (to within any
- *  body force present). The stress modes, and ghost modes, are
- *  relaxed toward their equilibrium values.
- *
- *****************************************************************************/
-
-__device__ void lb_collision_mrt_site(lb_t * lb, 
-				      hydro_t * hydro, map_t * map,
-				      noise_t * noise, int noise_on,
-				      const int baseIndex){
-  
-  int p, m;                               /* velocity index */
-  int ia, ib;                             /* indices ("alphabeta") */
-  int iv=0;                               /* SIMD loop counter */
-  double mode[NVEL*NSIMDVL];              /* Modes; hydrodynamic + ghost */
-  double rho[NSIMDVL], rrho[NSIMDVL];     /* Density, reciprocal density */
-  double u[3][NSIMDVL];                   /* Velocity */
-  double s[3][3][NSIMDVL];                /* Stress */
-  double seq[3][3][NSIMDVL];              /* Equilibrium stress */
-  double shat[3][3][NSIMDVL];             /* random stress */
-  double ghat[NVEL][NSIMDVL];             /* noise for ghosts */
-  double rdim;                            /* 1 / dimension */
-
-  double force[3][NSIMDVL];               /* External force */
-  double tr_s[NSIMDVL], tr_seq[NSIMDVL];  /* Vectors for stress trace */
-  double fchunk[NVEL*NSIMDVL];            /* 1-d SIMD distribution vector */
-
-  char fullchunk=1;
-  char includeSite[NSIMDVL];
-  KRONECKER_DELTA_CHAR(d);
-
-  assert(lb);
-  assert(lb->param);
-  assert(hydro);
-
-  /* Determine whether this chunk of lattice sites are all active
-   * and if not, which should be included */
-
-  __targetILP__(iv) includeSite[iv] = 1;
-
-  __targetILP__(iv) {
-    if ((baseIndex+iv) >= tc_nSites) {
-      includeSite[iv] = 0;
-      fullchunk = 0;
-    }
-    else {
-      if (map->status[baseIndex+iv] != MAP_FLUID) {
-	includeSite[iv] = 0;
-	fullchunk = 0;
-      }
-    }
-  }
-
-  /* Default to fluctuations off; shat, ghat are zero */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) shat[ia][ib][iv] = 0.0;
-    }
-  }
-
-  for (ia = 0; ia < NVEL; ia++) {
-    __targetILP__(iv) ghat[ia][iv] = 0.0;
-  }
-
-  rdim = 1.0/NDIM;
-
-
-  /* Load SIMD vectors for distribution and force */
-
-  if (fullchunk) {
-    /* distribution */
-    for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) fchunk[p*NSIMDVL+iv] = 
-	lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, LB_RHO, p) ];
-    }
-    /* force */
-
-    for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
-	force[ia][iv] = tc_force_global[ia] 
-	  + hydro->f[addr_rank1(hydro->nsite, NHDIM, baseIndex+iv, ia)];
-      }
-    }
-  }
-  else {
-    __targetILP__(iv) {
-      if (includeSite[iv]) {
-	/* distribution */
-	for (p = 0; p < NVEL; p++) {
-	  fchunk[p*NSIMDVL+iv] = 
-	    lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, 0, p) ];
-	}
-
-	/* force */
-
-	for (ia = 0; ia < 3; ia++) {
-	  force[ia][iv] = tc_force_global[ia] 
-	    + hydro->f[addr_rank1(hydro->nsite, NHDIM, baseIndex+iv, ia)];
-	}
-      }
-    }
-  }
-  
-  /* Compute all the modes */
-
-#ifdef _D3Q19_
-    d3q19_f2mode_chunk(mode, fchunk, baseIndex);
-#else
-    for (m = 0; m < NVEL; m++) {
-      __targetILP__(iv) mode[m*NSIMDVL+iv] = 0.0;
-      for (p = 0; p < NVEL; p++) {
-	__targetILP__(iv) mode[m*NSIMDVL+iv] += fchunk[p*NSIMDVL+iv]*tc_ma_[m][p];
-      }
-    }
-#endif
-
-  /* For convenience, write out the physical modes, that is,
-   * rho, NDIM components of velocity, independent components
-   * of stress (upper triangle), and lower triangle. */
-
-  __targetILP__(iv) rho[iv] = mode[0*NSIMDVL+iv];
-  for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
-  }
-
-  m = 0;
-  for (ia = 0; ia < NDIM; ia++) {
-    for (ib = ia; ib < NDIM; ib++) {
-      __targetILP__(iv) s[ia][ib][iv] = mode[(1 + NDIM + m)*NSIMDVL+iv];
-      m++;
-    }
-  }
-    
-  for (ia = 1; ia < NDIM; ia++) {
-    for (ib = 0; ib < ia; ib++) {
-      __targetILP__(iv) s[ia][ib][iv] = s[ib][ia][iv];
-    }
-  }
-
-  /* Compute the local velocity, taking account of any body force */
-    
-  __targetILP__(iv) rrho[iv] = 1.0/rho[iv];
-
-  for (ia = 0; ia < NDIM; ia++) {      
-    __targetILP__(iv) {
-      u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
-    }
-  }
-   
-  /* Relax stress with different shear and bulk viscosity */
-
-  __targetILP__(iv) {
-    tr_s[iv]   = 0.0;
-    tr_seq[iv] = 0.0;
-  }
-    
-  for (ia = 0; ia < NDIM; ia++) {
-    /* Set equilibrium stress */
-    for (ib = 0; ib < NDIM; ib++) {
-      __targetILP__(iv) {
-	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv];
-      }
-    }
-    /* Compute trace */
-    __targetILP__(iv){
-      tr_s[iv]   += s[ia][ia][iv];
-      tr_seq[iv] += seq[ia][ia][iv];
-    }
-  }
-    
-  /* Form traceless parts */
-  for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv){
-      s[ia][ia][iv]   -= rdim*tr_s[iv];
-      seq[ia][ia][iv] -= rdim*tr_seq[iv];
-    }
-  }
-    
-  /* Relax each mode */
-  __targetILP__(iv) {
-    tr_s[iv] = tr_s[iv] - tc_rtau_bulk*(tr_s[iv] - tr_seq[iv]);
-  }
-
-  for (ia = 0; ia < NDIM; ia++) {
-    for (ib = 0; ib < NDIM; ib++) {
-      __targetILP__(iv) {
-	s[ia][ib][iv] -= tc_rtau_shear*(s[ia][ib][iv] - seq[ia][ib][iv]);
-	s[ia][ib][iv] += d[ia][ib]*rdim*tr_s[iv];
-	  
-	/* Correction from body force (assumes equal relaxation times) */
-	      
-	s[ia][ib][iv] += (2.0-tc_rtau_shear)
-	  *(u[ia][iv]*force[ib][iv] + force[ia][iv]*u[ib][iv]);
-      }
-    }
-  }
-
-  if (noise_on) {
-	
-    double shat1[3][3];
-    double ghat1[NVEL];
-
-    /* This does not vectorise at the moment. Needs revisiting */
-
-    for (iv = 0; iv < NSIMDVL; iv++) {
-
-      if (includeSite[iv]) {
-
-	lb_collision_fluctuations(lb, noise, baseIndex + iv, shat1, ghat1);
-
-	for (ia = 0; ia < NDIM; ia++) {
-	  for (ib = 0; ib < NDIM; ib++) {
-	    shat[ia][ib][iv] = shat1[ia][ib];
-	  }
-	}
-
-	for (ia = 0; ia < NVEL; ia++) {
-	  ghat[ia][iv] = ghat1[ia];
-	}
-      }
-    }
-  }
-
-
-  /* Now reset the hydrodynamic modes to post-collision values:
-   * rho is unchanged, velocity unchanged if no force,
-   * independent components of stress, and ghosts. */
-    
-  for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
-  }
-    
-  m = 0;
-  for (ia = 0; ia < NDIM; ia++) {
-    for (ib = ia; ib < NDIM; ib++) {
-      __targetILP__(iv) {
-	mode[(1 + NDIM + m)*NSIMDVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
-      }
-      m++;
-    }
-  }
-
-  /* Ghost modes are relaxed toward zero equilibrium. */
-
-  for (m = NHYDRO; m < NVEL; m++) {  
-    __targetILP__(iv) {
-      mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
-	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
-    }
-  }
-
-
-  /* Project post-collision modes back onto the distribution */
-#ifdef _D3Q19_
-  d3q19_mode2f_chunk(mode, fchunk, baseIndex);
-#else
-    for (p = 0; p < NVEL; p++) {
-      double ftmp[VVL];
-      __targetILP__(iv) ftmp[iv] = 0.0;
-      for (m = 0; m < NVEL; m++) {
-	__targetILP__(iv) ftmp[iv] += tc_mi_[p][m]*mode[m*NSIMDVL+iv];
-      }
-      __targetILP__(iv) fchunk[p*NSIMDVL+iv] = ftmp[iv];
-    }
-#endif
-
-
-  /* Write SIMD chunks back to main arrays. */
-
-  if (fullchunk) {
-    /* distribution */
-    for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) { 
-	lb->f[LB_ADDR(tc_nSites, 1, NVEL, baseIndex+iv, 0, p)] = fchunk[p*NSIMDVL+iv];
-      }
-    }
-    /* velocity */
-    for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
-	hydro->u[addr_rank1(hydro->nsite, NHDIM, baseIndex+iv, ia)] = u[ia][iv];
-      }
-    }
-  }
-  else {
-    __targetILP__(iv) {
-      if (includeSite[iv]) {
-	/* distribution */
-	for (p = 0; p < NVEL; p++) {
-	  lb->f[ LB_ADDR(tc_nSites, 1, NVEL, baseIndex + iv, LB_RHO, p) ]
-	    = fchunk[p*NSIMDVL+iv]; 
-	}
-	/* velocity */
-
-	for (ia = 0; ia < 3; ia++) {
-	  hydro->u[addr_rank1(hydro->nsite, NHDIM, baseIndex + iv, ia)] = u[ia][iv];
-	}
-      }
-    }
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  lb_collision_mrt_lattice
- *
- *  Kernel driver for thread-decomposed collision routine; this generates
- *  a loop over all lattice sites.
- *
- *****************************************************************************/
-
-__global__ void lb_collision_mrt_lattice(lb_t * lb, 
-					 hydro_t * hydro, 
-					 map_t * map,
-					 noise_t * noise, int noise_on,
-					 int nSites) {
-  int baseIndex = 0;
-
-  __targetTLP__(baseIndex, nSites) {
-    lb_collision_mrt_site(lb, hydro, map, noise,
-			  noise_on, baseIndex);
-  }
-
-
-  return;
 }
 
 /*****************************************************************************
@@ -485,74 +131,81 @@ __global__ void lb_collision_mrt_lattice(lb_t * lb,
  *
  *****************************************************************************/
 
-int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
-
-  int nhalo;
+__host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
+			      noise_t * noise) {
   int nlocal[3];
-  int Nall[3];
-  int nSites;
-  int noise_on = 0;
-  double force_global[3];
-  noise_t * noiset = NULL;
-  physics_t * phys = NULL;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
   assert(lb);
   assert(hydro);
   assert(map);
 
-  cs_nhalo(lb->cs, &nhalo);
   cs_nlocal(lb->cs, nlocal);
 
-  physics_ref(&phys);
-  physics_fbody(phys, force_global);
+  /* Local extent */
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  Nall[X] = nlocal[X]+2*nhalo;
-  Nall[Y] = nlocal[Y]+2*nhalo;
-  Nall[Z] = nlocal[Z]+2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
+  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
-  copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  /*copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));*/
-  copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));
-  copyConstToTarget(tc_mi_, mi_, NVEL*NVEL*sizeof(double));
-  /*  copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));*/
-  /* copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));*/
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  copyConstToTarget(&tc_nhalo,&nhalo, sizeof(int));
-  copyConstToTarget(tc_force_global,force_global, 3*sizeof(double));
-  /*copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));*/
-  copyConstToTarget(tc_Nall, Nall, 3*sizeof(int));
-
-  checkTargetError("constants");
-
-  noise_present(noise, NOISE_RHO, &noise_on);
-  noise_target(noise, &noiset);
+  lb_collision_parameters_commit(lb);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
-  lb_collision_mrt_lattice __targetLaunch__(nSites) ( lb->target, hydro->target, map->target, noiset, noise_on,nSites);
+  tdpLaunchKernel(lb_collision_mrt1, nblk, ntpb, 0, 0, ctxt->target,
+		  lb->target, hydro->target, map->target, noise->target);
 
-  targetSynchronize();
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   TIMER_stop(TIMER_COLLIDE_KERNEL);
+
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
 
-#else
+/*****************************************************************************
+ *
+ *  lb_collision_mrt1
+ *
+ *  Kernel driver for thread-decomposed collision routine; this generates
+ *  a loop over all lattice sites.
+ *
+ *****************************************************************************/
+
+__global__
+void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
+		       map_t * map, noise_t * noise) {
+  int kindex;
+  int kiter;
+
+  kiter = kernel_vector_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+    int index0;
+    index0 = kernel_baseindex(ktx, kindex);
+    lb_collision_mrt1_site(lb, hydro, map, noise, index0);
+  }
+
+  return;
+}
 
 /*****************************************************************************
  *
- *  lb_collision_mrt
+ *  lb_collision_mrt1_site
  *
  *  Collision with (potentially) different relaxation times for each
  *  different mode.
  *
  *  This code is per lattice site. To be called from
- *  lb_collision_mrt_lattice().
+ *  lb_collision_mrt1().
  *
- *  The matrices ma_ and mi_ project the distributions onto the
+ *  The matrices ma and mi project the distributions onto the
  *  modes, and vice-versa, respectively, for the current LB model.
  *
  *  The collision conserves density, and momentum (to within any
@@ -561,8 +214,9 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
  *
  *****************************************************************************/
 
-__device__ void lb_mrt_ndist1_site(lb_t * lb, hydro_t * hydro, map_t * map,
-				   noise_t * noise, const int index0) {
+static __device__
+void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
+			    noise_t * noise, const int index0) {
   
   int p, m;                               /* velocity index */
   int ia, ib;                             /* indices ("alphabeta") */
@@ -784,7 +438,7 @@ __device__ void lb_mrt_ndist1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   d3q19_mode2f_chunk(mode, fchunk, index0);
 #else
     for (p = 0; p < NVEL; p++) {
-      double ftmp[VVL];
+      double ftmp[NSIMDVL];
       __targetILP__(iv) ftmp[iv] = 0.0;
       for (m = 0; m < NVEL; m++) {
 	__targetILP__(iv) ftmp[iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
@@ -831,80 +485,6 @@ __device__ void lb_mrt_ndist1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 
 /*****************************************************************************
  *
- *  lb_collision_mrt_lattice
- *
- *  Kernel driver for thread-decomposed collision routine; this generates
- *  a loop over all lattice sites.
- *
- *****************************************************************************/
-
-__global__ void lb_mrt_ndist1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
-			      map_t * map, noise_t * noise) {
-  int kindex;
-  int kiter;
-
-  kiter = kernel_vector_iterations(ktx);
-
-  targetdp_simt_for(kindex, kiter, NSIMDVL) {
-    int index0;
-    index0 = kernel_baseindex(ktx, kindex);
-    lb_mrt_ndist1_site(lb, hydro, map, noise, index0);
-  }
-
-  return;
-}
-
-/*****************************************************************************
- *
- *  lb_collision_mrt
- *
- *  Single fluid collision driver (multiple relaxation time).
- *
- *****************************************************************************/
-
-int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
-
-  int nlocal[3];
-  dim3 nblk, ntpb;
-  kernel_info_t limits;
-  kernel_ctxt_t * ctxt = NULL;
-
-  assert(lb);
-  assert(hydro);
-  assert(map);
-
-  cs_nlocal(lb->cs, nlocal);
-
-  /* Local extent */
-  limits.imin = 1; limits.imax = nlocal[X];
-  limits.jmin = 1; limits.jmax = nlocal[Y];
-  limits.kmin = 1; limits.kmax = nlocal[Z];
-
-  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
-  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
-
-  lb_collision_parameters_commit(lb);
-
-  TIMER_start(TIMER_COLLIDE_KERNEL);
-
-  tdpLaunchKernel(lb_mrt_ndist1, nblk, ntpb, 0, 0, ctxt->target,
-		  lb->target, hydro->target, map->target, noise->target);
-
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
-
-  TIMER_stop(TIMER_COLLIDE_KERNEL);
-
-  kernel_ctxt_free(ctxt);
-
-  return 0;
-}
-
-
-#endif
-
-/*****************************************************************************
- *
  *  lb_collision_binary
  *
  *  Binary LB collision stage (here we are progressing toward
@@ -948,14 +528,11 @@ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise) {
 #define NDIST 2 /* for binary collision */
 
 
-__device__ void lb_collision_binary_site(lb_t * lb, 
-					 hydro_t * hydro,
-					 fe_symm_t * fe,
-					 noise_t * noise, int noise_on,
-					 const int baseIndex){
+__device__ void lb_mrt_ndist2_site(lb_t * lb, hydro_t * hydro, fe_symm_t * fe,
+				   noise_t * noise, const int index0) {
 
   int ia, ib, m, p;
-  
+  double f[NVEL*NSIMDVL];
   double mode[NVEL*NSIMDVL];    /* Modes; hydrodynamic + ghost */
   double rho[NSIMDVL]; 
   double rrho[NSIMDVL];         /* Density, reciprocal density */
@@ -1000,22 +577,30 @@ __device__ void lb_collision_binary_site(lb_t * lb,
 
 
 #ifdef _D3Q19_
-  d3q19_f2mode_hydro(mode, lb->f, 2, baseIndex);
+  for (p = 0; p < NVEL; p++) {
+    targetdp_simd_for(iv, NSIMDVL) {
+      f[p*VVL+iv] = lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)];
+    }
+  }
+  d3q19_f2mode_chunk(mode, f, index0);
+  /*d3q19_f2mode_hydro(mode, lb->f, 2, baseIndex);*/
 #else
     /* Compute all the modes */
     for (m = 0; m < NVEL; m++) {
-      __targetILP__(iv) mode[m*NSIMDVL+iv] = 0.0;
+      targetdp_simd_for(iv, NSIMDVL) {
+	mode[m][iv] = 0.0;
+      }
       for (p = 0; p < NVEL; p++) {
-	__targetILP__(iv) mode[m*NSIMDVL+iv] +=
-	  lb->f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex + iv, LB_RHO, p) ]
-	  *_lbp.ma[m][p];
+	targetdp_simd_for(iv) {
+	  mode[m][iv] += _lbp.ma[m][p]
+	    *lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)];
       }
     }
 #endif
 
   /* For convenience, write out the physical modes. */
   
-  __targetILP__(iv) rho[iv] = mode[0*NSIMDVL+iv];
+  __targetILP__(iv) rho[iv] = mode[0*VVL+iv];
   for (ia = 0; ia < 3; ia++) {
     __targetILP__(iv) u[ia][iv] = mode[(1 + ia)*VVL+iv];
   }
@@ -1041,20 +626,20 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   for (ia = 0; ia < 3; ia++) {
     __targetILP__(iv) {
       force[ia][iv] = _cp.force_global[ia] 
-	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, baseIndex+iv, ia)];
+	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
     }
   }
 
   for (ia = 0; ia < 3; ia++) {   
     __targetILP__(iv) {
-      hydro->u[addr_rank1(hydro->nsite, NHDIM, baseIndex+iv, ia)] = u[ia][iv];
+      hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
     }
-  }
+ }
   
   /* Compute the thermodynamic component of the stress */
 
-  fe_symm_str_v(fe, baseIndex, sth);
+  fe_symm_str_v(fe, index0, sth);
 
   /* Relax stress with different shear and bulk viscosity */
   
@@ -1088,24 +673,24 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   
   /* Relax each mode */
   __targetILP__(iv)
-    tr_s[iv] = tr_s[iv] - tc_rtau_bulk*(tr_s[iv] - tr_seq[iv]);
+    tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
   
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 
       __targetILP__(iv) {
-	s[ia][ib][iv] -= tc_rtau_shear*(s[ia][ib][iv] - seq[ia][ib][iv]);
+	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
 	s[ia][ib][iv] += d[ia][ib]*r3*tr_s[iv];
       
 	/* Correction from body force (assumes equal relaxation times) */
       
-	s[ia][ib][iv] += (2.0-tc_rtau_shear)
+	s[ia][ib][iv] += (2.0 - _lbp.rtau[LB_TAU_SHEAR])
 	               *(u[ia][iv]*force[ib][iv] + force[ia][iv]*u[ib][iv]);
       }
     }
   }
 
-  if (noise_on) {
+  if (noise->on[NOISE_RHO]) {
 
     /* Not vectorised */
 
@@ -1114,7 +699,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
       double shat1[3][3];
       double ghat1[NVEL];
 
-      lb_collision_fluctuations(lb, noise, baseIndex + iv, shat1, ghat1);
+      lb_collision_fluctuations(lb, noise, index0 + iv, shat1, ghat1);
 
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
@@ -1134,12 +719,12 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   for (ia = 0; ia < NDIM; ia++) {
     __targetILP__(iv) mode[(1 + ia)*VVL+iv] += force[ia][iv];
   }
-    
+
   m = 0;
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = ia; ib < NDIM; ib++) {
       __targetILP__(iv) {
-	mode[(1 + NDIM + m)*NSIMDVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
+	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
       }
       m++;
     }
@@ -1148,34 +733,43 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   /* Ghost modes are relaxed toward zero equilibrium. */
 
   for (m = NHYDRO; m < NVEL; m++) { 
-    __targetILP__(iv)  mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv] 
-	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
+    __targetILP__(iv)  {
+      mode[m*VVL+iv] = mode[m*VVL+iv] 
+	- lb->param->rtau[m]*(mode[m*VVL+iv] - 0.0) + ghat[m][iv];
+    }
   }
 
   /* Project post-collision modes back onto the distribution */
 
 #ifdef _D3Q19_  
-  d3q19_mode2f_hydro(mode, lb->f,2, baseIndex);
+  /*d3q19_mode2f_hydro(mode, lb->f,2, index0);*/
+  d3q19_mode2f_chunk(mode, f, index0);
+  for (p = 0; p < NVEL; p++) {
+    targetdp_simd_for(iv, NSIMDVL) {
+      lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)] =
+	f[p*VVL+iv];
+    }
+  }
 #else    
   for (p = 0; p < NVEL; p++) {
     double ftmp[NSIMDVL];
     __targetILP__(iv) ftmp[iv]=0.;
     for (m = 0; m < NVEL; m++) {
-      __targetILP__(iv) ftmp[iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
+      __targetILP__(iv) ftmp[iv] += _lbp.mi[p][m]*mode[m][iv];
     }
     __targetILP__(iv) {
-      lb->f[LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_RHO, p)] = ftmp[iv];
+      lb->f[LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_RHO, p)] = ftmp[iv];
     }
   }
 #endif
 
   /* Now, the order parameter distribution */
   __targetILP__(iv) {
-    phi[iv] = fe->phi->data[addr_rank0(fe->phi->nsites, baseIndex + iv)];
+    phi[iv] = fe->phi->data[addr_rank0(fe->phi->nsites, index0 + iv)];
   }
 
-  __targetILP__(iv){
-    fe_symm_mu(fe, baseIndex + iv, mu + iv);
+  __targetILP__(iv) {
+    fe_symm_mu(fe, index0 + iv, mu + iv);
     jphi[X][iv] = 0.0;
     jphi[Y][iv] = 0.0;
     jphi[Z][iv] = 0.0;
@@ -1185,12 +779,12 @@ __device__ void lb_collision_binary_site(lb_t * lb,
     for (ia = 0; ia < 3; ia++) {
       __targetILP__(iv) {
 	jphi[ia][iv] += _lbp.cv[p][ia]* 
-	lb->f[ LB_ADDR(tc_nSites, NDIST, NVEL, baseIndex+iv, LB_PHI, p) ];
+	lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ];
       }
     }
   }
 
-  /* Relax order parameters modes. See the comments above. */
+  /* Relax order parameter modes. See the comments above. */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -1208,7 +802,7 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   /* Now update the distribution */
   
 #ifdef _D3Q19_
-  d3q19_mode2f_phi(jdotc,sphidotq,sphi,phi,jphi, lb->f, baseIndex);
+  d3q19_mode2f_phi(jdotc,sphidotq,sphi,phi,jphi, lb->f, index0);
 #else
 
   for (p = 0; p < NVEL; p++) {
@@ -1239,68 +833,61 @@ __device__ void lb_collision_binary_site(lb_t * lb,
   return;
 }
 
-__global__ void lb_collision_binary_lattice(lb_t * lb, 
-					    hydro_t * hydro,
-					    fe_symm_t * fe,
-					    noise_t * noise, int noise_on){
-  int baseIndex = 0;
+__global__
+void lb_mrt_binary_lattice(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
+			   fe_symm_t * fe, noise_t * noise) {
+  int kindex;
+  int kiter;
 
-  __targetTLP__(baseIndex, tc_nSites) {
-    lb_collision_binary_site(lb, hydro, fe, noise, noise_on, baseIndex);
+  kiter = kernel_vector_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+    int index0;
+    index0 = kernel_baseindex(ktx, kindex);
+    lb_mrt_ndist2_site(lb, hydro, fe, noise, index0);
   }
-  
+
   return;
 }
 
 __host__
-int lb_collision_binary(lb_t * lb, hydro_t * hydro, map_t * map,
-			noise_t * noise, fe_symm_t * fe) {
+int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
+			fe_symm_t * fe) {
 
-  int Nall[3];
   int nlocal[3];
-  int nSites;
-  int nhalo;
-  int noise_on = 0;                  /* Fluctuations switch */
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
 
-  assert (NDIM == 3);
+  assert (NDIM == 3); /* NDIM = 2 warrants additional tests here. */
   assert(lb);
   assert(hydro);
-  assert(map);
+  assert(noise);
+  assert(fe);
 
-  cs_nhalo(lb->cs, &nhalo);
   cs_nlocal(lb->cs, nlocal);
 
-  noise_present(noise, NOISE_RHO, &noise_on);
+  /* Kernel extent */
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   lb_collision_parameters_commit(lb);
 
-  Nall[X] = nlocal[X]+2*nhalo;
-  Nall[Y] = nlocal[Y]+2*nhalo;
-  Nall[Z] = nlocal[Z]+2*nhalo;
-  nSites  = Nall[X]*Nall[Y]*Nall[Z];
-
-  tdpMemcpyToSymbol(tdpSymbol(coords), lb->cs->param, sizeof(cs_param_t), 0,
-		    tdpMemcpyHostToDevice);
-
-  copyConstToTarget(&tc_rtau_shear, &rtau_shear, sizeof(double));
-  copyConstToTarget(&tc_rtau_bulk, &rtau_bulk, sizeof(double));
-  /* copyConstToTarget(&tc_r2rcs4, &r2rcs4, sizeof(double));*/
-  /*copyConstToTarget(tc_wv, wv, NVEL*sizeof(double));*/
-  /*copyConstToTarget(tc_ma_, ma_, NVEL*NVEL*sizeof(double));*/
-  /* copyConstToTarget(tc_mi_, mi_, NVEL*NVEL*sizeof(double));*/
-  /*copyConstToTarget(tc_cv, cv, NVEL*3*sizeof(int));*/
-  /* copyConstToTarget(&tc_rtau2, &rtau2, sizeof(double));*/
-  /* copyConstToTarget(&tc_rcs2, &rcs2, sizeof(double));*/
-  copyConstToTarget(&tc_nSites,&nSites, sizeof(int));
-  /*copyConstToTarget(tc_q_, q_, NVEL*3*3*sizeof(double));*/
-
-  checkTargetError("constants");
-
   TIMER_start(TIMER_COLLIDE_KERNEL);
-  lb_collision_binary_lattice __targetLaunch__(nSites) (lb->target, hydro->target, fe->target, noise, noise_on);
 
-  targetSynchronize();
+  tdpLaunchKernel(lb_mrt_binary_lattice, nblk, ntpb, 0, 0, ctxt->target,
+		  lb->target, hydro->target, fe->target, noise->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
   TIMER_stop(TIMER_COLLIDE_KERNEL);
+
+  kernel_ctxt_free(ctxt);
 
   return 0;
 }
@@ -1463,6 +1050,8 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
   double rho0;
   double eta_shear;
   double eta_bulk;
+  double rtau_shear;
+  double rtau_bulk;
   double tau, rtau;
   physics_t * phys = NULL;
 
@@ -1563,8 +1152,8 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
     physics_ref(&phys);
     physics_kt(phys, &kt);
 
-    tau_s = 1.0/rtau_shear;
-    tau_b = 1.0/rtau_bulk;
+    tau_s = 1.0/lb->param->rtau[LB_TAU_SHEAR];
+    tau_b = 1.0/lb->param->rtau[LB_TAU_BULK];
 
     /* Initialise the stress variances */
 
@@ -3052,7 +2641,7 @@ __device__ void d3q19_f2mode_chunk(double* mode, const double* __restrict__ fchu
 __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk, int baseIndex)
 {
 
-  double ftmp[VVL];
+  double ftmp[NSIMDVL];
 
   int il=0;
 
