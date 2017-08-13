@@ -267,6 +267,7 @@ __host__ int noise_memcpy(noise_t * obj, tdpMemcpyKind flag) {
     switch (flag) {
     case tdpMemcpyHostToDevice:
       tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
+      tdpMemcpy(&obj->target->on, &obj->on, NOISE_END*sizeof(int), flag);
       tdpMemcpy(tmp, obj->state, nstat*sizeof(unsigned int), flag);
       break;
     case tdpMemcpyDeviceToHost:

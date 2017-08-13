@@ -176,6 +176,7 @@ const char *  tdpGetErrorName(tdpError_t error) {
     CASE_RETURN(tdpErrorLaunchOutOfResources);
     CASE_RETURN(tdpErrorInvalidDeviceFunction);
     CASE_RETURN(tdpErrorInvalidSymbol);
+    CASE_RETURN(tdpErrorInvalidDevicePointer);
     CASE_RETURN(tdpErrorInvalidResourceHandle);
   default:
     fprintf(stderr, "Unrecognised error code was %d\n", error);
