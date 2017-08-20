@@ -20,6 +20,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "leesedwards.h"
 #include "free_energy.h"
 #include "field.h"
 #include "field_grad.h"
@@ -37,6 +38,8 @@ struct fe_lc_s {
   fe_lc_param_t * param;      /* Parameters */
   field_t * q;                /* Q_ab (compresse rank 1 field) */
   field_grad_t * dq;          /* Gradients thereof */
+  field_t * p;                /* Active term P_a = Q_ak d_m Q_mk */
+  field_grad_t * dp;          /* Active term gradient d_a P_b */
   fe_lc_t * target;           /* Device structure */
 };
 
@@ -50,7 +53,9 @@ struct fe_lc_param_s {
   double kappa1;
 
   double xi;
-  double zeta;
+  double zeta0;                           /* active stress term delta_ab */
+  double zeta1;                           /* active stress term Q_ab */
+  double zeta2;                           /* active stress d_a P_b + d_b P_a */
   double redshift;                        /* Redshift */
   double rredshift;                       /* Reciprocal redshift */
   double epsilon;                         /* Dielectric anistropy */
@@ -65,6 +70,7 @@ struct fe_lc_param_s {
   int anchoring_coll;                     /* Colloids anchoring type */
   int anchoring_wall;                     /* Wall anchoring type */
   int is_redshift_updated;                /* Switch */
+  int is_active;                          /* Switch for active fluid */
 };
 
 /* Surface anchoring types */
@@ -75,14 +81,15 @@ enum lc_anchoring_enum {LC_ANCHORING_PLANAR = 0,
 };
 
 
-__host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
-			  fe_lc_t ** fe);
+__host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+			  field_t * q, field_grad_t * dq, fe_lc_t ** fe);
 __host__ int fe_lc_free(fe_lc_t * fe);
 __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values);
 __host__ int fe_lc_param_commit(fe_lc_t * fe);
 __host__ int fe_lc_redshift_set(fe_lc_t * fe,  double redshift);
 __host__ int fe_lc_redshift_compute(cs_t * cs, fe_lc_t * fe);
 __host__ int fe_lc_target(fe_lc_t * fe, fe_t ** target);
+__host__ int fe_lc_active_stress(fe_lc_t * fe);
 
 /* Host / device functions */
 
@@ -109,6 +116,9 @@ int fe_lc_compute_h(fe_lc_t * fe, double gaama,	double q[3][3],
 __host__ __device__
 int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3], double dq[3][3][3],
 			 double h[3][3], double sth[3][3]);
+__host__ __device__
+int fe_lc_compute_stress_active(fe_lc_t * fe, double q[3][3], double dp[3][3],
+				double sa[3][3]);
 
 __host__ __device__
 int fe_lc_chirality(fe_lc_t * fe, double * chirality);

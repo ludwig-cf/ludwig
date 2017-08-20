@@ -521,6 +521,7 @@ void ludwig_run(const char * inputfile) {
       fe_lc_redshift_compute(ludwig->cs, ludwig->fe_lc);
     }
     TIMER_stop(TIMER_PHI_GRADIENTS);
+    if (ludwig->fe_lc) fe_lc_active_stress(ludwig->fe_lc);
     
     /* Electrokinetics (including electro/symmetric requiring above
      * gradients for phi) */
@@ -944,6 +945,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->pch)       phi_ch_free(ludwig->pch);
 
   if (ludwig->stat_sigma) stats_sigma_free(ludwig->stat_sigma);
+  if (ludwig->fe) ludwig->fe->func->free(ludwig->fe);
 
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
@@ -1265,7 +1267,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
 
-    fe_lc_create(pe, cs, ludwig->q, ludwig->q_grad, &fe);
+    fe_lc_create(pe, cs, le, ludwig->q, ludwig->q_grad, &fe);
     beris_edw_create(pe, cs, le, &ludwig->be);
     blue_phase_init_rt(pe, rt, fe, ludwig->be);
 
@@ -1382,7 +1384,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Free energy details\n");
     pe_info(pe, "-------------------\n\n");
 
-    fe_lc_create(pe, cs, ludwig->q, ludwig->q_grad, &lc);
+    fe_lc_create(pe, cs, le, ludwig->q, ludwig->q_grad, &lc);
     beris_edw_create(pe, cs, le, &ludwig->be);
     blue_phase_init_rt(pe, rt, lc, ludwig->be);
 

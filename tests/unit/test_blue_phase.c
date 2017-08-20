@@ -75,7 +75,7 @@ int test_bp_suite(void) {
   field_grad_create(pe, fq, 2, &fqgrad);
   field_grad_set(fqgrad, grad_3d_27pt_fluid_d2, NULL);
 
-  fe_lc_create(pe, cs, fq, fqgrad, &fe);
+  fe_lc_create(pe, cs, le, fq, fqgrad, &fe);
 
   test_o8m_struct(pe, cs, le, fe, fq, fqgrad);
   do_test_fe_lc_device1(pe, cs, fe);

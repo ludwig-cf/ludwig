@@ -145,7 +145,11 @@ __host__ int fe_lc_droplet_free(fe_lc_droplet_t * fe) {
 
   assert(fe);
 
-  if (fe->target != fe) tdpFree(fe->target);
+  /* Free constituent parts, then self... */
+  fe_lc_free(fe->lc);
+  fe_symm_free(fe->symm);
+
+  if (fe->target != fe) tdpAssert(tdpFree(fe->target));
 
   free(fe->param);
   free(fe);
@@ -513,12 +517,11 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
   double h[3][3];
   int ia, ib, ic;
   double qh;
-  double xi, zeta;
+  double xi;
   const double r3 = (1.0/3.0);
   KRONECKER_DELTA_CHAR(d);
 
   xi = fe->lc->param->xi;
-  zeta = fe->lc->param->zeta;
   
   /* No redshift at the moment */
   
@@ -552,14 +555,6 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
 	  -xi*h[ia][ic]*(q[ib][ic] + r3*d[ib][ic])
 	  -xi*(q[ia][ic] + r3*d[ia][ic])*h[ib][ic];
       }
-    }
-  }
-
-  /* Additional active stress -zeta*(q_ab - 1/3 d_ab)Â */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] -= zeta*(q[ia][ib] + r3*d[ia][ib]);
     }
   }
 

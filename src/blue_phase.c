@@ -23,9 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pe.h"
 #include "util.h"
-#include "coords.h"
 #include "physics.h"
 #include "field_s.h"
 #include "field_grad_s.h"
@@ -70,10 +68,12 @@ static __constant__ fe_vt_t fe_dvt = {
  *
  *  fe_lc_create
  *
+ *  "le" only used in initialisation of field p, so may be NULL
+ *
  *****************************************************************************/
 
-__host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
-			  fe_lc_t ** pobj) {
+__host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+			  field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
 
   int ndevice;
   fe_lc_t * fe = NULL;
@@ -104,6 +104,13 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, field_t * q, field_grad_t * dq,
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
+    /* Additional active stress is host only at present */
+    int nhalo;
+    cs_nhalo(fe->cs, &nhalo);
+    field_create(fe->pe, fe->cs, 3, "Active P", &fe->p);
+    field_init(fe->p, nhalo, le);
+    field_grad_create(fe->pe, fe->p, 2, &fe->dp);
+    /* End additional steps */
     fe->target = fe;
   }
   else {
@@ -147,6 +154,9 @@ __host__ int fe_lc_free(fe_lc_t * fe) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
+
+  field_grad_free(fe->dp);
+  field_free(fe->p);
 
   free(fe->param);
   free(fe);
@@ -231,6 +241,9 @@ __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
 
   /* Must compute reciprocal of redshift */
   fe_lc_redshift_set(fe, fe->param->redshift);
+
+  /* Active terms switch (zeta0 does not count here) */
+  fe->param->is_active = (fe->param->zeta1 != 0.0 || fe->param->zeta2 != 0.0); 
 
   return 0;
 }
@@ -403,6 +416,19 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
   fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
   fe_lc_compute_stress(fe, q, dq, h, sth);
 
+  if (fe->param->is_active) {
+    int ia, ib;
+    double dp[3][3];
+    double sa[3][3];
+    field_grad_vector_grad(fe->dp, index, dp);
+    fe_lc_compute_stress_active(fe, q, dp, sa);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] += sa[ia][ib];
+      }
+    }
+  }
+
   return 0;
 }
 
@@ -510,19 +536,48 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
     }
   }
 
-  /* Additional active stress -zeta*(q_ab - 1/3 d_ab) */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sth[ia][ib] -= fe->param->zeta*(q[ia][ib] + r3*d[ia][ib]);
-    }
-  }
-
   /* This is the minus sign. */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_stress_active
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_compute_stress_active(fe_lc_t * fe,
+						    double q[3][3],
+						    double dp[3][3],
+						    double s[3][3]) {
+  int ia, ib;
+  KRONECKER_DELTA_CHAR(d);
+
+  /* Previously comment said: -zeta*(q_ab - 1/3 d_ab)
+   * while code was           -zeta*(q[ia][ib] + r3*d[ia][ib])
+   * for zeta = zeta1 */
+  /* The sign of zeta0 needs to be clarified cf Eq. 36 of notes */
+  /* For "backwards compatability" use zeta0 = +1/3 at the moment */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib] = -fe->param->zeta1*(q[ia][ib] + fe->param->zeta0*d[ia][ib])
+                -  fe->param->zeta2*(dp[ia][ib] + dp[ib][ia]);
+    }
+  }
+
+  /* This is an extra minus sign for the divergance. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	s[ia][ib] = -s[ia][ib];
     }
   }
 
@@ -1148,6 +1203,79 @@ __host__ int fe_lc_scalar_ops(double q[3][3], double qs[NQAB]) {
 
 /*****************************************************************************
  *
+ *  fe_lc_active_stress
+ *
+ *  Driver to compute the zeta2 term in the active stress. This must
+ *  be done
+ *    1. after computation of order parameter gradient d_a Q_bc
+ *    2. before the final stress computation
+ *
+ *  The full active stress is written:
+ *
+ *  S_ab = zeta_0 d_ab - zeta_1 Q_ab - zeta_2 (d_a P_b + d_b P_a)
+ *
+ *  where P_a = Q_ak d_m Q_mk. The first two terms are simple to compute.
+ *
+ *  Computation of the zeta_2 term is split into two stages. Here, we
+ *  compute P_a from the existing Q_ab and gradient d_a Q_bc. We then
+ *  take the gradient of P_a. This allows the complete term to be
+ *  computed as part of the stress.
+ *
+ *****************************************************************************/
+
+__host__ int fe_lc_active_stress(fe_lc_t * fe) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int ia, im, ik;
+
+  double q[3][3];
+  double dq[3][3][3];
+  double p[3];
+
+  assert(fe);
+  assert(fe->p);
+  assert(fe->dp);
+
+  if (fe->param->zeta2 == 0.0) return 0;
+
+  cs_nlocal(fe->cs, nlocal);
+
+  /* compute p_a */
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(fe->cs, ic, jc, kc);
+	field_tensor(fe->q, index, q);
+	field_grad_tensor_grad(fe->dq, index, dq);
+
+	for (ia = 0; ia < 3; ia++) {
+	  p[ia] = 0.0;
+	  for (ik = 0; ik < 3; ik++) {
+	    for (im = 0; im < 3; im++) {
+	      p[ia] += q[ia][ik]*dq[im][im][ik];
+	    }
+	  }
+	}
+
+	field_vector_set(fe->p, index, p);
+        /* Next site */
+      }
+    }
+  }
+
+  field_halo(fe->p);
+  fe->dp->d2 = fe->dq->d2; /* Kludge - set same gradient for dp */
+  field_grad_compute(fe->dp);
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  fe_lc_mol_field_v
  *
  *****************************************************************************/
@@ -1273,6 +1401,27 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
 
   fe_lc_compute_h_v(fe, q, dq, dsq, h);
   fe_lc_compute_stress_v(fe, q, dq, h, s);
+
+  if (fe->param->is_active) {
+    int ib;
+    double dp[3][3];
+    double sa[3][3];
+    double q1[3][3];
+    for (iv = 0; iv < NSIMDVL; iv++) {
+      field_grad_vector_grad(fe->dp, index + iv, dp);
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  q1[ia][ib] = q[ia][ib][iv];
+	}
+      }
+      fe_lc_compute_stress_active(fe, q1, dp, sa);
+      for (ia = 0; ia < 3; ia++) {
+	for (ib = 0; ib < 3; ib++) {
+	  s[ia][ib][iv] += sa[ia][ib];
+	}
+      }
+    }
+  }
 
   return;
 }
@@ -1662,7 +1811,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   double kappa1;
   double q0;
   double xi;
-  double zeta;
 
   double qh[NSIMDVL];
   double p0[NSIMDVL];
@@ -1677,7 +1825,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
 
   xi = fe->param->xi;
-  zeta = fe->param->zeta;
 
   /* We have ignored the rho T term at the moment, assumed to be zero
      (in particular, it has no divergence if rho = const). */
@@ -1744,7 +1891,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[0][2][iv] - h[0][2][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[0][0][iv] + r3);
 
   /* XX -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[X][X][iv] = -sthtmp[iv];
@@ -1794,7 +1940,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[1][2][iv] - h[0][2][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[0][1][iv]);
 
   /* XY with minus sign */
   targetdp_simd_for(iv, NSIMDVL) s[X][Y][iv] = -sthtmp[iv];
@@ -1844,7 +1989,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[2][2][iv] - h[0][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[0][2][iv]);
 
   /* XZ with -ve sign*/
   targetdp_simd_for(iv, NSIMDVL) s[X][Z][iv] = -sthtmp[iv];
@@ -1895,7 +2039,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[0][2][iv] - h[1][2][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[1][0][iv]);
 
   /* YX -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[Y][X][iv] = -sthtmp[iv];
@@ -1946,7 +2089,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[1][2][iv] - h[1][2][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[1][1][iv] + r3);
 
   /* YY -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[Y][Y][iv] = -sthtmp[iv];
@@ -1997,7 +2139,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[2][2][iv] - h[1][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[1][2][iv]);
 
   /* YZ -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[Y][Z][iv] = -sthtmp[iv];
@@ -2048,7 +2189,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[0][2][iv] - h[2][2][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[2][0][iv]);
 
   /* ZX -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[Z][X][iv] = -sthtmp[iv];
@@ -2100,7 +2240,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[1][2][iv] - h[2][2][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[2][1][iv]);
 
   /* ZY -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[Z][Y][iv] = -sthtmp[iv];
@@ -2151,7 +2290,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[2][2][iv] - h[2][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= zeta*(q[2][2][iv] + r3);
 
   /* ZZ -ve sign */
   targetdp_simd_for(iv, NSIMDVL) s[Z][Z][iv] = -sthtmp[iv];
