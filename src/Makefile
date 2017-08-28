@@ -34,7 +34,7 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-OPTS = -DNP_D3Q6
+OPTS = -DNP_D3Q6 -DNDEBUG
 LIBS = -L../targetDP -ltarget -lm
 INC = -I. -I ../targetDP
 
@@ -51,8 +51,8 @@ HAVE_PETSC =
 
 ifdef HAVE_PETSC
 OPTS += -DPETSC
-INC  += $(PETSC_INC)
-LIBS += $(PETSC_LIB)
+INC  += $(PETSC_INC) -I/Users/ohenrich/petsc-3.7.6/include -I/Users/ohenrich/petsc-3.7.6/arch-darwin-c-debug/include -I/opt/local/include 
+LIBS += $(PETSC_LIB) -Wl,-rpath,/Users/ohenrich/petsc-3.7.6/arch-darwin-c-debug/lib -Wl,-rpath,/Users/ohenrich/petsc-3.7.6/arch-darwin-c-debug/lib -L/Users/ohenrich/petsc-3.7.6/arch-darwin-c-debug/lib -Wl,-rpath,/opt/local/lib -L/opt/local/lib -Wl,-rpath,/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib -Wl,-rpath,/opt/local/lib/openmpi-mp -L/opt/local/lib/openmpi-mp -Wl,-rpath,/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/lib/darwin -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/8.1.0/lib/darwin -Wl,-rpath,/opt/local/lib/gcc6/gcc/x86_64-apple-darwin16/6.3.0 -L/opt/local/lib/gcc6/gcc/x86_64-apple-darwin16/6.3.0 -Wl,-rpath,/opt/local/lib/gcc6 -L/opt/local/lib/gcc6 -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.1.0/lib/darwin -lclang_rt.osx -lpetsc -llapack -lblas -lhwloc -lclang_rt.osx -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lgfortran -lgcc_ext.10.5 -lquadmath -lm -lclang_rt.osx -lmpi_cxx -lc++ -lto_library -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib -lLTO -Wl,-rpath,/opt/local/lib/openmpi-mp -L/opt/local/lib/openmpi-mp -ldl -lmpi -lSystem -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.1.0/lib/darwin -lclang_rt.osx -ldl
 endif 
 
 ###############################################################################

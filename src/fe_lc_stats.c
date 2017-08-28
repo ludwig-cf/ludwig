@@ -26,7 +26,13 @@ static int fe_lc_colloid(fe_lc_t * fe, colloids_info_t * cinfo,
 			 map_t * map, double * fs);
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
-			   double qs[3][3], char status, double * fe);
+			   double qs[3][3], char status, double * fs);
+
+static int fe_lc_bulk_grad(fe_lc_t * fe, map_t * map, double * fbg);
+
+__host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3], 
+			   double dq[3][3][3], double * fbg);
+
 
 #define NFE_STAT 5
 
@@ -48,7 +54,6 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
   double fed;
   double fe_local[NFE_STAT];
   double fe_total[NFE_STAT];
-  double rv;
 
   assert(pe);
   assert(cs);
@@ -119,12 +124,14 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
     }
   }
   else {
-    MPI_Reduce(fe_local, fe_total, 3, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
-    rv = 1.0/(L(X)*L(Y)*L(Z));
 
-    pe_info(pe, "\nFree energy density - timestep total fluid\n");
-    pe_info(pe, "[fed] %14d %17.10e %17.10e\n", step, rv*fe_total[0],
-	    fe_total[1]/fe_total[2]);
+    fe_lc_bulk_grad(fe, map, fe_local + 3);
+
+    MPI_Reduce(fe_local, fe_total, NFE_STAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
+
+    pe_info(pe, "\nFree energies - timestep f v f/v f_bulk/v f_grad/v redshift\n");
+    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n", step, 
+	fe_total[1], fe_total[2], fe_total[1]/fe_total[2], fe_total[3]/fe_total[2], fe_total[4]/fe_total[2], fe->param->redshift);
   }
 
   return 0;
@@ -515,7 +522,7 @@ static int fe_lc_colloid(fe_lc_t * fe, colloids_info_t * cinfo,
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
 			   double qs[3][3], char status,
-			   double * fe) {
+			   double * fs) {
 
   int ia, ib;
   double w1, w2;
@@ -556,7 +563,154 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
     }
   }
 
-  *fe = 0.5*w1*f1 + 0.5*w2*f2;
+  *fs = 0.5*w1*f1 + 0.5*w2*f2;
 
   return 0;
 }
+/*****************************************************************************
+ *
+ *  fe_lc_bulk_grad
+ *
+ *****************************************************************************/
+
+static int fe_lc_bulk_grad(fe_lc_t * fe,  map_t * map, double * fbg) {
+
+  int ic, jc, kc, index;
+  int nlocal[3];
+  int status;
+
+  double febg[2];
+  double q[3][3];
+  double h[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  coords_nlocal(nlocal);
+
+  assert(fe);
+  assert(map);
+  assert(fbg);
+
+  fbg[0] = 0.0;
+  fbg[1] = 0.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+        index = coords_index(ic, jc, kc);
+	map_status(map, index, &status);
+	if (status != MAP_FLUID) continue;
+
+	field_tensor(fe->q, index, q);
+	field_grad_tensor_grad(fe->dq, index, dq);
+	field_grad_tensor_delsq(fe->dq, index, dsq);
+	fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
+
+	blue_phase_fbg(fe->param, q, dq, febg);
+	fbg[0] += febg[0];
+	fbg[1] += febg[1];
+	
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_fbg
+ *
+ *  This computes statistics for the total, bulk and gradient free energy.
+ *
+ *****************************************************************************/
+
+__host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
+                           double dq[3][3][3], double * febg) {
+
+  int ia, ib, ic, id;
+  double q0, redshift, rredshift, a0, gamma, kappa0, kappa1;
+  double q2, q3, dq0, dq1, sum;
+  const double r3 = 1.0/3.0;
+  LEVI_CIVITA_CHAR(e);
+
+  q0 = feparam->q0;
+  kappa0 = feparam->kappa0;
+  kappa1 = feparam->kappa1;
+
+  // Use current redshift.
+  redshift = feparam->redshift;
+  rredshift = feparam->rredshift;
+
+  q0 *= rredshift;
+  kappa0 *= redshift*redshift;
+  kappa1 *= redshift*redshift;
+
+  a0 = feparam->a0;
+  gamma = feparam->gamma;
+
+  q2 = 0.0;
+
+  // Q_ab^2
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  // Q_ab Q_bd Q_da
+
+  q3 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	// We use here the fact that q[ic][ia] = q[ia][ic]
+	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
+      }
+    }
+  }
+
+  // (d_b Q_ab)^2
+
+  dq0 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    sum = 0.0;
+    for (ib = 0; ib < 3; ib++) {
+      sum += dq[ib][ia][ib];
+    }
+    dq0 += sum*sum;
+  }
+
+  // (e_agd d_g Q_db + 2q_0 Q_ab)^2
+
+  dq1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (id = 0; id < 3; id++) {
+	for (ic = 0; ic < 3; ic++) {
+	  sum += e[ia][id][ic]*dq[id][ic][ib];
+	}
+      }
+      sum += 2.0*q0*q[ia][ib];
+      dq1 += sum*sum;
+    }
+  }
+
+  // Contribution bulk
+  febg[0] = 0.5*a0*(1.0 - r3*gamma)*q2;
+  febg[0] += -r3*a0*gamma*q3;
+  febg[0] += 0.25*a0*gamma*q2*q2;
+
+  // Contribution gradient kapp0 and kappa1
+  febg[1] = 0.5*kappa0*dq0;
+  febg[1] += 0.5*kappa1*dq1;
+
+  return 0;
+}
+
