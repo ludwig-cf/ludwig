@@ -98,10 +98,10 @@ int fe_lc_stats_info(pe_t * pe, cs_t * cs, fe_lc_t * fe,
 
     MPI_Reduce(fe_local, fe_total, NFE_STAT, MPI_DOUBLE, MPI_SUM, 0, pe_comm());
 
-    pe_info(pe, "\nFree energies - timestep f v f/v f_s1 fs_s2 \n");
-    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e\n",
+    pe_info(pe, "\nFree energies - timestep f v f/v f_s1 fs_s2 redshift\n");
+    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
 	    step, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	    fe_total[3], fe_total[4]);
+	    fe_total[3], fe_total[4], fe->param->redshift);
   }
   else if (ncolloid > 0) {
 
