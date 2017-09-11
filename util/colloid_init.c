@@ -57,17 +57,17 @@ double v_lj(double r, double rc);
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {66.0, 128.0, 256.0};  /* Total system size (cf. input) */
-  int periodic[3] = {0, 1, 1};           /* 0 = wall, 1 = periodic */
+  int ntotal[3] = {32.0, 32.0, 32.0};  /* Total system size (cf. input) */
+  int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
   int file_format = ASCII;
 
   int n;
   int nrequest;
   int nactual;
 
-  double a0 = 5.0;   /* Input radius */
-  double ah = 5.0;   /* Hydrodynamic radius */ 
-  double vf = 0.20;   /* Volume fraction */
+  double a0 = 3.5;   /* Input radius */
+  double ah = 3.5;   /* Hydrodynamic radius */ 
+  double vf = 0.02;  /* Volume fraction */
   double dh = 0.5;   /* "grace' distance */
   double q0 = 0.0;   /* positive charge */ 
   double q1 = 0.0;   /* negative charge */
@@ -108,7 +108,7 @@ int main(int argc, char ** argv) {
     state[n].rng = 1 + n;
   }
 
-  if (vf < 1e-12) {
+  if (vf < 0.35) {
     /* Set positions through random insertion */
     nactual = colloid_init_random(nrequest, state, dh);
   }
@@ -428,13 +428,15 @@ int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
     exit(1);
   }
 
-// return nactual;
-
   n = 0;
   delta = 0.01*ah_ref;
 
   for (im = 0; im < NMC; im++) {
-    if (im%1000 ==0) printf("MC move #%d\r", im); fflush(stdout); 
+
+    if (im%1000 == 0) {
+      printf("MC move #%d\r", im); 
+      fflush(stdout); 
+    }
 
     eno = 0.0;
     enn = 0.0;
