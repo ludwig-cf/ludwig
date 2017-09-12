@@ -116,6 +116,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   zeta1 = 0.0;
   zeta2 = 0.0;
   rt_double_parameter(rt, "lc_active_zeta", &zeta1);
+  rt_double_parameter(rt, "lc_active_zeta2", &zeta2);
   fe_param.zeta0 = zeta0;
   fe_param.zeta1 = zeta1;
   fe_param.zeta2 = zeta2;
@@ -145,6 +146,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   pe_info(pe, "Dynamic redshift update    = %14s\n",
 	  redshift_update == 0 ? "no" : "yes");
   pe_info(pe, "LC activity constant zeta  = %14.7e\n", fe_param.zeta1);
+  pe_info(pe, "LC activity constant zeta2  = %14.7e\n", fe_param.zeta2);
 
 
   /* Default electric field stuff zero */
