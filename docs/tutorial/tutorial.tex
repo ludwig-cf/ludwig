@@ -171,6 +171,7 @@ and rename to \texttt{config.mk}: \\
 \begin{lstlisting}
 $ cp config/lunix-gcc-default.mk ./config.mk
 \end{lstlisting}
+Note that you may need to specify the path to the MPI wrapper compiler in this file.
 \item Issue \texttt{make} in \texttt{/targetDP}: \\
 \begin{lstlisting}
 $ cd targetDP/
@@ -281,7 +282,7 @@ output at time step $10,000$ can be found, in addition to a file containing the 
   \end{center}
 \end{figure}
 
-\subsection{Test 1: Spinodal Decomposition of a Binary Fluid}
+\subsection{Test 2: Spinodal Decomposition of a Binary Fluid}
 
 This section outlines the second example, the spinodal decomposition of a binary fluid in 
 three-dimensions.
@@ -337,7 +338,7 @@ Filters/Common/Contour or in the tool bar:
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=0.8\linewidth]{contour.png}
-  \caption{The contour button in the toolbar.}
+  \caption{The contour button in the tool bar.}
   \label{fig:contour}
   \end{center}
 \end{figure}
@@ -350,7 +351,7 @@ Filters/Common/Glyph or in the tool bar:
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=0.8\linewidth]{glyph.png}
-  \caption{The glyph button in the toolbar}
+  \caption{The glyph button in the tool bar}
   \label{fig:glyph}
   \end{center}
 \end{figure}
@@ -382,7 +383,7 @@ A 3D visualisation of the system should also now be shown:
 \begin{center}
 \includegraphics[width=0.4\linewidth]{arrows.png}
   \caption{A visualisation of a separating binary fluid using ParaView.}
-  \label{fig:sysVisualisation}
+  \label{fig:changeFrame}
   \end{center}
 \end{figure}
 
@@ -391,6 +392,152 @@ as you do this, you should see the coarsening of the binary fluid.
 \item In the File menu you can save a screen shot of the visualisation or save the state of the system in order to reload the entire visualisation.
 \end{enumerate}
 \end{enumerate} 
+
+\subsection{Test 3: Colloids Dispersed in a Liquid Crystalline Fluid}
+
+For this third example, the system being used is a that of colloidal particles suspended in 
+a liquid crystalline fluid.
+The example illustrates the post-processing procedure for a colloidal system in addition to 
+demonstrating the ways to visualise liquid crystals in ParaView. 
+As before, the code should be compiled in parallel and the executable 
+\texttt{Ludwig.exe} should be copied into your working directory.
+
+\begin{enumerate}
+\item Copy the input file \texttt{input} located in the directory 
+\texttt{/trunk/docs/tutorial/test3} to your working directory. We see in this input file that 
+there are many more parameters 
+than in the previous examples. Specifically, we note that \texttt{colloid\_cell\_min} 
+must be set if colloids are present and must be at least $2r + \delta$ where $r$ is colloid 
+radius and $\delta$ - here set to 0.5 - catches any colloid-colloid interactions. This is shown for our example - where this value is set to 8.0 - in Fig. \ref{fig:colloid_int}.
+
+ \begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.5\linewidth]{colloidInit.png}
+  \caption{A diagrammatic representation of a colloid in a 32$^3$ system showing that the value, \texttt{colloid\_cell\_min} must be set such that it can contain the entire colloid plus colloid-colloid interactions.}
+  \label{fig:colloid_int}
+  \end{center}
+\end{figure}
+
+\item The following steps outline the preliminary stages required in order to initialise the colloidal system and for the visualisation of colloids. Firstly compile the code in serial and go to the directory \texttt{ludwig/trunk/util} here you should see the files \texttt{colloid\_init.c} and \texttt{extract\_colloid.c}. These are the file required for the initialisation and visualisation of colloids respectively.
+\item In the file, \texttt{colloid\_init.c} set the flags for:
+\begin{enumerate}
+\item \texttt{NMC = 0},
+\item \texttt{periodic[3] = {1,1,1}} \\ for our fully periodic system,
+\item \texttt{file\_format=ASCII} \\ resulting in ASCII output,
+\item \texttt{a0 = 3.5} \\ which sets the radius of the colloids,
+\item \texttt{ah = 3.5} \\ which sets the hydrodynamic radius of the colloid,
+\item \texttt{vf = 0.02} \\ this sets the volume fraction of colloids to 2\%, for our system of size 32$^2$ with colloids of radius 3.5, this will result in 3 colloids,
+\item \texttt{dh = 0.5} \\ to set the grace distance for interactions (note that this means that one colloid plus this distance is less than \texttt{colloid\_cell\_min} which was set in the input file.
+\end{enumerate}
+\item Now issue: \\
+\begin{lstlisting}
+$ make colloid_init
+$ ./colloid_init
+\end{lstlisting}
+this produces a file, \texttt{config.cds.init.001-001} which should be copied into your working directory.
+\item In the file, \texttt{extract\_colloids.c} set:
+\begin{enumerate}
+\item The system size, \texttt{NX},  \texttt{NY},  \texttt{NZ} all = 32,
+\item \texttt{iread\_ascii = 1} \\ since the output is in ASCII,
+\item \texttt{cds\_with\_v  = 1} \\ which will output the velocities and positions of the colloids,
+\end{enumerate}
+\item Now issue: \\
+\begin{lstlisting}
+$ make extract_colloids
+\end{lstlisting}
+and copy the executable \texttt{extract\_colloids} into your working directory along with the 
+usual post-processing scripts, \texttt{vtk\_extract.c} and \texttt{vtk\_extract\_script.py} 
+scripts. 
+\item Next, run the code in your working directory by issuing the command:
+\begin{lstlisting}
+$ mpirun -np 8 ./Ludwig.exe input
+\end{lstlisting}
+\item For the post-processing of this system, in \texttt{vtk\_extract.c}, set:
+\begin{enumerate}
+\item \texttt{input\_binary\_  = 1} \\ due to binary output from code,
+\item \texttt{output\_binary\_ = 0} \\ for output to be visualised in ASCII,
+\item \texttt{output\_lc\_op\_   = 1} \\ to visualise the liquid crystal order parameter,
+\item \texttt{output\_lc\_dir\_  = 1} \\ to visualise the liquid crystal director field,
+\item \texttt{output\_lc\_biop\_ = 0} \\ since the liquid crystals are not biaxial,
+\end{enumerate}
+\item and in \texttt{vtk\_extract\_script.py},
+\begin{enumerate}
+\item \texttt{vel = 1}, \\ to visualise the velocity field,
+\item \texttt{q = 1}, \\ since there are liquid crystals present,
+\item \texttt{colcds = 0} and 
+\item \texttt{colcdsvel = 1} so that the colloid position and velocity data are both available.
+\end{enumerate}
+\item After running the python script as before, \texttt{.csv} files with the colloid data should 
+be seen in addition to the \texttt{.vtk} files for the velocity, order parameter and director field.
+\item The system can now be visualised, again using ParaView:
+\begin{enumerate}
+\item The liquid crystal, scalar order parameter can be visualised by opening the files: 
+\texttt{op-q-XXXXXXXX.vtk} and applying the `contour' filter. By setting a threshold 
+minimum $1 \times 10^{-4}$ the order parameter in the colloids can be ignored, this can be done using the tool bar:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.8\linewidth]{thresh.png}
+  \caption{The threshold button in the tool bar.}
+  \label{fig:thresh}
+  \end{center}
+\end{figure}
+
+\item For the director field open the \texttt{dir-q-XXXXXXXX.vtk} and apply the `glyphvector' filter. In this case, change the glyph 
+type from `arrow' to `line' and scale the colour of the lines by the $x$-component of the 
+vector.
+\item The velocity field can be visualised using arrows as before with the `glyphvector' filter.
+\item To visualise the colloids, open the files \texttt{col-cdsXXXXXXXX.csv}. This will open 
+a table, which can be closed. Next apply the filter `Table to Points' found in 
+Filters/Alphabetical/Table to Points and set the X, Y and Z Columns in the `Properties' tab 
+below the Pipeline Browser to be the $x$, $y$ and $z$-coordinates in the table via the 
+drop down menus:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.5\linewidth]{colloidCoords.png}
+  \caption{Setting the coordinates of the colloid locations in the properties tab.}
+  \label{fig:collCoords}
+  \end{center}
+\end{figure}
+
+ You should now see points in the render window at the location of the centres of each of the colloids.
+\item To fully visualise the colloids, apply the `glyphvector' filter and set glyph type to 
+`sphere.' In the properties tab, set the radius to 3.5, scale mode `off' and scale factor to 
+1.0 in the properties. In order to access these settings, you will need to click the `cog' icon shown here:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.5\linewidth]{cog.png}
+  \caption{Location of the `cog' icon in the properties tab.}
+  \label{fig:cog}
+  \end{center}
+\end{figure}
+
+\item Next, glyph mode must be set to `all points' and you should set the colour of teh spheres to `Solid Color'. Finally, you can increase the resolution of the spheres by increasing the `Theta Resolution' and `Phi Resolution' quantities.
+\item In the pipeline browser, should now see: 
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.6\linewidth]{colloidsPipeline.png}
+  \caption{The pipeline browser for the colloidal suspension in liquid crystals.}
+  \label{fig:collPipe}
+  \end{center}
+\end{figure}
+
+The 3D visualisation of this system should appear as:
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=0.6\linewidth]{colloidSystem.png}
+  \caption{The visualisation of the colloidal suspension in liquid crystals.}
+  \label{fig:collVis}
+  \end{center}
+\end{figure}
+
+
+\end{enumerate}
+\end{enumerate}
 
 %\clearpage
 %\vfill\pagebreak
