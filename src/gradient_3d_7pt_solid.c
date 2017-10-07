@@ -34,6 +34,10 @@
  *
  *  This will also cope with parallel boundaries separated by one fluid
  *  points, whatever the solid involved.
+ *
+ *  Experimental feature.
+ *  Depedence on the compositional order parameter phi is introduced
+ *  to allow wetting in the LC droplet case.
  * 
  *  $Id$
  *
@@ -41,7 +45,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
+ *  (c) 2011-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -67,6 +71,7 @@ struct grad_lc_anch_s {
   cs_t * cs;
   param_t * param;           /* Boundary condition parameters */
   map_t * map;               /* Supports a map */
+  field_t * phi;             /* Compositional order parameter */
   colloids_info_t * cinfo;   /* Supports colloids */
   fe_lc_t * fe;              /* Liquid crystal free energy */
   grad_lc_anch_t * target;   /* Device memory */
@@ -108,10 +113,12 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
  *
  *  grad_lc_anch_create
  *
+ *  phi may be NULL, in which case this is the bare LC case.
+ *
  *****************************************************************************/
 
 __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
-				 colloids_info_t * cinfo,
+				 field_t * phi, colloids_info_t * cinfo,
 				 fe_lc_t * fe, grad_lc_anch_t ** pobj) {
 
   int ndevice;
@@ -130,6 +137,7 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   obj->pe = pe;
   obj->cs = cs;
   obj->map = map;
+  obj->phi = phi;
   obj->cinfo = cinfo;
   obj->fe = fe;
   gradient_param_init(obj);
@@ -342,6 +350,18 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
     if (map->status[index] == MAP_FLUID) {
 
       q = fg->field;
+
+      /* Note on compositional order parameter.
+       * Code such as the following would give the composition at
+       * this lattice site.
+       * if (anch->phi == NULL) {
+       *    phi not available
+       * }
+       * else {
+       *   phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)]
+       * }
+       * Any and all code involving phi should check of anch->phi NULL.
+       */
 
       /* Set up partial gradients and identify solid neighbours
        * (unknowns) in various directions. If both neighbours

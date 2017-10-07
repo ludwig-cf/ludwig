@@ -10,7 +10,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -34,7 +34,8 @@
  *
  *****************************************************************************/
 
-int gradient_rt_init(pe_t * pe, rt_t * rt, field_grad_t * grad, map_t * map,
+int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
+		     field_grad_t * grad, map_t * map,
 		     colloids_info_t * cinfo) {
 
   int n;
@@ -45,7 +46,21 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, field_grad_t * grad, map_t * map,
 
   assert(grad);
 
+  /* fd_gradient_calculation is     defualt
+   * fd_gradient_calculation_phi    overrides if and only if field is phi
+   * fd_gradient_calculation_q      overrides if and only if field is Q_ab
+   */
+
   n = rt_string_parameter(rt, "fd_gradient_calculation", keyvalue, BUFSIZ);
+
+  if (strcmp(fieldname, "phi") == 0) {
+    n += rt_string_parameter(rt, "fd_gradient_calculation_phi", keyvalue,
+			     BUFSIZ);
+  }
+  if (strcmp(fieldname, "q") == 0) {
+    n += rt_string_parameter(rt, "fd_gradient_calculation_q", keyvalue,
+			     BUFSIZ);
+  }
 
   if (n == 0) {
     pe_info(pe, "You must specify the keyvalue fd_gradient_calculation\n");

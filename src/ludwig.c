@@ -343,13 +343,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* gradient initialisation for field stuff */
 
   if (ludwig->phi) {
-    gradient_rt_init(pe, rt, ludwig->phi_grad, ludwig->map, ludwig->collinfo);
+    gradient_rt_init(pe, rt, "phi", ludwig->phi_grad, ludwig->map,
+		     ludwig->collinfo);
   }
   if (ludwig->p) {
-    gradient_rt_init(pe, rt, ludwig->p_grad, ludwig->map, ludwig->collinfo);
+    gradient_rt_init(pe, rt, "p", ludwig->p_grad, ludwig->map,
+		     ludwig->collinfo);
   }
   if (ludwig->q) {
-    gradient_rt_init(pe, rt, ludwig->q_grad, ludwig->map, ludwig->collinfo);
+    gradient_rt_init(pe, rt, "q", ludwig->q_grad, ludwig->map,
+		     ludwig->collinfo);
   }
 
   stats_rheology_init();
@@ -1280,7 +1283,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
     /* Not very elegant, but here ... */
-    grad_lc_anch_create(pe, cs, NULL, NULL, fe, NULL);
+    grad_lc_anch_create(pe, cs, NULL, NULL, NULL, fe, NULL);
 
     ludwig->fe_lc = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1392,7 +1395,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_lc_droplet_create(lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
 
-    grad_lc_anch_create(pe, cs, NULL, NULL, lc, NULL);
+    grad_lc_anch_create(pe, cs, NULL, ludwig->phi, NULL, lc, NULL);
 
     ludwig->fe_symm = symm;
     ludwig->fe_lc = lc;
