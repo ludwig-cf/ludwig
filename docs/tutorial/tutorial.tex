@@ -115,12 +115,12 @@
 This tutorial document takes new users of the \texttt{Ludwig} code through the process of how to obtain 
 and build the code before outlining some short tutorial exercises where simulations 
 of simple example cases will be run and visualised.
-It is assumed that the reader is familar with UNIX-based operationg systems and has 
+It is assumed that the reader is familar with UNIX-based operating systems and has 
 a basic knowledge of hydrodynamics, complex fluids, and to some extent statistical physics. 
 This knowledge will be required to make sense of the input and output involved in using the code. 
 
 The system requirements are an up-to-date version of a C compiler as well as working installations 
-of Apache's Subversion (SVN) version control system, the visualisation tool
+of a text editor like \texttt{vi} or \texttt{emacs}, Apache's Subversion (SVN) version control system, the visualisation tool
 ParaView (\hyperref[ParaView]{https://www.paraview.org}), the MPI-library 
 for compiling the parallel version of the code and \texttt{gnuplot} for simple visualisations.
 
@@ -156,7 +156,7 @@ $ cd /ludwig/trunk/docs/
 $ make pdf
 \end{lstlisting}
 
-\subsection{Configuration and Build}
+\subsection{Configuration and Build}\label{configbuild}
 
 The following section outlines the configuration and compilation 
 procedure. The configuration step is based on the GNU Compiler Collection gcc.
@@ -167,7 +167,7 @@ procedure. The configuration step is based on the GNU Compiler Collection gcc.
 $ cd ludwig/trunk
 \end{lstlisting}
 \item Copy the configuration file \texttt{lunix-gcc-default.mk} to the \texttt{/trunk} directory 
-and rename to \texttt{config.mk}: \\
+and rename to \texttt{config.mk} (both steps exectued below at once): \\
 \begin{lstlisting}
 $ cp config/lunix-gcc-default.mk ./config.mk
 \end{lstlisting}
@@ -212,7 +212,13 @@ To compile the parallel version of the code issue: \\
 \begin{lstlisting}
 $ make mpi
 \end{lstlisting} 
-This creates the executable file \texttt{Ludwig.exe} in \texttt{/src}.
+This creates the executable file \texttt{Ludwig.exe} in \texttt{/src}. 
+Before going from a serial to a parallel compilation or vice versa
+you should clean the directory by issuing
+\begin{lstlisting}
+$ make clean
+\end{lstlisting}
+
 \end{enumerate}
 
 \section{Tutorial Test Exercises}
@@ -418,7 +424,7 @@ radius and $\delta$ - here set to 0.5 - catches any colloid-colloid interactions
   \end{center}
 \end{figure}
 
-\item The following steps outline the preliminary stages required in order to initialise the colloidal system and for the visualisation of colloids. Firstly compile the code in serial and go to the directory \texttt{ludwig/trunk/util} here you should see the files \texttt{colloid\_init.c} and \texttt{extract\_colloid.c}. These are the file required for the initialisation and visualisation of colloids respectively.
+\item The following steps outline the preliminary stages required in order to initialise the colloidal system and for the visualisation of colloids. Firstly compile the code in serial (see section \ref{configbuild})and go to the directory \texttt{ludwig/trunk/util} here you should see the files \texttt{colloid\_init.c} and \texttt{extract\_colloid.c}. These are the file required for the initialisation and visualisation of colloids respectively.
 \item In the file, \texttt{colloid\_init.c} set the flags for:
 \begin{enumerate}
 \item \texttt{NMC = 0},
