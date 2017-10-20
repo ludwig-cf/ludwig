@@ -38,7 +38,7 @@ struct fe_lc_droplet_s {
 struct fe_lc_droplet_param_s {
   double gamma0; /* \gamma(phi) = gamma0 + delta x (1 + phi) */
   double delta;  /* As above */
-  double w;      /* Surface nchoring constant */
+  double w;      /* Surface anchoring constant */
 };
 
 __host__ int fe_lc_droplet_create(fe_lc_t * lc, fe_symm_t * symm,
