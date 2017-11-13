@@ -101,6 +101,7 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
       pe_info(pe, "3d_27pt_solid\n");
       f2 = grad_3d_27pt_solid_d2;
       f4 = NULL;
+      field_grad_dab_set(grad, grad_3d_27pt_solid_dab);
       assert(map);
       grad_3d_27pt_solid_map_set(map);
     }
