@@ -103,7 +103,7 @@ int colloids_q_boundary(fe_lc_param_t * param, const double n[3],
 			double qs[3][3], double q0[3][3],
 			int map_status);
 __host__ __device__
-int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
+int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch, 
 			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
@@ -351,22 +351,10 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 
       q = fg->field;
 
-      /* Note on compositional order parameter.
-       * Code such as the following would give the composition at
-       * this lattice site.
-       * if (anch->phi == NULL) {
-       *    phi not available
-       * }
-       * else {
-       *   phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)]
-       * }
-       * Any and all code involving phi should check of anch->phi NULL.
-       */
-
       /* Set up partial gradients and identify solid neighbours
        * (unknowns) in various directions. If both neighbours
        * in one coordinate direction are solid, treat as known. */
-      
+
       nunknown = 0;
       
       for (ia = 0; ia < 3; ia++) {
@@ -437,7 +425,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  - q->data[addr_rank1(q->nsites, NQAB, index, XX)]
 	  - q->data[addr_rank1(q->nsites, NQAB, index, YY)];
 	
-	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
 			     bcs[normal[0]], status[normal[0]], c, cinfo);
 	
 	/* Constant terms all move to RHS (hence -ve sign). Factors
@@ -461,7 +449,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       
       if (nunknown > 1) {
 	
-	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
 			     bcs[normal[1]], status[normal[1]], c, cinfo);
 	
 	b18[1*NSYMM + XX] = -1.0*c[X][X];
@@ -481,7 +469,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       
       if (nunknown > 2) {
 	
-	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
 			     bcs[normal[2]], status[normal[2]], c, cinfo);
 	
 	b18[2*NSYMM + XX] = -1.0*c[X][X];
@@ -626,7 +614,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	}
       }
       
-      /* Fix the trace (don't care about Qzz in the end) */
+      /* Fix the trace (don't store Qzz in the end) */
       
       for (n = 0; n < nunknown; n++) {
 	
@@ -922,14 +910,14 @@ int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
  *
  *  q_boundary_constants
  *
- *  Compute the comstant term in the cholesteric boundary condition.
+ *  Compute the constant term in the cholesteric boundary condition.
  *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
  *  The outward normal is di[3], and the map status is as given.
  *
  *****************************************************************************/
 
 __host__ __device__
-int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
+int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch,
 			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
@@ -946,6 +934,7 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
   double q2 = 0.0;
   double rd;
   double amp;
+  double phi, wphi;
   KRONECKER_DELTA_CHAR(d);
   LEVI_CIVITA_CHAR(e);
 
@@ -1042,9 +1031,26 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
        *                   have Qtilde appearing explicitly.
        *                   See colloids_q_boundary() etc */
 
+      /* Default case without compositional order parameter */
+      if (anch->phi == NULL) {
+	wphi = 1.0;
+      }
+      /* Compositional order parameter for LC wetting:
+	 The LC anchoring strengths w1 and w2 vanish in the disordered phase.
+	 We assume this is the phase which has a positive binary OP. 
+	 The standard anchoring case corresponds to phi = -1.0 */
+      else {
+	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
+	wphi = 0.5*(1.0-phi);
+	if (phi < -1.0) wphi = 1.0;
+	if (phi > +1.0) wphi = 0.0;
+      }
+
       c[ia][ib] +=
-	-w1*(qs[ia][ib] - q0[ia][ib])
-	-w2*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+	-w1*wphi*(qs[ia][ib] - q0[ia][ib])
+	-w2*wphi*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+
+
     }
   }
 
