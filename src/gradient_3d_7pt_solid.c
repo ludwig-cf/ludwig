@@ -1042,8 +1042,6 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
       else {
 	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
 	wphi = 0.5*(1.0-phi);
-	if (phi < -1.0) wphi = 1.0;
-	if (phi > +1.0) wphi = 0.0;
       }
 
       c[ia][ib] +=
