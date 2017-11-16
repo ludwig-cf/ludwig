@@ -23,6 +23,7 @@
 #include "field.h"
 #include "field_grad.h"
 #include "hydro.h"
+#include "map_s.h"
 
 typedef struct fe_lc_droplet_s fe_lc_droplet_t;
 typedef struct fe_lc_droplet_param_s fe_lc_droplet_param_t;
@@ -77,6 +78,6 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
 						   double h[3][3][NSIMDVL]);
 
 __host__ int  fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
-				      hydro_t * hydro);
+					      hydro_t * hydro, map_t * map);
 
 #endif
