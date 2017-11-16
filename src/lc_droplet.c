@@ -643,15 +643,15 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
  *****************************************************************************/
   
 int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
-			    hydro_t * hydro) {
+			    hydro_t * hydro, map_t * map) {
 
-  int ic, jc, kc, icm1, icp1;
+  int ic, jc, kc, icm1, icm2, icp1, icp2;
   int ia, ib;
-  int index0, indexm1, indexp1;
+  int index0, indexm1, indexm2, indexp1, indexp2;
   int nhalo;
   int nlocal[3];
-  int zs, ys;
-  double mum1, mup1;
+  int ys, zs;
+  double mu0, mum1, mum2, mup1, mup2;
   double force[3];
 
   double h[3][3];
@@ -659,9 +659,12 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
   double dq[3][3][3];
   double phi;
 
+  int statusm1, statusp1;
+
   assert(fe);
   assert(le);
   assert(hydro);
+  assert(map);
 
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal(le, nlocal);
@@ -680,7 +683,7 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index0 = lees_edw_index(le, ic, jc, kc);
-	
+
 	field_scalar(fe->symm->phi, index0, &phi);
 	field_tensor(fe->lc->q, index0, q);
   
@@ -690,13 +693,34 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
         indexm1 = lees_edw_index(le, icm1, jc, kc);
         indexp1 = lees_edw_index(le, icp1, jc, kc);
 
+	/* X */
+
 	fe_lc_droplet_mu(fe, indexm1, &mum1);
         fe_lc_droplet_mu(fe, indexp1, &mup1);
-	
-	/* X */
 
 	force[X] = - phi*0.5*(mup1 - mum1);
 	
+	/* forward or backward FD at boundary */
+
+	map_status(map, indexm1, &statusm1);
+	map_status(map, indexp1, &statusp1);
+
+	if (statusm1 == MAP_BOUNDARY) {
+	  fe_lc_droplet_mu(fe, index0, &mu0);
+	  icp2 = lees_edw_ic_to_buff(le, ic, +2);
+	  indexp2 = lees_edw_index(le, icp2, jc, kc);
+	  fe_lc_droplet_mu(fe, indexp2, &mup2);
+	  force[X] = -phi*(-1.5*mu0 + 2.0*mup1 - 0.5*mup2);
+	}
+
+	if (statusp1 == MAP_BOUNDARY) {
+	  fe_lc_droplet_mu(fe, index0, &mu0);
+	  icm2 = lees_edw_ic_to_buff(le, ic, -2);
+	  indexm2 = lees_edw_index(le, icm2, jc, kc);
+	  fe_lc_droplet_mu(fe, indexm2, &mum2);
+	  force[X] = -phi*(1.5*mu0 - 2.0*mum1 + 0.5*mum2);
+	}
+
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
 	    force[X] -= h[ia][ib]*dq[X][ia][ib];
@@ -706,10 +730,27 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
 	/* Y */
 
 	fe_lc_droplet_mu(fe, index0 - ys, &mum1);
-        fe_lc_droplet_mu(fe, index0 + ys, &mup1);
+	fe_lc_droplet_mu(fe, index0 + ys, &mup1);
 
-        force[Y] = -phi*0.5*(mup1 - mum1);
-	
+	force[Y] = -phi*0.5*(mup1 - mum1);
+
+	/* forward or backward FD at boundary */
+
+	map_status(map, index0 - ys, &statusm1);
+	map_status(map, index0 + ys, &statusp1);
+
+	if (statusm1 == MAP_BOUNDARY) {
+	  fe_lc_droplet_mu(fe, index0, &mu0);
+	  fe_lc_droplet_mu(fe, index0 + 2*ys, &mup2);
+	  force[Y] = -phi*(-1.5*mu0 + 2.0*mup1 - 0.5*mup2);
+	}
+
+	if (statusp1 == MAP_BOUNDARY) {
+	  fe_lc_droplet_mu(fe, index0, &mu0);
+	  fe_lc_droplet_mu(fe, index0 - 2*ys, &mum2);
+	  force[Y] = -phi*(1.5*mu0 - 2.0*mum1 + 0.5*mum2);
+	}
+
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
 	    force[Y] -= h[ia][ib]*dq[Y][ia][ib];
@@ -722,6 +763,23 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
         fe_lc_droplet_mu(fe, index0 + zs, &mup1);
 
         force[Z] = -phi*0.5*(mup1 - mum1);
+
+	/* forward or backward FD at boundary */
+
+	map_status(map, index0 - zs, &statusm1);
+	map_status(map, index0 + zs, &statusp1);
+
+	if (statusm1 == MAP_BOUNDARY) {
+	  fe_lc_droplet_mu(fe, index0, &mu0);
+	  fe_lc_droplet_mu(fe, index0 + 2*zs, &mup2);
+	  force[Z] = -phi*(-1.5*mu0 + 2.0*mup1 - 0.5*mup2);
+	}
+
+	if (statusp1 == MAP_BOUNDARY) {
+	  fe_lc_droplet_mu(fe, index0, &mu0);
+	  fe_lc_droplet_mu(fe, index0 - 2*zs, &mum2);
+	  force[Z] = -phi*(1.5*mu0 - 2.0*mum1 + 0.5*mum2);
+	}
 	
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
