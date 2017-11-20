@@ -495,7 +495,6 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
 
   double q[3][3], dq[3][3][3];
   double h[3][3], dsq[3][3];
-  double phi;
   int ia, ib, ic;
   double qh;
   double gamma;
@@ -505,10 +504,9 @@ int fe_lc_droplet_symmetric_stress(fe_lc_droplet_t * fe, int index,
 
   xi = fe->lc->param->xi;
   zeta = fe->lc->param->zeta;
-  
+
   /* No redshift at the moment */
   
-  field_scalar(fe->symm->phi, index, &phi);
   field_tensor(fe->lc->q, index, q);
 
   fe_lc_droplet_gamma(fe, index, &gamma);
@@ -580,14 +578,12 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
   int ia, ib, ic;
   double q[3][3], dq[3][3][3];
   double h[3][3], dsq[3][3];
-  double phi;
   double gamma;
 
   assert(fe);
 
   /* No redshift at the moment */
   
-  field_scalar(fe->symm->phi, index, &phi);
   field_tensor(fe->lc->q, index, q);
 
   fe_lc_droplet_gamma(fe, index, &gamma);
