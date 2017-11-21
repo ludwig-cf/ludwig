@@ -83,28 +83,28 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
 
   if (p != 0 && strcmp(value, "block_X") == 0) {
     double block_dimension = 10.0;
-    rt_double_parameter(rt, "block_dimension", &block_dimension);
-    pe_info(pe, "Initialising phi as block  of size %0.2f along the X axis\n", block_dimension);
+    rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block of size %0.2f along the X axis\n", block_dimension);
     field_phi_init_block_X(param.xi0, phi, block_dimension);
   }
 
   if (p != 0 && strcmp(value, "block_Y") == 0) {
     double block_dimension = 10.0;
-    rt_double_parameter(rt, "block_dimension", &block_dimension);
+    rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);
     pe_info(pe, "Initialising phi as block  of size %0.2f along the Y axis\n", block_dimension);
     field_phi_init_block_Y(param.xi0, phi, block_dimension);
   }
 
   if (p != 0 && strcmp(value, "block_Z") == 0) {
     double block_dimension = 10.0;
-    rt_double_parameter(rt, "block_dimension", &block_dimension);
+    rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);
     pe_info(pe, "Initialising phi as block  of size %0.2f along the Z axis\n", block_dimension);
     field_phi_init_block_Z(param.xi0, phi, block_dimension);
   }
 
   if (p != 0 && strcmp(value, "layer_X") == 0) {
     double layer_size = 0.50;
-    rt_double_parameter(rt, "layer_size", &layer_size);
+    rt_double_parameter(rt, "phi_init_layer_size", &layer_size);
     if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
     pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the X axis\n", layer_size*100.0);
     field_phi_init_layer_X(param.xi0, phi, layer_size);
@@ -112,7 +112,7 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
 
   if (p != 0 && strcmp(value, "layer_Y") == 0) {
      double layer_size = 0.50;
-    rt_double_parameter(rt, "layer_size", &layer_size);
+    rt_double_parameter(rt, "phi_init_layer_size", &layer_size);
     if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
     pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the Y axis\n", layer_size*100.0);
     field_phi_init_layer_Y(param.xi0, phi, layer_size);
@@ -120,7 +120,7 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
 
   if (p != 0 && strcmp(value, "layer_Z") == 0) {
     double layer_size = 0.50;
-    rt_double_parameter(rt, "layer_size", &layer_size);
+    rt_double_parameter(rt, "phi_init_layer_size", &layer_size);
     if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
     pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the Z axis\n", layer_size*100.0);
     field_phi_init_layer_Z(param.xi0, phi, layer_size);
