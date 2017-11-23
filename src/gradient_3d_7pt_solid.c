@@ -1037,11 +1037,11 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
       }
       /* Compositional order parameter for LC wetting:
 	 The LC anchoring strengths w1 and w2 vanish in the disordered phase.
-	 We assume this is the phase which has a positive binary OP. 
-	 The standard anchoring case corresponds to phi = -1.0 */
+	 We assume this is the phase which has a negative binary OP, e.g. phi = -1. 
+	 The standard anchoring case corresponds to phi = +1 */
       else {
 	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
-	wphi = 0.5*(1.0-phi);
+	wphi = 0.5*(1.0+phi);
       }
 
       c[ia][ib] +=
