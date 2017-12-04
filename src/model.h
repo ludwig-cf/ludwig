@@ -62,7 +62,7 @@ __host__ int lb_halo_via_copy(lb_t * lb);
 __host__ int lb_halo_via_struct(lb_t * lb);
 __host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
-__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info);
+__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int form_out);
 
 __host__ __device__ int lb_nvel(lb_t * lb, int * nvel);
 __host__ __device__ int lb_ndim(lb_t * lb, int * ndim);

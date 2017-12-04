@@ -41,7 +41,9 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   int nreduced;
   int io_grid[3] = {1, 1, 1};
   char string[FILENAME_MAX];
-  char memory = ' '; 
+  char memory = ' ';
+  int form_in = IO_FORMAT_DEFAULT;
+  int form_out = IO_FORMAT_DEFAULT;
 
   io_info_arg_t param;
   io_info_t * io_info = NULL;
@@ -61,8 +63,6 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   param.grid[Y] = io_grid[Y];
   param.grid[Z] = io_grid[Z];
   io_info_create(pe, cs, &param, &io_info);
-
-  lb_io_info_set(lb, io_info);
 
   rt_string_parameter(rt,"distribution_io_format_input", string,
 		      FILENAME_MAX);
@@ -85,12 +85,20 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
     pe_info(pe, "Input format:     binary single serial file\n");
     io_info_set_processor_independent(io_info);
   }
+  else if (strcmp(string, "ASCII") == 0) {
+    form_in = IO_FORMAT_ASCII;
+    form_out = IO_FORMAT_ASCII;
+    pe_info(pe, "Input format:     ASCII\n");
+    pe_info(pe, "Output format:    ASCII\n");
+  }
   else {
     pe_info(pe, "Input format:     binary\n");
+    pe_info(pe, "Output format:    binary\n");
   }
 
-  pe_info(pe, "Output format:    binary\n");
   pe_info(pe, "I/O grid:         %d %d %d\n", io_grid[X], io_grid[Y], io_grid[Z]);
+
+  lb_io_info_set(lb, io_info, form_in, form_out);
 
   lb_init(lb);
 

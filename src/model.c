@@ -39,7 +39,9 @@ static int lb_set_types(int, MPI_Datatype *);
 static int lb_set_blocks(lb_t * lb, int, int *, int, const int *);
 static int lb_set_displacements(lb_t * lb, int, MPI_Aint *, int, const int *);
 static int lb_f_read(FILE *, int index, void * self);
+static int lb_f_read_ascii(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
+static int lb_f_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 
 __targetConst__ int tc_cv[NVEL][3];
@@ -622,7 +624,7 @@ static int lb_set_displacements(lb_t * lb, int ndisp, MPI_Aint * disp,
  *
  *****************************************************************************/
 
-__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info) {
+__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int form_out) {
 
   char string[FILENAME_MAX];
 
@@ -636,8 +638,10 @@ __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info) {
   io_info_set_name(lb->io_info, string);
   io_info_read_set(lb->io_info, IO_FORMAT_BINARY, lb_f_read);
   io_info_write_set(lb->io_info, IO_FORMAT_BINARY, lb_f_write);
+  io_info_read_set(lb->io_info, IO_FORMAT_ASCII, lb_f_read_ascii);
+  io_info_write_set(lb->io_info, IO_FORMAT_ASCII, lb_f_write_ascii);
   io_info_set_bytesize(lb->io_info, lb->ndist*NVEL*sizeof(double));
-  io_info_format_set(lb->io_info, IO_FORMAT_BINARY, IO_FORMAT_BINARY);
+  io_info_format_set(lb->io_info, form_in, form_out);
 
   return 0;
 }
@@ -877,6 +881,39 @@ static int lb_f_read(FILE * fp, int index, void * self) {
 
 /*****************************************************************************
  *
+ *  lb_f_read_ascii
+ *
+ *  Read one lattice site (index) worth of distributions.
+ *  Note that read-write is always 'MODEL' order.
+ *
+ *****************************************************************************/
+
+static int lb_f_read_ascii(FILE * fp, int index, void * self) {
+
+  int iread, n, p;
+  int nr = 0;
+  lb_t * lb = (lb_t*) self;
+
+  assert(fp);
+  assert(lb);
+
+  /* skip output index */
+  fscanf(fp, "%*d %*d %*d");
+
+  for (n = 0; n < lb->ndist; n++) {
+    for (p = 0; p < NVEL; p++) {
+      fscanf(fp, "%le", &lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)]);
+      nr++;
+    }
+  }
+
+  if (nr != lb->ndist*NVEL) fatal("fread(lb) failed at %d\n", index);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_f_write
  *
  *  Write one lattice site (index) worth of distributions.
@@ -899,6 +936,47 @@ static int lb_f_write(FILE * fp, int index, void * self) {
       nw += fwrite(lb->f + iwrite, sizeof(double), 1, fp);
     }
   }
+
+  if (nw != lb->ndist*NVEL) fatal("fwrite(lb) failed at %d\n", index);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_f_write_ascii
+ *
+ *  Write one lattice site (index) worth of distributions.
+ *  Note that read/write is always 'MODEL' order.
+ *
+ *****************************************************************************/
+
+static int lb_f_write_ascii(FILE * fp, int index, void * self) {
+
+  int n, p;
+  int nw = 0;
+  lb_t * lb = (lb_t*) self;
+
+  cs_t * cs = NULL;
+  int coords[3], noffset[3];
+
+  assert(fp);
+  assert(self);
+
+  cs_ref(&cs);
+  cs_index_to_ijk(cs, index, coords);
+  cs_nlocal_offset(cs, noffset);
+
+  /* write output index */
+  fprintf(fp, "%d %d %d ", noffset[0]+coords[0], noffset[1]+coords[1], noffset[2]+coords[2]);
+
+  for (n = 0; n < lb->ndist; n++) {
+    for (p = 0; p < NVEL; p++) {
+      fprintf(fp, "%le ", lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)]);
+      nw++;
+    }
+  }
+  fprintf(fp, "\n");
 
   if (nw != lb->ndist*NVEL) fatal("fwrite(lb) failed at %d\n", index);
 
