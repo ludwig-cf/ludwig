@@ -53,15 +53,15 @@ enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 /* Set the system size as desired. Clearly, this must match the system
  * set in the main input file for Ludwig. */
 
-const int xmax = 512;
-const int ymax = 3;
-const int zmax = 512;
+const int xmax = 16;
+const int ymax = 16;
+const int zmax = 16;
 
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
 enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM};
-const int xsection = XWALL_BOTTOM;
+const int xsection = YWALL;
 
 /*Modify the local geometry of the wall*/
 
@@ -81,9 +81,9 @@ const double sigma = 0.125;
  * must match those used in the main calculation. See Desplat et al.
  * Comp. Phys. Comm. (2001) for details. */
 
-const double kappa = 0.004;
-const double B = 0.001;
-const double H = 0.00135705;
+const double kappa = 0.053;
+const double B = 0.0625;
+const double H = 0.00;
 const double C = 0.000;	// Following Desplat et al.
 
 /* WETTING */
@@ -91,14 +91,14 @@ const double C = 0.000;	// Following Desplat et al.
  * wetting property H = H, the remainder H = 0 */
 
 const int z1 = 1;
-const int z2 = 16;
+const int z2 = 36;
 
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
  * or one which includes the wetting parameter H or charge Q. */
 
 enum {STATUS_ONLY, STATUS_WITH_H, STATUS_WITH_C_H, STATUS_WITH_SIGMA};
-const int output_type = STATUS_WITH_C_H;
+const int output_type = STATUS_WITH_H;
 
 /* OUTPUT FILENAME */
 

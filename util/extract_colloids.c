@@ -42,11 +42,11 @@
 
 #include "colloid.h"
 
-#define NX 66
-#define NY 128
-#define NZ 256
+#define NX 32
+#define NY 32
+#define NZ 32
 
-static const int  iread_ascii = 0;  /* Read ascii or binary (default) */
+static const int  iread_ascii = 1;  /* Read ascii or binary (default) */
 static const int  include_ref = 0;  /* Include reference colloids at far x-,y-,z-corners */
 static const int  id = 1;  	    /* Output colloid id */
 static const int  cds_with_m  = 0;  /* Output coordinate and orientation */
