@@ -890,7 +890,7 @@ static int lb_f_read(FILE * fp, int index, void * self) {
 
 static int lb_f_read_ascii(FILE * fp, int index, void * self) {
 
-  int iread, n, p;
+  int n, p;
   int nr = 0;
   lb_t * lb = (lb_t*) self;
 
