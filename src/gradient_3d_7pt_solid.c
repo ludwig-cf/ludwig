@@ -1040,6 +1040,7 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
 	 We assume this is the phase which has a negative binary OP, e.g. phi = -1. 
 	 The standard anchoring case corresponds to phi = +1 */
       else {
+	index = cs_index(cs, ic, jc, kc);
 	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
 	wphi = 0.5*(1.0+phi);
       }
