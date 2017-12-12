@@ -632,9 +632,19 @@ void ludwig_run(const char * inputfile) {
 
 	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->q && ludwig->phi) {
+
 	    fe_lc_droplet_t * fe = (fe_lc_droplet_t *) ludwig->fe;
-	    fe_lc_droplet_bodyforce(fe, ludwig->le, ludwig->hydro, ludwig->map);
+
+	    if (wall_present(ludwig->wall)) {
+	      fe_lc_droplet_bodyforce_wall(fe, ludwig->le, ludwig->hydro, 
+						ludwig->map, ludwig->wall);
+	    }
+	    else {
+	      fe_lc_droplet_bodyforce(fe, ludwig->le, ludwig->hydro);
+	    }
+
 	    hydro_correct_momentum(ludwig->hydro);
+
 	  }
 	}
 	else {

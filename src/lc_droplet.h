@@ -24,6 +24,7 @@
 #include "field_grad.h"
 #include "hydro.h"
 #include "map_s.h"
+#include "wall.h"
 
 typedef struct fe_lc_droplet_s fe_lc_droplet_t;
 typedef struct fe_lc_droplet_param_s fe_lc_droplet_param_t;
@@ -60,7 +61,7 @@ __host__ __device__ int fe_lc_droplet_stress(fe_lc_droplet_t * fe, int index,
 					     double s[3][3]);
 __host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
 						int index,
-					       double s[3][3][NSIMDVL]);
+						double s[3][3][NSIMDVL]);
 __host__ __device__ int fe_lc_droplet_mol_field(fe_lc_droplet_t * fe,
 						int index,
 						double h[3][3]);
@@ -69,15 +70,9 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
 						   double h[3][3][NSIMDVL]);
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu);
-
-__host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
-						int index,
-						double sth[3][3][NSIMDVL]);
-__host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
-						   int index,
-						   double h[3][3][NSIMDVL]);
-
 __host__ int  fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
-					      hydro_t * hydro, map_t * map);
+					      hydro_t * hydro);
+__host__ int  fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
+			      hydro_t * hydro, map_t * map, wall_t * wall);
 
 #endif

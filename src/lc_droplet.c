@@ -30,6 +30,18 @@
 #include "leesedwards.h"
 #include "lc_droplet.h"
 
+#define NGRAD_ 27
+static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
+                                 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
+                                 {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
+                                 {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
+                                 { 0,-1,-1}, { 0,-1, 0}, { 0,-1, 1},
+                                 { 0, 0,-1},             { 0, 0, 1},
+                                 { 0, 1,-1}, { 0, 1, 0}, { 0, 1, 1},
+                                 { 1,-1,-1}, { 1,-1, 0}, { 1,-1, 1},
+                                 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
+                                 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
+
 static fe_vt_t fe_drop_hvt = {
   (fe_free_ft)      fe_lc_droplet_free,
   (fe_target_ft)    fe_lc_droplet_target,
@@ -639,15 +651,15 @@ int fe_lc_droplet_antisymmetric_stress(fe_lc_droplet_t * fe, int index,
  *****************************************************************************/
   
 int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
-			    hydro_t * hydro, map_t * map) {
+			    hydro_t * hydro) {
 
-  int ic, jc, kc, icm1, icm2, icp1, icp2;
+  int ic, jc, kc, icm1, icp1;
   int ia, ib;
-  int index0, indexm1, indexm2, indexp1, indexp2;
+  int index0, indexm1, indexp1;
   int nhalo;
   int nlocal[3];
   int ys, zs;
-  double mu0, mum1, mum2, mup1, mup2;
+  double mum1, mup1;
   double force[3];
 
   double h[3][3];
@@ -655,12 +667,9 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
   double dq[3][3][3];
   double phi;
 
-  int statusm1, statusp1;
-
   assert(fe);
   assert(le);
   assert(hydro);
-  assert(map);
 
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal(le, nlocal);
@@ -696,27 +705,6 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
 
 	force[X] = - phi*0.5*(mup1 - mum1);
 	
-	/* forward or backward FD at boundary */
-
-	map_status(map, indexm1, &statusm1);
-	map_status(map, indexp1, &statusp1);
-
-	if (statusm1 == MAP_BOUNDARY) {
-	  fe_lc_droplet_mu(fe, index0, &mu0);
-	  icp2 = lees_edw_ic_to_buff(le, ic, +2);
-	  indexp2 = lees_edw_index(le, icp2, jc, kc);
-	  fe_lc_droplet_mu(fe, indexp2, &mup2);
-	  force[X] = -phi*(-1.5*mu0 + 2.0*mup1 - 0.5*mup2);
-	}
-
-	if (statusp1 == MAP_BOUNDARY) {
-	  fe_lc_droplet_mu(fe, index0, &mu0);
-	  icm2 = lees_edw_ic_to_buff(le, ic, -2);
-	  indexm2 = lees_edw_index(le, icm2, jc, kc);
-	  fe_lc_droplet_mu(fe, indexm2, &mum2);
-	  force[X] = -phi*(1.5*mu0 - 2.0*mum1 + 0.5*mum2);
-	}
-
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
 	    force[X] -= h[ia][ib]*dq[X][ia][ib];
@@ -729,23 +717,6 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
 	fe_lc_droplet_mu(fe, index0 + ys, &mup1);
 
 	force[Y] = -phi*0.5*(mup1 - mum1);
-
-	/* forward or backward FD at boundary */
-
-	map_status(map, index0 - ys, &statusm1);
-	map_status(map, index0 + ys, &statusp1);
-
-	if (statusm1 == MAP_BOUNDARY) {
-	  fe_lc_droplet_mu(fe, index0, &mu0);
-	  fe_lc_droplet_mu(fe, index0 + 2*ys, &mup2);
-	  force[Y] = -phi*(-1.5*mu0 + 2.0*mup1 - 0.5*mup2);
-	}
-
-	if (statusp1 == MAP_BOUNDARY) {
-	  fe_lc_droplet_mu(fe, index0, &mu0);
-	  fe_lc_droplet_mu(fe, index0 - 2*ys, &mum2);
-	  force[Y] = -phi*(1.5*mu0 - 2.0*mum1 + 0.5*mum2);
-	}
 
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
@@ -760,23 +731,6 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
 
         force[Z] = -phi*0.5*(mup1 - mum1);
 
-	/* forward or backward FD at boundary */
-
-	map_status(map, index0 - zs, &statusm1);
-	map_status(map, index0 + zs, &statusp1);
-
-	if (statusm1 == MAP_BOUNDARY) {
-	  fe_lc_droplet_mu(fe, index0, &mu0);
-	  fe_lc_droplet_mu(fe, index0 + 2*zs, &mup2);
-	  force[Z] = -phi*(-1.5*mu0 + 2.0*mup1 - 0.5*mup2);
-	}
-
-	if (statusp1 == MAP_BOUNDARY) {
-	  fe_lc_droplet_mu(fe, index0, &mu0);
-	  fe_lc_droplet_mu(fe, index0 - 2*zs, &mum2);
-	  force[Z] = -phi*(1.5*mu0 - 2.0*mum1 + 0.5*mum2);
-	}
-	
 	for (ia = 0; ia < 3; ia++ ) {
 	  for(ib = 0; ib < 3; ib++ ) {
 	    force[Z] -= h[ia][ib]*dq[Z][ia][ib];
@@ -793,3 +747,162 @@ int fe_lc_droplet_bodyforce(fe_lc_droplet_t * fe, lees_edw_t * le,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  fe_lc_droplet_bodyforce_wall
+ *
+ *  This computes and stores the force on the fluid via
+ *
+ *    f_a = - H_gn \nabla_a Q_gn - phi \nabla_a mu
+ *
+ *  This is appropriate for the LC droplets including symmtric and blue_phase 
+ *  free energies. Additonal force terms are included in the stress tensor.
+ *
+ *  The routine takes care of gradients at walls by extrapolating the
+ *  gradients from the adjacent fluid site. The gradients are computed on a 
+ *  27-point stencil basis.
+ *
+ *****************************************************************************/
+
+int fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
+			    hydro_t * hydro, map_t * map, wall_t * wall) {
+
+  int ic, jc, kc;
+  int ic1, jc1, kc1, isite[NGRAD_];
+  int ia, ib, p;
+  int index0;
+  int nhalo;
+  int nlocal[3];
+  int status;
+
+  double mu0, mup;
+  double force[3] = {0.0, 0.0, 0.0};
+  double h[3][3];
+  double q[3][3];
+  double dq[3][3][3];
+  double phi;
+  double count[NGRAD_];
+  double gradt[NGRAD_];
+  double gradn[3];
+
+  cs_t * cs = NULL;
+  cs_ref(&cs);
+
+  assert(fe);
+  assert(le);
+  assert(hydro);
+  assert(map);
+  assert(cs);
+
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
+  assert(nhalo >= 2);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = cs_index(cs, ic, jc, kc);
+	map_status(map, index0, &status);
+
+	if (status == MAP_FLUID) {
+
+	  field_scalar(fe->symm->phi, index0, &phi);
+	  field_tensor(fe->lc->q, index0, q);
+    
+	  field_grad_tensor_grad(fe->lc->dq, index0, dq);
+	  fe_lc_droplet_mol_field(fe, index0, h);
+
+	  /* Set solid/fluid flag to determine dry links */
+	  for (p = 1; p < NGRAD_; p++) {
+
+	    ic1 = ic + bs_cv[p][X];
+	    jc1 = jc + bs_cv[p][Y]; 
+	    kc1 = kc + bs_cv[p][Z];
+	      
+	    isite[p] = cs_index(cs, ic1, jc1, kc1);
+	    map_status(map, isite[p], &status);
+	    if (status != MAP_FLUID) isite[p] = -1; 
+
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    count[ia] = 0.0;
+	    gradn[ia] = 0.0;
+	  }
+
+	  /* Estimate normal gradient using FD on wet links */
+	  for (p = 1; p < NGRAD_; p++) {
+
+	    if (isite[p] == -1) continue;
+
+	    fe_lc_droplet_mu(fe, isite[p], &mup);
+	    fe_lc_droplet_mu(fe, index0, &mu0);
+
+	    gradt[p] = mup - mu0;
+
+	    for (ia = 0; ia < 3; ia++) {
+	      gradn[ia] += bs_cv[p][ia]*gradt[p];
+	      count[ia] += bs_cv[p][ia]*bs_cv[p][ia];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    if (count[ia] > 0.0) gradn[ia] /= count[ia];
+	  }
+
+	  /* Estimate gradient at boundaries */
+	  for (p = 1; p < NGRAD_; p++) {
+
+	    if (isite[p] == -1) {
+
+	      gradt[p] = (bs_cv[p][X]*gradn[X] + 
+			  bs_cv[p][Y]*gradn[Y] + 
+			  bs_cv[p][Z]*gradn[Z]);
+
+	    }
+	  }
+
+	  /* Accumulate the final gradients */
+	  for (ia = 0; ia < 3; ia++) {
+	    count[ia] = 0.0;
+	    gradn[ia] = 0.0;
+	  }
+
+	  for (p = 1; p < NGRAD_; p++) {
+	    for (ia = 0; ia < 3; ia++) {
+	      gradn[ia] += bs_cv[p][ia]*gradt[p];
+	      count[ia] += bs_cv[p][ia]*bs_cv[p][ia];
+	    }
+	  }
+
+	  for (ia = 0; ia < 3; ia++) {
+	    if (count[ia] > 0.0) gradn[ia] /= count[ia];
+	  }
+
+	  force[X] = -phi*gradn[X];
+	  force[Y] = -phi*gradn[Y];
+	  force[Z] = -phi*gradn[Z];
+
+	  for (ia = 0; ia < 3; ia++ ) {
+	    for(ib = 0; ib < 3; ib++ ) {
+	      force[X] -= h[ia][ib]*dq[X][ia][ib];
+	      force[Y] -= h[ia][ib]*dq[Y][ia][ib];
+	      force[Z] -= h[ia][ib]*dq[Z][ia][ib];
+	    }
+	  }
+
+	  /* Store the force on lattice */
+	  hydro_f_local_add(hydro, index0, force);
+
+	}	
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+
