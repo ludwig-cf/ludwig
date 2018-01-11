@@ -28,6 +28,7 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
 				 field_t * phi, colloids_info_t * cinfo,
 				 fe_lc_t * fe, grad_lc_anch_t ** p);
 __host__ int grad_3d_7pt_solid_d2(field_grad_t * fg);
+__host__ int grad_3d_7pt_solid_dab(field_grad_t * fg);
 __host__ int grad_3d_7pt_solid_set(map_t * map, colloids_info_t * cinfo);
 
 #endif

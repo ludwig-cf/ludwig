@@ -325,8 +325,6 @@ __host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
   nextra = nhalo - 1;
   assert(nextra >= 0);
 
-  ys = nlocal[Z] + 2*nhalo;
-
   field = df->field->data;
   dab = df->d_ab;
 

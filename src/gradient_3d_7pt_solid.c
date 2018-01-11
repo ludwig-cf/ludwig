@@ -1134,3 +1134,84 @@ int colloids_q_boundary(fe_lc_param_t * param,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  grad_3d_7pt_solid_dab
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_7pt_solid_dab(field_grad_t * df) {
+
+  int nlocal[3];
+  int nhalo;
+  int nextra;
+  int nsites;
+  int ic, jc, kc;
+  int xs, ys, zs;
+  int index;
+  double * __restrict__ dab;
+  double * __restrict__ field;
+
+  cs_t * cs = NULL;
+
+  assert(df);
+
+  cs_ref(&cs);
+  cs_nhalo(cs, &nhalo);
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsites);
+  cs_strides(cs, &xs, &ys, &zs);
+
+  nextra = nhalo - 1;
+  assert(nextra >= 0);
+
+  field = df->field->data;
+  dab = df->d_ab;
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+        index = cs_index(cs, ic, jc, kc);
+
+        dab[addr_rank1(nsites, NSYMM, index, XX)] = 
+         (+ 1.0*field[addr_rank0(nsites, index + xs)]
+          + 1.0*field[addr_rank0(nsites, index - xs)]
+          - 2.0*field[addr_rank0(nsites, index)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
+          (+ field[addr_rank0(nsites, index + xs + ys)]
+           - field[addr_rank0(nsites, index + xs - ys)]
+           - field[addr_rank0(nsites, index - xs + ys)]
+           + field[addr_rank0(nsites, index - xs - ys)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
+          (+ field[addr_rank0(nsites, index + xs + 1)]
+           - field[addr_rank0(nsites, index + xs - 1)]
+           - field[addr_rank0(nsites, index - xs + 1)]
+           + field[addr_rank0(nsites, index - xs - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, YY)] = 
+         (+ 1.0*field[addr_rank0(nsites, index + ys)]
+          + 1.0*field[addr_rank0(nsites, index - ys)]
+          - 2.0*field[addr_rank0(nsites, index)]);
+
+
+        dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
+          (+ field[addr_rank0(nsites, index + ys + 1)]
+           - field[addr_rank0(nsites, index + ys - 1)]
+           - field[addr_rank0(nsites, index - ys + 1)]
+           + field[addr_rank0(nsites, index - ys - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 
+         (+ 1.0*field[addr_rank0(nsites, index + 1)]
+          + 1.0*field[addr_rank0(nsites, index - 1)]
+          - 2.0*field[addr_rank0(nsites, index)]);
+
+      }
+    }
+  }
+
+  return 0;
+}
