@@ -213,7 +213,7 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 
 /*****************************************************************************
  *
- *  pth_force_fuild_wall_driver
+ *  pth_force_fluid_wall_driver
  *
  *  Kernel driver. Fluid in presence of walls.
  *
@@ -259,6 +259,7 @@ __host__ int pth_force_fluid_wall_driver(pth_t * pth, hydro_t * hydro,
 
   copyFromTarget(fw, fwd, 3*sizeof(double));
   wall_momentum_add(wall, fw);
+
 
   return 0;
 }
