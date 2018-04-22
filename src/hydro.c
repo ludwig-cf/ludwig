@@ -886,8 +886,222 @@ __host__ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
  *
  *  hydro_correct_momentum
  *
+ *  Driver to work out correction to momentum budget arising from
+ *  non-conserving body force.
+ *
  *****************************************************************************/
 
+#ifndef OLD_METHOD
+
+/* REQUIRE serial MPI_IN_PLACE */
+
+__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+					double fnet[3]);
+__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+				     double fnet[3]);
+__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+				       double fnet[3]);
+
+static __device__ double fs[3];
+
+__host__ int hydro_correct_momentum(hydro_t * hydro) {
+
+  int nlocal[3];
+  double rv;
+  double ltot[3];
+  MPI_Comm comm;
+
+  /* Net force */
+  double fnet[3] = {0.0, 0.0, 0.0};
+  double * fnetd = NULL;
+
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(hydro);
+
+  cs_nlocal(hydro->cs, nlocal);
+  cs_cart_comm(hydro->cs, &comm);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(hydro->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpAssert(tdpGetSymbolAddress((void **) &fnetd, tdpSymbol(fs)));
+  tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
+
+  /* Accumulate net force */
+
+  tdpLaunchKernel(hydro_accumulate_kernel, nblk, ntpb, 0, 0,
+		  ctxt, hydro->target, fnetd);
+
+  tdpAssert(tdpPeekAtLastError());
+
+  cs_ltot(hydro->cs, ltot);
+  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
+
+  tdpAssert(tdpDeviceSynchronize());
+  tdpAssert(tdpMemcpy(fnet, fnetd, 3*sizeof(double), tdpMemcpyDeviceToHost));
+
+  /* Compute global correction */
+
+  MPI_Allreduce(MPI_IN_PLACE, fnet, 3, MPI_DOUBLE, MPI_SUM, comm);
+
+  fnet[X] = -fnet[X]*rv;
+  fnet[Y] = -fnet[Y]*rv;
+  fnet[Z] = -fnet[Z]*rv;
+
+  /* Apply correction and finish */
+
+  tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice);
+
+  tdpLaunchKernel(hydro_correct_kernel, nblk, ntpb, 0, 0,
+		  ctxt, hydro->target, fnetd);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_accumulate_kernel
+ *
+ *  Work out the net total body force in the system.
+ *
+ *****************************************************************************/
+
+__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+					double fnet[3]) {
+
+  int kindex;
+  int kiterations;
+  int tid;
+
+  double fxb, fyb, fzb;
+  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(hydro);
+
+  tid = threadIdx.x;
+  fx[tid] = 0.0;
+  fy[tid] = 0.0;
+  fz[tid] = 0.0;
+
+  kiterations = kernel_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiterations, 1) {
+
+    int ic, jc, kc, index;
+    double f[3];
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+    hydro_f_local(hydro, index, f); 
+
+    fx[tid] += f[X];
+    fy[tid] += f[Y];
+    fz[tid] += f[Z];
+  }
+
+  /* Reduction */
+  fxb = atomicBlockAddDouble(fx);
+  fyb = atomicBlockAddDouble(fy);
+  fzb = atomicBlockAddDouble(fz);
+
+  if (tid == 0) {
+    atomicAddDouble(fnet + X, fxb);
+    atomicAddDouble(fnet + Y, fyb);
+    atomicAddDouble(fnet + Z, fzb);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_correct_kernel
+ *
+ *  Add the net force correction to body force at each site.
+ *
+ *****************************************************************************/
+
+__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+				     double fnet[3]) {
+
+  int kindex;
+  int kiterations;
+  int ic, jc, kc, index;
+
+  assert(ktx);
+  assert(hydro);
+
+  kiterations = kernel_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiterations, 1) {
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    hydro_f_local_add(hydro, index, fnet);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_correct_kernel_v
+ *
+ *  Vectorised version of the above.
+ *
+ *****************************************************************************/
+
+__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+				       double fnet[3]) {
+
+  int kindex;
+  int kiterations;
+  int index;
+  int ia;
+  int iv;
+
+  assert(ktx);
+  assert(hydro);
+
+  kiterations = kernel_vector_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
+
+    index = kernel_baseindex(ktx, kindex);
+
+    for (ia = 0; ia < 3; ia++) {
+      targetdp_simd_for(iv, NSIMDVL) {
+	hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)] += fnet[ia]; 
+      }
+    }
+  }
+
+  return;
+}
+
+
+
+#else
 __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   int ic, jc, kc, index;
@@ -926,7 +1140,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
     
   /* calculate the total force per fluid node */
 
-  MPI_Allreduce(flocal, fsum, 4, MPI_DOUBLE, MPI_SUM, comm);
+  MPI_Allreduce(flocal, fsum, 3, MPI_DOUBLE, MPI_SUM, comm);
 
   rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
   f[X] = -fsum[X]*rv;
@@ -948,3 +1162,4 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   
   return 0;
 }
+#endif
