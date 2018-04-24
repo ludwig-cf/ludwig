@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017 The University of Edinburgh
+ *  (c) 2018 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -415,7 +415,12 @@ int MPI_Gatherv(const void * sendbuf, int sendcount, MPI_Datatype sendtype,
 int MPI_Allreduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 		  MPI_Op op, MPI_Comm comm) {
 
-  mpi_copy(sendbuf, recvbuf, count, type);
+  assert(recvbuf);
+  assert(count >= 1);
+
+  if (sendbuf != MPI_IN_PLACE) {
+    mpi_copy(sendbuf, recvbuf, count, type);
+  }
 
   return MPI_SUCCESS;
 }

@@ -100,6 +100,10 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 #define MPI_OP_NULL         -5
 #define MPI_ERRHANDLER_NULL -6
 
+/* Special values */
+
+#define MPI_IN_PLACE NULL
+
 /* Interface */
 
 int MPI_Barrier(MPI_Comm comm);
