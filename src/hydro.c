@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,6 +32,17 @@ static int hydro_u_read_ascii(FILE * fp, int index, void * self);
 
 static __global__
 void hydro_field_set(hydro_t * hydro, double * field, double, double, double);
+
+__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+                                        double fnet[3]);
+__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
+                                     double fnet[3]);
+__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+                                          double fnet[3]);
+__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+				       double fnet[3]);
+
+static __device__ double fs[3];
 
 
 /*****************************************************************************
@@ -65,13 +76,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
 
   cs_nsites(cs, &obj->nsite);
   if (le) lees_edw_nsites(le, &obj->nsite);
-#ifdef OLD_DATA_SHIT
-  obj->u = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
-  if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
 
-  obj->f = (double *) calloc(NHDIM*obj->nsite, sizeof(double));
-  if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
-#else
   obj->u = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
 					 sizeof(double));
   if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
@@ -79,7 +84,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
   obj->f = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
 					 sizeof(double));
   if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
-#endif
+
   halo_swap_create_r1(pe, cs, nhcomm, obj->nsite, NHDIM, &obj->halo);
   assert(obj->halo);
 
@@ -891,21 +896,6 @@ __host__ int hydro_u_gradient_tensor(hydro_t * obj, int ic, int jc, int kc,
  *
  *****************************************************************************/
 
-#ifndef OLD_METHOD
-
-/* REQUIRE serial MPI_IN_PLACE */
-
-__global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
-					double fnet[3]);
-__global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
-				     double fnet[3]);
-__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
-					double fnet[3]);
-__global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
-				       double fnet[3]);
-
-static __device__ double fs[3];
-
 __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   int nlocal[3];
@@ -1166,68 +1156,3 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   return;
 }
-
-
-
-#else
-__host__ int hydro_correct_momentum(hydro_t * hydro) {
-
-  int ic, jc, kc, index;
-  int nlocal[3];
-
-  double f[3];
-  double flocal[3] = {0.0, 0.0, 0.0};
-  double fsum[3];
-  double ltot[3];
-  double rv; 
-  
-  MPI_Comm comm;
-
-  if (hydro == NULL) return 0;
-
-  cs_ltot(hydro->cs, ltot);
-  cs_nlocal(hydro->cs, nlocal);
-  cs_cart_comm(hydro->cs, &comm);
-
-  /* Compute force without correction. */
-  
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-    
-        index = cs_index(hydro->cs, ic, jc, kc);
-        hydro_f_local(hydro, index, f); 
-
-        flocal[X] += f[X];
-        flocal[Y] += f[Y];
-        flocal[Z] += f[Z];
-    
-      }   
-    }   
-  }
-    
-  /* calculate the total force per fluid node */
-
-  MPI_Allreduce(flocal, fsum, 3, MPI_DOUBLE, MPI_SUM, comm);
-
-  rv = 1.0/(ltot[X]*ltot[Y]*ltot[Z]);
-  f[X] = -fsum[X]*rv;
-  f[Y] = -fsum[Y]*rv;
-  f[Z] = -fsum[Z]*rv;
-
-  /* Now add correction */
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = cs_index(hydro->cs, ic, jc, kc);
-        hydro_f_local_add(hydro, index, f); 
-
-      }   
-    }   
-  }
-  
-  return 0;
-}
-#endif
