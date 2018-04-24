@@ -899,6 +899,8 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
 					double fnet[3]);
 __global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
 				     double fnet[3]);
+__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+					double fnet[3]);
 __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 				       double fnet[3]);
 
@@ -928,7 +930,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
 
-  kernel_ctxt_create(hydro->cs, 1, limits, &ctxt);
+  kernel_ctxt_create(hydro->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpAssert(tdpGetSymbolAddress((void **) &fnetd, tdpSymbol(fs)));
@@ -936,7 +938,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   /* Accumulate net force */
 
-  tdpLaunchKernel(hydro_accumulate_kernel, nblk, ntpb, 0, 0,
+  tdpLaunchKernel(hydro_accumulate_kernel_v, nblk, ntpb, 0, 0,
 		  ctxt, hydro->target, fnetd);
 
   tdpAssert(tdpPeekAtLastError());
@@ -959,7 +961,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
 
   tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice);
 
-  tdpLaunchKernel(hydro_correct_kernel, nblk, ntpb, 0, 0,
+  tdpLaunchKernel(hydro_correct_kernel_v, nblk, ntpb, 0, 0,
 		  ctxt, hydro->target, fnetd);
 
   tdpAssert(tdpPeekAtLastError());
@@ -1010,6 +1012,72 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
     kc = kernel_coords_kc(ktx, kindex);
     index = kernel_coords_index(ktx, ic, jc, kc);
     hydro_f_local(hydro, index, f); 
+
+    fx[tid] += f[X];
+    fy[tid] += f[Y];
+    fz[tid] += f[Z];
+  }
+
+  /* Reduction */
+  fxb = atomicBlockAddDouble(fx);
+  fyb = atomicBlockAddDouble(fy);
+  fzb = atomicBlockAddDouble(fz);
+
+  if (tid == 0) {
+    atomicAddDouble(fnet + X, fxb);
+    atomicAddDouble(fnet + Y, fyb);
+    atomicAddDouble(fnet + Z, fzb);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_accumulate_kernel_v
+ *
+ *  vectorised version of the above.
+ *
+ *****************************************************************************/
+
+__global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
+					  double fnet[3]) {
+
+  int kindex;
+  int kiterations;
+  int tid;
+
+  double fxb, fyb, fzb;
+  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(hydro);
+
+  tid = threadIdx.x;
+  fx[tid] = 0.0;
+  fy[tid] = 0.0;
+  fz[tid] = 0.0;
+
+  kiterations = kernel_vector_iterations(ktx);
+
+  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
+
+    int index;
+    int ia, iv;
+    double f[3];
+
+    index = kernel_baseindex(ktx, kindex);
+
+    for (ia = 0; ia < 3; ia++) {
+      double ftmp = 0.0;
+      #pragma omp simd reduction(+: ftmp)
+      for (iv = 0; iv < NSIMDVL; iv++) {
+        ftmp += hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]; 
+      }
+      f[ia] = ftmp;
+    }
 
     fx[tid] += f[X];
     fy[tid] += f[Y];
