@@ -140,6 +140,7 @@ typedef cudaDeviceAttr tdpDeviceAttr;
 #define tdpMemcpyHostToHost cudaMemcpyHostToHost
 #define tdpMemcpyDeviceToDevice cudaMemcpyDeviceToDevice
 
+#define tdpMemAttachHost   cudaMemAttachHost
 #define tdpMemAttachGlobal cudaMemAttachGlobal
 
 #define tdpHostAllocDefault cudaHostAllocDefault

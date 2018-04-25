@@ -923,7 +923,7 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   kernel_ctxt_create(hydro->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  tdpAssert(tdpGetSymbolAddress((void **) &fnetd, tdpSymbol(fs)));
+  tdpGetSymbolAddress((void **) &fnetd, tdpSymbol(fs));
   tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
 
   /* Accumulate net force */

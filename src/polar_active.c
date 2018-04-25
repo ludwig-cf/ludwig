@@ -159,7 +159,7 @@ __host__ int fe_polar_free(fe_polar_t * fe) {
 
   assert(fe);
 
-  if (fe->target != fe) targetFree(fe->target);
+  if (fe->target != fe) tdpAssert(tdpFree(fe->target));
 
   free(fe->param);
   free(fe);
