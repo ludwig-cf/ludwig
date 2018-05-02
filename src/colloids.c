@@ -864,7 +864,7 @@ __host__ void colloid_free(colloids_info_t * cinfo, colloid_t * pc) {
   assert(pc);
 
   colloid_link_free_list(pc->lnk);
-  targetFree(pc);
+  tdpAssert(tdpFree(pc));
 
   cinfo->nallocated -= 1;
 
