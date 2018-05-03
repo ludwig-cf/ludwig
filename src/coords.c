@@ -105,7 +105,7 @@ __host__ int cs_free(cs_t * cs) {
 
   if (cs->nref <= 0) {
 
-    if (cs->target != cs) targetFree(cs->target);
+    if (cs->target != cs) tdpAssert(tdpFree(cs->target));
 
     MPI_Comm_free(&cs->commcart);
     MPI_Comm_free(&cs->commperiodic);
