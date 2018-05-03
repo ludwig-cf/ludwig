@@ -331,17 +331,19 @@ void * mem_aligned_calloc(size_t alignment, size_t count, size_t size) {
  *
  *****************************************************************************/
 
-void * mem_aligned_realloc(void * ptr, size_t alignment, size_t size) {
+void * mem_aligned_realloc(void * ptr, size_t alignment, size_t oldsize,
+			   size_t newsize) {
 
   void * p = NULL;
 
+
   if (ptr == NULL) {
-    return mem_aligned_malloc(alignment, size);
+    return mem_aligned_malloc(alignment, newsize);
   }
   else {
-    p = mem_aligned_malloc(alignment, size);
+    p = mem_aligned_malloc(alignment, newsize);
     if (p) {
-      memcpy(p, ptr, size);
+      memcpy(p, ptr, oldsize);
       free(ptr);
     }
   }

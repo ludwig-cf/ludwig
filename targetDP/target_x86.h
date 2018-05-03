@@ -12,6 +12,10 @@
 
 #ifdef _OPENMP
 
+  /* Helpers */
+  #define xstr(a) str(a)
+  #define str(a) #a
+
   /* Have OpenMP */
 
   #include <omp.h>
@@ -45,6 +49,9 @@
   _Pragma("omp simd") \
   for (iv = 0; iv < (nsimdvl); ++iv)
 
+  #define for_host_simd_reduction(iv, nsimdvl, clause) \
+  _Pragma(xstr(omp simd reduction(clause)))	\
+  for (iv = 0; iv < nsimdvl; ++iv)
 
 #else
 
@@ -64,6 +71,9 @@
   /* "Worksharing" is provided by a loop */
   #define tdp_host_simt_for(index, ndata, stride)	\
   for (index = 0; index < (ndata); index += (stride))
+
+  #define for_host_simd_reduction(iv, nsimdvl, clause) \
+  for (iv = 0; iv < nsimdvl; iv++)
 
   #define tdp_host_simd_for(iv, nsimdvl) for (iv = 0; iv < (nsimdvl); ++iv)
 

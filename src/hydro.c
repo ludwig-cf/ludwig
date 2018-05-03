@@ -1062,8 +1062,7 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
     for (ia = 0; ia < 3; ia++) {
       double ftmp = 0.0;
-      #pragma omp simd reduction(+: ftmp)
-      for (iv = 0; iv < NSIMDVL; iv++) {
+      for_simd_reduction(iv, NSIMDVL, +: ftmp) {
         ftmp += hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]; 
       }
       f[ia] = ftmp;

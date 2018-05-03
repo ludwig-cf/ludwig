@@ -565,8 +565,7 @@ __global__ void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb,
  *
  *  lb_collision_mrt2_site
  *
- *  Binary LB collision stage (here we are progressing toward
- *  decoupled version).
+ *  Binary LB collision stage.
  *
  *  This follows the single fluid version above, with the addition
  *  that the equilibrium stress includes the thermodynamic term
@@ -1230,7 +1229,6 @@ __host__ int lb_collision_relaxation_times(lb_t * lb, double * tau) {
 
   for (ia = NDIM+1; ia < NVEL; ia++) {
     tau[ia] = 1.0/lb->param->rtau[ia];
-    /* printf("RELAXATION TIME %2d %f\n", ia, 1.0/lb->param->rtau[ia]);*/
   }
 
   return 0;

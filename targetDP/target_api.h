@@ -77,6 +77,8 @@
 
   #define targetdp_simd_for(iv, nsimdvl) tdp_host_simd_for(iv, nsimdvl)
   #define targetdp_simt_for(index, ndata, stride) tdp_host_simt_for(index, ndata, stride)
+ #define for_simd_reduction(iv, nsimdvl, clause) \
+         for_host_simd_reduction(iv, nsimdvl, clause)
   #define __syncthreads()                 tdp_host_barrier()
   #define tdp_host_threads_per_block()    tdp_host_get_max_threads()
 

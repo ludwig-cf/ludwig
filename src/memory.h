@@ -292,7 +292,8 @@ int reverse_addr_rank4_assert(int line, const char * file,
 #define MEM_PAGESIZE 4096
 void * mem_aligned_malloc(size_t alignment, size_t size);
 void * mem_aligned_calloc(size_t alignment, size_t count, size_t size);
-void * mem_aligned_realloc(void * ptr, size_t alignment, size_t size);
+void * mem_aligned_realloc(void * ptr, size_t alignment, size_t oldsize,
+			   size_t newsize);
 
 
 #endif

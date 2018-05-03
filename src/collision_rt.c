@@ -91,7 +91,8 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
   pe_info(pe, "Lattice Boltzmann collision\n");
   pe_info(pe, "---------------------------\n");
 #ifndef OLD_SHIT
-  /* Need to update test references if have ... */
+  /* Make merge before adding this extra output line to avoid breaking
+   * all tests before the merge. */
 #else
   pe_info(pe, "Relaxation time scheme:   %s\n", relax);
 #endif
