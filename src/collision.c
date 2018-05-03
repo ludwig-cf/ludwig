@@ -91,6 +91,7 @@ struct collide_param_s {
 
 static __constant__ lb_collide_param_t _lbp;
 static __constant__ collide_param_t _cp;
+static fe_t * fe_static = NULL;
 
 /*****************************************************************************
  *
@@ -118,6 +119,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collision_noise_var_set(lb, noise);
   lb_collide_param_commit(lb);
 
+  fe_static = fe;
   if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
   if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe);
 
@@ -229,6 +231,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   double seq[3][3][NSIMDVL];              /* Equilibrium stress */
   double shat[3][3][NSIMDVL];             /* random stress */
   double ghat[NVEL][NSIMDVL];             /* noise for ghosts */
+  double sth[3][3][NSIMDVL];
 
   double force[3][NSIMDVL];               /* External force */
   double tr_s[NSIMDVL], tr_seq[NSIMDVL];  /* Vectors for stress trace */
@@ -257,6 +260,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   }
 
   /* Default to fluctuations off; shat, ghat are zero */
+
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       __targetILP__(iv) shat[ia][ib][iv] = 0.0;
@@ -335,12 +339,21 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     tr_s[iv]   = 0.0;
     tr_seq[iv] = 0.0;
   }
-    
+
+#ifdef NO_STRESS_HACK
+#else
+  fe_lc_droplet_symm_v(fe_static, index0, sth);
+#endif    
+
   for (ia = 0; ia < NDIM; ia++) {
     /* Set equilibrium stress */
     for (ib = 0; ib < NDIM; ib++) {
       __targetILP__(iv) {
+#ifdef NO_STRESS_HACK
 	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv];
+#else
+	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv] + sth[ia][ib][iv];
+#endif
       }
     }
     /* Compute trace */

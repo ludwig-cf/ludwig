@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Juho Lintuvuori
@@ -76,12 +76,5 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
 						   double h[3][3][NSIMDVL]);
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu);
-
-__host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
-						int index,
-						double sth[3][3][NSIMDVL]);
-__host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
-						   int index,
-						   double h[3][3][NSIMDVL]);
 
 #endif

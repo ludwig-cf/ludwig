@@ -462,7 +462,7 @@ __host__ __device__ int fe_lc_droplet_stress(fe_lc_droplet_t * fe,
   double s2[3][3];
 
   assert(fe);
-
+#ifdef NO_STRESS_HACK
   fe_lc_droplet_symmetric_stress(fe, index, s1);
   fe_lc_droplet_antisymmetric_stress(fe, index, s2);
 
@@ -471,7 +471,15 @@ __host__ __device__ int fe_lc_droplet_stress(fe_lc_droplet_t * fe,
       sth[ia][ib] = s1[ia][ib] + s2[ia][ib];
     }
   }
+#else
+  fe_lc_droplet_antisymmetric_stress(fe, index, s2);
 
+  for (ia = 0; ia < 3; ia++){
+    for(ib = 0; ib < 3; ib++){
+      sth[ia][ib] = s2[ia][ib];
+    }
+  }
+#endif
   return 0;
 }
 
@@ -489,7 +497,7 @@ __host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
   int ia, ib, iv;
   double s1[3][3];
   double s2[3][3];
-
+#ifdef NO_STRESS_HACK
   for (iv = 0; iv < NSIMDVL; iv++) {
     fe_lc_droplet_symmetric_stress(fe, index+iv, s1);
     fe_lc_droplet_antisymmetric_stress(fe, index+iv, s2);
@@ -499,7 +507,33 @@ __host__ __device__ void fe_lc_droplet_stress_v(fe_lc_droplet_t * fe,
       }
     }
   }
+#else
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_lc_droplet_antisymmetric_stress(fe, index+iv, s2);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib][iv] = s2[ia][ib];
+      }
+    }
+  }
+#endif
+  return;
+}
 
+__host__ __device__ void fe_lc_droplet_symm_v(fe_lc_droplet_t * fe,
+					      int index,
+					      double sth[3][3][NSIMDVL]) {
+  int ia, ib, iv;
+  double s1[3][3];
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_lc_droplet_symmetric_stress(fe, index+iv, s1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib][iv] = s1[ia][ib];
+      }
+    }
+  }
   return;
 }
 
