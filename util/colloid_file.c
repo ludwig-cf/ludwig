@@ -86,7 +86,9 @@ int main(int argc, char ** argv) {
      *    an input radius a0
      *    a hydrodynamic radius ah
      *    a position r [Lmin < r < Lmin + ntotal]
-     *    where Lmin is 0.5 by default. Everything else may be safely
+     *    where Lmin is 0.5 by default.
+     *    Non-zero rng initialisation (use, e.g., the index)
+     *    Everything else may be safely
      *    set to zero (as is done above). */
 
     state.a0 = 2.3;
@@ -94,6 +96,7 @@ int main(int argc, char ** argv) {
     state.r[0] = 1.0; /* X position */
     state.r[1] = 1.0; /* Y position */
     state.r[2] = 1.0; /* Z position */
+    state.rng  = index;
 
     if (binary) {
       colloid_state_write_binary(state, fp);

@@ -60,6 +60,7 @@ __host__ int util_matrix_free(int m, double *** p);
 __host__ int util_vector_free(double ** p);
 __host__ int util_matrix_invert(int n, double ** a);
 
+__host__ int util_random_unit_vector(int * state, double rhat[3]);
 __host__ int util_ranlcg_reap_uniform(int * state, double * r);
 __host__ int util_ranlcg_reap_gaussian(int * state, double r[2]);
 

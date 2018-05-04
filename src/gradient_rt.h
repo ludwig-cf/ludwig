@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -28,7 +28,8 @@
 #include "gradient_3d_27pt_fluid.h"
 #include "gradient_3d_27pt_solid.h"
 
-__host__ int gradient_rt_init(pe_t * pe, rt_t * rt, field_grad_t * grad,
-			      map_t * map, colloids_info_t * cinfo);
+__host__ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
+			      field_grad_t * grad, map_t * map,
+			      colloids_info_t * cinfo);
 
 #endif

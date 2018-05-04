@@ -46,7 +46,7 @@ lc_kappa1  0.000648456
 lc_xi      0.7
 
 lc_Gamma   0.5
-lc_active_zeta 0.0
+lc_activity no
 
 lc_q_initialisation twist
 lc_q_init_amplitude 0.333333333333333

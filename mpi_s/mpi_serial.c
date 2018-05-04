@@ -812,7 +812,6 @@ int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
   return MPI_SUCCESS;
 }
 
-
 #ifdef _DO_NOT_INCLUDE_MPI2_INTERFACE
 /*
  * The following are removed from MPI3... and have an apprpriate

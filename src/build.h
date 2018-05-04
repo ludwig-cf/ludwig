@@ -19,8 +19,9 @@
 #include "colloids.h"
 #include "model.h"
 #include "wall.h"
+#include "free_energy.h"
 
-int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
+int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 			 field_t * p, field_t * q, psi_t * psi, map_t * map);
 
 int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,

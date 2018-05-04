@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -103,24 +103,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   rt_int_parameter(rt, "lc_redshift_update", &redshift_update);
   fe_param.is_redshift_updated = redshift_update;
 
-  /* Use a default zeta (no activity) of 0 */
-  /* Active stress is:
-   *   s_ab = zeta0 d_ab - zeta1 Q_ab - zeta2 (d_a p_b  + d_b p_a)
-   * with p_a = Q_ak d_m Q_mk
-   * The sign of zeta0 is currently +ve here (clarify).
-   *
-   * The input file kkey for zeta1 is "zeta" at the moment (to be updated).
-   */
-
-  zeta0 = (1.0/3.0);
-  zeta1 = 0.0;
-  zeta2 = 0.0;
-  rt_double_parameter(rt, "lc_active_zeta", &zeta1);
-  rt_double_parameter(rt, "lc_active_zeta2", &zeta2);
-  fe_param.zeta0 = zeta0;
-  fe_param.zeta1 = zeta1;
-  fe_param.zeta2 = zeta2;
-
   pe_info(pe, "\n");
   pe_info(pe, "Liquid crystal blue phase free energy\n");
   pe_info(pe, "Bulk parameter A0:         = %14.7e\n", fe_param.a0);
@@ -145,9 +127,34 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   pe_info(pe, "Initial redshift           = %14.7e\n", fe_param.redshift);
   pe_info(pe, "Dynamic redshift update    = %14s\n",
 	  redshift_update == 0 ? "no" : "yes");
-  pe_info(pe, "LC activity constant zeta  = %14.7e\n", fe_param.zeta1);
-  pe_info(pe, "LC activity constant zeta2  = %14.7e\n", fe_param.zeta2);
 
+
+  /* Use a default zeta (no activity) of 0 */
+  /* Active stress is:
+   *   s_ab = zeta0 d_ab - zeta1 Q_ab - zeta2 (d_a p_b  + d_b p_a)
+   * with p_a = Q_ak d_m Q_mk
+   * The sign of zeta0 is currently +ve here (clarify).
+   */
+
+  fe_param.is_active = rt_switch(rt, "lc_activity");
+  pe_info(pe, "Liquid crystal activity      %14s\n",
+	  fe_param.is_active == 0 ? "No" : "Yes");
+
+  if (fe_param.is_active) {
+    zeta0 = (1.0/3.0);
+    zeta1 = 0.0;
+    zeta2 = 0.0;
+    rt_double_parameter(rt, "lc_active_zeta0", &zeta0);
+    rt_double_parameter(rt, "lc_active_zeta1", &zeta1);
+    rt_double_parameter(rt, "lc_active_zeta2", &zeta2);
+    fe_param.zeta0 = zeta0;
+    fe_param.zeta1 = zeta1;
+    fe_param.zeta2 = zeta2;
+
+    pe_info(pe, "Activity constant zeta0    = %14.7e\n", fe_param.zeta0);
+    pe_info(pe, "Activity constant zeta1    = %14.7e\n", fe_param.zeta1);
+    pe_info(pe, "Activity constant zeta2    = %14.7e\n", fe_param.zeta2);
+  }
 
   /* Default electric field stuff zero */
 

@@ -1,0 +1,256 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  lc-emulsion.tex
+%
+%  Liquid Crystal Emulsions.
+%
+%  Edinburgh Soft Matter and Statistical Physics Group and
+%  Edinburgh Parallel Computing Centre
+%
+%  Contributing Authors:
+%
+%  Adriano Tiribocchi made the original draft.
+%  Juho lintuvuori (juho.lintuvuori@u-bordeaux.fr)
+%  Kevin Stratforrd (kevin@epcc.ed.ac.uk)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Liquid Crystal Emulsions}
+
+This section describes the approach used to model liquid crystal
+emulsions which might include, for example, droplets of liquid
+crystal in water. This combines elements of the binary fluid model
+discussed in Section~\ref{section-binary} with the liquid crystal
+approach of Section~\ref{section-lc}. 
+
+\subsection{Combined Approach}
+
+\subsubsection{Order parameters}
+
+To describe a liquid crystal emulsion, two order parameters are used:
+the composition $\phi({\mathbf r}; t)$ and the orientational order
+$Q_{\alpha\beta}({\mathbf r}; t)$.
+
+
+\subsubsection{Free energy densities}
+
+The free energy density is here the sum of three contributions:
+\begin{equation}
+f(\phi, Q_{\alpha\beta}) = f_{\rm c}(\phi) + f_{\rm lc}(Q_{\alpha\beta})
+                         + f_{\rm anchoring}(\phi, Q_{\alpha\beta}).
+\end{equation}
+
+The first contribution relates to the composition using the standard
+symmetric approach
+\begin{equation}
+f_{\rm c}(\phi) =
+ {\textstyle\frac{1}{2}}A\phi^2
++ {\textstyle\frac{1}{4}}B\phi^4
++ {\textstyle\frac{1}{2}}\kappa (\partial_\alpha \phi)^2
+\end{equation}
+(cf.\ Equation~\ref{eq-binary-fed}),
+where we recall that in the separated regime $A$ is a negative constant,
+$B$ is a positive constant, and $\kappa$ is a positive constant which
+determines the interfacial tension. The extremal values of the
+composition are $\phi^\star = (-A/B)^{1/2}$ while
+uniformly mixed components in equal proportion have $\phi = 0$.
+
+The second contribution is the liquid crystal bulk free energy density
+(Equation~\ref{eq-lc-fed-bulk}):
+\begin{eqnarray}
+f_{\rm lc} &=&
+  {\textstyle\frac{1}{2}}A_0 \left(1-\gamma(\phi)/3\right) Q_{\alpha\beta}^2
+- {\textstyle\frac{1}{3}}A_0 \gamma(\phi)
+  Q_{\alpha\beta} Q_{\beta\pi} Q_{\pi\alpha}
++ {\textstyle\frac{1}{4}} A_0 \gamma(\phi) (Q_{\alpha\beta})^2\nonumber\\
+&+&{\textstyle\frac{1}{2}} \kappa_0 (\partial_\alpha Q_{\alpha\beta})^2
++ {\textstyle\frac{1}{2}} \kappa_1
+(\epsilon_{\alpha\mu\nu} \partial_\mu Q_{\nu\beta} + 2q_0 Q_{\alpha\beta})^2,
+\label{eq-lc-fed}
+\end{eqnarray}
+where in the first line of Equation~\ref{eq-lc-fed} the composition enters parametrically through the control
+parameter $\gamma = \gamma(\phi)$. This will be discussion further
+below. The distortion terms in the
+second line of Equation~\ref{eq-lc-fed} related to the elastic constants $\kappa_0$ and $\kappa_1$
+are unchanged (and are as appear in Equation~\ref{equation-lc-gradient-fe}).
+
+Finally, there is a coupling between the liquid crystal and the
+composition which determines the anchoring (normal or planar) at
+the boundary of the droplet:
+\begin{equation}
+f_{\rm anchoring}(\phi,Q_{\alpha\beta}) =
+W Q_{\alpha\beta}\partial_{\alpha}\phi\partial_{\beta}\phi.
+\end{equation}
+For $W>0$ the anchoring is planar, and for $W<0$ the anchoring is normal.
+
+\subsubsection{Control of the isotropic/nematic transition}
+The function $\gamma(\phi)$ allows control of the liquid crystal
+ordering as the composition changes. An appropriate choice of function
+for the case of $\phi^\star = 1$ is
+\begin{equation}
+\gamma(\phi)=\gamma_0+\Delta\left(1+\phi\right)
+\end{equation}
+so that $\gamma(\phi=-1)=\gamma_0$, and $\gamma(\phi=1)=\gamma_0+2\Delta$.
+We should choose $\gamma_0$ and $\Delta$ such that $\gamma(\phi=-1)$ 
+is smaller than 2.7 (so that for $\phi=-1$ the fluid is isotropic)
+and $\gamma(\phi=+1)$ is larger than 2.7 (so that when $\phi=1$ the
+liquid crystal is in the ordered phase, nematic or cholesteric etc.).
+Experience suggests that for example 
+$\gamma_0=2.5$ and $\Delta=0.25$ is a suitable choice.
+
+\subsubsection{Chemical potential}
+
+The chemical potential $\mu(\phi,Q_{\alpha\beta})$ resulting from the
+combined free energy density is the functional derivative of the
+total energy with respect to the composition~$\phi$, 
+
+\begin{equation}
+\mu = \mu_{\rm c} + \mu_{\rm lc} + \mu_{\rm anchoring} = \frac{\delta F}{\delta \phi} 
+= \frac{\partial F}{\partial \phi} - \partial_\alpha \frac{\partial F}{\partial (\partial_\alpha \phi)}  
+\end{equation}
+
+In the
+case that $\gamma(\phi) \sim \Delta\cdot\phi$ we generate terms
+\begin{equation}
+\mu_{\rm c} + \mu_{\rm lc} = A\phi + B\phi^3 -\kappa \partial_{\gamma}\partial_{\gamma}\phi
+- \textstyle{\frac{1}{6}} A_0 \Delta Q_{\alpha\beta}^2
+- \textstyle{\frac{1}{3}} A_0 \Delta
+                          Q_{\alpha\beta} Q_{\beta\pi} Q_{\pi\alpha}
++ \textstyle{\frac{1}{4}} A_0 \Delta (Q_{\alpha\beta}^2)^2
+\end{equation}
+from $f_{\rm c}(\phi)$ and $f_{\rm lc}(Q_{\alpha\beta})$.
+The interfacial or anchoring contribution to the chemical potential is
+\begin{equation} 
+\mu_{\rm anchoring}=-W \left(
+ \partial_{\alpha}\phi\partial_{\beta}Q_{\alpha\beta}
++\partial_{\beta}\phi\partial_{\alpha}Q_{\alpha\beta}\right)
+- 2W Q_{\alpha\beta} \partial_\alpha\partial_\beta\phi.
+\end{equation}
+
+\subsubsection{Molecular field}
+
+The molecular field resulting from the combined free energy is the functional
+derivative of the total free energy with respect to the tensor order parameter $Q_{\alpha\beta}$,
+
+\begin{equation}
+H_{\alpha\beta} = H_{\alpha\beta,{\rm lc}} + H_{\alpha\beta, {\rm anchoring}}  = \frac{\delta F}{\delta Q_{\alpha\beta}} 
+= \frac{\partial F}{\partial Q_{\alpha\beta}} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma Q_{\alpha\beta})}  
+\end{equation}
+
+The terms in the molecular field resulting from the bulk free energy
+density of the liquid crystalline part are:
+\begin{equation}
+H_{\alpha\beta,{\rm lc}} = -A_0 (1 - \gamma(\phi)/3) Q_{\alpha\beta}
++A_0 \gamma(\phi)\left[ Q_{\alpha\pi} Q_{\pi\beta}
+     - {\textstyle\frac{1}{3}} \delta_{\alpha\beta} Q_{\pi\sigma}^2\right]
+-A_0 \gamma (\phi)Q_{\pi\nu}^2 Q_{\alpha\beta} \\ \nonumber
+\end{equation}
+where the terms related to the elastic contants $\kappa_0$ and $\kappa_1$
+have been omitted (cf. Equation~\ref{eq-lc-h-full}). The interfacial
+contribution to the molecular field is
+\begin{equation}
+H_{\alpha\beta, {\rm anchoring}}  = -W \left( \partial_{\alpha}\phi\partial_{\beta}\phi
+- {\textstyle\frac{1}{3}}
+  \partial_{\pi}\phi \partial_{\pi}\phi \delta_{\alpha\beta} \right).
+\end{equation}
+As before, relevant contributions to the molecular field have
+been rendered traceless.
+
+\subsubsection{Stress and the force on the fluid}
+The thermodynamic contribution to the pressure tensor is
+\begin{equation}
+\label{eq-lc-emulsion-stress}
+\Pi_{\alpha\beta} = \sigma_{\alpha\beta} + \tau_{\alpha\beta} + P_{\alpha\beta}
+\end{equation}
+where $\sigma_{\alpha\beta}$ and $\tau_{\alpha\beta}$ are the symmetric and
+antisymmetric contributions
+arising from the liquid crystalline order: 
+\begin{equation}
+\sigma_{\alpha\beta} =
+-p_0\delta_{\alpha\beta}
+- \xi H_{\alpha\pi}
+  \left(Q_{\pi\beta}+{\textstyle \frac{1}{3}} \delta_{\alpha\beta}\right)
+- \xi
+  \left(Q_{\alpha\pi} + {\textstyle\frac{1}{3}}\delta_{\alpha\pi}\right)
+  H_{\pi\beta}
++ 2\xi \left(Q_{\alpha\beta} + {\textstyle \frac{1}{3}}\delta_{\alpha\beta}
+\right) Q_{\pi\nu} H_{\pi\nu}
+\nonumber
+\end{equation}
+and
+\begin{equation}
+\tau_{\alpha\beta} = Q_{\alpha\pi} H_{\pi\beta} - H_{\alpha\pi}Q_{\pi\beta}.
+\nonumber
+\end{equation}
+
+The term $P_{\alpha\beta}$ includes the binary fluid and coupling
+(between LC and binary fluid) contributions and is somewhat more
+complicated than in the bare liquid crystal case:
+\begin{eqnarray}
+\label{eq-lc-emulsion-pab}
+P_{\alpha\beta} =
+-\left( \phi\frac{\delta  F}{\delta\phi} - F \right) \delta_{\alpha\beta}
+-\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\partial_{\alpha}\phi
+-\frac{\delta F}{\delta\left(\partial_{\beta}Q_{\gamma\nu}\right)}\partial_{\alpha}Q_{\gamma\nu},
+\end{eqnarray}
+where we have re-introduced the full free energy functional $F$.
+This term is discussed in the following section.
+
+\subsection{Implementation}
+
+It is convenient \cite{sulaiman2006} to rewrite a divergence of the
+stress  $-\partial_\beta P_{\alpha\beta}$ with the stress defined in
+Equation~\ref{eq-lc-emulsion-pab}. This force can be expanded in full as
+\begin{equation}
+\partial_{\alpha}\left(\phi\mu - F\right)
++\partial_{\beta} \left(\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi
++\frac{\delta F}{\delta \left(\partial_{\beta}\phi\right)}\partial_{\beta}\left(\partial_{\alpha}\phi\right)
++\partial_{\beta}\left(\frac{\delta F}{\delta Q_{\pi\nu,\beta}}\right)
+ \partial_{\alpha} Q_{\pi\nu}
++\frac{\delta F}{\delta Q_{\pi\nu,\beta}} \partial_{\beta}\left(\partial_{\alpha} Q_{\pi\nu}\right).
+\label{eq-lc-emulsion-force}
+\end{equation}
+Applying the chain rule on the first bracket in Equation \ref{eq-lc-emulsion-force} leads to
+\begin{equation}
+\partial_{\alpha}(\phi\mu) 
+- \frac{\partial F}{\partial \phi} \partial_\alpha \phi
+- \frac{\partial F}{\partial(\partial_\beta \phi)} \partial_\alpha (\partial_\beta\phi)
+- \frac{\partial F}{\partial Q_{\pi\nu}} \partial_\alpha Q_{\pi\nu}  
+- \frac{\partial F}{\partial Q_{\pi\nu,\beta}} \partial_\alpha Q_{\pi\nu,\beta}\nonumber.
+\end{equation}
+The expansion of the functional derivatives in Equation \ref{eq-lc-emulsion-force} gives
+\begin{eqnarray}
+&&\partial_{\beta} \left(\frac{\partial F}{\partial (\partial_{\beta}\phi)} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma\partial_\beta\phi)}\right) \partial_{\alpha}\phi
++\left(\frac{\partial F}{\partial (\partial_{\beta}\phi)} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma\partial_\beta\phi)}\right) \partial_\beta\left(\partial_{\alpha}\phi\right)\nonumber\\
+&&\partial_{\beta} \left(\frac{\partial F}{\partial Q_{\pi\nu,\beta}} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma Q_{\pi\nu,\beta)}}\right) \partial_{\alpha}Q_{\pi\nu}
++ \left(\frac{\partial F}{\partial Q_{\pi\nu,\beta}} - \partial_\gamma \frac{\partial F}{\partial (\partial_\gamma Q_{\pi\nu,\beta)}}\right) \partial_\beta Q_{\pi\nu,\alpha}\nonumber.
+\end{eqnarray}
+Using the symmetry of partial derivatives and $$\frac{\partial F}{\partial (\partial_\gamma\partial_\beta\phi)} = \frac{\partial F}{\partial (\partial_\gamma Q_{\mu\nu,\beta})}=0$$
+this can be recast with some manipulation as 
+\begin{eqnarray}
+-\partial_\beta P_{\alpha\beta} &=& -\left( \frac{\partial F}{\partial Q_{\pi\nu}} 
+       - \partial_{\beta}\frac{\partial F}{\partial Q_{\pi\nu,\beta}}
+ \right) \partial_{\alpha}Q_{\pi\nu}
+- \left(\frac{\partial F}{\partial\phi} 
+- \partial_{\beta} \frac{\partial F}{\partial \left(\partial_{\beta}\phi\right)}\right)\partial_{\alpha}\phi + \partial_{\alpha}\left(\phi\mu\right)\nonumber\\
+&=& -\left(\frac{\delta F}{\delta Q_{\pi\nu}}\right) \partial_{\alpha}Q_{\pi\nu} - \left(\frac{\delta F}{\delta \phi}\right) \partial_{\alpha} \phi + \partial_{\alpha}\left(\phi\mu\right)\nonumber\\ 
+&=& H_{\pi\nu}\; \partial_{\alpha} Q_{\pi\nu} + \phi \;\partial_{\alpha}\mu,
+\label{eq-lc-emulsion-hgradq}
+\end{eqnarray}
+which is a local force on the fluid.
+The total force on the fluid locally is the divergence of the stress,
+where the total stress is $\Pi_{\alpha\beta}$
+given by equation~(\ref{eq-lc-emulsion-stress}).
+It is sometimes useful to compute the various contributions to the
+force in different ways. The contribution from the symmetric and
+antisymmetric stress $\sigma_{\alpha\beta}$ and  $\tau_{\alpha\beta}$
+can be calculated numerically as a divergence. The contribution from
+$P_{\alpha\beta}$ can be computed numerically as a divergence, or via the
+analytical form of the divergence Equation~\ref{eq-lc-emulsion-hgradq}.
+The  last option is
+at the expense of global conservation of momentum.
+
+
+\vfill
+\pagebreak

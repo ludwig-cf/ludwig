@@ -242,9 +242,6 @@ __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
   /* Must compute reciprocal of redshift */
   fe_lc_redshift_set(fe, fe->param->redshift);
 
-  /* Active terms switch (zeta0 does not count here) */
-  fe->param->is_active = (fe->param->zeta1 != 0.0 || fe->param->zeta2 != 0.0); 
-
   return 0;
 }
 

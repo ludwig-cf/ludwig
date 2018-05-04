@@ -73,6 +73,8 @@ reduced_halo no
 #
 #  ghost_modes           [on|off] Default is on.
 #  force FX_FY_FZ        Uniform body force on fluid (default zero)
+#  fpulse_amplitude	 Amplitude of time-dependent force
+#  fpulse_frequency	 Frequency of time-dependent force
 #
 #  distribution_initialisation    Default is fluid uniformly at rest
 #                                 3d_uniform_u   uniform velocity
@@ -91,6 +93,8 @@ temperature 3.33333333333333333e-5
 
 # ghost_modes off
 # force 0.00_0.0_0.0
+# fpulse_amplitude 0.0_0.0_0.00005
+# fpulse_frequency 0.00004
 
 distribution_initialisation   1d_poiseuille
 distribution_uniform_u        0.0_0.0_0.00
@@ -119,7 +123,7 @@ distribution_poiseuille_umax  0.0_0.0_0.01
 #                                 sets order of finite difference
 #                                 advection scheme
 #
-#  fd_gradient_calcualtion        Scheme to yse for gradient calculations
+#  fd_gradient_calcualtion        Scheme to use for gradient calculations
 #                                 2d_5pt_fluid
 #                                 3d_7pt_fluid
 #                                 3d_7pt_solid (free_energy lc_blue_phase only)
@@ -152,11 +156,19 @@ fd_force_divergence 1
 #  A            symmetric bulk parameter (A < 0 for binary fluid)
 #  B            symmetric bulk parameter (B = -A for binary fluid)
 #  kappa        surface 'penalty' parameter (kappa > 0 for binary fluid)
-#  C            additional brazovskki parameter (C = 0 for binary fluid)
+#  C            additional Brazovskki parameter (C = 0 for binary fluid)
 #
 #  mobility               Order parameter mobility M
 #
-#  phi_initialisation     spinodal or block [spinodal] 
+#  phi_initialisation     spinodal [default]
+#			  block
+#			  patches
+#			  block_X
+#			  layer_X
+#			  bath
+#			  drop
+#			  emulsion
+# 
 #  noise        magnitude of initial order parameter noise [default 0.05]
 #  phi0         mean order parameter
 #

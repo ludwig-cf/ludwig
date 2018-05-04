@@ -4,7 +4,7 @@
 #
 #  See also serial-actv-s01.inp
 #
-#  This one is in the turbulent regime lc_active_zeta 0.05
+#  This one is in the turbulent regime lc_active_zeta1 0.05
 #
 ##############################################################################
 
@@ -51,7 +51,9 @@ lc_kappa1  0.04
 lc_xi      0.7
 
 lc_Gamma   0.3375
-lc_active_zeta 0.05
+
+lc_activity     yes
+lc_active_zeta1 0.05
 
 lc_q_initialisation active_nematic_q2d_y
 lc_q_init_amplitude 0.333333333333333

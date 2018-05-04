@@ -34,14 +34,20 @@
  *
  *  This will also cope with parallel boundaries separated by one fluid
  *  points, whatever the solid involved.
+ *
+ *  Experimental feature.
+ *  Depedence on the compositional order parameter phi is introduced
+ *  to allow wetting in the LC droplet case.
  * 
  *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2011-2018 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -67,6 +73,7 @@ struct grad_lc_anch_s {
   cs_t * cs;
   param_t * param;           /* Boundary condition parameters */
   map_t * map;               /* Supports a map */
+  field_t * phi;             /* Compositional order parameter */
   colloids_info_t * cinfo;   /* Supports colloids */
   fe_lc_t * fe;              /* Liquid crystal free energy */
   grad_lc_anch_t * target;   /* Device memory */
@@ -98,7 +105,7 @@ int colloids_q_boundary(fe_lc_param_t * param, const double n[3],
 			double qs[3][3], double q0[3][3],
 			int map_status);
 __host__ __device__
-int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
+int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch, 
 			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
@@ -108,10 +115,12 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
  *
  *  grad_lc_anch_create
  *
+ *  phi may be NULL, in which case this is the bare LC case.
+ *
  *****************************************************************************/
 
 __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
-				 colloids_info_t * cinfo,
+				 field_t * phi, colloids_info_t * cinfo,
 				 fe_lc_t * fe, grad_lc_anch_t ** pobj) {
 
   int ndevice;
@@ -130,6 +139,7 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   obj->pe = pe;
   obj->cs = cs;
   obj->map = map;
+  obj->phi = phi;
   obj->cinfo = cinfo;
   obj->fe = fe;
   gradient_param_init(obj);
@@ -349,7 +359,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       /* Set up partial gradients and identify solid neighbours
        * (unknowns) in various directions. If both neighbours
        * in one coordinate direction are solid, treat as known. */
-      
+
       nunknown = 0;
       
       for (ia = 0; ia < 3; ia++) {
@@ -420,7 +430,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	  - q->data[addr_rank1(q->nsites, NQAB, index, XX)]
 	  - q->data[addr_rank1(q->nsites, NQAB, index, YY)];
 	
-	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
 			     bcs[normal[0]], status[normal[0]], c, cinfo);
 	
 	/* Constant terms all move to RHS (hence -ve sign). Factors
@@ -444,7 +454,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       
       if (nunknown > 1) {
 	
-	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
 			     bcs[normal[1]], status[normal[1]], c, cinfo);
 	
 	b18[1*NSYMM + XX] = -1.0*c[X][X];
@@ -464,7 +474,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
       
       if (nunknown > 2) {
 	
-	q_boundary_constants(cs, fe->param, ic, jc, kc, qs,
+	q_boundary_constants(cs, fe->param, anch, ic, jc, kc, qs,
 			     bcs[normal[2]], status[normal[2]], c, cinfo);
 	
 	b18[2*NSYMM + XX] = -1.0*c[X][X];
@@ -609,7 +619,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
 	}
       }
       
-      /* Fix the trace (don't care about Qzz in the end) */
+      /* Fix the trace (don't store Qzz in the end) */
       
       for (n = 0; n < nunknown; n++) {
 	
@@ -905,14 +915,14 @@ int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
  *
  *  q_boundary_constants
  *
- *  Compute the comstant term in the cholesteric boundary condition.
+ *  Compute the constant term in the cholesteric boundary condition.
  *  Fluid point is (ic, jc, kc) with fluid Q_ab = qs
  *  The outward normal is di[3], and the map status is as given.
  *
  *****************************************************************************/
 
 __host__ __device__
-int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
+int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch,
 			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
@@ -929,6 +939,7 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
   double q2 = 0.0;
   double rd;
   double amp;
+  double phi, wphi;
   KRONECKER_DELTA_CHAR(d);
   LEVI_CIVITA_CHAR(e);
 
@@ -1025,9 +1036,25 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param,
        *                   have Qtilde appearing explicitly.
        *                   See colloids_q_boundary() etc */
 
+      /* Default case without compositional order parameter */
+      if (anch->phi == NULL) {
+	wphi = 1.0;
+      }
+      /* Compositional order parameter for LC wetting:
+	 The LC anchoring strengths w1 and w2 vanish in the disordered phase.
+	 We assume this is the phase which has a negative binary OP, e.g. phi = -1. 
+	 The standard anchoring case corresponds to phi = +1 */
+      else {
+	index = cs_index(cs, ic, jc, kc);
+	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
+	wphi = 0.5*(1.0+phi);
+      }
+
       c[ia][ib] +=
-	-w1*(qs[ia][ib] - q0[ia][ib])
-	-w2*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+	-w1*wphi*(qs[ia][ib] - q0[ia][ib])
+	-w2*wphi*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
+
+
     }
   }
 
@@ -1108,6 +1135,87 @@ int colloids_q_boundary(fe_lc_param_t * param,
       }
     }
 
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_3d_7pt_solid_dab
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_7pt_solid_dab(field_grad_t * df) {
+
+  int nlocal[3];
+  int nhalo;
+  int nextra;
+  int nsites;
+  int ic, jc, kc;
+  int xs, ys, zs;
+  int index;
+  double * __restrict__ dab;
+  double * __restrict__ field;
+
+  cs_t * cs = NULL;
+
+  assert(df);
+  assert(cs);
+
+  cs_nhalo(cs, &nhalo);
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsites);
+  cs_strides(cs, &xs, &ys, &zs);
+
+  nextra = nhalo - 1;
+  assert(nextra >= 0);
+
+  field = df->field->data;
+  dab = df->d_ab;
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+        index = cs_index(cs, ic, jc, kc);
+
+        dab[addr_rank1(nsites, NSYMM, index, XX)] = 
+         (+ 1.0*field[addr_rank0(nsites, index + xs)]
+          + 1.0*field[addr_rank0(nsites, index - xs)]
+          - 2.0*field[addr_rank0(nsites, index)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, XY)] = 0.25*
+          (+ field[addr_rank0(nsites, index + xs + ys)]
+           - field[addr_rank0(nsites, index + xs - ys)]
+           - field[addr_rank0(nsites, index - xs + ys)]
+           + field[addr_rank0(nsites, index - xs - ys)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, XZ)] = 0.25*
+          (+ field[addr_rank0(nsites, index + xs + 1)]
+           - field[addr_rank0(nsites, index + xs - 1)]
+           - field[addr_rank0(nsites, index - xs + 1)]
+           + field[addr_rank0(nsites, index - xs - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, YY)] = 
+         (+ 1.0*field[addr_rank0(nsites, index + ys)]
+          + 1.0*field[addr_rank0(nsites, index - ys)]
+          - 2.0*field[addr_rank0(nsites, index)]);
+
+
+        dab[addr_rank1(nsites, NSYMM, index, YZ)] = 0.25*
+          (+ field[addr_rank0(nsites, index + ys + 1)]
+           - field[addr_rank0(nsites, index + ys - 1)]
+           - field[addr_rank0(nsites, index - ys + 1)]
+           + field[addr_rank0(nsites, index - ys - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 
+         (+ 1.0*field[addr_rank0(nsites, index + 1)]
+          + 1.0*field[addr_rank0(nsites, index - 1)]
+          - 2.0*field[addr_rank0(nsites, index)]);
+
+      }
+    }
   }
 
   return 0;

@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computeing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -133,7 +133,7 @@ int stats_sigma_create(pe_t * pe, cs_t * cs, fe_symm_t * fe, field_t * phi,
 
   /* Initialise the order parameter field */
 
-  field_phi_init_drop(obj->drop.xi0, obj->drop.radius, obj->drop.phimax, phi);
+  field_phi_init_drop(phi, obj->drop.xi0, obj->drop.radius, obj->drop.phimax);
 
   /* Print some information */
   /* The diffusivity is mobility/A (with A < 0) */

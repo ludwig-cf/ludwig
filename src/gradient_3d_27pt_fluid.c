@@ -62,7 +62,7 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				   int nextra, grad_enum_t type);
 
 __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df);
-__host__ int grad_3d_27pt_dab_compute(lees_edw_t * le, field_grad_t * df);
+__host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df);
 
 __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 				    lees_edw_t * le,
@@ -163,7 +163,7 @@ __host__ int grad_3d_27pt_fluid_dab(field_grad_t * fgrad) {
   assert(fgrad->field->nf == 1); /* Scalars only; host only */
 
   le = fgrad->field->le;
-  grad_3d_27pt_dab_compute(le, fgrad);
+  grad_3d_27pt_fluid_dab_compute(le, fgrad);
   grad_3d_27pt_dab_le_correct(le, fgrad);
 
   return 0;
@@ -649,7 +649,7 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
  *
  *****************************************************************************/
 
-__host__ int grad_3d_27pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
+__host__ int grad_3d_27pt_fluid_dab_compute(lees_edw_t * le, field_grad_t * df) {
 
   int nlocal[3];
   int nhalo;
@@ -705,71 +705,34 @@ __host__ int grad_3d_27pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
 	  + 1.0*field[addr_rank0(nsites, indexp1 - 1)]
 	  + 1.0*field[addr_rank0(nsites, indexm1 - 1)]
 	  - 2.0*field[addr_rank0(nsites, index - 1)]);
-/*
-	  (+ 1.0*field[addr_rank0(nsites, indexp1)]
-	   + 1.0*field[addr_rank0(nsites, indexm1)]
-	   - 2.0*field[addr_rank0(nsites, index)]);
-*/
-	dab[addr_rank1(nsites, NSYMM, index, XY)] = 
-/*
--0.5* 
-	 (+ 1.0*field[addr_rank0(nsites, indexp1)]
-	  + 1.0*field[addr_rank0(nsites, indexm1)]
-	  + 1.0*field[addr_rank0(nsites, index + ys)]
-	  + 1.0*field[addr_rank0(nsites, index - ys)]
-	  - 2.0*field[addr_rank0(nsites, index)]
-	  - 1.0*field[addr_rank0(nsites, indexp1 + ys)]
-	  - 1.0*field[addr_rank0(nsites, indexm1 - ys)]
 
-);
-*/
-
-///*
-	  r12*
+	dab[addr_rank1(nsites, NSYMM, index, XY)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + ys)]
 	   - field[addr_rank0(nsites, indexp1 - ys)]
 	   - field[addr_rank0(nsites, indexm1 + ys)]
 	   + field[addr_rank0(nsites, indexm1 - ys)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys + 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-//*/
 
-	dab[addr_rank1(nsites, NSYMM, index, XZ)] = 
-/*
--0.5* 
-	 (+ 1.0*field[addr_rank0(nsites, indexp1)]
-	  + 1.0*field[addr_rank0(nsites, indexm1)]
-	  + 1.0*field[addr_rank0(nsites, index + 1)]
-	  + 1.0*field[addr_rank0(nsites, index - 1)]
-	  - 2.0*field[addr_rank0(nsites, index)]
-	  - 1.0*field[addr_rank0(nsites, indexp1 + 1)]
-	  - 1.0*field[addr_rank0(nsites, indexm1 - 1)]);
-*/
-///*
-	  r12*
+	dab[addr_rank1(nsites, NSYMM, index, XZ)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + 1)]
 	   - field[addr_rank0(nsites, indexp1 - 1)]
 	   - field[addr_rank0(nsites, indexm1 + 1)]
 	   + field[addr_rank0(nsites, indexm1 - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 + ys - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-//*/
 
 	dab[addr_rank1(nsites, NSYMM, index, YY)] = 0.2*
 	 (+ 1.0*field[addr_rank0(nsites, index + ys)]
@@ -787,39 +750,20 @@ __host__ int grad_3d_27pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
 	  + 1.0*field[addr_rank0(nsites, index - 1 + ys)]
 	  + 1.0*field[addr_rank0(nsites, index - 1 - ys)]
 	  - 2.0*field[addr_rank0(nsites, index - 1 )]);
-/*
-	  (+ 1.0*field[addr_rank0(nsites, index + ys)]
-	   + 1.0*field[addr_rank0(nsites, index - ys)]
-	   - 2.0*field[addr_rank0(nsites, index)]);
-*/
-	dab[addr_rank1(nsites, NSYMM, index, YZ)] = 
-/*
--0.5*
-	 (+ 1.0*field[addr_rank0(nsites, index + ys)]
-	  + 1.0*field[addr_rank0(nsites, index - ys)]
-	  + 1.0*field[addr_rank0(nsites, index + 1)]
-	  + 1.0*field[addr_rank0(nsites, index - 1)]
-	  - 2.0*field[addr_rank0(nsites, index)]
-	  - 1.0*field[addr_rank0(nsites, index + ys + 1)]
-	  - 1.0*field[addr_rank0(nsites, index - ys - 1)]);
-*/
-///*
-	  r12*
+
+	dab[addr_rank1(nsites, NSYMM, index, YZ)] = r12*
 	  (+ field[addr_rank0(nsites, index + ys + 1)]
 	   - field[addr_rank0(nsites, index + ys - 1)]
 	   - field[addr_rank0(nsites, index - ys + 1)]
 	   + field[addr_rank0(nsites, index - ys - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexp1 - ys - 1)]
-
 	   + field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-//*/
 
 	dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 0.2*
 	 (+ 1.0*field[addr_rank0(nsites, index + 1)]
@@ -837,11 +781,6 @@ __host__ int grad_3d_27pt_dab_compute(lees_edw_t * le, field_grad_t * df) {
 	  + 1.0*field[addr_rank0(nsites, index - ys + 1)]
 	  + 1.0*field[addr_rank0(nsites, index - ys - 1)]
 	  - 2.0*field[addr_rank0(nsites, index - ys)]);
-/*
-	  (+ 1.0*field[addr_rank0(nsites, index + 1)]
-	   + 1.0*field[addr_rank0(nsites, index - 1)]
-	   - 2.0*field[addr_rank0(nsites, index)]);
-*/
 
       }
     }
@@ -920,84 +859,34 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 	    + 1.0*field[addr_rank0(nsites, indexp1 - 1)]
 	    + 1.0*field[addr_rank0(nsites, indexm1 - 1)]
 	    - 2.0*field[addr_rank0(nsites, index - 1)]);
-/*
-	    (+ 1.0*field[addr_rank0(nsites, indexp1)]
-	     + 1.0*field[addr_rank0(nsites, indexm1)]
-	     - 2.0*field[addr_rank0(nsites, index)]);
-*/
 
-	  dab[addr_rank1(nsites, NSYMM, index, XY)] = 
-
-	  r12*
+	  dab[addr_rank1(nsites, NSYMM, index, XY)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + ys)]
 	   - field[addr_rank0(nsites, indexp1 - ys)]
 	   - field[addr_rank0(nsites, indexm1 + ys)]
 	   + field[addr_rank0(nsites, indexm1 - ys)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys + 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-/*
--0.5*
 
-         (+ 1.0*field[addr_rank0(nsites, indexp1)]
-          + 1.0*field[addr_rank0(nsites, indexm1)]
-          + 1.0*field[addr_rank0(nsites, index + ys)]
-          + 1.0*field[addr_rank0(nsites, index - ys)]
-          - 2.0*field[addr_rank0(nsites, index)]
-          - 1.0*field[addr_rank0(nsites, indexp1 + ys)]
-          - 1.0*field[addr_rank0(nsites, indexm1 - ys)]);
-*/
-/*
-0.25*
-	    (+ field[addr_rank0(nsites, indexp1 + ys)]
-	     - field[addr_rank0(nsites, indexp1 - ys)]
-	     - field[addr_rank0(nsites, indexm1 + ys)]
-	     + field[addr_rank0(nsites, indexm1 - ys)]);
-*/
-
-	  dab[addr_rank1(nsites, NSYMM, index, XZ)] = 
-
-	  r12*
+	  dab[addr_rank1(nsites, NSYMM, index, XZ)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + 1)]
 	   - field[addr_rank0(nsites, indexp1 - 1)]
 	   - field[addr_rank0(nsites, indexm1 + 1)]
 	   + field[addr_rank0(nsites, indexm1 - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 + ys - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-
-/*
--0.5*
-
-         (+ 1.0*field[addr_rank0(nsites, indexp1)]
-          + 1.0*field[addr_rank0(nsites, indexm1)]
-          + 1.0*field[addr_rank0(nsites, index + 1)]
-          + 1.0*field[addr_rank0(nsites, index - 1)]
-          - 2.0*field[addr_rank0(nsites, index)]
-          - 1.0*field[addr_rank0(nsites, indexp1 + 1)]
-          - 1.0*field[addr_rank0(nsites, indexm1 - 1)]);
-*/
-/*
-0.25*
-	    (+ field[addr_rank0(nsites, indexp1 + 1)]
-	     - field[addr_rank0(nsites, indexp1 - 1)]
-	     - field[addr_rank0(nsites, indexm1 + 1)]
-	     + field[addr_rank0(nsites, indexm1 - 1)]);
-*/
 
 	  dab[addr_rank1(nsites, NSYMM, index, YY)] = 0.2*
 	   (+ 1.0*field[addr_rank0(nsites, index + ys)]
@@ -1016,46 +905,20 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 	    + 1.0*field[addr_rank0(nsites, index - 1 - ys)]
 	    - 2.0*field[addr_rank0(nsites, index - 1 )]);
 
-/*	    (+ 1.0*field[addr_rank0(nsites, index + ys)]
-	     + 1.0*field[addr_rank0(nsites, index - ys)]
-	     - 2.0*field[addr_rank0(nsites, index)]);
-*/
-	  dab[addr_rank1(nsites, NSYMM, index, YZ)] = 
-
-	  r12*
+	  dab[addr_rank1(nsites, NSYMM, index, YZ)] = r12*
 	  (+ field[addr_rank0(nsites, index + ys + 1)]
 	   - field[addr_rank0(nsites, index + ys - 1)]
 	   - field[addr_rank0(nsites, index - ys + 1)]
 	   + field[addr_rank0(nsites, index - ys - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexp1 - ys - 1)]
-
 	   + field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
 
-/*
--0.5*
-
-         (+ 1.0*field[addr_rank0(nsites, index + ys)]
-          + 1.0*field[addr_rank0(nsites, index - ys)]
-          + 1.0*field[addr_rank0(nsites, index + 1)]
-          + 1.0*field[addr_rank0(nsites, index - 1)]
-          - 2.0*field[addr_rank0(nsites, index)]
-          - 1.0*field[addr_rank0(nsites, index + ys + 1)]
-          - 1.0*field[addr_rank0(nsites, index - ys - 1)]);
-*/
-/*
-0.25*
-	    (+ field[addr_rank0(nsites, index + ys + 1)]
-	     - field[addr_rank0(nsites, index + ys - 1)]
-	     - field[addr_rank0(nsites, index - ys + 1)]
-	     + field[addr_rank0(nsites, index - ys - 1)]);
-*/
 	  dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 0.2*
 	   (+ 1.0*field[addr_rank0(nsites, index + 1)]
 	    + 1.0*field[addr_rank0(nsites, index - 1)]
@@ -1072,12 +935,6 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 	    + 1.0*field[addr_rank0(nsites, index - ys + 1)]
 	    + 1.0*field[addr_rank0(nsites, index - ys - 1)]
 	    - 2.0*field[addr_rank0(nsites, index - ys)]);
-
-/*
-	    (+ 1.0*field[addr_rank0(nsites, index + 1)]
-	     + 1.0*field[addr_rank0(nsites, index - 1)]
-	     - 2.0*field[addr_rank0(nsites, index)]);
-*/
 
 	}
       }
@@ -1114,82 +971,34 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 	    + 1.0*field[addr_rank0(nsites, indexp1 - 1)]
 	    + 1.0*field[addr_rank0(nsites, indexm1 - 1)]
 	    - 2.0*field[addr_rank0(nsites, index - 1)]);
-/*
-	    (+ 1.0*field[addr_rank0(nsites, indexp1)]
-	     + 1.0*field[addr_rank0(nsites, indexm1)]
-	     - 2.0*field[addr_rank0(nsites, index)]);
-*/
 
-	  dab[addr_rank1(nsites, NSYMM, index, XY)] =
-	  r12*
+	  dab[addr_rank1(nsites, NSYMM, index, XY)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + ys)]
 	   - field[addr_rank0(nsites, indexp1 - ys)]
 	   - field[addr_rank0(nsites, indexm1 + ys)]
 	   + field[addr_rank0(nsites, indexm1 - ys)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys + 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-/*
- -0.5*
-         (+ 1.0*field[addr_rank0(nsites, indexp1)]
-          + 1.0*field[addr_rank0(nsites, indexm1)]
-          + 1.0*field[addr_rank0(nsites, index + ys)]
-          + 1.0*field[addr_rank0(nsites, index - ys)]
-          - 2.0*field[addr_rank0(nsites, index)]
-          - 1.0*field[addr_rank0(nsites, indexp1 + ys)]
-          - 1.0*field[addr_rank0(nsites, indexm1 - ys)]);
-*/
-/*
-0.25*
-	    (+ field[addr_rank0(nsites, indexp1 + ys)]
-	     - field[addr_rank0(nsites, indexp1 - ys)]
-	     - field[addr_rank0(nsites, indexm1 + ys)]
-	     + field[addr_rank0(nsites, indexm1 - ys)]);
-*/
 
-	  dab[addr_rank1(nsites, NSYMM, index, XZ)] = 
-
-	  r12*
+	  dab[addr_rank1(nsites, NSYMM, index, XZ)] = r12*
 	  (+ field[addr_rank0(nsites, indexp1 + 1)]
 	   - field[addr_rank0(nsites, indexp1 - 1)]
 	   - field[addr_rank0(nsites, indexm1 + 1)]
 	   + field[addr_rank0(nsites, indexm1 - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 + ys - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-
-/*
--0.5*
-
-         (+ 1.0*field[addr_rank0(nsites, indexp1)]
-          + 1.0*field[addr_rank0(nsites, indexm1)]
-          + 1.0*field[addr_rank0(nsites, index + 1)]
-          + 1.0*field[addr_rank0(nsites, index - 1)]
-          - 2.0*field[addr_rank0(nsites, index)]
-          - 1.0*field[addr_rank0(nsites, indexp1 + 1)]
-          - 1.0*field[addr_rank0(nsites, indexm1 - 1)]);
-*/
-/*
-0.25*
-	    (+ field[addr_rank0(nsites, indexp1 + 1)]
-	     - field[addr_rank0(nsites, indexp1 - 1)]
-	     - field[addr_rank0(nsites, indexm1 + 1)]
-	     + field[addr_rank0(nsites, indexm1 - 1)]);
-*/
 
 	  dab[addr_rank1(nsites, NSYMM, index, YY)] = 0.2*
 	   (+ 1.0*field[addr_rank0(nsites, index + ys)]
@@ -1207,48 +1016,20 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 	    + 1.0*field[addr_rank0(nsites, index - 1 + ys)]
 	    + 1.0*field[addr_rank0(nsites, index - 1 - ys)]
 	    - 2.0*field[addr_rank0(nsites, index - 1 )]);
-/*
-	    (+ 1.0*field[addr_rank0(nsites, index + ys)]
-	     + 1.0*field[addr_rank0(nsites, index - ys)]
-	     - 2.0*field[addr_rank0(nsites, index)]);
-*/
 
-	  dab[addr_rank1(nsites, NSYMM, index, YZ)] = 
-
-	  r12*
+	  dab[addr_rank1(nsites, NSYMM, index, YZ)] = r12*
 	  (+ field[addr_rank0(nsites, index + ys + 1)]
 	   - field[addr_rank0(nsites, index + ys - 1)]
 	   - field[addr_rank0(nsites, index - ys + 1)]
 	   + field[addr_rank0(nsites, index - ys - 1)]
-
 	   + field[addr_rank0(nsites, indexp1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexp1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexp1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexp1 - ys - 1)]
-
 	   + field[addr_rank0(nsites, indexm1 + ys + 1)]
 	   - field[addr_rank0(nsites, indexm1 + ys - 1)]
 	   - field[addr_rank0(nsites, indexm1 - ys + 1)]
 	   + field[addr_rank0(nsites, indexm1 - ys - 1)]);
-
-/*
--0.5*
-
-         (+ 1.0*field[addr_rank0(nsites, index + ys)]
-          + 1.0*field[addr_rank0(nsites, index - ys)]
-          + 1.0*field[addr_rank0(nsites, index + 1)]
-          + 1.0*field[addr_rank0(nsites, index - 1)]
-          - 2.0*field[addr_rank0(nsites, index)]
-          - 1.0*field[addr_rank0(nsites, index + ys + 1)]
-          - 1.0*field[addr_rank0(nsites, index - ys - 1)]);
-*/
-/*
-0.25*
-	    (+ field[addr_rank0(nsites, index + ys + 1)]
-	     - field[addr_rank0(nsites, index + ys - 1)]
-	     - field[addr_rank0(nsites, index - ys + 1)]
-	     + field[addr_rank0(nsites, index - ys - 1)]);
-*/
 
 	  dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 0.2*
 	   (+ 1.0*field[addr_rank0(nsites, index + 1)]
@@ -1266,11 +1047,6 @@ __host__ int grad_3d_27pt_dab_le_correct(lees_edw_t * le, field_grad_t * df) {
 	    + 1.0*field[addr_rank0(nsites, index - ys + 1)]
 	    + 1.0*field[addr_rank0(nsites, index - ys - 1)]
 	    - 2.0*field[addr_rank0(nsites, index - ys)]);
-/*
-	    (+ 1.0*field[addr_rank0(nsites, index + 1)]
-	     + 1.0*field[addr_rank0(nsites, index - 1)]
-	     - 2.0*field[addr_rank0(nsites, index)]);
-*/
 
 	}
       }

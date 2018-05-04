@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.5.82 (Serial version running on 1 process)
+Welcome to Ludwig v0.8.0 (Serial version running on 1 process)
 
-The SVN revision details are: 3052
+The SVN revision details are: 3199M
 Note assertions via standard C assert() are on.
 
 Read 22 user parameters from serial-init-lcr.inp
@@ -33,7 +33,7 @@ Chirality                  =  1.3500000e+00
 Reduced temperature        = -5.0000003e-01
 Initial redshift           =  1.0000000e+00
 Dynamic redshift update    =             no
-LC activity constant zeta  =  0.0000000e+00
+Liquid crystal activity                  No
 
 Using Beris-Edwards solver:
 Rotational diffusion const =  1.0000000e-01
@@ -108,8 +108,8 @@ Scalars - total mean variance min max
 [phi] -9.4742638e-01 -2.8913159e-05 1.9405274e-05 -4.9953337e-03 9.9515476e-03
 [phi]  1.8660003e-01  5.6945811e-06 1.4999371e-05 -7.4666375e-03 7.4628443e-03
 
-Free energy density - timestep total fluid
-[fed]              1  1.2798848361e-06  1.2798848361e-06
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]              1  4.1939266308e-02  3.2768000000e+04  1.2798848361e-06 -7.3638579886e-08  1.3535234160e-06  1.0000000000e+00
 
 Momentum - x y z
 [total   ]  4.4969237e-13 -3.7331249e-15  3.1780134e-15
@@ -121,28 +121,28 @@ Velocity - x y z
 
 Completed cycle 1
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.204      0.204      0.204   0.204027 (1 call)
-      Time step loop:      0.144      0.144      0.144   0.143886 (1 call)
-         Propagation:      0.014      0.014      0.014   0.014132 (1 call)
-    Propagtn (krnl) :      0.014      0.014      0.014   0.014119 (1 call)
-           Collision:      0.026      0.026      0.026   0.025652 (1 call)
-   Collision (krnl) :      0.026      0.026      0.026   0.025642 (1 call)
-       Lattice halos:      0.003      0.003      0.003   0.003135 (1 call)
-       phi gradients:      0.020      0.020      0.020   0.020189 (1 call)
-    phi grad (krnl) :      0.018      0.018      0.018   0.017589 (1 call)
-           phi halos:      0.003      0.003      0.003   0.002579 (1 call)
-                 BBL:      0.000      0.000      0.000   0.000007 (1 call)
-   Force calculation:      0.038      0.038      0.038   0.037727 (1 call)
-   Phi force (krnl) :      0.015      0.015      0.015   0.014753 (1 call)
-          phi update:      0.041      0.041      0.041   0.041357 (1 call)
-      Velocity Halo :      0.001      0.001      0.001   0.000982 (1 call)
-BE mol field (krnl) :      0.010      0.010      0.010   0.009922 (1 call)
-BP BE update (krnl) :      0.016      0.016      0.016   0.015539 (1 call)
-     Advectn (krnl) :      0.011      0.011      0.011   0.011166 (1 call)
- Advectn BCS (krnl) :      0.003      0.003      0.003   0.002906 (1 call)
-               Free1:      0.027      0.027      0.027   0.026639 (1 call)
+               Total:      0.217      0.217      0.217   0.216706 (1 call)
+      Time step loop:      0.139      0.139      0.139   0.138801 (1 call)
+         Propagation:      0.013      0.013      0.013   0.012807 (1 call)
+    Propagtn (krnl) :      0.013      0.013      0.013   0.012797 (1 call)
+           Collision:      0.022      0.022      0.022   0.021694 (1 call)
+   Collision (krnl) :      0.022      0.022      0.022   0.021661 (1 call)
+       Lattice halos:      0.004      0.004      0.004   0.003773 (1 call)
+       phi gradients:      0.019      0.019      0.019   0.018892 (1 call)
+    phi grad (krnl) :      0.017      0.017      0.017   0.017163 (1 call)
+           phi halos:      0.002      0.002      0.002   0.001717 (1 call)
+                 BBL:      0.000      0.000      0.000   0.000004 (1 call)
+   Force calculation:      0.039      0.039      0.039   0.039250 (1 call)
+   Phi force (krnl) :      0.016      0.016      0.016   0.015505 (1 call)
+          phi update:      0.041      0.041      0.041   0.041254 (1 call)
+      Velocity Halo :      0.001      0.001      0.001   0.000554 (1 call)
+BE mol field (krnl) :      0.010      0.010      0.010   0.010488 (1 call)
+BP BE update (krnl) :      0.016      0.016      0.016   0.016481 (1 call)
+     Advectn (krnl) :      0.010      0.010      0.010   0.010160 (1 call)
+ Advectn BCS (krnl) :      0.003      0.003      0.003   0.002747 (1 call)
+               Free1:      0.041      0.041      0.041   0.041172 (1 call)
 Ludwig finished normally.

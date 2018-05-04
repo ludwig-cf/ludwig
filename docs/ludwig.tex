@@ -8,12 +8,14 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
+%  Contributing authors:
 %  Kevin Stratford (kevin@epcc.ed.ac.uk)
-%  (c) 2008-2014 The University of Edinburgh
+%
+%  (c) 2008-2017 The University of Edinburgh
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\documentclass[11pt,twoside]{article}
+\documentclass[11pt,twoside,a4paper]{article}
 
 \usepackage{amsmath}
 \usepackage{moreverb}
@@ -26,21 +28,17 @@
 \usepackage{listings}
 \usepackage{mathtools}
 
-\setlength{\hoffset}{-1in}
-\setlength{\voffset}{-1in}
-
-\setlength{\topmargin}{2cm}
-\setlength{\evensidemargin}{3.1cm}
-\setlength{\oddsidemargin}{3.1cm}
-
-\setlength{\textwidth}{14.8cm}
-\setlength{\textheight}{23cm}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ left=3.1cm,
+ right=3.1cm,
+ top=2.25cm,
+ bottom=2.25cm 
+}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{\smallskipamount}
-
-
-
 
 \newcommand{\inputkey}[1]{\framebox{\textbf{\texttt{#1}}}}
 \newcommand{\e}[1]{\cdot10^{#1}}
@@ -66,6 +64,7 @@
 
 \setcounter{page}{1}
 
+% We're not including the table of contents just at the moment
 %\tableofcontents
 
 \newpage
@@ -95,7 +94,15 @@
   {\normalfont\normalsize\bfseries}%
 }
 
+% Table of Contents
+\pagenumbering{roman}
+\title{Ludwig User Manual}
+\maketitle 
+\tableofcontents
+\clearpage
+
 % Sections
+\pagenumbering{arabic}
 
 \input{intro.tex}
 \input{devel.tex}
@@ -104,11 +111,11 @@
 \input{colloid.tex}
 \input{binary.tex}
 \input{liquidcrystal.tex}
+\input{lc-emulsion.tex}
 \input{electrokinetic.tex}
 \input{input.tex}
 \input{examples.tex}
 \input{develop.tex}
-\input{input.tex}
 \input{plan.tex}
 
 \clearpage

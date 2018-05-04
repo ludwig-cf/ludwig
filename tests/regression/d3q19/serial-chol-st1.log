@@ -1,9 +1,9 @@
-Welcome to Ludwig v0.5.82 (Serial version running on 1 process)
+Welcome to Ludwig v0.8.0 (Serial version running on 1 process)
 
-The SVN revision details are: 3052
+The SVN revision details are: 3199M
 Note assertions via standard C assert() are on.
 
-Read 52 user parameters from serial-chol-st1.inp
+Read 51 user parameters from serial-chol-st1.inp
 
 System details
 --------------
@@ -33,7 +33,7 @@ Chirality                  =  7.9999999e-01
 Reduced temperature        = -2.5000000e-01
 Initial redshift           =  1.0000000e+00
 Dynamic redshift update    =             no
-LC activity constant zeta  =  0.0000000e+00
+Liquid crystal activity                  No
 
 Liquid crystal anchoring
 Anchoring method:          =            two
@@ -189,31 +189,31 @@ Velocity - x y z
 
 Completed cycle 20
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      3.140      3.140      3.140   3.140235 (1 call)
-      Time step loop:      0.139      0.175      3.075   0.153767 (20 calls)
-         Propagation:      0.010      0.014      0.228   0.011382 (20 calls)
-    Propagtn (krnl) :      0.010      0.014      0.228   0.011376 (20 calls)
-           Collision:      0.023      0.032      0.541   0.027066 (20 calls)
-   Collision (krnl) :      0.023      0.032      0.541   0.027059 (20 calls)
-       Lattice halos:      0.002      0.005      0.121   0.003021 (40 calls)
-       phi gradients:      0.018      0.024      0.407   0.020352 (20 calls)
-           phi halos:      0.001      0.002      0.024   0.001210 (20 calls)
-              Forces:      0.000      0.000      0.005   0.000247 (20 calls)
-             Rebuild:      0.001      0.002      0.023   0.001144 (20 calls)
-                 BBL:      0.001      0.002      0.023   0.001134 (20 calls)
-      Particle halos:      0.000      0.000      0.000   0.000019 (20 calls)
-   Force calculation:      0.034      0.046      0.788   0.039418 (20 calls)
-   Phi force (krnl) :      0.013      0.019      0.307   0.015326 (20 calls)
-          phi update:      0.041      0.055      0.917   0.045837 (20 calls)
-      Velocity Halo :      0.000      0.001      0.010   0.000489 (20 calls)
-BE mol field (krnl) :      0.009      0.013      0.186   0.009299 (20 calls)
-BP BE update (krnl) :      0.014      0.020      0.319   0.015927 (20 calls)
-     Advectn (krnl) :      0.014      0.019      0.315   0.015739 (20 calls)
- Advectn BCS (krnl) :      0.003      0.005      0.067   0.003354 (20 calls)
-               Free1:      0.000      0.027      0.027   0.000445 (60 calls)
-               Free3:      0.000      0.000      0.000   0.000021 (20 calls)
+               Total:      2.818      2.818      2.818   2.817902 (1 call)
+      Time step loop:      0.135      0.152      2.753   0.137664 (20 calls)
+         Propagation:      0.009      0.012      0.193   0.009634 (20 calls)
+    Propagtn (krnl) :      0.009      0.012      0.193   0.009631 (20 calls)
+           Collision:      0.021      0.022      0.418   0.020896 (20 calls)
+   Collision (krnl) :      0.021      0.022      0.418   0.020888 (20 calls)
+       Lattice halos:      0.002      0.004      0.099   0.002465 (40 calls)
+       phi gradients:      0.018      0.022      0.361   0.018072 (20 calls)
+           phi halos:      0.001      0.002      0.021   0.001060 (20 calls)
+              Forces:      0.000      0.000      0.006   0.000281 (20 calls)
+             Rebuild:      0.001      0.001      0.017   0.000837 (20 calls)
+                 BBL:      0.001      0.001      0.018   0.000898 (20 calls)
+      Particle halos:      0.000      0.000      0.000   0.000016 (20 calls)
+   Force calculation:      0.037      0.040      0.751   0.037530 (20 calls)
+   Phi force (krnl) :      0.015      0.016      0.303   0.015168 (20 calls)
+          phi update:      0.043      0.048      0.872   0.043594 (20 calls)
+      Velocity Halo :      0.000      0.001      0.009   0.000436 (20 calls)
+BE mol field (krnl) :      0.010      0.011      0.199   0.009935 (20 calls)
+BP BE update (krnl) :      0.016      0.017      0.322   0.016115 (20 calls)
+     Advectn (krnl) :      0.013      0.016      0.269   0.013448 (20 calls)
+ Advectn BCS (krnl) :      0.003      0.003      0.056   0.002804 (20 calls)
+               Free1:      0.000      0.028      0.028   0.000461 (60 calls)
+               Free3:      0.000      0.000      0.000   0.000024 (20 calls)
 Ludwig finished normally.

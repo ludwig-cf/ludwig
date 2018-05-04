@@ -62,7 +62,6 @@ lc_kappa1  0.018971957
 lc_xi      0.0
 
 lc_Gamma   0.5
-lc_active_zeta 0.0
 
 lc_q_init_amplitude 0.0001
 lc_q_initialisation random

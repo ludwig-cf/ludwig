@@ -73,7 +73,7 @@ lc_xi      0.7
 
 lc_Gamma   0.3
 lc_noise   0
-lc_active_zeta 0.0
+lc_activity no
 
 lc_q_initialisation nematic
 lc_q_init_amplitude 0.2

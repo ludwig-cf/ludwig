@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -126,7 +126,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
 
 /*****************************************************************************
  *
- *  lb_collision_mrt
+ *  lb_collision_mrt_site
  *
  *  Single fluid collision driver (multiple relaxation time).
  *
@@ -1334,10 +1334,32 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb) {
   collide_param_t p;
   physics_t * phys = NULL;
 
+  int ia;
+  double t;
+  double force_constant[3];
+  double fpulse_frequency;
+  double fpulse_frequency_rad;
+  double fpulse_amplitude[3] = {0.0, 0.0, 0.0};
+  double force_pulsatile[3] = {0.0, 0.0, 0.0};
+
+  PI_DOUBLE(pi);
+
   assert(lb);
 
   physics_ref(&phys);
-  physics_fbody(phys, p.force_global);
+  physics_fbody(phys, force_constant);
+
+  /* Pulse force (time dependent) */
+  physics_fpulse(phys, fpulse_amplitude);
+  physics_fpulse_frequency(phys, &fpulse_frequency);
+
+  t = physics_control_timestep(phys);
+  fpulse_frequency_rad =  2.0*pi*fpulse_frequency; 
+
+  for (ia = 0; ia < 3; ia++) {
+    force_pulsatile[ia] = fpulse_amplitude[ia]*sin(fpulse_frequency_rad*t);
+    p.force_global[ia] = force_constant[ia]+force_pulsatile[ia];
+  }
 
   /* The lattice mobility gives tau = (M rho_0 / Delta t) + 1 / 2,
    * or with rho_0 = 1 etc: (1 / tau) = 2 / (2M + 1) */

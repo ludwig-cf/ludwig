@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -61,7 +61,7 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     pe_info(pe, "Initialising phi for spinodal\n");
     rt_int_parameter(rt, "random_seed", &seed);
     rt_double_parameter(rt, "noise", &noise0);
-    field_phi_init_spinodal(seed, param.phi0, noise0, phi);
+    field_phi_init_spinodal(phi, seed, param.phi0, noise0);
   }
 
   if (p != 0 && strcmp(value, "patches") == 0) {
@@ -73,12 +73,57 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     rt_int_parameter(rt, "random_seed", &seed);
     rt_int_parameter(rt, "phi_init_patch_size", &patch);
     rt_double_parameter(rt, "phi_init_patch_vol", &volminus1);
-    field_phi_init_spinodal_patches(seed, patch, volminus1, phi);
+    field_phi_init_spinodal_patches(phi, seed, patch, volminus1);
   }
 
   if (p != 0 && strcmp(value, "block") == 0) {
     pe_info(pe, "Initialisng phi as block\n");
-    field_phi_init_block(param.xi0, phi);
+    field_phi_init_block(phi, param.xi0);
+  }
+
+  if (p != 0 && strcmp(value, "block_X") == 0) {
+    double block_dimension = 10.0;
+    rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block of size %0.2f along the X axis\n", block_dimension);
+    field_phi_init_block_X(phi, param.xi0, block_dimension);
+  }
+
+  if (p != 0 && strcmp(value, "block_Y") == 0) {
+    double block_dimension = 10.0;
+    rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block  of size %0.2f along the Y axis\n", block_dimension);
+    field_phi_init_block_Y(phi, param.xi0, block_dimension);
+  }
+
+  if (p != 0 && strcmp(value, "block_Z") == 0) {
+    double block_dimension = 10.0;
+    rt_double_parameter(rt, "phi_init_block_dimension", &block_dimension);
+    pe_info(pe, "Initialising phi as block  of size %0.2f along the Z axis\n", block_dimension);
+    field_phi_init_block_Z(phi, param.xi0, block_dimension);
+  }
+
+  if (p != 0 && strcmp(value, "layer_X") == 0) {
+    double layer_size = 0.50;
+    rt_double_parameter(rt, "phi_init_layer_size", &layer_size);
+    if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
+    pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the X axis\n", layer_size*100.0);
+    field_phi_init_layer_X(phi, param.xi0, layer_size);
+  }
+
+  if (p != 0 && strcmp(value, "layer_Y") == 0) {
+     double layer_size = 0.50;
+    rt_double_parameter(rt, "phi_init_layer_size", &layer_size);
+    if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
+    pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the Y axis\n", layer_size*100.0);
+    field_phi_init_layer_Y(phi, param.xi0, layer_size);
+  }
+
+  if (p != 0 && strcmp(value, "layer_Z") == 0) {
+    double layer_size = 0.50;
+    rt_double_parameter(rt, "phi_init_layer_size", &layer_size);
+    if (layer_size < 0.0 || layer_size > 1.0) { layer_size = 0.50; }
+    pe_info(pe, "Initialising phi as layer with interface at %0.2f/100 on the Z axis\n", layer_size*100.0);
+    field_phi_init_layer_Z(phi, param.xi0, layer_size);
   }
 
   if (p != 0 && strcmp(value, "bath") == 0) {
@@ -93,7 +138,27 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     rt_double_parameter(rt, "phi_init_drop_amplitude", &phistar);
     pe_info(pe, "Initialising droplet radius:     %14.7e\n", radius);
     pe_info(pe, "Initialising droplet amplitude:  %14.7e\n", phistar);
-    field_phi_init_drop(param.xi0, radius, phistar, phi);
+    field_phi_init_drop(phi, param.xi0, radius, phistar);
+  }
+
+  if (p != 0 && strcmp(value, "emulsion") == 0) {
+    pe_info(pe, "Initialising phi for emulsion\n");
+    int ndrops = 1;
+    radius = DEFAULT_RADIUS;
+    double d_centre = 20.0;   // distance between drop centres
+    double phistar = -1.0;   // Value of the order parameter inside the droplets
+    rt_int_parameter(rt, "phi_init_emulsion_ndrops", &ndrops);
+    rt_double_parameter(rt, "phi_init_emulsion_radius", &radius);
+    rt_double_parameter(rt, "phi_init_emulsion_d_centre", &d_centre);
+    rt_double_parameter(rt, "phi_init_emulsion_amplitude", &phistar);
+
+    if (2.0*radius > d_centre + 5.0) pe_info(pe, "Overlapping droplets\n"); 
+    
+    pe_info(pe, "Intialising emulsion with %i droplets of radius %f\n", ndrops, radius);   
+    pe_info(pe, "Centre to centre distance: %f\n",d_centre);
+    pe_info(pe, "Value of phi inside droplets: %0.2f\n",phistar); 
+
+    field_phi_init_emulsion(phi, param.xi0, radius, phistar, ndrops, d_centre);
   }
 
   if (p != 0 && strcmp(value, "from_file") == 0) {

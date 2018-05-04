@@ -24,7 +24,7 @@
 # Edinburgh Parallel Computing Centre
 #
 # Kevin Stratford (kevin@epcc.ed.ac.uk)
-# (c) 2010-2015 The University of Edinburgh
+# (c) 2010-2017 The University of Edinburgh
 #
 ###############################################################################
 
@@ -76,7 +76,7 @@ OBJS = \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
      field_phi_init.o field_phi_init_rt.o \
-     fe_electro.o fe_electro_symmetric.o \
+     fe_electro.o fe_electro_symmetric.o fe_lc_stats.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \

@@ -31,12 +31,13 @@
 #include "util.h"
 #include "wall.h"
 #include "build.h"
+#include "blue_phase.h"
 
 
 int build_replace_fluid_local(colloids_info_t * info, colloid_t * pc,
 			      int index, lb_t * lb);
 
-int build_replace_q_local(colloids_info_t * info, colloid_t * pc, int index,
+int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc, int index,
 			  field_t * q);
 
 static int build_remove_fluid(lb_t * lb, int index, colloid_t * pc);
@@ -44,7 +45,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * info, int index,
 			       colloid_t * pc, map_t * map);
 static int build_remove_order_parameter(lb_t * lb, field_t * f, int index,
 					colloid_t * pc);
-static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
+static int build_replace_order_parameter(fe_t * fe, lb_t * lb, colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc, map_t * map);
 static int build_reset_links(cs_t * cs, colloid_t * pc, map_t * map);
@@ -553,9 +554,12 @@ int build_reset_links(cs_t * cs, colloid_t * p_colloid, map_t * map) {
  *  Correction terms are added for the appropriate colloids to be
  *  implemented at the next step.
  *
+ *  The 'abstract' free energy fe may be NULL for single fluid.
+ *
  *****************************************************************************/
 
-int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
+int build_remove_replace(fe_t * fe, colloids_info_t * cinfo, lb_t * lb,
+			 field_t * phi,
 			 field_t * p, field_t * q, psi_t * psi, map_t * map) {
 
   int ic, jc, kc, index;
@@ -600,9 +604,9 @@ int build_remove_replace(colloids_info_t * cinfo, lb_t * lb, field_t * phi,
 
 	  if (!is_halo) {
 	    build_replace_fluid(lb, cinfo, index, pcold, map);
-	    if (phi) build_replace_order_parameter(lb, cinfo, phi, index, pcold, map);
-	    if (p) build_replace_order_parameter(lb, cinfo, p, index, pcold, map);
-	    if (q) build_replace_order_parameter(lb, cinfo, q, index, pcold, map);
+	    if (phi) build_replace_order_parameter(fe, lb, cinfo, phi, index, pcold, map);
+	    if (p) build_replace_order_parameter(fe, lb, cinfo, p, index, pcold, map);
+	    if (q) build_replace_order_parameter(fe, lb, cinfo, q, index, pcold, map);
 	    if (psi) psi_colloid_replace_charge(psi, cinfo, pcold, index);
 	  }
 	}
@@ -993,7 +997,8 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
  *
  *****************************************************************************/
 
-static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
+static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
+					 colloids_info_t * cinfo,
 					 field_t * f, int index,
 					 colloid_t * pc, map_t * map) {
   int indexn, n, p, pdash;
@@ -1100,7 +1105,7 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
 
     if (nweight == 0) {
       if (n == NQAB) {
-	build_replace_q_local(cinfo, pc, index, f);
+	build_replace_q_local(fe, cinfo, pc, index, f);
       }
       else {
 	assert(0);
@@ -1128,32 +1133,62 @@ static int build_replace_order_parameter(lb_t * lb, colloids_info_t * cinfo,
  *  build_replace_q_local
  *
  *  ASSUME NORMAL ANCHORING AMPLITUDE = 1/3
- *  TODO:
- *  We need the free energy at this point.
  *
  *****************************************************************************/
 
-int build_replace_q_local(colloids_info_t * info, colloid_t * pc, int index,
-			  field_t * q) {
+int build_replace_q_local(fe_t * fe, colloids_info_t * info, colloid_t * pc,
+			  int index, field_t * q) {
 
   int ia, ib;
-  double rmodsq;
-  double rb[3];
+  double rb[3], rbp[3], rhat[3];
+  double rbmod, rhat_dot_rb;
   double qnew[3][3];
 
   double amplitude = (1.0/3.0);
+
+  fe_lc_t * fe_lc = (fe_lc_t *) fe;
+  fe_lc_param_t * lc_param = fe_lc->param; 
+
   KRONECKER_DELTA_CHAR(d);
 
+  assert(fe);
   assert(info);
   assert(pc);
   assert(q);
 
+  fe_lc_amplitude_compute(lc_param, &amplitude);
+
+  /* For normal anchoring we determine the radial unit vector rb */
+
   colloid_rb(info, pc, index, rb);
-  rmodsq = 1.0/(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
+
+  rbmod = 1.0/sqrt(rb[X]*rb[X] + rb[Y]*rb[Y] + rb[Z]*rb[Z]);
+  rb[0] *= rbmod;
+  rb[1] *= rbmod;
+  rb[2] *= rbmod;
+
+  /* For planar degenerate anchoring we subtract the projection of a
+     randomly oriented unit vector on rb and renormalise the result   */
+
+  if (lc_param->anchoring_coll == LC_ANCHORING_PLANAR) {
+
+    util_random_unit_vector(&pc->s.rng, rhat);
+
+    rhat_dot_rb = dot_product(rhat,rb); 
+    rbp[0] = rhat[0] - rhat_dot_rb*rb[0];
+    rbp[1] = rhat[1] - rhat_dot_rb*rb[1];
+    rbp[2] = rhat[2] - rhat_dot_rb*rb[2];
+
+    rbmod = 1.0/sqrt(rbp[X]*rbp[X] + rbp[Y]*rbp[Y] + rbp[Z]*rbp[Z]);
+    rb[0] = rbmod * rbp[0];
+    rb[1] = rbmod * rbp[1];
+    rb[2] = rbmod * rbp[2];
+
+  }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      qnew[ia][ib] = 0.5*amplitude*(3.0*rmodsq*rb[ia]*rb[ib] - d[ia][ib]);
+      qnew[ia][ib] = 0.5*amplitude*(3.0*rb[ia]*rb[ib] - d[ia][ib]);
     }
   }
 

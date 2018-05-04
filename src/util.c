@@ -216,6 +216,36 @@ void rotate_vector(double v[3], const double w[3]) {
 
 /*****************************************************************************
  *
+ *  util_random_unit_vector
+ *
+ *  Returns a vector randomly on the surface of a unit sphere.
+ *  Method of Marsaglia [1972]. See Allen and Tildesley.
+ *
+ *****************************************************************************/
+
+int util_random_unit_vector(int * state, double rhat[3]) {
+
+  double r[2];
+  double zeta1, zeta2, zsq;  
+
+  do {
+    util_ranlcg_reap_uniform(state, r);
+    util_ranlcg_reap_uniform(state, r + 1);
+    zeta1 = 1.0 - 2.0*r[0];
+    zeta2 = 1.0 - 2.0*r[1];
+    zsq   = zeta1*zeta1 + zeta2*zeta2;
+  } while (zsq > 1.0);
+
+  rhat[0] = 2.0*zeta1*sqrt(1.0 - zsq);
+  rhat[1] = 2.0*zeta2*sqrt(1.0 - zsq);
+  rhat[2] = 1.0 - 2.0*zsq;
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  imin, imax, dmin, dmax
  *
  *  minimax functions

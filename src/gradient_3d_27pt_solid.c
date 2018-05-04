@@ -296,3 +296,146 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  grad_3d_27pt_solid_dab
+ *
+ *****************************************************************************/
+
+__host__ int grad_3d_27pt_solid_dab(field_grad_t * df) {
+
+  int nlocal[3];
+  int nhalo;
+  int nextra;
+  int nsites;
+  int ic, jc, kc;
+  int xs, ys, zs;
+  int index;
+  double * __restrict__ dab;
+  double * __restrict__ field;
+
+  cs_t * cs = NULL;
+
+  const double r12 = (1.0/12.0);
+
+  assert(df);
+  assert(cs);
+
+  cs_nhalo(cs, &nhalo);
+  cs_nlocal(cs, nlocal);
+  cs_nsites(cs, &nsites);
+  cs_strides(cs, &xs, &ys, &zs);
+
+  nextra = nhalo - 1;
+  assert(nextra >= 0);
+
+  field = df->field->data;
+  dab = df->d_ab;
+
+  for (ic = 1 - nextra; ic <= nlocal[X] + nextra; ic++) {
+    for (jc = 1 - nextra; jc <= nlocal[Y] + nextra; jc++) {
+      for (kc = 1 - nextra; kc <= nlocal[Z] + nextra; kc++) {
+
+        index = cs_index(cs, ic, jc, kc);
+
+        dab[addr_rank1(nsites, NSYMM, index, XX)] = 0.2*
+         (+ 1.0*field[addr_rank0(nsites, index + xs)]
+          + 1.0*field[addr_rank0(nsites, index - xs)]
+          - 2.0*field[addr_rank0(nsites, index)]
+          + 1.0*field[addr_rank0(nsites, index + xs + ys)]
+          + 1.0*field[addr_rank0(nsites, index - xs + ys)]
+          - 2.0*field[addr_rank0(nsites, index + ys)]
+          + 1.0*field[addr_rank0(nsites, index + xs - ys)]
+          + 1.0*field[addr_rank0(nsites, index - xs - ys)]
+          - 2.0*field[addr_rank0(nsites, index - ys)]
+          + 1.0*field[addr_rank0(nsites, index + xs + 1)]
+          + 1.0*field[addr_rank0(nsites, index - xs + 1)]
+          - 2.0*field[addr_rank0(nsites, index + 1)]
+          + 1.0*field[addr_rank0(nsites, index + xs - 1)]
+          + 1.0*field[addr_rank0(nsites, index - xs - 1)]
+          - 2.0*field[addr_rank0(nsites, index - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, XY)] = r12*
+          (+ field[addr_rank0(nsites, index + xs + ys)]
+           - field[addr_rank0(nsites, index + xs - ys)]
+           - field[addr_rank0(nsites, index - xs + ys)]
+           + field[addr_rank0(nsites, index - xs - ys)]
+           + field[addr_rank0(nsites, index + xs + ys + 1)]
+           - field[addr_rank0(nsites, index + xs - ys + 1)]
+           - field[addr_rank0(nsites, index - xs + ys + 1)]
+           + field[addr_rank0(nsites, index - xs - ys + 1)]
+           + field[addr_rank0(nsites, index + xs + ys - 1)]
+           - field[addr_rank0(nsites, index + xs - ys - 1)]
+           - field[addr_rank0(nsites, index - xs + ys - 1)]
+           + field[addr_rank0(nsites, index - xs - ys - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, XZ)] = r12*
+          (+ field[addr_rank0(nsites, index + xs + 1)]
+           - field[addr_rank0(nsites, index + xs - 1)]
+           - field[addr_rank0(nsites, index - xs + 1)]
+           + field[addr_rank0(nsites, index - xs - 1)]
+           + field[addr_rank0(nsites, index + xs + ys + 1)]
+           - field[addr_rank0(nsites, index + xs + ys - 1)]
+           - field[addr_rank0(nsites, index - xs + ys + 1)]
+           + field[addr_rank0(nsites, index - xs + ys - 1)]
+           + field[addr_rank0(nsites, index + xs - ys + 1)]
+           - field[addr_rank0(nsites, index + xs - ys - 1)]
+           - field[addr_rank0(nsites, index - xs - ys + 1)]
+           + field[addr_rank0(nsites, index - xs - ys - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, YY)] = 0.2*
+         (+ 1.0*field[addr_rank0(nsites, index + ys)]
+          + 1.0*field[addr_rank0(nsites, index - ys)]
+          - 2.0*field[addr_rank0(nsites, index)]
+          + 1.0*field[addr_rank0(nsites, index + xs + ys)]
+          + 1.0*field[addr_rank0(nsites, index + xs - ys)]
+          - 2.0*field[addr_rank0(nsites, index + xs)]
+          + 1.0*field[addr_rank0(nsites, index - xs + ys)]
+          + 1.0*field[addr_rank0(nsites, index - xs - ys)]
+          - 2.0*field[addr_rank0(nsites, index - xs)]
+          + 1.0*field[addr_rank0(nsites, index + 1 + ys)]
+          + 1.0*field[addr_rank0(nsites, index + 1 - ys)]
+          - 2.0*field[addr_rank0(nsites, index + 1 )]
+          + 1.0*field[addr_rank0(nsites, index - 1 + ys)]
+          + 1.0*field[addr_rank0(nsites, index - 1 - ys)]
+          - 2.0*field[addr_rank0(nsites, index - 1 )]);
+
+
+        dab[addr_rank1(nsites, NSYMM, index, YZ)] = r12*
+          (+ field[addr_rank0(nsites, index + ys + 1)]
+           - field[addr_rank0(nsites, index + ys - 1)]
+           - field[addr_rank0(nsites, index - ys + 1)]
+           + field[addr_rank0(nsites, index - ys - 1)]
+           + field[addr_rank0(nsites, index + xs + ys + 1)]
+           - field[addr_rank0(nsites, index + xs + ys - 1)]
+           - field[addr_rank0(nsites, index + xs - ys + 1)]
+           + field[addr_rank0(nsites, index + xs - ys - 1)]
+           + field[addr_rank0(nsites, index - xs + ys + 1)]
+           - field[addr_rank0(nsites, index - xs + ys - 1)]
+           - field[addr_rank0(nsites, index - xs - ys + 1)]
+           + field[addr_rank0(nsites, index - xs - ys - 1)]);
+
+        dab[addr_rank1(nsites, NSYMM, index, ZZ)] = 0.2*
+         (+ 1.0*field[addr_rank0(nsites, index + 1)]
+          + 1.0*field[addr_rank0(nsites, index - 1)]
+          - 2.0*field[addr_rank0(nsites, index)]
+          + 1.0*field[addr_rank0(nsites, index + xs + 1)]
+          + 1.0*field[addr_rank0(nsites, index + xs - 1)]
+          - 2.0*field[addr_rank0(nsites, index + xs)]
+          + 1.0*field[addr_rank0(nsites, index - xs + 1)]
+          + 1.0*field[addr_rank0(nsites, index - xs - 1)]
+          - 2.0*field[addr_rank0(nsites, index - xs)]
+          + 1.0*field[addr_rank0(nsites, index + ys + 1)]
+          + 1.0*field[addr_rank0(nsites, index + ys - 1)]
+          - 2.0*field[addr_rank0(nsites, index + ys)]
+          + 1.0*field[addr_rank0(nsites, index - ys + 1)]
+          + 1.0*field[addr_rank0(nsites, index - ys - 1)]
+          - 2.0*field[addr_rank0(nsites, index - ys)]);
+
+      }
+    }
+  }
+
+  return 0;
+}

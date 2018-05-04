@@ -13,8 +13,8 @@
  *
  *****************************************************************************/
 
-#ifndef _MPI_SERIAL
-#define _MPI_SERIAL
+#ifndef LUDWIG_MPI_SERIAL
+#define LUDWIG_MPI_SERIAL
 
 #ifdef __cplusplus
 extern "C" {
@@ -220,4 +220,4 @@ int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint ub, MPI_Aint extent,
 }
 #endif
 
-#endif /* _MPI_SERIAL */
+#endif /* LUDWIG_MPI_SERIAL */

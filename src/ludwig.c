@@ -108,6 +108,8 @@
 #include "stats_sigma.h"
 #include "stats_symmetric.h"
 
+#include "fe_lc_stats.h"
+
 #include "hydro_s.h"
 #include "lb_model_s.h"
 #include "field_s.h"
@@ -342,13 +344,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
   /* gradient initialisation for field stuff */
 
   if (ludwig->phi) {
-    gradient_rt_init(pe, rt, ludwig->phi_grad, ludwig->map, ludwig->collinfo);
+    gradient_rt_init(pe, rt, "phi", ludwig->phi_grad, ludwig->map,
+		     ludwig->collinfo);
   }
   if (ludwig->p) {
-    gradient_rt_init(pe, rt, ludwig->p_grad, ludwig->map, ludwig->collinfo);
+    gradient_rt_init(pe, rt, "p", ludwig->p_grad, ludwig->map,
+		     ludwig->collinfo);
   }
   if (ludwig->q) {
-    gradient_rt_init(pe, rt, ludwig->q_grad, ludwig->map, ludwig->collinfo);
+    gradient_rt_init(pe, rt, "q", ludwig->q_grad, ludwig->map,
+		     ludwig->collinfo);
   }
 
   stats_rheology_create(pe, cs, &ludwig->stat_rheo);
@@ -619,18 +624,33 @@ void ludwig_run(const char * inputfile) {
       }
       else {
 	if (ncolloid == 0) {
-	  /* Force calculation as divergence of stress tensor */
 
-	  phi_force_calculation(ludwig->cs, ludwig->le, ludwig->wall,
-				ludwig->pth,
-				ludwig->fe, ludwig->map, ludwig->phi, ludwig->hydro);
+	  /* LC-droplet requires partial body force input and momentum
+           * correction. This correction, via hydro_correct_momentun(),
+           * should not include the contributions from the divergence
+           * of the stress, so is done before phi_force_calculation(). */
 
-	  /* LC-droplet requires partial body force input and momentum correction */
 	  if (ludwig->fe && ludwig->fe->id == FE_LC_DROPLET) {
+
 	    fe_lc_droplet_t * fe = (fe_lc_droplet_t *) ludwig->fe;
-	    fe_lc_droplet_bodyforce(fe, ludwig->hydro);
+
+	    if (wall_present(ludwig->wall)) {
+	      fe_lc_droplet_bodyforce_wall(fe, ludwig->le, ludwig->hydro, 
+		                           ludwig->map, ludwig->wall);
+	    }
+	    else {
+	      fe_lc_droplet_bodyforce(fe, ludwig->hydro);
+	    }
+
 	    hydro_correct_momentum(ludwig->hydro);
 	  }
+
+	  /* Force calculation as divergence of stress tensor */
+
+          phi_force_calculation(ludwig->cs, ludwig->le, ludwig->wall,
+                                ludwig->pth, ludwig->fe, ludwig->map,
+                                ludwig->phi, ludwig->hydro);
+
 	}
 	else {
 	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
@@ -849,10 +869,18 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 1) pe_info(ludwig->pe, "[psi_zeta] %14.7e\n",  psi_zeta);
       }
 
-      stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
-				ludwig->fe, ludwig->q, ludwig->map,
-				ludwig->collinfo);
-//      blue_phase_stats(ludwig->q, ludwig->q_grad, ludwig->map, step);
+      if (ludwig->fe) {
+	switch (ludwig->fe->id) {
+	case FE_LC:
+	  fe_lc_stats_info(ludwig->pe, ludwig->cs, ludwig->fe_lc,
+			   ludwig->wall, ludwig->map, ludwig->collinfo, step);
+	  break;
+	default:
+	  stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
+				    ludwig->fe, ludwig->map,
+				    ludwig->collinfo);
+	}
+      }
       ludwig_report_momentum(ludwig);
 
       if (ludwig->hydro) {
@@ -1279,7 +1307,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
     /* Not very elegant, but here ... */
-    grad_lc_anch_create(pe, cs, NULL, NULL, fe, NULL);
+    grad_lc_anch_create(pe, cs, NULL, NULL, NULL, fe, NULL);
 
     ludwig->fe_lc = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1391,7 +1419,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_lc_droplet_create(pe, cs, lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
 
-    grad_lc_anch_create(pe, cs, NULL, NULL, lc, NULL);
+    grad_lc_anch_create(pe, cs, NULL, ludwig->phi, NULL, lc, NULL);
 
     ludwig->fe_symm = symm;
     ludwig->fe_lc = lc;
@@ -1605,6 +1633,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
     if (strcmp(status, "status_only") == 0) ndata = 0;
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
+    if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
 
     rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
 
@@ -1709,7 +1738,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
     TIMER_start(TIMER_REBUILD);
 
     build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
-    build_remove_replace(ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
+    build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
 			 ludwig->q, ludwig->psi, ludwig->map);
     build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
     

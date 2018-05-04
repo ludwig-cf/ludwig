@@ -21,9 +21,9 @@
 
 import sys, os, re, math
 
-nstart=0	# Start timestep
-nint=5000	# Increment
-nend=60000	# End timestep
+nstart=1000	# Start timestep
+nint=1000	# Increment
+nend=10000	# End timestep
 ngroup=1	# Number of output groups
 
 vel=1		# Switch for velocity 
@@ -32,7 +32,7 @@ phi=0		# Switch for binary fluid
 psi=0		# Switch for electrokinetics
 fed=0		# Switch for free energy
 colcds=0	# Switch for colloid coordinate
-colcdsvel=1	# Switch for colloid coordinate and lattice velocity
+colcdsvel=0	# Switch for colloid coordinate and lattice velocity
 
 # Set lists for analysis
 metafile=[]
@@ -91,7 +91,7 @@ for i in range(len(filelist)):
 			line=datafiles.readline()
 			if not line: break
 
-			print '\n# Processing %s' % line 
+			print ('\n# Processing %s' % line) 
 
 			stub=line.split('.',1)
 			os.system('./vtk_extract %s %s' % (metafile[i],stub[0]))
@@ -105,7 +105,7 @@ for i in range(len(filelist)):
 			line=datafiles.readline()
 			if not line: break
 
-			print '\n# Processing %s' % line 
+			print ('\n# Processing %s' % line)
 
 			stub=line.split('.',2)
 			datafilename = ('%s.%s' % (stub[0], stub[1]))

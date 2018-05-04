@@ -24,7 +24,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2015-2016 The University of Edinburgh
+#  (c) 2015-2018 The University of Edinburgh
 #  Contributing authors:
 #  Kevin Stratford (kevinAepcc.ed.ac.uk)
 #
@@ -156,6 +156,4 @@ all-serial:
 
 all-mpi:
 	$(MAKE) compile-run-mpi-d3q19 "CFLAGS = $(CFLAGS) $(CFLAGS_TEST)"
-
-
 
