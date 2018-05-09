@@ -21,7 +21,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2017 The University of Edinburgh
+ *  (c) 2007-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -67,6 +67,7 @@ struct io_info_s {
   int metadata_written;
   int processor_independent;
   int single_file_read;
+  int report;                        /* Report time taken for output */
   char metadata_stub[FILENAME_MAX];
   char name[FILENAME_MAX];
   io_rw_cb_ft write_data;
@@ -591,6 +592,7 @@ int io_info_format_in_set(io_info_t * obj, int form_in) {
   case IO_FORMAT_BINARY_SERIAL:
     obj->read_data = obj->read_binary;
     obj->processor_independent = 1;
+    obj->single_file_read = 1;
     break;
   case IO_FORMAT_ASCII:
     obj->read_data = obj->read_ascii;
@@ -599,7 +601,8 @@ int io_info_format_in_set(io_info_t * obj, int form_in) {
   case IO_FORMAT_BINARY:
   case IO_FORMAT_DEFAULT:
     obj->read_data = obj->read_binary;
-    obj->processor_independent = 0;
+    obj->processor_independent = 1;
+    obj->single_file_read = 1;
     break;
   default:
     pe_fatal(obj->pe, "Bad i/o input format\n");
@@ -633,7 +636,7 @@ int io_info_format_out_set(io_info_t * obj, int form_out) {
   case IO_FORMAT_DEFAULT:
     obj->output_format = IO_FORMAT_BINARY;
     obj->write_data = obj->write_binary;
-    obj->processor_independent = 0;
+    obj->processor_independent = 1;
     obj->bytesize = obj->bytesize_binary;
     break;
   default:
@@ -699,18 +702,21 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
   assert(obj);
   assert(data);
 
-  if (1) {
-    /* Use the standard method for the time being. */
+  if (obj->processor_independent == 0) {
+    /* Use the standard "parallel" method for the time being. */
     io_write_data_p(obj, filename_stub, data);
   }
   else {
-    /* This is in testing.*/
+    /* This is serial output format if one I/O group */
+    assert(obj->io_comm->ngroup[X] == 1);
     t0 = MPI_Wtime();
     io_write_data_s(obj, filename_stub, data);
     t1 = MPI_Wtime();
-    pe_info(obj->pe, "Write %lu bytes in %f secs %f\n",
-	    obj->nsites*obj->bytesize, t1-t0,
-	    obj->nsites*obj->bytesize/(1.0e+09*(t1-t0)));
+    if (obj->report) {
+      pe_info(obj->pe, "Write %lu bytes in %f secs %f GB/s\n",
+	      obj->nsites*obj->bytesize, t1-t0,
+	      obj->nsites*obj->bytesize/(1.0e+09*(t1-t0)));
+    }
   }
 
   return 0;
@@ -801,10 +807,10 @@ int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data) {
 
 /* TODO */
 /* Write I/O documentation */
+/* Should really have separate processor_independent / single_file for I/O */
 /* Appropriate switch in io-write-data */
 /* Meta data files need to match actual output format */
-/* Run time check for x only io decomposition */
-/* Check behaviour of code against documentation */
+/* Add flag for report timings */
 
 int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
