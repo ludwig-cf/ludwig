@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -35,7 +35,7 @@
  *  Computes estimates of domain length scales in real space based on
  *  a gradient statistic.
  *
- *  The reduction is in pe_comm() for output.
+ *  A unit test is required. grad argument unnecessary.
  *
  *****************************************************************************/
 
@@ -118,7 +118,7 @@ int stats_symmetric_length(fe_symm_t * fe, field_grad_t * phi_grad,
   dphiab[Y][Y] = rvolume*dphi_total[3];
   dphiab[Y][Z] = rvolume*dphi_total[4];
   dphiab[Z][X] = dphiab[X][Z];
-  dphiab[Z][Y] = dphiab[X][Y];
+  dphiab[Z][Y] = dphiab[Y][Z];
   dphiab[Z][Z] = rvolume*dphi_total[5];
 
   /* Length scales in coordinate directions, and natural directions */
