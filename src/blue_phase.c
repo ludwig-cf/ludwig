@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  blue_phase.c
+ *  fe_lc.c
  *
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *
@@ -422,6 +422,101 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] += sa[ia][ib];
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_str_symm
+ *
+ *  Symmetric stress. Easier to compute the total, and take off
+ *  the antisymmtric part.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_str_symm(fe_lc_t * fe, int index,
+				       double s[3][3]) {
+  int ia, ib, ic;
+  double q[3][3];
+  double h[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  assert(fe);
+  assert(fe->q);
+  assert(fe->dq);
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
+  fe_lc_compute_stress(fe, q, dq, h, s);
+
+  if (fe->param->is_active) {
+    int ia, ib;
+    double dp[3][3];
+    double sa[3][3];
+    field_grad_vector_grad(fe->dp, index, dp);
+    fe_lc_compute_stress_active(fe, q, dp, sa);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib] += sa[ia][ib];
+      }
+    }
+  }
+
+  /* Antisymmetric part is subtracted (added, with the -ve sign) */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	s[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_str_anti
+ *
+ *  Antisymmetric part of the stress.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_str_anti(fe_lc_t * fe, int index,
+				       double s[3][3]) {
+
+  int ia, ib, ic;
+  double q[3][3];
+  double h[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  assert(fe);
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  fe_lc_compute_h(fe, fe->param->gamma, q, dq, dsq, h);
+
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
+  /* With minus sign */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib] = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	s[ia][ib] -= (q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic]);
       }
     }
   }
@@ -1421,6 +1516,59 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_str_symm_v
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_str_symm_v(fe_lc_t * fe, int index,
+					 double s[3][3][NSIMDVL]) {
+
+  int ia, ib, iv;
+  double s1[3][3];
+
+  assert(fe);
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_lc_str_symm(fe, index + iv, s1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib][iv] = s1[ia][ib];
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_str_anti_v
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_str_anti_v(fe_lc_t * fe, int index,
+					 double s[3][3][NSIMDVL]) {
+  assert(fe);
+
+  int ia, ib, iv;
+  double s1[3][3];
+
+  assert(fe);
+
+  for (iv = 0; iv < NSIMDVL; iv++) {
+    fe_lc_str_anti(fe, index + iv, s1);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	s[ia][ib][iv] = s1[ia][ib];
+      }
+    }
+  }
+
+  return 0;
 }
 
 /*****************************************************************************

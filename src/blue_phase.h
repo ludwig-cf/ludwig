@@ -1,11 +1,11 @@
 /*****************************************************************************
  *
- *  blue_phase.h
+ *  fe_lc.h
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -15,8 +15,8 @@
  *
  *****************************************************************************/
 
-#ifndef BLUEPHASE_H
-#define BLUEPHASE_H
+#ifndef LUDWIG_FE_LC_H
+#define LUDWIG_FE_LC_H
 
 #include "pe.h"
 #include "coords.h"
@@ -135,7 +135,7 @@ void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]);
 __host__ __device__
 void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]);
 
-__host__ __device__ __inline__
+__host__ __device__
 void fe_lc_compute_h_v(fe_lc_t * fe,
 		       double q[3][3][NSIMDVL], 
 		       double dq[3][3][3][NSIMDVL],
