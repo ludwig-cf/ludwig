@@ -43,16 +43,15 @@
 
 #include "symmetric.h"
 
-/* TODO tidy forward declarations */
-
 __global__
 void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
-		       map_t * map, noise_t * noise);
+		       map_t * map, noise_t * noise, fe_t * fe);
 __global__
 void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
 		       fe_symm_t * fe, noise_t * noise);
 
-int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise);
+int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
+		     noise_t * noise, fe_t * fe);
 int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
 			fe_symm_t * fe);
 
@@ -64,7 +63,7 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb);
 
 static __device__
 void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
-			    noise_t * noise, const int index0);
+			    noise_t * noise, fe_t * fe, const int index0);
 static __device__
 void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro, fe_symm_t * fe,
 			    noise_t * noise, const int index0);
@@ -118,7 +117,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collision_noise_var_set(lb, noise);
   lb_collide_param_commit(lb);
 
-  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise);
+  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe);
   if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe);
 
   return 0;
@@ -133,9 +132,10 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
  *****************************************************************************/
 
 __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
-			      noise_t * noise) {
+			      noise_t * noise, fe_t * fe) {
   int nlocal[3];
   dim3 nblk, ntpb;
+  fe_t * fetarget = NULL;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
 
@@ -154,11 +154,13 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   lb_collision_parameters_commit(lb);
+  fe->func->target(fe, &fetarget);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
   tdpLaunchKernel(lb_collision_mrt1, nblk, ntpb, 0, 0, ctxt->target,
-		  lb->target, hydro->target, map->target, noise->target);
+		  lb->target, hydro->target, map->target, noise->target,
+		  fetarget);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -181,7 +183,7 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
 
 __global__
 void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
-		       map_t * map, noise_t * noise) {
+		       map_t * map, noise_t * noise, fe_t * fe) {
   int kindex;
   int kiter;
 
@@ -190,7 +192,7 @@ void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
   targetdp_simt_for(kindex, kiter, NSIMDVL) {
     int index0;
     index0 = kernel_baseindex(ktx, kindex);
-    lb_collision_mrt1_site(lb, hydro, map, noise, index0);
+    lb_collision_mrt1_site(lb, hydro, map, noise, fe, index0);
   }
 
   return;
@@ -217,7 +219,7 @@ void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
 
 static __device__
 void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
-			    noise_t * noise, const int index0) {
+			    noise_t * noise, fe_t * fe, const int index0) {
   
   int p, m;                               /* velocity index */
   int ia, ib;                             /* indices ("alphabeta") */
@@ -337,17 +339,39 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     tr_seq[iv] = 0.0;
   }
 
-  for (ia = 0; ia < NDIM; ia++) {
-    /* Set equilibrium stress */
-    for (ib = 0; ib < NDIM; ib++) {
-      __targetILP__(iv) {
-	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv];
+  if (fe->use_stress_relaxation) {
+    double symm[3][3][NSIMDVL];
+
+    fe->func->str_symm_v(fe, index0, symm);
+
+    for (ia = 0; ia < NDIM; ia++) {
+      /* Set equilibrium stress */
+      for (ib = 0; ib < NDIM; ib++) {
+	__targetILP__(iv) {
+	  seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv] + symm[ia][ib][iv];
+	}
+      }
+      /* Compute trace */
+      __targetILP__(iv){
+	tr_s[iv]   += s[ia][ia][iv];
+	tr_seq[iv] += seq[ia][ia][iv];
       }
     }
-    /* Compute trace */
-    __targetILP__(iv){
-      tr_s[iv]   += s[ia][ia][iv];
-      tr_seq[iv] += seq[ia][ia][iv];
+  }
+  else {
+
+    for (ia = 0; ia < NDIM; ia++) {
+      /* Set equilibrium stress */
+      for (ib = 0; ib < NDIM; ib++) {
+	__targetILP__(iv) {
+	  seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv];
+	}
+      }
+      /* Compute trace */
+      __targetILP__(iv){
+	tr_s[iv]   += s[ia][ia][iv];
+	tr_seq[iv] += seq[ia][ia][iv];
+      }
     }
   }
     

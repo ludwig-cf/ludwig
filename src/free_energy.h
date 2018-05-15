@@ -64,6 +64,7 @@ struct fe_vt_s {
 struct fe_s {
   fe_vt_t * func;
   int id;
+  int use_stress_relaxation;
 };
 
 #endif
