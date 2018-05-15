@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -49,10 +49,14 @@ static fe_vt_t fe_symm_hvt = {
   (fe_mu_ft)        fe_symm_mu,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       fe_symm_str,
+  (fe_str_ft)       fe_symm_str,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  fe_symm_str_v
+  (fe_stress_v_ft)  fe_symm_str_v,
+  (fe_stress_v_ft)  fe_symm_str_v,
+  (fe_stress_v_ft)  NULL
 };
 
 static  __constant__ fe_vt_t fe_symm_dvt = {
@@ -62,10 +66,14 @@ static  __constant__ fe_vt_t fe_symm_dvt = {
   (fe_mu_ft)        fe_symm_mu,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       fe_symm_str,
+  (fe_str_ft)       fe_symm_str,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  fe_symm_str_v
+  (fe_stress_v_ft)  fe_symm_str_v,
+  (fe_stress_v_ft)  fe_symm_str_v,
+  (fe_stress_v_ft)  NULL
 };
 
 /****************************************************************************

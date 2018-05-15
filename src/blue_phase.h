@@ -106,6 +106,12 @@ __host__ __device__
 int fe_lc_stress(fe_lc_t * fe, int index, double s[3][3]);
 
 __host__ __device__
+int fe_lc_str_symm(fe_lc_t * fe, int index, double s[3][3]);
+
+__host__ __device__
+int fe_lc_str_anti(fe_lc_t * fe, int index, double s[3][3]);
+
+__host__ __device__
 int fe_lc_compute_fed(fe_lc_t * fe, double gamma,  double q[3][3],
 		      double dq[3][3][3], double * fed);
 
@@ -134,6 +140,12 @@ void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]);
 
 __host__ __device__
 void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]);
+
+__host__ __device__
+void fe_lc_str_symm_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]);
+
+__host__ __device__
+void fe_lc_str_anti_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]);
 
 __host__ __device__
 void fe_lc_compute_h_v(fe_lc_t * fe,

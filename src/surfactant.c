@@ -25,13 +25,13 @@
  *  The beta term allows one to get at the Frumkin isotherm and has
  *  been added here.
  *
- *  $Id: surfactant.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2018 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  ****************************************************************************/
 

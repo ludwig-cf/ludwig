@@ -27,12 +27,10 @@
  *  charge, current and flow in heterogeneous media,
  *  Faraday Discussions \textbf{144} 223--243 (2010).
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 The University of Edinburgh
+ *  (c) 2013-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -72,8 +70,12 @@ static fe_vt_t fe_es_hvt = {
   (fe_mu_ft)        fe_es_mu_phi,
   (fe_mu_solv_ft)   fe_es_mu_ion_solv,
   (fe_str_ft)       fe_es_stress_ex,
+  (fe_str_ft)       fe_es_stress_ex,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_htensor_v_ft) NULL,
   (fe_htensor_v_ft) NULL
 };
 
@@ -84,8 +86,12 @@ static  __constant__ fe_vt_t fe_es_dvt = {
   (fe_mu_ft)        NULL,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       NULL,
+  (fe_str_ft)       NULL,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
+  (fe_htensor_v_ft) NULL,
+  (fe_htensor_v_ft) NULL,
   (fe_htensor_v_ft) NULL
 };
 

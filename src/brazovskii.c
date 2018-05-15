@@ -23,12 +23,10 @@
  *  phi ~= A sin(k_0 x) in the traverse direction, where
  *  A^2 = 4 (1 + kappa^2/4cb)/3 and k_0 = sqrt(-kappa/2c). 
  *
- *  $Id: brazovskii.c,v 1.2 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -64,10 +62,14 @@ static fe_vt_t fe_braz_hvt = {
   (fe_mu_ft)        fe_brazovskii_mu,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       fe_brazovskii_str,
+  (fe_str_ft)       fe_brazovskii_str,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  fe_brazovskii_str_v
+  (fe_stress_v_ft)  fe_brazovskii_str_v,
+  (fe_stress_v_ft)  fe_brazovskii_str_v,
+  (fe_stress_v_ft)  NULL
 };
 
 static  __constant__ fe_vt_t fe_braz_dvt = {
@@ -77,10 +79,14 @@ static  __constant__ fe_vt_t fe_braz_dvt = {
   (fe_mu_ft)        fe_brazovskii_mu,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       fe_brazovskii_str,
+  (fe_str_ft)       fe_brazovskii_str,
+  (fe_str_ft)       NULL,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  fe_brazovskii_str_v
+  (fe_stress_v_ft)  fe_brazovskii_str_v,
+  (fe_stress_v_ft)  fe_brazovskii_str_v,
+  (fe_stress_v_ft)  NULL
 };
 
 

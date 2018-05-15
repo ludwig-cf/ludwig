@@ -5,8 +5,6 @@
  *  Routines related to liquid crystal droplet free energy
  *  and molecular field.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -78,6 +76,15 @@ __host__ __device__ void fe_lc_droplet_mol_field_v(fe_lc_droplet_t * fe,
 						   double h[3][3][NSIMDVL]);
 __host__ __device__ int fe_lc_droplet_mu(fe_lc_droplet_t * fe, int index,
 					 double * mu);
+
+__host__ __device__
+int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double s[3][3]);
+__host__ __device__
+int fe_lc_droplet_str_anti(fe_lc_droplet_t * fe, int index, double s[3][3]);
+__host__ __device__
+void fe_lc_droplet_str_symm_v(fe_lc_droplet_t * fe, int index, double s[3][3][NSIMDVL]);
+__host__ __device__
+void fe_lc_droplet_str_anti_v(fe_lc_droplet_t * fe, int index, double s[3][3][NSIMDVL]);
 
 __host__ int  fe_lc_droplet_bodyforce_wall(fe_lc_droplet_t * fe, lees_edw_t * le,
 			      hydro_t * hydro, map_t * map, wall_t * wall);

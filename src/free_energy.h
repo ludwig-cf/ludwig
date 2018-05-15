@@ -7,13 +7,15 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2009-2018 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2009-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef FREE_ENERGY_H
-#define FREE_ENERGY_H
+#ifndef LUDWIG_FREE_ENERGY_H
+#define LUDWIG_FREE_ENERGY_H
 
 #include "memory.h"
 
@@ -48,11 +50,15 @@ struct fe_vt_s {
   fe_fed_ft fed;                /* Freee energy density */
   fe_mu_ft mu;                  /* Chemical potential */
   fe_mu_solv_ft mu_solv;        /* Solvation chemical potential */
-  fe_str_ft stress;             /* Chemical stress */
+  fe_str_ft stress;             /* Chemical stress (total) */
+  fe_str_ft str_symm;           /* Symmetric stress */
+  fe_str_ft str_anti;           /* Antisymmetric stress */
   fe_hvector_ft hvector;        /* Vector molecular field */
   fe_htensor_ft htensor;        /* Tensor molecular field */
   fe_htensor_v_ft htensor_v;    /* Vectorised version */
-  fe_stress_v_ft stress_v;      /* Vectorised stress version */
+  fe_stress_v_ft stress_v;      /* Vectorised stress (total) version */
+  fe_stress_v_ft str_symm_v;    /* Symmetric part */
+  fe_stress_v_ft str_anti_v;    /* Antisymmetric part */
 };
 
 struct fe_s {

@@ -5,15 +5,12 @@
  *  Routines related to blue phase liquid crystal free energy
  *  and molecular field.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
- *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -44,10 +41,14 @@ static fe_vt_t fe_hvt = {
   (fe_mu_ft)        NULL,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       fe_lc_stress,
+  (fe_str_ft)       fe_lc_str_symm,
+  (fe_str_ft)       fe_lc_str_anti,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_mol_field,
   (fe_htensor_v_ft) fe_lc_mol_field_v,
-  (fe_stress_v_ft)  fe_lc_stress_v
+  (fe_stress_v_ft)  fe_lc_stress_v,
+  (fe_stress_v_ft)  fe_lc_str_symm_v,
+  (fe_stress_v_ft)  fe_lc_str_anti_v
 };
 
 static __constant__ fe_vt_t fe_dvt = {
@@ -57,10 +58,14 @@ static __constant__ fe_vt_t fe_dvt = {
   (fe_mu_ft)        NULL,
   (fe_mu_solv_ft)   NULL,
   (fe_str_ft)       fe_lc_stress,
+  (fe_str_ft)       fe_lc_str_symm,
+  (fe_str_ft)       fe_lc_str_anti,
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   fe_lc_mol_field,
   (fe_htensor_v_ft) fe_lc_mol_field_v,
-  (fe_stress_v_ft)  fe_lc_stress_v
+  (fe_stress_v_ft)  fe_lc_stress_v,
+  (fe_stress_v_ft)  fe_lc_str_symm_v,
+  (fe_stress_v_ft)  fe_lc_str_anti_v
 };
 
 
@@ -1524,8 +1529,8 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
  *
  *****************************************************************************/
 
-__host__ __device__ int fe_lc_str_symm_v(fe_lc_t * fe, int index,
-					 double s[3][3][NSIMDVL]) {
+__host__ __device__ void fe_lc_str_symm_v(fe_lc_t * fe, int index,
+			 		  double s[3][3][NSIMDVL]) {
 
   int ia, ib, iv;
   double s1[3][3];
@@ -1541,7 +1546,7 @@ __host__ __device__ int fe_lc_str_symm_v(fe_lc_t * fe, int index,
     }
   }
 
-  return 0;
+  return;
 }
 
 /*****************************************************************************
@@ -1550,8 +1555,8 @@ __host__ __device__ int fe_lc_str_symm_v(fe_lc_t * fe, int index,
  *
  *****************************************************************************/
 
-__host__ __device__ int fe_lc_str_anti_v(fe_lc_t * fe, int index,
-					 double s[3][3][NSIMDVL]) {
+__host__ __device__ void fe_lc_str_anti_v(fe_lc_t * fe, int index,
+			 		  double s[3][3][NSIMDVL]) {
   assert(fe);
 
   int ia, ib, iv;
@@ -1568,7 +1573,7 @@ __host__ __device__ int fe_lc_str_anti_v(fe_lc_t * fe, int index,
     }
   }
 
-  return 0;
+  return;
 }
 
 /*****************************************************************************
