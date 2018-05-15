@@ -154,7 +154,7 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   lb_collision_parameters_commit(lb);
-  fe->func->target(fe, &fetarget);
+  if (fe) fe->func->target(fe, &fetarget);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
@@ -339,7 +339,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     tr_seq[iv] = 0.0;
   }
 
-  if (fe->use_stress_relaxation) {
+  if (fe && fe->use_stress_relaxation) {
     double symm[3][3][NSIMDVL];
 
     fe->func->str_symm_v(fe, index0, symm);
