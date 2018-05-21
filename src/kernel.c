@@ -144,22 +144,11 @@ int kernel_ctxt_launch_param(kernel_ctxt_t * obj, dim3 * nblk, dim3 * ntpb) {
 
 __host__ int kernel_launch_param(int iterations, dim3 * nblk, dim3 * ntpb) {
 
-  int ndevice;
-
   assert(iterations > 0);
 
-  tdpGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    ntpb->x = omp_get_max_threads();
-    ntpb->y = 1;
-    ntpb->z = 1;
-  }
-  else {
-    ntpb->x = 128;
-    ntpb->y = 1;
-    ntpb->z = 1;
-  }
+  ntpb->x = tdp_get_max_threads();
+  ntpb->y = 1;
+  ntpb->z = 1;
 
   nblk->x = (iterations + ntpb->x - 1)/ntpb->x;
   nblk->y = 1;

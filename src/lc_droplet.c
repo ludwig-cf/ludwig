@@ -31,7 +31,7 @@
 #include "lc_droplet.h"
 
 #define NGRAD_ 27
-static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
+static const int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
                                  {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
                                  {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
                                  {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},

@@ -9,7 +9,28 @@
 
 #include "cuda_runtime_api.h"
 
-#define MAX_THREADS_PER_BLOCK 128
+typedef cudaFuncCache tdpFuncCache;
+typedef cudaMemcpyKind tdpMemcpyKind;
+typedef cudaDeviceAttr tdpDeviceAttr;
+
+#define tdpDevAttrManagedMemory cudaDevAttrManagedMemory
+
+#define tdpSuccess cudaSuccess
+#define tdpMemcpyHostToDevice cudaMemcpyHostToDevice
+#define tdpMemcpyDeviceToHost cudaMemcpyDeviceToHost
+#define tdpMemcpyHostToHost cudaMemcpyHostToHost
+#define tdpMemcpyDeviceToDevice cudaMemcpyDeviceToDevice
+
+#define tdpMemAttachHost   cudaMemAttachHost
+#define tdpMemAttachGlobal cudaMemAttachGlobal
+
+#define tdpHostAllocDefault cudaHostAllocDefault
+
+typedef cudaStream_t tdpStream_t;
+typedef cudaError_t tdpError_t;
+
+
+#define TARGET_MAX_THREADS_PER_BLOCK 128
 
 /* Macros for calls involing device symbols */
 
@@ -33,5 +54,7 @@
 
 #define for_simd_v_reduction(iv, nsimdvl, clause) \
   for (iv = 0; iv < (nsimdvl); iv++)
+
+#define tdp_get_max_threads() TARGET_MAX_THREADS_PER_BLOCK
 
 #endif
