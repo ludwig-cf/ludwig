@@ -26,6 +26,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "util.h"
@@ -389,12 +390,12 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
   kappa = fe->param->kappa;
 
   for (ia = 0; ia < 3; ia++) {
-    targetdp_simd_for(iv, NSIMDVL) {
+    for_simd_v(iv, NSIMDVL) {
       grad[ia][iv] = fe->dphi->grad[addr_rank2(fe->dphi->nsite,1,3,index+iv,0,ia)];
     }
   }
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     phi = fe->phi->data[addr_rank1(fe->phi->nsites, 1, index + iv, 0)];
     delsq = fe->dphi->delsq[addr_rank1(fe->dphi->nsite, 1, index + iv, 0)];
 

@@ -36,7 +36,10 @@
 
 /* The target SIMD vector length */
 
-#define NSIMDVL VVL
+#if defined NSIMDVL
+#else
+#define NSIMDVL 1
+#endif
 
 /* Interface */
 

@@ -23,7 +23,6 @@
  *  If one only needs a set contact angle, can have C = 0. C only comes
  *  into play when consdiering wetting phase transitions.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -174,7 +173,7 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 
   kiterations = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     int nop;
     int ic, jc, kc, ic1, jc1, kc1;

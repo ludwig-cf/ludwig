@@ -47,7 +47,7 @@ verbose:
 .PHONY:	compile-serial compile-mpi compile-serial-base compile-mpi-base
 
 compile-mpi-base:
-	$(MAKE) -C ../targetDP
+	$(MAKE) -C ../target
 	$(MAKE) -C ../src $(LBMODEL)
 	$(MAKE) -C unit $(LBMODEL)
 
@@ -96,7 +96,7 @@ run-mpi-regr-%:
 .PHONY:	clean test-clean
 
 clean:
-	$(MAKE) -C ../targetDP clean
+	$(MAKE) -C ../target   clean
 	$(MAKE) -C ../mpi_s    clean
 	$(MAKE) -C ../src      clean
 	$(MAKE) -C unit clean

@@ -25,16 +25,14 @@
  *  fluxes.
  *
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *
- *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -273,7 +271,7 @@ __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 
   kiterations = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     int ic, jc, kc;
     int index0, index1;
@@ -938,7 +936,7 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 
   kiterations = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);

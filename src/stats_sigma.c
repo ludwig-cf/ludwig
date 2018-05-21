@@ -5,7 +5,6 @@
  *  Provides a calibration of the surface tension when the symmetric
  *  free energy is used. This approach uses a droplet in 2d or 3d.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computeing Centre
@@ -20,6 +19,7 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "util.h"
 #include "physics.h"

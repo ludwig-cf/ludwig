@@ -469,7 +469,7 @@ void hydro_field_set(hydro_t * hydro, double * field, double zx, double zy,
   assert(hydro);
   assert(field);
 
-  targetdp_simt_for(kindex, hydro->nsite, 1) {
+  for_simt_parallel(kindex, hydro->nsite, 1) {
     field[addr_rank1(hydro->nsite, NHDIM, kindex, X)] = zx;
     field[addr_rank1(hydro->nsite, NHDIM, kindex, Y)] = zy;
     field[addr_rank1(hydro->nsite, NHDIM, kindex, Z)] = zz;
@@ -992,7 +992,7 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   kiterations = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     int ic, jc, kc, index;
     double f[3];
@@ -1009,14 +1009,14 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
   }
 
   /* Reduction */
-  fxb = atomicBlockAddDouble(fx);
-  fyb = atomicBlockAddDouble(fy);
-  fzb = atomicBlockAddDouble(fz);
+  fxb = tdpAtomicBlockAddDouble(fx);
+  fyb = tdpAtomicBlockAddDouble(fy);
+  fzb = tdpAtomicBlockAddDouble(fz);
 
   if (tid == 0) {
-    atomicAddDouble(fnet + X, fxb);
-    atomicAddDouble(fnet + Y, fyb);
-    atomicAddDouble(fnet + Z, fzb);
+    tdpAtomicAddDouble(fnet + X, fxb);
+    tdpAtomicAddDouble(fnet + Y, fyb);
+    tdpAtomicAddDouble(fnet + Z, fzb);
   }
 
   return;
@@ -1052,7 +1052,7 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
+  for_simt_parallel(kindex, kiterations, NSIMDVL) {
 
     int index;
     int ia, iv;
@@ -1062,7 +1062,7 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
     for (ia = 0; ia < 3; ia++) {
       double ftmp = 0.0;
-      for_simd_reduction(iv, NSIMDVL, +: ftmp) {
+      for_simd_v_reduction(iv, NSIMDVL, +: ftmp) {
         ftmp += hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)]; 
       }
       f[ia] = ftmp;
@@ -1074,14 +1074,14 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
   }
 
   /* Reduction */
-  fxb = atomicBlockAddDouble(fx);
-  fyb = atomicBlockAddDouble(fy);
-  fzb = atomicBlockAddDouble(fz);
+  fxb = tdpAtomicBlockAddDouble(fx);
+  fyb = tdpAtomicBlockAddDouble(fy);
+  fzb = tdpAtomicBlockAddDouble(fz);
 
   if (tid == 0) {
-    atomicAddDouble(fnet + X, fxb);
-    atomicAddDouble(fnet + Y, fyb);
-    atomicAddDouble(fnet + Z, fzb);
+    tdpAtomicAddDouble(fnet + X, fxb);
+    tdpAtomicAddDouble(fnet + Y, fyb);
+    tdpAtomicAddDouble(fnet + Z, fzb);
   }
 
   return;
@@ -1107,7 +1107,7 @@ __global__ void hydro_correct_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   kiterations = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -1142,12 +1142,12 @@ __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 
   kiterations = kernel_vector_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, NSIMDVL) {
+  for_simt_parallel(kindex, kiterations, NSIMDVL) {
 
     index = kernel_baseindex(ktx, kindex);
 
     for (ia = 0; ia < 3; ia++) {
-      targetdp_simd_for(iv, NSIMDVL) {
+      for_simd_v(iv, NSIMDVL) {
 	hydro->f[addr_rank1(hydro->nsite, NHDIM, index+iv, ia)] += fnet[ia]; 
       }
     }

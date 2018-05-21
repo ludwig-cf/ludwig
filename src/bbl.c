@@ -304,7 +304,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 
   kiter = kernel_iterations(ktxt);
 
-  targetdp_simt_for(kindex, kiter, 1) {
+  for_simt_parallel(kindex, kiter, 1) {
 
     int ic, jc, kc, index;
     int ia, ib, p;

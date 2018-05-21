@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -54,6 +54,7 @@ __host__ __device__ int fe_symm_interfacial_tension(fe_symm_t * fe, double * s);
 __host__ __device__ int fe_symm_interfacial_width(fe_symm_t * fe, double * xi);
 __host__ __device__ int fe_symm_fed(fe_symm_t * fe, int index, double * fed);
 __host__ __device__ int fe_symm_mu(fe_symm_t * fe, int index, double * mu);
+
 __host__ __device__ int fe_symm_str(fe_symm_t * fe, int index, double s[3][3]);
 __host__ __device__ void fe_symm_str_v(fe_symm_t * fe, int index,
 				       double s[3][3][NSIMDVL]);

@@ -11,14 +11,13 @@
  *  Device copy must be updated at least once per time step to
  *  ensure a coherent view.
  *
- *
- *  $Id: physics.c,v 1.4 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2018 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -145,7 +144,8 @@ __host__ int physics_commit(physics_t * phys) {
 
   assert(phys);
 
-  copyConstToTarget(&const_phys, phys, sizeof(physics_t));
+  tdpMemcpyToSymbol(tdpSymbol(const_phys), phys, sizeof(physics_t), 0,
+		    tdpMemcpyHostToDevice);
 
   return 0;
 }

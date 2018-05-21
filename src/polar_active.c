@@ -44,6 +44,7 @@
 
 #include <assert.h>
 #include <float.h>
+#include <stdlib.h>
 
 #include "pe.h"
 #include "coords.h"
@@ -222,7 +223,8 @@ __host__ int fe_polar_param_commit(fe_polar_t * fe) {
 
   assert(fe);
 
-  copyConstToTarget(&const_param, fe->param, sizeof(fe_polar_param_t));
+  tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param,
+		    sizeof(fe_polar_param_t), 0, tdpMemcpyHostToDevice);
 
   return 0;
 }

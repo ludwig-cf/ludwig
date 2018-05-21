@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "pe.h"
@@ -143,11 +144,22 @@ int kernel_ctxt_launch_param(kernel_ctxt_t * obj, dim3 * nblk, dim3 * ntpb) {
 
 __host__ int kernel_launch_param(int iterations, dim3 * nblk, dim3 * ntpb) {
 
+  int ndevice;
+
   assert(iterations > 0);
 
-  ntpb->x = tdp_host_threads_per_block();
-  ntpb->y = 1;
-  ntpb->z = 1;
+  tdpGetDeviceCount(&ndevice);
+
+  if (ndevice == 0) {
+    ntpb->x = omp_get_max_threads();
+    ntpb->y = 1;
+    ntpb->z = 1;
+  }
+  else {
+    ntpb->x = 128;
+    ntpb->y = 1;
+    ntpb->z = 1;
+  }
 
   nblk->x = (iterations + ntpb->x - 1)/ntpb->x;
   nblk->y = 1;
@@ -324,7 +336,7 @@ __host__ __device__ int kernel_coords_v(kernel_ctxt_t * obj,
   assert(obj);
   xs = obj->param->nkv_local[Y]*obj->param->nkv_local[Z];
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     index = obj->param->kindex0 + kindex0 + iv;
 
     icv[iv] = index/xs;
@@ -332,7 +344,7 @@ __host__ __device__ int kernel_coords_v(kernel_ctxt_t * obj,
     kcv[iv] = index - icv[iv]*xs - jcv[iv]*obj->param->nkv_local[Z];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     icv[iv] = icv[iv] - (obj->param->nhalo - 1);
     jcv[iv] = jcv[iv] - (obj->param->nhalo - 1);
     kcv[iv] = kcv[iv] - (obj->param->nhalo - 1);
@@ -382,11 +394,11 @@ __host__ __device__ int kernel_mask_v(kernel_ctxt_t * obj,
 
   assert(obj);
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     maskv[iv] = 1;
   }
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     if (icv[iv] < obj->param->lim.imin || icv[iv] > obj->param->lim.imax ||
 	jcv[iv] < obj->param->lim.jmin || jcv[iv] > obj->param->lim.jmax ||
 	kcv[iv] < obj->param->lim.kmin || kcv[iv] > obj->param->lim.kmax) {
@@ -445,7 +457,7 @@ __host__ __device__ int kernel_coords_index_v(kernel_ctxt_t * obj,
   yfac = obj->param->nlocal[Z] + 2*nhalo;
   xfac = yfac*(obj->param->nlocal[Y] + 2*nhalo);
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     index[iv] = xfac*(nhalo + icv[iv] - 1)
       + yfac*(nhalo + jcv[iv] - 1) + nhalo + kcv[iv] - 1; 
   }

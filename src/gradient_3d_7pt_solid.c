@@ -39,7 +39,6 @@
  *  Depedence on the compositional order parameter phi is introduced
  *  to allow wetting in the LC droplet case.
  * 
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -315,7 +314,7 @@ void gradient_6x6_kernel(kernel_ctxt_t * ktx, cs_t * cs, grad_lc_anch_t * anch,
   assert(fg);
   assert(fg->field);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     int ic, jc, kc, index;
     int str[3];

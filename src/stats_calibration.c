@@ -4,7 +4,6 @@
  *
  *  A measurement to calibrate the hydrodynamic radius.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -19,6 +18,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "ran.h"
 #include "util.h"

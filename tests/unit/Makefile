@@ -30,12 +30,12 @@ NPROCS = 8
 MPIRUN = ${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH} $(NPROCS)
 
 SRC     = ../../src
-INCLUDE = -I$(SRC) -I../../targetDP
+INCLUDE = -I$(SRC) -I../../target
 
 MPI_STUB_INCLUDE = -I../../mpi_s
 MPI_STUB_LIB = -L../../mpi_s -lmpi
 
-CLIBS  = -lm -L../../targetDP -ltarget
+CLIBS  = -lm -L../../target -ltarget
 MPILIB = -lmpi
 
 #------------------------------------------------------------------------------

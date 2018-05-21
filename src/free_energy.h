@@ -17,6 +17,8 @@
 #ifndef LUDWIG_FREE_ENERGY_H
 #define LUDWIG_FREE_ENERGY_H
 
+/* We want the simd vector length */
+
 #include "memory.h"
 
 enum fe_id_enum {FE_SYMMETRIC,
@@ -63,8 +65,8 @@ struct fe_vt_s {
 
 struct fe_s {
   fe_vt_t * func;
-  int id;
-  int use_stress_relaxation;
+  int id;                       /* enum id */
+  int use_stress_relaxation;    /* use symmetric stress in collision */
 };
 
 #endif

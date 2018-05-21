@@ -117,7 +117,7 @@ __global__ void lb_propagation_kernel_novector(kernel_ctxt_t * ktx, lb_t * lb) {
 
   kiter = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, 1) {
+  for_simt_parallel(kindex, kiter, 1) {
 
     int n, p;
     int ic, jc, kc;
@@ -174,7 +174,7 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
   f = lb->f;
   fprime = lb->fprime;
 
-  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+  for_simt_parallel(kindex, kiter, NSIMDVL) {
 
     int iv;
     int n, p;
@@ -195,13 +195,13 @@ __global__ void lb_propagation_kernel(kernel_ctxt_t * ktx, lb_t * lb) {
 
 	/* If this is a halo site, just copy, else pull from neighbour */ 
 
-	targetdp_simd_for(iv, NSIMDVL) {
+	for_simd_v(iv, NSIMDVL) {
 	  indexp[iv] = index0 + iv - maskv[iv]*(lbp.cv[p][X]*coords.str[X] +
 						lbp.cv[p][Y]*coords.str[Y] +
 						lbp.cv[p][Z]*coords.str[Z]);
 	}
 
-	targetdp_simd_for(iv, NSIMDVL) {
+	for_simd_v(iv, NSIMDVL) {
 	  fprime[LB_ADDR(lbp.nsite, lbp.ndist, NVEL, index0 + iv, n, p)] 
 	    = f[LB_ADDR(lbp.nsite, lbp.ndist, NVEL, indexp[iv], n, p)];
 	}

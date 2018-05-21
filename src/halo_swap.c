@@ -15,6 +15,9 @@
  *
  *****************************************************************************/
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "util.h"
 #include "halo_swap.h"
 
@@ -1063,7 +1066,7 @@ void halo_swap_pack_rank1(halo_swap_t * halo, int id, double * data) {
   assert(id == X || id == Y || id == Z);
   assert(data);
 
-  targetdp_simt_for(kindex, halo->param->hsz[id], 1) {
+  for_simt_parallel(kindex, halo->param->hsz[id], 1) {
 
     int nh;
     int hsz;
@@ -1167,7 +1170,7 @@ void halo_swap_unpack_rank1(halo_swap_t * halo, int id, double * data) {
 
   /* Unpack buffer this site. */
 
-  targetdp_simt_for(kindex, halo->param->hsz[id], 1) {
+  for_simt_parallel(kindex, halo->param->hsz[id], 1) {
 
     int hsz;
     int ia, indexl, indexh;

@@ -31,7 +31,6 @@
  *  This scheme was fist instituted for the work of Kendon et al.
  *  JFM (2001).
  *
- *  $Id: gradient_3d_27pt_fluid.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -234,7 +233,7 @@ __global__ void grad_3d_27pt_kernel(kernel_ctxt_t * ktx, int nf, int ys,
 
   kiterations = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiterations, 1) {
+  for_simt_parallel(kindex, kiterations, 1) {
 
     int n;
     int ic, jc, kc;

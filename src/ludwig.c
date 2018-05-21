@@ -1066,8 +1066,6 @@ static int ludwig_report_momentum(ludwig_t * ludwig) {
  *  This is currently rather repetative, so some rationalisation
  *  is required.
  *
- *  TODO: force divergence method alters halo requirement?
- *
  *****************************************************************************/
 
 int free_energy_init_rt(ludwig_t * ludwig) {

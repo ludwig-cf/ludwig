@@ -189,7 +189,7 @@ void lb_collision_mrt1(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
 
   kiter = kernel_vector_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+  for_simt_parallel(kindex, kiter, NSIMDVL) {
     int index0;
     index0 = kernel_baseindex(ktx, kindex);
     lb_collision_mrt1_site(lb, hydro, map, noise, fe, index0);
@@ -249,9 +249,9 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   /* Determine whether this chunk of lattice sites are all active
    * and if not, which should be included */
 
-  __targetILP__(iv) includeSite[iv] = 1;
+  for_simd_v(iv, NSIMDVL) includeSite[iv] = 1;
 
-  __targetILP__(iv) {
+  for_simd_v(iv, NSIMDVL) {
     if (map->status[index0+iv] != MAP_FLUID) {
       includeSite[iv] = 0;
       fullchunk = 0;
@@ -262,23 +262,23 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) shat[ia][ib][iv] = 0.0;
+      for_simd_v(iv, NSIMDVL) shat[ia][ib][iv] = 0.0;
     }
   }
 
   for (ia = 0; ia < NVEL; ia++) {
-    __targetILP__(iv) ghat[ia][iv] = 0.0;
+    for_simd_v(iv, NSIMDVL) ghat[ia][iv] = 0.0;
   }
 
   /* Load SIMD vectors for distribution and force */
 
   for (p = 0; p < NVEL; p++) {
-    __targetILP__(iv) fchunk[p*NSIMDVL+iv] = 
+    for_simd_v(iv, NSIMDVL) fchunk[p*NSIMDVL+iv] = 
       lb->f[ LB_ADDR(_lbp.nsite, 1, NVEL, index0 + iv, LB_RHO, p) ];
   }
 
   for (ia = 0; ia < 3; ia++) {
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       force[ia][iv] = _cp.force_global[ia] 
 	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
     }
@@ -290,9 +290,9 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     d3q19_f2mode_chunk(mode, fchunk);
 #else
     for (m = 0; m < NVEL; m++) {
-      __targetILP__(iv) mode[m*NSIMDVL+iv] = 0.0;
+      for_simd_v(iv, NSIMDVL) mode[m*NSIMDVL+iv] = 0.0;
       for (p = 0; p < NVEL; p++) {
-	__targetILP__(iv) {
+	for_simd_v(iv, NSIMDVL) {
 	  mode[m*NSIMDVL+iv] += fchunk[p*NSIMDVL+iv]*_lbp.ma[m][p];
 	}
       }
@@ -303,38 +303,38 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
    * rho, NDIM components of velocity, independent components
    * of stress (upper triangle), and lower triangle. */
 
-  __targetILP__(iv) rho[iv] = mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) rho[iv] = mode[0*NSIMDVL+iv];
   for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
+    for_simd_v(iv, NSIMDVL) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
   }
 
   m = 0;
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = ia; ib < NDIM; ib++) {
-      __targetILP__(iv) s[ia][ib][iv] = mode[(1 + NDIM + m)*NSIMDVL+iv];
+      for_simd_v(iv, NSIMDVL) s[ia][ib][iv] = mode[(1 + NDIM + m)*NSIMDVL+iv];
       m++;
     }
   }
     
   for (ia = 1; ia < NDIM; ia++) {
     for (ib = 0; ib < ia; ib++) {
-      __targetILP__(iv) s[ia][ib][iv] = s[ib][ia][iv];
+      for_simd_v(iv, NSIMDVL) s[ia][ib][iv] = s[ib][ia][iv];
     }
   }
 
   /* Compute the local velocity, taking account of any body force */
     
-  __targetILP__(iv) rrho[iv] = 1.0/rho[iv];
+  for_simd_v(iv, NSIMDVL) rrho[iv] = 1.0/rho[iv];
 
   for (ia = 0; ia < NDIM; ia++) {      
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
     }
   }
    
   /* Relax stress with different shear and bulk viscosity */
 
-  __targetILP__(iv) {
+  for_simd_v(iv, NSIMDVL) {
     tr_s[iv]   = 0.0;
     tr_seq[iv] = 0.0;
   }
@@ -347,12 +347,12 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     for (ia = 0; ia < NDIM; ia++) {
       /* Set equilibrium stress */
       for (ib = 0; ib < NDIM; ib++) {
-	__targetILP__(iv) {
+	for_simd_v(iv, NSIMDVL) {
 	  seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv] + symm[ia][ib][iv];
 	}
       }
       /* Compute trace */
-      __targetILP__(iv){
+      for_simd_v(iv, NSIMDVL){
 	tr_s[iv]   += s[ia][ia][iv];
 	tr_seq[iv] += seq[ia][ia][iv];
       }
@@ -363,12 +363,12 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     for (ia = 0; ia < NDIM; ia++) {
       /* Set equilibrium stress */
       for (ib = 0; ib < NDIM; ib++) {
-	__targetILP__(iv) {
+	for_simd_v(iv, NSIMDVL) {
 	  seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv];
 	}
       }
       /* Compute trace */
-      __targetILP__(iv){
+      for_simd_v(iv, NSIMDVL){
 	tr_s[iv]   += s[ia][ia][iv];
 	tr_seq[iv] += seq[ia][ia][iv];
       }
@@ -377,20 +377,20 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     
   /* Form traceless parts */
   for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv){
+    for_simd_v(iv, NSIMDVL){
       s[ia][ia][iv]   -= rdim*tr_s[iv];
       seq[ia][ia][iv] -= rdim*tr_seq[iv];
     }
   }
     
   /* Relax each mode */
-  __targetILP__(iv) {
+  for_simd_v(iv, NSIMDVL) {
     tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
   }
 
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = 0; ib < NDIM; ib++) {
-      __targetILP__(iv) {
+      for_simd_v(iv, NSIMDVL) {
 	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
 	s[ia][ib][iv] += d[ia][ib]*rdim*tr_s[iv];
 	  
@@ -436,13 +436,13 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
    * independent components of stress, and ghosts. */
     
   for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
+    for_simd_v(iv, NSIMDVL) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
   }
 
   m = 0;
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = ia; ib < NDIM; ib++) {
-      __targetILP__(iv) {
+      for_simd_v(iv, NSIMDVL) {
 	mode[(1 + NDIM + m)*NSIMDVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
       }
       m++;
@@ -452,7 +452,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   /* Ghost modes are relaxed toward zero equilibrium. */
 
   for (m = NHYDRO; m < NVEL; m++) {  
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
 	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
     }
@@ -465,11 +465,11 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 #else
     for (p = 0; p < NVEL; p++) {
       double ftmp[NSIMDVL];
-      __targetILP__(iv) ftmp[iv] = 0.0;
+      for_simd_v(iv, NSIMDVL) ftmp[iv] = 0.0;
       for (m = 0; m < NVEL; m++) {
-	__targetILP__(iv) ftmp[iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
+	for_simd_v(iv, NSIMDVL) ftmp[iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
       }
-      __targetILP__(iv) fchunk[p*NSIMDVL+iv] = ftmp[iv];
+      for_simd_v(iv, NSIMDVL) fchunk[p*NSIMDVL+iv] = ftmp[iv];
     }
 #endif
 
@@ -478,19 +478,19 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   if (fullchunk) {
     /* distribution */
     for (p = 0; p < NVEL; p++) {
-      __targetILP__(iv) { 
+      for_simd_v(iv, NSIMDVL) { 
 	lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_RHO, p)] = fchunk[p*NSIMDVL+iv];
       }
     }
     /* velocity */
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      for_simd_v(iv, NSIMDVL) {
 	hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
       }
     }
   }
   else {
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       if (includeSite[iv]) {
 	/* distribution */
 	for (p = 0; p < NVEL; p++) {
@@ -576,7 +576,7 @@ __global__ void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb,
 
   kiter = kernel_vector_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+  for_simt_parallel(kindex, kiter, NSIMDVL) {
     int index0;
     index0 = kernel_baseindex(ktx, kindex);
     lb_collision_mrt2_site(lb, hydro, fe, noise, index0);
@@ -667,18 +667,18 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   /* switch fluctuations off */
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) shat[ia][ib][iv] = 0.0;
+      for_simd_v(iv, NSIMDVL) shat[ia][ib][iv] = 0.0;
     }
   }
 
   for (m = NHYDRO; m < NVEL; m++) {
-    __targetILP__(iv) ghat[m][iv] = 0.0;
+    for_simd_v(iv, NSIMDVL) ghat[m][iv] = 0.0;
   }
 
 
 #ifdef _D3Q19_
   for (p = 0; p < NVEL; p++) {
-    targetdp_simd_for(iv, NSIMDVL) {
+    for_simd_v(iv, NSIMDVL) {
       f[p*NSIMDVL+iv]
 	= lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)];
     }
@@ -687,11 +687,11 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 #else
   /* Compute all the modes */
   for (m = 0; m < NVEL; m++) {
-    targetdp_simd_for(iv, NSIMDVL) {
+    for_simd_v(iv, NSIMDVL) {
       mode[m*NSIMDVL+iv] = 0.0;
     }
     for (p = 0; p < NVEL; p++) {
-      targetdp_simd_for(iv, NSIMDVL) {
+      for_simd_v(iv, NSIMDVL) {
 	mode[m*NSIMDVL+iv] += _lbp.ma[m][p]
 	  *lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)];
       }
@@ -701,31 +701,31 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   /* For convenience, write out the physical modes. */
   
-  __targetILP__(iv) rho[iv] = mode[0*VVL+iv];
+  for_simd_v(iv, NSIMDVL) rho[iv] = mode[0*NSIMDVL+iv];
   for (ia = 0; ia < 3; ia++) {
-    __targetILP__(iv) u[ia][iv] = mode[(1 + ia)*VVL+iv];
+    for_simd_v(iv, NSIMDVL) u[ia][iv] = mode[(1 + ia)*NSIMDVL+iv];
   }
 
   m = 0;
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = ia; ib < NDIM; ib++) {
-      __targetILP__(iv) s[ia][ib][iv] = mode[(1 + NDIM + m)*VVL+iv];
+      for_simd_v(iv, NSIMDVL) s[ia][ib][iv] = mode[(1 + NDIM + m)*NSIMDVL+iv];
       m++;
     }
   }
 
   for (ia = 1; ia < NDIM; ia++) {
     for (ib = 0; ib < ia; ib++) {
-      __targetILP__(iv) s[ia][ib][iv] = s[ib][ia][iv];
+      for_simd_v(iv, NSIMDVL) s[ia][ib][iv] = s[ib][ia][iv];
     }
   }
 
   /* Compute the local velocity, taking account of any body force */
   
-  __targetILP__(iv) rrho[iv] = 1.0/rho[iv];
+  for_simd_v(iv, NSIMDVL) rrho[iv] = 1.0/rho[iv];
   
   for (ia = 0; ia < 3; ia++) {
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       force[ia][iv] = _cp.force_global[ia] 
 	+ hydro->f[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)];
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
@@ -733,7 +733,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   }
 
   for (ia = 0; ia < 3; ia++) {   
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       hydro->u[addr_rank1(hydro->nsite, NHDIM, index0+iv, ia)] = u[ia][iv];
     }
   }
@@ -744,7 +744,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   /* Relax stress with different shear and bulk viscosity */
   
-  __targetILP__(iv) {
+  for_simd_v(iv, NSIMDVL) {
     tr_s[iv]   = 0.0;
     tr_seq[iv] = 0.0;
   }
@@ -752,12 +752,12 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   for (ia = 0; ia < 3; ia++) {
     /* Set equilibrium stress, which includes thermodynamic part */
     for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) {
+      for_simd_v(iv, NSIMDVL) {
 	seq[ia][ib][iv] = rho[iv]*u[ia][iv]*u[ib][iv] + sth[ia][ib][iv];
       }
     }
     /* Compute trace */
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       tr_s[iv]   += s[ia][ia][iv];
       tr_seq[iv] += seq[ia][ia][iv];
     }
@@ -765,7 +765,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   
   /* Form traceless parts */
   for (ia = 0; ia < 3; ia++) {
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       s[ia][ia][iv]   -= r3*tr_s[iv];
       seq[ia][ia][iv] -= r3*tr_seq[iv];
     }
@@ -773,13 +773,13 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   
   /* Relax each mode */
-  __targetILP__(iv)
+  for_simd_v(iv, NSIMDVL)
     tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
   
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 
-      __targetILP__(iv) {
+      for_simd_v(iv, NSIMDVL) {
 	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
 	s[ia][ib][iv] += d[ia][ib]*r3*tr_s[iv];
       
@@ -818,14 +818,14 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
    * independent components of stress, and ghosts. */
     
   for (ia = 0; ia < NDIM; ia++) {
-    __targetILP__(iv) mode[(1 + ia)*VVL+iv] += force[ia][iv];
+    for_simd_v(iv, NSIMDVL) mode[(1 + ia)*NSIMDVL+iv] += force[ia][iv];
   }
 
   m = 0;
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = ia; ib < NDIM; ib++) {
-      __targetILP__(iv) {
-	mode[(1 + NDIM + m)*VVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
+      for_simd_v(iv, NSIMDVL) {
+	mode[(1 + NDIM + m)*NSIMDVL+iv] = s[ia][ib][iv] + shat[ia][ib][iv];
       }
       m++;
     }
@@ -834,9 +834,9 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
   /* Ghost modes are relaxed toward zero equilibrium. */
 
   for (m = NHYDRO; m < NVEL; m++) { 
-    __targetILP__(iv)  {
-      mode[m*VVL+iv] = mode[m*VVL+iv] 
-	- lb->param->rtau[m]*(mode[m*VVL+iv] - 0.0) + ghat[m][iv];
+    for_simd_v(iv, NSIMDVL)  {
+      mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv] 
+	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
     }
   }
 
@@ -845,29 +845,29 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 #ifdef _D3Q19_  
   d3q19_mode2f_chunk(mode, f);
   for (p = 0; p < NVEL; p++) {
-    targetdp_simd_for(iv, NSIMDVL) {
+    for_simd_v(iv, NSIMDVL) {
       lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0 + iv, LB_RHO, p)] =
-	f[p*VVL+iv];
+	f[p*NSIMDVL+iv];
     }
   }
 #else    
   for (p = 0; p < NVEL; p++) {
-    __targetILP__(iv) f[p*NSIMDVL+iv] = 0.0;
+    for_simd_v(iv, NSIMDVL) f[p*NSIMDVL+iv] = 0.0;
     for (m = 0; m < NVEL; m++) {
-      __targetILP__(iv) f[p*NSIMDVL+iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
+      for_simd_v(iv, NSIMDVL) f[p*NSIMDVL+iv] += _lbp.mi[p][m]*mode[m*NSIMDVL+iv];
     }
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       lb->f[LB_ADDR(_lbp.nsite, NDIST, NVEL, index0+iv, LB_RHO, p)] = f[p*NSIMDVL+iv];
     }
   }
 #endif
 
   /* Now, the order parameter distribution */
-  __targetILP__(iv) {
+  for_simd_v(iv, NSIMDVL) {
     phi[iv] = fe->phi->data[addr_rank0(fe->phi->nsites, index0 + iv)];
   }
 
-  __targetILP__(iv) {
+  for_simd_v(iv, NSIMDVL) {
     fe_symm_mu(fe, index0 + iv, mu + iv);
     jphi[X][iv] = 0.0;
     jphi[Y][iv] = 0.0;
@@ -876,7 +876,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   for (p = 1; p < NVEL; p++) {
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) {
+      for_simd_v(iv, NSIMDVL) {
 	jphi[ia][iv] += _lbp.cv[p][ia]* 
 	lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ];
       }
@@ -887,12 +887,12 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      __targetILP__(iv) { 
+      for_simd_v(iv, NSIMDVL) { 
 	sphi[ia][ib][iv] = phi[iv]*u[ia][iv]*u[ib][iv] + mu[iv]*d[ia][ib];
         /* sphi[ia][ib] = phi*u[ia]*u[ib] + cs2*mobility*mu*d_[ia][ib];*/
       }
     }
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       jphi[ia][iv] = jphi[ia][iv] - _cp.rtau2*(jphi[ia][iv] - phi[iv]*u[ia][iv]);
       /* jphi[ia] = phi*u[ia]; */
     }
@@ -908,21 +908,21 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     
     int dp0 = (p == 0);
 
-    __targetILP__(iv) {
+    for_simd_v(iv, NSIMDVL) {
       jdotc[iv]    = 0.0;
       sphidotq[iv] = 0.0;
     }
     
     for (ia = 0; ia < 3; ia++) {
-      __targetILP__(iv) jdotc[iv] += jphi[ia][iv]*_lbp.cv[p][ia];
+      for_simd_v(iv, NSIMDVL) jdotc[iv] += jphi[ia][iv]*_lbp.cv[p][ia];
       for (ib = 0; ib < 3; ib++) {
-	__targetILP__(iv) sphidotq[iv] += sphi[ia][ib][iv]*_lbp.q[p][ia][ib];
+	for_simd_v(iv, NSIMDVL) sphidotq[iv] += sphi[ia][ib][iv]*_lbp.q[p][ia][ib];
       }
     }
     
     /* Project all this back to the distributions. The magic
      * here is to move phi into the non-propagating distribution. */
-    __targetILP__(iv) { 
+    for_simd_v(iv, NSIMDVL) { 
       lb->f[ LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_PHI, p) ] 
       = _lbp.wv[p]*(jdotc[iv]*3.0 + sphidotq[iv]*4.5) + phi[iv]*dp0;
     }
@@ -1431,411 +1431,411 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb) {
 __device__ void d3q19_f2mode_chunk(double* mode, const double* __restrict__ fchunk)
 {
 
-  int m, il=0;
+  int m, iv;
 
    for (m = 0; m < NVEL; m++) { 
-       __targetILP__(il) mode[m*VVL+il] = 0.0; 
+       for_simd_v(iv, NSIMDVL) mode[m*NSIMDVL+iv] = 0.0; 
    }
 
 
-  __targetILP__(il) mode[0*VVL+il] += fchunk[0*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[1*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[3*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[4*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[5*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[7*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[9*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[10*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[12*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[13*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[14*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[15*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[16*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[17*VVL+il]*c1;
-  __targetILP__(il) mode[0*VVL+il] += fchunk[18*VVL+il]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[0*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c1;
 
   /* m=1*/
-  __targetILP__(il) mode[1*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[1*VVL+il]*c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[3*VVL+il]*c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[4*VVL+il]*c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[5*VVL+il]*c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[6*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[8*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[11*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[13*VVL+il]*c0;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[14*VVL+il]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[15*VVL+il]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[16*VVL+il]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[17*VVL+il]*-c1;
-  __targetILP__(il) mode[1*VVL+il] += fchunk[18*VVL+il]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[1*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*-c1;
 
   /* m=2*/
-  __targetILP__(il) mode[2*VVL+il]=0.;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[1*VVL+il]*c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[2*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[4*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[5*VVL+il]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[7*VVL+il]*c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[11*VVL+il]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[12*VVL+il]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[13*VVL+il]*-c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[14*VVL+il]*c1;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[15*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[17*VVL+il]*c0;
-  __targetILP__(il) mode[2*VVL+il] += fchunk[18*VVL+il]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv]=0.;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[2*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*-c1;
 
   /* m=3*/
-  __targetILP__(il) mode[3*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[4*VVL+il]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[8*VVL+il]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[9*VVL+il]*c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[10*VVL+il]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[13*VVL+il]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[15*VVL+il]*c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[17*VVL+il]*-c1;
-  __targetILP__(il) mode[3*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[3*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=4*/
-  __targetILP__(il) mode[4*VVL+il] += fchunk[0*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[1*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[2*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[3*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[4*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[5*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[6*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[7*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[8*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[9*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[10*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[11*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[12*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[13*VVL+il]*-r3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[14*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[15*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[16*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[17*VVL+il]*t3;
-  __targetILP__(il) mode[4*VVL+il] += fchunk[18*VVL+il]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[4*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*t3;
 
   /* m=5*/
-  __targetILP__(il) mode[5*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[1*VVL+il]*c1;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[2*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[4*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[5*VVL+il]*-c1;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[6*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[8*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[11*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[13*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[14*VVL+il]*-c1;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[15*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[17*VVL+il]*c0;
-  __targetILP__(il) mode[5*VVL+il] += fchunk[18*VVL+il]*c1;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[5*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c1;
 
   /* m=6*/
-  __targetILP__(il) mode[6*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[4*VVL+il]*-c1;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[6*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[8*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[11*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[13*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[15*VVL+il]*-c1;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[17*VVL+il]*c1;
-  __targetILP__(il) mode[6*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[6*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=7*/
-  __targetILP__(il) mode[7*VVL+il] += fchunk[0*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[1*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[2*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[3*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[4*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[5*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[6*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[7*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[8*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[9*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[10*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[11*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[12*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[13*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[14*VVL+il]*t3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[15*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[16*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[17*VVL+il]*-r3;
-  __targetILP__(il) mode[7*VVL+il] += fchunk[18*VVL+il]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[7*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*t3;
 
   /* m=8*/
-  __targetILP__(il) mode[8*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[2*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[4*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[8*VVL+il]*-c1;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[11*VVL+il]*-c1;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[13*VVL+il]*c1;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[15*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[17*VVL+il]*c0;
-  __targetILP__(il) mode[8*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[8*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=9*/
-  __targetILP__(il) mode[9*VVL+il] += fchunk[0*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[1*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[2*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[3*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[4*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[5*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[6*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[7*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[8*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[9*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[10*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[11*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[12*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[13*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[14*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[15*VVL+il]*t3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[16*VVL+il]*-r3;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[17*VVL+il]*t3 ;
-  __targetILP__(il) mode[9*VVL+il] += fchunk[18*VVL+il]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*t3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-r3;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*t3 ;
+  for_simd_v(iv, NSIMDVL) mode[9*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*-r3;
 
   /* m=10*/
-  __targetILP__(il) mode[10*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[1*VVL+il]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[3*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[4*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[5*VVL+il]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[7*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[9*VVL+il]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[10*VVL+il]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[12*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[13*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[14*VVL+il]*-c2;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[15*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[16*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[17*VVL+il]*c1;
-  __targetILP__(il) mode[10*VVL+il] += fchunk[18*VVL+il]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[10*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*-c2;
 
   /* m=11*/
-  __targetILP__(il) mode[11*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[1*VVL+il]*-c2;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[3*VVL+il]*c1;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[4*VVL+il]*c1;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[5*VVL+il]*-c2;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[6*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[8*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[11*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[13*VVL+il]*c0;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[14*VVL+il]*c2;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[15*VVL+il]*-c1;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[16*VVL+il]*-c1;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[17*VVL+il]*-c1;
-  __targetILP__(il) mode[11*VVL+il] += fchunk[18*VVL+il]*c2;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c2;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[11*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c2;
 
   /* m=12*/
-  __targetILP__(il) mode[12*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[1*VVL+il]*-c2;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[2*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[4*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[5*VVL+il]*c2;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[7*VVL+il]*c1;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[11*VVL+il]*-c1;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[12*VVL+il]*-c1;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[13*VVL+il]*-c1;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[14*VVL+il]*-c2;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[15*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[17*VVL+il]*c0;
-  __targetILP__(il) mode[12*VVL+il] += fchunk[18*VVL+il]*c2;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c2;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[12*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c2;
 
   /* m=13*/
-  __targetILP__(il) mode[13*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[4*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[8*VVL+il]*-c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[9*VVL+il]*-c2;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[10*VVL+il]*c2;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[13*VVL+il]*-c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[15*VVL+il]*c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[17*VVL+il]*-c1;
-  __targetILP__(il) mode[13*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c2;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[13*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=14*/
-  __targetILP__(il) mode[14*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[2*VVL+il]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[3*VVL+il]*c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[4*VVL+il]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[7*VVL+il]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[12*VVL+il]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[13*VVL+il]*c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[15*VVL+il]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[16*VVL+il]*c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[17*VVL+il]*-c1;
-  __targetILP__(il) mode[14*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[14*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=15*/
-  __targetILP__(il) mode[15*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[2*VVL+il]*-c1;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[3*VVL+il]*c1;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[4*VVL+il]*-c1;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[6*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[8*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[11*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[13*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[15*VVL+il]*c1;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[16*VVL+il]*-c1;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[17*VVL+il]*c1;
-  __targetILP__(il) mode[15*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[15*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=16*/
-  __targetILP__(il) mode[16*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[2*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[4*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[7*VVL+il]*-c1;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[11*VVL+il]*-c1;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[12*VVL+il]*c1;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[13*VVL+il]*-c1;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[15*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[17*VVL+il]*c0;
-  __targetILP__(il) mode[16*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[16*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=17*/
-  __targetILP__(il) mode[17*VVL+il] += fchunk[0*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[1*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[2*VVL+il]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[3*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[4*VVL+il]*c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[5*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[7*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[8*VVL+il]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[9*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[10*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[12*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[13*VVL+il]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[14*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[15*VVL+il]*-c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[16*VVL+il]*c0;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[17*VVL+il]*c1;
-  __targetILP__(il) mode[17*VVL+il] += fchunk[18*VVL+il]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*-c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*c0;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[17*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c0;
 
   /* m=18*/
-  __targetILP__(il) mode[18*VVL+il] += fchunk[0*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[1*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[2*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[3*VVL+il]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[4*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[5*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[6*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[7*VVL+il]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[8*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[9*VVL+il]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[10*VVL+il]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[11*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[12*VVL+il]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[13*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[14*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[15*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[16*VVL+il]*-c2;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[17*VVL+il]*c1;
-  __targetILP__(il) mode[18*VVL+il] += fchunk[18*VVL+il]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[0*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[1*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[2*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[3*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[4*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[5*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[6*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[7*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[8*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[9*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[10*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[11*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[12*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[13*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[14*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[15*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[16*NSIMDVL+iv]*-c2;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[17*NSIMDVL+iv]*c1;
+  for_simd_v(iv, NSIMDVL) mode[18*NSIMDVL+iv] += fchunk[18*NSIMDVL+iv]*c1;
  
 }
 
@@ -1843,444 +1843,444 @@ __device__ void d3q19_mode2f_chunk(double* mode, double* fchunk) {
 
   double ftmp[NSIMDVL];
 
-  int il=0;
+  int iv;
 
   
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w0*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -r2*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -r2*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -r2*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[18*VVL+il];
-  __targetILP__(il)   fchunk[0*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w0*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r2*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r2*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r2*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL)   fchunk[0*NSIMDVL+iv] = ftmp[iv];
   
   /* p=1*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[1*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[1*NSIMDVL+iv] = ftmp[iv];
   
   /* p=2*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += -we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[2*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[2*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=3*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w1*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) fchunk[3*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[3*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=4*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += -we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[4*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[4*NSIMDVL+iv] = ftmp[iv];
   
   /* p=5 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[5*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[5*NSIMDVL+iv] = ftmp[iv];
   
   /* p=6 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[6*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[6*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=7 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w1*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) fchunk[7*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[7*NSIMDVL+iv] = ftmp[iv];
   
   /* p=8 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[8*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[8*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=9*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w1*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += -r6*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) fchunk[9*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r6*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[9*NSIMDVL+iv] = ftmp[iv];
   
   /* p=10*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w1*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += -r6*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) fchunk[10*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r6*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[10*NSIMDVL+iv] = ftmp[iv];
   
   /* p=11 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[11*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[11*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=12*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w1*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += -r6*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) fchunk[12*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r6*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[12*NSIMDVL+iv] = ftmp[iv];
   
   /* p=13 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[13*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[13*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=14 */
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[14*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[14*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=15*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += -we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += -r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[15*VVL+il] =  ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[15*NSIMDVL+iv] =  ftmp[iv];
   
   /* p=16*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w1*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += -r6*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += r6*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += -r4*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += -w1*mode[18*VVL+il];
-  __targetILP__(il) fchunk[16*VVL+il] =ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w1*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r6*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r6*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -r4*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -w1*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[16*NSIMDVL+iv] =ftmp[iv];
   
   /* p=17*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += wd*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += -we*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += r8*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[17*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wd*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -we*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r8*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[17*NSIMDVL+iv] = ftmp[iv];
   
   /* p=18*/
-  __targetILP__(il) ftmp[il]=0.;
-  __targetILP__(il) ftmp[il] += w2*mode[0*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[1*VVL+il];
-  __targetILP__(il) ftmp[il] += -wa*mode[2*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[3*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[4*VVL+il];
-  __targetILP__(il) ftmp[il] += r4*mode[5*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[6*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[7*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[8*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[9*VVL+il];
-  __targetILP__(il) ftmp[il] += -wb*mode[10*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[11*VVL+il];
-  __targetILP__(il) ftmp[il] += wa*mode[12*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[13*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[14*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[15*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[16*VVL+il];
-  __targetILP__(il) ftmp[il] += c0*mode[17*VVL+il];
-  __targetILP__(il) ftmp[il] += wc*mode[18*VVL+il];
-  __targetILP__(il) fchunk[18*VVL+il] = ftmp[il];
+  for_simd_v(iv, NSIMDVL) ftmp[iv]=0.;
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += w2*mode[0*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[1*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wa*mode[2*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[3*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[4*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += r4*mode[5*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[6*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[7*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[8*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[9*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += -wb*mode[10*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[11*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wa*mode[12*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[13*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[14*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[15*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[16*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += c0*mode[17*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) ftmp[iv] += wc*mode[18*NSIMDVL+iv];
+  for_simd_v(iv, NSIMDVL) fchunk[18*NSIMDVL+iv] = ftmp[iv];
 
 
 }
@@ -2297,265 +2297,265 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
   const double rcs2 = 3.0;
   const double r2rcs4 = (9.0/2.0);
 
-  __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+  for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
-  __targetILP__(iv) 
+  for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 0) ] 
         = w0*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4) + phi[iv];
 
 
-  __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+  for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] += jphi[Y][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][1][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][0][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][1][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][0][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 1) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] += jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][2][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][0][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][2][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 2) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[X][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 3) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] -= jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][2][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][0][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][2][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 4) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] -= jphi[Y][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][1][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][0][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][1][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][0][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 5) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[Y][iv];
-  __targetILP__(iv)  jdotc[iv] += jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][2][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][1][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][2][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 6) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[Y][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 7) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[Y][iv];
-  __targetILP__(iv)  jdotc[iv] -= jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][2][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][1][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][2][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 8) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] += jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 9) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 10) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[Y][iv];
-  __targetILP__(iv)  jdotc[iv] += jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][2][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][1][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][2][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 11) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[Y][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 12) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[Y][iv];
-  __targetILP__(iv)  jdotc[iv] -= jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][2][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][1][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][2][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][1][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 13) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] += jphi[Y][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][1][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][0][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][1][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][0][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 14) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] += jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][2][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][0][iv]*-1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] += jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][2][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*-1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 15) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[X][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 16) ] 
         = w1*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] -= jphi[Z][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][2][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][0][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Z][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][2][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][0][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*6.6666666666666663e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 17) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 
 
- __targetILP__(iv) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
+ for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 
 
-  __targetILP__(iv)  jdotc[iv] -= jphi[X][iv];
-  __targetILP__(iv)  jdotc[iv] -= jphi[Y][iv];
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[0][1][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][0][iv]*1.0000000000000000e+00;
-  __targetILP__(iv)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
-  __targetILP__(iv)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[X][iv];
+  for_simd_v(iv, NSIMDVL)  jdotc[iv] -= jphi[Y][iv];
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][0][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[0][1][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][0][iv]*1.0000000000000000e+00;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[1][1][iv]*6.6666666666666663e-01;
+  for_simd_v(iv, NSIMDVL)  sphidotq[iv] += sphi[2][2][iv]*-3.3333333333333331e-01;
 
- __targetILP__(iv) 
+ for_simd_v(iv, NSIMDVL) 
      f[ LB_ADDR(_lbp.nsite, NDIST, NVEL, baseIndex+iv, LB_PHI, 18) ] 
         = w2*(jdotc[iv]*rcs2 + sphidotq[iv]*r2rcs4);
 

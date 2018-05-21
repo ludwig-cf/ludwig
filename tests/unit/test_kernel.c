@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2017 The University of Edinburgh
+ *  (c) 2016-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "pe.h"
@@ -100,8 +101,8 @@ __host__ int test_kernel_suite(void) {
  *
  *  For given configuration run the following
  *   1. __host__   "kernel" with standard form to generate reference result
- *   2. __kernel__ with no explicit vectorisation
- *   3. __kernel__ with explicit vectorisation
+ *   2. __global__ with no explicit vectorisation
+ *   3. __global__ with explicit vectorisation
  *
  *****************************************************************************/
 
@@ -109,6 +110,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   int isum;
   int nsites;
+  int nexpect;
   int * iref = NULL;
   dim3 ntpb;
   dim3 nblk;
@@ -138,7 +140,10 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   kernel_ctxt_create(cs, 1, limits, &ctxt);
   do_host_kernel(cs, limits, iref, &isum);
 
-  printf("Host kernel returns isum = %d\n", isum);
+  nexpect = (limits.imax - limits.imin + 1)*
+            (limits.jmax - limits.jmin + 1)*
+            (limits.kmax - limits.kmin + 1);
+  assert(isum == nexpect);
 
   /* Target */
 
@@ -149,7 +154,6 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
-  printf("Finish kernel 1\n");
   data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
 
@@ -164,7 +168,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
 
   data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
-  printf("isum %d data->Isum %d\n", isum, data->isum);
+
   assert(isum == data->isum);
 
   kernel_ctxt_free(ctxt);
@@ -181,7 +185,6 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
-  printf("Finish kernel 2\n");
   data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
 
@@ -249,7 +252,7 @@ __global__ void do_target_kernel1(kernel_ctxt_t * ktx, data_t * data) {
 
   kiter = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, 1) {
+  for_simt_parallel(kindex, kiter, 1) {
 
     int ic, jc, kc;
     int index;
@@ -288,7 +291,7 @@ __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
   psum[threadIdx.x] = 0;
   kiter = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, 1) {
+  for_simt_parallel(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -304,10 +307,10 @@ __global__ void do_target_kernel1r(kernel_ctxt_t * ktx, data_t * data) {
 
   /* Reduction, two part */
 
-  block_sum = atomicBlockAddInt(psum);
+  block_sum = tdpAtomicBlockAddInt(psum);
 
   if (threadIdx.x == 0) {
-    atomicAddInt(&data->isum, block_sum);
+    tdpAtomicAddInt(&data->isum, block_sum);
   }
 
   return;
@@ -337,13 +340,13 @@ __global__ void do_target_kernel2(kernel_ctxt_t * ktx, data_t * data) {
 
   kiter = kernel_vector_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+  for_simt_parallel(kindex, kiter, NSIMDVL) {
 
     kernel_coords_v(ktx, kindex, ic, jc, kc);
     kernel_coords_index_v(ktx, ic, jc, kc, index);
     kernel_mask_v(ktx, ic, jc, kc, kmask);
 
-    targetdp_simd_for(iv, NSIMDVL) {
+    for_simd_v(iv, NSIMDVL) {
       data->idata[mem_addr_rank0(data->nsites, index[iv])] = kmask[iv]*index[iv];
     }
   }

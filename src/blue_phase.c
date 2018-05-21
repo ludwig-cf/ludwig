@@ -1398,38 +1398,38 @@ void fe_lc_mol_field_v(fe_lc_t * fe, int index, double h[3][3][NSIMDVL]) {
 
   /* Expand various tensors */
 
-  targetdp_simd_for(iv, NSIMDVL) q[X][X][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
-  targetdp_simd_for(iv, NSIMDVL) q[X][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
-  targetdp_simd_for(iv, NSIMDVL) q[X][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
-  targetdp_simd_for(iv, NSIMDVL) q[Y][X][iv] = q[X][Y][iv];
-  targetdp_simd_for(iv, NSIMDVL) q[Y][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
-  targetdp_simd_for(iv, NSIMDVL) q[Y][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
-  targetdp_simd_for(iv, NSIMDVL) q[Z][X][iv] = q[X][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) q[Z][Y][iv] = q[Y][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
+  for_simd_v(iv, NSIMDVL) q[X][X][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  for_simd_v(iv, NSIMDVL) q[X][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  for_simd_v(iv, NSIMDVL) q[X][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
+  for_simd_v(iv, NSIMDVL) q[Y][X][iv] = q[X][Y][iv];
+  for_simd_v(iv, NSIMDVL) q[Y][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  for_simd_v(iv, NSIMDVL) q[Y][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
+  for_simd_v(iv, NSIMDVL) q[Z][X][iv] = q[X][Z][iv];
+  for_simd_v(iv, NSIMDVL) q[Z][Y][iv] = q[Y][Z][iv];
+  for_simd_v(iv, NSIMDVL) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][X][X][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XX,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][X][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XY,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][X][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XZ,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Y][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,YY,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Y][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,YZ,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][X][X][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XX,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][X][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XY,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][X][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,XZ,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][Y][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,YY,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][Y][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,NVECTOR,index+iv,YZ,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) dsq[X][X][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[X][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[X][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Y][X][iv] = dsq[X][Y][iv];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Y][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Y][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Z][X][iv] = dsq[X][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Z][Y][iv] = dsq[Y][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
+  for_simd_v(iv, NSIMDVL) dsq[X][X][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  for_simd_v(iv, NSIMDVL) dsq[X][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  for_simd_v(iv, NSIMDVL) dsq[X][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
+  for_simd_v(iv, NSIMDVL) dsq[Y][X][iv] = dsq[X][Y][iv];
+  for_simd_v(iv, NSIMDVL) dsq[Y][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  for_simd_v(iv, NSIMDVL) dsq[Y][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
+  for_simd_v(iv, NSIMDVL) dsq[Z][X][iv] = dsq[X][Z][iv];
+  for_simd_v(iv, NSIMDVL) dsq[Z][Y][iv] = dsq[Y][Z][iv];
+  for_simd_v(iv, NSIMDVL) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
 
   fe_lc_compute_h_v(fe, q, dq, dsq, h);
@@ -1464,37 +1464,37 @@ void fe_lc_stress_v(fe_lc_t * fe, int index, double s[3][3][NSIMDVL]) {
   grad = fe->dq->grad;
   delsq = fe->dq->delsq;
 
-  targetdp_simd_for(iv, NSIMDVL) q[X][X][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
-  targetdp_simd_for(iv, NSIMDVL) q[X][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
-  targetdp_simd_for(iv, NSIMDVL) q[X][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
-  targetdp_simd_for(iv, NSIMDVL) q[Y][X][iv] = q[X][Y][iv];
-  targetdp_simd_for(iv, NSIMDVL) q[Y][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
-  targetdp_simd_for(iv, NSIMDVL) q[Y][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
-  targetdp_simd_for(iv, NSIMDVL) q[Z][X][iv] = q[X][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) q[Z][Y][iv] = q[Y][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
+  for_simd_v(iv, NSIMDVL) q[X][X][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  for_simd_v(iv, NSIMDVL) q[X][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  for_simd_v(iv, NSIMDVL) q[X][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
+  for_simd_v(iv, NSIMDVL) q[Y][X][iv] = q[X][Y][iv];
+  for_simd_v(iv, NSIMDVL) q[Y][Y][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  for_simd_v(iv, NSIMDVL) q[Y][Z][iv] = data[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
+  for_simd_v(iv, NSIMDVL) q[Z][X][iv] = q[X][Z][iv];
+  for_simd_v(iv, NSIMDVL) q[Z][Y][iv] = q[Y][Z][iv];
+  for_simd_v(iv, NSIMDVL) q[Z][Z][iv] = 0.0 - q[X][X][iv] - q[Y][Y][iv];
 
   for (ia = 0; ia < NVECTOR; ia++) {
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][X][X][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XX,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][X][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XY,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][X][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XZ,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Y][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,YY,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Y][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,YZ,ia)];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
-    targetdp_simd_for(iv, NSIMDVL) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][X][X][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XX,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][X][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XY,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][X][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,XZ,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][Y][X][iv] = dq[ia][X][Y][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][Y][Y][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,YY,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][Y][Z][iv] = grad[addr_rank2(fe->q->nsites,NQAB,3,index+iv,YZ,ia)];
+    for_simd_v(iv, NSIMDVL) dq[ia][Z][X][iv] = dq[ia][X][Z][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][Z][Y][iv] = dq[ia][Y][Z][iv];
+    for_simd_v(iv, NSIMDVL) dq[ia][Z][Z][iv] = 0.0 - dq[ia][X][X][iv] - dq[ia][Y][Y][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) dsq[X][X][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[X][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[X][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Y][X][iv] = dsq[X][Y][iv];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Y][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Y][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Z][X][iv] = dsq[X][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Z][Y][iv] = dsq[Y][Z][iv];
-  targetdp_simd_for(iv, NSIMDVL) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
+  for_simd_v(iv, NSIMDVL) dsq[X][X][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XX)];
+  for_simd_v(iv, NSIMDVL) dsq[X][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XY)];
+  for_simd_v(iv, NSIMDVL) dsq[X][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,XZ)];
+  for_simd_v(iv, NSIMDVL) dsq[Y][X][iv] = dsq[X][Y][iv];
+  for_simd_v(iv, NSIMDVL) dsq[Y][Y][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YY)];
+  for_simd_v(iv, NSIMDVL) dsq[Y][Z][iv] = delsq[addr_rank1(fe->q->nsites,NQAB,index+iv,YZ)];
+  for_simd_v(iv, NSIMDVL) dsq[Z][X][iv] = dsq[X][Z][iv];
+  for_simd_v(iv, NSIMDVL) dsq[Z][Y][iv] = dsq[Y][Z][iv];
+  for_simd_v(iv, NSIMDVL) dsq[Z][Z][iv] = 0.0 - dsq[X][X][iv] - dsq[Y][Y][iv];
 
   fe_lc_compute_h_v(fe, q, dq, dsq, h);
   fe_lc_compute_stress_v(fe, q, dq, h, s);
@@ -1611,134 +1611,134 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
   kappa0 = fe->param->redshift*fe->param->redshift*fe->param->kappa0;
   kappa1 = kappa0;
 
-  targetdp_simd_for(iv, NSIMDVL) q2[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) q2[iv] = 0.0;
 
   /* Q_ab^2 */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL)  q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
+      for_simd_v(iv, NSIMDVL)  q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
     }
   }
 
   /* Q_ab Q_bc Q_ca */
 
-  targetdp_simd_for(iv, NSIMDVL) q3[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) q3[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
 	/* We use here the fact that q[ic][ia] = q[ia][ic] */
-	targetdp_simd_for(iv, NSIMDVL)  q3[iv] += q[ia][ib][iv]*q[ib][ic][iv]*q[ia][ic][iv];
+	for_simd_v(iv, NSIMDVL)  q3[iv] += q[ia][ib][iv]*q[ib][ic][iv]*q[ia][ic][iv];
       }
     }
   }
 
   /* (d_b Q_ab)^2 */
 
-  targetdp_simd_for(iv, NSIMDVL)  dq0[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL)  dq0[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
-    targetdp_simd_for(iv, NSIMDVL)  sum[iv] = 0.0;
+    for_simd_v(iv, NSIMDVL)  sum[iv] = 0.0;
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL)  sum[iv] += dq[ib][ia][ib][iv];
+      for_simd_v(iv, NSIMDVL)  sum[iv] += dq[ib][ia][ib][iv];
     }
-    targetdp_simd_for(iv, NSIMDVL)  dq0[iv] += sum[iv]*sum[iv];
+    for_simd_v(iv, NSIMDVL)  dq0[iv] += sum[iv]*sum[iv];
   }
 
   /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
   /* With symmetric Q_db write Q_bd */
 
-  targetdp_simd_for(iv, NSIMDVL)  dq1[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL)  dq1[iv] = 0.0;
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][0][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[2][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[2][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][1][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[2][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[2][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][2][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[2][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[2][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[0][0][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[0][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[0][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[0][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[0][2][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[0][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][0][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[1][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[1][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][1][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[1][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[1][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][2][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] -= dq[1][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] -= dq[1][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += 2.0*q0*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += 2.0*q0*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
+  for_simd_v(iv, NSIMDVL) dq1[iv] += sum[iv]*sum[iv];
 
 
   /* Electric field term (epsilon_ includes the factor 1/12pi) */
 
-  targetdp_simd_for(iv, NSIMDVL)  efield[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL)  efield[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL) {
+      for_simd_v(iv, NSIMDVL) {
 	efield[iv] += fe->param->e0coswt[ia]*q[ia][ib][iv]*fe->param->e0coswt[ib];
       }
     }
   }
 
 
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) {
     fed[iv] = 0.5*fe->param->a0*(1.0 - r3*fe->param->gamma)*q2[iv]
       - r3*fe->param->a0*fe->param->gamma*q3[iv]
       + 0.25*fe->param->a0*fe->param->gamma*q2[iv]*q2[iv]
@@ -1797,21 +1797,21 @@ void fe_lc_compute_h_v(fe_lc_t * fe,
 
   /* From the bulk terms in the free energy... */
 
-  targetdp_simd_for(iv, NSIMDVL) q2[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) q2[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL) q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
+      for_simd_v(iv, NSIMDVL) q2[iv] += q[ia][ib][iv]*q[ia][ib][iv];
     }
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
+      for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
       for (ic = 0; ic < 3; ic++) {
-	targetdp_simd_for(iv, NSIMDVL) sum[iv] += q[ia][ic][iv]*q[ib][ic][iv];
+	for_simd_v(iv, NSIMDVL) sum[iv] += q[ia][ic][iv]*q[ib][ic][iv];
       }
-      targetdp_simd_for(iv, NSIMDVL) h[ia][ib][iv] =
+      for_simd_v(iv, NSIMDVL) h[ia][ib][iv] =
 	- fe->param->a0*(1.0 - r3*gamma)*q[ia][ib][iv]
 	+ fe->param->a0*gamma*(sum[iv] - r3*q2[iv]*d[ia][ib])
 	- fe->param->a0*gamma*q2[iv]*q[ia][ib][iv];
@@ -1822,115 +1822,115 @@ void fe_lc_compute_h_v(fe_lc_t * fe,
   /* First, the sum e_abc d_b Q_ca. With two permutations, we
    * may rewrite this as e_bca d_b Q_ca */
 
-  targetdp_simd_for(iv, NSIMDVL) edq[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) edq[iv] = 0.0;
 
   for (ib = 0; ib < 3; ib++) {
     for (ic = 0; ic < 3; ic++) {
       for (ia = 0; ia < 3; ia++) {
-	targetdp_simd_for(iv, NSIMDVL) edq[iv] += e[ib][ic][ia]*dq[ib][ic][ia][iv];
+	for_simd_v(iv, NSIMDVL) edq[iv] += e[ib][ic][ia]*dq[ib][ic][ia][iv];
       }
     }
   }
 
   /* Contraction d_c Q_db ... */
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][0][2][iv] + dq[1][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[2][0][1][iv] + -dq[2][0][1][iv];
+  for_simd_v(iv, NSIMDVL) {
     h[0][0][iv] += kappa0*dsq[0][0][iv] - 2.0*kappa1*q0*sum[iv]
       + 4.0*r3*kappa1*q0*edq[iv] - 4.0*kappa1*q0*q0*q[0][0][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[0][0][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][1][2][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][0][0][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[2][1][1][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[0][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][1][2][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[2][1][1][iv] ;
+  for_simd_v(iv, NSIMDVL) {
     h[0][1][iv] += kappa0*dsq[0][1][iv] - 2.0*kappa1*q0*sum[iv]
       - 4.0*kappa1*q0*q0*q[0][1][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][0][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[1][0][0][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][2][2][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[2][2][1][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[1][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][2][2][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[2][2][1][iv] ;
+  for_simd_v(iv, NSIMDVL) {
     h[0][2][iv] += kappa0*dsq[0][2][iv] - 2.0*kappa1*q0*sum[iv]
       - 4.0*kappa1*q0*q0*q[0][2][iv];
     }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[0][0][2][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][1][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][0][0][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[2][1][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[0][0][2][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][0][0][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[2][1][1][iv];
+  for_simd_v(iv, NSIMDVL) {
     h[1][0][iv] += kappa0*dsq[1][0][iv] - 2.0*kappa1*q0*sum[iv]
       - 4.0*kappa1*q0*q0*q[1][0][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[0][1][2][iv] + -dq[0][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][1][0][iv] + dq[2][1][0][iv];
+  for_simd_v(iv, NSIMDVL) {
     h[1][1][iv] += kappa0*dsq[1][1][iv] - 2.0*kappa1*q0*sum[iv]
       + 4.0*r3*kappa1*q0*edq[iv] - 4.0*kappa1*q0*q0*q[1][1][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][1][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[0][2][2][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[1][1][0][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][2][0][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[0][2][2][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[1][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][2][0][iv] ;
+  for_simd_v(iv, NSIMDVL) {
     h[1][2][iv] += kappa0*dsq[1][2][iv] - 2.0*kappa1*q0*sum[iv]
       - 4.0*kappa1*q0*q0*q[1][2][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][0][1][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[1][0][0][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[1][2][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[2][2][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][0][1][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[1][0][0][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[1][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[2][2][1][iv];
+  for_simd_v(iv, NSIMDVL) {
     h[2][0][iv] += kappa0*dsq[2][0][iv] - 2.0*kappa1*q0*sum[iv]
       - 4.0*kappa1*q0*q0*q[2][0][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][1][1][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[0][2][2][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[1][1][0][iv] ;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[2][2][0][iv];
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][1][1][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[0][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[1][1][0][iv] ;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[2][2][0][iv];
+  for_simd_v(iv, NSIMDVL) {
     h[2][1][iv] += kappa0*dsq[2][1][iv] - 2.0*kappa1*q0*sum[iv]
       - 4.0*kappa1*q0*q0*q[2][1][iv];
   }
 
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] = 0.0;
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
-  targetdp_simd_for(iv, NSIMDVL) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
-  targetdp_simd_for(iv, NSIMDVL) {
+  for_simd_v(iv, NSIMDVL) sum[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) sum[iv] += dq[0][2][1][iv] + dq[0][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sum[iv] += -dq[1][2][0][iv] + -dq[1][2][0][iv];
+  for_simd_v(iv, NSIMDVL) {
     h[2][2][iv] += kappa0*dsq[2][2][iv] - 2.0*kappa1*q0*sum[iv]
       + 4.0*r3*kappa1*q0*edq[iv] - 4.0*kappa1*q0*q0*q[2][2][iv];
   }
 
   /* Electric field term */
 
-  targetdp_simd_for(iv, NSIMDVL) e2[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) e2[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
-    targetdp_simd_for(iv, NSIMDVL) {
+    for_simd_v(iv, NSIMDVL) {
       e2[iv] += fe->param->e0coswt[ia]*fe->param->e0coswt[ia];
     }
   }
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL) {
+      for_simd_v(iv, NSIMDVL) {
 	h[ia][ib][iv] +=  fe->param->epsilon*
 	  (fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2[iv]);
       }
@@ -1981,15 +1981,15 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   fe_lc_compute_fed_v(fe, q, dq, p0);
 
-  targetdp_simd_for(iv, NSIMDVL) p0[iv] = 0.0 - p0[iv]; 
+  for_simd_v(iv, NSIMDVL) p0[iv] = 0.0 - p0[iv]; 
 
   /* The contraction Q_ab H_ab */
 
-  targetdp_simd_for(iv, NSIMDVL) qh[iv] = 0.0;
+  for_simd_v(iv, NSIMDVL) qh[iv] = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
-      targetdp_simd_for(iv, NSIMDVL) qh[iv] += q[ia][ib][iv]*h[ia][ib][iv];
+      for_simd_v(iv, NSIMDVL) qh[iv] += q[ia][ib][iv]*h[ia][ib][iv];
     }
   }
 
@@ -1997,452 +1997,452 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
    * fe_lc_compute_stress() */
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][0][iv]+ r3)*qh[iv] -p0[iv] ;
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][0][iv]+ r3)*qh[iv] -p0[iv] ;
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[0][0][iv] + r3)   -xi*(q[0][0][iv]    +r3)*h[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[0][0][iv] + r3)   -xi*(q[0][0][iv]    +r3)*h[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][1][iv]*(q[0][1][iv])   -xi*(q[0][1][iv]    )*h[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][1][iv]*(q[0][1][iv])   -xi*(q[0][1][iv]    )*h[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][2][iv]*(q[0][2][iv])   -xi*(q[0][2][iv]    )*h[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][2][iv]*(q[0][2][iv])   -xi*(q[0][2][iv]    )*h[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][0][iv]*dq[0][0][0][iv] - kappa1*dq[0][0][0][iv]*dq[0][0][0][iv]+ kappa1*dq[0][0][0][iv]*dq[0][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][0][iv]*dq[0][0][0][iv] - kappa1*dq[0][0][0][iv]*dq[0][0][0][iv]+ kappa1*dq[0][0][0][iv]*dq[0][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][0][iv]*dq[1][0][1][iv] - kappa1*dq[0][0][1][iv]*dq[0][0][1][iv]+ kappa1*dq[0][0][1][iv]*dq[0][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][0][iv]*dq[1][0][1][iv] - kappa1*dq[0][0][1][iv]*dq[0][0][1][iv]+ kappa1*dq[0][0][1][iv]*dq[0][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][0][iv]*dq[2][0][2][iv] - kappa1*dq[0][0][2][iv]*dq[0][0][2][iv]+ kappa1*dq[0][0][2][iv]*dq[0][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][0][iv]*dq[2][0][2][iv] - kappa1*dq[0][0][2][iv]*dq[0][0][2][iv]+ kappa1*dq[0][0][2][iv]*dq[0][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][1][iv]*dq[0][1][0][iv] - kappa1*dq[0][1][0][iv]*dq[0][1][0][iv]+ kappa1*dq[0][1][0][iv]*dq[1][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][1][iv]*dq[0][1][0][iv] - kappa1*dq[0][1][0][iv]*dq[0][1][0][iv]+ kappa1*dq[0][1][0][iv]*dq[1][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][1][0][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][1][0][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][1][iv]*dq[1][1][1][iv] - kappa1*dq[0][1][1][iv]*dq[0][1][1][iv]+ kappa1*dq[0][1][1][iv]*dq[1][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][1][iv]*dq[1][1][1][iv] - kappa1*dq[0][1][1][iv]*dq[0][1][1][iv]+ kappa1*dq[0][1][1][iv]*dq[1][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][1][1][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][1][1][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[0][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[0][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][1][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][1][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[0][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[0][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][2][0][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][2][0][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[0][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[0][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][2][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][2][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][2][iv]*dq[2][2][2][iv] - kappa1*dq[0][2][2][iv]*dq[0][2][2][iv]+ kappa1*dq[0][2][2][iv]*dq[2][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][0][2][iv]*dq[2][2][2][iv] - kappa1*dq[0][2][2][iv]*dq[0][2][2][iv]+ kappa1*dq[0][2][2][iv]*dq[2][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][2][2][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][2][2][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][0][iv]*h[0][0][iv] - h[0][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][0][iv]*h[0][0][iv] - h[0][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][1][iv]*h[0][1][iv] - h[0][1][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][1][iv]*h[0][1][iv] - h[0][1][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[0][2][iv] - h[0][2][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[0][2][iv] - h[0][2][iv]*q[0][2][iv];
 
 
   /* XX -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[X][X][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[X][X][iv] = -sthtmp[iv];
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][1][iv])*qh[iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][1][iv])*qh[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[1][0][iv])   -xi*(q[0][0][iv]    +r3)*h[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[1][0][iv])   -xi*(q[0][0][iv]    +r3)*h[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][1][iv]*(q[1][1][iv] + r3)   -xi*(q[0][1][iv]    )*h[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][1][iv]*(q[1][1][iv] + r3)   -xi*(q[0][1][iv]    )*h[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][2][iv]*(q[1][2][iv])   -xi*(q[0][2][iv]    )*h[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][2][iv]*(q[1][2][iv])   -xi*(q[0][2][iv]    )*h[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[0][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[0][0][0][iv]*dq[0][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[0][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[0][0][0][iv]*dq[0][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][0][0][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][0][0][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[0][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[0][0][1][iv]*dq[0][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[0][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[0][0][1][iv]*dq[0][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][0][1][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][0][1][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][0][iv]*dq[2][0][2][iv] - kappa1*dq[0][0][2][iv]*dq[1][0][2][iv]+ kappa1*dq[0][0][2][iv]*dq[0][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][0][iv]*dq[2][0][2][iv] - kappa1*dq[0][0][2][iv]*dq[1][0][2][iv]+ kappa1*dq[0][0][2][iv]*dq[0][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][0][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][0][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[0][1][0][iv] - kappa1*dq[0][1][0][iv]*dq[1][1][0][iv]+ kappa1*dq[0][1][0][iv]*dq[1][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[0][1][0][iv] - kappa1*dq[0][1][0][iv]*dq[1][1][0][iv]+ kappa1*dq[0][1][0][iv]*dq[1][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[1][1][1][iv] - kappa1*dq[0][1][1][iv]*dq[1][1][1][iv]+ kappa1*dq[0][1][1][iv]*dq[1][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[1][1][1][iv] - kappa1*dq[0][1][1][iv]*dq[1][1][1][iv]+ kappa1*dq[0][1][1][iv]*dq[1][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][1][0][iv];
     
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][1][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][1][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[0][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[0][2][2][iv]*dq[2][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[0][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[0][2][2][iv]*dq[2][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][2][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][2][2][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][0][iv]*h[1][0][iv] - h[0][0][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][0][iv]*h[1][0][iv] - h[0][0][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][1][iv]*h[1][1][iv] - h[0][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][1][iv]*h[1][1][iv] - h[0][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[1][2][iv] - h[0][2][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[1][2][iv] - h[0][2][iv]*q[1][2][iv];
 
 
   /* XY with minus sign */
-  targetdp_simd_for(iv, NSIMDVL) s[X][Y][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[X][Y][iv] = -sthtmp[iv];
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][2][iv])*qh[iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][2][iv])*qh[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[2][0][iv])   -xi*(q[0][0][iv]    +r3)*h[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[2][0][iv])   -xi*(q[0][0][iv]    +r3)*h[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][1][iv]*(q[2][1][iv])   -xi*(q[0][1][iv]    )*h[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][1][iv]*(q[2][1][iv])   -xi*(q[0][1][iv]    )*h[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][2][iv]*(q[2][2][iv] + r3)   -xi*(q[0][2][iv]    )*h[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][2][iv]*(q[2][2][iv] + r3)   -xi*(q[0][2][iv]    )*h[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[0][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[0][0][0][iv]*dq[0][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[0][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[0][0][0][iv]*dq[0][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][0][0][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][0][0][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[0][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[0][0][1][iv]*dq[0][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[0][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[0][0][1][iv]*dq[0][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][0][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][0][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][0][iv]*dq[2][0][2][iv] - kappa1*dq[0][0][2][iv]*dq[2][0][2][iv]+ kappa1*dq[0][0][2][iv]*dq[0][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][0][iv]*dq[2][0][2][iv] - kappa1*dq[0][0][2][iv]*dq[2][0][2][iv]+ kappa1*dq[0][0][2][iv]*dq[0][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][0][2][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[0][0][2][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][1][iv]*dq[0][1][0][iv] - kappa1*dq[0][1][0][iv]*dq[2][1][0][iv]+ kappa1*dq[0][1][0][iv]*dq[1][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][1][iv]*dq[0][1][0][iv] - kappa1*dq[0][1][0][iv]*dq[2][1][0][iv]+ kappa1*dq[0][1][0][iv]*dq[1][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][1][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][1][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][1][iv]*dq[1][1][1][iv] - kappa1*dq[0][1][1][iv]*dq[2][1][1][iv]+ kappa1*dq[0][1][1][iv]*dq[1][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][1][iv]*dq[1][1][1][iv] - kappa1*dq[0][1][1][iv]*dq[2][1][1][iv]+ kappa1*dq[0][1][1][iv]*dq[1][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][1][1][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][1][1][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[2][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][1][iv]*dq[2][1][2][iv] - kappa1*dq[0][1][2][iv]*dq[2][1][2][iv]+ kappa1*dq[0][1][2][iv]*dq[1][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][1][2][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[0][1][2][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[2][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][2][iv]*dq[0][2][0][iv] - kappa1*dq[0][2][0][iv]*dq[2][2][0][iv]+ kappa1*dq[0][2][0][iv]*dq[2][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[2][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][2][iv]*dq[1][2][1][iv] - kappa1*dq[0][2][1][iv]*dq[2][2][1][iv]+ kappa1*dq[0][2][1][iv]*dq[2][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][2][iv]*dq[2][2][2][iv] - kappa1*dq[0][2][2][iv]*dq[2][2][2][iv]+ kappa1*dq[0][2][2][iv]*dq[2][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[0][2][2][iv]*dq[2][2][2][iv] - kappa1*dq[0][2][2][iv]*dq[2][2][2][iv]+ kappa1*dq[0][2][2][iv]*dq[2][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][0][iv]*h[2][0][iv] - h[0][0][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][0][iv]*h[2][0][iv] - h[0][0][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][1][iv]*h[2][1][iv] - h[0][1][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][1][iv]*h[2][1][iv] - h[0][1][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[2][2][iv] - h[0][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[0][2][iv]*h[2][2][iv] - h[0][2][iv]*q[2][2][iv];
 
 
   /* XZ with -ve sign*/
-  targetdp_simd_for(iv, NSIMDVL) s[X][Z][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[X][Z][iv] = -sthtmp[iv];
 
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[1][0][iv])*qh[iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[1][0][iv])*qh[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][0][iv]*(q[0][0][iv] + r3)   -xi*(q[1][0][iv]    )*h[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][0][iv]*(q[0][0][iv] + r3)   -xi*(q[1][0][iv]    )*h[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][1][iv]*(q[0][1][iv])   -xi*(q[1][1][iv]    +r3)*h[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][1][iv]*(q[0][1][iv])   -xi*(q[1][1][iv]    +r3)*h[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[0][2][iv])   -xi*(q[1][2][iv]    )*h[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[0][2][iv])   -xi*(q[1][2][iv]    )*h[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[0][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[0][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[0][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[0][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][0][iv]*dq[2][0][2][iv] - kappa1*dq[1][0][2][iv]*dq[0][0][2][iv]+ kappa1*dq[1][0][2][iv]*dq[0][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][0][iv]*dq[2][0][2][iv] - kappa1*dq[1][0][2][iv]*dq[0][0][2][iv]+ kappa1*dq[1][0][2][iv]*dq[0][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][1][iv]*dq[0][1][0][iv] - kappa1*dq[1][1][0][iv]*dq[0][1][0][iv]+ kappa1*dq[1][1][0][iv]*dq[1][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][1][iv]*dq[0][1][0][iv] - kappa1*dq[1][1][0][iv]*dq[0][1][0][iv]+ kappa1*dq[1][1][0][iv]*dq[1][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][1][0][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][1][0][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][1][iv]*dq[1][1][1][iv] - kappa1*dq[1][1][1][iv]*dq[0][1][1][iv]+ kappa1*dq[1][1][1][iv]*dq[1][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][1][iv]*dq[1][1][1][iv] - kappa1*dq[1][1][1][iv]*dq[0][1][1][iv]+ kappa1*dq[1][1][1][iv]*dq[1][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][1][1][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][1][1][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][1][iv]*dq[2][1][2][iv] - kappa1*dq[1][1][2][iv]*dq[0][1][2][iv]+ kappa1*dq[1][1][2][iv]*dq[1][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][1][iv]*dq[2][1][2][iv] - kappa1*dq[1][1][2][iv]*dq[0][1][2][iv]+ kappa1*dq[1][1][2][iv]*dq[1][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][1][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][1][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][2][iv]*dq[0][2][0][iv] - kappa1*dq[1][2][0][iv]*dq[0][2][0][iv]+ kappa1*dq[1][2][0][iv]*dq[2][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][2][iv]*dq[0][2][0][iv] - kappa1*dq[1][2][0][iv]*dq[0][2][0][iv]+ kappa1*dq[1][2][0][iv]*dq[2][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][2][0][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][2][0][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][2][iv]*dq[1][2][1][iv] - kappa1*dq[1][2][1][iv]*dq[0][2][1][iv]+ kappa1*dq[1][2][1][iv]*dq[2][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][2][iv]*dq[1][2][1][iv] - kappa1*dq[1][2][1][iv]*dq[0][2][1][iv]+ kappa1*dq[1][2][1][iv]*dq[2][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][2][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][2][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][2][iv]*dq[2][2][2][iv] - kappa1*dq[1][2][2][iv]*dq[0][2][2][iv]+ kappa1*dq[1][2][2][iv]*dq[2][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][0][2][iv]*dq[2][2][2][iv] - kappa1*dq[1][2][2][iv]*dq[0][2][2][iv]+ kappa1*dq[1][2][2][iv]*dq[2][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][2][2][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][2][2][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][0][iv]*h[0][0][iv] - h[1][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][0][iv]*h[0][0][iv] - h[1][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][1][iv]*h[0][1][iv] - h[1][1][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][1][iv]*h[0][1][iv] - h[1][1][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[0][2][iv] - h[1][2][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[0][2][iv] - h[1][2][iv]*q[0][2][iv];
 
 
   /* YX -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[Y][X][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[Y][X][iv] = -sthtmp[iv];
 
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[1][1][iv]+ r3)*qh[iv] -p0[iv] ;
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[1][1][iv]+ r3)*qh[iv] -p0[iv] ;
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][0][iv]*(q[1][0][iv])   -xi*(q[1][0][iv]    )*h[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][0][iv]*(q[1][0][iv])   -xi*(q[1][0][iv]    )*h[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][1][iv]*(q[1][1][iv] + r3)   -xi*(q[1][1][iv]    +r3)*h[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][1][iv]*(q[1][1][iv] + r3)   -xi*(q[1][1][iv]    +r3)*h[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[1][2][iv])   -xi*(q[1][2][iv]    )*h[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[1][2][iv])   -xi*(q[1][2][iv]    )*h[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][0][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][0][iv]*q[0][2][iv];
   
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][1][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][1][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[2][0][2][iv] - kappa1*dq[1][0][2][iv]*dq[1][0][2][iv]+ kappa1*dq[1][0][2][iv]*dq[0][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][0][iv]*dq[2][0][2][iv] - kappa1*dq[1][0][2][iv]*dq[1][0][2][iv]+ kappa1*dq[1][0][2][iv]*dq[0][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][0][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][1][iv]*dq[0][1][0][iv] - kappa1*dq[1][1][0][iv]*dq[1][1][0][iv]+ kappa1*dq[1][1][0][iv]*dq[1][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][1][iv]*dq[0][1][0][iv] - kappa1*dq[1][1][0][iv]*dq[1][1][0][iv]+ kappa1*dq[1][1][0][iv]*dq[1][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][1][iv]*dq[1][1][1][iv] - kappa1*dq[1][1][1][iv]*dq[1][1][1][iv]+ kappa1*dq[1][1][1][iv]*dq[1][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][1][iv]*dq[1][1][1][iv] - kappa1*dq[1][1][1][iv]*dq[1][1][1][iv]+ kappa1*dq[1][1][1][iv]*dq[1][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[1][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[1][1][2][iv]*dq[1][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[1][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[1][1][2][iv]*dq[1][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[1][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[1][2][0][iv]*dq[2][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[1][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[1][2][0][iv]*dq[2][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][2][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][2][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[1][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[1][2][1][iv]*dq[2][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[1][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[1][2][1][iv]*dq[2][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][2][1][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][2][1][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[1][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[1][2][2][iv]*dq[2][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[1][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[1][2][2][iv]*dq[2][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][2][2][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][2][2][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][0][iv]*h[1][0][iv] - h[1][0][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][0][iv]*h[1][0][iv] - h[1][0][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][1][iv]*h[1][1][iv] - h[1][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][1][iv]*h[1][1][iv] - h[1][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[1][2][iv] - h[1][2][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[1][2][iv] - h[1][2][iv]*q[1][2][iv];
 
 
   /* YY -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[Y][Y][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[Y][Y][iv] = -sthtmp[iv];
 
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[1][2][iv])*qh[iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[1][2][iv])*qh[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][0][iv]*(q[2][0][iv])   -xi*(q[1][0][iv]    )*h[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][0][iv]*(q[2][0][iv])   -xi*(q[1][0][iv]    )*h[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][1][iv]*(q[2][1][iv])   -xi*(q[1][1][iv]    +r3)*h[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][1][iv]*(q[2][1][iv])   -xi*(q[1][1][iv]    +r3)*h[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[2][2][iv] + r3)   -xi*(q[1][2][iv]    )*h[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[1][2][iv]*(q[2][2][iv] + r3)   -xi*(q[1][2][iv]    )*h[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[1][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[1][0][0][iv]*dq[0][2][0][iv];
   
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][0][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][0][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[1][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[1][0][1][iv]*dq[0][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[2][0][2][iv] - kappa1*dq[1][0][2][iv]*dq[2][0][2][iv]+ kappa1*dq[1][0][2][iv]*dq[0][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][0][iv]*dq[2][0][2][iv] - kappa1*dq[1][0][2][iv]*dq[2][0][2][iv]+ kappa1*dq[1][0][2][iv]*dq[0][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][2][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[1][0][2][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][1][iv]*dq[0][1][0][iv] - kappa1*dq[1][1][0][iv]*dq[2][1][0][iv]+ kappa1*dq[1][1][0][iv]*dq[1][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][1][iv]*dq[0][1][0][iv] - kappa1*dq[1][1][0][iv]*dq[2][1][0][iv]+ kappa1*dq[1][1][0][iv]*dq[1][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][1][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][1][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][1][iv]*dq[1][1][1][iv] - kappa1*dq[1][1][1][iv]*dq[2][1][1][iv]+ kappa1*dq[1][1][1][iv]*dq[1][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][1][iv]*dq[1][1][1][iv] - kappa1*dq[1][1][1][iv]*dq[2][1][1][iv]+ kappa1*dq[1][1][1][iv]*dq[1][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][1][1][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][1][1][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][1][iv]*dq[2][1][2][iv] - kappa1*dq[1][1][2][iv]*dq[2][1][2][iv]+ kappa1*dq[1][1][2][iv]*dq[1][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][1][iv]*dq[2][1][2][iv] - kappa1*dq[1][1][2][iv]*dq[2][1][2][iv]+ kappa1*dq[1][1][2][iv]*dq[1][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][1][2][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[1][1][2][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][2][iv]*dq[0][2][0][iv] - kappa1*dq[1][2][0][iv]*dq[2][2][0][iv]+ kappa1*dq[1][2][0][iv]*dq[2][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][2][iv]*dq[0][2][0][iv] - kappa1*dq[1][2][0][iv]*dq[2][2][0][iv]+ kappa1*dq[1][2][0][iv]*dq[2][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][2][iv]*dq[1][2][1][iv] - kappa1*dq[1][2][1][iv]*dq[2][2][1][iv]+ kappa1*dq[1][2][1][iv]*dq[2][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][2][iv]*dq[1][2][1][iv] - kappa1*dq[1][2][1][iv]*dq[2][2][1][iv]+ kappa1*dq[1][2][1][iv]*dq[2][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][2][iv]*dq[2][2][2][iv] - kappa1*dq[1][2][2][iv]*dq[2][2][2][iv]+ kappa1*dq[1][2][2][iv]*dq[2][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[1][2][2][iv]*dq[2][2][2][iv] - kappa1*dq[1][2][2][iv]*dq[2][2][2][iv]+ kappa1*dq[1][2][2][iv]*dq[2][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][0][iv]*h[2][0][iv] - h[1][0][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][0][iv]*h[2][0][iv] - h[1][0][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][1][iv]*h[2][1][iv] - h[1][1][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][1][iv]*h[2][1][iv] - h[1][1][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[2][2][iv] - h[1][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[1][2][iv]*h[2][2][iv] - h[1][2][iv]*q[2][2][iv];
 
 
   /* YZ -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[Y][Z][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[Y][Z][iv] = -sthtmp[iv];
 
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[2][0][iv])*qh[iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[2][0][iv])*qh[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][0][iv]*(q[0][0][iv] + r3)   -xi*(q[2][0][iv]    )*h[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][0][iv]*(q[0][0][iv] + r3)   -xi*(q[2][0][iv]    )*h[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][1][iv]*(q[0][1][iv])   -xi*(q[2][1][iv]    )*h[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][1][iv]*(q[0][1][iv])   -xi*(q[2][1][iv]    )*h[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][2][iv]*(q[0][2][iv])   -xi*(q[2][2][iv]    +r3)*h[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][2][iv]*(q[0][2][iv])   -xi*(q[2][2][iv]    +r3)*h[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][0][iv]*dq[0][0][0][iv] - kappa1*dq[2][0][0][iv]*dq[0][0][0][iv]+ kappa1*dq[2][0][0][iv]*dq[0][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][0][iv]*dq[0][0][0][iv] - kappa1*dq[2][0][0][iv]*dq[0][0][0][iv]+ kappa1*dq[2][0][0][iv]*dq[0][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][0][iv]*dq[1][0][1][iv] - kappa1*dq[2][0][1][iv]*dq[0][0][1][iv]+ kappa1*dq[2][0][1][iv]*dq[0][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][0][iv]*dq[1][0][1][iv] - kappa1*dq[2][0][1][iv]*dq[0][0][1][iv]+ kappa1*dq[2][0][1][iv]*dq[0][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][0][iv]*dq[2][0][2][iv] - kappa1*dq[2][0][2][iv]*dq[0][0][2][iv]+ kappa1*dq[2][0][2][iv]*dq[0][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][0][iv]*dq[2][0][2][iv] - kappa1*dq[2][0][2][iv]*dq[0][0][2][iv]+ kappa1*dq[2][0][2][iv]*dq[0][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][1][iv]*dq[0][1][0][iv] - kappa1*dq[2][1][0][iv]*dq[0][1][0][iv]+ kappa1*dq[2][1][0][iv]*dq[1][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][1][iv]*dq[0][1][0][iv] - kappa1*dq[2][1][0][iv]*dq[0][1][0][iv]+ kappa1*dq[2][1][0][iv]*dq[1][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][1][0][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][1][0][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][1][iv]*dq[1][1][1][iv] - kappa1*dq[2][1][1][iv]*dq[0][1][1][iv]+ kappa1*dq[2][1][1][iv]*dq[1][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][1][iv]*dq[1][1][1][iv] - kappa1*dq[2][1][1][iv]*dq[0][1][1][iv]+ kappa1*dq[2][1][1][iv]*dq[1][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][1][1][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][1][1][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][1][iv]*dq[2][1][2][iv] - kappa1*dq[2][1][2][iv]*dq[0][1][2][iv]+ kappa1*dq[2][1][2][iv]*dq[1][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][1][iv]*dq[2][1][2][iv] - kappa1*dq[2][1][2][iv]*dq[0][1][2][iv]+ kappa1*dq[2][1][2][iv]*dq[1][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][1][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][1][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][2][iv]*dq[0][2][0][iv] - kappa1*dq[2][2][0][iv]*dq[0][2][0][iv]+ kappa1*dq[2][2][0][iv]*dq[2][0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][2][iv]*dq[0][2][0][iv] - kappa1*dq[2][2][0][iv]*dq[0][2][0][iv]+ kappa1*dq[2][2][0][iv]*dq[2][0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][2][0][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][2][0][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][2][iv]*dq[1][2][1][iv] - kappa1*dq[2][2][1][iv]*dq[0][2][1][iv]+ kappa1*dq[2][2][1][iv]*dq[2][0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][2][iv]*dq[1][2][1][iv] - kappa1*dq[2][2][1][iv]*dq[0][2][1][iv]+ kappa1*dq[2][2][1][iv]*dq[2][0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][2][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][2][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[0][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][0][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[0][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][2][2][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][2][2][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[0][0][iv] - h[2][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[0][0][iv] - h[2][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[0][1][iv] - h[2][1][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[0][1][iv] - h[2][1][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[0][2][iv] - h[2][2][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[0][2][iv] - h[2][2][iv]*q[0][2][iv];
 
 
   /* ZX -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[Z][X][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[Z][X][iv] = -sthtmp[iv];
 
 
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[2][1][iv])*qh[iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[2][1][iv])*qh[iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][0][iv]*(q[1][0][iv])   -xi*(q[2][0][iv]    )*h[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][0][iv]*(q[1][0][iv])   -xi*(q[2][0][iv]    )*h[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][1][iv]*(q[1][1][iv] + r3)   -xi*(q[2][1][iv]    )*h[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][1][iv]*(q[1][1][iv] + r3)   -xi*(q[2][1][iv]    )*h[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][2][iv]*(q[1][2][iv])   -xi*(q[2][2][iv]    +r3)*h[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][2][iv]*(q[1][2][iv])   -xi*(q[2][2][iv]    +r3)*h[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[2][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[2][0][0][iv]*dq[0][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][0][iv]*dq[0][0][0][iv] - kappa1*dq[2][0][0][iv]*dq[1][0][0][iv]+ kappa1*dq[2][0][0][iv]*dq[0][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][0][0][iv]*q[0][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][0][0][iv]*q[0][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[2][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[2][0][1][iv]*dq[0][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][0][iv]*dq[1][0][1][iv] - kappa1*dq[2][0][1][iv]*dq[1][0][1][iv]+ kappa1*dq[2][0][1][iv]*dq[0][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][0][1][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][0][1][iv]*q[1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][0][iv]*dq[2][0][2][iv] - kappa1*dq[2][0][2][iv]*dq[1][0][2][iv]+ kappa1*dq[2][0][2][iv]*dq[0][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][0][iv]*dq[2][0][2][iv] - kappa1*dq[2][0][2][iv]*dq[1][0][2][iv]+ kappa1*dq[2][0][2][iv]*dq[0][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][0][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][0][2][iv]*q[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][1][iv]*dq[0][1][0][iv] - kappa1*dq[2][1][0][iv]*dq[1][1][0][iv]+ kappa1*dq[2][1][0][iv]*dq[1][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][1][iv]*dq[0][1][0][iv] - kappa1*dq[2][1][0][iv]*dq[1][1][0][iv]+ kappa1*dq[2][1][0][iv]*dq[1][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][1][iv]*dq[1][1][1][iv] - kappa1*dq[2][1][1][iv]*dq[1][1][1][iv]+ kappa1*dq[2][1][1][iv]*dq[1][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][1][iv]*dq[1][1][1][iv] - kappa1*dq[2][1][1][iv]*dq[1][1][1][iv]+ kappa1*dq[2][1][1][iv]*dq[1][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[2][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[2][1][2][iv]*dq[1][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][1][iv]*dq[2][1][2][iv] - kappa1*dq[2][1][2][iv]*dq[1][1][2][iv]+ kappa1*dq[2][1][2][iv]*dq[1][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[2][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[2][2][0][iv]*dq[2][1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[0][2][0][iv] - kappa1*dq[2][2][0][iv]*dq[1][2][0][iv]+ kappa1*dq[2][2][0][iv]*dq[2][1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[2][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[2][2][1][iv]*dq[2][1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[1][2][1][iv] - kappa1*dq[2][2][1][iv]*dq[1][2][1][iv]+ kappa1*dq[2][2][1][iv]*dq[2][1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][1][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][1][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][1][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[1][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][1][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][2][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][2][2][iv]*q[2][0][iv];
   
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[1][0][iv] - h[2][0][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[1][0][iv] - h[2][0][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[1][1][iv] - h[2][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[1][1][iv] - h[2][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[1][2][iv] - h[2][2][iv]*q[1][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[1][2][iv] - h[2][2][iv]*q[1][2][iv];
 
 
   /* ZY -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[Z][Y][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[Z][Y][iv] = -sthtmp[iv];
 
 
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[2][2][iv]+ r3)*qh[iv] -p0[iv] ;
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[2][2][iv]+ r3)*qh[iv] -p0[iv] ;
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][0][iv]*(q[2][0][iv])   -xi*(q[2][0][iv]    )*h[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][0][iv]*(q[2][0][iv])   -xi*(q[2][0][iv]    )*h[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][1][iv]*(q[2][1][iv])   -xi*(q[2][1][iv]    )*h[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][1][iv]*(q[2][1][iv])   -xi*(q[2][1][iv]    )*h[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][2][iv]*(q[2][2][iv] + r3)   -xi*(q[2][2][iv]    +r3)*h[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[2][2][iv]*(q[2][2][iv] + r3)   -xi*(q[2][2][iv]    +r3)*h[2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[2][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[2][0][0][iv]*dq[0][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][0][iv]*dq[0][0][0][iv] - kappa1*dq[2][0][0][iv]*dq[2][0][0][iv]+ kappa1*dq[2][0][0][iv]*dq[0][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][0][0][iv]*q[0][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][0][0][iv]*q[0][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[2][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[2][0][1][iv]*dq[0][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][0][iv]*dq[1][0][1][iv] - kappa1*dq[2][0][1][iv]*dq[2][0][1][iv]+ kappa1*dq[2][0][1][iv]*dq[0][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][0][1][iv]*q[1][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][0][1][iv]*q[1][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][0][iv]*dq[2][0][2][iv] - kappa1*dq[2][0][2][iv]*dq[2][0][2][iv]+ kappa1*dq[2][0][2][iv]*dq[0][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][0][iv]*dq[2][0][2][iv] - kappa1*dq[2][0][2][iv]*dq[2][0][2][iv]+ kappa1*dq[2][0][2][iv]*dq[0][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][0][2][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] -= 2.0*kappa1*q0*dq[2][0][2][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][1][iv]*dq[0][1][0][iv] - kappa1*dq[2][1][0][iv]*dq[2][1][0][iv]+ kappa1*dq[2][1][0][iv]*dq[1][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][1][iv]*dq[0][1][0][iv] - kappa1*dq[2][1][0][iv]*dq[2][1][0][iv]+ kappa1*dq[2][1][0][iv]*dq[1][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][1][0][iv]*q[0][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][1][0][iv]*q[0][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][1][iv]*dq[1][1][1][iv] - kappa1*dq[2][1][1][iv]*dq[2][1][1][iv]+ kappa1*dq[2][1][1][iv]*dq[1][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][1][iv]*dq[1][1][1][iv] - kappa1*dq[2][1][1][iv]*dq[2][1][1][iv]+ kappa1*dq[2][1][1][iv]*dq[1][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][1][1][iv]*q[1][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][1][1][iv]*q[1][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][1][iv]*dq[2][1][2][iv] - kappa1*dq[2][1][2][iv]*dq[2][1][2][iv]+ kappa1*dq[2][1][2][iv]*dq[1][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][1][iv]*dq[2][1][2][iv] - kappa1*dq[2][1][2][iv]*dq[2][1][2][iv]+ kappa1*dq[2][1][2][iv]*dq[1][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][1][2][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += 2.0*kappa1*q0*dq[2][1][2][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][2][iv]*dq[0][2][0][iv] - kappa1*dq[2][2][0][iv]*dq[2][2][0][iv]+ kappa1*dq[2][2][0][iv]*dq[2][2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][2][iv]*dq[0][2][0][iv] - kappa1*dq[2][2][0][iv]*dq[2][2][0][iv]+ kappa1*dq[2][2][0][iv]*dq[2][2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][2][iv]*dq[1][2][1][iv] - kappa1*dq[2][2][1][iv]*dq[2][2][1][iv]+ kappa1*dq[2][2][1][iv]*dq[2][2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][2][iv]*dq[1][2][1][iv] - kappa1*dq[2][2][1][iv]*dq[2][2][1][iv]+ kappa1*dq[2][2][1][iv]*dq[2][2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[2][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += - kappa0*dq[2][2][2][iv]*dq[2][2][2][iv] - kappa1*dq[2][2][2][iv]*dq[2][2][2][iv]+ kappa1*dq[2][2][2][iv]*dq[2][2][2][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[2][0][iv] - h[2][0][iv]*q[2][0][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][0][iv]*h[2][0][iv] - h[2][0][iv]*q[2][0][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[2][1][iv] - h[2][1][iv]*q[2][1][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][1][iv]*h[2][1][iv] - h[2][1][iv]*q[2][1][iv];
 
-  targetdp_simd_for(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[2][2][iv] - h[2][2][iv]*q[2][2][iv];
+  for_simd_v(iv, NSIMDVL) sthtmp[iv] += q[2][2][iv]*h[2][2][iv] - h[2][2][iv]*q[2][2][iv];
 
 
   /* ZZ -ve sign */
-  targetdp_simd_for(iv, NSIMDVL) s[Z][Z][iv] = -sthtmp[iv];
+  for_simd_v(iv, NSIMDVL) s[Z][Z][iv] = -sthtmp[iv];
 
   return;
 }

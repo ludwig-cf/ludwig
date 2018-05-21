@@ -509,7 +509,7 @@ __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
   assert(wall);
   assert(lb);
 
-  targetdp_simt_for(n, wall->nlink, 1) {
+  for_simt_parallel(n, wall->nlink, 1) {
 
     p = NVEL - wall->linkp[n];
     fp = lb->param->wv[p]*(lb->param->rho0 + rcs2*ux*lb->param->cv[p][X]);
@@ -538,13 +538,16 @@ __host__ int wall_bbl(wall_t * wall) {
   if (wall->nlink == 0) return 0;
 
   /* Update kernel constants */
-  copyConstToTarget(&static_param, wall->param, sizeof(wall_param_t));
+  tdpMemcpyToSymbol(tdpSymbol(static_param), wall->param,
+		    sizeof(wall_param_t), 0, tdpMemcpyHostToDevice);
 
   kernel_launch_param(wall->nlink, &nblk, &ntpb);
 
   tdpLaunchKernel(wall_bbl_kernel, nblk, ntpb, 0, 0,
 		  wall->target, wall->lb->target, wall->map->target);
-  tdpDeviceSynchronize();
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   return 0;
 }
@@ -590,7 +593,7 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
   fy[tid] = 0.0;
   fz[tid] = 0.0;
 
-  targetdp_simt_for(n, wall->nlink, 1) {
+  for_simt_parallel(n, wall->nlink, 1) {
 
     int i, j, ij, ji, ia;
     int status;
@@ -656,14 +659,14 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
   /* Reduction for momentum transfer */
 
-  fxb = atomicBlockAddDouble(fx);
-  fyb = atomicBlockAddDouble(fy);
-  fzb = atomicBlockAddDouble(fz);
+  fxb = tdpAtomicBlockAddDouble(fx);
+  fyb = tdpAtomicBlockAddDouble(fy);
+  fzb = tdpAtomicBlockAddDouble(fz);
 
   if (tid == 0) {
-    atomicAddDouble(&wall->fnet[X], fxb);
-    atomicAddDouble(&wall->fnet[Y], fyb);
-    atomicAddDouble(&wall->fnet[Z], fzb);
+    tdpAtomicAddDouble(&wall->fnet[X], fxb);
+    tdpAtomicAddDouble(&wall->fnet[Y], fyb);
+    tdpAtomicAddDouble(&wall->fnet[Z], fzb);
   }
 
   return;

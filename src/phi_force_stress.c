@@ -5,12 +5,11 @@
  *  Storage and computation of the "thermodynamic" stress which
  *  depends on the choice of free energy.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,6 +28,7 @@
 
 __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
 __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
+__global__ void pth_kernel_a_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
 
 /*****************************************************************************
  *
@@ -161,7 +161,8 @@ __host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag) {
  *
  *  phi_force_stress_compute
  *
- *  Compute the stress everywhere and store.
+ *  Compute the stress everywhere and store. This allows that the
+ *  full stress, or just the antisymmetric part is needed.
  *
  *****************************************************************************/
 
@@ -190,9 +191,22 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
 
   fe->func->target(fe, &fe_target);
 
-  tdpLaunchKernel(pth_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt->target, pth->target, fe_target);
-  tdpDeviceSynchronize();
+  if (fe->use_stress_relaxation) {
+    /* Antisymmetric part only required; if no antisymmetric part,
+     * do nothing. */
+    if (fe->func->str_anti != NULL) {
+      tdpLaunchKernel(pth_kernel_a_v, nblk, ntpb, 0, 0,
+		      ctxt->target, pth->target, fe_target);
+    }
+  }
+  else {
+    /* Full stress */
+    tdpLaunchKernel(pth_kernel_v, nblk, ntpb, 0, 0,
+		    ctxt->target, pth->target, fe_target);
+  }
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 
@@ -221,7 +235,7 @@ __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   kiter = kernel_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, 1) {
+  for_simt_parallel(kindex, kiter, 1) {
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -257,7 +271,7 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   kiter = kernel_vector_iterations(ktx);
 
-  targetdp_simt_for(kindex, kiter, NSIMDVL) {
+  for_simt_parallel(kindex, kiter, NSIMDVL) {
 
     index = kernel_baseindex(ktx, kindex);
 
@@ -265,7 +279,7 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	for (iv = 0; iv < NSIMDVL; iv++) {
+	for_simd_v(iv, NSIMDVL) {
 	  pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)] = s[ia][ib][iv];
 	}
       }
@@ -276,6 +290,49 @@ __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  pth_kernel_a_v
+ *
+ *****************************************************************************/
+
+__global__ void pth_kernel_a_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
+
+  int kiter;
+  int kindex;
+  int index;
+  int ia, ib, iv;
+
+  double s[3][3][NSIMDVL];
+
+  assert(ktx);
+  assert(pth);
+  assert(fe);
+  assert(fe->func->str_anti_v);
+
+  kiter = kernel_vector_iterations(ktx);
+
+  for_simt_parallel(kindex, kiter, NSIMDVL) {
+
+    index = kernel_baseindex(ktx, kindex);
+
+    fe->func->str_anti_v(fe, index, s);
+
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	for_simd_v(iv, NSIMDVL) {
+	  pth->str[addr_rank2(pth->nsites,3,3,index+iv,ia,ib)] = s[ia][ib][iv];
+	}
+      }
+    }
+
+    /* Next block */
+  }
+
+  return;
+}
+
 
 /*****************************************************************************
  *
