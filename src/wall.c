@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -503,7 +503,7 @@ __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
   int n;
   int p;                   /* Outward going component of link velocity */
   double fp;               /* f = w_p (rho0 + (1/cs2) u_a c_pa) No sdotq */
-  double ux = 0.0;         /* PENDING initialisation */
+  double ux = 0.0;         /* No initialisation */
   const double rcs2 = 3.0; /* macro? */
 
   assert(wall);
@@ -975,7 +975,7 @@ __host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
   drag[Y] = 0.0;
   drag[Z] = 0.0;
 
-  if (wall == NULL) return 0; /* PENDING prefer assert()? */
+  if (wall == NULL) return 0;
 
   cs_lmin(wall->cs, lmin);
   cs_ltot(wall->cs, ltot);

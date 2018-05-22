@@ -2,6 +2,11 @@
  *
  *  target_cuda.h
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ * (c) 2018 The University of Edinburgh
+ *
  ****************************************************************************/
 
 #ifndef LUDWIG_TARGET_CUDA_H

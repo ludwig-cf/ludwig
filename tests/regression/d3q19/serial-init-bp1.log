@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.8.0 (Serial version running on 1 process)
+Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
 
-The SVN revision details are: 3199M
+The SVN revision details are: 3209M
 Note assertions via standard C assert() are on.
 
 Read 23 user parameters from serial-init-bp1.inp
@@ -62,6 +62,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              on
 Isothermal fluctuations:  off
@@ -125,24 +126,24 @@ Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.210      0.210      0.210   0.210336 (1 call)
-      Time step loop:      0.138      0.138      0.138   0.138060 (1 call)
-         Propagation:      0.012      0.012      0.012   0.012119 (1 call)
-    Propagtn (krnl) :      0.012      0.012      0.012   0.012108 (1 call)
-           Collision:      0.021      0.021      0.021   0.021218 (1 call)
-   Collision (krnl) :      0.021      0.021      0.021   0.021182 (1 call)
-       Lattice halos:      0.004      0.004      0.004   0.003784 (1 call)
-       phi gradients:      0.019      0.019      0.019   0.019104 (1 call)
-    phi grad (krnl) :      0.017      0.017      0.017   0.017359 (1 call)
-           phi halos:      0.002      0.002      0.002   0.001734 (1 call)
-                 BBL:      0.000      0.000      0.000   0.000004 (1 call)
-   Force calculation:      0.040      0.040      0.040   0.039693 (1 call)
-   Phi force (krnl) :      0.016      0.016      0.016   0.015568 (1 call)
-          phi update:      0.041      0.041      0.041   0.041039 (1 call)
-      Velocity Halo :      0.001      0.001      0.001   0.000573 (1 call)
-BE mol field (krnl) :      0.011      0.011      0.011   0.010541 (1 call)
-BP BE update (krnl) :      0.016      0.016      0.016   0.016270 (1 call)
-     Advectn (krnl) :      0.010      0.010      0.010   0.010105 (1 call)
- Advectn BCS (krnl) :      0.003      0.003      0.003   0.002767 (1 call)
-               Free1:      0.041      0.041      0.041   0.041119 (1 call)
+               Total:      0.231      0.231      0.231   0.231402 (1 call)
+      Time step loop:      0.155      0.155      0.155   0.154998 (1 call)
+         Propagation:      0.013      0.013      0.013   0.013360 (1 call)
+    Propagtn (krnl) :      0.013      0.013      0.013   0.013351 (1 call)
+           Collision:      0.026      0.026      0.026   0.025706 (1 call)
+   Collision (krnl) :      0.026      0.026      0.026   0.025668 (1 call)
+       Lattice halos:      0.004      0.004      0.004   0.004485 (1 call)
+       phi gradients:      0.020      0.020      0.020   0.020043 (1 call)
+    phi grad (krnl) :      0.018      0.018      0.018   0.018298 (1 call)
+           phi halos:      0.002      0.002      0.002   0.001736 (1 call)
+                 BBL:      0.000      0.000      0.000   0.000005 (1 call)
+   Force calculation:      0.044      0.044      0.044   0.043745 (1 call)
+   Phi force (krnl) :      0.017      0.017      0.017   0.016968 (1 call)
+          phi update:      0.047      0.047      0.047   0.046504 (1 call)
+      Velocity Halo :      0.001      0.001      0.001   0.000736 (1 call)
+BE mol field (krnl) :      0.012      0.012      0.012   0.011991 (1 call)
+BP BE update (krnl) :      0.018      0.018      0.018   0.018181 (1 call)
+     Advectn (krnl) :      0.012      0.012      0.012   0.011542 (1 call)
+ Advectn BCS (krnl) :      0.003      0.003      0.003   0.003232 (1 call)
+               Free1:      0.045      0.045      0.045   0.045287 (1 call)
 Ludwig finished normally.

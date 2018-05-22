@@ -201,4 +201,6 @@ void  tdp_x86_postlaunch(void);
 
 #endif /* _OPENMP */
 
+#define tdp_get_max_threads() omp_get_max_threads()
+
 #endif

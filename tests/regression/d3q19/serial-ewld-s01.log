@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.16 (Serial version running on 1 process)
+Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
 
-The SVN revision details are: 2638M
+The SVN revision details are: 3209M
 Note assertions via standard C assert() are on.
 
 Read 26 user parameters from serial-ewld-s01.inp
@@ -40,6 +40,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              on
 Isothermal fluctuations:  off
@@ -133,24 +134,26 @@ Velocity - x y z
 
 Completed cycle 10
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      4.090      4.090      4.090   4.089734 (1 call)
-      Time step loop:      0.382      0.428      3.883   0.388343 (10 calls)
-         Propagation:      0.092      0.112      0.953   0.095260 (10 calls)
-           Collision:      0.254      0.274      2.574   0.257393 (10 calls)
-       Lattice halos:      0.001      0.002      0.030   0.001501 (20 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (10 calls)
-              Forces:      0.002      0.002      0.023   0.002319 (10 calls)
-             Rebuild:      0.008      0.009      0.083   0.008254 (10 calls)
-                 BBL:      0.004      0.005      0.044   0.004412 (10 calls)
-      Particle halos:      0.000      0.000      0.002   0.000155 (10 calls)
-     Ewald Sum total:      0.002      0.002      0.022   0.002234 (10 calls)
-          Ewald Real:      0.000      0.000      0.000   0.000028 (10 calls)
-       Ewald_Fourier:      0.002      0.002      0.022   0.002204 (10 calls)
+               Total:      3.119      3.119      3.119   3.119074 (1 call)
+      Time step loop:      0.259      0.318      2.782   0.278156 (10 calls)
+         Propagation:      0.066      0.104      0.738   0.073824 (10 calls)
+    Propagtn (krnl) :      0.066      0.104      0.738   0.073818 (10 calls)
+           Collision:      0.152      0.173      1.643   0.164340 (10 calls)
+   Collision (krnl) :      0.152      0.173      1.643   0.164331 (10 calls)
+       Lattice halos:      0.007      0.014      0.195   0.009769 (20 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
+              Forces:      0.001      0.001      0.013   0.001326 (10 calls)
+             Rebuild:      0.005      0.006      0.055   0.005544 (10 calls)
+                 BBL:      0.007      0.008      0.070   0.006958 (10 calls)
+      Particle halos:      0.000      0.000      0.001   0.000099 (10 calls)
+     Ewald Sum total:      0.001      0.001      0.013   0.001277 (10 calls)
+          Ewald Real:      0.000      0.000      0.000   0.000018 (10 calls)
+       Ewald_Fourier:      0.001      0.001      0.013   0.001259 (10 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (10 calls)
-          phi update:      0.000      0.000      0.000   0.000001 (10 calls)
-               Free1:      0.000      0.000      0.000   0.000001 (20 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
+               Free1:      0.000      0.134      0.134   0.004471 (30 calls)
 Ludwig finished normally.

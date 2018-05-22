@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.5.71 (Serial version running on 1 process)
+Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
 
-The SVN revision details are: 3020M
+The SVN revision details are: 3209M
 Note assertions via standard C assert() are on.
 
 Read 31 user parameters from serial-spin-c03.inp
@@ -53,6 +53,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              off
 Isothermal fluctuations:  off
@@ -142,22 +143,22 @@ Velocity - x y z
 
 Completed cycle 10
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     15.811     15.811     15.811  15.811089 (1 call)
-      Time step loop:      1.398      1.653     15.035   1.503516 (10 calls)
-         Propagation:      0.165      0.241      1.821   0.182084 (10 calls)
-    Propagtn (krnl) :      0.165      0.241      1.821   0.182074 (10 calls)
-           Collision:      0.784      0.896      8.392   0.839186 (10 calls)
-   Collision (krnl) :      0.784      0.896      8.392   0.839177 (10 calls)
-       Lattice halos:      0.016      0.031      0.410   0.020510 (20 calls)
-       phi gradients:      0.153      0.184      1.654   0.165402 (10 calls)
-           phi halos:      0.001      0.001      0.008   0.000826 (10 calls)
-              Forces:      0.002      0.002      0.019   0.001852 (10 calls)
-             Rebuild:      0.048      0.063      0.529   0.052924 (10 calls)
-                 BBL:      0.192      0.233      2.131   0.213130 (10 calls)
-      Particle halos:      0.001      0.001      0.008   0.000755 (10 calls)
-               Free1:      0.000      0.145      0.145   0.004820 (30 calls)
+               Total:      9.809      9.809      9.809   9.808803 (1 call)
+      Time step loop:      0.872      0.944      9.078   0.907819 (10 calls)
+         Propagation:      0.131      0.180      1.428   0.142753 (10 calls)
+    Propagtn (krnl) :      0.131      0.180      1.427   0.142745 (10 calls)
+           Collision:      0.304      0.332      3.148   0.314783 (10 calls)
+   Collision (krnl) :      0.304      0.332      3.148   0.314771 (10 calls)
+       Lattice halos:      0.015      0.031      0.376   0.018780 (20 calls)
+       phi gradients:      0.146      0.158      1.521   0.152074 (10 calls)
+           phi halos:      0.001      0.001      0.008   0.000792 (10 calls)
+              Forces:      0.001      0.002      0.016   0.001630 (10 calls)
+             Rebuild:      0.043      0.051      0.471   0.047128 (10 calls)
+                 BBL:      0.190      0.218      2.048   0.204761 (10 calls)
+      Particle halos:      0.001      0.001      0.008   0.000834 (10 calls)
+               Free1:      0.000      0.140      0.140   0.004669 (30 calls)
 Ludwig finished normally.

@@ -134,16 +134,20 @@ int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) 
   /* The order of these calls is important, as the diffusive
    * (Nernst Planck) fluxes are added to the advective. The
    * whole lot are then subject to no normal flux BCs. */
-#ifdef OLD_SHIT
+
   /* Add advective fluxes based on six-point stencil */
-  if (hydro) advective_fluxes(hydro, nk, psi->rho, fe, fy, fz);
-#endif
+  if (hydro) {
+    /* Compute advective fluxes */
+  }
+
   /* Add diffusive fluxes based on six-point stencil */
   nernst_planck_fluxes(psi, fel, fe, fy, fz);
-#ifdef OLD_SHIT
+
   /* Apply no flux BC for six-point stencil */
-  if (map) advective_bcs_no_flux(nk, fe, fy, fz, map);
-#endif  
+  if (map) {
+    /* Apply no flux boundary condition. */
+  }
+
   /* Update charge distribution */
   nernst_planck_update(psi, fe, fy, fz);
 

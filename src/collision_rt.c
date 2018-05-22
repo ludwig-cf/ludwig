@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -90,12 +90,7 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
   pe_info(pe, "\n");
   pe_info(pe, "Lattice Boltzmann collision\n");
   pe_info(pe, "---------------------------\n");
-#ifndef OLD_SHIT
-  /* Make merge before adding this extra output line to avoid breaking
-   * all tests before the merge. */
-#else
   pe_info(pe, "Relaxation time scheme:   %s\n", relax);
-#endif
   pe_info(pe, "Hydrodynamic modes:       on\n");
   pe_info(pe, "Ghost modes:              %s\n", (nghost == 1) ? "on" : "off");
   pe_info(pe, "Isothermal fluctuations:  %s\n", (noise_on == 1) ? "on" : "off");

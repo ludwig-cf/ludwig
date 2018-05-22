@@ -198,56 +198,6 @@ int stats_sigma_measure(stats_sigma_t * stat, int ntime) {
 
 /*****************************************************************************
  *
- *  stats_sigma_init_phi
- *
- *  Initialise the order parameter according to a tanh profile.
- *  Note phi = -drop.phimax in the centre.
- *
- *****************************************************************************/
-#ifdef OLD_SHIT
-/* Can be removed when tested with field_phi_int() */
-static int stats_sigma_init_drop(stats_sigma_t * stat, field_t * fphi) {
-
-  int nlocal[3];
-  int noffset[3];
-  int index, ic, jc, kc;
-
-  double position[3];  /* current lattice site position */
-  double phi;          /* order parameter value */
-  double r;            /* radial distance */
-  double rxi0;         /* 1/xi0 */
-
-  assert(stat);
-  assert(fphi);
-
-  cs_nlocal(stat->cs, nlocal);
-  cs_nlocal_offset(stat->cs, noffset);
-
-  rxi0 = 1.0/stat.drop.xi0;
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-        index = cs_index(stat->cs, ic, jc, kc);
-
-        position[X] = 1.0*(noffset[X] + ic) - stat.drop.centre[X];
-        position[Y] = 1.0*(noffset[Y] + jc) - stat.drop.centre[Y];
-        position[Z] = 1.0*(noffset[Z] + kc) - stat.drop.centre[Z];
-
-        r = modulus(position);
-
-        phi = stat.drop.phimax*tanh(rxi0*(r - stat.drop.radius));
-	field_scalar_set(fphi, index, phi);
-      }
-    }
-  }
-
-  return 0;
-}
-#endif
-/*****************************************************************************
- *
  *  stats_sigma_find_drop
  *
  *  Locate the drop centre by looking for the 'centre of mass'.

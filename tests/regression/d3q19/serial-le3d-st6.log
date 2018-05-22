@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.5.82 (Serial version running on 1 process)
+Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
 
-The SVN revision details are: 3052
+The SVN revision details are: 3209M
 Note assertions via standard C assert() are on.
 
 Read 22 user parameters from serial-le3d-st6.inp
@@ -62,6 +62,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              on
 Isothermal fluctuations:  off
@@ -112,24 +113,24 @@ Velocity - x y z
 
 Completed cycle 10
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.123      1.123      1.123   1.122563 (1 call)
-      Time step loop:      0.097      0.116      1.067   0.106736 (10 calls)
-         Propagation:      0.010      0.014      0.109   0.010899 (10 calls)
-    Propagtn (krnl) :      0.010      0.014      0.109   0.010891 (10 calls)
-           Collision:      0.023      0.034      0.282   0.028234 (10 calls)
-   Collision (krnl) :      0.023      0.034      0.282   0.028227 (10 calls)
-       Lattice halos:      0.002      0.004      0.031   0.003064 (10 calls)
-       phi gradients:      0.021      0.028      0.240   0.023996 (10 calls)
-           phi halos:      0.000      0.001      0.005   0.000481 (10 calls)
-     Lees Edwards BC:      0.002      0.005      0.031   0.003107 (10 calls)
-                 BBL:      0.000      0.000      0.000   0.000002 (10 calls)
-   Force calculation:      0.013      0.019      0.157   0.015655 (10 calls)
-          phi update:      0.017      0.022      0.203   0.020308 (10 calls)
-     Advectn (krnl) :      0.008      0.012      0.091   0.009052 (10 calls)
- Advectn BCS (krnl) :      0.002      0.003      0.022   0.002154 (10 calls)
-               Free1:      0.000      0.019      0.019   0.001899 (10 calls)
+               Total:      0.963      0.963      0.963   0.963027 (1 call)
+      Time step loop:      0.087      0.096      0.903   0.090318 (10 calls)
+         Propagation:      0.010      0.012      0.102   0.010231 (10 calls)
+    Propagtn (krnl) :      0.010      0.012      0.102   0.010226 (10 calls)
+           Collision:      0.023      0.024      0.236   0.023583 (10 calls)
+   Collision (krnl) :      0.023      0.024      0.236   0.023574 (10 calls)
+       Lattice halos:      0.003      0.004      0.030   0.002969 (10 calls)
+       phi gradients:      0.019      0.020      0.194   0.019436 (10 calls)
+           phi halos:      0.000      0.001      0.005   0.000516 (10 calls)
+     Lees Edwards BC:      0.003      0.003      0.027   0.002670 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000001 (10 calls)
+   Force calculation:      0.013      0.015      0.136   0.013646 (10 calls)
+          phi update:      0.016      0.017      0.166   0.016552 (10 calls)
+     Advectn (krnl) :      0.007      0.008      0.079   0.007858 (10 calls)
+ Advectn BCS (krnl) :      0.002      0.002      0.018   0.001832 (10 calls)
+               Free1:      0.000      0.019      0.019   0.001859 (10 calls)
 Ludwig finished normally.

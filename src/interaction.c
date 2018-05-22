@@ -477,15 +477,17 @@ int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo,
 
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
                                          map_t * map) {
-#ifdef SHIT_THIS_NEEDS_TO_BE_REFACTORED
+
   int nc;
   int ia;
   int nsfluid;
   double rvolume;
+  int periodic[3];
   double fd[3], f[3];
   /* double fw[3]; */
   physics_t * phys = NULL;
 
+  return 0; /* This routine needs an MOT before use. */
   assert(cinfo);
 
   colloids_info_ntotal(cinfo, &nc);
@@ -504,8 +506,8 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     driven_colloid_total_force(cinfo, fd);
     
     for (ia = 0; ia < 3; ia++) {
-      f[ia] = -1.0*fd[ia]*rvolume*is_periodic(ia);
-      fw[ia] = -1.0*fd[ia]*(1.0 - is_periodic(ia))/(1.0*pe_size());
+      f[ia] = -1.0*fd[ia]*rvolume*periodic[ia];
+      /* fw[ia] = -1.0*fd[ia]*(1.0 - periodic[ia])/(1.0*pe_size());*/
     }
 
     physics_fbody_set(phys, f);
@@ -513,7 +515,7 @@ int colloids_update_forces_fluid_driven(colloids_info_t * cinfo,
     /* Need to account for wall momentum transfer */
     assert(0); /* NO TEST */
   }
-#endif
+
   return 0;
 }
 

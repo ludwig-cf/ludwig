@@ -517,9 +517,9 @@ static int phi_force_flux_fix_local(lees_edw_t * le, int nall,
   int nhalo;
   int ic, jc, kc, index, index1, ia, ip;
 
-  double * fbar;     /* Local sum over plane */
-  double * fcor;     /* Global correction */
-  double ra;         /* Normaliser */
+  double * fbar = NULL;     /* Local sum over plane */
+  double * fcor = NULL;     /* Global correction */
+  double ra;                /* Normaliser */
   double ltot[3];
 
   MPI_Comm comm;
@@ -538,11 +538,11 @@ static int phi_force_flux_fix_local(lees_edw_t * le, int nall,
 
   fbar = (double *) calloc(3*nplane, sizeof(double));
   fcor = (double *) calloc(3*nplane, sizeof(double));
-#ifdef OLD_SHIT
+
+  assert(fbar);
+  assert(fcor);
   /* TODO: decide "ownership" to find pe */
-  if (fbar == NULL) fatal("calloc(%d, fbar) failed\n", 3*nplane);
-  if (fcor == NULL) fatal("calloc(%d, fcor) failed\n", 3*nplane);
-#endif
+
   for (ip = 0; ip < nplane; ip++) { 
 
     ic = lees_edw_plane_location(le, ip);

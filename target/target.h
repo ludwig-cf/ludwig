@@ -78,10 +78,10 @@ __host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
 
 /* Memory management involving symbols
  * These are slightly awkward as there is never a host pointer to
- * device symbols, The implementation is via macro abuse, and
- * left as comments here. */
+ * device symbols. */
 
-/*
+#ifdef __NVCC__
+#else
 __host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
 __host__ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
 					size_t count, size_t offset,
@@ -89,7 +89,7 @@ __host__ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
 __host__ tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
 				      size_t count, size_t offset,
 				      tdpMemcpyKind kind);
-*/
+#endif
 
 /* Additional API */
 
