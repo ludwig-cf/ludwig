@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.15 (MPI version running on 8 processes)
+Welcome to Ludwig v0.7.33 (MPI version running on 8 processes)
 
-The SVN revision details are: 
+The SVN revision details are: 3210M
 Note assertions via standard C assert() are on.
 
 Read 21 user parameters from pmpi08-spin-fd1.inp
@@ -55,6 +55,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              off
 Isothermal fluctuations:  off
@@ -104,20 +105,24 @@ Velocity - x y z
 
 Completed cycle 400
 
-Timer resolution: 0.001 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     43.739     43.739     43.739  43.738975 (1 call)
-      Time step loop:      0.096      0.132     43.666   0.109165 (400 calls)
-         Propagation:      0.013      0.023      5.911   0.014777 (400 calls)
-           Collision:      0.046      0.063     19.546   0.048865 (400 calls)
-       Lattice halos:      0.002      0.023      2.563   0.006407 (400 calls)
-       phi gradients:      0.008      0.018      4.522   0.011306 (400 calls)
-           phi halos:      0.000      0.010      1.539   0.003849 (400 calls)
-                 BBL:      0.000      0.000      0.001   0.000001 (400 calls)
-   Force calculation:      0.008      0.016      3.593   0.008983 (400 calls)
-          phi update:      0.015      0.022      6.679   0.016697 (400 calls)
-  Collision (kernel):      0.040      0.054     17.199   0.042996 (400 calls)
-Chem stress (kernel):      0.003      0.005      1.395   0.003488 (400 calls)
+               Total:     77.428     77.428     77.428  77.428146 (1 call)
+      Time step loop:      0.166      0.218     77.308   0.193270 (400 calls)
+         Propagation:      0.003      0.024      3.480   0.008700 (400 calls)
+    Propagtn (krnl) :      0.003      0.024      3.476   0.008689 (400 calls)
+           Collision:      0.006      0.070     12.338   0.030844 (400 calls)
+   Collision (krnl) :      0.006      0.070     12.334   0.030834 (400 calls)
+       Lattice halos:      0.002      0.072      9.824   0.024560 (400 calls)
+       phi gradients:      0.010      0.101     20.217   0.050543 (400 calls)
+           phi halos:      0.001      0.092     10.971   0.027428 (400 calls)
+                 BBL:      0.000      0.000      0.000   0.000001 (400 calls)
+   Force calculation:      0.006      0.077     11.502   0.028756 (400 calls)
+   Phi force (krnl) :      0.004      0.073      8.802   0.022005 (400 calls)
+          phi update:      0.008      0.128     19.172   0.047930 (400 calls)
+     Advectn (krnl) :      0.002      0.051      1.868   0.004670 (400 calls)
+ Advectn BCS (krnl) :      0.001      0.056      1.017   0.002542 (400 calls)
+               Free1:      0.000      0.054      0.045   0.000111 (400 calls)
 Ludwig finished normally.

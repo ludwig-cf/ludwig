@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.15 (MPI version running on 8 processes)
+Welcome to Ludwig v0.7.33 (MPI version running on 8 processes)
 
-The SVN revision details are: 
+The SVN revision details are: 3210M
 Note assertions via standard C assert() are on.
 
 Read 20 user parameters from pmpi08-spin-lb1.inp
@@ -53,6 +53,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              off
 Isothermal fluctuations:  off
@@ -100,16 +101,19 @@ Velocity - x y z
 
 Completed cycle 400
 
-Timer resolution: 0.001 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     60.013     60.014     60.014  60.013534 (1 call)
-      Time step loop:      0.122      0.194     59.858   0.149644 (400 calls)
-         Propagation:      0.023      0.061     15.812   0.039530 (400 calls)
-           Collision:      0.056      0.090     26.417   0.066043 (400 calls)
-       Lattice halos:      0.003      0.037      4.219   0.010547 (400 calls)
-       phi gradients:      0.015      0.058     12.547   0.031368 (400 calls)
-           phi halos:      0.000      0.044      4.999   0.012497 (400 calls)
-                 BBL:      0.000      0.000      0.001   0.000002 (400 calls)
+               Total:     75.175     75.175     75.175  75.174660 (1 call)
+      Time step loop:      0.142      0.232     75.004   0.187509 (400 calls)
+         Propagation:      0.005      0.058      6.254   0.015635 (400 calls)
+    Propagtn (krnl) :      0.005      0.058      6.251   0.015628 (400 calls)
+           Collision:      0.013      0.123     29.404   0.073510 (400 calls)
+   Collision (krnl) :      0.013      0.123     29.396   0.073489 (400 calls)
+       Lattice halos:      0.003      0.112     10.948   0.027370 (400 calls)
+       phi gradients:      0.010      0.152     27.642   0.069104 (400 calls)
+           phi halos:      0.001      0.136     13.722   0.034306 (400 calls)
+                 BBL:      0.000      0.000      0.000   0.000001 (400 calls)
+               Free1:      0.000      0.076      0.061   0.000153 (400 calls)
 Ludwig finished normally.

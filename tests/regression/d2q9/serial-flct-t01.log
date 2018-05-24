@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.19 (Serial version running on 1 process)
+Welcome to Ludwig v0.7.33 (Serial version running on 1 process)
 
-The SVN revision details are: 2767M
+The SVN revision details are: 3210
 Note assertions via standard C assert() are on.
 
 Read 15 user parameters from serial-flct-t01.inp
@@ -40,6 +40,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              on
 Isothermal fluctuations:  on
@@ -57,8 +58,8 @@ Scalars - total mean variance min max
 [rho]        9216.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
 
 Momentum - x y z
-[total   ]  1.2789769e-13  0.0000000e+00 6.4080903e-306
-[fluid   ]  1.2789769e-13  0.0000000e+00 6.4080903e-306
+[total   ]  1.2789769e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  1.2789769e-13  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
 
@@ -66,31 +67,33 @@ Scalars - total mean variance min max
 [rho]        9216.00  1.00000000000  6.4497525e-05  0.96889246074  1.02868094831
 
 Momentum - x y z
-[total   ]  1.9585028e-14 -8.2538143e-15 6.4080903e-306
-[fluid   ]  1.9585028e-14 -8.2538143e-15 6.4080903e-306
+[total   ]  1.9585028e-14 -8.2538143e-15  0.0000000e+00
+[fluid   ]  1.9585028e-14 -8.2538143e-15  0.0000000e+00
 
 Velocity - x y z
-[minimum ] -1.7471238e-02 -1.9640087e-02 6.9532230e-310
+[minimum ] -1.7471238e-02 -1.9640087e-02  0.0000000e+00
 [maximum ]  1.7996748e-02  1.8853105e-02  1.1754944e-38
 
 Isothermal fluctuations
-[eqipart.]  2.1276235e-05  2.1422854e-05  1.3818761e-76
+[eqipart.]  2.1276235e-05  2.1422854e-05  0.0000000e+00
 [measd/kT]  4.2699090e-05  4.2666660e-05
 
 Completed cycle 200
 
-Timer resolution: 1e-06 second
+Timer resolution: 0.01 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.124      2.124      2.124   2.124227 (1 call)
-      Time step loop:      0.010      0.013      2.118   0.010588 (200 calls)
-         Propagation:      0.000      0.000      0.042   0.000211 (200 calls)
-           Collision:      0.009      0.011      1.830   0.009149 (200 calls)
-       Lattice halos:      0.001      0.001      0.125   0.000626 (200 calls)
-       phi gradients:      0.000      0.000      0.000   0.000000 (200 calls)
+               Total:      1.180      1.180      1.180   1.179993 (1 call)
+      Time step loop:      0.005      0.009      1.165   0.005825 (200 calls)
+         Propagation:      0.001      0.001      0.194   0.000971 (200 calls)
+    Propagtn (krnl) :      0.001      0.001      0.193   0.000965 (200 calls)
+           Collision:      0.003      0.004      0.615   0.003074 (200 calls)
+   Collision (krnl) :      0.003      0.004      0.613   0.003066 (200 calls)
+       Lattice halos:      0.001      0.003      0.284   0.001418 (200 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (200 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (200 calls)
-   Force calculation:      0.000      0.000      0.000   0.000000 (200 calls)
+   Force calculation:      0.000      0.000      0.000   0.000002 (200 calls)
           phi update:      0.000      0.000      0.000   0.000000 (200 calls)
-  Collision (kernel):      0.008      0.010      1.705   0.008527 (200 calls)
+               Free1:      0.000      0.004      0.004   0.000020 (200 calls)
 Ludwig finished normally.

@@ -226,7 +226,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   int iv=0;                               /* SIMD loop counter */
   double mode[NVEL*NSIMDVL];              /* Modes; hydrodynamic + ghost */
   double rho[NSIMDVL], rrho[NSIMDVL];     /* Density, reciprocal density */
-  double u[3][NSIMDVL];                   /* Velocity */
+  double u[3][NSIMDVL] = {0};             /* Velocity */
   double s[3][3][NSIMDVL];                /* Stress */
   double seq[3][3][NSIMDVL];              /* Equilibrium stress */
   double shat[3][3][NSIMDVL];             /* random stress */

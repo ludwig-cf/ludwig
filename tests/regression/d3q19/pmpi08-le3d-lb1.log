@@ -1,6 +1,6 @@
-Welcome to Ludwig v0.2.15 (MPI version running on 8 processes)
+Welcome to Ludwig v0.7.33 (MPI version running on 8 processes)
 
-The SVN revision details are: 
+The SVN revision details are: 3210M
 Note assertions via standard C assert() are on.
 
 Read 25 user parameters from pmpi08-le3d-lb1.inp
@@ -60,6 +60,7 @@ I/O grid:         1 1 1
 
 Lattice Boltzmann collision
 ---------------------------
+Relaxation time scheme:   M10
 Hydrodynamic modes:       on
 Ghost modes:              off
 Isothermal fluctuations:  off
@@ -107,17 +108,20 @@ Velocity - x y z
 
 Completed cycle 400
 
-Timer resolution: 0.001 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     56.797     56.797     56.797  56.796867 (1 call)
-      Time step loop:      0.103      0.207     56.654   0.141636 (400 calls)
-         Propagation:      0.023      0.065     13.070   0.032675 (400 calls)
-           Collision:      0.058      0.100     25.835   0.064588 (400 calls)
-       Lattice halos:      0.003      0.030      3.271   0.008177 (400 calls)
-       phi gradients:      0.013      0.053     11.392   0.028480 (400 calls)
-           phi halos:      0.000      0.039      4.624   0.011561 (400 calls)
-     Lees Edwards BC:      0.002      0.030      2.212   0.005530 (400 calls)
-                 BBL:      0.000      0.000      0.001   0.000002 (400 calls)
+               Total:     79.471     79.471     79.471  79.471043 (1 call)
+      Time step loop:      0.152      0.249     79.303   0.198257 (400 calls)
+         Propagation:      0.005      0.057      6.177   0.015442 (400 calls)
+    Propagtn (krnl) :      0.005      0.057      6.174   0.015434 (400 calls)
+           Collision:      0.014      0.129     27.566   0.068916 (400 calls)
+   Collision (krnl) :      0.014      0.129     27.558   0.068896 (400 calls)
+       Lattice halos:      0.004      0.073      9.567   0.023917 (400 calls)
+       phi gradients:      0.011      0.165     29.061   0.072653 (400 calls)
+           phi halos:      0.001      0.043      6.386   0.015964 (400 calls)
+     Lees Edwards BC:      0.004      0.095      6.088   0.015219 (400 calls)
+                 BBL:      0.000      0.000      0.000   0.000001 (400 calls)
+               Free1:      0.000      0.089      0.060   0.000149 (400 calls)
 Ludwig finished normally.
