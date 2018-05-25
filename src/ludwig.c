@@ -4,12 +4,10 @@
  *
  *  A lattice Boltzmann code for complex fluids.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1346,7 +1344,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
-  else if(strcmp(description, "lc_droplet") == 0){
+  else if(strcmp(description, "lc_droplet") == 0) {
+    int use_stress_relaxation;
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
@@ -1397,7 +1396,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     assert(p != 0); /* Grad mu method not implemented! */
     pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
 
-
     /* Liquid crystal part */
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
@@ -1416,6 +1414,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     fe_lc_droplet_create(pe, cs, lc, symm, &fe);
     fe_lc_droplet_run_time(pe, rt, fe);
+
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
+    }
 
     grad_lc_anch_create(pe, cs, NULL, ludwig->phi, NULL, lc, NULL);
 

@@ -11,12 +11,11 @@
  *
  *  In serial, the MPI stub library is required.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,7 +28,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "svn.h"
 #include "pe.h"
 
 struct pe_s {
@@ -155,7 +153,6 @@ __host__ int pe_message(pe_t * pe) {
        (pe->mpi_size == 1) ? "" : "es");
 
   if (pe->mpi_rank == 0) {
-    printf("The SVN revision details are: %s\n", svn_revision());
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
   }
 

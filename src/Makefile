@@ -100,7 +100,7 @@ OBJS = \
      stats_calibration.o stats_colloid.o \
      stats_distribution.o stats_free_energy.o stats_rheology.o \
      stats_sigma.o stats_symmetric.o \
-     stats_surfactant.o stats_turbulent.o stats_velocity.o svn.o \
+     stats_surfactant.o stats_turbulent.o stats_velocity.o  \
      symmetric.o timer.o util.o wall.o wall_rt.o wall_ss_cut.o ludwig.o
 
 
@@ -172,14 +172,6 @@ lib:
 	$(MAKE) libar "INC=$(INC) -I../mpi_s" "LIBS= -L../mpi_s -lmpi $(LIBS)"
 libmpi:
 	$(MAKE) libar "CC=$(MPICC)" "INC=$(INC) $(MPI_INCL)"
-
-# To obtain the latest svn version information, we use svnversion.
-# If svnversion is not available there may be an ugly error message,
-# although compilation should procede. The result should be double
-# quoted, e.g. "1191", hence the apostrophe armageddon.
-
-svn.o:
-	$(CC) $(CFLAGS) -D SVN_REVISION='"'`svnversion`'"' -c svn.c
 
 ###############################################################################
 #
