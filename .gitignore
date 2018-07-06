@@ -2,3 +2,8 @@
 *.o
 *.a
 *.exe
+a.out
+
+*.new
+*.meta
+*001-001
