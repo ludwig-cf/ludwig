@@ -7,7 +7,7 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2016-2017 The University of Edinburgh
+%  (c) 2016-2018 The University of Edinburgh
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -90,48 +90,12 @@ You will need to consult the section relevant to your problem.
 
 \subsection{Obtaining the code}
 
-Under the auspices of the CCPs (Collaborative Computational Projects),
-and in particular CCP5, we have a CCPForge project account at
-\texttt{http://ccpforge.cse.rl.ac.uk/}
-which provides revision control via SVN, issue tracking, and so on.
+The code is publicly available from
+\texttt{http://github/ludwig-cf/ludwig/}
+which provides revision control via git, issue tracking, and so on.
 
-\paragraph{Users:}
+The current stable release is available as the master branch.
 
-Code releases may be downloaded via anonymous download
-\begin{lstlisting}[style=terminalverbatim]
-http://ccpforge.cse.rl.ac.uk/gf/project/ludwig/frs/
-\end{lstlisting}
-The current release is available as \texttt{ludwig-0.6.0.tar.gz}.
-Alternatively, registered users can obtain the code via svn checkout
-in the same way as developers.
-
-
-\paragraph{Developers:}
-
-Developers need to create an account at CCPForge, and let one of the
-project owners\footnote{Currently: \texttt{kevin@epcc.ed.ac.uk},
-\texttt{ohenrich@epcc.ed.ac.uk}}
-know the user name so you can be added to the access list.
-
-To download the entire code, developers need
-\begin{lstlisting}
-svn checkout --username <user> http://ccpforge.cse.rl.ac.uk/svn/ludwig
-\end{lstlisting}
-where \texttt{<user>} is replaced by your CCPForge user name. You will
-see
-\begin{lstlisting}
-$ ls ludwig
-branches  tags      trunk
-\end{lstlisting}
-which is the usual svn convention for trunk, branches and tags.
-The process for committing code is described in section \ref{xref:developers}.
-
-If you look in  the \texttt{trunk} directory, you should see
-\begin{lstlisting}
-$ ls trunk
-config  LICENSE      mpi_s   src       tests  version.h
-docs    Makefile.mk  README  targetDP  util
-\end{lstlisting}
 
 \vfill
 \pagebreak

@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -505,7 +505,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
       /* This is an average over (y,z) so don't care about the
        * Lees Edwards places, but correct uy */
 
-      double uy = 0.0; /* Correct in post-processing is wanted at all */
+      double uy = 0.0; /* Correct in post-processing if wanted at all */
 
       fprintf(fp_output,
 	      "%6d %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e %18.10e\n",
@@ -665,7 +665,6 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
 	  stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + n] *= viscous;
 	}
 
-	assert(0); /* U_LE too be added here or elsewhere? */
 	/* u_y must be corrected */
 	stat_2d[NSTAT2*(nlocal[Z]*(ic-1) + kc-1) + 19] += uy;
       }

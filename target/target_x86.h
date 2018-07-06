@@ -2,8 +2,14 @@
  *
  *  target_x86.h
  *
- *  Low level interface for targetDP to allow host executation either
- *  via OpenMP or serial execution.
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2018 The University of Edinbugh
+ *
+ *  Contributing authors:
+ *  Alan Gray (alang@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 

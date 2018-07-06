@@ -1,3 +1,17 @@
+/*****************************************************************************
+ *
+ *  test.c
+ *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2018 The University of Edinbugh
+ *
+ *  Contributing authors:
+ *  Alan Gray (alang@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
+ *****************************************************************************/
 
 #include <assert.h>
 #include <stdio.h>

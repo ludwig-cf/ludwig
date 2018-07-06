@@ -4,6 +4,11 @@
  *
  *  Implementation is serial or OpenMP.
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2018 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Alan Gray (Late of this parish)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)

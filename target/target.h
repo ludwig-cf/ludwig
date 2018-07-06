@@ -10,6 +10,7 @@
  *  (c) 2018 The University of Edinburgh
  *
  *  Contributing authors:
+ *  Alan Gray (alang@epcc.ed.ac.uk)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
