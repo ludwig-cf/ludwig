@@ -4,12 +4,12 @@
  *
  *  Test basic model assumptions, portability issues.
  *
- *  Also testing util.h stuff at the moment.
+ *  Also testing pe_fenv.h, util.h stuff at the moment.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2016 The University of Edinburgh 
+ *  (c) 2008-2018 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -21,11 +21,13 @@
 #include <assert.h>
 
 #include "mpi.h"
+#include "pe_fenv.h"
 #include "util.h"
 #include "tests.h"
 
 void (* p_function)(void);
 void test_util(void);
+int test_pe_fenv(void);
 int test_util_discrete_volume(void);
 int test_discrete_volume_sphere(double r0[3], double a0, double answer);
 int test_macro_abuse(void);
@@ -107,6 +109,7 @@ int test_assumptions_suite(void) {
   test_assert(fabs(pi - pi_) < DBL_EPSILON);
 
 
+  test_pe_fenv();
   test_util();
   test_macro_abuse();
 
@@ -291,6 +294,22 @@ int test_macro_abuse(void) {
   test_assert(sum == 3);
   blah_parallel(sum, 4, 99);
   test_assert(sum == 103);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_pe_fenv
+ *
+ *****************************************************************************/
+
+int test_pe_fenv(void) {
+
+  const char * s = pe_fegetround_tostring();
+
+  assert(s);
+  /* printf("Floating point rounding mode: %s\n", s);*/
 
   return 0;
 }
