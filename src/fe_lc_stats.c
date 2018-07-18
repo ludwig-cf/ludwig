@@ -644,7 +644,7 @@ __host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
   kappa0 = feparam->kappa0;
   kappa1 = feparam->kappa1;
 
-  // Use current redshift.
+  /* Use current redshift.*/
   redshift = feparam->redshift;
   rredshift = feparam->rredshift;
 
@@ -657,7 +657,7 @@ __host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
 
   q2 = 0.0;
 
-  // Q_ab^2
+  /* Q_ab^2 */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
@@ -665,20 +665,20 @@ __host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
     }
   }
 
-  // Q_ab Q_bd Q_da
+  /* Q_ab Q_bd Q_da */
 
   q3 = 0.0;
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       for (ic = 0; ic < 3; ic++) {
-	// We use here the fact that q[ic][ia] = q[ia][ic]
+	/* We use here the fact that q[ic][ia] = q[ia][ic] */
 	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
       }
     }
   }
 
-  // (d_b Q_ab)^2
+  /* (d_b Q_ab)^2 */
 
   dq0 = 0.0;
 
@@ -690,7 +690,7 @@ __host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
     dq0 += sum*sum;
   }
 
-  // (e_agd d_g Q_db + 2q_0 Q_ab)^2
+  /* (e_agd d_g Q_db + 2q_0 Q_ab)^2 */
 
   dq1 = 0.0;
 
@@ -707,12 +707,12 @@ __host__ int blue_phase_fbg(fe_lc_param_t * feparam, double q[3][3],
     }
   }
 
-  // Contribution bulk
+  /* Contribution bulk */
   febg[0] = 0.5*a0*(1.0 - r3*gamma)*q2;
   febg[0] += -r3*a0*gamma*q3;
   febg[0] += 0.25*a0*gamma*q2*q2;
 
-  // Contribution gradient kapp0 and kappa1
+  /* Contribution gradient kapp0 and kappa1 */
   febg[1] = 0.5*kappa0*dq0;
   febg[1] += 0.5*kappa1*dq1;
 

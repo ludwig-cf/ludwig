@@ -94,7 +94,7 @@ OBJS = \
      psi_force.o psi_colloid.o propagation.o \
      nernst_planck.o \
      psi_petsc.o psi_gradients.o \
-     pe.o ran.o runtime.o \
+     pe.o pe_fenv.o ran.o runtime.o \
      surfactant.o surfactant_rt.o \
      symmetric_rt.o subgrid.o \
      stats_calibration.o stats_colloid.o \

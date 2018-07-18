@@ -546,8 +546,8 @@ tdpError_t tdpMemcpyAsync(void * dst, const void * src, size_t count,
   return tdpMemcpy(dst, src, count, kind);
 }
 
-inline static int int_max(int a, int b) {return (a > b) ?a :b;}
-inline static int int_min(int a, int b) {return (a < b) ?a :b;}
+static int int_max(int a, int b) {return (a > b) ?a :b;}
+static int int_min(int a, int b) {return (a < b) ?a :b;}
 
 /*****************************************************************************
  *
@@ -658,8 +658,8 @@ __device__ double tdpAtomicAddDouble(double * sum, double val) {
   return old;
 }
 
-inline static double double_max(double a, double b) {return (a > b) ?a :b;}
-inline static double double_min(double a, double b) {return (a < b) ?a :b;}
+static double double_max(double a, double b) {return (a > b) ?a :b;}
+static double double_min(double a, double b) {return (a < b) ?a :b;}
 
 /*****************************************************************************
  *

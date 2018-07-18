@@ -12,7 +12,7 @@ ifeq ($(PE_ENV), CRAY)
   # msglevel_3 is warnings (ok)
   # Default C is c99
 
-  CFLAGS_EXTRA=-h msglevel_3 -h stdc -h noomp
+  CFLAGS_EXTRA=-h msglevel_3 -h noomp
 endif
 
 ifeq ($(PE_ENV), INTEL)
@@ -20,12 +20,12 @@ ifeq ($(PE_ENV), INTEL)
   # -w2  gives errors and warnings
   # -w3  adds remarks (very verbose)
 
-  CFLAGS_EXTRA= -w2 -strict-ansi -std=c99
+  CFLAGS_EXTRA= -w2 -strict-ansi
 endif
 
 ifeq ($(PE_ENV), GNU)
   # GNU
-  CFLAGS_EXTRA= -Wall -pedantic -std=c99
+  CFLAGS_EXTRA= -Wall -pedantic
 endif
 
 
