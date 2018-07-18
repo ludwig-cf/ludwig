@@ -34,20 +34,24 @@ const char * const pe_fenv_towardzero = "FE_TOWARDZERO";
 
 const char * pe_fegetround_tostring(void) {
 
+  const char * s;
+
   switch (fegetround()) {
   case FE_TONEAREST:
-    return pe_fenv_tonearest;
+    s = pe_fenv_tonearest;
     break;
   case FE_UPWARD:
-    return pe_fenv_upward;
+    s = pe_fenv_upward;
     break;
   case FE_DOWNWARD:
-    return pe_fenv_downward;
+    s = pe_fenv_downward;
     break;
   case FE_TOWARDZERO:
-    return pe_fenv_towardzero;
+    s = pe_fenv_towardzero;
     break;
+  default:
+    s = pe_fenv_unset;
   }
 
-  return pe_fenv_unset;
+  return s;
 }
