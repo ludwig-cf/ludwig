@@ -145,8 +145,8 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     pe_info(pe, "Initialising phi for emulsion\n");
     int ndrops = 1;
     radius = DEFAULT_RADIUS;
-    double d_centre = 20.0;   // distance between drop centres
-    double phistar = -1.0;   // Value of the order parameter inside the droplets
+    double d_centre = 20.0;  /* distance between drop centres */
+    double phistar = -1.0;   /* Value of the order parameter inside droplets */
     rt_int_parameter(rt, "phi_init_emulsion_ndrops", &ndrops);
     rt_double_parameter(rt, "phi_init_emulsion_radius", &radius);
     rt_double_parameter(rt, "phi_init_emulsion_d_centre", &d_centre);
