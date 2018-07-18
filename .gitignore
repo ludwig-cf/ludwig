@@ -7,3 +7,5 @@ a.out
 *.new
 *.meta
 *001-001
+
+config.mk
