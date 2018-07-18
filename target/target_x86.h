@@ -95,7 +95,7 @@ enum tdpError {
 #define __constant__
 
 #if (__STDC__VERSION__ >= 19901)
-  #define __forceinline__ inline
+  #define __forceinline__
   #define __noinline__
 #else
   #define __forceinline__
