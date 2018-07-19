@@ -17,7 +17,7 @@ also available via a lightweight abstraction layer ("Target Data Parallel"
 or "TargetDP") which currently supports either OpenMP or CUDA (NVIDIA GPUs)
 from a single source.
 
-#### For the impatient
+#### Quick start (for the impatient)
 
 Copy a config file from the config directory to
 the top level directory and make any changes required. E.g.,
