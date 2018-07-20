@@ -74,7 +74,7 @@ int main(int argc, char * argv[]) {
   tdpAssert(tdpMemcpy(n_d, n_h, bufsz, tdpMemcpyHostToDevice));
 
   nblk.x = 1; nblk.y = 1; nblk.z = 1;
-  ntpb.x = omp_get_max_threads(); ntpb.y = 1; ntpb.z = 0;
+  ntpb.x = tdp_get_max_threads(); ntpb.y = 1; ntpb.z = 1;
 
   tdpLaunchKernel(kerneltest1, nblk, ntpb, 0, 0, n_d);
   tdpAssert(tdpPeekAtLastError());

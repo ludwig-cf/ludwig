@@ -160,8 +160,8 @@ __host__ int fe_lc_free(fe_lc_t * fe) {
 
   if (ndevice > 0) tdpAssert(tdpFree(fe->target));
 
-  field_grad_free(fe->dp);
-  field_free(fe->p);
+  if (fe->dp) field_grad_free(fe->dp);
+  if (fe->p) field_free(fe->p);
 
   free(fe->param);
   free(fe);
@@ -1331,10 +1331,11 @@ __host__ int fe_lc_active_stress(fe_lc_t * fe) {
   double p[3];
 
   assert(fe);
-  assert(fe->p);
-  assert(fe->dp);
 
   if (fe->param->zeta2 == 0.0) return 0;
+
+  assert(fe->p);
+  assert(fe->dp);
 
   cs_nlocal(fe->cs, nlocal);
 

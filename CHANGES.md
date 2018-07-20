@@ -1,0 +1,27 @@
+
+### Changes
+
+
+Version 0.8.0
+
+- The constraint that the number of MPI tasks divide exactly the system
+  size in each direction has been relaxed. Logically rectangular, but
+  uneven decompositions are computed automatically if required.
+
+- Output format in parallel. Files for a given I/O group now appear with
+  data in a format which is independent of parallel decomposition. This
+  means an 'extract' step is no longer required. It also means files
+  generated with previous versions will no longer work as input.
+
+- Different collision relaxation time schemes are now available by using
+  the 'lb_relaxation_scheme' input either ('bgk', 'trt', or 'm10'). The
+  default is unchanged ('m10').
+
+- An option for a 'split' treatment of symmetric and antisymmetric stress
+  arising from the thermodynamic sector has been introduced. This is
+  via the input key 'fe_use_stress_relaxation yes'. This introduces the
+  symmetric part of the stress as a relaxation in the collision, while
+  the anti-symmetric part is via the force (via divergence). The default
+  is still to treat the whole stress via the divergence.
+
+- A 'second active stress' is now available for active liquid crystals.

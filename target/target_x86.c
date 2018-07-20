@@ -206,6 +206,18 @@ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int device) {
 
 /*****************************************************************************
  *
+ *  tdpSetDevice
+ *
+ *****************************************************************************/
+
+tdpError_t tdpSetDevice(int device) {
+
+  error_return_if(device < 0, tdpErrorInvalidDevice);
+  return tdpSuccess;
+}
+
+/*****************************************************************************
+ *
  *  tdpGetErrorName
  *
  *****************************************************************************/
