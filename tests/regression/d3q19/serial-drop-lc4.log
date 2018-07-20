@@ -1,0 +1,176 @@
+Welcome to Ludwig v0.8.1 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Read 39 user parameters from serial-drop-lc4.inp
+
+Liquid crystal droplet free energy selected
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  1 1 1
+Local domain:   32 32 32
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-04
+Bulk parameter B      =  6.25000e-04
+Surface penalty kappa =  5.30000e-04
+Surface tension       =  5.42627e-04
+Interfacial width     =  1.30231e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  5.00000e+00
+Force calculation:      divergence method
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-01
+Magnitude of order gamma   =  3.0860000e+00
+Pitch wavevector q0        =  1.3884000e-01
+... gives pitch length     =  4.5254864e+01
+Elastic constant kappa0    =  7.0000000e-02
+Elastic constant kappa1    =  7.0000000e-02
+Amplitude (uniaxial) order = -2.0000000e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  6.8719112e-01
+Reduced temperature        = -2.5081011e-01
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  5.0000000e-01
+
+Liquid crystal droplet coupling parameters
+Isotropic/LC control gamma0 =  2.58600e+00
+Isotropic/LC control delta  =  2.50000e-01
+Anchoring parameter  W      =  0.00000e+00
+
+Split symmetric/antisymmetric stress relaxation/force
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               5.00000e-01
+Bulk viscosity                5.00000e-01
+Temperature                   9.60000e-06
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    2.00000e+00
+Bulk relaxation time:     2.00000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 3
+Initialising phi in patches
+Gradient calculation: 3d_7pt_fluid
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab using O8M (BPI)
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  2.1632000e+04  6.6015625e-01 5.6419373e-01 -1.0000000e+00 1.0000000e+00
+[phi] -1.6694979e-14 -5.0949032e-19 6.0000000e-02 -4.4966062e-01 4.4966064e-01
+[phi] -3.7856679e-09 -1.1552942e-13 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -3.7861401e-09 -1.1554383e-13 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+[phi] -3.9850068e-14 -1.2161276e-18 6.0000000e-02 -4.4966062e-01 4.4966064e-01
+[phi] -3.7858013e-09 -1.1553349e-13 5.0000000e-02 -6.0000000e-01 6.0000000e-01
+
+Momentum - x y z
+[total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  9.7313809e-04  0.95622767598  1.06633265218
+[phi]  2.1632000e+04  6.6015625e-01 4.7769905e-01 -1.2135542e+00 1.1769234e+00
+[phi]  7.4284844e+00  2.2669935e-04 2.7132050e-02 -2.2969270e-01 3.8686199e-01
+[phi]  5.4714152e-01  1.6697434e-05 1.6192819e-02 -2.8941093e-01 2.8880430e-01
+[phi]  2.4804637e+00  7.5697746e-05 1.6244838e-02 -2.8953670e-01 2.8936710e-01
+[phi] -9.0434750e+00 -2.7598495e-04 2.6973430e-02 -2.2944790e-01 3.8657858e-01
+[phi]  2.6295431e-01  8.0247288e-06 1.6175635e-02 -2.8900822e-01 2.8935612e-01
+
+Free energy density - timestep total fluid
+[fed]             10  1.1704103980e-03  1.1704103980e-03
+
+Momentum - x y z
+[total   ]  4.6630408e-13 -6.9701189e-15  4.4061976e-16
+[fluid   ]  4.6630408e-13 -6.9701189e-15  4.4061976e-16
+
+Velocity - x y z
+[minimum ] -1.3110364e-02 -1.3479731e-02 -1.2996381e-02
+[maximum ]  1.3152142e-02  1.2515236e-02  1.3249023e-02
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      3.362      3.362      3.362   3.361954 (1 call)
+      Time step loop:      0.323      0.350      3.290   0.329035 (10 calls)
+         Propagation:      0.010      0.014      0.104   0.010423 (10 calls)
+    Propagtn (krnl) :      0.010      0.014      0.104   0.010413 (10 calls)
+           Collision:      0.051      0.052      0.513   0.051261 (10 calls)
+   Collision (krnl) :      0.051      0.052      0.512   0.051241 (10 calls)
+       Lattice halos:      0.002      0.004      0.027   0.002745 (10 calls)
+       phi gradients:      0.025      0.032      0.255   0.025505 (10 calls)
+    phi grad (krnl) :      0.004      0.019      0.199   0.009953 (20 calls)
+           phi halos:      0.000      0.002      0.017   0.000827 (20 calls)
+                 BBL:      0.000      0.000      0.000   0.000002 (10 calls)
+   Force calculation:      0.126      0.134      1.289   0.128886 (10 calls)
+   Phi force (krnl) :      0.017      0.017      0.166   0.016643 (10 calls)
+          phi update:      0.107      0.114      1.092   0.109223 (10 calls)
+      Velocity Halo :      0.000      0.000      0.004   0.000410 (10 calls)
+BE mol field (krnl) :      0.019      0.020      0.188   0.018804 (10 calls)
+BP BE update (krnl) :      0.017      0.022      0.181   0.018062 (10 calls)
+     Advectn (krnl) :      0.009      0.023      0.288   0.014413 (20 calls)
+ Advectn BCS (krnl) :      0.002      0.003      0.048   0.002410 (20 calls)
+               Free1:      0.000      0.030      0.030   0.003010 (10 calls)
+Ludwig finished normally.
