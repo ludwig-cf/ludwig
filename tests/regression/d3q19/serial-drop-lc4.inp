@@ -1,0 +1,145 @@
+##############################################################################
+#
+#  Liquid crystal droplet emulsion
+#  85:15 composition dynamics
+#  See Lintuvuori et al. PRL (2018) Figure 2a-e
+#  For this test the system size is reduced to 32^3 and we run for
+#  a grand total of 10 time steps.
+#
+#  "Parameter Set B"
+#
+#  Composition
+#  85:15 LC : i1sotropic (=> reported mean phi should be around 0.7)
+#  A = -B = 0.000625 kappa = 0.00053 => sigma = 5.4e-4
+#  => xi_0 = 1.3
+#  Mobility M = 5.0
+#
+#  Liquid Crystal
+#  A_0 = 0.1
+#  gamma_0 = 2.586 delta = 0.25 so  gamma = gamma_0 + (1+phi)delta
+#    give gamma = 3.086 in ordered phase (phi = +1)
+#    => reduced temperature = -0.25
+#  kappa0 = kappa1 = kappa_LC = 0.07
+#  => reduced chirality ~= 0.69
+#
+#  System size 128 x 128 x 128
+#  q0 = 0.13884 so LC pitch is 64/sqrt(2) and unit cell size is 64
+#  for BPI (initialised in high chirality limit via 'o8m').
+#
+#  Liquid crystal flow aligning parameter lc_xi = 0.7
+#  Rotational diffusion constant Gamma = 0.5
+#
+#  Interfacial anchoring free energy term W = 0.
+#
+#  Fluid
+#  viscosity 0.5 in lattice units
+#  No isothernmal fluctuations (off)
+#
+##############################################################################
+
+N_start  0
+N_cycles 10
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+size 32_32_32
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.5
+
+isothermal_fluctuations off
+temperature 0.0000096
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_droplet
+fe_use_stress_relaxation yes
+
+fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
+
+###############################################################################
+#
+#  Free energy
+#
+###############################################################################
+
+A -0.000625
+B 0.000625
+K 0.00053
+
+mobility 5.0
+
+phi_initialisation patches
+phi_init_patch_size 4
+phi_init_patch_vol 0.15
+
+lc_a0      0.1
+lc_gamma   3.086
+lc_q0      0.13884
+lc_kappa0  0.07
+lc_kappa1  0.07
+lc_xi      0.7
+
+lc_Gamma   0.5
+lc_active_zeta 0.0
+
+lc_q_initialisation o8m
+lc_q_init_amplitude -0.2
+lc_init_redshift 1.0
+
+lc_anchoring_method none
+
+lc_droplet_gamma 2.586
+lc_droplet_delta 0.25 
+lc_droplet_W 0.0
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end   no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235

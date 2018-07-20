@@ -1,0 +1,160 @@
+##############################################################################
+#
+#  Droplet free energy: Cubic fluid cylinder phase
+#
+#  See Lintuvuori et al PRL (2018) Figure 1
+#  For the purposes of this test the system size is reduced to 64^3
+#  isothermal fluctuations are off and wee run for 2 steps.
+#
+#  "Parameter Set A"
+#  Composition phi
+#  90:10 LC:isotropic => mean phi reported in output \approx 0.8
+#        The initialisation is via "patches" of size 4
+#        and total patch volume fraction 0.1 (phi = -1 minority,
+#        isotropic phase).
+#  Symmstric free energy parameters
+#  A = -B = 0.000625 kappa = 0.00053 => sigma = 5.4e-4
+#                                    => bare interfacial width \xi_0 = 1.3
+#  Mobility M = 5
+#
+#  LC 
+#  A_0 = 0.5 K = 0.14
+#  gamma_0 = 2.586 and delta = 0.25 giving gamma = gamma_0 + (1+phi)delta
+#            gamma = 3.086 in the ordered (phi = +1) phase
+#            Reduced temperature is then -0.25 in ordered phase.
+#  The BPI unit cell size is 64sqrt(2) ie, pitch is 64 and then
+#      q_0 = 0.06942
+#      and then Chirality \approx 0.7
+#  The system size = 128^3 = 2x2x2 unit cells of BP1.
+#  The "redshift" is unity.
+#
+#  If the symmetric part of the stress is not placed in the collision
+#  then a redshift of 0.83 which is fixed controls stability; it will
+#  produce a slightly lower measured free energy.
+#
+#  Initialisation of the Q_ab for the LC is via tag "o8m" which is the
+#  high chirality approximation for BPI
+#  Droplet anchoring free energy term W = 0
+#  The anisotropy factor appearing in the LC stress lc_xi = 0.7.
+#  Rotational diffusion Gamma = 0.5
+#
+#  Fluid viscosity = 0.5 lattice units
+#  Temperature     We have kT = 4.0x10^-5 A_0 xi^3 [note 26]
+#                  If \chi = 0.019 (Figure 1 caption) xi = 1.69 and
+#                  xi^3 = 4.8 so kT = 9.6x10^-6
+#
+#  Here the free energy is output every 1000 steps. To see the very
+#  sharp decline at the start of the run, one must use e.g., every
+#  100 steps. Total 30000 steps.
+#
+##############################################################################
+
+N_start  0
+N_cycles 2
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+size 64_64_64
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.5
+viscosity_bulk 0.5
+
+isothermal_fluctuations off
+temperature 0.0000096
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_droplet
+fe_use_stress_relaxation yes
+
+fd_advection_scheme_order 3
+fd_gradient_calculation 3d_7pt_fluid
+
+###############################################################################
+#
+#  Free energy
+#
+###############################################################################
+
+A -0.000625
+B 0.000625
+K 0.00053
+
+mobility 5.0
+noise 0.05
+phi0 0.8
+
+phi_initialisation patches
+phi_init_patch_size 4
+phi_init_patch_vol 0.1
+
+lc_a0      0.05
+lc_gamma   3.086
+lc_q0      0.06942
+lc_kappa0  0.14
+lc_kappa1  0.14
+lc_xi      0.7
+
+lc_Gamma   0.5
+lc_active_zeta 0.0
+
+lc_q_initialisation o8m
+lc_q_init_amplitude -0.2
+lc_init_redshift 1.0
+
+lc_anchoring_method none
+
+lc_droplet_gamma 2.586
+lc_droplet_delta 0.25 
+lc_droplet_W     0.0
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 2
+config_at_end no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235
