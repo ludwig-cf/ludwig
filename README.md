@@ -17,24 +17,30 @@ also available via a lightweight abstraction layer ("Target Data Parallel"
 or "TargetDP") which currently supports either OpenMP or CUDA (NVIDIA GPUs)
 from a single source.
 
-#### Quick start (for the impatient)
+#### Installation
 
 Copy a config file from the config directory to
 the top level directory and make any changes required. E.g.,
+
 ```
 $ cp config/lunix-gcc-default.mk config.mk
 $ cd tests
 $ make compile-mpi-d3q19
 ```
-This will produce an execuatable `./src/Ludwig.exe`
+
+This should produce an execuatable `./src/Ludwig.exe`.
+
+#### Usage
+
+Full documentation is available in the `docs` directory.
+
+#### Contributing
+
+If you would like to contribute, please consider a pull request.
+
 
 #### Help
 
 For bug reports, problems, and other issues, please open a new issue.
-
-#### Contributing
-
-
-If you would like to contribute, please consider a pull request.
 
 
