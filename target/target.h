@@ -33,6 +33,8 @@
 /* Device management */
 
 __host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig);
+__host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int);
+__host__ tdpError_t tdpSetDevice(int device);
 
 __host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
 						     tdpDeviceAttr attr,
@@ -40,8 +42,6 @@ __host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
 __host__ __device__ tdpError_t tdpDeviceSynchronize(void);
 __host__ __device__ tdpError_t tdpGetDevice(int * device);
 __host__ __device__ tdpError_t tdpGetDeviceCount(int * count);
-
-__host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop, int);
 
 /* Error handling */
 

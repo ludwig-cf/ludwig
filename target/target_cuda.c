@@ -183,6 +183,17 @@ __host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
   return cudaDeviceGetAttribute(value, attr, device);
 }
 
+__host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop,
+					   int device) {
+
+  return cudaGetDeviceProperties(prop, device);
+}
+
+__host__ tdpError_t tdpSetDevice(int device) {
+
+  return cudaSetDevice(device);
+}
+
 __host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
 
   return cudaDeviceSynchronize();

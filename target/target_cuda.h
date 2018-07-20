@@ -22,6 +22,8 @@ typedef cudaFuncCache tdpFuncCache;
 typedef cudaMemcpyKind tdpMemcpyKind;
 typedef cudaDeviceAttr tdpDeviceAttr;
 
+#define tdpDeviceProp cudaDeviceProp
+
 #define tdpDevAttrManagedMemory cudaDevAttrManagedMemory
 
 #define tdpSuccess cudaSuccess
