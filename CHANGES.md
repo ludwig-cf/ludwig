@@ -18,6 +18,10 @@ Version 0.8.0
   default is unchanged ('m10').
 
 - An option for a 'split' treatment of symmetric and antisymmetric stress
-  arising from the thermodynamic sector has been introduced.
+  arising from the thermodynamic sector has been introduced. This is
+  via the input key 'fe_use_stress_relaxation yes'. This introduces the
+  symmetric part of the stress as a relaxation in the collision, while
+  the anti-symmetric part is via the force (via divergence). The default
+  is still to treat the whole stress via the divergence.
 
 - A 'second active stress' is now available for active liquid crystals.
