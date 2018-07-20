@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -487,10 +487,13 @@ static int colloid_io_write_header_ascii(FILE * fp, int ngroup) {
 
 static int colloid_io_read_header_ascii(FILE * fp, int * nfile) {
 
+  int nr;
+  
   assert(nfile);
 
-  fscanf(fp, "%22d\n",  nfile);
-
+  nr = fscanf(fp, "%22d\n",  nfile);
+  if (nr != 1) return -1; 
+  
   return 0;
 }
 
@@ -519,11 +522,14 @@ static int colloid_io_write_header_binary(FILE * fp, int ngroup) {
 
 static int colloid_io_read_header_binary(FILE * fp, int * nfile) {
 
+  size_t nr;
+  
   assert(fp);
   assert(nfile);
 
-  fread(nfile, sizeof(int), 1, fp);
-
+  nr = fread(nfile, sizeof(int), 1, fp);
+  if (nr != 1) return -1;
+  
   return 0;
 }
 

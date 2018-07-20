@@ -12,7 +12,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -960,7 +960,7 @@ static int lb_f_read(FILE * fp, int index, void * self) {
 static int lb_f_read_ascii(FILE * fp, int index, void * self) {
 
   int n, p;
-  int nr = 0;
+  int nr;
   pe_t * pe = NULL;
   lb_t * lb = (lb_t *) self;
 
@@ -970,12 +970,14 @@ static int lb_f_read_ascii(FILE * fp, int index, void * self) {
   pe = lb->pe;
 
   /* skip output index */
-  fscanf(fp, "%*d %*d %*d");
+  nr = fscanf(fp, "%*d %*d %*d");
+  assert(nr == 1);
 
+  nr = 0;
   for (n = 0; n < lb->ndist; n++) {
     for (p = 0; p < NVEL; p++) {
-      fscanf(fp, "%le", &lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)]);
-      nr++;
+      nr += fscanf(fp, "%le",
+		   &lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)]);
     }
   }
 
