@@ -55,6 +55,7 @@ int angle_cosine_create(pe_t * pe, cs_t * cs, angle_cosine_t ** pobj) {
   assert(pobj);
 
   obj = (angle_cosine_t *) calloc(1, sizeof(angle_cosine_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(angle_cosine) failed\n");
 
   obj->pe = pe;

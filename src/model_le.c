@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -362,7 +362,8 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
   nprop = xblocklen_cv[0];
   ndata = ndist*nprop*nlocal[Y]*nlocal[Z];
   recv_buff = (double *) malloc(ndata*sizeof(double));
-  if(recv_buff == NULL) pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
+  assert(recv_buff);
+  if (recv_buff == NULL) pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
 
   for (plane = 0; plane < nplane; plane++) {
  
@@ -547,10 +548,12 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 
   ndata = ndist*nprop*nlocal[Y]*nlocal[Z];
   send_buff = (double *) malloc(ndata*sizeof(double));
+  assert(send_buff);
   if (send_buff == NULL) pe_fatal(lb->pe, "malloc(send_buff) failed\n");
 
   ndata = ndist*nprop*(nlocal[Y] + 1)*nlocal[Z];
   recv_buff = (double *) malloc(ndata*sizeof(double));
+  assert(recv_buff);
   if (recv_buff == NULL) pe_fatal(lb->pe, "malloc(recv_buff) failed\n");
 
   for (plane = 0; plane < nplane; plane++) {

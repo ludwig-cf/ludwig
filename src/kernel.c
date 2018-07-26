@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2017 The University of Edinburgh
+ *  (c) 2016-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -67,11 +67,13 @@ __host__ int kernel_ctxt_create(cs_t * cs, int nsimdvl, kernel_info_t info,
   assert(cs);
 
   obj = (kernel_ctxt_t *) calloc(1, sizeof(kernel_ctxt_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(cs->pe, "calloc(kernel_ctxt_t) failed\n");
 
   assert(nsimdvl == 1 || nsimdvl == NSIMDVL);
 
   obj->param = (kernel_param_t *) calloc(1, sizeof(kernel_param_t));
+  assert(obj->param);
   if (obj->param == NULL) pe_fatal(cs->pe, "calloc(kernel_param_t) failed\n");
 
   tdpGetDeviceCount(&ndevice);

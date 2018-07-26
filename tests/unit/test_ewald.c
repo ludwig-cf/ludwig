@@ -17,6 +17,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -98,8 +99,8 @@ int test_ewald_suite(void) {
 
   colloids_info_add_local(cinfo, 1, r1, &p_c1);
   colloids_info_add_local(cinfo, 2, r2, &p_c2);
-  test_assert(p_c1 != NULL);
-  test_assert(p_c2 != NULL);
+  assert(p_c1 != NULL);
+  assert(p_c2 != NULL);
   colloids_info_ntotal_set(cinfo);
 
   /* First colloid .... */

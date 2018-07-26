@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *    Juho Lintuvuori (jlintuvu@ph.ed.ac.uk)
@@ -60,6 +60,7 @@ int pair_lj_cut_create(pe_t * pe, cs_t * cs, pair_lj_cut_t ** pobj) {
   assert(pobj);
 
   obj = (pair_lj_cut_t *) calloc(1, sizeof(pair_lj_cut_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(pair_lj_cut_t) failed\n");
 
   obj->pe = pe;

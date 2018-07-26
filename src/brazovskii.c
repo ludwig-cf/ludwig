@@ -110,10 +110,12 @@ __host__ int fe_brazovskii_create(pe_t * pe, cs_t * cs, field_t * phi,
   assert(dphi);
 
   obj = (fe_brazovskii_t *) calloc(1, sizeof(fe_brazovskii_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(fe_brazovskii_t) failed\n");
 
   obj->param =
     (fe_brazovskii_param_t *) calloc(1, sizeof(fe_brazovskii_param_t));
+  assert(obj->param);
   if (obj->param == NULL) pe_fatal(pe, "calloc(fe_brazovskii_param_t) failed\n");
 
   obj->pe = pe;

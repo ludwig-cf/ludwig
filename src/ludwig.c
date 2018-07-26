@@ -1438,6 +1438,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Default method is divergence of stress tensor */
     p = 1;
+    nhalo = 2;
     rt_int_parameter(rt, "fd_force_divergence", &p);
 
     if (p == 0) nhalo = 1;

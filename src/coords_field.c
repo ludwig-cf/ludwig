@@ -4,13 +4,12 @@
  *
  *  Additional routines for halo swaps.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -112,6 +111,8 @@ int coords_field_init_mpi_indexed(cs_t * cs, int nhcomm, int nf,
 
   blocklen = (int*) calloc(ncount, sizeof(int));
   displace = (int*) calloc(ncount, sizeof(int));
+  assert(blocklen);
+  assert(displace);
   if (blocklen == NULL) pe_fatal(cs->pe, "calloc(blocklen) failed\n");
   if (displace == NULL) pe_fatal(cs->pe, "calloc(displace) failed\n");
 
@@ -141,6 +142,8 @@ int coords_field_init_mpi_indexed(cs_t * cs, int nhcomm, int nf,
 
   blocklen = (int*) calloc(ncount, sizeof(int));
   displace = (int*) calloc(ncount, sizeof(int));
+  assert(blocklen);
+  assert(displace);
   if (blocklen == NULL) pe_fatal(cs->pe, "calloc(blocklen) failed\n");
   if (displace == NULL) pe_fatal(cs->pe, "calloc(displace) failed\n");
 
@@ -171,6 +174,8 @@ int coords_field_init_mpi_indexed(cs_t * cs, int nhcomm, int nf,
 
   blocklen = (int*) calloc(ncount, sizeof(int));
   displace = (int*) calloc(ncount, sizeof(int));
+  assert(blocklen);
+  assert(displace);
   if (blocklen == NULL) pe_fatal(cs->pe, "calloc(blocklen) failed\n");
   if (displace == NULL) pe_fatal(cs->pe, "calloc(displace) failed\n");
 
@@ -243,6 +248,8 @@ int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
@@ -326,6 +333,8 @@ int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");
@@ -407,6 +416,8 @@ int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(cs->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(cs->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(cs->pe, "malloc(recvforw) failed\n");

@@ -90,9 +90,11 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pobj);
 
   fe = (fe_lc_t *) calloc(1, sizeof(fe_lc_t));
+  assert(fe);
   if (fe == NULL) pe_fatal(pe, "calloc(fe_lc_t) failed\n");
 
   fe->param = (fe_lc_param_t *) calloc(1, sizeof(fe_lc_param_t));
+  assert(fe->param);
   if (fe->param == NULL) pe_fatal(pe, "calloc(fe_lc_param_t) failed\n");
 
   fe->pe = pe;

@@ -116,9 +116,11 @@ __host__ int fe_polar_create(pe_t * pe, cs_t * cs, field_t * p,
   assert(cs);
 
   obj = (fe_polar_t *) calloc(1, sizeof(fe_polar_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(fe_polar_t) failed\n");
 
   obj->param = (fe_polar_param_t *) calloc(1, sizeof(fe_polar_param_t));
+  assert(obj->param);
   if (obj->param == NULL) pe_fatal(pe, "calloc(fe_polar_param_t) failed\n");
 
   obj->pe = pe;

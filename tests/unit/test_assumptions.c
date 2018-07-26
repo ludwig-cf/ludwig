@@ -40,9 +40,6 @@ int test_macro_abuse(void);
 
 int test_assumptions_suite(void) {
 
-  int n;
-  int * p_int;
-
   double pi;
   PI_DOUBLE(pi_);
 
@@ -85,20 +82,6 @@ int test_assumptions_suite(void) {
   printf("Checking sizeof(void *)... (%lu bytes)\n", sizeof(void *));
   printf("Checking sizeof(func *)... (%lu bytes)\n", sizeof(p_function));
   */
-  /* See what happens to zero size allocation */
-
-  n = 0;
-  p_int = (int *) malloc(n*sizeof(int));
-
-  /*
-  if (p_int == NULL) {
-    printf("malloc(0) returns a NULL pointer\n");
-  }
-  else {
-    printf("malloc(0) returns non NULL pointer\n");
-  }
-  */
-  if (p_int != NULL) free(p_int);
 
   /* Maths? */
   /*

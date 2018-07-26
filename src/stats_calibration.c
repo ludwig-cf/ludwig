@@ -90,6 +90,7 @@ int stats_ahydro_create(pe_t * pe, cs_t * cs, colloids_info_t * cinfo,
   assert(pobj);
 
   obj = (stats_ahydro_t *) calloc(1, sizeof(stats_ahydro_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(stats_ahydro_t) failed\n");
 
   obj->pe = pe;

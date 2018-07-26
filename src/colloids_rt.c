@@ -656,7 +656,7 @@ int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   assert(pe);
   assert(rt);
 
-  n = rt_int_parameter(rt, "lubrication_on", &on);
+  rt_int_parameter(rt, "lubrication_on", &on);
 
   if (on) {
     pe_info(pe, "\nColloid-colloid lubrication corrections\n");
@@ -706,7 +706,7 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   physics_ref(&phys);
   physics_kt(phys, &kt);
 
-  n = rt_int_parameter(rt, "soft_sphere_on", &on);
+  rt_int_parameter(rt, "soft_sphere_on", &on);
 
   if (on) {
 
@@ -752,7 +752,7 @@ int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
   assert(rt);
   assert(interact);
 
-  n = rt_int_parameter(rt, "yukawa_on", &on);
+  rt_int_parameter(rt, "yukawa_on", &on);
 
   if (on) {
     n = rt_double_parameter(rt, "yukawa_epsilon", &epsilon);
@@ -791,7 +791,7 @@ int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   assert(rt);
   assert(inter);
 
-  n = rt_int_parameter(rt, "lennard_jones_on", &on);
+  rt_int_parameter(rt, "lennard_jones_on", &on);
 
   if (on) {
     n = rt_double_parameter(rt, "lj_epsilon", &epsilon);
@@ -829,7 +829,7 @@ int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
   assert(rt);
   assert(interact);
 
-  n = rt_int_parameter(rt, "bond_fene_on", &on);
+  rt_int_parameter(rt, "bond_fene_on", &on);
 
   if (on) {
     n = rt_double_parameter(rt, "bond_fene_k", &kappa);
@@ -863,7 +863,7 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact) {
   assert(rt);
   assert(interact);
 
-  n = rt_int_parameter(rt,"angle_cosine_on", &on);
+  rt_int_parameter(rt,"angle_cosine_on", &on);
 
   if (on) {
     n = rt_double_parameter(rt, "angle_cosine_k", &kappa);

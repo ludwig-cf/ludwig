@@ -28,13 +28,11 @@
  *  for reading the input file, and the key value pair list is then
  *  broadcast to all other processes.
  *
- *  $Id: runtime.c,v 1.4 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -82,6 +80,7 @@ int rt_create(pe_t * pe, rt_t ** prt) {
   assert(pe);
 
   rt = (rt_t *) calloc(1, sizeof(rt_t));
+  assert(rt);
   if (rt == NULL) pe_fatal(pe, "calloc(rt) failed\n");
 
   rt->pe = pe;
@@ -215,6 +214,7 @@ static int rt_key_broadcast(rt_t * rt) {
   MPI_Bcast(&rt->nkeys, 1, MPI_INT, 0, comm);
 
   packed_keys = (char *) calloc(rt->nkeys*NKEY_LENGTH, sizeof(char));
+  assert(packed_keys);
   if (packed_keys == NULL) pe_fatal(rt->pe, "malloc(packed_keys) failed\n");
 
   /* Pack message */
@@ -489,11 +489,12 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
 static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
 
-  key_pair_t * pnew;
+  key_pair_t * pnew = NULL;
 
   assert(rt);
 
   pnew = (key_pair_t *) calloc(1, sizeof(key_pair_t));
+  assert(pnew);
 
   if (pnew == NULL) {
     pe_fatal(rt->pe, "calloc(key_pair) failed\n");

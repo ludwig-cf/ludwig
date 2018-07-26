@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2017 The University of Edinburgh
+ *  (c) 2016-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -436,6 +436,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(halo->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(halo->pe, "malloc(recvforw) failed\n");
@@ -519,6 +521,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(halo->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(halo->pe, "malloc(recvforw) failed\n");
@@ -600,6 +604,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
+  assert(sendforw && sendback);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(halo->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(halo->pe, "malloc(recvforw) failed\n");

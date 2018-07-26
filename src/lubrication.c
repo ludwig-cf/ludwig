@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -49,6 +49,7 @@ int lubrication_create(pe_t * pe, cs_t * cs, lubr_t ** pobj) {
   assert(pobj);
 
   obj = (lubr_t *) calloc(1, sizeof(lubr_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(lubr_t) failed\n");
 
   obj->pe = pe;

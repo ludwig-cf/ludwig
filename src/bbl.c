@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -71,6 +71,7 @@ int bbl_create(pe_t * pe, cs_t * cs, lb_t * lb, bbl_t ** pobj) {
   assert(pobj);
 
   bbl = (bbl_t *) calloc(1, sizeof(bbl_t));
+  assert(bbl);
   if (bbl == NULL) pe_fatal(pe, "calloc(bbl_t) failed\n");
 
   bbl->pe = pe;

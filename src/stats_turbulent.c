@@ -4,12 +4,12 @@
  *
  *  Statistics to probe turbulent flow.
  *
- *  $Id: stats_turbulent.c,v 1.3 2010-10-15 12:40:03 kevin Exp $
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2017 The University of Edinburgh
+ *  (c) 2008-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -49,6 +49,7 @@ int stats_turbulent_create(pe_t * pe, cs_t * cs, stats_turb_t ** pobj) {
   assert(pobj);
 
   obj = (stats_turb_t *) calloc(1, sizeof(stats_turb_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(stats_turb_t) failed\n");
 
   obj->pe = pe;
@@ -251,9 +252,11 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   cs_cart_coords(stat->cs, mpi_cartcoords);
 
   f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
+  assert(f1);
   if (f1 == NULL) pe_fatal(stat->pe, "malloc(f1) failed\n");
 
   f1z = (double *) malloc(3*ntotal[Z]*sizeof(double));
+  assert(f1z);
   if (f1z == NULL) pe_fatal(stat->pe, "malloc(f1z) failed\n");
 
   /* Set the averaging factor (if no data, set to zero) */

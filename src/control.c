@@ -4,13 +4,11 @@
  *
  *  Model control and time stepping.
  *
- *  $Id: control.c,v 1.10 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  end Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2008-2018 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -61,22 +59,22 @@ int init_control(pe_t * pe, rt_t * rt) {
   t_start = 0;
   t_steps = 0;
 
-  n = rt_int_parameter(rt, "N_start", &t_start);
+  rt_int_parameter(rt, "N_start", &t_start);
   n = rt_int_parameter(rt, "N_cycles", &t_steps);
   if (n == 0) pe_fatal(pe, "Please set N_cycles in input\n");
 
-  n = rt_int_parameter(rt, "freq_statistics", &freq_statistics);
+  rt_int_parameter(rt, "freq_statistics", &freq_statistics);
 
-  n = rt_int_parameter(rt, "freq_measure", &freq_measure);
-  n = rt_int_parameter(rt, "freq_config", &freq_config);
-  n = rt_int_parameter(rt, "freq_phi", &freq_phi);
-  n = rt_int_parameter(rt, "freq_psi", &freq_psi);
-  n = rt_int_parameter(rt, "freq_vel", &freq_vel);
-  n = rt_int_parameter(rt, "freq_fed", &freq_fed);
-  n = rt_int_parameter(rt, "freq_shear_measurement", &freq_shear_meas);
-  n = rt_int_parameter(rt, "freq_shear_output", &freq_shear_io);
-  n = rt_int_parameter(rt, "colloid_io_freq", &freq_colloid_io);
-  n = rt_string_parameter(rt, "config_at_end", tmp, 128);
+  rt_int_parameter(rt, "freq_measure", &freq_measure);
+  rt_int_parameter(rt, "freq_config", &freq_config);
+  rt_int_parameter(rt, "freq_phi", &freq_phi);
+  rt_int_parameter(rt, "freq_psi", &freq_psi);
+  rt_int_parameter(rt, "freq_vel", &freq_vel);
+  rt_int_parameter(rt, "freq_fed", &freq_fed);
+  rt_int_parameter(rt, "freq_shear_measurement", &freq_shear_meas);
+  rt_int_parameter(rt, "freq_shear_output", &freq_shear_io);
+  rt_int_parameter(rt, "colloid_io_freq", &freq_colloid_io);
+  rt_string_parameter(rt, "config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
 
   physics_control_init_time(phys, t_start, t_steps);

@@ -218,7 +218,6 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
   int offset[3];
   int mpi_cartsz[3];
   int mpi_cartcoords[3];
-  int ic, jc, kc;
   int nd;
   int ndist = 2;
   int nextra;
@@ -337,99 +336,6 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	/* Next site */
       }
     }
-  }
-
-  /* REDUCED HALO NEEDS WORK*/
-  /* The logic required for the edges and corners for general
-   * decomposition is really more pain than it is worth. By
-   * excluding the edges and corners, a few cases may be
-   * missed. The true test is therefore in the propagation
-   * (see test_prop.c). */
-   
-  if (halo == LB_HALO_REDUCED && dim == X && mpi_cartsz[X] > 1) {
-
-    for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
-      for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
-
-	/* left hand edge */
-	index = cs_index(cs, 0, jc, kc);
-
-	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
-	    lb_f(lb, index, p, nd, &f_actual);
-	    f_expect = -1.0;
-
-	    if (cv[p][X] > 0) {
-	      f_expect = offset[X];
-	      if (mpi_cartcoords[dim] == 0) f_expect = ltot[X];
-	    }
-
-	  }
-
-	  /* right hand edge */
-	  ic = nlocal[X] + 1;
-	  index = cs_index(cs, ic, jc, kc);
-
-	  for (p = 0; p < NVEL; p++) {
-	    lb_f(lb, index, p, nd, &f_actual);
-	    f_expect = -1.0;
-
-	    if (cv[p][X] < 0) {
-	      f_expect = offset[X] + ic;
-	      if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) f_expect = 1.0;
-	    }
-	  }
-	}
-	/* Next site */
-      }
-    }
-
-    /* Finish x direction */
-  }
-
-  /* Y-DIRECTION */
-
-  if (halo == LB_HALO_REDUCED && dim == Y && mpi_cartsz[Y] > 1) {
-
-    for (ic = 0; ic <= nlocal[X] + 1; ic++) {
-      for (kc = 0; kc <= nlocal[Z] + 1; kc++) {
-
-	/* left hand edge */
-	index = cs_index(cs, ic, 0, kc);
-
-	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
-	    lb_f(lb, index, p, nd, &f_actual);
-	    f_expect = -1.0;
-
-	    if (cv[p][Y] > 0) {
-	      f_expect = offset[X];
-	      if (mpi_cartcoords[dim] == 0) f_expect = ltot[X];
-	    }
-	  }
-
-	  /* right hand edge */
-	  jc = nlocal[Y] + 1;
-	  index = cs_index(cs, ic, jc, kc);
-
-	  for (p = 0; p < NVEL; p++) {
-	    lb_f(lb, index, p, nd, &f_actual);
-	    f_expect = -1.0;
-
-	    if (cv[p][Y] < 0) {
-	      f_expect = offset[X] + ic;
-	      if (mpi_cartcoords[X] == mpi_cartsz[X] - 1) f_expect = 1.0;
-	    }
-	  }
-	}
-
-	/* Next site */
-      }
-    }
-
-    /* Z-DIRECTION ? */
-
-    /* Finished reduced check */
   }
 
   lb_free(lb);

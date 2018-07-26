@@ -27,7 +27,6 @@
  *  variates at each lattice site to generate consistent noise. The
  *  variance is 2 kT Gamma from fluctuation dissipation.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -119,6 +118,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pobj);
 
   obj = (beris_edw_t *) calloc(1, sizeof(beris_edw_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(beris_edw) failed\n");
 
   obj->param = (beris_edw_param_t *) calloc(1, sizeof(beris_edw_param_t));
