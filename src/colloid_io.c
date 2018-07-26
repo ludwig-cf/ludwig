@@ -96,6 +96,7 @@ int colloid_io_create(pe_t * pe, cs_t * cs, int io_grid[3],
   assert(pcio);
 
   obj = (colloid_io_t*) calloc(1, sizeof(colloid_io_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(colloid_io_t) failed\n");
 
   obj->pe = pe;
@@ -273,6 +274,7 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
   /* Gather a list of colloid numbers from each rank in the group */
 
   nclist = (int *) calloc(cio->size, sizeof(int));
+  assert(nclist);
   if (nclist == NULL) pe_fatal(cio->pe, "malloc(nclist) failed\n");
 
   colloids_info_nlocal(cio->info, &nc);
@@ -281,6 +283,7 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
   /* Allocate local buffer, pack. */
 
   cbuf = (colloid_state_t *) malloc(nc*sizeof(colloid_state_t));
+  assert(cbuf);
   if (cbuf == NULL) pe_fatal(cio->pe, "malloc(cbuf) failed\n");
 
   colloid_io_pack_buffer(cio, nc, cbuf);
@@ -291,6 +294,7 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
     /* Allocate total recieve buffer */
 
     displ = (int *) malloc(cio->size*sizeof(int));
+    assert(displ);
     if (displ == NULL) pe_fatal(cio->pe, "malloc(displ) failed\n");
 
     displ[0] = 0;
@@ -305,7 +309,9 @@ int colloid_io_write(colloid_io_t * cio, const char * filename) {
       nclist[n] *= sizeof(colloid_state_t);  /* ditto */
     }
 
+    assert(ntotal > 0); /* STATIC ANALYSIS */
     rbuf = (colloid_state_t *) malloc(ntotal*sizeof(colloid_state_t));
+    assert(rbuf);
     if (rbuf == NULL) pe_fatal(cio->pe, "malloc(rbuf) failed\n");
   }
 

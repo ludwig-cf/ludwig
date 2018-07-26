@@ -58,6 +58,7 @@ int bond_fene_create(pe_t * pe, cs_t * cs, bond_fene_t ** pobj) {
   assert(pobj);
 
   obj = (bond_fene_t *) calloc(1, sizeof(bond_fene_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(bond_fene_t) failed\n");
 
   obj->pe = pe;

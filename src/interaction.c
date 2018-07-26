@@ -13,12 +13,11 @@
  *  Each interaction present may give rise to a potential and some
  *  statistics on separation, cutoffs etc.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -70,6 +69,7 @@ int interact_create(pe_t * pe, cs_t * cs, interact_t ** pobj) {
   assert(pobj);
 
   obj = (interact_t *) calloc(1, sizeof(interact_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(interact_t) failed\n");
 
   obj->pe = pe;

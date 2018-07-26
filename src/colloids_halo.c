@@ -4,12 +4,12 @@
  *
  *  Halo exchange of colloid state information.
  *
- *  $Id: colloids_halo.c,v 1.4 2010-11-29 17:03:16 kevin Exp $
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -24,6 +24,7 @@
 #include "coords_s.h"
 #include "colloids_s.h"
 #include "colloids_halo.h"
+#include "util.h"
 
 struct colloid_halo_s {
   pe_t * pe;               /* Parallel environment */
@@ -64,6 +65,7 @@ int colloids_halo_create(colloids_info_t * cinfo, colloid_halo_t ** phalo) {
   assert(cinfo);
 
   halo = (colloid_halo_t *) calloc(1, sizeof(colloid_halo_t));
+  assert(halo);
   if (halo == NULL) pe_fatal(cinfo->pe, "calloc(colloid_halo_t) failed\n");
 
   halo->pe = cinfo->pe;
@@ -110,6 +112,7 @@ int colloids_halo_state(colloids_info_t * cinfo) {
   assert(cinfo);
 
   halo = (colloid_halo_t *) calloc(1, sizeof(colloid_halo_t));
+  assert(halo);
   if (halo == NULL) pe_fatal(cinfo->pe, "calloc(colloid_halo_t) failed\n");
 
   halo->pe = cinfo->pe;
@@ -153,9 +156,12 @@ int colloids_halo_dim(colloid_halo_t * halo, int dim) {
   /* Allocate the send and recv buffer, and post recvs */
 
   n = halo->nsend[FORWARD] + halo->nsend[BACKWARD];
-  halo->send = (colloid_state_t *) malloc(n*sizeof(colloid_state_t));
+  halo->send = (colloid_state_t *) malloc(imax(1,n)*sizeof(colloid_state_t));
+  assert(halo->send);
+
   n = halo->nrecv[FORWARD] + halo->nrecv[BACKWARD];
-  halo->recv = (colloid_state_t *) malloc(n*sizeof(colloid_state_t));
+  halo->recv = (colloid_state_t *) malloc(imax(1,n)*sizeof(colloid_state_t));
+  assert(halo->recv);
 
   if (halo->send == NULL) pe_fatal(halo->pe, "halo malloc(send_) failed\n");
   if (halo->recv == NULL) pe_fatal(halo->pe, "halo malloc(recv_) failed\n");
@@ -375,20 +381,22 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
 
   int n;
   int exists;
+  int index;
   int cell[3];
-  colloid_t * pc;
+  colloid_t * pc = NULL;
 
   assert(halo);
 
   for (n = 0; n < nrecv; n++) {
 
-    colloids_info_cell_coords(halo->cinfo, halo->recv[n].r, cell);
     exists = 0;
+    index = halo->recv[n].index;
+    colloids_info_cell_coords(halo->cinfo, halo->recv[n].r, cell);
     colloids_info_cell_list_head(halo->cinfo, cell[X], cell[Y], cell[Z], &pc);
 
     while (pc) {
 
-      if (pc->s.index == halo->recv[n].index) {
+      if (pc->s.index == index) {
 	/* kludge: don't update deltaphi */
 	double phi;
 	phi = pc->s.deltaphi;
@@ -401,7 +409,7 @@ static int colloids_halo_unload(colloid_halo_t * halo, int nrecv) {
     }
 
     if (exists == 0) {
-      colloids_info_add(halo->cinfo, halo->recv[n].index, halo->recv[n].r, &pc);
+      colloids_info_add(halo->cinfo, index, halo->recv[n].r, &pc);
       assert(pc);
       pc->s = halo->recv[n];
       pc->s.rebuild = 1;

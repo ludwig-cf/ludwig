@@ -130,9 +130,11 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   assert(fe);
 
   obj = (grad_lc_anch_t *) calloc(1, sizeof(grad_lc_anch_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(grad_lc_anch_t) failed\n");
 
   obj->param = (param_t *) calloc(1, sizeof(param_t));
+  assert(obj->param);
   if (obj->param == NULL) pe_fatal(pe, "calloc(param_t) failed\n");
 
   obj->pe = pe;

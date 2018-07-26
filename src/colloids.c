@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -51,6 +51,7 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
   assert(pinfo);
 
   obj = (colloids_info_t*) calloc(1, sizeof(colloids_info_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(colloids_info_t) failed\n");
 
   obj->pe = pe;
@@ -69,6 +70,7 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
 
   nlist = (ncell[X] + 2*nhalo)*(ncell[Y] + 2*nhalo)*(ncell[Z] + 2*nhalo);
   obj->clist = (colloid_t**) calloc(nlist, sizeof(colloid_t *));
+  assert(obj->clist);
   if (obj->clist == NULL) pe_fatal(pe, "calloc(nlist, colloid_t *) failed\n");
 
   obj->ncells = nlist;
@@ -140,6 +142,7 @@ __host__ int colloids_info_recreate(int newcell[3], colloids_info_t ** pinfo) {
 
   for ( ; pc; pc = pc->nextlocal) {
     colloids_info_add_local(newinfo, pc->s.index, pc->s.r, &pcnew);
+    assert(pcnew);
     pcnew->s = pc->s;
   }
 
@@ -611,6 +614,7 @@ int colloids_info_insert_colloid(colloids_info_t * cinfo, colloid_t * coll) {
     cinfo->clist[index] = coll;
   }
   else {
+    assert(p_previous); /* static analyser can't work this out */
     coll->next = p_current;
     p_previous->next = coll;
   }

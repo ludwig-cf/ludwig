@@ -7,12 +7,10 @@
  *
  *  See, for example, Allen and Tildesley, Computer Simulation of Liquids.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2017 The University of Edinburgh.
+ *  (c) 2007-2018 The University of Edinburgh.
  *
  *  Contributing authors:
  *  Grace Kim
@@ -84,6 +82,7 @@ int ewald_create(pe_t * pe, cs_t * cs, double mu_input, double rc_input,
   assert(cinfo);
 
   ewald = (ewald_t *) calloc(1, sizeof(ewald_t));
+  assert(ewald);
   if (ewald == NULL) pe_fatal(pe, "calloc(ewald) failed");
 
   ewald->pe = pe;
@@ -108,6 +107,7 @@ int ewald_create(pe_t * pe, cs_t * cs, double mu_input, double rc_input,
   kmax_ = pow(2.0*pi*nk/ltot[X], 2);
   nkmax_ = nk + 1;
   nktot_ = ewald_get_number_fourier_terms(ewald);
+  assert(nktot_ > 0);
 
   sinx_ = (double *) malloc(nktot_*sizeof(double));
   cosx_ = (double *) malloc(nktot_*sizeof(double));
@@ -429,6 +429,8 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
   subsin = (double *) calloc(nktot_, sizeof(double));
   subcos = (double *) calloc(nktot_, sizeof(double));
+  assert(subsin);
+  assert(subcos);
   if (subsin == NULL) pe_fatal(ewald->pe, "calloc(subsin) failed\n");
   if (subcos == NULL) pe_fatal(ewald->pe, "calloc(subcos) failed\n");
 

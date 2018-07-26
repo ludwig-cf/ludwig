@@ -4,12 +4,10 @@
  *
  *  The physical coordinate system and the MPI Cartesian Communicator.
  *
- *  $Id: coords.c,v 1.4 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -42,8 +40,11 @@ __host__ int cs_create(pe_t * pe, cs_t ** pcs) {
   assert(pcs);
 
   cs = (cs_t *) calloc(1, sizeof(cs_t));
+  assert(cs);
   if (cs == NULL) pe_fatal(pe, "calloc(cs_t) failed\n");
+
   cs->param = (cs_param_t *) calloc(1, sizeof(cs_param_t));
+  assert(cs->param);
   if (cs->param == NULL) pe_fatal(pe, "calloc(cs_param_t) failed\n");
 
   cs->pe = pe;
@@ -561,6 +562,8 @@ static __host__ int cs_rectilinear_decomposition(cs_t * cs) {
 
     cs->listnlocal[idim] = (int *) calloc(mpisz[idim], sizeof(int));
     cs->listnoffset[idim] = (int *) calloc(mpisz[idim], sizeof(int));
+    assert(cs->listnlocal[idim]);
+    assert(cs->listnoffset[idim]);
 
     if (cs->listnlocal[idim] == NULL || cs->listnoffset[idim] == NULL) {
       pe_fatal(cs->pe, "calloc(listlocal) failed\n");

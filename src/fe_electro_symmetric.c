@@ -118,8 +118,10 @@ __host__ int fe_es_create(pe_t * pe, cs_t * cs, fe_symm_t * symm,
   assert(psi);
 
   fe = (fe_es_t*) calloc(1, sizeof(fe_es_t));
+  assert(fe);
   if (fe == NULL) pe_fatal(pe, "calloc(fe_es_t) failed\n");
   fe->param = (fe_es_param_t *) calloc(1, sizeof(fe_es_param_t));
+  assert(fe->param);
   if (fe->param == NULL) pe_fatal(pe, "calloc(fe_es_param_t) failed\n");
 
   fe->pe = pe;

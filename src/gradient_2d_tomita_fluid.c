@@ -28,7 +28,6 @@
  *
  *  Corrections for Lees-Edwards planes and plane wall in X are included.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -82,10 +81,10 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
   nextra -= 1;
   assert(nextra >= 0);
 
-  assert(0); /* NO TEST */
-
   grad_2d_tomita_fluid_operator(le, fg, nextra);
   grad_2d_tomita_fluid_le(le, fg, nextra);
+
+  assert(0); /* NO TEST */
 
   return 0;
 }

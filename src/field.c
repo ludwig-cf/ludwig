@@ -11,8 +11,6 @@
  *  cs_t coordinate system applies.
  *
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -69,11 +67,13 @@ __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
   assert(pobj);
 
   obj = (field_t *) calloc(1, sizeof(field_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(obj) failed\n");
 
   obj->nf = nf;
 
   obj->name = (char *) calloc(strlen(name) + 1, sizeof(char));
+  assert(obj->name);
   if (obj->name == NULL) pe_fatal(pe, "calloc(name) failed\n");
 
   assert(strlen(name) < BUFSIZ);
@@ -542,7 +542,6 @@ static int field_leesedwards_parallel(field_t * obj) {
   for (ib = 0; ib < nxbuffer; ib++) {
 
     ic = lees_edw_ibuff_to_real(obj->le, ib);
-    kc = 1 - nhalo;
 
     /* Work out the displacement-dependent quantities */
 

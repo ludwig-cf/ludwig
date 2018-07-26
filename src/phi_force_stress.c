@@ -48,6 +48,7 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pobj) {
   assert(pobj);
 
   obj = (pth_t *) calloc(1, sizeof(pth_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(pth_t) failed\n");
 
   obj->pe = pe;

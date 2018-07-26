@@ -21,7 +21,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017  The University of Edinburgh
+ *  (c) 2010-2018  The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -146,6 +146,7 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   assert(pobj);
 
   obj = (advflux_t *) calloc(1, sizeof(advflux_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(advflux) failed\n");
 
   if (cs) cs_nsites(cs, &nsites);

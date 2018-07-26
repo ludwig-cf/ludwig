@@ -67,6 +67,7 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
   assert(pobj);
 
   obj = (hydro_t *) calloc(1, sizeof(hydro_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(hydro) failed\n");
 
   obj->pe = pe;

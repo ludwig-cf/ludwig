@@ -94,6 +94,7 @@ int stats_sigma_create(pe_t * pe, cs_t * cs, fe_symm_t * fe, field_t * phi,
   assert(pobj);
 
   obj = (stats_sigma_t *) calloc(1, sizeof(stats_sigma_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(stats_sigma_t) failed\n");
 
   obj->pe = pe;

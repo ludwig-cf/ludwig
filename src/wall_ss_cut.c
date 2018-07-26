@@ -66,6 +66,7 @@ int wall_ss_cut_create(pe_t * pe, cs_t * cs, wall_t * wall,
   assert(pobj);
 
   obj = (wall_ss_cut_t *) calloc(1, sizeof(wall_ss_cut_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(wall_ss_cut_t) failed\n");
 
   obj->pe = pe;

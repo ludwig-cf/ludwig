@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -42,6 +42,7 @@ __host__ int field_grad_create(pe_t * pe, field_t * f, int level,
   assert(pobj);
 
   obj = (field_grad_t*) calloc(1, sizeof(field_grad_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(field_grad_t) failed\n");
 
   obj->pe = pe;

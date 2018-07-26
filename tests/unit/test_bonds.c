@@ -269,6 +269,7 @@ int test_bonds_dimer_instance(pe_t * pe, cs_t * cs, double a0, double r1[3],
   assert(npair == 1);
 
   colloids_info_free(cinfo);
+  free(state0);
 
   return 0;
 }
@@ -391,6 +392,7 @@ int test_bonds_trimer_instance(pe_t * pe, cs_t * cs, double a0, double r0[3],
   assert(npair == 2);
 
   colloids_info_free(cinfo);
+  free(state_null);
 
   return 0;
 }
