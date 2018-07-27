@@ -192,10 +192,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   TIMER_init(ludwig->pe);
   TIMER_start(TIMER_TOTAL);
 
-#ifdef __NVCC__
-  /* make maximum L1 cache available on GPU */
-  cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
-#endif
+  /* Prefer maximum L1 cache available on device */
+  tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
 
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */

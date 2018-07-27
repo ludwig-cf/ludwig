@@ -935,13 +935,13 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
       if (mc == 0 && ndevice > 0) {
 	tdpMemcpy(&tmp, &halo->target->hylo, sizeof(double *),
 		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(halo->target->hylo, halo->hylo, ncount*sizeof(double),
+	tdpMemcpyAsync(tmp, halo->hylo, ncount*sizeof(double),
 		       tdpMemcpyHostToDevice, halo->stream[Y]);
       }
       if (mc == 1 && ndevice > 0) {
 	tdpMemcpy(&tmp, &halo->target->hyhi, sizeof(double *),
 		  tdpMemcpyDeviceToHost);
-	tdpMemcpyAsync(halo->target->hyhi, halo->hyhi, ncount*sizeof(double),
+	tdpMemcpyAsync(tmp, halo->hyhi, ncount*sizeof(double),
 			tdpMemcpyHostToDevice, halo->stream[Y]);
       }
     }
@@ -1034,12 +1034,12 @@ __host__ int halo_swap_packed(halo_swap_t * halo, double * data) {
 	tdpMemcpyAsync(tmp, halo->hzlo, ncount*sizeof(double),
 		       tdpMemcpyHostToDevice, halo->stream[Z]);
       }
-    }
-    if (mc == 1 && ndevice > 0) {
-      tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
-		      tdpMemcpyHostToDevice, halo->stream[Z]);
+      if (mc == 1 && ndevice > 0) {
+	tdpMemcpy(&tmp, &halo->target->hzhi, sizeof(double *),
+		  tdpMemcpyDeviceToHost);
+	tdpMemcpyAsync(tmp, halo->hzhi, ncount*sizeof(double),
+		       tdpMemcpyHostToDevice, halo->stream[Z]);
+      }
     }
   }
 

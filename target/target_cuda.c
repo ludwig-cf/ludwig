@@ -183,6 +183,20 @@ __host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
   return cudaDeviceGetAttribute(value, attr, device);
 }
 
+__host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache) {
+  return cudaDeviceGetCacheConfig(cache);
+}
+
+__host__ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
+
+  return cudaDeviceSetCacheConfig(cacheConfig);
+}
+
+__host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
+
+  return cudaDeviceSynchronize();
+}
+
 __host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop,
 					   int device) {
 
@@ -192,11 +206,6 @@ __host__ tdpError_t tdpGetDeviceProperties(struct tdpDeviceProp * prop,
 __host__ tdpError_t tdpSetDevice(int device) {
 
   return cudaSetDevice(device);
-}
-
-__host__ __device__ tdpError_t tdpDeviceSynchronize(void) {
-
-  return cudaDeviceSynchronize();
 }
 
 __host__ __device__ tdpError_t tdpGetDevice(int * device) {

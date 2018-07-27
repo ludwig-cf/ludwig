@@ -99,6 +99,33 @@ void tdp_x86_postlaunch(void) {
 
 /*****************************************************************************
  *
+ *  tdpDeviceGetCacheConfig
+ *
+ *****************************************************************************/
+
+tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cacheConfig) {
+
+  *cacheConfig = tdpFuncCachePreferNone;
+  return tdpSuccess;
+}
+
+
+/*****************************************************************************
+ *
+ *  tdpDeviceSetCacheConfig
+ *
+ *****************************************************************************/
+
+tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
+
+  /* No op. */
+  return tdpSuccess;
+}
+
+
+
+/*****************************************************************************
+ *
  *  tdpDeviceSynchronize
  *
  *****************************************************************************/
