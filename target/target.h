@@ -39,6 +39,7 @@ __host__ tdpError_t tdpSetDevice(int device);
 __host__ __device__ tdpError_t tdpDeviceGetAttribute(int * value,
 						     tdpDeviceAttr attr,
 						     int device);
+__host__ __device__ tdpError_t tdpDeviceGetCacheConfig(tdpFuncCache * cache);
 __host__ __device__ tdpError_t tdpDeviceSynchronize(void);
 __host__ __device__ tdpError_t tdpGetDevice(int * device);
 __host__ __device__ tdpError_t tdpGetDeviceCount(int * count);

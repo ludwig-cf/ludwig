@@ -19,6 +19,12 @@
 #include "cuda_runtime_api.h"
 
 typedef cudaFuncCache tdpFuncCache;
+
+#define tdpFuncCachePreferNone   cudaFuncCachePreferNone
+#define tdpFuncCachePreferShared cudaFuncCachePreferShared
+#define tdpFuncCachePreferL1     cudaFuncCachePreferL1
+#define tdpFuncCahcePreferEqual  cudaFuncCachePreferEqual
+
 typedef cudaMemcpyKind tdpMemcpyKind;
 typedef cudaDeviceAttr tdpDeviceAttr;
 
