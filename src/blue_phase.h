@@ -52,7 +52,7 @@ struct fe_lc_param_s {
   double kappa0;
   double kappa1;
 
-  double xi;
+  double xi;                              /* Flow aligning parameter */
   double zeta0;                           /* active stress term delta_ab */
   double zeta1;                           /* active stress term Q_ab */
   double zeta2;                           /* active stress d_a P_b + d_b P_a */
@@ -66,6 +66,7 @@ struct fe_lc_param_s {
   double w2_coll;                         /* Second anchoring parameter */
   double w1_wall;
   double w2_wall;
+  double nfix[3];                         /* Fixed anchoring orientation */
 
   int anchoring_coll;                     /* Colloids anchoring type */
   int anchoring_wall;                     /* Wall anchoring type */

@@ -1,15 +1,10 @@
 ##############################################################################
 #
-#  Active nematic 2-d smoke test (turbulent regime)
-#
-#  See also serial-actv-s01.inp
-#
-#  This one is in the turbulent regime lc_active_zeta1 0.05
+#  Wall anchoring (fixed) smake test: orientation (1,0,0)
 #
 ##############################################################################
 
-N_cycles 20
-N_start 0
+N_cycles 2
 
 ##############################################################################
 #
@@ -17,8 +12,8 @@ N_start 0
 # 
 ##############################################################################
 
-size 64_64_1
-grid 1_1_1
+size 32_32_64
+grid 2_2_2
 reduced_halo no
 
 ##############################################################################
@@ -27,10 +22,7 @@ reduced_halo no
 #
 ##############################################################################
 
-viscosity 1.3333
-
-isothermal_fluctuations off
-temperature 0.00002133333
+viscosity 1.0
 
 ##############################################################################
 #
@@ -41,26 +33,26 @@ temperature 0.00002133333
 free_energy lc_blue_phase
 
 fd_advection_scheme_order 1
-fd_gradient_calculation 3d_7pt_fluid
+fd_gradient_calculation 3d_7pt_solid
 
-lc_a0      1.0
+lc_a0      0.01
 lc_gamma   3.0
-lc_q0      0.0
-lc_kappa0  0.04
-lc_kappa1  0.04
+lc_q0      0.19635
+lc_kappa0  0.000648456
+lc_kappa1  0.000648456
 lc_xi      0.7
 
-lc_Gamma   0.3375
+lc_Gamma   0.5
 
-lc_activity     yes
-lc_active_zeta1 0.05
+lc_q_initialisation        nematic
+lc_q_init_amplitude        0.333333333333333
+lc_init_redshift           1.0
+lc_init_nematic            1.0_1.0_1.0
 
-lc_q_initialisation active_nematic_q2d_y
-lc_q_init_amplitude 0.333333333333333
-lc_init_redshift 1.0
-lc_init_nematic 0.0_1.0_0.0
-
-lc_anchoring_method none
+lc_anchoring_method        two
+lc_wall_anchoring          fixed
+lc_wall_fixed_orientation  2.0_0.0_0.0
+lc_anchoring_strength      0.002593824
 
 ###############################################################################
 #
@@ -76,9 +68,9 @@ colloid_init     none
 #
 ###############################################################################
 
-boundary_walls_on no
-periodicity 1_1_1
-boundary_walls 0_0_0
+boundary_walls_on yes
+boundary_walls 0_0_1
+periodicity 1_1_0
 
 ###############################################################################
 #
@@ -86,8 +78,10 @@ boundary_walls 0_0_0
 #
 ###############################################################################
 
-freq_statistics 20
+freq_statistics 2
 config_at_end no
+
+colloid_io_freq 10000000
 
 ###############################################################################
 #
