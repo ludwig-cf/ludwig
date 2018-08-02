@@ -5,7 +5,6 @@
  *  Electrokinetics: field quantites for potential and charge densities,
  *  and a number of other relevant quantities.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -73,6 +72,7 @@ int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
   cs_nhalo(cs, &nhalo);
 
   psi = (psi_t *) calloc(1, sizeof(psi_t));
+  assert(psi);
   if (psi == NULL) pe_fatal(pe, "Allocation of psi failed\n");
 
   psi->pe = pe;
@@ -1392,6 +1392,10 @@ int psi_electroneutral(psi_t * psi, map_t * map) {
   qloc = 0.0;
   qtot = 0.0;
 
+  for (n = 0; n < nk; n++) {
+    psi_valency(psi, n, valency + n);
+  }
+
   /* accumulate local charge */
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
@@ -1400,7 +1404,6 @@ int psi_electroneutral(psi_t * psi, map_t * map) {
 	index = cs_index(psi->cs, ic, jc, kc);
 
 	for (n = 0; n < nk; n++) {
-	  psi_valency(psi, n, valency + n);
 	  psi_rho(psi, index, n, &rho);
 	  qloc += valency[n]*rho;
 	}

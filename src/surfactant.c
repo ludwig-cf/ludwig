@@ -86,6 +86,7 @@ int fe_surfactant1_create(pe_t * pe, cs_t * cs, field_t * phi,
   assert(grad);
 
   obj = (fe_surfactant1_t *) calloc(1, sizeof(fe_surfactant1_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(fe_surfactant1_t) failed\n");
 
   obj->pe = pe;

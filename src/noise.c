@@ -20,7 +20,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 Kevin Stratford
+ *  (c) 2013-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -61,6 +61,7 @@ __host__ int noise_create(pe_t * pe, cs_t * cs, noise_t ** pobj) {
   assert(pobj);
 
   obj = (noise_t *) calloc(1, sizeof(noise_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(noise_t) failed\n");
 
   obj->pe = pe;

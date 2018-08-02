@@ -61,10 +61,7 @@ lc_q_init_amplitude 0.333333333333333
 lc_init_redshift 1.0
 lc_init_nematic 0.0_1.0_0.0
 
-lc_anchoring_method two
-lc_wall_anchoring fixed
-lc_coll_anchoring normal
-lc_anchoring_strength_wall 0.04
+lc_anchoring_method none
 
 ###############################################################################
 #
@@ -73,10 +70,6 @@ lc_anchoring_strength_wall 0.04
 ###############################################################################
 
 colloid_init     none
-
-# Constant body force on all colloids ("gravity")
-
-colloid_gravity 0.0_0.0_0.0
 
 ###############################################################################
 #

@@ -5,7 +5,6 @@
  *  Run time input for blue phase free energy, and related parameters.
  *  Also relevant Beris Edwards parameters.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -239,9 +238,17 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     }
 
     if (strcmp(type_wall, "fixed") == 0) {
+      double nfix[3] = {0.0, 1.0, 0.0}; /* default orientation */
+      double rmod;
       fe_param.anchoring_wall = LC_ANCHORING_FIXED;
       w1_wall = w1;
       w2_wall = 0.0;
+      rt_double_parameter_vector(rt, "lc_wall_fixed_orientation", nfix);
+      /* Make sure it's a unit vector */
+      rmod = 1.0/sqrt(nfix[X]*nfix[X] + nfix[Y]*nfix[Y] + nfix[Z]*nfix[Z]);
+      fe_param.nfix[X] = rmod*nfix[X];
+      fe_param.nfix[Y] = rmod*nfix[Y];
+      fe_param.nfix[Z] = rmod*nfix[Z];
     }
 
     /* Colloids default, then look for specific value */
@@ -283,6 +290,11 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     pe_info(pe, "Ratio (wall) w1/kappa0:          = %14.7e\n",
 	    w1_wall/fe_param.kappa0);
     pe_info(pe, "Computed surface order f(gamma)  = %14.7e\n", amp0);
+
+    if (fe_param.anchoring_wall == LC_ANCHORING_FIXED) {
+      pe_info(pe, "Wall fixed anchoring orientation = %14.7e %14.7e %14.7e\n",
+	      fe_param.nfix[X], fe_param.nfix[Y], fe_param.nfix[Z]);
+    }
 
     /* For computed anchoring order [see fe_lc_amplitude_compute()] */
     if (fe_param.gamma < (8.0/3.0)) {

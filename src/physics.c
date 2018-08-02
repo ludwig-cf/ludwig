@@ -96,6 +96,7 @@ __host__ int physics_create(pe_t * pe, physics_t ** phys) {
   assert(phys);
 
   obj = (physics_t *) calloc(1, sizeof(physics_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(physics_t) failed\n");
 
   obj->eta_shear = ETA_DEFAULT;

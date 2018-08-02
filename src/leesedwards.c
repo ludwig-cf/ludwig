@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -96,9 +96,11 @@ __host__ int lees_edw_create(pe_t * pe, cs_t * cs, lees_edw_info_t * info,
   assert(cs);
 
   le = (lees_edw_t *) calloc(1, sizeof(lees_edw_t));
+  assert(le);
   if (le == NULL) pe_fatal(pe, "calloc(lees_edw_t) failed\n");
 
   le->param = (lees_edw_param_t *) calloc(1, sizeof(lees_edw_param_t));
+  assert(le->param);
   if (le->param == NULL) pe_fatal(pe, "calloc(lees_edw_param_t) failed\n");
 
   le->pe = pe;
@@ -489,6 +491,7 @@ static int lees_edw_init_tables(lees_edw_t * le) {
   le->param->index_real_nbuffer = n;
 
   le->icreal_to_buff = (int *) calloc(n, sizeof(int));
+  assert(le->icreal_to_buff);
   if (le->icreal_to_buff == NULL) pe_fatal(le->pe, "calloc(le) failed\n");
 
   /* Set table in abscence of planes. */
@@ -550,7 +553,8 @@ static int lees_edw_init_tables(lees_edw_t * le) {
     * jump? This is +1 for 'looking up' and -1 for 'looking down'.*/
 
    if (le->param->nxbuffer > 0) {
-     le->buffer_duy = (int *) calloc(le->param->nxbuffer, sizeof(double));
+     le->buffer_duy = (int *) calloc(le->param->nxbuffer, sizeof(int));
+     assert(le->buffer_duy);
      if (le->buffer_duy == NULL) pe_fatal(le->pe,"calloc(buffer_duy) failed\n");
    }
 

@@ -720,10 +720,12 @@ int util_matrix_create(int m, int n, double *** p) {
   double ** matrix = NULL;
 
   matrix = (double**) calloc(m, sizeof(double *));
+  assert(matrix);
   if (matrix == NULL) return -1;
 
   for (i = 0; i < m; i++) {
     matrix[i] = (double*) calloc(n, sizeof(double));
+    assert(matrix[i]);
     if (matrix[i] == NULL) ifail += 1;
   }
 
@@ -743,6 +745,7 @@ int util_matrix_free(int m, double ***p) {
 
   int i;
   assert(p);
+  assert(*p);
 
   for (i = 0; i < m; i++) {
     free((*p)[i]);
@@ -1040,12 +1043,23 @@ __host__ int util_matrix_invert(int n, double ** a) {
   assert(a);
 
   indexcol = (int*) calloc(n, sizeof(int));
-  indexrow = (int*) calloc(n, sizeof(int));
-  ipivot = (int*) calloc(n, sizeof(int));
-
+  assert(indexcol);
   if (indexcol == NULL) return -3;
-  if (indexrow == NULL) return -3;
-  if (ipivot == NULL) return -3;
+
+  indexrow = (int*) calloc(n, sizeof(int));
+  assert(indexrow);
+  if (indexrow == NULL) {
+    free(indexcol);
+    return -3;
+  }
+
+  ipivot = (int*) calloc(n, sizeof(int));
+  assert(ipivot);
+  if (ipivot == NULL) {
+    free(indexrow);
+    free(indexcol);
+    return -3;
+  }
 
   icol = -1;
   irow = -1;

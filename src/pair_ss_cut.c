@@ -68,6 +68,7 @@ int pair_ss_cut_create(pe_t * pe, cs_t * cs, pair_ss_cut_t ** pobj) {
   assert(pobj);
 
   obj = (pair_ss_cut_t *) calloc(1, sizeof(pair_ss_cut_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(pair_ss_cut_t) failed\n");
 
   obj->pe = pe;

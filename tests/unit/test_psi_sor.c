@@ -288,6 +288,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   /* Compute and store the permeativity values for convenience */
 
   epsilon = (double *) calloc(n, sizeof(double));
+  assert(epsilon);
   if (epsilon == NULL) pe_fatal(obj->pe, "calloc(epsilon) failed\n");
 
   for (k = 0; k < n; k++) {
@@ -300,6 +301,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   a = (double *) calloc(n*n, sizeof(double));
   b = (double *) calloc(n, sizeof(double));
   c = (double *) calloc(n, sizeof(double));
+  assert(a && b && c);
   if (a == NULL) pe_fatal(obj->pe, "calloc(a) failed\n");
   if (b == NULL) pe_fatal(obj->pe, "calloc(b) failed\n");
   if (c == NULL) pe_fatal(obj->pe, "calloc(c) failed\n");

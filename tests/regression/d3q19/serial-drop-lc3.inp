@@ -1,51 +1,102 @@
 ##############################################################################
 #
-#  Droplet free energy: Cubic fluid cylinder phase
+#  Cubic fluid cylinder phase (input file)
 #
 #  See Lintuvuori et al PRL (2018) Figure 1
+#
+#  -- Note for this regrssion test
 #  For the purposes of this test the system size is reduced to 64^3
-#  isothermal fluctuations are off and wee run for 2 steps.
+#  isothermal fluctuations are off and we run for 2 steps.
+#  -- End note
 #
 #  "Parameter Set A"
-#  Composition phi
-#  90:10 LC:isotropic => mean phi reported in output \approx 0.8
-#        The initialisation is via "patches" of size 4
-#        and total patch volume fraction 0.1 (phi = -1 minority,
-#        isotropic phase).
-#  Symmstric free energy parameters
-#  A = -B = 0.000625 kappa = 0.00053 => sigma = 5.4e-4
-#                                    => bare interfacial width \xi_0 = 1.3
-#  Mobility M = 5
+#  Compositional order
+#  The 90:10 liquid-crystal:isotropic composition is set via the
+#  choice of initial compositional order parameter \phi.
+#  The initialisation is set in the input via the keys
 #
-#  LC 
-#  A_0 = 0.5 K = 0.14
-#  gamma_0 = 2.586 and delta = 0.25 giving gamma = gamma_0 + (1+phi)delta
-#            gamma = 3.086 in the ordered (phi = +1) phase
-#            Reduced temperature is then -0.25 in ordered phase.
+#    phi_initialisation  patches
+#    phi_init_patch_size 4
+#    phi_init_patch_vol  0.1
+#
+#  This selection forms random patches of size 4 lattice units to a
+#  total volume fraction of the minority phase (phi = -1) of 0.1 (10%).
+#  The (pseudo-) random part is controlled via the choice
+#
+#    random_seed 8361235
+#
+#  At this composition the mean \phi reported in the output should be
+#  \approx 0.8.
+#
+#  Symmetric free energy parameters
+#
+#    A -0.000625
+#    B  0.000625
+#    K  0.00053
+#
+#  determine the bare fluid interfacial tension \sigma \approx 5.4e-04
+#  and bare interfacial width                   \xi_0  \approx 1.3
+#
+#    mobility 5.0
+#
+#  sets the order parameter mobility in the Cahn Hilliard equation. 
+#
+#  Liquid Crystal free energy parameter
+#
+#  The bare liquid crystal free energy parameters are set be
+#
+#    lc_a0      0.05          A_0, the energy scale
+#    lc_gamma   3.086         see below
+#    lc_q0      0.06942       2\pi/pitch
+#    lc_kappa0  0.14          elastic constant
+#    lc_kappa1  0.14          elastic constant
+#    lc_xi      0.7           flow aligning parameter
+#
+#  A combination of these parameters set the reduced chirality
+#  and reduced temperature appropriate for equilibrium blue phasae I
+#  (chirality \approx 0.7 and reduced temperature \approx -0.25 in
+#  the ordered phase).
+#
+#  The coupling part of the free energy is determined by the parameters
+#
+#    lc_droplet_gamma  2.586    "\gamma_0"
+#    lc_droplet_delta  0.25     "delta"
+#    lc_droplet_W      0.0      interfacial anchoring free energy
+#
+#   \gamma = gamma_0 + delta*(1 + phi)
+#  so that \gamma is 3.086 in the ordered (phi = +1) phase
+#  (and matches lc_gamma).
+#
+#  The initial tensor order parameter Q_ab is set via
+#
+#    lc_q_initialisation o8m
+#    lc_q_init_amplitude -0.2
+#    lc_init_redshift 1.0
+#
+#  which is appropriate for the hign chirality limit approximation for
+#  blue phase I. The negative amplitude is a convention.
+#
 #  The BPI unit cell size is 64sqrt(2) ie, pitch is 64 and then
 #      q_0 = 0.06942
-#      and then Chirality \approx 0.7
 #  The system size = 128^3 = 2x2x2 unit cells of BP1.
-#  The "redshift" is unity.
+#  The "redshift" is unity (see supplementary material).
 #
 #  If the symmetric part of the stress is not placed in the collision
 #  then a redshift of 0.83 which is fixed controls stability; it will
 #  produce a slightly lower measured free energy.
 #
-#  Initialisation of the Q_ab for the LC is via tag "o8m" which is the
-#  high chirality approximation for BPI
-#  Droplet anchoring free energy term W = 0
-#  The anisotropy factor appearing in the LC stress lc_xi = 0.7.
-#  Rotational diffusion Gamma = 0.5
+#  Rotational diffusion in the Beris Edwards equation is Gamma = 0.5
 #
+#  Fluid properties
 #  Fluid viscosity = 0.5 lattice units
+#  Isothermal fluctualtions may be on or off
 #  Temperature     We have kT = 4.0x10^-5 A_0 xi^3 [note 26]
 #                  If \chi = 0.019 (Figure 1 caption) xi = 1.69 and
 #                  xi^3 = 4.8 so kT = 9.6x10^-6
 #
 #  Here the free energy is output every 1000 steps. To see the very
 #  sharp decline at the start of the run, one must use e.g., every
-#  100 steps. Total 30000 steps.
+#  100 steps. Total number of steps "N_cycles" is 30000 steps.
 #
 ##############################################################################
 
@@ -96,8 +147,6 @@ B 0.000625
 K 0.00053
 
 mobility 5.0
-noise 0.05
-phi0 0.8
 
 phi_initialisation patches
 phi_init_patch_size 4

@@ -72,6 +72,7 @@ __host__ int pe_create(MPI_Comm parent, pe_enum_t flag, pe_t ** ppe) {
     exit(0);
   }
 
+  assert(pe);
   pe->unquiet = 0; /* Quiet */
   pe->parent_comm = parent;
   pe->nref = 1;

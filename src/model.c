@@ -65,6 +65,7 @@ __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** plb) {
   assert(plb);
 
   lb = (lb_t *) calloc(1, sizeof(lb_t));
+  assert(lb);
   if (lb == NULL) pe_fatal(pe, "calloc(1, lb_t) failed\n");
 
   lb->param = (lb_collide_param_t *) calloc(1, sizeof(lb_collide_param_t));
@@ -1552,6 +1553,8 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   sendback = (double *) malloc(nsend*sizeof(double));
   recvforw = (double *) malloc(nsend*sizeof(double));
   recvback = (double *) malloc(nsend*sizeof(double));
+  assert(sendback && sendforw);
+  assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(lb->pe, "malloc(sendforw) failed\n");
   if (sendback == NULL) pe_fatal(lb->pe, "malloc(sendback) failed\n");
   if (recvforw == NULL) pe_fatal(lb->pe, "malloc(recvforw) failed\n");

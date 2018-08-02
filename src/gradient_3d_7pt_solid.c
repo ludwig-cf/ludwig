@@ -130,9 +130,11 @@ __host__ int grad_lc_anch_create(pe_t * pe, cs_t * cs, map_t * map,
   assert(fe);
 
   obj = (grad_lc_anch_t *) calloc(1, sizeof(grad_lc_anch_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(grad_lc_anch_t) failed\n");
 
   obj->param = (param_t *) calloc(1, sizeof(param_t));
+  assert(obj->param);
   if (obj->param == NULL) pe_fatal(pe, "calloc(param_t) failed\n");
 
   obj->pe = pe;
@@ -921,7 +923,8 @@ int gradient_bcs6x6_coeff(double kappa0, double kappa1, const int dn[3],
  *****************************************************************************/
 
 __host__ __device__
-int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch,
+int q_boundary_constants(cs_t * cs,
+			 fe_lc_param_t * param, grad_lc_anch_t * anch,
 			 int ic, int jc, int kc,
 			 double qs[3][3],
 			 const int di[3], int status, double c[3][3],
@@ -982,8 +985,16 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
     dnhat[Z] *= rd;
   }
 
-  if (anchor == LC_ANCHORING_NORMAL) {
+  if (anchor == LC_ANCHORING_FIXED) {
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+        q0[ia][ib] = 0.5*amp*(3.0*param->nfix[ia]*param->nfix[ib] - d[ia][ib]);
+	qtilde[ia][ib] = 0.0;
+      }
+    }
+  }
 
+  if (anchor == LC_ANCHORING_NORMAL) {
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
         q0[ia][ib] = 0.5*amp*(3.0*dnhat[ia]*dnhat[ib] - d[ia][ib]);
@@ -991,8 +1002,9 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
       }
     }
   }
-  else { /* PLANAR */
 
+  if (anchor == LC_ANCHORING_PLANAR) {
+    /* Compute qtilde, and its projection */
     q2 = 0.0;
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
@@ -1039,11 +1051,12 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
       if (anch->phi == NULL) {
 	wphi = 1.0;
       }
-      /* Compositional order parameter for LC wetting:
-	 The LC anchoring strengths w1 and w2 vanish in the disordered phase.
-	 We assume this is the phase which has a negative binary OP, e.g. phi = -1. 
-	 The standard anchoring case corresponds to phi = +1 */
       else {
+	/* Compositional order parameter for LC wetting:
+	 * The LC anchoring strengths w1 and w2 vanish in the disordered phase.
+	 * We assume this is the phase which has a negative binary
+	 * order parameter e.g. phi = -1. 
+	 * The standard anchoring case corresponds to phi = +1 */
 	index = cs_index(cs, ic, jc, kc);
 	phi = anch->phi->data[addr_rank0(anch->phi->nsites, index)];
 	wphi = 0.5*(1.0+phi);
@@ -1052,8 +1065,6 @@ int q_boundary_constants(cs_t * cs, fe_lc_param_t * param, grad_lc_anch_t * anch
       c[ia][ib] +=
 	-w1*wphi*(qs[ia][ib] - q0[ia][ib])
 	-w2*wphi*(2.0*q2 - 4.5*amp*amp)*qtilde[ia][ib];
-
-
     }
   }
 
@@ -1084,8 +1095,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
   int anchoring;
 
   double qtilde[3][3];
-  double amplitude;
-  double  nfix[3] = {0.0, 1.0, 0.0};
+  double amp;
   KRONECKER_DELTA_CHAR(d);
 
   assert(map_status == MAP_COLLOID || map_status == MAP_BOUNDARY);
@@ -1093,19 +1103,20 @@ int colloids_q_boundary(fe_lc_param_t * param,
   anchoring = param->anchoring_coll;
   if (map_status == MAP_BOUNDARY) anchoring = param->anchoring_wall;
 
-  fe_lc_amplitude_compute(param, &amplitude);
+  fe_lc_amplitude_compute(param, &amp);
 
   if (anchoring == LC_ANCHORING_FIXED) {
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amplitude*(3.0*nfix[ia]*nfix[ib] - d[ia][ib]);
+	q0[ia][ib] = 0.5*amp*(3.0*param->nfix[ia]*param->nfix[ib] - d[ia][ib]);
       }
     }
   }
+
   if (anchoring == LC_ANCHORING_NORMAL) {
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	q0[ia][ib] = 0.5*amplitude*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
+	q0[ia][ib] = 0.5*amp*(3.0*nhat[ia]*nhat[ib] - d[ia][ib]);
       }
     }
   }
@@ -1116,7 +1127,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
 
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	qtilde[ia][ib] = qs[ia][ib] + 0.5*amplitude*d[ia][ib];
+	qtilde[ia][ib] = qs[ia][ib] + 0.5*amp*d[ia][ib];
       }
     }
 
@@ -1130,7 +1141,7 @@ int colloids_q_boundary(fe_lc_param_t * param,
 	  }
 	}
 	/* Return Q^0_ab = ~Q_ab - (1/2) A d_ab */
-	q0[ia][ib] -= 0.5*amplitude*d[ia][ib];
+	q0[ia][ib] -= 0.5*amp*d[ia][ib];
       }
     }
 

@@ -348,11 +348,15 @@ int nernst_planck_driver_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
   psi_nk(psi, &nk);
 
   /* Allocate fluxes and initialise to zero */
-  flx = (double **) calloc(psi->nsites*nk, sizeof(double));
+  flx = (double **) calloc(psi->nsites*nk, sizeof(double *));
+  assert(flx);
+  if (flx == NULL) pe_fatal(psi->pe, "calloc(flx) failed\n");
+
   for (ia = 0; ia < psi->nsites*nk; ia++) {
     flx[ia] = (double *) calloc(PSI_NGRAD-1, sizeof(double));
+    assert(flx[ia]);
+    if (flx[ia] == NULL) pe_fatal(psi->pe, "calloc(flx[]) failed\n");
   }
-  if (flx == NULL) pe_fatal(psi->pe, "calloc(flx) failed\n");
 
   /* Add advective fluxes */
   if (hydro) advective_fluxes_d3qx(hydro, nk, psi->rho, flx);

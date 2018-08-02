@@ -90,6 +90,7 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pch);
 
   obj = (phi_ch_t *) calloc(1, sizeof(phi_ch_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(phi_ch_t) failed\n");
 
   obj->pe = pe;
@@ -445,6 +446,7 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise) {
   lees_edw_nlocal(pch->le, nlocal);
 
   rflux = (double *) malloc(3*nsites*sizeof(double));
+  assert(rflux);
   if (rflux == NULL) pe_fatal(pch->pe, "malloc(rflux) failed\n");
 
   /* We go one site into the halo region to allow all the fluxes to
@@ -562,6 +564,7 @@ static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf) {
     nbuffer = nf*nlocal[Y]*nlocal[Z];
     buffere = (double *) malloc(nbuffer*sizeof(double));
     bufferw = (double *) malloc(nbuffer*sizeof(double));
+    assert(buffere && bufferw);
     if (buffere == NULL) pe_fatal(pch->pe, "malloc(buffere) failed\n");
     if (bufferw == NULL) pe_fatal(pch->pe, "malloc(bufferw) failed\n");
 
@@ -776,8 +779,6 @@ static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf) {
     MPI_Issend(sbufw     , n2, MPI_DOUBLE, nrank_s[1], tag1, le_comm, sreq+1);
 
     /* OTHER WAY */
-
-    kc = 1 - nhalo;
 
     lees_edw_plane_dy(pch->le, &dy);
     dy = fmod(-dy, ltotal[Y]);

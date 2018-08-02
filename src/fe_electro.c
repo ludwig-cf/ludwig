@@ -113,6 +113,7 @@ __host__ int fe_electro_create(pe_t * pe, psi_t * psi, fe_electro_t ** pobj) {
   assert(psi);
 
   fe = (fe_electro_t *) calloc(1, sizeof(fe_electro_t));
+  assert(fe);
   if (fe == NULL) pe_fatal(pe, "calloc() failed\n");
 
   fe->pe = pe;

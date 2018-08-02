@@ -16,7 +16,6 @@
  *  lattice Cartesian communicator. Each IO communicator group so
  *  defined then deals with its own file.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -108,6 +107,7 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
   assert(p);
 
   info = (io_info_t *) calloc(1, sizeof(io_info_t));
+  assert(info);
   if (info == NULL) pe_fatal(pe, "Failed to allocate io_info_t struct\n");
 
   info->pe = pe;
@@ -156,6 +156,7 @@ static int io_decomposition_create(pe_t * pe, cs_t * cs, const int grid[3],
   assert(pobj);
 
   p = (io_decomposition_t *) calloc(1, sizeof(io_decomposition_t));
+  assert(p);
   if (p == NULL) pe_fatal(pe, "Failed to allocate io_decomposition_t\n");
 
   p->n_io = 1;

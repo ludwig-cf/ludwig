@@ -7,12 +7,10 @@
  *  At the moment the number of species is set to 2 automatically
  *  if the electrokinetics is switched on.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -67,18 +65,18 @@ int psi_rt_init_param(pe_t * pe, rt_t * rt, psi_t * obj) {
   psi_nk(obj, &nk);
   assert(nk == 2); /* nk must be two for the time being */
 
-  n = rt_int_parameter(rt, "electrokinetics_z0", valency);
-  n = rt_int_parameter(rt, "electrokinetics_z1", valency + 1);
-  n = rt_double_parameter(rt, "electrokinetics_d0", diffusivity);
-  n = rt_double_parameter(rt, "electrokinetics_d1", diffusivity + 1);
+  rt_int_parameter(rt, "electrokinetics_z0", valency);
+  rt_int_parameter(rt, "electrokinetics_z1", valency + 1);
+  rt_double_parameter(rt, "electrokinetics_d0", diffusivity);
+  rt_double_parameter(rt, "electrokinetics_d1", diffusivity + 1);
 
   for (n = 0; n < nk; n++) {
     psi_valency_set(obj, n, valency[n]);
     psi_diffusivity_set(obj, n, diffusivity[n]);
   }
 
-  n = rt_double_parameter(rt, "electrokinetics_eunit", &eunit);
-  n = rt_double_parameter(rt, "electrokinetics_epsilon", &epsilon);
+  rt_double_parameter(rt, "electrokinetics_eunit", &eunit);
+  rt_double_parameter(rt, "electrokinetics_epsilon", &epsilon);
 
   psi_unit_charge_set(obj, eunit);
   psi_epsilon_set(obj, epsilon);
@@ -147,8 +145,8 @@ int psi_rt_init_param(pe_t * pe, rt_t * rt, psi_t * obj) {
 
   /* I/O */
 
-  n = rt_int_parameter_vector(rt, "default_io_grid", io_grid);
-  n = rt_string_parameter(rt, "psi_format", value, BUFSIZ);
+  rt_int_parameter_vector(rt, "default_io_grid", io_grid);
+  rt_string_parameter(rt, "psi_format", value, BUFSIZ);
 
   if (strcmp(value, "ASCII") == 0) {
     io_format_in = IO_FORMAT_ASCII;
@@ -201,7 +199,7 @@ int psi_rt_init_rho(pe_t * pe, rt_t * rt, psi_t * obj, map_t * map) {
   pe_info(pe, "Initial charge densities\n");
   pe_info(pe, "------------------------\n");
 
-  n = rt_string_parameter(rt, "electrokinetics_init", value, BUFSIZ);
+  rt_string_parameter(rt, "electrokinetics_init", value, BUFSIZ);
 
   if (strcmp(value, "gouy_chapman") == 0) {
     pe_info(pe, "Initial conditions:         %s\n", "Gouy Chapman");

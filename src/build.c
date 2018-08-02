@@ -5,7 +5,6 @@
  *  Responsible for the construction of links for particles which
  *  do bounce back on links.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -328,7 +327,6 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
   cs_nlocal_offset(cs, offset);
 
   p_link = p_colloid->lnk;
-  p_last = p_link;
   radius = p_colloid->s.a0;
 
   /* Failsafe approach: set all links to unused status */
@@ -440,9 +438,9 @@ int build_reconstruct_links(cs_t * cs, colloids_info_t * cinfo,
 	    if (p_colloid->lnk == NULL) {
 	      /* Remember to attach the head of the list */
 	      p_colloid->lnk = p_link;
-	      p_last = p_link;
 	    }
 	    else {
+	      assert(p_last);
 	      p_last->next = p_link;
 	    }
 

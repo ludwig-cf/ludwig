@@ -78,6 +78,7 @@ __host__ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb,
   assert(p);
 
   wall = (wall_t *) calloc(1, sizeof(wall_t));
+  assert(wall);
   if (wall == NULL) pe_fatal(pe, "calloc(wall_t) failed\n");
 
   wall->param = (wall_param_t *) calloc(1, sizeof(wall_param_t));
@@ -299,6 +300,7 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
   tdpGetDeviceCount(&ndevice);
 
   if (init == WALL_INIT_ALLOCATE) {
+    assert(wall->nlink > 0);
     wall->linki = (int *) calloc(wall->nlink, sizeof(int));
     wall->linkj = (int *) calloc(wall->nlink, sizeof(int));
     wall->linkp = (int *) calloc(wall->nlink, sizeof(int));
@@ -448,9 +450,11 @@ __host__ int wall_init_uw(wall_t * wall) {
 
   if (nwall == 1) {
     /* All links are either top or bottom */
+    iw = -1;
     if (wall->param->isboundary[X]) iw = X;
     if (wall->param->isboundary[Y]) iw = Y;
     if (wall->param->isboundary[Z]) iw = Z;
+    assert(iw == X || iw == Y || iw == Z);
 
     for (n = 0; n < wall->nlink; n++) {
       if (cv[wall->linkp[n]][iw] == -1) wall->linku[n] = WALL_UWBOT;

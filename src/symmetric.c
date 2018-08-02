@@ -97,9 +97,11 @@ __host__ int fe_symm_create(pe_t * pe, cs_t * cs, field_t * phi,
   assert(dphi);
 
   obj = (fe_symm_t *) calloc(1, sizeof(fe_symm_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(fe_symm_t) failed\n");
 
   obj->param = (fe_symm_param_t *) calloc(1, sizeof(fe_symm_param_t));
+  assert(obj->param);
   if (obj->param == NULL) pe_fatal(pe, "calloc(fe_symm_param_t failed\n");
 
   obj->pe = pe;

@@ -4,13 +4,13 @@
  *
  *  Communication for sums over colloid links.
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -95,6 +95,7 @@ int colloid_sums_create(colloids_info_t * cinfo, colloid_sum_t ** psum) {
   assert(cinfo);
 
   sum = (colloid_sum_t *) calloc(1, sizeof(colloid_sum_t));
+  assert(sum);
   if (sum == NULL) pe_fatal(cinfo->pe, "calloc(colloid_sum_t) failed\n");
 
   sum->pe = cinfo->pe;
@@ -137,6 +138,7 @@ int colloid_sums_halo(colloids_info_t * cinfo, colloid_sum_enum_t mtype) {
   assert(cinfo);
 
   sum = (colloid_sum_t * ) calloc(1, sizeof(colloid_sum_t));
+  assert(sum);
   if (sum == NULL) pe_fatal(cinfo->pe, "calloc(colloid_sum_t) failed\n");
 
   sum->pe = cinfo->pe;

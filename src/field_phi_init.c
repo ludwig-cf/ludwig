@@ -575,7 +575,7 @@ int field_phi_init_emulsion(field_t * phi, double xi, double radius,
   int noffset[3];
   int ic, jc, kc, index;
 
-  int i, j, k, y, z;
+  int y, z;
   int id;
   double dy, dz;
   int cy, cz;
@@ -642,19 +642,6 @@ int field_phi_init_emulsion(field_t * phi, double xi, double radius,
 
   }
 
-  for (i=0; i<ntotal[X]; i++) {
-    for (j=0; j<ntotal[Y]; j++) {
-      for (k=0; k<ntotal[Z]; k++) {
-
-	for (id=0; id<N_drops; id++) {
-
-	  r = sqrt((j-PosY[id])*(j-PosY[id]) + (k-PosZ[id])*(k-PosZ[id]));
-	} 
-
-      }
-    }
-  }
-
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -663,7 +650,6 @@ int field_phi_init_emulsion(field_t * phi, double xi, double radius,
 	y = noffset[Y] + jc;
 	z = noffset[Z] + kc;
 
-	phi1 = -(phistar);
 	Rclosest = ntotal[Y]*ntotal[Z];
 
 	for (id=0; id<N_drops; id++) {

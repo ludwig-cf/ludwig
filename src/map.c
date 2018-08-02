@@ -5,12 +5,10 @@
  *  Map of fluid lattice sites containing status (fluid, solid, etc)
  *  and with space for additional data such as wetting parameters.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -57,9 +55,11 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   cs_nhalo(cs, &nhalo);
 
   obj = (map_t*) calloc(1, sizeof(map_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(map_t) failed\n");
 
   obj->status = (char*) calloc(nsites, sizeof(char));
+  assert(obj->status);
   if (obj->status == NULL) pe_fatal(pe, "calloc(map->status) failed\n");
 
   obj->pe = pe;
@@ -70,6 +70,7 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   /* Could be zero-sized array */
 
   obj->data = (double*) calloc(ndata*nsites, sizeof(double));
+  assert(obj->data);
   if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
 
   coords_field_init_mpi_indexed(cs, nhalo, 1, MPI_CHAR, obj->halostatus);

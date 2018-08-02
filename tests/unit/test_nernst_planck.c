@@ -310,6 +310,10 @@ static int test_io(cs_t * cs, psi_t * psi, int tstep) {
   psifield = (double *) calloc(ntotal[X], sizeof(double));
   rho0field = (double *) calloc(ntotal[X], sizeof(double));
   rho1field = (double *) calloc(ntotal[X], sizeof(double));
+  assert(field);
+  assert(psifield);
+  assert(rho0field);
+  assert(rho1field);
   if (field == NULL) pe_fatal(psi->pe, "calloc(field) failed\n");
   if (psifield == NULL) pe_fatal(psi->pe, "calloc(psifield) failed\n");
   if (rho0field == NULL) pe_fatal(psi->pe, "calloc(rho0field) failed\n");

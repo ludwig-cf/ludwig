@@ -1,40 +1,51 @@
 ##############################################################################
 #
-#  Elastic Emulsion at 80:20
+#  Droplet Emulsion 80:20 (input file)
 #
 #  See Lintuvuori et al PRL (2018) Figure 2f-j
-#  For this test, the system size is reduced to 32^3, and we run
-#  for 10 time steps.
+#
+#  -- Note for this regrssion test
+#  For the purposes of this test the system size is reduced to 32^3
+#  isothermal fluctuations are off and we run for 10 steps.
+#  -- End note
+#
+#  See serial-drop-lc3.inp for a full description. We note here only
+#  pertintant differences for...
 #
 #  "Parameter Set C"
 #
-#  Composition
-#  80:20 LC: i 1sotropic (reported phi0 = 0.6)
-#  A = -B = 0.0625 kappa = 0.053 => sigma = 5.4e-02
-#  interfacial width xi_0 = 1.3
+#  Compositional order
+#
+#  The composition is 80:20  liquid crystal: i 1sotropic
+#  The reported mean phi should be around 0.6.
+#
+#  Symmetric free energy
+#
+#  Parameters are choosen to give a higher interfacial tension, but the
+#  same interfacial width:
+#
+#    A -0.0625
+#    B  0.0625
+#    K  0.053
+#
+#  so \sigma \approx 5.4e-02 and \xi_0 \approx 1.3
 #  Cahn Hilliard equation mobility M = 0.05
 #
-#  The composition is initialised in random patches of size 4
-#  lattice units to the appropriate 80:20 mix. (Minority phase
-#  phi = -1, LC phi = +1).
+#  Liquid crystel free energy
 #
-#  System size 128^3
-#  fluid viscoity 0.5, no fluctuations (kT = 0).
+#    lc_a0      0.05
+#    lc_gamma   3.086
+#    lc_q0      0.06942
+#    lc_kappa0  0.14
+#    lc_kappa1  0.14
+#    lc_xi      0.7
 #
-#  Liquid crystel
-#  A_0 = 0.05
-#  gamma_0 = 2.586 and delta = 0.25 giving gamma = gamma_0 + (1+phi)delta
-#    So gamma = 3.086 in ordered phase (phi = +1).
-#    Reduced temperature  = -0.25
-#  BP unit cell size is 64 sqrt(2) so pitch is 64 lattice units
-#  and q_0 = 0.06942
-#  kappa0 = kappa1 = kappa_LC = 0.14 and chirality \approx 0.7
-#  The "redshift" is unity.
+#  again give reduced chirality \approx 0.7 and reduced temperature
+#  \approx -0.25. The pitch is 64sqrt(2) and the BPI unit cell size
+#  is then 64 lattice units.
 #
-#  The symmetric part of the stress is via a relaxation in the collision
-#  stage via fe_use_stress_relaxation.
-#
-#  Figure 2j has run for 6.5 million time steps.
+#  Figure 2j has run for 6.5 million time steps. This requires some
+#  computational effort.
 #
 ##############################################################################
 

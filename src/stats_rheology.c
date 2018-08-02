@@ -82,6 +82,7 @@ int stats_rheology_create(pe_t * pe, cs_t * cs, stats_rheo_t ** pobj) {
   assert(cs);
 
   obj = (stats_rheo_t *) calloc(1, sizeof(stats_rheo_t));
+  assert(obj);
   if (obj == NULL) pe_fatal(pe, "calloc(stats_rheo_t) failed\n");
 
   obj->pe = pe;
@@ -136,11 +137,13 @@ int stats_rheology_create(pe_t * pe, cs_t * cs, stats_rheo_t ** pobj) {
   cs_nlocal(cs, nlocal);
 
   obj->sxy = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
+  assert(obj->sxy);
   if (obj->sxy == NULL) pe_fatal(pe, "malloc(sxy) failed\n");
 
   /* stat_xz_ */
 
   obj->stat_xz = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  assert(obj->stat_xz);
   if (obj->stat_xz == NULL) pe_fatal(pe, "malloc(stat_xz) failed\n");
 
   stats_rheology_stress_profile_zero(obj);
@@ -209,8 +212,10 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat, fe_t * fe,
   cs_cart_comm(stat->cs, &comm);
 
   fex = (double *) malloc(nlocal[X]*sizeof(double));
+  assert(fex);
   if (fex == NULL) pe_fatal(stat->pe, "malloc(fex) failed\n");
   fexmean = (double *) malloc(nlocal[X]*sizeof(double));
+  assert(fexmean);
   if (fexmean == NULL) pe_fatal(stat->pe, "malloc(fexmean failed\n");
 
   /* Accumulate the local average over y,z */
@@ -475,6 +480,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
   physics_eta_shear(phys, &eta);
 
   sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
+  assert(sxymean);
   if (sxymean == NULL) pe_fatal(stat->pe, "malloc(sxymean) failed\n");
 
   MPI_Reduce(stat->sxy, sxymean, NSTAT1*nlocal[X], MPI_DOUBLE, MPI_SUM, 0,
@@ -606,9 +612,11 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
   stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  assert(stat_2d);
   if (stat_2d == NULL) pe_fatal(stat->pe, "malloc(stat_2d) failed\n");
 
   stat_1d = (double *) malloc(NSTAT2*ntotal[Z]*sizeof(double));
+  assert(stat_1d);
   if (stat_1d == NULL) pe_fatal(stat->pe, "malloc(stat_1d) failed\n");
 
   /* Set the averaging factor (if no data, set to zero) */

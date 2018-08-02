@@ -126,9 +126,10 @@ __host__ int grad_3d_7pt_fluid_d4(field_grad_t * fgrad) {
   nextra = nhalo - 2*NSTENCIL;
   assert(nextra >= 0);
 
-  assert(0); /* NO TEST? */
   grad_3d_7pt_fluid_operator(cs, le, fgrad, nextra);
   grad_3d_7pt_fluid_le(le, fgrad, nextra);
+
+  assert(0); /* NO TEST? */
 
   return 0;
 }
