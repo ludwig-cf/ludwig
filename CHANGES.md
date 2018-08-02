@@ -1,6 +1,12 @@
 
 ### Changes
 
+Version 0.8.05
+- Added the option to specify fixed liquid crystal anchoring orientation
+  from the input.
+
+Version 0.8.04
+- Fixed bug in device halo swap.
 
 Version 0.8.0
 
