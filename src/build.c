@@ -78,7 +78,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   int nhalo;
   int status;
 
-  colloid_t * p_colloid;
+  colloid_t * p_colloid = NULL;
 
   double  r0[3];
   double  rsite0[3];

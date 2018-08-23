@@ -4,13 +4,13 @@
  *
  *  Run time colloid I/O settings.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2018 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -53,6 +53,7 @@ int colloid_io_run_time(pe_t * pe, rt_t * rt, cs_t * cs,
   colloid_io_format_input_ascii_set(cio);
   colloid_io_format_output_ascii_set(cio);
 
+  strcpy(tmp, "");
   rt_string_parameter(rt, "colloid_io_format", tmp, BUFSIZ);
 
   if (strncmp("BINARY", tmp, 5) == 0 || strncmp("binary", tmp, 5) == 0) {
