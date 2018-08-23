@@ -148,6 +148,7 @@ __host__ int hydro_free(hydro_t * obj) {
   }
 
   halo_swap_free(obj->halo);
+  if (obj->info) io_info_free(obj->info);
   free(obj->f);
   free(obj->u);
   free(obj);

@@ -2,6 +2,14 @@
  *
  *  hydro_rt.c
  *
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2018 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -24,7 +32,7 @@ int hydro_rt(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
 	     hydro_t ** phydro) {
 
   int hswitch = 1;
-  char value[BUFSIZ];
+  char value[BUFSIZ] = "";
 
   assert(pe);
   assert(rt);
@@ -60,7 +68,7 @@ static int hydro_do_init(pe_t * pe, rt_t * rt, cs_t * cs, lees_edw_t * le,
 
   hydro_t * obj = NULL;
 
-  char value[BUFSIZ];
+  char value[BUFSIZ] = "";
   int nhcomm = 1; /* Always create with halo width one */
   int io_grid[3] = {1, 1, 1};
   int io_format_in  = IO_FORMAT_DEFAULT;
