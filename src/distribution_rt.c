@@ -42,7 +42,7 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   int ndist;
   int nreduced;
   int io_grid[3] = {1, 1, 1};
-  char string[FILENAME_MAX];
+  char string[FILENAME_MAX] = "";
   char memory = ' ';
   int form_in = IO_FORMAT_DEFAULT;
   int form_out = IO_FORMAT_DEFAULT;
@@ -120,7 +120,7 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
 			     physics_t * phys) {
 
-  char key[FILENAME_MAX];
+  char key[FILENAME_MAX] = "";
   double rho0;
   double u0[3] = {0.0, 0.0, 0.0};
 

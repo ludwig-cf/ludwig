@@ -962,11 +962,18 @@ void ludwig_run(const char * inputfile) {
   bbl_free(ludwig->bbl);
   colloids_info_free(ludwig->collinfo);
 
+  if (ludwig->interact) interact_free(ludwig->interact);
+  if (ludwig->cio)      colloid_io_free(ludwig->cio);
+
   if (ludwig->wall)      wall_free(ludwig->wall);
   if (ludwig->noise_phi) noise_free(ludwig->noise_phi);
   if (ludwig->noise_rho) noise_free(ludwig->noise_rho);
   if (ludwig->be)        beris_edw_free(ludwig->be);
+  if (ludwig->map)       map_free(ludwig->map);
   if (ludwig->pch)       phi_ch_free(ludwig->pch);
+  if (ludwig->pth)       pth_free(ludwig->pth);
+  if (ludwig->hydro)     hydro_free(ludwig->hydro);
+  if (ludwig->lb)        lb_free(ludwig->lb);
 
   if (ludwig->stat_sigma) stats_sigma_free(ludwig->stat_sigma);
   if (ludwig->fe) ludwig->fe->func->free(ludwig->fe);
@@ -974,10 +981,13 @@ void ludwig_run(const char * inputfile) {
   TIMER_stop(TIMER_TOTAL);
   TIMER_statistics();
 
+  physics_free(ludwig->phys);
   lees_edw_free(ludwig->le);
   cs_free(ludwig->cs);
   rt_free(ludwig->rt);
   pe_free(ludwig->pe);
+
+  free(ludwig);
 
   return;
 }

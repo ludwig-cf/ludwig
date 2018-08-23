@@ -231,18 +231,20 @@ __host__ int lb_init(lb_t * lb) {
   /* The total number of distribution data is then... */
 
   ndata = lb->nsite*lb->ndist*NVEL;
-#ifndef OLD_DATA
-  lb->f = (double  *) malloc(ndata*sizeof(double));
+#ifdef OLD_DATA
+  lb->f = (double  *) calloc(ndata, sizeof(double));
   if (lb->f == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
 
-  lb->fprime = (double  *) malloc(ndata*sizeof(double));
+  lb->fprime = (double  *) calloc(ndata, sizeof(double));
   if (lb->fprime == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
 #else
   lb->f = (double  *) mem_aligned_malloc(MEM_PAGESIZE, ndata*sizeof(double));
   if (lb->f == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
+  memset(lb->f, 0, ndata*sizeof(double));
 
   lb->fprime = (double *) mem_aligned_malloc(MEM_PAGESIZE, ndata*sizeof(double));
   if (lb->fprime == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
+  memset(lb->fprime, 0, ndata*sizeof(double));
 #endif
 
   /* Allocate target copy of structure or alias */

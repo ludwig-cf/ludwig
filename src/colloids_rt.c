@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -86,7 +86,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   int init_from_file = 0;
   int init_random = 0;
   int ncell[3] = {2, 2, 2};
-  char keyvalue[BUFSIZ];
+  char keyvalue[BUFSIZ] = "";
 
   assert(pe);
   assert(cs);
@@ -219,6 +219,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     pe_info(pe, "Requested one colloid via input:\n");
     state1 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
     assert(state1 != NULL);
+
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_one", state1);
     colloids_info_add_local(cinfo, 1, state1->r, &pc);
     state1->index = 1;
@@ -345,8 +346,8 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state) {
   int nrt;
-  char key[BUFSIZ];
-  char value[BUFSIZ];
+  char key[BUFSIZ] = "";
+  char value[BUFSIZ] = "";
 
   const char * format_i1 = "%-28s  %d\n";
   const char * format_e1 = "%-28s %14.7e\n";
@@ -357,6 +358,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   assert(rt);
   assert(cinfo);
   assert(stub);
+  assert(state);
 
   state->rebuild = 1;
 

@@ -839,6 +839,7 @@ __host__ int colloids_info_add(colloids_info_t * cinfo, int index,
 
 __host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
 
+  colloid_state_t s = {0};
   colloid_t * obj = NULL;
 
   assert(cinfo);
@@ -849,6 +850,7 @@ __host__ int colloid_create(colloids_info_t * cinfo, colloid_t ** pc) {
   /* Important .. remember to nullify pointers. */
 
   tdpAssert(tdpMemset((void *) obj, 0, sizeof(colloid_t)));
+  obj->s = s;
 
   cinfo->nallocated += 1;
   *pc = obj;
