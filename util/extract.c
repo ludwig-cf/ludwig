@@ -21,13 +21,11 @@
  *
  *  Compile with $(CC) extract.c -lm
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2018 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -37,11 +35,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+const int version = 2;        /* Meta data version */
+                              /* 1 = older output files */
+                              /* 2 = current processor independent per file */
 int nlocal[3];
 int rank, cx, cy, cz, nlx, nly, nlz, nox, noy, noz;
 
 int ntotal[3];
 int ntargets[3]; /* Output target */
+int io_size[3];                /* I/O decomposition */
 int pe_[3];
 int nplanes_ = 0;
 int nio_;
@@ -64,6 +66,9 @@ double * le_duy_;
 
 char stub_[FILENAME_MAX];
 
+int version1(int argc, char ** argv);
+int version2(int argc, char ** argv);
+
 void read_meta_data_file(const char *);
 int  read_data_file_name(const char *);
 
@@ -79,6 +84,141 @@ double reverse_byte_order_double(char *);
 
 int main(int argc, char ** argv) {
 
+  /* Check the command line, then parse the meta data information,
+   * and sort out the data file name  */
+
+  if (argc != 3) {
+    printf("Usage %s meta-file data-file\n", argv[0]);
+    exit(-1);
+  }
+
+  read_meta_data_file(argv[1]);
+
+  if (version == 1) {
+    version1(argc, argv);
+  }
+  else {
+    version2(argc, argv);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Newer output files where each file has processor-independent order.
+ *  PENDING update in meta data file output for more than 1 file.
+ *
+ *****************************************************************************/
+
+int version2(int argc, char ** argv) {
+
+  int ntime;
+  int i, n, p;
+  int ifail;
+
+  double * datalocal;
+  double * datasection;
+  char io_metadata[FILENAME_MAX];
+  char io_data[FILENAME_MAX];
+  char line[FILENAME_MAX];
+
+  FILE * fp_metadata;
+  FILE * fp_data;
+
+  ntime = read_data_file_name(argv[2]);
+
+  /* Work out parallel local file size */
+
+  assert(io_size[0] == 1);
+
+  for (i = 0; i < 3; i++) {
+    nlocal[i] = ntotal[i]/io_size[i];
+  }
+
+  /* Allocate storage */
+
+  n = nrec_*nlocal[0]*nlocal[1]*nlocal[2];
+  datalocal = (double *) calloc(n, sizeof(double));
+  if (datalocal == NULL) printf("calloc(datalocal) failed\n");
+    
+  /* No. sites in the target section (always original at moment) */
+
+  for (i = 0; i < 3; i++) {
+    ntargets[i] = ntotal[i];
+  }
+ 
+  n = nrec_*ntargets[0]*ntargets[1]*ntargets[2];
+  datasection = (double *) calloc(n, sizeof(double));
+  if (datasection == NULL) printf("calloc(datasection) failed\n");
+
+  /* LE displacements as function of x */
+  le_displace_ = le_speed_*(double) (ntime - le_t0_);
+  le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
+  le_duy_ = (double *) malloc(ntotal[0]*sizeof(double));
+  if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
+  if (le_duy_ == NULL) printf("malloc(le_duy_) failed\n");
+  le_set_displacements();
+
+  /* Main loop */
+
+  for (n = 1; n <= nio_; n++) {
+
+    /* Open the current data file */
+
+    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", stub_, ntime, nio_, n);
+    printf("-> %s\n", io_data);
+
+    fp_data = fopen(io_data, "r+b");
+    if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
+
+    /* Read data file based on offsets recorded in the metadata,
+     * then copy this section to the global array */
+
+    nlx = nlocal[0]; nly = nlocal[1]; nlz = nlocal[2];
+    nox = 0; noy = 0; noz = 0;
+
+    read_data(fp_data, nlocal, datalocal);
+    copy_data(datalocal, datasection);
+
+    fclose(fp_data);
+  }
+
+  /* Unroll the data if Lees Edwards planes are present */
+
+  if (nplanes_ > 0) {
+    printf("Unrolling LE planes from centre (displacement %f)\n",
+	   le_displace_);
+    le_unroll(datasection);
+  }
+
+  /* Write a single file with the final section */
+
+  sprintf(io_data, "%s-%8.8d", stub_, ntime);
+  fp_data = fopen(io_data, "w+b");
+  if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
+
+  printf("\nWriting result to %s\n", io_data);
+
+  if(output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
+  if(output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
+
+  fclose(fp_data);
+  free(datalocal);
+  free(le_displacements_);
+  
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Older output versions where each file has processor dependent
+ *  order specified in the metadata file.
+ *
+ *****************************************************************************/
+
+int version1(int argc, char ** argv) {
+
   int ntime;
   int i, n, p, pe_per_io;
   int ifail;
@@ -92,15 +232,6 @@ int main(int argc, char ** argv) {
   FILE * fp_metadata;
   FILE * fp_data;
 
-  /* Check the command line, then parse the meta data information,
-   * and sort out the data file name  */
-
-  if (argc != 3) {
-    printf("Usage %s meta-file data-file\n", argv[0]);
-    exit(-1);
-  }
-
-  read_meta_data_file(argv[1]);
   ntime = read_data_file_name(argv[2]);
 
   /* Work out parallel decompsoition that was used and the number of
@@ -276,6 +407,11 @@ void read_meta_data_file(const char * filename) {
   fgets(tmp, FILENAME_MAX, fp_meta);
   sscanf(tmp+ncharoffset, "%d", &nio_);
   printf("Number of I/O groups: %d\n", nio_);
+  /* I/O decomposition */
+  fgets(tmp, FILENAME_MAX, fp_meta);
+  sscanf(tmp+ncharoffset, "%d %d %d\n", io_size + 0, io_size + 1, io_size + 2);
+  printf("I/O communicator topology: %d %d %d\n",
+	 io_size[0], io_size[1], io_size[2]);
 
   fclose(fp_meta);
 
