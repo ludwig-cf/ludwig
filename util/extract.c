@@ -66,14 +66,21 @@ double * le_duy_;
 
 char stub_[FILENAME_MAX];
 
-int version1(int argc, char ** argv);
-int version2(int argc, char ** argv);
+int extract_driver(int argc, char ** argv, int version);
+int read_version1(int ntime, int nlocal[3], double * datasection);
+int read_version2(int ntime, int nlocal[3], double * datasection);
 
 void read_meta_data_file(const char *);
 int  read_data_file_name(const char *);
 
+int write_data_ascii(FILE * fp, int n[3], int nrec0, int nrec, double * data);
+int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
+int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data);
+int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
+
 int site_index(int, int, int, const int *);
 void read_data(FILE *, int *, double *);
+int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript);
 void write_data(FILE *, int *, double *);
 void write_data_cmf(FILE *, int *, double *);
 int copy_data(double *, double *);
@@ -81,6 +88,12 @@ int le_displacement(int, int);
 void le_set_displacements(void);
 void le_unroll(double *);
 double reverse_byte_order_double(char *);
+
+/******************************************************************************
+ *
+ *  main
+ *
+ ******************************************************************************/
 
 int main(int argc, char ** argv) {
 
@@ -94,36 +107,25 @@ int main(int argc, char ** argv) {
 
   read_meta_data_file(argv[1]);
 
-  if (version == 1) {
-    version1(argc, argv);
-  }
-  else {
-    version2(argc, argv);
-  }
+  extract_driver(argc, argv, version);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  Newer output files where each file has processor-independent order.
- *  PENDING update in meta data file output for more than 1 file.
+ *  extract_driver
  *
  *****************************************************************************/
 
-int version2(int argc, char ** argv) {
+int extract_driver(int argc, char ** argv, int version) {
 
   int ntime;
-  int i, n, p;
-  int ifail;
+  int i, n;
 
-  double * datalocal;
   double * datasection;
-  char io_metadata[FILENAME_MAX];
   char io_data[FILENAME_MAX];
-  char line[FILENAME_MAX];
 
-  FILE * fp_metadata;
   FILE * fp_data;
 
   ntime = read_data_file_name(argv[2]);
@@ -132,15 +134,20 @@ int version2(int argc, char ** argv) {
 
   assert(io_size[0] == 1);
 
-  for (i = 0; i < 3; i++) {
-    nlocal[i] = ntotal[i]/io_size[i];
+  switch (version) {
+  case 1:
+    for (i = 0; i < 3; i++) {
+      nlocal[i] = ntotal[i]/pe_[i];
+    }
+    break;
+  case 2:
+    for (i = 0; i < 3; i++) {
+      nlocal[i] = ntotal[i]/io_size[i];
+    }
+    break;
+  default:
+    printf("Invalid version %d\n", version);
   }
-
-  /* Allocate storage */
-
-  n = nrec_*nlocal[0]*nlocal[1]*nlocal[2];
-  datalocal = (double *) calloc(n, sizeof(double));
-  if (datalocal == NULL) printf("calloc(datalocal) failed\n");
     
   /* No. sites in the target section (always original at moment) */
 
@@ -159,6 +166,79 @@ int version2(int argc, char ** argv) {
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
   if (le_duy_ == NULL) printf("malloc(le_duy_) failed\n");
   le_set_displacements();
+
+  /* Read data file or files */
+
+  if (version == 1) read_version1(ntime, nlocal, datasection);
+  if (version == 2) read_version2(ntime, nlocal, datasection);
+
+  /* Unroll the data if Lees Edwards planes are present */
+
+  if (nplanes_ > 0) {
+    printf("Unrolling LE planes from centre (displacement %f)\n",
+	   le_displace_);
+    le_unroll(datasection);
+  }
+
+
+  if (nrec_ == 4 && strncmp(stub_, "psi", 3) == 0) {
+    /* Electrokinetic results */
+  }
+  else if (nrec_ == 5 && strncmp(stub_, "q", 1) == 0) {
+    /* Scalar order parameter etc */
+    /* Convert */
+    /* Order parameter */
+    /* Director */
+    /* Biaxial order */
+  }
+  else if (nrec_ == 3 && strncmp(stub_, "fed", 3) == 0) {
+    /* Require a more robust method to identify free energy densities */
+  }
+  else {
+    /* A direct input / output */
+
+    /* Write a single file with the final section */
+
+    sprintf(io_data, "%s-%8.8d", stub_, ntime);
+    fp_data = fopen(io_data, "w+b");
+    if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
+
+    printf("\nWriting result to %s\n", io_data);
+
+    if (output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
+    /* Add vtk option */
+
+    fclose(fp_data);
+  }
+
+  free(le_displacements_);
+  free(datasection);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  Newer output files where each file has processor-independent order.
+ *  PENDING update in meta data file output for more than 1 file.
+ *
+ *****************************************************************************/
+
+int read_version2(int ntime, int nlocal[3], double * datasection) {
+
+  int n;
+  char io_data[BUFSIZ];
+
+  double * datalocal = NULL;
+  FILE * fp_data = NULL;
+
+  n = nrec_*nlocal[0]*nlocal[1]*nlocal[2];
+  datalocal = (double *) calloc(n, sizeof(double));
+  if (datalocal == NULL) {
+    printf("calloc(datalocal) failed\n");
+    exit(-1);
+  }
 
   /* Main loop */
 
@@ -184,29 +264,8 @@ int version2(int argc, char ** argv) {
     fclose(fp_data);
   }
 
-  /* Unroll the data if Lees Edwards planes are present */
-
-  if (nplanes_ > 0) {
-    printf("Unrolling LE planes from centre (displacement %f)\n",
-	   le_displace_);
-    le_unroll(datasection);
-  }
-
-  /* Write a single file with the final section */
-
-  sprintf(io_data, "%s-%8.8d", stub_, ntime);
-  fp_data = fopen(io_data, "w+b");
-  if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
-
-  printf("\nWriting result to %s\n", io_data);
-
-  if(output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
-  if(output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
-
-  fclose(fp_data);
   free(datalocal);
-  free(le_displacements_);
-  
+
   return 0;
 }
 
@@ -217,57 +276,29 @@ int version2(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-int version1(int argc, char ** argv) {
+int read_version1(int ntime, int nlocal[3], double * datasection) {
 
-  int ntime;
-  int i, n, p, pe_per_io;
   int ifail;
+  int n;
+  int p, pe_per_io;
+  char io_metadata[BUFSIZ];
+  char io_data[BUFSIZ];
+  char line[BUFSIZ];
 
-  double * datalocal;
-  double * datasection;
-  char io_metadata[FILENAME_MAX];
-  char io_data[FILENAME_MAX];
-  char line[FILENAME_MAX];
-
-  FILE * fp_metadata;
-  FILE * fp_data;
-
-  ntime = read_data_file_name(argv[2]);
-
-  /* Work out parallel decompsoition that was used and the number of
-   * processors per I/O group. */
-
-  for (i = 0; i < 3; i++) {
-    nlocal[i] = ntotal[i]/pe_[i];
-  }
+  double * datalocal = NULL;
+  FILE * fp_metadata = NULL;
+  FILE * fp_data = NULL;
 
   pe_per_io = pe_[0]*pe_[1]*pe_[2]/nio_;
-
 
   /* Allocate storage */
 
   n = nrec_*nlocal[0]*nlocal[1]*nlocal[2];
   datalocal = (double *) calloc(n, sizeof(double));
-  if (datalocal == NULL) printf("calloc(datalocal) failed\n");
-    
-  /* No. sites in the target section (always original at moment) */
-
-  for (i = 0; i < 3; i++) {
-    ntargets[i] = ntotal[i];
+  if (datalocal == NULL) {
+    printf("calloc(datalocal) failed\n");
+    exit(-1);
   }
- 
-  n = nrec_*ntargets[0]*ntargets[1]*ntargets[2];
-  datasection = (double *) calloc(n, sizeof(double));
-  if (datasection == NULL) printf("calloc(datasection) failed\n");
-
-  /* LE displacements as function of x */
-  le_displace_ = le_speed_*(double) (ntime - le_t0_);
-  le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
-  le_duy_ = (double *) malloc(ntotal[0]*sizeof(double));
-  if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
-  if (le_duy_ == NULL) printf("malloc(le_duy_) failed\n");
-  le_set_displacements();
-
 
   /* Main loop */
 
@@ -312,29 +343,8 @@ int version1(int argc, char ** argv) {
     fclose(fp_metadata);
   }
 
-  /* Unroll the data if Lees Edwards planes are present */
-
-  if (nplanes_ > 0) {
-    printf("Unrolling LE planes from centre (displacement %f)\n",
-	   le_displace_);
-    le_unroll(datasection);
-  }
-
-  /* Write a single file with the final section */
-
-  sprintf(io_data, "%s-%8.8d", stub_, ntime);
-  fp_data = fopen(io_data, "w+b");
-  if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
-
-  printf("\nWriting result to %s\n", io_data);
-
-  if(output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
-  if(output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
-
-  fclose(fp_data);
   free(datalocal);
-  free(le_displacements_);
-  
+
   return 0;
 }
 
@@ -542,11 +552,13 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 
 void write_data(FILE * fp_data, int n[3], double * data) {
 
+  /*
   int ic, jc, kc, index, nr;
 
   index = 0;
-
+  */
   if (output_binary_) {
+    /*
     for (ic = 0; ic < n[0]; ic++) {
       for (jc = 0; jc < n[1]; jc++) {
 	for (kc = 0; kc < n[2]; kc++) {
@@ -557,14 +569,16 @@ void write_data(FILE * fp_data, int n[3], double * data) {
 	}
       }
     }
+    */
+    write_data_binary(fp_data, n, 0, nrec_, data);
   }
   else {
+    /*
     for (ic = 0; ic < n[0]; ic++) {
       for (jc = 0; jc < n[1]; jc++) {
 	for (kc = 0; kc < n[2]; kc++) {
 
 	  if (output_index_) {
-	    /* Add the global (i,j,k) index starting at 1 each way */
 	    fprintf(fp_data, "%4d %4d %4d ", 1 + ic, 1 + jc, 1 + kc);
 	  }
 
@@ -577,6 +591,8 @@ void write_data(FILE * fp_data, int n[3], double * data) {
 	}
       }
     }
+    */
+    write_data_ascii(fp_data, n, 0, nrec_, data);
   }
 
   return;
@@ -592,10 +608,13 @@ void write_data(FILE * fp_data, int n[3], double * data) {
 
 void write_data_cmf(FILE * fp_data, int n[3], double * data) {
 
+  /*
   int ic, jc, kc, index;
   int nr;
+  */
 
   if (output_binary_) {
+    /*
     for (kc = 1; kc <= n[2]; kc++) {
       for (jc = 1; jc <= n[1]; jc++) {
 	for (ic = 1; ic <= n[0]; ic++) {
@@ -606,15 +625,17 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
 	}
       }
     }
+    */
+    write_data_binary_cmf(fp_data, n, 0, nrec_, data);
   }
   else {
+    /*
     for (kc = 1; kc <= n[2]; kc++) {
       for (jc = 1; jc <= n[1]; jc++) {
 	for (ic = 1; ic <= n[0]; ic++) {
 	  index = site_index(ic, jc, kc, n);
       
 	  if (output_index_) {
-             /* Add the global (i,j,k) index starting at 1 each way */
              fprintf(fp_data, "%4d %4d %4d ", ic, jc, kc);
            }
 
@@ -625,6 +646,8 @@ void write_data_cmf(FILE * fp_data, int n[3], double * data) {
 	}
       }
     }
+    */
+    write_data_ascii_cmf(fp_data, n, 0, nrec_, data);
   }
 
   return;
@@ -815,4 +838,167 @@ double reverse_byte_order_double(char * c) {
   }
 
   return result;
+}
+
+/******************************************************************************
+ *
+ *  write_vtk_header
+ *
+ *  Suitable for an ascii file; to be followed by actual data.
+ *
+ ******************************************************************************/
+
+int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript) {
+
+  assert(fp);
+
+  fprintf(fp, "# vtk DataFile Version 2.0\n");
+  fprintf(fp, "Generated by ludwig extract.c\n");
+  fprintf(fp, "ASCII\n");
+  fprintf(fp, "DATASET STRUCTURED_POINTS\n");
+  fprintf(fp, "DIMENSIONS %d %d %d\n", ndim[0], ndim[1], ndim[2]);
+  fprintf(fp, "ORIGIN %d %d %d\n", 0, 0, 0);
+  fprintf(fp, "SPACING %d %d %d\n", 1, 1, 1);
+  fprintf(fp, "POINT_DATA %d\n", ndim[0]*ndim[1]*ndim[2]);
+  fprintf(fp, "SCALARS %s float %d\n", descript, nrec);
+  fprintf(fp, "LOOKUP_TABLE default\n");
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  write_data_binary
+ *
+ *  For data of section size n[3].
+ *  Records [nrec0:nrec0+nrec] are selected from total nrec_.
+ *
+ ******************************************************************************/
+
+int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
+
+  int ic, jc, kc;
+  int index, nr;
+
+  assert(fp);
+  assert((nrec0 + nrec) < nrec_);
+
+  for (ic = 1; ic <= n[0]; ic++) {
+    for (jc = 1; jc <= n[1]; jc++) {
+      for (kc = 1; kc <= n[2]; kc++) {
+
+	index = site_index(ic, jc, kc, n);
+	for (nr = nrec0; nr < (nrec0 + nrec); nr++) {
+	  fwrite(data + nrec_*index + nr, sizeof(double), 1, fp);
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  write_data_ascii
+ *
+ *  For data of size n[3].
+ *  Records nrec0 .. nrec0+nrec from global nrec_ are selected.
+ *
+ ******************************************************************************/
+
+int write_data_ascii(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
+
+  int ic, jc, kc;
+  int index, nr;
+
+  assert(fp);
+  assert((nrec0 + nrec) <= nrec_);
+
+  for (ic = 1; ic <= n[0]; ic++) {
+    for (jc = 1; jc <= n[1]; jc++) {
+      for (kc = 1; kc <= n[2]; kc++) {
+
+	index = site_index(ic, jc, kc, n);
+	if (output_index_) {
+	  fprintf(fp, "%4d %4d %4d ", ic, jc, kc);
+	}
+
+	for (nr = nrec0; nr < (nrec0 + nrec - 1); nr++) {
+	  fprintf(fp, "%13.6e ", *(data + nrec_*index + nr));
+	}
+	/* Last one has a new line (not space) */
+	nr = nrec0 + nrec;
+	fprintf(fp, "%13.6e\n", *(data + nrec_*index + nr));
+      }
+    }
+  }
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  write_data_binary_cmf
+ *
+ ******************************************************************************/
+
+int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec,
+			  double * data) {
+  int ic, jc, kc;
+  int index, nr;
+
+  assert(fp);
+  assert((nrec0 + nrec) <= nrec_);
+
+  for (kc = 1; kc <= n[2]; kc++) {
+    for (jc = 1; jc <= n[1]; jc++) {
+      for (ic = 1; ic <= n[0]; ic++) {
+
+	index = site_index(ic, jc, kc, n);
+	for (nr = nrec0; nr < (nrec0 + nrec); nr++) {
+	  fwrite(data + nrec_*index + nr, sizeof(double), 1, fp);
+	}
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  write_data_ascii_cmf
+ *
+ ******************************************************************************/
+
+int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec,
+			 double * data) {
+  int ic, jc, kc;
+  int index, nr;
+
+  assert(fp);
+  assert((nrec0 + nrec) <= nrec_);
+
+  for (kc = 1; kc <= n[2]; kc++) {
+    for (jc = 1; jc <= n[1]; jc++) {
+      for (ic = 1; ic <= n[0]; ic++) {
+	index = site_index(ic, jc, kc, n);
+      
+	if (output_index_) {
+	  fprintf(fp, "%4d %4d %4d ", ic, jc, kc);
+	}
+
+	for (nr = nrec0; nr < (nrec0 + nrec - 1); nr++) {
+	  fprintf(fp, "%13.6e ", *(data + nrec_*index + nr));
+	}
+	nr = nrec0 + nrec;
+	fprintf(fp, "%13.6e\n", *(data + nrec_*index + nr));
+      }
+    }
+  }
+
+  return 0;
 }
