@@ -21,8 +21,8 @@
 
 include ../Makefile.mk
 
-LIBS = ../mpi_s/libmpi.a ../src/libludwig.a -L../targetDP -ltarget -lm
-INC = -I. -I../src -I../targetDP -I../mpi_s
+LIBS = ../mpi_s/libmpi.a ../src/libludwig.a -L../target -ltarget -lm
+INC = -I. -I../src -I../target -I../mpi_s
 
 default:
 	$(MAKE) extract
@@ -37,7 +37,7 @@ capillary:	capillary.c
 	$(CC) $(CFLAGS) capillary.c -o capillary
 
 extract:	extract.c
-	$(CC) $(CFLAGS) extract.c
+	$(CC) $(CFLAGS) $(INC) extract.c $(LIBS)
 
 .PHONY : clean
 clean:

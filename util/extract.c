@@ -19,12 +19,26 @@
  *  Clearly, the two input files must match, or results will be
  *  unpredictable.
  *
- *  Compile with $(CC) extract.c -lm
+ *  COMMAND LINE OPTIONS
+ *
+ *  -a   Request ASCII output
+ *  -b   Request binary output (the default)
+ *  -k   Request VTK header (none by default)
+ *
+ *  TO BUILD:
+ *  Compile the serial version of Ludwig in  the usual way.
+ *  In this directory:
+ *  $ make extract
+ *
+ *  should produce a.out
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Oliver Henirch  (ohenrich@strath.ac.uk)
+ *
  *  (c) 2011-2018 The University of Edinburgh
  *
  ****************************************************************************/
@@ -34,6 +48,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../src/util.h"
 
 const int version = 2;        /* Meta data version */
                               /* 1 = older output files */
@@ -51,13 +67,15 @@ int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int reverse_byte_order_ = 0;   /* Switch for bigendian input */
 int input_binary_ = 1;         /* Switch for format of input */
-int output_binary_ = 0;        /* Switch for format of final output */
+int output_binary_ = 1;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
 int output_index_ = 1;         /* For ASCII output, include (i,j,k) indices */
+int output_vtk_ = 0;           /* Write ASCII VTK header */
 
 int le_t0_ = 0;                /* LE offset start time (time steps) */ 
 
 int output_cmf_ = 0;           /* flag for output in column-major format */
+int output_q_raw_ = 0;         /* 0 -> LC s, director, b otherwise raw q5 */
 
 double le_speed_ = 0.0;
 double le_displace_ = 0.0;
@@ -66,7 +84,7 @@ double * le_duy_;
 
 char stub_[FILENAME_MAX];
 
-int extract_driver(int argc, char ** argv, int version);
+int extract_driver(const char * filename, int version);
 int read_version1(int ntime, int nlocal[3], double * datasection);
 int read_version2(int ntime, int nlocal[3], double * datasection);
 
@@ -87,27 +105,49 @@ int copy_data(double *, double *);
 int le_displacement(int, int);
 void le_set_displacements(void);
 void le_unroll(double *);
-double reverse_byte_order_double(char *);
 
-/******************************************************************************
+int lc_transform_q5(int * nlocal, double * datasection);
+int lc_compute_scalar_ops(double q[3][3], double qs[5]);
+
+/*****************************************************************************
  *
  *  main
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int main(int argc, char ** argv) {
+
+  size_t optind;
 
   /* Check the command line, then parse the meta data information,
    * and sort out the data file name  */
 
-  if (argc != 3) {
-    printf("Usage %s meta-file data-file\n", argv[0]);
-    exit(-1);
+  for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
+    switch (argv[optind][1]) {
+    case 'a':
+      output_binary_ = 0; /* Request ASCII */ 
+      break;
+    case 'b':
+      output_binary_ = 1; /* Request Binary */
+      break;
+    case 'k':
+      output_vtk_ = 1;    /* Request VTK header */
+      break;
+    default:
+      fprintf(stderr, "Unrecognised option: %s\n", argv[optind]);
+      fprintf(stderr, "Usage: %s [-abk] meta-file data-file\n", argv[0]);
+      exit(EXIT_FAILURE);
+    }   
   }
 
-  read_meta_data_file(argv[1]);
+  if (optind > argc-2) {
+    printf("Usage: %s [-abk] meta-file data-file\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
 
-  extract_driver(argc, argv, version);
+  read_meta_data_file(argv[optind]);
+
+  extract_driver(argv[optind+1], version);
 
   return 0;
 }
@@ -118,7 +158,7 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-int extract_driver(int argc, char ** argv, int version) {
+int extract_driver(const char * filename, int version) {
 
   int ntime;
   int i, n;
@@ -128,7 +168,7 @@ int extract_driver(int argc, char ** argv, int version) {
 
   FILE * fp_data;
 
-  ntime = read_data_file_name(argv[2]);
+  ntime = read_data_file_name(filename);
 
   /* Work out parallel local file size */
 
@@ -185,11 +225,27 @@ int extract_driver(int argc, char ** argv, int version) {
     /* Electrokinetic results */
   }
   else if (nrec_ == 5 && strncmp(stub_, "q", 1) == 0) {
-    /* Scalar order parameter etc */
-    /* Convert */
-    /* Order parameter */
-    /* Director */
-    /* Biaxial order */
+
+    sprintf(io_data, "q-%8.8d", ntime);
+    fp_data = fopen(io_data, "w+b");
+    if (fp_data == NULL) {
+      printf("fopen(%s) failed\n", io_data);
+      exit(-1);
+    }
+
+    if (output_q_raw_) {
+      printf("Writing raw q to %s\n", io_data);
+    }
+    else {
+      printf("Writing computed scalar q etc: %s\n", io_data);
+      lc_transform_q5(ntargets, datasection);
+    }
+
+    if (output_vtk_ == 1) write_vtk_header(fp_data, 5, ntargets, "Q_ab");
+    if (output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
+
+    fclose(fp_data);
   }
   else if (nrec_ == 3 && strncmp(stub_, "fed", 3) == 0) {
     /* Require a more robust method to identify free energy densities */
@@ -205,9 +261,9 @@ int extract_driver(int argc, char ** argv, int version) {
 
     printf("\nWriting result to %s\n", io_data);
 
+    /* Add vtk header */
     if (output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
     if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
-    /* Add vtk option */
 
     fclose(fp_data);
   }
@@ -546,52 +602,16 @@ void read_data(FILE * fp_data, int n[3], double * data) {
  *
  *  write_data
  *
- *  Write contiguous block of (float) data.
+ *  In the current format.
  *
  ****************************************************************************/
 
 void write_data(FILE * fp_data, int n[3], double * data) {
 
-  /*
-  int ic, jc, kc, index, nr;
-
-  index = 0;
-  */
   if (output_binary_) {
-    /*
-    for (ic = 0; ic < n[0]; ic++) {
-      for (jc = 0; jc < n[1]; jc++) {
-	for (kc = 0; kc < n[2]; kc++) {
-	  for (nr = 0; nr < nrec_; nr++) {
-	    fwrite(data + index, sizeof(double), 1, fp_data);
-	    index++;
-	  }
-	}
-      }
-    }
-    */
     write_data_binary(fp_data, n, 0, nrec_, data);
   }
   else {
-    /*
-    for (ic = 0; ic < n[0]; ic++) {
-      for (jc = 0; jc < n[1]; jc++) {
-	for (kc = 0; kc < n[2]; kc++) {
-
-	  if (output_index_) {
-	    fprintf(fp_data, "%4d %4d %4d ", 1 + ic, 1 + jc, 1 + kc);
-	  }
-
-	  for (nr = 0; nr < nrec_ - 1; nr++) {
-	    fprintf(fp_data, "%13.6e ", *(data + index));
-	    index++;
-	  }
-	  fprintf(fp_data, "%13.6e\n", *(data + index));
-	  index++;
-	}
-      }
-    }
-    */
     write_data_ascii(fp_data, n, 0, nrec_, data);
   }
 
@@ -602,51 +622,16 @@ void write_data(FILE * fp_data, int n[3], double * data) {
  *
  *  write_data_cmf
  *
- *  Loop around the sites in 'reverse' order (column major format).
+ *  Column major format.
  *
  *****************************************************************************/
 
 void write_data_cmf(FILE * fp_data, int n[3], double * data) {
 
-  /*
-  int ic, jc, kc, index;
-  int nr;
-  */
-
   if (output_binary_) {
-    /*
-    for (kc = 1; kc <= n[2]; kc++) {
-      for (jc = 1; jc <= n[1]; jc++) {
-	for (ic = 1; ic <= n[0]; ic++) {
-	  index = site_index(ic, jc, kc, n);
-	  for (nr = 0; nr < nrec_; nr++) {
-	    fwrite(data + nrec_*index + nr, sizeof(double), 1, fp_data);
-	  }
-	}
-      }
-    }
-    */
     write_data_binary_cmf(fp_data, n, 0, nrec_, data);
   }
   else {
-    /*
-    for (kc = 1; kc <= n[2]; kc++) {
-      for (jc = 1; jc <= n[1]; jc++) {
-	for (ic = 1; ic <= n[0]; ic++) {
-	  index = site_index(ic, jc, kc, n);
-      
-	  if (output_index_) {
-             fprintf(fp_data, "%4d %4d %4d ", ic, jc, kc);
-           }
-
-	  for (nr = 0; nr < nrec_ - 1; nr++) {
-	    fprintf(fp_data, "%13.6e ", *(data + nrec_*index + nr));
-	  }
-	  fprintf(fp_data, "%13.6e\n", *(data + nrec_*index + nr));
-	}
-      }
-    }
-    */
     write_data_ascii_cmf(fp_data, n, 0, nrec_, data);
   }
 
@@ -819,34 +804,13 @@ void le_unroll(double * data) {
   return;
 }
 
-/****************************************************************************
- *
- *  reverse_byte_order_double
- *
- *  Reverse the bytes in the char argument to make a double.
- *
- *****************************************************************************/
-
-double reverse_byte_order_double(char * c) {
-
-  double result;
-  char * p = (char *) &result;
-  int b;
-
-  for (b = 0; b < sizeof(double); b++) {
-    p[b] = c[sizeof(double) - (b + 1)];
-  }
-
-  return result;
-}
-
-/******************************************************************************
+/*****************************************************************************
  *
  *  write_vtk_header
  *
  *  Suitable for an ascii file; to be followed by actual data.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript) {
 
@@ -866,14 +830,14 @@ int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript) {
   return 0;
 }
 
-/******************************************************************************
+/*****************************************************************************
  *
  *  write_data_binary
  *
  *  For data of section size n[3].
  *  Records [nrec0:nrec0+nrec] are selected from total nrec_.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
 
@@ -881,7 +845,7 @@ int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
   int index, nr;
 
   assert(fp);
-  assert((nrec0 + nrec) < nrec_);
+  assert((nrec0 + nrec) <= nrec_);
 
   for (ic = 1; ic <= n[0]; ic++) {
     for (jc = 1; jc <= n[1]; jc++) {
@@ -899,14 +863,14 @@ int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
   return 0;
 }
 
-/******************************************************************************
+/*****************************************************************************
  *
  *  write_data_ascii
  *
  *  For data of size n[3].
  *  Records nrec0 .. nrec0+nrec from global nrec_ are selected.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int write_data_ascii(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
 
@@ -938,11 +902,11 @@ int write_data_ascii(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
   return 0;
 }
 
-/******************************************************************************
+/*****************************************************************************
  *
  *  write_data_binary_cmf
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec,
 			  double * data) {
@@ -968,11 +932,11 @@ int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec,
   return 0;
 }
 
-/******************************************************************************
+/*****************************************************************************
  *
  *  write_data_ascii_cmf
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec,
 			 double * data) {
@@ -1001,4 +965,107 @@ int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec,
   }
 
   return 0;
+}
+
+/****************************************************************************
+ *
+ *  lc_transform_q5
+ *
+ *  This routine diagonalises the Q tensor [q_xx, q_xy, q_xz, q_yy, q_yz]
+ *  and replaces it with [s, n_x, n_y, n_z, b], where s is the scalar
+ *  order parameter, (n_x, n_y, n_z) is the director, and b is the
+ *  biaxial order parameter.
+ *
+ *  nlocal is usually the entire system size.
+ *
+ *****************************************************************************/
+
+int lc_transform_q5(int * nlocal, double * datasection) {
+
+  int ic, jc, kc, nr, index;
+  int ifail = 0;
+  double q[3][3], qs[5];
+
+  assert(nrec_ == 5);
+  assert(datasection);
+
+  for (ic = 1; ic <= nlocal[0]; ic++) {
+    for (jc = 1; jc <= nlocal[1]; jc++) {
+      for (kc = 1; kc <= nlocal[2]; kc++) {
+
+	index = nrec_*site_index(ic, jc, kc, nlocal);
+
+	q[0][0] = *(datasection + index + 0);
+	q[1][0] = *(datasection + index + 1);
+	q[2][0] = *(datasection + index + 2);
+	q[0][1] = q[1][0];
+	q[1][1] = *(datasection + index + 3);
+	q[2][1] = *(datasection + index + 4);
+	q[0][2] = q[2][0];
+	q[1][2] = q[2][1];
+	q[2][2] = 0.0 - q[0][0] - q[1][1];
+
+	ifail += lc_compute_scalar_ops(q, qs);
+
+	for (nr = 0; nr < nrec_; nr++) {
+	  *(datasection + index + nr) = qs[nr];
+	}
+      }
+    }
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
+ *  compute_scalar_ops   [A copy from src/lc_blue_phase]
+ *
+ *  For symmetric traceless q[3][3], return the associated scalar
+ *  order parameter, biaxial order parameter and director:
+ *
+ *  qs[0]  scalar order parameter: largest eigenvalue
+ *  qs[1]  director[X] (associated eigenvector)
+ *  qs[2]  director[Y]
+ *  qs[3]  director[Z]
+ *  qs[4]  biaxial order parameter b = sqrt(1 - 6 (Tr(QQQ))^2 / Tr(QQ)^3)
+ *         related to the two largest eigenvalues...
+ *
+ *  If we write Q = ((s, 0, 0), (0, t, 0), (0, 0, -s -t)) then
+ *
+ *    Tr(QQ)  = s^2 + t^2 + (s + t)^2
+ *    Tr(QQQ) = 3 s t (s + t)
+ *
+ *  If no diagonalisation is possible, all the results are set to zero.
+ *
+ *****************************************************************************/
+
+int lc_compute_scalar_ops(double q[3][3], double qs[5]) {
+
+  int ifail;
+  double eigenvalue[3];
+  double eigenvector[3][3];
+  double s, t;
+  double q2, q3;
+
+  ifail = util_jacobi_sort(q, eigenvalue, eigenvector);
+
+  qs[0] = 0.0; qs[1] = 0.0; qs[2] = 0.0; qs[3] = 0.0; qs[4] = 0.0;
+
+  if (ifail == 0) {
+
+    qs[0] = eigenvalue[0];
+    qs[1] = eigenvector[0][0];
+    qs[2] = eigenvector[1][0];
+    qs[3] = eigenvector[2][0];
+
+    s = eigenvalue[0];
+    t = eigenvalue[1];
+
+    q2 = s*s + t*t + (s + t)*(s + t);
+    q3 = 3.0*s*t*(s + t);
+    qs[4] = sqrt(1 - 6.0*q3*q3 / (q2*q2*q2));
+  }
+
+  return ifail;
 }
