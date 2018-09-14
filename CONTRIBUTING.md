@@ -1,7 +1,14 @@
 
 ### Contributing
 
-Please consider pull request "thorugh the usual channels".
+Ludwig has been developed largely at The University of Edinburgh as
+a collaboration between the School of Physics and Edinburgh Parallel
+Computing Centre. However, contributions are welcome.
+
+The code is released under a BSD 3-clause license.
+
+Please consider pull request "through the usual channels". Some notes
+on the steps involved in development are provided below.
 
 ### Tests
 
@@ -12,15 +19,15 @@ $ make compile-serial-d3q19
 $ make run-serial-unit
 $ make run-serial-regr-d3q19
 ```
-Each test reports a pass or fail.
+Each test reports a pass or fail. Parallel tests are also available.
 
 
 ### Development model
 
 The development model is borrowed from a description by Vincent Driessen
-[https://nvie.com/posts/a-successful-git-branching-model/]
-
-Two branches are always in existance: master and develop.
+\[1\]. Two branches are always in existance: master and develop. The
+master represents the current release state. New developments should be
+based on the develop branch.
 
 #### Feature branches
 
@@ -73,3 +80,5 @@ $ git branch -d patch-0.1.2
 Release branches must branch from develop and must be merged back into both
 develop and master.
 
+
+\[1\] [https://nvie.com/posts/a-successful-git-branching-model/]
