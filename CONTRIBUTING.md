@@ -15,7 +15,6 @@ $ make run-serial-regr-d3q19
 which runs a series of regression tests for the LB D3Q19 model.
 See the `Makefile` for further options.
 
-
 ### Development model
 
 The development model is borrowed from a description by Vincent Driessen
