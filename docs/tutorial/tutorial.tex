@@ -120,7 +120,7 @@ a basic knowledge of hydrodynamics, complex fluids, and to some extent statistic
 This knowledge will be required to make sense of the input and output involved in using the code. 
 
 The system requirements are an up-to-date version of a C compiler as well as working installations 
-of a text editor like \texttt{vi} or \texttt{emacs}, Apache's Subversion (SVN) version control system, the visualisation tool
+of a text editor like \texttt{vi} or \texttt{emacs}, the visualisation tool
 ParaView (\hyperref[ParaView]{https://www.paraview.org}), the MPI-library 
 for compiling the parallel version of the code and \texttt{gnuplot} for simple visualisations.
 
@@ -129,14 +129,16 @@ for compiling the parallel version of the code and \texttt{gnuplot} for simple v
 \subsection{Obtaining the Code}
 \label{sec:getCode}
 
-The \texttt{Ludwig} project is currently hosted at our central repository 
-at CCPForge:\\
-(\hyperref[CCPForge]{https://ccpforge.cse.rl.ac.uk}).\\
-For full access to the repository please open a CCPForge account and request
-to join the project \texttt{Ludwig}. The following command grants anonymous access:
+The \texttt{Ludwig} project is currently hosted at our central repository at GitHub:\\
+(\hyperref[GitHubLudwig]{https://github.com/ludwig-cf/ludwig}).\\
+
+\smallskip
+You can either download or clone the repository. 
+The following command clones the repository into \texttt{ludwig} and requires a working 
+git installation on your local system:
 
 \begin{lstlisting}[style=terminalverbatim]
-$ svn checkout https://ccpforge.cse.rl.ac.uk/svn/ludwig
+$ git clone https://github.com/ludwig-cf/ludwig
 \end{lstlisting}
 
 A copy of the \texttt{Ludwig} repository will now be available in your current directory. 
