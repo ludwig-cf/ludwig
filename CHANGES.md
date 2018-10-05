@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.8.07
+- Updated the extract program to include vtk headers
+- Added some Bond number test examples regression/d3q19/serial-bond-c01.inp
+
 Version 0.8.05
 - Added the option to specify fixed liquid crystal anchoring orientation
   from the input.
