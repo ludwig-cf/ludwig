@@ -10,22 +10,25 @@ The code is released under a BSD 3-clause license.
 Please consider pull request "through the usual channels". Some notes
 on the steps involved in development are provided below.
 
-### Tests
 
-Tests may be run as follows:
+### Running the tests
+
+Various tests exist in the `test` subdirectory. To check that no
+obvious errors have been introduced by developments one can run
 ```
 $ cd tests
-$ make compile-serial-d3q19
-$ make run-serial-unit
 $ make run-serial-regr-d3q19
 ```
-Each test reports a pass or fail. Parallel tests are also available.
+which runs a series of regression tests for the LB D3Q19 model.
+Each test reports a pass or fail. See the `Makefile` for further options.
 
 
 ### Development model
 
 The development model is borrowed from a description by Vincent Driessen
-\[1\]. Two branches are always in existance: master and develop. The
+\[1\].
+
+Two branches are always in existance: `master` and `develop`. The
 master represents the current release state. New developments should be
 based on the develop branch.
 
@@ -80,5 +83,4 @@ $ git branch -d patch-0.1.2
 Release branches must branch from develop and must be merged back into both
 develop and master.
 
-
-\[1\] [https://nvie.com/posts/a-successful-git-branching-model/]
+\[1\] https://nvie.com/posts/a-successful-git-branching-model/
