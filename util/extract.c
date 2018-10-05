@@ -28,6 +28,7 @@
  *  TO BUILD:
  *  Compile the serial version of Ludwig in  the usual way.
  *  In this directory:
+ *
  *  $ make extract
  *
  *  should produce a.out
@@ -220,11 +221,7 @@ int extract_driver(const char * filename, int version) {
     le_unroll(datasection);
   }
 
-
-  if (nrec_ == 4 && strncmp(stub_, "psi", 3) == 0) {
-    /* Electrokinetic results */
-  }
-  else if (nrec_ == 5 && strncmp(stub_, "q", 1) == 0) {
+  if (nrec_ == 5 && strncmp(stub_, "q", 1) == 0) {
 
     sprintf(io_data, "q-%8.8d", ntime);
     fp_data = fopen(io_data, "w+b");
@@ -249,6 +246,7 @@ int extract_driver(const char * filename, int version) {
   }
   else if (nrec_ == 3 && strncmp(stub_, "fed", 3) == 0) {
     /* Require a more robust method to identify free energy densities */
+    assert(0); /* Requires an update */
   }
   else {
     /* A direct input / output */
@@ -261,7 +259,7 @@ int extract_driver(const char * filename, int version) {
 
     printf("\nWriting result to %s\n", io_data);
 
-    /* Add vtk header */
+    if (output_vtk_ == 1) write_vtk_header(fp_data, nrec_, ntargets, stub_);
     if (output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
     if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
 
@@ -747,7 +745,7 @@ void le_unroll(double * data) {
 
   /* Allocate the temporary buffer */
 
-  buffer = (double *) malloc(nrec_*ntargets[1]*ntargets[2]*sizeof(double));
+  buffer = (double *) calloc(nrec_*ntargets[1]*ntargets[2], sizeof(double));
   if (buffer == NULL) {
     printf("malloc(buffer) failed\n");
     exit(-1);
