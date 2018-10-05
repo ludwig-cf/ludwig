@@ -1,0 +1,118 @@
+##############################################################################
+#
+#  Particle on an interface
+#
+#  This places a particle at a flat interface of interfacial tension
+#  sigma, and exerts a constant downward force F in the z-direction.
+#
+#  If the Bond number Bo < 1 then the particle should stay at the
+#  interface.
+#
+#  The Bond number here may be computed as F / 2 pi sigma. The particle
+#  has neutral wetting (C = H = 0). Contact angle 90 degress.
+#
+#  The parameters here are a = 2.3 and sigma = 0.047. The force F is
+#  the z compoenent in "colloid_gravity" F = 0.001 (downwards). The
+#  Bond number is then Bo = 0.003, so we expect the equilibrium
+#  displacement below the interface to be negligible.
+#
+#  Notes. There are a number of things to note about this set up.
+#
+#  1. The system size in the horizontal is set to be at least 10a,
+#     so that there is little distoration of the interface at the
+#     periodic boundaries.
+#  2. Don't place the particle at a symmetric position of the
+#     lattice in the horizontal. This can cause some pathological
+#     behaviour.
+#  3. No exact equilibrium is available in the discrete model;
+#     some particles may detatch from the interface at Bond
+#     numbers lower than the critical Bond number owning to
+#     poor discretisation. Note also that one would really like
+#     a clear separation of scales between the particle size a
+#     and the interfacial width zeta. This is barely the case
+#     for the samllest particles (zeta is about 1.1).
+#  4. The free particle Stokes time would be t_s = 6 pi eta a^2 / F
+#     which is here about 17.000 time steps. One can run for, say,
+#     20,000 steps to convince yourself the particle isn't going
+#     anywhere.
+#
+#  For the purposes of this test, the number of time steps is
+#  reduced to 10.
+#
+##############################################################################
+
+N_cycles 10
+
+##############################################################################
+#
+#  System
+#
+##############################################################################
+
+size 32_32_64
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.1666666666666666
+
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy symmetric
+
+A -0.0625
+B  0.0625
+K  0.04
+C  0.0
+
+phi0 0.0
+phi_initialisation      block
+mobility 0.15
+
+fd_gradient_calculation 3d_27pt_solid
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        input_one
+
+colloid_one_type    default
+colloid_one_a0      2.3
+colloid_one_ah      2.3
+colloid_one_r       16.13_16.47_16.0
+colloid_one_v       0.0_0.0_0.0
+colloid_c           0.0
+colloid_h           0.0
+
+# Constant body force on all colloids ("gravity")
+
+colloid_gravity 0.0_0.0_-0.001
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end no

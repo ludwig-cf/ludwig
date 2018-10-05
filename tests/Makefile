@@ -40,7 +40,8 @@ verbose:
 	"\t Testing options include:\n" \
 	"\t   make compile-run-serial\n" \
 	"\t   make compile-run-mpi\n"  \
-	"\t See the Makefile for further model-specific targets\n"
+	"\t See the Makefile for further model-specific targets\n" \
+	"\t Note: it is assumed make is GNU make\n"
 
 # Compilation only
 
