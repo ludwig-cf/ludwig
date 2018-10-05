@@ -120,8 +120,9 @@ a basic knowledge of hydrodynamics, complex fluids, and to some extent statistic
 This knowledge will be required to make sense of the input and output involved in using the code. 
 
 The system requirements are an up-to-date version of a C compiler as well as working installations 
-of a text editor like \texttt{vi} or \texttt{emacs}, Apache's Subversion (SVN) version control system, the visualisation tool
-ParaView (\hyperref[ParaView]{https://www.paraview.org}), the MPI-library 
+of a text editor like \texttt{vi} or \texttt{emacs}, the visualisation tool
+ParaView \\
+(\hyperref[ParaView]{https://www.paraview.org}), the MPI-library 
 for compiling the parallel version of the code and \texttt{gnuplot} for simple visualisations.
 
 \section{Access and Compilation}
@@ -129,14 +130,16 @@ for compiling the parallel version of the code and \texttt{gnuplot} for simple v
 \subsection{Obtaining the Code}
 \label{sec:getCode}
 
-The \texttt{Ludwig} project is currently hosted at our central repository 
-at CCPForge:\\
-(\hyperref[CCPForge]{https://ccpforge.cse.rl.ac.uk}).\\
-For full access to the repository please open a CCPForge account and request
-to join the project \texttt{Ludwig}. The following command grants anonymous access:
+The \texttt{Ludwig} project is currently hosted at our central repository at GitHub:\\
+(\hyperref[GitHubLudwig]{https://github.com/ludwig-cf/ludwig}).
+\smallskip
+
+You can either download or clone the repository. 
+The following command clones the repository and requires a working 
+git installation on your local system:
 
 \begin{lstlisting}[style=terminalverbatim]
-$ svn checkout https://ccpforge.cse.rl.ac.uk/svn/ludwig
+$ git clone https://github.com/ludwig-cf/ludwig
 \end{lstlisting}
 
 A copy of the \texttt{Ludwig} repository will now be available in your current directory. 
@@ -144,15 +147,14 @@ You should see:
 
 \begin{lstlisting}
 $ ls ludwig
-branches  tags  trunk
+LICENSE Makefile.mk config docs mpi_s src target tests util version.h
 \end{lstlisting}
-which is the usual svn layout for trunk, branches and tagged versions.
 
 A full documentation of \texttt{Ludwig} can be obtained by running 
-the command \texttt{make pdf} twice in the \texttt{/trunk/docs} directory:
+the command \texttt{make pdf} twice in the \texttt{/docs} directory:
 
 \begin{lstlisting}[style=terminalverbatim]
-$ cd /ludwig/trunk/docs/
+$ cd /ludwig/docs/
 $ make pdf
 \end{lstlisting}
 
@@ -162,19 +164,19 @@ The following section outlines the configuration and compilation
 procedure. The configuration step is based on the GNU Compiler Collection gcc.
 
 \begin{enumerate}
-\item Go to the directory \texttt{/ludwig/trunk/}: \\
+\item Go to the top level directory \texttt{/ludwig}: \\
 \begin{lstlisting}
-$ cd ludwig/trunk
+$ cd ludwig
 \end{lstlisting}
-\item Copy the configuration file \texttt{lunix-gcc-default.mk} to the \texttt{/trunk} directory 
+\item Copy the configuration file \texttt{lunix-gcc-default.mk} to top level directory 
 and rename to \texttt{config.mk} (both steps exectued below at once): \\
 \begin{lstlisting}
 $ cp config/lunix-gcc-default.mk ./config.mk
 \end{lstlisting}
 Note that you may need to specify the path to the MPI wrapper compiler in this file.
-\item Issue \texttt{make} in \texttt{/targetDP}: \\
+\item Issue \texttt{make} in \texttt{/target}: \\
 \begin{lstlisting}
-$ cd targetDP/
+$ cd target/
 $ make 
 \end{lstlisting}
 This creates dummy functions for calls to the targetDP library.
@@ -200,8 +202,8 @@ EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
 OPTS = -DNP_D3Q6 -DNDEBUG
-LIBS = -L../targetDP -ltarget -lm
-INC = -I. -I ../targetDP
+LIBS = -L../target -ltarget -lm
+INC = -I. -I ../target
 ...
 \end{lstlisting}
 \item To compile the code in serial issue: \\
