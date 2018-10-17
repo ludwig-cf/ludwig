@@ -21,7 +21,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2018 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -40,13 +40,14 @@ enum format {ASCII, BINARY};
 #define NTRYMAX 10000
 #define NMC 10000000
 
-int  colloid_init_vf_n(const double ah, const double vf);
-void colloid_init_trial(double r[3], double dh);
-int  colloid_init_random(const int nc, colloid_state_t * state, double dh);
-int  colloid_init_mc(const int nc, colloid_state_t * state, double dh);
+int  colloid_init_vf_n(cs_t * cs, const double ah, const double vf);
+void colloid_init_trial(cs_t * cs, double r[3], double dh);
+int  colloid_init_random(cs_t * cs, int nc, colloid_state_t * state, double dh);
+int  colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh);
 void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 			     const int form);
 double v_lj(double r, double rc);
+
 /*****************************************************************************
  *
  *  main
@@ -82,7 +83,7 @@ int main(int argc, char ** argv) {
   ran_init(pe);
 
   /* This program is intended to be serial */
-  assert(pe_size() == 1);
+  assert(pe_mpi_size(pe) == 1);
 
   cs_create(pe,&cs);
   cs_ntotal_set(cs, ntotal);
@@ -92,7 +93,7 @@ int main(int argc, char ** argv) {
   /* Allocate required number of state objects, and set state
      to zero; initialise indices (position set later) */
 
-  nrequest = colloid_init_vf_n(ah, vf);
+  nrequest = colloid_init_vf_n(cs, ah, vf);
   printf("Volume fraction %7.3f gives %d colloids\n", vf, nrequest);
 
   state = (colloid_state_t *) calloc(nrequest, sizeof(colloid_state_t));
@@ -110,11 +111,11 @@ int main(int argc, char ** argv) {
 
   if (vf < 0.35) {
     /* Set positions through random insertion */
-    nactual = colloid_init_random(nrequest, state, dh);
+    nactual = colloid_init_random(cs, nrequest, state, dh);
   }
   else {
     /* Set positions through lattice and MC */
-    nactual = colloid_init_mc(nrequest, state, dh);
+    nactual = colloid_init_mc(cs, nrequest, state, dh);
   }
 
   /* Write out */
@@ -137,14 +138,14 @@ int main(int argc, char ** argv) {
  *
  ****************************************************************************/
 
-int colloid_init_vf_n(const double ah, const double vf) {
+int colloid_init_vf_n(cs_t * cs, const double ah, const double vf) {
 
   int n, ntotal[3];
   double volume;
   PI_DOUBLE(pi);
 
-  cs_t * cs;
-  cs_ref(&cs);
+  assert(cs);
+
   cs_ntotal(cs, ntotal);
 
   volume = ntotal[X]*ntotal[Y]*ntotal[Z];
@@ -162,20 +163,20 @@ int colloid_init_vf_n(const double ah, const double vf) {
  *
  ****************************************************************************/
 
-void colloid_init_trial(double r[3], double dh) {
+void colloid_init_trial(cs_t * cs, double r[3], double dh) {
 
   int ia, ntotal[3];
+  int periodic[3];
   double lmin, lmax, l[3];
 
-  cs_t * cs;
-  cs_ref(&cs);
   cs_lmin(cs, l);
   cs_ntotal(cs, ntotal);
+  cs_periodic(cs, periodic);
 
   for (ia = 0; ia < 3; ia++) {
     lmin = l[ia];
     lmax = l[ia] +  ntotal[ia];
-    if (is_periodic(ia) == 0) {
+    if (periodic[ia] == 0) {
       lmin += dh;
       lmax -= dh;
     }
@@ -198,7 +199,8 @@ void colloid_init_trial(double r[3], double dh) {
  *
  ****************************************************************************/
 
-int colloid_init_random(const int nc, colloid_state_t * state, double dh) {
+int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,
+			double dh) {
 
   int n;              /* Current number of positions successfully set */
   int ok;
@@ -209,17 +211,19 @@ int colloid_init_random(const int nc, colloid_state_t * state, double dh) {
   double rtrial[3];
   double rsep[3];
 
+  assert(cs);
+
   n = 0;
   nmaxattempt = nc*NTRYMAX;
 
   for (nattempt = 0; nattempt < nmaxattempt; nattempt++) {
 
-    colloid_init_trial(rtrial, state[n].ah + dh);
+    colloid_init_trial(cs, rtrial, state[n].ah + dh);
 
     ok = 1;
 
     for (ncheck = 0; ncheck < n; ncheck++) {
-      coords_minimum_distance(rtrial, state[ncheck].r, rsep);
+      cs_minimum_distance(cs, rtrial, state[ncheck].r, rsep);
       if (modulus(rsep) <= state[ncheck].ah + state[n].ah + dh) ok = 0;
     }
 
@@ -248,7 +252,7 @@ int colloid_init_random(const int nc, colloid_state_t * state, double dh) {
  * 
  ****************************************************************************/
 
-int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
+int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
 
   int ix, iy, iz;
   int ii, ij, ik, im;
@@ -269,8 +273,7 @@ int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
   double eno, enn, boltzfac, ran;
   double delta;
 
-  cs_t * cs;
-  cs_ref(&cs);
+  assert(cs);
   cs_ntotal(cs, ntotal);
 
   /* assuming there is one colloid, take radius */
@@ -409,7 +412,7 @@ int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
 
     for (ncheck=0; ncheck<nc; ncheck++) {
       if (ncheck == n) continue;
-      coords_minimum_distance(state[n].r, state[ncheck].r, rsep);
+      cs_minimum_distance(cs, state[n].r, state[ncheck].r, rsep);
 
       if (modulus(rsep) <= state[n].ah + state[ncheck].ah) {
 	ok = 0;
@@ -451,7 +454,7 @@ int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
 
 	if (ij == ii) continue;
 
-	coords_minimum_distance(rtrial, state[ij].r, rsep);
+	cs_minimum_distance(cs, rtrial, state[ij].r, rsep);
 	dr = modulus(rsep) - state[ii].ah - state[ij].ah;
 
 	eno += v_lj(dr, dh); 
@@ -466,7 +469,7 @@ int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
 
 	if (ij == ii) continue;
 
-	coords_minimum_distance(rtrial, state[ij].r, rsep);
+	cs_minimum_distance(cs, rtrial, state[ij].r, rsep);
 	dr = modulus(rsep) - state[ii].ah - state[ij].ah;
 
 	enn += v_lj(dr, dh); 
@@ -491,7 +494,7 @@ int colloid_init_mc(const int nc, colloid_state_t * state, double dh) {
 
     for (ncheck=0; ncheck<nc; ncheck++) {
       if (ncheck == n) continue;
-      coords_minimum_distance(state[n].r, state[ncheck].r, rsep);
+      cs_minimum_distance(cs, state[n].r, state[ncheck].r, rsep);
 
       if (modulus(rsep) <= state[n].ah + state[ncheck].ah) {
 	ok = 0;

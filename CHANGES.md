@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.8.08
+- Repaired util/colloid_init.c
+- Separate vtk scalar order / director / biaxial order files
+
 version 0.8.07
 - Updated the extract program to include vtk headers
 - Added some Bond number test examples regression/d3q19/serial-bond-c01.inp
