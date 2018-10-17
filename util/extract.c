@@ -23,7 +23,13 @@
  *
  *  -a   Request ASCII output
  *  -b   Request binary output (the default)
+ *  -i   Request coordinate indices in output (none by default)
  *  -k   Request VTK header (none by default)
+ *
+ *  Options relevant to liquid crystal order parameter (only):
+ *  -d   Request director output
+ *  -s   Request scalar order parameter output
+ *  -x   Request biaxial order parameter output
  *
  *  TO BUILD:
  *  Compile the serial version of Ludwig in  the usual way.
@@ -55,6 +61,9 @@
 const int version = 2;        /* Meta data version */
                               /* 1 = older output files */
                               /* 2 = current processor independent per file */
+
+typedef enum vtk_enum {VTK_SCALARS, VTK_VECTORS} vtk_enum_t;
+
 int nlocal[3];
 int rank, cx, cy, cz, nlx, nly, nlz, nox, noy, noz;
 
@@ -70,8 +79,12 @@ int reverse_byte_order_ = 0;   /* Switch for bigendian input */
 int input_binary_ = 1;         /* Switch for format of input */
 int output_binary_ = 1;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
-int output_index_ = 1;         /* For ASCII output, include (i,j,k) indices */
+int output_index_ = 0;         /* For ASCII output, include (i,j,k) indices */
 int output_vtk_ = 0;           /* Write ASCII VTK header */
+
+int output_lcs_ = 0;
+int output_lcd_ = 0;
+int output_lcx_ = 0;
 
 int le_t0_ = 0;                /* LE offset start time (time steps) */ 
 
@@ -92,6 +105,8 @@ int read_version2(int ntime, int nlocal[3], double * datasection);
 void read_meta_data_file(const char *);
 int  read_data_file_name(const char *);
 
+int write_data(FILE * fp, int n[3], int nrec0, int nrec, double * data);
+int write_data_cmf(FILE * fp, int n[3], int nr0, int nr, double * data);
 int write_data_ascii(FILE * fp, int n[3], int nrec0, int nrec, double * data);
 int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
 int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data);
@@ -99,9 +114,10 @@ int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
 
 int site_index(int, int, int, const int *);
 void read_data(FILE *, int *, double *);
-int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript);
-void write_data(FILE *, int *, double *);
-void write_data_cmf(FILE *, int *, double *);
+int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
+		     vtk_enum_t vtk);
+int write_qab_vtk(int ntime, int ntargets[3], double * datasection);
+
 int copy_data(double *, double *);
 int le_displacement(int, int);
 void le_set_displacements(void);
@@ -131,8 +147,20 @@ int main(int argc, char ** argv) {
     case 'b':
       output_binary_ = 1; /* Request Binary */
       break;
+    case 'd':
+      output_lcd_ = 1;    /* Request liquid crystal director output */
+      break;
+    case 'i':
+      output_index_ = 1;  /* Request ic, jc, kc indices */
+      break;
     case 'k':
       output_vtk_ = 1;    /* Request VTK header */
+      break;
+    case 's':
+      output_lcs_ = 1; /* Request liquid crystal scalar order parameter */
+      break;
+    case 'x':
+      output_lcx_ = 1; /* Request liquid crystal biaxial order paramter */
       break;
     default:
       fprintf(stderr, "Unrecognised option: %s\n", argv[optind]);
@@ -223,26 +251,32 @@ int extract_driver(const char * filename, int version) {
 
   if (nrec_ == 5 && strncmp(stub_, "q", 1) == 0) {
 
-    sprintf(io_data, "q-%8.8d", ntime);
-    fp_data = fopen(io_data, "w+b");
-    if (fp_data == NULL) {
-      printf("fopen(%s) failed\n", io_data);
-      exit(-1);
-    }
-
-    if (output_q_raw_) {
-      printf("Writing raw q to %s\n", io_data);
+    if (output_vtk_ == 1) {
+      /* We mandate this is the transformed Q_ab */
+      lc_transform_q5(ntargets, datasection);
+      write_qab_vtk(ntime, ntargets, datasection);
     }
     else {
-      printf("Writing computed scalar q etc: %s\n", io_data);
-      lc_transform_q5(ntargets, datasection);
+      sprintf(io_data, "q-%8.8d", ntime);
+      fp_data = fopen(io_data, "w+b");
+      if (fp_data == NULL) {
+	printf("fopen(%s) failed\n", io_data);
+	exit(-1);
+      }
+
+      if (output_q_raw_) {
+	printf("Writing raw q to %s\n", io_data);
+      }
+      else {
+	printf("Writing computed scalar q etc: %s\n", io_data);
+	lc_transform_q5(ntargets, datasection);
+      }
+
+      if (output_cmf_ == 0) write_data(fp_data, ntargets, 0, 5, datasection);
+      if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 0, 5, datasection);
+
+      fclose(fp_data);
     }
-
-    if (output_vtk_ == 1) write_vtk_header(fp_data, 5, ntargets, "Q_ab");
-    if (output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
-    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
-
-    fclose(fp_data);
   }
   else if (nrec_ == 3 && strncmp(stub_, "fed", 3) == 0) {
     /* Require a more robust method to identify free energy densities */
@@ -259,9 +293,8 @@ int extract_driver(const char * filename, int version) {
 
     printf("\nWriting result to %s\n", io_data);
 
-    if (output_vtk_ == 1) write_vtk_header(fp_data, nrec_, ntargets, stub_);
-    if (output_cmf_ == 0) write_data(fp_data, ntargets, datasection);
-    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, datasection);
+    if (output_cmf_ == 0) write_data(fp_data, ntargets, 0, nrec_, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 0, nrec_, datasection);
 
     fclose(fp_data);
   }
@@ -604,16 +637,16 @@ void read_data(FILE * fp_data, int n[3], double * data) {
  *
  ****************************************************************************/
 
-void write_data(FILE * fp_data, int n[3], double * data) {
+int write_data(FILE * fp_data, int n[3], int nrec0, int nrec, double * data) {
 
   if (output_binary_) {
-    write_data_binary(fp_data, n, 0, nrec_, data);
+    write_data_binary(fp_data, n, nrec0, nrec, data);
   }
   else {
-    write_data_ascii(fp_data, n, 0, nrec_, data);
+    write_data_ascii(fp_data, n, nrec0, nrec, data);
   }
 
-  return;
+  return 0;
 }
 
 /*****************************************************************************
@@ -624,16 +657,16 @@ void write_data(FILE * fp_data, int n[3], double * data) {
  *
  *****************************************************************************/
 
-void write_data_cmf(FILE * fp_data, int n[3], double * data) {
+int write_data_cmf(FILE * fp_data, int n[3], int nr0, int nr, double * data) {
 
   if (output_binary_) {
-    write_data_binary_cmf(fp_data, n, 0, nrec_, data);
+    write_data_binary_cmf(fp_data, n, nr0, nr, data);
   }
   else {
-    write_data_ascii_cmf(fp_data, n, 0, nrec_, data);
+    write_data_ascii_cmf(fp_data, n, nr0, nr, data);
   }
 
-  return;
+  return 0;
 }
 
 /****************************************************************************
@@ -810,7 +843,8 @@ void le_unroll(double * data) {
  *
  *****************************************************************************/
 
-int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript) {
+int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
+		     vtk_enum_t vtk) {
 
   assert(fp);
 
@@ -822,8 +856,93 @@ int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript) {
   fprintf(fp, "ORIGIN %d %d %d\n", 0, 0, 0);
   fprintf(fp, "SPACING %d %d %d\n", 1, 1, 1);
   fprintf(fp, "POINT_DATA %d\n", ndim[0]*ndim[1]*ndim[2]);
-  fprintf(fp, "SCALARS %s float %d\n", descript, nrec);
-  fprintf(fp, "LOOKUP_TABLE default\n");
+  if (vtk == VTK_SCALARS) {
+    fprintf(fp, "SCALARS %s float %d\n", descript, nrec);
+    fprintf(fp, "LOOKUP_TABLE default\n");
+  }
+  if (vtk == VTK_VECTORS) {
+    fprintf(fp, "VECTORS %s float\n", descript);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  write_qab_vtk
+ *
+ *  For Q_ab in vtk format, three separate files are required:
+ *    scalar order parameter  (scalar)
+ *    director                (vector)
+ *    biaxial order parameter (scalar)
+ *
+ *****************************************************************************/
+
+int write_qab_vtk(int ntime, int ntargets[3], double * datasection) {
+
+  char io_data[FILENAME_MAX];
+  FILE * fp_data = NULL;
+
+  assert(datasection);
+  assert(nrec_ == 5);
+
+  /* Scalar order */
+  if (output_lcs_) {
+    sprintf(io_data, "lcq-%8.8d.vtk", ntime);
+    fp_data = fopen(io_data, "w");
+
+    if (fp_data == NULL) {
+      printf("fopen(%s) failed\n", io_data);
+      exit(-1);
+    }
+
+    printf("Writing computed scalar order with vtk: %s\n", io_data);
+
+    write_vtk_header(fp_data, 1, ntargets, "Q_ab_scalar_order", VTK_SCALARS);
+    if (output_cmf_ == 0) write_data(fp_data, ntargets, 0, 1, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 0, 1, datasection);
+    fclose(fp_data);
+  }
+
+  /* Director */
+  fp_data = NULL;
+
+  if (output_lcd_) {
+    sprintf(io_data, "lcd-%8.8d.vtk", ntime);
+    fp_data = fopen(io_data, "w");
+
+    if (fp_data == NULL) {
+      printf("fopen(%s) failed\n", io_data);
+      exit(-1);
+    }
+
+    printf("Writing computed director with vtk: %s\n", io_data);
+
+    write_vtk_header(fp_data, 1, ntargets, "Q_ab_director", VTK_VECTORS);
+    if (output_cmf_ == 0) write_data(fp_data, ntargets, 1, 3, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 1, 3, datasection);
+    fclose(fp_data);
+  }
+
+  /* Biaxial order */
+  fp_data = NULL;
+
+  if (output_lcx_) {
+    sprintf(io_data, "lcb-%8.8d.vtk", ntime);
+    fp_data = fopen(io_data, "w");
+
+    if (fp_data == NULL) {
+      printf("fopen(%s) failed\n", io_data);
+      exit(-1);
+    }
+
+    printf("Writing computed biaxial order with vtk: %s\n", io_data);
+
+    write_vtk_header(fp_data, 1, ntargets, "Q_ab_biaxial_order", VTK_SCALARS);
+    if (output_cmf_ == 0) write_data(fp_data, ntargets, 4, 1, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 4, 1, datasection);
+    fclose(fp_data);
+  }
 
   return 0;
 }
@@ -891,7 +1010,7 @@ int write_data_ascii(FILE * fp, int n[3], int nrec0, int nrec, double * data) {
 	  fprintf(fp, "%13.6e ", *(data + nrec_*index + nr));
 	}
 	/* Last one has a new line (not space) */
-	nr = nrec0 + nrec;
+	nr = nrec0 + nrec - 1;
 	fprintf(fp, "%13.6e\n", *(data + nrec_*index + nr));
       }
     }
@@ -956,7 +1075,7 @@ int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec,
 	for (nr = nrec0; nr < (nrec0 + nrec - 1); nr++) {
 	  fprintf(fp, "%13.6e ", *(data + nrec_*index + nr));
 	}
-	nr = nrec0 + nrec;
+	nr = nrec0 + nrec - 1;
 	fprintf(fp, "%13.6e\n", *(data + nrec_*index + nr));
       }
     }
