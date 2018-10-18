@@ -300,11 +300,16 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
   tdpGetDeviceCount(&ndevice);
 
   if (init == WALL_INIT_ALLOCATE) {
-    assert(wall->nlink > 0);
-    wall->linki = (int *) calloc(wall->nlink, sizeof(int));
-    wall->linkj = (int *) calloc(wall->nlink, sizeof(int));
-    wall->linkp = (int *) calloc(wall->nlink, sizeof(int));
-    wall->linku = (int *) calloc(wall->nlink, sizeof(int));
+    nlink = imax(1, wall->nlink); /* Avoid zero-sized allocations */
+    assert(nlink > 0);
+    wall->linki = (int *) calloc(nlink, sizeof(int));
+    wall->linkj = (int *) calloc(nlink, sizeof(int));
+    wall->linkp = (int *) calloc(nlink, sizeof(int));
+    wall->linku = (int *) calloc(nlink, sizeof(int));
+    assert(wall->linki);
+    assert(wall->linkj);
+    assert(wall->linkp);
+    assert(wall->linku);
     if (wall->linki == NULL) pe_fatal(wall->pe,"calloc(wall->linki) failed\n");
     if (wall->linkj == NULL) pe_fatal(wall->pe,"calloc(wall->linkj) failed\n");
     if (wall->linkp == NULL) pe_fatal(wall->pe,"calloc(wall->linkp) failed\n");

@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.8.09
+- Avoid zero-sized allocations in wall.c
+
 version 0.8.08
 - Repaired util/colloid_init.c
 - Separate vtk scalar order / director / biaxial order files
