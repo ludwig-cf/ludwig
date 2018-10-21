@@ -293,6 +293,21 @@ int extract_driver(const char * filename, int version) {
 
     printf("\nWriting result to %s\n", io_data);
 
+    if (output_vtk_ == 1) {
+      if (nrec_ == 3 && strncmp(stub_, "vel", 3) == 0) {
+	write_vtk_header(fp_data, nrec_, ntargets, "velocity_field",
+			 VTK_VECTORS);
+      }
+      else if (nrec_ == 1 && strncmp(stub_, "phi", 3) == 0) {
+	write_vtk_header(fp_data, nrec_, ntargets, "composition",
+			 VTK_SCALARS);
+      }
+      else {
+	/* Assume scalars */
+	write_vtk_header(fp_data, nrec_, ntargets, stub_, VTK_SCALARS);
+      }
+    }
+
     if (output_cmf_ == 0) write_data(fp_data, ntargets, 0, nrec_, datasection);
     if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 0, nrec_, datasection);
 
@@ -467,8 +482,18 @@ void read_meta_data_file(const char * filename) {
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
   assert(ifail == 1);
   printf("Record size (bytes): %d\n", nrbyte);
-  assert((nrbyte % 8) == 0);
-  nrec_ = nrbyte/8;
+  /* PENDING: this deals with different formats until improved meta data
+   * is available */
+  if (input_binary_ == 1) {
+    /* Exactly 8 bytes per record */
+    assert((nrbyte % 8) == 0);
+    nrec_ = nrbyte/8;
+  }
+  else {
+    /* ASCII: approx 22 characters per record */
+    nrec_ = nrbyte / 22;
+    assert(nrec_ > 0);
+  }
 
   fgets(tmp, FILENAME_MAX, fp_meta);
   ifail = sscanf(tmp+ncharoffset, "%d", &input_isbigendian_);
