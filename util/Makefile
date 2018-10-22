@@ -37,10 +37,10 @@ capillary:	capillary.c
 	$(CC) $(CFLAGS) capillary.c -o capillary
 
 extract:	extract.c
-	$(CC) $(CFLAGS) $(INC) extract.c $(LIBS)
+	$(CC) $(CFLAGS) $(INC) extract.c $(LIBS) -o extract
 
 .PHONY : clean
 clean:
-	rm -f colloid_init extract_colloids capillary
+	rm -f colloid_init extract_colloids capillary extract
 
 
