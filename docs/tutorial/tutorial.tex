@@ -262,7 +262,9 @@ $ mpirun -np 4 ./Ludwig.exe input
 output files being created with names of the form \texttt{vel-XXXXXXXX.001-001}. 
 These files contain the components of the velocity vectors in Cartesian coordinates at each lattice point in the simulation. 
 \item The first step to the post-processing of the data is to compile the \texttt{extract.c} 
-routine in \texttt{/util}. 
+routine in \texttt{/util}. This requires the \texttt{Ludwig} code to be compiled in serial 
+(see section \ref{configbuild}).
+ 
 \item Edit \texttt{extract.c}. Specifically, set the flags for:
 \begin{enumerate}
 \item \texttt{input\_binary\_=0} \\ if the velocity data is in ASCII format (see flag in input file for \texttt{test1}),
@@ -322,7 +324,10 @@ in this case two sets of output files are being created, one containing the velo
 the other compositional order parameter ($\phi$) data at each lattice point in the simulation. 
 In this example, these data are in binary format.
 \item The post-processing of the data requires again a compiled exectuable of \texttt{extract.c} in
-\texttt{/util}, but this time with slightly different settings. Specifically, set the flags for:
+\texttt{/util}, but this time with slightly different settings. 
+Again, this requires the \texttt{Ludwig} code to be compiled in serial 
+(see section \ref{configbuild}).
+Specifically, set the flags for:
 \begin{enumerate}
 \item \texttt{input\_binary\_=1} \\ if the scalar order parameter and velocity data are in binary format (see 
 flag in input file for \texttt{test2}),
@@ -442,7 +447,7 @@ radius and $\delta$ - here set to 0.5 - catches any colloid-colloid interactions
   \end{center}
 \end{figure}
 
-\item The following steps outline the preliminary stages required in order to initialise the colloidal system and for the visualisation of colloids. Firstly, compile the \texttt{Ludwig} code in serial (see section \ref{configbuild}) and go to the directory \texttt{ludwig/util}. There you should see the files \texttt{colloid\_init.c} and \texttt{extract\_colloid.c}. These are the files required for the initialisation and post-processing of colloids, respectively.
+\item The following steps outline the preliminary stages required in order to initialise the colloidal system and for the visualisation of colloids. Firstly, and as before, compile the \texttt{Ludwig} code in serial (see section \ref{configbuild}) and go to the directory \texttt{ludwig/util}. There you should see the files \texttt{colloid\_init.c} and \texttt{extract\_colloid.c}. These are the files required for the initialisation and post-processing of colloids, respectively.
 \item In the file, \texttt{colloid\_init.c} set the flags for:
 \begin{enumerate}
 \item \texttt{NMC = 0},
