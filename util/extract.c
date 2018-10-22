@@ -77,7 +77,7 @@ int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int reverse_byte_order_ = 0;   /* Switch for bigendian input */
-int input_binary_ = 1;         /* Switch for format of input */
+int input_binary_ = -1;        /* Format of input detected from meta data */
 int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
 int output_index_ = 0;         /* For ASCII output, include (i,j,k) indices */
@@ -494,15 +494,18 @@ void read_meta_data_file(const char * filename) {
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
   assert(ifail == 1);
   printf("Record size (bytes): %d\n", nrbyte);
+
   /* PENDING: this deals with different formats until improved meta data
    * is available */
-  if (input_binary_ == 1) {
-    /* Exactly 8 bytes per record */
-    assert((nrbyte % 8) == 0);
-    nrec_ = nrbyte/8;
+
+  if ((nrbyte % 8) == 0) {
+    /* We have a binary file */
+    input_binary_ = 1;
+    nrec_ = nrbyte / 8;
   }
   else {
     /* ASCII: approx 22 characters per record */
+    input_binary_ = 0;
     nrec_ = nrbyte / 22;
     assert(nrec_ > 0);
   }
