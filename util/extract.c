@@ -37,14 +37,15 @@
  *
  *  $ make extract
  *
- *  should produce a.out
+ *  should produce 'extract'
  *
- *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
+ *  University of Strathclyde, Glasgow, UK
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  Oliver Henirch  (ohenrich@strath.ac.uk)
+ *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
  *
  *  (c) 2011-2018 The University of Edinburgh
  *
