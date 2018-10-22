@@ -467,8 +467,14 @@ void read_meta_data_file(const char * filename) {
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
   assert(ifail == 1);
   printf("Record size (bytes): %d\n", nrbyte);
-  assert((nrbyte % 8) == 0);
-  nrec_ = nrbyte/8;
+  if (input_binary_ == 1) {
+    assert((nrbyte % 8) == 0);
+    nrec_ = nrbyte / 8;
+  }
+  else {
+    /* ASCCI */
+    nrec_ = nrbyte/22;
+  }
 
   fgets(tmp, FILENAME_MAX, fp_meta);
   ifail = sscanf(tmp+ncharoffset, "%d", &input_isbigendian_);
