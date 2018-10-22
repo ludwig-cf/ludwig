@@ -1,21 +1,23 @@
 ########################################################################
 #			   					       #
-#  vtk_extract_script.py 					       #
+#  extract.py 					                       #
 #			   					       #
 #  Script for creating data files in vtk-format for visualisation in   #
 #  Paraview.						               #
-#  Requires vtk_extract.c with corresponding flags set and	       #
-#  an executable 'extract_colloids' for colloid processing. 	       #				
+#  Requires executables 'extract' and 'extract_colloids' compiled      #				
+#  and corresponding flags to be set.                                  #				
 #								       #				
-#  Usage: $> python vtk_extract_script.py			       #
+#  Usage: $> python extract.py	                		       #
 #								       #
-#  $Id$$    #
-#								       #	
-#  Edinburgh Soft Matter and Statistical Physics Group and	       #
-#  Edinburgh Parallel Computing Centre				       #
-#								       #	
-#  Oliver Henrich (ohenrich@epcc.ed.ac.uk)			       #
-#  (c) 2014 The University of Edinburgh				       #
+#  Edinburgh Soft Matter and Statistical Physics Group                 #
+#  Edinburgh Parallel Computing Centre                                 #
+#  University of Strathclyde, Glasgow, UK                              #
+#                                                                      #
+#  Contributing authors:                                               #
+#  Kevin Stratford (kevin@epcc.ed.ac.uk)                               #
+#  Oliver Henrich  (oliver.henrich@strath.ac.uk)                       # 
+#			   					       #
+#  (c) 2011-2018 The University of Edinburgh                           #
 #			   					       #
 ########################################################################
 
