@@ -39,11 +39,8 @@ capillary:	capillary.c
 extract:	extract.c
 	$(CC) $(CFLAGS) $(INC) extract.c $(LIBS) -o extract
 
-vtk_extract:	vtk_extract.c
-	$(CC) $(CFLAGS) $(INC) vtk_extract.c $(LIBS) -o vtk_extract
-
 .PHONY : clean
 clean:
-	rm -f colloid_init extract_colloids capillary extract vtk_extract
+	rm -f colloid_init extract_colloids capillary extract
 
 

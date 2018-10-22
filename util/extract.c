@@ -78,7 +78,7 @@ int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int reverse_byte_order_ = 0;   /* Switch for bigendian input */
 int input_binary_ = 1;         /* Switch for format of input */
-int output_binary_ = 1;        /* Switch for format of final output */
+int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
 int output_index_ = 0;         /* For ASCII output, include (i,j,k) indices */
 int output_vtk_ = 0;           /* Write ASCII VTK header */
@@ -195,6 +195,7 @@ int extract_driver(const char * filename, int version) {
 
   double * datasection;
   char io_data[FILENAME_MAX];
+  char suf[FILENAME_MAX] = ".vtk";
 
   FILE * fp_data;
 
@@ -289,10 +290,35 @@ int extract_driver(const char * filename, int version) {
     /* Write a single file with the final section */
 
     sprintf(io_data, "%s-%8.8d", stub_, ntime);
-    fp_data = fopen(io_data, "w+b");
-    if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
 
-    printf("\nWriting result to %s\n", io_data);
+    if (output_vtk_ == 1) {
+
+      strcat(io_data, suf);
+      fp_data = fopen(io_data, "w+b");
+      if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
+      printf("\nWriting result to %s\n", io_data);
+
+      if (nrec_ == 3 && strncmp(stub_, "vel", 3) == 0) {
+	write_vtk_header(fp_data, nrec_, ntargets, "velocity_field",
+			 VTK_VECTORS);
+      }
+      else if (nrec_ == 1 && strncmp(stub_, "phi", 3) == 0) {
+	write_vtk_header(fp_data, nrec_, ntargets, "composition",
+			 VTK_SCALARS);
+      }
+      else {
+	/* Assume scalars */
+	write_vtk_header(fp_data, nrec_, ntargets, stub_, VTK_SCALARS);
+      }
+
+    }
+    else {
+
+      fp_data = fopen(io_data, "w+b");
+      if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
+      printf("\nWriting result to %s\n", io_data);
+
+    }
 
     if (output_cmf_ == 0) write_data(fp_data, ntargets, 0, nrec_, datasection);
     if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 0, nrec_, datasection);
@@ -468,13 +494,18 @@ void read_meta_data_file(const char * filename) {
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
   assert(ifail == 1);
   printf("Record size (bytes): %d\n", nrbyte);
+
+  /* PENDING: this deals with different formats until improved meta data
+   * is available */
   if (input_binary_ == 1) {
+    /* Exactly 8 bytes per record */
     assert((nrbyte % 8) == 0);
     nrec_ = nrbyte / 8;
   }
   else {
-    /* ASCCI */
-    nrec_ = nrbyte/22;
+    /* ASCII: approx 22 characters per record */
+    nrec_ = nrbyte / 22;
+    assert(nrec_ > 0);
   }
 
   fgets(tmp, FILENAME_MAX, fp_meta);
@@ -895,7 +926,7 @@ int write_qab_vtk(int ntime, int ntargets[3], double * datasection) {
 
   /* Scalar order */
   if (output_lcs_) {
-    sprintf(io_data, "lcq-%8.8d.vtk", ntime);
+    sprintf(io_data, "lcs-%8.8d.vtk", ntime);
     fp_data = fopen(io_data, "w");
 
     if (fp_data == NULL) {

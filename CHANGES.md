@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.8.10
+- Add vtk format output for composition, velocity, in extract
+
 version 0.8.09
 - Avoid zero-sized allocations in wall.c
 

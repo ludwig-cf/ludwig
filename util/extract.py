@@ -1,15 +1,14 @@
 ########################################################################
-#			   					       #
-#  extract.py 					                       #
-#			   					       #
+#                                                                      #
+#  extract.py                                                          #
+#                                                                      #
 #  Script for batch processing of data files in vtk-format             #
 #  for visualisation in Paraview.                                      #
-#						                       #
+#                                                                      #
 #  Requires executable 'extract' with corresponding flags set          #
-#  and executable 'extract_colloids' for colloid processing. 	       #		
-#								       #		
-#  Usage: $> python extract.py			                       #
-#								       #
+#
+#  Usage: $> python extract.py                                         #
+#                                                                      #
 #  Edinburgh Soft Matter and Statistical Physics Group                 #
 #  Edinburgh Parallel Computing Centre                                 #
 #  University of Strathclyde, Glasgow, UK                              #
@@ -18,8 +17,9 @@
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)                               #
 #  Oliver Henrich  (oliver.henrich@strath.ac.uk)                       #
 #                                                                      #
-#  (c) 2011-2018 The University of Edinburgh			       #
-#			   					       #
+#
+#  (c) 2011-2018 The University of Edinburgh                           #
+#                                                                      #
 ########################################################################
 
 import sys, os, re, math
@@ -30,12 +30,12 @@ nend=10000	# End timestep
 ngroup=1	# Number of output groups
 
 vel=1		# Switch for velocity 
-q=0		# Switch for Q-tensor
-phi=1		# Switch for binary fluid
+q=1		# Switch for Q-tensor
+phi=0		# Switch for binary fluid
 psi=0		# Switch for electrokinetics
 fed=0		# Switch for free energy
 colcds=0	# Switch for colloid coordinate
-colcdsvel=0	# Switch for colloid coordinate and lattice velocity
+colcdsvel=1	# Switch for colloid coordinate and lattice velocity
 
 # Set lists for analysis
 metafile=[]
@@ -98,6 +98,20 @@ for i in range(len(filelist)):
 
 			stub=line.split('.',1)
 			os.system('./extract -a -k %s %s' % (metafile[i],stub[0]))
+
+		datafiles.close
+
+	if filelist[i] == 'filelist_q':
+		datafiles=open(filelist[i],'r') 
+
+		while 1:
+			line=datafiles.readline()
+			if not line: break
+
+			print(('\n# Processing %s' % line)) 
+
+			stub=line.split('.',1)
+			os.system('./extract -a -k -s -d %s %s' % (metafile[i],stub[0]))
 
 		datafiles.close
 
