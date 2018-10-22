@@ -162,7 +162,7 @@ $ make pdf
 \end{lstlisting}
 
 This tutorial and directories with input files and sample output is contained in 
-a subdirectory of \texttt{/docs}. It can be compiled in the following way:
+a subdirectory of \texttt{/docs}. It can be compiled in the following way (issue twice for TOC):
 
 \begin{lstlisting}[style=terminalverbatim]
 $ cd /ludwig/docs/tutorial
@@ -263,26 +263,20 @@ output files being created with names of the form \texttt{vel-XXXXXXXX.001-001}.
 These files contain the components of the velocity vectors in Cartesian coordinates at each lattice point in the simulation. 
 \item The first step to the post-processing of the data is to compile the \texttt{extract.c} 
 routine in \texttt{/util}. This requires the \texttt{Ludwig} code to be compiled in serial 
-(see section \ref{configbuild}).
- 
-\item Edit \texttt{extract.c}. Specifically, set the flags for:
-\begin{enumerate}
-\item \texttt{input\_binary\_=0} \\ if the velocity data is in ASCII format (see flag in input file for \texttt{test1}),
-\item \texttt{output\_binary\_=0} \\ as the output of the postprocessing routines should also be in ASCII format for this tutorial,
-\item \texttt{output\_index=1} \\ to obtain Cartesian lattice indices \textit{i, j, k} for direct visualisation with \texttt{gnuplot}, 
-\end{enumerate}
-\item Compile with 
+(see section \ref{configbuild}). Compile with 
 \begin{lstlisting}
 $ make extract 
 \end{lstlisting} 
 and copy the executable \texttt{extract} into your working directory.
 \item Post-process the raw data by issuing 
 \begin{lstlisting}
-$ ./extract meta_file_name data_file_name_stub
+$ ./extract -a -i meta_file_name data_file_name_stub
 \end{lstlisting} 
 replacing the filenames with those of the present case (i.e. \texttt{vel.001-001.meta} and e.g. \texttt{vel-00010000}).
-\item You should now see files named \texttt{vel-XXXXXXXX}.
-The first three columns of these ASCII files are the spatial lattice indices followed by the Cartesian components of the velocity vectors.\\
+The command line options '\texttt{-a}' and '\texttt{-i}' give output in ASCII format and a lattice index 
+for easy visualisation in \texttt{gnuplot}.
+
+\item You should now see files named \texttt{vel-XXXXXXXX}.  The first three columns of these ASCII files are the spatial lattice indices followed by the Cartesian components of the velocity vectors.\\
 \item To plot the velocity profile of the system, you can plot the $y$-component of the velocity against 
 the spatial $x$-coordinate on the lattice with the command:
 \begin{lstlisting}
@@ -296,7 +290,7 @@ output at time step $10,000$ can be found, in addition to a file containing the 
 
 \begin{figure}[h]
 \begin{center}
-\includegraphics[width=0.6\linewidth]{velProf.png}
+\includegraphics[width=0.8\linewidth]{velProf.png}
   \caption{The parabolic velocity profile of a simple fluid in a cavity after $10,000$ time-steps.}
   \label{fig:velocityProfile}
   \end{center}
@@ -323,25 +317,14 @@ $ mpirun -np 8 ./Ludwig.exe input
 in this case two sets of output files are being created, one containing the velocity and 
 the other compositional order parameter ($\phi$) data at each lattice point in the simulation. 
 In this example, these data are in binary format.
-\item The post-processing of the data requires again a compiled exectuable of \texttt{extract.c} in
-\texttt{/util}, but this time with slightly different settings. 
-Again, this requires the \texttt{Ludwig} code to be compiled in serial 
-(see section \ref{configbuild}).
-Specifically, set the flags for:
-\begin{enumerate}
-\item \texttt{input\_binary\_=1} \\ if the scalar order parameter and velocity data are in binary format (see 
-flag in input file for \texttt{test2}),
-\item \texttt{output\_binary\_=0} \\ as the output of the post-processing routines should be 
-in ASCII format,
-\item \texttt{output\_index=0} \\ as Cartesian lattice indices are not required, 
-\item \texttt{output\_cmf=1} to produce data in column-major format, which is required for the correct 
-visualisation with ParaView.
-\end{enumerate}
-\item Compile with 
+\item It should be possible to use the same exectuable \texttt{extract} from the previous 
+example for the  post-processing. Alternatively, compile with 
 \begin{lstlisting}
 make extract
 \end{lstlisting} 
 and copy the executable \texttt{extract} into your working directory.
+Remember that this requires the \texttt{Ludwig} code to be compiled in serial 
+(see section \ref{configbuild}).
 \item A python script \texttt{extract.py}
 can be used for convenient post-processing of multiple raw data files and time steps.
  Edit \texttt{extract.py} and set:
@@ -400,23 +383,23 @@ A 3D visualisation of the system should also now be shown:
 
 \begin{figure}[H]
 \begin{center}
-\includegraphics[width=0.6\linewidth]{system.png}
+\includegraphics[width=0.8\linewidth]{system.png}
   \caption{A visualisation of a separating binary fluid using ParaView.}
   \label{fig:sysVisualisation}
   \end{center}
 \end{figure}
 
-\item You can move through different frames of the simulation with the arrow buttons:
+\item You can move through different frames of the simulation with the arrow buttons.
+As you do this, you should see the coarsening of the binary fluid.
 
 \begin{figure}[H]
 \begin{center}
 \includegraphics[width=0.4\linewidth]{arrows.png}
-  \caption{A visualisation of a separating binary fluid using ParaView.}
+  \caption{Control buttons for the visualisation in ParaView.}
   \label{fig:changeFrame}
   \end{center}
 \end{figure}
 
-as you do this, you should see the coarsening of the binary fluid.
 
 \item In the File menu you can save a screen shot of the visualisation or save the state of the system in order to reload the entire visualisation.
 \end{enumerate}
@@ -464,6 +447,12 @@ $ make colloid_init
 $ ./colloid_init
 \end{lstlisting}
 this produces a file \texttt{config.cds.init.001-001}, which you have to copy into your working directory.
+
+\item Next, run the code in your working directory by issuing the command:
+\begin{lstlisting}
+$ mpirun -np 8 ./Ludwig.exe input
+\end{lstlisting}
+
 \item In the file, \texttt{extract\_colloids.c} set:
 \begin{enumerate}
 \item The system size, \texttt{NX},  \texttt{NY},  \texttt{NZ} all = 32,
@@ -475,25 +464,18 @@ this produces a file \texttt{config.cds.init.001-001}, which you have to copy in
 $ make extract_colloids
 \end{lstlisting}
 and copy the executable \texttt{extract\_colloids} into your working directory.
-\item For the post-processing of this system, in \texttt{extract.c}, set:
-\begin{enumerate}
-\item \texttt{input\_binary\_  = 1} \\ due to binary output from code,
-\item \texttt{output\_binary\_ = 0} \\ for output to be visualised in ASCII,
-\end{enumerate}
-compile in the usual manner and copy the post-processing executable \texttt{extract} and 
-the script \texttt{extract.py} as well into your working directory. 
-\item In \texttt{extract.py},
+\item For the post-processing of other data either copy the existing executable \texttt{extract} from 
+previous examples or compile in \texttt{/util} in the usual manner.
+Remember that this requires the \texttt{Ludwig} code to be compiled in serial 
+(see section \ref{configbuild}).
+
+\item Copy the script \texttt{extract.py} as well into your working directory and set:
 \begin{enumerate}
 \item \texttt{vel = 1}, \\ to visualise the velocity field,
 \item \texttt{q = 1}, \\ since there are liquid crystals present,
 \item \texttt{colcds = 0} and 
 \item \texttt{colcdsvel = 1} so that the colloid position and velocity data are both available.
 \end{enumerate}
-
-\item Next, run the code in your working directory by issuing the command:
-\begin{lstlisting}
-$ mpirun -np 8 ./Ludwig.exe input
-\end{lstlisting}
 
 \item Run the post-processing routine as before using the python script. 
 \texttt{.csv} files with the colloid data should 
@@ -558,7 +540,7 @@ The 3D visualisation of this system should appear as:
 
 \begin{figure}[H]
 \begin{center}
-\includegraphics[width=0.6\linewidth]{colloidSystem.png}
+\includegraphics[width=0.8\linewidth]{colloidSystem.png}
   \caption{The visualisation of the colloidal suspension in liquid crystals.}
   \label{fig:collVis}
   \end{center}
