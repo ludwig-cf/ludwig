@@ -1,24 +1,25 @@
 ########################################################################
-#			   					       #
-#  extract.py 					                       #
-#			   					       #
-#  Script for creating data files in vtk-format for visualisation in   #
-#  Paraview.						               #
-#  Requires executables 'extract' and 'extract_colloids' compiled      #				
-#  and corresponding flags to be set.                                  #				
-#								       #				
-#  Usage: $> python extract.py	                		       #
-#								       #
+#                                                                      #
+#  extract.py                                                          #
+#                                                                      #
+#  Script for batch processing of data files in vtk-format             #
+#  for visualisation in Paraview.                                      #
+#                                                                      #
+#  Requires executable 'extract' with corresponding flags set          #
+#  and executable 'extract_colloids' for colloid processing.           #                
+#                                                                      #                
+#  Usage: $> python extract.py                                         #
+#                                                                      #
 #  Edinburgh Soft Matter and Statistical Physics Group                 #
 #  Edinburgh Parallel Computing Centre                                 #
 #  University of Strathclyde, Glasgow, UK                              #
 #                                                                      #
 #  Contributing authors:                                               #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)                               #
-#  Oliver Henrich  (oliver.henrich@strath.ac.uk)                       # 
-#			   					       #
+#  Oliver Henrich  (oliver.henrich@strath.ac.uk)                       #
+#                                                                      #
 #  (c) 2011-2018 The University of Edinburgh                           #
-#			   					       #
+#                                                                      #
 ########################################################################
 
 import sys, os, re, math

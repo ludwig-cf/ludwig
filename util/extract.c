@@ -37,7 +37,7 @@
  *
  *  $ make extract
  *
- *  should produce extract
+ *  should produce 'extract'
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
