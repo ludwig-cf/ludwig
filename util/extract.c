@@ -156,6 +156,7 @@ int main(int argc, char ** argv) {
       break;
     case 'k':
       output_vtk_ = 1;    /* Request VTK header */
+      output_cmf_ = 1;    /* Request column-major format for Paraview */ 
       break;
     case 's':
       output_lcs_ = 1; /* Request liquid crystal scalar order parameter */
