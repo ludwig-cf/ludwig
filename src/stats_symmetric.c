@@ -4,8 +4,6 @@
  *
  *  Statistics related to the symetric free energy Model H, binary fluid.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -104,13 +102,14 @@ int stats_symmetric_length(fe_symm_t * fe, field_grad_t * phi_grad,
     }
   }
 
-  MPI_Reduce(dphi_local, dphi_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, comm);
-
+  /* The final computation is significant at rank 0 only (for output) */
   /* Set up the normalised gradient tensor. */
 
-  assert(dphi_total[6] > 0.0);
+  MPI_Reduce(dphi_local, dphi_total, NSTAT, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-  rvolume = 1.0/dphi_total[6];
+  rvolume = 0.0;
+  if (dphi_total[6] > 0.0) rvolume = 1.0/dphi_total[6];
+
   dphiab[X][X] = rvolume*dphi_total[0];
   dphiab[X][Y] = rvolume*dphi_total[1];
   dphiab[X][Z] = rvolume*dphi_total[2];

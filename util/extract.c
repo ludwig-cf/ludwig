@@ -77,7 +77,7 @@ int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int reverse_byte_order_ = 0;   /* Switch for bigendian input */
-int input_binary_ = 1;         /* Switch for format of input */
+int input_binary_ = -1;        /* Format of input detected from meta data */
 int output_binary_ = 0;        /* Switch for format of final output */
 int is_velocity_ = 0;          /* Switch to identify velocity field */
 int output_index_ = 0;         /* For ASCII output, include (i,j,k) indices */
@@ -156,6 +156,7 @@ int main(int argc, char ** argv) {
       break;
     case 'k':
       output_vtk_ = 1;    /* Request VTK header */
+      output_cmf_ = 1;    /* Request column-major format for Paraview */ 
       break;
     case 's':
       output_lcs_ = 1; /* Request liquid crystal scalar order parameter */
@@ -497,13 +498,15 @@ void read_meta_data_file(const char * filename) {
 
   /* PENDING: this deals with different formats until improved meta data
    * is available */
-  if (input_binary_ == 1) {
-    /* Exactly 8 bytes per record */
-    assert((nrbyte % 8) == 0);
+
+  if ((nrbyte % 8) == 0) {
+    /* We have a binary file */
+    input_binary_ = 1;
     nrec_ = nrbyte / 8;
   }
   else {
     /* ASCII: approx 22 characters per record */
+    input_binary_ = 0;
     nrec_ = nrbyte / 22;
     assert(nrec_ > 0);
   }

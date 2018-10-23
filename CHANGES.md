@@ -2,7 +2,9 @@
 ### Changes
 
 version 0.8.10
-- Add vtk format output for composition, velocity, in extract
+- Add vtk format output for composition, velocity, in extract;
+  automatically detect input format
+- Replace dubious assertion in stats_symmetric_length()
 
 version 0.8.09
 - Avoid zero-sized allocations in wall.c
