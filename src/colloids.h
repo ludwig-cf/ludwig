@@ -4,12 +4,10 @@
  *
  *  Data structures holding linked list of colloids.
  *
- *  $Id: colloids.h,v 1.10 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -58,7 +56,6 @@ struct colloid {
   /* Bonded neighbours cf. colloid.h */
 
   colloid_t * bonded[NBOND_MAX];
-
 };
 
 typedef struct colloids_info_s colloids_info_t;
@@ -77,6 +74,8 @@ __host__ int colloids_info_nhalo(colloids_info_t * info, int * nhalo);
 __host__ int colloids_info_ntotal(colloids_info_t * info, int * ntotal);
 __host__ int colloids_info_nlocal(colloids_info_t * cinfo, int * nlocal);
 __host__ int colloids_info_ntotal_set(colloids_info_t * cinfo);
+__host__ int colloids_info_rebuild_freq(colloids_info_t * cinfo, int * nf);
+__host__ int colloids_info_rebuild_freq_set(colloids_info_t * cinfo, int nf);
 __host__ int colloids_info_map(colloids_info_t * info, int index, colloid_t ** pc);
 __host__ int colloids_info_map_old(colloids_info_t * info, int index, colloid_t ** pc);
 __host__ int colloids_info_cell_index(colloids_info_t * cinfo, int ic, int jc, int kc);

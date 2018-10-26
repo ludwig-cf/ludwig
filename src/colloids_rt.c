@@ -157,6 +157,22 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   colloids_rt_dynamics(cs, *pinfo, wall, map);
   colloids_rt_gravity(pe, rt, *pinfo);
+
+  /* Set the update frequency and report (non-default values) */
+
+  {
+    int isfreq = 0;
+    int nfreq = 1;
+
+    isfreq = rt_int_parameter(rt, "colloid_rebuild_freq", &nfreq);
+    if (nfreq <= 0) pe_fatal(pe, "colloids_rebuild_freq must be >= 1\n");
+
+    if (isfreq) {
+      colloids_info_rebuild_freq_set(*pinfo, nfreq);
+      pe_info(pe, "Colloid rebuild freq:         %d\n", nfreq);
+    }
+  }
+
   pe_info(pe, "\n");
   
   return 0;

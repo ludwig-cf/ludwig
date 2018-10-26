@@ -159,6 +159,8 @@ struct ludwig_s {
 static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
+static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
+
 int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
@@ -486,7 +488,13 @@ void ludwig_run(const char * inputfile) {
     }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
-    ludwig_colloids_update(ludwig);
+
+    if ((step % ludwig->collinfo->rebuild_freq) == 0) {
+      ludwig_colloids_update(ludwig);
+    }
+    else {
+      ludwig_colloids_update_low_freq(ludwig);
+    }
 
     /* Order parameter gradients */
 
@@ -1677,6 +1685,44 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
   map_halo(map);
 
   *pmap = map;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ludwig_colloids_update_low_freq
+ *
+ *  No rebuild; no lattice operations, but interactions are required.
+ *
+ *****************************************************************************/
+
+static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
+
+  int is_subgrid = 0;
+  int ncolloid = 0;
+
+  assert(ludwig);
+
+  colloids_info_ntotal(ludwig->collinfo, &ncolloid);
+  if (ncolloid == 0) return 0;
+
+  subgrid_on(&is_subgrid);
+
+  if (is_subgrid) {
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);
+  }
+  else {
+    /* This order should be preserved */
+    colloids_info_position_update(ludwig->collinfo);
+    colloids_info_update_cell_list(ludwig->collinfo);
+    colloids_halo_state(ludwig->collinfo);
+    colloids_info_update_lists(ludwig->collinfo);
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+  }
 
   return 0;
 }
