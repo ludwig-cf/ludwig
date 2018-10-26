@@ -73,6 +73,7 @@ __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
   assert(obj->clist);
   if (obj->clist == NULL) pe_fatal(pe, "calloc(nlist, colloid_t *) failed\n");
 
+  obj->rebuild_freq = 1;
   obj->ncells = nlist;
   obj->rho0 = RHO_DEFAULT;
   obj->drmax = DRMAX_DEFAULT;
@@ -1504,6 +1505,37 @@ __host__ int colloid_rb_ub(colloids_info_t * info, colloid_t * pc, int index,
   ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
   ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
   ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_rebuild_freq
+ *
+ *****************************************************************************/
+
+int colloids_info_rebuild_freq(colloids_info_t * cinfo, int * nfreq) {
+
+  assert(cinfo);
+
+  *nfreq = cinfo->rebuild_freq;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_info_rebuild_freq_set
+ *
+ *****************************************************************************/
+
+int colloids_info_rebuild_freq_set(colloids_info_t * cinfo, int nfreq) {
+
+  assert(cinfo);
+  assert(nfreq >= 1);
+
+  cinfo->rebuild_freq = nfreq;
 
   return 0;
 }

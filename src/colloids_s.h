@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2018 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -19,8 +21,8 @@
 #include "coords.h"
 #include "colloids.h"
 
-
 struct colloids_info_s {
+
   int nhalo;                  /* Halo extent in cell list */
   int ntotal;                 /* Total, physical, number of colloids */
   int nallocated;             /* Number colloid_t allocated */
@@ -28,6 +30,9 @@ struct colloids_info_s {
   int str[3];                 /* Strides for cell list */
   int nsites;                 /* Total number of map sites */
   int ncells;                 /* Total number of cells */
+
+  int rebuild_freq;           /* Rebuild shape every so many steps */
+
   double rho0;                /* Mean density (usually matches fluid) */
   double drmax;               /* Maximum movement per time step */
 
