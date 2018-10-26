@@ -28,16 +28,20 @@
  *  provide the order parameter data. See the routine read_phi()
  *  below for details.
  *
- *  ./a.out phi-file
+ *  ./a.out phi-00000010
  *
- *  Note that all the floating point data are of type float
- *  (assumed to be 4 bytes).
+ *  Files should be binary with 8-byte double data, as would be
+ *  produced by, e.g.,
  *
- *  $Id: length_from_sk.c,v 1.1 2009-06-22 09:56:09 kevin Exp $
+ *  ./extract -b phi.001-001.meta phi-00000010.001-001
+ *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
- *  (c) T|he University of Edinburgh (2008)
+ *
+ *  (c) 2008-2018 T|he University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
@@ -191,7 +195,7 @@ int main(int argc, char ** argv) {
  *  It is assumed that the data are stored in a binary file
  *  arranged regularly with the k (z) index running fastest.
  *
- *  The data type read is float (4 bytes).
+ *  The data type read is double (8 bytes).
  *
  *  Dummy values are treated as zero (interface).
  *
@@ -200,7 +204,7 @@ int main(int argc, char ** argv) {
 void read_phi(char * filename) {
 
   int   i, j, k, n;
-  float tmp;
+  double tmp;
 
   FILE * fp;
 
@@ -211,7 +215,7 @@ void read_phi(char * filename) {
   for (i = 0; i < NX; i++) {
     for (j = 0; j < NY; j++) {
       for (k = 0; k < NZ; k++) {
-	n = fread(&tmp, sizeof(float), 1, fp);
+	n = fread(&tmp, sizeof(double), 1, fp);
 	if (tmp == DUMMY) tmp = 0.0;
 	phi[i][j][k] = tmp;
       }

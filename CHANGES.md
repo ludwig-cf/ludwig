@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.8.11
+- updated util/length_from_sk.c to take double input to be consistent
+  with extract output
+
 version 0.8.10
 - Add vtk format output for composition, velocity, in extract;
   automatically detect input format
