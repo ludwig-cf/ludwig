@@ -6,22 +6,27 @@
 #    gcc   Gnu C compiler
 #    mpicc Wrapper to the local MPI C compiler
 #
-#  Running the tests requires
-#     - an MPI launch command (often "mpirun")
-#     - the identity of the switch which controls the number of MPI tasks
-#     - a serial "launch command" (can be useful for platforms requiring
-#       cross-compiled)
-#       e.g., "aprun -n 1" on Cray systems. Leave blank if none is required.
+#  Options:
+#    BUILD is either "serial" or "parallel"
+#    MODEL is either "-D_D2Q9_", "-D_D3Q15_"" or "-D_D3Q19_"
+#
+#  Compiler switches
+#    Use e.g., -DSIMBVL=4 to set the targt vector length to 4
+#    Use -fopnemp for OpenMP
 #
 ##############################################################################
 
-CC=gcc
-MPICC=mpicc
-CFLAGS=-O2 -Wall
+BUILD   = serial
+MODEL   = -D_D3Q19_
 
-AR = ar
+CC      = gcc
+MPICC   = gcc
+CFLAGS  = -O -g -Wall -fopenmp
+
+AR      = ar
 ARFLAGS = -cru
+LDFLAGS = -fopenmp
 
-LAUNCH_SERIAL_CMD=
-LAUNCH_MPI_CMD=mpirun
-LAUNCH_MPI_NP_SWITCH=-np
+MPI_INC_PATH  = ./mpi_s
+MPI_LIB_PATH  = ./mpi_s
+MPI_LIB       = -lmpi

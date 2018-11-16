@@ -2,8 +2,21 @@
 ### Changes
 
 version 0.9.0
+- The build process has changed to try to move all the configuration
+  to the config.mk file. Please see updated examples in the ./config
+  directory. The configs are either serial or parallel (not both).
+  The build process should now be from the top level and is via
+  "make && make test". Serial builds should do "make serial" first.
+- Exectables in utils are built via "make" to be consistent with
+  other source directories
 - added input colloid_rebuild_freq (with default 1) to allow discrete
-  rebuild to be done less often
+  rebuild to be done less often than every time step
+- TODO PARALLEL LAUNCH OF PARALLEL REGRESSION TESTS
+- TODO Complete the split of serial regression tests
+- UPDATE CONFIG.mk in config directory for current machines
+- UPDATE BUILD AND TEST INSTRUCTIONS
+- UPDATE TUTORIALS
+- ADD TRAVIS ADD BADGE
 
 version 0.8.11
 - updated util/length_from_sk.c to take double input to be consistent

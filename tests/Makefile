@@ -33,7 +33,11 @@
 include ../Makefile.mk
 
 default:
-	$(MAKE) -s verbose
+	$(MAKE) test
+
+test:
+	$(MAKE) unit-test
+	$(MAKE) d3q19-short
 
 verbose:
 	@echo \
@@ -42,6 +46,12 @@ verbose:
 	"\t   make compile-run-mpi\n"  \
 	"\t See the Makefile for further model-specific targets\n" \
 	"\t Note: it is assumed make is GNU make\n"
+
+unit-test:
+	$(MAKE) -C unit test
+
+d3q19-short:
+	$(MAKE) -C regression/d3q19-short
 
 # Compilation only
 
@@ -97,13 +107,8 @@ run-mpi-regr-%:
 .PHONY:	clean test-clean
 
 clean:
-	$(MAKE) -C ../target   clean
-	$(MAKE) -C ../mpi_s    clean
-	$(MAKE) -C ../src      clean
 	$(MAKE) -C unit clean
-
-test-clean:
-	$(MAKE) -C regression
+	$(MAKE) -C regression clean
 
 
 # Compile and run tests (targets of convenience...)

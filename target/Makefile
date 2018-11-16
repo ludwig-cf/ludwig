@@ -57,10 +57,12 @@ test:
 	$(MAKE)
 	$(CC) $(CFLAGS) -c test.c
 	$(CC) $(LDFLAGS) test.o libtarget.a
+	./a.out
 
 testmpi:
 	$(MAKE)
-	$(MPICC) $(MPI_INCL) $(CFLAGS) -c testmpi.c
-	$(MPICC) $(LDFLAGS) testmpi.o libtarget.a $(MPI_LIBS) -lmpi
+	$(MPICC) $(MPI_INC_PATH) $(CFLAGS) -c testmpi.c
+	$(MPICC) $(LDFLAGS) testmpi.o libtarget.a $(MPI_LIB_PATH) -lmpi
+
 clean:
 	rm -f *.o *.a a.out
