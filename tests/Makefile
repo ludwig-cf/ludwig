@@ -33,7 +33,7 @@
 include ../Makefile.mk
 
 default:
-	$(MAKE) test
+	$(MAKE) -C test
 
 test:
 	$(MAKE) unit-test
