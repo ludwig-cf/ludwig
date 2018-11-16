@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Use clock() only as a last resort in serial */
+/* Use clock() only as a last resort in serial (no threads) */
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -37,11 +37,23 @@
 
 #include "mpi.h"
 
+/* Internal state */
+
+#define MAX_CART_COMM 16
+
+typedef struct mpi_info_s mpi_info_t;
+
+struct mpi_info_s {
+  int initialised;               /* MPI initialised */
+  int ncart;                     /* Number of Cartesian communicators */
+  int period[MAX_CART_COMM][3];  /* Periodic Cartesisan per communicator */
+};
+
+static mpi_info_t * mpi_info = NULL;
+
 static void mpi_copy(void * send, void * recv, int count, MPI_Datatype type);
 static int mpi_sizeof(MPI_Datatype type);
-
-static int mpi_initialised_flag_ = 0;
-static int periods_[3];
+static int mpi_is_valid_comm(MPI_Comm comm);
 
 /*****************************************************************************
  *
@@ -50,6 +62,8 @@ static int periods_[3];
  *****************************************************************************/
 
 int MPI_Barrier(MPI_Comm comm) {
+
+  assert(mpi_is_valid_comm(comm));
 
   return MPI_SUCCESS;
 }
@@ -65,7 +79,11 @@ int MPI_Barrier(MPI_Comm comm) {
 int MPI_Bcast(void * buffer, int count, MPI_Datatype datatype, int root,
 	      MPI_Comm comm) {
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info->initialised);
+  assert(buffer);
+  assert(count > 0);
+  assert(mpi_is_valid_comm(comm));
+
   return MPI_SUCCESS;
 }
 
@@ -77,7 +95,13 @@ int MPI_Bcast(void * buffer, int count, MPI_Datatype datatype, int root,
 
 int MPI_Init(int * argc, char *** argv) {
 
-  mpi_initialised_flag_ = 1;
+  assert(argc);
+  assert(argv);
+
+  mpi_info = (mpi_info_t *) calloc(1, sizeof(mpi_info_t));
+  assert(mpi_info);
+
+  mpi_info->initialised = 1;
 
   return MPI_SUCCESS;
 }
@@ -90,7 +114,9 @@ int MPI_Init(int * argc, char *** argv) {
 
 int MPI_Initialized(int * flag) {
 
-  *flag = mpi_initialised_flag_;
+  assert(flag);
+
+  *flag = (mpi_info != NULL); /* A sufficient condition */
 
   return MPI_SUCCESS;
 }
@@ -103,6 +129,9 @@ int MPI_Initialized(int * flag) {
 
 int MPI_Finalize(void) {
 
+  assert(mpi_info);
+  free(mpi_info);
+
   return MPI_SUCCESS;
 }
 
@@ -114,6 +143,7 @@ int MPI_Finalize(void) {
 
 int MPI_Comm_group(MPI_Comm comm, MPI_Group * group) {
 
+  assert(mpi_is_valid_comm(comm));
   assert(group);
 
   *group = 0;
@@ -129,6 +159,9 @@ int MPI_Comm_group(MPI_Comm comm, MPI_Group * group) {
 
 int MPI_Comm_rank(MPI_Comm comm, int * rank) {
 
+  assert(mpi_is_valid_comm(comm));
+  assert(rank);
+
   *rank = 0;
 
   return MPI_SUCCESS;
@@ -142,6 +175,9 @@ int MPI_Comm_rank(MPI_Comm comm, int * rank) {
 
 int MPI_Comm_size(MPI_Comm comm, int * size) {
 
+  assert(mpi_is_valid_comm(comm));
+  assert(size);
+
   *size = 1;
 
   return MPI_SUCCESS;
@@ -154,6 +190,8 @@ int MPI_Comm_size(MPI_Comm comm, int * size) {
  *****************************************************************************/
 
 int MPI_Abort(MPI_Comm comm, int code) {
+
+  assert(mpi_is_valid_comm(comm));
 
   exit(code);
   return MPI_SUCCESS; /* ha! */
@@ -192,6 +230,7 @@ double MPI_Wtick(void) {
 int MPI_Send(void * buf, int count, MPI_Datatype datatype, int dest,
 	     int tag, MPI_Comm comm) {
 
+  assert(buf);
 
   printf("MPI_Send should not be called in serial.\n");
   exit(0);
@@ -208,6 +247,9 @@ int MPI_Send(void * buf, int count, MPI_Datatype datatype, int dest,
 int MPI_Recv(void * buf, int count, MPI_Datatype datatype, int source,
 	     int tag, MPI_Comm comm, MPI_Status * status) {
 
+  assert(buf);
+  assert(status);
+
   printf("MPI_Recv should not be called in serial.\n");
   exit(0);
 
@@ -222,6 +264,9 @@ int MPI_Recv(void * buf, int count, MPI_Datatype datatype, int source,
 
 int MPI_Irecv(void * buf, int count, MPI_Datatype datatype, int source,
 	     int tag, MPI_Comm comm, MPI_Request * request) {
+
+  assert(buf);
+  assert(request);
 
   printf("MPI_Irecv should not be called in serial.\n");
   exit(0);
@@ -239,6 +284,8 @@ int MPI_Irecv(void * buf, int count, MPI_Datatype datatype, int source,
 int MPI_Ssend(void * buf, int count, MPI_Datatype datatype, int dest,
 	      int tag, MPI_Comm comm) {
 
+  assert(buf);
+
   printf("MPI_Ssend should not be called in serial\n");
   exit(0);
 
@@ -253,6 +300,9 @@ int MPI_Ssend(void * buf, int count, MPI_Datatype datatype, int dest,
 
 int MPI_Isend(void * buf, int count, MPI_Datatype datatype, int dest,
 	      int tag, MPI_Comm comm, MPI_Request * request) {
+
+  assert(buf);
+  assert(request);
 
   printf("MPI_Isend should not be called in serial\n");
   exit(0);
@@ -269,6 +319,12 @@ int MPI_Isend(void * buf, int count, MPI_Datatype datatype, int dest,
 int MPI_Issend(void * buf, int count, MPI_Datatype datatype, int dest,
 	       int tag, MPI_Comm comm, MPI_Request * request) {
 
+  assert(buf);
+  assert(count >= 0);
+  assert(dest == 0);
+  assert(mpi_is_valid_comm(comm));
+  assert(request);
+
   printf("MPI_Issend should not be called in serial\n");
   exit(0);
 
@@ -283,6 +339,10 @@ int MPI_Issend(void * buf, int count, MPI_Datatype datatype, int dest,
 
 int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
 
+  assert(count >= 0);
+  assert(requests);
+  assert(statuses);
+
   return MPI_SUCCESS;
 }
 
@@ -296,6 +356,11 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
 int MPI_Waitany(int count, MPI_Request requests[], int * index,
 		MPI_Status * statuses) {
 
+  assert(count >= 0);
+  assert(requests);
+  assert(index);
+  assert(statuses);
+
   return MPI_SUCCESS;
 }
 
@@ -307,6 +372,10 @@ int MPI_Waitany(int count, MPI_Request requests[], int * index,
  *****************************************************************************/
 
 int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status * status) {
+
+  assert(source == 0);
+  assert(mpi_is_valid_comm(comm));
+  assert(status);
 
   printf("MPI_Probe should not be called in serial\n");
   exit(0);
@@ -325,6 +394,12 @@ int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 		 MPI_Datatype recvtype, int source, int recvtag,
 		 MPI_Comm comm, MPI_Status * status) {
 
+  assert(sendbuf);
+  assert(dest == source);
+  assert(recvbuf);
+  assert(recvcount == sendcount);
+  assert(status);
+
   printf("MPI_Sendrecv should not be called in serial\n");
   exit(0);
 
@@ -339,6 +414,12 @@ int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 
 int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 	       MPI_Op op, int root, MPI_Comm comm) {
+
+  assert(sendbuf);
+  assert(recvbuf);
+  assert(count >= 0);
+  assert(root == 0);
+  assert(mpi_is_valid_comm(comm));
 
   /* mpi_check_collective(op);*/
   mpi_copy(sendbuf, recvbuf, count, type);
@@ -356,9 +437,13 @@ int MPI_Allgather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 		  void * recvbuf, int recvcount, MPI_Datatype recvtype,
 		  MPI_Comm comm) {
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info);
+  assert(sendbuf);
+  assert(recvbuf);
   assert(sendcount == recvcount);
   assert(sendtype == recvtype);
+  assert(mpi_is_valid_comm(comm));
+
   mpi_copy(sendbuf, recvbuf, sendcount, sendtype);
 
   return MPI_SUCCESS;
@@ -374,9 +459,12 @@ int MPI_Gather(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 	       void * recvbuf, int recvcount, MPI_Datatype recvtype,
 	       int root, MPI_Comm comm) {
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info);
+  assert(sendbuf);
+  assert(recvbuf);
   assert(sendcount == recvcount);
   assert(sendtype == recvtype);
+  assert(mpi_is_valid_comm(comm));
   
   mpi_copy(sendbuf, recvbuf, sendcount, sendtype);
 
@@ -415,8 +503,10 @@ int MPI_Gatherv(const void * sendbuf, int sendcount, MPI_Datatype sendtype,
 int MPI_Allreduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 		  MPI_Op op, MPI_Comm comm) {
 
+  assert(sendbuf);
   assert(recvbuf);
   assert(count >= 1);
+  assert(mpi_is_valid_comm(comm));
 
   if (sendbuf != MPI_IN_PLACE) {
     mpi_copy(sendbuf, recvbuf, count, type);
@@ -435,6 +525,9 @@ int MPI_Allreduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
 
 int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm) {
 
+  assert(mpi_is_valid_comm(comm));
+  assert(newcomm);
+
   *newcomm = comm;
 
   return MPI_SUCCESS;
@@ -444,11 +537,15 @@ int MPI_Comm_split(MPI_Comm comm, int colour, int key, MPI_Comm * newcomm) {
  *
  *  MPI_Comm_free
  *
- *  No operation.
- *
  *****************************************************************************/
 
 int MPI_Comm_free(MPI_Comm * comm) {
+
+  /* Mark Cartesian communicators as free */
+
+  if (*comm > MPI_COMM_SELF) {
+    mpi_info->ncart -= 1;
+  }
 
   return MPI_SUCCESS;
 }
@@ -463,8 +560,9 @@ int MPI_Comm_free(MPI_Comm * comm) {
 
 int MPI_Comm_dup(MPI_Comm oldcomm, MPI_Comm * newcomm) {
 
-  assert(mpi_initialised_flag_);
-  assert(oldcomm != MPI_COMM_NULL);
+  assert(mpi_info);
+  assert(mpi_is_valid_comm(oldcomm));
+  assert(newcomm);
 
   *newcomm = oldcomm;
 
@@ -481,6 +579,11 @@ int MPI_Type_indexed(int count, int * array_of_blocklengths,
 		     int * array_of_displacements, MPI_Datatype oldtype,
 		     MPI_Datatype * newtype) {
 
+  assert(count > 0);
+  assert(array_of_blocklengths);
+  assert(array_of_displacements);
+  assert(newtype);
+
   *newtype = MPI_UNDEFINED;
 
   return MPI_SUCCESS;
@@ -494,6 +597,9 @@ int MPI_Type_indexed(int count, int * array_of_blocklengths,
 
 int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * newtype) {
 
+  assert(count > 0);
+  assert(newtype);
+
   *newtype = MPI_UNDEFINED;
 
   return MPI_SUCCESS;
@@ -506,6 +612,8 @@ int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * newtype) {
  *****************************************************************************/
 
 int MPI_Type_commit(MPI_Datatype * type) {
+
+  assert(type);
 
   /* Flag this as undefined at the moment */
   *type = MPI_UNDEFINED;
@@ -521,6 +629,8 @@ int MPI_Type_commit(MPI_Datatype * type) {
 
 int MPI_Type_free(MPI_Datatype * type) {
 
+  assert(type);
+
   *type = MPI_DATATYPE_NULL;
 
   return MPI_SUCCESS;
@@ -534,6 +644,10 @@ int MPI_Type_free(MPI_Datatype * type) {
 
 int MPI_Type_vector(int count, int blocklength, int stride,
 		    MPI_Datatype oldtype, MPI_Datatype * newtype) {
+
+  assert(count > 0);
+  assert(blocklength >= 0);
+  assert(newtype);
 
   *newtype = MPI_UNDEFINED;
 
@@ -550,6 +664,12 @@ int MPI_Type_struct(int count, int * array_of_blocklengths,
 		    MPI_Aint * array_of_displacements,
 		    MPI_Datatype * array_of_types, MPI_Datatype * newtype) {
 
+  assert(count > 0);
+  assert(array_of_blocklengths);
+  assert(array_of_displacements);
+  assert(array_of_types);
+  assert(newtype);
+
   *newtype = MPI_UNDEFINED;
 
   return MPI_SUCCESS;
@@ -565,6 +685,9 @@ int MPI_Type_struct(int count, int * array_of_blocklengths,
 
 int MPI_Address(void * location, MPI_Aint * address) {
 
+  assert(location);
+  assert(address);
+
   *address = 0;
 
   return MPI_SUCCESS;
@@ -578,7 +701,7 @@ int MPI_Address(void * location, MPI_Aint * address) {
 
 int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler) {
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info);
   assert(comm != MPI_COMM_NULL);
   assert(errhandler == MPI_ERRORS_ARE_FATAL);
 
@@ -595,12 +718,22 @@ int MPI_Cart_create(MPI_Comm oldcomm, int ndims, int * dims, int * periods,
 		    int reorder, MPI_Comm * newcomm) {
 
   int n;
-  assert(mpi_initialised_flag_);
+  int icart;
+
+  assert(mpi_info);
   assert(ndims <= 3);
-  *newcomm = oldcomm;
+  assert(newcomm);
+
+  mpi_info->ncart += 1;
+  icart = MPI_COMM_SELF + mpi_info->ncart;
+  assert(icart < MAX_CART_COMM);
+
+  *newcomm = icart;
+
+  /* Record periodity */
 
   for (n = 0; n < ndims; n++) {
-    periods_[n] = periods[n];
+    mpi_info->period[icart][n] = periods[n];
   }
 
   return MPI_SUCCESS;
@@ -618,11 +751,16 @@ int MPI_Cart_get(MPI_Comm comm, int maxdims, int * dims, int * periods,
 		 int * coords) {
 
   int n;
-  assert(mpi_initialised_flag_);
+
+  assert(mpi_info);
+  assert(mpi_is_valid_comm(comm));
+  assert(dims);
+  assert(periods);
+  assert(coords);
 
   for (n = 0; n < maxdims; n++) {
     dims[n] = 1;
-    periods[n] = periods_[n];
+    periods[n] = mpi_info->period[comm][n];
     coords[n] = 0;
   }
 
@@ -639,9 +777,10 @@ int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int * coords) {
 
   int d;
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info);
   assert(comm != MPI_COMM_NULL);
   assert(rank == 0);
+  assert(coords);
 
   for (d = 0; d < maxdims; d++) {
     coords[d] = 0;
@@ -660,8 +799,11 @@ int MPI_Cart_coords(MPI_Comm comm, int rank, int maxdims, int * coords) {
 
 int MPI_Cart_rank(MPI_Comm comm, int * coords, int * rank) {
 
-  assert(mpi_initialised_flag_);
-  assert(comm != MPI_COMM_NULL);
+  assert(mpi_info);
+  assert(mpi_is_valid_comm(comm));
+  assert(coords);
+  assert(rank);
+
   *rank = 0;
 
   return MPI_SUCCESS;
@@ -671,18 +813,24 @@ int MPI_Cart_rank(MPI_Comm comm, int * coords, int * rank) {
  *
  *  MPI_Cart_shift
  *
- *  No attempt is made to deal with non-periodic boundaries.
- *
  *****************************************************************************/
 
 int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
 		   int * rank_dest) {
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info);
   assert(comm != MPI_COMM_NULL);
+  assert(rank_source);
+  assert(rank_dest);
 
   *rank_source = 0;
   *rank_dest = 0;
+
+  /* Non periodic directions */
+  if (disp != 0 && mpi_info->period[comm][direction] != 1) {
+    *rank_source = MPI_PROC_NULL;
+    *rank_dest   = MPI_PROC_NULL;
+  }
 
   return MPI_SUCCESS;
 }
@@ -695,8 +843,10 @@ int MPI_Cart_shift(MPI_Comm comm, int direction, int disp, int * rank_source,
 
 int MPI_Cart_sub(MPI_Comm comm, int * remain_dims, MPI_Comm * new_comm) {
 
-  assert(mpi_initialised_flag_);
-  assert(comm != MPI_COMM_NULL);
+  assert(mpi_info);
+  assert(mpi_is_valid_comm(comm));
+  assert(remain_dims);
+  assert(new_comm);
 
   *new_comm = comm;
 
@@ -713,9 +863,10 @@ int MPI_Dims_create(int nnodes, int ndims, int * dims) {
 
   int d;
 
-  assert(mpi_initialised_flag_);
+  assert(mpi_info);
   assert(nnodes == 1);
   assert(ndims > 0);
+  assert(dims);
 
   for (d = 0; d < ndims; d++) {
     dims[d] = 1;
@@ -732,9 +883,13 @@ int MPI_Dims_create(int nnodes, int ndims, int * dims) {
 
 static void mpi_copy(void * send, void * recv, int count, MPI_Datatype type) {
  
-  int sizeof_datatype = mpi_sizeof(type);
+  size_t sizeof_datatype = mpi_sizeof(type);
 
-  memcpy(recv, send, count*sizeof_datatype);
+  assert(send);
+  assert(recv);
+  assert(count >= 0);
+
+  memcpy(recv, send, sizeof_datatype*count);
 
   return;
 }
@@ -805,8 +960,8 @@ static int mpi_sizeof(MPI_Datatype type) {
 
 int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
 
-  assert(mpi_initialised_flag_);
-  assert(comm != MPI_COMM_NULL);
+  assert(mpi_info);
+  assert(mpi_is_valid_comm(comm));
   assert(errhandler == MPI_ERRORS_ARE_FATAL);
 
   return MPI_SUCCESS;
@@ -854,6 +1009,9 @@ int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler errhandler) {
 
 int MPI_Get_address(const void * location, MPI_Aint * address) {
 
+  assert(location);
+  assert(address);
+
   *address = 0;
 
   return MPI_SUCCESS;
@@ -884,6 +1042,8 @@ int MPI_Group_translate_ranks(MPI_Group grp1, int n, const int * ranks1,
 int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint lb, MPI_Aint extent,
 			    MPI_Datatype * newtype) {
 
+  assert(newtype);
+
   *newtype = oldtype;
 
   return MPI_SUCCESS;
@@ -902,6 +1062,12 @@ int MPI_Type_create_struct(int count, int array_of_blocklengths[],
 			   const MPI_Datatype array_of_types[],
 			   MPI_Datatype * newtype) {
 
+  assert(count > 0);
+  assert(array_of_blocklengths);
+  assert(array_of_displacements);
+  assert(array_of_types);
+  assert(newtype);
+
   *newtype = MPI_UNDEFINED;
 
   return MPI_SUCCESS;
@@ -913,8 +1079,11 @@ int MPI_Type_create_struct(int count, int array_of_blocklengths[],
  *
  *****************************************************************************/
 
-int MPI_Type_get_extent(MPI_Datatype dataype, MPI_Aint * lb,
+int MPI_Type_get_extent(MPI_Datatype datatype, MPI_Aint * lb,
 			MPI_Aint * extent) {
+
+  assert(lb);
+  assert(extent);
 
   *lb = 0;
   *extent = -1;
@@ -923,3 +1092,16 @@ int MPI_Type_get_extent(MPI_Datatype dataype, MPI_Aint * lb,
 }
 
 #endif /* _DO_NOT_INCLUDE_MPI2_INTERFACE */
+
+/*****************************************************************************
+ *
+ *  mpi_is_valid_comm
+ *
+ *****************************************************************************/
+
+int mpi_is_valid_comm(MPI_Comm comm) {
+
+  if (comm < MPI_COMM_WORLD || comm >= MAX_CART_COMM) return 0;
+
+  return 1;
+}
