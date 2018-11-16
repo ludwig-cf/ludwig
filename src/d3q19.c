@@ -7,15 +7,19 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2014 The University of Edinburgh
+ *  (c) 2008-2018 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Ronojoy Adhikari computed this D3Q19 basis.
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Ronojoy Adhikari computed this D3Q19 basis.
  *
  *****************************************************************************/
 
-#include "pe.h"
 #include "d3q19.h"
+
+const char * model_name_d3q19 = "D3Q19";
+
+#ifdef _D3Q19_
 
 /*****************************************************************************
  *
@@ -70,16 +74,15 @@
  *
  *****************************************************************************/
 
+const int cv[NVEL19][3] = {{ 0,  0,  0},
+			   { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},
+			   { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},
+			   { 0,  1,  0}, { 0,  1, -1}, { 0,  0,  1},
+			   { 0,  0, -1}, { 0, -1,  1}, { 0, -1,  0},
+			   { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},
+			   {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
 
-const int cv[NVEL][3] = {{ 0,  0,  0},
-			 { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},
-			 { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},
-			 { 0,  1,  0}, { 0,  1, -1}, { 0,  0,  1},
-			 { 0,  0, -1}, { 0, -1,  1}, { 0, -1,  0},
-			 { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},
-			 {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
-
-const  double q_[NVEL][3][3] = {
+const  double q_[NVEL19][3][3] = {
   {{-1.0/3.0, 0.0, 0.0},{ 0.0,-1.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}},
   {{ 2.0/3.0, 1.0, 0.0},{ 1.0, 2.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}},
   {{ 2.0/3.0, 0.0, 1.0},{ 0.0,-1.0/3.0, 0.0},{ 1.0, 0.0, 2.0/3.0}},
@@ -101,26 +104,26 @@ const  double q_[NVEL][3][3] = {
   {{ 2.0/3.0, 1.0, 0.0},{ 1.0, 2.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}}};
 
 
-const double chi1[NVEL] = {0.0, -2.0,  1.0,  1.0, 
-                                 1.0, -2.0,  1.0, 
-                                 1.0,  1.0, -2.0,
-                                -2.0,  1.0,  1.0,
-                                 1.0, -2.0,  1.0,
-                                 1.0,  1.0, -2.0};
+const double chi1[NVEL19] = {0.0, -2.0,  1.0,  1.0, 
+                                   1.0, -2.0,  1.0, 
+                                   1.0,  1.0, -2.0,
+                                  -2.0,  1.0,  1.0,
+                                   1.0, -2.0,  1.0,
+                                   1.0,  1.0, -2.0};
 
-const double chi2[NVEL] = {0.0,  0.0, -1.0,  1.0,
-                                -1.0,  0.0,  1.0,
-                                -1.0,  1.0,  0.0,
-                                 0.0,  1.0, -1.0,
-                                 1.0,  0.0, -1.0,
-                                 1.0, -1.0,  0.0};
+const double chi2[NVEL19] = {0.0,  0.0, -1.0,  1.0,
+                                  -1.0,  0.0,  1.0,
+                                  -1.0,  1.0,  0.0,
+                                   0.0,  1.0, -1.0,
+                                   1.0,  0.0, -1.0,
+                                   1.0, -1.0,  0.0};
 
-const double chi3[NVEL] = {1.0,  1.0,  1.0, -2.0,
-                                 1.0,  1.0,  1.0,
-                                -2.0,  1.0, -2.0,
-                                -2.0,  1.0, -2.0,
-                                 1.0,  1.0,  1.0,
-                                -2.0,  1.0,  1.0};
+const double chi3[NVEL19] = {1.0,  1.0,  1.0, -2.0,
+                                   1.0,  1.0,  1.0,
+                                  -2.0,  1.0, -2.0,
+                                  -2.0,  1.0, -2.0,
+                                   1.0,  1.0,  1.0,
+                                  -2.0,  1.0,  1.0};
 
 #define w0 (12.0/36.0)
 #define w1  (2.0/36.0)
@@ -143,14 +146,14 @@ const double chi3[NVEL] = {1.0,  1.0,  1.0, -2.0,
 #define wd ( 1.0/48.0)
 #define we ( 3.0/48.0)
 
-const double wv[NVEL] = {w0,
-			 w2, w2, w1, w2, w2, w2, w1, w2, w1,
-			 w1, w2, w1, w2, w2, w2, w1, w2, w2}; 
-const double norm_[NVEL] = {c1,
+const double wv[NVEL19] = {w0,
+			   w2, w2, w1, w2, w2, w2, w1, w2, w1,
+			   w1, w2, w1, w2, w2, w2, w1, w2, w2}; 
+const double norm_[NVEL19] = {c1,
       3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0, 9.0/2.0, 9.0, 9.0/2.0,
       3.0/4.0, 3.0/2.0,3.0/2.0,3.0/2.0, 9.0/4.0,9.0/2.0,9.0/2.0,9.0/2.0, 0.5};
 
-const double ma_[NVEL][NVEL] = {
+const double ma_[NVEL19][NVEL19] = {
 { c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1},
 { c0, c1, c1, c1, c1, c1, c0, c0, c0, c0, c0, c0, c0, c0,-c1,-c1,-c1,-c1,-c1},
 { c0, c1, c0, c0, c0,-c1, c1, c1, c1, c0, c0,-c1,-c1,-c1, c1, c0, c0, c0,-c1},
@@ -172,7 +175,7 @@ const double ma_[NVEL][NVEL] = {
 { c1, c1, c1,-c2, c1, c1, c1,-c2, c1,-c2,-c2, c1,-c2, c1, c1, c1,-c2, c1, c1}
 };
 
-const double mi_[NVEL][NVEL] = {
+const double mi_[NVEL19][NVEL19] = {
 {w0, c0, c0, c0,-r2, c0, c0,-r2, c0,-r2, c0, c0, c0, c0, c0, c0, c0, c0, r6},
 {w2, wa, wa, c0, wa, r4, c0, wa, c0,-wb,-wb,-wa,-wa, c0, c0, c0, c0, c0, wc},
 {w2, wa, c0, wa, wa, c0, r4,-wb, c0, wa, wd, wb, c0, wb,-we,-r8, c0,-r8, wc},
@@ -194,15 +197,16 @@ const double mi_[NVEL][NVEL] = {
 {w2,-wa,-wa, c0, wa, r4, c0, wa, c0,-wb,-wb, wa, wa, c0, c0, c0, c0, c0, wc}
 };
 
+const int xblocklen_cv[CVXBLOCK19] = {5};
+const int xdisp_fwd_cv[CVXBLOCK19] = {1};
+const int xdisp_bwd_cv[CVXBLOCK19] = {14};
 
-const int xblocklen_cv[CVXBLOCK] = {5};
-const int xdisp_fwd_cv[CVXBLOCK] = {1};
-const int xdisp_bwd_cv[CVXBLOCK] = {14};
+const int yblocklen_cv[CVYBLOCK19] = {1, 3, 1};
+const int ydisp_fwd_cv[CVYBLOCK19] = {1, 6, 14};
+const int ydisp_bwd_cv[CVYBLOCK19] = {5, 11, 18};
 
-const int yblocklen_cv[CVYBLOCK] = {1, 3, 1};
-const int ydisp_fwd_cv[CVYBLOCK] = {1, 6, 14};
-const int ydisp_bwd_cv[CVYBLOCK] = {5, 11, 18};
+const int zblocklen_cv[CVZBLOCK19] = {1, 1, 1, 1, 1};
+const int zdisp_fwd_cv[CVZBLOCK19] = {2, 6, 9, 11, 15};
+const int zdisp_bwd_cv[CVZBLOCK19] = {4, 8, 10, 13, 17};
 
-const int zblocklen_cv[CVZBLOCK] = {1, 1, 1, 1, 1};
-const int zdisp_fwd_cv[CVZBLOCK] = {2, 6, 9, 11, 15};
-const int zdisp_bwd_cv[CVZBLOCK] = {4, 8, 10, 13, 17};
+#endif

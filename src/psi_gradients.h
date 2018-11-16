@@ -2,33 +2,37 @@
  *
  *  psi_gradients.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
+ * 
+ *  (c) 2014-2018 The University of Edinburgh
  *
+ *  Contributing authors:
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
- *  (c) 2014 The University of Edinburgh
  *
  ****************************************************************************/
 
-#ifndef  PSI_GRADIENTS_H
-#define  PSI_GRADIENTS_H
+#ifndef  LUDWIG_PSI_GRADIENTS_H
+#define  LUDWIG_PSI_GRADIENTS_H
 
 #include "map.h"
 #include "psi.h"
 #include "fe_electro_symmetric.h"
 
-#ifdef NP_D3Q6
-#define PSI_NGRAD 7
-#endif
+#if defined NP_D3Q18
 
-#ifdef NP_D3Q18
 #define PSI_NGRAD 19
-#endif
 
-#ifdef NP_D3Q26
+#elif defined NP_D3Q26
+
 #define PSI_NGRAD 27
+
+#else
+
+/* Default to 7-point stencil */
+
+#define PSI_NGRAD 7
+
 #endif
 
 extern const int    psi_gr_cv[PSI_NGRAD][3];
@@ -42,4 +46,4 @@ int psi_grad_rho_d3qx(psi_t * obj,  map_t * map, int index, int n, double * grad
 int psi_grad_eps_d3qx(psi_t * psi, fe_t * fe, f_vare_t fepsilon, int index,
 		      double * grad_eps);
 
-#endif                               
+#endif                     

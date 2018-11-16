@@ -77,7 +77,6 @@
 #include "colloids_rt.h"
 #include "colloid_sums.h"
 #include "colloids_halo.h"
-#include "colloids_Q_tensor.h"
 #include "build.h"
 #include "subgrid.h"
 #include "colloids.h"

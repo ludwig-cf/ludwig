@@ -9,15 +9,19 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2014 The University of Edinburgh
+ *  (c) 2008-2018 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Ronojoy Adhikari computed this D3Q15 basis.
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Ronojoy Adhikari computed this D3Q15 basis.
  *
  *****************************************************************************/
 
-#include "pe.h"
 #include "d3q15.h"
+
+const char * model_name_d3q15 = "D3Q15";
+
+#ifdef _D3Q15_
 
 /*****************************************************************************
  *
@@ -79,20 +83,20 @@
 #define wb ( 9.0/72.0)
 #define wc ( 4.0/72.0)
 
-const int cv[NVEL][3] = {{ 0, 0, 0},
-			 { 1,  1,  1}, { 1,  1, -1}, { 1,  0,  0},
-			 { 1, -1,  1}, { 1, -1, -1}, { 0,  1,  0},
-                         { 0,  0,  1}, { 0,  0, -1}, { 0, -1,  0},
-			 {-1,  1,  1}, {-1,  1, -1}, {-1,  0,  0},
-			 {-1, -1,  1}, {-1, -1, -1}};
+const int cv[NVEL15][3] = {{ 0, 0, 0},
+			   { 1,  1,  1}, { 1,  1, -1}, { 1,  0,  0},
+			   { 1, -1,  1}, { 1, -1, -1}, { 0,  1,  0},
+                           { 0,  0,  1}, { 0,  0, -1}, { 0, -1,  0},
+			   {-1,  1,  1}, {-1,  1, -1}, {-1,  0,  0},
+			   {-1, -1,  1}, {-1, -1, -1}};
 
-const double wv[NVEL] = {w0,
-			 w3, w3, w1, w3, w3, w1, w1,
-			 w1, w1, w3, w3, w1, w3, w3};
-const double norm_[NVEL] = {1.0, 3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0,
-			    9.0/2.0,9.0,9.0/2.0, 0.5, 1.5, 1.5, 1.5, 9.0};
+const double wv[NVEL15] = {w0,
+			   w3, w3, w1, w3, w3, w1, w1,
+			   w1, w1, w3, w3, w1, w3, w3};
+const double norm_[NVEL15] = {1.0, 3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0,
+			      9.0/2.0,9.0,9.0/2.0, 0.5, 1.5, 1.5, 1.5, 9.0};
 
-const  double q_[NVEL][3][3] = {
+const  double q_[NVEL15][3][3] = {
   {{-r3, 0.0, 0.0},{ 0.0,-r3, 0.0},{ 0.0, 0.0,-r3}},
   {{ t3, 1.0, 1.0},{ 1.0, t3, 1.0},{ 1.0, 1.0, t3}},
   {{ t3, 1.0,-1.0},{ 1.0, t3,-1.0},{-1.0,-1.0, t3}},
@@ -109,7 +113,7 @@ const  double q_[NVEL][3][3] = {
   {{ t3, 1.0,-1.0},{ 1.0, t3,-1.0},{-1.0,-1.0, t3}},
   {{ t3, 1.0, 1.0},{ 1.0, t3, 1.0},{ 1.0, 1.0, t3}}};
 
-const double ma_[NVEL][NVEL] = 
+const double ma_[NVEL15][NVEL15] = 
   {{ c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1},
    { c0, c1, c1, c1, c1, c1, c0, c0, c0, c0,-c1,-c1,-c1,-c1,-c1},
    { c0, c1, c1, c0,-c1,-c1, c1, c0, c0,-c1, c1, c1, c0,-c1,-c1},
@@ -126,7 +130,7 @@ const double ma_[NVEL][NVEL] =
    { c0,-c2, c2, c0,-c2, c2, c0, c1,-c1, c0,-c2, c2, c0,-c2, c2},
    { c0, c1,-c1, c0,-c1, c1, c0, c0, c0, c0,-c1, c1, c0, c1,-c1}};
 
-const double mi_[NVEL][NVEL] =
+const double mi_[NVEL15][NVEL15] =
   {{ w0, c0, c0, c0,-r3, c0, c0,-r3, c0,-r3,-w0, c0, c0, c0, c0},
    { w3, wa, wa, wa, wa, wb, wb, wa, wb, wa,-w3,-wa,-wa,-wa, wb},
    { w3, wa, wa,-wa, wa, wb,-wb, wa,-wb, wa,-w3,-wa,-wa, wa,-wb},
@@ -144,14 +148,16 @@ const double mi_[NVEL][NVEL] =
    { w3,-wa,-wa,-wa, wa, wb, wb, wa, wb, wa,-w3, wa, wa, wa,-wb}};
 
 
-const int xblocklen_cv[CVXBLOCK] = {5};
-const int xdisp_fwd_cv[CVXBLOCK] = {1};
-const int xdisp_bwd_cv[CVXBLOCK] = {10};
+const int xblocklen_cv[CVXBLOCK15] = {5};
+const int xdisp_fwd_cv[CVXBLOCK15] = {1};
+const int xdisp_bwd_cv[CVXBLOCK15] = {10};
 
-const int yblocklen_cv[CVYBLOCK] = {2, 1, 2};
-const int ydisp_fwd_cv[CVYBLOCK] = {1, 6, 10};
-const int ydisp_bwd_cv[CVYBLOCK] = {4, 9, 13};
+const int yblocklen_cv[CVYBLOCK15] = {2, 1, 2};
+const int ydisp_fwd_cv[CVYBLOCK15] = {1, 6, 10};
+const int ydisp_bwd_cv[CVYBLOCK15] = {4, 9, 13};
 
-const int zblocklen_cv[CVZBLOCK] = {1, 1, 1, 1, 1};
-const int zdisp_fwd_cv[CVZBLOCK] = {1, 4, 7, 10, 13};
-const int zdisp_bwd_cv[CVZBLOCK] = {2, 5, 8, 11, 14};
+const int zblocklen_cv[CVZBLOCK15] = {1, 1, 1, 1, 1};
+const int zdisp_fwd_cv[CVZBLOCK15] = {1, 4, 7, 10, 13};
+const int zdisp_bwd_cv[CVZBLOCK15] = {2, 5, 8, 11, 14};
+
+#endif

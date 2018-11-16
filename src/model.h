@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,14 +22,36 @@
 
 #ifdef _D2Q9_
 #include "d2q9.h"
+
+enum {NDIM     = NDIM9,
+      NVEL     = NVEL9,
+      CVXBLOCK = CVXBLOCK9,
+      CVYBLOCK = CVYBLOCK9,
+      CVZBLOCK = CVZBLOCK9};
+
 #endif
 
 #ifdef _D3Q15_
 #include "d3q15.h"
+
+enum {NDIM     = NDIM15,
+      NVEL     = NVEL15,
+      CVXBLOCK = CVXBLOCK15,
+      CVYBLOCK = CVYBLOCK15,
+      CVZBLOCK = CVZBLOCK15};
+
 #endif
 
 #ifdef _D3Q19_
+
 #include "d3q19.h"
+
+enum {NDIM     = NDIM19,
+      NVEL     = NVEL19,
+      CVXBLOCK = CVXBLOCK19,
+      CVYBLOCK = CVYBLOCK19,
+      CVZBLOCK = CVZBLOCK19};
+
 #endif
 
 #include "pe.h"

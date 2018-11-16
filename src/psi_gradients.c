@@ -5,13 +5,11 @@
  *  Finite difference stencils used in the 
  *  electrokinetic routines.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
- *  (c) 2014 The University of Edinburgh
+ *  (c) 2014-2018 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -21,26 +19,7 @@
 #include "psi_gradients.h"
 #include "fe_electro_symmetric.h"
 
-#ifdef NP_D3Q6
-const int psi_gr_cv[PSI_NGRAD][3] = {{ 0,  0,  0},
-		{-1,  0,  0}, { 0, -1,  0}, { 0,  0, -1},
-		{ 1,  0,  0}, { 0,  1,  0}, { 0,  0,  1}};
-
-#define w0 (0.0)
-#define w1  (1.0/6.0)
-
-const double psi_gr_wv[PSI_NGRAD] = {w0,
-                         	     w1, w1, w1, 
-			             w1, w1, w1};
-
-const double psi_gr_rnorm[PSI_NGRAD] = {0.0,
-		                        1.0, 1.0, 1.0,
-                	                1.0, 1.0, 1.0};
-
-const double psi_gr_rcs2 = 3.0;
-#endif
-
-#ifdef NP_D3Q18
+#if defined NP_D3Q18
 const int psi_gr_cv[PSI_NGRAD][3] = {{ 0,  0,  0},
 		{ 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},
 		{ 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},
@@ -67,9 +46,9 @@ const double psi_gr_rnorm[PSI_NGRAD] = {0.0,
 		1.0/sqrt2, 1.0/sqrt2, 1.0/sqrt2, 1.0, 1.0/sqrt2, 1.0/sqrt2};
 
 const double psi_gr_rcs2 = 3.0;
-#endif
 
-#ifdef NP_D3Q26
+#elif defined NP_D3Q26
+
 const int psi_gr_cv[PSI_NGRAD][3] = {{ 0, 0, 0}, 
 		{-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1}, 
 		{-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1}, 
@@ -113,7 +92,30 @@ const double psi_gr_rnorm[PSI_NGRAD] = {0.0,
 		1.0/sqrt3, 1.0/sqrt2, 1.0/sqrt3};   
 
 const double psi_gr_rcs2 = 3.0;
+
+
+#else
+
+/* NP_D3Q6 */
+
+const int psi_gr_cv[PSI_NGRAD][3] = {{ 0,  0,  0},
+		{-1,  0,  0}, { 0, -1,  0}, { 0,  0, -1},
+		{ 1,  0,  0}, { 0,  1,  0}, { 0,  0,  1}};
+
+#define w0 (0.0)
+#define w1  (1.0/6.0)
+
+const double psi_gr_wv[PSI_NGRAD] = {w0,
+                         	     w1, w1, w1, 
+			             w1, w1, w1};
+
+const double psi_gr_rnorm[PSI_NGRAD] = {0.0,
+		                        1.0, 1.0, 1.0,
+                	                1.0, 1.0, 1.0};
+
+const double psi_gr_rcs2 = 3.0;
 #endif
+
 
 /*****************************************************************************
  *

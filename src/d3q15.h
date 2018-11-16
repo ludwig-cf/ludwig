@@ -7,38 +7,43 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
+ *  (c) 2008-2018 The University of Edinburgh
+ *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008-2014 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef D3Q15_MODEL_H
-#define D3Q15_MODEL_H
+#ifndef LUDWIG_D3Q15_MODEL_H
+#define LUDWIG_D3Q15_MODEL_H
 
-enum {NDIM = 3};
-enum {NVEL = 15};
-enum {CVXBLOCK = 1};
-enum {CVYBLOCK = 3};
-enum {CVZBLOCK = 5};
+enum {NDIM15 = 3};
+enum {NVEL15 = 15};
+enum {CVXBLOCK15 = 1};
+enum {CVYBLOCK15 = 3};
+enum {CVZBLOCK15 = 5};
 
-extern const    int cv[NVEL][3];
-extern const double wv[NVEL];
-extern const double q_[NVEL][3][3];
-extern const double norm_[NVEL];
-extern const double ma_[NVEL][NVEL];
-extern const double mi_[NVEL][NVEL];
+#ifdef _D3Q15_
 
-extern const int xblocklen_cv[CVXBLOCK];
-extern const int xdisp_fwd_cv[CVXBLOCK];
-extern const int xdisp_bwd_cv[CVXBLOCK];
+extern const    int cv[NVEL15][3];
+extern const double wv[NVEL15];
+extern const double q_[NVEL15][3][3];
+extern const double norm_[NVEL15];
+extern const double ma_[NVEL15][NVEL15];
+extern const double mi_[NVEL15][NVEL15];
 
-extern const int yblocklen_cv[CVYBLOCK];
-extern const int ydisp_fwd_cv[CVYBLOCK];
-extern const int ydisp_bwd_cv[CVYBLOCK];
+extern const int xblocklen_cv[CVXBLOCK15];
+extern const int xdisp_fwd_cv[CVXBLOCK15];
+extern const int xdisp_bwd_cv[CVXBLOCK15];
 
-extern const int zblocklen_cv[CVZBLOCK];
-extern const int zdisp_fwd_cv[CVZBLOCK];
-extern const int zdisp_bwd_cv[CVZBLOCK];
+extern const int yblocklen_cv[CVYBLOCK15];
+extern const int ydisp_fwd_cv[CVYBLOCK15];
+extern const int ydisp_bwd_cv[CVYBLOCK15];
+
+extern const int zblocklen_cv[CVZBLOCK15];
+extern const int zdisp_fwd_cv[CVZBLOCK15];
+extern const int zdisp_bwd_cv[CVZBLOCK15];
+
+#endif
 
 #endif
 
