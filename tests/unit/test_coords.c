@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -61,13 +61,11 @@ int test_coords_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  /* info("Checking coords.c ...\n\n");*/
-  
   test_coords_constants();
 
   /* Check the defaults, an the correct resetting of defaults. */
 
-  /* info("\nCheck defaults...\n\n");*/
+  /* pe_info(pe, "\nCheck defaults...\n\n");*/
   cs_create(pe, &cs);
   test_coords_system(cs, ntotal_default, periods_default);
 
@@ -79,6 +77,7 @@ int test_coords_suite(void) {
 
   /* Now test 1 */
 
+  /* pe_info(pe, "\nCheck one...\n\n");*/
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal_test1);
   cs_periodicity_set(cs, periods_test1);
@@ -93,6 +92,7 @@ int test_coords_suite(void) {
 
   /* Now test 2 */
 
+  /* pe_info(pe, "\nCheck two...\n\n");*/
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal_test2);
   cs_periodicity_set(cs, periods_test2);
@@ -482,8 +482,7 @@ static int test_coords_sub_communicator(cs_t * cs) {
 
 int neighbour_rank(cs_t * cs, int nx, int ny, int nz) {
 
-  int sz;
-  int rank = 0;
+  int rank = MPI_PROC_NULL;
   int coords[3];
   int periodic = 1;
   int is_periodic[3];
@@ -504,12 +503,7 @@ int neighbour_rank(cs_t * cs, int nx, int ny, int nz) {
   coords[Y] = ny;
   coords[Z] = nz;
 
-  rank = MPI_PROC_NULL;
   if (periodic) MPI_Cart_rank(comm, coords, &rank);
-
-  /* Serial doesn't quite work out with the above */
-  MPI_Comm_size(comm, &sz);
-  if (sz == 1) rank = 0; /* Fails in true MPI Comm_size = 1 */
 
   return rank;
 }

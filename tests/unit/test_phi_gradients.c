@@ -5,8 +5,6 @@
  *  Test the finite-difference approximations to the various
  *  gradients required.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -17,6 +15,9 @@
 
 #include <stdio.h>
 #include <math.h>
+
+
+#ifdef THIS_TEST_IS_OUT_OF_DATE
 
 #include "pe.h"
 #include "coords.h"
@@ -676,3 +677,5 @@ void test_function3_grad_delsq(int ic, int jc, int kc, double grad[3]) {
 
   return;
 }
+
+#endif
