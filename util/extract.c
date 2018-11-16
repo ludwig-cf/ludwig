@@ -137,6 +137,8 @@ int main(int argc, char ** argv) {
 
   size_t optind;
 
+  MPI_Init(&argc, &argv);
+
   /* Check the command line, then parse the meta data information,
    * and sort out the data file name  */
 
@@ -179,6 +181,8 @@ int main(int argc, char ** argv) {
   read_meta_data_file(argv[optind]);
 
   extract_driver(argv[optind+1], version);
+
+  MPI_Finalize();
 
   return 0;
 }
