@@ -15,12 +15,10 @@
  *
  *  Note that the stress may be asymmetric.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -79,9 +77,13 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
 				   field_t * phi, hydro_t * hydro) {
 
+  int is_pm;
+
   if (pth == NULL) return 0;
   if (pth->method == PTH_METHOD_NO_FORCE) return 0;
   if (hydro == NULL) return 0; 
+
+  wall_is_pm(wall, &is_pm);
 
   if (lees_edw_nplane_total(le) > 0) {
     /* Must use the flux method for LE planes */
@@ -92,7 +94,7 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
     switch (pth->method) {
     case PTH_METHOD_DIVERGENCE:
       pth_stress_compute(pth, fe);
-      if (wall_present(wall)) {
+      if (wall_present(wall) || is_pm) {
 	pth_force_fluid_wall_driver(pth, hydro, map, wall);
       }
       else {
