@@ -17,6 +17,7 @@ version 0.9.0
 - UPDATE BUILD AND TEST INSTRUCTIONS
 - UPDATE TUTORIALS
 - ADD TRAVIS ADD BADGE
+- Fix gcc -Wformat-overflow and a number of other warnings
 
 version 0.8.11
 - updated util/length_from_sk.c to take double input to be consistent

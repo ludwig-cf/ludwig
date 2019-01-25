@@ -401,7 +401,7 @@ int io_write_metadata(io_info_t * info) {
 int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
   FILE * fp_meta;
-  char filename_io[FILENAME_MAX];
+  char filename_io[2*FILENAME_MAX];
   char buf[MY_BUFSIZ], rbuf[MY_BUFSIZ];
   char filename[FILENAME_MAX];
   int nr;
@@ -507,9 +507,9 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
 
 int io_remove_metadata(io_info_t * obj, const char * file_stub) {
 
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX/2];
   char filename[FILENAME_MAX];
-  char filename_io[FILENAME_MAX];
+  char filename_io[2*FILENAME_MAX];
 
   assert(obj);
   assert(file_stub);

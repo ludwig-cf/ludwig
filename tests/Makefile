@@ -33,10 +33,13 @@
 include ../Makefile.mk
 
 default:
-	$(MAKE) -C test
+	$(MAKE) build
+
+build:
+	$(MAKE) -C unit
 
 test:
-	$(MAKE) unit-test
+	$(MAKE) -C unit test
 	$(MAKE) d3q19-short
 
 verbose:
@@ -46,9 +49,6 @@ verbose:
 	"\t   make compile-run-mpi\n"  \
 	"\t See the Makefile for further model-specific targets\n" \
 	"\t Note: it is assumed make is GNU make\n"
-
-unit-test:
-	$(MAKE) -C unit test
 
 d3q19-short:
 	$(MAKE) -C regression/d3q19-short

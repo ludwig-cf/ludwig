@@ -178,7 +178,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int ntstep;
   int n, nstat;
   char filename[FILENAME_MAX];
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX/2];
   char value[BUFSIZ];
   int io_grid_default[3] = {1, 1, 1};
   int io_grid[3];
@@ -406,7 +406,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 void ludwig_run(const char * inputfile) {
 
   char    filename[FILENAME_MAX];
-  char    subdirectory[FILENAME_MAX];
+  char    subdirectory[FILENAME_MAX/2];
   int     is_porous_media = 0;
   int     step = 0;
   int     is_subgrid = 0;

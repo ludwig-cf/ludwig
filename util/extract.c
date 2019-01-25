@@ -97,7 +97,7 @@ double le_displace_ = 0.0;
 double * le_displacements_;
 double * le_duy_;
 
-char stub_[FILENAME_MAX];
+char stub_[FILENAME_MAX/2];
 
 int extract_driver(const char * filename, int version);
 int read_version1(int ntime, int nlocal[3], double * datasection);
@@ -200,7 +200,7 @@ int extract_driver(const char * filename, int version) {
 
   double * datasection;
   char io_data[FILENAME_MAX];
-  char suf[FILENAME_MAX] = ".vtk";
+  const char * suf = ".vtk";
 
   FILE * fp_data;
 
