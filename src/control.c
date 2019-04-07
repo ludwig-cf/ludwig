@@ -8,7 +8,7 @@
  *  end Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008-2018 The University of Edinburgh
+ *  (c) 2008-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -32,8 +32,8 @@ static int freq_fed        = 100000000;
 static int freq_shear_io   = 100000000;
 static int freq_shear_meas = 100000000;
 static int freq_colloid_io = 100000000;
+static int rho_nfreq       = 100000000;
 static int config_at_end   = 1;
-
 
 /*****************************************************************************
  *
@@ -48,6 +48,7 @@ int init_control(pe_t * pe, rt_t * rt) {
   int n;
   int t_start;
   int t_steps;
+  int is_wanted;
   char tmp[128];
   physics_t * phys = NULL;
 
@@ -76,6 +77,9 @@ int init_control(pe_t * pe, rt_t * rt) {
   rt_int_parameter(rt, "colloid_io_freq", &freq_colloid_io);
   rt_string_parameter(rt, "config_at_end", tmp, 128);
   if (strcmp(tmp, "no") == 0) config_at_end = 0;
+
+  is_wanted = rt_switch(rt, "rho_io_wanted");
+  if (is_wanted) rt_int_parameter(rt, "rho_io_freq", &rho_nfreq);
 
   physics_control_init_time(phys, t_start, t_steps);
 
@@ -214,4 +218,16 @@ int control_freq_set(int freq) {
   freq_statistics = freq;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  is_rho_output_step
+ *
+ *****************************************************************************/
+
+int is_rho_output_step(void) {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % rho_nfreq) == 0);
 }

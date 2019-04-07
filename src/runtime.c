@@ -396,6 +396,7 @@ int rt_switch(rt_t * rt, const char * key) {
   key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
+    if (strcmp(str_value, "Yes") == 0) iswitch = 1;
     if (strcmp(str_value, "yes") == 0) iswitch = 1;
     if (strcmp(str_value, "1") == 0) iswitch = 1;
     if (strcmp(str_value, "on") == 0) iswitch = 1;

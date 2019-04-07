@@ -760,6 +760,13 @@ void ludwig_run(const char * inputfile) {
       io_write_data(iohandler, filename, ludwig->lb);
     }
 
+    if (is_rho_output_step()) {
+      /* Potential device-host copy required */
+      pe_info(ludwig->pe, "Writing density output at step %d!\n", step);
+      sprintf(filename, "%srho-%8.8d", subdirectory, step);
+      io_write_data(ludwig->lb->io_rho, filename, ludwig->lb);
+    }
+
     /* is_measurement_step() is here to prevent 'breaking' old input
      * files; it should really be removed. */
 

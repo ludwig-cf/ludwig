@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -35,6 +35,11 @@ static int lb_init_poiseuille(lb_t * lb, double rho0,
  *
  *  lb_run_time
  *
+ *  Arrange various run-time parameters
+ *  Arrange input/output format for:
+ *    distributions
+ *    density rho
+ *
  *****************************************************************************/
 
 int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
@@ -46,9 +51,11 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   char memory = ' ';
   int form_in = IO_FORMAT_DEFAULT;
   int form_out = IO_FORMAT_DEFAULT;
+  int rho_wanted;
 
   io_info_arg_t param;
   io_info_t * io_info = NULL;
+  io_info_t * io_rho = NULL;
 
   assert(pe);
   assert(cs);
@@ -102,6 +109,48 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   pe_info(pe, "I/O grid:         %d %d %d\n", io_grid[X], io_grid[Y], io_grid[Z]);
 
   lb_io_info_set(lb, io_info, form_in, form_out);
+
+  /* Density io_info:
+   *
+   * rho_io_wanted           switch to indicate output wanted [no]
+   * rho_io_freq             output frequency
+   * rho_io_grid             grid
+   * rho_io_format           ASCII/BINARY
+   * */
+
+  form_in = IO_FORMAT_DEFAULT;
+  form_out = IO_FORMAT_DEFAULT;
+  io_grid[X] = 1; io_grid[Y] = 1; io_grid[Z] = 1;
+
+  rho_wanted = rt_switch(rt, "rho_io_wanted");
+  rt_int_parameter_vector(rt, "rho_io_grid", io_grid);
+  rt_string_parameter(rt,"rho_io_format", string, FILENAME_MAX);
+
+  param.grid[X] = io_grid[X];
+  param.grid[Y] = io_grid[Y];
+  param.grid[Z] = io_grid[Z];
+  if (strcmp(string, "ASCII") == 0) {
+    form_in = IO_FORMAT_ASCII;
+    form_out = IO_FORMAT_ASCII;
+  }
+  else {
+    form_in = IO_FORMAT_BINARY;
+    form_out = IO_FORMAT_BINARY;
+  }
+
+  io_info_create(pe, cs, &param, &io_rho);
+  io_info_metadata_filestub_set(io_rho, "rho");
+  lb_io_rho_set(lb, io_rho, form_in, form_out);
+
+  if (rho_wanted) {
+    pe_info(pe, "Fluid density output\n");
+    if (form_out==IO_FORMAT_ASCII)  pe_info(pe, "Output format:    ASCII\n");
+    if (form_out==IO_FORMAT_BINARY) pe_info(pe, "Output format:    binary\n");
+    pe_info(pe, "I/O grid:         %d %d %d\n",
+                io_grid[X], io_grid[Y], io_grid[Z]);
+  }
+
+  /* Initialise */
 
   lb_init(lb);
 
