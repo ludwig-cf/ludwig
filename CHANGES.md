@@ -1,6 +1,12 @@
 
 ### Changes
 
+version 0.8.13
+- add option for density output via "rho" commands in input
+
+version 0.8.12
+- allow force divergence method to see porous media
+
 version 0.8.11
 - updated util/length_from_sk.c to take double input to be consistent
   with extract output
