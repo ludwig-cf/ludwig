@@ -463,6 +463,12 @@ boundary_lubrication_rcnormal 0.0
 #  distribution_io_input_format BINARY or BINARY_SERIAL for single serial
 #                               input files. Output always parallel.
 #
+#  density
+#  rho_io_wanted            "Yes" if density output wanted [no]
+#  rho_io_freq              Every so many steps
+#  rho_io_format            ASCII or BINARY [BINARY]
+#  rho_io_grid              1_1_1
+#
 ###############################################################################
 
 freq_statistics 500

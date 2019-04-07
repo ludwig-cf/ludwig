@@ -2,18 +2,16 @@
  *
  *  control.h
  *
- *  $Id: control.h,v 1.6 2009-10-08 16:29:59 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008 The University of Edinburgh
+ *  (c) 2008-2019 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef CONTROL_H
-#define CONTROL_H
+#ifndef LUDWIG_CONTROL_H
+#define LUDWIG_CONTROL_H
 
 #include "pe.h"
 #include "runtime.h"
@@ -29,6 +27,7 @@ int is_colloid_io_step(void);
 int is_phi_output_step(void);
 int is_vel_output_step(void);
 int is_psi_output_step(void);
+int is_rho_output_step(void);
 int is_fed_output_step(void);
 int is_shear_measurement_step(void);
 int is_shear_output_step(void);
