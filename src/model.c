@@ -43,6 +43,8 @@ static int lb_f_read(FILE *, int index, void * self);
 static int lb_f_read_ascii(FILE *, int index, void * self);
 static int lb_f_write(FILE *, int index, void * self);
 static int lb_f_write_ascii(FILE *, int index, void * self);
+static int lb_rho_write(FILE *, int index, void * self);
+static int lb_rho_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 
 static __constant__ lb_collide_param_t static_param;
@@ -694,6 +696,35 @@ __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int for
 
 /*****************************************************************************
  *
+ *  lb_io_rho_set
+ *
+ *  There is no input for rho, as it is never required.
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_rho_set(lb_t * lb, io_info_t * io_rho, int form_in,
+                           int form_out) {
+
+  char string[FILENAME_MAX];
+
+  assert(lb);
+  assert(io_rho);
+
+  lb->io_rho = io_rho;
+
+  sprintf(string, "Fluid density (rho)");
+
+  io_info_set_name(lb->io_rho, string);
+  io_info_write_set(lb->io_rho, IO_FORMAT_BINARY, lb_rho_write);
+  io_info_set_bytesize(lb->io_rho, IO_FORMAT_BINARY, sizeof(double));
+  io_info_write_set(lb->io_rho, IO_FORMAT_ASCII, lb_rho_write_ascii);
+  io_info_format_set(lb->io_rho, form_in, form_out);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_io_info
  *
  *****************************************************************************/
@@ -1057,6 +1088,53 @@ static int lb_f_write_ascii(FILE * fp, int index, void * self) {
   fprintf(fp, "\n");
 
   if (nw != lb->ndist*NVEL) pe_fatal(pe, "fwrite(lb) failed at %d\n", index);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  lb_rho_write
+ *
+ *  Write density data to file (binary)
+ *
+ *****************************************************************************/
+
+static int lb_rho_write(FILE * fp, int index, void * self) {
+
+  size_t iw;
+  double rho;
+  lb_t * lb = (lb_t *) self;
+
+  assert(fp);
+  assert(lb);
+
+  lb_0th_moment(lb, index, LB_RHO, &rho);
+  iw = fwrite(&rho, sizeof(double), 1, fp);
+
+  if (iw != 1) pe_fatal(lb->pe, "lb_rho-write failed\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_rho_write_ascii
+ *
+ *****************************************************************************/
+
+static int lb_rho_write_ascii(FILE * fp, int index, void * self) {
+
+  int nwrite;
+  double rho;
+  lb_t * lb = (lb_t *) self;
+
+  assert(fp);
+  assert(lb);
+
+  lb_0th_moment(lb, index, LB_RHO, &rho);
+  nwrite = fprintf(fp, "%22.15e\n", rho);
+  if (nwrite != 23) pe_fatal(lb->pe, "lb_rho_write_ascii failed\n");
 
   return 0;
 }

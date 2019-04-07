@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -73,7 +73,8 @@ __host__ int lb_halo_via_copy(lb_t * lb);
 __host__ int lb_halo_via_struct(lb_t * lb);
 __host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
-__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int form_in, int form_out);
+__host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
+__host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
 
 __host__ __device__ int lb_nvel(lb_t * lb, int * nvel);
 __host__ __device__ int lb_ndim(lb_t * lb, int * ndim);
