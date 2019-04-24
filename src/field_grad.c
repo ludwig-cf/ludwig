@@ -523,3 +523,48 @@ int field_grad_tensor_delsq(field_grad_t * obj, int index, double dsq[3][3]) {
 
   return 0;
 }
+*****************************************************************************
+*
+*  field_grad_array_grad
+*
+*  Return the gradient tensor for array field dp[ia][ib] = d_a p_b.
+*
+*****************************************************************************/
+
+__host__ __device__
+int field_grad_array_grad(field_grad_t * obj, int index, double *dp) {
+    
+    int ia, ib;
+    
+    assert(obj);
+    assert(dp);
+    
+    for (ia = 0; ia < obj->nf; ia++) {
+        for (ib = 0; ib < obj->nf; ib++) {
+            dp[ia][ib] = obj->grad[addr_rank2(obj->nsite, obj->nf, obj->nf, index, ib, ia)];
+        }
+    }
+    
+    return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_array_delsq
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_array_delsq(field_grad_t * obj, int index, double *delsq) {
+    
+    int ia;
+    
+    assert(obj);
+    assert(delsq);
+    
+    for (ia = 0; ia < obj->nf; ia++) {
+        delsq[ia] = obj->delsq[addr_rank1(obj->nsite, obj->nf, index, ia)];
+    }
+    
+    return 0;
+}
