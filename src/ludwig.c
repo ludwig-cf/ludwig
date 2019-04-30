@@ -643,7 +643,8 @@ void ludwig_run(const char * inputfile) {
 
 	  /* Force calculation as divergence of stress tensor */
 
-          phi_force_calculation(ludwig->cs, ludwig->le, ludwig->wall,
+          phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
+				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro);
 
@@ -1131,6 +1132,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 
+    int use_stress_relaxation;
     fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via finite difference */
@@ -1183,12 +1185,23 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Force */
 
-    p = 1; /* Default is to use divergence method */
-    rt_int_parameter(rt, "fd_force_divergence", &p);
-    pe_info(pe, "Force calculation:      %s\n",
-         (p == 0) ? "phi grad mu method" : "divergence method");
-    if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
-    if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Force calculation\n");
+      pe_info(pe, "Symmetric stress via collision relaxation\n");
+      pth_create(pe, cs, PTH_METHOD_STRESS_ONLY, &ludwig->pth);
+    }
+    else {
+      p = 1; /* Default is to use divergence method */
+      rt_int_parameter(rt, "fd_force_divergence", &p);
+      pe_info(pe, "Force calculation:      %s\n",
+           (p == 0) ? "phi grad mu method" : "divergence method");
+      if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+      if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
 
     ludwig->fe_symm = fe;
     ludwig->fe = (fe_t *) fe;
