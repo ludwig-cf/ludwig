@@ -57,6 +57,9 @@ static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double 
 static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
 				      field_t * phi,
 				      hydro_t * hydro);
+static int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
+				      field_t * phi,
+				      hydro_t * hydro, map_t * map);
 
 /*****************************************************************************
  *
@@ -73,15 +76,16 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
  *
  *****************************************************************************/
 
-__host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
+__host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
+				   wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
 				   field_t * phi, hydro_t * hydro) {
 
   int is_pm;
 
   if (pth == NULL) return 0;
-  if (pth->method == PTH_METHOD_NO_FORCE) return 0;
   if (hydro == NULL) return 0; 
+  if (pth->method == PTH_METHOD_NO_FORCE) return 0;
 
   wall_is_pm(wall, &is_pm);
 
@@ -102,10 +106,18 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
       }
       break;
     case PTH_METHOD_GRADMU:
-      phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
+      if (is_pm) {
+	phi_force_solid_phi_gradmu(le, pth, fe, phi, hydro, map);
+      }
+      else {
+        phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
+      }
+      break;
+    case PTH_METHOD_STRESS_ONLY:
+      pth_stress_compute(pth, fe);
       break;
     default:
-      assert(0);
+      pe_fatal(pe, "Bad force method\n");
     }
   }
 
@@ -178,6 +190,105 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 	fe->func->mu(fe, index0 + zs, &mup1);
 
         force[Z] = -phi*0.5*(mup1 - mum1);
+
+	/* Store the force on lattice */
+
+	hydro_f_local_add(hydro, index0, force);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_solid_phi_gradmu
+ *
+ *  This computes and stores the force on the fluid via
+ *    f_a = - phi \nabla_a mu
+ *
+ *  which is appropriate for the symmtric and Brazovskii
+ *  free energies, This version allows a solid wall, and
+ *  makes the approximation that the normal gradient of
+ *  the chemical potential at the wall is zero.
+ *
+ *  The gradient of the chemical potential is computed as
+ *    grad_x mu = 0.5*(mu(i+1) - mu(i) + mu(i) - mu(i-1)) etc
+ *  which collapses to the fluid version away from any wall.
+ *
+ *****************************************************************************/
+
+static int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
+				      fe_t * fe, field_t * fphi,
+				      hydro_t * hydro, map_t * map) {
+
+  int ic, jc, kc, icm1, icp1;
+  int index0, indexm1, indexp1;
+  int nhalo;
+  int nlocal[3];
+  int zs, ys, xs;
+  int mapm1, mapp1;
+  double phi, mu, mum1, mup1;
+  double force[3];
+
+  assert(le);
+  assert(fphi);
+  assert(hydro);
+
+  lees_edw_nhalo(le, &nhalo);
+  lees_edw_nlocal(le, nlocal);
+  assert(nhalo >= 2);
+
+  /* Memory strides */
+  zs = 1;
+  ys = (nlocal[Z] + 2*nhalo)*zs;
+  xs = (nlocal[Y] + 2*nhalo)*ys;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = lees_edw_index(le, ic, jc, kc);
+	field_scalar(fphi, index0, &phi);
+        fe->func->mu(fe, index0, &mu);
+
+        indexm1 = lees_edw_index(le, icm1, jc, kc);
+        indexp1 = lees_edw_index(le, icp1, jc, kc);
+
+	fe->func->mu(fe, indexm1, &mum1);
+	fe->func->mu(fe, indexp1, &mup1);
+
+        map_status(map, index0 - xs, &mapm1);
+        map_status(map, index0 + xs, &mapp1);
+        if (mapm1 == MAP_BOUNDARY) mum1 = mu;
+        if (mapp1 == MAP_BOUNDARY) mup1 = mu;
+
+        force[X] = -phi*0.5*(mup1 - mu + mu - mum1);
+
+	fe->func->mu(fe, index0 - ys, &mum1);
+	fe->func->mu(fe, index0 + ys, &mup1);
+
+        map_status(map, index0 - ys, &mapm1);
+        map_status(map, index0 + ys, &mapp1);
+        if (mapm1 == MAP_BOUNDARY) mum1 = mu;
+        if (mapp1 == MAP_BOUNDARY) mup1 = mu;
+
+        force[Y] = -phi*0.5*(mup1 - mu + mu - mum1);
+
+	fe->func->mu(fe, index0 - zs, &mum1);
+	fe->func->mu(fe, index0 + zs, &mup1);
+
+        map_status(map, index0 - zs, &mapm1);
+        map_status(map, index0 + zs, &mapp1);
+        if (mapm1 == MAP_BOUNDARY) mum1 = mu;
+        if (mapp1 == MAP_BOUNDARY) mup1 = mu;
+
+        force[Z] = -phi*0.5*(mup1 - mu + mu - mum1);
 
 	/* Store the force on lattice */
 
