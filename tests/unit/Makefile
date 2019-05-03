@@ -16,7 +16,7 @@
 #  Edinburgh Parallel Computing Centre
 #
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
-#  (c) 2010-2015 The University of Edinburgh
+#  (c) 2010-2019 The University of Edinburgh
 #
 ###############################################################################
 
@@ -50,6 +50,7 @@ TESTSOURCES = test_assumptions.c test_pe.c test_timer.c \
 	      test_ewald.c test_polar_active.c test_phi_ch.c \
               test_colloid.c test_colloids.c test_colloids_halo.c \
               test_colloid_sums.c test_blue_phase.c \
+              test_fe_surfactant1.o \
               test_psi.c test_psi_sor.c test_hydro.c \
               test_field.c test_field_grad.c test_nernst_planck.c \
               test_fe_electro.c test_fe_electro_symm.c test_be.c \

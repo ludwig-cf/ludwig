@@ -37,6 +37,7 @@ int test_coords_suite(void);
 int test_ewald_suite(void);
 int test_fe_electro_suite(void);
 int test_fe_electro_symm_suite(void);
+int test_fe_surfactant1_suite(void);
 int test_field_suite(void);
 int test_field_grad_suite(void);
 int test_halo_suite(void);
