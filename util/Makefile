@@ -26,7 +26,7 @@ SRC  = $(ROOT_DIR)./src
 INCL = -I$(SRC) $(TARGET_INC_PATH) $(MPI_INC_PATH)
 
 BLIBS = $(MPI_LIB_PATH) $(MPI_LIB) $(TARGET_LIB_PATH) $(TARGET_LIB)
-LIBS  = $(BLIBS) $(SRC)/libludwig.a -lm
+LIBS  = $(SRC)/libludwig.a  $(BLIBS) -lm
 
 
 default:
