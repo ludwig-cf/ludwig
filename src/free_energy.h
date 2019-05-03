@@ -3,11 +3,14 @@
  *  free_energy.h
  *
  *  The 'abstract' free energy interface.
+ *  (Abstract means there's is no corresponding implementation free_energy.c)
+ *
+ *  For instructions on how to add a free energy, see below.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
+ *  (c) 2009-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,6 +26,7 @@
 
 enum fe_id_enum {FE_SYMMETRIC,
 		 FE_BRAZOVSKII,
+                 FE_SURFACTANT1,
 		 FE_POLAR,
 		 FE_LC,
 		 FE_ELECTRO,
@@ -68,5 +72,85 @@ struct fe_s {
   int id;                       /* enum id */
   int use_stress_relaxation;    /* use symmetric stress in collision */
 };
+
+/*****************************************************************************
+ *
+ * Abstract free energy, or free energy interface.
+ *
+ * There are four components about which define what is required
+ * by an actual free energy:
+ *
+ *   1. The fe_id_enum provides a tag to label each free energy.
+ *   2. The series of typedefs define the signatures of the functions
+ *      which can be provided by a free energy. Not all are relevant
+ *      for all free energies depending on whether the order parameter
+ *      is scalar, vector, tensor, etc.
+ *   3. A virtual function table or "vtable" which holds a series of
+ *      pointers to the functions which compute the various quantities.
+ *   4. The abstract free energy struct fs_t which holds the vtable and
+ *      is used by parts of the code which don't care about the exact
+ *      details of particular free energies.
+ *
+ * Adding a new free energy.
+ *
+ * If you want to add a new free energy, there are a number of steps to
+ * follow.
+ *
+ *   1. Add a new tag to the fe_id_enum above e.g., FE_SURFACTANT2
+ *
+ *   2. Create new header and source files to hold the relevant code,
+ *      e.g., fe_surfactant2.h and fe_surfactant2.c
+ *
+ *   3. Define a struct which will hold the relevant information about
+ *      the new free energy, e.g.,
+ *        struct fe_surf2_s {
+ *          fe_t super;
+ *          ...
+ *        };
+ *      The fe_t super component *must* appear first.
+ *
+ *   4. Define relevant functions with exactly the type signatures
+ *      as given above. E.g., in fe_surfactant2.c
+ *
+ *        int fe_surf2_fed(fe_surf2_t * fe, int index, double * fed)
+ *        int fe_surf2_mu(fe_surf2 * fe, int index, double * mu)
+ *        int fe_surf2_str(fe_surf2 * fe, int index, double s[3][3])
+ *
+ *      which should compute the free energy density, the chemical
+ *      potential(s), and the stress, respectively. The index argument
+ *      is the single location on the lattice.
+ *
+ *   5. Define a static vtable structure and add the functions from
+ *      stage4 to the vtable in the appropriate positions. If
+ *      functions are not relevant, a NULL entry is acceptable.
+ *
+ *         static fe_vt_t fe_surf2_vtable = {
+ *            ...
+ *         };
+ *
+ *   6. When the the fe_surf1_t is brought into existance, one should
+ *      set the components of the "superclass" appropriately:
+ *
+ *          fe->super.func = fe_surf2_vtable;
+ *          fe->super.id   = FE_SURFACTANT2;
+ *
+ * Device implementations
+ *
+ * If a device implementation is required:
+ *
+ *   1.  The typedef'd functions defined above should have both
+ *       __host__ and __device__ attributes.
+ *
+ *   2. A separate vtable for device version is required which should
+ *      be in device memory, e.g., declare
+ *
+ *      static __constant__ fe_vt_t fe_surf_device_vtable = {
+ *        ...
+ *      };
+ *
+ *   3. On creation, the device vtable needs to be copied to the device.
+ *      See e.g., symmetric.c for an example.
+ *
+ *****************************************************************************/
 
 #endif
