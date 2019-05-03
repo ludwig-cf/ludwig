@@ -1,0 +1,5 @@
+language: c
+script:
+  - cp config/lunix-gcc-default.mk ./config.mk
+  - make
+
