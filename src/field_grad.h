@@ -5,15 +5,15 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef FIELD_GRAD_H
-#define FIELD_GRAD_H
+#ifndef LUDWIG_FIELD_GRAD_H
+#define LUDWIG_FIELD_GRAD_H
 
 #include "pe.h"
 #include "field.h"
@@ -34,6 +34,12 @@ __host__ __device__ int field_grad_scalar_delsq(field_grad_t * obj, int index, d
 __host__ __device__ int field_grad_scalar_grad_delsq(field_grad_t * obj, int index, double gd[3]);
 __host__ __device__ int field_grad_scalar_delsq_delsq(field_grad_t * obj, int index, double * dd);
 __host__ __device__ int field_grad_scalar_dab(field_grad_t * obj, int index, double d_ab[3][3]);
+
+__host__ __device__ int field_grad_pair_grad(field_grad_t * obj, int index, double grad[2][3]);
+__host__ __device__ int field_grad_pair_delsq(field_grad_t * obj, int index, double * delsq);
+
+__host__ __device__ int field_grad_pair_grad_set(field_grad_t * obj, int index, const double grad[2][3]);
+__host__ __device__ int field_grad_pair_delsq_set(field_grad_t * obj, int index, const double * delsq);
 
 __host__ __device__ int field_grad_vector_grad(field_grad_t * obj, int index, double dp[3][3]);
 __host__ __device__ int field_grad_vector_delsq(field_grad_t * obj, int index, double dp[3]);
