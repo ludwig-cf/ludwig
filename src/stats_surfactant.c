@@ -4,12 +4,10 @@
  *
  *  Some routines to perform analysis of the surfactant model.
  *
- *  $Id: stats_surfactant.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -39,7 +37,7 @@
  *
  *****************************************************************************/
 
-int stats_surfactant_1d(fe_surfactant1_t * fe) {
+int stats_surfactant_1d(fe_surf1_t * fe) {
 
   int index;
   int ic = 1, jc = 1, kc;
@@ -69,7 +67,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
 
   kc = 1;
   index = cs_index(cs, ic, jc, kc);
-  fe_surfactant1_fed(fe, index, &e0);
+  fe_surf1_fed(fe, index, &e0);
 
   assert(0); /* phi and psi required from relevant field */
   phi[0] = 0.0;
@@ -88,7 +86,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
 
     index = cs_index(cs, ic, jc, kc);
 
-    fe_surfactant1_fed(fe, index, &e0);
+    fe_surf1_fed(fe, index, &e0);
     e = 0.0; /* Check what e should be. */
     sigma += 0.5*(e - e0);
     /* field_scalar_array(fe->phi, index, phi);*/
@@ -99,7 +97,7 @@ int stats_surfactant_1d(fe_surfactant1_t * fe) {
   /* Compute the fractional reduction in the surface tension
    * below the bare surface value */
 
-  fe_surfactant1_sigma(fe, &sigma0);
+  fe_surf1_sigma(fe, &sigma0);
   sigma = (sigma - sigma0)/sigma0;
 
   /* The sqrt(t) is the usual dependance for analysis of the

@@ -62,6 +62,7 @@
 /* Free energy */
 #include "symmetric_rt.h"
 #include "brazovskii_rt.h"
+#include "surfactant_rt.h"
 #include "polar_active_rt.h"
 #include "blue_phase_rt.h"
 #include "lc_droplet_rt.h"
@@ -1291,9 +1292,35 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ludwig->fe_braz = fe;
     ludwig->fe = (fe_t *) fe;
   }
-  else if (strcmp(description, "surfactant") == 0) {
-    /* Disable surfactant for the time being */
-    pe_info(pe, "Surfactant free energy is disabled\n");
+  else if (strcmp(description, "surfactant1") == 0) {
+
+    fe_surf1_param_t param;
+    fe_surf1_t * fe;
+
+    nf = 2;       /* Nominally "phi" and "psi" */
+    nhalo = 2;
+    ngrad = 2;
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+
+    /* No Lees Edwards for the time being */
+
+    field_create(pe, cs, nf, "surfactant1", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, NULL);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    /* Cahn Hilliard */
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Surfactant free energy\n");
+    pe_info(pe, "----------------------\n");
+
+    fe_surf1_param_rt(pe, rt, &param);
+    fe_surf1_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
+    fe_surf1_info(fe);
+    /* INFOMATION */
+
     assert(0);
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
