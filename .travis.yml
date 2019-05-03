@@ -3,5 +3,4 @@ script:
   - cp config/lunix-gcc-travis.mk ./config.mk
   - make serial
   - make
-
-
+  - make test
