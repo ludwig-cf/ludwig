@@ -1,6 +1,6 @@
 language: c
 script:
-  - cp config/lunix-gcc-default.mk ./config.mk
+  - cp config/lunix-gcc-travis.mk ./config.mk
   - make serial
   - make
 
