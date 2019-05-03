@@ -9,13 +9,15 @@
 
 include ../../../Makefile.mk
 
+NTASKS=1
+
 SER=${LAUNCH_SERIAL_CMD}
-PAR=${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH}
+PAR=${MPI_LAUNCH_CMD} ${MPI_NTASKS_ARG} ${NTASKS}
 
 test:
 	@echo "TEST --> regression tests serial"
 	inputs='serial*inp'; \
-	for file in $$inputs; do ../../test.sh $$file "" ""; done
+	for file in $$inputs; do ../../test.sh $$file "${SER}" "${PAR}"; done
 
 clean:
 	rm -f *new test-diff* *meta *001-001
