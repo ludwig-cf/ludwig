@@ -403,6 +403,7 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
   char io_metadata[BUFSIZ];
   char io_data[BUFSIZ];
   char line[BUFSIZ];
+  char * pstr;
 
   double * datalocal = NULL;
   FILE * fp_metadata = NULL;
@@ -433,7 +434,8 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
     if (fp_metadata == NULL) printf("fopen(%s) failed\n", io_metadata);
 
     for (p = 0; p < 12; p++) {
-      fgets(line, FILENAME_MAX, fp_metadata);
+      pstr = fgets(line, FILENAME_MAX, fp_metadata);
+      if (pstr == NULL) printf("Failed to read line\n");
       printf("%s", line);
     }
 
@@ -651,6 +653,7 @@ int copy_data(double * datalocal, double * datasection) {
 void read_data(FILE * fp_data, int n[3], double * data) {
 
   int ic, jc, kc, index, nr;
+  int nread;
   double phi;
   double revphi;
 
@@ -662,7 +665,8 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 	  index = site_index(ic, jc, kc, nlocal);
 
 	  for (nr = 0; nr < nrec_; nr++) {
-	    fread(&phi, sizeof(double), 1, fp_data);
+	    nread = fread(&phi, sizeof(double), 1, fp_data);
+	    assert(nread == 1);
 	    if(reverse_byte_order_){
 	       revphi = reverse_byte_order_double((char *) &phi); 
 	       phi = revphi;
@@ -680,7 +684,8 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 	  index = site_index(ic, jc, kc, nlocal);
 
 	  for (nr = 0; nr < nrec_; nr++) {
-	    fscanf(fp_data, "%le", data + nrec_*index + nr);
+	    nread = fscanf(fp_data, "%le", data + nrec_*index + nr);
+	    assert(nread == 1);
 	  }
 	}
       }
