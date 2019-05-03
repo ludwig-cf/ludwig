@@ -1,6 +1,10 @@
 
 ### Ludwig
 
+[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=feature-make)](https://travis-ci.com/ludwig-cf/ludwig)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1998/badge)](https://bestpractices.coreinfrastructure.org/projects/1998)
+
+
 A lattice Boltzmann code for complex fluids
 
 Ludwig is a parallel code for the simulation of complex fluids, which
