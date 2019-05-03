@@ -29,13 +29,12 @@
  *  is height vs r, the radial distance from the centre.
  *  The output file should match the capillary structure!
  *
- *  $Id: capillary.c,v 1.3 2008-11-26 19:34:32 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
+ *  (c) 2008-2019 The University of Edinburgh
  *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2008 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -625,6 +624,7 @@ static void profile(const char * filename) {
 
   int ic, jc, kc, index;
   int inside;
+  int nread;
   double rc = 0.5*(xmax-2);
   double x0 = 0.5*xmax + 0.5;
   double y0 = 0.5*ymax + 0.5;
@@ -652,7 +652,8 @@ static void profile(const char * filename) {
     for (jc = 0; jc < ymax; jc++) {
       for (kc = 0; kc < zmax; kc++) {
 	index = ic*zmax*ymax + jc*zmax + kc;
-	fread(phi + index, 1, sizeof(double), fp);
+	nread = fread(phi + index, 1, sizeof(double), fp);
+	assert(nread == 1);
       }
     }
   }
