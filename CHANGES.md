@@ -1,6 +1,12 @@
 
 ### Changes
 
+version 0.9.2
+- add back an operational surfactant free energy. There is no
+  dynamics available yet.
+- Add unit tests for the the same.
+- Add a description of how to add a free energy to free_energy.h
+
 version 0.9.1
 - add option "fe_use_stress_relaxation" in the symmetric case
   to allow force via equilibrium stress.
