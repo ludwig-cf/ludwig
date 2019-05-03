@@ -652,7 +652,7 @@ static void profile(const char * filename) {
     for (jc = 0; jc < ymax; jc++) {
       for (kc = 0; kc < zmax; kc++) {
 	index = ic*zmax*ymax + jc*zmax + kc;
-	nread = fread(phi + index, 1, sizeof(double), fp);
+	nread = fread(phi + index, sizeof(double), 1, fp);
 	assert(nread == 1);
       }
     }

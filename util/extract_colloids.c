@@ -36,6 +36,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -74,6 +75,7 @@ int main(int argc, char ** argv) {
   int nf, nfile;
   int ncolloid;
   int ncount = 0;
+  int nread;
 
   colloid_state_t s1;
   colloid_state_t s2;
@@ -149,10 +151,12 @@ int main(int argc, char ** argv) {
     }
 
     if (iread_ascii) {
-      fscanf(fp_colloids, "%d22\n", &ncolloid);
+      nread = fscanf(fp_colloids, "%d22\n", &ncolloid);
+      assert(nread == 1);
     }
     else {
-      fread(&ncolloid, sizeof(int), 1, fp_colloids);
+      nread = fread(&ncolloid, sizeof(int), 1, fp_colloids);
+      assert(nread == 1);
     }
 
     printf("Reading %d colloids from %s\n", ncolloid, argv[1]);

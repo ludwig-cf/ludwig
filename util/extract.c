@@ -47,7 +47,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2019 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -480,6 +480,7 @@ void read_meta_data_file(const char * filename) {
   int npe, nrbyte;
   int ifail;
   char tmp[FILENAME_MAX];
+  char * p;
   FILE * fp_meta;
   const int ncharoffset = 33;
 
@@ -489,13 +490,16 @@ void read_meta_data_file(const char * filename) {
     exit(-1);
   }
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%s\n", stub_);
   assert(ifail == 1);
   printf("Read stub: %s\n", stub_);
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
   assert(ifail == 1);
   printf("Record size (bytes): %d\n", nrbyte);
@@ -515,43 +519,55 @@ void read_meta_data_file(const char * filename) {
     assert(nrec_ > 0);
   }
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &input_isbigendian_);
   assert(ifail == 1);
   assert(input_isbigendian_ == 0 || input_isbigendian_ == 1);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p =  fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &npe);
   assert(ifail == 1);
   printf("Total number of processors %d\n", npe);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d %d %d", pe_, pe_+1, pe_+2);
   assert(ifail == 3);
   printf("Decomposition is %d %d %d\n", pe_[0], pe_[1], pe_[2]);
   assert(npe == pe_[0]*pe_[1]*pe_[2]);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d %d %d", ntotal, ntotal+1, ntotal+2);
   assert(ifail == 3);
   printf("System size is %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &nplanes_);
   assert(ifail == 1);
   assert(nplanes_ >= 0);
   printf("Number of Lees Edwards planes %d\n", nplanes_);
-  fgets(tmp, FILENAME_MAX, fp_meta);
-  sscanf(tmp+ncharoffset, "%lf", &le_speed_);
+  p =  fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
+  ifail = sscanf(tmp+ncharoffset, "%lf", &le_speed_);
+  assert(ifail == 1);
   printf("Lees Edwards speed: %f\n", le_speed_);
 
   /* Number of I/O groups */
-  fgets(tmp, FILENAME_MAX, fp_meta);
-  sscanf(tmp+ncharoffset, "%d", &nio_);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
+  ifail = sscanf(tmp+ncharoffset, "%d", &nio_);
+  assert(ifail == 1);
   printf("Number of I/O groups: %d\n", nio_);
   /* I/O decomposition */
-  fgets(tmp, FILENAME_MAX, fp_meta);
-  sscanf(tmp+ncharoffset, "%d %d %d\n", io_size + 0, io_size + 1, io_size + 2);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  if (p == NULL) printf("Not reached last line correctly\n");
+  ifail = sscanf(tmp+ncharoffset, "%d %d %d\n",
+		 io_size + 0, io_size + 1, io_size + 2);
+  assert(ifail == 3);
   printf("I/O communicator topology: %d %d %d\n",
 	 io_size[0], io_size[1], io_size[2]);
 
