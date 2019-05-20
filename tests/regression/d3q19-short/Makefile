@@ -12,9 +12,8 @@ include ../../../Makefile.mk
 NTASKS=1
 
 SER=${LAUNCH_SERIAL_CMD}
-PAR=
+PAR=${MPIRUN_CMD} ${MPIRUN_NTASKS_FLAG} ${MPIRUN_NTASKS_ARG}
 
-# todo ${MPI_LAUNCH_CMD} ${MPI_NTASKS_ARG} ${NTASKS}
 
 test:
 	@echo "TEST --> regression tests serial"
