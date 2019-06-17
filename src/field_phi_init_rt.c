@@ -76,6 +76,13 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     field_phi_init_spinodal_patches(phi, seed, patch, volminus1);
   }
 
+  if (p != 0 && strcmp(value, "one") == 0) {
+	int type_ll = 0;
+    pe_info(pe, "Initialisng phi as one\n");
+    rt_int_parameter(rt, "phi_init_one_type", &type_ll);
+    field_phi_init_one(phi, type_ll);
+  }
+
   if (p != 0 && strcmp(value, "block") == 0) {
     pe_info(pe, "Initialisng phi as block\n");
     field_phi_init_block(phi, param.xi0);

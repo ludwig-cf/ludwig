@@ -67,9 +67,9 @@ __host__ int cs_create(pe_t * pe, cs_t ** pcs) {
   cs->reorder = 1;
   cs->commcart = MPI_COMM_NULL;
   cs->commperiodic = MPI_COMM_NULL;
-  cs->param->lmin[X] = 0.5;
-  cs->param->lmin[Y] = 0.5;
-  cs->param->lmin[Z] = 0.5;
+  cs->param->lmin[X] = 2.5;
+  cs->param->lmin[Y] = 2.5;
+  cs->param->lmin[Z] = 2.5;
 
   cs->nref = 1;
   *pcs = cs;

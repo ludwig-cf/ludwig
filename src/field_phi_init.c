@@ -125,6 +125,45 @@ int field_phi_init_block(field_t * phi, double xi) {
   return 0;
 }
 
+
+
+/*****************************************************************************
+ *
+ *  phi_init_one
+ *
+ *  Initialise all phi order parameter to one.
+ *  type_ll: 0 both. 1 only first. 2 only second
+ *
+ *****************************************************************************/
+
+void field_phi_init_one(field_t * phi, int type_ll) {
+
+  int nlocal[3];
+  int noffset[3];
+  int ic, jc, kc, index;
+  double phi0;
+
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+
+	if (type_ll == 0) {
+		phi0 = 1.;
+	}else if (type_ll == 1){
+		phi0 = 0.10;
+	}
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+		    index = cs_index(phi->cs, ic, jc, kc);
+			field_scalar_set(phi, index, phi0);
+      }
+    }
+  }
+
+  return;
+}
+
 /*****************************************************************************
  *
  *  field_phi_init_block_X
