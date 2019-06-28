@@ -5,6 +5,19 @@ version 0.9.0
 - added input colloid_rebuild_freq (with default 1) to allow discrete
   rebuild to be done less often
 
+version 0.8.15
+- fix "weight = 0" problem in replacement of fluid for binary order
+  parameter and add test (issue 30)
+
+version 0.8.14
+- add html placeholder
+
+version 0.8.13
+- add option for density output via "rho" commands in input
+
+version 0.8.12
+- allow force divergence method to see porous media
+
 version 0.8.11
 - updated util/length_from_sk.c to take double input to be consistent
   with extract output

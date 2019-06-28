@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -50,7 +50,8 @@ struct lb_data_s {
   pe_t * pe;             /* parallel environment */
   cs_t * cs;             /* coordinate system */
   halo_swap_t * halo;    /* halo swap driver */
-  io_info_t * io_info; 
+  io_info_t * io_info;   /* Distributions */ 
+  io_info_t * io_rho;    /* Fluid density (here; could be hydrodynamics...) */
 
   double * f;            /* Distributions */
   double * fprime;       /* used in propagation only */
