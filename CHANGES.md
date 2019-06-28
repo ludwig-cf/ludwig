@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.8.15
+- fix "weight = 0" problem in replacement of fluid for binary order
+  parameter and add test (issue 30)
+
 version 0.8.14
 - add html placeholder
 
