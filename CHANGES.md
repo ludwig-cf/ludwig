@@ -7,16 +7,18 @@ version 0.9.0
   directory. The configs are either serial or parallel (not both).
   The build process should now be from the top level and is via
   "make && make test". Serial builds should do "make serial" first.
-- Exectables in utils are built via "make" to be consistent with
+- You should be able to type "make" in any directory and the local
+  default target will be built.
+- Executables in utils are built via "make" to be consistent with
   other source directories
-- added input colloid_rebuild_freq (with default 1) to allow discrete
+- Added input colloid_rebuild_freq (with default 1) to allow discrete
   rebuild to be done less often than every time step
 - TODO PARALLEL LAUNCH OF PARALLEL REGRESSION TESTS
 - TODO Complete the split of serial regression tests
-- UPDATE CONFIG.mk in config directory for current machines
+- UPDATE CONFIG.mk in config directory for current machines and retire old ones
 - UPDATE BUILD AND TEST INSTRUCTIONS
 - UPDATE TUTORIALS
-- ADD TRAVIS ADD BADGE
+- Added travis .travis.yml
 - Fix gcc -Wformat-overflow and a number of other warnings
 
 version 0.8.11
