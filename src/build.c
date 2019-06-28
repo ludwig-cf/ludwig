@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017 The University of Edinburgh
+ *  (c) 2006-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1060,7 +1060,16 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
 
     /* Set new fluid distributions */
 
-    assert(weight > 0.0);
+    if (weight == 0.0) {
+      /* No neighbouring fluid: as there's no information, we
+       * fall back to the value that is currently stored on the
+       * lattice. This is not entirely unreasonable, as it may
+       * reflect what is nearby, or initial conditions. It could
+       * also be set as a contingency in a separate step. */
+      field_scalar(f, index, newg);
+      weight = 1.0;
+    }
+
     weight = 1.0/weight;
     phi[0] = 0.0;
 
@@ -1102,12 +1111,9 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
     }
 
     if (nweight == 0) {
-      if (n == NQAB) {
-	build_replace_q_local(fe, cinfo, pc, index, f);
-      }
-      else {
-	assert(0);
-      }
+      /* No information. For phi, use existing (solid) value. */
+      if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
+      if (fe->id == FE_SYMMETRIC) field_scalar(f, index, phi);
     }
     else {
       weight = 1.0 / weight;
