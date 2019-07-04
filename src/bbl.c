@@ -146,8 +146,7 @@ int bbl_active_set(bbl_t * bbl, colloids_info_t * cinfo) {
  *****************************************************************************/
 
 __host__
-int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
-			 colloids_info_t * cinfo) {
+int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall, colloids_info_t * cinfo) {
 
   int ntotal;
   int nlocal[3];
@@ -745,13 +744,14 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   double dwall[3];
   double xb[6];
   double a[6][6];
+  wall_param_t wallparam;
 
   colloid_t * pc;
   PI_DOUBLE(pi);
 
   assert(bbl);
   assert(cinfo);
-
+  wall_param(wall, &wallparam);
   colloids_info_rho0(cinfo, &rho0);
 
   /* All colloids, including halo */
@@ -890,12 +890,28 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
      * update.
      * We use mean of old and new velocity. */
 
+	//Distance to colloid -->
     for (ia = 0; ia < 3; ia++) {
-      if (pc->s.isfixedr == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+      if (pc->s.isfixedr == 0) {
+        if (wallparam.isboundary[ia]) {				//If we have wall at this edge
+          dist_update[0] = 0.5*(pc->s.v[ia] + xb[ia]);	//Compute the dr as usually
+          dist_update[1] = pc->s.r[ia]+dist_update[0];	//Compute the r it will be
+
+          if (dist_update[1] < wallparam.limit_colloid_floor[ia]+pc->s.a0) { //if it is down the limit we want
+            pc->s.dr[ia] = pc->s.r[ia] - (wallparam.limit_colloid_floor[ia]+pc->s.a0);
+          }else if (dist_update[1] > wallparam.limit_colloid_ceil[ia]-pc->s.a0) { //same for upper
+            pc->s.dr[ia] = (wallparam.limit_colloid_floor[ia]+pc->s.a0) - pc->s.r[ia];
+          }else{											//else: do as always!
+            pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+          }
+		  //printf("ia %d dr %f pos %f dist_upd[1] %f limit floor %f limit ceil %f\n", ia, pc->s.dr[ia], pc->s.r[ia], dist_update[1], wallparam.limit_colloid_floor[ia]+pc->s.a0, wallparam.limit_colloid_ceil[ia]-pc->s.a0);
+        }else{
+          pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+        } 
+      }//<-- Distance to colloid
       if (pc->s.isfixedv == 0) pc->s.v[ia] = xb[ia];
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
-
     if (pc->s.isfixeds == 0) {
       rotate_vector(pc->s.m, xb + 3);
       rotate_vector(pc->s.s, xb + 3);

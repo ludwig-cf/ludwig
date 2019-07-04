@@ -32,6 +32,8 @@ struct wall_param_s {
   double ubot[3];       /* 'Botttom' wall motion */
   double utop[3];       /* 'Top' wall motion */
   double lubr_rc[3];    /* Lubrication correction cut offs */
+  double limit_colloid_floor[3];	/* Maximum distance of colloids to floor wall */
+  double limit_colloid_ceil[3];	/* Maximum distance of colloids to ceil wall */
 };
 
 
