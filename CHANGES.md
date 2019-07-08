@@ -22,11 +22,8 @@ version 0.9.0
 
 - The default test is regression/d3q19-short 
 
-- ADD Cirrus config x 2
-
-- ADD ARCHER config x 2
-
-- UPDATE BUILD AND TEST INSTRUCTIONS
+- A link to new build and test instructions has been made available
+  from the README
 
 - UPDATE TUTORIALS
 
