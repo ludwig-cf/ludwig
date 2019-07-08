@@ -4,14 +4,14 @@
 #
 #  Various targets for utility programs to perform pre-processing
 #  and post-processing tasks.
-
+#
 #  Note all the builds are parallel, but the utilities are
 #  intended to be run in serial.
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2016-2018 The University of Edinburgh
+#  (c) 2016-2019 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -45,7 +45,7 @@ extract_colloids: extract_colloids.o
 	$(MPICC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 capillary: capillary.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 extract: extract.o
 	$(MPICC) $(LDFLAGS) -o $@ $^ $(LIBS)

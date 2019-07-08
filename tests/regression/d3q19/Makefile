@@ -8,23 +8,12 @@
 
 include ../../../Makefile.mk
 
+ifeq (${BUILD},parallel)
+MPIRUN_NTASKS=1
+endif
+
 SER=${LAUNCH_SERIAL_CMD}
-PAR=${LAUNCH_MPI_CMD} ${LAUNCH_MPI_NP_SWITCH}
-
-serial:
-	@echo "TEST --> regression tests serial"
-	inputs='serial*inp'; \
-	for file in $$inputs; do ../../test.sh $$file "" ""; done
-
-mpix01:
-	@echo "TEST --> regression tests mpi (1 mpi task)"
-	inputs='serial*inp'; \
-	for file in $$inputs; do ../../test.sh $$file "$(SER)" "$(PAR) 1"; done
-
-mpix08:
-	@echo "TEST --> regression tests mpi (8 mpi tasks)"
-	inputs='pmpi08*inp'; \
-	for file in $$inputs; do ../../test.sh $$file "$(SER)" "$(PAR) 8"; done
+PAR=${LAUNCH_MPIRUN_CMD} ${MPIRUN_NTASK_FLAG} ${MPIRUN_NTASKS}
 
 mpix64:
 	@echo "TEST --> regression test mpi (64 mpi tasks)"

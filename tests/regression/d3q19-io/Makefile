@@ -2,8 +2,7 @@
 #
 #  Makefile
 #
-#  D3Q19 short regression tests. "Short" is not more than 10 seconds
-#  on a single thread (with assertions).
+#  Various tests involving input from file
 #
 ###############################################################################
 
@@ -19,8 +18,8 @@ PAR=${LAUNCH_MPIRUN_CMD} ${MPIRUN_NTASK_FLAG} ${MPIRUN_NTASKS}
 
 test:
 	@echo "TEST --> regression tests serial"
-	inputs='serial*inp'; \
+	inputs='*inp'; \
 	for file in $$inputs; do ../../test.sh $$file "${SER}" "${PAR}"; done
 
 clean:
-	rm -f *new test-diff* *meta *001-001
+	rm -f *new test-diff*
