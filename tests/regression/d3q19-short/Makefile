@@ -9,10 +9,12 @@
 
 include ../../../Makefile.mk
 
-NTASKS=1
+ifeq (${BUILD},parallel)
+MPIRUN_NTASKS=1
+endif
 
 SER=${LAUNCH_SERIAL_CMD}
-PAR=${MPIRUN_CMD} ${MPIRUN_NTASKS_FLAG} ${MPIRUN_NTASKS_ARG}
+PAR=${LAUNCH_MPIRUN_CMD} ${MPIRUN_NTASK_FLAG} ${MPIRUN_NTASKS}
 
 
 test:
