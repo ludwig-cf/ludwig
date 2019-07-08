@@ -32,8 +32,16 @@ $ make serial
 $ make
 $ make test
 ```
+If a parallel build is wanted omit the serial step, for example,
+```
+$ cp config/unix-mpicc-default.mk config.mk
+$ make
+$ make test
+```
 
-Full details of the build process are available at XXXX.
+
+Full details of the build process are available at
+<a href = "https://ludwg.epcc.ed.ac.uk/">https://ludwig.epcc.ed.ac.uk/</a>.
 
 #### Usage
 
