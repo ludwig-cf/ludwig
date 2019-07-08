@@ -579,7 +579,7 @@ void read_meta_data_file(const char * filename) {
 int read_data_file_name(const char * filename) {
 
   int ntime = -1;
-  char * tmp;
+  const char * tmp;
   
   tmp = strchr(filename, '-');
   if (tmp) {
