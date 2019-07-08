@@ -67,7 +67,7 @@ periodicity 1_1_1
 freq_statistics 10
 config_at_end no
 
-colloid_file_stub colloids-serial-pair-yk1
+colloid_file_stub colloids-serial-pair
 colloids_io_grid 1_1_1
 colloid_io_format_input  ASCII_SERIAL
 

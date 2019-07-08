@@ -64,7 +64,7 @@ Input format:                 ascii
 Output format:                ascii
 Single file read flag:        1
 
-colloid_io_read: reading from single file colloids-serial-lubr-nf1.001-001
+colloid_io_read: reading from single file colloids-serial-lubr.001-001
 Read a total of 1000 colloids from file
 
 Initialised 1000 colloids
