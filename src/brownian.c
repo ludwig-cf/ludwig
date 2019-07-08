@@ -2,8 +2,6 @@
  *
  *  brownian.c
  *
- *  $Id: brownian.c,v 1.4 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -22,6 +20,8 @@
 #include "colloids_halo.h"
 #include "physics.h"
 #include "util.h"
+
+#ifdef THIS_FILE_IS_OUT_OF_DATE
 
 void brownian_step_ermak_buckholz(void);
 void brownian_step_no_inertia(void);
@@ -509,3 +509,4 @@ void brownian_step_no_inertia_test() {
 
   return;
 }
+#endif

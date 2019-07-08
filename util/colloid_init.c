@@ -58,7 +58,7 @@ double v_lj(double r, double rc);
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {32.0, 32.0, 32.0};  /* Total system size (cf. input) */
+  int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
   int file_format = ASCII;
 

@@ -102,7 +102,7 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 
 /* Special values */
 
-#define MPI_IN_PLACE NULL
+#define MPI_IN_PLACE ((void *) 1)
 
 /* Interface */
 

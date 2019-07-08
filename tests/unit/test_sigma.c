@@ -13,6 +13,8 @@
 #include <float.h>
 #include <math.h>
 
+#ifdef THIS_TEST_IS_OUT_OF_DATE
+
 #include "pe.h"
 #include "coords.h"
 #include "lattice.h"
@@ -510,3 +512,5 @@ void drop_locate_profile(struct drop_t drop, const int print_profile) {
 
   return;
 }
+
+#endif

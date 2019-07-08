@@ -3,6 +3,10 @@
 
 A lattice Boltzmann code for complex fluids
 
+[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=feature-make)](https://travis-ci.com/ludwig-cf/ludwig)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1998/badge)](https://bestpractices.coreinfrastructure.org/projects/1998)
+
+
 Ludwig is a parallel code for the simulation of complex fluids, which
 include mixtures, colloidal suspensions, gels, and liquid crystals.
 It takes its name from Ludwig Boltzmann, as it uses a lattice Boltzmann
@@ -23,12 +27,13 @@ Copy a config file from the config directory to
 the top level directory and make any changes required. E.g.,
 
 ```
-$ cp config/lunix-gcc-default.mk config.mk
-$ cd tests
-$ make compile-mpi-d3q19
+$ cp config/unix-gcc-default.mk config.mk
+$ make serial
+$ make
+$ make test
 ```
 
-This should produce an execuatable `./src/Ludwig.exe`.
+Full details of the build process are available at XXXX.
 
 #### Usage
 

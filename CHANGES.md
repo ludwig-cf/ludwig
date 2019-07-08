@@ -2,8 +2,37 @@
 ### Changes
 
 version 0.9.0
-- added input colloid_rebuild_freq (with default 1) to allow discrete
-  rebuild to be done less often
+- The build process has changed to try to move all the configuration
+  to the config.mk file. Please see updated examples in the ./config
+  directory. The configs are either serial or parallel (not both).
+  The build process should now be from the top level and is via
+  "make && make test". Serial builds should do "make serial" first.
+
+- You should be able to type "make" in any directory and the local
+  default target will be built.
+
+- Executables in utils are built via "make" to be consistent with
+  other source directories
+
+- Added input colloid_rebuild_freq (with default 1) to allow discrete
+  rebuild to be done less often than every time step
+
+- Regression tests have been re-organised into different directories
+  and are run on a per-directory basis (see tests/Makefile)
+
+- The default test is regression/d3q19-short 
+
+- ADD Cirrus config x 2
+
+- ADD ARCHER config x 2
+
+- UPDATE BUILD AND TEST INSTRUCTIONS
+
+- UPDATE TUTORIALS
+
+- Added travis .travis.yml and relevant config file
+
+- Fixed gcc -Wformat-overflow and a number of other warnings
 
 version 0.8.15
 - fix "weight = 0" problem in replacement of fluid for binary order

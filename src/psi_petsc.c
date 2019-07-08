@@ -172,25 +172,24 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   int xs, ys, zs, xw, yw, zw, xe, ye, ze;
   double epsilon;
 
-#ifdef NP_D3Q6
-  double v[7];
-  MatStencil  row, col[7];
-#endif
-
-#ifdef NP_D3Q18
+#if defined NP_D3Q18
   double v[19];
   MatStencil  row, col[19];
   const double r3 = (1.0/3.0);
   const double r6 = (1.0/6.0);
-#endif
 
-#ifdef NP_D3Q26
+#elif defined NP_D3Q26
   double v[27];
   MatStencil  row, col[27];
   const double r10 = 0.1;
   const double r30 = (1.0/30.0);
   const double r15_7  = (7.0/15.0);
   const double r15_64 = (64.0/15.0);
+
+#else
+  /*  NP_D3Q6 */
+  double v[7];
+  MatStencil  row, col[7];
 #endif
 
   assert(obj);
