@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -210,15 +210,15 @@ static int do_test5(pe_t * pe) {
 
   field_grad_tensor_grad(gradient, 1, grad);
   for (ia = 0; ia < 3; ia++) {
-    assert(fabs(grad[ia][X][X] - test_encode(ENCODE_GRAD, nf, ia, XX)) < tol);
-    assert(fabs(grad[ia][X][Y] - test_encode(ENCODE_GRAD, nf, ia, XY)) < tol);
-    assert(fabs(grad[ia][X][Z] - test_encode(ENCODE_GRAD, nf, ia, XZ)) < tol);
-    assert(fabs(grad[ia][Y][X] - test_encode(ENCODE_GRAD, nf, ia, XY)) < tol);
-    assert(fabs(grad[ia][Y][Y] - test_encode(ENCODE_GRAD, nf, ia, YY)) < tol);
-    assert(fabs(grad[ia][Y][Z] - test_encode(ENCODE_GRAD, nf, ia, YZ)) < tol);
-    assert(fabs(grad[ia][Z][X] - test_encode(ENCODE_GRAD, nf, ia, XZ)) < tol);
-    assert(fabs(grad[ia][Z][Y] - test_encode(ENCODE_GRAD, nf, ia, YZ)) < tol);
-    assert(fabs(grad[ia][Z][Z] + grad[ia][X][X] + grad[ia][Y][Y]) < tol);
+    assert(fabs(grad[ia][X][X] - test_encode(ENCODE_GRAD, nf, ia, XX)) <= tol);
+    assert(fabs(grad[ia][X][Y] - test_encode(ENCODE_GRAD, nf, ia, XY)) <= tol);
+    assert(fabs(grad[ia][X][Z] - test_encode(ENCODE_GRAD, nf, ia, XZ)) <= tol);
+    assert(fabs(grad[ia][Y][X] - test_encode(ENCODE_GRAD, nf, ia, XY)) <= tol);
+    assert(fabs(grad[ia][Y][Y] - test_encode(ENCODE_GRAD, nf, ia, YY)) <= tol);
+    assert(fabs(grad[ia][Y][Z] - test_encode(ENCODE_GRAD, nf, ia, YZ)) <= tol);
+    assert(fabs(grad[ia][Z][X] - test_encode(ENCODE_GRAD, nf, ia, XZ)) <= tol);
+    assert(fabs(grad[ia][Z][Y] - test_encode(ENCODE_GRAD, nf, ia, YZ)) <= tol);
+    assert(fabs(grad[ia][Z][Z] + grad[ia][X][X] + grad[ia][Y][Y]) <= tol);
   }
 
   field_grad_tensor_delsq(gradient, 1, delsq);
