@@ -52,8 +52,6 @@ LIBOBJECTS = $(filter-out main.o, $(OBJECTS))
 #
 ###############################################################################
 
-HAVE_PETSC =
-
 ifdef HAVE_PETSC
 OPTS += -DPETSC
 INCL += $(PETSC_INC)
