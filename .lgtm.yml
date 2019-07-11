@@ -1,0 +1,6 @@
+--- 
+extraction: 
+  c: 
+    configure: 
+      command: 
+        - "cp config/travis-gcc.mk config.mk"
