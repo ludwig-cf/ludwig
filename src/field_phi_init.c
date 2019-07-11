@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -69,6 +69,37 @@ int field_phi_init_drop(field_t * phi, double xi, double radius,
 
         phival = phistar*tanh(rxi0*(r - radius));
 	field_scalar_set(phi, index, phival);
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_phi_init_uniform
+ *
+ *  Uniform field = phi0; phi0 should be consistent with phys_t object.
+ *
+ *****************************************************************************/
+
+int field_phi_init_uniform(field_t * phi, double phi0) {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+
+  assert(phi);
+
+  cs_nlocal(phi->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(phi->cs, ic, jc, kc);
+
+	field_scalar_set(phi, index, phi0);
       }
     }
   }
