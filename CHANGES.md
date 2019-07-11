@@ -31,6 +31,10 @@ version 0.9.0
 
 - Fixed gcc -Wformat-overflow and a number of other warnings
 
+version 0.8.16
+- add option for uniform composition via "phi_initialisation uniform"
+- fix composition replacement bug (was dependent on charge psi)
+
 version 0.8.15
 - fix "weight = 0" problem in replacement of fluid for binary order
   parameter and add test (issue 30)
