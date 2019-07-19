@@ -1460,6 +1460,8 @@ int build_count_faces_local(colloid_t * colloid, double * sa, double * saf) {
 
 int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
 
+  assert(cinfo);
+
   if (phi) build_conservation_phi(cinfo, phi);
   if (psi) build_conservation_psi(cinfo, psi);
 
@@ -1490,6 +1492,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi) {
   colloid_link_t * pl = NULL;
 
   assert(cinfo);
+  assert(psi);
 
   colloids_info_all_head(cinfo, &colloid);
 
@@ -1579,9 +1582,8 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
 
-  double dphitot = 0.0;
-
   assert(cinfo);
+  assert(phi);
 
   colloids_info_all_head(cinfo, &colloid);
 
@@ -1604,7 +1606,6 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
 	/* Replace */
 	field_scalar(phi, pl->i, &value);
 	field_scalar_set(phi, pl->i, value + dphi);
-	dphitot += dphi;
       }
     }
 
