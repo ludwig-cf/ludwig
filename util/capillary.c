@@ -59,7 +59,8 @@ const int zmax = 16;
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
-enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM};
+enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM,
+      SPECIAL_CROSS};
 const int xsection = YWALL;
 
 /*Modify the local geometry of the wall*/
@@ -97,13 +98,15 @@ const int z2 = 36;
  * or one which includes the wetting parameter H or charge Q. */
 
 enum {STATUS_ONLY, STATUS_WITH_H, STATUS_WITH_C_H, STATUS_WITH_SIGMA};
-const int output_type = STATUS_WITH_H;
+const int output_type = STATUS_ONLY;
 
 /* OUTPUT FILENAME */
 
 const char * filename = "capillary.001-001";
 
 static void profile(const char *);
+
+int map_special_cross(char * map, int * nsolid);
 
 /*****************************************************************************
  *
@@ -118,6 +121,7 @@ int main(int argc, char ** argv) {
   FILE * fp_orig;
   int i, j, k, n;
   int nsolid = 0;
+  int k_pic;
 
   double * map_h; // for wetting coefficient H
   double * map_c; // for additional wetting coefficient C
@@ -173,8 +177,15 @@ int main(int argc, char ** argv) {
   map_sig = (double *) malloc(xmax*ymax*zmax*sizeof(double));
   if (map_sig == NULL) exit(-1);
 
+  k_pic = 0; /* Picture */
+
   /* Begin switch */
   switch (xsection) {
+
+  case SPECIAL_CROSS:
+    map_special_cross(map_in, &nsolid);
+    k_pic = 1;
+    break;
 
   case CIRCLE:
     for (i = 0; i < xmax; i++) {
@@ -506,10 +517,9 @@ int main(int argc, char ** argv) {
 
   printf("\nCross section (%d = fluid, %d = solid)\n", MAP_FLUID, MAP_BOUNDARY);
 
-  k = 0;
   for (i = 0; i < xmax; i++) {
     for (j = 0; j < ymax; j++) {
-	n = ymax*zmax*i + zmax*j + k;
+	n = ymax*zmax*i + zmax*j + k_pic;
       
 	if (map_in[n] == MAP_BOUNDARY) printf(" %d", MAP_BOUNDARY);
 	if (map_in[n] == MAP_FLUID)    printf(" %d", MAP_FLUID);
@@ -702,4 +712,120 @@ static void profile(const char * filename) {
   exit(0);
 
   return;
+}
+
+/******************************************************************************
+ *
+ *  map_special_cross
+ *
+ *  Make a cross shape which looks like a '+' in the x-y plane.
+ *
+ *  We use the system size from above so
+ *   (Lx, Ly, Lz) = (xmax, ymax, zmax).
+ *
+ *  Along the x-direction we have a periodic channel of width
+ *  W, with the centre of the channel at Ly/2. The channel is
+ *  'open', ie., periodic at x = 1 and x = Lx.
+ *
+ *  In the y-direction we have two dead-end arms of length
+ *  W_arm in the x-direction. The extent of each arm in the
+ *  y-direction is (Ly - W - 2)/2 (one point is solid at
+ *  y = 1 and y = Ly to form the dead-end.
+ *
+ *  The height is the same everywhere in the z-direction
+ *  (height = Lz - 2, ie., it is 'closed' at top and bottom).
+ *
+ *  Example: xmax = 19, ymax = 13, zmax = 9; w = 5, w_arm = 4.
+ *  To minimise computational modes, it's a good idea to have
+ *  xmax, ymax, zmax, odd numbers.
+ *
+ *****************************************************************************/
+
+int map_special_cross(char * map_in, int * nsolid) {
+
+  const int w = 5;
+  const int w_arm = 4;
+  int index, ic, jc, kc;
+  int x0, x1, j0, j1;
+  int ns;
+
+  assert(map_in);
+  assert(nsolid);
+
+  /* The plan.
+   * 1. Set all the points to solid
+   * 2. Drive a period channel along the x-direction
+   * 3. Drive a non-periodic channel across the y-direction */
+
+  printf("Special cross routine\n");
+  printf("Lx Ly Lz: %4d %4d %4d\n", xmax, ymax, zmax);
+  printf("Channel width: %3d\n", w);
+  printf("Arm length:    %3d\n", w_arm);
+
+  assert(ymax % 2);  /* Odd number of points */
+  assert(w % 2);     /* Odd number of points */
+
+  /* Set all points to solid */
+
+  for (ic = 1; ic <= xmax; ic++) {
+    for (jc = 1; jc <= ymax; jc++) {
+      for (kc = 1; kc <= zmax; kc++) {
+
+	/* Memory index */
+	index = ymax*zmax*(ic-1) + zmax*(jc-1) + (kc-1);
+	map_in[index] = MAP_BOUNDARY;
+      }
+    }
+  }
+
+  /* Centred peridoic channel in x-direction */
+
+  j0 = (ymax+1)/2 - (w-1)/2;
+  j1 = (ymax+1)/2 + (w-1)/2;
+
+  for (ic = 1; ic <= xmax; ic++) {
+    for (jc = j0; jc <= j1; jc++) {
+      for (kc = 2; kc <= zmax-1; kc++) {
+
+	/* Memory index */
+	index = ymax*zmax*(ic-1) + zmax*(jc-1) + (kc-1);
+	map_in[index] = MAP_FLUID;
+      }
+    }
+  }
+
+  /* The 'arms' of the cross */
+
+  x0 = (xmax - w_arm + 1)/2 + (xmax % 2);
+  x1 = x0 + w_arm - 1;
+
+  for (ic = x0; ic <= x1; ic++) {
+    for (jc = 2; jc <= ymax-1; jc++) {
+      for (kc = 2; kc <= zmax-1; kc++) {
+
+	/* Memory index */
+	index = ymax*zmax*(ic-1) + zmax*(jc-1) + (kc-1);
+	map_in[index] = MAP_FLUID;
+      }
+    }
+  }
+
+  /* Count solid points for return */
+
+  ns = 0;
+
+  for (ic = 1; ic <= xmax; ic++) {
+    for (jc = 1; jc <= ymax; jc++) {
+      for (kc = 1; kc <= zmax; kc++) {
+
+	/* Memory index */
+	index = ymax*zmax*(ic-1) + zmax*(jc-1) + (kc-1);
+	if (map_in[index] == MAP_BOUNDARY) ++ns;
+      }
+    }
+  }
+
+  *nsolid = ns;
+
+  return 0;
 }
