@@ -53,7 +53,7 @@ default:
 	$(MAKE) build
 
 build:	$(OBJECTS)
-	$(MPICC) $(LDFLAGS) $(OBJECTS) $(LIBS)
+	$(CC) $(LDFLAGS) $(OBJECTS) $(LIBS)
 
 test:
 	$(MPI_RUN) ./a.out
@@ -69,4 +69,4 @@ clean:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(MPICC) $(MODEL) $(CFLAGS) $(INCL) -c $*.c
+	$(CC) $(MODEL) $(CFLAGS) $(INCL) -c $*.c

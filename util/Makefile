@@ -39,16 +39,16 @@ build:
 	$(MAKE) extract_colloids
 
 colloid_init: colloid_init.o
-	$(MPICC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 extract_colloids: extract_colloids.o
-	$(MPICC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 capillary: capillary.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
 extract: extract.o
-	$(MPICC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 
 # Default rules
@@ -62,5 +62,5 @@ clean:
 .SUFFIXES: .c .o
 
 .c.o:
-	$(MPICC) $(CFLAGS) $(INCL) -c $*.c
+	$(CC) $(CFLAGS) $(INCL) -c $*.c
 

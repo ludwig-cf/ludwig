@@ -72,7 +72,7 @@ verbose:
             "\t Check the Makefile for further details\n"	
 
 build:	lib main.o
-	$(MPICC) $(LDFLAGS) -o $(EXECUTABLE) main.o $(LIBRARY) $(LIBS)
+	$(CC) $(LDFLAGS) -o $(EXECUTABLE) main.o $(LIBRARY) $(LIBS)
 
 # Library
 
@@ -90,7 +90,7 @@ lib:	$(LIBOBJECTS)
 #
 
 .c.o :
-	$(MPICC) $(MODEL) $(OPTS) $(CFLAGS) $(INCL) -c $?
+	$(CC) $(MODEL) $(OPTS) $(CFLAGS) $(INCL) -c $?
 
 .PHONY : clean
 clean:
