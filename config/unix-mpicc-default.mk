@@ -10,8 +10,7 @@
 BUILD   = parallel
 MODEL   = -D_D3Q19_
 
-CC      = gcc
-MPICC   = mpicc
+CC      = mpicc
 CFLAGS  = -O -g
 
 

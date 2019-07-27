@@ -16,8 +16,7 @@
 BUILD   = parallel
 MODEL   = -D_D3Q19_
 
-CC     = icc -qopenmp
-MPICC  = mpiicc -qopenmp
+CC     = mpiicc -qopenmp
 CFLAGS = -fast -DNDEBUG -DNSIMDVL=4
 
 AR = ar

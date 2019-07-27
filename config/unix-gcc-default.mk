@@ -10,7 +10,6 @@ BUILD   = serial
 MODEL   = -D_D3Q19_
 
 CC      = gcc
-MPICC   = gcc
 CFLAGS  = -O -g -Wall
 
 AR      = ar

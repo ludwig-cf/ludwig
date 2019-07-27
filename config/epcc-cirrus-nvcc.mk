@@ -15,7 +15,6 @@ BUILD   = parallel
 MODEL   = -D_D3Q19_
 
 CC     = nvcc
-MPICC  = nvcc
 CFLAGS = -ccbin=icpc -DADDR_SOA -DNDEBUG -arch=sm_70 -x cu -dc -Xcompiler -fast
 
 AR = ar
