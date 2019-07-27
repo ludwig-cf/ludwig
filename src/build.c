@@ -1566,7 +1566,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi) {
  *  change in mean composition.
  *
  *  A call to colloid_sums_halo(cinfo, COLLOID_SUM_CONSERVATION) before
- *  we reach this point is required so that all parts of distrubted
+ *  we reach this point is required so that all parts of distributed
  *  colloids see the same deltaphi.
  *
  *****************************************************************************/
@@ -1577,7 +1577,6 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
 
   double value;
   double dphi;
-  double sa_local, saf_local;
 
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
