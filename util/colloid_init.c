@@ -21,7 +21,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -301,7 +301,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
   nbcc += nze * nx * ny;
 
   // position of bcc sites
-  rbcc = (double **) calloc(nbcc, sizeof(double));
+  rbcc = (double **) calloc(nbcc, sizeof(double *));
   for (n = 0; n <nbcc; n++) {
     rbcc[n] = (double *) calloc(3, sizeof(double));
   }
@@ -431,7 +431,6 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     exit(1);
   }
 
-  n = 0;
   delta = 0.01*ah_ref;
 
   for (im = 0; im < NMC; im++) {
