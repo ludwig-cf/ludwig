@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2018 The University of Edinburgh
+ *  (c) 2016-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -225,7 +225,7 @@ __host__ int do_host_kernel(cs_t * cs, kernel_info_t limits, int * mask,
 	/* We are at ic,jc,kc */
 
 	index = cs_index(cs, ic, jc, kc);
-	ifail = addr_rank0(nsites, index);
+	ifail = mem_addr_rank0(nsites, index);
 	assert(ifail >= 0 && ifail < nsites);
 
 	mask[mem_addr_rank0(nsites, index)] = index;
