@@ -1,15 +1,8 @@
 ###############################################################################
 #
-# Makefile for LUDWIG
+# Makefile for ./src
 #
-# Preprocessor flags.
-#
-# Please use the following for any production run
-#
-# -DNDEBUG               Switch off standard C assert()
-#                        The assertions can make the code much slower.
-#
-# Compiler flags.
+# You should not need to edit this file.
 #
 # Appropriate flags for your system should be set in the parent
 # directory in the file config.mk. See ../Makefile.mk
@@ -18,7 +11,7 @@
 # Edinburgh Parallel Computing Centre
 #
 # Kevin Stratford (kevin@epcc.ed.ac.uk)
-# (c) 2010-2018 The University of Edinburgh
+# (c) 2010-2019 The University of Edinburgh
 #
 ###############################################################################
 
