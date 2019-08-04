@@ -26,7 +26,7 @@
 
 enum fe_id_enum {FE_SYMMETRIC,
 		 FE_BRAZOVSKII,
-                 FE_SURFACTANT1,
+                 FE_SURFACTANT,
 		 FE_POLAR,
 		 FE_LC,
 		 FE_ELECTRO,

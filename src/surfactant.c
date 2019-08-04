@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *  surfactant.c
+ *  fe_surfactant.c
  *
  *  Implementation of the surfactant free energy described by
  *  van der Graff and van der Sman [REFERENCE].
@@ -54,49 +54,39 @@
  * w_       = 0.0;
  */
 
-struct fe_surfactant1_s {
-  fe_t super;                       /* "Superclass" block */
-  pe_t * pe;                        /* Parallel environment */
-  cs_t * cs;                        /* Coordinate system */
-  fe_surf1_param_t * param;         /* Parameters */
-  field_t * phi;                    /* Single field with {phi,psi} */
-  field_grad_t * dphi;              /* gradients thereof */
-  fe_surf1_t * target;              /* Device copy */
-};
-
 /* Virtual function table (host) */
 
-static fe_vt_t fe_surf1_hvt = {
-  (fe_free_ft)      fe_surf1_free,     /* Virtual destructor */
-  (fe_target_ft)    fe_surf1_target,   /* Return target pointer */
-  (fe_fed_ft)       fe_surf1_fed,      /* Free energy density */
-  (fe_mu_ft)        fe_surf1_mu,       /* Chemical potential */
+static fe_vt_t fe_surf_hvt = {
+  (fe_free_ft)      fe_surf_free,     /* Virtual destructor */
+  (fe_target_ft)    fe_surf_target,   /* Return target pointer */
+  (fe_fed_ft)       fe_surf_fed,      /* Free energy density */
+  (fe_mu_ft)        fe_surf_mu,       /* Chemical potential */
   (fe_mu_solv_ft)   NULL,
-  (fe_str_ft)       fe_surf1_str,      /* Total stress */
-  (fe_str_ft)       fe_surf1_str,      /* Symmetric stress */
-  (fe_str_ft)       NULL,              /* Antisymmetric stress (not relevant */
-  (fe_hvector_ft)   NULL,              /* Not relevant */
-  (fe_htensor_ft)   NULL,              /* Not relevant */
-  (fe_htensor_v_ft) NULL,              /* Not reelvant */
-  (fe_stress_v_ft)  fe_surf1_str_v,    /* Total stress (vectorised version) */
-  (fe_stress_v_ft)  fe_surf1_str_v,    /* Symmetric part (vectorised) */
-  (fe_stress_v_ft)  NULL               /* Antisymmetric part */
+  (fe_str_ft)       fe_surf_str,      /* Total stress */
+  (fe_str_ft)       fe_surf_str,      /* Symmetric stress */
+  (fe_str_ft)       NULL,             /* Antisymmetric stress (not relevant) */
+  (fe_hvector_ft)   NULL,             /* Not relevant */
+  (fe_htensor_ft)   NULL,             /* Not relevant */
+  (fe_htensor_v_ft) NULL,             /* Not reelvant */
+  (fe_stress_v_ft)  fe_surf_str_v,    /* Total stress (vectorised version) */
+  (fe_stress_v_ft)  fe_surf_str_v,    /* Symmetric part (vectorised) */
+  (fe_stress_v_ft)  NULL              /* Antisymmetric part */
 };
 
 
-static __constant__ fe_surf1_param_t const_param;
+static __constant__ fe_surf_param_t const_param;
 
 /****************************************************************************
  *
- *  fe_surf1_create
+ *  fe_surf_create
  *
  ****************************************************************************/
 
-int fe_surf1_create(pe_t * pe, cs_t * cs, field_t * phi,
-		    field_grad_t * dphi, fe_surf1_param_t param,
-		    fe_surf1_t ** fe) {
+int fe_surf_create(pe_t * pe, cs_t * cs, field_t * phi,
+		    field_grad_t * dphi, fe_surf_param_t param,
+		    fe_surf_t ** fe) {
   int ndevice;
-  fe_surf1_t * obj = NULL;
+  fe_surf_t * obj = NULL;
 
   assert(pe);
   assert(cs);
@@ -104,34 +94,34 @@ int fe_surf1_create(pe_t * pe, cs_t * cs, field_t * phi,
   assert(phi);
   assert(dphi);
 
-  obj = (fe_surf1_t *) calloc(1, sizeof(fe_surf1_t));
+  obj = (fe_surf_t *) calloc(1, sizeof(fe_surf_t));
   assert(obj);
-  if (obj == NULL) pe_fatal(pe, "calloc(fe_surf1_t) failed\n");
+  if (obj == NULL) pe_fatal(pe, "calloc(fe_surf_t) failed\n");
 
-  obj->param = (fe_surf1_param_t *) calloc(1, sizeof(fe_surf1_param_t));
+  obj->param = (fe_surf_param_t *) calloc(1, sizeof(fe_surf_param_t));
   assert(obj->param);
-  if (obj->param == NULL) pe_fatal(pe, "calloc(fe_surf1_param_t) failed\n");
+  if (obj->param == NULL) pe_fatal(pe, "calloc(fe_surf_param_t) failed\n");
 
   obj->pe = pe;
   obj->cs = cs;
   obj->phi = phi;
   obj->dphi = dphi;
-  obj->super.func = &fe_surf1_hvt;
-  obj->super.id = FE_SURFACTANT1;
+  obj->super.func = &fe_surf_hvt;
+  obj->super.id = FE_SURFACTANT;
 
   /* Allocate target memory, or alias */
 
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    fe_surf1_param_set(obj, param);
+    fe_surf_param_set(obj, param);
     obj->target = obj;
   }
   else {
-    fe_surf1_param_t * tmp;
-    tdpMalloc((void **) &obj->target, sizeof(fe_surf1_t));
+    fe_surf_param_t * tmp;
+    tdpMalloc((void **) &obj->target, sizeof(fe_surf_t));
     tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&obj->target->param, tmp, sizeof(fe_surf1_param_t *),
+    tdpMemcpy(&obj->target->param, tmp, sizeof(fe_surf_param_t *),
 	      tdpMemcpyHostToDevice);
     /* Now copy. */
     assert(0); /* No implementation */
@@ -144,11 +134,11 @@ int fe_surf1_create(pe_t * pe, cs_t * cs, field_t * phi,
 
 /****************************************************************************
  *
- *  fe_surf1_free
+ *  fe_surf_free
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_free(fe_surf1_t * fe) {
+__host__ int fe_surf_free(fe_surf_t * fe) {
 
   int ndevice;
 
@@ -165,13 +155,13 @@ __host__ int fe_surf1_free(fe_surf1_t * fe) {
 
 /****************************************************************************
  *
- *  fe_surf1_info
+ *  fe_surf_info
  *
  *  Some information on parameters etc.
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_info(fe_surf1_t * fe) {
+__host__ int fe_surf_info(fe_surf_t * fe) {
 
   double sigma, xi0;
   double psi_c;
@@ -181,9 +171,9 @@ __host__ int fe_surf1_info(fe_surf1_t * fe) {
 
   pe = fe->pe;
 
-  fe_surf1_sigma(fe, &sigma);
-  fe_surf1_xi0(fe, &xi0);
-  fe_surf1_langmuir_isotherm(fe, &psi_c);
+  fe_surf_sigma(fe, &sigma);
+  fe_surf_xi0(fe, &xi0);
+  fe_surf_langmuir_isotherm(fe, &psi_c);
 
   pe_info(pe, "Surfactant free energy parameters:\n");
   pe_info(pe, "Bulk parameter A      = %12.5e\n", fe->param->a);
@@ -200,15 +190,16 @@ __host__ int fe_surf1_info(fe_surf1_t * fe) {
   pe_info(pe, "Interfacial width     = %12.5e\n", xi0);
   pe_info(pe, "Langmuir isotherm     = %12.5e\n", psi_c);
 
+  return 0;
 }
 
 /****************************************************************************
  *
- *  fe_surf1_target
+ *  fe_surf_target
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_target(fe_surf1_t * fe, fe_t ** target) {
+__host__ int fe_surf_target(fe_surf_t * fe, fe_t ** target) {
 
   assert(fe);
   assert(target);
@@ -220,11 +211,11 @@ __host__ int fe_surf1_target(fe_surf1_t * fe, fe_t ** target) {
 
 /****************************************************************************
  *
- *  fe_surf1_param_set
+ *  fe_surf_param_set
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_param_set(fe_surf1_t * fe, fe_surf1_param_t vals) {
+__host__ int fe_surf_param_set(fe_surf_t * fe, fe_surf_param_t vals) {
 
   assert(fe);
 
@@ -235,11 +226,11 @@ __host__ int fe_surf1_param_set(fe_surf1_t * fe, fe_surf1_param_t vals) {
 
 /*****************************************************************************
  *
- *  fe_surf1_param
+ *  fe_surf_param
  *
  *****************************************************************************/
 
-__host__ int fe_surf1_param(fe_surf1_t * fe, fe_surf1_param_t * values) {
+__host__ int fe_surf_param(fe_surf_t * fe, fe_surf_param_t * values) {
   assert(fe);
 
   *values = *fe->param;
@@ -249,13 +240,13 @@ __host__ int fe_surf1_param(fe_surf1_t * fe, fe_surf1_param_t * values) {
 
 /****************************************************************************
  *
- *  fe_surf1_sigma
+ *  fe_surf_sigma
  *
  *  Assumes phi^* = (-a/b)^1/2
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_sigma(fe_surf1_t * fe,  double * sigma0) {
+__host__ int fe_surf_sigma(fe_surf_t * fe,  double * sigma0) {
 
   double a, b, kappa;
 
@@ -273,13 +264,13 @@ __host__ int fe_surf1_sigma(fe_surf1_t * fe,  double * sigma0) {
 
 /****************************************************************************
  *
- *  fe_surf1_xi0
+ *  fe_surf_xi0
  *
  *  Interfacial width.
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_xi0(fe_surf1_t * fe, double * xi0) {
+__host__ int fe_surf_xi0(fe_surf_t * fe, double * xi0) {
 
   assert(fe);
   assert(xi0);
@@ -291,7 +282,7 @@ __host__ int fe_surf1_xi0(fe_surf1_t * fe, double * xi0) {
 
 /****************************************************************************
  *
- *  fe_surf1_langmuir_isotherm
+ *  fe_surf_langmuir_isotherm
  *
  *  The Langmuir isotherm psi_c is given by
  *  
@@ -302,13 +293,13 @@ __host__ int fe_surf1_xi0(fe_surf1_t * fe, double * xi0) {
  *
  ****************************************************************************/ 
 
-__host__ int fe_surf1_langmuir_isotherm(fe_surf1_t * fe, double * psi_c) {
+__host__ int fe_surf_langmuir_isotherm(fe_surf_t * fe, double * psi_c) {
 
   double xi0;
 
   assert(fe);
 
-  fe_surf1_xi0(fe, &xi0);
+  fe_surf_xi0(fe, &xi0);
   *psi_c = exp(0.5*fe->param->epsilon / (fe->param->kt*xi0*xi0));
 
   return 0;
@@ -316,7 +307,7 @@ __host__ int fe_surf1_langmuir_isotherm(fe_surf1_t * fe, double * psi_c) {
 
 /****************************************************************************
  *
- *  fe_surf1_fed
+ *  fe_surf_fed
  *
  *  This is:
  *     (1/2)A \phi^2 + (1/4)B \phi^4 + (1/2) kappa (\nabla\phi)^2
@@ -326,7 +317,7 @@ __host__ int fe_surf1_langmuir_isotherm(fe_surf1_t * fe, double * psi_c) {
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_fed(fe_surf1_t * fe, int index, double * fed) {
+__host__ int fe_surf_fed(fe_surf_t * fe, int index, double * fed) {
 
   double field[2];
   double phi;
@@ -363,7 +354,7 @@ __host__ int fe_surf1_fed(fe_surf1_t * fe, int index, double * fed) {
 
 /****************************************************************************
  *
- *  fe_surf1_mu
+ *  fe_surf_mu
  * 
  *  Two chemical potentials are present:
  *
@@ -378,7 +369,7 @@ __host__ int fe_surf1_fed(fe_surf1_t * fe, int index, double * fed) {
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_mu(fe_surf1_t * fe, int index, double * mu) {
+__host__ int fe_surf_mu(fe_surf_t * fe, int index, double * mu) {
 
   double phi;
   double psi;
@@ -419,7 +410,7 @@ __host__ int fe_surf1_mu(fe_surf1_t * fe, int index, double * mu) {
 
 /****************************************************************************
  *
- *  fe_surf1_str
+ *  fe_surf_str
  *
  *  Thermodynamic stress S_ab = p0 delta_ab + P_ab
  *
@@ -437,7 +428,7 @@ __host__ int fe_surf1_mu(fe_surf1_t * fe, int index, double * mu) {
  *
  ****************************************************************************/
 
-__host__ int fe_surf1_str(fe_surf1_t * fe, int index, double s[3][3]) {
+__host__ int fe_surf_str(fe_surf_t * fe, int index, double s[3][3]) {
 
   int ia, ib;
   double field[2];
@@ -481,13 +472,13 @@ __host__ int fe_surf1_str(fe_surf1_t * fe, int index, double s[3][3]) {
 
 /*****************************************************************************
  *
- *  fe_surf1_str_v
+ *  fe_surf_str_v
  *
  *  Stress (vectorised version) Currently a patch-up.
  *
  *****************************************************************************/
 
-int fe_surf1_str_v(fe_surf1_t * fe, int index, double s[3][3][NSIMDVL]) {
+int fe_surf_str_v(fe_surf_t * fe, int index, double s[3][3][NSIMDVL]) {
 
   int ia, ib;
   int iv;
@@ -496,7 +487,7 @@ int fe_surf1_str_v(fe_surf1_t * fe, int index, double s[3][3][NSIMDVL]) {
   assert(fe);
 
   for (iv = 0; iv < NSIMDVL; iv++) {
-    fe_surf1_str(fe, index + iv, s1);
+    fe_surf_str(fe, index + iv, s1);
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
 	s[ia][ib][iv] = s1[ia][ib];

@@ -61,6 +61,9 @@ static int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
 				      field_t * phi,
 				      hydro_t * hydro, map_t * map);
 
+int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
+			      hydro_t * hydro);
+
 /*****************************************************************************
  *
  *  phi_force_calculation
@@ -82,6 +85,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 				   field_t * phi, hydro_t * hydro) {
 
   int is_pm;
+  int nplanes = 0;
 
   if (pth == NULL) return 0;
   if (hydro == NULL) return 0; 
@@ -89,9 +93,11 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 
   wall_is_pm(wall, &is_pm);
 
-  if (lees_edw_nplane_total(le) > 0) {
-    /* Must use the flux method for LE planes */
+  if (le) nplanes = lees_edw_nplane_total(le);
 
+  if (nplanes > 0) {
+    /* Must use the flux method for LE planes */
+    assert(le);
     phi_force_flux(cs, le, fe, wall, hydro);
   }
   else {
@@ -110,7 +116,12 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	phi_force_solid_phi_gradmu(le, pth, fe, phi, hydro, map);
       }
       else {
-        phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
+	if (le) {
+	  phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
+	}
+	else {
+	  phi_force_fluid_cs_gradmu(cs, fe, phi, hydro);
+	}
       }
       break;
     case PTH_METHOD_STRESS_ONLY:
@@ -190,6 +201,85 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 	fe->func->mu(fe, index0 + zs, &mup1);
 
         force[Z] = -phi*0.5*(mup1 - mum1);
+
+	/* Store the force on lattice */
+
+	hydro_f_local_add(hydro, index0, force);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_force_fluid_cs_gradmu
+ *
+ *  Intended for surfactant model with more than one order parameter,
+ *  and corrspondingly chemical potentials.
+ *
+ *****************************************************************************/
+
+int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
+			      hydro_t * hydro) {
+
+  int ic, jc, kc;
+  int index0, indexm1, indexp1;
+  int nlocal[3];
+  int n1;
+  double phi[3], mum1[3], mup1[3];
+  double force[3];
+
+  assert(cs);
+  assert(fe);
+  assert(field);
+  assert(hydro);
+  assert(field->nf <= 3);
+
+  cs_nlocal(cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = cs_index(cs, ic, jc, kc);
+	field_scalar_array(field, index0, phi);
+
+        indexm1 = cs_index(cs, ic-1, jc, kc);
+        indexp1 = cs_index(cs, ic+1, jc, kc);
+
+	fe->func->mu(fe, indexm1, mum1);
+	fe->func->mu(fe, indexp1, mup1);
+
+	force[X] = 0.0;
+	for (n1 = 0; n1 < field->nf; n1++) {
+	  force[X] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
+	}
+
+        indexm1 = cs_index(cs, ic, jc-1, kc);
+        indexp1 = cs_index(cs, ic, jc+1, kc);
+
+	fe->func->mu(fe, indexm1, mum1);
+	fe->func->mu(fe, indexp1, mup1);
+
+	force[Y] = 0.0;
+	for (n1 = 0; n1 < field->nf; n1++) {
+	  force[Y] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
+	}
+
+        indexm1 = cs_index(cs, ic, jc, kc-1);
+        indexp1 = cs_index(cs, ic, jc, kc+1);
+
+	fe->func->mu(fe, indexm1, mum1);
+	fe->func->mu(fe, indexp1, mup1);
+
+	force[Z] = 0.0;
+	for (n1 = 0; n1 < field->nf; n1++) {
+	  force[Z] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
+	}
 
 	/* Store the force on lattice */
 

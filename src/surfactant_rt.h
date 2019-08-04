@@ -19,6 +19,9 @@
 #include "runtime.h"
 #include "surfactant.h"
 
-__host__ int fe_surf1_param_rt(pe_t * pe, rt_t * rt, fe_surf1_param_t * p);
-
+__host__ int fe_surf_param_rt(pe_t * pe, rt_t * rt, fe_surf_param_t * p);
+__host__ int fe_surf_phi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
+				 field_t * phi);
+__host__ int fe_surf_psi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
+				 field_t * phi);
 #endif

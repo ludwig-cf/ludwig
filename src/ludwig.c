@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -70,6 +70,7 @@
 #include "fe_electro_symmetric.h"
 
 /* Dynamics */
+#include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
 #include "leslie_ericksen.h"
 #include "blue_phase_beris_edwards.h"
@@ -138,11 +139,13 @@ struct ludwig_s {
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
   fe_t * fe;                   /* Free energy "polymorphic" version */
-  phi_ch_t * pch;              /* Cahn Hilliard dynamics */
+  ch_t * ch;                   /* Cahn Hilliard (surfactants) */
+  phi_ch_t * pch;              /* Cahn Hilliard dynamics (binary fluid) */
   beris_edw_t * be;            /* Beris Edwards dynamics */
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
   fe_symm_t * fe_symm;         /* Symmetric free energy */
+  fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
   colloids_info_t * collinfo;  /* Colloid information */
@@ -265,6 +268,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
   if (ludwig->fe_braz) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
+  }
+  if (ludwig->fe_surf) {
+    fe_surf_phi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
+    fe_surf_psi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
   }
 
   /* To be called before wall_rt_init() */
@@ -623,7 +630,7 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 0) {
 
 	  /* LC-droplet requires partial body force input and momentum
-           * correction. This correction, via hydro_correct_momentun(),
+           * correction. This correction, via hydro_correct_momentum(),
            * should not include the contributions from the divergence
            * of the stress, so is done before phi_force_calculation(). */
 
@@ -659,6 +666,10 @@ void ludwig_run(const char * inputfile) {
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
+
+      if (ludwig->ch) {
+	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro);
+      }
 
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
@@ -706,7 +717,9 @@ void ludwig_run(const char * inputfile) {
       
       /* Boundary conditions */
 
-      lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
+      if (ludwig->le) {
+	lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
+      }
 
       TIMER_start(TIMER_HALO_LATTICE);
 
@@ -991,7 +1004,7 @@ void ludwig_run(const char * inputfile) {
   TIMER_statistics();
 
   physics_free(ludwig->phys);
-  lees_edw_free(ludwig->le);
+  if (ludwig->le) lees_edw_free(ludwig->le);
   cs_free(ludwig->cs);
   rt_free(ludwig->rt);
   pe_free(ludwig->pe);
@@ -1292,12 +1305,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ludwig->fe_braz = fe;
     ludwig->fe = (fe_t *) fe;
   }
-  else if (strcmp(description, "surfactant1") == 0) {
+  else if (strcmp(description, "surfactant") == 0) {
 
-    fe_surf1_param_t param;
-    fe_surf1_t * fe;
+    fe_surf_param_t param;
+    ch_info_t info;
+    fe_surf_t * fe = NULL;
 
-    nf = 2;       /* Nominally "phi" and "psi" */
+    nf = 2;       /* Composition, surfactant: "phi" and "psi" */
     nhalo = 2;
     ngrad = 2;
 
@@ -1310,18 +1324,43 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_init(ludwig->phi, nhalo, NULL);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    /* Cahn Hilliard */
 
     pe_info(pe, "\n");
     pe_info(pe, "Surfactant free energy\n");
     pe_info(pe, "----------------------\n");
 
-    fe_surf1_param_rt(pe, rt, &param);
-    fe_surf1_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
-    fe_surf1_info(fe);
-    /* INFOMATION */
+    fe_surf_param_rt(pe, rt, &param);
+    fe_surf_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
+    fe_surf_info(fe);
 
-    assert(0);
+    /* Cahn Hilliard */
+
+    info.nfield = nf;
+
+    n = rt_double_parameter(rt, "surf_mobility_phi", &info.mobility[0]);
+    if (n == 0) pe_fatal(pe, "Please set mobility_phi in the input\n");
+
+    n = rt_double_parameter(rt, "surf_mobility_psi", &info.mobility[1]);
+    if (n == 0) pe_fatal(pe, "Please set mobility_psi in the input\n");
+
+    ch_create(pe, cs, info, &ludwig->ch);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
+    ch_info(ludwig->ch);
+
+    /* Coupling between momentum and free energy */
+    /* Hydrodynamics sector (move to hydro_rt?) */
+
+    n = rt_switch(rt, "hydrodynamics");
+    {
+      int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_GRADMU;
+      pth_create(pe, cs, method, &ludwig->pth);
+    }
+
+    ludwig->fe_surf = fe;
+    ludwig->fe = (fe_t *) fe;
+    
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
 

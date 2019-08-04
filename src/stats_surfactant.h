@@ -15,6 +15,6 @@
 
 #include "surfactant.h"
 
-int stats_surfactant_1d(fe_surf1_t * fe);
+int stats_surfactant_1d(fe_surf_t * fe);
 
 #endif
