@@ -6,12 +6,12 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef LUDWIG_CAHN_HILLIARD_H
-#define LUDWIG_CAHN_HILLIARD_H
+#ifndef LUDWIG_PHI_CAHN_HILLIARD_H
+#define LUDWIG_PHI_CAHN_HILLIARD_H
 
 #include "pe.h"
 #include "coords.h"
