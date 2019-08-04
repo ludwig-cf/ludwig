@@ -6,12 +6,12 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef TESTS_H
-#define TESTS_H
+#ifndef LUDWIG_UNIT_TESTS_H
+#define LUDWIG_UNIT_TESTS_H
 
 void test_assert_info(const int lvalue, int line, const char * file);
 
@@ -29,6 +29,7 @@ int test_bp_suite(void);
 int test_bond_fene_suite(void);
 int test_bonds_suite(void);
 int test_build_suite(void);
+int test_ch_suite(void);
 int test_colloid_sums_suite(void);
 int test_colloid_suite(void);
 int test_colloids_info_suite(void);

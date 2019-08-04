@@ -56,6 +56,7 @@ int tests_create() {
   test_bonds_suite();
   test_bp_suite();
   test_build_suite();
+  test_ch_suite();
   test_colloid_suite();
   test_colloid_sums_suite();
   test_colloids_info_suite();
