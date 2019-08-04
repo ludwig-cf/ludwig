@@ -5,12 +5,10 @@
  *  Updates a vector order parameter according to something looking
  *  like a Leslie-Ericksen equation.
  *
- *  $Id: leslie_ericksen.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -82,12 +80,12 @@ int leslie_ericksen_update(cs_t * cs, fe_polar_t * fe, field_t * p,
 
   field_nf(p, &nf);
   assert(nf == NVECTOR);
-  advflux_cs_create(p->pe, cs, nf, &flux); /* TODO: remove p->pe */
+  advflux_cs_create(p->pe, cs, nf, &flux);
 
   if (hydro) {
     if (swim_ != 0.0) leslie_ericksen_add_swimming_velocity(p, hydro);
     hydro_u_halo(hydro);
-    advection_x(flux, hydro, p);
+    advflux_cs_compute(flux, hydro, p);
   }
 
   leslie_ericksen_update_fluid(fe, p, hydro, flux);
@@ -111,7 +109,7 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
 					hydro_t * hydro,
 					advflux_t * flux) {
   int ic, jc, kc, index;
-  int indexj, indexk;
+  int im1, jm1, km1;
   int ia, ib;
   int nlocal[3];
 
@@ -158,10 +156,11 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
 	  }
 	}
 
-	/* update */
+	/* updates involve the following fluxes */
 
-	indexj = cs_index(flux->cs, ic, jc-1, kc);
-	indexk = cs_index(flux->cs, ic, jc, kc-1);
+        im1 = cs_index(flux->cs, ic-1, jc, kc);
+	jm1 = cs_index(flux->cs, ic, jc-1, kc);
+	km1 = cs_index(flux->cs, ic, jc, kc-1);
 
 	for (ia = 0; ia < 3; ia++) {
 
@@ -170,12 +169,12 @@ static int leslie_ericksen_update_fluid(fe_polar_t * fe,
 	    sum += param.lambda*d[ia][ib]*p[ib] - omega[ia][ib]*p[ib];
 	  }
 
-	  p[ia] += dt*(- flux->fe[addr_rank1(flux->nsite, 3, index,  ia)]
-		       + flux->fw[addr_rank1(flux->nsite, 3, index,  ia)]
-		       - flux->fy[addr_rank1(flux->nsite, 3, index,  ia)]
-		       + flux->fy[addr_rank1(flux->nsite, 3, indexj, ia)]
-		       - flux->fz[addr_rank1(flux->nsite, 3, index,  ia)]
-		       + flux->fz[addr_rank1(flux->nsite, 3, indexk, ia)]
+	  p[ia] += dt*(- flux->fx[addr_rank1(flux->nsite, 3, index, ia)]
+		       + flux->fx[addr_rank1(flux->nsite, 3, im1,   ia)]
+		       - flux->fy[addr_rank1(flux->nsite, 3, index, ia)]
+		       + flux->fy[addr_rank1(flux->nsite, 3, jm1,   ia)]
+		       - flux->fz[addr_rank1(flux->nsite, 3, index, ia)]
+		       + flux->fz[addr_rank1(flux->nsite, 3, km1,   ia)]
 		       + sum + Gamma_*h[ia]);
 	}
 
