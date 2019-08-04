@@ -79,51 +79,51 @@ static __constant__ fe_ternary_param_t const_param;
 int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
                       field_grad_t * dphi, fe_ternary_param_t param,
                       fe_ternary_t ** fe) {
-    int ndevice;
-    fe_ternary_t * obj = NULL;
+  int ndevice;
+  fe_ternary_t * obj = NULL;
     
-    assert(pe);
-    assert(cs);
-    assert(fe);
-    assert(phi);
-    assert(dphi);
+  assert(pe);
+  assert(cs);
+  assert(fe);
+  assert(phi);
+  assert(dphi);
     
-    obj = (fe_ternary_t *) calloc(1, sizeof(fe_ternary_t));
-    assert(obj);
-    if (obj == NULL) pe_fatal(pe, "calloc(fe_surf1_t) failed\n");
+  obj = (fe_ternary_t *) calloc(1, sizeof(fe_ternary_t));
+  assert(obj);
+  if (obj == NULL) pe_fatal(pe, "calloc(fe_surf1_t) failed\n");
     
-    obj->param = (fe_ternary_param_t *) calloc(1, sizeof(fe_ternary_param_t));
-    assert(obj->param);
-    if (obj->param == NULL) pe_fatal(pe, "calloc(fe_ternary_param_t) fail\n");
+  obj->param = (fe_ternary_param_t *) calloc(1, sizeof(fe_ternary_param_t));
+  assert(obj->param);
+  if (obj->param == NULL) pe_fatal(pe, "calloc(fe_ternary_param_t) fail\n");
     
-    obj->pe = pe;
-    obj->cs = cs;
-    obj->phi = phi;
-    obj->dphi = dphi;
-    obj->super.func = &fe_ternary_hvt;
-    obj->super.id = FE_TERNARY;
+  obj->pe = pe;
+  obj->cs = cs;
+  obj->phi = phi;
+  obj->dphi = dphi;
+  obj->super.func = &fe_ternary_hvt;
+  obj->super.id = FE_TERNARY;
     
-    /* Allocate target memory, or alias */
+  /* Allocate target memory, or alias */
     
-    tdpGetDeviceCount(&ndevice);
+  tdpGetDeviceCount(&ndevice);
     
-    if (ndevice == 0) {
-        fe_ternary_param_set(obj, param);
-        obj->target = obj;
-    }
-    else {
-        fe_ternary_param_t * tmp;
-        tdpMalloc((void **) &obj->target, sizeof(fe_ternary_t));
-        tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-        tdpMemcpy(&obj->target->param, tmp, sizeof(fe_ternary_param_t *),
-                  tdpMemcpyHostToDevice);
-        /* Now copy. */
-        assert(0); /* No implementation */
-    }
+  if (ndevice == 0) {
+    fe_ternary_param_set(obj, param);
+    obj->target = obj;
+  }
+  else {
+    fe_ternary_param_t * tmp;
+    tdpMalloc((void **) &obj->target, sizeof(fe_ternary_t));
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&obj->target->param, tmp, sizeof(fe_ternary_param_t *),
+	      tdpMemcpyHostToDevice);
+    /* Now copy. */
+    assert(0); /* No implementation */
+  }
     
-    *fe = obj;
+  *fe = obj;
     
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -134,17 +134,17 @@ int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
 
 __host__ int fe_ternary_free(fe_ternary_t * fe) {
     
-    int ndevice;
+  int ndevice;
     
-    assert(fe);
+  assert(fe);
     
-    tdpGetDeviceCount(&ndevice);
-    if (ndevice > 0) tdpFree(fe->target);
+  tdpGetDeviceCount(&ndevice);
+  if (ndevice > 0) tdpFree(fe->target);
     
-    free(fe->param);
-    free(fe);
+  free(fe->param);
+  free(fe);
     
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -157,30 +157,30 @@ __host__ int fe_ternary_free(fe_ternary_t * fe) {
 
 __host__ int fe_ternary_info(fe_ternary_t * fe) {
     
-    double sigma[3];
-    double xi0;
-    pe_t * pe = NULL;
+  double sigma[3];
+  double xi0;
+  pe_t * pe = NULL;
     
-    assert(fe);
+  assert(fe);
     
-    pe = fe->pe;
+  pe = fe->pe;
     
-    fe_ternary_sigma(fe, sigma);
-    fe_ternary_xi0(fe, &xi0);
+  fe_ternary_sigma(fe, sigma);
+  fe_ternary_xi0(fe, &xi0);
     
-    pe_info(pe, "Ternary free energy parameters:\n");
-    pe_info(pe, "Surface penalty kappa1 = %12.5e\n", fe->param->kappa1);
-    pe_info(pe, "Surface penalty kappa2 = %12.5e\n", fe->param->kappa2);
-    pe_info(pe, "Surface penalty kappa3 = %12.5e\n", fe->param->kappa3);
-    pe_info(pe, "Interface width       = %12.5e\n", fe->param->alpha);
+  pe_info(pe, "Ternary free energy parameters:\n");
+  pe_info(pe, "Surface penalty kappa1 = %12.5e\n", fe->param->kappa1);
+  pe_info(pe, "Surface penalty kappa2 = %12.5e\n", fe->param->kappa2);
+  pe_info(pe, "Surface penalty kappa3 = %12.5e\n", fe->param->kappa3);
+  pe_info(pe, "Interface width       = %12.5e\n", fe->param->alpha);
     
-    pe_info(pe, "\n");
-    pe_info(pe, "Derived quantities\n");
-    pe_info(pe, "Interfacial tension   = %12.5e, %12.5e, %12.5e\n",
-	    sigma[0], sigma[1], sigma[2]);
-    pe_info(pe, "Interfacial width     = %12.5e\n", xi0);
+  pe_info(pe, "\n");
+  pe_info(pe, "Derived quantities\n");
+  pe_info(pe, "Interfacial tension   = %12.5e, %12.5e, %12.5e\n",
+	  sigma[0], sigma[1], sigma[2]);
+  pe_info(pe, "Interfacial width     = %12.5e\n", xi0);
    
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -191,12 +191,12 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
 
 __host__ int fe_ternary_target(fe_ternary_t * fe, fe_t ** target) {
     
-    assert(fe);
-    assert(target);
+  assert(fe);
+  assert(target);
     
-    *target = (fe_t *) fe->target;
+  *target = (fe_t *) fe->target;
     
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -207,11 +207,11 @@ __host__ int fe_ternary_target(fe_ternary_t * fe, fe_t ** target) {
 
 __host__ int fe_ternary_param_set(fe_ternary_t * fe, fe_ternary_param_t vals) {
     
-    assert(fe);
+  assert(fe);
     
-    *fe->param = vals;
+  *fe->param = vals;
     
-    return 0;
+  return 0;
 }
 
 /*****************************************************************************
@@ -222,11 +222,11 @@ __host__ int fe_ternary_param_set(fe_ternary_t * fe, fe_ternary_param_t vals) {
 
 __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * values) {
 
-    assert(fe);
+  assert(fe);
     
-    *values = *fe->param;
+  *values = *fe->param;
     
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -240,21 +240,21 @@ __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * values) {
 
 __host__ int fe_ternary_sigma(fe_ternary_t * fe,  double * sigma) {
     
-    double alpha, kappa1, kappa2, kappa3;
+  double alpha, kappa1, kappa2, kappa3;
     
-    assert(fe);
-    assert(sigma);
+  assert(fe);
+  assert(sigma);
     
-    alpha  = fe->param->alpha;
-    kappa1 = fe->param->kappa1;
-    kappa2 = fe->param->kappa2;
-    kappa3 = fe->param->kappa3;
+  alpha  = fe->param->alpha;
+  kappa1 = fe->param->kappa1;
+  kappa2 = fe->param->kappa2;
+  kappa3 = fe->param->kappa3;
     
-    sigma[0] = alpha*(kappa1 + kappa2)/6.0;
-    sigma[1] = alpha*(kappa2 + kappa3)/6.0;
-    sigma[2] = alpha*(kappa3 + kappa1)/6.0;
+  sigma[0] = alpha*(kappa1 + kappa2)/6.0;
+  sigma[1] = alpha*(kappa2 + kappa3)/6.0;
+  sigma[2] = alpha*(kappa3 + kappa1)/6.0;
     
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -267,12 +267,12 @@ __host__ int fe_ternary_sigma(fe_ternary_t * fe,  double * sigma) {
 
 __host__ int fe_ternary_xi0(fe_ternary_t * fe, double * xi0) {
     
-    assert(fe);
-    assert(xi0);
+  assert(fe);
+  assert(xi0);
     
-    *xi0 = fe->param->alpha;
+  *xi0 = fe->param->alpha;
     
-    return 0;
+  return 0;
 }
 
 /****************************************************************************
@@ -293,58 +293,59 @@ __host__ int fe_ternary_xi0(fe_ternary_t * fe, double * xi0) {
 
 __host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
     
-    int ia;
-    double field[2];
-    double phi;
-    double psi;
-    double rho;
-    double grad[2][3];
-    double drho;       /* temporary gradient of rho */
-    double d3, dsum;
-    double s1, s2, fe1, fe2;
-    double kappa1, kappa2, kappa3, alpha2;
+  int ia;
+  double field[2];
+  double phi;
+  double psi;
+  double rho;
+  double grad[2][3];
+  double drho;       /* temporary gradient of rho */
+  double d3, dsum;
+  double s1, s2, fe1, fe2;
+  double kappa1, kappa2, kappa3, alpha2;
 
-    assert(fe);
+  assert(fe);
     
-    kappa1 = fe->param->kappa1;
-    kappa2 = fe->param->kappa2;
-    kappa3 = fe->param->kappa3;
-    alpha2 = fe->param->alpha*fe->param->alpha;
+  kappa1 = fe->param->kappa1;
+  kappa2 = fe->param->kappa2;
+  kappa3 = fe->param->kappa3;
+  alpha2 = fe->param->alpha*fe->param->alpha;
 
-    field_scalar_array(fe->phi, index, field);
+  field_scalar_array(fe->phi, index, field);
     
-    rho = 1.0;
-    phi = field[0];
-    psi = field[1];
+  rho = 1.0;
+  phi = field[0];
+  psi = field[1];
     
-    drho = 0.0;
-    field_grad_pair_grad(fe->dphi, index, grad);
+  drho = 0.0;
+  field_grad_pair_grad(fe->dphi, index, grad);
     
-    dsum = 0.0;
-    for (ia = 0; ia < 3; ia++) {
-      d3 = drho + grad[0][ia] - grad[1][ia];
-      dsum += d3*d3;
-    }
+  dsum = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    d3 = drho + grad[FE_PHI][ia] - grad[FE_PSI][ia];
+    dsum += d3*d3;
+  }
 
-    s1  = rho + phi - psi;
-    s2  = 2.0 + psi - rho - phi;
-    fe1 = 0.03125*kappa1*s1*s1*s2*s2 + 0.125*alpha2*kappa1*dsum;
+  s1  = rho + phi - psi;
+  s2  = 2.0 + psi - rho - phi;
+  fe1 = 0.03125*kappa1*s1*s1*s2*s2 + 0.125*alpha2*kappa1*dsum;
     
-    dsum = 0.0;
-    for (ia = 0; ia < 3; ia++) {
-      d3 = drho - grad[0][ia] - grad[1][ia];
-      dsum += d3*d3;
-    }
+  dsum = 0.0;
+  for (ia = 0; ia < 3; ia++) {
+    d3 = drho - grad[FE_PHI][ia] - grad[FE_PSI][ia];
+    dsum += d3*d3;
+  }
 
-    s1  = rho - phi - psi;
-    s2  = 2.0 + psi - rho + phi;
-    fe2 = 0.03125*kappa2*s1*s1*s2*s2 + 0.125*alpha2*kappa2*dsum;
+  s1  = rho - phi - psi;
+  s2  = 2.0 + psi - rho + phi;
+  fe2 = 0.03125*kappa2*s1*s1*s2*s2 + 0.125*alpha2*kappa2*dsum;
 
-    s1 = 0.5*kappa3*psi*psi*(1 - psi)*(1 - psi);
-    s2 = 0.5*alpha2*kappa3*dot_product(grad[1], grad[1]);
-    *fed = fe1 + fe2 + s1 + s2;    
+  s1 = 0.5*kappa3*psi*psi*(1.0 - psi)*(1.0 - psi);
+  s2 = 0.5*alpha2*kappa3*dot_product(grad[FE_PSI], grad[FE_PSI]);
 
-    return 0;
+  *fed = fe1 + fe2 + s1 + s2;
+
+  return 0;
 }
 
 /****************************************************************************
@@ -442,27 +443,15 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
  *
  *  Thermodynamic stress S_ab = p0 delta_ab + P_ab
  *
- *  p0 = (1/2) A \phi^2 + (3/4) B \phi^4 - (1/2) \kappa \nabla^2 \phi
- *     - (1/2) kappa (\nabla phi)^2
- *     - kT ln(1 - \psi)
- *     + W \psi \phi^2
- *     + \epsilon \phi \nabla_a \phi \nabla_a \psi
- *     + \epsilon \phi \psi \nabla^2 \phi
- *     + 2 \beta \phi \psi \nabla_a\phi \nabla_a\psi
- *     + \beta\phi\psi^2 \nabla^2 \phi
- *     - (1/2) \beta\psi^2 (\nabla\phi)^2
- *
- *  P_ab = (\kappa - \epsilon\psi - \beta\psi^2) \nabla_a \phi \nabla_b \phi
- *
  ****************************************************************************/
 
 __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     
     int ia, ib;
     double field[2];
-    double phi, phi2, dphi[3], dphi2, d2phi;
-    double psi, psi2, dpsi[3], dpsi2, d2psi;
-    double rho, rho2, drho[3], drho2, d2rho;
+    double phi, phi2, dphi[3], dphi2;
+    double psi, psi2, dpsi[3], dpsi2;
+    double rho, rho2, drho[3], drho2;
     double delsq[3];
     double grad[2][3];
     double p0;
@@ -474,7 +463,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     KRONECKER_DELTA_CHAR(d);
     
     assert(fe);
-    
+
     kappa1 = fe->param->kappa1;
     kappa2 = fe->param->kappa2;
     kappa3 = fe->param->kappa3;
@@ -484,7 +473,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     kphiphi = krhorho;
     kpsipsi = 0.25*alpha2*(kappa1 + kappa2 + 4.0*kappa3);
     krhophi = 0.25*alpha2*(kappa1 - kappa2);
-    krhopsi - - krhorho;
+    krhopsi = - krhorho;
     kphipsi = - krhophi;
 
     field_scalar_array(fe->phi, index, field);
@@ -499,6 +488,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     field_grad_pair_grad(fe->dphi, index, grad);
     field_grad_pair_delsq(fe->dphi, index, delsq);
 
+    assert(0); /* dphi from grad etc */
     drho[X] = 0.0; drho[Y] = 0.0; drho[Z] = 0.0;
     delsq[FE_RHO] = 0.0;
 
@@ -526,7 +516,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
 
     drho2    = drho[X]*drho[X] + drho[Y]*drho[Y] + drho[Z]*drho[Z];
     dphi2    = dphi[X]*dphi[X] + dphi[Y]*dphi[Y] + dphi[Z]*dphi[Z];
-    dphi2    = dpsi[X]*dpsi[X] + dpsi[Y]*dpsi[Y] + dpsi[Z]*dpsi[Z];
+    dpsi2    = dpsi[X]*dpsi[X] + dpsi[Y]*dpsi[Y] + dpsi[Z]*dpsi[Z];
 
     drhodphi = drho[X]*dphi[X] + drho[Y]*dphi[Y] + drho[Z]*dphi[Z];
     drhodpsi = drho[X]*dpsi[X] + drho[Y]*dpsi[Y] + drho[Z]*dpsi[Z];
