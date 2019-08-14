@@ -32,6 +32,10 @@ $ make serial
 $ make
 $ make test
 ```
+Note that the tests expect standard C assertions to be active; for
+production runs, one should add the standard preprocessor option
+`-DNDEBUG` to the compiler options in the `config.mk` file.
+
 If a parallel build is wanted omit the serial step, for example,
 ```
 $ cp config/unix-mpicc-default.mk config.mk
@@ -43,13 +47,29 @@ $ make test
 Full details of the build process are available at
 <a href = "https://ludwg.epcc.ed.ac.uk/">https://ludwig.epcc.ed.ac.uk/</a>.
 
-#### Usage
+#### Background and Tutorial
 
-Full documentation is available in the `docs` directory.
+Background documentation on the LB model and various free energy choices
+is available in the `docs` directory.
+```
+$ cd docs
+$ make
+```
+will produce a pdf version of the LaTeX source.
+
+A short tutorial, which includes some examples in which the
+results are visualised, is also provided:
+```
+$ cd docs/tutorial
+$ make
+```
+to produce a pdf of the tutorial instructions.
 
 #### Contributing
 
 If you would like to contribute, please consider a pull request.
+See `CONTRIBUTING.md` for further details of testing and
+development.
 
 
 #### Help
