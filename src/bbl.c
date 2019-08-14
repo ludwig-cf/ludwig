@@ -384,8 +384,8 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double fdist;
 
   physics_t * phys = NULL;
-  colloid_t * pc;
-  colloid_link_t * p_link;
+  colloid_t * pc = NULL;
+  colloid_link_t * p_link = NULL;
 
   assert(bbl);
   assert(lb);

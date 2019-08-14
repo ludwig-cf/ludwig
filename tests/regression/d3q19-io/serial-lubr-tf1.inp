@@ -1,15 +1,17 @@
 ##############################################################################
 #
 #  Colloid pairwise interaction smoke test 
-#  LJ potential (with quite a large cutoff to capture some interactions
-#                from initial positions).
+#  Lubrication tangential force only (with unrealistically large cuoff).
+#
+#  No noise means no fluctuation-dissipation contribution to
+#  correction
 #
 ##############################################################################
 
 N_cycles 10
 
 size 64_64_64
-grid 4_1_1
+grid 2_2_2
 reduced_halo no
 
 ##############################################################################
@@ -21,7 +23,7 @@ reduced_halo no
 viscosity 0.02
 
 isothermal_fluctuations off
-temperature 0.0002133333
+temperature 0.0
 
 ##############################################################################
 #
@@ -42,12 +44,8 @@ colloid_init        from_file
 
 colloid_gravity  0.0_0.0_0.0
 
-lubrication_on 0
-lennard_jones_on 1
-lj_epsilon 0.1
-lj_sigma   2.6
-lj_cutoff  8.0
-
+lubrication_on 1
+lubrication_tangential_cutoff 0.5
 
 ###############################################################################
 #
@@ -67,7 +65,7 @@ periodicity 1_1_1
 freq_statistics 10
 config_at_end no
 
-colloid_file_stub colloids-serial-pair-yk1
+colloid_file_stub colloids-serial-lubr
 colloids_io_grid 1_1_1
 colloid_io_format_input  ASCII_SERIAL
 

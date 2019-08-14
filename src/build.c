@@ -81,7 +81,7 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
   int nhalo;
   int status;
 
-  colloid_t * p_colloid;
+  colloid_t * p_colloid = NULL;
 
   double  r0[3];
   double  rsite0[3];
@@ -1460,6 +1460,8 @@ int build_count_faces_local(colloid_t * colloid, double * sa, double * saf) {
 
 int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
 
+  assert(cinfo);
+
   if (phi) build_conservation_phi(cinfo, phi);
   if (psi) build_conservation_psi(cinfo, psi);
 
@@ -1490,6 +1492,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi) {
   colloid_link_t * pl = NULL;
 
   assert(cinfo);
+  assert(psi);
 
   colloids_info_all_head(cinfo, &colloid);
 
@@ -1563,7 +1566,7 @@ int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi) {
  *  change in mean composition.
  *
  *  A call to colloid_sums_halo(cinfo, COLLOID_SUM_CONSERVATION) before
- *  we reach this point is required so that all parts of distrubted
+ *  we reach this point is required so that all parts of distributed
  *  colloids see the same deltaphi.
  *
  *****************************************************************************/
@@ -1574,14 +1577,12 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
 
   double value;
   double dphi;
-  double sa_local, saf_local;
 
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
 
-  double dphitot = 0.0;
-
   assert(cinfo);
+  assert(phi);
 
   colloids_info_all_head(cinfo, &colloid);
 
@@ -1604,7 +1605,6 @@ int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
 	/* Replace */
 	field_scalar(phi, pl->i, &value);
 	field_scalar_set(phi, pl->i, value + dphi);
-	dphitot += dphi;
       }
     }
 

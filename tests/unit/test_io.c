@@ -156,7 +156,7 @@ static int test_io_write1(FILE * fp, int index, void * self) {
 
   data = s->dref*index;
   n = fwrite(&data, sizeof(double), 1, fp);
-  assert(n == 1);
+  test_assert(n == 1);
 
   return n;
 }
@@ -177,8 +177,8 @@ static int test_io_read1(FILE * fp, int index, void * self) {
   assert(s);
 
   n = fread(&data, sizeof(double), 1, fp);
-  assert(n == 1);
-  assert(fabs(data - s->dref*index) < DBL_EPSILON);
+  test_assert(n == 1);
+  test_assert(fabs(data - s->dref*index) < DBL_EPSILON);
 
   return n;
 }
@@ -199,8 +199,8 @@ int test_io_read3(FILE * fp, int index, void * self) {
 
   n = fscanf(fp, "%d\n", &indata);
 
-  assert(n == 1);
-  assert(indata == data->iref*index);
+  test_assert(n == 1);
+  test_assert(indata == data->iref*index);
 
   return n;
 }
@@ -219,7 +219,7 @@ int test_io_write3(FILE * fp, int index, void * self) {
   test_io_t * data = (test_io_t *) self;
 
   n = fprintf(fp, "%7d\n", index*data->iref);
-  assert(n == 8);
+  test_assert(n == 8);
 
   return n;
 }

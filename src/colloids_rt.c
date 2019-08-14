@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -86,7 +86,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   int init_from_file = 0;
   int init_random = 0;
   int ncell[3] = {2, 2, 2};
-  char keyvalue[BUFSIZ];
+  char keyvalue[BUFSIZ] = "";
 
   assert(pe);
   assert(cs);
@@ -157,6 +157,22 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   colloids_rt_dynamics(cs, *pinfo, wall, map);
   colloids_rt_gravity(pe, rt, *pinfo);
+
+  /* Set the update frequency and report (non-default values) */
+
+  {
+    int isfreq = 0;
+    int nfreq = 1;
+
+    isfreq = rt_int_parameter(rt, "colloid_rebuild_freq", &nfreq);
+    if (nfreq <= 0) pe_fatal(pe, "colloids_rebuild_freq must be >= 1\n");
+
+    if (isfreq) {
+      colloids_info_rebuild_freq_set(*pinfo, nfreq);
+      pe_info(pe, "Colloid rebuild freq:         %d\n", nfreq);
+    }
+  }
+
   pe_info(pe, "\n");
   
   return 0;
@@ -219,6 +235,7 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     pe_info(pe, "Requested one colloid via input:\n");
     state1 = (colloid_state_t *) calloc(1, sizeof(colloid_state_t));
     assert(state1 != NULL);
+
     colloids_rt_state_stub(pe, rt, cinfo, "colloid_one", state1);
     colloids_info_add_local(cinfo, 1, state1->r, &pc);
     state1->index = 1;
@@ -261,9 +278,9 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio) {
 
   int ntstep;
-  char subdirectory[FILENAME_MAX];
-  char filename[FILENAME_MAX];
-  char stub[FILENAME_MAX];
+  char subdirectory[BUFSIZ];
+  char filename[3*BUFSIZ];
+  char stub[BUFSIZ];
   physics_t * phys = NULL;
 
   assert(pe);
@@ -275,7 +292,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   physics_ref(&phys);
 
   strcpy(stub, "config.cds.init");
-  rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
+  rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
 
   ntstep = physics_control_timestep(phys);
 
@@ -284,7 +301,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   }
   else {
     strcpy(stub, "config.cds");
-    rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
+    rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
     sprintf(filename, "%s%s%8.8d", subdirectory, stub, ntstep);
   }
 
@@ -345,8 +362,8 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state) {
   int nrt;
-  char key[BUFSIZ];
-  char value[BUFSIZ];
+  char key[BUFSIZ] = "";
+  char value[BUFSIZ] = "";
 
   const char * format_i1 = "%-28s  %d\n";
   const char * format_e1 = "%-28s %14.7e\n";
@@ -357,6 +374,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   assert(rt);
   assert(cinfo);
   assert(stub);
+  assert(state);
 
   state->rebuild = 1;
 

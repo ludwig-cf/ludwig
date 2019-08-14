@@ -3,6 +3,10 @@
 
 A lattice Boltzmann code for complex fluids
 
+[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=develop)](https://travis-ci.com/ludwig-cf/ludwig)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1998/badge)](https://bestpractices.coreinfrastructure.org/projects/1998)
+
+
 Ludwig is a parallel code for the simulation of complex fluids, which
 include mixtures, colloidal suspensions, gels, and liquid crystals.
 It takes its name from Ludwig Boltzmann, as it uses a lattice Boltzmann
@@ -23,20 +27,49 @@ Copy a config file from the config directory to
 the top level directory and make any changes required. E.g.,
 
 ```
-$ cp config/lunix-gcc-default.mk config.mk
-$ cd tests
-$ make compile-mpi-d3q19
+$ cp config/unix-gcc-default.mk config.mk
+$ make serial
+$ make
+$ make test
+```
+Note that the tests expect standard C assertions to be active; for
+production runs, one should add the standard preprocessor option
+`-DNDEBUG` to the compiler options in the `config.mk` file.
+
+If a parallel build is wanted omit the serial step, for example,
+```
+$ cp config/unix-mpicc-default.mk config.mk
+$ make
+$ make test
 ```
 
-This should produce an execuatable `./src/Ludwig.exe`.
 
-#### Usage
+Full details of the build process are available at
+<a href = "https://ludwg.epcc.ed.ac.uk/">https://ludwig.epcc.ed.ac.uk/</a>.
 
-Full documentation is available in the `docs` directory.
+#### Background and Tutorial
+
+Background documentation on the LB model and various free energy choices
+is available in the `docs` directory.
+```
+$ cd docs
+$ make
+```
+will produce a pdf version of the LaTeX source.
+
+A short tutorial, which includes some examples in which the
+results are visualised, is also provided:
+```
+$ cd docs/tutorial
+$ make
+```
+to produce a pdf of the tutorial instructions.
 
 #### Contributing
 
 If you would like to contribute, please consider a pull request.
+See `CONTRIBUTING.md` for further details of testing and
+development.
 
 
 #### Help

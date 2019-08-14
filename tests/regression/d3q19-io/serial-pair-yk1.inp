@@ -1,10 +1,7 @@
 ##############################################################################
 #
 #  Colloid pairwise interaction smoke test 
-#  Lubrication tangential force only (with unrealistically large cuoff).
-#
-#  No noise means no fluctuation-dissipation contribution to
-#  correction
+#  Yukawa no noise
 #
 ##############################################################################
 
@@ -23,7 +20,7 @@ reduced_halo no
 viscosity 0.02
 
 isothermal_fluctuations off
-temperature 0.0
+temperature 0.0002133333
 
 ##############################################################################
 #
@@ -44,8 +41,11 @@ colloid_init        from_file
 
 colloid_gravity  0.0_0.0_0.0
 
-lubrication_on 1
-lubrication_tangential_cutoff 0.5
+lubrication_on 0
+yukawa_on 1
+yukawa_epsilon  1.330764285
+yukawa_kappa 0.72463768115
+yukawa_cutoff 16.0
 
 ###############################################################################
 #
@@ -65,7 +65,7 @@ periodicity 1_1_1
 freq_statistics 10
 config_at_end no
 
-colloid_file_stub colloids-serial-lubr-nf1
+colloid_file_stub colloids-serial-pair
 colloids_io_grid 1_1_1
 colloid_io_format_input  ASCII_SERIAL
 

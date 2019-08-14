@@ -135,16 +135,15 @@ __host__ int map_free(map_t * obj) {
   MPI_Type_free(&obj->halostatus[Z]);
 
   if (obj->ndata > 0) {
-    free(obj->data);
     MPI_Type_free(&obj->halodata[X]);
     MPI_Type_free(&obj->halodata[Y]);
     MPI_Type_free(&obj->halodata[Z]);
   }
 
   if (obj->info) io_info_free(obj->info);
+
+  free(obj->data);
   free(obj->status);
-
-
   free(obj);
 
   return 0;

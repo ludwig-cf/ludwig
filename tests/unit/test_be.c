@@ -102,7 +102,7 @@ static int do_test_be_tmatrix(void) {
 	}
       }
       dij = (i == j);
-      assert(fabs(sum - dij) <= DBL_EPSILON);
+      test_assert(fabs(sum - dij) <= DBL_EPSILON);
     }
   }
 

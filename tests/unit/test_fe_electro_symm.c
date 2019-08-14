@@ -110,16 +110,16 @@ static int do_test1(pe_t * pe) {
   phi0 = 0.0;
   field_scalar_set(phi, index, phi0);
   fe_es_mu_ion_solv(fe, index, 0, &dmu_test);
-  assert(fabs(2.0*dmu_test - dmu[0]) < DBL_EPSILON);
+  test_assert(fabs(2.0*dmu_test - dmu[0]) < DBL_EPSILON);
   fe_es_mu_ion_solv(fe, index, 1, &dmu_test);
-  assert(fabs(2.0*dmu_test - dmu[1]) < DBL_EPSILON);
+  test_assert(fabs(2.0*dmu_test - dmu[1]) < DBL_EPSILON);
 
   phi0 = 1.0;
   field_scalar_set(phi, index, phi0);
   fe_es_mu_ion_solv(fe, index, 0, &dmu_test);
-  assert(fabs(dmu_test - dmu[0]) < DBL_EPSILON);
+  test_assert(fabs(dmu_test - dmu[0]) < DBL_EPSILON);
   fe_es_mu_ion_solv(fe, index, 1, &dmu_test);
-  assert(fabs(dmu_test - dmu[1]) < DBL_EPSILON);
+  test_assert(fabs(dmu_test - dmu[1]) < DBL_EPSILON);
 
 
   /* Check epsilon e = ebar [ 1 - gamma phi ] */
@@ -130,13 +130,13 @@ static int do_test1(pe_t * pe) {
   field_scalar_set(phi, index, phi0);
   fe_es_var_epsilon(fe, index, &eps_test);
   eps_expect = ebar*(1.0 - gamma*phi0);
-  assert(fabs(eps_expect - eps_test) < DBL_EPSILON);
+  test_assert(fabs(eps_expect - eps_test) < DBL_EPSILON);
 
   phi0 = 1.0;
   field_scalar_set(phi, index, phi0);
   fe_es_var_epsilon(fe, index, &eps_test);
   eps_expect = ebar*(1.0 - gamma*phi0);
-  assert(fabs(eps_expect - eps_test) < DBL_EPSILON);
+  test_assert(fabs(eps_expect - eps_test) < DBL_EPSILON);
 
   /* Finish. */
 

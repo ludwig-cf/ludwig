@@ -4,24 +4,34 @@
 Contributions may be made via a pull request. There is also a note
 here on the development model, and running the tests.
 
+Ludwig has been developed largely at The University of Edinburgh as
+a collaboration between the School of Physics and Edinburgh Parallel
+Computing Centre. However, contributions are welcome.
+
+The code is released under a BSD 3-clause license.
+
 ### Running the tests
 
 Various tests exist in the `test` subdirectory. To check that no
 obvious errors have been introduced by developments one can run
 ```
 $ cd tests
-$ make run-serial-regr-d3q19
+$ make
 ```
-which runs a series of regression tests for the LB D3Q19 model.
+which runs a series of unit tests and a series of regression tests for the
+LB D3Q19 model.
 See the `Makefile` for further options.
 
+Each test reports a pass or fail. Parallel tests are also available.
 
 ### Development model
 
 The development model is borrowed from a description by Vincent Driessen
-[https://nvie.com/posts/a-successful-git-branching-model/]
+[https://nvie.com/posts/a-successful-git-branching-model/].
 
-Two branches are always in existance: master and develop.
+Two branches are always in existance: master and develop. The
+master represents the current release state. New developments should be
+based on the develop branch.
 
 #### Feature branches
 

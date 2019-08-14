@@ -1336,7 +1336,7 @@ static __host__ __device__
 
   /* Ghost modes */
 
-  for (ia = 0; ia < NHYDRO; ia++) {
+  for (ia = 0; ia < NVEL; ia++) {
     ghat[ia] = 0.0;
   }
 

@@ -72,8 +72,8 @@ static int do_test_noise1(pe_t * pe) {
   unsigned int state[NNOISE_STATE] = {0, 0, 0, 0};
 
   assert(pe);
-  assert(NNOISE_MAX == 10);
-  assert(NNOISE_STATE == 4);
+  test_assert(NNOISE_MAX == 10);
+  test_assert(NNOISE_STATE == 4);
 
   a1 = sqrt(2.0 + sqrt(2.0));
   a2 = sqrt(2.0 - sqrt(2.0));
@@ -90,33 +90,33 @@ static int do_test_noise1(pe_t * pe) {
 
   noise_uniform(state);
 
-  assert(state[0] == 1234567);
-  assert(state[1] == 0);
-  assert(state[2] == 0);
-  assert(state[3] == 0);
+  test_assert(state[0] == 1234567);
+  test_assert(state[1] == 0);
+  test_assert(state[2] == 0);
+  test_assert(state[3] == 0);
 
   /* Set some state and make sure reap vector is correct */
 
   noise_state_set(noise, 0, state_ref);
   noise_state(noise, 0, state);
 
-  assert(state[0] == state_ref[0]);
-  assert(state[1] == state_ref[1]);
-  assert(state[2] == state_ref[2]);
-  assert(state[3] == state_ref[3]);
+  test_assert(state[0] == state_ref[0]);
+  test_assert(state[1] == state_ref[1]);
+  test_assert(state[2] == state_ref[2]);
+  test_assert(state[3] == state_ref[3]);
 
   noise_reap(noise, 0, r);
 
-  assert(fabs(r[0] - +a1) < DBL_EPSILON);
-  assert(fabs(r[1] - -a1) < DBL_EPSILON);
-  assert(fabs(r[2] - 0.0) < DBL_EPSILON);
-  assert(fabs(r[3] - +a2) < DBL_EPSILON);
-  assert(fabs(r[4] - +a2) < DBL_EPSILON);
-  assert(fabs(r[5] - 0.0) < DBL_EPSILON);
-  assert(fabs(r[6] - 0.0) < DBL_EPSILON);
-  assert(fabs(r[7] - 0.0) < DBL_EPSILON);
-  assert(fabs(r[8] - 0.0) < DBL_EPSILON);
-  assert(fabs(r[9] - 0.0) < DBL_EPSILON);
+  test_assert(fabs(r[0] - +a1) < DBL_EPSILON);
+  test_assert(fabs(r[1] - -a1) < DBL_EPSILON);
+  test_assert(fabs(r[2] - 0.0) < DBL_EPSILON);
+  test_assert(fabs(r[3] - +a2) < DBL_EPSILON);
+  test_assert(fabs(r[4] - +a2) < DBL_EPSILON);
+  test_assert(fabs(r[5] - 0.0) < DBL_EPSILON);
+  test_assert(fabs(r[6] - 0.0) < DBL_EPSILON);
+  test_assert(fabs(r[7] - 0.0) < DBL_EPSILON);
+  test_assert(fabs(r[8] - 0.0) < DBL_EPSILON);
+  test_assert(fabs(r[9] - 0.0) < DBL_EPSILON);
 
   noise_free(noise);
   cs_free(cs);
@@ -183,8 +183,8 @@ static int do_test_noise2(pe_t * pe) {
   rstat[1] = rstat[1]/(NNOISE_MAX*ltot[X]*ltot[Y]*ltot[Z]) - rstat[0]*rstat[0];
 
   /* These are the results for the default seeds, system size */
-  assert(fabs(rstat[0] - 4.10105573e-03) < FLT_EPSILON);
-  assert(fabs(rstat[1] - 1.00177840)     < FLT_EPSILON);
+  test_assert(fabs(rstat[0] - 4.10105573e-03) < FLT_EPSILON);
+  test_assert(fabs(rstat[1] - 1.00177840)     < FLT_EPSILON);
 
   noise_free(noise);
   cs_free(cs);
@@ -290,12 +290,12 @@ static int do_test_noise3(pe_t * pe) {
 	m5 = rnorm*moment6[4*nsites + index];
 	m6 = rnorm*moment6[5*nsites + index];
 
-	assert(fabs(m1 - 0.0)  < tolerance);
-	assert(fabs(m2 - 1.0)  < tolerance);
-	assert(fabs(m3 - 0.0)  < tolerance);
-	assert(fabs(m4 - 3.0)  < tolerance);
-	assert(fabs(m5 - 0.0)  < tolerance);
-	assert(fabs(m6 - 10.0) < tolerance);
+	test_assert(fabs(m1 - 0.0)  < tolerance);
+	test_assert(fabs(m2 - 1.0)  < tolerance);
+	test_assert(fabs(m3 - 0.0)  < tolerance);
+	test_assert(fabs(m4 - 3.0)  < tolerance);
+	test_assert(fabs(m5 - 0.0)  < tolerance);
+	test_assert(fabs(m6 - 10.0) < tolerance);
 
       }
     }

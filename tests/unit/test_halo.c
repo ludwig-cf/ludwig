@@ -187,7 +187,7 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	    lb_f(lb, index, p, nd, &f_actual);
 
 	    /* everything should still be zero inside the lattice */
-	    assert(fabs(f_actual - 0.0) < DBL_EPSILON);
+	    test_assert(fabs(f_actual - 0.0) < DBL_EPSILON);
 	  }
 	}
 
@@ -316,7 +316,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
 	      for (p = 0; p < NVEL; p++) {
 		lb_f(lb, index, p, nd, &f_actual);
-		assert(fabs(f_actual-f_expect) < DBL_EPSILON);
+		test_assert(fabs(f_actual-f_expect) < DBL_EPSILON);
 	      }
 	    }
 
@@ -328,7 +328,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 
 	      for (p = 0; p < NVEL; p++) {
 		lb_f(lb, index, p, nd, &f_actual);
-		assert(fabs(f_actual-f_expect) < DBL_EPSILON);
+		test_assert(fabs(f_actual-f_expect) < DBL_EPSILON);
 	      }
 	    }
 	  }

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2018 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -61,13 +61,11 @@ int test_coords_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  /* info("Checking coords.c ...\n\n");*/
-  
   test_coords_constants();
 
   /* Check the defaults, an the correct resetting of defaults. */
 
-  /* info("\nCheck defaults...\n\n");*/
+  /* pe_info(pe, "\nCheck defaults...\n\n");*/
   cs_create(pe, &cs);
   test_coords_system(cs, ntotal_default, periods_default);
 
@@ -79,6 +77,7 @@ int test_coords_suite(void) {
 
   /* Now test 1 */
 
+  /* pe_info(pe, "\nCheck one...\n\n");*/
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal_test1);
   cs_periodicity_set(cs, periods_test1);
@@ -93,6 +92,7 @@ int test_coords_suite(void) {
 
   /* Now test 2 */
 
+  /* pe_info(pe, "\nCheck two...\n\n");*/
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal_test2);
   cs_periodicity_set(cs, periods_test2);
@@ -273,34 +273,34 @@ int test_coords_communicator(cs_t * cs) {
   /* info("yes\n");*/
 
   /* info("Checking Cartesian rank...");*/
-  assert(cs_cart_rank(cs) == rank);
+  test_assert(cs_cart_rank(cs) == rank);
   /* info("ok\n");*/
 
   /* info("Checking cart_size() ...");*/
   cs_cartsz(cs, mpisz);
-  assert(mpisz[X] == dims[X]);
-  assert(mpisz[Y] == dims[Y]);
-  assert(mpisz[Z] == dims[Z]);
+  test_assert(mpisz[X] == dims[X]);
+  test_assert(mpisz[Y] == dims[Y]);
+  test_assert(mpisz[Z] == dims[Z]);
   /* info("ok\n");*/
 
   /* info("Checking cart_coords() ...");*/
   cs_cart_coords(cs, cart_coords);
-  assert(cart_coords[X] == coords[X]);
-  assert(cart_coords[Y] == coords[Y]);
-  assert(cart_coords[Z] == coords[Z]);
+  test_assert(cart_coords[X] == coords[X]);
+  test_assert(cart_coords[Y] == coords[Y]);
+  test_assert(cart_coords[Z] == coords[Z]);
   /* info("ok\n");*/
 
   /* info("Checking periodity...");*/
   cs_periodic(cs, periodic);
-  assert(periodic[X] == periods[X]);
-  assert(periodic[Y] == periods[Y]);
-  assert(periodic[Z] == periods[Z]);
+  test_assert(periodic[X] == periods[X]);
+  test_assert(periodic[Y] == periods[Y]);
+  test_assert(periodic[Z] == periods[Z]);
   /* info("ok\n");*/
 
   /* info("Checking n_local[] ...");*/
-  assert(nlocal[X] == ntotal[X]/mpisz[X]);
-  assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
-  assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
+  test_assert(nlocal[X] == ntotal[X]/mpisz[X]);
+  test_assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
+  test_assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
   /* info("ok\n");*/
 
   /* info("Checking n_offset()...");*/
@@ -313,32 +313,32 @@ int test_coords_communicator(cs_t * cs) {
 
   /* info("Checking FORWARD neighbours in X...");*/
   n = neighbour_rank(cs, cart_coords[X]+1, cart_coords[Y], cart_coords[Z]);
-  assert(n == cs_cart_neighb(cs, CS_FORW, X));
+  test_assert(n == cs_cart_neighb(cs, CS_FORW, X));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in X...");*/
   n = neighbour_rank(cs, cart_coords[X]-1, cart_coords[Y], cart_coords[Z]);
-  assert(n == cs_cart_neighb(cs, CS_BACK, X));
+  test_assert(n == cs_cart_neighb(cs, CS_BACK, X));
   /* info("ok\n");*/
 
   /* info("Checking FORWARD neighbours in Y...");*/
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y]+1, cart_coords[Z]);
-  assert(n == cs_cart_neighb(cs, CS_FORW, Y));
+  test_assert(n == cs_cart_neighb(cs, CS_FORW, Y));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in Y...");*/
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y]-1, cart_coords[Z]);
-  assert(n == cs_cart_neighb(cs, CS_BACK, Y));
+  test_assert(n == cs_cart_neighb(cs, CS_BACK, Y));
   /* info("ok\n");*/
 
   /* info("Checking FORWARD neighbours in Z...");*/
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y], cart_coords[Z]+1);
-  assert(n == cs_cart_neighb(cs, CS_FORW, Z));
+  test_assert(n == cs_cart_neighb(cs, CS_FORW, Z));
   /* info("ok\n");*/
 
   /* info("Checking BACKWARD neighbours in Z...");*/
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y], cart_coords[Z]-1);
-  assert(n == cs_cart_neighb(cs, CS_BACK, Z));
+  test_assert(n == cs_cart_neighb(cs, CS_BACK, Z));
   /* info("ok\n");*/
 
   return 0;
@@ -482,8 +482,7 @@ static int test_coords_sub_communicator(cs_t * cs) {
 
 int neighbour_rank(cs_t * cs, int nx, int ny, int nz) {
 
-  int sz;
-  int rank = 0;
+  int rank = MPI_PROC_NULL;
   int coords[3];
   int periodic = 1;
   int is_periodic[3];
@@ -504,12 +503,7 @@ int neighbour_rank(cs_t * cs, int nx, int ny, int nz) {
   coords[Y] = ny;
   coords[Z] = nz;
 
-  rank = MPI_PROC_NULL;
   if (periodic) MPI_Cart_rank(comm, coords, &rank);
-
-  /* Serial doesn't quite work out with the above */
-  MPI_Comm_size(comm, &sz);
-  if (sz == 1) rank = 0; /* Fails in true MPI Comm_size = 1 */
 
   return rank;
 }
@@ -609,41 +603,41 @@ __global__ void do_test_coords_kernel1(cs_t * cs) {
   assert(cs);
 
   cs_nhalo(cs, &nhalo);
-  assert(nhalo == 1);
+  test_assert(nhalo == 1);
 
   cs_ntotal(cs, ntotal);
-  assert(ntotal[X] == 64);
-  assert(ntotal[Y] == 64);
-  assert(ntotal[Z] == 64);
+  test_assert(ntotal[X] == 64);
+  test_assert(ntotal[Y] == 64);
+  test_assert(ntotal[Z] == 64);
 
   cs_nlocal(cs, nlocal);
   cs_cartsz(cs, mpisz);
 
-  assert(nlocal[X] == ntotal[X]/mpisz[X]);
-  assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
-  assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
+  test_assert(nlocal[X] == ntotal[X]/mpisz[X]);
+  test_assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
+  test_assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
 
   cs_nsites(cs, &nsites);
 
-  assert(nsites == (nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo));
+  test_assert(nsites == (nlocal[X]+2*nhalo)*(nlocal[Y]+2*nhalo)*(nlocal[Z]+2*nhalo));
 
   cs_cart_coords(cs, mpicoords);
   cs_nlocal_offset(cs, noffset);
 
-  assert(noffset[X] == mpicoords[X]*nlocal[X]);
-  assert(noffset[Y] == mpicoords[Y]*nlocal[Y]);
-  assert(noffset[Z] == mpicoords[Z]*nlocal[Z]);
+  test_assert(noffset[X] == mpicoords[X]*nlocal[X]);
+  test_assert(noffset[Y] == mpicoords[Y]*nlocal[Y]);
+  test_assert(noffset[Z] == mpicoords[Z]*nlocal[Z]);
 
   cs_lmin(cs, lmin);
   cs_ltot(cs, ltot);
 
-  assert(fabs(lmin[X] - 0.5) < DBL_EPSILON);
-  assert(fabs(lmin[Y] - 0.5) < DBL_EPSILON);
-  assert(fabs(lmin[Z] - 0.5) < DBL_EPSILON);
+  test_assert(fabs(lmin[X] - 0.5) < DBL_EPSILON);
+  test_assert(fabs(lmin[Y] - 0.5) < DBL_EPSILON);
+  test_assert(fabs(lmin[Z] - 0.5) < DBL_EPSILON);
 
-  assert(fabs(ltot[X] - ntotal[X]) < DBL_EPSILON);
-  assert(fabs(ltot[Y] - ntotal[Y]) < DBL_EPSILON);
-  assert(fabs(ltot[Z] - ntotal[Z]) < DBL_EPSILON);
+  test_assert(fabs(ltot[X] - ntotal[X]) < DBL_EPSILON);
+  test_assert(fabs(ltot[Y] - ntotal[Y]) < DBL_EPSILON);
+  test_assert(fabs(ltot[Z] - ntotal[Z]) < DBL_EPSILON);
 
   return;
 }

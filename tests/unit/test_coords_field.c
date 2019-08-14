@@ -2,12 +2,10 @@
  *
  *  test_coords_field.c
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,6 +23,7 @@
 #include "memory.h"
 #include "coords_field.h"
 #include "test_coords_field.h"
+#include "tests.h"
 
 /*****************************************************************************
  *
@@ -135,7 +134,7 @@ int test_coords_field_check(cs_t * cs, int nhcomm, int nf, void * buf,
 	    indexf = mem_addr_rank1(nsites, nf, index, n);
             bufref(cs, noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &cref);
             cact =  bufc[sz*indexf];
-            assert(cref == cact);
+            test_assert(cref == cact);
           }
         }
 
@@ -145,7 +144,7 @@ int test_coords_field_check(cs_t * cs, int nhcomm, int nf, void * buf,
             bufref(cs, noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
             dact = *((double *) (bufc + sz*indexf));
 	    /*printf("%2d %2d %2d %14.7e %14.7e\n", ic, jc, kc, dref, dact);*/
-            assert(fabs(dact - dref) < FLT_EPSILON);
+            test_assert(fabs(dact - dref) < FLT_EPSILON);
           }
         }
 
@@ -182,7 +181,7 @@ int test_ref_char1(cs_t * cs, int ic, int jc, int kc, int n, void * ref) {
   if (iref > ntotal[X]) iref -= ntotal[X];
 
   iref += n;
-  assert(iref >= 0);
+  test_assert(iref >= 0);
   assert(iref < CHAR_MAX);
 
   *c = iref;

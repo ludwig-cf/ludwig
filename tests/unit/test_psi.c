@@ -91,22 +91,22 @@ static int do_test1(pe_t * pe) {
   psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_nk(psi, &n);
-  assert(n == 3);
+  test_assert(n == 3);
 
   for (n = 0; n < nk; n++) {
     psi_valency_set(psi, n, valency[n]);
     psi_valency(psi, n, &iv);
-    assert(iv == valency[n]);
+    test_assert(iv == valency[n]);
     psi_diffusivity_set(psi, n, diffusivity[n]);
     psi_diffusivity(psi, n, &diff);
-    assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
+    test_assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
   }
 
   psi_unit_charge(psi, &e);
-  assert(fabs(e - 1.0) < DBL_EPSILON); /* Default unit = 1.0 */
+  test_assert(fabs(e - 1.0) < DBL_EPSILON); /* Default unit = 1.0 */
   psi_unit_charge_set(psi, eunit);
   psi_unit_charge(psi, &e);
-  assert(fabs(eunit - e) < DBL_EPSILON);
+  test_assert(fabs(eunit - e) < DBL_EPSILON);
 
   psi_free(psi);
   cs_free(cs);
@@ -143,33 +143,33 @@ static int do_test2(pe_t * pe) {
   psi_create(pe, cs, nk, &psi);
   assert(psi);
   psi_nk(psi, &n);
-  assert(n == 2);
+  test_assert(n == 2);
 
   for (n = 0; n < nk; n++) {
     psi_valency_set(psi, n, valency[n]);
     psi_valency(psi, n, &iv);
-    assert(iv == valency[n]);
+    test_assert(iv == valency[n]);
     psi_diffusivity_set(psi, n, diffusivity[n]);
     psi_diffusivity(psi, n, &diff);
-    assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
+    test_assert(fabs(diff - diffusivity[n]) < DBL_EPSILON);
   }
 
   index = 1;
   ref = 1.0;
   psi_psi_set(psi, index, ref);
   psi_psi(psi, index, &value);
-  assert(fabs(value - ref) < DBL_EPSILON);
+  test_assert(fabs(value - ref) < DBL_EPSILON);
 
   for (n = 0; n < nk; n++) {
     ref = 1.0 + n;
     psi_rho_set(psi, index, n, ref);
     psi_rho(psi, index, n, &value);
-    assert(fabs(value - ref) < DBL_EPSILON);
+    test_assert(fabs(value - ref) < DBL_EPSILON);
   }
 
   ref = 1.0 + 4.0;
   psi_rho_elec(psi, index, &value);
-  assert(fabs(value - ref) < DBL_EPSILON);
+  test_assert(fabs(value - ref) < DBL_EPSILON);
 
   psi_free(psi);
   cs_free(cs);
@@ -382,24 +382,24 @@ static int do_test_bjerrum(pe_t * pe) {
 
   psi_beta_set(psi, 1.0/ktref);
   psi_beta(psi, &tmp);
-  assert(fabs(1.0/ktref - tmp) < DBL_EPSILON);
+  test_assert(fabs(1.0/ktref - tmp) < DBL_EPSILON);
 
   psi_epsilon_set(psi, epsilonref);
   psi_epsilon(psi, &tmp);
-  assert(fabs(tmp - epsilonref) < DBL_EPSILON);
+  test_assert(fabs(tmp - epsilonref) < DBL_EPSILON);
 
   psi_unit_charge_set(psi, eref);
   psi_unit_charge(psi, &tmp);
-  assert(fabs(tmp - eref) < DBL_EPSILON);
+  test_assert(fabs(tmp - eref) < DBL_EPSILON);
 
   lbref = eref*eref / (4.0*pi_*epsilonref*ktref);
   psi_bjerrum_length(psi, &tmp);
-  assert(fabs(lbref - tmp) < DBL_EPSILON);
+  test_assert(fabs(lbref - tmp) < DBL_EPSILON);
 
   /* For unit ionic strength */
   ldebyeref = 1.0 / sqrt(8.0*pi_*lbref);
   psi_debye_length(psi, 1.0, &tmp);
-  assert(fabs(ldebyeref - tmp) < DBL_EPSILON);
+  test_assert(fabs(ldebyeref - tmp) < DBL_EPSILON);
 
   psi_free(psi);
   cs_free(cs);
@@ -442,7 +442,7 @@ static int do_test_ionic_strength(pe_t * pe) {
   expect = 0.5*(pow(valency[0], 2)*rho[0] + pow(valency[1], 2)*rho[1]);
 
   psi_ionic_strength(psi, index, &rhoi);
-  assert(fabs(expect - rhoi) < DBL_EPSILON);
+  test_assert(fabs(expect - rhoi) < DBL_EPSILON);
 
   psi_free(psi);
   cs_free(cs);
