@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018 The University of Edinburgh
+ *  (c) 2019 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -191,9 +191,11 @@ int MPI_Comm_size(MPI_Comm comm, int * size) {
 
 int MPI_Abort(MPI_Comm comm, int code) {
 
-  assert(mpi_is_valid_comm(comm));
+  int is_valid;
 
-  exit(code);
+  is_valid = 1 - mpi_is_valid_comm(comm);
+
+  exit(code + is_valid);
   return MPI_SUCCESS; /* ha! */
 }
 

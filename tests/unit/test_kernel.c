@@ -24,6 +24,8 @@
 #include "kernel.h"
 #include "memory.h"
 
+#include "tests.h"
+
 typedef struct data_s data_t;
 
 struct data_s {
@@ -128,7 +130,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
    * in memory.c */
 
   /* In the meantime, we need... */
-  assert(nsites % NSIMDVL == 0);
+  test_assert(nsites % NSIMDVL == 0);
 
   isum = 0;
   iref = (int *) calloc(nsites, sizeof(int));
@@ -143,7 +145,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   nexpect = (limits.imax - limits.imin + 1)*
             (limits.jmax - limits.jmin + 1)*
             (limits.kmax - limits.kmin + 1);
-  assert(isum == nexpect);
+  test_assert(isum == nexpect);
 
   /* Target */
 
@@ -169,7 +171,7 @@ __host__ int do_test_kernel(cs_t * cs, kernel_info_t limits, data_t * data) {
   data_copy(data, tdpMemcpyDeviceToHost);
   do_check(cs, iref, data->idata);
 
-  assert(isum == data->isum);
+  test_assert(isum == data->isum);
 
   kernel_ctxt_free(ctxt);
 
@@ -226,7 +228,7 @@ __host__ int do_host_kernel(cs_t * cs, kernel_info_t limits, int * mask,
 
 	index = cs_index(cs, ic, jc, kc);
 	ifail = mem_addr_rank0(nsites, index);
-	assert(ifail >= 0 && ifail < nsites);
+	test_assert(ifail >= 0 && ifail < nsites);
 
 	mask[mem_addr_rank0(nsites, index)] = index;
 	*isum += 1;

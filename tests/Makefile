@@ -6,7 +6,10 @@
 #
 #    default:         builds unit tests
 #    test:            runs unit tests and d3q19-short (default test)
-#    test-serial:     runs serial tests 
+#    d3q19-short      a batch of shorter tests
+#    d3q19-extra      a extra batch of longer tests
+#    d3q19-io         a batch of tests with file I/O
+#    d3q19-elec       a batch of tests for electrokinetics
 #
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and

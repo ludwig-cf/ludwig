@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2018 The University of Edinburgh
+ *  (c) 2014-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -278,9 +278,9 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio) {
 
   int ntstep;
-  char subdirectory[FILENAME_MAX];
-  char filename[FILENAME_MAX];
-  char stub[FILENAME_MAX];
+  char subdirectory[BUFSIZ];
+  char filename[3*BUFSIZ];
+  char stub[BUFSIZ];
   physics_t * phys = NULL;
 
   assert(pe);
@@ -292,7 +292,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   physics_ref(&phys);
 
   strcpy(stub, "config.cds.init");
-  rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
+  rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
 
   ntstep = physics_control_timestep(phys);
 
@@ -301,7 +301,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   }
   else {
     strcpy(stub, "config.cds");
-    rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
+    rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
     sprintf(filename, "%s%s%8.8d", subdirectory, stub, ntstep);
   }
 

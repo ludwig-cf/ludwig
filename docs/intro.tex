@@ -7,7 +7,7 @@
 %  Edinburgh Soft Matter and Statistical Physics Group and
 %  Edinburgh Parallel Computing Centre
 %
-%  (c) 2016-2018 The University of Edinburgh
+%  (c) 2016-2019 The University of Edinburgh
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -102,99 +102,7 @@ The current stable release is available as the master branch.
 
 \section{Quick Start for Users}
 
-This section provides a brief overview of compiling and running
-the code, which should allow users to get off the ground.
-The section assumes the code has been downloaded and you are in the
-top level directory.
 
-\subsection{Configuration}
-
-You will need to copy one of the existing configuration files from
-the \texttt{config} directory to the top level directory. This file
-sets all the relevant local details for compilation and so on. For
-example:
-\begin{lstlisting}
-$ cp config/lunix-gcc-default.mk config.mk
-\end{lstlisting}
-Edit the new \texttt{config.mk} file to check, or adjust, the options
-as required. You will need to identify your local C compiler. The
-example uses \texttt{gcc}
-in serial, and \texttt{mpicc} in parallel. For MPI in particular,
-local details may vary. A quick way to compile the code is via
-\begin{lstlisting}
-$ cd tests
-$ make compile-mpi-d3q19
-\end{lstlisting}
-This integrates a number of separate stages which are described
-indivually in the following sections. The resulting executable
-will be \texttt{./src/Ludwig.exe} at the top level.
-
-\subsubsection{targetDP}
-
-A \texttt{targetDP} layer is required by the code in all cases. It
-allows compilation for both simple CPU systems and
-for a number of accelerator systems using a single source code. This
-will make the appropriate choices depending what has been specified
-in the top-level \texttt{config.mk} file. From the top-level directory
-\begin{lstlisting}
-$ cd targetDP
-$ make
-\end{lstlisting}
-should produce the appropriate \texttt{libtarget.a} library.
-
-\subsubsection{Serial}
-\label{section:quick-serial}
-
-First, compile the MPI stub library in the \texttt{mpi\_s}
-directory. You should be able to build the library and run the
-tests using, e.g.:
-
-\begin{lstlisting}
-$ make libc
-gcc -Wall -I.  -c mpi_serial.c
-ar -cru libmpi.a mpi_serial.o
-$ make testc
-gcc -Wall   mpi_tests.c -L. -lmpi
-./a.out
-Running mpi_s tests...
-Finished mpi_s tests ok.
-\end{lstlisting}
-
-Now compile the main code in the \texttt{src} directory.
-Compilation should look like:
-
-\begin{lstlisting}
-$ make serial
-make serial-d3q19
-make serial-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
-make lib
-make libar "INC=-I. -I../mpi_s" "LIBS= -L../mpi_s -lmpi -lm"
-gcc -D_D3Q19_ -Wall -O2 -I. -I../mpi_s -c model.c
-gcc -D_D3Q19_ -Wall -O2 -I. -I../mpi_s -c propagation.c
-...
-\end{lstlisting}
-which shows that the default lattice Boltzmann model is D3Q19.
-Successful compilation will provide an executable \texttt{Ludwig.exe}
-which is linked against the MPI stub library.
-
-\subsubsection{Parallel}
-
-Here, you do not need to compile the stub library. Simply compile
-the main code with, e.g.,:
-\begin{lstlisting}
-$ make mpi
-make mpi-d3q19
-make mpi-model "LB=-D_D3Q19_" "LBOBJ=d3q19.o"
-make libmpi
-make libar "CC=mpicc"
-mpicc -D_D3Q19_ -Wall -O2 -I. -c model.c
-mpicc -D_D3Q19_ -Wall -O2 -I. -c propagation.c
-...
-\end{lstlisting}
-
-Again, this should produce an executable \texttt{./Ludwig.exe}
-in the current directory, this time linked against the true MPI
-library.
 
 \subsection{Running an Example}
 
@@ -230,7 +138,7 @@ directory.
 
 Make a copy of the input file
 \begin{lstlisting}
-$ cp ../tests/regression/d3q19/serial-auto-c01.inp .
+$ cp ../tests/regression/d3q19-extra/serial-auto-c01.inp .
 \end{lstlisting}
 
 Inspection of this file will reveal the following: blank lines
@@ -246,7 +154,7 @@ A given value is parsed appropriately in the context of the associated key.
 
 So, the first few lines of the above file are:
 \lstinputlisting[firstline=1, lastline= 16]
-{../tests/regression/d3q19/serial-auto-c01.inp}
+{../tests/regression/d3q19-extra/serial-auto-c01.inp}
 Here, the first key value pair \texttt{N\_cycles 40} sets the number
 of time steps to 40, while the second, \texttt{size 64\_64\_64}, sets
 the system size to be 64 points in each of the three coordinate
@@ -272,7 +180,7 @@ to execute 40 steps. The fist few lines of output should look like:
 $ ./Ludwig.exe ./serial-auto-c01.inp
 \end{lstlisting}
 \lstinputlisting[aboveskip=0pt, firstline=1, lastline= 16]
-{../tests/regression/d3q19/serial-auto-c01.log}
+{../tests/regression/d3q19-extra/serial-auto-c01.log}
 This output shows that the appropriate input file has been read, and
 the system size set correspondingly with a number of default settings
 including periodic boundary conditions. ``No free energy'' tells us we

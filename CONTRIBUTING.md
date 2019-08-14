@@ -16,9 +16,10 @@ Various tests exist in the `test` subdirectory. To check that no
 obvious errors have been introduced by developments one can run
 ```
 $ cd tests
-$ make run-serial-regr-d3q19
+$ make
 ```
-which runs a series of regression tests for the LB D3Q19 model.
+which runs a series of unit tests and a series of regression tests for the
+LB D3Q19 model.
 See the `Makefile` for further options.
 
 Each test reports a pass or fail. Parallel tests are also available.

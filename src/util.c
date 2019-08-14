@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -890,6 +890,8 @@ int util_svd(int m, int n, double ** a, double * w, double ** v) {
 
 
   /* Diagonalisation of the bidiagonal form */
+
+  nm = -1;
 
   for (k = n - 1; k >= 0; k--) {
 

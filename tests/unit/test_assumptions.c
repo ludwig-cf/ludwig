@@ -101,7 +101,7 @@ int test_assumptions_suite(void) {
   /* printf("Language\n");
      printf("__STC__ = %d\n", __STDC__);*/
 #if (__STDC_VERSION__ >= 199901)
-  printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);
+  /* printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);*/
 #endif
   /*
   printf("__DATE__ is %s\n", __DATE__);
@@ -137,10 +137,10 @@ void test_util(void) {
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       if (i == j) {
-	assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
+	test_assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
       }
       else {
-	assert(fabs(d_[i][j] - 0.0) < TEST_DOUBLE_TOLERANCE);
+	test_assert(fabs(d_[i][j] - 0.0) < TEST_DOUBLE_TOLERANCE);
       }
     }
   }
@@ -156,9 +156,9 @@ void test_util(void) {
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       for (k = 0; k < 3; k++) {
-	assert(abs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
-	assert(abs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
-	assert(abs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
+	test_assert(abs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
+	test_assert(abs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
+	test_assert(abs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
       }
     }
   }
@@ -291,7 +291,7 @@ int test_pe_fenv(void) {
 
   const char * s = pe_fegetround_tostring();
 
-  assert(s);
+  test_assert(s != NULL);
   /* printf("Floating point rounding mode: %s\n", s);*/
 
   return 0;

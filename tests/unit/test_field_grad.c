@@ -182,9 +182,10 @@ static int do_test3(pe_t * pe) {
 
 static int do_test5(pe_t * pe) {
 
+#define tol DBL_EPSILON
+
   int nf = 5;
   int ia;
-  double tol = DBL_EPSILON;
   double delsq[3][3];
   double grad[3][3][3];
 

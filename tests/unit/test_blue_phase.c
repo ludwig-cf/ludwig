@@ -127,12 +127,12 @@ static int test_bp_nonfield(void) {
   verbose("q5[4] = %14.7e\n", q5[4]);
   verbose("ifail = %d\n", ifail);
   */
-  assert(ifail == 0);
-  assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
-  assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
-  assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
-  assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
-  assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
+  test_assert(ifail == 0);
+  test_assert(fabs(q5[0] - 2.5214385 ) < FLT_EPSILON);
+  test_assert(fabs(q5[1] - 0.74879672) < FLT_EPSILON);
+  test_assert(fabs(q5[2] - 0.56962409) < FLT_EPSILON);
+  test_assert(fabs(q5[3] - 0.33886852) < FLT_EPSILON);
+  test_assert(fabs(q5[4] - 0.95411133) < FLT_EPSILON);
 
   return 0;
 }
@@ -952,11 +952,11 @@ __global__ void do_test_fe_lc_kernel1(fe_lc_t * fe, fe_lc_param_t ref) {
 
   /* epsilon is sclaed by a factor of 12pi within fe_lc */
 
-  assert(fabs(p.a0 - ref.a0) < DBL_EPSILON);
-  assert(fabs(p.gamma - ref.gamma) < DBL_EPSILON);
-  assert(fabs(p.kappa0 - ref.kappa0) < DBL_EPSILON);
-  assert(fabs(12.0*pi*p.epsilon - ref.epsilon) < FLT_EPSILON);
-  assert(fabs(p.redshift - ref.redshift) < DBL_EPSILON);
+  test_assert(fabs(p.a0 - ref.a0) < DBL_EPSILON);
+  test_assert(fabs(p.gamma - ref.gamma) < DBL_EPSILON);
+  test_assert(fabs(p.kappa0 - ref.kappa0) < DBL_EPSILON);
+  test_assert(fabs(12.0*pi*p.epsilon - ref.epsilon) < FLT_EPSILON);
+  test_assert(fabs(p.redshift - ref.redshift) < DBL_EPSILON);
 
   return;
 }
