@@ -36,7 +36,7 @@ int main (int argc, char ** argv) {
 
   printf("Finished mpi_s tests ok.\n");
 
-  return 0;
+  return ireturn;
 }
 
 /*****************************************************************************
@@ -54,7 +54,7 @@ static int test_mpi_comm_rank(void) {
   assert(ireturn == MPI_SUCCESS);
   assert(rank == 0);
 
-  return MPI_SUCCESS;
+  return ireturn;
 }
 
 /*****************************************************************************
@@ -72,7 +72,7 @@ static int test_mpi_comm_size(void) {
   assert(ireturn == MPI_SUCCESS);
   assert(size == 1);
 
-  return MPI_SUCCESS;
+  return ireturn;
 }
 
 /*****************************************************************************
@@ -106,7 +106,7 @@ static int test_mpi_allreduce(void) {
   assert(irecv[1] == 0);
   assert(irecv[2] == +1);
 
-  return MPI_SUCCESS;
+  return ireturn;
 }
 
 /*****************************************************************************
@@ -162,7 +162,7 @@ static int test_mpi_reduce(void) {
   free(dvsend);
   free(dvrecv);
 
-  return MPI_SUCCESS;
+  return ireturn;
 }
 
 /*****************************************************************************
@@ -181,5 +181,5 @@ int test_mpi_allgather(void) {
 
   assert(ireturn == MPI_SUCCESS);
 
-  return MPI_SUCCESS;
+  return ireturn;
 }
