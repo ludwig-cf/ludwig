@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *  
  *****************************************************************************/
 
@@ -17,6 +17,7 @@
 
 #include "pe.h"
 #include "util.h"
+#include "tests.h"
 
 /* For SVD tests, SVD_EPSILON is increased according to matrix elements... */
 #define SVD_EPSILON (2.0*DBL_EPSILON)
@@ -49,7 +50,7 @@ int test_util_suite(void) {
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
   ifail = util_matrix_create(m, n, &a);
-  assert(ifail == 0);
+  test_assert(ifail == 0);
 
   a[0][0] = -1.0;
   a[0][1] = 0.0;
@@ -59,10 +60,10 @@ int test_util_suite(void) {
   a[2][1] = -1.0;
 
   ifail = util_svd_check(m, n, a);
-  assert(ifail == 0);
+  test_assert(ifail == 0);
 
   ifail = util_svd_solve(m, n, a, b, x);
-  assert(ifail == 0);
+  test_assert(ifail == 0);
 
   util_matrix_free(m, &a);
   util_random_unit_vector_check();
@@ -183,7 +184,7 @@ int util_random_unit_vector_check(void) {
     util_random_unit_vector(&state, rhat);
     rvar = rhat[0]*rhat[0] + rhat[1]*rhat[1] + rhat[2]*rhat[2];
     /* The algorithm is ok to about 5x10^-16 */
-    assert(fabs(rvar - 1.0) < 4.0*DBL_EPSILON);
+    test_assert(fabs(rvar - 1.0) < 4.0*DBL_EPSILON);
     rmean[0] += rhat[0];
     rmean[1] += rhat[1];
     rmean[2] += rhat[2];
@@ -197,21 +198,21 @@ int util_random_unit_vector_check(void) {
 
   /*info("Unit vector modulus is %f (ok)\n", rvar);*/
 
-  assert(rmin >= -1.0);
+  test_assert(rmin >= -1.0);
   /*info("Component min is %g (ok)\n", rmin);*/
   
-  assert(rmax <= +1.0);
+  test_assert(rmax <= +1.0);
   /*info("Component max is %g (ok)\n", rmax);*/
 
   rmean[0] /= NLARGE;
   rmean[1] /= NLARGE;
   rmean[2] /= NLARGE;
 
-  assert(fabs(rmean[0]) < STAT_TOLERANCE);
+  test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
   /*info("Component <X> is %g (ok)\n", rmean[0]);*/
-  assert(fabs(rmean[1]) < STAT_TOLERANCE);
+  test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
   /*info("Component <Y> is %g (ok)\n", rmean[1]);*/
-  assert(fabs(rmean[2]) < STAT_TOLERANCE);
+  test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
   /*info("Component <Z> is %g (ok)\n", rmean[2]);*/
 
 
