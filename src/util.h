@@ -14,6 +14,8 @@
  *  
  ****************************************************************************/
 
+#include <stdint.h>
+
 #ifndef LUDWIG_UTIL_H
 #define LUDWIG_UTIL_H
 
