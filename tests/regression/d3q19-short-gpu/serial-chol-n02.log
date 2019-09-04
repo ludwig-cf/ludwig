@@ -1,0 +1,209 @@
+Welcome to Ludwig v0.9.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: CUDA.
+Default threads per block: 128; max. threads per block: 1024.
+
+Read 42 user parameters from serial-chol-n02.inp
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-02
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9635000e-01
+... gives pitch length     =  3.1999925e+01
+Elastic constant kappa0    =  6.4845600e-04
+Elastic constant kappa1    =  6.4845600e-04
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  3.0000080e-01
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Liquid crystal anchoring
+Anchoring method:          =            two
+Anchoring type (colloids): =         normal
+Anchoring type (walls):          =         normal
+Surface free energy (colloid)w1: =  2.5938240e-03
+Surface free energy (colloid)w2: =  0.0000000e+00
+Surface free energy (wall) w1:   =  0.0000000e+00
+Surface free energy (wall) w2:   =  0.0000000e+00
+Ratio (colloid) w1/kappa0:       =  4.0000000e+00
+Ratio (wall) w1/kappa0:          =  0.0000000e+00
+Computed surface order f(gamma)  =  3.3333333e-01
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  5.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e+00
+Bulk viscosity                1.00000e+00
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    3.50000e+00
+Bulk relaxation time:     3.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 1
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+Requested one colloid via input:
+colloid_one_a0                7.2500000e+00
+colloid_one_ah                7.2500000e+00
+colloid_one_r                 3.2000000e+01  3.2000000e+01  3.2000000e+01
+colloid_one_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+Requested second colloid via input:
+colloid_two_a0                7.2500000e+00
+colloid_two_ah                7.2500000e+00
+colloid_two_r                 4.8000000e+01  3.2000000e+01  3.2000000e+01
+colloid_two_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Initialised 2 colloids
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         7.2500000e+00
+Hydrodynamic radius maximum:  7.2500000e+00
+Surface-surface interaction:  0.0000000e+00
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              4 4 4
+Final cell lengths:           1.6000000e+01  1.6000000e+01  1.6000000e+01
+
+Gradient calculation: 3d_7pt_solid
+
+
+Initialising Q_ab to cholesteric
+Helical axis X
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      258994.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -4.3165667e+04 -1.6666667e-01-7.7306217e-14 -1.6666667e-01-1.6666667e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  2.1271805e+04  8.2132426e-02 3.1281495e-02 -1.6666667e-01 3.3333333e-01
+[phi]  1.8665093e-02  7.2067665e-08 3.1217063e-02 -2.5000000e-01 2.5000000e-01
+
+Momentum - x y z
+[total   ]  3.5942638e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.5942638e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -3.7551327e-05  5.8446340e-19 -6.0833017e-19
+[maximum ]  3.7551111e-05  2.8633672e-18 -4.3108021e-20
+
+Scalars - total mean variance min max
+[rho]      258994.00  1.00000000000  2.6341434e-08  0.99544798423  1.00149280815
+[phi] -4.3152703e+04 -1.6661661e-01 5.8269849e-08 -1.6740144e-01-1.5670750e-01
+[phi] -2.2938648e-15 -8.8568261e-21 2.6690464e-08 -7.0823033e-03 7.0823033e-03
+[phi]  5.4143281e-15  2.0905226e-20 3.3769091e-08 -7.5924269e-03 7.5924269e-03
+[phi]  2.1265219e+04  8.2106995e-02 3.1278470e-02 -1.6690066e-01 3.3397530e-01
+[phi]  1.8653835e-02  7.2024197e-08 3.1212676e-02 -2.5040482e-01 2.5040481e-01
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]              5 -1.6870562224e+01  2.5899400000e+05 -6.5138814893e-05  8.4425272198e-01  2.0280000000e+03  4.1629818638e-04
+
+Momentum - x y z
+[total   ] -1.4841947e-13 -1.3621011e-12 -7.8467818e-16
+[fluid   ]  3.9265760e-07 -1.3655847e-12  8.3613672e-16
+[colloids] -3.9265774e-07  3.4836701e-15 -1.6208149e-15
+
+Velocity - x y z
+[minimum ] -1.2315423e-03 -1.0237514e-03 -1.1950511e-03
+[maximum ]  1.2315424e-03  1.0237514e-03  1.1950511e-03
+
+Completed cycle 5
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      1.990      1.990      1.990   1.990000 (1 call)
+      Time step loop:      0.150      0.170      0.770   0.154000 (5 calls)
+         Propagation:      0.010      0.020      0.070   0.014000 (5 calls)
+    Propagtn (krnl) :      0.010      0.020      0.060   0.012000 (5 calls)
+           Collision:      0.000      0.010      0.010   0.002000 (5 calls)
+   Collision (krnl) :      0.000      0.010      0.010   0.002000 (5 calls)
+       Lattice halos:      0.000      0.030      0.120   0.012000 (10 calls)
+       phi gradients:      0.010      0.020      0.080   0.016000 (5 calls)
+           phi halos:      0.000      0.010      0.020   0.004000 (5 calls)
+              Forces:      0.000      0.000      0.000   0.000000 (5 calls)
+             Rebuild:      0.010      0.010      0.050   0.010000 (5 calls)
+                 BBL:      0.020      0.030      0.130   0.026000 (5 calls)
+      Particle halos:      0.000      0.000      0.000   0.000000 (5 calls)
+   Force calculation:      0.010      0.020      0.070   0.014000 (5 calls)
+   Phi force (krnl) :      0.000      0.010      0.030   0.006000 (5 calls)
+          phi update:      0.020      0.030      0.120   0.024000 (5 calls)
+      Velocity Halo :      0.000      0.000      0.000   0.000000 (5 calls)
+BE mol field (krnl) :      0.000      0.010      0.010   0.002000 (5 calls)
+BP BE update (krnl) :      0.000      0.020      0.060   0.012000 (5 calls)
+     Advectn (krnl) :      0.000      0.010      0.030   0.006000 (5 calls)
+ Advectn BCS (krnl) :      0.000      0.020      0.020   0.004000 (5 calls)
+               Free1:      0.000      0.520      0.520   0.034667 (15 calls)
+               Free3:      0.000      0.010      0.010   0.002000 (5 calls)
+Ludwig finished normally.

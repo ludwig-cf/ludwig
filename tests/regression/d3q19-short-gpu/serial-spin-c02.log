@@ -1,0 +1,180 @@
+Welcome to Ludwig v0.9.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: CUDA.
+Default threads per block: 128; max. threads per block: 1024.
+
+Read 28 user parameters from serial-spin-c02.inp
+
+System details
+--------------
+System size:    64 64 64
+Decomposition:  1 1 1
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  4.50000e-01
+Order parameter noise = off
+Force calculation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               8.33333e-02
+Bulk viscosity                8.33333e-02
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    7.50000e-01
+Bulk relaxation time:     7.50000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: -7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order:  1 (default)
+Initialising phi for spinodal
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_random_a0             2.3000000e+00
+colloid_random_ah             2.3000000e+00
+Requested   20 colloids at random
+Colloid  radius a0 = 2.300000e+00
+Hydrodyn radius ah = 2.300000e+00
+Colloid charges q0 = 0.000000e+00    q1 = 0.000000e+00
+
+Initialised 20 colloids
+
+Soft sphere potential
+epsilon:                   4.0000000e-04
+sigma:                     1.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  2.5000000e-01
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Hydrodynamic radius maximum:  2.3000000e+00
+Surface-surface interaction:  2.5000000e-01
+Centre-centre interaction:    0.0000000e+00
+Final cell list:              13 13 13
+Final cell lengths:           4.9230769e+00  4.9230769e+00  4.9230769e+00
+
+Gradient calculation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]      261110.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -1.1543906e+01 -4.4210890e-05 8.3500524e-04 -4.9999763e-02 4.9999902e-02
+
+Momentum - x y z
+[total   ]  3.6236292e-12  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.6236292e-12  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  6.4804670e+00
+Pair potential energy is:     0.0000000e+00
+
+Colloid velocities - x y z
+[minimum ] -5.0025735e-06 -5.7093547e-06 -6.8108574e-06
+[maximum ]  3.1013956e-06  4.3495831e-06  7.1318726e-06
+
+Scalars - total mean variance min max
+[rho]      261110.00  1.00000000000  1.9689672e-10  0.99988830472  1.00005593456
+[phi] -1.1543906e+01 -4.4210890e-05 1.2066029e-04 -4.6590055e-02 4.9153332e-02
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]             10 -6.3424447383e-01  2.6111000000e+05 -2.4290317255e-06  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  3.5489563e-12 -4.9068551e-15 -1.6004992e-14
+[fluid   ]  5.2553829e-04 -2.3187448e-04 -2.0196332e-04
+[colloids] -5.2553829e-04  2.3187448e-04  2.0196332e-04
+
+Velocity - x y z
+[minimum ] -2.7632818e-05 -2.9968116e-05 -3.2847922e-05
+[maximum ]  3.1223092e-05  2.8474793e-05  2.4961377e-05
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      2.370      2.370      2.370   2.370000 (1 call)
+      Time step loop:      0.130      0.140      1.340   0.134000 (10 calls)
+         Propagation:      0.000      0.020      0.120   0.012000 (10 calls)
+    Propagtn (krnl) :      0.000      0.020      0.120   0.012000 (10 calls)
+           Collision:      0.000      0.020      0.090   0.009000 (10 calls)
+   Collision (krnl) :      0.000      0.020      0.090   0.009000 (10 calls)
+       Lattice halos:      0.000      0.030      0.260   0.013000 (20 calls)
+       phi gradients:      0.000      0.020      0.110   0.011000 (10 calls)
+           phi halos:      0.000      0.000      0.000   0.000000 (10 calls)
+              Forces:      0.000      0.000      0.000   0.000000 (10 calls)
+             Rebuild:      0.010      0.010      0.100   0.010000 (10 calls)
+                 BBL:      0.020      0.030      0.230   0.023000 (10 calls)
+      Particle halos:      0.000      0.010      0.010   0.001000 (10 calls)
+   Force calculation:      0.010      0.020      0.130   0.013000 (10 calls)
+   Phi force (krnl) :      0.000      0.020      0.100   0.010000 (10 calls)
+          phi update:      0.000      0.010      0.030   0.003000 (10 calls)
+     Advectn (krnl) :      0.000      0.000      0.000   0.000000 (10 calls)
+ Advectn BCS (krnl) :      0.000      0.000      0.000   0.000000 (10 calls)
+               Free1:      0.000      0.310      0.320   0.010667 (30 calls)
+               Free3:      0.000      0.010      0.070   0.007000 (10 calls)
+Ludwig finished normally.
