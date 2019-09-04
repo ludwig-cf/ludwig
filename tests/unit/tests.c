@@ -86,6 +86,7 @@ int tests_create() {
   test_util_suite();
 
   test_fe_surfactant1_suite();
+  test_fe_ternary_suite();
 
   /* Failing... pending investigation */
 
