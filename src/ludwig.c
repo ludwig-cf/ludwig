@@ -273,6 +273,10 @@ static int ludwig_rt(ludwig_t * ludwig) {
     fe_surf_phi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
     fe_surf_psi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
   }
+   if (ludwig->fe_ternary) {
+    fe_ternary_phi_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
+    fe_ternary_psi_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
+    }
 
   /* To be called before wall_rt_init() */
   if (ludwig->psi) {
