@@ -1,0 +1,98 @@
+##############################################################################
+#
+#  Spinodal LB smoke test
+#
+##############################################################################
+
+##############################################################################
+#
+#  Run duration
+#
+###############################################################################
+
+N_cycles 10
+
+##############################################################################
+#
+#  System
+#
+##############################################################################
+
+size 64_64_64
+grid 2_2_2
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.00625
+ghost_modes off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy symmetric_lb
+
+A -0.00625
+B 0.00625
+K 0.004
+C 0.0
+
+phi0 0.0
+phi_initialisation    spinodal
+mobility 3.75
+fd_gradient_calculation 3d_27pt_fluid
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+#  freq_statistics N        Output diagnostics every N steps
+#  freq_output     N        Output field state every N steps
+#  freq_config     N        Output full configuration (for restart) every
+#                           N steps (can be large!)
+#  config_at_end            [yes|no] write full configuration at end of run
+#                           [default is yes]
+#
+#  io_grid  NX_NY_NZ        Cartesian processor I/O grid. Default is 1_1_1
+#  The following for particle data are under review...
+#  n_io_nodes               Number of I/O processors for particles
+#  output_format            [ASCII|BINARY] default output format
+#  input_format             [ASCII|BINARY] default input format
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235

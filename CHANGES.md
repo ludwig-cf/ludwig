@@ -1,6 +1,11 @@
 
 ### Changes
 
+version 0.9.1
+- Added target thread model information to output
+- Refactored d_ij and e_ijk from char to int8_t to avoid potential
+  pitfalls with default unsigned char.
+
 version 0.9.0
 - The build process has changed to try to move all the configuration
   to the config.mk file. Please see updated examples in the ./config

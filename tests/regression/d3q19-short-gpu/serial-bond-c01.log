@@ -1,0 +1,172 @@
+Welcome to Ludwig v0.9.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: CUDA.
+Default threads per block: 128; max. threads per block: 1024.
+
+Read 25 user parameters from serial-bond-c01.inp
+
+System details
+--------------
+System size:    32 32 64
+Decomposition:  1 1 1
+Local domain:   32 32 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-02
+Bulk parameter B      =  6.25000e-02
+Surface penalty kappa =  4.00000e-02
+Surface tension       =  4.71405e-02
+Interfacial width     =  1.13137e+00
+
+Using Cahn-Hilliard finite difference solver.
+Mobility M            =  1.50000e-01
+Order parameter noise = off
+Force calculation:      divergence method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e-01
+Bulk viscosity                1.66667e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    1.00000e+00
+Bulk relaxation time:     1.00000e+00
+Ghost relaxation time:    1.00000e+00
+[Default] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order:  1 (default)
+Initialisng phi as block
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+Requested one colloid via input:
+colloid_one                   default
+colloid_one_a0                2.3000000e+00
+colloid_one_ah                2.3000000e+00
+colloid_one_r                 1.6130000e+01  1.6470000e+01  1.6000000e+01
+colloid_one_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Initialised 1 colloid
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         2.3000000e+00
+Final cell list:              8 8 16
+Final cell lengths:           4.0000000e+00  4.0000000e+00  4.0000000e+00
+
+Sedimentation force on:       yes
+Sedimentation force:          0.0000000e+00  0.0000000e+00 -1.0000000e-03
+
+Gradient calculation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       65484.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  0.0000000e+00  0.0000000e+00 9.2965928e-01 -1.0000000e+00 1.0000000e+00
+
+Momentum - x y z
+[total   ]  9.0877306e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  9.0877306e-13  0.0000000e+00  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+
+Colloid velocities - x y z
+[minimum ] -1.1948914e-04  1.3070449e-06 -4.5053019e-05
+[maximum ] -1.1948914e-04  1.3070449e-06 -4.5053019e-05
+
+Scalars - total mean variance min max
+[rho]       65484.00  1.00000000000  4.5491479e-06  0.99745871558  1.01759177465
+[phi]  5.6288307e-13  8.5957344e-18 9.2933314e-01 -1.0001298e+00 1.0001298e+00
+
+Free energies - timestep f v f/v f_s a f_s/a
+[fe]             10 -9.3540909343e+02  6.5484000000e+04 -1.4284544216e-02  0.0000000000e+00
+
+Momentum - x y z
+[total   ] -2.2858451e-13  2.6781217e-14  9.0456115e-13
+[fluid   ]  6.4394861e-03 -6.9528742e-05  2.4188116e-03
+[colloids] -6.4394861e-03  6.9528742e-05 -2.4188116e-03
+
+Velocity - x y z
+[minimum ] -3.0530914e-03 -4.0635313e-03 -3.3170394e-03
+[maximum ]  3.3018765e-03  4.0668579e-03  3.2841686e-03
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.870      0.870      0.870   0.870000 (1 call)
+      Time step loop:      0.030      0.060      0.460   0.046000 (10 calls)
+         Propagation:      0.000      0.010      0.040   0.004000 (10 calls)
+    Propagtn (krnl) :      0.000      0.010      0.030   0.003000 (10 calls)
+           Collision:      0.000      0.020      0.050   0.005000 (10 calls)
+   Collision (krnl) :      0.000      0.020      0.050   0.005000 (10 calls)
+       Lattice halos:      0.000      0.010      0.100   0.005000 (20 calls)
+       phi gradients:      0.000      0.020      0.080   0.008000 (10 calls)
+           phi halos:      0.000      0.010      0.020   0.002000 (10 calls)
+              Forces:      0.000      0.010      0.010   0.001000 (10 calls)
+             Rebuild:      0.000      0.010      0.020   0.002000 (10 calls)
+                 BBL:      0.000      0.010      0.050   0.005000 (10 calls)
+      Particle halos:      0.000      0.000      0.000   0.000000 (10 calls)
+   Force calculation:      0.000      0.010      0.020   0.002000 (10 calls)
+   Phi force (krnl) :      0.000      0.010      0.010   0.001000 (10 calls)
+          phi update:      0.000      0.010      0.020   0.002000 (10 calls)
+     Advectn (krnl) :      0.000      0.000      0.000   0.000000 (10 calls)
+ Advectn BCS (krnl) :      0.000      0.000      0.000   0.000000 (10 calls)
+               Free1:      0.000      0.080      0.090   0.003000 (30 calls)
+               Free3:      0.000      0.000      0.000   0.000000 (10 calls)
+Ludwig finished normally.

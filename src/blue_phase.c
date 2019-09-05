@@ -81,6 +81,7 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			  field_t * q, field_grad_t * dq, fe_lc_t ** pobj) {
 
   int ndevice;
+  int nhalo;
   fe_lc_t * fe = NULL;
 
   assert(pe);
@@ -102,6 +103,13 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   fe->q = q;
   fe->dq = dq;
 
+  /* Additional active stress field "p" */
+
+  cs_nhalo(fe->cs, &nhalo);
+  field_create(fe->pe, fe->cs, 3, "Active P", &fe->p);
+  field_init(fe->p, nhalo, le);
+  field_grad_create(fe->pe, fe->p, 2, &fe->dp);
+
   /* free energy interface functions */
   fe->super.func = &fe_hvt;
   fe->super.id = FE_LC;
@@ -111,13 +119,6 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    /* Additional active stress is host only at present */
-    int nhalo;
-    cs_nhalo(fe->cs, &nhalo);
-    field_create(fe->pe, fe->cs, 3, "Active P", &fe->p);
-    field_init(fe->p, nhalo, le);
-    field_grad_create(fe->pe, fe->p, 2, &fe->dp);
-    /* End additional steps */
     fe->target = fe;
   }
   else {
@@ -135,10 +136,16 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
     tdpAssert(tdpMemcpy(&fe->target->super.func, &vt, sizeof(fe_vt_t *),
 			tdpMemcpyHostToDevice));
 
+    /* Q_ab, gradient */
     tdpAssert(tdpMemcpy(&fe->target->q, &q->target, sizeof(field_t *),
 			tdpMemcpyHostToDevice));
     tdpAssert(tdpMemcpy(&fe->target->dq, &dq->target, sizeof(field_grad_t *),
 			tdpMemcpyHostToDevice));
+    /* Active stress */
+    tdpAssert(tdpMemcpy(&fe->target->p, &fe->p->target, sizeof(field_t *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&fe->target->dp, &fe->dp->target,
+			sizeof(field_grad_t *), tdpMemcpyHostToDevice));
   }
 
   *pobj = fe;
