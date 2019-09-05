@@ -314,8 +314,8 @@ __host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
   field_scalar_array(fe->phi, index, field);
     
   rho = 1.0;
-  phi = field[0];
-  psi = field[1];
+  phi = field[FE_PHI];
+  psi = field[FE_PSI];
     
   drho = 0.0;
   field_grad_pair_grad(fe->dphi, index, grad);
@@ -403,8 +403,8 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
     field_scalar_array(fe->phi, index, field);
 
     rho = 1.0;    
-    phi = field[0];
-    psi = field[1];
+    phi = field[FE_PHI];
+    psi = field[FE_PSI];
     
     field_grad_pair_delsq(fe->dphi, index, delsq);
 
@@ -416,7 +416,7 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
     s2 = (rho - phi - psi)*(rho - phi - psi - 2.0)*(rho - phi - psi - 1.0);
 
     mu[FE_PHI] = 0.125*kappa1*s1 - 0.125*kappa2*s2
-               + kphipsi*(delsq_rho - delsq[FE_PSI]) - kphipsi*delsq[FE_PHI];
+               + kphipsi*(delsq_rho - delsq[FE_PSI]) - krhoroh*delsq[FE_PHI];
 
     /* mu_psi */
     s1 = (rho + phi - psi)*(rho + phi - psi - 2.0)*(rho + phi - psi - 1.0);
@@ -424,7 +424,7 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
 
     mu[FE_PSI] = -0.125*kappa1*s1 - 0.125*kappa2*s2 
                + kappa3*psi*(psi - 1.0)*(2.0*psi - 1.0)
-               + krhorho*delsq_rho + kphipsi*delsq[FE_PHI]
+               + krhorho*delsq_rho - kphipsi*delsq[FE_PHI]
                - kpsipsi*delsq[FE_PSI];
 
     /* mu_rho */
@@ -488,7 +488,10 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     field_grad_pair_grad(fe->dphi, index, grad);
     field_grad_pair_delsq(fe->dphi, index, delsq);
 
-    assert(0); /* dphi from grad etc */
+    dphi[X] = grad[FE_PHI][X]; dpsi[X] = grad[FE_PSI][X];
+    dphi[Y] = grad[FE_PHI][Y]; dpsi[Y] = grad[FE_PSI][Y];
+    dphi[Z] = grad[FE_PHI][Z]; dpsi[Z] = grad[FE_PSI][Z];
+
     drho[X] = 0.0; drho[Y] = 0.0; drho[Z] = 0.0;
     delsq[FE_RHO] = 0.0;
 
@@ -497,7 +500,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     p1 = (kappa1 + kappa2)*
       (0.09375*(rho2*rho2 + phi2*phi2)
        + 0.5625*(rho2*phi2 + rho2*psi2 + phi2*psi2) 
-       - 0.3750*rho*psi*(rho2 + psi*psi2) 
+       - 0.3750*rho*psi*(rho2 + psi2) 
        + 0.75*(rho2*psi  - rho*phi2 - rho*psi2 + phi2*psi)
        - 0.25*rho2*rho + 0.125*rho2 + 0.125*phi2 - 0.25*rho*psi
        - 1.125*rho*phi2*psi);
