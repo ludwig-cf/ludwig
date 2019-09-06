@@ -38,16 +38,6 @@
 #define FE_PSI 1
 #define FE_RHO 2
 
-struct fe_ternary_s {
-    fe_t super;                       /* "Superclass" block */
-    pe_t * pe;                        /* Parallel environment */
-    cs_t * cs;                        /* Coordinate system */
-    fe_ternary_param_t * param;         /* Parameters */
-    field_t * phi;                    /* Single field with {phi,psi} */
-    field_grad_t * dphi;              /* gradients thereof */
-    fe_ternary_t * target;              /* Device copy */
-};
-
 /* Virtual function table (host) */
 
 static fe_vt_t fe_ternary_hvt = {
@@ -416,7 +406,7 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
     s2 = (rho - phi - psi)*(rho - phi - psi - 2.0)*(rho - phi - psi - 1.0);
 
     mu[FE_PHI] = 0.125*kappa1*s1 - 0.125*kappa2*s2
-               + kphipsi*(delsq_rho - delsq[FE_PSI]) - krhoroh*delsq[FE_PHI];
+               + kphipsi*(delsq_rho - delsq[FE_PSI]) - krhorho*delsq[FE_PHI];
 
     /* mu_psi */
     s1 = (rho + phi - psi)*(rho + phi - psi - 2.0)*(rho + phi - psi - 1.0);

@@ -25,10 +25,20 @@ typedef struct fe_ternary_s fe_ternary_t;
 typedef struct fe_ternary_param_s fe_ternary_param_t;
 
 struct fe_ternary_param_s {
-    double alpha;              /* interface width  alpha  */
-    double kappa1;             /* Ternary kappa */
-    double kappa2;
-    double kappa3;
+  double alpha;                     /* interface width  alpha  */
+  double kappa1;                    /* Ternary kappa */
+  double kappa2;
+  double kappa3;
+};
+
+struct fe_ternary_s {
+  fe_t super;                       /* "Superclass" block */
+  pe_t * pe;                        /* Parallel environment */
+  cs_t * cs;                        /* Coordinate system */
+  fe_ternary_param_t * param;       /* Parameters */
+  field_t * phi;                    /* Single field with {phi,psi} */
+  field_grad_t * dphi;              /* gradients thereof */
+  fe_ternary_t * target;            /* Device copy */
 };
 
 
