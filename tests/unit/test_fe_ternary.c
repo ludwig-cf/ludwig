@@ -28,6 +28,13 @@
 #include "tests.h"
 
 __host__ int test_fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi);
+__host__ int test_fe_ternary_fed(pe_t * pe, cs_t * cs, field_t * phi);
+__host__ int test_fe_ternary_mu(pe_t * pe, cs_t * cs, field_t * phi);
+__host__ int test_fe_ternary_str(pe_t * pe, cs_t * cs, field_t * phi);
+
+__host__ int shan_ternary_fed(fe_ternary_t * fe, int index, double * fed);
+__host__ int shan_ternary_mu(fe_ternary_t * fe, int index, double * mu);
+__host__ int shan_ternary_str(fe_ternary_t * fe, int index, double s[3][3]);
 
 /*****************************************************************************
  *
@@ -61,13 +68,9 @@ __host__ int test_fe_ternary_suite(void) {
     field_init(phi, nhalo, NULL);
 
     test_fe_ternary_create(pe, cs, phi);
-    /*
-    test_fe_surf_create(pe, cs, phi);
-    test_fe_surf_xi_etc(pe, cs, phi);
-    test_fe_surf_fed(pe, cs, phi);
-    test_fe_surf_mu(pe, cs, phi);
-    test_fe_surf_str(pe, cs, phi);
-    */
+    test_fe_ternary_fed(pe, cs, phi);
+    test_fe_ternary_mu(pe, cs, phi);
+    test_fe_ternary_str(pe, cs, phi);
 
     field_free(phi);
     cs_free(cs);
@@ -88,7 +91,8 @@ __host__ int test_fe_ternary_suite(void) {
 __host__ int test_fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi) {
 
   fe_ternary_t * fe = NULL;
-  fe_ternary_param_t pref;
+  fe_ternary_param_t pref = {0.1, 0.2, 0.3, 0.4};
+  fe_ternary_param_t p    = {0};
   field_grad_t * dphi = NULL;
 
   assert(pe);
@@ -100,21 +104,188 @@ __host__ int test_fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi) {
 
   assert(fe);
 
+  fe_ternary_param(fe, &p);
+  test_assert((pref.alpha  - p.alpha)  < DBL_EPSILON);
+  test_assert((pref.kappa1 - p.kappa1) < DBL_EPSILON);
+  test_assert((pref.kappa2 - p.kappa2) < DBL_EPSILON);
+  test_assert((pref.kappa3 - p.kappa3) < DBL_EPSILON);
+
   fe_ternary_free(fe);
   field_grad_free(dphi);
 
   return 0;
 }
 
-#ifdef TO_BE_REFERENCE
+/*****************************************************************************
+ *
+ *  test_fe_ternary_fed
+ *
+ *****************************************************************************/
+
+__host__ int test_fe_ternary_fed(pe_t * pe, cs_t * cs, field_t * phi) {
+
+  fe_ternary_t * fe = NULL;
+  field_grad_t * dphi = NULL;
+  fe_ternary_param_t pref = {0.5, 0.6, 0.7, 0.8};
+
+  int index = 1;
+  double phi0[2] = {-0.3, 0.7};
+  double grad[2][3] = {{0.1, -0.2, 0.3}, {-0.4, 0.5, -0.7}};
+  double fed;
+
+  assert(pe);
+  assert(cs);
+  assert(phi);
+
+  field_grad_create(pe, phi, 2, &dphi);
+  fe_ternary_create(pe, cs, phi, dphi, pref, &fe);
+
+  /* No gradients */
+
+  field_scalar_array_set(phi, index, phi0);
+  fe_ternary_fed(fe, index, &fed);
+  test_assert(fabs(fed - 3.3075000e-02) < DBL_EPSILON);
+
+  /* With gradients */
+
+  field_grad_pair_grad_set(dphi, index, grad);
+  fe_ternary_fed(fe, index, &fed);
+  test_assert(fabs(fed - 1.6313750e-01) < DBL_EPSILON);
+
+  fe_ternary_free(fe);
+  field_grad_free(dphi);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_fe_ternary_mu
+ *
+ *****************************************************************************/
+
+__host__ int test_fe_ternary_mu(pe_t * pe, cs_t * cs, field_t * phi) {
+
+  fe_ternary_t * fe = NULL;
+  field_grad_t * dphi = NULL;
+  fe_ternary_param_t pref = {0.5, 0.6, 0.7, 0.8};
+
+  int index = 1;
+  double phi0[2] = {-0.3, 0.7};
+  double d2phi[2] = {0.1, 0.4};
+  double mu[3];
+
+  assert(pe);
+  assert(cs);
+  assert(phi);
+
+  field_grad_create(pe, phi, 2, &dphi);
+  fe_ternary_create(pe, cs, phi, dphi, pref, &fe);
+
+  /* No gradients */
+
+  field_scalar_array_set(phi, index, phi0);
+  fe_ternary_mu(fe, index, mu);
+  test_assert(fabs(mu[0] - -2.9400000e-02) < DBL_EPSILON);
+  test_assert(fabs(mu[1] - -9.6600000e-02) < DBL_EPSILON);
+  test_assert(fabs(mu[2] - -2.9400000e-02) < DBL_EPSILON);
+
+  /* With delsq */
+
+  field_grad_pair_delsq_set(dphi, index, d2phi);
+  fe_ternary_mu(fe, index, mu);
+  test_assert(fabs(mu[0] - -4.0025000e-02) < DBL_EPSILON);
+  test_assert(fabs(mu[1] - -2.0972500e-01) < DBL_EPSILON);
+  test_assert(fabs(mu[2] - -5.0250000e-03) < DBL_EPSILON);
+
+  fe_ternary_free(fe);
+  field_grad_free(dphi);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_fe_ternary_str
+ *
+ *****************************************************************************/
+
+__host__ int test_fe_ternary_str(pe_t * pe, cs_t * cs, field_t * phi) {
+
+  fe_ternary_t * fe = NULL;
+  field_grad_t * dphi = NULL;
+  fe_ternary_param_t pref = {0.5, 0.6, 0.7, 0.8};
+
+  int index = 1;
+  double phi0[2] = {-0.3, 0.7};
+  double d2phi[2] = {0.1, 0.4};
+  double grad[2][3] = {{0.1, -0.2, 0.3}, {-0.4, 0.5, -0.7}};
+  double s[3][3];
+
+  assert(pe);
+  assert(cs);
+  assert(phi);
+
+  field_grad_create(pe, phi, 2, &dphi);
+  fe_ternary_create(pe, cs, phi, dphi, pref, &fe);
+
+  /* No gradients */
+
+  field_scalar_array_set(phi, index, phi0);
+  fe_ternary_str(fe, index, s);
+
+  test_assert(fabs(s[0][0] - 5.2552500e-01) < DBL_EPSILON);
+  test_assert(fabs(s[0][1] - 0.0000000e+00) < DBL_EPSILON);
+  test_assert(fabs(s[0][2] - 0.0000000e+00) < DBL_EPSILON);
+  test_assert(fabs(s[1][0] - 0.0000000e+00) < DBL_EPSILON);
+  test_assert(fabs(s[1][1] - 5.2552500e-01) < DBL_EPSILON);
+  test_assert(fabs(s[1][2] - 0.0000000e+00) < DBL_EPSILON);
+  test_assert(fabs(s[2][0] - 0.0000000e+00) < DBL_EPSILON);
+  test_assert(fabs(s[2][1] - 0.0000000e+00) < DBL_EPSILON);
+  test_assert(fabs(s[2][2] - 5.2552500e-01) < DBL_EPSILON);
+
+  /* With grad */
+
+  field_grad_pair_grad_set(dphi, index, grad);
+  fe_ternary_str(fe, index, s);
+
+  test_assert(fabs(s[0][0] -  4.4077500e-01) < DBL_EPSILON);
+  test_assert(fabs(s[0][1] - -5.7062500e-02) < DBL_EPSILON);
+  test_assert(fabs(s[0][2] -  8.0000000e-02) < DBL_EPSILON);
+  test_assert(fabs(s[1][0] - -5.7062500e-02) < DBL_EPSILON);
+  test_assert(fabs(s[1][1] -  4.6777500e-01) < DBL_EPSILON);
+  test_assert(fabs(s[1][2] - -1.0150000e-01) < DBL_EPSILON);
+  test_assert(fabs(s[2][0] -  8.0000000e-02) < DBL_EPSILON);
+  test_assert(fabs(s[2][1] - -1.0150000e-01) < DBL_EPSILON);
+  test_assert(fabs(s[2][2] -  5.3796250e-01) < DBL_EPSILON);
+
+  /* With delsq */
+
+  field_grad_pair_delsq_set(dphi, index, d2phi);
+  fe_ternary_str(fe, index, s);
+
+  test_assert(fabs(s[0][0] -  3.9790000e-01) < DBL_EPSILON);
+  test_assert(fabs(s[0][1] - -5.7062500e-02) < DBL_EPSILON);
+  test_assert(fabs(s[0][2] -  8.0000000e-02) < DBL_EPSILON);
+  test_assert(fabs(s[1][0] - -5.7062500e-02) < DBL_EPSILON);
+  test_assert(fabs(s[1][1] -  4.2490000e-01) < DBL_EPSILON);
+  test_assert(fabs(s[1][2] - -1.0150000e-01) < DBL_EPSILON);
+  test_assert(fabs(s[2][0] -  8.0000000e-02) < DBL_EPSILON);
+  test_assert(fabs(s[2][1] - -1.0150000e-01) < DBL_EPSILON);
+  test_assert(fabs(s[2][2] -  4.9508750e-01) < DBL_EPSILON);
+
+  fe_ternary_free(fe);
+  field_grad_free(dphi);
+
+  return 0;
+}
+
 
 /****************************************************************************
  *
- *  fe_ternary_fed
- *
  ****************************************************************************/
 
-__host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
+__host__ int shan_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
     
     int ia,ic;
     double a[3], b[3];
@@ -130,7 +301,6 @@ __host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
     field_scalar_array(fe->phi, index, field);
     field_grad_pair_grad(fe->dphi, index, grad);
     
-    assert(0);
     phi = field[0];
     psi = field[1];
     assert(abs(phi)+abs(psi) == 1);
@@ -159,11 +329,9 @@ __host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
 
 /****************************************************************************
  *
- *  fe_ternary_mu
- *
  ****************************************************************************/
 
-__host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
+__host__ int shan_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
     
     double phi;
     double psi;
@@ -198,23 +366,19 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
     -(fe->param->kappa2 - fe->param->kappa1)*delsq[0]
     - (fe->param->kappa2 + fe->param->kappa1 + 4*fe->param->kappa3)*delsq[1]);
     //mu_rho
-  /*  mu[2] = 0.125*fe->param->kappa1*(rho + phi - psi)*(rho + phi - psi - 2)*(rho + phi - psi - 1)
+    mu[2] = 0.125*fe->param->kappa1*(rho + phi - psi)*(rho + phi - psi - 2)*(rho + phi - psi - 1)
     - 0.125*fe->param->kappa2*(rho - phi - psi)*(rho - phi - psi - 2)*(rho - phi - psi -1)
     + 0.25*fe->param->alpha*fe->param->alpha*((fe->param->kappa1 + fe->param->kappa2)*(delsq[1] - delsq[0])
-    + (fe->param->kappa2 - fe->param->kappa1)*delsq_rho);*/
+    + (fe->param->kappa2 - fe->param->kappa1)*delsq_rho);
     
     return 0;
 }
 
 /****************************************************************************
  *
- *  fe_ternary_str
- *
- *  Thermodynamic stress S_ab = p0 delta_ab + P_ab
- *
  ****************************************************************************/
 
-__host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
+__host__ int shan_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     
     int ia, ib,ic;
     double field[2];
@@ -276,4 +440,4 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
         
     return 0;
 }
-#endif
+
