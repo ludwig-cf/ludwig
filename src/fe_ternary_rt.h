@@ -21,7 +21,8 @@
 #include "fe_ternary.h"
 
 __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt, fe_ternary_param_t * p);
-
-
-
+__host__ int fe_ternary_phi_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
+				    field_t * phi);
+__host__ int fe_ternary_psi_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
+				    field_t * phi);
 #endif

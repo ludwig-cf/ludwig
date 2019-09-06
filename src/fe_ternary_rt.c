@@ -21,7 +21,9 @@
 #include "runtime.h"
 #include "fe_ternary.h"
 #include "fe_ternary_rt.h"
-
+#include "field_s.h"
+#include "field_phi_init_rt.h"
+#include "field_psi_init_rt.h"
 
 int field_init_combine_insert(field_t * array, field_t * scalar, int nfin);
 
@@ -82,7 +84,7 @@ __host__ int fe_ternary_phi_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
   field_init(tmp, 0, NULL);
     
   field_phi_init_rt(pe, rt, param, tmp);
-  field_init_ternary_combine_insert(phi, tmp, 0);
+  field_init_combine_insert(phi, tmp, 0);
     
   field_free(tmp);
     
@@ -112,7 +114,7 @@ __host__ int fe_ternary_psi_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
   field_init(tmp, 0, NULL);
     
   field_psi_init_rt(pe, rt, param, tmp);
-  field_init_ternary_combine_insert(phi, tmp, 1);
+  field_init_combine_insert(phi, tmp, 1);
     
   field_free(tmp);
     
