@@ -1,16 +1,16 @@
 /****************************************************************************
  *
- *  field_phi_init.c
+ *  field_ternary_init.c
  *
- *  Initial compositional order parameter configurations.
- *  Independent of the free energy.
+ *  Initial configurations intended for ternary mixtures.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2019 The University of Edinburgh
  *
  *  Contributing authors:
+ *  Shan Chen (shan.chen@epfl.ch)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
@@ -54,7 +54,7 @@ int field_phi_init_ternary_X(field_t * phi) {
 	index = cs_index(phi->cs, ic, jc, kc);
 	x = noffset[X] + ic;
 
-        phi = 0.0;                
+        phi0 = 0.0;                
 	if (x < 0.3*len[X]) phi0 = +1.0;
 	if (x > 0.6*len[X]) phi0 = -1.0;
 
@@ -174,7 +174,7 @@ int field_phi_init_ternary_bbb(field_t * phi) {
 	x = noffset[X] + ic;
 	y = noffset[X] + jc;
 
-	phi = -1.0;
+	phi0 = -1.0;
 	if ((x-x0)*(x-x0) + (y-y0)*(y-y0) <= r*r) phi0 = 0.0;
               
 	field_scalar_set(phi, index, phi0);
