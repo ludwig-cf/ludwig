@@ -36,7 +36,7 @@ int field_ternary_init_X(field_t * phi) {
   int noffset[3];
   int ic, jc, kc, index;
   double x;
-  double phi0;
+  double phi0, psi0, phipsi[2];
   double len[3];
 
   assert(phi);
@@ -53,10 +53,20 @@ int field_ternary_init_X(field_t * phi) {
 	x = noffset[X] + ic;
 
         phi0 = 0.0;                
-	if (x < 0.3*len[X]) phi0 = +1.0;
-	if (x > 0.6*len[X]) phi0 = -1.0;
+	psi0 = 1.0;
 
-	field_scalar_set(phi, index, phi0);
+	if (x < 0.3*len[X]) {
+	  phi0 = +1.0;
+	  psi0 =  0.0;
+	}
+	if (x > 0.6*len[X]) {
+	  phi0 = -1.0;
+	  psi0 =  0.0;
+	}
+
+	phipsi[0] = phi0;
+	phipsi[1] = psi0;
+	field_scalar_array_set(phi, index, phipsi);
       }
     }
   }
@@ -84,7 +94,7 @@ int field_ternary_init_XY(field_t * phi) {
   int noffset[3];
   int ic, jc, kc, index;
   double x, y;
-  double phi0;
+  double phi0, psi0, phipsi[2];
   double len[3];
 
   double x1, x2, x3;
@@ -112,10 +122,20 @@ int field_ternary_init_XY(field_t * phi) {
 	y = noffset[X] + jc;
         
 	phi0 = 0.0;
-	if (x1 < x && x < x2  &&  y1 < y  && y < y2) phi0 = +1.0;
-	if (x2 < x && x < x3  &&  y1 < y  && y < y2) phi0 = -1.0;
+	psi0 = 1.0;
 
-	field_scalar_set(phi, index, phi0);
+	if (x1 < x && x < x2  &&  y1 < y  && y < y2) {
+	  phi0 = +1.0;
+	  psi0 =  0.0;
+	}
+	if (x2 < x && x < x3  &&  y1 < y  && y < y2) {
+	  phi0 = -1.0;
+	  psi0 =  0.0;
+	}
+
+	phipsi[0] = phi0;
+	phipsi[1] = psi0;
+	field_scalar_array_set(phi, index, phipsi);
       }
     }
   }
@@ -133,7 +153,7 @@ int field_ternary_init_bbb(field_t * phi) {
   int noffset[3];
   int ic, jc, kc, index;
   double x, y;
-  double phi0;
+  double phi0, psi0, phipsi[2];
   double len[3];
 
   double x0, y0, r;
@@ -157,9 +177,15 @@ int field_ternary_init_bbb(field_t * phi) {
 	y = noffset[X] + jc;
 
 	phi0 = 1.0;
-	if ((x-x0)*(x-x0) + (y-y0)*(y-y0) <= r*r) phi0 = 0.0;
-             
-	field_scalar_set(phi, index, phi0);
+	psi0 = 0.0;
+	if ((x-x0)*(x-x0) + (y-y0)*(y-y0) <= r*r) {
+	  phi0 = 0.0;
+	  psi0 = 1.0;
+	}
+
+	phipsi[0] = phi0;
+	phipsi[1] = psi0;
+	field_scalar_array_set(phi, index, phipsi);
       }
     }
   }
@@ -173,9 +199,15 @@ int field_ternary_init_bbb(field_t * phi) {
 	y = noffset[X] + jc;
 
 	phi0 = -1.0;
-	if ((x-x0)*(x-x0) + (y-y0)*(y-y0) <= r*r) phi0 = 0.0;
-              
-	field_scalar_set(phi, index, phi0);
+	psi0 =  0.0;
+	if ((x-x0)*(x-x0) + (y-y0)*(y-y0) <= r*r) {
+	  phi0 = 0.0;
+	  psi0 = 1.0;
+	}
+
+	phipsi[0] = phi0;
+	phipsi[1] = psi0;
+	field_scalar_array_set(phi, index, phipsi);
       }
     }
   }
@@ -197,7 +229,7 @@ int field_ternary_init_ggg(field_t * phi) {
   int noffset[3];
   int ic, jc, kc, index;
   double x, y;
-  double phi0;
+  double phi0, psi0, phipsi[2];
   double len[3];
 
   double xl, xr, y0, r;
@@ -222,10 +254,19 @@ int field_ternary_init_ggg(field_t * phi) {
 	y = noffset[X] + jc;
                 
         phi0 = 0.0;
-	if ((x-xl)*(x-xl) + (y-y0)*(y-y0) <= r*r) phi0 =  1.0;
-        if ((x-xr)*(x-xr) + (y-y0)*(y-y0) <= r*r) phi0 = -1.0;
+	psi0 = 1.0;
+	if ((x-xl)*(x-xl) + (y-y0)*(y-y0) <= r*r) {
+	  phi0 =  1.0;
+	  psi0 =  0.0;
+	}
+        if ((x-xr)*(x-xr) + (y-y0)*(y-y0) <= r*r) {
+	  phi0 = -1.0;
+	  psi0 =  0.0;
+	}
 
-	field_scalar_set(phi, index, phi0);
+	phipsi[0] = phi0;
+	phipsi[1] = psi0;
+	field_scalar_array_set(phi, index, phipsi);
       }
     }
   }
