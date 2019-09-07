@@ -26,13 +26,11 @@
 
 /*****************************************************************************
  *
- *  field_phi_init_ternary_X
- *
- *  Initialise one block of chosen thickness at central position on X
+ *  field_ternary_init_X
  *
  *****************************************************************************/
 
-int field_phi_init_ternary_X(field_t * phi) {
+int field_ternary_init_X(field_t * phi) {
     
   int nlocal[3];
   int noffset[3];
@@ -68,7 +66,7 @@ int field_phi_init_ternary_X(field_t * phi) {
 
 /*****************************************************************************
  *
- *  field_phi_init_ternary_XY
+ *  field_ternary_init_XY
  *
  *  Initialise:
  *
@@ -80,7 +78,7 @@ int field_phi_init_ternary_X(field_t * phi) {
  *
  *****************************************************************************/
 
-int field_phi_init_ternary_XY(field_t * phi) {
+int field_ternary_init_XY(field_t * phi) {
     
   int nlocal[3];
   int noffset[3];
@@ -129,7 +127,7 @@ int field_phi_init_ternary_XY(field_t * phi) {
  *
  *****************************************************************************/
 
-int field_phi_init_ternary_bbb(field_t * phi) {
+int field_ternary_init_bbb(field_t * phi) {
     
   int nlocal[3];
   int noffset[3];
@@ -187,13 +185,13 @@ int field_phi_init_ternary_bbb(field_t * phi) {
 
 /*****************************************************************************
  *
- *  field_phi_init_ternary_ggg
+ *  field_ternary_init_ggg
  *
  *  Initialise one block of chosen thickness at central position on X
  *
  *****************************************************************************/
 
-int field_phi_init_ternary_ggg(field_t * phi) {
+int field_ternary_init_ggg(field_t * phi) {
     
   int nlocal[3];
   int noffset[3];
