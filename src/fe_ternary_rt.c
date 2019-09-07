@@ -16,14 +16,14 @@
  ****************************************************************************/
 
 #include <assert.h>
+#include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
 #include "fe_ternary.h"
 #include "fe_ternary_rt.h"
 #include "field_s.h"
-#include "field_phi_init_rt.h"
-#include "field_psi_init_rt.h"
+#include "field_ternary_init.h"
 
 int field_init_combine_insert(field_t * array, field_t * scalar, int nfin);
 
@@ -58,65 +58,39 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
 
 /*****************************************************************************
  *
- *  fe_ternary_phi_init_rt
+ *  fe_ternary_init_rt
  *
- *  Initialise the composition part of the order parameter.
+ *  Initialise fields: phi, psi. These are related.
  *
  *****************************************************************************/
 
-__host__ int fe_ternary_phi_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
-				    field_t * phi) {
-    
-  field_phi_info_t param = {0};
-  field_t * tmp = NULL;
+__host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
+				field_t * phi) {
+  int p;
+  char value[BUFSIZ];
     
   assert(pe);
   assert(rt);
   assert(fe);
   assert(phi);
-    
-  /* Parameters xi0, phi0, phistar */
-  fe_ternary_xi0(fe, &param.xi0);
-    
-  /* Initialise phi via a temporary scalar field */
-    
-  field_create(pe, phi->cs, 1, "tmp", &tmp);
-  field_init(tmp, 0, NULL);
-    
-  field_phi_init_rt(pe, rt, param, tmp);
-  field_init_combine_insert(phi, tmp, 0);
-    
-  field_free(tmp);
-    
-  return 0;
-}
-/*****************************************************************************
- *
- *  fe_ternary_psi_init_rt
- *
- *  Note: phi is the full two-component field used by the free energy.
- *
- *****************************************************************************/
 
-__host__ int fe_ternary_psi_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
-				    field_t * phi) {
-  field_t * tmp = NULL;
-  field_psi_info_t param = {0};
-    
-  assert(pe);
-  assert(rt);
-  assert(fe);
-  assert(phi);
-    
-  /* Initialise surfactant via a temporary field */
-    
-  field_create(pe, phi->cs, 1, "tmp", &tmp);
-  field_init(tmp, 0, NULL);
-    
-  field_psi_init_rt(pe, rt, param, tmp);
-  field_init_combine_insert(phi, tmp, 1);
-    
-  field_free(tmp);
+  p = rt_string_parameter(rt, "ternary_phi_psi_initialisation", value, BUFSIZ);
+
+  if (p != 0 && strcmp(value, "ternary_X") == 0) {
+    field_ternary_init_X(phi);
+  }
+
+  if (p != 0 && strcmp(value, "ternary_XY") == 0) {
+    field_ternary_init_XY(phi);
+  }
+
+  if (p != 0 && strcmp(value, "ternary_bbb") == 0) {
+    field_ternary_init_bbb(phi);
+  }
+
+  if (p != 0 && strcmp(value, "ternary_ggg") == 0) {
+    field_ternary_init_ggg(phi);
+  }
     
   return 0;
 }
