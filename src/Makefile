@@ -77,6 +77,7 @@ OBJS = \
      driven_colloid.o driven_colloid_rt.o \
      ewald.o field.o field_grad.o \
      field_phi_init.o field_phi_init_rt.o field_psi_init_rt.o \
+     field_ternary_init.o \
      fe_electro.o fe_electro_symmetric.o fe_lc_stats.o \
      fe_ternary.o fe_ternary_rt.o \
      gradient_rt.o \
