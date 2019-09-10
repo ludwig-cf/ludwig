@@ -66,6 +66,7 @@
 #include "polar_active_rt.h"
 #include "blue_phase_rt.h"
 #include "lc_droplet_rt.h"
+#include "fe_ternary_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
 
@@ -146,6 +147,7 @@ struct ludwig_s {
   fe_lc_t * fe_lc;             /* LC free energy */
   fe_symm_t * fe_symm;         /* Symmetric free energy */
   fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
+  fe_ternary_t * fe_ternary;   /* Ternary (Semprebon et al.) */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
   colloids_info_t * collinfo;  /* Colloid information */
@@ -272,6 +274,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->fe_surf) {
     fe_surf_phi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
     fe_surf_psi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
+  }
+  if (ludwig->fe_ternary) {
+    fe_ternary_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
   }
 
   /* To be called before wall_rt_init() */
@@ -1361,6 +1366,62 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ludwig->fe_surf = fe;
     ludwig->fe = (fe_t *) fe;
     
+  }
+  else if (strcmp(description, "ternary") == 0) {
+
+    fe_ternary_param_t param;
+    ch_info_t info;
+    fe_ternary_t * fe = NULL;
+
+    nf = 2;       /* Composition, ternary: "phi" and "psi" */
+    nhalo = 2;
+    ngrad = 2;
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+
+    /* No Lees Edwards for the time being */
+
+    field_create(pe, cs, nf, "phi,psi,rho", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, NULL);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Ternary free energy\n");
+    pe_info(pe, "----------------------\n");
+
+    fe_ternary_param_rt(pe, rt, &param);
+    fe_ternary_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
+    fe_ternary_info(fe);
+
+    /* Cahn Hilliard */
+
+    info.nfield = nf;
+
+    n = rt_double_parameter(rt, "ternary_mobility_phi", &info.mobility[0]);
+    if (n == 0) pe_fatal(pe, "Please set mobility_phi in the input\n");
+
+    n = rt_double_parameter(rt, "ternary_mobility_psi", &info.mobility[1]);
+    if (n == 0) pe_fatal(pe, "Please set mobility_psi in the input\n");
+
+    ch_create(pe, cs, info, &ludwig->ch);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
+    ch_info(ludwig->ch);
+
+    /* Coupling between momentum and free energy */
+    /* Hydrodynamics sector (move to hydro_rt?) */
+
+    n = rt_switch(rt, "hydrodynamics");
+    {
+      int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_GRADMU;
+      pth_create(pe, cs, method, &ludwig->pth);
+    }
+
+    ludwig->fe_ternary = fe;
+    ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
 
