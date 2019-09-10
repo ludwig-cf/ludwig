@@ -25,8 +25,6 @@
 #include "field_s.h"
 #include "field_ternary_init.h"
 
-int field_init_combine_insert(field_t * array, field_t * scalar, int nfin);
-
 /****************************************************************************
  *
  *  fe_ternary_param_rt
@@ -90,44 +88,6 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
   if (p != 0 && strcmp(value, "ternary_ggg") == 0) {
     field_ternary_init_ggg(phi);
-  }
-    
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  field_init_combine_insert
- *
- *  Insert scalar field into array field at position nfin
- *
- ****************************************************************************/
-
-int field_init_combine_insert(field_t * array, field_t * scalar, int nfin) {
-    
-  int nlocal[3];
-  int ic, jc, kc, index;
-  double val[2];
-    
-  assert(array);
-  assert(scalar);
-  assert(array->nf == 2);
-  assert(scalar->nf == 1);
-  assert(nfin <= array->nf);
-    
-  cs_nlocal(array->cs, nlocal);
-    
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-                
-	index = cs_index(array->cs, ic, jc, kc);
-	field_scalar_array(array, index, val);
-	field_scalar(scalar, index, val + nfin);
-                
-	field_scalar_array_set(array, index, val);
-      }
-    }
   }
     
   return 0;
