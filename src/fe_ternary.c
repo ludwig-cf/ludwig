@@ -162,14 +162,14 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
   pe_info(pe, "Surface penalty kappa1 = %12.5e\n", fe->param->kappa1);
   pe_info(pe, "Surface penalty kappa2 = %12.5e\n", fe->param->kappa2);
   pe_info(pe, "Surface penalty kappa3 = %12.5e\n", fe->param->kappa3);
-  pe_info(pe, "Interface width       = %12.5e\n", fe->param->alpha);
+  pe_info(pe, "Interface width alpha  = %12.5e\n", fe->param->alpha);
     
   pe_info(pe, "\n");
   pe_info(pe, "Derived quantities\n");
-  pe_info(pe, "Interfacial tension   = %12.5e, %12.5e, %12.5e\n",
-	  sigma[0], sigma[1], sigma[2]);
-  pe_info(pe, "Interfacial width     = %12.5e\n", xi0);
-   
+  pe_info(pe, "Interfacial tension 12 = %12.5e\n",  sigma[0]);
+  pe_info(pe, "Interfacial tension 23 = %12.5e\n",  sigma[1]);
+  pe_info(pe, "Interfacial tension 31 = %12.5e\n",  sigma[2]);
+
   return 0;
 }
 
