@@ -19,7 +19,7 @@
 #include "field.h"
 
 int field_ternary_init_X(field_t * phi);
-int field_ternary_init_XY(field_t * phi);
+int field_ternary_init_2d_double_emulsion(field_t * phi);
 int field_ternary_init_bbb(field_t * phi);
 int field_ternary_init_ggg(field_t * phi);
 

@@ -58,7 +58,7 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
  *
  *  fe_ternary_init_rt
  *
- *  Initialise fields: phi, psi. These are related.
+ *  Initialise fields: phi, psi, rho. These are related.
  *
  *****************************************************************************/
 
@@ -72,14 +72,17 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
   assert(fe);
   assert(phi);
 
-  p = rt_string_parameter(rt, "ternary_phi_psi_initialisation", value, BUFSIZ);
+  p = rt_string_parameter(rt, "ternary_initialisation", value, BUFSIZ);
+
+  pe_info(pe, "\n");
+  pe_info(pe, "Initialising fields for ternary fluid\n");
 
   if (p != 0 && strcmp(value, "ternary_X") == 0) {
     field_ternary_init_X(phi);
   }
 
-  if (p != 0 && strcmp(value, "ternary_XY") == 0) {
-    field_ternary_init_XY(phi);
+  if (p != 0 && strcmp(value, "2d_double_emulsion") == 0) {
+    field_ternary_init_2d_double_emulsion(phi);
   }
 
   if (p != 0 && strcmp(value, "ternary_bbb") == 0) {

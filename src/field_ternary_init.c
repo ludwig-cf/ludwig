@@ -76,9 +76,9 @@ int field_ternary_init_X(field_t * phi) {
 
 /*****************************************************************************
  *
- *  field_ternary_init_XY
+ *  field_ternary_init_2d_double_emulsion
  *
- *  Initialise:
+ *  Initialise a "double emulsion":
  *
  *       phi = 0
  *     -------------------
@@ -88,13 +88,13 @@ int field_ternary_init_X(field_t * phi) {
  *
  *****************************************************************************/
 
-int field_ternary_init_XY(field_t * phi) {
+int field_ternary_init_2d_double_emulsion(field_t * phi) {
     
   int nlocal[3];
   int noffset[3];
   int ic, jc, kc, index;
   double x, y;
-  double phi0, psi0, phipsi[2];
+  double phi0, psi0, phipsi[3];
   double len[3];
 
   double x1, x2, x3;
@@ -112,7 +112,11 @@ int field_ternary_init_XY(field_t * phi) {
   x3 = 0.8*len[X];
   y1 = 0.3*len[Y];
   y2 = 0.7*len[Y];
-    
+
+  /* rho = 1 */
+  phipsi[2] = 1.0;
+
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -120,15 +124,18 @@ int field_ternary_init_XY(field_t * phi) {
 	index = cs_index(phi->cs, ic, jc, kc);
 	x = noffset[X] + ic;
 	y = noffset[X] + jc;
-        
+
+	/* Compoenent c3 */
 	phi0 = 0.0;
 	psi0 = 1.0;
 
 	if (x1 < x && x < x2  &&  y1 < y  && y < y2) {
+	  /* Component c1 */
 	  phi0 = +1.0;
 	  psi0 =  0.0;
 	}
 	if (x2 < x && x < x3  &&  y1 < y  && y < y2) {
+	  /* Compoenent c2 */
 	  phi0 = -1.0;
 	  psi0 =  0.0;
 	}
