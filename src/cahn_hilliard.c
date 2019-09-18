@@ -249,7 +249,7 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe) {
     int index0, index1;
     int n, nfield;
     double flux;
-    double mu0[2], mu1[2];
+    double mu0[3], mu1[3];
 
     assert(ch->info->nfield == ch->flux->nf);
 
