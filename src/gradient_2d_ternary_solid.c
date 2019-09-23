@@ -85,8 +85,8 @@ __host__ int grad_2d_ternary_solid_set(map_t * map) {
 __host__ int grad_2d_ternary_solid_fe_set(fe_ternary_t * fe) {
 
 
-  double k1, k2;
-  double h1, h2;
+  double k1, k2, k3;
+  double h1, h2, h3;
   double a2;
 
   assert(fe);
@@ -95,12 +95,14 @@ __host__ int grad_2d_ternary_solid_fe_set(fe_ternary_t * fe) {
 
   h1 = fe->param->h1;
   h2 = fe->param->h2;
+  h3 = fe->param->h3;
   k1 = fe->param->kappa1;
   k2 = fe->param->kappa2;
+  k3 = fe->param->kappa3;
   a2 = fe->param->alpha*fe->param->alpha;
 
   static_solid.hrka[0] = -(h1/k1 - h2/k2)/a2; /* phi */
-  static_solid.hrka[1] = +(h1/k1 + h2/k2)/a2; /* psi */
+  static_solid.hrka[1] = -(h3/k3)/a2;         /* psi */
 
   return 0;
 }
