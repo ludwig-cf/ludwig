@@ -20,6 +20,7 @@
 #include "field.h"
 #include "hydro.h"
 #include "advection.h"
+#include "map.h"
 
 typedef struct ch_s ch_t;
 typedef struct ch_info_s ch_info_t;
@@ -41,6 +42,7 @@ __host__ int ch_create(pe_t * pe, cs_t * cs, ch_info_t info, ch_t ** ch);
 __host__ int ch_free(ch_t * ch);
 __host__ int ch_info(ch_t * ch);
 __host__ int ch_info_set(ch_t * ch, ch_info_t info);
-__host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro);
+__host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
+		       map_t * map);
 
 #endif

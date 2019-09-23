@@ -151,9 +151,12 @@ __host__ int ch_info_set(ch_t * ch, ch_info_t info) {
  *  hydro is allowed to be NULL, in which case the dynamics is
  *  just relaxational (no velocity field).
  *
+ *  map is allowed to be NULL, in which case there are no boundaries.
+ *
  *****************************************************************************/
 
-__host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro) {
+__host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro,
+		       map_t * map) {
 
   assert(ch);
   assert(fe);
@@ -170,6 +173,8 @@ __host__ int ch_solver(ch_t * ch, fe_t * fe, field_t * phi, hydro_t * hydro) {
   }
 
   ch_flux_mu1(ch, fe);
+
+  if (map) advflux_cs_no_normal_flux(ch->flux, map);
   ch_update_forward_step(ch, phi);
 
   return 0;

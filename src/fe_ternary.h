@@ -29,6 +29,9 @@ struct fe_ternary_param_s {
   double kappa1;                    /* Ternary kappa */
   double kappa2;
   double kappa3;
+  double h1;                        /* Uniform surface free energy h1 */
+  double h2;                        /* Uniform surface free energy h2 */
+  double h3;                        /* Uniform surface free energy h3 */
 };
 
 struct fe_ternary_s {

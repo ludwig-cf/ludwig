@@ -25,6 +25,7 @@
 #include "gradient_3d_7pt_solid.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "gradient_3d_27pt_solid.h"
+#include "gradient_2d_ternary_solid.h"
 #include "gradient_3d_ternary_solid.h"
 
 __host__ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,

@@ -51,6 +51,14 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
   if (p->kappa3 < 0.0) pe_fatal(pe, "Please use ternary_kappa3 >= 0\n");
   if (p->alpha <= 0.0) pe_fatal(pe, "Please use ternary_alpha > 0\n");
 
+  /* Optional wetting parameters */
+  /* In normal circumstances, there are only two independent parameters,
+   * so only h1 and h2 need to be set. However, three are provided */
+
+  rt_double_parameter(rt, "ternary_h1", &p->h1);
+  rt_double_parameter(rt, "ternary_h2", &p->h2);
+  rt_double_parameter(rt, "ternary_h3", &p->h3);
+
   return 0;
 }
 
@@ -83,6 +91,10 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
 
   if (p != 0 && strcmp(value, "2d_double_emulsion") == 0) {
     field_ternary_init_2d_double_emulsion(phi);
+  }
+
+  if (p != 0 && strcmp(value, "2d_tee") == 0) {
+    field_ternary_init_2d_tee(phi);
   }
 
   if (p != 0 && strcmp(value, "ternary_bbb") == 0) {

@@ -152,6 +152,81 @@ int field_ternary_init_2d_double_emulsion(field_t * phi) {
 
 /*****************************************************************************
  *
+ *  field_ternary_init_2d_tee
+ *
+ *  Initialise three phases in a "T" shape:
+ *
+ *       +------------+     There should be roughly equal
+ *       |      |     |     areas 1/3 : 1/3 : 1/3
+ *       | c1   | c2  |
+ *       |------------|
+ *       |    c3      |
+ *       +------------+
+ *
+ *****************************************************************************/
+
+int field_ternary_init_2d_tee(field_t * phi) {
+    
+  int nlocal[3];
+  int noffset[3];
+  int ic, jc, kc, index;
+  double x, y;
+  double phi0, psi0, phipsi[3];
+  double len[3];
+
+  double x1, y1;
+
+  assert(phi);
+  
+  cs_nlocal(phi->cs, nlocal);
+  cs_nlocal_offset(phi->cs, noffset);
+  cs_ltot(phi->cs, len);
+
+  /* Block positions */
+  x1 = 0.50*len[X];
+  y1 = 0.33*len[Y];
+
+  /* rho = 1 */
+  phipsi[2] = 1.0;
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	
+	index = cs_index(phi->cs, ic, jc, kc);
+	x = noffset[X] + ic;
+	y = noffset[X] + jc;
+
+	if (y < y1) {
+	  /* Compoenent c3 */
+	  phi0 = 0.0;
+	  psi0 = 1.0;
+	}
+	else {
+	  if (x < x1) {
+	    /* Component c1 */
+	    phi0 = +1.0;
+	    psi0 =  0.0;
+	  }
+	  else {
+	    /* Compoenent c2 */
+	    phi0 = -1.0;
+	    psi0 =  0.0;
+	  }
+	}
+
+	phipsi[0] = phi0;
+	phipsi[1] = psi0;
+	field_scalar_array_set(phi, index, phipsi);
+      }
+    }
+  }
+    
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *****************************************************************************/
 
 int field_ternary_init_bbb(field_t * phi) {

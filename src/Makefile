@@ -84,7 +84,7 @@ OBJS = \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
      gradient_3d_27pt_fluid.o gradient_3d_27pt_solid.o \
-     gradient_3d_ternary_solid.o \
+     gradient_2d_ternary_solid.o gradient_3d_ternary_solid.o \
      halo_swap.o hydro.o hydro_rt.o interaction.o io_harness.o \
      kernel.o leesedwards_rt.o leslie_ericksen.o \
      lc_droplet.o lc_droplet_rt.o memory.o model.o model_le.o map.o \

@@ -673,7 +673,8 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
       if (ludwig->ch) {
-	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro);
+	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
+		  ludwig->map);
       }
 
       if (ludwig->pch) {
@@ -1395,15 +1396,17 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_ternary_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
     fe_ternary_info(fe);
 
+    grad_2d_ternary_solid_fe_set(fe);
+
     /* Cahn Hilliard */
 
     info.nfield = nf;
 
     n = rt_double_parameter(rt, "ternary_mobility_phi", &info.mobility[0]);
-    if (n == 0) pe_fatal(pe, "Please set mobility_phi in the input\n");
+    if (n == 0) pe_fatal(pe, "Please set ternary_mobility_phi in the input\n");
 
     n = rt_double_parameter(rt, "ternary_mobility_psi", &info.mobility[1]);
-    if (n == 0) pe_fatal(pe, "Please set mobility_psi in the input\n");
+    if (n == 0) pe_fatal(pe, "Please set ternary_mobility_psi in the input\n");
 
     ch_create(pe, cs, info, &ludwig->ch);
 
