@@ -169,6 +169,7 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
   pe_info(pe, "Interfacial tension 12 = %12.5e\n",  sigma[0]);
   pe_info(pe, "Interfacial tension 23 = %12.5e\n",  sigma[1]);
   pe_info(pe, "Interfacial tension 31 = %12.5e\n",  sigma[2]);
+  grad_3d_ternary_solid_fe_set(fe);
 
   return 0;
 }
