@@ -1796,6 +1796,7 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
     if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
+    if (strcmp(status, "status_with_c_h_h_h") == 0) ndata = 4;
 
     rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
 
