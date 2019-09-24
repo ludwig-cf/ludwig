@@ -265,18 +265,18 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				     kc + bs_cv[p][Z]);
 	    map_data(map, ia, wet);
-	    /* c1 = wet[0] = 0.0; */
-	    h1 = wet[1] = 0.002;
+            	    /* c1 = wet[0] = 0.0; */
+	    h1 = wet[1] = -0.002;
 	    /* c2 = wet[2] = 0.0; */
-	    h2 = wet[3] = -0.001;
+	    h2 = wet[3] = 0.002;
 
           //gradt[p] = -(c*phi_b + h)*rkappa;
          
-          if (nop == 0) {
-              gradt[p] =(-h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
+          if (n == 0) {
+              gradt[p] = (-h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
           }
           else{
-              gradt[p] =(h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
+              gradt[p] = (h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
           }
           
 	  }
