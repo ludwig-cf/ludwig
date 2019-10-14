@@ -149,6 +149,9 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
     
   double sigma[3];
   double xi0;
+  double d1, d2, a1, a2, a3;
+  PI_DOUBLE(pi);
+
   pe_t * pe = NULL;
     
   assert(fe);
@@ -168,7 +171,32 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
   pe_info(pe, "Derived quantities\n");
   pe_info(pe, "Interfacial tension 12 = %12.5e\n",  sigma[0]);
   pe_info(pe, "Interfacial tension 23 = %12.5e\n",  sigma[1]);
-  pe_info(pe, "Interfacial tension 31 = %12.5e\n",  sigma[2]);
+  pe_info(pe, "Interfacial tension 13 = %12.5e\n",  sigma[2]);
+
+  /* Equilibrium (internal) angles a_1 a_2 and a_3 */
+  /* Using the sine rule, and the cosine rule, we have, e.g.,
+   *
+   *   cos(pi - a_1) = [(s_12^2 + s_13^2) - s_23^2] / 2s_12 s_13
+   *
+   * with tensions s_12, s_13, and s_23. So we have... */
+
+  /* Todo: check for equilibrium possible here? */
+
+  d1 = sigma[1]*sigma[1] - (sigma[0]*sigma[0] + sigma[2]*sigma[2]);
+  d2 = 2.0*sigma[0]*sigma[2];
+  a1 = acos(d1/d2)*180.0/pi;
+
+  d1 = sigma[2]*sigma[2] - (sigma[0]*sigma[0] + sigma[1]*sigma[1]);
+  d2 = 2.0*sigma[0]*sigma[1];
+  a2 = acos(d1/d2)*180.0/pi;
+
+  d1 = sigma[0]*sigma[0] - (sigma[1]*sigma[1] + sigma[2]*sigma[2]);
+  d2 = 2.0*sigma[1]*sigma[2];
+  a3 = acos(d1/d2)*180.0/pi;
+
+  pe_info(pe, "Equilibrium angle 1      %12.5e\n", a1);
+  pe_info(pe, "Equilibrium angle 2      %12.5e\n", a2);
+  pe_info(pe, "Equilibrium angle 3      %12.5e\n", a3);
 
   return 0;
 }
@@ -222,9 +250,7 @@ __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * values) {
 /****************************************************************************
  *
  *  fe_ternary_sigma
- *  surface tension
- *
- *  Assumes phi^* = (-a/b)^1/2
+ *  Interfacial tensions s_12, s_23, s_13
  *
  ****************************************************************************/
 
@@ -242,7 +268,7 @@ __host__ int fe_ternary_sigma(fe_ternary_t * fe,  double * sigma) {
     
   sigma[0] = alpha*(kappa1 + kappa2)/6.0;
   sigma[1] = alpha*(kappa2 + kappa3)/6.0;
-  sigma[2] = alpha*(kappa3 + kappa1)/6.0;
+  sigma[2] = alpha*(kappa1 + kappa3)/6.0;
     
   return 0;
 }
