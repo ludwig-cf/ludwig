@@ -79,7 +79,7 @@ OBJS = \
      field_phi_init.o field_phi_init_rt.o field_psi_init_rt.o \
      field_ternary_init.o \
      fe_electro.o fe_electro_symmetric.o fe_lc_stats.o \
-     fe_ternary.o fe_ternary_rt.o \
+     fe_ternary.o fe_ternary_rt.o fe_ternary_stats.o \
      gradient_rt.o \
      gradient_2d_5pt_fluid.o gradient_2d_tomita_fluid.o \
      gradient_3d_7pt_fluid.o gradient_3d_7pt_solid.o \
