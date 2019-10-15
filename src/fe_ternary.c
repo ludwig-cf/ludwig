@@ -275,6 +275,57 @@ __host__ int fe_ternary_sigma(fe_ternary_t * fe,  double * sigma) {
 
 /****************************************************************************
  *
+ *  fe_ternary_wetting_angles
+ *
+ *  Return the three factors
+ *
+ *   1/(alpha kappa)^1/2 [(alpha kappa - 4 h)^3/2 - (alpha kappa - 4 h)^3/2]
+ *
+ *  for kappa1, h1, kappa2, h2, and kappa3 h3. These are used in the
+ *  computation of the wetting angles.
+ *
+ ****************************************************************************/
+
+__host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * angle) { 
+
+  double a, h;
+  double kappa1, kappa2, kappa3;
+  double f1, factor[3];
+  PI_DOUBLE(pi);
+
+  a = fe->param->alpha;
+  kappa1 = fe->param->kappa1;
+  kappa2 = fe->param->kappa2;
+  kappa3 = fe->param->kappa3;
+
+  h = fe->param->h1;
+  f1 = pow(a*kappa1 + 4.0*h, 1.5) - pow(a*kappa1 - 4.0*h, 1.5);
+  factor[0] = f1/sqrt(a*kappa1);
+
+  h = fe->param->h2;
+  f1 = pow(a*kappa2 + 4.0*h, 1.5) - pow(a*kappa2 - 4.0*h, 1.5);
+  factor[1] = f1/sqrt(a*kappa2);
+
+  h = fe->param->h3;
+  f1 = pow(a*kappa3 + 4.0*h, 1.5) - pow(a*kappa3 - 4.0*h, 1.5);
+  factor[2] = f1/sqrt(a*kappa3);
+
+  /* angles: 12, 23, 31 */
+  angle[0] = acos((factor[0] - factor[1])/(2.0*(kappa1 + kappa2)));
+  angle[1] = acos((factor[1] - factor[2])/(2.0*(kappa2 + kappa3)));
+  angle[2] = acos((factor[2] - factor[0])/(2.0*(kappa3 + kappa1)));
+
+  /*
+  printf("Angle 12 %14.7e %14.7e\n", fe->param->h1, angle[0]*180.0/pi);
+  printf("Angle 23 %14.7e %14.7e\n", fe->param->h2, angle[1]*180.0/pi);
+  printf("Angle 31 %14.7e %14.7e\n", fe->param->h3, angle[2]*180.0/pi);
+  */
+
+  return 0;
+}
+
+/****************************************************************************
+ *
  *  fe_ternary_xi0
  *
  *  Interfacial width.    interfical width = alpha
