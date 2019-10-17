@@ -52,8 +52,9 @@ __host__ int fe_ternary_free(fe_ternary_t * fe);
 __host__ int fe_ternary_info(fe_ternary_t * fe);
 __host__ int fe_ternary_param_set(fe_ternary_t * fe, fe_ternary_param_t vals);
 __host__ int fe_ternary_sigma(fe_ternary_t * fe, double * sigma1);
-__host__ int fe_ternary_xi0(fe_ternary_t * fe,  double * xi1);
 __host__ int fe_ternary_target(fe_ternary_t * fe, fe_t ** target);
+__host__ int fe_ternary_angles(fe_ternary_t * fe, double * theta);
+__host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * theta);
 
 __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * param);
 __host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed);

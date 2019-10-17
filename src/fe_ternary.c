@@ -146,11 +146,11 @@ __host__ int fe_ternary_free(fe_ternary_t * fe) {
  ****************************************************************************/
 
 __host__ int fe_ternary_info(fe_ternary_t * fe) {
-    
+
+  int wet;
   double sigma[3];
-  double xi0;
-  double d1, d2, a1, a2, a3;
-  PI_DOUBLE(pi);
+  double theta[3];
+  double h1, h2, h3;
 
   pe_t * pe = NULL;
     
@@ -159,7 +159,6 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
   pe = fe->pe;
     
   fe_ternary_sigma(fe, sigma);
-  fe_ternary_xi0(fe, &xi0);
     
   pe_info(pe, "Ternary free energy parameters:\n");
   pe_info(pe, "Surface penalty kappa1 = %12.5e\n", fe->param->kappa1);
@@ -173,30 +172,30 @@ __host__ int fe_ternary_info(fe_ternary_t * fe) {
   pe_info(pe, "Interfacial tension 23 = %12.5e\n",  sigma[1]);
   pe_info(pe, "Interfacial tension 13 = %12.5e\n",  sigma[2]);
 
-  /* Equilibrium (internal) angles a_1 a_2 and a_3 */
-  /* Using the sine rule, and the cosine rule, we have, e.g.,
-   *
-   *   cos(pi - a_1) = [(s_12^2 + s_13^2) - s_23^2] / 2s_12 s_13
-   *
-   * with tensions s_12, s_13, and s_23. So we have... */
-
   /* Todo: check for equilibrium possible here? */
 
-  d1 = sigma[1]*sigma[1] - (sigma[0]*sigma[0] + sigma[2]*sigma[2]);
-  d2 = 2.0*sigma[0]*sigma[2];
-  a1 = acos(d1/d2)*180.0/pi;
+  fe_ternary_angles(fe, theta);
+  pe_info(pe, "Equilibrium angle    1 = %12.5e\n", theta[0]);
+  pe_info(pe, "Equilibrium angle    2 = %12.5e\n", theta[1]);
+  pe_info(pe, "Equilibrium angle    3 = %12.5e\n", theta[2]);
 
-  d1 = sigma[2]*sigma[2] - (sigma[0]*sigma[0] + sigma[1]*sigma[1]);
-  d2 = 2.0*sigma[0]*sigma[1];
-  a2 = acos(d1/d2)*180.0/pi;
+  /* Wetting (if appropriate) */
+  h1 = fe->param->h1;
+  h2 = fe->param->h2;
+  h3 = fe->param->h3;
+  wet = (h1 > 0.0 || h2 > 0.0 || h3 > 0.0);
 
-  d1 = sigma[0]*sigma[0] - (sigma[1]*sigma[1] + sigma[2]*sigma[2]);
-  d2 = 2.0*sigma[1]*sigma[2];
-  a3 = acos(d1/d2)*180.0/pi;
-
-  pe_info(pe, "Equilibrium angle 1      %12.5e\n", a1);
-  pe_info(pe, "Equilibrium angle 2      %12.5e\n", a2);
-  pe_info(pe, "Equilibrium angle 3      %12.5e\n", a3);
+  if (wet) {
+    printf("\n");
+    printf("Solid wetting parameters:\n");
+    pe_info(pe, "Wetting parameter   h1 = %12.5e\n", h1);
+    pe_info(pe, "Wetting parameter   h2 = %12.5e\n", h2);
+    pe_info(pe, "Wetting parameter   h3 = %12.5e\n", h3);
+    fe_ternary_wetting_angles(fe, theta);
+    pe_info(pe, "Wetting angle theta_12 = %12.5e\n", theta[0]);
+    pe_info(pe, "Wetting angle theta_23 = %12.5e\n", theta[1]);
+    pe_info(pe, "Wetting angle theta_31 = %12.5e\n", theta[2]);
+  }
 
   return 0;
 }
@@ -275,14 +274,57 @@ __host__ int fe_ternary_sigma(fe_ternary_t * fe,  double * sigma) {
 
 /****************************************************************************
  *
+ *  fe_ternary_angles
+ *
+ *  Return the three equilibrium angles: theta_1, theta_2, theta_3
+ *  at the fluid three-phase contact. (In degrees.)
+ *
+ *
+ *  Using the sine rule, and the cosine rule, we have, e.g.,
+ *
+ *   cos(pi - theta_1) = [(s_12^2 + s_13^2) - s_23^2] / 2s_12 s_13
+ *
+ *  with tensions s_12, s_13, and s_23.
+ *
+ ****************************************************************************/
+
+__host__ int fe_ternary_angles(fe_ternary_t * fe, double * theta) {
+
+  double sigma[3];
+  double a1, a2, a3;
+  double d1, d2;
+  PI_DOUBLE(pi);
+
+  assert(fe);
+  assert(theta);
+    
+  fe_ternary_sigma(fe, sigma);
+
+  d1 = sigma[1]*sigma[1] - (sigma[0]*sigma[0] + sigma[2]*sigma[2]);
+  d2 = 2.0*sigma[0]*sigma[2];
+  a1 = acos(d1/d2)*180.0/pi;
+
+  d1 = sigma[2]*sigma[2] - (sigma[0]*sigma[0] + sigma[1]*sigma[1]);
+  d2 = 2.0*sigma[0]*sigma[1];
+  a2 = acos(d1/d2)*180.0/pi;
+
+  d1 = sigma[0]*sigma[0] - (sigma[1]*sigma[1] + sigma[2]*sigma[2]);
+  d2 = 2.0*sigma[1]*sigma[2];
+  a3 = acos(d1/d2)*180.0/pi;
+
+  theta[0] = a1;
+  theta[1] = a2;
+  theta[2] = a3;
+
+  return 0;
+}
+
+/****************************************************************************
+ *
  *  fe_ternary_wetting_angles
  *
- *  Return the three factors
- *
- *   1/(alpha kappa)^1/2 [(alpha kappa - 4 h)^3/2 - (alpha kappa - 4 h)^3/2]
- *
- *  for kappa1, h1, kappa2, h2, and kappa3 h3. These are used in the
- *  computation of the wetting angles.
+ *  Return the three angles: theta_12, thera_23, theta_31
+ *  when solid wetting parameters h1, h2, h3 are available.
  *
  ****************************************************************************/
 
@@ -311,15 +353,9 @@ __host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * angle) {
   factor[2] = f1/sqrt(a*kappa3);
 
   /* angles: 12, 23, 31 */
-  angle[0] = acos((factor[0] - factor[1])/(2.0*(kappa1 + kappa2)));
-  angle[1] = acos((factor[1] - factor[2])/(2.0*(kappa2 + kappa3)));
-  angle[2] = acos((factor[2] - factor[0])/(2.0*(kappa3 + kappa1)));
-
-  /*
-  printf("Angle 12 %14.7e %14.7e\n", fe->param->h1, angle[0]*180.0/pi);
-  printf("Angle 23 %14.7e %14.7e\n", fe->param->h2, angle[1]*180.0/pi);
-  printf("Angle 31 %14.7e %14.7e\n", fe->param->h3, angle[2]*180.0/pi);
-  */
+  angle[0] = acos((factor[0] - factor[1])/(2.0*(kappa1 + kappa2)))*180.0/pi;
+  angle[1] = acos((factor[1] - factor[2])/(2.0*(kappa2 + kappa3)))*180.0/pi;
+  angle[2] = acos((factor[2] - factor[0])/(2.0*(kappa3 + kappa1)))*180.0/pi;
 
   return 0;
 }
