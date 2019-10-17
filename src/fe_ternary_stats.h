@@ -19,7 +19,7 @@
 #include "wall.h"
 #include "map.h"
 
-int fe_ternary_stats_info(fe_ternary_t * fe,
-			  wall_t * wall, map_t * map, int step);
+__host__ int fe_ternary_stats_info(fe_ternary_t * fe, wall_t * wall,
+				   map_t * map, int nt);
 
 #endif

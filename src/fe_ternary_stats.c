@@ -32,7 +32,7 @@ __host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb);
 __host__ int fe_ternary_surf(fe_ternary_t * fe, map_t * map, double * fes);
 
 __global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx,
-				       fe_ternary_t * dphi, map_t * map,
+				       fe_ternary_t * fe, map_t * map,
 				       double febulk[1]);
 
 __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
@@ -43,7 +43,7 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
 
 /*****************************************************************************
  *
- *  fe_ternary_statis_info
+ *  fe_ternary_stats_info
  *
  *  Top level driver for free energy statistics.
  *
@@ -73,27 +73,32 @@ __host__ int fe_ternary_stats_info(fe_ternary_t * fe, wall_t * wall,
   fe_ternary_bulk(fe, map, fe_local);
 
   if (wall_present(wall)) {
+    double fes_tot = 0.0;
 
-    fe_ternary_surf(fe, map, fe_local + 3);
+    fe_ternary_surf(fe, map, fe_local + 2);
 
     MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, comm);
+    fes_tot = fe_total[2] + fe_total[3] + fe_total[4];
 
-    pe_info(pe, "\nFree energies - timestep f v f/v f_s1 fs_s2\n");
-    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	      nstep, fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	      fe_total[3], fe_total[4]);
+    /* Report is on two lines:
+     *        time fes_rho fes_phi fes_psi
+     *        time surface fluid   total */
+
+    pe_info(pe, "\nFree energies\n");
+    pe_info(pe, "[rho/phi/psi]  %9d %17.10e %17.10e %17.10e\n",
+	    nstep, fe_total[2], fe_total[3], fe_total[4]);
+    pe_info(pe, "[surf/fl/tot]  %9d %17.10e %17.10e %17.10e\n",
+	    nstep, fes_tot, fe_total[0], fe_total[0] + fes_tot);
   }
   else {
 
     /* Fluid only */
 
-    MPI_Reduce(fe_local, fe_total, 5, MPI_DOUBLE, MPI_SUM, 0, comm);
+    MPI_Reduce(fe_local, fe_total, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-    pe_info(pe, "\nFree energies - timestep f v f/v f_bulk/v f_grad/v\n");
-    pe_info(pe, "[fe] %14d %17.10e %17.10e %17.10e %17.10e %17.10e %17.10e\n",
-	    nstep, 
-	    fe_total[1], fe_total[2], fe_total[1]/fe_total[2],
-	    fe_total[3]/fe_total[2], fe_total[4]/fe_total[2]);
+    pe_info(pe, "\nFree energies\n");
+    pe_info(pe, "[surf/fl/tot]  %9d %17.10e %17.10e %17.10e\n",
+	    nstep, 0.0, fe_total[0], fe_total[0]);
   }
 
   return 0;
@@ -102,20 +107,18 @@ __host__ int fe_ternary_stats_info(fe_ternary_t * fe, wall_t * wall,
 
 /*****************************************************************************
  *
- *  fe_ternary_fe_bulk
+ *  fe_ternary_bulk
  *
  *  Compute (bulk) fluid free energy.
  *
  *****************************************************************************/
 
-__host__ int fe_ternary_fe_bulk(fe_ternary_t * fe, map_t * map) {
+__host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
-
-  double febulk[1] = {0.0};
 
   assert(fe);
   assert(map);
@@ -130,7 +133,7 @@ __host__ int fe_ternary_fe_bulk(fe_ternary_t * fe, map_t * map) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(fe_ternary_bulk_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, fe->target, map->target, febulk);
+		  ctxt->target, fe->target, map->target, feb);
   
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -145,6 +148,9 @@ __host__ int fe_ternary_fe_bulk(fe_ternary_t * fe, map_t * map) {
  *  fe_ternary_surf
  *
  *  Compute terms in the surface free energy.
+ *  Thre terms are returned: fes[0] = h rho
+ *                           fes[1] = h phi
+ *                           fes[2] = h psi
  *
  *  Currently 2d only.
  *
@@ -251,7 +257,7 @@ __global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx, fe_ternary_t * fe,
 
 __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
 				       fe_ternary_param_t param,
-				       field_t * field,
+				       field_t * f,
 				       map_t * map,
 				       double fes[3]) {
   int kindex;
@@ -267,7 +273,7 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
   __shared__ double fespsi[TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(ktx);
-  assert(dphi);
+  assert(f);
 
   kiterations = kernel_iterations(ktx);
 
@@ -278,12 +284,9 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
 
   for_simt_parallel(kindex, kiterations, 1) {
 
-    int nf;
     int ic, jc, kc, ic1, jc1;
     int index, inext, p;
     int status0, status1;
-
-    nf = field->nf;
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -305,8 +308,8 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
 
         if (status1 == MAP_BOUNDARY) {
 	  double rho = 1.0;
-	  double phi = field->data[addr_rank1(phi->nsites, nf, index, FE_PHI)];
-	  double psi = field->data[addr_rank1(phi->nsites, nf, index, FE_PSI)];
+	  double phi = f->data[addr_rank1(f->nsites, f->nf, index, FE_PHI)];
+	  double psi = f->data[addr_rank1(f->nsites, f->nf, index, FE_PSI)];
 	  fesrho[tid] += rho*0.5*(-param.h1 - param.h2);
 	  fesphi[tid] += phi*0.5*(-param.h1 + param.h2);
 	  fespsi[tid] += psi*0.5*( param.h1 + param.h2 - 2.0*param.h3);
