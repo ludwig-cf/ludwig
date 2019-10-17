@@ -110,6 +110,7 @@
 #include "stats_symmetric.h"
 
 #include "fe_lc_stats.h"
+#include "fe_ternary_stats.h"
 
 #include "hydro_s.h"
 #include "lb_model_s.h"
@@ -899,6 +900,10 @@ void ludwig_run(const char * inputfile) {
 	  fe_lc_stats_info(ludwig->pe, ludwig->cs, ludwig->fe_lc,
 			   ludwig->wall, ludwig->map, ludwig->collinfo, step);
 	  break;
+	case FE_TERNARY:
+	  fe_ternary_stats_info(ludwig->fe_ternary, ludwig->wall,
+				ludwig->map, step);
+	  break;
 	default:
 	  stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
 				    ludwig->fe, ludwig->map,
@@ -1370,7 +1375,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if (strcmp(description, "ternary") == 0) {
 
-    fe_ternary_param_t param;
+    fe_ternary_param_t param = {0};
     ch_info_t info;
     fe_ternary_t * fe = NULL;
 
