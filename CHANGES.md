@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.9.2
+- Moved input section in porous media docs to online version only
+
 version 0.9.1
 - Disallow porous media files using "status_with_h" as erroneous.
   Use "status_with_c_h" instead.

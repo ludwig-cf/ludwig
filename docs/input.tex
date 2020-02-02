@@ -691,56 +691,6 @@ constraint of momentum conservation for the system as a whole is
 computed automatically by the code at each time step.
 
 
-\subsection{Porous media}
-
-Porous media calculations can be undertaken when appropriate
-solid/fluid status information is supplied. The are a number
-of switches available in the input file:
-\begin{lstlisting}
-porous_media_file
-porous_media_format
-porous_media_type
-\end{lstlisting}
-
-specifies the file stub name to be read at the start of execution.
-(If the stub name is \texttt{file} then the code will expect to
-find \texttt{file.001-001} in the current directory.
-
-is either \texttt{ASCII} or \texttt{BINARY} as appropriate. Note that
-in parallel, a single data file can be supplied, but it must be binary.
-The default is \texttt{BINARY}.
-
-is either \texttt{status\_only} (the default) or \texttt{status\_with\_h}.
-
-\subsubsection{File format}
-
-In all cases the status (fluid/solid) information is represented by a
-single \texttt{char} (or integer), which must be supplied via the
-porous media file. A single file should contain data matching the
-current system size, and have the $z-$direction running fastest,
-followed by the $y-$direction. Note that in non-periodic directions,
-the structure must be 'closed', i.e., all the points at the edge
-should be solid.
-
-Fluid sites are designated by \texttt{0} and boundary or solid sites
-by \texttt{1}. These data should be of type \texttt{char} in binary,
-and may be integer in ASCII.
-
-Where wetting information is required, the free energy parameter $H$
-can be supplied by using the \texttt{status\_with\_h} switch. In this
-case, the \texttt{char} status is augmented by a single \texttt{double}
-value which is the local value of $H$. The order is then
-$s_1,h_1, s_2, h_2, \ldots$.
-
-An example of how to construct a porous media file is provided in
-\texttt{util/capillary.c}, which builds an appropriate file for
-a square or circular capillary tube. Please see the comments in
-the file for further details. Note that the allowed
-solid/fluid status values are defined in \texttt{src/site\_map.h}.
-A solid boundary is \texttt{BOUNDARY}, while fluid is \texttt{FLUID}.
-
-
-
 \subsection{Order parameter initialisations}
 
 Free energy choices requiring one or more fluid order parameters can make
