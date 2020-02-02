@@ -97,6 +97,9 @@ const int z2 = 36;
 /* You can generate a file with solid/fluid status information only,
  * or one which includes the wetting parameter H or charge Q. */
 
+/* Wetting: Please don't use STATUS_WITH_H; use STATUS_WITH_C_H
+   and set C = 0, if you just want H */
+
 enum {STATUS_ONLY, STATUS_WITH_H, STATUS_WITH_C_H, STATUS_WITH_SIGMA};
 const int output_type = STATUS_ONLY;
 
