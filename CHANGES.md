@@ -1,10 +1,12 @@
 
 ### Changes
-
 version 0.10.0
 - Added target thread model information to output
 - Refactored d_ij and e_ijk from char to int8_t to avoid potential
   pitfalls with default unsigned char.
+
+version 0.9.2
+- Moved input section in porous media docs to online version only
 
 version 0.9.1
 - Disallow porous media files using "status_with_h" as erroneous.

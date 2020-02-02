@@ -105,7 +105,7 @@ const int output_type = STATUS_ONLY;
 
 /* OUTPUT FILENAME */
 
-const char * filename = "capillary.001-001";
+const char * outputfilename = "capillary.001-001";
 
 static void profile(const char *);
 
@@ -578,7 +578,7 @@ int main(int argc, char ** argv) {
 
   /* Write new data as char */
 
-  fp_orig = fopen(filename, "w");
+  fp_orig = fopen(outputfilename, "w");
   if (fp_orig == NULL) {
     printf("Cant open output\n");
     exit(-1);
