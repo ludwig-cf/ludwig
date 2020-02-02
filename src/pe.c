@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -155,6 +155,8 @@ __host__ int pe_message(pe_t * pe) {
 
   if (pe->mpi_rank == 0) {
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
+    tdpThreadModelInfo(stdout);
+    printf("\n");
   }
 
   return 0;

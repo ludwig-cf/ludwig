@@ -7,12 +7,14 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk) 
  *  
  ****************************************************************************/
+
+#include <stdint.h>
 
 #ifndef LUDWIG_UTIL_H
 #define LUDWIG_UTIL_H
@@ -23,8 +25,8 @@
 #include "pe.h"
 #include "coords.h"
 
-#define KRONECKER_DELTA_CHAR(d) const char d[3][3] = {{1,0,0},{0,1,0},{0,0,1}}
-#define LEVI_CIVITA_CHAR(e) const char e[3][3][3] =		\
+#define KRONECKER_DELTA_CHAR(d) const int8_t d[3][3] = {{1,0,0},{0,1,0},{0,0,1}}
+#define LEVI_CIVITA_CHAR(e) const int8_t e[3][3][3] =		\
     {{{0, 0, 0}, { 0, 0, 1}, { 0,-1, 0}},			\
      {{0, 0,-1}, { 0, 0, 0}, { 1, 0, 0}},			\
      {{0, 1, 0}, {-1, 0, 0}, { 0, 0, 0}}}

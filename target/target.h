@@ -16,6 +16,7 @@
  *****************************************************************************/
 
 #include <stddef.h>
+#include <stdio.h>
 
 #ifndef LUDWIG_TARGET_H
 #define LUDWIG_TARGET_H
@@ -94,6 +95,8 @@ __host__ tdpError_t tdpMemcpyToSymbol(void * symbol, const void * src,
 #endif
 
 /* Additional API */
+
+__host__ tdpError_t tdpThreadModelInfo(FILE * fp);
 
 /* Type-specific atomic operations */
 

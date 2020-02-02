@@ -1,0 +1,154 @@
+Welcome to Ludwig v0.9.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: CUDA.
+Default threads per block: 128; max. threads per block: 1024.
+
+Read 32 user parameters from serial-actv-s02.inp
+
+System details
+--------------
+System size:    64 64 1
+Decomposition:  1 1 1
+Local domain:   64 64 1
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e+00
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  0.0000000e+00
+... gives pitch length     =            inf
+Elastic constant kappa0    =  4.0000000e-02
+Elastic constant kappa1    =  4.0000000e-02
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  0.0000000e+00
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                 Yes
+Activity constant zeta0    =  3.3333333e-01
+Activity constant zeta1    =  5.0000000e-02
+Activity constant zeta2    =  0.0000000e+00
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  3.3750000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.33330e+00
+Bulk viscosity                1.33330e+00
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    4.49990e+00
+Bulk relaxation time:     4.49990e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 1
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab to quasi-2d with strip parallel to Y
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -6.2059650e+02 -1.5151282e-01 7.1188129e-03 -1.6666667e-01 3.1825649e-01
+[phi] -3.6082248e-16 -8.8091427e-20 2.2847222e-04 -8.5505036e-02 8.5505036e-02
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  1.3032632e+03  3.1817948e-01 7.1188129e-03 -1.5158982e-01 3.3333333e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Momentum - x y z
+[total   ]  5.6843419e-14  0.0000000e+00  0.0000000e+00
+[fluid   ]  5.6843419e-14  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  6.9021590e-05  0.94703141779  1.01928719360
+[phi] -6.2562059e+02 -1.5273940e-01 5.2634346e-03 -1.6776749e-01 2.8546866e-01
+[phi] -2.6308556e-16 -6.4229874e-20 6.8345581e-04 -1.5507906e-01 1.5507906e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  1.3052116e+03  3.1865516e-01 5.5474665e-03 -1.3107958e-01 3.3505841e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]             20 -2.7856522638e+01  4.0960000000e+03 -6.8009088471e-03 -6.9151716814e-03  1.1426283429e-04  1.0000000000e+00
+
+Momentum - x y z
+[total   ]  2.0945051e-14 -1.7368051e-14  0.0000000e+00
+[fluid   ]  2.0945051e-14 -1.7368051e-14  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -6.8273352e-03 -1.3469543e-02  0.0000000e+00
+[maximum ]  6.8273352e-03  1.3469543e-02  1.1754944e-38
+
+Completed cycle 20
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.510      0.510      0.510   0.510000 (1 call)
+      Time step loop:      0.010      0.030      0.260   0.013000 (20 calls)
+         Propagation:      0.000      0.000      0.000   0.000000 (20 calls)
+    Propagtn (krnl) :      0.000      0.000      0.000   0.000000 (20 calls)
+           Collision:      0.000      0.000      0.000   0.000000 (20 calls)
+   Collision (krnl) :      0.000      0.000      0.000   0.000000 (20 calls)
+       Lattice halos:      0.000      0.010      0.010   0.000500 (20 calls)
+       phi gradients:      0.000      0.020      0.180   0.009000 (20 calls)
+    phi grad (krnl) :      0.000      0.010      0.020   0.001000 (20 calls)
+           phi halos:      0.000      0.010      0.130   0.006500 (20 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (20 calls)
+   Force calculation:      0.000      0.020      0.040   0.002000 (20 calls)
+   Phi force (krnl) :      0.000      0.010      0.010   0.000500 (20 calls)
+          phi update:      0.000      0.010      0.030   0.001500 (20 calls)
+      Velocity Halo :      0.000      0.010      0.020   0.001000 (20 calls)
+BE mol field (krnl) :      0.000      0.000      0.000   0.000000 (20 calls)
+BP BE update (krnl) :      0.000      0.000      0.000   0.000000 (20 calls)
+     Advectn (krnl) :      0.000      0.000      0.000   0.000000 (20 calls)
+ Advectn BCS (krnl) :      0.000      0.010      0.010   0.000500 (20 calls)
+               Free1:      0.000      0.020      0.020   0.001000 (20 calls)
+Ludwig finished normally.

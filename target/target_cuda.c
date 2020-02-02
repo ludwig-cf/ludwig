@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018 The University of Edinburgh
+ *  (c) 2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -15,6 +15,7 @@
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,25 @@
 #include <math.h>
 
 #include "target.h"
+
+/*****************************************************************************
+ *
+ *  tdpThreadModelInfo
+ *
+ *  Provide some information on the model, usually to stdout.
+ *
+ ****************************************************************************/
+
+__host__ tdpError_t tdpThreadModelInfo(FILE * fp) {
+
+  assert(fp);
+
+  fprintf(fp, "Target thread model: CUDA.\n");
+  fprintf(fp, "Default threads per block: %d; max. threads per block: %d.\n",
+	  tdp_get_max_threads(), 1024);
+
+  return tdpSuccess;
+}
 
 /*****************************************************************************
  *
