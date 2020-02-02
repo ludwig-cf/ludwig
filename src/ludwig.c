@@ -1635,7 +1635,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 
   int is_porous_media = 0;
-  int ndata = 0;
+  int ndata = 2;           /* Default is to allow C,H e.g. for colloids */
   int form_in = IO_FORMAT_DEFAULT;
   int form_out = IO_FORMAT_DEFAULT;
   int grid[3] = {1, 1, 1};
@@ -1660,6 +1660,13 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
     if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
+
+    if (strcmp(status, "status_with_h") == 0) {
+      /* This is not to be used as it not implemented correctly. */
+      pe_info(pe, "porous_media_type    status_with_h\n");
+      pe_info(pe, "Please use status_with_c_h (and set C = 0) instead\n");
+      pe_fatal(pe, "Will not continue.\n");
+    }
 
     rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
 
