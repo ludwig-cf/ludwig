@@ -1,6 +1,11 @@
 
 ### Changes
 
+version 0.9.1
+- Disallow porous media files using "status_with_h" as erroneous.
+  Use "status_with_c_h" instead.
+- Bug fix: allow colloid wetting by default.
+
 version 0.9.0
 - The build process has changed to try to move all the configuration
   to the config.mk file. Please see updated examples in the ./config
