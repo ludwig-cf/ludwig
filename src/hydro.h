@@ -2,10 +2,12 @@
  *
  *  hydro.h
  *
+ *  Various hydrodynamic-related quantities.
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,10 +19,31 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "halo_swap.h"
 #include "leesedwards.h"
 #include "io_harness.h"
 
 typedef struct hydro_s hydro_t;
+
+/* Data storage: Always a 3-vector NHDIM */
+
+#define NHDIM 3
+
+struct hydro_s {
+  int nsite;               /* Allocated sites (local) */
+  int nhcomm;              /* Width of halo region for u field */
+  double * u;              /* Velocity field (on host) */
+  double * f;              /* Body force field (on host) */
+  double * eta;            /* Local shear stress */
+
+  pe_t * pe;               /* Parallel environment */
+  cs_t * cs;               /* Coordinate system */
+  lees_edw_t * le;         /* Lees Edwards */
+  io_info_t * info;        /* I/O handler. */
+  halo_swap_t * halo;      /* Halo driver object */
+  hydro_t * target;        /* structure on target */ 
+};
+
 
 typedef enum {HYDRO_U_HALO_HOST, HYDRO_U_HALO_TARGET} hydro_halo_enum_t;
 
