@@ -35,7 +35,7 @@
 #include "field_s.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
-#include "hydro_s.h"
+#include "hydro.h"
 #include "timer.h"
 
 __host__

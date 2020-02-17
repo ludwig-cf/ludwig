@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2019 The University of Edinburgh
+ *  (c) 2014-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,7 +30,9 @@ struct lb_collide_param_s {
   int nsite;
   int ndist;
   double rho0;
+  double eta_shear;
   double var_shear;
+  double eta_bulk;
   double var_bulk;
   double var_noise[NVEL];
   double rtau[NVEL];

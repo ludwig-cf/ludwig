@@ -107,7 +107,6 @@
 
 #include "fe_lc_stats.h"
 
-#include "hydro_s.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 

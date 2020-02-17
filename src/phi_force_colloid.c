@@ -58,7 +58,6 @@
 #include "coords.h"
 #include "kernel.h"
 #include "wall.h"
-#include "hydro_s.h" 
 #include "colloids_s.h"
 #include "map_s.h"
 #include "pth_s.h"
