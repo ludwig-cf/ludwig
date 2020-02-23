@@ -1254,6 +1254,9 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
 
 __host__ __device__ int lb_relaxation_time_shear(lb_t * lb,
 						 double eta, double * rtau) {
+
+  LB_CS2_DOUBLE(cs2);
+
   assert(lb);
 
   *rtau = 1.0/(0.5 + eta / (lb->param->rho0*cs2));
@@ -1273,6 +1276,11 @@ __host__ __device__ int lb_relaxation_time_shear(lb_t * lb,
 __host__ __device__ int lb_relaxation_time_bulk(lb_t * lb,
 					        double eta, double eta_nu,
 					        double * rtau) {
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+  assert(rtau);
+
   *rtau = 0.0;
 
   assert(lb_nrelax_valid(lb->nrelax));
@@ -1307,6 +1315,7 @@ __host__ __device__ int lb_relaxation_time_ghosts(lb_t * lb,
   int p;
   double rtau_ghost;
   double rtau_shear;
+  LB_CS2_DOUBLE(cs2);
 
   assert(lb);
   assert(rtau);
@@ -1579,6 +1588,8 @@ static __host__ __device__
 
 __host__ __device__ double lb_fluctuations_var_eta(double tau, double kt) {
 
+  LB_RCS2_DOUBLE(rcs2);
+
   assert(kt >= 0);
 
   kt = kt*rcs2;         /* Without normalisation kT = cs^2 */
@@ -1596,6 +1607,8 @@ __host__ __device__ double lb_fluctuations_var_eta(double tau, double kt) {
  *****************************************************************************/
 
 __host__ __device__ double lb_fluctuations_var_bulk(double tau, double kt) {
+
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(kt >= 0.0);
 
@@ -1616,6 +1629,8 @@ __host__ __device__ double lb_fluctuations_var_bulk(double tau, double kt) {
 __host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
 						  double * var) {
   int p;
+  LB_RCS2_DOUBLE(rcs2);
+  LB_NORMALISERS_DOUBLE(norm);
 
   assert(rtau);
   assert(kt >= 0.0);
@@ -1625,7 +1640,7 @@ __host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
 
   for (p = NHYDRO; p < NVEL; p++) {
     double tau_g = 1.0/rtau[p];
-    var[p] = sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
+    var[p] = sqrt(kt/norm[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
   }
 
   return 0;
