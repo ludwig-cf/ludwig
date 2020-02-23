@@ -49,6 +49,7 @@ __host__ int visc_arrhenius_create(pe_t * pe, cs_t * cs, field_t * phi,
 				   visc_arrhenius_param_t param,
 				   visc_arrhenius_t ** visc);
 __host__ int visc_arrhenius_free(visc_arrhenius_t * visc);
+__host__ int visc_arrhenius_info(visc_arrhenius_t * visc);
 __host__ int visc_arrhenius_update(visc_arrhenius_t * visc, hydro_t * hydro);
 __host__ int visc_arrhenius_stats(visc_arrhenius_t * visc, hydro_t * hydro);
 

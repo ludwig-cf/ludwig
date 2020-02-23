@@ -120,6 +120,32 @@ __host__ int visc_arrhenius_free(visc_arrhenius_t * visc) {
 
 /*****************************************************************************
  *
+ *  visc_arrhenius_info
+ *
+ *****************************************************************************/
+
+__host__ int visc_arrhenius_info(visc_arrhenius_t * visc) {
+
+  pe_t * pe = NULL;
+
+  assert(visc);
+  assert(visc->pe);
+
+  pe = visc->pe;
+
+  pe_info(pe, "\n");
+  pe_info(pe, "Viscosity model\n");
+  pe_info(pe, "---------------\n");
+  pe_info(pe, "Model:                       %14s\n",   "Arrhenius");
+  pe_info(pe, "Viscosity (eta -ve phase):   %14.7e\n", visc->param->eta_minus);
+  pe_info(pe, "Viscosity (eta +ve phase):   %14.7e\n", visc->param->eta_plus);
+  pe_info(pe, "Composition limit (phistar): %14.7e\n", visc->param->phistar);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  visc_arrhenius_stats
  *
  *  Produce statistics to an appropriate output channel.

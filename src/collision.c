@@ -33,6 +33,7 @@
 #include "model.h"
 #include "lb_model_s.h"
 #include "free_energy.h"
+#include "visc.h"
 #include "control.h"
 #include "collision.h"
 #include "field_s.h"
@@ -50,15 +51,15 @@ void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
 		       fe_symm_t * fe, noise_t * noise);
 
 int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
-		     noise_t * noise, fe_t * fe);
+		     noise_t * noise, fe_t * fe, visc_t * visc);
 int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
-			fe_symm_t * fe);
+			fe_symm_t * fe, visc_t * visc);
 
 static __host__ __device__
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 			       double shat[3][3], double ghat[NVEL]);
 int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
-static __host__ int lb_collision_parameters_commit(lb_t * lb);
+static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc);
 
 static __device__
 void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
@@ -88,6 +89,7 @@ struct collide_param_s {
   double rtau2;
   double eta_shear;
   double eta_bulk;
+  int    have_visc_model;
 };
 
 static __constant__ lb_collide_param_t _lbp;
@@ -132,7 +134,7 @@ __host__ __device__ int lb_fluctuations_ghosts(noise_t * noise, int index,
 
 __host__
 int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
-	       fe_t * fe) {
+	       fe_t * fe, visc_t * visc) {
 
   int ndist;
 
@@ -146,8 +148,8 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collision_noise_var_set(lb, noise);
   lb_collide_param_commit(lb);
 
-  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe);
-  if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe);
+  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe, visc);
+  if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe, visc);
 
   return 0;
 }
@@ -161,7 +163,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
  *****************************************************************************/
 
 __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
-			      noise_t * noise, fe_t * fe) {
+			      noise_t * noise, fe_t * fe, visc_t * visc) {
   int nlocal[3];
   dim3 nblk, ntpb;
   fe_t * fetarget = NULL;
@@ -182,7 +184,7 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
   kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  lb_collision_parameters_commit(lb);
+  lb_collision_parameters_commit(lb, visc);
   if (fe) fe->func->target(fe, &fetarget);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
@@ -371,15 +373,33 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     }
   }
 
-  /* Local relaxation times OR NOTE */
+  /* Local relaxation times */
 
-  for_simd_v(iv, NSIMDVL) {
-    eta[iv] = _cp.eta_shear;
-    eta_bulk[iv] = _cp.eta_bulk;
-    lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
-    lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
-    lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
-    assert(NSIMDVL == 1); /* TODO VECTORISE */
+  if (_cp.have_visc_model == 0) {
+
+    for_simd_v(iv, NSIMDVL) {
+      eta[iv] = _cp.eta_shear;
+      eta_bulk[iv] = _cp.eta_bulk;
+      lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
+      lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
+      lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
+      assert(NSIMDVL == 1); /* TODO VECTORISE */
+    }
+
+  }
+  else {
+
+    /* Use viscosity model values hydro->eta */
+    /* Bulk viscosity will be (eta_bulk/eta_shear)_newtonian*eta_local */
+
+    for_simd_v(iv, NSIMDVL) {
+      eta[iv] = hydro->eta[addr_rank0(hydro->nsite, index0+iv)];
+      eta_bulk[iv] = (_cp.eta_bulk/_cp.eta_shear)*eta[iv];
+      lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
+      lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
+      lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
+      assert(NSIMDVL == 1); /* TODO VECTORISE */
+    }
   }
 
   /* Relax stress with different shear and bulk viscosity */
@@ -579,7 +599,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
  *****************************************************************************/
 
 __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
-				 fe_symm_t * fe) {
+				 fe_symm_t * fe, visc_t * visc) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -602,7 +622,7 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
   kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  lb_collision_parameters_commit(lb);
+  lb_collision_parameters_commit(lb, visc);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
@@ -1707,7 +1727,7 @@ __host__ __device__ int lb_fluctuations_ghosts(noise_t * noise, int index,
  *
  *****************************************************************************/
 
-static __host__ int lb_collision_parameters_commit(lb_t * lb) {
+static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc) {
 
   collide_param_t p;
   physics_t * phys = NULL;
@@ -1732,6 +1752,9 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb) {
   physics_kt(phys, &p.kt);
   physics_eta_shear(phys, &p.eta_shear);
   physics_eta_bulk(phys, &p.eta_bulk);
+
+  p.have_visc_model = 0;
+  if (visc) p.have_visc_model = 1;
 
   /* Pulse force (time dependent) */
   physics_fpulse(phys, fpulse_amplitude);
