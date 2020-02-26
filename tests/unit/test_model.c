@@ -456,20 +456,20 @@ int do_test_model_halo_swap(pe_t * pe, cs_t * cs) {
 
 	  f_expect = 1.0*abs(i - nlocal[X]);
 	  lb_f(lb, index, X, n, &f_actual);
-	  assert(fabs(f_actual - f_expect) < DBL_EPSILON);
+	  test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
 	  f_expect = 1.0*abs(j - nlocal[Y]);
 	  lb_f(lb, index, Y, n, &f_actual);
-	  assert(fabs(f_actual - f_expect) < DBL_EPSILON);
+	  test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
 	  f_expect = 1.0*abs(k - nlocal[Z]);
 	  lb_f(lb, index, Z, n, &f_actual);
-	  assert(fabs(f_actual - f_expect) < DBL_EPSILON);
+	  test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
 	  for (p = 3; p < NVEL; p++) {
 	    lb_f(lb, index, p, n, &f_actual);
 	    f_expect = (double) p;
-	    assert(fabs(f_actual - f_expect) < DBL_EPSILON);
+	    test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	  }
 	}
       }
@@ -539,7 +539,7 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
 	  for (p = 0; p < NVEL; p++) {
 	    lb_f(lb, index, p, n, &f_actual);
 	    f_expect = 1.0*(n*NVEL +  p);
-	    assert(fabs(f_expect - f_actual) < DBL_EPSILON);
+	    test_assert(fabs(f_expect - f_actual) < DBL_EPSILON);
 	  }
 	}
       }
@@ -570,7 +570,7 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
 	    kcdt = k + cv[p][Z];
 
 	    if (test_model_is_domain(cs, icdt, jcdt, kcdt)) {
-	      assert(fabs(f_actual - f_expect) < DBL_EPSILON);
+	      test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	    }
 	  }
 	}

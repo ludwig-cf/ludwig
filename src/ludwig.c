@@ -77,7 +77,6 @@
 #include "colloids_rt.h"
 #include "colloid_sums.h"
 #include "colloids_halo.h"
-#include "colloids_Q_tensor.h"
 #include "build.h"
 #include "subgrid.h"
 #include "colloids.h"
@@ -159,6 +158,8 @@ struct ludwig_s {
 static int ludwig_rt(ludwig_t * ludwig);
 static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
+static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
+
 int free_energy_init_rt(ludwig_t * ludwig);
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
@@ -177,7 +178,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   int ntstep;
   int n, nstat;
   char filename[FILENAME_MAX];
-  char subdirectory[FILENAME_MAX];
+  char subdirectory[FILENAME_MAX/2];
   char value[BUFSIZ];
   int io_grid_default[3] = {1, 1, 1};
   int io_grid[3];
@@ -405,7 +406,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 void ludwig_run(const char * inputfile) {
 
   char    filename[FILENAME_MAX];
-  char    subdirectory[FILENAME_MAX];
+  char    subdirectory[FILENAME_MAX/2];
   int     is_porous_media = 0;
   int     step = 0;
   int     is_subgrid = 0;
@@ -486,7 +487,13 @@ void ludwig_run(const char * inputfile) {
     }
 
     colloids_info_ntotal(ludwig->collinfo, &ncolloid);
-    ludwig_colloids_update(ludwig);
+
+    if ((step % ludwig->collinfo->rebuild_freq) == 0) {
+      ludwig_colloids_update(ludwig);
+    }
+    else {
+      ludwig_colloids_update_low_freq(ludwig);
+    }
 
     /* Order parameter gradients */
 
@@ -1628,7 +1635,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 
   int is_porous_media = 0;
-  int ndata = 0;
+  int ndata = 2;           /* Default is to allow C,H e.g. for colloids */
   int form_in = IO_FORMAT_DEFAULT;
   int form_out = IO_FORMAT_DEFAULT;
   int grid[3] = {1, 1, 1};
@@ -1653,6 +1660,13 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
     if (strcmp(status, "status_with_h") == 0) ndata = 1;
     if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
     if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
+
+    if (strcmp(status, "status_with_h") == 0) {
+      /* This is not to be used as it not implemented correctly. */
+      pe_info(pe, "porous_media_type    status_with_h\n");
+      pe_info(pe, "Please use status_with_c_h (and set C = 0) instead\n");
+      pe_fatal(pe, "Will not continue.\n");
+    }
 
     rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
 
@@ -1684,6 +1698,44 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
   map_halo(map);
 
   *pmap = map;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ludwig_colloids_update_low_freq
+ *
+ *  No rebuild; no lattice operations, but interactions are required.
+ *
+ *****************************************************************************/
+
+static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
+
+  int is_subgrid = 0;
+  int ncolloid = 0;
+
+  assert(ludwig);
+
+  colloids_info_ntotal(ludwig->collinfo, &ncolloid);
+  if (ncolloid == 0) return 0;
+
+  subgrid_on(&is_subgrid);
+
+  if (is_subgrid) {
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);
+  }
+  else {
+    /* This order should be preserved */
+    colloids_info_position_update(ludwig->collinfo);
+    colloids_info_update_cell_list(ludwig->collinfo);
+    colloids_halo_state(ludwig->collinfo);
+    colloids_info_update_lists(ludwig->collinfo);
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+  }
 
   return 0;
 }

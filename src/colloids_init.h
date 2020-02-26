@@ -6,11 +6,12 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef COLLOIDS_INIT_H
+#ifndef LUDWIG_COLLOIDS_INIT_H
+#define LUDWIG_COLLOIDS_INIT_H
 
 #include "pe.h"
 #include "coords.h"

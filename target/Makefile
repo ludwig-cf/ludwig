@@ -13,7 +13,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2018 The University of Edinburgh
+#  (c) 2018-2019 The University of Edinburgh
 #
 #  Contributing authors:
 #  Alan Gray (alang@epcc.ed.ac.uk)
@@ -56,11 +56,13 @@ default:
 test:
 	$(MAKE)
 	$(CC) $(CFLAGS) -c test.c
-	$(CC) $(LDFLAGS) test.o libtarget.a
+	$(CC) $(LDFLAGS) test.o libtarget.a -lm
+	./a.out
 
 testmpi:
 	$(MAKE)
-	$(MPICC) $(MPI_INCL) $(CFLAGS) -c testmpi.c
-	$(MPICC) $(LDFLAGS) testmpi.o libtarget.a $(MPI_LIBS) -lmpi
+	$(MPICC) $(MPI_INC_PATH) $(CFLAGS) -c testmpi.c
+	$(MPICC) $(LDFLAGS) testmpi.o libtarget.a $(MPI_LIB_PATH) -lmpi
+
 clean:
 	rm -f *.o *.a a.out

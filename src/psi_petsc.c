@@ -14,12 +14,11 @@
  *  where psi is the potential, rho_elec is the free charge density, and
  *  epsilon is a permeability.
  *
- *  $Id: psi_petsc.c 2679 2015-06-18 09:18:01Z ohenrich $
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013 The University of Edinburgh
+ *  (c) 2013-2017 The University of Edinburgh
  *
  *  Contributing Authors:
  *    Oliver Henrich (ohenrich@epcc.ed.ac.uk)
@@ -172,25 +171,25 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
   int xs, ys, zs, xw, yw, zw, xe, ye, ze;
   double epsilon;
 
-#ifdef NP_D3Q6
-  double v[7];
-  MatStencil  row, col[7];
-#endif
 
-#ifdef NP_D3Q18
-  double v[19];
-  MatStencil  row, col[19];
-  const double r3 = (1.0/3.0);
-  const double r6 = (1.0/6.0);
-#endif
-
-#ifdef NP_D3Q26
+#if defined NP_D3Q26
   double v[27];
   MatStencil  row, col[27];
   const double r10 = 0.1;
   const double r30 = (1.0/30.0);
   const double r15_7  = (7.0/15.0);
   const double r15_64 = (64.0/15.0);
+
+#elif defined NP_D3Q18
+  double v[19];
+  MatStencil  row, col[19];
+  const double r3 = (1.0/3.0);
+  const double r6 = (1.0/6.0);
+
+#else
+  /*  NP_D3Q6 is the default */
+  double v[7];
+  MatStencil  row, col[7];
 #endif
 
   assert(obj);
@@ -216,43 +215,8 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	row.j = j;
 	row.k = k;
 
-#ifdef NP_D3Q6
-	/* 7-point stencil */
-	col[0].i = row.i; col[0].j = row.j; col[0].k = row.k; v[0] = 6.0 * epsilon;
-	col[1].i = i-1;   col[1].j = j;     col[1].k = k;     v[1] = - epsilon;
-	col[2].i = i;     col[2].j = j-1;   col[2].k = k;     v[2] = - epsilon;
-	col[3].i = i;     col[3].j = j;     col[3].k = k-1;   v[3] = - epsilon;
-	col[4].i = i+1;   col[4].j = j;     col[4].k = k;     v[4] = - epsilon;
-	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = - epsilon;
-	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = - epsilon;
-	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
-#endif
 
-#ifdef NP_D3Q18
-	/* 19-point stencil */
-	col[0].i  = row.i; col[0].j  = row.j; col[0].k  = row.k; v[0]  =  4.0 * epsilon;
-	col[1].i  = i+1;   col[1].j  = j+1;   col[1].k  = k;     v[1]  = - r6 * epsilon;
-	col[2].i  = i+1;   col[2].j  = j;     col[2].k  = k+1;   v[2]  = - r6 * epsilon;
-	col[3].i  = i+1;   col[3].j  = j;     col[3].k  = k;     v[3]  = - r3 * epsilon;
-	col[4].i  = i+1;   col[4].j  = j;     col[4].k  = k-1;   v[4]  = - r6 * epsilon;
-	col[5].i  = i+1;   col[5].j  = j-1;   col[5].k  = k;     v[5]  = - r6 * epsilon;
-	col[6].i  = i;     col[6].j  = j+1;   col[6].k  = k+1;   v[6]  = - r6 * epsilon;
-	col[7].i  = i;     col[7].j  = j+1;   col[7].k  = k;     v[7]  = - r3 * epsilon;
-	col[8].i  = i;     col[8].j  = j+1;   col[8].k  = k-1;   v[8]  = - r6 * epsilon;
-	col[9].i  = i;     col[9].j  = j;     col[9].k  = k+1;   v[9]  = - r3 * epsilon;
-	col[10].i = i;     col[10].j = j;     col[10].k = k-1;   v[10] = - r3 * epsilon;
-	col[11].i = i;     col[11].j = j-1;   col[11].k = k+1;   v[11] = - r6 * epsilon;
-	col[12].i = i;     col[12].j = j-1;   col[12].k = k;     v[12] = - r3 * epsilon;
-	col[13].i = i;     col[13].j = j-1;   col[13].k = k-1;   v[13] = - r6 * epsilon;
-	col[14].i = i-1;   col[14].j = j+1;   col[14].k = k;     v[14] = - r6 * epsilon;
-	col[15].i = i-1;   col[15].j = j;     col[15].k = k+1;   v[15] = - r6 * epsilon;
-	col[16].i = i-1;   col[16].j = j;     col[16].k = k;     v[16] = - r3 * epsilon;
-	col[17].i = i-1;   col[17].j = j;     col[17].k = k-1;   v[17] = - r6 * epsilon;
-	col[18].i = i-1;   col[18].j = j-1;   col[18].k = k;     v[18] = - r6 * epsilon;
-	MatSetValuesStencil(A,1,&row,19,col,v,INSERT_VALUES);
-#endif
-
-#ifdef NP_D3Q26
+#if defined NP_D3Q26
 	/* 27-point stencil */
 	col[0].i  = row.i; col[0].j  = row.j; col[0].k  = row.k; v[0]  =  r15_64 * epsilon;
 	col[1].i  = i-1;   col[1].j  = j-1;   col[1].k  = k-1;   v[1]  = - r30   * epsilon;
@@ -282,6 +246,40 @@ int psi_petsc_compute_laplacian(psi_t * obj) {
 	col[25].i = i+1;   col[25].j = j+1;   col[25].k = k;     v[25] = - r10   * epsilon;
 	col[26].i = i+1;   col[26].j = j+1;   col[26].k = k+1;   v[26] = - r30   * epsilon;
 	MatSetValuesStencil(A,1,&row,27,col,v,INSERT_VALUES);
+
+#elif defined NP_D3Q18
+	/* 19-point stencil */
+	col[0].i  = row.i; col[0].j  = row.j; col[0].k  = row.k; v[0]  =  4.0 * epsilon;
+	col[1].i  = i+1;   col[1].j  = j+1;   col[1].k  = k;     v[1]  = - r6 * epsilon;
+	col[2].i  = i+1;   col[2].j  = j;     col[2].k  = k+1;   v[2]  = - r6 * epsilon;
+	col[3].i  = i+1;   col[3].j  = j;     col[3].k  = k;     v[3]  = - r3 * epsilon;
+	col[4].i  = i+1;   col[4].j  = j;     col[4].k  = k-1;   v[4]  = - r6 * epsilon;
+	col[5].i  = i+1;   col[5].j  = j-1;   col[5].k  = k;     v[5]  = - r6 * epsilon;
+	col[6].i  = i;     col[6].j  = j+1;   col[6].k  = k+1;   v[6]  = - r6 * epsilon;
+	col[7].i  = i;     col[7].j  = j+1;   col[7].k  = k;     v[7]  = - r3 * epsilon;
+	col[8].i  = i;     col[8].j  = j+1;   col[8].k  = k-1;   v[8]  = - r6 * epsilon;
+	col[9].i  = i;     col[9].j  = j;     col[9].k  = k+1;   v[9]  = - r3 * epsilon;
+	col[10].i = i;     col[10].j = j;     col[10].k = k-1;   v[10] = - r3 * epsilon;
+	col[11].i = i;     col[11].j = j-1;   col[11].k = k+1;   v[11] = - r6 * epsilon;
+	col[12].i = i;     col[12].j = j-1;   col[12].k = k;     v[12] = - r3 * epsilon;
+	col[13].i = i;     col[13].j = j-1;   col[13].k = k-1;   v[13] = - r6 * epsilon;
+	col[14].i = i-1;   col[14].j = j+1;   col[14].k = k;     v[14] = - r6 * epsilon;
+	col[15].i = i-1;   col[15].j = j;     col[15].k = k+1;   v[15] = - r6 * epsilon;
+	col[16].i = i-1;   col[16].j = j;     col[16].k = k;     v[16] = - r3 * epsilon;
+	col[17].i = i-1;   col[17].j = j;     col[17].k = k-1;   v[17] = - r6 * epsilon;
+	col[18].i = i-1;   col[18].j = j-1;   col[18].k = k;     v[18] = - r6 * epsilon;
+	MatSetValuesStencil(A,1,&row,19,col,v,INSERT_VALUES);
+
+#else
+	/* 7-point stencil */
+	col[0].i = row.i; col[0].j = row.j; col[0].k = row.k; v[0] = 6.0 * epsilon;
+	col[1].i = i-1;   col[1].j = j;     col[1].k = k;     v[1] = - epsilon;
+	col[2].i = i;     col[2].j = j-1;   col[2].k = k;     v[2] = - epsilon;
+	col[3].i = i;     col[3].j = j;     col[3].k = k-1;   v[3] = - epsilon;
+	col[4].i = i+1;   col[4].j = j;     col[4].k = k;     v[4] = - epsilon;
+	col[5].i = i;     col[5].j = j+1;   col[5].k = k;     v[5] = - epsilon;
+	col[6].i = i;     col[6].j = j;     col[6].k = k+1;   v[6] = - epsilon;
+	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
 #endif
 
       }
@@ -344,30 +342,7 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
   int xs, ys, zs, xw, yw, zw, xe, ye, ze;
   double eps, grad_eps[3];
 
-#ifdef NP_D3Q6
-  double  v[7];
-  MatStencil   row, col[7];
-  const double matval[7] = {6.0, 
-		       -1.0, -1.0, -1.0, 
-		       -1.0, -1.0, -1.0}; 
-#endif
-
-#ifdef NP_D3Q18
-  double v[19];
-  MatStencil  row, col[19];
-
-  const double r3 = (1.0/3.0);
-  const double r6 = (1.0/6.0);
-  const double  matval[19] = {4.0,
-			  -r6, -r6, -r3,
-			  -r6, -r6, -r6,
-			  -r3, -r6, -r3,
-			  -r3, -r6, -r3,
-			  -r6, -r6, -r6,
-			  -r3, -r6, -r6};
-#endif
-
-#ifdef NP_D3Q26
+#if defined NP_D3Q26
   double v[27];
   MatStencil  row, col[27];
 
@@ -386,6 +361,28 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 			 -r30,  -r10  , -r30, 
 			 -r10,  -r15_7, -r10, 
 			 -r30,  -r10  , -r30};
+
+#elif defined NP_D3Q18
+  double v[19];
+  MatStencil  row, col[19];
+
+  const double r3 = (1.0/3.0);
+  const double r6 = (1.0/6.0);
+  const double  matval[19] = {4.0,
+			  -r6, -r6, -r3,
+			  -r6, -r6, -r6,
+			  -r3, -r6, -r3,
+			  -r3, -r6, -r3,
+			  -r6, -r6, -r6,
+			  -r3, -r6, -r6};
+
+#else
+  /* NP_D3Q6 is the default */
+  double  v[7];
+  MatStencil   row, col[7];
+  const double matval[7] = {6.0, 
+		       -1.0, -1.0, -1.0, 
+		       -1.0, -1.0, -1.0}; 
 #endif
 
   assert(obj);
@@ -413,86 +410,7 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	row.j = j;
 	row.k = k;
 
-#ifdef NP_D3Q6
-	/* 7-point stencil */
-	col[0].i = row.i; col[0].j = row.j; col[0].k = row.k;
-	col[1].i = i-1;   col[1].j = j;     col[1].k = k;
-	col[2].i = i;     col[2].j = j-1;   col[2].k = k;
-	col[3].i = i;     col[3].j = j;     col[3].k = k-1;
-	col[4].i = i+1;   col[4].j = j;     col[4].k = k;
-	col[5].i = i;     col[5].j = j+1;   col[5].k = k;
-	col[6].i = i;     col[6].j = j;     col[6].k = k+1;
-
-	ic = (col[0].i + 1) - noffset[X];
-	jc = (col[0].j + 1) - noffset[Y];
-	kc = (col[0].k + 1) - noffset[Z];
-	index = cs_index(obj->cs, ic, jc, kc);
-
-	fepsilon(fe, index, &eps); 
-	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
-
-	for (p = 0; p < PSI_NGRAD; p++){
-
-	  /* Laplacian part of operator */
-	  v[p] = matval[p] * eps;
-
-	  /* Addtional terms in generalised Poisson equation */
-	  for(ia = 0; ia < 3; ia++){
-	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
-	  }
-
-	}
-
-	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
-#endif
-
-#ifdef NP_D3Q18
-	/* 19-point stencil */
-	col[0].i  = row.i; col[0].j  = row.j; col[0].k  = row.k;
-	col[1].i  = i+1;   col[1].j  = j+1;   col[1].k  = k;    
-	col[2].i  = i+1;   col[2].j  = j;     col[2].k  = k+1;  
-	col[3].i  = i+1;   col[3].j  = j;     col[3].k  = k;    
-	col[4].i  = i+1;   col[4].j  = j;     col[4].k  = k-1;  
-	col[5].i  = i+1;   col[5].j  = j-1;   col[5].k  = k;    
-	col[6].i  = i;     col[6].j  = j+1;   col[6].k  = k+1;  
-	col[7].i  = i;     col[7].j  = j+1;   col[7].k  = k;    
-	col[8].i  = i;     col[8].j  = j+1;   col[8].k  = k-1;  
-	col[9].i  = i;     col[9].j  = j;     col[9].k  = k+1;  
-	col[10].i = i;     col[10].j = j;     col[10].k = k-1;  
-	col[11].i = i;     col[11].j = j-1;   col[11].k = k+1;  
-	col[12].i = i;     col[12].j = j-1;   col[12].k = k;    
-	col[13].i = i;     col[13].j = j-1;   col[13].k = k-1;  
-	col[14].i = i-1;   col[14].j = j+1;   col[14].k = k;    
-	col[15].i = i-1;   col[15].j = j;     col[15].k = k+1;  
-	col[16].i = i-1;   col[16].j = j;     col[16].k = k;    
-	col[17].i = i-1;   col[17].j = j;     col[17].k = k-1;  
-	col[18].i = i-1;   col[18].j = j-1;   col[18].k = k;    
-
-        /* Laplacian part of operator */
-	ic = (col[0].i + 1) - noffset[X];
-	jc = (col[0].j + 1) - noffset[Y];
-	kc = (col[0].k + 1) - noffset[Z];
-	index = cs_index(obj->cs, ic, jc, kc);
-
-	fepsilon(fe, index, &eps); 
-	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
-
-	for (p = 0; p < PSI_NGRAD; p++){
-
-	  /* Laplacian part of operator */
-	  v[p] = matval[p] * eps;
-
-	  /* Addtional terms in generalised Poisson equation */
-	  for(ia = 0; ia < 3; ia++){
-	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
-	  }
-
-	}
-
-	MatSetValuesStencil(A,1,&row,19,col,v,INSERT_VALUES);
-#endif
-
-#ifdef NP_D3Q26
+#if defined NP_D3Q26
 	/* 27-point stencil */
 	col[0].i  = row.i; col[0].j  = row.j; col[0].k  = row.k;
 	col[1].i  = i-1;   col[1].j  = j-1;   col[1].k  = k-1;  
@@ -544,6 +462,83 @@ int psi_petsc_compute_matrix(psi_t * obj, fe_es_t * fe, f_vare_t fepsilon) {
 	}
 	
 	MatSetValuesStencil(A,1,&row,27,col,v,INSERT_VALUES);
+
+#elif defined NP_D3Q18
+	/* 19-point stencil */
+	col[0].i  = row.i; col[0].j  = row.j; col[0].k  = row.k;
+	col[1].i  = i+1;   col[1].j  = j+1;   col[1].k  = k;    
+	col[2].i  = i+1;   col[2].j  = j;     col[2].k  = k+1;  
+	col[3].i  = i+1;   col[3].j  = j;     col[3].k  = k;    
+	col[4].i  = i+1;   col[4].j  = j;     col[4].k  = k-1;  
+	col[5].i  = i+1;   col[5].j  = j-1;   col[5].k  = k;    
+	col[6].i  = i;     col[6].j  = j+1;   col[6].k  = k+1;  
+	col[7].i  = i;     col[7].j  = j+1;   col[7].k  = k;    
+	col[8].i  = i;     col[8].j  = j+1;   col[8].k  = k-1;  
+	col[9].i  = i;     col[9].j  = j;     col[9].k  = k+1;  
+	col[10].i = i;     col[10].j = j;     col[10].k = k-1;  
+	col[11].i = i;     col[11].j = j-1;   col[11].k = k+1;  
+	col[12].i = i;     col[12].j = j-1;   col[12].k = k;    
+	col[13].i = i;     col[13].j = j-1;   col[13].k = k-1;  
+	col[14].i = i-1;   col[14].j = j+1;   col[14].k = k;    
+	col[15].i = i-1;   col[15].j = j;     col[15].k = k+1;  
+	col[16].i = i-1;   col[16].j = j;     col[16].k = k;    
+	col[17].i = i-1;   col[17].j = j;     col[17].k = k-1;  
+	col[18].i = i-1;   col[18].j = j-1;   col[18].k = k;    
+
+        /* Laplacian part of operator */
+	ic = (col[0].i + 1) - noffset[X];
+	jc = (col[0].j + 1) - noffset[Y];
+	kc = (col[0].k + 1) - noffset[Z];
+	index = cs_index(obj->cs, ic, jc, kc);
+
+	fepsilon(fe, index, &eps); 
+	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
+
+	for (p = 0; p < PSI_NGRAD; p++){
+
+	  /* Laplacian part of operator */
+	  v[p] = matval[p] * eps;
+
+	  /* Addtional terms in generalised Poisson equation */
+	  for(ia = 0; ia < 3; ia++){
+	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
+	  }
+
+	}
+
+	MatSetValuesStencil(A,1,&row,19,col,v,INSERT_VALUES);
+
+#else
+	/* 7-point stencil */
+	col[0].i = row.i; col[0].j = row.j; col[0].k = row.k;
+	col[1].i = i-1;   col[1].j = j;     col[1].k = k;
+	col[2].i = i;     col[2].j = j-1;   col[2].k = k;
+	col[3].i = i;     col[3].j = j;     col[3].k = k-1;
+	col[4].i = i+1;   col[4].j = j;     col[4].k = k;
+	col[5].i = i;     col[5].j = j+1;   col[5].k = k;
+	col[6].i = i;     col[6].j = j;     col[6].k = k+1;
+
+	ic = (col[0].i + 1) - noffset[X];
+	jc = (col[0].j + 1) - noffset[Y];
+	kc = (col[0].k + 1) - noffset[Z];
+	index = cs_index(obj->cs, ic, jc, kc);
+
+	fepsilon(fe, index, &eps); 
+	psi_grad_eps_d3qx(obj, (fe_t *) fe, fepsilon, index, grad_eps);
+
+	for (p = 0; p < PSI_NGRAD; p++){
+
+	  /* Laplacian part of operator */
+	  v[p] = matval[p] * eps;
+
+	  /* Addtional terms in generalised Poisson equation */
+	  for(ia = 0; ia < 3; ia++){
+	    v[p] -= grad_eps[ia] * psi_gr_wv[p] * psi_gr_rcs2 * psi_gr_cv[p][ia];
+	  }
+
+	}
+
+	MatSetValuesStencil(A,1,&row,7,col,v,INSERT_VALUES);
 #endif
 
       }

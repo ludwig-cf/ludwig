@@ -158,7 +158,7 @@ static int test_charge1_set(psi_t * psi) {
   rho1 = 1.0 / (ltot[X]*ltot[Y]*(ltot[Z] - 2.0));  /* Interior values */
 
   psi_nk(psi, &nk);
-  assert(nk == 2);
+  test_assert(nk == 2);
   
   /* Throughout set to rho1 */
 
@@ -207,21 +207,21 @@ static int test_charge1_set(psi_t * psi) {
 
   if (pe_mpi_rank(psi->pe) == 0) {
     /* psi all zero */
-    assert(fabs(rho_min[0] - 0.0) < DBL_EPSILON);
-    assert(fabs(rho_max[0] - 0.0) < DBL_EPSILON);
-    assert(fabs(rho_tot[0] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(rho_min[0] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(rho_max[0] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(rho_tot[0] - 0.0) < DBL_EPSILON);
     /* First rho0 interior */
-    assert(fabs(rho_min[1] - 0.0) < DBL_EPSILON);
-    assert(fabs(rho_max[1] - rho0) < DBL_EPSILON);
-    assert(fabs(rho_tot[1] - 1.0) < DBL_EPSILON);
+    test_assert(fabs(rho_min[1] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(rho_max[1] - rho0) < DBL_EPSILON);
+    test_assert(fabs(rho_tot[1] - 1.0) < DBL_EPSILON);
     /* Next rho1 edge */
-    assert(fabs(rho_min[2] - 0.0) < DBL_EPSILON);
-    assert(fabs(rho_max[2] - rho1) < DBL_EPSILON);
-    assert(fabs(rho_tot[2] - 1.0) < FLT_EPSILON);
+    test_assert(fabs(rho_min[2] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(rho_max[2] - rho1) < DBL_EPSILON);
+    test_assert(fabs(rho_tot[2] - 1.0) < FLT_EPSILON);
     /* Total rho_elec */
-    assert(fabs(rho_min[3] + rho1) < DBL_EPSILON); /* + because valency is - */
-    assert(fabs(rho_max[3] - rho0) < DBL_EPSILON);
-    assert(fabs(rho_tot[3] - 0.0) < FLT_EPSILON);
+    test_assert(fabs(rho_min[3] + rho1) < DBL_EPSILON); /* + because valency is - */
+    test_assert(fabs(rho_max[3] - rho0) < DBL_EPSILON);
+    test_assert(fabs(rho_tot[3] - 0.0) < FLT_EPSILON);
   }
 
   return 0;
@@ -338,7 +338,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
   }
 
   ifail = util_gauss_jordan(n, a, b);
-  assert(ifail == 0);
+  test_assert(ifail == 0);
 
   /* Check the Gauss Jordan answer against the answer from psi_t */
 
@@ -351,7 +351,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
     psi_psi(obj, index, &psi);
     if (k == 0) psi0 = psi;
 
-    assert(fabs(b[k] + psi0 - psi) < tolerance);
+    test_assert(fabs(b[k] + psi0 - psi) < tolerance);
     
     kp1 = k + 1;
     km1 = k - 1;
@@ -363,12 +363,12 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
     rhodiff = emh*obj->psi[index-1] - (emh + eph)*obj->psi[index]
       + eph*obj->psi[index+1];
 
-    assert(fabs(c[k] - rhodiff) < tolerance);
+    test_assert(fabs(c[k] - rhodiff) < tolerance);
     rhotot += c[k];
   }
 
   /* Total rho should be unchanged at zero. */
-  assert(fabs(rhotot) < tolerance);
+  test_assert(fabs(rhotot) < tolerance);
 
   free(c);
   free(b);
@@ -408,8 +408,8 @@ static int fepsilon_constant(fe_fake_t * fe, int index, double * epsilon) {
  *****************************************************************************/
 
 static int fepsilon_sinz(fe_fake_t * fe, int index, double * epsilon) {
-  assert(0);
-#ifdef OLD_SHIT
+  test_assert(0);
+#ifdef OLD_PENDING_REFACTOR
   int coords[3];
   double ltot[3];
   cs_t * cs = NULL;

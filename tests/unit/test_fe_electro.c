@@ -116,21 +116,21 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
   psi_psi_set(psi, index, 0.0);
 
   fe_electro_fed(fe, index, &fed);
-  assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
+  test_assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho0 = exp(1.0);
   fed0 = rho0*(log(rho0) - 1.0);
 
   psi_rho_set(psi, index, 0, rho0);
   fe_electro_fed(fe, index, &fed);
-  assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
+  test_assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   rho1 = exp(2.0);
   fed1 = rho1*(log(rho1) - 1.0);
 
   psi_rho_set(psi, index, 1, rho1);
   fe_electro_fed(fe, index, &fed);
-  assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
+  test_assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   /* For psi > 0 we add \sum rho 0.5 Z psi */
 
@@ -142,7 +142,7 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
   psi_valency_set(psi, 0, valency[0]);
   psi_valency_set(psi, 1, valency[1]);
   fe_electro_fed(fe, index, &fed);
-  assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
+  test_assert(fabs(fed - (fed0 + fed1)) < DBL_EPSILON);
 
   fe_electro_free(fe);
   psi_free(psi);
@@ -196,14 +196,14 @@ int do_test2(pe_t * pe, cs_t * cs, physics_t * phys) {
     psi_psi_set(psi, index, psi0);
     mu0 = kt*log(rho0);
     fe_electro_mu(fe, index, mu);
-    assert(fabs(mu[n] - mu0) < DBL_EPSILON);
+    test_assert(fabs(mu[n] - mu0) < DBL_EPSILON);
 
     /* Complete mu_a = kT log(rho) + Z_a e psi */
     psi0 = 1.0;
     psi_psi_set(psi, index, psi0);
     mu0 = kt*log(rho0) + valency[n]*eunit*psi0;
     fe_electro_mu(fe, index, mu);
-    assert(fabs(mu[n] - mu0) < DBL_EPSILON);
+    test_assert(fabs(mu[n] - mu0) < DBL_EPSILON);
   }
 
   fe_electro_free(fe);
@@ -262,7 +262,7 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sexpect = 0.0;
-      assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
+      test_assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
     }
   }
 
@@ -293,7 +293,7 @@ static int do_test3(pe_t * pe, cs_t * cs, physics_t * phys) {
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       sexpect = -epsilon*(e0[ia]*e0[ib] - 0.5*d_[ia][ib]*emod*emod);
-      assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
+      test_assert(fabs(s[ia][ib] - sexpect) < DBL_EPSILON);
     }
   }
 
