@@ -32,10 +32,10 @@
 #include "kernel.h"
 #include "visc_arrhenius.h"
 
-static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
-				          visc_arrhenius_t * visc,
-				          hydro_t * hydro);
 
+static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
+				          visc_arrhenius_param_t visc_param,
+					  field_t * phi, hydro_t * hydro);
 /* Function table */
 
 static const visc_vt_t vt_ = {
@@ -85,7 +85,7 @@ __host__ int visc_arrhenius_create(pe_t * pe, cs_t * cs, field_t * phi,
     visc->target = visc;
   }
   else {
-    assert(0); /* PENDING */
+    /* No action required at this point. */
   }
 
   *pvisc = visc;
@@ -109,7 +109,7 @@ __host__ int visc_arrhenius_free(visc_arrhenius_t * visc) {
 
   tdpGetDeviceCount(&ndevice);
   if (ndevice > 0) {
-    assert(0); /* PENDING */
+    /* No additional action required */
   }
 
   free(visc->param);
@@ -185,7 +185,7 @@ __host__ int visc_arrhenius_update(visc_arrhenius_t * visc, hydro_t * hydro) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(visc_update_kernel, nblk, ntpb, 0, 0, ctxt->target,
-		  visc->target, hydro->target);
+		  *visc->param, visc->phi->target, hydro->target);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -202,13 +202,13 @@ __host__ int visc_arrhenius_update(visc_arrhenius_t * visc, hydro_t * hydro) {
  *****************************************************************************/
 
 static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
-				          visc_arrhenius_t * visc,
-				          hydro_t * hydro) {
+				          visc_arrhenius_param_t visc_param,
+					  field_t * phi, hydro_t * hydro) {
   int kindex;
   int kiter;
 
   assert(ktx);
-  assert(visc);
+  assert(phi);
   assert(hydro);
 
   kiter = kernel_iterations(ktx);
@@ -216,7 +216,7 @@ static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
   for_simt_parallel(kindex, kiter, 1) {
 
     int ic, jc, kc, index;
-    double phi;
+    double phi0;
     double etaplus;
     double etaminus;
 
@@ -226,11 +226,11 @@ static __global__ void visc_update_kernel(kernel_ctxt_t * ktx,
 
     index = kernel_coords_index(ktx, ic, jc, kc);
 
-    phi = visc->phi->data[addr_rank0(visc->phi->nsites, index)];
-    phi = phi/visc->param->phistar;
+    phi0 = phi->data[addr_rank0(phi->nsites, index)];
+    phi0 = phi0/visc_param.phistar;
 
-    etaminus = pow(visc->param->eta_minus, 0.5*(1.0 - phi));
-    etaplus  = pow(visc->param->eta_plus,  0.5*(1.0 + phi));
+    etaminus = pow(visc_param.eta_minus, 0.5*(1.0 - phi0));
+    etaplus  = pow(visc_param.eta_plus,  0.5*(1.0 + phi0));
 
     hydro->eta[addr_rank0(hydro->nsite, index)] = etaminus*etaplus;
   }
