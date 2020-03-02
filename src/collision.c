@@ -385,7 +385,6 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
       lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
       assert(NSIMDVL == 1); /* TODO VECTORISE */
     }
-
   }
   else {
 
@@ -477,7 +476,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     double shat1[3][3];
     double ghat1[NVEL];
     double var, var_bulk;
-    double var_ghost[NNOISE_MAX];
+    double var_ghost[NVEL];
 
     /* This does not vectorise at the moment. Needs revisiting.
      * Note that there is a mask here to prevent random number
@@ -1290,7 +1289,7 @@ __host__ __device__ int lb_relaxation_time_bulk(lb_t * lb,
   }
 
   if (lb->nrelax == LB_RELAXATION_BGK) {
-    /* No separate bulk visocity */
+    /* No separate bulk visocity: use eta, not eta_nu */
     *rtau  = 1.0/(0.5 + eta / (lb->param->rho0*cs2));
   }
 
@@ -1376,7 +1375,7 @@ __host__ __device__ int lb_relaxation_time_ghosts(lb_t * lb,
  *
  *****************************************************************************/
 
-int lb_nrelax_valid(lb_relaxation_enum_t nrelax) {
+__host__ __device__ int lb_nrelax_valid(lb_relaxation_enum_t nrelax) {
 
   int isvalid = 0;
 
