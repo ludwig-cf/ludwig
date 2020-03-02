@@ -34,7 +34,6 @@ struct visc_arrhenius_s {
   cs_t * cs;                         /* Coordinate system */
   field_t * phi;                     /* Composition field */
   visc_arrhenius_param_t * param;    /* Parameters */
-  visc_arrhenius_t * target;         /* Target (gpu) data */
 };
 
 /* Parameters */

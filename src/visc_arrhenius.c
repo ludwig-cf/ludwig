@@ -53,7 +53,7 @@ static const visc_vt_t vt_ = {
 __host__ int visc_arrhenius_create(pe_t * pe, cs_t * cs, field_t * phi,
 				   visc_arrhenius_param_t param,
 				   visc_arrhenius_t ** pvisc) {
-  int ndevice;
+
   visc_arrhenius_t * visc = NULL;
 
   assert(pe);
@@ -68,6 +68,7 @@ __host__ int visc_arrhenius_create(pe_t * pe, cs_t * cs, field_t * phi,
     (visc_arrhenius_param_t *) calloc(1, sizeof(visc_arrhenius_param_t));
   assert(visc->param);
   if (visc->param == NULL) pe_fatal(pe, "calloc(visc_arrhenius_param_t)\n");
+  *visc->param = param;
 
   visc->pe = pe;
   visc->cs = cs;
@@ -75,18 +76,6 @@ __host__ int visc_arrhenius_create(pe_t * pe, cs_t * cs, field_t * phi,
 
   visc->super.func = &vt_;
   visc->super.id   = VISC_MODEL_ARRHENIUS;
-
-  /* Allocate target memory, or alias */
-
-  tdpGetDeviceCount(&ndevice);
-
-  if (ndevice == 0) {
-    *visc->param = param;
-    visc->target = visc;
-  }
-  else {
-    /* No action required at this point. */
-  }
 
   *pvisc = visc;
 
@@ -103,14 +92,7 @@ __host__ int visc_arrhenius_create(pe_t * pe, cs_t * cs, field_t * phi,
 
 __host__ int visc_arrhenius_free(visc_arrhenius_t * visc) {
 
-  int ndevice;
-
   assert(visc);
-
-  tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) {
-    /* No additional action required */
-  }
 
   free(visc->param);
   free(visc);
