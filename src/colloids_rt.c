@@ -366,6 +366,7 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   char value[BUFSIZ] = "";
 
   const char * format_i1 = "%-28s  %d\n";
+  const char * format_i3 = "%-28s  %d %d %d\n";
   const char * format_e1 = "%-28s %14.7e\n";
   const char * format_e3 = "%-28s %14.7e %14.7e %14.7e\n";
   const char * format_s1 = "%-28s  %s\n";
@@ -402,9 +403,17 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_int_parameter(rt, key, &state->isfixedr);
   if (nrt) pe_info(pe, format_i1, key, state->isfixedr);
 
+  sprintf(key, "%s_%s", stub, "isfixedrxyz");
+  nrt = rt_int_parameter_vector(rt, key, &state->isfixedrxyz);
+  if (nrt) pe_info(pe, format_i3, key, state->isfixedr);
+
   sprintf(key, "%s_%s", stub, "isfixedv");
   nrt = rt_int_parameter(rt, key, &state->isfixedv);
   if (nrt) pe_info(pe, format_i1, key, state->isfixedv);
+
+  sprintf(key, "%s_%s", stub, "isfixedvxyz");
+  nrt = rt_int_parameter_vector(rt, key, &state->isfixedvxyz);
+  if (nrt) pe_info(pe, format_i3, key, state->isfixedr);
 
   sprintf(key, "%s_%s", stub, "isfixedw");
   nrt = rt_int_parameter(rt, key, &state->isfixedw);
