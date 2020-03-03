@@ -33,6 +33,7 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   int ifail = 0;
 
   const char * isformat = "%24d\n";
+  const char * ivformat = "%24d %24d %24d\n";
   const char * sformat  = "%24le\n";
   const char * vformat  = "%24le %24le %24le\n";
 
@@ -44,7 +45,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   nread += fscanf(fp, isformat, &ps->nbonds);
   nread += fscanf(fp, isformat, &ps->nangles);
   nread += fscanf(fp, isformat, &ps->isfixedr);
+  nread += fscanf(fp, ivformat, &ps->isfixedrxyz[0], &ps->isfixedrxyz[1], &ps->isfixedrxyz[2]);
   nread += fscanf(fp, isformat, &ps->isfixedv);
+  nread += fscanf(fp, ivformat, &ps->isfixedvxyz[0], &ps->isfixedvxyz[1], &ps->isfixedvxyz[2]);
   nread += fscanf(fp, isformat, &ps->isfixedw);
   nread += fscanf(fp, isformat, &ps->isfixeds);
   nread += fscanf(fp, isformat, &ps->type);
@@ -137,6 +140,7 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   int ifail = 0;
 
   const char * isformat = "%24d\n";
+  const char * ivformat = "%24d %24d %24d\n";
   const char * sformat  = "%24.15e\n";
   const char * vformat  = "%24.15e %24.15e %24.15e\n";
 
@@ -147,7 +151,9 @@ int colloid_state_write_ascii(colloid_state_t s, FILE * fp) {
   nwrite += fprintf(fp, isformat, s.nbonds);
   nwrite += fprintf(fp, isformat, s.nangles);
   nwrite += fprintf(fp, isformat, s.isfixedr);
+  nwrite += fprintf(fp, ivformat, s.isfixedrxyz[0], s.isfixedrxyz[1], s.isfixedrxyz[2]);
   nwrite += fprintf(fp, isformat, s.isfixedv);
+  nwrite += fprintf(fp, ivformat, s.isfixedvxyz[0], s.isfixedvxyz[1], s.isfixedvxyz[2]);
   nwrite += fprintf(fp, isformat, s.isfixedw);
   nwrite += fprintf(fp, isformat, s.isfixeds);
   nwrite += fprintf(fp, isformat, s.type);

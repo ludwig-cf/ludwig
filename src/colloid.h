@@ -48,8 +48,10 @@ struct colloid_state_type {
   int nbonds;           /* Number of bonds e.g. fene (to NBOND_MAX) */
   int nangles;          /* Number of angles, e.g., fene (1 at the moment) */
 
-  int isfixedr;         /* Set to 1 for no position update */
-  int isfixedv;         /* Set to 1 for no velocity update */
+  int isfixedr;         /* Set to 1 for no position update in all coordinate directions */
+  int isfixedrxyz[3];   /* Set vector for no position update in specific coordinate directions */
+  int isfixedv;         /* Set to 1 for no velocity update in all coordinate directions */
+  int isfixedvxyz[3];   /* Set vector for no velocity update in specific coordinate directions */
   int isfixedw;         /* Set to 1 for no angular velocity update */
   int isfixeds;         /* Set to zero for no s, m update */
 

@@ -32,6 +32,7 @@
 #include "colloid.h"
 #include "colloids.h"
 #include "colloids_s.h"
+#include "control.h"
 
 struct bbl_s {
   pe_t * pe;            /* Parallel environment */
@@ -760,6 +761,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
+    if (is_statistics_step() && ) printf("Thermodyn force ID %d  %le %le %le\n", pc->s.index, pc->force[0], pc->force[1], pc->force[2]);
+
     /* Set up the matrix problem and solve it here. */
 
     /* Mass and moment of inertia are those of a hard sphere
@@ -891,8 +894,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
      * We use mean of old and new velocity. */
 
     for (ia = 0; ia < 3; ia++) {
-      if (pc->s.isfixedr == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
-      if (pc->s.isfixedv == 0) pc->s.v[ia] = xb[ia];
+      if (pc->s.isfixedr == 0 && pc->s.isfixedrxyz[ia] == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+      if (pc->s.isfixedv == 0 && pc->s.isfixedvxyz[ia] == 0) pc->s.v[ia] = xb[ia];
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
 
@@ -924,6 +927,9 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 	pc->zeta[12]*pc->s.w[X] +
 	pc->zeta[13]*pc->s.w[Y] +
 	pc->zeta[14]*pc->s.w[Z]);
+
+        if (is_statistics_step()) printf(" Hydrodyn force ID %d  %le %le %le\n", pc->s.index, pc->force[0], pc->force[1], pc->force[2]);
+
   }
 
   /* As the lubrication force is based on the updated velocity, but
