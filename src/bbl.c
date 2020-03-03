@@ -761,7 +761,7 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
-    if (is_statistics_step() && ) printf("Thermodyn force ID %d  %le %le %le\n", pc->s.index, pc->force[0], pc->force[1], pc->force[2]);
+    if (is_statistics_step()) printf("Thermodyn force ID %d  %le %le %le\n", pc->s.index, pc->force[0], pc->force[1], pc->force[2]);
 
     /* Set up the matrix problem and solve it here. */
 
