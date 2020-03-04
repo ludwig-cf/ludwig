@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1059,7 +1059,7 @@ __host__ int colloids_info_position_update(colloids_info_t * cinfo) {
 	    if (ifail == 1) {
 	      pe_verbose(cinfo->pe, "Colloid velocity exceeded max %14.7e\n",
 			 cinfo->drmax);
-	      colloid_state_write_ascii(coll->s, stdout);
+	      colloid_state_write_ascii(&coll->s, stdout);
 	      pe_fatal(cinfo->pe, "Stopping\n");
 	    }
 	  }
