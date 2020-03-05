@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -391,7 +391,7 @@ int colloid_io_write_buffer_ascii(FILE * fp, int nc, colloid_state_t * buf) {
   assert(buf);
 
   for (n = 0; n < nc; n++) {
-    ifail += colloid_state_write_ascii(buf[n], fp);
+    ifail += colloid_state_write_ascii(buf + n, fp);
   }
 
   return ifail;
@@ -556,7 +556,7 @@ static int colloid_io_write_list_ascii(colloid_io_t * cio,
   colloids_info_cell_list_head(cio->info, ic, jc, kc, &pc);
 
   while (pc) {
-    ifail += colloid_state_write_ascii(pc->s, fp);
+    ifail += colloid_state_write_ascii(&pc->s, fp);
     pc = pc->next;
   }
 
@@ -614,7 +614,7 @@ static int colloid_io_write_list_binary(colloid_io_t * cio,
   colloids_info_cell_list_head(cio->info, ic, jc, kc, &pc);
 
   while (pc) {
-    colloid_state_write_binary(pc->s, fp);
+    colloid_state_write_binary(&pc->s, fp);
     pc = pc->next;
   }
 
