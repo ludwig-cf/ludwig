@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.9.3
+- Allow stress relaxation option in bare liquid crystal free energy
+
 version 0.9.2
 - Moved input section in porous media docs to online version only
 
