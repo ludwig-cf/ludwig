@@ -1295,6 +1295,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     int use_stress_relaxation;
     fe_symm_t * symm = NULL;
     fe_lc_t * fe = NULL;
+    int use_stress_relaxation = 0;
 
     /* Liquid crystal (always finite difference). */
 
