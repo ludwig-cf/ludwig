@@ -1292,8 +1292,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
 
-    int use_stress_relaxation;
-    fe_symm_t * symm = NULL;
     fe_lc_t * fe = NULL;
     int use_stress_relaxation = 0;
 
@@ -1377,10 +1375,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
   else if(strcmp(description, "lc_droplet") == 0) {
-    int use_stress_relaxation;
+
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
+    int use_stress_relaxation = 0;
 
     /* liquid crystal droplet */
     pe_info(pe, "\n");
