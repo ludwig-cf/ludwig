@@ -1292,6 +1292,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
 
+    int use_stress_relaxation;
+    fe_symm_t * symm = NULL;
     fe_lc_t * fe = NULL;
 
     /* Liquid crystal (always finite difference). */
@@ -1316,6 +1318,13 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_lc_create(pe, cs, le, ludwig->q, ludwig->q_grad, &fe);
     beris_edw_create(pe, cs, le, &ludwig->be);
     blue_phase_init_rt(pe, rt, fe, ludwig->be);
+
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
+    }
 
     p = 0;
     rt_int_parameter(rt, "lc_noise", &p);

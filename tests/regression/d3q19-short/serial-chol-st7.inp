@@ -1,0 +1,146 @@
+##############################################################################
+#
+#  Cholesteric smoke test
+#
+#  This is the same as st1 except
+#
+#    colloid_isfixedr    1
+#
+#  is replaced by
+#
+#    colloid_isfixedrxyz 1_1_1
+#
+#  for the same result.
+#
+##############################################################################
+
+N_start  0
+N_cycles 20
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 32_32_32
+periodicity 1_1_1
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.01
+viscosity_bulk 0.1
+
+isothermal_fluctuations off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_blue_phase
+
+fd_advection_scheme_order 2
+fd_gradient_calculation 3d_7pt_solid
+
+###############################################################################
+#
+#  Blue Phase free energy
+#
+###############################################################################
+
+lc_a0      0.01
+lc_gamma   3.085714286
+lc_q0      0.09817477
+lc_kappa0  0.018971957
+lc_kappa1  0.018971957
+lc_xi      0.0
+
+lc_Gamma   0.5
+
+lc_q_init_amplitude 0.0001
+lc_q_initialisation random
+lc_init_redshift 1.0
+lc_redshift_update 0
+lc_init_nematic 1.0_0.0_0.0
+
+lc_anchoring_method two
+lc_wall_anchoring normal
+lc_coll_anchoring normal
+lc_anchoring_strength_wall 0.0018971957
+lc_anchoring_strength_colloid 0.0018971957
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        input_two
+
+colloid_one_type         inactive
+colloid_one_a0           2.3
+colloid_one_ah           2.3
+colloid_one_r            16.25_15.0_15.0
+colloid_one_v            0.0_0.0_0.0
+colloid_one_isfixedrxyz  1_1_1
+
+colloid_two_type         inactive
+colloid_two_a0           2.30
+colloid_two_ah           2.30
+colloid_two_r            21.305_15.0_15.0
+colloid_two_v            0.0_0.0_0.0
+
+
+# Constant body force on all colloids ("gravity") [default is zero]
+# Uniform magnetic field [default is zero]
+
+colloid_gravity  -0.01_0.0_0.0
+
+# Colloid-colloid lubrication corrections
+
+lubrication_on 0
+
+###############################################################################
+#
+# Colloid-colloid soft-sphere potential parameters
+# The soft sphere is always needed
+#
+###############################################################################
+
+soft_sphere_on 1
+soft_sphere_epsilon 0.000
+soft_sphere_sigma 0.1
+soft_sphere_nu 1.0
+soft_sphere_cutoff 0.25
+
+###############################################################################
+#
+#  Walls / boundaries
+#
+###############################################################################
+
+boundary_walls 0_0_0
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 20
+config_at_end no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235
