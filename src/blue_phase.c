@@ -647,7 +647,6 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] = -sth[ia][ib];
-	sth[ia][ib] = 0.0;
     }
   }
 
