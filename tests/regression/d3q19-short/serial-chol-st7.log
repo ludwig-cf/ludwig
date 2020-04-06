@@ -2,8 +2,6 @@ Welcome to Ludwig v0.9.2 (Serial version running on 1 process)
 
 Note assertions via standard C assert() are on.
 
-Target thread model: None.
-
 Read 51 user parameters from serial-chol-st7.inp
 
 System details
