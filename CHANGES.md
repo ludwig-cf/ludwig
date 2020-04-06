@@ -1,5 +1,6 @@
 
 ### Changes
+
 version 0.10.0
 - Added an option to fix colloid position or velocity on a per-direction
   basis, e.g.
