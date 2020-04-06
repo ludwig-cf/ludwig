@@ -1,0 +1,109 @@
+##############################################################################
+#
+#  Cholesteric normal anchoring isotropy test (Y).
+#
+##############################################################################
+
+N_cycles 5
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 64_64_64
+grid 2_2_2
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 1.0
+
+isothermal_fluctuations off
+temperature 0.00002133333
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy lc_blue_phase
+
+fd_advection_scheme_order 1
+fd_gradient_calculation 3d_7pt_solid
+
+lc_a0      0.01
+lc_gamma   3.0
+lc_q0      0.19635
+lc_kappa0  0.000648456
+lc_kappa1  0.000648456
+lc_xi      0.7
+
+lc_Gamma   0.5
+lc_activity no
+
+lc_q_initialisation cholesteric_y
+lc_q_init_amplitude 0.333333333333333
+lc_init_redshift 1.0
+lc_init_nematic 0.0_1.0_0.0
+
+lc_anchoring_method two
+lc_wall_anchoring normal
+lc_coll_anchoring normal
+lc_anchoring_strength_colloid 0.002593824
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init     input_two
+
+colloid_one_a0   7.25
+colloid_one_ah   7.25
+colloid_one_r    32.0_32.0_32.0
+colloid_one_v    0.0_0.0_0.0
+
+colloid_two_a0   7.25
+colloid_two_ah   7.25
+colloid_two_r    32.0_48.0_32.0
+colloid_two_v    0.0_0.0_0.0
+
+# Constant body force on all colloids ("gravity")
+
+colloid_gravity 0.0_0.0_0.0
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 5
+config_at_end no
+
+colloid_io_freq 10000000
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235

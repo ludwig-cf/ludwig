@@ -26,7 +26,8 @@ lib:	mpi_serial.c Makefile
 	$(AR) $(ARFLAGS) $(LIBNAME) mpi_serial.o
 
 test:	mpi_tests.c $(LIBNAME) Makefile
-	$(CC) $(INCLUDE) $(CFLAGS) mpi_tests.c -L. -lmpi
+	$(CC) $(INCLUDE) $(CFLAGS) -c mpi_tests.c
+	$(CC) $(LDFLAGS) mpi_tests.o -L. -lmpi
 	./a.out
 
 clean:

@@ -56,7 +56,7 @@ default:
 test:
 	$(MAKE)
 	$(CC) $(CFLAGS) -c test.c
-	$(CC) $(LDFLAGS) test.o libtarget.a
+	$(CC) $(LDFLAGS) test.o libtarget.a -lm
 	./a.out
 
 testmpi:

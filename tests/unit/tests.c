@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,7 +18,7 @@
 
 #include "tests.h"
 
-int tests_create(void);
+__host__ int tests_create(void);
 
 /*****************************************************************************
  *
@@ -26,7 +26,7 @@ int tests_create(void);
  *
  *****************************************************************************/
 
-int main(int argc, char ** argv) {
+__host__ int main(int argc, char ** argv) {
 
   MPI_Init(&argc, &argv);
 
@@ -43,7 +43,7 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-int tests_create() {
+__host__ int tests_create() {
 
   test_pe_suite();
   test_coords_suite();
@@ -102,19 +102,25 @@ int tests_create() {
  *
  *****************************************************************************/
 
-void test_assert_info(const int lvalue, int line, const char * file) {
-
-  int rank;
+__host__ __device__ void test_assert_info(const int lvalue, int line,
+					  const char * file) {
 
   if (lvalue) {
     /* ok */
   }
   else {
-    /* Who has failed? */
+#ifdef __CUDA_ARCH__
+    /* No rank available */
+    printf("Line %d file %s Failed test assertion\n", line, file);
+    assert(0);
+#else
+    int rank;
 
+    /* Who has failed? */
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     printf("[%d] Line %d file %s Failed test assertion\n", rank, line, file);
     MPI_Abort(MPI_COMM_WORLD, 0);
+#endif
   }
 
   return;

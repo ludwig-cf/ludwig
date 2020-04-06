@@ -543,10 +543,10 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
   for (n = 0; n < nc; n++) {
     if (form == BINARY) {
-      colloid_state_write_binary(pc[n], fp);
+      colloid_state_write_binary(pc, fp);
     }
     else {
-      colloid_state_write_ascii(pc[n], fp);
+      colloid_state_write_ascii(pc, fp);
     }
   }
 

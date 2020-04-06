@@ -11,6 +11,7 @@
 #    d3q19-io         a batch of tests with file I/O
 #    d3q19-elec       a batch of tests for electrokinetics
 #
+#    d3q19-short-gpu  unit tests and d3q19-short-gpu
 #
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
@@ -51,6 +52,11 @@ d3q19-io:
 
 d3q19-elec:
 	$(Make) -C regression/d3q19-elec
+
+# GPU target
+
+d3q19-short-gpu:
+	$(MAKE) -C regression/d3q19-short-gpu
 
 # Clean
 

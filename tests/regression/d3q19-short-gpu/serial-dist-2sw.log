@@ -1,0 +1,102 @@
+Welcome to Ludwig v0.9.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: CUDA.
+Default threads per block: 128; max. threads per block: 1024.
+
+Read 16 user parameters from serial-dist-2sw.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    64 64 1
+Decomposition:  1 1 1
+Local domain:   64 64 1
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   2.13333e-05
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        reduced
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Initial distribution: 2d shear wave
+Velocity magnitude:    4.0000000e-02
+Shear layer kappa:     6.2831853e+00
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  0.0000000e+00  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  1.1102230e-16  7.1054274e-15  0.0000000e+00
+[fluid   ]  1.1102230e-16  7.1054274e-15  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        4096.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ] -2.7755576e-17  7.3274720e-15  0.0000000e+00
+[fluid   ] -2.7755576e-17  7.3274720e-15  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -3.9586358e-02 -2.7755576e-16  0.0000000e+00
+[maximum ]  3.9586358e-02  2.8449465e-16  1.1754944e-38
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.240      0.240      0.240   0.240000 (1 call)
+      Time step loop:      0.000      0.010      0.030   0.003000 (10 calls)
+         Propagation:      0.000      0.000      0.000   0.000000 (10 calls)
+    Propagtn (krnl) :      0.000      0.000      0.000   0.000000 (10 calls)
+           Collision:      0.000      0.010      0.010   0.001000 (10 calls)
+   Collision (krnl) :      0.000      0.010      0.010   0.001000 (10 calls)
+       Lattice halos:      0.000      0.010      0.010   0.001000 (10 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000000 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (10 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (10 calls)
+               Free1:      0.000      0.010      0.010   0.001000 (10 calls)
+Ludwig finished normally.
