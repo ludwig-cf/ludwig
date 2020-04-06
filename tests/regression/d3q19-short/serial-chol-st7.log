@@ -2,8 +2,7 @@ Welcome to Ludwig v0.9.2 (Serial version running on 1 process)
 
 Note assertions via standard C assert() are on.
 
-Target thread model: OpenMP.
-OpenMP threads: 1; maximum number of threads: 8.
+Target thread model: None.
 
 Read 51 user parameters from serial-chol-st7.inp
 
@@ -192,31 +191,31 @@ Velocity - x y z
 
 Completed cycle 20
 
-Timer resolution: 0.01 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      2.782      2.782      2.782   2.782084 (1 call)
-      Time step loop:      0.134      0.147      2.713   0.135665 (20 calls)
-         Propagation:      0.009      0.010      0.192   0.009597 (20 calls)
-    Propagtn (krnl) :      0.009      0.010      0.192   0.009594 (20 calls)
-           Collision:      0.023      0.023      0.457   0.022864 (20 calls)
-   Collision (krnl) :      0.023      0.023      0.457   0.022857 (20 calls)
-       Lattice halos:      0.002      0.004      0.097   0.002417 (40 calls)
-       phi gradients:      0.017      0.021      0.351   0.017543 (20 calls)
-           phi halos:      0.001      0.002      0.022   0.001082 (20 calls)
-              Forces:      0.000      0.000      0.005   0.000255 (20 calls)
-             Rebuild:      0.001      0.001      0.016   0.000823 (20 calls)
-                 BBL:      0.001      0.001      0.017   0.000853 (20 calls)
-      Particle halos:      0.000      0.000      0.000   0.000016 (20 calls)
-   Force calculation:      0.035      0.038      0.713   0.035671 (20 calls)
-   Phi force (krnl) :      0.015      0.015      0.295   0.014738 (20 calls)
-          phi update:      0.042      0.046      0.846   0.042295 (20 calls)
-      Velocity Halo :      0.000      0.001      0.009   0.000441 (20 calls)
-BE mol field (krnl) :      0.010      0.010      0.193   0.009662 (20 calls)
-BP BE update (krnl) :      0.015      0.015      0.302   0.015096 (20 calls)
-     Advectn (krnl) :      0.013      0.016      0.268   0.013412 (20 calls)
- Advectn BCS (krnl) :      0.003      0.004      0.058   0.002881 (20 calls)
-               Free1:      0.000      0.025      0.025   0.000423 (60 calls)
-               Free3:      0.000      0.000      0.000   0.000024 (20 calls)
+               Total:      3.012      3.012      3.012   3.011839 (1 call)
+      Time step loop:      0.141      0.155      2.935   0.146773 (20 calls)
+         Propagation:      0.010      0.011      0.204   0.010176 (20 calls)
+    Propagtn (krnl) :      0.010      0.011      0.203   0.010172 (20 calls)
+           Collision:      0.022      0.024      0.451   0.022548 (20 calls)
+   Collision (krnl) :      0.022      0.024      0.451   0.022538 (20 calls)
+       Lattice halos:      0.002      0.003      0.106   0.002656 (40 calls)
+       phi gradients:      0.018      0.023      0.379   0.018974 (20 calls)
+           phi halos:      0.001      0.002      0.024   0.001208 (20 calls)
+              Forces:      0.000      0.000      0.006   0.000300 (20 calls)
+             Rebuild:      0.001      0.001      0.019   0.000933 (20 calls)
+                 BBL:      0.001      0.001      0.020   0.001014 (20 calls)
+      Particle halos:      0.000      0.000      0.000   0.000020 (20 calls)
+   Force calculation:      0.037      0.043      0.782   0.039107 (20 calls)
+   Phi force (krnl) :      0.015      0.017      0.320   0.015987 (20 calls)
+          phi update:      0.045      0.049      0.949   0.047434 (20 calls)
+      Velocity Halo :      0.000      0.001      0.009   0.000449 (20 calls)
+BE mol field (krnl) :      0.009      0.011      0.202   0.010080 (20 calls)
+BP BE update (krnl) :      0.017      0.019      0.355   0.017741 (20 calls)
+     Advectn (krnl) :      0.014      0.017      0.300   0.014996 (20 calls)
+ Advectn BCS (krnl) :      0.003      0.004      0.065   0.003240 (20 calls)
+               Free1:      0.000      0.029      0.029   0.000476 (60 calls)
+               Free3:      0.000      0.000      0.000   0.000016 (20 calls)
 Ludwig finished normally.
