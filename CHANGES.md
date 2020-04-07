@@ -1,10 +1,10 @@
 
 ### Changes
 
-version 0.10.0
+version 0.11.0
 - Add Arrhenius viscosity model for compositional order parameter
-  PENDING relaxation time unit tests; Test for gpu implmentation.
-  PENDING default phistar. ADD DOCUMENTATION
+- Various code quality updates
+
 - Added target thread model information to output
 - Refactored d_ij and e_ijk from char to int8_t to avoid potential
   pitfalls with default unsigned char.
