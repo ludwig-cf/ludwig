@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -43,7 +43,6 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
   int nsites;
   int nhalo;
   int ndevice;
-  char * tmp;
   map_t * obj = NULL;
 
   assert(pe);
@@ -69,7 +68,7 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 
   /* Could be zero-sized array */
 
-  obj->data = (double*) calloc(ndata*nsites, sizeof(double));
+  obj->data = (double*) calloc((size_t) ndata*nsites, sizeof(double));
   assert(obj->data);
   if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
 
@@ -88,6 +87,8 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
     obj->target = obj;
   }
   else {
+    char * tmp = NULL;
+    double * dtmp = NULL;
 
     tdpMalloc((void **) &obj->target, sizeof(map_t));
     tdpMemset(obj->target, 0, sizeof(map_t));
@@ -102,6 +103,15 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 	      tdpMemcpyHostToDevice);
     tdpMemcpy(&obj->target->ndata, &obj->ndata, sizeof(int),
 	      tdpMemcpyHostToDevice); 
+
+    /* Data */
+    if (obj->ndata > 0) {
+      size_t nsz = (size_t) obj->ndata*nsites*sizeof(double);
+      tdpAssert(tdpMalloc((void **) &dtmp, nsz));
+      tdpAssert(tdpMemset(dtmp, 0, nsz));
+      tdpAssert(tdpMemcpy(&obj->target->data, &dtmp, sizeof(double *),
+		          tdpMemcpyHostToDevice));
+    }
   }
 
   *pobj = obj;
@@ -118,15 +128,23 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 __host__ int map_free(map_t * obj) {
 
   int ndevice;
-  char * tmp;
+  char * tmp = NULL;
+  double * dtmp = NULL;
 
   assert(obj);
 
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
-    tdpMemcpy(&tmp, &obj->target->status, sizeof(char *), tdpMemcpyDeviceToHost); 
-    tdpFree(tmp);
+    tdpAssert(tdpMemcpy(&tmp, &obj->target->status, sizeof(char *),
+			tdpMemcpyDeviceToHost)); 
+    tdpAssert(tdpFree(tmp));
+
+    if (obj->ndata > 0) {
+      tdpAssert(tdpMemcpy(&dtmp, &obj->target->data, sizeof(double *),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpFree(dtmp));
+    }
     tdpFree(obj->target);
   }
 

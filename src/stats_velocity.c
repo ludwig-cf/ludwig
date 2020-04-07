@@ -4,8 +4,6 @@
  *
  *  Basic statistics for the velocity field.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
@@ -21,9 +19,9 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "util.h"
-#include "hydro_s.h"
+#include "hydro.h"
 #include "stats_velocity.h"
+#include "util.h"
 
 /****************************************************************************
  *

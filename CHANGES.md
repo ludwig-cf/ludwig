@@ -1,6 +1,11 @@
 
 ### Changes
 
+
+version 0.11.0
+- Add Arrhenius viscosity model for compositional order parameter
+- Various code quality updates
+
 version 0.10.0
 - Added an option to fix colloid position or velocity on a per-direction
   basis, e.g.

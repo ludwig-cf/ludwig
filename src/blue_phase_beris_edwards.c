@@ -53,7 +53,6 @@
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
-#include "hydro_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "colloids_s.h"

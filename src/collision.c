@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,8 +32,8 @@
 #include "physics.h"
 #include "model.h"
 #include "lb_model_s.h"
-#include "hydro_s.h"
 #include "free_energy.h"
+#include "visc.h"
 #include "control.h"
 #include "collision.h"
 #include "field_s.h"
@@ -51,15 +51,15 @@ void lb_collision_mrt2(kernel_ctxt_t * ktx, lb_t * lb, hydro_t * hydro,
 		       fe_symm_t * fe, noise_t * noise);
 
 int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
-		     noise_t * noise, fe_t * fe);
+		     noise_t * noise, fe_t * fe, visc_t * visc);
 int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
-			fe_symm_t * fe);
+			fe_symm_t * fe, visc_t * visc);
 
 static __host__ __device__
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
 			       double shat[3][3], double ghat[NVEL]);
 int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
-static __host__ int lb_collision_parameters_commit(lb_t * lb);
+static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc);
 
 static __device__
 void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
@@ -84,12 +84,43 @@ typedef struct collide_param_s collide_param_t;
 
 struct collide_param_s {
   double force_global[3];
+  double kt;
   double mobility;
   double rtau2;
+  double eta_shear;
+  double eta_bulk;
+  int    have_visc_model;
 };
 
 static __constant__ lb_collide_param_t _lbp;
 static __constant__ collide_param_t _cp;
+
+/* Todo. Better unit tests required for these functions. */
+
+__host__ __device__ int lb_nrelax_valid(lb_relaxation_enum_t nrelax);
+__host__ __device__ int lb_relaxation_time_shear(lb_t * lb,
+						 double eta,
+						 double * rtau);
+__host__ __device__ int lb_relaxation_time_bulk(lb_t * lb,
+						double eta,
+						double eta_bulk,
+						double * rtau_bulk);
+__host__ __device__ int lb_relaxation_time_ghosts(lb_t * lb,
+						  double eta,
+						  double * rtau);
+
+__host__ __device__ double lb_fluctuations_var_eta(double tau, double kt);
+__host__ __device__ double lb_fluctuations_var_bulk(double tau, double kt);
+__host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
+						  double * var);
+
+__host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
+					       double var_eta,
+					       double var_eta_bulk,
+					       double shat[3][3]);
+__host__ __device__ int lb_fluctuations_ghosts(noise_t * noise, int index,
+					       double * var_ghost,
+					       double ghat[NVEL]);
 
 /*****************************************************************************
  *
@@ -103,7 +134,7 @@ static __constant__ collide_param_t _cp;
 
 __host__
 int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
-	       fe_t * fe) {
+	       fe_t * fe, visc_t * visc) {
 
   int ndist;
 
@@ -117,8 +148,8 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
   lb_collision_noise_var_set(lb, noise);
   lb_collide_param_commit(lb);
 
-  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe);
-  if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe);
+  if (ndist == 1) lb_collision_mrt(lb, hydro, map, noise, fe, visc);
+  if (ndist == 2) lb_collision_binary(lb, hydro, noise, (fe_symm_t *) fe, visc);
 
   return 0;
 }
@@ -132,7 +163,7 @@ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map, noise_t * noise,
  *****************************************************************************/
 
 __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
-			      noise_t * noise, fe_t * fe) {
+			      noise_t * noise, fe_t * fe, visc_t * visc) {
   int nlocal[3];
   dim3 nblk, ntpb;
   fe_t * fetarget = NULL;
@@ -153,7 +184,7 @@ __host__ int lb_collision_mrt(lb_t * lb, hydro_t * hydro, map_t * map,
   kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  lb_collision_parameters_commit(lb);
+  lb_collision_parameters_commit(lb, visc);
   if (fe) fe->func->target(fe, &fetarget);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
@@ -231,6 +262,12 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   double seq[3][3][NSIMDVL];              /* Equilibrium stress */
   double shat[3][3][NSIMDVL];             /* random stress */
   double ghat[NVEL][NSIMDVL];             /* noise for ghosts */
+
+  double eta[NSIMDVL];                    /* Local shear viscosity */
+  double eta_bulk[NSIMDVL];               /* Local bulk viscosity */
+  double rtau[NSIMDVL];                   /* Local 1/shear relaxation tau */
+  double rtau_bulk[NSIMDVL];              /* Local 1/bulk relaxation tau */
+  double rtau_ghost[NVEL];                /* Ghost relaxation times rtau*/
 
   double force[3][NSIMDVL];               /* External force */
   double tr_s[NSIMDVL], tr_seq[NSIMDVL];  /* Vectors for stress trace */
@@ -335,7 +372,35 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
       u[ia][iv] = rrho[iv]*(u[ia][iv] + 0.5*force[ia][iv]);  
     }
   }
-   
+
+  /* Local relaxation times */
+
+  if (_cp.have_visc_model == 0) {
+
+    for_simd_v(iv, NSIMDVL) {
+      eta[iv] = _cp.eta_shear;
+      eta_bulk[iv] = _cp.eta_bulk;
+      lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
+      lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
+      lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
+      assert(NSIMDVL == 1); /* TODO VECTORISE */
+    }
+  }
+  else {
+
+    /* Use viscosity model values hydro->eta */
+    /* Bulk viscosity will be (eta_bulk/eta_shear)_newtonian*eta_local */
+
+    for_simd_v(iv, NSIMDVL) {
+      eta[iv] = hydro->eta[addr_rank0(hydro->nsite, index0+iv)];
+      eta_bulk[iv] = (_cp.eta_bulk/_cp.eta_shear)*eta[iv];
+      lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
+      lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
+      lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
+      assert(NSIMDVL == 1); /* TODO VECTORISE */
+    }
+  }
+
   /* Relax stress with different shear and bulk viscosity */
 
   for_simd_v(iv, NSIMDVL) {
@@ -389,18 +454,18 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     
   /* Relax each mode */
   for_simd_v(iv, NSIMDVL) {
-    tr_s[iv] = tr_s[iv] - _lbp.rtau[LB_TAU_BULK]*(tr_s[iv] - tr_seq[iv]);
+    tr_s[iv] = tr_s[iv] - rtau_bulk[iv]*(tr_s[iv] - tr_seq[iv]);
   }
 
   for (ia = 0; ia < NDIM; ia++) {
     for (ib = 0; ib < NDIM; ib++) {
       for_simd_v(iv, NSIMDVL) {
-	s[ia][ib][iv] -= _lbp.rtau[LB_TAU_SHEAR]*(s[ia][ib][iv] - seq[ia][ib][iv]);
+	s[ia][ib][iv] -= rtau[iv]*(s[ia][ib][iv] - seq[ia][ib][iv]);
 	s[ia][ib][iv] += d[ia][ib]*rdim*tr_s[iv];
 	  
 	/* Correction from body force (assumes equal relaxation times) */
 	      
-	s[ia][ib][iv] += (2.0 - _lbp.rtau[LB_TAU_SHEAR])
+	s[ia][ib][iv] += (2.0 - rtau[iv])
 	  *(u[ia][iv]*force[ib][iv] + force[ia][iv]*u[ib][iv]);
       }
     }
@@ -410,6 +475,8 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	
     double shat1[3][3];
     double ghat1[NVEL];
+    double var, var_bulk;
+    double var_ghost[NVEL];
 
     /* This does not vectorise at the moment. Needs revisiting.
      * Note that there is a mask here to prevent random number
@@ -420,7 +487,10 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 
       if (includeSite[iv]) {
 
-	lb_collision_fluctuations(lb, noise, index0 + iv, shat1, ghat1);
+	/*lb_collision_fluctuations(lb, noise, index0 + iv, shat1, ghat1);*/
+	var = lb_fluctuations_var_eta(1.0/rtau[iv], _cp.kt);
+	var_bulk = lb_fluctuations_var_bulk(1.0/rtau_bulk[iv], _cp.kt);
+	lb_fluctuations_stress(noise, index0 + iv, var, var_bulk, shat1);
 
 	for (ia = 0; ia < NDIM; ia++) {
 	  for (ib = 0; ib < NDIM; ib++) {
@@ -428,8 +498,13 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	  }
 	}
 
-	for (ia = 0; ia < NVEL; ia++) {
-	  ghat[ia][iv] = ghat1[ia];
+	if (lb->param->isghost == LB_GHOST_ON) {
+	  /* TODO rtau_ghost to be vectorised */
+	  lb_fluctuations_var_ghost(rtau_ghost, _cp.kt, var_ghost);
+	  lb_fluctuations_ghosts(noise, index0 + iv, var_ghost, ghat1);
+	  for (ia = 0; ia < NVEL; ia++) {
+	    ghat[ia][iv] = ghat1[ia];
+	  }
 	}
       }
     }
@@ -458,7 +533,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   for (m = NHYDRO; m < NVEL; m++) {  
     for_simd_v(iv, NSIMDVL) {
       mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
-	- lb->param->rtau[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
+	- rtau_ghost[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
     }
   }
 
@@ -523,7 +598,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
  *****************************************************************************/
 
 __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
-				 fe_symm_t * fe) {
+				 fe_symm_t * fe, visc_t * visc) {
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -546,7 +621,7 @@ __host__ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
   kernel_ctxt_create(lb->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  lb_collision_parameters_commit(lb);
+  lb_collision_parameters_commit(lb, visc);
 
   TIMER_start(TIMER_COLLIDE_KERNEL);
 
@@ -1169,6 +1244,156 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
 
 /*****************************************************************************
  *
+ *  lb_relaxation_time_shear
+ *
+ *  Relaxation time related to shear viscosity (inverse). This is
+ *  independent of relaxation scheme.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int lb_relaxation_time_shear(lb_t * lb,
+						 double eta, double * rtau) {
+
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+
+  *rtau = 1.0/(0.5 + eta / (lb->param->rho0*cs2));
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_relaxation_time_bulk
+ *
+ *  Return (inverse) bulk relaxation time which is either related to
+ *  the shear viscosity eta or the bulk viscosity eta_nu.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int lb_relaxation_time_bulk(lb_t * lb,
+					        double eta, double eta_nu,
+					        double * rtau) {
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+  assert(rtau);
+
+  *rtau = 0.0;
+
+  assert(lb_nrelax_valid(lb->nrelax));
+
+  if (lb->nrelax == LB_RELAXATION_M10) {
+    *rtau = 1.0/(0.5 + eta_nu / (lb->param->rho0*cs2));
+  }
+
+  if (lb->nrelax == LB_RELAXATION_BGK) {
+    /* No separate bulk visocity: use eta, not eta_nu */
+    *rtau  = 1.0/(0.5 + eta / (lb->param->rho0*cs2));
+  }
+
+  if (lb->nrelax == LB_RELAXATION_TRT) {
+    *rtau = 1.0/(0.5 + eta_nu / (lb->param->rho0*cs2));
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_relaxation_time_ghosts
+ *
+ *  Relaxation times for non-hydrodynamic modes.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int lb_relaxation_time_ghosts(lb_t * lb,
+						  double eta,
+						  double * rtau) {
+  int p;
+  double rtau_ghost;
+  double rtau_shear;
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+  assert(rtau);
+
+  if (lb->nrelax == LB_RELAXATION_M10) {
+    for (p = NHYDRO; p < NVEL; p++) {
+      rtau[p] = 1.0;
+    }
+  }
+
+  if (lb->nrelax == LB_RELAXATION_BGK) {
+    lb_relaxation_time_shear(lb, eta, &rtau_shear);
+    for (p = NHYDRO; p < NVEL; p++) {
+      rtau[p] = rtau_shear;
+    }
+  }
+
+  if (lb->nrelax == LB_RELAXATION_TRT) {
+
+    double tau;
+
+    assert(NVEL != 9);
+    lb_relaxation_time_shear(lb, eta, &rtau_shear);
+
+    tau = eta / (lb->param->rho0*cs2);
+    rtau_ghost = 0.5 + 2.0*tau/(tau + 3.0/8.0);
+
+    if (rtau_ghost > 2.0) rtau_ghost = 2.0;
+
+    if (NVEL == 15) {
+      rtau[10] = rtau_shear;
+      rtau[11] = rtau_ghost;
+      rtau[12] = rtau_ghost;
+      rtau[13] = rtau_ghost;
+      rtau[14] = rtau_shear;
+    }
+
+    if (NVEL == 19) {
+      rtau[10] = rtau_shear;
+      rtau[14] = rtau_shear;
+      rtau[18] = rtau_shear;
+
+      rtau[11] = rtau_ghost;
+      rtau[12] = rtau_ghost;
+      rtau[13] = rtau_ghost;
+      rtau[15] = rtau_ghost;
+      rtau[16] = rtau_ghost;
+      rtau[17] = rtau_ghost;
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_nrelax_valid
+ *
+ *****************************************************************************/
+
+__host__ __device__ int lb_nrelax_valid(lb_relaxation_enum_t nrelax) {
+
+  int isvalid = 0;
+
+  switch (nrelax) {
+  case LB_RELAXATION_M10:
+  case LB_RELAXATION_BGK:
+  case LB_RELAXATION_TRT:
+    isvalid = 1;
+    break;
+  default:
+    isvalid = 0;
+  }
+
+  return isvalid;
+}
+
+/*****************************************************************************
+ *
  *  lb_collision_noise_var_set
  *
  *  Note there is an extra normalisation in the lattice fluctuations
@@ -1353,11 +1578,170 @@ static __host__ __device__
 
 /*****************************************************************************
  *
+ *  lb_fluctuations_var_eta
+ *
+ *  Return variance related to noise terms for shear stress, which
+ *  depends on the shear relaxation time tau, and the temperature.
+ *
+ *****************************************************************************/
+
+__host__ __device__ double lb_fluctuations_var_eta(double tau, double kt) {
+
+  LB_RCS2_DOUBLE(rcs2);
+
+  assert(kt >= 0);
+
+  kt = kt*rcs2;         /* Without normalisation kT = cs^2 */
+
+  return sqrt(kt)*sqrt(1.0/9.0)*sqrt((tau + tau - 1.0)/(tau*tau));
+}
+
+/*****************************************************************************
+ *
+ *  lb_fluctuations_var_bulk
+ *
+ *  Return variance related to the noise term for bulk stress, which
+ *  is related to the bulk relaxation time, and the temperature.
+ *
+ *****************************************************************************/
+
+__host__ __device__ double lb_fluctuations_var_bulk(double tau, double kt) {
+
+  LB_RCS2_DOUBLE(rcs2);
+
+  assert(kt >= 0.0);
+
+  kt = kt*rcs2;         /* Without normalisation kT = cs^2 */
+
+  return sqrt(kt)*sqrt(2.0/9.0)*sqrt((tau + tau - 1.0)/(tau*tau));
+}
+
+/*****************************************************************************
+ *
+ *  lb_fluctuations_var_ghost
+ *
+ *  Variances for ghost mode noise for modes with inverse relaxation
+ *  times rtau and temperature kt.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
+						  double * var) {
+  int p;
+  LB_RCS2_DOUBLE(rcs2);
+  LB_NORMALISERS_DOUBLE(norm);
+
+  assert(rtau);
+  assert(kt >= 0.0);
+  assert(var);
+
+  kt = kt*rcs2;         /* Without normalisation kT = cs^2 */
+
+  for (p = NHYDRO; p < NVEL; p++) {
+    double tau_g = 1.0/rtau[p];
+    var[p] = sqrt(kt/norm[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_fluctuations_stress
+ *
+ *  Return the random stress shat for fluctuations.
+ *  The rnadom number generator at position "index" is required.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
+					       double var_eta,
+					       double var_eta_bulk,
+					       double shat[3][3]) {
+  double tr;
+  double random[6];
+
+  assert(noise);
+  assert(NDIM == 2 || NDIM == 3);
+
+  /* Set symetric random stress matrix (elements with unit variance);
+   * in practice always 3d (= 6 elements) required */
+
+  noise_reap_n(noise, index, 6, random);
+
+  shat[X][X] = random[0];
+  shat[X][Y] = random[1];
+  shat[X][Z] = random[2];
+
+  shat[Y][X] = shat[X][Y];
+  shat[Y][Y] = random[3];
+  shat[Y][Z] = random[4];
+
+  shat[Z][X] = shat[X][Z];
+  shat[Z][Y] = shat[Y][Z];
+  shat[Z][Z] = random[5];
+
+  /* Compute the trace and the traceless part */
+
+  tr = (1.0/NDIM)*(shat[X][X] + shat[Y][Y] + (NDIM - 2.0)*shat[Z][Z]);
+  shat[X][X] -= tr;
+  shat[Y][Y] -= tr;
+  shat[Z][Z] -= tr;
+
+  /* Set variance of the traceless part */
+
+  shat[X][X] *= var_eta*sqrt(2.0);
+  shat[X][Y] *= var_eta;
+  shat[X][Z] *= var_eta;
+
+  shat[Y][X] *= var_eta;
+  shat[Y][Y] *= var_eta*sqrt(2.0);
+  shat[Y][Z] *= var_eta;
+
+  shat[Z][X] *= var_eta;
+  shat[Z][Y] *= var_eta;
+  shat[Z][Z] *= var_eta*sqrt(2.0);
+
+  /* Set variance of trace and recombine... */
+
+  tr *= var_eta_bulk;
+
+  shat[X][X] += tr;
+  shat[Y][Y] += tr;
+  shat[Z][Z] += tr;
+
+  return 0;
+}
+
+__host__ __device__ int lb_fluctuations_ghosts(noise_t * noise, int index,
+					       double * var_ghost,
+					       double ghat[NVEL]) {
+  int ia;
+  double random[NNOISE_MAX];
+
+  assert(noise);
+  assert(NNOISE_MAX >= (NVEL - NHYDRO));
+
+  /* Ghost modes */
+
+  noise_reap_n(noise, index, NVEL-NHYDRO, random);
+
+  for (ia = NHYDRO; ia < NVEL; ia++) {
+    ghat[ia] = var_ghost[ia]*random[ia - NHYDRO];
+  }
+
+  return 0;
+}
+
+
+
+/*****************************************************************************
+ *
  *  lb_collision_parameters_commit
  *
  *****************************************************************************/
 
-static __host__ int lb_collision_parameters_commit(lb_t * lb) {
+static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc) {
 
   collide_param_t p;
   physics_t * phys = NULL;
@@ -1376,6 +1760,15 @@ static __host__ int lb_collision_parameters_commit(lb_t * lb) {
 
   physics_ref(&phys);
   physics_fbody(phys, force_constant);
+
+  /* Bare fluid visocisities */
+ 
+  physics_kt(phys, &p.kt);
+  physics_eta_shear(phys, &p.eta_shear);
+  physics_eta_bulk(phys, &p.eta_bulk);
+
+  p.have_visc_model = 0;
+  if (visc) p.have_visc_model = 1;
 
   /* Pulse force (time dependent) */
   physics_fpulse(phys, fpulse_amplitude);

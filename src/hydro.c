@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,7 +22,7 @@
 #include "kernel.h"
 #include "coords_field.h"
 #include "util.h"
-#include "hydro_s.h"
+#include "hydro.h"
 
 static int hydro_lees_edwards_parallel(hydro_t * obj);
 static int hydro_u_write(FILE * fp, int index, void * self);
@@ -86,6 +86,10 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
 					 sizeof(double));
   if (obj->f == NULL) pe_fatal(pe, "calloc(hydro->f) failed\n");
 
+  obj->eta =
+    (double *) mem_aligned_calloc(MEM_PAGESIZE, obj->nsite, sizeof(double));
+  if (obj->eta == NULL) pe_fatal(pe, "calloc(hydro->eta) failed\n");
+
   halo_swap_create_r1(pe, cs, nhcomm, obj->nsite, NHDIM, &obj->halo);
   assert(obj->halo);
 
@@ -111,6 +115,11 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
     tdpAssert(tdpMalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double)));
     tdpAssert(tdpMemset(tmp, 0, NHDIM*obj->nsite*sizeof(double)));
     tdpAssert(tdpMemcpy(&obj->target->f, &tmp, sizeof(double *),
+			tdpMemcpyHostToDevice)); 
+
+    tdpAssert(tdpMalloc((void **) &tmp, obj->nsite*sizeof(double)));
+    tdpAssert(tdpMemset(tmp, 0, obj->nsite*sizeof(double)));
+    tdpAssert(tdpMemcpy(&obj->target->eta, &tmp, sizeof(double *),
 			tdpMemcpyHostToDevice)); 
 
     tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
@@ -144,11 +153,15 @@ __host__ int hydro_free(hydro_t * obj) {
     tdpAssert(tdpMemcpy(&tmp, &obj->target->f, sizeof(double *),
 			tdpMemcpyDeviceToHost)); 
     tdpAssert(tdpFree(tmp));
+    tdpAssert(tdpMemcpy(&tmp, &obj->target->eta, sizeof(double *),
+			tdpMemcpyDeviceToHost)); 
+    tdpAssert(tdpFree(tmp));
     tdpAssert(tdpFree(obj->target));
   }
 
   halo_swap_free(obj->halo);
   if (obj->info) io_info_free(obj->info);
+  free(obj->eta);
   free(obj->f);
   free(obj->u);
   free(obj);
@@ -167,6 +180,7 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
   int ndevice;
   double * tmpu;
   double * tmpf;
+  double * tmpeta;
 
   assert(obj);
 
@@ -181,16 +195,20 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
 			tdpMemcpyDeviceToHost));
     tdpAssert(tdpMemcpy(&tmpu, &obj->target->u, sizeof(double *),
 			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&tmpeta, &obj->target->eta, sizeof(double *),
+			tdpMemcpyDeviceToHost));
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
       tdpAssert(tdpMemcpy(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(tmpeta, obj->eta, obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int), flag));
       break;
     case tdpMemcpyDeviceToHost:
       tdpAssert(tdpMemcpy(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(obj->u, tmpu, NHDIM*obj->nsite*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(obj->eta, tmpeta, obj->nsite*sizeof(double), flag));
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in hydro_memcpy\n");

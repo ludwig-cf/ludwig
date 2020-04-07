@@ -135,7 +135,7 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 
 int main(int argc, char ** argv) {
 
-  size_t optind;
+  int optind;
 
   MPI_Init(&argc, &argv);
 
