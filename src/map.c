@@ -106,8 +106,9 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 
     /* Data */
     if (obj->ndata > 0) {
-      tdpAssert(tdpMalloc((void **) &dtmp, obj->ndata*nsites*sizeof(double)));
-      tdpAssert(tdpMemset(dtmp, 0, obj->ndata*nsites*sizeof(double)));
+      size_t nsz = (size_t) obj->ndata*nsites*sizeof(double);
+      tdpAssert(tdpMalloc((void **) &dtmp, nsz));
+      tdpAssert(tdpMemset(dtmp, 0, nsz));
       tdpAssert(tdpMemcpy(&obj->target->data, &dtmp, sizeof(double *),
 		          tdpMemcpyHostToDevice));
     }
