@@ -391,23 +391,17 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	for (; pc != NULL; pc = pc->next) {
+	  btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
+	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
+	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
-          //CHANGE
-	  for (ia = 0; ia < 3; ia++) 
+	  driven_colloid_force(pc->s.s, dforce);
+	  
+	  for (ia = 0; ia < 3; ia++) {
 	    pc->force[ia] += g[ia];                /* Gravity */
-
-          if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
-	    btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
-	    btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
-	    btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
-
-	    driven_colloid_force(pc->s.s, dforce);
-	    
-	    for (ia = 0; ia < 3; ia++) {
-	      pc->torque[ia] += btorque[ia];         /* Magnetic field */
-	      pc->force[ia] += dforce[ia];           /* Active force */
-	    }
-          }
+	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
+	    pc->force[ia] += dforce[ia];           /* Active force */
+	  }
 	}
       }
     }
@@ -641,40 +635,33 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
 
         colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
         for (; pc1; pc1 = pc1->next) {
-          //CHANGE
-          if(pc1->s.nbonds>0) {
 
-            for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
-              for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
-                for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+          for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+            for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+              for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
    
-                  colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
-                  for (; pc2; pc2 = pc2->next) {
-                    //CHANGE
-                    if(pc2->s.nbonds>0) { 
-                  
-                      for (n1 = 0; n1 < pc1->s.nbonds; n1++) {
-                        if (pc1->s.bond[n1] == pc2->s.index) {
-                          nbondfound += 1;
-                          pc1->bonded[n1] = pc2;
-                          /* And bond is reciprocated */
-                            for (n2 = 0; n2 < pc2->s.nbonds; n2++) {
-                              if (pc2->s.bond[n2] == pc1->s.index) {
-                                nbondpair += 1;
-                                pc2->bonded[n2] = pc1;
-                              }
-                            }
-                        }
-	              }
-                    
-                    }
+                colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
+                for (; pc2; pc2 = pc2->next) {
 
-	            /* Cell list */
-	          }
-	        }
+                  for (n1 = 0; n1 < pc1->s.nbonds; n1++) {
+                    if (pc1->s.bond[n1] == pc2->s.index) {
+                      nbondfound += 1;
+                      pc1->bonded[n1] = pc2;
+                      /* And bond is reciprocated */
+                      for (n2 = 0; n2 < pc2->s.nbonds; n2++) {
+                        if (pc2->s.bond[n2] == pc1->s.index) {
+                          nbondpair += 1;
+                          pc2->bonded[n2] = pc1;
+                        }
+                      }
+                    }
+		  }
+
+		  /* Cell list */
+		}
 	      }
 	    }
-          }
+	  }
 	}
       }
     }

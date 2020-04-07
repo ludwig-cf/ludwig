@@ -17,12 +17,9 @@
 
 #include "colloids.h"
 #include "hydro.h"
-//CHANGE
-#include "wall.h"
 
 int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro);
-//CHANGE
-int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_t * wall);
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro);
 int subgrid_on_set(void);
 int subgrid_on(int * flag);
 

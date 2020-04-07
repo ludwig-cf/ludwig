@@ -722,16 +722,17 @@ void ludwig_run(const char * inputfile) {
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
 
-      //CHANGE
-      TIMER_start(TIMER_BBL);
-      wall_set_wall_distributions(ludwig->wall);
-      if (is_subgrid)  
-        subgrid_update(ludwig->collinfo, ludwig->hydro);
-      bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
-      		     ludwig->collinfo);
-      wall_bbl(ludwig->wall);
-      TIMER_stop(TIMER_BBL);
-
+      if (is_subgrid) {
+	subgrid_update(ludwig->collinfo, ludwig->hydro);
+      }
+      else {
+	TIMER_start(TIMER_BBL);
+	wall_set_wall_distributions(ludwig->wall);
+	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
+			     ludwig->collinfo);
+	wall_bbl(ludwig->wall);
+	TIMER_stop(TIMER_BBL);
+      }
     }
     else {
       /* No hydrodynamics, but update colloids in response to
@@ -1729,15 +1730,20 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
 
   subgrid_on(&is_subgrid);
 
-  //CHANGE
-  colloids_info_position_update(ludwig->collinfo);
-  colloids_info_update_cell_list(ludwig->collinfo);
-  colloids_halo_state(ludwig->collinfo);
-  colloids_info_update_lists(ludwig->collinfo);
-  interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-        	     ludwig->psi, ludwig->ewald);
-  if (is_subgrid) 
-    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+  if (is_subgrid) {
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);
+  }
+  else {
+    /* This order should be preserved */
+    colloids_info_position_update(ludwig->collinfo);
+    colloids_info_update_cell_list(ludwig->collinfo);
+    colloids_halo_state(ludwig->collinfo);
+    colloids_info_update_lists(ludwig->collinfo);
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+  }
 
   return 0;
 }
@@ -1782,54 +1788,56 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-  /* Removal or replacement of fluid requires a lattice halo update */
-
-  //CHANGE
-  TIMER_start(TIMER_HALO_LATTICE);
-
-  /* __NVCC__ */
-  if (ndevice == 0) {
-    lb_halo(ludwig->lb);
+  if (is_subgrid) {
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);    
   }
   else {
-    lb_halo_swap(ludwig->lb, LB_HALO_HOST);
+
+    /* Removal or replacement of fluid requires a lattice halo update */
+
+    TIMER_start(TIMER_HALO_LATTICE);
+
+    /* __NVCC__ */
+    if (ndevice == 0) {
+      lb_halo(ludwig->lb);
+    }
+    else {
+      lb_halo_swap(ludwig->lb, LB_HALO_HOST);
+    }
+
+    TIMER_stop(TIMER_HALO_LATTICE);
+
+    TIMER_start(TIMER_FREE1);
+    if (iconserve && ludwig->phi) field_halo(ludwig->phi);
+    if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
+    TIMER_stop(TIMER_FREE1);
+
+    TIMER_start(TIMER_REBUILD);
+
+    build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
+    build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
+			 ludwig->q, ludwig->psi, ludwig->map);
+    build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
+    
+
+    TIMER_stop(TIMER_REBUILD);
+
+    TIMER_start(TIMER_FREE1);
+    if (iconserve) {
+      colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
+      build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
+    }
+    TIMER_stop(TIMER_FREE1);
+
+    TIMER_start(TIMER_FORCES);
+
+    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		     ludwig->psi, ludwig->ewald);
+
+    TIMER_stop(TIMER_FORCES);
   }
-
-  TIMER_stop(TIMER_HALO_LATTICE);
-
-  TIMER_start(TIMER_FREE1);
-  if (iconserve && ludwig->phi) field_halo(ludwig->phi);
-  if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
-  TIMER_stop(TIMER_FREE1);
-
-  TIMER_start(TIMER_REBUILD);
-
-  build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
-  build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
-      		 ludwig->q, ludwig->psi, ludwig->map);
-  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
-  
-
-  TIMER_stop(TIMER_REBUILD);
-
-  TIMER_start(TIMER_FREE1);
-  if (iconserve) {
-    colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
-    build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
-  }
-  TIMER_stop(TIMER_FREE1);
-
-  TIMER_start(TIMER_FORCES);
-
-  interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-      	     ludwig->psi, ludwig->ewald);
-
-  //CHANGE
-  if (is_subgrid) 
-      subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);    
-
-  TIMER_stop(TIMER_FORCES);
-  
 
   /* __NVCC__ TODO: remove */
 

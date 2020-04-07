@@ -379,51 +379,47 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 
 	while (p_colloid != NULL) {
 
-          //CHANGE
-          if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
+	  kn = 0;
 
-	    kn = 0;
+	  ewald_set_kr_table(ewald, p_colloid->s.r);
 
-	    ewald_set_kr_table(ewald, p_colloid->s.r);
+	  for (kz = 0; kz <= nk_[Z]; kz++) {
+	    for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
+	      for (kx = -nk_[X]; kx <= nk_[X]; kx++) {
+		double udotk, kdotr;
+		double skr[3], ckr[3];
 
-	    for (kz = 0; kz <= nk_[Z]; kz++) {
-	      for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
-	        for (kx = -nk_[X]; kx <= nk_[X]; kx++) {
-	          double udotk, kdotr;
-	          double skr[3], ckr[3];
+		k[X] = fkx*kx;
+		k[Y] = fky*ky;
+		k[Z] = fkz*kz;
+		ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
 
-	          k[X] = fkx*kx;
-	          k[Y] = fky*ky;
-	          k[Z] = fkz*kz;
-	          ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
+		if (ksq <= 0.0 || ksq > kmax_) continue;
 
-	          if (ksq <= 0.0 || ksq > kmax_) continue;
+		skr[X] = sinkr_[3*abs(kx) + X];
+		skr[Y] = sinkr_[3*abs(ky) + Y];
+		skr[Z] = sinkr_[3*kz      + Z];
+		ckr[X] = coskr_[3*abs(kx) + X];
+		ckr[Y] = coskr_[3*abs(ky) + Y];
+		ckr[Z] = coskr_[3*kz      + Z];
 
-	          skr[X] = sinkr_[3*abs(kx) + X];
-	          skr[Y] = sinkr_[3*abs(ky) + Y];
-	          skr[Z] = sinkr_[3*kz      + Z];
-	          ckr[X] = coskr_[3*abs(kx) + X];
-	          ckr[Y] = coskr_[3*abs(ky) + Y];
-	          ckr[Z] = coskr_[3*kz      + Z];
+		if (kx < 0) skr[X] = -skr[X];
+		if (ky < 0) skr[Y] = -skr[Y];
 
-	          if (kx < 0) skr[X] = -skr[X];
-	          if (ky < 0) skr[Y] = -skr[Y];
+		udotk = dot_product(p_colloid->s.s, k);
 
-	          udotk = dot_product(p_colloid->s.s, k);
+		kdotr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
+		  + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
+		sinx_[kn] += udotk*kdotr;
 
-	          kdotr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
-	            + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
-	          sinx_[kn] += udotk*kdotr;
+		kdotr = ckr[X]*ckr[Y]*ckr[Z] - ckr[X]*skr[Y]*skr[Z]
+		  - skr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*ckr[Z];
+		cosx_[kn] += udotk*kdotr;
 
-	          kdotr = ckr[X]*ckr[Y]*ckr[Z] - ckr[X]*skr[Y]*skr[Z]
-	            - skr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*ckr[Z];
-	          cosx_[kn] += udotk*kdotr;
-
-	          kn++;
-	        }
+		kn++;
 	      }
 	    }
-          }
+	  }
 	  p_colloid = p_colloid->next;
 	}
 	/* Next cell */
@@ -532,97 +528,92 @@ int ewald_real_space_sum(ewald_t * ewald) {
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_c1);
 
 	while (p_c1) {
-          //CHANGE
-          if(p_c1->s.type!=COLLOID_TYPE_SUBGRID) {
 
-	    for (dx = -1; dx <= +1; dx++) {
-	      for (dy = -1; dy <= +1; dy++) {
-	        for (dz = -1; dz <= +1; dz++) {
+	  for (dx = -1; dx <= +1; dx++) {
+	    for (dy = -1; dy <= +1; dy++) {
+	      for (dz = -1; dz <= +1; dz++) {
 
-	          id = ic + dx;
-	          jd = jc + dy;
-	          kd = kc + dz;
+		id = ic + dx;
+		jd = jc + dy;
+		kd = kc + dz;
 
-	          colloids_info_cell_list_head(ewald->cinfo, id, jd, kd, &p_c2);
+		colloids_info_cell_list_head(ewald->cinfo, id, jd, kd, &p_c2);
 
-	          while (p_c2) {
-                    //CHANGE
-                    if(p_c2->s.type!=COLLOID_TYPE_SUBGRID) {
-	              if (p_c1->s.index < p_c2->s.index) {
-	                double r;
+		while (p_c2) {
+		  if (p_c1->s.index < p_c2->s.index) {
+		    double r;
 
-	                /* Here we need r2-r1 */
+		    /* Here we need r2-r1 */
 
-	                cs_minimum_distance(ewald->cs, p_c2->s.r, p_c1->s.r, r12);
-	                r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
+		    cs_minimum_distance(ewald->cs, p_c2->s.r, p_c1->s.r, r12);
+		    r = sqrt(r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z]);
 
-	                if (r < ewald_rc_) {
-	                  double rr = 1.0/r;
-	                  double b, b1, b2, c, d;
-	                  double udotu, u1dotr, u2dotr;
-	                  double f[3], g[3];
-	                  int i;
+		    if (r < ewald_rc_) {
+		      double rr = 1.0/r;
+		      double b, b1, b2, c, d;
+		      double udotu, u1dotr, u2dotr;
+		      double f[3], g[3];
+		      int i;
 
-	                  /* Energy */
-	                  b1 = mu_*mu_*erfc(kappa_*r)*(rr*rr*rr);
-	                  b2 = mu_*mu_*(2.0*kappa_*rpi_)
-	                  *exp(-kappa_*kappa_*r*r)*(rr*rr);
+		      /* Energy */
+		      b1 = mu_*mu_*erfc(kappa_*r)*(rr*rr*rr);
+		      b2 = mu_*mu_*(2.0*kappa_*rpi_)
+			*exp(-kappa_*kappa_*r*r)*(rr*rr);
 
-	                  b = b1 + b2;
-	                  c = 3.0*b1*rr*rr + (2.0*kappa_*kappa_ + 3.0*rr*rr)*b2;
-	                  d = 5.0*c/(r*r)
-	                  + 4.0*kappa_*kappa_*kappa_*kappa_*b2;
+		      b = b1 + b2;
+		      c = 3.0*b1*rr*rr + (2.0*kappa_*kappa_ + 3.0*rr*rr)*b2;
+		      d = 5.0*c/(r*r)
+			+ 4.0*kappa_*kappa_*kappa_*kappa_*b2;
 
-	                  udotu  = dot_product(p_c1->s.s, p_c2->s.s);
-	                  u1dotr = dot_product(p_c1->s.s, r12);
-	                  u2dotr = dot_product(p_c2->s.s, r12);
+		      udotu  = dot_product(p_c1->s.s, p_c2->s.s);
+		      u1dotr = dot_product(p_c1->s.s, r12);
+		      u2dotr = dot_product(p_c2->s.s, r12);
 
-	                  ereal_ += udotu*b - u1dotr*u2dotr*c;
+		      ereal_ += udotu*b - u1dotr*u2dotr*c;
 
-	                  /* Force */
+		      /* Force */
 
-	                  for (i = 0; i < 3; i++) {
-	                  f[i] = (udotu*c - u1dotr*u2dotr*d)*r12[i]
-	                    + c*(u2dotr*p_c1->s.s[i] + u1dotr*p_c2->s.s[i]);
-	                  }
+		      for (i = 0; i < 3; i++) {
+			f[i] = (udotu*c - u1dotr*u2dotr*d)*r12[i]
+			  + c*(u2dotr*p_c1->s.s[i] + u1dotr*p_c2->s.s[i]);
+		      }
 
-	                  for (i = 0; i < 3; i++) {
-	                  p_c1->force[i] += f[i];
-	                  p_c2->force[i] -= f[i];
-	                  }
+		      for (i = 0; i < 3; i++) {
+			p_c1->force[i] += f[i];
+			p_c2->force[i] -= f[i];
+		      }
 
-	                  /* Torque on particle 1 */
+		      /* Torque on particle 1 */
 
-	                  g[X] = b*p_c2->s.s[X] - c*u2dotr*r12[X];
-	                  g[Y] = b*p_c2->s.s[Y] - c*u2dotr*r12[Y];
-	                  g[Z] = b*p_c2->s.s[Z] - c*u2dotr*r12[Z];
+		      g[X] = b*p_c2->s.s[X] - c*u2dotr*r12[X];
+		      g[Y] = b*p_c2->s.s[Y] - c*u2dotr*r12[Y];
+		      g[Z] = b*p_c2->s.s[Z] - c*u2dotr*r12[Z];
 
-	                  p_c1->torque[X] += -(p_c1->s.s[Y]*g[Z] - p_c1->s.s[Z]*g[Y]);
-	                  p_c1->torque[Y] += -(p_c1->s.s[Z]*g[X] - p_c1->s.s[X]*g[Z]);
-	                  p_c1->torque[Z] += -(p_c1->s.s[X]*g[Y] - p_c1->s.s[Y]*g[X]);
+		      p_c1->torque[X] += -(p_c1->s.s[Y]*g[Z] - p_c1->s.s[Z]*g[Y]);
+		      p_c1->torque[Y] += -(p_c1->s.s[Z]*g[X] - p_c1->s.s[X]*g[Z]);
+		      p_c1->torque[Z] += -(p_c1->s.s[X]*g[Y] - p_c1->s.s[Y]*g[X]);
 
-	                  /* Torque on particle 2 */
+		      /* Torque on particle 2 */
 
-	                  g[X] = b*p_c1->s.s[X] - c*u1dotr*r12[X];
-	                  g[Y] = b*p_c1->s.s[Y] - c*u1dotr*r12[Y];
-	                  g[Z] = b*p_c1->s.s[Z] - c*u1dotr*r12[Z];
+		      g[X] = b*p_c1->s.s[X] - c*u1dotr*r12[X];
+		      g[Y] = b*p_c1->s.s[Y] - c*u1dotr*r12[Y];
+		      g[Z] = b*p_c1->s.s[Z] - c*u1dotr*r12[Z];
 
-	                  p_c2->torque[X] += -(p_c2->s.s[Y]*g[Z] - p_c2->s.s[Z]*g[Y]);
-	                  p_c2->torque[Y] += -(p_c2->s.s[Z]*g[X] - p_c2->s.s[X]*g[Z]);
-	                  p_c2->torque[Z] += -(p_c2->s.s[X]*g[Y] - p_c2->s.s[Y]*g[X]);
-	                }
+		      p_c2->torque[X] += -(p_c2->s.s[Y]*g[Z] - p_c2->s.s[Z]*g[Y]);
+		      p_c2->torque[Y] += -(p_c2->s.s[Z]*g[X] - p_c2->s.s[X]*g[Z]);
+		      p_c2->torque[Z] += -(p_c2->s.s[X]*g[Y] - p_c2->s.s[Y]*g[X]);
+		    }
  
-	              }
-                    }
+		  }
 
-	            p_c2 = p_c2->next;
-	          }
+		  p_c2 = p_c2->next;
+		}
 
-	          /* Next cell */
-	        }
+		/* Next cell */
 	      }
 	    }
-          }
+	  }
+
 	  p_c1 = p_c1->next;
 	}
 
@@ -682,86 +673,82 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
- 
-          //CHANGE
-          if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
 
-	    /* Sum over k to get the force/torque. */
+	  /* Sum over k to get the force/torque. */
 
-	    double f[3], t[3];
-	    int i;
+	  double f[3], t[3];
+	  int i;
 
-	    ewald_set_kr_table(ewald, p_colloid->s.r);
+	  ewald_set_kr_table(ewald, p_colloid->s.r);
 
-	    for (i = 0; i < 3; i++) {
-	      f[i] = 0.0;
-	      t[i] = 0.0;
-	    }
+	  for (i = 0; i < 3; i++) {
+	    f[i] = 0.0;
+	    t[i] = 0.0;
+	  }
 
-	    efourier_ = 0.0; /* Count only once! */
+	  efourier_ = 0.0; /* Count only once! */
 
-	    kn = 0;
-	    for (kz = 0; kz <= nk_[Z]; kz++) {
-	      for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
-	        for (kx = -nk_[X]; kx <= nk_[X]; kx++) {
+	  kn = 0;
+	  for (kz = 0; kz <= nk_[Z]; kz++) {
+	    for (ky = -nk_[Y]; ky <= nk_[Y]; ky++) {
+	      for (kx = -nk_[X]; kx <= nk_[X]; kx++) {
 
-	          double udotk, g[3];
-	          double coskr, sinkr, ckr[3], skr[3];
+		double udotk, g[3];
+		double coskr, sinkr, ckr[3], skr[3];
 
-	          k[X] = fkx*kx;
-	          k[Y] = fky*ky;
-	          k[Z] = fkz*kz;
-	          ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
+		k[X] = fkx*kx;
+		k[Y] = fky*ky;
+		k[Z] = fkz*kz;
+		ksq = k[X]*k[X] + k[Y]*k[Y] + k[Z]*k[Z];
 
-	          if (ksq <= 0.0 || ksq > kmax_) continue;		
-	          b = b0*exp(-r4kappa_sq*ksq)/ksq;
+		if (ksq <= 0.0 || ksq > kmax_) continue;		
+		b = b0*exp(-r4kappa_sq*ksq)/ksq;
 
-	          /* Energy */ 
+		/* Energy */ 
 
-	          if (kz > 0) b *= 2.0; 
-	          efourier_ += 0.5*b*(sinx_[kn]*sinx_[kn] + cosx_[kn]*cosx_[kn]);
+		if (kz > 0) b *= 2.0; 
+		efourier_ += 0.5*b*(sinx_[kn]*sinx_[kn] + cosx_[kn]*cosx_[kn]);
 
-	          skr[X] = sinkr_[3*abs(kx) + X];
-	          skr[Y] = sinkr_[3*abs(ky) + Y];
-	          skr[Z] = sinkr_[3*kz      + Z];
-	          ckr[X] = coskr_[3*abs(kx) + X];
-	          ckr[Y] = coskr_[3*abs(ky) + Y];
-	          ckr[Z] = coskr_[3*kz      + Z];
+		skr[X] = sinkr_[3*abs(kx) + X];
+		skr[Y] = sinkr_[3*abs(ky) + Y];
+		skr[Z] = sinkr_[3*kz      + Z];
+		ckr[X] = coskr_[3*abs(kx) + X];
+		ckr[Y] = coskr_[3*abs(ky) + Y];
+		ckr[Z] = coskr_[3*kz      + Z];
 
-	          if (kx < 0) skr[X] = -skr[X];
-	          if (ky < 0) skr[Y] = -skr[Y];
+		if (kx < 0) skr[X] = -skr[X];
+		if (ky < 0) skr[Y] = -skr[Y];
 
-	          sinkr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
-	            + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
+		sinkr = skr[X]*ckr[Y]*ckr[Z] + ckr[X]*skr[Y]*ckr[Z]
+		  + ckr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*skr[Z];
 
-	          coskr = ckr[X]*ckr[Y]*ckr[Z] - ckr[X]*skr[Y]*skr[Z]
-	            - skr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*ckr[Z];
+		coskr = ckr[X]*ckr[Y]*ckr[Z] - ckr[X]*skr[Y]*skr[Z]
+		  - skr[X]*ckr[Y]*skr[Z] - skr[X]*skr[Y]*ckr[Z];
 
-	          /* Force and torque */
+		/* Force and torque */
 
-	          udotk = dot_product(p_colloid->s.s, k);
+		udotk = dot_product(p_colloid->s.s, k);
 
-	          for (i = 0; i < 3; i++) {
-	            f[i] += b*k[i]*udotk*(cosx_[kn]*sinkr - sinx_[kn]*coskr);
-	            g[i] =  b*k[i]*(cosx_[kn]*coskr + sinx_[kn]*sinkr);
-	          }
+		for (i = 0; i < 3; i++) {
+		  f[i] += b*k[i]*udotk*(cosx_[kn]*sinkr - sinx_[kn]*coskr);
+		  g[i] =  b*k[i]*(cosx_[kn]*coskr + sinx_[kn]*sinkr);
+		}
 
-	          t[X] += -(p_colloid->s.s[Y]*g[Z] - p_colloid->s.s[Z]*g[Y]);
-	          t[Y] += -(p_colloid->s.s[Z]*g[X] - p_colloid->s.s[X]*g[Z]);
-	          t[Z] += -(p_colloid->s.s[X]*g[Y] - p_colloid->s.s[Y]*g[X]);
+		t[X] += -(p_colloid->s.s[Y]*g[Z] - p_colloid->s.s[Z]*g[Y]);
+		t[Y] += -(p_colloid->s.s[Z]*g[X] - p_colloid->s.s[X]*g[Z]);
+		t[Z] += -(p_colloid->s.s[X]*g[Y] - p_colloid->s.s[Y]*g[X]);
 
-	          kn++;
-	        }
+		kn++;
 	      }
 	    }
+	  }
 
-	    /* Accululate force/torque */
+	  /* Accululate force/torque */
 
-	    for (i = 0; i < 3; i++) {
-	      p_colloid->force[i] += f[i];
-	      p_colloid->torque[i] += t[i];
-	    }
-          }
+	  for (i = 0; i < 3; i++) {
+	    p_colloid->force[i] += f[i];
+	    p_colloid->torque[i] += t[i];
+	  }
 
 	  p_colloid = p_colloid->next;
 	}

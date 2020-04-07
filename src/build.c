@@ -144,78 +144,74 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	while (p_colloid != NULL) {
 
-          //CHANGE
-          if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
+	  /* Set actual position and radius */
 
-	    /* Set actual position and radius */
+	  radius = p_colloid->s.a0;
+	  rsq    = radius*radius;
 
-	    radius = p_colloid->s.a0;
-	    rsq    = radius*radius;
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
 
-	    /* Need to translate the colloid position to "local"
-	     * coordinates, so that the correct range of lattice
-	     * nodes is found */
+	  r0[X] = p_colloid->s.r[X] - 1.0*noffset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*noffset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*noffset[Z];
 
-	    r0[X] = p_colloid->s.r[X] - 1.0*noffset[X];
-	    r0[Y] = p_colloid->s.r[Y] - 1.0*noffset[Y];
-	    r0[Z] = p_colloid->s.r[Z] - 1.0*noffset[Z];
+	  /* Compute appropriate range of sites that require checks, i.e.,
+	   * a cubic box around the centre of the colloid. However, this
+	   * should not extend beyond the boundary of the current domain
+	   * (but include halos). */
 
-	    /* Compute appropriate range of sites that require checks, i.e.,
-	     * a cubic box around the centre of the colloid. However, this
-	     * should not extend beyond the boundary of the current domain
-	     * (but include halos). */
+	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - radius));
+	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + radius));
+	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - radius));
+	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + radius));
+	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - radius));
+	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + radius));
 
-	    i_min = imax(1 - nhalo,         (int) floor(r0[X] - radius));
-	    i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + radius));
-	    j_min = imax(1 - nhalo,         (int) floor(r0[Y] - radius));
-	    j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + radius));
-	    k_min = imax(1 - nhalo,         (int) floor(r0[Z] - radius));
-	    k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + radius));
+	  /* Check each site to see whether it is inside or not */
 
-	    /* Check each site to see whether it is inside or not */
+	  for (i = i_min; i <= i_max; i++)
+	    for (j = j_min; j <= j_max; j++)
+	      for (k = k_min; k <= k_max; k++) {
 
-	    for (i = i_min; i <= i_max; i++)
-	      for (j = j_min; j <= j_max; j++)
-	        for (k = k_min; k <= k_max; k++) {
+		/* rsite0 is the coordinate position of the site */
 
-	          /* rsite0 is the coordinate position of the site */
+		rsite0[X] = 1.0*i;
+		rsite0[Y] = 1.0*j;
+		rsite0[Z] = 1.0*k;
+		cs_minimum_distance(cs, rsite0, r0, rsep);
 
-	          rsite0[X] = 1.0*i;
-	          rsite0[Y] = 1.0*j;
-	          rsite0[Z] = 1.0*k;
-	          cs_minimum_distance(cs, rsite0, r0, rsep);
+		/* Are we inside? */
 
-	          /* Are we inside? */
+		if (dot_product(rsep, rsep) < rsq) {
 
-	          if (dot_product(rsep, rsep) < rsq) {
+		  /* Set index */
+		  index = cs_index(cs, i, j, k);
 
-	            /* Set index */
-	            index = cs_index(cs, i, j, k);
+		  colloids_info_map_set(cinfo, index, p_colloid);
+		  map_status_set(map, index, MAP_COLLOID);
 
-	            colloids_info_map_set(cinfo, index, p_colloid);
-	            map_status_set(map, index, MAP_COLLOID);
+		  /* Janus particles have h = h_0 cos (theta)
+		   * with s[3] pointing to the 'north pole' */
 
-	            /* Janus particles have h = h_0 cos (theta)
-	             * with s[3] pointing to the 'north pole' */
+		  cosine = 1.0;
+		  if (p_colloid->s.type == COLLOID_TYPE_JANUS) {
+		    mod = modulus(rsep);
+		    if (mod > 0.0) {
+		      cosine = dot_product(p_colloid->s.s, rsep)/mod;
+		    }
+		  }
 
-	            cosine = 1.0;
-	            if (p_colloid->s.type == COLLOID_TYPE_JANUS) {
-	              mod = modulus(rsep);
-	              if (mod > 0.0) {
-	                cosine = dot_product(p_colloid->s.s, rsep)/mod;
-	              }
-	            }
+		  wet[0] = p_colloid->s.c;
+		  wet[1] = cosine*p_colloid->s.h;
 
-	            wet[0] = p_colloid->s.c;
-	            wet[1] = cosine*p_colloid->s.h;
+		  map_data_set(map, index, wet);
+		}
+		/* Next site */
+	      }
 
-	            map_data_set(map, index, wet);
-	          }
-	          /* Next site */
-	        }
-
-	    /* Next colloid */
-          }
+	  /* Next colloid */
 	  p_colloid = p_colloid->next;
 	}
 
@@ -258,31 +254,28 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
-          //CHANGE
-          if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
-	    pc->sumw   = 0.0;
-	    for (ia = 0; ia < 3; ia++) {
-	      pc->cbar[ia] = 0.0;
-	      pc->rxcbar[ia] = 0.0;
-	    }
+	  pc->sumw   = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    pc->cbar[ia] = 0.0;
+	    pc->rxcbar[ia] = 0.0;
+	  }
 
-	    if (pc->s.rebuild) {
-	      /* The shape has changed, so need to reconstruct */
-	      build_reconstruct_links(cs, cinfo, pc, map);
-	      if (wall) build_colloid_wall_links(cs, cinfo, pc, map);
-	    }
-	    else {
-	      /* Shape unchanged, so just reset existing links */
-	      build_reset_links(cs, pc, map);
-	    }
+	  if (pc->s.rebuild) {
+	    /* The shape has changed, so need to reconstruct */
+	    build_reconstruct_links(cs, cinfo, pc, map);
+	    if (wall) build_colloid_wall_links(cs, cinfo, pc, map);
+	  }
+	  else {
+	    /* Shape unchanged, so just reset existing links */
+	    build_reset_links(cs, pc, map);
+	  }
 
-	    build_count_faces_local(pc, &pc->s.sa, &pc->s.saf);
+	  build_count_faces_local(pc, &pc->s.sa, &pc->s.saf);
 
-	    /* Next colloid */
+	  /* Next colloid */
 
-	    pc->s.rebuild = 0;
-          }
+	  pc->s.rebuild = 0;
 	  pc = pc->next;
 	}
 

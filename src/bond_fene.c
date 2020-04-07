@@ -165,34 +165,31 @@ int bond_fene_compute(colloids_info_t * cinfo, void * self) {
   obj->bondlocal = 0.0;
 
   for (; pc; pc = pc->nextlocal) {
-   
-    //CHANGE 
-    if (pc->s.nbonds>0) {
-      for (n = 0; n < pc->s.nbonds; n++) {
-        assert(pc->bonded[n]);
-        if (pc->s.index > pc->bonded[n]->s.index) continue;
 
-        /* Compute force arising on each particle from single bond */
+    for (n = 0; n < pc->s.nbonds; n++) {
+      assert(pc->bonded[n]);
+      if (pc->s.index > pc->bonded[n]->s.index) continue;
 
-        cs_minimum_distance(obj->cs, pc->s.r, pc->bonded[n]->s.r, r12);
-        r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
+      /* Compute force arising on each particle from single bond */
 
-        if (r2 < r2min) r2min = r2;
-        if (r2 > r2max) r2max = r2;
-        if (r2 > obj->r0*obj->r0) pe_fatal(obj->pe, "Broken fene bond\n");
+      cs_minimum_distance(obj->cs, pc->s.r, pc->bonded[n]->s.r, r12);
+      r2 = r12[X]*r12[X] + r12[Y]*r12[Y] + r12[Z]*r12[Z];
 
-        obj->vlocal += -0.5*obj->k*obj->r0*obj->r0*log(1.0 - r2*rr02);
-        obj->bondlocal += 1.0;
-        f = -obj->k/(1.0 - r2*rr02);
+      if (r2 < r2min) r2min = r2;
+      if (r2 > r2max) r2max = r2;
+      if (r2 > obj->r0*obj->r0) pe_fatal(obj->pe, "Broken fene bond\n");
 
-        pc->force[X] -= f*r12[X];
-        pc->force[Y] -= f*r12[Y];
-        pc->force[Z] -= f*r12[Z];
+      obj->vlocal += -0.5*obj->k*obj->r0*obj->r0*log(1.0 - r2*rr02);
+      obj->bondlocal += 1.0;
+      f = -obj->k/(1.0 - r2*rr02);
 
-        pc->bonded[n]->force[X] += f*r12[X];
-        pc->bonded[n]->force[Y] += f*r12[Y];
-        pc->bonded[n]->force[Z] += f*r12[Z];
-      }
+      pc->force[X] -= f*r12[X];
+      pc->force[Y] -= f*r12[Y];
+      pc->force[Z] -= f*r12[Z];
+
+      pc->bonded[n]->force[X] += f*r12[X];
+      pc->bonded[n]->force[Y] += f*r12[Y];
+      pc->bonded[n]->force[Z] += f*r12[Z];
     }
 
   }
