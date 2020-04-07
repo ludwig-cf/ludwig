@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018 The University of Edinbugh
+ *  (c) 2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -73,8 +73,8 @@ int main(int argc, char * argv[]) {
 
   tdpAssert(tdpMemcpy(n_d, n_h, bufsz, tdpMemcpyHostToDevice));
 
-  nblk.x = 1; nblk.y = 1; nblk.z = 1;
   ntpb.x = tdp_get_max_threads(); ntpb.y = 1; ntpb.z = 1;
+  nblk.x = (NARRAY + ntpb.x - 1)/ntpb.x; nblk.y = 1; nblk.z = 1;
 
   tdpLaunchKernel(kerneltest1, nblk, ntpb, 0, 0, n_d);
   tdpAssert(tdpPeekAtLastError());

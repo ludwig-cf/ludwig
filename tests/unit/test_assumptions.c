@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2018 The University of Edinburgh 
+ *  (c) 2008-2019 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -126,26 +126,24 @@ int test_assumptions_suite(void) {
 void test_util(void) {
 
   int i, j, k, m, n;
-  double sumd, sume;
+  int sumd, sume;
   KRONECKER_DELTA_CHAR(d_);
   LEVI_CIVITA_CHAR(e_);
   
-  /* Krocker delta and Levi-Civita tensor (floating point) */
+  /* Krocker delta and Levi-Civita tensor */
 
   /* printf("Kroneker delta d_[i][j] correct...");*/
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       if (i == j) {
-	test_assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
+	test_assert(d_[i][j] == 1);
       }
       else {
-	test_assert(fabs(d_[i][j] - 0.0) < TEST_DOUBLE_TOLERANCE);
+	test_assert(d_[i][j] == 0);
       }
     }
   }
-  
-  /* printf("yes.\n");*/
 
   /* Do some permutations to test the perutation tensor e_[i][j][k].
    * Also use the identity e_ijk e_imn = d_jm d_kn - d_jn d_km
@@ -156,9 +154,9 @@ void test_util(void) {
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       for (k = 0; k < 3; k++) {
-	test_assert(abs(e_[i][j][k] + e_[i][k][j]) < TEST_DOUBLE_TOLERANCE);
-	test_assert(abs(e_[i][j][k] + e_[j][i][k]) < TEST_DOUBLE_TOLERANCE);
-	test_assert(abs(e_[i][j][k] - e_[k][i][j]) < TEST_DOUBLE_TOLERANCE);
+	test_assert((e_[i][j][k] + e_[i][k][j]) == 0);
+	test_assert((e_[i][j][k] + e_[j][i][k]) == 0);
+	test_assert((e_[i][j][k] - e_[k][i][j]) == 0);
       }
     }
   }
@@ -172,7 +170,7 @@ void test_util(void) {
 	    sume += e_[i][j][k]*e_[i][m][n];
 	  }
 	  sumd = (d_[j][m]*d_[k][n] - d_[j][n]*d_[k][m]);
-	  test_assert(fabs(sume - sumd) < TEST_DOUBLE_TOLERANCE);
+	  test_assert((sume - sumd) == 0);
 	}
       }
     }

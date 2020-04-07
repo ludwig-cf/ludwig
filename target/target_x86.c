@@ -67,6 +67,37 @@ void tdpErrorHandler(tdpError_t ifail, const char * file, int line, int fatal) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  tdpThreadModelInfo
+ *
+ *  Provide spme information on the thread model.
+ *
+ *****************************************************************************/
+
+__host__ tdpError_t tdpThreadModelInfo(FILE * fp) {
+
+  assert(fp);
+
+#ifndef _OPENMP
+  fprintf(fp, "Target thread model: None.\n");
+#else
+  fprintf(fp, "Target thread model: OpenMP.\n");
+  fprintf(fp, "OpenMP threads: %d; maximum number of threads: %d.\n",
+	  omp_get_max_threads(), omp_get_num_procs());
+#endif
+
+  return tdpSuccess;
+}
+
+/*****************************************************************************
+ *
+ *  tdp_x86_prelaunch
+ *
+ *  Injected immediately before "kernel launch".
+ *
+ *****************************************************************************/
+
 __host__ void tdp_x86_prelaunch(dim3 nblocks, dim3 nthreads) {
 
   gridDim = nblocks;
@@ -133,6 +164,8 @@ tdpError_t tdpDeviceSetCacheConfig(tdpFuncCache cacheConfig) {
 tdpError_t tdpDeviceSynchronize(void) {
 
   /* do nothing */
+
+  lastError = tdpSuccess;
 
   return tdpSuccess;
 }
