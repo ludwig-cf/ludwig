@@ -1670,6 +1670,10 @@ int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig) {
     rt_double_parameter(rt, "viscosity_arrhenius_eta_minus", &param.eta_minus);
     rt_double_parameter(rt, "viscosity_arrhenius_phistar",   &param.phistar);
 
+    if (param.eta_plus  == 0.0) pe_fatal(pe, "Non-zero eta_plus required\n");
+    if (param.eta_minus == 0.0) pe_fatal(pe, "Non-zero eta_minus required\n");
+    if (param.phistar   == 0.0) pe_fatal(pe, "Non-zero phistar required\n"); 
+
     visc_arrhenius_create(pe, cs, phi, param, &visc);
     ludwig->visc = (visc_t *) visc;
 

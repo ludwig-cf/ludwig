@@ -21,7 +21,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018  The University of Edinburgh
+ *  (c) 2010-2020  The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -158,10 +158,10 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   obj->nf = nf;
   obj->nsite = nsites;
 
-  obj->fe = (double *) calloc(nsites*nf, sizeof(double));
-  obj->fw = (double *) calloc(nsites*nf, sizeof(double));
-  obj->fy = (double *) calloc(nsites*nf, sizeof(double));
-  obj->fz = (double *) calloc(nsites*nf, sizeof(double));
+  obj->fe = (double *) calloc((size_t) nsites*nf, sizeof(double));
+  obj->fw = (double *) calloc((size_t) nsites*nf, sizeof(double));
+  obj->fy = (double *) calloc((size_t) nsites*nf, sizeof(double));
+  obj->fz = (double *) calloc((size_t) nsites*nf, sizeof(double));
 
   if (obj->fe == NULL) pe_fatal(pe, "calloc(advflux->fe) failed\n");
   if (obj->fw == NULL) pe_fatal(pe, "calloc(advflux->fw) failed\n");
@@ -179,19 +179,21 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   else {
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
+    size_t nsz = (size_t) nsites*nf*sizeof(double);
 
     tdpMalloc((void **) &obj->target, sizeof(advflux_t));
     tdpMemset(obj->target, 0, sizeof(advflux_t));
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+
+    tdpMalloc((void **) &tmp, nsz);
     tdpMemcpy(&obj->target->fe, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMalloc((void **) &tmp, nsz);
     tdpMemcpy(&obj->target->fw, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMalloc((void **) &tmp, nsz);
     tdpMemcpy(&obj->target->fy, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
+    tdpMalloc((void **) &tmp, nsz);
     tdpMemcpy(&obj->target->fz, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
 
     tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), tdpMemcpyHostToDevice);

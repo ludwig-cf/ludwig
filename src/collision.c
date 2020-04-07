@@ -95,7 +95,7 @@ struct collide_param_s {
 static __constant__ lb_collide_param_t _lbp;
 static __constant__ collide_param_t _cp;
 
-/* KLUDGE ME */
+/* Todo. Better unit tests required for these functions. */
 
 __host__ __device__ int lb_nrelax_valid(lb_relaxation_enum_t nrelax);
 __host__ __device__ int lb_relaxation_time_shear(lb_t * lb,

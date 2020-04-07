@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -68,7 +68,7 @@ __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj) {
 
   /* Could be zero-sized array */
 
-  obj->data = (double*) calloc(ndata*nsites, sizeof(double));
+  obj->data = (double*) calloc((size_t) ndata*nsites, sizeof(double));
   assert(obj->data);
   if (ndata > 0 && obj->data == NULL) pe_fatal(pe, "calloc(map->data) failed\n");
 
