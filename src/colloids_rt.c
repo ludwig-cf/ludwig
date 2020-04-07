@@ -199,13 +199,13 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   cs_cart_comm(cs, &comm);
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
-  if (nsubgrid > 0) {
+  //CHANGE
+  if (nsubgrid > 0) 
     subgrid_on_set();
-  }
-  else {
-    build_update_map(cs, cinfo, map);
-    build_update_links(cs, cinfo, wall, map);
-  }  
+  
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, wall, map);
+
 
   return 0;
 }

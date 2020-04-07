@@ -211,25 +211,28 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
   /* For each colloid in the list */
 
   for ( ; pc; pc = pc->nextall) {
+    //CHANGE
+    if(pc->s.type==COLLOID_TYPE_ACTIVE) {
 
-    pc->sump /= pc->sumw;
-    p_link = pc->lnk;
+      pc->sump /= pc->sumw;
+      p_link = pc->lnk;
 
-    for (; p_link; p_link = p_link->next) {
+      for (; p_link; p_link = p_link->next) {
 
-      if (p_link->status != LINK_FLUID) continue;
+        if (p_link->status != LINK_FLUID) continue;
 
-      dm = -wv[p_link->p]*pc->sump;
+        dm = -wv[p_link->p]*pc->sump;
 
-      for (ia = 0; ia < 3; ia++) {
-	c[ia] = 1.0*cv[p_link->p][ia];
-      }
+        for (ia = 0; ia < 3; ia++) {
+          c[ia] = 1.0*cv[p_link->p][ia];
+        }
 
-      cross_product(p_link->rb, c, rbxc);
+        cross_product(p_link->rb, c, rbxc);
 
-      for (ia = 0; ia < 3; ia++) {
-	pc->fc0[ia] += dm*c[ia];
-	pc->tc0[ia] += dm*rbxc[ia];
+        for (ia = 0; ia < 3; ia++) {
+          pc->fc0[ia] += dm*c[ia];
+          pc->tc0[ia] += dm*rbxc[ia];
+        }
       }
     }
   }
@@ -325,34 +328,37 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
     pc = cinfo->map_new[index];
 	
     if (pc) { 
-      cs_nlocal_offset(cs, noffset);
-      r[X] = 1.0*(noffset[X] + ic);
-      r[Y] = 1.0*(noffset[Y] + jc);
-      r[Z] = 1.0*(noffset[Z] + kc);
+      //CHANGE
+      if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
+        cs_nlocal_offset(cs, noffset);
+        r[X] = 1.0*(noffset[X] + ic);
+        r[Y] = 1.0*(noffset[Y] + jc);
+        r[Z] = 1.0*(noffset[Z] + kc);
 
-      r0[X] = pc->s.r[X];
-      r0[Y] = pc->s.r[Y];
-      r0[Z] = pc->s.r[Z];
+        r0[X] = pc->s.r[X];
+        r0[Y] = pc->s.r[Y];
+        r0[Z] = pc->s.r[Z];
 
-      cs_minimum_distance(cs, r0, r, rb);
+        cs_minimum_distance(cs, r0, r, rb);
 
-      /* u_b = v + omega x r_b */
+        /* u_b = v + omega x r_b */
 
-      ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
-      ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
-      ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
+        ub[X] = pc->s.v[X] + pc->s.w[Y]*rb[Z] - pc->s.w[Z]*rb[Y];
+        ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
+        ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
 
-      for (p = 1; p < NVEL; p++) {
-	udotc = lbp.cv[p][X]*ub[X] + lbp.cv[p][Y]*ub[Y] + lbp.cv[p][Z]*ub[Z];
-	sdotq = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  for (ib = 0; ib < 3; ib++) {
-	    sdotq += lbp.q[p][ia][ib]*ub[ia]*ub[ib];
-	  }
-	}
+        for (p = 1; p < NVEL; p++) {
+          udotc = lbp.cv[p][X]*ub[X] + lbp.cv[p][Y]*ub[Y] + lbp.cv[p][Z]*ub[Z];
+          sdotq = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            for (ib = 0; ib < 3; ib++) {
+              sdotq += lbp.q[p][ia][ib]*ub[ia]*ub[ib];
+            }
+          }
 
-	lb->f[ LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p) ]
-	  = lbp.wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+          lb->f[ LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p) ]
+            = lbp.wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+        }
       }
     }
   }
@@ -399,144 +405,147 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
+    //CHANGE
+    if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
-    p_link = pc->lnk;
+      p_link = pc->lnk;
 
-    for (i = 0; i < 21; i++) {
-      pc->zeta[i] = 0.0;
-    }
-
-    /* We need to normalise link quantities by the sum of weights
-     * over the particle. Note that sumw cannot be zero here during
-     * correct operation (implies the particle has no links). */
-
-    rsumw = 1.0 / pc->sumw;
-    for (ia = 0; ia < 3; ia++) {
-      pc->cbar[ia]   *= rsumw;
-      pc->rxcbar[ia] *= rsumw;
-    }
-    pc->deltam   *= rsumw;
-    pc->s.deltaphi *= rsumw;
-
-    /* Sum over the links */ 
-
-    for (; p_link; p_link = p_link->next) {
-
-      if (p_link->status == LINK_UNUSED) continue;
-
-      i = p_link->i;        /* index site i (outside) */
-      j = p_link->j;        /* index site j (inside) */
-      ij = p_link->p;       /* link velocity index i->j */
-      ji = NVEL - ij;       /* link velocity index j->i */
-
-      assert(ij > 0 && ij < NVEL);
-
-      /* For stationary link, the momentum transfer from the
-       * fluid to the colloid is "dm" */
-
-      if (p_link->status == LINK_FLUID) {
-	/* Bounce back of fluid on outside plus correction
-	 * arising from changes in shape at previous step.
-	 * Note minus sign. */
-
-	lb_f(lb, i, ij, 0, &fdist);
-	dm =  2.0*fdist - wv[ij]*pc->deltam;
-	delta = 2.0*rcs2*wv[ij]*rho0;
-
-	/* Squirmer section */
-	if (pc->s.type == COLLOID_TYPE_ACTIVE) {
-
-	  /* We expect s.m to be a unit vector, but for floating
-	   * point purposes, we must make sure here. */
-
-	  mod = modulus(p_link->rb)*modulus(pc->s.m);
-	  rmod = 0.0;
-	  if (mod != 0.0) rmod = 1.0/mod;
-	  cost = rmod*dot_product(p_link->rb, pc->s.m);
-	  if (cost*cost > 1.0) cost = 1.0;
-	  assert(cost*cost <= 1.0);
-	  sint = sqrt(1.0 - cost*cost);
-
-	  cross_product(p_link->rb, pc->s.m, vector1);
-	  cross_product(vector1, p_link->rb, tans);
-
-	  mod = modulus(tans);
-	  rmod = 0.0;
-	  if (mod != 0.0) rmod = 1.0/mod;
-	  plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
-
-	  dm_a = 0.0;
-	  for (ia = 0; ia < 3; ia++) {
-	    dm_a += -delta*plegendre*rmod*tans[ia]*cv[ij][ia];
-	  }
-
-	  lb_f(lb, i, ij, 0, &fdist);
-	  fdist += dm_a;
-	  lb_f_set(lb, i, ij, 0, fdist);
-
-	  dm += dm_a;
-
-	  /* needed for mass conservation   */
-	  pc->sump += dm_a;
-	}
-      }
-      else {
-	/* Virtual momentum transfer for solid->solid links,
-	 * but no contribution to drag maxtrix */
-
-	lb_f(lb, i, ij, 0, &fdist);
-	dm = fdist;
-	lb_f(lb, j, ji, 0, &fdist);
-	dm += fdist;
-	delta = 0.0;
+      for (i = 0; i < 21; i++) {
+        pc->zeta[i] = 0.0;
       }
 
+      /* We need to normalise link quantities by the sum of weights
+       * over the particle. Note that sumw cannot be zero here during
+       * correct operation (implies the particle has no links). */
+
+      rsumw = 1.0 / pc->sumw;
       for (ia = 0; ia < 3; ia++) {
-	c[ia] = 1.0*cv[ij][ia];
+        pc->cbar[ia]   *= rsumw;
+        pc->rxcbar[ia] *= rsumw;
       }
+      pc->deltam   *= rsumw;
+      pc->s.deltaphi *= rsumw;
 
-      cross_product(p_link->rb, c, rbxc);
+      /* Sum over the links */ 
 
-      /* Now add contribution to the sums required for 
-       * self-consistent evaluation of new velocities. */
+      for (; p_link; p_link = p_link->next) {
 
-      for (ia = 0; ia < 3; ia++) {
-	pc->f0[ia] += dm*c[ia];
-	pc->t0[ia] += dm*rbxc[ia];
-	/* Corrections when links are missing (close to contact) */
-	c[ia] -= pc->cbar[ia];
-	rbxc[ia] -= pc->rxcbar[ia];
+        if (p_link->status == LINK_UNUSED) continue;
+
+        i = p_link->i;        /* index site i (outside) */
+        j = p_link->j;        /* index site j (inside) */
+        ij = p_link->p;       /* link velocity index i->j */
+        ji = NVEL - ij;       /* link velocity index j->i */
+
+        assert(ij > 0 && ij < NVEL);
+
+        /* For stationary link, the momentum transfer from the
+         * fluid to the colloid is "dm" */
+
+        if (p_link->status == LINK_FLUID) {
+          /* Bounce back of fluid on outside plus correction
+           * arising from changes in shape at previous step.
+           * Note minus sign. */
+
+          lb_f(lb, i, ij, 0, &fdist);
+          dm =  2.0*fdist - wv[ij]*pc->deltam;
+          delta = 2.0*rcs2*wv[ij]*rho0;
+
+          /* Squirmer section */
+          if (pc->s.type == COLLOID_TYPE_ACTIVE) {
+
+            /* We expect s.m to be a unit vector, but for floating
+             * point purposes, we must make sure here. */
+
+            mod = modulus(p_link->rb)*modulus(pc->s.m);
+            rmod = 0.0;
+            if (mod != 0.0) rmod = 1.0/mod;
+            cost = rmod*dot_product(p_link->rb, pc->s.m);
+            if (cost*cost > 1.0) cost = 1.0;
+            assert(cost*cost <= 1.0);
+            sint = sqrt(1.0 - cost*cost);
+
+            cross_product(p_link->rb, pc->s.m, vector1);
+            cross_product(vector1, p_link->rb, tans);
+
+            mod = modulus(tans);
+            rmod = 0.0;
+            if (mod != 0.0) rmod = 1.0/mod;
+            plegendre = -sint*(pc->s.b2*cost + pc->s.b1);
+
+            dm_a = 0.0;
+            for (ia = 0; ia < 3; ia++) {
+              dm_a += -delta*plegendre*rmod*tans[ia]*cv[ij][ia];
+            }
+
+            lb_f(lb, i, ij, 0, &fdist);
+            fdist += dm_a;
+            lb_f_set(lb, i, ij, 0, fdist);
+
+            dm += dm_a;
+
+            /* needed for mass conservation   */
+            pc->sump += dm_a;
+          }
+        }
+        else {
+          /* Virtual momentum transfer for solid->solid links,
+           * but no contribution to drag maxtrix */
+
+          lb_f(lb, i, ij, 0, &fdist);
+          dm = fdist;
+          lb_f(lb, j, ji, 0, &fdist);
+          dm += fdist;
+          delta = 0.0;
+        }
+
+        for (ia = 0; ia < 3; ia++) {
+          c[ia] = 1.0*cv[ij][ia];
+        }
+
+        cross_product(p_link->rb, c, rbxc);
+
+        /* Now add contribution to the sums required for 
+         * self-consistent evaluation of new velocities. */
+
+        for (ia = 0; ia < 3; ia++) {
+          pc->f0[ia] += dm*c[ia];
+          pc->t0[ia] += dm*rbxc[ia];
+          /* Corrections when links are missing (close to contact) */
+          c[ia] -= pc->cbar[ia];
+          rbxc[ia] -= pc->rxcbar[ia];
+        }
+
+        /* Drag matrix elements */
+
+        pc->zeta[ 0] += delta*c[X]*c[X];
+        pc->zeta[ 1] += delta*c[X]*c[Y];
+        pc->zeta[ 2] += delta*c[X]*c[Z];
+        pc->zeta[ 3] += delta*c[X]*rbxc[X];
+        pc->zeta[ 4] += delta*c[X]*rbxc[Y];
+        pc->zeta[ 5] += delta*c[X]*rbxc[Z];
+
+        pc->zeta[ 6] += delta*c[Y]*c[Y];
+        pc->zeta[ 7] += delta*c[Y]*c[Z];
+        pc->zeta[ 8] += delta*c[Y]*rbxc[X];
+        pc->zeta[ 9] += delta*c[Y]*rbxc[Y];
+        pc->zeta[10] += delta*c[Y]*rbxc[Z];
+
+        pc->zeta[11] += delta*c[Z]*c[Z];
+        pc->zeta[12] += delta*c[Z]*rbxc[X];
+        pc->zeta[13] += delta*c[Z]*rbxc[Y];
+        pc->zeta[14] += delta*c[Z]*rbxc[Z];
+
+        pc->zeta[15] += delta*rbxc[X]*rbxc[X];
+        pc->zeta[16] += delta*rbxc[X]*rbxc[Y];
+        pc->zeta[17] += delta*rbxc[X]*rbxc[Z];
+
+        pc->zeta[18] += delta*rbxc[Y]*rbxc[Y];
+        pc->zeta[19] += delta*rbxc[Y]*rbxc[Z];
+
+        pc->zeta[20] += delta*rbxc[Z]*rbxc[Z];
+
       }
-
-      /* Drag matrix elements */
-
-      pc->zeta[ 0] += delta*c[X]*c[X];
-      pc->zeta[ 1] += delta*c[X]*c[Y];
-      pc->zeta[ 2] += delta*c[X]*c[Z];
-      pc->zeta[ 3] += delta*c[X]*rbxc[X];
-      pc->zeta[ 4] += delta*c[X]*rbxc[Y];
-      pc->zeta[ 5] += delta*c[X]*rbxc[Z];
-
-      pc->zeta[ 6] += delta*c[Y]*c[Y];
-      pc->zeta[ 7] += delta*c[Y]*c[Z];
-      pc->zeta[ 8] += delta*c[Y]*rbxc[X];
-      pc->zeta[ 9] += delta*c[Y]*rbxc[Y];
-      pc->zeta[10] += delta*c[Y]*rbxc[Z];
-
-      pc->zeta[11] += delta*c[Z]*c[Z];
-      pc->zeta[12] += delta*c[Z]*rbxc[X];
-      pc->zeta[13] += delta*c[Z]*rbxc[Y];
-      pc->zeta[14] += delta*c[Z]*rbxc[Z];
-
-      pc->zeta[15] += delta*rbxc[X]*rbxc[X];
-      pc->zeta[16] += delta*rbxc[X]*rbxc[Y];
-      pc->zeta[17] += delta*rbxc[X]*rbxc[Z];
-
-      pc->zeta[18] += delta*rbxc[Y]*rbxc[Y];
-      pc->zeta[19] += delta*rbxc[Y]*rbxc[Z];
-
-      pc->zeta[20] += delta*rbxc[Z]*rbxc[Z];
-
     }
   }
 
@@ -602,118 +611,121 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
+    //CHANGE
+    if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
-    /* Set correction for phi arising from previous step */
+      /* Set correction for phi arising from previous step */
 
-    dgtm1 = pc->s.deltaphi;
-    pc->s.deltaphi = 0.0;
+      dgtm1 = pc->s.deltaphi;
+      pc->s.deltaphi = 0.0;
 
-    /* Correction to the bounce-back for this particle if it is
-     * without full complement of links */
+      /* Correction to the bounce-back for this particle if it is
+       * without full complement of links */
 
-    dms = 0.0;
+      dms = 0.0;
 
-    for (ia = 0; ia < 3; ia++) {
-      dms += pc->s.v[ia]*pc->cbar[ia];
-      dms += pc->s.w[ia]*pc->rxcbar[ia];
-    }
-
-    dms = 2.0*rcs2*rho0*dms;
-
-    /* Run through the links */
-
-    p_link = pc->lnk;
-
-    for ( ; p_link; p_link = p_link->next) {
-
-      i = p_link->i;       /* index site i (outside) */
-      j = p_link->j;       /* index site j (inside) */
-      ij = p_link->p;      /* link velocity index i->j */
-      ji = NVEL - ij;      /* link velocity index j->i */
-
-      if (p_link->status == LINK_FLUID) {
-
-	lb_f(lb, i, ij, 0, &fdist);
-	dm =  2.0*fdist - wv[ij]*pc->deltam;
-
-	/* Compute the self-consistent boundary velocity,
-	 * and add the correction term for changes in shape. */
-
-	cross_product(pc->s.w, p_link->rb, wxrb);
-
-	vdotc = 0.0;
-	for (ia = 0; ia < 3; ia++) {
-	  vdotc += (pc->s.v[ia] + wxrb[ia])*cv[ij][ia];
-	}
-	vdotc = 2.0*rcs2*wv[ij]*vdotc;
-	df = rho0*vdotc + wv[ij]*pc->deltam;
-
-	/* Contribution to mass conservation from squirmer */
-
-	df += wv[ij]*pc->sump; 
-
-	/* Correction owing to missing links "squeeze term" */
-
-	df -= wv[ij]*dms;
-
-	/* The outside site actually undergoes BBL. */
-
-	lb_f(lb, i, ij, LB_RHO, &fdist);
-	fdist = fdist - df;
-	lb_f_set(lb, j, ji, LB_RHO, fdist);
-
-	/* This is slightly clunky. If the order parameter is
-	 * via LB, bounce back with correction. */
-
-	if (ndist > 1) {
-	  lb_0th_moment(lb, i, LB_PHI, &dg);
-	  dg *= vdotc;
-	  pc->s.deltaphi += dg;
-	  dg -= wv[ij]*dgtm1;
-
-	  lb_f(lb, i, ij, LB_PHI, &fdist);
-	  fdist = fdist - dg;
-	  lb_f_set(lb, j, ji, LB_PHI, fdist);
-	}
-
-	/* The stress is r_b f_b */
-	for (ia = 0; ia < 3; ia++) {
-	  bbl->stress[ia][X] += p_link->rb[X]*(dm - df)*cv[ij][ia];
-	  bbl->stress[ia][Y] += p_link->rb[Y]*(dm - df)*cv[ij][ia];
-	  bbl->stress[ia][Z] += p_link->rb[Z]*(dm - df)*cv[ij][ia];
-	}
+      for (ia = 0; ia < 3; ia++) {
+        dms += pc->s.v[ia]*pc->cbar[ia];
+        dms += pc->s.w[ia]*pc->rxcbar[ia];
       }
-      else if (p_link->status == LINK_COLLOID) {
 
-	/* The stress should include the solid->solid term */
+      dms = 2.0*rcs2*rho0*dms;
 
-	lb_f(lb, i, ij, 0, &fdist);
-	dm = fdist;
-	lb_f(lb, j, ji, 0, &fdist);
-	dm += fdist;
+      /* Run through the links */
 
-	for (ia = 0; ia < 3; ia++) {
-	  bbl->stress[ia][X] += p_link->rb[X]*dm*cv[ij][ia];
-	  bbl->stress[ia][Y] += p_link->rb[Y]*dm*cv[ij][ia];
-	  bbl->stress[ia][Z] += p_link->rb[Z]*dm*cv[ij][ia];
-	}
+      p_link = pc->lnk;
+
+      for ( ; p_link; p_link = p_link->next) {
+
+        i = p_link->i;       /* index site i (outside) */
+        j = p_link->j;       /* index site j (inside) */
+        ij = p_link->p;      /* link velocity index i->j */
+        ji = NVEL - ij;      /* link velocity index j->i */
+
+        if (p_link->status == LINK_FLUID) {
+
+          lb_f(lb, i, ij, 0, &fdist);
+          dm =  2.0*fdist - wv[ij]*pc->deltam;
+
+          /* Compute the self-consistent boundary velocity,
+           * and add the correction term for changes in shape. */
+
+          cross_product(pc->s.w, p_link->rb, wxrb);
+
+          vdotc = 0.0;
+          for (ia = 0; ia < 3; ia++) {
+            vdotc += (pc->s.v[ia] + wxrb[ia])*cv[ij][ia];
+          }
+          vdotc = 2.0*rcs2*wv[ij]*vdotc;
+          df = rho0*vdotc + wv[ij]*pc->deltam;
+
+          /* Contribution to mass conservation from squirmer */
+
+          df += wv[ij]*pc->sump; 
+
+          /* Correction owing to missing links "squeeze term" */
+
+          df -= wv[ij]*dms;
+
+          /* The outside site actually undergoes BBL. */
+
+          lb_f(lb, i, ij, LB_RHO, &fdist);
+          fdist = fdist - df;
+          lb_f_set(lb, j, ji, LB_RHO, fdist);
+
+          /* This is slightly clunky. If the order parameter is
+           * via LB, bounce back with correction. */
+
+          if (ndist > 1) {
+            lb_0th_moment(lb, i, LB_PHI, &dg);
+            dg *= vdotc;
+            pc->s.deltaphi += dg;
+            dg -= wv[ij]*dgtm1;
+
+            lb_f(lb, i, ij, LB_PHI, &fdist);
+            fdist = fdist - dg;
+            lb_f_set(lb, j, ji, LB_PHI, fdist);
+          }
+
+          /* The stress is r_b f_b */
+          for (ia = 0; ia < 3; ia++) {
+            bbl->stress[ia][X] += p_link->rb[X]*(dm - df)*cv[ij][ia];
+            bbl->stress[ia][Y] += p_link->rb[Y]*(dm - df)*cv[ij][ia];
+            bbl->stress[ia][Z] += p_link->rb[Z]*(dm - df)*cv[ij][ia];
+          }
+        }
+        else if (p_link->status == LINK_COLLOID) {
+
+          /* The stress should include the solid->solid term */
+
+          lb_f(lb, i, ij, 0, &fdist);
+          dm = fdist;
+          lb_f(lb, j, ji, 0, &fdist);
+          dm += fdist;
+
+          for (ia = 0; ia < 3; ia++) {
+            bbl->stress[ia][X] += p_link->rb[X]*dm*cv[ij][ia];
+            bbl->stress[ia][Y] += p_link->rb[Y]*dm*cv[ij][ia];
+            bbl->stress[ia][Z] += p_link->rb[Z]*dm*cv[ij][ia];
+          }
+        }
+        /* Next link */
       }
-      /* Next link */
+
+      /* Reset factors required for change of shape, etc */
+
+      pc->deltam = 0.0;
+      pc->sump = 0.0;
+
+      for (ia = 0; ia < 3; ia++) {
+        pc->f0[ia] = 0.0;
+        pc->t0[ia] = 0.0;
+        pc->fc0[ia] = 0.0;
+        pc->tc0[ia] = 0.0;
+      }
+
+      bbl->deltag += pc->s.deltaphi;
     }
-
-    /* Reset factors required for change of shape, etc */
-
-    pc->deltam = 0.0;
-    pc->sump = 0.0;
-
-    for (ia = 0; ia < 3; ia++) {
-      pc->f0[ia] = 0.0;
-      pc->t0[ia] = 0.0;
-      pc->fc0[ia] = 0.0;
-      pc->tc0[ia] = 0.0;
-    }
-
-    bbl->deltag += pc->s.deltaphi;
   }
 
   return 0;
@@ -759,176 +771,179 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
+    //CHANGE
+    if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
-    /* Set up the matrix problem and solve it here. */
+      /* Set up the matrix problem and solve it here. */
 
-    /* Mass and moment of inertia are those of a hard sphere
-     * with the input radius */
+      /* Mass and moment of inertia are those of a hard sphere
+       * with the input radius */
 
-    mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
-    moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
+      mass = (4.0/3.0)*pi*rho0*pow(pc->s.a0, 3);
+      moment = (2.0/5.0)*mass*pow(pc->s.a0, 2);
 
-    /* Wall lubrication correction */
-    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
+      /* Wall lubrication correction */
+      wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
 
-    /* Add inertial terms to diagonal elements */
+      /* Add inertial terms to diagonal elements */
 
-    a[0][0] = mass +   pc->zeta[0] - dwall[X];
-    a[0][1] =          pc->zeta[1];
-    a[0][2] =          pc->zeta[2];
-    a[0][3] =          pc->zeta[3];
-    a[0][4] =          pc->zeta[4];
-    a[0][5] =          pc->zeta[5];
-    a[1][1] = mass +   pc->zeta[6] - dwall[Y];
-    a[1][2] =          pc->zeta[7];
-    a[1][3] =          pc->zeta[8];
-    a[1][4] =          pc->zeta[9];
-    a[1][5] =          pc->zeta[10];
-    a[2][2] = mass +   pc->zeta[11] - dwall[Z];
-    a[2][3] =          pc->zeta[12];
-    a[2][4] =          pc->zeta[13];
-    a[2][5] =          pc->zeta[14];
-    a[3][3] = moment + pc->zeta[15];
-    a[3][4] =          pc->zeta[16];
-    a[3][5] =          pc->zeta[17];
-    a[4][4] = moment + pc->zeta[18];
-    a[4][5] =          pc->zeta[19];
-    a[5][5] = moment + pc->zeta[20];
+      a[0][0] = mass +   pc->zeta[0] - dwall[X];
+      a[0][1] =          pc->zeta[1];
+      a[0][2] =          pc->zeta[2];
+      a[0][3] =          pc->zeta[3];
+      a[0][4] =          pc->zeta[4];
+      a[0][5] =          pc->zeta[5];
+      a[1][1] = mass +   pc->zeta[6] - dwall[Y];
+      a[1][2] =          pc->zeta[7];
+      a[1][3] =          pc->zeta[8];
+      a[1][4] =          pc->zeta[9];
+      a[1][5] =          pc->zeta[10];
+      a[2][2] = mass +   pc->zeta[11] - dwall[Z];
+      a[2][3] =          pc->zeta[12];
+      a[2][4] =          pc->zeta[13];
+      a[2][5] =          pc->zeta[14];
+      a[3][3] = moment + pc->zeta[15];
+      a[3][4] =          pc->zeta[16];
+      a[3][5] =          pc->zeta[17];
+      a[4][4] = moment + pc->zeta[18];
+      a[4][5] =          pc->zeta[19];
+      a[5][5] = moment + pc->zeta[20];
 
-    /* Lower triangle */
+      /* Lower triangle */
 
-    a[1][0] = a[0][1];
-    a[2][0] = a[0][2];
-    a[2][1] = a[1][2];
-    a[3][0] = a[0][3];
-    a[3][1] = a[1][3];
-    a[3][2] = a[2][3];
-    a[4][0] = a[0][4];
-    a[4][1] = a[1][4];
-    a[4][2] = a[2][4];
-    a[4][3] = a[3][4];
-    a[5][0] = a[0][5];
-    a[5][1] = a[1][5];
-    a[5][2] = a[2][5];
-    a[5][3] = a[3][5];
-    a[5][4] = a[4][5];
+      a[1][0] = a[0][1];
+      a[2][0] = a[0][2];
+      a[2][1] = a[1][2];
+      a[3][0] = a[0][3];
+      a[3][1] = a[1][3];
+      a[3][2] = a[2][3];
+      a[4][0] = a[0][4];
+      a[4][1] = a[1][4];
+      a[4][2] = a[2][4];
+      a[4][3] = a[3][4];
+      a[5][0] = a[0][5];
+      a[5][1] = a[1][5];
+      a[5][2] = a[2][5];
+      a[5][3] = a[3][5];
+      a[5][4] = a[4][5];
 
-    /* Form the right-hand side */
+      /* Form the right-hand side */
 
-    for (ia = 0; ia < 3; ia++) {
-      xb[ia] = mass*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
-      xb[3+ia] = moment*pc->s.w[ia] + pc->t0[ia] + pc->torque[ia];
-    }
-
-    /* Contribution to mass conservation from squirmer */
-
-    for (ia = 0; ia < 3; ia++) {
-      xb[ia] += pc->fc0[ia];
-      xb[3+ia] += pc->tc0[ia];
-    }
-
-    /* Begin the Gaussian elimination */
-
-    for (k = 0; k < 6; k++) {
-      ipivot[k] = -1;
-    }
-
-    for (k = 0; k < 6; k++) {
-
-      /* Find pivot row */
-      tmp = 0.0;
-      for (idash = 0; idash < 6; idash++) {
-	if (ipivot[idash] == -1) {
-	  if (fabs(a[idash][k]) >= tmp) {
-	    tmp = fabs(a[idash][k]);
-	    iprow = idash;
-	  }
-	}
-      }
-      ipivot[k] = iprow;
-
-      /* divide pivot row by the pivot element a[iprow][k] */
-
-      if (a[iprow][k] == 0.0) {
-	pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
+      for (ia = 0; ia < 3; ia++) {
+        xb[ia] = mass*pc->s.v[ia] + pc->f0[ia] + pc->force[ia];
+        xb[3+ia] = moment*pc->s.w[ia] + pc->t0[ia] + pc->torque[ia];
       }
 
-      tmp = 1.0 / a[iprow][k];
+      /* Contribution to mass conservation from squirmer */
 
-      for (j = k; j < 6; j++) {
-	a[iprow][j] *= tmp;
+      for (ia = 0; ia < 3; ia++) {
+        xb[ia] += pc->fc0[ia];
+        xb[3+ia] += pc->tc0[ia];
       }
-      xb[iprow] *= tmp;
 
-      /* Subtract the pivot row (scaled) from remaining rows */
+      /* Begin the Gaussian elimination */
 
-      for (idash = 0; idash < 6; idash++) {
-	if (ipivot[idash] == -1) {
-	  tmp = a[idash][k];
-	  for (j = k; j < 6; j++) {
-	    a[idash][j] -= tmp*a[iprow][j];
-	  }
-	  xb[idash] -= tmp*xb[iprow];
-	}
+      for (k = 0; k < 6; k++) {
+        ipivot[k] = -1;
       }
-    }
 
-    /* Now do the back substitution */
+      for (k = 0; k < 6; k++) {
 
-    for (idash = 5; idash > -1; idash--) {
-      iprow = ipivot[idash];
-      tmp = xb[iprow];
-      for (k = idash+1; k < 6; k++) {
-	tmp -= a[iprow][k]*xb[ipivot[k]];
+        /* Find pivot row */
+        tmp = 0.0;
+        for (idash = 0; idash < 6; idash++) {
+          if (ipivot[idash] == -1) {
+            if (fabs(a[idash][k]) >= tmp) {
+              tmp = fabs(a[idash][k]);
+              iprow = idash;
+            }
+          }
+        }
+        ipivot[k] = iprow;
+
+        /* divide pivot row by the pivot element a[iprow][k] */
+
+        if (a[iprow][k] == 0.0) {
+          pe_fatal(bbl->pe, "Gaussian elimination failed in bbl_update\n");
+        }
+
+        tmp = 1.0 / a[iprow][k];
+
+        for (j = k; j < 6; j++) {
+          a[iprow][j] *= tmp;
+        }
+        xb[iprow] *= tmp;
+
+        /* Subtract the pivot row (scaled) from remaining rows */
+
+        for (idash = 0; idash < 6; idash++) {
+          if (ipivot[idash] == -1) {
+            tmp = a[idash][k];
+            for (j = k; j < 6; j++) {
+              a[idash][j] -= tmp*a[iprow][j];
+            }
+            xb[idash] -= tmp*xb[iprow];
+          }
+        }
       }
-      xb[iprow] = tmp;
+
+      /* Now do the back substitution */
+
+      for (idash = 5; idash > -1; idash--) {
+        iprow = ipivot[idash];
+        tmp = xb[iprow];
+        for (k = idash+1; k < 6; k++) {
+          tmp -= a[iprow][k]*xb[ipivot[k]];
+        }
+        xb[iprow] = tmp;
+      }
+
+      /* Set the position update, but don't actually move
+       * the particles. This is deferred until the next
+       * call to coll_update() and associated cell list
+       * update.
+       * We use mean of old and new velocity. */
+
+      for (ia = 0; ia < 3; ia++) {
+        if (pc->s.isfixedr == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+        if (pc->s.isfixedv == 0) pc->s.v[ia] = xb[ia];
+        if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
+      }
+
+      if (pc->s.isfixeds == 0) {
+        rotate_vector(pc->s.m, xb + 3);
+        rotate_vector(pc->s.s, xb + 3);
+      }
+
+      /* Record the actual hydrodynamic force on the particle */
+
+      pc->force[X] = pc->f0[X]
+        -(pc->zeta[0]*pc->s.v[X] +
+          pc->zeta[1]*pc->s.v[Y] +
+          pc->zeta[2]*pc->s.v[Z] +
+          pc->zeta[3]*pc->s.w[X] +
+          pc->zeta[4]*pc->s.w[Y] +
+          pc->zeta[5]*pc->s.w[Z]);
+      pc->force[Y] = pc->f0[Y]
+        -(pc->zeta[ 1]*pc->s.v[X] +
+          pc->zeta[ 6]*pc->s.v[Y] +
+          pc->zeta[ 7]*pc->s.v[Z] +
+          pc->zeta[ 8]*pc->s.w[X] +
+          pc->zeta[ 9]*pc->s.w[Y] +
+          pc->zeta[10]*pc->s.w[Z]);
+      pc->force[Z] = pc->f0[Z]
+        -(pc->zeta[ 2]*pc->s.v[X] +
+          pc->zeta[ 7]*pc->s.v[Y] +
+          pc->zeta[11]*pc->s.v[Z] +
+          pc->zeta[12]*pc->s.w[X] +
+          pc->zeta[13]*pc->s.w[Y] +
+          pc->zeta[14]*pc->s.w[Z]);
     }
+  }  
 
-    /* Set the position update, but don't actually move
-     * the particles. This is deferred until the next
-     * call to coll_update() and associated cell list
-     * update.
-     * We use mean of old and new velocity. */
-
-    for (ia = 0; ia < 3; ia++) {
-      if (pc->s.isfixedr == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
-      if (pc->s.isfixedv == 0) pc->s.v[ia] = xb[ia];
-      if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
-    }
-
-    if (pc->s.isfixeds == 0) {
-      rotate_vector(pc->s.m, xb + 3);
-      rotate_vector(pc->s.s, xb + 3);
-    }
-
-    /* Record the actual hydrodynamic force on the particle */
-
-    pc->force[X] = pc->f0[X]
-      -(pc->zeta[0]*pc->s.v[X] +
-	pc->zeta[1]*pc->s.v[Y] +
-	pc->zeta[2]*pc->s.v[Z] +
-	pc->zeta[3]*pc->s.w[X] +
-	pc->zeta[4]*pc->s.w[Y] +
-	pc->zeta[5]*pc->s.w[Z]);
-    pc->force[Y] = pc->f0[Y]
-      -(pc->zeta[ 1]*pc->s.v[X] +
-	pc->zeta[ 6]*pc->s.v[Y] +
-	pc->zeta[ 7]*pc->s.v[Z] +
-	pc->zeta[ 8]*pc->s.w[X] +
-	pc->zeta[ 9]*pc->s.w[Y] +
-	pc->zeta[10]*pc->s.w[Z]);
-    pc->force[Z] = pc->f0[Z]
-      -(pc->zeta[ 2]*pc->s.v[X] +
-	pc->zeta[ 7]*pc->s.v[Y] +
-	pc->zeta[11]*pc->s.v[Z] +
-	pc->zeta[12]*pc->s.w[X] +
-	pc->zeta[13]*pc->s.w[Y] +
-	pc->zeta[14]*pc->s.w[Z]);
-  }
-
-  /* As the lubrication force is based on the updated velocity, but
-   * the old position, we can account for the total momentum here. */
-
+  ///* As the lubrication force is based on the updated velocity, but
+  // * the old position, we can account for the total momentum here. */
+  
   bbl_wall_lubrication_account(bbl, wall, cinfo);
 
   return 0;
