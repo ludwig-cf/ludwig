@@ -391,8 +391,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	for (; pc != NULL; pc = pc->next) {
-
-          //CHANGE
+		
 	  for (ia = 0; ia < 3; ia++) 
 	    pc->force[ia] += g[ia];                /* Gravity */
 
@@ -641,7 +640,7 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
 
         colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
         for (; pc1; pc1 = pc1->next) {
-          //CHANGE
+
           if(pc1->s.nbonds>0) {
 
             for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
@@ -650,7 +649,7 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
    
                   colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
                   for (; pc2; pc2 = pc2->next) {
-                    //CHANGE
+
                     if(pc2->s.nbonds>0) { 
                   
                       for (n1 = 0; n1 < pc1->s.nbonds; n1++) {
