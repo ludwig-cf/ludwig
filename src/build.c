@@ -144,7 +144,6 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	while (p_colloid != NULL) {
 
-          //CHANGE
           if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
 
 	    /* Set actual position and radius */
@@ -258,7 +257,7 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
 	while (pc) {
-          //CHANGE
+        
           if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
 	    pc->sumw   = 0.0;
