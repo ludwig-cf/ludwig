@@ -211,7 +211,6 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
   /* For each colloid in the list */
 
   for ( ; pc; pc = pc->nextall) {
-    //CHANGE
     if(pc->s.type==COLLOID_TYPE_ACTIVE) {
 
       pc->sump /= pc->sumw;
@@ -328,7 +327,6 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
     pc = cinfo->map_new[index];
 	
     if (pc) { 
-      //CHANGE
       if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
         cs_nlocal_offset(cs, noffset);
         r[X] = 1.0*(noffset[X] + ic);
@@ -405,7 +403,6 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
-    //CHANGE
     if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
       p_link = pc->lnk;
@@ -611,7 +608,6 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
-    //CHANGE
     if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
       /* Set correction for phi arising from previous step */
@@ -771,7 +767,6 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
-    //CHANGE
     if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
 
       /* Set up the matrix problem and solve it here. */
