@@ -722,7 +722,6 @@ void ludwig_run(const char * inputfile) {
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
 
-      //CHANGE
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
       if (is_subgrid)  
@@ -1729,7 +1728,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
 
   subgrid_on(&is_subgrid);
 
-  //CHANGE
+
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
@@ -1784,7 +1783,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* Removal or replacement of fluid requires a lattice halo update */
 
-  //CHANGE
+
   TIMER_start(TIMER_HALO_LATTICE);
 
   /* __NVCC__ */
@@ -1824,7 +1823,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
       	     ludwig->psi, ludwig->ewald);
 
-  //CHANGE
+
   if (is_subgrid) 
       subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);    
 
