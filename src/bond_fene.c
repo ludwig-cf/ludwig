@@ -166,7 +166,7 @@ int bond_fene_compute(colloids_info_t * cinfo, void * self) {
 
   for (; pc; pc = pc->nextlocal) {
    
-    //CHANGE 
+
     if (pc->s.nbonds>0) {
       for (n = 0; n < pc->s.nbonds; n++) {
         assert(pc->bonded[n]);
