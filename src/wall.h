@@ -39,10 +39,10 @@ __host__ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb,
 			 wall_t ** p);
 __host__ int wall_free(wall_t * wall);
 __host__ int wall_info(wall_t * wall);
-__host__ int wall_commit(wall_t * wall, wall_param_t values);
+__host__ int wall_commit(wall_t * wall, wall_param_t * values);
 __host__ int wall_target(wall_t * wall, wall_t ** target);
 __host__ int wall_param(wall_t * wall, wall_param_t * param);
-__host__ int wall_param_set(wall_t * wall, wall_param_t values);
+__host__ int wall_param_set(wall_t * wall, wall_param_t * values);
 __host__ int wall_shear_init(wall_t * wall);
 __host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag);
 

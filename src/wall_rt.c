@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2015-2016 The University of Edinburgh
+ *  (c) 2015-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -64,7 +64,7 @@ int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
   wall_create(pe, cs, map, lb, wall);
 
   if (p.iswall || p.isporousmedia) {
-    wall_commit(*wall, p);
+    wall_commit(*wall, &p);
     wall_info(*wall);
   }
 
