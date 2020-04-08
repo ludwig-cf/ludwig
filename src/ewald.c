@@ -378,8 +378,7 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
-
-          //CHANGE
+		
           if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
 
 	    kn = 0;
@@ -532,7 +531,6 @@ int ewald_real_space_sum(ewald_t * ewald) {
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_c1);
 
 	while (p_c1) {
-          //CHANGE
           if(p_c1->s.type!=COLLOID_TYPE_SUBGRID) {
 
 	    for (dx = -1; dx <= +1; dx++) {
@@ -546,7 +544,6 @@ int ewald_real_space_sum(ewald_t * ewald) {
 	          colloids_info_cell_list_head(ewald->cinfo, id, jd, kd, &p_c2);
 
 	          while (p_c2) {
-                    //CHANGE
                     if(p_c2->s.type!=COLLOID_TYPE_SUBGRID) {
 	              if (p_c1->s.index < p_c2->s.index) {
 	                double r;
@@ -682,8 +679,7 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
- 
-          //CHANGE
+
           if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
 
 	    /* Sum over k to get the force/torque. */
