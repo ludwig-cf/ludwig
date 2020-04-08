@@ -29,11 +29,9 @@
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
-//CHANGE
 #include "wall.h"
 
 static double d_peskin(double);
-//CHANGE
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
 static int subgrid_on_ = 0;  /* Subgrid particle flag */
@@ -47,7 +45,7 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *
  *****************************************************************************/
 
-//CHANGE
+
 int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_t * wall) {
 
   int ic, jc, kc;
@@ -60,9 +58,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_
   double dr;
   colloid_t * p_colloid;
 
-  //CHANGE
   double dwall[3];
-
 
   physics_t * phys = NULL;
 
@@ -85,7 +81,6 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_
 
 	while (p_colloid != NULL) {
 
-          //CHANGE
           if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
 
             /* Need to translate the colloid position to "local"
@@ -121,14 +116,12 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_
 
 	          dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
             
-                  //CHANGE
                   //Apply the lubrication force from the wall to subgrid particles
                   wall_lubr_sphere(wall, p_colloid->s.ah, p_colloid->s.r, dwall);
                   p_colloid->force[X]+= p_colloid->s.v[X]*dwall[X];
                   p_colloid->force[Y]+= p_colloid->s.v[Y]*dwall[Y];
                   p_colloid->force[Z]+= p_colloid->s.v[Z]*dwall[Z];
 
-                  //CHANGE
 	          force[X] = p_colloid->force[X]*dr;
 	          force[Y] = p_colloid->force[Y]*dr;
 	          force[Z] = p_colloid->force[Z]*dr;
@@ -193,13 +186,11 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
-          //CHANGE
           if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
 
 	    drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
 	    for (ia = 0; ia < 3; ia++) {
-              //CHANGE
 	      p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia];
 	      p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	    }
@@ -253,7 +244,6 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
-          //CHANGE
           if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
 	    p_colloid->fc0[X] = 0.0;
 	    p_colloid->fc0[Y] = 0.0;
@@ -274,7 +264,6 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
-          //CHANGE
           if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
 
             /* Need to translate the colloid position to "local"
