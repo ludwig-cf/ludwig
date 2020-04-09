@@ -244,7 +244,7 @@ int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
   /* X-direction */
 
   nsend = nhcomm*na*nlocal[Y]*nlocal[Z];
-  sendforw = (unsigned char *) malloc(sz*nsend);
+  sendforw = (unsigned char *) malloc(nsend*sz);
   sendback = (unsigned char *) malloc(nsend*sz);
   recvforw = (unsigned char *) malloc(nsend*sz);
   recvback = (unsigned char *) malloc(nsend*sz);
