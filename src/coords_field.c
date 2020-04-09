@@ -9,7 +9,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -207,7 +207,7 @@ int coords_field_init_mpi_indexed(cs_t * cs, int nhcomm, int nf,
 int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
 			    void * mbuf,
 			    MPI_Datatype mpidata) {
-  int sz;
+  size_t sz;
   int ic, jc, kc;
   int ia, index;
   int nh;

@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
+ *  (c) 2009-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -318,7 +318,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   else {
     be_param.gamma = gamma;
     be_param.xi = fe_param.xi;
-    beris_edw_param_set(be, be_param);
+    beris_edw_param_set(be, &be_param);
     pe_info(pe, "Rotational diffusion const = %14.7e\n", gamma);
   }
 
