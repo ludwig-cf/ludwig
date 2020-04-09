@@ -2,19 +2,18 @@
  *
  *  blue_phase_beris_edwards.h
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef BLUE_PHASE_BERIS_EDWARDS_H
-#define BLUE_PHASE_BERIS_EDWARDS_H
+#ifndef LUDWIG_BLUE_PHASE_BERIS_EDWARDS_H
+#define LUDWIG_BLUE_PHASE_BERIS_EDWARDS_H
 
 #include "coords.h"
 #include "leesedwards.h"
@@ -40,7 +39,7 @@ __host__ int beris_edw_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			      beris_edw_t ** pobj);
 __host__ int beris_edw_free(beris_edw_t * be);
 __host__ int beris_edw_memcpy(beris_edw_t * be, int flag);
-__host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t values);
+__host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t * values);
 __host__ int beris_edw_param_commit(beris_edw_t * be);
 
 __host__ int beris_edw_update(beris_edw_t * be, fe_t * fe, field_t * fq,
