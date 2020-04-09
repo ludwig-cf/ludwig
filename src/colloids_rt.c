@@ -229,7 +229,6 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   assert(pe);
   assert(rt);
   assert(cinfo);
-  assert(nc == 1 || nc == 2 || nc == 3);
 
   if (nc >= 1) {
     pe_info(pe, "Requested one colloid via input:\n");
@@ -263,6 +262,10 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     state3->index = 3;
     if (pc) pc->s = *state3;
     free(state3);
+  }
+
+  if (nc >= 4) {
+    pe_fatal(pe, "Cannot specify more than 3 colloids with a file\n");
   }
 
   return 0;
