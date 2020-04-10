@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2018 The University of Edinburgh
+ *  (c) 2008-2020 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -42,6 +42,10 @@ extern const int ydisp_bwd_cv[CVYBLOCK15];
 extern const int zblocklen_cv[CVZBLOCK15];
 extern const int zdisp_fwd_cv[CVZBLOCK15];
 extern const int zdisp_bwd_cv[CVZBLOCK15];
+
+#define LB_NORMALISERS_DOUBLE(norm) const double norm[NVEL15] = { \
+    1.0, 3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0, 9.0/2.0, 9.0, 9.0/2.0, \
+    0.5, 1.5, 1.5, 1.5, 9.0};
 
 #endif
 

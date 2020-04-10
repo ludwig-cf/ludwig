@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,9 +22,10 @@
 #include "noise.h"
 #include "model.h"
 #include "free_energy.h"
+#include "visc.h"
 
 __host__ int lb_collide(lb_t * lb, hydro_t * hydro, map_t * map,
-			noise_t * noise, fe_t * fe);
+			noise_t * noise, fe_t * fe, visc_t * visc);
 __host__ int lb_collision_stats_kt(lb_t * lb, noise_t * noise, map_t * map);
 __host__ int lb_collision_relaxation_set(lb_t * lb, lb_relaxation_enum_t nrelax);
 

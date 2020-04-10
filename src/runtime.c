@@ -32,7 +32,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -44,6 +44,7 @@
 #include "runtime.h"
 
 #define NKEY_LENGTH 128           /* Maximum key / value string length */
+#define NKEY_MAX    1024          /* Prevent buffer overflow in keys */
 
 typedef struct key_pair_s key_pair_t;
 
@@ -161,6 +162,9 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
 	  rt_add_key_pair(rt, line, nline);
 	  rt->nkeys += 1;
 	}
+	if (rt->nkeys > NKEY_MAX) {
+	  pe_fatal(rt->pe, "Too many keys! Increase NKEY_MAX %d\n", NKEY_MAX);
+	}
       }
     }
 
@@ -202,7 +206,7 @@ int rt_info(rt_t * rt) {
 
 static int rt_key_broadcast(rt_t * rt) {
 
-  char * packed_keys;
+  char * packed_keys = NULL;
   int nk = 0;
   MPI_Comm comm;
 
@@ -213,8 +217,11 @@ static int rt_key_broadcast(rt_t * rt) {
 
   MPI_Bcast(&rt->nkeys, 1, MPI_INT, 0, comm);
 
-  packed_keys = (char *) calloc(rt->nkeys*NKEY_LENGTH, sizeof(char));
-  assert(packed_keys);
+  if (rt->nkeys <= NKEY_MAX) {
+    packed_keys = (char *) calloc(rt->nkeys*NKEY_LENGTH, sizeof(char));
+    assert(packed_keys);
+  }
+
   if (packed_keys == NULL) pe_fatal(rt->pe, "malloc(packed_keys) failed\n");
 
   /* Pack message */

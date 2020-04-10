@@ -12,7 +12,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -178,6 +178,8 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
   }
   else {
 
+    size_t nsz = (size_t) NVEL*lb->nsite*lb->ndist*sizeof(double);
+
     assert(lb->target);
 
     tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
@@ -187,10 +189,10 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
       tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag); 
       tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag); 
       tdpMemcpy(&lb->target->model, &lb->model, sizeof(int), flag);
-      tdpMemcpy(tmpf, lb->f, NVEL*lb->nsite*lb->ndist*sizeof(double), flag);
+      tdpMemcpy(tmpf, lb->f, nsz, flag);
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(lb->f, tmpf, NVEL*lb->nsite*lb->ndist*sizeof(double), flag);
+      tdpMemcpy(lb->f, tmpf, nsz, flag);
       break;
     default:
       pe_fatal(lb->pe, "Bad flag in lb_memcpy\n");
