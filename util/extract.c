@@ -47,7 +47,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2019 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -97,7 +97,7 @@ double le_displace_ = 0.0;
 double * le_displacements_;
 double * le_duy_;
 
-char stub_[FILENAME_MAX];
+char stub_[FILENAME_MAX/2];
 
 int extract_driver(const char * filename, int version);
 int read_version1(int ntime, int nlocal[3], double * datasection);
@@ -135,7 +135,9 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 
 int main(int argc, char ** argv) {
 
-  size_t optind;
+  int optind;
+
+  MPI_Init(&argc, &argv);
 
   /* Check the command line, then parse the meta data information,
    * and sort out the data file name  */
@@ -180,6 +182,8 @@ int main(int argc, char ** argv) {
 
   extract_driver(argv[optind+1], version);
 
+  MPI_Finalize();
+
   return 0;
 }
 
@@ -196,7 +200,7 @@ int extract_driver(const char * filename, int version) {
 
   double * datasection;
   char io_data[FILENAME_MAX];
-  char suf[FILENAME_MAX] = ".vtk";
+  const char * suf = ".vtk";
 
   FILE * fp_data;
 
@@ -399,6 +403,7 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
   char io_metadata[BUFSIZ];
   char io_data[BUFSIZ];
   char line[BUFSIZ];
+  char * pstr;
 
   double * datalocal = NULL;
   FILE * fp_metadata = NULL;
@@ -429,7 +434,8 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
     if (fp_metadata == NULL) printf("fopen(%s) failed\n", io_metadata);
 
     for (p = 0; p < 12; p++) {
-      fgets(line, FILENAME_MAX, fp_metadata);
+      pstr = fgets(line, FILENAME_MAX, fp_metadata);
+      if (pstr == NULL) printf("Failed to read line\n");
       printf("%s", line);
     }
 
@@ -476,6 +482,7 @@ void read_meta_data_file(const char * filename) {
   int npe, nrbyte;
   int ifail;
   char tmp[FILENAME_MAX];
+  char * p;
   FILE * fp_meta;
   const int ncharoffset = 33;
 
@@ -485,13 +492,16 @@ void read_meta_data_file(const char * filename) {
     exit(-1);
   }
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%s\n", stub_);
   assert(ifail == 1);
   printf("Read stub: %s\n", stub_);
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &nrbyte);
   assert(ifail == 1);
   printf("Record size (bytes): %d\n", nrbyte);
@@ -511,43 +521,55 @@ void read_meta_data_file(const char * filename) {
     assert(nrec_ > 0);
   }
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &input_isbigendian_);
   assert(ifail == 1);
   assert(input_isbigendian_ == 0 || input_isbigendian_ == 1);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p =  fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d\n", &npe);
   assert(ifail == 1);
   printf("Total number of processors %d\n", npe);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d %d %d", pe_, pe_+1, pe_+2);
   assert(ifail == 3);
   printf("Decomposition is %d %d %d\n", pe_[0], pe_[1], pe_[2]);
   assert(npe == pe_[0]*pe_[1]*pe_[2]);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d %d %d", ntotal, ntotal+1, ntotal+2);
   assert(ifail == 3);
   printf("System size is %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
 
-  fgets(tmp, FILENAME_MAX, fp_meta);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
   ifail = sscanf(tmp+ncharoffset, "%d", &nplanes_);
   assert(ifail == 1);
   assert(nplanes_ >= 0);
   printf("Number of Lees Edwards planes %d\n", nplanes_);
-  fgets(tmp, FILENAME_MAX, fp_meta);
-  sscanf(tmp+ncharoffset, "%lf", &le_speed_);
+  p =  fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
+  ifail = sscanf(tmp+ncharoffset, "%lf", &le_speed_);
+  assert(ifail == 1);
   printf("Lees Edwards speed: %f\n", le_speed_);
 
   /* Number of I/O groups */
-  fgets(tmp, FILENAME_MAX, fp_meta);
-  sscanf(tmp+ncharoffset, "%d", &nio_);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  assert(p);
+  ifail = sscanf(tmp+ncharoffset, "%d", &nio_);
+  assert(ifail == 1);
   printf("Number of I/O groups: %d\n", nio_);
   /* I/O decomposition */
-  fgets(tmp, FILENAME_MAX, fp_meta);
-  sscanf(tmp+ncharoffset, "%d %d %d\n", io_size + 0, io_size + 1, io_size + 2);
+  p = fgets(tmp, FILENAME_MAX, fp_meta);
+  if (p == NULL) printf("Not reached last line correctly\n");
+  ifail = sscanf(tmp+ncharoffset, "%d %d %d\n",
+		 io_size + 0, io_size + 1, io_size + 2);
+  assert(ifail == 3);
   printf("I/O communicator topology: %d %d %d\n",
 	 io_size[0], io_size[1], io_size[2]);
 
@@ -575,7 +597,7 @@ void read_meta_data_file(const char * filename) {
 int read_data_file_name(const char * filename) {
 
   int ntime = -1;
-  char * tmp;
+  const char * tmp;
   
   tmp = strchr(filename, '-');
   if (tmp) {
@@ -631,6 +653,7 @@ int copy_data(double * datalocal, double * datasection) {
 void read_data(FILE * fp_data, int n[3], double * data) {
 
   int ic, jc, kc, index, nr;
+  int nread;
   double phi;
   double revphi;
 
@@ -642,7 +665,8 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 	  index = site_index(ic, jc, kc, nlocal);
 
 	  for (nr = 0; nr < nrec_; nr++) {
-	    fread(&phi, sizeof(double), 1, fp_data);
+	    nread = fread(&phi, sizeof(double), 1, fp_data);
+	    assert(nread == 1);
 	    if(reverse_byte_order_){
 	       revphi = reverse_byte_order_double((char *) &phi); 
 	       phi = revphi;
@@ -660,7 +684,8 @@ void read_data(FILE * fp_data, int n[3], double * data) {
 	  index = site_index(ic, jc, kc, nlocal);
 
 	  for (nr = 0; nr < nrec_; nr++) {
-	    fscanf(fp_data, "%le", data + nrec_*index + nr);
+	    nread = fscanf(fp_data, "%le", data + nrec_*index + nr);
+	    assert(nread == 1);
 	  }
 	}
       }

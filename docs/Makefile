@@ -13,17 +13,17 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2014-2015 The University of Edinburgh
+#  (c) 2014-2019 The University of Edinburgh
 #
 ############################################################################
 
 TEX_SOURCE = ludwig.tex
 
-dvi:	$(TEX_SOURCE) Makefile
-	latex $(TEX_SOURCE)
-
 pdf:	$(TEX_SOURCE)
 	pdflatex $(TEX_SOURCE)
+
+dvi:	$(TEX_SOURCE) Makefile
+	latex $(TEX_SOURCE)
 
 clean:
 	rm -f *pdf *aux *dvi *log *toc *out 

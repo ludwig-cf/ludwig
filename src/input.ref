@@ -346,6 +346,8 @@ leslie_ericksen_swim  0.0
 #                 colloid_one_a0   2.3
 #                 colloid_one_ah   2.4
 #                 colloid_one_r    12.0_12.0_12.0
+#                 colloid_one_isfixedr 1
+#                 colloid_one_isfixedvxyz 1_0_1
 #
 #  colloid_rho0   density of all colloids (default 1.0 as for fluid)
 #

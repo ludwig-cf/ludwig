@@ -71,6 +71,7 @@ static void stats_rheology_print_matrix(FILE *, double s[3][3]);
 int stats_rheology_create(pe_t * pe, cs_t * cs, stats_rheo_t ** pobj) {
 
   stats_rheo_t * obj = NULL;
+  int nelements;
   int rank;
   int remainder[3];
   int nlocal[3];
@@ -136,13 +137,15 @@ int stats_rheology_create(pe_t * pe, cs_t * cs, stats_rheo_t ** pobj) {
 
   cs_nlocal(cs, nlocal);
 
-  obj->sxy = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
+  nelements = NSTAT1*nlocal[X];
+  obj->sxy = (double *) malloc(nelements*sizeof(double));
   assert(obj->sxy);
   if (obj->sxy == NULL) pe_fatal(pe, "malloc(sxy) failed\n");
 
   /* stat_xz_ */
 
-  obj->stat_xz = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  nelements = NSTAT2*nlocal[X]*nlocal[Z];
+  obj->stat_xz = (double *) malloc(nelements*sizeof(double));
   assert(obj->stat_xz);
   if (obj->stat_xz == NULL) pe_fatal(pe, "malloc(stat_xz) failed\n");
 
@@ -254,7 +257,7 @@ int stats_rheology_free_energy_density_profile(stats_rheo_t * stat, fe_t * fe,
       fp_output = fopen(filename, "a");
     }
 
-    if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n");
+    if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n", filename);
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       /* This is an average over (y,z) so don't care about the
@@ -448,6 +451,7 @@ int stats_rheology_stress_profile_accumulate(stats_rheo_t * stat, lb_t * lb,
 int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
 
   int ic;
+  int nelements;
   int nlocal[3];
   int noffset[3];
   int mpi_cartsz[3];
@@ -479,7 +483,8 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
 
-  sxymean = (double *) malloc(NSTAT1*nlocal[X]*sizeof(double));
+  nelements = NSTAT1*nlocal[X];
+  sxymean = (double *) malloc(nelements*sizeof(double));
   assert(sxymean);
   if (sxymean == NULL) pe_fatal(stat->pe, "malloc(sxymean) failed\n");
 
@@ -505,7 +510,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
       fp_output = fopen(filename, "a");
     }
 
-    if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n");
+    if (fp_output == NULL) pe_fatal(stat->pe, "fopen(%s) failed\n", filename);
 
     for (ic = 1; ic <= nlocal[X]; ic++) {
       /* This is an average over (y,z) so don't care about the
@@ -577,6 +582,7 @@ int stats_rheology_stress_profile(stats_rheo_t * stat, const char * filename) {
 int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
 
   int ic, kc;
+  int nelements;
   int nlocal[3];
   int ntotal[3];
   int mpi_cartsz[3];
@@ -611,11 +617,13 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   physics_eta_shear(phys, &eta);
   viscous = -rcs2*eta*2.0/(1.0 + 6.0*eta);
 
-  stat_2d = (double *) malloc(NSTAT2*nlocal[X]*nlocal[Z]*sizeof(double));
+  nelements = NSTAT2*nlocal[X]*nlocal[Z];
+  stat_2d = (double *) malloc(nelements*sizeof(double));
   assert(stat_2d);
   if (stat_2d == NULL) pe_fatal(stat->pe, "malloc(stat_2d) failed\n");
 
-  stat_1d = (double *) malloc(NSTAT2*ntotal[Z]*sizeof(double));
+  nelements = NSTAT2*ntotal[Z];
+  stat_1d = (double *) malloc(nelements*sizeof(double));
   assert(stat_1d);
   if (stat_1d == NULL) pe_fatal(stat->pe, "malloc(stat_1d) failed\n");
 

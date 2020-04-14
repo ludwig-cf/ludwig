@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017 The University of Edinburgh
+ *  (c) 2006-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -54,6 +54,9 @@ static void build_link_mean(colloid_t * pc, int p, const double rb[3]);
 static int build_colloid_wall_links(cs_t * cs, colloids_info_t * cinfo,
 				    colloid_t * pc,
 				    map_t * map);
+
+int build_conservation_phi(colloids_info_t * cinfo, field_t * phi);
+int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi);
 
 /*****************************************************************************
  *
@@ -1060,7 +1063,16 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
 
     /* Set new fluid distributions */
 
-    assert(weight > 0.0);
+    if (weight == 0.0) {
+      /* No neighbouring fluid: as there's no information, we
+       * fall back to the value that is currently stored on the
+       * lattice. This is not entirely unreasonable, as it may
+       * reflect what is nearby, or initial conditions. It could
+       * also be set as a contingency in a separate step. */
+      field_scalar(f, index, newg);
+      weight = 1.0;
+    }
+
     weight = 1.0/weight;
     phi[0] = 0.0;
 
@@ -1102,12 +1114,9 @@ static int build_replace_order_parameter(fe_t * fe, lb_t * lb,
     }
 
     if (nweight == 0) {
-      if (n == NQAB) {
-	build_replace_q_local(fe, cinfo, pc, index, f);
-      }
-      else {
-	assert(0);
-      }
+      /* No information. For phi, use existing (solid) value. */
+      if (fe->id == FE_LC) build_replace_q_local(fe, cinfo, pc, index, f);
+      if (fe->id == FE_SYMMETRIC) field_scalar(f, index, phi);
     }
     else {
       weight = 1.0 / weight;
@@ -1447,23 +1456,43 @@ int build_count_faces_local(colloid_t * colloid, double * sa, double * saf) {
  *  Either phi or psi are allowed to be NULL, in which case, they are
  *  ignored. If both are NULL, don't need to call this at all!
  *
- *  For each particle, we replace a proportion of the conservered
- *  surplus or deficit at each fluid face.
- *
  *****************************************************************************/
 
 int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
 
+  assert(cinfo);
+
+  if (phi) build_conservation_phi(cinfo, phi);
+  if (psi) build_conservation_psi(cinfo, psi);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_conservation_psi
+ *
+ *  Ensure fluid charge is conserved following remove / replace.
+ *
+ *  Charge has the additonal constraint that quantitiy of charge must
+ *  not fall below zero. This means some correction may be carried
+ *  forward to future steps.
+ *
+ *****************************************************************************/
+
+int build_conservation_psi(colloids_info_t * cinfo, psi_t * psi) {
+
   int p;
 
   double value;
-  double dphi, dq0, dq1;
+  double dq0, dq1;
   double sa_local, saf_local;
 
   colloid_t * colloid = NULL;
   colloid_link_t * pl = NULL;
 
   assert(cinfo);
+  assert(psi);
 
   colloids_info_all_head(cinfo, &colloid);
 
@@ -1475,7 +1504,6 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
     colloid->dq[0] += colloid->s.deltaq0;
     colloid->dq[1] += colloid->s.deltaq1;
 
-    dphi = colloid->s.deltaphi / colloid->s.saf;
     dq0  = colloid->dq[0]  / colloid->s.saf;
     dq1  = colloid->dq[1]  / colloid->s.saf;
 
@@ -1497,23 +1525,16 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
       p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
 
       if (p == 1) {
-	/* Replace */
-	if (phi) {
-	  field_scalar(phi, pl->i, &value);
-	  field_scalar_set(phi, pl->i, value + dphi);
-	}
 	/* For charge, do not drop densities below zero. */
-	if (psi) {
-	  psi_rho(psi, pl->i, 0, &value);
-	  if ((value + dq0) >= 0.0) {
-	    colloid->dq[0] -= dq0;
-	    psi_rho_set(psi, pl->i, 0, value + dq0);
-	  }
-	  psi_rho(psi, pl->i, 1, &value);
-	  if ((value + dq1) >=  0.0) {
-	    colloid->dq[1] -= dq1;
-	    psi_rho_set(psi, pl->i, 1, value + dq1);
-	  }
+	psi_rho(psi, pl->i, 0, &value);
+	if ((value + dq0) >= 0.0) {
+	  colloid->dq[0] -= dq0;
+	  psi_rho_set(psi, pl->i, 0, value + dq0);
+	}
+	psi_rho(psi, pl->i, 1, &value);
+	if ((value + dq1) >=  0.0) {
+	  colloid->dq[1] -= dq1;
+	  psi_rho_set(psi, pl->i, 1, value + dq1);
 	}
       }
     }
@@ -1532,6 +1553,63 @@ int build_conservation(colloids_info_t * cinfo, field_t * phi, psi_t * psi) {
     colloid->s.deltaq1 = colloid->dq[1];
     colloid->dq[0] = 0.0;
     colloid->dq[1] = 0.0; 
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  build_conservation_phi
+ *
+ *  To be run immediately following remove/replace so that there is no
+ *  change in mean composition.
+ *
+ *  A call to colloid_sums_halo(cinfo, COLLOID_SUM_CONSERVATION) before
+ *  we reach this point is required so that all parts of distributed
+ *  colloids see the same deltaphi.
+ *
+ *****************************************************************************/
+
+int build_conservation_phi(colloids_info_t * cinfo, field_t * phi) {
+
+  int p;
+
+  double value;
+  double dphi;
+
+  colloid_t * colloid = NULL;
+  colloid_link_t * pl = NULL;
+
+  assert(cinfo);
+  assert(phi);
+
+  colloids_info_all_head(cinfo, &colloid);
+
+  for (; colloid != NULL; colloid = colloid->nextall) {
+
+    /* Add any contribution form previous steps (all copies);
+     * work out what should be put back. */
+
+    dphi = colloid->s.deltaphi / colloid->s.saf;
+    if (dphi == 0.0) continue;
+
+    for (pl = colloid->lnk; pl != NULL; pl = pl->next) {
+
+      if (pl->status != LINK_FLUID) continue;
+
+      p = pl->p;
+      p = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+
+      if (p == 1) {
+	/* Replace */
+	field_scalar(phi, pl->i, &value);
+	field_scalar_set(phi, pl->i, value + dphi);
+      }
+    }
+
+    /* We may now reset deltaphi to zero. */
+    colloid->s.deltaphi = 0.0;
   }
 
   return 0;

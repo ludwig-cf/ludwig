@@ -32,10 +32,11 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -74,6 +75,7 @@ int main(int argc, char ** argv) {
   int nf, nfile;
   int ncolloid;
   int ncount = 0;
+  int nread;
 
   colloid_state_t s1;
   colloid_state_t s2;
@@ -101,13 +103,13 @@ int main(int argc, char ** argv) {
   /* Allocate lattice and open vtk file */
   if (argc == 5) {
 
-    vel = calloc(NX, sizeof(double));
+    vel = (double ****) calloc(NX, sizeof(double ***));
     for (ix = 0; ix < NX; ix++) {
-      vel[ix] = calloc(NY, sizeof(double));
+      vel[ix] = (double ***) calloc(NY, sizeof(double **));
       for (iy = 0; iy < NY; iy++) {
-	vel[ix][iy] = calloc(NZ, sizeof(double));
+	vel[ix][iy] = (double **) calloc(NZ, sizeof(double *));
 	for (iz = 0; iz < NZ; iz++) {
-	  vel[ix][iy][iz] = calloc(3, sizeof(double));
+	  vel[ix][iy][iz] = (double *) calloc(3, sizeof(double));
 	}
       }
     }
@@ -149,11 +151,14 @@ int main(int argc, char ** argv) {
     }
 
     if (iread_ascii) {
-      fscanf(fp_colloids, "%d22\n", &ncolloid);
+      nread = fscanf(fp_colloids, "%d22\n", &ncolloid);
+      assert(nread == 1);
     }
     else {
-      fread(&ncolloid, sizeof(int), 1, fp_colloids);
+      nread = fread(&ncolloid, sizeof(int), 1, fp_colloids);
+      assert(nread == 1);
     }
+    if (nread != 1) printf("Warning: problem reading number of collloids\n");
 
     printf("Reading %d colloids from %s\n", ncolloid, argv[1]);
 

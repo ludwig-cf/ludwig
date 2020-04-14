@@ -7,15 +7,19 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2018 The University of Edinburgh
+ *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
- *    Ronojoy Adhikari computed this D2Q9 basis.
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Ronojoy Adhikari computed this D2Q9 basis.
  *
  *****************************************************************************/
 
-#include "pe.h"
 #include "d2q9.h"
+
+const char * model_name_d2q9 = "D2Q9";
+
+#ifdef _D2Q9_
 
 /*****************************************************************************
  *
@@ -60,15 +64,13 @@
  *
  *****************************************************************************/
 
-#include "d2q9.h"
+const int cv[NVEL9][3] = {{ 0,  0,  0},
+			  { 1,  1,  0}, { 1,  0,  0},
+			  { 1, -1,  0}, { 0,  1,  0},
+			  { 0, -1,  0}, {-1,  1,  0},
+			  {-1,  0,  0}, {-1, -1,  0}};
 
-const int cv[NVEL][3] = {{ 0,  0,  0},
-			 { 1,  1,  0}, { 1,  0,  0},
-			 { 1, -1,  0}, { 0,  1,  0},
-			 { 0, -1,  0}, {-1,  1,  0},
-			 {-1,  0,  0}, {-1, -1,  0}};
-
-const double q_[NVEL][3][3] = {
+const double q_[NVEL9][3][3] = {
   {{-1.0/3.0, 0.0, 0.0}, { 0.0,-1.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
   {{ 2.0/3.0, 1.0, 0.0}, { 1.0, 2.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
   {{ 2.0/3.0, 0.0, 0.0}, { 0.0,-1.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
@@ -83,10 +85,10 @@ const double q_[NVEL][3][3] = {
 #define w1  (4.0/36.0)
 #define w2  (1.0/36.0)
 
-const double wv[NVEL] = {w0, w2, w1, w2, w1, w1, w2, w1, w2};
+const double wv[NVEL9] = {w0, w2, w1, w2, w1, w1, w2, w1, w2};
  
-const double norm_[NVEL] = {1.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0/2.0, 1.0/4.0,
-			    3.0/8.0, 3.0/8.0};
+const double norm_[NVEL9] = {1.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0/2.0, 1.0/4.0,
+			     3.0/8.0, 3.0/8.0};
 
 #define c0 0.0
 #define c1 1.0
@@ -97,7 +99,7 @@ const double norm_[NVEL] = {1.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0/2.0, 1.0/4.0,
 #define r4 (1.0/4.0)
 #define r6 (1.0/6.0)
 
-const double ma_[NVEL][NVEL] = {
+const double ma_[NVEL9][NVEL9] = {
   { c1, c1,  c1,  c1,  c1,  c1,  c1,  c1,  c1},
   { c0, c1,  c1,  c1,  c0,  c0, -c1, -c1, -c1},
   { c0, c1,  c0, -c1,  c1, -c1,  c1,  c0, -c1},
@@ -112,7 +114,7 @@ const double ma_[NVEL][NVEL] = {
 #define wb (4.0/72.0)
 #define wc (3.0/72.0)
 
-const double mi_[NVEL][NVEL] = {
+const double mi_[NVEL9][NVEL9] = {
   {w0,  c0,  c0, -t3,  c0, -t3,  w1,  c0,  c0},
   {w2,  wa,  wa,  wa,  r4,  wa,  w2,  wc,  wc},
   {w1,  r3,  c0,  r3,  c0, -r6, -wb, -wa,  c0},
@@ -124,15 +126,16 @@ const double mi_[NVEL][NVEL] = {
   {w2, -wa, -wa,  wa,  r4,  wa,  w2, -wc, -wc}};
 
 
-const int xblocklen_cv[CVXBLOCK] = {3};
-const int xdisp_fwd_cv[CVXBLOCK] = {1};
-const int xdisp_bwd_cv[CVXBLOCK] = {6};
+const int xblocklen_cv[CVXBLOCK9] = {3};
+const int xdisp_fwd_cv[CVXBLOCK9] = {1};
+const int xdisp_bwd_cv[CVXBLOCK9] = {6};
 
-const int yblocklen_cv[CVYBLOCK] = {1, 1, 1};
-const int ydisp_fwd_cv[CVYBLOCK] = {1, 4, 6};
-const int ydisp_bwd_cv[CVYBLOCK] = {3, 5, 8};
+const int yblocklen_cv[CVYBLOCK9] = {1, 1, 1};
+const int ydisp_fwd_cv[CVYBLOCK9] = {1, 4, 6};
+const int ydisp_bwd_cv[CVYBLOCK9] = {3, 5, 8};
 
-const int zblocklen_cv[CVZBLOCK] = {0};
-const int zdisp_fwd_cv[CVZBLOCK] = {0};
-const int zdisp_bwd_cv[CVZBLOCK] = {0};
+const int zblocklen_cv[CVZBLOCK9] = {0};
+const int zdisp_fwd_cv[CVZBLOCK9] = {0};
+const int zdisp_bwd_cv[CVZBLOCK9] = {0};
 
+#endif

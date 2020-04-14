@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -74,6 +74,20 @@ int field_phi_init_rt(pe_t * pe, rt_t * rt, field_phi_info_t param,
     rt_int_parameter(rt, "phi_init_patch_size", &patch);
     rt_double_parameter(rt, "phi_init_patch_vol", &volminus1);
     field_phi_init_spinodal_patches(phi, seed, patch, volminus1);
+  }
+
+  if (p != 0 && strcmp(value, "uniform") == 0) {
+    int ihave_phi0;
+    double phi0;
+
+    pe_info(pe, "Initialisng phi as uniform phi0\n");
+
+    ihave_phi0 = rt_double_parameter(rt, "phi0", &phi0);
+    if (ihave_phi0 == 0) pe_fatal(pe, "Please define phi0 in the input!\n");
+
+    pe_info(pe, "Initial value phi0: %14.7e\n", phi0);
+
+    field_phi_init_uniform(phi, phi0);
   }
 
   if (p != 0 && strcmp(value, "block") == 0) {

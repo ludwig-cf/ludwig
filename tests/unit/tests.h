@@ -6,14 +6,17 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
 #ifndef LUDWIG_UNIT_TESTS_H
 #define LUDWIG_UNIT_TESTS_H
 
-void test_assert_info(const int lvalue, int line, const char * file);
+#include "target.h"
+
+__host__ __device__ void test_assert_info(const int lvalue, int line,
+					  const char * file);
 
 #define test_assert(x) test_assert_info((x), __LINE__, __FILE__)
 
@@ -65,5 +68,6 @@ int test_random_suite(void);
 int test_rt_suite(void);
 int test_timer_suite(void);
 int test_util_suite(void);
+int test_visc_arrhenius_suite(void);
 
 #endif

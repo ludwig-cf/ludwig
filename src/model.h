@@ -22,14 +22,36 @@
 
 #ifdef _D2Q9_
 #include "d2q9.h"
+
+enum {NDIM     = NDIM9,
+      NVEL     = NVEL9,
+      CVXBLOCK = CVXBLOCK9,
+      CVYBLOCK = CVYBLOCK9,
+      CVZBLOCK = CVZBLOCK9};
+
 #endif
 
 #ifdef _D3Q15_
 #include "d3q15.h"
+
+enum {NDIM     = NDIM15,
+      NVEL     = NVEL15,
+      CVXBLOCK = CVXBLOCK15,
+      CVYBLOCK = CVYBLOCK15,
+      CVZBLOCK = CVZBLOCK15};
+
 #endif
 
 #ifdef _D3Q19_
+
 #include "d3q19.h"
+
+enum {NDIM     = NDIM19,
+      NVEL     = NVEL19,
+      CVXBLOCK = CVXBLOCK19,
+      CVYBLOCK = CVYBLOCK19,
+      CVZBLOCK = CVZBLOCK19};
+
 #endif
 
 #include "pe.h"
@@ -46,8 +68,13 @@ enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
 enum {LB_TAU_BULK = 1 + NDIM + XX, LB_TAU_SHEAR = 1 + NDIM + XY};
 
+/* Extern declarations are to be avoided; prefer the macro! */
+
 extern const double cs2;
 extern const double rcs2;
+
+#define LB_CS2_DOUBLE(cs2)   const double cs2 = (1.0/3.0)
+#define LB_RCS2_DOUBLE(rcs2) const double rcs2 = 3.0;
 
 typedef enum lb_dist_enum_type{LB_RHO = 0, LB_PHI = 1} lb_dist_enum_t;
 typedef enum lb_mode_enum_type{LB_GHOST_ON = 0, LB_GHOST_OFF = 1} lb_mode_enum_t;

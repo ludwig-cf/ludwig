@@ -22,7 +22,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019  The University of Edinburgh
+ *  (c) 2010-2020  The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -36,7 +36,7 @@
 #include "field_s.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
-#include "hydro_s.h"
+#include "hydro.h"
 #include "timer.h"
 
 /* Non-Lees Edwards implementation */
@@ -174,9 +174,9 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   if (obj->le == NULL) {
     /* If no Lees Edwards, we only require an fx = fw */
 
-    obj->fx = (double *) calloc(nsites*nf, sizeof(double));
-    obj->fy = (double *) calloc(nsites*nf, sizeof(double));
-    obj->fz = (double *) calloc(nsites*nf, sizeof(double));
+    obj->fx = (double *) calloc((size_t) nsites*nf, sizeof(double));
+    obj->fy = (double *) calloc((size_t) nsites*nf, sizeof(double));
+    obj->fz = (double *) calloc((size_t) nsites*nf, sizeof(double));
 
     if (obj->fx == NULL) pe_fatal(pe, "calloc(advflux->fx) failed\n");
     if (obj->fy == NULL) pe_fatal(pe, "calloc(advflux->fy) failed\n");
@@ -184,10 +184,10 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   }
   else {
 
-    obj->fw = (double *) calloc(nsites*nf, sizeof(double));
-    obj->fe = (double *) calloc(nsites*nf, sizeof(double));
-    obj->fy = (double *) calloc(nsites*nf, sizeof(double));
-    obj->fz = (double *) calloc(nsites*nf, sizeof(double));
+    obj->fw = (double *) calloc((size_t) nsites*nf, sizeof(double));
+    obj->fe = (double *) calloc((size_t) nsites*nf, sizeof(double));
+    obj->fy = (double *) calloc((size_t) nsites*nf, sizeof(double));
+    obj->fz = (double *) calloc((size_t) nsites*nf, sizeof(double));
     if (obj->fw == NULL) pe_fatal(pe, "calloc(advflux->fw) failed\n");
     if (obj->fe == NULL) pe_fatal(pe, "calloc(advflux->fe) failed\n");
     if (obj->fy == NULL) pe_fatal(pe, "calloc(advflux->fy) failed\n");
@@ -204,36 +204,44 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   else {
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
+    size_t nsz = (size_t) nsites*nf*sizeof(double);
 
-    tdpMalloc((void **) &obj->target, sizeof(advflux_t));
-    tdpMemset(obj->target, 0, sizeof(advflux_t));
+    tdpAssert(tdpMalloc((void **) &obj->target, sizeof(advflux_t)));
+    tdpAssert(tdpMemset(obj->target, 0, sizeof(advflux_t)));
 
     if (obj->le == NULL) {
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
-    tdpMemcpy(&obj->target->fx, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
+      tdpAssert(tdpMalloc((void **) &tmp, nsz));
+      tdpAssert(tdpMemcpy(&obj->target->fx, &tmp, sizeof(double *),
+			  tdpMemcpyHostToDevice));
     }
     else {
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
-    tdpMemcpy(&obj->target->fe, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
-    tdpMemcpy(&obj->target->fw, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
+      tdpAssert(tdpMalloc((void **) &tmp, nsz));
+      tdpAssert(tdpMemcpy(&obj->target->fe, &tmp, sizeof(double *),
+			  tdpMemcpyHostToDevice));
+      tdpAssert(tdpMalloc((void **) &tmp, nsz));
+      tdpAssert(tdpMemcpy(&obj->target->fw, &tmp, sizeof(double *),
+			  tdpMemcpyHostToDevice));
     }
 
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
-    tdpMemcpy(&obj->target->fy, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
-    tdpMalloc((void **) &tmp, nf*nsites*sizeof(double));
-    tdpMemcpy(&obj->target->fz, &tmp, sizeof(double *), tdpMemcpyHostToDevice);
+    tdpAssert(tdpMalloc((void **) &tmp, nsz));
+    tdpAssert(tdpMemcpy(&obj->target->fy, &tmp, sizeof(double *),
+			tdpMemcpyHostToDevice));
 
-    tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMalloc((void **) &tmp, nsz));
+    tdpAssert(tdpMemcpy(&obj->target->fz, &tmp, sizeof(double *),
+			tdpMemcpyHostToDevice));
+
+    tdpAssert(tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
+			tdpMemcpyHostToDevice));
 
     if (cs) cs_target(cs, &cstarget);
     if (le) lees_edw_target(le, &letarget);
-    tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
-	      tdpMemcpyHostToDevice);
-    tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
-	      tdpMemcpyHostToDevice);
+    tdpAssert(tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->le, &letarget, sizeof(lees_edw_t *),
+			tdpMemcpyHostToDevice));
   }
 
   *pobj = obj;

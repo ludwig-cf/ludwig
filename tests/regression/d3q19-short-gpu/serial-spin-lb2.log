@@ -1,0 +1,133 @@
+Welcome to Ludwig v0.9.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: CUDA.
+Default threads per block: 128; max. threads per block: 1024.
+
+Read 22 user parameters from serial-spin-lb2.inp
+
+System details
+--------------
+System size:    32 32 32
+Decomposition:  1 1 1
+Local domain:   32 32 32
+Periodic:       0 0 0
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Symmetric phi^4 free energy selected.
+
+Parameters:
+Bulk parameter A      = -6.25000e-03
+Bulk parameter B      =  6.25000e-03
+Surface penalty kappa =  4.00000e-03
+Surface tension       =  4.71405e-03
+Interfacial width     =  1.13137e+00
+
+Using full lattice Boltzmann solver for Cahn-Hilliard:
+Mobility M            =  3.75000e+00
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               6.25000e-03
+Bulk viscosity                6.25000e-03
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   2
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              off
+Isothermal fluctuations:  off
+Shear relaxation time:    5.18750e-01
+Bulk relaxation time:     5.18750e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+Initialising phi for spinodal
+
+Boundary walls
+--------------
+Boundary walls:                  X Y Z
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   30336
+Memory (total, bytes):           485376
+Boundary shear initialise:       0
+Gradient calculation: 3d_27pt_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -5.9892076e+00 -1.8277611e-04 8.3100414e-04 -4.9989121e-02 4.9997941e-02
+
+Momentum - x y z
+[total   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+[fluid   ]  4.5474735e-13  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       32768.00  1.00000000000  8.3601348e-11  0.99996729891  1.00002317848
+[phi] -5.9892076e+00 -1.8277611e-04 4.8107467e-04 -5.4252546e-02 5.3888958e-02
+
+Free energies - timestep f v f/v f_s1 fs_s2 
+[fe]             40 -4.1390835011e-02  3.2768000000e+04 -1.2631480411e-06  0.0000000000e+00  0.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.0609877e-14  1.8093166e-14  1.8329088e-14
+[fluid   ]  1.1410526e-04 -9.7604906e-04 -1.7379322e-04
+[walls   ] -1.1410526e-04  9.7604906e-04  1.7379322e-04
+
+Velocity - x y z
+[minimum ] -1.5629928e-05 -1.4460037e-05 -1.5091671e-05
+[maximum ]  1.8897739e-05  1.4357452e-05  1.3674644e-05
+
+Completed cycle 40
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.770      0.770      0.770   0.770000 (1 call)
+      Time step loop:      0.000      0.020      0.430   0.010750 (40 calls)
+         Propagation:      0.000      0.010      0.150   0.003750 (40 calls)
+    Propagtn (krnl) :      0.000      0.010      0.150   0.003750 (40 calls)
+           Collision:      0.000      0.020      0.100   0.002500 (40 calls)
+   Collision (krnl) :      0.000      0.020      0.100   0.002500 (40 calls)
+       Lattice halos:      0.000      0.010      0.060   0.001500 (40 calls)
+       phi gradients:      0.000      0.010      0.090   0.002250 (40 calls)
+           phi halos:      0.000      0.010      0.060   0.001500 (40 calls)
+                 BBL:      0.000      0.010      0.030   0.000750 (40 calls)
+               Free1:      0.000      0.040      0.040   0.001000 (40 calls)
+Ludwig finished normally.

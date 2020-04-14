@@ -1,20 +1,75 @@
 
 ### Changes
 
-version 0.9.2
-- add back an operational surfactant free energy. There is no
+version 0.11.0
+- PENDING THREE TESTS AND DESCRIPTION FOR WEB PAGES
+- Add a ternary free energy. Thanks to Shan Chen.
+- Add back an operational surfactant free energy. There is no
   dynamics available yet.
 - Add unit tests for the the same.
 - Add a description of how to add a free energy to free_energy.h
+- Add Arrhenius viscosity model for compositional order parameter
+- Various code quality updates
+
+version 0.10.0
+- Added an option to fix colloid position or velocity on a per-direction
+  basis, e.g.
+    colloid_isfixedrxyz  1_1_0
+  allows movement in z-direction only. Any value is overridden by
+  colloid_isfixedr. An analogous option colloid_isfixedvxyz is available.
+- Added target thread model information to output
+- Refactored d_ij and e_ijk from char to int8_t to avoid potential
+  pitfalls with default unsigned char.
+
+version 0.9.3
+- Allow stress relaxation option in bare liquid crystal free energy
+
+version 0.9.2
+- Moved input section in porous media docs to online version only
 
 version 0.9.1
-- add option "fe_use_stress_relaxation" in the symmetric case
-  to allow force via equilibrium stress.
-- Symmetric free energy. Add option "fd_force_divergence 0" which
-  allows computation of -phi grad mu in the case where solid is
-  present with the approximation that grad mu at boundary is zero.
+- Disallow porous media files using "status_with_h" as erroneous.
+  Use "status_with_c_h" instead.
+- Bug fix: allow colloid wetting by default.
 
+version 0.9.0
+- The build process has changed to try to move all the configuration
+  to the config.mk file. Please see updated examples in the ./config
+  directory. The configs are either serial or parallel (not both).
+  The build process should now be from the top level and is via
+  "make && make test". Serial builds should do "make serial" first.
 
+- You should be able to type "make" in any directory and the local
+  default target will be built.
+
+- Executables in utils are built via "make" to be consistent with
+  other source directories
+
+- Added input colloid_rebuild_freq (with default 1) to allow discrete
+  rebuild to be done less often than every time step
+
+- Regression tests have been re-organised into different directories
+  and are run on a per-directory basis (see tests/Makefile)
+
+- The default test is regression/d3q19-short 
+
+- A link to new build and test instructions has been made available
+  from the README
+
+- Added travis .travis.yml and relevant config file
+
+- Fixed gcc -Wformat-overflow and a number of other warnings
+
+version 0.8.16
+- add option for uniform composition via "phi_initialisation uniform"
+- fix composition replacement bug (was dependent on charge psi)
+
+version 0.8.15
+- fix "weight = 0" problem in replacement of fluid for binary order
+  parameter and add test (issue 30)
+
+version 0.8.14
+- add html placeholder
 
 version 0.8.13
 - add option for density output via "rho" commands in input

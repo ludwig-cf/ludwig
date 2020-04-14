@@ -21,7 +21,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -58,7 +58,7 @@ double v_lj(double r, double rc);
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {32.0, 32.0, 32.0};  /* Total system size (cf. input) */
+  int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
   int file_format = ASCII;
 
@@ -301,7 +301,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
   nbcc += nze * nx * ny;
 
   // position of bcc sites
-  rbcc = (double **) calloc(nbcc, sizeof(double));
+  rbcc = (double **) calloc(nbcc, sizeof(double *));
   for (n = 0; n <nbcc; n++) {
     rbcc[n] = (double *) calloc(3, sizeof(double));
   }
@@ -431,7 +431,6 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     exit(1);
   }
 
-  n = 0;
   delta = 0.01*ah_ref;
 
   for (im = 0; im < NMC; im++) {
@@ -544,10 +543,10 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
   for (n = 0; n < nc; n++) {
     if (form == BINARY) {
-      colloid_state_write_binary(pc[n], fp);
+      colloid_state_write_binary(pc, fp);
     }
     else {
-      colloid_state_write_ascii(pc[n], fp);
+      colloid_state_write_ascii(pc, fp);
     }
   }
 

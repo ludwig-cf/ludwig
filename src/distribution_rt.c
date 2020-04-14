@@ -115,11 +115,12 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
    * rho_io_wanted           switch to indicate output wanted [no]
    * rho_io_freq             output frequency
    * rho_io_grid             grid
-   * rho_io_format           ASCII/BINARY
+   * rho_io_format           ASCII/BINARY (default BINARY)
    * */
 
-  form_in = IO_FORMAT_DEFAULT;
-  form_out = IO_FORMAT_DEFAULT;
+  form_in = IO_FORMAT_BINARY;
+  form_out = IO_FORMAT_BINARY;
+
   io_grid[X] = 1; io_grid[Y] = 1; io_grid[Z] = 1;
 
   rho_wanted = rt_switch(rt, "rho_io_wanted");
@@ -129,13 +130,10 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
   param.grid[X] = io_grid[X];
   param.grid[Y] = io_grid[Y];
   param.grid[Z] = io_grid[Z];
+
   if (strcmp(string, "ASCII") == 0) {
     form_in = IO_FORMAT_ASCII;
     form_out = IO_FORMAT_ASCII;
-  }
-  else {
-    form_in = IO_FORMAT_BINARY;
-    form_out = IO_FORMAT_BINARY;
   }
 
   io_info_create(pe, cs, &param, &io_rho);

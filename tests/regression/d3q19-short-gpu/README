@@ -1,0 +1,22 @@
+This is the current state of the tests cf those in d3q19-short.
+The missing tests here are:
+
+serial-chol-st3.inp   LE planes
+serial-chol-st4.inp   LE planes
+serial-chol-st5.inp   LE planes
+serial-chol-st6.inp   LE planes
+
+serial-drop-lc1.inp    Line 941 (hydro.c): cudaErrorIllegalAddress:
+serial-drop-lc2.inp    All same.   
+serial-drop-lc3.inp   
+serial-drop-lc4.inp   
+
+All Lees Edwards cases
+
+serial-pola-r01.inp    polar active
+
+serial-rest-ec1.inp    fe_electro
+serial-rest-ec2.inp    fe_electro
+
+serial-spin-c01.inp    Bus error
+serial-spin-n01.inp    wrong result

@@ -90,17 +90,17 @@ int test_angle_cosine1(pe_t * pe, cs_t * cs) {
   interact_angles(interact, cinfo);
 
   if (pe_mpi_size(pe) == 1) {
-    assert(fabs(pc3[0]->force[X] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc3[0]->force[Y] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc3[0]->force[Z] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[0]->force[X] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[0]->force[Y] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[0]->force[Z] - 0.0) < DBL_EPSILON);
 
-    assert(fabs(pc3[1]->force[X] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc3[1]->force[Y] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc3[1]->force[Z] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[1]->force[X] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[1]->force[Y] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[1]->force[Z] - 0.0) < DBL_EPSILON);
 
-    assert(fabs(pc3[2]->force[X] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc3[2]->force[Y] - 0.0) < DBL_EPSILON);
-    assert(fabs(pc3[2]->force[Z] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[2]->force[X] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[2]->force[Y] - 0.0) < DBL_EPSILON);
+    test_assert(fabs(pc3[2]->force[Z] - 0.0) < DBL_EPSILON);
   }
 
   angle_cosine_free(angle);
@@ -151,20 +151,20 @@ int test_angle_cosine2(pe_t * pe, cs_t * cs) {
   if (pe_mpi_size(pe) == 1) {
     fexpect = sqrt(2.0);
 
-    assert(fabs(pc3[0]->force[X] - -fexpect) < FLT_EPSILON);
-    assert(fabs(pc3[0]->force[Y] - 0.0) < FLT_EPSILON);
-    assert(fabs(pc3[0]->force[Z] - 0.0) < FLT_EPSILON);
+    test_assert(fabs(pc3[0]->force[X] - -fexpect) < FLT_EPSILON);
+    test_assert(fabs(pc3[0]->force[Y] - 0.0) < FLT_EPSILON);
+    test_assert(fabs(pc3[0]->force[Z] - 0.0) < FLT_EPSILON);
 
 
     fexpect = 1.0/sqrt(2.0);
 
-    assert(fabs(pc3[1]->force[X] -  fexpect) < FLT_EPSILON);
-    assert(fabs(pc3[1]->force[Y] - -fexpect) < FLT_EPSILON);
-    assert(fabs(pc3[1]->force[Z] - 0.0) < FLT_EPSILON);
+    test_assert(fabs(pc3[1]->force[X] -  fexpect) < FLT_EPSILON);
+    test_assert(fabs(pc3[1]->force[Y] - -fexpect) < FLT_EPSILON);
+    test_assert(fabs(pc3[1]->force[Z] - 0.0) < FLT_EPSILON);
 
-    assert(fabs(pc3[2]->force[X] - fexpect) < FLT_EPSILON);
-    assert(fabs(pc3[2]->force[Y] - fexpect) < FLT_EPSILON);
-    assert(fabs(pc3[2]->force[Z] - 0.0) < FLT_EPSILON);
+    test_assert(fabs(pc3[2]->force[X] - fexpect) < FLT_EPSILON);
+    test_assert(fabs(pc3[2]->force[Y] - fexpect) < FLT_EPSILON);
+    test_assert(fabs(pc3[2]->force[Z] - 0.0) < FLT_EPSILON);
   }
 
   angle_cosine_free(angle);
@@ -216,7 +216,7 @@ int test_create_trimer(colloids_info_t * cinfo, double a, double r1[3],
 
   colloids_info_ntotal_set(cinfo);
   colloids_info_ntotal(cinfo, &nc);
-  assert(nc == 3);
+  test_assert(nc == 3);
 
   colloids_halo_state(cinfo);
   colloids_info_list_local_build(cinfo);

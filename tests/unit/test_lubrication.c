@@ -84,16 +84,16 @@ int test_lubrication_ss_fnorm(pe_t * pe, cs_t * cs) {
 
   lubrication_rch_set(lubr, LUBRICATION_SS_FNORM, rc);
   lubrication_rchmax(lubr, &rchmax);
-  assert(fabs(rc - rchmax) < DBL_EPSILON);
+  test_assert(fabs(rc - rchmax) < DBL_EPSILON);
 
   /* Both zero velocity */
 
   fexpect[X] = 0.0; fexpect[Y] = 0.0; fexpect[Z] = 0.0;
 
   lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
-  assert(fabs(factual[X] - fexpect[X]) < FLT_EPSILON);
-  assert(fabs(factual[Y] - fexpect[Y]) < FLT_EPSILON);
-  assert(fabs(factual[Z] - fexpect[Z]) < FLT_EPSILON);
+  test_assert(fabs(factual[X] - fexpect[X]) < FLT_EPSILON);
+  test_assert(fabs(factual[Y] - fexpect[Y]) < FLT_EPSILON);
+  test_assert(fabs(factual[Z] - fexpect[Z]) < FLT_EPSILON);
 
   /* Finite velocity test values */
 
@@ -101,7 +101,7 @@ int test_lubrication_ss_fnorm(pe_t * pe, cs_t * cs) {
   fexpect[Z] = -1.0035643;
 
   lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
-  assert(fabs(factual[Z] - fexpect[Z]) < FLT_EPSILON);
+  test_assert(fabs(factual[Z] - fexpect[Z]) < FLT_EPSILON);
 
   lubrication_free(lubr);
 
@@ -141,14 +141,14 @@ int test_lubrication_ss_ftang(pe_t * pe, cs_t * cs) {
 
   lubrication_rch_set(lubr, LUBRICATION_SS_FTANG, rc);
   lubrication_rchmax(lubr, &rchmax);
-  assert(fabs(rc - rchmax) < DBL_EPSILON);
+  test_assert(fabs(rc - rchmax) < DBL_EPSILON);
 
   /* Both zero velocity */
 
   lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
-  assert(fabs(fexpect[X] - factual[X]) < FLT_EPSILON);
-  assert(fabs(fexpect[Y] - factual[Y]) < FLT_EPSILON);
-  assert(fabs(fexpect[Z] - factual[Z]) < FLT_EPSILON);
+  test_assert(fabs(fexpect[X] - factual[X]) < FLT_EPSILON);
+  test_assert(fabs(fexpect[Y] - factual[Y]) < FLT_EPSILON);
+  test_assert(fabs(fexpect[Z] - factual[Z]) < FLT_EPSILON);
 
   /* Finite tangential velocity test values */
 
@@ -156,7 +156,7 @@ int test_lubrication_ss_ftang(pe_t * pe, cs_t * cs) {
   fexpect[X] = -0.40893965;
 
   lubrication_single(lubr, a1, a2, u1, u2, r12, ran, factual);
-  assert(fabs(fexpect[X] - factual[X]) < FLT_EPSILON);
+  test_assert(fabs(fexpect[X] - factual[X]) < FLT_EPSILON);
 
   lubrication_free(lubr);
 

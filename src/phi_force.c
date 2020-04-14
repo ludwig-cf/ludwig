@@ -32,7 +32,7 @@
 #include "kernel.h"
 #include "field_grad_s.h"
 #include "field_s.h"
-#include "hydro_s.h"
+#include "hydro.h"
 #include "pth_s.h"
 #include "timer.h"
 #include "phi_force.h"

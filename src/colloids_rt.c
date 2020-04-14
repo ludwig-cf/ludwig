@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2018 The University of Edinburgh
+ *  (c) 2014-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -157,6 +157,22 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 
   colloids_rt_dynamics(cs, *pinfo, wall, map);
   colloids_rt_gravity(pe, rt, *pinfo);
+
+  /* Set the update frequency and report (non-default values) */
+
+  {
+    int isfreq = 0;
+    int nfreq = 1;
+
+    isfreq = rt_int_parameter(rt, "colloid_rebuild_freq", &nfreq);
+    if (nfreq <= 0) pe_fatal(pe, "colloids_rebuild_freq must be >= 1\n");
+
+    if (isfreq) {
+      colloids_info_rebuild_freq_set(*pinfo, nfreq);
+      pe_info(pe, "Colloid rebuild freq:         %d\n", nfreq);
+    }
+  }
+
   pe_info(pe, "\n");
   
   return 0;
@@ -262,9 +278,9 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			       colloid_io_t * cio) {
 
   int ntstep;
-  char subdirectory[FILENAME_MAX];
-  char filename[FILENAME_MAX];
-  char stub[FILENAME_MAX];
+  char subdirectory[BUFSIZ];
+  char filename[3*BUFSIZ];
+  char stub[BUFSIZ];
   physics_t * phys = NULL;
 
   assert(pe);
@@ -276,7 +292,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   physics_ref(&phys);
 
   strcpy(stub, "config.cds.init");
-  rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
+  rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
 
   ntstep = physics_control_timestep(phys);
 
@@ -285,7 +301,7 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   }
   else {
     strcpy(stub, "config.cds");
-    rt_string_parameter(rt, "colloid_file_stub", stub, FILENAME_MAX);
+    rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
     sprintf(filename, "%s%s%8.8d", subdirectory, stub, ntstep);
   }
 
@@ -345,11 +361,13 @@ int colloids_rt_init_random(pe_t * pe, cs_t * cs, rt_t * rt, wall_t * wall,
 int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 			   const char * stub,
 			   colloid_state_t * state) {
-  int nrt;
+  int nrt, nrt1;
   char key[BUFSIZ] = "";
+  char key1[BUFSIZ] = "";
   char value[BUFSIZ] = "";
 
   const char * format_i1 = "%-28s  %d\n";
+  const char * format_i3 = "%-28s  %d %d %d\n";
   const char * format_e1 = "%-28s %14.7e\n";
   const char * format_e3 = "%-28s %14.7e %14.7e %14.7e\n";
   const char * format_s1 = "%-28s  %s\n";
@@ -382,13 +400,37 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_int_parameter(rt, key, &state->nangles);
   if (nrt) pe_info(pe, format_i1, key, state->nangles);
 
+  sprintf(key1, "%s_%s", stub, "isfixedrxyz");
+  nrt1 = rt_int_parameter_vector(rt, key1, state->isfixedrxyz);
+  /* Defer output until isfxiedr is known */
+
   sprintf(key, "%s_%s", stub, "isfixedr");
   nrt = rt_int_parameter(rt, key, &state->isfixedr);
-  if (nrt) pe_info(pe, format_i1, key, state->isfixedr);
+  if (nrt) {
+    pe_info(pe, format_i1, key, state->isfixedr);
+    /* Override any previous value of rxyz */
+    state->isfixedrxyz[X] = state->isfixedr;
+    state->isfixedrxyz[Y] = state->isfixedr;
+    state->isfixedrxyz[Z] = state->isfixedr;
+  }
+  if (nrt1) pe_info(pe, format_i3, key1, state->isfixedrxyz[X],
+		    state->isfixedrxyz[Y], state->isfixedrxyz[Z]);
+
+  sprintf(key1, "%s_%s", stub, "isfixedvxyz");
+  nrt1 = rt_int_parameter_vector(rt, key1, state->isfixedvxyz);
+  /* Defer output until isfixedv is known */
 
   sprintf(key, "%s_%s", stub, "isfixedv");
   nrt = rt_int_parameter(rt, key, &state->isfixedv);
-  if (nrt) pe_info(pe, format_i1, key, state->isfixedv);
+  if (nrt) {
+    pe_info(pe, format_i1, key, state->isfixedv);
+    /* Override any previous value of vxyz */
+    state->isfixedvxyz[X] = state->isfixedv;
+    state->isfixedvxyz[Y] = state->isfixedv;
+    state->isfixedvxyz[Z] = state->isfixedv;
+  }
+  if (nrt1) pe_info(pe, format_i3, key1, state->isfixedvxyz[X],
+		    state->isfixedvxyz[Y], state->isfixedvxyz[Z]);
 
   sprintf(key, "%s_%s", stub, "isfixedw");
   nrt = rt_int_parameter(rt, key, &state->isfixedw);
