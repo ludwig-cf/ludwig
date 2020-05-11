@@ -39,6 +39,7 @@
 #include "phi_force_colloid.h"
 #include "physics.h" //added for externally imposed chemical potential gradient
 
+
 static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe, int nall,
 				    double * fxe,
 				    double * fxw,
