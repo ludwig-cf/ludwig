@@ -51,6 +51,9 @@ struct physics_s {
 
   double fpulse_frequency; /* Frequency of external body forcing */ 
   double fpulse[3];        /* Amplitude of external electric field */
+
+  //added for externally imposed chemical potential gradient
+  double grad_mu[3];     /* External chemical potential gradient */
 };
 
 /* At the moment we have static instances */
@@ -584,6 +587,40 @@ __host__ int physics_fgrav_set(physics_t * phys, double g[3]) {
   phys->fgravity[0] = g[0];
   phys->fgravity[1] = g[1];
   phys->fgravity[2] = g[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_grad_mu - added for externally imposed chemical potential gradient
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_grad_mu(physics_t * phys, double gm[3]) {
+
+  assert(phys);
+
+  gm[0] = phys->grad_mu[0];
+  gm[1] = phys->grad_mu[1];
+  gm[2] = phys->grad_mu[2];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_grad_mu_set - added for externally imposed chemical potential gradient
+ *
+ *****************************************************************************/
+
+__host__ int physics_grad_mu_set(physics_t * phys, double gm[3]) {
+
+  assert(phys);
+
+  phys->grad_mu[0] = gm[0];
+  phys->grad_mu[1] = gm[1];
+  phys->grad_mu[2] = gm[2];
 
   return 0;
 }

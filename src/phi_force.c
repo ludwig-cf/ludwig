@@ -37,6 +37,7 @@
 #include "timer.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
+#include "physics.h" //added for externally imposed chemical potential gradient
 
 static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe, int nall,
 				    double * fxe,
@@ -140,6 +141,10 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   double phi, mum1, mup1;
   double force[3];
 
+  //added for externally imposed chemical potential gradient
+  double grad_mu[3];
+  physics_t * phys = NULL;
+
   assert(le);
   assert(fphi);
   assert(hydro);
@@ -147,6 +152,10 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal(le, nlocal);
   assert(nhalo >= 2);
+
+  //added for externally imposed chemical potential gradient
+  physics_ref(&phys);
+  physics_grad_mu(phys, grad_mu);
 
   /* Memory strides */
   zs = 1;
@@ -167,17 +176,17 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 	fe->func->mu(fe, indexm1, &mum1);
 	fe->func->mu(fe, indexp1, &mup1);
 
-        force[X] = -phi*0.5*(mup1 - mum1);
+        force[X] = -phi*0.5*(mup1 - mum1 + 2.0 * grad_mu[X]); //altered for externally imposed chemical potential gradient
 
 	fe->func->mu(fe, index0 - ys, &mum1);
 	fe->func->mu(fe, index0 + ys, &mup1);
 
-        force[Y] = -phi*0.5*(mup1 - mum1);
+        force[Y] = -phi*0.5*(mup1 - mum1 + 2.0 * grad_mu[Y]); //altered for externally imposed chemical potential gradient
 
 	fe->func->mu(fe, index0 - zs, &mum1);
 	fe->func->mu(fe, index0 + zs, &mup1);
 
-        force[Z] = -phi*0.5*(mup1 - mum1);
+        force[Z] = -phi*0.5*(mup1 - mum1 + 2.0 * grad_mu[Z]); //altered for externally imposed chemical potential gradient
 
 	/* Store the force on lattice */
 

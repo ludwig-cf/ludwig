@@ -32,6 +32,7 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   double f0[3], e0[3], b0[3], fpulse[3];
   double e0_frequency;
   double fpulse_frequency;
+  double gm0[3]; //added for externally imposed chemical potential gradient
 
   assert(pe);
   assert(phys);
@@ -46,6 +47,7 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   physics_b0(phys, b0);
   physics_fpulse(phys, fpulse);
   physics_fpulse_frequency(phys, &fpulse_frequency);
+  physics_grad_mu(phys, gm0); //added for externally imposed chemical potential gradient
 
   pe_info(pe, "\n");
   pe_info(pe, "System properties\n");
@@ -68,6 +70,10 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   if (fpulse_frequency) { 
     pe_info(pe, "External pulsatile force frequency  %12.5e\n", 
 	  fpulse_frequency);
+  }
+  if (gm0[0] || gm0[1] || gm0[2]) { //added for externally imposed chemical potential gradient
+      pe_info(pe, "External chemical potential gradient  %12.5e %12.5e %12.5e\n",
+	  gm0[0], gm0[1], gm0[2]);
   }
 
   return 0;
@@ -135,6 +141,11 @@ __host__ int physics_init_rt(rt_t * rt, physics_t * phys) {
 
   if (rt_double_parameter(rt, "fpulse_frequency", &frequency)) {
     physics_fpulse_frequency_set(phys, frequency);
+  }
+
+  //added for externally imposed chemical potential gradient
+  if (rt_double_parameter_vector(rt, "grad_mu", vector)) {
+    physics_grad_mu_set(phys, vector);
   }
 
   return 0;
