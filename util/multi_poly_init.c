@@ -321,13 +321,13 @@ void poly_init_random(cs_t * cs, int nc, colloid_state_t * state,double dh,int L
 
   }
 
-  for (monl=0;monl<Lpoly;monl++) {
-    for(int pl=0;pl<Npoly;pl++) {
-      int mon=pl*Lpoly+monl;
-      printf("%lf   %lf   %lf   ",state[mon].r[X],state[mon].r[Y],state[mon].r[Z]);
-    }
-    printf("\n");
-  }
+  //for (monl=0;monl<Lpoly;monl++) {
+  //  for(int pl=0;pl<Npoly;pl++) {
+  //    int mon=pl*Lpoly+monl;
+  //    printf("%lf   %lf   %lf   ",state[mon].r[X],state[mon].r[Y],state[mon].r[Z]);
+  //  }
+  //  printf("\n");
+  //}
       
   
   assert(Nmon==Npoly*Lpoly);
@@ -361,10 +361,10 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
   for (n = 0; n < nc; n++) {
     if (form == BINARY) {
-      colloid_state_write_binary(pc[n], fp);
+      colloid_state_write_binary(pc+n, fp);
     }
     else {
-      colloid_state_write_ascii(pc[n], fp);
+      colloid_state_write_ascii(pc+n, fp);
     }
   }
 
@@ -377,4 +377,3 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
   return;
 }
-

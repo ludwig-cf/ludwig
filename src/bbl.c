@@ -891,8 +891,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
      * We use mean of old and new velocity. */
 
     for (ia = 0; ia < 3; ia++) {
-      if (pc->s.isfixedr == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
-      if (pc->s.isfixedv == 0) pc->s.v[ia] = xb[ia];
+      if (pc->s.isfixedrxyz[ia] == 0) pc->s.dr[ia] = 0.5*(pc->s.v[ia] + xb[ia]);
+      if (pc->s.isfixedvxyz[ia] == 0) pc->s.v[ia] = xb[ia];
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
 

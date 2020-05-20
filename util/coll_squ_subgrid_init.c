@@ -74,7 +74,7 @@ int main(int argc, char ** argv) {
   double a0 = 0.178;   /* Input radius */
   double ah = 0.2;   /* Hydrodynamic radius */ 
   double al = 1.58; /* Offset parameter for subgrid particle */
-  double vf = 0.0000015;  /* Volume fraction */
+  double vf = 0.015;  /* Volume fraction */
   double dh = 0.03;   /* "grace' distance */
   double q0 = 0.0;   /* positive charge */ 
   double q1 = 0.0;   /* negative charge */
@@ -248,7 +248,6 @@ int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,
       state[n].r[X] = rtrial[X];
       state[n].r[Y] = rtrial[Y];
       state[n].r[Z] = rtrial[Z];
-      printf("%lf  %lf  %lf\n",state[n].r[X],state[n].r[Y],state[n].r[Z]);
       n += 1;
     }
 
@@ -561,10 +560,10 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
   for (n = 0; n < nc; n++) {
     if (form == BINARY) {
-      colloid_state_write_binary(pc[n], fp);
+      colloid_state_write_binary(pc+n, fp);
     }
     else {
-      colloid_state_write_ascii(pc[n], fp);
+      colloid_state_write_ascii(pc+n, fp);
     }
   }
 

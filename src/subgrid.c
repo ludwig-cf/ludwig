@@ -199,6 +199,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,pe_t * pe,noise_t * 
 	        p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
+
 	  p_colloid = p_colloid->next;
 	}
 

@@ -1,0 +1,92 @@
+##############################################################################
+#
+#  Particle on an interface
+#
+#  See the comments in the accompanying serial-bond-c01.inp.
+#
+#  This is a higher Bond number case with a = 2.3, sigma = 4.7e-05,
+#  and F = 0.00013 giving `bond number F / 2 pi a \approx 0.2.
+#
+#  The free particle Stokes time here would be about 2000 time steps.
+#  If one runs for 20,000 steps, the particle rests at about centre
+#  z = 14.5. By 80,000 steps a small adjust to about z = 14.3 has
+#  occured but the position is basically steady.
+#
+#  For the purposes of this test 10 time steps are used.
+#
+#  nb. gpu version has a small 10^12 size difference in phi sum
+#
+##############################################################################
+
+N_cycles 10
+
+##############################################################################
+#
+#  System
+#
+##############################################################################
+
+size 32_32_64
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.005
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy symmetric
+
+A -0.0000625
+B  0.0000625
+K  0.00004
+C 0.0
+
+phi0 0.0
+phi_initialisation    block
+mobility 0.15
+
+fd_gradient_calculation 3d_27pt_solid
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        input_one
+
+colloid_one_type    default
+colloid_one_a0      2.3
+colloid_one_ah      2.3
+colloid_one_r       16.13_16.47_16.0
+colloid_one_v       0.0_0.0_0.0
+
+# Constant body force on all colloids ("gravity")
+
+colloid_gravity 0.0_0.0_-0.00013
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end no

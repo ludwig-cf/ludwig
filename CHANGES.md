@@ -1,6 +1,16 @@
 
 ### Changes
 
+version 0.10.0
+- Added an option to fix colloid position or velocity on a per-direction
+  basis, e.g.
+    colloid_isfixedrxyz  1_1_0
+  allows movement in z-direction only. Any value is overridden by
+  colloid_isfixedr. An analogous option colloid_isfixedvxyz is available.
+- Added target thread model information to output
+- Refactored d_ij and e_ijk from char to int8_t to avoid potential
+  pitfalls with default unsigned char.
+
 version 0.9.3
 - Allow stress relaxation option in bare liquid crystal free energy
 

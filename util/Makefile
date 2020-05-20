@@ -36,17 +36,11 @@ build:
 	$(MAKE) extract
 	$(MAKE) capillary
 	$(MAKE) colloid_init
-	$(MAKE) coll_squ_subgrid_init
 	$(MAKE) extract_colloids
+	$(MAKE) coll_squ_subgrid_init
 	$(MAKE) multi_poly_init
 
 colloid_init: colloid_init.o
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-coll_squ_subgrid_init: coll_squ_subgrid_init.o
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-multi_poly_init: multi_poly_init.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 extract_colloids: extract_colloids.o
@@ -58,6 +52,11 @@ capillary: capillary.o
 extract: extract.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+coll_squ_subgrid_init: coll_squ_subgrid_init.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+multi_poly_init: multi_poly_init.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Default rules
 
