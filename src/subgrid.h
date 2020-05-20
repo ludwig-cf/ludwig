@@ -17,8 +17,9 @@
 
 #include "colloids.h"
 #include "hydro.h"
+#include "noise.h"
 
-int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro);
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,pe_t * pe,noise_t * noise);
 int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro);
 int subgrid_on_set(void);
 int subgrid_on(int * flag);

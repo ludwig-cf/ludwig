@@ -723,7 +723,7 @@ void ludwig_run(const char * inputfile) {
        * propagation steps. */
 
       if (is_subgrid) {
-	subgrid_update(ludwig->collinfo, ludwig->hydro);
+	subgrid_update(ludwig->collinfo, ludwig->hydro,ludwig->pe,ludwig->noise_rho);
       }
       else {
 	TIMER_start(TIMER_BBL);

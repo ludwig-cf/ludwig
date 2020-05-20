@@ -21,6 +21,8 @@
 #include <assert.h>
 #include <math.h>
 #include <stddef.h>
+#include "util.h"
+#include "noise.h"
 
 #include "pe.h"
 #include "coords.h"
@@ -111,9 +113,9 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 
-		force[X] = g[X]*dr;
-		force[Y] = g[Y]*dr;
-		force[Z] = g[Z]*dr;
+	        force[X] = p_colloid->force[X]*dr;
+	        force[Y] = p_colloid->force[Y]*dr;
+	        force[Z] = p_colloid->force[Z]*dr;
 		hydro_f_local_add(hydro, index, force);
 	      }
 	    }
@@ -141,7 +143,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
  *
  *****************************************************************************/
 
-int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,pe_t * pe,noise_t * noise) {
 
   int ia;
   int ic, jc, kc;
@@ -152,6 +154,9 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   PI_DOUBLE(pi);
   colloid_t * p_colloid;
   physics_t * phys = NULL;
+  double ran[2];  /* Random numbers for fluctuation dissipation correction */
+  double frand; /* Random correction */
+  double kt;
 
   assert(cinfo);
   assert(hydro);
@@ -159,6 +164,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   colloids_info_ncell(cinfo, ncell);
 
   subgrid_interpolation(cinfo, hydro);
+  colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
   colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -166,6 +172,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
   physics_fgrav(phys, g);
+  physics_kt(phys, &kt);
   reta = 1.0/(6.0*pi*eta);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
@@ -176,13 +183,22 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
 	while (p_colloid != NULL) {
 
-	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
+	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.al);
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*g[ia];
+            if (noise->on[0]) {
+                while(1) {
+	            util_ranlcg_reap_gaussian(&p_colloid->s.rng, ran);
+                    if(fabs(ran[0])<3.0) {frand=sqrt(2.0*kt*drag)*ran[0]; break;}
+                    if(fabs(ran[1])<3.0) {frand=sqrt(2.0*kt*drag)*ran[1]; break;}
+                }
+                /* To keep the random correction not too large, smaller than 3 sigma. Otherwise, large thermal fluctuation will blow up the velocity. */
+	        p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia]+frand;
+            }
+            else 
+	        p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
-
 	  p_colloid = p_colloid->next;
 	}
 

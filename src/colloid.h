@@ -30,7 +30,7 @@ typedef enum colloid_io_version colloid_io_version_t;
 
 #define NTOT_VAR (32+48)
 #define NPAD_INT  20
-#define NPAD_DBL  16
+#define NPAD_DBL  15
 #define NBOND_MAX  2
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -92,6 +92,7 @@ struct colloid_state_type {
   double sa;            /* surface area (finite difference) */
   double saf;           /* surface area to fluid (finite difference grid) */
 
+  double al;            /* Offset parameter used for subgrid particles */
   double dpad[NPAD_DBL];/* Again, this pads to 512 bytes to allow
 			 * for future expansion. */
 };
