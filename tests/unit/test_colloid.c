@@ -40,7 +40,6 @@ int test_colloid_suite(void) {
   int rank;
   char filename[FILENAME_MAX];
 
-  //CHANGE
   colloid_state_t sref = {1, 3, 2, 4, 5, 6, 7, 8, 9,
 			  {10, 11},
 			  12, 
