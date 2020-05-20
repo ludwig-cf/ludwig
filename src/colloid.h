@@ -31,6 +31,7 @@ typedef enum colloid_io_version colloid_io_version_t;
 #define NTOT_VAR (32+48)
 #define NPAD_INT  14
 #define NPAD_DBL  15
+
 #define NBOND_MAX  2
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,

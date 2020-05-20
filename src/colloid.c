@@ -204,6 +204,7 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   nwrite += fprintf(fp, sformat, s->saf);
   nwrite += fprintf(fp, sformat, s->al);
 
+
   for (n = 0; n < NPAD_DBL; n++) {
     nwrite += fprintf(fp, sformat, s->dpad[n]);
   }

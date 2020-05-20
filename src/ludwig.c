@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -83,6 +83,10 @@
 #include "colloids_s.h"
 #include "advection_rt.h"
 
+/* Viscosity model */
+#include "visc.h"
+#include "visc_arrhenius.h"
+
 /* Electrokinetics */
 #include "psi.h"
 #include "psi_rt.h"
@@ -107,7 +111,6 @@
 
 #include "fe_lc_stats.h"
 
-#include "hydro_s.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 
@@ -143,6 +146,8 @@ struct ludwig_s {
   fe_symm_t * fe_symm;         /* Symmetric free energy */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
+  visc_t * visc;               /* Viscosity model */
+
   colloids_info_t * collinfo;  /* Colloid information */
   colloid_io_t * cio;          /* Colloid I/O harness */
   ewald_t * ewald;             /* Ewald sum for dipoles */
@@ -161,6 +166,7 @@ static int ludwig_colloids_update(ludwig_t * ludwig);
 static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
 int free_energy_init_rt(ludwig_t * ludwig);
+int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
 
@@ -224,6 +230,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   ran_init_rt(pe, rt);
   hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
+  visc_model_init_rt(pe, rt, ludwig);
 
   /* PHI I/O */
 
@@ -699,12 +706,17 @@ void ludwig_run(const char * inputfile) {
 
       hydro_u_zero(ludwig->hydro, uzero);
 
+      /* Viscosity computation */
+      if (ludwig->visc) {
+	ludwig->visc->func->update(ludwig->visc, ludwig->hydro);
+      }
+
       /* Collision stage */
 
       TIMER_start(TIMER_COLLIDE);
 
       lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho,
-		 ludwig->fe);
+		 ludwig->fe, ludwig->visc);
 
       TIMER_stop(TIMER_COLLIDE);
 
@@ -1628,6 +1640,57 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
   ludwig->cs = cs;
   ludwig->le = le;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  visc_model_init_rt
+ *
+ *****************************************************************************/
+
+int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig) {
+
+  int key;
+  char description[BUFSIZ/2];
+
+  assert(pe);
+  assert(rt);
+  assert(ludwig);
+
+  key = rt_string_parameter(rt, "viscosity_model", description, BUFSIZ/2);
+
+  if (strcmp(description, "arrhenius") == 0) {
+    cs_t * cs = ludwig->cs;
+    field_t * phi = ludwig->phi;
+    visc_arrhenius_param_t param = {0};
+    visc_arrhenius_t * visc = NULL;
+
+    if (phi == NULL) {
+      pe_info(pe, "viscosity_model arrhenius requires a composition\n");
+      pe_fatal(pe, "Please check the fee energy and try again\n");
+    }
+
+    /* Parameters */
+
+    rt_double_parameter(rt, "viscosity_arrhenius_eta_plus",  &param.eta_plus);
+    rt_double_parameter(rt, "viscosity_arrhenius_eta_minus", &param.eta_minus);
+    rt_double_parameter(rt, "viscosity_arrhenius_phistar",   &param.phistar);
+
+    if (param.eta_plus  == 0.0) pe_fatal(pe, "Non-zero eta_plus required\n");
+    if (param.eta_minus == 0.0) pe_fatal(pe, "Non-zero eta_minus required\n");
+    if (param.phistar   == 0.0) pe_fatal(pe, "Non-zero phistar required\n"); 
+
+    visc_arrhenius_create(pe, cs, phi, param, &visc);
+    ludwig->visc = (visc_t *) visc;
+
+    visc_arrhenius_info(visc);
+  }
+  else if (key != 0) {
+    pe_info(pe, "viscosity_model %s not recognised.\n", description);
+    pe_fatal(pe, "Please check and try again.\n");
+  }
 
   return 0;
 }

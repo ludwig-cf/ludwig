@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2019 The University of Edinburgh
+ *  (c) 2014-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,7 +30,9 @@ struct lb_collide_param_s {
   int nsite;
   int ndist;
   double rho0;
+  double eta_shear;
   double var_shear;
+  double eta_bulk;
   double var_bulk;
   double var_noise[NVEL];
   double rtau[NVEL];
@@ -45,7 +47,6 @@ struct lb_data_s {
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
   int model;             /* MODEL or MODEL_R */
-  int nrelax;            /* Relaxation scheme */
 
   pe_t * pe;             /* parallel environment */
   cs_t * cs;             /* coordinate system */
@@ -56,7 +57,8 @@ struct lb_data_s {
   double * f;            /* Distributions */
   double * fprime;       /* used in propagation only */
 
-  lb_collide_param_t * param;
+  lb_collide_param_t * param;   /* Collision parameters REFACTOR THIS */
+  lb_relaxation_enum_t nrelax;  /* Relaxation scheme */
 
   /* MPI data types for halo swaps; these are comupted at runtime
    * to conform to the model selected at compile time */

@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -157,11 +157,12 @@ __host__ int wall_free(wall_t * wall) {
  *
  *****************************************************************************/
 
-__host__ int wall_commit(wall_t * wall, wall_param_t param) {
+__host__ int wall_commit(wall_t * wall, wall_param_t * param) {
 
   assert(wall);
+  assert(param);
 
-  *wall->param = param;
+  *wall->param = *param;
 
   wall_init_map(wall);
   wall_init_boundaries(wall, WALL_INIT_COUNT_ONLY);
@@ -210,8 +211,8 @@ __host__ int wall_info(wall_t * wall) {
     pe_info(pe, "Boundary normal lubrication rc: %14.7e\n",
 	    wall->param->lubr_rc[X]);
 
-    pe_info(pe, "Wall boundary links allocated:   %d\n", nlink);
-    pe_info(pe, "Memory (total, bytes):           %d\n", 4*nlink*sizeof(int));
+    pe_info(pe, "Wall boundary links allocated:   %d\n",  nlink);
+    pe_info(pe, "Memory (total, bytes):           %zu\n", 4*nlink*sizeof(int));
     pe_info(pe, "Boundary shear initialise:       %d\n",
 	    wall->param->initshear);
   }
@@ -220,8 +221,8 @@ __host__ int wall_info(wall_t * wall) {
     pe_info(pe, "\n");
     pe_info(pe, "Porous Media\n");
     pe_info(pe, "------------\n");
-    pe_info(pe, "Wall boundary links allocated:   %d\n", nlink);
-    pe_info(pe, "Memory (total, bytes):           %d\n", 4*nlink*sizeof(int));
+    pe_info(pe, "Wall boundary links allocated:   %d\n",  nlink);
+    pe_info(pe, "Memory (total, bytes):           %zu\n", 4*nlink*sizeof(int));
   }
 
   return 0;
@@ -249,11 +250,12 @@ __host__ int wall_target(wall_t * wall, wall_t ** target) {
  *
  *****************************************************************************/
 
-__host__ int wall_param_set(wall_t * wall, wall_param_t values) {
+__host__ int wall_param_set(wall_t * wall, wall_param_t * values) {
 
   assert(wall);
+  assert(values);
 
-  *wall->param = values;
+  *wall->param = *values;
 
   return 0;
 }
