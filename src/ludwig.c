@@ -234,7 +234,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   rt_int_parameter_vector(rt, "phi_io_grid", io_grid);
 
   form = IO_FORMAT_DEFAULT;
-  strcpy(value, ""); /* Really need a way to get string from "form" */
+  strcpy(value, "BINARY"); /* Really need a way to get string from "form" */
   n = rt_string_parameter(rt, "phi_format", value, BUFSIZ);
   if (n != 0 && strcmp(value, "ASCII") == 0) {
     form = IO_FORMAT_ASCII;
