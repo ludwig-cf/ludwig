@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,6 +24,9 @@
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <ctype.h>
+#include <string.h>
 
 #include "util.h"
 
@@ -1327,4 +1330,29 @@ static long int util_ranlcg_multiply(long a, long s, long c, long m) {
   if (p < 0) p += m;
 
   return p;
+}
+
+/*****************************************************************************
+ *
+ *  util_str_tolower
+ *
+ *  Force first maxlen characters of str to be lower case.
+ *
+ *****************************************************************************/
+
+__host__ int util_str_tolower(char * str, size_t maxlen) {
+
+  size_t n, nlen;
+
+  assert(str);
+
+  nlen = strlen(str);
+  if (maxlen < nlen) nlen = maxlen;
+
+  for (n = 0; n < nlen; n++) {
+    /* if (str[n] < 'A' || str[n] > 'Z') continue;*/
+    str[n] = tolower(str[n]);
+  }
+
+  return 0;
 }
