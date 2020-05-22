@@ -707,7 +707,6 @@ int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
 
   if (obj->processor_independent == 0) {
     /* Use the standard "parallel" method for the time being. */
-    printf("Standard %s %d\n", filename_stub, obj->single_file_read);
     io_write_data_p(obj, filename_stub, data);
   }
   else {
@@ -807,17 +806,21 @@ int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data) {
  *  are aggregated to a contiguous buffer internally, and tranferred
  *  to a single block at rank 0 per I/O group before output to file.
  *
- *  I/O Groups can write to the same file if ngroup[Y] = ngroup[Z] = 1;
- *  the results is a single file.
+ *  I/O Groups can write contiguous blocks to the same file iff
+ *  ngroup[Y] = ngroup[Z] = 1; the result is a single file with
+ *  the expected (serial) format.
  *
  *****************************************************************************/
 
 /* TODO */
-/* Write I/O documentation */
-/* Should really have separate processor_independent / single_file for I/O */
-/* Appropriate switch in io-write-data i.e., "io_version" */
-/* Meta data files need to match actual output format */
-/* Extract step must be consistent */
+/* Require choice of io_version: single multiple */
+/* Default is single file because this is effectively what people use */
+/* single file is io_grid[Y] == io_grid[Z] == 0 */
+/* Depending on choice: single file meta data or multiple file metadata */
+/* read is single file or multiple file; default to single file */
+/* write is write_data_p() or write data_s() */
+/* Extract step to recognise io_version */
+/* Complete consistent I/O documentation */
 
 int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
@@ -848,10 +851,6 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
   /* io_set_group_filename(filename_io, filename_stub, obj);*/
   sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
 
-  printf("File [%d] %s %d index %d ns %d max %d\n", obj->io_comm->rank, filename_stub, obj->io_comm->n_io, obj->io_comm->index + 1, obj->nsites, obj->maxlocal);
-  /*sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, obj->io_comm->n_io,
-    obj->io_comm->index + 1);*/
-
   itemsz = obj->bytesize;
 
   /* Local buffer to be assoicated with file handle for write... */
@@ -879,9 +878,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
   /* Send local buffer to root. */
 
   if (obj->io_comm->rank > 0) {
-    printf("Start send\n");
     MPI_Ssend(buf, localsz, MPI_BYTE, 0, tag, obj->io_comm->comm);
-    printf("Done send\n");
   }
   else {
 
@@ -900,7 +897,6 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
     io_unpack_local_buf(obj, 0, buf, io_buf);
 
     for (nr = 0; nr < obj->io_comm->size - 1; nr++) {
-      printf("Recv for %d\n", nr);
       MPI_Recv(rbuf, itemsz*obj->maxlocal, MPI_BYTE, MPI_ANY_SOURCE, tag,
 	       obj->io_comm->comm, &status);
       io_unpack_local_buf(obj, status.MPI_SOURCE, rbuf, io_buf);
@@ -915,7 +911,6 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
       fp_state = fopen(filename_io, "w");
     }
 
-    printf("Start Bcast\n");
     MPI_Bcast(&itemsz, 1, MPI_INT, 0, obj->io_comm->xcomm);
 
     if (obj->io_comm->index > 0) {
