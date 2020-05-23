@@ -4,6 +4,8 @@
 
 version 0.11.0
 - Add Arrhenius viscosity model for compositional order parameter
+- Add the ability to run both subgrid and fully resolved particles at
+  the same time. Thanks to Qi Kai (kai.qi@epfl.ch) for this.
 - Various code quality updates
 
 version 0.10.0

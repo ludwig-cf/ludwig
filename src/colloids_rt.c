@@ -194,15 +194,17 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   assert(cs);
   assert(cinfo);
 
+  /* Find out if we have any sub-grid particles */
+
   colloids_info_count_local(cinfo, COLLOID_TYPE_SUBGRID, &nsubgrid_local);
 
   cs_cart_comm(cs, &comm);
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
+  if (nsubgrid > 0) subgrid_on_set();
 
-  if (nsubgrid > 0) 
-    subgrid_on_set();
-  
+  /* Assume there are always fully-resolved particles */
+
   build_update_map(cs, cinfo, map);
   build_update_links(cs, cinfo, wall, map);
 
