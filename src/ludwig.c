@@ -736,11 +736,11 @@ void ludwig_run(const char * inputfile) {
 
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
-      if (is_subgrid)  
-        subgrid_update(ludwig->collinfo, ludwig->hydro);
+
+      if (is_subgrid) subgrid_update(ludwig->collinfo, ludwig->hydro);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
-      		     ludwig->collinfo);
-      wall_bbl(ludwig->wall);
+			   ludwig->collinfo);
+			   wall_bbl(ludwig->wall);
       TIMER_stop(TIMER_BBL);
 
     }
@@ -1789,17 +1789,19 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  subgrid_on(&is_subgrid);
-
-
   colloids_info_position_update(ludwig->collinfo);
   colloids_info_update_cell_list(ludwig->collinfo);
   colloids_halo_state(ludwig->collinfo);
   colloids_info_update_lists(ludwig->collinfo);
+
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald);
-  if (is_subgrid) 
+
+  subgrid_on(&is_subgrid);
+
+  if (is_subgrid) { 
     subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+  }
 
   return 0;
 }
@@ -1829,8 +1831,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* __NVCC__ TODO: remove */
   lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-
-  subgrid_on(&is_subgrid);
 
   lb_ndist(ludwig->lb, &ndist);
   iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));
@@ -1867,8 +1867,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   TIMER_start(TIMER_REBUILD);
 
   build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
-  build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
-      		 ludwig->q, ludwig->psi, ludwig->map);
+  build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
+		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
   build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
   
 
@@ -1887,9 +1887,11 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
       	     ludwig->psi, ludwig->ewald);
 
 
-  if (is_subgrid) 
-      subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);    
+  subgrid_on(&is_subgrid);
 
+  if (is_subgrid) { 
+    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);    
+  }
   TIMER_stop(TIMER_FORCES);
   
 
