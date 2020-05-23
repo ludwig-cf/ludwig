@@ -6,12 +6,10 @@
  *
  *  See Nash et al. (2007).
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -46,7 +44,8 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *****************************************************************************/
 
 
-int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_t * wall) {
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
+				 wall_t * wall) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -54,13 +53,11 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_
   int nlocal[3], offset[3];
   int ncell[3];
 
-  double r[3], r0[3], force[3], g[3];
+  double r[3], r0[3], force[3];
   double dr;
   colloid_t * p_colloid;
 
   double dwall[3];
-
-  physics_t * phys = NULL;
 
   assert(cinfo);
   assert(hydro);
@@ -68,8 +65,6 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
-
-  physics_ref(&phys);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -79,60 +74,60 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro, wall_
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
-	while (p_colloid != NULL) {
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-          if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-            /* Need to translate the colloid position to "local"
-             * coordinates, so that the correct range of lattice
-             * nodes is found */
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
 
-            r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-            r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-            r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
+	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
-	    /* Work out which local lattice sites are involved
-	     * and loop around */
+	  /* Work out which local lattice sites are involved
+	   * and loop around */
 
-            i_min = imax(1,         (int) floor(r0[X] - drange_));
-            i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
-            j_min = imax(1,         (int) floor(r0[Y] - drange_));
-            j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
-            k_min = imax(1,         (int) floor(r0[Z] - drange_));
-            k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
+	  i_min = imax(1,         (int) floor(r0[X] - drange_));
+	  i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
+	  j_min = imax(1,         (int) floor(r0[Y] - drange_));
+	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
+	  k_min = imax(1,         (int) floor(r0[Z] - drange_));
+	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
 
-            for (i = i_min; i <= i_max; i++) {
-              for (j = j_min; j <= j_max; j++) {
-	        for (k = k_min; k <= k_max; k++) {
+	  for (i = i_min; i <= i_max; i++) {
+	    for (j = j_min; j <= j_max; j++) {
+	      for (k = k_min; k <= k_max; k++) {
 
-	          index = cs_index(cinfo->cs, i, j, k);
+		index = cs_index(cinfo->cs, i, j, k);
 
-                  /* Separation between r0 and the coordinate position of
-	           * this site */
+		/* Separation between r0 and the coordinate position of
+		 * this site */
 
-	          r[X] = r0[X] - 1.0*i;
-	          r[Y] = r0[Y] - 1.0*j;
-	          r[Z] = r0[Z] - 1.0*k;
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
 
-	          dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
+		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
             
-                  //Apply the lubrication force from the wall to subgrid particles
-                  wall_lubr_sphere(wall, p_colloid->s.ah, p_colloid->s.r, dwall);
-                  p_colloid->force[X]+= p_colloid->s.v[X]*dwall[X];
-                  p_colloid->force[Y]+= p_colloid->s.v[Y]*dwall[Y];
-                  p_colloid->force[Z]+= p_colloid->s.v[Z]*dwall[Z];
+                /* Apply the lubrication force from the wall to subgrid
+		   particles (zero wall speed) */
 
-	          force[X] = p_colloid->force[X]*dr;
-	          force[Y] = p_colloid->force[Y]*dr;
-	          force[Z] = p_colloid->force[Z]*dr;
-	          hydro_f_local_add(hydro, index, force);
-	        }
+		wall_lubr_sphere(wall, p_colloid->s.ah, p_colloid->s.r, dwall);
+		p_colloid->force[X] += p_colloid->s.v[X]*dwall[X];
+		p_colloid->force[Y] += p_colloid->s.v[Y]*dwall[Y];
+		p_colloid->force[Z] += p_colloid->s.v[Z]*dwall[Z];
+
+		force[X] = p_colloid->force[X]*dr;
+		force[Y] = p_colloid->force[Y]*dr;
+		force[Z] = p_colloid->force[Z]*dr;
+		hydro_f_local_add(hydro, index, force);
 	      }
 	    }
-          }
+	  }
 
 	  /* Next colloid */
-	  p_colloid = p_colloid->next;
 	}
 
 	/* Next cell */
@@ -159,7 +154,6 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   int ic, jc, kc;
   int ncell[3];
   double drag, reta;
-  double g[3];
   double eta;
   PI_DOUBLE(pi);
   colloid_t * p_colloid;
@@ -171,6 +165,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   colloids_info_ncell(cinfo, ncell);
 
   subgrid_interpolation(cinfo, hydro);
+  /* colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);*/
   colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -185,20 +180,18 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
-	while (p_colloid != NULL) {
-          if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-	    drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	    for (ia = 0; ia < 3; ia++) {
-	      p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia];
-	      p_colloid->s.dr[ia] = p_colloid->s.v[ia];
-	    }
-          }
+	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
-	  p_colloid = p_colloid->next;
+	  for (ia = 0; ia < 3; ia++) {
+	    p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia];
+	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
+	  }
 	}
-
+	/* Next cell */
       }
     }
   }
@@ -243,13 +236,13 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
-	while (p_colloid != NULL) {
-          if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
-	    p_colloid->fc0[X] = 0.0;
-	    p_colloid->fc0[Y] = 0.0;
-	    p_colloid->fc0[Z] = 0.0;
-          }
-	  p_colloid = p_colloid->next;
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
+
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
+
+	  p_colloid->fc0[X] = 0.0;
+	  p_colloid->fc0[Y] = 0.0;
+	  p_colloid->fc0[Z] = 0.0;
 	}
       }
     }
@@ -263,53 +256,52 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &p_colloid);
 
-	while (p_colloid != NULL) {
-          if(p_colloid->s.type==COLLOID_TYPE_SUBGRID) {
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-            /* Need to translate the colloid position to "local"
-             * coordinates, so that the correct range of lattice
-             * nodes is found */
+          if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-            r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
-            r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
-            r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
 
-	    /* Work out which local lattice sites are involved
-	     * and loop around */
+	  r0[X] = p_colloid->s.r[X] - 1.0*offset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*offset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*offset[Z];
 
-            i_min = imax(1,         (int) floor(r0[X] - drange_));
-            i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
-            j_min = imax(1,         (int) floor(r0[Y] - drange_));
-            j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
-            k_min = imax(1,         (int) floor(r0[Z] - drange_));
-            k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
+	  /* Work out which local lattice sites are involved
+	   * and loop around */
 
-            for (i = i_min; i <= i_max; i++) {
-              for (j = j_min; j <= j_max; j++) {
-	        for (k = k_min; k <= k_max; k++) {
+	  i_min = imax(1,         (int) floor(r0[X] - drange_));
+	  i_max = imin(nlocal[X], (int) ceil (r0[X] + drange_));
+	  j_min = imax(1,         (int) floor(r0[Y] - drange_));
+	  j_max = imin(nlocal[Y], (int) ceil (r0[Y] + drange_));
+	  k_min = imax(1,         (int) floor(r0[Z] - drange_));
+	  k_max = imin(nlocal[Z], (int) ceil (r0[Z] + drange_));
 
-	          index = cs_index(cinfo->cs, i, j, k);
+	  for (i = i_min; i <= i_max; i++) {
+	    for (j = j_min; j <= j_max; j++) {
+	      for (k = k_min; k <= k_max; k++) {
 
-                  /* Separation between r0 and the coordinate position of
-	           * this site */
+		index = cs_index(cinfo->cs, i, j, k);
 
-	          r[X] = r0[X] - 1.0*i;
-	          r[Y] = r0[Y] - 1.0*j;
-	          r[Z] = r0[Z] - 1.0*k;
+		/* Separation between r0 and the coordinate position of
+		 * this site */
 
-	          dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
-	          hydro_u(hydro, index, u);
+		r[X] = r0[X] - 1.0*i;
+		r[Y] = r0[Y] - 1.0*j;
+		r[Z] = r0[Z] - 1.0*k;
 
-	          p_colloid->fc0[X] += u[X]*dr;
-	          p_colloid->fc0[Y] += u[Y]*dr;
-	          p_colloid->fc0[Z] += u[Z]*dr;
-	        }
+		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
+		hydro_u(hydro, index, u);
+
+		p_colloid->fc0[X] += u[X]*dr;
+		p_colloid->fc0[Y] += u[Y]*dr;
+		p_colloid->fc0[Z] += u[Z]*dr;
 	      }
 	    }
+	  }
 
-          }
 	  /* Next colloid */
-	  p_colloid = p_colloid->next;
 	}
 
 	/* Next cell */
