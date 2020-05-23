@@ -254,33 +254,31 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
-	while (pc) {
+	for (; pc; pc = pc->next) {
         
-          if(pc->s.type!=COLLOID_TYPE_SUBGRID) {
+          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
-	    pc->sumw   = 0.0;
-	    for (ia = 0; ia < 3; ia++) {
-	      pc->cbar[ia] = 0.0;
-	      pc->rxcbar[ia] = 0.0;
-	    }
+	  pc->sumw   = 0.0;
+	  for (ia = 0; ia < 3; ia++) {
+	    pc->cbar[ia] = 0.0;
+	    pc->rxcbar[ia] = 0.0;
+	  }
 
-	    if (pc->s.rebuild) {
-	      /* The shape has changed, so need to reconstruct */
-	      build_reconstruct_links(cs, cinfo, pc, map);
-	      if (wall) build_colloid_wall_links(cs, cinfo, pc, map);
-	    }
-	    else {
-	      /* Shape unchanged, so just reset existing links */
-	      build_reset_links(cs, pc, map);
-	    }
+	  if (pc->s.rebuild) {
+	    /* The shape has changed, so need to reconstruct */
+	    build_reconstruct_links(cs, cinfo, pc, map);
+	    if (wall) build_colloid_wall_links(cs, cinfo, pc, map);
+	  }
+	  else {
+	    /* Shape unchanged, so just reset existing links */
+	    build_reset_links(cs, pc, map);
+	  }
 
-	    build_count_faces_local(pc, &pc->s.sa, &pc->s.saf);
+	  build_count_faces_local(pc, &pc->s.sa, &pc->s.saf);
 
-	    /* Next colloid */
+	  /* Next colloid */
 
-	    pc->s.rebuild = 0;
-          }
-	  pc = pc->next;
+	  pc->s.rebuild = 0;
 	}
 
 	/* Next cell */
