@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2019 The University of Edinburgh
+ *  (c) 2006-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -142,80 +142,78 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	/* For each colloid in this cell, check solid/fluid status */
 
-	while (p_colloid != NULL) {
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
 
-          if(p_colloid->s.type!=COLLOID_TYPE_SUBGRID) {
+          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
 
-	    /* Set actual position and radius */
+	  /* Set actual position and radius */
 
-	    radius = p_colloid->s.a0;
-	    rsq    = radius*radius;
+	  radius = p_colloid->s.a0;
+	  rsq    = radius*radius;
 
-	    /* Need to translate the colloid position to "local"
-	     * coordinates, so that the correct range of lattice
-	     * nodes is found */
+	  /* Need to translate the colloid position to "local"
+	   * coordinates, so that the correct range of lattice
+	   * nodes is found */
 
-	    r0[X] = p_colloid->s.r[X] - 1.0*noffset[X];
-	    r0[Y] = p_colloid->s.r[Y] - 1.0*noffset[Y];
-	    r0[Z] = p_colloid->s.r[Z] - 1.0*noffset[Z];
+	  r0[X] = p_colloid->s.r[X] - 1.0*noffset[X];
+	  r0[Y] = p_colloid->s.r[Y] - 1.0*noffset[Y];
+	  r0[Z] = p_colloid->s.r[Z] - 1.0*noffset[Z];
 
-	    /* Compute appropriate range of sites that require checks, i.e.,
-	     * a cubic box around the centre of the colloid. However, this
-	     * should not extend beyond the boundary of the current domain
-	     * (but include halos). */
+	  /* Compute appropriate range of sites that require checks, i.e.,
+	   * a cubic box around the centre of the colloid. However, this
+	   * should not extend beyond the boundary of the current domain
+	   * (but include halos). */
 
-	    i_min = imax(1 - nhalo,         (int) floor(r0[X] - radius));
-	    i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + radius));
-	    j_min = imax(1 - nhalo,         (int) floor(r0[Y] - radius));
-	    j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + radius));
-	    k_min = imax(1 - nhalo,         (int) floor(r0[Z] - radius));
-	    k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + radius));
+	  i_min = imax(1 - nhalo,         (int) floor(r0[X] - radius));
+	  i_max = imin(nlocal[X] + nhalo, (int) ceil (r0[X] + radius));
+	  j_min = imax(1 - nhalo,         (int) floor(r0[Y] - radius));
+	  j_max = imin(nlocal[Y] + nhalo, (int) ceil (r0[Y] + radius));
+	  k_min = imax(1 - nhalo,         (int) floor(r0[Z] - radius));
+	  k_max = imin(nlocal[Z] + nhalo, (int) ceil (r0[Z] + radius));
 
-	    /* Check each site to see whether it is inside or not */
+	  /* Check each site to see whether it is inside or not */
 
-	    for (i = i_min; i <= i_max; i++)
-	      for (j = j_min; j <= j_max; j++)
-	        for (k = k_min; k <= k_max; k++) {
+	  for (i = i_min; i <= i_max; i++)
+	    for (j = j_min; j <= j_max; j++)
+	      for (k = k_min; k <= k_max; k++) {
 
-	          /* rsite0 is the coordinate position of the site */
+		/* rsite0 is the coordinate position of the site */
 
-	          rsite0[X] = 1.0*i;
-	          rsite0[Y] = 1.0*j;
-	          rsite0[Z] = 1.0*k;
-	          cs_minimum_distance(cs, rsite0, r0, rsep);
+		rsite0[X] = 1.0*i;
+		rsite0[Y] = 1.0*j;
+		rsite0[Z] = 1.0*k;
+		cs_minimum_distance(cs, rsite0, r0, rsep);
 
-	          /* Are we inside? */
+		/* Are we inside? */
 
-	          if (dot_product(rsep, rsep) < rsq) {
+		if (dot_product(rsep, rsep) < rsq) {
 
-	            /* Set index */
-	            index = cs_index(cs, i, j, k);
+		  /* Set index */
+		  index = cs_index(cs, i, j, k);
 
-	            colloids_info_map_set(cinfo, index, p_colloid);
-	            map_status_set(map, index, MAP_COLLOID);
+		  colloids_info_map_set(cinfo, index, p_colloid);
+		  map_status_set(map, index, MAP_COLLOID);
 
-	            /* Janus particles have h = h_0 cos (theta)
-	             * with s[3] pointing to the 'north pole' */
+		  /* Janus particles have h = h_0 cos (theta)
+		   * with s[3] pointing to the 'north pole' */
 
-	            cosine = 1.0;
-	            if (p_colloid->s.type == COLLOID_TYPE_JANUS) {
-	              mod = modulus(rsep);
-	              if (mod > 0.0) {
-	                cosine = dot_product(p_colloid->s.s, rsep)/mod;
-	              }
-	            }
+		  cosine = 1.0;
+		  if (p_colloid->s.type == COLLOID_TYPE_JANUS) {
+		    mod = modulus(rsep);
+		    if (mod > 0.0) {
+		      cosine = dot_product(p_colloid->s.s, rsep)/mod;
+		    }
+		  }
 
-	            wet[0] = p_colloid->s.c;
-	            wet[1] = cosine*p_colloid->s.h;
+		  wet[0] = p_colloid->s.c;
+		  wet[1] = cosine*p_colloid->s.h;
 
-	            map_data_set(map, index, wet);
-	          }
-	          /* Next site */
-	        }
+		  map_data_set(map, index, wet);
+		}
+		/* Next site */
+	      }
 
-	    /* Next colloid */
-          }
-	  p_colloid = p_colloid->next;
+	  /* Next colloid */
 	}
 
 	/* Next cell */
