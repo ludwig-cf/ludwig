@@ -57,7 +57,7 @@ __host__ int test_io_options_rt_suite(void) {
 __host__ int test_io_options_rt_mode(pe_t * pe) {
 
   rt_t * rt = NULL;
-  io_mode_enum_t mode = IO_MODE_DEFAULT();
+  io_mode_enum_t mode = io_mode_default();
 
   assert(pe);
 
@@ -85,19 +85,19 @@ __host__ int test_io_options_rt_mode(pe_t * pe) {
 __host__ int test_io_options_rt_rformat(pe_t * pe) {
 
   rt_t * rt = NULL;
-  io_rformat_enum_t iorformat = IO_RECORD_FORMAT_DEFAULT();
+  io_record_format_enum_t iorformat = io_record_format_default();
 
   assert(pe);
 
   rt_create(pe, &rt);
 
-  rt_add_key_value(rt, "distribution_input_io_format", "ASCII");
-  rt_add_key_value(rt, "distribution_output_io_format", "BINARY");
+  rt_add_key_value(rt, "lb_input_io_format", "ASCII");
+  rt_add_key_value(rt, "lb_output_io_format", "BINARY");
 
-  io_options_rt_rformat(pe, rt, "distribution_input_io_format", &iorformat);
+  io_options_rt_record_format(pe, rt, "lb_input_io_format", &iorformat);
   assert(iorformat == IO_RECORD_ASCII);
 
-  io_options_rt_rformat(pe, rt, "distribution_output_io_format", &iorformat);
+  io_options_rt_record_format(pe, rt, "lb_output_io_format", &iorformat);
   assert(iorformat == IO_RECORD_BINARY);
 
   rt_free(rt);
@@ -116,8 +116,8 @@ __host__ int test_io_options_rt_rformat(pe_t * pe) {
 __host__ int test_io_options_rt_default(pe_t * pe) {
 
   rt_t * rt = NULL;
-  io_options_t opts = {};
-  io_options_t defs = IO_OPTIONS_DEFAULT();
+  io_options_t opts = {0};
+  io_options_t defs = io_options_default();
 
   assert(pe);
 
