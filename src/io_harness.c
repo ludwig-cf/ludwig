@@ -20,7 +20,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2018 The University of Edinburgh
+ *  (c) 2007-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,45 +37,6 @@
 #include "coords_s.h"
 #include "leesedwards.h"
 #include "io_harness.h"
-
-typedef struct io_decomposition_s io_decomposition_t;
-
-struct io_decomposition_s {
-  int n_io;         /* Total number of I/O groups (files) in decomposition */
-  int index;        /* Index of this I/O group {0, 1, ...} */
-  MPI_Comm xcomm;   /* Cross-communicator for same rank in different groups */
-  MPI_Comm comm;    /* MPI communicator for this group */
-  int rank;         /* Rank of this process in group communicator */
-  int size;         /* Size of this group in processes */
-  int ngroup[3];    /* Global I/O group topology XYZ */
-  int coords[3];    /* Coordinates of this group in I/O topology XYZ */
-  int nsite[3];     /* Size of file in lattice sites */
-  int offset[3];    /* Offset of the file on the lattice */
-};
-
-struct io_info_s {
-  pe_t * pe;
-  cs_t * cs;
-  io_decomposition_t * io_comm;
-  io_format_enum_t output_format;
-  size_t bytesize;                   /* Actual output per site */
-  size_t bytesize_ascii;             /* ASCII line size */
-  size_t bytesize_binary;            /* Binary record size */
-  int nsites;                        /* No. sites this group */
-  int maxlocal;                      /* Max. no. sites per rank this group */
-  int metadata_written;
-  int processor_independent;
-  int single_file_read;
-  int report;                        /* Report time taken for output */
-  char metadata_stub[FILENAME_MAX];
-  char name[FILENAME_MAX];
-  io_rw_cb_ft write_data;
-  io_rw_cb_ft write_ascii;
-  io_rw_cb_ft write_binary;
-  io_rw_cb_ft read_data;
-  io_rw_cb_ft read_ascii;
-  io_rw_cb_ft read_binary;
-};
 
 static void io_set_group_filename(char *, const char *, io_info_t *);
 static long int io_file_offset(int, int, io_info_t *);
@@ -107,6 +68,7 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
   assert(p);
 
   info = (io_info_t *) calloc(1, sizeof(io_info_t));
+
   assert(info);
   if (info == NULL) pe_fatal(pe, "Failed to allocate io_info_t struct\n");
 
@@ -130,6 +92,49 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  io_info_create_impl
+ *
+ *  Create and initialise an io_info_t.
+ *
+ *****************************************************************************/
+
+__host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t args,
+				 io_implementation_t impl, io_info_t ** info) {
+  io_info_t * p = NULL;
+
+  assert(pe);
+  assert(cs);
+  assert(info);
+
+  p = (io_info_t *) calloc(1, sizeof(io_info_t));
+  assert(p);
+
+  if (p == NULL) pe_fatal(pe, "Failed to allocate io_info_t struct\n");
+
+  /* Retain pointers to the parallel environment, coordinate system.
+   * Copy the argument and implementation details (assumed correct here).
+   * Create decomposition from the grid */
+
+  p->pe = pe;
+  p->cs = cs;
+
+  p->args = args;
+  p->impl = impl;
+
+  io_decomposition_create(pe, cs, args.grid, &p->comm);
+
+  /* Local rank and group counts */
+  /* Root stores max group size in case of irregular decomposition */
+
+  p->nsites = p->comm->nsite[X]*p->comm->nsite[Y]*p->comm->nsite[Z];
+  MPI_Reduce(&p->nsites, &p->maxlocal, 1, MPI_INT, MPI_MAX, 0, p->comm->comm);
+
+  *info = p;
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -260,7 +265,9 @@ int io_info_free(io_info_t * p) {
 
   assert(p);
 
-  io_decomposition_free(p->io_comm);
+  if (p->io_comm) io_decomposition_free(p->io_comm);
+  if (p->comm) io_decomposition_free(p->comm);
+
   free(p);
 
   return 0;
@@ -630,14 +637,12 @@ int io_info_format_out_set(io_info_t * obj, int form_out) {
 
   switch (form_out) {
   case IO_FORMAT_ASCII:
-    obj->output_format = IO_FORMAT_ASCII;
     obj->write_data = obj->write_ascii;
     obj->processor_independent = 0;
     obj->bytesize = obj->bytesize_ascii;
     break;
   case IO_FORMAT_BINARY:
   case IO_FORMAT_DEFAULT:
-    obj->output_format = IO_FORMAT_BINARY;
     obj->write_data = obj->write_binary;
     obj->processor_independent = 1;
     obj->bytesize = obj->bytesize_binary;
@@ -687,6 +692,71 @@ int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
 
 /*****************************************************************************
  *
+ *  io_info_bytesize
+ *
+ *****************************************************************************/
+
+static __host__ int io_info_bytesize(io_info_t * info,
+				     io_record_format_enum_t iorformat,
+				     size_t * bs) {
+  int err = 0;
+
+  switch (iorformat) {
+  case IO_RECORD_ASCII:
+    *bs = info->impl.bytesize_ascii;
+    break;
+  case IO_RECORD_BINARY:
+    *bs = info->impl.bytesize_binary;
+    break;
+  default:
+    err = 1;
+  }
+
+  return err;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_input_bytesize
+ *
+ *****************************************************************************/
+
+__host__ int io_info_input_bytesize(io_info_t * info, size_t * bs) {
+
+  int err = 0;
+
+  assert(info);
+  assert(bs);
+
+  err = io_info_bytesize(info, info->args.input.iorformat, bs);
+
+  if (err) pe_fatal(info->pe, "io_info_input_bytesize: bad format\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  io_info_output_bytesize
+ *
+ *****************************************************************************/
+
+__host__ int io_info_output_bytesize(io_info_t * info, size_t * bs) {
+
+  int err = 0;
+
+  assert(info);
+  assert(bs);
+
+  err = io_info_bytesize(info, info->args.output.iorformat, bs);
+
+  if (err) pe_fatal(info->pe, "io_info_output_bytesize: bad format\n");
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  io_write_data
  *
  *  This is the driver to write lattice quantities on the lattice.
@@ -698,27 +768,28 @@ int io_info_write_set(io_info_t * obj, int format, io_rw_cb_ft f) {
  *
  *****************************************************************************/
 
-int io_write_data(io_info_t * obj, const char * filename_stub, void * data) {
+int io_write_data(io_info_t * info, const char * filename_stub, void * data) {
 
   double t0, t1;
 
-  assert(obj);
+  assert(info);
   assert(data);
 
-  if (obj->processor_independent == 0) {
+  if (info->args.output.mode == IO_MODE_MULTIPLE) {
     /* Use the standard "parallel" method for the time being. */
-    io_write_data_p(obj, filename_stub, data);
+    io_write_data_p(info, filename_stub, data);
   }
   else {
     /* This is serial output format if one I/O group */
-    /* assert(obj->io_comm->ngroup[X] == 1);*/
     t0 = MPI_Wtime();
-    io_write_data_s(obj, filename_stub, data);
+    io_write_data_s(info, filename_stub, data);
     t1 = MPI_Wtime();
-    if (obj->report) {
-      pe_info(obj->pe, "Write %lu bytes in %f secs %f GB/s\n",
-	      obj->nsites*obj->bytesize, t1-t0,
-	      obj->nsites*obj->bytesize/(1.0e+09*(t1-t0)));
+    if (info->args.output.report) {
+      size_t bytesize = 0;
+      io_info_output_bytesize(info, &bytesize);
+      pe_info(info->pe, "Write %lu bytes in %f secs %f GB/s\n",
+	      info->nsites*bytesize, t1-t0,
+	      info->nsites*bytesize/(1.0e+09*(t1-t0)));
     }
   }
 
@@ -813,8 +884,7 @@ int io_write_data_p(io_info_t * obj, const char * filename_stub, void * data) {
  *****************************************************************************/
 
 /* TODO */
-/* Require choice of io_version: single multiple */
-/* Default is single file because this is effectively what people use */
+/* Default/user io_info_arg_t initialisation */
 /* single file is io_grid[Y] == io_grid[Z] == 0 */
 /* Depending on choice: single file meta data or multiple file metadata */
 /* read is single file or multiple file; default to single file */
