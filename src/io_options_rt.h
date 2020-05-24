@@ -26,6 +26,7 @@ __host__ int io_options_rt(pe_t * pe, rt_t * rt, const char * keystub,
 			   io_options_t * opts);
 __host__ int io_options_rt_mode(pe_t * pe, rt_t * rt, const char * key,
 				io_mode_enum_t * mode);
-__host__ int io_options_rt_rformat(pe_t * pe, rt_t * rt, const char * key,
-				   io_rformat_enum_t * options);
+__host__ int io_options_rt_record_format(pe_t * pe, rt_t * rt,
+					 const char * key,
+					 io_record_format_enum_t * options);
 #endif

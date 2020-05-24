@@ -40,8 +40,8 @@ __host__ int io_options_rt(pe_t * pe, rt_t * rt, const char * keystub,
 
   char key[BUFSIZ] = {0};
   io_mode_enum_t mode = IO_MODE_INVALID;
-  io_rformat_enum_t iorformat = IO_RECORD_INVALID;
-  io_options_t opts = IO_OPTIONS_DEFAULT();
+  io_record_format_enum_t iorformat = IO_RECORD_INVALID;
+  io_options_t opts = io_options_default();
 
   assert(pe);
   assert(rt);
@@ -54,8 +54,8 @@ __host__ int io_options_rt(pe_t * pe, rt_t * rt, const char * keystub,
   if (io_options_mode_valid(mode)) opts.mode = mode;
 
   sprintf(key, "%s_io_format", keystub);
-  io_options_rt_rformat(pe, rt, key, &iorformat);
-  if (io_options_rformat_valid(iorformat)) opts.iorformat = iorformat;
+  io_options_rt_record_format(pe, rt, key, &iorformat);
+  if (io_options_record_format_valid(iorformat)) opts.iorformat = iorformat;
 
   sprintf(key, "%s_io_report", keystub);
   opts.report = rt_switch(rt, key);
@@ -121,11 +121,12 @@ __host__ int io_options_rt_mode(pe_t * pe, rt_t * rt, const char * key,
  *
  *****************************************************************************/
 
-__host__ int io_options_rt_rformat(pe_t * pe, rt_t * rt, const char * key,
-				   io_rformat_enum_t * iorformat) {
+__host__ int io_options_rt_record_format(pe_t * pe, rt_t * rt,
+					 const char * key,
+					 io_record_format_enum_t * iorformat) {
   int key_present = 0;
   char value[BUFSIZ] = {0};
-  io_rformat_enum_t user_iorformat = IO_RECORD_INVALID;
+  io_record_format_enum_t user_iorformat = IO_RECORD_INVALID;
 
   assert(pe);
   assert(rt);
@@ -138,7 +139,7 @@ __host__ int io_options_rt_rformat(pe_t * pe, rt_t * rt, const char * key,
   if (strcmp(value, "ascii")  == 0) user_iorformat = IO_RECORD_ASCII;
   if (strcmp(value, "binary") == 0) user_iorformat = IO_RECORD_BINARY;
 
-  if (key_present && io_options_rformat_valid(user_iorformat) == 0) {
+  if (key_present && io_options_record_format_valid(user_iorformat) == 0) {
     pe_info(pe, "I/O record format key present but value not recognised\n");
     pe_info(pe, "key:   %s\n", key);
     pe_info(pe, "value: %s\n", value);

@@ -16,8 +16,65 @@
  *****************************************************************************/
 
 #include <assert.h>
-
 #include "io_options.h"
+
+/* Defaults */
+
+#define IO_MODE_DEFAULT()             IO_MODE_SINGLE
+#define IO_RECORD_FORMAT_DEFAULT()    IO_RECORD_BINARY
+#define IO_METADATA_VERSION_DEFAULT() IO_METADATA_SINGLE_V1
+#define IO_OPTIONS_DEFAULT()         {IO_MODE_DEFAULT(), \
+                                      IO_RECORD_FORMAT_DEFAULT(), \
+                                      IO_METADATA_VERSION_DEFAULT(), 0, 0}
+
+/*****************************************************************************
+ *
+ *  io_mode_default
+ *
+ *****************************************************************************/
+
+__host__ io_mode_enum_t io_mode_default(void) {
+
+  return IO_MODE_DEFAULT();
+}
+
+/*****************************************************************************
+ *
+ *  io_record_format_default
+ *
+ *****************************************************************************/
+
+__host__ io_record_format_enum_t io_record_format_default(void) {
+
+  return IO_RECORD_FORMAT_DEFAULT();
+}
+
+
+/*****************************************************************************
+ *
+ *  io_metadata_version_default
+ *
+ *****************************************************************************/
+
+__host__ io_metadata_version_enum_t io_metadata_version_default(void) {
+
+  return IO_METADATA_VERSION_DEFAULT();
+}
+
+/*****************************************************************************
+ *
+ *  io_options_default
+ *
+ *****************************************************************************/
+
+__host__ io_options_t io_options_default(void) {
+
+  io_options_t opts = IO_OPTIONS_DEFAULT();
+
+  return opts;
+}
+
+
 
 /*****************************************************************************
  *
@@ -34,7 +91,7 @@ __host__ int io_options_valid(const io_options_t * options) {
   assert(options);
 
   valid += io_options_mode_valid(options->mode);
-  valid += io_options_rformat_valid(options->iorformat);
+  valid += io_options_record_format_valid(options->iorformat);
   valid += io_options_metadata_version_valid(options);
 
   return valid;
@@ -59,18 +116,18 @@ __host__ int io_options_mode_valid(io_mode_enum_t mode) {
 
 /*****************************************************************************
  *
- *  io_options_rformat_valid
+ *  io_options_record_format_valid
  *
  *  Return non-zero for a valid format.
  *
  *****************************************************************************/
 
-__host__ int io_options_rformat_valid(io_rformat_enum_t iorformat) {
+__host__ int io_options_record_format_valid(io_record_format_enum_t ioformat) {
 
   int valid = 0;
 
-  valid += (iorformat == IO_RECORD_ASCII);
-  valid += (iorformat == IO_RECORD_BINARY);
+  valid += (ioformat == IO_RECORD_ASCII);
+  valid += (ioformat == IO_RECORD_BINARY);
 
   return valid;
 }
