@@ -933,11 +933,11 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 	pc->zeta[12]*pc->s.w[X] +
 	pc->zeta[13]*pc->s.w[Y] +
 	pc->zeta[14]*pc->s.w[Z]);
-  }  
+  }
 
   /* As the lubrication force is based on the updated velocity, but
    * the old position, we can account for the total momentum here. */
-  
+
   bbl_wall_lubrication_account(bbl, wall, cinfo);
 
   return 0;

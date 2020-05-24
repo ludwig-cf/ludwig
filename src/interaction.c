@@ -404,7 +404,7 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
 	  driven_colloid_force(pc->s.s, dforce);
-	    
+
 	  for (ia = 0; ia < 3; ia++) {
 	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
 	    pc->force[ia] += dforce[ia];           /* Active force */
