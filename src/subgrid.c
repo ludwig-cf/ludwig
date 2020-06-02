@@ -66,6 +66,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
+  colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
+
   /* Loop through all cells (including the halo cells) */
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
@@ -115,6 +117,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		   particles (zero wall speed) */
 
 		wall_lubr_sphere(wall, p_colloid->s.ah, p_colloid->s.r, dwall);
+
 		p_colloid->force[X] += p_colloid->s.v[X]*dwall[X];
 		p_colloid->force[Y] += p_colloid->s.v[Y]*dwall[Y];
 		p_colloid->force[Z] += p_colloid->s.v[Z]*dwall[Z];
@@ -165,7 +168,6 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   colloids_info_ncell(cinfo, ncell);
 
   subgrid_interpolation(cinfo, hydro);
-  /* colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);*/
   colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -187,7 +189,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.v[ia] = p_colloid->fc0[ia] + drag*p_colloid->force[ia];
+	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->force[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
 	}
@@ -240,9 +242,9 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	  p_colloid->fc0[X] = 0.0;
-	  p_colloid->fc0[Y] = 0.0;
-	  p_colloid->fc0[Z] = 0.0;
+	  p_colloid->fsub[X] = 0.0;
+	  p_colloid->fsub[Y] = 0.0;
+	  p_colloid->fsub[Z] = 0.0;
 	}
       }
     }
@@ -294,9 +296,9 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
 		hydro_u(hydro, index, u);
 
-		p_colloid->fc0[X] += u[X]*dr;
-		p_colloid->fc0[Y] += u[Y]*dr;
-		p_colloid->fc0[Z] += u[Z]*dr;
+		p_colloid->fsub[X] += u[X]*dr;
+		p_colloid->fsub[Y] += u[Y]*dr;
+		p_colloid->fsub[Z] += u[Z]*dr;
 	      }
 	    }
 	  }
