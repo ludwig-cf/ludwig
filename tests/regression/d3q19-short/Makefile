@@ -28,5 +28,10 @@ logs:	$(LOGS)
 %.new:	%.inp
 	../../test.sh $< "${SER}" "${PAR}"
 
+# Restart tests must be in the right order
+
+serial-rest-c02.new:	serial-rest-c01.new
+serial-rest-ec2.new:	serial-rest-ec1.new
+
 clean:
 	rm -f *new test-diff* *meta *001-001
