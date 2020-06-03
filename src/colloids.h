@@ -46,6 +46,8 @@ struct colloid {
   double dq[2];         /* charge remove/replace mismatch for 2 charges */
 
   double fsub[3];       /* Subgrid particle force from fluid */
+  double fex[3];        /* External forces (non-fluid) on particle */
+  double tex[3];        /* External torques on particle */
 
   /* Pointers */
 
