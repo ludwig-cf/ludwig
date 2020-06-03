@@ -27,7 +27,6 @@
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
-#include "wall.h"
 
 static double d_peskin(double);
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
@@ -44,8 +43,7 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *****************************************************************************/
 
 
-int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
-				 wall_t * wall) {
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -57,8 +55,6 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   double dr;
   colloid_t * p_colloid;
 
-  double dwall[3];
-
   assert(cinfo);
   assert(hydro);
 
@@ -66,7 +62,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
-  colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
+  colloid_sums_halo(cinfo, COLLOID_SUM_FORCE_EXT_ONLY);
 
   /* Loop through all cells (including the halo cells) */
 
@@ -113,18 +109,9 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
 		dr = d_peskin(r[X])*d_peskin(r[Y])*d_peskin(r[Z]);
             
-                /* Apply the lubrication force from the wall to subgrid
-		   particles (zero wall speed) */
-
-		wall_lubr_sphere(wall, p_colloid->s.ah, p_colloid->s.r, dwall);
-
-		p_colloid->force[X] += p_colloid->s.v[X]*dwall[X];
-		p_colloid->force[Y] += p_colloid->s.v[Y]*dwall[Y];
-		p_colloid->force[Z] += p_colloid->s.v[Z]*dwall[Z];
-
-		force[X] = p_colloid->force[X]*dr;
-		force[Y] = p_colloid->force[Y]*dr;
-		force[Z] = p_colloid->force[Z]*dr;
+		force[X] = p_colloid->fex[X]*dr;
+		force[Y] = p_colloid->fex[Y]*dr;
+		force[Z] = p_colloid->fex[Z]*dr;
 		hydro_f_local_add(hydro, index, force);
 	      }
 	    }
@@ -189,7 +176,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->force[ia];
+	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
 	}
