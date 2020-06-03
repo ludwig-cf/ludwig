@@ -2,12 +2,11 @@
  *
  *  interaction.h
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epc.ed.ac.uk)
  *
@@ -68,6 +67,6 @@ int colloids_update_forces_zero(colloids_info_t * cinfo);
 int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi);
 int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map);
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo, map_t * map);
-                                         
+int colloids_update_forces_ext(colloids_info_t * cinfo);
 
 #endif
