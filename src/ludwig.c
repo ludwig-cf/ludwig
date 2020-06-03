@@ -740,9 +740,8 @@ void ludwig_run(const char * inputfile) {
       if (is_subgrid) subgrid_update(ludwig->collinfo, ludwig->hydro);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
-			   wall_bbl(ludwig->wall);
+      wall_bbl(ludwig->wall);
       TIMER_stop(TIMER_BBL);
-
     }
     else {
       /* No hydrodynamics, but update colloids in response to
@@ -1800,7 +1799,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   subgrid_on(&is_subgrid);
 
   if (is_subgrid) { 
-    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);
   }
 
   return 0;
@@ -1844,8 +1843,18 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-  /* Removal or replacement of fluid requires a lattice halo update */
 
+  subgrid_on(&is_subgrid);
+
+  if (is_subgrid) { 
+
+  interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+      	     ludwig->psi, ludwig->ewald);
+  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);
+  }
+  else {
+
+  /* Removal or replacement of fluid requires a lattice halo update */
 
   TIMER_start(TIMER_HALO_LATTICE);
 
@@ -1886,14 +1895,8 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
       	     ludwig->psi, ludwig->ewald);
 
-
-  subgrid_on(&is_subgrid);
-
-  if (is_subgrid) { 
-    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);    
-  }
   TIMER_stop(TIMER_FORCES);
-  
+}  
 
   /* __NVCC__ TODO: remove */
 
