@@ -65,9 +65,17 @@ static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
 static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
 static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise);
 
+/* Utility container */
+
+typedef struct ch_kernel_s ch_kernel_t;
+struct ch_kernel_s {
+  double mobility;      /* Mobility */
+  double gradmu_ex[3];  /* External chemical potential gradient */
+};
+
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
-				       advflux_t * flux, double mobility, double * grad_mu); //altered for externally imposed chemical potential gradient
+				       advflux_t * flux, ch_kernel_t ch);
 __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				  field_t * field, advflux_t * flux,
 				  int ys, double wz);
@@ -208,10 +216,10 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
 
   int nlocal[3];
-  double mobility;
-  double grad_mu[3]; //added for externally imposed chemical potential gradient
   dim3 nblk, ntpb;
   kernel_info_t limits;
+  ch_kernel_t ch = {0};
+
   fe_t * fetarget = NULL;
   physics_t * phys = NULL;
   lees_edw_t * letarget = NULL;
@@ -225,8 +233,8 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   fe->func->target(fe, &fetarget);
 
   physics_ref(&phys);
-  physics_mobility(phys, &mobility);
-  physics_grad_mu(phys, grad_mu); //added for externally imposed chemical potential gradient
+  physics_mobility(phys, &ch.mobility);
+  physics_grad_mu(phys,  ch.gradmu_ex);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 0; limits.jmax = nlocal[Y];
@@ -236,7 +244,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(phi_ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, letarget, fetarget, pch->flux->target, mobility, grad_mu); //altered for externally imposed chemical potential gradient
+		  ctxt->target, letarget, fetarget, pch->flux->target, ch);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
@@ -262,7 +270,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
 
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
-				       advflux_t * flux, double mobility, double grad_mu[3]) {
+				       advflux_t * flux, ch_kernel_t ch) {
   int kindex;
   __shared__ int kiterations;
 
@@ -296,25 +304,29 @@ __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 
     index1 = lees_edw_index(le, icm1, jc, kc);
     fe->func->mu(fe, index1, &mu1);
-    flux->fw[addr_rank0(flux->nsite, index0)] -= mobility*(mu0 - mu1 + grad_mu[X]); //altered for externally imposed chemical potential gradient
+    flux->fw[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu0 - mu1
+					       + ch.gradmu_ex[X]);
 
     /* ...and between ic and ic+1 */
 
     index1 = lees_edw_index(le, icp1, jc, kc);
     fe->func->mu(fe, index1, &mu1);
-    flux->fe[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0 + grad_mu[X]); //altered for externally imposed chemical potential gradient
+    flux->fe[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu1 - mu0
+					       + ch.gradmu_ex[X]);
 
     /* y direction */
 
     index1 = lees_edw_index(le, ic, jc+1, kc);
     fe->func->mu(fe, index1, &mu1);
-    flux->fy[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0 + grad_mu[Y]); //altered for externally imposed chemical potential gradient
+    flux->fy[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu1 - mu0
+					       + ch.gradmu_ex[Y]);
 
     /* z direction */
 
     index1 = lees_edw_index(le, ic, jc, kc+1);
     fe->func->mu(fe, index1, &mu1);
-    flux->fz[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0 + grad_mu[Z]); //altered for externally imposed chemical potential gradient
+    flux->fz[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu1 - mu0
+					       + ch.gradmu_ex[Z]);
 
     /* Next site */
   }
