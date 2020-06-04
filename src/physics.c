@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -52,8 +52,7 @@ struct physics_s {
   double fpulse_frequency; /* Frequency of external body forcing */ 
   double fpulse[3];        /* Amplitude of external electric field */
 
-  //added for externally imposed chemical potential gradient
-  double grad_mu[3];     /* External chemical potential gradient */
+  double grad_mu[3];       /* External chemical potential gradient */
 };
 
 /* At the moment we have static instances */
