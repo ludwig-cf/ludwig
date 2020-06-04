@@ -43,7 +43,8 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
  *****************************************************************************/
 
 
-int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
+int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
+				 wall_t * wall) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
@@ -57,11 +58,18 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro) {
 
   assert(cinfo);
   assert(hydro);
+  assert(wall);
+
+  if (subgrid_on_ == 0) return 0;
 
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
 
+  /* Add any wall lubrication corrections before communication to
+   * find total external force on each particle */
+
+  subgrid_wall_lubrication(cinfo, wall);
   colloid_sums_halo(cinfo, COLLOID_SUM_FORCE_EXT_ONLY);
 
   /* Loop through all cells (including the halo cells) */
@@ -151,6 +159,8 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   assert(cinfo);
   assert(hydro);
+
+  if (subgrid_on_ == 0) return 0;
 
   colloids_info_ncell(cinfo, ncell);
 
@@ -296,6 +306,35 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 	/* Next cell */
       }
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  subgrid_wall_lubrication
+ *
+ *  Accumulate lubrication corrections to the external force on each particle.
+ *
+ *****************************************************************************/
+
+int subgrid_wall_lubrication(colloids_info_t * cinfo, wall_t * wall) {
+
+  double drag[3];
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+  assert(wall);
+
+  colloids_info_local_head(cinfo, &pc);
+
+  for ( ; pc; pc = pc->next) {
+    if (pc->s.type != COLLOID_TYPE_SUBGRID) continue;
+    wall_lubr_sphere(wall, pc->s.ah, pc->s.r, drag);
+    pc->fex[X] += drag[X]*pc->s.v[X];
+    pc->fex[Y] += drag[Y]*pc->s.v[Y];
+    pc->fex[Z] += drag[Z]*pc->s.v[Z];
   }
 
   return 0;
