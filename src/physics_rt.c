@@ -141,7 +141,6 @@ __host__ int physics_init_rt(rt_t * rt, physics_t * phys) {
     physics_fpulse_frequency_set(phys, frequency);
   }
 
-  //added for externally imposed chemical potential gradient
   if (rt_double_parameter_vector(rt, "grad_mu", vector)) {
     physics_grad_mu_set(phys, vector);
   }
