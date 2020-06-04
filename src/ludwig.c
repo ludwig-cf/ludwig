@@ -1202,8 +1202,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Force */
 
-    //p = 1; /* Default is to use divergence method */
-    p = 0; //altered for externally imposed chemical potential gradient
+    p = 1; /* Default is to use divergence method */
     rt_int_parameter(rt, "fd_force_divergence", &p);
     pe_info(pe, "Force calculation:      %s\n",
          (p == 0) ? "phi grad mu method" : "divergence method");
