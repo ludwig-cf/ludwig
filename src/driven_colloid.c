@@ -92,7 +92,9 @@ void driven_colloid_total_force(colloids_info_t * cinfo, double ftotal[3]) {
   colloids_info_local_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextlocal) { 
-
+	  
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+	  
     driven_colloid_force(pc->s.s, f);
 	  
     for (ia = 0; ia < 3; ia++){
