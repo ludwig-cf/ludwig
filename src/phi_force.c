@@ -59,6 +59,8 @@ static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double 
 static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
 				      field_t * phi,
 				      hydro_t * hydro);
+static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
+					  hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -105,6 +107,7 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
       break;
     case PTH_METHOD_GRADMU:
       phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
+      phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
       break;
     default:
       assert(0);
@@ -142,9 +145,6 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   double phi, mum1, mup1;
   double force[3];
 
-  double grad_mu[3];
-  physics_t * phys = NULL;
-
   assert(le);
   assert(fphi);
   assert(hydro);
@@ -152,9 +152,6 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   lees_edw_nhalo(le, &nhalo);
   lees_edw_nlocal(le, nlocal);
   assert(nhalo >= 2);
-
-  physics_ref(&phys);
-  physics_grad_mu(phys, grad_mu);
 
   /* Memory strides */
   zs = 1;
@@ -175,19 +172,72 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 	fe->func->mu(fe, indexm1, &mum1);
 	fe->func->mu(fe, indexp1, &mup1);
 
-        force[X] = -phi*0.5*(mup1 - mum1 + 2.0*grad_mu[X]);
+        force[X] = -phi*0.5*(mup1 - mum1);
 
 	fe->func->mu(fe, index0 - ys, &mum1);
 	fe->func->mu(fe, index0 + ys, &mup1);
 
-        force[Y] = -phi*0.5*(mup1 - mum1 + 2.0*grad_mu[Y]);
+        force[Y] = -phi*0.5*(mup1 - mum1);
 
 	fe->func->mu(fe, index0 - zs, &mum1);
 	fe->func->mu(fe, index0 + zs, &mup1);
 
-        force[Z] = -phi*0.5*(mup1 - mum1 + 2.0*grad_mu[Z]);
+        force[Z] = -phi*0.5*(mup1 - mum1);
 
 	/* Store the force on lattice */
+
+	hydro_f_local_add(hydro, index0, force);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  phi_force_fluid_phi_gradmu_ext
+ *
+ *  As for phi_force_fluid_phi_gradmu(), except this is a contribution\
+ *  from the external chemical potential gradient.
+ *
+ *****************************************************************************/
+
+static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
+					  hydro_t * hydro) {
+  int ic, jc, kc;
+  int index0;
+  int nlocal[3];
+  double phi;
+  double force[3];
+
+  double grad_mu[3];
+  physics_t * phys = NULL;
+
+  assert(cs);
+  assert(fphi);
+  assert(hydro);
+
+  cs_nlocal(cs, nlocal);
+
+  physics_ref(&phys);
+  physics_grad_mu(phys, grad_mu);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = cs_index(cs, ic, jc, kc);
+	field_scalar(fphi, index0, &phi);
+
+        force[X] = -phi*grad_mu[X];
+        force[Y] = -phi*grad_mu[Y];
+        force[Z] = -phi*grad_mu[Z];
+
+	/* Accumulate the force on lattice */
 
 	hydro_f_local_add(hydro, index0, force);
 

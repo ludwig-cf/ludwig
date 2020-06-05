@@ -60,6 +60,7 @@ struct phi_ch_info_s {
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
+static int phi_ch_flux_mu_ext(phi_ch_t * pch);
 
 static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
 static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
@@ -75,7 +76,10 @@ struct ch_kernel_s {
 
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
-				       advflux_t * flux, ch_kernel_t ch);
+				       advflux_t * flux, double mobility);
+__global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
+					  lees_edw_t * le, advflux_t * flux,
+					  ch_kernel_t ch);
 __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				  field_t * field, advflux_t * flux,
 				  int ys, double wz);
@@ -195,6 +199,10 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
     phi_ch_flux_mu1(pch, fe);
   }
 
+  /* External chemical potential gradient (could switch out if zero) */
+
+  phi_ch_flux_mu_ext(pch);
+
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
 
   if (map) advection_bcs_no_normal_flux(nf, pch->flux, map);
@@ -216,9 +224,9 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
 
   int nlocal[3];
+  double mobility;
   dim3 nblk, ntpb;
   kernel_info_t limits;
-  ch_kernel_t ch = {0};
 
   fe_t * fetarget = NULL;
   physics_t * phys = NULL;
@@ -233,8 +241,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   fe->func->target(fe, &fetarget);
 
   physics_ref(&phys);
-  physics_mobility(phys, &ch.mobility);
-  physics_grad_mu(phys,  ch.gradmu_ex);
+  physics_mobility(phys, &mobility);
 
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 0; limits.jmax = nlocal[Y];
@@ -244,7 +251,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(phi_ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, letarget, fetarget, pch->flux->target, ch);
+		  ctxt->target, letarget, fetarget, pch->flux->target, mobility);
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
@@ -270,7 +277,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
 
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
-				       advflux_t * flux, ch_kernel_t ch) {
+				       advflux_t * flux, double mobility) {
   int kindex;
   __shared__ int kiterations;
 
@@ -304,29 +311,25 @@ __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 
     index1 = lees_edw_index(le, icm1, jc, kc);
     fe->func->mu(fe, index1, &mu1);
-    flux->fw[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu0 - mu1
-					       + ch.gradmu_ex[X]);
+    flux->fw[addr_rank0(flux->nsite, index0)] -= mobility*(mu0 - mu1);
 
     /* ...and between ic and ic+1 */
 
     index1 = lees_edw_index(le, icp1, jc, kc);
     fe->func->mu(fe, index1, &mu1);
-    flux->fe[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu1 - mu0
-					       + ch.gradmu_ex[X]);
+    flux->fe[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0);
 
     /* y direction */
 
     index1 = lees_edw_index(le, ic, jc+1, kc);
     fe->func->mu(fe, index1, &mu1);
-    flux->fy[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu1 - mu0
-					       + ch.gradmu_ex[Y]);
+    flux->fy[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0);
 
     /* z direction */
 
     index1 = lees_edw_index(le, ic, jc, kc+1);
     fe->func->mu(fe, index1, &mu1);
-    flux->fz[addr_rank0(flux->nsite, index0)] -= ch.mobility*(mu1 - mu0
-					       + ch.gradmu_ex[Z]);
+    flux->fz[addr_rank0(flux->nsite, index0)] -= mobility*(mu1 - mu0);
 
     /* Next site */
   }
@@ -968,6 +971,93 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 	    - wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
 
     field_scalar_set(field, index, phi);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_mu_ext
+ *
+ *  Kernel driver for external chemical potential gradient contribution.
+ *
+ *****************************************************************************/
+
+static int phi_ch_flux_mu_ext(phi_ch_t * pch) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  ch_kernel_t ch = {0};
+
+  physics_t * phys = NULL;
+  lees_edw_t * letarget = NULL;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(pch);
+
+  lees_edw_nlocal(pch->le, nlocal);
+  lees_edw_target(pch->le, &letarget);
+
+  physics_ref(&phys);
+  physics_mobility(phys, &ch.mobility);
+  physics_grad_mu(phys,  ch.gradmu_ex);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(phi_ch_flux_mu_ext_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, letarget, pch->flux->target, ch);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_mu_ext_kernel
+ *
+ *  Accumulate contributions -m grad mu^ex from external chemical
+ *  potential gradient.
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
+					  lees_edw_t * le,
+					  advflux_t * flux,
+					  ch_kernel_t ch) {
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(le);
+  assert(flux);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index0 = lees_edw_index(le, ic, jc, kc);
+
+    flux->fw[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[X];
+    flux->fe[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[X];
+    flux->fy[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[Y];
+    flux->fz[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[Z];
   }
 
   return;
