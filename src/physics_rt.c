@@ -62,15 +62,15 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   pe_info(pe, "External magnetic field      %12.5e %12.5e %12.5e\n",
 	  b0[0], b0[1], b0[2]);
   if (fpulse[0] || fpulse[1] || fpulse[2]) { 
-      pe_info(pe, "External pulsatile force amplitude  %12.5e %12.5e %12.5e\n",
-	  fpulse[0], fpulse[1], fpulse[2]);
+    pe_info(pe, "External pulsatile force amplitude  %12.5e %12.5e %12.5e\n",
+	    fpulse[0], fpulse[1], fpulse[2]);
   }
   if (fpulse_frequency) { 
     pe_info(pe, "External pulsatile force frequency  %12.5e\n", 
-	  fpulse_frequency);
+	    fpulse_frequency);
   }
   if (gm0[0] || gm0[1] || gm0[2]) {
-    pe_info(pe, "External chemical potential gradient  %12.5e %12.5e %12.5e\n",
+    pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
 	    gm0[0], gm0[1], gm0[2]);
   }
 
