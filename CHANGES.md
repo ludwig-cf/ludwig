@@ -3,6 +3,8 @@
 
 
 version 0.11.0
+- Add external chemical potential gradient in Cahn Hilliard for
+  free energy symmetric. Thanks to Jurij Sablic (jurij.sablic@gmail.com).
 - Add Arrhenius viscosity model for compositional order parameter
 - Various code quality updates
 

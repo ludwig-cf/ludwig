@@ -2,13 +2,11 @@
  *
  *  physics_rt.c
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -32,6 +30,7 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   double f0[3], e0[3], b0[3], fpulse[3];
   double e0_frequency;
   double fpulse_frequency;
+  double gm0[3];
 
   assert(pe);
   assert(phys);
@@ -46,6 +45,7 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   physics_b0(phys, b0);
   physics_fpulse(phys, fpulse);
   physics_fpulse_frequency(phys, &fpulse_frequency);
+  physics_grad_mu(phys, gm0);
 
   pe_info(pe, "\n");
   pe_info(pe, "System properties\n");
@@ -62,12 +62,16 @@ __host__ int physics_info(pe_t * pe, physics_t * phys) {
   pe_info(pe, "External magnetic field      %12.5e %12.5e %12.5e\n",
 	  b0[0], b0[1], b0[2]);
   if (fpulse[0] || fpulse[1] || fpulse[2]) { 
-      pe_info(pe, "External pulsatile force amplitude  %12.5e %12.5e %12.5e\n",
-	  fpulse[0], fpulse[1], fpulse[2]);
+    pe_info(pe, "External pulsatile force amplitude  %12.5e %12.5e %12.5e\n",
+	    fpulse[0], fpulse[1], fpulse[2]);
   }
   if (fpulse_frequency) { 
     pe_info(pe, "External pulsatile force frequency  %12.5e\n", 
-	  fpulse_frequency);
+	    fpulse_frequency);
+  }
+  if (gm0[0] || gm0[1] || gm0[2]) {
+    pe_info(pe, "External chem. pot. grad.    %12.5e %12.5e %12.5e\n",
+	    gm0[0], gm0[1], gm0[2]);
   }
 
   return 0;
@@ -135,6 +139,10 @@ __host__ int physics_init_rt(rt_t * rt, physics_t * phys) {
 
   if (rt_double_parameter(rt, "fpulse_frequency", &frequency)) {
     physics_fpulse_frequency_set(phys, frequency);
+  }
+
+  if (rt_double_parameter_vector(rt, "grad_mu", vector)) {
+    physics_grad_mu_set(phys, vector);
   }
 
   return 0;
