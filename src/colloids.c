@@ -1250,7 +1250,7 @@ __host__ int colloids_info_a0max(colloids_info_t * cinfo, double * a0max) {
   colloids_info_update_lists(cinfo);
 
   colloids_info_local_head(cinfo, &pc);
-  for (; pc; pc = pc->next) a0_local = dmax(a0_local, pc->s.a0);
+  for (; pc; pc = pc->nextlocal) a0_local = dmax(a0_local, pc->s.a0);
 
   MPI_Allreduce(&a0_local, a0max, 1, MPI_DOUBLE, MPI_MAX, comm);
 
@@ -1280,7 +1280,7 @@ __host__ int colloids_info_ahmax(colloids_info_t * cinfo, double * ahmax) {
   colloids_info_update_lists(cinfo);
 
   colloids_info_local_head(cinfo, &pc);
-  for (; pc; pc = pc->next) ahmax_local = dmax(ahmax_local, pc->s.ah);
+  for (; pc; pc = pc->nextlocal) ahmax_local = dmax(ahmax_local, pc->s.ah);
 
   MPI_Allreduce(&ahmax_local, ahmax, 1, MPI_DOUBLE, MPI_MAX, comm);
 

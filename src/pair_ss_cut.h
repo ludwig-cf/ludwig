@@ -28,8 +28,8 @@ int pair_ss_cut_info(pair_ss_cut_t * obj);
 int pair_ss_cut_register(pair_ss_cut_t * obj, interact_t * parent);
 int pair_ss_cut_compute(colloids_info_t * cinfo, void * self);
 int pair_ss_cut_stats(void * self, double * stats);
-int pair_ss_cut_single(pair_ss_cut_t * obj, double h, double * f, double * v);
-int pair_ss_cut_param_set(pair_ss_cut_t * obj, double epsilon, double sigma,
-			  int nu, double hc);
+int pair_ss_cut_single(pair_ss_cut_t * obj, double h, double * f, double * v,int it1, int it2);
+int pair_ss_cut_param_set(pair_ss_cut_t * obj, double epsilon[][NUM_INT_PART_TYPES], double sigma[][NUM_INT_PART_TYPES],
+			  double nu[][NUM_INT_PART_TYPES], double hc[][NUM_INT_PART_TYPES]);
 
 #endif

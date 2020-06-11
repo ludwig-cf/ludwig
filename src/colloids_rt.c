@@ -740,11 +740,11 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
   int n;
   int on = 0;
-  double epsilon ;
-  double sigma;
-  int nu;
+  double epsilon[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double sigma[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double nu[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
   double kt;
-  double cutoff;
+  double cutoff[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
 
   physics_t * phys = NULL;
   pair_ss_cut_t * pair = NULL;
@@ -758,19 +758,24 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
   rt_int_parameter(rt, "soft_sphere_on", &on);
 
   if (on) {
-
-    n = rt_double_parameter(rt, "soft_sphere_epsilon", &epsilon);
+    
+    n = rt_double_parameter_rank2_tensor(rt, "soft_sphere_epsilon", epsilon);
     if (n == 0) pe_fatal(pe, "Please define soft_sphere_epsilon in input\n");
 
-    n = rt_double_parameter(rt, "soft_sphere_sigma", &sigma);
+    n = rt_double_parameter_rank2_tensor(rt, "soft_sphere_sigma", sigma);
     if (n == 0) pe_fatal(pe, "Please define soft_sphere_sigme in input\n");
 
-    n = rt_int_parameter(rt, "soft_sphere_nu", &nu);
+    n = rt_double_parameter_rank2_tensor(rt, "soft_sphere_nu", nu);
     if (n == 0) pe_fatal(pe, "Please check soft_sphere_nu appears in input\n");
-    if (nu <= 0) pe_fatal(pe, "Please check soft_sphere_nu is positive\n");
+    for (int i=0; i<NUM_INT_PART_TYPES; i++)
+        for (int j=0; j<NUM_INT_PART_TYPES; j++)
+            if (nu[i][j] <= 0) pe_fatal(pe, "Please check soft_sphere_nu is positive\n");
 
-    n = rt_double_parameter(rt, "soft_sphere_cutoff", &cutoff);
+    n = rt_double_parameter_rank2_tensor(rt, "soft_sphere_cutoff", cutoff);
     if (n == 0) pe_fatal(pe, "Check soft_sphere_cutoff appears in input\n");
+    for (int i=0; i<NUM_INT_PART_TYPES; i++)
+        for (int j=0; j<NUM_INT_PART_TYPES; j++)
+            if (cutoff[i][j] == 0) pe_fatal(pe, "Please check soft_sphere_cutoff is non-zero\n");
 
     pair_ss_cut_create(pe, cs, &pair);
     pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);

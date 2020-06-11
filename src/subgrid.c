@@ -27,6 +27,7 @@
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
+#include "noise.h"
 
 static double d_peskin(double);
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
@@ -121,6 +122,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		force[Y] = p_colloid->fex[Y]*dr;
 		force[Z] = p_colloid->fex[Z]*dr;
 		hydro_f_local_add(hydro, index, force);
+
 	      }
 	    }
 	  }
@@ -146,7 +148,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,noise_t * noise) {
 
   int ia;
   int ic, jc, kc;
@@ -156,6 +158,10 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   PI_DOUBLE(pi);
   colloid_t * p_colloid;
   physics_t * phys = NULL;
+  double ran[2];  /* Random numbers for fluctuation dissipation correction */
+  double frand; /* Random correction */
+  double kt;
+  double v2;
 
   assert(cinfo);
   assert(hydro);
@@ -171,6 +177,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
+  physics_kt(phys, &kt);
   reta = 1.0/(6.0*pi*eta);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
@@ -183,12 +190,31 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
+	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
+          
+          if (noise->on[0]) {
+	    for (ia = 0; ia < 3; ia++) {
+                while(1) {
+	            util_ranlcg_reap_gaussian(&p_colloid->s.rng, ran);
+                    if(fabs(ran[0])<3.0) {frand=sqrt(2.0*kt*drag)*ran[0]; break;}
+                }
+                /* To keep the random correction not too large, smaller than 3 sigma. Otherwise, large thermal fluctuation will blow up the velocity. */
+	        p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]+frand;
+             }
+             v2=p_colloid->s.v[X]*p_colloid->s.v[X]+p_colloid->s.v[Y]*p_colloid->s.v[Y]+p_colloid->s.v[Z]*p_colloid->s.v[Z];
+             if(v2>=0.25) {
+                 p_colloid->s.v[X]*=0.5;
+                 p_colloid->s.v[Y]*=0.5;
+                 p_colloid->s.v[Z]*=0.5;
+             }
+             /* To avoid too large velocity. It is valid only if v2 very rarely surpasses the threshold. It is equivalent to applying a large random force to the particle. */
+          }
+          else 
+	    for (ia = 0; ia < 3; ia++) 
+	        p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia];
 
-	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia];
+	  for (ia = 0; ia < 3; ia++) 
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
-	  }
 	}
 	/* Next cell */
       }

@@ -905,6 +905,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
       if (pc->s.isfixedw == 0) pc->s.w[ia] = xb[3+ia];
     }
 
+    //printf("squ: idx: %d; r: %lf,%lf,%lf; dr: %lf,%lf,%lf; v: %lf,%lf,%lf; w: %lf,%lf,%lf\n",pc->s.index,pc->s.r[0],pc->s.r[1],pc->s.r[2],pc->s.dr[0],pc->s.dr[1],pc->s.dr[2],pc->s.v[0],pc->s.v[1],pc->s.v[2],pc->s.w[0],pc->s.w[1],pc->s.w[2]); 
+
     if (pc->s.isfixeds == 0) {
       rotate_vector(pc->s.m, xb + 3);
       rotate_vector(pc->s.s, xb + 3);

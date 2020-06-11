@@ -346,6 +346,79 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
   return key_present;
 }
 
+
+/*****************************************************************************
+ *
+ *  rt_int_parameter_rank2_tensor
+ *
+ *  Query keys for a rank2 tensor of int. The tensor size is (NUM_INT_PART_TYPES*NUM_INT_PART_TYPES).
+ *
+ *****************************************************************************/
+
+int rt_int_parameter_rank2_tensor(rt_t * rt, const char * key, int v[][NUM_INT_PART_TYPES]) {
+
+  int key_present = 0;
+  char str_value[NKEY_LENGTH];
+
+  char delim[] = "_";
+  char *ptr;
+
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
+
+  if (key_present) {
+      ptr=strtok(str_value, delim);
+      int times=0;
+      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
+          for(int j=0;j<NUM_INT_PART_TYPES;j++) {
+              v[i][j]=atoi(ptr);
+              ptr = strtok(NULL, delim);
+              times++;
+          }
+      if(times!=NUM_INT_PART_TYPES*NUM_INT_PART_TYPES)
+          pe_fatal(rt->pe, "Could not parse input key %s as int[%d][%d]\n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES);
+  }
+
+  return key_present;
+}
+
+/*****************************************************************************
+ *
+ *  rt_double_parameter_rank2_tensor
+ *
+ *  Query keys for a rank2 tensor of double. The tensor size is (NUM_INT_PART_TYPES*NUM_INT_PART_TYPES).
+ *
+ *****************************************************************************/
+
+int rt_double_parameter_rank2_tensor(rt_t * rt, const char * key, double v[][NUM_INT_PART_TYPES]) {
+
+  int key_present = 0;
+  char str_value[NKEY_LENGTH];
+
+  char delim[] = "_";
+  char *ptr;
+
+  assert(rt);
+
+  key_present = rt_look_up_key(rt, key, str_value);
+
+  if (key_present) {
+      ptr=strtok(str_value, delim);
+      int times=0;
+      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
+          for(int j=0;j<NUM_INT_PART_TYPES;j++) {
+              v[i][j]=atof(ptr);
+              ptr = strtok(NULL, delim);
+              times++;
+          }
+      if(times!=NUM_INT_PART_TYPES*NUM_INT_PART_TYPES)
+          pe_fatal(rt->pe, "Could not parse input key %s as double[%d][%d]\n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES);
+  }
+
+  return key_present;
+}
+
 /*****************************************************************************
  *
  *  rt_string_parameter

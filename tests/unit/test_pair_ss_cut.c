@@ -23,6 +23,7 @@
 #include "colloids_halo.h"
 #include "pair_ss_cut.h"
 #include "tests.h"
+#include "colloids.h"
 
 #define PAIR_EPSILON 0.001
 #define PAIR_SIGMA   0.8
@@ -76,15 +77,26 @@ static int test_pair_ss_cut1(pe_t * pe, cs_t * cs) {
   pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
-  pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC);
+  double epsilon[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double sigma[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double nu[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double hc[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  for(int i=0;i<NUM_INT_PART_TYPES;i++)
+    for(int j=0;j<NUM_INT_PART_TYPES;j++) {
+        epsilon[i][j]=PAIR_EPSILON;
+        sigma[i][j]=PAIR_SIGMA;
+        nu[i][j]=PAIR_NU;
+        hc[i][j]=PAIR_HC;
+    }
+  pair_ss_cut_param_set(pair, epsilon, sigma, nu, hc);
 
   h = 0.0125;
-  pair_ss_cut_single(pair, h, &f, &v);
+  pair_ss_cut_single(pair, h, &f, &v,0,0);
   assert(fabs(f - 655.27808) < FLT_EPSILON);
   assert(fabs(v - 4.0663040) < FLT_EPSILON);
 
   h = PAIR_HC;
-  pair_ss_cut_single(pair, h, &f, &v);
+  pair_ss_cut_single(pair, h, &f, &v,0,0);
   assert(fabs(f - 0.0) < DBL_EPSILON);
   assert(fabs(v - 0.0) < DBL_EPSILON);
 
@@ -118,7 +130,19 @@ static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
   pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
-  pair_ss_cut_param_set(pair, PAIR_EPSILON, PAIR_SIGMA, PAIR_NU, PAIR_HC);
+  double epsilon[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double sigma[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double nu[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  double hc[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
+  for(int i=0;i<NUM_INT_PART_TYPES;i++)
+    for(int j=0;j<NUM_INT_PART_TYPES;j++) {
+        epsilon[i][j]=PAIR_EPSILON;
+        sigma[i][j]=PAIR_SIGMA;
+        nu[i][j]=PAIR_NU;
+        hc[i][j]=PAIR_HC;
+    }
+  pair_ss_cut_param_set(pair, epsilon, sigma, nu, hc);
+
   pair_ss_cut_register(pair, interact);
 
   test_pair_config1(cinfo, interact, pair);
@@ -197,7 +221,7 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   /* Compute interactions and compare against single version */
 
   interact_pairwise(interact, cinfo);
-  pair_ss_cut_single(pair, dh, &f, &v);
+  pair_ss_cut_single(pair, dh, &f, &v,pc1->s.inter_type,pc2->s.inter_type);
 
   f = f/sqrt(3.0);
  

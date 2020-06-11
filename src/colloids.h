@@ -21,6 +21,8 @@
 #include "colloid.h"
 #include "colloid_link.h"
 
+#define NUM_INT_PART_TYPES 2 /* number of interaction paritcle types */
+
 typedef struct colloid colloid_t;
 
 struct colloid {

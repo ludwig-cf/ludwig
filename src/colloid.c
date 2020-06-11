@@ -61,12 +61,16 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   for (n = 0; n < 3; n++) {
     nread += fscanf(fp, isformat, ps->isfixedvxyz + n);
   }
+
+  nread += fscanf(fp, isformat, &ps->inter_type);
+
   for (n = 0; n < NPAD_INT; n++) {
     nread += fscanf(fp, isformat, &ps->intpad[n]);
   }
 
   nread += fscanf(fp, sformat, &ps->a0);
   nread += fscanf(fp, sformat, &ps->ah);
+  nread += fscanf(fp, sformat, &ps->al);
   nread += fscanf(fp, vformat, &ps->r[0], &ps->r[1], &ps->r[2]);
   nread += fscanf(fp, vformat, &ps->v[0], &ps->v[1], &ps->v[2]);
   nread += fscanf(fp, vformat, &ps->w[0], &ps->w[1], &ps->w[2]);
@@ -175,12 +179,15 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
     nwrite += fprintf(fp, isformat, s->isfixedvxyz[n]);
   }
 
+  nwrite += fprintf(fp, isformat, s->inter_type);
+
   for (n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, isformat, s->intpad[n]);
   }
 
   nwrite += fprintf(fp, sformat, s->a0);
   nwrite += fprintf(fp, sformat, s->ah);
+  nwrite += fprintf(fp, sformat, s->al);
   nwrite += fprintf(fp, vformat, s->r[0], s->r[1], s->r[2]);
   nwrite += fprintf(fp, vformat, s->v[0], s->v[1], s->v[2]);
   nwrite += fprintf(fp, vformat, s->w[0], s->w[1], s->w[2]);
