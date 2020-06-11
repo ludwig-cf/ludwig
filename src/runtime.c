@@ -346,7 +346,6 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
   return key_present;
 }
 
-
 /*****************************************************************************
  *
  *  rt_int_parameter_rank2_tensor
@@ -372,12 +371,16 @@ int rt_int_parameter_rank2_tensor(rt_t * rt, const char * key, int v[][NUM_INT_P
       int times=0;
       for(int i=0;i<NUM_INT_PART_TYPES;i++) 
           for(int j=0;j<NUM_INT_PART_TYPES;j++) {
-              v[i][j]=atoi(ptr);
-              ptr = strtok(NULL, delim);
-              times++;
+              if(ptr!=NULL) {
+                v[i][j]=atoi(ptr);
+                ptr = strtok(NULL, delim);
+                times++;
+              }
+              else
+                v[i][j]=1;
           }
       if(times!=NUM_INT_PART_TYPES*NUM_INT_PART_TYPES)
-          pe_fatal(rt->pe, "Could not parse input key %s as int[%d][%d]\n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES);
+        pe_info(rt->pe, "input key %s is in the form of int[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
   }
 
   return key_present;
@@ -408,12 +411,16 @@ int rt_double_parameter_rank2_tensor(rt_t * rt, const char * key, double v[][NUM
       int times=0;
       for(int i=0;i<NUM_INT_PART_TYPES;i++) 
           for(int j=0;j<NUM_INT_PART_TYPES;j++) {
-              v[i][j]=atof(ptr);
-              ptr = strtok(NULL, delim);
-              times++;
+              if(ptr!=NULL) {
+                v[i][j]=atof(ptr);
+                ptr = strtok(NULL, delim);
+                times++;
+              }
+              else
+                v[i][j]=1E-6;
           }
       if(times!=NUM_INT_PART_TYPES*NUM_INT_PART_TYPES)
-          pe_fatal(rt->pe, "Could not parse input key %s as double[%d][%d]\n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES);
+        pe_info(rt->pe, "input key %s is in the form of double[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
   }
 
   return key_present;

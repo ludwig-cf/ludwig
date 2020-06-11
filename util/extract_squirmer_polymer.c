@@ -58,7 +58,6 @@ static const int  cds_with_w  = 1;  /* Output coordinate and rotatial velocity*/
 static const char * format3_    = "%10.5f, %10.5f, %10.5f, ";
 static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 static const char * formate3end_ = "%13.6e  %13.6e  %13.6e\n";
-static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 static const char * formate9end_ = "%10.5f, %10.5f, %10.5f, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e, %14.6e\n";
 
 double **** vel;

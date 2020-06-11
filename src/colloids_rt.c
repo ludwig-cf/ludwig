@@ -457,6 +457,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_int_parameter(rt, key, &state->rng);
   if (nrt) pe_info(pe, format_i1, key, state->rng);
 
+  sprintf(key, "%s_%s", stub, "inter_type");
+  nrt = rt_int_parameter(rt, key, &state->rng);
+  if (nrt) pe_info(pe, format_i1, key, state->rng);
+
   sprintf(key, "%s_%s", stub, "a0");
   nrt = rt_double_parameter(rt, key, &state->a0);
   if (nrt) pe_info(pe, format_e1, key, state->a0);
@@ -464,6 +468,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   sprintf(key, "%s_%s", stub, "ah");
   nrt = rt_double_parameter(rt, key, &state->ah);
   if (nrt) pe_info(pe, format_e1, key, state->ah);
+
+  sprintf(key, "%s_%s", stub, "al");
+  nrt = rt_double_parameter(rt, key, &state->al);
+  if (nrt) pe_info(pe, format_e1, key, state->al);
 
   sprintf(key, "%s_%s", stub, "r");
   nrt = rt_double_parameter_vector(rt, key, state->r);

@@ -45,11 +45,13 @@ colloid_init        input_two
 colloid_one_type    subgrid
 colloid_one_a0      0.10
 colloid_one_ah      0.20
+colloid_one_al      1.50
 colloid_one_r       6.1_6.1_6.1
 
 colloid_two_type    subgrid
 colloid_two_a0      0.10
 colloid_two_ah      0.20
+colloid_two_al      1.50
 colloid_two_r       6.1_6.1_3.1
 
 colloid_gravity  0.0_0.0_0.00001
