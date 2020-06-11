@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -211,6 +211,7 @@ int interact_compute(interact_t * interact, colloids_info_t * cinfo,
       pe_info(interact->pe, "\n");
       stats_colloid_velocity_minmax(cinfo);
     }
+    colloids_update_forces_ext(cinfo);
   }
 
   return 0;
@@ -258,7 +259,7 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
   
       intr = obj->abstr[INTERACT_LUBR];
 
-      if (intr) {
+     if (intr) {
 
 	obj->stats[INTERACT_LUBR](intr, stats);
 
@@ -390,15 +391,22 @@ int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi) {
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
-	for (; pc != NULL; pc = pc->next) {
+	for (; pc; pc = pc->next) {
+
+	  /* All particles have gravity */
+	  pc->force[X] += g[X];
+	  pc->force[Y] += g[Y];
+	  pc->force[Z] += g[Z];
+
+          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+
 	  btorque[X] = pc->s.s[Y]*b0[Z] - pc->s.s[Z]*b0[Y];
 	  btorque[Y] = pc->s.s[Z]*b0[X] - pc->s.s[X]*b0[Z];
 	  btorque[Z] = pc->s.s[X]*b0[Y] - pc->s.s[Y]*b0[X];
 
 	  driven_colloid_force(pc->s.s, dforce);
-	  
+
 	  for (ia = 0; ia < 3; ia++) {
-	    pc->force[ia] += g[ia];                /* Gravity */
 	    pc->torque[ia] += btorque[ia];         /* Magnetic field */
 	    pc->force[ia] += dforce[ia];           /* Active force */
 	  }
@@ -636,32 +644,36 @@ int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo) {
         colloids_info_cell_list_head(cinfo, ic1, jc1, kc1, &pc1);
         for (; pc1; pc1 = pc1->next) {
 
-          for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
-            for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
-              for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
-   
-                colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
-                for (; pc2; pc2 = pc2->next) {
+	  if (pc1->s.nbonds == 0) continue;
 
-                  for (n1 = 0; n1 < pc1->s.nbonds; n1++) {
-                    if (pc1->s.bond[n1] == pc2->s.index) {
-                      nbondfound += 1;
-                      pc1->bonded[n1] = pc2;
-                      /* And bond is reciprocated */
-                      for (n2 = 0; n2 < pc2->s.nbonds; n2++) {
-                        if (pc2->s.bond[n2] == pc1->s.index) {
-                          nbondpair += 1;
-                          pc2->bonded[n2] = pc1;
-                        }
-                      }
-                    }
+	  for (ic2 = di[0]; ic2 <= di[1]; ic2++) {
+	    for (jc2 = dj[0]; jc2 <= dj[1]; jc2++) {
+	      for (kc2 = dk[0]; kc2 <= dk[1]; kc2++) {
+   
+		colloids_info_cell_list_head(cinfo, ic2, jc2, kc2, &pc2);
+		for (; pc2; pc2 = pc2->next) {
+
+		  if (pc2->s.nbonds == 0) continue; 
+                  
+		  for (n1 = 0; n1 < pc1->s.nbonds; n1++) {
+		    if (pc1->s.bond[n1] == pc2->s.index) {
+		      nbondfound += 1;
+		      pc1->bonded[n1] = pc2;
+		      /* And bond is reciprocated */
+		      for (n2 = 0; n2 < pc2->s.nbonds; n2++) {
+			if (pc2->s.bond[n2] == pc1->s.index) {
+			  nbondpair += 1;
+			  pc2->bonded[n2] = pc1;
+			}
+		      }
+		    }
 		  }
 
 		  /* Cell list */
-		}
+	        }
 	      }
 	    }
-	  }
+          }
 	}
       }
     }
@@ -778,6 +790,35 @@ int interact_range_check(interact_t * obj, colloids_info_t * cinfo) {
     pe_info(obj->pe, "The maximum interaction range is: %f\n", rmax);
     pe_info(obj->pe, "The minumum cell width is only:   %f\n", lmin);
     pe_fatal(obj->pe, "Please check and try again\n");
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  colloids_update_forces_ext
+ *
+ *  Having computed external forces, transfer the information for
+ *  all particles to fex, tex.
+ *
+ *****************************************************************************/
+
+int colloids_update_forces_ext(colloids_info_t * cinfo) {
+
+  colloid_t * pc = NULL;
+
+  assert(cinfo);
+
+  colloids_info_all_head(cinfo, &pc);
+
+  for (; pc; pc = pc->nextall) {
+    pc->fex[X] = pc->force[X];
+    pc->fex[Y] = pc->force[Y];
+    pc->fex[Z] = pc->force[Z];
+    pc->tex[X] = pc->torque[X];
+    pc->tex[Y] = pc->torque[Y];
+    pc->tex[Z] = pc->torque[Z];
   }
 
   return 0;

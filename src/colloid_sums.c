@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -71,10 +71,13 @@ static int colloid_sums_m1(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m2(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m3(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m4(colloid_sum_t * sum, int, int, int, int);
+static int colloid_sums_m5(colloid_sum_t * sum, int, int, int, int);
+static int colloid_sums_m6(colloid_sum_t * sum, int, int, int, int);
 
 /* Message sizes (doubles) */
+/* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {10, 35, 7, 6};
+static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 7};
 
 /* The following are used for internal communication */
 
@@ -375,7 +378,9 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
   if (sum->mtype == COLLOID_SUM_STRUCTURE) mloader_forw = colloid_sums_m1;
   if (sum->mtype == COLLOID_SUM_DYNAMICS) mloader_forw = colloid_sums_m2;
   if (sum->mtype == COLLOID_SUM_ACTIVE) mloader_forw = colloid_sums_m3;
-  if (sum->mtype == COLLOID_SUM_CONSERVATION) mloader_forw = colloid_sums_m4;
+  if (sum->mtype == COLLOID_SUM_SUBGRID) mloader_forw = colloid_sums_m4;
+  if (sum->mtype == COLLOID_SUM_CONSERVATION) mloader_forw = colloid_sums_m5;
+  if (sum->mtype == COLLOID_SUM_FORCE_EXT_ONLY) mloader_forw = colloid_sums_m6;
 
   assert(mloader_forw);
   mloader_back = mloader_forw;
@@ -588,7 +593,7 @@ static int colloid_sums_m2(colloid_sum_t * sum, int ic, int jc, int kc,
  *
  *  colloid_sums_m3
  *
- *  See comments for m1 above.
+ *  Additional information for active particles.
  *
  *****************************************************************************/
 
@@ -639,6 +644,54 @@ static int colloid_sums_m3(colloid_sum_t * sum, int ic, int jc, int kc,
  *
  *  colloid_sums_m4
  *
+ *  For subgrid particles force from fluid fsub[3]. No torque.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m4(colloid_sum_t * sum, int ic, int jc, int kc,
+			   int noff) {
+
+  int n, npart;
+  int ia;
+  int index;
+  colloid_t * pc;
+
+  n = sum->msize*noff;
+  npart = 0;
+  colloids_info_cell_list_head(sum->cinfo, ic, jc, kc, &pc);
+
+  for (; pc; pc = pc->next) {
+
+    if (sum->mload == MESSAGE_LOAD) {
+      sum->send[n++] = 1.0*pc->s.index;
+      for (ia = 0; ia < 3; ia++) {
+	sum->send[n++] = pc->fsub[ia];
+      }
+      assert(n == (noff + npart + 1)*sum->msize);
+    }
+    else {
+      /* unload and check incoming index (a fatal error) */
+      index = (int) sum->recv[n++];
+      if (index != pc->s.index) {
+	pe_fatal(sum->pe, "Sum mismatch fsub (%d)\n", index);
+      }
+
+      for (ia = 0; ia < 3; ia++) {
+	pc->fsub[ia] += sum->recv[n++];
+      }
+      assert(n == (noff + npart + 1)*sum->msize);
+    }
+
+    npart++;
+  }
+
+  return npart;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m5
+ *
  *  See comments for m1 above.
  *
  *  This is for conserved order parameters and related information.
@@ -647,7 +700,7 @@ static int colloid_sums_m3(colloid_sum_t * sum, int ic, int jc, int kc,
  *
  *****************************************************************************/
 
-static int colloid_sums_m4(colloid_sum_t * sum, int ic, int jc, int kc,
+static int colloid_sums_m5(colloid_sum_t * sum, int ic, int jc, int kc,
 			   int noff) {
 
   int n, npart;
@@ -689,6 +742,56 @@ static int colloid_sums_m4(colloid_sum_t * sum, int ic, int jc, int kc,
 
     npart++;
     pc = pc->next;
+  }
+
+  return npart;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m6
+ *
+ *  External forces only.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m6(colloid_sum_t * sum, int ic, int jc, int kc,
+			   int noff) {
+
+  int n, npart;
+  int ia;
+  int index;
+  colloid_t * pc;
+
+  n = sum->msize*noff;
+  npart = 0;
+  colloids_info_cell_list_head(sum->cinfo, ic, jc, kc, &pc);
+
+  for (; pc; pc = pc->next) {
+
+    if (sum->mload == MESSAGE_LOAD) {
+      sum->send[n++] = 1.0*pc->s.index;
+      for (ia = 0; ia < 3; ia++) {
+	sum->send[n++] = pc->fex[ia];
+	sum->send[n++] = pc->tex[ia];
+      }
+      assert(n == (noff + npart + 1)*sum->msize);
+    }
+    else {
+      /* unload and check incoming index (a fatal error) */
+      index = (int) sum->recv[n++];
+      if (index != pc->s.index) {
+	pe_fatal(sum->pe, "Sum mismatch fsub (%d)\n", index);
+      }
+
+      for (ia = 0; ia < 3; ia++) {
+	pc->fex[ia] += sum->recv[n++];
+	pc->tex[ia] += sum->recv[n++];
+      }
+      assert(n == (noff + npart + 1)*sum->msize);
+    }
+
+    npart++;
   }
 
   return npart;

@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -165,6 +165,8 @@ int bond_fene_compute(colloids_info_t * cinfo, void * self) {
   obj->bondlocal = 0.0;
 
   for (; pc; pc = pc->nextlocal) {
+   
+    if (pc->s.nbonds == 0) continue;
 
     for (n = 0; n < pc->s.nbonds; n++) {
       assert(pc->bonded[n]);
@@ -191,7 +193,6 @@ int bond_fene_compute(colloids_info_t * cinfo, void * self) {
       pc->bonded[n]->force[Y] += f*r12[Y];
       pc->bonded[n]->force[Z] += f*r12[Z];
     }
-
   }
 
   obj->rminlocal = sqrt(r2min);
