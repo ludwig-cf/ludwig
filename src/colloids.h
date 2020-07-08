@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -44,6 +44,10 @@ struct colloid {
   double tc0[3];        /* total torque on squirmer for mass conservation */
   double sump;          /* flux through squirmer surface */ 
   double dq[2];         /* charge remove/replace mismatch for 2 charges */
+
+  double fsub[3];       /* Subgrid particle force from fluid */
+  double fex[3];        /* External forces (non-fluid) on particle */
+  double tex[3];        /* External torques on particle */
 
   /* Pointers */
 

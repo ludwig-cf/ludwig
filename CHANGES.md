@@ -1,6 +1,15 @@
 
 ### Changes
 
+
+version 0.11.0
+- Add external chemical potential gradient in Cahn Hilliard for
+  free energy symmetric. Thanks to Jurij Sablic (jurij.sablic@gmail.com).
+- Add Arrhenius viscosity model for compositional order parameter
+- Add the ability to run both subgrid and fully resolved particles at
+  the same time. Thanks to Qi Kai (kai.qi@epfl.ch) for this.
+- Various code quality updates
+
 version 0.10.0
 - Added an option to fix colloid position or velocity on a per-direction
   basis, e.g.

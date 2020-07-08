@@ -194,18 +194,20 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   assert(cs);
   assert(cinfo);
 
+  /* Find out if we have any sub-grid particles */
+
   colloids_info_count_local(cinfo, COLLOID_TYPE_SUBGRID, &nsubgrid_local);
 
   cs_cart_comm(cs, &comm);
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
-  if (nsubgrid > 0) {
-    subgrid_on_set();
-  }
-  else {
-    build_update_map(cs, cinfo, map);
-    build_update_links(cs, cinfo, wall, map);
-  }  
+  if (nsubgrid > 0) subgrid_on_set();
+
+  /* Assume there are always fully-resolved particles */
+
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, wall, map);
+
 
   return 0;
 }
@@ -229,7 +231,6 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   assert(pe);
   assert(rt);
   assert(cinfo);
-  assert(nc == 1 || nc == 2 || nc == 3);
 
   if (nc >= 1) {
     pe_info(pe, "Requested one colloid via input:\n");
@@ -263,6 +264,10 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     state3->index = 3;
     if (pc) pc->s = *state3;
     free(state3);
+  }
+
+  if (nc >= 4) {
+    pe_fatal(pe, "Cannot specify more than 3 colloids with a file\n");
   }
 
   return 0;

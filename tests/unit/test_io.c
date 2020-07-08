@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -36,6 +36,8 @@ static int  test_io_write1(FILE *, int index, void * self);
 static int  test_io_read3(FILE *, int index, void * self);
 static int  test_io_write3(FILE *, int index, void * self);
 
+__host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs);
+
 /*****************************************************************************
  *
  *  test_io_suite
@@ -52,6 +54,8 @@ int test_io_suite(void) {
   cs_init(cs);
 
   do_test_io_info_struct(pe, cs);
+
+  test_io_info_create_impl_a(pe, cs);
   /* if (pe_size() == cart_size(X)) test_processor_independent();
      test_ascii();*/
 
@@ -96,7 +100,7 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
 
   io_info_set_name(io_info, "Test double data");
   io_info_set_bytesize(io_info, IO_FORMAT_BINARY, sizeof(double));
-  io_info_set_bytesize(io_info, IO_FORMAT_ASCII, 8); /* See below */
+  io_info_set_bytesize(io_info, IO_FORMAT_ASCII, 10); /* See below */
   io_info_write_set(io_info, IO_FORMAT_BINARY, test_io_write1);
   io_info_read_set(io_info, IO_FORMAT_BINARY, test_io_read1);
 
@@ -136,6 +140,67 @@ int do_test_io_info_struct(pe_t * pe, cs_t * cs) {
   io_remove_metadata(io_info, stubp);
 
   io_info_free(io_info);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ * test_io_info_create_impl_b
+ *
+ *****************************************************************************/
+
+__host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs) {
+
+  io_info_args_t args = io_info_args_default();
+  io_implementation_t impl = {0};
+  io_info_t * info = {0};
+
+  assert(pe);
+  assert(cs);
+
+  sprintf(impl.name, "%s", "Test implementaton");
+
+  impl.write_binary    = test_io_write1;
+  impl.read_binary     = test_io_read1;
+  impl.write_ascii     = test_io_write3;
+  impl.read_ascii      = test_io_read3;
+  impl.bytesize_ascii  = 10;
+  impl.bytesize_binary = sizeof(double);
+
+  io_info_create_impl(pe, cs, args, impl, &info);
+
+  assert(info);
+
+  {
+    /* Copied implementation correctly... */
+    assert(info->pe == pe);
+    assert(info->cs == cs);
+    assert(info->impl.write_binary    == impl.write_binary);
+    assert(info->impl.read_binary     == impl.read_binary);
+    assert(info->impl.write_ascii     == impl.write_ascii);
+    assert(info->impl.read_ascii      == impl.read_ascii);
+    assert(info->impl.bytesize_ascii  == impl.bytesize_ascii);
+    assert(info->impl.bytesize_binary == impl.bytesize_binary);
+  }
+
+  {
+    /* Default input format binary ... */
+    size_t bs;
+    assert(info->args.input.iorformat == IO_RECORD_BINARY);
+    io_info_input_bytesize(info, &bs);
+    assert(bs == impl.bytesize_binary);
+  }
+
+  {
+    /* Default output format is binary... */
+    size_t bytesize;
+    assert(info->args.output.iorformat == IO_RECORD_BINARY);
+    io_info_output_bytesize(info, &bytesize);
+    assert(bytesize == impl.bytesize_binary);
+  }
+
+  io_info_free(info);
 
   return 0;
 }
@@ -218,8 +283,8 @@ int test_io_write3(FILE * fp, int index, void * self) {
   int n;
   test_io_t * data = (test_io_t *) self;
 
-  n = fprintf(fp, "%7d\n", index*data->iref);
-  test_assert(n == 8);
+  n = fprintf(fp, "%9d\n", index*data->iref);
+  test_assert(n == 10);
 
   return n;
 }

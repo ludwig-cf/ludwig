@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -212,6 +212,8 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
+    if (pc->s.type != COLLOID_TYPE_ACTIVE) continue;
+
     pc->sump /= pc->sumw;
     p_link = pc->lnk;
 
@@ -324,7 +326,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 
     pc = cinfo->map_new[index];
 	
-    if (pc) { 
+    if (pc && pc->s.type != COLLOID_TYPE_SUBGRID) { 
       cs_nlocal_offset(cs, noffset);
       r[X] = 1.0*(noffset[X] + ic);
       r[Y] = 1.0*(noffset[Y] + jc);
@@ -399,6 +401,8 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
+
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
     p_link = pc->lnk;
 
@@ -603,6 +607,8 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   for ( ; pc; pc = pc->nextall) {
 
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
+
     /* Set correction for phi arising from previous step */
 
     dgtm1 = pc->s.deltaphi;
@@ -716,6 +722,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
     bbl->deltag += pc->s.deltaphi;
   }
 
+
   return 0;
 }
 
@@ -759,6 +766,8 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
   colloids_info_all_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextall) {
+
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
     /* Set up the matrix problem and solve it here. */
 

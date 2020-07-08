@@ -31,7 +31,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
+ *  (c) 2009-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -53,7 +53,6 @@
 #include "blue_phase.h"
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
-#include "hydro_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "colloids_s.h"
@@ -234,11 +233,12 @@ __host__ int beris_edw_param_commit(beris_edw_t * be) {
  *
  *****************************************************************************/
 
-__host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t vals) {
+__host__ int beris_edw_param_set(beris_edw_t * be, beris_edw_param_t * vals) {
 
   assert(be);
+  assert(vals);
 
-  *be->param = vals;
+  *be->param = *vals;
 
   return 0;
 }

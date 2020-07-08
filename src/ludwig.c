@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -83,6 +83,10 @@
 #include "colloids_s.h"
 #include "advection_rt.h"
 
+/* Viscosity model */
+#include "visc.h"
+#include "visc_arrhenius.h"
+
 /* Electrokinetics */
 #include "psi.h"
 #include "psi_rt.h"
@@ -107,7 +111,6 @@
 
 #include "fe_lc_stats.h"
 
-#include "hydro_s.h"
 #include "lb_model_s.h"
 #include "field_s.h"
 
@@ -143,6 +146,8 @@ struct ludwig_s {
   fe_symm_t * fe_symm;         /* Symmetric free energy */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
+  visc_t * visc;               /* Viscosity model */
+
   colloids_info_t * collinfo;  /* Colloid information */
   colloid_io_t * cio;          /* Colloid I/O harness */
   ewald_t * ewald;             /* Ewald sum for dipoles */
@@ -161,6 +166,7 @@ static int ludwig_colloids_update(ludwig_t * ludwig);
 static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
 int free_energy_init_rt(ludwig_t * ludwig);
+int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
 int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
 
@@ -224,6 +230,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   ran_init_rt(pe, rt);
   hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
+  visc_model_init_rt(pe, rt, ludwig);
 
   /* PHI I/O */
 
@@ -234,7 +241,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   rt_int_parameter_vector(rt, "phi_io_grid", io_grid);
 
   form = IO_FORMAT_DEFAULT;
-  strcpy(value, ""); /* Really need a way to get string from "form" */
+  strcpy(value, ""); /* REPLACE Really need a way to get string from "form" */
   n = rt_string_parameter(rt, "phi_format", value, BUFSIZ);
   if (n != 0 && strcmp(value, "ASCII") == 0) {
     form = IO_FORMAT_ASCII;
@@ -409,7 +416,6 @@ void ludwig_run(const char * inputfile) {
   char    subdirectory[FILENAME_MAX/2];
   int     is_porous_media = 0;
   int     step = 0;
-  int     is_subgrid = 0;
   int     is_pm = 0;
   int     ncolloid = 0;
   double  fzero[3] = {0.0, 0.0, 0.0};
@@ -471,7 +477,6 @@ void ludwig_run(const char * inputfile) {
 
   pe_info(ludwig->pe, "\n");
   pe_info(ludwig->pe, "Starting time step loop.\n");
-  subgrid_on(&is_subgrid);
 
   /* sync tasks before main loop for timing purposes */
   MPI_Barrier(comm);
@@ -699,12 +704,17 @@ void ludwig_run(const char * inputfile) {
 
       hydro_u_zero(ludwig->hydro, uzero);
 
+      /* Viscosity computation */
+      if (ludwig->visc) {
+	ludwig->visc->func->update(ludwig->visc, ludwig->hydro);
+      }
+
       /* Collision stage */
 
       TIMER_start(TIMER_COLLIDE);
 
       lb_collide(ludwig->lb, ludwig->hydro, ludwig->map, ludwig->noise_rho,
-		 ludwig->fe);
+		 ludwig->fe, ludwig->visc);
 
       TIMER_stop(TIMER_COLLIDE);
 
@@ -722,17 +732,14 @@ void ludwig_run(const char * inputfile) {
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
 
-      if (is_subgrid) {
-	subgrid_update(ludwig->collinfo, ludwig->hydro);
-      }
-      else {
-	TIMER_start(TIMER_BBL);
-	wall_set_wall_distributions(ludwig->wall);
-	bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
-			     ludwig->collinfo);
-	wall_bbl(ludwig->wall);
-	TIMER_stop(TIMER_BBL);
-      }
+      TIMER_start(TIMER_BBL);
+      wall_set_wall_distributions(ludwig->wall);
+
+      subgrid_update(ludwig->collinfo, ludwig->hydro);
+      bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
+			   ludwig->collinfo);
+      wall_bbl(ludwig->wall);
+      TIMER_stop(TIMER_BBL);
     }
     else {
       /* No hydrodynamics, but update colloids in response to
@@ -1634,6 +1641,57 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
 /*****************************************************************************
  *
+ *  visc_model_init_rt
+ *
+ *****************************************************************************/
+
+int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig) {
+
+  int key;
+  char description[BUFSIZ/2];
+
+  assert(pe);
+  assert(rt);
+  assert(ludwig);
+
+  key = rt_string_parameter(rt, "viscosity_model", description, BUFSIZ/2);
+
+  if (strcmp(description, "arrhenius") == 0) {
+    cs_t * cs = ludwig->cs;
+    field_t * phi = ludwig->phi;
+    visc_arrhenius_param_t param = {0};
+    visc_arrhenius_t * visc = NULL;
+
+    if (phi == NULL) {
+      pe_info(pe, "viscosity_model arrhenius requires a composition\n");
+      pe_fatal(pe, "Please check the fee energy and try again\n");
+    }
+
+    /* Parameters */
+
+    rt_double_parameter(rt, "viscosity_arrhenius_eta_plus",  &param.eta_plus);
+    rt_double_parameter(rt, "viscosity_arrhenius_eta_minus", &param.eta_minus);
+    rt_double_parameter(rt, "viscosity_arrhenius_phistar",   &param.phistar);
+
+    if (param.eta_plus  == 0.0) pe_fatal(pe, "Non-zero eta_plus required\n");
+    if (param.eta_minus == 0.0) pe_fatal(pe, "Non-zero eta_minus required\n");
+    if (param.phistar   == 0.0) pe_fatal(pe, "Non-zero phistar required\n"); 
+
+    visc_arrhenius_create(pe, cs, phi, param, &visc);
+    ludwig->visc = (visc_t *) visc;
+
+    visc_arrhenius_info(visc);
+  }
+  else if (key != 0) {
+    pe_info(pe, "viscosity_model %s not recognised.\n", description);
+    pe_fatal(pe, "Please check and try again.\n");
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  map_init_rt
  *
  *  Could do more work trapping duff input keys.
@@ -1720,7 +1778,6 @@ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
 
 static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
 
-  int is_subgrid = 0;
   int ncolloid = 0;
 
   assert(ludwig);
@@ -1728,22 +1785,15 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   colloids_info_ntotal(ludwig->collinfo, &ncolloid);
   if (ncolloid == 0) return 0;
 
-  subgrid_on(&is_subgrid);
+  colloids_info_position_update(ludwig->collinfo);
+  colloids_info_update_cell_list(ludwig->collinfo);
+  colloids_halo_state(ludwig->collinfo);
+  colloids_info_update_lists(ludwig->collinfo);
 
-  if (is_subgrid) {
-    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-		     ludwig->psi, ludwig->ewald);
-    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);
-  }
-  else {
-    /* This order should be preserved */
-    colloids_info_position_update(ludwig->collinfo);
-    colloids_info_update_cell_list(ludwig->collinfo);
-    colloids_halo_state(ludwig->collinfo);
-    colloids_info_update_lists(ludwig->collinfo);
-    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-		     ludwig->psi, ludwig->ewald);
-  }
+  interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+        	     ludwig->psi, ludwig->ewald);
+
+  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
 
   return 0;
 }
@@ -1762,7 +1812,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   int ndevice;
   int ncolloid;
   int iconserve;         /* switch for finite-difference conservation */
-  int is_subgrid = 0;    /* subgrid particle switch */
 
   assert(ludwig);
 
@@ -1773,8 +1822,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   /* __NVCC__ TODO: remove */
   lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
-
-  subgrid_on(&is_subgrid);
 
   lb_ndist(ludwig->lb, &ndist);
   iconserve = (ludwig->psi || (ludwig->phi && ndist == 1));
@@ -1788,56 +1835,50 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   TIMER_stop(TIMER_PARTICLE_HALO);
 
-  if (is_subgrid) {
-    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-		     ludwig->psi, ludwig->ewald);
-    subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro);    
+  /* Removal or replacement of fluid requires a lattice halo update */
+
+  TIMER_start(TIMER_HALO_LATTICE);
+
+  /* __NVCC__ */
+  if (ndevice == 0) {
+    lb_halo(ludwig->lb);
   }
   else {
-
-    /* Removal or replacement of fluid requires a lattice halo update */
-
-    TIMER_start(TIMER_HALO_LATTICE);
-
-    /* __NVCC__ */
-    if (ndevice == 0) {
-      lb_halo(ludwig->lb);
-    }
-    else {
-      lb_halo_swap(ludwig->lb, LB_HALO_HOST);
-    }
-
-    TIMER_stop(TIMER_HALO_LATTICE);
-
-    TIMER_start(TIMER_FREE1);
-    if (iconserve && ludwig->phi) field_halo(ludwig->phi);
-    if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
-    TIMER_stop(TIMER_FREE1);
-
-    TIMER_start(TIMER_REBUILD);
-
-    build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
-    build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi, ludwig->p,
-			 ludwig->q, ludwig->psi, ludwig->map);
-    build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
-    
-
-    TIMER_stop(TIMER_REBUILD);
-
-    TIMER_start(TIMER_FREE1);
-    if (iconserve) {
-      colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
-      build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
-    }
-    TIMER_stop(TIMER_FREE1);
-
-    TIMER_start(TIMER_FORCES);
-
-    interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
-		     ludwig->psi, ludwig->ewald);
-
-    TIMER_stop(TIMER_FORCES);
+    lb_halo_swap(ludwig->lb, LB_HALO_HOST);
   }
+
+  TIMER_stop(TIMER_HALO_LATTICE);
+
+  TIMER_start(TIMER_FREE1);
+  if (iconserve && ludwig->phi) field_halo(ludwig->phi);
+  if (iconserve && ludwig->psi) psi_halo_rho(ludwig->psi);
+  TIMER_stop(TIMER_FREE1);
+
+  TIMER_start(TIMER_REBUILD);
+
+  build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
+  build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
+		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
+  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
+  
+
+  TIMER_stop(TIMER_REBUILD);
+
+  TIMER_start(TIMER_FREE1);
+  if (iconserve) {
+    colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
+    build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
+  }
+  TIMER_stop(TIMER_FREE1);
+
+  TIMER_start(TIMER_FORCES);
+
+  interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
+		   ludwig->psi, ludwig->ewald);
+  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+
+  TIMER_stop(TIMER_FORCES);
+
 
   /* __NVCC__ TODO: remove */
 

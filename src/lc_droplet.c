@@ -26,7 +26,6 @@
 #include "coords.h"
 #include "blue_phase.h"
 #include "symmetric.h"
-#include "hydro_s.h" 
 #include "kernel.h"
 #include "lc_droplet.h"
 

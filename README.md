@@ -3,7 +3,7 @@
 
 A lattice Boltzmann code for complex fluids
 
-[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=develop)](https://travis-ci.com/ludwig-cf/ludwig)
+[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=master)](https://travis-ci.com/ludwig-cf/ludwig)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1998/badge)](https://bestpractices.coreinfrastructure.org/projects/1998)
 
 

@@ -12,7 +12,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -178,6 +178,8 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
   }
   else {
 
+    size_t nsz = (size_t) NVEL*lb->nsite*lb->ndist*sizeof(double);
+
     assert(lb->target);
 
     tdpMemcpy(&tmpf, &lb->target->f, sizeof(double *), tdpMemcpyDeviceToHost);
@@ -187,10 +189,10 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
       tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag); 
       tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag); 
       tdpMemcpy(&lb->target->model, &lb->model, sizeof(int), flag);
-      tdpMemcpy(tmpf, lb->f, NVEL*lb->nsite*lb->ndist*sizeof(double), flag);
+      tdpMemcpy(tmpf, lb->f, nsz, flag);
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(lb->f, tmpf, NVEL*lb->nsite*lb->ndist*sizeof(double), flag);
+      tdpMemcpy(lb->f, tmpf, nsz, flag);
       break;
     default:
       pe_fatal(lb->pe, "Bad flag in lb_memcpy\n");
@@ -664,6 +666,33 @@ static int lb_set_displacements(lb_t * lb, int ndisp, MPI_Aint * disp,
       disp[n*nbasic + p] = disp1 - disp0;
     }
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_info_commit
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
+
+  io_implementation_t impl = {0};
+
+  assert(lb);
+  assert(lb->io_info == NULL);
+
+  sprintf(impl.name, "%1d x Distribution: d%dq%d", lb->ndist, NDIM, NVEL);
+
+  impl.write_ascii     = lb_f_write_ascii;
+  impl.read_ascii      = lb_f_read_ascii;
+  impl.write_binary    = lb_f_write;
+  impl.read_binary     = lb_f_read;
+  impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
+  impl.bytesize_binary = lb->ndist*NVEL*sizeof(double);
+
+  io_info_create_impl(lb->pe, lb->cs, args, impl, &lb->io_info);
 
   return 0;
 }

@@ -4,13 +4,13 @@
  *
  *  Runtime input interface.
  *
- *  $Id: runtime.h,v 1.3 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2020 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -32,5 +32,6 @@ int rt_double_parameter_vector(rt_t * rt, const char * key, double value[3]);
 int rt_string_parameter(rt_t * rt, const char * key, char * s, unsigned  int len);
 int rt_switch(rt_t * rt, const char * key);
 int rt_active_keys(rt_t * rt, int * nactive);
+int rt_add_key_value(rt_t * rt, const char * key, const char * value);
 
 #endif

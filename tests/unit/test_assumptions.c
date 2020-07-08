@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2019 The University of Edinburgh 
+ *  (c) 2008-2020 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
+#include <string.h>
 #include <assert.h>
 
 #include "mpi.h"
@@ -41,6 +42,8 @@ int test_macro_abuse(void);
 int test_assumptions_suite(void) {
 
   double pi;
+  char s0[BUFSIZ] = {};
+  char s1[BUFSIZ] = {0};
   PI_DOUBLE(pi_);
 
   /*
@@ -95,6 +98,10 @@ int test_assumptions_suite(void) {
   test_pe_fenv();
   test_util();
   test_macro_abuse();
+
+  /* Initialised string buffers have length zero */
+  assert(strlen(s0) == 0);
+  assert(strlen(s1) == 0);
 
 
   /* Information */

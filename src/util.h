@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk) 
@@ -65,5 +65,7 @@ __host__ int util_matrix_invert(int n, double ** a);
 __host__ int util_random_unit_vector(int * state, double rhat[3]);
 __host__ int util_ranlcg_reap_uniform(int * state, double * r);
 __host__ int util_ranlcg_reap_gaussian(int * state, double r[2]);
+
+__host__ int util_str_tolower(char * str, size_t maxlen);
 
 #endif
