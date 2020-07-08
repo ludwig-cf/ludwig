@@ -1350,7 +1350,6 @@ __host__ int util_str_tolower(char * str, size_t maxlen) {
   if (maxlen < nlen) nlen = maxlen;
 
   for (n = 0; n < nlen; n++) {
-    /* if (str[n] < 'A' || str[n] > 'Z') continue;*/
     str[n] = tolower(str[n]);
   }
 
