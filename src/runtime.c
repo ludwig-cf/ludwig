@@ -180,6 +180,44 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
 
 /*****************************************************************************
  *
+ *  rt_add_key_value
+ *
+ *  Add an extra key value pair (useful for testing)
+ *
+ *****************************************************************************/
+
+int rt_add_key_value(rt_t * rt, const char * key, const char * value) {
+
+  int nline = 0;
+  int added = 0;
+
+  assert(rt);
+  assert(key);
+  assert(value);
+
+  /* Form a new line with a space between key and value */
+
+  nline = rt->nkeys + 1;
+
+  if (strlen(key) + strlen(value) >= NKEY_LENGTH - 2) {
+    /* avoid buffer overflow */
+  }
+  else {
+    char line[NKEY_LENGTH];
+    sprintf(line, "%s %s", key, value);
+
+    if (rt_is_valid_key_pair(rt, line, nline)) {
+      rt_add_key_pair(rt, line, nline);
+      rt->nkeys += 1;
+      added = 1;
+    }
+  }
+
+  return added;
+}
+
+/*****************************************************************************
+ *
  *  rt_info
  *
  *****************************************************************************/
