@@ -72,7 +72,15 @@ See `CONTRIBUTING.md` for further details of testing and
 development.
 
 
+#### Attribution
+
+[![DOI](https://zenodo.org/badge/137508275.svg)](https://zenodo.org/badge/latestdoi/137508275)
+
+Please consider using the appropriate DOI as a reference if you use Ludwig in
+your publications.
+
 #### Help
+
 
 For bug reports, problems, and other issues, please open a new issue.
 
