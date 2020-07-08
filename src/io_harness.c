@@ -918,7 +918,6 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
   if (obj->metadata_written == 0) io_write_metadata(obj);
 
   cs_nlocal(obj->cs, nlocal);
-  /* io_set_group_filename(filename_io, filename_stub, obj);*/
   sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
 
   itemsz = obj->bytesize;
