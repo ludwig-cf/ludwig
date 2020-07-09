@@ -59,9 +59,9 @@
 
 #include "../src/util.h"
 
-const int version = 2;        /* Meta data version */
-                              /* 1 = older output files */
-                              /* 2 = current processor independent per file */
+const int default_version = 2; /* Meta data version */
+                               /* 1 = older output files */
+                               /* 2 = current processor independent per file */
 
 typedef enum vtk_enum {VTK_SCALARS, VTK_VECTORS} vtk_enum_t;
 typedef struct metadata_v1_s metadata_v1_t;
@@ -142,6 +142,7 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 int main(int argc, char ** argv) {
 
   int optind;
+  int version = default_version;
   metadata_v1_t metadata = {0};
 
   MPI_Init(&argc, &argv);
