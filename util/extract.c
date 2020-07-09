@@ -856,6 +856,7 @@ void le_unroll(metadata_v1_t * meta, double * data) {
 
   int ic, jc, kc, n;
   int j0, j1, j2, j3, jdy;
+  size_t ntmp;
   double * buffer;
   double dy, fr;
   double du[3];
@@ -864,7 +865,8 @@ void le_unroll(metadata_v1_t * meta, double * data) {
 
   /* Allocate the temporary buffer */
 
-  buffer = (double *) calloc(nrec_*ntargets[1]*ntargets[2], sizeof(double));
+  ntmp = nrec_*ntargets[1]*ntargets[2];
+  buffer = (double *) calloc(ntmp, sizeof(double));
   if (buffer == NULL) {
     printf("malloc(buffer) failed\n");
     exit(-1);
