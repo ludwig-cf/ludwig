@@ -47,7 +47,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Oliver Henrich  (oliver.henrich@strath.ac.uk)
  *
- *  (c) 2011-2019 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  ****************************************************************************/
 
@@ -64,16 +64,24 @@ const int version = 2;        /* Meta data version */
                               /* 2 = current processor independent per file */
 
 typedef enum vtk_enum {VTK_SCALARS, VTK_VECTORS} vtk_enum_t;
+typedef struct metadata_v1_s metadata_v1_t;
 
-int nlocal[3];
-int rank, cx, cy, cz, nlx, nly, nlz, nox, noy, noz;
+struct metadata_v1_s {
+  char stub[BUFSIZ/2];         /* file stub */
+  int nrbyte;                  /* byte per record */
+  int is_bigendean;            /* flag */
+  int npe;                     /* comm sz */
+  int pe[3];                   /* mpi cart size */
+  int coords[3];               /* mpi cart coords */
+  int ntotal[3];               /* ntotal */
+  int nlocal[3];               /* nlocal */
+  int nplanes;                 /* number of le planes */
+  int offset[3];               /* noffset CHECK */
+  int nio;                     /* number of io groups (files) */
+};
 
-int ntotal[3];
-int ntargets[3]; /* Output target */
+int ntargets[3];               /* Output target */
 int io_size[3];                /* I/O decomposition */
-int pe_[3];
-int nplanes_ = 0;
-int nio_;
 int nrec_ = 1;
 int input_isbigendian_ = -1;   /* May need to deal with endianness */
 int reverse_byte_order_ = 0;   /* Switch for bigendian input */
@@ -97,13 +105,11 @@ double le_displace_ = 0.0;
 double * le_displacements_;
 double * le_duy_;
 
-char stub_[FILENAME_MAX/2];
+int extract_driver(const char * filename, metadata_v1_t * meta, int version);
+int read_version1(int ntime, metadata_v1_t * m, double * datasection);
+int read_version2(int ntime, metadata_v1_t * m, double * datasection);
 
-int extract_driver(const char * filename, int version);
-int read_version1(int ntime, int nlocal[3], double * datasection);
-int read_version2(int ntime, int nlocal[3], double * datasection);
-
-void read_meta_data_file(const char *);
+void read_meta_data_file(const char *, metadata_v1_t * metadata);
 int  read_data_file_name(const char *);
 
 int write_data(FILE * fp, int n[3], int nrec0, int nrec, double * data);
@@ -114,15 +120,15 @@ int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data);
 int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
 
 int site_index(int, int, int, const int *);
-void read_data(FILE *, int *, double *);
+void read_data(FILE *, metadata_v1_t * meta, double *);
 int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
 		     vtk_enum_t vtk);
 int write_qab_vtk(int ntime, int ntargets[3], double * datasection);
 
-int copy_data(double *, double *);
-int le_displacement(int, int);
-void le_set_displacements(void);
-void le_unroll(double *);
+int copy_data(metadata_v1_t * metadata, double *, double *);
+int le_displacement(int ntotal[3], int, int);
+void le_set_displacements(metadata_v1_t * meta);
+void le_unroll(metadata_v1_t * meta, double *);
 
 int lc_transform_q5(int * nlocal, double * datasection);
 int lc_compute_scalar_ops(double q[3][3], double qs[5]);
@@ -136,6 +142,7 @@ int lc_compute_scalar_ops(double q[3][3], double qs[5]);
 int main(int argc, char ** argv) {
 
   int optind;
+  metadata_v1_t metadata = {0};
 
   MPI_Init(&argc, &argv);
 
@@ -178,9 +185,9 @@ int main(int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
-  read_meta_data_file(argv[optind]);
+  read_meta_data_file(argv[optind], &metadata);
 
-  extract_driver(argv[optind+1], version);
+  extract_driver(argv[optind+1], &metadata, version);
 
   MPI_Finalize();
 
@@ -193,7 +200,7 @@ int main(int argc, char ** argv) {
  *
  *****************************************************************************/
 
-int extract_driver(const char * filename, int version) {
+int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
   int ntime;
   int i, n;
@@ -213,12 +220,12 @@ int extract_driver(const char * filename, int version) {
   switch (version) {
   case 1:
     for (i = 0; i < 3; i++) {
-      nlocal[i] = ntotal[i]/pe_[i];
+     meta->nlocal[i] = meta->ntotal[i]/meta->pe[i];
     }
     break;
   case 2:
     for (i = 0; i < 3; i++) {
-      nlocal[i] = ntotal[i]/io_size[i];
+      meta->nlocal[i] = meta->ntotal[i]/io_size[i];
     }
     break;
   default:
@@ -228,7 +235,7 @@ int extract_driver(const char * filename, int version) {
   /* No. sites in the target section (always original at moment) */
 
   for (i = 0; i < 3; i++) {
-    ntargets[i] = ntotal[i];
+    ntargets[i] = meta->ntotal[i];
   }
  
   n = nrec_*ntargets[0]*ntargets[1]*ntargets[2];
@@ -237,26 +244,26 @@ int extract_driver(const char * filename, int version) {
 
   /* LE displacements as function of x */
   le_displace_ = le_speed_*(double) (ntime - le_t0_);
-  le_displacements_ = (double *) malloc(ntotal[0]*sizeof(double));
-  le_duy_ = (double *) malloc(ntotal[0]*sizeof(double));
+  le_displacements_ = (double *) malloc(meta->ntotal[0]*sizeof(double));
+  le_duy_ = (double *) malloc(meta->ntotal[0]*sizeof(double));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
   if (le_duy_ == NULL) printf("malloc(le_duy_) failed\n");
-  le_set_displacements();
+  le_set_displacements(meta);
 
-  /* Read data file or files */
+  /* Read data file or files (version 2 uses v1 meta data for time being) */
 
-  if (version == 1) read_version1(ntime, nlocal, datasection);
-  if (version == 2) read_version2(ntime, nlocal, datasection);
+  if (version == 1) read_version1(ntime, meta, datasection);
+  if (version == 2) read_version2(ntime, meta, datasection);
 
   /* Unroll the data if Lees Edwards planes are present */
 
-  if (nplanes_ > 0) {
+  if (meta->nplanes > 0) {
     printf("Unrolling LE planes from centre (displacement %f)\n",
 	   le_displace_);
-    le_unroll(datasection);
+    le_unroll(meta, datasection);
   }
 
-  if (nrec_ == 5 && strncmp(stub_, "q", 1) == 0) {
+  if (nrec_ == 5 && strncmp(meta->stub, "q", 1) == 0) {
 
     if (output_vtk_ == 1) {
       /* We mandate this is the transformed Q_ab */
@@ -285,7 +292,7 @@ int extract_driver(const char * filename, int version) {
       fclose(fp_data);
     }
   }
-  else if (nrec_ == 3 && strncmp(stub_, "fed", 3) == 0) {
+  else if (nrec_ == 3 && strncmp(meta->stub, "fed", 3) == 0) {
     /* Require a more robust method to identify free energy densities */
     assert(0); /* Requires an update */
   }
@@ -294,7 +301,7 @@ int extract_driver(const char * filename, int version) {
 
     /* Write a single file with the final section */
 
-    sprintf(io_data, "%s-%8.8d", stub_, ntime);
+    sprintf(io_data, "%s-%8.8d", meta->stub, ntime);
 
     if (output_vtk_ == 1) {
 
@@ -303,17 +310,17 @@ int extract_driver(const char * filename, int version) {
       if (fp_data == NULL) printf("fopen(%s) failed\n", io_data);
       printf("\nWriting result to %s\n", io_data);
 
-      if (nrec_ == 3 && strncmp(stub_, "vel", 3) == 0) {
+      if (nrec_ == 3 && strncmp(meta->stub, "vel", 3) == 0) {
 	write_vtk_header(fp_data, nrec_, ntargets, "velocity_field",
 			 VTK_VECTORS);
       }
-      else if (nrec_ == 1 && strncmp(stub_, "phi", 3) == 0) {
+      else if (nrec_ == 1 && strncmp(meta->stub, "phi", 3) == 0) {
 	write_vtk_header(fp_data, nrec_, ntargets, "composition",
 			 VTK_SCALARS);
       }
       else {
 	/* Assume scalars */
-	write_vtk_header(fp_data, nrec_, ntargets, stub_, VTK_SCALARS);
+	write_vtk_header(fp_data, nrec_, ntargets, meta->stub, VTK_SCALARS);
       }
 
     }
@@ -344,7 +351,7 @@ int extract_driver(const char * filename, int version) {
  *
  *****************************************************************************/
 
-int read_version2(int ntime, int nlocal[3], double * datasection) {
+int read_version2(int ntime, metadata_v1_t * meta, double * datasection) {
 
   int n;
   char io_data[BUFSIZ];
@@ -352,7 +359,10 @@ int read_version2(int ntime, int nlocal[3], double * datasection) {
   double * datalocal = NULL;
   FILE * fp_data = NULL;
 
-  n = nrec_*nlocal[0]*nlocal[1]*nlocal[2];
+  assert(meta);
+  assert(datasection);
+
+  n = nrec_*meta->nlocal[0]*meta->nlocal[1]*meta->nlocal[2];
   datalocal = (double *) calloc(n, sizeof(double));
   if (datalocal == NULL) {
     printf("calloc(datalocal) failed\n");
@@ -361,11 +371,11 @@ int read_version2(int ntime, int nlocal[3], double * datasection) {
 
   /* Main loop */
 
-  for (n = 1; n <= nio_; n++) {
+  for (n = 1; n <= meta->nio; n++) {
 
     /* Open the current data file */
 
-    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", stub_, ntime, nio_, n);
+    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", meta->stub, ntime, meta->nio, n);
     printf("-> %s\n", io_data);
 
     fp_data = fopen(io_data, "r+b");
@@ -374,11 +384,8 @@ int read_version2(int ntime, int nlocal[3], double * datasection) {
     /* Read data file based on offsets recorded in the metadata,
      * then copy this section to the global array */
 
-    nlx = nlocal[0]; nly = nlocal[1]; nlz = nlocal[2];
-    nox = 0; noy = 0; noz = 0;
-
-    read_data(fp_data, nlocal, datalocal);
-    copy_data(datalocal, datasection);
+    read_data(fp_data, meta, datalocal);
+    copy_data(meta, datalocal, datasection);
 
     fclose(fp_data);
   }
@@ -395,11 +402,12 @@ int read_version2(int ntime, int nlocal[3], double * datasection) {
  *
  *****************************************************************************/
 
-int read_version1(int ntime, int nlocal[3], double * datasection) {
+int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
 
   int ifail;
   int n;
   int p, pe_per_io;
+  int rank;
   char io_metadata[BUFSIZ];
   char io_data[BUFSIZ];
   char line[BUFSIZ];
@@ -409,11 +417,11 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
   FILE * fp_metadata = NULL;
   FILE * fp_data = NULL;
 
-  pe_per_io = pe_[0]*pe_[1]*pe_[2]/nio_;
+  pe_per_io = meta->pe[0]*meta->pe[1]*meta->pe[2]/meta->nio;
 
   /* Allocate storage */
 
-  n = nrec_*nlocal[0]*nlocal[1]*nlocal[2];
+  n = nrec_*meta->nlocal[0]*meta->nlocal[1]*meta->nlocal[2];
   datalocal = (double *) calloc(n, sizeof(double));
   if (datalocal == NULL) {
     printf("calloc(datalocal) failed\n");
@@ -422,12 +430,12 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
 
   /* Main loop */
 
-  for (n = 1; n <= nio_; n++) {
+  for (n = 1; n <= meta->nio; n++) {
 
     /* Open metadata file and skip 12 lines to get to the
      * decomposition inofmration */
 
-    sprintf(io_metadata, "%s.%3.3d-%3.3d.meta", stub_, nio_, n);
+    sprintf(io_metadata, "%s.%3.3d-%3.3d.meta", meta->stub, meta->nio, n);
     printf("Reading metadata file ... %s ", io_metadata);
 
     fp_metadata = fopen(io_metadata, "r");
@@ -441,7 +449,7 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
 
     /* Open the current data file */
 
-    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", stub_, ntime, nio_, n);
+    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", meta->stub, ntime, meta->nio, n);
     printf("-> %s\n", io_data);
 
     fp_data = fopen(io_data, "r+b");
@@ -453,11 +461,14 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
     for (p = 0; p < pe_per_io; p++) {
 
       ifail = fscanf(fp_metadata, "%d %d %d %d %d %d %d %d %d %d",
-		     &rank, &cx, &cy, &cz, &nlx, &nly, &nlz, &nox, &noy, &noz);
+		     &rank,
+		     &meta->coords[0], &meta->coords[1], &meta->coords[2],
+		     &meta->ntotal[0], &meta->ntotal[1], &meta->ntotal[2],
+		     &meta->offset[0], &meta->offset[1], &meta->offset[2]);
       assert(ifail == 10);
 
-      read_data(fp_data, nlocal, datalocal);
-      copy_data(datalocal, datasection);
+      read_data(fp_data, meta, datalocal);
+      copy_data(meta, datalocal, datasection);
     }
 
     fclose(fp_data);
@@ -477,14 +488,17 @@ int read_version1(int ntime, int nlocal[3], double * datasection) {
  *
  ****************************************************************************/
 
-void read_meta_data_file(const char * filename) {
+void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
 
-  int npe, nrbyte;
+  int nrbyte;
   int ifail;
   char tmp[FILENAME_MAX];
   char * p;
   FILE * fp_meta;
   const int ncharoffset = 33;
+
+  assert(filename);
+  assert(meta);
 
   fp_meta = fopen(filename, "r");
   if (fp_meta == NULL) {
@@ -494,9 +508,9 @@ void read_meta_data_file(const char * filename) {
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%s\n", stub_);
+  ifail = sscanf(tmp+ncharoffset, "%s\n", meta->stub);
   assert(ifail == 1);
-  printf("Read stub: %s\n", stub_);
+  printf("Read stub: %s\n", meta->stub);
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
 
@@ -529,29 +543,32 @@ void read_meta_data_file(const char * filename) {
 
   p =  fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%d\n", &npe);
+  ifail = sscanf(tmp+ncharoffset, "%d\n", &meta->npe);
   assert(ifail == 1);
-  printf("Total number of processors %d\n", npe);
+  printf("Total number of processors %d\n", meta->npe);
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%d %d %d", pe_, pe_+1, pe_+2);
+  ifail = sscanf(tmp+ncharoffset, "%d %d %d",
+		 &meta->pe[0], &meta->pe[1], &meta->pe[2]);
   assert(ifail == 3);
-  printf("Decomposition is %d %d %d\n", pe_[0], pe_[1], pe_[2]);
-  assert(npe == pe_[0]*pe_[1]*pe_[2]);
+  printf("Decomposition is %d %d %d\n", meta->pe[0], meta->pe[1], meta->pe[2]);
+  assert(meta->npe == meta->pe[0]*meta->pe[1]*meta->pe[2]);
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%d %d %d", ntotal, ntotal+1, ntotal+2);
+  ifail = sscanf(tmp+ncharoffset, "%d %d %d",
+		 &meta->ntotal[0], &meta->ntotal[1], &meta->ntotal[2]);
   assert(ifail == 3);
-  printf("System size is %d %d %d\n", ntotal[0], ntotal[1], ntotal[2]);
+  printf("System size is %d %d %d\n",
+	 meta->ntotal[0], meta->ntotal[1], meta->ntotal[2]);
 
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%d", &nplanes_);
+  ifail = sscanf(tmp+ncharoffset, "%d", &meta->nplanes);
   assert(ifail == 1);
-  assert(nplanes_ >= 0);
-  printf("Number of Lees Edwards planes %d\n", nplanes_);
+  assert(meta->nplanes >= 0);
+  printf("Number of Lees Edwards planes %d\n", meta->nplanes);
   p =  fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%lf", &le_speed_);
@@ -561,9 +578,9 @@ void read_meta_data_file(const char * filename) {
   /* Number of I/O groups */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
-  ifail = sscanf(tmp+ncharoffset, "%d", &nio_);
+  ifail = sscanf(tmp+ncharoffset, "%d", &meta->nio);
   assert(ifail == 1);
-  printf("Number of I/O groups: %d\n", nio_);
+  printf("Number of I/O groups: %d\n", meta->nio);
   /* I/O decomposition */
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   if (p == NULL) printf("Not reached last line correctly\n");
@@ -598,7 +615,7 @@ int read_data_file_name(const char * filename) {
 
   int ntime = -1;
   const char * tmp;
-  
+
   tmp = strchr(filename, '-');
   if (tmp) {
     sscanf(tmp+1, "%d.", &ntime);
@@ -616,23 +633,23 @@ int read_data_file_name(const char * filename) {
  *
  ****************************************************************************/
 
-int copy_data(double * datalocal, double * datasection) {
+int copy_data(metadata_v1_t * meta, double * datalocal, double * datasection) {
 
   int ic, jc, kc, ic_g, jc_g, kc_g;
   int index_l, index_s, nr;
 
   /* Sweep through the local sites for this pe */
 
-  for (ic = 1; ic <= nlocal[0]; ic++) {
-    ic_g = nox + ic;
-    for (jc = 1; jc <= nlocal[1]; jc++) {
-      jc_g = noy + jc;
-      for (kc = 1; kc <= nlocal[2]; kc++) {
-	kc_g = noz + kc;
+  for (ic = 1; ic <= meta->nlocal[0]; ic++) {
+    ic_g = meta->offset[0] + ic;
+    for (jc = 1; jc <= meta->nlocal[1]; jc++) {
+      jc_g = meta->offset[1] + jc;
+      for (kc = 1; kc <= meta->nlocal[2]; kc++) {
+	kc_g = meta->offset[2] + kc;
 	index_s = nrec_*site_index(ic_g, jc_g, kc_g, ntargets);
 
 	for (nr = 0; nr < nrec_; nr++) {
-	  index_l = nrec_*site_index(ic, jc, kc, nlocal);
+	  index_l = nrec_*site_index(ic, jc, kc, meta->nlocal);
 	  *(datasection + index_s + nr) = *(datalocal + index_l + nr);
 	}
       }
@@ -650,19 +667,20 @@ int copy_data(double * datalocal, double * datasection) {
  *
  ****************************************************************************/
 
-void read_data(FILE * fp_data, int n[3], double * data) {
+void read_data(FILE * fp_data, metadata_v1_t * meta, double * data) {
 
   int ic, jc, kc, index, nr;
   int nread;
   double phi;
   double revphi;
 
+  assert(meta);
 
   if (input_binary_) {
-    for (ic = 1; ic <= n[0]; ic++) {
-      for (jc = 1; jc <= n[1]; jc++) {
-	for (kc = 1; kc <= n[2]; kc++) {
-	  index = site_index(ic, jc, kc, nlocal);
+    for (ic = 1; ic <= meta->nlocal[0]; ic++) {
+      for (jc = 1; jc <= meta->nlocal[1]; jc++) {
+	for (kc = 1; kc <= meta->nlocal[2]; kc++) {
+	  index = site_index(ic, jc, kc, meta->nlocal);
 
 	  for (nr = 0; nr < nrec_; nr++) {
 	    nread = fread(&phi, sizeof(double), 1, fp_data);
@@ -678,10 +696,10 @@ void read_data(FILE * fp_data, int n[3], double * data) {
     }
   }
   else {
-    for (ic = 1; ic <= n[0]; ic++) {
-      for (jc = 1; jc <= n[1]; jc++) {
-	for (kc = 1; kc <= n[2]; kc++) {
-	  index = site_index(ic, jc, kc, nlocal);
+    for (ic = 1; ic <= meta->nlocal[0]; ic++) {
+      for (jc = 1; jc <= meta->nlocal[1]; jc++) {
+	for (kc = 1; kc <= meta->nlocal[2]; kc++) {
+	  index = site_index(ic, jc, kc, meta->nlocal);
 
 	  for (nr = 0; nr < nrec_; nr++) {
 	    nread = fscanf(fp_data, "%le", data + nrec_*index + nr);
@@ -741,7 +759,7 @@ int write_data_cmf(FILE * fp_data, int n[3], int nr0, int nr, double * data) {
  *
  ****************************************************************************/
 
-int le_displacement(int ic, int jc) {
+int le_displacement(int ntotal[3], int ic, int jc) {
 
     int dj;
 
@@ -760,23 +778,23 @@ int le_displacement(int ic, int jc) {
  *
  ****************************************************************************/
 
-void le_set_displacements() {
+void le_set_displacements(metadata_v1_t * meta) {
 
   int ic;
   int di;
   double dy;
   double duy;
 
-  for (ic = 0; ic < ntotal[0]; ic++) {
+  for (ic = 0; ic < meta->ntotal[0]; ic++) {
     le_displacements_[ic] = 0.0;
     le_duy_[ic] = 0.0;
   }
 
-  if (nplanes_ > 0) {
+  if (meta->nplanes > 0) {
 
-    di = ntotal[0] / nplanes_;
-    dy = -(nplanes_/2.0)*le_displace_;
-    duy = -(nplanes_/2.0)*le_speed_;
+    di = meta->ntotal[0] / meta->nplanes;
+    dy = -(meta->nplanes/2.0)*le_displace_;
+    duy = -(meta->nplanes/2.0)*le_speed_;
 
     /* Fist half block */
     for (ic = 1; ic <= di/2; ic++) {
@@ -786,7 +804,7 @@ void le_set_displacements() {
 
     dy += le_displace_;
     duy += le_speed_;
-    for (ic = di/2 + 1; ic <= ntotal[0] - di/2; ic++) {
+    for (ic = di/2 + 1; ic <= meta->ntotal[0] - di/2; ic++) {
       le_displacements_[ic-1] = dy;
       le_duy_[ic-1] = duy;
       if ( (ic - di/2) % di == 0 ) {
@@ -796,7 +814,7 @@ void le_set_displacements() {
     }
 
     /* Last half block */
-    for (ic = ntotal[0] - di/2 + 1; ic <= ntotal[0]; ic++) {
+    for (ic = meta->ntotal[0] - di/2 + 1; ic <= meta->ntotal[0]; ic++) {
       le_displacements_[ic-1] = dy;
       le_duy_[ic-1] = duy;
     }
@@ -834,13 +852,15 @@ int site_index(int ic, int jc, int kc, const int n[3]) {
  *
  *****************************************************************************/
 
-void le_unroll(double * data) {
+void le_unroll(metadata_v1_t * meta, double * data) {
 
   int ic, jc, kc, n;
   int j0, j1, j2, j3, jdy;
   double * buffer;
   double dy, fr;
   double du[3];
+
+  assert(meta);
 
   /* Allocate the temporary buffer */
 
@@ -861,10 +881,10 @@ void le_unroll(double * data) {
     if (is_velocity_) du[1] = le_duy_[ic-1];
 
     for (jc = 1; jc <= ntargets[1]; jc++) {
-      j0 = 1 + (jc - jdy - 3 + 1000*ntotal[1]) % ntotal[1];
-      j1 = 1 + j0 % ntotal[1];
-      j2 = 1 + j1 % ntotal[1];
-      j3 = 1 + j2 % ntotal[1];
+      j0 = 1 + (jc - jdy - 3 + 1000*meta->ntotal[1]) % meta->ntotal[1];
+      j1 = 1 + j0 % meta->ntotal[1];
+      j2 = 1 + j1 % meta->ntotal[1];
+      j3 = 1 + j2 % meta->ntotal[1];
 
       for (kc = 1; kc <= ntargets[2]; kc++) {
 	for (n = 0; n < nrec_; n++) {
