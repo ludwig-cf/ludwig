@@ -58,7 +58,7 @@ int stats_turbulent_create(pe_t * pe, cs_t * cs, stats_turb_t ** pobj) {
 
   cs_nlocal(cs, nlocal);
 
-  ntmp = nlocal[X]*nlocal[Z];
+  ntmp = (size_t) nlocal[X]*nlocal[Z];
   obj->ubar = (double *) malloc(3*ntmp*sizeof(double));
   if (obj->ubar == NULL) pe_fatal(pe, "malloc(ubar_) failed\n");
 
@@ -254,7 +254,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   cs_cart_comm(stat->cs, &comm);
   cs_cart_coords(stat->cs, mpi_cartcoords);
 
-  ntmp = nlocal[X]*nlocal[Z];
+  ntmp = (size_t) nlocal[X]*nlocal[Z];
   f1 = (double *) malloc(3*ntmp*sizeof(double));
   assert(f1);
   if (f1 == NULL) pe_fatal(stat->pe, "malloc(f1) failed\n");
