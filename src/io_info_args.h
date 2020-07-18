@@ -21,15 +21,15 @@
 #include "pe.h"
 #include "io_options_rt.h"
 
-typedef enum   io_info_rw_enum io_info_rw_enum_t;
-typedef struct io_info_args_s io_info_args_t;
-
 /* Specifies whether input or output is expected for given io type */
 
 enum io_info_rw_enum {IO_INFO_NONE,
 		      IO_INFO_READ_ONLY,
 		      IO_INFO_WRITE_ONLY,
 		      IO_INFO_READ_WRITE};
+
+typedef enum   io_info_rw_enum io_info_rw_enum_t;
+typedef struct io_info_args_s io_info_args_t;
 
 /* Container for run time arguments to allow io_info_t creation. */
 
