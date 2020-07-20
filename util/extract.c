@@ -466,7 +466,10 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
 		     &meta->coords[0], &meta->coords[1], &meta->coords[2],
 		     &meta->ntotal[0], &meta->ntotal[1], &meta->ntotal[2],
 		     &meta->offset[0], &meta->offset[1], &meta->offset[2]);
-      assert(ifail == 10);
+      if (ifail != 10) {
+	printf("Meta data rank ... not corrrect\n");
+	exit(-1);
+      }
 
       read_data(fp_data, meta, datalocal);
       copy_data(meta, datalocal, datasection);
@@ -510,7 +513,10 @@ void read_meta_data_file(const char * filename, metadata_v1_t * meta) {
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
   ifail = sscanf(tmp+ncharoffset, "%s\n", meta->stub);
-  assert(ifail == 1);
+  if (ifail != 1) {
+    printf("Meta data stub not read correctly\n");
+    exit(-1);
+  }
   printf("Read stub: %s\n", meta->stub);
   p = fgets(tmp, FILENAME_MAX, fp_meta);
   assert(p);
@@ -685,7 +691,7 @@ void read_data(FILE * fp_data, metadata_v1_t * meta, double * data) {
 
 	  for (nr = 0; nr < nrec_; nr++) {
 	    nread = fread(&phi, sizeof(double), 1, fp_data);
-	    assert(nread == 1);
+	    if (nread != 1) printf("File corrupted!\n");
 	    if(reverse_byte_order_){
 	       revphi = reverse_byte_order_double((char *) &phi); 
 	       phi = revphi;
@@ -704,7 +710,7 @@ void read_data(FILE * fp_data, metadata_v1_t * meta, double * data) {
 
 	  for (nr = 0; nr < nrec_; nr++) {
 	    nread = fscanf(fp_data, "%le", data + nrec_*index + nr);
-	    assert(nread == 1);
+	    if (nread != 1) printf("File corrupted!\n");
 	  }
 	}
       }
@@ -866,7 +872,7 @@ void le_unroll(metadata_v1_t * meta, double * data) {
 
   /* Allocate the temporary buffer */
 
-  ntmp = nrec_*ntargets[1]*ntargets[2];
+  ntmp = (size_t) nrec_*ntargets[1]*ntargets[2];
   buffer = (double *) calloc(ntmp, sizeof(double));
   if (buffer == NULL) {
     printf("malloc(buffer) failed\n");
@@ -967,7 +973,7 @@ int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
  *
  *****************************************************************************/
 
-int write_qab_vtk(int ntime, int ntargets[3], double * datasection) {
+int write_qab_vtk(int ntime, int ntarget[3], double * datasection) {
 
   char io_data[FILENAME_MAX];
   FILE * fp_data = NULL;
@@ -987,9 +993,9 @@ int write_qab_vtk(int ntime, int ntargets[3], double * datasection) {
 
     printf("Writing computed scalar order with vtk: %s\n", io_data);
 
-    write_vtk_header(fp_data, 1, ntargets, "Q_ab_scalar_order", VTK_SCALARS);
-    if (output_cmf_ == 0) write_data(fp_data, ntargets, 0, 1, datasection);
-    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 0, 1, datasection);
+    write_vtk_header(fp_data, 1, ntarget, "Q_ab_scalar_order", VTK_SCALARS);
+    if (output_cmf_ == 0) write_data(fp_data, ntarget, 0, 1, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntarget, 0, 1, datasection);
     fclose(fp_data);
   }
 
@@ -1007,9 +1013,9 @@ int write_qab_vtk(int ntime, int ntargets[3], double * datasection) {
 
     printf("Writing computed director with vtk: %s\n", io_data);
 
-    write_vtk_header(fp_data, 1, ntargets, "Q_ab_director", VTK_VECTORS);
-    if (output_cmf_ == 0) write_data(fp_data, ntargets, 1, 3, datasection);
-    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 1, 3, datasection);
+    write_vtk_header(fp_data, 1, ntarget, "Q_ab_director", VTK_VECTORS);
+    if (output_cmf_ == 0) write_data(fp_data, ntarget, 1, 3, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntarget, 1, 3, datasection);
     fclose(fp_data);
   }
 
@@ -1027,9 +1033,9 @@ int write_qab_vtk(int ntime, int ntargets[3], double * datasection) {
 
     printf("Writing computed biaxial order with vtk: %s\n", io_data);
 
-    write_vtk_header(fp_data, 1, ntargets, "Q_ab_biaxial_order", VTK_SCALARS);
-    if (output_cmf_ == 0) write_data(fp_data, ntargets, 4, 1, datasection);
-    if (output_cmf_ == 1) write_data_cmf(fp_data, ntargets, 4, 1, datasection);
+    write_vtk_header(fp_data, 1, ntarget, "Q_ab_biaxial_order", VTK_SCALARS);
+    if (output_cmf_ == 0) write_data(fp_data, ntarget, 4, 1, datasection);
+    if (output_cmf_ == 1) write_data_cmf(fp_data, ntarget, 4, 1, datasection);
     fclose(fp_data);
   }
 
