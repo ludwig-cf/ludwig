@@ -2,7 +2,7 @@
  *
  *  io_info_args.c
  *
- *  Default container values only.
+ *  Default container values.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -27,13 +27,10 @@
 
 __host__ io_info_args_t io_info_args_default(void) {
 
-  io_info_args_t args = {0};
-
-  args = (io_info_args_t) {.input   = io_options_default(),
-                           .output  = io_options_default(),
-                           .grid[0] = 1, .grid[1] = 1, .grid[2] = 1,
-                           .nfreq   = 100000};
-
+  io_info_args_t args = {.input  = io_options_default(),
+			 .output = io_options_default(),
+			 .grid   = {1, 1, 1},
+			 .nfreq  = 100000};
   return args;
 }
 
