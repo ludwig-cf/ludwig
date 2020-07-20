@@ -31,7 +31,7 @@
  *
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
- *  (c) 2008-2019 The University of Edinburgh
+ *  (c) 2008-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -81,17 +81,22 @@ const double sigma = 0.125;
  * must match those used in the main calculation. See Desplat et al.
  * Comp. Phys. Comm. (2001) for details. */
 
-const double kappa = 0.053;
-const double B = 0.0625;
-const double H = 0.00;
-const double C = 0.000;	// Following Desplat et al.
+typedef struct fe_symm_param_s fe_symm_param_t;
+
+struct fe_symm_param_s {
+  double a;      /* Free energy parameter A < 0 */
+  double b;      /* Free energy parameter B > 0 */
+  double kappa;  /* Free energy parameter */
+  double c;      /* Surface free energy C */
+  double h;      /* Surface free energy H */
+};
 
 /* WETTING */
 /* A section of capillary between z1 and z2 (inclusive) will have
  * wetting property H = H, the remainder H = 0 */
 
-const int z1 = 1;
-const int z2 = 36;
+const int z1_h = 1;
+const int z2_h = 36;
 
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
@@ -126,10 +131,10 @@ int main(int argc, char ** argv) {
   int nsolid = 0;
   int k_pic;
 
-  double * map_h; // for wetting coefficient H
-  double * map_c; // for additional wetting coefficient C
+  double * map_h;   /* for wetting coefficient H */
+  double * map_c;   /* for additional wetting coefficient C */
 
-  double * map_sig; // for (surface) charge
+  double * map_sig; /* for (surface) charge */
 
   double rc = 0.5*(xmax-2);
   double x0 = 0.5*xmax + 0.5;
@@ -145,15 +150,22 @@ int main(int argc, char ** argv) {
   FILE  * WriteFile;	
   char  file[800];
 
+  /* Some default values */
+  fe_symm_param_t fe = {.a =    -0.0625,
+                        .b =     0.0625,
+                        .kappa = 0.053,
+                        .c     = 0.0,
+                        .h     = 0.0};
+
   if (argc == 2) profile(argv[1]);
 
   if (output_type == STATUS_WITH_H || output_type == STATUS_WITH_C_H) {
 
     printf("Free energy parameters:\n");
-    printf("free energy parameter kappa = %f\n", kappa);
-    printf("free energy parameter B     = %f\n", B);
-    printf("surface free energy   H     = %f\n", H);
-    h = H*sqrt(1.0/(kappa*B));
+    printf("free energy parameter kappa = %f\n", fe.kappa);
+    printf("free energy parameter B     = %f\n", fe.b);
+    printf("surface free energy   H     = %f\n", fe.h);
+    h = fe.h*sqrt(1.0/(fe.kappa*fe.b));
     printf("dimensionless parameter h   = %f\n", h);
     h1 = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
     printf("dimensionless parameter h1=cos(theta)   = %f\n", h1);
@@ -211,9 +223,13 @@ int main(int argc, char ** argv) {
 
 	  if (map_in[n] == MAP_BOUNDARY) {
 	    nsolid++;
-	    if (k >= z1 && k <= z2) {
-	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (k >= z1_h && k <= z2_h) {
+	      if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	      if (output_type == STATUS_WITH_C_H) {
+		map_h[n] = fe.h;
+		map_c[n] = fe.c;
+	      }
+
 	      map_sig[n] = sigma;
 	    }
 	  }
@@ -245,9 +261,12 @@ int main(int argc, char ** argv) {
 
 	  if (map_in[n] == MAP_BOUNDARY) {
 	    nsolid++;
-	    if (k >= z1 && k <= z2) {
-	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-       	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (k >= z1_h && k <= z2_h) {
+	      if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+       	      if (output_type == STATUS_WITH_C_H) {
+		map_h[n] = fe.h;
+		map_c[n] = fe.c;
+	      }
 	      map_sig[n] = sigma;
 	    }
 	  }
@@ -273,8 +292,11 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
             map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	    if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -299,8 +321,13 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
             map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) {
+	      map_h[n] = fe.h;
+	    }
+	    if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    ++nsolid;
 	  }
 	  if (i == xmax - 1) {
@@ -477,8 +504,11 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
 	      map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+            if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -502,8 +532,11 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
 	      map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+            if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -666,7 +699,7 @@ static void profile(const char * filename) {
       for (kc = 0; kc < zmax; kc++) {
 	index = ic*zmax*ymax + jc*zmax + kc;
 	nread = fread(phi + index, sizeof(double), 1, fp);
-	assert(nread == 1);
+	if (nread != 1) printf("Read failed\n");
       }
     }
   }
@@ -696,7 +729,7 @@ static void profile(const char * filename) {
 	double h, dh;
 	h = -1.0;
 
-	for (kc = z1; kc <= z2; kc++) {
+	for (kc = z1_h; kc <= z2_h; kc++) {
 	  index = ic*zmax*ymax + jc*zmax + kc;
 	  if (phi[index] > 0.0 && phi[index+1] < 0.0) {
 	    /* Linear interpolation to get surface position */
