@@ -126,7 +126,7 @@ static int field_grad_init(field_grad_t * obj) {
 
   if (obj->level >= 4) {
     obj->grad_delsq = (double*) calloc(NVECTOR*nfsz, sizeof(double));
-    obj->delsq_delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
+    obj->delsq_delsq = (double*) calloc(nfsz, sizeof(double));
     if (obj->grad_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->grad_delsq)\n");
     if (obj->delsq_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->delsq_delsq) failed");
 
@@ -168,7 +168,7 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
   }
   else {
 
-    nsz = obj->nf*obj->nsite*sizeof(double);
+    nsz = (size_t) obj->nf*obj->nsite*sizeof(double);
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
