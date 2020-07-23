@@ -23,6 +23,7 @@
 #include <math.h>
 
 #include "target.h"
+#include "hip/hip_runtime_api.h"
 
 /*****************************************************************************
  *
@@ -172,7 +173,7 @@ __device__ double tdpAtomicBlockAddDouble(double * partsum) {
 
 __host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
 					 int line, int fatal) {
-#ifdef __CUDA_ARCH__
+#ifdef __HIPCC___
 
   if (ifail != tdpSuccess) {
     printf("Line %d (%s): %s %s\n", line, file, hipGetErrorName(ifail),
