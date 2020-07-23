@@ -25,6 +25,8 @@
 
 #ifdef __NVCC__
 #include "target_cuda.h"
+#elif __HIPCC__
+#include "target_hip.h"
 #else
 #include "target_x86.h"
 #endif
@@ -84,6 +86,7 @@ __host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
  * device symbols. */
 
 #ifdef __NVCC__
+#elif __HIPCC__
 #else
 __host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
 __host__ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,
