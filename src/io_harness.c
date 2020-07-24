@@ -958,7 +958,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
     io_buf = (char *) malloc(iosz*sizeof(char));
     if (io_buf == NULL) pe_fatal(obj->pe, "malloc(io_buf)\n");
 
-    rbuf = (char *) malloc(itemsz*obj->maxlocal*sizeof(char));
+    rbuf = (char *) malloc((size_t) itemsz*obj->maxlocal*sizeof(char));
     if (rbuf == NULL) pe_fatal(obj->pe, "malloc(rbuf)\n");
 
     /* Unpack own buffer to correct position in the io buffer, and
