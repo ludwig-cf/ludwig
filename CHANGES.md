@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.12.0
+- Various minor code quality improvements
+
 
 version 0.11.0
 - Add external chemical potential gradient in Cahn Hilliard for
