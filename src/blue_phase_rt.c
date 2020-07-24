@@ -115,7 +115,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   /* One-constant approximation enforced. */
   assert(fe_param.kappa0 == fe_param.kappa1);
 
-  fe_lc_param_set(fe, fe_param);
+  fe_lc_param_set(fe, &fe_param);
 
   fe_lc_chirality(fe, &ck);
   fe_lc_reduced_temperature(fe, &tred);
@@ -302,7 +302,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
     }
   }
 
-  fe_lc_param_set(fe, fe_param);
+  fe_lc_param_set(fe, &fe_param);
 
 
   /* Beris Edwards */
