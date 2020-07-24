@@ -692,7 +692,7 @@ __host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
   impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
   impl.bytesize_binary = lb->ndist*NVEL*sizeof(double);
 
-  io_info_create_impl(lb->pe, lb->cs, args, impl, &lb->io_info);
+  io_info_create_impl(lb->pe, lb->cs, args, &impl, &lb->io_info);
 
   return 0;
 }

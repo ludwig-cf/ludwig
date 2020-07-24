@@ -101,7 +101,8 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
  *****************************************************************************/
 
 __host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t args,
-				 io_implementation_t impl, io_info_t ** info) {
+				 const io_implementation_t * impl,
+				 io_info_t ** info) {
   io_info_t * p = NULL;
 
   assert(pe);
@@ -121,7 +122,7 @@ __host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t args,
   p->cs = cs;
 
   p->args = args;
-  p->impl = impl;
+  p->impl = *impl;
 
   io_decomposition_create(pe, cs, args.grid, &p->comm);
 
@@ -898,7 +899,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
   int ic, jc, kc, index;
   int nlocal[3];
   int itemsz;                      /* Data size per site (bytes) */
-  int iosz;                        /* Data size io_buf (bytes) */
+  size_t iosz;                     /* Data size io_buf (bytes) */
   int localsz;                     /* Data size local buffer (bytes) */
   char * buf = NULL;               /* Local buffer for this rank */
   char * io_buf = NULL;            /* I/O buffer for whole group */
@@ -953,7 +954,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
     /* I/O buff */
 
-    iosz = itemsz*obj->nsites;
+    iosz = (size_t) itemsz*obj->nsites;
     io_buf = (char *) malloc(iosz*sizeof(char));
     if (io_buf == NULL) pe_fatal(obj->pe, "malloc(io_buf)\n");
 
@@ -984,9 +985,9 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
     if (obj->io_comm->index > 0) {
       fp_state = fopen(filename_io, "r+");
-      offset = obj->io_comm->offset[X]*
-	       obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z];
-      fseek(fp_state, offset*itemsz, SEEK_SET);
+      offset = (long int) itemsz*
+	obj->io_comm->offset[X]*obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z];
+      fseek(fp_state, offset, SEEK_SET);
     }
 
     if (fp_state == NULL) {
@@ -1068,7 +1069,7 @@ int io_unpack_local_buf(io_info_t * obj, int mpi_sender, const char * buf,
       offset = ifo*obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z]
 	+ jfo*obj->io_comm->nsite[Z] + kfo;
 
-      memcpy(io_buf + itemsz*offset, buf + ib, itemsz*nsendlocal[Z]);
+      memcpy(io_buf + itemsz*offset, buf + ib, (size_t) itemsz*nsendlocal[Z]);
       ib += itemsz*nsendlocal[Z];
     }
   }
