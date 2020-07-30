@@ -515,7 +515,7 @@ __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
   int p;                   /* Outward going component of link velocity */
   double fp;               /* f = w_p (rho0 + (1/cs2) u_a c_pa) No sdotq */
   double ux = 0.0;         /* No initialisation */
-  const double rcs2 = 3.0; /* macro? */
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(wall);
   assert(lb);
@@ -584,7 +584,7 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
   __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
   __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
 
-  const double rcs2 = 3.0;
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(wall);
   assert(lb);
@@ -880,6 +880,8 @@ __host__ int wall_shear_init(wall_t * wall) {
   double uxbottom;
   double uxtop;
   double ltot[3];
+  LB_RCS2_DOUBLE(rcs2);
+
   physics_t * phys = NULL;
 
   assert(wall);
