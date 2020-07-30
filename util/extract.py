@@ -7,7 +7,16 @@
 #                                                                      #
 #  Requires executable 'extract' with corresponding flags set          #
 #
-#  Usage: $> python extract.py                                         #
+#  Usage: $> python extract.py [options]
+#
+#  Options:
+#    -v    velocity
+#    -p    Compositional order parameter phi
+#    -q    Q-tensor order parameter
+#    -e    psi
+#    -f    free energy density
+#    -y    colloid output
+#    -z    colloid velocity output
 #                                                                      #
 #  Edinburgh Soft Matter and Statistical Physics Group                 #
 #  Edinburgh Parallel Computing Centre                                 #
@@ -18,7 +27,7 @@
 #  Oliver Henrich  (oliver.henrich@strath.ac.uk)                       #
 #                                                                      #
 #
-#  (c) 2011-2018 The University of Edinburgh                           #
+#  (c) 2011-2020 The University of Edinburgh
 #                                                                      #
 ########################################################################
 
@@ -36,10 +45,10 @@ q=False		# Switch for Q-tensor
 phi=False	# Switch for binary fluid
 psi=False	# Switch for electrokinetics
 fed=False	# Switch for free energy
-colcds=0	# Switch for colloid coordinate
-colcdsvel=1	# Switch for colloid coordinate and lattice velocity
+colcds=False	# Switch for colloid coordinate
+colcdsvel=False	# Switch for colloid coordinate and lattice velocity
 
-opts, args = getopt.getopt(sys.argv[1:], "vqpef")
+opts, args = getopt.getopt(sys.argv[1:], "vqpefyz")
 for opt, arg in opts:
 	if (opt == "v"):
 		vel = True
@@ -51,6 +60,10 @@ for opt, arg in opts:
 		psi = True
 	elif (opt == "f"):
 		fed = True
+	elif (opt == "y"):
+		colcds = True
+	elif (opt == "z"):
+		colcdsvel = True
 	else:
 		sys.stdout.write("Bad argument\n")
 
@@ -146,9 +159,9 @@ for i in range(len(filelist)):
 			outputfilename1 = ('col-%s.csv' % stub[1])
 			outputfilename2 = ('velcol-%s.vtk' % stub[1])
 
-			if colcds==1:
+			if colcds:
 				os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename1))
-			if colcdsvel==1:
+			if colcdsvel:
 				os.system('./extract_colloids %s %d %s %s' % (datafilename,ngroup,outputfilename1,outputfilename2))	
 
 os.system('rm filelist*')
