@@ -1,7 +1,6 @@
-//#include "hip/hip_runtime.h"
 /****************************************************************************
  *
- *  target_cuda.h
+ *  target_hip.h
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
@@ -9,15 +8,13 @@
  * (c) 2018 The University of Edinburgh
  *
  *  Contributing authors:
- *  Alan Gray (alang@epcc.ed.ac.uk)
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
-#ifndef LUDWIG_TARGET_CUDA_H
-#define LUDWIG_TARGET_CUDA_H
+#ifndef LUDWIG_TARGET_HIP_H
+#define LUDWIG_TARGET_HIP_H
 
-#include "hip/hip_runtime_api.h"
+#include <hip/hip_runtime.h>
 
 typedef hipFuncCache_t tdpFuncCache;
 
@@ -61,7 +58,7 @@ typedef hipError_t tdpError_t;
         tdpAssert(hipMemcpyFromSymbol(dst, HIP_SYMBOL(symbol), count, offset, kind))
 
 #define	tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
-  hipLaunchKernelGGL(kernel, dim3(nblocks), dim3(nthreads), shmem, stream, __VA_ARGS__);
+  hipLaunchKernelGGL(kernel, nblocks, nthreads, shmem, stream, __VA_ARGS__);
 
 #define for_simt_parallel(index, ndata, stride) \
   index = (stride)*(blockIdx.x*blockDim.x + threadIdx.x); \
