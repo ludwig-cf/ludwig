@@ -28,12 +28,12 @@ include ../Makefile.mk
 else
 
 #CPU:
-CC=gcc
-CFLAGS=-O2 -Wall -fopenmp
+#CC=gcc
+#CFLAGS=-O2 -Wall -fopenmp
 
 #GPU
-#CC=nvcc
-#CFLAGS=-O2 -arch=sm_35 -x cu -dc
+CC=hipcc
+CFLAGS= -O2 -arch=sm_35 -x cu -dc
 
 endif
 
@@ -46,6 +46,10 @@ TARGETSRC = target_x86.c
 ifeq ($(CC),nvcc)
 TARGETSRC = target_cuda.c
 endif
+
+#ifeq ($(CC),hipcc)
+#TARGETSRC = target_hip.c
+#endif
 
 TARGETOBJ = ${TARGETSRC:.c=.o}
 
