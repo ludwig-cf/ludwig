@@ -23,10 +23,10 @@
 
 /* Implementation details */
 
-#ifdef __NVCC__
-#include "target_cuda.h"
-#elif __HIPCC__
+#ifdef __HIPCC__
 #include "target_hip.h"
+#elif __NVCC__
+#include "target_cuda.h"
 #else
 #include "target_x86.h"
 #endif
@@ -85,8 +85,7 @@ __host__ __device__ tdpError_t tdpMalloc(void ** devRtr, size_t size);
  * These are slightly awkward as there is never a host pointer to
  * device symbols. */
 
-#ifdef __NVCC__
-#elif __HIPCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 #else
 __host__ tdpError_t tdpGetSymbolAddress(void ** devPtr, const void * symbol);
 __host__ tdpError_t tdpMemcpyFromSymbol(void * dst, const void * symbol,

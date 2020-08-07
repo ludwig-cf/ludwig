@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  target_cuda.c
+ *  target_hip.c
  *
  *  CUDA implementation.
  *
@@ -10,8 +10,6 @@
  *  (c) 2019 The University of Edinburgh
  *
  *  Contributing authors:
- *  Alan Gray (alang@epcc.ed.ac.uk)
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -21,9 +19,8 @@
 #include <string.h>
 
 #include <math.h>
-
+#include <hip/hip_runtime.h>
 #include "target.h"
-#include "hip/hip_runtime_api.h"
 
 /*****************************************************************************
  *
@@ -173,20 +170,20 @@ __device__ double tdpAtomicBlockAddDouble(double * partsum) {
 
 __host__ __device__ void tdpErrorHandler(tdpError_t ifail, const char * file,
 					 int line, int fatal) {
-#ifdef __HIPCC___
+//#ifdef __HIPCC__
 
   if (ifail != tdpSuccess) {
     printf("Line %d (%s): %s %s\n", line, file, hipGetErrorName(ifail),
 	   hipGetErrorString(ifail));
     if (fatal) assert(0);
   }
-#else
-  if (ifail != tdpSuccess) {
-    fprintf(stderr, "Line %d (%s): %s: %s\n", line, file,
-	    hipGetErrorName(ifail), hipGetErrorString(ifail));
-    if (fatal) exit(ifail);
-  }
-#endif
+//#else
+//  if (ifail != tdpSuccess) {
+//    fprintf(stderr, "Line %d (%s): %s: %s\n", line, file,
+//	    hipGetErrorName(ifail), hipGetErrorString(ifail));
+//    if (fatal) exit(ifail);
+//  }
+//#endif
 
   return;
 }
