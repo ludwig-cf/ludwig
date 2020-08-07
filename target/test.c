@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <hip/hip_runtime.h>
 #include "target.h"
 
 #define NARRAY 132
