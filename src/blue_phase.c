@@ -151,6 +151,7 @@ __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   *pobj = fe;
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -176,6 +177,7 @@ __host__ int fe_lc_free(fe_lc_t * fe) {
   free(fe);
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -195,6 +197,7 @@ __host__ int fe_lc_target(fe_lc_t * fe, fe_t ** target) {
   *target = (fe_t *) fe->target;
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -227,6 +230,7 @@ __host__ int fe_lc_param_commit(fe_lc_t * fe) {
 		    0, tdpMemcpyHostToDevice);
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -257,6 +261,7 @@ __host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
   fe_lc_redshift_set(fe, fe->param->redshift);
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -273,6 +278,7 @@ __host__ __device__ int fe_lc_param(fe_lc_t * fe, fe_lc_param_t * vals) {
   *vals = *fe->param;
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -294,6 +300,7 @@ __host__ __device__ int fe_lc_fed(fe_lc_t * fe, int index, double * fed) {
   fe_lc_compute_fed(fe, fe->param->gamma, q, dq, fed);
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -398,6 +405,7 @@ __host__ __device__ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,
     - fe->param->epsilon*efield;
 
   return 0;
+
 }
 
 /*****************************************************************************
@@ -454,6 +462,7 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
 
 __host__ __device__ int fe_lc_str_symm(fe_lc_t * fe, int index,
 				       double s[3][3]) {
+ 
   int ia, ib, ic;
   double q[3][3];
   double h[3][3];
@@ -556,6 +565,7 @@ __host__ __device__ int fe_lc_compute_stress(fe_lc_t * fe, double q[3][3],
 					     double dq[3][3][3],
 					     double h[3][3],
 					     double sth[3][3]) {
+
   int ia, ib, ic, id, ie;
   double fed;
   double q0;
@@ -663,6 +673,7 @@ __host__ __device__ int fe_lc_compute_stress_active(fe_lc_t * fe,
 						    double q[3][3],
 						    double dp[3][3],
 						    double s[3][3]) {
+
   int ia, ib;
   KRONECKER_DELTA_CHAR(d);
 
@@ -703,6 +714,7 @@ __host__ __device__ int fe_lc_compute_stress_active(fe_lc_t * fe,
 
 __host__ __device__ int fe_lc_mol_field(fe_lc_t * fe, int index,
 					double h[3][3]) {
+
 
   double q[3][3];
   double dq[3][3][3];
@@ -1280,6 +1292,7 @@ __host__ int fe_lc_redshift_compute(cs_t * cs, fe_lc_t * fe) {
 __host__ int fe_lc_scalar_ops(double q[3][3], double qs[NQAB]) {
 
   int ifail;
+
   double eigenvalue[3];
   double eigenvector[3][3];
   double s, t;
@@ -1567,7 +1580,8 @@ __host__ __device__ void fe_lc_str_symm_v(fe_lc_t * fe, int index,
 
 __host__ __device__ void fe_lc_str_anti_v(fe_lc_t * fe, int index,
 			 		  double s[3][3][NSIMDVL]) {
-  assert(fe);
+
+ assert(fe);
 
   int ia, ib, iv;
   double s1[3][3];
@@ -1601,7 +1615,8 @@ void fe_lc_compute_fed_v(fe_lc_t * fe,
 			 double q[3][3][NSIMDVL], 
 			 double dq[3][3][3][NSIMDVL],
 			 double fed[NSIMDVL]) {
-  int iv;
+
+int iv;
   int ia, ib, ic;
 
   double q0;
@@ -1950,6 +1965,8 @@ void fe_lc_compute_h_v(fe_lc_t * fe,
   return;
 }
 
+
+
 /*****************************************************************************
  *
  *  fe_lc_compute_stress_v
@@ -1964,6 +1981,9 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 			    double dq[3][3][3][NSIMDVL],
 			    double h[3][3][NSIMDVL],
 			    double s[3][3][NSIMDVL]) {
+#ifdef __HIPCC__
+  assert(false && "Vectorisation for fe_lc_compute_stress is not supported by HIPCC");
+#else
   int ia, ib;
   int iv;
 
@@ -2056,6 +2076,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
   for_simd_v(iv, NSIMDVL) s[X][X][iv] = -sthtmp[iv];
 
 
+  
   for_simd_v(iv, NSIMDVL) sthtmp[iv] = 2.0*xi*(q[0][1][iv])*qh[iv];
 
   for_simd_v(iv, NSIMDVL) sthtmp[iv] += -xi*h[0][0][iv]*(q[1][0][iv])   -xi*(q[0][0][iv]    +r3)*h[1][0][iv];
@@ -2453,7 +2474,7 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   /* ZZ -ve sign */
   for_simd_v(iv, NSIMDVL) s[Z][Z][iv] = -sthtmp[iv];
-
+#endif
   return;
 }
 
