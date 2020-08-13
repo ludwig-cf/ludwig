@@ -46,9 +46,9 @@ ifeq ($(CC),nvcc)
 TARGETSRC = target_cuda.c
 endif
 
-#ifeq ($(CC),hipcc)
+ifeq ($(CC),hipcc)
 TARGETSRC = target_hip.c
-#endif
+endif
 
 TARGETOBJ = ${TARGETSRC:.c=.o}
 
