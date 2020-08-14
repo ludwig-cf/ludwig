@@ -33,7 +33,7 @@ else
 
 #GPU
 CC=hipcc
-CFLAGS= -O2 -dc 
+CFLAGS= -O2 -dc
 endif
 
 .SUFFIXES:

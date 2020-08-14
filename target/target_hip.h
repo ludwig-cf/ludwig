@@ -28,7 +28,7 @@ typedef hipDeviceAttribute_t tdpDeviceAttr;
 
 #define tdpDeviceProp hipDeviceProp_t
 
-#define tdpDevAttrManagedMemory cudaDevAttrManagedMemory
+#define tdpDevAttrManagedMemory (tdpDeviceAttr)83 //cudaDevAttrManagedMemory
 
 #define tdpSuccess hipSuccess
 #define tdpMemcpyHostToDevice hipMemcpyHostToDevice
