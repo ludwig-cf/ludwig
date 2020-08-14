@@ -1981,9 +1981,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 			    double dq[3][3][3][NSIMDVL],
 			    double h[3][3][NSIMDVL],
 			    double s[3][3][NSIMDVL]) {
-#ifdef __HIPCC__
-  assert(false && "Vectorisation for fe_lc_compute_stress is not supported by HIPCC");
-#else
   int ia, ib;
   int iv;
 
@@ -2474,7 +2471,6 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 
   /* ZZ -ve sign */
   for_simd_v(iv, NSIMDVL) s[Z][Z][iv] = -sthtmp[iv];
-#endif
   return;
 }
 
