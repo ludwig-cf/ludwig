@@ -33,7 +33,7 @@ else
 
 #GPU
 CC=hipcc
-CFLAGS= -O2 -arch=sm_30 -x cu -dc
+CFLAGS= -O2 -dc 
 endif
 
 .SUFFIXES:
@@ -46,9 +46,9 @@ ifeq ($(CC),nvcc)
 TARGETSRC = target_cuda.c
 endif
 
-#ifeq ($(CC),hipcc)
+ifeq ($(CC),hipcc)
 TARGETSRC = target_hip.c
-#endif
+endif
 
 TARGETOBJ = ${TARGETSRC:.c=.o}
 
