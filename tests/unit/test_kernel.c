@@ -532,9 +532,9 @@ int do_test_attributes(pe_t * pe) {
 
   if (ndevice > 0) {
     tdpAssert(tdpGetDevice(&device));
-    tdpAssert(tdpDeviceGetAttribute(&value, tdpDevAttrManagedMemory, device));
+//    tdpAssert(tdpDeviceGetAttribute(&value, tdpDevAttrManagedMemory, device));
     pe_info(pe, "Device:                 %d\n", device);
-    pe_info(pe, "tdpDevAttrManagedMemory %d\n", value);
+//    pe_info(pe, "tdpDevAttrManagedMemory %d\n", value);
   }
 
   return 0;

@@ -33,7 +33,7 @@ isothermal_fluctuations off
 #
 ###############################################################################
 
-free_energy lc_blue_phase
+free_energy none
 
 fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
