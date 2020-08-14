@@ -116,7 +116,7 @@ __host__ int test_io_options_rt_rformat(pe_t * pe) {
 __host__ int test_io_options_rt_default(pe_t * pe) {
 
   rt_t * rt = NULL;
-  io_options_t opts = {0};
+  io_options_t opts = {};
   io_options_t defs = io_options_default();
 
   assert(pe);

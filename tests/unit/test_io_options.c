@@ -59,7 +59,7 @@ __host__ int test_io_options_suite(void) {
 
 __host__ int test_io_options_mode_valid(void) {
 
-  io_mode_enum_t mode = 0;
+  io_mode_enum_t mode = IO_MODE_INVALID;
 
   mode = IO_MODE_SINGLE;
   assert(io_options_mode_valid(mode));
@@ -82,7 +82,7 @@ __host__ int test_io_options_mode_valid(void) {
 
 __host__ int test_io_options_record_format_valid(void) {
 
-  io_record_format_enum_t iorformat = 0;
+  io_record_format_enum_t iorformat = IO_RECORD_INVALID;
 
   iorformat = IO_RECORD_ASCII;
   assert(io_options_record_format_valid(iorformat));
