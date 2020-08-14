@@ -103,6 +103,8 @@ __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
 __host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
 
+__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args);
+
 __host__ __device__ int lb_nvel(lb_t * lb, int * nvel);
 __host__ __device__ int lb_ndim(lb_t * lb, int * ndim);
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);

@@ -672,6 +672,33 @@ static int lb_set_displacements(lb_t * lb, int ndisp, MPI_Aint * disp,
 
 /*****************************************************************************
  *
+ *  lb_io_info_commit
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
+
+  io_implementation_t impl = {0};
+
+  assert(lb);
+  assert(lb->io_info == NULL);
+
+  sprintf(impl.name, "%1d x Distribution: d%dq%d", lb->ndist, NDIM, NVEL);
+
+  impl.write_ascii     = lb_f_write_ascii;
+  impl.read_ascii      = lb_f_read_ascii;
+  impl.write_binary    = lb_f_write;
+  impl.read_binary     = lb_f_read;
+  impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
+  impl.bytesize_binary = lb->ndist*NVEL*sizeof(double);
+
+  io_info_create_impl(lb->pe, lb->cs, args, impl, &lb->io_info);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_io_info_set
  *
  *****************************************************************************/
