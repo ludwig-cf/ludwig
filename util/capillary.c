@@ -63,7 +63,7 @@ const int crystalline_cell_size = 10; //added for implementation of crystalline 
 
 enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM,
       SPECIAL_CROSS, SCC, BCC, FCC}; //changed for implementation of crystalline capillaries
-const int xsection = FCC;//YWALL;
+const int xsection = YWALL;
 
 /*Modify the local geometry of the wall*/
 
