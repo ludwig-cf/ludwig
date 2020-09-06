@@ -52,16 +52,18 @@ enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 /* Set the system size as desired. Clearly, this must match the system
  * set in the main input file for Ludwig. */
 
-const int xmax = 16;
-const int ymax = 16;
-const int zmax = 16;
+const int xmax = 20;
+const int ymax = 20;
+const int zmax = 20;
+
+const int crystalline_cell_size = 10; //added for implementation of crystalline capillaries
 
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
 enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM,
-      SPECIAL_CROSS};
-const int xsection = YWALL;
+      SPECIAL_CROSS, SCC, BCC, FCC}; //changed for implementation of crystalline capillaries
+const int xsection = FCC;//YWALL;
 
 /*Modify the local geometry of the wall*/
 
@@ -136,6 +138,10 @@ int main(int argc, char ** argv) {
   double y0 = 0.5*ymax + 0.5;
   double x, y, r;
   double h, h1, theta;
+
+  //added for implementation of crystalline capillaries
+  double crystalline_cell_radius;
+  double diff_x_edges, diff_y_edges, diff_z_edges, r_edges;
 
   int iobst;
   int obst_start[2*obstacle_number][3];
@@ -223,6 +229,188 @@ int main(int argc, char ** argv) {
 
     break;
 
+  case SCC: ;
+    /* simple cubic crystal */
+
+    if(xmax % crystalline_cell_size != 0 || ymax % crystalline_cell_size != 0 ||
+    zmax % crystalline_cell_size !=0){
+        printf("ERROR: wrong ratio of the capillary dimension with respect "
+        "to the crystalline cell size. Please check the parameters "
+        "xmax, ymax, zmax, and crystalline_cell_size!\n");
+        exit(-1);
+    }
+
+    k_pic = 0; //picture
+    printf("k_pic: %d\n", k_pic);
+
+    //radius of crystalline particle
+    crystalline_cell_radius = 0.5 * crystalline_cell_size;
+    double center_i, center_j, center_k;
+    double diff_x, diff_y, diff_z;
+    printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	    for (k = 0; k < zmax; k++) {
+            //distance between the node (i,j,k) and the centre of the nearest crystalline particle,
+            //located at the edges of the crystalline cell
+	        diff_x = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r = sqrt(diff_x*diff_x + diff_y*diff_y + diff_z*diff_z);
+
+	        n = ymax*zmax*i + zmax*j + k;
+
+	        map_in[n] = MAP_FLUID;
+	        if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
+	        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	        map_sig[n] = 0.0;
+
+	        if(r <= crystalline_cell_radius){
+	            nsolid++;
+	            map_in[n] = MAP_BOUNDARY;
+	            if (output_type == STATUS_WITH_H) { map_h[n] = H; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	            map_sig[n] = sigma;
+	        }
+	    }
+	  }
+	}
+	break;
+
+  case BCC: ;
+    /* body centered cubic crystal */
+
+    if(xmax % crystalline_cell_size != 0 || ymax % crystalline_cell_size != 0 ||
+    zmax % crystalline_cell_size !=0){
+        printf("ERROR: wrong ratio of the capillary dimension with respect "
+        "to the crystalline cell size. Please check the parameters "
+        "xmax, ymax, zmax, and crystalline_cell_size!\n");
+        exit(-1);
+    }
+
+    k_pic = 5; //picture
+    printf("k_pic: %d\n", k_pic);
+
+    //radius of crystalline particle
+    crystalline_cell_radius = 0.25 * sqrt(3) * crystalline_cell_size;
+    double diff_x_center, diff_y_center, diff_z_center, r_center;
+    printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	    for (k = 0; k < zmax; k++) {
+	        //distance between the node (i,j,k) and the centre of the nearest crystalline particle,
+            //located at the edges of the crystalline cell
+	        diff_x_edges = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y_edges = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z_edges = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r_edges = sqrt(diff_x_edges*diff_x_edges + diff_y_edges*diff_y_edges + diff_z_edges*diff_z_edges);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the crystalline cell
+	        diff_x_center = i - (floor((double)i/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_y_center = j - (floor((double)j/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_z_center = k - (floor((double)k/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+
+	        r_center = sqrt(diff_x_center*diff_x_center + diff_y_center*diff_y_center + diff_z_center*diff_z_center);
+
+	        n = ymax*zmax*i + zmax*j + k;
+
+	        map_in[n] = MAP_FLUID;
+	        if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
+	        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	        map_sig[n] = 0.0;
+
+	        if(r_edges <= crystalline_cell_radius || r_center <= crystalline_cell_radius){
+	            nsolid++;
+	            map_in[n] = MAP_BOUNDARY;
+	            if (output_type == STATUS_WITH_H) { map_h[n] = H; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	            map_sig[n] = sigma;
+	        }
+	    }
+	  }
+	}
+	break;
+
+  case FCC: ;
+    /* face centered cubic crystal */
+
+    if(xmax % crystalline_cell_size != 0 || ymax % crystalline_cell_size != 0 ||
+    zmax % crystalline_cell_size !=0){
+        printf("ERROR: wrong ratio of the capillary dimension with respect "
+        "to the crystalline cell size. Please check the parameters "
+        "xmax, ymax, zmax, and crystalline_cell_size!\n");
+        exit(-1);
+    }
+
+    k_pic = 0; //picture
+    printf("k_pic: %d\n", k_pic);
+
+    //radius of crystalline particle
+    crystalline_cell_radius = 0.25 * sqrt(2) * crystalline_cell_size;
+    double diff_x_center_xy, diff_y_center_xy, diff_z_center_xy, r_center_xy;
+    double diff_x_center_xz, diff_y_center_xz, diff_z_center_xz, r_center_xz;
+    double diff_x_center_yz, diff_y_center_yz, diff_z_center_yz, r_center_yz;
+    printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	    for (k = 0; k < zmax; k++) {
+	        //distance between the node (i,j,k) and the centre of the nearest crystalline particle,
+            //located at the edges of the crystalline cell
+	        diff_x_edges = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y_edges = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z_edges = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r_edges = sqrt(diff_x_edges*diff_x_edges + diff_y_edges*diff_y_edges + diff_z_edges*diff_z_edges);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the xy-surface in the crystalline cell
+	        diff_x_center_xy = i - (floor((double)i/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_y_center_xy = j - (floor((double)j/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_z_center_xy = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r_center_xy = sqrt(diff_x_center_xy*diff_x_center_xy + diff_y_center_xy*diff_y_center_xy + diff_z_center_xy*diff_z_center_xy);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the xz-surface in the crystalline cell
+	        diff_x_center_xz = i - (floor((double)i/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_y_center_xz = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z_center_xz = k - (floor((double)k/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+
+	        r_center_xz = sqrt(diff_x_center_xz*diff_x_center_xz + diff_y_center_xz*diff_y_center_xz + diff_z_center_xz*diff_z_center_xz);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the yz-surface in the crystalline cell
+	        diff_x_center_yz = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y_center_yz = j - (floor((double)j/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_z_center_yz = k - (floor((double)k/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+
+	        r_center_yz = sqrt(diff_x_center_yz*diff_x_center_yz + diff_y_center_yz*diff_y_center_yz + diff_z_center_yz*diff_z_center_yz);
+
+	        n = ymax*zmax*i + zmax*j + k;
+
+	        map_in[n] = MAP_FLUID;
+	        if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
+	        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	        map_sig[n] = 0.0;
+
+	        if(r_edges <= crystalline_cell_radius || r_center_xy <= crystalline_cell_radius ||
+	            r_center_xz <= crystalline_cell_radius || r_center_yz <= crystalline_cell_radius){
+	            nsolid++;
+	            map_in[n] = MAP_BOUNDARY;
+	            if (output_type == STATUS_WITH_H) { map_h[n] = H; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	            map_sig[n] = sigma;
+	        }
+	    }
+	  }
+	}
+	break;
 
   case SQUARE:
 
@@ -573,8 +761,11 @@ int main(int argc, char ** argv) {
   }
 
 
-  printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
-	 xmax*ymax*zmax - nsolid);
+  //printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
+	// xmax*ymax*zmax - nsolid);
+  //changed for implementation of crystalline capillaries in order to see the volume fraction of the crystals
+  printf("n = %d nsolid = %d nfluid = %d nsolid fraction: %f \n", xmax*ymax*zmax, nsolid,
+	 xmax*ymax*zmax - nsolid, (double)nsolid/(xmax*ymax*zmax));
 
   /* Write new data as char */
 
