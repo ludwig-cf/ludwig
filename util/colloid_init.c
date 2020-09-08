@@ -14,14 +14,19 @@
  *
  *  $ make colloid_init 
  *
- *  $ ./a.out
+ *  $ ./colloid_init [-a a0] [-h ah] [-v volume_fraction] 
  *  should produce a file config.cds.init.001-001 in the specified format.
+ *
+ *  Options:
+ *    -a sets a0 the input radius
+ *    -h sets ah the hydrodynamic radius
+ *    -v sets the volume fraction 0 < vf < 1.0 (usually < 0.5)
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2019 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -65,13 +70,23 @@ int main(int argc, char ** argv) {
   int n;
   int nrequest;
   int nactual;
+  int optind;
 
-  double a0 = 3.5;   /* Input radius */
-  double ah = 3.5;   /* Hydrodynamic radius */ 
-  double vf = 0.02;  /* Volume fraction */
-  double dh = 0.5;   /* "grace' distance */
-  double q0 = 0.0;   /* positive charge */ 
-  double q1 = 0.0;   /* negative charge */
+  const double a0_default = 2.3;   /* Input radius */
+  const double ah_default = 2.3;   /* Hydrodynamic radius */ 
+  const double vf_default = 0.02;  /* Volume fraction */
+  const double dh_default = 0.5;   /* "grace' distance */
+  const double q0_default = 0.0;   /* positive charge */ 
+  const double q1_default = 0.0;   /* negative charge */
+
+  /* At the moment, three quantities can come from the command line */
+
+  double a0 = a0_default;
+  double ah = ah_default;
+  double vf = vf_default;
+  double dh = dh_default;
+  double q0 = q0_default;
+  double q1 = q1_default;
 
   colloid_state_t * state;
   pe_t * pe;
@@ -81,6 +96,31 @@ int main(int argc, char ** argv) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
   ran_init(pe);
+
+  /* Check the command line, then parse the meta data information,
+   * and sort out the data file name  */
+
+  for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
+    switch (argv[optind][1]) {
+    case 'a':
+      a0 = atof(argv[++optind]);
+      printf("%s: option -a sets a0 = %f\n", argv[0], a0);
+      break;
+    case'h':
+      ah = atof(argv[++optind]);
+      printf("%s: option -h sets ah = %f\n", argv[0], ah);
+      break;
+    case 'v':
+      vf = atof(argv[++optind]);
+      printf("%s: option -v sets vf = %f\n", argv[0], vf);
+      break;
+    default:
+      fprintf(stderr, "Unrecognised option: %s\n", argv[optind]);
+      fprintf(stderr, "Usage: %s [-ahv]\n", argv[0]);
+      exit(EXIT_FAILURE);
+    }   
+  }
+
 
   /* This program is intended to be serial */
   assert(pe_mpi_size(pe) == 1);

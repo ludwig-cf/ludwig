@@ -154,6 +154,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
   assert(fabs(eta0 - param.eta_plus) < DBL_EPSILON);
 
   ifail = test_visc_arrhenius_eta_uniform(cs, hydro, eta0);
+  if (ifail) printf("test_visc_arrhenius_eta_uniform()\n");
   assert(ifail == 0);
 
   /* Another value phi = -1 */

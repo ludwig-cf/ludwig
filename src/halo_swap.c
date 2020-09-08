@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2018 The University of Edinburgh
+ *  (c) 2016-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -110,11 +110,11 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
 			      int na, int nb,
 			      halo_swap_t ** phalo) {
 
-  int sz;
   int nhalo;
   int ndevice;
   unsigned int mflag = tdpHostAllocDefault;
 
+  size_t sz;
   halo_swap_t * halo = NULL;
 
   assert(pe);
@@ -166,19 +166,19 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
 
   /* Host buffers, actual and halo regions */
 
-  sz = halo->param->hsz[X]*na*nb*sizeof(double);
+  sz = (size_t) halo->param->hsz[X]*na*nb*sizeof(double);
   tdpHostAlloc((void **) &halo->fxlo, sz, mflag);
   tdpHostAlloc((void **) &halo->fxhi, sz, mflag);
   tdpHostAlloc((void **) &halo->hxlo, sz, mflag);
   tdpHostAlloc((void **) &halo->hxhi, sz, mflag);
 
-  sz = halo->param->hsz[Y]*na*nb*sizeof(double);
+  sz = (size_t) halo->param->hsz[Y]*na*nb*sizeof(double);
   tdpHostAlloc((void **) &halo->fylo, sz, mflag);
   tdpHostAlloc((void **) &halo->fyhi, sz, mflag);
   tdpHostAlloc((void **) &halo->hylo, sz, mflag);
   tdpHostAlloc((void **) &halo->hyhi, sz, mflag);
 
-  sz = halo->param->hsz[Z]*na*nb*sizeof(double);
+  sz = (size_t) halo->param->hsz[Z]*na*nb*sizeof(double);
   tdpHostAlloc((void **) &halo->fzlo, sz, mflag);
   tdpHostAlloc((void **) &halo->fzhi, sz, mflag);
   tdpHostAlloc((void **) &halo->hzlo, sz, mflag);
@@ -204,7 +204,7 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
     tdpMemset(halo->target, 0, sizeof(halo_swap_t));
 
     /* Buffers */
-    sz = halo->param->hsz[X]*na*nb*sizeof(double);
+    sz = (size_t) halo->param->hsz[X]*na*nb*sizeof(double);
 
     tdpMalloc((void **) &tmp, sz);
     tdpMemcpy(&halo->target->fxlo, &tmp, sizeof(double *),
@@ -220,7 +220,7 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
     tdpMemcpy(&halo->target->hxhi, &tmp, sizeof(double *),
 	      tdpMemcpyHostToDevice);
 
-    sz = halo->param->hsz[Y]*na*nb*sizeof(double);
+    sz = (size_t) halo->param->hsz[Y]*na*nb*sizeof(double);
 
     tdpMalloc((void ** ) &tmp, sz);
     tdpMemcpy(&halo->target->fylo, &tmp, sizeof(double *),
@@ -236,7 +236,7 @@ __host__ int halo_swap_create(pe_t * pe, cs_t * cs, int nhcomm, int naddr,
     tdpMemcpy(&halo->target->hyhi, &tmp, sizeof(double *),
 	      tdpMemcpyHostToDevice);
 
-    sz = halo->param->hsz[Z]*na*nb*sizeof(double);
+    sz = (size_t) halo->param->hsz[Z]*na*nb*sizeof(double);
 
     tdpMalloc((void **) &tmp, sz);
     tdpMemcpy(&halo->target->fzlo, &tmp, sizeof(double *),
@@ -389,7 +389,6 @@ __host__ int halo_swap_commit(halo_swap_t * halo) {
 __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
 				  MPI_Datatype mpidata) {
 
-  int sz;
   int ic, jc, kc;
   int ia, index;
   int nh;
@@ -398,6 +397,9 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   int pforw, pback;
   int nlocal[3];
   int mpicartsz[3];
+
+  size_t sz;
+  size_t nsz;
 
   unsigned char * buf;
   unsigned char * sendforw;
@@ -432,10 +434,12 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   /* X-direction */
 
   nsend = hp->nswap*hp->na*nlocal[Y]*nlocal[Z];
-  sendforw = (unsigned char *) malloc(nsend*sz);
-  sendback = (unsigned char *) malloc(nsend*sz);
-  recvforw = (unsigned char *) malloc(nsend*sz);
-  recvback = (unsigned char *) malloc(nsend*sz);
+  nsz = (size_t) nsend*sz;
+
+  sendforw = (unsigned char *) malloc(nsz);
+  sendback = (unsigned char *) malloc(nsz);
+  recvforw = (unsigned char *) malloc(nsz);
+  recvback = (unsigned char *) malloc(nsz);
   assert(sendforw && sendback);
   assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
@@ -468,8 +472,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   assert(icount == nsend);
 
   if (mpicartsz[X] == 1) {
-    memcpy(recvback, sendforw, nsend*sz);
-    memcpy(recvforw, sendback, nsend*sz);
+    memcpy(recvback, sendforw, nsz);
+    memcpy(recvforw, sendback, nsz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
@@ -517,10 +521,12 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   /* Y direction */
 
   nsend = hp->nswap*hp->na*(nlocal[X] + 2*hp->nswap)*nlocal[Z];
-  sendforw = (unsigned char *) malloc(nsend*sz);
-  sendback = (unsigned char *) malloc(nsend*sz);
-  recvforw = (unsigned char *) malloc(nsend*sz);
-  recvback = (unsigned char *) malloc(nsend*sz);
+  nsz = (size_t) nsend*sz;
+
+  sendforw = (unsigned char *) malloc(nsz);
+  sendback = (unsigned char *) malloc(nsz);
+  recvforw = (unsigned char *) malloc(nsz);
+  recvback = (unsigned char *) malloc(nsz);
   assert(sendforw && sendback);
   assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
@@ -551,8 +557,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   assert(icount == nsend);
 
   if (mpicartsz[Y] == 1) {
-    memcpy(recvback, sendforw, nsend*sz);
-    memcpy(recvforw, sendback, nsend*sz);
+    memcpy(recvback, sendforw, nsz);
+    memcpy(recvforw, sendback, nsz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }
@@ -600,10 +606,12 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   /* Z direction */
 
   nsend = hp->nswap*hp->na*(nlocal[X] + 2*hp->nswap)*(nlocal[Y] + 2*hp->nswap);
-  sendforw = (unsigned char *) malloc(nsend*sz);
-  sendback = (unsigned char *) malloc(nsend*sz);
-  recvforw = (unsigned char *) malloc(nsend*sz);
-  recvback = (unsigned char *) malloc(nsend*sz);
+  nsz = (size_t) nsend*sz;
+
+  sendforw = (unsigned char *) malloc(nsz);
+  sendback = (unsigned char *) malloc(nsz);
+  recvforw = (unsigned char *) malloc(nsz);
+  recvback = (unsigned char *) malloc(nsz);
   assert(sendforw && sendback);
   assert(recvforw && recvback);
   if (sendforw == NULL) pe_fatal(halo->pe, "malloc(sendforw) failed\n");
@@ -637,8 +645,8 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   assert(icount == nsend);
 
   if (mpicartsz[Z] == 1) {
-    memcpy(recvback, sendforw, nsend*sz);
-    memcpy(recvforw, sendback, nsend*sz);
+    memcpy(recvback, sendforw, nsz);
+    memcpy(recvforw, sendback, nsz);
     req[2] = MPI_REQUEST_NULL;
     req[3] = MPI_REQUEST_NULL;
   }

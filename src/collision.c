@@ -1172,6 +1172,8 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
   double rtau_shear;
   double rtau_bulk;
   double tau, rtau;
+  LB_CS2_DOUBLE(cs2);
+
   physics_t * phys = NULL;
 
   assert(lb);
@@ -1409,6 +1411,8 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
   double tau_s;
   double tau_b;
   double tau_g;
+  LB_RCS2_DOUBLE(rcs2);
+
   physics_t * phys = NULL;
 
   assert(lb);
@@ -2691,7 +2695,7 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
 				 double * f, int baseIndex){
 
   int iv=0;
-  const double rcs2 = 3.0;
+  LB_RCS2_DOUBLE(rcs2);
   const double r2rcs4 = (9.0/2.0);
 
   for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 

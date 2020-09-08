@@ -168,7 +168,7 @@ __host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs) {
   impl.bytesize_ascii  = 10;
   impl.bytesize_binary = sizeof(double);
 
-  io_info_create_impl(pe, cs, args, impl, &info);
+  io_info_create_impl(pe, cs, args, &impl, &info);
 
   assert(info);
 

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2013-2017 The University of Edinburgh
+ *  (c) 2013-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (ohenrich@epcc.ed.ac.uk)
@@ -28,6 +28,9 @@
 
 static int psi_colloid_charge_accum(psi_t * psi, colloids_info_t * cinfo,
 				    int index, double * rho, double * weight);
+
+/* Additional forward declaration */
+colloid_t * colloid_at_site_index(int);
 
 /*****************************************************************************
  *
@@ -331,7 +334,6 @@ int psi_colloid_zetapotential(psi_t * obj, colloids_info_t * cinfo,
   double psic_local, psic_total; /* local and global cummulative potential */
 
   colloid_t * p_c;
-  colloid_t * colloid_at_site_index(int);
 
   MPI_Comm comm;
 

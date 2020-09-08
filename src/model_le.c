@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -122,6 +122,7 @@ static int le_reproject(lb_t * lb, lees_edw_t * le) {
   double t;
   physics_t * phys = NULL;
 
+  LB_RCS2_DOUBLE(rcs2);
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   assert(lb);
@@ -739,6 +740,8 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
   int nlocal[3];
   double rho0, u[NDIM], gradu[NDIM][NDIM];
   double eta;
+  LB_RCS2_DOUBLE(rcs2);
+
   physics_t * phys = NULL;
 
   assert(lb);

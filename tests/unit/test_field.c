@@ -36,6 +36,7 @@ static int do_test_io(pe_t * pe, int nf, int io_format);
 static int test_field_halo(cs_t * cs, field_t * phi);
 
 int do_test_device1(pe_t * pe);
+__global__ void do_test_field_kernel1(field_t * phi);
 
 /*****************************************************************************
  *
@@ -177,7 +178,6 @@ int do_test_device1(pe_t * pe) {
 
   cs_t * cs = NULL;
   field_t * phi = NULL;
-  __global__ void do_test_field_kernel1(field_t * phi);
 
   assert(pe);
 
