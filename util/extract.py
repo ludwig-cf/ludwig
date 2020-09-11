@@ -106,8 +106,6 @@ if fed:
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_fed' % (i,ngroup))
 
-os.system('gcc -o vtk_extract vtk_extract.c -lm')
-
 if (colcds==1) or (colcdsvel==1):
 	metafile.append('')
 	filelist.append('filelist_colloid')
