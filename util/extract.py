@@ -18,7 +18,7 @@
 #  Oliver Henrich  (oliver.henrich@strath.ac.uk)                       #
 #                                                                      #
 #
-#  (c) 2011-2020 The University of Edinburgh                           #
+#  (c) 2011-2018 The University of Edinburgh                           #
 #                                                                      #
 ########################################################################
 
@@ -75,6 +75,8 @@ if fed==1:
         os.system('rm filelist_fed')
         for i in range(nstart,nend+nint,nint):
                 os.system('ls -t1 fed-%08.0d.%03.0d-001 >> filelist_fed' % (i,ngroup))
+
+os.system('gcc -o vtk_extract vtk_extract.c -lm')
 
 if (colcds==1) or (colcdsvel==1):
 	metafile.append('')
