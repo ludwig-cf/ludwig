@@ -5,9 +5,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- * (c) 2018 The University of Edinburgh
+ * (c) 2020 The University of Edinburgh
  *
  *  Contributing authors:
+ *    Nikola Vasilev did the original implementation in 2020.
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  ****************************************************************************/
 
@@ -28,7 +30,9 @@ typedef hipDeviceAttribute_t tdpDeviceAttr;
 
 #define tdpDeviceProp hipDeviceProp_t
 
-#define tdpDevAttrManagedMemory cudaDevAttrManagedMemory
+/* There is no e.g., hipDevAttrManagedMemory */
+/* We therefore provide an explicit value at trap it in tdpGetDeviceAttr() */
+#define tdpDevAttrManagedMemory (tdpDeviceAttr) 83
 
 #define tdpSuccess hipSuccess
 #define tdpMemcpyHostToDevice hipMemcpyHostToDevice
