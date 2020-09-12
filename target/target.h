@@ -23,9 +23,9 @@
 
 /* Implementation details */
 
-#ifdef __HIPCC__
+#if defined(__HIP_PLATFORM_NVCC__)
 #include "target_hip.h"
-#elif __NVCC__
+#elif defined(__NVCC__)
 #include "target_cuda.h"
 #else
 #include "target_x86.h"
