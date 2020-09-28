@@ -100,9 +100,12 @@ int test_assumptions_suite(void) {
   test_macro_abuse();
 
   /* Initialised string buffers have length zero */
+  /* if (verbose) printf("strlen({})  is %d\n", strlen(s0)); */
+  /* if (verbose) printf("strlen({0}) is %d\n", strlen(s1)); */
   assert(strlen(s0) == 0);
   assert(strlen(s1) == 0);
-
+  (void) strlen(s0); /* prevent unused variable warning */
+  (void) strlen(s1); /* ditto */
 
   /* Information */
   /* printf("Language\n");

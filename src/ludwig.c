@@ -200,7 +200,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   TIMER_start(TIMER_TOTAL);
 
   /* Prefer maximum L1 cache available on device */
-  tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
+  (void) tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
 
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */

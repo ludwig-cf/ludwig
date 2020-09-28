@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -136,6 +136,8 @@ static void test_model_velocity_set(void) {
   int i, j, k, p;
   double dij;
   double sum, sumx, sumy, sumz;
+
+  LB_RCS2_DOUBLE(rcs2);
   KRONECKER_DELTA_CHAR(d_);
 
   /*

@@ -103,7 +103,8 @@ __host__ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg,
 __host__ int io_info_free(io_info_t *);
 
 __host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t arg,
-				 io_implementation_t impl, io_info_t ** info);
+				 const io_implementation_t * impl,
+				 io_info_t ** info);
 
 __host__ int io_info_input_bytesize(io_info_t * info, size_t * bs);
 __host__ int io_info_output_bytesize(io_info_t * info, size_t * bs);

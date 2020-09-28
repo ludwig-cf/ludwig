@@ -133,7 +133,7 @@ __host__ int test_io_options_rt_default(pe_t * pe) {
 
   rt_free(rt);
 
-  return 0;
+  return defs.report; /* Return 0 (and prevent unused variable warning) */
 }
 
 

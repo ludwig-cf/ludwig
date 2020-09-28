@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -68,12 +68,14 @@ static int field_grad_init(field_grad_t * obj) {
 
   int ndevice;
   int nsites;
+  size_t nfsz;
   double * tmp;
 
   assert(obj);
 
   nsites = obj->field->nsites;
   obj->nsite = nsites;
+  nfsz = (size_t) obj->nf*nsites;
 
   tdpGetDeviceCount(&ndevice);
 
@@ -92,8 +94,8 @@ static int field_grad_init(field_grad_t * obj) {
 
   if (obj->level >= 2) {
 
-    obj->grad = (double *) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq = (double *) calloc(obj->nf*nsites, sizeof(double));
+    obj->grad  = (double *) calloc(NVECTOR*nfsz, sizeof(double));
+    obj->delsq = (double *) calloc(nfsz, sizeof(double));
 
     if (obj->grad == NULL) pe_fatal(obj->pe, "calloc(field_grad->grad) failed");
     if (obj->delsq == NULL) pe_fatal(obj->pe, "calloc(field_grad->delsq) failed");
@@ -101,39 +103,39 @@ static int field_grad_init(field_grad_t * obj) {
     /* Allocate data space on target (or alias) */
  
     if (ndevice > 0) {
-      tdpMalloc((void **) &tmp, obj->nf*NVECTOR*nsites*sizeof(double));
+      tdpMalloc((void **) &tmp, nfsz*NVECTOR*sizeof(double));
       tdpMemcpy(&obj->target->grad, &tmp, sizeof(double *),
 		tdpMemcpyHostToDevice);
 
-      tdpMalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+      tdpMalloc((void **) &tmp, nfsz*sizeof(double));
       tdpMemcpy(&obj->target->delsq, &tmp, sizeof(double *),
 		tdpMemcpyHostToDevice);
     }
   }
 
   if (obj->level == 3) {
-    obj->d_ab = (double*) calloc(NSYMM*obj->nf*nsites, sizeof(double));
+    obj->d_ab = (double*) calloc(NSYMM*nfsz, sizeof(double));
     if (obj->d_ab == NULL) pe_fatal(obj->pe, "calloc(fieldgrad->d_ab) failed\n");
 
     if (ndevice > 0) {
-      tdpMalloc((void **) &tmp, NSYMM*obj->nf*nsites*sizeof(double));
+      tdpMalloc((void **) &tmp, NSYMM*nfsz*sizeof(double));
       tdpMemcpy(&obj->target->d_ab, &tmp, sizeof(double *),
 		tdpMemcpyHostToDevice);
     }
   }
 
   if (obj->level >= 4) {
-    obj->grad_delsq = (double*) calloc(NVECTOR*obj->nf*nsites, sizeof(double));
-    obj->delsq_delsq = (double*) calloc(obj->nf*nsites, sizeof(double));
-    if (obj->grad_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->grad_delsq) failed");
+    obj->grad_delsq = (double*) calloc(NVECTOR*nfsz, sizeof(double));
+    obj->delsq_delsq = (double*) calloc(nfsz, sizeof(double));
+    if (obj->grad_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->grad_delsq)\n");
     if (obj->delsq_delsq == NULL) pe_fatal(obj->pe, "calloc(grad->delsq_delsq) failed");
 
     if (ndevice > 0) {
-      tdpMalloc((void **) &tmp, NVECTOR*obj->nf*nsites*sizeof(double));
+      tdpMalloc((void **) &tmp, NVECTOR*nfsz*sizeof(double));
       tdpMemcpy(&obj->target->grad_delsq, &tmp, sizeof(double *),
 		tdpMemcpyHostToDevice); 
 
-      tdpMalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+      tdpMalloc((void **) &tmp, nfsz*sizeof(double));
       tdpMemcpy(&obj->target->delsq_delsq, &tmp, sizeof(double *),
 		tdpMemcpyHostToDevice); 
     }
@@ -166,7 +168,7 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
   }
   else {
 
-    nsz = obj->nf*obj->nsite*sizeof(double);
+    nsz = (size_t) obj->nf*obj->nsite*sizeof(double);
 
     switch (flag) {
     case tdpMemcpyHostToDevice:

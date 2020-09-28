@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2018 The University of Edinburgh
+ *  (c) 2014-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -179,7 +179,6 @@ int lubrication_rch_set(lubr_t * obj, lubr_ss_enum_t type, double rc) {
 
   assert(obj);
   assert(type < LUBRICATION_SS_MAX);
-  assert(rc >= 0.0);
 
   if (rc < 0.0) rc = 0.0;
 

@@ -955,6 +955,8 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
   double gnew[3] = {0.0, 0.0, 0.0};
   double tnew[3] = {0.0, 0.0, 0.0};
 
+  LB_RCS2_DOUBLE(rcs2);
+
   assert(cinfo);
   assert(pc);
   assert(lb);

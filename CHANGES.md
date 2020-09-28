@@ -2,8 +2,10 @@
 ### Changes
 
 version 0.12.0
+
 - Extended target abstraction layer to include HIP (only tested via
   __HIP_PLATFORM_NVCC__ so far). Thanks to Nikola Vasilev for this.
+- Various minor code quality improvements
 
 version 0.11.0
 - Add external chemical potential gradient in Cahn Hilliard for

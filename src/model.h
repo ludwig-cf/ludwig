@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -68,13 +68,8 @@ enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
 enum {LB_TAU_BULK = 1 + NDIM + XX, LB_TAU_SHEAR = 1 + NDIM + XY};
 
-/* Extern declarations are to be avoided; prefer the macro! */
-
-extern const double cs2;
-extern const double rcs2;
-
 #define LB_CS2_DOUBLE(cs2)   const double cs2 = (1.0/3.0)
-#define LB_RCS2_DOUBLE(rcs2) const double rcs2 = 3.0;
+#define LB_RCS2_DOUBLE(rcs2) const double rcs2 = 3.0
 
 typedef enum lb_dist_enum_type{LB_RHO = 0, LB_PHI = 1} lb_dist_enum_t;
 typedef enum lb_mode_enum_type{LB_GHOST_ON = 0, LB_GHOST_OFF = 1} lb_mode_enum_t;
