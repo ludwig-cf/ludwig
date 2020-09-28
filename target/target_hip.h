@@ -53,13 +53,13 @@ typedef hipError_t tdpError_t;
 
 /* Macros for calls involing device symbols */
 
-#define tdpSymbol(x) x
-#define tdpGetSymbolAddress(dst, symbol)		\
-        tdpAssert(hipGetSymbolAddress(dst, HIP_SYMBOL(symbol)))
+#define tdpSymbol(x) HIP_SYMBOL(x)
+#define tdpGetSymbolAddress(dst, symbol) \
+        tdpAssert(hipGetSymbolAddress(dst, symbol))
 #define tdpMemcpyToSymbol(symbol, src, count, offset, kind)	\
-        tdpAssert(hipMemcpyToSymbol(HIP_SYMBOL(symbol), src, count, offset, kind))
+        tdpAssert(hipMemcpyToSymbol(symbol, src, count, offset, kind))
 #define tdpMemcpyFromSymbol(dst, symbol, count, offset, kind) \
-        tdpAssert(hipMemcpyFromSymbol(dst, HIP_SYMBOL(symbol), count, offset, kind))
+        tdpAssert(hipMemcpyFromSymbol(dst, symbol, count, offset, kind))
 
 #define	tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
   hipLaunchKernelGGL(kernel, nblocks, nthreads, shmem, stream, __VA_ARGS__);
