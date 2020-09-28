@@ -26,14 +26,7 @@ ifneq ("","$(wildcard ../Makefile.mk)") #use global settings
 include ../Makefile.mk
 
 else
-
-#CPU:
-#CC=gcc
-#CFLAGS=-O2 -Wall -fopenmp
-
-#GPU
-CC=hipcc
-CFLAGS= -O2 -arch=sm_30 -x cu -dc
+# can have specific settings here
 endif
 
 .SUFFIXES:
