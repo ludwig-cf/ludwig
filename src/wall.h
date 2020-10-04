@@ -15,6 +15,8 @@
 #ifndef LUDWIG_WALL_H
 #define LUDWIG_WALL_H
 
+#include <stdint.h>
+
 #include "pe.h"
 #include "coords.h"
 #include "runtime.h"
