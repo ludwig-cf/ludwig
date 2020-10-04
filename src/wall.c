@@ -36,25 +36,14 @@ typedef enum wall_uw_enum {WALL_UZERO = 0,
 			   WALL_UWBOT,
 			   WALL_UWMAX} wall_uw_enum_t;
 
-struct wall_s {
-  pe_t * pe;             /* Parallel environment */
-  cs_t * cs;             /* Reference to coordinate system */
-  map_t * map;           /* Reference to map structure */
-  lb_t * lb;             /* Reference to LB information */ 
-  wall_t * target;       /* Device memory */
-
-  wall_param_t * param;  /* parameters */
-  int   nlink;           /* Number of links */
-  int * linki;           /* outside (fluid) site indices */
-  int * linkj;           /* inside (solid) site indices */
-  int * linkp;           /* LB basis vectors for links */
-  int * linku;           /* Link wall_uw_enum_t (wall velocity) */
-  double fnet[3];        /* Momentum accounting for source/sink walls */
-};
-
 int wall_init_boundaries(wall_t * wall, wall_init_enum_t init);
 int wall_init_map(wall_t * wall);
 int wall_init_uw(wall_t * wall);
+
+__host__ int wall_init_boundaries_slip(wall_t * wall);
+__host__ int wall_link_normal(wall_t * wall, int n, int wn[3]);
+__host__ int wall_link_slip_direction(wall_t * wall, int n);
+__host__ int wall_link_slip(wall_t * wall, int n);
 
 __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb);
 __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map);
@@ -124,19 +113,37 @@ __host__ int wall_free(wall_t * wall) {
   assert(wall);
 
   if (wall->target != wall) {
-    int * tmp;
-    tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
-    tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
-	      tdpMemcpyDeviceToHost);
-    tdpFree(tmp);
+    {
+      int * tmp = NULL;
+      tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpFree(tmp);
+      tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpFree(tmp);
+      tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpFree(tmp);
+      tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
+		tdpMemcpyDeviceToHost);
+      tdpFree(tmp);
+    }
+    /* Release slip stuff */
+    if (wall->param->slip.active) {
+      int * tmp = NULL;
+      tdpAssert(tdpMemcpy(&tmp, &wall->target->linkk, sizeof(int *),
+			  tdpMemcpyDeviceToHost));
+      tdpFree(tmp);
+    }
+    if (wall->param->slip.active) {
+      int8_t * tmp = NULL;
+      tdpAssert(tdpMemcpy(&tmp, &wall->target->linkq, sizeof(int8_t *),
+			  tdpMemcpyDeviceToHost));
+      tdpFree(tmp);
+      tdpAssert(tdpMemcpy(&tmp, &wall->target->links, sizeof(int8_t *),
+			  tdpMemcpyDeviceToHost));
+      tdpFree(tmp);
+    }
     tdpFree(wall->target);
   }
 
@@ -167,6 +174,7 @@ __host__ int wall_commit(wall_t * wall, wall_param_t * param) {
   wall_init_map(wall);
   wall_init_boundaries(wall, WALL_INIT_COUNT_ONLY);
   wall_init_boundaries(wall, WALL_INIT_ALLOCATE);
+  wall_init_boundaries_slip(wall);
   wall_init_uw(wall);
 
   /* As we have initialised the map on the host, ... */
@@ -242,6 +250,53 @@ __host__ int wall_target(wall_t * wall, wall_t ** target) {
   *target = wall->target;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_slip
+ *
+ *  A convenience to load the slip lookup table.
+ *
+ *****************************************************************************/
+
+__host__ wall_slip_t wall_slip(double sbot[3], double stop[3]) {
+
+  wall_slip_t ws = {0};
+
+  ws.active = (sbot[X] != 0.0 || sbot[Y] != 0.0 || sbot[Z] != 0.0 ||
+               stop[X] != 0.0 || stop[Y] != 0.0 || stop[Z] != 0.0);
+
+  ws.s[WALL_NO_SLIP]   = 0.0;
+  ws.s[WALL_SLIP_XBOT] = sbot[X];
+  ws.s[WALL_SLIP_XTOP] = stop[X];
+  ws.s[WALL_SLIP_YBOT] = sbot[Y];
+  ws.s[WALL_SLIP_YTOP] = stop[Y];
+  ws.s[WALL_SLIP_ZBOT] = sbot[Z];
+  ws.s[WALL_SLIP_ZTOP] = stop[Z];
+
+  return ws;
+}
+
+/*****************************************************************************
+ *
+ *  wall_slip_valid
+ *
+ *****************************************************************************/
+
+__host__ int wall_slip_valid(const wall_slip_t * ws) {
+
+  int valid = 1;
+
+  assert(ws);
+
+  if (ws->s[WALL_NO_SLIP] != 0.0) valid = 0.0;
+
+  for (int n = 1; n < WALL_SLIP_MAX; n++) {
+    if (0.0 > ws->s[n] || ws->s[n] > 1.0) valid = 0;
+  }
+
+  return valid;
 }
 
 /*****************************************************************************
@@ -377,6 +432,279 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
   wall->nlink = nlink;
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_init_boundaries_slip
+ *
+ *  The slip condition is slightly more compilcated than the no-slip,
+ *  as it involves an additional fluid site.
+ *
+ *  Further, some care should be taken that slip links occur in pairs;
+ *  the pair should have a unique value of 's' (the fraction of slip)
+ *  so that mass is conserved by the bbl.
+ *
+ *  This will examine the existing 'no-slip' links, and make necesary
+ *  additions.
+ *
+ *****************************************************************************/
+
+__host__ int wall_init_boundaries_slip(wall_t * wall) {
+
+  int ndevice;
+
+  assert(wall);
+  assert(wall->cs);
+  assert(wall->map);
+
+  tdpGetDeviceCount(&ndevice);
+
+  if (wall->param->slip.active) {
+
+    int nlink;
+
+    nlink = imax(1, wall->nlink); /* Avoid zero-sized allocations */
+    assert(nlink > 0);
+    wall->linkk = (int *) calloc(nlink, sizeof(int));
+    wall->linkq = (int8_t *) calloc(nlink, sizeof(int8_t));
+    wall->links = (int8_t *) calloc(nlink, sizeof(int8_t));
+    assert(wall->linkk);
+    assert(wall->linkq);
+    assert(wall->links);
+    if (wall->linkk == NULL) pe_fatal(wall->pe,"calloc(wall->linkk) failed\n");
+    if (wall->linkq == NULL) pe_fatal(wall->pe,"calloc(wall->linkq) failed\n");
+    if (wall->links == NULL) pe_fatal(wall->pe,"calloc(wall->links) failed\n");
+
+    /* Allocate device memory */
+    if (ndevice > 0) {
+      int tmp;
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      tdpMemcpy(&wall->target->linkk, &tmp, sizeof(int *),
+		tdpMemcpyHostToDevice);
+    }
+    if (ndevice > 0) {
+      int8_t tmp;
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int8_t));
+      tdpMemcpy(&wall->target->linkq, &tmp, sizeof(int8_t *),
+		tdpMemcpyHostToDevice);
+      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int8_t));
+      tdpMemcpy(&wall->target->links, &tmp, sizeof(int8_t *),
+		tdpMemcpyHostToDevice);
+    }
+
+    /* For each exsiting fluid-to-solid link i->j with cv[p] ... */
+    /* Where is k (source of slipping distribution which will arrive at i),
+       and what are q and s? */
+
+    /* The location of k depends on the local wall normal at the nominal
+     * bounce-back position i + cv[p]dt/2 (which might be a side, an edge
+     * or a corner), so we must
+     * re-examine the map to find the normal/tangent direction */
+
+    for (int n = 0; n < nlink; n++) {
+
+      /* Identify the wall normal wn, and project cv[p] into the
+       * plane orthogonal to the normal to find the tangetial
+       * direction which takes us to the fluid site paired with
+       * the current link for slip. */
+
+      int wn[3] = {0};
+      int ijk[3] = {0};       /* fluid site (ic,jc,kc) */
+      int p = wall->linkp[n];
+      int cvdotwn, modwn;
+      int modcv;
+
+      cs_index_to_ijk(wall->cs, wall->linki[n], ijk);
+      wall_link_normal(wall, n, wn);
+
+      /* EXPAND COMMENT CHECK CHECK */
+      /* tangent = cv[p] - (cv[p].n/n.n) n */
+
+      cvdotwn = cv[p][X]*wn[X] + cv[p][Y]*wn[Y] + cv[p][Z]*wn[Z];
+      assert(cvdotwn == -1 || cvdotwn == -2 || cvdotwn == -3);
+
+      ijk[X] = ijk[X] + (cv[p][X] - cvdotwn*wn[X]);
+      ijk[Y] = ijk[Y] + (cv[p][Y] - cvdotwn*wn[Y]);
+      ijk[Z] = ijk[Z] + (cv[p][Z] - cvdotwn*wn[Z]);
+
+      modwn = wn[X]*wn[X] + wn[Y]*wn[Y] + wn[Z]*wn[Z];
+
+      switch (modwn) {
+      case 1: /* We are at a face */
+	wall->linkk[n] = cs_index(wall->cs, ijk[X], ijk[Y], ijk[Z]);
+	wall->linkq[n] = wall_link_slip_direction(wall, n);
+	wall->links[n] = wall_link_slip(wall, n);
+	/* Any cv normal to the face must also be no-slip */
+	modcv = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+	if (modcv == 1) wall->links[n] = WALL_NO_SLIP;
+	break;
+      case 2: /* We are at an edge: set no-slip for now */
+	wall->linkk[n] = wall->linki[n];
+	wall->linkq[n] = wall->linkp[n];
+	wall->links[n] = WALL_NO_SLIP;
+	break;
+      case 3: /* We are in a corner: must be no-slip */
+	wall->linkk[n] = wall->linki[n];
+	wall->linkq[n] = wall->linkp[n];
+	wall->links[n] = WALL_NO_SLIP;
+	break;
+      default:
+	assert(0);
+	pe_fatal(wall->pe, "Incorrect wall normal\n");
+      }
+    }
+  }
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  wall_link_normal
+ *
+ *  For link n, what is the wall normal at the crossing poistion?
+ *  This is for the special case iswall only.
+ *
+ *****************************************************************************/
+
+__host__ int wall_link_normal(wall_t * wall, int n, int wn[3]) {
+
+  assert(wall);
+  assert(wall->param->iswall);
+  assert(0 <= n && n < wall->nlink);
+
+  wn[X] = 0;
+  wn[Y] = 0;
+  wn[Z] = 0;
+
+  if (wall->param->iswall) {
+
+    int i0[3] = {0};
+    int p = wall->linkp[n];
+    int ic, jc, kc, index;
+    int status;
+
+    cs_index_to_ijk(wall->cs, wall->linki[n], i0);
+
+    ic = i0[X] + cv[p][X]; jc = i0[Y], kc = i0[Z];
+    index = cs_index(wall->cs, ic, jc, kc);
+    map_status(wall->map, index, &status);
+    if (status != MAP_FLUID) wn[X] = -cv[p][X];
+
+    ic = i0[X]; jc = i0[Y] + cv[p][Y]; kc = i0[Z];
+    index = cs_index(wall->cs, ic, jc, kc);
+    map_status(wall->map, index, &status);
+    if (status != MAP_FLUID) wn[Y] = -cv[p][Y];
+
+    ic = i0[X]; jc = i0[Y]; kc = i0[Z] + cv[p][Z];
+    index = cs_index(wall->cs, ic, jc, kc);
+    map_status(wall->map, index, &status);
+    if (status != MAP_FLUID) wn[Z] = -cv[p][Z];
+  }
+
+  return 0;
+} 
+
+/*****************************************************************************
+ *
+ *  wall_link_slip_direction
+ *
+ *  For given link n, work out the index q of the slip velocity
+ *  for the relevant adjacent fluid site (which will be incoming
+ *  at link fluid site i).
+ *
+ *  q = -1 is returned if no link is identified - an error.
+ *  q  = 0 should also be regarded as erroneous.
+ *
+ *****************************************************************************/
+
+__host__ int wall_link_slip_direction(wall_t * wall, int n) {
+
+  int q = -1;
+
+  assert(wall);
+  assert(wall->param->iswall);
+  assert(0 <= n && n < wall->nlink);
+
+  if (wall->param->iswall) {
+
+    int cq[3] = {0};
+    int wn[3] = {0};
+    int p = wall->linkp[n];
+
+    /* Components are reversed in the tangential direction, but
+     * the same in the (-ve outward) normal direction. */
+
+    wall_link_normal(wall, n, wn);
+
+    cq[X] = -2*wn[X] - cv[p][X];
+    cq[Y] = -2*wn[Y] - cv[p][Y];
+    cq[Z] = -2*wn[Z] - cv[p][Z];
+
+    /* Find the appropriate index */
+
+    for (int p = 0; p < NVEL; p++) {
+      if (cq[X] == cv[p][X] && cq[Y] == cv[p][Y] && cq[Z] == cv[p][Z]) q = p; 
+    }
+    assert(0 < q && q < NVEL);
+  }
+
+  return q;
+}
+
+/*****************************************************************************
+ *
+ *  wall_link_slip
+ *
+ *  For a given link n, find the relevant indirection into the slip value
+ *  table to get the fraction of slip s.
+ *
+ *  Not this only considers the wall normal (not the link direction per se).
+ *
+ *****************************************************************************/
+
+__host__ int wall_link_slip(wall_t * wall, int n) {
+
+  int s = WALL_NO_SLIP;
+  int wn[3] = {0};
+  int modwn = 0;
+
+  assert(wall);
+  assert(0 <= n && n < wall->nlink);
+
+  wall_link_normal(wall, n, wn);
+
+  modwn = wn[X]*wn[X] + wn[Y]*wn[Y] + wn[Z]*wn[Z];
+
+  switch (modwn) {
+  case 1:
+    /* A face (six cases) : set the relevant value */
+    if (wn[X] == +1) s = WALL_SLIP_XBOT;
+    if (wn[X] == -1) s = WALL_SLIP_XTOP;
+    if (wn[Y] == +1) s = WALL_SLIP_YBOT;
+    if (wn[Y] == -1) s = WALL_SLIP_YTOP;
+    if (wn[Z] == +1) s = WALL_SLIP_ZBOT;
+    if (wn[Z] == -1) s = WALL_SLIP_ZTOP;
+    break;
+  case 2:
+    /* An edge; one could allow slip, but there must be a unique value
+     * of s, which would mean e.g., an average of the two adjoining
+     * face values for slip. We can't manage this yet, so set no-slip. */
+    /* Potentially 12 cases */
+    s = WALL_NO_SLIP;
+    break;
+  case 3:
+    /* A corner (8 cases): all must be no slip */
+    s = WALL_NO_SLIP;
+    break;
+  default:
+    assert(0);
+  }
+
+  assert(s < WALL_SLIP_MAX);
+
+  return s;
 }
 
 /*****************************************************************************
@@ -664,6 +992,110 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 	fp = fp - 2.0*rcs2*lb->param->wv[ij]*lb->param->rho0*cdotu;
 	lb_f_set(lb, j, ji, LB_PHI, fp);
       }
+    }
+    /* Next link */
+  }
+
+  /* Reduction for momentum transfer */
+
+  fxb = tdpAtomicBlockAddDouble(fx);
+  fyb = tdpAtomicBlockAddDouble(fy);
+  fzb = tdpAtomicBlockAddDouble(fz);
+
+  if (tid == 0) {
+    tdpAtomicAddDouble(&wall->fnet[X], fxb);
+    tdpAtomicAddDouble(&wall->fnet[Y], fyb);
+    tdpAtomicAddDouble(&wall->fnet[Z], fzb);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  wall_bbl_slip_kernel
+ *
+ *  Version which:
+ *    1. allows slip
+ *    2. does not allow wall velocity
+ *
+ *****************************************************************************/
+
+__global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
+
+  int n;
+  int tid;
+  double fxb, fyb, fzb;
+
+  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(wall);
+  assert(lb);
+  assert(map);
+
+  tid = threadIdx.x;
+
+  fx[tid] = 0.0;
+  fy[tid] = 0.0;
+  fz[tid] = 0.0;
+
+  for_simt_parallel(n, wall->nlink, 1) {
+
+    int i, j, ij, ji;
+    int status;
+    double fp, fp0, fp1;
+
+    i  = wall->linki[n];
+    j  = wall->linkj[n];
+    ij = wall->linkp[n];   /* Link index direction solid->fluid */
+    ji = NVEL - ij;        /* Opposite direction index */
+
+    map_status(map, i, &status);
+
+    if (status == MAP_COLLOID) {
+
+      /* This matches the momentum exchange in colloid BBL. */
+      /* This only affects the accounting (via anomaly, as below) */
+
+      lb_f(lb, i, ij, LB_RHO, &fp0);
+      lb_f(lb, j, ji, LB_RHO, &fp1);
+      fp = fp0 + fp1;
+
+      fx[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[tid] += (fp - 2.0*lb->param->wv[ij])*lb->param->cv[ij][Z];
+    }
+    else {
+
+      int8_t k, q;
+      double fi, fk, s;
+      double wx, wy, wz;
+
+      k = wall->linkk[n];
+      q = wall->linkq[n];
+      s = wall->param->slip.s[wall->links[n]];
+
+      lb_f(lb, i, ij, LB_RHO, &fi);
+      lb_f(lb, k, q,  LB_RHO, &fk);
+      fp = (1.0-s)*fi + s*fk;
+
+      lb_f_set(lb, j, ji, LB_RHO, fp);
+
+      /* Momentum change: no-slip has full contribution,
+       * slip only contributes in wall normal direction */
+
+      fx[tid] += 2.0*(1.0-s)*fi*lb->param->cv[ij][X];
+      fy[tid] += 2.0*(1.0-s)*fi*lb->param->cv[ij][Y];
+      fz[tid] += 2.0*(1.0-s)*fi*lb->param->cv[ij][Z];
+
+      wx = -(lb->param->cv[ij][X] + lb->param->cv[q][X])/2;
+      wy = -(lb->param->cv[ij][Y] + lb->param->cv[q][Y])/2;
+      wz = -(lb->param->cv[ij][Z] + lb->param->cv[q][Z])/2;
+      fx[tid] += 2.0*wx*s*fk*lb->param->cv[q][X];
+      fy[tid] += 2.0*wy*s*fk*lb->param->cv[q][Y];
+      fz[tid] += 2.0*wz*s*fk*lb->param->cv[q][Z];
     }
     /* Next link */
   }
