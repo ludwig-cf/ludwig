@@ -17,6 +17,8 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
+#include <math.h>
 #include <stdio.h>
 
 #include "pe.h"
@@ -87,8 +89,8 @@ __host__ int test_wall_slip(void) {
 
   {
     /* These are invalid values for fraction of slip... */
-    double sbot[3] = {1.0, 2.0, 3.0};
-    double stop[3] = {4.0, 5.0, 6.0};
+    double sbot[3] = {1.0,  2.0,  3.0};
+    double stop[3] = {4.0,  5.0,  6.0};
 
     ws = wall_slip(sbot, stop);
     assert(ws.s[WALL_NO_SLIP]   == 0.0);
@@ -98,6 +100,7 @@ __host__ int test_wall_slip(void) {
     assert(ws.s[WALL_SLIP_YTOP] == stop[Y]);
     assert(ws.s[WALL_SLIP_ZBOT] == sbot[Z]);
     assert(ws.s[WALL_SLIP_ZTOP] == stop[Z]);
+
     assert(ws.active);
     assert(!wall_slip_valid(&ws));
   }
@@ -110,6 +113,40 @@ __host__ int test_wall_slip(void) {
     ws = wall_slip(sbot, stop);
     assert(ws.active);
     assert(wall_slip_valid(&ws));
+  }
+
+  /* Edges: test some reasonable cases */
+  {
+    double sbot[3] = {0.1, 0.2, 0.0};
+    double stop[3] = {0.5, 0.7, 0.0};
+
+    ws = wall_slip(sbot, stop);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XB_YB] - 0.15) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XB_YT] - 0.40) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XT_YB] - 0.35) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XT_YT] - 0.60) < DBL_EPSILON);
+  }
+
+  {
+    double sbot[3] = {0.2, 0.0, 0.3};
+    double stop[3] = {0.4, 0.0, 0.7};
+
+    ws = wall_slip(sbot, stop);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XB_ZB] - 0.25) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XB_ZT] - 0.45) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XT_ZB] - 0.35) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_XT_ZT] - 0.55) < DBL_EPSILON);
+  }
+
+  {
+    double sbot[3] = {0.0, 0.5, 0.3};
+    double stop[3] = {0.0, 0.1, 0.4};
+
+    ws = wall_slip(sbot, stop);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_YB_ZB] - 0.40) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_YB_ZT] - 0.45) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_YT_ZB] - 0.20) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_EDGE_YT_ZT] - 0.25) < DBL_EPSILON);
   }
 
   return valid;
