@@ -47,6 +47,7 @@ __host__ int wall_link_slip(wall_t * wall, int n);
 
 __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb);
 __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map);
+__global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map);
 
 static __constant__ wall_param_t static_param;
 
@@ -225,6 +226,20 @@ __host__ int wall_info(wall_t * wall) {
 	    wall->param->initshear);
   }
 
+  if (wall->param->slip.active) {
+    pe_info(pe, "Wall slip active:                %s\n", "yes");
+    pe_info(pe, "Wall slip fraction (bottom):    %14.7e %14.7e %14.7e\n",
+	    wall->param->slip.s[WALL_SLIP_XBOT],
+	    wall->param->slip.s[WALL_SLIP_YBOT],
+	    wall->param->slip.s[WALL_SLIP_ZBOT]);
+    pe_info(pe, "Wall slip fraction (top):       %14.7e %14.7e %14.7e\n",
+	    wall->param->slip.s[WALL_SLIP_XTOP],
+	    wall->param->slip.s[WALL_SLIP_YTOP],
+	    wall->param->slip.s[WALL_SLIP_ZTOP]);
+    pe_info(pe, "Memory (total, bytes):           %zu\n",
+	    nlink*(1*sizeof(int) + 2*sizeof(int8_t)));
+  }
+
   if (wall->param->isporousmedia) {
     pe_info(pe, "\n");
     pe_info(pe, "Porous Media\n");
@@ -274,6 +289,21 @@ __host__ wall_slip_t wall_slip(double sbot[3], double stop[3]) {
   ws.s[WALL_SLIP_YTOP] = stop[Y];
   ws.s[WALL_SLIP_ZBOT] = sbot[Z];
   ws.s[WALL_SLIP_ZTOP] = stop[Z];
+
+  /* Unique edge values (average of two sides) */
+
+  ws.s[WALL_SLIP_EDGE_XB_YB] = 0.5*(sbot[X] + sbot[Y]);
+  ws.s[WALL_SLIP_EDGE_XB_YT] = 0.5*(sbot[X] + stop[Y]);
+  ws.s[WALL_SLIP_EDGE_XB_ZB] = 0.5*(sbot[X] + sbot[Z]);
+  ws.s[WALL_SLIP_EDGE_XB_ZT] = 0.5*(sbot[X] + stop[Z]);
+  ws.s[WALL_SLIP_EDGE_XT_YB] = 0.5*(stop[X] + sbot[Y]);
+  ws.s[WALL_SLIP_EDGE_XT_YT] = 0.5*(stop[X] + stop[Y]);
+  ws.s[WALL_SLIP_EDGE_XT_ZB] = 0.5*(stop[X] + sbot[Z]);
+  ws.s[WALL_SLIP_EDGE_XT_ZT] = 0.5*(stop[X] + stop[Z]);
+  ws.s[WALL_SLIP_EDGE_YB_ZB] = 0.5*(sbot[Y] + sbot[Z]);
+  ws.s[WALL_SLIP_EDGE_YB_ZT] = 0.5*(sbot[Y] + stop[Z]);
+  ws.s[WALL_SLIP_EDGE_YT_ZB] = 0.5*(stop[Y] + sbot[Z]);
+  ws.s[WALL_SLIP_EDGE_YT_ZT] = 0.5*(stop[Y] + stop[Z]);
 
   return ws;
 }
@@ -509,40 +539,57 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
        * direction which takes us to the fluid site paired with
        * the current link for slip. */
 
-      int wn[3] = {0};
-      int ijk[3] = {0};       /* fluid site (ic,jc,kc) */
+      int wn[3] = {0};        /* Wall normal */
+      int wt[3] = {0};        /* Wall tangent */
+      int ijk[3] = {0};       /* fluid site linki (ic,jc,kc) */
       int p = wall->linkp[n];
-      int cvdotwn, modwn;
-      int modcv;
+      int cvdotwn, modwn, modwt;
 
       cs_index_to_ijk(wall->cs, wall->linki[n], ijk);
       wall_link_normal(wall, n, wn);
 
-      /* EXPAND COMMENT CHECK CHECK */
       /* tangent = cv[p] - (cv[p].n/n.n) n */
+      /* But we are in integers, so watch any division */
 
       cvdotwn = cv[p][X]*wn[X] + cv[p][Y]*wn[Y] + cv[p][Z]*wn[Z];
-      assert(cvdotwn == -1 || cvdotwn == -2 || cvdotwn == -3);
-
-      ijk[X] = ijk[X] + (cv[p][X] - cvdotwn*wn[X]);
-      ijk[Y] = ijk[Y] + (cv[p][Y] - cvdotwn*wn[Y]);
-      ijk[Z] = ijk[Z] + (cv[p][Z] - cvdotwn*wn[Z]);
-
       modwn = wn[X]*wn[X] + wn[Y]*wn[Y] + wn[Z]*wn[Z];
 
-      switch (modwn) {
-      case 1: /* We are at a face */
-	wall->linkk[n] = cs_index(wall->cs, ijk[X], ijk[Y], ijk[Z]);
-	wall->linkq[n] = wall_link_slip_direction(wall, n);
-	wall->links[n] = wall_link_slip(wall, n);
-	/* Any cv normal to the face must also be no-slip */
-	modcv = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
-	if (modcv == 1) wall->links[n] = WALL_NO_SLIP;
-	break;
-      case 2: /* We are at an edge: set no-slip for now */
+      assert(cvdotwn == -1 || cvdotwn == -2 || cvdotwn == -3);
+      assert(modwn == -cvdotwn);
+
+      wt[X] = (cv[p][X] - cvdotwn*wn[X]/modwn);
+      wt[Y] = (cv[p][Y] - cvdotwn*wn[Y]/modwn);
+      wt[Z] = (cv[p][Z] - cvdotwn*wn[Z]/modwn);
+      modwt = wt[X]*wt[X] + wt[Y]*wt[Y] + wt[Z]*wt[Z];
+
+      if (modwt == 0) {
+	/* If there's no tangential component, p is not relevant for
+	 * slip. Set WALL_NO_SLIP (k, q must be valid, but they
+	 * don't enter the final result). */
 	wall->linkk[n] = wall->linki[n];
 	wall->linkq[n] = wall->linkp[n];
 	wall->links[n] = WALL_NO_SLIP;
+      }
+      else {
+	ijk[X] = ijk[X] + wt[X];
+	ijk[Y] = ijk[Y] + wt[Y];
+	ijk[Z] = ijk[Z] + wt[Z];
+	wall->linkk[n] = cs_index(wall->cs, ijk[X], ijk[Y], ijk[Z]);
+	wall->linkq[n] = wall_link_slip_direction(wall, n);
+	wall->links[n] = wall_link_slip(wall, n);
+      }
+#ifdef OLD_STUV
+      switch (modwn) {
+      case 1: /* We are at a face */
+	/* Any cv normal to the face must also be no-slip */
+	/* ... and I don't really care what k is, as long as it's valid */
+	if (modwt == 0) wall->links[n] = WALL_NO_SLIP;
+	break;
+      case 2: /* We are at an edge: set no-slip for now */
+	wall->linkk[n] = cs_index(wall->cs, ijk[X], ijk[Y], ijk[Z]);
+	wall->linkq[n] = wall_link_slip_direction(wall, n);
+	wall->links[n] = wall_link_slip(wall, n);
+	if (modwt == 0) wall->links[n] = WALL_NO_SLIP;
 	break;
       case 3: /* We are in a corner: must be no-slip */
 	wall->linkk[n] = wall->linki[n];
@@ -553,6 +600,7 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
 	assert(0);
 	pe_fatal(wall->pe, "Incorrect wall normal\n");
       }
+#endif
     }
   }
 
@@ -688,11 +736,19 @@ __host__ int wall_link_slip(wall_t * wall, int n) {
     if (wn[Z] == -1) s = WALL_SLIP_ZTOP;
     break;
   case 2:
-    /* An edge; one could allow slip, but there must be a unique value
-     * of s, which would mean e.g., an average of the two adjoining
-     * face values for slip. We can't manage this yet, so set no-slip. */
-    /* Potentially 12 cases */
-    s = WALL_NO_SLIP;
+    /* An edge (12 cases); there must be a unique value of s. */
+    if (wn[X] ==  1 && wn[Y] ==  1) s = WALL_SLIP_EDGE_XB_YB;
+    if (wn[X] ==  1 && wn[Y] == -1) s = WALL_SLIP_EDGE_XB_YT;
+    if (wn[X] ==  1 && wn[Z] ==  1) s = WALL_SLIP_EDGE_XB_ZB;
+    if (wn[X] ==  1 && wn[Z] == -1) s = WALL_SLIP_EDGE_XB_ZT;
+    if (wn[X] == -1 && wn[Y] ==  1) s = WALL_SLIP_EDGE_XT_YB;
+    if (wn[X] == -1 && wn[Y] == -1) s = WALL_SLIP_EDGE_XT_YT;
+    if (wn[X] == -1 && wn[Z] ==  1) s = WALL_SLIP_EDGE_XT_ZB;
+    if (wn[X] == -1 && wn[Z] == -1) s = WALL_SLIP_EDGE_XT_ZT;
+    if (wn[Y] ==  1 && wn[Z] ==  1) s = WALL_SLIP_EDGE_YB_ZB;
+    if (wn[Y] ==  1 && wn[Z] == -1) s = WALL_SLIP_EDGE_YB_ZT;
+    if (wn[Y] == -1 && wn[Z] ==  1) s = WALL_SLIP_EDGE_YT_ZB;
+    if (wn[Y] == -1 && wn[Z] == -1) s = WALL_SLIP_EDGE_YT_ZT;
     break;
   case 3:
     /* A corner (8 cases): all must be no slip */
@@ -870,11 +926,15 @@ __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
 __host__ int wall_bbl(wall_t * wall) {
 
   dim3 nblk, ntpb;
+  void (* kernel) (wall_t * wall, lb_t * lb, map_t * map);
 
   assert(wall);
   assert(wall->target);
 
   if (wall->nlink == 0) return 0;
+
+  kernel = wall_bbl_kernel;
+  if (wall->param->slip.active) kernel = wall_bbl_slip_kernel;
 
   /* Update kernel constants */
   tdpMemcpyToSymbol(tdpSymbol(static_param), wall->param,
@@ -882,7 +942,7 @@ __host__ int wall_bbl(wall_t * wall) {
 
   kernel_launch_param(wall->nlink, &nblk, &ntpb);
 
-  tdpLaunchKernel(wall_bbl_kernel, nblk, ntpb, 0, 0,
+  tdpLaunchKernel(kernel, nblk, ntpb, 0, 0,
 		  wall->target, wall->lb->target, wall->map->target);
 
   tdpAssert(tdpPeekAtLastError());
@@ -1069,7 +1129,7 @@ __global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
     }
     else {
 
-      int8_t k, q;
+      int k, q;           /* Note promotion to int for linkk, linkq */
       double fi, fk, s;
       double wx, wy, wz;
 
@@ -1084,18 +1144,19 @@ __global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
       lb_f_set(lb, j, ji, LB_RHO, fp);
 
       /* Momentum change: no-slip has full contribution,
-       * slip only contributes in wall normal direction */
+       * slip only contributes in wall normal direction
+       * (wx, wy, wz) and we need |normal| to get sign. */
 
-      fx[tid] += 2.0*(1.0-s)*fi*lb->param->cv[ij][X];
-      fy[tid] += 2.0*(1.0-s)*fi*lb->param->cv[ij][Y];
-      fz[tid] += 2.0*(1.0-s)*fi*lb->param->cv[ij][Z];
+      fx[tid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][X];
+      fy[tid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][Y];
+      fz[tid] += 2.0*(1.0-s)*(fi-lb->param->wv[ij])*lb->param->cv[ij][Z];
 
       wx = -(lb->param->cv[ij][X] + lb->param->cv[q][X])/2;
       wy = -(lb->param->cv[ij][Y] + lb->param->cv[q][Y])/2;
       wz = -(lb->param->cv[ij][Z] + lb->param->cv[q][Z])/2;
-      fx[tid] += 2.0*wx*s*fk*lb->param->cv[q][X];
-      fy[tid] += 2.0*wy*s*fk*lb->param->cv[q][Y];
-      fz[tid] += 2.0*wz*s*fk*lb->param->cv[q][Z];
+      fx[tid] += 2.0*wx*wx*s*(fk-lb->param->wv[q])*lb->param->cv[q][X];
+      fy[tid] += 2.0*wy*wy*s*(fk-lb->param->wv[q])*lb->param->cv[q][Y];
+      fz[tid] += 2.0*wz*wz*s*(fk-lb->param->wv[q])*lb->param->cv[q][Z];
     }
     /* Next link */
   }
