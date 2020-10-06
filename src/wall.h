@@ -27,6 +27,18 @@ typedef enum wall_slip_enum {WALL_NO_SLIP = 0,
 			     WALL_SLIP_XBOT, WALL_SLIP_XTOP,
 			     WALL_SLIP_YBOT, WALL_SLIP_YTOP,
 			     WALL_SLIP_ZBOT, WALL_SLIP_ZTOP,
+			     WALL_SLIP_EDGE_XB_YB,
+			     WALL_SLIP_EDGE_XB_YT,
+			     WALL_SLIP_EDGE_XB_ZB,
+			     WALL_SLIP_EDGE_XB_ZT,
+			     WALL_SLIP_EDGE_XT_YB,
+			     WALL_SLIP_EDGE_XT_YT,
+			     WALL_SLIP_EDGE_XT_ZB,
+			     WALL_SLIP_EDGE_XT_ZT,
+			     WALL_SLIP_EDGE_YB_ZB,
+			     WALL_SLIP_EDGE_YB_ZT,
+			     WALL_SLIP_EDGE_YT_ZB,
+			     WALL_SLIP_EDGE_YT_ZT,
 			     WALL_SLIP_MAX} wall_slip_enum_t;
 
 typedef struct wall_slip_s  wall_slip_t;
