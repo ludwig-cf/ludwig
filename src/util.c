@@ -1355,3 +1355,55 @@ __host__ int util_str_tolower(char * str, size_t maxlen) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  util_rectangle_conductance
+ *
+ *  The steady volume flux (volume flow rate) Q in a rectangular
+ *  capillary of cross section width x height 2b x 2c (with 2b > 2c)
+ *  we write:
+ *
+ *    Q = -C (dp/dx) / eta
+ *
+ *  with dp/dx the pressure gradient and eta the dynamic viscosity.
+ *  One can define a viscosity-independent conductance C
+ *
+ *    C = (4/3) b c^3 [ 1 - 6(c/b) \sum_k tanh (a_k b/c)/a_k^5 ]
+ *
+ *  where a_k = (2k - 1) pi/2 and the sum is k = 1, ..., \inf.
+ *
+ *  This function returns the value of conductance for (w, h) w > h.
+ *  "q" in the argument list is "conductance".
+ *
+ *  [1] E.g. T. Papanastasiou, G. Georiou, and A. Alexandrou,
+ *  "Viscous Fluid Flow" CRC Press, Boca Raton, Florida (2000).
+ *
+ *****************************************************************************/
+
+__host__ int util_rectangle_conductance(double w, double h, double * q) {
+
+  int ierr = 0;
+  PI_DOUBLE(pi);
+
+  assert(q);
+
+  if (w < h || w <= 0.0 || h <= 0.0) {
+    ierr = 1;
+  }
+  else {
+    double b = 0.5*w;
+    double c = 0.5*h;
+    double asum = 0;
+    /* As the terms in the sum decrease with k, run loop in reverse */
+    /* Two thousand terms should converge to DBL_EPISLON*sum */
+    for (int k = 2000; k > 0; k--) {
+      double ak = 0.5*(2*k - 1)*pi;
+      asum += tanh(ak*b/c)/pow(ak, 5);
+    }
+
+    *q = (4.0/3.0)*b*c*c*c*(1.0 - 6.0*(c/b)*asum);
+  }
+
+  return ierr;
+}
