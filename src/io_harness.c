@@ -79,6 +79,10 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
   io_info_set_processor_dependent(info);
   info->single_file_read = 0;
 
+  /* Patch to allow old parallel i/o to take effect */
+  if (info->io_comm->n_io > 1) {
+    info->args.output.mode = IO_MODE_MULTIPLE;
+  }
   /* Local rank and group counts */
 
   info->nsites = info->io_comm->nsite[X]*info->io_comm->nsite[Y]
@@ -574,6 +578,12 @@ int io_info_format_set(io_info_t * obj, int form_in, int form_out) {
 
   io_info_format_in_set(obj, form_in);
   io_info_format_out_set(obj, form_out);
+
+  /* Patch to allow old parallel i/o format */
+  if (obj->io_comm->n_io > 1) {
+    obj->processor_independent = 0;
+    obj->single_file_read = 0;
+  }
 
   return 0;
 }
