@@ -1,0 +1,80 @@
+#############################################################################
+#
+#  serial-rect-ct3.inp
+#
+#  Rectangular capillary.
+#
+#  Here we have a tube 1/4 the size of that in serial-rect-ct[12].inp
+#  but we have slip boundary conditions at two adjacent sides.
+#
+#  So this should give us a volume flow rate exactly 1/4 that in the
+#  larger capillary.
+#
+#  The result should be (Q/A) = (1.4632/465.0) => C = 52.423 i.e.,
+#  the same viscosity-independent conductance.
+#
+##############################################################################
+
+N_cycles 100
+N_start 0
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+size 1_31_15
+grid 1_1_1
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+force 0.00001_0_0
+viscosity 0.1666
+isothermal_fluctuations off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy none
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on yes
+periodicity       1_0_0
+boundary_walls    0_1_1
+
+boundary_walls_slip_active        yes
+boundary_walls_slip_fraction_top  0.0_1.0_1.0
+boundary_walls_slip_fraction_bot  0.0_0.0_0.0
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics           100
+stats_vel_print_vol_flux  yes
+
+config_at_end no

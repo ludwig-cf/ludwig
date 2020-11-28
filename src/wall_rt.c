@@ -27,6 +27,7 @@ int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
 
   double ux_bot = 0.0;
   double ux_top = 0.0;
+  wall_slip_t ws = {0};
   wall_param_t p = {0};
 
   assert(rt);
@@ -57,6 +58,28 @@ int wall_rt_init(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb, map_t * map,
     rt_double_parameter(rt, "boundary_lubrication_rcnormal", &p.lubr_rc[X]);
     p.lubr_rc[Y] = p.lubr_rc[X];
     p.lubr_rc[Z] = p.lubr_rc[X];
+  }
+
+  /* Slip properties [optional] */
+
+  if (p.iswall) {
+    double sbot[3] = {0.0, 0.0, 0.0};
+    double stop[3] = {0.0, 0.0, 0.0};
+
+    rt_double_parameter_vector(rt, "boundary_walls_slip_fraction_bot", sbot);
+    rt_double_parameter_vector(rt, "boundary_walls_slip_fraction_top", stop);
+
+    ws = wall_slip(sbot, stop);
+    if (wall_slip_valid(&ws) == 0) {
+      /* Could move elsewhere */
+      pe_info(pe,  "Wall slip parameters must be 0 <= s <= 1 everywhere\n");
+      pe_fatal(pe, "Please check and try again!\n");
+    }
+
+    /* Allow user to force use of slip (even if s = 0 everywhere) */
+    if (rt_switch(rt, "boundary_walls_slip_active")) ws.active = 1;
+
+    p.slip = ws;
   }
 
   /* Allocate */
