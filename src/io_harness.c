@@ -234,11 +234,6 @@ static void io_set_group_filename(char * filename_io, const char * stub,
   sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
 	  info->io_comm->index + 1);
 
-  info->single_file_read = 0;
-  if (info->single_file_read) {
-    sprintf(filename_io, "%s.%3.3d-%3.3d", stub, 1, 1);
-  }
-
   return;
 }
 
@@ -1115,6 +1110,10 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   cs_nlocal(obj->cs, nlocal);
 
   io_set_group_filename(filename_io, filename_stub, obj);
+
+  if (obj->single_file_read) {
+    sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
+  }
 
   if (obj->io_comm->rank == 0) {
 
