@@ -172,7 +172,8 @@ __host__ int colloids_memcpy(colloids_info_t * info, int flag) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    assert(info->target == info);
+    /* Bare pointer equality causes HIPCC to choke, hence explicit (()) */
+    assert((info->target == info));
   }
   else {
     colloid_t * tmp;
