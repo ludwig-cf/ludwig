@@ -34,6 +34,7 @@
 int util_svd_check(int m, int n, double ** a);
 int util_random_unit_vector_check(void);
 int util_str_tolower_check(void);
+int util_rectangle_conductance_check(void);
 
 /*****************************************************************************
  *
@@ -74,6 +75,7 @@ int test_util_suite(void) {
   util_random_unit_vector_check();
 
   util_str_tolower_check();
+  util_rectangle_conductance_check();
 
   pe_info(pe, "PASS     ./unit/test_util\n");
   pe_free(pe);
@@ -252,6 +254,42 @@ int util_str_tolower_check(void) {
   strncpy(s1, "__12345ABCDE__", 15);
   util_str_tolower(s1, strlen(s1));
   assert(strncmp(s1, "__12345abcde__", 14) == 0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_rectangle_conductance_check
+ *
+ *****************************************************************************/
+
+int util_rectangle_conductance_check(void) {
+
+  double c = 0.0;
+
+  {
+    /* h must be the larger */
+    double h = 1.0;
+    double w = 2.0;
+
+    assert(util_rectangle_conductance(h, w, &c) != 0);
+  }
+
+  {
+    double h = 2.0;
+    double w = 2.0;
+    util_rectangle_conductance(h, w, &c);
+  }
+
+
+  {
+    /* Value used for some regression tests */
+    double h = 30.0;
+    double w = 62.0;
+    assert(util_rectangle_conductance(w, h, &c) == 0);
+    assert(fabs(c - 97086.291)/97086.291 < FLT_EPSILON);
+  }
 
   return 0;
 }
