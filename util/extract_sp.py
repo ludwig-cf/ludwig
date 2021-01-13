@@ -31,7 +31,7 @@ pn=sys.argv[4] #processor number
 ngroup=1	# Number of output groups
 
 a0_squ=3.0      # the radius of squirmer
-a0_poly=0.178   # the radius of monomer 
+a0_poly=0.179   # the radius of monomer 
 
 vel=0		# Switch for velocity 
 q=0		# Switch for Q-tensor

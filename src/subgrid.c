@@ -30,7 +30,7 @@
 #include "noise.h"
 
 static double d_peskin(double);
-static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
+static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro,map_t * map);
 static double drange_ = 1.0; /* Max. range of interpolation - 1 */
 static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
@@ -45,17 +45,21 @@ static int subgrid_on_ = 0;  /* Subgrid particle flag */
 
 
 int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
-				 wall_t * wall) {
+				 wall_t * wall,map_t * map) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
   int nlocal[3], offset[3];
   int ncell[3];
+  int status;
+  double rd[3];
+  double torque[3];
 
   double r[3], r0[3], force[3];
   double dr;
   colloid_t * p_colloid;
+  colloid_t * p_colloid_distr;
 
   assert(cinfo);
   assert(hydro);
@@ -121,7 +125,26 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		force[X] = p_colloid->fex[X]*dr;
 		force[Y] = p_colloid->fex[Y]*dr;
 		force[Z] = p_colloid->fex[Z]*dr;
-		hydro_f_local_add(hydro, index, force);
+
+                map_status(map, index, &status);
+
+                if (status == MAP_FLUID)
+		    hydro_f_local_add(hydro, index, force);
+                else if(status == MAP_COLLOID) {
+                    colloids_info_map(cinfo, index, &p_colloid_distr);
+                    p_colloid_distr->force[X]+=force[X];
+                    p_colloid_distr->force[Y]+=force[Y];
+                    p_colloid_distr->force[Z]+=force[Z];
+                    rd[X]=1.0*i-(p_colloid_distr->s.r[X] - 1.0*offset[X]);
+                    rd[Y]=1.0*j-(p_colloid_distr->s.r[Y] - 1.0*offset[Y]);
+                    rd[Z]=1.0*k-(p_colloid_distr->s.r[Z] - 1.0*offset[Z]);
+                    cross_product(rd,force,torque);
+                    p_colloid_distr->torque[X]+=torque[X];
+                    p_colloid_distr->torque[Y]+=torque[Y];
+                    p_colloid_distr->torque[Z]+=torque[Z];
+                }
+                /* Assign the forces originally acting on the colloid nodes to
+                 * the colloids*/
 
 	      }
 	    }
@@ -148,7 +171,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,noise_t * noise) {
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,noise_t * noise,map_t * map) {
 
   int ia;
   int ic, jc, kc;
@@ -165,12 +188,13 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,noise_t * noise) {
 
   assert(cinfo);
   assert(hydro);
+  assert(map);
 
   if (subgrid_on_ == 0) return 0;
 
   colloids_info_ncell(cinfo, ncell);
 
-  subgrid_interpolation(cinfo, hydro);
+  subgrid_interpolation(cinfo, hydro,map);
   colloid_sums_halo(cinfo, COLLOID_SUM_SUBGRID);
 
   /* Loop through all cells (including the halo cells) */
@@ -206,6 +230,8 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,noise_t * noise) {
                  p_colloid->s.v[X]*=0.5;
                  p_colloid->s.v[Y]*=0.5;
                  p_colloid->s.v[Z]*=0.5;
+                 printf("vel idx: %d; v: %lf,%lf,%lf;\n",p_colloid->s.index,p_colloid->s.v[0],p_colloid->s.v[1],p_colloid->s.v[2]);
+                 printf("count1 1\n");
              }
              /* To avoid too large velocity. It is valid only if v2 very rarely surpasses the threshold. It is equivalent to applying a large random force to the particle. */
           }
@@ -233,13 +259,14 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro,noise_t * noise) {
  *
  *****************************************************************************/
 
-static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
+static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro,map_t * map) {
 
   int ic, jc, kc;
   int i, j, k, i_min, i_max, j_min, j_max, k_min, k_max;
   int index;
   int nlocal[3], offset[3];
   int ncell[3];
+  int status;
 
   double r0[3], r[3], u[3];
   double dr;
@@ -247,6 +274,7 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 
   assert(cinfo);
   assert(hydro);
+  assert(map);
 
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
@@ -308,6 +336,9 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
 	      for (k = k_min; k <= k_max; k++) {
 
 		index = cs_index(cinfo->cs, i, j, k);
+
+                map_status(map, index, &status);
+                if (status != MAP_FLUID) continue;
 
 		/* Separation between r0 and the coordinate position of
 		 * this site */

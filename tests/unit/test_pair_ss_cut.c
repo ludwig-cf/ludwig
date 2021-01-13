@@ -23,6 +23,7 @@
 #include "colloids_halo.h"
 #include "pair_ss_cut.h"
 #include "tests.h"
+//CHANGE2
 #include "colloids.h"
 
 #define PAIR_EPSILON 0.001
@@ -60,6 +61,7 @@ int test_pair_ss_cut_suite(void) {
   return 0;
 }
 
+//CHANGE2
 /*****************************************************************************
  *
  *  test_pair_ss_cut1
@@ -130,6 +132,7 @@ static int test_pair_ss_cut2(pe_t * pe, cs_t * cs) {
   pair_ss_cut_create(pe, cs, &pair);
   assert(pair);
 
+  //CHANGE2
   double epsilon[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
   double sigma[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
   double nu[NUM_INT_PART_TYPES][NUM_INT_PART_TYPES];
@@ -221,6 +224,7 @@ static int test_pair_config1(colloids_info_t * cinfo, interact_t * interact,
   /* Compute interactions and compare against single version */
 
   interact_pairwise(interact, cinfo);
+  //CHANGE2
   pair_ss_cut_single(pair, dh, &f, &v,pc1->s.inter_type,pc2->s.inter_type);
 
   f = f/sqrt(3.0);

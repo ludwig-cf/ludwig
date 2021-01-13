@@ -70,7 +70,7 @@ multi_squ_poly_init: multi_squ_poly_init.o
 
 .PHONY : clean
 clean:
-	rm -f *.o colloid_init extract_colloids extract_squirmer_polymer capillary extract coll_squ_subgrid_init multi_poly_init multi_squ_poly_init
+	rm -f *.o colloid_init extract_colloids extract_squirmer_polymer capillary extract coll_squ_subgrid_init multi_poly_init multi_squ_poly_init  
 
 
 .SUFFIXES:

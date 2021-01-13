@@ -70,6 +70,7 @@ int main(int argc, char ** argv) {
 
   int n;
   int nrequest;
+  int nactual;
 
 
   double a0 = 0.178;   /* Input radius */

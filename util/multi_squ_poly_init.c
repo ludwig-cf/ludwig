@@ -45,7 +45,7 @@
 #include "../src/ran.h"
 
 enum format {ASCII, BINARY};
-#define NTRYMAX 10000
+#define NTRYMAX 20000
 
 void colloid_init_trial(cs_t * cs, double r[3], double dh);
 void colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,double dh);
@@ -66,25 +66,26 @@ void grow_one_monomer(cs_t * cs,double r1[3], double r2[3], double dh,double lbo
 
 int main(int argc, char ** argv) {
 
-  int ntotal[3] = {36, 36, 36};        /* Total system size (cf. input) */
+  int ntotal[3] = {100, 100, 100};        /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
   int file_format = ASCII;
 
   int n;
   int nrequest;
+  int nactual;
 
 
-  double a0_pl = 0.179;   /* Input radius */
+  double a0_pl = 0.2;   /* Input radius */
   double ah_pl = 0.2;   /* Hydrodynamic radius */ 
-  double al_pl = 1.66; /* Offset parameter for subgrid particle */
+  double al_pl = 1.54; /* Offset parameter for subgrid particle */
   double dh_pl = 0.50;   /* "grace' distance */
   double q0_pl = 0.0;   /* positive charge */ 
   double q1_pl = 0.0;   /* negative charge */
   double b1_pl = 0.00;
   double b2_pl = 0.00;
   int type_pl=2; /* 0 colloid, 1 squirmer, 2 subgrid; For polymers, you can only put 2. */
-  int Npoly=8; /* number of polymers */
-  int Lpoly=120; /* length of a polymer */
+  int Npoly=400; /* number of polymers */
+  int Lpoly=240; /* length of a polymer */
   double lbond=1.0; /* bond length */
   int inter_type_pl=0; /* interaction type: 0,1,2,3... */
 
@@ -94,10 +95,10 @@ int main(int argc, char ** argv) {
   double dh_sq = 0.5;   /* "grace' distance */
   double q0_sq = 0.0;   /* positive charge */ 
   double q1_sq = 0.0;   /* negative charge */
-  double b1_sq = 0.01;
-  double b2_sq = -0.05;
+  double b1_sq = 0.003;
+  double b2_sq = -0.015;
   int type_sq=1; /* 0 colloid; 1 squirmer; 2 subgrid */
-  int N_sq = 1;  /* number of squirmers */
+  int N_sq = 2000;  /* number of squirmers */
   int inter_type_sq=1; /* interaction type: 0,1,2,3... */
 
   colloid_state_t * state;
@@ -354,12 +355,15 @@ void poly_init_random(cs_t * cs, int N_sq, colloid_state_t * state,double dh,int
   int parc; //check particle 
   int overlap;
   double rsep[3];
-
+  int count;
+  int restart;
 
   for (int pl=0;pl<Npoly;pl++) {
     
     mon1=pl*Lpoly+N_sq;
 
+    count=0;
+    restart=0;
     do{
         colloid_init_trial(cs, rtrial, state[mon1].ah + dh);
 
@@ -370,7 +374,18 @@ void poly_init_random(cs_t * cs, int N_sq, colloid_state_t * state,double dh,int
             if (modulus(rsep) <= state[mon1].ah + state[parc].ah + dh) {overlap = 1;break;}
             parc++;
         }
+        count++;
+        if(count>NTRYMAX) {
+            restart=1;
+            break;
+        }
     }while(overlap);
+
+    if(restart==1) {
+        printf("restart polymer %d\n",pl);
+        pl--;
+        continue;
+    }
 
     state[mon1].r[X] = rtrial[X];
     state[mon1].r[Y] = rtrial[Y];
@@ -384,6 +399,8 @@ void poly_init_random(cs_t * cs, int N_sq, colloid_state_t * state,double dh,int
         mon2=pl*Lpoly+monl+N_sq;
         mon1=mon2-1;
 
+        count=0;
+        restart=0;
         do{
             grow_one_monomer(cs,state[mon1].r,rtrial,state[mon2].ah+dh,lbond);
             overlap=0;
@@ -393,7 +410,15 @@ void poly_init_random(cs_t * cs, int N_sq, colloid_state_t * state,double dh,int
                 if (modulus(rsep) <= state[mon2].ah + state[parc].ah + dh) {overlap = 1;break;}
                 parc++;
             }
+            count++;
+            if(count>NTRYMAX) {
+                restart=1;
+                break;
+            }
         }while(overlap);
+
+        if(restart==1) 
+            break;
 
         state[mon2].r[X] = rtrial[X];
         state[mon2].r[Y] = rtrial[Y];
@@ -410,6 +435,14 @@ void poly_init_random(cs_t * cs, int N_sq, colloid_state_t * state,double dh,int
         Nmon++;
     }
 
+    if(restart==1) {
+        Nmon-=monl;    
+        printf("restart polymer %d\n",pl);
+        pl--;
+        continue;
+    }
+
+    printf("polymer %d is done\n",pl);
   }
 
   //for (monl=0;monl<Lpoly;monl++) {

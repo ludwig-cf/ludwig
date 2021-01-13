@@ -40,6 +40,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
+
+
 
 #include "runtime.h"
 
@@ -346,6 +349,7 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
   return key_present;
 }
 
+
 /*****************************************************************************
  *
  *  rt_int_parameter_rank2_tensor
@@ -367,24 +371,37 @@ int rt_int_parameter_rank2_tensor(rt_t * rt, const char * key, int v[][NUM_INT_P
   key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
+      char str_value_cp[200];
+      strcpy(str_value_cp,str_value);
+
       ptr=strtok(str_value, delim);
       int times=0;
-      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
-          for(int j=0;j<NUM_INT_PART_TYPES;j++) {
-              if(ptr!=NULL) {
-                v[i][j]=atoi(ptr);
-                ptr = strtok(NULL, delim);
-                times++;
-              }
-              else
-                v[i][j]=1;
+      while(ptr!=NULL) {
+        times+=1;
+        ptr = strtok(NULL, delim);
+      }
+
+      int n_actual=(int)sqrt(times);
+
+      ptr=strtok(str_value_cp, delim);
+      for(int i=0;i<n_actual;i++) 
+          for(int j=0;j<n_actual;j++) {
+            v[i][j]=atoi(ptr);
+            ptr = strtok(NULL, delim);
           }
-      if(times!=NUM_INT_PART_TYPES*NUM_INT_PART_TYPES)
-        pe_info(rt->pe, "input key %s is in the form of int[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
+
+      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
+          for(int j=0;j<NUM_INT_PART_TYPES;j++)  
+              if(i>=n_actual || j>=n_actual)
+                  v[i][j]=1;
+
+      if(n_actual!=NUM_INT_PART_TYPES)
+        pe_info(rt->pe, "input key %s is in the form of double[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
   }
 
   return key_present;
 }
+
 
 /*****************************************************************************
  *
@@ -407,24 +424,37 @@ int rt_double_parameter_rank2_tensor(rt_t * rt, const char * key, double v[][NUM
   key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
+      char str_value_cp[200];
+      strcpy(str_value_cp,str_value);
+
       ptr=strtok(str_value, delim);
       int times=0;
-      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
-          for(int j=0;j<NUM_INT_PART_TYPES;j++) {
-              if(ptr!=NULL) {
-                v[i][j]=atof(ptr);
-                ptr = strtok(NULL, delim);
-                times++;
-              }
-              else
-                v[i][j]=1E-6;
+      while(ptr!=NULL) {
+        times+=1;
+        ptr = strtok(NULL, delim);
+      }
+
+      int n_actual=(int)sqrt(times);
+
+      ptr=strtok(str_value_cp, delim);
+      for(int i=0;i<n_actual;i++) 
+          for(int j=0;j<n_actual;j++) {
+            v[i][j]=atof(ptr);
+            ptr = strtok(NULL, delim);
           }
-      if(times!=NUM_INT_PART_TYPES*NUM_INT_PART_TYPES)
+
+      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
+          for(int j=0;j<NUM_INT_PART_TYPES;j++)  
+              if(i>=n_actual || j>=n_actual)
+                  v[i][j]=1E-5;
+
+      if(n_actual!=NUM_INT_PART_TYPES)
         pe_info(rt->pe, "input key %s is in the form of double[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
   }
 
   return key_present;
 }
+
 
 /*****************************************************************************
  *

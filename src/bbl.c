@@ -453,6 +453,8 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  /* We expect s.m to be a unit vector, but for floating
 	   * point purposes, we must make sure here. */
 
+          //printf("idx: %d; B1: %lf; B2: %lf\n",pc->s.index,pc->s.b1,pc->s.b2);
+
 	  mod = modulus(p_link->rb)*modulus(pc->s.m);
 	  rmod = 0.0;
 	  if (mod != 0.0) rmod = 1.0/mod;

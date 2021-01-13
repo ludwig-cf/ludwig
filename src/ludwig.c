@@ -735,7 +735,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
-      subgrid_update(ludwig->collinfo, ludwig->hydro,ludwig->noise_rho);
+      subgrid_update(ludwig->collinfo, ludwig->hydro,ludwig->noise_rho,ludwig->map);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
       wall_bbl(ludwig->wall);
@@ -1793,7 +1793,7 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig) {
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
         	     ludwig->psi, ludwig->ewald);
 
-  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall,ludwig->map);
 
   return 0;
 }
@@ -1875,7 +1875,7 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
 
   interact_compute(ludwig->interact, ludwig->collinfo, ludwig->map,
 		   ludwig->psi, ludwig->ewald);
-  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall);
+  subgrid_force_from_particles(ludwig->collinfo, ludwig->hydro, ludwig->wall,ludwig->map);
 
   TIMER_stop(TIMER_FORCES);
 
