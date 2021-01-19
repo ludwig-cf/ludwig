@@ -3,7 +3,7 @@
 
 A lattice Boltzmann code for complex fluids
 
-[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=master)](https://travis-ci.com/ludwig-cf/ludwig)
+[![Build Status](https://travis-ci.com/ludwig-cf/ludwig.svg?branch=develop)](https://travis-ci.com/ludwig-cf/ludwig)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1998/badge)](https://bestpractices.coreinfrastructure.org/projects/1998)
 
 
@@ -72,7 +72,15 @@ See `CONTRIBUTING.md` for further details of testing and
 development.
 
 
+#### Attribution
+
+[![DOI](https://zenodo.org/badge/137508275.svg)](https://zenodo.org/badge/latestdoi/137508275)
+
+Recent release versions have a Zenodo-provided DOI. Please consider using the
+appropriate DOI as a reference if you use Ludwig in your publications.
+
 #### Help
+
 
 For bug reports, problems, and other issues, please open a new issue.
 

@@ -1,6 +1,16 @@
 
 ### Changes
 
+version 0.12.0
+
+- Allow user to specify a linear combination of slip and no-slip for
+  plane walls. This was originally implementated by Katrin Wolff when
+  at Edinburgh, and has been resurrected with the help of Ryan Keogh
+  and Tyler Shendruk. See https://ludwig.epcc.ed.ac.uk/inputs/walls.html
+- Various minor code quality improvements
+- Extended target abstraction layer to include HIP (only tested via
+  __HIP_PLATFORM_NVCC__ so far). Thanks to Nikola Vasilev for this.
+- Various minor code quality improvements
 
 version 0.11.0
 - Add external chemical potential gradient in Cahn Hilliard for

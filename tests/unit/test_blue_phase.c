@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -233,7 +233,7 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   param.redshift = 1.0;
   param.rredshift = 1.0;
   param.epsilon = epsilon;
-  fe_lc_param_set(fe, param);
+  fe_lc_param_set(fe, &param);
   fe_lc_param_commit(fe);
 
   /* Check the chirality and the reduced temperature */
@@ -919,7 +919,7 @@ __host__ int do_test_fe_lc_device1(pe_t * pe, cs_t * cs, fe_lc_t * fe) {
   param.kappa0 = kappa;
   param.epsilon = epsilon;
   param.redshift = redshift;
-  fe_lc_param_set(fe, param);
+  fe_lc_param_set(fe, &param);
   fe_lc_param_commit(fe);
 
   fe_lc_target(fe, (fe_t **) &fetarget);

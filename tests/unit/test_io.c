@@ -168,18 +168,19 @@ __host__ int test_io_info_create_impl_a(pe_t * pe, cs_t * cs) {
   impl.bytesize_ascii  = 10;
   impl.bytesize_binary = sizeof(double);
 
-  io_info_create_impl(pe, cs, args, impl, &info);
+  io_info_create_impl(pe, cs, args, &impl, &info);
 
   assert(info);
 
   {
     /* Copied implementation correctly... */
-    assert(info->pe == pe);
-    assert(info->cs == cs);
-    assert(info->impl.write_binary    == impl.write_binary);
-    assert(info->impl.read_binary     == impl.read_binary);
-    assert(info->impl.write_ascii     == impl.write_ascii);
-    assert(info->impl.read_ascii      == impl.read_ascii);
+    assert((info->pe == pe));
+    assert((info->cs == cs));
+    assert((info->impl.write_binary    == impl.write_binary));
+    assert((info->impl.read_binary     == impl.read_binary));
+    assert((info->impl.write_ascii     == impl.write_ascii));
+    assert((info->impl.read_ascii      == impl.read_ascii));
+
     assert(info->impl.bytesize_ascii  == impl.bytesize_ascii);
     assert(info->impl.bytesize_binary == impl.bytesize_binary);
   }

@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -595,6 +595,7 @@ int stats_rheology_stress_section(stats_rheo_t * stat, const char * filename) {
   double uy = 0.0;
   double eta, viscous;
   double ltot[3];
+  LB_RCS2_DOUBLE(rcs2);
 
   physics_t * phys = NULL;
 
@@ -754,6 +755,8 @@ int stats_rheology_mean_stress(lb_t * lb, fe_t * fe, const char * filename) {
   double rho, rrho, rv;
   double eta, viscous;
   double ltot[3];
+  LB_RCS2_DOUBLE(rcs2);
+
   physics_t * phys = NULL;
   FILE * fp;
   MPI_Comm comm;

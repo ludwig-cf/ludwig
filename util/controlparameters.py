@@ -2,7 +2,7 @@
 #
 # Script for calculation of cholesteric LC input parameters
 
-import sys, os, re, math
+import sys, math
 
 try:
 	tau=float(sys.argv[1])
@@ -11,7 +11,7 @@ try:
 	L1_0=float(sys.argv[4])
 	L_uc=float(sys.argv[5])
 
-except:
+except (IndexError, ValueError) as error:
 	print
 	print "usage: python controlparameters.py tau kappa e L1_0 L_uc Lz"
 	print
@@ -21,7 +21,7 @@ except:
 	print "* L1_0: elastic constant (use 0.02 as default)"
 	print "* L_uc: dimension of unit cell (1/2 pitch length)"
 	print
-	sys.exit(1)
+	raise RuntimeError("Check command line arguments")
 
 # dielectric anisotropy
 epsa=41.4

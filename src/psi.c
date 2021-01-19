@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -81,7 +81,7 @@ int psi_create(pe_t * pe, cs_t * cs, int nk, psi_t ** pobj) {
   psi->nk = nk;
   psi->nsites = nsites;
   psi->psi = (double *) calloc(nsites, sizeof(double));
-  psi->rho = (double *) calloc(nk*nsites, sizeof(double));
+  psi->rho = (double *) calloc((size_t) nk*nsites, sizeof(double));
   psi->diffusivity = (double *) calloc(nk, sizeof(double));
   psi->valency = (int *) calloc(nk, sizeof(int));
 

@@ -348,7 +348,7 @@ int nernst_planck_driver_d3qx(psi_t * psi, fe_t * fe, hydro_t * hydro,
   psi_nk(psi, &nk);
 
   /* Allocate fluxes and initialise to zero */
-  flx = (double **) calloc(psi->nsites*nk, sizeof(double *));
+  flx = (double **) calloc((size_t) psi->nsites*nk, sizeof(double *));
   assert(flx);
   if (flx == NULL) pe_fatal(psi->pe, "calloc(flx) failed\n");
 

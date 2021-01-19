@@ -59,6 +59,7 @@ int interact_wall(interact_t * interact, colloids_info_t * cinfo);
 int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
+int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo, int nx);
 int interact_stats(interact_t * obj, colloids_info_t * cinfo);
 int interact_hcmax(interact_t * obj, double * hcmax);
 int interact_rcmax(interact_t * obj, double * rcmax);

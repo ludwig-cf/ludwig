@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2018 The University of Edinburgh
+ *  (c) 2008-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -43,6 +43,7 @@ int stats_turbulent_create(pe_t * pe, cs_t * cs, stats_turb_t ** pobj) {
 
   stats_turb_t * obj = NULL;
   int nlocal[3];
+  size_t ntmp;
 
   assert(pe);
   assert(cs);
@@ -57,7 +58,8 @@ int stats_turbulent_create(pe_t * pe, cs_t * cs, stats_turb_t ** pobj) {
 
   cs_nlocal(cs, nlocal);
 
-  obj->ubar = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
+  ntmp = (size_t) nlocal[X]*nlocal[Z];
+  obj->ubar = (double *) malloc(3*ntmp*sizeof(double));
   if (obj->ubar == NULL) pe_fatal(pe, "malloc(ubar_) failed\n");
 
   stats_turbulent_init_mpi(obj);
@@ -232,6 +234,7 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   int mpi_cartsz[3];
   int mpi_cartcoords[3];
   const int tag_token = 4129;
+  size_t ntmp;
   FILE   * fp_output = NULL;
   double * f1;
   double * f1z;
@@ -251,7 +254,8 @@ int stats_turbulent_ubar_output(stats_turb_t * stat, const char * filename) {
   cs_cart_comm(stat->cs, &comm);
   cs_cart_coords(stat->cs, mpi_cartcoords);
 
-  f1 = (double *) malloc(3*nlocal[X]*nlocal[Z]*sizeof(double));
+  ntmp = (size_t) nlocal[X]*nlocal[Z];
+  f1 = (double *) malloc(3*ntmp*sizeof(double));
   assert(f1);
   if (f1 == NULL) pe_fatal(stat->pe, "malloc(f1) failed\n");
 

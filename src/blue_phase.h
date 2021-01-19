@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -85,7 +85,7 @@ enum lc_anchoring_enum {LC_ANCHORING_PLANAR = 0,
 __host__ int fe_lc_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			  field_t * q, field_grad_t * dq, fe_lc_t ** fe);
 __host__ int fe_lc_free(fe_lc_t * fe);
-__host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values);
+__host__ int fe_lc_param_set(fe_lc_t * fe, const fe_lc_param_t * values);
 __host__ int fe_lc_param_commit(fe_lc_t * fe);
 __host__ int fe_lc_redshift_set(fe_lc_t * fe,  double redshift);
 __host__ int fe_lc_redshift_compute(cs_t * cs, fe_lc_t * fe);

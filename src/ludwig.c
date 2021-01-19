@@ -200,7 +200,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   TIMER_start(TIMER_TOTAL);
 
   /* Prefer maximum L1 cache available on device */
-  tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
+  (void) tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
 
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
@@ -427,6 +427,8 @@ void ludwig_run(const char * inputfile) {
   ludwig_t * ludwig = NULL;
   MPI_Comm comm;
 
+  stats_vel_t statvel = stats_vel_default();
+
 
   ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
@@ -439,6 +441,8 @@ void ludwig_run(const char * inputfile) {
   rt_info(ludwig->rt);
 
   ludwig_rt(ludwig);
+
+  statvel.print_vol_flux = rt_switch(ludwig->rt, "stats_vel_print_vol_flux");
 
   /* Report initial statistics */
 
@@ -903,7 +907,7 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->hydro) {
 	wall_is_pm(ludwig->wall, &is_pm);
 	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
-	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
+	stats_velocity_minmax(&statvel, ludwig->hydro, ludwig->map);
       }
 
       lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
