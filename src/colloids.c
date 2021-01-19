@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,7 +24,7 @@
 #include "coords.h"
 #include "util.h"
 #include "colloids.h"
-#include "colloids_s.h"
+
 #define RHO_DEFAULT 1.0
 #define DRMAX_DEFAULT 0.8
 

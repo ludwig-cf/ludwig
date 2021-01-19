@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2017 The University of Edinburgh
+ *  (c) 2014-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,7 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "colloids_halo.h"
 #include "pair_ss_cut.h"
 #include "tests.h"

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -20,7 +20,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "tests.h"
 
 int test_colloids_info_with_ncell(pe_t * pe, cs_t * cs, int ncellref[3]);

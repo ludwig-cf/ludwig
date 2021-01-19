@@ -59,7 +59,7 @@
 #include "util.h"
 #include "coords.h"
 #include "kernel.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "map_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
