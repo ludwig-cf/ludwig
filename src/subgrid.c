@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,15 +23,14 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
 
 static double d_peskin(double);
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
-static double drange_ = 1.0; /* Max. range of interpolation - 1 */
-static int subgrid_on_ = 0;  /* Subgrid particle flag */
+static const double drange_ = 1.0; /* Max. range of interpolation - 1 */
 
 /*****************************************************************************
  *
@@ -60,7 +59,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   assert(hydro);
   assert(wall);
 
-  if (subgrid_on_ == 0) return 0;
+  if (cinfo->nsubgrid == 0) return 0;
 
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
@@ -160,7 +159,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   assert(cinfo);
   assert(hydro);
 
-  if (subgrid_on_ == 0) return 0;
+  if (cinfo->nsubgrid == 0) return 0;
 
   colloids_info_ncell(cinfo, ncell);
 
@@ -363,32 +362,4 @@ static double d_peskin(double r) {
   }
 
   return delta;
-}
-
-/*****************************************************************************
- *
- *  subgrid_on_set
- *
- *  Set the flag to 'on'.
- *
- *****************************************************************************/
-
-int subgrid_on_set(void) {
-
-  subgrid_on_ = 1;
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  subgrid_on
- *
- *****************************************************************************/
-
-int subgrid_on(int * flag) {
-
-  assert(flag);
-
-  *flag = subgrid_on_;
-  return 0;
 }

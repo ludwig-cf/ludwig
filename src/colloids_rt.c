@@ -39,7 +39,6 @@
 
 #include "bbl.h"
 #include "build.h"
-#include "subgrid.h"
 
 int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
@@ -188,7 +187,7 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 			 map_t * map) {
 
   int nsubgrid_local = 0;
-  int nsubgrid;
+  int nsubgrid = 0;
   MPI_Comm comm;
 
   assert(cs);
@@ -201,7 +200,7 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   cs_cart_comm(cs, &comm);
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
-  if (nsubgrid > 0) subgrid_on_set();
+  cinfo->nsubgrid = nsubgrid;
 
   /* Assume there are always fully-resolved particles */
 
