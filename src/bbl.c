@@ -31,7 +31,6 @@
 #include "bbl.h"
 #include "colloid.h"
 #include "colloids.h"
-#include "colloids_s.h"
 
 struct bbl_s {
   pe_t * pe;            /* Parallel environment */

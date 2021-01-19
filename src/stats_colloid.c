@@ -4,12 +4,10 @@
  *
  *  Some useful quantities concerning colloids.
  *
- *  $Id: stats_colloid.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,7 +20,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "util.h"
 #include "stats_colloid.h"
 
