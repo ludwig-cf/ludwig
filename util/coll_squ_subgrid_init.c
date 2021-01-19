@@ -1,13 +1,13 @@
 /*****************************************************************************
  *
- *  colloid_init.c
+ *  coll_squ_subgrid_init.c
  *
- *  Produce a file of colloid information suitable for reading into
- *  the main code.
+ *  Produce a file of colloid/squirmer/subgrid particle information suitable 
+ *  for reading into the main code.
  *
- *  Colloid positions are initialised at random to provide a requested
+ *  Particle positions are initialised at random to provide a requested
  *  volume fraction. Flat boundary walls may be included. A 'grace'
- *  distance dh may be specified to prevent the initial colloid
+ *  distance dh may be specified to prevent the initial particle 
  *  positions being too close together, or too close to the wall.
  *
  *  For compilation instructions see the Makefile.
@@ -22,6 +22,9 @@
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2012-2019 The University of Edinburgh
+ *
+ *  Kai Qi (kai.qi@epfl.ch)
+ *  (c) 2020- Swiss Federal Institute of Technology Lausanne
  *
  *****************************************************************************/
 
@@ -59,9 +62,7 @@ double v_lj(double r, double rc);
 
 int main(int argc, char ** argv) {
 
-  //int ntotal[3] = {32, 32, 32};        /* Total system size (cf. input) */
-  int ntotal[3] = {100, 100, 100};        /* Total system size (cf. input) */
-  //int ntotal[3] = {9, 9, 9};        /* Total system size (cf. input) */
+  int ntotal[3] = {18, 18, 18};        /* Total system size (cf. input) */
   int periodic[3] = {1, 1, 1};         /* 0 = wall, 1 = periodic */
   int file_format = ASCII;
 
@@ -69,35 +70,17 @@ int main(int argc, char ** argv) {
   int nrequest;
   int nactual;
 
-  //These are the default values
-  //double a0 = 3.5;   /* Input radius */
-  //double ah = 3.5;   /* Hydrodynamic radius */ 
-  //double vf = 0.02;  /* Volume fraction */
-  //double dh = 0.5;   /* "grace' distance */
-  //double q0 = 0.0;   /* positive charge */ 
-  //double q1 = 0.0;   /* negative charge */
 
-  double a0 = 2.3;   /* Input radius */
-  double ah = 2.3;   /* Hydrodynamic radius */ 
-  //double vf = 0.10196;  /* Volume fraction */
-  double vf = 0.02;  /* Volume fraction */
-  double dh = 0.5;   /* "grace' distance */
+  double a0 = 0.178;   /* Input radius */
+  double ah = 0.2;   /* Hydrodynamic radius */ 
+  double al = 1.58; /* Offset parameter for subgrid particle */
+  double vf = 0.015;  /* Volume fraction */
+  double dh = 0.03;   /* "grace' distance */
   double q0 = 0.0;   /* positive charge */ 
   double q1 = 0.0;   /* negative charge */
-  double b1 = 0.02;
-  double b2 = 0.01;
-  int type=1; //0 colloid; 1 squirmer; 2 subgrid 
-
-  //double a0 = 0.117;   /* Input radius */
-  //double ah = 0.117;   /* Hydrodynamic radius */ 
-  ////double vf = 0.10196;  /* Volume fraction */
-  //double vf = 0.001;  /* Volume fraction */
-  //double dh = 0.03;   /* "grace' distance */
-  //double q0 = 0.0;   /* positive charge */ 
-  //double q1 = 0.0;   /* negative charge */
-  //double b1 = 0.00;
-  //double b2 = 0.00;
-  //int type=2; //0 colloid; 1 squirmer; 2 subgrid 
+  double b1 = 0.00;
+  double b2 = 0.00;
+  int type=2; //0 colloid; 1 squirmer; 2 subgrid 
 
   colloid_state_t * state;
   pe_t * pe;
@@ -138,6 +121,8 @@ int main(int argc, char ** argv) {
     state[n].m[Y] = 0.0;
     state[n].m[Z] = 0.0;
     state[n].type=type;
+    if (type==2)
+        state[n].al= al;
     state[n].rng = 1 + n;
   }
 
@@ -575,10 +560,10 @@ void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 
   for (n = 0; n < nc; n++) {
     if (form == BINARY) {
-      colloid_state_write_binary(pc[n], fp);
+      colloid_state_write_binary(pc+n, fp);
     }
     else {
-      colloid_state_write_ascii(pc[n], fp);
+      colloid_state_write_ascii(pc+n, fp);
     }
   }
 

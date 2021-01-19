@@ -695,7 +695,7 @@ int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo,
 	        }
 	      }
 	    }
-          }
+	  }
 	}
       }
     }

@@ -701,6 +701,8 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->hydro) {
+      int noise_flag = ludwig->noise_rho->on[NOISE_RHO];
+
       /* Zero velocity field here, as velocity at collision is used
        * at next time step for FD above. Strictly, we only need to
        * do this if velocity output is required in presence of
@@ -739,7 +741,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
-      subgrid_update(ludwig->collinfo, ludwig->hydro);
+      subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
       wall_bbl(ludwig->wall);
@@ -1864,7 +1866,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
 		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
   build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
-  
 
   TIMER_stop(TIMER_REBUILD);
 
