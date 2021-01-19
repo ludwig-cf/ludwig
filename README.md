@@ -76,8 +76,8 @@ development.
 
 [![DOI](https://zenodo.org/badge/137508275.svg)](https://zenodo.org/badge/latestdoi/137508275)
 
-Please consider using the appropriate DOI as a reference if you use Ludwig in
-your publications.
+Recent release versions have a Zenodo-provided DOI. Please consider using the
+appropriate DOI as a reference if you use Ludwig in your publications.
 
 #### Help
 
