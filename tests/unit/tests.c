@@ -8,9 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
-
- *  (c) 2010-2019 The University of Edinburgh
-
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
