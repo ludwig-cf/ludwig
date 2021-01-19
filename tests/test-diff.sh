@@ -80,9 +80,8 @@ fi
 sed '/call)/d' $1 > test-diff-tmp.ref
 sed -i~ '/calls)/d' test-diff-tmp.ref
 sed -i~ '/Welcome/d' test-diff-tmp.ref
-
-sed -i~ '/Target thread model: None/d' test-diff-tmp.ref
-
+sed -i~ '/Target thread model:/d' test-diff-tmp.ref
+sed -i~ '/OpenMP/d' test-diff-tmp.ref
 sed -i~ '/^$/d' test-diff-tmp.ref
 sed -i~ '/Timer/d' test-diff-tmp.ref
 sed -i~ '/user.parameters.from/d' test-diff-tmp.ref
