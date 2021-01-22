@@ -9,7 +9,7 @@
 ##############################################################################
 
 N_start  0
-N_cycles 1000 
+N_cycles 100
 
 ##############################################################################
 #
@@ -27,8 +27,8 @@ reduced_halo no
 #
 ##############################################################################
 
-fluid_rho0 0.864
-viscosity 0.024192
+fluid_rho0     0.864
+viscosity      0.024192
 viscosity_bulk 0.024192
 
 isothermal_fluctuations on
@@ -47,6 +47,7 @@ free_energy none
 #  Colloid parameters
 #
 ###############################################################################
+
 colloid_init     from_file 
 
 soft_sphere_on 1
@@ -58,7 +59,6 @@ soft_sphere_cutoff 1.2
 bond_fene_on 1
 bond_fene_k 0.002
 bond_fene_r0 2.0
-
 
 ###############################################################################
 #
@@ -75,18 +75,9 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-freq_statistics 1 
-freq_measure 10000
-freq_config 50
-config_at_end no
+freq_statistics 100
+config_at_end   no
 
-#freq_vel    1000
-vel_format  ASCII
-
-colloid_io_freq 1000
-colloid_io_grid 1_1_1
-colloid_io_format_input  ASCII_SERIAL
-colloid_io_format_output ASCII
 
 ###############################################################################
 #
