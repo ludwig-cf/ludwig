@@ -12,19 +12,18 @@
  *
  *  For compilation instructions see the Makefile.
  *
- *  $ make colloid_init 
+ *  $ make
  *
- *  $ ./a.out
+ *  $ ./coll_squ_subgrid_init
+ *
  *  should produce a file config.cds.init.001-001 in the specified format.
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2019 The University of Edinburgh
- *
  *  Kai Qi (kai.qi@epfl.ch)
- *  (c) 2020- Swiss Federal Institute of Technology Lausanne
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -33,21 +32,20 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "../src/colloid.h"
 #include "../src/pe.h"
 #include "../src/coords.h"
+#include "../src/colloid.h"
 #include "../src/util.h"
-#include "../src/ran.h"
 
 enum format {ASCII, BINARY};
 #define NTRYMAX 10000
-//#define NMC 10000000
-#define NMC 0 
 
 int  colloid_init_vf_n(cs_t * cs, const double ah, const double vf);
-void colloid_init_trial(cs_t * cs, double r[3], double dh);
-int  colloid_init_random(cs_t * cs, int nc, colloid_state_t * state, double dh);
-int  colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh);
+void colloid_init_trial(cs_t * cs, int * lcg, double r[3], double dh);
+int  colloid_init_random(cs_t * cs, int * lcg, int nc,
+			 colloid_state_t * state, double dh);
+int  colloid_init_mc(cs_t * cs, int * lcg, int nc, int mc,
+		     colloid_state_t * state, double dh);
 void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 			     const int form);
 double v_lj(double r, double rc);
@@ -69,27 +67,50 @@ int main(int argc, char ** argv) {
   int n;
   int nrequest;
   int nactual;
+  int optind;
 
+  const double vf_default   = 0.015; /* Solid volume fraction */
+  const int    mc_default   = 0;     /* Monte Carlo moves */
+  const int    lcg_default  = 12345; /* Random number initial state */ 
 
   double a0 = 0.178;   /* Input radius */
-  double ah = 0.2;   /* Hydrodynamic radius */ 
-  double al = 1.58; /* Offset parameter for subgrid particle */
-  double vf = 0.015;  /* Volume fraction */
-  double dh = 0.03;   /* "grace' distance */
-  double q0 = 0.0;   /* positive charge */ 
-  double q1 = 0.0;   /* negative charge */
+  double ah = 0.2;     /* Hydrodynamic radius */ 
+  double al = 1.58;    /* Offset parameter for subgrid particle */
+  double dh = 0.03;    /* "grace' distance */
+  double q0 = 0.0;     /* positive charge */ 
+  double q1 = 0.0;     /* negative charge */
   double b1 = 0.00;
   double b2 = 0.00;
-  int type=2; //0 colloid; 1 squirmer; 2 subgrid 
+  int type = COLLOID_TYPE_SUBGRID;
 
   colloid_state_t * state;
   pe_t * pe;
   cs_t * cs;
 
+  double vf  = vf_default;
+  int    mc  = mc_default;
+  int    lcg = lcg_default;
+
   MPI_Init(&argc, &argv);
 
+  for (optind = 1; optind < argc && argv[optind][0] == '-'; optind++) {
+    switch (argv[optind][1]) {
+    case 'n':
+      mc = atoi(argv[++optind]);
+      printf("%s: option -n sets mc = %d\n", argv[0], mc);
+      break;
+    case 'v':
+      vf = atof(argv[++optind]);
+      printf("%s: option -v sets vf = %f\n", argv[0], vf);
+      break;
+    default:
+      fprintf(stderr, "Unrecognised option: %s\n", argv[optind]);
+      fprintf(stderr, "Usage: %s [-ahv]\n", argv[0]);
+      exit(EXIT_FAILURE);
+    }   
+  }
+
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  ran_init(pe);
 
   /* This program is intended to be serial */
   assert(pe_mpi_size(pe) == 1);
@@ -120,19 +141,18 @@ int main(int argc, char ** argv) {
     state[n].m[X] = 1.0;
     state[n].m[Y] = 0.0;
     state[n].m[Z] = 0.0;
-    state[n].type=type;
-    if (type==2)
-        state[n].al= al;
+    state[n].type = type;
+    if (type == COLLOID_TYPE_SUBGRID) state[n].al = al;
     state[n].rng = 1 + n;
   }
 
   if (vf < 0.35) {
     /* Set positions through random insertion */
-    nactual = colloid_init_random(cs, nrequest, state, dh);
+    nactual = colloid_init_random(cs, &lcg, nrequest, state, dh);
   }
   else {
     /* Set positions through lattice and MC */
-    nactual = colloid_init_mc(cs, nrequest, state, dh);
+    nactual = colloid_init_mc(cs, &lcg, nrequest, mc, state, dh);
   }
 
   /* Write out */
@@ -180,11 +200,15 @@ int colloid_init_vf_n(cs_t * cs, const double ah, const double vf) {
  *
  ****************************************************************************/
 
-void colloid_init_trial(cs_t * cs, double r[3], double dh) {
+void colloid_init_trial(cs_t * cs, int * lcg, double r[3], double dh) {
 
   int ia, ntotal[3];
   int periodic[3];
   double lmin, lmax, l[3];
+  double u01;
+
+  assert(cs);
+  assert(lcg);
 
   cs_lmin(cs, l);
   cs_ntotal(cs, ntotal);
@@ -198,7 +222,8 @@ void colloid_init_trial(cs_t * cs, double r[3], double dh) {
       lmax -= dh;
     }
     assert(lmax >= lmin);
-    r[ia] = lmin + (lmax - lmin)*ran_serial_uniform();
+    util_ranlcg_reap_uniform(lcg, &u01);
+    r[ia] = lmin + (lmax - lmin)*u01;
   }
 
 }
@@ -216,7 +241,7 @@ void colloid_init_trial(cs_t * cs, double r[3], double dh) {
  *
  ****************************************************************************/
 
-int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,
+int colloid_init_random(cs_t * cs, int * lcg, int nc, colloid_state_t * state,
 			double dh) {
 
   int n;              /* Current number of positions successfully set */
@@ -235,7 +260,7 @@ int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,
 
   for (nattempt = 0; nattempt < nmaxattempt; nattempt++) {
 
-    colloid_init_trial(cs, rtrial, state[n].ah + dh);
+    colloid_init_trial(cs, lcg, rtrial, state[n].ah + dh);
 
     ok = 1;
 
@@ -269,7 +294,8 @@ int colloid_init_random(cs_t * cs, int nc, colloid_state_t * state,
  * 
  ****************************************************************************/
 
-int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
+int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
+		    colloid_state_t * state, double dh) {
 
   int ix, iy, iz;
   int ii, ij, ik, im;
@@ -296,40 +322,40 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
   /* assuming there is one colloid, take radius */
   ah_ref = state[0].ah;
 
-  d_ci = 2.0*ah_ref + dh;    // distance corner site - intertitial site
-  d_cc = 2.0*rsqrt3 * d_ci;  // distance corner site - corner site
+  d_ci = 2.0*ah_ref + dh;    /* distance corner site - intertitial site */
+  d_cc = 2.0*rsqrt3 * d_ci;  /* distance corner site - corner site */
 
-  d_bndry = dh + ah_ref;     // position of first corner site
+  d_bndry = dh + ah_ref;     /* position of first corner site */
 
-  // number of complete unit cells along each dimension
+  /* number of complete unit cells along each dimension */
   nx =  floor((ntotal[X]- 2.0*d_bndry)/d_cc);
   ny =  floor((ntotal[Y]- 2.0*d_bndry)/d_cc);
   nz =  floor((ntotal[Z]- 2.0*d_bndry)/d_cc);
 
-  // can we squeeze in another interstitial site?
+  /* can we squeeze in another interstitial site? */
   nxe = floor((ntotal[X] - 2.0*d_bndry)/d_cc - nx + 0.5);
   nye = floor((ntotal[Y] - 2.0*d_bndry)/d_cc - ny + 0.5);
   nze = floor((ntotal[Z] - 2.0*d_bndry)/d_cc - nz + 0.5);
 
-  nbcc = (nx+1)*(ny+1)*(nz+1);  // corner sites in all ucs
-  nbcc += nx * ny * nz;         // interstitial sites in all ucs
-  nbcc += nxe * ny * nz;        // additional interstitial sites
+  nbcc = (nx+1)*(ny+1)*(nz+1);  /* corner sites in all ucs       */
+  nbcc += nx * ny * nz;         /* interstitial sites in all ucs */
+  nbcc += nxe * ny * nz;        /* additional interstitial sites */
   nbcc += nye * nx * nz;
   nbcc += nze * nx * ny;
 
-  // position of bcc sites
+  /* position of bcc sites */
   rbcc = (double **) calloc(nbcc, sizeof(double *));
   for (n = 0; n <nbcc; n++) {
     rbcc[n] = (double *) calloc(3, sizeof(double));
   }
 
-  // reservoir sampling
+  /* reservoir sampling */
   r = (int *) calloc(nc, sizeof(int));
   s = (int *) calloc(nbcc, sizeof(int));
 
   n = 0;
 
-  // position of corner sites
+  /* position of corner sites */
   for (ix = 0; ix <= nx; ix++) {
     for (iy = 0; iy <= ny; iy++) {
       for (iz = 0; iz <= nz; iz++) {
@@ -343,7 +369,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     }
   }
 
-  // position of interstitial sites
+  /* position of interstitial sites */
   for (ix = 0; ix < nx; ix++) {
     for (iy = 0; iy < ny; iy++) {
       for (iz = 0; iz < nz; iz++) {
@@ -357,7 +383,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     }
   }
 
-  // extra interstitial sites
+  /* extra interstitial sites */
   for (ix = nx; ix < nx+nxe ; ix++) {
     for (iy = 0; iy < ny; iy++) {
       for (iz = 0; iz < nz; iz++) {
@@ -371,7 +397,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     }
   }
 
-  // extra interstitial sites
+  /* extra interstitial sites */
   for (ix = 0; ix < nx; ix++) {
     for (iy = ny; iy < ny+nye; iy++) {
       for (iz = 0; iz < nz; iz++) {
@@ -385,7 +411,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     }
   }
 
-  // extra interstitial sites
+  /* extra interstitial sites */
   for (ix = 0; ix < nx; ix++) {
     for (iy = 0; iy < ny; iy++) {
       for (iz = nz; iz < nz+nze; iz++) {
@@ -401,12 +427,14 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
 
   n = 0;
 
-  // reservoir sampling if nc < nbcc
+  /* reservoir sampling if nc < nbcc */
+
   for (ii = 0; ii < nbcc; ii++) s[ii] = ii; 
   for (ij = 0; ij < nc; ij++) r[ij] = s[ij]; 
 
   for (ii = nc; ii < nbcc; ii++) {
-    ik = rand() % ii;
+    util_ranlcg_reap_uniform(lcg, &ran);
+      ik = (*lcg) % ii;
     if (ik < nc) r[ik] = s[ii]; 
   }
 
@@ -424,7 +452,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
 
   ok = 1;
 
-  // now check for overlap
+  /* now check for overlap */
   for (n=0; n<nc; n++){
 
     for (ncheck=0; ncheck<nc; ncheck++) {
@@ -450,7 +478,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
 
   delta = 0.01*ah_ref;
 
-  for (im = 0; im < NMC; im++) {
+  for (im = 0; im < nmc; im++) {
 
     if (im%1000 == 0) {
       printf("MC move #%d\r", im); 
@@ -460,7 +488,8 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     eno = 0.0;
     enn = 0.0;
 
-    ii = rand() % nc;
+    util_ranlcg_reap_uniform(lcg, &ran);
+    ii = (*lcg) % nc;
 
     rtrial[X] = state[ii].r[X];
     rtrial[Y] = state[ii].r[Y];
@@ -477,9 +506,12 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
 
     }
 
-    rtrial[X] += delta * (ran_serial_uniform()-0.5);
-    rtrial[Y] += delta * (ran_serial_uniform()-0.5);
-    rtrial[Z] += delta * (ran_serial_uniform()-0.5);
+    util_ranlcg_reap_uniform(lcg, &ran);
+    rtrial[X] += delta * (ran-0.5);
+    util_ranlcg_reap_uniform(lcg, &ran);
+    rtrial[Y] += delta * (ran-0.5);
+    util_ranlcg_reap_uniform(lcg, &ran);
+    rtrial[Z] += delta * (ran-0.5);
 
     for (ij = 0; ij < nc; ij++) {
 
@@ -493,7 +525,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
     }
 
     boltzfac = exp(-(enn-eno));
-    ran = ran_serial_uniform();
+    util_ranlcg_reap_uniform(lcg, &ran);
 
     if (ran < boltzfac) {
       state[ii].r[X] = rtrial[X]; 
@@ -522,7 +554,7 @@ int colloid_init_mc(cs_t * cs, int nc, colloid_state_t * state, double dh) {
   }
 
   if (ok) {
-    printf("Applied %d MC moves\n", NMC);
+    printf("Applied %d MC moves\n", nmc);
   }
   else {
     printf("MC moves created overlap. Aborting ...\n");
