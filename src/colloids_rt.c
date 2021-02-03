@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2020 The University of Edinburgh
+ *  (c) 2014-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -463,6 +463,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   sprintf(key, "%s_%s", stub, "ah");
   nrt = rt_double_parameter(rt, key, &state->ah);
   if (nrt) pe_info(pe, format_e1, key, state->ah);
+
+  sprintf(key, "%s_%s", stub, "al");
+  nrt = rt_double_parameter(rt, key, &state->al);
+  if (nrt) pe_info(pe, format_e1, key, state->al);
 
   sprintf(key, "%s_%s", stub, "r");
   nrt = rt_double_parameter_vector(rt, key, state->r);

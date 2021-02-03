@@ -1,9 +1,10 @@
-Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
+Welcome to Ludwig v0.12.0 (Serial version running on 1 process)
 
-The SVN revision details are: 3209M
 Note assertions via standard C assert() are on.
 
-Read 24 user parameters from serial-sgrd-st1.inp
+Target thread model: None.
+
+Read 25 user parameters from serial-sgrd-st1.inp
 
 No free energy selected
 
@@ -68,6 +69,7 @@ Requested one colloid via input:
 colloid_one                   subgrid
 colloid_one_a0                2.0000000e-01
 colloid_one_ah                2.0000000e-01
+colloid_one_al                2.0000000e-01
 colloid_one_r                 6.1000000e+00  6.1000000e+00  6.1000000e+00
 colloid_one_v                 0.0000000e+00  0.0000000e+00  0.0000000e+00
 colloid_one_s                 1.0000000e+00  0.0000000e+00  0.0000000e+00
@@ -137,20 +139,23 @@ Hydrodynamic radius:        1.3262e+00
 Stokes equation rhs:        2.0824e-02
 Stokes equation lhs:        2.0824e-02
 
-Timer resolution: 0.01 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      9.355      9.355      9.355   9.354792 (1 call)
-      Time step loop:      0.005      0.007      9.308   0.004654 (2000 calls)
-         Propagation:      0.001      0.002      2.221   0.001111 (2000 calls)
-    Propagtn (krnl) :      0.001      0.002      2.219   0.001110 (2000 calls)
-           Collision:      0.003      0.004      5.697   0.002848 (2000 calls)
-   Collision (krnl) :      0.003      0.004      5.693   0.002847 (2000 calls)
-       Lattice halos:      0.000      0.001      0.924   0.000462 (2000 calls)
-       phi gradients:      0.000      0.000      0.000   0.000000 (2000 calls)
-      Particle halos:      0.000      0.000      0.046   0.000023 (2000 calls)
-   Force calculation:      0.000      0.000      0.000   0.000000 (2000 calls)
-          phi update:      0.000      0.000      0.000   0.000000 (2000 calls)
-               Free1:      0.000      0.002      0.043   0.000021 (2000 calls)
+               Total:     11.320     11.320     11.320  11.320396 (1 call)
+      Time step loop:      0.005      0.007     11.265   0.005633 (2000 calls)
+         Propagation:      0.001      0.002      2.405   0.001202 (2000 calls)
+    Propagtn (krnl) :      0.001      0.002      2.399   0.001200 (2000 calls)
+           Collision:      0.003      0.004      5.628   0.002814 (2000 calls)
+   Collision (krnl) :      0.003      0.004      5.619   0.002810 (2000 calls)
+       Lattice halos:      0.000      0.001      2.053   0.000513 (4000 calls)
+       phi gradients:      0.000      0.000      0.001   0.000001 (2000 calls)
+              Forces:      0.000      0.000      0.155   0.000077 (2000 calls)
+             Rebuild:      0.000      0.000      0.245   0.000122 (2000 calls)
+                 BBL:      0.000      0.000      0.462   0.000231 (2000 calls)
+      Particle halos:      0.000      0.000      0.054   0.000027 (2000 calls)
+   Force calculation:      0.000      0.000      0.001   0.000001 (2000 calls)
+          phi update:      0.000      0.000      0.001   0.000001 (2000 calls)
+               Free1:      0.000      0.002      0.051   0.000008 (6000 calls)
 Ludwig finished normally.

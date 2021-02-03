@@ -1,6 +1,9 @@
 
 ### Changes
 
+- Added subgrid offset parameter; this replaces ah in the computation
+  of the drag force (typically aL >> ah).
+
 version 0.12.0
 
 - Allow user to specify a linear combination of slip and no-slip for
