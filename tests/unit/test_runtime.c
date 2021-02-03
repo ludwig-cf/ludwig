@@ -8,7 +8,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -54,6 +54,11 @@ int test_rt_suite(void) {
   rt_active_keys(rt, &n);
   test_assert(n == 15);
   /* info("yes\n");*/
+
+  n = rt_key_required(rt, "int_scalar", RT_FATAL);
+  assert(n == 0);
+  n = rt_key_required(rt, "int_not_present", RT_NONE);
+  assert(n != 0);
 
   n = 0;
   /* info("Checking key 'int_scalar' is available...");*/
