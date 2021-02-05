@@ -16,7 +16,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "driven_colloid.h"
 
 static double fmod_ = 0.0;

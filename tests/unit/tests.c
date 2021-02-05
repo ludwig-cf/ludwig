@@ -68,6 +68,8 @@ __host__ int tests_create() {
   test_halo_suite();
   test_hydro_suite();
   test_io_suite();
+  test_io_options_suite();
+  test_io_options_rt_suite();
   test_le_suite();
   test_lubrication_suite();
   test_map_suite();
@@ -84,6 +86,7 @@ __host__ int tests_create() {
   test_timer_suite();
   test_util_suite();
   test_visc_arrhenius_suite();
+  test_wall_suite();
 
   /* Failing... pending investigation */
 

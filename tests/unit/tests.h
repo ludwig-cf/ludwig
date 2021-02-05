@@ -45,6 +45,8 @@ int test_field_grad_suite(void);
 int test_halo_suite(void);
 int test_hydro_suite(void);
 int test_io_suite(void);
+int test_io_options_suite(void);
+int test_io_options_rt_suite(void);
 int test_le_suite(void);
 int test_kernel_suite(void);
 int test_lubrication_suite(void);
@@ -66,5 +68,6 @@ int test_rt_suite(void);
 int test_timer_suite(void);
 int test_util_suite(void);
 int test_visc_arrhenius_suite(void);
+int test_wall_suite(void);
 
 #endif

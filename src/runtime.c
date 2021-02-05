@@ -32,7 +32,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -176,6 +176,44 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
   rt_key_broadcast(rt);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_add_key_value
+ *
+ *  Add an extra key value pair (useful for testing)
+ *
+ *****************************************************************************/
+
+int rt_add_key_value(rt_t * rt, const char * key, const char * value) {
+
+  int nline = 0;
+  int added = 0;
+
+  assert(rt);
+  assert(key);
+  assert(value);
+
+  /* Form a new line with a space between key and value */
+
+  nline = rt->nkeys + 1;
+
+  if (strlen(key) + strlen(value) >= NKEY_LENGTH - 2) {
+    /* avoid buffer overflow */
+  }
+  else {
+    char line[NKEY_LENGTH];
+    sprintf(line, "%s %s", key, value);
+
+    if (rt_is_valid_key_pair(rt, line, nline)) {
+      rt_add_key_pair(rt, line, nline);
+      rt->nkeys += 1;
+      added = 1;
+    }
+  }
+
+  return added;
 }
 
 /*****************************************************************************
@@ -554,4 +592,49 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
   }
 
   return key_present;
+}
+
+/*****************************************************************************
+ *
+ *  rt_key_required
+ *
+ *  Convenience to declare that a given key should be present and
+ *  take some action.
+ *
+ *  If not RT_FATAL, returns 0 if key is present, non-zero on "error".
+ *
+ *****************************************************************************/
+
+int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
+
+  int ierr = 0;
+  char value[NKEY_LENGTH];
+  char msg[BUFSIZ];
+
+  assert(rt);
+  assert(key);
+
+  ierr = -1 + rt_look_up_key(rt, key, value);
+
+  if (ierr == 0) {
+    /* No problem */
+  }
+  else {
+    strncpy(value, key, NKEY_LENGTH);
+
+    /* Information */
+    if (level == RT_INFO) {
+      sprintf(msg, "Input: key \"%s\" absent; a default value will be used.\n",
+	      value);
+      pe_info(rt->pe, msg);
+    }
+    /* Fatal */
+    if (level == RT_FATAL) {
+      sprintf(msg, "Input: key \"%s\" must be specified, but is missing;\n"
+	      "please check the input and try again.", value);
+      pe_fatal(rt->pe, msg);
+    }
+  }
+
+  return ierr;
 }

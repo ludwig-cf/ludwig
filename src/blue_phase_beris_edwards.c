@@ -55,7 +55,7 @@
 #include "advection_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "map_s.h"
 #include "timer.h"
 

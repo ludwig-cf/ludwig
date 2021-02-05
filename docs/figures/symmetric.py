@@ -29,7 +29,7 @@ def make_schematic():
     tco = coexistance(phistar)
     tsp = spinodal(phistar)
 
-    fig = plt.figure(figsize = (9.0, 3.0))
+    plt.figure(figsize = (9.0, 3.0))
     ax1 = plt.subplot(1, 2, 1)
 
     ax1.spines['left'].set_position('center')

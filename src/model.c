@@ -32,9 +32,6 @@
 #include "lb_model_s.h"
 #include "io_harness.h"
 
-const double cs2  = (1.0/3.0);
-const double rcs2 = 3.0;
-
 static int lb_mpi_init(lb_t * lb);
 static int lb_set_types(int, MPI_Datatype *);
 static int lb_set_blocks(lb_t * lb, int, int *, int, const int *);
@@ -666,6 +663,33 @@ static int lb_set_displacements(lb_t * lb, int ndisp, MPI_Aint * disp,
       disp[n*nbasic + p] = disp1 - disp0;
     }
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_io_info_commit
+ *
+ *****************************************************************************/
+
+__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
+
+  io_implementation_t impl = {0};
+
+  assert(lb);
+  assert(lb->io_info == NULL);
+
+  sprintf(impl.name, "%1d x Distribution: d%dq%d", lb->ndist, NDIM, NVEL);
+
+  impl.write_ascii     = lb_f_write_ascii;
+  impl.read_ascii      = lb_f_read_ascii;
+  impl.write_binary    = lb_f_write;
+  impl.read_binary     = lb_f_read;
+  impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
+  impl.bytesize_binary = lb->ndist*NVEL*sizeof(double);
+
+  io_info_create_impl(lb->pe, lb->cs, args, &impl, &lb->io_info);
 
   return 0;
 }
@@ -1390,6 +1414,7 @@ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
   int ia, ib, p;
   double udotc;
   double sdotq;
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(lb);
   assert(index >= 0 && index < lb->nsite);

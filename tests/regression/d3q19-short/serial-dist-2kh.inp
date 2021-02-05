@@ -25,7 +25,6 @@ reduced_halo yes
 viscosity 0.1
 
 isothermal_fluctuations off
-temperature 0.00002133333
 
 ##############################################################################
 #
@@ -35,6 +34,10 @@ temperature 0.00002133333
 
 free_energy none
 distribution_initialisation 2d_kelvin_helmholtz
+
+2d_kelvin_helmholtz_u0     0.04
+2d_kelvin_helmholtz_delta  0.05
+2d_kelvin_helmholtz_kappa  80.0
 
 ###############################################################################
 #

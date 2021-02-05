@@ -58,13 +58,6 @@ static const char * format3end_ = "%10.5f, %10.5f, %10.5f\n";
 static const char * formate3end_ = "%13.6e  %13.6e  %13.6e\n";
 static const char * formate4end_ = "%14.6e, %14.6e, %14.6e, %14.6e\n";
 
-double **** vel;
-int ix,iy,iz,ixc,iyc,izc;
-int xstart,xstop,ystart,ystop,zstart,zstop;
-double dist;
-
-double normv;
-
 void colloids_to_csv_header(FILE * fp);
 void colloids_to_csv_header_with_m(FILE * fp);
 void colloids_to_csv_header_with_v(FILE * fp);
@@ -76,6 +69,12 @@ int main(int argc, char ** argv) {
   int ncolloid;
   int ncount = 0;
   int nread;
+  int ix,iy,iz,ixc,iyc,izc;
+  int xstart,xstop,ystart,ystop,zstart,zstop;
+
+  double **** vel;
+  double dist;
+  double normv;
 
   colloid_state_t s1;
   colloid_state_t s2;

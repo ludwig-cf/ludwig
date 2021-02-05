@@ -2,12 +2,11 @@
  *
  *  interaction.h
  *
- *  $Id$
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epc.ed.ac.uk)
  *
@@ -60,6 +59,7 @@ int interact_wall(interact_t * interact, colloids_info_t * cinfo);
 int interact_bonds(interact_t * obj, colloids_info_t * cinfo);
 int interact_angles(interact_t * obj, colloids_info_t * cinfo);
 int interact_find_bonds(interact_t * obj, colloids_info_t * cinfo);
+int interact_find_bonds_all(interact_t * obj, colloids_info_t * cinfo, int nx);
 int interact_stats(interact_t * obj, colloids_info_t * cinfo);
 int interact_hcmax(interact_t * obj, double * hcmax);
 int interact_rcmax(interact_t * obj, double * rcmax);
@@ -68,6 +68,6 @@ int colloids_update_forces_zero(colloids_info_t * cinfo);
 int colloids_update_forces_external(colloids_info_t * cinfo, psi_t * psi);
 int colloids_update_forces_fluid_gravity(colloids_info_t * cinfo, map_t * map);
 int colloids_update_forces_fluid_driven(colloids_info_t * cinfo, map_t * map);
-                                         
+int colloids_update_forces_ext(colloids_info_t * cinfo);
 
 #endif

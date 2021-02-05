@@ -240,13 +240,13 @@ __host__ int fe_lc_param_commit(fe_lc_t * fe) {
  *
  *****************************************************************************/
 
-__host__ int fe_lc_param_set(fe_lc_t * fe, fe_lc_param_t values) {
+__host__ int fe_lc_param_set(fe_lc_t * fe, const fe_lc_param_t * values) {
 
   PI_DOUBLE(pi);
 
   assert(fe);
 
-  *fe->param = values;
+  *fe->param = *values;
 
   /* The convention here is to non-dimensionalise the dielectric
    * anisotropy by factor (1/12pi) which appears in free energy. */

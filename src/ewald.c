@@ -10,7 +10,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2007-2018 The University of Edinburgh.
+ *  (c) 2007-2020 The University of Edinburgh.
  *
  *  Contributing authors:
  *  Grace Kim
@@ -378,9 +378,10 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
 	while (p_colloid != NULL) {
+		
+          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
 
 	  kn = 0;
-
 	  ewald_set_kr_table(ewald, p_colloid->s.r);
 
 	  for (kz = 0; kz <= nk_[Z]; kz++) {
@@ -527,7 +528,9 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_c1);
 
-	while (p_c1) {
+	for ( ; p_c1; p_c1 = p_c1->next) {
+
+          if (p_c1->s.type == COLLOID_TYPE_SUBGRID) continue;
 
 	  for (dx = -1; dx <= +1; dx++) {
 	    for (dy = -1; dy <= +1; dy++) {
@@ -539,7 +542,10 @@ int ewald_real_space_sum(ewald_t * ewald) {
 
 		colloids_info_cell_list_head(ewald->cinfo, id, jd, kd, &p_c2);
 
-		while (p_c2) {
+		for ( ; p_c2; p_c2 = p_c2->next) {
+
+		  if (p_c2->s.type == COLLOID_TYPE_SUBGRID) continue;
+
 		  if (p_c1->s.index < p_c2->s.index) {
 		    double r;
 
@@ -603,18 +609,16 @@ int ewald_real_space_sum(ewald_t * ewald) {
 		      p_c2->torque[Y] += -(p_c2->s.s[Z]*g[X] - p_c2->s.s[X]*g[Z]);
 		      p_c2->torque[Z] += -(p_c2->s.s[X]*g[Y] - p_c2->s.s[Y]*g[X]);
 		    }
- 
 		  }
 
-		  p_c2 = p_c2->next;
+		  /* Next colloid c2 */
 		}
 
 		/* Next cell */
 	      }
 	    }
-	  }
-
-	  p_c1 = p_c1->next;
+          }
+	  /* Next colloid c1 */
 	}
 
 	/* Next cell */
@@ -672,7 +676,9 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 
 	colloids_info_cell_list_head(ewald->cinfo, ic, jc, kc, &p_colloid);
 
-	while (p_colloid != NULL) {
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
+
+          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
 
 	  /* Sum over k to get the force/torque. */
 
@@ -743,14 +749,14 @@ int ewald_fourier_space_sum(ewald_t * ewald) {
 	    }
 	  }
 
-	  /* Accululate force/torque */
+	  /* Accumulate force/torque */
 
 	  for (i = 0; i < 3; i++) {
 	    p_colloid->force[i] += f[i];
 	    p_colloid->torque[i] += t[i];
 	  }
 
-	  p_colloid = p_colloid->next;
+	  /* Next colloid */
 	}
 
 	/* Next cell */

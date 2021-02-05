@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2006-2019 The University of Edinburgh
+ *  (c) 2006-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -142,7 +142,9 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 
 	/* For each colloid in this cell, check solid/fluid status */
 
-	while (p_colloid != NULL) {
+	for ( ; p_colloid; p_colloid = p_colloid->next) {
+
+          if (p_colloid->s.type == COLLOID_TYPE_SUBGRID) continue;
 
 	  /* Set actual position and radius */
 
@@ -212,7 +214,6 @@ int build_update_map(cs_t * cs, colloids_info_t * cinfo, map_t * map) {
 	      }
 
 	  /* Next colloid */
-	  p_colloid = p_colloid->next;
 	}
 
 	/* Next cell */
@@ -253,7 +254,9 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 
 	colloids_info_cell_list_head(cinfo, ic, jc, kc, &pc);
 
-	while (pc) {
+	for (; pc; pc = pc->next) {
+        
+          if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
 	  pc->sumw   = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
@@ -276,7 +279,6 @@ int build_update_links(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 	  /* Next colloid */
 
 	  pc->s.rebuild = 0;
-	  pc = pc->next;
 	}
 
 	/* Next cell */
@@ -952,6 +954,8 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
   double rb[3], ub[3];
   double gnew[3] = {0.0, 0.0, 0.0};
   double tnew[3] = {0.0, 0.0, 0.0};
+
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(cinfo);
   assert(pc);

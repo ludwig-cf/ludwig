@@ -119,12 +119,12 @@ __host__ int fe_symm_create(pe_t * pe, cs_t * cs, field_t * phi,
     obj->target = obj;
   }
   else {
-    fe_symm_param_t * p;
+    fe_symm_param_t * tmp = NULL;
     fe_vt_t * vt;
     tdpMalloc((void **) &obj->target, sizeof(fe_symm_t));
     tdpMemset(obj->target, 0, sizeof(fe_symm_t));
-    tdpGetSymbolAddress((void **) &p, tdpSymbol(const_param));
-    tdpMemcpy(&obj->target->param, &p, sizeof(fe_symm_param_t *),
+    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+    tdpMemcpy(&obj->target->param, &tmp, sizeof(fe_symm_param_t *),
 	      tdpMemcpyHostToDevice);
     tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_symm_dvt));
     tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),

@@ -26,7 +26,7 @@
 #include <assert.h>
 
 #include "ran.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "colloids_halo.h"
 #include "colloids_init.h"
 
