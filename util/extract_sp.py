@@ -1,6 +1,6 @@
 ########################################################################
 #                                                                      #
-#  extract.py                                                          #
+#  extract_sp.py                                                          #
 #                                                                      #
 #  Script for batch processing of data files in vtk-format             #
 #  for visualisation in Paraview.                                      #
@@ -22,7 +22,7 @@
 #                                                                      #
 ########################################################################
 
-import sys, os, re, math
+import sys, os
 
 nstart=int(sys.argv[1])# Start timestep
 nint=int(sys.argv[2])	# Increment

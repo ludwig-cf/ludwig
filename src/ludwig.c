@@ -740,7 +740,6 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
-
       subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);

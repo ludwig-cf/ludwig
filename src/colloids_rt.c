@@ -773,7 +773,7 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     if (n == 0) pe_fatal(pe, "Please define soft_sphere_sigme in input\n");
 
     n = rt_int_parameter(rt, "soft_sphere_nu", &nu);
-    if (n == 0) pe_fatal(pe, "Please check soft_sphere_nu appears in input\n");
+    if (n <= 0) pe_fatal(pe, "Please check soft_sphere_nu is positive\n");
 
     n = rt_double_parameter(rt, "soft_sphere_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Check soft_sphere_cutoff appears in input\n");
