@@ -46,7 +46,6 @@ int  colloid_init_random(cs_t * cs, int * lcg, int nc,
 			 colloid_state_t * state, double dh);
 int  colloid_init_mc(cs_t * cs, int * lcg, int nc, int mc,
 		     colloid_state_t * state, double dh);
-
 void colloid_init_write_file(const int nc, const colloid_state_t * pc,
 			     const int form);
 double v_lj(double r, double rc);
@@ -68,7 +67,6 @@ int main(int argc, char ** argv) {
   int n;
   int nrequest;
   int nactual;
-
   int optind;
 
   const double vf_default   = 0.015; /* Solid volume fraction */
@@ -336,7 +334,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   nz =  floor((ntotal[Z]- 2.0*d_bndry)/d_cc);
 
   /* can we squeeze in another interstitial site? */
-
   nxe = floor((ntotal[X] - 2.0*d_bndry)/d_cc - nx + 0.5);
   nye = floor((ntotal[Y] - 2.0*d_bndry)/d_cc - ny + 0.5);
   nze = floor((ntotal[Z] - 2.0*d_bndry)/d_cc - nz + 0.5);
@@ -348,21 +345,18 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   nbcc += nze * nx * ny;
 
   /* position of bcc sites */
-
   rbcc = (double **) calloc(nbcc, sizeof(double *));
   for (n = 0; n <nbcc; n++) {
     rbcc[n] = (double *) calloc(3, sizeof(double));
   }
 
   /* reservoir sampling */
-
   r = (int *) calloc(nc, sizeof(int));
   s = (int *) calloc(nbcc, sizeof(int));
 
   n = 0;
 
   /* position of corner sites */
-
   for (ix = 0; ix <= nx; ix++) {
     for (iy = 0; iy <= ny; iy++) {
       for (iz = 0; iz <= nz; iz++) {
@@ -377,7 +371,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   }
 
   /* position of interstitial sites */
-
   for (ix = 0; ix < nx; ix++) {
     for (iy = 0; iy < ny; iy++) {
       for (iz = 0; iz < nz; iz++) {
@@ -392,7 +385,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   }
 
   /* extra interstitial sites */
-
   for (ix = nx; ix < nx+nxe ; ix++) {
     for (iy = 0; iy < ny; iy++) {
       for (iz = 0; iz < nz; iz++) {
@@ -407,7 +399,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   }
 
   /* extra interstitial sites */
-
   for (ix = 0; ix < nx; ix++) {
     for (iy = ny; iy < ny+nye; iy++) {
       for (iz = 0; iz < nz; iz++) {
@@ -422,7 +413,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   }
 
   /* extra interstitial sites */
-
   for (ix = 0; ix < nx; ix++) {
     for (iy = 0; iy < ny; iy++) {
       for (iz = nz; iz < nz+nze; iz++) {
@@ -445,7 +435,7 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
 
   for (ii = nc; ii < nbcc; ii++) {
     util_ranlcg_reap_uniform(lcg, &ran);
-    ik = (*lcg) % ii;
+      ik = (*lcg) % ii;
     if (ik < nc) r[ik] = s[ii]; 
   }
 
@@ -464,7 +454,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   ok = 1;
 
   /* now check for overlap */
-
   for (n=0; n<nc; n++){
 
     for (ncheck=0; ncheck<nc; ncheck++) {
@@ -499,6 +488,7 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
 
     eno = 0.0;
     enn = 0.0;
+
     util_ranlcg_reap_uniform(lcg, &ran);
     ii = (*lcg) % nc;
 

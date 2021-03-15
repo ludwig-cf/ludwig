@@ -233,12 +233,12 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 	      }
 	    }
 	  }
+
 	  for (ia = 0; ia < 3; ia++) {
 	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
                                + frand[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
-	  /* Next colloid */
 	}
 	/* Next cell */
       }
