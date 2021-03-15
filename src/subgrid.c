@@ -121,6 +121,28 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		force[Z] = p_colloid->fex[Z]*dr;
 
 		hydro_f_local_add(hydro, index, force);
+#ifdef TEMPORARY
+                map_status(map, index, &status);
+
+                if (status == MAP_FLUID)
+		    hydro_f_local_add(hydro, index, force);
+                else if(status == MAP_COLLOID) {
+                    colloids_info_map(cinfo, index, &p_colloid_distr);
+                    p_colloid_distr->force[X]+=force[X];
+                    p_colloid_distr->force[Y]+=force[Y];
+                    p_colloid_distr->force[Z]+=force[Z];
+                    rd[X]=1.0*i-(p_colloid_distr->s.r[X] - 1.0*offset[X]);
+                    rd[Y]=1.0*j-(p_colloid_distr->s.r[Y] - 1.0*offset[Y]);
+                    rd[Z]=1.0*k-(p_colloid_distr->s.r[Z] - 1.0*offset[Z]);
+                    cross_product(rd,force,torque);
+                    p_colloid_distr->torque[X]+=torque[X];
+                    p_colloid_distr->torque[Y]+=torque[Y];
+                    p_colloid_distr->torque[Z]+=torque[Z];
+                }
+                /* Assign the forces originally acting on the colloid nodes to
+                 * the colloids*/
+#endif
+
 	      }
 	    }
 	  }
@@ -211,12 +233,12 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 	      }
 	    }
 	  }
-
 	  for (ia = 0; ia < 3; ia++) {
 	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
                                + frand[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
+	  /* Next colloid */
 	}
 	/* Next cell */
       }

@@ -29,7 +29,6 @@
  *  Kai Qi (kai.qi@epfl.ch)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2012-2021 The University of Edinburgh
- *  (c) 2020- Swiss Federal Institute of Technology Lausanne
  *
  *****************************************************************************/
 
@@ -118,7 +117,6 @@ int main(int argc, char ** argv) {
 
   state = (colloid_state_t *) calloc(nrequest, sizeof(colloid_state_t));
   assert(state != NULL);
-
 
   for (n = 0; n < nrequest; n++) {
     state[n].index = 1 + n;
@@ -225,6 +223,7 @@ void grow_one_monomer(cs_t * cs, int * lcgstate, double r1[3], double r2[3],
       if (r2[ia] <= bd_min[ia] ||  r2[ia] >= bd_max[ia]) {exceed=1;break;}
     }
   } while(exceed);
+
 }
 
 /*****************************************************************************
@@ -300,6 +299,7 @@ void poly_init_random(cs_t * cs, int * lcgstate, int nc,
         state[mon2].r[X] = rtrial[X];
         state[mon2].r[Y] = rtrial[Y];
         state[mon2].r[Z] = rtrial[Z];
+
         if (monl < (Lpoly-1)) {
             state[mon2].nbonds=2;
             state[mon2].bond[0]=mon2;
@@ -313,7 +313,7 @@ void poly_init_random(cs_t * cs, int * lcgstate, int nc,
     }
 
   }
-  
+
   assert(Nmon==Npoly*Lpoly);
 
 }

@@ -456,6 +456,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_int_parameter(rt, key, &state->rng);
   if (nrt) pe_info(pe, format_i1, key, state->rng);
 
+  sprintf(key, "%s_%s", stub, "inter_type");
+  nrt = rt_int_parameter(rt, key, &state->rng);
+  if (nrt) pe_info(pe, format_i1, key, state->rng);
+
   sprintf(key, "%s_%s", stub, "a0");
   nrt = rt_double_parameter(rt, key, &state->a0);
   if (nrt) pe_info(pe, format_e1, key, state->a0);
@@ -743,7 +747,7 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
   int n;
   int on = 0;
-  double epsilon ;
+  double epsilon;
   double sigma;
   int nu;
   double kt;
@@ -770,7 +774,6 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
 
     n = rt_int_parameter(rt, "soft_sphere_nu", &nu);
     if (n == 0) pe_fatal(pe, "Please check soft_sphere_nu appears in input\n");
-    if (nu <= 0) pe_fatal(pe, "Please check soft_sphere_nu is positive\n");
 
     n = rt_double_parameter(rt, "soft_sphere_cutoff", &cutoff);
     if (n == 0) pe_fatal(pe, "Check soft_sphere_cutoff appears in input\n");

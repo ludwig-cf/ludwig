@@ -131,6 +131,7 @@ int pair_ss_cut_info(pair_ss_cut_t * obj) {
   pe_info(obj->pe, "sigma:                    %14.7e\n", obj->sigma);
   pe_info(obj->pe, "exponent nu:              %14.7e\n", obj->nu);
   pe_info(obj->pe, "cut off (surface-surface) %14.7e\n", obj->hc);
+ 
   if (kt > 0.0) {
     pe_info(obj->pe, "epsilon / kT              %14.7e\n", obj->epsilon/kt);
   }

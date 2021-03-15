@@ -19,10 +19,10 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids.h"
 #include "colloids_halo.h"
 #include "pair_ss_cut.h"
 #include "tests.h"
+#include "colloids.h"
 
 #define PAIR_EPSILON 0.001
 #define PAIR_SIGMA   0.8
