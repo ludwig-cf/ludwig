@@ -328,7 +328,6 @@ int colloid_init_mc(cs_t * cs, int * lcg, int nc, int nmc,
   d_bndry = dh + ah_ref;     /* position of first corner site */
 
   /* number of complete unit cells along each dimension */
-
   nx =  floor((ntotal[X]- 2.0*d_bndry)/d_cc);
   ny =  floor((ntotal[Y]- 2.0*d_bndry)/d_cc);
   nz =  floor((ntotal[Z]- 2.0*d_bndry)/d_cc);

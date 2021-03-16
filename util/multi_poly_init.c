@@ -118,6 +118,7 @@ int main(int argc, char ** argv) {
   state = (colloid_state_t *) calloc(nrequest, sizeof(colloid_state_t));
   assert(state != NULL);
 
+
   for (n = 0; n < nrequest; n++) {
     state[n].index = 1 + n;
     state[n].rebuild = 1;
@@ -223,7 +224,6 @@ void grow_one_monomer(cs_t * cs, int * lcgstate, double r1[3], double r2[3],
       if (r2[ia] <= bd_min[ia] ||  r2[ia] >= bd_max[ia]) {exceed=1;break;}
     }
   } while(exceed);
-
 }
 
 /*****************************************************************************
