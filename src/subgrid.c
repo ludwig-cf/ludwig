@@ -53,7 +53,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
   double r[3], r0[3], force[3];
   double dr;
-  colloid_t * p_colloid;
+  colloid_t * p_colloid = NULL;  /* Subgrid colloid */
+  colloid_t * presolved = NULL;  /* Resolved colloid occupuing node */
 
   assert(cinfo);
   assert(hydro);
@@ -120,28 +121,25 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		force[Y] = p_colloid->fex[Y]*dr;
 		force[Z] = p_colloid->fex[Z]*dr;
 
-		hydro_f_local_add(hydro, index, force);
-#ifdef TEMPORARY
-                map_status(map, index, &status);
+		colloids_info_map(cinfo, index, &presolved);
 
-                if (status == MAP_FLUID)
-		    hydro_f_local_add(hydro, index, force);
-                else if(status == MAP_COLLOID) {
-                    colloids_info_map(cinfo, index, &p_colloid_distr);
-                    p_colloid_distr->force[X]+=force[X];
-                    p_colloid_distr->force[Y]+=force[Y];
-                    p_colloid_distr->force[Z]+=force[Z];
-                    rd[X]=1.0*i-(p_colloid_distr->s.r[X] - 1.0*offset[X]);
-                    rd[Y]=1.0*j-(p_colloid_distr->s.r[Y] - 1.0*offset[Y]);
-                    rd[Z]=1.0*k-(p_colloid_distr->s.r[Z] - 1.0*offset[Z]);
-                    cross_product(rd,force,torque);
-                    p_colloid_distr->torque[X]+=torque[X];
-                    p_colloid_distr->torque[Y]+=torque[Y];
-                    p_colloid_distr->torque[Z]+=torque[Z];
+                if (presolved == NULL) {
+		  hydro_f_local_add(hydro, index, force);
+		}
+                else {
+		  double rd[3] = {};
+		  double torque[3] = {};
+		  presolved->force[X] += force[X];
+		  presolved->force[Y] += force[Y];
+		  presolved->force[Z] += force[Z];
+		  rd[X] = 1.0*i - (presolved->s.r[X] - 1.0*offset[X]);
+		  rd[Y] = 1.0*j - (presolved->s.r[Y] - 1.0*offset[Y]);
+		  rd[Z] = 1.0*k - (presolved->s.r[Z] - 1.0*offset[Z]);
+		  cross_product(rd, force, torque);
+		  presolved->torque[X] += torque[X];
+		  presolved->torque[Y] += torque[Y];
+		  presolved->torque[Z] += torque[Z];
                 }
-                /* Assign the forces originally acting on the colloid nodes to
-                 * the colloids*/
-#endif
 
 	      }
 	    }
