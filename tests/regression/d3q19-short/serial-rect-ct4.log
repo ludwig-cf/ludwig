@@ -1,0 +1,113 @@
+Welcome to Ludwig v0.12.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: None.
+
+Read 19 user parameters from serial-rect-ct4.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    31 15 1
+Decomposition:  1 1 1
+Local domain:   31 15 1
+Periodic:       0 0 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66600e-01
+Bulk viscosity                1.66600e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  1.00000e-05
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    9.99800e-01
+Bulk relaxation time:     9.99800e-01
+Ghost relaxation time:    1.00000e+00
+[Default] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Boundary walls
+--------------
+Boundary walls:                  X Y -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   456
+Memory (total, bytes):           7296
+Boundary shear initialise:       0
+Wall slip active:                yes
+Wall slip fraction (bottom):     0.0000000e+00  0.0000000e+00  0.0000000e+00
+Wall slip fraction (top):        1.0000000e+00  1.0000000e+00  0.0000000e+00
+Memory (total, bytes):           2736
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         465.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  6.4531713e-15  0.0000000e+00  0.0000000e+00
+[fluid   ]  6.4531713e-15  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]         465.00  1.00000000000  8.8817842e-16  0.99999999304  1.00000000372
+
+Momentum - x y z
+[total   ] -7.2719608e-15 -2.9663771e-15  4.6500000e-01
+[fluid   ] -3.2700376e-08 -6.2118880e-09  3.3430778e-01
+[walls   ]  3.2700369e-08  6.2118850e-09  1.3069222e-01
+
+Velocity - x y z
+[minimum ] -2.0689731e-09 -2.1051525e-09  2.7731865e-05
+[maximum ]  2.3096053e-09  2.2509916e-09  9.9156495e-04
+[vol flux] -3.2689946e-08 -6.2647818e-09  3.3388555e-01
+
+Completed cycle 100
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.162      0.162      0.162   0.161610 (1 call)
+      Time step loop:      0.002      0.002      0.160   0.001599 (100 calls)
+         Propagation:      0.000      0.001      0.037   0.000370 (100 calls)
+    Propagtn (krnl) :      0.000      0.001      0.037   0.000368 (100 calls)
+           Collision:      0.001      0.001      0.082   0.000816 (100 calls)
+   Collision (krnl) :      0.001      0.001      0.081   0.000813 (100 calls)
+       Lattice halos:      0.000      0.001      0.035   0.000351 (100 calls)
+       phi gradients:      0.000      0.000      0.000   0.000001 (100 calls)
+                 BBL:      0.000      0.000      0.002   0.000023 (100 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (100 calls)
+          phi update:      0.000      0.000      0.000   0.000000 (100 calls)
+               Free1:      0.000      0.000      0.000   0.000003 (100 calls)
+Ludwig finished normally.

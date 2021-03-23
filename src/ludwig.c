@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -80,7 +80,6 @@
 #include "build.h"
 #include "subgrid.h"
 #include "colloids.h"
-#include "colloids_s.h"
 #include "advection_rt.h"
 
 /* Viscosity model */
@@ -200,7 +199,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   TIMER_start(TIMER_TOTAL);
 
   /* Prefer maximum L1 cache available on device */
-  tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
+  (void) tdpDeviceSetCacheConfig(tdpFuncCachePreferL1);
 
   /* Initialise free-energy related objects, and the coordinate
    * system (the halo extent depends on choice of free energy). */
@@ -427,6 +426,8 @@ void ludwig_run(const char * inputfile) {
   ludwig_t * ludwig = NULL;
   MPI_Comm comm;
 
+  stats_vel_t statvel = stats_vel_default();
+
 
   ludwig = (ludwig_t*) calloc(1, sizeof(ludwig_t));
   assert(ludwig);
@@ -439,6 +440,8 @@ void ludwig_run(const char * inputfile) {
   rt_info(ludwig->rt);
 
   ludwig_rt(ludwig);
+
+  statvel.print_vol_flux = rt_switch(ludwig->rt, "stats_vel_print_vol_flux");
 
   /* Report initial statistics */
 
@@ -697,6 +700,8 @@ void ludwig_run(const char * inputfile) {
     }
 
     if (ludwig->hydro) {
+      int noise_flag = ludwig->noise_rho->on[NOISE_RHO];
+
       /* Zero velocity field here, as velocity at collision is used
        * at next time step for FD above. Strictly, we only need to
        * do this if velocity output is required in presence of
@@ -735,7 +740,7 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_BBL);
       wall_set_wall_distributions(ludwig->wall);
 
-      subgrid_update(ludwig->collinfo, ludwig->hydro);
+      subgrid_update(ludwig->collinfo, ludwig->hydro, noise_flag);
       bounce_back_on_links(ludwig->bbl, ludwig->lb, ludwig->wall,
 			   ludwig->collinfo);
       wall_bbl(ludwig->wall);
@@ -903,7 +908,7 @@ void ludwig_run(const char * inputfile) {
       if (ludwig->hydro) {
 	wall_is_pm(ludwig->wall, &is_pm);
 	hydro_memcpy(ludwig->hydro, tdpMemcpyDeviceToHost);
-	stats_velocity_minmax(ludwig->hydro, ludwig->map, is_pm);
+	stats_velocity_minmax(&statvel, ludwig->hydro, ludwig->map);
       }
 
       lb_collision_stats_kt(ludwig->lb, ludwig->noise_rho, ludwig->map);
@@ -1860,7 +1865,6 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
 		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
   build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
-  
 
   TIMER_stop(TIMER_REBUILD);
 

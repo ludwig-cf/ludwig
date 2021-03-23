@@ -79,6 +79,10 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
   io_info_set_processor_dependent(info);
   info->single_file_read = 0;
 
+  /* Patch to allow old parallel i/o to take effect */
+  if (info->io_comm->n_io > 1) {
+    info->args.output.mode = IO_MODE_MULTIPLE;
+  }
   /* Local rank and group counts */
 
   info->nsites = info->io_comm->nsite[X]*info->io_comm->nsite[Y]
@@ -101,7 +105,8 @@ int io_info_create(pe_t * pe, cs_t * cs, io_info_arg_t * arg, io_info_t ** p) {
  *****************************************************************************/
 
 __host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t args,
-				 io_implementation_t impl, io_info_t ** info) {
+				 const io_implementation_t * impl,
+				 io_info_t ** info) {
   io_info_t * p = NULL;
 
   assert(pe);
@@ -121,7 +126,7 @@ __host__ int io_info_create_impl(pe_t * pe, cs_t * cs, io_info_args_t args,
   p->cs = cs;
 
   p->args = args;
-  p->impl = impl;
+  p->impl = *impl;
 
   io_decomposition_create(pe, cs, args.grid, &p->comm);
 
@@ -229,11 +234,6 @@ static void io_set_group_filename(char * filename_io, const char * stub,
 
   sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
 	  info->io_comm->index + 1);
-
-  info->single_file_read = 0;
-  if (info->single_file_read) {
-    sprintf(filename_io, "%s.%3.3d-%3.3d", stub, 1, 1);
-  }
 
   return;
 }
@@ -575,6 +575,12 @@ int io_info_format_set(io_info_t * obj, int form_in, int form_out) {
   io_info_format_in_set(obj, form_in);
   io_info_format_out_set(obj, form_out);
 
+  /* Patch to allow old parallel i/o format */
+  if (obj->io_comm->n_io > 1) {
+    obj->processor_independent = 0;
+    obj->single_file_read = 0;
+  }
+
   return 0;
 }
 
@@ -898,7 +904,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
   int ic, jc, kc, index;
   int nlocal[3];
   int itemsz;                      /* Data size per site (bytes) */
-  int iosz;                        /* Data size io_buf (bytes) */
+  size_t iosz;                     /* Data size io_buf (bytes) */
   int localsz;                     /* Data size local buffer (bytes) */
   char * buf = NULL;               /* Local buffer for this rank */
   char * io_buf = NULL;            /* I/O buffer for whole group */
@@ -953,11 +959,11 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
     /* I/O buff */
 
-    iosz = itemsz*obj->nsites;
+    iosz = (size_t) itemsz*obj->nsites;
     io_buf = (char *) malloc(iosz*sizeof(char));
     if (io_buf == NULL) pe_fatal(obj->pe, "malloc(io_buf)\n");
 
-    rbuf = (char *) malloc(itemsz*obj->maxlocal*sizeof(char));
+    rbuf = (char *) malloc((size_t) itemsz*obj->maxlocal*sizeof(char));
     if (rbuf == NULL) pe_fatal(obj->pe, "malloc(rbuf)\n");
 
     /* Unpack own buffer to correct position in the io buffer, and
@@ -984,9 +990,9 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
 
     if (obj->io_comm->index > 0) {
       fp_state = fopen(filename_io, "r+");
-      offset = obj->io_comm->offset[X]*
-	       obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z];
-      fseek(fp_state, offset*itemsz, SEEK_SET);
+      offset = (long int) itemsz*
+	obj->io_comm->offset[X]*obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z];
+      fseek(fp_state, offset, SEEK_SET);
     }
 
     if (fp_state == NULL) {
@@ -1068,7 +1074,7 @@ int io_unpack_local_buf(io_info_t * obj, int mpi_sender, const char * buf,
       offset = ifo*obj->io_comm->nsite[Y]*obj->io_comm->nsite[Z]
 	+ jfo*obj->io_comm->nsite[Z] + kfo;
 
-      memcpy(io_buf + itemsz*offset, buf + ib, itemsz*nsendlocal[Z]);
+      memcpy(io_buf + itemsz*offset, buf + ib, (size_t) itemsz*nsendlocal[Z]);
       ib += itemsz*nsendlocal[Z];
     }
   }
@@ -1105,6 +1111,10 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   cs_nlocal(obj->cs, nlocal);
 
   io_set_group_filename(filename_io, filename_stub, obj);
+
+  if (obj->single_file_read) {
+    sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
+  }
 
   if (obj->io_comm->rank == 0) {
 

@@ -121,6 +121,17 @@ __host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
 __host__ __device__ int lb_fluctuations_ghosts(noise_t * noise, int index,
 					       double * var_ghost,
 					       double ghat[NVEL]);
+/* Some vectorised versions */
+__host__ __device__ int lb_relaxation_time_shear_v(lb_t * lb,
+						   const double eta[NSIMDVL],
+						   double rtau[NSIMDVL]);
+__host__ __device__ int lb_relaxation_time_bulk_v(lb_t * lb,
+						  const double eta[NSIMDVL],
+						  const double eta_nu[NSIMDVL],
+						  double rtau[NSIMDVL]);
+__host__ __device__ int lb_relaxation_time_ghosts_v(lb_t * lb,
+						  const double eta[NSIMDVL],
+						    double rtau[NVEL][NSIMDVL]);
 
 /*****************************************************************************
  *
@@ -267,7 +278,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   double eta_bulk[NSIMDVL];               /* Local bulk viscosity */
   double rtau[NSIMDVL];                   /* Local 1/shear relaxation tau */
   double rtau_bulk[NSIMDVL];              /* Local 1/bulk relaxation tau */
-  double rtau_ghost[NVEL];                /* Ghost relaxation times rtau*/
+  double rtau_ghost[NVEL][NSIMDVL];       /* Ghost relaxation times rtau */
 
   double force[3][NSIMDVL];               /* External force */
   double tr_s[NSIMDVL], tr_seq[NSIMDVL];  /* Vectors for stress trace */
@@ -376,30 +387,24 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   /* Local relaxation times */
 
   if (_cp.have_visc_model == 0) {
-
+    /* Fixed viscosity */
     for_simd_v(iv, NSIMDVL) {
       eta[iv] = _cp.eta_shear;
       eta_bulk[iv] = _cp.eta_bulk;
-      lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
-      lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
-      lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
-      assert(NSIMDVL == 1); /* TODO VECTORISE */
     }
   }
   else {
-
     /* Use viscosity model values hydro->eta */
     /* Bulk viscosity will be (eta_bulk/eta_shear)_newtonian*eta_local */
-
     for_simd_v(iv, NSIMDVL) {
       eta[iv] = hydro->eta[addr_rank0(hydro->nsite, index0+iv)];
       eta_bulk[iv] = (_cp.eta_bulk/_cp.eta_shear)*eta[iv];
-      lb_relaxation_time_shear(lb, eta[iv], rtau + iv);
-      lb_relaxation_time_bulk(lb, eta[iv], eta_bulk[iv], rtau_bulk + iv);
-      lb_relaxation_time_ghosts(lb, eta[iv], rtau_ghost);
-      assert(NSIMDVL == 1); /* TODO VECTORISE */
     }
   }
+
+  lb_relaxation_time_shear_v(lb, eta, rtau);
+  lb_relaxation_time_bulk_v(lb, eta, eta_bulk, rtau_bulk);
+  lb_relaxation_time_ghosts_v(lb, eta, rtau_ghost);
 
   /* Relax stress with different shear and bulk viscosity */
 
@@ -476,6 +481,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
     double shat1[3][3];
     double ghat1[NVEL];
     double var, var_bulk;
+    double rtau_ghost_tmp[NVEL];
     double var_ghost[NVEL];
 
     /* This does not vectorise at the moment. Needs revisiting.
@@ -487,7 +493,6 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 
       if (includeSite[iv]) {
 
-	/*lb_collision_fluctuations(lb, noise, index0 + iv, shat1, ghat1);*/
 	var = lb_fluctuations_var_eta(1.0/rtau[iv], _cp.kt);
 	var_bulk = lb_fluctuations_var_bulk(1.0/rtau_bulk[iv], _cp.kt);
 	lb_fluctuations_stress(noise, index0 + iv, var, var_bulk, shat1);
@@ -500,7 +505,10 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 
 	if (lb->param->isghost == LB_GHOST_ON) {
 	  /* TODO rtau_ghost to be vectorised */
-	  lb_fluctuations_var_ghost(rtau_ghost, _cp.kt, var_ghost);
+	  for (ia = 0; ia < NVEL; ia++) {
+	    rtau_ghost_tmp[ia] = rtau_ghost[ia][iv];
+	  }
+	  lb_fluctuations_var_ghost(rtau_ghost_tmp, _cp.kt, var_ghost);
 	  lb_fluctuations_ghosts(noise, index0 + iv, var_ghost, ghat1);
 	  for (ia = 0; ia < NVEL; ia++) {
 	    ghat[ia][iv] = ghat1[ia];
@@ -533,7 +541,7 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
   for (m = NHYDRO; m < NVEL; m++) {  
     for_simd_v(iv, NSIMDVL) {
       mode[m*NSIMDVL+iv] = mode[m*NSIMDVL+iv]
-	- rtau_ghost[m]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
+	- rtau_ghost[m][iv]*(mode[m*NSIMDVL+iv] - 0.0) + ghat[m][iv];
     }
   }
 
@@ -1172,6 +1180,8 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
   double rtau_shear;
   double rtau_bulk;
   double tau, rtau;
+  LB_CS2_DOUBLE(cs2);
+
   physics_t * phys = NULL;
 
   assert(lb);
@@ -1263,6 +1273,21 @@ __host__ __device__ int lb_relaxation_time_shear(lb_t * lb,
   return 0;
 }
 
+__host__ __device__ int lb_relaxation_time_shear_v(lb_t * lb,
+						   const double eta[NSIMDVL],
+						   double rtau[NSIMDVL]) {
+  int iv;
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+
+  for_simd_v(iv, NSIMDVL) {
+    rtau[iv] = 1.0/(0.5 + eta[iv] / (lb->param->rho0*cs2));
+  }
+
+  return 0;
+}
+
 /*****************************************************************************
  *
  *  lb_relaxation_time_bulk
@@ -1295,6 +1320,42 @@ __host__ __device__ int lb_relaxation_time_bulk(lb_t * lb,
 
   if (lb->nrelax == LB_RELAXATION_TRT) {
     *rtau = 1.0/(0.5 + eta_nu / (lb->param->rho0*cs2));
+  }
+
+  return 0;
+}
+
+__host__ __device__ int lb_relaxation_time_bulk_v(lb_t * lb,
+						  const double eta[NSIMDVL],
+						  const double eta_nu[NSIMDVL],
+						  double rtau[NSIMDVL]) {
+  int iv;
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+  assert(rtau);
+
+  *rtau = 0.0;
+
+  assert(lb_nrelax_valid(lb->nrelax));
+
+  if (lb->nrelax == LB_RELAXATION_M10) {
+    for_simd_v(iv, NSIMDVL) {
+      rtau[iv] = 1.0/(0.5 + eta_nu[iv] / (lb->param->rho0*cs2));
+    }
+  }
+
+  if (lb->nrelax == LB_RELAXATION_BGK) {
+    /* No separate bulk visocity: use eta, not eta_nu */
+    for_simd_v(iv, NSIMDVL) {
+      rtau[iv]  = 1.0/(0.5 + eta[iv] / (lb->param->rho0*cs2));
+    }
+  }
+
+  if (lb->nrelax == LB_RELAXATION_TRT) {
+    for_simd_v(iv, NSIMDVL) {
+      rtau[iv] = 1.0/(0.5 + eta_nu[iv] / (lb->param->rho0*cs2));
+    }
   }
 
   return 0;
@@ -1368,6 +1429,102 @@ __host__ __device__ int lb_relaxation_time_ghosts(lb_t * lb,
 
   return 0;
 }
+__host__ __device__ int lb_relaxation_time_ghosts_v(lb_t * lb,
+						  const double eta[NSIMDVL],
+						  double rtau[NVEL][NSIMDVL]) {
+  int iv, p;
+  double rtau_ghost[NSIMDVL];
+  double rtau_shear[NSIMDVL];
+  LB_CS2_DOUBLE(cs2);
+
+  assert(lb);
+  assert(rtau);
+
+  if (lb->nrelax == LB_RELAXATION_M10) {
+    for (p = NHYDRO; p < NVEL; p++) {
+      for_simd_v(iv, NSIMDVL) {
+	rtau[p][iv] = 1.0;
+      }
+    }
+  }
+
+  if (lb->nrelax == LB_RELAXATION_BGK) {
+    lb_relaxation_time_shear_v(lb, eta, rtau_shear);
+    for (p = NHYDRO; p < NVEL; p++) {
+      for_simd_v(iv, NSIMDVL) {
+	rtau[p][iv] = rtau_shear[iv];
+      }
+    }
+  }
+
+  if (lb->nrelax == LB_RELAXATION_TRT) {
+
+    double tau;
+
+    assert(NVEL != 9);
+    lb_relaxation_time_shear_v(lb, eta, rtau_shear);
+
+    for_simd_v(iv, NSIMDVL) {
+      tau = eta[iv] / (lb->param->rho0*cs2);
+      rtau_ghost[iv] = 0.5 + 2.0*tau/(tau + 3.0/8.0);
+    }
+
+    for_simd_v(iv, NSIMDVL) {
+      if (rtau_ghost[iv] > 2.0) rtau_ghost[iv] = 2.0;
+    }
+
+    if (NVEL == 15) {
+      for_simd_v(iv, NSIMDVL) {
+	rtau[10][iv] = rtau_shear[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[11][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[12][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[13][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[14][iv] = rtau_shear[iv];
+      }
+    }
+
+    if (NVEL == 19) {
+      for_simd_v(iv, NSIMDVL) {
+	rtau[10][iv] = rtau_shear[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[14][iv] = rtau_shear[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[18][iv] = rtau_shear[iv];
+      }
+
+      for_simd_v(iv, NSIMDVL) {
+	rtau[11][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[12][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[13][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[15][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[16][iv] = rtau_ghost[iv];
+      }
+      for_simd_v(iv, NSIMDVL) {
+	rtau[17][iv] = rtau_ghost[iv];
+      }
+    }
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -1409,6 +1566,8 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
   double tau_s;
   double tau_b;
   double tau_g;
+  LB_RCS2_DOUBLE(rcs2);
+
   physics_t * phys = NULL;
 
   assert(lb);
@@ -2691,7 +2850,7 @@ __device__ void d3q19_mode2f_phi(double jdotc[NSIMDVL],
 				 double * f, int baseIndex){
 
   int iv=0;
-  const double rcs2 = 3.0;
+  LB_RCS2_DOUBLE(rcs2);
   const double r2rcs4 = (9.0/2.0);
 
   for_simd_v(iv, NSIMDVL) { jdotc[iv]    = 0.0; sphidotq[iv] = 0.0;} 

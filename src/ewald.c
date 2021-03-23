@@ -420,7 +420,7 @@ static int ewald_sum_sin_cos_terms(ewald_t * ewald) {
 		kn++;
 	      }
 	    }
-          }
+	  }
 	  p_colloid = p_colloid->next;
 	}
 	/* Next cell */

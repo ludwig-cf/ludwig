@@ -1,4 +1,4 @@
-import sys, os, re, math
+import math
 
 # distribution filename
 input_filename  = 'dist-00010000.001-001.bak'

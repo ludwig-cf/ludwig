@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2017 The University of Edinburgh
+ *  (c) 2011-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,6 +25,21 @@
 
 /****************************************************************************
  *
+ *  stats_vel_default
+ *
+ *  Always print minmax at moment.
+ *
+ ****************************************************************************/
+
+stats_vel_t stats_vel_default(void) {
+
+  stats_vel_t stat = {0};
+
+  return stat;
+}
+
+/****************************************************************************
+ *
  *  stats_velocity_minmax
  *
  *  The volume flux of is of interest for porous media calculations
@@ -36,7 +51,7 @@
  *
  ****************************************************************************/
 
-int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
+int stats_velocity_minmax(stats_vel_t * stat, hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, ia, index;
   int nlocal[3];
@@ -49,6 +64,7 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
 
   MPI_Comm comm;
 
+  assert(stat);
   assert(hydro);
   assert(map);
 
@@ -101,7 +117,7 @@ int stats_velocity_minmax(hydro_t * hydro, map_t * map, int print_vol_flux) {
   pe_info(hydro->pe, "[minimum ] %14.7e %14.7e %14.7e\n", umin[X], umin[Y], umin[Z]);
   pe_info(hydro->pe, "[maximum ] %14.7e %14.7e %14.7e\n", umax[X], umax[Y], umax[Z]);
 
-  if (print_vol_flux) {
+  if (stat->print_vol_flux) {
     pe_info(hydro->pe, "[vol flux] %14.7e %14.7e %14.7e\n", usum[X], usum[Y], usum[Z]);
   }
 

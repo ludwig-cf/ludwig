@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Phyiscs Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,15 +23,14 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "colloid_sums.h"
 #include "util.h"
 #include "subgrid.h"
 
 static double d_peskin(double);
 static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro);
-static double drange_ = 1.0; /* Max. range of interpolation - 1 */
-static int subgrid_on_ = 0;  /* Subgrid particle flag */
+static const double drange_ = 1.0; /* Max. range of interpolation - 1 */
 
 /*****************************************************************************
  *
@@ -60,7 +59,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   assert(hydro);
   assert(wall);
 
-  if (subgrid_on_ == 0) return 0;
+  if (cinfo->nsubgrid == 0) return 0;
 
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
@@ -120,6 +119,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		force[X] = p_colloid->fex[X]*dr;
 		force[Y] = p_colloid->fex[Y]*dr;
 		force[Z] = p_colloid->fex[Z]*dr;
+
 		hydro_f_local_add(hydro, index, force);
 	      }
 	    }
@@ -146,7 +146,7 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
  *
  *****************************************************************************/
 
-int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
+int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 
   int ia;
   int ic, jc, kc;
@@ -157,10 +157,14 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
   colloid_t * p_colloid;
   physics_t * phys = NULL;
 
+  double ran[2];    /* Random numbers for fluctuation dissipation correction */
+  double frand[3];  /* Random force */
+  double kt;        /* Temperature */
+
   assert(cinfo);
   assert(hydro);
 
-  if (subgrid_on_ == 0) return 0;
+  if (cinfo->nsubgrid == 0) return 0;
 
   colloids_info_ncell(cinfo, ncell);
 
@@ -171,6 +175,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
   physics_ref(&phys);
   physics_eta_shear(phys, &eta);
+  physics_kt(phys, &kt);
   reta = 1.0/(6.0*pi*eta);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
@@ -183,10 +188,33 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.ah);
+	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.al);
+
+	  if (noise_flag == 0) {
+	    frand[X] = 0.0; frand[Y] = 0.0; frand[Z] = 0.0;
+	  }
+	  else {
+	    for (ia = 0; ia < 3; ia++) {
+	      while (1) {
+		/* To keep the random correction smaller than 3 sigma.
+		 * Otherwise, a large thermal fluctuation may cause a
+		 * numerical problem. */
+		util_ranlcg_reap_gaussian(&p_colloid->s.rng, ran);
+		if (fabs(ran[0]) < 3.0) {
+		  frand[ia] = sqrt(2.0*kt*drag)*ran[0];
+		  break;
+		}
+		if (fabs(ran[1]) < 3.0) {
+		  frand[ia] = sqrt(2.0*kt*drag)*ran[1];
+		  break;
+		}
+	      }
+	    }
+	  }
 
 	  for (ia = 0; ia < 3; ia++) {
-	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia];
+	    p_colloid->s.v[ia] = p_colloid->fsub[ia] + drag*p_colloid->fex[ia]
+                               + frand[ia];
 	    p_colloid->s.dr[ia] = p_colloid->s.v[ia];
 	  }
 	}
@@ -363,32 +391,4 @@ static double d_peskin(double r) {
   }
 
   return delta;
-}
-
-/*****************************************************************************
- *
- *  subgrid_on_set
- *
- *  Set the flag to 'on'.
- *
- *****************************************************************************/
-
-int subgrid_on_set(void) {
-
-  subgrid_on_ = 1;
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  subgrid_on
- *
- *****************************************************************************/
-
-int subgrid_on(int * flag) {
-
-  assert(flag);
-
-  *flag = subgrid_on_;
-  return 0;
 }

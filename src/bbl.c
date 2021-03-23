@@ -31,7 +31,6 @@
 #include "bbl.h"
 #include "colloid.h"
 #include "colloids.h"
-#include "colloids_s.h"
 
 struct bbl_s {
   pe_t * pe;            /* Parallel environment */
@@ -298,7 +297,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 
   int kindex;
   int kiter;
-  const double rcs2 = 3.0;
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(ktxt);
   assert(cs);
@@ -384,6 +383,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
   double mod, rmod, dm_a, cost, plegendre, sint;
   double tans[3], vector1[3];
   double fdist;
+  LB_RCS2_DOUBLE(rcs2);
 
   physics_t * phys = NULL;
   colloid_t * pc = NULL;
@@ -575,6 +575,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
   double dgtm1;
   double rho0;
+  LB_RCS2_DOUBLE(rcs2);
 
   physics_t * phys = NULL;
   colloid_t * pc = NULL;

@@ -32,9 +32,6 @@
 #include "lb_model_s.h"
 #include "io_harness.h"
 
-const double cs2  = (1.0/3.0);
-const double rcs2 = 3.0;
-
 static int lb_mpi_init(lb_t * lb);
 static int lb_set_types(int, MPI_Datatype *);
 static int lb_set_blocks(lb_t * lb, int, int *, int, const int *);
@@ -692,7 +689,7 @@ __host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args) {
   impl.bytesize_ascii  = 0; /* HOW MANY BYTES! */
   impl.bytesize_binary = lb->ndist*NVEL*sizeof(double);
 
-  io_info_create_impl(lb->pe, lb->cs, args, impl, &lb->io_info);
+  io_info_create_impl(lb->pe, lb->cs, args, &impl, &lb->io_info);
 
   return 0;
 }
@@ -1417,6 +1414,7 @@ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
   int ia, ib, p;
   double udotc;
   double sdotq;
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(lb);
   assert(index >= 0 && index < lb->nsite);
