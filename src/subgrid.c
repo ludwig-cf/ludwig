@@ -123,10 +123,10 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
 		colloids_info_map(cinfo, index, &presolved);
 
-                if (presolved == NULL) {
+		if (presolved == NULL) {
 		  hydro_f_local_add(hydro, index, force);
 		}
-                else {
+		else {
 		  double rd[3] = {};
 		  double torque[3] = {};
 		  presolved->force[X] += force[X];
