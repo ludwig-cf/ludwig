@@ -24,6 +24,9 @@ struct field_s {
   int nsites;                   /* Local sites (allocated) */
   double * data;                /* Field data */
   char * name;                  /* "phi", "p", "q" etc. */
+  
+  //conservation phi correction
+  double field_init_sum;			/* field sum at the beginning */
 
   pe_t * pe;                    /* Parallel environment */
   cs_t * cs;                    /* Coordinate system */

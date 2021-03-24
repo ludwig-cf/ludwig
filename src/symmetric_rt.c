@@ -20,6 +20,7 @@
 
 #include "field_phi_init_rt.h"
 #include "symmetric_rt.h"
+#include "field_s.h" // field sum at the beginning
 
 #include "gradient_3d_27pt_solid.h"
 #include "physics.h"
@@ -93,5 +94,48 @@ int fe_symmetric_phi_init_rt(pe_t * pe, rt_t * rt, fe_symm_t * fe,
 
   field_phi_init_rt(pe, rt, param, phi);
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_sum_phi_init_rt
+ *
+ *****************************************************************************/
+//conservation phi correction
+int field_sum_phi_init_rt(field_t * field, map_t * map) {
+  
+  int ic, jc, kc, index, status;
+  double sum_phi_local, sum_phi, phi;
+  int nlocal[3];
+  
+  assert(field);
+  assert(map);
+  MPI_Comm comm;
+  pe_mpi_comm(field->pe, &comm);
+  
+  sum_phi_local = 0.0;
+  sum_phi = 0.0;
+  cs_nlocal(field->cs, nlocal);
+  
+  
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+      	index = cs_index(field->cs, ic, jc, kc);
+      	
+		map_status(map, index, &status);	    
+    	if (status == MAP_FLUID){   
+      		field_scalar(field, index, &phi);
+      		sum_phi_local += phi;
+      	}
+      }
+    }
+  }
+  
+  MPI_Allreduce(&sum_phi_local, &sum_phi, 1, MPI_DOUBLE, MPI_SUM, comm);
+  
+  field->field_init_sum = sum_phi;
+  
   return 0;
 }
