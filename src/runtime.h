@@ -19,6 +19,8 @@
 
 #include "pe.h"
 
+typedef enum {RT_NONE, RT_INFO, RT_FATAL} rt_enum_t;
+
 typedef struct rt_s rt_t;
 
 int rt_create(pe_t * pe, rt_t ** prt);
@@ -35,5 +37,6 @@ int rt_active_keys(rt_t * rt, int * nactive);
 int rt_add_key_value(rt_t * rt, const char * key, const char * value);
 int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v);
 int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v);
+int rt_key_required(rt_t * rt, const char * key, rt_enum_t level);
 
 #endif

@@ -668,3 +668,48 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
 
   return key_present;
 }
+
+/*****************************************************************************
+ *
+ *  rt_key_required
+ *
+ *  Convenience to declare that a given key should be present and
+ *  take some action.
+ *
+ *  If not RT_FATAL, returns 0 if key is present, non-zero on "error".
+ *
+ *****************************************************************************/
+
+int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
+
+  int ierr = 0;
+  char value[NKEY_LENGTH];
+  char msg[BUFSIZ];
+
+  assert(rt);
+  assert(key);
+
+  ierr = -1 + rt_look_up_key(rt, key, value);
+
+  if (ierr == 0) {
+    /* No problem */
+  }
+  else {
+    strncpy(value, key, NKEY_LENGTH);
+
+    /* Information */
+    if (level == RT_INFO) {
+      sprintf(msg, "Input: key \"%s\" absent; a default value will be used.\n",
+	      value);
+      pe_info(rt->pe, msg);
+    }
+    /* Fatal */
+    if (level == RT_FATAL) {
+      sprintf(msg, "Input: key \"%s\" must be specified, but is missing;\n"
+	      "please check the input and try again.", value);
+      pe_fatal(rt->pe, msg);
+    }
+  }
+
+  return ierr;
+}

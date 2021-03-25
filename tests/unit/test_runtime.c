@@ -82,6 +82,11 @@ int test_rt_general(pe_t * pe) {
   test_assert(n == 15);
   /* info("yes\n");*/
 
+  n = rt_key_required(rt, "int_scalar", RT_FATAL);
+  assert(n == 0);
+  n = rt_key_required(rt, "int_not_present", RT_NONE);
+  assert(n != 0);
+
   n = 0;
   /* info("Checking key 'int_scalar' is available...");*/
   n = rt_int_parameter(rt, "int_scalar", &ivalue);

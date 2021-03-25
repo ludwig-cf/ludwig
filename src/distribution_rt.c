@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -28,7 +28,16 @@
 #include "io_info_args_rt.h"
 #include "distribution_rt.h"
 
-static int lb_rt_2d_kelvin_helmholtz(lb_t * lb);
+struct kh_2d_param_s {
+  double rho0;          /* Mean density */
+  double u0;            /* Maximum velocity one dimension */
+  double delta;         /* Initial perturbation */
+  double kappa;         /* Shear layer "thinckness" (an inverse length) */
+};
+
+typedef struct kh_2d_param_s kh_2d_param_t;
+
+static int lb_rt_2d_kelvin_helmholtz(lb_t * lb, const kh_2d_param_t * kh);
 static int lb_rt_2d_shear_wave(lb_t * lb);
 static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]);
 static int lb_init_poiseuille(lb_t * lb, double rho0,
@@ -256,7 +265,33 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
   rt_string_parameter(rt, "distribution_initialisation", key, FILENAME_MAX);
 
   if (strcmp("2d_kelvin_helmholtz", key) == 0) {
-    lb_rt_2d_kelvin_helmholtz(lb);
+
+    double u0 = 0.0;
+    double delta = 0.0;
+    double kappa = 0.0;
+    kh_2d_param_t kh = {};
+
+    rt_key_required(rt, "2d_kelvin_helmholtz_u0", RT_FATAL);
+    rt_key_required(rt, "2d_kelvin_helmholtz_delta", RT_FATAL);
+    rt_key_required(rt, "2d_kelvin_helmholtz_kappa", RT_FATAL);
+
+    rt_double_parameter(rt, "2d_kelvin_helmholtz_u0", &u0);
+    rt_double_parameter(rt, "2d_kelvin_helmholtz_delta", &delta);
+    rt_double_parameter(rt, "2d_kelvin_helmholtz_kappa", &kappa);
+
+    kh.rho0 = rho0;
+    kh.u0   = u0;
+    kh.delta = delta;
+    kh.kappa = kappa;
+
+    lb_rt_2d_kelvin_helmholtz(lb, &kh);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Initial distribution: 2d kelvin helmholtz\n");
+    pe_info(pe, "Velocity magnitude:   %14.7e\n", kh.u0);
+    pe_info(pe, "Shear layer kappa:    %14.7e\n", kh.kappa);
+    pe_info(pe, "Perturbation delta:   %14.7e\n", kh.delta);
+    pe_info(pe, "\n");
   }
 
   if (strcmp("2d_shear_wave", key) == 0) {
@@ -318,16 +353,12 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
  *
  *****************************************************************************/
 
-static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
+static int lb_rt_2d_kelvin_helmholtz(lb_t * lb, const kh_2d_param_t * kh) {
 
   int ic, jc, kc, index;
   int nlocal[3];
   int noffset[3];
 
-  double rho = 1.0;
-  double u0 = 0.04;
-  double delta = 0.05;
-  double kappa = 80.0;
   double u[3];
   double lmin[3];
   double ltot[3];
@@ -347,25 +378,18 @@ static int lb_rt_2d_kelvin_helmholtz(lb_t * lb) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       y = (1.0*(noffset[Y] + jc) - lmin[Y])/ltot[Y];
 
-      if (y >  0.5) u[X] = u0*tanh(kappa*(0.75 - y));
-      if (y <= 0.5) u[X] = u0*tanh(kappa*(y - 0.25));
-      u[Y] = u0*delta*sin(2.0*pi*(x + 0.25));
+      if (y >  0.5) u[X] = kh->u0*tanh(kh->kappa*(0.75 - y));
+      if (y <= 0.5) u[X] = kh->u0*tanh(kh->kappa*(y - 0.25));
+      u[Y] = kh->u0*kh->delta*sin(2.0*pi*(x + 0.25));
       u[Z] = 0.0;
 
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(lb->cs, ic, jc, kc);
-        lb_1st_moment_equilib_set(lb, index, rho, u);
+        lb_1st_moment_equilib_set(lb, index, kh->rho0, u);
       }
     }
   }
-
-  pe_info(lb->pe, "\n");
-  pe_info(lb->pe, "Initial distribution: 2d kelvin helmholtz\n");
-  pe_info(lb->pe, "Velocity magnitude:   %14.7e\n", u0);
-  pe_info(lb->pe, "Shear layer kappa:    %14.7e\n", kappa);
-  pe_info(lb->pe, "Perturbation delta:   %14.7e\n", delta);
-  pe_info(lb->pe, "\n");
 
   return 0;
 }
