@@ -266,20 +266,25 @@ int util_str_tolower_check(void) {
 
 int util_rectangle_conductance_check(void) {
 
+  int ierr = 0;
   double c = 0.0;
 
   {
-    /* h must be the larger */
+    /* w must be the larger */
     double h = 1.0;
     double w = 2.0;
 
-    assert(util_rectangle_conductance(h, w, &c) != 0);
+    ierr = util_rectangle_conductance(w, h, &c);
+    assert(ierr == 0);
+    ierr = util_rectangle_conductance(h, w, &c); /* Wrong! */
+    assert(ierr != 0);
   }
 
   {
     double h = 2.0;
     double w = 2.0;
-    util_rectangle_conductance(h, w, &c);
+    ierr = util_rectangle_conductance(w, h, &c);
+    assert(ierr == 0);
   }
 
 
@@ -287,9 +292,10 @@ int util_rectangle_conductance_check(void) {
     /* Value used for some regression tests */
     double h = 30.0;
     double w = 62.0;
-    assert(util_rectangle_conductance(w, h, &c) == 0);
+    ierr = util_rectangle_conductance(w, h, &c);
+    assert(ierr == 0);
     assert(fabs(c - 97086.291)/97086.291 < FLT_EPSILON);
   }
 
-  return 0;
+  return ierr;
 }
