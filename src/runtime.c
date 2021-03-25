@@ -32,7 +32,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -387,112 +387,77 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
   return key_present;
 }
 
-#ifdef DELETE_ME
 /*****************************************************************************
  *
- *  rt_int_parameter_rank2_tensor
+ *  rt_int_nvector
  *
- *  Query keys for a rank2 tensor of int. The tensor size is (NUM_INT_PART_TYPES*NUM_INT_PART_TYPES).
+ *  Vector of specified length with values 1_2_3_...
  *
  *****************************************************************************/
 
-int rt_int_parameter_rank2_tensor(rt_t * rt, const char * key, int v[][NUM_INT_PART_TYPES]) {
+int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v) {
 
+  int ierr = 0;
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  char delim[] = "_";
-  char *ptr;
-
   assert(rt);
+  assert(v);
 
   key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
-      char str_value_cp[200];
-      strcpy(str_value_cp,str_value);
-
-      ptr=strtok(str_value, delim);
-      int times=0;
-      while(ptr!=NULL) {
-        times+=1;
-        ptr = strtok(NULL, delim);
+    /* Tokenize */
+    char * token = strtok(str_value, "_");
+    while (token) {
+      if (sscanf(token, "%d", &v[ierr]) != 1) {
+	pe_info(rt->pe, "Key %s has bad value %s\n", key, token);
+	break;
       }
-
-      int n_actual=(int)sqrt(times);
-
-      ptr=strtok(str_value_cp, delim);
-      for(int i=0;i<n_actual;i++) 
-          for(int j=0;j<n_actual;j++) {
-            v[i][j]=atoi(ptr);
-            ptr = strtok(NULL, delim);
-          }
-
-      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
-          for(int j=0;j<NUM_INT_PART_TYPES;j++)  
-              if(i>=n_actual || j>=n_actual)
-                  v[i][j]=1;
-
-      if(n_actual!=NUM_INT_PART_TYPES)
-        pe_info(rt->pe, "input key %s is in the form of double[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
+      token = strtok(NULL, "_");
+      ierr = ierr + 1;
+    }
+    ierr -= nv;
   }
 
-  return key_present;
+  return (key_present && (ierr == 0));
 }
-
 
 /*****************************************************************************
  *
- *  rt_double_parameter_rank2_tensor
+ *  rt_double_nvector
  *
- *  Query keys for a rank2 tensor of double. The tensor size is (NUM_INT_PART_TYPES*NUM_INT_PART_TYPES).
+ *  Vector of given length with values "1.0_2.0_3.0_4.0_..."
  *
  *****************************************************************************/
 
-int rt_double_parameter_rank2_tensor(rt_t * rt, const char * key, double v[][NUM_INT_PART_TYPES]) {
+int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v) {
 
+  int ierr = 0;
   int key_present = 0;
   char str_value[NKEY_LENGTH];
 
-  char delim[] = "_";
-  char *ptr;
-
   assert(rt);
+  assert(v);
 
   key_present = rt_look_up_key(rt, key, str_value);
 
   if (key_present) {
-      char str_value_cp[200];
-      strcpy(str_value_cp,str_value);
-
-      ptr=strtok(str_value, delim);
-      int times=0;
-      while(ptr!=NULL) {
-        times+=1;
-        ptr = strtok(NULL, delim);
+    /* Tokenize and read values ... */
+    char * token = strtok(str_value, "_");
+    while (token) {
+      if (sscanf(token, "%lf", &v[ierr]) != 1) {
+	pe_info(rt->pe, "Key %s has bad value %s\n", key, token);
+	break;
       }
-
-      int n_actual=(int)sqrt(times);
-
-      ptr=strtok(str_value_cp, delim);
-      for(int i=0;i<n_actual;i++) 
-          for(int j=0;j<n_actual;j++) {
-            v[i][j]=atof(ptr);
-            ptr = strtok(NULL, delim);
-          }
-
-      for(int i=0;i<NUM_INT_PART_TYPES;i++) 
-          for(int j=0;j<NUM_INT_PART_TYPES;j++)  
-              if(i>=n_actual || j>=n_actual)
-                  v[i][j]=1E-5;
-
-      if(n_actual!=NUM_INT_PART_TYPES)
-        pe_info(rt->pe, "input key %s is in the form of double[%d][%d]. %d values have been actually inputted. \n",key,NUM_INT_PART_TYPES,NUM_INT_PART_TYPES,times);
+      token = strtok(NULL, "_");
+      ierr = ierr + 1;
+    }
+    ierr -= nv;
   }
 
-  return key_present;
+  return (key_present && (ierr == 0));
 }
-#endif
 
 /*****************************************************************************
  *
