@@ -37,12 +37,10 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <math.h>
-
-
 
 #include "runtime.h"
 
@@ -70,6 +68,7 @@ static int rt_key_broadcast(rt_t * rt);
 static int rt_is_valid_key_pair(rt_t * rt, const char *, int lineno);
 static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
+static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
 
 /*****************************************************************************
  *
@@ -393,9 +392,12 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
  *
  *  Vector of specified length with values 1_2_3_...
  *
+ *  Return zero on key present and success.
+ *
  *****************************************************************************/
 
-int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v) {
+int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v,
+		   rt_enum_t level) {
 
   int ierr = 0;
   int key_present = 0;
@@ -406,21 +408,28 @@ int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v) {
 
   key_present = rt_look_up_key(rt, key, str_value);
 
-  if (key_present) {
+  if (!key_present) {
+    ierr = -1;
+  }
+  else {
     /* Tokenize */
+    int iread = 0;
     char * token = strtok(str_value, "_");
     while (token) {
-      if (sscanf(token, "%d", &v[ierr]) != 1) {
-	pe_info(rt->pe, "Key %s has bad value %s\n", key, token);
+      if (sscanf(token, "%d", &v[iread]) != 1) {
+	rt_vinfo(rt, level, "Key %s has bad value %s\n", key, token);
 	break;
       }
       token = strtok(NULL, "_");
-      ierr = ierr + 1;
+      iread += 1;
     }
-    ierr -= nv;
+    if (iread != nv) {
+      rt_vinfo(rt, level, "Vector (key %s) has incorrect length\n", key);
+      ierr = -2;
+    }
   }
 
-  return (key_present && (ierr == 0));
+  return ierr;
 }
 
 /*****************************************************************************
@@ -429,34 +438,44 @@ int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v) {
  *
  *  Vector of given length with values "1.0_2.0_3.0_4.0_..."
  *
+ *  Return 0 on key present and success.
+ *
  *****************************************************************************/
 
-int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v) {
+int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v,
+		      rt_enum_t level) {
 
   int ierr = 0;
   int key_present = 0;
   char str_value[NKEY_LENGTH];
-
+  
   assert(rt);
   assert(v);
 
   key_present = rt_look_up_key(rt, key, str_value);
 
-  if (key_present) {
+  if (!key_present) {
+    ierr = -1;
+  }
+  else {
     /* Tokenize and read values ... */
+    int iread = 0;
     char * token = strtok(str_value, "_");
     while (token) {
-      if (sscanf(token, "%lf", &v[ierr]) != 1) {
-	pe_info(rt->pe, "Key %s has bad value %s\n", key, token);
+      if (sscanf(token, "%lf", &v[iread]) != 1) {
+	rt_vinfo(rt, level, "Key %s has bad value %s\n", key, token);
 	break;
       }
       token = strtok(NULL, "_");
-      ierr = ierr + 1;
+      iread += 1;
     }
-    ierr -= nv;
+    if (iread != nv) {
+      rt_vinfo(rt, level, "Vector (key %s) has incorrect length\n", key);
+      ierr = -2;
+    }
   }
 
-  return (key_present && (ierr == 0));
+  return ierr;
 }
 
 /*****************************************************************************
@@ -712,4 +731,39 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
   }
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  rt_info
+ *
+ *  A filter for messages.
+ *
+ *****************************************************************************/
+
+static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...) {
+
+  int rank;
+
+  assert(rt);
+
+  rank = pe_mpi_rank(rt->pe);
+
+  if (lv >= RT_INFO && rank == 0) {
+
+    va_list args;
+
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+
+    if (lv == RT_FATAL) {
+      MPI_Comm comm = MPI_COMM_NULL;
+      pe_mpi_comm(rt->pe, &comm);
+      printf("Please check input and try again.\n");
+      MPI_Abort(comm, 0);
+    }
+  }
+
+  return 0;
 }
