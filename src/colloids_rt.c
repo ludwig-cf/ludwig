@@ -27,6 +27,7 @@
 
 #include "lubrication.h"
 #include "pair_ss_cut.h"
+#include "pair_ss_cut_ij.h"
 #include "pair_lj_cut.h"
 #include "pair_yukawa.h"
 #include "bond_fene.h"
@@ -783,6 +784,54 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);
     pair_ss_cut_register(pair, inter);
     pair_ss_cut_info(pair);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pair_ss_cut_ij_init
+ *
+ *****************************************************************************/
+
+int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct) {
+
+  int ison = 0;
+
+  assert(pe);
+  assert(cs);
+  assert(rt);
+  assert(intrct);
+
+  ison = rt_switch(rt, "pair_ss_cut_ij");
+
+  if (ison) {
+    int ntypes = 0;
+    double epsilon[BUFSIZ] = {};
+    double sigma[BUFSIZ] = {};
+    double nu[BUFSIZ] = {};
+    double hc[BUFSIZ] = {};
+    pair_ss_cut_ij_t * pair = NULL;
+
+    rt_key_required(rt, "pair_ss_cut_ij_ntypes",  RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_epsilon", RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_sigma",   RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_nu",      RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_hc",      RT_FATAL);
+
+    rt_int_parameter(rt, "pair_ss_cut_ij_ntypes", &ntypes);
+    if (ntypes < 1) pe_fatal(pe, "pair_ss_cut_ij_ntypes < 1 (%d)\n", ntypes);
+    if (ntypes >= BUFSIZ) pe_fatal(pe, "pair_ss_cut_ij_ntypes INTERNAL\n");
+
+    rt_double_nvector(rt, "pair_ss_cut_ij_epsilon", ntypes, epsilon, RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_sigma",   ntypes, sigma,   RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_nu",      ntypes, nu,      RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_hc",      ntypes, hc,      RT_FATAL);
+
+    pair_ss_cut_ij_create(pe, cs, ntypes, epsilon, sigma, nu, hc, &pair);
+    pair_ss_cut_ij_register(pair, intrct);
+    pair_ss_cut_ij_info(pair);
   }
 
   return 0;
