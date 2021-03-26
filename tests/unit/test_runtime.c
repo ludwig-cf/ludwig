@@ -274,36 +274,34 @@ int test_rt_nvector(pe_t * pe) {
 
   {
     int i2[2] = {};
-    key_ret = rt_int_nvector(rt, "ki2", 2, i2);
-    assert(key_ret == 1);
+    key_ret = rt_int_nvector(rt, "ki2", 2, i2, RT_NONE);
+    assert(key_ret == 0);
     assert(i2[0] == 1);
     assert(i2[1] == 2);
   }
 
   {
     int i3[3] = {};
-    key_ret = rt_int_nvector(rt, "ki2", 3, i3);
-    assert(key_ret == 0);
+    key_ret = rt_int_nvector(rt, "ki2", 3, i3, RT_NONE); /* Wrong length */
+    assert(key_ret != 0);
   }
 
   {
     double v4[4] = {};
-    key_ret = rt_double_nvector(rt, "kd4", 4, v4);
+    key_ret = rt_double_nvector(rt, "kd4", 4, v4, RT_NONE);
+    assert(key_ret == 0);
     assert(fabs(v4[0] - 1.0) < DBL_EPSILON);
     assert(fabs(v4[1] - 2.0) < DBL_EPSILON);
     assert(fabs(v4[2] - 3.0) < DBL_EPSILON);
     assert(fabs(v4[3] - 4.0) < DBL_EPSILON);
-    assert(key_ret == 1);
   }
 
-  /* Pending prevention of runtime messages 
   {
     int i2[2] = {};
 
-    key_ret = rt_int_nvector(rt, "bad_val", 2, i2);
-    assert(key_ret == 0);
+    key_ret = rt_int_nvector(rt, "bad_val", 2, i2, RT_NONE); /* bad value */
+    assert(key_ret != 0);
   }
-  */
 
   rt_free(rt);
 
