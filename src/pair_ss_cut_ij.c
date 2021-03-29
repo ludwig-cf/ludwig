@@ -184,7 +184,7 @@ int pair_ss_cut_ij_info(pair_ss_cut_ij_t * obj) {
   for (int i = 0; i < obj->ntypes; i++) {
     for (int j = i; j < obj->ntypes; j++) {
 
-      pe_info(obj->pe, "Pair type:    %d %d\n", i, j);
+      pe_info(obj->pe, "Pair type:    %2d %d\n", i, j);
       pe_info(obj->pe, "epsilon:      %14.7e\n", obj->epsilon[i][j]);
       pe_info(obj->pe, "sigma:        %14.7e\n", obj->sigma[i][j]);
       pe_info(obj->pe, "exponent nu:  %14.7e\n", obj->nu[i][j]);

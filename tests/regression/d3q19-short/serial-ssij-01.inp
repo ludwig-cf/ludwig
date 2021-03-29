@@ -1,0 +1,93 @@
+##############################################################################
+#
+#  Pair interaction ss(ij)
+#
+#  Two types with one particle of each type.
+#
+##############################################################################
+
+N_cycles 10
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 16_16_16
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+isothermal_fluctuations off
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy none
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init               input_two
+
+colloid_one_a0             1.25
+colloid_one_ah             1.25
+colloid_one_r              6.0_6.0_6.0
+colloid_one_interact_type  0
+
+colloid_two_a0             1.25
+colloid_two_ah             1.25
+colloid_two_r              6.0_6.0_8.8
+colloid_two_interact_type  1
+
+# Coefficients are the "upper triangle" of the symmetric matrix epsilon_ij etc
+# As we have two types, we have interactions 00_01_11.
+# If it was three types, we would have 00_01_02_10_11_22
+# ... and so on
+
+pair_ss_cut_ij          yes
+pair_ss_cut_ij_ntypes   2
+pair_ss_cut_ij_epsilon  0.0_0.1_0.0
+pair_ss_cut_ij_sigma    0.0_2.0_0.0
+pair_ss_cut_ij_nu       1.0_1.0_3.0
+pair_ss_cut_ij_hc       0.1_0.4_0.1
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+boundary_walls_on no
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 10
+config_at_end   no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
+#
+###############################################################################
+
+random_seed 8361235
+
