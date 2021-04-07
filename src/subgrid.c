@@ -208,7 +208,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.al);
+	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
 
 	  if (noise_flag == 0) {
 	    frand[X] = 0.0; frand[Y] = 0.0; frand[Z] = 0.0;
@@ -372,18 +372,25 @@ int subgrid_wall_lubrication(colloids_info_t * cinfo, wall_t * wall) {
   double drag[3];
   colloid_t * pc = NULL;
 
+  double f[3] = {0.0, 0.0, 0.0};
+  
   assert(cinfo);
   assert(wall);
 
   colloids_info_local_head(cinfo, &pc);
 
-  for ( ; pc; pc = pc->next) {
+  for ( ; pc; pc = pc->nextlocal) {
     if (pc->s.type != COLLOID_TYPE_SUBGRID) continue;
     wall_lubr_sphere(wall, pc->s.ah, pc->s.r, drag);
     pc->fex[X] += drag[X]*pc->s.v[X];
     pc->fex[Y] += drag[Y]*pc->s.v[Y];
     pc->fex[Z] += drag[Z]*pc->s.v[Z];
+    f[X] -= drag[X]*pc->s.v[X];
+    f[Y] -= drag[Y]*pc->s.v[Y];
+    f[Z] -= drag[Z]*pc->s.v[Z];
   }
+
+  wall_momentum_add(wall, f);
 
   return 0;
 }
