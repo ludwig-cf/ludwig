@@ -69,13 +69,13 @@ Requested one colloid via input:
 colloid_one                   subgrid
 colloid_one_a0                1.0000000e-01
 colloid_one_ah                2.0000000e-01
-colloid_one_al                2.0000000e-01
+colloid_one_al                1.5000000e+00
 colloid_one_r                 6.1000000e+00  6.1000000e+00  6.1000000e+00
 Requested second colloid via input:
 colloid_two                   subgrid
 colloid_two_a0                1.0000000e-01
 colloid_two_ah                2.0000000e-01
-colloid_two_al                2.0000000e-01
+colloid_two_al                1.5000000e+00
 colloid_two_r                 6.1000000e+00  6.1000000e+00  3.1000000e+00
 
 Initialised 2 colloids
@@ -107,20 +107,20 @@ Starting time step loop.
 Particle statistics:
 
 Colloid velocities - x y z
-[minimum ]  8.1029544e-15  8.1201477e-15  1.8639947e-05
-[maximum ]  8.1420468e-15  8.1661491e-15  1.8640040e-05
+[minimum ]  8.0705048e-15  8.0988003e-15  3.2432826e-05
+[maximum ]  8.1400090e-15  8.1684744e-15  3.2432996e-05
 
 Scalars - total mean variance min max
-[rho]        4096.00  1.00000000000  2.2204460e-15  0.99999920121  1.00000075569
+[rho]        4096.00  1.00000000000  1.1102230e-14  0.99999920083  1.00000074696
 
 Momentum - x y z
-[total   ] -6.1981670e-14 -7.1505302e-15  1.6858182e-12
-[fluid   ] -6.1981670e-14 -7.1505302e-15  1.6858182e-12
+[total   ] -4.5654452e-14  1.7937041e-14  1.7141219e-12
+[fluid   ] -4.5654452e-14  1.7937041e-14  1.7141219e-12
 [colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Velocity - x y z
-[minimum ] -4.8090284e-07 -4.8090284e-07 -4.8461488e-07
-[maximum ]  4.7103067e-07  4.7103067e-07  3.7680411e-06
+[minimum ] -4.8244625e-07 -4.8244625e-07 -4.8471079e-07
+[maximum ]  4.7333594e-07  4.7333594e-07  3.7695752e-06
 
 Completed cycle 2000
 
@@ -128,19 +128,19 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:     10.936     10.936     10.936  10.935762 (1 call)
-      Time step loop:      0.005      0.007     10.926   0.005463 (2000 calls)
-         Propagation:      0.001      0.002      2.307   0.001153 (2000 calls)
-    Propagtn (krnl) :      0.001      0.002      2.303   0.001151 (2000 calls)
-           Collision:      0.003      0.004      5.392   0.002696 (2000 calls)
-   Collision (krnl) :      0.003      0.004      5.386   0.002693 (2000 calls)
-       Lattice halos:      0.000      0.001      1.935   0.000484 (4000 calls)
+               Total:     11.414     11.414     11.414  11.414010 (1 call)
+      Time step loop:      0.005      0.009     11.404   0.005702 (2000 calls)
+         Propagation:      0.001      0.002      2.408   0.001204 (2000 calls)
+    Propagtn (krnl) :      0.001      0.002      2.403   0.001202 (2000 calls)
+           Collision:      0.003      0.004      5.597   0.002798 (2000 calls)
+   Collision (krnl) :      0.003      0.004      5.588   0.002794 (2000 calls)
+       Lattice halos:      0.000      0.003      2.033   0.000508 (4000 calls)
        phi gradients:      0.000      0.000      0.001   0.000001 (2000 calls)
-              Forces:      0.000      0.000      0.188   0.000094 (2000 calls)
-             Rebuild:      0.000      0.000      0.248   0.000124 (2000 calls)
-                 BBL:      0.000      0.000      0.527   0.000263 (2000 calls)
-      Particle halos:      0.000      0.000      0.078   0.000039 (2000 calls)
+              Forces:      0.000      0.000      0.193   0.000096 (2000 calls)
+             Rebuild:      0.000      0.000      0.260   0.000130 (2000 calls)
+                 BBL:      0.000      0.001      0.566   0.000283 (2000 calls)
+      Particle halos:      0.000      0.000      0.083   0.000042 (2000 calls)
    Force calculation:      0.000      0.000      0.001   0.000001 (2000 calls)
-          phi update:      0.000      0.000      0.001   0.000000 (2000 calls)
-               Free1:      0.000      0.002      0.005   0.000001 (6000 calls)
+          phi update:      0.000      0.000      0.001   0.000001 (2000 calls)
+               Free1:      0.000      0.002      0.006   0.000001 (6000 calls)
 Ludwig finished normally.
