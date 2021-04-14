@@ -27,6 +27,7 @@
 
 #include "lubrication.h"
 #include "pair_ss_cut.h"
+#include "pair_ss_cut_ij.h"
 #include "pair_lj_cut.h"
 #include "pair_yukawa.h"
 #include "bond_fene.h"
@@ -46,6 +47,8 @@ int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+
+int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
 
 int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 			 map_t * map);
@@ -139,6 +142,8 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   pair_yukawa_init(pe, cs, rt, *interact);
   bond_fene_init(pe, cs, rt, *interact);
   angle_cosine_init(pe, cs, rt, *interact);
+
+  pair_ss_cut_ij_init(pe, cs, rt, *interact);
 
   colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
@@ -455,6 +460,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   sprintf(key, "%s_%s", stub, "rng");
   nrt = rt_int_parameter(rt, key, &state->rng);
   if (nrt) pe_info(pe, format_i1, key, state->rng);
+
+  sprintf(key, "%s_%s", stub, "interact_type");
+  nrt = rt_int_parameter(rt, key, &state->inter_type);
+  if (nrt) pe_info(pe, format_i1, key, state->inter_type);
 
   sprintf(key, "%s_%s", stub, "a0");
   nrt = rt_double_parameter(rt, key, &state->a0);
@@ -779,6 +788,57 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);
     pair_ss_cut_register(pair, inter);
     pair_ss_cut_info(pair);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pair_ss_cut_ij_init
+ *
+ *****************************************************************************/
+
+int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct) {
+
+  int ison = 0;
+
+  assert(pe);
+  assert(cs);
+  assert(rt);
+  assert(intrct);
+
+  ison = rt_switch(rt, "pair_ss_cut_ij");
+
+  if (ison) {
+    int ntypes = 0;
+    int nsymm  = 0;
+    double epsilon[BUFSIZ] = {};
+    double sigma[BUFSIZ] = {};
+    double nu[BUFSIZ] = {};
+    double hc[BUFSIZ] = {};
+    pair_ss_cut_ij_t * pair = NULL;
+
+    rt_key_required(rt, "pair_ss_cut_ij_ntypes",  RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_epsilon", RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_sigma",   RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_nu",      RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_hc",      RT_FATAL);
+
+    rt_int_parameter(rt, "pair_ss_cut_ij_ntypes", &ntypes);
+    if (ntypes < 1) pe_fatal(pe, "pair_ss_cut_ij_ntypes < 1 (%d)\n", ntypes);
+    if (ntypes >= BUFSIZ) pe_fatal(pe, "pair_ss_cut_ij_ntypes INTERNAL\n");
+
+    nsymm = ntypes*(ntypes + 1)/2;
+
+    rt_double_nvector(rt, "pair_ss_cut_ij_epsilon", nsymm, epsilon, RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_sigma",   nsymm, sigma,   RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_nu",      nsymm, nu,      RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_hc",      nsymm, hc,      RT_FATAL);
+
+    pair_ss_cut_ij_create(pe, cs, ntypes, epsilon, sigma, nu, hc, &pair);
+    pair_ss_cut_ij_register(pair, intrct);
+    pair_ss_cut_ij_info(pair);
   }
 
   return 0;
