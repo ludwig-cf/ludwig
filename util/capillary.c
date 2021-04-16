@@ -256,10 +256,10 @@ int main(int argc, char ** argv) {
         exit(-1);
     }
 
-    k_pic = 0; //picture
+    k_pic = 0; /* picture */
     printf("k_pic: %d\n", k_pic);
 
-    //radius of crystalline particle
+    /* radius of crystalline particle */
     crystalline_cell_radius = 0.5 * crystalline_cell_size;
     double center_i, center_j, center_k;
     double diff_x, diff_y, diff_z;
@@ -268,8 +268,9 @@ int main(int argc, char ** argv) {
     for (i = 0; i < xmax; i++) {
       for (j = 0; j < ymax; j++) {
 	    for (k = 0; k < zmax; k++) {
-            //distance between the node (i,j,k) and the centre of the nearest crystalline particle,
-            //located at the edges of the crystalline cell
+	      /* distance between the node (i,j,k) and the centre of the
+		 nearest crystalline particle, located at the edges of
+		 the crystalline cell */
 	        diff_x = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
 	        diff_y = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
 	        diff_z = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
@@ -286,8 +287,8 @@ int main(int argc, char ** argv) {
 	        if(r <= crystalline_cell_radius){
 	            nsolid++;
 	            map_in[n] = MAP_BOUNDARY;
-	            if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	            if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = fe.h; map_c[n] = fe.c; }
 	            map_sig[n] = sigma;
 	        }
 	    }
@@ -343,8 +344,8 @@ int main(int argc, char ** argv) {
 	        if(r_edges <= crystalline_cell_radius || r_center <= crystalline_cell_radius){
 	            nsolid++;
 	            map_in[n] = MAP_BOUNDARY;
-	            if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	            if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = fe.h; map_c[n] = fe.c; }
 	            map_sig[n] = sigma;
 	        }
 	    }
@@ -419,8 +420,8 @@ int main(int argc, char ** argv) {
 	            r_center_xz <= crystalline_cell_radius || r_center_yz <= crystalline_cell_radius){
 	            nsolid++;
 	            map_in[n] = MAP_BOUNDARY;
-	            if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	            if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = fe.h; map_c[n] = fe.c; }
 	            map_sig[n] = sigma;
 	        }
 	    }
