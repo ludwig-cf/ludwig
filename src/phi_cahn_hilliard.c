@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
@@ -44,23 +44,15 @@
 #include "physics.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
+#include "util_sum.h"
 #include "phi_cahn_hilliard.h"
-
-struct phi_ch_s {
-  pe_t * pe;
-  cs_t * cs;
-  lees_edw_t * le;
-  advflux_t * flux;
-};
-
-struct phi_ch_info_s {
-  int placeholder;
-};
 
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
 static int phi_ch_flux_mu_ext(phi_ch_t * pch);
+
+static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phif);
 
 static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
 static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
@@ -83,6 +75,9 @@ __global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				  field_t * field, advflux_t * flux,
 				  int ys, double wz);
+__global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
+				   field_t * field, advflux_t * flux,
+				   field_t * csum, int ys, double wz);
 
 /*****************************************************************************
  *
@@ -110,6 +105,11 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   obj->le = le;
   advflux_le_create(pe, cs, le, 1, &obj->flux);
 
+  if (obj->info.conserve) {
+    field_create(pe, cs, 1, "compensated sum", &obj->csum);
+    field_init(obj->csum, 0, NULL);
+  }
+
   pe_retain(pe);
   lees_edw_retain(le);
 
@@ -131,9 +131,10 @@ __host__ int phi_ch_free(phi_ch_t * pch) {
   lees_edw_free(pch->le);
   pe_free(pch->pe);
 
+  if (pch->csum) field_free(pch->csum);
   advflux_free(pch->flux);
   free(pch);
-
+  
   return 0;
 }
 
@@ -190,6 +191,10 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */ 
     advection_x(pch->flux, hydro, phi);
   }
+  else {
+    /* Remember to initialise fluxes to zero for this step */
+    advflux_zero(pch->flux);
+  }
 
   if (noise_phi) {
     phi_ch_flux_mu2(pch, fe);
@@ -208,7 +213,13 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
   if (map) advection_bcs_no_normal_flux(nf, pch->flux, map);
 
   phi_ch_le_fix_fluxes(pch, nf);
-  phi_ch_update_forward_step(pch, phi);
+
+  if (pch->info.conserve) {
+    phi_ch_update_conserve(pch, phi);
+  }
+  else {
+    phi_ch_update_forward_step(pch, phi);
+  }
 
   return 0;
 }
@@ -971,6 +982,104 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 	    - wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
 
     field_scalar_set(field, index, phi);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_update_conserve
+ *
+ *  As above but with the compensated sum at each lattice point.
+ *
+ *****************************************************************************/
+
+static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phi) {
+
+  int nlocal[3];
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  double wz = 1.0;
+
+  lees_edw_t * le = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(pch);
+  assert(phi);
+  assert(pch->info.conserve);
+
+  lees_edw_nlocal(pch->le, nlocal);
+  lees_edw_target(pch->le, &le);
+  lees_edw_strides(pch->le, &xs, &ys, &zs);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+  if (nlocal[Z] == 1) wz = 0.0;
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(phi_ch_csum_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, le, phi->target, pch->flux->target,
+		  pch->csum->target, ys, wz);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  phi_ch_ufs_kernel
+ *
+ *  In 2-d systems need to eliminate the z fluxes (no chemical
+ *  potential computed in halo region for 2d_5pt_fluid): this
+ *  is done via "wz".
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
+				   field_t * field, advflux_t * flux,
+				   field_t * csum, int ys, double wz) {
+  int kindex;
+  int kiterations;
+  int ic, jc, kc, index;
+
+  assert(ktx);
+  assert(le);
+  assert(field);
+  assert(flux);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    kahan_t phi = {};
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = lees_edw_index(le, ic, jc, kc);
+
+    phi.sum = field->data[addr_rank1(field->nsites, 1, index, 0)];
+    phi.cs  = csum->data[addr_rank1(csum->nsites, 1, index, 0)];
+
+    kahan_add(&phi, -flux->fe[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi,  flux->fw[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi, -flux->fy[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi,  flux->fy[addr_rank0(flux->nsite, index - ys)]);
+    kahan_add(&phi, -wz*flux->fz[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi,  wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
+
+    csum->data[addr_rank1(csum->nsites, 1, index, 0)] = phi.cs;
+    field->data[addr_rank1(field->nsites, 1, index, 0)] = phi.sum;
   }
 
   return;
