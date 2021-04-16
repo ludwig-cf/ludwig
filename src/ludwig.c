@@ -70,6 +70,7 @@
 
 /* Dynamics */
 #include "phi_cahn_hilliard.h"
+#include "cahn_hilliard_stats.h"
 #include "leslie_ericksen.h"
 #include "blue_phase_beris_edwards.h"
 
@@ -434,7 +435,16 @@ void ludwig_run(const char * inputfile) {
 
   pe_create(MPI_COMM_WORLD, PE_VERBOSE, &ludwig->pe);
   pe_mpi_comm(ludwig->pe, &comm);
-
+#ifdef __NVCC__
+  {
+    /* KLUDGE */
+    int nd = 0; /* GPU devices per node */
+    int id = 0; /* Assume MPI ranks per node == nd */
+    cudaGetDeviceCount(&nd);
+    id = pe_mpi_rank(ludwig->pe) % nd;
+    cudaSetDevice(id);
+  }
+#endif
   rt_create(ludwig->pe, &ludwig->rt);
   rt_read_input_file(ludwig->rt, inputfile);
   rt_info(ludwig->rt);
@@ -459,7 +469,14 @@ void ludwig_run(const char * inputfile) {
     stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
   }
   else {
-    if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+    if (ludwig->phi) {
+	if (ludwig->pch && ludwig->pch->info.conserve) {
+	  cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
+	}
+	else {
+	  stats_field_info(ludwig->phi, ludwig->map);
+	}
+    }
   }
   if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
   if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
@@ -866,8 +883,13 @@ void ludwig_run(const char * inputfile) {
 	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
 	}
 	else {
-	  field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
-	  stats_field_info(ludwig->phi, ludwig->map);
+	  if (ludwig->pch && ludwig->pch->info.conserve) {
+	    cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
+	  }
+	  else {
+	    field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
+	    stats_field_info(ludwig->phi, ludwig->map);
+	  }
 	}
       }
 
