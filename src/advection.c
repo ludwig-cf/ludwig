@@ -50,6 +50,8 @@ static int advection_le_4th(advflux_t * flux, hydro_t * hydro, int nf,
 static int advection_le_5th(advflux_t * flux, hydro_t * hydro, int nf,
 			    double * f);
 
+__global__ void advflux_zero_kernel(kernel_ctxt_t * ktx, advflux_t * flx);
+
 __global__
 void advection_le_1st_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
 			     hydro_t * hydro, field_t * field);
@@ -247,6 +249,82 @@ __host__ int advflux_free(advflux_t * obj) {
   free(obj);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advflux_zero
+ *
+ *****************************************************************************/
+
+__host__ int advflux_zero(advflux_t * flux) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(flux);
+  assert(hydro);
+  assert(field);
+
+  cs_nlocal(flux->cs, nlocal);
+
+  /* Limits */
+
+  limits.imin = 0; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(flux->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(advflux_zero_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, flux->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advflux_zero_kernel_v
+ *
+ *****************************************************************************/
+
+__global__ void advflux_zero_kernel(kernel_ctxt_t * ktx, advflux_t * flux) {
+
+  int kindex;
+  __shared__ int kiter;
+
+  assert(ktx);
+  assert(flux);
+
+  kiter = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiter, 1) {
+
+    int ia, index;
+    int ic, jc, kc;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    for (ia = 0; ia < flux->nf; ia++) {
+      flux->fw[addr_rank1(flux->nsite, flux->nf, index, ia)] = 0.0;
+      flux->fe[addr_rank1(flux->nsite, flux->nf, index, ia)] = 0.0;
+      flux->fy[addr_rank1(flux->nsite, flux->nf, index, ia)] = 0.0;
+      flux->fz[addr_rank1(flux->nsite, flux->nf, index, ia)] = 0.0;
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************
