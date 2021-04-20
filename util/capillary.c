@@ -261,7 +261,7 @@ int main(int argc, char ** argv) {
 
     /* radius of crystalline particle */
     crystalline_cell_radius = 0.5 * crystalline_cell_size;
-    double center_i, center_j, center_k;
+
     double diff_x, diff_y, diff_z;
     printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
 
