@@ -78,9 +78,9 @@ __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
  *
  *****************************************************************************/
 
-static __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
-				      map_t * map, phi_stats_t * stats,
-				      int root, MPI_Comm comm) {
+__host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
+			       map_t * map, phi_stats_t * stats,
+			       int root, MPI_Comm comm) {
   phi_stats_t * stats_d = NULL;
   phi_stats_t local = {};
 
