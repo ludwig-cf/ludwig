@@ -102,31 +102,31 @@ Momentum - x y z
 Starting time step loop.
 
 Particle statistics:
-Pair potential minimum h is:  4.8979475e-01
-Pair potential energy is:     1.2997325e-02
-Bond potential minimum r is:  8.8979475e-01
-Bond potential maximum r is:  1.3015668e+00
-Bond potential energy is:     3.8845619e-02
+Pair potential minimum h is:  4.8395330e-01
+Pair potential energy is:     1.2988079e-02
+Bond potential minimum r is:  8.8395330e-01
+Bond potential maximum r is:  1.3023242e+00
+Bond potential energy is:     3.8687293e-02
 
 Colloid velocities - x y z
-[minimum ] -9.7582414e-02 -7.3218517e-02 -1.1601255e-01
-[maximum ]  1.2465941e-01  1.1111363e-01  1.3052224e-01
+[minimum ] -8.9984586e-02 -6.9810028e-02 -1.0820702e-01
+[maximum ]  1.1602232e-01  1.0323917e-01  1.2076675e-01
 
 Scalars - total mean variance min max
-[rho]        5038.85  0.86400000000  3.5887682e-04  0.78256580324  0.93539518409
+[rho]        5038.85  0.86400000000  3.5887820e-04  0.78256020943  0.93539612486
 
 Momentum - x y z
-[total   ]  1.3083284e-14  1.0543649e-14  4.0939474e-16
-[fluid   ]  1.3083284e-14  1.0543649e-14  4.0939474e-16
+[total   ] -8.2434060e-15  1.7874591e-14  8.5105534e-15
+[fluid   ] -8.2434060e-15  1.7874591e-14  8.5105534e-15
 [colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Velocity - x y z
-[minimum ] -4.2259655e-02 -4.7843460e-02 -4.2666356e-02
-[maximum ]  4.6370804e-02  4.7311083e-02  4.4102279e-02
+[minimum ] -4.2261068e-02 -4.7844831e-02 -4.2658360e-02
+[maximum ]  4.6372023e-02  4.7324303e-02  4.4106628e-02
 
 Isothermal fluctuations
-[eqipart.]  1.3850187e-04  1.3750173e-04  1.3653217e-04
-[measd/kT]  4.1253578e-04  3.6000000e-04
+[eqipart.]  1.3850215e-04  1.3750275e-04  1.3653090e-04
+[measd/kT]  4.1253580e-04  3.6000000e-04
 
 Completed cycle 100
 
@@ -134,18 +134,18 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.007      1.007      1.007   1.006863 (1 call)
-      Time step loop:      0.010      0.011      0.995   0.009951 (100 calls)
-         Propagation:      0.002      0.002      0.169   0.001693 (100 calls)
-    Propagtn (krnl) :      0.002      0.002      0.169   0.001691 (100 calls)
-           Collision:      0.006      0.007      0.600   0.006002 (100 calls)
-   Collision (krnl) :      0.006      0.007      0.600   0.005997 (100 calls)
-       Lattice halos:      0.001      0.001      0.123   0.000613 (200 calls)
-       phi gradients:      0.000      0.000      0.000   0.000001 (100 calls)
-              Forces:      0.000      0.000      0.021   0.000208 (100 calls)
-             Rebuild:      0.000      0.000      0.016   0.000162 (100 calls)
-                 BBL:      0.000      0.000      0.044   0.000437 (100 calls)
-      Particle halos:      0.000      0.000      0.004   0.000043 (100 calls)
+               Total:      1.025      1.025      1.025   1.024513 (1 call)
+      Time step loop:      0.010      0.013      1.012   0.010124 (100 calls)
+         Propagation:      0.002      0.002      0.169   0.001695 (100 calls)
+    Propagtn (krnl) :      0.002      0.002      0.169   0.001692 (100 calls)
+           Collision:      0.006      0.006      0.614   0.006144 (100 calls)
+   Collision (krnl) :      0.006      0.006      0.614   0.006139 (100 calls)
+       Lattice halos:      0.001      0.002      0.125   0.000624 (200 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (100 calls)
+              Forces:      0.000      0.000      0.021   0.000212 (100 calls)
+             Rebuild:      0.000      0.000      0.016   0.000163 (100 calls)
+                 BBL:      0.000      0.001      0.044   0.000439 (100 calls)
+      Particle halos:      0.000      0.000      0.004   0.000041 (100 calls)
    Force calculation:      0.000      0.000      0.000   0.000001 (100 calls)
           phi update:      0.000      0.000      0.000   0.000001 (100 calls)
                Free1:      0.000      0.005      0.005   0.000018 (300 calls)

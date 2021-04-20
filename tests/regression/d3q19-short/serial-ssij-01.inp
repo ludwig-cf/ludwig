@@ -1,13 +1,12 @@
 ##############################################################################
 #
-#  Subgrid particle smoke test.
+#  Pair interaction ss(ij)
 #
-#  Key/value "calibration on" requests the calibration, although
-#  it's not clear it is a sensible calculation for subgrid
+#  Two types with one particle of each type.
 #
 ##############################################################################
 
-N_cycles 2000
+N_cycles 10
 
 ##############################################################################
 #
@@ -25,7 +24,6 @@ reduced_halo no
 ##############################################################################
 
 isothermal_fluctuations off
-ghost_modes off
 
 ##############################################################################
 #
@@ -41,18 +39,29 @@ free_energy none
 #
 ###############################################################################
 
-colloid_init        input_one
+colloid_init               input_two
 
-colloid_one_type    subgrid
-colloid_one_a0      0.20
-colloid_one_ah      0.20
-colloid_one_al      1.50
-colloid_one_r       6.1_6.1_6.1
-colloid_one_v       0.0_0.0_0.0
-colloid_one_s       1.0_0.0_0.0
-colloid_one_m       1.0_0.0_0.0
+colloid_one_a0             1.25
+colloid_one_ah             1.25
+colloid_one_r              6.0_6.0_6.0
+colloid_one_interact_type  0
 
-colloid_gravity  0.0_0.0_0.0
+colloid_two_a0             1.25
+colloid_two_ah             1.25
+colloid_two_r              6.0_6.0_8.8
+colloid_two_interact_type  1
+
+# Coefficients are the "upper triangle" of the symmetric matrix epsilon_ij etc
+# As we have two types, we have interactions 00_01_11.
+# If it was three types, we would have 00_01_02_10_11_22
+# ... and so on
+
+pair_ss_cut_ij          yes
+pair_ss_cut_ij_ntypes   2
+pair_ss_cut_ij_epsilon  0.0_0.1_0.0
+pair_ss_cut_ij_sigma    0.0_2.0_0.0
+pair_ss_cut_ij_nu       1.0_1.0_3.0
+pair_ss_cut_ij_hc       0.1_0.4_0.1
 
 ###############################################################################
 #
@@ -69,13 +78,8 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-calibration on
-
-freq_statistics 2000
-freq_measure    10000000
-freq_config     10000000
-colloid_io_freq 10000000
-config_at_end no
+freq_statistics 10
+config_at_end   no
 
 ###############################################################################
 #

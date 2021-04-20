@@ -313,9 +313,9 @@ void poly_init_random(cs_t * cs, int * lcgstate, int nc,
     }
 
   }
-  
-  assert(Nmon==Npoly*Lpoly);
 
+  assert(Nmon==Npoly*Lpoly);
+  
 }
 
 /****************************************************************************

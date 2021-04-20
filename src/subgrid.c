@@ -53,7 +53,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 
   double r[3], r0[3], force[3];
   double dr;
-  colloid_t * p_colloid;
+  colloid_t * p_colloid = NULL;  /* Subgrid colloid */
+  colloid_t * presolved = NULL;  /* Resolved colloid occupuing node */
 
   assert(cinfo);
   assert(hydro);
@@ -120,7 +121,26 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
 		force[Y] = p_colloid->fex[Y]*dr;
 		force[Z] = p_colloid->fex[Z]*dr;
 
-		hydro_f_local_add(hydro, index, force);
+		colloids_info_map(cinfo, index, &presolved);
+
+		if (presolved == NULL) {
+		  hydro_f_local_add(hydro, index, force);
+		}
+		else {
+		  double rd[3] = {};
+		  double torque[3] = {};
+		  presolved->force[X] += force[X];
+		  presolved->force[Y] += force[Y];
+		  presolved->force[Z] += force[Z];
+		  rd[X] = 1.0*i - (presolved->s.r[X] - 1.0*offset[X]);
+		  rd[Y] = 1.0*j - (presolved->s.r[Y] - 1.0*offset[Y]);
+		  rd[Z] = 1.0*k - (presolved->s.r[Z] - 1.0*offset[Z]);
+		  cross_product(rd, force, torque);
+		  presolved->torque[X] += torque[X];
+		  presolved->torque[Y] += torque[Y];
+		  presolved->torque[Z] += torque[Z];
+                }
+
 	      }
 	    }
 	  }
@@ -188,7 +208,7 @@ int subgrid_update(colloids_info_t * cinfo, hydro_t * hydro, int noise_flag) {
 
           if (p_colloid->s.type != COLLOID_TYPE_SUBGRID) continue;
 
-	  drag = reta*(1.0/p_colloid->s.a0 - 1.0/p_colloid->s.al);
+	  drag = reta*(1.0/p_colloid->s.ah - 1.0/p_colloid->s.al);
 
 	  if (noise_flag == 0) {
 	    frand[X] = 0.0; frand[Y] = 0.0; frand[Z] = 0.0;
@@ -352,18 +372,25 @@ int subgrid_wall_lubrication(colloids_info_t * cinfo, wall_t * wall) {
   double drag[3];
   colloid_t * pc = NULL;
 
+  double f[3] = {0.0, 0.0, 0.0};
+  
   assert(cinfo);
   assert(wall);
 
   colloids_info_local_head(cinfo, &pc);
 
-  for ( ; pc; pc = pc->next) {
+  for ( ; pc; pc = pc->nextlocal) {
     if (pc->s.type != COLLOID_TYPE_SUBGRID) continue;
     wall_lubr_sphere(wall, pc->s.ah, pc->s.r, drag);
     pc->fex[X] += drag[X]*pc->s.v[X];
     pc->fex[Y] += drag[Y]*pc->s.v[Y];
     pc->fex[Z] += drag[Z]*pc->s.v[Z];
+    f[X] -= drag[X]*pc->s.v[X];
+    f[Y] -= drag[Y]*pc->s.v[Y];
+    f[Z] -= drag[Z]*pc->s.v[Z];
   }
+
+  wall_momentum_add(wall, f);
 
   return 0;
 }

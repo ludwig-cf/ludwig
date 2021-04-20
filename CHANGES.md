@@ -1,6 +1,8 @@
 
 ### Changes
 
+- Add pair_ss_cut_ij interaction: a cut-and-shoft soft sphere potential
+  with pair-dependent parameters. Thanks to Qi Kai.
 - Added subgrid offset parameter; this replaces ah in the computation
   of the drag force (typically aL >> ah).
 
