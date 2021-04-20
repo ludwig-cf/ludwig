@@ -265,8 +265,6 @@ __host__ int advflux_zero(advflux_t * flux) {
   kernel_ctxt_t * ctxt = NULL;
 
   assert(flux);
-  assert(hydro);
-  assert(field);
 
   cs_nlocal(flux->cs, nlocal);
 
