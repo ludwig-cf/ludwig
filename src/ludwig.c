@@ -400,6 +400,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_electroneutral(ludwig->psi, ludwig->map);
   }
 
+  /* TODO IF REQUIRED */
+  /*
+  if (ludwig->phi) {
+    field_sum_phi_init_rt(ludwig->phi, ludwig->map);
+  }
+  */
   return 0;
 }
 
@@ -1172,6 +1178,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 
+    phi_ch_info_t ch_options = {};
     fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via finite difference */
@@ -1194,7 +1201,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1208,6 +1214,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
+
+    rt_int_parameter(rt, "cahn_hilliard_options_conserve",
+		     &ch_options.conserve);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     /* Order parameter noise */
 
@@ -1278,6 +1288,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Brazovskii (always finite difference). */
 
+    phi_ch_info_t ch_options = {};
     fe_brazovskii_t * fe = NULL;
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 3;   /* Required for stress diveregnce. */
@@ -1291,7 +1302,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1410,6 +1421,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "lc_droplet") == 0) {
     int use_stress_relaxation;
+    phi_ch_info_t ch_options = {};
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
@@ -1436,7 +1448,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1535,6 +1547,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
+    phi_ch_info_t ch_options = {};
     fe_symm_t * fe_symm = NULL;
     fe_electro_t * fe_elec = NULL;
     fe_es_t * fes = NULL;
@@ -1560,7 +1573,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Charged binary fluid 'Electrosymmetric' free energy\n");

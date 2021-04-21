@@ -39,6 +39,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 
 #include "field_s.h"
 #include "physics.h"
@@ -57,6 +58,23 @@ static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phif);
 static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
 static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
 static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise);
+
+static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch,
+						      field_t * phif,
+						      map_t * map);
+
+#define NGRAD_ 27
+static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
+				 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
+                                 {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
+                                 {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
+                                 { 0,-1,-1}, { 0,-1, 0}, { 0,-1, 1},
+                                 { 0, 0,-1},             { 0, 0, 1},
+				 { 0, 1,-1}, { 0, 1, 0}, { 0, 1, 1},
+				 { 1,-1,-1}, { 1,-1, 0}, { 1,-1, 1},
+				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
+				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
+				 
 
 /* Utility container */
 
@@ -78,6 +96,8 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				   field_t * field, advflux_t * flux,
 				   field_t * csum, int ys, double wz);
+__global__ void phi_ch_subtract_kernel(kernel_ctxt_t * ktx,
+				       field_t * field, map_t * map);
 
 /*****************************************************************************
  *
@@ -86,7 +106,7 @@ __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
  *****************************************************************************/
 
 __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
-			   phi_ch_info_t * info,
+			   phi_ch_info_t * options,
 			   phi_ch_t ** pch) {
 
   phi_ch_t * obj = NULL;
@@ -94,6 +114,7 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pe);
   assert(cs);
   assert(le);
+  assert(options);
   assert(pch);
 
   obj = (phi_ch_t *) calloc(1, sizeof(phi_ch_t));
@@ -103,6 +124,7 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   obj->pe = pe;
   obj->cs = cs;
   obj->le = le;
+  obj->info = *options;
   advflux_le_create(pe, cs, le, 1, &obj->flux);
 
   if (obj->info.conserve) {
@@ -214,12 +236,17 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 
   phi_ch_le_fix_fluxes(pch, nf);
 
-  if (pch->info.conserve) {
+  /* REPLACE 1/2 */
+  if (pch->info.conserve == 1) {
     phi_ch_update_conserve(pch, phi);
   }
   else {
     phi_ch_update_forward_step(pch, phi);
+    if (pch->info.conserve == 2) {
+      phi_ch_subtract_sum_phi_after_forward_step(pch, phi, map);
+    }
   }
+
 
   return 0;
 }
@@ -1034,6 +1061,42 @@ static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phi) {
   return 0;
 }
 
+
+/****************************************************************************
+ *  
+ *  correction of phi in order to improve the conservation of phi
+ *
+ *
+ ****************************************************************************/
+
+static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * phif, map_t * map) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+  
+  cs_nlocal(pch->cs, nlocal);
+  
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+  
+  tdpLaunchKernel(phi_ch_subtract_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, phif->target, map);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
 /******************************************************************************
  *
  *  phi_ch_ufs_kernel
@@ -1080,6 +1143,106 @@ __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 
     csum->data[addr_rank1(csum->nsites, 1, index, 0)] = phi.cs;
     field->data[addr_rank1(field->nsites, 1, index, 0)] = phi.sum;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *
+ *  kernel for correction of phi in order to improve the conservation of phi
+ *
+ *
+ ****************************************************************************/
+
+__global__ void phi_ch_subtract_kernel(kernel_ctxt_t * ktx,
+				       field_t * field, map_t * map){
+
+  int kindex;
+  int kiterations;
+  int ic, jc, kc, index, status;
+  double phi, sum_phi_local, sum_phi, sum_phi_init;
+  int num_fluid_nodes_local, num_fluid_nodes;
+  
+  int ic1, jc1, kc1, index1, status1, p;
+  bool adjacent_to_solid;
+  
+  MPI_Comm comm;
+  pe_mpi_comm(field->pe, &comm);
+
+  assert(ktx);
+  assert(map);
+  assert(field);
+
+  kiterations = kernel_iterations(ktx);
+  
+  sum_phi_local = 0.0;
+  sum_phi = 0.0;
+  num_fluid_nodes_local = 0; 
+  num_fluid_nodes = 0;
+  
+  sum_phi_init = field->field_init_sum;
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    
+    adjacent_to_solid = false;
+
+    index = cs_index(field->cs, ic, jc, kc);
+    field_scalar(field, index, &phi);
+    map_status(map, index, &status);	
+    
+    if (status == MAP_FLUID) {
+      sum_phi_local += phi;
+    	
+      for (p = 1; p < NGRAD_; p++) {
+	ic1 = ic + bs_cv[p][X];
+	jc1 = jc + bs_cv[p][Y];
+	kc1 = kc + bs_cv[p][Z];
+
+	index1 = kernel_coords_index(ktx, ic1, jc1, kc1);
+	map_status(map, index1, &status1);
+	if (status1 != MAP_FLUID) adjacent_to_solid = true;
+      }
+      if(adjacent_to_solid) num_fluid_nodes_local += 1;
+    }		  
+  }
+
+  MPI_Allreduce(&sum_phi_local, &sum_phi, 1, MPI_DOUBLE, MPI_SUM, comm);
+  MPI_Allreduce(&num_fluid_nodes_local, &num_fluid_nodes, 1, MPI_INT, MPI_SUM, comm);
+  
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    
+    adjacent_to_solid = false;
+
+    index = cs_index(field->cs, ic, jc, kc);
+    field_scalar(field, index, &phi);
+    map_status(map, index, &status);	
+    
+    if (status == MAP_FLUID) {
+      for (p = 1; p < NGRAD_; p++) {
+	ic1 = ic + bs_cv[p][X];
+	jc1 = jc + bs_cv[p][Y];
+	kc1 = kc + bs_cv[p][Z];
+
+	index1 = kernel_coords_index(ktx, ic1, jc1, kc1);
+	map_status(map, index1, &status1);
+	if (status1 != MAP_FLUID) adjacent_to_solid = true;
+      }
+      if (adjacent_to_solid) { 
+	phi -= (sum_phi - sum_phi_init)/num_fluid_nodes;
+      }   	
+    }
+    
+    field_scalar_set(field, index, phi);			  
   }
 
   return;

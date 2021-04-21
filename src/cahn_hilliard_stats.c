@@ -13,8 +13,9 @@
  *****************************************************************************/
 
 #include <assert.h>
-#include <stdlib.h>
+#include <float.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "phi_cahn_hilliard.h"
 #include "field_s.h"
@@ -40,6 +41,10 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * obj, map_t * map,
 __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
 				      field_t * csum, map_t * map,
 				      phi_stats_t * stats);
+__global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
+				      map_t * map, phi_stats_t * stats);
+__global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
+				      map_t * map, phi_stats_t * stats);
 
 /*****************************************************************************
  *
@@ -65,7 +70,7 @@ __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
     double fbar = rvol*klein_sum(&stats.sum);    /* mean */
     double f2   = rvol*stats.var - fbar*fbar;    /* variance */
 
-    pe_info(pch->pe, "[pew] %14.7e %14.7e%14.7e %14.7e%14.7e\n",
+    pe_info(pch->pe, "[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n",
 	    klein_sum(&stats.sum), fbar, f2, stats.min, stats.max);
   }
 
@@ -108,9 +113,26 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   tdpLaunchKernel(cahn_stats_sum_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, pch->csum->target, map->target,
 		  stats_d);
-  /* min, max, vol */
+  tdpAssert(tdpPeekAtLastError());
 
-  kernel_ctxt_free(ctxt);
+  tdpLaunchKernel(cahn_stats_var_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, phi->target, map->target, stats_d);
+  tdpAssert(tdpPeekAtLastError());
+
+  tdpLaunchKernel(cahn_stats_min_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, phi->target, map->target, stats_d);
+  tdpAssert(tdpPeekAtLastError());
+
+  tdpAssert(tdpDeviceSynchronize());
+  tdpAssert(tdpMemcpy(&local, stats_d, sizeof(phi_stats_t),
+		      tdpMemcpyDeviceToHost));
+
+  /* Kernel required */
+  {
+    int ivol = 0;
+    map_volume_local(map, MAP_FLUID, &ivol);
+    local.vol = 1.0*ivol;
+  }
 
   MPI_Reduce(&local.sum, &stats->sum, 1, MPI_DOUBLE, MPI_MIN, root, comm);
   MPI_Reduce(&local.var, &stats->var, 1, MPI_DOUBLE, MPI_MAX, root, comm);
@@ -118,7 +140,8 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   MPI_Reduce(&local.max, &stats->max, 1, MPI_DOUBLE, MPI_SUM, root, comm);
   MPI_Reduce(&local.vol, &stats->vol, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 
-  tdpFree(&stats_d);
+  kernel_ctxt_free(ctxt);
+  tdpFree(stats_d);
 
   return 0;
 }
@@ -127,7 +150,8 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
  *
  *  cahn_stats_sum_kernel
  *
- *  Compenstated sum and variance.
+ *  Compenstated sum and variance. We do care how the sum is computed
+ *  (a conserve quantity) but are not so concerned with the variance.
  *
  *****************************************************************************/
 
@@ -186,18 +210,140 @@ __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
       klein_add(&sum, phib[it].sum);
     }
 
-    /*
-    printf("PARA  %14.7e %14.7e %14.7e\n", klein_sum(&sum), sum.cs, klein_sum(&sum)+1.1219161e-11);
-    */
-
     /* Final result */
     klein_atomic_add(&stats->sum, sum.cs);
     klein_atomic_add(&stats->sum, sum.ccs);
     klein_atomic_add(&stats->sum, sum.sum);
-
   }
 
   return;
 }
 
+/*****************************************************************************
+ *
+ *  cahn_stats_var_kernel
+ *
+ *****************************************************************************/
 
+__global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
+				      map_t * map, phi_stats_t * stats) {
+  int kindex;
+  int tid;
+  __shared__ int kiterations;
+  __shared__ double bvar[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(phi);
+  assert(map);
+  assert(stats);
+
+  kiterations = kernel_iterations(ktx);
+
+  tid = threadIdx.x;
+  bvar[tid] = 0.0;
+
+  stats->var = 0.0;
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index;
+    int status = 0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = cs_index(phi->cs, ic, jc, kc);
+    map_status(map, index, &status);
+
+    if (status == MAP_FLUID) {
+      double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
+
+      bvar[tid] += phi0*phi0;
+    }
+  }
+
+  __syncthreads();
+
+  if (tid == 0) {
+    double var = 0.0;
+
+    for (int it = 0; it < blockDim.x; it++) {
+      var += bvar[it];
+    }
+
+    /* Final result */
+    tdpAtomicAddDouble(&stats->var, var);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  cahn_stats_var_kernel
+ *
+ *****************************************************************************/
+
+__global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
+				      map_t * map, phi_stats_t * stats) {
+  int kindex;
+  int tid;
+  __shared__ int kiterations;
+  __shared__ double bmin[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double bmax[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(phi);
+  assert(map);
+  assert(stats);
+
+  kiterations = kernel_iterations(ktx);
+
+  tid = threadIdx.x;
+  bmin[tid] = +FLT_MAX;
+  bmax[tid] = -FLT_MAX;
+
+  stats->min = +FLT_MAX;
+  stats->max = -FLT_MAX;
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index;
+    int status = 0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = cs_index(phi->cs, ic, jc, kc);
+    map_status(map, index, &status);
+
+    if (status == MAP_FLUID) {
+      double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
+
+      bmin[tid] = dmin(bmin[tid], phi0);
+      bmax[tid] = dmax(bmax[tid], phi0);
+    }
+  }
+
+  __syncthreads();
+
+  if (tid == 0) {
+    double min = +FLT_MAX;
+    double max = -FLT_MAX;
+
+    for (int it = 0; it < blockDim.x; it++) {
+      min = dmin(bmin[it], min);
+      max = dmax(bmax[it], max);
+    }
+
+    /* Final result */
+    tdpAtomicMinDouble(&stats->min, min);
+    tdpAtomicMaxDouble(&stats->max, max);
+  }
+
+  return;
+}
