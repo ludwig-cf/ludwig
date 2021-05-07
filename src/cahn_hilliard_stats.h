@@ -18,5 +18,7 @@
 #include "phi_cahn_hilliard.h"
 
 __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map);
+__host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
+				       map_t * map);
 
 #endif

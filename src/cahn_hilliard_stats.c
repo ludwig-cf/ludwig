@@ -28,11 +28,11 @@
 typedef struct phi_stats_s phi_stats_t;
 
 struct phi_stats_s {
-  klein_t sum;
-  double  var;
-  double  min;
-  double  max;
-  double  vol;
+  klein_t sum;       /* Global sum phi: composition is conserved. */
+  double  var;       /* Variance */
+  double  min;       /* Minimum */
+  double  max;       /* Maximum */
+  double  vol;       /* Current fluid volume */
 };
 
 __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * obj, map_t * map,
@@ -45,6 +45,38 @@ __global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
 				      map_t * map, phi_stats_t * stats);
 __global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
 				      map_t * map, phi_stats_t * stats);
+
+/*****************************************************************************
+ *
+ * cahn_hilliard_stats_time0
+ *
+ * Compute an initial order parameter sum in the same way as any later sum.
+ *
+ *****************************************************************************/
+
+__host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
+				       map_t * map) {
+
+  phi_stats_t stats = {};
+  MPI_Comm comm = MPI_COMM_NULL;
+
+  assert(pch);
+  assert(phi);
+  assert(map);
+
+  pe_mpi_comm(pch->pe, &comm);
+  cahn_stats_reduce(pch, phi, map, &stats, 0, comm);
+
+  {
+    double rvol = 1.0 / stats.vol;
+    double fbar = rvol*klein_sum(&stats.sum);
+
+    phi->field_init_sum = fbar;
+    MPI_Bcast(&phi->field_init_sum, 1, MPI_DOUBLE, 0, comm);
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
@@ -68,10 +100,10 @@ __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
     double rvol = 1.0 / stats.vol;
 
     double fbar = rvol*klein_sum(&stats.sum);    /* mean */
-    double f2   = rvol*stats.var - fbar*fbar;    /* variance */
+    double fvar = rvol*stats.var - fbar*fbar;    /* variance */
 
     pe_info(pch->pe, "[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n",
-	    klein_sum(&stats.sum), fbar, f2, stats.min, stats.max);
+	    klein_sum(&stats.sum), fbar, fvar, stats.min, stats.max);
   }
 
   return 0;
@@ -134,10 +166,18 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
     local.vol = 1.0*ivol;
   }
 
-  MPI_Reduce(&local.sum, &stats->sum, 1, MPI_DOUBLE, MPI_MIN, root, comm);
-  MPI_Reduce(&local.var, &stats->var, 1, MPI_DOUBLE, MPI_MAX, root, comm);
-  MPI_Reduce(&local.min, &stats->min, 1, MPI_DOUBLE, MPI_SUM, root, comm);
-  MPI_Reduce(&local.max, &stats->max, 1, MPI_DOUBLE, MPI_SUM, root, comm);
+  /* A real MPI operation for sum is required */
+  {
+    local.sum.sum = klein_sum(&local.sum);
+    local.sum.cs  = 0.0;
+    local.sum.ccs = 0.0;
+    MPI_Reduce(&local.sum.sum, &stats->sum.sum, 1, MPI_DOUBLE, MPI_SUM, root,
+	       comm);
+  }
+
+  MPI_Reduce(&local.var, &stats->var, 1, MPI_DOUBLE, MPI_SUM, root, comm);
+  MPI_Reduce(&local.min, &stats->min, 1, MPI_DOUBLE, MPI_MIN, root, comm);
+  MPI_Reduce(&local.max, &stats->max, 1, MPI_DOUBLE, MPI_MAX, root, comm);
   MPI_Reduce(&local.vol, &stats->vol, 1, MPI_DOUBLE, MPI_SUM, root, comm);
 
   kernel_ctxt_free(ctxt);
@@ -150,8 +190,8 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
  *
  *  cahn_stats_sum_kernel
  *
- *  Compenstated sum and variance. We do care how the sum is computed
- *  (a conserve quantity) but are not so concerned with the variance.
+ *  Compensated sum. We do care how the sum is computed
+ *  (a conserved quantity).
  *
  *****************************************************************************/
 
@@ -223,6 +263,8 @@ __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
  *
  *  cahn_stats_var_kernel
  *
+ *  Accumulate the variance in phi field (don't care about exact sum).
+ *
  *****************************************************************************/
 
 __global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
@@ -282,7 +324,9 @@ __global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
 /*****************************************************************************
  *
- *  cahn_stats_var_kernel
+ *  cahn_stats_min_kernel
+ *
+ *  Local min/max of phi field.
  *
  *****************************************************************************/
 
