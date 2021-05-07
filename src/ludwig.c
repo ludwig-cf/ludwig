@@ -400,12 +400,12 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_electroneutral(ludwig->psi, ludwig->map);
   }
 
-  /* TODO IF REQUIRED */
-  /*
-  if (ludwig->phi) {
-    field_sum_phi_init_rt(ludwig->phi, ludwig->map);
+  if (ludwig->pch && ludwig->phi) {
+    if (ludwig->pch->info.conserve == 2) {
+      cahn_hilliard_stats_time0(ludwig->pch, ludwig->phi, ludwig->map);
+    }
   }
-  */
+
   return 0;
 }
 
@@ -443,7 +443,7 @@ void ludwig_run(const char * inputfile) {
   pe_mpi_comm(ludwig->pe, &comm);
 #ifdef __NVCC__
   {
-    /* KLUDGE */
+    /* Pending a more formal approach */
     int nd = 0; /* GPU devices per node */
     int id = 0; /* Assume MPI ranks per node == nd */
     cudaGetDeviceCount(&nd);
