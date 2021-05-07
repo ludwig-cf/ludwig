@@ -28,6 +28,7 @@ struct kahan_s {
 };
 
 struct klein_s {
+  int lock;                      /* For threaded mutex */
   double sum;
   double cs;
   double ccs;

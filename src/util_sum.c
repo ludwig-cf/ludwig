@@ -49,7 +49,7 @@ __host__ __device__ void kahan_add(kahan_t * kahan, double val) {
 
 __host__ __device__ klein_t klein_zero(void) {
 
-  klein_t sum = {0.0, 0.0, 0.0};
+  klein_t sum = {0, 0.0, 0.0, 0.0};
 
   return sum;
 }
@@ -119,8 +119,17 @@ __host__ __device__ void klein_atomic_add(klein_t * sum, double val) {
 
   assert(sum);
 
-  /* KLUDGE FOR NOW */
+#ifdef __CUDA_ARCH___
+  while (atomicCAS(&sum->lock, 0, 1) != 0) {};
+  __threadfence();
+#endif
+
   klein_add(sum, val);
+
+#ifdef __CUDA_ARCH__
+  __threadfence();
+  atomicExch(&sum->lock, 0);
+#endif
 
   return;
 }
