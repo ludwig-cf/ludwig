@@ -67,13 +67,8 @@ __host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
   pe_mpi_comm(pch->pe, &comm);
   cahn_stats_reduce(pch, phi, map, &stats, 0, comm);
 
-  {
-    double rvol = 1.0 / stats.vol;
-    double fbar = rvol*klein_sum(&stats.sum);
-
-    phi->field_init_sum = fbar;
-    MPI_Bcast(&phi->field_init_sum, 1, MPI_DOUBLE, 0, comm);
-  }
+  phi->field_init_sum = klein_sum(&stats.sum);
+  MPI_Bcast(&phi->field_init_sum, 1, MPI_DOUBLE, 0, comm);
 
   return 0;
 }
