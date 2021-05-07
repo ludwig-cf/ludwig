@@ -39,10 +39,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>
-#include <stdbool.h>
 
 #include "field_s.h"
 #include "physics.h"
+#include "map_s.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 #include "util_sum.h"
@@ -62,26 +62,22 @@ static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise);
 static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch,
 						      field_t * phif,
 						      map_t * map);
-
-#define NGRAD_ 27
-static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
-				 {-1,-1,-1}, {-1,-1, 0}, {-1,-1, 1},
-                                 {-1, 0,-1}, {-1, 0, 0}, {-1, 0, 1},
-                                 {-1, 1,-1}, {-1, 1, 0}, {-1, 1, 1},
-                                 { 0,-1,-1}, { 0,-1, 0}, { 0,-1, 1},
-                                 { 0, 0,-1},             { 0, 0, 1},
-				 { 0, 1,-1}, { 0, 1, 0}, { 0, 1, 1},
-				 { 1,-1,-1}, { 1,-1, 0}, { 1,-1, 1},
-				 { 1, 0,-1}, { 1, 0, 0}, { 1, 0, 1},
-				 { 1, 1,-1}, { 1, 1, 0}, { 1, 1, 1}};
-				 
-
 /* Utility container */
 
 typedef struct ch_kernel_s ch_kernel_t;
 struct ch_kernel_s {
   double mobility;      /* Mobility */
   double gradmu_ex[3];  /* External chemical potential gradient */
+};
+
+/* Utility container for corrections to order parameter conservation */
+
+typedef struct phi_correct_s phi_correct_t;
+struct phi_correct_s {
+  int initial;   /* Are we at t > 0? */
+  int nfluid;    /* Fluid volume */
+  double phi0;   /* Sum phi at t = 0 */
+  double phi;    /* Sum current. */
 };
 
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
@@ -96,8 +92,6 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				   field_t * field, advflux_t * flux,
 				   field_t * csum, int ys, double wz);
-__global__ void phi_ch_subtract_kernel(kernel_ctxt_t * ktx,
-				       field_t * field, map_t * map);
 
 /*****************************************************************************
  *
@@ -236,7 +230,7 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
 
   phi_ch_le_fix_fluxes(pch, nf);
 
-  /* REPLACE 1/2 */
+  /* TODO REPLACE 1/2 WITH MEANINGFUL SYMBOLS */
   if (pch->info.conserve == 1) {
     phi_ch_update_conserve(pch, phi);
   }
@@ -1066,8 +1060,14 @@ static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phi) {
  *  
  *  correction of phi in order to improve the conservation of phi
  *
- *
  ****************************************************************************/
+
+__global__ void phi_ch_subtract_kernel1(kernel_ctxt_t * ktx,
+					field_t * field, map_t * map,
+					phi_correct_t * correct);
+__global__ void phi_ch_subtract_kernel2(kernel_ctxt_t * ktx,
+					field_t * field, map_t * map,
+					phi_correct_t * correct);
 
 static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * phif, map_t * map) {
 
@@ -1076,7 +1076,14 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
   
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
-  
+
+  phi_correct_t local = {};
+  phi_correct_t * local_d = NULL;
+
+  assert(pch);
+  assert(phif);
+  assert(map);
+
   cs_nlocal(pch->cs, nlocal);
   
   limits.imin = 1; limits.imax = nlocal[X];
@@ -1085,14 +1092,43 @@ static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * 
 
   kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
-  
-  tdpLaunchKernel(phi_ch_subtract_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phif->target, map);
+
+  tdpAssert(tdpMalloc((void **) &local_d, sizeof(phi_correct_t)));
+
+  /* Work out the local correction... */
+  tdpLaunchKernel(phi_ch_subtract_kernel1, nblk, ntpb, 0, 0,
+		  ctxt->target, phif->target, map->target, local_d);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  /* Communication stage for global correction... */
+  tdpAssert(tdpMemcpy(&local, local_d, sizeof(phi_correct_t),
+		      tdpMemcpyDeviceToHost));
+
+  {
+    MPI_Comm comm = MPI_COMM_NULL;
+    phi_correct_t global = {};
+
+    cs_cart_comm(pch->cs, &comm);
+
+    MPI_Allreduce(&local.phi, &global.phi, 1, MPI_DOUBLE, MPI_SUM, comm);
+    MPI_Allreduce(&local.nfluid, &global.nfluid, 1, MPI_INT, MPI_SUM, comm);
+
+    global.phi0 = phif->field_init_sum;
+    tdpAssert(tdpMemcpy(local_d, &global, sizeof(phi_correct_t),
+			tdpMemcpyHostToDevice));
+  }
+
+  /* Apply the correction... */
+  tdpLaunchKernel(phi_ch_subtract_kernel2, nblk, ntpb, 0, 0,
+		  ctxt->target, phif->target, map->target, local_d);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
+  tdpFree(local_d);
 
   return 0;
 }
@@ -1156,93 +1192,105 @@ __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
  *
  ****************************************************************************/
 
-__global__ void phi_ch_subtract_kernel(kernel_ctxt_t * ktx,
-				       field_t * field, map_t * map){
-
+__global__ void phi_ch_subtract_kernel1(kernel_ctxt_t * ktx,
+					field_t * field, map_t * map,
+					phi_correct_t * correct) {
   int kindex;
   int kiterations;
-  int ic, jc, kc, index, status;
-  double phi, sum_phi_local, sum_phi, sum_phi_init;
-  int num_fluid_nodes_local, num_fluid_nodes;
-  
-  int ic1, jc1, kc1, index1, status1, p;
-  bool adjacent_to_solid;
-  
-  MPI_Comm comm;
-  pe_mpi_comm(field->pe, &comm);
+  int index;
+  int tid;
+
+  __shared__ double sum_phi_local[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ int num_fluid_nodes_local[TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(ktx);
   assert(map);
   assert(field);
+  assert(correct);
 
   kiterations = kernel_iterations(ktx);
-  
-  sum_phi_local = 0.0;
-  sum_phi = 0.0;
-  num_fluid_nodes_local = 0; 
-  num_fluid_nodes = 0;
-  
-  sum_phi_init = field->field_init_sum;
+
+  tid = threadIdx.x;
+  sum_phi_local[tid] = 0.0;
+  num_fluid_nodes_local[tid] = 0;
+
+  correct->phi = 0.0;
+  correct->nfluid = 0;
 
   for_simt_parallel(kindex, kiterations, 1) {
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int status = 0;
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
     
-    adjacent_to_solid = false;
-
     index = cs_index(field->cs, ic, jc, kc);
-    field_scalar(field, index, &phi);
     map_status(map, index, &status);	
     
     if (status == MAP_FLUID) {
-      sum_phi_local += phi;
-    	
-      for (p = 1; p < NGRAD_; p++) {
-	ic1 = ic + bs_cv[p][X];
-	jc1 = jc + bs_cv[p][Y];
-	kc1 = kc + bs_cv[p][Z];
+      double phi = 0.0;
+      field_scalar(field, index, &phi);
 
-	index1 = kernel_coords_index(ktx, ic1, jc1, kc1);
-	map_status(map, index1, &status1);
-	if (status1 != MAP_FLUID) adjacent_to_solid = true;
-      }
-      if(adjacent_to_solid) num_fluid_nodes_local += 1;
+      sum_phi_local[tid] += phi;
+      num_fluid_nodes_local[tid] += 1;
     }		  
   }
 
-  MPI_Allreduce(&sum_phi_local, &sum_phi, 1, MPI_DOUBLE, MPI_SUM, comm);
-  MPI_Allreduce(&num_fluid_nodes_local, &num_fluid_nodes, 1, MPI_INT, MPI_SUM, comm);
+  /* Reduction */
+
+  __syncthreads();
+
+  if (tid == 0) {
+    int nfluid = 0;
+    double phi = 0.0;
+    for (int it = 0; it < blockDim.x; it++) {
+      nfluid += num_fluid_nodes_local[it];
+      phi    += sum_phi_local[it];
+    }
+
+    tdpAtomicAddInt(&correct->nfluid, nfluid);
+    tdpAtomicAddDouble(&correct->phi, phi);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_subtract_kernel2
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_subtract_kernel2(kernel_ctxt_t * ktx, field_t * field,
+					map_t * map, phi_correct_t * correct) {
+
+  int kindex;
+  int kiterations;
+
+  assert(ktx);
+  assert(field);
+  assert(map);
+  assert(correct);
   
+  kiterations = kernel_iterations(ktx);
+
   for_simt_parallel(kindex, kiterations, 1) {
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
-    
-    adjacent_to_solid = false;
+    int status = 0;
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+    int index = cs_index(field->cs, ic, jc, kc);
+    double phi = 0.0;
 
-    index = cs_index(field->cs, ic, jc, kc);
     field_scalar(field, index, &phi);
     map_status(map, index, &status);	
     
     if (status == MAP_FLUID) {
-      for (p = 1; p < NGRAD_; p++) {
-	ic1 = ic + bs_cv[p][X];
-	jc1 = jc + bs_cv[p][Y];
-	kc1 = kc + bs_cv[p][Z];
-
-	index1 = kernel_coords_index(ktx, ic1, jc1, kc1);
-	map_status(map, index1, &status1);
-	if (status1 != MAP_FLUID) adjacent_to_solid = true;
-      }
-      if (adjacent_to_solid) { 
-	phi -= (sum_phi - sum_phi_init)/num_fluid_nodes;
-      }   	
+      phi -= (correct->phi - correct->phi0)/correct->nfluid;
     }
-    
-    field_scalar_set(field, index, phi);			  
+
+    field_scalar_set(field, index, phi);
   }
 
   return;
