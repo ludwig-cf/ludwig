@@ -133,3 +133,82 @@ __host__ __device__ void klein_atomic_add(klein_t * sum, double val) {
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  klein_mpi_datatype
+ *
+ *  Generate a datatype handle. Caller to release via MPI_Datatype_free().
+ *
+ *****************************************************************************/
+
+__host__ int klein_mpi_datatype(MPI_Datatype * type) {
+
+  int ierr = 0;
+  int blocklengths[4] = {1, 1, 1, 1};
+  MPI_Aint displacements[5] = {};
+  MPI_Datatype types[4] = {MPI_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE}; 
+
+  klein_t sum = {};
+
+  assert(type);
+
+  MPI_Get_address(&sum,      displacements + 0);
+  MPI_Get_address(&sum.lock, displacements + 1);
+  MPI_Get_address(&sum.sum,  displacements + 2);
+  MPI_Get_address(&sum.cs,   displacements + 3);
+  MPI_Get_address(&sum.ccs,  displacements + 4);
+
+  /* Subtract the offset (displacements[0] == displacements[1] in fact) */
+  for (int n = 1; n <= 4; n++) {
+    displacements[n] -= displacements[0];
+  }
+
+  MPI_Type_create_struct(4, blocklengths, displacements + 1, types, type);
+  MPI_Type_commit(type);
+
+  return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  klein_mpi_op_sum_function
+ *
+ *  Implementation for sum operation below.
+ *
+ *****************************************************************************/
+
+__host__ void klein_mpi_op_sum_function(klein_t * invec, klein_t * inoutvec,
+					int * len, MPI_Datatype * dt) {
+
+  assert(invec);
+  assert(inoutvec);
+  assert(len);
+  assert(dt);
+
+  for (int n = 0; n < *len; n++) {
+    klein_add(inoutvec + n, invec[n].cs);
+    klein_add(inoutvec + n, invec[n].ccs);
+    klein_add(inoutvec + n, invec[n].sum);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  klein_mpi_op_sum
+ *
+ *  Return the MPI_Op for the sum above. Caller to MPI_Op_free().
+ *
+ *****************************************************************************/
+
+__host__ int klein_mpi_op_sum(MPI_Op * op) {
+
+  assert(klein_mpi_op_sum_function);
+  assert(op);
+
+  MPI_Op_create((MPI_User_function *) klein_mpi_op_sum_function, 0, op);
+
+  return 0;
+}

@@ -34,6 +34,9 @@ struct klein_s {
   double ccs;
 };
 
+__host__ int klein_mpi_datatype(MPI_Datatype * dt);
+__host__ int klein_mpi_op_sum(MPI_Op * op);
+
 __host__ __device__ void    kahan_add(kahan_t * kahan, double val);
 
 __host__ __device__ void    klein_add(klein_t * klein, double val);

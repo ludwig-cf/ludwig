@@ -108,13 +108,15 @@ __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
  *
  *  cahn_stats_reduce
  *
+ *  Form the local sums are reduce to rank "root".
+ *
  *****************************************************************************/
 
 __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
 			       map_t * map, phi_stats_t * stats,
 			       int root, MPI_Comm comm) {
-  phi_stats_t * stats_d = NULL;
   phi_stats_t local = {};
+  phi_stats_t * stats_d = NULL;
 
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -161,13 +163,17 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
     local.vol = 1.0*ivol;
   }
 
-  /* A real MPI operation for sum is required */
   {
-    local.sum.sum = klein_sum(&local.sum);
-    local.sum.cs  = 0.0;
-    local.sum.ccs = 0.0;
-    MPI_Reduce(&local.sum.sum, &stats->sum.sum, 1, MPI_DOUBLE, MPI_SUM, root,
-	       comm);
+    MPI_Datatype dt = MPI_DATATYPE_NULL;
+    MPI_Op op = MPI_OP_NULL;
+
+    klein_mpi_datatype(&dt);
+    klein_mpi_op_sum(&op);
+
+    MPI_Reduce(&local.sum, &stats->sum, 1, dt, op, root, comm);
+
+    MPI_Op_free(&op);
+    MPI_Type_free(&dt);
   }
 
   MPI_Reduce(&local.var, &stats->var, 1, MPI_DOUBLE, MPI_SUM, root, comm);
@@ -229,7 +235,7 @@ __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
       double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
       double cmp  = csum->data[addr_rank1(csum->nsites, 1, index, 0)];
 
-      klein_add(&phib[tid], -cmp);
+      klein_add(&phib[tid], -cmp); /* minus here from Kahan sum */
       klein_add(&phib[tid], phi0);
     }
   }
