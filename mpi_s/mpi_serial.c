@@ -15,12 +15,13 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2021 The University of Edinburgh
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +40,21 @@
 
 /* Internal state */
 
-#define MAX_CART_COMM 16
+#define MAX_CART_COMM  16
+#define MAX_USER_DT    32
+
+/* We are not going to deal with all possible data types; encode
+ * what we have ... */
+enum dt_flavour {DT_NOT_IMPLEMENTED = 0, DT_CONTIGUOUS, DT_VECTOR, DT_STRUCT};
+
+typedef struct internal_data_type_s data_t;
+
+struct internal_data_type_s {
+  MPI_Datatype handle;       /* User space handle [in suitable range] */
+  int          bytes;        /* sizeof */
+  int          commit;       /* Commited? */
+  int          flavour;      /* Contiguous types only at present */
+};
 
 typedef struct mpi_info_s mpi_info_t;
 
@@ -47,13 +62,22 @@ struct mpi_info_s {
   int initialised;               /* MPI initialised */
   int ncart;                     /* Number of Cartesian communicators */
   int period[MAX_CART_COMM][3];  /* Periodic Cartesisan per communicator */
+  int ndatatype;                 /* Current number of data types */
+  data_t dt[MAX_USER_DT];        /* Internal information per data type */
+  int ndatatypelast;             /* Current free list extent */
+  int dtfreelist[MAX_USER_DT];   /* Free list */
 };
 
 static mpi_info_t * mpi_info = NULL;
 
 static void mpi_copy(void * send, void * recv, int count, MPI_Datatype type);
 static int mpi_sizeof(MPI_Datatype type);
+static int mpi_sizeof_user(MPI_Datatype handle);
 static int mpi_is_valid_comm(MPI_Comm comm);
+static int mpi_data_type_add(mpi_info_t * ctxt, const data_t * dt,
+			     MPI_Datatype * newtype);
+static int mpi_data_type_free(mpi_info_t * ctxt, MPI_Datatype * handle);
+static int mpi_data_type_handle(mpi_info_t * ctxt, MPI_Datatype handle);
 
 /*****************************************************************************
  *
@@ -103,6 +127,20 @@ int MPI_Init(int * argc, char *** argv) {
 
   mpi_info->initialised = 1;
 
+  /* User data type handles: reserve dt[0].handle = 0 for MPI_DATATYPE_NULL */
+  /* Otherwise, user data type handles are indexed 1, 2, 3, ... */
+  /* Initialise the free list. */
+
+  assert(MPI_DATATYPE_NULL == 0);
+
+  for (int n = 0; n < MAX_USER_DT; n++) {
+    data_t null = {.handle = 0, .bytes = 0, .commit = 0, .flavour = 0};
+    mpi_info->dt[n] = null;
+    mpi_info->dtfreelist[n] = n;
+  }
+  mpi_info->ndatatype = 0;
+  mpi_info->ndatatypelast = 0;
+
   return MPI_SUCCESS;
 }
 
@@ -130,6 +168,8 @@ int MPI_Initialized(int * flag) {
 int MPI_Finalize(void) {
 
   assert(mpi_info);
+  assert(mpi_info->ndatatype == 0); /* All released */
+
   free(mpi_info);
 
   return MPI_SUCCESS;
@@ -423,7 +463,8 @@ int MPI_Reduce(void * sendbuf, void * recvbuf, int count, MPI_Datatype type,
   assert(root == 0);
   assert(mpi_is_valid_comm(comm));
 
-  /* mpi_check_collective(op);*/
+  assert(op != MPI_OP_NULL);
+
   mpi_copy(sendbuf, recvbuf, count, type);
 
   return MPI_SUCCESS;
@@ -586,7 +627,16 @@ int MPI_Type_indexed(int count, int * array_of_blocklengths,
   assert(array_of_displacements);
   assert(newtype);
 
-  *newtype = MPI_UNDEFINED;
+  {
+    data_t dt = {};
+
+    dt.handle  = MPI_DATATYPE_NULL;
+    dt.bytes   = 0;
+    dt.commit  = 0;
+    dt.flavour = DT_NOT_IMPLEMENTED; /* Can't do displacements at moment */
+
+    mpi_data_type_add(mpi_info, &dt, newtype);
+  }
 
   return MPI_SUCCESS;
 }
@@ -602,7 +652,16 @@ int MPI_Type_contiguous(int count, MPI_Datatype old, MPI_Datatype * newtype) {
   assert(count > 0);
   assert(newtype);
 
-  *newtype = MPI_UNDEFINED;
+  {
+    data_t dt = {};
+
+    dt.handle  = MPI_DATATYPE_NULL;
+    dt.bytes   = mpi_sizeof(old)*count;  /* contiguous */
+    dt.commit  = 0;
+    dt.flavour = DT_CONTIGUOUS;
+
+    mpi_data_type_add(mpi_info, &dt, newtype);
+  }
 
   return MPI_SUCCESS;
 }
@@ -617,8 +676,20 @@ int MPI_Type_commit(MPI_Datatype * type) {
 
   assert(type);
 
-  /* Flag this as undefined at the moment */
-  *type = MPI_UNDEFINED;
+  int handle = *type;
+
+  if (handle < 0) {
+    printf("MPI_Type_commit: Attempt to commit intrinsic type\n");
+  }
+  if (handle == 0) {
+    printf("MPI_Type_commit: Attempt to commit null data type\n");
+  }
+  if (handle > mpi_info->ndatatypelast) {
+    printf("MPI_Type_commit: unrecognised handle %d\n", handle);
+  }
+
+  assert(mpi_info->dt[handle].handle == handle);
+  mpi_info->dt[handle].commit = 1;
 
   return MPI_SUCCESS;
 }
@@ -633,7 +704,8 @@ int MPI_Type_free(MPI_Datatype * type) {
 
   assert(type);
 
-  *type = MPI_DATATYPE_NULL;
+  mpi_data_type_free(mpi_info, type);
+  assert(*type == MPI_DATATYPE_NULL);
 
   return MPI_SUCCESS;
 }
@@ -651,7 +723,16 @@ int MPI_Type_vector(int count, int blocklength, int stride,
   assert(blocklength >= 0);
   assert(newtype);
 
-  *newtype = MPI_UNDEFINED;
+  {
+    data_t dt = {};
+
+    dt.handle = MPI_DATATYPE_NULL;
+    dt.bytes  = 0;
+    dt.commit = 0;
+    dt.flavour = DT_NOT_IMPLEMENTED; /* Can't do strided copy */
+
+    mpi_data_type_add(mpi_info, &dt, newtype);
+  }
 
   return MPI_SUCCESS;
 }
@@ -659,6 +740,8 @@ int MPI_Type_vector(int count, int blocklength, int stride,
 /*****************************************************************************
  *
  *  MPI_Type_struct
+ *
+ *  Superceded by MPI_Type_create_struct.
  *
  *****************************************************************************/
 
@@ -672,9 +755,9 @@ int MPI_Type_struct(int count, int * array_of_blocklengths,
   assert(array_of_types);
   assert(newtype);
 
-  *newtype = MPI_UNDEFINED;
+  printf("MPI_Type_struct: please use MPI_Type_create_struct instead\n");
 
-  return MPI_SUCCESS;
+  return -1;
 }
 
 /*****************************************************************************
@@ -879,6 +962,38 @@ int MPI_Dims_create(int nnodes, int ndims, int * dims) {
 
 /*****************************************************************************
  *
+ *  MPI_Op_create
+ *
+ *****************************************************************************/
+
+int MPI_Op_create(MPI_User_function * function, int commute, MPI_Op * op) {
+
+  /* Never actually use function, so don't really care what's here... */
+
+  assert(function);
+
+  *op = MPI_SUM;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  MPI_Op_free
+ *
+ *****************************************************************************/
+
+int MPI_Op_free(MPI_Op * op) {
+
+  assert(op);
+
+  *op = MPI_OP_NULL;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  mpi_copy
  *
  *****************************************************************************/
@@ -904,7 +1019,7 @@ static void mpi_copy(void * send, void * recv, int count, MPI_Datatype type) {
 
 static int mpi_sizeof(MPI_Datatype type) {
 
-  int size = sizeof(int);
+  int size = -1;
 
   switch (type) {
   case MPI_CHAR:
@@ -946,13 +1061,39 @@ static int mpi_sizeof(MPI_Datatype type) {
   case MPI_PACKED:
     printf("MPI_PACKED not implemented\n");
   default:
-    printf("Unrecognised data type\n");
-    MPI_Abort(MPI_COMM_WORLD, 0);
+    /* Try user type */
+    size = mpi_sizeof_user(type);
   }
 
+  assert(size != -1);
   return size;
 }
 
+/*****************************************************************************
+ *
+ *  mpi_sizeof_user
+ *
+ *  For user defined data types.
+ *
+ *****************************************************************************/
+
+static int mpi_sizeof_user(MPI_Datatype handle) {
+
+  int sz    = -1;
+  int index = mpi_data_type_handle(mpi_info, handle);
+
+  assert(index >= MPI_COMM_NULL); /* not intrinsic */
+
+  if (index == MPI_DATATYPE_NULL) {
+    printf("mpi_sizeof_dt: NULL data type %d\n", handle);
+    MPI_Abort(MPI_COMM_WORLD, 0);
+  }
+  else {
+    sz = mpi_info->dt[index].bytes;
+  }
+
+  return sz;
+}
 
 /*****************************************************************************
  *
@@ -1014,7 +1155,7 @@ int MPI_Get_address(const void * location, MPI_Aint * address) {
   assert(location);
   assert(address);
 
-  *address = 0;
+  *address = (MPI_Aint) location;
 
   return MPI_SUCCESS;
 }
@@ -1046,7 +1187,16 @@ int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint lb, MPI_Aint extent,
 
   assert(newtype);
 
-  *newtype = oldtype;
+  {
+    data_t dt = {};
+
+    dt.handle  = MPI_DATATYPE_NULL;
+    dt.bytes   = extent;
+    dt.commit  = 0;
+    dt.flavour = DT_NOT_IMPLEMENTED; /* Should be  old.flavour */
+
+    mpi_data_type_add(mpi_info, &dt, newtype);
+  }
 
   return MPI_SUCCESS;
 }
@@ -1070,7 +1220,22 @@ int MPI_Type_create_struct(int count, int array_of_blocklengths[],
   assert(array_of_types);
   assert(newtype);
 
-  *newtype = MPI_UNDEFINED;
+
+  {
+    data_t dt = {};
+
+    dt.handle  = MPI_DATATYPE_NULL;
+    dt.bytes   = 0;
+    dt.commit  = 0;
+    dt.flavour = DT_NOT_IMPLEMENTED; /* General copy not available yet */
+
+    /* Extent */
+    /* C must maintain order so we should be able to write... */
+    dt.bytes = (array_of_displacements[count-1] - array_of_displacements[0])
+      + mpi_sizeof(array_of_types[count-1]);
+
+    mpi_data_type_add(mpi_info, &dt, newtype);
+  }
 
   return MPI_SUCCESS;
 }
@@ -1084,11 +1249,25 @@ int MPI_Type_create_struct(int count, int array_of_blocklengths[],
 int MPI_Type_get_extent(MPI_Datatype datatype, MPI_Aint * lb,
 			MPI_Aint * extent) {
 
+  int handle = MPI_DATATYPE_NULL;
+
   assert(lb);
   assert(extent);
 
-  *lb = 0;
-  *extent = -1;
+  if (datatype < 0) {
+    /* intrinsic allowed? Why? */
+    assert(0);
+    *extent = mpi_sizeof(datatype);
+  }
+
+  handle = mpi_data_type_handle(mpi_info, datatype);
+
+  if (handle == MPI_DATATYPE_NULL) {
+    printf("MPI_Type_get_Extent: null handle\n");
+  }
+
+  *lb = 0; /* Always, at the moment */
+  *extent = mpi_info->dt[handle].bytes;
 
   return MPI_SUCCESS;
 }
@@ -1106,4 +1285,90 @@ int mpi_is_valid_comm(MPI_Comm comm) {
   if (comm < MPI_COMM_WORLD || comm >= MAX_CART_COMM) return 0;
 
   return 1;
+}
+
+/*****************************************************************************
+ *
+ *  mpi_data_type_add
+ *
+ *  Add a record of active data type. At the moment we just have the
+ *  extent in bytes to allow copy of contiguous types.
+ *
+ *****************************************************************************/
+
+static int mpi_data_type_add(mpi_info_t * ctxt, const data_t * dt,
+			     MPI_Datatype * newtype) {
+
+  assert(ctxt);
+  assert(dt);
+  assert(newtype);
+
+  ctxt->ndatatype += 1;
+
+  if (ctxt->ndatatype >= MAX_USER_DT) {
+    /* Run out of handles */
+    printf("INTERNAL ERROR: run out of handles\n");
+  }
+
+  {
+    int handle = ctxt->dtfreelist[ctxt->ndatatype];
+
+    if (handle > ctxt->ndatatypelast) ctxt->ndatatypelast = handle;
+
+    ctxt->dt[handle] = *dt;
+    ctxt->dt[handle].handle = handle;
+    *newtype = handle;
+  }
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  mpi_data_type_free
+ *
+ *****************************************************************************/
+
+static int mpi_data_type_free(mpi_info_t * ctxt, MPI_Datatype * handle) {
+
+  assert(ctxt);
+  assert(handle);
+
+  int index = *handle;
+
+  assert(index != 0); /* Not MPI_DATATYPE_NULL */
+  assert(ctxt->dt[index].commit);
+
+  ctxt->dt[index].handle = MPI_DATATYPE_NULL;
+  ctxt->dt[index].commit = 0;
+
+  /* Update free list */
+  ctxt->dtfreelist[ctxt->ndatatype] = index;
+  ctxt->ndatatype -= 1;
+
+  *handle = MPI_DATATYPE_NULL;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  mpi_data_type_handle
+ *
+ *  Valid handle to valid index.
+ *
+ *****************************************************************************/
+
+static int mpi_data_type_handle(mpi_info_t * ctxt, MPI_Datatype handle) {
+
+  int index = MPI_DATATYPE_NULL;
+
+  assert(ctxt);
+  assert(handle >= 0);
+
+  if (handle <= ctxt->ndatatypelast) {
+    index = ctxt->dt[handle].handle;
+  }
+
+  return index;
 }
