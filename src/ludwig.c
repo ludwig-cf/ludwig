@@ -402,6 +402,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   if (ludwig->pch && ludwig->phi) {
     if (ludwig->pch->info.conserve == 2) {
+      /* 2 is correction method requiring a reference sum. */
       cahn_hilliard_stats_time0(ludwig->pch, ludwig->phi, ludwig->map);
     }
   }
