@@ -72,6 +72,7 @@ fi
 
 # Get rid of:
 #   - line with the versiosn number "Welcome to Ludwig"
+#   - Compiler information
 #   - timer statistics identified via "call)" or "calls)"
 #   - blank lines
 #   - "Timer resolution"
@@ -80,6 +81,9 @@ fi
 sed '/call)/d' $1 > test-diff-tmp.ref
 sed -i~ '/calls)/d' test-diff-tmp.ref
 sed -i~ '/Welcome/d' test-diff-tmp.ref
+sed -i~ '/Compiler:/d' test-diff-tmp.ref
+sed -i~ '/..name:/d' test-diff-tmp.ref
+sed -i~ '/..version-string:/d' test-diff-tmp.ref
 sed -i~ '/Target thread model:/d' test-diff-tmp.ref
 sed -i~ '/OpenMP/d' test-diff-tmp.ref
 sed -i~ '/^$/d' test-diff-tmp.ref
