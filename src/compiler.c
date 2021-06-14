@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "compiler.h"
+
 int min(int a, int b) {
   if (a < b) return a;
   return b;
