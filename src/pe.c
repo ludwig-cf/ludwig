@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,6 +29,7 @@
 #include <stdarg.h>
 
 #include "pe.h"
+#include "compiler.h"
 
 struct pe_s {
   int unquiet;                       /* Print version information etc */
@@ -154,6 +155,18 @@ __host__ int pe_message(pe_t * pe) {
        (pe->mpi_size == 1) ? "" : "es");
 
   if (pe->mpi_rank == 0) {
+
+    compiler_info_t compiler = {};
+
+    compiler_id(&compiler);
+
+    printf("Compiler:\n");
+    printf("  name:           %s %d.%d.%d\n", compiler.name, compiler.major,
+	   compiler.minor, compiler.patchlevel);
+    printf("  version-string: %s\n", compiler.version);
+    printf("\n");
+
+    /* Compilation */
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
     tdpThreadModelInfo(stdout);
     printf("\n");
