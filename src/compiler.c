@@ -20,11 +20,6 @@
 
 #include "compiler.h"
 
-int min(int a, int b) {
-  if (a < b) return a;
-  return b;
-}
-
 /*****************************************************************************
  *
  *  compiler_id
@@ -51,7 +46,7 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->major = __cray_major__;
   compiler->minor = __cray_minor__;
   compiler->patchlevel = __cray_patchlevel__;
-  strncpy(compiler->version, __VERSION__, min(strlen(__VERSION__), BUFSIZ-1));
+  strncpy(compiler->version, __VERSION__, strnlen(__VERSION__, BUFSIZ-1));
   sprintf(compiler->name, "%s", "Cray Clang");
   return 0;
 #endif
@@ -62,7 +57,7 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->minor = _RELEASE_MINOR;
   compiler->patchlevel = 0; /* Not provided */
   {
-    int len = min(strlen(_RELEASE_STRING), BUFSIZ-1);
+    int len = strnlen(_RELEASE_STRING, BUFSIZ-1);
     strncpy(compiler->version, _RELEASE_STRING, len);
   }
   sprintf(compiler->name, "%s", "Cray Classic");
@@ -80,7 +75,7 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->major = __INTEL_COMPILER/100;
   compiler->minor = __INTEL_COMPILER - 100*compiler->major;
   compiler->patchlevel = __INTEL_COMPILER_UPDATE;
-  strncpy(compiler->version, __VERSION__, min(strlen(__VERSION__), BUFSIZ-1));
+  strncpy(compiler->version, __VERSION__, strnlen(__VERSION__, BUFSIZ-1));
   sprintf(compiler->name, "%s", "Intel");
   return 0;
 #endif
@@ -101,7 +96,7 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->minor = __clang_minor__;
   compiler->patchlevel = __clang_patchlevel__;
   {
-    int len = min(strlen(__clang_version__), BUFSIZ-1);
+    int len = strnlen(__clang_version__, BUFSIZ-1);
     strncpy(compiler->version, __clang_version__, len);
   }
   sprintf(compiler->name, "%s", "Clang");
@@ -119,7 +114,7 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->major = __GNUC__;
   compiler->minor = __GNUC_MINOR__;
   compiler->patchlevel = __GNUC_PATCHLEVEL__;
-  strncpy(compiler->version, __VERSION__, min(strlen(__VERSION__), BUFSIZ-1));
+  strncpy(compiler->version, __VERSION__, strnlen(__VERSION__, BUFSIZ-1));
   sprintf(compiler->name, "%s", "Gnu");
   ierr = 0;
 
