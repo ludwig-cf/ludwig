@@ -1407,7 +1407,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* No Lees Edwards for the time being */
 
-    field_create(pe, cs, nf, "phi,psi,rho", &ludwig->phi);
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, NULL);
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
@@ -1420,7 +1420,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_ternary_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
     fe_ternary_info(fe);
 
-    grad_2d_ternary_solid_fe_set(fe);
+    grad_3d_ternary_solid_fe_set(fe);
 
     /* Cahn Hilliard */
 
@@ -1442,10 +1442,18 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Hydrodynamics sector (move to hydro_rt?) */
 
     n = rt_switch(rt, "hydrodynamics");
-    {
-      int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_GRADMU;
-      pth_create(pe, cs, method, &ludwig->pth);
+    p = 1;
+      
+    rt_int_parameter(rt, "fd_force_divergence", &p);
+    pe_info(pe, "Force calculation:      %s\n",
+    (p == 0) ? "phi grad mu method" : "divergence method");
+    if (p == 0) {
+      pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
     }
+    else {
+      pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+      
 
     ludwig->fe_ternary = fe;
     ludwig->fe = (fe_t *) fe;
