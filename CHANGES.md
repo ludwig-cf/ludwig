@@ -1,6 +1,9 @@
 
 ### Changes
 
+- Added compensated sums for binary order parameter sum statistic to
+  improve robustness of result to round-off. Additional compensation
+  in time evolution for Cahn-Hilliard update.
 - Add pair_ss_cut_ij interaction: a cut-and-shoft soft sphere potential
   with pair-dependent parameters. Thanks to Qi Kai.
 - Added subgrid offset parameter; this replaces ah in the computation

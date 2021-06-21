@@ -70,6 +70,7 @@
 
 /* Dynamics */
 #include "phi_cahn_hilliard.h"
+#include "cahn_hilliard_stats.h"
 #include "leslie_ericksen.h"
 #include "blue_phase_beris_edwards.h"
 
@@ -399,6 +400,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
     psi_electroneutral(ludwig->psi, ludwig->map);
   }
 
+  if (ludwig->pch && ludwig->phi) {
+    if (ludwig->pch->info.conserve == 2) {
+      /* 2 is correction method requiring a reference sum. */
+      cahn_hilliard_stats_time0(ludwig->pch, ludwig->phi, ludwig->map);
+    }
+  }
+
   return 0;
 }
 
@@ -434,7 +442,16 @@ void ludwig_run(const char * inputfile) {
 
   pe_create(MPI_COMM_WORLD, PE_VERBOSE, &ludwig->pe);
   pe_mpi_comm(ludwig->pe, &comm);
-
+#ifdef __NVCC__
+  {
+    /* Pending a more formal approach */
+    int nd = 0; /* GPU devices per node */
+    int id = 0; /* Assume MPI ranks per node == nd */
+    cudaGetDeviceCount(&nd);
+    id = pe_mpi_rank(ludwig->pe) % nd;
+    cudaSetDevice(id);
+  }
+#endif
   rt_create(ludwig->pe, &ludwig->rt);
   rt_read_input_file(ludwig->rt, inputfile);
   rt_info(ludwig->rt);
@@ -459,7 +476,14 @@ void ludwig_run(const char * inputfile) {
     stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
   }
   else {
-    if (ludwig->phi) stats_field_info(ludwig->phi, ludwig->map);
+    if (ludwig->phi) {
+	if (ludwig->pch && ludwig->pch->info.conserve) {
+	  cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
+	}
+	else {
+	  stats_field_info(ludwig->phi, ludwig->map);
+	}
+    }
   }
   if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
   if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
@@ -866,8 +890,13 @@ void ludwig_run(const char * inputfile) {
 	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
 	}
 	else {
-	  field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
-	  stats_field_info(ludwig->phi, ludwig->map);
+	  if (ludwig->pch && ludwig->pch->info.conserve) {
+	    cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
+	  }
+	  else {
+	    field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
+	    stats_field_info(ludwig->phi, ludwig->map);
+	  }
 	}
       }
 
@@ -1150,6 +1179,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 
+    phi_ch_info_t ch_options = {};
     fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via finite difference */
@@ -1172,7 +1202,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1186,6 +1215,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     rt_double_parameter(rt, "mobility", &value);
     physics_mobility_set(ludwig->phys, value);
     pe_info(pe, "Mobility M            = %12.5e\n", value);
+
+    rt_int_parameter(rt, "cahn_hilliard_options_conserve",
+		     &ch_options.conserve);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     /* Order parameter noise */
 
@@ -1256,6 +1289,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Brazovskii (always finite difference). */
 
+    phi_ch_info_t ch_options = {};
     fe_brazovskii_t * fe = NULL;
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 3;   /* Required for stress diveregnce. */
@@ -1269,7 +1303,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1388,6 +1422,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "lc_droplet") == 0) {
     int use_stress_relaxation;
+    phi_ch_info_t ch_options = {};
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
@@ -1414,7 +1449,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1513,6 +1548,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "fe_electro_symmetric") == 0) {
 
+    phi_ch_info_t ch_options = {};
     fe_symm_t * fe_symm = NULL;
     fe_electro_t * fe_elec = NULL;
     fe_es_t * fes = NULL;
@@ -1538,7 +1574,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, NULL, &ludwig->pch);
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Charged binary fluid 'Electrosymmetric' free energy\n");

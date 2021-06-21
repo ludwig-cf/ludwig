@@ -68,6 +68,7 @@ int test_random_suite(void);
 int test_rt_suite(void);
 int test_timer_suite(void);
 int test_util_suite(void);
+int test_util_sum_suite(void);
 int test_visc_arrhenius_suite(void);
 int test_wall_suite(void);
 
