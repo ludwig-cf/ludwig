@@ -98,6 +98,9 @@ sed -i~ '/SIMD\ vector/d' test-diff-tmp.ref
 sed '/call)/d' $2 > test-diff-tmp.log
 sed -i~ '/calls)/d' test-diff-tmp.log
 sed -i~ '/Welcome/d' test-diff-tmp.log
+sed -i~ '/Compiler:/d' test-diff-tmp.log
+sed -i~ '/..name:/d' test-diff-tmp.log
+sed -i~ '/..version-string:/d' test-diff-tmp.log
 sed -i~ '/Target thread model:/d' test-diff-tmp.log
 sed -i~ '/OpenMP/d' test-diff-tmp.log
 sed -i~ '/SVN.revision/d' test-diff-tmp.log
