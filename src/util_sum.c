@@ -23,7 +23,7 @@
  *
  *  kahan_add
  *
- *  Add a contribution to a compensated sum.
+ *  Add a contribution to a simple compensated sum.
  *
  *****************************************************************************/
 
@@ -32,11 +32,37 @@ __host__ __device__ void kahan_add(kahan_t * kahan, double val) {
   assert(kahan);
 
   {
-    volatile double y = val - kahan->cs;
+    volatile double y = val + kahan->cs;
     volatile double t = kahan->sum + y;
-    kahan->cs  = (t - kahan->sum) - y;
+    kahan->cs  = y - (t - kahan->sum);
     kahan->sum = t;
   }
+}
+
+/*****************************************************************************
+ *
+ *  kahan_zero
+ *
+ *****************************************************************************/
+
+__host__ __device__ kahan_t kahan_zero(void) {
+
+  kahan_t k = {0, 0.0, 0.0};
+
+  return k;
+}
+
+/*****************************************************************************
+ *
+ *  kahan_sum
+ *
+ *****************************************************************************/
+
+__host__ __device__ double kahan_sum(const kahan_t * sum) {
+
+  assert(sum);
+
+  return (sum->sum + sum->cs);
 }
 
 /*****************************************************************************
@@ -109,6 +135,34 @@ __host__ __device__ double klein_sum(const klein_t * klein) {
 
 /*****************************************************************************
  *
+ *  kahan_atomic_add
+ *
+ *  Add atomically when threads are active.
+ *
+ *****************************************************************************/
+
+__host__ __device__ void kahan_atomic_add(kahan_t * sum, double val) {
+
+  assert(sum);
+
+#ifdef __CUDA_ARCH___
+  while (atomicCAS(&sum->lock, 0, 1) != 0) {};
+  __threadfence();
+#endif
+
+  kahan_add(sum, val);
+
+#ifdef __CUDA_ARCH__
+  __threadfence();
+  atomicExch(&sum->lock, 0);
+#endif
+
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  klein_atomic_add
  *
  *  Add contribution atomically
@@ -132,6 +186,82 @@ __host__ __device__ void klein_atomic_add(klein_t * sum, double val) {
 #endif
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  kahan_mpi_datatype
+ *
+ *  Generate datatype handle. Caller to release via MPI_Datatype_free().
+ *
+ *****************************************************************************/
+
+__host__ int kahan_mpi_datatype(MPI_Datatype * type) {
+
+  int blocklengths[3] = {1, 1, 1};
+  MPI_Aint displacements[4] = {};
+  MPI_Datatype types[3] = {MPI_INT, MPI_DOUBLE, MPI_DOUBLE}; 
+
+  kahan_t sum = {};
+
+  assert(type);
+
+  MPI_Get_address(&sum,      displacements + 0);
+  MPI_Get_address(&sum.lock, displacements + 1);
+  MPI_Get_address(&sum.sum,  displacements + 2);
+  MPI_Get_address(&sum.cs,   displacements + 3);
+
+  /* Subtract the offset (displacements[0] == displacements[1] in fact) */
+  for (int n = 1; n <= 3; n++) {
+    displacements[n] -= displacements[0];
+  }
+
+  MPI_Type_create_struct(3, blocklengths, displacements + 1, types, type);
+  MPI_Type_commit(type);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  kahan_mpi_op_sum_function
+ *
+ *  Implementation for sum operation below.
+ *
+ *****************************************************************************/
+
+__host__ void kahan_mpi_op_sum_function(kahan_t * invec, kahan_t * inoutvec,
+					int * len, MPI_Datatype * dt) {
+
+  assert(invec);
+  assert(inoutvec);
+  assert(len);
+  assert(dt);
+
+  for (int n = 0; n < *len; n++) {
+    kahan_add(inoutvec + n, invec[n].cs);
+    kahan_add(inoutvec + n, invec[n].sum);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  kahan_mpi_op_sum
+ *
+ *  Return the MPI_Op for the sum above. Caller to MPI_Op_free().
+ *
+ *****************************************************************************/
+
+__host__ int kahan_mpi_op_sum(MPI_Op * op) {
+
+  assert(kahan_mpi_op_sum_function);
+  assert(op);
+
+  MPI_Op_create((MPI_User_function *) kahan_mpi_op_sum_function, 0, op);
+
+  return 0;
 }
 
 /*****************************************************************************

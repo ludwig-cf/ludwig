@@ -23,12 +23,14 @@
 #include "util.h"
 #include "util_sum.h"
 
-/* Utility container for stats */
+/* Utility container for global statistics */
 
 typedef struct phi_stats_s phi_stats_t;
 
 struct phi_stats_s {
-  klein_t sum;       /* Global sum phi: composition is conserved. */
+  kahan_t sum1;      /* Glboal sum: single compensation */
+  klein_t sum2;      /* Global sum: doubly compensated. */
+  double  sum;       /* Current result for sum */
   double  var;       /* Variance */
   double  min;       /* Minimum */
   double  max;       /* Maximum */
@@ -38,9 +40,11 @@ struct phi_stats_s {
 __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * obj, map_t * map,
 			       phi_stats_t * stats,  int root, MPI_Comm comm);
 
-__global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
-				      field_t * csum, map_t * map,
-				      phi_stats_t * stats);
+__global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+					    map_t * map, phi_stats_t * stats);
+__global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+					    field_t * csum, map_t * map,
+					    phi_stats_t * stats);
 __global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
 				      map_t * map, phi_stats_t * stats);
 __global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
@@ -67,7 +71,7 @@ __host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
   pe_mpi_comm(pch->pe, &comm);
   cahn_stats_reduce(pch, phi, map, &stats, 0, comm);
 
-  phi->field_init_sum = klein_sum(&stats.sum);
+  phi->field_init_sum = stats.sum;
   MPI_Bcast(&phi->field_init_sum, 1, MPI_DOUBLE, 0, comm);
 
   return 0;
@@ -94,11 +98,11 @@ __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
   {
     double rvol = 1.0 / stats.vol;
 
-    double fbar = rvol*klein_sum(&stats.sum);    /* mean */
+    double fbar = rvol*stats.sum;                /* mean */
     double fvar = rvol*stats.var - fbar*fbar;    /* variance */
 
     pe_info(pch->pe, "[phi] %14.7e %14.7e%14.7e %14.7e%14.7e\n",
-	    klein_sum(&stats.sum), fbar, fvar, stats.min, stats.max);
+	    stats.sum, fbar, fvar, stats.min, stats.max);
   }
 
   return 0;
@@ -139,10 +143,17 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
 
   tdpAssert(tdpMalloc((void **) &stats_d, sizeof(phi_stats_t)));
 
-  tdpLaunchKernel(cahn_stats_sum_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, phi->target, pch->csum->target, map->target,
-		  stats_d);
-  tdpAssert(tdpPeekAtLastError());
+  if (pch->info.conserve) {
+    tdpLaunchKernel(cahn_stats_klein_sum_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, phi->target, pch->csum->target, map->target,
+		    stats_d);
+    tdpAssert(tdpPeekAtLastError());
+  }
+  else {
+    tdpLaunchKernel(cahn_stats_kahan_sum_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, phi->target, map->target, stats_d);
+    tdpAssert(tdpPeekAtLastError());
+  }
 
   tdpLaunchKernel(cahn_stats_var_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, map->target, stats_d);
@@ -167,10 +178,20 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
     MPI_Datatype dt = MPI_DATATYPE_NULL;
     MPI_Op op = MPI_OP_NULL;
 
-    klein_mpi_datatype(&dt);
-    klein_mpi_op_sum(&op);
+    if (pch->info.conserve) {
+      klein_mpi_datatype(&dt);
+      klein_mpi_op_sum(&op);
 
-    MPI_Reduce(&local.sum, &stats->sum, 1, dt, op, root, comm);
+      MPI_Reduce(&local.sum2, &stats->sum2, 1, dt, op, root, comm);
+      stats->sum = klein_sum(&stats->sum2);
+    }
+    else {
+      kahan_mpi_datatype(&dt);
+      kahan_mpi_op_sum(&op);
+
+      MPI_Reduce(&local.sum1, &stats->sum1, 1, dt, op, root, comm);
+      stats->sum = kahan_sum(&stats->sum1);
+    }
 
     MPI_Op_free(&op);
     MPI_Type_free(&dt);
@@ -189,16 +210,80 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
 
 /*****************************************************************************
  *
- *  cahn_stats_sum_kernel
+ *  cahn_stats_kahan_sum_kernel
+ *
+ *  Sum when no compensation in the time evolution is present.
+ *
+ *****************************************************************************/
+
+__global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+					    map_t * map, phi_stats_t * stats) {
+  int kindex;
+  int tid;
+  int kiterations;
+  __shared__ kahan_t phib[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(phi);
+
+  kiterations = kernel_iterations(ktx);
+
+  tid = threadIdx.x;
+
+  phib[tid].sum = 0.0;
+  phib[tid].cs  = 0.0;
+
+  stats->sum1 = kahan_zero();
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index;
+    int status = 0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = cs_index(phi->cs, ic, jc, kc);
+    map_status(map, index, &status);
+
+    if (status == MAP_FLUID) {
+      double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
+      kahan_add(&phib[tid], phi0);
+    }
+  }
+
+  __syncthreads();
+
+  if (tid == 0) {
+    kahan_t sum = kahan_zero();
+
+    for (int it = 0; it < blockDim.x; it++) {
+      kahan_add(&sum, phib[it].cs);
+      kahan_add(&sum, phib[it].sum);
+    }
+
+    /* Final result */
+    kahan_atomic_add(&stats->sum1, sum.cs);
+    kahan_atomic_add(&stats->sum1, sum.sum);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  cahn_stats_klein_sum_kernel
  *
  *  Compensated sum. We do care how the sum is computed
  *  (a conserved quantity).
  *
  *****************************************************************************/
 
-__global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
-				      field_t * csum, map_t * map,
-				      phi_stats_t * stats) {
+__global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
+					    field_t * csum, map_t * map,
+					    phi_stats_t * stats) {
   int kindex;
   int tid;
   __shared__ int kiterations;
@@ -215,8 +300,7 @@ __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
   phib[tid].cs  = 0.0;
   phib[tid].ccs = 0.0;
 
-  stats->sum = klein_zero();
-  stats->var = 0.0;
+  stats->sum2 = klein_zero();
   
   for_simt_parallel(kindex, kiterations, 1) {
 
@@ -235,7 +319,7 @@ __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
       double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
       double cmp  = csum->data[addr_rank1(csum->nsites, 1, index, 0)];
 
-      klein_add(&phib[tid], -cmp); /* minus here from Kahan sum */
+      klein_add(&phib[tid], cmp);
       klein_add(&phib[tid], phi0);
     }
   }
@@ -252,9 +336,9 @@ __global__ void cahn_stats_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
     }
 
     /* Final result */
-    klein_atomic_add(&stats->sum, sum.cs);
-    klein_atomic_add(&stats->sum, sum.ccs);
-    klein_atomic_add(&stats->sum, sum.sum);
+    klein_atomic_add(&stats->sum2, sum.cs);
+    klein_atomic_add(&stats->sum2, sum.ccs);
+    klein_atomic_add(&stats->sum2, sum.sum);
   }
 
   return;
