@@ -477,7 +477,7 @@ void ludwig_run(const char * inputfile) {
   }
   else {
     if (ludwig->phi) {
-	if (ludwig->pch && ludwig->pch->info.conserve) {
+	if (ludwig->pch) {
 	  cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
 	}
 	else {
@@ -890,7 +890,7 @@ void ludwig_run(const char * inputfile) {
 	  stats_field_info_bbl(ludwig->phi, ludwig->map, ludwig->bbl);
 	}
 	else {
-	  if (ludwig->pch && ludwig->pch->info.conserve) {
+	  if (ludwig->pch) {
 	    cahn_hilliard_stats(ludwig->pch, ludwig->phi, ludwig->map);
 	  }
 	  else {
