@@ -29,8 +29,13 @@
 #include "util_sum.h"
 #include "stats_distribution.h"
 
-__host__ int distribution_stats_momentum(lb_t * lb, map_t * map, double gm[3],
-					 int root, MPI_Comm comm);
+__host__ int stats_distribution_momentum_serial(lb_t * lb, map_t * map,
+						double g[3]);
+__host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
+					 MPI_Comm comm, double gm[3]);
+
+__global__ void distribution_gm_kernel(kernel_ctxt_t * ktxt, lb_t * lb,
+				       map_t * map, kahan_t * gm);
 
 
 /*****************************************************************************
@@ -110,11 +115,34 @@ int stats_distribution_print(lb_t * lb, map_t * map) {
  *
  *  stats_distribution_momentum
  *
+ *****************************************************************************/
+
+__host__ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
+
+  MPI_Comm comm = MPI_COMM_NULL;
+
+  assert(lb);
+  assert(map);
+  assert(g);
+
+  /* Reduce to rank 0 in pe comm for output. */
+
+  pe_mpi_comm(lb->pe, &comm);
+  distribution_stats_momentum(lb, map, 0, comm, g);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  stats_distribution_momentum_serial
+ *
  *  Returns the fluid momentum (always distribution 0).
+ *  Serial routine retained for reference only.
  *
  *****************************************************************************/
 
-int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
+int stats_distribution_momentum_serial(lb_t * lb, map_t * map, double g[3]) {
 
   int ic, jc, kc, index;
   int nlocal[3];
@@ -160,14 +188,13 @@ int stats_distribution_momentum(lb_t * lb, map_t * map, double g[3]) {
  *
  *  distribution_stats_momentum
  *
+ *  Return global total momentum gm[3] with compenstated sum.
+ *  This driver calls the kernel below.
+ *
  *****************************************************************************/
 
-__global__ void distribution_gm_kernel(kernel_ctxt_t * ktxt, lb_t * lb,
-				       map_t * map, kahan_t * gm);
-
-
-__host__ int distribution_stats_momentum(lb_t * lb, map_t * map, double gm[3],
-					 int root, MPI_Comm comm) {
+__host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
+					 MPI_Comm comm, double gm[3]) {
 
   assert(lb);
   assert(map);
@@ -199,10 +226,10 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, double gm[3],
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
 
-  /* Copy back local result*/
+  /* Copy back local result */
   tdpAssert(tdpMemcpy(sum, sum_d, 3*sizeof(kahan_t), tdpMemcpyDeviceToHost));
 
-  /* Reduction */
+  /* Reduction for global result */
 
   {
     MPI_Datatype dt = MPI_DATATYPE_NULL;
@@ -230,6 +257,9 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, double gm[3],
 /*****************************************************************************
  *
  *  distribution_gm_kernel
+ *
+ *
+ *  Kernel with compenstated sum.
  *
  *****************************************************************************/
 
