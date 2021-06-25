@@ -51,7 +51,6 @@ lc_activity no
 lc_q_initialisation cholesteric_z
 lc_q_init_amplitude 0.333333333333333
 lc_init_redshift 1.0
-lc_init_nematic 0.0_0.0_1.0
 
 lc_anchoring_method two
 lc_wall_anchoring normal
@@ -86,7 +85,6 @@ colloid_gravity 0.0_0.0_0.0
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################
