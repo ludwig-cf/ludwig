@@ -1039,6 +1039,7 @@ void ludwig_run(const char * inputfile) {
   physics_free(ludwig->phys);
   lees_edw_free(ludwig->le);
   cs_free(ludwig->cs);
+  rt_report_unused_keys(ludwig->rt, RT_INFO);
   rt_free(ludwig->rt);
   pe_free(ludwig->pe);
 
@@ -1498,6 +1499,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
       pe_info(pe, "\n");
       pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
     }
+
+    p = rt_switch(rt, "lc_noise");
+    if (p) pe_fatal(pe, "Not accepting noise in lc droplet until tested\n");
 
     grad_lc_anch_create(pe, cs, NULL, ludwig->phi, NULL, lc, NULL);
 

@@ -768,3 +768,30 @@ static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  rt_report_unused_keys
+ *
+ *****************************************************************************/
+
+int rt_report_unused_keys(rt_t * rt, rt_enum_t level) {
+
+  int n_unused = 0;
+
+  assert(rt);
+
+  {
+    key_pair_t * key = rt->keylist;
+
+    for (; key; key = key->next) {
+      if (key->is_active) n_unused += 1;
+      if (level == RT_INFO && key->is_active) {
+	pe_info(rt->pe, "Warning: key/value present in input but not used:\n");
+	pe_info(rt->pe, "(Line %d): %s\n", key->input_line_no, key->key);
+      }
+    }
+  }
+
+  return n_unused;
+}
