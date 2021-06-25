@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2020 The University of Edinburgh
+ *  (c) 2008-2021 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -26,7 +26,6 @@ enum {CVZBLOCK15 = 5};
 
 extern const    int cv[NVEL15][3];
 extern const double wv[NVEL15];
-extern const double q_[NVEL15][3][3];
 extern const double norm_[NVEL15];
 extern const double ma_[NVEL15][NVEL15];
 extern const double mi_[NVEL15][NVEL15];

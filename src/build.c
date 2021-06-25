@@ -942,6 +942,7 @@ static int build_replace_fluid(lb_t * lb, colloids_info_t * cinfo, int index,
  *  velocity of the colloid that has just vacated the site.
  *
  *  This has the advantage (cf interpolation) of being local.
+ *  [Test coverage?]
  *
  *****************************************************************************/
 
@@ -955,7 +956,9 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
   double gnew[3] = {0.0, 0.0, 0.0};
   double tnew[3] = {0.0, 0.0, 0.0};
 
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
+  KRONECKER_DELTA_CHAR(d_);
 
   assert(cinfo);
   assert(pc);
@@ -971,7 +974,7 @@ int build_replace_fluid_local(colloids_info_t * cinfo, colloid_t * pc,
     sdotq = 0.0;
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	sdotq += q_[p][ia][ib]*ub[ia]*ub[ib];
+	sdotq += (cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib])*ub[ia]*ub[ib];
       }
     }
 

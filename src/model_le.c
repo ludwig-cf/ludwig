@@ -32,6 +32,7 @@
 #include "lb_model_s.h"
 #include "physics.h"
 #include "leesedwards.h"
+#include "util.h"
 
 static int le_reproject(lb_t * lb, lees_edw_t * le);
 static int le_reproject_all(lb_t * lb, lees_edw_t * le);
@@ -122,7 +123,9 @@ static int le_reproject(lb_t * lb, lees_edw_t * le) {
   double t;
   physics_t * phys = NULL;
 
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
+  KRONECKER_DELTA_CHAR(d_);
   const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
 
   assert(lb);
@@ -187,7 +190,7 @@ static int le_reproject(lb_t * lb, lees_edw_t * le) {
 	      
 	      for (ia = 0; ia < 3; ia++) {
 		for (ib = 0; ib < 3; ib++) {
-		  sdotq += ds[ia][ib]*q_[p][ia][ib];
+		  sdotq += ds[ia][ib]*(cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib]);
 		}
 	      }
 
@@ -740,7 +743,9 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
   int nlocal[3];
   double rho0, u[NDIM], gradu[NDIM][NDIM];
   double eta;
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
+  KRONECKER_DELTA_CHAR(d_);
 
   physics_t * phys = NULL;
 
@@ -787,7 +792,8 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
 	  for (i = 0; i < NDIM; i++) {
 	    cdotu += cv[p][i]*u[i];
 	    for (j = 0; j < NDIM; j++) {
-	      sdotq += (rho0*u[i]*u[j] - eta*gradu[i][j])*q_[p][i][j];
+	      double q_ij = cv[p][i]*cv[p][j] - cs2*d_[i][j];
+	      sdotq += (rho0*u[i]*u[j] - eta*gradu[i][j])*q_ij;
 	    }
 	  }
 	  f = wv[p]*(rho0 + rcs2*rho0*cdotu + 0.5*rcs2*rcs2*sdotq);

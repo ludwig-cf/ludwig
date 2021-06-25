@@ -31,6 +31,7 @@
 #include "model.h"
 #include "lb_model_s.h"
 #include "io_harness.h"
+#include "util.h"
 
 static int lb_mpi_init(lb_t * lb);
 static int lb_set_types(int, MPI_Datatype *);
@@ -329,6 +330,8 @@ __host__ int lb_collide_param_commit(lb_t * lb) {
 static int lb_model_param_init(lb_t * lb) {
 
   int ia, ib, p;
+  LB_CS2_DOUBLE(cs2);
+  KRONECKER_DELTA_CHAR(d_);
 
   assert(lb);
   assert(lb->param);
@@ -343,7 +346,7 @@ static int lb_model_param_init(lb_t * lb) {
     }
     for (ia = 0; ia < 3; ia++) {
       for (ib = 0; ib < 3; ib++) {
-	lb->param->q[p][ia][ib] = q_[p][ia][ib];
+	lb->param->q[p][ia][ib] = cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib];
       }
     }
   }
@@ -1343,7 +1346,7 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
  *
  *  lb_2nd_moment
  *
- *  Return the (deviatoric) stress at index.
+ *  Return the (deviatoric) stress at index. [Test coverage?]
  *
  *****************************************************************************/
 
@@ -1351,6 +1354,8 @@ __host__
 int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
 
   int p, ia, ib;
+  LB_CS2_DOUBLE(cs2);
+  KRONECKER_DELTA_CHAR(d_);
 
   assert(lb);
   assert(nd == LB_RHO);
@@ -1366,7 +1371,7 @@ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
     for (ia = 0; ia < NDIM; ia++) {
       for (ib = 0; ib < NDIM; ib++) {
 	s[ia][ib] += lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, nd, p)]
-	  *q_[p][ia][ib];
+	  *(cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib]);
       }
     }
   }
@@ -1414,7 +1419,9 @@ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
   int ia, ib, p;
   double udotc;
   double sdotq;
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
+  KRONECKER_DELTA_CHAR(d_);
 
   assert(lb);
   assert(index >= 0 && index < lb->nsite);
@@ -1425,7 +1432,7 @@ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
     for (ia = 0; ia < 3; ia++) {
       udotc += u[ia]*cv[p][ia];
       for (ib = 0; ib < 3; ib++) {
-	sdotq += q_[p][ia][ib]*u[ia]*u[ib];
+	sdotq += (cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib])*u[ia]*u[ib];
       }
     }
 
