@@ -305,5 +305,5 @@ int test_rt_nvector(pe_t * pe) {
 
   rt_free(rt);
 
-  return 0;
+  return key_ret;
 }

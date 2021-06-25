@@ -78,7 +78,7 @@ int test_kahan_zero(pe_t * pe) {
   assert(k.sum  == 0.0);
   assert(k.cs   == 0.0);
 
-  return 0;
+  return k.lock;
 }
 
 /*****************************************************************************
@@ -119,7 +119,7 @@ int test_kahan_sum(pe_t * pe) {
     assert(fabs(kahan_sum(&k) - 3.0) < DBL_EPSILON);
   }
 
-  return 0;
+  return k.lock;
 }
 
 /*****************************************************************************
@@ -145,7 +145,7 @@ int test_kahan_add(pe_t * pe) {
   kahan_add(&k, -a);
   assert(kahan_sum(&k) == 0.0);
 
-  return 0;
+  return k.lock;
 }
 
 /*****************************************************************************
@@ -261,7 +261,7 @@ int test_klein_sum(pe_t * pe) {
     assert(fabs(klein_sum(&k) - 6.0) < DBL_EPSILON);
   }
 
-  return 0;
+  return k.lock;
 }
 
 /*****************************************************************************
