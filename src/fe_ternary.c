@@ -555,7 +555,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     double phi, phi2, dphi[3], dphi2;
     double psi, psi2, dpsi[3], dpsi2;
     double rho, rho2, drho[3], drho2;
-    double delsq[3];
+    double delsq[3],delsq_pair[2];
     double grad[2][3];
     double p0;
     double p1, p2, p3, p4, p5, p6;
@@ -596,8 +596,10 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
     dphi[Z] = grad[FE_PHI][Z]; dpsi[Z] = grad[FE_PSI][Z];
 
     drho[X] = 0.0; drho[Y] = 0.0; drho[Z] = 0.0;
+    delsq[FE_PHI] = delsq_pair[FE_PHI];
+    delsq[FE_PSI] = delsq_pair[FE_PSI];
     delsq[FE_RHO] = 0.0;
-
+    
     /* Construct the bulk isotropic term p0 (with 4 pieces) */
 
     p1 = (kappa1 + kappa2)*
@@ -664,7 +666,7 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
  *
  *****************************************************************************/
 
-int fe_ternary_str_v(fe_ternary_t * fe, int index, double s[3][3][NSIMDVL]) {
+__host__  int fe_ternary_str_v(fe_ternary_t * fe, int index, double s[3][3][NSIMDVL]) {
 
   int ia, ib;
   int iv;

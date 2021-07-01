@@ -197,7 +197,7 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
     double h1,h2;
 
     int status;
-    double wet[4] = {0.0, 0.0, 0.0, 0.0};
+    double wet[2] = {0.0, 0.0};
 
     field_t * phi = NULL;
 
@@ -265,14 +265,14 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				     kc + bs_cv[p][Z]);
 	    map_data(map, ia, wet);
-	    /* c1 = wet[0] = 0.0; */
-	    h1 = wet[1] = 0.002;
-	    /* c2 = wet[2] = 0.0; */
-	    h2 = wet[3] = -0.001;
+          
+        /* At the time use status_with_c_h and set h as h1, c as h2 through capillary.c file */
+         h1 = wet[1];
+         h2 = wet[0];
 
           //gradt[p] = -(c*phi_b + h)*rkappa;
          
-          if (nop == 0) {
+          if (n == 0) {
               gradt[p] =(-h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
           }
           else{
