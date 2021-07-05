@@ -375,7 +375,8 @@ __host__ int pe_time(char ** str) {
   *str = strdefault;
 
   if (now != (time_t) -1) {
-    char * c_time = ctime(&now);
+    char buf[BUFSIZ] = {};
+    char * c_time = ctime_r(&now, buf);
     if (c_time != NULL) {
       *str = c_time;
       ierr = 0;
