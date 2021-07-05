@@ -36,5 +36,6 @@ __host__ int pe_subdirectory_set(pe_t * pe, const char * name);
 __host__ int pe_info(pe_t * pe, const char * fmt, ...);
 __host__ int pe_fatal(pe_t * pe, const char * fmt, ...);
 __host__ int pe_verbose(pe_t * pe, const char * fmt, ...);
+__host__ int pe_time(char ** strctime);
 
 #endif

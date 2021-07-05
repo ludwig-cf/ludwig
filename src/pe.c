@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include "pe.h"
 #include "compiler.h"
@@ -128,7 +129,12 @@ __host__ int pe_free(pe_t * pe) {
 
   if (pe->nref <= 0) {
     MPI_Comm_free(&pe->comm);
-    if (pe->unquiet) pe_info(pe, "Ludwig finished normally.\n");
+    if (pe->unquiet) {
+      char * strctime = NULL;
+      pe_time(&strctime);
+      pe_info(pe, "End time: %s", strctime);
+      pe_info(pe, "Ludwig finished normally.\n");
+    }
     free(pe);
     pe = NULL;
   }
@@ -149,10 +155,16 @@ __host__ int pe_message(pe_t * pe) {
   assert(pe);
 
   pe_info(pe,
-       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n\n",
+       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
        LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
        (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
        (pe->mpi_size == 1) ? "" : "es");
+
+  {
+    char * strctime = NULL;
+    pe_time(&strctime);
+    pe_info(pe, "Start time: %s\n", strctime); /* Extra \n ! */
+  }
 
   if (pe->mpi_rank == 0) {
 
@@ -342,4 +354,33 @@ __host__ int pe_mpi_size(pe_t * pe) {
   assert(pe);
 
   return pe->mpi_size;
+}
+
+/*****************************************************************************
+ *
+ *  pe_time
+ *
+ *  Convenience to return pointer to standard time string.
+ *  Returns 0 on success.
+ *
+ *****************************************************************************/
+
+__host__ int pe_time(char ** str) {
+
+  static char * strdefault = "Unavailable\n";
+  time_t now = time(NULL);
+  int ierr = -1;
+
+  assert(str);
+  *str = strdefault;
+
+  if (now != (time_t) -1) {
+    char * c_time = ctime(&now);
+    if (c_time != NULL) {
+      *str = c_time;
+      ierr = 0;
+    }
+  }
+
+  return ierr;
 }
