@@ -303,11 +303,12 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
     jc = kernel_coords_jc(ktx, kindex);
     kc = kernel_coords_kc(ktx, kindex);
 
-    index = cs_index(lb->cs, ic, jc, kc);
+    index = kernel_coords_index(ktx, ic, jc, kc);
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
       for (int p = 1; p < NVEL; p++) {
+	LB_CV(cv);
 	double f = lb->f[LB_ADDR(lb->nsite,lb->ndist,NVEL,index,LB_RHO,p)];
 	double gxf = f*cv[p][X];
 	double gyf = f*cv[p][Y];
