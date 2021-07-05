@@ -29,6 +29,9 @@ enum {NDIM     = NDIM9,
       CVYBLOCK = CVYBLOCK9,
       CVZBLOCK = CVZBLOCK9};
 
+#define LB_CV(cv) LB_CV_D2Q9(cv)
+#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D2Q9(n)
+
 #endif
 
 #ifdef _D3Q15_
@@ -39,6 +42,9 @@ enum {NDIM     = NDIM15,
       CVXBLOCK = CVXBLOCK15,
       CVYBLOCK = CVYBLOCK15,
       CVZBLOCK = CVZBLOCK15};
+
+#define LB_CV(cv) LB_CV_D3Q15(cv)
+#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D3Q15(n)
 
 #endif
 
@@ -51,6 +57,9 @@ enum {NDIM     = NDIM19,
       CVXBLOCK = CVXBLOCK19,
       CVYBLOCK = CVYBLOCK19,
       CVZBLOCK = CVZBLOCK19};
+
+#define LB_CV(cv) LB_CV_D3Q19(cv)
+#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D3Q19(n)
 
 #endif
 

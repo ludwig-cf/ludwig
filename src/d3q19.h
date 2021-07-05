@@ -44,7 +44,16 @@ extern const int zblocklen_cv[CVZBLOCK19];
 extern const int zdisp_fwd_cv[CVZBLOCK19];
 extern const int zdisp_bwd_cv[CVZBLOCK19];
 
-#define LB_NORMALISERS_DOUBLE(norm) const double norm[NVEL19] = { \
+#define LB_CV_D3Q19(cv) const int8_t cv[NVEL19][3] = {                \
+                           { 0,  0,  0},                              \
+			   { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},  \
+			   { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},  \
+			   { 0,  1,  0}, { 0,  1, -1}, { 0,  0,  1},  \
+			   { 0,  0, -1}, { 0, -1,  1}, { 0, -1,  0},  \
+			   { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},  \
+			   {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
+
+#define LB_NORMALISERS_D3Q19(norm) const double norm[NVEL19] = { \
     1.0, \
     3.0, 3.0, 3.0, \
     9.0/2.0, 9.0, 9.0, 9.0/2.0, 9.0, 9.0/2.0, \
