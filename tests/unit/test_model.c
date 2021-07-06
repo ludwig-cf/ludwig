@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -137,6 +137,7 @@ static void test_model_velocity_set(void) {
   double dij;
   double sum, sumx, sumy, sumz;
 
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
   KRONECKER_DELTA_CHAR(d_);
 
@@ -220,23 +221,13 @@ static void test_model_velocity_set(void) {
   }
 
   /* info("Checking q_[p][i][j] = cv[p][i]*cv[p][j] - c_s^2*d_[i][j]...");*/
-
-  for (p = 0; p < NVEL; p++) {
-    for (i = 0; i < NDIM; i++) {
-      for (j = 0; j < NDIM; j++) {
-	sum = cv[p][i]*cv[p][j] - d_[i][j]/rcs2;
-	test_assert(fabs(sum - q_[p][i][j]) < TEST_DOUBLE_TOLERANCE);
-      }
-    }
-  }
-
   /* info("Checking wv[p]*q_[p][i][j]...");*/
 
   for (i = 0; i < NDIM; i++) {
     for (j = 0; j < NDIM; j++) {
       sum = 0.0;
       for (p = 0; p < NVEL; p++) {
-	sum += wv[p]*q_[p][i][j];
+	sum += wv[p]*(cv[p][i]*cv[p][j] - cs2*d_[i][j]);
       }
       test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);
     }
@@ -249,7 +240,7 @@ static void test_model_velocity_set(void) {
       for (k = 0; k < NDIM; k++) {
 	sum = 0.0;
 	for (p = 0; p < NVEL; p++) {
-	  sum += wv[p]*cv[p][i]*q_[p][j][k];
+	  sum += wv[p]*cv[p][i]*(cv[p][i]*cv[p][j] - cs2*d_[i][j]);
 	}
 	test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);
       }
@@ -263,7 +254,7 @@ static void test_model_velocity_set(void) {
     sum = 0.0;
     for (i = 0; i < NDIM; i++) {
       for (j = 0; j < NDIM; j++) {
-	sum += d_[i][j]*q_[p][i][j];
+	sum += d_[i][j]*(cv[p][i]*cv[p][j] - cs2*d_[i][j]);
       }
     }
     /* test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);*/
@@ -285,7 +276,8 @@ static void test_model_velocity_set(void) {
     k = 0;
     for (i = 0; i < NDIM; i++) {
       for (j = i; j < NDIM; j++) {
-	test_assert(fabs(ma_[1 + NDIM + k++][p] - q_[p][i][j])
+	double q_ij = cv[p][i]*cv[p][j] - cs2*d_[i][j];
+	test_assert(fabs(ma_[1 + NDIM + k++][p] - q_ij)
 		    < TEST_DOUBLE_TOLERANCE);
       }
     }

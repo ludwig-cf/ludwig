@@ -46,6 +46,9 @@ colloid_init: colloid_init.o
 extract_colloids: extract_colloids.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
+extract_squirmer_polymer: extract_squirmer_polymer.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
 capillary: capillary.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lm
 
@@ -62,8 +65,8 @@ multi_poly_init: multi_poly_init.o
 
 .PHONY : clean
 clean:
-	rm -f *.o colloid_init extract_colloids capillary extract coll_squ_subgrid_init multi_poly_init
-
+	rm -f *.o colloid_init extract_colloids capillary extract \
+	coll_squ_subgrid_init multi_poly_init
 
 .SUFFIXES:
 .SUFFIXES: .c .o

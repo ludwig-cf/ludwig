@@ -1355,6 +1355,7 @@ __host__ __device__ int wall_present_dim(wall_t * wall, int iswall[3]) {
  *  profile for the given top and bottom wall velocities.
  *
  *  This is only relevant for walls at z = 0 and z = L_z.
+ *  [Test coverage?]
  *
  *****************************************************************************/
 
@@ -1373,7 +1374,10 @@ __host__ int wall_shear_init(wall_t * wall) {
   double uxbottom;
   double uxtop;
   double ltot[3];
+
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
+  KRONECKER_DELTA_CHAR(d_);
 
   physics_t * phys = NULL;
 
@@ -1430,7 +1434,8 @@ __host__ int wall_shear_init(wall_t * wall) {
           for (ia = 0; ia < 3; ia++) {
             cdotu += cv[p][ia]*u[ia];
             for (ib = 0; ib < 3; ib++) {
-              sdotq += (rho*u[ia]*u[ib] - eta*gradu[ia][ib])*q_[p][ia][ib];
+              double q_ab = cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib];
+              sdotq += (rho*u[ia]*u[ib] - eta*gradu[ia][ib])*q_ab;
             }
           }
           f = wv[p]*rho*(1.0 + rcs2*cdotu + 0.5*rcs2*rcs2*sdotq);

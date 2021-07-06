@@ -18,9 +18,13 @@
 #include "pe.h"
 #include "runtime.h"
 #include "symmetric.h"
+#include "map.h" // field sum at the beginning
 
 int fe_symmetric_init_rt(pe_t * pe, rt_t * rt, fe_symm_t * fe);
 int fe_symmetric_phi_init_rt(pe_t * pe, rt_t * rt, fe_symm_t * fe,
 			     field_t * phi);
+
+//conservation phi correction
+int field_sum_phi_init_rt(field_t * field, map_t * map);
 
 #endif

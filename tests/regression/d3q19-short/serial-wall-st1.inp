@@ -54,7 +54,6 @@ colloid_init        none
 boundary_walls 1_1_1
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
-boundary_shear_init 0
 
 ###############################################################################
 #

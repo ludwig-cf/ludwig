@@ -35,7 +35,6 @@ free_energy symmetric_lb
 A -0.0625
 B 0.0625
 K 0.04
-C 0.0
 
 phi0 0.0
 phi_initialisation    spinodal
@@ -79,8 +78,8 @@ soft_sphere_cutoff 0.25
 #
 ###############################################################################
 
-boundary_walls_on no
-periodicity 1_1_1
+boundary_walls  0_0_0
+periodicity     1_1_1
 
 ###############################################################################
 #

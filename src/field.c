@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -76,8 +76,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
   assert(obj->name);
   if (obj->name == NULL) pe_fatal(pe, "calloc(name) failed\n");
 
-  assert(strlen(name) < BUFSIZ);
-  strncpy(obj->name, name, strlen(name));
+  strncpy(obj->name, name, imin(strlen(name), BUFSIZ));
   obj->name[strlen(name)] = '\0';
 
   obj->pe = pe;

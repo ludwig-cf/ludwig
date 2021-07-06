@@ -22,6 +22,7 @@ LOGS    = ${SOURCES:.inp=.new}
 test:
 	$(MAKE) -s clean
 	$(MAKE) -s logs
+	@echo End of tests.
 
 logs:	$(LOGS)
 
@@ -37,7 +38,7 @@ serial-rest-c02.new:	serial-rest-c01.new
 serial-poly-st1.new: serial-poly-st1.pre
 
 serial-poly-st1.pre:
-	../../../util/multi_poly_init
+	${SER} ${PAR} ../../../util/multi_poly_init
 
 clean:
 	rm -f *new test-diff* *meta *001-001

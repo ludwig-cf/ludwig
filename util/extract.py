@@ -15,6 +15,8 @@
 #    -q    Q-tensor order parameter
 #    -e    psi
 #    -f    free energy density
+#    -s    squirmer/polymer output
+#    -t    squirmer/polymer/velocity output
 #    -y    colloid output
 #    -z    colloid velocity output
 #                                                                      #
@@ -40,6 +42,9 @@ nint=1000	# Increment
 nend=10000	# End timestep
 ngroup=1	# Number of output groups
 
+a0_squ  = None  # the radius of squirmer
+a0_poly = None  # the radius of monomer 
+
 vel=False	# Switch for velocity 
 q=False		# Switch for Q-tensor
 phi=False	# Switch for binary fluid
@@ -47,6 +52,9 @@ psi=False	# Switch for electrokinetics
 fed=False	# Switch for free energy
 colcds=False	# Switch for colloid coordinate
 colcdsvel=False	# Switch for colloid coordinate and lattice velocity
+
+squ_poly_cds = False     # Squirmer, polymer co-ordinate
+squ_poly_cdsvel = False  # Squirmer, polymer co-ordinate; velocity 
 
 opts, args = getopt.getopt(sys.argv[1:], "vqpefyz")
 for opt, arg in opts:
@@ -60,6 +68,10 @@ for opt, arg in opts:
 		psi = True
 	elif (opt == "f"):
 		fed = True
+        elif (opt == "s"):
+		squ_poly_cds = True
+	elif (opt == "t"):
+		squ_poly_cdsvel = True
 	elif (opt == "y"):
 		colcds = True
 	elif (opt == "z"):
@@ -113,6 +125,13 @@ if (colcds==1) or (colcdsvel==1):
 	for i in range(nstart,nend+nint,nint):
 		os.system('ls -t1 config.cds%08.0d.001-001 >> filelist_colloid' % i)
 
+if (squ_poly_cds==1) or (squ_poly_cdsvel==1):
+        metafile.append('')
+        filelist.append('filelist_squ_poly')
+        os.system('rm filelist_squ_poly')
+        for i in range(nstart,nend+nint,nint):
+                os.system('ls -t1 config.cds%08.0d.001-001 >> filelist_squ_poly' % (i))
+
 # Create vtk-files
 for i in range(len(filelist)):
 	if filelist[i] == 'filelist_vel' or filelist[i] == 'filelist_phi':
@@ -161,6 +180,29 @@ for i in range(len(filelist)):
 				os.system('./extract_colloids %s %d %s' % (datafilename,ngroup,outputfilename1))
 			if colcdsvel:
 				os.system('./extract_colloids %s %d %s %s' % (datafilename,ngroup,outputfilename1,outputfilename2))	
+
+
+        if filelist[i] == 'filelist_squ_poly':
+                datafiles=open(filelist[i],'r') 
+
+                while 1:
+                        line=datafiles.readline()
+                        if not line: break
+
+                        print(('\n# Processing %s' % line))
+
+                        stub=line.split('.',2)
+                        datafilename = ('%s.%s' % (stub[0], stub[1]))
+                        outputfilename1 = ('squ-%s.csv' % stub[1])
+                        outputfilename2 = ('poly-%s.csv' % stub[1])
+                        outputfilename3 = ('velsqu-%s.vtk' % stub[1])
+
+                        if squ_poly_cds==1:
+                                os.system('./extract_squirmer_polymer %s %d %s %s %f %f' % (datafilename,ngroup,outputfilename1,outputfilename2,a0_squ,a0_poly))
+                        if squ_poly_cdsvel==1:
+                                os.system('./extract_squirmer_polymer %s %d %s %s %f %f %s' % (datafilename,ngroup,outputfilename1,outputfilename2,a0_squ,a0_poly,outputfilename3))
+
+
 
 os.system('rm filelist*')
 

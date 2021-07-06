@@ -40,7 +40,6 @@ free_energy none
 
 colloid_init        input_random
 
-colloid_type        inactive
 colloid_random_no   1
 colloid_random_a0   2.3
 colloid_random_ah   2.3

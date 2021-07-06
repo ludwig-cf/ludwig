@@ -134,7 +134,7 @@ static int do_test1(pe_t * pe, cs_t * cs, physics_t * phys) {
 
   /* For psi > 0 we add \sum rho 0.5 Z psi */
 
-  psi0 = 2.0;
+  psi0 = 0.5;
   fed0 += rho0*0.5*valency[0]*psi0;
   fed1 += rho1*0.5*valency[1]*psi0;
 

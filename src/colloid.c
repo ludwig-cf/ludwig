@@ -9,7 +9,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -61,6 +61,9 @@ int colloid_state_read_ascii(colloid_state_t * ps, FILE * fp) {
   for (n = 0; n < 3; n++) {
     nread += fscanf(fp, isformat, ps->isfixedvxyz + n);
   }
+
+  nread += fscanf(fp, isformat, &ps->inter_type);
+
   for (n = 0; n < NPAD_INT; n++) {
     nread += fscanf(fp, isformat, &ps->intpad[n]);
   }
@@ -175,6 +178,8 @@ int colloid_state_write_ascii(const colloid_state_t * s, FILE * fp) {
   for (n = 0; n < 3; n++) {
     nwrite += fprintf(fp, isformat, s->isfixedvxyz[n]);
   }
+
+  nwrite += fprintf(fp, isformat, s->inter_type);
 
   for (n = 0; n < NPAD_INT; n++) {
     nwrite += fprintf(fp, isformat, s->intpad[n]);

@@ -7,18 +7,24 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2011-2021 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
 #include "pe.h"
 #include "runtime.h"
 #include "tests.h"
+
+int test_rt_general(pe_t * pe);
+int test_rt_nvector(pe_t * pe);
 
 /*****************************************************************************
  *
@@ -28,6 +34,27 @@
 
 int test_rt_suite(void) {
 
+  pe_t * pe = NULL;
+
+  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+
+  test_rt_general(pe);
+  test_rt_nvector(pe);
+
+  pe_info(pe, "PASS     ./unit/test_runtime\n");
+  pe_free(pe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_rt_general
+ *
+ *****************************************************************************/
+
+int test_rt_general(pe_t * pe) {
+
   int    n;
   int    ivalue;
   int    ivector[3];
@@ -35,10 +62,10 @@ int test_rt_suite(void) {
   double dvector[3];
   char   string[256];
 
-  pe_t * pe = NULL;
   rt_t * rt = NULL;
 
-  pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
+  assert(pe);
+
   rt_create(pe, &rt);
   rt_read_input_file(rt, "test_runtime_input1");
 
@@ -225,9 +252,58 @@ int test_rt_suite(void) {
   /* info("yes\n");*/
 
   rt_free(rt);
-  pe_info(pe, "PASS     ./unit/test_runtime\n");
-  pe_free(pe);
 
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  test_rt_nvector
+ *
+ *****************************************************************************/
+
+int test_rt_nvector(pe_t * pe) {
+
+  int key_ret = 0;
+  rt_t * rt = NULL;
+
+  rt_create(pe, &rt);
+  rt_add_key_value(rt, "ki2", "1_2");
+  rt_add_key_value(rt, "kd4", "1.0_2.0_3.0_4.0");
+  rt_add_key_value(rt, "bad_val", "1_x");
+
+  {
+    int i2[2] = {};
+    key_ret = rt_int_nvector(rt, "ki2", 2, i2, RT_NONE);
+    assert(key_ret == 0);
+    assert(i2[0] == 1);
+    assert(i2[1] == 2);
+  }
+
+  {
+    int i3[3] = {};
+    key_ret = rt_int_nvector(rt, "ki2", 3, i3, RT_NONE); /* Wrong length */
+    assert(key_ret != 0);
+  }
+
+  {
+    double v4[4] = {};
+    key_ret = rt_double_nvector(rt, "kd4", 4, v4, RT_NONE);
+    assert(key_ret == 0);
+    assert(fabs(v4[0] - 1.0) < DBL_EPSILON);
+    assert(fabs(v4[1] - 2.0) < DBL_EPSILON);
+    assert(fabs(v4[2] - 3.0) < DBL_EPSILON);
+    assert(fabs(v4[3] - 4.0) < DBL_EPSILON);
+  }
+
+  {
+    int i2[2] = {};
+
+    key_ret = rt_int_nvector(rt, "bad_val", 2, i2, RT_NONE); /* bad value */
+    assert(key_ret != 0);
+  }
+
+  rt_free(rt);
+
+  return key_ret;
+}

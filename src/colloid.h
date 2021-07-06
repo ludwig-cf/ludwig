@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,9 +29,8 @@ typedef enum colloid_io_version colloid_io_version_t;
  * useful to know to check the ASCII read/write. */
 
 #define NTOT_VAR (32+48)
-#define NPAD_INT  14
+#define NPAD_INT  13
 #define NPAD_DBL  15
-
 #define NBOND_MAX  2
 
 enum colloid_type_enum {COLLOID_TYPE_DEFAULT = 0,
@@ -61,6 +60,8 @@ struct colloid_state_type {
 
   int isfixedrxyz[3];   /* Position update in specific coordinate directions */
   int isfixedvxyz[3];   /* Velocity update in specific coordinate directions */
+
+  int inter_type;         /* Interaction type of a particle */
 
   /* New integer additions can be immediately before the padding */
   /* This should allow existing binary files to be read correctly */
