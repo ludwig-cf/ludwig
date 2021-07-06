@@ -68,7 +68,6 @@ lc_q_init_amplitude 0.0001
 lc_q_initialisation random
 lc_init_redshift 1.0
 lc_redshift_update 0
-lc_init_nematic 1.0_0.0_0.0
 
 lc_anchoring_method two
 lc_wall_anchoring normal

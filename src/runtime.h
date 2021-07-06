@@ -40,5 +40,6 @@ int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v, rt_enum_t lv);
 int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v,
 		      rt_enum_t level);
 int rt_key_required(rt_t * rt, const char * key, rt_enum_t level);
+int rt_report_unused_keys(rt_t * rt, rt_enum_t level);
 
 #endif

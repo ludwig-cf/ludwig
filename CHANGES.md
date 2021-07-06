@@ -1,6 +1,9 @@
 
 ### Changes
 
+- Add report on compiler and start/end times.
+- Add report on key/value pairs which appear in input but are not used
+  at end of execution.
 - Added compensated sums for binary order parameter sum statistic to
   improve robustness of result to round-off. Additional compensation
   in time evolution for Cahn-Hilliard update.

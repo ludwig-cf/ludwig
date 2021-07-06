@@ -1,9 +1,12 @@
-Welcome to Ludwig v0.9.2 (Serial version running on 1 process)
+Welcome to Ludwig v0.12.0 (Serial version running on 1 process)
+
+Compiler:
+  name:           Gnu 8.3.0
+  version-string: 8.3.0
 
 Note assertions via standard C assert() are on.
 
-Target thread model: OpenMP.
-OpenMP threads: 1; maximum number of threads: 8.
+Target thread model: None.
 
 Read 25 user parameters from serial-symm-dr2.inp
 
@@ -93,8 +96,8 @@ Scalars - total mean variance min max
 [phi]  2.2740611e+05  8.6748547e-01 2.1958671e-01 -1.0000000e+00 1.0000000e+00
 
 Momentum - x y z
-[total   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
-[fluid   ]  3.6379788e-12  0.0000000e+00  0.0000000e+00
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
 
@@ -106,8 +109,8 @@ Free energy density - timestep total fluid
 [fed]              1 -1.5106187854e-03 -1.5106187854e-03
 
 Momentum - x y z
-[total   ]  2.4941299e-12 -5.4746832e-13 -1.8735014e-16
-[fluid   ]  2.4941299e-12 -5.4746832e-13 -1.8735014e-16
+[total   ]  2.5214553e-12  1.1865509e-15 -1.3877788e-16
+[fluid   ]  2.5214553e-12  1.1865509e-15 -1.3877788e-16
 
 Velocity - x y z
 [minimum ] -2.6551925e-04 -2.6551925e-04 -2.6551925e-04
@@ -115,24 +118,24 @@ Velocity - x y z
 
 Completed cycle 1
 
-Timer resolution: 0.01 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      1.063      1.063      1.063   1.063382 (1 call)
-      Time step loop:      0.661      0.661      0.661   0.661296 (1 call)
-         Propagation:      0.076      0.076      0.076   0.076102 (1 call)
-    Propagtn (krnl) :      0.076      0.076      0.076   0.076092 (1 call)
-           Collision:      0.180      0.180      0.180   0.179928 (1 call)
-   Collision (krnl) :      0.180      0.180      0.180   0.179888 (1 call)
-       Lattice halos:      0.014      0.014      0.014   0.013505 (1 call)
-       phi gradients:      0.116      0.116      0.116   0.116047 (1 call)
-           phi halos:      0.002      0.002      0.002   0.002223 (1 call)
+               Total:      1.088      1.088      1.088   1.088417 (1 call)
+      Time step loop:      0.641      0.641      0.641   0.640836 (1 call)
+         Propagation:      0.072      0.072      0.072   0.072396 (1 call)
+    Propagtn (krnl) :      0.072      0.072      0.072   0.072379 (1 call)
+           Collision:      0.158      0.158      0.158   0.158119 (1 call)
+   Collision (krnl) :      0.158      0.158      0.158   0.158055 (1 call)
+       Lattice halos:      0.012      0.012      0.012   0.012181 (1 call)
+       phi gradients:      0.118      0.118      0.118   0.118067 (1 call)
+           phi halos:      0.002      0.002      0.002   0.002039 (1 call)
                  BBL:      0.000      0.000      0.000   0.000008 (1 call)
-   Force calculation:      0.150      0.150      0.150   0.149538 (1 call)
-   Phi force (krnl) :      0.113      0.113      0.113   0.112911 (1 call)
-          phi update:      0.103      0.103      0.103   0.102765 (1 call)
-     Advectn (krnl) :      0.050      0.050      0.050   0.049907 (1 call)
- Advectn BCS (krnl) :      0.013      0.013      0.013   0.013246 (1 call)
-               Free1:      0.147      0.147      0.147   0.146863 (1 call)
+   Force calculation:      0.145      0.145      0.145   0.145046 (1 call)
+   Phi force (krnl) :      0.112      0.112      0.112   0.111542 (1 call)
+          phi update:      0.111      0.111      0.111   0.111477 (1 call)
+     Advectn (krnl) :      0.049      0.049      0.049   0.048798 (1 call)
+ Advectn BCS (krnl) :      0.014      0.014      0.014   0.013544 (1 call)
+               Free1:      0.166      0.166      0.166   0.166269 (1 call)
 Ludwig finished normally.

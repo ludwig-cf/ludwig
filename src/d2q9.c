@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -70,6 +70,8 @@ const int cv[NVEL9][3] = {{ 0,  0,  0},
 			  { 0, -1,  0}, {-1,  1,  0},
 			  {-1,  0,  0}, {-1, -1,  0}};
 
+/* Prefer to compute c_ia c_ib - cs2*d_ab. So remove global symbol. */
+/*
 const double q_[NVEL9][3][3] = {
   {{-1.0/3.0, 0.0, 0.0}, { 0.0,-1.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
   {{ 2.0/3.0, 1.0, 0.0}, { 1.0, 2.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
@@ -80,6 +82,7 @@ const double q_[NVEL9][3][3] = {
   {{ 2.0/3.0,-1.0, 0.0}, {-1.0, 2.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
   {{ 2.0/3.0, 0.0, 0.0}, { 0.0,-1.0/3.0, 0.0}, { 0.0, 0.0, 0.0}},
   {{ 2.0/3.0, 1.0, 0.0}, { 1.0, 2.0/3.0, 0.0}, { 0.0, 0.0, 0.0}}};
+*/
 
 #define w0 (16.0/36.0)
 #define w1  (4.0/36.0)

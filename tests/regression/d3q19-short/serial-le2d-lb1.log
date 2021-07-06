@@ -1,9 +1,15 @@
-Welcome to Ludwig v0.7.32 (Serial version running on 1 process)
+Welcome to Ludwig v0.12.0 (Serial version running on 1 process)
 
-The SVN revision details are: 3209M
+Compiler:
+  name:           Gnu 8.3.0
+  version-string: 8.3.0
+
 Note assertions via standard C assert() are on.
 
-Read 35 user parameters from serial-le2d-lb1.inp
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 8.
+
+Read 23 user parameters from serial-le2d-lb1.inp
 
 System details
 --------------
@@ -75,7 +81,7 @@ Hydrodynamics: on
 
 Order parameter I/O
 -------------------
-Order parameter I/O format:   BINARY
+Order parameter I/O format:   
 I/O decomposition:            1 1 1
 Initialising phi for spinodal
 Initialising shear profile
@@ -87,8 +93,8 @@ Scalars - total mean variance min max
 [phi] -1.1802440e-02 -2.8814551e-06 8.2680383e-04 -4.9977721e-02 4.9988335e-02
 
 Momentum - x y z
-[total   ]  1.5099033e-14 -3.3306691e-16  0.0000000e+00
-[fluid   ]  1.5099033e-14 -3.3306691e-16  0.0000000e+00
+[total   ]  3.1225023e-17  0.0000000e+00  0.0000000e+00
+[fluid   ]  3.1225023e-17  0.0000000e+00  0.0000000e+00
 
 Starting time step loop.
 
@@ -100,8 +106,8 @@ Free energy density - timestep total fluid
 [fed]            200 -8.8708717596e-05 -8.8708717596e-05
 
 Momentum - x y z
-[total   ]  1.7593565e-14  1.0263754e-03  0.0000000e+00
-[fluid   ]  1.7593565e-14  1.0263754e-03  0.0000000e+00
+[total   ]  1.7989082e-14  1.0263754e-03  0.0000000e+00
+[fluid   ]  1.7989082e-14  1.0263754e-03  0.0000000e+00
 
 Velocity - x y z
 [minimum ] -6.8035452e-04 -2.4492205e-02  0.0000000e+00
@@ -109,20 +115,20 @@ Velocity - x y z
 
 Completed cycle 200
 
-Timer resolution: 0.01 second
+Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      6.004      6.004      6.004   6.003920 (1 call)
-      Time step loop:      0.028      0.036      5.990   0.029949 (200 calls)
-         Propagation:      0.005      0.008      1.193   0.005964 (200 calls)
-    Propagtn (krnl) :      0.005      0.008      1.192   0.005960 (200 calls)
-           Collision:      0.013      0.015      2.829   0.014146 (200 calls)
-   Collision (krnl) :      0.013      0.015      2.828   0.014141 (200 calls)
-       Lattice halos:      0.005      0.010      1.292   0.006461 (200 calls)
-       phi gradients:      0.002      0.003      0.545   0.002723 (200 calls)
-           phi halos:      0.000      0.000      0.047   0.000234 (200 calls)
-     Lees Edwards BC:      0.000      0.000      0.070   0.000350 (200 calls)
+               Total:      5.797      5.797      5.797   5.796828 (1 call)
+      Time step loop:      0.028      0.031      5.782   0.028910 (200 calls)
+         Propagation:      0.006      0.007      1.210   0.006049 (200 calls)
+    Propagtn (krnl) :      0.006      0.007      1.209   0.006045 (200 calls)
+           Collision:      0.013      0.015      2.673   0.013367 (200 calls)
+   Collision (krnl) :      0.013      0.015      2.672   0.013362 (200 calls)
+       Lattice halos:      0.005      0.008      1.222   0.006110 (200 calls)
+       phi gradients:      0.003      0.003      0.548   0.002740 (200 calls)
+           phi halos:      0.000      0.000      0.042   0.000212 (200 calls)
+     Lees Edwards BC:      0.000      0.000      0.068   0.000340 (200 calls)
                  BBL:      0.000      0.000      0.000   0.000001 (200 calls)
                Free1:      0.000      0.003      0.003   0.000017 (200 calls)
 Ludwig finished normally.

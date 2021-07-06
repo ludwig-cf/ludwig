@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2018 The University of Edinburgh
+ *  (c) 2008-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -82,6 +82,8 @@ const int cv[NVEL19][3] = {{ 0,  0,  0},
 			   { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},
 			   {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
 
+/* Prefer to compute c_ia c_ib - cs2 d_ab. So remove global symbol. */
+/*
 const  double q_[NVEL19][3][3] = {
   {{-1.0/3.0, 0.0, 0.0},{ 0.0,-1.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}},
   {{ 2.0/3.0, 1.0, 0.0},{ 1.0, 2.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}},
@@ -102,7 +104,7 @@ const  double q_[NVEL19][3][3] = {
   {{ 2.0/3.0, 0.0, 0.0},{ 0.0,-1.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}},
   {{ 2.0/3.0, 0.0, 1.0},{ 0.0,-1.0/3.0, 0.0},{ 1.0, 0.0, 2.0/3.0}},
   {{ 2.0/3.0, 1.0, 0.0},{ 1.0, 2.0/3.0, 0.0},{ 0.0, 0.0,-1.0/3.0}}};
-
+*/
 
 const double chi1[NVEL19] = {0.0, -2.0,  1.0,  1.0, 
                                    1.0, -2.0,  1.0, 

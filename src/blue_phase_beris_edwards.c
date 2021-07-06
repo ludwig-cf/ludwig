@@ -325,7 +325,7 @@ __host__ int beris_edw_update_host(beris_edw_t * be, fe_t * fe, field_t * fq,
   double gamma;
 
   double chi[NQAB], chi_qab[3][3];
-  double tmatrix[3][3][NQAB];
+  double tmatrix[3][3][NQAB] = {};
   double var = 0.0;
 
   const double dt = 1.0;

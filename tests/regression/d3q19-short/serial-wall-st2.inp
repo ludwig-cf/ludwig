@@ -63,7 +63,6 @@ colloid_gravity  -0.001_0.0_0.0
 boundary_walls 1_1_1
 boundary_speed_bottom 0.0
 boundary_speed_top    0.0
-boundary_shear_init 0
 
 boundary_lubrication_rcnormal 0.0
 

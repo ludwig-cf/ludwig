@@ -54,7 +54,6 @@ colloid_init        no_colloids
 #
 ###############################################################################
 
-boundary_walls_on yes
 periodicity       1_0_0
 boundary_walls    0_1_1
 

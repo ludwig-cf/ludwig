@@ -1227,6 +1227,10 @@ __host__ int lb_collision_relaxation_times_set(lb_t * lb) {
     rtau = 0.5 + 2.0*tau/(tau + 3.0/8.0);
     if (rtau > 2.0) rtau = 2.0;
 
+    if (NVEL == 9) {
+      pe_fatal(lb->pe, "TRT not available for d2q9\n");
+    }
+
     if (NVEL == 15) {
       lb->param->rtau[10] = rtau_shear;
       lb->param->rtau[11] = rtau;

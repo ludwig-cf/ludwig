@@ -634,8 +634,7 @@ __device__ int tdpAtomicAddInt(int * sum, int val) {
   assert(sum);
 
 #ifdef _OPENMP
-  /* Some compilers dislike capture: use #pragma omp critical(atomicAddInt) */
-  #pragma omp atomic capture
+  #pragma omp critical(atomicAddInt)
   {
     old = *sum;
     *sum += val;
@@ -690,7 +689,7 @@ __device__ int tdpAtomicMinInt(int * minval, int val) {
   assert(minval);
 
 #ifdef _OPENMP
-  #pragma omp critical (atomicMinInt)
+  #pragma omp critical (tdpAtomicMinInt)
   {
     old = *minval;
     *minval = int_min(*minval, val);
@@ -716,8 +715,8 @@ __device__ double tdpAtomicAddDouble(double * sum, double val) {
   assert(sum);
 
 #ifdef _OPENMP
-  /* Some compilers dislike capture: use #pragma omp critical(atomicAddD) */
-  #pragma omp atomic capture
+  /* Could use "omp capture" here, but not entirely portable without warning */
+  #pragma omp critical(tdpAtomicAddDouble)
   {
     old = *sum;
     *sum += val;

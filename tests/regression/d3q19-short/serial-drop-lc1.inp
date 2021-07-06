@@ -28,7 +28,6 @@ viscosity 0.1
 viscosity_bulk 0.1
 
 distribution_initialisation   1d_poiseuille
-distribution_uniform_u        0.0_0.0_0.0
 distribution_poiseuille_umax  0.0_0.0_0.0
 
 ##############################################################################
@@ -52,11 +51,9 @@ fd_force_divergence 1
 A -0.0625
 B 0.0625
 K 0.053
-C 0.0
 
 mobility 0.05
 
-noise 0.05
 phi0 0.8
 phi_initialisation    drop
 phi_init_drop_radius 9.2
@@ -82,7 +79,6 @@ lc_q_initialisation cholesteric_z
 lc_q_init_amplitude 0.333333333
 lc_init_redshift 1
 lc_redshift_update 0
-lc_init_nematic 1.0_0.0_0.0
 
 ###############################################################################
 #
