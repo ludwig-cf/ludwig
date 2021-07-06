@@ -5,8 +5,11 @@
  *****************************************************************************/
 
 #include <assert.h>
+#include <float.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "mpi.h"
 
 static MPI_Comm comm_ = MPI_COMM_WORLD;
@@ -15,6 +18,9 @@ static int test_mpi_comm_size(void);
 static int test_mpi_allreduce(void);
 static int test_mpi_reduce(void);
 static int test_mpi_allgather(void);
+static int test_mpi_type_contiguous(void);
+static int test_mpi_type_create_struct(void);
+static int test_mpi_op_create(void);
 
 int main (int argc, char ** argv) {
 
@@ -30,6 +36,10 @@ int main (int argc, char ** argv) {
   ireturn = test_mpi_allreduce();
   ireturn = test_mpi_reduce();
   ireturn = test_mpi_allgather();
+
+  test_mpi_type_contiguous();
+  test_mpi_type_create_struct();
+  test_mpi_op_create();
 
   ireturn = MPI_Finalize();
   assert(ireturn == MPI_SUCCESS);
@@ -182,4 +192,146 @@ int test_mpi_allgather(void) {
   assert(ireturn == MPI_SUCCESS);
 
   return ireturn;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_type_contiguous
+ *
+ *****************************************************************************/
+
+int test_mpi_type_contiguous(void) {
+
+  MPI_Datatype dt = MPI_DATATYPE_NULL;
+
+  MPI_Type_contiguous(2, MPI_INT, &dt);
+  MPI_Type_commit(&dt);
+  assert(dt != MPI_DATATYPE_NULL);
+
+  {
+    MPI_Aint lb = -1;
+    MPI_Aint extent = -1;
+
+    MPI_Type_get_extent(dt, &lb, &extent);
+    assert(lb == 0);
+    assert(extent == 2*sizeof(int));
+  }
+
+
+  {
+    /* MPI_Reduce(); something with a copy */
+    int send[2] = {1, 2};
+    int recv[2] = {0, 0};
+
+    MPI_Reduce(send, recv, 1, dt, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    assert(send[0] == 1 && send[1] == 2);
+    assert(recv[0] == 1 && recv[1] == 2);
+  }
+
+  MPI_Type_free(&dt);
+  assert(dt == MPI_DATATYPE_NULL);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_type_create_struct
+ *
+ *****************************************************************************/
+
+int test_mpi_type_create_struct(void) {
+
+  typedef struct test_s test_t;
+  struct test_s {
+    int a;
+    double b;
+  };
+
+  MPI_Datatype dt = MPI_DATATYPE_NULL;
+
+  {
+    /* Commit */
+    test_t data = {};
+    int count = 2;
+    int blocklengths[2] = {1, 1};
+    MPI_Aint displacements[3] = {};
+    MPI_Datatype datatypes[2] = {MPI_INT, MPI_DOUBLE};
+
+    MPI_Get_address(&data,   displacements + 0);
+    MPI_Get_address(&data.a, displacements + 1);
+    MPI_Get_address(&data.b, displacements + 2);
+    displacements[1] -= displacements[0];
+    displacements[2] -= displacements[0];
+
+    MPI_Type_create_struct(count, blocklengths, displacements + 1, datatypes,
+			 &dt);
+    MPI_Type_commit(&dt);
+    assert(dt != MPI_DATATYPE_NULL);
+  }
+
+  {
+    /* Extent */
+    MPI_Aint lb = -1;
+    MPI_Aint extent = -1;
+
+    MPI_Type_get_extent(dt, &lb, &extent);
+    assert(lb == 0);
+    assert(extent == sizeof(test_t));
+  }
+
+  {
+    /* Check can copy */
+    test_t send = {.a = 1, .b = 2.0};
+    test_t recv = {.a = 0, .b = 0.0};
+
+    MPI_Reduce(&send, &recv, 1, dt, MPI_SUM, 0, MPI_COMM_WORLD);
+    assert(send.a == recv.a);
+    assert(fabs(send.b - recv.b) < DBL_EPSILON);
+  }
+
+  MPI_Type_free(&dt);
+  assert(dt == MPI_DATATYPE_NULL);
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
+ *  test_mpi_op_create
+ *
+ *****************************************************************************/
+
+void test_op_create_function(void * invec, void * inoutvec, int * len,
+			     MPI_Datatype * dt) {
+
+  assert(invec);
+  assert(inoutvec);
+  assert(len);
+  assert(dt);
+
+  return;
+}
+
+static int test_mpi_op_create(void) {
+
+  MPI_Op op = MPI_OP_NULL;
+
+  MPI_Op_create((MPI_User_function *) test_op_create_function, 0, &op);
+  assert(op != MPI_OP_NULL);
+
+  {
+    /* Smoke test */
+    int send = 1;
+    int recv = 0;
+
+    MPI_Reduce(&send, &recv, 1, MPI_INT, op, 0, MPI_COMM_WORLD);
+    assert(recv == send);
+  }
+
+  MPI_Op_free(&op);
+  assert(op == MPI_OP_NULL);
+
+  return MPI_SUCCESS;
 }

@@ -20,6 +20,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 /* Datatypes */
 
 typedef int MPI_Handle;
@@ -35,7 +37,7 @@ typedef struct {
   int MPI_TAG;
 } MPI_Status;
 
-typedef MPI_Handle MPI_Aint;
+typedef uintptr_t MPI_Aint;
 
 /* Defined constants (see Annex A.2) */
 
@@ -55,19 +57,19 @@ enum return_codes {MPI_SUCCESS};
 
 enum error_specifiers {MPI_ERRORS_ARE_FATAL, MPI_ERRORS_RETURN};
 
-enum elementary_datatypes {MPI_CHAR,
-			   MPI_SHORT,
-			   MPI_INT,
-			   MPI_LONG,
-			   MPI_UNSIGNED_CHAR,
-			   MPI_UNSIGNED_SHORT,
-			   MPI_UNSIGNED,
-			   MPI_UNSIGNED_LONG,
-			   MPI_FLOAT,
-			   MPI_DOUBLE,
-			   MPI_LONG_DOUBLE,
-			   MPI_BYTE,
-			   MPI_PACKED};
+enum elementary_datatypes {MPI_CHAR           = -11,
+			   MPI_SHORT          = -12,
+			   MPI_INT            = -13,
+			   MPI_LONG           = -14,
+			   MPI_UNSIGNED_CHAR  = -15,
+			   MPI_UNSIGNED_SHORT = -16,
+			   MPI_UNSIGNED       = -17,
+			   MPI_UNSIGNED_LONG  = -18,
+			   MPI_FLOAT          = -19,
+			   MPI_DOUBLE         = -20,
+			   MPI_LONG_DOUBLE    = -21,
+			   MPI_BYTE           = -22,
+			   MPI_PACKED         = -23};
 
 enum collective_operations {MPI_MAX,
 			    MPI_MIN,
@@ -95,7 +97,7 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 
 #define MPI_GROUP_NULL      -1
 #define MPI_COMM_NULL       -2
-#define MPI_DATATYPE_NULL   -3
+#define MPI_DATATYPE_NULL    0
 #define MPI_REQUEST_NULL    -4
 #define MPI_OP_NULL         -5
 #define MPI_ERRHANDLER_NULL -6
@@ -130,6 +132,13 @@ int MPI_Issend(void * buf, int count, MPI_Datatype datatype, int dest,
 
 
 int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status * status);
+
+
+typedef void MPI_User_function(void * invec, void * inoutvec, int * len,
+			       MPI_Datatype * datatype);
+int MPI_Op_create(MPI_User_function * function, int commute, MPI_Op * op);
+int MPI_Op_free(MPI_Op * op);
+
 int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
 		 int dest, int sendtag, void  *recvbuf, int recvcount,
 		 MPI_Datatype recvtype, int source, MPI_Datatype recvtag,
@@ -215,6 +224,7 @@ int MPI_Type_create_struct(int count, int * arry_of_blocklens,
 			   MPI_Datatype * newtype);
 int MPI_Type_create_resized(MPI_Datatype oldtype, MPI_Aint ub, MPI_Aint extent,
 			    MPI_Datatype * newtype);
+int MPI_Type_get_extent(MPI_Datatype handle, MPI_Aint * lb, MPI_Aint *extent);
 
 #ifdef __cplusplus
 }
