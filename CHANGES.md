@@ -1,6 +1,8 @@
 
 ### Changes
 
+version 0.13.0
+
 - Add report on compiler and start/end times.
 - Add report on key/value pairs which appear in input but are not used
   at end of execution.
