@@ -302,8 +302,11 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
     /* Write a single file with the final section */
 
-    assert(strnlen(meta->stub, BUFSIZ) < FILENAME_MAX - 12);
-    sprintf(io_data, "%s-%8.8d", meta->stub, ntime);
+    {
+      char tmp[FILENAME_MAX/2] = {}; /* Avoid potential buffer overflow */
+      strncpy(tmp, meta->stub, strnlen(meta->stub, FILENAME_MAX/2-1));
+      sprintf(io_data, "%s-%8.8d", tmp, ntime);
+    }
 
     if (output_vtk_ == 1) {
 
