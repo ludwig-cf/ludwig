@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -26,7 +26,6 @@ enum {CVZBLOCK9 = 1};
 
 extern const    int cv[NVEL9][3];
 extern const double wv[NVEL9];
-extern const double q_[NVEL9][3][3];
 extern const double norm_[NVEL9];
 extern const double ma_[NVEL9][NVEL9];
 extern const double mi_[NVEL9][NVEL9];
@@ -43,7 +42,14 @@ extern const int zblocklen_cv[CVZBLOCK9];
 extern const int zdisp_fwd_cv[CVZBLOCK9];
 extern const int zdisp_bwd_cv[CVZBLOCK9];
 
-#define LB_NORMALISERS_DOUBLE(norm) const double norm[NVEL9] = { \
+#define LB_CV_D2Q9(cv) const int8_t cv[NVEL9][3] = {  \
+                          { 0,  0,  0},               \
+                          { 1,  1,  0}, { 1,  0,  0}, \
+                          { 1, -1,  0}, { 0,  1,  0}, \
+                          { 0, -1,  0}, {-1,  1,  0}, \
+                          {-1,  0,  0}, {-1, -1,  0}};
+
+#define LB_NORMALISERS_D2Q9(norm) const double norm[NVEL9] = { \
     1.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0/2.0, 1.0/4.0, 3.0/8.0, 3.0/8.0};
 
 #endif

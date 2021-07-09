@@ -1196,7 +1196,7 @@ int io_info_metadata_filestub_set(io_info_t * info, const char * stub) {
   assert(stub);
   assert(strlen(stub) < FILENAME_MAX);
 
-  strncpy(info->metadata_stub, stub, FILENAME_MAX);
+  strncpy(info->metadata_stub, stub, strnlen(stub, FILENAME_MAX-1));
 
   return 0;
 }

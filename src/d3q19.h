@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel computing Centre
  *
- *  (c) 2008-2020 The University of Edinburgh
+ *  (c) 2008-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -28,7 +28,6 @@ enum {CVZBLOCK19 = 5};
 
 extern const    int cv[NVEL19][3];
 extern const double wv[NVEL19];
-extern const double q_[NVEL19][3][3];
 extern const double norm_[NVEL19];
 extern const double ma_[NVEL19][NVEL19];
 extern const double mi_[NVEL19][NVEL19];
@@ -45,7 +44,16 @@ extern const int zblocklen_cv[CVZBLOCK19];
 extern const int zdisp_fwd_cv[CVZBLOCK19];
 extern const int zdisp_bwd_cv[CVZBLOCK19];
 
-#define LB_NORMALISERS_DOUBLE(norm) const double norm[NVEL19] = { \
+#define LB_CV_D3Q19(cv) const int8_t cv[NVEL19][3] = {                \
+                           { 0,  0,  0},                              \
+			   { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},  \
+			   { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},  \
+			   { 0,  1,  0}, { 0,  1, -1}, { 0,  0,  1},  \
+			   { 0,  0, -1}, { 0, -1,  1}, { 0, -1,  0},  \
+			   { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},  \
+			   {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
+
+#define LB_NORMALISERS_D3Q19(norm) const double norm[NVEL19] = { \
     1.0, \
     3.0, 3.0, 3.0, \
     9.0/2.0, 9.0, 9.0, 9.0/2.0, 9.0, 9.0/2.0, \

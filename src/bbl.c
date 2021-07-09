@@ -31,7 +31,6 @@
 #include "bbl.h"
 #include "colloid.h"
 #include "colloids.h"
-#include "colloids_s.h"
 
 struct bbl_s {
   pe_t * pe;            /* Parallel environment */
@@ -972,6 +971,7 @@ static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
   colloids_info_local_head(cinfo, &pc);
 
   for (; pc; pc = pc->nextlocal) {
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
     wall_lubr_sphere(wall, pc->s.ah, pc->s.r, dwall);
     f[X] -= pc->s.v[X]*dwall[X];
     f[Y] -= pc->s.v[Y]*dwall[Y];

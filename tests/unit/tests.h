@@ -6,7 +6,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -56,6 +56,7 @@ int test_nernst_planck_suite(void);
 int test_noise_suite(void);
 int test_pair_lj_cut_suite(void);
 int test_pair_ss_cut_suite(void);
+int test_pair_ss_cut_ij_suite(void);
 int test_pair_yukawa_suite(void);
 int test_pe_suite(void);
 int test_phi_ch_suite(void);
@@ -67,6 +68,7 @@ int test_random_suite(void);
 int test_rt_suite(void);
 int test_timer_suite(void);
 int test_util_suite(void);
+int test_util_sum_suite(void);
 int test_visc_arrhenius_suite(void);
 int test_wall_suite(void);
 

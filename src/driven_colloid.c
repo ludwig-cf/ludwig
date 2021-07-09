@@ -16,7 +16,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "colloids_s.h"
+#include "colloids.h"
 #include "driven_colloid.h"
 
 static double fmod_ = 0.0;
@@ -92,6 +92,8 @@ void driven_colloid_total_force(colloids_info_t * cinfo, double ftotal[3]) {
   colloids_info_local_head(cinfo, &pc);
 
   for ( ; pc; pc = pc->nextlocal) { 
+
+    if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
     driven_colloid_force(pc->s.s, f);
 	  

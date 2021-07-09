@@ -22,6 +22,7 @@ LOGS    = ${SOURCES:.inp=.new}
 test:
 	$(MAKE) -s clean
 	$(MAKE) -s logs
+	@echo End of tests.
 
 logs:	$(LOGS)
 
@@ -31,6 +32,13 @@ logs:	$(LOGS)
 # Restart tests must be in the right order
 
 serial-rest-c02.new:	serial-rest-c01.new
+
+# Generate initial conditions for polymer test before running
+
+serial-poly-st1.new: serial-poly-st1.pre
+
+serial-poly-st1.pre:
+	${SER} ${PAR} ../../../util/multi_poly_init
 
 clean:
 	rm -f *new test-diff* *meta *001-001
