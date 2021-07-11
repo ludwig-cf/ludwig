@@ -65,7 +65,7 @@ struct rt_s {
 
 static int rt_add_key_pair(rt_t * rt, const char *, int lineno);
 static int rt_key_broadcast(rt_t * rt);
-static int rt_is_valid_key_pair(rt_t * rt, const char *, int lineno);
+static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno);
 static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
 static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
@@ -583,8 +583,9 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
-  char a[NKEY_LENGTH];
-  char b[NKEY_LENGTH];
+  char myline[NKEY_LENGTH] = {};
+  char a[NKEY_LENGTH] = {};
+  char b[NKEY_LENGTH] = {};
 
   if (strncmp("#",  line, 1) == 0) return 0;
   if (strncmp("\n", line, 1) == 0) return 0;
@@ -592,7 +593,9 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
   /* Minimal syntax checks. The user will need to sort these
    * out. */
 
-  if (sscanf(line, "%s %s", a, b) != 2) {
+  strncpy(myline, line, NKEY_LENGTH-1);
+
+  if (sscanf(myline, "%s %s", a, b) != 2) {
     /* This does not look like a key value pair... */
     pe_fatal(rt->pe, "Please check input file syntax at line %d:\n %s\n",
 	     lineno, line);
