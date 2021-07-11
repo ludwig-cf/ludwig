@@ -585,6 +585,7 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
   char a[NKEY_LENGTH] = {};
   char b[NKEY_LENGTH] = {};
+  char fmt[32] = {};
 
   if (strncmp("#",  line, 1) == 0) return 0;
   if (strncmp("\n", line, 1) == 0) return 0;
@@ -592,7 +593,9 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
   /* Minimal syntax checks. The user will need to sort these
    * out. */
 
-  if (sscanf(line, "%127s %127s", a, b) != 2) {
+  snprintf(fmt, sizeof(fmt), "%%%ds %%%ds", NKEY_LENGTH-1, NKEY_LENGTH-1);
+
+  if (sscanf(line, fmt, a, b) != 2) {
     /* This does not look like a key value pair... */
     pe_fatal(rt->pe, "Please check input file syntax at line %d:\n %s\n",
 	     lineno, line);
