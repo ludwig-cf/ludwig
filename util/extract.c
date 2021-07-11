@@ -59,6 +59,8 @@
 
 #include "../src/util.h"
 
+#define MAXNTOTAL 1024 /* Maximum linear system size */
+
 const int default_version = 2; /* Meta data version */
                                /* 1 = older output files */
                                /* 2 = current processor independent per file */
@@ -246,6 +248,10 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
   /* LE displacements as function of x */
   le_displace_ = le_speed_*(double) (ntime - le_t0_);
   n = meta->ntotal[0];
+  if (n < 0 || n > MAXNTOTAL) {
+    printf("Please check system size %d\n", meta->ntotal[0]);
+    return -1;
+  }
   le_displacements_ = (double *) calloc(n, sizeof(double));
   le_duy_ = (double *) calloc(n, sizeof(double));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
