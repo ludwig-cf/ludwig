@@ -583,7 +583,6 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
-  char myline[NKEY_LENGTH] = {};
   char a[NKEY_LENGTH] = {};
   char b[NKEY_LENGTH] = {};
 
@@ -593,9 +592,7 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
   /* Minimal syntax checks. The user will need to sort these
    * out. */
 
-  strncpy(myline, line, NKEY_LENGTH-1);
-
-  if (sscanf(myline, "%s %s", a, b) != 2) {
+  if (sscanf(line, "%127s %127s", a, b) != 2) {
     /* This does not look like a key value pair... */
     pe_fatal(rt->pe, "Please check input file syntax at line %d:\n %s\n",
 	     lineno, line);
