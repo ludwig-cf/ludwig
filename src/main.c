@@ -4,13 +4,12 @@
  *
  *  Main driver code. See ludwig.c for details of timestepping etc.
  *
- *  $Id$
- *
+
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -37,7 +36,7 @@ int main(int argc, char ** argv) {
 #ifdef PETSC
   PetscInitialize(&argc, &argv, (char*) 0, NULL); 
 #endif 
-  if (argc > 1) sprintf(inputfile, "%s", argv[1]);
+  if (argc > 1) snprintf(inputfile, FILENAME_MAX, "%s", argv[1]);
 
   ludwig_run(inputfile);
 
