@@ -136,7 +136,6 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(p[X] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +7.0710678e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   index = cs_index(cs, 2, 28, 1);
   field_vector(fp, index, p);
@@ -145,12 +144,10 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(p[X] - +9.0523694e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Y] - +4.2490714e-01) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(p[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n"); */
 
   /* Gradient terms */
 
   field_halo_swap(fp, FIELD_HALO_HOST);
-  /* info("ok\n");*/
   field_grad_compute(fpgrad);
 
   /* Free energy density (not computed in independent code) */
@@ -166,7 +163,6 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   fe_polar_fed(fe, index, &fed);
   /* info("free energy density at (100, 3, 1) ...");*/
   test_assert(fabs(fed - -2.2448448e-02) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   /* Molecular field */
 
@@ -178,7 +174,6 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(h[X] - -2.9526261e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y] - +1.6947361e-06) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   index = cs_index(cs, 49, 49, 1);
   fe_polar_mol_field(fe, index, h);
@@ -186,7 +181,6 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(h[X] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y] - -1.0003585e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   /* Stress */
 
@@ -205,7 +199,6 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   index = cs_index(cs, 100, 1, 1);
   fe_polar_stress(fe, index, s);
@@ -220,7 +213,6 @@ static int test_polar_active_aster(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Z]) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   /* info("2-d test ok\n\n");*/
 
@@ -290,7 +282,6 @@ int test_polar_active_terms(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Z] - -3.3150277e-04) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   index = cs_index(cs, 100, 1, 1);
   fe_polar_stress(fe, index, s);
@@ -305,9 +296,6 @@ int test_polar_active_terms(fe_polar_t * fe, cs_t * cs, field_t * fp,
   test_assert(fabs(s[Z][X]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Y]) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(s[Z][Z] - +1.3667395e-02) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");
-
-     info("Active stress ok\n\n");*/
 
   return 0;
 }

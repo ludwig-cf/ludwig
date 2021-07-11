@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -219,8 +219,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   field_nf(fq, &nf);
   test_assert(nf == NQAB);
 
-  /* info("ok\n");*/
-
   q0 = sqrt(2.0)*4.0*atan(1.0)*numhalftwists*numunitcells / ltot[Y];
 
   param.a0 = a0;
@@ -243,14 +241,12 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   /* info("Testing chirality = %8.5f ...", value);*/
   fe_lc_chirality(fe, &vtest);
   test_assert(fabs(value - vtest) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   value = 27.0*(1.0 - gamma/3.0)/gamma;
 
   /* info("Testing reduced temperature = %8.5f ...", value);*/
   fe_lc_reduced_temperature(fe, &vtest);
   test_assert(fabs(value - vtest) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   /* Set up the q tensor and sample some lattice sites. 
    * Note there are a limited number of unique order parameter values,
@@ -269,7 +265,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(q[X][Z] - -0.28284271247462) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Y] - -0.00000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Z] - -0.28284271247462) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -283,7 +278,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(q[X][Z] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Y] - -0.40000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Z] - -0.48284271247462) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -297,7 +291,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(q[X][Z] - +0.28284271247462) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Y] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Z] - -0.28284271247462) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 12;
@@ -311,7 +304,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(q[X][Z] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Y] - +0.40000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Z] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -325,7 +317,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(q[X][Z] -  0.00000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Y] - -0.20000000000000) < TEST_DOUBLE_TOLERANCE);
   test_assert(fabs(q[Y][Z] - -0.08284271247462) < TEST_DOUBLE_TOLERANCE);
-  /* info("ok\n");*/
 
   /* What we can test everywhere is that the q tensor is symmetric
    * and traceless. */
@@ -347,8 +338,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
       }
     }
   }
-
-  /* info("ok\n");*/
 
 
   /* Now the free energy density. This requires that the gradients are
@@ -373,7 +362,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   /* info("Check F( 1, 1, 1)...");*/
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -386,7 +374,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   /* info("Check F( 1, 1, 2)...");*/
   test_assert(fabs(value - 1.056203e-02) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -400,7 +387,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   /* info("Check F( 1, 1, 3)..."); */
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 12;
@@ -414,7 +400,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   /* info("Check F( 1,12, 4)...");*/
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -428,7 +413,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   /* info("Check F( 2, 7, 6)...");*/
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
 
 
@@ -455,8 +439,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[X][Z] - 0.0171194) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Y] - 0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] - 0.0171194) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
-
 
   ic = 1;
   jc = 1;
@@ -477,7 +459,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[X][Z] - +0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Y] - +0.0303829) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] - +0.0323891) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -498,7 +479,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[X][Z] - -0.0171194) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Y] -  0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] - +0.0171194) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 12;
@@ -519,7 +499,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[X][Z] -  0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Y] - -0.0111454) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] -  0.0000000) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -540,7 +519,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[X][Z] -  0.0000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Y] - +0.0057295) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] - +0.0023299) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
 
   /* info("Check molecular field tensor is symmetric...");*/
@@ -591,7 +569,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][X] - -8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
 
   ic = 1;
@@ -618,7 +595,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -2.871796e-02) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -5.329164e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 1;
@@ -644,7 +620,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][X] -  8.924220e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 1;
   jc = 12;
@@ -670,7 +645,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -1.007305e-04) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -696,7 +670,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][X] -  0.0000000000) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Y] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
 
   /* Electric field test */
@@ -716,7 +689,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   /* info("Electric field (0.0, 0.0, 1.0) gives dimensionless field %14.7e...", e);*/
   fe_lc_dimensionless_field_strength(fe, &value);
   test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   field[X] = 1.0;
   field[Y] = 1.0;
@@ -729,7 +701,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_dimensionless_field_strength(fe, &value);
   /* info("Electric field (1.0, 1.0, 1.0) gives dimensionless field %14.7e...", e);*/
   test_assert(fabs(value - e) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   /* Set dimensionless field to 0.2 for these parameters */
 
@@ -744,7 +715,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_param_commit(fe);
   /* info("Set dimensionless field 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   /* Note the electric field remains switched on so... */
 
@@ -768,7 +738,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   /* info("Check F( 1, 1, 1)... %14.7e\n ", value);*/
   test_assert(fabs(value - 6.1626224e-03) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   ic = 2;
   jc = 7;
@@ -780,7 +749,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   /* info("Check F( 2, 7, 6)... %14.7e ", value);*/
   test_assert(fabs(value - 6.7087074e-04) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
   field[X] = 0.012820969;
   field[Y] = 0.0;
@@ -792,7 +760,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_dimensionless_field_strength(fe, &value);
   /* info("Set dimensionless field again 0.2...");*/
   test_assert(fabs(value - 0.2) < TEST_FLOAT_TOLERANCE);
-  /* info("ok\n");*/
 
 
   /* Note the electric field now changed so... */
@@ -815,8 +782,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[Y][Y] - -6.0171338e-05) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] -  1.7119419e-02) < TEST_FLOAT_TOLERANCE);
 
-  /* info("ok\n");*/
-
   ic = 2;
   jc = 7;
   kc = 6;
@@ -834,8 +799,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(h[Y][Y] - +5.6693334e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(h[Y][Z] - +2.3299416e-03) < TEST_FLOAT_TOLERANCE);
   /*
-  info("ok\n");
-
   info("Blue phase O8M structure ok\n");
   */
 

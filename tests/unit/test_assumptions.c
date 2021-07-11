@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2020 The University of Edinburgh 
+ *  (c) 2008-2021 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -55,7 +55,6 @@ int test_assumptions_suite(void) {
 
   /*printf("Checking sizeof(int) is 4 bytes... ");*/
   assert(sizeof(int) == 4);
-  /* printf("yes\n");*/
 
   /* printf("Checking sizeof(long int) is >= 4 bytes... ");*/
   assert(sizeof(long int) >= 4);
@@ -66,11 +65,10 @@ int test_assumptions_suite(void) {
 
   /* printf("Checking sizeof(float) is 4 bytes... ");*/
   assert(sizeof(float) == 4);
-  /* printf("yes\n");*/
 
   /* printf("Checking sizeof(double) is 8 bytes... ");*/
   assert(sizeof(double) == 8);
-  /* printf("yes\n");*/
+
   /*
   printf("sizeof(char) = %lu\n", sizeof(char));
   printf("sizeof(unsigned char) = %lu\n", sizeof(unsigned char));
@@ -185,8 +183,6 @@ void test_util(void) {
       }
     }
   }
-
-  /* printf("yes.\n");*/
 
   test_util_discrete_volume();
 

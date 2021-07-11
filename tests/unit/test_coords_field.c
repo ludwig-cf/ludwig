@@ -143,7 +143,6 @@ int test_coords_field_check(cs_t * cs, int nhcomm, int nf, void * buf,
 	    indexf = mem_addr_rank1(nsites, nf, index, n);
             bufref(cs, noffst[X] + ic, noffst[Y] + jc, noffst[Z] + kc, n, &dref);
             dact = *((double *) (bufc + sz*indexf));
-	    /*printf("%2d %2d %2d %14.7e %14.7e\n", ic, jc, kc, dref, dact);*/
             test_assert(fabs(dact - dref) < FLT_EPSILON);
           }
         }

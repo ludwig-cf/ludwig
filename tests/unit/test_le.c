@@ -106,17 +106,14 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
   /*info("\nLees Edwards test (constant speed)...\n");
     info("Total number of planes in set correctly... ");*/
   test_assert(lees_edw_nplane_total(le) == nplane);
-  /*info("yes\n");*/
 
   /* info("Local number of planes set correctly... ");*/
   nplane_local = nplane / cartsz[X];
   test_assert(lees_edw_nplane_local(le) == nplane_local);
-  /* info("yes\n");*/
 
   /* info("Plane maximum velocity set correctly... ");*/
   lees_edw_plane_uy(le, &uy);
   test_assert(fabs(uy - uy_set) < TEST_DOUBLE_TOLERANCE);
-  /* info("yes\n");*/
 
 
   /* Check displacement calculations. Run to a displacement which is
