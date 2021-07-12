@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2019 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -117,19 +117,19 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
     case PTH_METHOD_GRADMU:
       if (is_pm) {
         if (le) {
-    phi_force_solid_phi_gradmu(le, pth, fe, phi, hydro, map);
-    }
-    else{
-        phi_force_solid_cs_gradmu(cs, fe, phi, hydro,map);
-    }
+	  phi_force_solid_phi_gradmu(le, pth, fe, phi, hydro, map);
+	}
+	else {
+	  phi_force_solid_cs_gradmu(cs, fe, phi, hydro, map);
+	}
       }
       else {
-    if (le) {
-      phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
-    }
-    else {
-      phi_force_fluid_cs_gradmu(cs, fe, phi, hydro);
-    }
+	if (le) {
+	  phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
+	}
+	else {
+	  phi_force_fluid_cs_gradmu(cs, fe, phi, hydro);
+	}
       }
       break;
     case PTH_METHOD_STRESS_ONLY:
@@ -238,7 +238,7 @@ int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
   int index0, indexm1, indexp1;
   int nlocal[3];
   int n1;
-  double phi[2], mum1[3], mup1[3];
+  double phi[3], mum1[3], mup1[3];
   double force[3];
 
   assert(cs);
@@ -317,19 +317,22 @@ int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
  *    grad_x mu = 0.5*(mu(i+1) - mu(i) + mu(i) - mu(i-1)) etc
  *  which collapses to the fluid version away from any wall.
  *
+ *  Ternary free energy: there are two order parameters and three
+ *  chemical potentials. The force only involves the first two
+ *  chemical potentials, so loops involving nf are relevant.
+ *
  *****************************************************************************/
 
- int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
-                                      hydro_t * hydro, map_t * map ) {
+int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
+			      hydro_t * hydro, map_t * map ) {
 
-  int ic, jc, kc, icm1, icp1;
+  int ic, jc, kc;
   int index0, indexm1, indexp1;
-  int nhalo;
   int nlocal[3];
 
   int n1;
   int mapm1, mapp1;
-  double phi[2], mu[3], mum1[3], mup1[3];
+  double phi[3], mu[3], mum1[3], mup1[3];
   double force[3];
 
   assert(cs);
@@ -337,73 +340,97 @@ int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
   assert(field);
   assert(hydro);
   assert(field->nf <= 3);
+
   cs_nlocal(cs,nlocal);
+
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
-    index0 = cs_index(cs, ic, jc, kc);
-    field_scalar_array(field, index0, phi);
+	index0 = cs_index(cs, ic, jc, kc);
+	field_scalar_array(field, index0, phi);
         fe->func->mu(fe, index0, mu);
-
 
         indexm1 = cs_index(cs, ic-1, jc, kc);
         indexp1 = cs_index(cs, ic+1, jc, kc);
 
-    fe->func->mu(fe, indexm1, mum1);
-    fe->func->mu(fe, indexp1, mup1);
+	fe->func->mu(fe, indexm1, mum1);
+	fe->func->mu(fe, indexp1, mup1);
 
         map_status(map, indexm1, &mapm1);
         map_status(map, indexp1, &mapp1);
-          if (mapm1 == MAP_BOUNDARY) {
-              for (n1=0; n1<field->nf+1; n1++){
-                  mum1[n1] = mu[n1]; }
-          }
-          if (mapp1 == MAP_BOUNDARY) {for (n1=0; n1<field->nf; n1++){ mup1[n1] = mu[n1]; }}
-      
-          force[X] = 0.0;
-          for (n1=0; n1<field->nf; n1++){
-        force[X] -= phi[n1]*0.5*(mup1[n1]- mum1[n1]);
-          }
 
-          indexm1 = cs_index(cs, ic, jc-1, kc);
-          indexp1 = cs_index(cs, ic, jc+1, kc);
+	if (mapm1 == MAP_BOUNDARY) {
+	  for (n1 = 0; n1 < field->nf; n1++) {
+	    mum1[n1] = mu[n1];
+	  }
+	}
+	if (mapp1 == MAP_BOUNDARY) {
+	  for (n1 = 0; n1 < field->nf; n1++) {
+	    mup1[n1] = mu[n1];
+	  }
+	}
+      
+	force[X] = 0.0;
+	for (n1 = 0; n1 < field->nf; n1++) {
+	  force[X] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
+	}
+
+	indexm1 = cs_index(cs, ic, jc-1, kc);
+	indexp1 = cs_index(cs, ic, jc+1, kc);
           
-    fe->func->mu(fe, indexm1, mum1);
-    fe->func->mu(fe, indexp1, mup1);
+	fe->func->mu(fe, indexm1, mum1);
+	fe->func->mu(fe, indexp1, mup1);
     
         map_status(map, indexm1, &mapm1);
         map_status(map, indexp1, &mapp1);
           
-          if (mapm1 == MAP_BOUNDARY) {for (n1=0; n1<field->nf; n1++){ mum1[n1] = mu[n1]; }}
-          if (mapp1 == MAP_BOUNDARY) {for (n1=0; n1<field->nf; n1++){ mup1[n1] = mu[n1]; }}
+	if (mapm1 == MAP_BOUNDARY) {
+	  for (n1 =0; n1 < field->nf; n1++) {
+	    mum1[n1] = mu[n1];
+	  }
+	}
+	if (mapp1 == MAP_BOUNDARY) {
+	  for (n1 = 0; n1 < field->nf; n1++) {
+	    mup1[n1] = mu[n1];
+	  }
+	}
         
-          force[Y] = 0.0;
-          for (n1=0; n1<field->nf; n1++){
-              force[Y] -= phi[n1]*0.5*(mup1[n1]- mum1[n1]);
-          }
+	force[Y] = 0.0;
+	for (n1 = 0; n1 < field->nf; n1++) {
+	  force[Y] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
+	}
           
-          indexm1 = cs_index(cs, ic, jc, kc-1);
-          indexp1 = cs_index(cs, ic, jc, kc+1);
+	indexm1 = cs_index(cs, ic, jc, kc-1);
+	indexp1 = cs_index(cs, ic, jc, kc+1);
           
-    fe->func->mu(fe, indexm1, mum1);
-    fe->func->mu(fe, indexp1, mup1);
+	fe->func->mu(fe, indexm1, mum1);
+	fe->func->mu(fe, indexp1, mup1);
 
         map_status(map, indexm1, &mapm1);
         map_status(map, indexp1, &mapp1);
           
-          if (mapm1 == MAP_BOUNDARY) {for (n1=0; n1<field->nf; n1++){ mum1[n1] = mu[n1]; }}
-          if (mapp1 == MAP_BOUNDARY) {for (n1=0; n1<field->nf; n1++){ mup1[n1] = mu[n1]; }}
+	if (mapm1 == MAP_BOUNDARY) {
+	  for (n1 = 0; n1 < field->nf; n1++) {
+	    mum1[n1] = mu[n1];
+	  }
+	}
+	if (mapp1 == MAP_BOUNDARY) {
+	  for (n1 = 0; n1 < field->nf; n1++) {
+	    mup1[n1] = mu[n1];
+	  }
+	}
         
-          force[Z] = 0.0;
-          for (n1=0; n1<field->nf; n1++){
-              force[Z] -= phi[n1]*0.5*(mup1[n1]- mum1[n1]);
-          }
-    /* Store the force on lattice */
+	force[Z] = 0.0;
+	for (n1 = 0; n1 < field->nf; n1++) {
+	  force[Z] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
+	}
 
-    hydro_f_local_add(hydro, index0, force);
+	/* Store the force on lattice */
 
-    /* Next site */
+	hydro_f_local_add(hydro, index0, force);
+
+	/* Next site */
       }
     }
   }

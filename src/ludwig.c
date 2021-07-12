@@ -675,13 +675,13 @@ void ludwig_run(const char * inputfile) {
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro);
-        
-        /* Ternary free energy gradmu requires of momentum correction after force calculation */
-        if((ludwig->fe) && ludwig->fe->id == FE_TERNARY   )
-        {
-            hydro_correct_momentum(ludwig->hydro);
-        }
 
+	  /* Ternary free energy gradmu requires of momentum correction
+	     after force calculation */
+
+	  if (ludwig->fe && ludwig->fe->id == FE_TERNARY) {
+            hydro_correct_momentum(ludwig->hydro);
+	  }
 
 	}
 	else {
@@ -1447,12 +1447,9 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ch_info(ludwig->ch);
 
     /* Coupling between momentum and free energy */
-    /* Hydrodynamics sector (move to hydro_rt?) */
-
-    n = rt_switch(rt, "hydrodynamics");
     /* Default method for ternary free energy: gradmu */
     p = 0;
-      
+
     rt_int_parameter(rt, "fd_force_divergence", &p);
     pe_info(pe, "Force calculation:      %s\n",
     (p == 0) ? "phi grad mu method" : "divergence method");
@@ -1462,7 +1459,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     else {
       pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
     }
-      
 
     ludwig->fe_ternary = fe;
     ludwig->fe = (fe_t *) fe;
