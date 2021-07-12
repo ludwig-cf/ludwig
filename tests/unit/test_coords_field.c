@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2019 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -48,7 +48,7 @@ int test_coords_field_set(cs_t * cs, int nf, void * buf, MPI_Datatype mpidata,
   int noffst[3];
   int ic, jc, kc, index, indexf;
 
-  size_t sz;
+  size_t sz = 0;
   unsigned char * fc = (unsigned char *) buf;
 
   assert(cs);
@@ -106,7 +106,7 @@ int test_coords_field_check(cs_t * cs, int nhcomm, int nf, void * buf,
   int nlocal[3];
   int noffst[3];
   int ic, jc, kc, index, indexf;
-  size_t sz;
+  size_t sz = 0;
 
   char   cref, cact;            /* Reference, actual, function value */
   double dref, dact;            /* Reference, actual, function value */
