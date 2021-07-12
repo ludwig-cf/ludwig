@@ -2,11 +2,8 @@
  *
  *  gradient_3d_ternary_solid.c
  *
- *  Gradient routines when solid objects are present (colloids and/or
- *  general porous media). If there are no solid sites nearby it
- *  reduces to the fluid 27pt stencil.
- *
- *  For scalar order parameters with or without wetting.
+ *  Gradient routines for three phase model of Semprebon where wetting
+ *  parameters are set via the map structure.
  *
  *  This is the 'predictor corrector' method described by Desplat et al.
  *  Comp. Phys. Comm. 134, 273--290 (2000).
@@ -27,10 +24,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
+ *  Sergi Granados Leyva (sgranale7@alumnes.ub.edu)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -71,7 +69,8 @@ static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 					  field_grad_t * fg, int nf,
 					  map_t * map,
-					  double rkappa1, double rkappa2, double alpha);
+					  double rkappa1, double rkappa2,
+					  double alpha);
 
 /*****************************************************************************
  *
@@ -150,7 +149,8 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(grad_ternary_solid_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, fgrad->target, fgrad->field->nf, static_solid.map->target, rkappa1, rkappa2, alpha);
+		  ctxt->target, fgrad->target, fgrad->field->nf,
+		  static_solid.map->target, rkappa1, rkappa2, alpha);
     
   tdpDeviceSynchronize();
 
@@ -171,7 +171,8 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
 __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 					  field_grad_t * fg, int nf,
 					  map_t * map,
-					  double rkappa1, double rkappa2, double alpha) {
+					  double rkappa1, double rkappa2,
+					  double alpha) {
   int kindex;
   int kiterations;
   const double r9 = (1.0/9.0);     /* normaliser for grad */
@@ -193,7 +194,6 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
     double gradt[NGRAD_];
     double gradn[3];
     double dphi;
-    /* double c1,c2, phi_b;*/
     double h1,h2;
 
     int status;
@@ -256,9 +256,6 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 	for (p = 1; p < NGRAD_; p++) {
 
 	  if (isite[p] == -1) {
-	    /* phi_b = phi->data[addr_rank1(phi->nsites, nop, index, n)]
-	      + 0.5*(bs_cv[p][X]*gradn[X] + bs_cv[p][Y]*gradn[Y]
-	      + bs_cv[p][Z]*gradn[Z]); */
 
 	    /* Set gradient phi at boundary following wetting properties */
 
@@ -266,18 +263,17 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 				     kc + bs_cv[p][Z]);
 	    map_data(map, ia, wet);
           
-        /* At the time use status_with_c_h and set h as h1, c as h2 through capillary.c file */
-         h1 = wet[1];
-         h2 = wet[0];
-
-          //gradt[p] = -(c*phi_b + h)*rkappa;
+	    /* At the time use status_with_c_h and set h as h1, c as h2 through
+	       capillary.c file */
+	    h1 = wet[1];
+	    h2 = wet[0];
          
-          if (n == 0) {
-              gradt[p] =(-h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
-          }
-          else{
-              gradt[p] =(h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
-          }
+	    if (n == 0) {
+              gradt[p] = (-h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
+	    }
+	    else {
+              gradt[p] = (h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
+	    }
           
 	  }
 	}
