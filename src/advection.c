@@ -139,8 +139,8 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
 			    advflux_t ** pobj) {
 
   int ndevice;
-  int nsites;
-  double * tmp;
+  int nsites = 0;
+  double * tmp = NULL;
   advflux_t * obj = NULL;
 
   assert(pe);
