@@ -69,18 +69,15 @@ int test_rt_general(pe_t * pe) {
   rt_create(pe, &rt);
   rt_read_input_file(rt, "test_runtime_input1");
 
-  /* info("Testing runtime.c...\n");
-
-     info("Checking can read the file 'test_runtime_input1'... \n"); */
+  /* "Testing runtime.c...\n"
+     "Checking can read the file 'test_runtime_input1'... \n" */
 
   test_assert(1);
-  /* info("...input file read ok.\n");*/
 
   n = 0;
-  /* info("Checking number of keys available is now 11... ");*/
+  /* "Checking number of keys available is now 11... "*/
   rt_active_keys(rt, &n);
   test_assert(n == 15);
-  /* info("yes\n");*/
 
   n = rt_key_required(rt, "int_scalar", RT_FATAL);
   assert(n == 0);
@@ -88,112 +85,112 @@ int test_rt_general(pe_t * pe) {
   assert(n != 0);
 
   n = 0;
-  /* info("Checking key 'int_scalar' is available...");*/
+  /* "Checking key 'int_scalar' is available..." */
   n = rt_int_parameter(rt, "int_scalar", &ivalue);
   test_assert(n == 1);
 
-  /* info("Checking key 'int_scalar' has correct value...");*/
+  /* "Checking key 'int_scalar' has correct value..." */
   test_assert(ivalue == 999);
 
   n = 0;
-  /* info("Checking key 'double_scalar' is available...");*/
+  /* "Checking key 'double_scalar' is available..." */
   n = rt_double_parameter(rt, "double_scalar", &dvalue);
   test_assert(n == 1);
 
-  /* info("Checking key 'double_scalar' has correct value...");*/
+  /* "Checking key 'double_scalar' has correct value..." */
   test_assert(fabs(dvalue - 3.33) < TEST_DOUBLE_TOLERANCE);
 
   n = 0;
-  /* info("Checking 'temperature' is available...");*/
+  /* "Checking 'temperature' is available..." */
   n = rt_int_parameter(rt, "temperature", &ivalue);
   test_assert(n == 1);
 
-  /* info("Checking 'temperature' is -1...");*/
+  /* "Checking 'temperature' is -1..." */
   test_assert(ivalue == -1);
 
   n = 0;
-  /* info("Checking 'temp' is available...");*/
+  /* "Checking 'temp' is available..." */
   n = rt_int_parameter(rt, "temp", &ivalue);
   test_assert(n == 1);
 
-  /* info("Checking 'temp' is +1...");*/
+  /* "Checking 'temp' is +1..." */
   test_assert(ivalue == 1);
 
-  /* info("Checking 'temper' is 0...");*/
+  /* "Checking 'temper' is 0..." */
   n = rt_int_parameter(rt, "temper", &ivalue);
   test_assert(ivalue == 0);
 
   n = 0;
-  /* info("Checking key 'int_vector' is available...");*/
+  /* "Checking key 'int_vector' is available..." */
   n = rt_int_parameter_vector(rt, "int_vector", ivector);
   test_assert(n == 1);
 
-  /* info("Checking int_vector x component is -1 ...");*/
+  /* "Checking int_vector x component is -1 ..." */
   test_assert(ivector[0] == -1);
 
-  /*info("Checking int_vector y component is -2 ...");*/
+  /* "Checking int_vector y component is -2 ..." */
   test_assert(ivector[1] == -2);
 
-  /* info("Checking int_vector z component is +3 ...");*/
+  /* "Checking int_vector z component is +3 ..." */
   test_assert(ivector[2] == 3);
 
   n = 0;
-  /* info("Checking key 'double_vector' is available ...");*/
+  /* "Checking key 'double_vector' is available ..." */
   n = rt_double_parameter_vector(rt, "double_vector", dvector);
   test_assert(n == 1);
 
-  /* info("Checking double_vector x component is -1.0 ...");*/
+  /* "Checking double_vector x component is -1.0 ..." */
   test_assert(fabs(dvector[0] - -1.0) < TEST_DOUBLE_TOLERANCE);
 
-  /* info("Checking double_vector y component is -2.0 ...");*/
+  /* "Checking double_vector y component is -2.0 ..." */
   test_assert(fabs(dvector[1] - -2.0) < TEST_DOUBLE_TOLERANCE);
 
-  /* info("Checking double_vector z component is +3.0 ...");*/
+  /* "Checking double_vector z component is +3.0 ..." */
   test_assert(fabs(dvector[2] - 3.0) < TEST_DOUBLE_TOLERANCE);
 
   n = 1;
-  /* info("Checking 'int_dummy' does not exist ...");*/
+  /* "Checking 'int_dummy' does not exist ..." */
   n = rt_int_parameter(rt, "int_dummy", &ivalue);
   test_assert(n == 0);
 
-  /* info("Checking 'double_dummy' does not exist ...");*/
+  /* "Checking 'double_dummy' does not exist ..." */
   n = rt_double_parameter(rt, "double_dummy", &dvalue);
   test_assert(n == 0);
 
   /* Parameters specified in odd syntax */
 
   n = 0;
-  /* info("Checking 'int_multiple_space' is available...");*/
+  /* "Checking 'int_multiple_space' is available..." */
   n = rt_int_parameter(rt, "int_multiple_space", &ivalue);
   test_assert(n == 1);
 
-  /* info("Checking 'int_multiple_space' is -2...");*/
+  /* "Checking 'int_multiple_space' is -2..." */
   test_assert(ivalue == -2);
 
   n = 0;
-  /* info("Checking 'double_tab' is available...");*/
+  /* "Checking 'double_tab' is available..." */
   n = rt_double_parameter(rt, "double_tab", &dvalue);
   test_assert(n == 1);
 
-  /* info("Checking 'double_tab' is -2.0...");*/
+  /* "Checking 'double_tab' is -2.0..." */
   test_assert(fabs(dvalue - -2.0) < TEST_DOUBLE_TOLERANCE);
 
   /* String parameters */
 
   n = 0;
-  /* info("Checking 'string_parameter' is available...");*/
+  /* "Checking 'string_parameter' is available..." */
   n = rt_string_parameter(rt, "string_parameter", string, 256);
   test_assert(n == 1);
 
-  /* info("Checking 'string_parameter' is 'ASCII'...");*/
+  /* "Checking 'string_parameter' is 'ASCII'..." */
   test_assert(strcmp(string, "ASCII") == 0);
 
   n = 0;
-  /* info("Checking 'input_config' is available...");*/
+  /* "Checking 'input_config' is available..." */
   n = rt_string_parameter(rt, "input_config", string, 256);
   test_assert(n == 1);
 
-  /* info("Checking 'input_config' is 'config.0'...");*/
+  /* "Checking 'input_config' is 'config.0'..." */
   test_assert(strcmp(string, "config.0") == 0);
 
   /* key_trail1 is 909; key_trail2 is 910 */
@@ -219,7 +216,7 @@ int test_rt_general(pe_t * pe) {
   /* Done. */
 
   n = 1;
-  /* info("Checking all keys have been exhausted ...");*/
+  /* "Checking all keys have been exhausted ..." */
   rt_active_keys(rt, &n);
   test_assert(n == 0);
 
