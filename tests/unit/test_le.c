@@ -103,15 +103,13 @@ int test_parallel1(pe_t * pe, cs_t * cs) {
   cs_cartsz(cs, cartsz);
   lees_edw_create(pe, cs, info, &le);
 
-  /*info("\nLees Edwards test (constant speed)...\n");
-    info("Total number of planes in set correctly... ");*/
+  /* Total number of planes... */
   test_assert(lees_edw_nplane_total(le) == nplane);
 
-  /* info("Local number of planes set correctly... ");*/
+  /* Local number of planes... */
   nplane_local = nplane / cartsz[X];
   test_assert(lees_edw_nplane_local(le) == nplane_local);
 
-  /* info("Plane maximum velocity set correctly... ");*/
   lees_edw_plane_uy(le, &uy);
   test_assert(fabs(uy - uy_set) < TEST_DOUBLE_TOLERANCE);
 
