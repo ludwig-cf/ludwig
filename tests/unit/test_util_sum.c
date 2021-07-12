@@ -31,6 +31,12 @@ int test_klein_add(pe_t * pe);
 int test_klein_mpi_datatype(pe_t * pe);
 int test_klein_mpi_op_sum(pe_t * pe);
 
+/* "Private" functions in util_sum.c */
+
+void kahan_mpi_op_sum_function(kahan_t * invec, kahan_t * inoutvec, int * len,
+			       MPI_Datatype * dt);
+void klein_mpi_op_sum_function(klein_t * invec, klein_t * inoutvec, int * len,
+			       MPI_Datatype * dt);
 
 /*****************************************************************************
  *
@@ -210,8 +216,6 @@ int test_kahan_mpi_op_sum(pe_t * pe) {
 
   {
     /* internal smoke test */
-    void kahan_mpi_op_sum_function(kahan_t * invec, kahan_t * inoutvec,
-				   int * len, MPI_Datatype * dt);
 
     kahan_t invec = kahan_zero();
     kahan_t inoutvec = kahan_zero();
@@ -356,8 +360,6 @@ int test_klein_mpi_op_sum(pe_t * pe) {
 
   {
     /* internal smoke test */
-    void klein_mpi_op_sum_function(klein_t * invec, klein_t * inoutvec,
-				   int * len, MPI_Datatype * dt);
 
     klein_t invec = klein_zero();
     klein_t inoutvec = klein_zero();
