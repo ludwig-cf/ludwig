@@ -142,7 +142,7 @@ int nernst_planck_driver(psi_t * psi, fe_t * fel, hydro_t * hydro, map_t * map) 
   nernst_planck_fluxes(psi, fel, fe, fy, fz);
 
   /* Apply no flux BC for six-point stencil */
-  ?* Should be here. */
+  /* Should be here. */
 
   /* Update charge distribution */
   nernst_planck_update(psi, fe, fy, fz);
