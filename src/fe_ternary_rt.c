@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -52,12 +52,20 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
   if (p->alpha <= 0.0) pe_fatal(pe, "Please use ternary_alpha > 0\n");
 
   /* Optional wetting parameters */
-  /* In normal circumstances, there are only two independent parameters,
-   * so only h1 and h2 need to be set. However, three are provided */
 
-  rt_double_parameter(rt, "ternary_h1", &p->h1);
-  rt_double_parameter(rt, "ternary_h2", &p->h2);
-  rt_double_parameter(rt, "ternary_h3", &p->h3);
+  {
+    int have_wetting = 0;
+
+    have_wetting += rt_double_parameter(rt, "ternary_h1", &p->h1);
+    have_wetting += rt_double_parameter(rt, "ternary_h2", &p->h2);
+
+    /* Only h1 and h2 may be specified independently. h3 is then
+       determined by the constraint h1/k1 + h2/k2 + h3/k3 = 0 */
+
+    if (have_wetting) {
+      p->h3 = -p->kappa3*(p->h1/p->kappa1 + p->h2/p->kappa2);
+    }
+  }
 
   return 0;
 }
