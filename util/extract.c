@@ -59,6 +59,8 @@
 
 #include "../src/util.h"
 
+#define MAXNTOTAL 1024 /* Maximum linear system size */
+
 const int default_version = 2; /* Meta data version */
                                /* 1 = older output files */
                                /* 2 = current processor independent per file */
@@ -245,8 +247,13 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
   /* LE displacements as function of x */
   le_displace_ = le_speed_*(double) (ntime - le_t0_);
-  le_displacements_ = (double *) malloc(meta->ntotal[0]*sizeof(double));
-  le_duy_ = (double *) malloc(meta->ntotal[0]*sizeof(double));
+  n = meta->ntotal[0];
+  if (n < 0 || n > MAXNTOTAL) {
+    printf("Please check system size %d\n", meta->ntotal[0]);
+    return -1;
+  }
+  le_displacements_ = (double *) calloc(n, sizeof(double));
+  le_duy_ = (double *) calloc(n, sizeof(double));
   if (le_displacements_ == NULL) printf("malloc(le_displacements_)\n");
   if (le_duy_ == NULL) printf("malloc(le_duy_) failed\n");
   le_set_displacements(meta);
@@ -302,7 +309,11 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
     /* Write a single file with the final section */
 
-    sprintf(io_data, "%s-%8.8d", meta->stub, ntime);
+    {
+      char tmp[FILENAME_MAX/2] = {}; /* Avoid potential buffer overflow */
+      strncpy(tmp, meta->stub, strnlen(meta->stub, FILENAME_MAX/2-1));
+      snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
+    }
 
     if (output_vtk_ == 1) {
 
@@ -376,7 +387,8 @@ int read_version2(int ntime, metadata_v1_t * meta, double * datasection) {
 
     /* Open the current data file */
 
-    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", meta->stub, ntime, meta->nio, n);
+    snprintf(io_data, BUFSIZ, "%s-%8.8d.%3.3d-%3.3d", meta->stub, ntime,
+	     meta->nio, n);
     printf("-> %s\n", io_data);
 
     fp_data = fopen(io_data, "r+b");
@@ -436,7 +448,8 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
     /* Open metadata file and skip 12 lines to get to the
      * decomposition inofmration */
 
-    sprintf(io_metadata, "%s.%3.3d-%3.3d.meta", meta->stub, meta->nio, n);
+    snprintf(io_metadata, sizeof(io_metadata), "%s.%3.3d-%3.3d.meta",
+	     meta->stub, meta->nio, n);
     printf("Reading metadata file ... %s ", io_metadata);
 
     fp_metadata = fopen(io_metadata, "r");
@@ -450,7 +463,8 @@ int read_version1(int ntime, metadata_v1_t * meta, double * datasection) {
 
     /* Open the current data file */
 
-    sprintf(io_data, "%s-%8.8d.%3.3d-%3.3d", meta->stub, ntime, meta->nio, n);
+    snprintf(io_data, sizeof(io_data), "%s-%8.8d.%3.3d-%3.3d", meta->stub,
+	     ntime, meta->nio, n);
     printf("-> %s\n", io_data);
 
     fp_data = fopen(io_data, "r+b");

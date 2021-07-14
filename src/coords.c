@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -850,6 +850,7 @@ __host__ int cs_cart_shift(MPI_Comm comm, int dim, int direction, int * rank) {
   MPI_Comm_rank(comm, &crank);
   MPI_Cart_coords(comm, crank, 3, coords);
 
+  shift = 0;
   if (direction == FORWARD) shift = +1;
   if (direction == BACKWARD) shift = -1;
 

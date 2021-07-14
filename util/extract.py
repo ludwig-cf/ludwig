@@ -181,6 +181,8 @@ for i in range(len(filelist)):
 			if colcdsvel:
 				os.system('./extract_colloids %s %d %s %s' % (datafilename,ngroup,outputfilename1,outputfilename2))	
 
+		datafiles.close
+
 
         if filelist[i] == 'filelist_squ_poly':
                 datafiles=open(filelist[i],'r') 
@@ -202,6 +204,7 @@ for i in range(len(filelist)):
                         if squ_poly_cdsvel==1:
                                 os.system('./extract_squirmer_polymer %s %d %s %s %f %f %s' % (datafilename,ngroup,outputfilename1,outputfilename2,a0_squ,a0_poly,outputfilename3))
 
+		datafiles.close
 
 
 os.system('rm filelist*')

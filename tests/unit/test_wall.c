@@ -89,17 +89,18 @@ __host__ int test_wall_slip(void) {
 
   {
     /* These are invalid values for fraction of slip... */
+    /* ... but just for testing different numbers: */
     double sbot[3] = {1.0,  2.0,  3.0};
     double stop[3] = {4.0,  5.0,  6.0};
 
     ws = wall_slip(sbot, stop);
-    assert(ws.s[WALL_NO_SLIP]   == 0.0);
-    assert(ws.s[WALL_SLIP_XBOT] == sbot[X]);
-    assert(ws.s[WALL_SLIP_XTOP] == stop[X]);
-    assert(ws.s[WALL_SLIP_YBOT] == sbot[Y]);
-    assert(ws.s[WALL_SLIP_YTOP] == stop[Y]);
-    assert(ws.s[WALL_SLIP_ZBOT] == sbot[Z]);
-    assert(ws.s[WALL_SLIP_ZTOP] == stop[Z]);
+    assert(fabs(ws.s[WALL_NO_SLIP]   - 0.0)     < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_XBOT] - sbot[X]) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_XTOP] - stop[X]) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_YBOT] - sbot[Y]) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_YTOP] - stop[Y]) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_ZBOT] - sbot[Z]) < DBL_EPSILON);
+    assert(fabs(ws.s[WALL_SLIP_ZTOP] - stop[Z]) < DBL_EPSILON);
 
     assert(ws.active);
     assert(!wall_slip_valid(&ws));

@@ -65,7 +65,6 @@ int test_coords_suite(void) {
 
   /* Check the defaults, an the correct resetting of defaults. */
 
-  /* pe_info(pe, "\nCheck defaults...\n\n");*/
   cs_create(pe, &cs);
   test_coords_system(cs, ntotal_default, periods_default);
 
@@ -77,7 +76,6 @@ int test_coords_suite(void) {
 
   /* Now test 1 */
 
-  /* pe_info(pe, "\nCheck one...\n\n");*/
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal_test1);
   cs_periodicity_set(cs, periods_test1);
@@ -92,7 +90,6 @@ int test_coords_suite(void) {
 
   /* Now test 2 */
 
-  /* pe_info(pe, "\nCheck two...\n\n");*/
   cs_create(pe, &cs);
   cs_ntotal_set(cs, ntotal_test2);
   cs_periodicity_set(cs, periods_test2);
@@ -127,7 +124,8 @@ int test_coords_suite(void) {
 
 int test_coords_constants(void) {
 
-  /* info("Checking X Y Z enum... ");*/
+
+  /* "Checking X Y Z enum... " */
   test_assert(X == 0);
   test_assert(Y == 1);
   test_assert(Z == 2);
@@ -137,20 +135,10 @@ int test_coords_constants(void) {
   test_assert(XZ == 2);
   test_assert(YY == 3);
   test_assert(YZ == 4);
-  /* info("ok\n");*/
 
-  /* info("Checking FORWARD BACKWARD enum... ");*/
+  /* "Checking FORWARD BACKWARD enum... " */
   test_assert(FORWARD == 0);
   test_assert(BACKWARD == 1);
-  /* info("ok\n");*/
-
-  /* info("Checking Lmin()... ");*/
-  /*
-  test_assert(fabs(Lmin(X) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(Lmin(Y) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(Lmin(Z) - 0.5) < TEST_DOUBLE_TOLERANCE);
-  */
-  /* info("ok\n");*/
 
   return 0;
 }
@@ -264,82 +252,69 @@ int test_coords_communicator(cs_t * cs) {
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
-  /* info("Checking Cartesian communicator initialised...");*/
+  /* "Checking Cartesian communicator initialised..." */
 
   cs_cart_comm(cs, &comm);
 
   MPI_Cart_get(comm, 3, dims, periods, coords);
   MPI_Comm_rank(comm, &rank);
-  /* info("yes\n");*/
 
-  /* info("Checking Cartesian rank...");*/
+  /* Checking Cartesian rank..." */
   test_assert(cs_cart_rank(cs) == rank);
-  /* info("ok\n");*/
 
-  /* info("Checking cart_size() ...");*/
+  /* "Checking cart_size() ..." */
   cs_cartsz(cs, mpisz);
   test_assert(mpisz[X] == dims[X]);
   test_assert(mpisz[Y] == dims[Y]);
   test_assert(mpisz[Z] == dims[Z]);
-  /* info("ok\n");*/
 
-  /* info("Checking cart_coords() ...");*/
+  /* "Checking cart_coords() ..." */
   cs_cart_coords(cs, cart_coords);
   test_assert(cart_coords[X] == coords[X]);
   test_assert(cart_coords[Y] == coords[Y]);
   test_assert(cart_coords[Z] == coords[Z]);
-  /* info("ok\n");*/
 
-  /* info("Checking periodity...");*/
+  /* "Checking periodity..." */
   cs_periodic(cs, periodic);
   test_assert(periodic[X] == periods[X]);
   test_assert(periodic[Y] == periods[Y]);
   test_assert(periodic[Z] == periods[Z]);
-  /* info("ok\n");*/
 
-  /* info("Checking n_local[] ...");*/
+  /* "Checking nlocal[] ..." */
   test_assert(nlocal[X] == ntotal[X]/mpisz[X]);
   test_assert(nlocal[Y] == ntotal[Y]/mpisz[Y]);
   test_assert(nlocal[Z] == ntotal[Z]/mpisz[Z]);
-  /* info("ok\n");*/
 
-  /* info("Checking n_offset()...");*/
+  /* "Checking noffset()..." */
   test_assert(noffset[X] == cart_coords[X]*nlocal[X]);
   test_assert(noffset[Y] == cart_coords[Y]*nlocal[Y]);
   test_assert(noffset[Z] == cart_coords[Z]*nlocal[Z]);
-  /* info("ok\n");*/
 
   /* Check the neighbours */
 
-  /* info("Checking FORWARD neighbours in X...");*/
+  /* "Checking FORWARD neighbours in X..." */
   n = neighbour_rank(cs, cart_coords[X]+1, cart_coords[Y], cart_coords[Z]);
   test_assert(n == cs_cart_neighb(cs, CS_FORW, X));
-  /* info("ok\n");*/
 
-  /* info("Checking BACKWARD neighbours in X...");*/
+  /* "Checking BACKWARD neighbours in X..." */
   n = neighbour_rank(cs, cart_coords[X]-1, cart_coords[Y], cart_coords[Z]);
   test_assert(n == cs_cart_neighb(cs, CS_BACK, X));
-  /* info("ok\n");*/
 
-  /* info("Checking FORWARD neighbours in Y...");*/
+  /* "Checking FORWARD neighbours in Y..." */
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y]+1, cart_coords[Z]);
   test_assert(n == cs_cart_neighb(cs, CS_FORW, Y));
-  /* info("ok\n");*/
 
-  /* info("Checking BACKWARD neighbours in Y...");*/
+  /* "Checking BACKWARD neighbours in Y..." */
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y]-1, cart_coords[Z]);
   test_assert(n == cs_cart_neighb(cs, CS_BACK, Y));
-  /* info("ok\n");*/
 
-  /* info("Checking FORWARD neighbours in Z...");*/
+  /* "Checking FORWARD neighbours in Z..." */
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y], cart_coords[Z]+1);
   test_assert(n == cs_cart_neighb(cs, CS_FORW, Z));
-  /* info("ok\n");*/
 
-  /* info("Checking BACKWARD neighbours in Z...");*/
+  /* "Checking BACKWARD neighbours in Z..." */
   n = neighbour_rank(cs, cart_coords[X], cart_coords[Y], cart_coords[Z]-1);
   test_assert(n == cs_cart_neighb(cs, CS_BACK, Z));
-  /* info("ok\n");*/
 
   return 0;
 }
@@ -363,19 +338,9 @@ static int test_coords_cart_info(cs_t * cs) {
 
   assert(cs);
 
-  /* info("\n");
-  info("Overview\n");
-  info("[rank] cartesian rank (X, Y, Z) cartesian order\n");*/
+  /* String should be... */
+  /* "[rank] cartesian rank (X, Y, Z) cartesian order\n" */
 
-  /* This looks at whether cart_rank() is in the "natural" order */
-  /*
-  index = cart_size(Z)*cart_size(Y)*cart_coords(X) +
-    cart_size(Z)*cart_coords(Y) + cart_coords(Z);
-  sprintf(string, "[%4d] %14d (%d, %d, %d) %d\n", pe_rank(), cart_rank(),
-	  cart_coords(X), cart_coords(Y), cart_coords(Z), index);
-	
-  info(string);
-  */
   /* Pass everything to root to print in order. */
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -387,7 +352,6 @@ static int test_coords_cart_info(cs_t * cs) {
   else {
     for (n = 1; n < sz; n++) {
       MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
-      /* info(string);*/
     }
   }
 
@@ -436,17 +400,6 @@ static int test_coords_sub_communicator(cs_t * cs) {
   MPI_Cart_sub(cartcomm, remainder, &sub_comm2);
   MPI_Comm_rank(sub_comm2, &rank2);
 
-  /*
-  info("\n");
-  info("Sub-dimensional communicators\n");
-  info("[rank] cartesian rank (X, Y, Z) -> Y 1-d YZ 2-d\n");
-
-  sprintf(string, "[%4d] %14d (%d, %d, %d)        %d      %d\n",
-	  pe_rank(), cart_rank(),
-	  cart_coords(X), cart_coords(Y), cart_coords(Z), rank1, rank2);
-
-  info(string);
-  */
   /* Pass everything to root to print in order. */
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -458,7 +411,6 @@ static int test_coords_sub_communicator(cs_t * cs) {
   else {
     for (n = 1; n < sz; n++) {
       MPI_Recv(string, FILENAME_MAX, MPI_CHAR, n, tag, MPI_COMM_WORLD, status);
-      /* info(string);*/
     }
   }
 
@@ -557,7 +509,7 @@ static int test_coords_periodic_comm(cs_t * cs) {
  *
  *  Test default system size.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 __host__ int do_test_coords_device1(pe_t * pe) {
 

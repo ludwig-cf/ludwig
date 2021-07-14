@@ -138,7 +138,7 @@ int main(int argc, char ** argv) {
 
     /* We expect extensions 00n-001 00n-002 ... 00n-00n */ 
 
-    sprintf(filename, "%s.%3.3d-%3.3d", argv[1], nfile, nf);
+    snprintf(filename, sizeof(filename), "%s.%3.3d-%3.3d", argv[1], nfile, nf);
     printf("Filename: %s\n", filename);
 
     fp_colloids = fopen(filename, "r");

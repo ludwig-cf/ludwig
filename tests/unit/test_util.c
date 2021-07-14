@@ -205,25 +205,17 @@ int util_random_unit_vector_check(void) {
     rmax = dmax(rmax, rhat[2]);
   }
 
-  /*info("Unit vector modulus is %f (ok)\n", rvar);*/
 
   test_assert(rmin >= -1.0);
-  /*info("Component min is %g (ok)\n", rmin);*/
-  
   test_assert(rmax <= +1.0);
-  /*info("Component max is %g (ok)\n", rmax);*/
 
   rmean[0] /= NLARGE;
   rmean[1] /= NLARGE;
   rmean[2] /= NLARGE;
 
   test_assert(fabs(rmean[0]) < STAT_TOLERANCE);
-  /*info("Component <X> is %g (ok)\n", rmean[0]);*/
   test_assert(fabs(rmean[1]) < STAT_TOLERANCE);
-  /*info("Component <Y> is %g (ok)\n", rmean[1]);*/
   test_assert(fabs(rmean[2]) < STAT_TOLERANCE);
-  /*info("Component <Z> is %g (ok)\n", rmean[2]);*/
-
 
   return 0;
 }

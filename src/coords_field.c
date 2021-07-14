@@ -207,7 +207,7 @@ int coords_field_init_mpi_indexed(cs_t * cs, int nhcomm, int nf,
 int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
 			    void * mbuf,
 			    MPI_Datatype mpidata) {
-  size_t sz;
+  size_t sz = 0;
   int ic, jc, kc;
   int ia, index;
   int nh;
@@ -238,6 +238,7 @@ int coords_field_halo_rank1(cs_t * cs, int nall, int nhcomm, int na,
   comm = cs->commcart;
   if (mpidata == MPI_CHAR) sz = sizeof(char);
   if (mpidata == MPI_DOUBLE) sz = sizeof(double);
+  assert(sz != 0);
 
   cs_nlocal(cs, nlocal);
 

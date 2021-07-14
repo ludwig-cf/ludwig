@@ -398,7 +398,7 @@ __host__ int halo_swap_host_rank1(halo_swap_t * halo, void * mbuf,
   int nlocal[3];
   int mpicartsz[3];
 
-  size_t sz;
+  size_t sz = 0;
   size_t nsz;
 
   unsigned char * buf;
