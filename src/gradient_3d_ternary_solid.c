@@ -8,17 +8,8 @@
  *  This is the 'predictor corrector' method described by Desplat et al.
  *  Comp. Phys. Comm. 134, 273--290 (2000).
  *
- *  Note that fluid free energy and surface free energy parameters
- *  are required for wetting. Fluid parameters are via free_energy.h
- *  and surface paramter via site_map.h.
- *
- *  Explicitly, Desplat et al. assume
- *
- *    -kappa f_s = (1/2) C phi_s^2 + H phi_s
- *
- *  where kappa is the fluid parameter and C and H are surface parameters.
- *  If one only needs a set contact angle, can have C = 0. C only comes
- *  into play when consdiering wetting phase transitions.
+ *  Wetting parameters per site must be available from the map structure;
+ *  parameters h_1 and h_2 are expected.
  *
  *
  *  Edinburgh Soft Matter and Statistical Physics Group and
@@ -85,12 +76,11 @@ __host__ int grad_3d_ternary_solid_map_set(map_t * map) {
 
   static_solid.map = map;
 
-  /* We expect at most four wetting parameters; if present
-   * first should be C, second H1,H2,H3. Default to zero. */
+  /* We expect exactly two wetting parameters h_1, h_2 */
 
   map_ndata(map, &ndata);
 
-  if (ndata > 4) pe_fatal(map->pe, "Too many wetting parameters %d\n", ndata);
+  if (ndata != 2) pe_fatal(map->pe, "Check wetting parameters %d\n", ndata);
 
   return 0;
 }
