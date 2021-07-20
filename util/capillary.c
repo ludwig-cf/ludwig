@@ -76,15 +76,26 @@ int obstacle_depth  = 6; /* perpendicular to length and height */
 
 const double sigma = 0.125;
 
-/* FREE ENERGY PARAMETERS */
+/* BINARY FREE ENERGY PARAMETERS */
 /* Set the fluid and solid free energy parameters. The fluid parameters
  * must match those used in the main calculation. See Desplat et al.
  * Comp. Phys. Comm. (2001) for details. */
-
 const double kappa = 0.053;
 const double B = 0.0625;
 const double H = 0.00;
 const double C = 0.000;	// Following Desplat et al.
+
+/* TERNARY FREE ENERGY PARAMETERS */
+/* Set the fluid and solid free energy parameters. The fluid parameters
+* must match those used in the main calculation. See Semprebon et al.
+* Phys. Rev. E (2016) for details. */
+const double kappa1 = 0.012;
+const double kappa2 = 0.05;
+const double kappa3 = 0.05;
+const double H1 = 0.0007;    // Following Desplat et al.
+const double H2 = -0.005;    // Following Desplat et al.
+const double alpha = 1.000;    // Following Desplat et al.
+
 
 /* WETTING */
 /* A section of capillary between z1 and z2 (inclusive) will have
@@ -100,8 +111,8 @@ const int z2 = 36;
 /* Wetting: Please don't use STATUS_WITH_H; use STATUS_WITH_C_H
    and set C = 0, if you just want H */
 
-enum {STATUS_ONLY, STATUS_WITH_H, STATUS_WITH_C_H, STATUS_WITH_SIGMA};
-const int output_type = STATUS_ONLY;
+enum {STATUS_ONLY, STATUS_WITH_H, STATUS_WITH_C_H, STATUS_WITH_SIGMA,STATUS_WITH_H1_H2};
+const int output_type = STATUS_WITH_H1_H2;
 
 /* OUTPUT FILENAME */
 
@@ -136,6 +147,8 @@ int main(int argc, char ** argv) {
   double y0 = 0.5*ymax + 0.5;
   double x, y, r;
   double h, h1, theta;
+  double f1,f2,f3,H3,cos_theta12,cos_theta23,cos_theta31;
+  double theta12,theta23,theta31;
 
   int iobst;
   int obst_start[2*obstacle_number][3];
@@ -166,6 +179,43 @@ int main(int argc, char ** argv) {
 
   if (output_type == STATUS_WITH_SIGMA) {
     printf("Surface charge sigma = %f\n", sigma);
+  }
+  if (output_type == STATUS_WITH_H1_H2)
+  {
+      printf("Ternary free energy parameters:\n");
+      printf("free energy parameter kappa1 = %f\n", kappa1);
+      printf("free energy parameter kappa2 = %f\n", kappa2);
+      printf("free energy parameter kappa3 = %f\n", kappa3);
+      printf("free energy parameter alpha = %f\n", alpha);
+      H3=kappa3*(-(H1/kappa1)-(H2/kappa2));
+      f1=pow(alpha*kappa1+4*H1,1.5)-pow(alpha*kappa1-4*H1,1.5);
+      f1=f1/sqrt(alpha*kappa1);
+      f2=pow(alpha*kappa2+4*H2,1.5)-pow(alpha*kappa2-4*H2,1.5);
+      f2=f2/sqrt(alpha*kappa2);
+      f3=pow(alpha*kappa3+4*H3,1.5)-pow(alpha*kappa3-4*H3,1.5);
+      f3=f3/sqrt(alpha*kappa3);
+      cos_theta12=f1/(2.0*(kappa1+kappa2))-f2/(2.0*(kappa1+kappa2));
+      cos_theta23=f2/(2.0*(kappa2+kappa3))-f3/(2.0*(kappa2+kappa3));
+      cos_theta31=f3/(2.0*(kappa3+kappa1))-f1/(2.0*(kappa3+kappa1));
+      printf("dimensionless parameters cos(theta12)   = %f\n", cos_theta12);
+      printf("dimensionless parameters cos(theta23)   = %f\n", cos_theta23);
+      printf("dimensionless parameters cos(theta13)   = %f\n", cos_theta31);
+      theta12=acos(cos_theta12);
+      theta23=acos(cos_theta23);
+      theta31=acos(cos_theta31);
+      printf("contact angle theta12         = %f radians\n", theta12);
+      theta12=theta12*180.0/(4.0*atan(1.0));
+      printf("contact angle theta12         = %f degrees\n", theta12);
+      printf("contact angle theta23         = %f radians\n", theta23);
+      theta23=theta23*180.0/(4.0*atan(1.0));
+      printf("contact angle theta23         = %f degrees\n", theta23);
+      printf("contact angle theta31         = %f radians\n", theta31);
+      theta31=theta31*180.0/(4.0*atan(1.0));
+      printf("contact angle theta31         = %f degrees\n", theta31);
+
+
+
+
   }
 
   map_in = (char *) malloc(xmax*ymax*zmax*sizeof(char));
@@ -201,6 +251,8 @@ int main(int argc, char ** argv) {
 	  map_in[n] = MAP_BOUNDARY;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
 	  if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+      if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
+
 	  map_sig[n] = 0.0;
 
 	  /* Fluid if r(x,y) <= capillary width (L/2) */
@@ -214,6 +266,7 @@ int main(int argc, char ** argv) {
 	    if (k >= z1 && k <= z2) {
 	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
 	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+          if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
 	      map_sig[n] = sigma;
 	    }
 	  }
@@ -237,6 +290,7 @@ int main(int argc, char ** argv) {
 	  map_in[n] = MAP_FLUID;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
 	  if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+      if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
 	  map_sig[n] = 0.0;
 	  
 	  if (i == 0 || j == 0 || i == xmax - 1 || j == ymax - 1) {
@@ -248,6 +302,7 @@ int main(int argc, char ** argv) {
 	    if (k >= z1 && k <= z2) {
 	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
        	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+              if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
 	      map_sig[n] = sigma;
 	    }
 	  }
@@ -267,6 +322,7 @@ int main(int argc, char ** argv) {
 	  map_in[n] = MAP_FLUID;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; } 
 	  if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+      if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
 	  map_sig[n] = 0.0;
 	  if (i == 0 || i == xmax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
@@ -275,6 +331,7 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
 	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+        if (output_type == STATUS_WITH_C_H) { map_h[n] = H1; map_c[n] = H2; }
 	    ++nsolid;
 	  }
 	}
@@ -293,6 +350,7 @@ int main(int argc, char ** argv) {
 	  map_in[n] = MAP_FLUID;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; } 
 	  if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+      if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
 	  map_sig[n] = 0.0;
 	  if (i == 0) {
 	    map_in[n] = MAP_BOUNDARY;
@@ -301,6 +359,8 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
 	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+        if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
+
 	    ++nsolid;
 	  }
 	  if (i == xmax - 1) {
@@ -310,6 +370,7 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
 	    if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
 	    ++nsolid;
 	  }
 
@@ -472,6 +533,8 @@ int main(int argc, char ** argv) {
 	  map_sig[n] = 0.0;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
           if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+          if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
+
 	  if (j == 0 || j == ymax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
 	    if (output_type == STATUS_WITH_SIGMA) {
@@ -479,6 +542,8 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
             if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+            if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
+
 	    ++nsolid;
 	  }
 	}
@@ -497,6 +562,7 @@ int main(int argc, char ** argv) {
 	  map_sig[n] = 0.0;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
           if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+          if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
 	  if (k == 0 || k == zmax - 1) {
 	    map_in[n] = MAP_BOUNDARY;
 	    if (output_type == STATUS_WITH_SIGMA) {
@@ -504,6 +570,7 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
             if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+          if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
 	    ++nsolid;
 	  }
 	}
@@ -571,6 +638,25 @@ int main(int argc, char ** argv) {
     }
     fclose(WriteFile);
   }
+    if (output_type == STATUS_WITH_H1_H2)  {
+      sprintf(file,"Configuration_capillary.dat");
+      WriteFile=fopen(file,"w");
+      fprintf(WriteFile,"#x y z n map H1 H2\n");
+
+      for (i = 0; i < xmax; i++) {
+        for (j = 0; j < ymax; j++) {
+      for (k = 0; k < zmax; k++) {
+
+      n = ymax*zmax*i + zmax*j + k;
+        
+      if (map_in[n] == MAP_BOUNDARY) { fprintf(WriteFile,"%i %i %i %i %d %f %f\n", i, j, k, n, MAP_BOUNDARY, map_h[n], map_c[n]); }
+      if (map_in[n] == MAP_FLUID)    { fprintf(WriteFile,"%i %i %i %i %d %f %f\n", i, j, k, n, MAP_FLUID, map_h[n], map_c[n]); }
+
+      }
+        }
+      }
+      fclose(WriteFile);
+    }
 
 
   printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
@@ -597,7 +683,10 @@ int main(int argc, char ** argv) {
 	  fwrite(map_c + n, sizeof(double), 1, fp_orig);
 	  fwrite(map_h + n, sizeof(double), 1, fp_orig);
 	}
-
+    if (output_type == STATUS_WITH_H1_H2) {
+      fwrite(map_c + n, sizeof(double), 1, fp_orig);
+      fwrite(map_h + n, sizeof(double), 1, fp_orig);
+    }
 	if (output_type == STATUS_WITH_SIGMA) {
 	  fwrite(map_sig + n, sizeof(double), 1, fp_orig);
 	}
