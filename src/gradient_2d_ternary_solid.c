@@ -2,12 +2,19 @@
  *
  *  gradient_2d_ternary_solid.c
  *
+ *  Wetting condition for ternary free energy following Semprebon et al.
+ *  We assume there is a single solid free energy with associated
+ *  constants h_1 and h_2.
+ *
+ *  No Lees-Edwards planes are supported.
+ *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
+ *  Shan Chen (chan.chen@epfl.ch)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -56,17 +63,9 @@ __global__ void grad_2d_ternary_solid_kernel(kernel_ctxt_t * ktx,
 
 __host__ int grad_2d_ternary_solid_set(map_t * map) {
 
-  int ndata;
-
   assert(map);
 
   static_solid.map = map;
-
-  /* We expect at most two wetting parameters; if present
-   * first should be C, second H. Default to zero. */
-
-  map_ndata(map, &ndata);
-  /* if (ndata < 2) pe_fatal(map->pe, "Wetting parameters%d\n", ndata);*/
 
   return 0;
 }
@@ -77,8 +76,9 @@ __host__ int grad_2d_ternary_solid_set(map_t * map) {
  *
  *  Keep a copy of the free energy paramerers.
  *  Set wetting parameters for phi and psi. See Eq. 24-26 Semprebon.
- *  The constraint Eq. 32 is also used so that only h1 and h2 are
- *  involved.
+ *
+ *  The constraint Eq. 32 that only h1 and h2 are independent may be
+ *  imposed elsewhere.
  *
  *****************************************************************************/
 
@@ -101,8 +101,8 @@ __host__ int grad_2d_ternary_solid_fe_set(fe_ternary_t * fe) {
   k3 = fe->param->kappa3;
   a2 = fe->param->alpha*fe->param->alpha;
 
-  static_solid.hrka[0] = -(h1/k1 - h2/k2)/a2; /* phi */
-  static_solid.hrka[1] = -(h3/k3)/a2;         /* psi */
+  static_solid.hrka[0] =  (-h1/k1 + h2/k2)/a2; /* phi */
+  static_solid.hrka[1] =  (-h3/k3        )/a2; /* psi */
 
   return 0;
 }
@@ -212,12 +212,12 @@ __global__ void grad_2d_ternary_solid_kernel(kernel_ctxt_t * ktx,
 
 	  if (isite[p] == -1) {
 	    /* Wetting condition */
-	    dphi = -fe.hrka[n];
+	    dphi = fe.hrka[n];
 	  }
 	  else {
 	    /* Fluid */
 	    dphi = phi->data[addr_rank1(phi->nsites, nf, isite[p], n)]
-	      - phi->data[addr_rank1(phi->nsites, nf, index,    n)];
+	         - phi->data[addr_rank1(phi->nsites, nf, index,    n)];
 	  }
 
 	  gradn[X] += 3.0*wv[p]*bs_cv[p][X]*dphi;
