@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -86,6 +86,8 @@ int field_ternary_init_X(field_t * phi) {
  *     |  +1    |  -1    |
  *     -------------------
  *
+ *  cf. Semprebon et al (2016) Fig 1 (e).
+ *
  *****************************************************************************/
 
 int field_ternary_init_2d_double_emulsion(field_t * phi) {
@@ -162,6 +164,8 @@ int field_ternary_init_2d_double_emulsion(field_t * phi) {
  *       |------------|
  *       |    c3      |
  *       +------------+
+ *
+ *  cf. Semprebon etal (2016) Fig. 2 (a)
  *
  *****************************************************************************/
 
@@ -293,7 +297,7 @@ int field_ternary_init_bbb(field_t * phi) {
       }
     }
   }
-    
+
   return 0;
 }
 
