@@ -89,12 +89,15 @@ const double C = 0.000;	// Following Desplat et al.
 /* Set the fluid and solid free energy parameters. The fluid parameters
 * must match those used in the main calculation. See Semprebon et al.
 * Phys. Rev. E (2016) for details. */
+
 const double kappa1 = 0.012;
 const double kappa2 = 0.05;
 const double kappa3 = 0.05;
-const double H1 = 0.0007;    // Following Desplat et al.
-const double H2 = -0.005;    // Following Desplat et al.
-const double alpha = 1.000;    // Following Desplat et al.
+const double TERNARY_H1 = 0.0007;
+const double TERNARY_H2 = -0.005;
+const double TERNARY_H3 = ((kappa3)*(-((TERNARY_H1)/(kappa1))-((TERNARY_H2)/(kappa2))));
+
+const double alpha = 1.000;
 
 
 /* WETTING */
@@ -147,7 +150,7 @@ int main(int argc, char ** argv) {
   double y0 = 0.5*ymax + 0.5;
   double x, y, r;
   double h, h1, theta;
-  double f1,f2,f3,H3,cos_theta12,cos_theta23,cos_theta31;
+  double f1,f2,f3,cos_theta12,cos_theta23,cos_theta31;
   double theta12,theta23,theta31;
 
   int iobst;
@@ -187,12 +190,11 @@ int main(int argc, char ** argv) {
       printf("free energy parameter kappa2 = %f\n", kappa2);
       printf("free energy parameter kappa3 = %f\n", kappa3);
       printf("free energy parameter alpha = %f\n", alpha);
-      H3=kappa3*(-(H1/kappa1)-(H2/kappa2));
-      f1=pow(alpha*kappa1+4*H1,1.5)-pow(alpha*kappa1-4*H1,1.5);
+      f1=pow(alpha*kappa1+4*TERNARY_H1,1.5)-pow(alpha*kappa1-4*TERNARY_H1,1.5);
       f1=f1/sqrt(alpha*kappa1);
-      f2=pow(alpha*kappa2+4*H2,1.5)-pow(alpha*kappa2-4*H2,1.5);
+      f2=pow(alpha*kappa2+4*TERNARY_H2,1.5)-pow(alpha*kappa2-4*TERNARY_H2,1.5);
       f2=f2/sqrt(alpha*kappa2);
-      f3=pow(alpha*kappa3+4*H3,1.5)-pow(alpha*kappa3-4*H3,1.5);
+      f3=pow(alpha*kappa3+4*TERNARY_H3,1.5)-pow(alpha*kappa3-4*TERNARY_H3,1.5);
       f3=f3/sqrt(alpha*kappa3);
       cos_theta12=f1/(2.0*(kappa1+kappa2))-f2/(2.0*(kappa1+kappa2));
       cos_theta23=f2/(2.0*(kappa2+kappa3))-f3/(2.0*(kappa2+kappa3));
@@ -266,7 +268,10 @@ int main(int argc, char ** argv) {
 	    if (k >= z1 && k <= z2) {
 	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
 	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
-          if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
+	      if (output_type == STATUS_WITH_H1_H2) {
+		map_h[n] = TERNARY_H1;
+		map_c[n] = TERNARY_H2;
+	      }
 	      map_sig[n] = sigma;
 	    }
 	  }
@@ -302,7 +307,10 @@ int main(int argc, char ** argv) {
 	    if (k >= z1 && k <= z2) {
 	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
        	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
-              if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
+              if (output_type == STATUS_WITH_H1_H2) {
+		map_h[n] = TERNARY_H1;
+		map_c[n] = TERNARY_H2;
+	      }
 	      map_sig[n] = sigma;
 	    }
 	  }
@@ -331,7 +339,10 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
 	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
-        if (output_type == STATUS_WITH_C_H) { map_h[n] = H1; map_c[n] = H2; }
+	    if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = TERNARY_H1;
+	      map_c[n] = TERNARY_H2;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -359,8 +370,10 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
 	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
-        if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
-
+	    if (output_type == STATUS_WITH_H1_H2) {
+	      map_h[n] = TERNARY_H1;
+	      map_c[n] = TERNARY_H2;
+	    }
 	    ++nsolid;
 	  }
 	  if (i == xmax - 1) {
@@ -542,8 +555,10 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
             if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
-            if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
-
+            if (output_type == STATUS_WITH_H1_H2) {
+	      map_h[n] = TERNARY_H1;
+	      map_c[n] = TERNARY_H2;
+	    }
 	    ++nsolid;
 	  }
 	}
@@ -570,7 +585,10 @@ int main(int argc, char ** argv) {
 	    }
 	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
             if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
-          if (output_type == STATUS_WITH_H1_H2) { map_h[n] = H1; map_c[n] = H2; }
+	    if (output_type == STATUS_WITH_H1_H2) {
+	      map_h[n] = TERNARY_H1;
+	      map_c[n] = TERNARY_H2;
+	    }
 	    ++nsolid;
 	  }
 	}
