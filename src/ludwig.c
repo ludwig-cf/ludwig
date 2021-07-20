@@ -679,7 +679,7 @@ void ludwig_run(const char * inputfile) {
 	  /* Ternary free energy gradmu requires of momentum correction
 	     after force calculation */
 
-	  if (ludwig->fe && ludwig->fe->id == FE_TERNARY) {
+	  if (ludwig->fe && ludwig->hydro && ludwig->fe->id == FE_TERNARY) {
             hydro_correct_momentum(ludwig->hydro);
 	  }
 
@@ -1428,6 +1428,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_ternary_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
     fe_ternary_info(fe);
 
+    /* Allow either possibility for gradient computation... */
+    grad_2d_ternary_solid_fe_set(fe);
     grad_3d_ternary_solid_fe_set(fe);
 
     /* Cahn Hilliard */
