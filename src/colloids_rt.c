@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2020 The University of Edinburgh
+ *  (c) 2014-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -27,6 +27,7 @@
 
 #include "lubrication.h"
 #include "pair_ss_cut.h"
+#include "pair_ss_cut_ij.h"
 #include "pair_lj_cut.h"
 #include "pair_yukawa.h"
 #include "bond_fene.h"
@@ -39,7 +40,6 @@
 
 #include "bbl.h"
 #include "build.h"
-#include "subgrid.h"
 
 int lubrication_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
@@ -47,6 +47,8 @@ int pair_yukawa_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int pair_lj_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter);
 int bond_fene_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
+
+int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
 
 int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 			 map_t * map);
@@ -141,6 +143,8 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   bond_fene_init(pe, cs, rt, *interact);
   angle_cosine_init(pe, cs, rt, *interact);
 
+  pair_ss_cut_ij_init(pe, cs, rt, *interact);
+
   colloids_rt_cell_list_checks(pe, cs, pinfo, *interact);
   colloids_init_halo_range_check(pe, cs, *pinfo);
   if (nc > 1) interact_range_check(*interact, *pinfo);
@@ -188,24 +192,26 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
 			 map_t * map) {
 
   int nsubgrid_local = 0;
-  int nsubgrid;
+  int nsubgrid = 0;
   MPI_Comm comm;
 
   assert(cs);
   assert(cinfo);
+
+  /* Find out if we have any sub-grid particles */
 
   colloids_info_count_local(cinfo, COLLOID_TYPE_SUBGRID, &nsubgrid_local);
 
   cs_cart_comm(cs, &comm);
   MPI_Allreduce(&nsubgrid_local, &nsubgrid, 1, MPI_INT, MPI_SUM, comm);
 
-  if (nsubgrid > 0) {
-    subgrid_on_set();
-  }
-  else {
-    build_update_map(cs, cinfo, map);
-    build_update_links(cs, cinfo, wall, map);
-  }  
+  cinfo->nsubgrid = nsubgrid;
+
+  /* Assume there are always fully-resolved particles */
+
+  build_update_map(cs, cinfo, map);
+  build_update_links(cs, cinfo, wall, map);
+
 
   return 0;
 }
@@ -229,7 +235,6 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   assert(pe);
   assert(rt);
   assert(cinfo);
-  assert(nc == 1 || nc == 2 || nc == 3);
 
   if (nc >= 1) {
     pe_info(pe, "Requested one colloid via input:\n");
@@ -263,6 +268,10 @@ int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
     state3->index = 3;
     if (pc) pc->s = *state3;
     free(state3);
+  }
+
+  if (nc >= 4) {
+    pe_fatal(pe, "Cannot specify more than 3 colloids with a file\n");
   }
 
   return 0;
@@ -452,6 +461,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   nrt = rt_int_parameter(rt, key, &state->rng);
   if (nrt) pe_info(pe, format_i1, key, state->rng);
 
+  sprintf(key, "%s_%s", stub, "interact_type");
+  nrt = rt_int_parameter(rt, key, &state->inter_type);
+  if (nrt) pe_info(pe, format_i1, key, state->inter_type);
+
   sprintf(key, "%s_%s", stub, "a0");
   nrt = rt_double_parameter(rt, key, &state->a0);
   if (nrt) pe_info(pe, format_e1, key, state->a0);
@@ -459,6 +472,10 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   sprintf(key, "%s_%s", stub, "ah");
   nrt = rt_double_parameter(rt, key, &state->ah);
   if (nrt) pe_info(pe, format_e1, key, state->ah);
+
+  sprintf(key, "%s_%s", stub, "al");
+  nrt = rt_double_parameter(rt, key, &state->al);
+  if (nrt) pe_info(pe, format_e1, key, state->al);
 
   sprintf(key, "%s_%s", stub, "r");
   nrt = rt_double_parameter_vector(rt, key, state->r);
@@ -771,6 +788,57 @@ int pair_ss_cut_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * inter) {
     pair_ss_cut_param_set(pair, epsilon, sigma, nu, cutoff);
     pair_ss_cut_register(pair, inter);
     pair_ss_cut_info(pair);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  pair_ss_cut_ij_init
+ *
+ *****************************************************************************/
+
+int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct) {
+
+  int ison = 0;
+
+  assert(pe);
+  assert(cs);
+  assert(rt);
+  assert(intrct);
+
+  ison = rt_switch(rt, "pair_ss_cut_ij");
+
+  if (ison) {
+    int ntypes = 0;
+    int nsymm  = 0;
+    double epsilon[BUFSIZ] = {};
+    double sigma[BUFSIZ] = {};
+    double nu[BUFSIZ] = {};
+    double hc[BUFSIZ] = {};
+    pair_ss_cut_ij_t * pair = NULL;
+
+    rt_key_required(rt, "pair_ss_cut_ij_ntypes",  RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_epsilon", RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_sigma",   RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_nu",      RT_FATAL);
+    rt_key_required(rt, "pair_ss_cut_ij_hc",      RT_FATAL);
+
+    rt_int_parameter(rt, "pair_ss_cut_ij_ntypes", &ntypes);
+    if (ntypes < 1) pe_fatal(pe, "pair_ss_cut_ij_ntypes < 1 (%d)\n", ntypes);
+    if (ntypes >= BUFSIZ) pe_fatal(pe, "pair_ss_cut_ij_ntypes INTERNAL\n");
+
+    nsymm = ntypes*(ntypes + 1)/2;
+
+    rt_double_nvector(rt, "pair_ss_cut_ij_epsilon", nsymm, epsilon, RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_sigma",   nsymm, sigma,   RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_nu",      nsymm, nu,      RT_FATAL);
+    rt_double_nvector(rt, "pair_ss_cut_ij_hc",      nsymm, hc,      RT_FATAL);
+
+    pair_ss_cut_ij_create(pe, cs, ntypes, epsilon, sigma, nu, hc, &pair);
+    pair_ss_cut_ij_register(pair, intrct);
+    pair_ss_cut_ij_info(pair);
   }
 
   return 0;

@@ -49,11 +49,9 @@ fd_force_divergence 1
 A -0.0625
 B 0.0625
 K 0.053
-C 0.0
 
 mobility 0.05
 
-noise 0.05
 phi0 0.0
 phi_initialisation    drop
 phi_init_drop_radius 9.2

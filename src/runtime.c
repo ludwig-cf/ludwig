@@ -32,11 +32,12 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -67,6 +68,7 @@ static int rt_key_broadcast(rt_t * rt);
 static int rt_is_valid_key_pair(rt_t * rt, const char *, int lineno);
 static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
+static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
 
 /*****************************************************************************
  *
@@ -171,11 +173,50 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
     fclose(fp_input);
   }
 
-  strncpy(rt->input_file, input_file_name, FILENAME_MAX);
+  strncpy(rt->input_file, input_file_name,
+	  strnlen(input_file_name, FILENAME_MAX-1));
 
   rt_key_broadcast(rt);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_add_key_value
+ *
+ *  Add an extra key value pair (useful for testing)
+ *
+ *****************************************************************************/
+
+int rt_add_key_value(rt_t * rt, const char * key, const char * value) {
+
+  int nline = 0;
+  int added = 0;
+
+  assert(rt);
+  assert(key);
+  assert(value);
+
+  /* Form a new line with a space between key and value */
+
+  nline = rt->nkeys + 1;
+
+  if (strlen(key) + strlen(value) >= NKEY_LENGTH - 2) {
+    /* avoid buffer overflow */
+  }
+  else {
+    char line[NKEY_LENGTH];
+    sprintf(line, "%s %s", key, value);
+
+    if (rt_is_valid_key_pair(rt, line, nline)) {
+      rt_add_key_pair(rt, line, nline);
+      rt->nkeys += 1;
+      added = 1;
+    }
+  }
+
+  return added;
 }
 
 /*****************************************************************************
@@ -348,6 +389,98 @@ int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
 
 /*****************************************************************************
  *
+ *  rt_int_nvector
+ *
+ *  Vector of specified length with values 1_2_3_...
+ *
+ *  Return zero on key present and success.
+ *
+ *****************************************************************************/
+
+int rt_int_nvector(rt_t * rt, const char * key, int nv, int * v,
+		   rt_enum_t level) {
+
+  int ierr = 0;
+  int key_present = 0;
+  char str_value[NKEY_LENGTH];
+
+  assert(rt);
+  assert(v);
+
+  key_present = rt_look_up_key(rt, key, str_value);
+
+  if (!key_present) {
+    ierr = -1;
+  }
+  else {
+    /* Tokenize */
+    int iread = 0;
+    char * token = strtok(str_value, "_");
+    while (token) {
+      if (sscanf(token, "%d", &v[iread]) != 1) {
+	rt_vinfo(rt, level, "Key %s has bad value %s\n", key, token);
+	break;
+      }
+      token = strtok(NULL, "_");
+      iread += 1;
+    }
+    if (iread != nv) {
+      rt_vinfo(rt, level, "Vector (key %s) has incorrect length\n", key);
+      ierr = -2;
+    }
+  }
+
+  return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  rt_double_nvector
+ *
+ *  Vector of given length with values "1.0_2.0_3.0_4.0_..."
+ *
+ *  Return 0 on key present and success.
+ *
+ *****************************************************************************/
+
+int rt_double_nvector(rt_t * rt, const char * key, int nv, double * v,
+		      rt_enum_t level) {
+
+  int ierr = 0;
+  int key_present = 0;
+  char str_value[NKEY_LENGTH];
+  
+  assert(rt);
+  assert(v);
+
+  key_present = rt_look_up_key(rt, key, str_value);
+
+  if (!key_present) {
+    ierr = -1;
+  }
+  else {
+    /* Tokenize and read values ... */
+    int iread = 0;
+    char * token = strtok(str_value, "_");
+    while (token) {
+      if (sscanf(token, "%lf", &v[iread]) != 1) {
+	rt_vinfo(rt, level, "Key %s has bad value %s\n", key, token);
+	break;
+      }
+      token = strtok(NULL, "_");
+      iread += 1;
+    }
+    if (iread != nv) {
+      rt_vinfo(rt, level, "Vector (key %s) has incorrect length\n", key);
+      ierr = -2;
+    }
+  }
+
+  return ierr;
+}
+
+/*****************************************************************************
+ *
  *  rt_string_parameter
  *
  *  Query the key list for a string. Any truncation is treated as
@@ -510,7 +643,7 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
   else {
     /* Put the new key at the head of the list. */
 
-    strncpy(pnew->key, key, NKEY_LENGTH);
+    strncpy(pnew->key, key, strnlen(key, NKEY_LENGTH-1));
     pnew->is_active = 1;
     pnew->input_line_no = lineno;
 
@@ -554,4 +687,111 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
   }
 
   return key_present;
+}
+
+/*****************************************************************************
+ *
+ *  rt_key_required
+ *
+ *  Convenience to declare that a given key should be present and
+ *  take some action.
+ *
+ *  If not RT_FATAL, returns 0 if key is present, non-zero on "error".
+ *
+ *****************************************************************************/
+
+int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
+
+  int ierr = 0;
+  char value[NKEY_LENGTH] = {};
+  char msg[BUFSIZ] = {};
+
+  assert(rt);
+  assert(key);
+
+  ierr = -1 + rt_look_up_key(rt, key, value);
+
+  if (ierr == 0) {
+    /* No problem */
+  }
+  else {
+    strncpy(value, key, strnlen(key, NKEY_LENGTH-1));
+
+    /* Information */
+    if (level == RT_INFO) {
+      sprintf(msg, "Input: key \"%s\" absent; a default value will be used.\n",
+	      value);
+      pe_info(rt->pe, msg);
+    }
+    /* Fatal */
+    if (level == RT_FATAL) {
+      sprintf(msg, "Input: key \"%s\" must be specified, but is missing;\n"
+	      "please check the input and try again.", value);
+      pe_fatal(rt->pe, msg);
+    }
+  }
+
+  return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  rt_info
+ *
+ *  A filter for messages.
+ *
+ *****************************************************************************/
+
+static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...) {
+
+  int rank;
+
+  assert(rt);
+
+  rank = pe_mpi_rank(rt->pe);
+
+  if (lv >= RT_INFO && rank == 0) {
+
+    va_list args;
+
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+
+    if (lv == RT_FATAL) {
+      MPI_Comm comm = MPI_COMM_NULL;
+      pe_mpi_comm(rt->pe, &comm);
+      printf("Please check input and try again.\n");
+      MPI_Abort(comm, 0);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_report_unused_keys
+ *
+ *****************************************************************************/
+
+int rt_report_unused_keys(rt_t * rt, rt_enum_t level) {
+
+  int n_unused = 0;
+
+  assert(rt);
+
+  {
+    key_pair_t * key = rt->keylist;
+
+    for (; key; key = key->next) {
+      if (key->is_active) n_unused += 1;
+      if (level == RT_INFO && key->is_active) {
+	pe_info(rt->pe, "Warning: key/value present in input but not used:\n");
+	pe_info(rt->pe, "(Line %d): %s\n", key->input_line_no, key->key);
+      }
+    }
+  }
+
+  return n_unused;
 }

@@ -5,8 +5,11 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2019 The University of Edinburgh
- *  
+ *  (c) 2012-2020 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *
  *****************************************************************************/
 
 #include <assert.h>
@@ -14,6 +17,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pe.h"
 #include "util.h"
@@ -29,6 +33,8 @@
 
 int util_svd_check(int m, int n, double ** a);
 int util_random_unit_vector_check(void);
+int util_str_tolower_check(void);
+int util_rectangle_conductance_check(void);
 
 /*****************************************************************************
  *
@@ -67,6 +73,9 @@ int test_util_suite(void) {
 
   util_matrix_free(m, &a);
   util_random_unit_vector_check();
+
+  util_str_tolower_check();
+  util_rectangle_conductance_check();
 
   pe_info(pe, "PASS     ./unit/test_util\n");
   pe_free(pe);
@@ -217,4 +226,76 @@ int util_random_unit_vector_check(void) {
 
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_str_tolower_check
+ *
+ *  Don't stray into tests of standard tolower()
+ *
+ *****************************************************************************/
+
+int util_str_tolower_check(void) {
+
+  char s1[BUFSIZ] = {0};
+
+  /* basic */
+  strncpy(s1, "TesT", 5);
+  util_str_tolower(s1, strlen(s1));
+  assert(strncmp(s1, "test", 4) == 0);
+
+  /* maxlen < len */
+  strncpy(s1, "AbCD", 5);
+  util_str_tolower(s1, 3);
+  assert(strncmp(s1, "abcD", 4) == 0);
+
+  /* a longer example */
+  strncpy(s1, "__12345ABCDE__", 15);
+  util_str_tolower(s1, strlen(s1));
+  assert(strncmp(s1, "__12345abcde__", 14) == 0);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  util_rectangle_conductance_check
+ *
+ *****************************************************************************/
+
+int util_rectangle_conductance_check(void) {
+
+  int ierr = 0;
+  double c = 0.0;
+
+  {
+    /* w must be the larger */
+    double h = 1.0;
+    double w = 2.0;
+
+    ierr = util_rectangle_conductance(w, h, &c);
+    assert(ierr == 0);
+    ierr = util_rectangle_conductance(h, w, &c); /* Wrong! */
+    assert(ierr != 0);
+  }
+
+  {
+    double h = 2.0;
+    double w = 2.0;
+    ierr = util_rectangle_conductance(w, h, &c);
+    assert(ierr == 0);
+  }
+
+
+  {
+    /* Value used for some regression tests */
+    double h = 30.0;
+    double w = 62.0;
+    ierr = util_rectangle_conductance(w, h, &c);
+    assert(ierr == 0);
+    assert(fabs(c - 97086.291)/97086.291 < FLT_EPSILON);
+  }
+
+  return ierr;
 }

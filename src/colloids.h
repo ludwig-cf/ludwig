@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -45,6 +45,10 @@ struct colloid {
   double sump;          /* flux through squirmer surface */ 
   double dq[2];         /* charge remove/replace mismatch for 2 charges */
 
+  double fsub[3];       /* Subgrid particle force from fluid */
+  double fex[3];        /* External forces (non-fluid) on particle */
+  double tex[3];        /* External torques on particle */
+
   /* Pointers */
 
   colloid_link_t * lnk; /* Pointer to the list of links defining surface */
@@ -59,6 +63,33 @@ struct colloid {
 };
 
 typedef struct colloids_info_s colloids_info_t;
+
+struct colloids_info_s {
+
+  int nhalo;                  /* Halo extent in cell list */
+  int ntotal;                 /* Total, physical, number of colloids */
+  int nallocated;             /* Number colloid_t allocated */
+  int ncell[3];               /* Number of cells (excluding  2*halo) */
+  int str[3];                 /* Strides for cell list */
+  int nsites;                 /* Total number of map sites */
+  int ncells;                 /* Total number of cells */
+
+  int nsubgrid;               /* Total number of subgrid particles */
+  int rebuild_freq;           /* Rebuild shape every so many steps */
+
+  double rho0;                /* Mean density (usually matches fluid) */
+  double drmax;               /* Maximum movement per time step */
+
+  colloid_t ** clist;         /* Cell list pointers */
+  colloid_t ** map_old;       /* Map (previous time step) pointers */
+  colloid_t ** map_new;       /* Map (current time step) pointers */
+  colloid_t * headall;        /* All colloid list (incl. halo) head */
+  colloid_t * headlocal;      /* Local list (excl. halo) head */
+
+  pe_t * pe;                  /* Parallel environment */
+  cs_t * cs;                  /* Coordinate system */
+  colloids_info_t * target;   /* Copy of this structure on target */ 
+};
 
 __host__ int colloids_info_create(pe_t * pe, cs_t * cs, int ncell[3],
 				  colloids_info_t ** pinfo);

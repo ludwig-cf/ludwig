@@ -21,7 +21,6 @@ MAIN = main
 EXECUTABLE = Ludwig.exe
 LIBRARY = libludwig.a
 
-OPTS =
 LIBS = $(MPI_LIB_PATH) $(MPI_LIB) $(TARGET_LIB_PATH) $(TARGET_LIB) -lm
 INCL = $(MPI_INC_PATH) $(TARGET_INC_PATH)
 
@@ -84,6 +83,11 @@ lib:	$(LIBOBJECTS)
 
 .c.o :
 	$(CC) $(MODEL) $(OPTS) $(CFLAGS) $(INCL) -c $?
+
+# Special case for no optimaisation
+
+util_sum.o:	util_sum.c
+	$(CC) $(CFLAGS) $(INCL) -c util_sum.c
 
 .PHONY : clean
 clean:

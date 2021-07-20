@@ -1,0 +1,127 @@
+##############################################################################
+#
+#  Distribution initialisation with 2d Kelvin Helmholtz
+#
+#  Following Brown and Minion (J. Computat. Phys. 122, 165--183 (1995)
+#  this is a standard test problem of the doubly periodic shear layer.
+#
+#  Brown and Minion have and initial flow (u,v)
+#
+#    u = tanh k(y-0.25)     y <= 0.5
+#      = tanh k(0.75-y)     y >  0.5
+#    v = delta sin 2pi x
+#
+#  in a two dimensional system L_x = L_y = L = 1. The value of k is the
+#  initial "shear layer thickness" kL = 30 (for the "thick" layer).
+#
+#  the velocity pertubation delta is 0.05. Brown and Minion use kinematic
+#  viscosity nu = 1/10,000 (Fig. 2) and a dimensionless time T = 0.8. The
+#  nominal Reynolds number is delta L / nu = 500.
+#
+#  We use equivalent values transposed to appropriate units to match
+#  relevant dimensionless groups. For L_x = L_y = L = N lattice
+#  units the lattice spacing is h = 1/N.
+#
+#  We introduce a velocity scale U_0 so that the initial conditions in
+#  lattice units are
+#
+#  u = U_0 tanh k(hy-0.25)    hy = y/N_y <= 0.5 etc
+#  v = U_0 delta sin 2pi hx.  hx = x/N_x
+#
+#  To ensure we keep the maximum speed below the Mach number constraint,
+#  we choose U_0 = 0.01. delta is 0.05 as for Brown and Minion.
+#
+#  We match the Reynolds number with delta L / nu = 500 of Brown/Minion,
+#  who use nu = 10,000 (also nu = 20,0000). So we can set the lattice
+#  vicosity U_0 delta L / nu = 500, i.e., nu = 10^-6 N (as rho = 1, this
+#  is also the dynamic viscosity).
+#
+#  Finally, it reamins to match the time of the simulation. We match the
+#  dimensionless time T_0 = h/delta = 1/(N delta) for Brown and Minion.
+#  E.g., for N = 64, T_0 = 0.3125. T = 0.8 is 2.56 T_0.
+#
+#  For the lattice Boltzmann (1 time step is 1 dt) the dimensionless time
+#  T_0 = 1/(U_0 delta) = 2000 time steps.
+#  Matching 2.56 T_0 is therefore takes 5120 simulation steps. 
+#
+#  "Thick shear layer" k = 30, U_0 = 0.01, delta = 0.05; one can use...
+#
+#     L           k        eta      T = 0.4  T = 0.8   T = 1.2
+#    64        30.0   0.000064         2560     5120      7680
+#   128        30.0   0.000128         5120    10240     15360
+#   256        30.0   0.000256        10240    20480     30720
+#   512        30.0   0.000512        20480    40960     61440
+#
+#  "Thin shear layer" k = 100 and otherwise unchanged.
+#
+##############################################################################
+
+N_cycles 2560
+
+##############################################################################
+#
+#  System and MPI
+# 
+##############################################################################
+
+size 64_64_1
+grid 2_2_1
+reduced_halo yes
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+viscosity 0.000128
+
+isothermal_fluctuations off
+lb_relaxation_scheme    m10
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy                 none
+distribution_initialisation 2d_kelvin_helmholtz
+2d_kelvin_helmholtz_u0      0.01
+2d_kelvin_helmholtz_delta   0.05
+2d_kelvin_helmholtz_kappa   100.0
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init     none
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+periodicity 1_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics 2560
+freq_vel        5120
+vel_format      ASCII
+config_at_end   no
+
+###############################################################################
+#
+#  Miscellaneous
+#
+###############################################################################
+
+random_seed 8361235

@@ -90,8 +90,8 @@ int stats_surfactant_1d(fe_surf_t * fe) {
   /* The sqrt(t) is the usual dependance for analysis of the
    * diffusion problem, so is included here. */
 
-  pe_info(fe->pe, "Surfactant: %12.5e %12.5e %12.5e %12.5e\n",
-	  psi_b, psi_0, sigma0, 0.5*excess);
+  pe_info(fe->pe, "Surfactant: %12.5e %12.5e %12.5e %12.5e %12.5e\n",
+	  psi_b, psi_0, sigma0, sigma, 0.5*excess);
 
   return 0;
 }

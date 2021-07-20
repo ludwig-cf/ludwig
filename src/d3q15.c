@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2018 The University of Edinburgh
+ *  (c) 2008-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -96,6 +96,8 @@ const double wv[NVEL15] = {w0,
 const double norm_[NVEL15] = {1.0, 3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0,
 			      9.0/2.0,9.0,9.0/2.0, 0.5, 1.5, 1.5, 1.5, 9.0};
 
+/* Prefer to compute c_ia c_ib - cs2 d_ab. So remove global symbol. */
+/*
 const  double q_[NVEL15][3][3] = {
   {{-r3, 0.0, 0.0},{ 0.0,-r3, 0.0},{ 0.0, 0.0,-r3}},
   {{ t3, 1.0, 1.0},{ 1.0, t3, 1.0},{ 1.0, 1.0, t3}},
@@ -112,7 +114,7 @@ const  double q_[NVEL15][3][3] = {
   {{ t3, 0.0, 0.0},{ 0.0,-r3, 0.0},{ 0.0, 0.0,-r3}},
   {{ t3, 1.0,-1.0},{ 1.0, t3,-1.0},{-1.0,-1.0, t3}},
   {{ t3, 1.0, 1.0},{ 1.0, t3, 1.0},{ 1.0, 1.0, t3}}};
-
+*/
 const double ma_[NVEL15][NVEL15] = 
   {{ c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1},
    { c0, c1, c1, c1, c1, c1, c0, c0, c0, c0,-c1,-c1,-c1,-c1,-c1},

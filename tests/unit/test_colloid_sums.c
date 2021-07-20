@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,12 +29,13 @@ static int dim_; /* Current direction */
 
 static int test_colloid_sums_1d(pe_t * pe);
 static int test_colloid_sums_reference_set(colloid_t * cref, int seed);
-static int test_colloid_sums_copy(colloid_t ref, colloid_t * pc);
-static int test_colloid_sums_assert(colloid_t c1, colloid_t * c2);
+static int test_colloid_sums_copy(const colloid_t * ref, colloid_t * pc);
 static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
 				  const double r0[3]);
 static int test_colloid_sums_move(pe_t * pe);
 static int test_colloid_sums_conservation(pe_t * pe);
+
+int test_colloid_sums_assert(const colloid_t * c1, const colloid_t * c2);
 
 /*****************************************************************************
  *
@@ -158,13 +159,13 @@ static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
   index = 1;
   colloids_info_add_local(cinfo, index, r0, &pc);
   if (pc) {
-    test_colloid_sums_copy(cref1, pc);
+    test_colloid_sums_copy(&cref1, pc);
   }
 
   index = 2;
   colloids_info_add_local(cinfo, index, r0, &pc);
   if (pc) {
-    test_colloid_sums_copy(cref2, pc);
+    test_colloid_sums_copy(&cref2, pc);
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -195,8 +196,8 @@ static int test_colloid_sums_edge(pe_t * pe, cs_t * cs, int ncell[3],
 
 	if (pc) {
 	  /* Check the totals */
-	  if (pc->s.index == 1) test_colloid_sums_assert(cref1, pc);
-	  if (pc->s.index == 2) test_colloid_sums_assert(cref2, pc);
+	  if (pc->s.index == 1) test_colloid_sums_assert(&cref1, pc);
+	  if (pc->s.index == 2) test_colloid_sums_assert(&cref2, pc);
 	}
 	/* Next cell */
       }
@@ -271,28 +272,28 @@ static int test_colloid_sums_reference_set(colloid_t * pc, int seed) {
  *
  *****************************************************************************/
 
-static int test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
+static int test_colloid_sums_copy(const colloid_t * ref, colloid_t * pc) {
 
   int ia;
 
   assert(pc);
 
-  pc->sumw = ref.sumw;
-  pc->sump = ref.sump;
+  pc->sumw = ref->sumw;
+  pc->sump = ref->sump;
 
   for (ia = 0; ia < 3; ia++) {
-    pc->cbar[ia] = ref.cbar[ia];
-    pc->rxcbar[ia] = ref.rxcbar[ia];
-    pc->f0[ia] = ref.f0[ia];
-    pc->t0[ia] = ref.t0[ia];
-    pc->force[ia] = ref.force[ia];
-    pc->torque[ia] = ref.torque[ia];
-    pc->fc0[ia] = ref.fc0[ia];
-    pc->tc0[ia] = ref.tc0[ia];
+    pc->cbar[ia] = ref->cbar[ia];
+    pc->rxcbar[ia] = ref->rxcbar[ia];
+    pc->f0[ia] = ref->f0[ia];
+    pc->t0[ia] = ref->t0[ia];
+    pc->force[ia] = ref->force[ia];
+    pc->torque[ia] = ref->torque[ia];
+    pc->fc0[ia] = ref->fc0[ia];
+    pc->tc0[ia] = ref->tc0[ia];
   }
 
   for (ia = 0; ia < 21; ia++) {
-    pc->zeta[ia] = ref.zeta[ia];
+    pc->zeta[ia] = ref->zeta[ia];
   }
 
   return 0;
@@ -306,41 +307,42 @@ static int test_colloid_sums_copy(colloid_t ref, colloid_t * pc) {
  *
  *****************************************************************************/
 
-static int test_colloid_sums_assert(colloid_t c1, colloid_t * c2) {
+int test_colloid_sums_assert(const colloid_t * c1, const colloid_t * c2) {
 
   int ia;
 
+  assert(c1);
   assert(c2);
 
   /* STRUCTURE */
 
-  test_assert(fabs(c1.sumw - c2->sumw) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(c1->sumw - c2->sumw) < TEST_DOUBLE_TOLERANCE);
 
   for (ia = 0; ia < 3; ia++) {
-    test_assert(fabs(c1.cbar[ia] - c2->cbar[ia]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(c1.rxcbar[ia] - c2->rxcbar[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->cbar[ia] - c2->cbar[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->rxcbar[ia] - c2->rxcbar[ia]) < TEST_DOUBLE_TOLERANCE);
   }
 
   /* DYNAMICS */
 
-  test_assert(fabs(c1.sump - c2->sump) < TEST_DOUBLE_TOLERANCE);
+  test_assert(fabs(c1->sump - c2->sump) < TEST_DOUBLE_TOLERANCE);
 
   for (ia = 0; ia < 3; ia++) {
-    test_assert(fabs(c1.f0[ia] - c2->f0[ia]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(c1.t0[ia] - c2->t0[ia]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(c1.force[ia] - c2->force[ia]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(c1.torque[ia] - c2->torque[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->f0[ia] - c2->f0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->t0[ia] - c2->t0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->force[ia] - c2->force[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->torque[ia] - c2->torque[ia]) < TEST_DOUBLE_TOLERANCE);
   }
 
   for (ia = 0; ia < 21; ia++) {
-    test_assert(fabs(c1.zeta[ia] - c2->zeta[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->zeta[ia] - c2->zeta[ia]) < TEST_DOUBLE_TOLERANCE);
   }
 
   /* ACTIVE */
 
   for (ia = 0; ia < 3; ia++) {
-    test_assert(fabs(c1.fc0[ia] - c2->fc0[ia]) < TEST_DOUBLE_TOLERANCE);
-    test_assert(fabs(c1.tc0[ia] - c2->tc0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->fc0[ia] - c2->fc0[ia]) < TEST_DOUBLE_TOLERANCE);
+    test_assert(fabs(c1->tc0[ia] - c2->tc0[ia]) < TEST_DOUBLE_TOLERANCE);
   }
 
   return 0;

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -298,7 +298,7 @@ static int test_charge1_exact(psi_t * obj, f_vare_t fepsilon) {
 
   /* Allocate space for exact solution */
 
-  a = (double *) calloc(n*n, sizeof(double));
+  a = (double *) calloc((size_t) n*n, sizeof(double));
   b = (double *) calloc(n, sizeof(double));
   c = (double *) calloc(n, sizeof(double));
   assert(a && b && c);

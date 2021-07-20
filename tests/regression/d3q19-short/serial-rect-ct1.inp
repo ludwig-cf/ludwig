@@ -1,0 +1,78 @@
+#############################################################################
+#
+#  serial-rect-ct1.inp
+#
+#  Rectangular capiliary with no-slip walls.
+#
+#  A body force drives a flow down the tube, and one can run to
+#  steady state to get a volume flow rate (perhaps 10,000 steps
+#  for steady state, here shortened for test purposes).
+#
+#  The viscosity-independent conductance for a channel of this
+#  width and height should be C = 52.197 [L^2]
+#
+#  We can read off the converged volume flow rate Q [L^3/T]
+#    Q/A = - (1/eta) dp/dx C 
+#  as XXXXX. With eta = 0.1666 and dp/dx = 0.00001 we can compute
+#  Q/A = (5.83439/1860.0) so C = 52.259.
+#
+#  See also serial-rect-ct2.inp, serial-rect-ct3.inp.
+#
+##############################################################################
+
+N_cycles 100
+N_start 0
+
+##############################################################################
+#
+#  System and MPI
+#
+##############################################################################
+
+size 1_62_30
+grid 1_1_1
+reduced_halo no
+
+##############################################################################
+#
+#  Fluid parameters
+#
+##############################################################################
+
+force 0.00001_0_0
+viscosity 0.1666
+
+##############################################################################
+#
+#  Free energy parameters
+#
+###############################################################################
+
+free_energy none
+
+###############################################################################
+#
+#  Colloid parameters
+#
+###############################################################################
+
+colloid_init        no_colloids
+
+###############################################################################
+#
+#  Periodic conditions / boundaries
+#
+###############################################################################
+
+periodicity       1_0_0
+boundary_walls    0_1_1
+
+###############################################################################
+#
+#  Output frequency and type
+#
+###############################################################################
+
+freq_statistics           100
+stats_vel_print_vol_flux  yes
+config_at_end no

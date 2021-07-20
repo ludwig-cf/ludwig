@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,6 +29,9 @@ enum {NDIM     = NDIM9,
       CVYBLOCK = CVYBLOCK9,
       CVZBLOCK = CVZBLOCK9};
 
+#define LB_CV(cv) LB_CV_D2Q9(cv)
+#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D2Q9(n)
+
 #endif
 
 #ifdef _D3Q15_
@@ -39,6 +42,9 @@ enum {NDIM     = NDIM15,
       CVXBLOCK = CVXBLOCK15,
       CVYBLOCK = CVYBLOCK15,
       CVZBLOCK = CVZBLOCK15};
+
+#define LB_CV(cv) LB_CV_D3Q15(cv)
+#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D3Q15(n)
 
 #endif
 
@@ -51,6 +57,9 @@ enum {NDIM     = NDIM19,
       CVXBLOCK = CVXBLOCK19,
       CVYBLOCK = CVYBLOCK19,
       CVZBLOCK = CVZBLOCK19};
+
+#define LB_CV(cv) LB_CV_D3Q19(cv)
+#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D3Q19(n)
 
 #endif
 
@@ -68,13 +77,8 @@ enum {NHYDRO = 1 + NDIM + NDIM*(NDIM+1)/2};
 
 enum {LB_TAU_BULK = 1 + NDIM + XX, LB_TAU_SHEAR = 1 + NDIM + XY};
 
-/* Extern declarations are to be avoided; prefer the macro! */
-
-extern const double cs2;
-extern const double rcs2;
-
 #define LB_CS2_DOUBLE(cs2)   const double cs2 = (1.0/3.0)
-#define LB_RCS2_DOUBLE(rcs2) const double rcs2 = 3.0;
+#define LB_RCS2_DOUBLE(rcs2) const double rcs2 = 3.0
 
 typedef enum lb_dist_enum_type{LB_RHO = 0, LB_PHI = 1} lb_dist_enum_t;
 typedef enum lb_mode_enum_type{LB_GHOST_ON = 0, LB_GHOST_OFF = 1} lb_mode_enum_t;
@@ -102,6 +106,8 @@ __host__ int lb_halo_set(lb_t * lb, lb_halo_enum_t halo);
 __host__ int lb_io_info(lb_t * lb, io_info_t ** io_info);
 __host__ int lb_io_info_set(lb_t * lb, io_info_t * io_info, int fin, int fout);
 __host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
+
+__host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args);
 
 __host__ __device__ int lb_nvel(lb_t * lb, int * nvel);
 __host__ __device__ int lb_ndim(lb_t * lb, int * ndim);

@@ -4,7 +4,7 @@
 #
 #  test.sh
 #
-#  Run a regression test.
+#  Run a regression test. Return non-zero on failure.
 #
 #  ./test.sh input.inp "serial launch command" "parallel launch command"
 #
@@ -18,7 +18,8 @@
 #  Edinburgh Soft Matter and Statisical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2014-2015 The University of Edinburgh
+#  (c) 2014-2020 The University of Edinburgh
+#
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcce.ed.ac.uk)
 #
@@ -57,8 +58,7 @@ function main() {
   then
       echo "    FAIL ./$input"
       ${launch_serial} ${test_diff} -v $stub.log $stub.new
-      # ok, exit with zero
-     exit 0
+      exit -1
   else
       echo "PASS     ./$input"
   fi

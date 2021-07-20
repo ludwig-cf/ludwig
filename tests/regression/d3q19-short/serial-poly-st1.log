@@ -1,0 +1,152 @@
+Welcome to Ludwig v0.12.0 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: None.
+
+Read 25 user parameters from serial-poly-st1.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    18 18 18
+Decomposition:  1 1 1
+Local domain:   18 18 18
+Periodic:       1 1 1
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           8.64000e-01
+Shear viscosity               2.41920e-02
+Bulk viscosity                2.41920e-02
+Temperature                   1.20000e-04
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  on
+Shear relaxation time:    5.84000e-01
+Bulk relaxation time:     5.84000e-01
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Colloid information
+-------------------
+
+Colloid I/O settings
+--------------------
+Decomposition:                1  1  1
+Number of files:              1
+Input format:                 ascii
+Output format:                ascii
+Single file read flag:        0
+
+colloid_io_read: reading from config.cds.init.001-001 etc
+Read a total of 30 colloids from file
+
+Initialised 30 colloids
+
+Soft sphere potential
+epsilon:                   2.1000000e-03
+sigma:                     6.0000000e-01
+exponent nu:               1.0000000e+00
+cut off (surface-surface)  1.2000000e+00
+epsilon / kT               1.7500000e+01
+FENE bond
+Spring constant:              2.0000000e-03
+Equilibrium separation:       2.0000000e+00
+
+Colloid cell list information
+-----------------------------
+Input radius maximum:         1.0000000e+00
+Hydrodynamic radius maximum:  2.0000000e-01
+Surface-surface interaction:  1.2000000e+00
+Centre-centre interaction:    2.0000000e+00
+Final cell list:              9 9 9
+Final cell lengths:           2.0000000e+00  2.0000000e+00  2.0000000e+00
+
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        5038.85  0.86400000000  1.7241764e-13  0.86400000000  0.86400000000
+
+Momentum - x y z
+[total   ]  8.0935258e-14  2.0233815e-14  0.0000000e+00
+[fluid   ]  8.0935258e-14  2.0233815e-14  0.0000000e+00
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Particle statistics:
+Pair potential minimum h is:  4.8395330e-01
+Pair potential energy is:     1.2988079e-02
+Bond potential minimum r is:  8.8395330e-01
+Bond potential maximum r is:  1.3023242e+00
+Bond potential energy is:     3.8687293e-02
+
+Colloid velocities - x y z
+[minimum ] -8.9984586e-02 -6.9810028e-02 -1.0820702e-01
+[maximum ]  1.1602232e-01  1.0323917e-01  1.2076675e-01
+
+Scalars - total mean variance min max
+[rho]        5038.85  0.86400000000  3.5887820e-04  0.78256020943  0.93539612486
+
+Momentum - x y z
+[total   ] -8.2434060e-15  1.7874591e-14  8.5105534e-15
+[fluid   ] -8.2434060e-15  1.7874591e-14  8.5105534e-15
+[colloids]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ] -4.2261068e-02 -4.7844831e-02 -4.2658360e-02
+[maximum ]  4.6372023e-02  4.7324303e-02  4.4106628e-02
+
+Isothermal fluctuations
+[eqipart.]  1.3850215e-04  1.3750275e-04  1.3653090e-04
+[measd/kT]  4.1253580e-04  3.6000000e-04
+
+Completed cycle 100
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      1.025      1.025      1.025   1.024513 (1 call)
+      Time step loop:      0.010      0.013      1.012   0.010124 (100 calls)
+         Propagation:      0.002      0.002      0.169   0.001695 (100 calls)
+    Propagtn (krnl) :      0.002      0.002      0.169   0.001692 (100 calls)
+           Collision:      0.006      0.006      0.614   0.006144 (100 calls)
+   Collision (krnl) :      0.006      0.006      0.614   0.006139 (100 calls)
+       Lattice halos:      0.001      0.002      0.125   0.000624 (200 calls)
+       phi gradients:      0.000      0.000      0.000   0.000000 (100 calls)
+              Forces:      0.000      0.000      0.021   0.000212 (100 calls)
+             Rebuild:      0.000      0.000      0.016   0.000163 (100 calls)
+                 BBL:      0.000      0.001      0.044   0.000439 (100 calls)
+      Particle halos:      0.000      0.000      0.004   0.000041 (100 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (100 calls)
+          phi update:      0.000      0.000      0.000   0.000001 (100 calls)
+               Free1:      0.000      0.005      0.005   0.000018 (300 calls)
+Ludwig finished normally.

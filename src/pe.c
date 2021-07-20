@@ -15,7 +15,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -27,8 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include "pe.h"
+#include "compiler.h"
 
 struct pe_s {
   int unquiet;                       /* Print version information etc */
@@ -39,6 +41,8 @@ struct pe_s {
   MPI_Comm comm;                     /* Communicator for pe itself */
   char subdirectory[FILENAME_MAX];
 };
+
+__host__ int pe_time(char * strctime, int bufsiz);
 
 /*****************************************************************************
  *
@@ -127,7 +131,12 @@ __host__ int pe_free(pe_t * pe) {
 
   if (pe->nref <= 0) {
     MPI_Comm_free(&pe->comm);
-    if (pe->unquiet) pe_info(pe, "Ludwig finished normally.\n");
+    if (pe->unquiet) {
+      char strctime[BUFSIZ] = {};
+      pe_time(strctime, BUFSIZ);
+      pe_info(pe, "End time: %s", strctime);
+      pe_info(pe, "Ludwig finished normally.\n");
+    }
     free(pe);
     pe = NULL;
   }
@@ -148,12 +157,30 @@ __host__ int pe_message(pe_t * pe) {
   assert(pe);
 
   pe_info(pe,
-       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n\n",
+       "Welcome to Ludwig v%d.%d.%d (%s version running on %d process%s)\n",
        LUDWIG_MAJOR_VERSION, LUDWIG_MINOR_VERSION, LUDWIG_PATCH_VERSION,
        (pe->mpi_size > 1) ? "MPI" : "Serial", pe->mpi_size,
        (pe->mpi_size == 1) ? "" : "es");
 
+  {
+    char strctime[BUFSIZ] = {};
+    pe_time(strctime, BUFSIZ);
+    pe_info(pe, "Start time: %s\n", strctime); /* Extra \n ! */
+  }
+
   if (pe->mpi_rank == 0) {
+
+    compiler_info_t compiler = {};
+
+    compiler_id(&compiler);
+
+    printf("Compiler:\n");
+    printf("  name:           %s %d.%d.%d\n", compiler.name, compiler.major,
+	   compiler.minor, compiler.patchlevel);
+    printf("  version-string: %s\n", compiler.version);
+    printf("\n");
+
+    /* Compilation */
     assert(printf("Note assertions via standard C assert() are on.\n\n"));
     tdpThreadModelInfo(stdout);
     printf("\n");
@@ -329,4 +356,34 @@ __host__ int pe_mpi_size(pe_t * pe) {
   assert(pe);
 
   return pe->mpi_size;
+}
+
+/*****************************************************************************
+ *
+ *  pe_time
+ *
+ *  Convenience to return pointer to standard time string.
+ *  Returns 0 on success.
+ *
+ *****************************************************************************/
+
+__host__ int pe_time(char * str, int bufsiz) {
+
+  static const char * strdefault = "Unavailable\n";
+  time_t now = time(NULL);
+  int ierr = -1;
+
+  assert(str);
+  strncpy(str, strdefault, strnlen(strdefault, bufsiz-1));
+
+  if (now != (time_t) -1) {
+    char buf[BUFSIZ] = {};
+    char * c_time = ctime_r(&now, buf);
+    if (c_time != NULL) {
+      strncpy(str, buf, strnlen(buf, bufsiz-1));
+      ierr = 0;
+    }
+  }
+
+  return ierr;
 }

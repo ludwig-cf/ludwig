@@ -51,7 +51,6 @@ ewald_rc  16.0
 
 colloid_init        input_random
 
-colloid_type        inactive
 colloid_random_no   20
 colloid_random_a0   2.3
 colloid_random_ah   2.3
@@ -63,8 +62,6 @@ colloid_gravity 0.0_0.0_0.0
 # Colloid-colloid lubrication corrections
 
 lubrication_on 0
-lubrication_normal_cutoff 0.3
-lubrication_tangential_cutoff 0.0
 
 ###############################################################################
 #
@@ -85,7 +82,6 @@ soft_sphere_cutoff 0.25
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################

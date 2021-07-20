@@ -108,7 +108,8 @@ lc_kappa1  0.14
 lc_xi      0.7
 
 lc_Gamma   0.5
-lc_active_zeta 0.0
+lc_noise     0
+lc_activity  0
 
 lc_q_initialisation o8m
 lc_q_init_amplitude -0.2
@@ -135,7 +136,6 @@ colloid_init        no_colloids
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################

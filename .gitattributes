@@ -1,0 +1,4 @@
+# An attempt to prevent mislabeling of .h files as C++
+# See https://github.com/github/linguist
+
+*.h linguist-language=C

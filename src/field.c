@@ -14,7 +14,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -76,8 +76,7 @@ __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
   assert(obj->name);
   if (obj->name == NULL) pe_fatal(pe, "calloc(name) failed\n");
 
-  assert(strlen(name) < BUFSIZ);
-  strncpy(obj->name, name, strlen(name));
+  strncpy(obj->name, name, imin(strlen(name), BUFSIZ));
   obj->name[strlen(name)] = '\0';
 
   obj->pe = pe;
@@ -142,6 +141,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 
   int ndevice;
   int nsites;
+  size_t nfsz;
   double * tmp;
 
   assert(obj);
@@ -153,12 +153,13 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
   obj->le = le;
   obj->nhcomm = nhcomm;
   obj->nsites = nsites;
+  nfsz = (size_t) obj->nf*nsites;
+
 #ifndef OLD_DATA
-  obj->data = (double *) calloc(obj->nf*nsites, sizeof(double));
+  obj->data = (double *) calloc(nfsz, sizeof(double));
   if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 #else
-  obj->data = (double *) mem_aligned_malloc(MEM_PAGESIZE, obj->nf*nsites*
-					    sizeof(double));
+  obj->data = (double *) mem_aligned_malloc(MEM_PAGESIZE, nfsz*sizeof(double));
   if (obj->data == NULL) pe_fatal(obj->pe, "calloc(obj->data) failed\n");
 #endif
 
@@ -173,7 +174,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
     cs_t * cstarget = NULL;
     lees_edw_t * letarget = NULL;
     tdpMalloc((void **) &obj->target, sizeof(field_t));
-    tdpMalloc((void **) &tmp, obj->nf*nsites*sizeof(double));
+    tdpMalloc((void **) &tmp, nfsz*sizeof(double));
     tdpMemcpy(&obj->target->data, &tmp, sizeof(double *),
 	      tdpMemcpyHostToDevice);
 
@@ -205,6 +206,7 @@ __host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le) {
 __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
+  size_t nfsz;
   double * tmp;
 
   tdpGetDeviceCount(&ndevice);
@@ -215,6 +217,7 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
   }
   else {
 
+    nfsz = (size_t) obj->nf*obj->nsites;
     tdpMemcpy(&tmp, &obj->target->data, sizeof(double *),
 	      tdpMemcpyDeviceToHost);
 
@@ -223,10 +226,10 @@ __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag) {
       tdpMemcpy(&obj->target->nf, &obj->nf, sizeof(int), flag);
       tdpMemcpy(&obj->target->nhcomm, &obj->nhcomm, sizeof(int), flag);
       tdpMemcpy(&obj->target->nsites, &obj->nsites, sizeof(int), flag);
-      tdpMemcpy(tmp, obj->data, obj->nf*obj->nsites*sizeof(double), flag);
+      tdpMemcpy(tmp, obj->data, nfsz*sizeof(double), flag);
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(obj->data, tmp, obj->nf*obj->nsites*sizeof(double), flag);
+      tdpMemcpy(obj->data, tmp, nfsz*sizeof(double), flag);
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");

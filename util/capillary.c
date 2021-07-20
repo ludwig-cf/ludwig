@@ -31,7 +31,7 @@
  *
  *  Edinburgh Soft Matter and Statistcal Physics Group and
  *  Edinburgh Parallel Computing Centre
- *  (c) 2008-2019 The University of Edinburgh
+ *  (c) 2008-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -52,15 +52,17 @@ enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 /* Set the system size as desired. Clearly, this must match the system
  * set in the main input file for Ludwig. */
 
-const int xmax = 16;
-const int ymax = 16;
-const int zmax = 16;
+const int xmax = 20;
+const int ymax = 20;
+const int zmax = 20;
+
+const int crystalline_cell_size = 10; //added for implementation of crystalline capillaries
 
 /* CROSS SECTION */
 /* You can choose a square or circular cross section */
 
 enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM,
-      SPECIAL_CROSS};
+      SPECIAL_CROSS, SCC, BCC, FCC}; //changed for implementation of crystalline capillaries
 const int xsection = YWALL;
 
 /*Modify the local geometry of the wall*/
@@ -80,10 +82,16 @@ const double sigma = 0.125;
 /* Set the fluid and solid free energy parameters. The fluid parameters
  * must match those used in the main calculation. See Desplat et al.
  * Comp. Phys. Comm. (2001) for details. */
-const double kappa = 0.053;
-const double B = 0.0625;
-const double H = 0.00;
-const double C = 0.000;	// Following Desplat et al.
+
+typedef struct fe_symm_param_s fe_symm_param_t;
+
+struct fe_symm_param_s {
+  double a;      /* Free energy parameter A < 0 */
+  double b;      /* Free energy parameter B > 0 */
+  double kappa;  /* Free energy parameter */
+  double c;      /* Surface free energy C */
+  double h;      /* Surface free energy H */
+};
 
 /* TERNARY FREE ENERGY PARAMETERS */
 /* Set the fluid and solid free energy parameters. The fluid parameters
@@ -104,8 +112,8 @@ const double alpha = 1.000;
 /* A section of capillary between z1 and z2 (inclusive) will have
  * wetting property H = H, the remainder H = 0 */
 
-const int z1 = 1;
-const int z2 = 36;
+const int z1_h = 1;
+const int z2_h = 36;
 
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
@@ -140,10 +148,10 @@ int main(int argc, char ** argv) {
   int nsolid = 0;
   int k_pic;
 
-  double * map_h; // for wetting coefficient H
-  double * map_c; // for additional wetting coefficient C
+  double * map_h;   /* for wetting coefficient H */
+  double * map_c;   /* for additional wetting coefficient C */
 
-  double * map_sig; // for (surface) charge
+  double * map_sig; /* for (surface) charge */
 
   double rc = 0.5*(xmax-2);
   double x0 = 0.5*xmax + 0.5;
@@ -153,6 +161,10 @@ int main(int argc, char ** argv) {
   double f1,f2,f3,cos_theta12,cos_theta23,cos_theta31;
   double theta12,theta23,theta31;
 
+  //added for implementation of crystalline capillaries
+  double crystalline_cell_radius;
+  double diff_x_edges, diff_y_edges, diff_z_edges, r_edges;
+
   int iobst;
   int obst_start[2*obstacle_number][3];
   int obst_stop[2*obstacle_number][3];
@@ -161,15 +173,22 @@ int main(int argc, char ** argv) {
   FILE  * WriteFile;	
   char  file[800];
 
+  /* Some default values */
+  fe_symm_param_t fe = {.a =    -0.0625,
+                        .b =     0.0625,
+                        .kappa = 0.053,
+                        .c     = 0.0,
+                        .h     = 0.0};
+
   if (argc == 2) profile(argv[1]);
 
   if (output_type == STATUS_WITH_H || output_type == STATUS_WITH_C_H) {
 
     printf("Free energy parameters:\n");
-    printf("free energy parameter kappa = %f\n", kappa);
-    printf("free energy parameter B     = %f\n", B);
-    printf("surface free energy   H     = %f\n", H);
-    h = H*sqrt(1.0/(kappa*B));
+    printf("free energy parameter kappa = %f\n", fe.kappa);
+    printf("free energy parameter B     = %f\n", fe.b);
+    printf("surface free energy   H     = %f\n", fe.h);
+    h = fe.h*sqrt(1.0/(fe.kappa*fe.b));
     printf("dimensionless parameter h   = %f\n", h);
     h1 = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
     printf("dimensionless parameter h1=cos(theta)   = %f\n", h1);
@@ -253,7 +272,7 @@ int main(int argc, char ** argv) {
 	  map_in[n] = MAP_BOUNDARY;
 	  if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
 	  if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
-      if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	  if (output_type == STATUS_WITH_H1_H2) { map_h[n] = 0.0; map_c[n] = 0.0; }
 
 	  map_sig[n] = 0.0;
 
@@ -265,9 +284,12 @@ int main(int argc, char ** argv) {
 
 	  if (map_in[n] == MAP_BOUNDARY) {
 	    nsolid++;
-	    if (k >= z1 && k <= z2) {
-	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (k >= z1_h && k <= z2_h) {
+	      if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	      if (output_type == STATUS_WITH_C_H) {
+		map_h[n] = fe.h;
+		map_c[n] = fe.c;
+	      }
 	      if (output_type == STATUS_WITH_H1_H2) {
 		map_h[n] = TERNARY_H1;
 		map_c[n] = TERNARY_H2;
@@ -281,6 +303,189 @@ int main(int argc, char ** argv) {
 
     break;
 
+  case SCC: ;
+    /* simple cubic crystal */
+
+    if(xmax % crystalline_cell_size != 0 || ymax % crystalline_cell_size != 0 ||
+    zmax % crystalline_cell_size !=0){
+        printf("ERROR: wrong ratio of the capillary dimension with respect "
+        "to the crystalline cell size. Please check the parameters "
+        "xmax, ymax, zmax, and crystalline_cell_size!\n");
+        exit(-1);
+    }
+
+    k_pic = 0; /* picture */
+    printf("k_pic: %d\n", k_pic);
+
+    /* radius of crystalline particle */
+    crystalline_cell_radius = 0.5 * crystalline_cell_size;
+
+    double diff_x, diff_y, diff_z;
+    printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	    for (k = 0; k < zmax; k++) {
+	      /* distance between the node (i,j,k) and the centre of the
+		 nearest crystalline particle, located at the edges of
+		 the crystalline cell */
+	        diff_x = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r = sqrt(diff_x*diff_x + diff_y*diff_y + diff_z*diff_z);
+
+	        n = ymax*zmax*i + zmax*j + k;
+
+	        map_in[n] = MAP_FLUID;
+	        if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
+	        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	        map_sig[n] = 0.0;
+
+	        if(r <= crystalline_cell_radius){
+	            nsolid++;
+	            map_in[n] = MAP_BOUNDARY;
+	            if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = fe.h; map_c[n] = fe.c; }
+	            map_sig[n] = sigma;
+	        }
+	    }
+	  }
+	}
+	break;
+
+  case BCC: ;
+    /* body centered cubic crystal */
+
+    if(xmax % crystalline_cell_size != 0 || ymax % crystalline_cell_size != 0 ||
+    zmax % crystalline_cell_size !=0){
+        printf("ERROR: wrong ratio of the capillary dimension with respect "
+        "to the crystalline cell size. Please check the parameters "
+        "xmax, ymax, zmax, and crystalline_cell_size!\n");
+        exit(-1);
+    }
+
+    k_pic = 5; //picture
+    printf("k_pic: %d\n", k_pic);
+
+    //radius of crystalline particle
+    crystalline_cell_radius = 0.25 * sqrt(3) * crystalline_cell_size;
+    double diff_x_center, diff_y_center, diff_z_center, r_center;
+    printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	    for (k = 0; k < zmax; k++) {
+	        //distance between the node (i,j,k) and the centre of the nearest crystalline particle,
+            //located at the edges of the crystalline cell
+	        diff_x_edges = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y_edges = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z_edges = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r_edges = sqrt(diff_x_edges*diff_x_edges + diff_y_edges*diff_y_edges + diff_z_edges*diff_z_edges);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the crystalline cell
+	        diff_x_center = i - (floor((double)i/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_y_center = j - (floor((double)j/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_z_center = k - (floor((double)k/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+
+	        r_center = sqrt(diff_x_center*diff_x_center + diff_y_center*diff_y_center + diff_z_center*diff_z_center);
+
+	        n = ymax*zmax*i + zmax*j + k;
+
+	        map_in[n] = MAP_FLUID;
+	        if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
+	        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	        map_sig[n] = 0.0;
+
+	        if(r_edges <= crystalline_cell_radius || r_center <= crystalline_cell_radius){
+	            nsolid++;
+	            map_in[n] = MAP_BOUNDARY;
+	            if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = fe.h; map_c[n] = fe.c; }
+	            map_sig[n] = sigma;
+	        }
+	    }
+	  }
+	}
+	break;
+
+  case FCC: ;
+    /* face centered cubic crystal */
+
+    if(xmax % crystalline_cell_size != 0 || ymax % crystalline_cell_size != 0 ||
+    zmax % crystalline_cell_size !=0){
+        printf("ERROR: wrong ratio of the capillary dimension with respect "
+        "to the crystalline cell size. Please check the parameters "
+        "xmax, ymax, zmax, and crystalline_cell_size!\n");
+        exit(-1);
+    }
+
+    k_pic = 0; //picture
+    printf("k_pic: %d\n", k_pic);
+
+    //radius of crystalline particle
+    crystalline_cell_radius = 0.25 * sqrt(2) * crystalline_cell_size;
+    double diff_x_center_xy, diff_y_center_xy, diff_z_center_xy, r_center_xy;
+    double diff_x_center_xz, diff_y_center_xz, diff_z_center_xz, r_center_xz;
+    double diff_x_center_yz, diff_y_center_yz, diff_z_center_yz, r_center_yz;
+    printf("crystalline_cell_radius: %f \n", crystalline_cell_radius);
+
+    for (i = 0; i < xmax; i++) {
+      for (j = 0; j < ymax; j++) {
+	    for (k = 0; k < zmax; k++) {
+	        //distance between the node (i,j,k) and the centre of the nearest crystalline particle,
+            //located at the edges of the crystalline cell
+	        diff_x_edges = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y_edges = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z_edges = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r_edges = sqrt(diff_x_edges*diff_x_edges + diff_y_edges*diff_y_edges + diff_z_edges*diff_z_edges);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the xy-surface in the crystalline cell
+	        diff_x_center_xy = i - (floor((double)i/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_y_center_xy = j - (floor((double)j/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_z_center_xy = k - round((double)k/crystalline_cell_size) * crystalline_cell_size;
+
+	        r_center_xy = sqrt(diff_x_center_xy*diff_x_center_xy + diff_y_center_xy*diff_y_center_xy + diff_z_center_xy*diff_z_center_xy);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the xz-surface in the crystalline cell
+	        diff_x_center_xz = i - (floor((double)i/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_y_center_xz = j - round((double)j/crystalline_cell_size) * crystalline_cell_size;
+	        diff_z_center_xz = k - (floor((double)k/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+
+	        r_center_xz = sqrt(diff_x_center_xz*diff_x_center_xz + diff_y_center_xz*diff_y_center_xz + diff_z_center_xz*diff_z_center_xz);
+
+	        //distance between the node (i,j,k) and the centre of the crystalline particle,
+            //located at the centre of the yz-surface in the crystalline cell
+	        diff_x_center_yz = i - round((double)i/crystalline_cell_size) * crystalline_cell_size;
+	        diff_y_center_yz = j - (floor((double)j/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+	        diff_z_center_yz = k - (floor((double)k/crystalline_cell_size) + 0.5) * crystalline_cell_size;
+
+	        r_center_yz = sqrt(diff_x_center_yz*diff_x_center_yz + diff_y_center_yz*diff_y_center_yz + diff_z_center_yz*diff_z_center_yz);
+
+	        n = ymax*zmax*i + zmax*j + k;
+
+	        map_in[n] = MAP_FLUID;
+	        if (output_type == STATUS_WITH_H) { map_h[n] = 0.0; }
+	        if (output_type == STATUS_WITH_C_H) { map_h[n] = 0.0; map_c[n] = 0.0; }
+	        map_sig[n] = 0.0;
+
+	        if(r_edges <= crystalline_cell_radius || r_center_xy <= crystalline_cell_radius ||
+	            r_center_xz <= crystalline_cell_radius || r_center_yz <= crystalline_cell_radius){
+	            nsolid++;
+	            map_in[n] = MAP_BOUNDARY;
+	            if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	            if (output_type == STATUS_WITH_C_H) { map_h[n] = fe.h; map_c[n] = fe.c; }
+	            map_sig[n] = sigma;
+	        }
+	    }
+	  }
+	}
+	break;
 
   case SQUARE:
 
@@ -304,9 +509,12 @@ int main(int argc, char ** argv) {
 
 	  if (map_in[n] == MAP_BOUNDARY) {
 	    nsolid++;
-	    if (k >= z1 && k <= z2) {
-	      if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-       	      if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (k >= z1_h && k <= z2_h) {
+	      if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+       	      if (output_type == STATUS_WITH_C_H) {
+		map_h[n] = fe.h;
+		map_c[n] = fe.c;
+	      }
               if (output_type == STATUS_WITH_H1_H2) {
 		map_h[n] = TERNARY_H1;
 		map_c[n] = TERNARY_H2;
@@ -337,8 +545,11 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
             map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+	    if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    if (output_type == STATUS_WITH_C_H) {
 	      map_h[n] = TERNARY_H1;
 	      map_c[n] = TERNARY_H2;
@@ -368,8 +579,13 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
             map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-	    if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) {
+	      map_h[n] = fe.h;
+	    }
+	    if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    if (output_type == STATUS_WITH_H1_H2) {
 	      map_h[n] = TERNARY_H1;
 	      map_c[n] = TERNARY_H2;
@@ -553,8 +769,11 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
 	      map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+            if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
             if (output_type == STATUS_WITH_H1_H2) {
 	      map_h[n] = TERNARY_H1;
 	      map_c[n] = TERNARY_H2;
@@ -583,8 +802,11 @@ int main(int argc, char ** argv) {
 	    if (output_type == STATUS_WITH_SIGMA) {
 	      map_sig[n] = sigma;
 	    }
-	    if (output_type == STATUS_WITH_H) { map_h[n] = H; }
-            if (output_type == STATUS_WITH_C_H) { map_h[n] = H; map_c[n] = C; }
+	    if (output_type == STATUS_WITH_H) { map_h[n] = fe.h; }
+            if (output_type == STATUS_WITH_C_H) {
+	      map_h[n] = fe.h;
+	      map_c[n] = fe.c;
+	    }
 	    if (output_type == STATUS_WITH_H1_H2) {
 	      map_h[n] = TERNARY_H1;
 	      map_c[n] = TERNARY_H2;
@@ -677,8 +899,11 @@ int main(int argc, char ** argv) {
     }
 
 
-  printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
-	 xmax*ymax*zmax - nsolid);
+  //printf("n = %d nsolid = %d nfluid = %d\n", xmax*ymax*zmax, nsolid,
+	// xmax*ymax*zmax - nsolid);
+  //changed for implementation of crystalline capillaries in order to see the volume fraction of the crystals
+  printf("n = %d nsolid = %d nfluid = %d nsolid fraction: %f \n", xmax*ymax*zmax, nsolid,
+	 xmax*ymax*zmax - nsolid, (double)nsolid/(xmax*ymax*zmax));
 
   /* Write new data as char */
 
@@ -773,7 +998,7 @@ static void profile(const char * filename) {
       for (kc = 0; kc < zmax; kc++) {
 	index = ic*zmax*ymax + jc*zmax + kc;
 	nread = fread(phi + index, sizeof(double), 1, fp);
-	assert(nread == 1);
+	if (nread != 1) printf("Read failed\n");
       }
     }
   }
@@ -803,7 +1028,7 @@ static void profile(const char * filename) {
 	double h, dh;
 	h = -1.0;
 
-	for (kc = z1; kc <= z2; kc++) {
+	for (kc = z1_h; kc <= z2_h; kc++) {
 	  index = ic*zmax*ymax + jc*zmax + kc;
 	  if (phi[index] > 0.0 && phi[index+1] < 0.0) {
 	    /* Linear interpolation to get surface position */

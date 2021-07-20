@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributions:
  *  Thanks to Markus Gross, who helped to validate the noise implementation.
@@ -42,35 +42,56 @@
 
 #include "field_s.h"
 #include "physics.h"
+#include "map_s.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
+#include "util_sum.h"
 #include "phi_cahn_hilliard.h"
-
-struct phi_ch_s {
-  pe_t * pe;
-  cs_t * cs;
-  lees_edw_t * le;
-  advflux_t * flux;
-};
-
-struct phi_ch_info_s {
-  int placeholder;
-};
 
 static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_flux_mu2(phi_ch_t * pch, fe_t * fes);
 static int phi_ch_update_forward_step(phi_ch_t * pch, field_t * phif);
+static int phi_ch_flux_mu_ext(phi_ch_t * pch);
+
+static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phif);
 
 static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf);
 static int phi_ch_le_fix_fluxes_parallel(phi_ch_t * pch, int nf);
 static int phi_ch_random_flux(phi_ch_t * pch, noise_t * noise);
 
+static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch,
+						      field_t * phif,
+						      map_t * map);
+/* Utility container */
+
+typedef struct ch_kernel_s ch_kernel_t;
+struct ch_kernel_s {
+  double mobility;      /* Mobility */
+  double gradmu_ex[3];  /* External chemical potential gradient */
+};
+
+/* Utility container for corrections to order parameter conservation */
+
+typedef struct phi_correct_s phi_correct_t;
+struct phi_correct_s {
+  int initial;   /* Are we at t > 0? */
+  int nfluid;    /* Fluid volume */
+  double phi0;   /* Sum phi at t = 0 */
+  double phi;    /* Sum current. */
+};
+
 __global__ void phi_ch_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
 				       advflux_t * flux, double mobility);
+__global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
+					  lees_edw_t * le, advflux_t * flux,
+					  ch_kernel_t ch);
 __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				  field_t * field, advflux_t * flux,
 				  int ys, double wz);
+__global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
+				   field_t * field, advflux_t * flux,
+				   field_t * csum, int ys, double wz);
 
 /*****************************************************************************
  *
@@ -79,7 +100,7 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
  *****************************************************************************/
 
 __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
-			   phi_ch_info_t * info,
+			   phi_ch_info_t * options,
 			   phi_ch_t ** pch) {
 
   phi_ch_t * obj = NULL;
@@ -87,6 +108,7 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   assert(pe);
   assert(cs);
   assert(le);
+  assert(options);
   assert(pch);
 
   obj = (phi_ch_t *) calloc(1, sizeof(phi_ch_t));
@@ -96,7 +118,13 @@ __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
   obj->pe = pe;
   obj->cs = cs;
   obj->le = le;
+  obj->info = *options;
   advflux_le_create(pe, cs, le, 1, &obj->flux);
+
+  if (obj->info.conserve) {
+    field_create(pe, cs, 1, "compensated sum", &obj->csum);
+    field_init(obj->csum, 0, NULL);
+  }
 
   pe_retain(pe);
   lees_edw_retain(le);
@@ -119,9 +147,10 @@ __host__ int phi_ch_free(phi_ch_t * pch) {
   lees_edw_free(pch->le);
   pe_free(pch->pe);
 
+  if (pch->csum) field_free(pch->csum);
   advflux_free(pch->flux);
   free(pch);
-
+  
   return 0;
 }
 
@@ -178,6 +207,10 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
     hydro_lees_edwards(hydro); /* Repoistion to main ditto */ 
     advection_x(pch->flux, hydro, phi);
   }
+  else {
+    /* Remember to initialise fluxes to zero for this step */
+    advflux_zero(pch->flux);
+  }
 
   if (noise_phi) {
     phi_ch_flux_mu2(pch, fe);
@@ -187,12 +220,27 @@ int phi_cahn_hilliard(phi_ch_t * pch, fe_t * fe, field_t * phi,
     phi_ch_flux_mu1(pch, fe);
   }
 
+  /* External chemical potential gradient (could switch out if zero) */
+
+  phi_ch_flux_mu_ext(pch);
+
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present) */
 
   if (map) advection_bcs_no_normal_flux(nf, pch->flux, map);
 
   phi_ch_le_fix_fluxes(pch, nf);
-  phi_ch_update_forward_step(pch, phi);
+
+  /* TODO REPLACE 1/2 WITH MEANINGFUL SYMBOLS */
+  if (pch->info.conserve == 1) {
+    phi_ch_update_conserve(pch, phi);
+  }
+  else {
+    phi_ch_update_forward_step(pch, phi);
+    if (pch->info.conserve == 2) {
+      phi_ch_subtract_sum_phi_after_forward_step(pch, phi, map);
+    }
+  }
+
 
   return 0;
 }
@@ -211,6 +259,7 @@ static int phi_ch_flux_mu1(phi_ch_t * pch, fe_t * fe) {
   double mobility;
   dim3 nblk, ntpb;
   kernel_info_t limits;
+
   fe_t * fetarget = NULL;
   physics_t * phys = NULL;
   lees_edw_t * letarget = NULL;
@@ -954,6 +1003,381 @@ __global__ void phi_ch_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 	    - wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
 
     field_scalar_set(field, index, phi);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_update_conserve
+ *
+ *  As above but with the compensated sum at each lattice point.
+ *
+ *****************************************************************************/
+
+static int phi_ch_update_conserve(phi_ch_t * pch, field_t * phi) {
+
+  int nlocal[3];
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  double wz = 1.0;
+
+  lees_edw_t * le = NULL;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(pch);
+  assert(phi);
+  assert(pch->info.conserve);
+
+  lees_edw_nlocal(pch->le, nlocal);
+  lees_edw_target(pch->le, &le);
+  lees_edw_strides(pch->le, &xs, &ys, &zs);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+  if (nlocal[Z] == 1) wz = 0.0;
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(phi_ch_csum_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, le, phi->target, pch->flux->target,
+		  pch->csum->target, ys, wz);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+
+/****************************************************************************
+ *  
+ *  correction of phi in order to improve the conservation of phi
+ *
+ ****************************************************************************/
+
+__global__ void phi_ch_subtract_kernel1(kernel_ctxt_t * ktx,
+					field_t * field, map_t * map,
+					phi_correct_t * correct);
+__global__ void phi_ch_subtract_kernel2(kernel_ctxt_t * ktx,
+					field_t * field, map_t * map,
+					phi_correct_t * correct);
+
+static int phi_ch_subtract_sum_phi_after_forward_step(phi_ch_t * pch, field_t * phif, map_t * map) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  phi_correct_t local = {};
+  phi_correct_t * local_d = NULL;
+
+  assert(pch);
+  assert(phif);
+  assert(map);
+
+  cs_nlocal(pch->cs, nlocal);
+  
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 1; limits.jmax = nlocal[Y];
+  limits.kmin = 1; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpAssert(tdpMalloc((void **) &local_d, sizeof(phi_correct_t)));
+
+  /* Work out the local correction... */
+  tdpLaunchKernel(phi_ch_subtract_kernel1, nblk, ntpb, 0, 0,
+		  ctxt->target, phif->target, map->target, local_d);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  /* Communication stage for global correction... */
+  tdpAssert(tdpMemcpy(&local, local_d, sizeof(phi_correct_t),
+		      tdpMemcpyDeviceToHost));
+
+  {
+    MPI_Comm comm = MPI_COMM_NULL;
+    phi_correct_t global = {};
+
+    cs_cart_comm(pch->cs, &comm);
+
+    MPI_Allreduce(&local.phi, &global.phi, 1, MPI_DOUBLE, MPI_SUM, comm);
+    MPI_Allreduce(&local.nfluid, &global.nfluid, 1, MPI_INT, MPI_SUM, comm);
+
+    global.phi0 = phif->field_init_sum;
+    tdpAssert(tdpMemcpy(local_d, &global, sizeof(phi_correct_t),
+			tdpMemcpyHostToDevice));
+  }
+
+  /* Apply the correction... */
+  tdpLaunchKernel(phi_ch_subtract_kernel2, nblk, ntpb, 0, 0,
+		  ctxt->target, phif->target, map->target, local_d);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+  tdpFree(local_d);
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  phi_ch_ufs_kernel
+ *
+ *  In 2-d systems need to eliminate the z fluxes (no chemical
+ *  potential computed in halo region for 2d_5pt_fluid): this
+ *  is done via "wz".
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
+				   field_t * field, advflux_t * flux,
+				   field_t * csum, int ys, double wz) {
+  int kindex;
+  int kiterations;
+  int ic, jc, kc, index;
+
+  assert(ktx);
+  assert(le);
+  assert(field);
+  assert(flux);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    kahan_t phi = {};
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index = lees_edw_index(le, ic, jc, kc);
+
+    phi.sum = field->data[addr_rank1(field->nsites, 1, index, 0)];
+    phi.cs  = csum->data[addr_rank1(csum->nsites, 1, index, 0)];
+
+    kahan_add(&phi, -flux->fe[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi,  flux->fw[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi, -flux->fy[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi,  flux->fy[addr_rank0(flux->nsite, index - ys)]);
+    kahan_add(&phi, -wz*flux->fz[addr_rank0(flux->nsite, index)]);
+    kahan_add(&phi,  wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
+
+    csum->data[addr_rank1(csum->nsites, 1, index, 0)] = phi.cs;
+    field->data[addr_rank1(field->nsites, 1, index, 0)] = phi.sum;
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *
+ *  kernel for correction of phi in order to improve the conservation of phi
+ *
+ *
+ ****************************************************************************/
+
+__global__ void phi_ch_subtract_kernel1(kernel_ctxt_t * ktx,
+					field_t * field, map_t * map,
+					phi_correct_t * correct) {
+  int kindex;
+  int kiterations;
+  int index;
+  int tid;
+
+  __shared__ double sum_phi_local[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ int num_fluid_nodes_local[TARGET_MAX_THREADS_PER_BLOCK];
+
+  assert(ktx);
+  assert(map);
+  assert(field);
+  assert(correct);
+
+  kiterations = kernel_iterations(ktx);
+
+  tid = threadIdx.x;
+  sum_phi_local[tid] = 0.0;
+  num_fluid_nodes_local[tid] = 0;
+
+  correct->phi = 0.0;
+  correct->nfluid = 0;
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int status = 0;
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+    
+    index = cs_index(field->cs, ic, jc, kc);
+    map_status(map, index, &status);	
+    
+    if (status == MAP_FLUID) {
+      double phi = 0.0;
+      field_scalar(field, index, &phi);
+
+      sum_phi_local[tid] += phi;
+      num_fluid_nodes_local[tid] += 1;
+    }		  
+  }
+
+  /* Reduction */
+
+  __syncthreads();
+
+  if (tid == 0) {
+    int nfluid = 0;
+    double phi = 0.0;
+    for (int it = 0; it < blockDim.x; it++) {
+      nfluid += num_fluid_nodes_local[it];
+      phi    += sum_phi_local[it];
+    }
+
+    tdpAtomicAddInt(&correct->nfluid, nfluid);
+    tdpAtomicAddDouble(&correct->phi, phi);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_subtract_kernel2
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_subtract_kernel2(kernel_ctxt_t * ktx, field_t * field,
+					map_t * map, phi_correct_t * correct) {
+
+  int kindex;
+  int kiterations;
+
+  assert(ktx);
+  assert(field);
+  assert(map);
+  assert(correct);
+  
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int status = 0;
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
+    int index = cs_index(field->cs, ic, jc, kc);
+    double phi = 0.0;
+
+    field_scalar(field, index, &phi);
+    map_status(map, index, &status);	
+    
+    if (status == MAP_FLUID) {
+      phi -= (correct->phi - correct->phi0)/correct->nfluid;
+    }
+
+    field_scalar_set(field, index, phi);
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_mu_ext
+ *
+ *  Kernel driver for external chemical potential gradient contribution.
+ *
+ *****************************************************************************/
+
+static int phi_ch_flux_mu_ext(phi_ch_t * pch) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  ch_kernel_t ch = {0};
+
+  physics_t * phys = NULL;
+  lees_edw_t * letarget = NULL;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(pch);
+
+  lees_edw_nlocal(pch->le, nlocal);
+  lees_edw_target(pch->le, &letarget);
+
+  physics_ref(&phys);
+  physics_mobility(phys, &ch.mobility);
+  physics_grad_mu(phys,  ch.gradmu_ex);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(phi_ch_flux_mu_ext_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, letarget, pch->flux->target, ch);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  phi_ch_flux_mu_ext_kernel
+ *
+ *  Accumulate contributions -m grad mu^ex from external chemical
+ *  potential gradient.
+ *
+ *****************************************************************************/
+
+__global__ void phi_ch_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
+					  lees_edw_t * le,
+					  advflux_t * flux,
+					  ch_kernel_t ch) {
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(le);
+  assert(flux);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index0;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index0 = lees_edw_index(le, ic, jc, kc);
+
+    flux->fw[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[X];
+    flux->fe[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[X];
+    flux->fy[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[Y];
+    flux->fz[addr_rank0(flux->nsite, index0)] -= ch.mobility*ch.gradmu_ex[Z];
   }
 
   return;

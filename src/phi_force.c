@@ -37,6 +37,8 @@
 #include "timer.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
+#include "physics.h"
+
 
 static int phi_force_compute_fluxes(lees_edw_t * le, fe_t * fe, int nall,
 				    double * fxe,
@@ -66,6 +68,8 @@ static int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
 static int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe,
 field_t * field,
 hydro_t * hydro, map_t * map);
+static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
+					  hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -131,6 +135,9 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	  phi_force_fluid_cs_gradmu(cs, fe, phi, hydro);
 	}
       }
+      /* External chemical potential may be applied in all cases,
+       * if one is happy it makes sense. */
+      phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
       break;
     case PTH_METHOD_STRESS_ONLY:
       pth_stress_compute(pth, fe);
@@ -526,6 +533,59 @@ static int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
         force[Z] = -phi*0.5*(mup1 - mu + mu - mum1);
 
 	/* Store the force on lattice */
+
+	hydro_f_local_add(hydro, index0, force);
+
+	/* Next site */
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  phi_force_fluid_phi_gradmu_ext
+ *
+ *  As for phi_force_fluid_phi_gradmu(), except this is a contribution\
+ *  from the external chemical potential gradient.
+ *
+ *****************************************************************************/
+
+static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
+					  hydro_t * hydro) {
+  int ic, jc, kc;
+  int index0;
+  int nlocal[3];
+  double phi;
+  double force[3];
+
+  double grad_mu[3];
+  physics_t * phys = NULL;
+
+  assert(cs);
+  assert(fphi);
+  assert(hydro);
+
+  cs_nlocal(cs, nlocal);
+
+  physics_ref(&phys);
+  physics_grad_mu(phys, grad_mu);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index0 = cs_index(cs, ic, jc, kc);
+	field_scalar(fphi, index0, &phi);
+
+        force[X] = -phi*grad_mu[X];
+        force[Y] = -phi*grad_mu[Y];
+        force[Z] = -phi*grad_mu[Z];
+
+	/* Accumulate the force on lattice */
 
 	hydro_f_local_add(hydro, index0, force);
 

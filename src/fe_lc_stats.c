@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2017-2018 The University of Edinburgh
+ *  (c) 2017-2020 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,6 +24,16 @@
 static int fe_lc_wall(cs_t * cs, wall_t * wall, fe_lc_t * fe, double * fs);
 static int fe_lc_colloid(fe_lc_t * fe, cs_t * cs, colloids_info_t * cinfo,
 			 map_t * map, double * fs);
+
+/* additional forward declarations */
+
+int fe_lc_wallx(cs_t * cs, fe_lc_t * fe, double * fs);
+int fe_lc_wally(cs_t * cs, fe_lc_t * fe, double * fs);
+int fe_lc_wallz(cs_t * cs, fe_lc_t * fe, double * fs);
+
+int colloids_q_boundary(fe_lc_param_t * param,
+			const double nhat[3], double qs[3][3],
+			  double q0[3][3], int map_status);
 
 __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
 			   double qs[3][3], char status, double * fs);
@@ -155,10 +165,6 @@ static int fe_lc_wall(cs_t * cs, wall_t * wall, fe_lc_t * fe, double * fs) {
   assert(cs);
   assert(wall);
   assert(fe);
-
-  int fe_lc_wallx(cs_t * cs, fe_lc_t * fe, double * fs);
-  int fe_lc_wally(cs_t * cs, fe_lc_t * fe, double * fs);
-  int fe_lc_wallz(cs_t * cs, fe_lc_t * fe, double * fs);
 
   wall_present_dim(wall, iswall);
 
@@ -535,10 +541,6 @@ __host__ int blue_phase_fs(fe_lc_param_t * feparam, const double dn[3],
   double amplitude;
   double f1, f2, s0;
   KRONECKER_DELTA_CHAR(d);
-
-  int colloids_q_boundary(fe_lc_param_t * param,
-			const double nhat[3], double qs[3][3],
-			  double q0[3][3], int map_status);
 
   assert(status == MAP_BOUNDARY || status == MAP_COLLOID);
 

@@ -15,6 +15,7 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "advection.h"
 #include "leesedwards.h"
 #include "free_energy.h"
 #include "field.h"
@@ -24,6 +25,19 @@
 
 typedef struct phi_ch_s phi_ch_t;
 typedef struct phi_ch_info_s phi_ch_info_t;
+
+struct phi_ch_info_s {
+  int conserve; /* 0 = normal; 1 = compensated sum */
+};
+
+struct phi_ch_s {
+  phi_ch_info_t info;
+  pe_t * pe;
+  cs_t * cs;
+  field_t * csum;
+  lees_edw_t * le;
+  advflux_t * flux;
+};
 
 __host__ int phi_ch_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
 			   phi_ch_info_t * info,

@@ -1,14 +1,46 @@
 
 ### Changes
 
-version 0.11.0
-- PENDING THREE TESTS AND DESCRIPTION FOR WEB PAGES
-- Add a ternary free energy. Thanks to Shan Chen.
+
+version 0.14.0
+
+- Add a ternary free energy. Thanks to Shan Chen and Sergios Granados Leyva.
+- See URL TO BE ADDED.
 - Add back an operational surfactant free energy. There is no
   dynamics available yet.
 - Add unit tests for the the same.
 - Add a description of how to add a free energy to free_energy.h
+
+version 0.13.0
+
+- Add report on compiler and start/end times.
+- Add report on key/value pairs which appear in input but are not used
+  at end of execution.
+- Added compensated sums for binary order parameter sum statistic to
+  improve robustness of result to round-off. Additional compensation
+  in time evolution for Cahn-Hilliard update.
+- Add pair_ss_cut_ij interaction: a cut-and-shoft soft sphere potential
+  with pair-dependent parameters. Thanks to Qi Kai.
+- Added subgrid offset parameter; this replaces ah in the computation
+  of the drag force (typically aL >> ah).
+
+version 0.12.0
+
+- Allow user to specify a linear combination of slip and no-slip for
+  plane walls. This was originally implementated by Katrin Wolff when
+  at Edinburgh, and has been resurrected with the help of Ryan Keogh
+  and Tyler Shendruk. See https://ludwig.epcc.ed.ac.uk/inputs/walls.html
+- Various minor code quality improvements
+- Extended target abstraction layer to include HIP (only tested via
+  __HIP_PLATFORM_NVCC__ so far). Thanks to Nikola Vasilev for this.
+- Various minor code quality improvements
+
+version 0.11.0
+- Add external chemical potential gradient in Cahn Hilliard for
+  free energy symmetric. Thanks to Jurij Sablic (jurij.sablic@gmail.com).
 - Add Arrhenius viscosity model for compositional order parameter
+- Add the ability to run both subgrid and fully resolved particles at
+  the same time. Thanks to Qi Kai (kai.qi@epfl.ch) for this.
 - Various code quality updates
 
 version 0.10.0

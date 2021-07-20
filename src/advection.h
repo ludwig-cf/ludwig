@@ -5,7 +5,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -27,6 +28,7 @@ __host__ int advflux_cs_create(pe_t * pe, cs_t * cs, int nf, advflux_t **obj);
 __host__ int advflux_le_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
 			       advflux_t ** pobj);
 __host__ int advflux_free(advflux_t * obj);
+__host__ int advflux_zero(advflux_t * obj);
 __host__ int advflux_memcpy(advflux_t * obj);
 
 

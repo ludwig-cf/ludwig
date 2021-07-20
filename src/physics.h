@@ -2,18 +2,16 @@
  *
  *  physics.h
  *
- *  $Id: physics.h,v 1.4 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2013-2016 The University of Edinburgh
+ *  (c) 2013-2020 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef PHYSICS_H
-#define PHYSICS_H
+#ifndef LUDWIG_PHYSICS_H
+#define LUDWIG_PHYSICS_H
 
 #include "pe.h"
 
@@ -37,6 +35,7 @@ __host__ int physics_control_next_step(physics_t * phys);
 __host__ int physics_control_init_time(physics_t * phys, int nstart, int nstep);
 __host__ int physics_fpulse_set(physics_t * phys, double fpulse[3]);
 __host__ int physics_fpulse_frequency_set(physics_t * phys, double fpulse_freq);
+__host__ int physics_grad_mu_set(physics_t * phys, double gm[3]);
 
 __host__ __device__ int physics_ref(physics_t ** ref);
 __host__ __device__ int physics_rho0(physics_t * phys, double * rho);
@@ -56,5 +55,6 @@ __host__ __device__ int physics_control_time(physics_t * phys, double * t);
 __host__ __device__ int physics_fpulse(physics_t * phys, double fpulse[3]);
 __host__ __device__ int physics_fpulse_frequency(physics_t * phys, 
 						  double * fpule_frequency);
+__host__ __device__ int physics_grad_mu(physics_t * phys, double gm[3]);
 
 #endif
