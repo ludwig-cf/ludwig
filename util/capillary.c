@@ -103,7 +103,6 @@ const double kappa2 = 0.05;
 const double kappa3 = 0.05;
 const double TERNARY_H1 = 0.0007;
 const double TERNARY_H2 = -0.005;
-const double TERNARY_H3 = ((kappa3)*(-((TERNARY_H1)/(kappa1))-((TERNARY_H2)/(kappa2))));
 
 const double alpha = 1.000;
 
@@ -213,7 +212,12 @@ int main(int argc, char ** argv) {
       f1=f1/sqrt(alpha*kappa1);
       f2=pow(alpha*kappa2+4*TERNARY_H2,1.5)-pow(alpha*kappa2-4*TERNARY_H2,1.5);
       f2=f2/sqrt(alpha*kappa2);
-      f3=pow(alpha*kappa3+4*TERNARY_H3,1.5)-pow(alpha*kappa3-4*TERNARY_H3,1.5);
+      
+      {
+	/* Constraint */
+	double TERNARY_H3 = kappa3*(-(TERNARY_H1/kappa1)-(TERNARY_H2/kappa2));
+	f3=pow(alpha*kappa3+4*TERNARY_H3,1.5)-pow(alpha*kappa3-4*TERNARY_H3,1.5);
+      }
       f3=f3/sqrt(alpha*kappa3);
       cos_theta12=f1/(2.0*(kappa1+kappa2))-f2/(2.0*(kappa1+kappa2));
       cos_theta23=f2/(2.0*(kappa2+kappa3))-f3/(2.0*(kappa2+kappa3));
