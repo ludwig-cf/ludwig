@@ -707,7 +707,6 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
 
   int ierr = 0;
   char value[NKEY_LENGTH] = {};
-  char msg[BUFSIZ] = {};
 
   assert(rt);
   assert(key);
@@ -722,15 +721,14 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
 
     /* Information */
     if (level == RT_INFO) {
-      sprintf(msg, "Input: key \"%s\" absent; a default value will be used.\n",
-	      value);
-      pe_info(rt->pe, msg);
+      pe_info(rt->pe, "The following input key is absent...\n");
+      pe_info(rt->pe, "A default value will be used for: %s\n", value);
     }
     /* Fatal */
     if (level == RT_FATAL) {
-      sprintf(msg, "Input: key \"%s\" must be specified, but is missing;\n"
-	      "please check the input and try again.", value);
-      pe_fatal(rt->pe, msg);
+      pe_info(rt->pe, "The following input key is missing...\n");
+      pe_info(rt->pe, "Required key: %s\n", value);
+      pe_fatal(rt->pe, "Please check the input and try again.\n");
     }
   }
 
