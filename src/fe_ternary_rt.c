@@ -38,7 +38,12 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
   assert(p);
 
   /* Parameters */
-    
+
+  rt_key_required(rt, "ternary_kappa1", RT_FATAL);
+  rt_key_required(rt, "ternary_kappa2", RT_FATAL);
+  rt_key_required(rt, "ternary_kappa3", RT_FATAL);
+  rt_key_required(rt, "ternary_alpha",  RT_FATAL);
+
   rt_double_parameter(rt, "ternary_kappa1", &p->kappa1);
   rt_double_parameter(rt, "ternary_kappa2", &p->kappa2);
   rt_double_parameter(rt, "ternary_kappa3", &p->kappa3);
@@ -63,6 +68,13 @@ __host__ int fe_ternary_param_rt(pe_t * pe, rt_t * rt,
        determined by the constraint h1/k1 + h2/k2 + h3/k3 = 0 */
 
     if (have_wetting) {
+      /* Must have both... */
+      rt_key_required(rt, "ternary_h1", RT_FATAL);
+      rt_key_required(rt, "ternary_h2", RT_FATAL);
+
+      /* h_3 is from the constraint h1/k1 + h2/k2 + h3/k3 = 0 */
+      /* Not specified independently in the input. */
+
       p->h3 = -p->kappa3*(p->h1/p->kappa1 + p->h2/p->kappa2);
     }
   }
