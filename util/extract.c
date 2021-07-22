@@ -310,8 +310,8 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
     /* Write a single file with the final section */
 
     {
-      char tmp[BUFSIZ] = {}; /* Avoid potential buffer overflow */
-      strncpy(tmp, meta->stub, strnlen(meta->stub, BUFSIZ-1));
+      char tmp[FIELNAME_MAX/2] = {}; /* Avoid potential buffer overflow */
+      strncpy(tmp, meta->stub, strnlen(meta->stub, FILENAME_MAX/2-1));
       snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
     }
 
