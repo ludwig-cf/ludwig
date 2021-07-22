@@ -982,7 +982,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     }
     for_simd_v(iv, NSIMDVL) {
       jphi[ia][iv] = jphi[ia][iv] - _cp.rtau2*(jphi[ia][iv] - phi[iv]*u[ia][iv]);
-      /* The alternate form would be: jphi[ia] = phi*u[ia]; */
+      /* The alternate form would be: "jphi[ia] = phi*u[ia];" */
     }
   }
   

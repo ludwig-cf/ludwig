@@ -28,7 +28,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -277,7 +277,8 @@ __host__ int fe_surfactant1_fed(fe_surfactant1_t * fe, int index,
   assert(fe);
 
   field_scalar_array(fe->phi, index, field);
-  /* field_grad_grad(fe->dphi, index, grad);*/
+  /* To be restored with merge of 3phase */
+  /* "field_grad_pair_grad(fe->dphi, index, grad);" */
 
   assert(0);
   phi = field[0];
@@ -330,8 +331,9 @@ __host__ int fe_surfactant_mu(fe_surfactant1_t * fe, int index,
   assert(mu);
 
   field_scalar_array(fe->phi, index, field);
-  /* field_grad_pair_grad(fe->dphi, index, grad);
-     field_grad_pair_delsq(fe->dphi, index, delsq);*/
+  /* To be restored on merge of 3phase */
+  /* "field_grad_pair_grad(fe->dphi, index, grad);" */
+  /* "field_grad_pair_delsq(fe->dphi, index, delsq); */
   delsq[0] = 0.0; delsq[1] = 0.0;
   assert(0);
   phi = field[0];
@@ -392,8 +394,9 @@ __host__ int fe_surfactant1_str(fe_surfactant1_t * fe, int index,
   assert(fe);
 
   field_scalar_array(fe->phi, index, field);
-  /* field_grad_pair_grad(fe->dp, index, grad);
-     field_grad_pair_delsq(fe->dp, index, delsq);*/
+  /* To be restored on merge with 3phase */
+  /* "field_grad_pair_grad(fe->dp, index, grad);" */
+  /* "field_grad_pair_delsq(fe->dp, index, delsq);" */
   delsq[0] = 0.0; delsq[1] = 0.0;
   assert(0);
   phi = field[0];
