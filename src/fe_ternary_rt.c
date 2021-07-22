@@ -110,20 +110,74 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
   }
 
   if (p != 0 && strcmp(value, "2d_double_emulsion") == 0) {
-    field_ternary_init_2d_double_emulsion(phi);
+
+    fti_block_t param = {};
+
+    /* Default parameters (historically to give roughly equal areas) */
+    param.xf1 = 0.2;
+    param.xf2 = 0.5;
+    param.xf3 = 0.8;
+    param.yf1 = 0.3;
+    param.yf2 = 0.7;
+
+    /* Optional user input */
+    rt_double_parameter(rt, "2d_double_emulsion_xf1", &param.xf1);
+    rt_double_parameter(rt, "2d_double_emulsion_xf2", &param.xf2);
+    rt_double_parameter(rt, "2d_double_emulsion_xf3", &param.xf3);
+    rt_double_parameter(rt, "2d_double_emulsion_yf1", &param.yf1);
+    rt_double_parameter(rt, "2d_double_emulsion_yf2", &param.yf2);
+
+    field_ternary_init_2d_double_emulsion(phi, &param);
   }
 
   if (p != 0 && strcmp(value, "2d_tee") == 0) {
-    field_ternary_init_2d_tee(phi);
+
+    fti_block_t param = {};
+
+    /* Default parameters (roughly equal area) */
+
+    param.xf1 = 0.50;
+    param.yf1 = 0.33; /* (sic) */
+
+    /* User optional parameter settings */
+    rt_double_parameter(rt, "ternary_2d_tee_xf1", &param.xf1);
+    rt_double_parameter(rt, "tarnary_2d_tee_yf1", &param.yf1);
+
+    field_ternary_init_2d_tee(phi, &param);
   }
 
-  if (p != 0 && strcmp(value, "ternary_bbb") == 0) {
-    field_ternary_init_bbb(phi);
+  if (p != 0 && strcmp(value, "2d_lens") == 0) {
+
+    fti_drop_t drop = {};
+
+    /* No defaults */ 
+    rt_key_required(rt, "ternary_2d_lens_centre", RT_FATAL);
+    rt_key_required(rt, "ternary_2d_lens_radius", RT_FATAL);
+
+    rt_double_nvector(rt,   "ternary_2d_lens_centre", 2, drop.r0, RT_FATAL);
+    rt_double_parameter(rt, "ternary_2d_lens_radius", &drop.r);
+
+    field_ternary_init_2d_lens(phi, &drop);
   }
 
-  if (p != 0 && strcmp(value, "ternary_ggg") == 0) {
-    field_ternary_init_ggg(phi);
+  if (p != 0 && strcmp(value, "2d_double_drop") == 0) {
+
+    fti_drop_t drop1 = {};
+    fti_drop_t drop2 = {};
+
+    /* No defaults */
+    rt_key_required(rt, "ternary_2d_drop1_centre", RT_FATAL);
+    rt_key_required(rt, "ternary_2d_drop1_radius", RT_FATAL);
+    rt_key_required(rt, "ternary_2d_drop2_centre", RT_FATAL);
+    rt_key_required(rt, "ternary_2d_drop2_radius", RT_FATAL);
+
+    rt_double_parameter(rt, "ternary_2d_drop1_radius", &drop1.r);
+    rt_double_parameter(rt, "ternary_2d_drop2_radius", &drop2.r);
+    rt_double_nvector(rt,   "ternary_2d_drop1_centre", 2, drop1.r0, RT_FATAL);
+    rt_double_nvector(rt,   "ternary_2d_drop2_centre", 2, drop2.r0, RT_FATAL);
+
+    field_ternary_init_2d_double_drop(phi, &drop1, &drop2);
   }
-    
+
   return 0;
 }
