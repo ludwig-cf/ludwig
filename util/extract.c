@@ -302,7 +302,11 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
     /* Write a single file with the final section */
 
-    sprintf(io_data, "%s-%8.8d", meta->stub, ntime);
+    {
+      char tmp[BUFSIZ] = {};
+      strncpy(tmp, meta->stub, strnlen(meta->stub, BUFSIZ-1));
+      sprintf(io_data, "%s-%8.8d", meta->stub, ntime);
+    }
 
     if (output_vtk_ == 1) {
 
