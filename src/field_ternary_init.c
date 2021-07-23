@@ -180,11 +180,11 @@ int field_ternary_init_2d_double_emulsion(field_t * phi,
 	/* Component c3 is default */
 	field_ternary_init_phase(COMPONENT3, phipsi);
 
-	if (x1 < x && x < x2  &&  y1 < y  && y < y2) {
+	if (x1 <  x && x < x2  &&  y1 < y  && y < y2) {
 	  /* Component c1 */
 	  field_ternary_init_phase(COMPONENT1, phipsi);
 	}
-	if (x2 < x && x < x3  &&  y1 < y  && y < y2) {
+	if (x2 <= x && x < x3  &&  y1 < y  && y < y2) {
 	  /* Compoenent c2 */
 	  field_ternary_init_phase(COMPONENT2, phipsi);
 	}
