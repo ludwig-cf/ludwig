@@ -63,8 +63,6 @@ int test_colloid_suite(void) {
   assert(tmp_ascii);
   assert(tmp_binary);
 
-  /* printf("sizeof(colloid_state_t) = %ld\n", sizeof(colloid_state_t));*/
-
   /* I assert that the colloid struct is 512 bytes. I.e., don't
    * change it without sorting out the padding. */
   test_assert(sizeof(colloid_state_t) == 512);
