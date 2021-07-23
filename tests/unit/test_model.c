@@ -117,8 +117,6 @@ static void test_model_constants(void) {
     }
   }
 
-  /* info("Model constants ok.\n"); */
-
   return;
 }
 
