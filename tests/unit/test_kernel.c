@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2016-2019 The University of Edinburgh
+ *  (c) 2016-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -71,8 +71,6 @@ __host__ int test_kernel_suite(void) {
   cs_nlocal(cs, nlocal);
 
   do_test_attributes(pe);
-
-  /* target_thread_info(); */
 
   cs_nsites(cs, &nsites);
   data_create(nsites, data);
