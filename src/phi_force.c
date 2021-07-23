@@ -119,7 +119,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
       }
       break;
     case PTH_METHOD_GRADMU:
-      if (is_pm) {
+      if (wall_present(wall) || is_pm) {
         if (le) {
 	  phi_force_solid_phi_gradmu(le, pth, fe, phi, hydro, map);
 	}
@@ -128,6 +128,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	}
       }
       else {
+	/* Fluid only versions */
 	if (le) {
 	  phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
 	}
@@ -135,9 +136,26 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	  phi_force_fluid_cs_gradmu(cs, fe, phi, hydro);
 	}
       }
+
       /* External chemical potential may be applied in all cases,
        * if one is happy it makes sense. */
-      phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
+      /* Scalars only at the moment, and don't bother unless there is
+       * a non-zero external chemical potential. */
+
+      {
+	int is_gradmu = 0;
+	double gradmu[3] = {};
+	physics_t * phys = NULL;
+
+	physics_ref(&phys);
+	physics_grad_mu(phys, gradmu);
+
+	is_gradmu = (gradmu[X] != 0.0 || gradmu[Y] != 0.0 || gradmu[Z] != 0.0);
+
+	if (is_gradmu && phi->nf == 1) {
+	  phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
+	}
+      }
       break;
     case PTH_METHOD_STRESS_ONLY:
       pth_stress_compute(pth, fe);
