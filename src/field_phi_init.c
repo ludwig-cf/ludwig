@@ -654,7 +654,7 @@ int field_phi_init_emulsion(field_t * phi, double xi, double radius,
 
   for (id=0; id<N_drops; id++) {
 
-    if (cz/2 != (1.0*cz)/2.0) {
+    if (cz % 2 != 0) {
       PosY[id] = (int)(PosY0 + (cy-1.0)*dy);
       PosZ[id] = (int)(PosZ0 + (cz-1.0)*dz);
     }
