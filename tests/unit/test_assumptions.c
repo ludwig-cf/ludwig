@@ -103,8 +103,6 @@ void test_util(void) {
   
   /* Krocker delta and Levi-Civita tensor */
 
-  /* printf("Kroneker delta d_[i][j] correct...");*/
-
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       if (i == j) {
@@ -119,8 +117,6 @@ void test_util(void) {
   /* Do some permutations to test the perutation tensor e_[i][j][k].
    * Also use the identity e_ijk e_imn = d_jm d_kn - d_jn d_km
    * for a test. */ 
-
-  /* printf("Permutation tensor e_[i][j][k] correct...");*/
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
