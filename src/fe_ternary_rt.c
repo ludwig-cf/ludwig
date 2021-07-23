@@ -128,6 +128,14 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
     rt_double_parameter(rt, "2d_double_emulsion_yf2", &param.yf2);
 
     field_ternary_init_2d_double_emulsion(phi, &param);
+
+    pe_info(pe, "Composition is 2d block double emulsion initialisation\n");
+    pe_info(pe, "Interface at xf1 Lx (left)     %12.5e\n", param.xf1);
+    pe_info(pe, "Interface at xf2 Lx (centre)   %12.5e\n", param.xf2);
+    pe_info(pe, "Interface at xf3 Lx (right)    %12.5e\n", param.xf3);
+    pe_info(pe, "Interface at yf1 Ly (bottom)   %12.5e\n", param.yf1);
+    pe_info(pe, "Interface at yf2 Ly (top)      %12.5e\n", param.yf2);
+    pe_info(pe, "\n");
   }
 
   if (p != 0 && strcmp(value, "2d_tee") == 0) {
@@ -144,6 +152,11 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
     rt_double_parameter(rt, "tarnary_2d_tee_yf1", &param.yf1);
 
     field_ternary_init_2d_tee(phi, &param);
+
+    pe_info(pe, "Composition is 2d T-shape initialisation\n");
+    pe_info(pe, "Interface at xf1 Lx (vertical)   %12.5e\n", param.xf1);
+    pe_info(pe, "Interface at yf1 Ly (horizontal) %12.5e\n", param.yf1);
+    pe_info(pe, "\n");
   }
 
   if (p != 0 && strcmp(value, "2d_lens") == 0) {
@@ -177,6 +190,20 @@ __host__ int fe_ternary_init_rt(pe_t * pe, rt_t * rt, fe_ternary_t * fe,
     rt_double_nvector(rt,   "ternary_2d_drop2_centre", 2, drop2.r0, RT_FATAL);
 
     field_ternary_init_2d_double_drop(phi, &drop1, &drop2);
+  }
+
+  /* File initialisations */
+
+  if (p != 0 && strcmp(value, "from_file") == 0) {
+
+    io_info_t * iohandler = NULL;
+    char filestub[FILENAME_MAX] = "ternary.init";
+
+    rt_string_parameter(rt, "ternary_file_stub", filestub, FILENAME_MAX);
+    pe_info(pe, "Initial order parameter requested with file stub %s\n",
+	    filestub);
+    field_io_info(phi, &iohandler);
+    io_read_data(iohandler, filestub, phi);
   }
 
   return 0;
