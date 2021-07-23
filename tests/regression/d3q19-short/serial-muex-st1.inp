@@ -1,10 +1,10 @@
 ##############################################################################
 #
 #  Spinodal finite difference with external chemical potential smoke test
-#  As the external chemical potential provides a permanent acceleration,
-#  we have a system with walls.
 #
 #  This is force on te fluid by grad mu method.
+#  We don't have any solid walls, which may be artifical, but is free
+#  of complications/wetting etc.
 #
 ##############################################################################
 
@@ -22,7 +22,7 @@ N_cycles 10
 #
 ##############################################################################
 
-size 32_32_32
+size 32_32_16
 grid 1_1_1
 
 ##############################################################################
@@ -56,8 +56,7 @@ fd_gradient_calculation   3d_27pt_fluid
 fd_advection_scheme_order 1
 fd_force_divergence       0
 
-# External chemical potential requires grad_mu method
-# To be added to external force if divergence case?
+# External chemical potential requires grad_mu method at the moment
 
 ###############################################################################
 #
@@ -73,8 +72,7 @@ colloid_init        no_colloids
 #
 ###############################################################################
 
-boundary_walls    1_1_1
-periodicity       0_0_0
+periodicity       1_1_1
 
 ###############################################################################
 #
