@@ -139,8 +139,8 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
 			    advflux_t ** pobj) {
 
   int ndevice;
-  int nsites;
-  double * tmp;
+  int nsites = 0;
+  double * tmp = NULL;
   advflux_t * obj = NULL;
 
   assert(pe);
@@ -1620,7 +1620,6 @@ int advective_fluxes_2nd_d3qx(hydro_t * hydro, int nf, double * f,
 
   cs_nlocal(hydro->cs, nlocal);
   cs_nsites(hydro->cs, &nsites);
-  /* assert(nhalo >= 1); */
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {

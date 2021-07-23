@@ -679,16 +679,16 @@ __host__ int wall_link_slip_direction(wall_t * wall, int n) {
 
     int cq[3] = {0};
     int wn[3] = {0};
-    int p = wall->linkp[n];
+    int pn = wall->linkp[n];
 
     /* Components are reversed in the tangential direction, but
      * the same in the (-ve outward) normal direction. */
 
     wall_link_normal(wall, n, wn);
 
-    cq[X] = -2*wn[X] - cv[p][X];
-    cq[Y] = -2*wn[Y] - cv[p][Y];
-    cq[Z] = -2*wn[Z] - cv[p][Z];
+    cq[X] = -2*wn[X] - cv[pn][X];
+    cq[Y] = -2*wn[Y] - cv[pn][Y];
+    cq[Z] = -2*wn[Z] - cv[pn][Z];
 
     /* Find the appropriate index */
 

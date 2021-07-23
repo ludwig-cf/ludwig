@@ -192,7 +192,6 @@ __host__ int gradient_param_commit(grad_lc_anch_t * anch) {
 
   assert(anch);
 
-  /* copyConstToTarget(&static_param, anch->param, sizeof(param_t));*/
   tdpMemcpyToSymbol(tdpSymbol(static_param), anch->param, sizeof(param_t), 0,
 		    tdpMemcpyHostToDevice);
 

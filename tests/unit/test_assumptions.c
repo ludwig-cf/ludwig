@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2008-2020 The University of Edinburgh 
+ *  (c) 2008-2021 The University of Edinburgh 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
@@ -46,83 +46,44 @@ int test_assumptions_suite(void) {
   char s1[BUFSIZ] = {0};
   PI_DOUBLE(pi_);
 
-  /*
-  printf("Testing assumptions...\n");
-  printf("This code compiled at %s on %s\n", __TIME__, __DATE__);
-  */
   /* All integers in the code should be declared 'int', which
    * we expect to be (at the least) 4 bytes. */
 
-  /*printf("Checking sizeof(int) is 4 bytes... ");*/
+  /* Checking sizeof(int) is 4 bytes... */
   assert(sizeof(int) == 4);
-  /* printf("yes\n");*/
 
-  /* printf("Checking sizeof(long int) is >= 4 bytes... ");*/
+  /* Checking sizeof(long int) is >= 4 bytes... */
   assert(sizeof(long int) >= 4);
-  /* printf("yes (%ld bytes)\n", sizeof(long int));*/
 
   /* All floating point types in the code should be double,
    * which must be 8 bytes. */
 
-  /* printf("Checking sizeof(float) is 4 bytes... ");*/
   assert(sizeof(float) == 4);
-  /* printf("yes\n");*/
-
-  /* printf("Checking sizeof(double) is 8 bytes... ");*/
   assert(sizeof(double) == 8);
-  /* printf("yes\n");*/
-  /*
-  printf("sizeof(char) = %lu\n", sizeof(char));
-  printf("sizeof(unsigned char) = %lu\n", sizeof(unsigned char));
-  printf("Checking sizeof(void *) ...\n");
-  printf("%lu\n", sizeof(void *));
-  */
-  /* printf("Checking FILENAME_MAX >= 128 characters ... ");*/
-  assert(FILENAME_MAX >= 128);
-  /* printf("yes (%d characters)\n", FILENAME_MAX);
-     printf("Checking BUFSIZ... (%d bytes)\n", BUFSIZ);
 
-  printf("Checking sizeof(void *)... (%lu bytes)\n", sizeof(void *));
-  printf("Checking sizeof(func *)... (%lu bytes)\n", sizeof(p_function));
-  */
+  assert(FILENAME_MAX >= 128);
 
   /* Maths? */
-  /*
-  printf("FLT_EPSILON is %14.7e\n", FLT_EPSILON);
-  printf("M_PI        is %14.7e\n", M_PI);
-  */
+
   pi = 4.0*atan(1.0);
   test_assert(fabs(pi - pi_) < DBL_EPSILON);
-
 
   test_pe_fenv();
   test_util();
   test_macro_abuse();
 
   /* Initialised string buffers have length zero */
-  /* if (verbose) printf("strlen({})  is %d\n", strlen(s0)); */
-  /* if (verbose) printf("strlen({0}) is %d\n", strlen(s1)); */
+
   assert(strlen(s0) == 0);
   assert(strlen(s1) == 0);
   (void) strlen(s0); /* prevent unused variable warning */
   (void) strlen(s1); /* ditto */
 
   /* Information */
-  /* printf("Language\n");
-     printf("__STC__ = %d\n", __STDC__);*/
+
 #if (__STDC_VERSION__ >= 199901)
-  /* printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);*/
+  printf("__STDC_VERSION__ = %ld\n", __STDC_VERSION__);
 #endif
-  /*
-  printf("__DATE__ is %s\n", __DATE__);
-  printf("__TIME__ is %s\n", __TIME__);
-  printf("__FILE__ is %s\n", __FILE__);
-  printf("__LINE__ is %d\n", __LINE__);
-
-  printf("Host appears to be %s-endian\n", is_bigendian() ? "big" : "little");
-
-  printf("All assumptions ok!\n");
-  */
 
   return 0;
 }
@@ -142,8 +103,6 @@ void test_util(void) {
   
   /* Krocker delta and Levi-Civita tensor */
 
-  /* printf("Kroneker delta d_[i][j] correct...");*/
-
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
       if (i == j) {
@@ -158,8 +117,6 @@ void test_util(void) {
   /* Do some permutations to test the perutation tensor e_[i][j][k].
    * Also use the identity e_ijk e_imn = d_jm d_kn - d_jn d_km
    * for a test. */ 
-
-  /* printf("Permutation tensor e_[i][j][k] correct...");*/
 
   for (i = 0; i < 3; i++) {
     for (j = 0; j < 3; j++) {
@@ -185,8 +142,6 @@ void test_util(void) {
       }
     }
   }
-
-  /* printf("yes.\n");*/
 
   test_util_discrete_volume();
 
@@ -300,7 +255,7 @@ int test_pe_fenv(void) {
   const char * s = pe_fegetround_tostring();
 
   test_assert(s != NULL);
-  /* printf("Floating point rounding mode: %s\n", s);*/
+  printf("Floating point rounding mode: %s\n", s);
 
   return 0;
 }

@@ -74,8 +74,8 @@ static int do_test1(pe_t * pe) {
 
   int nk;
   int iv, n;
+  int valency[3] = {1, 2, 3};
   double e, diff;
-  double valency[3] = {1, 2, 3};
   double diffusivity[3] = {1.0, 2.0, 3.0};
   double eunit = -1.0;
 
@@ -127,9 +127,9 @@ static int do_test2(pe_t * pe) {
   int nk = 2;
   int iv, n;
   int index;
+  int valency[2] = {1, 2};
   double diff;
   double ref, value;
-  double valency[2] = {1, 2};
   double diffusivity[2] = {1.0, 2.0};
 
   cs_t * cs = NULL;

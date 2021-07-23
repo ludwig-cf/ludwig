@@ -7,12 +7,10 @@
  *  See, for example, Henrich et al, ...
  *  and references therein.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (o.henrich@ucl.ac.uk)
@@ -825,7 +823,6 @@ int blue_phase_active_nematic_init(cs_t * cs, fe_lc_param_t * param,
   double nkink1[3], nkink2[3];
   double qkink1[3][3], qkink2[3][3];
 
-  double x, y, z;
   double ang;
   PI_DOUBLE(pi);
 
@@ -871,11 +868,11 @@ int blue_phase_active_nematic_init(cs_t * cs, fe_lc_param_t * param,
   fe_lc_q_uniaxial(param, nkink2, qkink2);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
+    int ix = noffset[X] + ic;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
+      int iy = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
+	int iz = noffset[Z] + kc;
 
 	index = cs_index(cs, ic, jc, kc);
 	field_tensor_set(fq, index, q);
@@ -884,8 +881,8 @@ int blue_phase_active_nematic_init(cs_t * cs, fe_lc_param_t * param,
 	   z = ntotal[Z]/2 is being replaced */
  
 	if(nhat[0] == 1.0) {
-	  if(z==ntotal[Z]/2.0 || z==(ntotal[Z]-1)/2.0) {
-	    if(x<=ntotal[X]/2.0) {
+	  if (iz == ntotal[Z]/2 || iz == (ntotal[Z]-1)/2) {
+	    if (ix <= ntotal[X]/2) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -898,8 +895,8 @@ int blue_phase_active_nematic_init(cs_t * cs, fe_lc_param_t * param,
 	   z=ntotal[Z]/2 is being replaced */
 
 	if(nhat[1] == 1.0){
-	  if (z == ntotal[Z]/2 || z == (ntotal[Z]-1)/2.0) {
-	    if(y<=ntotal[Y]/2.0) {
+	  if (iz == ntotal[Z]/2 || iz == (ntotal[Z]-1)/2) {
+	    if (iy <= ntotal[Y]/2) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -947,7 +944,6 @@ int lc_active_nematic_init_q2d(cs_t * cs, fe_lc_param_t * param, field_t * fq,
   double nkink1[3], nkink2[3];
   double qkink1[3][3], qkink2[3][3];
 
-  double x, y;
   double ang;
   PI_DOUBLE(pi);
 
@@ -991,9 +987,9 @@ int lc_active_nematic_init_q2d(cs_t * cs, fe_lc_param_t * param, field_t * fq,
   fe_lc_q_uniaxial(param, nkink2, qkink2);
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
+    int ix = noffset[X] + ic;
     for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
+      int iy = noffset[Y] + jc;
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
 	index = cs_index(cs, ic, jc, kc);
@@ -1004,8 +1000,8 @@ int lc_active_nematic_init_q2d(cs_t * cs, fe_lc_param_t * param, field_t * fq,
         /* Central strip parallel to X */
  
 	if (istrip == X) {
-	  if (y == ntotal[Y]/2 || y == (ntotal[Y]-1)/2) {
-	    if (x <= ntotal[X]/2) {
+	  if (iy == ntotal[Y]/2 || iy == (ntotal[Y]-1)/2) {
+	    if (ix <= ntotal[X]/2) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {
@@ -1017,8 +1013,8 @@ int lc_active_nematic_init_q2d(cs_t * cs, fe_lc_param_t * param, field_t * fq,
         /* Central strip parallel to Y */
 
 	if (istrip == Y) {
-	  if (x == ntotal[X]/2 || x == (ntotal[X]-1)/2) {
-	    if (y <= ntotal[Y]/2) {
+	  if (ix == ntotal[X]/2 || ix == (ntotal[X]-1)/2) {
+	    if (iy <= ntotal[Y]/2) {
 	      field_tensor_set(fq, index, qkink1);
 	    }
 	    else {

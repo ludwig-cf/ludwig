@@ -65,7 +65,7 @@ struct rt_s {
 
 static int rt_add_key_pair(rt_t * rt, const char *, int lineno);
 static int rt_key_broadcast(rt_t * rt);
-static int rt_is_valid_key_pair(rt_t * rt, const char *, int lineno);
+static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno);
 static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
 static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
@@ -583,8 +583,9 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
-  char a[NKEY_LENGTH];
-  char b[NKEY_LENGTH];
+  char a[NKEY_LENGTH] = {};
+  char b[NKEY_LENGTH] = {};
+  char fmt[32] = {};
 
   if (strncmp("#",  line, 1) == 0) return 0;
   if (strncmp("\n", line, 1) == 0) return 0;
@@ -592,7 +593,9 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
   /* Minimal syntax checks. The user will need to sort these
    * out. */
 
-  if (sscanf(line, "%s %s", a, b) != 2) {
+  snprintf(fmt, sizeof(fmt), "%%%ds %%%ds", NKEY_LENGTH-1, NKEY_LENGTH-1);
+
+  if (sscanf(line, fmt, a, b) != 2) {
     /* This does not look like a key value pair... */
     pe_fatal(rt->pe, "Please check input file syntax at line %d:\n %s\n",
 	     lineno, line);
@@ -704,7 +707,6 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
 
   int ierr = 0;
   char value[NKEY_LENGTH] = {};
-  char msg[BUFSIZ] = {};
 
   assert(rt);
   assert(key);
@@ -719,15 +721,14 @@ int rt_key_required(rt_t * rt, const char * key, rt_enum_t level) {
 
     /* Information */
     if (level == RT_INFO) {
-      sprintf(msg, "Input: key \"%s\" absent; a default value will be used.\n",
-	      value);
-      pe_info(rt->pe, msg);
+      pe_info(rt->pe, "The following input key is absent...\n");
+      pe_info(rt->pe, "A default value will be used for: %s\n", value);
     }
     /* Fatal */
     if (level == RT_FATAL) {
-      sprintf(msg, "Input: key \"%s\" must be specified, but is missing;\n"
-	      "please check the input and try again.", value);
-      pe_fatal(rt->pe, msg);
+      pe_info(rt->pe, "The following input key is missing...\n");
+      pe_info(rt->pe, "Required key: %s\n", value);
+      pe_fatal(rt->pe, "Please check the input and try again.\n");
     }
   }
 

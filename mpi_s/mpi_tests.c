@@ -100,8 +100,8 @@ static int test_mpi_allreduce(void) {
   dsend = 1.0; drecv = 0.0;
   ireturn = MPI_Allreduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, comm_);
   assert(ireturn == MPI_SUCCESS);
-  assert(dsend == 1.0);
-  assert(drecv == dsend);
+  assert(dsend == 1.0);   /* Exactly */
+  assert(drecv == dsend); /* Exactly */
 
   isend[0] = -1;
   isend[1] = 0;
@@ -135,8 +135,8 @@ static int test_mpi_reduce(void) {
   dsend = 1.0; drecv = 0.0;
   ireturn = MPI_Reduce(&dsend, &drecv, 1, MPI_DOUBLE, MPI_SUM, 0, comm_);
   assert(ireturn == MPI_SUCCESS);
-  assert(dsend == 1.0);
-  assert(drecv == dsend);
+  assert(dsend == 1.0);    /* Exactly */
+  assert(drecv == dsend);  /* Exactly */
 
   isend[0] = -1;
   isend[1] = 0;
@@ -164,7 +164,7 @@ static int test_mpi_reduce(void) {
 
   ireturn = MPI_Reduce(dvsend, dvrecv, 2, MPI_DOUBLE, MPI_SUM, 0, comm_);
   assert(ireturn == MPI_SUCCESS);
-  assert(dvsend[0] == -1.0);
+  assert(dvsend[0] == -1.0);       /* All should be exact. */
   assert(dvsend[1] == +1.5);
   assert(dvrecv[0] == dvsend[0]);
   assert(dvrecv[1] == dvsend[1]);

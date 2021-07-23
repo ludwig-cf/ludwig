@@ -40,8 +40,6 @@ int test_noise_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  /* info("Noise tests\n\n");*/
-
   do_test_noise1(pe);
   do_test_noise2(pe);
   do_test_noise3(pe);
