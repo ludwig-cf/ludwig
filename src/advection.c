@@ -22,7 +22,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020  The University of Edinburgh
+ *  (c) 2010-2021  The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -186,6 +186,7 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
   }
   else {
 
+    /* Require fe and fw */
     obj->fw = (double *) calloc((size_t) nsites*nf, sizeof(double));
     obj->fe = (double *) calloc((size_t) nsites*nf, sizeof(double));
     obj->fy = (double *) calloc((size_t) nsites*nf, sizeof(double));
@@ -212,11 +213,13 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
     tdpAssert(tdpMemset(obj->target, 0, sizeof(advflux_t)));
 
     if (obj->le == NULL) {
+      /* Just fx */
       tdpAssert(tdpMalloc((void **) &tmp, nsz));
       tdpAssert(tdpMemcpy(&obj->target->fx, &tmp, sizeof(double *),
 			  tdpMemcpyHostToDevice));
     }
     else {
+      /* Lees Edwards fe, fw */
       tdpAssert(tdpMalloc((void **) &tmp, nsz));
       tdpAssert(tdpMemcpy(&obj->target->fe, &tmp, sizeof(double *),
 			  tdpMemcpyHostToDevice));
@@ -238,6 +241,7 @@ __host__ int advflux_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
     tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
 			tdpMemcpyHostToDevice));
 
+    /* Other target pointers */
     if (cs) cs_target(cs, &cstarget);
     if (le) lees_edw_target(le, &letarget);
     tdpAssert(tdpMemcpy(&obj->target->cs, &cstarget, sizeof(cs_t *),
