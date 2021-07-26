@@ -1438,7 +1438,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "ternary") == 0) {
 
     fe_ternary_param_t param = {0};
-    ch_info_t info;
+    ch_info_t options = {};
     fe_ternary_t * fe = NULL;
 
     nf = 2;       /* Composition, ternary: "phi" and "psi" */
@@ -1469,15 +1469,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Cahn Hilliard */
 
-    info.nfield = nf;
+    options.nfield = nf;
 
-    n = rt_double_parameter(rt, "ternary_mobility_phi", &info.mobility[0]);
+    n = rt_double_parameter(rt, "ternary_mobility_phi", &options.mobility[0]);
     if (n == 0) pe_fatal(pe, "Please set ternary_mobility_phi in the input\n");
 
-    n = rt_double_parameter(rt, "ternary_mobility_psi", &info.mobility[1]);
+    n = rt_double_parameter(rt, "ternary_mobility_psi", &options.mobility[1]);
     if (n == 0) pe_fatal(pe, "Please set ternary_mobility_psi in the input\n");
 
-    ch_create(pe, cs, info, &ludwig->ch);
+    ch_create(pe, cs, options, &ludwig->ch);
 
     pe_info(pe, "\n");
     pe_info(pe, "Using Cahn-Hilliard solver:\n");
