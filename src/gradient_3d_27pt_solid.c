@@ -27,7 +27,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -39,7 +39,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "kernel.h"
-#include "map_s.h"
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "gradient_3d_27pt_solid.h"

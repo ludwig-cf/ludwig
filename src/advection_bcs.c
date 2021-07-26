@@ -7,8 +7,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
-*
+ *  (c) 2009-2021 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -24,7 +24,6 @@
 #include "kernel.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
-#include "map_s.h"
 #include "timer.h"
 #include "advection_bcs.h"
 

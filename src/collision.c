@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,7 +37,6 @@
 #include "control.h"
 #include "collision.h"
 #include "field_s.h"
-#include "map_s.h"
 #include "kernel.h"
 #include "timer.h"
 

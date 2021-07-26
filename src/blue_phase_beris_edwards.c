@@ -31,7 +31,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2020 The University of Edinburgh
+ *  (c) 2009-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -56,7 +56,6 @@
 #include "field_s.h"
 #include "field_grad_s.h"
 #include "colloids.h"
-#include "map_s.h"
 #include "timer.h"
 
 __host__ int beris_edw_update_driver(beris_edw_t * be, field_t * fq,

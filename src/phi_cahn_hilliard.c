@@ -42,7 +42,6 @@
 
 #include "field_s.h"
 #include "physics.h"
-#include "map_s.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
 #include "util_sum.h"
