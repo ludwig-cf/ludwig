@@ -65,11 +65,13 @@ static int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
 
 static int phi_force_fluid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
 			      hydro_t * hydro);
-static int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe,
-field_t * field,
-hydro_t * hydro, map_t * map);
+static int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
+				     hydro_t * hydro, map_t * map);
 static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
 					  hydro_t * hydro);
+
+__host__ int phi_force_external_chemical_potential(cs_t * cs, field_t * phi,
+						   hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -137,25 +139,7 @@ __host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
 	}
       }
 
-      /* External chemical potential may be applied in all cases,
-       * if one is happy it makes sense. */
-      /* Scalars only at the moment, and don't bother unless there is
-       * a non-zero external chemical potential. */
-
-      {
-	int is_gradmu = 0;
-	double gradmu[3] = {};
-	physics_t * phys = NULL;
-
-	physics_ref(&phys);
-	physics_grad_mu(phys, gradmu);
-
-	is_gradmu = (gradmu[X] != 0.0 || gradmu[Y] != 0.0 || gradmu[Z] != 0.0);
-
-	if (is_gradmu && phi->nf == 1) {
-	  phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
-	}
-      }
+      phi_force_external_chemical_potential(cs, phi, hydro);
       break;
     case PTH_METHOD_STRESS_ONLY:
       pth_stress_compute(pth, fe);
@@ -376,6 +360,7 @@ int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
 	field_scalar_array(field, index0, phi);
         fe->func->mu(fe, index0, mu);
 
+	/* x-direction */
         indexm1 = cs_index(cs, ic-1, jc, kc);
         indexp1 = cs_index(cs, ic+1, jc, kc);
 
@@ -401,6 +386,7 @@ int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
 	  force[X] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
 	}
 
+	/* y-direction */
 	indexm1 = cs_index(cs, ic, jc-1, kc);
 	indexp1 = cs_index(cs, ic, jc+1, kc);
           
@@ -425,7 +411,8 @@ int phi_force_solid_cs_gradmu(cs_t * cs, fe_t * fe, field_t * field,
 	for (n1 = 0; n1 < field->nf; n1++) {
 	  force[Y] -= phi[n1]*0.5*(mup1[n1] - mum1[n1]);
 	}
-          
+
+	/* z-direction */
 	indexm1 = cs_index(cs, ic, jc, kc-1);
 	indexp1 = cs_index(cs, ic, jc, kc+1);
           
@@ -562,6 +549,40 @@ static int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   return 0;
 }
 
+/*****************************************************************************
+ *
+ *  phi_force_external_chemical_potential
+ *
+ *  Driver for computing force arising from external chemical potential.
+ *
+ *****************************************************************************/
+
+__host__ int phi_force_external_chemical_potential(cs_t * cs, field_t * phi,
+						   hydro_t * hydro) {
+  assert(cs);
+  assert(phi);
+  assert(hydro);
+
+  /* Scalars only at the moment, and don't bother unless there is
+   * a non-zero external chemical potential. */
+
+  {
+    int is_gradmu = 0;
+    double gradmu[3] = {};
+    physics_t * phys = NULL;
+
+    physics_ref(&phys);
+    physics_grad_mu(phys, gradmu);
+
+    is_gradmu = (gradmu[X] != 0.0 || gradmu[Y] != 0.0 || gradmu[Z] != 0.0);
+
+    if (is_gradmu && phi->nf == 1) {
+      phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
+    }
+  }
+
+  return 0;
+}
 
 /*****************************************************************************
  *
