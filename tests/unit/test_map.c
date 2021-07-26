@@ -43,7 +43,6 @@ int test_map_suite(void) {
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  /*info("Map tests\n\n");*/
 
   do_test1(pe);
   do_test2(pe);

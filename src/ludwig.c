@@ -1794,7 +1794,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Dielectric contrast */
 
-    /* Call permittivities, e1=e2 has been set as default */
+    /* Call permittivities, e1 == e2 has been set as default */
     psi_epsilon(ludwig->psi, &e1);
     psi_epsilon2(ludwig->psi, &e2);
 
@@ -1824,6 +1824,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pe_info(pe, "Solvation dmu species 1:  %15.7e\n", mu[1]);
 
     /* f_vare_t function */
+    /* If permittivities really not the same number... */
 
     pe_info(pe, "Poisson solver:           %15s\n",
 	    (e1 == e2) ? "uniform" : "heterogeneous");

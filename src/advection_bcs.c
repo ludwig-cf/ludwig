@@ -24,6 +24,7 @@
 #include "kernel.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
+#include "field_s.h"
 #include "timer.h"
 #include "advection_bcs.h"
 
@@ -323,10 +324,11 @@ int advection_bcs_wall(field_t * fphi) {
   double q[NQAB];
   cs_t * cs = NULL; /* To be required */
 
-  /* if (wall_at_edge(X) == 0) return 0;*/
+  /* Only required if there are walls in the x-direction */
 
-  assert(0); /* Sort out line above */
   assert(fphi);
+
+  pe_fatal(fphi->pe, "advection_bcs_wall internal error: not implemented\n");
 
   field_nf(fphi, &nf);
   cs_nlocal(cs, nlocal);

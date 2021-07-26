@@ -573,7 +573,7 @@ void beris_edw_kernel_v(kernel_ctxt_t * ktx, beris_edw_t * be,
     int ic[NSIMDVL], jc[NSIMDVL], kc[NSIMDVL];
     int indexj[NSIMDVL], indexk[NSIMDVL];
     int maskv[NSIMDVL];
-    int status;
+    int status = 0;
 
     double q[3][3][NSIMDVL];
     double w[3][3][NSIMDVL];

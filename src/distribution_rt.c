@@ -247,9 +247,8 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
 			     physics_t * phys) {
 
-  char key[FILENAME_MAX] = "";
+  char key[BUFSIZ] = "";
   double rho0;
-  double u0[3] = {0.0, 0.0, 0.0};
 
   assert(pe);
   assert(rt);
@@ -262,7 +261,7 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
 
   lb_init_rest_f(lb, rho0);
 
-  rt_string_parameter(rt, "distribution_initialisation", key, FILENAME_MAX);
+  rt_string_parameter(rt, "distribution_initialisation", key, BUFSIZ);
 
   if (strcmp("2d_kelvin_helmholtz", key) == 0) {
 
@@ -299,6 +298,9 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
   }
 
   if (strcmp("3d_uniform_u", key) == 0) {
+
+    double u0[3] = {0.0, 0.0, 0.0};
+
     rt_double_parameter_vector(rt, "distribution_uniform_u", u0);
     lb_init_uniform(lb, rho0, u0);
 
@@ -311,6 +313,9 @@ int lb_rt_initial_conditions(pe_t * pe, rt_t * rt, lb_t * lb,
   }
 
   if (strcmp("1d_poiseuille", key) == 0) {
+
+    double u0[3] = {0.0, 0.0, 0.0};
+
     rt_double_parameter_vector(rt, "distribution_poiseuille_umax", u0);
     lb_init_poiseuille(lb, rho0, u0);
 

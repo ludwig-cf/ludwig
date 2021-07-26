@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2019 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -562,9 +562,9 @@ int field_phi_init_spinodal_patches(field_t * phi, int seed, int patch,
 	noise_uniform_double_reap(rng, index, &ran_uniform);
 	if (ran_uniform < volminus1) phi1 = -1.0;
 
-	ipatch = dmin(nlocal[X], ic + patch - 1);
-	jpatch = dmin(nlocal[Y], jc + patch - 1);
-	kpatch = dmin(nlocal[Z], kc + patch - 1);
+	ipatch = imin(nlocal[X], ic + patch - 1);
+	jpatch = imin(nlocal[Y], jc + patch - 1);
+	kpatch = imin(nlocal[Z], kc + patch - 1);
 
 	for (ip = ic; ip <= ipatch; ip++) {
 	  for (jp = jc; jp <= jpatch; jp++) {
@@ -654,7 +654,7 @@ int field_phi_init_emulsion(field_t * phi, double xi, double radius,
 
   for (id=0; id<N_drops; id++) {
 
-    if (cz/2 != (1.0*cz)/2.0) {
+    if (cz % 2 != 0) {
       PosY[id] = (int)(PosY0 + (cy-1.0)*dy);
       PosZ[id] = (int)(PosZ0 + (cz-1.0)*dz);
     }

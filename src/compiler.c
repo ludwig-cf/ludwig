@@ -66,11 +66,6 @@ int compiler_id(compiler_info_t * compiler) {
 
 #ifdef __INTEL_COMPILER
 
-  /*
-  printf("__INTEL_COMPILER_BUILD_DATE %d\n", __INTEL_COMPILER_BUILD_DATE);
-  printf("__ICC %d\n", __ICC);
-  */
-
   /* Intel compiler versioning seems a movable feast... use: */
   compiler->major = __INTEL_COMPILER/100;
   compiler->minor = __INTEL_COMPILER - 100*compiler->major;

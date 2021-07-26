@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -428,13 +428,12 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
   fe_lc_compute_stress(fe, q, dq, h, sth);
 
   if (fe->param->is_active) {
-    int ia, ib;
     double dp[3][3];
     double sa[3][3];
     field_grad_vector_grad(fe->dp, index, dp);
     fe_lc_compute_stress_active(fe, q, dp, sa);
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
 	sth[ia][ib] += sa[ia][ib];
       }
     }
@@ -454,7 +453,6 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
 
 __host__ __device__ int fe_lc_str_symm(fe_lc_t * fe, int index,
 				       double s[3][3]) {
-  int ia, ib, ic;
   double q[3][3];
   double h[3][3];
   double dq[3][3][3];
@@ -472,13 +470,12 @@ __host__ __device__ int fe_lc_str_symm(fe_lc_t * fe, int index,
   fe_lc_compute_stress(fe, q, dq, h, s);
 
   if (fe->param->is_active) {
-    int ia, ib;
     double dp[3][3];
     double sa[3][3];
     field_grad_vector_grad(fe->dp, index, dp);
     fe_lc_compute_stress_active(fe, q, dp, sa);
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
 	s[ia][ib] += sa[ia][ib];
       }
     }
@@ -486,9 +483,9 @@ __host__ __device__ int fe_lc_str_symm(fe_lc_t * fe, int index,
 
   /* Antisymmetric part is subtracted (added, with the -ve sign) */
 
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
+  for (int ia = 0; ia < 3; ia++) {
+    for (int ib = 0; ib < 3; ib++) {
+      for (int ic = 0; ic < 3; ic++) {
 	s[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
       }
     }
@@ -709,7 +706,7 @@ __host__ __device__ int fe_lc_mol_field(fe_lc_t * fe, int index,
   double dsq[3][3];
 
   assert(fe);
-  assert(fe->param->kappa0 == fe->param->kappa1);
+  assert(fe->param->kappa0 == fe->param->kappa1); /* Exactly */
 
   field_tensor(fe->q, index, q);
   field_grad_tensor_grad(fe->dq, index, dq);
