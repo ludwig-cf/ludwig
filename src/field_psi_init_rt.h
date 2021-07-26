@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -17,7 +17,6 @@
 
 #include "pe.h"
 #include "runtime.h"
-/* #include "field_psi_init.h" */
 #include "field.h"
 
 typedef struct field_psi_info_s field_psi_info_t;
