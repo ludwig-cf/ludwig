@@ -74,6 +74,7 @@ __host__ int tests_create() {
   test_le_suite();
   test_lubrication_suite();
   test_map_suite();
+  test_map_init_suite();
   test_model_suite();
   test_noise_suite();
   test_pair_lj_cut_suite();
@@ -92,6 +93,7 @@ __host__ int tests_create() {
   test_wall_suite();
 
   test_fe_surfactant1_suite();
+  test_fe_symmetric_suite();
   test_fe_ternary_suite();
 
   /* Failing... pending investigation */
