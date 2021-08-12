@@ -41,7 +41,7 @@
 #include "distribution_rt.h"
 #include "collision_rt.h"
 
-#include "map.h"
+#include "map_rt.h"
 #include "wall_rt.h"
 #include "interaction.h"
 #include "physics_rt.h"
@@ -174,7 +174,6 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
 int free_energy_init_rt(ludwig_t * ludwig);
 int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
-int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
 
 /*****************************************************************************
@@ -1896,84 +1895,6 @@ int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig) {
     pe_info(pe, "viscosity_model %s not recognised.\n", description);
     pe_fatal(pe, "Please check and try again.\n");
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_init_rt
- *
- *  Could do more work trapping duff input keys.
- *
- *****************************************************************************/
-
-int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
-
-  int is_porous_media = 0;
-  int ndata = 2;           /* Default is to allow C,H e.g. for colloids */
-  int form_in = IO_FORMAT_DEFAULT;
-  int form_out = IO_FORMAT_DEFAULT;
-  int grid[3] = {1, 1, 1};
-
-  char status[BUFSIZ] = "";
-  char format[BUFSIZ] = "";
-  char filename[FILENAME_MAX];
-
-  io_info_t * iohandler = NULL;
-  map_t * map = NULL;
-
-  assert(pe);
-  assert(rt);
-
-  is_porous_media = rt_string_parameter(rt, "porous_media_file", filename,
-					FILENAME_MAX);
-  if (is_porous_media) {
-
-    rt_string_parameter(rt, "porous_media_type", status, BUFSIZ);
-
-    if (strcmp(status, "status_only") == 0) ndata = 0;
-    if (strcmp(status, "status_with_h") == 0) ndata = 1;
-    if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
-    if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
-
-    if (strcmp(status, "status_with_h") == 0) {
-      /* This is not to be used as it not implemented correctly. */
-      pe_info(pe, "porous_media_type    status_with_h\n");
-      pe_info(pe, "Please use status_with_c_h (and set C = 0) instead\n");
-      pe_fatal(pe, "Will not continue.\n");
-    }
-
-    rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
-
-    if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
-    if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
-    if (strcmp(format, "BINARY_SERIAL") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
-
-    rt_int_parameter_vector(rt, "porous_media_io_grid", grid);
-
-    pe_info(pe, "\n");
-    pe_info(pe, "Porous media\n");
-    pe_info(pe, "------------\n");
-    pe_info(pe, "Porous media file requested:  %s\n", filename);
-    pe_info(pe, "Porous media file type:       %s\n", status);
-    pe_info(pe, "Porous media format (serial): %s\n", format);
-    pe_info(pe, "Porous media io grid:         %d %d %d\n",
-	    grid[X], grid[Y], grid[Z]);
-  }
-
-  map_create(pe, cs, ndata, &map);
-  map_init_io_info(map, grid, form_in, form_out);
-  map_io_info(map, &iohandler);
-
-  if (is_porous_media) {
-    io_info_set_processor_independent(iohandler);
-    io_read_data(iohandler, filename, map);
-    map_pm_set(map, 1);
-  }
-  map_halo(map);
-
-  *pmap = map;
 
   return 0;
 }

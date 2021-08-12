@@ -16,8 +16,7 @@
 #include "runtime.h"
 
 __host__ int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
-__host__ int map_init_status_circle_xy(pe_t * pe, cs_t * cs, map_t * map);
-__host__ int map_init_status_wall(pe_t * pe, cs_t * cs, int idim, map_t * map);
 __host__ int map_init_porous_media_from_file(pe_t * pe, cs_t * cs, rt_t * rt,
 					     map_t ** map);
+
 #endif
