@@ -33,10 +33,16 @@
 #include "field_grad_s.h"
 #include "gradient_3d_ternary_solid.h"
 
-struct solid_s {
+typedef struct solid_s {
+  int uniform;          /* Flag for uniform wetting values */
+  double ralpha2;       /* 1/alpha^2 */
+  double rkappa1;       /* 1/kappa_1 */
+  double rkappa2;       /* 1/kappa_2 */
+  double h1;            /* h1 */
+  double h2;            /* h2 */
   map_t * map;
   fe_ternary_t * fe_ternary;
-};
+} solid_t;
 
 static struct solid_s static_solid = {0};
 
@@ -58,9 +64,7 @@ static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 
 __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 					  field_grad_t * fg, int nf,
-					  map_t * map,
-					  double rkappa1, double rkappa2,
-					  double alpha);
+					  map_t * map, solid_t solid);
 
 /*****************************************************************************
  *
@@ -79,7 +83,14 @@ __host__ int grad_3d_ternary_solid_map_set(map_t * map) {
 
   map_ndata(map, &ndata);
 
-  if (ndata != 2) pe_fatal(map->pe, "Check wetting parameters %d\n", ndata);
+  if (ndata == 0) {
+    /* Assume uniform wetting */
+    static_solid.uniform = 1;
+  }
+  else if (ndata != 2) {
+    /* Should certainly not be 1 */
+    pe_fatal(map->pe, "Check wetting parameters in map data %d\n", ndata);
+  }
 
   return 0;
 }
@@ -93,9 +104,17 @@ __host__ int grad_3d_ternary_solid_map_set(map_t * map) {
 __host__ int grad_3d_ternary_solid_fe_set(fe_ternary_t * fe) {
 
   assert(fe);
-  
+
   static_solid.fe_ternary = fe;
- 
+
+  static_solid.ralpha2    = 1.0/(fe->param->alpha*fe->param->alpha);
+  static_solid.rkappa1    = 1.0/fe->param->kappa1;
+  static_solid.rkappa2    = 1.0/fe->param->kappa2;
+  static_solid.h1         = fe->param->h1;
+  static_solid.h2         = fe->param->h2;
+  /* Don't override any separate map setting. */
+  if (static_solid.map == NULL) static_solid.uniform = 1;
+
   return 0;
 }
 
@@ -109,7 +128,6 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
 
   int nextra;
   int nlocal[3];
-  double rkappa1,rkappa2,alpha;
   dim3 nblk, ntpb;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
@@ -124,11 +142,6 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
   assert(static_solid.fe_ternary);
 
   fe_ternary_param(static_solid.fe_ternary, &param);
-   
-  rkappa1 = 1.0/param.kappa1;
-  rkappa2 = 1.0/param.kappa2;
-  alpha = param.alpha;
- 
 
   limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
@@ -139,7 +152,7 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
 
   tdpLaunchKernel(grad_ternary_solid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, fgrad->target, fgrad->field->nf,
-		  static_solid.map->target, rkappa1, rkappa2, alpha);
+		  static_solid.map->target, static_solid);
     
   tdpDeviceSynchronize();
 
@@ -159,9 +172,7 @@ __host__ int grad_3d_ternary_solid_d2(field_grad_t * fgrad) {
 
 __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 					  field_grad_t * fg, int nf,
-					  map_t * map,
-					  double rkappa1, double rkappa2,
-					  double alpha) {
+					  map_t * map, solid_t solid) {
   int kindex;
   int kiterations;
   const double r9 = (1.0/9.0);     /* normaliser for grad */
@@ -250,23 +261,28 @@ __global__ void grad_ternary_solid_kernel(kernel_ctxt_t * ktx,
 
 	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				     kc + bs_cv[p][Z]);
-	    map_data(map, ia, wet);
-          
-	    /* At the time use status_with_c_h and set h as h1, c as h2 through
-	       capillary.c file */
-	    h1 = wet[1];
-	    h2 = wet[0];
-         
-	    if (n == 0) {
-              gradt[p] = (-h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
+	    if (solid.uniform) {
+	      h1 = solid.h1;
+	      h2 = solid.h2;
 	    }
 	    else {
-              gradt[p] = (h1*rkappa1 + h2*rkappa2) /(alpha*alpha);
+	      /* Look up map data */
+	      map_data(map, ia, wet);
+
+	      /* This is the prescribed order for h1, h2: */
+	      h1 = wet[0];
+	      h2 = wet[1];
 	    }
-          
+
+	    if (n == 0) {
+              gradt[p] = solid.ralpha2*(-h1*solid.rkappa1 + h2*solid.rkappa2);
+	    }
+	    else {
+              gradt[p] = solid.ralpha2*( h1*solid.rkappa1 + h2*solid.rkappa2);
+	    }
 	  }
 	}
- 
+
 	/* Accumulate the final gradients */
 
 	dphi = 0.0;
