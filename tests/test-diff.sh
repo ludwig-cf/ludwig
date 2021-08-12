@@ -86,6 +86,7 @@ sed -i~ '/..name:/d' test-diff-tmp.ref
 sed -i~ '/..version-string:/d' test-diff-tmp.ref
 sed -i~ '/Target thread model:/d' test-diff-tmp.ref
 sed -i~ '/OpenMP/d' test-diff-tmp.ref
+sed -i~ '/Note assertions/d' test-diff-tmp.ref
 sed -i~ '/^$/d' test-diff-tmp.ref
 sed -i~ '/Timer/d' test-diff-tmp.ref
 sed -i~ '/user.parameters.from/d' test-diff-tmp.ref
@@ -105,6 +106,7 @@ sed -i~ '/..name:/d' test-diff-tmp.log
 sed -i~ '/..version-string:/d' test-diff-tmp.log
 sed -i~ '/Target thread model:/d' test-diff-tmp.log
 sed -i~ '/OpenMP/d' test-diff-tmp.log
+sed -i~ '/Note assertions/d' test-diff-tmp.log
 sed -i~ '/SVN.revision/d' test-diff-tmp.log
 sed -i~ '/^$/d' test-diff-tmp.log
 sed -i~ '/Timer/d' test-diff-tmp.log
