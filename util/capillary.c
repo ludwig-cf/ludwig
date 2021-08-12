@@ -87,7 +87,7 @@ int main(int argc, char ** argv) {
   double data[2];  /* ndata = 2 max at the moment. for uniform cases */
   map_t * map = NULL;
 
-  int k_pic = 0;   /* k-value section to screen (k_pic = 0 is no picture) */
+  int k_pic = 1;   /* k-value section to screen */
 
 
   MPI_Init(&argc, &argv);
@@ -266,7 +266,7 @@ int main(int argc, char ** argv) {
 
   /* picture to terminal */
 
-  if (k_pic > 0) map_init_status_print_section(map, Z, k_pic);
+  map_init_status_print_section(map, Z, k_pic);
 
   /* Utility output ascii to file */
   capillary_write_ascii_serial(pe, cs, map);
