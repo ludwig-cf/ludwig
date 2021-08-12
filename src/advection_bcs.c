@@ -31,6 +31,7 @@
 __global__
 void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
 				    map_t * map);
+__global__
 void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
 			       map_t * map);
 

@@ -57,7 +57,6 @@ static fe_vt_t fe_ternary_hvt = {
     (fe_stress_v_ft)  NULL              /* Antisymmetric part (no used) */
 };
 
-
 static __constant__ fe_ternary_param_t const_param;
 
 /****************************************************************************
@@ -394,7 +393,8 @@ __host__ int fe_ternary_xi0(fe_ternary_t * fe, double * xi0) {
  *
  ****************************************************************************/
 
-__host__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed) {
+__host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
+				       double * fed) {
     
   int ia;
   double field[2];
