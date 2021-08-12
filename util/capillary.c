@@ -46,7 +46,7 @@ const int crystalline_cell_size = 10; /* Must devide all lengths */
 enum {CIRCLE, SQUARE, XWALL, YWALL, ZWALL, XWALL_OBSTACLES, XWALL_BOTTOM,
       SPECIAL_CROSS, SIMPLE_CUBIC, BODY_CENTRED_CUBIC, FACE_CENTRED_CUBIC};
 
-const int xsection = XWALL_OBSTACLES;
+const int xsection = XWALL;
 
 /* "Obstacles": Modify the local geometry of the wall */
 
@@ -56,10 +56,6 @@ int obstacle_height = 8; /* perpendicular from wall */
 int obstacle_depth  = 6; /* perpendicular to length and height */
 			 /* NOTE: obstacle_depth == xmax/ymax/zmax 
 				  means obstacles don't have a z-boundary */
-
-/* SURFACE CHARGE */
-
-const double sigma = 0.125;
 
 /* OUTPUT */
 /* You can generate a file with solid/fluid status information only,
@@ -73,6 +69,8 @@ int map_special_cross(map_t * map);
 
 int map_xwall_obstacles(map_t * map, double sigma);
 int capillary_write_ascii_serial(pe_t * pe, cs_t * cs, map_t * map);
+int capillary_fe_symm_info(pe_t * pe, const fe_symm_param_t * fe);
+int capillary_fe_ternary_info(pe_t * pe, const fe_ternary_param_t * fe);
 
 /*****************************************************************************
  *
@@ -113,20 +111,8 @@ int main(int argc, char ** argv) {
 			    .kappa = 0.053,
 			    .c     = 0.0,
 			    .h     = 0.0};
-      double h, h1, theta;
 
-      printf("Free energy parameters:\n");
-      printf("free energy parameter kappa = %f\n", fe.kappa);
-      printf("free energy parameter B     = %f\n", fe.b);
-      printf("surface free energy   H     = %f\n", fe.h);
-      h = fe.h*sqrt(1.0/(fe.kappa*fe.b));
-      printf("dimensionless parameter h   = %f\n", h);
-      h1 = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
-      printf("dimensionless parameter h1=cos(theta)   = %f\n", h1);
-      theta = acos(h1);
-      printf("contact angle theta         = %f radians\n", theta);
-      theta = theta*180.0/(4.0*atan(1.0));
-      printf("                            = %f degrees\n", theta);
+      capillary_fe_symm_info(pe, &fe);
 
       /* We must have this order "C, H" ... */
       ndata = 2;
@@ -138,21 +124,21 @@ int main(int argc, char ** argv) {
 
   case STATUS_WITH_SIGMA:
     /* Just a surface charge... */
-    ndata = 1;
-    data[0] = sigma;
-    printf("Surface charge sigma = %f\n", sigma);
+    {
+      const double sigma0 = 0.125;
+      ndata = 1;
+      data[0] = sigma0;
+      printf("Surface charge sigma = %f\n", sigma0);
+    }
     break;
 
   case STATUS_WITH_H1_H2:
 
     {
-
       /* TERNARY FREE ENERGY PARAMETERS */
       /* Set the fluid and solid free energy parameters. The fluid parameters
        * must match those used in the main calculation. See Semprebon et al.
        * Phys. Rev. E (2016) for details. */
-
-      /* Note on wetting: there is no independent h3 in the current picture. */
 
       fe_ternary_param_t fe = { .alpha   =  1.0,
 			        .kappa1  =  0.012,
@@ -162,49 +148,15 @@ int main(int argc, char ** argv) {
 			        .h2      = -0.005
       };
 
-      double f1,f2,f3,cos_theta12,cos_theta23,cos_theta31;
-      double theta12,theta23,theta31;
-
-      /* Constraint for h3: */
+      /* Constraint for h3: not independent */
       fe.h3 = fe.kappa3*(-(fe.h1/fe.kappa1) - (fe.h2/fe.kappa2));
 
-      printf("Ternary free energy parameters:\n");
-      printf("free energy parameter kappa1 = %f\n", fe.kappa1);
-      printf("free energy parameter kappa2 = %f\n", fe.kappa2);
-      printf("free energy parameter kappa3 = %f\n", fe.kappa3);
-      printf("free energy parameter alpha = %f\n",  fe.alpha);
+      capillary_fe_ternary_info(pe, &fe);
 
-    f1=pow(fe.alpha*fe.kappa1+4*fe.h1,1.5)-pow(fe.alpha*fe.kappa1-4*fe.h1,1.5);
-    f1=f1/sqrt(fe.alpha*fe.kappa1);
-    f2=pow(fe.alpha*fe.kappa2+4*fe.h2,1.5)-pow(fe.alpha*fe.kappa2-4*fe.h2,1.5);
-    f2=f2/sqrt(fe.alpha*fe.kappa2);
-    f3=pow(fe.alpha*fe.kappa3+4*fe.h3,1.5)-pow(fe.alpha*fe.kappa3-4*fe.h3,1.5);
-    f3=f3/sqrt(fe.alpha*fe.kappa3);
-
-    cos_theta12=f1/(2.0*(fe.kappa1+fe.kappa2))-f2/(2.0*(fe.kappa1+fe.kappa2));
-    cos_theta23=f2/(2.0*(fe.kappa2+fe.kappa3))-f3/(2.0*(fe.kappa2+fe.kappa3));
-    cos_theta31=f3/(2.0*(fe.kappa3+fe.kappa1))-f1/(2.0*(fe.kappa3+fe.kappa1));
-    printf("dimensionless parameters cos(theta12)   = %f\n", cos_theta12);
-    printf("dimensionless parameters cos(theta23)   = %f\n", cos_theta23);
-    printf("dimensionless parameters cos(theta13)   = %f\n", cos_theta31);
-    theta12=acos(cos_theta12);
-    theta23=acos(cos_theta23);
-    theta31=acos(cos_theta31);
-    printf("contact angle theta12         = %f radians\n", theta12);
-    theta12=theta12*180.0/(4.0*atan(1.0));
-    printf("contact angle theta12         = %f degrees\n", theta12);
-    printf("contact angle theta23         = %f radians\n", theta23);
-    theta23=theta23*180.0/(4.0*atan(1.0));
-    printf("contact angle theta23         = %f degrees\n", theta23);
-    printf("contact angle theta31         = %f radians\n", theta31);
-    theta31=theta31*180.0/(4.0*atan(1.0));
-    printf("contact angle theta31         = %f degrees\n", theta31);
-
-    /* We should have this order for additional data: h1, h2 */
-    /* No h3 is required. */
-    ndata = 2;
-    data[0] = fe.h1;
-    data[1] = fe.h2;
+      /* We should have this order for additional data: h1, h2; no h3. */
+      ndata = 2;
+      data[0] = fe.h1;
+      data[1] = fe.h2;
     }
     break;
 
@@ -294,7 +246,7 @@ int main(int argc, char ** argv) {
     pe_info(pe, "Obstacle length:             %d\n", obstacle_length);
     pe_info(pe, "Obstacle height:             %d\n", obstacle_height);
     pe_info(pe, "Obstacle depth:              %d\n", obstacle_depth);
-    map_xwall_obstacles(map, sigma);
+    map_xwall_obstacles(map, data[0]);
     k_pic = 10;
     break;
 
@@ -519,7 +471,7 @@ int map_xwall_obstacles(map_t * map, double sigma) {
   /* halo_status */
   /* Separate routine... */
 
-  assert(map->ndata = 1);
+  assert(map->ndata == 1);
 
   cs_nlocal(cs, nlocal);
 
@@ -620,6 +572,100 @@ int capillary_write_ascii_serial(pe_t * pe, cs_t * cs, map_t * map) {
   }
 
   fclose(fp);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  capillary_fe_symm_info
+ *
+ *  Could have something in fe_symmetric to perform this...
+ *
+ *****************************************************************************/
+
+int capillary_fe_symm_info(pe_t * pe, const fe_symm_param_t * fe) {
+
+  assert(pe);
+  assert(fe);
+
+  {
+
+    double h = fe->h*sqrt(1.0/(fe->kappa*fe->b));
+    double costheta = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
+    double theta = acos(costheta);
+
+    double pi = 4.0*atan(1.0);
+
+    pe_info(pe, "Free energy parameters:\n");
+    pe_info(pe, "free energy parameter kappa = %f\n", fe->kappa);
+    pe_info(pe, "free energy parameter B     = %f\n", fe->b);
+    pe_info(pe, "surface free energy   H     = %f\n", fe->h);
+    pe_info(pe, "dimensionless parameter h   = %f\n", h);
+    pe_info(pe, "cos(theta)                  = %f\n", costheta);
+    pe_info(pe, "contact angle theta         = %f radians\n", theta);
+    pe_info(pe, "                            = %f degrees\n", theta*180.0/pi);
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ * capillary_fe_ternary_info
+ *
+ *****************************************************************************/
+
+int capillary_fe_ternary_info(pe_t * pe, const fe_ternary_param_t * fe) {
+
+  double f1,f2,f3,cos_theta12,cos_theta23,cos_theta31;
+  double theta12,theta23,theta31;
+
+  assert(pe);
+  assert(fe);
+
+  {
+    double alpha  = fe->alpha;
+    double kappa1 = fe->kappa1;
+    double kappa2 = fe->kappa2;
+    double kappa3 = fe->kappa3;
+
+    printf("Ternary free energy parameters:\n");
+    printf("free energy parameter kappa1 = %f\n", kappa1);
+    printf("free energy parameter kappa2 = %f\n", kappa2);
+    printf("free energy parameter kappa3 = %f\n", kappa3);
+    printf("free energy parameter alpha = %f\n",  alpha);
+
+    f1=pow(alpha*kappa1+4*fe->h1,1.5)-pow(alpha*kappa1-4*fe->h1,1.5);
+    f1=f1/sqrt(alpha*kappa1);
+    f2=pow(alpha*kappa2+4*fe->h2,1.5)-pow(alpha*kappa2-4*fe->h2,1.5);
+    f2=f2/sqrt(alpha*kappa2);
+    f3=pow(alpha*kappa3+4*fe->h3,1.5)-pow(alpha*kappa3-4*fe->h3,1.5);
+    f3=f3/sqrt(alpha*kappa3);
+
+    cos_theta12=f1/(2.0*(kappa1 + kappa2))-f2/(2.0*(kappa1 + kappa2));
+    cos_theta23=f2/(2.0*(kappa2 + kappa3))-f3/(2.0*(kappa2 + kappa3));
+    cos_theta31=f3/(2.0*(kappa3 + kappa1))-f1/(2.0*(kappa3 + kappa1));
+
+    printf("dimensionless parameters cos(theta12)   = %f\n", cos_theta12);
+    printf("dimensionless parameters cos(theta23)   = %f\n", cos_theta23);
+    printf("dimensionless parameters cos(theta13)   = %f\n", cos_theta31);
+
+    theta12=acos(cos_theta12);
+    theta23=acos(cos_theta23);
+    theta31=acos(cos_theta31);
+
+    printf("contact angle theta12         = %f radians\n", theta12);
+
+    theta12=theta12*180.0/(4.0*atan(1.0));
+    printf("contact angle theta12         = %f degrees\n", theta12);
+    printf("contact angle theta23         = %f radians\n", theta23);
+    theta23=theta23*180.0/(4.0*atan(1.0));
+    printf("contact angle theta23         = %f degrees\n", theta23);
+    printf("contact angle theta31         = %f radians\n", theta31);
+    theta31=theta31*180.0/(4.0*atan(1.0));
+    printf("contact angle theta31         = %f degrees\n", theta31);
+  }
 
   return 0;
 }
