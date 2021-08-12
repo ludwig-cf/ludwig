@@ -16,7 +16,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,6 +25,8 @@
  ****************************************************************************/
 
 #include <assert.h>
+#include <complex.h>
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -413,4 +415,88 @@ void fe_symm_str_v(fe_symm_t * fe, int index, double s[3][3][NSIMDVL]) {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  fe_symm_theta_to_h
+ *
+ *  If theta is an angle in degrees, then the resulting h will satisfy
+ *  0.5 [(1+h)^3/2 - (1-h)^3/2] = cos(theta).
+ *
+ *  That is, H = h sqrt(kappa*B) should give the desired wetting
+ *  angle theta from theory.
+ *
+ *  h +ve is returned. ierr should always be zero.
+ *
+ *****************************************************************************/
+
+__host__ int fe_symm_theta_to_h(double theta, double * h) {
+
+  int ierr = 0;
+  PI_DOUBLE(pi);
+
+  /* Computation must be performed as complex, but the result must have
+   * zero imaginary part for any (real) angle. */
+  /* Courtesy of Wolfram alpha. */
+
+  /* Programming note: for C/C++ use
+   *   1. "double _Complex" not "double complex";
+   *   2. no initialisers;
+   *   3. c*() functions cpow() etc everywhere. */
+
+  double _Complex a1;
+  double _Complex a2;
+  double _Complex a3;
+  double _Complex z;
+
+  a1 = ccos(pi*theta/180.0);
+
+  z  = cpow(a1, 8) - 6.0*cpow(a1, 6) + 12.0*cpow(a1, 4) - 8.0*cpow(a1, 2);
+  a2 = csqrt(z);
+
+  z  = -2.0*cpow(a1, 4) - 10.0*cpow(a1, 2) + 2.0*a2 + 1.0;
+  a3 = cpow(z, 1.0/3.0);
+
+  z  = csqrt(4.0*cpow(a1, 2)/a3 + a3 + 1.0/a3 - 2.0);
+
+  /* May not quite make DBL_EPSILON depending on argument ... */
+  if (fabs(cimag(z) > 2.0*DBL_EPSILON)) ierr = -1;
+
+  *h = creal(z);
+
+  return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  fe_symm_h_to_costheta
+ *
+ *  For h = H sqrt(1.0/kappa B), return the associated cos(theta)
+ *  where theta is the theoretical wetting angle.
+ *
+ *  cos(theta) = 0.5 [-(1-h)^3/2 + (1+h)^3/2]
+ *
+ *  abs(h) >  1                     => costheta is complex
+ *  abs(h) >  sqrt(2sqrt(3) - 3)    => |costheta| >  1
+ *  abs(h) <= sqrt(2sqrt(3) - 3)    => |costheta| <= 1, i.e., a valid angle
+ *
+ *  So, evaluate, and check the return code (0 for valid).
+ *
+ *****************************************************************************/
+
+__host__ int fe_symm_h_to_costheta(double h, double * costheta) {
+
+  int ierr = 0;
+
+  if (abs(h) > 1.0) {
+    ierr = -1;
+    *costheta = -999.999;
+  }
+  else {
+    *costheta = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
+    if (abs(h) > sqrt(2.0*sqrt(3.0) - 3.0)) ierr = -1;
+  }
+
+  return ierr;
 }
