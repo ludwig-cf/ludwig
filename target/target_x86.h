@@ -155,6 +155,7 @@ void  tdp_x86_postlaunch(void);
 #define TARGET_MAX_THREADS_PER_BLOCK 256
 
 #define __syncthreads() _Pragma("omp barrier")
+#define __threadfence() /* only __syncthreads() is a barrier */
 
 /* Kernel launch is a __VA_ARGS__ macro, thus: */
 #define tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
@@ -187,6 +188,7 @@ void  tdp_x86_postlaunch(void);
 #define omp_get_max_threads() 1
 #define omp_set_num_threads(n)
 #define __syncthreads()
+#define __threadfence()
 
 /* NULL implementation */
 
@@ -208,5 +210,12 @@ void  tdp_x86_postlaunch(void);
 #endif /* _OPENMP */
 
 #define tdp_get_max_threads() omp_get_max_threads()
+
+/* For "critical section" it's handy to use atomicCAS() and atomicExch()
+ * in place (togther with __threadfence()); until some better mechanism
+ * is available */
+
+#define atomicCAS(address, old, new) (old)
+#define atomicExch(address, val)
 
 #endif
