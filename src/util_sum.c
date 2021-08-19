@@ -21,13 +21,13 @@
 
 /*****************************************************************************
  *
- *  kahan_add
+ *  kahan_add_double
  *
  *  Add a contribution to a simple compensated sum.
  *
  *****************************************************************************/
 
-__host__ __device__ void kahan_add(kahan_t * kahan, double val) {
+__host__ __device__ void kahan_add_double(kahan_t * kahan, double val) {
 
   assert(kahan);
 
@@ -82,13 +82,13 @@ __host__ __device__ klein_t klein_zero(void) {
 
 /*****************************************************************************
  *
- *  klein_add
+ *  klein_add_double
  *
  *  Add a contribution to a doubly compensated sum.
  *
  *****************************************************************************/
 
-__host__ __device__ void klein_add(klein_t * klein, double val) {
+__host__ __device__ void klein_add_double(klein_t * klein, double val) {
 
   assert(klein);
 
@@ -135,55 +135,33 @@ __host__ __device__ double klein_sum(const klein_t * klein) {
 
 /*****************************************************************************
  *
- *  kahan_atomic_add
- *
- *  Add atomically when threads are active.
+ *  kahan_add
  *
  *****************************************************************************/
 
-__host__ __device__ void kahan_atomic_add(kahan_t * sum, double val) {
+__host__ __device__ void kahan_add(kahan_t * sum, kahan_t val) {
 
   assert(sum);
 
-#ifdef __CUDA_ARCH___
-  while (atomicCAS(&sum->lock, 0, 1) != 0) {};
-  __threadfence();
-#endif
-
-  kahan_add(sum, val);
-
-#ifdef __CUDA_ARCH__
-  __threadfence();
-  atomicExch(&sum->lock, 0);
-#endif
-
+  kahan_add_double(sum, val.sum);
+  kahan_add_double(sum, val.cs);
 
   return;
 }
 
 /*****************************************************************************
  *
- *  klein_atomic_add
- *
- *  Add contribution atomically
+ *  klein_add
  *
  *****************************************************************************/
 
-__host__ __device__ void klein_atomic_add(klein_t * sum, double val) {
+__host__ __device__ void klein_add(klein_t * sum, klein_t val) {
 
   assert(sum);
 
-#ifdef __CUDA_ARCH___
-  while (atomicCAS(&sum->lock, 0, 1) != 0) {};
-  __threadfence();
-#endif
-
-  klein_add(sum, val);
-
-#ifdef __CUDA_ARCH__
-  __threadfence();
-  atomicExch(&sum->lock, 0);
-#endif
+  klein_add_double(sum, val.sum);
+  klein_add_double(sum, val.cs);
+  klein_add_double(sum, val.ccs);
 
   return;
 }
@@ -239,8 +217,7 @@ __host__ void kahan_mpi_op_sum_function(kahan_t * invec, kahan_t * inoutvec,
   assert(dt);
 
   for (int n = 0; n < *len; n++) {
-    kahan_add(inoutvec + n, invec[n].cs);
-    kahan_add(inoutvec + n, invec[n].sum);
+    kahan_add(inoutvec + n, invec[n]);
   }
 
   return;
@@ -317,9 +294,7 @@ __host__ void klein_mpi_op_sum_function(klein_t * invec, klein_t * inoutvec,
   assert(dt);
 
   for (int n = 0; n < *len; n++) {
-    klein_add(inoutvec + n, invec[n].cs);
-    klein_add(inoutvec + n, invec[n].ccs);
-    klein_add(inoutvec + n, invec[n].sum);
+    klein_add(inoutvec + n, invec[n]);
   }
 
   return;
