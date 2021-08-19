@@ -464,6 +464,15 @@ void ludwig_run(const char * inputfile) {
 
   pe_subdirectory(ludwig->pe, subdirectory);
 
+  /* Move initilaised data to target for initial conditions/time stepping */
+
+  map_memcpy(ludwig->map, tdpMemcpyHostToDevice);
+  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
+
+  if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+  if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
+  if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
+
   pe_info(ludwig->pe, "Initial conditions.\n");
   wall_is_pm(ludwig->wall, &is_porous_media);
 
@@ -492,14 +501,6 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
-  /* Move initilaised data to target for time stepping loop */
-
-  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
-  if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
-  if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
-  if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
-
-  
   /* Main time stepping loop */
 
   pe_info(ludwig->pe, "\n");
@@ -882,6 +883,7 @@ void ludwig_run(const char * inputfile) {
       lb_ndist(ludwig->lb, &im);
 
       if (ludwig->phi) {
+	field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
 	field_grad_memcpy(ludwig->phi_grad, tdpMemcpyDeviceToHost);
 	if (im == 2) {
 	  /* Recompute phi (kernel) and copy back if required */
