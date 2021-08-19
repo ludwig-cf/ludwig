@@ -210,6 +210,7 @@ __host__ int distribution_stats_momentum(lb_t * lb, map_t * map, int root,
   kahan_t * sum_d = NULL;
 
   tdpAssert(tdpMalloc((void **) &sum_d, 3*sizeof(kahan_t)));
+  tdpAssert(tdpMemcpy(sum_d, sum, 3*sizeof(kahan_t), tdpMemcpyHostToDevice));
 
   /* Local kernel */
 
@@ -289,10 +290,6 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
   gz[tid].sum = 0.0;
   gz[tid].cs  = 0.0;
 
-  gm[X] = kahan_zero();
-  gm[Y] = kahan_zero();
-  gm[Z] = kahan_zero();
-
   for_simt_parallel(kindex, kiterations, 1) {
 
     int ic, jc, kc;
@@ -313,9 +310,9 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
 	double gxf = f*cv[p][X];
 	double gyf = f*cv[p][Y];
 	double gzf = f*cv[p][Z];
-	kahan_add(&gx[tid], gxf);
-	kahan_add(&gy[tid], gyf);
-	kahan_add(&gz[tid], gzf);
+	kahan_add_double(&gx[tid], gxf);
+	kahan_add_double(&gy[tid], gyf);
+	kahan_add_double(&gz[tid], gzf);
       }
     }
   }
@@ -328,21 +325,22 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
     kahan_t sumz = kahan_zero();
 
     for (int it = 0; it < blockDim.x; it++) {
-      kahan_add(&sumx, gx[it].cs);
-      kahan_add(&sumx, gx[it].sum);
-      kahan_add(&sumy, gy[it].cs);
-      kahan_add(&sumy, gy[it].sum);
-      kahan_add(&sumz, gz[it].cs);
-      kahan_add(&sumz, gz[it].sum);
+      kahan_add(&sumx, gx[it]);
+      kahan_add(&sumy, gy[it]);
+      kahan_add(&sumz, gz[it]);
     }
 
     /* Final result */
-    kahan_atomic_add(&gm[X], sumx.cs);
-    kahan_atomic_add(&gm[X], sumx.sum);
-    kahan_atomic_add(&gm[Y], sumy.cs);
-    kahan_atomic_add(&gm[Y], sumy.sum);
-    kahan_atomic_add(&gm[Z], sumz.cs);
-    kahan_atomic_add(&gm[Z], sumz.sum);
+
+    while (atomicCAS(&(gm[X].lock), 0, 1) != 0);
+    __threadfence();
+
+    kahan_add(&gm[X], sumx);
+    kahan_add(&gm[Y], sumy);
+    kahan_add(&gm[Z], sumz);
+
+    __threadfence();
+    atomicExch(&(gm[X].lock), 0);
   }
 
   return;
