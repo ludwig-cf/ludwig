@@ -1170,12 +1170,12 @@ __global__ void phi_ch_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
     phi.sum = field->data[addr_rank1(field->nsites, 1, index, 0)];
     phi.cs  = csum->data[addr_rank1(csum->nsites, 1, index, 0)];
 
-    kahan_add(&phi, -flux->fe[addr_rank0(flux->nsite, index)]);
-    kahan_add(&phi,  flux->fw[addr_rank0(flux->nsite, index)]);
-    kahan_add(&phi, -flux->fy[addr_rank0(flux->nsite, index)]);
-    kahan_add(&phi,  flux->fy[addr_rank0(flux->nsite, index - ys)]);
-    kahan_add(&phi, -wz*flux->fz[addr_rank0(flux->nsite, index)]);
-    kahan_add(&phi,  wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
+    kahan_add_double(&phi, -flux->fe[addr_rank0(flux->nsite, index)]);
+    kahan_add_double(&phi,  flux->fw[addr_rank0(flux->nsite, index)]);
+    kahan_add_double(&phi, -flux->fy[addr_rank0(flux->nsite, index)]);
+    kahan_add_double(&phi,  flux->fy[addr_rank0(flux->nsite, index - ys)]);
+    kahan_add_double(&phi, -wz*flux->fz[addr_rank0(flux->nsite, index)]);
+    kahan_add_double(&phi,  wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
 
     csum->data[addr_rank1(csum->nsites, 1, index, 0)] = phi.cs;
     field->data[addr_rank1(field->nsites, 1, index, 0)] = phi.sum;
