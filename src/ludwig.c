@@ -1372,6 +1372,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (fe->super.use_stress_relaxation) {
       pe_info(pe, "\n");
       pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
+      tdpMemcpy(&fe->target->super.use_stress_relaxation,
+		&use_stress_relaxation, sizeof(int), tdpMemcpyHostToDevice);
     }
 
     p = 0;
@@ -1448,7 +1450,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_init_rt(pe, rt, cs);
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
-        
+
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
@@ -1500,6 +1502,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (fe->super.use_stress_relaxation) {
       pe_info(pe, "\n");
       pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
+      tdpMemcpy(&fe->target->super.use_stress_relaxation,
+		&use_stress_relaxation, sizeof(int), tdpMemcpyHostToDevice);
     }
 
     p = rt_switch(rt, "lc_noise");
