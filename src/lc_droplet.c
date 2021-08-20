@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Juho Lituvuori  (juho.lintuvuori@u-bordeaux.fr)
@@ -85,6 +85,7 @@ __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
 
 
 static __constant__ fe_lc_droplet_param_t const_param;
+static __constant__ fe_lc_param_t const_lc;
 
 /*****************************************************************************
  *
@@ -142,6 +143,19 @@ __host__ int fe_lc_droplet_create(pe_t * pe, cs_t * cs, fe_lc_t * lc,
 	      tdpMemcpyHostToDevice);
     tdpMemcpy(&fe->target->symm, &symm->target, sizeof(fe_symm_t *),
 	      tdpMemcpyHostToDevice);
+
+    {
+      /* Provide constant memory for lc parameters */
+      /* If symm->param are required, must be added */
+      /* Should perhaps aggregate to fe_lc_droplet_param_t itself */
+      fe_lc_param_t * tmp_lc = NULL;
+      fe_lc_t * x = NULL;
+      tdpGetSymbolAddress((void **) &tmp_lc, tdpSymbol(const_lc));
+      tdpAssert(tdpMemcpy(&x, &fe->target->lc, sizeof(fe_lc_param_t *),
+			  tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(&x->param, &tmp_lc, sizeof(fe_lc_param_t *),
+			  tdpMemcpyHostToDevice));
+    }
   }
 
   *p = fe;
@@ -203,6 +217,9 @@ __host__ int fe_lc_droplet_param_set(fe_lc_droplet_t * fe,
 
   tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param,
 		    sizeof(fe_lc_droplet_param_t), 0, tdpMemcpyHostToDevice);
+
+  tdpMemcpyToSymbol(tdpSymbol(const_lc), fe->lc->param, sizeof(fe_lc_param_t),
+		    0, tdpMemcpyHostToDevice);
 
   return 0;
 }
