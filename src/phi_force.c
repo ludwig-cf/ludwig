@@ -92,7 +92,9 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
   if (lees_edw_nplane_total(le) > 0) {
     /* Must use the flux method for LE planes */
 
+    hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
     phi_force_flux(cs, le, fe, wall, hydro);
+    hydro_memcpy(hydro, tdpMemcpyHostToDevice);
   }
   else {
     switch (pth->method) {
