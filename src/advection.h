@@ -29,7 +29,7 @@ __host__ int advflux_le_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nf,
 			       advflux_t ** pobj);
 __host__ int advflux_free(advflux_t * obj);
 __host__ int advflux_zero(advflux_t * obj);
-__host__ int advflux_memcpy(advflux_t * obj);
+__host__ int advflux_memcpy(advflux_t * obj, tdpMemcpyKind flag);
 
 __host__ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field);
 __host__ int advective_fluxes_d3qx(hydro_t * hydro, int nf, double * f, 
