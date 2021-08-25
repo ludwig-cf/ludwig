@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2019 The University of Edinburgh
+ *  (c) 2018-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -123,6 +123,16 @@ extern dim3 gridDim;
 extern dim3 blockDim;
 extern dim3 threadIdx;
 extern dim3 blockIdx;
+
+/* Other vector types (as required) */
+
+typedef struct tdp_double3_s double3;
+
+struct tdp_double3_s {
+  double x;
+  double y;
+  double z;
+};
 
 #ifdef _OPENMP
   /* These names are reserved and must be ... */ 
