@@ -345,7 +345,7 @@ __host__ int advflux_memcpy(advflux_t * adv, tdpMemcpyKind flag) {
   }
   else {
     /* Copy data items */
-    size_t nsz = adv->nsite*adv->nf;
+    size_t nsz = (size_t) adv->nsite*adv->nf;
     double * fe = NULL;
     double * fw = NULL;
     double * fy = NULL;

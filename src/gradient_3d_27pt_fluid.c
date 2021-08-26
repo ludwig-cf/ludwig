@@ -416,8 +416,8 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
   }
 
   {
-    int nplane = lees_edw_nplane_local(le);
-    if (nplane) field_grad_memcpy(fg, tdpMemcpyDeviceToHost);
+    int nplanes = lees_edw_nplane_local(le);
+    if (nplanes) field_grad_memcpy(fg, tdpMemcpyDeviceToHost);
   }
 
   for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
@@ -644,8 +644,8 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
   }
 
   {
-    int nplane = lees_edw_nplane_local(le);
-    if (nplane) field_grad_memcpy(fg, tdpMemcpyHostToDevice);
+    int nplanes = lees_edw_nplane_local(le);
+    if (nplanes) field_grad_memcpy(fg, tdpMemcpyHostToDevice);
   }
 
   return 0;
