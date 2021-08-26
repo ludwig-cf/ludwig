@@ -64,6 +64,9 @@ __host__ int phi_grad_mu_fluid(cs_t * cs, field_t * phi, fe_t * fe,
   tdpLaunchKernel(phi_grad_mu_fluid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, fe_target, hydro->target);
 
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
   kernel_ctxt_free(ctxt);
 
   return 0;
@@ -113,6 +116,9 @@ __host__ int phi_grad_mu_external(cs_t * cs, field_t * phi, hydro_t * hydro) {
 
   tdpLaunchKernel(phi_grad_mu_external_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target, phi->target, grad_mu, hydro->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
 
   kernel_ctxt_free(ctxt);
 
