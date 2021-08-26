@@ -44,6 +44,7 @@ __host__ int wall_init_boundaries_slip(wall_t * wall);
 __host__ int wall_link_normal(wall_t * wall, int n, int wn[3]);
 __host__ int wall_link_slip_direction(wall_t * wall, int n);
 __host__ int wall_link_slip(wall_t * wall, int n);
+__host__ int wall_memcpy_h2d(wall_t * wall);
 
 __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb);
 __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map);
@@ -757,46 +758,9 @@ __host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag) {
   }
   else {
 
-    int * tmp = NULL;
-    int nlink;
-
-    nlink = wall->nlink;
-
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&wall->target->nlink, &wall->nlink, sizeof(int), flag);
-      tdpMemcpy(wall->target->fnet, wall->fnet, 3*sizeof(double), flag);
-
-      /* In turn, linki, linkj, linkp, linku */
-      tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpAssert(tdpMemcpy(tmp, wall->linki, nlink*sizeof(int), flag));
-
-      tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpAssert(tdpMemcpy(tmp, wall->linkj, nlink*sizeof(int), flag));
-
-      tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpAssert(tdpMemcpy(tmp, wall->linkp, nlink*sizeof(int), flag));
-
-      tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpAssert(tdpMemcpy(tmp, wall->linku, nlink*sizeof(int), flag));
-
-      /* Slip stuff k, q, s ... */
-      if (wall->param->slip.active) {
-	int8_t * tmp8 = NULL;
-	tdpAssert(tdpMemcpy(&tmp, &wall->target->linkk, sizeof(int *),
-			    tdpMemcpyDeviceToHost));
-	tdpAssert(tdpMemcpy(tmp, wall->linkk, nlink*sizeof(int), flag));
-	tdpAssert(tdpMemcpy(&tmp8, &wall->target->linkq, sizeof(int8_t *),
-			    tdpMemcpyDeviceToHost));
-	tdpAssert(tdpMemcpy(tmp8, wall->linkq, nlink*sizeof(int8_t), flag));
-	tdpAssert(tdpMemcpy(&tmp8, &wall->target->links, sizeof(int8_t *),
-			    tdpMemcpyDeviceToHost));
-	tdpAssert(tdpMemcpy(tmp8, wall->links, nlink*sizeof(int8_t), flag));
-      }
+      wall_memcpy_h2d(wall);
       break;
     case tdpMemcpyDeviceToHost:
       assert(0); /* Not required */
@@ -804,6 +768,70 @@ __host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag) {
     default:
       pe_fatal(wall->pe, "Should definitely not be here\n");
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_memcpy_h2d
+ *
+ *  Host -> Device copy. Slightly tedious.
+ *
+ *****************************************************************************/
+
+__host__ int wall_memcpy_h2d(wall_t * wall) {
+
+  int * tmp = NULL;
+  int nlink = 0;
+
+  assert(wall);
+
+  nlink = wall->nlink;
+
+  tdpAssert(tdpMemcpy(&wall->target->nlink, &wall->nlink, sizeof(int),
+		      tdpMemcpyHostToDevice));
+  tdpAssert(tdpMemcpy(wall->target->fnet, wall->fnet, 3*sizeof(double),
+		      tdpMemcpyHostToDevice));
+
+  /* In turn, linki, linkj, linkp, linku */
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linki, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linkj, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linkp, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linku, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  /* Slip stuff k, q, s ... */
+  if (wall->param->slip.active) {
+    int8_t * tmp8 = NULL;
+    /* linkk, linkq, links ... */
+    tdpAssert(tdpMemcpy(&tmp, &wall->target->linkk, sizeof(int *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp, wall->linkk, nlink*sizeof(int),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&tmp8, &wall->target->linkq, sizeof(int8_t *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp8, wall->linkq, nlink*sizeof(int8_t),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&tmp8, &wall->target->links, sizeof(int8_t *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp8, wall->links, nlink*sizeof(int8_t),
+			tdpMemcpyHostToDevice));
   }
 
   return 0;
