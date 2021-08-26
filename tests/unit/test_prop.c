@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 Ths University of Edinburgh
+ *  (c) 2010-2021 Ths University of Edinburgh
  *
  *  Contributing authors: 
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -44,7 +44,7 @@ int test_lb_prop_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  if (NSIMDVL == 1 && DATA_MODEL != DATA_MODEL_AOS) { 
+  if (NSIMDVL == 1 && DATA_MODEL == DATA_MODEL_AOS) {
     do_test_velocity(pe, cs, LB_HALO_FULL);
     do_test_velocity(pe, cs, LB_HALO_REDUCED);
 
