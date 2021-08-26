@@ -66,7 +66,7 @@ __device__ int tdpAtomicAddInt(int * sum, int val) {
 
 __device__ double tdpAtomicAddDouble(double * sum, double val) {
 
-#if __CUDA_ARCH__ >= 600
+#if __HIPCC__
 
   return atomicAdd(sum, val);
 
