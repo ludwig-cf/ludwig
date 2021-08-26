@@ -24,7 +24,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "field_s.h"
+#include "field.h"
 #include "util.h"
 #include "phi_stats.h"
 

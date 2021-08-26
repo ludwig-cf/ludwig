@@ -23,7 +23,7 @@
 #include "coords.h"
 #include "kernel.h"
 #include "leesedwards.h"
-#include "field_s.h"
+#include "field.h"
 
 #include "test_coords_field.h"
 #include "tests.h"

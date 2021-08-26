@@ -33,7 +33,7 @@
 #include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
-#include "field_s.h"
+#include "field.h"
 
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
