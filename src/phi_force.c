@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2019 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,6 +37,7 @@
 #include "timer.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
+#include "phi_grad_mu.h"
 #include "physics.h"
 
 
@@ -56,11 +57,6 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
 static int phi_force_flux(cs_t * cs, lees_edw_t * le, fe_t * fe,
 			  wall_t * wall, hydro_t * hydro);
 static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double * fxe, double * fxw);
-static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
-				      field_t * phi,
-				      hydro_t * hydro);
-static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
-					  hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -108,8 +104,8 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
       }
       break;
     case PTH_METHOD_GRADMU:
-      phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
-      phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
+      phi_grad_mu_fluid(cs, phi, fe, hydro);
+      phi_grad_mu_external(cs, phi, hydro);
       break;
     default:
       assert(0);
@@ -118,139 +114,6 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
 
   return 0;
 }
-
-/*****************************************************************************
- *
- *  phi_force_fluid_phi_gradmu
- *
- *  This computes and stores the force on the fluid via
- *    f_a = - phi \nabla_a mu
- *
- *  which is appropriate for the symmtric and Brazovskii
- *  free energies, It is provided as a choice.
- *
- *  The gradient of the chemical potential is computed as
- *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
- *  Lees-Edwards planes are allowed for.
- *
- *****************************************************************************/
-
-static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
-				      fe_t * fe, field_t * fphi,
-				      hydro_t * hydro) {
-
-  int ic, jc, kc, icm1, icp1;
-  int index0, indexm1, indexp1;
-  int nhalo;
-  int nlocal[3];
-  int zs, ys;
-  double phi, mum1, mup1;
-  double force[3];
-
-  assert(le);
-  assert(fphi);
-  assert(hydro);
-
-  lees_edw_nhalo(le, &nhalo);
-  lees_edw_nlocal(le, nlocal);
-  assert(nhalo >= 2);
-
-  /* Memory strides */
-  zs = 1;
-  ys = (nlocal[Z] + 2*nhalo)*zs;
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    icm1 = lees_edw_ic_to_buff(le, ic, -1);
-    icp1 = lees_edw_ic_to_buff(le, ic, +1);
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = lees_edw_index(le, ic, jc, kc);
-	field_scalar(fphi, index0, &phi);
-
-        indexm1 = lees_edw_index(le, icm1, jc, kc);
-        indexp1 = lees_edw_index(le, icp1, jc, kc);
-
-	fe->func->mu(fe, indexm1, &mum1);
-	fe->func->mu(fe, indexp1, &mup1);
-
-        force[X] = -phi*0.5*(mup1 - mum1);
-
-	fe->func->mu(fe, index0 - ys, &mum1);
-	fe->func->mu(fe, index0 + ys, &mup1);
-
-        force[Y] = -phi*0.5*(mup1 - mum1);
-
-	fe->func->mu(fe, index0 - zs, &mum1);
-	fe->func->mu(fe, index0 + zs, &mup1);
-
-        force[Z] = -phi*0.5*(mup1 - mum1);
-
-	/* Store the force on lattice */
-
-	hydro_f_local_add(hydro, index0, force);
-
-	/* Next site */
-      }
-    }
-  }
-
-  return 0;
-}
-
-
-/*****************************************************************************
- *
- *  phi_force_fluid_phi_gradmu_ext
- *
- *  As for phi_force_fluid_phi_gradmu(), except this is a contribution\
- *  from the external chemical potential gradient.
- *
- *****************************************************************************/
-
-static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
-					  hydro_t * hydro) {
-  int ic, jc, kc;
-  int index0;
-  int nlocal[3];
-  double phi;
-  double force[3];
-
-  double grad_mu[3];
-  physics_t * phys = NULL;
-
-  assert(cs);
-  assert(fphi);
-  assert(hydro);
-
-  cs_nlocal(cs, nlocal);
-
-  physics_ref(&phys);
-  physics_grad_mu(phys, grad_mu);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index0 = cs_index(cs, ic, jc, kc);
-	field_scalar(fphi, index0, &phi);
-
-        force[X] = -phi*grad_mu[X];
-        force[Y] = -phi*grad_mu[Y];
-        force[Z] = -phi*grad_mu[Z];
-
-	/* Accumulate the force on lattice */
-
-	hydro_f_local_add(hydro, index0, force);
-
-	/* Next site */
-      }
-    }
-  }
-
-  return 0;
-}
-
 
 /*****************************************************************************
  *
