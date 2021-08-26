@@ -601,6 +601,12 @@ static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf) {
   lees_edw_cartsz(pch->le, mpisz);
   lees_edw_ltot(pch->le, ltotal);
 
+  {
+    /* At moment require a copy for device version ... */
+    int nplane = lees_edw_nplane_local(pch->le);
+    if (nplane) advflux_memcpy(pch->flux, tdpMemcpyDeviceToHost);
+  }
+
   if (mpisz[Y] > 1) {
     /* Parallel */
     phi_ch_le_fix_fluxes_parallel(pch, nf);
@@ -693,6 +699,12 @@ static int phi_ch_le_fix_fluxes(phi_ch_t * pch, int nf) {
 
     free(bufferw);
     free(buffere);
+  }
+
+  {
+    /* At moment require a copy for device version ... */
+    int nplane = lees_edw_nplane_local(pch->le);
+    if (nplane) advflux_memcpy(pch->flux, tdpMemcpyHostToDevice);
   }
 
   return 0;
