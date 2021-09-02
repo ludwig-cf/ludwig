@@ -312,7 +312,7 @@ int field_ternary_init_2d_lens(field_t * phi, const fti_drop_t * drop) {
                 
 	int index = cs_index(phi->cs, ic, jc, kc);
 	double x = noffset[X] + ic;
-	double y = noffset[X] + jc;
+	double y = noffset[Y] + jc;
 
 	/* Horizontal cut */
 	if (y < 0.5*len[Y]) {
