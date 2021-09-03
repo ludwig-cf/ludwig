@@ -12,6 +12,7 @@ clean:
 	$(MAKE) -C d3q19-short clean
 	$(MAKE) -C d3q19-extra clean
 	$(MAKE) -C d3q19-elec  clean
+	$(MAKE) -C d3q19-short-gpu clean
 
 test-clean:
 	$(MAKE) clean

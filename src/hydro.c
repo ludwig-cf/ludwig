@@ -42,8 +42,6 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 				       double fnet[3]);
 
-static __device__ double fs[3];
-
 
 /*****************************************************************************
  *
@@ -538,6 +536,9 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
   cs_ltot(obj->cs, ltot);
   cs_cartsz(obj->cs, mpi_cartsz);
 
+  /* All on host at the moment, so copy here and copy back at end */
+  hydro_memcpy(obj, tdpMemcpyDeviceToHost);
+
   if (mpi_cartsz[Y] > 1) {
     hydro_lees_edwards_parallel(obj);
   }
@@ -585,6 +586,8 @@ __host__ int hydro_lees_edwards(hydro_t * obj) {
       }
     }
   }
+
+  hydro_memcpy(obj, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -943,13 +946,13 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   kernel_ctxt_create(hydro->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  tdpGetSymbolAddress((void **) &fnetd, tdpSymbol(fs));
+  tdpAssert(tdpMalloc((void **) &fnetd, 3*sizeof(double)));
   tdpAssert(tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice));
 
   /* Accumulate net force */
 
   tdpLaunchKernel(hydro_accumulate_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt, hydro->target, fnetd);
+		  ctxt->target, hydro->target, fnetd);
 
   tdpAssert(tdpPeekAtLastError());
 
@@ -972,10 +975,11 @@ __host__ int hydro_correct_momentum(hydro_t * hydro) {
   tdpMemcpy(fnetd, fnet, 3*sizeof(double), tdpMemcpyHostToDevice);
 
   tdpLaunchKernel(hydro_correct_kernel_v, nblk, ntpb, 0, 0,
-		  ctxt, hydro->target, fnetd);
+		  ctxt->target, hydro->target, fnetd);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
+  tdpFree(fnetd);
 
   kernel_ctxt_free(ctxt);
 

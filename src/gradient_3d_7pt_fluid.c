@@ -357,6 +357,11 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
   grad = fg->grad;
   del2 = fg->delsq;
 
+  {
+    int nplanes = lees_edw_nplane_local(le);
+    if (nplanes) field_grad_memcpy(fg, tdpMemcpyDeviceToHost);
+  }
+
   for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
     ic = lees_edw_plane_location(le, nplane);
@@ -435,6 +440,11 @@ __host__ int grad_3d_7pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
       }
     }
     /* Next plane */
+  }
+
+  {
+    int nplanes = lees_edw_nplane_local(le);
+    if (nplanes) field_grad_memcpy(fg, tdpMemcpyHostToDevice);
   }
 
   return 0;

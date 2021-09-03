@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -24,8 +24,17 @@
 __host__ int test0(void) {
 
   int mydevice;
+  int ndevice = 0;
   struct tdpDeviceProp prop;
   tdpError_t ifail;
+
+  ifail = tdpGetDeviceCount(&ndevice);
+  if (ifail == tdpSuccess) {
+    printf("Number of devices avail: %d\n", ndevice);
+  }
+  else {
+    printf("No GPU device detected\n");
+  }
 
   tdpGetDevice(&mydevice);
   ifail = tdpGetDeviceProperties(&prop, mydevice);

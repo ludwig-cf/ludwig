@@ -477,6 +477,15 @@ void ludwig_run(const char * inputfile) {
 
   pe_subdirectory(ludwig->pe, subdirectory);
 
+  /* Move initilaised data to target for initial conditions/time stepping */
+
+  map_memcpy(ludwig->map, tdpMemcpyHostToDevice);
+  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
+
+  if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+  if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
+  if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
+
   pe_info(ludwig->pe, "Initial conditions.\n");
   wall_is_pm(ludwig->wall, &is_porous_media);
 
@@ -505,14 +514,6 @@ void ludwig_run(const char * inputfile) {
   }
   ludwig_report_momentum(ludwig);
 
-  /* Move initilaised data to target for time stepping loop */
-
-  lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
-  if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
-  if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
-  if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
-
-  
   /* Main time stepping loop */
 
   pe_info(ludwig->pe, "\n");
@@ -911,6 +912,7 @@ void ludwig_run(const char * inputfile) {
       lb_ndist(ludwig->lb, &im);
 
       if (ludwig->phi) {
+	field_memcpy(ludwig->phi, tdpMemcpyDeviceToHost);
 	field_grad_memcpy(ludwig->phi_grad, tdpMemcpyDeviceToHost);
 	if (im == 2) {
 	  /* Recompute phi (kernel) and copy back if required */
@@ -1532,6 +1534,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (fe->super.use_stress_relaxation) {
       pe_info(pe, "\n");
       pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
+      tdpMemcpy(&fe->target->super.use_stress_relaxation,
+		&use_stress_relaxation, sizeof(int), tdpMemcpyHostToDevice);
     }
 
     p = 0;
@@ -1609,7 +1613,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     coords_init_rt(pe, rt, cs);
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
-        
+
     field_create(pe, cs, nf, "phi", &ludwig->phi);
     field_init(ludwig->phi, nhalo, le);
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
@@ -1661,6 +1665,8 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     if (fe->super.use_stress_relaxation) {
       pe_info(pe, "\n");
       pe_info(pe, "Split symmetric/antisymmetric stress relaxation/force\n");
+      tdpMemcpy(&fe->target->super.use_stress_relaxation,
+		&use_stress_relaxation, sizeof(int), tdpMemcpyHostToDevice);
     }
 
     p = rt_switch(rt, "lc_noise");

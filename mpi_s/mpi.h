@@ -37,7 +37,11 @@ typedef struct {
   int MPI_TAG;
 } MPI_Status;
 
-typedef uintptr_t MPI_Aint;
+
+/* MPI_Aint is a signed integer. Prefer intmax_t over intptr_t as
+   the latter is optional in the standard. */ 
+
+typedef intmax_t MPI_Aint;
 
 /* Defined constants (see Annex A.2) */
 

@@ -26,7 +26,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
+ *  (c) 2009-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -206,6 +206,8 @@ __host__ int fe_brazovskii_param_set(fe_brazovskii_t * fe,
   assert(fe);
 
   *fe->param = values;
+  tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param,
+		    sizeof(fe_brazovskii_param_t), 0, tdpMemcpyHostToDevice);
 
   return 0;
 }

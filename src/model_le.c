@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -72,6 +72,10 @@ __host__ int lb_le_apply_boundary_conditions(lb_t * lb, lees_edw_t * le) {
 
     TIMER_start(TIMER_LE);
 
+    /* Everything must be done on host at the moment (slowly) ... */
+    /* ... and copy back at the end */
+    lb_memcpy(lb, tdpMemcpyDeviceToHost);
+
     if (irepro == 0) le_reproject(lb, le);
     if (irepro != 0) le_reproject_all(lb, le);
 
@@ -81,6 +85,8 @@ __host__ int lb_le_apply_boundary_conditions(lb_t * lb, lees_edw_t * le) {
     else {
       le_displace_and_interpolate(lb, le);
     }
+
+    lb_memcpy(lb, tdpMemcpyHostToDevice);
 
     TIMER_stop(TIMER_LE);
   }

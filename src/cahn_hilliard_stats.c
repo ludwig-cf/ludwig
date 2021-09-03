@@ -84,7 +84,13 @@ __host__ int cahn_hilliard_stats_time0(phi_ch_t * pch, field_t * phi,
 
 __host__ int cahn_hilliard_stats(phi_ch_t * pch, field_t * phi, map_t * map) {
 
-  phi_stats_t stats = {};
+  phi_stats_t stats = {.sum1 = {},
+		       .sum2 = {},
+		       .sum  = 0.0,
+		       .var  = 0.0,
+		       .min  = +FLT_MAX,
+		       .max =  -FLT_MAX,
+		       .vol  = 0.0};
   MPI_Comm comm = MPI_COMM_NULL;
 
   assert(pch);
@@ -140,7 +146,10 @@ __host__ int cahn_stats_reduce(phi_ch_t * pch, field_t * phi,
   kernel_ctxt_create(pch->cs, 1, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
+  /* Initialise device values */
   tdpAssert(tdpMalloc((void **) &stats_d, sizeof(phi_stats_t)));
+  tdpAssert(tdpMemcpy(stats_d, stats, sizeof(phi_stats_t),
+		      tdpMemcpyHostToDevice));
 
   if (pch->info.conserve) {
     tdpLaunchKernel(cahn_stats_klein_sum_kernel, nblk, ntpb, 0, 0,
@@ -232,8 +241,6 @@ __global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
   phib[tid].sum = 0.0;
   phib[tid].cs  = 0.0;
 
-  stats->sum1 = kahan_zero();
-
   for_simt_parallel(kindex, kiterations, 1) {
 
     int ic, jc, kc;
@@ -249,7 +256,7 @@ __global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
     if (status == MAP_FLUID) {
       double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
-      kahan_add(&phib[tid], phi0);
+      kahan_add_double(&phib[tid], phi0);
     }
   }
 
@@ -259,13 +266,18 @@ __global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
     kahan_t sum = kahan_zero();
 
     for (int it = 0; it < blockDim.x; it++) {
-      kahan_add(&sum, phib[it].cs);
-      kahan_add(&sum, phib[it].sum);
+      kahan_add(&sum, phib[it]);
     }
 
     /* Final result */
-    kahan_atomic_add(&stats->sum1, sum.cs);
-    kahan_atomic_add(&stats->sum1, sum.sum);
+
+    while (atomicCAS(&(stats->sum1.lock), 0, 1) != 0);
+    __threadfence();
+
+    kahan_add(&stats->sum1, sum);
+
+    __threadfence();
+    atomicExch(&(stats->sum1.lock), 0);
   }
 
   return;
@@ -299,8 +311,6 @@ __global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
   phib[tid].cs  = 0.0;
   phib[tid].ccs = 0.0;
 
-  stats->sum2 = klein_zero();
-  
   for_simt_parallel(kindex, kiterations, 1) {
 
     int ic, jc, kc;
@@ -318,8 +328,8 @@ __global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
       double phi0 = phi->data[addr_rank1(phi->nsites, 1, index, 0)];
       double cmp  = csum->data[addr_rank1(csum->nsites, 1, index, 0)];
 
-      klein_add(&phib[tid], cmp);
-      klein_add(&phib[tid], phi0);
+      klein_add_double(&phib[tid], cmp);
+      klein_add_double(&phib[tid], phi0);
     }
   }
 
@@ -329,15 +339,18 @@ __global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
     klein_t sum = klein_zero();
 
     for (int it = 0; it < blockDim.x; it++) {
-      klein_add(&sum, phib[it].cs);
-      klein_add(&sum, phib[it].ccs);
-      klein_add(&sum, phib[it].sum);
+      klein_add(&sum, phib[it]);
     }
 
     /* Final result */
-    klein_atomic_add(&stats->sum2, sum.cs);
-    klein_atomic_add(&stats->sum2, sum.ccs);
-    klein_atomic_add(&stats->sum2, sum.sum);
+
+    while (atomicCAS(&(stats->sum2.lock), 0, 1) != 0);
+    __threadfence();
+
+    klein_add(&stats->sum2, sum);
+
+    __threadfence();
+    atomicExch(&(stats->sum2.lock), 0);
   }
 
   return;
@@ -367,8 +380,6 @@ __global__ void cahn_stats_var_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
   tid = threadIdx.x;
   bvar[tid] = 0.0;
-
-  stats->var = 0.0;
 
   for_simt_parallel(kindex, kiterations, 1) {
 
@@ -430,11 +441,9 @@ __global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
   kiterations = kernel_iterations(ktx);
 
   tid = threadIdx.x;
+
   bmin[tid] = +FLT_MAX;
   bmax[tid] = -FLT_MAX;
-
-  stats->min = +FLT_MAX;
-  stats->max = -FLT_MAX;
 
   for_simt_parallel(kindex, kiterations, 1) {
 
@@ -469,6 +478,7 @@ __global__ void cahn_stats_min_kernel(kernel_ctxt_t * ktx, field_t * phi,
     }
 
     /* Final result */
+
     tdpAtomicMinDouble(&stats->min, min);
     tdpAtomicMaxDouble(&stats->max, max);
   }

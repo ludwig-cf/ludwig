@@ -373,22 +373,54 @@ __global__ void advflux_zero_kernel(kernel_ctxt_t * ktx, advflux_t * flux) {
 
 /*****************************************************************************
  *
- *  advection_memcpy
+ *  advflux_memcpy
  *
  *****************************************************************************/
 
-__host__ int advection_memcpy(advflux_t * obj) {
+__host__ int advflux_memcpy(advflux_t * adv, tdpMemcpyKind flag) {
 
   int ndevice;
+
+  assert(adv);
 
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
     /* Ensure we alias */
-    assert(obj->target == obj);
+    assert(adv->target == adv);
   }
   else {
-    assert(0); /* Please fill me in if needed. */
+    /* Copy data items */
+    size_t nsz = (size_t) adv->nsite*adv->nf;
+    double * fe = NULL;
+    double * fw = NULL;
+    double * fy = NULL;
+    double * fz = NULL;
+
+    tdpAssert(tdpMemcpy(&fe, &adv->target->fe, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&fw, &adv->target->fw, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&fy, &adv->target->fy, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&fz, &adv->target->fz, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    switch (flag) {
+    case tdpMemcpyHostToDevice:
+      tdpAssert(tdpMemcpy(fe, adv->fe, nsz*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(fw, adv->fw, nsz*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(fy, adv->fy, nsz*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(fz, adv->fz, nsz*sizeof(double), flag));
+      break;
+    case tdpMemcpyDeviceToHost:
+      tdpAssert(tdpMemcpy(adv->fe, fe, nsz*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(adv->fw, fw, nsz*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(adv->fy, fy, nsz*sizeof(double), flag));
+      tdpAssert(tdpMemcpy(adv->fz, fz, nsz*sizeof(double), flag));
+      break;
+    default:
+      pe_fatal(adv->pe, "advflux_memcpy: Bad tdpMemcpyKind\n");
+    }
   }
 
   return 0;
@@ -410,15 +442,17 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
 
   field_nf(field, &nf);
 
-  /* For given LE , and given order, compute fluxes */
-
   TIMER_start(ADVECTION_X_KERNEL);
 
   if (obj->le == NULL) {
+
+    /* No Lees-Edwards planes: treat spearately */
     advflux_cs_compute(obj, hydro, field);
 
   }
   else {
+
+    /* For given LE , and given order, compute fluxes */
 
     switch (order_) {
     case 1:
@@ -431,7 +465,10 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
       advection_le_3rd(obj, hydro, field);
       break;
     case 4:
+      /* No kernel available yet, hence copies ... */
+      advflux_memcpy(obj, tdpMemcpyDeviceToHost);
       advection_le_4th(obj, hydro, nf, field->data);
+      advflux_memcpy(obj, tdpMemcpyHostToDevice);
       break;
     case 5:
       advection_le_5th(obj, hydro, nf, field->data);

@@ -49,6 +49,7 @@ int test_polar_active_suite(void) {
   int nf = NVECTOR;
   int nhalo = 2;
   int ntotal[3] = {100, 100, 1};
+  int ndevice = 0;
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
@@ -57,9 +58,11 @@ int test_polar_active_suite(void) {
   field_grad_t * fpgrad = NULL;
   fe_polar_t * fe = NULL;
 
+  tdpGetDeviceCount(&ndevice);
+
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  if (pe_mpi_size(pe) > 1) {
+  if (ndevice > 0 || pe_mpi_size(pe) > 1) {
     pe_info(pe, "SKIP     ./unit/test_polar_active\n");
     pe_free(pe);
     return 0;
