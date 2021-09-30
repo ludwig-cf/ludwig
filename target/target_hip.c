@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2020 The University of Edinburgh
+ *  (c) 2020-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *    Nikola Vasilev: did the original implementation in 2020.
@@ -105,6 +105,31 @@ __device__ double tdpAtomicMinDouble(double * minval, double val) {
   } while (assumed != old);
 
   return __longlong_as_double(old);
+}
+
+/*****************************************************************************
+ *
+ *  tdpAtomicMaxDouble
+ *
+ *****************************************************************************/
+
+__device__ double tdpAtomicMaxDouble(double * address, double val) {
+
+  if (*address >= val) return *address;
+
+  {
+    unsigned long long * const address_as_ull = (unsigned long long *) address;
+    unsigned long long old = *address_as_ull;
+    unsigned long long assumed;
+
+    do {
+      assumed = old;
+      if (__longlong_as_double(assumed) >= val) break;
+      old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val));
+    } while (assumed != old);
+
+    return __longlong_as_double(old);
+  }
 }
 
 /*****************************************************************************
