@@ -65,8 +65,10 @@ __host__ int grad_2d_5pt_fluid_d2(field_grad_t * fg) {
   nextra = nhalo - 1;
   assert(nextra >= 0);
 
+  field_memcpy(fg->field, tdpMemcpyDeviceToHost);
   grad_2d_5pt_fluid_operator(le, fg, nextra, GRAD_DEL2);
   grad_2d_5pt_fluid_le(le, fg, nextra, GRAD_DEL2);
+  field_grad_memcpy(fg, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -92,6 +94,7 @@ __host__ int grad_2d_5pt_fluid_d4(field_grad_t * fg) {
 
   grad_2d_5pt_fluid_operator(le, fg, nextra, GRAD_DEL4);
   grad_2d_5pt_fluid_le(le, fg, nextra, GRAD_DEL4);
+  field_grad_memcpy(fg, tdpMemcpyHostToDevice);
 
   return 0;
 }

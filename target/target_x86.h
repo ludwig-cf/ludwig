@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2018-2019 The University of Edinburgh
+ *  (c) 2018-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -124,6 +124,16 @@ extern dim3 blockDim;
 extern dim3 threadIdx;
 extern dim3 blockIdx;
 
+/* Other vector types (as required) */
+
+typedef struct tdp_double3_s double3;
+
+struct tdp_double3_s {
+  double x;
+  double y;
+  double z;
+};
+
 #ifdef _OPENMP
   /* These names are reserved and must be ... */ 
   #pragma omp threadprivate(gridDim, blockDim, threadIdx, blockIdx)
@@ -155,6 +165,7 @@ void  tdp_x86_postlaunch(void);
 #define TARGET_MAX_THREADS_PER_BLOCK 256
 
 #define __syncthreads() _Pragma("omp barrier")
+#define __threadfence() /* only __syncthreads() is a barrier */
 
 /* Kernel launch is a __VA_ARGS__ macro, thus: */
 #define tdpLaunchKernel(kernel, nblocks, nthreads, shmem, stream, ...) \
@@ -187,6 +198,7 @@ void  tdp_x86_postlaunch(void);
 #define omp_get_max_threads() 1
 #define omp_set_num_threads(n)
 #define __syncthreads()
+#define __threadfence()
 
 /* NULL implementation */
 
@@ -208,5 +220,12 @@ void  tdp_x86_postlaunch(void);
 #endif /* _OPENMP */
 
 #define tdp_get_max_threads() omp_get_max_threads()
+
+/* For "critical section" it's handy to use atomicCAS() and atomicExch()
+ * in place (togther with __threadfence()); until some better mechanism
+ * is available */
+
+#define atomicCAS(address, old, new) (old)
+#define atomicExch(address, val)
 
 #endif

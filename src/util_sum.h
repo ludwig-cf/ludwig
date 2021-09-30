@@ -41,13 +41,13 @@ __host__ int kahan_mpi_op_sum(MPI_Op * op);
 __host__ int klein_mpi_datatype(MPI_Datatype * dt);
 __host__ int klein_mpi_op_sum(MPI_Op * op);
 
-__host__ __device__ void    kahan_add(kahan_t * kahan, double val);
-__host__ __device__ void    kahan_atomic_add(kahan_t * kahan, double val);
+__host__ __device__ void    kahan_add_double(kahan_t * kahan, double val);
+__host__ __device__ void    kahan_add(kahan_t * kahan, kahan_t val);
 __host__ __device__ double  kahan_sum(const kahan_t * kahan);
 __host__ __device__ kahan_t kahan_zero(void);
 
-__host__ __device__ void    klein_add(klein_t * klein, double val);
-__host__ __device__ void    klein_atomic_add(klein_t * sum, double val);
+__host__ __device__ void    klein_add_double(klein_t * klein, double val);
+__host__ __device__ void    klein_add(klein_t * sum, klein_t val);
 __host__ __device__ double  klein_sum(const klein_t * klein);
 __host__ __device__ klein_t klein_zero(void);
 

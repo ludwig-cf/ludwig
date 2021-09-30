@@ -152,11 +152,9 @@ static int field_grad_init(field_grad_t * obj) {
  *
  *****************************************************************************/
 
-__host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
+__host__ int field_grad_memcpy(field_grad_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
-  size_t nsz;
-  double * tmp = NULL;
 
   assert(obj);
 
@@ -168,7 +166,22 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
   }
   else {
 
-    nsz = (size_t) obj->nf*obj->nsite*sizeof(double);
+    size_t nsz = (size_t) obj->nf*obj->nsite*sizeof(double);
+    double * grad = NULL;
+    double * delsq = NULL;
+    double * grad_delsq = NULL;
+    double * delsq_delsq = NULL;
+
+    tdpAssert(tdpMemcpy(&grad, &obj->target->grad, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&delsq, &obj->target->delsq, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    if (obj->level >= 4) {
+      tdpAssert(tdpMemcpy(&grad_delsq, &obj->target->grad_delsq,
+			  sizeof(double *), tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(&delsq_delsq, &obj->target->delsq_delsq,
+			  sizeof(double *), tdpMemcpyDeviceToHost));
+    }
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
@@ -177,20 +190,20 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
       tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
 		tdpMemcpyHostToDevice);
 
-      tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, obj->grad, NVECTOR*nsz, tdpMemcpyHostToDevice);
-      tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, obj->delsq, nsz, tdpMemcpyHostToDevice);
+      tdpMemcpy(grad, obj->grad, NVECTOR*nsz, tdpMemcpyHostToDevice);
+      tdpMemcpy(delsq, obj->delsq, nsz, tdpMemcpyHostToDevice);
+      if (obj->level >= 4) {
+	tdpMemcpy(grad_delsq, obj->grad_delsq, NVECTOR*nsz, flag);
+	tdpMemcpy(delsq_delsq, obj->delsq_delsq, nsz, flag);
+      }
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(obj->grad, tmp, NVECTOR*nsz, tdpMemcpyDeviceToHost);
-      tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(obj->delsq, tmp, nsz, tdpMemcpyDeviceToHost);
+      tdpMemcpy(obj->grad, grad, NVECTOR*nsz, tdpMemcpyDeviceToHost);
+      tdpMemcpy(obj->delsq, delsq, nsz, tdpMemcpyDeviceToHost);
+      if (obj->level >= 4) {
+	tdpAssert(tdpMemcpy(obj->grad_delsq, grad_delsq, nsz*NVECTOR, flag));
+	tdpAssert(tdpMemcpy(obj->delsq_delsq, delsq_delsq, nsz, flag));
+      }
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
