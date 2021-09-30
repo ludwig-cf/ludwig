@@ -12,7 +12,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -369,7 +369,7 @@ static int lb_model_param_init(lb_t * lb) {
  *
  *****************************************************************************/
 
-__host__ int lb_nvel(lb_t * lb, int * nvel) {
+__host__ __device__ int lb_nvel(lb_t * lb, int * nvel) {
 
   assert(nvel);
 
@@ -386,7 +386,7 @@ __host__ int lb_nvel(lb_t * lb, int * nvel) {
  *
  *****************************************************************************/
 
-__host__ int lb_ndim(lb_t * lb, int * ndim) {
+__host__ __device__ int lb_ndim(lb_t * lb, int * ndim) {
 
   assert(ndim);
 
