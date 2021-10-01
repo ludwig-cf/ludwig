@@ -131,11 +131,21 @@ __host__ int fe_ternary_bulk(fe_ternary_t * fe, map_t * map, double * feb) {
   kernel_ctxt_create(fe->cs, NSIMDVL, limits, &ctxt);
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
-  tdpLaunchKernel(fe_ternary_bulk_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, fe->target, map->target, feb);
+  {
+    double * febd = NULL;
+
+    tdpAssert(tdpMalloc((void **) &febd, sizeof(double)));
+    tdpAssert(tdpMemcpy(febd, feb, sizeof(double), tdpMemcpyHostToDevice));
+
+    tdpLaunchKernel(fe_ternary_bulk_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, fe->target, map->target, febd);
   
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+
+    tdpAssert(tdpMemcpy(feb, febd, sizeof(double), tdpMemcpyDeviceToHost));
+    tdpAssert(tdpFree(febd));
+  }
 
   kernel_ctxt_free(ctxt);
 
@@ -174,11 +184,21 @@ __host__ int fe_ternary_surf(fe_ternary_t * fe, map_t * map, double * fes) {
 
   param = *fe->param;
 
-  tdpLaunchKernel(fe_ternary_surf_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, param, fe->phi->target, map->target, fes);
+  {
+    double * fesd = NULL;
+
+    tdpAssert(tdpMalloc((void **) &fesd, 3*sizeof(double)));
+    tdpAssert(tdpMemcpy(fesd, fes, 3*sizeof(double), tdpMemcpyHostToDevice));
+
+    tdpLaunchKernel(fe_ternary_surf_kernel, nblk, ntpb, 0, 0,
+		    ctxt->target, param, fe->phi->target, map->target, fesd);
   
-  tdpAssert(tdpPeekAtLastError());
-  tdpAssert(tdpDeviceSynchronize());
+    tdpAssert(tdpPeekAtLastError());
+    tdpAssert(tdpDeviceSynchronize());
+
+    tdpAssert(tdpMemcpy(fes, fesd, 3*sizeof(double), tdpMemcpyDeviceToHost));
+    tdpAssert(tdpFree(fesd));
+  }
 
   kernel_ctxt_free(ctxt);
 
@@ -229,6 +249,8 @@ __global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx, fe_ternary_t * fe,
       fepart[tid] += fed;
     }
   }
+
+  __syncthreads();
 
   /* Reduction: block, and inter-block */
 
@@ -317,6 +339,8 @@ __global__ void fe_ternary_surf_kernel(kernel_ctxt_t * ktx,
     }
     /* Next site */
   }
+
+  __syncthreads();
 
   /* Reduction: block, then inter-block */
 

@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -57,10 +57,14 @@ __host__ int fe_ternary_angles(fe_ternary_t * fe, double * theta);
 __host__ int fe_ternary_wetting_angles(fe_ternary_t * fe, double * theta);
 
 __host__ int fe_ternary_param(fe_ternary_t * fe, fe_ternary_param_t * param);
-__host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu);
-__host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]);
-__host__ int fe_ternary_str_v(fe_ternary_t * fe, int index, double s[3][3][NSIMDVL]);
 
-__host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index, double * fed);
+__host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
+				       double * fed);
+__host__ __device__ int fe_ternary_mu(fe_ternary_t * fe, int index,
+				      double * mu);
+__host__ __device__ int fe_ternary_str(fe_ternary_t * fe, int index,
+				       double s[3][3]);
+__host__ __device__ int fe_ternary_str_v(fe_ternary_t * fe, int index,
+					 double s[3][3][NSIMDVL]);
 
 #endif

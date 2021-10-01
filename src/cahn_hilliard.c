@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributions:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,16 +32,18 @@
 #include "field_s.h"
 #include "advection_s.h"
 #include "advection_bcs.h"
+#include "coords_s.h"
 #include "cahn_hilliard.h"
 
 __host__ int ch_update_forward_step(ch_t * ch, field_t * phif);
 __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe);
 
-__global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe);
+__global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
+				   ch_info_t info);
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
-				    field_t * field, int xs, int ys);
+				    field_t * field, ch_info_t info, int xs, int ys);
 __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
-				    field_t * field, int xs, int ys);
+				    field_t * field, ch_info_t info, int xs, int ys);
 
 /*****************************************************************************
  *
@@ -52,7 +54,7 @@ __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
 __host__ int ch_create(pe_t * pe, cs_t * cs, ch_info_t info, ch_t ** ch) {
 
   ch_t * obj = NULL;
-  int ndevice;
+  int ndevice = 0;
 
   assert(pe);
   assert(cs);
@@ -69,18 +71,27 @@ __host__ int ch_create(pe_t * pe, cs_t * cs, ch_info_t info, ch_t ** ch) {
   obj->pe = pe;
   obj->cs = cs;
   advflux_cs_create(pe, cs, info.nfield, &obj->flux);
+  assert(obj->flux);
 
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice == 0) {
-    ch_info_set(obj, info);
     obj->target = obj;
   }
   else {
-    assert(0); /* Pending implementation */
+    tdpAssert(tdpMalloc((void **) &obj->target, sizeof(ch_t)));
+    tdpAssert(tdpMemset(obj->target, 0, sizeof(ch_t)));
+
+    /* Coords */
+    tdpAssert(tdpMemcpy(&obj->target->cs, &cs->target, sizeof(cs_t *),
+			tdpMemcpyHostToDevice));
+    /* Flux */
+    tdpAssert(tdpMemcpy(&obj->target->flux, &obj->flux->target,
+			sizeof(advflux_t *), tdpMemcpyHostToDevice));
   }
 
   pe_retain(pe);
+  ch_info_set(obj, info);
 
   *ch = obj;
 
@@ -96,6 +107,13 @@ __host__ int ch_create(pe_t * pe, cs_t * cs, ch_info_t info, ch_t ** ch) {
 __host__ int ch_free(ch_t * ch) {
 
   assert(ch);
+
+  {
+    int ndevice = 0;
+
+    tdpGetDeviceCount(&ndevice);
+    if (ndevice > 0) tdpAssert(tdpFree(ch->target));
+  }
 
   advflux_free(ch->flux);
   pe_free(ch->pe);
@@ -210,7 +228,7 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(ch_flux_mu1_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, ch->target, fetarget);
+		  ctxt->target, ch->target, fetarget, *ch->info);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -235,10 +253,11 @@ __host__ int ch_flux_mu1(ch_t * ch, fe_t * fe) {
  *
  *****************************************************************************/
 
-__global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe) {
+__global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe,
+				   ch_info_t info) {
 
   int kindex;
-  __shared__ int kiterations;
+  int kiterations;
 
   assert(ktx);
   assert(ch);
@@ -252,13 +271,10 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe) {
 
     int ic, jc, kc;
     int index0, index1;
-    int n, nfield;
     double flux;
     double mu0[3], mu1[3];
 
-    assert(ch->info->nfield == ch->flux->nf);
-
-    nfield = ch->info->nfield;
+    assert(info.nfield == ch->flux->nf);
 
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
@@ -272,27 +288,27 @@ __global__ void ch_flux_mu1_kernel(kernel_ctxt_t * ktx, ch_t * ch, fe_t * fe) {
 
     index1 = cs_index(ch->cs, ic+1, jc, kc);
     fe->func->mu(fe, index1, mu1);
-    for (n = 0; n < nfield; n++) {
-      flux = ch->info->mobility[n]*(mu1[n] - mu0[n]);
-      ch->flux->fx[addr_rank1(ch->flux->nsite, nfield, index0, n)] -= flux;
+    for (int n = 0; n < info.nfield; n++) {
+      flux = info.mobility[n]*(mu1[n] - mu0[n]);
+      ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
     }
 
     /* y direction */
 
     index1 = cs_index(ch->cs, ic, jc+1, kc);
     fe->func->mu(fe, index1, mu1);
-    for (n = 0; n < nfield; n++) {
-      flux = ch->info->mobility[n]*(mu1[n] - mu0[n]);
-      ch->flux->fy[addr_rank1(ch->flux->nsite, nfield, index0, n)] -= flux;
+    for (int n = 0; n < info.nfield; n++) {
+      flux = info.mobility[n]*(mu1[n] - mu0[n]);
+      ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
     }
 
     /* z direction */
 
     index1 = cs_index(ch->cs, ic, jc, kc+1);
     fe->func->mu(fe, index1, mu1);
-    for (n = 0; n < nfield; n++) {
-      flux = ch->info->mobility[n]*(mu1[n] - mu0[n]);
-      ch->flux->fz[addr_rank1(ch->flux->nsite, nfield, index0, n)] -= flux;
+    for (int n = 0; n < info.nfield; n++) {
+      flux = info.mobility[n]*(mu1[n] - mu0[n]);
+      ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index0, n)] -= flux;
     }
 
     /* Next site */
@@ -335,11 +351,11 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif) {
 
   if (nlocal[Z] == 1) {
     tdpLaunchKernel(ch_update_kernel_2d, nblk, ntpb, 0, 0,
-		    ctxt->target, ch->target, phif->target, xs, ys);
+		    ctxt->target, ch->target, phif->target, *ch->info, xs, ys);
   }
   else {
     tdpLaunchKernel(ch_update_kernel_3d, nblk, ntpb, 0, 0,
-		    ctxt->target, ch->target, phif->target, xs, ys);
+		    ctxt->target, ch->target, phif->target, *ch->info, xs, ys);
   }
 
   tdpAssert(tdpPeekAtLastError());
@@ -359,38 +375,33 @@ __host__ int ch_update_forward_step(ch_t * ch, field_t * phif) {
  *****************************************************************************/
 
 __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
-				    field_t * field, int xs, int ys) {
+				    field_t * field, ch_info_t info, int xs, int ys) {
+
   int kindex;
   int kiterations;
-  int nf;
 
   assert(ktx);
   assert(ch);
   assert(field);
 
-  nf = ch->info->nfield;
   kiterations = kernel_iterations(ktx);
 
   for_simt_parallel(kindex, kiterations, 1) {
 
-    int ic, jc, index;
-    int n;
-    double phi;
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
+    int index = cs_index(ch->cs, ic, jc, 1);
 
-    index = cs_index(ch->cs, ic, jc, 1);
+    for (int n = 0; n < info.nfield; n++) {
+      double phi = field->data[addr_rank1(ch->flux->nsite, info.nfield, index, n)];
 
-    for (n = 0; n < nf; n++) {
-      phi = field->data[addr_rank1(ch->flux->nsite, nf, index, n)];
+      phi -= ( ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index, n)]
+	     - ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index - xs, n)]
+	     + ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index, n)]
+	     - ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index - ys, n)]);
 
-      phi -= ( ch->flux->fx[addr_rank1(ch->flux->nsite, nf, index, n)]
-	     - ch->flux->fx[addr_rank1(ch->flux->nsite, nf, index - xs, n)]
-	     + ch->flux->fy[addr_rank1(ch->flux->nsite, nf, index, n)]
-	     - ch->flux->fy[addr_rank1(ch->flux->nsite, nf, index - ys, n)]);
-
-      field->data[addr_rank1(ch->flux->nsite, nf, index, n)] = phi;
+      field->data[addr_rank1(ch->flux->nsite, info.nfield, index, n)] = phi;
     }
     /* Next site */
   }
@@ -405,41 +416,37 @@ __global__ void ch_update_kernel_2d(kernel_ctxt_t * ktx, ch_t * ch,
  *****************************************************************************/
 
 __global__ void ch_update_kernel_3d(kernel_ctxt_t * ktx, ch_t * ch,
-			           field_t * field, int xs, int ys) {
+				    field_t * field, ch_info_t info,
+				    int xs, int ys) {
+
   int kindex;
   int kiterations;
-  int nf;
 
   assert(ktx);
   assert(ch);
   assert(field);
 
-  nf = ch->info->nfield;
   kiterations = kernel_iterations(ktx);
 
   for_simt_parallel(kindex, kiterations, 1) {
 
-    int ic, jc, kc, index;
-    int n;
-    double phi;
+    int ic = kernel_coords_ic(ktx, kindex);
+    int jc = kernel_coords_jc(ktx, kindex);
+    int kc = kernel_coords_kc(ktx, kindex);
 
-    ic = kernel_coords_ic(ktx, kindex);
-    jc = kernel_coords_jc(ktx, kindex);
-    kc = kernel_coords_kc(ktx, kindex);
+    int index = cs_index(ch->cs, ic, jc, kc);
 
-    index = cs_index(ch->cs, ic, jc, kc);
+    for (int n = 0; n < info.nfield; n++) {
+      double phi = field->data[addr_rank1(ch->flux->nsite, info.nfield, index, n)];
 
-    for (n = 0; n < nf; n++) {
-      phi = field->data[addr_rank1(ch->flux->nsite, nf, index, n)];
+      phi -= ( ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index, n)]
+	     - ch->flux->fx[addr_rank1(ch->flux->nsite, info.nfield, index - xs, n)]
+	     + ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index, n)]
+             - ch->flux->fy[addr_rank1(ch->flux->nsite, info.nfield, index - ys, n)]
+             + ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index, n)]
+	     - ch->flux->fz[addr_rank1(ch->flux->nsite, info.nfield, index - 1,  n)]);
 
-      phi -= ( ch->flux->fx[addr_rank1(ch->flux->nsite, nf, index, n)]
-	     - ch->flux->fx[addr_rank1(ch->flux->nsite, nf, index - xs, n)]
-	     + ch->flux->fy[addr_rank1(ch->flux->nsite, nf, index, n)]
-             - ch->flux->fy[addr_rank1(ch->flux->nsite, nf, index - ys, n)]
-             + ch->flux->fz[addr_rank1(ch->flux->nsite, nf, index, n)]
-	     - ch->flux->fz[addr_rank1(ch->flux->nsite, nf, index - 1,  n)]);
-
-      field->data[addr_rank1(ch->flux->nsite, nf, index, n)] = phi;
+      field->data[addr_rank1(ch->flux->nsite, info.nfield, index, n)] = phi;
     }
     /* Next site */
   }

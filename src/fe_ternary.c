@@ -17,7 +17,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Shan Chen (shan.chen@epfl.ch)
@@ -54,7 +54,24 @@ static fe_vt_t fe_ternary_hvt = {
     (fe_htensor_v_ft) NULL,             /* Not reelvant */
     (fe_stress_v_ft)  fe_ternary_str_v, /* Total stress (vectorised version) */
     (fe_stress_v_ft)  fe_ternary_str_v, /* Symmetric part (vectorised) */
-    (fe_stress_v_ft)  NULL              /* Antisymmetric part (no used) */
+    (fe_stress_v_ft)  NULL              /* Antisymmetric part (not used) */
+};
+
+static __constant__ fe_vt_t fe_ternary_dvt = {
+    (fe_free_ft)      NULL,             /* Virtual destructor */
+    (fe_target_ft)    NULL,             /* Return target pointer */
+    (fe_fed_ft)       fe_ternary_fed,   /* Free energy density */
+    (fe_mu_ft)        fe_ternary_mu,    /* Chemical potential */
+    (fe_mu_solv_ft)   NULL,
+    (fe_str_ft)       fe_ternary_str,   /* Total stress */
+    (fe_str_ft)       fe_ternary_str,   /* Symmetric stress */
+    (fe_str_ft)       NULL,             /* Antisymmetric stress (not used) */
+    (fe_hvector_ft)   NULL,             /* Not relevant */
+    (fe_htensor_ft)   NULL,             /* Not relevant */
+    (fe_htensor_v_ft) NULL,             /* Not reelvant */
+    (fe_stress_v_ft)  fe_ternary_str_v, /* Total stress (vectorised version) */
+    (fe_stress_v_ft)  fe_ternary_str_v, /* Symmetric part (vectorised) */
+    (fe_stress_v_ft)  NULL              /* Antisymmetric part (not used) */
 };
 
 static __constant__ fe_ternary_param_t const_param;
@@ -97,19 +114,38 @@ int fe_ternary_create(pe_t * pe, cs_t * cs, field_t * phi,
   tdpGetDeviceCount(&ndevice);
     
   if (ndevice == 0) {
-    fe_ternary_param_set(obj, param);
     obj->target = obj;
   }
   else {
-    fe_ternary_param_t * tmp;
-    tdpMalloc((void **) &obj->target, sizeof(fe_ternary_t));
-    tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
-    tdpMemcpy(&obj->target->param, tmp, sizeof(fe_ternary_param_t *),
-	      tdpMemcpyHostToDevice);
-    /* Now copy. */
-    assert(0); /* No implementation */
+
+    tdpAssert(tdpMalloc((void **) &obj->target, sizeof(fe_ternary_t)));
+    tdpAssert(tdpMemset(obj->target, 0, sizeof(fe_ternary_t)));
+
+    /* Device function table */
+    {
+      fe_vt_t * vt = NULL;
+      tdpGetSymbolAddress((void **) &vt, tdpSymbol(fe_ternary_dvt));
+      tdpAssert(tdpMemcpy(&obj->target->super.func, &vt, sizeof(fe_vt_t *),
+			  tdpMemcpyHostToDevice));
+    }
+
+    /* Constant symbols */
+    {
+      fe_ternary_param_t * tmp = NULL;
+      tdpGetSymbolAddress((void **) &tmp, tdpSymbol(const_param));
+      tdpAssert(tdpMemcpy(&obj->target->param, &tmp,
+			  sizeof(fe_ternary_param_t *),
+			  tdpMemcpyHostToDevice));
+    }
+
+    /* Order parameter and gradient */
+    tdpAssert(tdpMemcpy(&obj->target->phi, &phi->target, sizeof(field_t *),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&obj->target->dphi, &dphi->target,
+			sizeof(field_grad_t *), tdpMemcpyHostToDevice));
   }
     
+  fe_ternary_param_set(obj, param);
   *fe = obj;
     
   return 0;
@@ -128,7 +164,7 @@ __host__ int fe_ternary_free(fe_ternary_t * fe) {
   assert(fe);
     
   tdpGetDeviceCount(&ndevice);
-  if (ndevice > 0) tdpFree(fe->target);
+  if (ndevice > 0) tdpAssert(tdpFree(fe->target));
     
   free(fe->param);
   free(fe);
@@ -222,11 +258,13 @@ __host__ int fe_ternary_target(fe_ternary_t * fe, fe_t ** target) {
  ****************************************************************************/
 
 __host__ int fe_ternary_param_set(fe_ternary_t * fe, fe_ternary_param_t vals) {
-    
+
   assert(fe);
-    
+
   *fe->param = vals;
-    
+
+  tdpMemcpyToSymbol(tdpSymbol(const_param), fe->param,
+		    sizeof(fe_ternary_param_t), 0, tdpMemcpyHostToDevice);
   return 0;
 }
 
@@ -479,8 +517,8 @@ __host__ __device__ int fe_ternary_fed(fe_ternary_t * fe, int index,
  *
  ****************************************************************************/
 
-__host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
-    
+__host__ __device__ int fe_ternary_mu(fe_ternary_t * fe, int index,
+				      double * mu) {
     double phi;
     double psi;
     double rho;
@@ -548,8 +586,8 @@ __host__ int fe_ternary_mu(fe_ternary_t * fe, int index, double * mu) {
  *
  ****************************************************************************/
 
-__host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
-    
+__host__ __device__ int fe_ternary_str(fe_ternary_t * fe, int index,
+				       double s[3][3]) {
     int ia, ib;
     double field[2];
     double phi, phi2, dphi[3], dphi2;
@@ -664,8 +702,8 @@ __host__ int fe_ternary_str(fe_ternary_t * fe, int index, double s[3][3]) {
  *
  *****************************************************************************/
 
-__host__ int fe_ternary_str_v(fe_ternary_t * fe, int index,
-			      double s[3][3][NSIMDVL]) {
+__host__ __device__ int fe_ternary_str_v(fe_ternary_t * fe, int index,
+					 double s[3][3][NSIMDVL]) {
 
   int ia, ib;
   int iv;
