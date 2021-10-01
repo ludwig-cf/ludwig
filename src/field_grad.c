@@ -21,8 +21,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "field_s.h"
-#include "field_grad_s.h"
+#include "field_grad.h"
 
 static int field_grad_init(field_grad_t * obj);
 
@@ -427,6 +426,96 @@ int field_grad_scalar_dab(field_grad_t * obj, int index, double dab[3][3]) {
   dab[Z][X] = dab[X][Z];
   dab[Z][Y] = dab[Y][Z];
   dab[Z][Z] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, ZZ)];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_grad
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_grad(field_grad_t * obj, int index, double grad[2][3]) {
+
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < NVECTOR; ia++) {
+    grad[0][ia] = obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 0, ia)];
+  }
+  for (ia = 0; ia < NVECTOR; ia++) {
+    grad[1][ia] = obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 1, ia)];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_delsq
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_delsq(field_grad_t * obj, int index, double * delsq) {
+
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < obj->nf; ia++) {
+    delsq[ia] = obj->delsq[addr_rank1(obj->nsite, obj->nf, index, ia)];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_grad_set
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_grad_set(field_grad_t * obj, int index,
+			     const double grad[2][3]) {
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < NVECTOR; ia++) {
+    obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 0, ia)] = grad[0][ia];
+  }
+  for (ia = 0; ia < NVECTOR; ia++) {
+    obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 1, ia)] = grad[1][ia];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_delsq_set
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_delsq_set(field_grad_t * obj, int index,
+			      const double * delsq) {
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < obj->nf; ia++) {
+    obj->delsq[addr_rank1(obj->nsite, obj->nf, index, ia)] = delsq[ia];
+  }
 
   return 0;
 }

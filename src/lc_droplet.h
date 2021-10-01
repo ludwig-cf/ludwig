@@ -25,7 +25,7 @@
 #include "field.h"
 #include "field_grad.h"
 #include "hydro.h"
-#include "map_s.h"
+#include "map.h"
 #include "wall.h"
 
 typedef struct fe_lc_droplet_s fe_lc_droplet_t;

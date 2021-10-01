@@ -43,7 +43,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2018 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -60,9 +60,7 @@
 #include "coords.h"
 #include "kernel.h"
 #include "colloids.h"
-#include "map_s.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "gradient_3d_7pt_solid.h"
 
 typedef struct param_s param_t;

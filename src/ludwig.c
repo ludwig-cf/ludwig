@@ -41,7 +41,7 @@
 #include "distribution_rt.h"
 #include "collision_rt.h"
 
-#include "map.h"
+#include "map_rt.h"
 #include "wall_rt.h"
 #include "interaction.h"
 #include "physics_rt.h"
@@ -62,13 +62,16 @@
 /* Free energy */
 #include "symmetric_rt.h"
 #include "brazovskii_rt.h"
+#include "surfactant_rt.h"
 #include "polar_active_rt.h"
 #include "blue_phase_rt.h"
 #include "lc_droplet_rt.h"
+#include "fe_ternary_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
 
 /* Dynamics */
+#include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
 #include "cahn_hilliard_stats.h"
 #include "leslie_ericksen.h"
@@ -110,6 +113,7 @@
 #include "stats_symmetric.h"
 
 #include "fe_lc_stats.h"
+#include "fe_ternary_stats.h"
 
 #include "lb_model_s.h"
 #include "field_s.h"
@@ -139,11 +143,14 @@ struct ludwig_s {
   f_vare_t epsilon;         /* Variable epsilon function for Poisson solver */
 
   fe_t * fe;                   /* Free energy "polymorphic" version */
-  phi_ch_t * pch;              /* Cahn Hilliard dynamics */
+  ch_t * ch;                   /* Cahn Hilliard (surfactants) */
+  phi_ch_t * pch;              /* Cahn Hilliard dynamics (binary fluid) */
   beris_edw_t * be;            /* Beris Edwards dynamics */
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
   fe_symm_t * fe_symm;         /* Symmetric free energy */
+  fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
+  fe_ternary_t * fe_ternary;   /* Ternary (Semprebon et al.) */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
 
   visc_t * visc;               /* Viscosity model */
@@ -167,7 +174,6 @@ static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
 int free_energy_init_rt(ludwig_t * ludwig);
 int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
-int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** map);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
 
 /*****************************************************************************
@@ -272,6 +278,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
   if (ludwig->fe_braz) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
+  }
+  if (ludwig->fe_surf) {
+    fe_surf_phi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
+    fe_surf_psi_init_rt(pe, rt, ludwig->fe_surf, ludwig->phi);
+  }
+  if (ludwig->fe_ternary) {
+    fe_ternary_init_rt(pe, rt, ludwig->fe_ternary, ludwig->phi);
   }
 
   /* To be called before wall_rt_init() */
@@ -662,7 +675,7 @@ void ludwig_run(const char * inputfile) {
 	if (ncolloid == 0) {
 
 	  /* LC-droplet requires partial body force input and momentum
-           * correction. This correction, via hydro_correct_momentun(),
+           * correction. This correction, via hydro_correct_momentum(),
            * should not include the contributions from the divergence
            * of the stress, so is done before phi_force_calculation(). */
 
@@ -683,9 +696,17 @@ void ludwig_run(const char * inputfile) {
 
 	  /* Force calculation as divergence of stress tensor */
 
-          phi_force_calculation(ludwig->cs, ludwig->le, ludwig->wall,
+          phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
+				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro);
+
+	  /* Ternary free energy gradmu requires of momentum correction
+	     after force calculation */
+
+	  if (ludwig->fe && ludwig->hydro && ludwig->fe->id == FE_TERNARY) {
+            hydro_correct_momentum(ludwig->hydro);
+	  }
 
 	}
 	else {
@@ -693,10 +714,16 @@ void ludwig_run(const char * inputfile) {
 			    ludwig->hydro, ludwig->map, ludwig->wall);
 	}
       }
+        
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
+
+      if (ludwig->ch) {
+	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
+		  ludwig->map);
+      }
 
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
@@ -751,7 +778,9 @@ void ludwig_run(const char * inputfile) {
       
       /* Boundary conditions */
 
-      lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
+      if (ludwig->le) {
+	lb_le_apply_boundary_conditions(ludwig->lb, ludwig->le);
+      }
 
       TIMER_start(TIMER_HALO_LATTICE);
 
@@ -928,6 +957,10 @@ void ludwig_run(const char * inputfile) {
 	  fe_lc_stats_info(ludwig->pe, ludwig->cs, ludwig->fe_lc,
 			   ludwig->wall, ludwig->map, ludwig->collinfo, step);
 	  break;
+	case FE_TERNARY:
+	  fe_ternary_stats_info(ludwig->fe_ternary, ludwig->wall,
+				ludwig->map, step);
+	  break;
 	default:
 	  stats_free_energy_density(ludwig->pe, ludwig->cs, ludwig->wall,
 				    ludwig->fe, ludwig->map,
@@ -1039,7 +1072,7 @@ void ludwig_run(const char * inputfile) {
   TIMER_statistics();
 
   physics_free(ludwig->phys);
-  lees_edw_free(ludwig->le);
+  if (ludwig->le) lees_edw_free(ludwig->le);
   cs_free(ludwig->cs);
   rt_report_unused_keys(ludwig->rt, RT_INFO);
   rt_free(ludwig->rt);
@@ -1182,6 +1215,7 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 
+    int use_stress_relaxation;
     phi_ch_info_t ch_options = {};
     fe_symm_t * fe = NULL;
 
@@ -1238,12 +1272,23 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* Force */
 
-    p = 1; /* Default is to use divergence method */
-    rt_int_parameter(rt, "fd_force_divergence", &p);
-    pe_info(pe, "Force calculation:      %s\n",
-         (p == 0) ? "phi grad mu method" : "divergence method");
-    if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
-    if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Force calculation\n");
+      pe_info(pe, "Symmetric stress via collision relaxation\n");
+      pth_create(pe, cs, PTH_METHOD_STRESS_ONLY, &ludwig->pth);
+    }
+    else {
+      p = 1; /* Default is to use divergence method */
+      rt_int_parameter(rt, "fd_force_divergence", &p);
+      pe_info(pe, "Force calculation:      %s\n",
+           (p == 0) ? "phi grad mu method" : "divergence method");
+      if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+      if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
 
     ludwig->fe_symm = fe;
     ludwig->fe = (fe_t *) fe;
@@ -1335,9 +1380,126 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "surfactant") == 0) {
-    /* Disable surfactant for the time being */
-    pe_info(pe, "Surfactant free energy is disabled\n");
-    assert(0);
+
+    fe_surf_param_t param;
+    ch_info_t options = {};
+    fe_surf_t * fe = NULL;
+
+    nf = 2;       /* Composition, surfactant: "phi" and "psi" */
+    nhalo = 2;
+    ngrad = 2;
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+
+    /* No Lees Edwards for the time being */
+
+    field_create(pe, cs, nf, "surfactant1", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, NULL);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Surfactant free energy\n");
+    pe_info(pe, "----------------------\n");
+
+    fe_surf_param_rt(pe, rt, &param);
+    fe_surf_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
+    fe_surf_info(fe);
+
+    /* Cahn Hilliard */
+
+    options.nfield = nf;
+
+    n = rt_double_parameter(rt, "surf_mobility_phi", &options.mobility[0]);
+    if (n == 0) pe_fatal(pe, "Please set mobility_phi in the input\n");
+
+    n = rt_double_parameter(rt, "surf_mobility_psi", &options.mobility[1]);
+    if (n == 0) pe_fatal(pe, "Please set mobility_psi in the input\n");
+
+    ch_create(pe, cs, options, &ludwig->ch);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
+    ch_info(ludwig->ch);
+
+    /* Coupling between momentum and free energy */
+    /* Hydrodynamics sector (move to hydro_rt?) */
+
+    n = rt_switch(rt, "hydrodynamics");
+    {
+      int method = (n == 0) ? PTH_METHOD_NO_FORCE : PTH_METHOD_GRADMU;
+      pth_create(pe, cs, method, &ludwig->pth);
+    }
+
+    ludwig->fe_surf = fe;
+    ludwig->fe = (fe_t *) fe;
+    
+  }
+  else if (strcmp(description, "ternary") == 0) {
+
+    fe_ternary_param_t param = {0};
+    ch_info_t options = {};
+    fe_ternary_t * fe = NULL;
+
+    nf = 2;       /* Composition, ternary: "phi" and "psi" */
+    nhalo = 2;
+    ngrad = 2;
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+
+    /* No Lees Edwards for the time being */
+
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_init(ludwig->phi, nhalo, NULL);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Ternary free energy\n");
+    pe_info(pe, "----------------------\n");
+
+    fe_ternary_param_rt(pe, rt, &param);
+    fe_ternary_create(pe, cs, ludwig->phi, ludwig->phi_grad, param, &fe);
+    fe_ternary_info(fe);
+
+    /* Allow either possibility for gradient computation... */
+    grad_2d_ternary_solid_fe_set(fe);
+    grad_3d_ternary_solid_fe_set(fe);
+
+    /* Cahn Hilliard */
+
+    options.nfield = nf;
+
+    n = rt_double_parameter(rt, "ternary_mobility_phi", &options.mobility[0]);
+    if (n == 0) pe_fatal(pe, "Please set ternary_mobility_phi in the input\n");
+
+    n = rt_double_parameter(rt, "ternary_mobility_psi", &options.mobility[1]);
+    if (n == 0) pe_fatal(pe, "Please set ternary_mobility_psi in the input\n");
+
+    ch_create(pe, cs, options, &ludwig->ch);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard solver:\n");
+    ch_info(ludwig->ch);
+
+    /* Coupling between momentum and free energy */
+    /* Default method for ternary free energy: gradmu */
+    p = 0;
+
+    rt_int_parameter(rt, "fd_force_divergence", &p);
+    pe_info(pe, "Force calculation:      %s\n",
+    (p == 0) ? "phi grad mu method" : "divergence method");
+    if (p == 0) {
+      pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+    }
+    else {
+      pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+
+    ludwig->fe_ternary = fe;
+    ludwig->fe = (fe_t *) fe;
   }
   else if (strcmp(description, "lc_blue_phase") == 0) {
 
@@ -1426,11 +1588,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
   }
   else if(strcmp(description, "lc_droplet") == 0) {
-    int use_stress_relaxation;
+
     phi_ch_info_t ch_options = {};
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
+    int use_stress_relaxation = 0;
 
     /* liquid crystal droplet */
     pe_info(pe, "\n");
@@ -1738,84 +1901,6 @@ int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig) {
     pe_info(pe, "viscosity_model %s not recognised.\n", description);
     pe_fatal(pe, "Please check and try again.\n");
   }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  map_init_rt
- *
- *  Could do more work trapping duff input keys.
- *
- *****************************************************************************/
-
-int map_init_rt(pe_t * pe, cs_t * cs, rt_t * rt, map_t ** pmap) {
-
-  int is_porous_media = 0;
-  int ndata = 2;           /* Default is to allow C,H e.g. for colloids */
-  int form_in = IO_FORMAT_DEFAULT;
-  int form_out = IO_FORMAT_DEFAULT;
-  int grid[3] = {1, 1, 1};
-
-  char status[BUFSIZ] = "";
-  char format[BUFSIZ] = "";
-  char filename[FILENAME_MAX];
-
-  io_info_t * iohandler = NULL;
-  map_t * map = NULL;
-
-  assert(pe);
-  assert(rt);
-
-  is_porous_media = rt_string_parameter(rt, "porous_media_file", filename,
-					FILENAME_MAX);
-  if (is_porous_media) {
-
-    rt_string_parameter(rt, "porous_media_type", status, BUFSIZ);
-
-    if (strcmp(status, "status_only") == 0) ndata = 0;
-    if (strcmp(status, "status_with_h") == 0) ndata = 1;
-    if (strcmp(status, "status_with_sigma") == 0) ndata = 1;
-    if (strcmp(status, "status_with_c_h") == 0) ndata = 2;
-
-    if (strcmp(status, "status_with_h") == 0) {
-      /* This is not to be used as it not implemented correctly. */
-      pe_info(pe, "porous_media_type    status_with_h\n");
-      pe_info(pe, "Please use status_with_c_h (and set C = 0) instead\n");
-      pe_fatal(pe, "Will not continue.\n");
-    }
-
-    rt_string_parameter(rt, "porous_media_format", format, BUFSIZ);
-
-    if (strcmp(format, "ASCII") == 0) form_in = IO_FORMAT_ASCII_SERIAL;
-    if (strcmp(format, "BINARY") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
-    if (strcmp(format, "BINARY_SERIAL") == 0) form_in = IO_FORMAT_BINARY_SERIAL;
-
-    rt_int_parameter_vector(rt, "porous_media_io_grid", grid);
-
-    pe_info(pe, "\n");
-    pe_info(pe, "Porous media\n");
-    pe_info(pe, "------------\n");
-    pe_info(pe, "Porous media file requested:  %s\n", filename);
-    pe_info(pe, "Porous media file type:       %s\n", status);
-    pe_info(pe, "Porous media format (serial): %s\n", format);
-    pe_info(pe, "Porous media io grid:         %d %d %d\n",
-	    grid[X], grid[Y], grid[Z]);
-  }
-
-  map_create(pe, cs, ndata, &map);
-  map_init_io_info(map, grid, form_in, form_out);
-  map_io_info(map, &iohandler);
-
-  if (is_porous_media) {
-    io_info_set_processor_independent(iohandler);
-    io_read_data(iohandler, filename, map);
-    map_pm_set(map, 1);
-  }
-  map_halo(map);
-
-  *pmap = map;
 
   return 0;
 }

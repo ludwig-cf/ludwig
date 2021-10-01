@@ -5,7 +5,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -38,9 +38,11 @@ struct fe_symm_s {
 /* Parameters */
 
 struct fe_symm_param_s {
-  double a;
-  double b;
-  double kappa;
+  double a;                    /* Bulk quadratic term */
+  double b;                    /* Bulk quartic term */
+  double kappa;                /* Interfacial penalty term */
+  double c;                    /* Surface wetting parameter C (uniform) */
+  double h;                    /* Surface wetting parameter H (ditto) */
 };
 
 __host__ int fe_symm_create(pe_t * pe, cs_t * cs, field_t * f,
@@ -58,6 +60,11 @@ __host__ __device__ int fe_symm_mu(fe_symm_t * fe, int index, double * mu);
 __host__ __device__ int fe_symm_str(fe_symm_t * fe, int index, double s[3][3]);
 __host__ __device__ void fe_symm_str_v(fe_symm_t * fe, int index,
 				       double s[3][3][NSIMDVL]);
+
+/* Some additional host-only utilities */
+__host__ int fe_symm_theta_to_h(double theta, double * h);
+__host__ int fe_symm_h_to_costheta(double h, double * costheta);
+
 
 #endif
 

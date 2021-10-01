@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +23,6 @@
 
 #include "kernel.h"
 #include "lb_model_s.h"
-#include "map_s.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"

@@ -25,7 +25,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "field_s.h"
-#include "field_grad_s.h"
+#include "field_grad.h"
 #include "tests.h"
 
 enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,

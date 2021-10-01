@@ -23,7 +23,6 @@
 #include "util.h"
 #include "physics.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "blue_phase.h"
 
 static __constant__ fe_lc_param_t const_param;

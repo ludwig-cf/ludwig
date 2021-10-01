@@ -24,7 +24,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "lb_model_s.h"
-#include "map_s.h"
 #include "util.h"
 #include "util_sum.h"
 #include "stats_distribution.h"

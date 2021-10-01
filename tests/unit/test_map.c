@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  (c) 2012-2021 The University of Edinburgh
+ *
+ *  Contributing authors:
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -20,7 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "coords_field.h"
-#include "map_s.h"
+#include "map.h"
 
 #include "test_coords_field.h"
 #include "tests.h"

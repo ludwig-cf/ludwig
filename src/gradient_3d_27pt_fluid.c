@@ -49,7 +49,6 @@
 #include "leesedwards.h"
 #include "wall.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "gradient_3d_27pt_fluid.h"
 
 typedef enum grad_enum_type {GRAD_DEL2, GRAD_DEL4} grad_enum_t;

@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,7 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "coords_field.h"
-#include "map_s.h"
+#include "map.h"
 
 static int map_read(FILE * fp, int index, void * self);
 static int map_write(FILE * fp, int index, void * self);

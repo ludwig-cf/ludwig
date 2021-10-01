@@ -4,26 +4,25 @@
  *  
  *  Wrapper functions for stress computation.
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
-#ifndef PHI_FORCE_STRESS_H
-#define PHI_FORCE_STRESS_H
+#ifndef LUDWIG_PHI_FORCE_STRESS_H
+#define LUDWIG_PHI_FORCE_STRESS_H
 
 #include "pe.h"
 #include "coords.h"
 #include "free_energy.h"
 
-enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU};
+enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU, 
+      PTH_METHOD_STRESS_ONLY};
 
 typedef struct pth_s pth_t;
 

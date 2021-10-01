@@ -39,7 +39,6 @@
 #include "pe.h"
 #include "leesedwards.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "timer.h"
 #include "gradient_3d_7pt_fluid.h"
 
