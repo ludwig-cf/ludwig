@@ -54,7 +54,6 @@
 #include "blue_phase_beris_edwards.h"
 #include "advection_s.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "colloids.h"
 #include "timer.h"
 

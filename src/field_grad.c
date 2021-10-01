@@ -21,8 +21,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "field_s.h"
-#include "field_grad_s.h"
+#include "field_grad.h"
 
 static int field_grad_init(field_grad_t * obj);
 

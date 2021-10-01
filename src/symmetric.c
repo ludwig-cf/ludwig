@@ -34,7 +34,6 @@
 #include "util.h"
 #include "coords.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "symmetric.h"
 
 /* Defaults */

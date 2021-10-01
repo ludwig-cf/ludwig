@@ -25,7 +25,6 @@
 #include "coords.h"
 #include "kernel.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "gradient_2d_ternary_solid.h"
 
 typedef struct solid_s {

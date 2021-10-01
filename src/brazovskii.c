@@ -39,7 +39,6 @@
 
 #include "pe.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "util.h"
 #include "brazovskii.h"
 

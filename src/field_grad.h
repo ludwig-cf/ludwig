@@ -21,6 +21,26 @@
 typedef struct field_grad_s field_grad_t;
 typedef int (* grad_ft)(field_grad_t * fgrad);
 
+struct field_grad_s {
+  pe_t * pe;                /* Parallel environment */
+  field_t * field;          /* Reference to the field */
+  int nf;                   /* Number of field components */
+  int level;                /* Maximum derivative required */
+  int nsite;                /* number of sites allocated */
+  double * grad;            /* Gradient  \nabla f */
+  double * delsq;           /* Laplacian \nabla^2 f */
+  double * d_ab;            /* Gradient tensor d_a d_b f */
+  double * grad_delsq;      /* Gradient of Laplacian grad \nabla^2 f */
+  double * delsq_delsq;     /* Laplacian^2           \nabla^4 f */
+
+  field_grad_t * target;    /* copy of this structure on target */ 
+
+  int (* d2)  (field_grad_t * fgrad);
+  int (* d4)  (field_grad_t * fgrad);
+  int (* dab) (field_grad_t * fgrad);
+};
+
+
 __host__ int field_grad_create(pe_t * pe, field_t * f, int level,
 			       field_grad_t ** pobj);
 __host__ void field_grad_free(field_grad_t * obj);

@@ -6,7 +6,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2019 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -18,7 +18,6 @@
 #include "free_energy.h"
 #include "field.h"
 #include "hydro.h"
-#include "field_grad_s.h"
 #include "phi_force_stress.h"
 #include "wall.h"
 
