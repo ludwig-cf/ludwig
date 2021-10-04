@@ -330,6 +330,7 @@ int field_grad_compute(field_grad_t * obj) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_grad_scalar_grad(field_grad_t * obj, int index, double grad[3]) {
 
   int ia;

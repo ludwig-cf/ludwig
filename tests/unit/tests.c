@@ -121,7 +121,7 @@ __host__ __device__ void test_assert_info(const int lvalue, int line,
     /* ok */
   }
   else {
-#ifdef __CUDA_ARCH__
+#if defined( __CUDA_ARCH__ ) || defined( __HIP_DEVICE_COMPILE__ )
     /* No rank available */
     printf("Line %d file %s Failed test assertion\n", line, file);
     assert(0);

@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2018 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -1151,7 +1151,7 @@ int lees_edw_cart_coords(lees_edw_t * le, int cartcoord[3]) {
  *
  ****************************************************************************/
 
-__host__ int lees_edw_plane_dy(lees_edw_t * le, double * dy) {
+__host__ __device__ int lees_edw_plane_dy(lees_edw_t * le, double * dy) {
 
   double t;
 
