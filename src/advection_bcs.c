@@ -7,8 +7,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2018 The University of Edinburgh
-*
+ *  (c) 2009-2021 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk)
@@ -24,13 +24,16 @@
 #include "kernel.h"
 #include "advection_s.h"
 #include "psi_gradients.h"
-#include "map_s.h"
+#include "field_s.h"
 #include "timer.h"
 #include "advection_bcs.h"
 
 __global__
 void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx, advflux_t * flux,
 				    map_t * map);
+__global__
+void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx, advflux_t * flux,
+			       map_t * map);
 
 /*****************************************************************************
  *
@@ -148,6 +151,104 @@ void advection_bcs_no_flux_kernel_v(kernel_ctxt_t * ktx,
 
 /*****************************************************************************
  *
+ *  advflux_cs_no_normal_flux
+ *
+ *  Kernel driver for no-flux boundary conditions.
+ *
+ *****************************************************************************/
+
+__host__ int advflux_cs_no_normal_flux(advflux_t * flux, map_t * map) {
+
+  int nlocal[3];
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(flux);
+  assert(map);
+
+  cs_nlocal(flux->cs, nlocal);
+
+  limits.imin = 0; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(flux->cs, NSIMDVL, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  TIMER_start(ADVECTION_BCS_KERNEL);
+
+  tdpLaunchKernel(advflux_cs_no_flux_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, flux->target, map->target);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  TIMER_stop(ADVECTION_BCS_KERNEL);
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  advection_cs_no_flux_kernel
+ *
+ *  Set normal fluxes at solid fluid interfaces to zero.
+ *
+ *****************************************************************************/
+
+__global__ void advflux_cs_no_flux_kernel(kernel_ctxt_t * ktx,
+					  advflux_t * flux, map_t * map) {
+  int kindex;
+  __shared__ int kiter;
+
+  kiter = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiter, 1) {
+
+    int n;
+    int index0, index1;
+    int ic, jc, kc;
+    double m0, mask;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+    index0 = kernel_coords_index(ktx, ic, jc, kc);
+    m0     = (map->status[index0] == MAP_FLUID);  
+
+    index1 = kernel_coords_index(ktx, ic+1, jc, kc);
+    mask   = m0*(map->status[index1] == MAP_FLUID);  
+
+    for (n = 0; n < flux->nf; n++) {
+      flux->fx[addr_rank1(flux->nsite, flux->nf, index0, n)] *= mask;
+    }
+
+    index1 = kernel_coords_index(ktx, ic, jc+1, kc);
+    mask   = m0*(map->status[index1] == MAP_FLUID);  
+
+    for (n = 0; n < flux->nf; n++) {
+      flux->fy[addr_rank1(flux->nsite, flux->nf, index0, n)] *= mask;
+    }
+
+    index1 = kernel_coords_index(ktx, ic, jc, kc+1);
+    mask   = m0*(map->status[index1] == MAP_FLUID);  
+
+    for (n = 0; n < flux->nf; n++) {
+      flux->fz[addr_rank1(flux->nsite, flux->nf, index0, n)] *= mask;
+    }
+
+    /* Next site */
+  }
+
+  return;
+}
+
+/*****************************************************************************
+ *
  *  advective_bcs_no_flux_d3qx
  *
  *  Set normal fluxes at solid fluid interfaces to zero.
@@ -224,10 +325,11 @@ int advection_bcs_wall(field_t * fphi) {
   double q[NQAB];
   cs_t * cs = NULL; /* To be required */
 
-  /* if (wall_at_edge(X) == 0) return 0;*/
+  /* Only required if there are walls in the x-direction */
 
-  assert(0); /* Sort out line above */
   assert(fphi);
+
+  pe_fatal(fphi->pe, "advection_bcs_wall internal error: not implemented\n");
 
   field_nf(fphi, &nf);
   cs_nlocal(cs, nlocal);

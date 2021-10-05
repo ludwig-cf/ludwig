@@ -28,8 +28,8 @@ include $(ROOT_DIR)/config.mk
 # TargetDP library
 
 TARGET_INC_PATH = -I$(ROOT_DIR)./target
-TARGET_LIB_PATH = -L$(ROOT_DIR)./target
-TARGET_LIB      = -ltarget
+TARGET_LIB_PATH =
+TARGET_LIB      = $(ROOT_DIR)./target/libtarget.a
 
 # Serial stubs required in serial
 

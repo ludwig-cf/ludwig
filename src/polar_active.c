@@ -49,7 +49,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "polar_active.h"
 #include "util.h"
 

@@ -1,0 +1,155 @@
+Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
+Start time: Fri Jul 23 11:28:22 2021
+
+Compiler:
+  name:           Gnu 8.3.0
+  version-string: 8.3.0
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 8.
+
+Read 21 user parameters from serial-tern-st4.inp
+
+System details
+--------------
+System size:    200 200 1
+Decomposition:  1 1 1
+Local domain:   200 200 1
+Periodic:       0 0 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Ternary free energy
+----------------------
+Ternary free energy parameters:
+Surface penalty kappa1 =  1.00000e-02
+Surface penalty kappa2 =  2.00000e-02
+Surface penalty kappa3 =  3.00000e-02
+Interface width alpha  =  1.00000e+00
+
+Derived quantities
+Interfacial tension 12 =  5.00000e-03
+Interfacial tension 23 =  8.33333e-03
+Interfacial tension 13 =  6.66667e-03
+Equilibrium angle    1 =  9.00000e+01
+Equilibrium angle    2 =  1.26870e+02
+Equilibrium angle    3 =  1.43130e+02
+
+Solid wetting parameters:
+Wetting parameter   h1 = -1.00000e-03
+Wetting parameter   h2 =  2.00000e-03
+Wetting parameter   h3 = -0.00000e+00
+Wetting angle theta_12 =  1.26575e+02
+Wetting angle theta_23 =  7.62109e+01
+Wetting angle theta_31 =  8.14329e+01
+
+Using Cahn-Hilliard solver:
+Number of fields      =  2
+Mobility (phi)        =  1.00000e+00
+Mobility (psi)        =  1.00000e+00
+Force calculation:      phi grad mu method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e-01
+Bulk viscosity                1.66667e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    1.00000e+00
+Bulk relaxation time:     1.00000e+00
+Ghost relaxation time:    1.00000e+00
+[Default] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: off
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order:  1 (default)
+
+Initialising fields for ternary fluid
+Composition is 2d T-shape initialisation
+Interface at xf1 Lx (vertical)    5.00000e-01
+Interface at yf1 Ly (horizontal)  3.30000e-01
+
+
+Boundary walls
+--------------
+Boundary walls:                  X Y -
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   3996
+Memory (total, bytes):           63936
+Boundary shear initialise:       0
+Gradient calculation: 2d_ternary_solid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       40000.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -2.7000000e+02 -6.7500000e-03 6.7495444e-01 -1.0000000e+00 1.0000000e+00
+[phi]  1.3000000e+04  3.2500000e-01 2.1937500e-01  0.0000000e+00 1.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       40000.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -2.7000000e+02 -6.7500000e-03 6.7397366e-01 -1.0420273e+00 1.0379998e+00
+[phi]  1.3000000e+04  3.2500000e-01 2.1851172e-01 -6.0715087e-02 1.0442577e+00
+
+Free energies
+[rho/phi/psi]          2 -4.0000000000e-01  4.8934426001e-04  1.6533656025e-01
+[surf/fl/tot]          2 -2.3417409549e-01  3.1710426458e+00  2.9368685503e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Completed cycle 2
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.223      0.223      0.223   0.223152 (1 call)
+      Time step loop:      0.045      0.053      0.098   0.049070 (2 calls)
+       phi gradients:      0.017      0.022      0.039   0.019330 (2 calls)
+           phi halos:      0.006      0.006      0.012   0.006241 (2 calls)
+   Force calculation:      0.000      0.000      0.000   0.000002 (2 calls)
+          phi update:      0.028      0.031      0.059   0.029734 (2 calls)
+ Advectn BCS (krnl) :      0.005      0.005      0.009   0.004583 (2 calls)
+               Free1:      0.000      0.031      0.031   0.015724 (2 calls)

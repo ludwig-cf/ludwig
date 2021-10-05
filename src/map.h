@@ -2,12 +2,10 @@
  *
  *  map.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,11 +17,28 @@
 
 #include "pe.h"
 #include "coords.h"
+#include "memory.h"
 #include "io_harness.h"
 
 enum map_status {MAP_FLUID, MAP_BOUNDARY, MAP_COLLOID, MAP_STATUS_MAX};
 
 typedef struct map_s map_t;
+
+struct map_s {
+  int nsite;                  /* Number of sites allocated */
+  int is_porous_media;        /* Flag for porous media */
+  int ndata;                  /* Additional fields associated with map */
+  char * status;              /* Status (one of enum_status) */
+  double * data;              /* Additional site lattice property */
+
+  pe_t * pe;                  /* Parallel environment */
+  cs_t * cs;                  /* Coordinate system */
+  MPI_Datatype halostatus[3]; /* Halo datatype for status */
+  MPI_Datatype halodata[3];   /* Halo datatype for data */
+  io_info_t * info;           /* I/O handler */
+
+  map_t * target;             /* Copy of this structure on target */
+};
 
 __host__ int map_create(pe_t * pe, cs_t * cs, int ndata, map_t ** pobj);
 __host__ int map_free(map_t * obj);

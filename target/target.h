@@ -23,7 +23,7 @@
 
 /* Implementation details */
 
-#if defined(__HIP_PLATFORM_NVCC__)
+#if defined(__HIPCC__)
 #include "target_hip.h"
 #elif defined(__NVCC__)
 #include "target_cuda.h"

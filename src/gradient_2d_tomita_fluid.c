@@ -14,6 +14,9 @@
  *  collapses to a five-point stencil. The optimum value epsilon is
  *  reckoned to be epsilon = 0.5.
  *
+ *  Note: weights consistent with the LB D2Q9 weights would have
+ *        relative weights of a and b 4:1, ie, epsilon = 0.25...
+ *
  *  In the same spirit, the gradient is approximated as:
  *
  *  d_x phi = 0.5*(1 / 1 + 2epsilon) * [
@@ -33,7 +36,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2011-2016 The University of Edinburgh
+ *  (c) 2011-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -43,18 +46,35 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
+#include "kernel.h"
 #include "wall.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "gradient_2d_tomita_fluid.h"
 
 static const double epsilon_ = 0.5;
 static const double epsilon1_ = 0.25;
 
+/* Use weights consistent with the D2Q9 LB model */
+
+#define GRAD_EPSILON 0.25
+#define DEL2_EPSILON 0.25
+
+#define E_PARAM(epsilon)          (1.0/(1.0 + 2.0*(epsilon)))
+#define GRAD_WEIGHT_W1(epsilon)   (0.5*E_PARAM(epsilon))
+#define GRAD_WEIGHT_W2(epsilon)   (0.5*E_PARAM(epsilon)*epsilon)
+#define DEL2_WEIGHT_W0(epsilon)   (E_PARAM(epsilon)*4.0*(1.0 + epsilon))
+#define DEL2_WEIGHT_W1(epsilon)   (E_PARAM(epsilon))
+#define DEL2_WEIGHT_W2(epsilon)   (E_PARAM(epsilon)*epsilon)
+
+__host__ int grad_cs_compute(field_grad_t * fgrad, int nextra);
+
 __host__ int grad_2d_tomita_fluid_operator(lees_edw_t * le, field_grad_t * fg,
 					   int nextra);
 __host__ int grad_2d_tomita_fluid_le(lees_edw_t * le, field_grad_t * fg,
 				     int nextra);
+
+__global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
+			       int xs, int ys);
 
 /*****************************************************************************
  *
@@ -81,10 +101,14 @@ __host__ int grad_2d_tomita_fluid_d2(field_grad_t * fg) {
   nextra -= 1;
   assert(nextra >= 0);
 
-  grad_2d_tomita_fluid_operator(le, fg, nextra);
-  grad_2d_tomita_fluid_le(le, fg, nextra);
-
-  assert(0); /* NO TEST */
+  if (le) {
+    grad_2d_tomita_fluid_operator(le, fg, nextra);
+    grad_2d_tomita_fluid_le(le, fg, nextra);
+  }
+  else {
+    assert(fg->field->cs);
+    grad_cs_compute(fg, nextra);
+  }
 
   return 0;
 }
@@ -117,6 +141,126 @@ __host__ int grad_2d_tomita_fluid_d4(field_grad_t * fg) {
   grad_2d_tomita_fluid_le(le, fg, nextra);
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_cs_compute
+ *
+ *  Compute grad and delsq (no Lees Edwards SPBC).
+ *
+ *****************************************************************************/
+
+__host__ int grad_cs_compute(field_grad_t * fgrad, int nextra) {
+
+  int nlocal[3];
+  int xs, ys, zs;
+  dim3 nblk, ntpb;
+  cs_t * cs;
+  kernel_info_t limits;
+  kernel_ctxt_t * ctxt = NULL;
+
+  assert(fgrad);
+  assert(fgrad->field);
+  assert(fgrad->field->cs);
+
+  cs = fgrad->field->cs;
+  cs_nlocal(cs, nlocal);
+  cs_strides(cs, &xs, &ys, &zs);
+
+  limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
+  limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
+  limits.kmin = 1;          limits.kmax = 1;
+
+  kernel_ctxt_create(cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(grad_cs_kernel, nblk, ntpb, 0, 0, ctxt->target,
+		  fgrad->target, xs, ys);
+
+  /* tdpLaunchKernel(grad_cs_kernel,
+   *                 kernel_tdp_arg(ctxt),
+   *                 kernel_actual_arg(cs->const, fgrad->target, ...)); */
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  grad_cs_kernel
+ *
+ *****************************************************************************/
+
+__global__ void grad_cs_kernel(kernel_ctxt_t * ktx, field_grad_t * fgrad,
+			       int xs, int ys) {
+
+  int kindex;
+  int kiterations;
+
+  const double r1 = GRAD_WEIGHT_W1(GRAD_EPSILON);
+  const double r2 = GRAD_WEIGHT_W2(GRAD_EPSILON);
+  const double w0 = DEL2_WEIGHT_W0(DEL2_EPSILON);
+  const double w1 = DEL2_WEIGHT_W1(DEL2_EPSILON);
+  const double w2 = DEL2_WEIGHT_W2(DEL2_EPSILON);
+
+  assert(ktx);
+  assert(fgrad);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+    int ic, jc, kc, index;
+    int n1;
+
+    field_t * __restrict__ f = fgrad->field;
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+    assert(kc == 1);
+    index = kernel_coords_index(ktx, ic, jc, kc);
+
+    /* for each order parameter */
+    for (n1 = 0; n1 < f->nf; n1++) {
+
+      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, X)] = 
+	+ r2*f->data[addr_rank1(f->nsites, f->nf, index + xs - ys, n1)]
+	- r2*f->data[addr_rank1(f->nsites, f->nf, index - xs - ys, n1)]
+	+ r1*f->data[addr_rank1(f->nsites, f->nf, index + xs     , n1)]
+	- r1*f->data[addr_rank1(f->nsites, f->nf, index - xs     , n1)]
+	+ r2*f->data[addr_rank1(f->nsites, f->nf, index + xs + ys, n1)]
+	- r2*f->data[addr_rank1(f->nsites, f->nf, index - xs + ys, n1)];
+
+      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, Y)] = 
+	+ r2*f->data[addr_rank1(f->nsites, f->nf, index - xs + ys, n1)]
+	- r2*f->data[addr_rank1(f->nsites, f->nf, index - xs - ys, n1)]
+	+ r1*f->data[addr_rank1(f->nsites, f->nf, index      + ys, n1)]
+	- r1*f->data[addr_rank1(f->nsites, f->nf, index      - ys, n1)]
+	+ r2*f->data[addr_rank1(f->nsites, f->nf, index + xs + ys, n1)]
+	- r2*f->data[addr_rank1(f->nsites, f->nf, index + xs - ys, n1)];
+
+      fgrad->grad[addr_rank2(f->nsites, f->nf, NVECTOR, index, n1, Z)] = 0.0;
+
+      /* delsq */
+      fgrad->delsq[addr_rank1(f->nsites, f->nf, index, n1)] = 
+	+ w1*f->data[addr_rank1(f->nsites, f->nf, index + xs,      n1)]
+	+ w1*f->data[addr_rank1(f->nsites, f->nf, index - xs,      n1)]
+	+ w1*f->data[addr_rank1(f->nsites, f->nf, index      + ys, n1)]
+	+ w1*f->data[addr_rank1(f->nsites, f->nf, index      - ys, n1)]
+	+ w2*f->data[addr_rank1(f->nsites, f->nf, index + xs + ys, n1)]
+	+ w2*f->data[addr_rank1(f->nsites, f->nf, index + xs - ys, n1)]
+	+ w2*f->data[addr_rank1(f->nsites, f->nf, index - xs + ys, n1)]
+	+ w2*f->data[addr_rank1(f->nsites, f->nf, index - xs - ys, n1)]
+	- w0*f->data[addr_rank1(f->nsites, f->nf, index,           n1)];
+    }
+  }
+
+  return;
 }
 
 /*****************************************************************************

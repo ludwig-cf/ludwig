@@ -49,7 +49,6 @@
 #include "leesedwards.h"
 #include "wall.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "gradient_3d_27pt_fluid.h"
 
 typedef enum grad_enum_type {GRAD_DEL2, GRAD_DEL4} grad_enum_t;
@@ -415,6 +414,11 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
     del2 = fg->delsq_delsq;
   }
 
+  {
+    int nplanes = lees_edw_nplane_local(le);
+    if (nplanes) field_grad_memcpy(fg, tdpMemcpyDeviceToHost);
+  }
+
   for (nplane = 0; nplane < lees_edw_nplane_local(le); nplane++) {
 
     ic = lees_edw_plane_location(le, nplane);
@@ -636,6 +640,11 @@ __host__ int grad_3d_27pt_fluid_le(lees_edw_t * le, field_grad_t * fg,
       }
     }
     /* Next plane */
+  }
+
+  {
+    int nplanes = lees_edw_nplane_local(le);
+    if (nplanes) field_grad_memcpy(fg, tdpMemcpyHostToDevice);
   }
 
   return 0;

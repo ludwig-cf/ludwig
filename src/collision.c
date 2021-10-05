@@ -13,7 +13,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *    Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -37,7 +37,6 @@
 #include "control.h"
 #include "collision.h"
 #include "field_s.h"
-#include "map_s.h"
 #include "kernel.h"
 #include "timer.h"
 
@@ -976,12 +975,13 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     for (ib = 0; ib < 3; ib++) {
       for_simd_v(iv, NSIMDVL) { 
 	sphi[ia][ib][iv] = phi[iv]*u[ia][iv]*u[ib][iv] + mu[iv]*d[ia][ib];
-        /* sphi[ia][ib] = phi*u[ia]*u[ib] + cs2*mobility*mu*d_[ia][ib];*/
+        /* The alternate form would be:
+	   sphi[ia][ib] = phi*u[ia]*u[ib] + cs2*mobility*mu*d_[ia][ib]; */
       }
     }
     for_simd_v(iv, NSIMDVL) {
       jphi[ia][iv] = jphi[ia][iv] - _cp.rtau2*(jphi[ia][iv] - phi[iv]*u[ia][iv]);
-      /* jphi[ia] = phi*u[ia]; */
+      /* The alternate form would be: "jphi[ia] = phi*u[ia];" */
     }
   }
   

@@ -42,6 +42,8 @@ struct pe_s {
   char subdirectory[FILENAME_MAX];
 };
 
+__host__ int pe_time(char * strctime, int bufsiz);
+
 /*****************************************************************************
  *
  *  pe_create
@@ -130,8 +132,8 @@ __host__ int pe_free(pe_t * pe) {
   if (pe->nref <= 0) {
     MPI_Comm_free(&pe->comm);
     if (pe->unquiet) {
-      char * strctime = NULL;
-      pe_time(&strctime);
+      char strctime[BUFSIZ] = {};
+      pe_time(strctime, BUFSIZ);
       pe_info(pe, "End time: %s", strctime);
       pe_info(pe, "Ludwig finished normally.\n");
     }
@@ -161,8 +163,8 @@ __host__ int pe_message(pe_t * pe) {
        (pe->mpi_size == 1) ? "" : "es");
 
   {
-    char * strctime = NULL;
-    pe_time(&strctime);
+    char strctime[BUFSIZ] = {};
+    pe_time(strctime, BUFSIZ);
     pe_info(pe, "Start time: %s\n", strctime); /* Extra \n ! */
   }
 
@@ -365,20 +367,20 @@ __host__ int pe_mpi_size(pe_t * pe) {
  *
  *****************************************************************************/
 
-__host__ int pe_time(char ** str) {
+__host__ int pe_time(char * str, int bufsiz) {
 
-  static char * strdefault = "Unavailable\n";
+  static const char * strdefault = "Unavailable\n";
   time_t now = time(NULL);
   int ierr = -1;
 
   assert(str);
-  *str = strdefault;
+  strncpy(str, strdefault, strnlen(strdefault, bufsiz-1));
 
   if (now != (time_t) -1) {
     char buf[BUFSIZ] = {};
     char * c_time = ctime_r(&now, buf);
     if (c_time != NULL) {
-      *str = c_time;
+      strncpy(str, buf, strnlen(buf, bufsiz-1));
       ierr = 0;
     }
   }

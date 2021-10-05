@@ -131,7 +131,7 @@ __device__ double tdpAtomicMinDouble(double * minval, double val) {
   do {
     assumed = old;
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong
-		    (fminf(val, __longlong_as_double(assumed))));
+		    (fmin(val, __longlong_as_double(assumed))));
   } while (assumed != old);
 
   return __longlong_as_double(old);

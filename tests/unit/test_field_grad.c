@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2019 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -25,7 +25,7 @@
 #include "coords.h"
 #include "leesedwards.h"
 #include "field_s.h"
-#include "field_grad_s.h"
+#include "field_grad.h"
 #include "tests.h"
 
 enum encode {ENCODE_GRAD = 1, ENCODE_DELSQ, ENCODE_GRAD4, ENCODE_DELSQ4,
@@ -52,8 +52,6 @@ int test_field_grad_suite(void) {
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-
-  /* info("Field gradient object test\n");*/
 
   do_test1(pe);
   do_test3(pe);

@@ -239,6 +239,8 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
   
   if (nc > 0) {
 
+    /* Colloid-wall. */
+
     intr = obj->abstr[INTERACT_WALL];
     
     if (intr) {
@@ -255,8 +257,12 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
       pe_info(obj->pe, "Wall potential energy is:    %14.7e\n", v);
     }
 
+
     if (nc > 1) {
   
+      /* Colloid-colloid lubrication */
+      /* Minimum lubrication distance */
+
       intr = obj->abstr[INTERACT_LUBR];
 
      if (intr) {
@@ -267,6 +273,9 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	MPI_Reduce(&hminlocal, &hmin, 1, MPI_DOUBLE, MPI_MIN, 0, comm);
 	pe_info(obj->pe, "Lubrication minimum h is:    %14.7e\n", hmin);
       }
+
+     /* Pairwise */
+     /* Minimum separation, potential energy */
 
       intr = obj->abstr[INTERACT_PAIR];
 
@@ -283,6 +292,9 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Pair potential minimum h is: %14.7e\n", hmin);
 	pe_info(obj->pe, "Pair potential energy is:    %14.7e\n", v);
       }
+
+      /* Bonds */
+      /* Min, max bond length; total potential energy */
 
       intr = obj->abstr[INTERACT_BOND];
 
@@ -302,6 +314,9 @@ int interact_stats(interact_t * obj, colloids_info_t * cinfo) {
 	pe_info(obj->pe, "Bond potential maximum r is: %14.7e\n", rmax);
 	pe_info(obj->pe, "Bond potential energy is:    %14.7e\n", v);
       }
+
+      /* Angles */
+      /* Min, max angle; total potential energy */
 
       intr = obj->abstr[INTERACT_ANGLE];
 

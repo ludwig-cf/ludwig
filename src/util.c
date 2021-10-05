@@ -775,7 +775,7 @@ int util_matrix_free(int m, double ***p) {
 __host__
 int util_svd(int m, int n, double ** a, double * w, double ** v) {
 
-  int i, j, k, ell;
+  int i, j, k, ell = 0;
   int jj, nm;
   int iteration, flag;
 

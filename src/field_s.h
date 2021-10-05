@@ -15,27 +15,7 @@
 #ifndef FIELD_S_H
 #define FIELD_S_H
 
-#include "halo_swap.h"
-#include "field.h"
-
-struct field_s {
-  int nf;                       /* Number of field components */
-  int nhcomm;                   /* Halo width required */
-  int nsites;                   /* Local sites (allocated) */
-  double * data;                /* Field data */
-  char * name;                  /* "phi", "p", "q" etc. */
-  
-  //conservation phi correction
-  double field_init_sum;			/* field sum at the beginning */
-
-  pe_t * pe;                    /* Parallel environment */
-  cs_t * cs;                    /* Coordinate system */
-  lees_edw_t * le;              /* Lees-Edwards */
-  io_info_t * info;             /* I/O Handler */
-  halo_swap_t * halo;           /* Halo swap driver object */
-
-  field_t * target;             /* target structure */ 
-};
+/* TO BE REMOVED */
 
 #define addr_qab(nsites, index, ia) addr_rank1(nsites, NQAB, index, ia)
 

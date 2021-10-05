@@ -11,7 +11,7 @@
 #  Edinburgh Soft Matter and Statistical Physics Group and
 #  Edinburgh Parallel Computing Centre
 #
-#  (c) 2016-2019 The University of Edinburgh
+#  (c) 2016-2021 The University of Edinburgh
 #
 #  Contributing authors:
 #  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -50,7 +50,7 @@ extract_squirmer_polymer: extract_squirmer_polymer.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 capillary: capillary.o
-	$(CC) $(LDFLAGS) -o $@ $^ -lm
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS) -lm
 
 extract: extract.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)

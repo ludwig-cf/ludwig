@@ -1,0 +1,137 @@
+Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
+Start time: Fri Jul 23 11:28:20 2021
+
+Compiler:
+  name:           Gnu 8.3.0
+  version-string: 8.3.0
+
+Note assertions via standard C assert() are on.
+
+Target thread model: OpenMP.
+OpenMP threads: 1; maximum number of threads: 8.
+
+Read 18 user parameters from serial-tern-st1.inp
+
+System details
+--------------
+System size:    180 120 1
+Decomposition:  1 1 1
+Local domain:   180 120 1
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Ternary free energy
+----------------------
+Ternary free energy parameters:
+Surface penalty kappa1 =  1.00000e-02
+Surface penalty kappa2 =  2.00000e-02
+Surface penalty kappa3 =  5.00000e-02
+Interface width alpha  =  1.00000e+00
+
+Derived quantities
+Interfacial tension 12 =  5.00000e-03
+Interfacial tension 23 =  1.16667e-02
+Interfacial tension 13 =  1.00000e-02
+Equilibrium angle    1 =  8.36206e+01
+Equilibrium angle    2 =  1.21588e+02
+Equilibrium angle    3 =  1.54791e+02
+
+Using Cahn-Hilliard solver:
+Number of fields      =  2
+Mobility (phi)        =  1.50000e-01
+Mobility (psi)        =  1.00000e-01
+Force calculation:      phi grad mu method
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e-01
+Bulk viscosity                1.66667e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    1.00000e+00
+Bulk relaxation time:     1.00000e+00
+Ghost relaxation time:    1.00000e+00
+[Default] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: off
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order:  1 (default)
+
+Initialising fields for ternary fluid
+Composition is 2d block double emulsion initialisation
+Interface at xf1 Lx (left)      2.00000e-01
+Interface at xf2 Lx (centre)    5.00000e-01
+Interface at xf3 Lx (right)     8.00000e-01
+Interface at yf1 Ly (bottom)    3.00000e-01
+Interface at yf2 Ly (top)       7.00000e-01
+
+Gradient calculation: 2d_tomita_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]       21600.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -4.7000000e+01 -2.1759259e-03 2.3281934e-01 -1.0000000e+00 1.0000000e+00
+[phi]  1.6571000e+04  7.6717593e-01 1.7861702e-01  0.0000000e+00 1.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]       21600.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi] -4.7000000e+01 -2.1759259e-03 2.3188828e-01 -1.0306524e+00 1.0276555e+00
+[phi]  1.6571000e+04  7.6717593e-01 1.7661806e-01 -5.5810158e-02 1.0302925e+00
+
+Free energies
+[surf/fl/tot]         10  0.0000000000e+00  4.8476926218e+00  4.8476926218e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Completed cycle 10
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.295      0.295      0.295   0.295004 (1 call)
+      Time step loop:      0.023      0.028      0.236   0.023617 (10 calls)
+       phi gradients:      0.008      0.011      0.084   0.008424 (10 calls)
+           phi halos:      0.003      0.004      0.034   0.003381 (10 calls)
+   Force calculation:      0.000      0.000      0.000   0.000000 (10 calls)
+          phi update:      0.015      0.017      0.152   0.015190 (10 calls)
+ Advectn BCS (krnl) :      0.002      0.002      0.024   0.002411 (10 calls)
+               Free1:      0.000      0.015      0.015   0.001456 (10 calls)

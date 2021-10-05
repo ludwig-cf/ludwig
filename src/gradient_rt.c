@@ -4,13 +4,12 @@
  *
  *  Set the gradient routine. 
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2010-2019 The University of Edinburgh
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2017 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -105,6 +104,20 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
       field_grad_dab_set(grad, grad_3d_27pt_solid_dab);
       assert(map);
       grad_3d_27pt_solid_map_set(map);
+    }
+    else if (strcmp(keyvalue, "2d_ternary_solid") == 0) {
+      pe_info(pe, "2d_ternary_solid\n");
+      f2 = grad_2d_ternary_solid_d2;
+      f4 = NULL;
+      assert(map);
+      grad_2d_ternary_solid_set(map);
+    }
+    else if (strcmp(keyvalue, "3d_ternary_solid") == 0) {
+      pe_info(pe, "3d_ternary_solid\n");
+      f2 = grad_3d_ternary_solid_d2;
+      f4 = NULL;
+      assert(map);
+      grad_3d_ternary_solid_map_set(map);
     }
     else {
       /* Not recognised */
