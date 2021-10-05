@@ -1589,11 +1589,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   }
   else if(strcmp(description, "lc_droplet") == 0) {
 
+    phi_ch_info_t ch_options = {};
     fe_symm_t * symm = NULL;
     fe_lc_t * lc = NULL;
     fe_lc_droplet_t * fe = NULL;
     int use_stress_relaxation = 0;
-    phi_ch_info_t ch_options = {};
 
     /* liquid crystal droplet */
     pe_info(pe, "\n");
