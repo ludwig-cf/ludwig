@@ -16,6 +16,8 @@ version 0.14.0
   dynamics available yet.
 - Add unit tests for the the same.
 - Add a description of how to add a free energy to free_energy.h
+- Unified CPU/GPU short regression tests.
+- Compilation of target HIP updated for AMD platform. See config/unix-hpcc.mk.
 
 version 0.13.0
 
