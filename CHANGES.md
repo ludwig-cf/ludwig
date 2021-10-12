@@ -1,6 +1,24 @@
 
 ### Changes
 
+
+version 0.14.0
+
+- Add a ternary free energy. Thanks to Shan Chen and Sergios Granados Leyva.
+  - See https://ludwig.epcc.ed.ac.uk/inputs/fe.html
+  - Added various initial ternary configurations.
+  - Allowed uniform wetting from input via free energy parameters.
+  - Added various porous media style initialisations from input;
+    input handling has changed slightly.
+  - Updated the util/capillary.c code to use the standard map structure,
+    and standard output functionality.
+- Add back an operational surfactant free energy. There is no
+  dynamics available yet.
+- Add unit tests for the the same.
+- Add a description of how to add a free energy to free_energy.h
+- Unified CPU/GPU short regression tests.
+- Compilation of target HIP updated for AMD platform. See config/unix-hpcc.mk.
+
 version 0.13.0
 
 - Add report on compiler and start/end times.
@@ -77,8 +95,6 @@ version 0.9.0
 
 - A link to new build and test instructions has been made available
   from the README
-
-- UPDATE TUTORIALS
 
 - Added travis .travis.yml and relevant config file
 

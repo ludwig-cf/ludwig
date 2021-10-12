@@ -311,7 +311,7 @@ static int stats_sigma_find_radius(stats_sigma_t * stat) {
 	      /* Look for change in sign */
 
               if (phi0 < 0.0 && phi1 > 0.0) {
-		assert(phi0 != phi1);
+
                 fraction = phi0 / (phi0 - phi1);
                 r[X] = 1.0*(noffset[X] + ic) + fraction*(ip-ic);
                 r[Y] = 1.0*(noffset[Y] + jc) + fraction*(jp-jc);

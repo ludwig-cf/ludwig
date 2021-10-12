@@ -33,7 +33,7 @@
 #include "leesedwards.h"
 #include "io_harness.h"
 #include "util.h"
-#include "field_s.h"
+#include "field.h"
 
 static int field_write(FILE * fp, int index, void * self);
 static int field_write_ascii(FILE * fp, int index, void * self);
@@ -407,6 +407,10 @@ __host__ int field_leesedwards(field_t * obj) {
   cs_ltot(obj->cs, ltot);
   cs_cartsz(obj->cs, mpi_cartsz);
 
+  /* At the moment we require some copies for device version ... */
+  /* ... here and at the end. */
+  field_memcpy(obj, tdpMemcpyDeviceToHost);
+
   if (mpi_cartsz[Y] > 1) {
     /* This has its own routine. */
     field_leesedwards_parallel(obj);
@@ -457,6 +461,8 @@ __host__ int field_leesedwards(field_t * obj) {
       }
     }
   }
+
+  field_memcpy(obj, tdpMemcpyHostToDevice);
 
   return 0;
 }

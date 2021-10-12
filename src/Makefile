@@ -87,7 +87,7 @@ lib:	$(LIBOBJECTS)
 # Special case for no optimaisation
 
 util_sum.o:	util_sum.c
-	$(CC) $(CFLAGS) $(INCL) -c util_sum.c
+	$(CC) $(CFLAGS) $(INCL) -O0 -c util_sum.c
 
 .PHONY : clean
 clean:

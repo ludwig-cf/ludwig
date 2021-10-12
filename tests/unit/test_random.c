@@ -44,29 +44,18 @@ int test_random_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
-  /* info("Testing random number generators (may take a minute...)\n");
-     info("Random sample size is %d\n\n", NLARGE);*/
+  /* "Testing random number generators (may take a minute...)"
+     "Random sample size is %d\n\n", NLARGE */
 
   ran_init(pe);
 
-  /* Check first number from serial generators */
-  /*
-  info("The first number from serial_uniform() is ...");
-  r = ran_serial_uniform();
-  info("%g ", r);
-  test_assert(fabs(r - 0.0001946092) < TEST_FLOAT_TOLERANCE);
-  info("(ok)\n");
-
-  info("The next from serial_gaussian() is...");
-  r = ran_serial_gaussian();
-  info("%g ", r);
-  test_assert(fabs(r - 1.6206822) < TEST_FLOAT_TOLERANCE);
-  info("(ok)\n");
-  */
+  /* Check first,second  number from serial generators */
+  /* This may be historical:
+   * fabs(r - 0.0001946092) < TEST_FLOAT_TOLERANCE
+   * fabs(r - 1.6206822)    < TEST_FLOAT_TOLERANCE
+   */
 
   /* Check serial uniform statistics */
-
-  /* info("Checking statistics for serial_uniform()...");*/
 
   rtot = 0.0;
   rmin = 1.0;
@@ -78,24 +67,14 @@ int test_random_suite(void) {
     if (r < rmin) rmin = r;
     if (r > rmax) rmax = r;
   }
-  /* info("\n");*/
+
   rtot = rtot/NLARGE;
-  /*info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.5) < STAT_TOLERANCE);
-  /* info("(ok)\n");*/
-
-  /* info("The minimum is %g ", rmin);*/
   test_assert(fabs(rmin - 0.0) < STAT_TOLERANCE);
-  /* info("(ok)\n");*/
-
-  /* info("The maximum is %g ", rmax);*/
   test_assert(fabs(rmax - 1.0) < STAT_TOLERANCE);
-  /* info("(ok)\n");*/
 
   /* Check serial Gaussian statistics. Note that the variance is
    * computed by assuming the mean is indeed exactly zero. */
-
-  /* info("Checking statistics for serial_gaussian()...");*/
 
   rtot = 0.0;
   rvar = 0.0;
@@ -110,28 +89,16 @@ int test_random_suite(void) {
     if (r > rmax) rmax = r;
   }
 
-  /* info("\n");*/
   rtot = rtot/NLARGE;
-  /* info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.0) < STAT_TOLERANCE);
-  /* info("(ok)\n");*/
 
-  /*info("The minimum is %g ", rmin);*/
   test_assert(rmin < -4.0);
-  /*info("(ok)\n");*/
-
-  /*info("The maximum is %g ", rmax);*/
   test_assert(rmax > 4.0);
-  /*info("(ok)\n");*/
 
   rvar = rvar/NLARGE;
-  /*info("The variance is %g ", rvar);*/
   test_assert(fabs(rvar - 1.0) < STAT_TOLERANCE);
-  /*info("(ok)\n");*/
 
   /* Check the parallel uniform generator. */
-
-  /*info("Checking statistics for parallel_uniform()...");*/
 
   rtot = 0.0;
   rmin = 1.0;
@@ -143,23 +110,13 @@ int test_random_suite(void) {
     if (r < rmin) rmin = r;
     if (r > rmax) rmax = r;
   }
-  /*info("\n");*/
+
   rtot = rtot/NLARGE;
-  /*info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.5) < STAT_TOLERANCE);
-  /*info("(ok)\n");*/
-
-  /*info("The minimum is %g ", rmin);*/
   test_assert(fabs(rmin - 0.0) < STAT_TOLERANCE);
-  /*info("(ok)\n");*/
-
-  /*info("The maximum is %g ", rmax);*/
   test_assert(fabs(rmax - 1.0) < STAT_TOLERANCE);
-  /*info("(ok)\n");*/
 
   /* Parallel Gaussian */
-
-  /*info("Checking statistics for parallel_gaussian()...");*/
 
   rtot = 0.0;
   rvar = 0.0;
@@ -174,24 +131,13 @@ int test_random_suite(void) {
     if (r > rmax) rmax = r;
   }
 
-  /*info("\n");*/
   rtot = rtot/NLARGE;
-  /*info("The mean is %g ", rtot);*/
   test_assert(fabs(rtot - 0.0) < STAT_TOLERANCE);
-  /*info("(ok)\n");*/
-
-  /*info("The minimum is %g ", rmin);*/
   test_assert(rmin < -4.0);
-  /*info("(ok)\n");*/
-
-  /*info("The maximum is %g ", rmax);*/
   test_assert(rmax > 4.0);
-  /*info("(ok)\n");*/
 
   rvar = rvar/NLARGE;
-  /*info("The variance is %g ", rvar);*/
   test_assert(fabs(rvar - 1.0) < STAT_TOLERANCE);
-  /*info("(ok)\n");*/
 
   pe_info(pe, "PASS     ./unit/test_random\n");
   pe_free(pe);

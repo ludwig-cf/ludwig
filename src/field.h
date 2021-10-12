@@ -2,12 +2,10 @@
  *
  *  field.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -24,10 +22,28 @@
 #include "coords.h"
 #include "io_harness.h"
 #include "leesedwards.h"
+#include "halo_swap.h"
 
 typedef struct field_s field_t;
-
 typedef enum {FIELD_HALO_HOST = 0, FIELD_HALO_TARGET} field_halo_enum_t;
+
+struct field_s {
+  int nf;                       /* Number of field components */
+  int nhcomm;                   /* Halo width required */
+  int nsites;                   /* Local sites (allocated) */
+  double * data;                /* Field data */
+  char * name;                  /* "phi", "p", "q" etc. */
+
+  double field_init_sum;        /* field sum at the beginning */
+
+  pe_t * pe;                    /* Parallel environment */
+  cs_t * cs;                    /* Coordinate system */
+  lees_edw_t * le;              /* Lees-Edwards */
+  io_info_t * info;             /* I/O Handler */
+  halo_swap_t * halo;           /* Halo swap driver object */
+
+  field_t * target;             /* target structure */
+};
 
 __host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
 			  field_t ** pobj);
@@ -55,6 +71,5 @@ __host__ __device__ int field_scalar_array(field_t * obj, int index,
 					   double * array);
 __host__ __device__ int field_scalar_array_set(field_t * obj, int index,
 					       const double * array);
-
 
 #endif

@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,8 +21,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "leesedwards.h"
-#include "field_s.h"
-#include "field_grad_s.h"
+#include "field_grad.h"
 
 static int field_grad_init(field_grad_t * obj);
 
@@ -152,11 +151,9 @@ static int field_grad_init(field_grad_t * obj) {
  *
  *****************************************************************************/
 
-__host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
+__host__ int field_grad_memcpy(field_grad_t * obj, tdpMemcpyKind flag) {
 
   int ndevice;
-  size_t nsz;
-  double * tmp = NULL;
 
   assert(obj);
 
@@ -168,7 +165,22 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
   }
   else {
 
-    nsz = (size_t) obj->nf*obj->nsite*sizeof(double);
+    size_t nsz = (size_t) obj->nf*obj->nsite*sizeof(double);
+    double * grad = NULL;
+    double * delsq = NULL;
+    double * grad_delsq = NULL;
+    double * delsq_delsq = NULL;
+
+    tdpAssert(tdpMemcpy(&grad, &obj->target->grad, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(&delsq, &obj->target->delsq, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    if (obj->level >= 4) {
+      tdpAssert(tdpMemcpy(&grad_delsq, &obj->target->grad_delsq,
+			  sizeof(double *), tdpMemcpyDeviceToHost));
+      tdpAssert(tdpMemcpy(&delsq_delsq, &obj->target->delsq_delsq,
+			  sizeof(double *), tdpMemcpyDeviceToHost));
+    }
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
@@ -177,20 +189,20 @@ __host__ int field_grad_memcpy(field_grad_t * obj, int flag) {
       tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int),
 		tdpMemcpyHostToDevice);
 
-      tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, obj->grad, NVECTOR*nsz, tdpMemcpyHostToDevice);
-      tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, obj->delsq, nsz, tdpMemcpyHostToDevice);
+      tdpMemcpy(grad, obj->grad, NVECTOR*nsz, tdpMemcpyHostToDevice);
+      tdpMemcpy(delsq, obj->delsq, nsz, tdpMemcpyHostToDevice);
+      if (obj->level >= 4) {
+	tdpMemcpy(grad_delsq, obj->grad_delsq, NVECTOR*nsz, flag);
+	tdpMemcpy(delsq_delsq, obj->delsq_delsq, nsz, flag);
+      }
       break;
     case tdpMemcpyDeviceToHost:
-      tdpMemcpy(&tmp, &obj->target->grad, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(obj->grad, tmp, NVECTOR*nsz, tdpMemcpyDeviceToHost);
-      tdpMemcpy(&tmp, &obj->target->delsq, sizeof(double *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(obj->delsq, tmp, nsz, tdpMemcpyDeviceToHost);
+      tdpMemcpy(obj->grad, grad, NVECTOR*nsz, tdpMemcpyDeviceToHost);
+      tdpMemcpy(obj->delsq, delsq, nsz, tdpMemcpyDeviceToHost);
+      if (obj->level >= 4) {
+	tdpAssert(tdpMemcpy(obj->grad_delsq, grad_delsq, nsz*NVECTOR, flag));
+	tdpAssert(tdpMemcpy(obj->delsq_delsq, delsq_delsq, nsz, flag));
+      }
       break;
     default:
       pe_fatal(obj->pe, "Bad flag in field_memcpy\n");
@@ -318,6 +330,7 @@ int field_grad_compute(field_grad_t * obj) {
  *
  *****************************************************************************/
 
+__host__ __device__
 int field_grad_scalar_grad(field_grad_t * obj, int index, double grad[3]) {
 
   int ia;
@@ -414,6 +427,96 @@ int field_grad_scalar_dab(field_grad_t * obj, int index, double dab[3][3]) {
   dab[Z][X] = dab[X][Z];
   dab[Z][Y] = dab[Y][Z];
   dab[Z][Z] = obj->d_ab[addr_rank1(obj->nsite, NSYMM, index, ZZ)];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_grad
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_grad(field_grad_t * obj, int index, double grad[2][3]) {
+
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < NVECTOR; ia++) {
+    grad[0][ia] = obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 0, ia)];
+  }
+  for (ia = 0; ia < NVECTOR; ia++) {
+    grad[1][ia] = obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 1, ia)];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_delsq
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_delsq(field_grad_t * obj, int index, double * delsq) {
+
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < obj->nf; ia++) {
+    delsq[ia] = obj->delsq[addr_rank1(obj->nsite, obj->nf, index, ia)];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_grad_set
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_grad_set(field_grad_t * obj, int index,
+			     const double grad[2][3]) {
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < NVECTOR; ia++) {
+    obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 0, ia)] = grad[0][ia];
+  }
+  for (ia = 0; ia < NVECTOR; ia++) {
+    obj->grad[addr_rank2(obj->nsite, 2, NVECTOR, index, 1, ia)] = grad[1][ia];
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_grad_pair_delsq_set
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int field_grad_pair_delsq_set(field_grad_t * obj, int index,
+			      const double * delsq) {
+  int ia;
+
+  assert(obj);
+  assert(obj->nf == 2);
+
+  for (ia = 0; ia < obj->nf; ia++) {
+    obj->delsq[addr_rank1(obj->nsite, obj->nf, index, ia)] = delsq[ia];
+  }
 
   return 0;
 }

@@ -2,18 +2,16 @@
  *
  *  gradients_rt.h
  *
- *  $Id: gradient_rt.h,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2019 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef GRADIENT_RT_H
-#define GRADIENT_RT_H
+#ifndef LUDWIG_GRADIENT_RT_H
+#define LUDWIG_GRADIENT_RT_H
 
 #include "pe.h"
 #include "runtime.h"
@@ -27,6 +25,8 @@
 #include "gradient_3d_7pt_solid.h"
 #include "gradient_3d_27pt_fluid.h"
 #include "gradient_3d_27pt_solid.h"
+#include "gradient_2d_ternary_solid.h"
+#include "gradient_3d_ternary_solid.h"
 
 __host__ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
 			      field_grad_t * grad, map_t * map,

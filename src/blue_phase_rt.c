@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2020 The University of Edinburgh
+ *  (c) 2009-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -112,7 +112,8 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   pe_info(pe, "Elastic constant kappa1    = %14.7e\n", fe_param.kappa1);
   pe_info(pe, "Amplitude (uniaxial) order = %14.7e\n", fe_param.amplitude0);
 
-  /* One-constant approximation enforced. */
+  /* One-constant approximation enforced. Exactly. */
+  /* Might really be a run-time check. */
   assert(fe_param.kappa0 == fe_param.kappa1);
 
   fe_lc_param_set(fe, &fe_param);

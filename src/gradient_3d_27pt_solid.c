@@ -27,7 +27,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -39,15 +39,17 @@
 #include "pe.h"
 #include "coords.h"
 #include "kernel.h"
-#include "map_s.h"
 #include "field_s.h"
-#include "field_grad_s.h"
 #include "gradient_3d_27pt_solid.h"
 
-struct solid_s {
+typedef struct solid_s {
+  int uniform;     /* uniform wetting (else map data) */
+  double rkappa;   /* 1/kappa */
+  double c;        /* uniform case */
+  double h;        /* uniform case */
   map_t * map;
   fe_symm_t * fe_symm;
-};
+} solid_t;
 
 static struct solid_s static_solid = {0};
 
@@ -69,7 +71,7 @@ static __constant__ int bs_cv[NGRAD_][3] = {{ 0, 0, 0},
 __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 					  field_grad_t * fg,
 					  map_t * map,
-					  double rkappa);
+					  solid_t solid);
 
 /*****************************************************************************
  *
@@ -88,7 +90,16 @@ __host__ int grad_3d_27pt_solid_map_set(map_t * map) {
    * first should be C, second H. Default to zero. */
 
   map_ndata(map, &ndata);
-  if (ndata > 2) pe_fatal(map->pe, "Two many wetting parameters for gradient %d\n", ndata);
+
+  if (ndata == 0) {
+    /* Assume we are uniform from free energy */
+    static_solid.uniform = 1;
+  }
+  else if (ndata != 2) {
+    /* We should have exactly 2 */
+    pe_fatal(map->pe, "Wrong number of wetting parameters in map data %d\n",
+	     ndata);
+  }
 
   return 0;
 }
@@ -104,6 +115,10 @@ __host__ int grad_3d_27pt_solid_fe_set(fe_symm_t * fe) {
   assert(fe);
 
   static_solid.fe_symm = fe;
+  static_solid.rkappa = 1.0/fe->param->kappa;
+  static_solid.c = fe->param->c;
+  static_solid.h = fe->param->h;
+  if (static_solid.map == NULL) static_solid.uniform = 1;
 
   return 0;
 }
@@ -118,7 +133,6 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   int nextra;
   int nlocal[3];
-  double rkappa;
   dim3 nblk, ntpb;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
@@ -133,7 +147,6 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
   assert(static_solid.fe_symm);
 
   fe_symm_param(static_solid.fe_symm, &param);
-  rkappa = 1.0/param.kappa;
 
   limits.imin = 1 - nextra; limits.imax = nlocal[X] + nextra;
   limits.jmin = 1 - nextra; limits.jmax = nlocal[Y] + nextra;
@@ -144,7 +157,7 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 
   tdpLaunchKernel(grad_3d_27pt_solid_kernel, nblk, ntpb, 0, 0,
 		  ctxt->target,
-		  fgrad->target, static_solid.map->target, rkappa);
+		  fgrad->target, static_solid.map->target, static_solid);
   tdpDeviceSynchronize();
 
   kernel_ctxt_free(ctxt);
@@ -164,7 +177,7 @@ __host__ int grad_3d_27pt_solid_d2(field_grad_t * fgrad) {
 __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 					  field_grad_t * fg,
 					  map_t * map,
-					  double rkappa) {
+					  solid_t solid) {
   int kindex;
   int kiterations;
   const double r9 = (1.0/9.0);     /* normaliser for grad */
@@ -256,16 +269,22 @@ __global__ void grad_3d_27pt_solid_kernel(kernel_ctxt_t * ktx,
 
 	    ia = kernel_coords_index(ktx, ic + bs_cv[p][X], jc + bs_cv[p][Y],
 				     kc + bs_cv[p][Z]);
-	    map_data(map, ia, wet);
-	    c = wet[0];
-	    h = wet[1];
+	    if (solid.uniform) {
+	      c = solid.c;
+	      h = solid.h;
+	    }
+	    else {
+	      map_data(map, ia, wet);
+	      c = wet[0];
+	      h = wet[1];
+	    }
 
 	    /* kludge: if nop is 2, set h[1] = 0 */
 	    /* This is for Langmuir Hinshelwood */
 	    c = (1 - n)*c;
 	    h = (1 - n)*h;
 
-	    gradt[p] = -(c*phi_b + h)*rkappa;
+	    gradt[p] = -(c*phi_b + h)*solid.rkappa;
 	  }
 	}
  

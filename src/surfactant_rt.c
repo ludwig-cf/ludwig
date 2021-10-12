@@ -4,12 +4,10 @@
  *
  *  Run time initialisation for the surfactant free energy.
  *
- *  $Id: surfactant_rt.c,v 1.2 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group
  *  and Edinburgh Parallel Computing Centre
  *
- *  (c) 2009-2017 The University of Edinburgh
+ *  (c) 2009-2019 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -19,73 +17,150 @@
 #include <assert.h>
 
 #include "pe.h"
-#include "coords.h"
 #include "runtime.h"
 #include "surfactant.h"
 #include "surfactant_rt.h"
 
+#include "field_s.h"
+#include "field_phi_init_rt.h"
+#include "field_psi_init_rt.h"
+
+int field_init_combine_insert(field_t * array, field_t * scalar, int nfin);
+
 /****************************************************************************
  *
- *  fe_surfactant1_run_time
+ *  fe_surfactant1_param_rt
  *
  ****************************************************************************/
 
-__host__ int fe_surfactant1_run_time(pe_t * pe, cs_t * cs, rt_t * rt,
-				     field_t * phi, field_grad_t * dphi,
-				     fe_surfactant1_t ** pobj) {
+__host__ int fe_surf_param_rt(pe_t * pe, rt_t * rt, fe_surf_param_t * p) {
 
-
-  fe_surfactant1_t * fe = NULL;
-  fe_surfactant1_param_t param;
-  double sigma;
-  double xi0;
-  double psi_c;
+  assert(pe);
+  assert(rt);
+  assert(p);
 
   /* Parameters */
 
-  rt_double_parameter(rt, "surf_A", &param.a);
-  rt_double_parameter(rt, "surf_B", &param.b);
-  rt_double_parameter(rt, "surf_K", &param.kappa);
+  rt_double_parameter(rt, "surf_A",       &p->a);
+  rt_double_parameter(rt, "surf_B",       &p->b);
+  rt_double_parameter(rt, "surf_kappa",   &p->kappa);
 
-  rt_double_parameter(rt, "surf_kt", &param.kt);
-  rt_double_parameter(rt, "surf_epsilon", &param.epsilon);
-  rt_double_parameter(rt, "surf_beta", &param.beta);
-  rt_double_parameter(rt, "surf_w", &param.w);
-
-  pe_info(pe, "Surfactant free energy parameters:\n");
-  pe_info(pe, "Bulk parameter A      = %12.5e\n", param.a);
-  pe_info(pe, "Bulk parameter B      = %12.5e\n", param.b);
-  pe_info(pe, "Surface penalty kappa = %12.5e\n", param.kappa);
+  rt_double_parameter(rt, "surf_kT",      &p->kt);
+  rt_double_parameter(rt, "surf_epsilon", &p->epsilon);
+  rt_double_parameter(rt, "surf_beta",    &p->beta);
+  rt_double_parameter(rt, "surf_W",       &p->w);
 
   /* For the surfactant should have... */
 
-  assert(param.kappa > 0.0);
-  assert(param.kt > 0.0);
-  assert(param.epsilon > 0.0);
-  assert(param.beta >= 0.0);
-  assert(param.w >= 0.0);
+  assert(p->kappa > 0.0);
+  assert(p->kt > 0.0);
+  assert(p->epsilon > 0.0);
+  assert(p->beta >= 0.0);
+  assert(p->w >= 0.0);
 
-  fe_surfactant1_create(pe, cs, phi, dphi, &fe);
-  fe_surfactant1_param_set(fe, param);
-  fe_surfactant1_sigma(fe, &sigma);
-  fe_surfactant1_xi0(fe, &xi0);
-  fe_surfactant1_langmuir_isotherm(fe, &psi_c);
+  return 0;
+}
 
+/*****************************************************************************
+ *
+ *  fe_surf_phi_init_rt
+ *
+ *  Initialise the composition part of the order parameter.
+ *
+ *****************************************************************************/
 
-  pe_info(pe, "Fluid parameters:\n");
-  pe_info(pe, "Interfacial tension   = %12.5e\n", sigma);
-  pe_info(pe, "Interfacial width     = %12.5e\n", xi0);
+__host__ int fe_surf_phi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
+				  field_t * phi) {
 
-  pe_info(pe, "\n");
-  pe_info(pe, "Surface adsorption e  = %12.5e\n", param.epsilon);
-  pe_info(pe, "Surface psi^2 beta    = %12.5e\n", param.beta);
-  pe_info(pe, "Enthalpic term W      = %12.5e\n", param.w);
-  pe_info(pe, "Scale energy kT       = %12.5e\n", param.kt);
-  pe_info(pe, "Langmuir isotherm     = %12.5e\n", psi_c);
+  field_phi_info_t param = {0};
+  field_t * tmp = NULL;
 
-  assert(0);
+  assert(pe);
+  assert(rt);
+  assert(fe);
+  assert(phi);
 
-  *pobj = fe;
+  /* Parameters xi0, phi0, phistar */
+  fe_surf_xi0(fe, &param.xi0);
+
+  /* Initialise phi via a temporary scalar field */
+
+  field_create(pe, phi->cs, 1, "tmp", &tmp);
+  field_init(tmp, 0, NULL);
+
+  field_phi_init_rt(pe, rt, param, tmp);
+  field_init_combine_insert(phi, tmp, 0);
+
+  field_free(tmp);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_surf_psi_init_rt
+ *
+ *  Note: phi is the full two-component field used by the free energy.
+ *
+ *****************************************************************************/
+
+__host__ int fe_surf_psi_init_rt(pe_t * pe, rt_t * rt, fe_surf_t * fe,
+				  field_t * phi) {
+  field_t * tmp = NULL;
+  field_psi_info_t param = {0};
+
+  assert(pe);
+  assert(rt);
+  assert(fe);
+  assert(phi);
+
+  /* Initialise surfactant via a temporary field */
+
+  field_create(pe, phi->cs, 1, "tmp", &tmp);
+  field_init(tmp, 0, NULL);
+
+  field_psi_init_rt(pe, rt, param, tmp);
+  field_init_combine_insert(phi, tmp, 1);
+
+  field_free(tmp);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  field_init_combine_insert
+ *
+ *  Insert scalar field into array field at position nfin
+ *
+ ****************************************************************************/
+
+int field_init_combine_insert(field_t * array, field_t * scalar, int nfin) {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+  double val[2];
+
+  assert(array);
+  assert(scalar);
+  assert(array->nf == 2);
+  assert(scalar->nf == 1);
+  assert(nfin <= array->nf);
+  
+  cs_nlocal(array->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(array->cs, ic, jc, kc);
+	field_scalar_array(array, index, val);
+	field_scalar(scalar, index, val + nfin);
+
+	field_scalar_array_set(array, index, val);
+      }
+    }
+  }
 
   return 0;
 }

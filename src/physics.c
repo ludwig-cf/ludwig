@@ -72,7 +72,7 @@ __host__ __device__ int physics_ref(physics_t ** ref) {
 
   assert(ref);
 
-#ifdef __CUDA_ARCH__
+#if defined( __CUDA_ARCH__ ) || defined (__HIP_DEVICE_COMPILE__)
   *ref = &const_phys;
 #else
   assert(stat_phys);

@@ -18,7 +18,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2019 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,13 +30,13 @@
 #include <math.h>
 
 #include "kernel.h"
-#include "field_grad_s.h"
 #include "field_s.h"
 #include "hydro.h"
 #include "pth_s.h"
 #include "timer.h"
 #include "phi_force.h"
 #include "phi_force_colloid.h"
+#include "phi_grad_mu.h"
 #include "physics.h"
 
 
@@ -56,11 +56,6 @@ static int phi_force_flux_divergence_with_fix(cs_t * cs,
 static int phi_force_flux(cs_t * cs, lees_edw_t * le, fe_t * fe,
 			  wall_t * wall, hydro_t * hydro);
 static __host__ int phi_force_wallx(cs_t * cs, wall_t * wall, fe_t * fe, double * fxe, double * fxw);
-static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth, fe_t * fe,
-				      field_t * phi,
-				      hydro_t * hydro);
-static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
-					  hydro_t * hydro);
 
 /*****************************************************************************
  *
@@ -77,22 +72,28 @@ static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
  *
  *****************************************************************************/
 
-__host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
+__host__ int phi_force_calculation(pe_t * pe, cs_t * cs, lees_edw_t * le,
+				   wall_t * wall,
 				   pth_t * pth, fe_t * fe, map_t * map,
 				   field_t * phi, hydro_t * hydro) {
 
   int is_pm;
+  int nplanes = 0;
 
   if (pth == NULL) return 0;
-  if (pth->method == PTH_METHOD_NO_FORCE) return 0;
   if (hydro == NULL) return 0; 
+  if (pth->method == PTH_METHOD_NO_FORCE) return 0;
 
   wall_is_pm(wall, &is_pm);
 
-  if (lees_edw_nplane_total(le) > 0) {
+  if (le) nplanes = lees_edw_nplane_total(le);
+
+  if (nplanes > 0) {
     /* Must use the flux method for LE planes */
 
+    hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
     phi_force_flux(cs, le, fe, wall, hydro);
+    hydro_memcpy(hydro, tdpMemcpyHostToDevice);
   }
   else {
     switch (pth->method) {
@@ -106,11 +107,22 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
       }
       break;
     case PTH_METHOD_GRADMU:
-      phi_force_fluid_phi_gradmu(le, pth, fe, phi, hydro);
-      phi_force_fluid_phi_gradmu_ext(cs, phi, hydro);
+
+      if (wall_present(wall) || is_pm) {
+	phi_grad_mu_solid(cs, phi, fe, hydro, map);
+	phi_grad_mu_external(cs, phi, hydro);
+      }
+      else {
+	/* Fluid only  */
+	phi_grad_mu_fluid(cs, phi, fe, hydro);
+	phi_grad_mu_external(cs, phi, hydro);
+      }
+      break;
+    case PTH_METHOD_STRESS_ONLY:
+      pth_stress_compute(pth, fe);
       break;
     default:
-      assert(0);
+      pe_fatal(pe, "Bad force method\n");
     }
   }
 
@@ -119,30 +131,33 @@ __host__ int phi_force_calculation(cs_t * cs, lees_edw_t * le, wall_t * wall,
 
 /*****************************************************************************
  *
- *  phi_force_fluid_phi_gradmu
+ *  phi_force_solid_phi_gradmu
  *
  *  This computes and stores the force on the fluid via
  *    f_a = - phi \nabla_a mu
  *
  *  which is appropriate for the symmtric and Brazovskii
- *  free energies, It is provided as a choice.
+ *  free energies, This version allows a solid wall, and
+ *  makes the approximation that the normal gradient of
+ *  the chemical potential at the wall is zero.
  *
  *  The gradient of the chemical potential is computed as
- *    grad_x mu = 0.5*(mu(i+1) - mu(i-1)) etc
- *  Lees-Edwards planes are allowed for.
+ *    grad_x mu = 0.5*(mu(i+1) - mu(i) + mu(i) - mu(i-1)) etc
+ *  which collapses to the fluid version away from any wall.
  *
  *****************************************************************************/
 
-static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
-				      fe_t * fe, field_t * fphi,
-				      hydro_t * hydro) {
+int phi_force_solid_phi_gradmu(lees_edw_t * le, pth_t * pth,
+			       fe_t * fe, field_t * fphi,
+			       hydro_t * hydro, map_t * map) {
 
   int ic, jc, kc, icm1, icp1;
   int index0, indexm1, indexp1;
   int nhalo;
   int nlocal[3];
-  int zs, ys;
-  double phi, mum1, mup1;
+  int zs, ys, xs;
+  int mapm1, mapp1;
+  double phi, mu, mum1, mup1;
   double force[3];
 
   assert(le);
@@ -156,6 +171,7 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   /* Memory strides */
   zs = 1;
   ys = (nlocal[Z] + 2*nhalo)*zs;
+  xs = (nlocal[Y] + 2*nhalo)*ys;
 
   for (ic = 1; ic <= nlocal[X]; ic++) {
     icm1 = lees_edw_ic_to_buff(le, ic, -1);
@@ -165,6 +181,7 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 
 	index0 = lees_edw_index(le, ic, jc, kc);
 	field_scalar(fphi, index0, &phi);
+        fe->func->mu(fe, index0, &mu);
 
         indexm1 = lees_edw_index(le, icm1, jc, kc);
         indexp1 = lees_edw_index(le, icp1, jc, kc);
@@ -172,17 +189,32 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
 	fe->func->mu(fe, indexm1, &mum1);
 	fe->func->mu(fe, indexp1, &mup1);
 
-        force[X] = -phi*0.5*(mup1 - mum1);
+        map_status(map, index0 - xs, &mapm1);
+        map_status(map, index0 + xs, &mapp1);
+        if (mapm1 == MAP_BOUNDARY) mum1 = mu;
+        if (mapp1 == MAP_BOUNDARY) mup1 = mu;
+
+        force[X] = -phi*0.5*(mup1 - mu + mu - mum1);
 
 	fe->func->mu(fe, index0 - ys, &mum1);
 	fe->func->mu(fe, index0 + ys, &mup1);
 
-        force[Y] = -phi*0.5*(mup1 - mum1);
+        map_status(map, index0 - ys, &mapm1);
+        map_status(map, index0 + ys, &mapp1);
+        if (mapm1 == MAP_BOUNDARY) mum1 = mu;
+        if (mapp1 == MAP_BOUNDARY) mup1 = mu;
+
+        force[Y] = -phi*0.5*(mup1 - mu + mu - mum1);
 
 	fe->func->mu(fe, index0 - zs, &mum1);
 	fe->func->mu(fe, index0 + zs, &mup1);
 
-        force[Z] = -phi*0.5*(mup1 - mum1);
+        map_status(map, index0 - zs, &mapm1);
+        map_status(map, index0 + zs, &mapp1);
+        if (mapm1 == MAP_BOUNDARY) mum1 = mu;
+        if (mapp1 == MAP_BOUNDARY) mup1 = mu;
+
+        force[Z] = -phi*0.5*(mup1 - mu + mu - mum1);
 
 	/* Store the force on lattice */
 
@@ -196,53 +228,35 @@ static int phi_force_fluid_phi_gradmu(lees_edw_t * le, pth_t * pth,
   return 0;
 }
 
-
 /*****************************************************************************
  *
- *  phi_force_fluid_phi_gradmu_ext
+ *  phi_force_external_chemical_potential
  *
- *  As for phi_force_fluid_phi_gradmu(), except this is a contribution\
- *  from the external chemical potential gradient.
+ *  Driver for computing force arising from external chemical potential.
  *
  *****************************************************************************/
 
-static int phi_force_fluid_phi_gradmu_ext(cs_t * cs, field_t * fphi,
-					  hydro_t * hydro) {
-  int ic, jc, kc;
-  int index0;
-  int nlocal[3];
-  double phi;
-  double force[3];
-
-  double grad_mu[3];
-  physics_t * phys = NULL;
-
+__host__ int phi_force_external_chemical_potential(cs_t * cs, field_t * phi,
+						   hydro_t * hydro) {
   assert(cs);
-  assert(fphi);
+  assert(phi);
   assert(hydro);
 
-  cs_nlocal(cs, nlocal);
+  /* Scalars only at the moment, and don't bother unless there is
+   * a non-zero external chemical potential. */
 
-  physics_ref(&phys);
-  physics_grad_mu(phys, grad_mu);
+  {
+    int is_gradmu = 0;
+    double gradmu[3] = {};
+    physics_t * phys = NULL;
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
+    physics_ref(&phys);
+    physics_grad_mu(phys, gradmu);
 
-	index0 = cs_index(cs, ic, jc, kc);
-	field_scalar(fphi, index0, &phi);
+    is_gradmu = (gradmu[X] != 0.0 || gradmu[Y] != 0.0 || gradmu[Z] != 0.0);
 
-        force[X] = -phi*grad_mu[X];
-        force[Y] = -phi*grad_mu[Y];
-        force[Z] = -phi*grad_mu[Z];
-
-	/* Accumulate the force on lattice */
-
-	hydro_f_local_add(hydro, index0, force);
-
-	/* Next site */
-      }
+    if (is_gradmu && phi->nf == 1) {
+      phi_grad_mu_external(cs, phi, hydro);
     }
   }
 

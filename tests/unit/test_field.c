@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2017 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +23,7 @@
 #include "coords.h"
 #include "kernel.h"
 #include "leesedwards.h"
-#include "field_s.h"
+#include "field.h"
 
 #include "test_coords_field.h"
 #include "tests.h"
@@ -49,8 +49,6 @@ int test_field_suite(void) {
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-
-  /* info("\nOrder parameter tests...\n");*/
 
   do_test0(pe);
   do_test1(pe);

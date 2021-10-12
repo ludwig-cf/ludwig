@@ -9,7 +9,7 @@
  *  Edinburgh Soft Matter and Statistical Physics and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2011-2020 The University of Edinburgh
+ *  (c) 2011-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -23,7 +23,6 @@
 
 #include "kernel.h"
 #include "lb_model_s.h"
-#include "map_s.h"
 #include "physics.h"
 #include "util.h"
 #include "wall.h"
@@ -44,6 +43,7 @@ __host__ int wall_init_boundaries_slip(wall_t * wall);
 __host__ int wall_link_normal(wall_t * wall, int n, int wn[3]);
 __host__ int wall_link_slip_direction(wall_t * wall, int n);
 __host__ int wall_link_slip(wall_t * wall, int n);
+__host__ int wall_memcpy_h2d(wall_t * wall);
 
 __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb);
 __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map);
@@ -180,6 +180,8 @@ __host__ int wall_commit(wall_t * wall, wall_param_t * param) {
 
   /* As we have initialised the map on the host, ... */
   map_memcpy(wall->map, tdpMemcpyHostToDevice);
+
+  wall_memcpy(wall, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -320,7 +322,7 @@ __host__ int wall_slip_valid(const wall_slip_t * ws) {
 
   assert(ws);
 
-  if (ws->s[WALL_NO_SLIP] != 0.0) valid = 0.0;
+  if (ws->s[WALL_NO_SLIP] != 0.0) valid = 0;
 
   for (int n = 1; n < WALL_SLIP_MAX; n++) {
     if (0.0 > ws->s[n] || ws->s[n] > 1.0) valid = 0;
@@ -455,10 +457,6 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
     }
   }
 
-  if (init == WALL_INIT_ALLOCATE) {
-    assert(nlink == wall->nlink);
-    wall_memcpy(wall, tdpMemcpyHostToDevice);
-  }
   wall->nlink = nlink;
 
   return 0;
@@ -509,16 +507,16 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
     /* Allocate device memory */
     if (ndevice > 0) {
       int tmp;
-      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int));
+      tdpMalloc((void **) &tmp, nlink*sizeof(int));
       tdpMemcpy(&wall->target->linkk, &tmp, sizeof(int *),
 		tdpMemcpyHostToDevice);
     }
     if (ndevice > 0) {
       int8_t tmp;
-      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int8_t));
+      tdpMalloc((void **) &tmp, nlink*sizeof(int8_t));
       tdpMemcpy(&wall->target->linkq, &tmp, sizeof(int8_t *),
 		tdpMemcpyHostToDevice);
-      tdpMalloc((void **) &tmp, wall->nlink*sizeof(int8_t));
+      tdpMalloc((void **) &tmp, nlink*sizeof(int8_t));
       tdpMemcpy(&wall->target->links, &tmp, sizeof(int8_t *),
 		tdpMemcpyHostToDevice);
     }
@@ -578,29 +576,6 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
 	wall->linkq[n] = wall_link_slip_direction(wall, n);
 	wall->links[n] = wall_link_slip(wall, n);
       }
-#ifdef OLD_STUV
-      switch (modwn) {
-      case 1: /* We are at a face */
-	/* Any cv normal to the face must also be no-slip */
-	/* ... and I don't really care what k is, as long as it's valid */
-	if (modwt == 0) wall->links[n] = WALL_NO_SLIP;
-	break;
-      case 2: /* We are at an edge: set no-slip for now */
-	wall->linkk[n] = cs_index(wall->cs, ijk[X], ijk[Y], ijk[Z]);
-	wall->linkq[n] = wall_link_slip_direction(wall, n);
-	wall->links[n] = wall_link_slip(wall, n);
-	if (modwt == 0) wall->links[n] = WALL_NO_SLIP;
-	break;
-      case 3: /* We are in a corner: must be no-slip */
-	wall->linkk[n] = wall->linki[n];
-	wall->linkq[n] = wall->linkp[n];
-	wall->links[n] = WALL_NO_SLIP;
-	break;
-      default:
-	assert(0);
-	pe_fatal(wall->pe, "Incorrect wall normal\n");
-      }
-#endif
     }
   }
 
@@ -679,16 +654,16 @@ __host__ int wall_link_slip_direction(wall_t * wall, int n) {
 
     int cq[3] = {0};
     int wn[3] = {0};
-    int p = wall->linkp[n];
+    int pn = wall->linkp[n];
 
     /* Components are reversed in the tangential direction, but
      * the same in the (-ve outward) normal direction. */
 
     wall_link_normal(wall, n, wn);
 
-    cq[X] = -2*wn[X] - cv[p][X];
-    cq[Y] = -2*wn[Y] - cv[p][Y];
-    cq[Z] = -2*wn[Z] - cv[p][Z];
+    cq[X] = -2*wn[X] - cv[pn][X];
+    cq[Y] = -2*wn[Y] - cv[pn][Y];
+    cq[Z] = -2*wn[Z] - cv[pn][Z];
 
     /* Find the appropriate index */
 
@@ -782,32 +757,9 @@ __host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag) {
   }
   else {
 
-    int * tmp = NULL;
-    int nlink;
-
-    nlink = wall->nlink;
-
     switch (flag) {
     case tdpMemcpyHostToDevice:
-      tdpMemcpy(&wall->target->nlink, &wall->nlink, sizeof(int), flag);
-      tdpMemcpy(wall->target->fnet, wall->fnet, 3*sizeof(double), flag);
-
-      /* In turn, linki, linkj, linkp, linku */
-      tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, wall->linki, nlink*sizeof(int), flag);
-
-      tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, wall->linkj, nlink*sizeof(int), flag);
-
-      tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, wall->linkp, nlink*sizeof(int), flag);
-
-      tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
-		tdpMemcpyDeviceToHost);
-      tdpMemcpy(tmp, wall->linku, nlink*sizeof(int), flag);
+      wall_memcpy_h2d(wall);
       break;
     case tdpMemcpyDeviceToHost:
       assert(0); /* Not required */
@@ -815,6 +767,70 @@ __host__ int wall_memcpy(wall_t * wall, tdpMemcpyKind flag) {
     default:
       pe_fatal(wall->pe, "Should definitely not be here\n");
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  wall_memcpy_h2d
+ *
+ *  Host -> Device copy. Slightly tedious.
+ *
+ *****************************************************************************/
+
+__host__ int wall_memcpy_h2d(wall_t * wall) {
+
+  int * tmp = NULL;
+  int nlink = 0;
+
+  assert(wall);
+
+  nlink = wall->nlink;
+
+  tdpAssert(tdpMemcpy(&wall->target->nlink, &wall->nlink, sizeof(int),
+		      tdpMemcpyHostToDevice));
+  tdpAssert(tdpMemcpy(wall->target->fnet, wall->fnet, 3*sizeof(double),
+		      tdpMemcpyHostToDevice));
+
+  /* In turn, linki, linkj, linkp, linku */
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linki, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linki, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linkj, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linkj, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linkp, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linkp, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  tdpAssert(tdpMemcpy(&tmp, &wall->target->linku, sizeof(int *),
+		      tdpMemcpyDeviceToHost));
+  tdpAssert(tdpMemcpy(tmp, wall->linku, nlink*sizeof(int),
+		      tdpMemcpyHostToDevice));
+
+  /* Slip stuff k, q, s ... */
+  if (wall->param->slip.active) {
+    int8_t * tmp8 = NULL;
+    /* linkk, linkq, links ... */
+    tdpAssert(tdpMemcpy(&tmp, &wall->target->linkk, sizeof(int *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp, wall->linkk, nlink*sizeof(int),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&tmp8, &wall->target->linkq, sizeof(int8_t *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp8, wall->linkq, nlink*sizeof(int8_t),
+			tdpMemcpyHostToDevice));
+    tdpAssert(tdpMemcpy(&tmp8, &wall->target->links, sizeof(int8_t *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpMemcpy(tmp8, wall->links, nlink*sizeof(int8_t),
+			tdpMemcpyHostToDevice));
   }
 
   return 0;

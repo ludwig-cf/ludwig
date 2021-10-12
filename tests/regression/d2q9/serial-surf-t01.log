@@ -1,0 +1,121 @@
+Welcome to Ludwig v0.9.2 (Serial version running on 1 process)
+
+Note assertions via standard C assert() are on.
+
+Read 26 user parameters from serial-surf-t01.inp
+
+System details
+--------------
+System size:    256 2 1
+Decomposition:  1 1 1
+Local domain:   256 2 1
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Surfactant free energy
+----------------------
+Surfactant free energy parameters:
+Bulk parameter A      = -2.08333e-02
+Bulk parameter B      =  2.08333e-02
+Surface penalty kappa =  1.20000e-01
+Scale energy kT       =  5.65870e-04
+Surface adsorption e  =  3.00000e-02
+Surface psi^2 beta    =  0.00000e+00
+Enthalpic term W      =  0.00000e+00
+
+Derived quantities
+Interfacial tension   =  4.71404e-02
+Interfacial width     =  3.39412e+00
+Langmuir isotherm     =  9.98442e+00
+
+Using Cahn-Hilliard solver:
+Number of fields      =  2
+Mobility (phi)        =  1.50000e-01
+Mobility (psi)        =  5.00000e-02
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.66667e-01
+Bulk viscosity                1.66667e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d2q9  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    1.00000e+00
+Bulk relaxation time:     1.00000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: off
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order:  1 (default)
+Initialising phi as block of size 128.00 along the X axis
+Initialising psi to a uniform value psi0
+Initial value psi0:  1.0000000e-04
+Gradient calculation: 2d_tomita_fluid
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]         512.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+[phi] -2.1427304e-14 -4.1850204e-17 9.4696695e-01 -1.0000000e+00 1.0000000e+00
+[phi]  5.1200000e-02  1.0000000e-04-2.4815418e-22  1.0000000e-04 1.0000000e-04
+
+Momentum - x y z
+[total   ]  7.1054274e-15  0.0000000e+00  0.0000000e+00
+[fluid   ]  7.1054274e-15  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]         512.00  1.00000000000  1.1102230e-16  1.00000000000  1.00000000000
+[phi]  1.2212453e-14  2.3852448e-17 9.4699070e-01 -1.0000000e+00 1.0000000e+00
+[phi]  5.1200000e-02  1.0000000e-04 2.1618320e-09  6.1275955e-05 4.6222274e-04
+
+Free energy density - timestep total fluid
+[fed]            200 -4.8448257250e-03 -4.8448257250e-03
+
+Momentum - x y z
+[total   ]  7.1054274e-15  0.0000000e+00  0.0000000e+00
+[fluid   ]  7.1054274e-15  0.0000000e+00  0.0000000e+00
+
+Completed cycle 200
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.291      0.291      0.291   0.290878 (1 call)
+      Time step loop:      0.001      0.002      0.288   0.001441 (200 calls)
+       phi gradients:      0.001      0.001      0.114   0.000572 (200 calls)
+           phi halos:      0.000      0.000      0.065   0.000324 (200 calls)
+   Force calculation:      0.000      0.000      0.000   0.000001 (200 calls)
+          phi update:      0.001      0.001      0.173   0.000863 (200 calls)
+               Free1:      0.000      0.000      0.000   0.000002 (200 calls)

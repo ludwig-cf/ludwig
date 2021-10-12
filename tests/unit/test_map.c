@@ -7,8 +7,10 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2012-2021 The University of Edinburgh
+ *
+ *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2012-2016 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -20,7 +22,7 @@
 #include "pe.h"
 #include "coords.h"
 #include "coords_field.h"
-#include "map_s.h"
+#include "map.h"
 
 #include "test_coords_field.h"
 #include "tests.h"
@@ -41,7 +43,6 @@ int test_map_suite(void) {
   pe_t * pe = NULL;
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
-  /*info("Map tests\n\n");*/
 
   do_test1(pe);
   do_test2(pe);

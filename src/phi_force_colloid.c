@@ -46,7 +46,7 @@
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *  Alan Gray (alang@epcc.ed.ac.uk) provided device implementations.
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -59,7 +59,6 @@
 #include "kernel.h"
 #include "wall.h"
 #include "colloids.h"
-#include "map_s.h"
 #include "pth_s.h"
 #include "phi_force_colloid.h"
 #include "timer.h"

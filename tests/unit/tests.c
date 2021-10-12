@@ -56,6 +56,7 @@ __host__ int tests_create() {
   test_bonds_suite();
   test_bp_suite();
   test_build_suite();
+  test_ch_suite();
   test_colloid_suite();
   test_colloid_sums_suite();
   test_colloids_info_suite();
@@ -73,6 +74,7 @@ __host__ int tests_create() {
   test_le_suite();
   test_lubrication_suite();
   test_map_suite();
+  test_map_init_suite();
   test_model_suite();
   test_noise_suite();
   test_pair_lj_cut_suite();
@@ -89,6 +91,10 @@ __host__ int tests_create() {
   test_util_sum_suite();
   test_visc_arrhenius_suite();
   test_wall_suite();
+
+  test_fe_surfactant1_suite();
+  test_fe_symmetric_suite();
+  test_fe_ternary_suite();
 
   /* Failing... pending investigation */
 
@@ -115,7 +121,7 @@ __host__ __device__ void test_assert_info(const int lvalue, int line,
     /* ok */
   }
   else {
-#ifdef __CUDA_ARCH__
+#if defined( __CUDA_ARCH__ ) || defined( __HIP_DEVICE_COMPILE__ )
     /* No rank available */
     printf("Line %d file %s Failed test assertion\n", line, file);
     assert(0);
