@@ -13,7 +13,7 @@
  *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
- *  Oliver Henrich (o.henrich@ucl.ac.uk)
+ *  Oliver Henrich (oliver.henrich@strath.ac.uk)
  *  Juho Lintuvuori
  *
  *****************************************************************************/
@@ -106,6 +106,96 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 
 /*****************************************************************************
  *
+ *  blue_phase_O8M_rot_init
+ *
+ *  Initialisation of a rotated BP I
+ *
+ *****************************************************************************/
+
+int blue_phase_O8M_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, const double euler_angles[3]) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  double r2;
+  double cosx, cosy, cosz, sinx, siny, sinz;
+  double q0;
+  double amplitude0;
+
+  double MZ[3][3], MXp[3][3], MZp[3][3];
+  double r[3], r_rot[3];
+  int ik, il, im, in;
+  PI_DOUBLE(pi);
+
+  assert(cs);
+  assert(fq);
+
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+
+  r2 = sqrt(2.0);
+  q0 = param->q0;
+  amplitude0 = param->amplitude0;
+
+  blue_phase_M_rot(MZ, 2,pi*euler_angles[0]/180.0);
+  blue_phase_M_rot(MXp,0,pi*euler_angles[1]/180.0);
+  blue_phase_M_rot(MZp,2,pi*euler_angles[2]/180.0);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	r[X] = x;
+	r[Y] = y;
+	r[Z] = z;
+
+	for(ik=0; ik<3; ik++){
+	  r_rot[ik] = 0.0;
+	  for(il=0; il<3; il++){
+	    for(im=0; im<3; im++){
+	      for(in=0; in<3; in++){
+		r_rot[ik] += MZp[ik][il] * MXp[il][im] * MZ[im][in] * r[in];
+	      }
+	    }
+	  }
+	}
+
+	cosx = cos(r2*q0*r_rot[X]);
+	cosy = cos(r2*q0*r_rot[Y]);
+	cosz = cos(r2*q0*r_rot[Z]);
+	sinx = sin(r2*q0*r_rot[X]);
+	siny = sin(r2*q0*r_rot[Y]);
+	sinz = sin(r2*q0*r_rot[Z]);
+
+	q[X][X] = amplitude0*(-2.0*cosy*sinz +    sinx*cosz + cosx*siny);
+	q[X][Y] = amplitude0*(  r2*cosy*cosz + r2*sinx*sinz - sinx*cosy);
+	q[X][Z] = amplitude0*(  r2*cosx*cosy + r2*sinz*siny - cosx*sinz);
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude0*(-2.0*sinx*cosz +    siny*cosx + cosy*sinz);
+	q[Y][Z] = amplitude0*(  r2*cosz*cosx + r2*siny*sinx - siny*cosz);
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	index = cs_index(cs, ic, jc, kc);
+	field_tensor_set(fq, index, q);
+
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  blue_phase_O2_init
  *
  *  This initialisation is for BP II.
@@ -152,6 +242,93 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
 	q[Z][Y] = q[Y][Z];
 	q[Z][Z] = - q[X][X] - q[Y][Y];
 
+	field_tensor_set(fq, index, q);
+      }
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  blue_phase_O2_rot_init
+ *
+ *  This initialisation is for a rotated BP II.
+ *
+ *****************************************************************************/
+
+int blue_phase_O2_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, const double euler_angles[3]) {
+
+  int ic, jc, kc;
+  int nlocal[3];
+  int noffset[3];
+  int index;
+
+  double q[3][3];
+  double x, y, z;
+  double cosx, cosy, cosz, sinx, siny, sinz;
+  double q0;
+  double amplitude0;
+
+  double MZ[3][3], MXp[3][3], MZp[3][3];
+  double r[3], r_rot[3];
+  int ik, il, im, in;
+  PI_DOUBLE(pi);
+
+  assert(cs);
+  assert(fq);
+
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+
+  q0 = param->q0;
+  amplitude0 = param->amplitude0;
+
+  blue_phase_M_rot(MZ, 2,pi*euler_angles[0]/180.0);
+  blue_phase_M_rot(MXp,0,pi*euler_angles[1]/180.0);
+  blue_phase_M_rot(MZp,2,pi*euler_angles[2]/180.0);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    x = noffset[X] + ic;
+    for (jc = 1; jc <= nlocal[Y]; jc++) {
+      y = noffset[Y] + jc;
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+	z = noffset[Z] + kc;
+
+	r[X] = x;
+	r[Y] = y;
+	r[Z] = z;
+
+	for(ik=0; ik<3; ik++){
+	  r_rot[ik] = 0.0;
+	  for(il=0; il<3; il++){
+	    for(im=0; im<3; im++){
+	      for(in=0; in<3; in++){
+		r_rot[ik] += MZp[ik][il] * MXp[il][im] * MZ[im][in] * r[in];
+	      }
+	    }
+	  }
+	}
+
+	cosx = cos(2.0*q0*r_rot[X]);
+	cosy = cos(2.0*q0*r_rot[Y]);
+	cosz = cos(2.0*q0*r_rot[Z]);
+	sinx = sin(2.0*q0*r_rot[X]);
+	siny = sin(2.0*q0*r_rot[Y]);
+	sinz = sin(2.0*q0*r_rot[Z]);
+
+	q[X][X] = amplitude0*(cosz - cosy);
+	q[X][Y] = amplitude0*sinz;
+	q[X][Z] = amplitude0*siny;
+	q[Y][X] = q[X][Y];
+	q[Y][Y] = amplitude0*(cosx - cosz);
+	q[Y][Z] = amplitude0*sinx;
+	q[Z][X] = q[X][Z];
+	q[Z][Y] = q[Y][Z];
+	q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	index = cs_index(cs, ic, jc, kc);
 	field_tensor_set(fq, index, q);
       }
     }

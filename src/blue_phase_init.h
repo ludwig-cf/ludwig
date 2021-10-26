@@ -22,7 +22,11 @@
 
 int blue_phase_twist_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, int helical_axis);
 int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
+int blue_phase_O8M_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			const double euler_angles[3]);
 int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
+int blue_phase_O2_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			const double euler_angles[3]);
 int blue_phase_O5_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
 int blue_phase_H2D_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
 int blue_phase_H3DA_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);

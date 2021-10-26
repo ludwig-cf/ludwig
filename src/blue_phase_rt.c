@@ -344,6 +344,8 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
   double nhat[3] = {1.0, 0.0, 0.0};
   double nhat2[3] = {64.0, 3.0, 1.0};
 
+  double euler_angles[3] = {0.0, 0.0, 0.0};
+
   fe_lc_param_t param;
   fe_lc_param_t * feparam = &param;
 
@@ -415,9 +417,27 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
     blue_phase_O8M_init(cs, feparam, q);
   }
 
+  if (strcmp(key1, "o8m_rot") == 0) {
+    pe_info(pe, "Initialising Q_ab using rotated O8M (BPI)\n");
+    if (strcmp(key1, "lc_q_euler_angles") == 0) {
+      rt_double_parameter_vector(rt, "lc_q_euler_angles", euler_angles);
+      pe_info(pe, "Euler angles alpha_z=%g, beta_x'=%g, gamma_z'=%g\n", euler_angles[0], euler_angles[1], euler_angles[2]);
+    }
+    blue_phase_O8M_rot_init(cs, feparam, q, euler_angles);
+  }
+
   if (strcmp(key1, "o2") == 0) {
     pe_info(pe, "Initialising Q_ab using O2 (BPII)\n");
     blue_phase_O2_init(cs, feparam, q);
+  }
+
+  if (strcmp(key1, "o2_rot") == 0) {
+    pe_info(pe, "Initialising Q_ab using rotated O2 (BPII)\n");
+    if (strcmp(key1, "lc_q_euler_angles") == 0) {
+      rt_double_parameter_vector(rt, "lc_q_euler_angles", euler_angles);
+      pe_info(pe, "Euler angles alpha_z=%g, beta_x'=%g, gamma_z'=%g\n", euler_angles[0], euler_angles[1], euler_angles[2]);
+    }
+    blue_phase_O2_rot_init(cs, feparam, q, euler_angles);
   }
 
   if (strcmp(key1, "o5") == 0) {
