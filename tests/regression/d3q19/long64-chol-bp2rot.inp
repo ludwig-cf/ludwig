@@ -1,7 +1,7 @@
 ##############################################################################
 #
 #  BPII test
-#  Following initialisation of serial-init-bp2.inp
+#  Following initialisation of serial-init-bp2.inp with different orientation
 #
 ##############################################################################
 
@@ -48,7 +48,8 @@ lc_kappa1  0.02
 lc_xi      0.7
 lc_Gamma   0.1
 
-lc_q_initialisation o2
+lc_q_initialisation o2_rot
+lc_q_euler_angles 45_45_0
 lc_q_init_amplitude 0.3
 lc_init_redshift 0.91
 lc_anchoring_method none
