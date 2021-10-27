@@ -152,9 +152,9 @@ int blue_phase_O8M_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, cons
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	r[X] = x - ntotal[X]/2;
-	r[Y] = y - ntotal[Y]/2;
-	r[Z] = z - ntotal[Z]/2;
+	r[X] = x - ntotal[X]/2.0;
+	r[Y] = y - ntotal[Y]/2.0;
+	r[Z] = z - ntotal[Z]/2.0;
 
 	for(ik=0; ik<3; ik++){
 	  r_rot[ik] = 0.0;
@@ -167,9 +167,9 @@ int blue_phase_O8M_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, cons
 	  }
 	}
 
-	r_rot[X] += ntotal[X]/2;
-	r_rot[Y] += ntotal[Y]/2;
-	r_rot[Z] += ntotal[Z]/2;
+	r_rot[X] += ntotal[X]/2.0;
+	r_rot[Y] += ntotal[Y]/2.0;
+	r_rot[Z] += ntotal[Z]/2.0;
 
 	cosx = cos(r2*q0*r_rot[X]);
 	cosy = cos(r2*q0*r_rot[Y]);
@@ -300,9 +300,9 @@ int blue_phase_O2_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, const
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 	z = noffset[Z] + kc;
 
-	r[X] = x - ntotal[X]/2;
-	r[Y] = y - ntotal[Y]/2;
-	r[Z] = z - ntotal[Z]/2;
+	r[X] = x - ntotal[X]/2.0;
+	r[Y] = y - ntotal[Y]/2.0;
+	r[Z] = z - ntotal[Z]/2.0;
 
 	for(ik=0; ik<3; ik++){
 	  r_rot[ik] = 0.0;
@@ -315,9 +315,9 @@ int blue_phase_O2_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, const
 	  }
 	}
 
-	r_rot[X] += ntotal[X]/2;
-	r_rot[Y] += ntotal[Y]/2;
-	r_rot[Z] += ntotal[Z]/2;
+	r_rot[X] += ntotal[X]/2.0;
+	r_rot[Y] += ntotal[Y]/2.0;
+	r_rot[Z] += ntotal[Z]/2.0;
 
 	cosx = cos(2.0*q0*r_rot[X]);
 	cosy = cos(2.0*q0*r_rot[Y]);
