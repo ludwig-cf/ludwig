@@ -718,6 +718,66 @@ __host__ __device__ int fe_lc_mol_field(fe_lc_t * fe, int index,
 
 /*****************************************************************************
  *
+ *  fe_lc_bulk_mol_field
+ *
+ *  Return the bulk terms of the molcular field h[3][3] at lattice site index.
+ *
+ *  Note this is only valid in the one-constant approximation at
+ *  the moment (kappa0 = kappa1 = kappa).
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_bulk_mol_field(fe_lc_t * fe, int index,
+					double h[3][3]) {
+
+  double q[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  assert(fe);
+  assert(fe->param->kappa0 == fe->param->kappa1); /* Exactly */
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  fe_lc_compute_bulk_h(fe, fe->param->gamma, q, h);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_grad_mol_field
+ *
+ *  Return the gradient terms of molcular field h[3][3] at lattice site index.
+ *
+ *  Note this is only valid in the one-constant approximation at
+ *  the moment (kappa0 = kappa1 = kappa).
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_grad_mol_field(fe_lc_t * fe, int index,
+					double h[3][3]) {
+
+  double q[3][3];
+  double dq[3][3][3];
+  double dsq[3][3];
+
+  assert(fe);
+  assert(fe->param->kappa0 == fe->param->kappa1); /* Exactly */
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  fe_lc_compute_grad_h(fe, fe->param->gamma, q, dq, dsq, h);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  fe_lc_compute_h
  *
  *  Compute the molcular field h from q, the q gradient tensor dq, and
@@ -813,6 +873,129 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
     for (ib = 0; ib < 3; ib++) {
       h[ia][ib] +=  fe->param->epsilon
 	*(fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2);
+    }
+  }
+
+  return 0;
+}
+/*****************************************************************************
+ *
+ *  fe_lc_compute_bulk_h
+ *
+ *  Compute the bulk terms of the molcular field h from q, 
+ *  the q gradient tensor dq, and the del^2 q tensor.
+ *
+ *  NOTE: gamma is potentially gamma(r) so does not come from the
+ *        fe->param
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_bulk_h(fe_lc_t * fe, double gamma, double q[3][3],
+		    double h[3][3]) {
+
+  int ia, ib, ic, id;
+
+  double q0;              /* Redshifted value */
+  double kappa1;          /* Redshifted value */
+  double q2;
+  double e2;
+  double eq;
+  double sum;
+  const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* From the bulk terms in the free energy... */
+
+  q2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	sum += q[ia][ic]*q[ib][ic];
+      }
+      h[ia][ib] = -fe->param->a0*(1.0 - r3*gamma)*q[ia][ib]
+	+ fe->param->a0*gamma*(sum - r3*q2*d[ia][ib])
+	- fe->param->a0*gamma*q2*q[ia][ib]
+	- 4.0*kappa1*q0*q0*q[ia][ib];
+    }
+  }
+
+  return 0;
+}
+/*****************************************************************************
+ *
+ *  fe_lc_compute_grad_h
+ *
+ *  Compute the gradient terms of the molcular field h from q, 
+ *  the q gradient tensor dq, and the del^2 q tensor.
+ *
+ *  NOTE: gamma is potentially gamma(r) so does not come from the
+ *        fe->param
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_grad_h(fe_lc_t * fe, double gamma, double q[3][3],
+		    double dq[3][3][3], double dsq[3][3], double h[3][3]) {
+
+  int ia, ib, ic, id;
+
+  double q0;              /* Redshifted value */
+  double kappa0, kappa1;  /* Redshifted values */
+  double q2;
+  double e2;
+  double eq;
+  double sum;
+  const double r3 = (1.0/3.0);
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* From the gradient terms ... */
+  /* First, the sum e_abc d_b Q_ca. With two permutations, we
+   * may rewrite this as e_bca d_b Q_ca */
+
+  eq = 0.0;
+  for (ib = 0; ib < 3; ib++) {
+    for (ic = 0; ic < 3; ic++) {
+      for (ia = 0; ia < 3; ia++) {
+	eq += e[ib][ic][ia]*dq[ib][ic][ia];
+      }
+    }
+  }
+
+  /* d_c Q_db written as d_c Q_bd etc */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum +=
+	    (e[ia][ic][id]*dq[ic][ib][id] + e[ib][ic][id]*dq[ic][ia][id]);
+	}
+      }
+      h[ia][ib] = kappa0*dsq[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d[ia][ib];
+
     }
   }
 

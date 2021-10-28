@@ -104,6 +104,12 @@ __host__ __device__
 int fe_lc_mol_field(fe_lc_t * fe, int index, double h[3][3]);
 
 __host__ __device__
+int fe_lc_bulk_mol_field(fe_lc_t * fe, int index, double h[3][3]);
+
+__host__ __device__
+int fe_lc_grad_mol_field(fe_lc_t * fe, int index, double h[3][3]);
+
+__host__ __device__
 int fe_lc_stress(fe_lc_t * fe, int index, double s[3][3]);
 
 __host__ __device__
@@ -118,6 +124,14 @@ int fe_lc_compute_fed(fe_lc_t * fe, double gamma,  double q[3][3],
 
 __host__ __device__
 int fe_lc_compute_h(fe_lc_t * fe, double gaama,	double q[3][3],
+		    double dq[3][3][3],	double dsq[3][3], double h[3][3]);
+
+__host__ __device__
+int fe_lc_compute_bulk_h(fe_lc_t * fe, double gaama,	double q[3][3],
+		    double h[3][3]);
+
+__host__ __device__
+int fe_lc_compute_grad_h(fe_lc_t * fe, double gaama,	double q[3][3],
 		    double dq[3][3][3],	double dsq[3][3], double h[3][3]);
 
 __host__ __device__
