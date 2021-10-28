@@ -110,6 +110,11 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
  *
  *  Initialisation of a rotated BP I
  *
+ *  The sequence of rotations follows the standard Euler angles:
+ *  1) rotation around z-axis obtaining frame x'-y'-z
+ *  2) rotation around x'-axis obtaining frame x'-y''-z'
+ *  3) rotation around z'-axis obtaining final reference
+ *
  *****************************************************************************/
 
 int blue_phase_O8M_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, const double euler_angles[3]) {
@@ -259,6 +264,11 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
  *  blue_phase_O2_rot_init
  *
  *  This initialisation is for a rotated BP II.
+ *
+ *  The sequence of rotations follows the standard Euler angles:
+ *  1) rotation around z-axis obtaining frame x'-y'-z
+ *  2) rotation around x'-axis obtaining frame x'-y''-z'
+ *  3) rotation around z'-axis obtaining final reference
  *
  *****************************************************************************/
 
