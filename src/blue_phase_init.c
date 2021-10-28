@@ -113,7 +113,7 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
  *  The sequence of rotations follows the standard Euler angles:
  *  1) rotation around z-axis obtaining frame x'-y'-z
  *  2) rotation around x'-axis obtaining frame x'-y''-z'
- *  3) rotation around z'-axis obtaining final reference
+ *  3) rotation around z'-axis obtaining final frame
  *
  *****************************************************************************/
 
@@ -146,6 +146,8 @@ int blue_phase_O8M_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, cons
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
+  /* Set up rotation matrices with negative angles. Clockwise rotation */
+  /* of arguments leads to counterclockwise rotation of the Q-tensor.  */
   blue_phase_M_rot(MZ, 2,-1.0*pi*euler_angles[0]/180.0);
   blue_phase_M_rot(MXp,0,-1.0*pi*euler_angles[1]/180.0);
   blue_phase_M_rot(MZp,2,-1.0*pi*euler_angles[2]/180.0);
@@ -268,7 +270,7 @@ int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
  *  The sequence of rotations follows the standard Euler angles:
  *  1) rotation around z-axis obtaining frame x'-y'-z
  *  2) rotation around x'-axis obtaining frame x'-y''-z'
- *  3) rotation around z'-axis obtaining final reference
+ *  3) rotation around z'-axis obtaining final frame
  *
  *****************************************************************************/
 
@@ -299,6 +301,8 @@ int blue_phase_O2_rot_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, const
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
+  /* Set up rotation matrices with negative angles. Clockwise rotation */
+  /* of arguments leads to counterclockwise rotation of the Q-tensor.  */
   blue_phase_M_rot(MZ, 2,-1.0*pi*euler_angles[0]/180.0);
   blue_phase_M_rot(MXp,0,-1.0*pi*euler_angles[1]/180.0);
   blue_phase_M_rot(MZp,2,-1.0*pi*euler_angles[2]/180.0);
