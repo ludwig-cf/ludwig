@@ -894,17 +894,14 @@ __host__ __device__
 int fe_lc_compute_bulk_h(fe_lc_t * fe, double gamma, double q[3][3],
 		    double h[3][3]) {
 
-  int ia, ib, ic, id;
+  int ia, ib, ic;
 
   double q0;              /* Redshifted value */
   double kappa1;          /* Redshifted value */
   double q2;
-  double e2;
-  double eq;
   double sum;
   const double r3 = (1.0/3.0);
   KRONECKER_DELTA_CHAR(d);
-  LEVI_CIVITA_CHAR(e);
 
   assert(fe);
 
@@ -956,8 +953,6 @@ int fe_lc_compute_grad_h(fe_lc_t * fe, double gamma, double q[3][3],
 
   double q0;              /* Redshifted value */
   double kappa0, kappa1;  /* Redshifted values */
-  double q2;
-  double e2;
   double eq;
   double sum;
   const double r3 = (1.0/3.0);
