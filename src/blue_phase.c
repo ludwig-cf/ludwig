@@ -461,7 +461,7 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
 
   double a0, gamma;
   double q0;              /* Redshifted value */
-  double kappa0, kappa1;  /* Redshifted value */
+  double kappa1;  /* Redshifted value */
 
   double q2, q3;
   double dq1;
@@ -481,7 +481,6 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
   a0 = fe->param->a0;
   gamma = fe->param->gamma;
   q0 = fe->param->q0*fe->param->rredshift;
-  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
   kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
 
   /* bulk contribution to molecular field */
@@ -543,8 +542,6 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
       dq1 += sum*sum;
     }
   }
-
-
 
   fed = 0.5*a0*(1.0 - r3*gamma)*q2 - r3*a0*gamma*q3 + 0.25*a0*gamma*q2*q2
     + 0.5*kappa1*dq1;
@@ -650,6 +647,8 @@ __host__ __device__ int fe_lc_grad_stress(fe_lc_t * fe, int index,
 
   /* gradient contribution to molecular field */
 
+  /* First, the sum e_abc d_b Q_ca. With two permutations, we
+     may rewrite this as e_bca d_b Q_ca */
   eq = 0.0;
   for (ib = 0; ib < 3; ib++) {
     for (ic = 0; ic < 3; ic++) {
@@ -1161,6 +1160,137 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
 	*(fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2);
     }
   }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_bulk_fed
+ *
+ *  Compute the bulk free energy density as a function of q.
+ *
+ *  Note: This function contains also the part quadratic in q 
+ *        which is normally part of the gradient free energy. 
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
+
+  int ia, ib, ic;
+  double q0;
+  double kappa1;
+  double q2, q3;
+  const double r3 = 1.0/3.0;
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  q2 = 0.0;
+
+  /* Q_ab^2 */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  /* Q_ab Q_bc Q_ca */
+
+  q3 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	/* We use here the fact that q[ic][ia] = q[ia][ic] */
+	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
+      }
+    }
+  }
+
+  *fed = 0.5*fe->param->a0*(1.0 - r3*fe->param->gamma)*q2
+    - r3*fe->param->a0*fe->param->gamma*q3
+    + 0.25*fe->param->a0*fe->param->gamma*q2*q2;
+
+  /* Add terms quadratic in q from gradient free energy */ 
+
+  *fed += 0.5*kappa1*4.0*q0*q0*q2;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_compute_gradient_fed
+ *
+ *  Compute the gradient contribution to the free energy density 
+ *  as a function of q and the q gradient tensor dq.
+ *
+ *  Note: The part quadratic in q has been added to the bulk free energy.
+ *
+ *****************************************************************************/
+
+__host__ __device__
+int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
+			       double dq[3][3][3], double * fed) {
+
+  int ia, ib, ic, id;
+  double q0;
+  double kappa0, kappa1;
+  double dq0, dq1;
+  double q2;
+  double sum;
+  LEVI_CIVITA_CHAR(e);
+
+  assert(fe);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* (d_b Q_ab)^2 */
+
+  dq0 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    sum = 0.0;
+    for (ib = 0; ib < 3; ib++) {
+      sum += dq[ib][ia][ib];
+    }
+    dq0 += sum*sum;
+  }
+
+  /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
+  /* With symmetric Q_db write Q_bd */
+
+  dq1 = 0.0;
+  q2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      sum = 0.0;
+  
+      q2 += q[ia][ib]*q[ia][ib];
+
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum += e[ia][ic][id]*dq[ic][ib][id];
+	}
+      }
+      sum += 2.0*q0*q[ia][ib];
+      dq1 += sum*sum;
+    }
+  }
+
+  /* Subtract part that is quadratic in q */
+  dq1 -= 4.0*q0*q0*q2;
+
+  *fed = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
 
   return 0;
 }
