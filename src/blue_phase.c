@@ -443,6 +443,352 @@ __host__ __device__ int fe_lc_stress(fe_lc_t * fe, int index,
 
 /*****************************************************************************
  *
+ *  fe_lc_bulk_stress
+ *
+ *  Return the bulk contribution to the stress sth[3][3] at lattice site index.
+ *  First we determine the bulk contributions to the molecular field and FE.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
+				     double sth[3][3]) {
+
+  double q[3][3];
+  double h[3][3];
+  double qh;
+  double fed;
+  double p0;
+
+  double a0, gamma;
+  double q0;              /* Redshifted value */
+  double kappa0, kappa1;  /* Redshifted value */
+
+  double q2, q3;
+  double dq1;
+  double sum;
+  const double r3 = (1.0/3.0);
+
+  int ia, ib, ic;
+
+  KRONECKER_DELTA_CHAR(d);
+
+  assert(fe);
+  assert(fed);
+  assert(fe->q);
+
+  field_tensor(fe->q, index, q);
+
+  a0 = fe->param->a0;
+  gamma = fe->param->gamma;
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* bulk contribution to molecular field */
+
+  q2 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	sum += q[ia][ic]*q[ib][ic];
+      }
+      h[ia][ib] = -fe->param->a0*(1.0 - r3*gamma)*q[ia][ib]
+	+ fe->param->a0*gamma*(sum - r3*q2*d[ia][ib])
+	- fe->param->a0*gamma*q2*q[ia][ib]
+	- 4.0*kappa1*q0*q0*q[ia][ib];
+    }
+  }
+
+  /* bulk contribution to free energy */
+
+  q2 = 0.0;
+
+  /* Q_ab^2 */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      q2 += q[ia][ib]*q[ia][ib];
+    }
+  }
+
+  /* Q_ab Q_bc Q_ca */
+
+  q3 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	/* We use here the fact that q[ic][ia] = q[ia][ic] */
+	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
+      }
+    }
+  }
+
+  /* (2q_0 Q_ab)^2 */
+  /* With symmetric Q_db write Q_bd */
+
+  dq1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 2.0*q0*q[ia][ib];
+      dq1 += sum*sum;
+    }
+  }
+
+
+
+  fed = 0.5*a0*(1.0 - r3*gamma)*q2 - r3*a0*gamma*q3 + 0.25*a0*gamma*q2*q2
+    + 0.5*kappa1*dq1;
+
+  /* bulk contribtion to stress using the above contributions */
+
+  p0 = 0.0 - fed;
+
+  /* The contraction Q_ab H_ab */
+
+  qh = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      qh += q[ia][ib]*h[ia][ib];
+    }
+  }
+
+  /* The term in the isotropic pressure, plus that in qh */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] = -p0*d[ia][ib]
+	+ 2.0*fe->param->xi*(q[ia][ib] + r3*d[ia][ib])*qh;
+    }
+  }
+
+  /* Remaining two terms in xi and molecular field */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] +=
+	  -fe->param->xi*h[ia][ic]*(q[ib][ic] + r3*d[ib][ic])
+	  -fe->param->xi*(q[ia][ic] + r3*d[ia][ic])*h[ib][ic];
+      }
+    }
+  }
+
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+      }
+    }
+  }
+
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_grad_stress
+ *
+ *  Return the gradient contribution to the stress sth[3][3] at lattice site index.
+ *
+ *****************************************************************************/
+
+__host__ __device__ int fe_lc_grad_stress(fe_lc_t * fe, int index,
+				     double sth[3][3]) {
+  double q[3][3];
+  double h[3][3];
+  double qh;
+  double dq[3][3][3];
+  double dsq[3][3];
+  double fed;
+  double p0;
+
+  double q0;              /* Redshifted value */
+  double kappa0, kappa1;  /* Redshifted values */
+
+  double eq;
+  double dq0, dq1, sum;
+  const double r3 = (1.0/3.0);
+
+  int ia, ib, ic, id, ie;
+
+  KRONECKER_DELTA_CHAR(d);
+  LEVI_CIVITA_CHAR(e);
+
+  assert(fe);
+  assert(fe->q);
+  assert(fe->dq);
+
+  field_tensor(fe->q, index, q);
+  field_grad_tensor_grad(fe->dq, index, dq);
+  field_grad_tensor_delsq(fe->dq, index, dsq);
+
+  q0 = fe->param->q0*fe->param->rredshift;
+  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
+  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
+
+  /* gradient contribution to molecular field */
+
+  eq = 0.0;
+  for (ib = 0; ib < 3; ib++) {
+    for (ic = 0; ic < 3; ic++) {
+      for (ia = 0; ia < 3; ia++) {
+	eq += e[ib][ic][ia]*dq[ib][ic][ia];
+      }
+    }
+  }
+
+  /* d_c Q_db written as d_c Q_bd etc */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum +=
+	    (e[ia][ic][id]*dq[ic][ib][id] + e[ib][ic][id]*dq[ic][ia][id]);
+	}
+      }
+      h[ia][ib] = kappa0*dsq[ia][ib]
+	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d[ia][ib];
+
+    }
+  }
+
+  /* gradient contribution to free energy */
+ 
+  /* (d_b Q_ab)^2 */
+
+  dq0 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    sum = 0.0;
+    for (ib = 0; ib < 3; ib++) {
+      sum += dq[ib][ia][ib];
+    }
+    dq0 += sum*sum;
+  }
+
+  /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
+  /* With symmetric Q_db write Q_bd */
+
+  dq1 = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sum = 0.0;
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sum += e[ia][ic][id]*dq[ic][ib][id];
+	}
+      }
+      dq1 += sum*sum;
+    }
+  }
+
+  fed = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
+
+  p0 = 0.0 - fed;
+
+
+  /* gradient contribtion to stress using the above contributions */
+
+  /* The contraction Q_ab H_ab */
+
+  qh = 0.0;
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      qh += q[ia][ib]*h[ia][ib];
+    }
+  }
+
+  /* The term in the isotropic pressure, plus that in qh */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      sth[ia][ib] = -p0*d[ia][ib]
+	+ 2.0*fe->param->xi*(q[ia][ib] + r3*d[ia][ib])*qh;
+    }
+  }
+
+  /* Remaining two terms in xi and molecular field */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] +=
+	  -fe->param->xi*h[ia][ic]*(q[ib][ic] + r3*d[ib][ic])
+	  -fe->param->xi*(q[ia][ic] + r3*d[ia][ic])*h[ib][ic];
+      }
+    }
+  }
+
+  /* Dot product term d_a Q_cd . dF/dQ_cd,b */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+
+      for (ic = 0; ic < 3; ic++) {
+	for (id = 0; id < 3; id++) {
+	  sth[ia][ib] +=
+	    - kappa0*dq[ia][ib][ic]*dq[id][ic][id]
+	    - kappa1*dq[ia][ic][id]*dq[ib][ic][id]
+	    + kappa1*dq[ia][ic][id]*dq[ic][ib][id];
+
+	  for (ie = 0; ie < 3; ie++) {
+	    sth[ia][ib] +=
+	      -2.0*kappa1*q0*dq[ia][ic][id]*e[ib][ic][ie]*q[id][ie];
+	  }
+	}
+      }
+    }
+  }
+
+  /* The antisymmetric piece q_ac h_cb - h_ac q_cb. We can
+   * rewrite it as q_ac h_bc - h_ac q_bc. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      for (ic = 0; ic < 3; ic++) {
+	sth[ia][ib] += q[ia][ic]*h[ib][ic] - h[ia][ic]*q[ib][ic];
+      }
+    }
+  }
+
+  /* This is the minus sign. */
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  fe_lc_str_symm
  *
  *  Symmetric stress. Easier to compute the total, and take off
@@ -718,66 +1064,6 @@ __host__ __device__ int fe_lc_mol_field(fe_lc_t * fe, int index,
 
 /*****************************************************************************
  *
- *  fe_lc_bulk_mol_field
- *
- *  Return the bulk terms of the molcular field h[3][3] at lattice site index.
- *
- *  Note this is only valid in the one-constant approximation at
- *  the moment (kappa0 = kappa1 = kappa).
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_lc_bulk_mol_field(fe_lc_t * fe, int index,
-					double h[3][3]) {
-
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
-
-  assert(fe);
-  assert(fe->param->kappa0 == fe->param->kappa1); /* Exactly */
-
-  field_tensor(fe->q, index, q);
-  field_grad_tensor_grad(fe->dq, index, dq);
-  field_grad_tensor_delsq(fe->dq, index, dsq);
-
-  fe_lc_compute_bulk_h(fe, fe->param->gamma, q, h);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_lc_grad_mol_field
- *
- *  Return the gradient terms of molcular field h[3][3] at lattice site index.
- *
- *  Note this is only valid in the one-constant approximation at
- *  the moment (kappa0 = kappa1 = kappa).
- *
- *****************************************************************************/
-
-__host__ __device__ int fe_lc_grad_mol_field(fe_lc_t * fe, int index,
-					double h[3][3]) {
-
-  double q[3][3];
-  double dq[3][3][3];
-  double dsq[3][3];
-
-  assert(fe);
-  assert(fe->param->kappa0 == fe->param->kappa1); /* Exactly */
-
-  field_tensor(fe->q, index, q);
-  field_grad_tensor_grad(fe->dq, index, dq);
-  field_grad_tensor_delsq(fe->dq, index, dsq);
-
-  fe_lc_compute_grad_h(fe, fe->param->gamma, q, dq, dsq, h);
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  fe_lc_compute_h
  *
  *  Compute the molcular field h from q, the q gradient tensor dq, and
@@ -875,255 +1161,6 @@ int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
 	*(fe->param->e0coswt[ia]*fe->param->e0coswt[ib] - r3*d[ia][ib]*e2);
     }
   }
-
-  return 0;
-}
-/*****************************************************************************
- *
- *  fe_lc_compute_bulk_h
- *
- *  Compute the bulk terms of the molcular field h from q, 
- *  the q gradient tensor dq, and the del^2 q tensor.
- *
- *  NOTE: gamma is potentially gamma(r) so does not come from the
- *        fe->param
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_lc_compute_bulk_h(fe_lc_t * fe, double gamma, double q[3][3],
-		    double h[3][3]) {
-
-  int ia, ib, ic;
-
-  double q0;              /* Redshifted value */
-  double kappa1;          /* Redshifted value */
-  double q2;
-  double sum;
-  const double r3 = (1.0/3.0);
-  KRONECKER_DELTA_CHAR(d);
-
-  assert(fe);
-
-  q0 = fe->param->q0*fe->param->rredshift;
-  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
-
-  /* From the bulk terms in the free energy... */
-
-  q2 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      q2 += q[ia][ib]*q[ia][ib];
-    }
-  }
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sum = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	sum += q[ia][ic]*q[ib][ic];
-      }
-      h[ia][ib] = -fe->param->a0*(1.0 - r3*gamma)*q[ia][ib]
-	+ fe->param->a0*gamma*(sum - r3*q2*d[ia][ib])
-	- fe->param->a0*gamma*q2*q[ia][ib]
-	- 4.0*kappa1*q0*q0*q[ia][ib];
-    }
-  }
-
-  return 0;
-}
-/*****************************************************************************
- *
- *  fe_lc_compute_grad_h
- *
- *  Compute the gradient terms of the molcular field h from q, 
- *  the q gradient tensor dq, and the del^2 q tensor.
- *
- *  NOTE: gamma is potentially gamma(r) so does not come from the
- *        fe->param
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_lc_compute_grad_h(fe_lc_t * fe, double gamma, double q[3][3],
-		    double dq[3][3][3], double dsq[3][3], double h[3][3]) {
-
-  int ia, ib, ic, id;
-
-  double q0;              /* Redshifted value */
-  double kappa0, kappa1;  /* Redshifted values */
-  double eq;
-  double sum;
-  const double r3 = (1.0/3.0);
-  KRONECKER_DELTA_CHAR(d);
-  LEVI_CIVITA_CHAR(e);
-
-  assert(fe);
-
-  q0 = fe->param->q0*fe->param->rredshift;
-  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
-  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
-
-  /* From the gradient terms ... */
-  /* First, the sum e_abc d_b Q_ca. With two permutations, we
-   * may rewrite this as e_bca d_b Q_ca */
-
-  eq = 0.0;
-  for (ib = 0; ib < 3; ib++) {
-    for (ic = 0; ic < 3; ic++) {
-      for (ia = 0; ia < 3; ia++) {
-	eq += e[ib][ic][ia]*dq[ib][ic][ia];
-      }
-    }
-  }
-
-  /* d_c Q_db written as d_c Q_bd etc */
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sum = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  sum +=
-	    (e[ia][ic][id]*dq[ic][ib][id] + e[ib][ic][id]*dq[ic][ia][id]);
-	}
-      }
-      h[ia][ib] = kappa0*dsq[ia][ib]
-	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d[ia][ib];
-
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_lc_compute_bulk_fed
- *
- *  Compute the bulk free energy density as a function of q.
- *
- *  Note: This function contains also the part quadratic in q 
- *        which is normally part of the gradient free energy. 
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed) {
-
-  int ia, ib, ic;
-  double q0;
-  double kappa1;
-  double q2, q3;
-  const double r3 = 1.0/3.0;
-
-  assert(fe);
-
-  q0 = fe->param->q0*fe->param->rredshift;
-  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
-
-  q2 = 0.0;
-
-  /* Q_ab^2 */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      q2 += q[ia][ib]*q[ia][ib];
-    }
-  }
-
-  /* Q_ab Q_bc Q_ca */
-
-  q3 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
-	/* We use here the fact that q[ic][ia] = q[ia][ic] */
-	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
-      }
-    }
-  }
-
-  *fed = 0.5*fe->param->a0*(1.0 - r3*fe->param->gamma)*q2
-    - r3*fe->param->a0*fe->param->gamma*q3
-    + 0.25*fe->param->a0*fe->param->gamma*q2*q2;
-
-  /* Add terms quadratic in q from gradient free energy */ 
-
-  *fed += 0.5*kappa1*4.0*q0*q0*q2;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  fe_lc_compute_gradient_fed
- *
- *  Compute the gradient contribution to the free energy density 
- *  as a function of q and the q gradient tensor dq.
- *
- *  Note: The part quadratic in q has been added to the bulk free energy.
- *
- *****************************************************************************/
-
-__host__ __device__
-int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
-			       double dq[3][3][3], double * fed) {
-
-  int ia, ib, ic, id;
-  double q0;
-  double kappa0, kappa1;
-  double dq0, dq1;
-  double q2;
-  double sum;
-  LEVI_CIVITA_CHAR(e);
-
-  assert(fe);
-
-  q0 = fe->param->q0*fe->param->rredshift;
-  kappa0 = fe->param->kappa0*fe->param->redshift*fe->param->redshift;
-  kappa1 = fe->param->kappa1*fe->param->redshift*fe->param->redshift;
-
-  /* (d_b Q_ab)^2 */
-
-  dq0 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    sum = 0.0;
-    for (ib = 0; ib < 3; ib++) {
-      sum += dq[ib][ia][ib];
-    }
-    dq0 += sum*sum;
-  }
-
-  /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
-  /* With symmetric Q_db write Q_bd */
-
-  dq1 = 0.0;
-  q2 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-
-      sum = 0.0;
-  
-      q2 += q[ia][ib]*q[ia][ib];
-
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  sum += e[ia][ic][id]*dq[ic][ib][id];
-	}
-      }
-      sum += 2.0*q0*q[ia][ib];
-      dq1 += sum*sum;
-    }
-  }
-
-  /* Subtract part that is quadratic in q */
-  dq1 -= 4.0*q0*q0*q2;
-
-  *fed = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
 
   return 0;
 }
