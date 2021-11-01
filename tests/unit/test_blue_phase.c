@@ -243,7 +243,10 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
    * Note there are a limited number of unique order parameter values,
    * so an exhaustive test is probably not worth while. */
 
-  blue_phase_O8M_init(cs, &param, fq);
+  {
+    double angles[3] = {}; /* No rotation. */
+    blue_phase_O8M_init(cs, &param, fq, angles);
+  }
 
   ic = 1;
   jc = 1;
