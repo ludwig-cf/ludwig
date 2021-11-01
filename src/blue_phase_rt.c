@@ -344,8 +344,6 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
   double nhat[3] = {1.0, 0.0, 0.0};
   double nhat2[3] = {64.0, 3.0, 1.0};
 
-  double euler_angles[3] = {0.0, 0.0, 0.0};
-
   fe_lc_param_t param;
   fe_lc_param_t * feparam = &param;
 
@@ -413,27 +411,39 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
   }
 
   if (strcmp(key1, "o8m") == 0) {
-    pe_info(pe, "Initialising Q_ab using O8M (BPI)\n");
-    blue_phase_O8M_init(cs, feparam, q);
-  }
 
-  if (strcmp(key1, "o8m_rot") == 0) {
-    pe_info(pe, "Initialising Q_ab using rotated O8M (BPI)\n");
-    rt_double_parameter_vector(rt, "lc_q_euler_angles", euler_angles);
-    pe_info(pe, "Euler angles alpha_z=%g, beta_x'=%g, gamma_z'=%g\n", euler_angles[0], euler_angles[1], euler_angles[2]);
-    blue_phase_O8M_rot_init(cs, feparam, q, euler_angles);
+    int   is_rot = 0;                   /* Default no rotation. */
+    double angles[3] = {0.0, 0.0, 0.0}; /* Default Euler rotation (degrees) */
+
+    pe_info(pe, "Initialising Q_ab using O8M (BPI)\n");
+    is_rot = rt_double_parameter_vector(rt, "lc_q_init_euler_angles", angles);
+
+    if (is_rot) {
+      pe_info(pe, "... initial conidition to be rotated ...\n");
+      pe_info(pe, "Euler angle (deg): alpha_z = %14.7e\n", angles[0]);
+      pe_info(pe, "Euler angle (deg): beta_x' = %14.7e\n", angles[1]);
+      pe_info(pe, "Euler angle (deg): gamma_z'= %14.7e\n", angles[2]);
+    }
+
+    blue_phase_O8M_init(cs, feparam, q, angles);
   }
 
   if (strcmp(key1, "o2") == 0) {
-    pe_info(pe, "Initialising Q_ab using O2 (BPII)\n");
-    blue_phase_O2_init(cs, feparam, q);
-  }
 
-  if (strcmp(key1, "o2_rot") == 0) {
-    pe_info(pe, "Initialising Q_ab using rotated O2 (BPII)\n");
-    rt_double_parameter_vector(rt, "lc_q_euler_angles", euler_angles);
-    pe_info(pe, "Euler angles alpha_z=%g, beta_x'=%g, gamma_z'=%g\n", euler_angles[0], euler_angles[1], euler_angles[2]);
-    blue_phase_O2_rot_init(cs, feparam, q, euler_angles);
+    int   is_rot = 0;                   /* Default no rotation. */
+    double angles[3] = {0.0, 0.0, 0.0}; /* Default Euler rotation (degrees) */
+
+    pe_info(pe, "Initialising Q_ab using O2 (BPII)\n");
+    is_rot = rt_double_parameter_vector(rt, "lc_q_init_euler_angles", angles);
+
+    if (is_rot) {
+      pe_info(pe, "... initial conidition to be rotated ...\n");
+      pe_info(pe, "Euler angle (deg): alpha_z = %14.7e\n", angles[0]);
+      pe_info(pe, "Euler angle (deg): beta_x' = %14.7e\n", angles[1]);
+      pe_info(pe, "Euler angle (deg): gamma_z'= %14.7e\n", angles[2]);
+    }
+
+    blue_phase_O2_init(cs, feparam, q, angles);
   }
 
   if (strcmp(key1, "o5") == 0) {
