@@ -134,7 +134,6 @@ __host__ __device__ int lb_f_multi_index_set(lb_t * lb, int index, int n,
 
 __host__ int lb_nblock(lb_t * lb, int dim, int * nblock);
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
-__host__ int lb_order(lb_t * lb);
 __host__ int lb_ndist_set(lb_t * lb, int ndist);
 __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);

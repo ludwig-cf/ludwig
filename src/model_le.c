@@ -287,7 +287,7 @@ static int le_reproject_all(lb_t * lb, lees_edw_t * le) {
 	  for (m = 0; m < NVEL; m++) {
 	    mode[m] = 0.0;
 	    for (p = 0; p < NVEL; p++) {
-	      mode[m] += lb->f[ndist*NVEL*index + 0 + p]*ma_[m][p];
+	      mode[m] += lb->f[ndist*NVEL*index + 0 + p]*lb->param->ma[m][p];
 	    }
 	  }
 
@@ -311,7 +311,7 @@ static int le_reproject_all(lb_t * lb, lees_edw_t * le) {
 	    p = poffset + np;
 	    lb->f[ndist*NVEL*index + 0 + p] = 0.0;
 	    for (m = 0; m < NVEL; m++) {
-	      lb->f[ndist*NVEL*index + 0 + p] += mode[m]*mi_[p][m];
+	      lb->f[ndist*NVEL*index + 0 + p] += mode[m]*lb->param->mi[p][m];
 	    }
 	  }
 

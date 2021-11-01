@@ -1571,6 +1571,7 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
   double tau_b;
   double tau_g;
   LB_RCS2_DOUBLE(rcs2);
+  LB_NORMALISERS_DOUBLE(na);
 
   physics_t * phys = NULL;
 
@@ -1602,7 +1603,7 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
     for (p = NHYDRO; p < NVEL; p++) {
       tau_g = 1.0/lb->param->rtau[p];
       lb->param->var_noise[p] =
-	sqrt(kt/norm_[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
+	sqrt(kt/na[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
     }
   }
 

@@ -74,8 +74,10 @@ __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** plb) {
   lb->pe = pe;
   lb->cs = cs;
   lb->ndist = ndist;
-  lb->model = DATA_MODEL;
   lb->nrelax = LB_RELAXATION_M10;
+
+  /* Compile time via NVEL at the moment. */
+  lb_model_create(NVEL, &lb->model);
 
   *plb = lb;
 
@@ -149,6 +151,8 @@ __host__ int lb_free(lb_t * lb) {
   MPI_Type_free(&lb->site_z[0]);
   MPI_Type_free(&lb->site_z[1]);
 
+  lb_model_free(&lb->model);
+
   free(lb->param);
   free(lb);
 
@@ -186,7 +190,6 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
     case tdpMemcpyHostToDevice:
       tdpMemcpy(&lb->target->ndist, &lb->ndist, sizeof(int), flag); 
       tdpMemcpy(&lb->target->nsite, &lb->nsite, sizeof(int), flag); 
-      tdpMemcpy(&lb->target->model, &lb->model, sizeof(int), flag);
       tdpMemcpy(tmpf, lb->f, nsz, flag);
       break;
     case tdpMemcpyDeviceToHost:
@@ -353,8 +356,8 @@ static int lb_model_param_init(lb_t * lb) {
 
   for (ia = 0; ia < NVEL; ia++) {
     for (ib = 0; ib < NVEL; ib++) {
-      lb->param->ma[ia][ib] = ma_[ia][ib];
-      lb->param->mi[ia][ib] = mi_[ia][ib];
+      lb->param->ma[ia][ib] = lb->model.ma[ia][ib];
+      lb->param->mi[ia][ib] = lb->model.wv[ia]*lb->model.na[ib]*lb->model.ma[ib][ia];
     }
   }
 
@@ -1602,21 +1605,6 @@ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
   }
 
   return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_order
- *
- *  Model data ordering
- *
- *****************************************************************************/
-
-__host__ int lb_order(lb_t * lb) {
-
-  assert(lb);
-
-  return lb->model;
 }
 
 /*****************************************************************************

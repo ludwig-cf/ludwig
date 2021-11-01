@@ -46,10 +46,11 @@ struct lb_data_s {
 
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
-  int model;             /* MODEL or MODEL_R */
 
   pe_t * pe;             /* parallel environment */
   cs_t * cs;             /* coordinate system */
+
+  lb_model_t model;      /* Current model information */
   halo_swap_t * halo;    /* halo swap driver */
   io_info_t * io_info;   /* Distributions */ 
   io_info_t * io_rho;    /* Fluid density (here; could be hydrodynamics...) */
