@@ -1,6 +1,9 @@
 
 ### Changes
 
+version 0.15.0
+- Add ability to rotate BPI and BPII liquid crystal initial conditions
+  Thanks to Oliver H. for this. See Section 3 of web documentation.
 
 version 0.14.0
 
