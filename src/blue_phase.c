@@ -661,7 +661,7 @@ __host__ __device__ int fe_lc_compute_stress_active(fe_lc_t * fe,
 						    double s[3][3]) {
   int ia, ib;
   KRONECKER_DELTA_CHAR(d);
-
+#ifdef OLD_SITUATION
   /* Previously comment said: -zeta*(q_ab - 1/3 d_ab)
    * while code was           -zeta*(q[ia][ib] + r3*d[ia][ib])
    * for zeta = zeta1 */
@@ -674,6 +674,16 @@ __host__ __device__ int fe_lc_compute_stress_active(fe_lc_t * fe,
                 -  fe->param->zeta2*(dp[ia][ib] + dp[ib][ia]);
     }
   }
+#else
+  /* The documented approach */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      s[ia][ib] = fe->param->zeta0*d[ia][ib]
+	        - fe->param->zeta1*q[ia][ib]
+	        - fe->param->zeta2*(dp[ia][ib] + dp[ib][ia]);
+    }
+  }
+#endif
 
   /* This is an extra minus sign for the divergance. */
 
