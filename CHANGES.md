@@ -1,6 +1,10 @@
 
 ### Changes
 
+version 0.15.0
+
+- Active stress implementation is updated to conform to the documented
+  case; active emulsion stress is available.
 
 version 0.14.0
 
