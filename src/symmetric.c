@@ -460,7 +460,7 @@ __host__ int fe_symm_theta_to_h(double theta, double * h) {
   z  = csqrt(4.0*cpow(a1, 2)/a3 + a3 + 1.0/a3 - 2.0);
 
   /* May not quite make DBL_EPSILON depending on argument ... */
-  if (fabs(cimag(z) > 2.0*DBL_EPSILON)) ierr = -1;
+  if (fabs(cimag(z)) > 2.0*DBL_EPSILON) ierr = -1;
 
   *h = creal(z);
 
@@ -488,13 +488,13 @@ __host__ int fe_symm_h_to_costheta(double h, double * costheta) {
 
   int ierr = 0;
 
-  if (abs(h) > 1.0) {
+  if (fabs(h) > 1.0) {
     ierr = -1;
     *costheta = -999.999;
   }
   else {
     *costheta = 0.5*(-pow(1.0 - h, 1.5) + pow(1.0 + h, 1.5));
-    if (abs(h) > sqrt(2.0*sqrt(3.0) - 3.0)) ierr = -1;
+    if (fabs(h) > sqrt(2.0*sqrt(3.0) - 3.0)) ierr = -1;
   }
 
   return ierr;
