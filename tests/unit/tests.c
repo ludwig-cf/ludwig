@@ -64,6 +64,7 @@ __host__ int tests_create() {
   test_ewald_suite();
   test_fe_electro_suite();
   test_fe_electro_symm_suite();
+  test_fe_lc_droplet_suite();
   test_field_suite();
   test_field_grad_suite();
   test_halo_suite();
