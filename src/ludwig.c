@@ -69,7 +69,9 @@
 #include "fe_ternary_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
-
+//CHANGE
+#include "symmetric_oft.h"
+//CHANGE
 /* Dynamics */
 #include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
