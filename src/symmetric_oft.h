@@ -39,11 +39,13 @@ struct fe_symm_oft_s {
 /* Parameters */
 
 struct fe_symm_oft_param_s {
-  double a; 
+  double a;			    /* A(T) = a0 + a*T */ 
+  double a0; 
   double b;
-  double kappa;
+  double kappa;			    /* K(T) = kappa0 + kappa*T */ 
+  double kappa0;
   double lambda;                    /* heat diffusivity */
-  double entropy;
+  double entropy;		    /* Probably needs to be a function */
 };
 
 __host__ int fe_symm_oft_create(pe_t * pe, cs_t * cs, field_t * f,

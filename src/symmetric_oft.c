@@ -254,8 +254,8 @@ int fe_symm_oft_fed(fe_symm_oft_t * fe, int index, double * fed) {
   double temperature;
   double phi;
   double dphi[3];
-  double aoft;
-  double kappaoft;
+  double A;
+  double Kappa;
 
   assert(fe);
 
@@ -263,11 +263,11 @@ int fe_symm_oft_fed(fe_symm_oft_t * fe, int index, double * fed) {
   field_scalar(fe->phi, index, &phi);
   field_grad_scalar_grad(fe->dphi, index, dphi);
 
-  aoft = fe->param->a*temperature; /* linear dependance on T */
-  kappaoft = fe->param->kappa*temperature; /* idem for K(T) */
+  A = fe->param->a0 + fe->param->a*temperature; /* A(T) = a0 + a*T */
+  Kappa = fe->param->kappa0 + fe->param->kappa*temperature; /* K(T) = kappa0 + kappa*T */
 
-  *fed = (0.5*aoft + 0.25*fe->param->b*phi*phi)*phi*phi
-    + 0.5*kappaoft*dot_product(dphi, dphi);
+  *fed = (0.5*A + 0.25*fe->param->b*phi*phi)*phi*phi
+    + 0.5*Kappa*dot_product(dphi, dphi);
 
   return 0;
 }
@@ -284,17 +284,17 @@ int fe_symm_oft_mu(fe_symm_oft_t * fe, int index, double * mu) {
   double phi;
   double delsq;
   double temperature;
-  double aoft;
-  double kappaoft;
+  double A;
+  double Kappa;
   
   phi = fe->phi->data[addr_rank0(fe->phi->nsites, index)];
   delsq = fe->dphi->delsq[addr_rank0(fe->phi->nsites, index)];
   temperature = fe->temperature->data[addr_rank0(fe->temperature->nsites, index)];
 
-  aoft = fe->param->a * temperature; /* A(T) is linear wrt T */
-  kappaoft = fe->param->kappa * temperature; /* idem for K(T) */
+  A = fe->param->a0 + fe->param->a*temperature; 
+  Kappa = fe->param->kappa0 + fe->param->kappa*temperature; 
 
-  *mu = aoft*phi + fe->param->b*phi*phi*phi - kappaoft*delsq;
+  *mu = A*phi + fe->param->b*phi*phi*phi - Kappa*delsq;
 
   return 0;
 }
