@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -92,6 +92,8 @@ typedef enum lb_halo_enum_type {LB_HALO_FULL,
 typedef enum {LB_RELAXATION_M10, LB_RELAXATION_BGK, LB_RELAXATION_TRT}
   lb_relaxation_enum_t;
 
+#include "lb_model_s.h"
+
 __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** lb);
 __host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** lb);
 __host__ int lb_init(lb_t * lb);
@@ -116,19 +118,6 @@ __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);
 __host__ __device__ int lb_f_set(lb_t * lb, int index, int p, int n, double f);
 __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 				      double * rho);
-__host__ __device__ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]);
-__host__ __device__ int lb_f_index_set(lb_t * lb, int index, int n,
-				       double f[NVEL]);
-__host__ __device__ int lb_f_multi_index_part(lb_t * lb, int index, int n,
-					      double f[NVEL][NSIMDVL], int nv);
-__host__ __device__ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
-						  double f[NVEL][NSIMDVL],
-						  int nv);
-__host__ __device__ int lb_f_multi_index(lb_t * lb, int index, int n,
-					 double f[NVEL][NSIMDVL]);
-__host__ __device__ int lb_f_multi_index_set(lb_t * lb, int index, int n,
-					     double f[NVEL][NSIMDVL]);
-
 /* These  could be __host__ __device__ pending removal of
  * static constants */
 
