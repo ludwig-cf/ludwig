@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -32,6 +32,7 @@ typedef struct hydro_s hydro_t;
 struct hydro_s {
   int nsite;               /* Allocated sites (local) */
   int nhcomm;              /* Width of halo region for u field */
+  double * rho;            /* Density field */
   double * u;              /* Velocity field (on host) */
   double * f;              /* Body force field (on host) */
   double * eta;            /* Local shear stress */
@@ -68,6 +69,8 @@ __host__ __device__ int hydro_f_local_set(hydro_t * obj, int index,
 __host__ __device__ int hydro_f_local(hydro_t * obj, int index, double force[3]);
 __host__ __device__ int hydro_f_local_add(hydro_t * obj, int index,
 					  const double force[3]);
+__host__ __device__ int hydro_rho_set(hydro_t * hydro, int index, double rho);
+__host__ __device__ int hydro_rho(hydro_t * hydro, int index, double * rho);
 __host__ __device__ int hydro_u_set(hydro_t * obj, int index, const double u[3]);
 __host__ __device__ int hydro_u(hydro_t * obj, int index, double u[3]);
 
