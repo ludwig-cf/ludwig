@@ -88,11 +88,6 @@ enum collective_operations {MPI_MAX,
 			    MPI_LOR,
 			    MPI_LXOR};
 
-/* special datatypes for constructing derived datatypes */
-
-#define MPI_UB 0 
-#define MPI_LB 0
-
 /* reserved communicators */
 
 enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
@@ -159,10 +154,6 @@ int MPI_Type_contiguous(int count, MPI_Datatype oldtype,
 			MPI_Datatype * newtype);
 int MPI_Type_vector(int count, int blocklength, int stride,
 		    MPI_Datatype oldtype, MPI_Datatype * newtype);
-int MPI_Type_struct(int count, int * array_of_blocklengths,
-		    MPI_Aint * array_of_displacements,
-		    MPI_Datatype * array_of_types, MPI_Datatype * newtype);
-int MPI_Address(void * location, MPI_Aint * address);
 int MPI_Type_commit(MPI_Datatype * datatype);
 int MPI_Type_free(MPI_Datatype * datatype);
 int MPI_Waitall(int count, MPI_Request * array_of_requests,
@@ -213,10 +204,6 @@ int MPI_Abort(MPI_Comm comm, int errorcode);
 
 /* MPI 2.0 */
 /* In particular, replacements for routines removed from MPI 3 */
-/* MPI_Address() -> MPI_Get_Address()
- * MPI_Type_struct() -> MPI_Type_create_struct()
- * MPI_Type_lb() and MPI_Type_ub() -> MPI_Type_get_extent()
- * See MPI 3 standard */
 
 int MPI_Comm_set_errhandler(MPI_Comm comm, MPI_Errhandler erhandler);
 int MPI_Get_address(const void * location, MPI_Aint * address);

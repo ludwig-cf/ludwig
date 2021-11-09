@@ -739,62 +739,6 @@ int MPI_Type_vector(int count, int blocklength, int stride,
 
 /*****************************************************************************
  *
- *  MPI_Type_struct
- *
- *  Superceded by MPI_Type_create_struct.
- *
- *****************************************************************************/
-
-int MPI_Type_struct(int count, int * array_of_blocklengths,
-		    MPI_Aint * array_of_displacements,
-		    MPI_Datatype * array_of_types, MPI_Datatype * newtype) {
-
-  assert(count > 0);
-  assert(array_of_blocklengths);
-  assert(array_of_displacements);
-  assert(array_of_types);
-  assert(newtype);
-
-  printf("MPI_Type_struct: please use MPI_Type_create_struct instead\n");
-
-  return -1;
-}
-
-/*****************************************************************************
- *
- *  MPI_Address
- *
- *  Please use MPI_Get_Address().
- *
- *****************************************************************************/
-
-int MPI_Address(void * location, MPI_Aint * address) {
-
-  assert(location);
-  assert(address);
-
-  *address = 0;
-
-  return MPI_SUCCESS;
-}
-
-/*****************************************************************************
- *
- *  MPI_Errhandler_set
- *
- *****************************************************************************/
-
-int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler) {
-
-  assert(mpi_info);
-  assert(comm != MPI_COMM_NULL);
-  assert(errhandler == MPI_ERRORS_ARE_FATAL);
-
-  return MPI_SUCCESS;
-}
-
-/*****************************************************************************
- *
  *  MPI_Cart_create
  *
  *****************************************************************************/
