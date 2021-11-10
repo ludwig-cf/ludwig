@@ -497,10 +497,8 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
       for (ic = 0; ic < 3; ic++) {
 	sum += q[ia][ic]*q[ib][ic];
       }
-      h[ia][ib] = -fe->param->a0*(1.0 - r3*gamma)*q[ia][ib]
-	+ fe->param->a0*gamma*(sum - r3*q2*d[ia][ib])
-	- fe->param->a0*gamma*q2*q[ia][ib]
-	- 4.0*kappa1*q0*q0*q[ia][ib];
+      h[ia][ib] = -a0*(1.0 - r3*gamma)*q[ia][ib] + a0*gamma*(sum - r3*q2*d[ia][ib])
+	- a0*gamma*q2*q[ia][ib] - 4.0*kappa1*q0*q0*q[ia][ib];
     }
   }
 
