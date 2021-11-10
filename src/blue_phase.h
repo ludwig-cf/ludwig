@@ -119,11 +119,18 @@ __host__ __device__
 int fe_lc_str_anti(fe_lc_t * fe, int index, double s[3][3]);
 
 __host__ __device__
-int fe_lc_compute_fed(fe_lc_t * fe, double gamma,  double q[3][3],
+int fe_lc_compute_fed(fe_lc_t * fe, double gamma, double q[3][3],
 		      double dq[3][3][3], double * fed);
 
 __host__ __device__
-int fe_lc_compute_h(fe_lc_t * fe, double gaama,	double q[3][3],
+int fe_lc_compute_bulk_fed(fe_lc_t * fe, double q[3][3], double * fed);
+
+__host__ __device__
+int fe_lc_compute_gradient_fed(fe_lc_t * fe, double q[3][3],
+		      double dq[3][3][3], double * fed);
+
+__host__ __device__
+int fe_lc_compute_h(fe_lc_t * fe, double gamma, double q[3][3],
 		    double dq[3][3][3],	double dsq[3][3], double h[3][3]);
 
 __host__ __device__

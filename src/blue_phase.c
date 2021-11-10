@@ -473,7 +473,6 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
   KRONECKER_DELTA_CHAR(d);
 
   assert(fe);
-  assert(fed);
   assert(fe->q);
 
   field_tensor(fe->q, index, q);
@@ -506,45 +505,9 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
     }
   }
 
+
   /* bulk contribution to free energy */
-
-  q2 = 0.0;
-
-  /* Q_ab^2 */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      q2 += q[ia][ib]*q[ia][ib];
-    }
-  }
-
-  /* Q_ab Q_bc Q_ca */
-
-  q3 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      for (ic = 0; ic < 3; ic++) {
-	/* We use here the fact that q[ic][ia] = q[ia][ic] */
-	q3 += q[ia][ib]*q[ib][ic]*q[ia][ic];
-      }
-    }
-  }
-
-  /* (2q_0 Q_ab)^2 */
-  /* With symmetric Q_db write Q_bd */
-
-  dq1 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sum = 2.0*q0*q[ia][ib];
-      dq1 += sum*sum;
-    }
-  }
-
-  fed = 0.5*a0*(1.0 - r3*gamma)*q2 - r3*a0*gamma*q3 + 0.25*a0*gamma*q2*q2
-    + 0.5*kappa1*dq1;
+  fe_lc_compute_bulk_fed(fe, q, &fed); 
 
   /* bulk contribtion to stress using the above contributions */
 
@@ -671,46 +634,16 @@ __host__ __device__ int fe_lc_grad_stress(fe_lc_t * fe, int index,
       h[ia][ib] = kappa0*dsq[ia][ib]
 	- 2.0*kappa1*q0*sum + 4.0*r3*kappa1*q0*eq*d[ia][ib];
 
+
     }
   }
 
   /* gradient contribution to free energy */
- 
-  /* (d_b Q_ab)^2 */
-
-  dq0 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    sum = 0.0;
-    for (ib = 0; ib < 3; ib++) {
-      sum += dq[ib][ia][ib];
-    }
-    dq0 += sum*sum;
-  }
-
-  /* (e_acd d_c Q_db + 2q_0 Q_ab)^2 */
-  /* With symmetric Q_db write Q_bd */
-
-  dq1 = 0.0;
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-      sum = 0.0;
-      for (ic = 0; ic < 3; ic++) {
-	for (id = 0; id < 3; id++) {
-	  sum += e[ia][ic][id]*dq[ic][ib][id];
-	}
-      }
-      dq1 += sum*sum;
-    }
-  }
-
-  fed = 0.5*kappa0*dq0 + 0.5*kappa1*dq1;
-
-  p0 = 0.0 - fed;
-
+  fe_lc_compute_gradient_fed(fe, q, dq, &fed); 
 
   /* gradient contribtion to stress using the above contributions */
+
+  p0 = 0.0 - fed;
 
   /* The contraction Q_ab H_ab */
 
