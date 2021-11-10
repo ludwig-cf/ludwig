@@ -463,8 +463,7 @@ __host__ __device__ int fe_lc_bulk_stress(fe_lc_t * fe, int index,
   double q0;              /* Redshifted value */
   double kappa1;  /* Redshifted value */
 
-  double q2, q3;
-  double dq1;
+  double q2;
   double sum;
   const double r3 = (1.0/3.0);
 
@@ -588,7 +587,7 @@ __host__ __device__ int fe_lc_grad_stress(fe_lc_t * fe, int index,
   double kappa0, kappa1;  /* Redshifted values */
 
   double eq;
-  double dq0, dq1, sum;
+  double sum;
   const double r3 = (1.0/3.0);
 
   int ia, ib, ic, id, ie;
