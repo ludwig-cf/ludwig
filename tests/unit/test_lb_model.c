@@ -5,13 +5,13 @@
  *  Tests that all model should pass.
  *
  *
- *   Edinburgh Soft Matter and Statistical Physics Group and
- *   Edinburgh Parallel Computing Centre
+ *  Edinburgh Soft Matter and Statistical Physics Group and
+ *  Edinburgh Parallel Computing Centre
  *
- *   (c) 2021 The University of Edinburgh
+ *  (c) 2021 The University of Edinburgh
  *
- *   Contributing authors:
- *   Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Contributing authors:
+ *    Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -125,6 +125,9 @@ int test_lb_model_cv(const lb_model_t * model) {
 
 int test_lb_model_wv(const lb_model_t * model) {
 
+  int ierr = 0;
+  KRONECKER_DELTA_CHAR(d_);
+
   assert(model);
 
   /* Sum of quadrature weights, velocities */
@@ -151,17 +154,61 @@ int test_lb_model_wv(const lb_model_t * model) {
   {
     for (int ia = 0; ia < model->ndim; ia++) {
       for (int ib = 0; ib < model->ndim; ib++) {
-	double dij = (ia == ib);
 	double sum = 0.0;
 	for (int p = 0; p < model->nvel; p++) {
 	  sum += model->wv[p]*model->cv[p][ia]*model->cv[p][ib];
 	}
-	assert(fabs(sum - dij*model->cs2) < DBL_EPSILON);
+	assert(fabs(sum - d_[ia][ib]*model->cs2) < DBL_EPSILON);
       }
     }
   }
 
-  return 0;
+  /* Third moment \sum_i w_i cia c_ib c_ig = 0 */
+
+  {
+    for (int ia = 0; ia < model->ndim; ia++) {
+      for (int ib = 0; ib < model->ndim; ib++) {
+	for (int ig = 0; ig < model->ndim; ig++) {
+	  double sum = 0.0;
+	  for (int p = 0; p < model->nvel; p++) {
+	    int8_t (*cv)[3] = model->cv;
+	    sum += model->wv[p]*cv[p][ia]*cv[p][ib]*cv[p][ig];
+	  }
+	  assert(fabs(sum - 0.0) < DBL_EPSILON);
+	}
+      }
+    }
+  }
+
+  /* Fourth order moment:
+   * \sum_i w_i c_ia c_ib c_ig c_ih = c_s^4 (d_ab d_gh + d_ag d_bh + d_ah d_bg)
+   * with d_ab Kronecker delta. */
+
+  {
+
+    for (int ia = 0; ia < model->ndim; ia++) {
+      for (int ib = 0; ib < model->ndim; ib++) {
+	for (int ig = 0; ig < model->ndim; ig++) {
+	  for (int ih = 0; ih < model->ndim; ih++) {
+	    double delta = d_[ia][ib]*d_[ig][ih] + d_[ia][ig]*d_[ib][ih]
+                         + d_[ia][ih]*d_[ib][ig];
+	    double expect = model->cs2*model->cs2*delta;
+
+	    double sum = 0.0;
+	    for (int p = 0; p < model->nvel; p++) {
+	      int8_t (*cv)[3] = model->cv;
+	      sum += model->wv[p]*cv[p][ia]*cv[p][ib]*cv[p][ig]*cv[p][ih];
+	    }
+
+	    assert(fabs(sum - expect) < DBL_EPSILON);
+	    ierr += (fabs(sum -expect) > DBL_EPSILON);
+	  }
+	}
+      }
+    }
+  }
+
+  return ierr;
 }
 
 /*****************************************************************************
@@ -171,6 +218,8 @@ int test_lb_model_wv(const lb_model_t * model) {
  *****************************************************************************/
 
 int test_lb_model_ma(const lb_model_t * model) {
+
+  int ierr = 0;
 
   assert(model);
 
@@ -186,6 +235,7 @@ int test_lb_model_ma(const lb_model_t * model) {
       }
       /* Just too tight to make DBL_EPSILON ... */
       assert(fabs(sum - dij) < 2*DBL_EPSILON);
+      ierr += (fabs(sum - dij) > 2*DBL_EPSILON);
     }
   }
 
@@ -210,11 +260,12 @@ int test_lb_model_ma(const lb_model_t * model) {
 	/* This element of the inverse should be ... */
 	double mipq = model->wv[p]*model->na[q]*model->ma[q][p];
 	assert(fabs(mipq - mi[p][q]) < DBL_EPSILON);
+	ierr += (fabs(mipq - mi[p][q]) > DBL_EPSILON);
       }
     }
 
     util_matrix_free(nvel, &mi);
   }
 
-  return 0;
+  return ierr;
 }
