@@ -31,6 +31,7 @@ struct lb_openbc_options_s {
   lb_inflow_enum_t  inflow;    /* Inflow boundary condition type */
   lb_outflow_enum_t outflow;   /* Outflow boundary condition type */
   int flow[3];                 /* Flow coordinate direction (exactly 1) */ 
+  double u0[3];                /* A velocity */
 };
 
 __host__ lb_inflow_enum_t lb_openbc_options_inflow_default(void);

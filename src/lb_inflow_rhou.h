@@ -33,8 +33,9 @@ __host__ int lb_inflow_rhou_create(pe_t * pe, cs_t * cs,
 				    lb_inflow_rhou_t ** inflow);
 
 __host__ int lb_inflow_rhou_free(lb_inflow_rhou_t * inflow);
-__host__ int lb_inflow_rhou_update(lb_inflow_rhou_t * inflow,
-				    hydro_t * hydro, lb_t * lb);
+__host__ int lb_inflow_rhou_update(lb_inflow_rhou_t * inflow, hydro_t * hydro);
+__host__ int lb_inflow_rhou_impose(lb_inflow_rhou_t * inflow, hydro_t * hydro,
+				   lb_t * lb);
 __host__ int lb_inflow_rhou_stats(lb_inflow_rhou_t * inflow);
 
 __host__ int lb_inflow_rhou_info(lb_inflow_rhou_t * inflow);

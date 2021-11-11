@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2021
+ *  (c) 2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -29,17 +29,20 @@ typedef struct lb_open_bc_s lb_open_bc_t;
 
 /* Abstract function table */
 /* lb_open_bc_free_ft         is destructor */
-/* lb_open_bc_update_ft       update driver with optional extra info */
+/* lb_open_bc_update_ft       update driver to set (rho, u) */
+/* lb_open_bc_impose_ft       apply conditions (set relevant f_i) */
 /* lb_open_bc_stats_ft        general purpose stats with optional extra info */
 
 typedef int (* lb_open_bc_free_ft)   (lb_open_bc_t * bc);
-typedef int (* lb_open_bc_update_ft) (lb_open_bc_t * bc, hydro_t * hydro,
+typedef int (* lb_open_bc_update_ft) (lb_open_bc_t * bc, hydro_t * hydro);
+typedef int (* lb_open_bc_impose_ft) (lb_open_bc_t * bc, hydro_t * hydro,
 				      lb_t * lb);
 typedef int (* lb_open_bc_stats_ft)  (lb_open_bc_t * bc); 
 
 struct lb_open_bc_vtable_s {
   lb_open_bc_free_ft   free;      /* Desctructor */
   lb_open_bc_update_ft update;    /* Update */
+  lb_open_bc_impose_ft impose;    /* Apply update to distributions */
   lb_open_bc_stats_ft  stats;     /* General information */
 };
 

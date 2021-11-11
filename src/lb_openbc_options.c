@@ -24,6 +24,7 @@
 #define LB_INFLOW_DEFAULT()         LB_INFLOW_NONE
 #define LB_OUTFLOW_DEFAULT()        LB_OUTFLOW_NONE
 #define LB_FLOW_DEFAULT()           {0,0,0}
+#define LB_FLOW_U0_DEFAULT()        {0.0,0.0,0.0}
 
 /*****************************************************************************
  *
@@ -58,7 +59,8 @@ __host__ lb_openbc_options_t lb_openbc_options_default(void) {
   lb_openbc_options_t options = {.bctype  = 0,
                                  .inflow  = LB_INFLOW_DEFAULT(),
                                  .outflow = LB_OUTFLOW_DEFAULT(),
-                                 .flow    = LB_FLOW_DEFAULT()};
+                                 .flow    = LB_FLOW_DEFAULT(),
+                                 .u0      = LB_FLOW_U0_DEFAULT()};
 
   return options;
 }
