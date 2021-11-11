@@ -348,6 +348,15 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
 
+  {
+    double fed_bulk = 0.0;
+    double fed_grad = 0.0;
+
+    fe_lc_compute_bulk_fed(fe, q, &fed_bulk);
+    fe_lc_compute_gradient_fed(fe, q, dq, &fed_grad);
+    assert(fabs(value - (fed_bulk + fed_grad)) < DBL_EPSILON);
+  }
+
   ic = 1;
   jc = 1;
   kc = 2;
@@ -358,6 +367,15 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 1.056203e-02) < TEST_FLOAT_TOLERANCE);
+  
+  {
+    double fed_bulk = 0.0;
+    double fed_grad = 0.0;
+
+    fe_lc_compute_bulk_fed(fe, q, &fed_bulk);
+    fe_lc_compute_gradient_fed(fe, q, dq, &fed_grad);
+    assert(fabs(value - (fed_bulk + fed_grad)) < DBL_EPSILON);
+  }
 
   ic = 1;
   jc = 1;
@@ -370,6 +388,15 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 6.060508e-03) < TEST_FLOAT_TOLERANCE);
 
+  {
+    double fed_bulk = 0.0;
+    double fed_grad = 0.0;
+
+    fe_lc_compute_bulk_fed(fe, q, &fed_bulk);
+    fe_lc_compute_gradient_fed(fe, q, dq, &fed_grad);
+    assert(fabs(value - (fed_bulk + fed_grad)) < DBL_EPSILON);
+  }
+
   ic = 1;
   jc = 12;
   kc = 4;
@@ -381,6 +408,15 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
 
+  {
+    double fed_bulk = 0.0;
+    double fed_grad = 0.0;
+
+    fe_lc_compute_bulk_fed(fe, q, &fed_bulk);
+    fe_lc_compute_gradient_fed(fe, q, dq, &fed_grad);
+    assert(fabs(value - (fed_bulk + fed_grad)) < DBL_EPSILON);
+  }
+
   ic = 2;
   jc = 7;
   kc = 6;
@@ -391,6 +427,15 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
 
   fe_lc_compute_fed(fe, gamma, q, dq, &value);
   test_assert(fabs(value - 6.609012e-04) < TEST_FLOAT_TOLERANCE);
+
+  {
+    double fed_bulk = 0.0;
+    double fed_grad = 0.0;
+
+    fe_lc_compute_bulk_fed(fe, q, &fed_bulk);
+    fe_lc_compute_gradient_fed(fe, q, dq, &fed_grad);
+    assert(fabs(value - (fed_bulk + fed_grad)) < DBL_EPSILON);
+  }
 
 
 
@@ -534,7 +579,6 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][Y] - -9.837494e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -7.887056e-03) < TEST_FLOAT_TOLERANCE);
 
-
   ic = 1;
   jc = 1;
   kc = 2;
@@ -631,6 +675,113 @@ int test_o8m_struct(pe_t * pe, cs_t * cs, lees_edw_t * le, fe_lc_t * fe,
   test_assert(fabs(dsq[Z][Y] -  1.308445e-03) < TEST_FLOAT_TOLERANCE);
   test_assert(fabs(dsq[Z][Z] - -5.056451e-03) < TEST_FLOAT_TOLERANCE);
 
+  /* Now do that again without doctoring the values of the gradients
+   * to test the decomposition into bulk and gradient parts */
+
+  {
+    double sfull[3][3] = {};
+    double sbulk[3][3] = {};
+    double sgrad[3][3] = {};
+    ic = 1;
+    jc = 1;
+    kc = 1;
+    index = lees_edw_index(le, ic, jc, kc);
+    
+    fe_lc_stress(fe, index, sfull);
+    fe_lc_bulk_stress(fe, index, sbulk);
+    fe_lc_grad_stress(fe, index, sgrad);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	assert(fabs(sfull[ia][ib] - (sbulk[ia][ib] + sgrad[ia][ib]))
+	       < DBL_EPSILON);
+      }
+    }
+  }
+
+  {
+    double sfull[3][3] = {};
+    double sbulk[3][3] = {};
+    double sgrad[3][3] = {};
+    ic = 1;
+    jc = 1;
+    kc = 2;
+    index = lees_edw_index(le, ic, jc, kc);
+    
+    fe_lc_stress(fe, index, sfull);
+    fe_lc_bulk_stress(fe, index, sbulk);
+    fe_lc_grad_stress(fe, index, sgrad);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	assert(fabs(sfull[ia][ib] - (sbulk[ia][ib] + sgrad[ia][ib]))
+	       < DBL_EPSILON);
+      }
+    }
+  }
+
+  {
+    double sfull[3][3] = {};
+    double sbulk[3][3] = {};
+    double sgrad[3][3] = {};
+    ic = 1;
+    jc = 1;
+    kc = 3;
+    index = lees_edw_index(le, ic, jc, kc);
+    
+    fe_lc_stress(fe, index, sfull);
+    fe_lc_bulk_stress(fe, index, sbulk);
+    fe_lc_grad_stress(fe, index, sgrad);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	assert(fabs(sfull[ia][ib] - (sbulk[ia][ib] + sgrad[ia][ib]))
+	       < DBL_EPSILON);
+      }
+    }
+  }
+
+  {
+    double sfull[3][3] = {};
+    double sbulk[3][3] = {};
+    double sgrad[3][3] = {};
+    ic = 1;
+    jc = 12;
+    kc = 4;
+    index = lees_edw_index(le, ic, jc, kc);
+    
+    fe_lc_stress(fe, index, sfull);
+    fe_lc_bulk_stress(fe, index, sbulk);
+    fe_lc_grad_stress(fe, index, sgrad);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	assert(fabs(sfull[ia][ib] - (sbulk[ia][ib] + sgrad[ia][ib]))
+	       < DBL_EPSILON);
+      }
+    }
+  }
+
+  {
+    double sfull[3][3] = {};
+    double sbulk[3][3] = {};
+    double sgrad[3][3] = {};
+    ic = 2;
+    jc = 6;
+    kc = 7;
+    index = lees_edw_index(le, ic, jc, kc);
+    
+    fe_lc_stress(fe, index, sfull);
+    fe_lc_bulk_stress(fe, index, sbulk);
+    fe_lc_grad_stress(fe, index, sgrad);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	assert(fabs(sfull[ia][ib] - (sbulk[ia][ib] + sgrad[ia][ib]))
+	       < DBL_EPSILON);
+      }
+    }
+  }
 
   /* Electric field test */
 

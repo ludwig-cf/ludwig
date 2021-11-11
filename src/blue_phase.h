@@ -175,6 +175,12 @@ void fe_lc_compute_stress_v(fe_lc_t * fe,
 			    double h[3][3][NSIMDVL],
 			    double s[3][3][NSIMDVL]);
 
+__host__ __device__
+int fe_lc_bulk_stress(fe_lc_t * fe, int index, double sbulk[3][3]);
+
+__host__ __device__
+int fe_lc_grad_stress(fe_lc_t * fe, int index, double sgrad[3][3]);
+
 
 /* Function of the parameters only */
 
