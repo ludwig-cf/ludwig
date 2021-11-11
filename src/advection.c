@@ -471,7 +471,10 @@ int advection_x(advflux_t * obj, hydro_t * hydro, field_t * field) {
       advflux_memcpy(obj, tdpMemcpyHostToDevice);
       break;
     case 5:
+      /* Ditto */
+      advflux_memcpy(obj, tdpMemcpyDeviceToHost);
       advection_le_5th(obj, hydro, nf, field->data);
+      advflux_memcpy(obj, tdpMemcpyHostToDevice);
       break; 
     default:
       pe_fatal(obj->pe, "Unexpected advection scheme order\n");
