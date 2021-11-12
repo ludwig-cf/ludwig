@@ -23,7 +23,7 @@
 #include "util.h"
 #include "lb_model.h"
 
-
+int test_lb_model_nhydro(void);
 int test_lb_model_create(int nvel);
 int test_lb_model_cv(const lb_model_t * model);
 int test_lb_model_wv(const lb_model_t * model);
@@ -41,6 +41,7 @@ int test_lb_model_suite(void) {
 
   pe_create(MPI_COMM_WORLD, PE_QUIET, &pe);
 
+  test_lb_model_nhydro();
   test_lb_model_create(9);
   test_lb_model_create(15);
   test_lb_model_create(19);
@@ -48,6 +49,20 @@ int test_lb_model_suite(void) {
   pe_info(pe, "PASS     ./unit/test_lb_model\n");
 
   pe_free(pe);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_model_nhydro
+ *
+ *****************************************************************************/
+
+int test_lb_model_nhydro(void) {
+
+  assert(lb_model_nhydro(2) == 6);
+  assert(lb_model_nhydro(3) == 10);
 
   return 0;
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *  test_lb_inflow_rhou.c
+ *  test_lb_bc_inflow_rhou.c
  *
  *  (c) 2021 The University of Edinburgh
  *
@@ -16,21 +16,21 @@
 #include <float.h>
 #include <math.h>
 
-#include "lb_inflow_rhou.h"
+#include "lb_bc_inflow_rhou.h"
 
 /* Tests */
 
-__host__ int test_lb_inflow_rhou_create(pe_t * pe, cs_t * cs);
-__host__ int test_lb_inflow_rhou_update(pe_t * pe, cs_t * cs);
-__host__ int test_lb_inflow_rhou_impose(pe_t * pe, cs_t * cs);
+__host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs);
+__host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs);
+__host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs);
 
 /*****************************************************************************
  *
- *  test_lb_inflow_rhou_suite
+ *  test_lb_bc_inflow_rhou_suite
  *
  *****************************************************************************/
 
-__host__ int test_lb_inflow_rhou_suite(void) {
+__host__ int test_lb_bc_inflow_rhou_suite(void) {
 
   pe_t * pe = NULL;
   cs_t * cs = NULL;
@@ -39,11 +39,11 @@ __host__ int test_lb_inflow_rhou_suite(void) {
   cs_create(pe, &cs);
   cs_init(cs);
 
-  test_lb_inflow_rhou_create(pe, cs);
-  test_lb_inflow_rhou_update(pe, cs);
-  test_lb_inflow_rhou_impose(pe, cs);
+  test_lb_bc_inflow_rhou_create(pe, cs);
+  test_lb_bc_inflow_rhou_update(pe, cs);
+  test_lb_bc_inflow_rhou_impose(pe, cs);
 
-  pe_info(pe, "PASS     ./unit/test_lb_inflow_rhou\n");
+  pe_info(pe, "PASS     ./unit/test_lb_bc_inflow_rhou\n");
 
   cs_free(cs);
   pe_free(pe);
@@ -53,26 +53,26 @@ __host__ int test_lb_inflow_rhou_suite(void) {
 
 /*****************************************************************************
  *
- *  test_lb_inflow_rhou_create
+ *  test_lb_bc_inflow_rhou_create
  *
  *****************************************************************************/
 
-__host__ int test_lb_inflow_rhou_create(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
 
   lb_openbc_options_t options = lb_openbc_options_default();
-  lb_inflow_rhou_t * inflow = NULL;
+  lb_bc_inflow_rhou_t * inflow = NULL;
 
   assert(pe);
   assert(cs);
 
-  lb_inflow_rhou_create(pe, cs, &options, &inflow);
+  lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
 
   assert(inflow);
   assert(inflow->pe == pe);
   assert(inflow->cs = cs);
 
   assert(inflow->super.func);
-  assert(inflow->super.id == LB_OPEN_BC_INFLOW_RHOU);
+  assert(inflow->super.id == LB_BC_INFLOW_RHOU);
 
   /* Check options */
 
@@ -85,14 +85,14 @@ __host__ int test_lb_inflow_rhou_create(pe_t * pe, cs_t * cs) {
   assert(inflow->linki);
   assert(inflow->linkj);
 
-  lb_inflow_rhou_free(inflow);
+  lb_bc_inflow_rhou_free(inflow);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  test_lb_inflow_rhou_update
+ *  test_lb_bc_inflow_rhou_update
  *
  *****************************************************************************/
 
@@ -104,11 +104,11 @@ typedef struct limits_s {
 
 /*****************************************************************************
  *
- *  test_lb_inflow_rhou_update
+ *  test_lb_bc_inflow_rhou_update
  *
  *****************************************************************************/
 
-__host__ int test_lb_inflow_rhou_update(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
 
   int nlocal[3] = {};
   int noffset[3] = {};
@@ -116,7 +116,7 @@ __host__ int test_lb_inflow_rhou_update(pe_t * pe, cs_t * cs) {
 
   lb_openbc_options_t options = {.flow = {1, 0, 0},
                                  .u0   = {-1.0,-2.0,-3.0}};
-  lb_inflow_rhou_t * inflow = NULL;
+  lb_bc_inflow_rhou_t * inflow = NULL;
   hydro_t * hydro = NULL;
 
   assert(pe);
@@ -125,7 +125,7 @@ __host__ int test_lb_inflow_rhou_update(pe_t * pe, cs_t * cs) {
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
-  lb_inflow_rhou_create(pe, cs, &options, &inflow);
+  lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
   hydro_create(pe, cs, NULL, 1, &hydro);
 
   /* Set the relevant domain values (rho only here) */
@@ -147,7 +147,7 @@ __host__ int test_lb_inflow_rhou_update(pe_t * pe, cs_t * cs) {
   /* Run the update. */
   /* Check rho, u = 0 in the boundary region are set */
 
-  lb_inflow_rhou_update(inflow, hydro);
+  lb_bc_inflow_rhou_update(inflow, hydro);
 
   if (noffset[X] == 0) {
 
@@ -173,18 +173,18 @@ __host__ int test_lb_inflow_rhou_update(pe_t * pe, cs_t * cs) {
   }
 
   hydro_free(hydro);
-  lb_inflow_rhou_free(inflow);
+  lb_bc_inflow_rhou_free(inflow);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  test_lb_inflow_rhou_impose
+ *  test_lb_bc_inflow_rhou_impose
  *
  *****************************************************************************/
 
-__host__ int test_lb_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
 
   int ierr = 0;
 
@@ -197,7 +197,7 @@ __host__ int test_lb_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
   lb_openbc_options_t options = {.nvel = NVEL,
                                  .flow = {1, 0, 0},
                                  .u0   = {0.01, 0.0, 0.0}};
-  lb_inflow_rhou_t * inflow = NULL;
+  lb_bc_inflow_rhou_t * inflow = NULL;
   hydro_t * hydro = NULL;
   lb_t * lb = NULL;
 
@@ -210,7 +210,7 @@ __host__ int test_lb_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
   cs_ntotal(cs, ntotal);
   cs_nlocal_offset(cs, noffset);
 
-  lb_inflow_rhou_create(pe, cs, &options, &inflow);
+  lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
   hydro_create(pe, cs, NULL, 1, &hydro);
   lb_create(pe, cs, &lb);
   lb_init(lb);
@@ -231,8 +231,8 @@ __host__ int test_lb_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
     }
   }
 
-  lb_inflow_rhou_update(inflow, hydro);
-  lb_inflow_rhou_impose(inflow, hydro, lb);
+  lb_bc_inflow_rhou_update(inflow, hydro);
+  lb_bc_inflow_rhou_impose(inflow, hydro, lb);
 
   /* Check relevant f_i are set correctly. */
   /* So, for each site in the boundary region, check ingoing distributions. */
@@ -270,7 +270,7 @@ __host__ int test_lb_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
 
   lb_free(lb);
   hydro_free(hydro);
-  lb_inflow_rhou_free(inflow);
+  lb_bc_inflow_rhou_free(inflow);
 
   return ierr;
 }

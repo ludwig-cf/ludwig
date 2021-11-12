@@ -34,6 +34,8 @@ struct lb_model_s {
   double cs2;           /* (speed of sound)^2 */
 };
 
+int lb_model_is_available(int nvel);
+int lb_model_nhydro(int ndim);
 int lb_model_create(int nvel, lb_model_t * model);
 int lb_model_free(lb_model_t * model);
 

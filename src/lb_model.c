@@ -27,6 +27,38 @@
 
 /*****************************************************************************
  *
+ *  lb_model_is_available
+ *
+ *****************************************************************************/
+
+int lb_model_is_available(int nvel) {
+
+  int available = 0;
+
+  available += (nvel == NVEL_D2Q9);
+  available += (nvel == NVEL_D3Q15);
+  available += (nvel == NVEL_D3Q19);
+
+  return available;
+}
+
+/*****************************************************************************
+ *
+ *  lb_model_nhydro
+ *
+ *****************************************************************************/
+
+int lb_model_nhydro(int ndim) {
+
+  /* The number of hydrodynamic modes is (rho, u_a, S_ab): */
+
+  int nhydro = 1 + ndim + ndim*(ndim + 1)/2;
+
+  return nhydro;
+}
+
+/*****************************************************************************
+ *
  *  lb_model_create
  *
  *  Really just a factory method as f(nvel)

@@ -1,8 +1,19 @@
 /*****************************************************************************
  *
- *  lb_inflow_rhou.c
+ *  lb_bc_inflow_rhou.c
  *
- *  Concrete instance of lb_open_bc.h for inflow.
+ *  Implementation of an inflowboundary condition which assumes
+ *  a channel geometry with walls in two dimensions.
+ *
+ *  The inflow in the flow direction is then at the left or lower
+ *  end of the system and sets, e.g.,:
+ *
+ *    rho_inflow(x=0,y,z) = rho(x=1,y,z)     the adjacent point
+ *    u_inflow(x=0,y,z)   = u0               a prescribed value
+ *
+ *  Incoming distributions are then set f_i = f^eq_i(rho, u) in
+ *  the inflow boundary region.
+ *
  *
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
@@ -15,57 +26,57 @@
 #include <stdlib.h>
 
 #include "lb_model.h"
-#include "lb_inflow_rhou.h"
+#include "lb_bc_inflow_rhou.h"
 
-typedef enum {LB_LINK_COUNT, LB_LINK_ASSIGN} lb_link_init_enum_t;
+typedef enum {LINK_COUNT, LINK_ASSIGN} link_init_enum_t;
 
-__host__ int lb_inflow_rhou_init_internal(lb_inflow_rhou_t * inflow);
-__host__ int lb_inflow_init_link(lb_inflow_rhou_t * inflow,
-				 lb_link_init_enum_t flag, int id);
+__host__ int lb_bc_inflow_rhou_init_internal(lb_bc_inflow_rhou_t * inflow);
+__host__ int lb_bc_inflow_init_link(lb_bc_inflow_rhou_t * inflow,
+				    link_init_enum_t flag, int id);
 
-static int int_max(int a, int b) {return (a > b) ?a :b;}
+static int int_max(int a, int b) {return (a > b) ? a : b;}
 
-static const lb_open_bc_vtable_t vt_ = {
-  (lb_open_bc_free_ft)   lb_inflow_rhou_free,
-  (lb_open_bc_update_ft) lb_inflow_rhou_update,
-  (lb_open_bc_impose_ft) lb_inflow_rhou_impose,
-  (lb_open_bc_stats_ft)  lb_inflow_rhou_stats
+static const lb_bc_open_vtable_t vt_ = {
+  (lb_bc_open_free_ft)   lb_bc_inflow_rhou_free,
+  (lb_bc_open_update_ft) lb_bc_inflow_rhou_update,
+  (lb_bc_open_impose_ft) lb_bc_inflow_rhou_impose,
+  (lb_bc_open_stats_ft)  lb_bc_inflow_rhou_stats
 };
 
 /*****************************************************************************
  *
- *  lb_inflow_rhou_create
+ *  lb_bc_inflow_rhou_create
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_rhou_create(pe_t * pe, cs_t * cs,
-				   const lb_openbc_options_t * options,
-				   lb_inflow_rhou_t ** inflow) {
-  lb_inflow_rhou_t * bc = NULL;
+__host__ int lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs,
+				      const lb_openbc_options_t * options,
+				      lb_bc_inflow_rhou_t ** inflow) {
+  lb_bc_inflow_rhou_t * bc = NULL;
 
   assert(pe);
   assert(cs);
   assert(options);
   assert(inflow);
 
-  bc = (lb_inflow_rhou_t *) calloc(1, sizeof(lb_inflow_rhou_t));
+  bc = (lb_bc_inflow_rhou_t *) calloc(1, sizeof(lb_bc_inflow_rhou_t));
   assert(bc);
-  if (bc == NULL) pe_fatal(pe, "Failed to allocate lb_inflow_rhou_t");
+  if (bc == NULL) pe_fatal(pe, "Failed to allocate lb_bc_inflow_rhou_t");
 
   /* Pointers; superclass block */
   bc->pe = pe;
   bc->cs = cs;
 
   bc->super.func = &vt_;
-  bc->super.id   = LB_OPEN_BC_INFLOW_RHOU;
+  bc->super.id   = LB_BC_INFLOW_RHOU;
 
   if (!lb_openbc_options_valid(options)) {
     /* Internal error if we reach this point. */
-    pe_fatal(pe, "lb_inflow_rhou_create: lb_openbc_options_t invalid\n");
+    pe_fatal(pe, "lb_bc_inflow_rhou_create: lb_openbc_options_t invalid\n");
   }
   bc->options = *options;
 
-  lb_inflow_rhou_init_internal(bc);
+  lb_bc_inflow_rhou_init_internal(bc);
 
   *inflow = bc;
 
@@ -74,17 +85,17 @@ __host__ int lb_inflow_rhou_create(pe_t * pe, cs_t * cs,
 
 /*****************************************************************************
  *
- *  lb_inflow_rhou_init_internal
+ *  lb_bc_inflow_rhou_init_internal
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_rhou_init_internal(lb_inflow_rhou_t * inflow) {
+__host__ int lb_bc_inflow_rhou_init_internal(lb_bc_inflow_rhou_t * inflow) {
 
   assert(inflow);
 
-  if (inflow->options.flow[X]) lb_inflow_init_link(inflow, LB_LINK_COUNT, X);
-  if (inflow->options.flow[Y]) lb_inflow_init_link(inflow, LB_LINK_COUNT, Y);
-  if (inflow->options.flow[Z]) lb_inflow_init_link(inflow, LB_LINK_COUNT, Z);
+  if (inflow->options.flow[X]) lb_bc_inflow_init_link(inflow, LINK_COUNT, X);
+  if (inflow->options.flow[Y]) lb_bc_inflow_init_link(inflow, LINK_COUNT, Y);
+  if (inflow->options.flow[Z]) lb_bc_inflow_init_link(inflow, LINK_COUNT, Z);
 
   {
     pe_t * pe = inflow->pe;
@@ -103,16 +114,16 @@ __host__ int lb_inflow_rhou_init_internal(lb_inflow_rhou_t * inflow) {
     if (inflow->linkj == NULL) pe_fatal(pe, "calloc(inflow->linkj) NULL\n");
   }
 
-  if (inflow->options.flow[X]) lb_inflow_init_link(inflow, LB_LINK_ASSIGN, X);
-  if (inflow->options.flow[Y]) lb_inflow_init_link(inflow, LB_LINK_ASSIGN, Y);
-  if (inflow->options.flow[Z]) lb_inflow_init_link(inflow, LB_LINK_ASSIGN, Z);
+  if (inflow->options.flow[X]) lb_bc_inflow_init_link(inflow, LINK_ASSIGN, X);
+  if (inflow->options.flow[Y]) lb_bc_inflow_init_link(inflow, LINK_ASSIGN, Y);
+  if (inflow->options.flow[Z]) lb_bc_inflow_init_link(inflow, LINK_ASSIGN, Z);
 
   return 0;
 }
 
 /*****************************************************************************
  *
- *  lb_inflow_init_link
+ *  lb_bc_inflow_init_link
  *
  *  Identify links representing incoming distributions at the inflow
  *  which are fluid to fluid in the coordinate direction "id".
@@ -125,8 +136,8 @@ __host__ int lb_inflow_rhou_init_internal(lb_inflow_rhou_t * inflow) {
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_init_link(lb_inflow_rhou_t * inflow,
-				 lb_link_init_enum_t init, int id) {
+__host__ int lb_bc_inflow_init_link(lb_bc_inflow_rhou_t * inflow,
+				    link_init_enum_t init, int id) {
 
   cs_t * cs = NULL;
   int noffset[3] = {};
@@ -173,7 +184,7 @@ __host__ int lb_inflow_init_link(lb_inflow_rhou_t * inflow,
 	    if (noffset[id2] + ijk[id2] < 1          ) continue;
 	    if (noffset[id2] + ijk[id2] > ntotal[id2]) continue;
 
-	    if (init == LB_LINK_ASSIGN) {
+	    if (init == LINK_ASSIGN) {
 	      inflow->linkp[nlink] = p;
 	      inflow->linki[nlink] = cs_index(cs, ic, jc, kc);
 	      inflow->linkj[nlink] = cs_index(cs, ic1, jc1, kc1);
@@ -194,11 +205,11 @@ __host__ int lb_inflow_init_link(lb_inflow_rhou_t * inflow,
 
 /*****************************************************************************
  *
- *  lb_inflow_rhou_free
+ *  lb_bc_inflow_rhou_free
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_rhou_free(lb_inflow_rhou_t * inflow) {
+__host__ int lb_bc_inflow_rhou_free(lb_bc_inflow_rhou_t * inflow) {
 
   assert(inflow);
 
@@ -212,7 +223,7 @@ __host__ int lb_inflow_rhou_free(lb_inflow_rhou_t * inflow) {
 
 /*****************************************************************************
  *
- *  lb_inflow_rhou_update
+ *  lb_bc_inflow_rhou_update
  *
  *  Set any relevant hydrodynamic conditions at the inflow:
  *    (1) rho is taken from directly adjacent site in domain;
@@ -220,13 +231,15 @@ __host__ int lb_inflow_rhou_free(lb_inflow_rhou_t * inflow) {
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_rhou_update(lb_inflow_rhou_t * inflow, hydro_t * hydro) {
+__host__ int lb_bc_inflow_rhou_update(lb_bc_inflow_rhou_t * inflow,
+				      hydro_t * hydro) {
 
   cs_t * cs = NULL;
   int id = -1;
   int noffset[3] = {};
 
   assert(inflow);
+  assert(hydro);
 
   cs = inflow->cs;
   cs_nlocal_offset(cs, noffset);
@@ -267,24 +280,17 @@ __host__ int lb_inflow_rhou_update(lb_inflow_rhou_t * inflow, hydro_t * hydro) {
 
 /*****************************************************************************
  *
- *  lb_inflow_rhou_impose
+ *  lb_bc_inflow_rhou_impose
  *
- *  Drive the update of (i.e., apply) the boundary conditions.
- *
- *  1. We must update the rho u in the halo region post collision
- *     - Allows any relevant f_i(rho, u) to be computed.
- *     - Allows correct u to enter any flux calculation at edge of grid.
- *  2. Update post collision distributions in halo region appropriately
- *     to enter propagation stage.
- *
- *  After lattice halo swap; before propagation.
+ *  Intent: After lattice halo swap; before propagation.
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_rhou_impose(lb_inflow_rhou_t * inflow, hydro_t * hydro,
-				   lb_t * lb) {
-
+__host__ int lb_bc_inflow_rhou_impose(lb_bc_inflow_rhou_t * inflow,
+				      hydro_t * hydro,
+				      lb_t * lb) {
   assert(inflow);
+  assert(hydro);
   assert(lb);
 
   /* For each incoming link set f_p = f^eq_p (rho, u) */
@@ -317,6 +323,7 @@ __host__ int lb_inflow_rhou_impose(lb_inflow_rhou_t * inflow, hydro_t * hydro,
 	}
       }
 
+      /* Here's the equilibrium */
       fp = rho*lb->model.wv[q]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
       lb_f_set(lb, index, q, LB_RHO, fp);
     }
@@ -327,13 +334,13 @@ __host__ int lb_inflow_rhou_impose(lb_inflow_rhou_t * inflow, hydro_t * hydro,
 
 /*****************************************************************************
  *
- *  lb_inflow_rhou_stats
+ *  lb_bc_inflow_rhou_stats
  *
- *  No operation at the moment.
+ *  Placeholder. No operation at the moment.
  *
  *****************************************************************************/
 
-__host__ int lb_inflow_rhou_stats(lb_inflow_rhou_t * inflow) {
+__host__ int lb_bc_inflow_rhou_stats(lb_bc_inflow_rhou_t * inflow) {
 
   return 0;
 }
