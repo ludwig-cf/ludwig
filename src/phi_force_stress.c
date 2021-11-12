@@ -202,7 +202,11 @@ __host__ int pth_stress_compute(pth_t * pth, fe_t * fe) {
   }
   else {
     /* Full stress */
-    tdpLaunchKernel(pth_kernel_v, nblk, ntpb, 0, 0,
+//OFT 
+/* Changed vectorised to non-vectorised computation bc thermal stress does not exist in vectorised version yet  */
+
+    tdpLaunchKernel(pth_kernel, nblk, ntpb, 0, 0,
+//OFT
 		    ctxt->target, pth->target, fe_target);
   }
 

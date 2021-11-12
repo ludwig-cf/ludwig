@@ -35,6 +35,9 @@ struct physics_s {
   double eta_bulk;     /* Bulk viscosity */
   double kt;           /* Isothermal "temperature" */
   double rho0;         /* Mean fluid density */
+  //OFT
+  double T0;	       /* Intial fluid temperature */
+  //OFT
   double phi0;         /* Mean fluid composition (binary fluid) */
   double phi_noise0;   /* Initial order parameter noise amplitude */
   double fbody[3];     /* External body force on fluid */
@@ -43,7 +46,9 @@ struct physics_s {
   double b0[3];        /* External magnetic field */
   double fgravity[3];  /* Gravitational force (on objects) */
   double mobility;     /* Order parameter mobility (binary fluid) */
-
+  //OFT
+  double lambda;       /* Thermal diffusivity (symmetric_oft) */
+  //OFT
   int t_start;         /* Start time step requested */
   int nsteps;          /* Number of time steps requested by user */
   int t_current;       /* The current time step */
@@ -308,6 +313,45 @@ __host__ int physics_phi0_set(physics_t * phys, double phi0) {
   return 0;
 }
 
+
+
+
+//OFT
+
+/*****************************************************************************
+ *
+ *  physics_T0
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_T0(physics_t * phys, double * T0) {
+
+  assert(phys);
+  assert(T0);
+
+  *T0 = phys->T0;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_T0_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_T0_set(physics_t * phys, double T0) {
+
+  assert(phys);
+
+  phys->T0 = T0;
+
+  return 0;
+}
+//OFT
+
+
+
 /*****************************************************************************
  *
  *  physics_b0
@@ -525,6 +569,8 @@ __host__ int physics_fpulse_frequency_set(physics_t * phys, double fpulse_freque
   return 0;
 }
 
+
+//OFT
 /*****************************************************************************
  *
  *  physics_mobility
@@ -540,6 +586,24 @@ __host__ __device__ int physics_mobility(physics_t * phys, double * mobility) {
  
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  physics_mobility_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_lambda_set(physics_t * phys, double lambda) {
+
+  assert(lambda);
+
+  phys->lambda = lambda;
+
+  return 0;
+}
+//OFT
+
+
 
 /*****************************************************************************
  *

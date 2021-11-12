@@ -305,8 +305,8 @@ __host__ void field_grad_free(field_grad_t * obj) {
 int field_grad_compute(field_grad_t * obj) {
 
   assert(obj);
-  assert(obj->d2);
 
+  assert(obj->d2);
   field_leesedwards(obj->field);
 
   obj->d2(obj);
@@ -320,7 +320,6 @@ int field_grad_compute(field_grad_t * obj) {
     assert(obj->d4);
     obj->d4(obj);
   }
-
   return 0;
 }
 

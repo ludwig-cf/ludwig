@@ -69,9 +69,10 @@
 #include "fe_ternary_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
-//CHANGE
+//OFT
 #include "symmetric_oft.h"
-//CHANGE
+#include "symmetric_oft_rt.h"
+//OFT
 /* Dynamics */
 #include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
@@ -134,6 +135,9 @@ struct ludwig_s {
   field_t * phi;            /* Scalar order parameter */
   field_t * p;              /* Vector order parameter */
   field_t * q;              /* Tensor order parameter */
+  //OFT
+  field_t * temperature;    /* Temperature (scalar) */
+  //OFT
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
@@ -151,6 +155,9 @@ struct ludwig_s {
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
   fe_symm_t * fe_symm;         /* Symmetric free energy */
+  //OFT
+  fe_symm_oft_t * fe_symm_oft; /* Temperature-dependant symmetric free energy */
+  //OFT
   fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
   fe_ternary_t * fe_ternary;   /* Ternary (Semprebon et al.) */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
@@ -257,7 +264,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
 
   /* All the same I/O grid  */
-
+  
+  /* OFT TODO: I think this part is for outputting fields, maybe add something for temperature later on */
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
@@ -274,10 +282,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* Can we move this down to t = 0 initialisation? */
-
+  
   if (ludwig->fe_symm) {
     fe_symmetric_phi_init_rt(pe, rt, ludwig->fe_symm, ludwig->phi);
   }
+//OFT
+  if (ludwig->fe_symm_oft) {
+    fe_symmetric_oft_phi_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->phi);
+    fe_symmetric_oft_temperature_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->temperature);
+  }
+//OFT
   if (ludwig->fe_braz) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
   }
@@ -361,7 +375,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* gradient initialisation for field stuff */
-
   if (ludwig->phi) {
     gradient_rt_init(pe, rt, "phi", ludwig->phi_grad, ludwig->map,
 		     ludwig->collinfo);
@@ -520,10 +533,9 @@ void ludwig_run(const char * inputfile) {
 
   pe_info(ludwig->pe, "\n");
   pe_info(ludwig->pe, "Starting time step loop.\n");
-
   /* sync tasks before main loop for timing purposes */
   MPI_Barrier(comm);
-
+  
   while (physics_control_next_step(ludwig->phys)) {
 
     TIMER_start(TIMER_STEPS);
@@ -538,6 +550,7 @@ void ludwig_run(const char * inputfile) {
 
     if ((step % ludwig->collinfo->rebuild_freq) == 0) {
       ludwig_colloids_update(ludwig);
+      
     }
     else {
       ludwig_colloids_update_low_freq(ludwig);
@@ -551,18 +564,16 @@ void ludwig_run(const char * inputfile) {
 
 
     lb_ndist(ludwig->lb, &im);
+     
 
     if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
-
+    
     if (ludwig->phi) {
-
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
       TIMER_stop(TIMER_PHI_HALO);
-
       field_grad_compute(ludwig->phi_grad);
     }
-
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
@@ -697,7 +708,6 @@ void ludwig_run(const char * inputfile) {
 	  }
 
 	  /* Force calculation as divergence of stress tensor */
-
           phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
@@ -1214,6 +1224,106 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_info(le);
     pth_create(pe, cs, PTH_METHOD_NO_FORCE, &ludwig->pth);
   }
+
+
+
+//OFT 
+
+  else if (strcmp(description, "symmetric_oft") == 0) {
+    int use_stress_relaxation;
+    phi_ch_info_t ch_options = {}; /* OFT TODO change to phiandT_ch (step 3) */
+
+    fe_symm_oft_t * fe = NULL;
+
+    /* Symmetric free energy via finite difference */
+
+    nf = 1;      /* 1 scalar order parameter */
+    nhalo = 2;   /* Require stress divergence. */
+    ngrad = 2;   /* \nabla^2 required */
+
+    /* Noise requires additional stencil point for Cahn Hilliard */
+
+    if (strcmp(description, "symmetric_noise") == 0) {
+      nhalo = 3;
+    }
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
+
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_create(pe, cs, nf, "temperature", &ludwig->temperature);
+    field_init(ludwig->temperature, nhalo, le);
+    field_init(ludwig->phi, nhalo, le);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
+    fe_symm_oft_create(pe, cs, ludwig->phi, ludwig->phi_grad, ludwig->temperature, &fe);
+    fe_symmetric_oft_init_rt(pe, rt, fe);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
+
+    rt_double_parameter(rt, "lambda", &value);
+    physics_lambda_set(ludwig->phys, value);
+    pe_info(pe, "Thermal diffusivity lambda            = %12.5e\n", value);
+
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
+
+    rt_int_parameter(rt, "cahn_hilliard_options_conserve",
+		     &ch_options.conserve);
+
+/* OFT TODO: need additional options for the case of phi & T ? */
+
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+
+    /* Order parameter noise */
+
+    rt_int_parameter(rt, "fd_phi_fluctuations", &noise_on);
+    pe_info(pe, "Order parameter noise = %3s\n",
+	    (noise_on == 0) ? "off" : " on");
+
+    if (noise_on) {
+      noise_create(pe, cs, &ludwig->noise_phi);
+      noise_init(ludwig->noise_phi, 0);
+      noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
+      if (nhalo != 3) pe_fatal(pe, "Fluctuations: use symmetric_noise\n");
+    }
+
+    /* Force */
+
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    printf("use stress relaxation = %d", use_stress_relaxation);
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Force calculation\n");
+      pe_info(pe, "Symmetric stress via collision relaxation\n");
+      pth_create(pe, cs, PTH_METHOD_STRESS_ONLY, &ludwig->pth);
+    }
+    else {
+      p = 1; /* Default is to use divergence method */
+      rt_int_parameter(rt, "fd_force_divergence", &p);
+      pe_info(pe, "Force calculation:      %s\n",
+           (p == 0) ? "phi grad mu method" : "divergence method");
+      if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+      if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+
+    ludwig->fe_symm_oft = fe;
+    ludwig->fe = (fe_t *) fe;
+  }
+
+//OFT
+ 
+
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 

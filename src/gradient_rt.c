@@ -42,7 +42,6 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
 
   int (* f2) (field_grad_t * fg) = NULL;
   int (* f4) (field_grad_t * fg) = NULL;
-
   assert(grad);
 
   /* fd_gradient_calculation is     defualt
@@ -105,6 +104,16 @@ int gradient_rt_init(pe_t * pe, rt_t * rt, const char * fieldname,
       assert(map);
       grad_3d_27pt_solid_map_set(map);
     }
+//OFT
+    else if (strcmp(keyvalue, "3d_27pt_solid_oft") == 0) {
+      pe_info(pe, "3d_27pt_solid_oft\n");
+      f2 = grad_3d_27pt_solid_d2_oft;
+      f4 = NULL;
+      field_grad_dab_set(grad, grad_3d_27pt_solid_dab);
+      assert(map);
+      grad_3d_27pt_solid_map_set(map);
+    }
+//OFT
     else if (strcmp(keyvalue, "2d_ternary_solid") == 0) {
       pe_info(pe, "2d_ternary_solid\n");
       f2 = grad_2d_ternary_solid_d2;

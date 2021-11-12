@@ -50,8 +50,8 @@ static fe_vt_t fe_symm_oft_hvt = {
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  fe_symm_oft_str_v,
-  (fe_stress_v_ft)  fe_symm_oft_str_v,
+  (fe_stress_v_ft)  NULL,
+  (fe_stress_v_ft)  NULL,
   (fe_stress_v_ft)  NULL
 };
 
@@ -68,8 +68,8 @@ static  __constant__ fe_vt_t fe_symm_oft_dvt = {
   (fe_hvector_ft)   NULL,
   (fe_htensor_ft)   NULL,
   (fe_htensor_v_ft) NULL,
-  (fe_stress_v_ft)  fe_symm_oft_str_v,
-  (fe_stress_v_ft)  fe_symm_oft_str_v,
+  (fe_stress_v_ft)  NULL,
+  (fe_stress_v_ft)  NULL,
   (fe_stress_v_ft)  NULL
 };
 
@@ -87,7 +87,7 @@ static  __constant__ fe_vt_t fe_symm_oft_dvt = {
  ****************************************************************************/
 
 __host__ int fe_symm_oft_create(pe_t * pe, cs_t * cs, field_t * phi,
-			    field_grad_t * dphi, field_t * temperature, io_options_t * options, fe_symm_oft_t ** p) {
+			    field_grad_t * dphi, field_t * temperature, fe_symm_oft_t ** p) {
 
   int ndevice;
   fe_symm_oft_t * obj = NULL;
@@ -97,7 +97,6 @@ __host__ int fe_symm_oft_create(pe_t * pe, cs_t * cs, field_t * phi,
   assert(phi);
   assert(dphi);
   assert(temperature);
-  assert(options);
 
   obj = (fe_symm_oft_t *) calloc(1, sizeof(fe_symm_oft_t));
   assert(obj);
@@ -112,7 +111,6 @@ __host__ int fe_symm_oft_create(pe_t * pe, cs_t * cs, field_t * phi,
   obj->phi = phi;
   obj->dphi = dphi;
   obj->temperature = temperature;
-  obj->options = options;
   obj->super.func = &fe_symm_oft_hvt;
   obj->super.id = FE_SYMM_OFT;
 
@@ -240,6 +238,53 @@ int fe_symm_oft_param(fe_symm_oft_t * fe, fe_symm_oft_param_t * values) {
   return 0;
 }
 
+
+/****************************************************************************
+ *
+ *  fe_symm_oft_interfacial_tension at Temperature = 0
+ *
+ *  Assumes phi^* = (-a/b)^1/2 and a < 0.
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_symm_oft_interfacial_tension(fe_symm_oft_t * fe, double * sigma) {
+
+  double a0, b, kappa0;
+
+  assert(fe);
+
+  a0 = fe->param->a0;
+  b = fe->param->b;
+  kappa0 = fe->param->kappa0;
+
+  *sigma = sqrt(-8.0*kappa0*a0*a0*a0/(9.0*b*b));
+
+  return 0;
+}
+
+
+
+/****************************************************************************
+ *
+ *  fe_symm_oft_interfacial_width 
+ *  
+ *  Width at Temperature = 0 
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_symm_oft_interfacial_width(fe_symm_oft_t * fe, double * xi) {
+
+  assert(fe);
+
+  *xi = sqrt(-2.0*fe->param->kappa0/fe->param->a0);
+
+  return 0;
+}
+
+
+
 /****************************************************************************
  *
  *  fe_symm_oft_fed
@@ -316,11 +361,35 @@ int fe_symm_oft_str(fe_symm_oft_t * fe, int index,  double s[3][3]) {
 
   int ia, ib;
   double entropy;
+  double kappa0, kappa, kappaoft;
+  double a0, a, aoft;
+  double phi, temperature;
+  double delsq_phi;
+  double grad_phi[3];
+  double p0;
+  double d_ab;
 
   assert(fe);
 
+  kappa0 = fe->param->kappa0;
+  kappa = fe->param->kappa;
+  a0 = fe->param->a0;
+  a = fe->param->a;
+  
+  field_scalar(fe->phi, index, &phi);
+  field_scalar(fe->temperature, index, &temperature);
+  field_grad_scalar_grad(fe->dphi, index, grad_phi);
+  field_grad_scalar_delsq(fe->dphi, index, &delsq_phi);
+
+  kappaoft = kappa0 + kappa*temperature;
+  aoft = a0 + a*temperature;
+  
+  /* TODO: entropy must be derived from Gibbs-Duhem and changed here */
   entropy = fe->param->entropy;
 
+/* Calculation of stress done in two loops for clarity (will change anyway) */
+
+//Thermal stress
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
       if (ia == 0 && ib == 0) {
@@ -329,6 +398,17 @@ int fe_symm_oft_str(fe_symm_oft_t * fe, int index,  double s[3][3]) {
       else {
         s[ia][ib] = 0;
       }
+    }
+  }
+
+//Chemical stress (same as in symmetric.c)
+  p0 = 0.5*aoft*phi*phi + 0.75*fe->param->b*phi*phi*phi*phi
+    - kappaoft*phi*delsq_phi - 0.5*kappaoft*dot_product(grad_phi, grad_phi);
+
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+      d_ab = (ia == ib);
+      s[ia][ib] = p0*d_ab + kappaoft*grad_phi[ia]*grad_phi[ib];
     }
   }
 
