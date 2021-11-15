@@ -16,6 +16,7 @@
 #include <float.h>
 #include <math.h>
 
+#include "cs_limits.h"
 #include "lb_bc_inflow_rhou.h"
 
 /* Tests */
@@ -96,18 +97,6 @@ __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
  *
  *****************************************************************************/
 
-typedef struct limits_s {
-  int imin, imax;
-  int jmin, jmax;
-  int kmin, kmax;
-} limits_t;
-
-/*****************************************************************************
- *
- *  test_lb_bc_inflow_rhou_update
- *
- *****************************************************************************/
-
 __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
 
   int nlocal[3] = {};
@@ -133,7 +122,7 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
 
   if (noffset[X] == 0) {
 
-    limits_t limits = {1, 1, 1, nlocal[Y], 1, nlocal[Z]};
+    cs_limits_t limits = {1, 1, 1, nlocal[Y], 1, nlocal[Z]};
 
     for (int ic = limits.imin; ic <= limits.imax; ic++) {
       for (int jc = limits.jmin; jc <= limits.jmax; jc++) {
@@ -152,7 +141,7 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
 
   if (noffset[X] == 0) {
 
-    limits_t limits = {0, 0, 1, nlocal[Y], 1, nlocal[Z]};
+    cs_limits_t limits = {0, 0, 1, nlocal[Y], 1, nlocal[Z]};
 
     for (int ic = limits.imin; ic <= limits.imax; ic++) {
       for (int jc = limits.jmin; jc <= limits.jmax; jc++) {
@@ -220,7 +209,7 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
 
   if (noffset[X] == 0) {
 
-    limits_t limits = {1, 1, 1, nlocal[Y], 1, nlocal[Z]};
+    cs_limits_t limits = {1, 1, 1, nlocal[Y], 1, nlocal[Z]};
 
     for (int ic = limits.imin; ic <= limits.imax; ic++) {
       for (int jc = limits.jmin; jc <= limits.jmax; jc++) {
@@ -239,7 +228,8 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
   /* So, for each site in the boundary region, check ingoing distributions. */
 
   if (noffset[X] == 0) {
-    limits_t limits = {0, 0, 1, nlocal[Y], 1, nlocal[Z]};
+
+    cs_limits_t limits = {0, 0, 1, nlocal[Y], 1, nlocal[Z]};
 
     for (int ic = limits.imin; ic <= limits.imax; ic++) {
       for (int jc = limits.jmin; jc <= limits.jmax; jc++) {
