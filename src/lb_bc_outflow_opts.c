@@ -22,7 +22,7 @@
 
 lb_bc_outflow_opts_t lb_bc_outflow_opts_default(void) {
 
-  lb_bc_outflow_opts_t opts = {.nvel = 0, .flow = {}, .rho0 = 1.0, .u0 = {}};
+  lb_bc_outflow_opts_t opts = {.nvel = 19, .flow = {}, .rho0 = 1.0};
 
   return opts;
 }
@@ -42,7 +42,7 @@ int lb_bc_outflow_opts_valid(lb_bc_outflow_opts_t options) {
   isvalid = lb_model_is_available(options.nvel); /* Available */
   isvalid = (isvalid && (sum == 0 || sum == 1)); /* One direction, or none */
 
-  /* We're not making any stipulations about (rho, u0). */
+  /* We're not making any stipulations about rho. */
 
   return isvalid;
 }

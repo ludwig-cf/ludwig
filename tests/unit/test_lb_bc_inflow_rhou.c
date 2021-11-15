@@ -59,7 +59,7 @@ __host__ int test_lb_bc_inflow_rhou_suite(void) {
 
 __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
 
-  lb_openbc_options_t options = lb_openbc_options_default();
+  lb_bc_inflow_opts_t options = lb_bc_inflow_opts_default();
   lb_bc_inflow_rhou_t * inflow = NULL;
 
   assert(pe);
@@ -74,9 +74,9 @@ __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
   assert(inflow->super.func);
   assert(inflow->super.id == LB_BC_INFLOW_RHOU);
 
-  /* Check options */
+  /* Check options are present */
 
-  assert(inflow->options.inflow);
+  assert(lb_bc_inflow_opts_valid(inflow->options));
 
   /* Default options given no links */
 
@@ -114,7 +114,8 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
   int noffset[3] = {};
   double rho0 = 2.0;
 
-  lb_openbc_options_t options = {.flow = {1, 0, 0},
+  lb_bc_inflow_opts_t options = {.nvel = 15,
+                                 .flow = {1, 0, 0},
                                  .u0   = {-1.0,-2.0,-3.0}};
   lb_bc_inflow_rhou_t * inflow = NULL;
   hydro_t * hydro = NULL;
@@ -194,7 +195,7 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
 
   double rho0 = 1.0;
 
-  lb_openbc_options_t options = {.nvel = NVEL,
+  lb_bc_inflow_opts_t options = {.nvel = 19,
                                  .flow = {1, 0, 0},
                                  .u0   = {0.01, 0.0, 0.0}};
   lb_bc_inflow_rhou_t * inflow = NULL;

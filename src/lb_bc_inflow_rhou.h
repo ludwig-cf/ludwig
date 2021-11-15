@@ -16,7 +16,7 @@
 #define LUDWIG_LB_BC_INFLOW_RHOU_H
 
 #include "lb_bc_open.h"
-#include "lb_openbc_options.h"
+#include "lb_bc_inflow_opts.h"
 
 typedef struct lb_bc_inflow_rhou_s lb_bc_inflow_rhou_t;
 
@@ -26,7 +26,7 @@ struct lb_bc_inflow_rhou_s {
   lb_bc_open_t super;              /* Superclass block */
   pe_t * pe;                       /* Parallel environment */
   cs_t * cs;                       /* Coordinate system */
-  lb_openbc_options_t options;     /* Options/parameters */
+  lb_bc_inflow_opts_t options;     /* Options/parameters */
   lb_bc_inflow_rhou_t * target;    /* Target pointer */
   
   /* Boundary links */
@@ -37,7 +37,7 @@ struct lb_bc_inflow_rhou_s {
 };
 
 __host__ int lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs,
-				      const lb_openbc_options_t * options,
+				      const lb_bc_inflow_opts_t * options,
 				      lb_bc_inflow_rhou_t ** inflow);
 
 __host__ int lb_bc_inflow_rhou_free(lb_bc_inflow_rhou_t * inflow);

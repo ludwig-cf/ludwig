@@ -51,7 +51,7 @@ __host__ int test_lb_bc_outflow_opts_default(void) {
 
   lb_bc_outflow_opts_t defaults = lb_bc_outflow_opts_default();
 
-  assert(defaults.nvel    == 0);
+  assert(defaults.nvel    == 19);
   assert(defaults.flow[X] == 0);
   assert(defaults.flow[Y] == 0);
   assert(defaults.flow[Z] == 0);
@@ -73,7 +73,7 @@ __host__ int test_lb_bc_outflow_opts_valid(void) {
     lb_bc_outflow_opts_t options = lb_bc_outflow_opts_default();
 
     ierr = lb_bc_outflow_opts_valid(options);
-    assert(ierr == 0);
+    assert(ierr != 0);
   }
 
   {

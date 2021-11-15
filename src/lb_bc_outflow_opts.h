@@ -26,7 +26,6 @@ struct lb_bc_outflow_opts_s {
   int nvel;
   int flow[3];
   double rho0;
-  double u0[3];
 };
 
 lb_bc_outflow_opts_t lb_bc_outflow_opts_default(void);

@@ -50,7 +50,7 @@ static const lb_bc_open_vtable_t vt_ = {
  *****************************************************************************/
 
 __host__ int lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs,
-				      const lb_openbc_options_t * options,
+				      const lb_bc_inflow_opts_t * options,
 				      lb_bc_inflow_rhou_t ** inflow) {
   lb_bc_inflow_rhou_t * bc = NULL;
 
@@ -70,7 +70,7 @@ __host__ int lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs,
   bc->super.func = &vt_;
   bc->super.id   = LB_BC_INFLOW_RHOU;
 
-  if (!lb_openbc_options_valid(options)) {
+  if (!lb_bc_inflow_opts_valid(*options)) {
     /* Internal error if we reach this point. */
     pe_fatal(pe, "lb_bc_inflow_rhou_create: lb_openbc_options_t invalid\n");
   }
@@ -265,7 +265,7 @@ __host__ int lb_bc_inflow_rhou_update(lb_bc_inflow_rhou_t * inflow,
 
 	  int index0 = cs_index(cs, ic - idx, jc - jdy, kc - kdz);
 	  int index1 = cs_index(cs, ic, jc, kc);
-	  double rho = 1.0;
+	  double rho = 0.0;
 
 	  hydro_rho(hydro, index1, &rho);
 	  hydro_rho_set(hydro, index0, rho);
