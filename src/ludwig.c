@@ -1137,7 +1137,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->p_grad)   field_grad_free(ludwig->p_grad);
   if (ludwig->q_grad)   field_grad_free(ludwig->q_grad);
   if (ludwig->phi)      field_free(ludwig->phi);
-  if (ludwig->temperature) field_temperature_free(ludwig->temperature);
+  if (ludwig->temperature) field_free(ludwig->temperature);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
 
