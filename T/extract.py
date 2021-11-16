@@ -36,8 +36,8 @@ import sys
 import getopt
 
 nstart=0	# Start timestep
-nint=100		# Increment
-nend=5000	# End timestep
+nint=1		# Increment
+nend=100		# End timestep
 ngroup=1	# Number of output groups
 
 vel=True	# Switch for velocity 

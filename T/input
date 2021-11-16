@@ -10,7 +10,7 @@
 #
 ###############################################################################
 
-N_cycles 5000
+N_cycles 10
 
 ##############################################################################
 #
@@ -39,12 +39,12 @@ ghost_modes off
 free_energy symmetric_oft
 
 A0 -0.00625    
-A 0.05
+A 0.0
 
 B 0.00625     
 
 K0 0.004      
-K 0.05
+K 0.0
 
 C 0.0
 
@@ -100,7 +100,7 @@ periodicity 1_1_1
 freq_statistics 1000
 freq_phi    100
 freq_vel    1000
-freq_temperature    100
+freq_temperature    1
 
 phi_format    BINARY
 vel_format    BINARY

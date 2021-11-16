@@ -17,7 +17,7 @@
  *
  *  Explicitly, Desplat et al. assume
  *
- *    -kappa f_s = (1/2) C phi_s^2 + H phi_s
+     -kappa f_s = (1/2) C phi_s^2 + H phi_s
  *
  *  where kappa is the fluid parameter and C and H are surface parameters.
  *  If one only needs a set contact angle, can have C = 0. C only comes
@@ -119,7 +119,7 @@ __host__ int grad_3d_27pt_solid_fe_oft_set(fe_symm_oft_t * fe) {
   assert(fe);
 
   static_solid.fe_symm_oft = fe;
-  static_solid.rkappa = 1.0/fe->param->kappa;
+  static_solid.rkappa = 1.0/fe->param->kappa0;
   static_solid.c = fe->param->c;
   static_solid.h = fe->param->h;
   if (static_solid.map == NULL) static_solid.uniform = 1;
