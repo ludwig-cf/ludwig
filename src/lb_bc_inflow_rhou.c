@@ -131,9 +131,6 @@ __host__ int lb_bc_inflow_rhou_init_internal(lb_bc_inflow_rhou_t * inflow) {
  *  This assumes that the other two directions are walls, and so no
  *  duplicates of incoming solid-fluid (bbl) links are wanted.
  *
- *  CHECK CHECK CHECK links are fluid (domain) to fluid (halo). The
- *  incoming distributions are then actually the complements -cv[p].
- *
  *****************************************************************************/
 
 __host__ int lb_bc_inflow_init_link(lb_bc_inflow_rhou_t * inflow,
@@ -185,9 +182,9 @@ __host__ int lb_bc_inflow_init_link(lb_bc_inflow_rhou_t * inflow,
 	    if (noffset[id2] + ijk[id2] > ntotal[id2]) continue;
 
 	    if (init == LINK_ASSIGN) {
-	      inflow->linkp[nlink] = p;
-	      inflow->linki[nlink] = cs_index(cs, ic, jc, kc);
-	      inflow->linkj[nlink] = cs_index(cs, ic1, jc1, kc1);
+	      inflow->linkp[nlink] = model.nvel - p; /* reverse */
+	      inflow->linki[nlink] = cs_index(cs, ic1, jc1, kc1);
+	      inflow->linkj[nlink] = cs_index(cs, ic,  jc,  kc);
 	    }
 	    nlink += 1;
 	  }
@@ -297,8 +294,8 @@ __host__ int lb_bc_inflow_rhou_impose(lb_bc_inflow_rhou_t * inflow,
 
   for (int n = 0; n < inflow->nlink; n++) {
 
-    int index = inflow->linkj[n];
-    int8_t q  = lb->model.nvel - inflow->linkp[n];
+    int index = inflow->linki[n];
+    int8_t p  = inflow->linkp[n];
 
     double rho  = 0.0;
     double u[3] = {};
@@ -314,18 +311,18 @@ __host__ int lb_bc_inflow_rhou_impose(lb_bc_inflow_rhou_t * inflow,
       double fp    = 0.0;
 
       for (int ia = 0; ia < 3; ia++) {
-	udotc += u[ia]*lb->model.cv[q][ia];
+	udotc += u[ia]*lb->model.cv[p][ia];
 	for (int ib = 0; ib < 3; ib++) {
 	  double d_ab = (ia == ib);
-	  double s_ab = lb->model.cv[q][ia]*lb->model.cv[q][ib] - cs2*d_ab;
+	  double s_ab = lb->model.cv[p][ia]*lb->model.cv[p][ib] - cs2*d_ab;
 
 	  sdotq += s_ab*u[ia]*u[ib];
 	}
       }
 
       /* Here's the equilibrium */
-      fp = rho*lb->model.wv[q]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
-      lb_f_set(lb, index, q, LB_RHO, fp);
+      fp = rho*lb->model.wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+      lb_f_set(lb, index, p, LB_RHO, fp);
     }
   }
 

@@ -90,6 +90,9 @@
 #include "visc.h"
 #include "visc_arrhenius.h"
 
+/* Open boundary conditions */
+#include "lb_bc_open_rt.h"
+
 /* Electrokinetics */
 #include "psi.h"
 #include "psi_rt.h"
@@ -160,6 +163,9 @@ struct ludwig_s {
   ewald_t * ewald;             /* Ewald sum for dipoles */
   interact_t * interact;       /* Colloid-colloid interaction handler */
   bbl_t * bbl;                 /* Bounce-back on links boundary condition */
+
+  lb_bc_open_t * inflow;       /* Inflow open boundary conidition (fluid) */
+  lb_bc_open_t * outflow;      /* Outflow boundary condition (fluid) */
 
   stats_sigma_t * stat_sigma;  /* Interfacial tension calibration */
   stats_ahydro_t * stat_ah;    /* Hydrodynamic radius calibration */
@@ -238,6 +244,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
   hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
   visc_model_init_rt(pe, rt, ludwig);
 
+  lb_bc_open_rt(pe, rt, cs, ludwig->lb, &ludwig->inflow, &ludwig->outflow);
+
   /* PHI I/O */
 
   rt_int_parameter_vector(rt, "default_io_grid", io_grid_default);
@@ -307,8 +315,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
   ntstep = physics_control_timestep(ludwig->phys);
 
   if (ntstep == 0) {
+    double rho0 = 1.0;
     n = 0;
     lb_rt_initial_conditions(pe, rt, ludwig->lb, ludwig->phys);
+    physics_rho0(ludwig->phys, &rho0);
+    if (ludwig->hydro) hydro_rho0(ludwig->hydro, rho0);
 
     rt_int_parameter(rt, "LE_init_profile", &n);
     if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
@@ -576,7 +587,16 @@ void ludwig_run(const char * inputfile) {
     }
     TIMER_stop(TIMER_PHI_GRADIENTS);
     if (ludwig->fe_lc) fe_lc_active_stress(ludwig->fe_lc);
-    
+
+    /* Update any open boundary flows (before any advection) */
+
+    if (ludwig->inflow) {
+      ludwig->inflow->func->update(ludwig->inflow, ludwig->hydro);
+    }
+    if (ludwig->outflow) {
+      ludwig->outflow->func->update(ludwig->outflow, ludwig->hydro);
+    }
+
     /* Electrokinetics (including electro/symmetric requiring above
      * gradients for phi) */
 
@@ -787,6 +807,19 @@ void ludwig_run(const char * inputfile) {
       lb_halo(ludwig->lb);
 
       TIMER_stop(TIMER_HALO_LATTICE);
+
+      /* Open boundaries */
+
+      if (ludwig->inflow) {
+	lb_bc_open_t * inflow = ludwig->inflow;
+	inflow->func->update(inflow, ludwig->hydro);
+	inflow->func->impose(inflow, ludwig->hydro, ludwig->lb);
+      }
+      if (ludwig->outflow) {
+	lb_bc_open_t * outflow = ludwig->outflow;
+	outflow->func->update(outflow, ludwig->hydro);
+	outflow->func->impose(outflow, ludwig->hydro, ludwig->lb);
+      }
 
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
@@ -1051,6 +1084,9 @@ void ludwig_run(const char * inputfile) {
 
   bbl_free(ludwig->bbl);
   colloids_info_free(ludwig->collinfo);
+
+  if (ludwig->inflow) ludwig->inflow->func->free(ludwig->inflow);
+  if (ludwig->outflow) ludwig->outflow->func->free(ludwig->outflow);
 
   if (ludwig->interact) interact_free(ludwig->interact);
   if (ludwig->cio)      colloid_io_free(ludwig->cio);

@@ -63,6 +63,7 @@ __host__ int hydro_lees_edwards(hydro_t * obj);
 __host__ int hydro_correct_momentum(hydro_t * obj);
 __host__ int hydro_f_zero(hydro_t * obj, const double fzero[3]);
 __host__ int hydro_u_zero(hydro_t * obj, const double uzero[3]);
+__host__ int hydro_rho0(hydro_t * hydro, double rho0);
 
 __host__ __device__ int hydro_f_local_set(hydro_t * obj, int index,
 					  const double force[3]);

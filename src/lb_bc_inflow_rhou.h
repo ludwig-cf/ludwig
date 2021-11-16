@@ -31,9 +31,9 @@ struct lb_bc_inflow_rhou_s {
   
   /* Boundary links */
   int nlink;                    /* Number of links (local) */
-  int8_t * linkp;               /* Velocity index in LB basis (i->j) */
-  int * linki;                  /* Fluid site in system */
-  int * linkj;                  /* Fluid site in inflow halo boundary */
+  int * linki;                  /* Fluid site in boundary (halo) region */
+  int * linkj;                  /* Fluid site in domain proper */
+  int8_t * linkp;               /* Velocity index in lb basis (i->j) */
 };
 
 __host__ int lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs,

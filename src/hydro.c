@@ -41,6 +41,7 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
                                           double fnet[3]);
 __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 				       double fnet[3]);
+__global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho);
 
 
 /*****************************************************************************
@@ -525,6 +526,54 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[NHDIM]) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  hydro_rho0
+ *
+ *  Set rho uniformly everywhere; rho0 shouldn't be zero!
+ *
+ *****************************************************************************/
+
+__host__ int hydro_rho0(hydro_t * obj, double rho0) {
+
+  dim3 nblk, ntpb;
+  double * rho = NULL;
+
+  assert(obj);
+  assert(obj->target);
+
+  tdpAssert(tdpMemcpy(&rho, &obj->target->rho, sizeof(double *),
+		      tdpMemcpyDeviceToHost));
+
+  kernel_launch_param(obj->nsite, &nblk, &ntpb);
+  tdpLaunchKernel(hydro_rho0_kernel, nblk, ntpb, 0, 0, obj->nsite, rho0, rho);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  hydro_rho0_kernel
+ *
+ *****************************************************************************/
+
+__global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho) {
+
+  int kindex = 0;
+
+  assert(rho);
+
+  for_simt_parallel(kindex, nsite, 1) {
+    rho[addr_rank0(nsite, kindex)] = rho0;
+  }
+
+  return;
+}
+
 
 /*****************************************************************************
  *
