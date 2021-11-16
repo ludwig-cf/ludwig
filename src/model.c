@@ -752,6 +752,7 @@ __host__ int lb_io_rho_set(lb_t * lb, io_info_t * io_rho, int form_in,
   io_info_write_set(lb->io_rho, IO_FORMAT_BINARY, lb_rho_write);
   io_info_set_bytesize(lb->io_rho, IO_FORMAT_BINARY, sizeof(double));
   io_info_write_set(lb->io_rho, IO_FORMAT_ASCII, lb_rho_write_ascii);
+  io_info_set_bytesize(lb->io_rho, IO_FORMAT_ASCII, 23*sizeof(char));
   io_info_format_set(lb->io_rho, form_in, form_out);
 
   return 0;
