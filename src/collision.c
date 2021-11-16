@@ -568,6 +568,10 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	lb->f[LB_ADDR(_lbp.nsite, _lbp.ndist, NVEL, index0+iv, LB_RHO, p)] = fchunk[p*NSIMDVL+iv];
       }
     }
+    /* density */
+    for_simd_v(iv, NSIMDVL) {
+      hydro->rho[addr_rank0(hydro->nsite, index0+iv)] = rho[iv];
+    }
     /* velocity */
     for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) {
