@@ -58,5 +58,20 @@ int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t par
 
     field_temperature_init_uniform(temperature, T0);
   }
+
+  if (p != 0 && strcmp(value, "drop") == 0) {
+    double phistar, xi, radius;      /* "Amplitude", can be negative. */
+
+    pe_info(pe, "Initialising temperature as droplet\n");
+
+    rt_double_parameter(rt, "temperature_init_drop_radius", &radius);
+    rt_double_parameter(rt, "temperature_init_drop_amplitude", &phistar);
+    rt_double_parameter(rt, "temperature_init_drop_xi", &xi);
+    pe_info(pe, "Initialising droplet radius:     %14.7e\n", radius);
+    pe_info(pe, "Initialising droplet amplitude:  %14.7e\n", phistar);
+    pe_info(pe, "Initialising droplet xi:  %14.7e\n", xi);
+    field_temperature_init_drop(temperature, xi, radius, phistar);
+  }
+
   return 0;
 }

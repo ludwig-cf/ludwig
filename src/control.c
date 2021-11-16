@@ -26,6 +26,7 @@ static int freq_statistics = 100;
 static int freq_measure    = 100000000;
 static int freq_config     = 100000000;
 static int freq_phi        = 100000000;
+static int freq_temperature= 100000000;
 static int freq_psi        = 100000000;
 static int freq_vel        = 100000000;
 static int freq_fed        = 100000000;
@@ -69,6 +70,9 @@ int init_control(pe_t * pe, rt_t * rt) {
   rt_int_parameter(rt, "freq_measure", &freq_measure);
   rt_int_parameter(rt, "freq_config", &freq_config);
   rt_int_parameter(rt, "freq_phi", &freq_phi);
+//OFT
+  rt_int_parameter(rt, "freq_temperature", &freq_temperature);
+//OFT
   rt_int_parameter(rt, "freq_psi", &freq_psi);
   rt_int_parameter(rt, "freq_vel", &freq_vel);
   rt_int_parameter(rt, "freq_fed", &freq_fed);
@@ -122,6 +126,20 @@ int is_colloid_io_step() {
   physics_ref(&phys);
   return ((physics_control_timestep(phys) % freq_colloid_io) == 0);
 }
+
+//OFT
+/*****************************************************************************
+ *
+ *  is_temperature_output_step
+ *
+ *****************************************************************************/
+
+int is_temperature_output_step() {
+  physics_t * phys = NULL;
+  physics_ref(&phys);
+  return ((physics_control_timestep(phys) % freq_temperature) == 0);
+}
+//OFT
 
 /*****************************************************************************
  *

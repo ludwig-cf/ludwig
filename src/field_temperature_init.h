@@ -24,5 +24,5 @@ struct field_temperature_info_s {
 };
 
 int field_temperature_init_uniform(field_t * temperature, double T0);
-
+int field_temperature_init_drop(field_t * temperature, double xi, double radius, double phistar);
 #endif

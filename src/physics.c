@@ -570,7 +570,6 @@ __host__ int physics_fpulse_frequency_set(physics_t * phys, double fpulse_freque
 }
 
 
-//OFT
 /*****************************************************************************
  *
  *  physics_mobility
@@ -587,9 +586,11 @@ __host__ __device__ int physics_mobility(physics_t * phys, double * mobility) {
   return 0;
 }
 
+
+//OFT
 /*****************************************************************************
  *
- *  physics_mobility_set
+ *  physics_lambda_set
  *
  *****************************************************************************/
 
@@ -601,8 +602,24 @@ __host__ int physics_lambda_set(physics_t * phys, double lambda) {
 
   return 0;
 }
-//OFT
 
+
+/*****************************************************************************
+ *
+ *  physics_lambda
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_lambda(physics_t * phys, double * lambda) {
+
+  assert(phys);
+  assert(lambda);
+
+  *lambda = phys->lambda;
+ 
+  return 0;
+}
+//OFT
 
 
 /*****************************************************************************
