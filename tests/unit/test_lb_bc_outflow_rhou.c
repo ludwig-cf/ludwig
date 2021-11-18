@@ -147,6 +147,8 @@ __host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs) {
 
 __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs) {
 
+  int ierr = 0;
+
   int nlocal[3] = {};
   int ntotal[3] = {};
   int noffset[3] = {};
@@ -222,6 +224,7 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs) {
 	      double rho0 = outflow->options.rho0;
 	      double fp   = lb->model.wv[p]*rho0*(1.0 - 3.0*uz + 3.0*uz*uz);
 	      assert(fabs(f - fp) < DBL_EPSILON);
+	      if (fabs(f - fp) > DBL_EPSILON) ierr += 1;
 	    }
 	  }
 	}
@@ -233,5 +236,5 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs) {
   hydro_free(hydro);
   lb_bc_outflow_rhou_free(outflow);
 
-  return 0;
+  return ierr;
 }

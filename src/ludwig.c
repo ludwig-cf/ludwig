@@ -92,6 +92,7 @@
 
 /* Open boundary conditions */
 #include "lb_bc_open_rt.h"
+#include "phi_bc_open_rt.h"
 
 /* Electrokinetics */
 #include "psi.h"
@@ -166,6 +167,8 @@ struct ludwig_s {
 
   lb_bc_open_t * inflow;       /* Inflow open boundary conidition (fluid) */
   lb_bc_open_t * outflow;      /* Outflow boundary condition (fluid) */
+  phi_bc_open_t * phi_inflow;  /* Inflow (composition phi) */
+  phi_bc_open_t * phi_outflow; /* Outflow (composition phi) */
 
   stats_sigma_t * stat_sigma;  /* Interfacial tension calibration */
   stats_ahydro_t * stat_ah;    /* Hydrodynamic radius calibration */
@@ -245,6 +248,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   visc_model_init_rt(pe, rt, ludwig);
 
   lb_bc_open_rt(pe, rt, cs, ludwig->lb, &ludwig->inflow, &ludwig->outflow);
+  phi_bc_open_rt(pe, rt, cs, &ludwig->phi_inflow, &ludwig->phi_outflow);
 
   /* PHI I/O */
 
@@ -568,6 +572,18 @@ void ludwig_run(const char * inputfile) {
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
       TIMER_stop(TIMER_PHI_HALO);
+
+      /* Boundary conditions on phi after halo and
+       * before gradient calculation. */
+
+      if (ludwig->phi_inflow) {
+	phi_bc_open_t * inflow = ludwig->phi_inflow;
+	inflow->func->update(inflow, ludwig->phi);
+      }
+      if (ludwig->phi_outflow) {
+	phi_bc_open_t * outflow = ludwig->phi_outflow;
+	outflow->func->update(outflow, ludwig->phi);
+      }
 
       field_grad_compute(ludwig->phi_grad);
     }
@@ -1087,6 +1103,8 @@ void ludwig_run(const char * inputfile) {
 
   if (ludwig->inflow) ludwig->inflow->func->free(ludwig->inflow);
   if (ludwig->outflow) ludwig->outflow->func->free(ludwig->outflow);
+  if (ludwig->phi_inflow) ludwig->phi_inflow->func->free(ludwig->phi_inflow);
+  if (ludwig->phi_outflow) ludwig->phi_outflow->func->free(ludwig->phi_outflow);
 
   if (ludwig->interact) interact_free(ludwig->interact);
   if (ludwig->cio)      colloid_io_free(ludwig->cio);
