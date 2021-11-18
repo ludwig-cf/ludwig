@@ -108,14 +108,6 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
 
       lb_bc_inflow_rhou_create(pe, cs, &options, &rhou);
       *inflow = (lb_bc_open_t *) rhou;
-      printf("INFLOW %d %d %d\n",
-	     rhou->options.flow[X],
-	     rhou->options.flow[Y],
-	     rhou->options.flow[Z]);
-      printf("INFLOW %14.7e %14.7e %14.7e\n",
-	     rhou->options.u0[X],
-	     rhou->options.u0[Y],
-	     rhou->options.u0[Z]);
     }
     else {
       /* Not recognised */

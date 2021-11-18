@@ -58,8 +58,6 @@ Ghost relaxation time:    1.00000e+00
 Hydrodynamics
 -------------
 Hydrodynamics: on
-INFLOW 1 0 0
-INFLOW  0.0000000e+00  0.0000000e+00  0.0000000e+00
 
 Boundary walls
 --------------
