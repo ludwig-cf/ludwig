@@ -124,7 +124,7 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
       *outflow = (phi_bc_open_t *) bc;
     }
     else {
-      pe_fatal(pe, "phi_bc_outflow_type not recognised: %s\n", outflow);
+      pe_fatal(pe, "phi_bc_outflow_type not recognised: %s\n", outtype);
     }
   }
 
