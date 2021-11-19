@@ -328,7 +328,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
-  /* NOW INITIAL CONDITIONS */
+  /* NOW eNITIAL CONDITIONS */
 
   pe_subdirectory(pe, subdirectory);
   ntstep = physics_control_timestep(ludwig->phys);
@@ -527,6 +527,8 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
 //OFT
   if (ludwig->temperature) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+  if (ludwig->temperature) pe_info(ludwig->pe, "went into temperature thing\n");
+
 //OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
@@ -535,7 +537,6 @@ void ludwig_run(const char * inputfile) {
   wall_is_pm(ludwig->wall, &is_porous_media);
 
   stats_distribution_print(ludwig->lb, ludwig->map);
-
   lb_ndist(ludwig->lb, &im);
 
   if (im == 2) {
@@ -550,6 +551,8 @@ void ludwig_run(const char * inputfile) {
 	else {
 	  stats_field_info(ludwig->phi, ludwig->map);
 	}
+    }
+    if (ludwig->temperature) {
 //OFT
 	if (ludwig->heq) {
 	  heat_equation_stats(ludwig->heq, ludwig->temperature, ludwig->map);
