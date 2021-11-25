@@ -27,6 +27,8 @@ __host__ void TIMER_start(const int);
 __host__ void TIMER_stop(const int);
 __host__ void TIMER_statistics(void);
 
+__host__ double timer_lapse(const int);
+
 enum timer_id {TIMER_TOTAL = 0,
 	       TIMER_STEPS,
 	       TIMER_PROPAGATE,
