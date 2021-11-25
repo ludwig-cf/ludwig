@@ -2,12 +2,10 @@
  *
  *  blue_phase_init.h
  *
- *  $Id$
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Oliver Henrich (o.henrich@ucl.ac.uk) wrote most of these.
@@ -21,8 +19,10 @@
 #include "blue_phase.h"
 
 int blue_phase_twist_init(cs_t * cs, fe_lc_param_t * param, field_t * fq, int helical_axis);
-int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
-int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
+int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			const double euler_angle[3]);
+int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			const double euler_angles[3]);
 int blue_phase_O5_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
 int blue_phase_H2D_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);
 int blue_phase_H3DA_init(cs_t * cs, fe_lc_param_t * param, field_t * fq);

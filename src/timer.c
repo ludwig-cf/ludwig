@@ -122,6 +122,29 @@ void TIMER_start(const int t_id) {
   return;
 }
 
+/*****************************************************************************
+ *
+ *  timer_lapse
+ *
+ *  Return lapsed time (seconds) since previous call (or start).
+ *
+ *****************************************************************************/
+
+double timer_lapse(const int id) {
+
+  double tlapse = -999.999;
+
+  assert(tiemr[id].active);
+
+  {
+    double tnow = MPI_Wtime();
+
+    tlapse = tnow - timer[id].t_start;
+    timer[id].t_start = tnow;
+  }
+
+  return tlapse;
+}
 
 /****************************************************************************
  *
