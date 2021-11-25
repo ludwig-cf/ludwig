@@ -134,7 +134,7 @@ double timer_lapse(const int id) {
 
   double tlapse = -999.999;
 
-  assert(tiemr[id].active);
+  assert(timer[id].active);
 
   {
     double tnow = MPI_Wtime();
