@@ -271,7 +271,9 @@ __global__ void cahn_stats_kahan_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
     /* Final result */
 
-    while (atomicCAS(&(stats->sum1.lock), 0, 1) != 0);
+    while (atomicCAS(&(stats->sum1.lock), 0, 1) != 0)
+      ;
+
     __threadfence();
 
     kahan_add(&stats->sum1, sum);
@@ -344,7 +346,9 @@ __global__ void cahn_stats_klein_sum_kernel(kernel_ctxt_t * ktx, field_t * phi,
 
     /* Final result */
 
-    while (atomicCAS(&(stats->sum2.lock), 0, 1) != 0);
+    while (atomicCAS(&(stats->sum2.lock), 0, 1) != 0)
+      ;
+
     __threadfence();
 
     klein_add(&stats->sum2, sum);
