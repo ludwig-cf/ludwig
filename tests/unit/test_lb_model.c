@@ -11,7 +11,7 @@
  *  (c) 2021 The University of Edinburgh
  *
  *  Contributing authors:
- *    Kevin Stratford (kevin@epcc.ed.ac.uk)
+ *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
  *****************************************************************************/
 
@@ -45,6 +45,7 @@ int test_lb_model_suite(void) {
   test_lb_model_create(9);
   test_lb_model_create(15);
   test_lb_model_create(19);
+  test_lb_model_create(27);
 
   pe_info(pe, "PASS     ./unit/test_lb_model\n");
 
@@ -157,6 +158,7 @@ int test_lb_model_wv(const lb_model_t * model) {
       sumcv[Y] += model->cv[p][Y];
       sumcv[Z] += model->cv[p][Z];
     }
+
     /* This can be close... may require 2*epsilon */
     assert(fabs(sumwv    - 1.0) <= DBL_EPSILON);
     assert(fabs(sumcv[X] - 0.0) <= DBL_EPSILON);
@@ -239,6 +241,7 @@ int test_lb_model_ma(const lb_model_t * model) {
   assert(model);
 
   /* Check normalisers \sum_p na[i]*wv[p]*ma[i][p]*ma[j][p] = dij. */
+  /* The modes must all be orthonormal wrt one another. */
 
   for (int i = 0; i < model->nvel; i++) {
     for (int j = 0; j < model->nvel; j++) {
@@ -248,9 +251,12 @@ int test_lb_model_ma(const lb_model_t * model) {
 	double ** ma = model->ma;
 	sum += model->na[i]*model->wv[p]*ma[i][p]*ma[j][p];
       }
-      /* Just too tight to make DBL_EPSILON ... */
-      assert(fabs(sum - dij) < 2*DBL_EPSILON);
-      ierr += (fabs(sum - dij) > 2*DBL_EPSILON);
+
+      /* Too tight to make DBL_EPSILON ... */
+      /* although d2q9, d3q15, d3q19 will make 2*DBL_EPISLON */
+
+      assert(fabs(sum - dij) < 5.0*DBL_EPSILON);
+      ierr += (fabs(sum - dij) > 5.0*DBL_EPSILON);
     }
   }
 
