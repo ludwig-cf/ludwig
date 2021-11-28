@@ -16,7 +16,7 @@
 
 #include "lb_model.h"
 
-/* Velocity set, weights, and normalisers */
+/* Velocity set and weights.*/
 
 enum {NVEL_D3Q15 = 15};
 
@@ -31,11 +31,6 @@ enum {NVEL_D3Q15 = 15};
 #define LB_WEIGHTS_D3Q15(wv) const double wv[NVEL_D3Q15] = {   16.0/72.0, \
     1.0/72.0, 1.0/72.0, 8.0/72.0, 1.0/72.0, 1.0/72.0, 8.0/72.0, 8.0/72.0, \
     8.0/72.0, 8.0/72.0, 1.0/72.0, 1.0/72.0, 8.0/72.0, 1.0/72.0, 1.0/72.0 };
-
-#define LB_NORMALISERS_D3Q15(norm) const double norm[NVEL_D3Q15] = { \
-    1.0, 3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0, 9.0/2.0, 9.0, 9.0/2.0,    \
-    0.5, 1.5, 1.5, 1.5, 9.0};
-
 
 int lb_d3q15_create(lb_model_t * model);
 
