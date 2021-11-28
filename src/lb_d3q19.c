@@ -49,14 +49,12 @@ int lb_d3q19_create(lb_model_t * model) {
   {
     LB_CV_D3Q19(cv);
     LB_WEIGHTS_D3Q19(wv);
-    LB_NORMALISERS_D3Q19(na);
 
     for (int p = 0; p < model->nvel; p++) {
       for (int ia = 0; ia < 3; ia++) {
 	model->cv[p][ia] = cv[p][ia];
       }
       model->wv[p] = wv[p];
-      model->na[p] = na[p];
     }
   }
 
@@ -70,6 +68,16 @@ int lb_d3q19_create(lb_model_t * model) {
   }
 
   lb_d3q19_matrix_ma(model);
+
+  /* Normalisers */
+
+  for (int p = 0; p < model->nvel; p++) {
+    double wip = 0.0;
+    for (int ia = 0; ia < model->nvel; ia++) {
+      wip += model->wv[ia]*model->ma[p][ia]*model->ma[p][ia];
+    }
+    model->na[p] = 1.0/wip;
+  }
 
   return 0;
 
@@ -88,9 +96,9 @@ int lb_d3q19_create(lb_model_t * model) {
  *
  *  There are three scalar ghost modes:
  *
- *   chi1  (2cs^2 - 3)(3c_z^2 - cs^2)           mode[10]
- *   chi2  (2cs^2 - 3)(c_y^2 - c_x^2)           mode[14]
- *   chi3  3cs^4 - 6cs^2 + 1                    mode[18]
+ *   chi1  (2c^2 - 3)(3c_z^2 - c^2)          mode[10]
+ *   chi2  (2c^2 - 3)(c_y^2 - c_x^2)         mode[14]
+ *   chi3  3c^4 - 6c^2 + 1                   mode[18]
  *
  *   and two associated vectors jchi1 and jchi2.
  *
@@ -115,10 +123,10 @@ static int lb_d3q19_matrix_ma(lb_model_t * model) {
     double syz  = cy*cz;
     double szz  = cz*cz - model->cs2;
 
-    double cs2  = cx*cx + cy*cy + cz*cz;
-    double chi1 = (2.0*cs2 - 3.0)*(3.0*cz*cz - cs2);
-    double chi2 = (2.0*cs2 - 3.0)*(cy*cy - cx*cx);
-    double chi3 = 3.0*cs2*cs2 - 6.0*cs2 + 1;
+    double c2   = cx*cx + cy*cy + cz*cz;
+    double chi1 = (2.0*c2 - 3.0)*(3.0*cz*cz - c2);
+    double chi2 = (2.0*c2 - 3.0)*(cy*cy - cx*cx);
+    double chi3 = 3.0*c2*c2 - 6.0*c2 + 1;
 
     model->ma[ 0][p] = rho;
     model->ma[ 1][p] = cx;
