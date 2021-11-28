@@ -19,25 +19,19 @@
 
 #include "lb_model.h"
 
-/* Velocity set, weights, and normalisers. */
+/* Velocity set and weights. */
 
 enum {NVEL_D2Q9 = 9};
 
-#define LB_CV_D2Q9(cv) const int8_t cv[NVEL_D2Q9][3] = {   \
-    { 0,  0,  0},                                          \
-    { 1,  1,  0}, { 1,  0,  0},                            \
-    { 1, -1,  0}, { 0,  1,  0},                            \
-    { 0, -1,  0}, {-1,  1,  0},                            \
-    {-1,  0,  0}, {-1, -1,  0}};
+#define LB_CV_D2Q9(cv) const int8_t cv[NVEL_D2Q9][3] = {      \
+    { 0,  0,  0},                                             \
+    { 1,  1,  0}, { 1,  0,  0}, { 1, -1,  0}, { 0,  1,  0},   \
+    { 0, -1,  0}, {-1,  1,  0}, {-1,  0,  0}, {-1, -1,  0}};
 
-#define LB_WEIGHTS_D2Q9(wv) const double wv[NVEL_D2Q9] = { \
-   16.0/36.0,                                              \
-    1.0/36.0, 4.0/36.0, 1.0/36.0, 4.0/36.0,                \
+#define LB_WEIGHTS_D2Q9(wv) const double wv[NVEL_D2Q9] = {    \
+   16.0/36.0,                                                 \
+    1.0/36.0, 4.0/36.0, 1.0/36.0, 4.0/36.0,                   \
     4.0/36.0, 1.0/36.0, 4.0/36.0, 1.0/36.0};
-
-#define LB_NORMALISERS_D2Q9(norm) const double norm[NVEL_D2Q9] = { \
-    1.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0/2.0, 1.0/4.0, 3.0/8.0, 3.0/8.0};
-
 
 int lb_d2q9_create(lb_model_t * model);
 
