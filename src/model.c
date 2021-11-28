@@ -355,6 +355,10 @@ static int lb_model_param_init(lb_t * lb) {
   }
 
   for (ia = 0; ia < NVEL; ia++) {
+    lb->param->rna[ia] = 1.0/lb->model.na[ia];
+  }
+
+  for (ia = 0; ia < NVEL; ia++) {
     for (ib = 0; ib < NVEL; ib++) {
       lb->param->ma[ia][ib] = lb->model.ma[ia][ib];
       lb->param->mi[ia][ib] = lb->model.wv[ia]*lb->model.na[ib]*lb->model.ma[ib][ia];

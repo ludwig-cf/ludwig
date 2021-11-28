@@ -56,6 +56,7 @@ int lb_collision_binary(lb_t * lb, hydro_t * hydro, noise_t * noise,
 
 static __host__ __device__
 void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
+			       double kt,
 			       double shat[3][3], double ghat[NVEL]);
 int lb_collision_noise_var_set(lb_t * lb, noise_t * noise);
 static __host__ int lb_collision_parameters_commit(lb_t * lb, visc_t * visc);
@@ -110,7 +111,8 @@ __host__ __device__ int lb_relaxation_time_ghosts(lb_t * lb,
 
 __host__ __device__ double lb_fluctuations_var_eta(double tau, double kt);
 __host__ __device__ double lb_fluctuations_var_bulk(double tau, double kt);
-__host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
+__host__ __device__ int lb_fluctuations_var_ghost(double * rna, double * rtau,
+						  double kt,
 						  double * var);
 
 __host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
@@ -507,7 +509,8 @@ void lb_collision_mrt1_site(lb_t * lb, hydro_t * hydro, map_t * map,
 	  for (ia = 0; ia < NVEL; ia++) {
 	    rtau_ghost_tmp[ia] = rtau_ghost[ia][iv];
 	  }
-	  lb_fluctuations_var_ghost(rtau_ghost_tmp, _cp.kt, var_ghost);
+	  lb_fluctuations_var_ghost(lb->param->rna,
+				    rtau_ghost_tmp, _cp.kt, var_ghost);
 	  lb_fluctuations_ghosts(noise, index0 + iv, var_ghost, ghat1);
 	  for (ia = 0; ia < NVEL; ia++) {
 	    ghat[ia][iv] = ghat1[ia];
@@ -890,7 +893,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
       double shat1[3][3];
       double ghat1[NVEL];
 
-      lb_collision_fluctuations(lb, noise, index0 + iv, shat1, ghat1);
+      lb_collision_fluctuations(lb, noise, index0 + iv, _cp.kt, shat1, ghat1);
 
       for (ia = 0; ia < 3; ia++) {
 	for (ib = 0; ib < 3; ib++) {
@@ -1573,9 +1576,7 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
   double kt;
   double tau_s;
   double tau_b;
-  double tau_g;
   LB_RCS2_DOUBLE(rcs2);
-  LB_NORMALISERS_DOUBLE(na);
 
   physics_t * phys = NULL;
 
@@ -1601,14 +1602,6 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
       sqrt(kt)*sqrt(2.0/9.0)*sqrt((tau_b + tau_b - 1.0)/(tau_b*tau_b));
     lb->param->var_shear =
       sqrt(kt)*sqrt(1.0/9.0)*sqrt((tau_s + tau_s - 1.0)/(tau_s*tau_s));
-
-    /* Noise variances */
-
-    for (p = NHYDRO; p < NVEL; p++) {
-      tau_g = 1.0/lb->param->rtau[p];
-      lb->param->var_noise[p] =
-	sqrt(kt/na[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
-    }
   }
 
   if (lb->param->isghost == LB_GHOST_OFF) {
@@ -1617,7 +1610,6 @@ __host__ int lb_collision_noise_var_set(lb_t * lb, noise_t * noise) {
     /* Eliminate ghost modes and ghost mode noise */
     for (p = NHYDRO; p < NVEL; p++) {
       lb->param->rtau[p] = 1.0;
-      lb->param->var_noise[p] = 0.0;
     }
   }
 
@@ -1663,16 +1655,18 @@ __host__ int lb_collision_relaxation_times(lb_t * lb, double * tau) {
  *  the current lattice site index.
  *
  *  There are NDIM*(NDIM+1)/2 independent stress modes, and
- *  NVEL - NHYDRO ghost modes.
+ *  NVEL - NHYDRO ghost modes (computed using kt explicitly).
  *
  *****************************************************************************/
 
 static __host__ __device__
   void lb_collision_fluctuations(lb_t * lb, noise_t * noise, int index,
+				 double kt,
 				 double shat[3][3], double ghat[NVEL]) {
   int ia;
   double tr;
   double random[NNOISE_MAX];
+  LB_RCS2_DOUBLE(rcs2);
 
   assert(lb);
   assert(lb->param);
@@ -1737,7 +1731,11 @@ static __host__ __device__
     noise_reap_n(noise, index, NVEL-NHYDRO, random);
 
     for (ia = NHYDRO; ia < NVEL; ia++) {
-      ghat[ia] = lb->param->var_noise[ia]*random[ia - NHYDRO];
+      /* Remember further normalisation of kT = rcs2*kt */
+      double tau = 1.0/lb->param->rtau[ia];
+      double rna = lb->param->rna[ia];
+      double var = sqrt(rna*rcs2*kt)*sqrt((tau + tau - 1.0)/(tau*tau));
+      ghat[ia] = var*random[ia - NHYDRO];
     }
   }
 
@@ -1791,13 +1789,16 @@ __host__ __device__ double lb_fluctuations_var_bulk(double tau, double kt) {
  *  Variances for ghost mode noise for modes with inverse relaxation
  *  times rtau and temperature kt.
  *
+ *  Also depends on the reciprocal of the normalisers rna[] for the
+ *  current model.
+ *
  *****************************************************************************/
 
-__host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
+__host__ __device__ int lb_fluctuations_var_ghost(double * rna, double * rtau,
+						  double kt,
 						  double * var) {
   int p;
   LB_RCS2_DOUBLE(rcs2);
-  LB_NORMALISERS_DOUBLE(norm);
 
   assert(rtau);
   assert(kt >= 0.0);
@@ -1807,7 +1808,7 @@ __host__ __device__ int lb_fluctuations_var_ghost(double * rtau, double kt,
 
   for (p = NHYDRO; p < NVEL; p++) {
     double tau_g = 1.0/rtau[p];
-    var[p] = sqrt(kt/norm[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
+    var[p] = sqrt(kt*rna[p])*sqrt((tau_g + tau_g - 1.0)/(tau_g*tau_g));
   }
 
   return 0;
@@ -1880,6 +1881,21 @@ __host__ __device__ int lb_fluctuations_stress(noise_t * noise, int index,
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  lb_fluctuations_ghosts
+ *
+ *  Note. Beacuse the random numbers are just assigned to the modes
+ *  on the basis of order of appearance in M^a, the order of the
+ *  ghost modes is significant here.
+ *
+ *  If the order of the modes is changed, the then random number
+ *  would have to be re-assigned in the new order to recover exactly
+ *  the same numerical results. (In the long-run, the statistics
+ *  are no different - the labelling cannot have any physical effect.)
+ *
+ *****************************************************************************/
 
 __host__ __device__ int lb_fluctuations_ghosts(noise_t * noise, int index,
 					       double * var_ghost,
