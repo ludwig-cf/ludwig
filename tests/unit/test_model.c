@@ -130,76 +130,17 @@ static void test_model_constants(void) {
 static void test_model_velocity_set(void) {
 
   int i, j, k, p;
-  double sum, sumx, sumy, sumz;
+  double sum;
 
   LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
   KRONECKER_DELTA_CHAR(d_);
-
-  /* Number of hydrodynamic modes: */
 
   test_assert(NHYDRO == (1 + NDIM + NDIM*(NDIM+1)/2));
 
   /* Speed of sound */
 
   test_assert(fabs(rcs2 - 3.0) < TEST_DOUBLE_TOLERANCE);
-
-  /* Kronecker delta */
-
-  for (i = 0; i < NDIM; i++) {
-    for (j = 0; j < NDIM; j++) {
-      if (i == j) {
-	test_assert(fabs(d_[i][j] - 1.0) < TEST_DOUBLE_TOLERANCE);
-      }
-      else {
-	test_assert(fabs(d_[i][j] - 0.0) < TEST_DOUBLE_TOLERANCE);
-      }
-    }
-  }
-
-  /* Checking cv[0] */
-
-  test_assert(cv[0][X] == 0);
-  test_assert(cv[0][Y] == 0);
-  test_assert(cv[0][Z] == 0);
-
-  /* Checking cv[p][X] = -cv[NVEL-p][X] (p != 0)  */
-
-  for (p = 1; p < NVEL; p++) {
-    test_assert(cv[p][X] == -cv[NVEL-p][X]);
-    test_assert(cv[p][Y] == -cv[NVEL-p][Y]);
-    test_assert(cv[p][Z] == -cv[NVEL-p][Z]);
-  }
-
-  /* Sum of quadrature weights, velcoities */
-
-  sum = 0.0; sumx = 0.0; sumy = 0.0; sumz = 0.0;
-
-  for (p = 0; p < NVEL; p++) {
-    sum += wv[p];
-    sumx += wv[p]*cv[p][X];
-    sumy += wv[p]*cv[p][Y];
-    sumz += wv[p]*cv[p][Z];
-  }
-
-  test_assert(fabs(sum - 1.0) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(sumx) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(sumy) < TEST_DOUBLE_TOLERANCE);
-  test_assert(fabs(sumz) < TEST_DOUBLE_TOLERANCE);
-
-  /* Quadratic terms = cs^2 d_ij */
-
-  /* Checking wv[p]*cv[p][i]*cv[p][j] */
-
-  for (i = 0; i < NDIM; i++) {
-    for (j = 0; j < NDIM; j++) {
-      sum = 0.0;
-      for (p = 0; p < NVEL; p++) {
-	sum += wv[p]*cv[p][i]*cv[p][j];
-      }
-      test_assert(fabs(sum - d_[i][j]/rcs2) < TEST_DOUBLE_TOLERANCE);
-    }
-  }
 
   /* Checking wv[p]*q_[p][i][j]... */
 
@@ -226,30 +167,6 @@ static void test_model_velocity_set(void) {
       }
     }
   }
-
-#ifdef NEED_TO_BE_MOVED
-  /* Check ma_ against rho, cv conserved quantities */
-
-  for (p = 0; p < NVEL; p++) {
-    test_assert(fabs(ma_[0][p] - 1.0) < TEST_DOUBLE_TOLERANCE);
-    for (i = 0; i < NDIM; i++) {
-      test_assert(fabs(ma_[1+i][p] - cv[p][i]) < TEST_DOUBLE_TOLERANCE);
-    }
-  }
-
-  /* Check ma_ against stress modes */
-
-  for (p = 0; p < NVEL; p++) {
-    k = 0;
-    for (i = 0; i < NDIM; i++) {
-      for (j = i; j < NDIM; j++) {
-	double q_ij = cv[p][i]*cv[p][j] - cs2*d_[i][j];
-	test_assert(fabs(ma_[1 + NDIM + k++][p] - q_ij)
-		    < TEST_DOUBLE_TOLERANCE);
-      }
-    }
-  }
-#endif
 
   return;
 }

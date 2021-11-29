@@ -80,7 +80,6 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   int nlocal[3];
   int ic, jc, kc, index, p;
   int nd;
-  int nvel;
   int ndist = 2;
   double f_actual;
 
@@ -94,7 +93,6 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 
   lb_ndist_set(lb, ndist);
   lb_init(lb);
-  lb_nvel(lb, &nvel);
 
   cs_nlocal(cs, nlocal);
 
@@ -107,8 +105,8 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	index = cs_index(cs, ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < nvel; p++) {
-	    lb_f_set(lb, index, p, nd, 1.0*(p + nd*NVEL));
+	  for (p = 0; p < lb->model.nvel; p++) {
+	    lb_f_set(lb, index, p, nd, 1.0*(p + nd*lb->model.nvel));
 	  }
 	}
 
@@ -138,9 +136,9 @@ int do_test_velocity(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	index = cs_index(cs, ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < nvel; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f(lb, index, p, nd, &f_actual);
-	    assert(fabs(f_actual - 1.0*(p + nd*NVEL)) < DBL_EPSILON);
+	    assert(fabs(f_actual - 1.0*(p + nd*lb->model.nvel)) < DBL_EPSILON);
 	  }
 	}
       }
@@ -171,7 +169,6 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   int ic, jc, kc, index, p;
   int nd;
   int ndist = 2;
-  int nvel;
   int isource, jsource, ksource;
   double f_actual, f_expect;
   double ltot[3];
@@ -185,7 +182,6 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
   assert(lb);
   lb_ndist_set(lb, ndist);
   lb_init(lb);
-  lb_nvel(lb, &nvel);
 
   cs_ltot(cs, ltot);
   cs_ntotal(cs, ntotal);
@@ -204,7 +200,7 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	  ltot[Z]*(offset[Y] + jc) + (offset[Z] + kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < nvel; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f_set(lb, index, p, nd, f_actual);
 	  }
 	}
@@ -234,14 +230,14 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	index = cs_index(cs, ic, jc, kc);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < nvel; p++) {
-	    isource = offset[X] + ic - cv[p][X];
+	  for (p = 0; p < lb->model.nvel; p++) {
+	    isource = offset[X] + ic - lb->model.cv[p][X];
 	    if (isource == 0) isource += ntotal[X];
 	    if (isource == ntotal[X] + 1) isource = 1;
-	    jsource = offset[Y] + jc - cv[p][Y];
+	    jsource = offset[Y] + jc - lb->model.cv[p][Y];
 	    if (jsource == 0) jsource += ntotal[Y];
 	    if (jsource == ntotal[Y] + 1) jsource = 1;
-	    ksource = offset[Z] + kc - cv[p][Z];
+	    ksource = offset[Z] + kc - lb->model.cv[p][Z];
 	    if (ksource == 0) ksource += ntotal[Z];
 	    if (ksource == ntotal[Z] + 1) ksource = 1;
 
@@ -249,7 +245,7 @@ int do_test_source_destination(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	    lb_f(lb, index, p, nd, &f_actual);
 
 	    /* In case of d2q9, propagation is only for kc = 1 */
-	    if (NDIM == 2 && kc > 1) f_actual = f_expect;
+	    if (lb->model.ndim == 2 && kc > 1) f_actual = f_expect;
 
 	    assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 	  }
