@@ -25,7 +25,6 @@
 #include "kernel.h"
 #include "pth_s.h"
 #include "phi_force_stress.h"
-#include "blue_phase.h"
 
 __global__ void pth_kernel(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
 __global__ void pth_kernel_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe);
@@ -333,74 +332,6 @@ __global__ void pth_kernel_a_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
   }
 
   return;
-}
-
-/*****************************************************************************
- *
- *  pth_bulk_stress_compute
- *
- *  Compute the stress from bulk FE terms everywhere and store.
- *
- *****************************************************************************/
-
-__host__ int pth_bulk_stress_compute(pth_t * pth, fe_lc_t * fe) {
-
-  int ic, jc, kc;
-  int index,nlocal[3];
-  double sth[3][3];
-
-  assert(pth);
-  assert(fe);
-
-  cs_nlocal(pth->cs, nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = cs_index(pth->cs, ic, jc, kc);
-	fe_lc_bulk_stress(fe, index, sth);
-	pth_stress_set(pth, index, sth);
-
-      }
-    }
-  }
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  pth_gradient_stress_compute
- *
- *  Compute the stress from gradient FE terms everywhere and store.
- *
- *****************************************************************************/
-
-__host__ int pth_gradient_stress_compute(pth_t * pth, fe_lc_t * fe) {
-
-  int ic, jc, kc;
-  int index,nlocal[3];
-  double sth[3][3];
-
-  assert(pth);
-  assert(fe);
-
-  cs_nlocal(pth->cs, nlocal);
-
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-
-	index = cs_index(pth->cs, ic, jc, kc);
-	fe_lc_grad_stress(fe, index, sth);
-	pth_stress_set(pth, index, sth);
-
-      }
-    }
-  }
-
-  return 0;
 }
 
 /*****************************************************************************

@@ -20,7 +20,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "free_energy.h"
-#include "blue_phase.h"
 
 enum {PTH_METHOD_NO_FORCE, PTH_METHOD_DIVERGENCE, PTH_METHOD_GRADMU, 
       PTH_METHOD_STRESS_ONLY};
@@ -31,8 +30,6 @@ __host__ int pth_create(pe_t * pe, cs_t * cs, int method, pth_t ** pth);
 __host__ int pth_free(pth_t * pth);
 __host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag);
 __host__ int pth_stress_compute(pth_t * pth, fe_t * fe);
-__host__ int pth_bulk_stress_compute(pth_t * pth, fe_lc_t * fe);
-__host__ int pth_gradient_stress_compute(pth_t * pth, fe_lc_t * fe);
 
 __host__ __device__ void pth_stress(pth_t * pth,  int index, double p[3][3]);
 __host__ __device__ void pth_stress_set(pth_t * pth, int index, double p[3][3]);
