@@ -27,7 +27,9 @@ int test_lb_model_nhydro(void);
 int test_lb_model_create(int nvel);
 int test_lb_model_cv(const lb_model_t * model);
 int test_lb_model_wv(const lb_model_t * model);
+int test_lb_model_na(const lb_model_t * model);
 int test_lb_model_ma(const lb_model_t * model);
+int test_lb_model_hydrodynamic_modes(const lb_model_t * model);
 
 /*****************************************************************************
  *
@@ -82,7 +84,10 @@ int test_lb_model_create(int nvel) {
 
   test_lb_model_cv(&model);
   test_lb_model_wv(&model);
+  test_lb_model_na(&model);
   test_lb_model_ma(&model);
+
+  test_lb_model_hydrodynamic_modes(&model);
 
   lb_model_free(&model);
 
@@ -230,6 +235,32 @@ int test_lb_model_wv(const lb_model_t * model) {
 
 /*****************************************************************************
  *
+ *  test_lb_model_na
+ *
+ *****************************************************************************/
+
+int test_lb_model_na(const lb_model_t * model) {
+
+  int ifail = 0;
+
+  assert(model);
+
+  /* The normalisers are related to the weighted inner product of the modes */
+
+  for (int m = 0; m < model->nvel; m++) {
+    double wip = 0.0;
+    for (int p = 0; p < model->nvel; p++) {
+      wip += model->wv[p]*model->ma[m][p]*model->ma[m][p];
+    }
+    assert(fabs(1.0/wip - model->na[m]) < DBL_EPSILON);
+    ifail += (fabs(1.0/wip - model->na[m]) > DBL_EPSILON);
+  }
+
+  return ifail;
+}
+
+/*****************************************************************************
+ *
  *  test_lb_model_ma
  *
  *****************************************************************************/
@@ -240,7 +271,7 @@ int test_lb_model_ma(const lb_model_t * model) {
 
   assert(model);
 
-  /* Check normalisers \sum_p na[i]*wv[p]*ma[i][p]*ma[j][p] = dij. */
+  /* Check condition \sum_p na[i]*wv[p]*ma[i][p]*ma[j][p] = dij. */
   /* The modes must all be orthonormal wrt one another. */
 
   for (int i = 0; i < model->nvel; i++) {
@@ -289,4 +320,51 @@ int test_lb_model_ma(const lb_model_t * model) {
   }
 
   return ierr;
+}
+
+/*****************************************************************************
+ *
+ *  test_lb_model_hydrodynamic_modes
+ *
+ *****************************************************************************/
+
+int test_lb_model_hydrodynamic_modes(const lb_model_t * model) {
+
+  assert(model);
+
+  /* The hydrodynamic modes are always the same independent of model
+   * and must be in the right order */
+
+  /* One density */
+
+  for (int p = 0; p < model->nvel; p++) {
+    assert(fabs(model->ma[0][p] - 1.0) < DBL_EPSILON);
+  }
+
+  /* ndim velocities */
+
+  for (int p = 0; p < model->nvel; p++) {
+    for (int q = 0; q < model->ndim; q++) {
+      assert(fabs(model->ma[1+q][p] - model->cv[p][q]) < DBL_EPSILON);
+    }
+  }
+
+  /* Upper triangle of stresses */
+  {
+    double cs2 = model->cs2;
+
+    for (int p = 0; p < model->nvel; p++) {
+      int k = 1 + model->ndim;
+      for (int i = 0; i < model->ndim; i++) {
+	for (int j = i; j < model->ndim; j++) {
+	  double dij = (i == j);
+	  double sij = model->cv[p][i]*model->cv[p][j] - cs2*dij;
+	  assert(fabs(model->ma[k][p] - sij) < DBL_EPSILON);
+	  k += 1;
+	}
+      }
+    }
+  }
+
+  return 0;
 }
