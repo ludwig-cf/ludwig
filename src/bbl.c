@@ -913,27 +913,35 @@ int bbl_update_colloids(bbl_t * bbl, wall_t * wall, colloids_info_t * cinfo) {
 
     /* Record the actual hydrodynamic force on the particle */
 
-    pc->force[X] = pc->f0[X]
+    pc->diagnostic.fhydro[X] = pc->f0[X]
       -(pc->zeta[0]*pc->s.v[X] +
 	pc->zeta[1]*pc->s.v[Y] +
 	pc->zeta[2]*pc->s.v[Z] +
 	pc->zeta[3]*pc->s.w[X] +
 	pc->zeta[4]*pc->s.w[Y] +
 	pc->zeta[5]*pc->s.w[Z]);
-    pc->force[Y] = pc->f0[Y]
+    pc->diagnostic.fhydro[Y] = pc->f0[Y]
       -(pc->zeta[ 1]*pc->s.v[X] +
 	pc->zeta[ 6]*pc->s.v[Y] +
 	pc->zeta[ 7]*pc->s.v[Z] +
 	pc->zeta[ 8]*pc->s.w[X] +
 	pc->zeta[ 9]*pc->s.w[Y] +
 	pc->zeta[10]*pc->s.w[Z]);
-    pc->force[Z] = pc->f0[Z]
+    pc->diagnostic.fhydro[Z] = pc->f0[Z]
       -(pc->zeta[ 2]*pc->s.v[X] +
 	pc->zeta[ 7]*pc->s.v[Y] +
 	pc->zeta[11]*pc->s.v[Z] +
 	pc->zeta[12]*pc->s.w[X] +
 	pc->zeta[13]*pc->s.w[Y] +
 	pc->zeta[14]*pc->s.w[Z]);
+
+    /* Copy non-hydrodynamic contribution for the diagnostic record. */
+
+    pc->diagnostic.fnonhy[X] = pc->force[X];
+    pc->diagnostic.fnonhy[Y] = pc->force[Y];
+    pc->diagnostic.fnonhy[Z] = pc->force[Z];
+
+    /* Next colloid */
   }
 
   /* As the lubrication force is based on the updated velocity, but

@@ -21,6 +21,29 @@
 #include "colloid.h"
 #include "colloid_link.h"
 
+/* Auxiliary for diagnostic quantities (for output) */
+
+typedef struct colloid_diagnostic_s colloid_diagnostic_t;
+
+struct colloid_diagnostic_s {
+
+  int index;          /* Copy of particle index for identification. */
+  double ftotal[3];   /* Net force on particle (all contributions) */
+  double fhydro[3];   /* Hydrodynamic force on particle */
+  double fsbulk[3];   /* Bulk stress (divergence) contribution */
+  double fsgrad[3];   /* Gradient stress (divergence) contribution */
+  double fschem[3];   /* Total "chemical" stress contribution (is fd2 + fd3) */
+  double finter[3];   /* External field/interaction contribution */
+  double fnonhy[3];   /* Total non-hydrodynamic (interpendent of fd0-fd1) */
+
+  /* Might want to split external field / conservative interaction
+   * contributions. A separate wall contribution for lubrication
+   * corrections is missing; it should currently appear in the
+   * hydrodynamic contribution. */
+};
+
+/* Colloid structure */
+
 typedef struct colloid colloid_t;
 
 struct colloid {
@@ -48,6 +71,10 @@ struct colloid {
   double fsub[3];       /* Subgrid particle force from fluid */
   double fex[3];        /* External forces (non-fluid) on particle */
   double tex[3];        /* External torques on particle */
+
+  /* Diagnostic utilities (all for current time step) */
+
+  colloid_diagnostic_t diagnostic;
 
   /* Pointers */
 

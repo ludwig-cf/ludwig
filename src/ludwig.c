@@ -102,6 +102,7 @@
 
 /* Statistics */
 #include "stats_colloid.h"
+#include "stats_colloid_force_split.h"
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
@@ -714,7 +715,12 @@ void ludwig_run(const char * inputfile) {
 			    ludwig->hydro, ludwig->map, ludwig->wall);
 	}
       }
-        
+      /* OLIVER: 
+	 You need this, only at statistics steps...
+      stats_colloid_force_split_update(ludwig->collinfo,
+				       ludwig->fe, ludwig->map,
+				       ludwig->q, ludwig->q_grad);
+      */
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
 
@@ -940,6 +946,10 @@ void ludwig_run(const char * inputfile) {
 	field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
 	field_grad_memcpy(ludwig->q_grad, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->q, ludwig->map);
+	/* OLIVER:
+	   You need this for diagnostic output
+	stats_colloid_force_split_output(ludwig->collinfo, step);
+	*/
       }
 
       if (ludwig->psi) {

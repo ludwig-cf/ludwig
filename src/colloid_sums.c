@@ -73,11 +73,12 @@ static int colloid_sums_m3(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m4(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m5(colloid_sum_t * sum, int, int, int, int);
 static int colloid_sums_m6(colloid_sum_t * sum, int, int, int, int);
+static int colloid_sums_m7(colloid_sum_t * sum, int, int, int, int);
 
 /* Message sizes (doubles) */
 /* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 7};
+static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 7, 10};
 
 /* The following are used for internal communication */
 
@@ -381,6 +382,7 @@ static int colloid_sums_process(colloid_sum_t * sum, int dim) {
   if (sum->mtype == COLLOID_SUM_SUBGRID) mloader_forw = colloid_sums_m4;
   if (sum->mtype == COLLOID_SUM_CONSERVATION) mloader_forw = colloid_sums_m5;
   if (sum->mtype == COLLOID_SUM_FORCE_EXT_ONLY) mloader_forw = colloid_sums_m6;
+  if (sum->mtype == COLLOID_SUM_DIAGNOSTIC) mloader_forw = colloid_sums_m7;
 
   assert(mloader_forw);
   mloader_back = mloader_forw;
@@ -787,6 +789,62 @@ static int colloid_sums_m6(colloid_sum_t * sum, int ic, int jc, int kc,
       for (ia = 0; ia < 3; ia++) {
 	pc->fex[ia] += sum->recv[n++];
 	pc->tex[ia] += sum->recv[n++];
+      }
+      assert(n == (noff + npart + 1)*sum->msize);
+    }
+
+    npart++;
+  }
+
+  return npart;
+}
+
+/*****************************************************************************
+ *
+ *  colloid_sums_m7
+ *
+ *  Diagnostic quantities.
+ *
+ *  Currently only stress terms require a sum here. Other forces
+ *  are computed as a result of the dynamics, where an appropriate
+ *  sum should have already taken place.
+ *
+ *****************************************************************************/
+
+static int colloid_sums_m7(colloid_sum_t * sum, int ic, int jc, int kc,
+			   int noff) {
+
+  int n, npart;
+  int ia;
+  int index;
+  colloid_t * pc;
+
+  n = sum->msize*noff;
+  npart = 0;
+  colloids_info_cell_list_head(sum->cinfo, ic, jc, kc, &pc);
+
+  for (; pc; pc = pc->next) {
+
+    if (sum->mload == MESSAGE_LOAD) {
+      sum->send[n++] = 1.0*pc->s.index;
+      for (ia = 0; ia < 3; ia++) {
+	sum->send[n++] = pc->diagnostic.fsbulk[ia];
+	sum->send[n++] = pc->diagnostic.fsgrad[ia];
+	sum->send[n++] = pc->diagnostic.fschem[ia];
+      }
+      assert(n == (noff + npart + 1)*sum->msize);
+    }
+    else {
+      /* unload and check incoming index (a fatal error) */
+      index = (int) sum->recv[n++];
+      if (index != pc->s.index) {
+	pe_fatal(sum->pe, "Sum mismatch m7 (%d)\n", index);
+      }
+
+      for (ia = 0; ia < 3; ia++) {
+	pc->diagnostic.fsbulk[ia] += sum->recv[n++];
+	pc->diagnostic.fsgrad[ia] += sum->recv[n++];
+	pc->diagnostic.fschem[ia] += sum->recv[n++];
       }
       assert(n == (noff + npart + 1)*sum->msize);
     }
