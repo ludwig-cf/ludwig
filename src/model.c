@@ -370,60 +370,6 @@ static int lb_model_param_init(lb_t * lb) {
 
 /*****************************************************************************
  *
- *  lb_nvel
- *
- *  Return number of velocities at runtime.
- *
- *****************************************************************************/
-
-__host__ __device__ int lb_nvel(lb_t * lb, int * nvel) {
-
-  assert(nvel);
-
-  *nvel = NVEL;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_ndim
- *
- *  Return dimension of model at runtime.
- *
- *****************************************************************************/
-
-__host__ __device__ int lb_ndim(lb_t * lb, int * ndim) {
-
-  assert(ndim);
-
-  *ndim = NDIM;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
- *  lb_nblock
- *
- *  Return cv block size.
- *
- *****************************************************************************/
-
-__host__ int lb_nblock(lb_t * lb, int dim, int * nblock) {
-
-  assert(dim == X || dim == Y || dim == Z);
-  assert(nblock);
-
-  if (dim == X) *nblock = CVXBLOCK;
-  if (dim == Y) *nblock = CVYBLOCK;
-  if (dim == Z) *nblock = CVZBLOCK;
-
-  return 0;
-}
-
-/*****************************************************************************
- *
  *  lb_init_rest_f
  *
  *  Fluid uniformly at rest.

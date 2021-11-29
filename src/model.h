@@ -108,8 +108,6 @@ __host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
 
 __host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args);
 
-__host__ __device__ int lb_nvel(lb_t * lb, int * nvel);
-__host__ __device__ int lb_ndim(lb_t * lb, int * ndim);
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);
 __host__ __device__ int lb_f_set(lb_t * lb, int index, int p, int n, double f);
@@ -118,7 +116,6 @@ __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 /* These  could be __host__ __device__ pending removal of
  * static constants */
 
-__host__ int lb_nblock(lb_t * lb, int dim, int * nblock);
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
 __host__ int lb_ndist_set(lb_t * lb, int ndist);
 __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
