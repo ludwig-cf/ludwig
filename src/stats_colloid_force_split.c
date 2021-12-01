@@ -208,6 +208,8 @@ int stat_diagnostic_write(colloid_diagnostic_t * array, int count,
 	    dp->fschem[X], dp->fschem[Y], dp->fschem[Z]);
     fprintf(fp, "Colloid %6d finter %14.7e %14.7e %14.7e\n", dp->index,
 	    dp->finter[X], dp->finter[Y], dp->finter[Z]);
+    fprintf(fp, "Colloid %6d fbuild %14.7e %14.7e %14.7e\n", dp->index,
+	    dp->fbuild[X], dp->fbuild[Y], dp->fbuild[Z]);
     fprintf(fp, "Colloid %6d fnonhy %14.7e %14.7e %14.7e\n", dp->index,
 	    dp->fnonhy[X], dp->fnonhy[Y], dp->fnonhy[Z]);
   }
@@ -229,6 +231,8 @@ int colloid_force_from_pth(colloid_t * pc, pth_t * pth, double f[3]) {
   f[X] = 0.0; f[Y] = 0.0; f[Z] = 0.0;
 
   for (colloid_link_t * link = pc->lnk; link; link = link->next) {
+
+    if (link->status != LINK_FLUID) continue;
 
     int id  = -1;
     int p = link->p;
