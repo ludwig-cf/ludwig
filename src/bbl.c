@@ -404,6 +404,13 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
     if (pc->s.type == COLLOID_TYPE_SUBGRID) continue;
 
+    /* Diagnostic record of f0 before additions are made. */
+    /* Really, f0 should not be used for dual purposes... */
+
+    pc->diagnostic.fbuild[X] = pc->f0[X];
+    pc->diagnostic.fbuild[Y] = pc->f0[Y];
+    pc->diagnostic.fbuild[Z] = pc->f0[Z];
+
     p_link = pc->lnk;
 
     for (i = 0; i < 21; i++) {

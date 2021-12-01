@@ -78,7 +78,7 @@ static int colloid_sums_m7(colloid_sum_t * sum, int, int, int, int);
 /* Message sizes (doubles) */
 /* NULL is a dummy zero size */
 
-static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 7, 10};
+static const int msize_[COLLOID_SUM_MAX] = {0, 10, 35, 7, 4, 6, 7, 13};
 
 /* The following are used for internal communication */
 
@@ -831,6 +831,7 @@ static int colloid_sums_m7(colloid_sum_t * sum, int ic, int jc, int kc,
 	sum->send[n++] = pc->diagnostic.fsbulk[ia];
 	sum->send[n++] = pc->diagnostic.fsgrad[ia];
 	sum->send[n++] = pc->diagnostic.fschem[ia];
+	sum->send[n++] = pc->diagnostic.fbuild[ia];
       }
       assert(n == (noff + npart + 1)*sum->msize);
     }
@@ -845,6 +846,7 @@ static int colloid_sums_m7(colloid_sum_t * sum, int ic, int jc, int kc,
 	pc->diagnostic.fsbulk[ia] += sum->recv[n++];
 	pc->diagnostic.fsgrad[ia] += sum->recv[n++];
 	pc->diagnostic.fschem[ia] += sum->recv[n++];
+	pc->diagnostic.fbuild[ia] += sum->recv[n++];
       }
       assert(n == (noff + npart + 1)*sum->msize);
     }

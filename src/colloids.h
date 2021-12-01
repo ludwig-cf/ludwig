@@ -34,6 +34,7 @@ struct colloid_diagnostic_s {
   double fsgrad[3];   /* Gradient stress (divergence) contribution */
   double fschem[3];   /* Total "chemical" stress contribution (is fd2 + fd3) */
   double finter[3];   /* External field/interaction contribution */
+  double fbuild[3];   /* Force corrections from changes in discrete shape */
   double fnonhy[3];   /* Total non-hydrodynamic (interpendent of fd0-fd1) */
 
   /* Might want to split external field / conservative interaction
