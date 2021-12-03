@@ -1,11 +1,11 @@
 ##############################################################################
 #
-#  BPII test
-#  Following initialisation of serial-init-bp2.inp
+#  BPII initialisation smoke test cf serial-init-bp2.inp.
+#  This one has a rotation.
 #
 ##############################################################################
 
-N_cycles 20000
+N_cycles 1
 
 ##############################################################################
 #
@@ -48,10 +48,11 @@ lc_kappa1  0.02
 lc_xi      0.7
 lc_Gamma   0.1
 
-lc_q_initialisation o2
-lc_q_init_amplitude 0.3
-lc_init_redshift 0.91
-lc_anchoring_method none
+lc_q_initialisation     o2
+lc_q_init_euler_angles  45_45_0
+lc_q_init_amplitude     0.3
+lc_init_redshift        0.91
+lc_anchoring_method     none
 
 ###############################################################################
 #
@@ -67,7 +68,6 @@ colloid_init        no_colloids
 #
 ###############################################################################
 
-boundary_walls_on no
 periodicity 1_1_1
 
 ###############################################################################
@@ -76,12 +76,14 @@ periodicity 1_1_1
 #
 ###############################################################################
 
-freq_statistics 20000
+freq_statistics 1
 config_at_end no
 
 ###############################################################################
 #
 #  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
 #
 ###############################################################################
 
