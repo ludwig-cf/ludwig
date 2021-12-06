@@ -37,6 +37,9 @@ enum timer_id {TIMER_TOTAL = 0,
 	       TIMER_PHI_GRADIENTS,
 	       TIMER_PHI_GRAD_KERNEL,
 	       TIMER_PHI_HALO,
+	       //OFT
+	       TIMER_TEMPERATURE_HALO,
+	       //OFT
 	       TIMER_LE,
 	       TIMER_IO,
 	       TIMER_FORCES,

@@ -42,6 +42,7 @@
 #include "collision_rt.h"
 
 #include "map_rt.h"
+#include "map_init.h"
 #include "wall_rt.h"
 #include "interaction.h"
 #include "physics_rt.h"
@@ -69,10 +70,17 @@
 #include "fe_ternary_rt.h"
 #include "fe_electro.h"
 #include "fe_electro_symmetric.h"
-
+//OFT
+#include "symmetric_oft.h"
+#include "symmetric_oft_rt.h"
+//OFT
 /* Dynamics */
 #include "cahn_hilliard.h"
 #include "phi_cahn_hilliard.h"
+//OFT
+#include "heat_equation.h"
+#include "heat_equation_stats.h"
+//OFT
 #include "cahn_hilliard_stats.h"
 #include "leslie_ericksen.h"
 #include "blue_phase_beris_edwards.h"
@@ -132,6 +140,9 @@ struct ludwig_s {
   field_t * phi;            /* Scalar order parameter */
   field_t * p;              /* Vector order parameter */
   field_t * q;              /* Tensor order parameter */
+  //OFT
+  field_t * temperature;    /* Temperature (scalar) */
+  //OFT
   field_grad_t * phi_grad;  /* Gradients for phi */
   field_grad_t * p_grad;    /* Gradients for p */
   field_grad_t * q_grad;    /* Gradients for q */
@@ -145,10 +156,16 @@ struct ludwig_s {
   fe_t * fe;                   /* Free energy "polymorphic" version */
   ch_t * ch;                   /* Cahn Hilliard (surfactants) */
   phi_ch_t * pch;              /* Cahn Hilliard dynamics (binary fluid) */
+//OFT
+  heq_t * heq;		       /* Temperature dynamics (heat equation) */
+//OFT
   beris_edw_t * be;            /* Beris Edwards dynamics */
   pth_t * pth;                 /* Thermodynamic stress/force calculation */
   fe_lc_t * fe_lc;             /* LC free energy */
   fe_symm_t * fe_symm;         /* Symmetric free energy */
+  //OFT
+  fe_symm_oft_t * fe_symm_oft; /* Temperature-dependant symmetric free energy */
+  //OFT
   fe_surf_t * fe_surf;         /* Surfactant (van der Graf etc) */
   fe_ternary_t * fe_ternary;   /* Ternary (Semprebon et al.) */
   fe_brazovskii_t * fe_braz;   /* Brazovskki */
@@ -231,7 +248,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   lb_run_time(pe, cs, rt, ludwig->lb);
   collision_run_time(pe, rt, ludwig->lb, ludwig->noise_rho);
   map_init_rt(pe, cs, rt, &ludwig->map);
-
   noise_init(ludwig->noise_rho, 0);
 
   ran_init_rt(pe, rt);
@@ -252,11 +268,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (n != 0 && strcmp(value, "ASCII") == 0) {
     form = IO_FORMAT_ASCII;
   }
-
+  /* Temperature I/O */
+  
+  /* TODO: Temperature always outputted in binary (I could never successfully use the extraction routines for fields written in ASCII anyway...) */
 
   /* All the same I/O grid  */
-
+  
   if (ludwig->phi) field_init_io_info(ludwig->phi, io_grid, form, form);
+//OFT
+  if (ludwig->temperature) field_init_io_info(ludwig->temperature, io_grid, form, form);
+//OFT
   if (ludwig->p) field_init_io_info(ludwig->p, io_grid, form, form);
   if (ludwig->q) field_init_io_info(ludwig->q, io_grid, form, form);
 
@@ -272,10 +293,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* Can we move this down to t = 0 initialisation? */
-
+  
   if (ludwig->fe_symm) {
     fe_symmetric_phi_init_rt(pe, rt, ludwig->fe_symm, ludwig->phi);
   }
+// OFT ---> This part must be done after colloid init since it uses map
+/* Initialisation of the symmetric_oft done below... because we need map */
+// <--- OFT
   if (ludwig->fe_braz) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
   }
@@ -296,12 +320,19 @@ static int ludwig_rt(ludwig_t * ludwig) {
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->wall, ludwig->map);
+// OFT --->
+  if (ludwig->fe_symm_oft) {
+    fe_symmetric_oft_phi_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->phi);
+    fe_symmetric_oft_temperature_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->temperature, ludwig->map);
+  }
+// <--- OFT
+
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
   bbl_active_set(ludwig->bbl, ludwig->collinfo);
 
-  /* NOW INITIAL CONDITIONS */
+  /* NOW eNITIAL CONDITIONS */
 
   pe_subdirectory(pe, subdirectory);
   ntstep = physics_control_timestep(ludwig->phys);
@@ -331,7 +362,14 @@ static int ludwig_rt(ludwig_t * ludwig) {
       field_io_info(ludwig->phi, &iohandler);
       io_read_data(iohandler, filename, ludwig->phi);
     }
-
+//OFT
+    if (ludwig->temperature) {
+      sprintf(filename, "%stemperature-%8.8d", subdirectory, ntstep);
+      pe_info(pe, "files(s) %s\n", filename);
+      field_io_info(ludwig->phi, &iohandler);
+      io_read_data(iohandler, filename, ludwig->temperature);
+    }
+//OFT
     if (ludwig->p) {
       sprintf(filename, "%sp-%8.8d", subdirectory, ntstep);
       pe_info(pe, "files(s) %s\n", filename);
@@ -359,7 +397,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   }
 
   /* gradient initialisation for field stuff */
-
   if (ludwig->phi) {
     gradient_rt_init(pe, rt, "phi", ludwig->phi_grad, ludwig->map,
 		     ludwig->collinfo);
@@ -418,7 +455,16 @@ static int ludwig_rt(ludwig_t * ludwig) {
       /* 2 is correction method requiring a reference sum. */
       cahn_hilliard_stats_time0(ludwig->pch, ludwig->phi, ludwig->map);
     }
+//OFT
+  if (ludwig->heq && ludwig->temperature) {
+    if (ludwig->heq->info.conserve == 2) {
+      /* 2 is correction method requiring a reference sum. */
+      heat_equation_stats_time0(ludwig->heq, ludwig->temperature, ludwig->map);
+    }
   }
+//OFT
+
+ }
 
   return 0;
 }
@@ -477,12 +523,16 @@ void ludwig_run(const char * inputfile) {
 
   pe_subdirectory(ludwig->pe, subdirectory);
 
-  /* Move initilaised data to target for initial conditions/time stepping */
+  /* Move initialised data to target for initial conditions/time stepping */
 
   map_memcpy(ludwig->map, tdpMemcpyHostToDevice);
   lb_memcpy(ludwig->lb, tdpMemcpyHostToDevice);
 
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+//OFT
+  if (ludwig->temperature) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
+
+//OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
@@ -490,7 +540,6 @@ void ludwig_run(const char * inputfile) {
   wall_is_pm(ludwig->wall, &is_porous_media);
 
   stats_distribution_print(ludwig->lb, ludwig->map);
-
   lb_ndist(ludwig->lb, &im);
 
   if (im == 2) {
@@ -506,6 +555,16 @@ void ludwig_run(const char * inputfile) {
 	  stats_field_info(ludwig->phi, ludwig->map);
 	}
     }
+    if (ludwig->temperature) {
+//OFT
+	if (ludwig->heq) {
+	  heat_equation_stats(ludwig->heq, ludwig->temperature, ludwig->map);
+	}
+	else {
+	  stats_field_info(ludwig->temperature, ludwig->map);
+	}
+//OFT
+    }
   }
   if (ludwig->p)   stats_field_info(ludwig->p, ludwig->map);
   if (ludwig->q)   stats_field_info(ludwig->q, ludwig->map);
@@ -518,10 +577,9 @@ void ludwig_run(const char * inputfile) {
 
   pe_info(ludwig->pe, "\n");
   pe_info(ludwig->pe, "Starting time step loop.\n");
-
   /* sync tasks before main loop for timing purposes */
   MPI_Barrier(comm);
-
+  
   while (physics_control_next_step(ludwig->phys)) {
 
     TIMER_start(TIMER_STEPS);
@@ -536,6 +594,7 @@ void ludwig_run(const char * inputfile) {
 
     if ((step % ludwig->collinfo->rebuild_freq) == 0) {
       ludwig_colloids_update(ludwig);
+      
     }
     else {
       ludwig_colloids_update_low_freq(ludwig);
@@ -549,18 +608,23 @@ void ludwig_run(const char * inputfile) {
 
 
     lb_ndist(ludwig->lb, &im);
+     
 
     if (im == 2) phi_lb_to_field(ludwig->phi, ludwig->lb);
-
+    
     if (ludwig->phi) {
-
       TIMER_start(TIMER_PHI_HALO);
       field_halo(ludwig->phi);
       TIMER_stop(TIMER_PHI_HALO);
-
       field_grad_compute(ludwig->phi_grad);
+      //OFT 
+      if (ludwig->temperature) {
+	TIMER_start(TIMER_TEMPERATURE_HALO);
+	field_halo(ludwig->temperature);
+	TIMER_stop(TIMER_TEMPERATURE_HALO);
+      }
+      //OFT
     }
-
     if (ludwig->p) {
       field_halo(ludwig->p);
       field_grad_compute(ludwig->p_grad);
@@ -659,7 +723,6 @@ void ludwig_run(const char * inputfile) {
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
-
     lb_ndist(ludwig->lb, &im);
     if (im == 2) {
       /* dynamics are dealt with at the collision stage (below) */
@@ -695,11 +758,12 @@ void ludwig_run(const char * inputfile) {
 	  }
 
 	  /* Force calculation as divergence of stress tensor */
-
           phi_force_calculation(ludwig->pe, ludwig->cs, ludwig->le,
 				ludwig->wall,
                                 ludwig->pth, ludwig->fe, ludwig->map,
                                 ludwig->phi, ludwig->hydro);
+
+	  /* OFT TODO: maybe add temperature_force_calculation later*/
 
 	  /* Ternary free energy gradmu requires of momentum correction
 	     after force calculation */
@@ -724,7 +788,14 @@ void ludwig_run(const char * inputfile) {
 	ch_solver(ludwig->ch, ludwig->fe, ludwig->phi, ludwig->hydro,
 		  ludwig->map);
       }
+// OFT TODO: give temperature its own noise, for now noise should not be used  */
 
+      if (ludwig->heq) {
+
+	heat_equation(ludwig->heq, ludwig->fe, ludwig->temperature,
+			  ludwig->hydro,
+			  ludwig->map, ludwig->noise_phi);
+      }
       if (ludwig->pch) {
 	phi_cahn_hilliard(ludwig->pch, ludwig->fe, ludwig->phi,
 			  ludwig->hydro,
@@ -868,7 +939,17 @@ void ludwig_run(const char * inputfile) {
 	io_write_data(iohandler, filename, ludwig->q);
       }
     }
+//OFT
+    if (is_temperature_output_step() || is_config_step()) {
 
+      if (ludwig->temperature) {
+	field_io_info(ludwig->temperature, &iohandler);
+	pe_info(ludwig->pe, "Writing temperature file at step %d!\n", step);
+	sprintf(filename,"%stemperature-%8.8d", subdirectory, step);
+	io_write_data(iohandler, filename, ludwig->temperature);
+      }
+    }
+//OFT
     if (ludwig->psi) {
       if (is_psi_output_step()) {
 	psi_io_info(ludwig->psi, &iohandler);
@@ -930,7 +1011,17 @@ void ludwig_run(const char * inputfile) {
 	  }
 	}
       }
-
+//OFT
+      if (ludwig->temperature) {
+	if (ludwig->heq) {
+	  heat_equation_stats(ludwig->heq, ludwig->temperature, ludwig->map);
+	}
+	else {
+	  field_memcpy(ludwig->temperature, tdpMemcpyDeviceToHost);
+	  stats_field_info(ludwig->temperature, ludwig->map);
+	}
+      }      
+//OFT
       if (ludwig->p) {
 	field_memcpy(ludwig->p, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->p, ludwig->map);
@@ -1009,7 +1100,14 @@ void ludwig_run(const char * inputfile) {
       sprintf(filename,"%sphi-%8.8d", subdirectory, step);
       io_write_data(iohandler, filename, ludwig->phi);
     }
-
+//OFT
+    if (ludwig->temperature) {
+      field_io_info(ludwig->phi, &iohandler);
+      pe_info(ludwig->pe, "Writing temperature file at step %d!\n", step);
+      sprintf(filename,"%stemperature-%8.8d", subdirectory, step);
+      io_write_data(iohandler, filename, ludwig->temperature);
+    }
+//OFT
     if (ludwig->q) {
       field_io_info(ludwig->q, &iohandler);
       pe_info(ludwig->pe, "Writing q file at step %d!\n", step);
@@ -1046,6 +1144,7 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->p_grad)   field_grad_free(ludwig->p_grad);
   if (ludwig->q_grad)   field_grad_free(ludwig->q_grad);
   if (ludwig->phi)      field_free(ludwig->phi);
+  if (ludwig->temperature) field_free(ludwig->temperature);
   if (ludwig->p)        field_free(ludwig->p);
   if (ludwig->q)        field_free(ludwig->q);
 
@@ -1061,6 +1160,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->be)        beris_edw_free(ludwig->be);
   if (ludwig->map)       map_free(ludwig->map);
   if (ludwig->pch)       phi_ch_free(ludwig->pch);
+//OFT
+  if (ludwig->heq)	 heq_free(ludwig->heq);
+//OFT
   if (ludwig->pth)       pth_free(ludwig->pth);
   if (ludwig->hydro)     hydro_free(ludwig->hydro);
   if (ludwig->lb)        lb_free(ludwig->lb);
@@ -1212,6 +1314,107 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_info(le);
     pth_create(pe, cs, PTH_METHOD_NO_FORCE, &ludwig->pth);
   }
+
+
+
+//OFT 
+
+  else if (strcmp(description, "symmetric_oft") == 0) {
+    int use_stress_relaxation;
+    phi_ch_info_t ch_options = {}; 
+    heq_info_t heq_options = {};
+
+    fe_symm_oft_t * fe = NULL;
+
+    /* Symmetric free energy via finite difference */
+
+    nf = 1;      /* 1 scalar order parameter */
+    nhalo = 2;   /* Require stress divergence. */
+    ngrad = 2;   /* \nabla^2 required */
+
+    /* Noise requires additional stencil point for Cahn Hilliard */
+
+    cs_nhalo_set(cs, nhalo);
+    coords_init_rt(pe, rt, cs);
+    lees_edw_create(pe, cs, info, &le);
+    lees_edw_info(le);
+
+    field_create(pe, cs, nf, "phi", &ludwig->phi);
+    field_create(pe, cs, nf, "temperature", &ludwig->temperature);
+    field_init(ludwig->temperature, nhalo, le);
+    field_init(ludwig->phi, nhalo, le);
+
+    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Free energy details\n");
+    pe_info(pe, "-------------------\n\n");
+    fe_symm_oft_create(pe, cs, ludwig->phi, ludwig->phi_grad, ludwig->temperature, &fe);
+    fe_symmetric_oft_init_rt(pe, rt, fe);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Using Cahn-Hilliard finite difference solver.\n");
+
+    rt_double_parameter(rt, "lambda", &value);
+    physics_lambda_set(ludwig->phys, value);
+    pe_info(pe, "Thermal diffusivity lambda            = %12.5e\n", value);
+
+    rt_double_parameter(rt, "mobility", &value);
+    physics_mobility_set(ludwig->phys, value);
+    pe_info(pe, "Mobility M            = %12.5e\n", value);
+
+    rt_int_parameter(rt, "cahn_hilliard_options_conserve",
+		     &ch_options.conserve);
+    rt_int_parameter(rt, "heat_equation_options_conserve",
+		     &heq_options.conserve);
+
+
+/* OFT TODO: need additional options for the case of phi and T ? */
+
+    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    heq_create(pe, cs, le, &heq_options, &ludwig->heq);
+
+    /* Order parameter noise */
+
+    rt_int_parameter(rt, "fd_phi_fluctuations", &noise_on);
+    pe_info(pe, "Order parameter noise = %3s\n",
+	    (noise_on == 0) ? "off" : " on");
+
+    if (noise_on) {
+      pe_info(pe, "noise is on\n");
+      noise_create(pe, cs, &ludwig->noise_phi);
+      noise_init(ludwig->noise_phi, 0);
+      noise_present_set(ludwig->noise_phi, NOISE_PHI, noise_on);
+      if (nhalo != 3) pe_fatal(pe, "Fluctuations: use symmetric_noise\n");
+    }
+
+    /* Force */
+
+    use_stress_relaxation = rt_switch(rt, "fe_use_stress_relaxation");
+    fe->super.use_stress_relaxation = use_stress_relaxation;
+
+    if (fe->super.use_stress_relaxation) {
+      pe_info(pe, "\n");
+      pe_info(pe, "Force calculation\n");
+      pe_info(pe, "Symmetric stress via collision relaxation\n");
+      pth_create(pe, cs, PTH_METHOD_STRESS_ONLY, &ludwig->pth);
+    }
+    else {
+      p = 1; /* Default is to use divergence method */
+      rt_int_parameter(rt, "fd_force_divergence", &p);
+      pe_info(pe, "Force calculation:      %s\n",
+           (p == 0) ? "phi grad mu method" : "divergence method");
+      if (p == 0) pth_create(pe, cs, PTH_METHOD_GRADMU, &ludwig->pth);
+      if (p == 1) pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &ludwig->pth);
+    }
+
+    ludwig->fe_symm_oft = fe;
+    ludwig->fe = (fe_t *) fe;
+  }
+
+//OFT
+ 
+
   else if (strcmp(description, "symmetric") == 0 ||
 	   strcmp(description, "symmetric_noise") == 0) {
 

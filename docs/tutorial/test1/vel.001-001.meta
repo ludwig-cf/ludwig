@@ -1,6 +1,6 @@
 Metadata for file set prefix:    vel
 Data description:                Velocity field
-Data size per site (bytes):      24
+Data size per site (bytes):      69
 is_bigendian():                  0
 Number of processors:            4
 Cartesian communicator topology: 4 1 1
