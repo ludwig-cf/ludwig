@@ -42,6 +42,7 @@
 #include "collision_rt.h"
 
 #include "map_rt.h"
+#include "map_init.h"
 #include "wall_rt.h"
 #include "interaction.h"
 #include "physics_rt.h"
@@ -247,7 +248,6 @@ static int ludwig_rt(ludwig_t * ludwig) {
   lb_run_time(pe, cs, rt, ludwig->lb);
   collision_run_time(pe, rt, ludwig->lb, ludwig->noise_rho);
   map_init_rt(pe, cs, rt, &ludwig->map);
-
   noise_init(ludwig->noise_rho, 0);
 
   ran_init_rt(pe, rt);
@@ -297,12 +297,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->fe_symm) {
     fe_symmetric_phi_init_rt(pe, rt, ludwig->fe_symm, ludwig->phi);
   }
-//OFT
-  if (ludwig->fe_symm_oft) {
-    fe_symmetric_oft_phi_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->phi);
-    fe_symmetric_oft_temperature_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->temperature);
-  }
-//OFT
+// OFT ---> This part must be done after colloid init since it uses map
+/* Initialisation of the symmetric_oft done below... because we need map */
+// <--- OFT
   if (ludwig->fe_braz) {
     fe_brazovskii_phi_init_rt(pe, rt, ludwig->fe_braz, ludwig->phi);
   }
@@ -323,6 +320,13 @@ static int ludwig_rt(ludwig_t * ludwig) {
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
 		   &ludwig->interact, ludwig->wall, ludwig->map);
+// OFT --->
+  if (ludwig->fe_symm_oft) {
+    fe_symmetric_oft_phi_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->phi);
+    fe_symmetric_oft_temperature_init_rt(pe, rt, ludwig->fe_symm_oft, ludwig->temperature, ludwig->map);
+  }
+// <--- OFT
+
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -527,7 +531,6 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
 //OFT
   if (ludwig->temperature) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
-  if (ludwig->temperature) pe_info(ludwig->pe, "went into temperature thing\n");
 
 //OFT
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
@@ -720,7 +723,6 @@ void ludwig_run(const char * inputfile) {
     }
 
     /* order parameter dynamics (not if symmetric_lb) */
-
     lb_ndist(ludwig->lb, &im);
     if (im == 2) {
       /* dynamics are dealt with at the collision stage (below) */
@@ -787,7 +789,9 @@ void ludwig_run(const char * inputfile) {
 		  ludwig->map);
       }
 // OFT TODO: give temperature its own noise, for now noise should not be used  */
+
       if (ludwig->heq) {
+
 	heat_equation(ludwig->heq, ludwig->fe, ludwig->temperature,
 			  ludwig->hydro,
 			  ludwig->map, ludwig->noise_phi);

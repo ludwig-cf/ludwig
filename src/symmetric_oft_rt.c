@@ -87,8 +87,8 @@ int fe_symmetric_oft_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe) {
     have_symm += rt_double_parameter(rt, "symmetric_oft_b",     &param.b);
     have_symm += rt_double_parameter(rt, "symmetric_oft_kappa0", &param.kappa0);
     have_symm += rt_double_parameter(rt, "symmetric_oft_kappa", &param.kappa);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_lambda", &param.kappa);
-    have_symm += rt_double_parameter(rt, "symmetric_oft_entropy", &param.kappa);
+    have_symm += rt_double_parameter(rt, "symmetric_oft_lambda", &param.lambda);
+    have_symm += rt_double_parameter(rt, "symmetric_oft_entropy", &param.entropy);
 
     if (have_symm) {
       /* must have all parameters */
@@ -203,7 +203,7 @@ int fe_symmetric_oft_phi_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe,
  *****************************************************************************/
 
 __host__
-int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, field_t * temperature) {
+int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * fe, field_t * temperature, map_t * map) {
 
   physics_t * phys = NULL;
   field_temperature_info_t param = {0};
@@ -212,11 +212,12 @@ int fe_symmetric_oft_temperature_init_rt(pe_t * pe, rt_t * rt, fe_symm_oft_t * f
   assert(rt);
   assert(fe);
   assert(temperature);
-
+  assert(map);
+ 
   physics_ref(&phys);
   physics_T0(phys, &param.T0);
-
-  field_temperature_init_rt(pe, rt, param, temperature);
+  physics_Tc(phys, &param.Tc);
+  field_temperature_init_rt(pe, rt, param, temperature, map);
 
   return 0;
 }

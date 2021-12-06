@@ -36,13 +36,13 @@ import sys
 import getopt
 
 nstart=0	# Start timestep
-nint=1		# Increment
-nend=100		# End timestep
+nint=1000	# Increment
+nend=200000	# End timestep
 ngroup=1	# Number of output groups
 
 vel=True	# Switch for velocity 
 q=False		# Switch for Q-tensor
-phi=True	# Switch for binary fluid
+phi=False	# Switch for binary fluid
 temperature=True	# Switch for temperature
 psi=False	# Switch for electrokinetics
 fed=False	# Switch for free energy

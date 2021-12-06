@@ -32,10 +32,11 @@
  *
  *****************************************************************************/
 
-int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t param, field_t * temperature) {
+int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t param, field_t * temperature, map_t * map) {
 
   int p;
   char value[BUFSIZ];
+  double Tc;
 
   assert(pe);
   assert(rt);
@@ -72,6 +73,13 @@ int field_temperature_init_rt(pe_t * pe, rt_t * rt, field_temperature_info_t par
     pe_info(pe, "Initialising droplet xi:  %14.7e\n", xi);
     field_temperature_init_drop(temperature, xi, radius, phistar);
   }
+
+  /* Set temperature of the colloid (order matter because it overwrites
+	temperature at colloid nodes */
+  
+  rt_double_parameter(rt, "colloid_temperature", &Tc);
+  pe_info(pe, "Initialising colloid temperature to %14.7e\n", Tc);
+  field_temperature_init_solid(temperature, map, Tc);
 
   return 0;
 }

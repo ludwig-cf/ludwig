@@ -37,6 +37,7 @@ struct physics_s {
   double rho0;         /* Mean fluid density */
   //OFT
   double T0;	       /* Intial fluid temperature */
+  double Tc;	       /* Colloid temperature */
   //OFT
   double phi0;         /* Mean fluid composition (binary fluid) */
   double phi_noise0;   /* Initial order parameter noise amplitude */
@@ -345,6 +346,38 @@ __host__ int physics_T0_set(physics_t * phys, double T0) {
   assert(phys);
 
   phys->T0 = T0;
+
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
+ *  physics_Tc
+ *
+ *****************************************************************************/
+
+__host__ __device__ int physics_Tc(physics_t * phys, double * Tc) {
+
+  assert(phys);
+  assert(Tc);
+
+  *Tc = phys->Tc;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  physics_Tc_set
+ *
+ *****************************************************************************/
+
+__host__ int physics_Tc_set(physics_t * phys, double Tc) {
+
+  assert(phys);
+
+  phys->Tc = Tc;
 
   return 0;
 }

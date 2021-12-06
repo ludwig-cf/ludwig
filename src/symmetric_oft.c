@@ -73,11 +73,6 @@ static  __constant__ fe_vt_t fe_symm_oft_dvt = {
   (fe_stress_v_ft)  NULL
 };
 
-/*
-==> what is this __constant__ for ?
-==> why are some functions duplicated ?
-*/
-
 /****************************************************************************
  *
  *  fe_symm_oft_create

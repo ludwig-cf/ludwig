@@ -25,6 +25,39 @@
 
 /*****************************************************************************
  *
+ *  field_temperature_init_solid
+ *
+ *  Initialise the temperature of colloid
+ *
+ *****************************************************************************/
+
+int field_temperature_init_solid(field_t * temperature, map_t * map, double Tc) {
+
+  int nlocal[3];
+  int ic, jc, kc, index;
+
+  assert(temperature);
+  assert(map);
+
+  cs_nlocal(temperature->cs, nlocal);
+
+  for (ic = 1; ic <= nlocal[X]; ic++) {
+    for (jc = 1; jc <= nlocal[Y]; jc++) { 
+      for (kc = 1; kc <= nlocal[Z]; kc++) {
+
+	index = cs_index(temperature->cs, ic, jc, kc);
+	if (map->status[index] == MAP_COLLOID) {
+	  temperature->data[addr_rank0(temperature->nsites, index)] = Tc;
+	}
+      }
+    }
+  }
+  return 0;
+}
+
+
+/*****************************************************************************
+ *
  *  field_temperature_init_uniform
  *
  *  Uniform field = T0; T0 should be consistent with phys_t object.

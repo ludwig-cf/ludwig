@@ -7,3 +7,4 @@ clean:
 	rm vel*
 	rm phi*
 	rm temp*
+	rm config.cds0*

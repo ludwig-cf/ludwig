@@ -48,8 +48,11 @@
 #include "heat_equation.h"
 
 static int heq_flux_mu1(heq_t * heq, fe_t * fes);
+//BC
+static int heq_flux_mu1_solid(heq_t * heq, fe_t * fes, map_t * map);
+//BC
 static int heq_flux_mu2(heq_t * heq, fe_t * fes);
-static int heq_update_forward_step(heq_t * heq, field_t * temperaturef);
+static int heq_update_forward_step(heq_t * heq, field_t * temperaturef, map_t * map);
 static int heq_flux_mu_ext(heq_t * heq);
 
 static int heq_update_conserve(heq_t * heq, field_t * temperaturef);
@@ -83,6 +86,13 @@ struct temperature_correct_s {
 __global__ void heq_flux_mu1_kernel(kernel_ctxt_t * ktx,
 				       lees_edw_t * le, fe_t * fe,
 				       advflux_t * flux, double lambda);
+//BC
+__global__ void heq_flux_mu1_solid_kernel(kernel_ctxt_t * ktx,
+				       lees_edw_t * le, fe_t * fe,
+				       advflux_t * flux, map_t * map,
+					double lambda);
+//BC
+
 __global__ void heq_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 					  lees_edw_t * le, advflux_t * flux,
 					  heq_kernel_t heq_kernel);
@@ -90,7 +100,7 @@ __global__ void heq_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 
 /* TODO: relevance for Temperature to be discussed */
 __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
-				  field_t * field, advflux_t * flux,
+				  field_t * field, advflux_t * flux, map_t * map,
 				  int ys, double wz);
 __global__ void heq_csum_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
 				   field_t * field, advflux_t * flux,
@@ -230,7 +240,10 @@ int heat_equation(heq_t * heq, fe_t * fe, field_t * temperature,
   /* No flux boundaries (diffusive fluxes, and hydrodynamic, if present)
      TODO: Think about = flux boundaries  */
 
-  if (map) advection_bcs_no_normal_flux(nf, heq->flux, map);
+  if (map) {
+    advection_bcs_no_normal_flux(nf, heq->flux, map);
+    heq_flux_mu1_solid(heq, fe, map);
+  }
 
   heq_le_fix_fluxes(heq, nf);
 
@@ -241,7 +254,7 @@ int heat_equation(heq_t * heq, fe_t * fe, field_t * temperature,
     heq_update_conserve(heq, temperature);
   }
   else {
-    heq_update_forward_step(heq, temperature);
+    heq_update_forward_step(heq, temperature, map);
     if (heq->info.conserve == 2) {
       heq_subtract_sum_temperature_after_forward_step(heq, temperature, map);
     }
@@ -280,7 +293,7 @@ static int heq_flux_mu1(heq_t * heq, fe_t * fe) {
   physics_ref(&phys);
   physics_lambda(phys, &lambda);
 
-  limits.imin = 1; limits.imax = nlocal[X];
+  limits.imin = 0; limits.imax = nlocal[X];
   limits.jmin = 0; limits.jmax = nlocal[Y];
   limits.kmin = 0; limits.kmax = nlocal[Z];
 
@@ -949,7 +962,7 @@ static int heq_le_fix_fluxes_parallel(heq_t * heq, int nf) {
  *
  *****************************************************************************/
 
-static int heq_update_forward_step(heq_t * heq, field_t * temperature) {
+static int heq_update_forward_step(heq_t * heq, field_t * temperature, map_t * map) {
 
   int nlocal[3];
   int xs, ys, zs;
@@ -959,11 +972,13 @@ static int heq_update_forward_step(heq_t * heq, field_t * temperature) {
   lees_edw_t * le = NULL;
   kernel_info_t limits;
   kernel_ctxt_t * ctxt = NULL;
+  map_t * maptarget = NULL;
 
   lees_edw_nlocal(heq->le, nlocal);
   lees_edw_target(heq->le, &le);
-  lees_edw_strides(heq->le, &xs, &ys, &zs);
+  maptarget = map->target;
 
+  lees_edw_strides(heq->le, &xs, &ys, &zs);
   limits.imin = 1; limits.imax = nlocal[X];
   limits.jmin = 1; limits.jmax = nlocal[Y];
   limits.kmin = 1; limits.kmax = nlocal[Z];
@@ -973,7 +988,7 @@ static int heq_update_forward_step(heq_t * heq, field_t * temperature) {
   kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
 
   tdpLaunchKernel(heq_ufs_kernel, nblk, ntpb, 0, 0,
-		  ctxt->target, le, temperature->target, heq->flux->target, ys, wz);
+		  ctxt->target, le, temperature->target, heq->flux->target, maptarget, ys, wz);
 
   tdpAssert(tdpPeekAtLastError());
   tdpAssert(tdpDeviceSynchronize());
@@ -994,8 +1009,8 @@ static int heq_update_forward_step(heq_t * heq, field_t * temperature) {
  *****************************************************************************/
 
 __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
-				  field_t * field, advflux_t * flux,
-				  int ys, double wz) {
+				  field_t * field, advflux_t * flux, 
+				map_t * map, int ys, double wz) {
   int kindex;
   int kiterations;
   int ic, jc, kc, index;
@@ -1005,6 +1020,7 @@ __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
   assert(le);
   assert(field);
   assert(flux);
+  assert(map);
 
   kiterations = kernel_iterations(ktx);
 
@@ -1013,20 +1029,19 @@ __global__ void heq_ufs_kernel(kernel_ctxt_t * ktx, lees_edw_t *le,
     ic = kernel_coords_ic(ktx, kindex);
     jc = kernel_coords_jc(ktx, kindex);
     kc = kernel_coords_kc(ktx, kindex);
-
     index = lees_edw_index(le, ic, jc, kc);
-    field_scalar(field, index, &temperature);
-
-    temperature -= (+ flux->fe[addr_rank0(flux->nsite, index)]
+    /* no update of the solid nodes */
+    if (map->status[index] == MAP_FLUID) {
+      field_scalar(field, index, &temperature);
+      temperature -= (+ flux->fe[addr_rank0(flux->nsite, index)]
 	    - flux->fw[addr_rank0(flux->nsite, index)]
 	    + flux->fy[addr_rank0(flux->nsite, index)]
 	    - flux->fy[addr_rank0(flux->nsite, index - ys)]
 	    + wz*flux->fz[addr_rank0(flux->nsite, index)]
 	    - wz*flux->fz[addr_rank0(flux->nsite, index - 1)]);
-
-    field_scalar_set(field, index, temperature);
+      field_scalar_set(field, index, temperature);
+    }
   }
-
   return;
 }
 
@@ -1404,3 +1419,187 @@ __global__ void heq_flux_mu_ext_kernel(kernel_ctxt_t * ktx,
 
   return;
 }
+
+
+
+
+//BC
+
+/*****************************************************************************
+ *
+ *  heq_flux_mu1_solid
+ *
+ *  Kernel driver for diffusive flux computation.
+ *
+ *****************************************************************************/
+
+static int heq_flux_mu1_solid(heq_t * heq, fe_t * fe, map_t * map) {
+
+  int nlocal[3];
+  double lambda;
+  dim3 nblk, ntpb;
+  kernel_info_t limits;
+
+  fe_t * fetarget = NULL;
+  physics_t * phys = NULL;
+  lees_edw_t * letarget = NULL;
+  kernel_ctxt_t * ctxt = NULL;
+  map_t * maptarget = NULL;
+
+  assert(heq);
+  assert(fe);
+  assert(map);
+
+  lees_edw_nlocal(heq->le, nlocal);
+  lees_edw_target(heq->le, &letarget);
+  fe->func->target(fe, &fetarget);
+  maptarget = map->target;
+
+  physics_ref(&phys);
+  physics_lambda(phys, &lambda);
+
+  limits.imin = 1; limits.imax = nlocal[X];
+  limits.jmin = 0; limits.jmax = nlocal[Y];
+  limits.kmin = 0; limits.kmax = nlocal[Z];
+
+  kernel_ctxt_create(heq->cs, 1, limits, &ctxt);
+  kernel_ctxt_launch_param(ctxt, &nblk, &ntpb);
+
+  tdpLaunchKernel(heq_flux_mu1_solid_kernel, nblk, ntpb, 0, 0,
+		  ctxt->target, letarget, fetarget, heq->flux->target, maptarget, lambda);
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  kernel_ctxt_free(ctxt);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  heq_flux_mu1_kernel
+ *
+ *  Unvectorised kernel.
+ *
+ *  Accumulate [add to a previously computed advective flux] the
+ *  'diffusive' contribution related to the chemical potential. It's
+ *  computed everywhere regardless of fluid/solid status.
+ *
+ *  This is a two point stencil the in the chemical potential,
+ *  and the lambda is constant.
+ *
+ *****************************************************************************/
+
+__global__ void heq_flux_mu1_solid_kernel(kernel_ctxt_t * ktx,
+				       lees_edw_t * le, fe_t * fe,
+				       advflux_t * flux, map_t * map,
+					double lambda) {
+  int kindex;
+  __shared__ int kiterations;
+
+  assert(ktx);
+  assert(le);
+  assert(fe);
+  assert(fe->func->mu);
+  assert(flux);
+  assert(map);
+
+  kiterations = kernel_iterations(ktx);
+
+  for_simt_parallel(kindex, kiterations, 1) {
+
+    int ic, jc, kc;
+    int index0, index1;
+    int icm1, icp1;
+    double mu0, mu1;
+    /* Here mu0 and mu1 are taken to be the values of the temperature at a given node... which is stored in fed. Not ideal but only way to access temperature from the abstract free energy structure without changing the vtable */
+
+    ic = kernel_coords_ic(ktx, kindex);
+    jc = kernel_coords_jc(ktx, kindex);
+    kc = kernel_coords_kc(ktx, kindex);
+
+   
+    icm1 = lees_edw_ic_to_buff(le, ic, -1);
+    icp1 = lees_edw_ic_to_buff(le, ic, +1);
+
+    index0 = lees_edw_index(le, ic, jc, kc);
+    if (map->status[index0] == MAP_FLUID) {
+      fe->func->fed(fe, index0, &mu0);
+
+      /* x-direction (between ic-1 and ic) */
+    
+      index1 = lees_edw_index(le, icm1, jc, kc);
+      if (map->status[index1] == MAP_COLLOID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fw[addr_rank0(flux->nsite, index0)] -= lambda*(mu0 - mu1);
+      }
+      /* ...and between ic and ic+1 */
+
+      index1 = lees_edw_index(le, icp1, jc, kc);
+      if (map->status[index1] == MAP_COLLOID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fe[addr_rank0(flux->nsite, index0)] -= lambda*(mu1 - mu0);
+      }
+      /* y direction */
+
+      index1 = lees_edw_index(le, ic, jc+1, kc);
+      if (map->status[index1] == MAP_COLLOID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fy[addr_rank0(flux->nsite, index0)] -= lambda*(mu1 - mu0);
+	//pe_info(flux->pe, "%d with %d, fy -= %f\n", jc, jc+1, lambda*(mu0-mu1));
+      }
+   	
+      /* z direction */
+
+      index1 = lees_edw_index(le, ic, jc, kc+1);
+      if (map->status[index1] == MAP_COLLOID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fz[addr_rank0(flux->nsite, index0)] -= lambda*(mu1 - mu0);
+      }
+    }
+
+    if (map->status[index0] == MAP_COLLOID) {
+      fe->func->fed(fe, index0, &mu0);
+
+      /* x-direction (between ic-1 and ic) */
+    
+      index1 = lees_edw_index(le, icm1, jc, kc);
+      if (map->status[index1] == MAP_FLUID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fw[addr_rank0(flux->nsite, index0)] -= lambda*(mu0 - mu1);
+      }
+      /* ...and between ic and ic+1 */
+
+      index1 = lees_edw_index(le, icp1, jc, kc);
+      if (map->status[index1] == MAP_FLUID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fe[addr_rank0(flux->nsite, index0)] -= lambda*(mu1 - mu0);
+      }
+      /* y direction */
+
+      index1 = lees_edw_index(le, ic, jc+1, kc);
+      if (map->status[index1] == MAP_FLUID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fy[addr_rank0(flux->nsite, index0)] -= lambda*(mu1 - mu0);
+	//pe_info(flux->pe, "%d with %d, fy -= %f\n", jc, jc+1, lambda*(mu0-mu1));
+      }
+   	
+      /* z direction */
+
+      index1 = lees_edw_index(le, ic, jc, kc+1);
+      if (map->status[index1] == MAP_FLUID) {
+        fe->func->fed(fe, index1, &mu1);
+        flux->fz[addr_rank0(flux->nsite, index0)] -= lambda*(mu1 - mu0);
+      }
+    }
+
+
+
+
+    /* Next site */
+  }
+
+  return;
+}
+
+//BC

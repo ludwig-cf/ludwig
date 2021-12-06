@@ -10,7 +10,8 @@
 #
 ###############################################################################
 
-N_cycles 10
+N_start 0
+N_cycles 50000
 
 ##############################################################################
 #
@@ -36,32 +37,41 @@ ghost_modes off
 #
 ###############################################################################
 
-free_energy symmetric_oft
+free_energy symmetric_oft	# F(phi, T) = A(T)*phi^4 + B*phi^2 
+				# 	+ K(T)(grad phi)^2
 
-A0 -0.00625    
+A0 0.00625   			# A(T) = A0 + A*T 
 A 0.0
 
-B 0.00625     
+B 0.0
 
-K0 0.004      
+K0 0.000001			# K(T) = K0 + K*T
 K 0.0
 
 C 0.0
 
-phi0 1.0
-T0 1.0
 
-phi_initialisation    spinodal
-temperature_initialisation drop
+### PHI ###
+phi_initialisation    uniform
+phi0 1.0			# Mean phi for init uniform
+mobility 0.5			# Diffusivity
+
+
+### TEMPERATURE ###
+# uniform temperature
+temperature_initialisation uniform
+T0 0.0				# Mean T for init uniform
+
+# drop initialisation of temperature
 temperature_init_drop_radius 5.0
 temperature_init_drop_amplitude 0.1
 temperature_init_drop_xi 3 
 
-lambda 0.001
-mobility 0.5
+lambda 0.02			# Thermal diffusivity
 
-fd_gradient_calculation 3d_27pt_solid_oft
-fd_advection_scheme_order 3
+
+fd_gradient_calculation 3d_27pt_solid_oft 
+fd_advection_scheme_order 4
 fd_phi_fluctuations 0
 
 ###############################################################################
@@ -70,15 +80,18 @@ fd_phi_fluctuations 0
 #
 ###############################################################################
 
-colloid_init        none
+colloid_init        input_one
+
+### COLLOID TEMPERATURE##
+colloid_temperature 2.0
 
 colloid_type        inactive
 colloid_rho0        1.0
 
-colloid_one_a0   2.3
-colloid_one_ah   2.4
+colloid_one_a0   5.3
+colloid_one_ah   5.4
 colloid_one_r    16.0_16.0_16.0
-colloid_one_isfixedr 0
+colloid_one_isfixedr 1
 
 
 
@@ -98,9 +111,9 @@ periodicity 1_1_1
 ###############################################################################
 
 freq_statistics 1000
-freq_phi    100
-freq_vel    1000
-freq_temperature    1
+freq_phi    100000
+freq_vel    100000
+freq_temperature    1000
 
 phi_format    BINARY
 vel_format    BINARY
