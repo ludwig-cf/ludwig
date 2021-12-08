@@ -646,7 +646,7 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
   else {
     /* Put the new key at the head of the list. */
 
-    strncpy(pnew->key, key, strnlen(key, NKEY_LENGTH-1));
+    strncpy(pnew->key, key, NKEY_LENGTH - strnlen(key, NKEY_LENGTH-1) - 1);
     pnew->is_active = 1;
     pnew->input_line_no = lineno;
 
