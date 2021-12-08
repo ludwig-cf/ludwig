@@ -306,12 +306,12 @@ int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   ntstep = physics_control_timestep(phys);
 
   if (ntstep == 0) {
-    sprintf(filename, "%s%s", subdirectory, stub);
+    snprintf(filename, 3*BUFSIZ, "%s%s", subdirectory, stub);
   }
   else {
     strcpy(stub, "config.cds");
     rt_string_parameter(rt, "colloid_file_stub", stub, BUFSIZ);
-    sprintf(filename, "%s%s%8.8d", subdirectory, stub, ntstep);
+    snprintf(filename, 3*BUFSIZ, "%s%s%8.8d", subdirectory, stub, ntstep);
   }
 
   colloid_io_read(cio, filename);
@@ -389,31 +389,31 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
 
   state->rebuild = 1;
 
-  sprintf(key, "%s_%s", stub, "nbonds");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "nbonds");
   nrt = rt_int_parameter(rt, key, &state->nbonds);
   if (nrt) pe_info(pe, format_i1, key, state->nbonds);
 
   if (state->nbonds > 0) {
-    sprintf(key, "%s_%s", stub, "bond1");
+    snprintf(key, BUFSIZ-1, "%s_%s", stub, "bond1");
     nrt = rt_int_parameter(rt, key, &state->bond[0]);
     if (nrt) pe_info(pe, format_i1, key, state->bond[0]);
   }
 
   if (state->nbonds > 1) {
-    sprintf(key, "%s_%s", stub, "bond2");
+    snprintf(key, BUFSIZ-1, "%s_%s", stub, "bond2");
     nrt = rt_int_parameter(rt, key, &state->bond[1]);
     if (nrt) pe_info(pe, format_i1, key, state->bond[1]);
   }
 
-  sprintf(key, "%s_%s", stub, "nangles");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "nangles");
   nrt = rt_int_parameter(rt, key, &state->nangles);
   if (nrt) pe_info(pe, format_i1, key, state->nangles);
 
-  sprintf(key1, "%s_%s", stub, "isfixedrxyz");
+  snprintf(key1, BUFSIZ-1, "%s_%s", stub, "isfixedrxyz");
   nrt1 = rt_int_parameter_vector(rt, key1, state->isfixedrxyz);
   /* Defer output until isfxiedr is known */
 
-  sprintf(key, "%s_%s", stub, "isfixedr");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "isfixedr");
   nrt = rt_int_parameter(rt, key, &state->isfixedr);
   if (nrt) {
     pe_info(pe, format_i1, key, state->isfixedr);
@@ -425,11 +425,11 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   if (nrt1) pe_info(pe, format_i3, key1, state->isfixedrxyz[X],
 		    state->isfixedrxyz[Y], state->isfixedrxyz[Z]);
 
-  sprintf(key1, "%s_%s", stub, "isfixedvxyz");
+  snprintf(key1, BUFSIZ-1, "%s_%s", stub, "isfixedvxyz");
   nrt1 = rt_int_parameter_vector(rt, key1, state->isfixedvxyz);
   /* Defer output until isfixedv is known */
 
-  sprintf(key, "%s_%s", stub, "isfixedv");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "isfixedv");
   nrt = rt_int_parameter(rt, key, &state->isfixedv);
   if (nrt) {
     pe_info(pe, format_i1, key, state->isfixedv);
@@ -441,15 +441,15 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   if (nrt1) pe_info(pe, format_i3, key1, state->isfixedvxyz[X],
 		    state->isfixedvxyz[Y], state->isfixedvxyz[Z]);
 
-  sprintf(key, "%s_%s", stub, "isfixedw");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "isfixedw");
   nrt = rt_int_parameter(rt, key, &state->isfixedw);
   if (nrt) pe_info(pe, format_i1, key, state->isfixedw);
 
-  sprintf(key, "%s_%s", stub, "isfixeds");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "isfixeds");
   nrt = rt_int_parameter(rt, key, &state->isfixeds);
   if (nrt) pe_info(pe, format_i1, key, state->isfixeds);
 
-  sprintf(key, "%s_%s", stub, "type");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "type");
   nrt = rt_string_parameter(rt, key, value, BUFSIZ);
 
   state->type = COLLOID_TYPE_DEFAULT;
@@ -457,71 +457,71 @@ int colloids_rt_state_stub(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
   if (strcmp(value, "subgrid") == 0) state->type = COLLOID_TYPE_SUBGRID;
   if (nrt) pe_info(pe, format_s1, stub, value);
 
-  sprintf(key, "%s_%s", stub, "rng");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "rng");
   nrt = rt_int_parameter(rt, key, &state->rng);
   if (nrt) pe_info(pe, format_i1, key, state->rng);
 
-  sprintf(key, "%s_%s", stub, "interact_type");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "interact_type");
   nrt = rt_int_parameter(rt, key, &state->inter_type);
   if (nrt) pe_info(pe, format_i1, key, state->inter_type);
 
-  sprintf(key, "%s_%s", stub, "a0");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "a0");
   nrt = rt_double_parameter(rt, key, &state->a0);
   if (nrt) pe_info(pe, format_e1, key, state->a0);
 
-  sprintf(key, "%s_%s", stub, "ah");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "ah");
   nrt = rt_double_parameter(rt, key, &state->ah);
   if (nrt) pe_info(pe, format_e1, key, state->ah);
 
-  sprintf(key, "%s_%s", stub, "al");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "al");
   nrt = rt_double_parameter(rt, key, &state->al);
   if (nrt) pe_info(pe, format_e1, key, state->al);
 
-  sprintf(key, "%s_%s", stub, "r");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "r");
   nrt = rt_double_parameter_vector(rt, key, state->r);
   if (nrt) pe_info(pe, format_e3, key, state->r[X], state->r[Y], state->r[Z]);
 
-  sprintf(key, "%s_%s", stub, "v");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "v");
   nrt = rt_double_parameter_vector(rt, key, state->v);
   if (nrt) pe_info(pe, format_e3, key, state->v[X], state->v[Y], state->v[Z]);
 
-  sprintf(key, "%s_%s", stub, "w");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "w");
   nrt = rt_double_parameter_vector(rt, key, state->w);
   if (nrt) pe_info(pe, format_e3, key, state->w[X], state->w[Y], state->w[Z]);
 
-  sprintf(key, "%s_%s", stub, "s");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "s");
   nrt = rt_double_parameter_vector(rt, key, state->s);
   if (nrt) pe_info(pe, format_e3, key, state->s[X], state->s[Y], state->s[Z]);
 
-  sprintf(key, "%s_%s", stub, "m");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "m");
   nrt = rt_double_parameter_vector(rt, key, state->m);
   if (nrt) pe_info(pe, format_e3, key, state->m[X], state->m[Y], state->m[Z]);
 
-  sprintf(key, "%s_%s", stub, "b1");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "b1");
   nrt = rt_double_parameter(rt, key, &state->b1);
   if (nrt) pe_info(pe, format_e1, key, state->b1);
 
-  sprintf(key, "%s_%s", stub, "b2");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "b2");
   nrt = rt_double_parameter(rt, key, &state->b2);
   if (nrt) pe_info(pe, format_e1, key, state->b2);
 
-  sprintf(key, "%s_%s", stub, "c");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "c");
   nrt = rt_double_parameter(rt, key, &state->c);
   if (nrt) pe_info(pe, format_e1, key, state->c);
 
-  sprintf(key, "%s_%s", stub, "h");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "h");
   nrt = rt_double_parameter(rt, key, &state->h);
   if (nrt) pe_info(pe, format_e1, key, state->h);
 
-  sprintf(key, "%s_%s", stub, "q0");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "q0");
   nrt = rt_double_parameter(rt, key, &state->q0);
   if (nrt) pe_info(pe, format_e1, key, state->q0);
 
-  sprintf(key, "%s_%s", stub, "q1");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "q1");
   nrt = rt_double_parameter(rt, key, &state->q1);
   if (nrt) pe_info(pe, format_e1, key, state->q1);
 
-  sprintf(key, "%s_%s", stub, "epsilon");
+  snprintf(key, BUFSIZ-1, "%s_%s", stub, "epsilon");
   nrt = rt_double_parameter(rt, key, &state->epsilon);
   if (nrt) pe_info(pe, format_e1, key, state->epsilon);
 

@@ -222,7 +222,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
     w1_wall = 0.0;
     w2_wall = 0.0;
-    strcpy(type_wall, type);
+    strncpy(type_wall, type, BUFSIZ - strnlen(type, BUFSIZ) - 1);
 
     rt_string_parameter(rt, "lc_wall_anchoring", type_wall, FILENAME_MAX);
 
