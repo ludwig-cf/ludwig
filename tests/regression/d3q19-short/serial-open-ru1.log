@@ -1,9 +1,9 @@
 Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
-Start time: Tue Nov 16 17:02:01 2021
+Start time: Wed Dec  8 14:16:26 2021
 
 Compiler:
-  name:           Gnu 11.2.0
-  version-string: 11.2.0
+  name:           Clang 13.0.0
+  version-string: 13.0.0 (clang-1300.0.29.3)
 
 Note assertions via standard C assert() are on.
 
@@ -59,6 +59,17 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
+Hydrodynamic open boundary condition for inflow
+Inflow type:              rhou
+Inflow flow profile:      uniform
+Inflow flow direction:    1 0 0
+Inflow flow value u0:     0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Hydrodynamic open boundary condition at outflow
+Outflow type:             rhou
+Outflow flow direction:   1 0 0
+Outflow flow rho0:        1.0000000e+00
+
 Boundary walls
 --------------
 Boundary walls:                  - Y Z
@@ -98,17 +109,17 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.014      0.014      0.014   0.013520 (1 call)
-      Time step loop:      0.006      0.006      0.006   0.006045 (1 call)
-         Propagation:      0.001      0.001      0.001   0.001431 (1 call)
-    Propagtn (krnl) :      0.001      0.001      0.001   0.001422 (1 call)
-           Collision:      0.003      0.003      0.003   0.002758 (1 call)
-   Collision (krnl) :      0.003      0.003      0.003   0.002740 (1 call)
-       Lattice halos:      0.001      0.001      0.001   0.000799 (1 call)
-       phi gradients:      0.000      0.000      0.000   0.000001 (1 call)
-                 BBL:      0.001      0.001      0.001   0.000846 (1 call)
-   Force calculation:      0.000      0.000      0.000   0.000003 (1 call)
-          phi update:      0.000      0.000      0.000   0.000001 (1 call)
-               Free1:      0.002      0.002      0.002   0.002090 (1 call)
-End time: Tue Nov 16 17:02:01 2021
+               Total:      0.012      0.012      0.012   0.012291 (1 call)
+      Time step loop:      0.005      0.005      0.005   0.005252 (1 call)
+         Propagation:      0.001      0.001      0.001   0.001092 (1 call)
+    Propagtn (krnl) :      0.001      0.001      0.001   0.001086 (1 call)
+           Collision:      0.002      0.002      0.002   0.002334 (1 call)
+   Collision (krnl) :      0.002      0.002      0.002   0.002320 (1 call)
+       Lattice halos:      0.001      0.001      0.001   0.000764 (1 call)
+       phi gradients:      0.000      0.000      0.000   0.000002 (1 call)
+                 BBL:      0.001      0.001      0.001   0.000851 (1 call)
+   Force calculation:      0.000      0.000      0.000   0.000004 (1 call)
+          phi update:      0.000      0.000      0.000   0.000000 (1 call)
+               Free1:      0.002      0.002      0.002   0.001855 (1 call)
+End time: Wed Dec  8 14:16:26 2021
 Ludwig finished normally.
