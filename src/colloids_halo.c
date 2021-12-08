@@ -341,7 +341,7 @@ static int colloids_halo_load(colloid_halo_t * halo, int dim) {
 
 static int colloids_halo_load_list(colloid_halo_t * halo,
 				   int ic, int jc, int kc,
-				   const double * rperiod, int noff) {
+				   const double rperiod[3], int noff) {
   int n;
   colloid_t * pc = NULL;
 
