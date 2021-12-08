@@ -232,7 +232,7 @@ static void io_set_group_filename(char * filename_io, const char * stub,
   assert(info->io_comm->n_io < 1000);     /* format restriction ... */
 
 
-  sprintf(filename_io, "%s.%3.3d-%3.3d", stub,
+  snprintf(filename_io, FILENAME_MAX, "%s.%3.3d-%3.3d", stub,
 	   info->io_comm->n_io, info->io_comm->index + 1);
 
   return;
