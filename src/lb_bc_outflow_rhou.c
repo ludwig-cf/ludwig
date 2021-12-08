@@ -138,24 +138,24 @@ __host__ int lb_bc_outflow_init_link(lb_bc_outflow_rhou_t * outflow,
 
   cs_t * cs = NULL;
   int noffset[3] = {};
+  int ntotal[3] = {};
+  int nlocal[3] = {};
   int nlink = 0;
 
   assert(outflow);
   assert(id == X || id == Y || id == Z);
 
   cs = outflow->cs;
+
+  cs_ntotal(cs, ntotal);
+  cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
-  if (noffset[id] == 0) {
+  if (noffset[id] + nlocal[id] == ntotal[id]) {
     int nmin[3]   = {1, 1, 1};
-    int ntotal[3] = {};
-    int nlocal[3] = {};
 
     lb_model_t model = {};
     lb_model_create(outflow->options.nvel, &model);
-
-    cs_ntotal(cs, ntotal);
-    cs_nlocal(cs, nlocal);
 
     nmin[id] = nlocal[id]; /* Only rightmost edge in the relevant direction */
 
@@ -234,12 +234,17 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
 
   cs_t * cs = NULL;
   int id = -1;
+  int nlocal[3] = {};
+  int ntotal[3] = {};
   int noffset[3] = {};
 
   assert(outflow);
   assert(hydro);
 
   cs = outflow->cs;
+
+  cs_ntotal(cs, ntotal);
+  cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
   if (outflow->options.flow[X]) id = X;
@@ -247,14 +252,11 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
   if (outflow->options.flow[Z]) id = Z;
 
 
-  if (noffset[id] == 0) {
+  if (noffset[id] + nlocal[id] == ntotal[id]) {
     int nmin[3]   = {1,1,1};
-    int nlocal[3] = {};
     int idx = outflow->options.flow[X];
     int jdy = outflow->options.flow[Y];
     int kdz = outflow->options.flow[Z];
-
-    cs_nlocal(cs, nlocal);
 
     nmin[id] = nlocal[id]; /* Only rightmost edge in the relevant direction */
 
@@ -281,7 +283,8 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
  *
  *  lb_bc_outflow_rhou_impose
  *
- *  ABSOLUTELY THE SAME
+ *  Very largely the same as the inflow routine; there could be
+ *  some consolidation.
  *  Intent: After lattice halo swap; before propagation.
  *
  *****************************************************************************/
