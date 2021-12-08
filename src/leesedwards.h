@@ -6,7 +6,7 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2016 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *****************************************************************************/
 
@@ -44,7 +44,7 @@ __host__ int lees_edw_target(lees_edw_t * le, lees_edw_t ** target);
 __host__ int lees_edw_info(lees_edw_t * le);
 __host__ int lees_edw_comm(lees_edw_t * le, MPI_Comm * comm);
 __host__ int lees_edw_plane_comm(lees_edw_t * le, MPI_Comm * comm);
-__host__ int lees_edw_jstart_to_mpi_ranks(lees_edw_t * le, int, int send[2], int recv[2]);
+__host__ int lees_edw_jstart_to_mpi_ranks(lees_edw_t * le, int, int send[3], int recv[3]);
 __host__ int lees_edw_buffer_dy(lees_edw_t * le, int ib, double t0, double * dy);
 __host__ int lees_edw_buffer_du(lees_edw_t * le, int ib, double ule[3]);
 

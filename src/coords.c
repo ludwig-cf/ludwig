@@ -560,6 +560,9 @@ static __host__ int cs_rectilinear_decomposition(cs_t * cs) {
 
   for (idim = 0; idim < 3; idim++) {
 
+    /* Guard for zealous code scanning */
+    assert(0 < mpisz[idim] && mpisz[idim] < 8192);
+
     cs->listnlocal[idim] = (int *) calloc(mpisz[idim], sizeof(int));
     cs->listnoffset[idim] = (int *) calloc(mpisz[idim], sizeof(int));
     assert(cs->listnlocal[idim]);

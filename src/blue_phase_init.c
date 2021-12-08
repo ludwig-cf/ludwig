@@ -13,7 +13,7 @@
  *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
- *  Oliver Henrich (o.henrich@ucl.ac.uk)
+ *  Oliver Henrich (oliver.henrich@strath.ac.uk)
  *  Juho Lintuvuori
  *
  *****************************************************************************/
@@ -35,68 +35,106 @@
 
 #define DEFAULT_SEED 13
 
+typedef struct rotation_s {
+  double m0[3][3];
+  double m1[3][3];
+  double m2[3][3];
+} rotation_t;
+
+static int rotation_create(rotation_t * rot, int, int, int, const double a[3]);
+static int rotate_inplace(const rotation_t * rot, double r[3]);
+
 void blue_phase_M_rot(double M[3][3], int dim, double alpha);
 
 /*****************************************************************************
  *
  *  blue_phase_O8M_init
  *
- *  BP I using the current free energy parameter q0
+ *  Initialisation of BP I
+ *
+ *  An Euler rotation is allowed (a default {0, 0, 0} is 'no action').
+ *  Input angles are in degrees.
  *
  *****************************************************************************/
 
-int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
+int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+			const double euler_angles[3]) {
 
-  int ic, jc, kc;
-  int nlocal[3];
-  int noffset[3];
-  int index;
+  int ntotal[3], nlocal[3], noffset[3];
 
-  double q[3][3];
-  double x, y, z;
-  double r2;
-  double cosx, cosy, cosz, sinx, siny, sinz;
+  double root2;
   double q0;
   double amplitude0;
+  rotation_t rot = {};
 
   assert(cs);
   assert(fq);
 
+  cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
-  r2 = sqrt(2.0);
-  q0 = param->q0;
+  root2 = sqrt(2.0);
+  q0    = param->q0;
   amplitude0 = param->amplitude0;
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
+  /* Set up rotation matrices with negative angles. Clockwise rotation */
+  /* of arguments leads to counterclockwise rotation of the Q-tensor.  */
+  /* So we add a sign here. */
 
-	index = cs_index(cs, ic, jc, kc);
+  {
+    double angles[3]  = {}; /* radians */
+    PI_DOUBLE(pi);
 
-	cosx = cos(r2*q0*x);
-	cosy = cos(r2*q0*y);
-	cosz = cos(r2*q0*z);
-	sinx = sin(r2*q0*x);
-	siny = sin(r2*q0*y);
-	sinz = sin(r2*q0*z);
+    angles[0] = -1.0*pi*euler_angles[0]/180.0;
+    angles[1] = -1.0*pi*euler_angles[1]/180.0;
+    angles[2] = -1.0*pi*euler_angles[2]/180.0;
 
-	q[X][X] = amplitude0*(-2.0*cosy*sinz +    sinx*cosz + cosx*siny);
-	q[X][Y] = amplitude0*(  r2*cosy*cosz + r2*sinx*sinz - sinx*cosy);
-	q[X][Z] = amplitude0*(  r2*cosx*cosy + r2*sinz*siny - cosx*sinz);
-	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude0*(-2.0*sinx*cosz +    siny*cosx + cosy*sinz);
-	q[Y][Z] = amplitude0*(  r2*cosz*cosx + r2*siny*sinx - siny*cosz);
-	q[Z][X] = q[X][Z];
-	q[Z][Y] = q[Y][Z];
-	q[Z][Z] = - q[X][X] - q[Y][Y];
+    rotation_create(&rot, Z, X, Z, angles);
+  }
 
-	field_tensor_set(fq, index, q);
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    double x = noffset[X] + ic;
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      double y = noffset[Y] + jc;
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
+	double z = noffset[Z] + kc;
+	double r[3] = {};
 
+	/* Rotate around the centre */
+	r[X] = x - 0.5*ntotal[X];
+	r[Y] = y - 0.5*ntotal[Y];
+	r[Z] = z - 0.5*ntotal[Z];
+
+	rotate_inplace(&rot, r);
+
+	r[X] += 0.5*ntotal[X];
+	r[Y] += 0.5*ntotal[Y];
+	r[Z] += 0.5*ntotal[Z];
+
+	{
+	  int index   = cs_index(cs, ic, jc, kc);
+	  double cosx = cos(root2*q0*r[X]);
+	  double cosy = cos(root2*q0*r[Y]);
+	  double cosz = cos(root2*q0*r[Z]);
+	  double sinx = sin(root2*q0*r[X]);
+	  double siny = sin(root2*q0*r[Y]);
+	  double sinz = sin(root2*q0*r[Z]);
+	  double q[3][3] = {};
+
+	  q[X][X] = amplitude0*( -2.0*cosy*sinz +       sinx*cosz + cosx*siny);
+	  q[X][Y] = amplitude0*(root2*cosy*cosz + root2*sinx*sinz - sinx*cosy);
+	  q[X][Z] = amplitude0*(root2*cosx*cosy + root2*sinz*siny - cosx*sinz);
+	  q[Y][X] = q[X][Y];
+	  q[Y][Y] = amplitude0*( -2.0*sinx*cosz +       siny*cosx + cosy*sinz);
+	  q[Y][Z] = amplitude0*(root2*cosz*cosx + root2*siny*sinx - siny*cosz);
+	  q[Z][X] = q[X][Z];
+	  q[Z][Y] = q[Y][Z];
+	  q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	  field_tensor_set(fq, index, q);
+	}
+	/* Next site */
       }
     }
   }
@@ -110,49 +148,86 @@ int blue_phase_O8M_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
  *
  *  This initialisation is for BP II.
  *
+ *  An Euler rotation is allowed (a default {0, 0, 0} is 'no action').
+ *  Input angles are in degrees.
+ *
  *****************************************************************************/
 
-int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq) {
+int blue_phase_O2_init(cs_t * cs, fe_lc_param_t * param, field_t * fq,
+		       const double euler_angles[3]) {
 
-  int ic, jc, kc;
-  int nlocal[3];
-  int noffset[3];
-  int index;
+  int ntotal[3], nlocal[3], noffset[3];
 
-  double q[3][3];
-  double x, y, z;
   double q0;
   double amplitude0;
+  rotation_t rot = {};
 
   assert(cs);
   assert(fq);
 
+  cs_ntotal(cs, ntotal);
   cs_nlocal(cs, nlocal);
   cs_nlocal_offset(cs, noffset);
 
   q0 = param->q0;
   amplitude0 = param->amplitude0;
 
-  for (ic = 1; ic <= nlocal[X]; ic++) {
-    x = noffset[X] + ic;
-    for (jc = 1; jc <= nlocal[Y]; jc++) {
-      y = noffset[Y] + jc;
-      for (kc = 1; kc <= nlocal[Z]; kc++) {
-	z = noffset[Z] + kc;
+  /* Set up rotation matrices with negative angles. Clockwise rotation */
+  /* of arguments leads to counterclockwise rotation of the Q-tensor.  */
+  /* Hence the factor of -1.0 below. */
 
-	index = cs_index(cs, ic, jc, kc);
+  {
+    double angles[3] = {}; /* radians */
+    PI_DOUBLE(pi);
 
-	q[X][X] = amplitude0*(cos(2.0*q0*z) - cos(2.0*q0*y));
-	q[X][Y] = amplitude0*sin(2.0*q0*z);
-	q[X][Z] = amplitude0*sin(2.0*q0*y);
-	q[Y][X] = q[X][Y];
-	q[Y][Y] = amplitude0*(cos(2.0*q0*x) - cos(2.0*q0*z));
-	q[Y][Z] = amplitude0*sin(2.0*q0*x);
-	q[Z][X] = q[X][Z];
-	q[Z][Y] = q[Y][Z];
-	q[Z][Z] = - q[X][X] - q[Y][Y];
+    angles[0] = -1.0*pi*euler_angles[0]/180.0;
+    angles[1] = -1.0*pi*euler_angles[1]/180.0;
+    angles[2] = -1.0*pi*euler_angles[2]/180.0;
 
-	field_tensor_set(fq, index, q);
+    rotation_create(&rot, Z, X, Z, angles);
+  }
+
+  for (int ic = 1; ic <= nlocal[X]; ic++) {
+    double x = noffset[X] + ic;
+    for (int jc = 1; jc <= nlocal[Y]; jc++) {
+      double y = noffset[Y] + jc;
+      for (int kc = 1; kc <= nlocal[Z]; kc++) {
+	double z = noffset[Z] + kc;
+	double r[3] = {};
+
+	r[X] = x - 0.5*ntotal[X];
+	r[Y] = y - 0.5*ntotal[Y];
+	r[Z] = z - 0.5*ntotal[Z];
+
+	rotate_inplace(&rot, r);
+
+	r[X] += 0.5*ntotal[X];
+	r[Y] += 0.5*ntotal[Y];
+	r[Z] += 0.5*ntotal[Z];
+
+	{
+	  int index = cs_index(cs, ic, jc, kc);
+	  double cosx = cos(2.0*q0*r[X]);
+	  double cosy = cos(2.0*q0*r[Y]);
+	  double cosz = cos(2.0*q0*r[Z]);
+	  double sinx = sin(2.0*q0*r[X]);
+	  double siny = sin(2.0*q0*r[Y]);
+	  double sinz = sin(2.0*q0*r[Z]);
+	  double q[3][3] = {};
+
+	  q[X][X] = amplitude0*(cosz - cosy);
+	  q[X][Y] = amplitude0*sinz;
+	  q[X][Z] = amplitude0*siny;
+	  q[Y][X] = q[X][Y];
+	  q[Y][Y] = amplitude0*(cosx - cosz);
+	  q[Y][Z] = amplitude0*sinx;
+	  q[Z][X] = q[X][Z];
+	  q[Z][Y] = q[Y][Z];
+	  q[Z][Z] = - q[X][X] - q[Y][Y];
+
+	  field_tensor_set(fq, index, q);
+	}
+	/* Next site */
       }
     }
   }
@@ -1237,6 +1312,8 @@ int blue_phase_random_q_rectangle(cs_t * cs, fe_lc_param_t * param,
 
 void blue_phase_M_rot(double M[3][3], int dim, double alpha){
 
+  assert(dim == X || dim == Y || dim == Z);
+
   if(dim==0){
     M[0][0] = 1.0;
     M[0][1] = 0.0;
@@ -1275,6 +1352,62 @@ void blue_phase_M_rot(double M[3][3], int dim, double alpha){
 
   return;
 }
+
+/*****************************************************************************
+ *
+ *  rotation_create
+ *
+ *  A convenience to help compute a standard Euler-style rotation.
+ *
+ *  (d0, d1, d2) is a set of coordinate axes e.g., (Z, X, Z), and
+ *  theta are the Euler angles in radians.
+ *
+ *  The sequence of rotations (Z,X,Z) follows the standard Euler angles:
+ *  1) rotation around z-axis obtaining frame x'-y'-z
+ *  2) rotation around x'-axis obtaining frame x'-y''-z'
+ *  3) rotation around z'-axis obtaining final frame
+ *
+ *****************************************************************************/
+
+static int rotation_create(rotation_t * rot, int d0, int d1, int d2,
+			   const double theta[3]) {
+
+  assert(rot);
+
+  blue_phase_M_rot(rot->m0, d0, theta[0]);
+  blue_phase_M_rot(rot->m1, d1, theta[1]);
+  blue_phase_M_rot(rot->m2, d2, theta[2]);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rotate_inplace
+ *
+ *****************************************************************************/
+
+static int rotate_inplace(const rotation_t * rot, double r[3]) {
+
+  double r0[3] = {r[X], r[Y], r[Z]};
+
+  assert(rot);
+
+  for (int ik = 0; ik < 3; ik++) {
+    double rrot = 0.0;
+    for (int il = 0; il < 3; il++) {
+      for (int im = 0; im < 3; im++) {
+	for (int in = 0; in < 3; in++) {
+	  rrot += rot->m2[ik][il]*rot->m1[il][im]*rot->m0[im][in]*r0[in];
+	}
+      }
+    }
+    r[ik] = rrot;
+  }
+
+  return 0;
+}
+
 
 /*****************************************************************************
  *

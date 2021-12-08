@@ -35,7 +35,7 @@
 #include "util.h"
 #include "tests.h"
 
-static int test_u_zero(cs_t * cs, hydro_t * hydro, const double *);
+static int test_u_zero(cs_t * cs, hydro_t * hydro, const double u[3]);
 static int test_advection(cs_t * cs, phi_ch_t * pch, field_t * phi,
 			  hydro_t * hydro);
 static int test_set_drop(cs_t * cs, field_t * phi, const double rc[3],
