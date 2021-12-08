@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -429,7 +429,7 @@ int colloid_io_write_buffer_binary(FILE * fp, int nc, colloid_state_t * buf) {
 int colloid_io_read(colloid_io_t * cio, const char * filename) {
 
   int    ngroup;
-  char   filename_io[FILENAME_MAX];
+  char   filename_io[FILENAME_MAX] = {};
   FILE * fp_state;
 
   assert(cio->f_header_read);
@@ -441,7 +441,7 @@ int colloid_io_read(colloid_io_t * cio, const char * filename) {
 
   if (cio->single_file_read) {
     /* All groups read for single 'serial' file */
-    sprintf(filename_io, "%s.%3.3d-%3.3d", filename, 1, 1);
+    snprintf(filename_io, FILENAME_MAX-1, "%s.%3.3d-%3.3d", filename, 1, 1);
     pe_info(cio->pe, "colloid_io_read: reading from single file %s\n", filename_io);
   }
   else {
@@ -743,7 +743,8 @@ static int colloid_io_filename(colloid_io_t * cio, char * filename,
     pe_fatal(cio->pe, "Format botch for cio stub %s\n", stub);
   }
 
-  sprintf(filename, "%s.%3.3d-%3.3d", stub, cio->n_io, cio->index + 1);
+  snprintf(filename, FILENAME_MAX/2-1, "%s.%3.3d-%3.3d", stub, cio->n_io,
+	   cio->index + 1);
 
   return 0;
 }

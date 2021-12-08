@@ -121,7 +121,7 @@ int write_data_ascii_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
 int write_data_binary(FILE * fp, int n[3], int nrec0, int nrec, double * data);
 int write_data_binary_cmf(FILE * fp, int n[3], int nrec0, int nrec, double *);
 
-int site_index(int, int, int, const int *);
+int site_index(int, int, int, const int nlocal[3]);
 void read_data(FILE *, metadata_v1_t * meta, double *);
 int write_vtk_header(FILE * fp, int nrec, int ndim[3], const char * descript,
 		     vtk_enum_t vtk);
@@ -311,7 +311,8 @@ int extract_driver(const char * filename, metadata_v1_t * meta, int version) {
 
     {
       char tmp[FILENAME_MAX/2] = {}; /* Avoid potential buffer overflow */
-      strncpy(tmp, meta->stub, strnlen(meta->stub, FILENAME_MAX/2-1));
+      strncpy(tmp, meta->stub,
+	      FILENAME_MAX/2 - strnlen(meta->stub, FILENAME_MAX/2-1) - 1);
       snprintf(io_data, sizeof(io_data), "%s-%8.8d", tmp, ntime);
     }
 

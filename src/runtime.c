@@ -341,7 +341,7 @@ int rt_int_parameter(rt_t * rt, const char * key, int * value) {
  *
  *****************************************************************************/
 
-int rt_double_parameter_vector(rt_t * rt, const char * key, double v[]) {
+int rt_double_parameter_vector(rt_t * rt, const char * key, double v[3]) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -368,7 +368,7 @@ int rt_double_parameter_vector(rt_t * rt, const char * key, double v[]) {
  *
  *****************************************************************************/
 
-int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
+int rt_int_parameter_vector(rt_t * rt, const char * key, int v[3]) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -583,8 +583,8 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
-  char a[NKEY_LENGTH] = {};
-  char b[NKEY_LENGTH] = {};
+  char a[NKEY_LENGTH+1] = {};
+  char b[NKEY_LENGTH+1] = {};
   char fmt[32] = {};
 
   if (strncmp("#",  line, 1) == 0) return 0;
@@ -646,7 +646,7 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
   else {
     /* Put the new key at the head of the list. */
 
-    strncpy(pnew->key, key, strnlen(key, NKEY_LENGTH-1));
+    strncpy(pnew->key, key, NKEY_LENGTH - strnlen(key, NKEY_LENGTH-1) - 1);
     pnew->is_active = 1;
     pnew->input_line_no = lineno;
 
@@ -684,7 +684,7 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
     if (strcmp(a, key) == 0) {
       pkey->is_active = 0;
       key_present = 1;
-      strncpy(value, b, NKEY_LENGTH);
+      strncpy(value, b, NKEY_LENGTH - strnlen(b, NKEY_LENGTH) - 1);
       break;
     }
   }

@@ -1488,7 +1488,7 @@ __host__ int wall_shear_init(wall_t * wall) {
  *****************************************************************************/
 
 __host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
-			      double * drag) {
+			      double drag[3]) {
 
   double hlub;
   double h;

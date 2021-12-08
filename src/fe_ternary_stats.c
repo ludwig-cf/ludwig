@@ -214,7 +214,7 @@ __host__ int fe_ternary_surf(fe_ternary_t * fe, map_t * map, double * fes) {
  *****************************************************************************/
 
 __global__ void fe_ternary_bulk_kernel(kernel_ctxt_t * ktx, fe_ternary_t * fe,
-				       map_t * map, double * febulk) {
+				       map_t * map, double febulk[1]) {
   int kindex;
   int kiterations;
   int tid;

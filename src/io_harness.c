@@ -232,8 +232,8 @@ static void io_set_group_filename(char * filename_io, const char * stub,
   assert(info->io_comm->n_io < 1000);     /* format restriction ... */
 
 
-  sprintf(filename_io, "%s.%3.3d-%3.3d", stub, info->io_comm->n_io,
-	  info->io_comm->index + 1);
+  snprintf(filename_io, FILENAME_MAX, "%s.%3.3d-%3.3d", stub,
+	   info->io_comm->n_io, info->io_comm->index + 1);
 
   return;
 }
@@ -443,7 +443,7 @@ int io_write_metadata_file(io_info_t * info, char * filename_stub) {
   le_uy = 0.0;
 
   io_set_group_filename(filename, filename_stub, info);
-  sprintf(filename_io, "%s.meta", filename);
+  snprintf(filename_io, 2*FILENAME_MAX, "%s.meta", filename);
 
   /* Write local decomposition information to the buffer */
 
@@ -526,7 +526,7 @@ int io_remove_metadata(io_info_t * obj, const char * file_stub) {
   if (obj->io_comm->rank == 0) {
     pe_subdirectory(obj->pe, subdirectory);
     io_set_group_filename(filename, file_stub, obj);
-    sprintf(filename_io, "%s%s.meta", subdirectory, filename);
+    snprintf(filename_io, 2*FILENAME_MAX, "%s%s.meta", subdirectory, filename);
     remove(filename_io);
   }
 
@@ -924,7 +924,7 @@ int io_write_data_s(io_info_t * obj, const char * filename_stub, void * data) {
   if (obj->metadata_written == 0) io_write_metadata(obj);
 
   cs_nlocal(obj->cs, nlocal);
-  sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
+  snprintf(filename_io, FILENAME_MAX, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
 
   itemsz = obj->bytesize;
 
@@ -1113,7 +1113,7 @@ int io_read_data(io_info_t * obj, const char * filename_stub, void * data) {
   io_set_group_filename(filename_io, filename_stub, obj);
 
   if (obj->single_file_read) {
-    sprintf(filename_io, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
+    snprintf(filename_io, FILENAME_MAX, "%s.%3.3d-%3.3d", filename_stub, 1, 1);
   }
 
   if (obj->io_comm->rank == 0) {
