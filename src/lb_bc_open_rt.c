@@ -92,7 +92,10 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
 
     rt_string_parameter(rt, "lb_bc_inflow_type", intype, BUFSIZ/2);
     rt_double_parameter_vector(rt, "lb_bc_inflow_rhou_u0", u0);
-    
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Hydrodynamic open boundary condition for inflow\n");
+
     if (strncmp(intype, "rhou", BUFSIZ) == 0) {
       /* Give me a rhou inflow */
       lb_bc_inflow_rhou_t * rhou = NULL;
@@ -108,6 +111,14 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
 
       lb_bc_inflow_rhou_create(pe, cs, &options, &rhou);
       *inflow = (lb_bc_open_t *) rhou;
+
+      /* Might be nice to delegate this elsewhere ... */
+      pe_info(pe, "Inflow type:              %s\n", "rhou");
+      pe_info(pe, "Inflow flow profile:      %s\n", "uniform");
+      pe_info(pe, "Inflow flow direction:    %d %d %d\n",
+	      flow[X], flow[Y], flow[Z]);
+      pe_info(pe, "Inflow flow value u0:    %14.7e %14.7e %14.7e\n",
+	      u0[X], u0[Y], u0[Z]);
     }
     else {
       /* Not recognised */
@@ -124,6 +135,9 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
     rt_string_parameter(rt, "lb_bc_outflow_type", outtype, BUFSIZ/2);
     rt_double_parameter(rt, "rho0", &rho0);
     rt_double_parameter(rt, "lb_bc_outflow_rhou_rho0", &rho0);
+
+    pe_info(pe, "\n");
+    pe_info(pe, "Hydrodynamic open boundary condition at outflow\n");
     
     if (strncmp(outtype, "rhou", BUFSIZ) == 0) {
       lb_bc_outflow_rhou_t * rhou = NULL;
@@ -138,6 +152,11 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
 
       lb_bc_outflow_rhou_create(pe, cs, &options, &rhou);
       *outflow = (lb_bc_open_t *) rhou;
+
+      pe_info(pe, "Outflow type:             %s\n", "rhou");
+      pe_info(pe, "Outflow flow direction:   %d %d %d\n",
+	      flow[X], flow[Y], flow[Z]);
+      pe_info(pe, "Outflow flow rho0:       %14.7e\n", rho0);
     }
     else {
       pe_fatal(pe, "lb_bc_outflow_type not recognised\n");
