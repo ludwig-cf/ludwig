@@ -27,7 +27,7 @@
 int test_colloids_halo111(pe_t * pe, cs_t * cs);
 int test_colloids_halo211(pe_t * pe, cs_t * cs);
 int test_colloids_halo_repeat(pe_t * pe, cs_t * cs);
-static void test_position(cs_t * cs, const double * r1, const double * r2);
+static void test_position(cs_t * cs, const double r1[3], const double r2[3]);
 
 /*****************************************************************************
  *

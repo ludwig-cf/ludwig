@@ -79,6 +79,13 @@ __host__ int phi_bc_outflow_free_free(phi_bc_outflow_free_t * outflow) {
  *
  *  phi_bc_outflow_free_update
  *
+ *  Important assumption here. We should have up-to-date halo information
+ *  in the non-flow direction, so that we can push the update into the
+ *  non-flow halo directions locally.
+ *
+ *  For complete safety, there should probably be an in-built halo
+ *  exchange to ensure the relevant information is up-to-date.
+ *
  *****************************************************************************/
 
 __host__ int phi_bc_outflow_free_update(phi_bc_outflow_free_t * outflow,
@@ -107,8 +114,8 @@ __host__ int phi_bc_outflow_free_update(phi_bc_outflow_free_t * outflow,
     /* Set halo region e.g., phi(x > L_x, y, z) = phi(x = L_x, y, z) */
     /* Slightly convoluted to allow x, y, or z direction. */
 
-    int imin[3] = {1, 1, 1};
-    int imax[3] = {nlocal[X], nlocal[Y], nlocal[Z]};
+    int imin[3] = {1-nhalo, 1-nhalo, 1-nhalo};
+    int imax[3] = {nlocal[X]+nhalo, nlocal[Y]+nhalo, nlocal[Z]+nhalo};
 
     imin[id] = nlocal[id];
     imax[id] = nlocal[id];
@@ -128,7 +135,7 @@ __host__ int phi_bc_outflow_free_update(phi_bc_outflow_free_t * outflow,
 	  }
 	}
       }
-    }  
+    }
   }
 
   return 0;

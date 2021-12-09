@@ -110,9 +110,11 @@ __host__ int phi_bc_inflow_fixed_update(phi_bc_inflow_fixed_t * inflow,
   if (noffset[id] == 0) {
 
     /* The inflow region covers the halo only in the flow direction. */
+    /* As we are just imposing a prescribed phi0, we can extend into
+     * the halo region in the other directions. */
 
-    int imin[3] = {1, 1, 1};
-    int imax[3] = {nlocal[X], nlocal[Y], nlocal[Z]};
+    int imin[3] = {1- nhalo, 1-nhalo, 1-nhalo};
+    int imax[3] = {nlocal[X]+nhalo, nlocal[Y]+nhalo, nlocal[Z]+nhalo};
 
     imin[id] = 1 - nhalo;
     imax[id] = 0;

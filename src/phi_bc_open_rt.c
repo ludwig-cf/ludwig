@@ -83,6 +83,11 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
     rt_string_parameter(rt, "phi_bc_inflow_type", intype, BUFSIZ);
     rt_double_parameter(rt, "phi_bc_inflow_fixed_phib", &phib);
 
+    pe_info(pe, "\n");
+    pe_info(pe, "Order parameter\n");
+    pe_info(pe, "---------------\n\n");
+    pe_info(pe, "Inflow open boundary for composition (phi)\n");
+
     if (strncmp(intype, "fixed", BUFSIZ) == 0) {
       /* A fixed-type inflow */
       phi_bc_inflow_fixed_t * bc = NULL;
@@ -96,6 +101,11 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 
       phi_bc_inflow_fixed_create(pe, cs, &options, &bc);
       *inflow = (phi_bc_open_t *) bc;
+
+      pe_info(pe, "Composition inflow condition:   %s\n", "fixed");
+      pe_info(pe, "Composition inflow direction:   %d %d %d\n",
+	      flow[X], flow[Y], flow[Z]);
+      pe_info(pe, "Composition inflow phi_b:      %14.7e\n", phib);
     }
     else {
       pe_info(pe, "phi_bc_inflow_type not recognised: %s\n", intype);
@@ -111,6 +121,9 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 
     rt_string_parameter(rt, "phi_bc_outflow_type", outtype, BUFSIZ);
 
+    pe_info(pe, "\n");
+    pe_info(pe, "Outflow open boundary for composition (phi)\n");
+
     if (strncmp(outtype, "free", BUFSIZ) == 0) {
       phi_bc_outflow_free_t * bc = NULL;
       phi_bc_outflow_opts_t options = {.flow = {flow[X], flow[Y], flow[Z]}};
@@ -122,6 +135,8 @@ __host__ int phi_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 
       phi_bc_outflow_free_create(pe, cs, &options, &bc);
       *outflow = (phi_bc_open_t *) bc;
+
+      pe_info(pe, "Composition outflow condition:  %s\n", "free");
     }
     else {
       pe_fatal(pe, "phi_bc_outflow_type not recognised: %s\n", outtype);
