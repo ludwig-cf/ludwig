@@ -74,8 +74,11 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
 static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
 
+static int rt_is_valid_token(const char * token);
 static int rt_line_count_tokens(const char * line);
 static int rt_key_value(const char * line, char ** key, char ** val);
+static int rt_add_key_value_pair(rt_t * rt, const char * key,
+				 const char * val, int lineno);
 
 /*****************************************************************************
  *
@@ -169,7 +172,6 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
 	/* Look at the line and add it if it's a key. */
 	if (rt_is_valid_key_pair(rt, line, nline)) {
 	  rt_add_key_pair(rt, line, nline);
-	  rt->nkeys += 1;
 	}
 	if (rt->nkeys > NKEY_MAX) {
 	  pe_fatal(rt->pe, "Too many keys! Increase NKEY_MAX %d\n", NKEY_MAX);
@@ -205,22 +207,12 @@ int rt_add_key_value(rt_t * rt, const char * key, const char * value) {
   assert(key);
   assert(value);
 
-  /* Form a new line with a space between key and value */
-
+  /* Say the line is just the number of keys */
   nline = rt->nkeys + 1;
 
-  if (strlen(key) + strlen(value) >= NKEY_LENGTH - 2) {
-    /* avoid buffer overflow */
-  }
-  else {
-    char line[NKEY_LENGTH];
-    sprintf(line, "%s %s", key, value);
-
-    if (rt_is_valid_key_pair(rt, line, nline)) {
-      rt_add_key_pair(rt, line, nline);
-      rt->nkeys += 1;
-      added = 1;
-    }
+  if (rt_is_valid_token(key) && rt_is_valid_token(value)) {
+    rt_add_key_value_pair(rt, key, value, nline);
+    added = 1;
   }
 
   return added;
@@ -587,6 +579,26 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 /*****************************************************************************
  *
+ *  rt_is_valid_token
+ *
+ *  Some checks on allowable tokens for either keys or values.
+ *
+ *****************************************************************************/
+
+static int rt_is_valid_token(const char * token) {
+
+  int isvalid = 1;
+
+  assert(token);
+
+  if (rt_line_count_tokens(token) != 1) isvalid = 0;
+  if (strncmp(token, "#", 1)      == 0) isvalid = 0;     
+
+  return isvalid;
+}
+
+/*****************************************************************************
+ *
  *  rt_is_valid_key
  *
  *  Checks a line of the input file (one string) is a valid key.
@@ -627,7 +639,8 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
     }
 
     if (rt_key_present(rt, newkey)) {
-      /* Duplicate */
+      pe_info(rt->pe, "Key %s (line %d) is already present\n", newkey, lineno);
+      pe_fatal(rt->pe, "Please check the input and remove one or other\n");
     }
 
     free(newkey);
@@ -703,8 +716,27 @@ static int rt_key_value(const char * line, char ** key, char ** val) {
  *
  *****************************************************************************/
 
-static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
+static int rt_add_key_pair(rt_t * rt, const char * line, int lineno) {
 
+  int ifail = 0;
+  char * newkey = NULL;
+  char * newval = NULL;
+
+  assert(rt);
+  assert(line);
+
+  rt_key_value(line, &newkey, &newval);
+
+  ifail = rt_add_key_value_pair(rt, newkey, newval, lineno);
+  
+  free(newkey);
+  free(newval);
+
+  return ifail;
+}
+
+static int rt_add_key_value_pair(rt_t * rt, const char * key,
+				 const char * val, int lineno) {
   key_pair_t * pnew = NULL;
 
   assert(rt);
@@ -717,22 +749,16 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
   }
   else {
     /* Put the new key at the head of the list. */
+    rt->nkeys += 1;
 
-    char * newkey = NULL;
-    char * newval = NULL;
-
-    rt_key_value(key, &newkey, &newval);
-    strncpy(pnew->key, newkey, NKEY_LENGTH - strnlen(newkey, NKEY_LENGTH) - 1);
-    strncpy(pnew->val, newval, NKEY_LENGTH - strnlen(newval, NKEY_LENGTH) - 1);
+    strncpy(pnew->key, key, NKEY_LENGTH - strnlen(key, NKEY_LENGTH) - 1);
+    strncpy(pnew->val, val, NKEY_LENGTH - strnlen(val, NKEY_LENGTH) - 1);
 
     pnew->is_active = 1;
     pnew->input_line_no = lineno;
 
     pnew->next = rt->keylist;
     rt->keylist = pnew;
-
-    free(newkey);
-    free(newval);
   }
 
   return 0;
