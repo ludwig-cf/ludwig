@@ -69,6 +69,13 @@ __host__ int lb_bc_open_rt(pe_t * pe, rt_t * rt, cs_t * cs, lb_t * lb,
     if (lb_bc_inflow_opts_flow_valid(flow) == 0) {
       pe_fatal(pe, "Inflow/outflow requires exactly one-non wall direction\n");
     }
+
+    /* Temporarily override this while only x-direction halo swap
+     * implementation in available. */
+
+    if (pe_mpi_size(pe) > 1 && (flow[Y] != 0 || flow[Z] != 0)) {
+      pe_fatal(pe, "Open boundary condition direction must be X\n");
+    }
     
     /* Test periodicity. Must be (0,0,0). */
 
