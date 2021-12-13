@@ -4,6 +4,9 @@
 version 0.15.0
 - Add ability to rotate BPI and BPII liquid crystal initial conditions
   Thanks to Oliver H. for this. See Section 3 of web documentation.
+- A diagnostic computation and output of the force breakdown on each
+  colloid has been added. This is currently via a static switch in
+  stats_colloid_force_split.c
 
 version 0.14.0
 
