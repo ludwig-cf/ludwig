@@ -20,8 +20,8 @@
 #include "lb_bc_outflow_rhou.h"
 
 __host__ int test_lb_bc_outflow_rhou_create(pe_t * pe, cs_t * cs);
-__host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs);
-__host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs);
+__host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs, int nvel);
+__host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel);
 
 /*****************************************************************************
  *
@@ -39,8 +39,8 @@ __host__ int test_lb_bc_outflow_rhou_suite(void) {
   cs_init(cs);
 
   test_lb_bc_outflow_rhou_create(pe, cs);
-  test_lb_bc_outflow_rhou_update(pe, cs);
-  test_lb_bc_outflow_rhou_impose(pe, cs);
+  test_lb_bc_outflow_rhou_update(pe, cs, NVEL);
+  test_lb_bc_outflow_rhou_impose(pe, cs, NVEL);
 
   pe_info(pe, "PASS     ./unit/test_lb_bc_outflow_rhou\n");
 
@@ -89,13 +89,13 @@ __host__ int test_lb_bc_outflow_rhou_create(pe_t * pe, cs_t * cs) {
  *
  *****************************************************************************/
 
-__host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
 
   int nlocal[3] = {};
   int ntotal[3] = {};
   int noffset[3] = {};
 
-  lb_bc_outflow_opts_t options = {.nvel = 9,
+  lb_bc_outflow_opts_t options = {.nvel = nvel,
                                   .flow = {0, 1, 0},
 				  .rho0 = 2.0};
   lb_bc_outflow_rhou_t * outflow = NULL;
@@ -145,7 +145,7 @@ __host__ int test_lb_bc_outflow_rhou_update(pe_t * pe, cs_t * cs) {
  *
  *****************************************************************************/
 
-__host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   int ierr = 0;
 
@@ -153,7 +153,7 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs) {
   int ntotal[3] = {};
   int noffset[3] = {};
 
-  lb_bc_outflow_opts_t options = {.nvel = 19,
+  lb_bc_outflow_opts_t options = {.nvel = nvel,
                                   .flow = {0, 0, 1},
                                   .rho0 = 3.0};
   lb_bc_outflow_rhou_t * outflow = NULL;

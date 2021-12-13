@@ -27,6 +27,7 @@
 
 #include "lb_model.h"
 #include "lb_bc_outflow_rhou.h"
+#include "cs_limits.h"
 
 typedef enum {LINK_COUNT, LINK_ASSIGN} link_init_enum_t;
 
@@ -281,6 +282,196 @@ __host__ int lb_bc_outflow_rhou_update(lb_bc_outflow_rhou_t * outflow,
 
 /*****************************************************************************
  *
+ *  lb_bc_outflow_rhou_halo
+ *
+ *  There is a lot in common with the inflow hlow which should be
+ *  abstracted away as only dependent on hydro_t.
+ *
+ *  Apart from being at the other end of the system.
+ *
+ *****************************************************************************/
+
+__host__ int lb_bc_outflow_rhou_halo_update(lb_bc_outflow_rhou_t * outflow,
+					    hydro_t * hydro) {
+  cs_t * cs = NULL;
+  int noffset[3] = {};
+  int ntotal[3] = {};
+  int nlocal[3]  = {};
+
+  const int tag = 12348;
+
+  assert(outflow);
+  assert(hydro);
+
+  cs = outflow->cs;
+  cs_ntotal(cs, ntotal);
+  cs_nlocal(cs, nlocal);
+  cs_nlocal_offset(cs, noffset);
+
+  /* Must have flow in x-direction at the moment! */
+  assert(outflow->options.flow[X]);
+
+  if (noffset[X] + nlocal[X] == ntotal[X]) {
+
+    MPI_Comm comm = MPI_COMM_NULL;
+    MPI_Request req[8] = {};
+    double *buf[8] = {};
+    int ngbr[8] = {};
+    int count[8] = {};      /* Data items */
+    int nhalo = 1;          /* Only ever one if distributions are involved. */
+
+    /* Recv from ... */
+    cs_cart_comm(cs, &comm);
+    ngbr[0] = cs_cart_neighb(cs, FORWARD,  Y);
+    ngbr[1] = cs_cart_neighb(cs, BACKWARD, Y);
+    ngbr[2] = cs_cart_neighb(cs, FORWARD,  Z);
+    ngbr[3] = cs_cart_neighb(cs, BACKWARD, Z);
+
+    /* Send to ... */
+    ngbr[4] = cs_cart_neighb(cs, BACKWARD, Y);
+    ngbr[5] = cs_cart_neighb(cs, FORWARD,  Y);
+    ngbr[6] = cs_cart_neighb(cs, BACKWARD, Z);
+    ngbr[7] = cs_cart_neighb(cs, FORWARD,  Z);
+
+    {
+      int countY = 4*nlocal[Z]*nhalo*nhalo;   /* 4 (rho, u_x, u_y, u_z) */
+      int countZ = 4*nlocal[Y]*nhalo*nhalo;
+      count[0] = countY;
+      count[1] = countY;
+      count[2] = countZ;
+      count[3] = countZ;
+      count[4] = countY;
+      count[5] = countY;
+      count[6] = countZ;
+      count[7] = countZ;
+    }
+
+    for (int m = 0; m < 8; m++) {
+      pe_t * pe = hydro->pe;
+      req[m] = MPI_REQUEST_NULL;
+      buf[m] = (double *) malloc(sizeof(double)*count[m]);
+      assert(buf[m]);
+      if (buf[m] == NULL) pe_fatal(pe, "malloc() failed\n");
+    }
+
+    /* Post receives */
+    for (int m = 0; m < 4; m++) {
+      MPI_Irecv(buf[m], count[m], MPI_DOUBLE, ngbr[m], tag, comm, req + m);
+    }
+
+    /* Pack buffers and post sends */
+    for (int ms = 0; ms < 4; ms++) {
+      int m = 4 + ms;
+      int ib = 0;
+      int nhm1 = nhalo-1;
+      cs_limits_t lim = {};
+
+      if (m == 4) { /* send to Y-1,Z */
+        lim.jmin = 1;                lim.jmax = nhalo;
+        lim.kmin = 1;                lim.kmax = nlocal[Z];
+      }
+      if (m == 5) { /* send to Y+1,Z */
+        lim.jmin = nlocal[Y] - nhm1; lim.jmax = nlocal[Y];
+        lim.kmin = 1;                lim.kmax = nlocal[Z];
+      }
+      if (m == 6) { /* send to Y,Z-1 */
+        lim.jmin = 1;                lim.jmax = nlocal[Y];
+        lim.kmin = 1;                lim.kmax = nhalo;
+      }
+      if (m == 7) { /* send to Y,Z+1 */
+        lim.jmin = 1;                lim.jmax = nlocal[Y];
+        lim.kmin = nlocal[Z] - nhm1; lim.kmax = nlocal[Z];
+      }
+
+      int ic = nlocal[X] + 1; /* halo region */
+      for (int jc = lim.jmin; jc <= lim.jmax; jc++) {
+        for (int kc = lim.kmin; kc <= lim.kmax; kc++) {
+          int index = cs_index(cs, ic, jc, kc);
+          double rho = 0.0;
+          double u[3] = {};
+          hydro_rho(hydro, index, &rho);
+          hydro_u(hydro, index, u);
+          buf[m][ib++] = rho;
+          buf[m][ib++] = u[X];
+          buf[m][ib++] = u[Y];
+          buf[m][ib++] = u[Z];
+        }
+      }
+      assert(ib == count[m]);
+
+      MPI_Isend(buf[m], count[m], MPI_DOUBLE, ngbr[m], tag, comm, req + m);
+    }
+
+    /* Process */
+    for (int ms = 0; ms < 8; ms++) {
+      int m = -1;
+      MPI_Status status = {};
+
+      MPI_Waitany(8, req, &m, &status);
+      if (m == MPI_UNDEFINED) continue;
+      if (status.MPI_SOURCE == MPI_PROC_NULL) continue;
+
+      if (m >= 4) {
+        /* Send has completed */
+        free(buf[m]);
+        buf[m] = NULL;
+      }
+      else {
+        /* Recv has arrived: unpack to correct destination */
+        int ib = 0;
+        cs_limits_t lim = {};
+
+        if (m == 0) { /* recv from Y+1,Z */
+          lim.jmin = nlocal[Y] + 1;    lim.jmax = nlocal[Y] + nhalo;
+          lim.kmin = 1;                lim.kmax = nlocal[Z];
+        }
+        if (m == 1) { /* recv from Y-1,Z */
+          lim.jmin = 1 - nhalo;        lim.jmin = 0;
+          lim.kmin = 1;                lim.kmax = nlocal[Z];
+        }
+        if (m == 2) { /* recv from Y, Z+1 */
+          lim.jmin = 1;                lim.jmax = nlocal[Y];
+          lim.kmin = nlocal[Z] + 1;    lim.kmax = nlocal[Z] + nhalo;
+        }
+        if (m == 3) { /* recv from Y, Z-1 */
+          lim.jmin = 1;                lim.jmax = nlocal[Y];
+          lim.kmin = 1 - nhalo;        lim.kmax = 0;
+        }
+
+        int ic = nlocal[X] + 1; /* halo region */
+        for (int jc = lim.jmin; jc <= lim.jmax; jc++) {
+          for (int kc = lim.kmin; kc <= lim.kmax; kc++) {
+            int index = cs_index(cs, ic, jc, kc);
+            double rho = 0.0;
+            double u[3] = {};
+            rho  = buf[m][ib++];
+            u[X] = buf[m][ib++];
+            u[Y] = buf[m][ib++];
+            u[Z] = buf[m][ib++];
+            hydro_rho_set(hydro, index, rho);
+            hydro_u_set(hydro, index, u);
+          }
+        }
+        assert(ib == count[m]);
+
+        /* Done with this message */
+        free(buf[m]);
+        buf[m] = NULL;
+      }
+    }
+
+    /* Ensure we have released all the buffers */
+    for (int m = 0; m < 8; m++) {
+      free(buf[m]);
+    }
+    /* Finish */
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  lb_bc_outflow_rhou_impose
  *
  *  Very largely the same as the inflow routine; there could be
@@ -295,6 +486,10 @@ __host__ int lb_bc_outflow_rhou_impose(lb_bc_outflow_rhou_t * outflow,
   assert(outflow);
   assert(hydro);
   assert(lb);
+
+  if (pe_mpi_size(outflow->pe) > 1) {
+    lb_bc_outflow_rhou_halo_update(outflow, hydro);
+  }
 
   /* For each incoming link (at outflow) set f_p = f^eq_p (rho, u) */
 

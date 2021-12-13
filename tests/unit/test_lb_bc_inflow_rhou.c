@@ -22,8 +22,8 @@
 /* Tests */
 
 __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs);
-__host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs);
-__host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs);
+__host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs, int nvel);
+__host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel);
 
 /*****************************************************************************
  *
@@ -41,8 +41,8 @@ __host__ int test_lb_bc_inflow_rhou_suite(void) {
   cs_init(cs);
 
   test_lb_bc_inflow_rhou_create(pe, cs);
-  test_lb_bc_inflow_rhou_update(pe, cs);
-  test_lb_bc_inflow_rhou_impose(pe, cs);
+  test_lb_bc_inflow_rhou_update(pe, cs, NVEL);
+  test_lb_bc_inflow_rhou_impose(pe, cs, NVEL);
 
   pe_info(pe, "PASS     ./unit/test_lb_bc_inflow_rhou\n");
 
@@ -97,13 +97,13 @@ __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
  *
  *****************************************************************************/
 
-__host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs, int nvel) {
 
   int nlocal[3] = {};
   int noffset[3] = {};
   double rho0 = 2.0;
 
-  lb_bc_inflow_opts_t options = {.nvel = 15,
+  lb_bc_inflow_opts_t options = {.nvel = nvel,
                                  .flow = {1, 0, 0},
                                  .u0   = {-1.0,-2.0,-3.0}};
   lb_bc_inflow_rhou_t * inflow = NULL;
@@ -172,9 +172,10 @@ __host__ int test_lb_bc_inflow_rhou_update(pe_t * pe, cs_t * cs) {
  *
  *  test_lb_bc_inflow_rhou_impose
  *
+ *
  *****************************************************************************/
 
-__host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
+__host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   int ierr = 0;
 
@@ -184,7 +185,7 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs) {
 
   double rho0 = 1.0;
 
-  lb_bc_inflow_opts_t options = {.nvel = 19,
+  lb_bc_inflow_opts_t options = {.nvel = nvel,
                                  .flow = {1, 0, 0},
                                  .u0   = {0.01, 0.0, 0.0}};
   lb_bc_inflow_rhou_t * inflow = NULL;
