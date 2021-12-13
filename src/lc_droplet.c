@@ -598,7 +598,7 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
   /* Put active stress here (even if zero) */
 
   {
-    double phi = 0;
+    double phi = 0.0;
     double sa[3][3] = {};
 
     field_scalar(fe->symm->phi, index, &phi);
