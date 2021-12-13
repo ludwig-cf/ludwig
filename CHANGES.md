@@ -2,6 +2,9 @@
 ### Changes
 
 version 0.15.0
+
+- Active stress implementation is updated to conform to the documented
+  case; active emulsion stress is available.
 - Add ability to rotate BPI and BPII liquid crystal initial conditions
   Thanks to Oliver H. for this. See Section 3 of web documentation.
 - A diagnostic computation and output of the force breakdown on each

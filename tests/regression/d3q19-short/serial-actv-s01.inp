@@ -54,6 +54,7 @@ lc_xi      0.7
 lc_Gamma   0.3375
 
 lc_activity     yes
+lc_active_zeta0 0.33333333333333333
 lc_active_zeta1 0.005
 
 lc_q_initialisation active_nematic_q2d_y

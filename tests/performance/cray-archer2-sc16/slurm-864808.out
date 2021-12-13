@@ -1,0 +1,946 @@
+
+Lmod is automatically replacing "cce/11.0.4" with "gcc/10.2.0".
+
+
+Lmod is automatically replacing "PrgEnv-cray/8.0.0" with "PrgEnv-gnu/8.0.0".
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) cray-mpich/8.1.4
+
+
+Currently Loaded Modules:
+  1) gcc/10.2.0                                  8) cray-mpich/8.1.4
+  2) craype/2.7.6                                9) cray-libsci/21.04.1.1
+  3) craype-x86-rome                            10) bolt/0.7
+  4) libfabric/1.11.0.4.71                      11) epcc-setup-env
+  5) craype-network-ofi                         12) load-epcc-module
+  6) perftools-base/21.02.0                     13) PrgEnv-gnu/8.0.0
+  7) xpmem/2.2.40-7.0.1.0_2.7__g1d7a24d.shasta
+
+ 
+
+Node summary for    1 nodes:
+Node    0, hostname nid001324, mpi   1, omp  16, executable xthi
+MPI summary: 1 ranks 
+Node    0, rank    0, thread   0, (affinity =    0) 
+Node    0, rank    0, thread   1, (affinity =    1) 
+Node    0, rank    0, thread   2, (affinity =    2) 
+Node    0, rank    0, thread   3, (affinity =    3) 
+Node    0, rank    0, thread   4, (affinity =    4) 
+Node    0, rank    0, thread   5, (affinity =    5) 
+Node    0, rank    0, thread   6, (affinity =    6) 
+Node    0, rank    0, thread   7, (affinity =    7) 
+Node    0, rank    0, thread   8, (affinity =    8) 
+Node    0, rank    0, thread   9, (affinity =    9) 
+Node    0, rank    0, thread  10, (affinity =   10) 
+Node    0, rank    0, thread  11, (affinity =   11) 
+Node    0, rank    0, thread  12, (affinity =   12) 
+Node    0, rank    0, thread  13, (affinity =   13) 
+Node    0, rank    0, thread  14, (affinity =   14) 
+Node    0, rank    0, thread  15, (affinity =   15) 
+Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
+Start time: Mon Dec  6 09:40:29 2021
+
+Compiler:
+  name:           Gnu 11.2.0
+  version-string: 11.2.0 20210728 (Cray Inc.)
+
+Target thread model: OpenMP.
+OpenMP threads: 16; maximum number of threads: 16.
+
+Read 28 user parameters from input
+
+System details
+--------------
+System size:    128 128 128
+Decomposition:  1 1 1
+Local domain:   128 128 128
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-02
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9635000e-01
+... gives pitch length     =  3.1999925e+01
+Elastic constant kappa0    =  6.4845600e-04
+Elastic constant kappa1    =  6.4845600e-04
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  3.0000080e-01
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Liquid crystal anchoring
+Anchoring method:          =            two
+Anchoring type (colloids): =         normal
+Anchoring type (walls):          =         normal
+Surface free energy (colloid)w1: =  2.5938240e-03
+Surface free energy (colloid)w2: =  0.0000000e+00
+Surface free energy (wall) w1:   =  0.0000000e+00
+Surface free energy (wall) w2:   =  0.0000000e+00
+Ratio (colloid) w1/kappa0:       =  4.0000000e+00
+Ratio (wall) w1/kappa0:          =  0.0000000e+00
+Computed surface order f(gamma)  =  3.3333333e-01
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  5.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e+00
+Bulk viscosity                1.00000e+00
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    3.50000e+00
+Bulk relaxation time:     3.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 3
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab to cholesteric
+Helical axis Z
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.7476388e+05  8.3333910e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  2.4079829e-01  1.1482157e-07 3.1249931e-02 -2.5000000e-01 2.5000000e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  1.7476146e+05  8.3332756e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000003  8.8264507e-11  0.99999999991  1.00000000302
+[phi]  1.7303123e+05  8.2507719e-02 3.1029972e-02 -1.6661093e-01 3.3162533e-01
+[phi]  2.2790390e-01  1.0867305e-07 3.1029859e-02 -2.4911811e-01 2.4911811e-01
+[phi] -1.9812350e-12 -9.4472649e-19 3.0065582e-33 -1.5099951e-16 1.1650947e-16
+[phi]  1.7302894e+05  8.2506627e-02 3.1029972e-02 -1.6661097e-01 3.3162528e-01
+[phi] -2.7354779e-12 -1.3043775e-18 4.4863135e-33 -1.8828475e-16 2.0412098e-16
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           1000 -1.4130150160e+02  2.0971520000e+06 -6.7377806475e-05 -6.9424084750e-05  2.0462782744e-06  1.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.3200998e-11  2.2737423e-11 -4.2518877e-11
+[fluid   ]  4.3200998e-11  2.2737423e-11 -4.2518877e-11
+
+Velocity - x y z
+[minimum ] -3.8161432e-17 -2.0816475e-17 -1.6327987e-12
+[maximum ]  9.7144615e-17  5.2056455e-17  1.6324896e-12
+
+Completed cycle 1000
+
+Timer resolution: 2e-08 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    246.751    246.751    246.751 246.751117 (1 call)
+      Time step loop:      0.239      0.470    243.768   0.243768 (1000 calls)
+         Propagation:      0.044      0.047     43.761   0.043761 (1000 calls)
+    Propagtn (krnl) :      0.044      0.047     43.756   0.043756 (1000 calls)
+           Collision:      0.024      0.029     24.071   0.024071 (1000 calls)
+   Collision (krnl) :      0.024      0.029     24.063   0.024063 (1000 calls)
+       Lattice halos:      0.006      0.011      6.759   0.006759 (1000 calls)
+       phi gradients:      0.028      0.228     28.781   0.028781 (1000 calls)
+    phi grad (krnl) :      0.025      0.036     25.072   0.025072 (1000 calls)
+           phi halos:      0.003      0.150      3.660   0.003660 (1000 calls)
+                 BBL:      0.000      0.000      0.001   0.000001 (1000 calls)
+   Force calculation:      0.039      0.044     39.437   0.039437 (1000 calls)
+   Phi force (krnl) :      0.013      0.015     12.983   0.012983 (1000 calls)
+          phi update:      0.093      0.117     97.805   0.097805 (1000 calls)
+      Velocity Halo :      0.001      0.001      0.849   0.000849 (1000 calls)
+BE mol field (krnl) :      0.019      0.023     18.758   0.018758 (1000 calls)
+BP BE update (krnl) :      0.021      0.027     21.079   0.021079 (1000 calls)
+     Advectn (krnl) :      0.030      0.048     34.537   0.034537 (1000 calls)
+ Advectn BCS (krnl) :      0.019      0.020     19.143   0.019143 (1000 calls)
+               Free1:      0.000      1.618      1.620   0.001620 (1000 calls)
+End time: Mon Dec  6 09:44:36 2021
+Ludwig finished normally.
+Node summary for    1 nodes:
+Node    0, hostname nid001324, mpi   2, omp  16, executable xthi
+MPI summary: 2 ranks 
+Node    0, rank    0, thread   0, (affinity =    0) 
+Node    0, rank    0, thread   1, (affinity =    1) 
+Node    0, rank    0, thread   2, (affinity =    2) 
+Node    0, rank    0, thread   3, (affinity =    3) 
+Node    0, rank    0, thread   4, (affinity =    4) 
+Node    0, rank    0, thread   5, (affinity =    5) 
+Node    0, rank    0, thread   6, (affinity =    6) 
+Node    0, rank    0, thread   7, (affinity =    7) 
+Node    0, rank    0, thread   8, (affinity =    8) 
+Node    0, rank    0, thread   9, (affinity =    9) 
+Node    0, rank    0, thread  10, (affinity =   10) 
+Node    0, rank    0, thread  11, (affinity =   11) 
+Node    0, rank    0, thread  12, (affinity =   12) 
+Node    0, rank    0, thread  13, (affinity =   13) 
+Node    0, rank    0, thread  14, (affinity =   14) 
+Node    0, rank    0, thread  15, (affinity =   15) 
+Node    0, rank    1, thread   0, (affinity =   16) 
+Node    0, rank    1, thread   1, (affinity =   17) 
+Node    0, rank    1, thread   2, (affinity =   18) 
+Node    0, rank    1, thread   3, (affinity =   19) 
+Node    0, rank    1, thread   4, (affinity =   20) 
+Node    0, rank    1, thread   5, (affinity =   21) 
+Node    0, rank    1, thread   6, (affinity =   22) 
+Node    0, rank    1, thread   7, (affinity =   23) 
+Node    0, rank    1, thread   8, (affinity =   24) 
+Node    0, rank    1, thread   9, (affinity =   25) 
+Node    0, rank    1, thread  10, (affinity =   26) 
+Node    0, rank    1, thread  11, (affinity =   27) 
+Node    0, rank    1, thread  12, (affinity =   28) 
+Node    0, rank    1, thread  13, (affinity =   29) 
+Node    0, rank    1, thread  14, (affinity =   30) 
+Node    0, rank    1, thread  15, (affinity =   31) 
+Welcome to Ludwig v0.14.0 (MPI version running on 2 processes)
+Start time: Mon Dec  6 09:44:38 2021
+
+Compiler:
+  name:           Gnu 11.2.0
+  version-string: 11.2.0 20210728 (Cray Inc.)
+
+Target thread model: OpenMP.
+OpenMP threads: 16; maximum number of threads: 16.
+
+Read 28 user parameters from input
+
+System details
+--------------
+System size:    128 128 128
+Decomposition:  2 1 1
+Local domain:   64 128 128
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-02
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9635000e-01
+... gives pitch length     =  3.1999925e+01
+Elastic constant kappa0    =  6.4845600e-04
+Elastic constant kappa1    =  6.4845600e-04
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  3.0000080e-01
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Liquid crystal anchoring
+Anchoring method:          =            two
+Anchoring type (colloids): =         normal
+Anchoring type (walls):          =         normal
+Surface free energy (colloid)w1: =  2.5938240e-03
+Surface free energy (colloid)w2: =  0.0000000e+00
+Surface free energy (wall) w1:   =  0.0000000e+00
+Surface free energy (wall) w2:   =  0.0000000e+00
+Ratio (colloid) w1/kappa0:       =  4.0000000e+00
+Ratio (wall) w1/kappa0:          =  0.0000000e+00
+Computed surface order f(gamma)  =  3.3333333e-01
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  5.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e+00
+Bulk viscosity                1.00000e+00
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    3.50000e+00
+Bulk relaxation time:     3.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 3
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab to cholesteric
+Helical axis Z
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.7476388e+05  8.3333910e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  2.4079829e-01  1.1482157e-07 3.1249931e-02 -2.5000000e-01 2.5000000e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  1.7476146e+05  8.3332756e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  0.99999999998  3.4473313e-11  0.99999999991  1.00000000302
+[phi]  1.7303123e+05  8.2507719e-02 3.1029972e-02 -1.6661093e-01 3.3162533e-01
+[phi]  2.2790390e-01  1.0867305e-07 3.1029859e-02 -2.4911811e-01 2.4911811e-01
+[phi] -1.9812350e-12 -9.4472649e-19 3.0065582e-33 -1.5099951e-16 1.1650947e-16
+[phi]  1.7302894e+05  8.2506627e-02 3.1029972e-02 -1.6661097e-01 3.3162528e-01
+[phi] -2.7354779e-12 -1.3043775e-18 4.4863135e-33 -1.8828475e-16 2.0412098e-16
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           1000 -1.4130150161e+02  2.0971520000e+06 -6.7377806476e-05 -6.9424084751e-05  2.0462782744e-06  1.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.3200998e-11  2.2737479e-11 -4.2518877e-11
+[fluid   ]  4.3200998e-11  2.2737479e-11 -4.2518877e-11
+
+Velocity - x y z
+[minimum ] -3.8161432e-17 -2.0816475e-17 -1.6327987e-12
+[maximum ]  9.7144615e-17  5.2056455e-17  1.6324896e-12
+
+Completed cycle 1000
+
+Timer resolution: 2e-08 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:    124.773    124.774    124.774 124.773611 (1 call)
+      Time step loop:      0.122      0.173    123.311   0.123311 (1000 calls)
+         Propagation:      0.022      0.024     22.599   0.022599 (1000 calls)
+    Propagtn (krnl) :      0.022      0.024     22.593   0.022593 (1000 calls)
+           Collision:      0.011      0.014     11.581   0.011581 (1000 calls)
+   Collision (krnl) :      0.011      0.014     11.573   0.011573 (1000 calls)
+       Lattice halos:      0.004      0.009      4.112   0.004112 (1000 calls)
+       phi gradients:      0.015      0.045     15.028   0.015028 (1000 calls)
+    phi grad (krnl) :      0.013      0.019     13.032   0.013032 (1000 calls)
+           phi halos:      0.002      0.026      1.990   0.001990 (1000 calls)
+                 BBL:      0.000      0.000      0.001   0.000001 (1000 calls)
+   Force calculation:      0.020      0.023     20.207   0.020207 (1000 calls)
+   Phi force (krnl) :      0.007      0.008      6.744   0.006744 (1000 calls)
+          phi update:      0.047      0.061     48.383   0.048383 (1000 calls)
+      Velocity Halo :      0.001      0.004      0.630   0.000630 (1000 calls)
+BE mol field (krnl) :      0.010      0.013     10.375   0.010375 (1000 calls)
+BP BE update (krnl) :      0.011      0.013     10.666   0.010666 (1000 calls)
+     Advectn (krnl) :      0.015      0.025     16.024   0.016024 (1000 calls)
+ Advectn BCS (krnl) :      0.009      0.009      8.937   0.008937 (1000 calls)
+               Free1:      0.000      0.812      0.813   0.000813 (1000 calls)
+End time: Mon Dec  6 09:46:43 2021
+Ludwig finished normally.
+Node summary for    1 nodes:
+Node    0, hostname nid001324, mpi   4, omp  16, executable xthi
+MPI summary: 4 ranks 
+Node    0, rank    0, thread   0, (affinity =    0) 
+Node    0, rank    0, thread   1, (affinity =    1) 
+Node    0, rank    0, thread   2, (affinity =    2) 
+Node    0, rank    0, thread   3, (affinity =    3) 
+Node    0, rank    0, thread   4, (affinity =    4) 
+Node    0, rank    0, thread   5, (affinity =    5) 
+Node    0, rank    0, thread   6, (affinity =    6) 
+Node    0, rank    0, thread   7, (affinity =    7) 
+Node    0, rank    0, thread   8, (affinity =    8) 
+Node    0, rank    0, thread   9, (affinity =    9) 
+Node    0, rank    0, thread  10, (affinity =   10) 
+Node    0, rank    0, thread  11, (affinity =   11) 
+Node    0, rank    0, thread  12, (affinity =   12) 
+Node    0, rank    0, thread  13, (affinity =   13) 
+Node    0, rank    0, thread  14, (affinity =   14) 
+Node    0, rank    0, thread  15, (affinity =   15) 
+Node    0, rank    1, thread   0, (affinity =   16) 
+Node    0, rank    1, thread   1, (affinity =   17) 
+Node    0, rank    1, thread   2, (affinity =   18) 
+Node    0, rank    1, thread   3, (affinity =   19) 
+Node    0, rank    1, thread   4, (affinity =   20) 
+Node    0, rank    1, thread   5, (affinity =   21) 
+Node    0, rank    1, thread   6, (affinity =   22) 
+Node    0, rank    1, thread   7, (affinity =   23) 
+Node    0, rank    1, thread   8, (affinity =   24) 
+Node    0, rank    1, thread   9, (affinity =   25) 
+Node    0, rank    1, thread  10, (affinity =   26) 
+Node    0, rank    1, thread  11, (affinity =   27) 
+Node    0, rank    1, thread  12, (affinity =   28) 
+Node    0, rank    1, thread  13, (affinity =   29) 
+Node    0, rank    1, thread  14, (affinity =   30) 
+Node    0, rank    1, thread  15, (affinity =   31) 
+Node    0, rank    2, thread   0, (affinity =   32) 
+Node    0, rank    2, thread   1, (affinity =   33) 
+Node    0, rank    2, thread   2, (affinity =   34) 
+Node    0, rank    2, thread   3, (affinity =   35) 
+Node    0, rank    2, thread   4, (affinity =   36) 
+Node    0, rank    2, thread   5, (affinity =   37) 
+Node    0, rank    2, thread   6, (affinity =   38) 
+Node    0, rank    2, thread   7, (affinity =   39) 
+Node    0, rank    2, thread   8, (affinity =   40) 
+Node    0, rank    2, thread   9, (affinity =   41) 
+Node    0, rank    2, thread  10, (affinity =   42) 
+Node    0, rank    2, thread  11, (affinity =   43) 
+Node    0, rank    2, thread  12, (affinity =   44) 
+Node    0, rank    2, thread  13, (affinity =   45) 
+Node    0, rank    2, thread  14, (affinity =   46) 
+Node    0, rank    2, thread  15, (affinity =   47) 
+Node    0, rank    3, thread   0, (affinity =   48) 
+Node    0, rank    3, thread   1, (affinity =   49) 
+Node    0, rank    3, thread   2, (affinity =   50) 
+Node    0, rank    3, thread   3, (affinity =   51) 
+Node    0, rank    3, thread   4, (affinity =   52) 
+Node    0, rank    3, thread   5, (affinity =   53) 
+Node    0, rank    3, thread   6, (affinity =   54) 
+Node    0, rank    3, thread   7, (affinity =   55) 
+Node    0, rank    3, thread   8, (affinity =   56) 
+Node    0, rank    3, thread   9, (affinity =   57) 
+Node    0, rank    3, thread  10, (affinity =   58) 
+Node    0, rank    3, thread  11, (affinity =   59) 
+Node    0, rank    3, thread  12, (affinity =   60) 
+Node    0, rank    3, thread  13, (affinity =   61) 
+Node    0, rank    3, thread  14, (affinity =   62) 
+Node    0, rank    3, thread  15, (affinity =   63) 
+Welcome to Ludwig v0.14.0 (MPI version running on 4 processes)
+Start time: Mon Dec  6 09:46:45 2021
+
+Compiler:
+  name:           Gnu 11.2.0
+  version-string: 11.2.0 20210728 (Cray Inc.)
+
+Target thread model: OpenMP.
+OpenMP threads: 16; maximum number of threads: 16.
+
+Read 28 user parameters from input
+
+System details
+--------------
+System size:    128 128 128
+Decomposition:  2 2 1
+Local domain:   64 64 128
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-02
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9635000e-01
+... gives pitch length     =  3.1999925e+01
+Elastic constant kappa0    =  6.4845600e-04
+Elastic constant kappa1    =  6.4845600e-04
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  3.0000080e-01
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Liquid crystal anchoring
+Anchoring method:          =            two
+Anchoring type (colloids): =         normal
+Anchoring type (walls):          =         normal
+Surface free energy (colloid)w1: =  2.5938240e-03
+Surface free energy (colloid)w2: =  0.0000000e+00
+Surface free energy (wall) w1:   =  0.0000000e+00
+Surface free energy (wall) w2:   =  0.0000000e+00
+Ratio (colloid) w1/kappa0:       =  4.0000000e+00
+Ratio (wall) w1/kappa0:          =  0.0000000e+00
+Computed surface order f(gamma)  =  3.3333333e-01
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  5.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e+00
+Bulk viscosity                1.00000e+00
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    3.50000e+00
+Bulk relaxation time:     3.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 3
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab to cholesteric
+Helical axis Z
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.7476388e+05  8.3333910e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  2.4079829e-01  1.1482157e-07 3.1249931e-02 -2.5000000e-01 2.5000000e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  1.7476146e+05  8.3332756e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000000  1.9937385e-12  0.99999999991  1.00000000302
+[phi]  1.7303123e+05  8.2507719e-02 3.1029972e-02 -1.6661093e-01 3.3162533e-01
+[phi]  2.2790390e-01  1.0867305e-07 3.1029859e-02 -2.4911811e-01 2.4911811e-01
+[phi] -1.9812350e-12 -9.4472649e-19 3.0065582e-33 -1.5099951e-16 1.1650947e-16
+[phi]  1.7302894e+05  8.2506627e-02 3.1029972e-02 -1.6661097e-01 3.3162528e-01
+[phi] -2.7354779e-12 -1.3043775e-18 4.4863135e-33 -1.8828475e-16 2.0412098e-16
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           1000 -1.4130150161e+02  2.0971520000e+06 -6.7377806475e-05 -6.9424084751e-05  2.0462782744e-06  1.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.3200998e-11  2.2737590e-11 -4.2518877e-11
+[fluid   ]  4.3200998e-11  2.2737590e-11 -4.2518877e-11
+
+Velocity - x y z
+[minimum ] -3.8161432e-17 -2.0816475e-17 -1.6327987e-12
+[maximum ]  9.7144615e-17  5.2056455e-17  1.6324896e-12
+
+Completed cycle 1000
+
+Timer resolution: 2e-08 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     66.705     66.705     66.705  66.704946 (1 call)
+      Time step loop:      0.065      0.088     65.962   0.065962 (1000 calls)
+         Propagation:      0.011      0.012     11.471   0.011471 (1000 calls)
+    Propagtn (krnl) :      0.011      0.012     11.467   0.011467 (1000 calls)
+           Collision:      0.007      0.007      6.826   0.006826 (1000 calls)
+   Collision (krnl) :      0.007      0.007      6.819   0.006819 (1000 calls)
+       Lattice halos:      0.003      0.009      3.194   0.003194 (1000 calls)
+       phi gradients:      0.006      0.013      6.802   0.006802 (1000 calls)
+    phi grad (krnl) :      0.005      0.010      5.414   0.005414 (1000 calls)
+           phi halos:      0.001      0.004      1.380   0.001380 (1000 calls)
+                 BBL:      0.000      0.000      0.001   0.000001 (1000 calls)
+   Force calculation:      0.012      0.015     12.341   0.012341 (1000 calls)
+   Phi force (krnl) :      0.004      0.004      4.001   0.004001 (1000 calls)
+          phi update:      0.024      0.035     24.686   0.024686 (1000 calls)
+      Velocity Halo :      0.000      0.002      0.549   0.000549 (1000 calls)
+BE mol field (krnl) :      0.006      0.008      6.229   0.006229 (1000 calls)
+BP BE update (krnl) :      0.006      0.007      5.880   0.005880 (1000 calls)
+     Advectn (krnl) :      0.006      0.013      6.762   0.006762 (1000 calls)
+ Advectn BCS (krnl) :      0.004      0.005      4.145   0.004145 (1000 calls)
+               Free1:      0.000      0.405      0.407   0.000407 (1000 calls)
+End time: Mon Dec  6 09:47:51 2021
+Ludwig finished normally.
+Node summary for    1 nodes:
+Node    0, hostname nid001324, mpi   8, omp  16, executable xthi
+MPI summary: 8 ranks 
+Node    0, rank    0, thread   0, (affinity =    0) 
+Node    0, rank    0, thread   1, (affinity =    1) 
+Node    0, rank    0, thread   2, (affinity =    2) 
+Node    0, rank    0, thread   3, (affinity =    3) 
+Node    0, rank    0, thread   4, (affinity =    4) 
+Node    0, rank    0, thread   5, (affinity =    5) 
+Node    0, rank    0, thread   6, (affinity =    6) 
+Node    0, rank    0, thread   7, (affinity =    7) 
+Node    0, rank    0, thread   8, (affinity =    8) 
+Node    0, rank    0, thread   9, (affinity =    9) 
+Node    0, rank    0, thread  10, (affinity =   10) 
+Node    0, rank    0, thread  11, (affinity =   11) 
+Node    0, rank    0, thread  12, (affinity =   12) 
+Node    0, rank    0, thread  13, (affinity =   13) 
+Node    0, rank    0, thread  14, (affinity =   14) 
+Node    0, rank    0, thread  15, (affinity =   15) 
+Node    0, rank    1, thread   0, (affinity =   16) 
+Node    0, rank    1, thread   1, (affinity =   17) 
+Node    0, rank    1, thread   2, (affinity =   18) 
+Node    0, rank    1, thread   3, (affinity =   19) 
+Node    0, rank    1, thread   4, (affinity =   20) 
+Node    0, rank    1, thread   5, (affinity =   21) 
+Node    0, rank    1, thread   6, (affinity =   22) 
+Node    0, rank    1, thread   7, (affinity =   23) 
+Node    0, rank    1, thread   8, (affinity =   24) 
+Node    0, rank    1, thread   9, (affinity =   25) 
+Node    0, rank    1, thread  10, (affinity =   26) 
+Node    0, rank    1, thread  11, (affinity =   27) 
+Node    0, rank    1, thread  12, (affinity =   28) 
+Node    0, rank    1, thread  13, (affinity =   29) 
+Node    0, rank    1, thread  14, (affinity =   30) 
+Node    0, rank    1, thread  15, (affinity =   31) 
+Node    0, rank    2, thread   0, (affinity =   32) 
+Node    0, rank    2, thread   1, (affinity =   33) 
+Node    0, rank    2, thread   2, (affinity =   34) 
+Node    0, rank    2, thread   3, (affinity =   35) 
+Node    0, rank    2, thread   4, (affinity =   36) 
+Node    0, rank    2, thread   5, (affinity =   37) 
+Node    0, rank    2, thread   6, (affinity =   38) 
+Node    0, rank    2, thread   7, (affinity =   39) 
+Node    0, rank    2, thread   8, (affinity =   40) 
+Node    0, rank    2, thread   9, (affinity =   41) 
+Node    0, rank    2, thread  10, (affinity =   42) 
+Node    0, rank    2, thread  11, (affinity =   43) 
+Node    0, rank    2, thread  12, (affinity =   44) 
+Node    0, rank    2, thread  13, (affinity =   45) 
+Node    0, rank    2, thread  14, (affinity =   46) 
+Node    0, rank    2, thread  15, (affinity =   47) 
+Node    0, rank    3, thread   0, (affinity =   48) 
+Node    0, rank    3, thread   1, (affinity =   49) 
+Node    0, rank    3, thread   2, (affinity =   50) 
+Node    0, rank    3, thread   3, (affinity =   51) 
+Node    0, rank    3, thread   4, (affinity =   52) 
+Node    0, rank    3, thread   5, (affinity =   53) 
+Node    0, rank    3, thread   6, (affinity =   54) 
+Node    0, rank    3, thread   7, (affinity =   55) 
+Node    0, rank    3, thread   8, (affinity =   56) 
+Node    0, rank    3, thread   9, (affinity =   57) 
+Node    0, rank    3, thread  10, (affinity =   58) 
+Node    0, rank    3, thread  11, (affinity =   59) 
+Node    0, rank    3, thread  12, (affinity =   60) 
+Node    0, rank    3, thread  13, (affinity =   61) 
+Node    0, rank    3, thread  14, (affinity =   62) 
+Node    0, rank    3, thread  15, (affinity =   63) 
+Node    0, rank    4, thread   0, (affinity =   64) 
+Node    0, rank    4, thread   1, (affinity =   65) 
+Node    0, rank    4, thread   2, (affinity =   66) 
+Node    0, rank    4, thread   3, (affinity =   67) 
+Node    0, rank    4, thread   4, (affinity =   68) 
+Node    0, rank    4, thread   5, (affinity =   69) 
+Node    0, rank    4, thread   6, (affinity =   70) 
+Node    0, rank    4, thread   7, (affinity =   71) 
+Node    0, rank    4, thread   8, (affinity =   72) 
+Node    0, rank    4, thread   9, (affinity =   73) 
+Node    0, rank    4, thread  10, (affinity =   74) 
+Node    0, rank    4, thread  11, (affinity =   75) 
+Node    0, rank    4, thread  12, (affinity =   76) 
+Node    0, rank    4, thread  13, (affinity =   77) 
+Node    0, rank    4, thread  14, (affinity =   78) 
+Node    0, rank    4, thread  15, (affinity =   79) 
+Node    0, rank    5, thread   0, (affinity =   80) 
+Node    0, rank    5, thread   1, (affinity =   81) 
+Node    0, rank    5, thread   2, (affinity =   82) 
+Node    0, rank    5, thread   3, (affinity =   83) 
+Node    0, rank    5, thread   4, (affinity =   84) 
+Node    0, rank    5, thread   5, (affinity =   85) 
+Node    0, rank    5, thread   6, (affinity =   86) 
+Node    0, rank    5, thread   7, (affinity =   87) 
+Node    0, rank    5, thread   8, (affinity =   88) 
+Node    0, rank    5, thread   9, (affinity =   89) 
+Node    0, rank    5, thread  10, (affinity =   90) 
+Node    0, rank    5, thread  11, (affinity =   91) 
+Node    0, rank    5, thread  12, (affinity =   92) 
+Node    0, rank    5, thread  13, (affinity =   93) 
+Node    0, rank    5, thread  14, (affinity =   94) 
+Node    0, rank    5, thread  15, (affinity =   95) 
+Node    0, rank    6, thread   0, (affinity =   96) 
+Node    0, rank    6, thread   1, (affinity =   97) 
+Node    0, rank    6, thread   2, (affinity =   98) 
+Node    0, rank    6, thread   3, (affinity =   99) 
+Node    0, rank    6, thread   4, (affinity =  100) 
+Node    0, rank    6, thread   5, (affinity =  101) 
+Node    0, rank    6, thread   6, (affinity =  102) 
+Node    0, rank    6, thread   7, (affinity =  103) 
+Node    0, rank    6, thread   8, (affinity =  104) 
+Node    0, rank    6, thread   9, (affinity =  105) 
+Node    0, rank    6, thread  10, (affinity =  106) 
+Node    0, rank    6, thread  11, (affinity =  107) 
+Node    0, rank    6, thread  12, (affinity =  108) 
+Node    0, rank    6, thread  13, (affinity =  109) 
+Node    0, rank    6, thread  14, (affinity =  110) 
+Node    0, rank    6, thread  15, (affinity =  111) 
+Node    0, rank    7, thread   0, (affinity =  112) 
+Node    0, rank    7, thread   1, (affinity =  113) 
+Node    0, rank    7, thread   2, (affinity =  114) 
+Node    0, rank    7, thread   3, (affinity =  115) 
+Node    0, rank    7, thread   4, (affinity =  116) 
+Node    0, rank    7, thread   5, (affinity =  117) 
+Node    0, rank    7, thread   6, (affinity =  118) 
+Node    0, rank    7, thread   7, (affinity =  119) 
+Node    0, rank    7, thread   8, (affinity =  120) 
+Node    0, rank    7, thread   9, (affinity =  121) 
+Node    0, rank    7, thread  10, (affinity =  122) 
+Node    0, rank    7, thread  11, (affinity =  123) 
+Node    0, rank    7, thread  12, (affinity =  124) 
+Node    0, rank    7, thread  13, (affinity =  125) 
+Node    0, rank    7, thread  14, (affinity =  126) 
+Node    0, rank    7, thread  15, (affinity =  127) 
+Welcome to Ludwig v0.14.0 (MPI version running on 8 processes)
+Start time: Mon Dec  6 09:47:54 2021
+
+Compiler:
+  name:           Gnu 11.2.0
+  version-string: 11.2.0 20210728 (Cray Inc.)
+
+Target thread model: OpenMP.
+OpenMP threads: 16; maximum number of threads: 16.
+
+Read 28 user parameters from input
+
+System details
+--------------
+System size:    128 128 128
+Decomposition:  2 2 2
+Local domain:   64 64 64
+Periodic:       1 1 1
+Halo nhalo:     2
+Reorder:        true
+Initialised:    1
+
+Free energy details
+-------------------
+
+Blue phase free energy selected.
+
+Liquid crystal blue phase free energy
+Bulk parameter A0:         =  1.0000000e-02
+Magnitude of order gamma   =  3.0000000e+00
+Pitch wavevector q0        =  1.9635000e-01
+... gives pitch length     =  3.1999925e+01
+Elastic constant kappa0    =  6.4845600e-04
+Elastic constant kappa1    =  6.4845600e-04
+Amplitude (uniaxial) order =  3.3333333e-01
+Effective aspect ratio xi  =  7.0000000e-01
+Chirality                  =  3.0000080e-01
+Reduced temperature        =  0.0000000e+00
+Initial redshift           =  1.0000000e+00
+Dynamic redshift update    =             no
+Liquid crystal activity                  No
+
+Liquid crystal anchoring
+Anchoring method:          =            two
+Anchoring type (colloids): =         normal
+Anchoring type (walls):          =         normal
+Surface free energy (colloid)w1: =  2.5938240e-03
+Surface free energy (colloid)w2: =  0.0000000e+00
+Surface free energy (wall) w1:   =  0.0000000e+00
+Surface free energy (wall) w2:   =  0.0000000e+00
+Ratio (colloid) w1/kappa0:       =  4.0000000e+00
+Ratio (wall) w1/kappa0:          =  0.0000000e+00
+Computed surface order f(gamma)  =  3.3333333e-01
+
+Using Beris-Edwards solver:
+Rotational diffusion const =  5.0000000e-01
+LC fluctuations:           =  off
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e+00
+Bulk viscosity                1.00000e+00
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  2
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    3.50000e+00
+Bulk relaxation time:     3.50000e+00
+Ghost relaxation time:    1.00000e+00
+[User   ] Random number seed: 8361235
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Order parameter I/O
+-------------------
+Order parameter I/O format:   
+I/O decomposition:            1 1 1
+
+Advection scheme order: 3
+Gradient calculation: 3d_7pt_fluid
+
+
+Initialising Q_ab to cholesteric
+Helical axis Z
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+[phi]  1.7476388e+05  8.3333910e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  2.4079829e-01  1.1482157e-07 3.1249931e-02 -2.5000000e-01 2.5000000e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+[phi]  1.7476146e+05  8.3332756e-02 3.1250069e-02 -1.6666667e-01 3.3333333e-01
+[phi]  0.0000000e+00  0.0000000e+00 0.0000000e+00  0.0000000e+00 0.0000000e+00
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]     2097152.00  1.00000000000  1.2587709e-12  0.99999999991  1.00000000302
+[phi]  1.7303123e+05  8.2507719e-02 3.1029972e-02 -1.6661093e-01 3.3162533e-01
+[phi]  2.2790390e-01  1.0867305e-07 3.1029859e-02 -2.4911811e-01 2.4911811e-01
+[phi] -1.9812350e-12 -9.4472649e-19 3.0065582e-33 -1.5099951e-16 1.1650947e-16
+[phi]  1.7302894e+05  8.2506627e-02 3.1029972e-02 -1.6661097e-01 3.3162528e-01
+[phi] -2.7354779e-12 -1.3043775e-18 4.4863135e-33 -1.8828475e-16 2.0412098e-16
+
+Free energies - timestep f v f/v f_bulk/v f_grad/v redshift
+[fe]           1000 -1.4130150161e+02  2.0971520000e+06 -6.7377806475e-05 -6.9424084750e-05  2.0462782744e-06  1.0000000000e+00
+
+Momentum - x y z
+[total   ]  4.3427928e-11  2.2738034e-11 -4.2518877e-11
+[fluid   ]  4.3427928e-11  2.2738034e-11 -4.2518877e-11
+
+Velocity - x y z
+[minimum ] -3.8161432e-17 -2.0816475e-17 -1.6327987e-12
+[maximum ]  9.7144615e-17  5.2056455e-17  1.6324896e-12
+
+Completed cycle 1000
+
+Timer resolution: 2e-08 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:     33.068     33.068     33.068  33.068290 (1 call)
+      Time step loop:      0.032      0.054     32.682   0.032682 (1000 calls)
+         Propagation:      0.003      0.005      3.677   0.003677 (1000 calls)
+    Propagtn (krnl) :      0.003      0.005      3.670   0.003670 (1000 calls)
+           Collision:      0.003      0.004      3.396   0.003396 (1000 calls)
+   Collision (krnl) :      0.003      0.004      3.389   0.003389 (1000 calls)
+       Lattice halos:      0.002      0.012      2.220   0.002220 (1000 calls)
+       phi gradients:      0.004      0.009      4.621   0.004621 (1000 calls)
+    phi grad (krnl) :      0.003      0.005      2.752   0.002752 (1000 calls)
+           phi halos:      0.001      0.004      1.859   0.001859 (1000 calls)
+                 BBL:      0.000      0.000      0.001   0.000001 (1000 calls)
+   Force calculation:      0.006      0.009      6.222   0.006222 (1000 calls)
+   Phi force (krnl) :      0.002      0.003      1.893   0.001893 (1000 calls)
+          phi update:      0.011      0.022     12.126   0.012126 (1000 calls)
+      Velocity Halo :      0.000      0.004      0.732   0.000732 (1000 calls)
+BE mol field (krnl) :      0.003      0.005      3.010   0.003010 (1000 calls)
+BP BE update (krnl) :      0.003      0.005      3.322   0.003322 (1000 calls)
+     Advectn (krnl) :      0.003      0.010      3.370   0.003370 (1000 calls)
+ Advectn BCS (krnl) :      0.001      0.002      1.160   0.001160 (1000 calls)
+               Free1:      0.000      0.207      0.207   0.000207 (1000 calls)
+End time: Mon Dec  6 09:48:27 2021
+Ludwig finished normally.

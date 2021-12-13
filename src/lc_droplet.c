@@ -77,7 +77,9 @@ static __constant__ fe_vt_t fe_drop_dvt = {
 
 __host__ __device__
 int fe_lc_droplet_anchoring_h(fe_lc_droplet_t * fe, int index, double h[3][3]);
-
+__host__ __device__
+int fe_lc_droplet_active_stress(const fe_lc_droplet_param_t * fp, double phi,
+				double q[3][3], double s[3][3]);
 
 __global__ void fe_lc_droplet_bf_kernel(kernel_ctxt_t * ktx,
 					fe_lc_droplet_t * fe,
@@ -592,11 +594,59 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
     }
   }
 
+
+  /* Put active stress here (even if zero) */
+
+  {
+    double phi = 0.0;
+    double sa[3][3] = {};
+
+    field_scalar(fe->symm->phi, index, &phi);
+    fe_lc_droplet_active_stress(fe->param, phi, q, sa);
+    for (ia = 0; ia < 3; ia++) {
+      for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] += sa[ia][ib];
+      }
+    }
+  }
+
   /* Additional minus sign. */
 
   for (ia = 0; ia < 3; ia++) {
     for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  fe_lc_droplet_active_stress
+ *
+ *  The active stress is
+ *
+ *  S_ab = [ zeta_1 Q_ab - (1/3) zeta_0 d_ab ] f(phi)
+ *
+ *  where f(phi) = 0.5(1 + phi) makes phi = +1 the active phase.
+ *
+ ****************************************************************************/
+
+__host__ __device__
+int fe_lc_droplet_active_stress(const fe_lc_droplet_param_t * fp, double phi,
+				 double q[3][3], double s[3][3]) {
+  assert(fp);
+
+  {
+    double r3   = (1.0/3.0);
+    double fphi = 0.5*(1.0 + phi);
+
+    for (int ia = 0; ia < 3; ia++) {
+      for (int ib = 0; ib < 3; ib++) {
+	double d_ab = 1.0*(ia == ib);
+	s[ia][ib] = fphi*(-r3*fp->zeta0*d_ab - fp->zeta1*q[ia][ib]);
+      }
     }
   }
 
