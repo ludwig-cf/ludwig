@@ -1,5 +1,5 @@
 Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
-Start time: Thu Nov 18 11:47:58 2021
+Start time: Mon Dec 13 14:29:42 2021
 
 Compiler:
   name:           Gnu 11.2.0
@@ -74,6 +74,28 @@ Hydrodynamics
 -------------
 Hydrodynamics: on
 
+Hydrodynamic open boundary condition for inflow
+Inflow type:              rhou
+Inflow flow profile:      uniform
+Inflow flow direction:    1 0 0
+Inflow flow value u0:     1.0000000e-02  0.0000000e+00  0.0000000e+00
+
+Hydrodynamic open boundary condition at outflow
+Outflow type:             rhou
+Outflow flow direction:   1 0 0
+Outflow flow rho0:        1.0000000e+00
+
+Order parameter
+---------------
+
+Inflow open boundary for composition (phi)
+Composition inflow condition:   fixed
+Composition inflow direction:   1 0 0
+Composition inflow phi_b:       1.0000000e+00
+
+Outflow open boundary for composition (phi)
+Composition outflow condition:  free
+
 Order parameter I/O
 -------------------
 Order parameter I/O format:   
@@ -112,19 +134,19 @@ Momentum - x y z
 Starting time step loop.
 
 Scalars - total mean variance min max
-[rho]        3200.09  1.00002739061  9.3509479e-06  0.99481135726  1.01392358365
-[phi]  2.7928350e+03  8.7276095e-01 2.0154281e-01 -1.0030607e+00 1.0027681e+00
+[rho]        3200.09  1.00002744913  9.3513571e-06  0.99481135726  1.01392358365
+[phi]  2.7928351e+03  8.7276096e-01 2.0154282e-01 -1.0030607e+00 1.0027424e+00
 
 Free energies - timestep f v f/v f_s1 fs_s2 
-[fe]             10 -4.7838937700e+01  3.2000000000e+03 -1.4949668031e-02  0.0000000000e+00  0.0000000000e+00
+[fe]             10 -4.7838937863e+01  3.2000000000e+03 -1.4949668082e-02  0.0000000000e+00  0.0000000000e+00
 
 Momentum - x y z
-[total   ]  3.2068535e+01  1.9290125e-15  0.0000000e+00
-[fluid   ]  3.0263827e+01  5.0067189e-04  0.0000000e+00
-[walls   ]  1.8047079e+00 -5.0067189e-04  0.0000000e+00
+[total   ]  3.2067742e+01 -1.4727802e-15  0.0000000e+00
+[fluid   ]  3.0263450e+01  5.0067189e-04  0.0000000e+00
+[walls   ]  1.8042912e+00 -5.0067189e-04  0.0000000e+00
 
 Velocity - x y z
-[minimum ]  2.8443251e-03 -6.4426101e-03  0.0000000e+00
+[minimum ]  2.8439734e-03 -6.4426101e-03  0.0000000e+00
 [maximum ]  1.6515746e-02  6.4426101e-03  1.1754944e-38
 
 Completed cycle 10
@@ -133,20 +155,20 @@ Timer resolution: 1e-06 second
 
 Timer statistics
              Section:       tmin       tmax      total
-               Total:      0.166      0.166      0.166   0.165952 (1 call)
-      Time step loop:      0.015      0.018      0.157   0.015683 (10 calls)
-         Propagation:      0.002      0.003      0.023   0.002265 (10 calls)
-    Propagtn (krnl) :      0.002      0.003      0.023   0.002259 (10 calls)
-           Collision:      0.005      0.006      0.050   0.004985 (10 calls)
-   Collision (krnl) :      0.005      0.006      0.050   0.004979 (10 calls)
-       Lattice halos:      0.001      0.002      0.013   0.001320 (10 calls)
-       phi gradients:      0.000      0.001      0.005   0.000459 (10 calls)
-           phi halos:      0.000      0.000      0.003   0.000343 (10 calls)
-                 BBL:      0.000      0.000      0.001   0.000050 (10 calls)
-   Force calculation:      0.003      0.004      0.031   0.003059 (10 calls)
-          phi update:      0.003      0.004      0.031   0.003135 (10 calls)
-     Advectn (krnl) :      0.001      0.001      0.008   0.000781 (10 calls)
- Advectn BCS (krnl) :      0.001      0.001      0.008   0.000831 (10 calls)
-               Free1:      0.000      0.001      0.001   0.000150 (10 calls)
-End time: Thu Nov 18 11:47:58 2021
+               Total:      0.163      0.163      0.163   0.162859 (1 call)
+      Time step loop:      0.015      0.018      0.154   0.015379 (10 calls)
+         Propagation:      0.002      0.002      0.021   0.002136 (10 calls)
+    Propagtn (krnl) :      0.002      0.002      0.021   0.002131 (10 calls)
+           Collision:      0.005      0.005      0.050   0.005040 (10 calls)
+   Collision (krnl) :      0.005      0.005      0.050   0.005035 (10 calls)
+       Lattice halos:      0.001      0.002      0.012   0.001241 (10 calls)
+       phi gradients:      0.000      0.001      0.005   0.000476 (10 calls)
+           phi halos:      0.000      0.000      0.004   0.000353 (10 calls)
+                 BBL:      0.000      0.000      0.000   0.000049 (10 calls)
+   Force calculation:      0.003      0.004      0.030   0.003014 (10 calls)
+          phi update:      0.003      0.003      0.030   0.003008 (10 calls)
+     Advectn (krnl) :      0.001      0.001      0.007   0.000740 (10 calls)
+ Advectn BCS (krnl) :      0.001      0.001      0.008   0.000825 (10 calls)
+               Free1:      0.000      0.001      0.001   0.000143 (10 calls)
+End time: Mon Dec 13 14:29:42 2021
 Ludwig finished normally.
