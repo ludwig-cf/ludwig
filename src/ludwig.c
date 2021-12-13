@@ -307,7 +307,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
-		   &ludwig->interact, ludwig->wall, ludwig->map);
+		   &ludwig->interact, ludwig->wall, ludwig->map,
+		   &ludwig->lb->model);
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -747,7 +748,8 @@ void ludwig_run(const char * inputfile) {
 	}
 	else {
 	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
-			    ludwig->hydro, ludwig->map, ludwig->wall);
+			    ludwig->hydro, ludwig->map, ludwig->wall,
+			    &ludwig->lb->model);
 	}
       }
         
@@ -2050,14 +2052,16 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
   build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
 		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
-  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
+  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map,
+		     &ludwig->lb->model);
 
   TIMER_stop(TIMER_REBUILD);
 
   TIMER_start(TIMER_FREE1);
   if (iconserve) {
     colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
-    build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
+    build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi,
+		       &ludwig->lb->model);
   }
   TIMER_stop(TIMER_FREE1);
 

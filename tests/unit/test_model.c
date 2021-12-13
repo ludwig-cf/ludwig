@@ -80,6 +80,7 @@ int test_model_suite(void) {
 
 static void test_model_constants(void) {
 
+#ifdef TEST_TO_BE_REMOVED_WITH_GLOBAL_SYMBOLS
   int i, k, p;
 
   for (i = 0; i < CVXBLOCK; i++) {
@@ -114,7 +115,7 @@ static void test_model_constants(void) {
       test_assert(cv[p][Z] == -1);
     }
   }
-
+#endif
   return;
 }
 
@@ -129,44 +130,7 @@ static void test_model_constants(void) {
 
 static void test_model_velocity_set(void) {
 
-  int i, j, k, p;
-  double sum;
-
-  LB_CS2_DOUBLE(cs2);
-  LB_RCS2_DOUBLE(rcs2);
-  KRONECKER_DELTA_CHAR(d_);
-
   test_assert(NHYDRO == (1 + NDIM + NDIM*(NDIM+1)/2));
-
-  /* Speed of sound */
-
-  test_assert(fabs(rcs2 - 3.0) < TEST_DOUBLE_TOLERANCE);
-
-  /* Checking wv[p]*q_[p][i][j]... */
-
-  for (i = 0; i < NDIM; i++) {
-    for (j = 0; j < NDIM; j++) {
-      sum = 0.0;
-      for (p = 0; p < NVEL; p++) {
-	sum += wv[p]*(cv[p][i]*cv[p][j] - cs2*d_[i][j]);
-      }
-      test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);
-    }
-  }
-
-  /* Checking wv[p]*cv[p][i]*q_[p][j][k]... */
-
-  for (i = 0; i < NDIM; i++) {
-    for (j = 0; j < NDIM; j++) {
-      for (k = 0; k < NDIM; k++) {
-	sum = 0.0;
-	for (p = 0; p < NVEL; p++) {
-	  sum += wv[p]*cv[p][i]*(cv[p][i]*cv[p][j] - cs2*d_[i][j]);
-	}
-	test_assert(fabs(sum - 0.0) < TEST_DOUBLE_TOLERANCE);
-      }
-    }
-  }
 
   return;
 }
@@ -208,8 +172,8 @@ int do_test_model_distributions(pe_t * pe, cs_t * cs) {
   assert(n == ndist);
 
   for (n = 0; n < ndist; n++) {
-    for (p = 0; p < NVEL; p++) {
-      fvalue_expected = 0.01*n + wv[p];
+    for (p = 0; p < lb->model.nvel; p++) {
+      fvalue_expected = 0.01*n + lb->model.wv[p];
       lb_f_set(lb, index, p, n, fvalue_expected);
       lb_f(lb, index, p, n, &fvalue);
       assert(fabs(fvalue - fvalue_expected) < DBL_EPSILON);
@@ -217,7 +181,7 @@ int do_test_model_distributions(pe_t * pe, cs_t * cs) {
 
     /* Check zeroth moment... */
 
-    fvalue_expected = 0.01*n*NVEL + 1.0;
+    fvalue_expected = 0.01*n*lb->model.nvel + 1.0;
     lb_0th_moment(lb, index, (lb_dist_enum_t) n, &fvalue);
     assert(fabs(fvalue - fvalue_expected) <= DBL_EPSILON);
 
@@ -225,7 +189,7 @@ int do_test_model_distributions(pe_t * pe, cs_t * cs) {
 
     lb_1st_moment(lb, index, (n == 0) ? LB_RHO : LB_PHI, u);
 
-    for (i = 0; i < NDIM; i++) {
+    for (i = 0; i < lb->model.ndim; i++) {
       assert(fabs(u[i] - 0.0) < DBL_EPSILON);
     }
   }
@@ -282,7 +246,7 @@ int do_test_model_halo_swap(pe_t * pe, cs_t * cs) {
 	  lb_f_set(lb, index, Y, n, (double) (j));
 	  lb_f_set(lb, index, Z, n, (double) (k));
 
-	  for (p = 3; p < NVEL; p++) {
+	  for (p = 3; p < lb->model.nvel; p++) {
 	    lb_f_set(lb, index, p, n, (double) p);
 	  }
 	}
@@ -319,7 +283,7 @@ int do_test_model_halo_swap(pe_t * pe, cs_t * cs) {
 	  lb_f(lb, index, Z, n, &f_actual);
 	  test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
 
-	  for (p = 3; p < NVEL; p++) {
+	  for (p = 3; p < lb->model.nvel; p++) {
 	    lb_f(lb, index, p, n, &f_actual);
 	    f_expect = (double) p;
 	    test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);
@@ -371,8 +335,8 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
       for (k = 1; k <= nlocal[Z]; k++) {
 	index = cs_index(cs, i, j, k);
 	for (n = 0; n < ndist; n++) {
-	  for (p = 0; p < NVEL; p++) {
-	    f_expect = 1.0*(n*NVEL + p);
+	  for (p = 0; p < lb->model.nvel; p++) {
+	    f_expect = 1.0*(n*lb->model.nvel + p);
 	    lb_f_set(lb, index, p, n, f_expect);
 	  }
 	}
@@ -389,9 +353,9 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
       for (k = 1; k <= nlocal[Z]; k++) {
 	index = cs_index(cs, i, j, k);
 	for (n = 0; n < ndist; n++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f(lb, index, p, n, &f_actual);
-	    f_expect = 1.0*(n*NVEL +  p);
+	    f_expect = 1.0*(n*lb->model.nvel +  p);
 	    test_assert(fabs(f_expect - f_actual) < DBL_EPSILON);
 	  }
 	}
@@ -413,14 +377,14 @@ int do_test_model_reduced_halo_swap(pe_t * pe, cs_t * cs) {
 	index = cs_index(cs, i, j, k);
 
 	for (n = 0; n < ndist; n++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 
 	    lb_f(lb, index, p, n, &f_actual);
-	    f_expect = 1.0*(n*NVEL + p);
+	    f_expect = 1.0*(n*lb->model.nvel + p);
 
-	    icdt = i + cv[p][X];
-	    jcdt = j + cv[p][Y];
-	    kcdt = k + cv[p][Z];
+	    icdt = i + lb->model.cv[p][X];
+	    jcdt = j + lb->model.cv[p][Y];
+	    kcdt = k + lb->model.cv[p][Z];
 
 	    if (test_model_is_domain(cs, icdt, jcdt, kcdt)) {
 	      test_assert(fabs(f_actual - f_expect) < DBL_EPSILON);

@@ -9,7 +9,7 @@
  * Edinburgh Soft Matter and Statistical Physics Group and
  * Edinburgh Parallel Computing Centre
  *
- * (c) 2020 The University of Edinburgh
+ * (c) 2020-2021 The University of Edinburgh
  *
  * Contributing authors:
  * Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -61,8 +61,8 @@ __host__ int test_wall_suite(void) {
   test_wall_link_normal(pe, cs);
   test_wall_link_slip_direction(pe, cs);
   test_wall_link_slip(pe, cs);
-  test_wall_commit1(pe, cs);
 
+  test_wall_commit1(pe, cs);
   test_wall_commit2(pe, cs);
 
   pe_info(pe, "PASS     ./unit/test_wall\n");
@@ -163,6 +163,7 @@ __host__ int test_wall_slip(void) {
 
 __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
 
+  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
@@ -170,8 +171,11 @@ __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  lb_create(pe, cs, &lb);
+  lb_init(lb);
+
   map_create(pe, cs, 1, &map);
-  wall_create(pe, cs, map, NULL, &wall);
+  wall_create(pe, cs, map, lb, &wall);
 
   /* This will probe all possible normal directions for the model */
   param.iswall = 1;
@@ -187,26 +191,28 @@ __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
     int modcv;
 
     wall_link_normal(wall, n, wn);
-    modcv = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+    modcv = lb->model.cv[p][X]*lb->model.cv[p][X]
+          + lb->model.cv[p][Y]*lb->model.cv[p][Y]
+          + lb->model.cv[p][Z]*lb->model.cv[p][Z];
 
     switch (modcv) {
     case 1:
       /* A link with |cv| = 1 is always normal to the face */
-      assert(wn[X] == -cv[p][X]);
-      assert(wn[Y] == -cv[p][Y]);
-      assert(wn[Z] == -cv[p][Z]);
+      assert(wn[X] == -lb->model.cv[p][X]);
+      assert(wn[Y] == -lb->model.cv[p][Y]);
+      assert(wn[Z] == -lb->model.cv[p][Z]);
       break;
     case 2:
       /* A link with |cv| = 2 may be face or edge  */
-      if (wn[X] != 0) assert(wn[X] == -cv[p][X]);
-      if (wn[Y] != 0) assert(wn[Y] == -cv[p][Y]);
-      if (wn[Z] != 0) assert(wn[Z] == -cv[p][Z]);
+      if (wn[X] != 0) assert(wn[X] == -lb->model.cv[p][X]);
+      if (wn[Y] != 0) assert(wn[Y] == -lb->model.cv[p][Y]);
+      if (wn[Z] != 0) assert(wn[Z] == -lb->model.cv[p][Z]);
       break;
     case 3:
       /* A link with |cv| = 3 may be face, edge, or corner */
-      if (wn[X] != 0) assert(wn[X] == -cv[p][X]);
-      if (wn[Y] != 0) assert(wn[Y] == -cv[p][Y]);
-      if (wn[Z] != 0) assert(wn[Z] == -cv[p][Z]);
+      if (wn[X] != 0) assert(wn[X] == -lb->model.cv[p][X]);
+      if (wn[Y] != 0) assert(wn[Y] == -lb->model.cv[p][Y]);
+      if (wn[Z] != 0) assert(wn[Z] == -lb->model.cv[p][Z]);
       break;
     default:
       assert(0);
@@ -215,6 +221,7 @@ __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
 
   wall_free(wall);
   map_free(map);
+  lb_free(lb);
 
   return 0;
 }
@@ -227,6 +234,7 @@ __host__ int test_wall_link_normal(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
 
+  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
@@ -234,8 +242,11 @@ __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  lb_create(pe, cs, &lb);
+  lb_init(lb);
+
   map_create(pe, cs, 1, &map);
-  wall_create(pe, cs, map, NULL, &wall);
+  wall_create(pe, cs, map, lb, &wall);
 
   /* This will probe all possible normal directions for the model */
   param.iswall = 1;
@@ -251,18 +262,18 @@ __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
     int wn[3] = {0};
 
     q = wall_link_slip_direction(wall, n);
-    assert(0 < q && q < NVEL);
+    assert(0 < q && q < lb->model.nvel);
 
     /* This test is slightly circular, but at least consistent... */
     wall_link_normal(wall, n, wn);
 
-    assert((cv[p][X] + cv[q][X]) == -2*wn[X]);
-    assert((cv[p][Y] + cv[q][Y]) == -2*wn[Y]);
-    assert((cv[p][Z] + cv[q][Z]) == -2*wn[Z]);
+    assert((lb->model.cv[p][X] + lb->model.cv[q][X]) == -2*wn[X]);
+    assert((lb->model.cv[p][Y] + lb->model.cv[q][Y]) == -2*wn[Y]);
+    assert((lb->model.cv[p][Z] + lb->model.cv[q][Z]) == -2*wn[Z]);
 
-    wn[X] += (cv[p][X] + cv[q][X])/2;
-    wn[Y] += (cv[p][Y] + cv[q][Y])/2;
-    wn[Z] += (cv[p][Z] + cv[q][Z])/2;
+    wn[X] += (lb->model.cv[p][X] + lb->model.cv[q][X])/2;
+    wn[Y] += (lb->model.cv[p][Y] + lb->model.cv[q][Y])/2;
+    wn[Z] += (lb->model.cv[p][Z] + lb->model.cv[q][Z])/2;
     assert(wn[X] == 0);
     assert(wn[Y] == 0);
     assert(wn[Z] == 0);
@@ -270,6 +281,7 @@ __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
 
   wall_free(wall);
   map_free(map);
+  lb_free(lb);
 
   return 0;
 }
@@ -282,6 +294,7 @@ __host__ int test_wall_link_slip_direction(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs) {
 
+  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
@@ -289,8 +302,11 @@ __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  lb_create(pe, cs, &lb);
+  lb_init(lb);
+
   map_create(pe, cs, 1, &map);
-  wall_create(pe, cs, map, NULL, &wall);
+  wall_create(pe, cs, map, lb, &wall);
 
   /* This will probe all possible normal directions for the model */
   param.iswall = 1;
@@ -307,17 +323,18 @@ __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs) {
     assert(WALL_NO_SLIP <= s && s < WALL_SLIP_MAX);
 
     /* Make sure these are at least consistent */
-    if (s == WALL_SLIP_XBOT) assert(cv[p][X] == -1);
-    if (s == WALL_SLIP_XTOP) assert(cv[p][X] == +1);
-    if (s == WALL_SLIP_YBOT) assert(cv[p][Y] == -1);
-    if (s == WALL_SLIP_YTOP) assert(cv[p][Y] == +1);
-    if (s == WALL_SLIP_ZBOT) assert(cv[p][Z] == -1);
-    if (s == WALL_SLIP_ZTOP) assert(cv[p][Z] == +1);
+    if (s == WALL_SLIP_XBOT) assert(lb->model.cv[p][X] == -1);
+    if (s == WALL_SLIP_XTOP) assert(lb->model.cv[p][X] == +1);
+    if (s == WALL_SLIP_YBOT) assert(lb->model.cv[p][Y] == -1);
+    if (s == WALL_SLIP_YTOP) assert(lb->model.cv[p][Y] == +1);
+    if (s == WALL_SLIP_ZBOT) assert(lb->model.cv[p][Z] == -1);
+    if (s == WALL_SLIP_ZTOP) assert(lb->model.cv[p][Z] == +1);
     if (p == 0) assert(0);
   }
 
   wall_free(wall);
   map_free(map);
+  lb_free(lb);
 
   return 0;
 }
@@ -330,6 +347,7 @@ __host__ int test_wall_link_slip(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_commit1(pe_t * pe, cs_t * cs) {
 
+  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
@@ -337,8 +355,11 @@ __host__ int test_wall_commit1(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  lb_create(pe, cs, &lb);
+  lb_init(lb);
+
   map_create(pe, cs, 1, &map);
-  wall_create(pe, cs, map, NULL, &wall);
+  wall_create(pe, cs, map, lb, &wall);
 
   /* This will probe all possible normal directions for the model */
   param.iswall = 1;
@@ -360,6 +381,7 @@ __host__ int test_wall_commit1(pe_t * pe, cs_t * cs) {
 
   wall_free(wall);
   map_free(map);
+  lb_free(lb);
 
   return 0;
 }
@@ -372,6 +394,7 @@ __host__ int test_wall_commit1(pe_t * pe, cs_t * cs) {
 
 __host__ int test_wall_commit2(pe_t * pe, cs_t * cs) {
 
+  lb_t * lb = NULL;
   map_t * map = NULL;
   wall_t * wall = NULL;
   wall_param_t param = {0};
@@ -379,8 +402,11 @@ __host__ int test_wall_commit2(pe_t * pe, cs_t * cs) {
   assert(pe);
   assert(cs);
 
+  lb_create(pe, cs, &lb);
+  lb_init(lb);
+
   map_create(pe, cs, 1, &map);
-  wall_create(pe, cs, map, NULL, &wall);
+  wall_create(pe, cs, map, lb, &wall);
 
   /* This will probe all possible normal directions for the model */
   param.iswall = 1;
@@ -403,6 +429,7 @@ __host__ int test_wall_commit2(pe_t * pe, cs_t * cs) {
 
   wall_free(wall);
   map_free(map);
+  lb_free(lb);
 
   return 0;
 }

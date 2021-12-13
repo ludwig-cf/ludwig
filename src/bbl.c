@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing Authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -43,7 +43,8 @@ struct bbl_s {
 
 static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
 static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo);
-static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo);
+static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
+				   colloids_info_t * cinfo);
 static int bbl_wall_lubrication_account(bbl_t * bbl, wall_t * wall,
 					colloids_info_t * cinfo);
 
@@ -172,7 +173,7 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
   colloid_sums_halo(cinfo, COLLOID_SUM_DYNAMICS);
 
   if (bbl->active) {
-    bbl_active_conservation(bbl, cinfo);
+    bbl_active_conservation(bbl, lb, cinfo);
     colloid_sums_halo(cinfo, COLLOID_SUM_ACTIVE);
   }
 
@@ -192,8 +193,8 @@ int bounce_back_on_links(bbl_t * bbl, lb_t * lb, wall_t * wall,
  *
  *****************************************************************************/
 
-static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
-
+static int bbl_active_conservation(bbl_t * bbl, lb_t * lb,
+				   colloids_info_t * cinfo) {
   int ia;
   double dm;
   double c[3];
@@ -220,10 +221,10 @@ static int bbl_active_conservation(bbl_t * bbl, colloids_info_t * cinfo) {
 
       if (p_link->status != LINK_FLUID) continue;
 
-      dm = -wv[p_link->p]*pc->sump;
+      dm = -lb->model.wv[p_link->p]*pc->sump;
 
       for (ia = 0; ia < 3; ia++) {
-	c[ia] = 1.0*cv[p_link->p][ia];
+	c[ia] = 1.0*lb->model.cv[p_link->p][ia];
       }
 
       cross_product(p_link->rb, c, rbxc);
@@ -297,6 +298,7 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
 
   int kindex;
   int kiter;
+  LB_CS2_DOUBLE(cs2);
   LB_RCS2_DOUBLE(rcs2);
 
   assert(ktxt);
@@ -343,16 +345,17 @@ __global__ void bbl_pass0_kernel(kernel_ctxt_t * ktxt, cs_t * cs, lb_t * lb,
       ub[Y] = pc->s.v[Y] + pc->s.w[Z]*rb[X] - pc->s.w[X]*rb[Z];
       ub[Z] = pc->s.v[Z] + pc->s.w[X]*rb[Y] - pc->s.w[Y]*rb[X];
 
-      for (p = 1; p < NVEL; p++) {
+      for (p = 1; p < lbp.nvel; p++) {
 	udotc = lbp.cv[p][X]*ub[X] + lbp.cv[p][Y]*ub[Y] + lbp.cv[p][Z]*ub[Z];
 	sdotq = 0.0;
 	for (ia = 0; ia < 3; ia++) {
 	  for (ib = 0; ib < 3; ib++) {
-	    sdotq += lbp.q[p][ia][ib]*ub[ia]*ub[ib];
+	    double dab = (ia == ib);
+	    sdotq += (lbp.cv[p][ia]*lbp.cv[p][ib] - cs2*dab)*ub[ia]*ub[ib];
 	  }
 	}
 
-	lb->f[ LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p) ]
+	lb->f[ LB_ADDR(lb->nsite, lb->ndist, lbp.nvel, index, LB_RHO, p) ]
 	  = lbp.wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
       }
     }
@@ -428,12 +431,12 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
       if (p_link->status == LINK_UNUSED) continue;
 
-      i = p_link->i;        /* index site i (outside) */
-      j = p_link->j;        /* index site j (inside) */
-      ij = p_link->p;       /* link velocity index i->j */
-      ji = NVEL - ij;       /* link velocity index j->i */
+      i = p_link->i;              /* index site i (outside) */
+      j = p_link->j;              /* index site j (inside) */
+      ij = p_link->p;             /* link velocity index i->j */
+      ji = lb->model.nvel - ij;   /* link velocity index j->i */
 
-      assert(ij > 0 && ij < NVEL);
+      assert(ij > 0 && ij < lb->model.nvel);
 
       /* For stationary link, the momentum transfer from the
        * fluid to the colloid is "dm" */
@@ -444,8 +447,8 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	 * Note minus sign. */
 
 	lb_f(lb, i, ij, 0, &fdist);
-	dm =  2.0*fdist - wv[ij]*pc->deltam;
-	delta = 2.0*rcs2*wv[ij]*rho0;
+	dm =  2.0*fdist - lb->model.wv[ij]*pc->deltam;
+	delta = 2.0*rcs2*lb->model.wv[ij]*rho0;
 
 	/* Squirmer section */
 	if (pc->s.type == COLLOID_TYPE_ACTIVE) {
@@ -471,7 +474,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 	  dm_a = 0.0;
 	  for (ia = 0; ia < 3; ia++) {
-	    dm_a += -delta*plegendre*rmod*tans[ia]*cv[ij][ia];
+	    dm_a += -delta*plegendre*rmod*tans[ia]*lb->model.cv[ij][ia];
 	  }
 
 	  lb_f(lb, i, ij, 0, &fdist);
@@ -496,7 +499,7 @@ static int bbl_pass1(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
       }
 
       for (ia = 0; ia < 3; ia++) {
-	c[ia] = 1.0*cv[ij][ia];
+	c[ia] = 1.0*lb->model.cv[ij][ia];
       }
 
       cross_product(p_link->rb, c, rbxc);
@@ -633,15 +636,15 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
     for ( ; p_link; p_link = p_link->next) {
 
-      i = p_link->i;       /* index site i (outside) */
-      j = p_link->j;       /* index site j (inside) */
-      ij = p_link->p;      /* link velocity index i->j */
-      ji = NVEL - ij;      /* link velocity index j->i */
+      i = p_link->i;              /* index site i (outside) */
+      j = p_link->j;              /* index site j (inside) */
+      ij = p_link->p;             /* link velocity index i->j */
+      ji = lb->model.nvel - ij;   /* link velocity index j->i */
 
       if (p_link->status == LINK_FLUID) {
 
 	lb_f(lb, i, ij, 0, &fdist);
-	dm =  2.0*fdist - wv[ij]*pc->deltam;
+	dm =  2.0*fdist - lb->model.wv[ij]*pc->deltam;
 
 	/* Compute the self-consistent boundary velocity,
 	 * and add the correction term for changes in shape. */
@@ -650,18 +653,18 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 	vdotc = 0.0;
 	for (ia = 0; ia < 3; ia++) {
-	  vdotc += (pc->s.v[ia] + wxrb[ia])*cv[ij][ia];
+	  vdotc += (pc->s.v[ia] + wxrb[ia])*lb->model.cv[ij][ia];
 	}
-	vdotc = 2.0*rcs2*wv[ij]*vdotc;
-	df = rho0*vdotc + wv[ij]*pc->deltam;
+	vdotc = 2.0*rcs2*lb->model.wv[ij]*vdotc;
+	df = rho0*vdotc + lb->model.wv[ij]*pc->deltam;
 
 	/* Contribution to mass conservation from squirmer */
 
-	df += wv[ij]*pc->sump; 
+	df += lb->model.wv[ij]*pc->sump; 
 
 	/* Correction owing to missing links "squeeze term" */
 
-	df -= wv[ij]*dms;
+	df -= lb->model.wv[ij]*dms;
 
 	/* The outside site actually undergoes BBL. */
 
@@ -676,7 +679,7 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	  lb_0th_moment(lb, i, LB_PHI, &dg);
 	  dg *= vdotc;
 	  pc->s.deltaphi += dg;
-	  dg -= wv[ij]*dgtm1;
+	  dg -= lb->model.wv[ij]*dgtm1;
 
 	  lb_f(lb, i, ij, LB_PHI, &fdist);
 	  fdist = fdist - dg;
@@ -685,9 +688,9 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 
 	/* The stress is r_b f_b */
 	for (ia = 0; ia < 3; ia++) {
-	  bbl->stress[ia][X] += p_link->rb[X]*(dm - df)*cv[ij][ia];
-	  bbl->stress[ia][Y] += p_link->rb[Y]*(dm - df)*cv[ij][ia];
-	  bbl->stress[ia][Z] += p_link->rb[Z]*(dm - df)*cv[ij][ia];
+	  bbl->stress[ia][X] += p_link->rb[X]*(dm - df)*lb->model.cv[ij][ia];
+	  bbl->stress[ia][Y] += p_link->rb[Y]*(dm - df)*lb->model.cv[ij][ia];
+	  bbl->stress[ia][Z] += p_link->rb[Z]*(dm - df)*lb->model.cv[ij][ia];
 	}
       }
       else if (p_link->status == LINK_COLLOID) {
@@ -700,9 +703,9 @@ static int bbl_pass2(bbl_t * bbl, lb_t * lb, colloids_info_t * cinfo) {
 	dm += fdist;
 
 	for (ia = 0; ia < 3; ia++) {
-	  bbl->stress[ia][X] += p_link->rb[X]*dm*cv[ij][ia];
-	  bbl->stress[ia][Y] += p_link->rb[Y]*dm*cv[ij][ia];
-	  bbl->stress[ia][Z] += p_link->rb[Z]*dm*cv[ij][ia];
+	  bbl->stress[ia][X] += p_link->rb[X]*dm*lb->model.cv[ij][ia];
+	  bbl->stress[ia][Y] += p_link->rb[Y]*dm*lb->model.cv[ij][ia];
+	  bbl->stress[ia][Z] += p_link->rb[Z]*dm*lb->model.cv[ij][ia];
 	}
       }
       /* Next link */

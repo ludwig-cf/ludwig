@@ -129,11 +129,6 @@ static int le_reproject(lb_t * lb, lees_edw_t * le) {
   double t;
   physics_t * phys = NULL;
 
-  LB_CS2_DOUBLE(cs2);
-  LB_RCS2_DOUBLE(rcs2);
-  KRONECKER_DELTA_CHAR(d_);
-  const double r2rcs4 = 4.5;         /* The constant 1 / 2 c_s^4 */
-
   assert(lb);
   assert(le);
   assert(CVXBLOCK == 1);
@@ -188,22 +183,27 @@ static int le_reproject(lb_t * lb, lees_edw_t * le) {
 
 	    for (np = 0; np < xblocklen_cv[0]; np++) {
 
+	      double cs2 = lb->model.cs2;
+	      double rcs2 = 1.0/cs2;
+
 	      /* Pick up the correct velocity indices */ 
 	      p = poffset + np;
 
-	      udotc = du[Y]*cv[p][Y];
+	      udotc = du[Y]*lb->model.cv[p][Y];
 	      sdotq = 0.0;
 	      
 	      for (ia = 0; ia < 3; ia++) {
 		for (ib = 0; ib < 3; ib++) {
-		  sdotq += ds[ia][ib]*(cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib]);
+		  double dab = cs2*(ia == ib);
+		  double q = (lb->model.cv[p][ia]*lb->model.cv[p][ib] - dab);
+		  sdotq += ds[ia][ib]*q;
 		}
 	      }
 
 	      /* Project all this back to the distribution. */
 
 	      lb_f(lb, index, p, n, &fnew);
-	      fnew += wv[p]*(rho*udotc*rcs2 + sdotq*r2rcs4);
+	      fnew += lb->model.wv[p]*(rho*udotc*rcs2 + 0.5*sdotq*rcs2*rcs2);
 	      lb_f_set(lb, index, p, n, fnew);
 	    }
 	  }
@@ -284,10 +284,11 @@ static int le_reproject_all(lb_t * lb, lees_edw_t * le) {
 
 	  /* Compute modes */
 
-	  for (m = 0; m < NVEL; m++) {
+	  for (m = 0; m < lb->model.nvel; m++) {
 	    mode[m] = 0.0;
-	    for (p = 0; p < NVEL; p++) {
-	      mode[m] += lb->f[ndist*NVEL*index + 0 + p]*lb->param->ma[m][p];
+	    for (p = 0; p < lb->model.nvel; p++) {
+	      int ijk = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, 0, p);
+	      mode[m] += lb->f[ijk]*lb->param->ma[m][p];
 	    }
 	  }
 
@@ -309,9 +310,12 @@ static int le_reproject_all(lb_t * lb, lees_edw_t * le) {
 
 	  for (np = 0; np < xblocklen_cv[0]; np++) {
 	    p = poffset + np;
-	    lb->f[ndist*NVEL*index + 0 + p] = 0.0;
-	    for (m = 0; m < NVEL; m++) {
-	      lb->f[ndist*NVEL*index + 0 + p] += mode[m]*lb->param->mi[p][m];
+	    {
+	      int ijk = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, 0, p);
+	      lb->f[ijk] = 0.0;
+	      for (m = 0; m < lb->model.nvel; m++) {
+		lb->f[ijk] += mode[m]*lb->param->mi[p][m];
+	      }
 	    }
 	  }
 
@@ -401,9 +405,9 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
 	    recv_buff[ndata++] = (1.0 - fr)*
-	      lb->f[LB_ADDR(lb->nsite,ndist,NVEL,index0,n, pcv)]
+	      lb->f[LB_ADDR(lb->nsite,ndist,lb->model.nvel,index0,n, pcv)]
 	      + fr*
-	      lb->f[LB_ADDR(lb->nsite,ndist,NVEL,index1,n, pcv)];
+	      lb->f[LB_ADDR(lb->nsite,ndist,lb->model.nvel,index1,n, pcv)];
 	  }
 	}
 	/* Next site */
@@ -421,7 +425,8 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_fwd_cv[0] + p;
-	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	    int la = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, pcv);
+	    lb->f[la] = recv_buff[ndata++];
 	  }
 	}
 	/* Next site */
@@ -452,9 +457,9 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
-	    recv_buff[ndata++] = (1.0 - fr)*
-	      lb->f[LB_ADDR(lb->nsite,ndist,NVEL,index0, n, pcv)] + fr*
-	      lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index1, n, pcv)];
+	    int l0 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index0, n, pcv);
+	    int l1 = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index1, n, pcv);
+	    recv_buff[ndata++] = (1.0 - fr)*lb->f[l0] + fr*lb->f[l1];
 	  }
 	}
 	/* Next site */
@@ -472,7 +477,8 @@ int le_displace_and_interpolate(lb_t * lb, lees_edw_t * le) {
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
 	    int pcv = xdisp_bwd_cv[0] + p;
-	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index0, n, pcv)] = recv_buff[ndata++];
+	    int ijkp = LB_ADDR(lb->nsite, ndist, lb->model.nvel,index0,n,pcv);
+	    lb->f[ijkp] = recv_buff[ndata++];
 	  }
 	}
       }
@@ -606,7 +612,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)];
+	    int ijkp = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, n,
+			       xdisp_fwd_cv[0] + p);
+	    send_buff[ndata++] = lb->f[ijkp];
 	  }
 	}
 	/* Next site */
@@ -635,7 +643,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 
 	  for (p = 0; p < nprop; p++) {
-	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_fwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
+	    int ijk = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, n,
+			      xdisp_fwd_cv[0] + p);
+	    lb->f[ijk] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
 	}
 	/* Next site */
@@ -687,7 +697,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 
 	for (n = 0; n < ndist; n++) {
 	  for (p = 0; p < nprop; p++) {
-	    send_buff[ndata++] = lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)];
+	    int ijkp = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, n,
+			       xdisp_bwd_cv[0] + p);
+	    send_buff[ndata++] = lb->f[ijkp];
 	  }
 	}
 	/* Next site */
@@ -716,7 +728,9 @@ static int le_displace_and_interpolate_parallel(lb_t * lb, lees_edw_t * le) {
 	  ind2 = ind0 + ndist*nprop*nlocal[Z] + n*nprop;
 
 	  for (p = 0; p < nprop; p++) {
-	    lb->f[LB_ADDR(lb->nsite, ndist, NVEL, index, n, xdisp_bwd_cv[0] + p)] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
+	    int ijk = LB_ADDR(lb->nsite, ndist, lb->model.nvel, index, n,
+			      xdisp_bwd_cv[0] + p);
+	    lb->f[ijk] = (1.0-fr)*recv_buff[ind1 + p] + fr*recv_buff[ind2 + p];
 	  }
 	}
 	/* Next site */
@@ -749,9 +763,6 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
   int nlocal[3];
   double rho0, u[NDIM], gradu[NDIM][NDIM];
   double eta;
-  LB_CS2_DOUBLE(cs2);
-  LB_RCS2_DOUBLE(rcs2);
-  KRONECKER_DELTA_CHAR(d_);
 
   physics_t * phys = NULL;
 
@@ -768,9 +779,9 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
 
   lees_edw_nlocal(le, nlocal);
 
-  for (i = 0; i< NDIM; i++) {
+  for (i = 0; i< lb->model.ndim; i++) {
     u[i] = 0.0;
-    for (j = 0; j < NDIM; j++) {
+    for (j = 0; j < lb->model.ndim; j++) {
       gradu[i][j] = 0.0;
     }
   }
@@ -790,19 +801,22 @@ int lb_le_init_shear_profile(lb_t * lb, lees_edw_t * le) {
 
 	index = lees_edw_index(le, ic, jc, kc);
 
-	for (p = 0; p < NVEL; p++) {
+	for (p = 0; p < lb->model.nvel; p++) {
 	  double f = 0.0;
 	  double cdotu = 0.0;
 	  double sdotq = 0.0;
+	  double cs2 = lb->model.cs2;
+	  double rcs2 = 1.0/cs2;
 
-	  for (i = 0; i < NDIM; i++) {
-	    cdotu += cv[p][i]*u[i];
-	    for (j = 0; j < NDIM; j++) {
-	      double q_ij = cv[p][i]*cv[p][j] - cs2*d_[i][j];
-	      sdotq += (rho0*u[i]*u[j] - eta*gradu[i][j])*q_ij;
+	  for (i = 0; i < lb->model.ndim; i++) {
+	    cdotu += lb->model.cv[p][i]*u[i];
+	    for (j = 0; j < lb->model.ndim; j++) {
+	      double dij = (i == j);
+	      double qij = lb->model.cv[p][i]*lb->model.cv[p][j] - cs2*dij;
+	      sdotq += (rho0*u[i]*u[j] - eta*gradu[i][j])*qij;
 	    }
 	  }
-	  f = wv[p]*(rho0 + rcs2*rho0*cdotu + 0.5*rcs2*rcs2*sdotq);
+	  f = lb->model.wv[p]*(rho0 + rcs2*rho0*cdotu + 0.5*rcs2*rcs2*sdotq);
 	  lb_f_set(lb, index, p, 0, f);
 	}
 	/* Next site */
