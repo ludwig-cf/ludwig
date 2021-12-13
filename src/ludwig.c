@@ -715,14 +715,12 @@ void ludwig_run(const char * inputfile) {
 			    ludwig->hydro, ludwig->map, ludwig->wall);
 	}
       }
-      /* OLIVER: 
-	 You need this, only at statistics steps...
-      stats_colloid_force_split_update(ludwig->collinfo,
-				       ludwig->fe, ludwig->map,
-				       ludwig->q, ludwig->q_grad);
-      */
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
+
+      if (ludwig->q && is_statistics_step()) {
+	stats_colloid_force_split_update(ludwig->collinfo, ludwig->fe);
+      }
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
@@ -946,10 +944,7 @@ void ludwig_run(const char * inputfile) {
 	field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
 	field_grad_memcpy(ludwig->q_grad, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->q, ludwig->map);
-	/* OLIVER:
-	   You need this for diagnostic output
 	stats_colloid_force_split_output(ludwig->collinfo, step);
-	*/
       }
 
       if (ludwig->psi) {

@@ -6,6 +6,11 @@
  *  a colloid. In the context of liquid crystal free energy.
  *
  *
+ *  Edinburgh Soft Matter and Staticial Physics Group and
+ *  Edinburgh Parallel Computing Centre
+ *
+ *  (c) 2021 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Oliver Henrich (o.henrich@strath.ac.uk)
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -22,6 +27,8 @@
 #include "colloid_sums.h"
 #include "phi_force_stress.h"
 #include "stats_colloid_force_split.h"
+
+static int switch_me_on_ = 0;
 
 enum {FSBULK, FSGRAD, FSCHEM}; /* Identify different components */
 
@@ -46,15 +53,16 @@ int stat_diagnostic_write(colloid_diagnostic_t * array, int count, FILE * fp);
  *
  *****************************************************************************/
 
-int stats_colloid_force_split_update(colloids_info_t * cinfo, fe_t * fe,
-				     map_t * map,
-				     field_t * q, field_grad_t * q_grad) {
+int stats_colloid_force_split_update(colloids_info_t * cinfo, fe_t * fe) {
+
   pth_t * pth = NULL;
   pe_t * pe = NULL;
   cs_t * cs = NULL;
 
-  pe = q->pe;
-  cs = q->cs;
+  if (switch_me_on_ == 0) return 0;
+
+  pe = cinfo->pe;
+  cs = cinfo->cs;
 
   pth_create(pe, cs, PTH_METHOD_DIVERGENCE, &pth);
 
@@ -95,6 +103,8 @@ int stats_colloid_force_split_output(colloids_info_t * cinfo, int timestep) {
 
   assert(cinfo);
   assert(timestep >= 0);
+
+  if (switch_me_on_ == 0) return 0;
 
   pe = cinfo->pe;
 
