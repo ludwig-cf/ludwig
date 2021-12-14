@@ -37,6 +37,8 @@ typedef struct {
   int MPI_TAG;
 } MPI_Status;
 
+#define MPI_STATUS_IGNORE   ((MPI_Status *) 0)
+#define MPI_STATUSES_IGNORE ((MPI_Status *) 0)
 
 /* MPI_Aint is a signed integer. Prefer intmax_t over intptr_t as
    the latter is optional in the standard. */ 

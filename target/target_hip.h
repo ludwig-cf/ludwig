@@ -50,6 +50,7 @@ typedef hipError_t tdpError_t;
 
 
 #define TARGET_MAX_THREADS_PER_BLOCK 128
+#define TARGET_PAD                     1
 
 /* Macros for calls involing device symbols */
 

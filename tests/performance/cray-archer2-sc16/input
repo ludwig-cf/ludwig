@@ -1,24 +1,20 @@
 ##############################################################################
 #
-#  Active nematic 2-d smoke test (turbulent regime)
-#
-#  See also serial-actv-s01.inp
-#
-#  This one is in the turbulent regime lc_active_zeta1 0.05
+#  Ludwig input file SC16 benchmark
+#  1 episode of diagnostic output at 1000 steps is representative.
 #
 ##############################################################################
 
-N_cycles 20
-N_start 0
+N_start  0
+N_cycles 1000
 
 ##############################################################################
 #
 #  System and MPI
-# 
+#
 ##############################################################################
 
-size 64_64_1
-grid 1_1_1
+size 128_128_128
 reduced_halo no
 
 ##############################################################################
@@ -27,10 +23,9 @@ reduced_halo no
 #
 ##############################################################################
 
-viscosity 1.3333
+viscosity 1.0
 
 isothermal_fluctuations off
-temperature 0.00002133333
 
 ##############################################################################
 #
@@ -40,27 +35,32 @@ temperature 0.00002133333
 
 free_energy lc_blue_phase
 
-fd_advection_scheme_order 1
+fd_advection_scheme_order 3
 fd_gradient_calculation 3d_7pt_fluid
 
-lc_a0      1.0
+###############################################################################
+#
+#  Blue Phase free energy
+#
+###############################################################################
+
+lc_a0      0.01
 lc_gamma   3.0
-lc_q0      0.0
-lc_kappa0  0.04
-lc_kappa1  0.04
+lc_q0      0.19635
+lc_kappa0  0.000648456
+lc_kappa1  0.000648456
 lc_xi      0.7
 
-lc_Gamma   0.3375
+lc_Gamma   0.5
 
-lc_activity     yes
-lc_active_zeta0 0.333333333333333
-lc_active_zeta1 0.05
-
-lc_q_initialisation active_nematic_q2d_y
+lc_q_initialisation twist
 lc_q_init_amplitude 0.333333333333333
 lc_init_redshift 1.0
 
-lc_anchoring_method none
+lc_anchoring_method two
+lc_wall_anchoring normal
+lc_coll_anchoring normal
+lc_anchoring_strength_colloid 0.002593824
 
 ###############################################################################
 #
@@ -68,7 +68,7 @@ lc_anchoring_method none
 #
 ###############################################################################
 
-colloid_init     none
+colloid_init        no_colloids
 
 ###############################################################################
 #
@@ -76,8 +76,7 @@ colloid_init     none
 #
 ###############################################################################
 
-periodicity    1_1_1
-boundary_walls 0_0_0
+periodicity 1_1_1
 
 ###############################################################################
 #
@@ -85,12 +84,14 @@ boundary_walls 0_0_0
 #
 ###############################################################################
 
-freq_statistics 20
+freq_statistics 1000
 config_at_end no
 
 ###############################################################################
 #
 #  Miscellaneous
+#
+#  random_seed  +ve integer is the random number generator seed
 #
 ###############################################################################
 

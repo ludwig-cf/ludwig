@@ -41,6 +41,7 @@ int test_coords_suite(void);
 int test_ewald_suite(void);
 int test_fe_electro_suite(void);
 int test_fe_electro_symm_suite(void);
+int test_fe_lc_droplet_suite(void);
 int test_fe_surfactant1_suite(void);
 int test_fe_symmetric_suite(void);
 int test_fe_ternary_suite(void);

@@ -331,7 +331,9 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
 
     /* Final result */
 
-    while (atomicCAS(&(gm[X].lock), 0, 1) != 0);
+    while (atomicCAS(&(gm[X].lock), 0, 1) != 0)
+      ;
+
     __threadfence();
 
     kahan_add(&gm[X], sumx);

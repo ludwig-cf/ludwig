@@ -290,7 +290,6 @@ int MPI_Recv(void * buf, int count, MPI_Datatype datatype, int source,
 	     int tag, MPI_Comm comm, MPI_Status * status) {
 
   assert(buf);
-  assert(status);
 
   printf("MPI_Recv should not be called in serial.\n");
   exit(0);
@@ -383,7 +382,6 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
 
   assert(count >= 0);
   assert(requests);
-  assert(statuses);
 
   return MPI_SUCCESS;
 }
@@ -401,7 +399,6 @@ int MPI_Waitany(int count, MPI_Request requests[], int * index,
   assert(count >= 0);
   assert(requests);
   assert(index);
-  assert(statuses);
 
   return MPI_SUCCESS;
 }
@@ -417,7 +414,6 @@ int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status * status) {
 
   assert(source == 0);
   assert(mpi_is_valid_comm(comm));
-  assert(status);
 
   printf("MPI_Probe should not be called in serial\n");
   exit(0);
@@ -440,7 +436,6 @@ int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
   assert(dest == source);
   assert(recvbuf);
   assert(recvcount == sendcount);
-  assert(status);
 
   printf("MPI_Sendrecv should not be called in serial\n");
   exit(0);

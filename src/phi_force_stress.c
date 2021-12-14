@@ -160,7 +160,7 @@ __host__ int pth_memcpy(pth_t * pth, tdpMemcpyKind flag) {
 
 /*****************************************************************************
  *
- *  phi_force_stress_compute
+ *  pth_stress_compute
  *
  *  Compute the stress everywhere and store. This allows that the
  *  full stress, or just the antisymmetric part is needed.
@@ -333,7 +333,6 @@ __global__ void pth_kernel_a_v(kernel_ctxt_t * ktx, pth_t * pth, fe_t * fe) {
 
   return;
 }
-
 
 /*****************************************************************************
  *

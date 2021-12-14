@@ -6,7 +6,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -28,7 +28,8 @@ typedef enum colloid_sum_enum_type {
   COLLOID_SUM_SUBGRID = 4,
   COLLOID_SUM_CONSERVATION = 5,
   COLLOID_SUM_FORCE_EXT_ONLY = 6,
-  COLLOID_SUM_MAX = 7} colloid_sum_enum_t;
+  COLLOID_SUM_DIAGNOSTIC = 7,
+  COLLOID_SUM_MAX = 8} colloid_sum_enum_t;
 
 int colloid_sums_create(colloids_info_t * cinfo, colloid_sum_t ** psum);
 void colloid_sums_free(colloid_sum_t * sum);

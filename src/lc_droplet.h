@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2018 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Juho Lintuvuori
@@ -45,6 +45,8 @@ struct fe_lc_droplet_param_s {
   double gamma0; /* \gamma(phi) = gamma0 + delta x (1 + phi) */
   double delta;  /* As above */
   double w;      /* Surface anchoring constant */
+  double zeta0 ; /* emulsion activity parameter */
+  double zeta1;  /* emulsion activity parameter */
 };
 
 __host__ int fe_lc_droplet_create(pe_t * pe, cs_t * cs, fe_lc_t * lc,
