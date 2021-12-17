@@ -594,8 +594,16 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
     }
   }
 
+  /* Additional minus sign. */
 
-  /* Put active stress here (even if zero) */
+  for (ia = 0; ia < 3; ia++) {
+    for (ib = 0; ib < 3; ib++) {
+	sth[ia][ib] = -sth[ia][ib];
+    }
+  }
+
+
+  /* Put active stress here (even if zero). No additional -ve sign. */
 
   {
     double phi = 0.0;
@@ -607,14 +615,6 @@ int fe_lc_droplet_str_symm(fe_lc_droplet_t * fe, int index, double sth[3][3]){
       for (ib = 0; ib < 3; ib++) {
 	sth[ia][ib] += sa[ia][ib];
       }
-    }
-  }
-
-  /* Additional minus sign. */
-
-  for (ia = 0; ia < 3; ia++) {
-    for (ib = 0; ib < 3; ib++) {
-	sth[ia][ib] = -sth[ia][ib];
     }
   }
 
