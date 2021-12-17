@@ -146,6 +146,29 @@ int MPI_Init(int * argc, char *** argv) {
 
 /*****************************************************************************
  *
+ *  MPI_Init_thread
+ *
+ *****************************************************************************/
+
+int MPI_Init_thread(int * argc, char *** argv, int required, int * provided) {
+
+  assert(argc);
+  assert(argv);
+  assert(MPI_THREAD_SINGLE <= required && required <= MPI_THREAD_MULTIPLE);
+  assert(provided);
+
+  MPI_Init(argc, argv);
+
+  /* We are going to say that MPI_THREAD_SERIALIZED is available */
+  /* Not MPI_THREAD_MULTIPLE */
+
+  *provided = MPI_THREAD_SERIALIZED;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Initialized
  *
  *****************************************************************************/
@@ -309,8 +332,8 @@ int MPI_Irecv(void * buf, int count, MPI_Datatype datatype, int source,
   assert(buf);
   assert(request);
 
-  printf("MPI_Irecv should not be called in serial.\n");
-  exit(0);
+  /* Could assert tag is ok */
+  *request = tag;
 
   return MPI_SUCCESS;
 }
@@ -345,8 +368,8 @@ int MPI_Isend(void * buf, int count, MPI_Datatype datatype, int dest,
   assert(buf);
   assert(request);
 
-  printf("MPI_Isend should not be called in serial\n");
-  exit(0);
+  /* Could assert tag is ok */
+  *request = tag;
 
   return MPI_SUCCESS;
 }
@@ -394,11 +417,25 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
  *****************************************************************************/
 
 int MPI_Waitany(int count, MPI_Request requests[], int * index,
-		MPI_Status * statuses) {
+		MPI_Status * status) {
 
   assert(count >= 0);
   assert(requests);
   assert(index);
+
+  *index = MPI_UNDEFINED;
+
+  for (int ireq = 0; ireq < count; ireq++) {
+    if (requests[ireq] != MPI_REQUEST_NULL) {
+      *index = ireq;
+      requests[ireq] = MPI_REQUEST_NULL;
+      if (status) {
+	status->MPI_SOURCE = 0;
+	status->MPI_TAG = requests[ireq];
+      }
+      break;
+    }
+  }
 
   return MPI_SUCCESS;
 }
