@@ -44,6 +44,8 @@ struct lb_collide_param_s {
 
 struct lb_data_s {
 
+  int ndim;
+  int nvel;
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
 
