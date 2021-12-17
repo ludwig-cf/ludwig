@@ -34,6 +34,7 @@ int lb_d3q27_create(lb_model_t * model) {
 
   *model = (lb_model_t) {};
 
+  model->ndim = 3;
   model->nvel = NVEL_D3Q27;
   model->cv   = (int8_t (*)[3]) calloc(NVEL_D3Q27, sizeof(int8_t[3]));
   model->wv   = (double *)      calloc(NVEL_D3Q27, sizeof(double));
@@ -126,7 +127,7 @@ int lb_d3q27_create(lb_model_t * model) {
  *  [18]               H_iyyzz      (c_iy c_iy - cs2)*(c_iz c_iz - cs2)
  *  [19]               H_izzxx      ...
  *
- *  Four 4th order polynomials H_ixxyz, etc
+ *  Three 4th order polynomials H_ixxyz, etc
  *  [20]               H_ixxyz      (c_ix c_ix - cs2) c_iy c_iz
  *  [21]               H_iyyzx      ...
  *  [22]               H_izzxy      ...
