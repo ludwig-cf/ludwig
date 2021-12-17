@@ -26,9 +26,6 @@ enum {CVZBLOCK15 = 5};
 
 #ifdef _D3Q15_
 
-extern const int8_t cv[NVEL15][3];
-extern const double wv[NVEL15];
-
 extern const int xblocklen_cv[CVXBLOCK15];
 extern const int xdisp_fwd_cv[CVXBLOCK15];
 extern const int xdisp_bwd_cv[CVXBLOCK15];

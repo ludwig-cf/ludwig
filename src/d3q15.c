@@ -83,8 +83,6 @@ const char * model_name_d3q15 = "D3Q15";
 #define wb ( 9.0/72.0)
 #define wc ( 4.0/72.0)
 
-LB_CV_D3Q15(cv);
-LB_WEIGHTS_D3Q15(wv);
 /*
 const double ma_[NVEL15][NVEL15] = 
   {{ c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1},
