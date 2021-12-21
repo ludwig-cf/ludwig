@@ -38,6 +38,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 				fe_lc_t * fe,
 				beris_edw_t * be) {
   int n;
+  int fe_is_lc_droplet = 0;
   int redshift_update;
   char method[BUFSIZ] = "none";
   char type[BUFSIZ] = "none";
@@ -70,13 +71,21 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
   pe_info(pe, "Blue phase free energy selected.\n");
 
+  {
+    char description[BUFSIZ] = {};
+    rt_string_parameter(rt, "free_energy", description, BUFSIZ);
+    fe_is_lc_droplet = (strcmp(description, "lc_droplet") == 0);
+  }
   /* PARAMETERS */
+  /* Note that for LC droplet, we should not specify gamma here. */
 
   n = rt_double_parameter(rt, "lc_a0", &fe_param.a0);
   if (n != 1) pe_fatal(pe, "Please specify lc_a0 <value>\n");
 
   n = rt_double_parameter(rt, "lc_gamma", &fe_param.gamma);
-  if (n != 1) pe_fatal(pe, "Please specify lc_gamma <value>\n");
+  if (n != 1 && fe_is_lc_droplet == 0) {
+    pe_fatal(pe, "Please specify lc_gamma <value>\n");
+  }
 
   n = rt_double_parameter(rt, "lc_q0", &fe_param.q0);
   if (n != 1) pe_fatal(pe, "Please specify lc_q0 <value>\n");
@@ -133,7 +142,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   /* Active stress is:
    *   s_ab = zeta0 d_ab - zeta1 Q_ab - zeta2 (d_a p_b  + d_b p_a)
    * with p_a = Q_ak d_m Q_mk
-   * The sign of zeta0 is currently +ve here (clarify).
    */
 
   fe_param.is_active = rt_switch(rt, "lc_activity");
@@ -141,7 +149,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 	  fe_param.is_active == 0 ? "No" : "Yes");
 
   if (fe_param.is_active) {
-    zeta0 = (1.0/3.0);
+    zeta0 = 0.0;
     zeta1 = 0.0;
     zeta2 = 0.0;
     rt_double_parameter(rt, "lc_active_zeta0", &zeta0);

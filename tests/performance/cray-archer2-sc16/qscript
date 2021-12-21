@@ -1,0 +1,37 @@
+#!/bin/bash
+
+#SBATCH --exclusive
+#SBATCH --export=none
+#SBATCH --partition=standard
+#SBATCH --qos=standard
+
+#SBATCH --nodes=1
+#SBATCH --time=0:20:00
+#SBATCH --ntasks-per-node=8
+
+#SBATCH --cpus-per-task=16
+#SBATCH --distribution=block:block
+#SBATCH --hint=nomultithread
+
+module load PrgEnv-gnu
+module list
+
+export OMP_NUM_THREADS=16
+export OMP_PLACES=cores
+
+module load xthi
+
+srun -n 1 xthi
+srun -n 1 ./Ludwig.exe
+
+srun -n 2 xthi
+srun -n 2 ./Ludwig.exe
+
+srun -n 4 xthi
+srun -n 4 ./Ludwig.exe
+
+srun -n 8 xthi
+srun -n 8 ./Ludwig.exe
+
+
+

@@ -1104,18 +1104,17 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
   int kiterations;
   int tid;
 
-  double fxb, fyb, fzb;
-  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(ktx);
   assert(hydro);
 
   tid = threadIdx.x;
-  fx[tid] = 0.0;
-  fy[tid] = 0.0;
-  fz[tid] = 0.0;
+  fx[TARGET_PAD*tid] = 0.0;
+  fy[TARGET_PAD*tid] = 0.0;
+  fz[TARGET_PAD*tid] = 0.0;
 
   kiterations = kernel_iterations(ktx);
 
@@ -1130,17 +1129,24 @@ __global__ void hydro_accumulate_kernel(kernel_ctxt_t * ktx, hydro_t * hydro,
     index = kernel_coords_index(ktx, ic, jc, kc);
     hydro_f_local(hydro, index, f); 
 
-    fx[tid] += f[X];
-    fy[tid] += f[Y];
-    fz[tid] += f[Z];
+    fx[TARGET_PAD*tid] += f[X];
+    fy[TARGET_PAD*tid] += f[Y];
+    fz[TARGET_PAD*tid] += f[Z];
   }
 
+  __syncthreads();
+
   /* Reduction */
-  fxb = tdpAtomicBlockAddDouble(fx);
-  fyb = tdpAtomicBlockAddDouble(fy);
-  fzb = tdpAtomicBlockAddDouble(fz);
 
   if (tid == 0) {
+    double fxb = 0.0;
+    double fyb = 0.0;
+    double fzb = 0.0;
+    for (int it = 0; it < blockDim.x; it++) {
+      fxb += fx[TARGET_PAD*it];
+      fyb += fy[TARGET_PAD*it];
+      fzb += fz[TARGET_PAD*it];
+    }
     tdpAtomicAddDouble(fnet + X, fxb);
     tdpAtomicAddDouble(fnet + Y, fyb);
     tdpAtomicAddDouble(fnet + Z, fzb);
@@ -1164,18 +1170,17 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
   int kiterations;
   int tid;
 
-  double fxb, fyb, fzb;
-  __shared__ double fx[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fy[TARGET_MAX_THREADS_PER_BLOCK];
-  __shared__ double fz[TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fx[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fy[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
+  __shared__ double fz[TARGET_PAD*TARGET_MAX_THREADS_PER_BLOCK];
 
   assert(ktx);
   assert(hydro);
 
   tid = threadIdx.x;
-  fx[tid] = 0.0;
-  fy[tid] = 0.0;
-  fz[tid] = 0.0;
+  fx[TARGET_PAD*tid] = 0.0;
+  fy[TARGET_PAD*tid] = 0.0;
+  fz[TARGET_PAD*tid] = 0.0;
 
   kiterations = kernel_vector_iterations(ktx);
 
@@ -1195,17 +1200,24 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
       f[ia] = ftmp;
     }
 
-    fx[tid] += f[X];
-    fy[tid] += f[Y];
-    fz[tid] += f[Z];
+    fx[TARGET_PAD*tid] += f[X];
+    fy[TARGET_PAD*tid] += f[Y];
+    fz[TARGET_PAD*tid] += f[Z];
   }
 
+  __syncthreads();
+
   /* Reduction */
-  fxb = tdpAtomicBlockAddDouble(fx);
-  fyb = tdpAtomicBlockAddDouble(fy);
-  fzb = tdpAtomicBlockAddDouble(fz);
 
   if (tid == 0) {
+    double fxb = 0.0;
+    double fyb = 0.0;
+    double fzb = 0.0;
+    for (int it = 0; it < blockDim.x; it++) {
+      fxb += fx[8*it];
+      fyb += fy[8*it];
+      fzb += fz[8*it];
+    }
     tdpAtomicAddDouble(fnet + X, fxb);
     tdpAtomicAddDouble(fnet + Y, fyb);
     tdpAtomicAddDouble(fnet + Z, fzb);

@@ -999,6 +999,7 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
 #else
 
   for (p = 0; p < NVEL; p++) {
+    LB_CS2_DOUBLE(cs2);
     
     int dp0 = (p == 0);
 
@@ -1010,7 +1011,9 @@ __device__ void lb_collision_mrt2_site(lb_t * lb, hydro_t * hydro,
     for (ia = 0; ia < 3; ia++) {
       for_simd_v(iv, NSIMDVL) jdotc[iv] += jphi[ia][iv]*_lbp.cv[p][ia];
       for (ib = 0; ib < 3; ib++) {
-	for_simd_v(iv, NSIMDVL) sphidotq[iv] += sphi[ia][ib][iv]*_lbp.q[p][ia][ib];
+	for_simd_v(iv, NSIMDVL) {
+	  sphidotq[iv] += sphi[ia][ib][iv]*(_lbp.cv[p][ia]*_lbp.cv[p][ib] - cs2*d[ia][ib]);
+	}
       }
     }
     

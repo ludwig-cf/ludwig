@@ -9,7 +9,7 @@
 BUILD   = serial
 MODEL   = -D_D3Q19_
 
-CC      = g++
+CC      = g++ -fopenmp
 CFLAGS  = -O -g -Wall -Werror
 
 AR      = ar

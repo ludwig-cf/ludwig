@@ -37,6 +37,8 @@ typedef struct {
   int MPI_TAG;
 } MPI_Status;
 
+#define MPI_STATUS_IGNORE   ((MPI_Status *) 0)
+#define MPI_STATUSES_IGNORE ((MPI_Status *) 0)
 
 /* MPI_Aint is a signed integer. Prefer intmax_t over intptr_t as
    the latter is optional in the standard. */ 
@@ -104,6 +106,13 @@ enum reserved_communicators{MPI_COMM_WORLD, MPI_COMM_SELF};
 /* Special values */
 
 #define MPI_IN_PLACE ((void *) 1)
+
+/* Thread support level */
+
+#define MPI_THREAD_SINGLE      1
+#define MPI_THREAD_FUNNELED    2
+#define MPI_THREAD_SERIALIZED  3
+#define MPI_THREAD_MULTIPLE    4
 
 /* Interface */
 
@@ -198,6 +207,7 @@ double MPI_Wtime(void);
 double MPI_Wtick(void);
 
 int MPI_Init(int * argc, char *** argv);
+int MPI_Init_thread(int * argc, char *** argv, int required, int * provided);
 int MPI_Finalize(void);
 int MPI_Initialized(int * flag);
 int MPI_Abort(MPI_Comm comm, int errorcode);

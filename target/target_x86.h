@@ -163,6 +163,7 @@ void  tdp_x86_postlaunch(void);
 
 #include <omp.h>
 #define TARGET_MAX_THREADS_PER_BLOCK 256
+#define TARGET_PAD                     8
 
 #define __syncthreads() _Pragma("omp barrier")
 #define __threadfence() /* only __syncthreads() is a barrier */
@@ -193,6 +194,7 @@ void  tdp_x86_postlaunch(void);
 #else /* Not OPENMP */
 
 #define TARGET_MAX_THREADS_PER_BLOCK 1
+#define TARGET_PAD                   1
 #define omp_get_num_threads() 1
 #define omp_get_thread_num()  0
 #define omp_get_max_threads() 1

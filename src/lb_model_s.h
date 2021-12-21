@@ -29,6 +29,7 @@ struct lb_collide_param_s {
   int8_t cv[NVEL][3];
   int nsite;
   int ndist;
+  int nvel;
   double rho0;
   double eta_shear;
   double var_shear;
@@ -37,13 +38,14 @@ struct lb_collide_param_s {
   double rna[NVEL];                    /* reciprocal of normaliser[p] */
   double rtau[NVEL];
   double wv[NVEL];
-  double q[NVEL][3][3];
   double ma[NVEL][NVEL];
   double mi[NVEL][NVEL];
 };
 
 struct lb_data_s {
 
+  int ndim;
+  int nvel;
   int ndist;             /* Number of distributions (default one) */
   int nsite;             /* Number of lattice sites (local) */
 

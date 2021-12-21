@@ -34,6 +34,7 @@ int lb_d3q27_create(lb_model_t * model) {
 
   *model = (lb_model_t) {};
 
+  model->ndim = 3;
   model->nvel = NVEL_D3Q27;
   model->cv   = (int8_t (*)[3]) calloc(NVEL_D3Q27, sizeof(int8_t[3]));
   model->wv   = (double *)      calloc(NVEL_D3Q27, sizeof(double));
@@ -126,8 +127,8 @@ int lb_d3q27_create(lb_model_t * model) {
  *  [18]               H_iyyzz      (c_iy c_iy - cs2)*(c_iz c_iz - cs2)
  *  [19]               H_izzxx      ...
  *
- *  Four 4th order polynomials H_ixxyz, etc (ORTHOGONALISED against H_i)
- *  [20]               H_ixxyz      c_ix c_ix c_iy c_iz - cs2 c_iy c_iz - cs4
+ *  Three 4th order polynomials H_ixxyz, etc
+ *  [20]               H_ixxyz      (c_ix c_ix - cs2) c_iy c_iz
  *  [21]               H_iyyzx      ...
  *  [22]               H_izzxy      ...
  *
@@ -140,6 +141,7 @@ int lb_d3q27_create(lb_model_t * model) {
  *  [26]               H_ixxyyzz    H_ixxyy (c_iz c_iz - cs2)
  *
  *
+ *  A case of a complete basis with all Hermite polynomials.
  *  See, e.g., Coreixas et al. PRE 96 033306 (2017) for a broad
  *  description of construction of models from Hermite tensors.
  *
@@ -180,9 +182,9 @@ static int lb_d3q27_matrix_ma(lb_model_t * model) {
     model->ma[17][p] = 9.0*(cx*cx - cs2)*(cy*cy - cs2);
     model->ma[18][p] = 9.0*(cy*cy - cs2)*(cz*cz - cs2);
     model->ma[19][p] = 9.0*(cz*cz - cs2)*(cx*cx - cs2);
-    model->ma[20][p] = 9.0*(cx*cx*cy*cz - cs2*cy*cz + cs2*cs2) - 1.0;
-    model->ma[21][p] = 9.0*(cy*cy*cz*cx - cs2*cz*cx + cs2*cs2) - 1.0;
-    model->ma[22][p] = 9.0*(cz*cz*cx*cy - cs2*cx*cy + cs2*cs2) - 1.0;
+    model->ma[20][p] = 9.0*(cx*cx - cs2)*cy*cz;
+    model->ma[21][p] = 9.0*(cy*cy - cs2)*cz*cx;
+    model->ma[22][p] = 9.0*(cz*cz - cs2)*cx*cy;
     model->ma[23][p] = 9.0*(cx*cx - cs2)*(cy*cy - cs2)*cz;
     model->ma[24][p] = 9.0*(cy*cy - cs2)*(cz*cz - cs2)*cx;
     model->ma[25][p] = 9.0*(cz*cz - cs2)*(cx*cx - cs2)*cy;

@@ -68,9 +68,6 @@ const char * model_name_d2q9 = "D2Q9";
 #define w1  (4.0/36.0)
 #define w2  (1.0/36.0)
 
-LB_CV_D2Q9(cv);
-LB_WEIGHTS_D2Q9(wv);
-
 #define c0 0.0
 #define c1 1.0
 #define c2 2.0

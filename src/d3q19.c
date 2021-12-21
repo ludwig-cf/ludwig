@@ -74,8 +74,6 @@ const char * model_name_d3q19 = "D3Q19";
  *
  *****************************************************************************/
 
-LB_CV_D3Q19(cv);
-
 #define w0 (12.0/36.0)
 #define w1  (2.0/36.0)
 #define w2  (1.0/36.0)
@@ -96,8 +94,6 @@ LB_CV_D3Q19(cv);
 #define t4 (16.0/72.0)
 #define wd ( 1.0/48.0)
 #define we ( 3.0/48.0)
-
-LB_WEIGHTS_D3Q19(wv);
 
 /* Global symbols are replaced by lb_model_t ...
 const double ma_[NVEL19][NVEL19] = {

@@ -180,7 +180,7 @@ __host__ int lb_memcpy(lb_t * lb, tdpMemcpyKind flag) {
   }
   else {
 
-    size_t nsz = (size_t) NVEL*lb->nsite*lb->ndist*sizeof(double);
+    size_t nsz = (size_t) lb->model.nvel*lb->nsite*lb->ndist*sizeof(double);
 
     assert(lb->target);
 
@@ -235,7 +235,7 @@ __host__ int lb_init(lb_t * lb) {
 
   /* The total number of distribution data is then... */
 
-  ndata = lb->nsite*lb->ndist*NVEL;
+  ndata = lb->nsite*lb->ndist*lb->model.nvel;
 #ifdef OLD_DATA
   lb->f = (double  *) calloc(ndata, sizeof(double));
   if (lb->f == NULL) pe_fatal(lb->pe, "malloc(distributions) failed\n");
@@ -333,35 +333,30 @@ __host__ int lb_collide_param_commit(lb_t * lb) {
 static int lb_model_param_init(lb_t * lb) {
 
   int ia, ib, p;
-  LB_CS2_DOUBLE(cs2);
-  KRONECKER_DELTA_CHAR(d_);
 
   assert(lb);
   assert(lb->param);
 
   lb->param->nsite = lb->nsite;
   lb->param->ndist = lb->ndist;
+  lb->param->nvel  = lb->model.nvel;
 
-  for (p = 0; p < NVEL; p++) {
-    lb->param->wv[p] = wv[p];
+  for (p = 0; p < lb->model.nvel; p++) {
+    lb->param->wv[p] = lb->model.wv[p];
     for (ia = 0; ia < 3; ia++) {
-      lb->param->cv[p][ia] = cv[p][ia];
-    }
-    for (ia = 0; ia < 3; ia++) {
-      for (ib = 0; ib < 3; ib++) {
-	lb->param->q[p][ia][ib] = cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib];
-      }
+      lb->param->cv[p][ia] = lb->model.cv[p][ia];
     }
   }
 
-  for (ia = 0; ia < NVEL; ia++) {
+  for (ia = 0; ia < lb->model.nvel; ia++) {
     lb->param->rna[ia] = 1.0/lb->model.na[ia];
   }
 
-  for (ia = 0; ia < NVEL; ia++) {
-    for (ib = 0; ib < NVEL; ib++) {
+  for (ia = 0; ia < lb->model.nvel; ia++) {
+    for (ib = 0; ib < lb->model.nvel; ib++) {
+      double maba = lb->model.ma[ib][ia];
       lb->param->ma[ia][ib] = lb->model.ma[ia][ib];
-      lb->param->mi[ia][ib] = lb->model.wv[ia]*lb->model.na[ib]*lb->model.ma[ib][ia];
+      lb->param->mi[ia][ib] = lb->model.wv[ia]*lb->model.na[ib]*maba;
     }
   }
 
@@ -954,13 +949,15 @@ static int lb_f_read(FILE * fp, int index, void * self) {
   assert(lb);
 
   for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < NVEL; p++) {
-      iread = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+    for (p = 0; p < lb->model.nvel; p++) {
+      iread = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
       nr += fread(lb->f + iread, sizeof(double), 1, fp);
     }
   }
 
-  if (nr != lb->ndist*NVEL) pe_fatal(lb->pe, "fread(lb) failed at %d\n", index);
+  if (nr != lb->ndist*lb->model.nvel) {
+    pe_fatal(lb->pe, "fread(lb) failed at %d\n", index);
+  }
 
   return 0;
 }
@@ -992,13 +989,15 @@ static int lb_f_read_ascii(FILE * fp, int index, void * self) {
 
   nr = 0;
   for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < NVEL; p++) {
-      nr += fscanf(fp, "%le",
-		   &lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)]);
+    for (p = 0; p < lb->model.nvel; p++) {
+      int ijkp = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      nr += fscanf(fp, "%le", &lb->f[ijkp]);
     }
   }
 
-  if (nr != lb->ndist*NVEL) pe_fatal(pe, "fread(lb) failed at %d\n", index);
+  if (nr != lb->ndist*lb->model.nvel) {
+    pe_fatal(pe, "fread(lb) failed at %d\n", index);
+  }
 
   return 0;
 }
@@ -1022,13 +1021,15 @@ static int lb_f_write(FILE * fp, int index, void * self) {
   assert(self);
 
   for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < NVEL; p++) {
-      iwrite = LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p);
+    for (p = 0; p < lb->model.nvel; p++) {
+      iwrite = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
       nw += fwrite(lb->f + iwrite, sizeof(double), 1, fp);
     }
   }
 
-  if (nw != lb->ndist*NVEL) pe_fatal(lb->pe, "fwrite(lb) failed at %d\n", index);
+  if (nw != lb->ndist*lb->model.nvel) {
+    pe_fatal(lb->pe, "fwrite(lb) failed at %d\n", index);
+  }
 
   return 0;
 }
@@ -1062,17 +1063,25 @@ static int lb_f_write_ascii(FILE * fp, int index, void * self) {
   cs_nlocal_offset(cs, noffset);
 
   /* write output index */
-  fprintf(fp, "%d %d %d ", noffset[X]+coords[X], noffset[Y]+coords[Y], noffset[Z]+coords[Z]);
+  {
+    int ic = noffset[X] + coords[X];
+    int jc = noffset[Y] + coords[Y];
+    int kc = noffset[Z] + coords[Z];
+    fprintf(fp, "%d %d %d ", ic, jc, kc);
+  }
 
   for (n = 0; n < lb->ndist; n++) {
-    for (p = 0; p < NVEL; p++) {
-      fprintf(fp, "%le ", lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)]);
+    for (p = 0; p < lb->model.nvel; p++) {
+      int ijkp = LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p);
+      fprintf(fp, "%le ", lb->f[ijkp]);
       nw++;
     }
   }
   fprintf(fp, "\n");
 
-  if (nw != lb->ndist*NVEL) pe_fatal(pe, "fwrite(lb) failed at %d\n", index);
+  if (nw != lb->ndist*lb->model.nvel) {
+    pe_fatal(pe, "fwrite(lb) failed at %d\n", index);
+  }
 
   return 0;
 }
@@ -1287,9 +1296,10 @@ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]) {
     g[n] = 0.0;
   }
 
-  for (p = 0; p < NVEL; p++) {
-    for (n = 0; n < NDIM; n++) {
-      g[n] += cv[p][n]*lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, nd, p)];
+  for (p = 0; p < lb->model.nvel; p++) {
+    for (n = 0; n < lb->model.ndim; n++) {
+      g[n] += lb->model.cv[p][n]
+	*lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, nd, p)];
     }
   }
 
@@ -1308,24 +1318,25 @@ __host__
 int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]) {
 
   int p, ia, ib;
-  LB_CS2_DOUBLE(cs2);
-  KRONECKER_DELTA_CHAR(d_);
 
   assert(lb);
   assert(nd == LB_RHO);
   assert(index >= 0  && index < lb->nsite);
 
-  for (ia = 0; ia < NDIM; ia++) {
-    for (ib = 0; ib < NDIM; ib++) {
+  for (ia = 0; ia < lb->model.ndim; ia++) {
+    for (ib = 0; ib < lb->model.ndim; ib++) {
       s[ia][ib] = 0.0;
     }
   }
 
-  for (p = 0; p < NVEL; p++) {
-    for (ia = 0; ia < NDIM; ia++) {
-      for (ib = 0; ib < NDIM; ib++) {
-	s[ia][ib] += lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, nd, p)]
-	  *(cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib]);
+  for (p = 0; p < lb->model.nvel; p++) {
+    for (ia = 0; ia < lb->model.ndim; ia++) {
+      for (ib = 0; ib < lb->model.ndim; ib++) {
+	double f = 0.0;
+	double cs2 = lb->model.cs2;
+	double dab = (ia == ib);
+	f = lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, nd, p)];
+	s[ia][ib] += f*(lb->model.cv[p][ia]*lb->model.cv[p][ib] - cs2*dab);
       }
     }
   }
@@ -1352,8 +1363,9 @@ int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho) {
   assert (n >= 0 && n < lb->ndist);
   assert(index >= 0 && index < lb->nsite);
 
-  for (p = 0; p < NVEL; p++) {
-    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, n, p)] = wv[p]*rho;
+  for (p = 0; p < lb->model.nvel; p++) {
+    double f = lb->model.wv[p]*rho;
+    lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, n, p)] = f;
   }
 
   return 0;
@@ -1371,27 +1383,25 @@ __host__
 int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]) {
 
   int ia, ib, p;
-  double udotc;
-  double sdotq;
-  LB_CS2_DOUBLE(cs2);
-  LB_RCS2_DOUBLE(rcs2);
-  KRONECKER_DELTA_CHAR(d_);
 
   assert(lb);
   assert(index >= 0 && index < lb->nsite);
 
-  for (p = 0; p < NVEL; p++) {
-    udotc = 0.0;
-    sdotq = 0.0;
+  for (p = 0; p < lb->model.nvel; p++) {
+    double cs2 = lb->model.cs2;
+    double rcs2 = 1.0/cs2;
+    double udotc = 0.0;
+    double sdotq = 0.0;
     for (ia = 0; ia < 3; ia++) {
-      udotc += u[ia]*cv[p][ia];
+      udotc += u[ia]*lb->model.cv[p][ia];
       for (ib = 0; ib < 3; ib++) {
-	sdotq += (cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib])*u[ia]*u[ib];
+	double dab = (ia == ib);
+	sdotq += (lb->model.cv[p][ia]*lb->model.cv[p][ib] - cs2*dab)*u[ia]*u[ib];
       }
     }
 
-    lb->f[LB_ADDR(lb->nsite, lb->ndist, NVEL, index, LB_RHO, p)]
-      = rho*wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
+    lb->f[LB_ADDR(lb->nsite, lb->ndist, lb->model.nvel, index, LB_RHO, p)]
+      = rho*lb->model.wv[p]*(1.0 + rcs2*udotc + 0.5*rcs2*rcs2*sdotq);
   }
 
   return 0;
@@ -1440,7 +1450,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
 
   /* The x-direction (YZ plane) */
 
-  nsend = NVEL*lb->ndist*nlocal[Y]*nlocal[Z];
+  nsend = lb->model.nvel*lb->ndist*nlocal[Y]*nlocal[Z];
   sendforw = (double *) malloc(nsend*sizeof(double));
   sendback = (double *) malloc(nsend*sizeof(double));
   recvforw = (double *) malloc(nsend*sizeof(double));
@@ -1453,7 +1463,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   if (recvforw == NULL) pe_fatal(lb->pe, "malloc(recvback) failed\n");
 
   count = 0;
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < lb->model.nvel; p++) {
     for (n = 0; n < lb->ndist; n++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -1492,7 +1502,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   }
 
   count = 0;
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < lb->model.nvel; p++) {
     for (n = 0; n < lb->ndist; n++) {
       for (jc = 1; jc <= nlocal[Y]; jc++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -1525,7 +1535,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
 
   /* The y-direction (XZ plane) */
 
-  nsend = NVEL*lb->ndist*(nlocal[X] + 2)*nlocal[Z];
+  nsend = lb->model.nvel*lb->ndist*(nlocal[X] + 2)*nlocal[Z];
   sendforw = (double *) malloc(nsend*sizeof(double));
   sendback = (double *) malloc(nsend*sizeof(double));
   recvforw = (double *) malloc(nsend*sizeof(double));
@@ -1536,7 +1546,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   if (recvforw == NULL) pe_fatal(lb->pe, "malloc(recvback) failed\n");
 
   count = 0;
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < lb->model.nvel; p++) {
     for (n = 0; n < lb->ndist; n++) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -1576,7 +1586,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   }
 
   count = 0;
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < lb->model.nvel; p++) {
     for (n = 0; n < lb->ndist; n++) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (kc = 1; kc <= nlocal[Z]; kc++) {
@@ -1607,7 +1617,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
 
   /* Finally, z-direction (XY plane) */
 
-  nsend = NVEL*lb->ndist*(nlocal[X] + 2)*(nlocal[Y] + 2);
+  nsend = lb->model.nvel*lb->ndist*(nlocal[X] + 2)*(nlocal[Y] + 2);
   sendforw = (double *) malloc(nsend*sizeof(double));
   sendback = (double *) malloc(nsend*sizeof(double));
   recvforw = (double *) malloc(nsend*sizeof(double));
@@ -1618,7 +1628,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   if (recvforw == NULL) pe_fatal(lb->pe, "malloc(recvback) failed\n");
 
   count = 0;
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < lb->model.nvel; p++) {
     for (n = 0; n < lb->ndist; n++) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
@@ -1657,7 +1667,7 @@ __host__ int lb_halo_via_copy(lb_t * lb) {
   }
 
   count = 0;
-  for (p = 0; p < NVEL; p++) {
+  for (p = 0; p < lb->model.nvel; p++) {
     for (n = 0; n < lb->ndist; n++) {
       for (ic = 0; ic <= nlocal[X] + 1; ic++) {
 	for (jc = 0; jc <= nlocal[Y] + 1; jc++) {
