@@ -348,9 +348,9 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full) {
 
   /* Determine look-up table of ranks of neighbouring processes */
   {
-    int dims[3];
-    int periods[3];
-    int coords[3];
+    int dims[3] = {};
+    int periods[3] = {};
+    int coords[3] = {};
 
     MPI_Cart_get(h->comm, h->map.ndim, dims, periods, coords);
 
