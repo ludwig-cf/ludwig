@@ -7,12 +7,10 @@
  *  There are a number of separate 'timers', each of which can
  *  be started, and stopped, independently.
  *
- *  $Id: timer.c,v 1.5 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -73,6 +71,7 @@ static const char * timer_name[] = {"Total",
 				    "Electrokinetics",
 				    "Poisson equation",
 				    "Nernst Planck",
+				    "Lap timer (no report)",
 				    "Free1",
 				    "Free2",
                                     "Free3"
@@ -141,6 +140,7 @@ double timer_lapse(const int id) {
 
     tlapse = tnow - timer[id].t_start;
     timer[id].t_start = tnow;
+    timer[id].nsteps  = 0;
   }
 
   return tlapse;
@@ -198,7 +198,10 @@ void TIMER_statistics() {
   for (n = 0; n < TIMER_NTIMERS; n++) {
 
     /* Report the stats for active timers */
+    /* Not the lap timer. */
 
+    if (n == TIMER_LAP) continue;
+    
     if (timer[n].nsteps != 0) {
 
       t_min = timer[n].t_min;
@@ -218,4 +221,66 @@ void TIMER_statistics() {
   }
 
   return;
+}
+
+/*****************************************************************************
+ *
+ *  timekeeper_create
+ *
+ *****************************************************************************/
+
+__host__ int timekeeper_create(pe_t * pe, const timekeeper_options_t * opts,
+			       timekeeper_t * tk) {
+  assert(pe);
+  assert(opts);
+  assert(tk);
+
+  *tk = (timekeeper_t) {};
+  tk->pe = pe;
+  tk->options = *opts;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  timekeeper_step
+ *
+ *  We anticipate calling this once at end of each time step ..
+ *
+ *****************************************************************************/
+
+__host__ int timekeeper_step(timekeeper_t * tk) {
+
+  assert(tk);
+
+  tk->timestep += 1;
+
+  if (tk->options.lap_report) {
+    if (tk->timestep % tk->options.lap_report_freq == 0) {
+      /* Recell strctime from pe_time() has a new line */
+      pe_t * pe = tk->pe;
+      char strctime[BUFSIZ] = {};
+      pe_time(strctime, BUFSIZ);
+      pe_info(pe, "\nLap time at step %9d is: %8.3f seconds at %s",
+	      tk->timestep, timer_lapse(TIMER_LAP), strctime);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  timekeeper_free
+ *
+ *****************************************************************************/
+
+__host__ int timekeeper_free(timekeeper_t * tk) {
+
+  assert(tk);
+
+  *tk = (timekeeper_t) {};
+
+  return 0;
 }

@@ -5,12 +5,10 @@
  *  Note that the number of timers, their ids, and their descriptive
  *  names must match here.
  *
- *  $Id: timer.h,v 1.4 2010-10-15 12:40:03 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -21,6 +19,28 @@
 #define LUDWIG_TIMER_H
 
 #include "pe.h"
+
+/* The aim here is to replace static data in timer.c with something
+ * more flexible in timerkeeper_t */
+
+typedef struct timekeeper_options_s timekeeper_options_t;
+typedef struct timekeeper_s timekeeper_t;
+
+struct timekeeper_options_s {
+  int lap_report;
+  int lap_report_freq;
+};
+
+struct timekeeper_s {
+  pe_t * pe;
+  int timestep;
+  timekeeper_options_t options;
+};
+
+__host__ int timekeeper_create(pe_t * pe, const timekeeper_options_t * opts,
+			       timekeeper_t * tk);
+__host__ int timekeeper_step(timekeeper_t * tk);
+__host__ int timerkeeper_free(timekeeper_t * tk);
 
 __host__ int TIMER_init(pe_t * pe);
 __host__ void TIMER_start(const int);
@@ -63,6 +83,7 @@ enum timer_id {TIMER_TOTAL = 0,
 	       TIMER_ELECTRO_TOTAL,
 	       TIMER_ELECTRO_POISSON,
 	       TIMER_ELECTRO_NPEQ,
+	       TIMER_LAP,
 	       TIMER_FREE1,
 	       TIMER_FREE2,
                TIMER_FREE3,
