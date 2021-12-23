@@ -64,7 +64,8 @@
 #include "timer.h"
 
 int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
-		     hydro_t * hydro, map_t * map, wall_t * wall);
+		     hydro_t * hydro, map_t * map, wall_t * wall,
+		     const lb_model_t * model);
 
 __global__ void pth_force_map_kernel(kernel_ctxt_t * ktx, pth_t * pth,
 				     hydro_t * hydro, map_t * map);
@@ -83,7 +84,8 @@ __global__ void pth_force_fluid_kernel_v(kernel_ctxt_t * ktx, pth_t * pth,
  *****************************************************************************/
 
 __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
-			       hydro_t * hydro, map_t * map, wall_t * wall) {
+			       hydro_t * hydro, map_t * map, wall_t * wall,
+			       const lb_model_t * model) {
 
   int ncolloid;
 
@@ -95,7 +97,7 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 
   if (pth->method == PTH_METHOD_DIVERGENCE) {
     pth_stress_compute(pth, fe);
-    pth_force_driver(pth, cinfo, hydro, map, wall);
+    pth_force_driver(pth, cinfo, hydro, map, wall, model);
   }
 
   return 0;
@@ -116,7 +118,8 @@ __host__ int pth_force_colloid(pth_t * pth, fe_t * fe, colloids_info_t * cinfo,
 static __device__ double fs[3];
 
 __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
-			      hydro_t * hydro, map_t * map, wall_t * wall) {
+			      hydro_t * hydro, map_t * map, wall_t * wall,
+			      const lb_model_t * model) {
   int ia;
   int nlocal[3];
   dim3 nblk, ntpb;
@@ -189,16 +192,18 @@ __host__ int pth_force_driver(pth_t * pth, colloids_info_t * cinfo,
 	int cmod;
 
 	p = p_link->p;
-	cmod = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+	cmod = model->cv[p][X]*model->cv[p][X]
+	     + model->cv[p][Y]*model->cv[p][Y]
+	     + model->cv[p][Z]*model->cv[p][Z];
 
 	if (cmod != 1) continue;
 	id = -1;
-	if (cv[p][X]) id = X;
-	if (cv[p][Y]) id = Y;
-	if (cv[p][Z]) id = Z;
+	if (model->cv[p][X]) id = X;
+	if (model->cv[p][Y]) id = Y;
+	if (model->cv[p][Z]) id = Z;
 
 	for (ia = 0; ia < 3; ia++) {
-	  pc->force[ia] += 1.0*cv[p][id]
+	  pc->force[ia] += 1.0*model->cv[p][id]
 	    *pth->str[addr_rank2(pth->nsites, 3, 3, p_link->i, ia, id)];
 	}
       }

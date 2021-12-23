@@ -2,12 +2,10 @@
  *
  *  coords.h
  *
- *  $Id: coords.h,v 1.4 2010-10-15 12:40:02 kevin Exp $
- *
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2017 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -18,12 +16,12 @@
 #define LUDWIG_COORDS_H
 
 #include "pe.h"
+#include "cartesian.h"
 
 typedef struct coords_s cs_t;
 
 #define NSYMM 6      /* Elements for general symmetric tensor */
 
-enum cartesian_directions {X, Y, Z};
 enum cartesian_neighbours {FORWARD, BACKWARD};
 enum cs_mpi_cart_neighbours {CS_FORW=0,CS_BACK=1};
 enum upper_triangle {XX, XY, XZ, YY, YZ, ZZ};

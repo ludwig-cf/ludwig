@@ -65,6 +65,7 @@ __host__ int wall_create(pe_t * pe, cs_t * cs, map_t * map, lb_t * lb,
 
   assert(pe);
   assert(cs);
+  assert(lb);
   assert(p);
 
   wall = (wall_t *) calloc(1, sizeof(wall_t));
@@ -385,6 +386,7 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
   int ndevice;
 
   assert(wall);
+  assert(wall->lb);
 
   tdpGetDeviceCount(&ndevice);
 
@@ -427,17 +429,19 @@ __host__ int wall_init_boundaries(wall_t * wall, wall_init_enum_t init) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
+	lb_t * lb = wall->lb;
+
 	indexi = cs_index(wall->cs, ic, jc, kc);
 	map_status(wall->map, indexi, &status);
 	if (status != MAP_FLUID) continue;
 
 	/* Look for non-solid -> solid links */
 
-	for (p = 1; p < NVEL; p++) {
+	for (p = 1; p < lb->model.nvel; p++) {
 
-	  ic1 = ic + cv[p][X];
-	  jc1 = jc + cv[p][Y];
-	  kc1 = kc + cv[p][Z];
+	  ic1 = ic + lb->model.cv[p][X];
+	  jc1 = jc + lb->model.cv[p][Y];
+	  kc1 = kc + lb->model.cv[p][Z];
 	  indexj = cs_index(wall->cs, ic1, jc1, kc1);
 	  map_status(wall->map, indexj, &status);
 
@@ -532,6 +536,8 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
 
     for (int n = 0; n < nlink; n++) {
 
+      lb_t * lb = wall->lb;
+
       /* Identify the wall normal wn, and project cv[p] into the
        * plane orthogonal to the normal to find the tangetial
        * direction which takes us to the fluid site paired with
@@ -549,15 +555,16 @@ __host__ int wall_init_boundaries_slip(wall_t * wall) {
       /* tangent = cv[p] - (cv[p].n/n.n) n */
       /* But we are in integers, so watch any division */
 
-      cvdotwn = cv[p][X]*wn[X] + cv[p][Y]*wn[Y] + cv[p][Z]*wn[Z];
+      cvdotwn = lb->model.cv[p][X]*wn[X] + lb->model.cv[p][Y]*wn[Y]
+	      + lb->model.cv[p][Z]*wn[Z];
       modwn = wn[X]*wn[X] + wn[Y]*wn[Y] + wn[Z]*wn[Z];
 
       assert(cvdotwn == -1 || cvdotwn == -2 || cvdotwn == -3);
       assert(modwn == -cvdotwn);
 
-      wt[X] = (cv[p][X] - cvdotwn*wn[X]/modwn);
-      wt[Y] = (cv[p][Y] - cvdotwn*wn[Y]/modwn);
-      wt[Z] = (cv[p][Z] - cvdotwn*wn[Z]/modwn);
+      wt[X] = (lb->model.cv[p][X] - cvdotwn*wn[X]/modwn);
+      wt[Y] = (lb->model.cv[p][Y] - cvdotwn*wn[Y]/modwn);
+      wt[Z] = (lb->model.cv[p][Z] - cvdotwn*wn[Z]/modwn);
       modwt = wt[X]*wt[X] + wt[Y]*wt[Y] + wt[Z]*wt[Z];
 
       if (modwt == 0) {
@@ -603,6 +610,8 @@ __host__ int wall_link_normal(wall_t * wall, int n, int wn[3]) {
 
   if (wall->param->iswall) {
 
+    lb_t * lb = wall->lb;
+
     int i0[3] = {0};
     int p = wall->linkp[n];
     int ic, jc, kc, index;
@@ -610,20 +619,20 @@ __host__ int wall_link_normal(wall_t * wall, int n, int wn[3]) {
 
     cs_index_to_ijk(wall->cs, wall->linki[n], i0);
 
-    ic = i0[X] + cv[p][X]; jc = i0[Y], kc = i0[Z];
+    ic = i0[X] + lb->model.cv[p][X]; jc = i0[Y], kc = i0[Z];
     index = cs_index(wall->cs, ic, jc, kc);
     map_status(wall->map, index, &status);
-    if (status != MAP_FLUID) wn[X] = -cv[p][X];
+    if (status != MAP_FLUID) wn[X] = -lb->model.cv[p][X];
 
-    ic = i0[X]; jc = i0[Y] + cv[p][Y]; kc = i0[Z];
+    ic = i0[X]; jc = i0[Y] + lb->model.cv[p][Y]; kc = i0[Z];
     index = cs_index(wall->cs, ic, jc, kc);
     map_status(wall->map, index, &status);
-    if (status != MAP_FLUID) wn[Y] = -cv[p][Y];
+    if (status != MAP_FLUID) wn[Y] = -lb->model.cv[p][Y];
 
-    ic = i0[X]; jc = i0[Y]; kc = i0[Z] + cv[p][Z];
+    ic = i0[X]; jc = i0[Y]; kc = i0[Z] + lb->model.cv[p][Z];
     index = cs_index(wall->cs, ic, jc, kc);
     map_status(wall->map, index, &status);
-    if (status != MAP_FLUID) wn[Z] = -cv[p][Z];
+    if (status != MAP_FLUID) wn[Z] = -lb->model.cv[p][Z];
   }
 
   return 0;
@@ -652,6 +661,8 @@ __host__ int wall_link_slip_direction(wall_t * wall, int n) {
 
   if (wall->param->iswall) {
 
+    lb_t * lb = wall->lb;
+
     int cq[3] = {0};
     int wn[3] = {0};
     int pn = wall->linkp[n];
@@ -661,16 +672,18 @@ __host__ int wall_link_slip_direction(wall_t * wall, int n) {
 
     wall_link_normal(wall, n, wn);
 
-    cq[X] = -2*wn[X] - cv[pn][X];
-    cq[Y] = -2*wn[Y] - cv[pn][Y];
-    cq[Z] = -2*wn[Z] - cv[pn][Z];
+    cq[X] = -2*wn[X] - lb->model.cv[pn][X];
+    cq[Y] = -2*wn[Y] - lb->model.cv[pn][Y];
+    cq[Z] = -2*wn[Z] - lb->model.cv[pn][Z];
 
     /* Find the appropriate index */
 
-    for (int p = 0; p < NVEL; p++) {
-      if (cq[X] == cv[p][X] && cq[Y] == cv[p][Y] && cq[Z] == cv[p][Z]) q = p; 
+    for (int p = 0; p < lb->model.nvel; p++) {
+      if (cq[X] == lb->model.cv[p][X] &&
+	  cq[Y] == lb->model.cv[p][Y] &&
+	  cq[Z] == lb->model.cv[p][Z]) q = p;
     }
-    assert(0 < q && q < NVEL);
+    assert(0 < q && q < lb->model.nvel);
   }
 
   return q;
@@ -856,6 +869,7 @@ __host__ int wall_init_uw(wall_t * wall) {
     + wall->param->isboundary[Z];
 
   if (nwall == 1) {
+    lb_t * lb = wall->lb;
     /* All links are either top or bottom */
     iw = -1;
     if (wall->param->isboundary[X]) iw = X;
@@ -864,8 +878,8 @@ __host__ int wall_init_uw(wall_t * wall) {
     assert(iw == X || iw == Y || iw == Z);
 
     for (n = 0; n < wall->nlink; n++) {
-      if (cv[wall->linkp[n]][iw] == -1) wall->linku[n] = WALL_UWBOT;
-      if (cv[wall->linkp[n]][iw] == +1) wall->linku[n] = WALL_UWTOP;
+      if (lb->model.cv[wall->linkp[n]][iw] == -1) wall->linku[n] = WALL_UWBOT;
+      if (lb->model.cv[wall->linkp[n]][iw] == +1) wall->linku[n] = WALL_UWTOP;
     }
   }
 
@@ -922,7 +936,7 @@ __global__ void wall_setu_kernel(wall_t * wall, lb_t * lb) {
 
   for_simt_parallel(n, wall->nlink, 1) {
 
-    p = NVEL - wall->linkp[n];
+    p = lb->param->nvel - wall->linkp[n];
     fp = lb->param->wv[p]*(lb->param->rho0 + rcs2*ux*lb->param->cv[p][X]);
     lb_f_set(lb, wall->linkj[n], p, LB_RHO, fp);
 
@@ -1018,9 +1032,9 @@ __global__ void wall_bbl_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
     i  = wall->linki[n];
     j  = wall->linkj[n];
-    ij = wall->linkp[n];   /* Link index direction solid->fluid */
-    ji = NVEL - ij;        /* Opposite direction index */
-    ia = wall->linku[n];   /* Wall velocity lookup */
+    ij = wall->linkp[n];         /* Link index direction solid->fluid */
+    ji = lb->param->nvel - ij;   /* Opposite direction index */
+    ia = wall->linku[n];         /* Wall velocity lookup */
 
     cdotu = lb->param->cv[ij][X]*uw[ia][X] +
             lb->param->cv[ij][Y]*uw[ia][Y] +
@@ -1125,8 +1139,8 @@ __global__ void wall_bbl_slip_kernel(wall_t * wall, lb_t * lb, map_t * map) {
 
     i  = wall->linki[n];
     j  = wall->linkj[n];
-    ij = wall->linkp[n];   /* Link index direction solid->fluid */
-    ji = NVEL - ij;        /* Opposite direction index */
+    ij = wall->linkp[n];        /* Link index direction solid->fluid */
+    ji = lb->param->nvel - ij;  /* Opposite direction index */
 
     map_status(map, i, &status);
 
@@ -1391,8 +1405,6 @@ __host__ int wall_shear_init(wall_t * wall) {
   double uxtop;
   double ltot[3];
 
-  LB_CS2_DOUBLE(cs2);
-  LB_RCS2_DOUBLE(rcs2);
   KRONECKER_DELTA_CHAR(d_);
 
   physics_t * phys = NULL;
@@ -1436,25 +1448,29 @@ __host__ int wall_shear_init(wall_t * wall) {
     for (jc = 1; jc <= nlocal[Y]; jc++) {
       for (kc = 1; kc <= nlocal[Z]; kc++) {
 
+	lb_t * lb = wall->lb;
+	double cs2 = lb->model.cs2;
+	double rcs2 = 1.0/cs2;
+
 	/* Linearly interpolate between top and bottom to get velocity;
 	 * the - 1.0 accounts for kc starting at 1. */
 	u[X] = uxbottom + (noffset[Z] + kc - 0.5)*(uxtop - uxbottom)/ltot[Z];
 
         index = cs_index(wall->cs, ic, jc, kc);
 
-        for (p = 0; p < NVEL; p++) {
+        for (p = 0; p < lb->model.nvel; p++) {
 
 	  cdotu = 0.0;
 	  sdotq = 0.0;
 
           for (ia = 0; ia < 3; ia++) {
-            cdotu += cv[p][ia]*u[ia];
+            cdotu += lb->model.cv[p][ia]*u[ia];
             for (ib = 0; ib < 3; ib++) {
-              double q_ab = cv[p][ia]*cv[p][ib] - cs2*d_[ia][ib];
+              double q_ab = lb->model.cv[p][ia]*lb->model.cv[p][ib] - cs2*d_[ia][ib];
               sdotq += (rho*u[ia]*u[ib] - eta*gradu[ia][ib])*q_ab;
             }
           }
-          f = wv[p]*rho*(1.0 + rcs2*cdotu + 0.5*rcs2*rcs2*sdotq);
+          f = lb->model.wv[p]*rho*(1.0 + rcs2*cdotu + 0.5*rcs2*rcs2*sdotq);
           lb_f_set(wall->lb, index, p, 0, f);
         }
         /* Next site */
@@ -1488,7 +1504,7 @@ __host__ int wall_shear_init(wall_t * wall) {
  *****************************************************************************/
 
 __host__ int wall_lubr_sphere(wall_t * wall, double ah, const double r[3],
-			      double * drag) {
+			      double drag[3]) {
 
   double hlub;
   double h;

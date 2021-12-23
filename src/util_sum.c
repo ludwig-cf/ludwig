@@ -233,7 +233,6 @@ __host__ void kahan_mpi_op_sum_function(kahan_t * invec, kahan_t * inoutvec,
 
 __host__ int kahan_mpi_op_sum(MPI_Op * op) {
 
-  assert(kahan_mpi_op_sum_function);
   assert(op);
 
   MPI_Op_create((MPI_User_function *) kahan_mpi_op_sum_function, 0, op);
@@ -310,7 +309,6 @@ __host__ void klein_mpi_op_sum_function(klein_t * invec, klein_t * inoutvec,
 
 __host__ int klein_mpi_op_sum(MPI_Op * op) {
 
-  assert(klein_mpi_op_sum_function);
   assert(op);
 
   MPI_Op_create((MPI_User_function *) klein_mpi_op_sum_function, 0, op);

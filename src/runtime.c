@@ -47,10 +47,14 @@
 #define NKEY_LENGTH 128           /* Maximum key / value string length */
 #define NKEY_MAX    1024          /* Prevent buffer overflow in keys */
 
+/* Relevant key/value separators (include \n to strip them out) */
+static const char * sep_ = " \t\n";
+
 typedef struct key_pair_s key_pair_t;
 
 struct key_pair_s {
   char key[NKEY_LENGTH];
+  char val[NKEY_LENGTH];
   int  is_active;
   int  input_line_no;
   key_pair_t * next;
@@ -69,6 +73,12 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno);
 static int rt_look_up_key(rt_t * rt, const char * key, char * value);
 static int rt_free_keylist(key_pair_t * key);
 static int rt_vinfo(rt_t * rt, rt_enum_t lv, const char * fmt, ...);
+
+static int rt_is_valid_token(const char * token);
+static int rt_line_count_tokens(const char * line);
+static int rt_key_value(const char * line, char ** key, char ** val);
+static int rt_add_key_value_pair(rt_t * rt, const char * key,
+				 const char * val, int lineno);
 
 /*****************************************************************************
  *
@@ -162,7 +172,6 @@ int rt_read_input_file(rt_t * rt, const char * input_file_name) {
 	/* Look at the line and add it if it's a key. */
 	if (rt_is_valid_key_pair(rt, line, nline)) {
 	  rt_add_key_pair(rt, line, nline);
-	  rt->nkeys += 1;
 	}
 	if (rt->nkeys > NKEY_MAX) {
 	  pe_fatal(rt->pe, "Too many keys! Increase NKEY_MAX %d\n", NKEY_MAX);
@@ -198,22 +207,12 @@ int rt_add_key_value(rt_t * rt, const char * key, const char * value) {
   assert(key);
   assert(value);
 
-  /* Form a new line with a space between key and value */
-
+  /* Say the line is just the number of keys */
   nline = rt->nkeys + 1;
 
-  if (strlen(key) + strlen(value) >= NKEY_LENGTH - 2) {
-    /* avoid buffer overflow */
-  }
-  else {
-    char line[NKEY_LENGTH];
-    sprintf(line, "%s %s", key, value);
-
-    if (rt_is_valid_key_pair(rt, line, nline)) {
-      rt_add_key_pair(rt, line, nline);
-      rt->nkeys += 1;
-      added = 1;
-    }
+  if (rt_is_valid_token(key) && rt_is_valid_token(value)) {
+    rt_add_key_value_pair(rt, key, value, nline);
+    added = 1;
   }
 
   return added;
@@ -247,8 +246,8 @@ int rt_info(rt_t * rt) {
 
 static int rt_key_broadcast(rt_t * rt) {
 
+  int nkeys_at_root = 0;
   char * packed_keys = NULL;
-  int nk = 0;
   MPI_Comm comm;
 
   assert(rt);
@@ -256,10 +255,11 @@ static int rt_key_broadcast(rt_t * rt) {
 
   /* Broacdcast the number of keys and set up the message. */
 
-  MPI_Bcast(&rt->nkeys, 1, MPI_INT, 0, comm);
+  nkeys_at_root = rt->nkeys;
+  MPI_Bcast(&nkeys_at_root, 1, MPI_INT, 0, comm);
 
-  if (rt->nkeys <= NKEY_MAX) {
-    packed_keys = (char *) calloc(rt->nkeys*NKEY_LENGTH, sizeof(char));
+  if (nkeys_at_root <= NKEY_MAX) {
+    packed_keys = (char *) calloc(2*nkeys_at_root*NKEY_LENGTH, sizeof(char));
     assert(packed_keys);
   }
 
@@ -269,21 +269,28 @@ static int rt_key_broadcast(rt_t * rt) {
 
   if (pe_mpi_rank(rt->pe) == 0) {
     key_pair_t * key = rt->keylist;
+    int nk = 0;
 
     for ( ; key; key = key->next) {
       strncpy(packed_keys + nk*NKEY_LENGTH, key->key, NKEY_LENGTH);
       nk += 1;
+      strncpy(packed_keys + nk*NKEY_LENGTH, key->val, NKEY_LENGTH);
+      nk += 1;
     }
+    assert(nk == 2*rt->nkeys);
   }
 
-  MPI_Bcast(packed_keys, rt->nkeys*NKEY_LENGTH, MPI_CHAR, 0, comm);
+  MPI_Bcast(packed_keys, 2*nkeys_at_root*NKEY_LENGTH, MPI_CHAR, 0, comm);
 
   /* Unpack message and set up the list */
 
   if (pe_mpi_rank(rt->pe) != 0) {
-    for (nk = 0; nk < rt->nkeys; nk++) {
-      rt_add_key_pair(rt, packed_keys + nk*NKEY_LENGTH, 0);
+    for (int nk = 0; nk < nkeys_at_root; nk++) {
+      char * key = packed_keys + (2*nk  )*NKEY_LENGTH;
+      char * val = packed_keys + (2*nk+1)*NKEY_LENGTH;
+      rt_add_key_value(rt, key, val);
     }
+    assert(rt->nkeys == nkeys_at_root);
   }
 
   free(packed_keys);
@@ -341,7 +348,7 @@ int rt_int_parameter(rt_t * rt, const char * key, int * value) {
  *
  *****************************************************************************/
 
-int rt_double_parameter_vector(rt_t * rt, const char * key, double v[]) {
+int rt_double_parameter_vector(rt_t * rt, const char * key, double v[3]) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -368,7 +375,7 @@ int rt_double_parameter_vector(rt_t * rt, const char * key, double v[]) {
  *
  *****************************************************************************/
 
-int rt_int_parameter_vector(rt_t * rt, const char * key, int v[]) {
+int rt_int_parameter_vector(rt_t * rt, const char * key, int v[3]) {
 
   int key_present = 0;
   char str_value[NKEY_LENGTH];
@@ -572,6 +579,26 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 /*****************************************************************************
  *
+ *  rt_is_valid_token
+ *
+ *  Some checks on allowable tokens for either keys or values.
+ *
+ *****************************************************************************/
+
+static int rt_is_valid_token(const char * token) {
+
+  int isvalid = 1;
+
+  assert(token);
+
+  if (rt_line_count_tokens(token) != 1) isvalid = 0;
+  if (strncmp(token, "#", 1)      == 0) isvalid = 0;     
+
+  return isvalid;
+}
+
+/*****************************************************************************
+ *
  *  rt_is_valid_key
  *
  *  Checks a line of the input file (one string) is a valid key.
@@ -583,9 +610,10 @@ int rt_active_keys(rt_t * rt, int * nactive) {
 
 static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
 
-  char a[NKEY_LENGTH] = {};
-  char b[NKEY_LENGTH] = {};
-  char fmt[32] = {};
+  assert(rt);
+  assert(line);
+
+  /* Ignore comments and blank lines */
 
   if (strncmp("#",  line, 1) == 0) return 0;
   if (strncmp("\n", line, 1) == 0) return 0;
@@ -593,34 +621,91 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
   /* Minimal syntax checks. The user will need to sort these
    * out. */
 
-  snprintf(fmt, sizeof(fmt), "%%%ds %%%ds", NKEY_LENGTH-1, NKEY_LENGTH-1);
-
-  if (sscanf(line, fmt, a, b) != 2) {
+  if (rt_line_count_tokens(line) < 2) {
     /* This does not look like a key value pair... */
-    pe_fatal(rt->pe, "Please check input file syntax at line %d:\n %s\n",
-	     lineno, line);
+    pe_fatal(rt->pe, "Input file at line %d has %d token:\n %s\n",
+	     lineno, rt_line_count_tokens(line), line);
   }
   else {
     /* Check against existing keys for duplicate definitions. */
+    char * newkey = NULL;
+    char * newval = NULL;
 
-    key_pair_t * key = rt->keylist;
+    rt_key_value(line, &newkey, &newval);
 
-    while (key) {
-
-      /* We must compare for exact equality against existing key. */
-      sscanf(key->key, "%s ", b);
-
-      if (strcmp(b, a) == 0) {
-	pe_info(rt->pe, "At line %d: %s\n", lineno, line); 
-	pe_fatal(rt->pe, "Duplication of parameters in input file: %s %s\n",
-		 a, b);
-      }
-
-      key = key->next;
+    if (strncmp(newval, "#", 1) == 0) {
+      pe_info(rt->pe,  "Second token in line must not be a comment\n");
+      pe_fatal(rt->pe, "Please check input line at line %d\n", lineno);
     }
+
+    if (rt_key_present(rt, newkey)) {
+      pe_info(rt->pe, "Key %s (line %d) is already present\n", newkey, lineno);
+      pe_fatal(rt->pe, "Please check the input and remove one or other\n");
+    }
+
+    free(newkey);
+    free(newval);
   }
 
   return 1;
+}
+
+/*****************************************************************************
+ *
+ *  rt_line_count_tokens
+ *
+ *  Count " " separated tokens in line.
+ *
+ *****************************************************************************/
+
+static int rt_line_count_tokens(const char * line) {
+
+  int ntok = 0;
+
+  assert(line);
+
+  {
+    char * copy  = strndup(line, BUFSIZ);
+    char * token = strtok(copy, sep_);
+
+    while (token) {
+      ntok += 1;
+      token = strtok(NULL, sep_);
+    }
+
+    free(copy);
+  }
+
+  return ntok;
+}
+
+/*****************************************************************************
+ *
+ *  rt_key_value
+ *
+ *  Parse a single string as space-separated key value.
+ *  A new copy of the key and value are returned.
+ *
+ *  Returns 0 on sucess.
+ *
+ *****************************************************************************/
+
+static int rt_key_value(const char * line, char ** key, char ** val) {
+
+  int ifail = 0;
+  int ntok = rt_line_count_tokens(line);
+
+  if (ntok < 2) {
+    ifail = -1;
+  }
+  else {
+    char * copy = strndup(line, BUFSIZ);
+    *key = strdup(strtok(copy, sep_));
+    *val = strdup(strtok(NULL, sep_));
+    free(copy);
+  }
+
+  return ifail;
 }
 
 /*****************************************************************************
@@ -631,8 +716,27 @@ static int rt_is_valid_key_pair(rt_t * rt, const char * line, int lineno) {
  *
  *****************************************************************************/
 
-static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
+static int rt_add_key_pair(rt_t * rt, const char * line, int lineno) {
 
+  int ifail = 0;
+  char * newkey = NULL;
+  char * newval = NULL;
+
+  assert(rt);
+  assert(line);
+
+  rt_key_value(line, &newkey, &newval);
+
+  ifail = rt_add_key_value_pair(rt, newkey, newval, lineno);
+  
+  free(newkey);
+  free(newval);
+
+  return ifail;
+}
+
+static int rt_add_key_value_pair(rt_t * rt, const char * key,
+				 const char * val, int lineno) {
   key_pair_t * pnew = NULL;
 
   assert(rt);
@@ -645,8 +749,11 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
   }
   else {
     /* Put the new key at the head of the list. */
+    rt->nkeys += 1;
 
-    strncpy(pnew->key, key, strnlen(key, NKEY_LENGTH-1));
+    strncpy(pnew->key, key, NKEY_LENGTH - strnlen(key, NKEY_LENGTH) - 1);
+    strncpy(pnew->val, val, NKEY_LENGTH - strnlen(val, NKEY_LENGTH) - 1);
+
     pnew->is_active = 1;
     pnew->input_line_no = lineno;
 
@@ -655,6 +762,31 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
   }
 
   return 0;
+}
+
+/*****************************************************************************
+ *
+ *  rt_key_present
+ *
+ *  Is the key present in the list at all?
+ *
+ *****************************************************************************/
+
+int rt_key_present(rt_t * rt, const char * key) {
+
+  int present = 0;
+  key_pair_t * pair = NULL;
+
+  assert(rt);
+
+  for ( ; pair; pair = pair->next) {
+    if (strncmp(key, pair->key, NKEY_LENGTH) == 0) {
+      present = 1;
+      break;
+    }
+  }
+  
+  return present;
 }
 
 /*****************************************************************************
@@ -669,8 +801,6 @@ static int rt_add_key_pair(rt_t * rt, const char * key, int lineno) {
 static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
 
   int key_present = 0;
-  char a[NKEY_LENGTH];
-  char b[NKEY_LENGTH];
   key_pair_t * pkey;
 
   assert(rt);
@@ -679,12 +809,12 @@ static int rt_look_up_key(rt_t * rt, const char * key, char * value) {
 
   for ( ; pkey; pkey = pkey->next) {
 
-    sscanf(pkey->key, "%s %s", a, b);
-
-    if (strcmp(a, key) == 0) {
+    if (strcmp(pkey->key, key) == 0) {
+      int len = strnlen(pkey->val, NKEY_LENGTH);
       pkey->is_active = 0;
       key_present = 1;
-      strncpy(value, b, NKEY_LENGTH);
+      strncpy(value, pkey->val, NKEY_LENGTH - len - 1);
+
       break;
     }
   }

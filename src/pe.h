@@ -37,4 +37,6 @@ __host__ int pe_info(pe_t * pe, const char * fmt, ...);
 __host__ int pe_fatal(pe_t * pe, const char * fmt, ...);
 __host__ int pe_verbose(pe_t * pe, const char * fmt, ...);
 
+__host__ int pe_time(char * strctime, int bufsiz);
+
 #endif

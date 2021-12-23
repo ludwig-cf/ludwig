@@ -38,6 +38,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 				fe_lc_t * fe,
 				beris_edw_t * be) {
   int n;
+  int fe_is_lc_droplet = 0;
   int redshift_update;
   char method[BUFSIZ] = "none";
   char type[BUFSIZ] = "none";
@@ -70,13 +71,21 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
   pe_info(pe, "Blue phase free energy selected.\n");
 
+  {
+    char description[BUFSIZ] = {};
+    rt_string_parameter(rt, "free_energy", description, BUFSIZ);
+    fe_is_lc_droplet = (strcmp(description, "lc_droplet") == 0);
+  }
   /* PARAMETERS */
+  /* Note that for LC droplet, we should not specify gamma here. */
 
   n = rt_double_parameter(rt, "lc_a0", &fe_param.a0);
   if (n != 1) pe_fatal(pe, "Please specify lc_a0 <value>\n");
 
   n = rt_double_parameter(rt, "lc_gamma", &fe_param.gamma);
-  if (n != 1) pe_fatal(pe, "Please specify lc_gamma <value>\n");
+  if (n != 1 && fe_is_lc_droplet == 0) {
+    pe_fatal(pe, "Please specify lc_gamma <value>\n");
+  }
 
   n = rt_double_parameter(rt, "lc_q0", &fe_param.q0);
   if (n != 1) pe_fatal(pe, "Please specify lc_q0 <value>\n");
@@ -133,7 +142,6 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
   /* Active stress is:
    *   s_ab = zeta0 d_ab - zeta1 Q_ab - zeta2 (d_a p_b  + d_b p_a)
    * with p_a = Q_ak d_m Q_mk
-   * The sign of zeta0 is currently +ve here (clarify).
    */
 
   fe_param.is_active = rt_switch(rt, "lc_activity");
@@ -141,7 +149,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 	  fe_param.is_active == 0 ? "No" : "Yes");
 
   if (fe_param.is_active) {
-    zeta0 = (1.0/3.0);
+    zeta0 = 0.0;
     zeta1 = 0.0;
     zeta2 = 0.0;
     rt_double_parameter(rt, "lc_active_zeta0", &zeta0);
@@ -222,7 +230,7 @@ __host__ int blue_phase_init_rt(pe_t * pe, rt_t *rt,
 
     w1_wall = 0.0;
     w2_wall = 0.0;
-    strcpy(type_wall, type);
+    strncpy(type_wall, type, BUFSIZ - strnlen(type, BUFSIZ) - 1);
 
     rt_string_parameter(rt, "lc_wall_anchoring", type_wall, FILENAME_MAX);
 
@@ -411,13 +419,39 @@ __host__ int blue_phase_rt_initial_conditions(pe_t * pe, rt_t * rt, cs_t * cs,
   }
 
   if (strcmp(key1, "o8m") == 0) {
+
+    int   is_rot = 0;                   /* Default no rotation. */
+    double angles[3] = {0.0, 0.0, 0.0}; /* Default Euler rotation (degrees) */
+
     pe_info(pe, "Initialising Q_ab using O8M (BPI)\n");
-    blue_phase_O8M_init(cs, feparam, q);
+    is_rot = rt_double_parameter_vector(rt, "lc_q_init_euler_angles", angles);
+
+    if (is_rot) {
+      pe_info(pe, "... initial conidition to be rotated ...\n");
+      pe_info(pe, "Euler angle (deg): alpha_z = %14.7e\n", angles[0]);
+      pe_info(pe, "Euler angle (deg): beta_x' = %14.7e\n", angles[1]);
+      pe_info(pe, "Euler angle (deg): gamma_z'= %14.7e\n", angles[2]);
+    }
+
+    blue_phase_O8M_init(cs, feparam, q, angles);
   }
 
   if (strcmp(key1, "o2") == 0) {
+
+    int   is_rot = 0;                   /* Default no rotation. */
+    double angles[3] = {0.0, 0.0, 0.0}; /* Default Euler rotation (degrees) */
+
     pe_info(pe, "Initialising Q_ab using O2 (BPII)\n");
-    blue_phase_O2_init(cs, feparam, q);
+    is_rot = rt_double_parameter_vector(rt, "lc_q_init_euler_angles", angles);
+
+    if (is_rot) {
+      pe_info(pe, "... initial conidition to be rotated ...\n");
+      pe_info(pe, "Euler angle (deg): alpha_z = %14.7e\n", angles[0]);
+      pe_info(pe, "Euler angle (deg): beta_x' = %14.7e\n", angles[1]);
+      pe_info(pe, "Euler angle (deg): gamma_z'= %14.7e\n", angles[2]);
+    }
+
+    blue_phase_O2_init(cs, feparam, q, angles);
   }
 
   if (strcmp(key1, "o5") == 0) {

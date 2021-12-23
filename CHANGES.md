@@ -1,6 +1,22 @@
 
 ### Changes
 
+version 0.15.0
+
+- Active stress implementation is updated to conform to the documented
+  case; active emulsion stress is available.
+- Add ability to rotate BPI and BPII liquid crystal initial conditions
+  Thanks to Oliver H. for this. See Section 3 of web documentation.
+- A diagnostic computation and output of the force breakdown on each
+  colloid has been added. This is currently via a static switch in
+  stats_colloid_force_split.c
+- An option for a "lap timer" is now provided.
+- Some simple open boundary conditions for fluid and binary composition
+  are available. See the "Open boundaries" section at
+  https://ludwig.epcc.ed.ac.uk/
+- Some refactoring of the lattice Boltzmann basis information has been
+  performed in order to be able to move to a more flexible approach.
+  This should have no practical impact at present.
 
 version 0.14.0
 

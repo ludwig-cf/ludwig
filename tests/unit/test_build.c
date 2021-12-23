@@ -26,9 +26,12 @@
 #include "build.h"
 #include "tests.h"
 
-static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]);
-static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[3]);
-static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]);
+static int test_build_links_model_c1(pe_t * pe, cs_t * cs, int nvel,
+				     double a0, double r0[3]);
+static int test_build_links_model_c2(pe_t * pe, cs_t * cs, int nvel,
+				     double a0, double r0[3]);
+static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, int nvel,
+				 double a0, double r0[3]);
 
 /*****************************************************************************
  *
@@ -38,6 +41,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]);
 
 int test_build_suite(void) {
 
+  int nvel = NVEL;
   double a0;
   double r0[3];
   double delta = 1.0;        /* A small lattice offset */
@@ -56,21 +60,21 @@ int test_build_suite(void) {
 
   a0 = 2.3;
   r0[X] = 0.5*ltot[X]; r0[Y] = 0.5*ltot[Y]; r0[Z] = 0.5*ltot[Z];
-  test_build_links_model_c1(pe, cs, a0, r0);
-  test_build_links_model_c2(pe, cs, a0, r0);
-  test_build_rebuild_c1(pe, cs, a0, r0);
+  test_build_links_model_c1(pe, cs, nvel, a0, r0);
+  test_build_links_model_c2(pe, cs, nvel, a0, r0);
+  test_build_rebuild_c1(pe, cs, nvel, a0, r0);
 
   a0 = 4.77;
   r0[X] = lmin[X] + delta; r0[Y] = 0.5*ltot[Y]; r0[Z] = 0.5*ltot[Z];
-  test_build_links_model_c1(pe, cs, a0, r0);
-  test_build_links_model_c2(pe, cs, a0, r0);
-  test_build_rebuild_c1(pe, cs, a0, r0);
+  test_build_links_model_c1(pe, cs, nvel, a0, r0);
+  test_build_links_model_c2(pe, cs, nvel, a0, r0);
+  test_build_rebuild_c1(pe, cs, nvel, a0, r0);
 
   a0 = 3.84;
   r0[X] = ltot[X]; r0[Y] = ltot[Y]; r0[Z] = ltot[Z];
-  test_build_links_model_c1(pe, cs, a0, r0);
-  test_build_links_model_c2(pe, cs, a0, r0);
-  test_build_rebuild_c1(pe, cs, a0, r0);
+  test_build_links_model_c1(pe, cs, nvel, a0, r0);
+  test_build_links_model_c2(pe, cs, nvel, a0, r0);
+  test_build_rebuild_c1(pe, cs, nvel, a0, r0);
 
   /* Some known cases: place the colloid in the centre and test only
    * in serial, as there is no quick way to compute in parallel. */
@@ -99,12 +103,14 @@ int test_build_suite(void) {
  *
  *****************************************************************************/
 
-static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) {
+static int test_build_links_model_c1(pe_t * pe, cs_t * cs, int nvel,
+				     double a0, double r0[3]) {
 
   int ncolloid;
   int ncell[3] = {2, 2, 2};
 
   map_t * map = NULL;
+  lb_model_t model = {};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
@@ -114,6 +120,7 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
   map_create(pe, cs, 0, &map);
+  lb_model_create(nvel, &model);
 
   /* Place the single colloid and construct the links */
 
@@ -123,7 +130,7 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
 
   colloids_halo_state(cinfo);
   build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map);
+  build_update_links(cs, cinfo, NULL, map, &model);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   colloids_info_ntotal(cinfo, &ncolloid);
@@ -145,6 +152,7 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
     assert(fabs(pc->deltam - 0.0) < DBL_EPSILON);
   }
 
+  lb_model_free(&model);
   map_free(map);
   colloids_info_free(cinfo);
 
@@ -157,13 +165,15 @@ static int test_build_links_model_c1(pe_t * pe, cs_t * cs, double a0, double r0[
  *
  *****************************************************************************/
 
-static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[3]) {
+static int test_build_links_model_c2(pe_t * pe, cs_t * cs, int nvel,
+				     double a0, double r0[3]) {
 
   int ic, jc, kc;
   int ncolloid;
   int ncell[3] = {4, 4, 4};
 
   map_t * map = NULL;
+  lb_model_t model = {};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
@@ -173,6 +183,7 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
   map_create(pe, cs, 0, &map);
+  lb_model_create(nvel, &model);
 
   /* Place the single colloid and construct the links */
 
@@ -182,7 +193,7 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
 
   colloids_halo_state(cinfo);
   build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map);
+  build_update_links(cs, cinfo, NULL, map, &model);
 
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
   colloids_info_ntotal(cinfo, &ncolloid);
@@ -214,6 +225,7 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
     }
   }
 
+  lb_model_free(&model);
   map_free(map);
   colloids_info_free(cinfo);
 
@@ -226,13 +238,15 @@ static int test_build_links_model_c2(pe_t * pe, cs_t * cs, double a0, double r0[
  *
  *****************************************************************************/
 
-static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) {
+static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, int nvel,
+				 double a0, double r0[3]) {
 
   int ic, jc, kc;
   int ncolloid;
   int ncell[3] = {2, 2, 2};
 
   map_t * map = NULL;
+  lb_model_t model = {};
   colloid_t * pc = NULL;
   colloids_info_t * cinfo = NULL;
 
@@ -242,6 +256,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
   colloids_info_create(pe, cs, ncell, &cinfo);
   colloids_info_map_init(cinfo);
   map_create(pe, cs, 0, &map);
+  lb_model_create(nvel, &model);
 
   /* Place the single colloid and construct the links */
 
@@ -258,7 +273,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
 
   colloids_halo_state(cinfo);
   build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map);
+  build_update_links(cs, cinfo, NULL, map, &model);
 
   colloids_info_ntotal(cinfo, &ncolloid);
   assert(ncolloid == 1);
@@ -270,7 +285,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
   colloids_halo_state(cinfo);
 
   build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, NULL, map);
+  build_update_links(cs, cinfo, NULL, map, &model);
   colloid_sums_halo(cinfo, COLLOID_SUM_STRUCTURE);
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
@@ -297,6 +312,7 @@ static int test_build_rebuild_c1(pe_t * pe, cs_t * cs, double a0, double r0[3]) 
     }
   }
 
+  lb_model_free(&model);
   map_free(map);
   colloids_info_free(cinfo);
 

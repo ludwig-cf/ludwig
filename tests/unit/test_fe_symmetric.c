@@ -72,7 +72,7 @@ int test_fe_symm_theta_to_h(pe_t * pe) {
 
     ierr += fe_symm_theta_to_h(theta, &h);
     assert(ierr == 0);
-    assert(fabs(h - sqrt(2.0*sqrt(3.0) - 3.0)) < DBL_EPSILON);
+    assert(fabs(h - sqrt(2.0*sqrt(3.0) - 3.0)) < 2.0*DBL_EPSILON);
   }
 
   return ierr;

@@ -173,8 +173,6 @@ __host__ int cs_init(cs_t * cs) {
     MPI_Dims_create(pe_mpi_size(cs->pe), 3, cs->param->mpi_cartsz);
   }
 
-  cs_rectilinear_decomposition(cs);
-
   /* A communicator which is always periodic: */
 
   MPI_Cart_create(comm, 3, cs->param->mpi_cartsz, iperiodic, cs->reorder,
@@ -199,6 +197,8 @@ __host__ int cs_init(cs_t * cs) {
   }
 
   /* Set local number of lattice sites and offsets. */
+
+  cs_rectilinear_decomposition(cs);
 
   cs->param->nlocal[X] = cs->listnlocal[X][cs->param->mpi_cartcoords[X]];
   cs->param->nlocal[Y] = cs->listnlocal[Y][cs->param->mpi_cartcoords[Y]];
@@ -545,12 +545,19 @@ static __host__ int cs_rectilinear_decomposition(cs_t * cs) {
 
   int idim;
   int n, ntot, nremainder;
-  int mpisz[3];
   int ntotal[3];
+  int mpisz[3] = {};
 
   assert(cs);
 
-  cs_cartsz(cs, mpisz);
+  {
+    int dims[3] = {};
+    int coords[3] = {};
+    int periods[3] = {};
+    MPI_Cart_get(cs->commcart, 3, dims, coords, periods);
+    mpisz[X] = dims[X]; mpisz[Y] = dims[Y]; mpisz[Z] = dims[Z];
+  }
+
   cs_ntotal(cs, ntotal);
 
   /* For each direction in turn:

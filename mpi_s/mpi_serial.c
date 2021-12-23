@@ -146,6 +146,29 @@ int MPI_Init(int * argc, char *** argv) {
 
 /*****************************************************************************
  *
+ *  MPI_Init_thread
+ *
+ *****************************************************************************/
+
+int MPI_Init_thread(int * argc, char *** argv, int required, int * provided) {
+
+  assert(argc);
+  assert(argv);
+  assert(MPI_THREAD_SINGLE <= required && required <= MPI_THREAD_MULTIPLE);
+  assert(provided);
+
+  MPI_Init(argc, argv);
+
+  /* We are going to say that MPI_THREAD_SERIALIZED is available */
+  /* Not MPI_THREAD_MULTIPLE */
+
+  *provided = MPI_THREAD_SERIALIZED;
+
+  return MPI_SUCCESS;
+}
+
+/*****************************************************************************
+ *
  *  MPI_Initialized
  *
  *****************************************************************************/
@@ -290,7 +313,6 @@ int MPI_Recv(void * buf, int count, MPI_Datatype datatype, int source,
 	     int tag, MPI_Comm comm, MPI_Status * status) {
 
   assert(buf);
-  assert(status);
 
   printf("MPI_Recv should not be called in serial.\n");
   exit(0);
@@ -310,8 +332,8 @@ int MPI_Irecv(void * buf, int count, MPI_Datatype datatype, int source,
   assert(buf);
   assert(request);
 
-  printf("MPI_Irecv should not be called in serial.\n");
-  exit(0);
+  /* Could assert tag is ok */
+  *request = tag;
 
   return MPI_SUCCESS;
 }
@@ -346,8 +368,8 @@ int MPI_Isend(void * buf, int count, MPI_Datatype datatype, int dest,
   assert(buf);
   assert(request);
 
-  printf("MPI_Isend should not be called in serial\n");
-  exit(0);
+  /* Could assert tag is ok */
+  *request = tag;
 
   return MPI_SUCCESS;
 }
@@ -383,7 +405,6 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
 
   assert(count >= 0);
   assert(requests);
-  assert(statuses);
 
   return MPI_SUCCESS;
 }
@@ -396,12 +417,25 @@ int MPI_Waitall(int count, MPI_Request * requests, MPI_Status * statuses) {
  *****************************************************************************/
 
 int MPI_Waitany(int count, MPI_Request requests[], int * index,
-		MPI_Status * statuses) {
+		MPI_Status * status) {
 
   assert(count >= 0);
   assert(requests);
   assert(index);
-  assert(statuses);
+
+  *index = MPI_UNDEFINED;
+
+  for (int ireq = 0; ireq < count; ireq++) {
+    if (requests[ireq] != MPI_REQUEST_NULL) {
+      *index = ireq;
+      requests[ireq] = MPI_REQUEST_NULL;
+      if (status) {
+	status->MPI_SOURCE = 0;
+	status->MPI_TAG = requests[ireq];
+      }
+      break;
+    }
+  }
 
   return MPI_SUCCESS;
 }
@@ -417,7 +451,6 @@ int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status * status) {
 
   assert(source == 0);
   assert(mpi_is_valid_comm(comm));
-  assert(status);
 
   printf("MPI_Probe should not be called in serial\n");
   exit(0);
@@ -440,7 +473,6 @@ int MPI_Sendrecv(void * sendbuf, int sendcount, MPI_Datatype sendtype,
   assert(dest == source);
   assert(recvbuf);
   assert(recvcount == sendcount);
-  assert(status);
 
   printf("MPI_Sendrecv should not be called in serial\n");
   exit(0);
@@ -733,62 +765,6 @@ int MPI_Type_vector(int count, int blocklength, int stride,
 
     mpi_data_type_add(mpi_info, &dt, newtype);
   }
-
-  return MPI_SUCCESS;
-}
-
-/*****************************************************************************
- *
- *  MPI_Type_struct
- *
- *  Superceded by MPI_Type_create_struct.
- *
- *****************************************************************************/
-
-int MPI_Type_struct(int count, int * array_of_blocklengths,
-		    MPI_Aint * array_of_displacements,
-		    MPI_Datatype * array_of_types, MPI_Datatype * newtype) {
-
-  assert(count > 0);
-  assert(array_of_blocklengths);
-  assert(array_of_displacements);
-  assert(array_of_types);
-  assert(newtype);
-
-  printf("MPI_Type_struct: please use MPI_Type_create_struct instead\n");
-
-  return -1;
-}
-
-/*****************************************************************************
- *
- *  MPI_Address
- *
- *  Please use MPI_Get_Address().
- *
- *****************************************************************************/
-
-int MPI_Address(void * location, MPI_Aint * address) {
-
-  assert(location);
-  assert(address);
-
-  *address = 0;
-
-  return MPI_SUCCESS;
-}
-
-/*****************************************************************************
- *
- *  MPI_Errhandler_set
- *
- *****************************************************************************/
-
-int MPI_Errhandler_set(MPI_Comm comm, MPI_Errhandler errhandler) {
-
-  assert(mpi_info);
-  assert(comm != MPI_COMM_NULL);
-  assert(errhandler == MPI_ERRORS_ARE_FATAL);
 
   return MPI_SUCCESS;
 }

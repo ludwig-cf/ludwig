@@ -55,7 +55,7 @@ struct ewald_s {
 
 static int ewald_sum_sin_cos_terms(ewald_t * ewald);
 static int ewald_get_number_fourier_terms(ewald_t * ewald);
-static int ewald_set_kr_table(ewald_t * ewlad, double []);
+static int ewald_set_kr_table(ewald_t * ewlad, double r[3]);
 
 /*****************************************************************************
  *

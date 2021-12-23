@@ -84,7 +84,7 @@ int compiler_id(compiler_info_t * compiler) {
   /* Include __CUDA_ARCH__ */
   return 0;
 #endif
-  
+
 #ifdef __clang__
   /* Load details */
   compiler->major = __clang_major__;
@@ -109,7 +109,7 @@ int compiler_id(compiler_info_t * compiler) {
   compiler->major = __GNUC__;
   compiler->minor = __GNUC_MINOR__;
   compiler->patchlevel = __GNUC_PATCHLEVEL__;
-  strncpy(compiler->version, __VERSION__, strnlen(__VERSION__, BUFSIZ-1));
+  strncpy(compiler->version, __VERSION__, 1 + strnlen(__VERSION__, BUFSIZ-1));
   sprintf(compiler->name, "%s", "Gnu");
   ierr = 0;
 

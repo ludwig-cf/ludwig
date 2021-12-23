@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statisitical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2014-2020 The University of Edinburgh
+ *  (c) 2014-2021 The University of Edinburgh
  *
  *  Contributing authors
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -34,6 +34,8 @@ static int do_test1(pe_t * pe);
 static int do_test_halo1(pe_t * pe, int nhalo, int nhcomm);
 static int do_test_io1(pe_t * pe, int io_format);
 
+int test_hydro_rho(pe_t * pe);
+
 /*****************************************************************************
  *
  *  test_hydro_suite
@@ -50,6 +52,8 @@ int test_hydro_suite(void) {
   do_test_halo1(pe, 1, 1);
   do_test_halo1(pe, 2, 2);
   do_test_halo1(pe, 2, 1);
+
+  test_hydro_rho(pe);
 
   do_test_io1(pe, IO_FORMAT_DEFAULT);
   do_test_io1(pe, IO_FORMAT_ASCII);
@@ -196,6 +200,42 @@ static int do_test_io1(pe_t * pe, int io_format) {
   MPI_Barrier(comm);
   io_remove(filename, iohandler);
   io_remove_metadata(iohandler, "vel");
+
+  hydro_free(hydro);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_hydro_rho
+ *
+ *****************************************************************************/
+
+int test_hydro_rho(pe_t * pe) {
+
+  cs_t * cs = NULL;
+  hydro_t * hydro = NULL;
+
+  assert(pe);
+
+  cs_create(pe, &cs);
+  cs_init(cs);
+
+  hydro_create(pe, cs, NULL, 1, &hydro);
+
+  assert(hydro->rho);
+
+  {
+    int index   = hydro->nsite - 1;
+    double rho0 = 2.0;
+    double rho  = 0.0;
+
+    hydro_rho_set(hydro, index, rho0);
+    hydro_rho(hydro, index, &rho);
+    assert(fabs(rho - rho0) < DBL_EPSILON);
+  }
 
   hydro_free(hydro);
   cs_free(cs);

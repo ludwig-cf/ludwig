@@ -90,6 +90,10 @@
 #include "visc.h"
 #include "visc_arrhenius.h"
 
+/* Open boundary conditions */
+#include "lb_bc_open_rt.h"
+#include "phi_bc_open_rt.h"
+
 /* Electrokinetics */
 #include "psi.h"
 #include "psi_rt.h"
@@ -102,6 +106,7 @@
 
 /* Statistics */
 #include "stats_colloid.h"
+#include "stats_colloid_force_split.h"
 #include "stats_turbulent.h"
 #include "stats_surfactant.h"
 #include "stats_rheology.h"
@@ -161,10 +166,16 @@ struct ludwig_s {
   interact_t * interact;       /* Colloid-colloid interaction handler */
   bbl_t * bbl;                 /* Bounce-back on links boundary condition */
 
+  lb_bc_open_t * inflow;       /* Inflow open boundary conidition (fluid) */
+  lb_bc_open_t * outflow;      /* Outflow boundary condition (fluid) */
+  phi_bc_open_t * phi_inflow;  /* Inflow (composition phi) */
+  phi_bc_open_t * phi_outflow; /* Outflow (composition phi) */
+
   stats_sigma_t * stat_sigma;  /* Interfacial tension calibration */
   stats_ahydro_t * stat_ah;    /* Hydrodynamic radius calibration */
   stats_rheo_t * stat_rheo;    /* Rheology diagnostics */
   stats_turb_t * stat_turb;    /* Turbulent diagnostics */
+  timekeeper_t tk;             /* Time keeper */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -172,6 +183,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
+int ludwig_timekeeper_init(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
@@ -201,7 +213,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   io_info_t * iohandler = NULL;
 
   assert(ludwig);
-  
+
   TIMER_init(ludwig->pe);
   TIMER_start(TIMER_TOTAL);
 
@@ -219,6 +231,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   cs = ludwig->cs;
   rt = ludwig->rt;
 
+  ludwig_timekeeper_init(ludwig);
   init_control(pe, rt);
 
   physics_init_rt(rt, ludwig->phys); 
@@ -237,6 +250,9 @@ static int ludwig_rt(ludwig_t * ludwig) {
   ran_init_rt(pe, rt);
   hydro_rt(pe, rt, cs, ludwig->le, &ludwig->hydro);
   visc_model_init_rt(pe, rt, ludwig);
+
+  lb_bc_open_rt(pe, rt, cs, ludwig->lb, &ludwig->inflow, &ludwig->outflow);
+  phi_bc_open_rt(pe, rt, cs, &ludwig->phi_inflow, &ludwig->phi_outflow);
 
   /* PHI I/O */
 
@@ -295,7 +311,8 @@ static int ludwig_rt(ludwig_t * ludwig) {
 
   wall_rt_init(pe, cs, rt, ludwig->lb, ludwig->map, &ludwig->wall);
   colloids_init_rt(pe, rt, cs, &ludwig->collinfo, &ludwig->cio,
-		   &ludwig->interact, ludwig->wall, ludwig->map);
+		   &ludwig->interact, ludwig->wall, ludwig->map,
+		   &ludwig->lb->model);
   colloids_init_ewald_rt(pe, rt, cs, ludwig->collinfo, &ludwig->ewald);
 
   bbl_create(pe, ludwig->cs, ludwig->lb, &ludwig->bbl);
@@ -307,8 +324,11 @@ static int ludwig_rt(ludwig_t * ludwig) {
   ntstep = physics_control_timestep(ludwig->phys);
 
   if (ntstep == 0) {
+    double rho0 = 1.0;
     n = 0;
     lb_rt_initial_conditions(pe, rt, ludwig->lb, ludwig->phys);
+    physics_rho0(ludwig->phys, &rho0);
+    if (ludwig->hydro) hydro_rho0(ludwig->hydro, rho0);
 
     rt_int_parameter(rt, "LE_init_profile", &n);
     if (n != 0) lb_le_init_shear_profile(ludwig->lb, ludwig->le);
@@ -486,6 +506,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
 
+  /* Lap timer: include initial statistics in first trip */
+  TIMER_start(TIMER_LAP);
+
   pe_info(ludwig->pe, "Initial conditions.\n");
   wall_is_pm(ludwig->wall, &is_porous_media);
 
@@ -558,6 +581,18 @@ void ludwig_run(const char * inputfile) {
       field_halo(ludwig->phi);
       TIMER_stop(TIMER_PHI_HALO);
 
+      /* Boundary conditions on phi after halo and
+       * before gradient calculation. */
+
+      if (ludwig->phi_inflow) {
+	phi_bc_open_t * inflow = ludwig->phi_inflow;
+	inflow->func->update(inflow, ludwig->phi);
+      }
+      if (ludwig->phi_outflow) {
+	phi_bc_open_t * outflow = ludwig->phi_outflow;
+	outflow->func->update(outflow, ludwig->phi);
+      }
+
       field_grad_compute(ludwig->phi_grad);
     }
 
@@ -576,7 +611,16 @@ void ludwig_run(const char * inputfile) {
     }
     TIMER_stop(TIMER_PHI_GRADIENTS);
     if (ludwig->fe_lc) fe_lc_active_stress(ludwig->fe_lc);
-    
+
+    /* Update any open boundary flows (before any advection) */
+
+    if (ludwig->inflow) {
+      ludwig->inflow->func->update(ludwig->inflow, ludwig->hydro);
+    }
+    if (ludwig->outflow) {
+      ludwig->outflow->func->update(ludwig->outflow, ludwig->hydro);
+    }
+
     /* Electrokinetics (including electro/symmetric requiring above
      * gradients for phi) */
 
@@ -711,12 +755,16 @@ void ludwig_run(const char * inputfile) {
 	}
 	else {
 	  pth_force_colloid(ludwig->pth, ludwig->fe, ludwig->collinfo,
-			    ludwig->hydro, ludwig->map, ludwig->wall);
+			    ludwig->hydro, ludwig->map, ludwig->wall,
+			    &ludwig->lb->model);
 	}
       }
-        
 
       TIMER_stop(TIMER_FORCE_CALCULATION);
+
+      if (ludwig->q && is_statistics_step()) {
+	stats_colloid_force_split_update(ludwig->collinfo, ludwig->fe);
+      }
 
       TIMER_start(TIMER_ORDER_PARAMETER_UPDATE);
 
@@ -787,6 +835,19 @@ void ludwig_run(const char * inputfile) {
       lb_halo(ludwig->lb);
 
       TIMER_stop(TIMER_HALO_LATTICE);
+
+      /* Open boundaries */
+
+      if (ludwig->inflow) {
+	lb_bc_open_t * inflow = ludwig->inflow;
+	inflow->func->update(inflow, ludwig->hydro);
+	inflow->func->impose(inflow, ludwig->hydro, ludwig->lb);
+      }
+      if (ludwig->outflow) {
+	lb_bc_open_t * outflow = ludwig->outflow;
+	outflow->func->update(outflow, ludwig->hydro);
+	outflow->func->impose(outflow, ludwig->hydro, ludwig->lb);
+      }
 
       /* Colloid bounce-back applied between collision and
        * propagation steps. */
@@ -906,7 +967,10 @@ void ludwig_run(const char * inputfile) {
 
     /* Print progress report */
 
+    timekeeper_step(&ludwig->tk);
+
     if (is_statistics_step()) {
+
       lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
@@ -940,6 +1004,7 @@ void ludwig_run(const char * inputfile) {
 	field_memcpy(ludwig->q, tdpMemcpyDeviceToHost);
 	field_grad_memcpy(ludwig->q_grad, tdpMemcpyDeviceToHost);
 	stats_field_info(ludwig->q, ludwig->map);
+	stats_colloid_force_split_output(ludwig->collinfo, step);
       }
 
       if (ludwig->psi) {
@@ -1051,6 +1116,11 @@ void ludwig_run(const char * inputfile) {
 
   bbl_free(ludwig->bbl);
   colloids_info_free(ludwig->collinfo);
+
+  if (ludwig->inflow) ludwig->inflow->func->free(ludwig->inflow);
+  if (ludwig->outflow) ludwig->outflow->func->free(ludwig->outflow);
+  if (ludwig->phi_inflow) ludwig->phi_inflow->func->free(ludwig->phi_inflow);
+  if (ludwig->phi_outflow) ludwig->phi_outflow->func->free(ludwig->phi_outflow);
 
   if (ludwig->interact) interact_free(ludwig->interact);
   if (ludwig->cio)      colloid_io_free(ludwig->cio);
@@ -1996,14 +2066,16 @@ int ludwig_colloids_update(ludwig_t * ludwig) {
   build_update_map(ludwig->cs, ludwig->collinfo, ludwig->map);
   build_remove_replace(ludwig->fe, ludwig->collinfo, ludwig->lb, ludwig->phi,
 		       ludwig->p, ludwig->q, ludwig->psi, ludwig->map);
-  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map);
+  build_update_links(ludwig->cs, ludwig->collinfo, ludwig->wall, ludwig->map,
+		     &ludwig->lb->model);
 
   TIMER_stop(TIMER_REBUILD);
 
   TIMER_start(TIMER_FREE1);
   if (iconserve) {
     colloid_sums_halo(ludwig->collinfo, COLLOID_SUM_CONSERVATION);
-    build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi);
+    build_conservation(ludwig->collinfo, ludwig->phi, ludwig->psi,
+		       &ludwig->lb->model);
   }
   TIMER_stop(TIMER_FREE1);
 
@@ -2060,6 +2132,36 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
 	}
       }
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ludwig_timekeeper_init
+ *
+ *****************************************************************************/
+
+__host__ int ludwig_timekeeper_init(ludwig_t * ludwig) {
+
+  timekeeper_options_t opts = {};
+
+  assert(ludwig);
+
+  {
+    pe_t * pe = ludwig->pe;
+    rt_t * rt = ludwig->rt;
+
+    if (rt_switch(rt, "timer_lap_report")) opts.lap_report = 1;
+    rt_int_parameter(rt, "timer_lap_report_freq", &opts.lap_report_freq);
+
+    if (opts.lap_report && opts.lap_report_freq == 0) {
+      pe_fatal(pe, "Please specify a timer_lap_report_freq "
+	           "(timer_lap_report is on)\n");
+    }
+
+    timekeeper_create(pe, &opts, &ludwig->tk);
   }
 
   return 0;

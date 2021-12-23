@@ -8,7 +8,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2010-2020 The University of Edinburgh
+ *  (c) 2010-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -30,7 +30,6 @@ enum {NDIM     = NDIM9,
       CVZBLOCK = CVZBLOCK9};
 
 #define LB_CV(cv) LB_CV_D2Q9(cv)
-#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D2Q9(n)
 
 #endif
 
@@ -44,7 +43,6 @@ enum {NDIM     = NDIM15,
       CVZBLOCK = CVZBLOCK15};
 
 #define LB_CV(cv) LB_CV_D3Q15(cv)
-#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D3Q15(n)
 
 #endif
 
@@ -59,7 +57,6 @@ enum {NDIM     = NDIM19,
       CVZBLOCK = CVZBLOCK19};
 
 #define LB_CV(cv) LB_CV_D3Q19(cv)
-#define LB_NORMALISERS_DOUBLE(n) LB_NORMALISERS_D3Q19(n)
 
 #endif
 
@@ -92,6 +89,8 @@ typedef enum lb_halo_enum_type {LB_HALO_FULL,
 typedef enum {LB_RELAXATION_M10, LB_RELAXATION_BGK, LB_RELAXATION_TRT}
   lb_relaxation_enum_t;
 
+#include "lb_model_s.h"
+
 __host__ int lb_create_ndist(pe_t * pe, cs_t * cs, int ndist, lb_t ** lb);
 __host__ int lb_create(pe_t * pe, cs_t * cs, lb_t ** lb);
 __host__ int lb_init(lb_t * lb);
@@ -109,32 +108,15 @@ __host__ int lb_io_rho_set(lb_t *lb, io_info_t * io_rho, int fin, int fout);
 
 __host__ int lb_io_info_commit(lb_t * lb, io_info_args_t args);
 
-__host__ __device__ int lb_nvel(lb_t * lb, int * nvel);
-__host__ __device__ int lb_ndim(lb_t * lb, int * ndim);
 __host__ __device__ int lb_ndist(lb_t * lb, int * ndist);
 __host__ __device__ int lb_f(lb_t * lb, int index, int p, int n, double * f);
 __host__ __device__ int lb_f_set(lb_t * lb, int index, int p, int n, double f);
 __host__ __device__ int lb_0th_moment(lb_t * lb, int index, lb_dist_enum_t nd,
 				      double * rho);
-__host__ __device__ int lb_f_index(lb_t * lb, int index, int n, double f[NVEL]);
-__host__ __device__ int lb_f_index_set(lb_t * lb, int index, int n,
-				       double f[NVEL]);
-__host__ __device__ int lb_f_multi_index_part(lb_t * lb, int index, int n,
-					      double f[NVEL][NSIMDVL], int nv);
-__host__ __device__ int lb_f_multi_index_set_part(lb_t * lb, int index, int n,
-						  double f[NVEL][NSIMDVL],
-						  int nv);
-__host__ __device__ int lb_f_multi_index(lb_t * lb, int index, int n,
-					 double f[NVEL][NSIMDVL]);
-__host__ __device__ int lb_f_multi_index_set(lb_t * lb, int index, int n,
-					     double f[NVEL][NSIMDVL]);
-
 /* These  could be __host__ __device__ pending removal of
  * static constants */
 
-__host__ int lb_nblock(lb_t * lb, int dim, int * nblock);
 __host__ int lb_init_rest_f(lb_t * lb, double rho0);
-__host__ int lb_order(lb_t * lb);
 __host__ int lb_ndist_set(lb_t * lb, int ndist);
 __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3]);
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
