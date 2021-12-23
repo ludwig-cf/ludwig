@@ -27,7 +27,8 @@
 
 int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** cio,
-		     interact_t ** interact, wall_t * wall, map_t * map);
+		     interact_t ** interact, wall_t * wall, map_t * map,
+		     const lb_model_t * model);
 int colloids_init_ewald_rt(pe_t * pe, rt_t * rt, cs_t * cs,
 			   colloids_info_t * cinfo, ewald_t ** pewald);
 int colloids_init_halo_range_check(pe_t * pe, cs_t * cs,

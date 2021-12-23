@@ -72,6 +72,11 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
   subgrid_wall_lubrication(cinfo, wall);
   colloid_sums_halo(cinfo, COLLOID_SUM_FORCE_EXT_ONLY);
 
+  /* While there is no device implementation, must copy back-and forth
+   * the force. */
+
+  hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
+
   /* Loop through all cells (including the halo cells) */
 
   for (ic = 0; ic <= ncell[X] + 1; ic++) {
@@ -152,6 +157,8 @@ int subgrid_force_from_particles(colloids_info_t * cinfo, hydro_t * hydro,
       }
     }
   }
+
+  hydro_memcpy(hydro, tdpMemcpyHostToDevice);
 
   return 0;
 }
@@ -273,6 +280,11 @@ static int subgrid_interpolation(colloids_info_t * cinfo, hydro_t * hydro) {
   cs_nlocal(cinfo->cs, nlocal);
   cs_nlocal_offset(cinfo->cs, offset);
   colloids_info_ncell(cinfo, ncell);
+
+  /* While there is no subgrid device implementation,
+     need to recover the current velocity. */
+
+  hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
 
   /* Loop through all cells (including the halo cells) and set
    * the velocity at each particle to zero for this step. */

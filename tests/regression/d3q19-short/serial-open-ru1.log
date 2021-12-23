@@ -1,0 +1,125 @@
+Welcome to Ludwig v0.14.0 (Serial version running on 1 process)
+Start time: Wed Dec  8 14:16:26 2021
+
+Compiler:
+  name:           Clang 13.0.0
+  version-string: 13.0.0 (clang-1300.0.29.3)
+
+Note assertions via standard C assert() are on.
+
+Target thread model: None.
+
+Read 16 user parameters from serial-open-ru1.inp
+
+No free energy selected
+
+System details
+--------------
+System size:    24 12 12
+Decomposition:  1 1 1
+Local domain:   24 12 12
+Periodic:       0 0 0
+Halo nhalo:     1
+Reorder:        true
+Initialised:    1
+
+System properties
+----------------
+Mean fluid density:           1.00000e+00
+Shear viscosity               1.00000e-01
+Bulk viscosity                1.00000e-01
+Temperature                   0.00000e+00
+External body force density   0.00000e+00  0.00000e+00  0.00000e+00
+External E-field amplitude    0.00000e+00  0.00000e+00  0.00000e+00
+External E-field frequency    0.00000e+00
+External magnetic field       0.00000e+00  0.00000e+00  0.00000e+00
+
+Lattice Boltzmann distributions
+-------------------------------
+Model:            d3q19  
+SIMD vector len:  1
+Number of sets:   1
+Halo type:        full
+Input format:     binary
+Output format:    binary
+I/O grid:         1 1 1
+
+Lattice Boltzmann collision
+---------------------------
+Relaxation time scheme:   M10
+Hydrodynamic modes:       on
+Ghost modes:              on
+Isothermal fluctuations:  off
+Shear relaxation time:    8.00000e-01
+Bulk relaxation time:     8.00000e-01
+Ghost relaxation time:    1.00000e+00
+[Default] Random number seed: 7361237
+
+Hydrodynamics
+-------------
+Hydrodynamics: on
+
+Hydrodynamic open boundary condition for inflow
+Inflow type:              rhou
+Inflow flow profile:      uniform
+Inflow flow direction:    1 0 0
+Inflow flow value u0:     0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Hydrodynamic open boundary condition at outflow
+Outflow type:             rhou
+Outflow flow direction:   1 0 0
+Outflow flow rho0:        1.0000000e+00
+
+Boundary walls
+--------------
+Boundary walls:                  - Y Z
+Boundary speed u_x (bottom):     0.0000000e+00
+Boundary speed u_x (top):        0.0000000e+00
+Boundary normal lubrication rc:  0.0000000e+00
+Wall boundary links allocated:   5664
+Memory (total, bytes):           90624
+Boundary shear initialise:       0
+Initial conditions.
+
+Scalars - total mean variance min max
+[rho]        3456.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[fluid   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Starting time step loop.
+
+Scalars - total mean variance min max
+[rho]        3456.00  1.00000000000  2.2204460e-16  1.00000000000  1.00000000000
+
+Momentum - x y z
+[total   ]  5.6621374e-15  0.0000000e+00  0.0000000e+00
+[fluid   ]  5.6621374e-15  0.0000000e+00  0.0000000e+00
+[walls   ]  0.0000000e+00  0.0000000e+00  0.0000000e+00
+
+Velocity - x y z
+[minimum ]  1.3877788e-17  0.0000000e+00  0.0000000e+00
+[maximum ]  1.3877788e-17  1.1754944e-38  1.1754944e-38
+
+Completed cycle 1
+
+Timer resolution: 1e-06 second
+
+Timer statistics
+             Section:       tmin       tmax      total
+               Total:      0.012      0.012      0.012   0.012291 (1 call)
+      Time step loop:      0.005      0.005      0.005   0.005252 (1 call)
+         Propagation:      0.001      0.001      0.001   0.001092 (1 call)
+    Propagtn (krnl) :      0.001      0.001      0.001   0.001086 (1 call)
+           Collision:      0.002      0.002      0.002   0.002334 (1 call)
+   Collision (krnl) :      0.002      0.002      0.002   0.002320 (1 call)
+       Lattice halos:      0.001      0.001      0.001   0.000764 (1 call)
+       phi gradients:      0.000      0.000      0.000   0.000002 (1 call)
+                 BBL:      0.001      0.001      0.001   0.000851 (1 call)
+   Force calculation:      0.000      0.000      0.000   0.000004 (1 call)
+          phi update:      0.000      0.000      0.000   0.000000 (1 call)
+               Free1:      0.002      0.002      0.002   0.001855 (1 call)
+End time: Wed Dec  8 14:16:26 2021
+Ludwig finished normally.

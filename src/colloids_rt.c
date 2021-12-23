@@ -51,7 +51,7 @@ int angle_cosine_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * interact);
 int pair_ss_cut_ij_init(pe_t * pe, cs_t * cs, rt_t * rt, interact_t * intrct);
 
 int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
-			 map_t * map);
+			 map_t * map, const lb_model_t * model);
 int colloids_rt_gravity(pe_t * pe, rt_t * rt, colloids_info_t * cinfo);
 int colloids_rt_init_few(pe_t * pe, rt_t * rt, colloids_info_t * cinfo, int nc);
 int colloids_rt_init_from_file(pe_t * pe, rt_t * rt, colloids_info_t * cinfo,
@@ -80,7 +80,8 @@ int colloids_rt_cell_list_checks(pe_t * pe, cs_t * cs, colloids_info_t ** pinfo,
 
 int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
 		     colloid_io_t ** pcio,
-		     interact_t ** interact, wall_t * wall, map_t * map) {
+		     interact_t ** interact, wall_t * wall, map_t * map,
+		     const lb_model_t * model) {
   int nc;
   int init_one = 0;
   int init_two = 0;
@@ -159,7 +160,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
   colloids_info_map_init(*pinfo);
   colloids_halo_state(*pinfo);
 
-  colloids_rt_dynamics(cs, *pinfo, wall, map);
+  colloids_rt_dynamics(cs, *pinfo, wall, map, model);
   colloids_rt_gravity(pe, rt, *pinfo);
 
   /* Set the update frequency and report (non-default values) */
@@ -189,7 +190,7 @@ int colloids_init_rt(pe_t * pe, rt_t * rt, cs_t * cs, colloids_info_t ** pinfo,
  *****************************************************************************/
 
 int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
-			 map_t * map) {
+			 map_t * map, const lb_model_t * model) {
 
   int nsubgrid_local = 0;
   int nsubgrid = 0;
@@ -210,7 +211,7 @@ int colloids_rt_dynamics(cs_t * cs, colloids_info_t * cinfo, wall_t * wall,
   /* Assume there are always fully-resolved particles */
 
   build_update_map(cs, cinfo, map);
-  build_update_links(cs, cinfo, wall, map);
+  build_update_links(cs, cinfo, wall, map, model);
 
 
   return 0;
