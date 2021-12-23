@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2012-2020 The University of Edinburgh
+ *  (c) 2012-2021 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -41,6 +41,7 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
                                           double fnet[3]);
 __global__ void hydro_correct_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
 				       double fnet[3]);
+__global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho);
 
 
 /*****************************************************************************
@@ -76,8 +77,11 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
   cs_nsites(cs, &obj->nsite);
   if (le) lees_edw_nsites(le, &obj->nsite);
 
+  obj->rho = (double *) mem_aligned_calloc(MEM_PAGESIZE, obj->nsite,
+					   sizeof(double));
   obj->u = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
 					 sizeof(double));
+  if (obj->rho == NULL) pe_fatal(pe, "calloc(hydro-rho) failed\n");
   if (obj->u == NULL) pe_fatal(pe, "calloc(hydro->u) failed\n");
 
   obj->f = (double *) mem_aligned_calloc(MEM_PAGESIZE, NHDIM*obj->nsite,
@@ -104,6 +108,11 @@ __host__ int hydro_create(pe_t * pe, cs_t * cs, lees_edw_t * le, int nhcomm,
 
     tdpAssert(tdpMalloc((void **) &obj->target, sizeof(hydro_t)));
     tdpAssert(tdpMemset(obj->target, 0, sizeof(hydro_t)));
+
+    tdpAssert(tdpMalloc((void **) &tmp, obj->nsite*sizeof(double)));
+    tdpAssert(tdpMemset(tmp, 0, obj->nsite*sizeof(double)));
+    tdpAssert(tdpMemcpy(&obj->target->rho, &tmp, sizeof(double *),
+			tdpMemcpyHostToDevice));
 
     tdpAssert(tdpMalloc((void **) &tmp, NHDIM*obj->nsite*sizeof(double)));
     tdpAssert(tdpMemset(tmp, 0, NHDIM*obj->nsite*sizeof(double)));
@@ -145,6 +154,11 @@ __host__ int hydro_free(hydro_t * obj) {
   tdpGetDeviceCount(&ndevice);
 
   if (ndevice > 0) {
+
+    tdpAssert(tdpMemcpy(&tmp, &obj->target->rho, sizeof(double *),
+			tdpMemcpyDeviceToHost));
+    tdpAssert(tdpFree(tmp));
+
     tdpAssert(tdpMemcpy(&tmp, &obj->target->u, sizeof(double *),
 			tdpMemcpyDeviceToHost)); 
     tdpAssert(tdpFree(tmp));
@@ -162,6 +176,7 @@ __host__ int hydro_free(hydro_t * obj) {
   free(obj->eta);
   free(obj->f);
   free(obj->u);
+  free(obj->rho);
   free(obj);
 
   return 0;
@@ -189,6 +204,10 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
     assert(obj->target == obj);
   }
   else {
+    double * tmprho = NULL;
+
+    tdpAssert(tdpMemcpy(&tmprho, &obj->target->rho, sizeof(double *),
+			tdpMemcpyDeviceToHost));
     tdpAssert(tdpMemcpy(&tmpf, &obj->target->f, sizeof(double *),
 			tdpMemcpyDeviceToHost));
     tdpAssert(tdpMemcpy(&tmpu, &obj->target->u, sizeof(double *),
@@ -198,12 +217,14 @@ __host__ int hydro_memcpy(hydro_t * obj, tdpMemcpyKind flag) {
 
     switch (flag) {
     case tdpMemcpyHostToDevice:
+      tdpAssert(tdpMemcpy(tmprho, obj->rho, obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(tmpu, obj->u, NHDIM*obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(tmpf, obj->f, NHDIM*obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(tmpeta, obj->eta, obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(&obj->target->nsite, &obj->nsite, sizeof(int), flag));
       break;
     case tdpMemcpyDeviceToHost:
+      tdpAssert(tdpMemcpy(obj->rho, tmprho, obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(obj->f, tmpf, NHDIM*obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(obj->u, tmpu, NHDIM*obj->nsite*sizeof(double), flag));
       tdpAssert(tdpMemcpy(obj->eta, tmpeta, obj->nsite*sizeof(double), flag));
@@ -234,6 +255,9 @@ __host__ int hydro_u_halo(hydro_t * obj) {
 /*****************************************************************************
  *
  *  hydro_halo_swap
+ *
+ *  There is no halo swap in the density at the moment, as it is never
+ *  required.
  *
  *****************************************************************************/
 
@@ -380,6 +404,37 @@ int hydro_f_local_add(hydro_t * obj, int index, const double force[3]) {
 
 /*****************************************************************************
  *
+ *  hydro_rho_set
+ *
+ *****************************************************************************/
+
+__host__ __device__ int hydro_rho_set(hydro_t * hydro, int index, double rho) {
+
+  assert(hydro);
+
+  hydro->rho[addr_rank0(hydro->nsite, index)] = rho;
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  hydro_rho
+ *
+ *****************************************************************************/
+
+__host__ __device__ int hydro_rho(hydro_t * hydro, int index, double * rho) {
+
+  assert(hydro);
+  assert(rho);
+
+  *rho = hydro->rho[addr_rank0(hydro->nsite, index)];
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
  *  hydro_u_set
  *
  *****************************************************************************/
@@ -471,6 +526,54 @@ __host__ int hydro_f_zero(hydro_t * obj, const double fzero[NHDIM]) {
 
   return 0;
 }
+
+/*****************************************************************************
+ *
+ *  hydro_rho0
+ *
+ *  Set rho uniformly everywhere; rho0 shouldn't be zero!
+ *
+ *****************************************************************************/
+
+__host__ int hydro_rho0(hydro_t * obj, double rho0) {
+
+  dim3 nblk, ntpb;
+  double * rho = NULL;
+
+  assert(obj);
+  assert(obj->target);
+
+  tdpAssert(tdpMemcpy(&rho, &obj->target->rho, sizeof(double *),
+		      tdpMemcpyDeviceToHost));
+
+  kernel_launch_param(obj->nsite, &nblk, &ntpb);
+  tdpLaunchKernel(hydro_rho0_kernel, nblk, ntpb, 0, 0, obj->nsite, rho0, rho);
+
+  tdpAssert(tdpPeekAtLastError());
+  tdpAssert(tdpDeviceSynchronize());
+
+  return 0;
+}
+
+/******************************************************************************
+ *
+ *  hydro_rho0_kernel
+ *
+ *****************************************************************************/
+
+__global__ void hydro_rho0_kernel(int nsite, double rho0, double * rho) {
+
+  int kindex = 0;
+
+  assert(rho);
+
+  for_simt_parallel(kindex, nsite, 1) {
+    rho[addr_rank0(nsite, kindex)] = rho0;
+  }
+
+  return;
+}
+
 
 /*****************************************************************************
  *

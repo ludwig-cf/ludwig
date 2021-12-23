@@ -235,8 +235,12 @@ int stat_diagnostic_write(colloid_diagnostic_t * array, int count,
 
 int colloid_force_from_pth(colloid_t * pc, pth_t * pth, double f[3]) {
 
+  lb_model_t model = {};
+
   assert(pc);
   assert(pth);
+
+  lb_model_create(NVEL, &model);
 
   f[X] = 0.0; f[Y] = 0.0; f[Z] = 0.0;
 
@@ -246,19 +250,23 @@ int colloid_force_from_pth(colloid_t * pc, pth_t * pth, double f[3]) {
 
     int id  = -1;
     int p = link->p;
-    int cmod = cv[p][X]*cv[p][X] + cv[p][Y]*cv[p][Y] + cv[p][Z]*cv[p][Z];
+    int cmod = model.cv[p][X]*model.cv[p][X]
+             + model.cv[p][Y]*model.cv[p][Y]
+             + model.cv[p][Z]*model.cv[p][Z];
 
     if (cmod != 1) continue;
 
-    if (cv[p][X]) id = X;
-    if (cv[p][Y]) id = Y;
-    if (cv[p][Z]) id = Z;
+    if (model.cv[p][X]) id = X;
+    if (model.cv[p][Y]) id = Y;
+    if (model.cv[p][Z]) id = Z;
 
     for (int ia = 0; ia < 3; ia++) {
-      f[ia] += 1.0*cv[p][id]
+      f[ia] += 1.0*model.cv[p][id]
 	*pth->str[addr_rank2(pth->nsites, 3, 3, link->i, ia, id)];
     }
   }
+
+  lb_model_free(&model);
 
   return 0;
 }

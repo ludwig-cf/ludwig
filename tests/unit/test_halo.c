@@ -71,6 +71,7 @@ int test_halo_suite(void) {
 
 int do_test_const_blocks(void) {
 
+#ifdef TEST_TO_BE_REMOVED_WITH_GLOBAL_SYMBOLS
   int i, k;
 
   for (i = 0; i < CVXBLOCK; i++) {
@@ -93,7 +94,7 @@ int do_test_const_blocks(void) {
       test_assert(cv[zdisp_bwd_cv[i] + k][Z] == -1);
     }
   }
-
+#endif
   return 0;
 }
 
@@ -143,7 +144,7 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f_set(lb, index, p, nd, 1.0);
 	  }
 	}
@@ -161,7 +162,7 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f_set(lb, index, p, nd, 0.0);
 	  }
 	}
@@ -183,7 +184,7 @@ int do_test_halo_null(pe_t * pe, cs_t * cs, lb_halo_enum_t halo) {
 	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f(lb, index, p, nd, &f_actual);
 
 	    /* everything should still be zero inside the lattice */
@@ -255,7 +256,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	index = cs_index(cs, n[X], n[Y], n[Z]);
 
 	for (nd = 0; nd < ndist; nd++) {
-	  for (p = 0; p < NVEL; p++) {
+	  for (p = 0; p < lb->model.nvel; p++) {
 	    lb_f_set(lb, index, p, nd, -1.0);
 	  }
 	}
@@ -278,7 +279,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	    n[Z] <= nhalo || n[Z] > nlocal[Z] - nhalo) {
 
 	  for (nd = 0; nd < ndist; nd++) {
-	    for (p = 0; p < NVEL; p++) {
+	    for (p = 0; p < lb->model.nvel; p++) {
 	      lb_f_set(lb, index, p, nd, 1.0*(offset[dim] + n[dim]));
 	    }
 	  }
@@ -314,7 +315,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	      f_expect = offset[dim];
 	      if (mpi_cartcoords[dim] == 0) f_expect = ltot[dim];
 
-	      for (p = 0; p < NVEL; p++) {
+	      for (p = 0; p < lb->model.nvel; p++) {
 		lb_f(lb, index, p, nd, &f_actual);
 		test_assert(fabs(f_actual-f_expect) < DBL_EPSILON);
 	      }
@@ -326,7 +327,7 @@ int do_test_halo(pe_t * pe, cs_t * cs, int dim, lb_halo_enum_t halo) {
 	      f_expect = offset[dim] + nlocal[dim] + 1.0;
 	      if (mpi_cartcoords[dim] == mpi_cartsz[dim] - 1) f_expect = 1.0;
 
-	      for (p = 0; p < NVEL; p++) {
+	      for (p = 0; p < lb->model.nvel; p++) {
 		lb_f(lb, index, p, nd, &f_actual);
 		test_assert(fabs(f_actual-f_expect) < DBL_EPSILON);
 	      }

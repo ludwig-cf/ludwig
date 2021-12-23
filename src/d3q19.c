@@ -74,14 +74,6 @@ const char * model_name_d3q19 = "D3Q19";
  *
  *****************************************************************************/
 
-const int cv[NVEL19][3] = {{ 0,  0,  0},
-			   { 1,  1,  0}, { 1,  0,  1}, { 1,  0,  0},
-			   { 1,  0, -1}, { 1, -1,  0}, { 0,  1,  1},
-			   { 0,  1,  0}, { 0,  1, -1}, { 0,  0,  1},
-			   { 0,  0, -1}, { 0, -1,  1}, { 0, -1,  0},
-			   { 0, -1, -1}, {-1,  1,  0}, {-1,  0,  1},
-			   {-1,  0,  0}, {-1,  0, -1}, {-1, -1,  0}};
-
 #define w0 (12.0/36.0)
 #define w1  (2.0/36.0)
 #define w2  (1.0/36.0)
@@ -103,13 +95,7 @@ const int cv[NVEL19][3] = {{ 0,  0,  0},
 #define wd ( 1.0/48.0)
 #define we ( 3.0/48.0)
 
-const double wv[NVEL19] = {w0,
-			   w2, w2, w1, w2, w2, w2, w1, w2, w1,
-			   w1, w2, w1, w2, w2, w2, w1, w2, w2}; 
-const double norm_[NVEL19] = {c1,
-      3.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0, 9.0/2.0, 9.0, 9.0/2.0,
-      3.0/4.0, 3.0/2.0,3.0/2.0,3.0/2.0, 9.0/4.0,9.0/2.0,9.0/2.0,9.0/2.0, 0.5};
-
+/* Global symbols are replaced by lb_model_t ...
 const double ma_[NVEL19][NVEL19] = {
 { c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1, c1},
 { c0, c1, c1, c1, c1, c1, c0, c0, c0, c0, c0, c0, c0, c0,-c1,-c1,-c1,-c1,-c1},
@@ -153,7 +139,7 @@ const double mi_[NVEL19][NVEL19] = {
 {w2,-wa, c0,-wa, wa, c0, r4,-wb, c0, wa, wd,-wb, c0,-wb,-we, r8, c0, r8, wc},
 {w2,-wa,-wa, c0, wa, r4, c0, wa, c0,-wb,-wb, wa, wa, c0, c0, c0, c0, c0, wc}
 };
-
+*/
 const int xblocklen_cv[CVXBLOCK19] = {5};
 const int xdisp_fwd_cv[CVXBLOCK19] = {1};
 const int xdisp_bwd_cv[CVXBLOCK19] = {14};

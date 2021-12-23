@@ -47,9 +47,18 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
   assert(rt);
   assert(lb);
 
+  /* Prefer "lb_fluctuations" in the future */
+
   p = rt_string_parameter(rt, "isothermal_fluctuations", tmp, BUFSIZ);
 
   if (p == 1 && strcmp(tmp, "on") == 0) {
+    noise_on = 1;
+    noise_present_set(noise, NOISE_RHO, noise_on);
+  }
+
+  p = rt_switch(rt, "lb_fluctuations");
+
+  if (p == 1) {
     noise_on = 1;
     noise_present_set(noise, NOISE_RHO, noise_on);
   }
@@ -76,7 +85,15 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
     }
   }
 
-  /* Ghost modes */
+  /* Ghost modes (prefer "lb_ghost_modes" in future) */
+
+  p = rt_key_required(rt, "lb_ghost_modes", RT_NONE); /* p = 0 if present */
+
+  if (p == 0) {
+    nghost = rt_switch(rt, "lb_ghost_modes");
+    if (nghost == 0) lb_collision_ghost_modes_off(lb);
+  }
+  else {
 
   p = rt_string_parameter(rt, "ghost_modes", tmp, BUFSIZ);
   nghost = 1;
@@ -85,6 +102,7 @@ int collision_run_time(pe_t * pe, rt_t * rt, lb_t * lb, noise_t * noise) {
     lb_collision_ghost_modes_off(lb);
   }
 
+  }
   lb_collision_relaxation_times(lb, tau);
 
   pe_info(pe, "\n");

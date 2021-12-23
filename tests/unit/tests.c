@@ -72,6 +72,14 @@ __host__ int tests_create() {
   test_io_suite();
   test_io_options_suite();
   test_io_options_rt_suite();
+  test_lb_d2q9_suite();
+  test_lb_d3q15_suite();
+  test_lb_d3q19_suite();
+  test_lb_model_suite();
+  test_lb_bc_inflow_opts_suite();
+  test_lb_bc_inflow_rhou_suite();
+  test_lb_bc_outflow_opts_suite();
+  test_lb_bc_outflow_rhou_suite();
   test_le_suite();
   test_lubrication_suite();
   test_map_suite();
@@ -82,6 +90,10 @@ __host__ int tests_create() {
   test_pair_ss_cut_suite();
   test_pair_ss_cut_ij_suite();
   test_pair_yukawa_suite();
+  test_phi_bc_inflow_opts_suite();
+  test_phi_bc_inflow_fixed_suite();
+  test_phi_bc_outflow_opts_suite();
+  test_phi_bc_outflow_free_suite();
   test_polar_active_suite();
   test_psi_suite();
   test_lb_prop_suite();

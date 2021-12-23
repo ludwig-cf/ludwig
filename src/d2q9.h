@@ -22,13 +22,9 @@ enum {CVXBLOCK9 = 1};
 enum {CVYBLOCK9 = 3};
 enum {CVZBLOCK9 = 1};
 
-#ifdef _D2Q9_
+#include "lb_d2q9.h"
 
-extern const    int cv[NVEL9][3];
-extern const double wv[NVEL9];
-extern const double norm_[NVEL9];
-extern const double ma_[NVEL9][NVEL9];
-extern const double mi_[NVEL9][NVEL9];
+#ifdef _D2Q9_
 
 extern const int xblocklen_cv[CVXBLOCK9];
 extern const int xdisp_fwd_cv[CVXBLOCK9];
@@ -41,16 +37,6 @@ extern const int ydisp_bwd_cv[CVYBLOCK9];
 extern const int zblocklen_cv[CVZBLOCK9];
 extern const int zdisp_fwd_cv[CVZBLOCK9];
 extern const int zdisp_bwd_cv[CVZBLOCK9];
-
-#define LB_CV_D2Q9(cv) const int8_t cv[NVEL9][3] = {  \
-                          { 0,  0,  0},               \
-                          { 1,  1,  0}, { 1,  0,  0}, \
-                          { 1, -1,  0}, { 0,  1,  0}, \
-                          { 0, -1,  0}, {-1,  1,  0}, \
-                          {-1,  0,  0}, {-1, -1,  0}};
-
-#define LB_NORMALISERS_D2Q9(norm) const double norm[NVEL9] = { \
-    1.0, 3.0, 3.0, 9.0/2.0, 9.0, 9.0/2.0, 1.0/4.0, 3.0/8.0, 3.0/8.0};
 
 #endif
 
