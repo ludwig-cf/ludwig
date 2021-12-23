@@ -166,6 +166,7 @@ struct ludwig_s {
   stats_ahydro_t * stat_ah;    /* Hydrodynamic radius calibration */
   stats_rheo_t * stat_rheo;    /* Rheology diagnostics */
   stats_turb_t * stat_turb;    /* Turbulent diagnostics */
+  timekeeper_t tk;             /* Time keeper */
 };
 
 static int ludwig_rt(ludwig_t * ludwig);
@@ -173,6 +174,7 @@ static int ludwig_report_momentum(ludwig_t * ludwig);
 static int ludwig_colloids_update(ludwig_t * ludwig);
 static int ludwig_colloids_update_low_freq(ludwig_t * ludwig);
 
+int ludwig_timekeeper_init(ludwig_t * ludwig);
 int free_energy_init_rt(ludwig_t * ludwig);
 int visc_model_init_rt(pe_t * pe, rt_t * rt, ludwig_t * ludwig);
 int io_replace_values(field_t * field, map_t * map, int map_id, double value);
@@ -202,7 +204,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   io_info_t * iohandler = NULL;
 
   assert(ludwig);
-  
+
   TIMER_init(ludwig->pe);
   TIMER_start(TIMER_TOTAL);
 
@@ -220,6 +222,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   cs = ludwig->cs;
   rt = ludwig->rt;
 
+  ludwig_timekeeper_init(ludwig);
   init_control(pe, rt);
 
   physics_init_rt(rt, ludwig->phys); 
@@ -486,6 +489,9 @@ void ludwig_run(const char * inputfile) {
   if (ludwig->phi) field_memcpy(ludwig->phi, tdpMemcpyHostToDevice);
   if (ludwig->p)   field_memcpy(ludwig->p, tdpMemcpyHostToDevice);
   if (ludwig->q)   field_memcpy(ludwig->q, tdpMemcpyHostToDevice);
+
+  /* Lap timer: include initial statistics in first trip */
+  TIMER_start(TIMER_LAP);
 
   pe_info(ludwig->pe, "Initial conditions.\n");
   wall_is_pm(ludwig->wall, &is_porous_media);
@@ -910,7 +916,10 @@ void ludwig_run(const char * inputfile) {
 
     /* Print progress report */
 
+    timekeeper_step(&ludwig->tk);
+
     if (is_statistics_step()) {
+
       lb_memcpy(ludwig->lb, tdpMemcpyDeviceToHost);
       stats_distribution_print(ludwig->lb, ludwig->map);
       lb_ndist(ludwig->lb, &im);
@@ -2065,6 +2074,36 @@ int io_replace_values(field_t * field, map_t * map, int map_id, double value) {
 	}
       }
     }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  ludwig_timekeeper_init
+ *
+ *****************************************************************************/
+
+__host__ int ludwig_timekeeper_init(ludwig_t * ludwig) {
+
+  timekeeper_options_t opts = {};
+
+  assert(ludwig);
+
+  {
+    pe_t * pe = ludwig->pe;
+    rt_t * rt = ludwig->rt;
+
+    if (rt_switch(rt, "timer_lap_report")) opts.lap_report = 1;
+    rt_int_parameter(rt, "timer_lap_report_freq", &opts.lap_report_freq);
+
+    if (opts.lap_report && opts.lap_report_freq == 0) {
+      pe_fatal(pe, "Please specify a timer_lap_report_freq "
+	           "(timer_lap_report is on)\n");
+    }
+
+    timekeeper_create(pe, &opts, &ludwig->tk);
   }
 
   return 0;

@@ -1111,9 +1111,9 @@ __global__ void hydro_accumulate_kernel_v(kernel_ctxt_t * ktx, hydro_t * hydro,
     double fyb = 0.0;
     double fzb = 0.0;
     for (int it = 0; it < blockDim.x; it++) {
-      fxb += fx[8*it];
-      fyb += fy[8*it];
-      fzb += fz[8*it];
+      fxb += fx[TARGET_PAD*it];
+      fyb += fy[TARGET_PAD*it];
+      fzb += fz[TARGET_PAD*it];
     }
     tdpAtomicAddDouble(fnet + X, fxb);
     tdpAtomicAddDouble(fnet + Y, fyb);

@@ -42,8 +42,6 @@ struct pe_s {
   char subdirectory[FILENAME_MAX];
 };
 
-__host__ int pe_time(char * strctime, int bufsiz);
-
 /*****************************************************************************
  *
  *  pe_create
