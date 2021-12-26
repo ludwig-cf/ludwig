@@ -295,7 +295,7 @@ __host__ int hydro_halo_swap(hydro_t * obj, hydro_halo_enum_t flag) {
 __host__ int hydro_init_io_info(hydro_t * obj, int grid[3], int form_in,
 				int form_out) {
 
-  io_info_arg_t args;
+  io_info_args_t args = {};
 
   assert(obj);
   assert(grid);

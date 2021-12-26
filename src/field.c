@@ -265,7 +265,7 @@ __host__ __device__ int field_nf(field_t * obj, int * nf) {
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out) {
 
-  io_info_arg_t args;
+  io_info_args_t args = {};
 
   assert(obj);
   assert(obj->info == NULL);

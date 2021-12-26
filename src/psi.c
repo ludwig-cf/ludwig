@@ -255,7 +255,7 @@ int psi_diffusivity(psi_t * obj, int n, double * diff) {
 
 int psi_init_io_info(psi_t * obj, int grid[3], int form_in, int form_out) {
 
-  io_info_arg_t args;
+  io_info_args_t args = {};
 
   assert(obj);
   assert(grid);
