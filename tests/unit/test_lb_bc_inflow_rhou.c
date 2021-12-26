@@ -188,6 +188,7 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
   lb_bc_inflow_opts_t options = {.nvel = nvel,
                                  .flow = {1, 0, 0},
                                  .u0   = {0.01, 0.0, 0.0}};
+  lb_data_options_t lb_options = lb_data_options_default();
   lb_bc_inflow_rhou_t * inflow = NULL;
   hydro_t * hydro = NULL;
   lb_t * lb = NULL;
@@ -203,8 +204,7 @@ __host__ int test_lb_bc_inflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   lb_bc_inflow_rhou_create(pe, cs, &options, &inflow);
   hydro_create(pe, cs, NULL, 1, &hydro);
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+  lb_data_create(pe, cs, &lb_options, &lb);
 
   /* Set the relevant domain values (rho only here) */
 

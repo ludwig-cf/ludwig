@@ -6,6 +6,8 @@
  *  Edinburgh Soft Matter and Statistical Physics Group and
  *  Edinburgh Parallel Computing Centre
  *
+ *  (c) 2021 The University of Edinburgh
+ *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
  *
@@ -167,8 +169,14 @@ __host__ int test_lb_bc_outflow_rhou_impose(pe_t * pe, cs_t * cs, int nvel) {
 
   lb_bc_outflow_rhou_create(pe, cs, &options, &outflow);
   hydro_create(pe, cs, NULL, 1, &hydro);
-  lb_create(pe, cs, &lb);
-  lb_init(lb);
+
+  {
+    lb_data_options_t opts = lb_data_options_default();
+    opts.ndim = NDIM;
+    opts.nvel = nvel;
+    lb_data_create(pe, cs, &opts, &lb);
+  }
+
 
   /* Set some outflow velocities in the domain */
 
