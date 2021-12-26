@@ -19,7 +19,7 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "model.h"
+#include "lb_data.h"
 #include "map.h"
 
 typedef enum wall_slip_enum {WALL_NO_SLIP = 0,

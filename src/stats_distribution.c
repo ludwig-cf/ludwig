@@ -23,7 +23,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lb_model_s.h"
 #include "util.h"
 #include "util_sum.h"
 #include "stats_distribution.h"
@@ -303,12 +302,11 @@ __global__ void distribution_gm_kernel(kernel_ctxt_t * ktx, lb_t * lb,
     map_status(map, index, &status);
 
     if (status == MAP_FLUID) {
-      for (int p = 1; p < NVEL; p++) {
-	LB_CV(cv);
-	double f = lb->f[LB_ADDR(lb->nsite,lb->ndist,NVEL,index,LB_RHO,p)];
-	double gxf = f*cv[p][X];
-	double gyf = f*cv[p][Y];
-	double gzf = f*cv[p][Z];
+      for (int p = 1; p < lb->nvel; p++) {
+	double f = lb->f[LB_ADDR(lb->nsite,lb->ndist,lb->nvel,index,LB_RHO,p)];
+	double gxf = f*lb->model.cv[p][X];
+	double gyf = f*lb->model.cv[p][Y];
+	double gzf = f*lb->model.cv[p][Z];
 	kahan_add_double(&gx[tid], gxf);
 	kahan_add_double(&gy[tid], gyf);
 	kahan_add_double(&gz[tid], gzf);

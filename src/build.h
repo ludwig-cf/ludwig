@@ -17,7 +17,7 @@
 #include "map.h"
 #include "psi.h"
 #include "colloids.h"
-#include "model.h"
+#include "lb_data.h"
 #include "wall.h"
 #include "free_energy.h"
 

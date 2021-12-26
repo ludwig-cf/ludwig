@@ -6,14 +6,14 @@
  *  Edinburgh Parallel Computing Centre
  *
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
- *  (c) 2010-2014 The University of Edinburgh
+ *  (c) 2010-2022 The University of Edinburgh
  *
  *****************************************************************************/
 
-#ifndef STATS_DISTRIBUTION_H
-#define STATS_DISTRIBUTION_H
+#ifndef LUDWIG_STATS_DISTRIBUTION_H
+#define LUDWIG_STATS_DISTRIBUTION_H
 
-#include "model.h"
+#include "lb_data.h"
 #include "map.h"
 
 int stats_distribution_print(lb_t * lb, map_t * map);

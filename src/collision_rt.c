@@ -16,7 +16,6 @@
 #include <string.h>
 
 #include "pe.h"
-#include "model.h"
 #include "physics.h"
 #include "runtime.h"
 #include "collision.h"

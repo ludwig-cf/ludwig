@@ -31,7 +31,6 @@
 
 #include "pe.h"
 #include "coords.h"
-#include "lb_model_s.h"
 #include "util.h"
 #include "control.h"
 #include "physics.h"

@@ -22,7 +22,7 @@
 
 #include "pe.h"
 #include "pth_s.h"
-#include "model.h"
+#include "lb_data.h"
 #include "blue_phase.h"
 #include "colloid_sums.h"
 #include "phi_force_stress.h"

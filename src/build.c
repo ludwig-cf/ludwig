@@ -24,7 +24,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "physics.h"
-#include "lb_model_s.h"
 #include "colloid_sums.h"
 #include "psi_colloid.h"
 #include "util.h"
