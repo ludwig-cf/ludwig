@@ -32,7 +32,6 @@
 #include "control.h"
 #include "util.h"
 
-#include "model.h"
 #include "model_le.h"
 #include "bbl.h"
 
@@ -120,7 +119,6 @@
 #include "fe_lc_stats.h"
 #include "fe_ternary_stats.h"
 
-#include "lb_model_s.h"
 #include "field_s.h"
 
 #include "ludwig.h"
@@ -241,7 +239,7 @@ static int ludwig_rt(ludwig_t * ludwig) {
   if (ludwig->psi) psi_petsc_init(ludwig->psi, ludwig->fe, ludwig->epsilon);
 #endif
 
-  lb_run_time(pe, cs, rt, ludwig->lb);
+  lb_run_time(pe, cs, rt, &ludwig->lb);
   collision_run_time(pe, rt, ludwig->lb, ludwig->noise_rho);
   map_init_rt(pe, cs, rt, &ludwig->map);
 
@@ -1263,7 +1261,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
   rt = ludwig->rt;
   cs_create(pe,&cs);
 
-  lb_create(pe, cs, &ludwig->lb);
   noise_create(pe, cs, &ludwig->noise_rho);
 
   lees_edw_init_rt(rt, info);
@@ -1368,8 +1365,6 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     fe_symm_t * fe = NULL;
 
     /* Symmetric free energy via full lattice kintic equation */
-
-    lb_ndist_set(ludwig->lb, 2);
 
     nf = 1;      /* 1 scalar order parameter */
     nhalo = 1;   /* Require one point for LB. */

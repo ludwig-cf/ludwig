@@ -24,7 +24,6 @@
 #include "util.h"
 #include "runtime.h"
 #include "coords.h"
-#include "lb_model_s.h"
 #include "io_info_args_rt.h"
 #include "distribution_rt.h"
 
@@ -42,6 +41,32 @@ static int lb_rt_2d_shear_wave(lb_t * lb);
 static int lb_init_uniform(lb_t * lb, double rho0, double u0[3]);
 static int lb_init_poiseuille(lb_t * lb, double rho0,
 			      const double umax[3]);
+
+static int lb_ndist_rt(rt_t * rt);
+
+/*****************************************************************************
+ *
+ *  lb_ndist_rt
+ *
+ *  Determine the number of distributions required at run time.
+ *
+ *****************************************************************************/
+
+int lb_ndist_rt(rt_t * rt) {
+
+  int ndist = 1;
+
+  assert(rt);
+
+  {
+    /* The only exception ... */
+    char description[BUFSIZ] = {};
+    rt_string_parameter(rt, "free_energy", description, BUFSIZ);
+    if (strcmp(description, "symmetric_lb") == 0) ndist = 2;
+  }
+
+  return ndist;
+}
 
 /*****************************************************************************
  *
@@ -77,15 +102,14 @@ static int lb_init_poiseuille(lb_t * lb, double rho0,
  *
  *****************************************************************************/
 
-int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb);
+int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb);
 
-int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
+int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 
   if (1) {
     lb_run_time_prev(pe, cs, rt, lb);
   }
   else {
-    /* Miscellaneous */
 
     /* I/O */
 
@@ -93,14 +117,11 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
     io_info_args_t rho_info = io_info_args_default();
 
     io_info_args_rt(pe, rt, "lb", IO_INFO_READ_WRITE, &lb_info);
-    lb_io_info_commit(lb, lb_info);
 
     /* density is output only */
 
     io_info_args_rt(pe, rt, "rho", IO_INFO_WRITE_ONLY, &rho_info);
-    /* lb_io_info_rho_commit(lb, rho_info); */
 
-    /* Report to stdout */
   }
 
   return 0;
@@ -122,20 +143,22 @@ int lb_run_time(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
  *
  *****************************************************************************/
 
-int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
+int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
 
   int ndist;
   int nreduced;
   int io_grid[3] = {1, 1, 1};
   char string[FILENAME_MAX] = "";
   char memory = ' ';
-  int form_in = IO_FORMAT_DEFAULT;
-  int form_out = IO_FORMAT_DEFAULT;
+  int lb_form_in = IO_FORMAT_DEFAULT;
+  int lb_form_out = IO_FORMAT_DEFAULT;
   int rho_wanted;
 
-  io_info_arg_t param;
   io_info_t * io_info = NULL;
   io_info_t * io_rho = NULL;
+
+  io_mode_enum_t lb_input_opt_mode = io_mode_default();
+  lb_data_options_t options = lb_data_options_default();
 
   assert(pe);
   assert(cs);
@@ -148,11 +171,6 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 
   rt_int_parameter_vector(rt, "distribution_io_grid", io_grid);
 
-  param.grid[X] = io_grid[X];
-  param.grid[Y] = io_grid[Y];
-  param.grid[Z] = io_grid[Z];
-  io_info_create(pe, cs, &param, &io_info);
-
   rt_string_parameter(rt,"distribution_io_format_input", string,
 		      FILENAME_MAX);
 
@@ -160,7 +178,9 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 
   /* TODO: r -> "AOS" or "SOA" or "AOSOA" */
   if (DATA_MODEL == DATA_MODEL_SOA) memory = 'R';
-  lb_ndist(lb, &ndist);
+
+  ndist = lb_ndist_rt(rt);
+  assert(ndist == 1 || ndist == 2);
 
   pe_info(pe, "\n");
   pe_info(pe, "Lattice Boltzmann distributions\n");
@@ -173,11 +193,11 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 
   if (strcmp("BINARY_SERIAL", string) == 0) {
     pe_info(pe, "Input format:     binary single serial file\n");
-    io_info_set_processor_independent(io_info);
+    lb_input_opt_mode = IO_MODE_SINGLE;
   }
   else if (strcmp(string, "ASCII") == 0) {
-    form_in = IO_FORMAT_ASCII;
-    form_out = IO_FORMAT_ASCII;
+    lb_form_in = IO_FORMAT_ASCII;
+    lb_form_out = IO_FORMAT_ASCII;
     pe_info(pe, "Input format:     ASCII\n");
     pe_info(pe, "Output format:    ASCII\n");
   }
@@ -188,8 +208,6 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
 
   pe_info(pe, "I/O grid:         %d %d %d\n", io_grid[X], io_grid[Y], io_grid[Z]);
 
-  lb_io_info_set(lb, io_info, form_in, form_out);
-
   /* Density io_info:
    *
    * rho_io_wanted           switch to indicate output wanted [no]
@@ -198,42 +216,92 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t * lb) {
    * rho_io_format           ASCII/BINARY (default BINARY)
    * */
 
-  form_in = IO_FORMAT_BINARY;
-  form_out = IO_FORMAT_BINARY;
 
-  io_grid[X] = 1; io_grid[Y] = 1; io_grid[Z] = 1;
+  int rho_form_in = IO_FORMAT_BINARY;
+  int rho_form_out = IO_FORMAT_BINARY;
+  io_info_args_t rhoio = io_info_args_default();
 
   rho_wanted = rt_switch(rt, "rho_io_wanted");
-  rt_int_parameter_vector(rt, "rho_io_grid", io_grid);
+  rt_int_parameter_vector(rt, "rho_io_grid", rhoio.grid);
   rt_string_parameter(rt,"rho_io_format", string, FILENAME_MAX);
 
-  param.grid[X] = io_grid[X];
-  param.grid[Y] = io_grid[Y];
-  param.grid[Z] = io_grid[Z];
-
   if (strcmp(string, "ASCII") == 0) {
-    form_in = IO_FORMAT_ASCII;
-    form_out = IO_FORMAT_ASCII;
+    rho_form_in = IO_FORMAT_ASCII;
+    rho_form_out = IO_FORMAT_ASCII;
   }
-
-  io_info_create(pe, cs, &param, &io_rho);
-  io_info_metadata_filestub_set(io_rho, "rho");
-  lb_io_rho_set(lb, io_rho, form_in, form_out);
 
   if (rho_wanted) {
     pe_info(pe, "Fluid density output\n");
-    if (form_out==IO_FORMAT_ASCII)  pe_info(pe, "Output format:    ASCII\n");
-    if (form_out==IO_FORMAT_BINARY) pe_info(pe, "Output format:    binary\n");
+    if (rho_form_out == IO_FORMAT_ASCII)  {
+      pe_info(pe, "Output format:    ASCII\n");
+    }
+    if (rho_form_out == IO_FORMAT_BINARY) {
+      pe_info(pe, "Output format:    binary\n");
+    }
     pe_info(pe, "I/O grid:         %d %d %d\n",
-                io_grid[X], io_grid[Y], io_grid[Z]);
+	    rhoio.grid[X], rhoio.grid[Y], rhoio.grid[Z]);
   }
+
 
   /* Initialise */
 
-  lb_init(lb);
+  options.ndim  = NDIM;
+  options.nvel  = NVEL;
+  options.ndist = ndist;
+
+  /* Halo options */
+  if (nreduced == 1) options.halo = LB_HALO_REDUCED;
+  {
+    char htype[BUFSIZ] = {};
+    int havetype = rt_string_parameter(rt, "lb_halo_scheme", htype, BUFSIZ);
+    if (strcmp(htype, "lb_halo_host") == 0) {
+      options.halo = LB_HALO_HOST;
+    }
+    else if (strcmp(htype, "lb_halo_target") == 0) {
+      options.halo = LB_HALO_TARGET;
+    }
+    else if (strcmp(htype, "lb_halo_full") == 0) {
+      options.halo = LB_HALO_FULL;
+    }
+    else if (strcmp(htype, "lb_halo_reduced") == 0) {
+      options.halo = LB_HALO_REDUCED;
+    }
+    else if (strcmp(htype, "lb_halo_openmp_full") == 0) {
+      options.halo = LB_HALO_OPENMP_FULL;
+    }
+    else if (strcmp(htype, "lb_halo_openmp_reduced") == 0) {
+      options.halo = LB_HALO_OPENMP_REDUCED;
+    }
+    else {
+      pe_fatal(pe, "lb_halo_scheme not recognised\n");
+    }
+    if (havetype) {
+      pe_info(pe, "Halo scheme:      %s\n", htype);
+    }
+  }
+  
+  lb_data_create(pe, cs, &options, lb);
+
+  /* distribution i/o */
+  {
+    io_info_args_t tmp = {};
+    tmp.grid[X] = io_grid[X];
+    tmp.grid[Y] = io_grid[Y];
+    tmp.grid[Z] = io_grid[Z];
+    io_info_create(pe, cs, &tmp, &io_info);
+  }
 
   io_info_metadata_filestub_set(io_info, "dist");
-  if (nreduced == 1) lb_halo_set(lb, LB_HALO_REDUCED);
+  if (lb_input_opt_mode == IO_MODE_SINGLE) {
+    io_info_set_processor_independent(io_info);
+  }
+  lb_io_info_set(*lb, io_info, lb_form_in, lb_form_out);
+
+  /* rho i/o */
+
+  io_info_create(pe, cs, &rhoio, &io_rho);
+  io_info_metadata_filestub_set(io_rho, "rho");
+  lb_io_rho_set(*lb, io_rho, rho_form_in, rho_form_out);
 
   return 0;
 }
