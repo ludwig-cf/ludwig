@@ -272,7 +272,7 @@ int lb_run_time_prev(pe_t * pe, cs_t * cs, rt_t * rt, lb_t ** lb) {
     else if (strcmp(htype, "lb_halo_openmp_reduced") == 0) {
       options.halo = LB_HALO_OPENMP_REDUCED;
     }
-    else {
+    else if (havetype) {
       pe_fatal(pe, "lb_halo_scheme not recognised\n");
     }
     if (havetype) {

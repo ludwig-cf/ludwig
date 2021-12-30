@@ -184,11 +184,11 @@ int util_lb_data_check(lb_t * lb, int full) {
 
 /*****************************************************************************
  *
- *  test_lb_halo_create
+ *  test_lb_halo_post_wait
  *
  *****************************************************************************/
 
-int test_lb_halo_create(pe_t * pe, cs_t * cs, int ndim, int nvel, int full) {
+int test_lb_halo_post_wait(pe_t * pe, cs_t * cs, int ndim, int nvel, int full) {
 
   lb_data_options_t options = lb_data_options_default();
   lb_t * lb = NULL;
@@ -196,6 +196,8 @@ int test_lb_halo_create(pe_t * pe, cs_t * cs, int ndim, int nvel, int full) {
   assert(pe);
   assert(cs);
 
+  printf("test halo create ndim = %2d nvel = %2d full = %2d\n",
+	 ndim, nvel, full);
   options.ndim = ndim;
   options.nvel = nvel;
   lb_data_create(pe, cs, &options, &lb);
@@ -204,7 +206,9 @@ int test_lb_halo_create(pe_t * pe, cs_t * cs, int ndim, int nvel, int full) {
 
   {
     lb_halo_t h = {};
-    lb_halo_create(lb, &h, full);
+    lb_halo_create(lb, &h, LB_HALO_OPENMP_FULL);
+    lb_halo_post(lb, &h);
+    lb_halo_wait(lb, &h);
     lb_halo_free(lb, &h);
   }
 
@@ -233,8 +237,8 @@ int test_lb_halo(pe_t * pe) {
     cs_ntotal_set(cs, ntotal);
     cs_init(cs);
 
-    test_lb_halo_create(pe, cs, 2, 9, 0);
-    test_lb_halo_create(pe, cs, 2, 9, 1);
+    test_lb_halo_post_wait(pe, cs, 2, 9, LB_HALO_OPENMP_REDUCED);
+    test_lb_halo_post_wait(pe, cs, 2, 9, LB_HALO_OPENMP_FULL);
 
     cs_free(cs);
   }
@@ -246,10 +250,10 @@ int test_lb_halo(pe_t * pe) {
     cs_create(pe, &cs);
     cs_init(cs);
 
-    test_lb_halo_create(pe, cs, 3, 15, 0);
-    test_lb_halo_create(pe, cs, 3, 15, 1);
-    test_lb_halo_create(pe, cs, 3, 19, 0);
-    test_lb_halo_create(pe, cs, 3, 19, 1);
+    test_lb_halo_post_wait(pe, cs, 3, 15, LB_HALO_OPENMP_REDUCED);
+    test_lb_halo_post_wait(pe, cs, 3, 15, LB_HALO_OPENMP_FULL);
+    test_lb_halo_post_wait(pe, cs, 3, 19, LB_HALO_OPENMP_REDUCED);
+    test_lb_halo_post_wait(pe, cs, 3, 19, LB_HALO_OPENMP_FULL);
     /* This will break while still fixed NVEL present...
     test_lb_halo_create(pe, cs, 3, 27, 0);
     test_lb_halo_create(pe, cs, 3, 27, 1);

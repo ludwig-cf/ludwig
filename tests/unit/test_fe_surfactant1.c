@@ -7,7 +7,7 @@
  *  Edinburgh Soft Matter and Statistical Phsyics Group and
  *  Edinburgh Parallel Computing Centre
  *
- *  (c) 2019 The University of Edinburgh
+ *  (c) 2019-2022 The University of Edinburgh
  *
  *  Contributing authors:
  *  Kevin Stratford (kevin@epcc.ed.ac.uk)
@@ -66,11 +66,12 @@ __host__ int test_fe_surfactant1_suite(void) {
   }
   else {
 
+    field_options_t opts = field_options_ndata_nhalo(nf2, nhalo);
+
     cs_create(pe, &cs);
     cs_init(cs);
 
-    field_create(pe, cs, nf2, "surfactant", &phi);
-    field_init(phi, nhalo, NULL);
+    field_create(pe, cs, NULL, "surfactant", &opts, &phi);
 
     test_fe_surf_create(pe, cs, phi);
     test_fe_surf_xi_etc(pe, cs, phi);

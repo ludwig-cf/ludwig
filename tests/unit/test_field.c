@@ -36,6 +36,8 @@ static int do_test_io(pe_t * pe, int nf, int io_format);
 static int test_field_halo(cs_t * cs, field_t * phi);
 
 int do_test_device1(pe_t * pe);
+int test_field_halo_create(pe_t * pe);
+
 __global__ void do_test_field_kernel1(field_t * phi);
 
 /*****************************************************************************
@@ -61,6 +63,8 @@ int test_field_suite(void) {
   do_test_io(pe, 5, IO_FORMAT_ASCII);
   do_test_io(pe, 5, IO_FORMAT_BINARY);
 
+  test_field_halo_create(pe);
+
   pe_info(pe, "PASS     ./unit/test_field\n");
   pe_free(pe);
 
@@ -83,6 +87,7 @@ static int do_test0(pe_t * pe) {
 
   cs_t * cs = NULL;
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nfref, nhalo);
 
   assert(pe);
   
@@ -91,8 +96,7 @@ static int do_test0(pe_t * pe) {
   cs_ntotal_set(cs, ntotal);
   cs_init(cs);
 
-  field_create(pe, cs, nfref, "phi", &phi);
-  field_init(phi, nhalo, NULL);
+  field_create(pe, cs, NULL, "phi", &opts, &phi);
 
   /* Halo */
   test_field_halo(cs, phi);
@@ -122,6 +126,7 @@ int do_test1(pe_t * pe) {
 
   cs_t * cs = NULL;
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nfref, nhalo);
 
   assert(pe);
 
@@ -129,13 +134,11 @@ int do_test1(pe_t * pe) {
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  field_create(pe, cs, nfref, "phi", &phi);
+  field_create(pe, cs, NULL, "phi", &opts, &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
-
-  field_init(phi, nhalo, NULL);
 
   ref = 1.0;
   field_scalar_set(phi, index, ref);
@@ -176,6 +179,7 @@ int do_test_device1(pe_t * pe) {
 
   cs_t * cs = NULL;
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nfref, nhalo);
 
   assert(pe);
 
@@ -183,13 +187,11 @@ int do_test_device1(pe_t * pe) {
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  field_create(pe, cs, nfref, "phi", &phi);
+  field_create(pe, cs, NULL, "phi", &opts, &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
-
-  field_init(phi, nhalo, NULL);
 
   kernel_launch_param(1, &nblk, &ntpb);
   ntpb.x = 1;
@@ -252,6 +254,7 @@ static int do_test3(pe_t * pe) {
 
   cs_t * cs = NULL;
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nfref, nhalo);
 
   assert(pe);
 
@@ -259,13 +262,11 @@ static int do_test3(pe_t * pe) {
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  field_create(pe, cs, nfref, "p", &phi);
+  field_create(pe, cs, NULL, "p", &opts, &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
-
-  field_init(phi, nhalo, NULL);
 
   field_vector_set(phi, index, ref);
   field_vector(phi, index, value);
@@ -307,6 +308,7 @@ static int do_test5(pe_t * pe) {
 
   cs_t * cs = NULL;
   field_t * phi = NULL;
+  field_options_t opts = field_options_ndata_nhalo(nfref, nhalo);
 
   assert(pe);
 
@@ -314,13 +316,11 @@ static int do_test5(pe_t * pe) {
   cs_nhalo_set(cs, nhalo);
   cs_init(cs);
 
-  field_create(pe, cs, nfref, "q", &phi);
+  field_create(pe, cs, NULL, "q", &opts, &phi);
   assert(phi);
 
   field_nf(phi, &nf);
   assert(nf == nfref);
-
-  field_init(phi, nhalo, NULL);
 
   field_tensor_set(phi, index, qref);
   field_tensor(phi, index, qvalue);
@@ -391,6 +391,7 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   cs_t * cs = NULL;
   field_t * phi = NULL;
   io_info_t * iohandler = NULL;
+  field_options_t opts = field_options_default();
 
   assert(pe);
 
@@ -405,9 +406,10 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
     grid[Z] = 2;
   }
 
-  field_create(pe, cs, nf, "phi-test", &phi);
-  assert(phi);
-  field_init(phi, nhalo, NULL);
+  opts.ndata = nf;
+  opts.nhcomm = nhalo;
+  field_create(pe, cs, NULL, "phi-test", &opts, &phi);
+
   field_init_io_info(phi, grid, io_format, io_format); 
 
   test_coords_field_set(cs, nf, phi->data, MPI_DOUBLE, test_ref_double1);
@@ -419,8 +421,7 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   field_free(phi);
   MPI_Barrier(comm);
 
-  field_create(pe, cs, nf, "phi-test", &phi);
-  field_init(phi, nhalo, NULL);
+  field_create(pe, cs, NULL, "phi-test", &opts,&phi);
   field_init_io_info(phi, grid, io_format, io_format);
 
   field_io_info(phi, &iohandler);
@@ -435,6 +436,49 @@ static int do_test_io(pe_t * pe, int nf, int io_format) {
   io_remove_metadata(iohandler, "phi-test");
 
   field_free(phi);
+  cs_free(cs);
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  test_field_halo_create
+ *
+ *****************************************************************************/
+
+int test_field_halo_create(pe_t * pe) {
+
+  cs_t * cs = NULL;
+  field_t * field = NULL;
+  field_options_t opts = field_options_default();
+
+  field_halo_t h = {};
+
+  {
+    int nhalo = 2;
+    int ntotal[3] = {32, 16, 8};
+    cs_create(pe, &cs);
+    cs_nhalo_set(cs, nhalo);
+    cs_ntotal_set(cs, ntotal);
+    cs_init(cs);
+  }
+
+  opts.ndata = 2;
+  opts.nhcomm = 2;
+  field_create(pe, cs, NULL, "halotest", &opts, &field);
+
+  field_halo_create(field, &h);
+  field_halo_info(pe, field, &h);
+
+  test_coords_field_set(cs, 2, field->data, MPI_DOUBLE, test_ref_double1);
+  field_halo_post(field, &h);
+  field_halo_wait(field, &h);
+  test_coords_field_check(cs, 2, 2, field->data, MPI_DOUBLE, test_ref_double1);
+
+  field_halo_free(&h);
+
+  field_free(field);
   cs_free(cs);
 
   return 0;

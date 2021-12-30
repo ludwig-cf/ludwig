@@ -33,7 +33,6 @@
 
 #include "noise.h"
 #include "util.h"
-#include "field_s.h"
 #include "field_ternary_init.h"
 
 /* Three phases c_1, c_2, c_3 */

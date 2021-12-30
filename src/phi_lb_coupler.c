@@ -20,7 +20,6 @@
 #include "pe.h"
 #include "coords.h"
 #include "kernel.h"
-#include "field_s.h"
 #include "phi_lb_coupler.h"
 
 #define NDIST 2

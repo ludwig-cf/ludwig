@@ -70,7 +70,7 @@ __host__ int test_lb_bc_inflow_rhou_create(pe_t * pe, cs_t * cs) {
 
   assert(inflow);
   assert(inflow->pe == pe);
-  assert(inflow->cs = cs);
+  assert(inflow->cs == cs);
 
   assert(inflow->super.func);
   assert(inflow->super.id == LB_BC_INFLOW_RHOU);

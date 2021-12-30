@@ -45,8 +45,6 @@ static int lb_rho_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 
-int lb_halo_post(const lb_t * lb, lb_halo_t * h);
-int lb_halo_wait(lb_t * lb, lb_halo_t * h);
 int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int irreq);
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
 
@@ -1745,7 +1743,7 @@ int lb_halo_size(cs_limits_t lim) {
 
 int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
 
-  assert(1 <= ireq && ireq < h->map.nvel);
+  assert(0 <= ireq && ireq < h->map.nvel);
   assert(lb->ndist == 1);
 
   if (h->count[ireq] > 0) {
@@ -1804,7 +1802,7 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
 
   assert(lb);
   assert(h);
-  assert(0 < ireq && ireq < h->map.nvel);
+  assert(0 <= ireq && ireq < h->map.nvel);
   assert(lb->ndist == 1);
 
   if (h->count[ireq] > 0) {
@@ -1997,6 +1995,12 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
       h->recv[p] = (double *) malloc(rcount*sizeof(double));
       assert(h->recv[p]);
     }
+  }
+
+  /* Ensure all requests are NULL in case a particular one is not required */
+
+  for (int ireq = 0; ireq < 2*27; ireq++) {
+    h->request[ireq] = MPI_REQUEST_NULL;
   }
 
   return 0;

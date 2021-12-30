@@ -30,7 +30,6 @@
 #include <math.h>
 
 #include "kernel.h"
-#include "field_s.h"
 #include "hydro.h"
 #include "pth_s.h"
 #include "timer.h"

@@ -60,7 +60,6 @@
 #include "coords.h"
 #include "kernel.h"
 #include "colloids.h"
-#include "field_s.h"
 #include "gradient_3d_7pt_solid.h"
 
 typedef struct param_s param_t;

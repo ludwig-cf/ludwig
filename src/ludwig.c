@@ -119,8 +119,6 @@
 #include "fe_lc_stats.h"
 #include "fe_ternary_stats.h"
 
-#include "field_s.h"
-
 #include "ludwig.h"
 
 typedef struct ludwig_s ludwig_t;
@@ -1303,9 +1301,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, le);
-    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
+      field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1375,9 +1375,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, le);
-    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
+      field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1413,10 +1415,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, le);
-    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
+      field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+      phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1459,8 +1463,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* No Lees Edwards for the time being */
 
-    field_create(pe, cs, nf, "surfactant1", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, NULL);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, NULL, "surfactant1", &opts, &ludwig->phi);
+    }
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1516,8 +1522,10 @@ int free_energy_init_rt(ludwig_t * ludwig) {
 
     /* No Lees Edwards for the time being */
 
-    field_create(pe, cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, NULL);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, NULL, "phi", &opts, &ludwig->phi);
+    }
 
     field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
 
@@ -1582,9 +1590,15 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "q", &ludwig->q);
-    field_init(ludwig->q, nhalo, le);
-    field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+
+      if (rt_switch(rt, "field_halo_openmp")) {
+	opts.haloscheme = FIELD_HALO_OPENMP;
+      }
+      field_create(pe, cs, le, "q", &opts, &ludwig->q);
+      field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1630,9 +1644,11 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "p", &ludwig->p);
-    field_init(ludwig->p, nhalo, le);
-    field_grad_create(pe, ludwig->p, ngrad, &ludwig->p_grad);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, le, "p", &opts, &ludwig->p);
+      field_grad_create(pe, ludwig->p, ngrad, &ludwig->p_grad);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1679,10 +1695,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, le);
-    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
+      field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+      phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1709,10 +1727,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     /* Liquid crystal part */
     nhalo = 2;   /* Required for stress diveregnce. */
     ngrad = 2;   /* (\nabla^2) required */
-    
-    field_create(pe, cs, NQAB, "q", &ludwig->q);
-    field_init(ludwig->q, nhalo, le);
-    field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
+
+    {
+      field_options_t opts = field_options_ndata_nhalo(NQAB, nhalo);
+      field_create(pe, cs, le, "q", &opts, &ludwig->q);
+      field_grad_create(pe, ludwig->q, ngrad, &ludwig->q_grad);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Free energy details\n");
@@ -1809,10 +1829,12 @@ int free_energy_init_rt(ludwig_t * ludwig) {
     lees_edw_create(pe, cs, info, &le);
     lees_edw_info(le);
 
-    field_create(pe, cs, nf, "phi", &ludwig->phi);
-    field_init(ludwig->phi, nhalo, le);
-    field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
-    phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    {
+      field_options_t opts = field_options_ndata_nhalo(nf, nhalo);
+      field_create(pe, cs, le, "phi", &opts, &ludwig->phi);
+      field_grad_create(pe, ludwig->phi, ngrad, &ludwig->phi_grad);
+      phi_ch_create(pe, cs, le, &ch_options, &ludwig->pch);
+    }
 
     pe_info(pe, "\n");
     pe_info(pe, "Charged binary fluid 'Electrosymmetric' free energy\n");

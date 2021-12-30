@@ -34,7 +34,6 @@
 #include "visc.h"
 #include "control.h"
 #include "collision.h"
-#include "field_s.h"
 #include "kernel.h"
 #include "timer.h"
 

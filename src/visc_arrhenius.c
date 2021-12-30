@@ -28,7 +28,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "field_s.h"
 #include "kernel.h"
 #include "visc_arrhenius.h"
 
