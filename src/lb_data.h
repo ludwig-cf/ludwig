@@ -80,6 +80,31 @@ struct lb_collide_param_s {
   double mi[NVEL][NVEL];
 };
 
+/* Halo */
+
+#include "cs_limits.h"
+
+struct lb_halo_s {
+
+  MPI_Comm comm;                  /* coords: Cartesian communicator */
+  int nbrrank[3][3][3];           /* coords: neighbour rank look-up */
+  int nlocal[3];                  /* coords: local domain size */
+
+  lb_model_t map;                 /* Communication map 2d or 3d */
+  int tagbase;                    /* send/recv tag */
+  int full;                       /* All velocities at each site required. */
+  int count[27];                  /* halo: item data count per direction */
+  cs_limits_t slim[27];           /* halo: send data region (rectangular) */
+  cs_limits_t rlim[27];           /* halo: recv data region (rectangular) */
+  double * send[27];              /* halo: send buffer per direction */
+  double * recv[27];              /* halo: recv buffer per direction */
+  MPI_Request request[2*27];      /* halo: array of requests */
+
+};
+
+int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme);
+int lb_halo_free(lb_t * lb, lb_halo_t * h);
+
 struct lb_data_s {
 
   int ndim;
@@ -101,6 +126,8 @@ struct lb_data_s {
   lb_collide_param_t * param;   /* Collision parameters REFACTOR THIS */
   lb_relaxation_enum_t nrelax;  /* Relaxation scheme */
   lb_halo_enum_t haloscheme;    /* halo scheme */
+
+  lb_halo_t h;                  /* halo information/buffers */
 
   /* MPI data types for halo swaps; these are comupted at runtime
    * to conform to the model selected at compile time */
@@ -172,30 +199,5 @@ __host__ int lb_1st_moment(lb_t * lb, int index, lb_dist_enum_t nd, double g[3])
 __host__ int lb_2nd_moment(lb_t * lb, int index, lb_dist_enum_t nd, double s[3][3]);
 __host__ int lb_0th_moment_equilib_set(lb_t * lb, int index, int n, double rho);
 __host__ int lb_1st_moment_equilib_set(lb_t * lb, int index, double rho, double u[3]);
-
-/* Halo */
-
-#include "cs_limits.h"
-
-struct lb_halo_s {
-
-  MPI_Comm comm;                  /* coords: Cartesian communicator */
-  int nbrrank[3][3][3];           /* coords: neighbour rank look-up */
-  int nlocal[3];                  /* coords: local domain size */
-
-  lb_model_t map;                 /* Communication map 2d or 3d */
-  int tagbase;                    /* send/recv tag */
-  int full;                       /* All velocities at each site required. */
-  int count[27];                  /* halo: item data count per direction */
-  cs_limits_t slim[27];           /* halo: send data region (rectangular) */
-  cs_limits_t rlim[27];           /* halo: recv data region (rectangular) */
-  double * send[27];              /* halo: send buffer per direction */
-  double * recv[27];              /* halo: recv buffer per direction */
-  MPI_Request request[2*27];      /* halo: array of requests */
-
-};
-
-int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full);
-int lb_halo_free(lb_t * lb, lb_halo_t * h);
 
 #endif

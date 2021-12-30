@@ -45,6 +45,11 @@ static int lb_rho_write_ascii(FILE *, int index, void * self);
 static int lb_model_param_init(lb_t * lb);
 static int lb_init(lb_t * lb);
 
+int lb_halo_post(const lb_t * lb, lb_halo_t * h);
+int lb_halo_wait(lb_t * lb, lb_halo_t * h);
+int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int irreq);
+int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int irreq);
+
 static __constant__ lb_collide_param_t static_param;
 
 /*****************************************************************************
@@ -119,6 +124,7 @@ int lb_data_create(pe_t * pe, cs_t * cs, const lb_data_options_t * options,
     pe_fatal(pe, "calloc(1, lb_collide_param_t) failed\n");
   }
 
+  lb_halo_create(obj, &obj->h, obj->haloscheme);
   lb_init(obj);
 
   *lb = obj;
@@ -157,6 +163,8 @@ __host__ int lb_free(lb_t * lb) {
   if (lb->io_info) io_info_free(lb->io_info);
   if (lb->f) free(lb->f);
   if (lb->fprime) free(lb->fprime);
+
+  lb_halo_free(lb, &lb->h);
 
   MPI_Type_free(&lb->plane_xy_full);
   MPI_Type_free(&lb->plane_xz_full);
@@ -786,16 +794,14 @@ __host__ int lb_halo_swap(lb_t * lb, lb_halo_enum_t flag) {
     break;
   case LB_HALO_OPENMP_FULL:
     {
-      lb_halo_t h = {};
-      lb_halo_create(lb, &h, 1);
-      lb_halo_free(lb, &h);
+      lb_halo_post(lb, &lb->h);
+      lb_halo_wait(lb, &lb->h);
     }
     break;
   case LB_HALO_OPENMP_REDUCED:
     {
-      lb_halo_t h = {};
-      lb_halo_create(lb, &h, 0);
-      lb_halo_free(lb, &h);
+      lb_halo_post(lb, &lb->h);
+      lb_halo_wait(lb, &lb->h);
     }
     break;
   default:
@@ -1737,7 +1743,7 @@ int lb_halo_size(cs_limits_t lim) {
  *
  *****************************************************************************/
 
-int lb_halo_enqueue_send(const lb_t * lb, const lb_halo_t * h, int ireq) {
+int lb_halo_enqueue_send(const lb_t * lb, lb_halo_t * h, int ireq) {
 
   assert(1 <= ireq && ireq < h->map.nvel);
   assert(lb->ndist == 1);
@@ -1749,29 +1755,38 @@ int lb_halo_enqueue_send(const lb_t * lb, const lb_halo_t * h, int ireq) {
     int8_t mz = h->map.cv[ireq][Z];
     int8_t mm = mx*mx + my*my + mz*mz;
 
-    int ib = 0; /* Buffer index */
+    int nx = 1 + h->slim[ireq].imax - h->slim[ireq].imin;
+    int ny = 1 + h->slim[ireq].jmax - h->slim[ireq].jmin;
+    int nz = 1 + h->slim[ireq].kmax - h->slim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
 
     assert(mm == 1 || mm == 2 || mm == 3);
 
-    for (int ic = h->slim[ireq].imin; ic <= h->slim[ireq].imax; ic++) {
-      for (int jc = h->slim[ireq].jmin; jc <= h->slim[ireq].jmax; jc++) {
-        for (int kc = h->slim[ireq].kmin; kc <= h->slim[ireq].kmax; kc++) {
-	  /* If full, we need p = 0 */
-          for (int p = 0; p < lb->nvel; p++) {
-	    int8_t px = lb->model.cv[p][X];
-	    int8_t py = lb->model.cv[p][Y];
-	    int8_t pz = lb->model.cv[p][Z];
-            int dot = mx*px + my*py + mz*pz;
-            if (h->full || dot == mm) {
-	      int index = cs_index(lb->cs, ic, jc, kc);
-	      int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	      h->send[ireq][ib++] = lb->f[laddr];
-	    }
-          }
-        }
+    #pragma omp for nowait
+    for (int ih = 0; ih < nx*ny*nz; ih++) {
+      int ic = h->slim[ireq].imin + ih/strx;
+      int jc = h->slim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->slim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int p = 0; p < lb->nvel; p++) {
+	/* Recall, if full, we need p = 0 */
+	int8_t px = lb->model.cv[p][X];
+	int8_t py = lb->model.cv[p][Y];
+	int8_t pz = lb->model.cv[p][Z];
+	int dot = mx*px + my*py + mz*pz;
+	if (h->full || dot == mm) {
+	  int index = cs_index(lb->cs, ic, jc, kc);
+	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
+	  h->send[ireq][ih*h->count[ireq] + ib] = lb->f[laddr];
+	  ib++;
+	}
       }
+      assert(ib == h->count[ireq]);
     }
-    assert(ib == h->count[ireq]*lb_halo_size(h->slim[ireq]));
   }
 
   return 0;
@@ -1800,7 +1815,14 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
     int8_t mz = h->map.cv[h->map.nvel-ireq][Z];
     int8_t mm = mx*mx + my*my + mz*mz;
 
-    int ib = 0; /* Buffer index */
+    int nx = 1 + h->rlim[ireq].imax - h->rlim[ireq].imin;
+    int ny = 1 + h->rlim[ireq].jmax - h->rlim[ireq].jmin;
+    int nz = 1 + h->rlim[ireq].kmax - h->rlim[ireq].kmin;
+
+    int strz = 1;
+    int stry = strz*nz;
+    int strx = stry*ny;
+
     double * recv = h->recv[ireq];
 
     {
@@ -1813,25 +1835,29 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
 
     assert(mm == 1 || mm == 2 || mm == 3);
 
-    for (int ic = h->rlim[ireq].imin; ic <= h->rlim[ireq].imax; ic++) {
-      for (int jc = h->rlim[ireq].jmin; jc <= h->rlim[ireq].jmax; jc++) {
-        for (int kc = h->rlim[ireq].kmin; kc <= h->rlim[ireq].kmax; kc++) {
-          for (int p = 0; p < lb->nvel; p++) {
-	    /* For reduced swap, we must have -cv[p] here... */
-	    int8_t px = lb->model.cv[lb->nvel-p][X];
-	    int8_t py = lb->model.cv[lb->nvel-p][Y];
-	    int8_t pz = lb->model.cv[lb->nvel-p][Z];
-            int dot = mx*px + my*py + mz*pz;
-            if (h->full || dot == mm) {
-	      int index = cs_index(lb->cs, ic, jc, kc);
-              int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
-	      lb->f[laddr] = recv[ib++];
-	    }
-          }
-        }
+    #pragma omp for nowait
+    for (int ih = 0; ih < nx*ny*nz; ih++) {
+      int ic = h->rlim[ireq].imin + ih/strx;
+      int jc = h->rlim[ireq].jmin + (ih % strx)/stry;
+      int kc = h->rlim[ireq].kmin + (ih % stry)/strz;
+      int ib = 0; /* Buffer index */
+
+      for (int p = 0; p < lb->nvel; p++) {
+	/* For reduced swap, we must have -cv[p] here... */
+	int8_t px = lb->model.cv[lb->nvel-p][X];
+	int8_t py = lb->model.cv[lb->nvel-p][Y];
+	int8_t pz = lb->model.cv[lb->nvel-p][Z];
+	int dot = mx*px + my*py + mz*pz;
+
+	if (h->full || dot == mm) {
+	  int index = cs_index(lb->cs, ic, jc, kc);
+	  int laddr = LB_ADDR(lb->nsite, lb->ndist, lb->nvel, index, 0, p);
+	  lb->f[laddr] = recv[ih*h->count[ireq] + ib];
+	  ib++;
+	}
       }
+      assert(ib == h->count[ireq]);
     }
-    assert(ib == h->count[ireq]*lb_halo_size(h->rlim[ireq]));
   }
 
   return 0;
@@ -1845,7 +1871,7 @@ int lb_halo_dequeue_recv(lb_t * lb, const lb_halo_t * h, int ireq) {
  *
  *****************************************************************************/
 
-int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full) {
+int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
 
   assert(lb);
   assert(h);
@@ -1862,7 +1888,8 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full) {
   cs_nlocal(lb->cs, h->nlocal);
   cs_cart_comm(lb->cs, &h->comm);
   h->tagbase = 211216;
-  h->full = full;
+
+  if (scheme == LB_HALO_OPENMP_FULL) h->full = 1;
 
   /* Determine look-up table of ranks of neighbouring processes */
   {
@@ -1972,6 +1999,20 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full) {
     }
   }
 
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_halo_post
+ *
+ *****************************************************************************/
+
+int lb_halo_post(const lb_t * lb, lb_halo_t * h) {
+
+  assert(lb);
+  assert(h);
+
   /* Post recvs (from opposite direction cf send) */
 
   for (int ireq = 0; ireq < h->map.nvel; ireq++) {
@@ -1991,9 +2032,16 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full) {
     }
   }
 
+  /* Load send buffers */
   /* Enqueue sends (second half of request array) */
 
-  #pragma omp parallel for schedule(dynamic, 1)
+  #pragma omp parallel
+  {
+    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+      lb_halo_enqueue_send(lb, h, ireq);
+    }
+  }
+
   for (int ireq = 0; ireq < h->map.nvel; ireq++) {
 
     h->request[27+ireq] = MPI_REQUEST_NULL;
@@ -2004,16 +2052,37 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, int full) {
       int k = 1 + h->map.cv[ireq][Z];
       int mcount = h->count[ireq]*lb_halo_size(h->slim[ireq]);
 
-      lb_halo_enqueue_send(lb, h, ireq);
-
       /* Short circuit messages to self. */
       if (h->nbrrank[i][j][k] == h->nbrrank[1][1][1]) mcount = 0;
 
-      #pragma omp critical
-      {
-	MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
-		  h->tagbase + ireq, h->comm, h->request + 27 + ireq);
-      }
+      MPI_Isend(h->send[ireq], mcount, MPI_DOUBLE, h->nbrrank[i][j][k],
+		h->tagbase + ireq, h->comm, h->request + 27 + ireq);
+    }
+  }
+
+  return 0;
+}
+
+/*****************************************************************************
+ *
+ *  lb_halo_wait
+ *
+ *****************************************************************************/
+
+int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
+
+  assert(lb);
+  assert(h);
+
+  {
+    MPI_Status statuses[2*27] = {};
+    MPI_Waitall(2*h->map.nvel, h->request, statuses);
+  }
+
+  #pragma omp parallel
+  {
+    for (int ireq = 0; ireq < h->map.nvel; ireq++) {
+      lb_halo_dequeue_recv(lb, h, ireq);
     }
   }
 
@@ -2033,38 +2102,12 @@ int lb_halo_free(lb_t * lb, lb_halo_t * h) {
   assert(lb);
   assert(h);
 
-  /* Can free() be used with thread safety? */
-
-  #pragma omp parallel for schedule(dynamic, 1)
-  for (int ireq = 0; ireq < 2*h->map.nvel; ireq++) {
-
-    int issatisfied = -1;
-    MPI_Status status = {};
-
-    #pragma omp critical
-    {
-      MPI_Waitany(2*h->map.nvel, h->request, &issatisfied, &status);
-    }
-    /* Check status is what we expect? */
-
-    if (issatisfied == MPI_UNDEFINED) {
-      /* No action e.g., for (0,0,0) case */
-    }
-    else {
-      /* Handle either send or recv request completion */
-      if (issatisfied < h->map.nvel) {
-	/* This is a recv */
-	int irreq = issatisfied;
-	lb_halo_dequeue_recv(lb, h, irreq);
-	free(h->recv[irreq]);
-      }
-      else {
-	/* This was a send */
-	int isreq = issatisfied - 27;
-	free(h->send[isreq]);
-      }
-    }
+  for (int ireq = 0; ireq < 27; ireq++) {
+    free(h->send[ireq]);
+    free(h->recv[ireq]);
   }
+
+  lb_model_free(&h->map);
 
   return 0;
 }
