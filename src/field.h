@@ -23,9 +23,29 @@
 #include "io_harness.h"
 #include "leesedwards.h"
 #include "halo_swap.h"
+#include "field_options.h"
+
+/* Halo */
+
+#include "cs_limits.h"
+
+typedef struct field_halo_s field_halo_t;
+
+struct field_halo_s {
+
+  MPI_Comm comm;                /* coords: Cartesian communicator */
+  int nbrrank[3][3][3];         /* coords: Cartesian neighbours */
+
+  int nvel;                     /* Number of directions involved (2d or 3d) */
+  int8_t cv[27][3];             /* Send/recv directions */
+  cs_limits_t slim[27];         /* halo: send regions (rectangular) */
+  cs_limits_t rlim[27];         /* halo: recv regions (rectangular) */
+  double * send[27];            /* halo: send data buffers */
+  double * recv[27];            /* halo: recv data buffers */
+  MPI_Request request[2*27];    /* halo: array of send/recv requests */
+};
 
 typedef struct field_s field_t;
-typedef enum {FIELD_HALO_HOST = 0, FIELD_HALO_TARGET} field_halo_enum_t;
 
 struct field_s {
   int nf;                       /* Number of field components */
@@ -41,16 +61,26 @@ struct field_s {
   lees_edw_t * le;              /* Lees-Edwards */
   io_info_t * info;             /* I/O Handler */
   halo_swap_t * halo;           /* Halo swap driver object */
+  field_halo_t h;               /* Host halo */
+  field_options_t opts;         /* Options */
 
   field_t * target;             /* target structure */
 };
 
-__host__ int field_create(pe_t * pe, cs_t * cs, int nf, const char * name,
+
+int field_halo_create(const field_t * field, field_halo_t * h);
+int field_halo_post(const field_t * field, field_halo_t * h);
+int field_halo_wait(field_t * field, field_halo_t * h);
+int field_halo_info(pe_t * pe, const field_t * field, const field_halo_t * h);
+int field_halo_free(field_halo_t * h);
+
+__host__ int field_create(pe_t * pe, cs_t * cs, lees_edw_t * le,
+			  const char * name,
+			  const field_options_t * opts,
 			  field_t ** pobj);
 __host__ int field_free(field_t * obj);
 
 __host__ int field_memcpy(field_t * obj, tdpMemcpyKind flag);
-__host__ int field_init(field_t * obj, int nhcomm, lees_edw_t * le);
 __host__ int field_init_io_info(field_t * obj, int grid[3], int form_in,
 				int form_out);
 __host__ int field_io_info(field_t * obj, io_info_t ** info);
