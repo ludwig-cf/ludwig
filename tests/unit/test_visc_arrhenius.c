@@ -125,6 +125,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
   visc_arrhenius_param_t param = {eta_minus, eta_plus, phistar};
   visc_arrhenius_t * visc = NULL;
 
+  hydro_options_t hopts = hydro_options_nhalo(0);
   hydro_t * hydro = NULL;
 
   int ifail;
@@ -145,7 +146,7 @@ int test_visc_arrhenius_update(pe_t * pe, cs_t * cs, field_t * phi) {
 
   /* Initialise the hydrodynamic sector and update the viscosity */
 
-  hydro_create(pe, cs, NULL, 0, &hydro);
+  hydro_create(pe, cs, NULL, &hopts, &hydro);
   visc_arrhenius_update(visc, hydro);
   hydro_memcpy(hydro, tdpMemcpyDeviceToHost);
 
