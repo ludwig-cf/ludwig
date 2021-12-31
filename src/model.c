@@ -1986,13 +1986,13 @@ int lb_halo_create(const lb_t * lb, lb_halo_t * h, lb_halo_enum_t scheme) {
     /* Allocate send buffer for send region */
     if (count > 0) {
       int scount = count*lb_halo_size(h->slim[p]);
-      h->send[p] = (double *) malloc(scount*sizeof(double));
+      h->send[p] = (double *) calloc(scount, sizeof(double));
       assert(h->send[p]);
     }
     /* Allocate recv buffer */
     if (count > 0) {
       int rcount = count*lb_halo_size(h->rlim[p]);
-      h->recv[p] = (double *) malloc(rcount*sizeof(double));
+      h->recv[p] = (double *) calloc(rcount, sizeof(double));
       assert(h->recv[p]);
     }
   }
@@ -2078,10 +2078,7 @@ int lb_halo_wait(lb_t * lb, lb_halo_t * h) {
   assert(lb);
   assert(h);
 
-  {
-    MPI_Status statuses[2*27] = {};
-    MPI_Waitall(2*h->map.nvel, h->request, statuses);
-  }
+  MPI_Waitall(2*h->map.nvel, h->request, MPI_STATUSES_IGNORE);
 
   #pragma omp parallel
   {

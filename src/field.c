@@ -1181,8 +1181,8 @@ int field_halo_create(const field_t * field, field_halo_t * h) {
     int scount = field->nf*field_halo_size(h->slim[p]);
     int rcount = field->nf*field_halo_size(h->rlim[p]);
 
-    h->send[p] = (double *) malloc(scount*sizeof(double));
-    h->recv[p] = (double *) malloc(rcount*sizeof(double));
+    h->send[p] = (double *) calloc(scount, sizeof(double));
+    h->recv[p] = (double *) calloc(rcount, sizeof(double));
     assert(h->send[p]);
     assert(h->recv[p]);
   }
@@ -1259,10 +1259,7 @@ int field_halo_wait(field_t * field, field_halo_t * h) {
   assert(field);
   assert(h);
 
-  {
-    MPI_Status statuses[2*27] = {};
-    MPI_Waitall(2*h->nvel, h->request, statuses);
-  }
+  MPI_Waitall(2*h->nvel, h->request, MPI_STATUSES_IGNORE);
 
   #pragma omp parallel
   {
