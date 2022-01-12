@@ -29,7 +29,6 @@ temperature 0.00001
 free_energy fe_electro
 
 fd_advection_scheme_order 2
-fd_gradient_calculation 3d_7pt_fluid
 fd_force_divergence 0
 
 ###############################################################################
@@ -78,7 +77,6 @@ electrokinetics_eunit   1.0
 electrokinetics_epsilon 3.3e3
 electrokinetics_init    uniform
 electrokinetics_init_rho_el 0.001
-electrokinetics_init_sigma 0.03125
 
 ###############################################################################
 #
