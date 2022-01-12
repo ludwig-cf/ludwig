@@ -32,6 +32,7 @@ logs:	$(LOGS)
 # Restart tests must be in the right order
 
 serial-rest-c02.new:	serial-rest-c01.new
+serial-rest-ec2.new:	serial-rest-ec1.new
 
 # Generate initial conditions for polymer test before running
 
