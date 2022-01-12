@@ -1102,6 +1102,7 @@ void ludwig_run(const char * inputfile) {
 #ifdef PETSC
   if (ludwig->psi) psi_petsc_finish();
 #endif
+  if (ludwig->psi) psi_free(ludwig->psi);
 
   if (ludwig->stat_rheo) stats_rheology_free(ludwig->stat_rheo);
   if (ludwig->stat_turb) stats_turbulent_free(ludwig->stat_turb);
